@@ -23,21 +23,19 @@ loadEnv({ path: '.env.local' })
 loadEnv() // fallback: carrega .env se existir
 import * as fs from 'fs'
 import * as path from 'path'
-import { adminClient } from '@/lib/supabase/admin'
+import { getAdminClient } from '@/lib/supabase/admin'
 import { parseExcel } from './parse-excel'
 import { loadMetas } from './load-metas'
 
 const DATA_DIR = path.join(process.cwd(), 'supabase', 'seed', 'data')
 const BATCH_SIZE = 500
 
-type RpcFn = typeof adminClient.rpc
+type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
 async function rpc(fn: string, args?: Record<string, unknown>): Promise<unknown> {
-  const call = adminClient.rpc as unknown as (
-    fn: string,
-    args?: Record<string, unknown>
-  ) => ReturnType<RpcFn>
-  const { data, error } = await call(fn, args)
+  const client = getAdminClient()
+  const bound = (client.rpc as unknown as BoundRpc).bind(client)
+  const { data, error } = await bound(fn, args)
   if (error) throw new Error(`RPC ${fn} falhou: ${error.message}`)
   return data
 }
@@ -79,7 +77,7 @@ async function main() {
     let inseridas = 0
     for (let i = 0; i < linhas.length; i += BATCH_SIZE) {
       const lote = linhas.slice(i, i + BATCH_SIZE)
-      await rpc('inserir_lote_raw', { p_linhas: JSON.stringify(lote) })
+      await rpc('inserir_lote_raw', { p_linhas: lote })
       inseridas += lote.length
       process.stdout.write(`   inseridas ${inseridas}/${linhas.length}\r`)
     }

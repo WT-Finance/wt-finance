@@ -1,7 +1,8 @@
 /**
  * load-metas.ts
  *
- * Insere as metas mensais em app.meta_setor.
+ * Insere as metas mensais via RPC inserir_metas() — evita depender da
+ * exposição do schema analytics via PostgREST.
  *
  * Valores de 2026 são reais (fonte='real'), fornecidos pelos gestores — Anexo A.3.
  * Valores de 2024 e 2025 são fictícios (fonte='ficticia'):
@@ -9,7 +10,7 @@
  *   meta_2025 = meta_2026 / 1.15^1   (÷ 1.15)
  */
 
-import { adminClient } from '@/lib/supabase/admin'
+import { getAdminClient } from '@/lib/supabase/admin'
 
 // Metas reais de 2026 — Anexo A.3 do briefing
 // "Trips" no briefing corresponde ao setor_macro nome='Lazer' (display_nome='Trips')
@@ -59,8 +60,8 @@ const METAS_2026: Record<string, Record<number, number>> = {
   },
 }
 
-type MetaRow = {
-  setor_macro_id: number
+type MetaPayload = {
+  setor_macro_nome: string
   ano: number
   mes: number
   valor_meta: number
@@ -68,60 +69,21 @@ type MetaRow = {
 }
 
 export async function loadMetas(): Promise<void> {
-  // Busca os IDs dos setores macro
-  const { data: setores, error: errSetores } = await adminClient
-    .schema('analytics')
-    .from('dim_setor_macro')
-    .select('id, nome')
-
-  if (errSetores || !setores) {
-    throw new Error(`Erro ao buscar dim_setor_macro: ${errSetores?.message}`)
-  }
-
-  const setorIdPorNome = Object.fromEntries(setores.map(s => [s.nome, s.id]))
-
-  const rows: MetaRow[] = []
+  const rows: MetaPayload[] = []
 
   for (const [nomeSetor, mesesValores] of Object.entries(METAS_2026)) {
-    const setorId = setorIdPorNome[nomeSetor]
-    if (!setorId) throw new Error(`Setor macro não encontrado: ${nomeSetor}`)
-
     for (const [mesStr, meta2026] of Object.entries(mesesValores)) {
       const mes = Number(mesStr)
 
-      // 2026 — real
-      rows.push({
-        setor_macro_id: setorId,
-        ano: 2026,
-        mes,
-        valor_meta: meta2026,
-        fonte: 'real',
-      })
-
-      // 2025 — fictício: ÷ 1.15
-      rows.push({
-        setor_macro_id: setorId,
-        ano: 2025,
-        mes,
-        valor_meta: Math.round(meta2026 / 1.15),
-        fonte: 'ficticia',
-      })
-
-      // 2024 — fictício: ÷ 1.15²
-      rows.push({
-        setor_macro_id: setorId,
-        ano: 2024,
-        mes,
-        valor_meta: Math.round(meta2026 / 1.3225),
-        fonte: 'ficticia',
-      })
+      rows.push({ setor_macro_nome: nomeSetor, ano: 2026, mes, valor_meta: meta2026,              fonte: 'real' })
+      rows.push({ setor_macro_nome: nomeSetor, ano: 2025, mes, valor_meta: Math.round(meta2026 / 1.15),     fonte: 'ficticia' })
+      rows.push({ setor_macro_nome: nomeSetor, ano: 2024, mes, valor_meta: Math.round(meta2026 / 1.3225),   fonte: 'ficticia' })
     }
   }
 
-  const { error } = await adminClient
-    .schema('app')
-    .from('meta_setor')
-    .insert(rows)
+  const client = getAdminClient()
+  const bound = (client.rpc as unknown as (fn: string, args: unknown) => Promise<{ error: { message: string } | null }>).bind(client)
+  const { error } = await bound('inserir_metas', { p_metas: rows })
 
   if (error) throw new Error(`Erro ao inserir metas: ${error.message}`)
 

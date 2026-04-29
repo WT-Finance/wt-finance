@@ -353,7 +353,7 @@ export interface Database {
     Views: Record<string, never>
     Functions: {
       truncate_dynamic_tables: { Args: Record<string, never>; Returns: void }
-      inserir_lote_raw: { Args: { p_linhas: string }; Returns: void }
+      inserir_lote_raw: { Args: { p_linhas: unknown }; Returns: void }
       transform_raw_to_analytics: {
         Args: Record<string, never>
         Returns: { vendas_count: number; fato_venda_item_count: number }
@@ -363,6 +363,7 @@ export interface Database {
         Args: { p_fonte: string; p_status: string; p_registros?: number; p_erro?: string }
         Returns: void
       }
+      inserir_metas: { Args: { p_metas: unknown }; Returns: void }
     }
   }
 }

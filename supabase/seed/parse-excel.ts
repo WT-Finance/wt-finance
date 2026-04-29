@@ -31,7 +31,7 @@ export interface LinhaRaw {
 // Ajuste aqui se o Excel vier com nomes ligeiramente diferentes
 const COL_MAP: Record<string, keyof LinhaRaw> = {
   'Venda Nº':        'venda_numero',
-  'Data':            'data_venda',
+  'Data Venda':      'data_venda',
   'Vendedor':        'vendedor',
   'Pagante':         'pagante',
   'Setor Macro':     'setor_macro',
