@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# planilhas de dados (nunca commitar — contêm dados internos da empresa)
+supabase/seed/data/
