@@ -364,6 +364,27 @@ export interface Database {
         Returns: void
       }
       inserir_metas: { Args: { p_metas: unknown }; Returns: void }
+      get_setores_macro: { Args: Record<string, never>; Returns: Json }
+      get_kpis: {
+        Args: { p_ano: number; p_mes: number; p_setor?: string }
+        Returns: Json
+      }
+      get_ritmo_diario: {
+        Args: { p_ano: number; p_mes: number; p_setor?: string }
+        Returns: Json
+      }
+      get_historico_mensal: {
+        Args: { p_setor?: string }
+        Returns: Json
+      }
+      get_ranking_vendedores: {
+        Args: { p_ano: number; p_mes: number; p_setor?: string; p_limite?: number }
+        Returns: Json
+      }
+      get_ranking_produtos: {
+        Args: { p_ano: number; p_mes: number; p_setor?: string; p_limite?: number }
+        Returns: Json
+      }
     }
   }
 }
