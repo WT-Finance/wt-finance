@@ -1,36 +1,167 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WT Finance
 
-## Getting Started
+Dashboard analítico de performance de vendas da Welcome Trips.  
+Substitui o dashboard Power BI (RPA + Excel) com ganhos analíticos e base técnica para crescimento.
 
-First, run the development server:
+**Stack:** Next.js 16 · TypeScript · Supabase · shadcn/ui · Recharts · Vercel
+
+---
+
+## Pré-requisitos
+
+- Node.js 20+
+- Conta no [Supabase](https://supabase.com) (projeto provisionado em São Paulo)
+- Conta no [Vercel](https://vercel.com) (conectada ao repositório GitHub)
+
+---
+
+## Setup local
+
+### 1. Instalar dependências
+
+```bash
+npm install
+```
+
+### 2. Configurar variáveis de ambiente
+
+Copie o template e preencha com os valores do painel do Supabase:
+
+```bash
+cp .env.example .env.local
+```
+
+Preencha em `.env.local`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<projeto>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<chave anon>
+SUPABASE_SERVICE_ROLE_KEY=<chave service_role>   # apenas para o seed local
+```
+
+> **Atenção:** `SUPABASE_SERVICE_ROLE_KEY` nunca vai para o Vercel. Usada apenas no `npm run seed` local.
+
+### 3. Aplicar migrations no Supabase
+
+Acesse o **SQL Editor** do painel do Supabase e execute os arquivos em ordem:
+
+```
+supabase/migrations/0001_init_schemas.sql
+supabase/migrations/0002_dimensions.sql
+supabase/migrations/0003_facts.sql
+supabase/migrations/0004_app_tables.sql
+supabase/migrations/0005_audit_tables.sql
+supabase/migrations/0006_views.sql
+supabase/migrations/0007_rls_policies.sql
+```
+
+**Validação após aplicar:**
+
+```sql
+-- Deve retornar 3 linhas: Lazer, Weddings, Corporativo
+SELECT * FROM analytics.dim_setor_macro;
+
+-- Deve retornar ~2557
+SELECT COUNT(*) FROM analytics.dim_data;
+
+-- Deve listar todas as tabelas criadas
+SELECT table_schema, table_name
+FROM information_schema.tables
+WHERE table_schema IN ('raw', 'analytics', 'app', 'audit')
+ORDER BY table_schema, table_name;
+```
+
+### 4. Carregar dados (Missão 2)
+
+As planilhas Excel devem ser colocadas em `supabase/seed/data/` (pasta ignorada pelo git):
+
+```
+supabase/seed/data/VendasPorProduto2024.xlsx
+supabase/seed/data/VendasPorProduto2025.xlsx
+supabase/seed/data/VendasPorProduto2026.xlsx
+```
+
+Depois, rodar o seed:
+
+```bash
+npm run seed
+```
+
+> O script `seed` ainda não existe — será implementado na Missão 2.
+
+### 5. Rodar localmente
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploy
 
-## Learn More
+Push em `main` dispara deploy automático no Vercel.
 
-To learn more about Next.js, take a look at the following resources:
+Variáveis de ambiente necessárias no Vercel (sem a service_role):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Estrutura do projeto
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+  app/
+    (dashboard)/     # página principal do dashboard
+    api/dashboard/   # Route Handlers (APIs)
+    layout.tsx
+  components/
+    dashboard/       # componentes do dashboard
+    ui/              # shadcn/ui
+  lib/
+    supabase/        # clientes browser/server/admin
+    formatters.ts    # formatBRL, formatPct, etc.
+    types.ts         # tipos de resposta das APIs
+  types/
+    database.ts      # tipos do schema Supabase
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+supabase/
+  migrations/        # migrations SQL (0001–0007)
+  seed/
+    seed.ts          # script de carga (M2)
+    data/            # planilhas .xlsx (gitignored)
+
+docs/
+  adr/               # Architecture Decision Records
+  briefings/         # briefing técnico do projeto
+```
+
+---
+
+## Missões (status)
+
+| Missão | Foco                       | Status       |
+|--------|----------------------------|--------------|
+| M1     | Modelagem do banco         | ✅ Concluída  |
+| M2     | Carga dos dados            | 🔲 Pendente  |
+| M3     | APIs (Route Handlers)      | 🔲 Pendente  |
+| M4     | Frontend (componentes)     | 🔲 Pendente  |
+| M5     | Filtros, polimento, deploy | 🔲 Pendente  |
+
+---
+
+## Decisões arquiteturais
+
+Registradas em [`docs/adr/`](docs/adr/):
+
+- [ADR 0001 — Stack inicial](docs/adr/0001-stack-inicial.md)
+- [ADR 0002 — Modelagem do banco](docs/adr/0002-modelagem-banco.md)
+
+---
+
+> Metas 2024 e 2025 são fictícias — calculadas com decréscimo de 15% a.a. sobre 2026.
