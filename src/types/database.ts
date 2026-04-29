@@ -347,6 +347,25 @@ export interface Database {
       }
     }
   }
+  // Schema public: apenas as funções RPC do seed — tabelas ficam nos schemas nomeados acima
+  public: {
+    Tables: Record<string, never>
+    Views: Record<string, never>
+    Functions: {
+      truncate_dynamic_tables: { Args: Record<string, never>; Returns: void }
+      inserir_lote_raw: { Args: { p_linhas: unknown }; Returns: void }
+      transform_raw_to_analytics: {
+        Args: Record<string, never>
+        Returns: { vendas_count: number; fato_venda_item_count: number }
+      }
+      refresh_all_materialized_views: { Args: Record<string, never>; Returns: void }
+      registrar_ingestao_log: {
+        Args: { p_fonte: string; p_status: string; p_registros?: number; p_erro?: string }
+        Returns: void
+      }
+      inserir_metas: { Args: { p_metas: unknown }; Returns: void }
+    }
+  }
 }
 
 // Tipos auxiliares para uso conveniente nos componentes e APIs
