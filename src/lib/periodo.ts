@@ -119,8 +119,11 @@ export function resolverPeriodoFromParams(params: {
 }): { from: string; to: string } {
   const preset = (params.preset as PresetPeriodo | null) ?? params.defaultPreset ?? 'este-mes'
 
-  if (preset === 'personalizado' && params.from && params.to) {
-    return { from: params.from, to: params.to }
+  if (preset === 'personalizado') {
+    // enquanto datas não estiverem preenchidas, usa este-mes como fallback
+    if (params.from && params.to) return { from: params.from, to: params.to }
+    const fallback = resolvePeriodo(params.defaultPreset ?? 'este-mes')
+    return { from: isoDate(fallback.inicio), to: isoDate(fallback.fim) }
   }
 
   const periodo = resolvePeriodo(preset)
