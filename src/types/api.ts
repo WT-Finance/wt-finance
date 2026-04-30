@@ -50,3 +50,68 @@ export interface RankingProdutoItem {
   receitas: number
   vendas_count: number
 }
+
+// ── V2: Aba Executiva / Performance ────────────────────────────────────────
+
+export interface PeriodoRef {
+  from: string
+  to: string
+}
+
+export interface KpiMetrica {
+  valor: number | null
+  variacao_anterior: number | null
+  variacao_yoy: number | null
+  is_pp?: boolean  // true para margem_pct (exibir em p.p., não %)
+}
+
+export interface ExecutivaKpis {
+  periodo: PeriodoRef
+  periodo_anterior: PeriodoRef
+  periodo_yoy: PeriodoRef
+  faturamento: KpiMetrica
+  receita: KpiMetrica
+  margem_pct: KpiMetrica
+  vendas: KpiMetrica
+  ticket_medio: KpiMetrica
+}
+
+export interface MixSetorItem {
+  setor_macro: string
+  display_nome: string
+  cor_hex: string
+  faturamento: number
+  receita: number
+  margem_pct: number | null
+  pct_faturamento: number
+  pct_receita: number
+}
+
+export interface MixSetor {
+  total: {
+    faturamento: number
+    receita: number
+    margem_pct: number | null
+  }
+  setores: MixSetorItem[]
+}
+
+export interface PrejuizosSummary {
+  quantidade: number
+  valor_prejuizo_total: number
+}
+
+export interface PrejuizoVendaItem {
+  data_venda: string
+  vendedor_nome: string
+  pagante_nome: string
+  produto_nome: string
+  valor_total: number
+  receitas: number
+}
+
+export interface PrejuizosDetalhe {
+  total: PrejuizosSummary
+  vendas: PrejuizoVendaItem[]
+  total_no_periodo: number
+}
