@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
-import PeriodoFilter, { resolverPeriodoFromParams } from '@/components/shared/periodo-filter'
+import PeriodoFilter from '@/components/shared/periodo-filter'
+import { resolverPeriodoFromParams } from '@/lib/periodo'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import MixSetorChart from '@/components/executiva/mix-setor-chart'

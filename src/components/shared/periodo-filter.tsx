@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect } from 'react'
-import { resolvePeriodo, type PresetPeriodo } from '@/lib/periodo'
+import { type PresetPeriodo } from '@/lib/periodo'
 import { format } from 'date-fns'
 
 const PRESETS: { value: PresetPeriodo; label: string }[] = [
@@ -24,21 +24,19 @@ interface Props {
 }
 
 export default function PeriodoFilter({ defaultPreset = 'este-mes' }: Props) {
-  const router      = useRouter()
-  const pathname    = usePathname()
+  const router       = useRouter()
+  const pathname     = usePathname()
   const searchParams = useSearchParams()
 
   const preset  = (searchParams.get('preset') as PresetPeriodo | null) ?? defaultPreset
   const fromVal = searchParams.get('from') ?? ''
   const toVal   = searchParams.get('to')   ?? ''
 
-  // persist to localStorage so switching tabs keeps the same period
   useEffect(() => {
     const current = { preset, from: fromVal, to: toVal }
     try { localStorage.setItem(LS_KEY, JSON.stringify(current)) } catch {}
   }, [preset, fromVal, toVal])
 
-  // on first mount with no search params, restore from localStorage
   useEffect(() => {
     if (searchParams.size > 0) return
     try {
@@ -93,21 +91,4 @@ export default function PeriodoFilter({ defaultPreset = 'este-mes' }: Props) {
       )}
     </div>
   )
-}
-
-/** Resolve os search params da URL em um Periodo concreto { from, to } em ISO strings. */
-export function resolverPeriodoFromParams(params: {
-  preset?: string | null
-  from?: string | null
-  to?: string | null
-  defaultPreset?: PresetPeriodo
-}): { from: string; to: string } {
-  const preset = (params.preset as PresetPeriodo | null) ?? params.defaultPreset ?? 'este-mes'
-
-  if (preset === 'personalizado' && params.from && params.to) {
-    return { from: params.from, to: params.to }
-  }
-
-  const periodo = resolvePeriodo(preset)
-  return { from: ISO(periodo.inicio), to: ISO(periodo.fim) }
 }
