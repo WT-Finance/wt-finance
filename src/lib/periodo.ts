@@ -2,7 +2,7 @@ import {
   startOfMonth, endOfMonth, subMonths, subYears,
   differenceInDays, addDays,
   getYear, getMonth, getDate,
-  isAfter,
+  isAfter, format,
 } from 'date-fns'
 
 export type PresetPeriodo =
@@ -103,4 +103,29 @@ export function formatarPeriodo(periodo: Periodo): string {
   const fmt = (d: Date) =>
     `${String(getDate(d)).padStart(2, '0')}/${String(getMonth(d) + 1).padStart(2, '0')}/${getYear(d)}`
   return `${fmt(periodo.inicio)} – ${fmt(periodo.fim)}`
+}
+
+const isoDate = (d: Date) => format(d, 'yyyy-MM-dd')
+
+/**
+ * Resolve search params de URL (preset, from, to) em { from, to } ISO strings.
+ * Seguro para uso em Server Components — sem `'use client'`.
+ */
+export function resolverPeriodoFromParams(params: {
+  preset?: string | null
+  from?: string | null
+  to?: string | null
+  defaultPreset?: PresetPeriodo
+}): { from: string; to: string } {
+  const preset = (params.preset as PresetPeriodo | null) ?? params.defaultPreset ?? 'este-mes'
+
+  if (preset === 'personalizado') {
+    // enquanto datas não estiverem preenchidas, usa este-mes como fallback
+    if (params.from && params.to) return { from: params.from, to: params.to }
+    const fallback = resolvePeriodo(params.defaultPreset ?? 'este-mes')
+    return { from: isoDate(fallback.inicio), to: isoDate(fallback.fim) }
+  }
+
+  const periodo = resolvePeriodo(preset)
+  return { from: isoDate(periodo.inicio), to: isoDate(periodo.fim) }
 }

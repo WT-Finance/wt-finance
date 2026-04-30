@@ -385,6 +385,18 @@ export interface Database {
         Args: { p_ano: number; p_mes: number; p_setor?: string; p_limite?: number }
         Returns: Json
       }
+      get_executiva_kpis: {
+        Args: { p_from: string; p_to: string; p_setor?: string }
+        Returns: Json
+      }
+      get_mix_setor: {
+        Args: { p_from: string; p_to: string; p_setor?: string }
+        Returns: Json
+      }
+      get_prejuizos: {
+        Args: { p_from: string; p_to: string; p_setor?: string; p_summary?: boolean }
+        Returns: Json
+      }
     }
   }
 }
