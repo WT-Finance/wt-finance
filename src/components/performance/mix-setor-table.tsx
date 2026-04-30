@@ -1,7 +1,13 @@
 import type { MixSetor } from '@/types/api'
+import { fmtBRL } from '@/lib/fmt'
+import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
 
-const fmtBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+function margemColor(v: number | null) {
+  if (v == null)           return 'text-zinc-400'
+  if (v >= MARGEM_OK)     return 'text-emerald-600'
+  if (v >= MARGEM_ALERTA) return 'text-amber-500'
+  return 'text-red-500'
+}
 
 function SkeletonRow() {
   return (
@@ -25,7 +31,7 @@ export default function MixSetorTable({ data, loading }: Props) {
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
       <h2 className="text-sm font-semibold text-zinc-700 mb-3">Mix por Setor</h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-120 text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Setor</th>
@@ -66,12 +72,7 @@ export default function MixSetorTable({ data, loading }: Props) {
                       <td className="py-2 px-3 text-right tabular-nums text-zinc-500">
                         {s.pct_receita.toFixed(1)}%
                       </td>
-                      <td className={`py-2 px-3 text-right tabular-nums font-medium ${
-                        s.margem_pct == null ? 'text-zinc-400'
-                        : s.margem_pct >= 14 ? 'text-emerald-600'
-                        : s.margem_pct >= 12 ? 'text-amber-500'
-                        : 'text-red-500'
-                      }`}>
+                      <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(s.margem_pct)}`}>
                         {s.margem_pct != null ? `${s.margem_pct.toFixed(1)}%` : '—'}
                       </td>
                     </tr>
@@ -86,12 +87,7 @@ export default function MixSetorTable({ data, loading }: Props) {
                       {fmtBRL(data.total.receita)}
                     </td>
                     <td className="py-2 px-3 text-right text-zinc-400">100%</td>
-                    <td className={`py-2 px-3 text-right tabular-nums ${
-                      data.total.margem_pct == null ? 'text-zinc-400'
-                      : data.total.margem_pct >= 14 ? 'text-emerald-600'
-                      : data.total.margem_pct >= 12 ? 'text-amber-500'
-                      : 'text-red-500'
-                    }`}>
+                    <td className={`py-2 px-3 text-right tabular-nums ${margemColor(data.total.margem_pct)}`}>
                       {data.total.margem_pct != null ? `${data.total.margem_pct.toFixed(1)}%` : '—'}
                     </td>
                   </tr>

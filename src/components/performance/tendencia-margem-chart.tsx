@@ -5,17 +5,13 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from 'recharts'
 import type { TendenciaMargem } from '@/types/api'
-
-const MARGEM_ALERTA = 12
-const MARGEM_OK     = 14
+import { fmtBRL } from '@/lib/fmt'
+import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
 
 interface Props {
   data: TendenciaMargem | null
   loading: boolean
 }
-
-const fmtBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
 
 export default function TendenciaMargemChart({ data, loading }: Props) {
   const pontos = data?.pontos ?? []

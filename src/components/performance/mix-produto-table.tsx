@@ -1,7 +1,13 @@
 import type { MixProduto } from '@/types/api'
+import { fmtBRL } from '@/lib/fmt'
+import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
 
-const fmtBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+function margemColor(v: number | null) {
+  if (v == null)           return 'text-zinc-400'
+  if (v >= MARGEM_OK)     return 'text-emerald-600'
+  if (v >= MARGEM_ALERTA) return 'text-amber-500'
+  return 'text-red-500'
+}
 
 function SkeletonRow() {
   return (
@@ -25,7 +31,7 @@ export default function MixProdutoTable({ data, loading }: Props) {
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
       <h2 className="text-sm font-semibold text-zinc-700 mb-3">Mix por Produto (Top 10)</h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-105 text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 w-8">#</th>
@@ -51,7 +57,7 @@ export default function MixProdutoTable({ data, loading }: Props) {
                   {data.produtos.map((p, i) => (
                     <tr key={p.produto_nome} className="hover:bg-zinc-50">
                       <td className="py-2 px-3 text-xs text-zinc-400">{i + 1}</td>
-                      <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-[180px]">
+                      <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-45">
                         {p.produto_nome}
                       </td>
                       <td className="py-2 px-3 text-right tabular-nums text-zinc-700">
@@ -60,12 +66,7 @@ export default function MixProdutoTable({ data, loading }: Props) {
                       <td className="py-2 px-3 text-right tabular-nums text-zinc-500">
                         {p.pct_faturamento.toFixed(1)}%
                       </td>
-                      <td className={`py-2 px-3 text-right tabular-nums font-medium ${
-                        p.margem_pct == null ? 'text-zinc-400'
-                        : p.margem_pct >= 14 ? 'text-emerald-600'
-                        : p.margem_pct >= 12 ? 'text-amber-500'
-                        : 'text-red-500'
-                      }`}>
+                      <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(p.margem_pct)}`}>
                         {p.margem_pct != null ? `${p.margem_pct.toFixed(1)}%` : '—'}
                       </td>
                     </tr>
@@ -80,12 +81,7 @@ export default function MixProdutoTable({ data, loading }: Props) {
                       <td className="py-2 px-3 text-right tabular-nums not-italic">
                         {data.outros.pct_faturamento.toFixed(1)}%
                       </td>
-                      <td className={`py-2 px-3 text-right tabular-nums not-italic font-medium ${
-                        data.outros.margem_pct == null ? 'text-zinc-400'
-                        : data.outros.margem_pct >= 14 ? 'text-emerald-600'
-                        : data.outros.margem_pct >= 12 ? 'text-amber-500'
-                        : 'text-red-500'
-                      }`}>
+                      <td className={`py-2 px-3 text-right tabular-nums not-italic font-medium ${margemColor(data.outros.margem_pct)}`}>
                         {data.outros.margem_pct != null ? `${data.outros.margem_pct.toFixed(1)}%` : '—'}
                       </td>
                     </tr>
