@@ -115,3 +115,45 @@ export interface PrejuizosDetalhe {
   vendas: PrejuizoVendaItem[]
   total_no_periodo: number
 }
+
+export interface TendenciaMargemPonto {
+  label: string
+  data_inicio: string
+  faturamento: number
+  receita: number
+  margem_pct: number | null
+}
+
+export interface TendenciaMargem {
+  granularidade: 'diaria' | 'semanal' | 'mensal'
+  pontos: TendenciaMargemPonto[]
+}
+
+export interface MixProdutoItem {
+  produto_nome: string
+  faturamento: number
+  receita: number
+  margem_pct: number | null
+  pct_faturamento: number
+}
+
+export interface MixProdutoOutros extends MixProdutoItem {
+  quantidade_produtos: number
+}
+
+export interface MixProduto {
+  produtos: MixProdutoItem[]
+  outros: MixProdutoOutros
+}
+
+export interface CagrData {
+  ano_inicial: number
+  ano_final: number
+  faturamento_inicial: number
+  faturamento_final: number
+  receita_inicial: number
+  receita_final: number
+  cagr_faturamento_pct: number | null
+  cagr_receita_pct: number | null
+  erro?: string
+}

@@ -397,6 +397,18 @@ export interface Database {
         Args: { p_from: string; p_to: string; p_setor?: string; p_summary?: boolean }
         Returns: Json
       }
+      get_tendencia_margem: {
+        Args: { p_from: string; p_to: string; p_setor?: string }
+        Returns: Json
+      }
+      get_mix_produto: {
+        Args: { p_from: string; p_to: string; p_setor?: string; p_limite?: number }
+        Returns: Json
+      }
+      get_cagr: {
+        Args: Record<string, never>
+        Returns: Json
+      }
     }
   }
 }

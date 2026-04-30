@@ -1,0 +1,90 @@
+'use client'
+
+import {
+  ResponsiveContainer, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+} from 'recharts'
+import type { TendenciaMargem } from '@/types/api'
+
+const MARGEM_ALERTA = 12
+const MARGEM_OK     = 14
+
+interface Props {
+  data: TendenciaMargem | null
+  loading: boolean
+}
+
+const fmtBRL = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+
+export default function TendenciaMargemChart({ data, loading }: Props) {
+  const pontos = data?.pontos ?? []
+  const semDados = pontos.every(p => p.faturamento === 0)
+
+  return (
+    <div className="bg-white rounded-xl border border-zinc-200 p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-zinc-700">Tendência de Margem</h2>
+        {data && (
+          <span className="text-xs text-zinc-400 capitalize">{data.granularidade}</span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="h-56 animate-pulse bg-zinc-100 rounded-lg" />
+      ) : !data || semDados ? (
+        <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
+          Sem dados para o período selecionado.
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={224}>
+          <LineChart data={pontos} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 10, fill: '#a1a1aa' }}
+              tickLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tickFormatter={v => `${v}%`}
+              tick={{ fontSize: 11, fill: '#71717a' }}
+              tickLine={false}
+              axisLine={false}
+              width={40}
+              domain={['auto', 'auto']}
+            />
+            <Tooltip
+              formatter={(value, name) => {
+                if (name === 'margem_pct') return [`${(value as number).toFixed(1)}%`, 'Margem']
+                if (name === 'faturamento') return [fmtBRL(value as number), 'Faturamento']
+                return [value, name]
+              }}
+              labelFormatter={label => `${label}`}
+            />
+            <ReferenceLine y={MARGEM_OK}    stroke="#10b981" strokeDasharray="4 4" strokeWidth={1} />
+            <ReferenceLine y={MARGEM_ALERTA} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} />
+            <Line
+              type="monotone"
+              dataKey="margem_pct"
+              stroke="#6366f1"
+              strokeWidth={2}
+              dot={pontos.length <= 15}
+              connectNulls={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+      <div className="mt-2 flex items-center gap-4 text-xs text-zinc-400">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
+          ≥{MARGEM_OK}% (ok)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-4 border-t-2 border-dashed border-amber-400" />
+          ≥{MARGEM_ALERTA}% (atenção)
+        </span>
+      </div>
+    </div>
+  )
+}
