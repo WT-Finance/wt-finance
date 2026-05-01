@@ -51,17 +51,29 @@ interface KpiCardProps {
   formato: 'brl' | 'pct' | 'numero'
   periodoAnterior?: PeriodoRef
   periodoYoY?: PeriodoRef
+  /** Quando fornecido, exibe linha "vs alvo" em p.p. (use para Margem %). */
+  benchmarkAlvo?: number
+  /** Quando true, exibe aviso de período proporcional abaixo do valor. */
+  isPeriodoProporcional?: boolean
 }
 
 export default function KpiCard({
   rotulo, metrica, formato, periodoAnterior, periodoYoY,
+  benchmarkAlvo, isPeriodoProporcional,
 }: KpiCardProps) {
+  const vsAlvo = benchmarkAlvo != null && metrica.valor != null
+    ? metrica.valor - benchmarkAlvo
+    : null
+
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{rotulo}</p>
       <p className="mt-1 text-2xl font-semibold text-zinc-900 tabular-nums leading-none">
         {fmtValor(metrica.valor, formato)}
       </p>
+      {isPeriodoProporcional && (
+        <p className="mt-0.5 text-[10px] text-zinc-300 leading-none">período proporcional</p>
+      )}
       <div className="mt-2 space-y-0.5">
         {metrica.variacao_anterior != null && (
           <div className="flex items-center gap-1">
@@ -81,6 +93,12 @@ export default function KpiCard({
                 {fmtPeriodoLabel(periodoYoY)}
               </span>
             )}
+          </div>
+        )}
+        {vsAlvo != null && (
+          <div className="flex items-center gap-1">
+            <Variacao pct={vsAlvo} isPP label="vs alvo" />
+            <span className="text-xs text-zinc-300">({benchmarkAlvo}%)</span>
           </div>
         )}
       </div>

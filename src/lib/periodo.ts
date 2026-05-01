@@ -2,7 +2,7 @@ import {
   startOfMonth, endOfMonth, subMonths, subYears,
   differenceInDays, addDays,
   getYear, getMonth, getDate,
-  isAfter, format,
+  isAfter, format, parseISO,
 } from 'date-fns'
 
 export type PresetPeriodo =
@@ -128,4 +128,86 @@ export function resolverPeriodoFromParams(params: {
 
   const periodo = resolvePeriodo(preset)
   return { from: isoDate(periodo.inicio), to: isoDate(periodo.fim) }
+}
+
+/**
+ * Período anterior proporcional.
+ * Se o período atual ainda está em curso (fim >= hoje), recua apenas
+ * os dias já decorridos; se está encerrado, comporta-se como
+ * calcularPeriodoAnterior (bloco completo de mesma duração).
+ */
+export function calcularPeriodoAnteriorInteligente(periodo: Periodo, hoje: Date): Periodo {
+  if (isAfter(hoje, periodo.fim)) return calcularPeriodoAnterior(periodo)
+
+  const diasDecorridos = differenceInDays(hoje, periodo.inicio) + 1
+  const antTo = addDays(periodo.inicio, -1)
+  const antFrom = addDays(antTo, -(diasDecorridos - 1))
+  return { inicio: antFrom, fim: antTo }
+}
+
+/**
+ * Período YoY proporcional.
+ * Período encerrado → mesmo bloco do ano anterior.
+ * Período em curso → de (inicio − 1 ano) até (hoje − 1 ano).
+ */
+export function calcularYoYInteligente(periodo: Periodo, hoje: Date): Periodo {
+  if (isAfter(hoje, periodo.fim)) return calcularPeriodoYoY(periodo)
+
+  return {
+    inicio: subYears(periodo.inicio, 1),
+    fim:    subYears(hoje, 1),
+  }
+}
+
+export interface PeriodoCompleto {
+  from:    string
+  to:      string
+  antFrom: string
+  antTo:   string
+  yoyFrom: string
+  yoyTo:   string
+  /** true quando o período selecionado ainda não encerrou (fim >= hoje). */
+  eParcial: boolean
+}
+
+/**
+ * Versão completa de resolverPeriodoFromParams: devolve também os períodos
+ * de comparação (anterior e YoY) calculados de forma proporcional quando
+ * o período corrente está em aberto.
+ */
+export function resolverPeriodoCompleto(
+  params: {
+    preset?: string | null
+    from?: string | null
+    to?: string | null
+    defaultPreset?: PresetPeriodo
+  },
+  hoje: Date = new Date(),
+): PeriodoCompleto {
+  const preset = (params.preset as PresetPeriodo | null) ?? params.defaultPreset ?? 'este-mes'
+
+  let periodo: Periodo
+  if (preset === 'personalizado') {
+    if (params.from && params.to) {
+      periodo = { inicio: parseISO(params.from), fim: parseISO(params.to) }
+    } else {
+      periodo = resolvePeriodo(params.defaultPreset ?? 'este-mes', hoje)
+    }
+  } else {
+    periodo = resolvePeriodo(preset, hoje)
+  }
+
+  const eParcial = !isAfter(hoje, periodo.fim)
+  const anterior = calcularPeriodoAnteriorInteligente(periodo, hoje)
+  const yoy      = calcularYoYInteligente(periodo, hoje)
+
+  return {
+    from:    isoDate(periodo.inicio),
+    to:      isoDate(periodo.fim),
+    antFrom: isoDate(anterior.inicio),
+    antTo:   isoDate(anterior.fim),
+    yoyFrom: isoDate(yoy.inicio),
+    yoyTo:   isoDate(yoy.fim),
+    eParcial,
+  }
 }
