@@ -1,9 +1,5 @@
 import type { PrejuizosSummary } from '@/types/api'
-
-const fmtBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency', currency: 'BRL', maximumFractionDigits: 0,
-  }).format(v)
+import { fmtBRL } from '@/lib/fmt'
 
 interface Props {
   data: PrejuizosSummary | null

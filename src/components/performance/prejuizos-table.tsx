@@ -1,12 +1,5 @@
 import type { PrejuizosDetalhe } from '@/types/api'
-
-const fmtBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
-
-const fmtDate = (s: string) => {
-  const [y, m, d] = s.split('-')
-  return `${d}/${m}/${y}`
-}
+import { fmtBRL, fmtDate } from '@/lib/fmt'
 
 function SkeletonRow() {
   return (
@@ -43,7 +36,7 @@ export default function PrejuizosTable({ data, loading }: Props) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-96 text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Data</th>
@@ -69,10 +62,10 @@ export default function PrejuizosTable({ data, loading }: Props) {
                   <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                     {fmtDate(v.data_venda)}
                   </td>
-                  <td className="py-2 px-3 text-zinc-700 font-medium truncate max-w-[120px]">
+                  <td className="py-2 px-3 text-zinc-700 font-medium truncate max-w-30">
                     {v.vendedor_nome}
                   </td>
-                  <td className="py-2 px-3 text-zinc-500 truncate max-w-[160px] hidden sm:table-cell">
+                  <td className="py-2 px-3 text-zinc-500 truncate max-w-40 hidden sm:table-cell">
                     {v.produto_nome}
                   </td>
                   <td className="py-2 px-3 text-right tabular-nums text-zinc-600">

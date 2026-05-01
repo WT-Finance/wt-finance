@@ -1,15 +1,5 @@
 import type { KpiMetrica, PeriodoRef } from '@/types/api'
-
-const fmtBRL = (v: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency', currency: 'BRL', maximumFractionDigits: 0,
-  }).format(v)
-
-const fmtMi = (v: number) => {
-  if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Mi`
-  if (Math.abs(v) >= 1_000)    return `R$ ${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} k`
-  return fmtBRL(v)
-}
+import { fmtBRL, fmtMi } from '@/lib/fmt'
 
 function fmtValor(v: number | null, formato: 'brl' | 'pct' | 'numero'): string {
   if (v == null) return '—'

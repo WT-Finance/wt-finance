@@ -5,12 +5,7 @@ import {
   XAxis, YAxis, Tooltip, Cell, LabelList,
 } from 'recharts'
 import type { MixSetor } from '@/types/api'
-
-const fmtMi = (v: number) => {
-  if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(2)} Mi`
-  if (Math.abs(v) >= 1_000)    return `R$ ${(v / 1_000).toFixed(1)} k`
-  return `R$ ${v.toFixed(0)}`
-}
+import { fmtMi } from '@/lib/fmt'
 
 interface Props {
   data: MixSetor | null
