@@ -31,7 +31,7 @@ export default async function ExecutivaPage({
   const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
     resolverPeriodoCompleto(sp)
   const setor  = sp.setor ?? 'todos'
-  const preset = sp.preset ?? 'este-mes'
+  const preset = sp.preset ?? 'mes-passado'
 
   const db = getServerClient()
 
@@ -109,7 +109,7 @@ export default async function ExecutivaPage({
       {/* Filtros */}
       <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
         <Suspense>
-          <PeriodoFilter defaultPreset="este-mes" />
+          <PeriodoFilter defaultPreset="mes-passado" />
         </Suspense>
         <Suspense>
           <SetorFilter />

@@ -23,7 +23,7 @@ interface Props {
   defaultPreset?: PresetPeriodo
 }
 
-export default function PeriodoFilter({ defaultPreset = 'este-mes' }: Props) {
+export default function PeriodoFilter({ defaultPreset = 'mes-passado' }: Props) {
   const router       = useRouter()
   const pathname     = usePathname()
   const searchParams = useSearchParams()

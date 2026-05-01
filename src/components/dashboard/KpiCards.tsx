@@ -32,7 +32,7 @@ export default function KpiCards({ data, loading }: { data: KpisMes | null; load
   }
 
   const yoyDiff =
-    data.valor_ano_anterior > 0
+    data.vendas_count > 0 && data.valor_ano_anterior > 0
       ? (data.valor_realizado / data.valor_ano_anterior - 1) * 100
       : null
 
