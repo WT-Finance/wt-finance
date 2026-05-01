@@ -10,10 +10,11 @@ import { fmtMi } from '@/lib/fmt'
 const MESES_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 interface Props {
-  data: Historico12m | null
+  data:      Historico12m | null
+  eParcial?: boolean
 }
 
-export default function Historico12mChart({ data }: Props) {
+export default function Historico12mChart({ data, eParcial = false }: Props) {
   const meses = data?.meses ?? []
   const semDados = meses.every(m => m.faturamento === 0)
 
@@ -22,6 +23,7 @@ export default function Historico12mChart({ data }: Props) {
     faturamento: m.faturamento,
     margem_pct:  m.margem_pct,
     eh_atual:    m.eh_atual,
+    parcial:     m.eh_atual && eParcial,
   }))
 
   return (
@@ -50,7 +52,12 @@ export default function Historico12mChart({ data }: Props) {
               width={52}
             />
             <Tooltip
-              formatter={(value) => [fmtMi(Number(value)), 'Faturamento']}
+              formatter={(value, _name, props) => {
+                const label = props.payload?.parcial
+                  ? `${fmtMi(Number(value))} · em andamento`
+                  : fmtMi(Number(value))
+                return [label, 'Faturamento']
+              }}
               labelStyle={{ fontSize: 11, color: '#3f3f46' }}
               contentStyle={{ fontSize: 11, borderRadius: 6 }}
             />
@@ -58,7 +65,7 @@ export default function Historico12mChart({ data }: Props) {
               {chartData.map((entry, i) => (
                 <Cell
                   key={i}
-                  fill={entry.eh_atual ? '#18181b' : '#e4e4e7'}
+                  fill={entry.parcial ? '#a1a1aa' : entry.eh_atual ? '#18181b' : '#e4e4e7'}
                 />
               ))}
             </Bar>

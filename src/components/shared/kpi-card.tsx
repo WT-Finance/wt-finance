@@ -3,6 +3,14 @@ import { fmtBRL, fmtMi } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import Sparkline from '@/components/shared/sparkline'
 
+function fmtExato(v: number | null, formato: 'brl' | 'pct' | 'numero'): string {
+  if (v == null) return '—'
+  if (formato === 'brl')    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+  if (formato === 'pct')    return `${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+  if (formato === 'numero') return v.toLocaleString('pt-BR')
+  return String(v)
+}
+
 function fmtValor(v: number | null, formato: 'brl' | 'pct' | 'numero'): string {
   if (v == null) return '—'
   if (formato === 'brl')     return fmtMi(v)
@@ -54,6 +62,8 @@ interface KpiCardProps {
   rotulo: string
   metrica: KpiMetrica
   formato: 'brl' | 'pct' | 'numero'
+  /** Fórmula exibida no tooltip ao passar o mouse no rótulo. */
+  formula?: string
   periodoAtual?: PeriodoRef
   periodoAnterior?: PeriodoRef
   periodoYoY?: PeriodoRef
@@ -69,7 +79,8 @@ interface KpiCardProps {
 }
 
 export default function KpiCard({
-  rotulo, metrica, formato, periodoAtual, periodoAnterior, periodoYoY,
+  rotulo, metrica, formato, formula,
+  periodoAtual, periodoAnterior, periodoYoY,
   benchmarkAlvo, benchmarkAtencao, isPeriodoProporcional,
   sparklineData, sparklineLabels,
 }: KpiCardProps) {
@@ -85,7 +96,18 @@ export default function KpiCard({
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
       <div className="flex items-start justify-between">
-        <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{rotulo}</p>
+        <div className="relative group/tip">
+          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide cursor-default">{rotulo}</p>
+          {formula && (
+            <div className="pointer-events-none absolute left-0 top-5 z-20 invisible group-hover/tip:visible
+                            bg-zinc-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+              {formula}
+              {metrica.valor != null && (
+                <span className="ml-2 text-zinc-300">{fmtExato(metrica.valor, formato)}</span>
+              )}
+            </div>
+          )}
+        </div>
         {sparklineData && sparklineData.length >= 2 && (
           <Sparkline data={sparklineData} labels={sparklineLabels} formato={formato} />
         )}
