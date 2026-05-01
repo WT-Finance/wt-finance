@@ -1,3 +1,6 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
 import type { MixSetor } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
@@ -30,9 +33,11 @@ interface Props {
   loading: boolean
   /** Quando fornecido, exibe coluna extra "vs Alvo" com diferença em p.p. */
   margemAlvo?: number
+  preset?: string
 }
 
-export default function MixSetorTable({ data, loading, margemAlvo }: Props) {
+export default function MixSetorTable({ data, loading, margemAlvo, preset = 'este-ano' }: Props) {
+  const router = useRouter()
   const cols = margemAlvo != null ? 7 : 6
 
   return (
@@ -67,7 +72,12 @@ export default function MixSetorTable({ data, loading, margemAlvo }: Props) {
               : (
                 <>
                   {data.setores.map(s => (
-                    <tr key={s.setor_macro} className="hover:bg-zinc-50">
+                    <tr
+                      key={s.setor_macro}
+                      className="hover:bg-zinc-50 cursor-pointer"
+                      onClick={() => router.push(`/performance?setor=${s.setor_macro}&preset=${preset}`)}
+                      title={`Filtrar por ${s.display_nome}`}
+                    >
                       <td className="py-2 px-3 font-medium" style={{ color: s.cor_hex }}>
                         {s.display_nome}
                       </td>
