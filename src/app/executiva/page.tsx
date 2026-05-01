@@ -86,6 +86,7 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               benchmarkAlvo={benchmarks.margemAlvo}
+              benchmarkAtencao={benchmarks.margemAtencao}
               isPeriodoProporcional={eParcial}
             />
             <KpiCard

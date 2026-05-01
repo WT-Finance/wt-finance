@@ -77,7 +77,7 @@ export default async function PerformancePage({
           <>
             <KpiCard rotulo="Faturamento"  metrica={kpis.faturamento}  formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
             <KpiCard rotulo="Receita"      metrica={kpis.receita}      formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-            <KpiCard rotulo="Margem %"     metrica={kpis.margem_pct}   formato="pct"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} isPeriodoProporcional={eParcial} />
+            <KpiCard rotulo="Margem %"     metrica={kpis.margem_pct}   formato="pct"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} />
             <KpiCard rotulo="Vendas"       metrica={kpis.vendas}       formato="numero" periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
             <KpiCard rotulo="Ticket Médio" metrica={kpis.ticket_medio} formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
           </>

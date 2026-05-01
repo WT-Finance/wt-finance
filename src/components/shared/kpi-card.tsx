@@ -1,5 +1,6 @@
 import type { KpiMetrica, PeriodoRef } from '@/types/api'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
+import { margemColor } from '@/lib/config'
 
 function fmtValor(v: number | null, formato: 'brl' | 'pct' | 'numero'): string {
   if (v == null) return '—'
@@ -51,24 +52,30 @@ interface KpiCardProps {
   formato: 'brl' | 'pct' | 'numero'
   periodoAnterior?: PeriodoRef
   periodoYoY?: PeriodoRef
-  /** Quando fornecido, exibe linha "vs alvo" em p.p. (use para Margem %). */
+  /** Quando fornecido, exibe linha "vs alvo" em p.p. e colore o valor (use para Margem %). */
   benchmarkAlvo?: number
+  /** Limite de atenção para coloração do valor (âmbar se abaixo deste, verde se acima do alvo). */
+  benchmarkAtencao?: number
   /** Quando true, exibe aviso de período proporcional abaixo do valor. */
   isPeriodoProporcional?: boolean
 }
 
 export default function KpiCard({
   rotulo, metrica, formato, periodoAnterior, periodoYoY,
-  benchmarkAlvo, isPeriodoProporcional,
+  benchmarkAlvo, benchmarkAtencao, isPeriodoProporcional,
 }: KpiCardProps) {
   const vsAlvo = benchmarkAlvo != null && metrica.valor != null
     ? metrica.valor - benchmarkAlvo
     : null
 
+  const valorColor = benchmarkAlvo != null
+    ? margemColor(metrica.valor, benchmarkAlvo, benchmarkAtencao)
+    : 'text-zinc-900'
+
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{rotulo}</p>
-      <p className="mt-1 text-2xl font-semibold text-zinc-900 tabular-nums leading-none">
+      <p className={`mt-1 text-2xl font-semibold tabular-nums leading-none ${valorColor}`}>
         {fmtValor(metrica.valor, formato)}
       </p>
       {isPeriodoProporcional && (

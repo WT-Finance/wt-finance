@@ -1,13 +1,6 @@
 import type { MixSetor } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
-import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
-
-function margemColor(v: number | null, ok = MARGEM_OK, alerta = MARGEM_ALERTA) {
-  if (v == null)    return 'text-zinc-400'
-  if (v >= ok)     return 'text-emerald-600'
-  if (v >= alerta) return 'text-amber-500'
-  return 'text-red-500'
-}
+import { margemColor } from '@/lib/config'
 
 function fmtPP(v: number | null) {
   if (v == null) return '—'

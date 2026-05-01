@@ -25,3 +25,18 @@ export async function getBenchmarks(db: SupabaseClient): Promise<Benchmarks> {
     margemCritica: cfg?.margem_critica_pct ?? 10,
   }
 }
+
+/**
+ * Classe Tailwind para coloração condicional de um valor de margem.
+ * Reutilizado em KpiCard, MixSetorTable e MixProdutoTable.
+ */
+export function margemColor(
+  v: number | null,
+  alvo    = MARGEM_OK,
+  atencao = MARGEM_ALERTA,
+): string {
+  if (v == null)    return 'text-zinc-400'
+  if (v >= alvo)   return 'text-emerald-600'
+  if (v >= atencao) return 'text-amber-500'
+  return 'text-red-500'
+}
