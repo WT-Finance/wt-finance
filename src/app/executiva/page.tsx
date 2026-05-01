@@ -8,9 +8,11 @@ import PrejuizosKpi from '@/components/executiva/prejuizos-kpi'
 import SumarioExecutivo from '@/components/executiva/sumario-executivo'
 import Historico12mChart from '@/components/executiva/historico-12m-chart'
 import DecomposicaoVariacaoCard from '@/components/executiva/decomposicao-variacao-card'
+import PontosAtencaoCard from '@/components/executiva/pontos-atencao-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { getBenchmarks } from '@/lib/config'
 import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
+import { avaliarTodasRegras } from '@/lib/regras-alerta'
 import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12m, Sparklines, DecomposicaoVariacao } from '@/types/api'
 
 interface SearchParams {
@@ -33,34 +35,38 @@ export default async function ExecutivaPage({
 
   const db = getServerClient()
 
-  const [kpisRes, mixRes, prejRes, histRes, sparkRes, decompRes, benchmarks] = await Promise.all([
+  const [
+    kpisRes, mixRes, prejRes, prejAntRes,
+    histRes, sparkRes, decompRes, benchmarks,
+  ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
-      p_from:     from,
-      p_to:       to,
-      p_setor:    setor,
-      p_ant_from: antFrom,
-      p_ant_to:   antTo,
-      p_yoy_from: yoyFrom,
-      p_yoy_to:   yoyTo,
+      p_from:     from,     p_to:       to,     p_setor:    setor,
+      p_ant_from: antFrom,  p_ant_to:   antTo,
+      p_yoy_from: yoyFrom,  p_yoy_to:   yoyTo,
     }),
-    db.rpc('get_mix_setor',    { p_from: from, p_to: to, p_setor: setor }),
-    db.rpc('get_prejuizos',    { p_from: from, p_to: to, p_setor: setor, p_summary: true }),
+    db.rpc('get_mix_setor',    { p_from: from,    p_to: to,    p_setor: setor }),
+    db.rpc('get_prejuizos',    { p_from: from,    p_to: to,    p_setor: setor, p_summary: true }),
+    db.rpc('get_prejuizos',    { p_from: antFrom, p_to: antTo, p_setor: setor, p_summary: true }),
     db.rpc('get_historico_12m', { p_setor: setor }),
     db.rpc('get_sparklines',   { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_decomposicao_variacao', {
-      p_from:     from,     p_to:       to,
-      p_ant_from: antFrom,  p_ant_to:   antTo,
-      p_setor:    setor,
+      p_from: from, p_to: to, p_ant_from: antFrom, p_ant_to: antTo, p_setor: setor,
     }),
     getBenchmarks(db),
   ])
 
-  const kpis        = kpisRes.error   ? null : kpisRes.data   as unknown as ExecutivaKpis
-  const mix         = mixRes.error    ? null : mixRes.data    as unknown as MixSetor
-  const prejuizos   = prejRes.error   ? null : prejRes.data   as unknown as PrejuizosSummary
-  const historico   = histRes.error   ? null : histRes.data   as unknown as Historico12m
-  const sparklines  = sparkRes.error  ? null : sparkRes.data  as unknown as Sparklines | null
-  const decomposicao = decompRes.error ? null : decompRes.data as unknown as DecomposicaoVariacao
+  const kpis         = kpisRes.error    ? null : kpisRes.data    as unknown as ExecutivaKpis
+  const mix          = mixRes.error     ? null : mixRes.data     as unknown as MixSetor
+  const prejuizos    = prejRes.error    ? null : prejRes.data    as unknown as PrejuizosSummary
+  const prejuizosAnt = prejAntRes.error ? null : prejAntRes.data as unknown as PrejuizosSummary
+  const historico    = histRes.error    ? null : histRes.data    as unknown as Historico12m
+  const sparklines   = sparkRes.error   ? null : sparkRes.data   as unknown as Sparklines | null
+  const decomposicao = decompRes.error  ? null : decompRes.data  as unknown as DecomposicaoVariacao
+
+  // Pontos de atenção — avaliados a partir dos dados já carregados, sem chamada extra ao banco
+  const alertas = avaliarTodasRegras({
+    kpis, mix, prejuizos, prejuizosAnt, historico, decomposicao, benchmarks, eParcial,
+  })
 
   // Sumário Executivo — calculado a partir dos dados já carregados, sem chamada extra ao banco
   const hoje    = new Date()
@@ -190,6 +196,9 @@ export default async function ExecutivaPage({
 
       {/* Decomposição de variação */}
       <DecomposicaoVariacaoCard data={decomposicao} />
+
+      {/* Pontos de atenção */}
+      <PontosAtencaoCard resultado={alertas} />
     </div>
   )
 }
