@@ -12,7 +12,7 @@ import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, CagrData,
+  MixProduto, PrejuizosDetalhe, CagrData, Sparklines,
 } from '@/types/api'
 
 interface SearchParams {
@@ -34,7 +34,9 @@ export default async function PerformancePage({
 
   const db = getServerClient()
 
-  const [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, benchmarks] = await Promise.all([
+  const preset = sp.preset ?? 'este-ano'
+
+  const [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, sparkRes, benchmarks] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from:     from,
       p_to:       to,
@@ -49,15 +51,17 @@ export default async function PerformancePage({
     db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
     db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
     db.rpc('get_cagr'),
+    db.rpc('get_sparklines',       { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     getBenchmarks(db),
   ])
 
-  const kpis      = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
-  const mix       = mixRes.error   ? null : mixRes.data   as unknown as MixSetor
-  const tendencia = tendRes.error  ? null : tendRes.data  as unknown as TendenciaMargem
-  const produtos  = prodRes.error  ? null : prodRes.data  as unknown as MixProduto
-  const prejuizos = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosDetalhe
-  const cagr      = cagrRes.error  ? null : cagrRes.data  as unknown as CagrData
+  const kpis       = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
+  const mix        = mixRes.error   ? null : mixRes.data   as unknown as MixSetor
+  const tendencia  = tendRes.error  ? null : tendRes.data  as unknown as TendenciaMargem
+  const produtos   = prodRes.error  ? null : prodRes.data  as unknown as MixProduto
+  const prejuizos  = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosDetalhe
+  const cagr       = cagrRes.error  ? null : cagrRes.data  as unknown as CagrData
+  const sparklines = sparkRes.error ? null : sparkRes.data as unknown as Sparklines | null
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
@@ -75,11 +79,11 @@ export default async function PerformancePage({
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         {kpis ? (
           <>
-            <KpiCard rotulo="Faturamento"  metrica={kpis.faturamento}  formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-            <KpiCard rotulo="Receita"      metrica={kpis.receita}      formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-            <KpiCard rotulo="Margem %"     metrica={kpis.margem_pct}   formato="pct"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} />
-            <KpiCard rotulo="Vendas"       metrica={kpis.vendas}       formato="numero" periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-            <KpiCard rotulo="Ticket Médio" metrica={kpis.ticket_medio} formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
+            <KpiCard rotulo="Faturamento"  metrica={kpis.faturamento}  formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.faturamento}                              sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Receita"      metrica={kpis.receita}      formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.receita}                                  sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Margem %"     metrica={kpis.margem_pct}   formato="pct"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Vendas"       metrica={kpis.vendas}       formato="numero" periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.vendas}                                   sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Ticket Médio" metrica={kpis.ticket_medio} formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)}  sparklineLabels={sparklines?.labels} />
           </>
         ) : (
           Array.from({ length: 5 }).map((_, i) => <KpiCardSkeleton key={i} />)

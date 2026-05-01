@@ -1,6 +1,7 @@
 import type { KpiMetrica, PeriodoRef } from '@/types/api'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
+import Sparkline from '@/components/shared/sparkline'
 
 function fmtValor(v: number | null, formato: 'brl' | 'pct' | 'numero'): string {
   if (v == null) return '—'
@@ -58,11 +59,15 @@ interface KpiCardProps {
   benchmarkAtencao?: number
   /** Quando true, exibe aviso de período proporcional abaixo do valor. */
   isPeriodoProporcional?: boolean
+  /** Dados para sparkline (últimos N períodos). Não exibe se array vazio ou null. */
+  sparklineData?:   number[]
+  sparklineLabels?: string[]
 }
 
 export default function KpiCard({
   rotulo, metrica, formato, periodoAnterior, periodoYoY,
   benchmarkAlvo, benchmarkAtencao, isPeriodoProporcional,
+  sparklineData, sparklineLabels,
 }: KpiCardProps) {
   const vsAlvo = benchmarkAlvo != null && metrica.valor != null
     ? metrica.valor - benchmarkAlvo
@@ -74,7 +79,12 @@ export default function KpiCard({
 
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
-      <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{rotulo}</p>
+      <div className="flex items-start justify-between">
+        <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{rotulo}</p>
+        {sparklineData && sparklineData.length >= 2 && (
+          <Sparkline data={sparklineData} labels={sparklineLabels} formato={formato} />
+        )}
+      </div>
       <p className={`mt-1 text-2xl font-semibold tabular-nums leading-none ${valorColor}`}>
         {fmtValor(metrica.valor, formato)}
       </p>

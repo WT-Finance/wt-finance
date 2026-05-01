@@ -6,10 +6,11 @@ import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import MixSetorChart from '@/components/executiva/mix-setor-chart'
 import PrejuizosKpi from '@/components/executiva/prejuizos-kpi'
 import SumarioExecutivo from '@/components/executiva/sumario-executivo'
+import Historico12mChart from '@/components/executiva/historico-12m-chart'
 import { getServerClient } from '@/lib/supabase/server'
 import { getBenchmarks } from '@/lib/config'
 import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
-import type { ExecutivaKpis, MixSetor, PrejuizosSummary } from '@/types/api'
+import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12m, Sparklines } from '@/types/api'
 
 interface SearchParams {
   preset?: string
@@ -31,7 +32,7 @@ export default async function ExecutivaPage({
 
   const db = getServerClient()
 
-  const [kpisRes, mixRes, prejRes, benchmarks] = await Promise.all([
+  const [kpisRes, mixRes, prejRes, histRes, sparkRes, benchmarks] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from:     from,
       p_to:       to,
@@ -41,14 +42,18 @@ export default async function ExecutivaPage({
       p_yoy_from: yoyFrom,
       p_yoy_to:   yoyTo,
     }),
-    db.rpc('get_mix_setor',  { p_from: from, p_to: to, p_setor: setor }),
-    db.rpc('get_prejuizos',  { p_from: from, p_to: to, p_setor: setor, p_summary: true }),
+    db.rpc('get_mix_setor',    { p_from: from, p_to: to, p_setor: setor }),
+    db.rpc('get_prejuizos',    { p_from: from, p_to: to, p_setor: setor, p_summary: true }),
+    db.rpc('get_historico_12m', { p_setor: setor }),
+    db.rpc('get_sparklines',   { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     getBenchmarks(db),
   ])
 
-  const kpis      = kpisRes.error ? null : kpisRes.data as unknown as ExecutivaKpis
-  const mix       = mixRes.error  ? null : mixRes.data  as unknown as MixSetor
-  const prejuizos = prejRes.error ? null : prejRes.data as unknown as PrejuizosSummary
+  const kpis      = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
+  const mix       = mixRes.error   ? null : mixRes.data   as unknown as MixSetor
+  const prejuizos = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosSummary
+  const historico = histRes.error  ? null : histRes.data  as unknown as Historico12m
+  const sparklines = sparkRes.error ? null : sparkRes.data as unknown as Sparklines | null
 
   // Sumário Executivo — calculado a partir dos dados já carregados, sem chamada extra ao banco
   const hoje    = new Date()
@@ -101,6 +106,9 @@ export default async function ExecutivaPage({
       {/* Sumário Executivo */}
       {textoSumario && <SumarioExecutivo texto={textoSumario} />}
 
+      {/* Linha temporal 12 meses */}
+      <Historico12mChart data={historico} />
+
       {/* KPI Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
         {kpis ? (
@@ -112,6 +120,8 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
+              sparklineData={sparklines?.faturamento}
+              sparklineLabels={sparklines?.labels}
             />
             <KpiCard
               rotulo="Receita"
@@ -120,6 +130,8 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
+              sparklineData={sparklines?.receita}
+              sparklineLabels={sparklines?.labels}
             />
             <KpiCard
               rotulo="Margem %"
@@ -130,6 +142,8 @@ export default async function ExecutivaPage({
               benchmarkAlvo={benchmarks.margemAlvo}
               benchmarkAtencao={benchmarks.margemAtencao}
               isPeriodoProporcional={eParcial}
+              sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)}
+              sparklineLabels={sparklines?.labels}
             />
             <KpiCard
               rotulo="Vendas"
@@ -138,6 +152,8 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
+              sparklineData={sparklines?.vendas}
+              sparklineLabels={sparklines?.labels}
             />
             <KpiCard
               rotulo="Ticket Médio"
@@ -146,6 +162,8 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
+              sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)}
+              sparklineLabels={sparklines?.labels}
             />
           </>
         ) : (

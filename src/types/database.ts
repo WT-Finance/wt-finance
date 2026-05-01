@@ -386,7 +386,11 @@ export interface Database {
         Returns: Json
       }
       get_executiva_kpis: {
-        Args: { p_from: string; p_to: string; p_setor?: string }
+        Args: {
+          p_from: string; p_to: string; p_setor?: string
+          p_ant_from?: string; p_ant_to?: string
+          p_yoy_from?: string; p_yoy_to?: string
+        }
         Returns: Json
       }
       get_mix_setor: {
@@ -407,6 +411,18 @@ export interface Database {
       }
       get_cagr: {
         Args: Record<string, never>
+        Returns: Json
+      }
+      get_dashboard_config: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      get_historico_12m: {
+        Args: { p_setor?: string }
+        Returns: Json
+      }
+      get_sparklines: {
+        Args: { p_preset: string; p_from: string; p_to: string; p_setor?: string }
         Returns: Json
       }
     }
