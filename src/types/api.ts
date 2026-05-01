@@ -74,6 +74,7 @@ export interface ExecutivaKpis {
   margem_pct: KpiMetrica
   vendas: KpiMetrica
   ticket_medio: KpiMetrica
+  receita_media: KpiMetrica
 }
 
 export interface MixSetorItem {
@@ -196,10 +197,11 @@ export interface DecomposicaoVariacao {
 }
 
 export interface Sparklines {
-  labels:       string[]
-  faturamento:  number[]
-  receita:      number[]
-  margem_pct:   (number | null)[]
-  vendas:       number[]
-  ticket_medio: (number | null)[]
+  labels:        string[]
+  faturamento:   number[]
+  receita:       number[]
+  margem_pct:    (number | null)[]
+  vendas:        number[]
+  ticket_medio:  (number | null)[]
+  receita_media: (number | null)[]
 }
