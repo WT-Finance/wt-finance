@@ -120,7 +120,7 @@ export default async function ExecutivaPage({
       {textoSumario && <SumarioExecutivo texto={textoSumario} />}
 
       {/* Linha temporal 12 meses */}
-      <Historico12mChart data={historico} />
+      <Historico12mChart data={historico} eParcial={eParcial} />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
@@ -128,6 +128,7 @@ export default async function ExecutivaPage({
           <>
             <KpiCard
               rotulo="Faturamento"
+              formula="Soma do valor total das vendas"
               metrica={kpis.faturamento}
               formato="brl"
               periodoAtual={kpis.periodo}
@@ -139,6 +140,7 @@ export default async function ExecutivaPage({
             />
             <KpiCard
               rotulo="Receita"
+              formula="Faturamento − custos e reembolsos"
               metrica={kpis.receita}
               formato="brl"
               periodoAtual={kpis.periodo}
@@ -150,6 +152,7 @@ export default async function ExecutivaPage({
             />
             <KpiCard
               rotulo="Margem %"
+              formula="Receita ÷ Faturamento × 100"
               metrica={kpis.margem_pct}
               formato="pct"
               periodoAtual={kpis.periodo}
@@ -163,6 +166,7 @@ export default async function ExecutivaPage({
             />
             <KpiCard
               rotulo="Vendas"
+              formula="Contagem de vendas no período"
               metrica={kpis.vendas}
               formato="numero"
               periodoAtual={kpis.periodo}
@@ -174,6 +178,7 @@ export default async function ExecutivaPage({
             />
             <KpiCard
               rotulo="Ticket Médio"
+              formula="Faturamento ÷ Vendas"
               metrica={kpis.ticket_medio}
               formato="brl"
               periodoAtual={kpis.periodo}
@@ -185,6 +190,7 @@ export default async function ExecutivaPage({
             />
             <KpiCard
               rotulo="Receita/Venda"
+              formula="Receita ÷ Vendas"
               metrica={kpis.receita_media}
               formato="brl"
               periodoAtual={kpis.periodo}

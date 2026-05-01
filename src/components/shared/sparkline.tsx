@@ -26,14 +26,18 @@ export default function Sparkline({ data, labels, formato = 'brl' }: Props) {
     ? data.map((v, i) => `${labels[i]}: ${fmtVal(v, formato)}`).join(' · ')
     : data.map(v => fmtVal(v, formato)).join(' · ')
 
+  const first = nonNull[0]
+  const last  = nonNull[nonNull.length - 1]
+  const stroke = last > first ? '#10b981' : last < first ? '#f43f5e' : '#a1a1aa'
+
   return (
-    <div style={{ width: 60, height: 20 }} title={title} className="shrink-0">
-      <LineChart width={60} height={20} data={chartData}>
+    <div style={{ width: 60, height: 24 }} title={title} className="shrink-0">
+      <LineChart width={60} height={24} data={chartData}>
         <Line
           type="monotone"
           dataKey="v"
-          stroke="#a1a1aa"
-          strokeWidth={1.5}
+          stroke={stroke}
+          strokeWidth={2}
           dot={false}
           isAnimationActive={false}
           connectNulls
