@@ -1,12 +1,14 @@
 import { Suspense } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
-import { resolverPeriodoCompleto } from '@/lib/periodo'
+import { resolverPeriodoCompleto, formatarLabelPeriodo } from '@/lib/periodo'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import MixSetorChart from '@/components/executiva/mix-setor-chart'
 import PrejuizosKpi from '@/components/executiva/prejuizos-kpi'
+import SumarioExecutivo from '@/components/executiva/sumario-executivo'
 import { getServerClient } from '@/lib/supabase/server'
 import { getBenchmarks } from '@/lib/config'
+import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
 import type { ExecutivaKpis, MixSetor, PrejuizosSummary } from '@/types/api'
 
 interface SearchParams {
@@ -24,7 +26,8 @@ export default async function ExecutivaPage({
   const sp    = await searchParams
   const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
     resolverPeriodoCompleto(sp)
-  const setor = sp.setor ?? 'todos'
+  const setor  = sp.setor ?? 'todos'
+  const preset = sp.preset ?? 'este-mes'
 
   const db = getServerClient()
 
@@ -47,6 +50,42 @@ export default async function ExecutivaPage({
   const mix       = mixRes.error  ? null : mixRes.data  as unknown as MixSetor
   const prejuizos = prejRes.error ? null : prejRes.data as unknown as PrejuizosSummary
 
+  // Sumário Executivo — calculado a partir dos dados já carregados, sem chamada extra ao banco
+  const hoje    = new Date()
+  const diaLabel = eParcial
+    ? (preset === 'este-mes' || preset === 'mes-passado'
+        ? String(hoje.getDate())
+        : `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}`)
+    : undefined
+
+  const textoSumario = kpis ? gerarSumarioExecutivo({
+    periodo: {
+      label:     formatarLabelPeriodo(preset, from, to),
+      eParcial,
+      diaLabel,
+    },
+    faturamento: {
+      valor:        kpis.faturamento.valor ?? 0,
+      varAnterior:  kpis.faturamento.variacao_anterior,
+      varYoY:       kpis.faturamento.variacao_yoy,
+    },
+    margem: {
+      pct:  kpis.margem_pct.valor,
+      alvo: benchmarks.margemAlvo,
+    },
+    setores: (mix?.setores ?? []).map(s => ({
+      nome:         s.display_nome,
+      pctFat:       s.pct_faturamento,
+      margem:       s.margem_pct,
+      margemVsAlvo: s.margem_pct != null ? s.margem_pct - benchmarks.margemAlvo : null,
+    })),
+    prejuizos: {
+      quantidade: prejuizos?.quantidade ?? 0,
+      valor:      prejuizos?.valor_prejuizo_total ?? 0,
+    },
+    vendasCount: kpis.vendas.valor ?? 0,
+  }) : null
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
       {/* Filtros */}
@@ -58,6 +97,9 @@ export default async function ExecutivaPage({
           <SetorFilter />
         </Suspense>
       </div>
+
+      {/* Sumário Executivo */}
+      {textoSumario && <SumarioExecutivo texto={textoSumario} />}
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">

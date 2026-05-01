@@ -107,6 +107,40 @@ export function formatarPeriodo(periodo: Periodo): string {
 
 const isoDate = (d: Date) => format(d, 'yyyy-MM-dd')
 
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                  'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+/**
+ * Gera rótulo legível do período em pt-BR para uso no Sumário Executivo.
+ * Ex: 'este-mes' → 'Maio/2026' | 'este-ano' → '2026' | 'personalizado' → '01/01 – 31/03/2026'
+ */
+export function formatarLabelPeriodo(
+  preset: PresetPeriodo | string,
+  from: string,
+  to: string,
+): string {
+  const [ano, mes] = from.split('-').map(Number)
+  switch (preset) {
+    case 'este-mes':
+    case 'mes-passado':
+      return `${MESES_PT[mes - 1]}/${ano}`
+    case 'ultimos-3-meses':
+      return 'Últimos 3 meses'
+    case 'ultimos-6-meses':
+      return 'Últimos 6 meses'
+    case 'este-ano':
+      return String(ano)
+    case 'personalizado': {
+      const [ay, am, ad] = from.split('-')
+      const [ty, , td] = to.split('-').map(s => s)
+      const tm = to.split('-')[1]
+      return `${ad}/${am} – ${td}/${tm}/${ty}`
+    }
+    default:
+      return `${from} – ${to}`
+  }
+}
+
 /**
  * Resolve search params de URL (preset, from, to) em { from, to } ISO strings.
  * Seguro para uso em Server Components — sem `'use client'`.
