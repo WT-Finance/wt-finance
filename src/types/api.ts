@@ -157,3 +157,27 @@ export interface CagrData {
   cagr_receita_pct: number | null
   erro?: string
 }
+
+// ── V3-3: Linha temporal + Sparklines ─────────────────────────────────────
+
+export interface Historico12mItem {
+  ano: number
+  mes: number
+  faturamento: number
+  receita: number
+  margem_pct: number | null
+  eh_atual: boolean
+}
+
+export interface Historico12m {
+  meses: Historico12mItem[]
+}
+
+export interface Sparklines {
+  labels:       string[]
+  faturamento:  number[]
+  receita:      number[]
+  margem_pct:   (number | null)[]
+  vendas:       number[]
+  ticket_medio: (number | null)[]
+}
