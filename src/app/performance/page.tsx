@@ -76,17 +76,18 @@ export default async function PerformancePage({
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {kpis ? (
           <>
-            <KpiCard rotulo="Faturamento"  metrica={kpis.faturamento}  formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.faturamento}                              sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Receita"      metrica={kpis.receita}      formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.receita}                                  sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Margem %"     metrica={kpis.margem_pct}   formato="pct"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Vendas"       metrica={kpis.vendas}       formato="numero" periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.vendas}                                   sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Ticket Médio" metrica={kpis.ticket_medio} formato="brl"    periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)}  sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Faturamento"   metrica={kpis.faturamento}   formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.faturamento}                               sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Receita"       metrica={kpis.receita}       formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.receita}                                   sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Margem %"      metrica={kpis.margem_pct}    formato="pct"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Vendas"        metrica={kpis.vendas}        formato="numero" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.vendas}                                    sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Ticket Médio"  metrica={kpis.ticket_medio}  formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)}   sparklineLabels={sparklines?.labels} />
+            <KpiCard rotulo="Receita/Venda" metrica={kpis.receita_media} formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.receita_media ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels} />
           </>
         ) : (
-          Array.from({ length: 5 }).map((_, i) => <KpiCardSkeleton key={i} />)
+          Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
         )}
       </div>
 

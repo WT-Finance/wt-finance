@@ -39,10 +39,13 @@ function Variacao({
   )
 }
 
-function fmtPeriodoLabel(p: PeriodoRef): string {
+function fmtPeriodoLabel(p: PeriodoRef, anoAtual?: number): string {
+  const ano = parseInt(p.from.split('-')[0], 10)
+  const comAno = anoAtual != null && ano !== anoAtual
+
   const fmt = (s: string) => {
     const [y, m, d] = s.split('-')
-    return `${d}/${m}`
+    return comAno ? `${d}/${m}/${y.slice(2)}` : `${d}/${m}`
   }
   return `${fmt(p.from)}–${fmt(p.to)}`
 }
@@ -51,6 +54,7 @@ interface KpiCardProps {
   rotulo: string
   metrica: KpiMetrica
   formato: 'brl' | 'pct' | 'numero'
+  periodoAtual?: PeriodoRef
   periodoAnterior?: PeriodoRef
   periodoYoY?: PeriodoRef
   /** Quando fornecido, exibe linha "vs alvo" em p.p. e colore o valor (use para Margem %). */
@@ -65,10 +69,11 @@ interface KpiCardProps {
 }
 
 export default function KpiCard({
-  rotulo, metrica, formato, periodoAnterior, periodoYoY,
+  rotulo, metrica, formato, periodoAtual, periodoAnterior, periodoYoY,
   benchmarkAlvo, benchmarkAtencao, isPeriodoProporcional,
   sparklineData, sparklineLabels,
 }: KpiCardProps) {
+  const anoAtual = periodoAtual ? parseInt(periodoAtual.from.split('-')[0], 10) : undefined
   const vsAlvo = benchmarkAlvo != null && metrica.valor != null
     ? metrica.valor - benchmarkAlvo
     : null
@@ -97,7 +102,7 @@ export default function KpiCard({
             <Variacao pct={metrica.variacao_anterior} isPP={metrica.is_pp} />
             {periodoAnterior && (
               <span className="text-xs text-zinc-300">
-                vs {fmtPeriodoLabel(periodoAnterior)}
+                vs {fmtPeriodoLabel(periodoAnterior, anoAtual)}
               </span>
             )}
           </div>
@@ -107,7 +112,7 @@ export default function KpiCard({
             <Variacao pct={metrica.variacao_yoy} isPP={metrica.is_pp} label="YoY" />
             {periodoYoY && (
               <span className="text-xs text-zinc-300">
-                {fmtPeriodoLabel(periodoYoY)}
+                {fmtPeriodoLabel(periodoYoY, anoAtual)}
               </span>
             )}
           </div>
