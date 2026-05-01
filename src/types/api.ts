@@ -173,6 +173,28 @@ export interface Historico12m {
   meses: Historico12mItem[]
 }
 
+// ── V3-4: Decomposição de variação ────────────────────────────────────────
+
+export interface DecomposicaoSetor {
+  nome:             string
+  display_nome:     string
+  cor_hex:          string
+  atual:            number
+  anterior:         number
+  variacao:         number
+  variacao_pct:     number | null
+  contribuicao_pct: number | null
+}
+
+export interface DecomposicaoVariacao {
+  variacao_total:     number
+  variacao_total_pct: number | null
+  tem_dados_anterior: boolean
+  periodo_atual:      PeriodoRef
+  periodo_anterior:   PeriodoRef
+  setores:            DecomposicaoSetor[]
+}
+
 export interface Sparklines {
   labels:       string[]
   faturamento:  number[]

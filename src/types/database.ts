@@ -417,6 +417,14 @@ export interface Database {
         Args: Record<string, never>
         Returns: Json
       }
+      get_decomposicao_variacao: {
+        Args: {
+          p_from: string; p_to: string
+          p_ant_from: string; p_ant_to: string
+          p_setor?: string
+        }
+        Returns: Json
+      }
       get_historico_12m: {
         Args: { p_setor?: string }
         Returns: Json
