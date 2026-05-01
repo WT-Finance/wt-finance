@@ -1,18 +1,22 @@
 import type { MixSetor } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
-import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
+import { margemColor } from '@/lib/config'
 
-function margemColor(v: number | null) {
-  if (v == null)           return 'text-zinc-400'
-  if (v >= MARGEM_OK)     return 'text-emerald-600'
-  if (v >= MARGEM_ALERTA) return 'text-amber-500'
-  return 'text-red-500'
+function fmtPP(v: number | null) {
+  if (v == null) return '—'
+  const sign = v > 0 ? '+' : ''
+  return `${sign}${v.toFixed(1)} p.p.`
 }
 
-function SkeletonRow() {
+function ppColor(v: number | null) {
+  if (v == null || Math.abs(v) < 0.5) return 'text-zinc-400'
+  return v > 0 ? 'text-emerald-600' : 'text-red-500'
+}
+
+function SkeletonRow({ cols }: { cols: number }) {
   return (
     <tr className="animate-pulse">
-      {Array.from({ length: 6 }).map((_, i) => (
+      {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="py-2 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: i === 0 ? 80 : 64 }} />
         </td>
@@ -24,9 +28,13 @@ function SkeletonRow() {
 interface Props {
   data: MixSetor | null
   loading: boolean
+  /** Quando fornecido, exibe coluna extra "vs Alvo" com diferença em p.p. */
+  margemAlvo?: number
 }
 
-export default function MixSetorTable({ data, loading }: Props) {
+export default function MixSetorTable({ data, loading, margemAlvo }: Props) {
+  const cols = margemAlvo != null ? 7 : 6
+
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
       <h2 className="text-sm font-semibold text-zinc-700 mb-3">Mix por Setor</h2>
@@ -40,15 +48,18 @@ export default function MixSetorTable({ data, loading }: Props) {
               <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Receita</th>
               <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">% Rec.</th>
               <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Margem</th>
+              {margemAlvo != null && (
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">vs Alvo</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {loading
-              ? Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)
+              ? Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} cols={cols} />)
               : !data
               ? (
                 <tr>
-                  <td colSpan={6} className="py-4 text-center text-sm text-zinc-400">
+                  <td colSpan={cols} className="py-4 text-center text-sm text-zinc-400">
                     Sem dados para o período selecionado.
                   </td>
                 </tr>
@@ -75,6 +86,11 @@ export default function MixSetorTable({ data, loading }: Props) {
                       <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(s.margem_pct)}`}>
                         {s.margem_pct != null ? `${s.margem_pct.toFixed(1)}%` : '—'}
                       </td>
+                      {margemAlvo != null && (
+                        <td className={`py-2 px-3 text-right tabular-nums text-xs ${ppColor(s.margem_pct != null ? s.margem_pct - margemAlvo : null)}`}>
+                          {fmtPP(s.margem_pct != null ? s.margem_pct - margemAlvo : null)}
+                        </td>
+                      )}
                     </tr>
                   ))}
                   <tr className="border-t border-zinc-200 bg-zinc-50 font-semibold">
@@ -90,6 +106,11 @@ export default function MixSetorTable({ data, loading }: Props) {
                     <td className={`py-2 px-3 text-right tabular-nums ${margemColor(data.total.margem_pct)}`}>
                       {data.total.margem_pct != null ? `${data.total.margem_pct.toFixed(1)}%` : '—'}
                     </td>
+                    {margemAlvo != null && (
+                      <td className={`py-2 px-3 text-right tabular-nums text-xs ${ppColor(data.total.margem_pct != null ? data.total.margem_pct - margemAlvo : null)}`}>
+                        {fmtPP(data.total.margem_pct != null ? data.total.margem_pct - margemAlvo : null)}
+                      </td>
+                    )}
                   </tr>
                 </>
               )}

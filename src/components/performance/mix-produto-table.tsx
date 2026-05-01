@@ -1,13 +1,6 @@
 import type { MixProduto } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
-import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
-
-function margemColor(v: number | null) {
-  if (v == null)           return 'text-zinc-400'
-  if (v >= MARGEM_OK)     return 'text-emerald-600'
-  if (v >= MARGEM_ALERTA) return 'text-amber-500'
-  return 'text-red-500'
-}
+import { margemColor } from '@/lib/config'
 
 function SkeletonRow() {
   return (

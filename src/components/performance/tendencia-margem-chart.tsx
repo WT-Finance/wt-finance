@@ -11,9 +11,11 @@ import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
 interface Props {
   data: TendenciaMargem | null
   loading: boolean
+  margemOk?: number
+  margemAlerta?: number
 }
 
-export default function TendenciaMargemChart({ data, loading }: Props) {
+export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_OK, margemAlerta = MARGEM_ALERTA }: Props) {
   const pontos = data?.pontos ?? []
   const semDados = pontos.every(p => p.faturamento === 0)
 
@@ -58,8 +60,8 @@ export default function TendenciaMargemChart({ data, loading }: Props) {
               }}
               labelFormatter={label => `${label}`}
             />
-            <ReferenceLine y={MARGEM_OK}    stroke="#10b981" strokeDasharray="4 4" strokeWidth={1} />
-            <ReferenceLine y={MARGEM_ALERTA} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} />
+            <ReferenceLine y={margemOk}     stroke="#10b981" strokeDasharray="4 4" strokeWidth={1} />
+            <ReferenceLine y={margemAlerta} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} />
             <Line
               type="monotone"
               dataKey="margem_pct"
@@ -74,11 +76,11 @@ export default function TendenciaMargemChart({ data, loading }: Props) {
       <div className="mt-2 flex items-center gap-4 text-xs text-zinc-400">
         <span className="flex items-center gap-1">
           <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
-          ≥{MARGEM_OK}% (ok)
+          ≥{margemOk}% (ok)
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block w-4 border-t-2 border-dashed border-amber-400" />
-          ≥{MARGEM_ALERTA}% (atenção)
+          ≥{margemAlerta}% (atenção)
         </span>
       </div>
     </div>

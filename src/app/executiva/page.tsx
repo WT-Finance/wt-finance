@@ -1,11 +1,12 @@
 import { Suspense } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
-import { resolverPeriodoFromParams } from '@/lib/periodo'
+import { resolverPeriodoCompleto } from '@/lib/periodo'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import MixSetorChart from '@/components/executiva/mix-setor-chart'
 import PrejuizosKpi from '@/components/executiva/prejuizos-kpi'
 import { getServerClient } from '@/lib/supabase/server'
+import { getBenchmarks } from '@/lib/config'
 import type { ExecutivaKpis, MixSetor, PrejuizosSummary } from '@/types/api'
 
 interface SearchParams {
@@ -21,15 +22,25 @@ export default async function ExecutivaPage({
   searchParams: Promise<SearchParams>
 }) {
   const sp    = await searchParams
-  const { from, to } = resolverPeriodoFromParams(sp)
+  const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
+    resolverPeriodoCompleto(sp)
   const setor = sp.setor ?? 'todos'
 
   const db = getServerClient()
 
-  const [kpisRes, mixRes, prejRes] = await Promise.all([
-    db.rpc('get_executiva_kpis', { p_from: from, p_to: to, p_setor: setor }),
-    db.rpc('get_mix_setor',      { p_from: from, p_to: to, p_setor: setor }),
-    db.rpc('get_prejuizos',      { p_from: from, p_to: to, p_setor: setor, p_summary: true }),
+  const [kpisRes, mixRes, prejRes, benchmarks] = await Promise.all([
+    db.rpc('get_executiva_kpis', {
+      p_from:     from,
+      p_to:       to,
+      p_setor:    setor,
+      p_ant_from: antFrom,
+      p_ant_to:   antTo,
+      p_yoy_from: yoyFrom,
+      p_yoy_to:   yoyTo,
+    }),
+    db.rpc('get_mix_setor',  { p_from: from, p_to: to, p_setor: setor }),
+    db.rpc('get_prejuizos',  { p_from: from, p_to: to, p_setor: setor, p_summary: true }),
+    getBenchmarks(db),
   ])
 
   const kpis      = kpisRes.error ? null : kpisRes.data as unknown as ExecutivaKpis
@@ -37,7 +48,7 @@ export default async function ExecutivaPage({
   const prejuizos = prejRes.error ? null : prejRes.data as unknown as PrejuizosSummary
 
   return (
-    <div className="max-w-screen-xl mx-auto px-6 py-4">
+    <div className="max-w-7xl mx-auto px-6 py-4">
       {/* Filtros */}
       <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
         <Suspense>
@@ -58,6 +69,7 @@ export default async function ExecutivaPage({
               formato="brl"
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
+              isPeriodoProporcional={eParcial}
             />
             <KpiCard
               rotulo="Receita"
@@ -65,6 +77,7 @@ export default async function ExecutivaPage({
               formato="brl"
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
+              isPeriodoProporcional={eParcial}
             />
             <KpiCard
               rotulo="Margem %"
@@ -72,6 +85,9 @@ export default async function ExecutivaPage({
               formato="pct"
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
+              benchmarkAlvo={benchmarks.margemAlvo}
+              benchmarkAtencao={benchmarks.margemAtencao}
+              isPeriodoProporcional={eParcial}
             />
             <KpiCard
               rotulo="Vendas"
@@ -79,6 +95,7 @@ export default async function ExecutivaPage({
               formato="numero"
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
+              isPeriodoProporcional={eParcial}
             />
             <KpiCard
               rotulo="Ticket Médio"
@@ -86,6 +103,7 @@ export default async function ExecutivaPage({
               formato="brl"
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
+              isPeriodoProporcional={eParcial}
             />
           </>
         ) : (
