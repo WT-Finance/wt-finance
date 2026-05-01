@@ -4,23 +4,32 @@ import {
   ResponsiveContainer, BarChart, Bar,
   XAxis, YAxis, Tooltip, Cell, LabelList,
 } from 'recharts'
+import { useRouter } from 'next/navigation'
 import type { MixSetor } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
 
 interface Props {
   data: MixSetor | null
   loading: boolean
+  preset?: string
 }
 
-export default function MixSetorChart({ data, loading }: Props) {
+export default function MixSetorChart({ data, loading, preset = 'mes-passado' }: Props) {
+  const router = useRouter()
+
   const chartData = data?.setores.map(s => ({
     name:           s.display_nome,
+    setor_macro:    s.setor_macro,
     faturamento:    s.faturamento,
     receita:        s.receita,
     pct:            s.pct_faturamento,
     cor:            s.cor_hex,
     margem:         s.margem_pct,
   })) ?? []
+
+  function navSetor(setor_macro: string) {
+    router.push(`/performance?setor=${setor_macro}&preset=${preset}`)
+  }
 
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4">
@@ -55,7 +64,11 @@ export default function MixSetorChart({ data, loading }: Props) {
                 'Faturamento',
               ]}
             />
-            <Bar dataKey="faturamento" radius={[0, 4, 4, 0]} maxBarSize={28}>
+            <Bar
+              dataKey="faturamento" radius={[0, 4, 4, 0]} maxBarSize={28}
+              cursor="pointer"
+              onClick={(entry) => navSetor((entry as unknown as typeof chartData[0]).setor_macro)}
+            >
               {chartData.map((entry, i) => (
                 <Cell key={i} fill={entry.cor} />
               ))}
@@ -73,7 +86,12 @@ export default function MixSetorChart({ data, loading }: Props) {
       {!loading && data && (
         <div className="mt-3 pt-3 border-t border-zinc-100 grid grid-cols-3 gap-3">
           {data.setores.map(s => (
-            <div key={s.setor_macro} className="text-center">
+            <div
+              key={s.setor_macro}
+              className="text-center cursor-pointer rounded-lg p-1 hover:bg-zinc-50 transition-colors"
+              onClick={() => navSetor(s.setor_macro)}
+              title={`Ver performance — ${s.display_nome}`}
+            >
               <p className="text-xs text-zinc-400">{s.display_nome}</p>
               <p className="text-sm font-semibold tabular-nums" style={{ color: s.cor_hex }}>
                 {s.margem_pct != null ? `${s.margem_pct.toFixed(1)}%` : '—'}

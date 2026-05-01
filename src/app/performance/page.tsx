@@ -112,7 +112,7 @@ export default async function PerformancePage({
       <Section titulo="Mix por Setor">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
-            <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} />
+            <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
           </div>
           <div>
             <CagrCard data={cagr} loading={false} />
