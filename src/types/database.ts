@@ -429,6 +429,10 @@ export interface Database {
         Args: { p_setor?: string }
         Returns: Json
       }
+      get_historico_12m_setores: {
+        Args: { p_setor?: string }
+        Returns: Json
+      }
       get_sparklines: {
         Args: { p_preset: string; p_from: string; p_to: string; p_setor?: string }
         Returns: Json

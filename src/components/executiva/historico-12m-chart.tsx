@@ -4,10 +4,17 @@ import {
   ResponsiveContainer, BarChart, Bar,
   XAxis, YAxis, Tooltip, Cell, CartesianGrid, LabelList,
 } from 'recharts'
-import type { Historico12m } from '@/types/api'
+import type { Historico12mSetores } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
 
 const MESES_SHORT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+
+const SETOR_COLORS: Record<string, string> = {
+  Lazer:       '#378ADD',
+  Weddings:    '#BA7517',
+  Corporativo: '#0F6E56',
+}
+const SETORES = ['Lazer', 'Weddings', 'Corporativo'] as const
 
 function fmtCurto(v: number): string {
   if (Math.abs(v) >= 1_000_000)
@@ -18,20 +25,23 @@ function fmtCurto(v: number): string {
 }
 
 interface Props {
-  data:      Historico12m | null
+  data:      Historico12mSetores | null
+  setor?:    string
   eParcial?: boolean
 }
 
-export default function Historico12mChart({ data, eParcial = false }: Props) {
+export default function Historico12mChart({ data, setor = 'todos', eParcial = false }: Props) {
   const meses = data?.meses ?? []
-  const semDados = meses.every(m => m.faturamento === 0)
+  const semDados = meses.every(m => m.total === 0)
 
   const chartData = meses.map(m => ({
     label:       `${MESES_SHORT[m.mes - 1]}/${String(m.ano).slice(2)}`,
-    faturamento:  m.faturamento,
-    margem_pct:   m.margem_pct,
-    eh_atual:     m.eh_atual,
-    parcial:      m.eh_atual && eParcial,
+    eh_atual:    m.eh_atual,
+    parcial:     m.eh_atual && eParcial,
+    total:       m.total,
+    Lazer:       m.Lazer,
+    Weddings:    m.Weddings,
+    Corporativo: m.Corporativo,
   }))
 
   const Y_TICKS = [0, 2_500_000, 5_000_000, 7_500_000, 10_000_000]
@@ -42,11 +52,10 @@ export default function Historico12mChart({ data, eParcial = false }: Props) {
     return '–'
   }
 
-  // Tick do eixo X — destaca o mês corrente
   const activeLabels = new Set(chartData.filter(d => d.eh_atual).map(d => d.label))
   function CustomXTick(props: Record<string, unknown>) {
-    const x = props.x as number | undefined
-    const y = props.y as number | undefined
+    const x       = props.x as number | undefined
+    const y       = props.y as number | undefined
     const payload = props.payload as { value: string } | undefined
     const isActive = activeLabels.has(payload?.value ?? '')
     return (
@@ -62,20 +71,22 @@ export default function Historico12mChart({ data, eParcial = false }: Props) {
     )
   }
 
-  // Cor da label acima da barra
-  function LabelColor({ value, index }: { value?: unknown; index?: number; x?: number; y?: number; width?: number }) {
+  // Label acima da barra (total) — renderizada no topo do stack
+  function TopLabel({ value, index }: { value?: unknown; index?: number; x?: number; y?: number; width?: number }) {
     const entry = index != null ? chartData[index] : null
-    const color = entry?.eh_atual ? 'var(--primary)' : 'rgba(37, 99, 235, 0.5)'
-    const weight = entry?.eh_atual ? 600 : 400
+    if (!entry || entry.total === 0) return null
+    const color  = entry.eh_atual ? 'var(--primary)' : '#a1a1aa'
+    const weight = entry.eh_atual ? 600 : 400
     return (
-      <text
-        style={{ fontSize: 10, fill: color, fontWeight: weight }}
-        textAnchor="middle"
-      >
-        {value != null ? fmtCurto(Number(value)) : ''}
+      <text style={{ fontSize: 10, fill: color, fontWeight: weight }} textAnchor="middle">
+        {fmtCurto(entry.total)}
       </text>
     )
   }
+
+  // Quando setor específico, exibe barra única na cor do setor (ou azul primário para eh_atual)
+  const isTodos = setor === 'todos'
+  const singleColor = SETOR_COLORS[setor] ?? 'var(--primary)'
 
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4 mb-6">
@@ -106,39 +117,86 @@ export default function Historico12mChart({ data, eParcial = false }: Props) {
               width={36}
             />
             <Tooltip
-              formatter={(value, _name, props) => {
-                const label = props.payload?.parcial
-                  ? `${fmtMi(Number(value))} · em andamento`
-                  : fmtMi(Number(value))
-                return [label, 'Faturamento']
-              }}
+              formatter={(value, name) => [
+                fmtMi(Number(value)),
+                isTodos ? String(name) : 'Faturamento',
+              ]}
               labelStyle={{ fontSize: 11, color: '#3f3f46' }}
               contentStyle={{ fontSize: 11, borderRadius: 6 }}
               cursor={{ fill: 'rgba(0,0,0,0.04)' }}
             />
-            <Bar
-              dataKey="faturamento"
-              radius={[4, 4, 0, 0]}
-              activeBar={{ opacity: 0.75 }}
-            >
-              {chartData.map((entry, i) => (
-                <Cell
-                  key={i}
-                  fill={
-                    entry.parcial  ? '#94a3b8'
-                    : entry.eh_atual ? 'var(--primary)'
-                    : 'rgba(37, 99, 235, 0.28)'
-                  }
+
+            {isTodos ? (
+              // ── Barras empilhadas por setor ──────────────────────────────
+              <>
+                {SETORES.map((s, idx) => {
+                  const isTop = idx === SETORES.length - 1
+                  return (
+                    <Bar
+                      key={s}
+                      dataKey={s}
+                      stackId="fat"
+                      fill={SETOR_COLORS[s]}
+                      radius={isTop ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                      activeBar={{ opacity: 0.75 }}
+                    >
+                      {chartData.map((entry, i) => (
+                        <Cell
+                          key={i}
+                          fill={SETOR_COLORS[s]}
+                          fillOpacity={entry.parcial ? 0.4 : 1}
+                        />
+                      ))}
+                      {isTop && (
+                        <LabelList
+                          dataKey="total"
+                          position="top"
+                          content={(props) => <TopLabel value={props.value} index={props.index} />}
+                        />
+                      )}
+                    </Bar>
+                  )
+                })}
+              </>
+            ) : (
+              // ── Barra única para setor específico ───────────────────────
+              <Bar
+                dataKey="total"
+                radius={[4, 4, 0, 0]}
+                activeBar={{ opacity: 0.75 }}
+              >
+                {chartData.map((entry, i) => (
+                  <Cell
+                    key={i}
+                    fill={
+                      entry.parcial  ? '#94a3b8'
+                      : entry.eh_atual ? 'var(--primary)'
+                      : singleColor
+                    }
+                    fillOpacity={entry.parcial ? 0.6 : 1}
+                  />
+                ))}
+                <LabelList
+                  dataKey="total"
+                  position="top"
+                  content={(props) => <TopLabel value={props.value} index={props.index} />}
                 />
-              ))}
-              <LabelList
-                dataKey="faturamento"
-                position="top"
-                content={(props) => <LabelColor value={props.value} index={props.index} />}
-              />
-            </Bar>
+              </Bar>
+            )}
           </BarChart>
         </ResponsiveContainer>
+      )}
+
+      {/* Legenda — só quando todos os setores */}
+      {isTodos && (
+        <div className="flex items-center gap-4 mt-2 justify-end">
+          {SETORES.map(s => (
+            <span key={s} className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: SETOR_COLORS[s] }} />
+              {s === 'Lazer' ? 'Trips' : s}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   )
