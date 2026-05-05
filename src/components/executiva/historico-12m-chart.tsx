@@ -34,10 +34,13 @@ export default function Historico12mChart({ data, eParcial = false }: Props) {
     parcial:      m.eh_atual && eParcial,
   }))
 
-  const valores = chartData.map(d => d.faturamento).filter(v => v > 0)
-  const valMax  = valores.length ? Math.max(...valores) : 0
-  const valMid  = valMax ? Math.round(valMax / 2) : 0
-  const yTicks  = valMax ? [0, valMid, valMax] : undefined
+  const Y_TICKS = [0, 2_500_000, 5_000_000, 7_500_000, 10_000_000]
+  function fmtYTick(v: number): string {
+    if (v === 0)          return '0'
+    if (v === 5_000_000)  return '5M'
+    if (v === 10_000_000) return '10M'
+    return '–'
+  }
 
   // Tick do eixo X — destaca o mês corrente
   const activeLabels = new Set(chartData.filter(d => d.eh_atual).map(d => d.label))
@@ -94,12 +97,13 @@ export default function Historico12mChart({ data, eParcial = false }: Props) {
               tickLine={false}
             />
             <YAxis
-              ticks={yTicks}
-              tickFormatter={fmtCurto}
+              domain={[0, 10_000_000]}
+              ticks={Y_TICKS}
+              tickFormatter={fmtYTick}
               tick={{ fontSize: 10, fill: '#a1a1aa' }}
               axisLine={false}
               tickLine={false}
-              width={40}
+              width={36}
             />
             <Tooltip
               formatter={(value, _name, props) => {
