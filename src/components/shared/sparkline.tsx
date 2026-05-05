@@ -31,7 +31,7 @@ export default function Sparkline({ data, labels, formato = 'brl' }: Props) {
   const stroke = last > first ? '#10b981' : last < first ? '#f43f5e' : '#a1a1aa'
 
   return (
-    <div style={{ width: 60, height: 24 }} title={title} className="shrink-0">
+    <div style={{ width: 60, height: 24 }} title={title} className="shrink-0 overflow-hidden">
       <LineChart width={60} height={24} data={chartData}>
         <Line
           type="monotone"

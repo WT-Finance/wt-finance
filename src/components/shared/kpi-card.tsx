@@ -101,7 +101,7 @@ export default function KpiCard({
     : 'text-zinc-900'
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4">
+    <div className="bg-white rounded-xl border border-zinc-200 p-4 h-full">
       <div className="flex items-start justify-between">
         <div className="relative group/tip">
           <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide cursor-default">{rotulo}</p>
