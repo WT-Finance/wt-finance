@@ -65,7 +65,7 @@ export default function Historico12mChart({ data, eParcial = false }: Props) {
   // Cor da label acima da barra
   function LabelColor({ value, index }: { value?: unknown; index?: number; x?: number; y?: number; width?: number }) {
     const entry = index != null ? chartData[index] : null
-    const color = entry?.eh_atual ? 'var(--primary)' : '#a1a1aa'
+    const color = entry?.eh_atual ? 'var(--primary)' : 'rgba(37, 99, 235, 0.5)'
     const weight = entry?.eh_atual ? 600 : 400
     return (
       <text
@@ -127,7 +127,7 @@ export default function Historico12mChart({ data, eParcial = false }: Props) {
                   fill={
                     entry.parcial  ? '#94a3b8'
                     : entry.eh_atual ? 'var(--primary)'
-                    : '#cbd5e1'
+                    : 'rgba(37, 99, 235, 0.28)'
                   }
                 />
               ))}

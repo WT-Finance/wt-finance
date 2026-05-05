@@ -17,13 +17,13 @@ export default function KpiDrawerTrigger({ children, metrica, rotulo, setor }: P
   return (
     <>
       <div
-        className="relative cursor-pointer group/drawer rounded-xl hover:shadow-md transition-shadow"
+        className="relative cursor-pointer group/drawer rounded-xl hover:shadow-md transition-shadow h-full"
         onClick={() => setOpen(true)}
         title={`Ver histórico — ${rotulo}`}
       >
         {children}
-        <span className="absolute bottom-3 right-3 opacity-0 group-hover/drawer:opacity-40 transition-opacity pointer-events-none">
-          <ChevronRight size={13} className="text-zinc-500" />
+        <span className="absolute bottom-3 right-3 opacity-20 group-hover/drawer:opacity-70 transition-opacity pointer-events-none">
+          <ChevronRight size={15} className="text-blue-600" />
         </span>
       </div>
 

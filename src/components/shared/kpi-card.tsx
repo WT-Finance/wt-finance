@@ -47,14 +47,21 @@ function Variacao({
   )
 }
 
+const MESES_SHORT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+
 function fmtPeriodoLabel(p: PeriodoRef, anoAtual?: number): string {
   const ano = parseInt(p.from.split('-')[0], 10)
   const comAno = anoAtual != null && ano !== anoAtual
 
-  const fmt = (s: string) => {
-    const [y, m, d] = s.split('-')
-    return comAno ? `${d}/${m}/${y.slice(2)}` : `${d}/${m}`
+  if (comAno) {
+    const [yFrom, mFrom] = p.from.split('-')
+    const [yTo,   mTo  ] = p.to.split('-')
+    const lFrom = `${MESES_SHORT[parseInt(mFrom, 10) - 1]}/${yFrom.slice(2)}`
+    const lTo   = `${MESES_SHORT[parseInt(mTo,   10) - 1]}/${yTo.slice(2)}`
+    return lFrom === lTo ? lFrom : `${lFrom}–${lTo}`
   }
+
+  const fmt = (s: string) => { const [, m, d] = s.split('-'); return `${d}/${m}` }
   return `${fmt(p.from)}–${fmt(p.to)}`
 }
 
