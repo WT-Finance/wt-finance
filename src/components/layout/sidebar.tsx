@@ -4,6 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, TrendingUp, Target, X, ChevronLeft } from 'lucide-react'
 
+const PERFORMANCE_SUBS = [
+  { href: '/performance',             label: 'Geral'       },
+  { href: '/performance/trips',       label: 'Trips'       },
+  { href: '/performance/weddings',    label: 'Weddings'    },
+  { href: '/performance/corporativo', label: 'Corporativo' },
+]
+
 const NAV_ITEMS = [
   { href: '/executiva',   label: 'Executiva',   Icon: LayoutDashboard },
   { href: '/performance', label: 'Performance', Icon: TrendingUp       },
@@ -38,28 +45,54 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
       <nav className="flex-1 px-3 py-3 space-y-0.5">
         {NAV_ITEMS.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`)
+          const isPerformance = href === '/performance'
           return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onNav}
-              className={[
-                'flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
-                active
-                  ? 'text-blue-600 font-semibold'
-                  : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
-              ].join(' ')}
-              style={active ? { background: 'var(--primary-bg)' } : undefined}
-            >
-              {active && (
-                <span
-                  className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
-                  style={{ background: 'var(--primary)' }}
-                />
+            <div key={href}>
+              <Link
+                href={href}
+                onClick={onNav}
+                className={[
+                  'flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
+                  active
+                    ? 'text-blue-600 font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
+                ].join(' ')}
+                style={active ? { background: 'var(--primary-bg)' } : undefined}
+              >
+                {active && (
+                  <span
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                    style={{ background: 'var(--primary)' }}
+                  />
+                )}
+                <Icon size={16} className={active ? 'text-blue-600' : 'text-zinc-400'} />
+                {label}
+              </Link>
+
+              {isPerformance && active && (
+                <div className="mt-0.5 ml-4 pl-3 border-l border-zinc-200 space-y-0.5">
+                  {PERFORMANCE_SUBS.map(sub => {
+                    const subActive = pathname === sub.href
+                    return (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        onClick={onNav}
+                        className={[
+                          'block px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                          subActive
+                            ? 'text-blue-600 font-semibold'
+                            : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100',
+                        ].join(' ')}
+                        style={subActive ? { background: 'var(--primary-bg)' } : undefined}
+                      >
+                        {sub.label}
+                      </Link>
+                    )
+                  })}
+                </div>
               )}
-              <Icon size={16} className={active ? 'text-blue-600' : 'text-zinc-400'} />
-              {label}
-            </Link>
+            </div>
           )
         })}
       </nav>
