@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, X } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, X, ChevronLeft } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/executiva',   label: 'Executiva',   Icon: LayoutDashboard },
@@ -13,15 +13,25 @@ const NAV_ITEMS = [
 interface SidebarContentProps {
   pathname: string
   onNav?: () => void
+  onCollapse?: () => void
 }
 
-function SidebarContent({ pathname, onNav }: SidebarContentProps) {
+function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
-      <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--sidebar-border)' }}>
+      <div className="px-5 py-5 border-b relative" style={{ borderColor: 'var(--sidebar-border)' }}>
         <p className="text-[18px] font-semibold text-zinc-900 leading-tight">WT Finance</p>
         <p className="text-[13px] text-zinc-400 mt-0.5">Welcome Group</p>
+        {onCollapse && (
+          <button
+            onClick={onCollapse}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            aria-label="Recolher sidebar"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -63,16 +73,17 @@ function SidebarContent({ pathname, onNav }: SidebarContentProps) {
 interface SidebarProps {
   mobileOpen: boolean
   onMobileClose: () => void
+  onCollapse?: () => void
 }
 
-export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onMobileClose, onCollapse }: SidebarProps) {
   const pathname = usePathname()
 
   return (
     <>
       {/* Desktop sidebar — sempre visível em lg+ */}
       <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0">
-        <SidebarContent pathname={pathname} />
+        <SidebarContent pathname={pathname} onCollapse={onCollapse} />
       </aside>
 
       {/* Mobile drawer */}
