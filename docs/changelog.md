@@ -1,5 +1,39 @@
 # Changelog — WT Finance Dashboard
 
+## v3.3 — Performance por Setor (maio/2026)
+
+### v3.3-1 — Polimento visual
+- Gráfico 12m: meses anteriores em azul ~28% opacity (antes cinza `#cbd5e1`); labels em azul ~50%
+- KPI cards clicáveis: `h-full` no wrapper alinha altura com cards adjacentes
+- Sparkline: `overflow-hidden` impede vazamento do SVG fora do card
+- Datas YoY com ano diferente: formato `abr/25` em vez de `01/04/25–30/04/25`
+- Chevron do drawer: sempre visível (opacity 20%), maior (15px), mais claro no hover
+
+### v3.3-2 — Sub-abas de Performance na sidebar
+- Item "Performance" vira botão toggle — abre/fecha sub-menu sem navegar
+- Sub-menu com 4 itens: Geral, Trips, Weddings, Corporativo
+- ChevronRight rotacionado indica estado; auto-abre quando pathname começa com `/performance`
+- Rotas criadas: `/performance/trips`, `/performance/weddings`, `/performance/corporativo`
+- ADR 0016: sub-abas de Performance como dropdown na sidebar
+
+### v3.3-3 — Barras empilhadas no gráfico 12m
+- `setor=todos`: barras empilhadas por setor (Trips `#378ADD` / Weddings `#BA7517` / Corporativo `#0F6E56`) com legenda
+- `setor` específico: barra única na cor do setor; mês corrente em azul primário
+- Migration `0023`: novo RPC `get_historico_12m_setores` com breakdown por setor + total + receita + margem_pct
+- ADR 0017: gráfico 12m com barras empilhadas por setor
+
+### v3.3-4 — Conteúdo de Performance por setor
+- `PerformanceContent`: async Server Component compartilhado entre as 4 sub-abas
+- Cada sub-aba exibe KPIs, Mix, Tendência e Prejuízos filtrados ao setor da rota
+- `SetorFilter` oculto nas sub-abas de setor (setor determinado pela rota)
+- ADR 0018: PerformanceContent como componente compartilhado
+
+### v3.3-5 — Polimento e documentação
+- ADRs 0016–0018 criados
+- Changelog atualizado
+
+---
+
 ## v3.2 — Sidebar e Polimento Visual (maio/2026)
 
 ### v3.2-1 — Sidebar lateral
