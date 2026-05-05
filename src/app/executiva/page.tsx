@@ -14,7 +14,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { getBenchmarks } from '@/lib/config'
 import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
 import { avaliarTodasRegras } from '@/lib/regras-alerta'
-import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12m, Sparklines, DecomposicaoVariacao } from '@/types/api'
+import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12mSetores, Sparklines, DecomposicaoVariacao } from '@/types/api'
 
 interface SearchParams {
   preset?: string
@@ -48,7 +48,7 @@ export default async function ExecutivaPage({
     db.rpc('get_mix_setor',    { p_from: from,    p_to: to,    p_setor: setor }),
     db.rpc('get_prejuizos',    { p_from: from,    p_to: to,    p_setor: setor, p_summary: true }),
     db.rpc('get_prejuizos',    { p_from: antFrom, p_to: antTo, p_setor: setor, p_summary: true }),
-    db.rpc('get_historico_12m', { p_setor: setor }),
+    db.rpc('get_historico_12m_setores', { p_setor: setor }),
     db.rpc('get_sparklines',   { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_decomposicao_variacao', {
       p_from: from, p_to: to, p_ant_from: antFrom, p_ant_to: antTo, p_setor: setor,
@@ -60,7 +60,7 @@ export default async function ExecutivaPage({
   const mix          = mixRes.error     ? null : mixRes.data     as unknown as MixSetor
   const prejuizos    = prejRes.error    ? null : prejRes.data    as unknown as PrejuizosSummary
   const prejuizosAnt = prejAntRes.error ? null : prejAntRes.data as unknown as PrejuizosSummary
-  const historico    = histRes.error    ? null : histRes.data    as unknown as Historico12m
+  const historico    = histRes.error    ? null : histRes.data    as unknown as Historico12mSetores
   const sparklines   = sparkRes.error   ? null : sparkRes.data   as unknown as Sparklines | null
   const decomposicao = decompRes.error  ? null : decompRes.data  as unknown as DecomposicaoVariacao
 
@@ -121,7 +121,7 @@ export default async function ExecutivaPage({
       {textoSumario && <SumarioExecutivo texto={textoSumario} />}
 
       {/* Linha temporal 12 meses */}
-      <Historico12mChart data={historico} eParcial={eParcial} />
+      <Historico12mChart data={historico} setor={setor} eParcial={eParcial} />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">

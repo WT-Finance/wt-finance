@@ -174,6 +174,22 @@ export interface Historico12m {
   meses: Historico12mItem[]
 }
 
+export interface Historico12mSetoresItem {
+  ano:         number
+  mes:         number
+  eh_atual:    boolean
+  total:       number
+  receita:     number
+  margem_pct:  number | null
+  Lazer:       number
+  Weddings:    number
+  Corporativo: number
+}
+
+export interface Historico12mSetores {
+  meses: Historico12mSetoresItem[]
+}
+
 // ── V3-4: Decomposição de variação ────────────────────────────────────────
 
 export interface DecomposicaoSetor {

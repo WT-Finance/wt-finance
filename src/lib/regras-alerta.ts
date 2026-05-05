@@ -1,6 +1,6 @@
 import type {
   ExecutivaKpis, MixSetor, PrejuizosSummary,
-  Historico12m, DecomposicaoVariacao,
+  Historico12mSetores, DecomposicaoVariacao,
 } from '@/types/api'
 import type { Benchmarks } from '@/lib/config'
 
@@ -16,7 +16,7 @@ export interface DadosPeriodo {
   mix:          MixSetor | null
   prejuizos:    PrejuizosSummary | null
   prejuizosAnt: PrejuizosSummary | null
-  historico:    Historico12m | null
+  historico:    Historico12mSetores | null
   decomposicao: DecomposicaoVariacao | null
   benchmarks:   Benchmarks
   eParcial:     boolean
