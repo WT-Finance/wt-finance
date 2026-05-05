@@ -3,6 +3,7 @@ import PeriodoFilter from '@/components/shared/periodo-filter'
 import { resolverPeriodoCompleto, formatarLabelPeriodo } from '@/lib/periodo'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
+import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
 import MixSetorChart from '@/components/executiva/mix-setor-chart'
 import PrejuizosKpi from '@/components/executiva/prejuizos-kpi'
 import SumarioExecutivo from '@/components/executiva/sumario-executivo'
@@ -126,30 +127,34 @@ export default async function ExecutivaPage({
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {kpis ? (
           <>
-            <KpiCard
-              rotulo="Faturamento"
-              formula="Soma do valor total das vendas"
-              metrica={kpis.faturamento}
-              formato="brl"
-              periodoAtual={kpis.periodo}
-              periodoAnterior={kpis.periodo_anterior}
-              periodoYoY={kpis.periodo_yoy}
-              isPeriodoProporcional={eParcial}
-              sparklineData={sparklines?.faturamento}
-              sparklineLabels={sparklines?.labels}
-            />
-            <KpiCard
-              rotulo="Receita"
-              formula="Faturamento − custos e reembolsos"
-              metrica={kpis.receita}
-              formato="brl"
-              periodoAtual={kpis.periodo}
-              periodoAnterior={kpis.periodo_anterior}
-              periodoYoY={kpis.periodo_yoy}
-              isPeriodoProporcional={eParcial}
-              sparklineData={sparklines?.receita}
-              sparklineLabels={sparklines?.labels}
-            />
+            <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor}>
+              <KpiCard
+                rotulo="Faturamento"
+                formula="Soma do valor total das vendas"
+                metrica={kpis.faturamento}
+                formato="brl"
+                periodoAtual={kpis.periodo}
+                periodoAnterior={kpis.periodo_anterior}
+                periodoYoY={kpis.periodo_yoy}
+                isPeriodoProporcional={eParcial}
+                sparklineData={sparklines?.faturamento}
+                sparklineLabels={sparklines?.labels}
+              />
+            </KpiDrawerTrigger>
+            <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor}>
+              <KpiCard
+                rotulo="Receita"
+                formula="Faturamento − custos e reembolsos"
+                metrica={kpis.receita}
+                formato="brl"
+                periodoAtual={kpis.periodo}
+                periodoAnterior={kpis.periodo_anterior}
+                periodoYoY={kpis.periodo_yoy}
+                isPeriodoProporcional={eParcial}
+                sparklineData={sparklines?.receita}
+                sparklineLabels={sparklines?.labels}
+              />
+            </KpiDrawerTrigger>
             <KpiCard
               rotulo="Margem %"
               formula="Receita ÷ Faturamento × 100"

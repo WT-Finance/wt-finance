@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
+import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
 import MixSetorTable from '@/components/performance/mix-setor-table'
 import CagrCard from '@/components/performance/cagr-card'
 import TendenciaMargemChart from '@/components/performance/tendencia-margem-chart'
@@ -96,8 +97,12 @@ export default async function PerformancePage({
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         {kpis ? (
           <>
-            <KpiCard rotulo="Faturamento"   formula="Soma do valor total das vendas"    metrica={kpis.faturamento}   formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.faturamento}                               sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Receita"       formula="Faturamento − custos e reembolsos" metrica={kpis.receita}       formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.receita}                                   sparklineLabels={sparklines?.labels} />
+            <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor}>
+              <KpiCard rotulo="Faturamento" formula="Soma do valor total das vendas" metrica={kpis.faturamento} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.faturamento} sparklineLabels={sparklines?.labels} />
+            </KpiDrawerTrigger>
+            <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor}>
+              <KpiCard rotulo="Receita" formula="Faturamento − custos e reembolsos" metrica={kpis.receita} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.receita} sparklineLabels={sparklines?.labels} />
+            </KpiDrawerTrigger>
             <KpiCard rotulo="Margem %"      formula="Receita ÷ Faturamento × 100"      metrica={kpis.margem_pct}    formato="pct"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels} />
             <KpiCard rotulo="Vendas"        formula="Contagem de vendas no período"     metrica={kpis.vendas}        formato="numero" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.vendas}                                    sparklineLabels={sparklines?.labels} />
             <KpiCard rotulo="Ticket Médio"  formula="Faturamento ÷ Vendas"             metrica={kpis.ticket_medio}  formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)}   sparklineLabels={sparklines?.labels} />
