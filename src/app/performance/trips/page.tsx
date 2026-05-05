@@ -1,7 +1,16 @@
-export default function TripsPage() {
-  return (
-    <div className="max-w-7xl mx-auto px-6 py-12 text-center text-zinc-400 text-sm">
-      Conteúdo Trips — em breve
-    </div>
-  )
+import PerformanceContent from '@/components/performance/performance-content'
+
+interface SearchParams {
+  preset?: string
+  from?:   string
+  to?:     string
+}
+
+export default async function TripsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
+  const sp = await searchParams
+  return <PerformanceContent setor="Lazer" searchParams={sp} />
 }
