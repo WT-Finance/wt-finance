@@ -1,5 +1,22 @@
 # Changelog — WT Finance Dashboard
 
+## v4.0 — Login, Permissões e Escopo de Setor (maio/2026)
+
+### v4.0-1 — Setup Supabase Auth + Bootstrap
+- Supabase Auth habilitado com magic link
+- Migration 0024: tabelas `app.usuarios` e `app.convites` com constraints de role e coerência setor/role
+- Funções SQL utilitárias: `app.current_user_setor_id()`, `app.current_user_role()`, `app.is_financeiro()` (SECURITY DEFINER)
+- RLS habilitado em `app.usuarios` e `app.convites`; policies mínimas de leitura para middleware (V4-2)
+- `src/types/user.ts`: interface `User` e tipo `Role`
+- `src/lib/permissions.ts`: funções centralizadas Grau 1 (`canInviteUsers`, `canViewAllSectors`, `getUserSectorScope`, etc.)
+- `docs/bootstrap.md`: procedimento de bootstrap do primeiro usuário (Yan)
+- `BYPASS_AUTH=true` em `.env.local` para desenvolvimento local
+- ADR 0019: bootstrap manual via SQL
+- ADR 0020: permissões Grau 1 centralizadas
+- ADR 0021: BYPASS_AUTH em desenvolvimento
+
+---
+
 ## v3.3 — Performance por Setor (maio/2026)
 
 ### v3.3-1 — Polimento visual
