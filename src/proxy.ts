@@ -35,13 +35,17 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const url = new URL('/login', request.url)
+    url.searchParams.set('reason', 'no_session')
+    return NextResponse.redirect(url)
   }
 
   const { data: profile } = await supabase.rpc('get_my_profile')
 
   if (!profile || profile.length === 0) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const url = new URL('/login', request.url)
+    url.searchParams.set('reason', 'no_profile')
+    return NextResponse.redirect(url)
   }
 
   return response
