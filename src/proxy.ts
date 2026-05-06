@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-const PUBLIC_PATHS = ['/login', '/verify', '/aceitar-convite']
+const PUBLIC_PATHS = ['/login', '/verify', '/auth/callback', '/aceitar-convite']
 
 export async function proxy(request: NextRequest) {
   if (process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH === 'true') {
