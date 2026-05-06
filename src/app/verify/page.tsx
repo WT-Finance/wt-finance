@@ -1,13 +1,12 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type State = 'verifying' | 'error'
 
 function VerifyContent() {
-  const router       = useRouter()
   const searchParams = useSearchParams()
   const [state,    setState]    = useState<State>('verifying')
   const [errorMsg, setErrorMsg] = useState('')
@@ -32,11 +31,13 @@ function VerifyContent() {
         return
       }
 
-      router.replace('/executiva')
+      // Navegação completa para garantir que os cookies de sessão
+      // sejam enviados ao proxy antes de verificar autenticação.
+      window.location.replace('/executiva')
     }
 
     verify()
-  }, [router, searchParams])
+  }, [searchParams])
 
   if (state === 'verifying') {
     return <p className="text-sm text-zinc-500">Verificando…</p>
