@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type State = 'verifying' | 'error'
 
-export default function VerifyPage() {
+function VerifyContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const [state,    setState]    = useState<State>('verifying')
@@ -38,20 +38,28 @@ export default function VerifyPage() {
     verify()
   }, [router, searchParams])
 
+  if (state === 'verifying') {
+    return <p className="text-sm text-zinc-500">Verificando…</p>
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="font-medium text-zinc-900">Não foi possível fazer login</p>
+      <p className="text-sm text-zinc-500">{errorMsg}</p>
+      <a href="/login" className="block text-sm text-blue-600 hover:underline">
+        Tentar novamente
+      </a>
+    </div>
+  )
+}
+
+export default function VerifyPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50">
       <div className="text-center">
-        {state === 'verifying' ? (
-          <p className="text-sm text-zinc-500">Verificando…</p>
-        ) : (
-          <div className="space-y-3">
-            <p className="font-medium text-zinc-900">Não foi possível fazer login</p>
-            <p className="text-sm text-zinc-500">{errorMsg}</p>
-            <a href="/login" className="block text-sm text-blue-600 hover:underline">
-              Tentar novamente
-            </a>
-          </div>
-        )}
+        <Suspense fallback={<p className="text-sm text-zinc-500">Verificando…</p>}>
+          <VerifyContent />
+        </Suspense>
       </div>
     </div>
   )
