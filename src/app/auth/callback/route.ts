@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
+import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -12,24 +12,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', origin))
   }
 
-  // cookies() de next/headers garante que as mutações de cookie
-  // sejam incluídas na resposta mesmo quando ela é um redirect.
-  const cookieStore = await cookies()
+  const pending: Array<{ name: string; value: string; options: Partial<ResponseCookie> }> = []
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
+        getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            try {
-              cookieStore.set(name, value, options)
-            } catch {
-              // Silencioso em contextos read-only (não deve ocorrer aqui)
-            }
-          })
+          cookiesToSet.forEach(c => pending.push(c))
         },
       },
     }
@@ -43,14 +35,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Confirma que a sessão foi de fato estabelecida antes de redirecionar.
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     const url = new URL('/login', origin)
-    url.searchParams.set('error', 'Sessão não estabelecida após verifyOtp')
+    url.searchParams.set('error', 'verifyOtp OK mas sessão não foi estabelecida')
     return NextResponse.redirect(url)
   }
 
-  return NextResponse.redirect(new URL('/executiva', origin))
+  // Retorna 200 + HTML com JS redirect em vez de 3xx.
+  // Set-Cookie em respostas 3xx pode ser descartado por CDNs/proxies;
+  // num 200 os cookies são sempre processados antes da navegação JS.
+  const response = new NextResponse(
+    `<!DOCTYPE html><html><head><title>Autenticando…</title></head><body>` +
+    `<script>window.location.replace('/executiva')</script>` +
+    `</body></html>`,
+    { status: 200, headers: { 'Content-Type': 'text/html' } }
+  )
+
+  pending.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options)
+  })
+
+  return response
 }
