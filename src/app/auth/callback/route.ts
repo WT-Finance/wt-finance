@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import type { Database } from '@/types/database'
 
 export async function GET(request: NextRequest) {
@@ -11,19 +12,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', origin))
   }
 
-  // Resposta de sucesso criada antes do verifyOtp para que setAll
-  // possa escrever os cookies de sessão diretamente neste response.
-  const response = NextResponse.redirect(new URL('/executiva', origin))
+  // cookies() de next/headers garante que as mutações de cookie
+  // sejam incluídas na resposta mesmo quando ela é um redirect.
+  const cookieStore = await cookies()
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll:  () => request.cookies.getAll(),
+        getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
+            try {
+              cookieStore.set(name, value, options)
+            } catch {
+              // Silencioso em contextos read-only (não deve ocorrer aqui)
+            }
           })
         },
       },
@@ -38,5 +43,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  return response
+  // Confirma que a sessão foi de fato estabelecida antes de redirecionar.
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    const url = new URL('/login', origin)
+    url.searchParams.set('error', 'Sessão não estabelecida após verifyOtp')
+    return NextResponse.redirect(url)
+  }
+
+  return NextResponse.redirect(new URL('/executiva', origin))
 }
