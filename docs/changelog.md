@@ -2,6 +2,18 @@
 
 ## v4.0 — Login, Permissões e Escopo de Setor (maio/2026)
 
+### v4.0-2 — Página de Login + Proxy de autenticação
+- `src/proxy.ts`: proteção de rotas via Next.js 16 proxy (BYPASS_AUTH → públicas → sessão → perfil)
+- Migration 0025: RPC `public.get_my_profile()` — expõe `app.usuarios` para o proxy e cliente via PostgREST
+- `src/lib/supabase/client.ts`: `createClient()` usando `createBrowserClient` de `@supabase/ssr`
+- `src/hooks/use-current-user.ts`: hook que retorna perfil do usuário logado via `get_my_profile()`
+- `src/app/login/page.tsx`: formulário de magic link com estados idle/sending/sent/error
+- `src/app/verify/page.tsx`: verifica OTP da URL, redireciona para `/executiva`
+- `AppShell`: detecta rotas auth (`/login`, `/verify`, `/aceitar-convite`) e renderiza sem sidebar
+- `Sidebar`: footer com nome/role do usuário + botão logout (`signOut` → `/login`)
+- ADR 0022: proxy de autenticação
+- ADR 0023: login via magic link
+
 ### v4.0-1 — Setup Supabase Auth + Bootstrap
 - Supabase Auth habilitado com magic link
 - Migration 0024: tabelas `app.usuarios` e `app.convites` com constraints de role e coerência setor/role
