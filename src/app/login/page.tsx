@@ -1,19 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type State = 'idle' | 'sending' | 'sent' | 'error'
 
-function LoginForm() {
-  const searchParams = useSearchParams()
-  const callbackError = searchParams.get('error')
+const REASON_MESSAGES: Record<string, string> = {
+  no_session: 'Sessão expirada. Faça login novamente.',
+  no_profile: 'Usuário não encontrado no sistema. Contate o administrador.',
+}
 
+function LoginForm() {
+  const searchParams  = useSearchParams()
+  const callbackError = searchParams.get('error')
+  const reason        = searchParams.get('reason')
+
+  const initialMsg   = callbackError ?? (reason ? REASON_MESSAGES[reason] ?? `Bloqueado: ${reason}` : '')
   const [email,    setEmail]    = useState('')
-  const [state,    setState]    = useState<State>(callbackError ? 'error' : 'idle')
-  const [errorMsg, setErrorMsg] = useState(callbackError ?? '')
+  const [state,    setState]    = useState<State>(initialMsg ? 'error' : 'idle')
+  const [errorMsg, setErrorMsg] = useState(initialMsg)
+
+  // Atualiza se os searchParams mudarem após montagem
+  useEffect(() => {
+    const msg = callbackError ?? (reason ? REASON_MESSAGES[reason] ?? `Bloqueado: ${reason}` : '')
+    if (msg) {
+      setState('error')
+      setErrorMsg(msg)
+    }
+  }, [callbackError, reason])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -74,7 +90,7 @@ function LoginForm() {
             />
           </div>
 
-          {state === 'error' && (
+          {state === 'error' && errorMsg && (
             <p className="text-sm text-red-600">{errorMsg}</p>
           )}
 
