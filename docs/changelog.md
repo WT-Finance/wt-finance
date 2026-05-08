@@ -1,34 +1,5 @@
 # Changelog — WT Finance Dashboard
 
-## v4.0 — Login, Permissões e Escopo de Setor (maio/2026)
-
-### v4.0-2 — Página de Login + Proxy de autenticação
-- `src/proxy.ts`: proteção de rotas via Next.js 16 proxy (BYPASS_AUTH → públicas → sessão → perfil)
-- Migration 0025: RPC `public.get_my_profile()` — expõe `app.usuarios` para o proxy e cliente via PostgREST
-- `src/lib/supabase/client.ts`: `createClient()` usando `createBrowserClient` de `@supabase/ssr`
-- `src/hooks/use-current-user.ts`: hook que retorna perfil do usuário logado via `get_my_profile()`
-- `src/app/login/page.tsx`: formulário de magic link com estados idle/sending/sent/error
-- `src/app/verify/page.tsx`: verifica OTP da URL, redireciona para `/executiva`
-- `AppShell`: detecta rotas auth (`/login`, `/verify`, `/aceitar-convite`) e renderiza sem sidebar
-- `Sidebar`: footer com nome/role do usuário + botão logout (`signOut` → `/login`)
-- ADR 0022: proxy de autenticação
-- ADR 0023: login via magic link
-
-### v4.0-1 — Setup Supabase Auth + Bootstrap
-- Supabase Auth habilitado com magic link
-- Migration 0024: tabelas `app.usuarios` e `app.convites` com constraints de role e coerência setor/role
-- Funções SQL utilitárias: `app.current_user_setor_id()`, `app.current_user_role()`, `app.is_financeiro()` (SECURITY DEFINER)
-- RLS habilitado em `app.usuarios` e `app.convites`; policies mínimas de leitura para middleware (V4-2)
-- `src/types/user.ts`: interface `User` e tipo `Role`
-- `src/lib/permissions.ts`: funções centralizadas Grau 1 (`canInviteUsers`, `canViewAllSectors`, `getUserSectorScope`, etc.)
-- `docs/bootstrap.md`: procedimento de bootstrap do primeiro usuário (Yan)
-- `BYPASS_AUTH=true` em `.env.local` para desenvolvimento local
-- ADR 0019: bootstrap manual via SQL
-- ADR 0020: permissões Grau 1 centralizadas
-- ADR 0021: BYPASS_AUTH em desenvolvimento
-
----
-
 ## v3.3 — Performance por Setor (maio/2026)
 
 ### v3.3-1 — Polimento visual

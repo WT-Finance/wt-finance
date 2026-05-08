@@ -437,18 +437,6 @@ export interface Database {
         Args: { p_preset: string; p_from: string; p_to: string; p_setor?: string }
         Returns: Json
       }
-      get_my_profile: {
-        Args: Record<string, never>
-        Returns: Array<{
-          id:            string
-          email:         string
-          nome:          string | null
-          role:          string
-          setor_id:      number | null
-          ativo:         boolean
-          ultimo_acesso: string | null
-        }>
-      }
     }
   }
 }
