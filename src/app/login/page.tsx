@@ -12,42 +12,53 @@ const REASON_MESSAGES: Record<string, string> = {
   no_profile: 'Usuário não encontrado no sistema. Contate o administrador.',
 }
 
-function LoginForm() {
+// Lê os tokens do hash da URL (fluxo implícito Supabase).
+// Hash não é enviado ao servidor — só acessível aqui no cliente.
+function parseHashTokens() {
+  if (typeof window === 'undefined') return null
+  const params = new URLSearchParams(window.location.hash.substring(1))
+  const access_token  = params.get('access_token')
+  const refresh_token = params.get('refresh_token')
+  return access_token && refresh_token ? { access_token, refresh_token } : null
+}
+
+function LoginContent() {
   const searchParams  = useSearchParams()
   const callbackError = searchParams.get('error')
   const reason        = searchParams.get('reason')
 
-  const initialMsg   = callbackError ?? (reason ? REASON_MESSAGES[reason] ?? `Bloqueado: ${reason}` : '')
-  const [email,    setEmail]    = useState('')
-  const [state,    setState]    = useState<State>(initialMsg ? 'error' : 'idle')
-  const [errorMsg, setErrorMsg] = useState(initialMsg)
+  const initialMsg = callbackError ?? (reason ? REASON_MESSAGES[reason] ?? `Bloqueado: ${reason}` : '')
 
-  // Atualiza se os searchParams mudarem após montagem
+  const [email,       setEmail]      = useState('')
+  const [state,       setState]      = useState<State>(initialMsg ? 'error' : 'idle')
+  const [errorMsg,    setErrorMsg]   = useState(initialMsg)
+  const [sessionMsg,  setSessionMsg] = useState('')
+
   useEffect(() => {
-    const msg = callbackError ?? (reason ? REASON_MESSAGES[reason] ?? `Bloqueado: ${reason}` : '')
-    if (msg) {
-      setState('error')
-      setErrorMsg(msg)
+    const tokens = parseHashTokens()
+    if (!tokens) return
+
+    setSessionMsg('Autenticando…')
+
+    async function handleImplicitTokens() {
+      const supabase = createClient()
+      const { error } = await supabase.auth.setSession(tokens!)
+
+      if (error) {
+        setSessionMsg('')
+        setState('error')
+        setErrorMsg(`Erro ao estabelecer sessão: ${error.message}`)
+        return
+      }
+
+      window.location.replace('/executiva')
     }
-  }, [callbackError, reason])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setState('sending')
-    setErrorMsg('')
+    handleImplicitTokens()
+  }, [])
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
-
-    if (error) {
-      setState('error')
-      setErrorMsg(error.message)
-    } else {
-      setState('sent')
-    }
+  if (sessionMsg) {
+    return <p className="text-sm text-zinc-500 text-center">{sessionMsg}</p>
   }
 
   return (
@@ -72,10 +83,7 @@ function LoginForm() {
           className="rounded-xl border border-zinc-200 bg-white px-6 py-8 space-y-4 shadow-sm"
         >
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-zinc-700 mb-1.5"
-            >
+            <label htmlFor="email" className="block text-sm font-medium text-zinc-700 mb-1.5">
               E-mail
             </label>
             <input
@@ -105,6 +113,25 @@ function LoginForm() {
       )}
     </>
   )
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setState('sending')
+    setErrorMsg('')
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    })
+
+    if (error) {
+      setState('error')
+      setErrorMsg(error.message)
+    } else {
+      setState('sent')
+    }
+  }
 }
 
 export default function LoginPage() {
@@ -116,7 +143,7 @@ export default function LoginPage() {
           <p className="text-sm text-zinc-400 mt-0.5">Welcome Group</p>
         </div>
         <Suspense fallback={<div className="h-48" />}>
-          <LoginForm />
+          <LoginContent />
         </Suspense>
       </div>
     </div>
