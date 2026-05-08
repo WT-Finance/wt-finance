@@ -2,10 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, X, ChevronLeft, ChevronRight, LogOut } from 'lucide-react'
-import { useCurrentUser } from '@/hooks/use-current-user'
-import { createClient } from '@/lib/supabase/client'
+import { usePathname } from 'next/navigation'
+import { LayoutDashboard, TrendingUp, Target, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const PERFORMANCE_SUBS = [
   { href: '/performance',             label: 'Geral'       },
@@ -24,35 +22,6 @@ interface SidebarContentProps {
   pathname:    string
   onNav?:      () => void
   onCollapse?: () => void
-}
-
-function SidebarFooter() {
-  const { user }  = useCurrentUser()
-  const router    = useRouter()
-
-  if (!user) return <div className="h-14" />
-
-  async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.replace('/login')
-  }
-
-  return (
-    <div className="px-3 py-3 border-t flex items-center gap-2" style={{ borderColor: 'var(--sidebar-border)' }}>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-zinc-700 truncate">{user.nome ?? user.email}</p>
-        <p className="text-[11px] text-zinc-400 truncate">{user.role}</p>
-      </div>
-      <button
-        onClick={handleLogout}
-        className="shrink-0 p-1.5 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
-        aria-label="Sair"
-      >
-        <LogOut size={14} />
-      </button>
-    </div>
-  )
 }
 
 function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
@@ -167,7 +136,8 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
         })}
       </nav>
 
-      <SidebarFooter />
+      {/* Footer — reservado para v4 (avatar, logout) */}
+      <div className="h-14 px-3 border-t" style={{ borderColor: 'var(--sidebar-border)' }} />
     </div>
   )
 }

@@ -1,21 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import Sidebar from './sidebar'
 import MobileHeader from './mobile-header'
 
-const AUTH_PATHS = ['/login', '/verify', '/aceitar-convite']
-
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
   const [mobileOpen,    setMobileOpen]    = useState(false)
   const [sidebarOpen,   setSidebarOpen]   = useState(true)
-
-  if (AUTH_PATHS.some(p => pathname.startsWith(p))) {
-    return <>{children}</>
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50">
