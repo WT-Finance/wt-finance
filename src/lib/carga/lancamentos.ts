@@ -1,12 +1,14 @@
 import * as XLSX from 'xlsx'
 import { getAdminClient } from '@/lib/supabase/admin'
 
+type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+
 export interface LancamentoRaw {
   lancamento_n:  number | null
   venda_n:       number | null
   pessoa:        string | null
   descricao:     string | null
-  liquidacao_dt: string | null  // ISO date ou null
+  liquidacao_dt: string | null
   vencimento_dt: string | null
   valor:         number
   tipo:          'Entrada' | 'Saída'
@@ -38,9 +40,7 @@ function toDate(value: unknown): string | null {
   }
   const s = String(value).trim()
   if (!s) return null
-  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-  // DD/MM/YYYY
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
     const [d, m, y] = s.split('/')
     return `${y}-${m}-${d}`
@@ -67,9 +67,7 @@ function parseCsvBuffer(buffer: Buffer): LancamentoRaw[] {
 
   if (rows.length === 0) return []
 
-  // Normaliza nomes de colunas (remove espaços, aceita variações)
-  const normalizeKey = (k: string) => k.trim()
-  const headers = Object.keys(rows[0]).map(normalizeKey)
+  const headers = Object.keys(rows[0]).map(k => k.trim())
 
   for (const col of COLUNAS_OBRIGATORIAS) {
     if (!headers.includes(col)) {
@@ -82,7 +80,7 @@ function parseCsvBuffer(buffer: Buffer): LancamentoRaw[] {
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
-    const linhaCsv = i + 2 // +2: header + 1-indexed
+    const linhaCsv = i + 2
 
     const operacao = toStr(row['Operacao'])
     if (!operacao) { erros.push(`Linha ${linhaCsv}: Operacao vazia, ignorada`); continue }
@@ -124,35 +122,21 @@ export async function carregarLancamentos(
   modo: 'preview' | 'executar'
 ): Promise<ResultadoCarga> {
   const supabase = getAdminClient()
+  const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
 
-  // Conta registros atuais
-  const { count: countAntes } = await supabase
-    .schema('analytics')
-    .from('fato_lancamento_operacao')
-    .select('*', { count: 'exact', head: true })
+  const { data: statusData } = await bound('get_upload_status')
+  const status = statusData as { lancamentos: { total: number } } | null
+  const totalAntes = status?.lancamentos?.total ?? 0
 
-  const totalAntes = countAntes ?? 0
-
-  // Parseia o CSV
   let linhas: LancamentoRaw[]
   try {
     linhas = parseCsvBuffer(buffer)
   } catch (err) {
-    return {
-      sucesso: false,
-      total_linhas: 0,
-      erros: [err instanceof Error ? err.message : String(err)],
-      preview: { antes: { total_lancamentos: totalAntes }, depois: { total_lancamentos: totalAntes } },
-    }
+    return erroResult(totalAntes, err instanceof Error ? err.message : String(err))
   }
 
   if (linhas.length === 0) {
-    return {
-      sucesso: false,
-      total_linhas: 0,
-      erros: ['Nenhuma linha válida encontrada no arquivo'],
-      preview: { antes: { total_lancamentos: totalAntes }, depois: { total_lancamentos: totalAntes } },
-    }
+    return erroResult(totalAntes, 'Nenhuma linha válida encontrada no arquivo')
   }
 
   if (modo === 'preview') {
@@ -167,45 +151,20 @@ export async function carregarLancamentos(
     }
   }
 
-  // Executa: truncate + inserção em batches
-  const { error: truncErr } = await supabase
-    .schema('analytics')
-    .from('fato_lancamento_operacao')
-    .delete()
-    .neq('id', 0)  // deleta tudo
-
-  if (truncErr) {
-    return {
-      sucesso: false,
-      total_linhas: 0,
-      erros: [`Erro ao limpar tabela: ${truncErr.message}`],
-      preview: { antes: { total_lancamentos: totalAntes }, depois: { total_lancamentos: totalAntes } },
-    }
-  }
+  const { error: truncErr } = await bound('truncar_lancamentos')
+  if (truncErr) return erroResult(totalAntes, `Erro ao limpar tabela: ${truncErr.message}`)
 
   const BATCH = 1000
   let inseridas = 0
 
   for (let i = 0; i < linhas.length; i += BATCH) {
     const lote = linhas.slice(i, i + BATCH)
-    const { error } = await supabase
-      .schema('analytics')
-      .from('fato_lancamento_operacao')
-      .insert(lote)
-
-    if (error) {
-      return {
-        sucesso: false,
-        total_linhas: inseridas,
-        erros: [`Erro ao inserir batch ${Math.floor(i / BATCH) + 1}: ${error.message}`],
-        preview: { antes: { total_lancamentos: totalAntes }, depois: { total_lancamentos: inseridas } },
-      }
-    }
+    const { error } = await bound('inserir_lote_lancamentos', { p_linhas: lote })
+    if (error) return erroResult(inseridas, `Erro ao inserir batch ${Math.floor(i / BATCH) + 1}: ${error.message}`)
     inseridas += lote.length
   }
 
-  // Regenera dim_operacao_weddings
-  const { error: dimErr } = await supabase.rpc('regenerar_dim_operacao_weddings' as never)
+  const { error: dimErr } = await bound('regenerar_dim_operacao_weddings')
   if (dimErr) {
     console.error('[lancamentos] Erro ao regenerar dim_operacao_weddings:', dimErr.message)
   }
@@ -218,5 +177,14 @@ export async function carregarLancamentos(
       antes:  { total_lancamentos: totalAntes },
       depois: { total_lancamentos: inseridas },
     },
+  }
+}
+
+function erroResult(totalAntes: number, msg: string): ResultadoCarga {
+  return {
+    sucesso: false,
+    total_linhas: 0,
+    erros: [msg],
+    preview: { antes: { total_lancamentos: totalAntes }, depois: { total_lancamentos: 0 } },
   }
 }

@@ -1,28 +1,16 @@
 import { getAdminClient } from '@/lib/supabase/admin'
 
+type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+
 export async function GET(): Promise<Response> {
   const supabase = getAdminClient()
+  const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
 
-  const [
-    { count: totalVendas },
-    { count: totalLancamentos },
-    { data: ultimaVenda },
-    { data: ultimoLancamento },
-  ] = await Promise.all([
-    supabase.schema('analytics').from('fato_venda').select('*', { count: 'exact', head: true }),
-    supabase.schema('analytics').from('fato_lancamento_operacao').select('*', { count: 'exact', head: true }),
-    supabase.schema('analytics').from('fato_venda').select('criado_em').order('criado_em', { ascending: false }).limit(1),
-    supabase.schema('analytics').from('fato_lancamento_operacao').select('importado_em').order('importado_em', { ascending: false }).limit(1),
-  ])
+  const { data, error } = await bound('get_upload_status')
 
-  return Response.json({
-    vendas: {
-      total: totalVendas ?? 0,
-      ultima_atualizacao: ultimaVenda?.[0]?.criado_em ?? null,
-    },
-    lancamentos: {
-      total: totalLancamentos ?? 0,
-      ultima_atualizacao: ultimoLancamento?.[0]?.importado_em ?? null,
-    },
-  })
+  if (error) {
+    return Response.json({ error: error.message }, { status: 500 })
+  }
+
+  return Response.json(data)
 }

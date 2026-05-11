@@ -6,13 +6,18 @@
 --   analytics.fato_lancamento_operacao  — lançamentos financeiros por casamento
 --   analytics.dim_operacao_weddings     — resumo por operação (casamento)
 --   analytics.extrair_data_evento()     — extrai data do nome da operação
+--   analytics.extrair_nome_casal()      — extrai nome do casal do nome da operação
 --   analytics.regenerar_dim_operacao_weddings() — reconstrói dim_operacao_weddings
+--   public.get_upload_status()          — status de carga (counts + timestamps)
+--   public.truncar_lancamentos()        — limpa fato_lancamento_operacao
+--   public.inserir_lote_lancamentos()   — insere lote de lançamentos via JSON
+--   public.regenerar_dim_operacao_weddings() — wrapper público para analytics fn
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
 -- 1. dim_produto_subsetor
 -- ---------------------------------------------------------------------------
-CREATE TABLE analytics.dim_produto_subsetor (
+CREATE TABLE IF NOT EXISTS analytics.dim_produto_subsetor (
   produto              text        PRIMARY KEY,
   produto_normalizado  text        NOT NULL,
   subsetor             text        NOT NULL
@@ -44,12 +49,13 @@ INSERT INTO analytics.dim_produto_subsetor (produto, produto_normalizado, subset
   ('Pacote de Casamento',                'PACOTE DE CASAMENTO',                'PLANEJAMENTO'),
   ('Pacote Turístico (passeios)',         'PACOTE TURÍSTICO (PASSEIOS)',        'PLANEJAMENTO'),
   ('Eventos (festa de boas vindas)',      'EVENTOS (FESTA DE BOAS VINDAS)',     'PLANEJAMENTO'),
-  ('Pacote Turístico (Passeios)',         'PACOTE TURÍSTICO (PASSEIOS)',        'PLANEJAMENTO');
+  ('Pacote Turístico (Passeios)',         'PACOTE TURÍSTICO (PASSEIOS)',        'PLANEJAMENTO')
+ON CONFLICT (produto) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- 2. fato_lancamento_operacao
 -- ---------------------------------------------------------------------------
-CREATE TABLE analytics.fato_lancamento_operacao (
+CREATE TABLE IF NOT EXISTS analytics.fato_lancamento_operacao (
   id             bigserial      PRIMARY KEY,
   lancamento_n   bigint,
   venda_n        bigint,
@@ -66,15 +72,15 @@ CREATE TABLE analytics.fato_lancamento_operacao (
   importado_em   timestamptz    NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_lancamento_operacao   ON analytics.fato_lancamento_operacao (operacao);
-CREATE INDEX idx_lancamento_venda_n    ON analytics.fato_lancamento_operacao (venda_n);
-CREATE INDEX idx_lancamento_liquidacao ON analytics.fato_lancamento_operacao (liquidacao_dt);
-CREATE INDEX idx_lancamento_tipo_op    ON analytics.fato_lancamento_operacao (tipo, operacao);
+CREATE INDEX IF NOT EXISTS idx_lancamento_operacao   ON analytics.fato_lancamento_operacao (operacao);
+CREATE INDEX IF NOT EXISTS idx_lancamento_venda_n    ON analytics.fato_lancamento_operacao (venda_n);
+CREATE INDEX IF NOT EXISTS idx_lancamento_liquidacao ON analytics.fato_lancamento_operacao (liquidacao_dt);
+CREATE INDEX IF NOT EXISTS idx_lancamento_tipo_op    ON analytics.fato_lancamento_operacao (tipo, operacao);
 
 -- ---------------------------------------------------------------------------
 -- 3. dim_operacao_weddings
 -- ---------------------------------------------------------------------------
-CREATE TABLE analytics.dim_operacao_weddings (
+CREATE TABLE IF NOT EXISTS analytics.dim_operacao_weddings (
   operacao         text           PRIMARY KEY,
   nome_casal       text,
   data_evento      date,
@@ -179,16 +185,16 @@ BEGIN
     analytics.extrair_nome_casal(operacao),
     analytics.extrair_data_evento(operacao),
     CASE
-      WHEN analytics.extrair_data_evento(operacao) IS NULL     THEN 'sem_data'
+      WHEN analytics.extrair_data_evento(operacao) IS NULL       THEN 'sem_data'
       WHEN analytics.extrair_data_evento(operacao) < CURRENT_DATE THEN 'passado'
       ELSE 'futuro'
     END,
-    SUM(CASE WHEN tipo   = 'Entrada'         THEN valor ELSE 0 END),
-    SUM(CASE WHEN tipo   = 'Saída'           THEN valor ELSE 0 END),
-    SUM(CASE WHEN status = 'Entrada'         THEN valor ELSE 0 END),
+    SUM(CASE WHEN tipo   = 'Entrada'          THEN valor ELSE 0 END),
+    SUM(CASE WHEN tipo   = 'Saída'            THEN valor ELSE 0 END),
+    SUM(CASE WHEN status = 'Entrada'          THEN valor ELSE 0 END),
     SUM(CASE WHEN status = 'A Receber Futuro' THEN valor ELSE 0 END),
-    SUM(CASE WHEN status = 'Saída'           THEN valor ELSE 0 END),
-    SUM(CASE WHEN status = 'A Pagar Futuro'  THEN valor ELSE 0 END)
+    SUM(CASE WHEN status = 'Saída'            THEN valor ELSE 0 END),
+    SUM(CASE WHEN status = 'A Pagar Futuro'   THEN valor ELSE 0 END)
   FROM analytics.fato_lancamento_operacao
   GROUP BY operacao;
 
@@ -203,11 +209,90 @@ ALTER TABLE analytics.dim_produto_subsetor       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics.fato_lancamento_operacao   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics.dim_operacao_weddings      ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "anon_select_dim_produto_subsetor"
+CREATE POLICY IF NOT EXISTS "anon_select_dim_produto_subsetor"
   ON analytics.dim_produto_subsetor FOR SELECT TO anon, authenticated USING (true);
 
-CREATE POLICY "anon_select_fato_lancamento"
+CREATE POLICY IF NOT EXISTS "anon_select_fato_lancamento"
   ON analytics.fato_lancamento_operacao FOR SELECT TO anon, authenticated USING (true);
 
-CREATE POLICY "anon_select_dim_operacao_weddings"
+CREATE POLICY IF NOT EXISTS "anon_select_dim_operacao_weddings"
   ON analytics.dim_operacao_weddings FOR SELECT TO anon, authenticated USING (true);
+
+-- ---------------------------------------------------------------------------
+-- 8. RPCs públicos — acesso ao analytics schema via PostgREST
+--    (analytics não está exposto diretamente; toda leitura/escrita passa por
+--     funções SECURITY DEFINER no schema public)
+-- ---------------------------------------------------------------------------
+
+-- Status de carga: counts + timestamps de última importação
+CREATE OR REPLACE FUNCTION public.get_upload_status()
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT jsonb_build_object(
+    'vendas', jsonb_build_object(
+      'total',              (SELECT COUNT(*)    FROM analytics.fato_venda),
+      'ultima_atualizacao', (SELECT MAX(criado_em) FROM analytics.fato_venda)
+    ),
+    'lancamentos', jsonb_build_object(
+      'total',              (SELECT COUNT(*)       FROM analytics.fato_lancamento_operacao),
+      'ultima_atualizacao', (SELECT MAX(importado_em) FROM analytics.fato_lancamento_operacao)
+    )
+  )
+$$;
+
+-- Trunca fato_lancamento_operacao (substitui DELETE .neq('id',0))
+CREATE OR REPLACE FUNCTION public.truncar_lancamentos()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  TRUNCATE analytics.fato_lancamento_operacao;
+END $$;
+
+-- Insere lote de lançamentos recebido como array JSON
+CREATE OR REPLACE FUNCTION public.inserir_lote_lancamentos(p_linhas jsonb)
+RETURNS int
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_count int;
+BEGIN
+  INSERT INTO analytics.fato_lancamento_operacao
+    (lancamento_n, venda_n, pessoa, descricao,
+     liquidacao_dt, vencimento_dt, valor, tipo,
+     operacao, status, data_final, mes_ano)
+  SELECT
+    NULLIF(el->>'lancamento_n', '')::bigint,
+    NULLIF(el->>'venda_n',      '')::bigint,
+    NULLIF(el->>'pessoa',       ''),
+    NULLIF(el->>'descricao',    ''),
+    NULLIF(el->>'liquidacao_dt','')::date,
+    NULLIF(el->>'vencimento_dt','')::date,
+    (el->>'valor')::numeric,
+    el->>'tipo',
+    el->>'operacao',
+    NULLIF(el->>'status',    ''),
+    NULLIF(el->>'data_final','')::date,
+    NULLIF(el->>'mes_ano',   '')
+  FROM jsonb_array_elements(p_linhas) AS el;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END $$;
+
+-- Wrapper público para analytics.regenerar_dim_operacao_weddings
+CREATE OR REPLACE FUNCTION public.regenerar_dim_operacao_weddings()
+RETURNS int
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT analytics.regenerar_dim_operacao_weddings()
+$$;
