@@ -437,6 +437,32 @@ export interface Database {
         Args: { p_preset: string; p_from: string; p_to: string; p_setor?: string }
         Returns: Json
       }
+      get_sumario_subsetor: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_operacoes_weddings: {
+        Args: {
+          p_status?:         string
+          p_periodo_inicio?: string | null
+          p_periodo_fim?:    string | null
+          p_subsetor?:       string
+          p_busca?:          string | null
+          p_ordenar_por?:    string
+          p_direcao?:        string
+          p_pagina?:         number
+          p_por_pagina?:     number
+        }
+        Returns: Json
+      }
+      get_operacao_weddings: {
+        Args: { p_operacao: string }
+        Returns: Json
+      }
+      get_pipeline_weddings: {
+        Args: { p_horizonte_meses?: number }
+        Returns: Json
+      }
     }
   }
 }
