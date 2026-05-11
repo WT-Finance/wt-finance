@@ -1,4 +1,4 @@
-import PerformanceContent from '@/components/performance/performance-content'
+import WeddingsContent from '@/components/performance/weddings-content'
 
 interface SearchParams {
   preset?: string
@@ -12,5 +12,5 @@ export default async function WeddingsPage({
   searchParams: Promise<SearchParams>
 }) {
   const sp = await searchParams
-  return <PerformanceContent setor="Weddings" searchParams={sp} />
+  return <WeddingsContent searchParams={sp} />
 }
