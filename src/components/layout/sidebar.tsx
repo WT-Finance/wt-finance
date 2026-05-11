@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const PERFORMANCE_SUBS = [
   { href: '/performance',             label: 'Geral'       },
@@ -13,9 +13,10 @@ const PERFORMANCE_SUBS = [
 ]
 
 const NAV_ITEMS = [
-  { href: '/executiva',   label: 'Executiva',   Icon: LayoutDashboard },
-  { href: '/performance', label: 'Performance', Icon: TrendingUp       },
-  { href: '/metas',       label: 'Metas',       Icon: Target           },
+  { href: '/executiva',      label: 'Executiva',   Icon: LayoutDashboard },
+  { href: '/performance',    label: 'Performance', Icon: TrendingUp       },
+  { href: '/metas',          label: 'Metas',       Icon: Target           },
+  { href: '/admin/uploads',  label: 'Upload de Arquivos', Icon: Upload },
 ]
 
 interface SidebarContentProps {
