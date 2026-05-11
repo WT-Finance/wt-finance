@@ -221,3 +221,103 @@ export interface Sparklines {
   ticket_medio:  (number | null)[]
   receita_media: (number | null)[]
 }
+
+// ── V3.4: Aba Weddings — Parte 2 ───────────────────────────────────────────
+
+export interface SumarioSubsetorItem {
+  subsetor:        string
+  n_vendas:        number
+  faturamento:     number
+  receita:         number
+  margem_pct:      number
+  pct_faturamento: number
+}
+
+export interface SumarioSubsetor {
+  periodo:    { inicio: string; fim: string }
+  subsetores: SumarioSubsetorItem[]
+  total:      { n_vendas: number; faturamento: number; receita: number; margem_pct: number }
+}
+
+export type OperacaoFlag = 'margem_negativa' | 'ncg_alto' | 'outlier'
+
+export interface OperacaoItem {
+  operacao:        string
+  nome_casal:      string | null
+  data_evento:     string | null
+  situacao:        'passado' | 'futuro' | 'sem_data'
+  faturamento:     number
+  receita:         number
+  margem_pct:      number
+  resultado_caixa: number
+  ncg:             number
+  flags:           OperacaoFlag[]
+}
+
+export interface ListaOperacoes {
+  total:      number
+  pagina:     number
+  por_pagina: number
+  operacoes:  OperacaoItem[]
+}
+
+export interface VisaoFinanceira {
+  faturamento:     number
+  receita_bruta:   number
+  margem_pct:      number
+  entradas_total:  number
+  recebido:        number
+  a_receber:       number
+  saidas_total:    number
+  pago:            number
+  a_pagar:         number
+  resultado_caixa: number
+  resultado_pct:   number
+  ncg:             number
+}
+
+export interface DecomposicaoSubsetorItem {
+  subsetor: string
+  receita:  number
+  pct:      number
+}
+
+export interface AcumuladoMensalItem {
+  mes:          string
+  entrada_acum: number
+  saida_acum:   number
+}
+
+export interface LancamentoRecente {
+  data:      string | null
+  tipo:      'Entrada' | 'Saída'
+  descricao: string | null
+  valor:     number
+  status:    string | null
+}
+
+export interface DrilldownOperacao {
+  operacao:                string
+  nome_casal:              string | null
+  data_evento:             string | null
+  situacao:                'passado' | 'futuro' | 'sem_data'
+  visao_financeira:        VisaoFinanceira
+  decomposicao_subsetor:   DecomposicaoSubsetorItem[]
+  acumulado_mensal:        AcumuladoMensalItem[]
+  lancamentos_recentes:    LancamentoRecente[]
+}
+
+export interface PipelineMesItem {
+  ano_mes:            string
+  n_casamentos:       number
+  receita_total:      number
+  margem_pct_media:   number
+  resultado_esperado: number
+  cor:                'verde' | 'amarelo' | 'vermelho'
+}
+
+export interface PipelineWeddings {
+  horizonte: number
+  meses:     PipelineMesItem[]
+  total:     { n_casamentos: number; receita_total: number; resultado_esperado: number }
+}
