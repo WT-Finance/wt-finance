@@ -6,7 +6,7 @@ import TendenciaMargemChart from '@/components/performance/tendencia-margem-char
 import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
-import ListaOperacoesCard from '@/components/weddings/lista-operacoes'
+import OperacoesSection from '@/components/weddings/operacoes-section'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
@@ -127,9 +127,9 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
         <SumarioSubsetorCard data={sumario} />
       </Section>
 
-      {/* Bloco 2.2 — Lista de Operações */}
+      {/* Blocos 2.2 + 2.3 — Lista de Operações + Drill-down */}
       <Section titulo="Operações — Lista">
-        <ListaOperacoesCard />
+        <OperacoesSection />
       </Section>
     </div>
   )
