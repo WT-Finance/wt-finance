@@ -7,6 +7,7 @@ import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import OperacoesSection from '@/components/weddings/operacoes-section'
+import PipelineCard from '@/components/weddings/pipeline-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
@@ -122,14 +123,28 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
         </div>
       </Section>
 
+      {/* ── Separador Parte 2 ─────────────────────────────────── */}
+      <div className="flex items-center gap-3 my-6">
+        <div className="flex-1 h-px bg-zinc-100" />
+        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide whitespace-nowrap">
+          Parte 2 — Operações Weddings
+        </span>
+        <div className="flex-1 h-px bg-zinc-100" />
+      </div>
+
       {/* Bloco 2.1 — Resumo por Subsetor */}
-      <Section titulo="Operações — Resumo por Subsetor">
+      <Section titulo="Resumo por Subsetor">
         <SumarioSubsetorCard data={sumario} />
       </Section>
 
-      {/* Blocos 2.2 + 2.3 — Lista de Operações + Drill-down */}
-      <Section titulo="Operações — Lista">
+      {/* Blocos 2.2 + 2.3 — Lista + Drill-down */}
+      <Section titulo="Lista de Operações">
         <OperacoesSection />
+      </Section>
+
+      {/* Bloco 2.4 — Pipeline */}
+      <Section titulo="Pipeline de Eventos Futuros">
+        <PipelineCard />
       </Section>
     </div>
   )

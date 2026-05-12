@@ -21,8 +21,9 @@ export async function POST(request: NextRequest): Promise<Response> {
   }
 
   const fileName = file instanceof File ? file.name : 'vendas.xlsx'
-  if (fileName && !fileName.toLowerCase().endsWith('.xlsx')) {
-    return Response.json({ error: `Arquivo deve ser .xlsx (recebido: ${fileName})` }, { status: 400 })
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
+  if (ext && ext !== 'xlsx' && ext !== 'csv') {
+    return Response.json({ error: `Formato não suportado: .${ext}. Envie .xlsx ou .csv` }, { status: 400 })
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())

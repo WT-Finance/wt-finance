@@ -26,19 +26,13 @@ export async function POST(request: NextRequest): Promise<Response> {
     return Response.json({ error: `Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)} MB). Máximo: 50 MB` }, { status: 400 })
   }
 
-  // Valida extensão pelo nome do arquivo (se disponível) E pelo conteúdo
   const fileName = file instanceof File ? file.name : ''
-  if (fileName && !fileName.toLowerCase().endsWith('.csv')) {
-    return Response.json({ error: `Arquivo deve ser .csv (recebido: ${fileName})` }, { status: 400 })
+  const ext = fileName ? fileName.split('.').pop()?.toLowerCase() ?? '' : ''
+  if (ext && ext !== 'csv' && ext !== 'xlsx') {
+    return Response.json({ error: `Formato não suportado: .${ext}. Envie .csv ou .xlsx` }, { status: 400 })
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
-
-  // Valida que parece ser CSV (começa com texto, não com bytes binários do XLSX)
-  const inicio = buffer.slice(0, 4).toString('utf8')
-  if (inicio.startsWith('PK')) {
-    return Response.json({ error: 'Arquivo parece ser XLSX. Para Lançamentos, envie .csv' }, { status: 400 })
-  }
 
   try {
     const resultado = await carregarLancamentos(buffer, modo as 'preview' | 'executar')
