@@ -7,14 +7,15 @@
  *   3. inserir_lote_raw() em lotes       — popula raw.vendas_excel
  *   4. loadMetas()                       — insere app.meta_setor
  *   5. transform_raw_to_analytics()      — popula dims + fatos
- *   6. refresh_all_materialized_views()  — atualiza MVs
+ *   6. carrega CSV de lançamentos        — popula fato_lancamento_operacao
+ *   7. refresh_all_materialized_views()  — atualiza MVs
  *
  * Uso:
  *   npm run seed
  *
  * Requisitos:
  *   - .env.local com SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY
- *   - Arquivos .xlsx em supabase/seed/data/
+ *   - Arquivos .xlsx (e opcionalmente CSV de lançamentos) em supabase/seed/data/
  *   - Migração 0008 aplicada no Supabase
  */
 
@@ -26,6 +27,7 @@ import * as path from 'path'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { parseExcel } from './parse-excel'
 import { loadMetas } from './load-metas'
+import { carregarLancamentos } from '@/lib/carga/lancamentos'
 
 const DATA_DIR = path.join(process.cwd(), 'supabase', 'seed', 'data')
 const BATCH_SIZE = 500
@@ -101,12 +103,30 @@ async function main() {
   console.log(`   ✓ ${resultado.vendas_count} vendas em fato_venda`)
   console.log(`   ✓ ${resultado.fato_venda_item_count} itens em fato_venda_item\n`)
 
-  // 5. Atualizar views materializadas
-  console.log('5. Atualizando views materializadas...')
+  // 6. Carregar lançamentos por operação (CSV)
+  const LANCAMENTOS_NOMES = ['Lançamentos por Operação.csv', 'lancamentos.csv', 'lancamentos.xlsx']
+  const csvPath = LANCAMENTOS_NOMES.map(n => path.join(DATA_DIR, n)).find(p => fs.existsSync(p))
+
+  if (csvPath) {
+    console.log(`6. Carregando lançamentos (${path.basename(csvPath)})...`)
+    const buffer = fs.readFileSync(csvPath)
+    const resultLanc = await carregarLancamentos(buffer, 'executar')
+    if (!resultLanc.sucesso) {
+      console.warn(`   ✗ Erro: ${resultLanc.erros[0]}`)
+    } else {
+      console.log(`   ✓ ${resultLanc.total_linhas} lançamentos inseridos`)
+      console.log(`   ✓ dim_operacao_weddings regenerado\n`)
+    }
+  } else {
+    console.log('6. Lançamentos: nenhum arquivo encontrado em seed/data/, pulando\n')
+  }
+
+  // 7. Atualizar views materializadas
+  console.log('7. Atualizando views materializadas...')
   await rpc('refresh_all_materialized_views')
   console.log('   ✓ 4 views atualizadas\n')
 
-  // 6. Registrar no log de auditoria
+  // 8. Registrar no log de auditoria
   await rpc('registrar_ingestao_log', {
     p_fonte: `seed-${new Date().toISOString().slice(0, 10)}`,
     p_status: 'sucesso',

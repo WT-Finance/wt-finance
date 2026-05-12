@@ -109,7 +109,7 @@ function CardUpload({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const label    = tipo === 'vendas' ? 'Vendas' : 'Lançamentos por Operação'
-  const extensao = tipo === 'vendas' ? '.xlsx' : '.csv'
+  const extensao = '.xlsx,.csv'
   const totalLabel = tipo === 'vendas' ? 'vendas' : 'lançamentos'
 
   return (
@@ -147,7 +147,7 @@ function CardUpload({
         {estado.estado === 'idle' && (
           <>
             <Upload size={16} className="mx-auto mb-1.5 text-zinc-400" />
-            <p className="text-xs text-zinc-500">Clique para selecionar um arquivo <span className="font-medium">{extensao}</span></p>
+            <p className="text-xs text-zinc-500">Clique para selecionar um arquivo <span className="font-medium">.xlsx</span> ou <span className="font-medium">.csv</span></p>
           </>
         )}
         {estado.estado === 'validando' && (
