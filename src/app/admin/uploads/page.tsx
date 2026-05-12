@@ -227,19 +227,36 @@ export default function AdminUploadsPage() {
 
   useEffect(() => { carregarStatus() }, [])
 
-  async function handleArquivoSelecionado(tipo: 'vendas' | 'lancamentos', arquivo: File) {
-    const setter = tipo === 'vendas' ? setVendas : setLanc
-    setter(s => ({ ...s, estado: 'validando', arquivo, resultado: null, mensagem: '' }))
-
+  async function enviarArquivo(
+    endpoint: string,
+    arquivo: File,
+    modo: 'preview' | 'executar',
+  ): Promise<{ res: Response; body: ResultadoCarga | { error: string } }> {
     const formData = new FormData()
     formData.append('file', arquivo)
-    formData.append('modo', 'preview')
+    formData.append('modo', modo)
+    const res = await fetch(endpoint, { method: 'POST', body: formData })
+    let body: ResultadoCarga | { error: string }
+    try {
+      body = await res.json()
+    } catch {
+      const text = await res.text().catch(() => '')
+      if (res.status === 413 || text.toLowerCase().includes('exceeded') || text.toLowerCase().includes('too large')) {
+        body = { error: `Arquivo muito grande para o servidor (HTTP ${res.status}). Verifique next.config.ts → serverActions.bodySizeLimit.` }
+      } else {
+        body = { error: `Resposta inesperada do servidor (HTTP ${res.status})${text ? ': ' + text.slice(0, 120) : ''}` }
+      }
+    }
+    return { res, body }
+  }
 
+  async function handleArquivoSelecionado(tipo: 'vendas' | 'lancamentos', arquivo: File) {
+    const setter   = tipo === 'vendas' ? setVendas : setLanc
     const endpoint = tipo === 'vendas' ? '/api/admin/upload-vendas' : '/api/admin/upload-lancamentos'
+    setter(s => ({ ...s, estado: 'validando', arquivo, resultado: null, mensagem: '' }))
 
     try {
-      const res  = await fetch(endpoint, { method: 'POST', body: formData })
-      const body = await res.json() as ResultadoCarga | { error: string }
+      const { res, body } = await enviarArquivo(endpoint, arquivo, 'preview')
 
       if (!res.ok || 'error' in body) {
         setter(s => ({ ...s, estado: 'erro', mensagem: 'error' in body ? body.error : 'Erro de validação' }))
@@ -260,22 +277,16 @@ export default function AdminUploadsPage() {
   }
 
   async function handleConfirmar(tipo: 'vendas' | 'lancamentos') {
-    const setter  = tipo === 'vendas' ? setVendas : setLanc
-    const estado  = tipo === 'vendas' ? vendas : lanc
+    const setter   = tipo === 'vendas' ? setVendas : setLanc
+    const estado   = tipo === 'vendas' ? vendas : lanc
+    const endpoint = tipo === 'vendas' ? '/api/admin/upload-vendas' : '/api/admin/upload-lancamentos'
     setModal(null)
 
     if (!estado.arquivo) return
     setter(s => ({ ...s, estado: 'carregando' }))
 
-    const formData = new FormData()
-    formData.append('file', estado.arquivo)
-    formData.append('modo', 'executar')
-
-    const endpoint = tipo === 'vendas' ? '/api/admin/upload-vendas' : '/api/admin/upload-lancamentos'
-
     try {
-      const res  = await fetch(endpoint, { method: 'POST', body: formData })
-      const body = await res.json() as ResultadoCarga | { error: string }
+      const { res, body } = await enviarArquivo(endpoint, estado.arquivo, 'executar')
 
       if (!res.ok || 'error' in body) {
         setter(s => ({ ...s, estado: 'erro', mensagem: 'error' in body ? body.error : 'Erro na importação' }))
