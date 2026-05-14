@@ -6,14 +6,16 @@ import MargemDrawerTrigger from '@/components/weddings/margem-drawer-trigger'
 import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
+import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
+import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
 import OperacoesSection from '@/components/weddings/operacoes-section'
-import PipelineCard from '@/components/weddings/pipeline-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, TendenciaMargem,
   MixProduto, PrejuizosDetalhe, Sparklines, SumarioSubsetor,
+  CarteiraWeddings, ProximosCasamentos,
 } from '@/types/api'
 
 function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
@@ -72,21 +74,24 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
   const db = getServerClient()
 
-  const [kpisRes, tendRes, prodRes, prejRes, sparkRes, sumarioRes, benchmarks] = await Promise.all([
+  const [
+    kpisRes, tendRes, prodRes, prejRes, sparkRes, sumarioRes,
+    cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks,
+  ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
-      p_from:     from,
-      p_to:       to,
-      p_setor:    setor,
-      p_ant_from: antFrom,
-      p_ant_to:   antTo,
-      p_yoy_from: yoyFrom,
-      p_yoy_to:   yoyTo,
+      p_from: from, p_to: to, p_setor: setor,
+      p_ant_from: antFrom, p_ant_to: antTo,
+      p_yoy_from: yoyFrom, p_yoy_to: yoyTo,
     }),
     db.rpc('get_tendencia_margem', { p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
     db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
     db.rpc('get_sparklines',       { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
+    db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
+    db.rpc('get_carteira_weddings', { p_metric: 'faturamento' }),
+    db.rpc('get_carteira_weddings', { p_metric: 'receita_bruta' }),
+    db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
   ])
 
@@ -96,6 +101,10 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const prejuizos = prejRes.error    ? null : prejRes.data    as unknown as PrejuizosDetalhe
   const sparklines = sparkRes.error  ? null : sparkRes.data   as unknown as Sparklines | null
   const sumario   = sumarioRes.error ? null : sumarioRes.data as unknown as SumarioSubsetor
+  const cartCas   = cartCasRes.error ? null : cartCasRes.data as unknown as CarteiraWeddings
+  const cartFat   = cartFatRes.error ? null : cartFatRes.data as unknown as CarteiraWeddings
+  const cartRb    = cartRbRes.error  ? null : cartRbRes.data  as unknown as CarteiraWeddings
+  const proximos  = proximosRes.error? null : proximosRes.data as unknown as ProximosCasamentos
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
@@ -189,6 +198,20 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           <SumarioSubsetorCard data={sumario} />
         </Section>
 
+        {/* Carteira: Vendas × Entregas */}
+        <Section titulo="Carteira: Vendas × Entregas">
+          <CarteiraMartrixCard
+            casamentos={cartCas}
+            faturamento={cartFat}
+            receita_bruta={cartRb}
+          />
+        </Section>
+
+        {/* Próximos Casamentos a Entregar */}
+        <Section titulo="Próximos Casamentos a Entregar">
+          <ProximosCasamentosCard data18m={proximos} />
+        </Section>
+
         {/* Mix de Produtos + Prejuízos */}
         <Section titulo="Mix de Produtos e Prejuízos">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -204,10 +227,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
         <Section titulo="Lista de Operações">
           <OperacoesSection />
-        </Section>
-
-        <Section titulo="Pipeline de Eventos Futuros">
-          <PipelineCard />
         </Section>
 
       </TopSection>

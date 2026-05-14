@@ -463,6 +463,14 @@ export interface Database {
         Args: { p_horizonte_meses?: number }
         Returns: Json
       }
+      get_carteira_weddings: {
+        Args: { p_metric?: string }
+        Returns: Json
+      }
+      get_proximos_casamentos: {
+        Args: { p_horizonte_meses?: number }
+        Returns: Json
+      }
     }
   }
 }
