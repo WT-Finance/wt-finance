@@ -12,19 +12,21 @@ export interface LinhaRaw {
   arquivo_origem: string
   linha_origem: number
   venda_numero: string | null
-  data_venda: string | null   // ISO 'YYYY-MM-DD'
+  data_venda: string | null          // ISO 'YYYY-MM-DD'
   vendedor: string | null
   pagante: string | null
   setor_macro: string | null
   setor: string | null
   setor_micro: string | null
   produto: string | null
-  valor_total: string | null  // string para o SQL fazer o cast
+  valor_total: string | null         // string para o SQL fazer o cast
   receitas: string | null
-  contrato: string | null     // 'true' | 'false'
+  contrato: string | null            // 'true' | 'false'
   taxa_servico: string | null
   semana: string | null
   mes: string | null
+  data_inicio_evento: string | null  // ADR-0027: data canônica do casamento (ISO)
+  fornecedor: string | null          // ADR-0029: hotel onde o casamento ocorre
 }
 
 // Mapeamento entre os cabeçalhos do Excel e os campos internos
@@ -44,6 +46,8 @@ const COL_MAP: Record<string, keyof LinhaRaw> = {
   'Taxa de Serviço': 'taxa_servico',
   'Semana':          'semana',
   'Mês':             'mes',
+  'Data de Início':  'data_inicio_evento',
+  'Fornecedor':      'fornecedor',
 }
 
 function toIsoDate(value: unknown): string | null {
@@ -141,7 +145,8 @@ export function parseExcel(filePath: string): LinhaRaw[] {
 
       switch (campo) {
         case 'data_venda':
-          raw.data_venda = toIsoDate(value)
+        case 'data_inicio_evento':
+          raw[campo] = toIsoDate(value)
           break
         case 'contrato':
         case 'taxa_servico':
