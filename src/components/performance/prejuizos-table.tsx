@@ -25,7 +25,7 @@ export default function PrejuizosTable({ data, loading }: Props) {
   const totalNo = data?.total_no_periodo ?? 0
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4">
+    <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-zinc-700">Vendas com Prejuízo</h2>
         {total && total.quantidade > 0 && (

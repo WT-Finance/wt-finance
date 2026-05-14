@@ -16,7 +16,13 @@ const LABELS: Record<string, string> = {
   NÃO_CLASSIFICADO: 'Não Classif.',
 }
 
-const COLORS = ['#BA7517', '#c8861e', '#d49530', '#dfa543']
+const SUBSETOR_COLORS: Record<string, string> = {
+  COMERCIAL:    '#8C857B',
+  CONVIDADOS:   '#4B4F54',
+  'PRODUÇÃO':   '#874B52',
+  PLANEJAMENTO: '#8F7E35',
+}
+const FALLBACK_COLOR = '#BA7517'
 
 interface Props {
   data: SumarioSubsetor | null
@@ -25,7 +31,7 @@ interface Props {
 export default function SumarioSubsetorCard({ data }: Props) {
   if (!data || data.subsetores.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-zinc-200 p-4">
+      <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
         <h2 className="text-sm font-semibold text-zinc-700 mb-3">Resumo por Subsetor</h2>
         <div className="h-32 flex items-center justify-center text-sm text-zinc-400">
           Sem dados para o período selecionado.
@@ -45,7 +51,7 @@ export default function SumarioSubsetorCard({ data }: Props) {
   }))
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4">
+    <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
       <div className="flex items-baseline gap-2 mb-4">
         <h2 className="text-sm font-semibold text-zinc-700">Resumo por Subsetor</h2>
         <span className="text-xs text-zinc-400">
@@ -74,8 +80,8 @@ export default function SumarioSubsetorCard({ data }: Props) {
             />
             <Tooltip formatter={(v) => [fmtBRL(v as number), 'Faturamento']} />
             <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={26}>
-              {chartData.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+              {chartData.map((entry, i) => (
+                <Cell key={i} fill={SUBSETOR_COLORS[entry.subsetor] ?? FALLBACK_COLOR} />
               ))}
               <LabelList
                 dataKey="pct"
@@ -105,7 +111,7 @@ export default function SumarioSubsetorCard({ data }: Props) {
                   <td className="py-2 px-3 font-medium text-zinc-800 flex items-center gap-2">
                     <span
                       className="inline-block w-2 h-2 rounded-full shrink-0"
-                      style={{ background: COLORS[i % COLORS.length] }}
+                      style={{ background: SUBSETOR_COLORS[s.subsetor] ?? FALLBACK_COLOR }}
                     />
                     {LABELS[s.subsetor] ?? s.subsetor}
                   </td>
