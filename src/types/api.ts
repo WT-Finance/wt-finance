@@ -321,3 +321,35 @@ export interface PipelineWeddings {
   meses:     PipelineMesItem[]
   total:     { n_casamentos: number; receita_total: number; resultado_esperado: number }
 }
+
+export interface CarteiraValores {
+  [ano: string]: number
+}
+
+export interface CarteiraLinha {
+  ano_venda: string
+  valores:   CarteiraValores
+  total:     number
+}
+
+export interface CarteiraWeddings {
+  metrica:         string
+  anos_casamento:  string[]
+  linhas:          CarteiraLinha[]
+}
+
+export interface ProximoCasamento {
+  data_casamento:           string
+  casal:                    string | null
+  hotel:                    string | null
+  faturamento:              number
+  receita_bruta:            number
+  margem_pct:               number
+  receita_liquida_prevista: number
+}
+
+export interface ProximosCasamentos {
+  horizonte_meses:      number
+  margem_historica_pct: number | null
+  casamentos:           ProximoCasamento[]
+}
