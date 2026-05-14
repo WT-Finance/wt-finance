@@ -21,7 +21,7 @@ interface Props {
 
 export default function MixProdutoTable({ data, loading }: Props) {
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4">
+    <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
       <h2 className="text-sm font-semibold text-zinc-700 mb-3">Mix por Produto (Top 10)</h2>
       <div className="overflow-x-auto">
         <table className="w-full min-w-105 text-sm">

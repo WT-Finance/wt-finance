@@ -50,6 +50,9 @@ interface Props {
 export default function DecomposicaoVariacaoCard({ data }: Props) {
   if (!data || !data.tem_dados_anterior) return null
 
+  const temDadosAtuais = (data.setores ?? []).some(s => s.atual > 0)
+  if (!temDadosAtuais) return null
+
   const setoresFiltrados = (data.setores ?? []).filter(s => Math.abs(s.variacao) >= 1_000)
   if (setoresFiltrados.length === 0) return null
 

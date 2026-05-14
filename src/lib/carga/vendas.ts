@@ -4,22 +4,24 @@ import { getAdminClient } from '@/lib/supabase/admin'
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
 interface LinhaRaw {
-  arquivo_origem: string
-  linha_origem:   number
-  venda_numero:   string | null
-  data_venda:     string | null
-  vendedor:       string | null
-  pagante:        string | null
-  setor_macro:    string | null
-  setor:          string | null
-  setor_micro:    string | null
-  produto:        string | null
-  valor_total:    string | null
-  receitas:       string | null
-  contrato:       string | null
-  taxa_servico:   string | null
-  semana:         string | null
-  mes:            string | null
+  arquivo_origem:     string
+  linha_origem:       number
+  venda_numero:       string | null
+  data_venda:         string | null
+  vendedor:           string | null
+  pagante:            string | null
+  setor_macro:        string | null
+  setor:              string | null
+  setor_micro:        string | null
+  produto:            string | null
+  valor_total:        string | null
+  receitas:           string | null
+  contrato:           string | null
+  taxa_servico:       string | null
+  semana:             string | null
+  mes:                string | null
+  data_inicio_evento: string | null
+  fornecedor:         string | null
 }
 
 const COL_MAP: Record<string, keyof LinhaRaw> = {
@@ -37,6 +39,8 @@ const COL_MAP: Record<string, keyof LinhaRaw> = {
   'Taxa de Serviço': 'taxa_servico',
   'Semana':          'semana',
   'Mês':             'mes',
+  'Data de Início':  'data_inicio_evento',
+  'Fornecedor':      'fornecedor',
 }
 
 function toIsoDate(value: unknown): string | null {
@@ -105,7 +109,8 @@ function parseXlsxBuffer(buffer: Buffer, nomeArquivo: string): LinhaRaw[] {
       if (!campo) continue
       const v = row[j]
       switch (campo) {
-        case 'data_venda':    raw.data_venda  = toIsoDate(v); break
+        case 'data_venda':
+        case 'data_inicio_evento': raw[campo] = toIsoDate(v); break
         case 'contrato':      raw.contrato    = toBoolean(v); break
         case 'taxa_servico':  raw.taxa_servico= toBoolean(v); break
         case 'valor_total':   raw.valor_total = toNumStr(v);  break
