@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
-import TendenciaMargemChart from '@/components/performance/tendencia-margem-chart'
+import MargemDrawerTrigger from '@/components/weddings/margem-drawer-trigger'
 import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
@@ -15,6 +15,27 @@ import type {
   ExecutivaKpis, TendenciaMargem,
   MixProduto, PrejuizosDetalhe, Sparklines, SumarioSubsetor,
 } from '@/types/api'
+
+function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <details open className="group mb-4">
+      <summary className="flex items-center gap-3 my-6 cursor-pointer list-none select-none">
+        <div className="flex-1 h-px bg-zinc-100" />
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-zinc-600 uppercase tracking-wide whitespace-nowrap transition-colors">
+          <svg
+            className="w-3 h-3 text-zinc-300 transition-transform group-open:rotate-90"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          {titulo}
+        </span>
+        <div className="flex-1 h-px bg-zinc-100" />
+      </summary>
+      {children}
+    </details>
+  )
+}
 
 function Section({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
@@ -85,67 +106,111 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
         </Suspense>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-        {kpis ? (
-          <>
-            <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor}>
-              <KpiCard rotulo="Faturamento" formula="Soma do valor total das vendas" metrica={kpis.faturamento} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.faturamento} sparklineLabels={sparklines?.labels} />
-            </KpiDrawerTrigger>
-            <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor}>
-              <KpiCard rotulo="Receita" formula="Faturamento − custos e reembolsos" metrica={kpis.receita} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.receita} sparklineLabels={sparklines?.labels} />
-            </KpiDrawerTrigger>
-            <KpiCard rotulo="Margem %"      formula="Receita ÷ Faturamento × 100"  metrica={kpis.margem_pct}    formato="pct"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Vendas"        formula="Contagem de vendas no período" metrica={kpis.vendas}        formato="numero" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={sparklines?.vendas}                                    sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Ticket Médio"  formula="Faturamento ÷ Vendas"          metrica={kpis.ticket_medio}  formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)}   sparklineLabels={sparklines?.labels} />
-            <KpiCard rotulo="Receita/Venda" formula="Receita ÷ Vendas"              metrica={kpis.receita_media} formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} sparklineData={(sparklines?.receita_media ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels} />
-          </>
-        ) : (
-          Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
-        )}
-      </div>
+      {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
+      <TopSection titulo="Visão Geral">
 
-      {/* Tendência de margem */}
-      <Section titulo="Tendência de Margem">
-        <TendenciaMargemChart
-          data={tendencia}
-          loading={false}
-          margemOk={benchmarks.margemAlvo}
-          margemAlerta={benchmarks.margemAtencao}
-        />
-      </Section>
+        {/* KPI Grid — ordem: Fat · Rec Bruta · Margem% · Ticket · Rec Média · Casamentos */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+          {kpis ? (
+            <>
+              <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor}>
+                <KpiCard
+                  rotulo="Faturamento"
+                  formula="Soma do valor total das vendas"
+                  metrica={kpis.faturamento} formato="brl"
+                  periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
+                  isPeriodoProporcional={eParcial}
+                  sparklineData={sparklines?.faturamento} sparklineLabels={sparklines?.labels}
+                />
+              </KpiDrawerTrigger>
 
-      {/* Mix de Produtos + Prejuízos */}
-      <Section titulo="Mix de Produtos e Prejuízos">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <MixProdutoTable data={produtos}  loading={false} />
-          <PrejuizosTable  data={prejuizos} loading={false} />
+              <KpiDrawerTrigger metrica="receita" rotulo="Receita Bruta" setor={setor}>
+                <KpiCard
+                  rotulo="Receita Bruta"
+                  formula="Faturamento − pagamento ao fornecedor (hotel, cia. aérea). No turismo de agenciamento, a receita real é o que sobra após o repasse ao fornecedor. (ADR-0026)"
+                  metrica={kpis.receita} formato="brl"
+                  periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
+                  isPeriodoProporcional={eParcial}
+                  sparklineData={sparklines?.receita} sparklineLabels={sparklines?.labels}
+                />
+              </KpiDrawerTrigger>
+
+              <MargemDrawerTrigger
+                tendencia={tendencia}
+                sumario={sumario}
+                margemOk={benchmarks.margemAlvo}
+                margemAlerta={benchmarks.margemAtencao}
+              >
+                <KpiCard
+                  rotulo="Margem %"
+                  formula="Receita Bruta ÷ Faturamento × 100"
+                  metrica={kpis.margem_pct} formato="pct"
+                  periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
+                  benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao}
+                  isPeriodoProporcional={eParcial}
+                  sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels}
+                />
+              </MargemDrawerTrigger>
+
+              <KpiCard
+                rotulo="Ticket Médio"
+                formula="Faturamento ÷ Casamentos"
+                metrica={kpis.ticket_medio} formato="brl"
+                periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
+                isPeriodoProporcional={eParcial}
+                sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels}
+              />
+
+              <KpiCard
+                rotulo="Receita Média"
+                formula="Receita Bruta ÷ Casamentos"
+                metrica={kpis.receita_media} formato="brl"
+                periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
+                isPeriodoProporcional={eParcial}
+                sparklineData={(sparklines?.receita_media ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels}
+              />
+
+              <KpiCard
+                rotulo="Casamentos Entregues"
+                formula="Operações com Contrato de Casamento realizadas no período"
+                metrica={kpis.vendas} formato="numero"
+                periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
+                isPeriodoProporcional={eParcial}
+                sparklineData={sparklines?.vendas} sparklineLabels={sparklines?.labels}
+              />
+            </>
+          ) : (
+            Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
+          )}
         </div>
-      </Section>
 
-      {/* ── Separador Parte 2 ─────────────────────────────────── */}
-      <div className="flex items-center gap-3 my-6">
-        <div className="flex-1 h-px bg-zinc-100" />
-        <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide whitespace-nowrap">
-          Parte 2 — Operações Weddings
-        </span>
-        <div className="flex-1 h-px bg-zinc-100" />
-      </div>
+        {/* Composição por Subsetor */}
+        <Section titulo="Composição por Subsetor">
+          <SumarioSubsetorCard data={sumario} />
+        </Section>
 
-      {/* Bloco 2.1 — Resumo por Subsetor */}
-      <Section titulo="Resumo por Subsetor">
-        <SumarioSubsetorCard data={sumario} />
-      </Section>
+        {/* Mix de Produtos + Prejuízos */}
+        <Section titulo="Mix de Produtos e Prejuízos">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <MixProdutoTable data={produtos}  loading={false} />
+            <PrejuizosTable  data={prejuizos} loading={false} />
+          </div>
+        </Section>
 
-      {/* Blocos 2.2 + 2.3 — Lista + Drill-down */}
-      <Section titulo="Lista de Operações">
-        <OperacoesSection />
-      </Section>
+      </TopSection>
 
-      {/* Bloco 2.4 — Pipeline */}
-      <Section titulo="Pipeline de Eventos Futuros">
-        <PipelineCard />
-      </Section>
+      {/* ── VISÃO ANALÍTICA POR OPERAÇÃO ─────────────────────────── */}
+      <TopSection titulo="Visão Analítica por Operação">
+
+        <Section titulo="Lista de Operações">
+          <OperacoesSection />
+        </Section>
+
+        <Section titulo="Pipeline de Eventos Futuros">
+          <PipelineCard />
+        </Section>
+
+      </TopSection>
     </div>
   )
 }
