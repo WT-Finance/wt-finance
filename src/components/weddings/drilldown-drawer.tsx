@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, AreaChart, Area,
   XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts'
-import type { DrilldownOperacao } from '@/types/api'
+import type { DrilldownOperacao, VisaoFinanceira } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 
@@ -50,15 +50,6 @@ function SectionTitle({ children }: { children: string }) {
   )
 }
 
-function KpiMini({ label, value, colorCls }: { label: string; value: string; colorCls?: string }) {
-  return (
-    <div className="bg-zinc-50 rounded-lg p-3">
-      <p className="text-[10px] text-zinc-400 mb-0.5">{label}</p>
-      <p className={`text-sm font-semibold tabular-nums ${colorCls ?? 'text-zinc-800'}`}>{value}</p>
-    </div>
-  )
-}
-
 function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }: {
   label: string; total: number
   sub1Label: string; sub1: number
@@ -82,6 +73,79 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
           <p className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub2)}</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+function EqRow({
+  prefix, label, value, highlight, deduction, formula,
+}: {
+  prefix: string
+  label: string
+  value: number | null
+  highlight?: boolean
+  deduction?: boolean
+  formula?: string
+}) {
+  const textCls = highlight
+    ? value != null && value < 0 ? 'text-red-600 font-bold' : 'text-zinc-900 font-bold'
+    : deduction ? 'text-zinc-500' : 'text-zinc-700'
+  return (
+    <div className={`flex justify-between items-baseline py-1.5 ${highlight ? 'border-t border-zinc-200 mt-0.5' : ''}`}>
+      <div className="flex items-baseline gap-1.5 min-w-0">
+        <span className="text-[10px] text-zinc-400 w-5 shrink-0 tabular-nums">{prefix}</span>
+        <span className={`text-xs ${highlight ? 'font-semibold text-zinc-700' : deduction ? 'text-zinc-500' : 'text-zinc-600'}`}>
+          {label}
+        </span>
+        {formula && (
+          <span className="text-[10px] text-zinc-400 hidden sm:inline truncate">— {formula}</span>
+        )}
+      </div>
+      {value != null ? (
+        <span className={`text-xs tabular-nums shrink-0 ml-2 ${textCls}`}>
+          {deduction ? `(${fmtBRL(Math.abs(value))})` : fmtBRL(value)}
+        </span>
+      ) : (
+        <span className="text-xs text-zinc-300 shrink-0 ml-2">N/D</span>
+      )}
+    </div>
+  )
+}
+
+function EquacaoFinanceira({ vf }: { vf: VisaoFinanceira }) {
+  const custoFornecedor = vf.faturamento - vf.receita_bruta
+  const temCaixa = vf.entradas_total > 0 || vf.saidas_total > 0
+
+  return (
+    <div className="border border-zinc-100 rounded-lg px-3 py-1 mb-4 bg-zinc-50/40">
+      <EqRow
+        prefix=""    label="Faturamento"      value={vf.faturamento}
+        highlight    formula="valor total das vendas"
+      />
+      <EqRow
+        prefix="(−)" label="Custo Fornecedor" value={custoFornecedor}
+        deduction    formula="repasse hotel / cia. aérea"
+      />
+      <EqRow
+        prefix="="   label="Receita Bruta"    value={vf.receita_bruta}
+        highlight    formula={`${vf.margem_pct.toFixed(1)}% do faturamento`}
+      />
+      {temCaixa ? (
+        <>
+          <EqRow
+            prefix="(−)" label="Custos Internos" value={vf.custos_internos}
+            deduction    formula="RB − resultado de caixa"
+          />
+          <EqRow
+            prefix="="   label="Receita Líquida" value={vf.resultado_caixa}
+            highlight    formula={`${vf.margem_liquida_pct.toFixed(1)}% do faturamento`}
+          />
+        </>
+      ) : (
+        <p className="text-[10px] text-zinc-400 pt-1.5 pb-0.5 border-t border-zinc-100 mt-0.5">
+          Custos e Receita Líquida calculados após registro de lançamentos (caixa).
+        </p>
+      )}
     </div>
   )
 }
@@ -168,6 +232,9 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
             {data?.data_evento && (
               <p className="text-xs text-zinc-400 mt-0.5">Evento: {fmtDate(data.data_evento)}</p>
             )}
+            {data?.hotel && (
+              <p className="text-xs text-zinc-400 mt-0.5">Hotel: {data.hotel}</p>
+            )}
           </div>
           <button
             onClick={handleClose}
@@ -193,16 +260,13 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
             <>
               {/* ── Seção 1: Visão Financeira ─────────────────────────── */}
               <div>
-                <SectionTitle>Visão Financeira</SectionTitle>
+                <SectionTitle>Equação Financeira</SectionTitle>
 
-                {/* KPIs topo */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <KpiMini label="Faturamento"   value={fmtBRL(vf.faturamento)} />
-                  <KpiMini label="Receita Bruta" value={fmtBRL(vf.receita_bruta)} />
-                  <KpiMini label="Margem"        value={`${vf.margem_pct.toFixed(1)}%`} colorCls={margemColor(vf.margem_pct)} />
-                </div>
+                {/* Waterfall: Faturamento → RB → RL */}
+                <EquacaoFinanceira vf={vf} />
 
-                {/* Fluxo financeiro */}
+                {/* Fluxo de caixa */}
+                <SectionTitle>Fluxo de Caixa</SectionTitle>
                 <div className="border border-zinc-100 rounded-lg p-3">
                   <FluxoRow
                     label="Entradas" total={vf.entradas_total} isEntrada
