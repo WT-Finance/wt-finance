@@ -265,18 +265,20 @@ export interface ListaOperacoes {
 }
 
 export interface VisaoFinanceira {
-  faturamento:     number
-  receita_bruta:   number
-  margem_pct:      number
-  entradas_total:  number
-  recebido:        number
-  a_receber:       number
-  saidas_total:    number
-  pago:            number
-  a_pagar:         number
-  resultado_caixa: number
-  resultado_pct:   number
-  ncg:             number
+  faturamento:        number
+  receita_bruta:      number
+  margem_pct:         number
+  custos_internos:    number
+  margem_liquida_pct: number
+  entradas_total:     number
+  recebido:           number
+  a_receber:          number
+  saidas_total:       number
+  pago:               number
+  a_pagar:            number
+  resultado_caixa:    number
+  resultado_pct:      number
+  ncg:                number
 }
 
 export interface DecomposicaoSubsetorItem {
@@ -304,6 +306,7 @@ export interface DrilldownOperacao {
   nome_casal:              string | null
   data_evento:             string | null
   situacao:                'passado' | 'futuro' | 'sem_data'
+  hotel:                   string | null
   visao_financeira:        VisaoFinanceira
   decomposicao_subsetor:   DecomposicaoSubsetorItem[]
   acumulado_mensal:        AcumuladoMensalItem[]
