@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import type { ListaOperacoes, OperacaoFlag } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
@@ -36,14 +36,16 @@ const SUBSETOR_OPTS = [
 ]
 
 const ORDEM_OPTS = [
-  { v: 'data_evento:desc', l: 'Evento ↓' },
-  { v: 'data_evento:asc',  l: 'Evento ↑' },
-  { v: 'receita:desc',     l: 'Receita ↓' },
-  { v: 'receita:asc',      l: 'Receita ↑' },
-  { v: 'margem:desc',      l: 'Margem ↓' },
-  { v: 'margem:asc',       l: 'Margem ↑' },
-  { v: 'resultado:desc',   l: 'Caixa ↓'  },
-  { v: 'resultado:asc',    l: 'Caixa ↑'  },
+  { v: 'data_evento:desc', l: 'Evento ↓'    },
+  { v: 'data_evento:asc',  l: 'Evento ↑'    },
+  { v: 'receita:desc',     l: 'Rec. Bruta ↓' },
+  { v: 'receita:asc',      l: 'Rec. Bruta ↑' },
+  { v: 'margem:desc',      l: 'Marg. Bruta ↓' },
+  { v: 'margem:asc',       l: 'Marg. Bruta ↑' },
+  { v: 'resultado:desc',   l: 'Rec. Líq. ↓'  },
+  { v: 'resultado:asc',    l: 'Rec. Líq. ↑'  },
+  { v: 'ml:desc',          l: 'Marg. Líq. ↓' },
+  { v: 'ml:asc',           l: 'Marg. Líq. ↑' },
 ]
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -57,10 +59,21 @@ function FlagBadge({ flag }: { flag: OperacaoFlag }) {
   )
 }
 
+function Th({ children, right, title }: { children: ReactNode; right?: boolean; title?: string }) {
+  return (
+    <th
+      title={title}
+      className={`py-2 px-3 text-xs font-medium text-zinc-400 whitespace-nowrap ${right ? 'text-right' : 'text-left'} ${title ? 'cursor-help underline decoration-dotted decoration-zinc-300' : ''}`}
+    >
+      {children}
+    </th>
+  )
+}
+
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      {[6, 140, 64, 72, 72, 52, 72, 80].map((w, i) => (
+      {[6, 140, 80, 64, 72, 60, 44, 68, 72, 52, 80].map((w, i) => (
         <td key={i} className="py-2.5 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: w }} />
         </td>
@@ -174,13 +187,16 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
           <thead>
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 w-5" />
-              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Operação / Casal</th>
-              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Evento</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Faturamento</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Receita</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Margem</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Caixa</th>
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400">Flags</th>
+              <Th>Operação / Casal</Th>
+              <Th title="Hotel / fornecedor principal do casamento (Contrato=1)">Hotel</Th>
+              <Th>Evento</Th>
+              <Th right title="Soma do valor total das vendas desta operação">Faturamento</Th>
+              <Th right title="Faturamento − repasse ao fornecedor (hotel, cia. aérea)">Rec. Bruta</Th>
+              <Th right title="Receita Bruta ÷ Faturamento × 100">Mg. Bruta</Th>
+              <Th right title="Receita Bruta − Custos Internos (estimado como RB − resultado de caixa quando positivo)">Custos Int.</Th>
+              <Th right title="Entradas − Saídas (resultado de caixa da operação)">Rec. Líq.</Th>
+              <Th right title="Receita Líquida ÷ Faturamento × 100">Mg. Líq.</Th>
+              <Th>Flags</Th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
@@ -188,55 +204,68 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : erro ? (
               <tr>
-                <td colSpan={8} className="py-6 text-center text-sm text-red-500">{erro}</td>
+                <td colSpan={11} className="py-6 text-center text-sm text-red-500">{erro}</td>
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
-                <td colSpan={8} className="py-6 text-center text-sm text-zinc-400">
+                <td colSpan={11} className="py-6 text-center text-sm text-zinc-400">
                   Nenhuma operação encontrada.
                 </td>
               </tr>
             ) : (
-              data.operacoes.map(op => (
-                <tr
-                  key={op.operacao}
-                  onClick={() => onSelectOperacao?.(op.operacao)}
-                  className={[
-                    'hover:bg-zinc-50 transition-colors',
-                    onSelectOperacao ? 'cursor-pointer' : '',
-                  ].join(' ')}
-                >
-                  <td className="py-2.5 px-3">
-                    <span className={`inline-block w-2 h-2 rounded-full ${SITUACAO_DOT[op.situacao] ?? 'bg-zinc-200'}`} />
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <p className="font-medium text-zinc-800 text-xs">{op.operacao}</p>
-                    {op.nome_casal && (
-                      <p className="text-[11px] text-zinc-500 truncate max-w-52">{op.nome_casal}</p>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
-                    {op.data_evento ? fmtDate(op.data_evento) : <span className="text-zinc-300">—</span>}
-                  </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
-                    {fmtBRL(op.faturamento)}
-                  </td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
-                    {fmtBRL(op.receita)}
-                  </td>
-                  <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_pct)}`}>
-                    {op.margem_pct.toFixed(1)}%
-                  </td>
-                  <td className={`py-2.5 px-3 text-right tabular-nums text-xs whitespace-nowrap ${op.resultado_caixa < 0 ? 'text-red-500' : 'text-zinc-700'}`}>
-                    {fmtBRL(op.resultado_caixa)}
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <div className="flex flex-wrap gap-1">
-                      {op.flags.map(f => <FlagBadge key={f} flag={f} />)}
-                    </div>
-                  </td>
-                </tr>
-              ))
+              data.operacoes.map(op => {
+                const rlNegativa = op.resultado_caixa < 0
+                return (
+                  <tr
+                    key={op.operacao}
+                    onClick={() => onSelectOperacao?.(op.operacao)}
+                    className={[
+                      'transition-colors',
+                      rlNegativa ? 'bg-red-50/40 hover:bg-red-50/70' : 'hover:bg-zinc-50',
+                      onSelectOperacao ? 'cursor-pointer' : '',
+                    ].join(' ')}
+                  >
+                    <td className="py-2.5 px-3">
+                      <span className={`inline-block w-2 h-2 rounded-full ${SITUACAO_DOT[op.situacao] ?? 'bg-zinc-200'}`} />
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <p className="font-medium text-zinc-800 text-xs">{op.operacao}</p>
+                      {op.nome_casal && (
+                        <p className="text-[11px] text-zinc-500 truncate max-w-52">{op.nome_casal}</p>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-xs text-zinc-500 truncate max-w-[100px] whitespace-nowrap">
+                      {op.hotel ?? <span className="text-zinc-300">—</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
+                      {op.data_evento ? fmtDate(op.data_evento) : <span className="text-zinc-300">—</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
+                      {fmtBRL(op.faturamento)}
+                    </td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
+                      {fmtBRL(op.receita)}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_pct)}`}>
+                      {op.margem_pct.toFixed(1)}%
+                    </td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-500 whitespace-nowrap">
+                      {op.custos_internos > 0 ? fmtBRL(op.custos_internos) : <span className="text-zinc-300">—</span>}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${rlNegativa ? 'text-red-600' : 'text-zinc-700'}`}>
+                      {fmtBRL(op.resultado_caixa)}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>
+                      {op.margem_liquida_pct.toFixed(1)}%
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <div className="flex flex-wrap gap-1">
+                        {op.flags.map(f => <FlagBadge key={f} flag={f} />)}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
