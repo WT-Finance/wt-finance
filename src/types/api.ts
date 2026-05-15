@@ -242,16 +242,19 @@ export interface SumarioSubsetor {
 export type OperacaoFlag = 'margem_negativa' | 'ncg_alto' | 'outlier'
 
 export interface OperacaoItem {
-  operacao:        string
-  nome_casal:      string | null
-  data_evento:     string | null
-  situacao:        'passado' | 'futuro' | 'sem_data'
-  faturamento:     number
-  receita:         number
-  margem_pct:      number
-  resultado_caixa: number
-  ncg:             number
-  flags:           OperacaoFlag[]
+  operacao:           string
+  nome_casal:         string | null
+  data_evento:        string | null
+  situacao:           'passado' | 'futuro' | 'sem_data'
+  faturamento:        number
+  receita:            number
+  margem_pct:         number
+  resultado_caixa:    number
+  ncg:                number
+  flags:              OperacaoFlag[]
+  hotel:              string | null
+  custos_internos:    number
+  margem_liquida_pct: number
 }
 
 export interface ListaOperacoes {
