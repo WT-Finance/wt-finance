@@ -1,5 +1,56 @@
 # Changelog — WT Finance Dashboard
 
+## v3.5 — Aba Weddings: Operações e Receita Líquida (maio/2026)
+
+### v3.5-m1 — Fundação de dados
+- Migration 0029: `data_inicio_evento`, `hotel`, `custos_internos`, `margem_liquida_pct` adicionados a `dim_operacao_weddings`
+- Função `regenerar_dim_operacao_weddings()` reescrita para usar linha Contrato=1 como pivô da operação
+- Receita Líquida = Resultado de Caixa (entradas − saídas), coluna GENERATED no banco
+- ADR 0031: data canônica e hotel derivados do Contrato=1
+
+### v3.5-m2 — Confiança visual
+- Scroll horizontal corrigido (min-w-0 em células de grid nas tabelas Mix e Prejuízos)
+- Cores de subsetor nomeadas (SUBSETOR_COLORS map em vez de array genérico)
+- Decomposição de variação: guard para período sem dados no período atual
+
+### v3.5-m3 — Reestruturação Visão Geral
+- Seções colapsáveis com `<details>`/`<summary>`: "Visão Geral" e "Visão Analítica por Operação"
+- KPIs reordenados: Fat · Rec. Bruta · Margem% · Ticket Médio · Receita Média · Casamentos Entregues
+- "Casamentos" renomeado para "Casamentos Entregues"; fórmulas atualizadas (ADR 0030)
+- Drawer de Margem%: inclui TendênciaMargem + Margem por Subsetor (via MargemDrawerTrigger)
+- SumarioSubsetorCard movido para Visão Geral
+
+### v3.5-m4 — Carteira × Entregas + Próximos Casamentos
+- Migration 0030: `data_venda_contrato` adicionado à tabela; `get_carteira_weddings` e `get_proximos_casamentos` criados
+- Carteira Vendas × Entregas: matriz pivot ano_venda × ano_casamento com toggle Casamentos / Faturamento / Receita Bruta
+- Próximos Casamentos a Entregar: tabela filtrada client-side (18m carregados, horizonte 3/6/12/18m)
+- Pipeline removido (ADR 0033)
+- ADR 0032: Carteira matrix design
+- ADR 0033: Próximos Casamentos substitui Pipeline
+
+### v3.5-m4b — Correções de RPC
+- Bug 1 — `get_carteira_weddings`: `array_agg(DISTINCT x ORDER BY y)` corrigido com subquery DISTINCT (migration 0031)
+- Bug 2 — `get_proximos_casamentos`: RL prevista inflada (caixa incompleto); filtro de plausibilidade `0 ≤ resultado_caixa ≤ receita_bruta` (migration 0032)
+
+### v3.5-m5 — Receita Líquida na Lista de Operações
+- Migration 0033: `get_operacoes_weddings` expõe `hotel`, `custos_internos`, `margem_liquida_pct`
+- Novas colunas na tabela: Hotel · Custos Int. · Rec. Líq. · Mg. Líq.
+- Linhas com RL < 0: fundo vermelho suave (`bg-red-50/40`)
+- Tooltips nos headers com fórmulas; ordenação por Rec. Líq. e Mg. Líq.
+
+### v3.5-m6 — Drill-down educativo
+- Migration 0034: `get_operacao_weddings` expõe `hotel`, `custos_internos`, `margem_liquida_pct`
+- Componente `EquacaoFinanceira` no drawer: waterfall Faturamento → (−) Fornecedor → Rec. Bruta → (−) Custos → Rec. Líquida
+- Operações futuras (sem lançamentos): exibe apenas Faturamento → RB + nota explicativa
+- Hotel exibido no header do drawer; seção Visão Financeira separada em Equação + Fluxo de Caixa
+- ADR 0030: equação financeira e fontes de RB vs RL documentadas
+
+### v3.5-m7 — Polimento e documentação
+- ADRs 0030–0033 criados
+- Changelog atualizado
+
+---
+
 ## v3.3 — Performance por Setor (maio/2026)
 
 ### v3.3-1 — Polimento visual
