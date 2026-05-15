@@ -1,5 +1,5 @@
 import type { KpiMetrica, PeriodoRef } from '@/types/api'
-import { fmtBRL, fmtMi } from '@/lib/fmt'
+import { fmtMi } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import Sparkline from '@/components/shared/sparkline'
 

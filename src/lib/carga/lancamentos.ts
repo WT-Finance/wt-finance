@@ -168,7 +168,7 @@ export async function carregarLancamentos(
 
   const { error: dimErr } = await bound('regenerar_dim_operacao_weddings')
   if (dimErr) {
-    console.error('[lancamentos] Erro ao regenerar dim_operacao_weddings:', dimErr.message)
+    return erroResult(inseridas, `Erro ao regenerar operações Weddings: ${dimErr.message}`)
   }
 
   return {

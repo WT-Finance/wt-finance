@@ -21,6 +21,14 @@ interface DashboardData {
   produtos: RankingProdutoItem[]
 }
 
+const EMPTY_DASHBOARD_DATA: DashboardData = {
+  kpis: null,
+  ritmo: [],
+  historico: [],
+  vendedores: [],
+  produtos: [],
+}
+
 interface Props {
   setor: string
   ano: number
@@ -31,9 +39,10 @@ export default function MetasDashboard({ setor, ano, mes }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
 
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<DashboardData>({
-    kpis: null, ritmo: [], historico: [], vendedores: [], produtos: [],
+  const requestKey = `${setor}:${ano}:${mes}`
+  const [state, setState] = useState<{ key: string; data: DashboardData }>({
+    key: '',
+    data: EMPTY_DASHBOARD_DATA,
   })
 
   function setFilter(newSetor: string, newAno: number, newMes: number) {
@@ -47,7 +56,6 @@ export default function MetasDashboard({ setor, ano, mes }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
 
     const qs = `ano=${ano}&mes=${mes}&setor=${setor}`
 
@@ -59,13 +67,17 @@ export default function MetasDashboard({ setor, ano, mes }: Props) {
       fetch(`/api/ranking-produtos?${qs}`).then(r => r.json()) as Promise<RankingProdutoItem[]>,
     ]).then(([kpis, ritmo, historico, vendedores, produtos]) => {
       if (!cancelled) {
-        setData({ kpis, ritmo, historico, vendedores, produtos })
-        setLoading(false)
+        setState({ key: requestKey, data: { kpis, ritmo, historico, vendedores, produtos } })
       }
-    }).catch(() => { if (!cancelled) setLoading(false) })
+    }).catch(() => {
+      if (!cancelled) setState({ key: requestKey, data: EMPTY_DASHBOARD_DATA })
+    })
 
     return () => { cancelled = true }
-  }, [setor, ano, mes])
+  }, [setor, ano, mes, requestKey])
+
+  const loading = state.key !== requestKey
+  const data = state.data
 
   return (
     <div className="max-w-screen-xl mx-auto px-6 py-4">

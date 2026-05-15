@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { loadMetas } from '@/lib/carga/metas'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -172,6 +173,12 @@ export async function carregarVendas(
   const { error: truncErr } = await bound('truncate_dynamic_tables')
   if (truncErr) return erroResult(totalAntes, `Erro ao truncar tabelas: ${truncErr.message}`)
 
+  try {
+    await loadMetas(false)
+  } catch (err) {
+    return erroResult(totalAntes, err instanceof Error ? err.message : String(err))
+  }
+
   const BATCH = 500
   let inseridas = 0
   for (let i = 0; i < linhas.length; i += BATCH) {
@@ -185,7 +192,11 @@ export async function carregarVendas(
 
   const resultado = transformData as { vendas_count: number; fato_venda_item_count: number } | null
 
-  await bound('refresh_all_materialized_views')
+  const { error: dimErr } = await bound('regenerar_dim_operacao_weddings')
+  if (dimErr) return erroResult(inseridas, `Erro ao regenerar operações Weddings: ${dimErr.message}`)
+
+  const { error: refreshErr } = await bound('refresh_all_materialized_views')
+  if (refreshErr) return erroResult(inseridas, `Erro ao atualizar views materializadas: ${refreshErr.message}`)
 
   return {
     sucesso: true,

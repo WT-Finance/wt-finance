@@ -72,7 +72,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
   }
 
   // Label acima da barra (total) — renderizada no topo do stack
-  function TopLabel({ value, index }: { value?: unknown; index?: number; x?: number; y?: number; width?: number }) {
+  function TopLabel({ index }: { index?: number; x?: number; y?: number; width?: number }) {
     const entry = index != null ? chartData[index] : null
     if (!entry || entry.total === 0) return null
     const color  = entry.eh_atual ? 'var(--primary)' : '#a1a1aa'
@@ -151,7 +151,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
                         <LabelList
                           dataKey="total"
                           position="top"
-                          content={(props) => <TopLabel value={props.value} index={props.index} />}
+                          content={(props) => <TopLabel index={props.index} />}
                         />
                       )}
                     </Bar>
@@ -179,7 +179,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
                 <LabelList
                   dataKey="total"
                   position="top"
-                  content={(props) => <TopLabel value={props.value} index={props.index} />}
+                  content={(props) => <TopLabel index={props.index} />}
                 />
               </Bar>
             )}

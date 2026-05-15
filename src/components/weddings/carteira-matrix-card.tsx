@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { CarteiraWeddings } from '@/types/api'
-import { fmtBRL, fmtMi } from '@/lib/fmt'
+import { fmtMi } from '@/lib/fmt'
 
 type Metrica = 'casamentos' | 'faturamento' | 'receita_bruta'
 

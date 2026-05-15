@@ -106,7 +106,7 @@ export default function SumarioSubsetorCard({ data }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
-              {classified.map((s, i) => (
+              {classified.map(s => (
                 <tr key={s.subsetor} className="hover:bg-zinc-50">
                   <td className="py-2 px-3 font-medium text-zinc-800 flex items-center gap-2">
                     <span

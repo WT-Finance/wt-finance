@@ -8,7 +8,6 @@ import {
 } from 'recharts'
 import type { DrilldownOperacao, VisaoFinanceira } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
-import { margemColor } from '@/lib/config'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -158,8 +157,10 @@ interface Props {
 }
 
 export default function DrilldownDrawer({ operacao, onClose }: Props) {
-  const [data,    setData]    = useState<DrilldownOperacao | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [requestState, setRequestState] = useState<{
+    operacao: string
+    data: DrilldownOperacao | null
+  }>({ operacao: '', data: null })
   const [visible, setVisible] = useState(false)
 
   const handleClose = useCallback(() => {
@@ -189,13 +190,25 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
 
   // Fetch
   useEffect(() => {
-    setLoading(true)
+    let cancelled = false
+
     fetch(`/api/dashboard/weddings/operacao/${encodeURIComponent(operacao)}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json() as Promise<DrilldownOperacao>
+      })
+      .then(data => {
+        if (!cancelled) setRequestState({ operacao, data })
+      })
+      .catch(() => {
+        if (!cancelled) setRequestState({ operacao, data: null })
+      })
+
+    return () => { cancelled = true }
   }, [operacao])
 
+  const loading = requestState.operacao !== operacao
+  const data = loading ? null : requestState.data
   const vf = data?.visao_financeira
 
   return (
