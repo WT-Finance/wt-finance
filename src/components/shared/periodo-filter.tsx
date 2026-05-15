@@ -32,20 +32,6 @@ export default function PeriodoFilter({ defaultPreset = 'mes-passado' }: Props) 
   const fromVal = searchParams.get('from') ?? ''
   const toVal   = searchParams.get('to')   ?? ''
 
-  useEffect(() => {
-    const current = { preset, from: fromVal, to: toVal }
-    try { localStorage.setItem(LS_KEY, JSON.stringify(current)) } catch {}
-  }, [preset, fromVal, toVal])
-
-  useEffect(() => {
-    if (searchParams.size > 0) return
-    try {
-      const saved = JSON.parse(localStorage.getItem(LS_KEY) ?? 'null')
-      if (saved?.preset) push(saved.preset, saved.from, saved.to)
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const push = useCallback((p: PresetPeriodo, from?: string, to?: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('preset', p)
@@ -58,6 +44,20 @@ export default function PeriodoFilter({ defaultPreset = 'mes-passado' }: Props) 
     }
     router.push(`${pathname}?${params.toString()}`)
   }, [router, pathname, searchParams])
+
+  useEffect(() => {
+    if (searchParams.size === 0) return
+    const current = { preset, from: fromVal, to: toVal }
+    try { localStorage.setItem(LS_KEY, JSON.stringify(current)) } catch {}
+  }, [preset, fromVal, toVal, searchParams.size])
+
+  useEffect(() => {
+    if (searchParams.size > 0) return
+    try {
+      const saved = JSON.parse(localStorage.getItem(LS_KEY) ?? 'null')
+      if (saved?.preset) push(saved.preset, saved.from, saved.to)
+    } catch {}
+  }, [push, searchParams.size])
 
   const selectClass =
     'rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400'

@@ -91,7 +91,7 @@ async function main() {
 
   // 3. Inserir metas
   console.log('3. Inserindo metas em app.meta_setor...')
-  await loadMetas()
+  await loadMetas(true)
   console.log()
 
   // 4. Transformar raw → analytics

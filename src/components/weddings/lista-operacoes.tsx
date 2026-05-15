@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { ListaOperacoes, OperacaoFlag } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
@@ -96,39 +96,57 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
   const [ordem,    setOrdem]    = useState('data_evento:desc')
   const [pagina,   setPagina]   = useState(1)
 
-  const [data,    setData]    = useState<ListaOperacoes | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [erro,    setErro]    = useState<string | null>(null)
+  const [requestState, setRequestState] = useState<{
+    key: string
+    data: ListaOperacoes | null
+    erro: string | null
+  }>({ key: '', data: null, erro: null })
 
   // Debounce busca 300ms
   const debRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (debRef.current) clearTimeout(debRef.current)
-    debRef.current = setTimeout(() => setBuscaDeb(busca), 300)
+    debRef.current = setTimeout(() => {
+      setBuscaDeb(busca)
+      setPagina(1)
+    }, 300)
     return () => { if (debRef.current) clearTimeout(debRef.current) }
   }, [busca])
 
-  // Reset página ao mudar filtros
-  useEffect(() => { setPagina(1) }, [status, subsetor, buscaDeb, ordem])
-
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    setErro(null)
+  const queryString = useMemo(() => {
     const [ordenar_por, direcao] = ordem.split(':')
     const params = new URLSearchParams({ status, subsetor, ordenar_por, direcao, pagina: String(pagina), por_pagina: '50' })
     if (buscaDeb) params.set('busca', buscaDeb)
-    try {
-      const res = await fetch(`/api/dashboard/weddings/operacoes?${params}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setData(await res.json())
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Erro desconhecido')
-    } finally {
-      setLoading(false)
-    }
+    return params.toString()
   }, [status, subsetor, buscaDeb, ordem, pagina])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    let cancelled = false
+
+    fetch(`/api/dashboard/weddings/operacoes?${queryString}`)
+      .then(async res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json() as Promise<ListaOperacoes>
+      })
+      .then(data => {
+        if (!cancelled) setRequestState({ key: queryString, data, erro: null })
+      })
+      .catch(e => {
+        if (!cancelled) {
+          setRequestState({
+            key: queryString,
+            data: null,
+            erro: e instanceof Error ? e.message : 'Erro desconhecido',
+          })
+        }
+      })
+
+    return () => { cancelled = true }
+  }, [queryString])
+
+  const loading = requestState.key !== queryString
+  const data = loading ? null : requestState.data
+  const erro = loading ? null : requestState.erro
 
   const totalPaginas = data ? Math.ceil(data.total / data.por_pagina) : 0
 
@@ -151,14 +169,14 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
       {/* Filtros */}
       <div className="flex flex-wrap gap-2 mb-4">
         <select
-          value={status} onChange={e => setStatus(e.target.value)}
+          value={status} onChange={e => { setStatus(e.target.value); setPagina(1) }}
           className="text-xs border border-zinc-200 rounded-lg px-2.5 h-8 text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
         >
           {STATUS_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
         </select>
 
         <select
-          value={subsetor} onChange={e => setSubsetor(e.target.value)}
+          value={subsetor} onChange={e => { setSubsetor(e.target.value); setPagina(1) }}
           className="text-xs border border-zinc-200 rounded-lg px-2.5 h-8 text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
         >
           {SUBSETOR_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
@@ -173,7 +191,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
         <div className="ml-auto flex items-center gap-1">
           <span className="text-xs text-zinc-400 hidden sm:inline">Ordenar:</span>
           <select
-            value={ordem} onChange={e => setOrdem(e.target.value)}
+            value={ordem} onChange={e => { setOrdem(e.target.value); setPagina(1) }}
             className="text-xs border border-zinc-200 rounded-lg px-2.5 h-8 text-zinc-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
           >
             {ORDEM_OPTS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}

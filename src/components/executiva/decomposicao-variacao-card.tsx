@@ -12,12 +12,11 @@ function comNegrito(texto: string): ReactNode[] {
 interface BarraProps {
   variacao:  number
   maxAbs:    number
-  corHex:    string
   nome:      string
   variacaoPct: number | null
 }
 
-function BarraSetor({ variacao, maxAbs, corHex, nome, variacaoPct }: BarraProps) {
+function BarraSetor({ variacao, maxAbs, nome, variacaoPct }: BarraProps) {
   if (maxAbs === 0) return null
   const larguraPct = Math.round((Math.abs(variacao) / maxAbs) * 100)
   const positivo   = variacao >= 0
@@ -73,7 +72,6 @@ export default function DecomposicaoVariacaoCard({ data }: Props) {
             key={s.nome}
             variacao={s.variacao}
             maxAbs={maxAbs}
-            corHex={s.cor_hex}
             nome={s.display_nome}
             variacaoPct={s.variacao_pct}
           />

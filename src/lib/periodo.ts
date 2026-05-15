@@ -131,7 +131,7 @@ export function formatarLabelPeriodo(
     case 'este-ano':
       return String(ano)
     case 'personalizado': {
-      const [ay, am, ad] = from.split('-')
+      const [, am, ad] = from.split('-')
       const [ty, , td] = to.split('-').map(s => s)
       const tm = to.split('-')[1]
       return `${ad}/${am} – ${td}/${tm}/${ty}`
