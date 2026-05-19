@@ -10,30 +10,29 @@ import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
 import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
 import OperacoesSection from '@/components/weddings/operacoes-section'
 import AcumuladoRecebPagChart from '@/components/weddings/acumulado-receb-pag-chart'
+import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, TendenciaMargem,
   MixProduto, PrejuizosDetalhe, Sparklines, SumarioSubsetor,
-  CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings,
+  CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
 } from '@/types/api'
 
 function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <details open className="group mb-4">
-      <summary className="flex items-center gap-3 my-6 cursor-pointer list-none select-none">
-        <div className="flex-1 h-px bg-zinc-100" />
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-zinc-600 uppercase tracking-wide whitespace-nowrap transition-colors">
-          <svg
-            className="w-3 h-3 text-zinc-300 transition-transform group-open:rotate-90"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
+    <details open className="group mb-8">
+      <summary className="flex items-center gap-3 px-5 py-4 mb-6 cursor-pointer list-none select-none rounded-lg border-l-4 border-[#BD965C] bg-gradient-to-r from-[#FBF1E1] to-transparent hover:from-[#f3e3c8] transition-colors">
+        <svg
+          className="w-5 h-5 text-[#BD965C] transition-transform group-open:rotate-90 shrink-0"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="text-base font-bold text-zinc-800 tracking-wide">
           {titulo}
         </span>
-        <div className="flex-1 h-px bg-zinc-100" />
       </summary>
       {children}
     </details>
@@ -45,12 +44,12 @@ function Section({ titulo, children }: { titulo: string; children: ReactNode }) 
     <details open className="group mb-6">
       <summary className="flex items-center gap-2 cursor-pointer list-none mb-4 select-none">
         <svg
-          className="w-4 h-4 text-zinc-400 transition-transform group-open:rotate-90 shrink-0"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          className="w-4 h-4 text-[#BD965C] transition-transform group-open:rotate-90 shrink-0"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-sm font-semibold text-zinc-600">{titulo}</span>
+        <span className="text-sm font-semibold text-zinc-700">{titulo}</span>
       </summary>
       {children}
     </details>
@@ -77,7 +76,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
   const [
     kpisRes, tendRes, prodRes, prejRes, sparkRes, sumarioRes,
-    cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes,
+    cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes, vendasAbertoRes,
   ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: setor,
@@ -95,19 +94,21 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
     db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18 }),
+    db.rpc('get_vendas_em_aberto_weddings', { p_limite: 50, p_offset: 0 }),
   ])
 
-  const kpis      = kpisRes.error    ? null : kpisRes.data    as unknown as ExecutivaKpis
-  const tendencia = tendRes.error    ? null : tendRes.data    as unknown as TendenciaMargem
-  const produtos  = prodRes.error    ? null : prodRes.data    as unknown as MixProduto
-  const prejuizos = prejRes.error    ? null : prejRes.data    as unknown as PrejuizosDetalhe
-  const sparklines = sparkRes.error  ? null : sparkRes.data   as unknown as Sparklines | null
-  const sumario   = sumarioRes.error ? null : sumarioRes.data as unknown as SumarioSubsetor
-  const cartCas   = cartCasRes.error ? null : cartCasRes.data as unknown as CarteiraWeddings
-  const cartFat   = cartFatRes.error ? null : cartFatRes.data as unknown as CarteiraWeddings
-  const cartRb    = cartRbRes.error  ? null : cartRbRes.data  as unknown as CarteiraWeddings
-  const proximos  = proximosRes.error? null : proximosRes.data as unknown as ProximosCasamentos
-  const acumulado = acumuladoRes.error ? null : acumuladoRes.data as unknown as AcumuladoWeddings
+  const kpis          = kpisRes.error         ? null : kpisRes.data         as unknown as ExecutivaKpis
+  const tendencia     = tendRes.error         ? null : tendRes.data         as unknown as TendenciaMargem
+  const produtos      = prodRes.error         ? null : prodRes.data         as unknown as MixProduto
+  const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as PrejuizosDetalhe
+  const sparklines    = sparkRes.error        ? null : sparkRes.data        as unknown as Sparklines | null
+  const sumario       = sumarioRes.error      ? null : sumarioRes.data      as unknown as SumarioSubsetor
+  const cartCas       = cartCasRes.error      ? null : cartCasRes.data      as unknown as CarteiraWeddings
+  const cartFat       = cartFatRes.error      ? null : cartFatRes.data      as unknown as CarteiraWeddings
+  const cartRb        = cartRbRes.error       ? null : cartRbRes.data       as unknown as CarteiraWeddings
+  const proximos      = proximosRes.error     ? null : proximosRes.data     as unknown as ProximosCasamentos
+  const acumulado     = acumuladoRes.error    ? null : acumuladoRes.data    as unknown as AcumuladoWeddings
+  const vendasAberto  = vendasAbertoRes.error ? null : vendasAbertoRes.data as unknown as VendasEmAberto
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
@@ -121,7 +122,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">
 
-        {/* KPI Grid — ordem: Fat · Rec Bruta · Margem% · Ticket · Rec Média · Casamentos */}
+        {/* 1. KPIs — panorama agregado */}
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           {kpis ? (
             <>
@@ -196,12 +197,22 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           )}
         </div>
 
-        {/* Composição por Subsetor */}
+        {/* 2. Próximos Casamentos | Mix por Produto — ação + composição imediata */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Section titulo="Próximos Casamentos a Entregar">
+            <ProximosCasamentosCard data18m={proximos} />
+          </Section>
+          <Section titulo="Mix por Produto">
+            <MixProdutoTable data={produtos} loading={false} />
+          </Section>
+        </div>
+
+        {/* 3. Composição por Subsetor — estrutura analítica */}
         <Section titulo="Composição por Subsetor">
           <SumarioSubsetorCard data={sumario} />
         </Section>
 
-        {/* Carteira: Vendas × Entregas */}
+        {/* 4. Carteira: Vendas × Entregas — par estratégico */}
         <Section titulo="Carteira: Vendas × Entregas">
           <CarteiraMartrixCard
             casamentos={cartCas}
@@ -210,18 +221,16 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           />
         </Section>
 
-        {/* Próximos Casamentos a Entregar */}
-        <Section titulo="Próximos Casamentos a Entregar">
-          <ProximosCasamentosCard data18m={proximos} />
-        </Section>
-
-        {/* Mix de Produtos + Prejuízos */}
-        <Section titulo="Mix de Produtos e Prejuízos">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <MixProdutoTable data={produtos}  loading={false} />
-            <PrejuizosTable  data={prejuizos} loading={false} />
-          </div>
-        </Section>
+        {/* 5. Vendas com Prejuízo — exceções operacionais (Vendas em Aberto: M5) */}
+        {/* 5. Vendas em Aberto | Vendas com Prejuízo — exceções operacionais */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Section titulo="Vendas em Aberto">
+            <VendasEmAbertoCard data={vendasAberto} />
+          </Section>
+          <Section titulo="Vendas com Prejuízo">
+            <PrejuizosTable data={prejuizos} loading={false} />
+          </Section>
+        </div>
 
       </TopSection>
 

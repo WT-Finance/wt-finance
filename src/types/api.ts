@@ -371,3 +371,17 @@ export interface AcumuladoWeddings {
   total_saidas: number
   meses:        AcumuladoMensalWeddingsItem[]
 }
+
+export interface VendaEmAberto {
+  venda_numero: string
+  data_venda:   string   // ISO date
+  casal:        string
+  produto:      string
+  valor_total:  number
+  idade_dias:   number
+}
+
+export interface VendasEmAberto {
+  total:  number
+  vendas: VendaEmAberto[]
+}

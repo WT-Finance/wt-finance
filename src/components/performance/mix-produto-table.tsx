@@ -1,6 +1,11 @@
+'use client'
+
+import { useState } from 'react'
 import type { MixProduto } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
+
+const LIMITE = 5
 
 function SkeletonRow() {
   return (
@@ -20,9 +25,15 @@ interface Props {
 }
 
 export default function MixProdutoTable({ data, loading }: Props) {
+  const [verTodos, setVerTodos] = useState(false)
+
+  const produtos = data?.produtos ?? []
+  const visiveis = verTodos ? produtos : produtos.slice(0, LIMITE)
+  const temMais = produtos.length > LIMITE
+
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-3">Mix por Produto (Top 10)</h2>
+      <p className="text-xs text-zinc-500 mb-3">Faturamento e margem por produto no período</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-105 text-sm">
           <thead>
@@ -36,7 +47,7 @@ export default function MixProdutoTable({ data, loading }: Props) {
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {loading
-              ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
+              ? Array.from({ length: LIMITE }).map((_, i) => <SkeletonRow key={i} />)
               : !data
               ? (
                 <tr>
@@ -47,7 +58,7 @@ export default function MixProdutoTable({ data, loading }: Props) {
               )
               : (
                 <>
-                  {data.produtos.map((p, i) => (
+                  {visiveis.map((p, i) => (
                     <tr key={p.produto_nome} className="hover:bg-zinc-50">
                       <td className="py-2 px-3 text-xs text-zinc-400">{i + 1}</td>
                       <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-45">
@@ -64,7 +75,7 @@ export default function MixProdutoTable({ data, loading }: Props) {
                       </td>
                     </tr>
                   ))}
-                  {data.outros.quantidade_produtos > 0 && (
+                  {(!temMais || verTodos) && data.outros.quantidade_produtos > 0 && (
                     <tr className="bg-zinc-50 text-zinc-500 italic">
                       <td className="py-2 px-3 text-xs text-zinc-300">+{data.outros.quantidade_produtos}</td>
                       <td className="py-2 px-3 text-sm">Outros</td>
@@ -84,6 +95,15 @@ export default function MixProdutoTable({ data, loading }: Props) {
           </tbody>
         </table>
       </div>
+
+      {temMais && (
+        <button
+          onClick={() => setVerTodos(v => !v)}
+          className="mt-3 w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 border-t border-zinc-100 transition-colors"
+        >
+          {verTodos ? 'Ver menos' : `Ver todos (${produtos.length})`}
+        </button>
+      )}
     </div>
   )
 }

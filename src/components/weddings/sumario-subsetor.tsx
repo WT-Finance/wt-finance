@@ -32,7 +32,7 @@ export default function SumarioSubsetorCard({ data }: Props) {
   if (!data || data.subsetores.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
-        <h2 className="text-sm font-semibold text-zinc-700 mb-3">Resumo por Subsetor</h2>
+        <p className="text-xs text-zinc-500 mb-3">Distribuição de faturamento por subsetor no período</p>
         <div className="h-32 flex items-center justify-center text-sm text-zinc-400">
           Sem dados para o período selecionado.
         </div>
@@ -53,7 +53,7 @@ export default function SumarioSubsetorCard({ data }: Props) {
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-sm font-semibold text-zinc-700">Resumo por Subsetor</h2>
+        <p className="text-xs text-zinc-500">Distribuição de faturamento por subsetor no período</p>
         <span className="text-xs text-zinc-400">
           {data.total.n_vendas} vendas · {fmtMi(data.total.faturamento)}
         </span>

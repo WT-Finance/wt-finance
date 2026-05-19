@@ -34,7 +34,6 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
   if (!data || data.linhas.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
-        <h2 className="text-sm font-semibold text-zinc-700 mb-3">Carteira: Vendas × Entregas</h2>
         <p className="text-sm text-zinc-400 text-center py-6">Sem dados disponíveis.</p>
       </div>
     )
@@ -59,7 +58,7 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h2 className="text-sm font-semibold text-zinc-700">Carteira: Vendas × Entregas</h2>
+        <p className="text-xs text-zinc-500">Vendas por ano de venda × ano do casamento</p>
         <div className="flex rounded-lg border border-zinc-200 overflow-hidden text-xs">
           {(Object.keys(labels) as Metrica[]).map(m => (
             <button
