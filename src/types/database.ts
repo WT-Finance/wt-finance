@@ -475,6 +475,10 @@ export interface Database {
         Args: { p_meses_passados?: number; p_meses_futuros?: number }
         Returns: Json
       }
+      get_vendas_em_aberto_weddings: {
+        Args: { p_limite?: number; p_offset?: number }
+        Returns: Json
+      }
     }
   }
 }
