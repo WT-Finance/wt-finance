@@ -119,7 +119,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">
 
-        {/* KPI Grid — ordem: Fat · Rec Bruta · Margem% · Ticket · Rec Média · Casamentos */}
+        {/* 1. KPIs — panorama agregado */}
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           {kpis ? (
             <>
@@ -194,12 +194,22 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           )}
         </div>
 
-        {/* Composição por Subsetor */}
+        {/* 2. Próximos Casamentos | Mix por Produto — ação + composição imediata */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Section titulo="Próximos Casamentos a Entregar">
+            <ProximosCasamentosCard data18m={proximos} />
+          </Section>
+          <Section titulo="Mix por Produto">
+            <MixProdutoTable data={produtos} loading={false} />
+          </Section>
+        </div>
+
+        {/* 3. Composição por Subsetor — estrutura analítica */}
         <Section titulo="Composição por Subsetor">
           <SumarioSubsetorCard data={sumario} />
         </Section>
 
-        {/* Carteira: Vendas × Entregas */}
+        {/* 4. Carteira: Vendas × Entregas — par estratégico */}
         <Section titulo="Carteira: Vendas × Entregas">
           <CarteiraMartrixCard
             casamentos={cartCas}
@@ -208,18 +218,12 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           />
         </Section>
 
-        {/* Próximos Casamentos a Entregar */}
-        <Section titulo="Próximos Casamentos a Entregar">
-          <ProximosCasamentosCard data18m={proximos} />
-        </Section>
-
-        {/* Mix de Produtos + Prejuízos */}
-        <Section titulo="Mix de Produtos e Prejuízos">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <MixProdutoTable data={produtos}  loading={false} />
-            <PrejuizosTable  data={prejuizos} loading={false} />
-          </div>
-        </Section>
+        {/* 5. Vendas com Prejuízo — exceções operacionais (Vendas em Aberto: M5) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Section titulo="Vendas com Prejuízo">
+            <PrejuizosTable data={prejuizos} loading={false} />
+          </Section>
+        </div>
 
       </TopSection>
 
