@@ -27,7 +27,7 @@ export default function PrejuizosTable({ data, loading }: Props) {
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-zinc-700">Vendas com Prejuízo</h2>
+        <p className="text-xs text-zinc-500">Operações com margem negativa no período</p>
         {total && total.quantidade > 0 && (
           <span className="text-xs text-red-500 font-medium">
             {total.quantidade} {total.quantidade === 1 ? 'venda' : 'vendas'} · {fmtBRL(total.valor_prejuizo_total)} em prejuízo

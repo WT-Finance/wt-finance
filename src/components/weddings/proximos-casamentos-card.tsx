@@ -27,14 +27,11 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-700">Próximos Casamentos a Entregar</h2>
-          {margemHist != null && (
-            <p className="text-xs text-zinc-400 mt-0.5">
-              RL prevista baseada em margem histórica de {margemHist.toFixed(1)}%
-            </p>
-          )}
-        </div>
+        <p className="text-xs text-zinc-500">
+          {margemHist != null
+            ? `RL prevista baseada em margem histórica de ${margemHist.toFixed(1)}%`
+            : 'Ordenado por data do casamento'}
+        </p>
         <div className="flex rounded-lg border border-zinc-200 overflow-hidden text-xs">
           {HORIZONTES.map(h => (
             <button
