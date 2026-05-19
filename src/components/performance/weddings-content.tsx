@@ -10,13 +10,14 @@ import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
 import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
 import OperacoesSection from '@/components/weddings/operacoes-section'
 import AcumuladoRecebPagChart from '@/components/weddings/acumulado-receb-pag-chart'
+import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, TendenciaMargem,
   MixProduto, PrejuizosDetalhe, Sparklines, SumarioSubsetor,
-  CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings,
+  CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
 } from '@/types/api'
 
 function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
@@ -75,7 +76,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
   const [
     kpisRes, tendRes, prodRes, prejRes, sparkRes, sumarioRes,
-    cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes,
+    cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes, vendasAbertoRes,
   ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: setor,
@@ -93,19 +94,21 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
     db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18 }),
+    db.rpc('get_vendas_em_aberto_weddings', { p_limite: 50, p_offset: 0 }),
   ])
 
-  const kpis      = kpisRes.error    ? null : kpisRes.data    as unknown as ExecutivaKpis
-  const tendencia = tendRes.error    ? null : tendRes.data    as unknown as TendenciaMargem
-  const produtos  = prodRes.error    ? null : prodRes.data    as unknown as MixProduto
-  const prejuizos = prejRes.error    ? null : prejRes.data    as unknown as PrejuizosDetalhe
-  const sparklines = sparkRes.error  ? null : sparkRes.data   as unknown as Sparklines | null
-  const sumario   = sumarioRes.error ? null : sumarioRes.data as unknown as SumarioSubsetor
-  const cartCas   = cartCasRes.error ? null : cartCasRes.data as unknown as CarteiraWeddings
-  const cartFat   = cartFatRes.error ? null : cartFatRes.data as unknown as CarteiraWeddings
-  const cartRb    = cartRbRes.error  ? null : cartRbRes.data  as unknown as CarteiraWeddings
-  const proximos  = proximosRes.error? null : proximosRes.data as unknown as ProximosCasamentos
-  const acumulado = acumuladoRes.error ? null : acumuladoRes.data as unknown as AcumuladoWeddings
+  const kpis          = kpisRes.error         ? null : kpisRes.data         as unknown as ExecutivaKpis
+  const tendencia     = tendRes.error         ? null : tendRes.data         as unknown as TendenciaMargem
+  const produtos      = prodRes.error         ? null : prodRes.data         as unknown as MixProduto
+  const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as PrejuizosDetalhe
+  const sparklines    = sparkRes.error        ? null : sparkRes.data        as unknown as Sparklines | null
+  const sumario       = sumarioRes.error      ? null : sumarioRes.data      as unknown as SumarioSubsetor
+  const cartCas       = cartCasRes.error      ? null : cartCasRes.data      as unknown as CarteiraWeddings
+  const cartFat       = cartFatRes.error      ? null : cartFatRes.data      as unknown as CarteiraWeddings
+  const cartRb        = cartRbRes.error       ? null : cartRbRes.data       as unknown as CarteiraWeddings
+  const proximos      = proximosRes.error     ? null : proximosRes.data     as unknown as ProximosCasamentos
+  const acumulado     = acumuladoRes.error    ? null : acumuladoRes.data    as unknown as AcumuladoWeddings
+  const vendasAberto  = vendasAbertoRes.error ? null : vendasAbertoRes.data as unknown as VendasEmAberto
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
@@ -219,7 +222,11 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
         </Section>
 
         {/* 5. Vendas com Prejuízo — exceções operacionais (Vendas em Aberto: M5) */}
+        {/* 5. Vendas em Aberto | Vendas com Prejuízo — exceções operacionais */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Section titulo="Vendas em Aberto">
+            <VendasEmAbertoCard data={vendasAberto} />
+          </Section>
           <Section titulo="Vendas com Prejuízo">
             <PrejuizosTable data={prejuizos} loading={false} />
           </Section>
