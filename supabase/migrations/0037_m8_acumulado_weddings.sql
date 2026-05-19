@@ -20,6 +20,9 @@ DECLARE
   v_fim_exclusivo  date;
   v_result         jsonb;
 BEGIN
+  p_meses_passados := LEAST(GREATEST(COALESCE(p_meses_passados, 24), 1), 120);
+  p_meses_futuros  := LEAST(GREATEST(COALESCE(p_meses_futuros,  18), 0),  60);
+
   v_inicio        := (v_mes_atual - (p_meses_passados * interval '1 month'))::date;
   v_fim_exclusivo := (v_mes_atual + ((p_meses_futuros + 1) * interval '1 month'))::date;
 
@@ -48,19 +51,14 @@ BEGIN
   cumulativo AS (
     SELECT
       mes,
+      saida_mes,
       mes >= v_mes_atual                                          AS eh_futuro,
-      ROUND(SUM(entrada_mes) OVER (ORDER BY mes)::numeric, 2)    AS entrada_acum,
-      ROUND(SUM(saida_mes)   OVER (ORDER BY mes)::numeric, 2)    AS saida_acum
+      ROUND(SUM(entrada_mes) OVER (ORDER BY mes), 2)              AS entrada_acum,
+      ROUND(SUM(saida_mes)   OVER (ORDER BY mes), 2)              AS saida_acum
     FROM serie_com_dados
   )
   SELECT jsonb_build_object(
-    'total_saidas', (
-      SELECT ROUND(COALESCE(SUM(valor), 0)::numeric, 2)
-      FROM analytics.fato_lancamento_operacao
-      WHERE tipo = 'Saída'
-        AND COALESCE(liquidacao_dt, vencimento_dt) >= v_inicio
-        AND COALESCE(liquidacao_dt, vencimento_dt) <  v_fim_exclusivo
-    ),
+    'total_saidas', ROUND(SUM(saida_mes), 2),
     'meses', COALESCE(
       jsonb_agg(
         jsonb_build_object(
