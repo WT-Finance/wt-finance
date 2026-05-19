@@ -43,3 +43,8 @@ next-env.d.ts
 # planilhas de dados (nunca commitar — contêm dados internos da empresa)
 supabase/seed/data/*
 !supabase/seed/data/.gitkeep
+# Proteção contra vazamento de instalação de plugins de agentes
+:USERPROFILE*
+.agentsskills/
+.codexsuperpowers/
+.superpowers/
