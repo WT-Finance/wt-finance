@@ -9,13 +9,14 @@ import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
 import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
 import OperacoesSection from '@/components/weddings/operacoes-section'
+import AcumuladoRecebPagChart from '@/components/weddings/acumulado-receb-pag-chart'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, TendenciaMargem,
   MixProduto, PrejuizosDetalhe, Sparklines, SumarioSubsetor,
-  CarteiraWeddings, ProximosCasamentos,
+  CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings,
 } from '@/types/api'
 
 function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
@@ -76,7 +77,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
   const [
     kpisRes, tendRes, prodRes, prejRes, sparkRes, sumarioRes,
-    cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks,
+    cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes,
   ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: setor,
@@ -93,6 +94,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_carteira_weddings', { p_metric: 'receita_bruta' }),
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
+    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18 }),
   ])
 
   const kpis      = kpisRes.error    ? null : kpisRes.data    as unknown as ExecutivaKpis
@@ -105,6 +107,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const cartFat   = cartFatRes.error ? null : cartFatRes.data as unknown as CarteiraWeddings
   const cartRb    = cartRbRes.error  ? null : cartRbRes.data  as unknown as CarteiraWeddings
   const proximos  = proximosRes.error? null : proximosRes.data as unknown as ProximosCasamentos
+  const acumulado = acumuladoRes.error ? null : acumuladoRes.data as unknown as AcumuladoWeddings
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
@@ -227,6 +230,10 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
         <Section titulo="Lista de Operações">
           <OperacoesSection />
+        </Section>
+
+        <Section titulo="Acumulado de Recebimentos e Pagamentos">
+          <AcumuladoRecebPagChart data={acumulado} />
         </Section>
 
       </TopSection>
