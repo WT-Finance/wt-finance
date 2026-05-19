@@ -27,6 +27,7 @@ export interface LinhaRaw {
   mes: string | null
   data_inicio_evento: string | null  // ADR-0027: data canônica do casamento (ISO)
   fornecedor: string | null          // ADR-0029: hotel onde o casamento ocorre
+  situacao: string | null            // ADR-0034: 'Aberta' | 'Fechada' | null
 }
 
 // Mapeamento entre os cabeçalhos do Excel e os campos internos
@@ -48,6 +49,7 @@ const COL_MAP: Record<string, keyof LinhaRaw> = {
   'Mês':             'mes',
   'Data de Início':  'data_inicio_evento',
   'Fornecedor':      'fornecedor',
+  'Situação':        'situacao',
 }
 
 function toIsoDate(value: unknown): string | null {
@@ -159,6 +161,13 @@ export function parseExcel(filePath: string): LinhaRaw[] {
         case 'semana':
           raw.semana = value !== null && value !== '' ? String(Math.round(Number(value))) : null
           break
+        case 'situacao': {
+          const s = toStr(value)
+          if (s === null) { raw.situacao = null; break }
+          const norm = s.trim()
+          raw.situacao = norm === 'Aberta' || norm === 'Fechada' ? norm : null
+          break
+        }
         default:
           ;(raw as Record<string, string | null>)[campo] = toStr(value)
       }
