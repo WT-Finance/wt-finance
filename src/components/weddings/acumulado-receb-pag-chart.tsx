@@ -100,7 +100,7 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
         <LegendItem color="#f59e0b" opacity={0.35} label="Saídas acum. (projetado)"   />
         <div className="flex items-center gap-1.5 text-xs text-zinc-500">
           <svg width="20" height="10">
-            <line x1="0" y1="5" x2="20" y2="5" stroke="#ef4444" strokeWidth="2" strokeDasharray="5 3" />
+            <line x1="0" y1="5" x2="20" y2="5" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 4" />
           </svg>
           Total previsto de custos
         </div>
