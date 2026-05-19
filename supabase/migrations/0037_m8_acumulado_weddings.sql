@@ -1,0 +1,86 @@
+-- supabase/migrations/0037_m8_acumulado_weddings.sql
+-- ---------------------------------------------------------------------------
+-- 0037 — get_acumulado_weddings
+-- Retorna série mensal acumulada de entradas e saídas Weddings.
+-- Janela padrão: 24 meses passados + 18 futuros a partir do mês atual.
+-- eh_futuro = true para mes >= date_trunc('month', CURRENT_DATE).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_acumulado_weddings(
+  p_meses_passados int DEFAULT 24,
+  p_meses_futuros  int DEFAULT 18
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_mes_atual      date := date_trunc('month', CURRENT_DATE)::date;
+  v_inicio         date;
+  v_fim_exclusivo  date;
+  v_result         jsonb;
+BEGIN
+  v_inicio        := (v_mes_atual - (p_meses_passados * interval '1 month'))::date;
+  v_fim_exclusivo := (v_mes_atual + ((p_meses_futuros + 1) * interval '1 month'))::date;
+
+  WITH meses_serie AS (
+    SELECT (v_inicio + (n * interval '1 month'))::date AS mes
+    FROM generate_series(0, p_meses_passados + p_meses_futuros) n
+  ),
+  lancamentos_agrupados AS (
+    SELECT
+      date_trunc('month', COALESCE(liquidacao_dt, vencimento_dt))::date AS mes,
+      COALESCE(SUM(CASE WHEN tipo = 'Entrada' THEN valor ELSE 0 END), 0) AS entrada_mes,
+      COALESCE(SUM(CASE WHEN tipo = 'Saída'   THEN valor ELSE 0 END), 0) AS saida_mes
+    FROM analytics.fato_lancamento_operacao
+    WHERE COALESCE(liquidacao_dt, vencimento_dt) >= v_inicio
+      AND COALESCE(liquidacao_dt, vencimento_dt) <  v_fim_exclusivo
+    GROUP BY 1
+  ),
+  serie_com_dados AS (
+    SELECT
+      m.mes,
+      COALESCE(l.entrada_mes, 0) AS entrada_mes,
+      COALESCE(l.saida_mes,   0) AS saida_mes
+    FROM meses_serie m
+    LEFT JOIN lancamentos_agrupados l ON l.mes = m.mes
+  ),
+  cumulativo AS (
+    SELECT
+      mes,
+      mes >= v_mes_atual                                          AS eh_futuro,
+      ROUND(SUM(entrada_mes) OVER (ORDER BY mes)::numeric, 2)    AS entrada_acum,
+      ROUND(SUM(saida_mes)   OVER (ORDER BY mes)::numeric, 2)    AS saida_acum
+    FROM serie_com_dados
+  )
+  SELECT jsonb_build_object(
+    'total_saidas', (
+      SELECT ROUND(COALESCE(SUM(valor), 0)::numeric, 2)
+      FROM analytics.fato_lancamento_operacao
+      WHERE tipo = 'Saída'
+        AND COALESCE(liquidacao_dt, vencimento_dt) >= v_inicio
+        AND COALESCE(liquidacao_dt, vencimento_dt) <  v_fim_exclusivo
+    ),
+    'meses', COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'mes',          to_char(mes, 'YYYY-MM-DD'),
+          'eh_futuro',    eh_futuro,
+          'entrada_acum', entrada_acum,
+          'saida_acum',   saida_acum
+        )
+        ORDER BY mes
+      ),
+      '[]'::jsonb
+    )
+  )
+  INTO v_result
+  FROM cumulativo;
+
+  RETURN v_result;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_acumulado_weddings(int, int) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.get_acumulado_weddings(int, int)
+  TO anon, authenticated, service_role;
