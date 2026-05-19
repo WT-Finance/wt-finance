@@ -471,6 +471,10 @@ export interface Database {
         Args: { p_horizonte_meses?: number }
         Returns: Json
       }
+      get_acumulado_weddings: {
+        Args: { p_meses_passados?: number; p_meses_futuros?: number }
+        Returns: Json
+      }
     }
   }
 }

@@ -359,3 +359,15 @@ export interface ProximosCasamentos {
   margem_historica_pct: number | null
   casamentos:           ProximoCasamento[]
 }
+
+export interface AcumuladoMensalWeddingsItem {
+  mes:          string   // 'YYYY-MM-DD' (primeiro dia do mês)
+  eh_futuro:    boolean
+  entrada_acum: number
+  saida_acum:   number
+}
+
+export interface AcumuladoWeddings {
+  total_saidas: number
+  meses:        AcumuladoMensalWeddingsItem[]
+}
