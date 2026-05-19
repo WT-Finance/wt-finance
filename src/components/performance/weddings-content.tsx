@@ -21,19 +21,17 @@ import type {
 
 function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <details open className="group mb-4">
-      <summary className="flex items-center gap-3 my-6 cursor-pointer list-none select-none">
-        <div className="flex-1 h-px bg-zinc-100" />
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-zinc-600 uppercase tracking-wide whitespace-nowrap transition-colors">
-          <svg
-            className="w-3 h-3 text-zinc-300 transition-transform group-open:rotate-90"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
+    <details open className="group mb-8">
+      <summary className="flex items-center gap-3 px-5 py-4 mb-6 cursor-pointer list-none select-none rounded-lg border-l-4 border-[#BD965C] bg-gradient-to-r from-[#FBF1E1] to-transparent hover:from-[#f3e3c8] transition-colors">
+        <svg
+          className="w-5 h-5 text-[#BD965C] transition-transform group-open:rotate-90 shrink-0"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        <span className="text-base font-bold text-zinc-800 tracking-wide">
           {titulo}
         </span>
-        <div className="flex-1 h-px bg-zinc-100" />
       </summary>
       {children}
     </details>
@@ -45,12 +43,12 @@ function Section({ titulo, children }: { titulo: string; children: ReactNode }) 
     <details open className="group mb-6">
       <summary className="flex items-center gap-2 cursor-pointer list-none mb-4 select-none">
         <svg
-          className="w-4 h-4 text-zinc-400 transition-transform group-open:rotate-90 shrink-0"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          className="w-4 h-4 text-[#BD965C] transition-transform group-open:rotate-90 shrink-0"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
-        <span className="text-sm font-semibold text-zinc-600">{titulo}</span>
+        <span className="text-sm font-semibold text-zinc-700">{titulo}</span>
       </summary>
       {children}
     </details>
