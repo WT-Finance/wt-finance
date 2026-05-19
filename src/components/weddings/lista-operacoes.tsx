@@ -115,7 +115,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
 
   const queryString = useMemo(() => {
     const [ordenar_por, direcao] = ordem.split(':')
-    const params = new URLSearchParams({ status, subsetor, ordenar_por, direcao, pagina: String(pagina), por_pagina: '50' })
+    const params = new URLSearchParams({ status, subsetor, ordenar_por, direcao, pagina: String(pagina), por_pagina: '10' })
     if (buscaDeb) params.set('busca', buscaDeb)
     return params.toString()
   }, [status, subsetor, buscaDeb, ordem, pagina])
