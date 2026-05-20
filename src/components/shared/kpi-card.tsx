@@ -101,25 +101,20 @@ export default function KpiCard({
     : 'text-zinc-900'
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4 h-full">
-      <div className="flex items-start justify-between">
-        <div className="relative group/tip">
-          <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide cursor-default">{rotulo}</p>
-          {formula && (
-            <div className="pointer-events-none absolute left-0 top-5 z-20 invisible group-hover/tip:visible
-                            bg-zinc-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
-              {formula}
-              {metrica.valor != null && (
-                <span className="ml-2 text-zinc-300">{fmtExato(metrica.valor, formato)}</span>
-              )}
-            </div>
-          )}
-        </div>
-        {sparklineData && sparklineData.length >= 2 && (
-          <Sparkline data={sparklineData} labels={sparklineLabels} formato={formato} />
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] h-full">
+      <div className="relative group/tip">
+        <p className="text-[11px] font-semibold text-[--text-muted] uppercase tracking-[0.5px] cursor-default">{rotulo}</p>
+        {formula && (
+          <div className="pointer-events-none absolute left-0 top-5 z-20 invisible group-hover/tip:visible
+                          bg-zinc-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+            {formula}
+            {metrica.valor != null && (
+              <span className="ml-2 text-zinc-300">{fmtExato(metrica.valor, formato)}</span>
+            )}
+          </div>
         )}
       </div>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums leading-none ${valorColor}`}>
+      <p className={`mt-2 text-3xl font-extrabold tabular-nums leading-none ${valorColor}`}>
         {fmtValor(metrica.valor, formato)}
       </p>
       {isPeriodoProporcional && (
@@ -159,7 +154,7 @@ export default function KpiCard({
 
 export function KpiCardSkeleton() {
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4 animate-pulse">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] animate-pulse">
       <div className="h-3 w-24 rounded bg-zinc-200" />
       <div className="mt-2 h-7 w-32 rounded bg-zinc-200" />
       <div className="mt-2 space-y-1">

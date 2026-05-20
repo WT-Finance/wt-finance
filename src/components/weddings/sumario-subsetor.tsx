@@ -31,7 +31,7 @@ interface Props {
 export default function SumarioSubsetorCard({ data }: Props) {
   if (!data || data.subsetores.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
+      <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
         <p className="text-xs text-zinc-500 mb-3">Distribuição de faturamento por subsetor no período</p>
         <div className="h-32 flex items-center justify-center text-sm text-zinc-400">
           Sem dados para o período selecionado.
@@ -51,9 +51,10 @@ export default function SumarioSubsetorCard({ data }: Props) {
   }))
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
+      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Composição por Subsetor</h2>
       <div className="flex items-baseline gap-2 mb-4">
-        <p className="text-xs text-zinc-500">Distribuição de faturamento por subsetor no período</p>
+        <p className="text-[13px] text-[--text-muted]">Distribuição de faturamento por subsetor no período</p>
         <span className="text-xs text-zinc-400">
           {data.total.n_vendas} vendas · {fmtMi(data.total.faturamento)}
         </span>

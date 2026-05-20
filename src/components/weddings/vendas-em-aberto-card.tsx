@@ -19,7 +19,7 @@ export default function VendasEmAbertoCard({ data }: Props) {
 
   if (!data || data.total === 0) {
     return (
-      <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
+      <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
         <p className="text-xs text-zinc-500 mb-3">Vendas com situação Aberta no cadastro</p>
         <div className="h-16 flex items-center justify-center text-sm text-zinc-400">
           Nenhuma venda em aberto.
@@ -29,16 +29,17 @@ export default function VendasEmAbertoCard({ data }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
+      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas em Aberto</h2>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-zinc-500">Vendas com situação Aberta no cadastro</p>
+        <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no cadastro</p>
         <span className="text-xs text-amber-600 font-medium">
           {data.total} {data.total === 1 ? 'venda' : 'vendas'} em aberto
         </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="w-full min-w-140 text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
@@ -56,12 +57,12 @@ export default function VendasEmAbertoCard({ data }: Props) {
                   <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                     {fmtDate(v.data_venda)}
                   </td>
-                  <td className="py-2 px-3 font-medium truncate max-w-[160px]">
+                  <td className="py-2 px-3 font-medium truncate max-w-40">
                     <span className={velha ? 'text-amber-800' : 'text-zinc-800'}>
                       {v.casal}
                     </span>
                   </td>
-                  <td className="py-2 px-3 text-zinc-500 truncate max-w-[120px] text-xs hidden sm:table-cell">
+                  <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs hidden sm:table-cell">
                     {v.produto}
                   </td>
                   <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">

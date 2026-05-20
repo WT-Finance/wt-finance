@@ -19,11 +19,12 @@ function SkeletonRow() {
 }
 
 interface Props {
-  data: PrejuizosDetalhe | null
+  data:    PrejuizosDetalhe | null
   loading: boolean
+  titulo?: string
 }
 
-export default function PrejuizosTable({ data, loading }: Props) {
+export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Prejuízo' }: Props) {
   const [verTodos, setVerTodos] = useState(false)
 
   const total = data?.total
@@ -33,9 +34,10 @@ export default function PrejuizosTable({ data, loading }: Props) {
   const totalNo = data?.total_no_periodo ?? 0
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4 min-w-0">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
+      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">{titulo}</h2>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-zinc-500">Operações com margem negativa no período</p>
+        <p className="text-[13px] text-[--text-muted]">Operações com margem negativa no período</p>
         {total && total.quantidade > 0 && (
           <span className="text-xs text-red-500 font-medium">
             {total.quantidade} {total.quantidade === 1 ? 'venda' : 'vendas'} · {fmtBRL(total.valor_prejuizo_total)} em prejuízo
