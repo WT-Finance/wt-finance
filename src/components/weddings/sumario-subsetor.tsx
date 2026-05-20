@@ -60,7 +60,7 @@ export default function SumarioSubsetorCard({ data }: Props) {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-w-0 overflow-hidden">
         {/* Gráfico horizontal */}
         <ResponsiveContainer width="100%" height={Math.max(120, classified.length * 44)}>
           <BarChart

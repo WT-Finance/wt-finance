@@ -16,7 +16,7 @@ import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, Sparklines, SumarioSubsetor,
+  MixProduto, PrejuizosDetalhe, SumarioSubsetor,
   CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
 } from '@/types/api'
 
@@ -58,7 +58,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const db = getServerClient()
 
   const [
-    kpisRes, tendRes, prodRes, prejRes, sparkRes, sumarioRes,
+    kpisRes, tendRes, prodRes, prejRes, sumarioRes,
     cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes, vendasAbertoRes,
   ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
@@ -69,7 +69,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_tendencia_margem', { p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
     db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
-    db.rpc('get_sparklines',       { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
     db.rpc('get_carteira_weddings', { p_metric: 'faturamento' }),
@@ -84,7 +83,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const tendencia     = tendRes.error         ? null : tendRes.data         as unknown as TendenciaMargem
   const produtos      = prodRes.error         ? null : prodRes.data         as unknown as MixProduto
   const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as PrejuizosDetalhe
-  const sparklines    = sparkRes.error        ? null : sparkRes.data        as unknown as Sparklines | null
   const sumario       = sumarioRes.error      ? null : sumarioRes.data      as unknown as SumarioSubsetor
   const cartCas       = cartCasRes.error      ? null : cartCasRes.data      as unknown as CarteiraWeddings
   const cartFat       = cartFatRes.error      ? null : cartFatRes.data      as unknown as CarteiraWeddings
@@ -116,7 +114,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
                   metrica={kpis.faturamento} formato="brl"
                   periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                   isPeriodoProporcional={eParcial}
-                  sparklineData={sparklines?.faturamento} sparklineLabels={sparklines?.labels}
                 />
               </KpiDrawerTrigger>
 
@@ -127,7 +124,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
                   metrica={kpis.receita} formato="brl"
                   periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                   isPeriodoProporcional={eParcial}
-                  sparklineData={sparklines?.receita} sparklineLabels={sparklines?.labels}
                 />
               </KpiDrawerTrigger>
 
@@ -144,7 +140,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
                   periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                   benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao}
                   isPeriodoProporcional={eParcial}
-                  sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels}
                 />
               </MargemDrawerTrigger>
 
@@ -154,7 +149,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
                 metrica={kpis.ticket_medio} formato="brl"
                 periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                 isPeriodoProporcional={eParcial}
-                sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels}
               />
 
               <KpiCard
@@ -163,7 +157,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
                 metrica={kpis.receita_media} formato="brl"
                 periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                 isPeriodoProporcional={eParcial}
-                sparklineData={(sparklines?.receita_media ?? []).map(v => v ?? 0)} sparklineLabels={sparklines?.labels}
               />
 
               <KpiCard
@@ -172,7 +165,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
                 metrica={kpis.vendas} formato="numero"
                 periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                 isPeriodoProporcional={eParcial}
-                sparklineData={sparklines?.vendas} sparklineLabels={sparklines?.labels}
               />
             </>
           ) : (

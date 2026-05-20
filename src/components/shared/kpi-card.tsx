@@ -1,7 +1,6 @@
 import type { KpiMetrica, PeriodoRef } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
-import Sparkline from '@/components/shared/sparkline'
 
 function fmtExato(v: number | null, formato: 'brl' | 'pct' | 'numero'): string {
   if (v == null) return '—'
@@ -80,16 +79,12 @@ interface KpiCardProps {
   benchmarkAtencao?: number
   /** Quando true, exibe aviso de período proporcional abaixo do valor. */
   isPeriodoProporcional?: boolean
-  /** Dados para sparkline (últimos N períodos). Não exibe se array vazio ou null. */
-  sparklineData?:   number[]
-  sparklineLabels?: string[]
 }
 
 export default function KpiCard({
   rotulo, metrica, formato, formula,
   periodoAtual, periodoAnterior, periodoYoY,
   benchmarkAlvo, benchmarkAtencao, isPeriodoProporcional,
-  sparklineData, sparklineLabels,
 }: KpiCardProps) {
   const anoAtual = periodoAtual ? parseInt(periodoAtual.from.split('-')[0], 10) : undefined
   const vsAlvo = benchmarkAlvo != null && metrica.valor != null
