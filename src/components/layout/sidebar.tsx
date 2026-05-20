@@ -60,27 +60,28 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                   onClick={() => setPerfOpen(o => !o)}
                   className={[
                     'w-full flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
-                    isPerformanceActive
-                      ? 'text-blue-600 font-semibold'
-                      : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
+                    isPerformanceActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
                   ].join(' ')}
-                  style={isPerformanceActive ? { background: 'var(--primary-bg)' } : undefined}
+                  style={isPerformanceActive
+                    ? { background: 'var(--brand-soft)', color: 'var(--brand)' }
+                    : undefined}
                 >
                   {isPerformanceActive && (
                     <span
                       className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
-                      style={{ background: 'var(--primary)' }}
+                      style={{ background: 'var(--brand)' }}
                     />
                   )}
-                  <Icon size={16} className={isPerformanceActive ? 'text-blue-600' : 'text-zinc-400'} />
+                  <Icon
+                    size={16}
+                    style={isPerformanceActive ? { color: 'var(--brand)' } : undefined}
+                    className={isPerformanceActive ? '' : 'text-zinc-400'}
+                  />
                   <span className="flex-1 text-left">{label}</span>
                   <ChevronRight
                     size={14}
-                    className={[
-                      'transition-transform shrink-0',
-                      isPerformanceActive ? 'text-blue-400' : 'text-zinc-300',
-                      showPerfSubs ? 'rotate-90' : '',
-                    ].join(' ')}
+                    className={['transition-transform shrink-0', showPerfSubs ? 'rotate-90' : ''].join(' ')}
+                    style={{ color: isPerformanceActive ? 'var(--brand)' : undefined }}
                   />
                 </button>
 
@@ -95,11 +96,11 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                           onClick={onNav}
                           className={[
                             'block px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                            subActive
-                              ? 'text-blue-600 font-semibold'
-                              : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100',
+                            subActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100',
                           ].join(' ')}
-                          style={subActive ? { background: 'var(--primary-bg)' } : undefined}
+                          style={subActive
+                            ? { background: 'var(--brand-soft)', color: 'var(--brand)' }
+                            : undefined}
                         >
                           {sub.label}
                         </Link>
@@ -118,19 +119,21 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
               onClick={onNav}
               className={[
                 'flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
-                active
-                  ? 'text-blue-600 font-semibold'
-                  : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
+                active ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
               ].join(' ')}
-              style={active ? { background: 'var(--primary-bg)' } : undefined}
+              style={active ? { background: 'var(--brand-soft)', color: 'var(--brand)' } : undefined}
             >
               {active && (
                 <span
                   className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
-                  style={{ background: 'var(--primary)' }}
+                  style={{ background: 'var(--brand)' }}
                 />
               )}
-              <Icon size={16} className={active ? 'text-blue-600' : 'text-zinc-400'} />
+              <Icon
+                size={16}
+                style={active ? { color: 'var(--brand)' } : undefined}
+                className={active ? '' : 'text-zinc-400'}
+              />
               {label}
             </Link>
           )
