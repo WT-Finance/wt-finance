@@ -1,5 +1,58 @@
 # Changelog — WT Finance Dashboard
 
+## v3.7 — Design System e Fluxo de Caixa Mensal (maio/2026)
+
+### v3.7-M1 — Fonte Avenir LT Std
+- Geist Sans substituída por Avenir LT Std auto-hospedada via `@font-face`
+- 5 pesos mapeados: 300 (Light), 400 (Book), 500 (Roman), 600 (Medium), 800 (Heavy)
+- Arquivos OTF em `public/fonts/`; `font-display: swap` para carregamento sem bloqueio
+- ADR-0039
+
+### v3.7-M2 — Tokens CSS semânticos
+- Criado `src/styles/tokens.css` com três camadas: global (text/surface/border), feedback (success/warning/danger) e marca por aba (`[data-theme]`)
+- `@theme inline` em `globals.css` expõe tokens como utilities Tailwind (`text-success`, `bg-warning-bg`, `border-danger`, etc.)
+- Tema Weddings: âmbar `#BD965C` · Trips: teal `#0091B3` · Corporativo: cinza `#75777B`
+- ADR-0040
+
+### v3.7-M3 — Padrão universal de cards
+- Wrapper canônico: `bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]`
+- Título padronizado: `text-base font-semibold text-[--text-primary] leading-snug`
+- Aplicado em todos os componentes da aba Weddings e Performance
+- ADR-0041
+
+### v3.7-M4 — Remoção de recolhibilidade individual de cards
+- Botões de toggle removidos de cada card individual
+- Mantido apenas o `<details open>` de nível de seção (`TopSection`)
+- ADR-0042
+
+### v3.7-M5 — Sidebar com cor dinâmica por aba
+- `ThemeProvider` (Client Component) seta `data-theme` no `<html>` conforme rota
+- Sidebar substitui `var(--primary)` por `var(--brand)` — cor muda automaticamente entre abas
+- ADR-0043
+
+### v3.7-M6 — Remoção de sparklines e fix de scroll
+- Props `sparklineData`/`sparklineLabels` removidas de `KpiCard`; RPC `get_sparklines` removida do Promise.all
+- Fix: scroll horizontal em `SumarioSubsetor` corrigido com `min-w-0 overflow-hidden` no grid
+- ADR-0044
+
+### v3.7-M7 — Cores de feedback em todo o codebase
+- `text-emerald-600` → `text-success`, `text-red-500` → `text-danger`, `text-amber-*` → `text-warning`
+- Aplicado em: `config.ts` (margemColor), KpiCard, KpiDetailDrawer, DrilldownDrawer, PrejuizosTable, MixSetorTable, VendasEmAbertoCard, ListaOperacoes, SumarioSubsetor, PrejuizosKpi, CagrCard, PontosAtencaoCard
+
+### v3.7 — Correções pós-review
+- `SumarioSubsetor`: layout side-by-side (Recharts + tabela) substituído por tabela única com coluna de barras CSS proporcionais — alinhamento perfeito, sem dependência de Recharts
+- Cabeçalhos da tabela com `whitespace-nowrap`; linha "Não Classif." sem quebra de texto
+- `pontos-atencao-card`: `bg-red-50/amber-50` → `bg-danger-bg/bg-warning-bg`; "sem alertas" → `text-success`
+- `cagr-card`: `emerald-600/red-500` → `text-success/text-danger`
+
+### v3.7 — Fluxo de Caixa Mensal
+- Novo componente `FluxoCaixaMensal` na aba Weddings (seção Visão Analítica)
+- Barras divergentes: entradas acima do eixo X, saídas abaixo; linha de resultado mensal (entrada − saída)
+- Efetivado em cor sólida, previsto em 35% opacidade (derivado de `eh_futuro`)
+- Posição: abaixo da Lista de Operações, acima do Acumulado de Recebimentos
+
+---
+
 ## v3.5 — Aba Weddings: Operações e Receita Líquida (maio/2026)
 
 ### v3.5-m1 — Fundação de dados
