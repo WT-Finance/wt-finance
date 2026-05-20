@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
 /* ── Avenir LT Std — fonte oficial Welcome Group (ADR-0039) ──────────────── */
 /* Stack: 35 Light→300  45 Book→400  55 Roman→500  65 Medium→600  85 Heavy→800 */
@@ -57,6 +58,33 @@
   --color-foreground: var(--foreground);
   --font-sans: 'Avenir LT Std', 'Avenir Next', 'Inter', Arial, sans-serif;
   --font-mono: var(--font-geist-mono);
+
+  /* Brand (muda por aba via data-theme) */
+  --color-brand:      var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-deep: var(--brand-deep);
+
+  /* Superfícies */
+  --color-surface:        var(--surface);
+  --color-surface-soft:   var(--surface-soft);
+  --color-surface-strong: var(--surface-strong);
+
+  /* Texto */
+  --color-text-primary: var(--text-primary);
+  --color-text-muted:   var(--text-muted);
+  --color-text-subtle:  var(--text-subtle);
+
+  /* Bordas */
+  --color-wt-border:        var(--border);
+  --color-wt-border-strong: var(--border-strong);
+
+  /* Feedback */
+  --color-success:    var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning:    var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger:     var(--danger);
+  --color-danger-bg:  var(--danger-bg);
 }
 
 @media (prefers-color-scheme: dark) {
