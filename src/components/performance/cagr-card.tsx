@@ -7,7 +7,7 @@ interface Props {
 
 function Pct({ v }: { v: number | null }) {
   if (v == null) return <span className="text-zinc-400">—</span>
-  const color = v >= 0 ? 'text-emerald-600' : 'text-red-500'
+  const color = v >= 0 ? 'text-success' : 'text-danger'
   return (
     <span className={`font-semibold tabular-nums ${color}`}>
       {v >= 0 ? '+' : ''}{v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%
@@ -17,8 +17,8 @@ function Pct({ v }: { v: number | null }) {
 
 export default function CagrCard({ data, loading }: Props) {
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4">
-      <h2 className="text-sm font-semibold text-zinc-700 mb-3">CAGR</h2>
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
+      <h2 className="text-base font-semibold text-[--text-primary] mb-3">CAGR</h2>
 
       {loading ? (
         <div className="space-y-2 animate-pulse">

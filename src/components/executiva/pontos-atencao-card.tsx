@@ -7,8 +7,8 @@ function AlertaItem({ ponto }: { ponto: PontoAtencao }) {
   return (
     <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border-l-2 text-sm ${
       isVermelho
-        ? 'bg-red-50 border-red-400 text-red-800'
-        : 'bg-amber-50 border-amber-400 text-amber-800'
+        ? 'bg-danger-bg border-danger text-danger'
+        : 'bg-warning-bg border-warning text-warning'
     }`}>
       <span className="shrink-0 mt-px">{isVermelho ? '▼' : '⚠'}</span>
       <p>{ponto.mensagem}</p>
@@ -24,13 +24,13 @@ export default function PontosAtencaoCard({ resultado }: Props) {
   if (resultado.estado === 'sem_dados') return null
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4 mt-6">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] mt-6">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">
         ⚠ Pontos de atenção
       </p>
 
       {resultado.estado === 'sem_alertas' ? (
-        <div className="flex items-center gap-2 text-emerald-600 text-sm">
+        <div className="flex items-center gap-2 text-success text-sm">
           <span>✓</span>
           <span>Sem pontos de atenção identificados no período.</span>
         </div>

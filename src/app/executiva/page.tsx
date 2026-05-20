@@ -137,8 +137,8 @@ export default async function ExecutivaPage({
                 periodoAnterior={kpis.periodo_anterior}
                 periodoYoY={kpis.periodo_yoy}
                 isPeriodoProporcional={eParcial}
-                sparklineData={sparklines?.faturamento}
-                sparklineLabels={sparklines?.labels}
+                
+                
               />
             </KpiDrawerTrigger>
             <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor}>
@@ -151,8 +151,8 @@ export default async function ExecutivaPage({
                 periodoAnterior={kpis.periodo_anterior}
                 periodoYoY={kpis.periodo_yoy}
                 isPeriodoProporcional={eParcial}
-                sparklineData={sparklines?.receita}
-                sparklineLabels={sparklines?.labels}
+                
+                
               />
             </KpiDrawerTrigger>
             <KpiCard
@@ -166,8 +166,8 @@ export default async function ExecutivaPage({
               benchmarkAlvo={benchmarks.margemAlvo}
               benchmarkAtencao={benchmarks.margemAtencao}
               isPeriodoProporcional={eParcial}
-              sparklineData={(sparklines?.margem_pct ?? []).map(v => v ?? 0)}
-              sparklineLabels={sparklines?.labels}
+              
+              
             />
             <KpiCard
               rotulo="Vendas"
@@ -178,8 +178,8 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
-              sparklineData={sparklines?.vendas}
-              sparklineLabels={sparklines?.labels}
+              
+              
             />
             <KpiCard
               rotulo="Ticket Médio"
@@ -190,8 +190,8 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
-              sparklineData={(sparklines?.ticket_medio ?? []).map(v => v ?? 0)}
-              sparklineLabels={sparklines?.labels}
+              
+              
             />
             <KpiCard
               rotulo="Receita/Venda"
@@ -202,8 +202,8 @@ export default async function ExecutivaPage({
               periodoAnterior={kpis.periodo_anterior}
               periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
-              sparklineData={(sparklines?.receita_media ?? []).map(v => v ?? 0)}
-              sparklineLabels={sparklines?.labels}
+              
+              
             />
           </>
         ) : (

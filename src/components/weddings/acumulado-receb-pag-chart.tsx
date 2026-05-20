@@ -21,7 +21,7 @@ interface Props {
 export default function AcumuladoRecebPagChart({ data }: Props) {
   if (!data || !data.meses.length) {
     return (
-      <div className="bg-white rounded-xl border border-zinc-200 p-4">
+      <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
         <p className="text-sm text-zinc-400 text-center py-8">
           {data ? 'Sem lançamentos no período.' : 'Dados não disponíveis.'}
         </p>
@@ -32,12 +32,10 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
   const mesHoje = data.meses.find(m => m.eh_futuro)?.mes ?? null
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 p-4">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-sm font-semibold text-zinc-700">
-          Acumulado de Recebimentos e Pagamentos
-        </h2>
-        <span className="text-xs text-zinc-400">24 meses passados + 18 futuros</span>
+        <h2 className="text-base font-semibold text-[--text-primary]">Acumulado de Recebimentos e Pagamentos</h2>
+        <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
       </div>
 
       <ResponsiveContainer width="100%" height={280}>
@@ -93,7 +91,7 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
       </ResponsiveContainer>
 
       {/* Legenda manual — mais simples e controlável que o <Legend> do Recharts */}
-      <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 ml-[72px]">
+      <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 ml-18">
         <LegendItem color="#3b82f6" opacity={1}    label="Entradas acum. (efetivado)" />
         <LegendItem color="#3b82f6" opacity={0.35} label="Entradas acum. (projetado)" />
         <LegendItem color="#f59e0b" opacity={1}    label="Saídas acum. (efetivado)"   />

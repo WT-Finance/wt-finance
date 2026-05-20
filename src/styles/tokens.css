@@ -1,0 +1,52 @@
+/* ── WT Finance Design System — Tokens semânticos (ADR-0040) ─────────────── */
+/* Estrutura: globais → feedback → por aba (data-theme)                       */
+
+:root {
+  /* Texto */
+  --text-primary: #2D2A26;
+  --text-muted:   #75777B;   /* Pantone Cool Gray 9 */
+  --text-subtle:  #ACA39A;   /* Pantone Warm Gray 5 */
+
+  /* Superfícies */
+  --surface:        #FFFFFF;
+  --surface-soft:   #F5F1EB;  /* off-white quente — base da plataforma */
+  --surface-strong: #FAF6EF;  /* hover, destaque sutil */
+
+  /* Bordas */
+  --border:        #E8E0D2;
+  --border-strong: #D4C8B4;
+
+  /* Feedback (terrosos refinados) */
+  --success:    #4F8E54;  /* verde-musgo */
+  --success-bg: #E8F0E4;
+  --warning:    #D9A23F;  /* mostarda, derivado do dourado */
+  --warning-bg: #FAEFD5;
+  --danger:     #B85C5C;  /* vermelho-terracota */
+  --danger-bg:  #F5DDDD;
+
+  /* Brand padrão: Weddings (Pantone 465 C) */
+  --brand:      #BD965C;
+  --brand-soft: #FBF1E1;
+  --brand-deep: #8F7E35;  /* Pantone 7768, oliva */
+}
+
+/* ── Tokens por aba ──────────────────────────────────────────────────────── */
+
+[data-theme="weddings"] {
+  --brand:      #BD965C;
+  --brand-soft: #FBF1E1;
+  --brand-deep: #8F7E35;
+}
+
+[data-theme="trips"] {
+  --brand:      #0091B3;  /* Pantone 632 C */
+  --brand-soft: #D9EEF5;
+  --brand-deep: #0D5257;  /* Pantone 7476 */
+}
+
+[data-theme="corporativo"],
+[data-theme="group"] {
+  --brand:      #75777B;  /* Pantone Cool Gray 9 */
+  --brand-soft: #EAE6DD;
+  --brand-deep: #4B4F54;  /* Pantone 7540 */
+}
