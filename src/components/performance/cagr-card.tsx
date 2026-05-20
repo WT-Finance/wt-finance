@@ -7,7 +7,7 @@ interface Props {
 
 function Pct({ v }: { v: number | null }) {
   if (v == null) return <span className="text-zinc-400">—</span>
-  const color = v >= 0 ? 'text-emerald-600' : 'text-red-500'
+  const color = v >= 0 ? 'text-success' : 'text-danger'
   return (
     <span className={`font-semibold tabular-nums ${color}`}>
       {v >= 0 ? '+' : ''}{v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%

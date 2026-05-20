@@ -95,62 +95,62 @@ export default function SumarioSubsetorCard({ data }: Props) {
         </ResponsiveContainer>
 
         {/* Tabela compacta */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="min-w-0 overflow-x-auto">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-zinc-100">
-                <th className="py-2 px-3 text-left   text-xs font-medium text-zinc-400">Subsetor</th>
-                <th className="py-2 px-3 text-right  text-xs font-medium text-zinc-400">Faturamento</th>
-                <th className="py-2 px-3 text-right  text-xs font-medium text-zinc-400">Receita</th>
-                <th className="py-2 px-3 text-right  text-xs font-medium text-zinc-400">Margem</th>
-                <th className="py-2 px-3 text-right  text-xs font-medium text-zinc-400">% Fat.</th>
+                <th className="py-2 px-2 text-left  font-medium text-[--text-subtle]">Subsetor</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">Faturamento</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">Receita</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">Margem</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">% Fat.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {classified.map(s => (
                 <tr key={s.subsetor} className="hover:bg-zinc-50">
-                  <td className="py-2 px-3 font-medium text-zinc-800 flex items-center gap-2">
+                  <td className="py-2 px-2 font-medium text-[--text-primary] flex items-center gap-2">
                     <span
                       className="inline-block w-2 h-2 rounded-full shrink-0"
                       style={{ background: SUBSETOR_COLORS[s.subsetor] ?? FALLBACK_COLOR }}
                     />
                     {LABELS[s.subsetor] ?? s.subsetor}
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-zinc-700">{fmtBRL(s.faturamento)}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-zinc-700">{fmtBRL(s.receita)}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(s.margem_pct)}`}>
+                  <td className="py-2 px-2 text-right tabular-nums text-[--text-muted]">{fmtBRL(s.faturamento)}</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-[--text-muted]">{fmtBRL(s.receita)}</td>
+                  <td className={`py-2 px-2 text-right tabular-nums font-medium ${margemColor(s.margem_pct)}`}>
                     {s.margem_pct.toFixed(1)}%
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-zinc-500">{s.pct_faturamento.toFixed(1)}%</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-[--text-subtle]">{s.pct_faturamento.toFixed(1)}%</td>
                 </tr>
               ))}
 
               {/* Linha de total */}
               <tr className="border-t border-zinc-200 bg-zinc-50 font-semibold">
-                <td className="py-2 px-3 text-zinc-800">Total</td>
-                <td className="py-2 px-3 text-right tabular-nums text-zinc-800">{fmtBRL(data.total.faturamento)}</td>
-                <td className="py-2 px-3 text-right tabular-nums text-zinc-800">{fmtBRL(data.total.receita)}</td>
-                <td className={`py-2 px-3 text-right tabular-nums font-semibold ${margemColor(data.total.margem_pct)}`}>
+                <td className="py-2 px-2 text-[--text-primary]">Total</td>
+                <td className="py-2 px-2 text-right tabular-nums text-[--text-primary]">{fmtBRL(data.total.faturamento)}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-[--text-primary]">{fmtBRL(data.total.receita)}</td>
+                <td className={`py-2 px-2 text-right tabular-nums font-semibold ${margemColor(data.total.margem_pct)}`}>
                   {data.total.margem_pct.toFixed(1)}%
                 </td>
-                <td className="py-2 px-3 text-right tabular-nums text-zinc-500">100%</td>
+                <td className="py-2 px-2 text-right tabular-nums text-[--text-subtle]">100%</td>
               </tr>
 
               {/* Linha NÃO_CLASSIFICADO (opcional) */}
               {nc && (
                 <tr className="bg-warning-bg border-t border-[--warning-bg]">
-                  <td className="py-2 px-3 text-warning font-medium">
+                  <td className="py-2 px-2 text-warning font-medium">
                     Não Classif.
-                    <span className="hidden sm:inline text-xs font-normal text-warning ml-1">
+                    <span className="hidden sm:inline font-normal text-warning ml-1">
                       — sem mapeamento
                     </span>
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-warning">{fmtBRL(nc.faturamento)}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-warning">{fmtBRL(nc.receita)}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(nc.margem_pct)}`}>
+                  <td className="py-2 px-2 text-right tabular-nums text-warning">{fmtBRL(nc.faturamento)}</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-warning">{fmtBRL(nc.receita)}</td>
+                  <td className={`py-2 px-2 text-right tabular-nums font-medium ${margemColor(nc.margem_pct)}`}>
                     {nc.margem_pct.toFixed(1)}%
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-warning">{nc.pct_faturamento.toFixed(1)}%</td>
+                  <td className="py-2 px-2 text-right tabular-nums text-warning">{nc.pct_faturamento.toFixed(1)}%</td>
                 </tr>
               )}
             </tbody>
