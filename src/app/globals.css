@@ -1,5 +1,48 @@
 @import "tailwindcss";
 
+/* ── Avenir LT Std — fonte oficial Welcome Group (ADR-0039) ──────────────── */
+/* Stack: 35 Light→300  45 Book→400  55 Roman→500  65 Medium→600  85 Heavy→800 */
+
+@font-face {
+  font-family: 'Avenir LT Std';
+  src: url('/fonts/avenir/Avenir LT Std 35 Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Avenir LT Std';
+  src: url('/fonts/avenir/Avenir LT Std 45 Book.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Avenir LT Std';
+  src: url('/fonts/avenir/Avenir LT Std 55 Roman.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Avenir LT Std';
+  src: url('/fonts/avenir/Avenir LT Std 65 Medium.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Avenir LT Std';
+  src: url('/fonts/avenir/Avenir LT Std 85 Heavy.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,7 +55,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: 'Avenir LT Std', 'Avenir Next', 'Inter', Arial, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -30,5 +73,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Avenir LT Std', 'Avenir Next', 'Inter', Arial, sans-serif;
 }
