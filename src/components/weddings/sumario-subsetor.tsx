@@ -99,11 +99,11 @@ export default function SumarioSubsetorCard({ data }: Props) {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-zinc-100">
-                <th className="py-2 px-2 text-left  font-medium text-[--text-subtle]">Subsetor</th>
-                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">Faturamento</th>
-                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">Receita</th>
-                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">Margem</th>
-                <th className="py-2 px-2 text-right font-medium text-[--text-subtle]">% Fat.</th>
+                <th className="py-2 px-2 text-left  font-medium text-[--text-subtle] whitespace-nowrap">Subsetor</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle] whitespace-nowrap">Faturamento</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle] whitespace-nowrap">Receita</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle] whitespace-nowrap">Margem</th>
+                <th className="py-2 px-2 text-right font-medium text-[--text-subtle] whitespace-nowrap">% Fat.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
@@ -139,11 +139,8 @@ export default function SumarioSubsetorCard({ data }: Props) {
               {/* Linha NÃO_CLASSIFICADO (opcional) */}
               {nc && (
                 <tr className="bg-warning-bg border-t border-[--warning-bg]">
-                  <td className="py-2 px-2 text-warning font-medium">
+                  <td className="py-2 px-2 text-warning font-medium whitespace-nowrap">
                     Não Classif.
-                    <span className="hidden sm:inline font-normal text-warning ml-1">
-                      — sem mapeamento
-                    </span>
                   </td>
                   <td className="py-2 px-2 text-right tabular-nums text-warning">{fmtBRL(nc.faturamento)}</td>
                   <td className="py-2 px-2 text-right tabular-nums text-warning">{fmtBRL(nc.receita)}</td>
