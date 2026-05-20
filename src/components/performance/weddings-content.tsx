@@ -208,10 +208,10 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           <OperacoesSection />
         </div>
 
-        <AcumuladoRecebPagChart data={acumulado} />
+        <FluxoCaixaMensal data={acumulado} />
 
         <div className="mt-6">
-          <FluxoCaixaMensal data={acumulado} />
+          <AcumuladoRecebPagChart data={acumulado} />
         </div>
 
       </TopSection>
