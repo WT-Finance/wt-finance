@@ -138,19 +138,19 @@ export default function SumarioSubsetorCard({ data }: Props) {
 
               {/* Linha NÃO_CLASSIFICADO (opcional) */}
               {nc && (
-                <tr className="bg-amber-50 border-t border-amber-100">
-                  <td className="py-2 px-3 text-amber-800 font-medium">
+                <tr className="bg-warning-bg border-t border-[--warning-bg]">
+                  <td className="py-2 px-3 text-warning font-medium">
                     Não Classif.
-                    <span className="hidden sm:inline text-xs font-normal text-amber-600 ml-1">
+                    <span className="hidden sm:inline text-xs font-normal text-warning ml-1">
                       — sem mapeamento
                     </span>
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-amber-700">{fmtBRL(nc.faturamento)}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-amber-700">{fmtBRL(nc.receita)}</td>
+                  <td className="py-2 px-3 text-right tabular-nums text-warning">{fmtBRL(nc.faturamento)}</td>
+                  <td className="py-2 px-3 text-right tabular-nums text-warning">{fmtBRL(nc.receita)}</td>
                   <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(nc.margem_pct)}`}>
                     {nc.margem_pct.toFixed(1)}%
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-amber-700">{nc.pct_faturamento.toFixed(1)}%</td>
+                  <td className="py-2 px-3 text-right tabular-nums text-warning">{nc.pct_faturamento.toFixed(1)}%</td>
                 </tr>
               )}
             </tbody>

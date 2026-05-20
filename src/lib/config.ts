@@ -35,8 +35,8 @@ export function margemColor(
   alvo    = MARGEM_OK,
   atencao = MARGEM_ALERTA,
 ): string {
-  if (v == null)    return 'text-zinc-400'
-  if (v >= alvo)   return 'text-emerald-600'
-  if (v >= atencao) return 'text-amber-500'
-  return 'text-red-500'
+  if (v == null)    return 'text-text-subtle'
+  if (v >= alvo)   return 'text-success'
+  if (v >= atencao) return 'text-warning'
+  return 'text-danger'
 }

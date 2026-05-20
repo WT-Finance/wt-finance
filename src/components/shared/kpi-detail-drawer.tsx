@@ -32,7 +32,7 @@ function VarCell({ pct }: { pct: number | null }) {
   if (pct == null) return <span className="text-zinc-300">—</span>
   const abs = Math.abs(pct)
   if (abs < 0.5)   return <span className="text-zinc-400">{pct.toFixed(1)}%</span>
-  const color = pct > 0 ? 'text-emerald-600' : 'text-red-500'
+  const color = pct > 0 ? 'text-success' : 'text-danger'
   const arrow = pct > 0 ? '▲' : '▼'
   const sign  = pct > 0 ? '+' : ''
   return <span className={color}>{arrow} {sign}{pct.toFixed(1)}%</span>

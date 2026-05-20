@@ -39,7 +39,7 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
       <div className="flex items-center justify-between mb-3">
         <p className="text-[13px] text-[--text-muted]">Operações com margem negativa no período</p>
         {total && total.quantidade > 0 && (
-          <span className="text-xs text-red-500 font-medium">
+          <span className="text-xs text-danger font-medium">
             {total.quantidade} {total.quantidade === 1 ? 'venda' : 'vendas'} · {fmtBRL(total.valor_prejuizo_total)} em prejuízo
           </span>
         )}
@@ -81,7 +81,7 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
                   <td className="py-2 px-3 text-right tabular-nums text-zinc-600">
                     {fmtBRL(v.valor_total)}
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums font-medium text-red-500">
+                  <td className="py-2 px-3 text-right tabular-nums font-medium text-danger">
                     {fmtBRL(v.receitas)}
                   </td>
                 </tr>

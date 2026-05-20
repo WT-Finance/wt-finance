@@ -29,7 +29,7 @@ function Variacao({
 
   const color = isNeutral
     ? 'text-zinc-400'
-    : isPos ? 'text-emerald-600' : 'text-red-500'
+    : isPos ? 'text-success' : 'text-danger'
 
   const arrow = isNeutral ? '' : isPos ? '↑' : '↓'
   const sign  = isNeutral ? '' : isPos ? '+' : ''

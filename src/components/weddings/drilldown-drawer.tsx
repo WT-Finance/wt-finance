@@ -55,7 +55,7 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
   sub2Label: string; sub2: number
   isEntrada: boolean
 }) {
-  const color = isEntrada ? 'text-emerald-600' : 'text-red-500'
+  const color = isEntrada ? 'text-success' : 'text-danger'
   return (
     <div className="mb-3">
       <div className="flex justify-between items-baseline mb-1">
@@ -296,14 +296,14 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                       <span className="text-xs font-semibold text-zinc-700">Resultado Caixa</span>
                       <span className="text-[10px] text-zinc-400 ml-1">({vf.resultado_pct.toFixed(1)}%)</span>
                     </div>
-                    <span className={`text-sm font-semibold tabular-nums ${vf.resultado_caixa >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <span className={`text-sm font-semibold tabular-nums ${vf.resultado_caixa >= 0 ? 'text-success' : 'text-danger'}`}>
                       {fmtBRL(vf.resultado_caixa)}
                     </span>
                   </div>
                   {vf.ncg > 0 && (
                     <div className="flex justify-between items-baseline mt-1.5">
                       <span className="text-xs text-zinc-500">NCG (capital de giro)</span>
-                      <span className={`text-xs tabular-nums font-medium ${vf.ncg > 50000 ? 'text-amber-600' : 'text-zinc-600'}`}>
+                      <span className={`text-xs tabular-nums font-medium ${vf.ncg > 50000 ? 'text-warning' : 'text-zinc-600'}`}>
                         {fmtBRL(vf.ncg)}
                       </span>
                     </div>
@@ -422,7 +422,7 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                           <td className="py-1.5 pr-2">
                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                               l.tipo === 'Entrada'
-                                ? 'bg-emerald-50 text-emerald-700'
+                                ? 'bg-success-bg text-success'
                                 : 'bg-orange-50 text-orange-700'
                             }`}>
                               {l.tipo}
@@ -432,7 +432,7 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                             {l.descricao ?? '—'}
                           </td>
                           <td className={`py-1.5 text-right tabular-nums font-medium ${
-                            l.tipo === 'Entrada' ? 'text-emerald-600' : 'text-orange-600'
+                            l.tipo === 'Entrada' ? 'text-success' : 'text-orange-600'
                           }`}>
                             {fmtBRL(l.valor)}
                           </td>

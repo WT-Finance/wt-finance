@@ -22,7 +22,7 @@ export default function PrejuizosKpi({ data, loading }: Props) {
         <p className="mt-2 text-sm text-zinc-400">Nenhuma no período.</p>
       ) : (
         <>
-          <p className="mt-1 text-2xl font-semibold text-red-500 tabular-nums leading-none">
+          <p className="mt-1 text-2xl font-semibold text-danger tabular-nums leading-none">
             {data.quantidade}
           </p>
           <p className="mt-1 text-xs text-zinc-500">

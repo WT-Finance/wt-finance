@@ -8,8 +8,8 @@ import { margemColor } from '@/lib/config'
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const FLAG_CONFIG: Record<OperacaoFlag, { label: string; cls: string }> = {
-  margem_negativa: { label: 'Margem −', cls: 'bg-red-50 text-red-600 border-red-200' },
-  ncg_alto:        { label: 'NCG alto', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  margem_negativa: { label: 'Margem −', cls: 'bg-danger-bg text-danger border-[--danger-bg]' },
+  ncg_alto:        { label: 'NCG alto', cls: 'bg-warning-bg text-warning border-[--warning-bg]' },
   outlier:         { label: 'Outlier',  cls: 'bg-purple-50 text-purple-600 border-purple-200' },
 }
 
@@ -239,7 +239,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     onClick={() => onSelectOperacao?.(op.operacao)}
                     className={[
                       'transition-colors',
-                      rlNegativa ? 'bg-red-50/40 hover:bg-red-50/70' : 'hover:bg-zinc-50',
+                      rlNegativa ? 'bg-danger-bg/40 hover:bg-danger-bg/70' : 'hover:bg-zinc-50',
                       onSelectOperacao ? 'cursor-pointer' : '',
                     ].join(' ')}
                   >
@@ -270,7 +270,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-500 whitespace-nowrap">
                       {op.custos_internos > 0 ? fmtBRL(op.custos_internos) : <span className="text-zinc-300">—</span>}
                     </td>
-                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${rlNegativa ? 'text-red-600' : 'text-zinc-700'}`}>
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${rlNegativa ? 'text-danger' : 'text-zinc-700'}`}>
                       {fmtBRL(op.resultado_caixa)}
                     </td>
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>

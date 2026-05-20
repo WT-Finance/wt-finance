@@ -13,7 +13,7 @@ function fmtPP(v: number | null) {
 
 function ppColor(v: number | null) {
   if (v == null || Math.abs(v) < 0.5) return 'text-zinc-400'
-  return v > 0 ? 'text-emerald-600' : 'text-red-500'
+  return v > 0 ? 'text-success' : 'text-danger'
 }
 
 function SkeletonRow({ cols }: { cols: number }) {

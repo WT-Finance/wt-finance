@@ -33,7 +33,7 @@ export default function VendasEmAbertoCard({ data }: Props) {
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas em Aberto</h2>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no cadastro</p>
-        <span className="text-xs text-amber-600 font-medium">
+        <span className="text-xs text-warning font-medium">
           {data.total} {data.total === 1 ? 'venda' : 'vendas'} em aberto
         </span>
       </div>
@@ -53,12 +53,12 @@ export default function VendasEmAbertoCard({ data }: Props) {
             {visiveis.map((v, i) => {
               const velha = v.idade_dias > 30
               return (
-                <tr key={i} className={velha ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-zinc-50'}>
+                <tr key={i} className={velha ? 'bg-warning-bg hover:bg-warning-bg/80' : 'hover:bg-zinc-50'}>
                   <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                     {fmtDate(v.data_venda)}
                   </td>
                   <td className="py-2 px-3 font-medium truncate max-w-40">
-                    <span className={velha ? 'text-amber-800' : 'text-zinc-800'}>
+                    <span className={velha ? 'text-warning' : 'text-zinc-800'}>
                       {v.casal}
                     </span>
                   </td>
@@ -68,7 +68,7 @@ export default function VendasEmAbertoCard({ data }: Props) {
                   <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
                     {fmtBRL(v.valor_total)}
                   </td>
-                  <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-amber-700' : 'text-zinc-400'}`}>
+                  <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
                     {v.idade_dias}d
                     {velha && (
                       <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>
