@@ -10,6 +10,7 @@ import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
 import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
 import OperacoesSection from '@/components/weddings/operacoes-section'
 import AcumuladoRecebPagChart from '@/components/weddings/acumulado-receb-pag-chart'
+import FluxoCaixaMensal from '@/components/weddings/fluxo-caixa-mensal'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
@@ -208,6 +209,10 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
         </div>
 
         <AcumuladoRecebPagChart data={acumulado} />
+
+        <div className="mt-6">
+          <FluxoCaixaMensal data={acumulado} />
+        </div>
 
       </TopSection>
     </div>
