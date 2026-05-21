@@ -91,9 +91,10 @@ export default function KpiCard({
     ? metrica.valor - benchmarkAlvo
     : null
 
-  const valorColor = benchmarkAlvo != null
+  const valorColorClass = benchmarkAlvo != null
     ? margemColor(metrica.valor, benchmarkAlvo, benchmarkAtencao)
-    : 'text-zinc-900'
+    : ''
+  const valorColorStyle = benchmarkAlvo == null ? 'var(--brand)' : undefined
 
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] h-full flex flex-col">
@@ -115,8 +116,8 @@ export default function KpiCard({
       {/* Main value */}
       <div className="min-h-16 flex items-center">
         <p
-          className={`font-extrabold tabular-nums leading-none whitespace-nowrap ${valorColor}`}
-          style={{ fontSize: 'clamp(16px, 1.8vw, 26px)' }}
+          className={`font-extrabold tabular-nums leading-none whitespace-nowrap ${valorColorClass}`}
+          style={{ fontSize: 'clamp(16px, 1.8vw, 26px)', color: valorColorStyle }}
         >
           {fmtValor(metrica.valor, formato)}
         </p>
