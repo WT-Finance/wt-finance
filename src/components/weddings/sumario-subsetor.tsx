@@ -21,10 +21,11 @@ const SUBSETOR_COLORS: Record<string, string> = {
 const FALLBACK_COLOR = '#BA7517'
 
 interface Props {
-  data: SumarioSubsetor | null
+  data:          SumarioSubsetor | null
+  periodoLabel?: string
 }
 
-export default function SumarioSubsetorCard({ data }: Props) {
+export default function SumarioSubsetorCard({ data, periodoLabel }: Props) {
   if (!data || data.subsetores.length === 0) {
     return (
       <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
@@ -41,7 +42,10 @@ export default function SumarioSubsetorCard({ data }: Props) {
 
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
-      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Composição por Subsetor</h2>
+      <div className="flex items-baseline gap-2 mb-3">
+        <h2 className="text-base font-semibold text-[--text-primary] leading-snug">Composição por Subsetor</h2>
+        {periodoLabel && <span className="text-xs text-[--text-muted]">{periodoLabel}</span>}
+      </div>
       <div className="flex items-baseline gap-2 mb-4">
         <p className="text-[13px] text-[--text-muted]">Distribuição de faturamento por subsetor no período</p>
         <span className="text-xs text-[--text-subtle]">

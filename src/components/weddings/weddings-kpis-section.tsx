@@ -38,7 +38,6 @@ export default function WeddingsKpisSection({ benchmarks }: Props) {
 
   return (
     <div>
-      <p className="text-[13px] mb-3" style={{ color: 'var(--text-muted)' }}>no período selecionado</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
         {loading || !kpis ? (
           Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)

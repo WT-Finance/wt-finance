@@ -18,13 +18,6 @@ const fmtShort = (d: Date) => format(d, 'dd/MM/yy')
 const toISO    = (d: Date) => format(d, 'yyyy-MM-dd')
 const TODAY    = toISO(new Date())
 
-function pillLabel(tipo: PresetPeriodo, customizado: PeriodoCustomizado | null): string {
-  if (tipo === 'personalizado' && customizado) {
-    return `Personalizado: ${fmtShort(customizado.inicio)} — ${fmtShort(customizado.fim)}`
-  }
-  return PILLS.find(p => p.value === tipo)?.label ?? tipo
-}
-
 export default function PeriodoFilter() {
   const { periodoTipo, periodoCustomizado, setPeriodo } = usePeriodoFilter()
 
@@ -117,8 +110,8 @@ export default function PeriodoFilter() {
               color:       'var(--brand-deep)',
             } : undefined}
           >
-            {pill.value === 'personalizado'
-              ? pillLabel(periodoTipo, periodoCustomizado)
+            {pill.value === 'personalizado' && periodoTipo === 'personalizado' && periodoCustomizado
+              ? `Personalizado: ${fmtShort(periodoCustomizado.inicio)} — ${fmtShort(periodoCustomizado.fim)}`
               : pill.label}
           </button>
         )

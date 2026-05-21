@@ -22,10 +22,5 @@ export default function WeddingsMixSection() {
     return () => { cancelled = true }
   }, [from, to])
 
-  return (
-    <div>
-      <p className="text-[13px] mb-1" style={{ color: 'var(--text-muted)' }}>no período selecionado</p>
-      <MixProdutoTable data={data} loading={loading} />
-    </div>
-  )
+  return <MixProdutoTable data={data} loading={loading} periodoLabel="no período selecionado" />
 }

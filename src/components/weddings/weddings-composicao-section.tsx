@@ -22,14 +22,8 @@ export default function WeddingsComposicaoSection() {
     return () => { cancelled = true }
   }, [from, to])
 
-  return (
-    <div>
-      <p className="text-[13px] mb-1" style={{ color: 'var(--text-muted)' }}>no período selecionado</p>
-      {loading ? (
-        <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 h-32 animate-pulse" />
-      ) : (
-        <SumarioSubsetorCard data={data} />
-      )}
-    </div>
-  )
+  if (loading) {
+    return <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 h-32 animate-pulse" />
+  }
+  return <SumarioSubsetorCard data={data} periodoLabel="no período selecionado" />
 }
