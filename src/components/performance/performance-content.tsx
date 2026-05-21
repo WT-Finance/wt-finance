@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from 'react'
+import { Suspense } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
@@ -8,30 +8,14 @@ import CagrCard from '@/components/performance/cagr-card'
 import TendenciaMargemChart from '@/components/performance/tendencia-margem-chart'
 import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
+import TopSection from '@/components/shared/top-section'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, CagrData, Sparklines,
+  MixProduto, PrejuizosDetalhe, CagrData,
 } from '@/types/api'
-
-function Section({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <details open className="group mb-6">
-      <summary className="flex items-center gap-2 cursor-pointer list-none mb-4 select-none">
-        <svg
-          className="w-4 h-4 text-zinc-400 transition-transform group-open:rotate-90 shrink-0"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-sm font-semibold text-zinc-600">{titulo}</span>
-      </summary>
-      {children}
-    </details>
-  )
-}
 
 interface PeriodoSearchParams {
   preset?: string
@@ -51,7 +35,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
 
   const db = getServerClient()
 
-  const [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, sparkRes, benchmarks] = await Promise.all([
+  const [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, benchmarks] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from:     from,
       p_to:       to,
@@ -66,7 +50,6 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
     db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
     db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
     db.rpc('get_cagr'),
-    db.rpc('get_sparklines',       { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     getBenchmarks(db),
   ])
 
@@ -76,7 +59,6 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   const produtos   = prodRes.error  ? null : prodRes.data  as unknown as MixProduto
   const prejuizos  = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosDetalhe
   const cagr       = cagrRes.error  ? null : cagrRes.data  as unknown as CagrData
-  const sparklines = sparkRes.error ? null : sparkRes.data as unknown as Sparklines | null
 
   const mostrarSetorFilter = setor === 'todos'
 
@@ -95,27 +77,29 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-        {kpis ? (
-          <>
-            <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor}>
-              <KpiCard rotulo="Faturamento" formula="Soma do valor total das vendas" metrica={kpis.faturamento} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-            </KpiDrawerTrigger>
-            <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor}>
-              <KpiCard rotulo="Receita" formula="Faturamento − custos e reembolsos" metrica={kpis.receita} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-            </KpiDrawerTrigger>
-            <KpiCard rotulo="Margem %"      formula="Receita ÷ Faturamento × 100"      metrica={kpis.margem_pct}    formato="pct"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} />
-            <KpiCard rotulo="Vendas"        formula="Contagem de vendas no período"     metrica={kpis.vendas}        formato="numero" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial}                                    />
-            <KpiCard rotulo="Ticket Médio"  formula="Faturamento ÷ Vendas"             metrica={kpis.ticket_medio}  formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial}   />
-            <KpiCard rotulo="Receita/Venda" formula="Receita ÷ Vendas"                 metrica={kpis.receita_media} formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-          </>
-        ) : (
-          Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
-        )}
-      </div>
+      <TopSection titulo="Visão Geral">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+          {kpis ? (
+            <>
+              <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor}>
+                <KpiCard rotulo="Faturamento" formula="Soma do valor total das vendas" metrica={kpis.faturamento} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
+              </KpiDrawerTrigger>
+              <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor}>
+                <KpiCard rotulo="Receita" formula="Faturamento − custos e reembolsos" metrica={kpis.receita} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
+              </KpiDrawerTrigger>
+              <KpiCard rotulo="Margem %"      formula="Receita ÷ Faturamento × 100"      metrica={kpis.margem_pct}    formato="pct"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} />
+              <KpiCard rotulo="Vendas"        formula="Contagem de vendas no período"     metrica={kpis.vendas}        formato="numero" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial}                                    />
+              <KpiCard rotulo="Ticket Médio"  formula="Faturamento ÷ Vendas"             metrica={kpis.ticket_medio}  formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial}   />
+              <KpiCard rotulo="Receita/Venda" formula="Receita ÷ Vendas"                 metrica={kpis.receita_media} formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
+            </>
+          ) : (
+            Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
+          )}
+        </div>
+      </TopSection>
 
       {/* Mix Setor + CAGR */}
-      <Section titulo="Mix por Setor">
+      <TopSection titulo="Mix por Setor">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2">
             <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
@@ -124,25 +108,25 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
             <CagrCard data={cagr} loading={false} />
           </div>
         </div>
-      </Section>
+      </TopSection>
 
       {/* Tendência de margem */}
-      <Section titulo="Tendência de Margem">
+      <TopSection titulo="Tendência de Margem">
         <TendenciaMargemChart
           data={tendencia}
           loading={false}
           margemOk={benchmarks.margemAlvo}
           margemAlerta={benchmarks.margemAtencao}
         />
-      </Section>
+      </TopSection>
 
       {/* Mix Produto + Prejuízos */}
-      <Section titulo="Mix de Produtos e Prejuízos">
+      <TopSection titulo="Mix de Produtos e Prejuízos">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <MixProdutoTable data={produtos}  loading={false} />
           <PrejuizosTable  data={prejuizos} loading={false} />
         </div>
-      </Section>
+      </TopSection>
     </div>
   )
 }
