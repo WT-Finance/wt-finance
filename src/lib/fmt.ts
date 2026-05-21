@@ -16,3 +16,11 @@ export const fmtDate = (s: string) => {
   const [y, m, d] = s.split('-')
   return `${d}/${m}/${y}`
 }
+
+const MESES_COMPACTOS = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+
+/** Converte 'yyyy-MM-dd' para 'DD mês AAAA' (ex: 21 mai 2026). */
+export const fmtDateCompact = (s: string): string => {
+  const [y, m, d] = s.split('-')
+  return `${parseInt(d, 10)} ${MESES_COMPACTOS[parseInt(m, 10) - 1]} ${y}`
+}
