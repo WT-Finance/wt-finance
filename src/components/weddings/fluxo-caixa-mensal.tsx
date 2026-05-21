@@ -60,7 +60,7 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart
           data={monthly}
-          margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+          margin={{ top: 8, right: 80, left: 0, bottom: 0 }}
           barCategoryGap="25%"
           barGap={0}
         >
