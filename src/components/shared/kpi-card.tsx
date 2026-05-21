@@ -79,12 +79,15 @@ interface KpiCardProps {
   benchmarkAtencao?: number
   /** Quando true, exibe aviso de período proporcional abaixo do valor. */
   isPeriodoProporcional?: boolean
+  /** Quando true, aplica var(--brand) no valor principal (use apenas em Weddings). */
+  useBrandColor?: boolean
 }
 
 export default function KpiCard({
   rotulo, metrica, formato, formula,
   periodoAtual, periodoAnterior, periodoYoY,
   benchmarkAlvo, benchmarkAtencao, isPeriodoProporcional,
+  useBrandColor,
 }: KpiCardProps) {
   const anoAtual = periodoAtual ? parseInt(periodoAtual.from.split('-')[0], 10) : undefined
   const vsAlvo = benchmarkAlvo != null && metrica.valor != null
@@ -94,7 +97,7 @@ export default function KpiCard({
   const valorColorClass = benchmarkAlvo != null
     ? margemColor(metrica.valor, benchmarkAlvo, benchmarkAtencao)
     : ''
-  const valorColorStyle = benchmarkAlvo == null ? 'var(--brand)' : undefined
+  const valorColorStyle = (useBrandColor && benchmarkAlvo == null) ? 'var(--brand)' : undefined
 
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] h-full flex flex-col">
