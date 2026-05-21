@@ -33,21 +33,21 @@ export default function VendasEmAbertoCard({ data }: Props) {
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 flex flex-col">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas em Aberto</h2>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no cadastro</p>
+        <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no sistema</p>
         <span className="text-xs text-warning font-medium">
           {data.total} {data.total === 1 ? 'venda' : 'vendas'} em aberto
         </span>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-x-auto">
-        <table className="w-full min-w-140 text-sm">
+      <div className="flex-1 min-h-0">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
+              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 whitespace-nowrap">Data da Venda</th>
               <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400">Venda Nº</th>
               <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 hidden sm:table-cell">Vendedor</th>
               <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Idade</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Tempo</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
@@ -108,7 +108,7 @@ export default function VendasEmAbertoCard({ data }: Props) {
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Venda Nº</th>
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Vendedor</th>
                 <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Idade</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Tempo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">

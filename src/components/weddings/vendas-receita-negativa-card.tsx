@@ -21,7 +21,7 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
   if (!data || data.total === 0) {
     return (
       <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
-        <p className="text-xs text-zinc-500 mb-3">Vendas Weddings com receita bruta negativa no período</p>
+        <p className="text-xs text-zinc-500 mb-3">Vendas com receita bruta negativa</p>
         <div className="h-16 flex items-center justify-center text-sm text-zinc-400">
           Nenhuma venda com receita negativa.
         </div>
@@ -29,7 +29,7 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
     )
   }
 
-  const subtitulo = 'Vendas Weddings com receita bruta negativa no período'
+  const subtitulo = 'Vendas com receita bruta negativa'
 
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 flex flex-col">
@@ -41,8 +41,8 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
         </span>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-x-auto">
-        <table className="w-full min-w-140 text-sm">
+      <div className="flex-1 min-h-0">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 whitespace-nowrap">Data da Venda</th>
