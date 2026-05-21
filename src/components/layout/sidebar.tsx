@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -41,8 +41,27 @@ function WelcomeGroupLogo() {
 
 function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
-  const [perfOpen, setPerfOpen] = useState(isPerformanceActive)
-  const showPerfSubs = isPerformanceActive || perfOpen
+  const [perfOpen, setPerfOpen] = useState(true)
+
+  // Hydrate from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem('sidebar-perf-open')
+    if (stored !== null) setPerfOpen(stored === 'true')
+  }, [])
+
+  const handlePerfToggle = () => {
+    setPerfOpen(prev => {
+      const next = !prev
+      localStorage.setItem('sidebar-perf-open', String(next))
+      return next
+    })
+  }
+
+  const visibleSubs = perfOpen
+    ? PERFORMANCE_SUBS
+    : isPerformanceActive
+    ? PERFORMANCE_SUBS.filter(s => pathname === s.href || pathname.startsWith(`${s.href}/`))
+    : []
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
@@ -70,7 +89,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
             return (
               <div key={href}>
                 <button
-                  onClick={() => setPerfOpen(o => !o)}
+                  onClick={handlePerfToggle}
                   className={[
                     'w-full flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
                     isPerformanceActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
@@ -93,15 +112,15 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                   <span className="flex-1 text-left">{label}</span>
                   <ChevronRight
                     size={14}
-                    className={['transition-transform shrink-0', showPerfSubs ? 'rotate-90' : ''].join(' ')}
+                    className={['transition-transform shrink-0', perfOpen ? 'rotate-90' : ''].join(' ')}
                     style={{ color: isPerformanceActive ? 'var(--brand)' : undefined }}
                   />
                 </button>
 
-                {showPerfSubs && (
+                {visibleSubs.length > 0 && (
                   <div className="mt-0.5 ml-4 pl-3 border-l border-zinc-200 space-y-0.5">
-                    {PERFORMANCE_SUBS.map(sub => {
-                      const subActive = pathname === sub.href
+                    {visibleSubs.map(sub => {
+                      const subActive = pathname === sub.href || pathname.startsWith(`${sub.href}/`)
                       return (
                         <Link
                           key={sub.href}
