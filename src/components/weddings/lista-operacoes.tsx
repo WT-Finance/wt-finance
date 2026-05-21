@@ -178,11 +178,15 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
             <button
               key={pill.v}
               onClick={() => { setStatus(pill.v); setPagina(1) }}
-              className={
-                isActive
-                  ? 'px-3 py-1 rounded-full text-xs border bg-[--brand-soft] border-[--brand] text-[--brand-deep] font-medium'
-                  : 'px-3 py-1 rounded-full text-xs border border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 transition-colors'
-              }
+              className={[
+                'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                isActive ? '' : 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50',
+              ].join(' ')}
+              style={isActive ? {
+                background:   'var(--brand-soft)',
+                borderColor:  'var(--brand)',
+                color:        'var(--brand-deep)',
+              } : undefined}
             >
               {pill.l}
             </button>
