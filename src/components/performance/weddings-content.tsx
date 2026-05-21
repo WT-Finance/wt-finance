@@ -1,5 +1,6 @@
-import { Suspense, type ReactNode } from 'react'
+import { Suspense } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
+import TopSection from '@/components/shared/top-section'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
 import MargemDrawerTrigger from '@/components/weddings/margem-drawer-trigger'
@@ -20,25 +21,6 @@ import type {
   MixProduto, PrejuizosDetalhe, SumarioSubsetor,
   CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
 } from '@/types/api'
-
-function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <details open className="group mb-8">
-      <summary className="flex items-center gap-3 px-5 py-4 mb-6 cursor-pointer list-none select-none rounded-lg border-l-4 border-[--brand] bg-gradient-to-r from-[--brand-soft] to-transparent hover:opacity-90 transition-opacity">
-        <svg
-          className="w-5 h-5 text-[--brand] transition-transform group-open:rotate-90 shrink-0"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-base font-bold text-[--text-primary] uppercase tracking-wide">
-          {titulo}
-        </span>
-      </summary>
-      {children}
-    </details>
-  )
-}
 
 interface PeriodoSearchParams {
   preset?: string
