@@ -50,6 +50,7 @@ export default function WeddingsKpisSection({ benchmarks }: Props) {
                 metrica={kpis.faturamento} formato="brl"
                 periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                 isPeriodoProporcional={eParcial}
+                useBrandColor
               />
             </KpiDrawerTrigger>
 
@@ -60,6 +61,7 @@ export default function WeddingsKpisSection({ benchmarks }: Props) {
                 metrica={kpis.receita} formato="brl"
                 periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
                 isPeriodoProporcional={eParcial}
+                useBrandColor
               />
             </KpiDrawerTrigger>
 
@@ -85,6 +87,7 @@ export default function WeddingsKpisSection({ benchmarks }: Props) {
               metrica={kpis.ticket_medio} formato="brl"
               periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
+              useBrandColor
             />
 
             <KpiCard
@@ -93,6 +96,7 @@ export default function WeddingsKpisSection({ benchmarks }: Props) {
               metrica={kpis.receita_media} formato="brl"
               periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
+              useBrandColor
             />
 
             <KpiCard
@@ -101,6 +105,7 @@ export default function WeddingsKpisSection({ benchmarks }: Props) {
               metrica={kpis.vendas} formato="numero"
               periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
               isPeriodoProporcional={eParcial}
+              useBrandColor
             />
           </>
         )}
