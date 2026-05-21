@@ -1,144 +1,256 @@
 # WT Finance — Out-Briefing v3.8
 
-**Data:** 2026-05-20  
+**Data:** 2026-05-21  
 **Branch:** `feat/v3-8` (base: `feat/v3-7-design-system`)  
-**Commits:** 13 missões + documentação
+**Commits:** 23 (13 missões + 8 correções pós-review + docs)  
+**TypeScript:** limpo (`npx tsc --noEmit --skipLibCheck`)  
+**Migrations aplicadas:** 0039, 0040
 
 ---
 
-## O que foi entregue
+## Missões implementadas
 
-### Refinamento visual (M1–M9)
+### M1 — Cor Corporativo #4B4F54 + logo sidebar (ADR-0047)
 
-**M1 — Cor Corporativo + logo sidebar**  
-A aba Corporativo ganhou identidade visual própria: `#4B4F54` (Pantone 7540), separada do cinza institucional `#75777B` que permanece nas páginas neutras. A sidebar agora tem área reservada para o logo do Welcome Group — SVG oficial pendente de entrega por Yan.
+`[data-theme="corporativo"]` foi separado de `[data-theme="group"]`. Corporativo agora usa `#4B4F54` (Pantone 7540), enquanto as páginas neutras (home, executiva) mantêm `#75777B` (Pantone Cool Gray 9). A sidebar ganhou espaço reservado com placeholder de texto para o logo Welcome Group — SVG oficial a ser inserido quando disponível.
 
-**M2 — Cabeçalhos de seção Opção B** (ADR-0048)  
-Componente `TopSection` extraído para uso compartilhado. Estilo definitivo: fundo `--brand-soft`, borda esquerda colorida, texto Heavy uppercase — identificação visual imediata do contexto de seção.
-
-**M3 — Sidebar Performance persistente** (ADR-0049)  
-Estado aberto/fechado do sub-menu de Performance salvo em `localStorage`. O usuário não precisa mais reabrir o menu a cada navegação.
-
-**M4 — Tooltips Recharts no design system**  
-Novo `CustomTooltip` compartilhado: usa tokens do design system (`var(--surface)`, `var(--border)`, fonte Avenir). Substituído em todos os gráficos da aba Weddings — visual consistente em vez do tooltip padrão do Recharts.
-
-**M5 — KPI cards: fonte responsiva e alturas fixas** (ADR-0050)  
-`clamp(20px, 2.5vw, 32px)` no valor principal — sem overflow em grids compactos. Zonas de altura fixa eliminam layout shift ao trocar filtros de período.
-
-**M6 — Próximos Casamentos: layout limpo**  
-De 7 para 3 colunas: Data do Evento, Casal, Hotel. Colunas financeiras removidas (redundantes com outros cards). Data no formato "12 out 2027". Drawer "Ver mais" para a lista completa dos 18 meses.
-
-**M7 — Mix por Produto: sem scroll horizontal**  
-Headers `whitespace-nowrap`, tabela sem `overflow-x-auto`. A tabela agora cabe confortavelmente no card sem scroll.
-
-**M8 — Drawer "Ver mais" padrão** (ADR-0051)  
-Componente `ListDrawer` compartilhado. Botão "Ver mais" substitui "Ver todos (N)" em todas as listas compactas. Padrão: 5 itens inline + restante no drawer. Zero layout shift.
-
-**M9 — Performance com TopSection**  
-`performance-content.tsx` migrado para `TopSection` — paridade visual com a aba Weddings. Removido código morto da chamada `get_sparklines` (deixada acidentalmente no v3.7-M6).
+**Arquivo:** `src/styles/tokens.css`, `src/components/layout/sidebar.tsx`
 
 ---
 
-### Gráficos com filtro por Operação (M10)
+### M2 — Cabeçalhos de seção Opção B (ADR-0048)
 
-Novo `DropdownOperacao` acima dos gráficos da seção "Visão Analítica por Operação" — permite filtrar Fluxo de Caixa Mensal e Acumulado de Recebimentos/Pagamentos por casamento específico.
+Componente `TopSection` extraído para `src/components/shared/top-section.tsx`. Estilo definitivo: fundo `--brand-soft`, borda esquerda `--brand` com pontas arredondadas (`rounded-full` em elemento absoluto), texto Heavy uppercase `--brand-deep`, chevron rotacionado 90° quando aberto. Cor muda automaticamente conforme o setor ativo.
 
-Paleta harmonizada: entradas em `#0091B3` (teal), saídas em `#D9A23F` (âmbar), resultado em `#2D2A26`. Ponto vermelho no gráfico de linha quando resultado mensal é negativo.
-
-O filtro usa URL state (`?operacao=...`) — compartilhável e preservado na navegação.
+**Arquivo:** `src/components/shared/top-section.tsx`
 
 ---
 
-### Dados por Venda Nº (M11)
+### M3 — Sidebar Performance persistente (ADR-0049)
 
-View `analytics.vw_vendas_agregadas` elimina dupla contagem nas análises. Uma venda com múltiplos produtos agora aparece como uma linha, não duas.
+Estado aberto/fechado do sub-menu de Performance salvo em `localStorage` com a chave `sidebar-perf-open`. Inicializado `true` por padrão; valor lido via `useEffect` após hidratação para evitar mismatch SSR.
 
-Política de situação: Aberta se qualquer produto estiver em aberto; Fechada apenas se todos estiverem fechados. (ADR-0045)
-
----
-
-### Vendas com Receita Negativa (M12)
-
-Card dedicado para Weddings, usando a view de agregação por Venda Nº. Terminologia corrigida: "Receita Negativa" em vez de "Prejuízo" — semanticamente preciso para o contexto de agenciamento turístico. (ADR-0046)
-
-O `PrejuizosTable` genérico permanece na aba Performance (análise cross-setor por produto/vendedor).
+**Arquivo:** `src/components/layout/sidebar.tsx`
 
 ---
 
-### Lista de Operações reformulada (M13)
+### M4 — Tooltips Recharts no design system
 
-Simplificação drástica dos controles de filtro:
+Criado `src/components/charts/custom-tooltip.tsx` (Client Component). Usa tokens CSS: `var(--surface)`, `var(--border)`, sombra `0 4px 12px rgba(45,42,38,0.08)`, fonte Avenir. Props `labelFormatter` e `formatter` permitem formatação por gráfico. Substituído o tooltip padrão do Recharts em todos os gráficos da aba Weddings.
+
+**Arquivo:** `src/components/charts/custom-tooltip.tsx`
+
+---
+
+### M5 — KPI cards: fonte responsiva e alturas fixas (ADR-0050)
+
+Valor principal: `font-size: clamp(20px, 2.5vw, 32px)` — sem overflow em grids compactos de 6 colunas. Zonas de altura fixa eliminam layout shift ao trocar filtros de período: label `h-5`, valor `min-h-16`, nota proporcional `h-4`, comparações `min-h-12`.
+
+**Arquivo:** `src/components/shared/kpi-card.tsx`
+
+---
+
+### M6 — Próximos Casamentos: 3 colunas + data compacta
+
+Removidas colunas financeiras e filtro de horizonte. Mantidas apenas 3 colunas: Data do Evento, Casal, Hotel. Datas formatadas como "12 out 2027" via `fmtDateCompact`. "Ver mais" abre `ListDrawer` com os 18 meses completos. Limite inline: 6 casamentos.
+
+**Arquivo:** `src/components/weddings/proximos-casamentos-card.tsx`, `src/lib/fmt.ts`
+
+---
+
+### M7 — Mix por Produto: sem scroll horizontal
+
+Headers com `whitespace-nowrap`, removidos `min-w-105` e `overflow-x-auto`. Tabela cabe no card sem scroll. `"% Total"` → `"%"`.
+
+**Arquivo:** `src/components/performance/mix-produto-table.tsx`
+
+---
+
+### M8 — Drawer "Ver mais" padrão (ADR-0051)
+
+Criado `src/components/shared/list-drawer.tsx`. Botão "Ver mais" (sem contagem) com footer sempre na base do card (`flex flex-col` + `flex-1` no conteúdo + div-espaçador quando não há "Ver mais"). Aplicado em: Próximos Casamentos, Mix por Produto, Vendas em Aberto, Vendas com Receita Negativa e Vendas com Prejuízo (Performance).
+
+**Arquivo:** `src/components/shared/list-drawer.tsx` + 5 cards
+
+---
+
+### M9 — Design system na aba Performance
+
+`performance-content.tsx` migrado para `TopSection` Opção B — paridade visual com a aba Weddings. Removido código morto: chamada a `get_sparklines` deixada acidentalmente no Promise.all desde v3.7-M6.
+
+**Arquivo:** `src/components/performance/performance-content.tsx`
+
+---
+
+### M10 — Filtro por Operação + cores harmonizadas nos gráficos
+
+**Paleta unificada:** entradas `#0091B3` (teal), saídas `#D9A23F` (âmbar), resultado `#2D2A26`. Ponto vermelho `#B85C5C` no Fluxo de Caixa quando resultado mensal é negativo.
+
+**`AcumuladoRecebPagChart`:** label da linha de referência atualizado para "Total previsto de saídas: R$ X"; margem direita aumentada para 80px (espaço para o label); prop `operacaoLabel` no título.
+
+**`DropdownOperacao`:** seletor de operação via URL state (`?operacao=...`). Texto de busca, fechamento por clique externo, badge X para limpar. Mostra só o nome do casal. Lista ordenada alfabeticamente. Posicionado com `right-0` para não sair da tela.
+
+**`weddings-content.tsx`:** `get_operacoes_lista_weddings` no Promise.all; dropdown exibido acima dos gráficos; ambos filtrados pela operação selecionada.
+
+**Migration:** `0039_m10_filtro_operacao_acumulado.sql`
+
+**Arquivos:** `src/components/weddings/fluxo-caixa-mensal.tsx`, `src/components/weddings/acumulado-receb-pag-chart.tsx`, `src/components/weddings/dropdown-operacao.tsx`, `src/components/performance/weddings-content.tsx`
+
+---
+
+### M11 — Agregação por Venda Nº (ADR-0045)
+
+View `analytics.vw_vendas_agregadas` agrega `raw.vendas_excel` por `(venda_numero, setor_macro)`, eliminando dupla contagem de vendas com múltiplos produtos. Política de situação: Aberta se qualquer produto em aberto; Fechada apenas se todos fechados. `get_vendas_em_aberto_weddings` refatorado para usar a view.
+
+**Migration:** `0040_m11_vw_vendas_agregadas.sql`
+
+---
+
+### M12 — Vendas com Receita Negativa (ADR-0046)
+
+`VendasReceitaNegativaCard` criado para a aba Weddings. Colunas: Data da Venda, Venda Nº, Valor Total, Receita (em `text-danger`), Vendedor. Linhas com `receita < -1000` com fundo `bg-danger-bg/40`. "Ver mais" via `ListDrawer`. Terminologia corrigida: "Prejuízo" → "Receita Negativa" em todos os rótulos da aba Weddings. `PrejuizosTable` permanece na aba Performance (análise cross-setor com granularidade diferente).
+
+**RPC:** `get_vendas_prejuizo_weddings(p_from, p_to)` (migration 0040)
+
+**Arquivo:** `src/components/weddings/vendas-receita-negativa-card.tsx`
+
+---
+
+### M13 — Lista de Operações reformulada
 
 | Antes | Depois |
 |-------|--------|
-| Dropdown Situação (4 opções) | Pills horizontais: Todas / Realizados / Futuros |
+| Dropdown Situação (4 opções) | Pills: Todas / **Realizados** (default) / Futuros |
 | Dropdown Subsetor | Removido |
 | Dropdown Ordenar por | Removido |
 | Coluna Flags | Removida |
 | Ponto colorido de situação | Removido |
+| Código W na célula casal | Só o nome do casal |
 | "Evento" | "Data do Evento" |
 | "Custos Int." | "Custos" |
-| Código W no nome | Só o nome do casal |
-| Datas dd/mm/aa | "12 out 2027" |
-| Default: Todos + sem ordem clara | Default: Realizados + Data do Evento desc |
+| Datas `dd/mm/aa` | "12 out 2027" (`fmtDateCompact`) |
+| Ordenação estática | Headers clicáveis com ↑/↓ toggle |
+| Default: Todos sem ordem clara | Realizados + Data do Evento desc |
 
-Headers de coluna clicáveis para ordenação toggle com indicador ↑/↓.
+Pills usam `var(--brand-soft)` / `var(--brand)` / `var(--brand-deep)` via `style` inline, seguindo o padrão da sidebar.
+
+**Arquivo:** `src/components/weddings/lista-operacoes.tsx`
 
 ---
 
-## Estado do codebase
+## Correções pós-review
+
+### TopSection — barra lateral arredondada
+
+A barra da esquerda foi convertida de `border-l-4` para um elemento `<span>` absolutamente posicionado com `top-2 bottom-2 w-1 rounded-full` — pontas arredondadas como na versão anterior do componente, mantendo o fundo `--brand-soft` do Opção B.
+
+---
+
+### Sidebar — sub-aba ativa ao recolher
+
+O filtro de visibilidade usava `pathname.startsWith(s.href + '/')`, o que fazia `/performance/weddings` casar tanto com `{ href: '/performance' }` quanto com `{ href: '/performance/weddings' }`. Corrigido para `pathname === s.href` (match exato), mostrando apenas a sub-aba da rota atual.
+
+---
+
+### "Ver mais" fixo na base de todos os cards
+
+O botão "Ver mais" flutuava dependendo do número de linhas, quebrando o alinhamento visual entre cards em grid. Solução: `flex flex-col` no wrapper do card + `flex-1` na área da tabela + footer sempre renderizado (botão ou `div` espaçador de mesma altura). Aplicado nos 5 cards com "Ver mais".
+
+Junto com esta correção: **Próximos Casamentos** passou de 5 para 6 linhas visíveis.
+
+---
+
+### Carteira: Vendas × Entregas — labels
+
+- Subtítulo: "ano do casamento" → "ano de entrega"  
+- Header da primeira coluna: "Ano da Venda" → "Ano da Venda / Entrega"  
+- Legenda: "Colunas: ano do casamento" → "Colunas: ano da Entrega do casamento"
+
+---
+
+### Vendas em Aberto — labels e scroll
+
+- "Data" → "Data da Venda"
+- "Idade" → "Tempo"
+- "Vendas com situação Aberta no cadastro" → "Vendas com situação Aberta no sistema"
+- Removido `min-w-140` que forçava largura mínima de 560px, causando scroll horizontal desnecessário.
+
+---
+
+### Vendas com Receita Negativa — subtítulo e scroll
+
+- "Vendas Weddings com receita bruta negativa no período" → "Vendas com receita bruta negativa"
+- Removido `min-w-140` pelo mesmo motivo acima.
+
+---
+
+### Fluxo de Caixa Mensal — alinhamento do eixo X
+
+`margin.right` alinhado com o Acumulado de Recebimentos: `16` → `80`. Ambos os gráficos agora têm a mesma configuração de margens e a mesma largura de YAxis (`72px`), garantindo alinhamento perfeito do eixo X entre os dois painéis.
+
+---
+
+### Dropdown Operação — posição, labels e ordenação
+
+- Posicionamento: `left-0` → `right-0` — o painel abre para a esquerda do botão, sem sair da página
+- Labels: cada item exibe apenas o nome do casal (`label.split(' - ')[1]`), sem o código W e sem a data duplicada
+- Ordenação: lista ordenada alfabeticamente por nome do casal (`localeCompare('pt-BR')`)
+
+---
+
+## Estado final do codebase
 
 | Área | Status |
 |------|--------|
-| TypeScript (`npx tsc --noEmit`) | ✅ Limpo |
-| Design system tokens | ✅ Completos e aplicados |
-| Recharts tooltips | ✅ Custom em todos os gráficos Weddings |
+| TypeScript (`npx tsc --noEmit --skipLibCheck`) | ✅ Limpo |
+| Migrations 0039 e 0040 | ✅ Aplicadas no remote |
+| Design tokens | ✅ Aplicados em todo o codebase |
+| Recharts tooltips | ✅ Design system em todos os gráficos Weddings |
 | ADRs 0045–0051 | ✅ Documentados |
 | Changelog | ✅ Atualizado |
 
 ---
 
-## Limitações conhecidas e pendências para v3.9+
+## Pendências para v3.9+
 
 **Logo Welcome Group na sidebar**  
-Espaço reservado com placeholder de texto. Yan precisa fornecer o SVG oficial para substituição.
+Espaço reservado com placeholder de texto. SVG oficial pendente de entrega.
 
 **Fluxo de Caixa — granularidade efetivado/previsto intra-mês**  
-Registrado desde v3.7. Para separar efetivado de previsto dentro de um mesmo mês, precisaria de RPC `get_fluxo_caixa_mensal_weddings` com campos separados. A base já tem a informação.
+A distinção atual é por mês inteiro via `eh_futuro`. Para separar dentro do mesmo mês, precisaria de RPC `get_fluxo_caixa_mensal_weddings` com campos `entrada_efetivado` e `entrada_previsto` separados. A base já tem a informação (data do lançamento vs data do evento).
 
 **Aba Trips e Corporativo**  
-Ainda exibem `PerformanceContent` genérico. Conteúdo específico por setor depende de alinhamento com a diretoria.
-
-**DropdownOperacao — bug de reset de paginação**  
-Ao trocar de operação nos gráficos, a Lista de Operações (componente separado) não é afetada. Isso é correto por design — são dois contextos independentes. Se no futuro quisermos sincronizá-los, a URL state já está em posição para isso.
+Exibem `PerformanceContent` genérico. Conteúdo específico depende de alinhamento com a diretoria.
 
 **Demonstração para a gestora de Weddings**  
-Pendente desde v3.6. A v3.8 completou a reformulação da Lista de Operações — momento ideal para agendar demonstração estruturada.
+Pendente desde v3.6. A v3.8 concluiu a reformulação da Lista de Operações — momento oportuno.
 
 ---
 
-## Arquivos-chave criados ou modificados na v3.8
+## Arquivos modificados ou criados na v3.8
 
 ```
-src/styles/tokens.css                                    ← separação Corporativo / Group
-src/components/layout/sidebar.tsx                        ← logo placeholder + localStorage
-src/components/shared/top-section.tsx                    ← Opção B extraído como componente
+src/styles/tokens.css                                    ← Corporativo #4B4F54 separado do Group
+src/components/layout/sidebar.tsx                        ← logo placeholder, localStorage, fix sub-aba
+src/components/shared/top-section.tsx                    ← novo: Opção B com barra rounded-full
 src/components/charts/custom-tooltip.tsx                 ← novo: tooltip design system
 src/components/shared/list-drawer.tsx                    ← novo: drawer "Ver mais"
 src/components/shared/kpi-card.tsx                       ← clamp() + alturas fixas
-src/components/weddings/proximos-casamentos-card.tsx     ← 3 colunas + fmtDateCompact
-src/components/performance/mix-produto-table.tsx         ← sem scroll, header nowrap
-src/components/weddings/fluxo-caixa-mensal.tsx           ← cores + ponto negativo + filtro
-src/components/weddings/acumulado-receb-pag-chart.tsx    ← cores + label + filtro
-src/components/weddings/dropdown-operacao.tsx            ← novo: seletor por URL state
-src/components/weddings/vendas-em-aberto-card.tsx        ← novo tipo venda_no + drawer
-src/components/weddings/vendas-receita-negativa-card.tsx ← novo: Receita Negativa Weddings
-src/components/weddings/lista-operacoes.tsx              ← reformulação completa M13
-src/components/performance/weddings-content.tsx          ← TopSection + filtro operação
-src/components/performance/performance-content.tsx       ← TopSection + remove sparklines
+src/components/weddings/proximos-casamentos-card.tsx     ← 3 colunas, 6 linhas, fmtDateCompact
+src/components/performance/mix-produto-table.tsx         ← sem scroll, header nowrap, footer fixo
+src/components/performance/prejuizos-table.tsx           ← footer fixo
+src/components/weddings/fluxo-caixa-mensal.tsx           ← cores, ponto negativo, margin.right 80
+src/components/weddings/acumulado-receb-pag-chart.tsx    ← cores, label saídas, margin.right 80
+src/components/weddings/dropdown-operacao.tsx            ← novo: right-0, só casal, alfabético
+src/components/weddings/vendas-em-aberto-card.tsx        ← labels, sem min-w, footer fixo
+src/components/weddings/vendas-receita-negativa-card.tsx ← novo: Receita Negativa, sem min-w
+src/components/weddings/carteira-matrix-card.tsx         ← labels "entrega"
+src/components/weddings/lista-operacoes.tsx              ← reformulação completa M13 + pills brand
+src/components/performance/weddings-content.tsx          ← TopSection, filtro operação
+src/components/performance/performance-content.tsx       ← TopSection, remove sparklines morto
 src/lib/fmt.ts                                           ← fmtDateCompact
 src/types/api.ts                                         ← VendaEmAberto, VendasReceitaNegativa, OperacoesLista
-src/types/database.ts                                    ← get_acumulado_weddings p_operacao, RPCs M11/M12
+src/types/database.ts                                    ← RPCs M10/M11/M12
 supabase/migrations/0039_m10_filtro_operacao_acumulado.sql
 supabase/migrations/0040_m11_vw_vendas_agregadas.sql
 ```
