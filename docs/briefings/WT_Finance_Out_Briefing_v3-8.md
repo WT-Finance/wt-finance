@@ -2,9 +2,9 @@
 
 **Data:** 2026-05-21  
 **Branch:** `feat/v3-8` (base: `feat/v3-7-design-system`)  
-**Commits:** 29 (13 missões + 9 correções pós-review + docs)  
+**Commits:** 47 (13 missões + 13 correções pós-review + docs)  
 **TypeScript:** limpo (`npx tsc --noEmit --skipLibCheck`)  
-**Migrations aplicadas:** 0039, 0040, 0041
+**Migrations aplicadas:** 0039, 0040, 0041, 0042
 
 ---
 
@@ -44,7 +44,7 @@ Criado `src/components/charts/custom-tooltip.tsx` (Client Component). Usa tokens
 
 ### M5 — KPI cards: fonte responsiva e alturas fixas (ADR-0050)
 
-Valor principal: `font-size: clamp(20px, 2.5vw, 32px)` — sem overflow em grids compactos de 6 colunas. Zonas de altura fixa eliminam layout shift ao trocar filtros de período: label `h-5`, valor `min-h-16`, nota proporcional `h-4`, comparações `min-h-12`.
+Valor principal: `font-size: clamp(16px, 1.8vw, 26px)` com `whitespace-nowrap` — sem quebra de linha em grids compactos de 6 colunas. Zonas de altura fixa eliminam layout shift ao trocar filtros de período: label `h-8` (2 linhas), valor `min-h-16`, nota proporcional `h-4`, comparações `min-h-12`.
 
 **Arquivo:** `src/components/shared/kpi-card.tsx`
 
@@ -52,7 +52,7 @@ Valor principal: `font-size: clamp(20px, 2.5vw, 32px)` — sem overflow em grids
 
 ### M6 — Próximos Casamentos: 3 colunas + data compacta
 
-Removidas colunas financeiras e filtro de horizonte. Mantidas apenas 3 colunas: Data do Evento, Casal, Hotel. Datas formatadas como "12 out 2027" via `fmtDateCompact`. "Ver mais" abre `ListDrawer` com os 18 meses completos. Limite inline: 6 casamentos.
+Removidas colunas financeiras e filtro de horizonte. Mantidas apenas 3 colunas: Data do Evento, Casal, Hotel. Datas formatadas como "07 de novembro de 2026" via `fmtDateLong`. "Ver mais" abre `ListDrawer` com os 18 meses completos. Limite inline: 6 casamentos.
 
 **Arquivo:** `src/components/weddings/proximos-casamentos-card.tsx`, `src/lib/fmt.ts`
 
@@ -128,7 +128,7 @@ View `analytics.vw_vendas_agregadas` agrega `raw.vendas_excel` por `(venda_numer
 | Código W na célula casal | Só o nome do casal |
 | "Evento" | "Data do Evento" |
 | "Custos Int." | "Custos" |
-| Datas `dd/mm/aa` | "12 out 2027" (`fmtDateCompact`) |
+| Datas `dd/mm/aa` | "07 de novembro de 2026" (`fmtDateLong`) |
 | Ordenação estática | Todos os headers clicáveis com ▲/▼ toggle |
 | Default: Todos sem ordem clara | Realizados + Data do Evento desc |
 
@@ -202,6 +202,33 @@ As pills (Todas / Realizados / Futuros) estavam sem cor ativa. Corrigido com `st
 
 ---
 
+### Datas em extenso — fmtDateLong
+
+`fmtDateLong` adicionada a `src/lib/fmt.ts` — formato "07 de novembro de 2026". O dia usa a string ISO diretamente (não `parseInt`) para preservar o zero à esquerda. Aplicada em Próximos Casamentos e Lista de Operações em substituição a `fmtDateCompact`.
+
+---
+
+### KPI cards — refinamento de layout pós-validação visual
+
+Após validação com grid de 6 colunas em viewport xl (1280px):
+- **Valor principal:** `clamp(20px, 2.5vw, 32px)` → `clamp(16px, 1.8vw, 26px)` + `whitespace-nowrap` — evita quebra em cards estreitos (~136px de largura útil)
+- **Label:** `h-5` → `h-8` com `leading-[1.3]` — comporta até 2 linhas sem vazar sobre o valor
+- **Comparações:** removido `h-4 overflow-hidden`; wrapper `flex items-baseline gap-1 min-w-0`, variação com `shrink-0`, período com `flex-1 min-w-0 truncate`
+
+---
+
+### Sidebar — sub-aba ativa duplicada
+
+`subActive` usava `pathname.startsWith(sub.href)`, fazendo tanto a sub-aba `/performance` quanto `/performance/weddings` aparecerem destacadas simultaneamente quando na rota weddings. Corrigido para `pathname === sub.href` (match exato), exibindo apenas a aba da rota atual.
+
+---
+
+### KPI cards — valor principal em dourado da ID Visual
+
+`valorColor` (classe Tailwind) substituído por `valorColorClass + valorColorStyle`. Quando não há `benchmarkAlvo`, o valor recebe `style={{ color: 'var(--brand)' }}` inline — dourado `#BD965C` nas páginas de tema `group`, teal `#0091B3` na aba Weddings. Quando há `benchmarkAlvo`, a classe semântica de `margemColor()` continua ativa sem conflito (inline `color: undefined` não interfere).
+
+---
+
 ### Dropdown Operação — posição, labels e ordenação
 
 - Posicionamento: `left-0` → `right-0` — o painel abre para a esquerda do botão, sem sair da página.
@@ -226,8 +253,14 @@ As pills (Todas / Realizados / Futuros) estavam sem cor ativa. Corrigido com `st
 
 ## Pendências para v3.9+
 
+**Nome do hotel ausente na base de dados**  
+`raw.vendas_excel.fornecedor` é NULL em todas as 31.744 linhas — os arquivos `_tratada.xlsx` não incluem a coluna "Fornecedor". A migration `0042_fix_hotel_via_pagante.sql` implementou um fallback via nome do pagante, mas a coluna permanece NULL na fonte. Próximo passo: incluir "Fornecedor" nos arquivos Excel e refazer o upload. Após o upload, executar `regenerar_dim_operacao_weddings()`.
+
+**Cor do tema Corporativo**  
+Cor atual `#4B4F54` (Pantone 7540) ainda percebida como mais azul do que cinza. Rever hex com a equipe — puxar para um cinza mais neutro, menos azulado.
+
 **Logo Welcome Group na sidebar**  
-Espaço reservado com placeholder de texto. SVG oficial pendente de entrega.
+Espaço reservado com placeholder de texto "Welcome Group / Finance Dashboard". Quando o PNG/SVG oficial estiver disponível, substituir o componente `WelcomeGroupLogo()` em `src/components/layout/sidebar.tsx`.
 
 **Fluxo de Caixa — granularidade efetivado/previsto intra-mês**  
 A distinção atual é por mês inteiro via `eh_futuro`. Para separar dentro do mesmo mês, precisaria de RPC `get_fluxo_caixa_mensal_weddings` com campos `entrada_efetivado` e `entrada_previsto` separados. A base já tem a informação (data do lançamento vs data do evento).
@@ -262,10 +295,11 @@ src/components/weddings/lista-operacoes.tsx              ← reformulação M13:
 src/app/api/dashboard/weddings/operacoes/route.ts        ← enum ordenar_por estendido
 src/components/performance/weddings-content.tsx          ← TopSection, filtro operação
 src/components/performance/performance-content.tsx       ← TopSection, remove sparklines morto
-src/lib/fmt.ts                                           ← fmtDateCompact
+src/lib/fmt.ts                                           ← fmtDateCompact, fmtDateLong
 src/types/api.ts                                         ← VendaEmAberto, VendasReceitaNegativa, OperacoesLista
 src/types/database.ts                                    ← RPCs M10/M11/M12
 supabase/migrations/0039_m10_filtro_operacao_acumulado.sql
 supabase/migrations/0040_m11_vw_vendas_agregadas.sql
 supabase/migrations/0041_m13_sort_colunas_extras.sql
+supabase/migrations/0042_fix_hotel_via_pagante.sql      ← fallback via pagante (hotel permanece NULL — v3.9)
 ```
