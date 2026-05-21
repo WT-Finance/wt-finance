@@ -39,7 +39,7 @@ interface SortThProps {
 function SortTh({ children, field, right, title, ordem, onSort }: SortThProps) {
   const [activeField, activeDir] = ordem.split(':')
   const isActive = field !== null && activeField === field
-  const arrow = isActive ? (activeDir === 'asc' ? '↑' : '↓') : null
+  const arrow = isActive ? (activeDir === 'asc' ? '▲' : '▼') : null
 
   const baseClass = `py-2 px-3 text-xs font-medium whitespace-nowrap ${right ? 'text-right' : 'text-left'}`
   const colorClass = isActive ? 'text-[--text-primary]' : 'text-zinc-400'
@@ -205,13 +205,13 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
-              <SortTh field={null} {...sortThProps}>Operação / Casal</SortTh>
-              <SortTh field={null} title="Hotel / fornecedor principal do casamento (Contrato=1)" {...sortThProps}>Hotel</SortTh>
+              <SortTh field="nome_casal" {...sortThProps}>Operação / Casal</SortTh>
+              <SortTh field="hotel" title="Hotel / fornecedor principal do casamento (Contrato=1)" {...sortThProps}>Hotel</SortTh>
               <SortTh field="data_evento" {...sortThProps}>Data do Evento</SortTh>
-              <SortTh field={null} right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
+              <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
               <SortTh field="receita" right title="Faturamento − repasse ao fornecedor (hotel, cia. aérea)" {...sortThProps}>Rec. Bruta</SortTh>
               <SortTh field="margem" right title="Receita Bruta ÷ Faturamento × 100" {...sortThProps}>Mg. Bruta</SortTh>
-              <SortTh field={null} right title="Receita Bruta − Custos Internos (estimado como RB − resultado de caixa quando positivo)" {...sortThProps}>Custos</SortTh>
+              <SortTh field="custos" right title="Receita Bruta − Custos Internos (estimado como RB − resultado de caixa quando positivo)" {...sortThProps}>Custos</SortTh>
               <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Rec. Líq.</SortTh>
               <SortTh field="ml" right title="Receita Líquida ÷ Faturamento × 100" {...sortThProps}>Mg. Líq.</SortTh>
             </tr>
