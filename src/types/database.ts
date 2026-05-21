@@ -483,6 +483,10 @@ export interface Database {
         Args: Record<string, never>
         Returns: Json
       }
+      get_vendas_prejuizo_weddings: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
     }
   }
 }

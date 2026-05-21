@@ -5,7 +5,7 @@ import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
 import MargemDrawerTrigger from '@/components/weddings/margem-drawer-trigger'
 import MixProdutoTable from '@/components/performance/mix-produto-table'
-import PrejuizosTable from '@/components/performance/prejuizos-table'
+import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
 import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
@@ -19,9 +19,9 @@ import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, SumarioSubsetor,
+  MixProduto, SumarioSubsetor,
   CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
-  OperacoesLista,
+  OperacoesLista, VendasReceitaNegativa,
 } from '@/types/api'
 
 interface PeriodoSearchParams {
@@ -56,7 +56,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     }),
     db.rpc('get_tendencia_margem', { p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
-    db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
+    db.rpc('get_vendas_prejuizo_weddings', { p_from: from, p_to: to }),
     db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
     db.rpc('get_carteira_weddings', { p_metric: 'faturamento' }),
@@ -71,7 +71,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const kpis          = kpisRes.error         ? null : kpisRes.data         as unknown as ExecutivaKpis
   const tendencia     = tendRes.error         ? null : tendRes.data         as unknown as TendenciaMargem
   const produtos      = prodRes.error         ? null : prodRes.data         as unknown as MixProduto
-  const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as PrejuizosDetalhe
+  const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as VendasReceitaNegativa
   const sumario       = sumarioRes.error      ? null : sumarioRes.data      as unknown as SumarioSubsetor
   const cartCas       = cartCasRes.error      ? null : cartCasRes.data      as unknown as CarteiraWeddings
   const cartFat       = cartFatRes.error      ? null : cartFatRes.data      as unknown as CarteiraWeddings
@@ -182,10 +182,10 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           />
         </div>
 
-        {/* 5. Vendas em Aberto | Vendas com Prejuízo — exceções operacionais */}
+        {/* 5. Vendas em Aberto | Vendas com Receita Negativa — exceções operacionais */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <VendasEmAbertoCard data={vendasAberto} />
-          <PrejuizosTable data={prejuizos} loading={false} />
+          <VendasReceitaNegativaCard data={prejuizos} />
         </div>
 
       </TopSection>
