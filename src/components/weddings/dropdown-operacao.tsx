@@ -30,9 +30,12 @@ export default function DropdownOperacao({ operacoes, operacaoAtiva }: Props) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const filtradas = busca
+  const nomeExibido = (label: string) => label.split(' - ')[1] ?? label
+
+  const filtradas = [...(busca
     ? operacoes.filter(o => o.label.toLowerCase().includes(busca.toLowerCase()))
     : operacoes
+  )].sort((a, b) => nomeExibido(a.label).localeCompare(nomeExibido(b.label), 'pt-BR'))
 
   const labelAtiva = operacoes.find(o => o.operacao === operacaoAtiva)?.label
 
@@ -68,7 +71,7 @@ export default function DropdownOperacao({ operacoes, operacaoAtiva }: Props) {
       )}
 
       {open && (
-        <div className="absolute top-full mt-1 left-0 z-30 w-80 bg-white border border-[--border] rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute top-full mt-1 right-0 z-30 w-72 bg-white border border-[--border] rounded-lg shadow-lg overflow-hidden">
           <div className="px-3 py-2 border-b border-zinc-100">
             <input
               type="text"
@@ -92,7 +95,7 @@ export default function DropdownOperacao({ operacoes, operacaoAtiva }: Props) {
                 onClick={() => handleSelect(o.operacao)}
                 className={`w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 transition-colors ${operacaoAtiva === o.operacao ? 'text-[--brand] font-medium bg-[--brand-soft]' : 'text-[--text-primary]'}`}
               >
-                {o.label}
+                {nomeExibido(o.label)}
               </button>
             ))}
             {filtradas.length === 0 && (
