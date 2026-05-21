@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import PeriodoFilter from '@/components/shared/periodo-filter'
+import PeriodoFilter from '@/components/shared/periodo-filter-url'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'

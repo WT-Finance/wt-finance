@@ -1,6 +1,6 @@
 # ADR 0037 — Hierarquia visual de seções recolhíveis
 
-**Status:** Aceito  
+**Status:** Parcialmente supersedido por ADR-0042 e ADR-0048  
 **Data:** Maio/2026  
 **Versão:** v3.6-m1
 

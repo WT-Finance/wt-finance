@@ -1,6 +1,6 @@
 # ADR 0036 — Padrão de listas compactas com Ver todos
 
-**Status:** Aceito  
+**Status:** Supersedido por ADR-0051  
 **Data:** Maio/2026  
 **Versão:** v3.6-m4
 

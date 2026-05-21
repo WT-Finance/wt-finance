@@ -1,6 +1,6 @@
 # ADR 0031 — Data canônica do evento e Hotel a partir da linha Contrato=1
 
-**Status:** Aceito  
+**Status:** Supersedido por ADR-0052  
 **Data:** Maio/2026  
 **Versão:** v3.5-m1
 

@@ -212,16 +212,6 @@ export interface DecomposicaoVariacao {
   setores:            DecomposicaoSetor[]
 }
 
-export interface Sparklines {
-  labels:        string[]
-  faturamento:   number[]
-  receita:       number[]
-  margem_pct:    (number | null)[]
-  vendas:        number[]
-  ticket_medio:  (number | null)[]
-  receita_media: (number | null)[]
-}
-
 // ── V3.4: Aba Weddings — Parte 2 ───────────────────────────────────────────
 
 export interface SumarioSubsetorItem {
