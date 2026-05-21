@@ -44,8 +44,8 @@ export default function VendasEmAbertoCard({ data }: Props) {
           <thead>
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400">Casal / Operação</th>
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 hidden sm:table-cell">Produto</th>
+              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400">Venda Nº</th>
+              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 hidden sm:table-cell">Vendedor</th>
               <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
               <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Idade</th>
             </tr>
@@ -60,11 +60,11 @@ export default function VendasEmAbertoCard({ data }: Props) {
                   </td>
                   <td className="py-2 px-3 font-medium truncate max-w-40">
                     <span className={velha ? 'text-warning' : 'text-zinc-800'}>
-                      {v.casal}
+                      {v.venda_no}
                     </span>
                   </td>
                   <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs hidden sm:table-cell">
-                    {v.produto}
+                    {v.vendedor}
                   </td>
                   <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
                     {fmtBRL(v.valor_total)}
@@ -101,8 +101,8 @@ export default function VendasEmAbertoCard({ data }: Props) {
             <thead>
               <tr className="border-b border-zinc-100">
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal / Operação</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Produto</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Venda Nº</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Vendedor</th>
                 <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
                 <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Idade</th>
               </tr>
@@ -117,11 +117,11 @@ export default function VendasEmAbertoCard({ data }: Props) {
                     </td>
                     <td className="py-2 px-3 font-medium truncate max-w-40">
                       <span className={velha ? 'text-warning' : 'text-zinc-800'}>
-                        {v.casal}
+                        {v.venda_no}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs">
-                      {v.produto}
+                      {v.vendedor}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
                       {fmtBRL(v.valor_total)}

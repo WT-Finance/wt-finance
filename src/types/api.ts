@@ -373,17 +373,29 @@ export interface AcumuladoWeddings {
 }
 
 export interface VendaEmAberto {
-  venda_numero: string
-  data_venda:   string   // ISO date
-  casal:        string
-  produto:      string
-  valor_total:  number
-  idade_dias:   number
+  venda_no:    string
+  data_venda:  string   // ISO date
+  valor_total: number
+  vendedor:    string
+  idade_dias:  number
 }
 
 export interface VendasEmAberto {
   total:  number
   vendas: VendaEmAberto[]
+}
+
+export interface VendaReceitaNegativaItem {
+  venda_no:    string
+  data_venda:  string
+  valor_total: number
+  receita:     number
+  vendedor:    string
+}
+
+export interface VendasReceitaNegativa {
+  total:  number
+  vendas: VendaReceitaNegativaItem[]
 }
 
 export interface OperacaoListaItem {
