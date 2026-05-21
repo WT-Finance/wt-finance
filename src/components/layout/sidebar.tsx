@@ -60,7 +60,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const visibleSubs = perfOpen
     ? PERFORMANCE_SUBS
     : isPerformanceActive
-    ? PERFORMANCE_SUBS.filter(s => pathname === s.href || pathname.startsWith(`${s.href}/`))
+    ? PERFORMANCE_SUBS.filter(s => pathname === s.href)
     : []
 
   return (
