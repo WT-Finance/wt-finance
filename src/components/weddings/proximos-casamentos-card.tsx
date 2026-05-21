@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { ProximosCasamentos } from '@/types/api'
-import { fmtDateCompact } from '@/lib/fmt'
+import { fmtDateLong } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 
 const LIMITE = 6
@@ -43,7 +43,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
                 {visiveis.map((c, i) => (
                   <tr key={i} className="hover:bg-zinc-50">
                     <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                      {c.data_casamento ? fmtDateCompact(c.data_casamento) : '—'}
+                      {c.data_casamento ? fmtDateLong(c.data_casamento) : '—'}
                     </td>
                     <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
                       {c.casal ?? '—'}
@@ -86,7 +86,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
               {casamentos.map((c, i) => (
                 <tr key={i} className="hover:bg-zinc-50">
                   <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                    {c.data_casamento ? fmtDateCompact(c.data_casamento) : '—'}
+                    {c.data_casamento ? fmtDateLong(c.data_casamento) : '—'}
                   </td>
                   <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
                     {c.casal ?? '—'}

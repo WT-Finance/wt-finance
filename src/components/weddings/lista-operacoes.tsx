@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { ListaOperacoes } from '@/types/api'
-import { fmtBRL, fmtDateCompact } from '@/lib/fmt'
+import { fmtBRL, fmtDateLong } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 
 // ── Status pills ──────────────────────────────────────────────────────────────
@@ -251,7 +251,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                       {op.hotel ?? <span className="text-zinc-300">—</span>}
                     </td>
                     <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
-                      {op.data_evento ? fmtDateCompact(op.data_evento) : <span className="text-zinc-300">—</span>}
+                      {op.data_evento ? fmtDateLong(op.data_evento) : <span className="text-zinc-300">—</span>}
                     </td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
                       {fmtBRL(op.faturamento)}
