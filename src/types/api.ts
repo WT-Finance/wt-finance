@@ -385,3 +385,9 @@ export interface VendasEmAberto {
   total:  number
   vendas: VendaEmAberto[]
 }
+
+export interface OperacaoListaItem {
+  operacao: string
+  label:    string
+}
+export type OperacoesLista = OperacaoListaItem[]

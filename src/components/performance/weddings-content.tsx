@@ -12,6 +12,7 @@ import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-ca
 import OperacoesSection from '@/components/weddings/operacoes-section'
 import AcumuladoRecebPagChart from '@/components/weddings/acumulado-receb-pag-chart'
 import FluxoCaixaMensal from '@/components/weddings/fluxo-caixa-mensal'
+import DropdownOperacao from '@/components/weddings/dropdown-operacao'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
@@ -20,12 +21,14 @@ import type {
   ExecutivaKpis, TendenciaMargem,
   MixProduto, PrejuizosDetalhe, SumarioSubsetor,
   CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
+  OperacoesLista,
 } from '@/types/api'
 
 interface PeriodoSearchParams {
-  preset?: string
-  from?:   string
-  to?:     string
+  preset?:   string
+  from?:     string
+  to?:       string
+  operacao?: string
 }
 
 interface Props {
@@ -35,14 +38,16 @@ interface Props {
 export default async function WeddingsContent({ searchParams: sp }: Props) {
   const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
     resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
-  const preset = sp.preset ?? 'este-ano'
-  const setor  = 'Weddings'
+  const preset   = sp.preset ?? 'este-ano'
+  const setor    = 'Weddings'
+  const operacao = sp.operacao ?? null
 
   const db = getServerClient()
 
   const [
     kpisRes, tendRes, prodRes, prejRes, sumarioRes,
     cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes, vendasAbertoRes,
+    operacoesRes,
   ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: setor,
@@ -58,8 +63,9 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_carteira_weddings', { p_metric: 'receita_bruta' }),
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
-    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18 }),
+    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18, p_operacao: operacao }),
     db.rpc('get_vendas_em_aberto_weddings', { p_limite: 50, p_offset: 0 }),
+    db.rpc('get_operacoes_lista_weddings'),
   ])
 
   const kpis          = kpisRes.error         ? null : kpisRes.data         as unknown as ExecutivaKpis
@@ -73,6 +79,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const proximos      = proximosRes.error     ? null : proximosRes.data     as unknown as ProximosCasamentos
   const acumulado     = acumuladoRes.error    ? null : acumuladoRes.data    as unknown as AcumuladoWeddings
   const vendasAberto  = vendasAbertoRes.error ? null : vendasAbertoRes.data as unknown as VendasEmAberto
+  const operacoesList = operacoesRes.error    ? [] as OperacoesLista : operacoesRes.data as unknown as OperacoesLista
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
@@ -190,10 +197,20 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           <OperacoesSection />
         </div>
 
-        <FluxoCaixaMensal data={acumulado} />
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-[--text-muted]">Filtrar gráficos por operação:</span>
+          <Suspense>
+            <DropdownOperacao
+              operacoes={operacoesList}
+              operacaoAtiva={operacao}
+            />
+          </Suspense>
+        </div>
+
+        <FluxoCaixaMensal data={acumulado} operacaoLabel={operacoesList.find(o => o.operacao === operacao)?.label.split(' - ')[1] ?? undefined} />
 
         <div className="mt-6">
-          <AcumuladoRecebPagChart data={acumulado} />
+          <AcumuladoRecebPagChart data={acumulado} operacaoLabel={operacoesList.find(o => o.operacao === operacao)?.label.split(' - ')[1] ?? undefined} />
         </div>
 
       </TopSection>

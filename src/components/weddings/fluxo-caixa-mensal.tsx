@@ -14,9 +14,9 @@ function fmtMesLabel(mes: string): string {
   return `${MESES_ABREV[parseInt(m) - 1]}/${y.slice(2)}`
 }
 
-const COR_ENTRADA   = '#5B8DB8'
-const COR_SAIDA     = '#BD965C'
-const COR_RESULTADO = '#4B4F54'
+const COR_ENTRADA   = '#0091B3'  // Pantone 632 — alinhado com Welcome Trips
+const COR_SAIDA     = '#D9A23F'  // token --warning
+const COR_RESULTADO = '#2D2A26'  // token --text-primary
 
 function LegendItem({ color, opacity, label }: { color: string; opacity: number; label: string }) {
   return (
@@ -27,9 +27,12 @@ function LegendItem({ color, opacity, label }: { color: string; opacity: number;
   )
 }
 
-interface Props { data: AcumuladoWeddings | null }
+interface Props {
+  data: AcumuladoWeddings | null
+  operacaoLabel?: string
+}
 
-export default function FluxoCaixaMensal({ data }: Props) {
+export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
   if (!data?.meses.length) return null
 
   const monthly = data.meses.map((m, i) => {
@@ -48,7 +51,9 @@ export default function FluxoCaixaMensal({ data }: Props) {
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-base font-semibold text-[--text-primary]">Fluxo de Caixa Mensal</h2>
+        <h2 className="text-base font-semibold text-[--text-primary]">
+            Fluxo de Caixa Mensal{operacaoLabel ? ` — ${operacaoLabel}` : ''}
+          </h2>
         <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
       </div>
 
@@ -105,22 +110,32 @@ export default function FluxoCaixaMensal({ data }: Props) {
             name="resultado"
             stroke={COR_RESULTADO}
             strokeWidth={2}
-            dot={false}
+            dot={(props) => {
+              const { cx, cy, payload } = props as { cx: number; cy: number; payload: { resultado: number } }
+              if (payload.resultado < 0) {
+                return <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={4} fill="#B85C5C" stroke="none" />
+              }
+              return <g key={`dot-${cx}-${cy}`} />
+            }}
             activeDot={{ r: 3, fill: COR_RESULTADO }}
           />
         </ComposedChart>
       </ResponsiveContainer>
 
       <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 ml-18">
-        <LegendItem color={COR_ENTRADA}  opacity={1}    label="Entrada (efetivada)" />
-        <LegendItem color={COR_ENTRADA}  opacity={0.35} label="Entrada (prevista)"  />
-        <LegendItem color={COR_SAIDA}    opacity={1}    label="Saída (efetivada)"   />
-        <LegendItem color={COR_SAIDA}    opacity={0.35} label="Saída (prevista)"    />
+        <LegendItem color="#0091B3"  opacity={1}    label="Entrada (efetivada)" />
+        <LegendItem color="#0091B3"  opacity={0.35} label="Entrada (prevista)"  />
+        <LegendItem color="#D9A23F"  opacity={1}    label="Saída (efetivada)"   />
+        <LegendItem color="#D9A23F"  opacity={0.35} label="Saída (prevista)"    />
         <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
           <svg width="20" height="10">
             <line x1="0" y1="5" x2="20" y2="5" stroke={COR_RESULTADO} strokeWidth="2" />
           </svg>
           Resultado mensal
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#B85C5C' }} />
+          Resultado negativo
         </div>
       </div>
     </div>
