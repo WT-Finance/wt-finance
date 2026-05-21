@@ -120,7 +120,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                 {visibleSubs.length > 0 && (
                   <div className="mt-0.5 ml-4 pl-3 border-l border-zinc-200 space-y-0.5">
                     {visibleSubs.map(sub => {
-                      const subActive = pathname === sub.href || pathname.startsWith(`${sub.href}/`)
+                      const subActive = pathname === sub.href
                       return (
                         <Link
                           key={sub.href}
