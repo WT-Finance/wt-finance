@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'next/navigation'
 import type { MixSetor } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 interface Props {
   data: MixSetor | null
@@ -59,10 +60,15 @@ export default function MixSetorChart({ data, loading, preset = 'mes-passado' }:
               tickLine={false} axisLine={false} width={80}
             />
             <Tooltip
-              formatter={(value, _name, props) => [
-                `${fmtMi(value as number)} (${props.payload.pct?.toFixed(1)}%)`,
-                'Faturamento',
-              ]}
+              content={(props) => (
+                <CustomTooltip
+                  {...props}
+                  formatter={(value, _name) => [
+                    `${fmtMi(value as number)} (${(props.payload?.[0]?.payload as { pct?: number })?.pct?.toFixed(1) ?? ''}%)`,
+                    'Faturamento',
+                  ]}
+                />
+              )}
             />
             <Bar
               dataKey="faturamento" radius={[0, 4, 4, 0]} maxBarSize={28}

@@ -7,6 +7,7 @@ import {
 import type { TendenciaMargem } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
 import { MARGEM_OK, MARGEM_ALERTA } from '@/lib/config'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 interface Props {
   data: TendenciaMargem | null
@@ -53,12 +54,17 @@ export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_
               domain={['auto', 'auto']}
             />
             <Tooltip
-              formatter={(value, name) => {
-                if (name === 'margem_pct') return [`${(value as number).toFixed(1)}%`, 'Margem']
-                if (name === 'faturamento') return [fmtBRL(value as number), 'Faturamento']
-                return [value, name]
-              }}
-              labelFormatter={label => `${label}`}
+              content={(props) => (
+                <CustomTooltip
+                  {...props}
+                  formatter={(value, name) => {
+                    if (name === 'margem_pct') return [`${(value as number).toFixed(1)}%`, 'Margem']
+                    if (name === 'faturamento') return [fmtBRL(value as number), 'Faturamento']
+                    return [String(value), name]
+                  }}
+                  labelFormatter={label => `${label}`}
+                />
+              )}
             />
             <ReferenceLine y={margemOk}     stroke="#10b981" strokeDasharray="4 4" strokeWidth={1} />
             <ReferenceLine y={margemAlerta} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} />

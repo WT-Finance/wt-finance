@@ -472,11 +472,19 @@ export interface Database {
         Returns: Json
       }
       get_acumulado_weddings: {
-        Args: { p_meses_passados?: number; p_meses_futuros?: number }
+        Args: { p_meses_passados?: number; p_meses_futuros?: number; p_operacao?: string | null }
         Returns: Json
       }
       get_vendas_em_aberto_weddings: {
         Args: { p_limite?: number; p_offset?: number }
+        Returns: Json
+      }
+      get_operacoes_lista_weddings: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      get_vendas_prejuizo_weddings: {
+        Args: { p_from: string; p_to: string }
         Returns: Json
       }
     }

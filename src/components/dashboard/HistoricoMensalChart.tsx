@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
 import type { HistoricoMensalItem } from '@/types/api'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -42,7 +43,14 @@ export default function HistoricoMensalChart({
               tickFormatter={v => `${((v as number) / 1000).toFixed(0)}k`}
               tick={{ fontSize: 11, fill: '#71717a' }} tickLine={false} axisLine={false} width={48}
             />
-            <Tooltip formatter={(value) => [fmtBRL(value as number)]} />
+            <Tooltip
+              content={(props) => (
+                <CustomTooltip
+                  {...props}
+                  formatter={(value) => [fmtBRL(value as number), '']}
+                />
+              )}
+            />
             <Legend
               wrapperStyle={{ fontSize: 12 }}
               formatter={name => name === 'valor_total' ? 'Realizado' : 'Meta'}

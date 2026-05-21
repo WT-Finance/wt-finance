@@ -1,17 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import type { VendasEmAberto } from '@/types/api'
+import type { VendasReceitaNegativa } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 
 const LIMITE = 5
 
 interface Props {
-  data: VendasEmAberto | null
+  data: VendasReceitaNegativa | null
 }
 
-export default function VendasEmAbertoCard({ data }: Props) {
+export default function VendasReceitaNegativaCard({ data }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const vendas = data?.vendas ?? []
@@ -21,21 +21,23 @@ export default function VendasEmAbertoCard({ data }: Props) {
   if (!data || data.total === 0) {
     return (
       <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
-        <p className="text-xs text-zinc-500 mb-3">Vendas com situação Aberta no cadastro</p>
+        <p className="text-xs text-zinc-500 mb-3">Vendas com receita bruta negativa</p>
         <div className="h-16 flex items-center justify-center text-sm text-zinc-400">
-          Nenhuma venda em aberto.
+          Nenhuma venda com receita negativa.
         </div>
       </div>
     )
   }
 
+  const subtitulo = 'Vendas com receita bruta negativa'
+
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 flex flex-col">
-      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas em Aberto</h2>
+      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas com Receita Negativa</h2>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no sistema</p>
-        <span className="text-xs text-warning font-medium">
-          {data.total} {data.total === 1 ? 'venda' : 'vendas'} em aberto
+        <p className="text-[13px] text-[--text-muted]">{subtitulo}</p>
+        <span className="text-xs text-danger font-medium">
+          {data.total} {data.total === 1 ? 'venda' : 'vendas'} com receita negativa
         </span>
       </div>
 
@@ -45,35 +47,30 @@ export default function VendasEmAbertoCard({ data }: Props) {
             <tr className="border-b border-zinc-100">
               <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 whitespace-nowrap">Data da Venda</th>
               <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400">Venda Nº</th>
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 hidden sm:table-cell">Vendedor</th>
               <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Tempo</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Receita</th>
+              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 hidden sm:table-cell">Vendedor</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
-            {visiveis.map((v, i) => {
-              const velha = v.idade_dias > 30
+            {visiveis.map((item, i) => {
+              const muitoNegativo = item.receita < -1000
               return (
-                <tr key={i} className={velha ? 'bg-warning-bg hover:bg-warning-bg/80' : 'hover:bg-zinc-50'}>
+                <tr key={i} className={muitoNegativo ? 'bg-danger-bg/40 hover:bg-danger-bg/70' : 'hover:bg-zinc-50'}>
                   <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                    {fmtDate(v.data_venda)}
+                    {fmtDate(item.data_venda)}
                   </td>
                   <td className="py-2 px-3 font-medium truncate max-w-40">
-                    <span className={velha ? 'text-warning' : 'text-zinc-800'}>
-                      {v.venda_no}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs hidden sm:table-cell">
-                    {v.vendedor}
+                    {item.venda_no}
                   </td>
                   <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
-                    {fmtBRL(v.valor_total)}
+                    {fmtBRL(item.valor_total)}
                   </td>
-                  <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
-                    {v.idade_dias}d
-                    {velha && (
-                      <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>
-                    )}
+                  <td className="py-2 px-3 text-right tabular-nums text-danger whitespace-nowrap">
+                    {fmtBRL(item.receita)}
+                  </td>
+                  <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs hidden sm:table-cell">
+                    {item.vendedor}
                   </td>
                 </tr>
               )
@@ -97,44 +94,39 @@ export default function VendasEmAbertoCard({ data }: Props) {
 
       {drawerOpen && (
         <ListDrawer
-          titulo="Vendas em Aberto"
-          subtitulo={`${data.total} ${data.total === 1 ? 'venda' : 'vendas'} com situação Aberta no cadastro`}
+          titulo="Vendas com Receita Negativa"
+          subtitulo={subtitulo}
           onClose={() => setDrawerOpen(false)}
         >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-100">
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data da Venda</th>
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Venda Nº</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Vendedor</th>
                 <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Tempo</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Receita</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Vendedor</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
-              {vendas.map((v, i) => {
-                const velha = v.idade_dias > 30
+              {vendas.map((item, i) => {
+                const muitoNegativo = item.receita < -1000
                 return (
-                  <tr key={i} className={velha ? 'bg-warning-bg hover:bg-warning-bg/80' : 'hover:bg-zinc-50'}>
+                  <tr key={i} className={muitoNegativo ? 'bg-danger-bg/40 hover:bg-danger-bg/70' : 'hover:bg-zinc-50'}>
                     <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                      {fmtDate(v.data_venda)}
+                      {fmtDate(item.data_venda)}
                     </td>
                     <td className="py-2 px-3 font-medium truncate max-w-40">
-                      <span className={velha ? 'text-warning' : 'text-zinc-800'}>
-                        {v.venda_no}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs">
-                      {v.vendedor}
+                      {item.venda_no}
                     </td>
                     <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
-                      {fmtBRL(v.valor_total)}
+                      {fmtBRL(item.valor_total)}
                     </td>
-                    <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
-                      {v.idade_dias}d
-                      {velha && (
-                        <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>
-                      )}
+                    <td className="py-2 px-3 text-right tabular-nums text-danger whitespace-nowrap">
+                      {fmtBRL(item.receita)}
+                    </td>
+                    <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs">
+                      {item.vendedor}
                     </td>
                   </tr>
                 )

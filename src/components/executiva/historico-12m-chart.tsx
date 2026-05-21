@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import type { Historico12mSetores } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 const MESES_SHORT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
 
@@ -117,12 +118,15 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
               width={36}
             />
             <Tooltip
-              formatter={(value, name) => [
-                fmtMi(Number(value)),
-                isTodos ? String(name) : 'Faturamento',
-              ]}
-              labelStyle={{ fontSize: 11, color: '#3f3f46' }}
-              contentStyle={{ fontSize: 11, borderRadius: 6 }}
+              content={(props) => (
+                <CustomTooltip
+                  {...props}
+                  formatter={(value, name) => [
+                    fmtMi(Number(value)),
+                    isTodos ? String(name) : 'Faturamento',
+                  ]}
+                />
+              )}
               cursor={{ fill: 'rgba(0,0,0,0.04)' }}
             />
 

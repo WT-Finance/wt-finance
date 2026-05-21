@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -25,21 +25,53 @@ interface SidebarContentProps {
   onCollapse?: () => void
 }
 
+function WelcomeGroupLogo() {
+  // SVG oficial a ser inserido quando disponível
+  return (
+    <div className="flex-1 min-w-0">
+      <p className="text-[15px] font-[800] leading-tight uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>
+        Welcome Group
+      </p>
+      <p className="text-[11px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>
+        Finance Dashboard
+      </p>
+    </div>
+  )
+}
+
 function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
-  const [perfOpen, setPerfOpen] = useState(isPerformanceActive)
-  const showPerfSubs = isPerformanceActive || perfOpen
+  const [perfOpen, setPerfOpen] = useState(true)
+
+  // Hydrate from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem('sidebar-perf-open')
+    if (stored !== null) setPerfOpen(stored === 'true')
+  }, [])
+
+  const handlePerfToggle = () => {
+    setPerfOpen(prev => {
+      const next = !prev
+      localStorage.setItem('sidebar-perf-open', String(next))
+      return next
+    })
+  }
+
+  const visibleSubs = perfOpen
+    ? PERFORMANCE_SUBS
+    : isPerformanceActive
+    ? PERFORMANCE_SUBS.filter(s => pathname === s.href)
+    : []
 
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
-      <div className="px-5 py-5 border-b relative" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <p className="text-[18px] font-semibold text-zinc-900 leading-tight">WT Finance</p>
-        <p className="text-[13px] text-zinc-400 mt-0.5">Welcome Group</p>
+      <div className="px-5 py-4 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
+        <WelcomeGroupLogo />
         {onCollapse && (
           <button
             onClick={onCollapse}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            className="p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
             aria-label="Recolher sidebar"
           >
             <ChevronLeft size={16} />
@@ -57,7 +89,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
             return (
               <div key={href}>
                 <button
-                  onClick={() => setPerfOpen(o => !o)}
+                  onClick={handlePerfToggle}
                   className={[
                     'w-full flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
                     isPerformanceActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
@@ -80,14 +112,14 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                   <span className="flex-1 text-left">{label}</span>
                   <ChevronRight
                     size={14}
-                    className={['transition-transform shrink-0', showPerfSubs ? 'rotate-90' : ''].join(' ')}
+                    className={['transition-transform shrink-0', perfOpen ? 'rotate-90' : ''].join(' ')}
                     style={{ color: isPerformanceActive ? 'var(--brand)' : undefined }}
                   />
                 </button>
 
-                {showPerfSubs && (
+                {visibleSubs.length > 0 && (
                   <div className="mt-0.5 ml-4 pl-3 border-l border-zinc-200 space-y-0.5">
-                    {PERFORMANCE_SUBS.map(sub => {
+                    {visibleSubs.map(sub => {
                       const subActive = pathname === sub.href
                       return (
                         <Link

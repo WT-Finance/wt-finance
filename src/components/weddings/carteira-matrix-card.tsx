@@ -59,7 +59,7 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-4">Carteira: Vendas × Entregas</h2>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <p className="text-[13px] text-[--text-muted]">Vendas por ano de venda × ano do casamento</p>
+        <p className="text-[13px] text-[--text-muted]">Vendas por ano de venda × ano de entrega</p>
         <div className="flex rounded-lg border border-zinc-200 overflow-hidden text-xs">
           {(Object.keys(labels) as Metrica[]).map(m => (
             <button
@@ -82,7 +82,7 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
           <thead>
             <tr>
               <th className="py-2 px-3 text-left text-zinc-400 font-medium whitespace-nowrap border-b border-zinc-100">
-                Ano da Venda
+                Ano da Venda / Entrega
               </th>
               {anosCasamento.map(ac => (
                 <th key={ac} className="py-2 px-3 text-center text-zinc-400 font-medium whitespace-nowrap border-b border-zinc-100">
@@ -148,7 +148,7 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
       </div>
 
       <p className="mt-3 text-[11px] text-zinc-400">
-        Linhas: ano da venda do Contrato · Colunas: ano do casamento · Diagonal{' '}
+        Linhas: ano da venda do Contrato · Colunas: ano da Entrega do casamento · Diagonal{' '}
         <span className="inline-block w-3 h-2 rounded-sm bg-amber-400/60 align-middle" /> = vendas e entregas no mesmo ano
       </p>
     </div>

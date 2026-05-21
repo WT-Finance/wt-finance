@@ -1,49 +1,34 @@
-import { Suspense, type ReactNode } from 'react'
+import { Suspense } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
+import TopSection from '@/components/shared/top-section'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
 import MargemDrawerTrigger from '@/components/weddings/margem-drawer-trigger'
 import MixProdutoTable from '@/components/performance/mix-produto-table'
-import PrejuizosTable from '@/components/performance/prejuizos-table'
+import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
 import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
 import OperacoesSection from '@/components/weddings/operacoes-section'
 import AcumuladoRecebPagChart from '@/components/weddings/acumulado-receb-pag-chart'
 import FluxoCaixaMensal from '@/components/weddings/fluxo-caixa-mensal'
+import DropdownOperacao from '@/components/weddings/dropdown-operacao'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, SumarioSubsetor,
+  MixProduto, SumarioSubsetor,
   CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
+  OperacoesLista, VendasReceitaNegativa,
 } from '@/types/api'
 
-function TopSection({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <details open className="group mb-8">
-      <summary className="flex items-center gap-3 px-5 py-4 mb-6 cursor-pointer list-none select-none rounded-lg border-l-4 border-[--brand] bg-gradient-to-r from-[--brand-soft] to-transparent hover:opacity-90 transition-opacity">
-        <svg
-          className="w-5 h-5 text-[--brand] transition-transform group-open:rotate-90 shrink-0"
-          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-        <span className="text-base font-bold text-[--text-primary] uppercase tracking-wide">
-          {titulo}
-        </span>
-      </summary>
-      {children}
-    </details>
-  )
-}
-
 interface PeriodoSearchParams {
-  preset?: string
-  from?:   string
-  to?:     string
+  preset?:   string
+  from?:     string
+  to?:       string
+  operacao?: string
 }
 
 interface Props {
@@ -53,14 +38,16 @@ interface Props {
 export default async function WeddingsContent({ searchParams: sp }: Props) {
   const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
     resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
-  const preset = sp.preset ?? 'este-ano'
-  const setor  = 'Weddings'
+  const preset   = sp.preset ?? 'este-ano'
+  const setor    = 'Weddings'
+  const operacao = sp.operacao ?? null
 
   const db = getServerClient()
 
   const [
     kpisRes, tendRes, prodRes, prejRes, sumarioRes,
     cartCasRes, cartFatRes, cartRbRes, proximosRes, benchmarks, acumuladoRes, vendasAbertoRes,
+    operacoesRes,
   ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: setor,
@@ -69,21 +56,22 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     }),
     db.rpc('get_tendencia_margem', { p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
-    db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
+    db.rpc('get_vendas_prejuizo_weddings', { p_from: from, p_to: to }),
     db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
     db.rpc('get_carteira_weddings', { p_metric: 'faturamento' }),
     db.rpc('get_carteira_weddings', { p_metric: 'receita_bruta' }),
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
-    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18 }),
+    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18, p_operacao: operacao }),
     db.rpc('get_vendas_em_aberto_weddings', { p_limite: 50, p_offset: 0 }),
+    db.rpc('get_operacoes_lista_weddings'),
   ])
 
   const kpis          = kpisRes.error         ? null : kpisRes.data         as unknown as ExecutivaKpis
   const tendencia     = tendRes.error         ? null : tendRes.data         as unknown as TendenciaMargem
   const produtos      = prodRes.error         ? null : prodRes.data         as unknown as MixProduto
-  const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as PrejuizosDetalhe
+  const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as VendasReceitaNegativa
   const sumario       = sumarioRes.error      ? null : sumarioRes.data      as unknown as SumarioSubsetor
   const cartCas       = cartCasRes.error      ? null : cartCasRes.data      as unknown as CarteiraWeddings
   const cartFat       = cartFatRes.error      ? null : cartFatRes.data      as unknown as CarteiraWeddings
@@ -91,6 +79,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const proximos      = proximosRes.error     ? null : proximosRes.data     as unknown as ProximosCasamentos
   const acumulado     = acumuladoRes.error    ? null : acumuladoRes.data    as unknown as AcumuladoWeddings
   const vendasAberto  = vendasAbertoRes.error ? null : vendasAbertoRes.data as unknown as VendasEmAberto
+  const operacoesList = operacoesRes.error    ? [] as OperacoesLista : operacoesRes.data as unknown as OperacoesLista
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
@@ -193,10 +182,10 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           />
         </div>
 
-        {/* 5. Vendas em Aberto | Vendas com Prejuízo — exceções operacionais */}
+        {/* 5. Vendas em Aberto | Vendas com Receita Negativa — exceções operacionais */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <VendasEmAbertoCard data={vendasAberto} />
-          <PrejuizosTable data={prejuizos} loading={false} />
+          <VendasReceitaNegativaCard data={prejuizos} />
         </div>
 
       </TopSection>
@@ -208,10 +197,20 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           <OperacoesSection />
         </div>
 
-        <FluxoCaixaMensal data={acumulado} />
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm text-[--text-muted]">Filtrar gráficos por operação:</span>
+          <Suspense>
+            <DropdownOperacao
+              operacoes={operacoesList}
+              operacaoAtiva={operacao}
+            />
+          </Suspense>
+        </div>
+
+        <FluxoCaixaMensal data={acumulado} operacaoLabel={operacoesList.find(o => o.operacao === operacao)?.label.split(' - ')[1] ?? undefined} />
 
         <div className="mt-6">
-          <AcumuladoRecebPagChart data={acumulado} />
+          <AcumuladoRecebPagChart data={acumulado} operacaoLabel={operacoesList.find(o => o.operacao === operacao)?.label.split(' - ')[1] ?? undefined} />
         </div>
 
       </TopSection>

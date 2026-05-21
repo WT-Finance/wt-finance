@@ -7,6 +7,7 @@ import {
   XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts'
 import { fmtMi } from '@/lib/fmt'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 interface SeriePonto {
   ano: number; mes: number; label: string; valor: number
@@ -150,9 +151,12 @@ export default function KpiDetailDrawer({ metrica, rotulo, setor, onClose }: Pro
                     tickCount={4}
                   />
                   <Tooltip
-                    formatter={(v) => [fmtMi(Number(v)), rotulo]}
-                    labelStyle={{ fontSize: 11, color: '#3f3f46' }}
-                    contentStyle={{ fontSize: 11, borderRadius: 6 }}
+                    content={(props) => (
+                      <CustomTooltip
+                        {...props}
+                        formatter={(v) => [fmtMi(Number(v)), rotulo]}
+                      />
+                    )}
                   />
                   <Line
                     type="monotone"

@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import type { AcumuladoWeddings } from '@/types/api'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -16,9 +17,10 @@ function fmtMesLabel(mes: string): string {
 
 interface Props {
   data: AcumuladoWeddings | null
+  operacaoLabel?: string
 }
 
-export default function AcumuladoRecebPagChart({ data }: Props) {
+export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
   if (!data || !data.meses.length) {
     return (
       <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
@@ -34,12 +36,14 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-base font-semibold text-[--text-primary]">Acumulado de Recebimentos e Pagamentos</h2>
+        <h2 className="text-base font-semibold text-[--text-primary]">
+            Acumulado de Recebimentos e Pagamentos{operacaoLabel ? ` — ${operacaoLabel}` : ''}
+          </h2>
         <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
       </div>
 
       <ResponsiveContainer width="100%" height={280}>
-        <ComposedChart data={data.meses} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+        <ComposedChart data={data.meses} margin={{ top: 8, right: 80, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
           <XAxis
             dataKey="mes"
@@ -56,18 +60,22 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
             width={72}
           />
           <Tooltip
-            formatter={(value, name) => [
-              fmtBRL(value as number),
-              name === 'entrada_acum' ? 'Entrada acum.' : 'Saída acum.',
-            ]}
-            labelFormatter={label => fmtMesLabel(label as string)}
+            content={(props) => (
+              <CustomTooltip
+                {...props}
+                formatter={(value, name) => [
+                  fmtBRL(value as number),
+                  name === 'entrada_acum' ? 'Entrada acum.' : 'Saída acum.',
+                ]}
+                labelFormatter={label => fmtMesLabel(label as string)}
+              />
+            )}
           />
           <ReferenceLine
             y={data.total_saidas}
-            stroke="#ef4444"
-            strokeDasharray="6 4"
-            strokeWidth={2}
-            label={{ value: 'Total previsto de custos', position: 'insideTopRight', fontSize: 10, fill: '#ef4444' }}
+            stroke="#B85C5C"
+            strokeWidth={1.5}
+            label={{ value: `Total previsto de saídas: ${fmtMi(data.total_saidas)}`, position: 'insideTopRight', fontSize: 10, fill: '#B85C5C' }}
           />
           {mesHoje && (
             <ReferenceLine
@@ -79,12 +87,12 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
           )}
           <Bar dataKey="entrada_acum" name="entrada_acum" radius={[2,2,0,0]}>
             {data.meses.map((entry, i) => (
-              <Cell key={i} fill="#3b82f6" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+              <Cell key={i} fill="#0091B3" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
           <Bar dataKey="saida_acum" name="saida_acum" radius={[2,2,0,0]}>
             {data.meses.map((entry, i) => (
-              <Cell key={i} fill="#f59e0b" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+              <Cell key={i} fill="#D9A23F" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
         </ComposedChart>
@@ -92,15 +100,15 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
 
       {/* Legenda manual — mais simples e controlável que o <Legend> do Recharts */}
       <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 ml-18">
-        <LegendItem color="#3b82f6" opacity={1}    label="Entradas acum. (efetivado)" />
-        <LegendItem color="#3b82f6" opacity={0.35} label="Entradas acum. (projetado)" />
-        <LegendItem color="#f59e0b" opacity={1}    label="Saídas acum. (efetivado)"   />
-        <LegendItem color="#f59e0b" opacity={0.35} label="Saídas acum. (projetado)"   />
+        <LegendItem color="#0091B3" opacity={1}    label="Entradas acum. (efetivado)" />
+        <LegendItem color="#0091B3" opacity={0.35} label="Entradas acum. (projetado)" />
+        <LegendItem color="#D9A23F" opacity={1}    label="Saídas acum. (efetivado)"   />
+        <LegendItem color="#D9A23F" opacity={0.35} label="Saídas acum. (projetado)"   />
         <div className="flex items-center gap-1.5 text-xs text-zinc-500">
           <svg width="20" height="10">
-            <line x1="0" y1="5" x2="20" y2="5" stroke="#ef4444" strokeWidth="2" strokeDasharray="6 4" />
+            <line x1="0" y1="5" x2="20" y2="5" stroke="#B85C5C" strokeWidth="1.5" />
           </svg>
-          Total previsto de custos
+          Total previsto de saídas
         </div>
       </div>
     </div>

@@ -91,55 +91,75 @@ export default function KpiCard({
     ? metrica.valor - benchmarkAlvo
     : null
 
-  const valorColor = benchmarkAlvo != null
+  const valorColorClass = benchmarkAlvo != null
     ? margemColor(metrica.valor, benchmarkAlvo, benchmarkAtencao)
-    : 'text-zinc-900'
+    : ''
+  const valorColorStyle = benchmarkAlvo == null ? 'var(--brand)' : undefined
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] h-full">
-      <div className="relative group/tip">
-        <p className="text-[11px] font-semibold text-[--text-muted] uppercase tracking-[0.5px] cursor-default">{rotulo}</p>
-        {formula && (
-          <div className="pointer-events-none absolute left-0 top-5 z-20 invisible group-hover/tip:visible
-                          bg-zinc-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
-            {formula}
-            {metrica.valor != null && (
-              <span className="ml-2 text-zinc-300">{fmtExato(metrica.valor, formato)}</span>
-            )}
-          </div>
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] h-full flex flex-col">
+      {/* Label — h-8 acomoda até 2 linhas sem vazar sobre o valor */}
+      <div className="h-8 flex items-start">
+        <div className="relative group/tip flex-1">
+          <p className="text-[11px] font-semibold text-[--text-muted] uppercase tracking-[0.5px] cursor-default leading-[1.3]">{rotulo}</p>
+          {formula && (
+            <div className="pointer-events-none absolute left-0 top-5 z-20 invisible group-hover/tip:visible
+                            bg-zinc-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
+              {formula}
+              {metrica.valor != null && (
+                <span className="ml-2 text-zinc-300">{fmtExato(metrica.valor, formato)}</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Main value */}
+      <div className="min-h-16 flex items-center">
+        <p
+          className={`font-extrabold tabular-nums leading-none whitespace-nowrap ${valorColorClass}`}
+          style={{ fontSize: 'clamp(16px, 1.8vw, 26px)', color: valorColorStyle }}
+        >
+          {fmtValor(metrica.valor, formato)}
+        </p>
+      </div>
+      {/* Proportional note — always rendered, fixed height */}
+      <div className="h-4">
+        {isPeriodoProporcional && (
+          <p className="text-[10px] text-zinc-300 leading-4">período proporcional</p>
         )}
       </div>
-      <p className={`mt-2 text-3xl font-extrabold tabular-nums leading-none ${valorColor}`}>
-        {fmtValor(metrica.valor, formato)}
-      </p>
-      {isPeriodoProporcional && (
-        <p className="mt-0.5 text-[10px] text-zinc-300 leading-none">período proporcional</p>
-      )}
-      <div className="mt-2 space-y-0.5">
+      {/* Comparisons */}
+      <div className="mt-2 min-h-12 flex flex-col gap-0.5">
         {metrica.variacao_anterior != null && (
-          <div className="flex items-center gap-1">
-            <Variacao pct={metrica.variacao_anterior} isPP={metrica.is_pp} />
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="shrink-0">
+              <Variacao pct={metrica.variacao_anterior} isPP={metrica.is_pp} />
+            </span>
             {periodoAnterior && (
-              <span className="text-xs text-zinc-300">
+              <span className="text-xs text-zinc-300 truncate flex-1 min-w-0">
                 vs {fmtPeriodoLabel(periodoAnterior, anoAtual)}
               </span>
             )}
           </div>
         )}
         {metrica.variacao_yoy != null && (
-          <div className="flex items-center gap-1">
-            <Variacao pct={metrica.variacao_yoy} isPP={metrica.is_pp} label="YoY" />
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="shrink-0">
+              <Variacao pct={metrica.variacao_yoy} isPP={metrica.is_pp} label="YoY" />
+            </span>
             {periodoYoY && (
-              <span className="text-xs text-zinc-300">
+              <span className="text-xs text-zinc-300 truncate flex-1 min-w-0">
                 {fmtPeriodoLabel(periodoYoY, anoAtual)}
               </span>
             )}
           </div>
         )}
         {vsAlvo != null && (
-          <div className="flex items-center gap-1">
-            <Variacao pct={vsAlvo} isPP label="vs alvo" />
-            <span className="text-xs text-zinc-300">({benchmarkAlvo}%)</span>
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="shrink-0">
+              <Variacao pct={vsAlvo} isPP label="vs alvo" />
+            </span>
+            <span className="text-xs text-zinc-300 shrink-0">({benchmarkAlvo}%)</span>
           </div>
         )}
       </div>
