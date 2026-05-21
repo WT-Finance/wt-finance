@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import type { AcumuladoWeddings } from '@/types/api'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -56,11 +57,16 @@ export default function AcumuladoRecebPagChart({ data }: Props) {
             width={72}
           />
           <Tooltip
-            formatter={(value, name) => [
-              fmtBRL(value as number),
-              name === 'entrada_acum' ? 'Entrada acum.' : 'Saída acum.',
-            ]}
-            labelFormatter={label => fmtMesLabel(label as string)}
+            content={(props) => (
+              <CustomTooltip
+                {...props}
+                formatter={(value, name) => [
+                  fmtBRL(value as number),
+                  name === 'entrada_acum' ? 'Entrada acum.' : 'Saída acum.',
+                ]}
+                labelFormatter={label => fmtMesLabel(label as string)}
+              />
+            )}
           />
           <ReferenceLine
             y={data.total_saidas}

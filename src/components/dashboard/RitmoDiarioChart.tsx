@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
 import type { RitmoDiarioItem } from '@/types/api'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 const SETOR_COLOR: Record<string, string> = {
   Lazer: '#378ADD', Corporativo: '#0F6E56', Weddings: '#BA7517', todos: '#6366f1',
@@ -33,8 +34,13 @@ export default function RitmoDiarioChart({
               tick={{ fontSize: 11, fill: '#71717a' }} tickLine={false} axisLine={false} width={48}
             />
             <Tooltip
-              formatter={(value) => [fmtBRL(value as number)]}
-              labelFormatter={label => `Dia ${label}`}
+              content={(props) => (
+                <CustomTooltip
+                  {...props}
+                  formatter={(value) => [fmtBRL(value as number), '']}
+                  labelFormatter={label => `Dia ${label}`}
+                />
+              )}
             />
             <Legend
               iconType="line" wrapperStyle={{ fontSize: 12 }}

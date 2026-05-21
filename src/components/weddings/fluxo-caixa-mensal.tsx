@@ -6,6 +6,7 @@ import {
 } from 'recharts'
 import type { AcumuladoWeddings } from '@/types/api'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 function fmtMesLabel(mes: string): string {
@@ -75,13 +76,18 @@ export default function FluxoCaixaMensal({ data }: Props) {
           />
           <ReferenceLine y={0} stroke="var(--border-strong)" strokeWidth={1.5} />
           <Tooltip
-            formatter={(value, name) => {
-              const v = value as number
-              if (name === 'entrada')   return [fmtBRL(v),  'Entrada']
-              if (name === 'saida_neg') return [fmtBRL(-v), 'Saída']
-              return [fmtBRL(v), 'Resultado']
-            }}
-            labelFormatter={label => fmtMesLabel(label as string)}
+            content={(props) => (
+              <CustomTooltip
+                {...props}
+                formatter={(value, name) => {
+                  const v = value as number
+                  if (name === 'entrada')   return [fmtBRL(v),  'Entrada']
+                  if (name === 'saida_neg') return [fmtBRL(-v), 'Saída']
+                  return [fmtBRL(v), 'Resultado']
+                }}
+                labelFormatter={label => fmtMesLabel(label as string)}
+              />
+            )}
           />
           <Bar dataKey="entrada" name="entrada" radius={[2, 2, 0, 0]} maxBarSize={14}>
             {monthly.map((entry, i) => (
