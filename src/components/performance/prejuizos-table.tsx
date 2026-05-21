@@ -35,7 +35,7 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
   const totalNo = data?.total_no_periodo ?? 0
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 flex flex-col">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">{titulo}</h2>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[13px] text-[--text-muted]">Operações com margem negativa no período</p>
@@ -46,7 +46,7 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
         )}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="flex-1 min-h-0 overflow-x-auto">
         <table className="w-full min-w-96 text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
@@ -92,13 +92,19 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
         </table>
       </div>
 
-      {!loading && temMais && (
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="mt-3 w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 border-t border-zinc-100 transition-colors"
-        >
-          Ver mais
-        </button>
+      {!loading && (
+        <div className="mt-3 border-t border-zinc-100">
+          {temMais ? (
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 transition-colors"
+            >
+              Ver mais
+            </button>
+          ) : (
+            <div className="py-1.5" />
+          )}
+        </div>
       )}
 
       {drawerOpen && (
