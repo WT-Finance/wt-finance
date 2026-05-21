@@ -38,7 +38,7 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 overflow-hidden flex flex-col">
       <div className="flex items-baseline gap-2 mb-3">
         <h2 className="text-base font-semibold text-[--text-primary] leading-snug">{titulo}</h2>
-        {periodoLabel && <span className="text-xs text-[--text-muted]">{periodoLabel}</span>}
+        {periodoLabel && <span className="text-xs" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>}
       </div>
       <p className="text-[13px] text-[--text-muted] mb-3">Faturamento e margem por produto no período</p>
       <div className="flex-1 min-h-0">

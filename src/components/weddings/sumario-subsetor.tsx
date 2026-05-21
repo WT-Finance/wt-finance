@@ -44,7 +44,7 @@ export default function SumarioSubsetorCard({ data, periodoLabel }: Props) {
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
       <div className="flex items-baseline gap-2 mb-3">
         <h2 className="text-base font-semibold text-[--text-primary] leading-snug">Composição por Subsetor</h2>
-        {periodoLabel && <span className="text-xs text-[--text-muted]">{periodoLabel}</span>}
+        {periodoLabel && <span className="text-xs" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>}
       </div>
       <div className="flex items-baseline gap-2 mb-4">
         <p className="text-[13px] text-[--text-muted]">Distribuição de faturamento por subsetor no período</p>
