@@ -1,5 +1,90 @@
 # Changelog — WT Finance Dashboard
 
+## v3.8 — Refinamento Visual e Reformulação da Lista de Operações (maio/2026)
+
+### v3.8-M1 — Cor Corporativo + logo sidebar placeholder
+- `[data-theme="corporativo"]` separado de `[data-theme="group"]`: Corporativo usa `#4B4F54` (Pantone 7540)
+- `[data-theme="group"]` mantém `#75777B` (Pantone Cool Gray 9) para páginas neutras
+- Sidebar: placeholder de logo Welcome Group adicionado (texto; SVG oficial pendente)
+- ADR-0047
+
+### v3.8-M2 — Cabeçalhos de seção Opção B
+- Componente `TopSection` extraído para `src/components/shared/top-section.tsx`
+- Estilo: fundo `--brand-soft`, borda esquerda `--brand`, texto Heavy uppercase `--brand-deep`
+- Chevron rotacionado indica estado aberto/fechado
+- ADR-0048
+
+### v3.8-M3 — Sidebar Performance persistente
+- Estado aberto/fechado do sub-menu Performance salvo em `localStorage` (`sidebar-perf-open`)
+- Inicializado `true` por padrão; hidratado pós-SSR via `useEffect`
+- ADR-0049
+
+### v3.8-M4 — Tooltips Recharts no design system
+- Criado `src/components/charts/custom-tooltip.tsx` — Client Component
+- Usa `var(--surface)`, `var(--border)`, fonte Avenir, sombra `0 4px 12px rgba(45,42,38,0.08)`
+- Props: `labelFormatter`, `formatter` para formatação customizada por gráfico
+- Substituído tooltip padrão em todos os gráficos Recharts da aba Weddings
+
+### v3.8-M5 — KPI cards: fonte responsiva e altura fixa
+- Valor principal: `clamp(20px, 2.5vw, 32px)` — sem overflow em grids compactos
+- Zonas de altura fixa: label `h-5`, valor `min-h-16`, nota `h-4`, comparações `min-h-12`
+- Sem layout shift ao trocar filtros de período
+- ADR-0050
+
+### v3.8-M6 — Próximos Casamentos: 3 colunas + data compacta
+- Removidas colunas financeiras e filtro de horizonte
+- 3 colunas: Data do Evento, Casal, Hotel
+- Datas formatadas como "12 out 2027" via `fmtDateCompact`
+- "Ver mais" abre `ListDrawer` com lista completa (18m carregados)
+
+### v3.8-M7 — Mix por Produto: sem overflow horizontal
+- Headers com `whitespace-nowrap` — sem quebra de linha
+- Removidos `min-w-105` e `overflow-x-auto` — tabela cabe no card
+- `"% Total"` → `"%"`
+
+### v3.8-M8 — Drawer "Ver mais" padrão
+- Criado `src/components/shared/list-drawer.tsx`
+- Botão "Ver mais" (sem contagem) substitui "Ver todos (N)" em todas as listas compactas
+- Mesmo padrão de animação e fechamento do `KpiDetailDrawer`
+- ADR-0051
+
+### v3.8-M9 — Design system em aba Performance
+- `performance-content.tsx` migrado para `TopSection` Opção B
+- Removido código morto: call a `get_sparklines` (já sem uso desde v3.7-M6)
+
+### v3.8-M10 — Filtro por Operação + cores harmonizadas nos gráficos
+- `FluxoCaixaMensal`: cores `#0091B3` (entrada), `#D9A23F` (saída), `#2D2A26` (resultado)
+- Ponto vermelho `#B85C5C` quando resultado < 0; prop `operacaoLabel` no título
+- `AcumuladoRecebPagChart`: mesmas cores; label "Total previsto de saídas: X"; margem direita 80
+- `DropdownOperacao`: seletor de operação via URL state (`?operacao=...`)
+- `weddings-content.tsx`: dropdown acima dos gráficos; ambos filtrados pela operação selecionada
+
+### v3.8-M11 — Agregação por Venda Nº (ADR-0045)
+- View `analytics.vw_vendas_agregadas`: agrega `raw.vendas_excel` por `(venda_numero, setor_macro)`
+- Política de situação: Aberta se qualquer produto em aberto; Fechada se todos fechados
+- `get_vendas_em_aberto_weddings` refatorado para usar a view — zero dupla contagem
+- `get_vendas_prejuizo_weddings` criado: retorna vendas com `receita < 0` por Venda Nº
+- ADR-0045
+
+### v3.8-M12 — Vendas com Receita Negativa (ADR-0046)
+- Novo componente `VendasReceitaNegativaCard` na aba Weddings
+- Colunas: Data da Venda, Venda Nº, Valor Total, Receita (em `text-danger`), Vendedor
+- Linhas com `receita < -1000`: fundo `bg-danger-bg/40`
+- "Ver mais" via `ListDrawer` para lista completa
+- `weddings-content.tsx`: substitui `PrejuizosTable` (cross-setor) por card específico Weddings
+- ADR-0046
+
+### v3.8-M13 — Lista de Operações reformulada
+- Removidos: dropdown Subsetor, dropdown Ordenar, coluna Flags, ponto colorido de situação
+- Adicionado: pills horizontais de situação — Todas / Realizados (default) / Futuros
+- Headers de coluna clicáveis: ordenação toggle asc/desc com indicador ↑/↓
+- "Operação / Casal" → exibe apenas nome do casal (sem código W-prefix)
+- "Evento" → "Data do Evento"; datas em formato "12 out 2027"
+- "Custos Int." → "Custos"
+- Default: Realizados + Data do Evento desc
+
+---
+
 ## v3.7 — Design System e Fluxo de Caixa Mensal (maio/2026)
 
 ### v3.7-M1 — Fonte Avenir LT Std
