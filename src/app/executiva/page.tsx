@@ -14,7 +14,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { getBenchmarks } from '@/lib/config'
 import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
 import { avaliarTodasRegras } from '@/lib/regras-alerta'
-import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12mSetores, Sparklines, DecomposicaoVariacao } from '@/types/api'
+import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12mSetores, DecomposicaoVariacao } from '@/types/api'
 
 interface SearchParams {
   preset?: string
@@ -38,7 +38,7 @@ export default async function ExecutivaPage({
 
   const [
     kpisRes, mixRes, prejRes, prejAntRes,
-    histRes, sparkRes, decompRes, benchmarks,
+    histRes, decompRes, benchmarks,
   ] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from:     from,     p_to:       to,     p_setor:    setor,
@@ -49,7 +49,6 @@ export default async function ExecutivaPage({
     db.rpc('get_prejuizos',    { p_from: from,    p_to: to,    p_setor: setor, p_summary: true }),
     db.rpc('get_prejuizos',    { p_from: antFrom, p_to: antTo, p_setor: setor, p_summary: true }),
     db.rpc('get_historico_12m_setores', { p_setor: setor }),
-    db.rpc('get_sparklines',   { p_preset: preset, p_from: from, p_to: to, p_setor: setor }),
     db.rpc('get_decomposicao_variacao', {
       p_from: from, p_to: to, p_ant_from: antFrom, p_ant_to: antTo, p_setor: setor,
     }),
@@ -61,7 +60,6 @@ export default async function ExecutivaPage({
   const prejuizos    = prejRes.error    ? null : prejRes.data    as unknown as PrejuizosSummary
   const prejuizosAnt = prejAntRes.error ? null : prejAntRes.data as unknown as PrejuizosSummary
   const historico    = histRes.error    ? null : histRes.data    as unknown as Historico12mSetores
-  const sparklines   = sparkRes.error   ? null : sparkRes.data   as unknown as Sparklines | null
   const decomposicao = decompRes.error  ? null : decompRes.data  as unknown as DecomposicaoVariacao
 
   // Pontos de atenção — avaliados a partir dos dados já carregados, sem chamada extra ao banco
