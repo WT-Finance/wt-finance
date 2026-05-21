@@ -44,9 +44,14 @@
   --brand-deep: #0D5257;  /* Pantone 7476 */
 }
 
-[data-theme="corporativo"],
+[data-theme="corporativo"] {
+  --brand:      #4B4F54;  /* Pantone 7540 oficial */
+  --brand-soft: #E5E7EA;
+  --brand-deep: #2C3338;
+}
+
 [data-theme="group"] {
-  --brand:      #75777B;  /* Pantone Cool Gray 9 */
+  --brand:      #75777B;  /* Pantone Cool Gray 9 — cinza institucional */
   --brand-soft: #EAE6DD;
-  --brand-deep: #4B4F54;  /* Pantone 7540 */
+  --brand-deep: #4B4F54;
 }

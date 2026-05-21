@@ -25,6 +25,20 @@ interface SidebarContentProps {
   onCollapse?: () => void
 }
 
+function WelcomeGroupLogo() {
+  // SVG oficial a ser inserido quando disponível
+  return (
+    <div className="flex-1 min-w-0">
+      <p className="text-[15px] font-[800] leading-tight uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>
+        Welcome Group
+      </p>
+      <p className="text-[11px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>
+        Finance Dashboard
+      </p>
+    </div>
+  )
+}
+
 function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
   const [perfOpen, setPerfOpen] = useState(isPerformanceActive)
@@ -33,13 +47,12 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
-      <div className="px-5 py-5 border-b relative" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <p className="text-[18px] font-semibold text-zinc-900 leading-tight">WT Finance</p>
-        <p className="text-[13px] text-zinc-400 mt-0.5">Welcome Group</p>
+      <div className="px-5 py-4 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
+        <WelcomeGroupLogo />
         {onCollapse && (
           <button
             onClick={onCollapse}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
+            className="p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
             aria-label="Recolher sidebar"
           >
             <ChevronLeft size={16} />
