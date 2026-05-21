@@ -8,7 +8,8 @@ interface Props {
 export default function TopSection({ titulo, children }: Props) {
   return (
     <details open className="group mb-8">
-      <summary className="flex items-center gap-3 px-6 py-[18px] mb-6 cursor-pointer list-none select-none border-l-4 border-[--brand] bg-[--brand-soft] hover:brightness-95 transition-all">
+      <summary className="relative flex items-center gap-3 px-6 py-[18px] mb-6 cursor-pointer list-none select-none bg-[--brand-soft] hover:brightness-95 transition-all">
+        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full" style={{ background: 'var(--brand)' }} />
         <svg
           className="w-5 h-5 shrink-0 transition-transform group-open:rotate-90"
           style={{ color: 'var(--brand-deep)' }}
