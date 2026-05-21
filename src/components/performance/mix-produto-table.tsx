@@ -33,18 +33,18 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
   const temMais = produtos.length > LIMITE
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
+    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 overflow-hidden">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">{titulo}</h2>
       <p className="text-[13px] text-[--text-muted] mb-3">Faturamento e margem por produto no período</p>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-105 text-sm">
+      <div>
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
-              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 w-8">#</th>
-              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Produto</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Faturamento</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">% Total</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Margem</th>
+              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 w-8 whitespace-nowrap">#</th>
+              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Produto</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Faturamento</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">%</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Margem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
