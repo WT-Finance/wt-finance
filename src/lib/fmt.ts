@@ -26,8 +26,8 @@ export const fmtDateCompact = (s: string): string => {
   return `${parseInt(d, 10)} ${MESES_COMPACTOS[parseInt(m, 10) - 1]} ${y}`
 }
 
-/** Converte 'yyyy-MM-dd' para 'DD de mês de AAAA' (ex: 12 de outubro de 2027). */
+/** Converte 'yyyy-MM-dd' para 'DD de mês de AAAA' (ex: 07 de novembro de 2026). */
 export const fmtDateLong = (s: string): string => {
   const [y, m, d] = s.split('-')
-  return `${parseInt(d, 10)} de ${MESES_EXTENSO[parseInt(m, 10) - 1]} de ${y}`
+  return `${d} de ${MESES_EXTENSO[parseInt(m, 10) - 1]} de ${y}`
 }
