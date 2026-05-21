@@ -93,9 +93,78 @@ export default function PeriodoFilter() {
   }
 
   return (
-    <div className="relative flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-2 flex-wrap">
       {PILLS.map(pill => {
         const isActive = periodoTipo === pill.value
+
+        if (pill.value === 'personalizado') {
+          return (
+            <div key={pill.value} className="relative">
+              <button
+                onClick={() => handlePillClick(pill.value)}
+                className={[
+                  'px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap',
+                  isActive ? '' : 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50',
+                ].join(' ')}
+                style={isActive ? {
+                  background:  'var(--brand-soft)',
+                  borderColor: 'var(--brand)',
+                  color:       'var(--brand-deep)',
+                } : undefined}
+              >
+                {periodoTipo === 'personalizado' && periodoCustomizado
+                  ? `Personalizado: ${fmtShort(periodoCustomizado.inicio)} — ${fmtShort(periodoCustomizado.fim)}`
+                  : pill.label}
+              </button>
+
+              {popoverOpen && (
+                <div
+                  ref={popoverRef}
+                  className="absolute top-full right-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-72"
+                >
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Período Personalizado</p>
+
+                  <div className="flex gap-3 mb-3">
+                    <div className="flex-1">
+                      <label className="text-xs text-zinc-500 mb-1 block">Início</label>
+                      <input
+                        type="date" value={fromVal} max={toVal || TODAY}
+                        onChange={e => { setFromVal(e.target.value); setErroFrom('') }}
+                        className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[--brand]"
+                      />
+                      {erroFrom && <p className="text-[11px] text-red-500 mt-1">{erroFrom}</p>}
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-zinc-500 mb-1 block">Fim</label>
+                      <input
+                        type="date" value={toVal} min={fromVal} max={TODAY}
+                        onChange={e => { setToVal(e.target.value); setErroTo('') }}
+                        className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[--brand]"
+                      />
+                      {erroTo && <p className="text-[11px] text-red-500 mt-1">{erroTo}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setPopoverOpen(false)}
+                      className="text-xs text-zinc-500 hover:text-zinc-700 px-2 py-1"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={aplicar}
+                      className="text-xs font-medium text-white px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        }
+
         return (
           <button
             key={pill.value}
@@ -110,58 +179,10 @@ export default function PeriodoFilter() {
               color:       'var(--brand-deep)',
             } : undefined}
           >
-            {pill.value === 'personalizado' && periodoTipo === 'personalizado' && periodoCustomizado
-              ? `Personalizado: ${fmtShort(periodoCustomizado.inicio)} — ${fmtShort(periodoCustomizado.fim)}`
-              : pill.label}
+            {pill.label}
           </button>
         )
       })}
-
-      {/* Popover Personalizado */}
-      {popoverOpen && (
-        <div
-          ref={popoverRef}
-          className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-72"
-        >
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Período Personalizado</p>
-
-          <div className="flex gap-3 mb-3">
-            <div className="flex-1">
-              <label className="text-xs text-zinc-500 mb-1 block">Início</label>
-              <input
-                type="date" value={fromVal} max={toVal || TODAY}
-                onChange={e => { setFromVal(e.target.value); setErroFrom('') }}
-                className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[--brand]"
-              />
-              {erroFrom && <p className="text-[11px] text-red-500 mt-1">{erroFrom}</p>}
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-zinc-500 mb-1 block">Fim</label>
-              <input
-                type="date" value={toVal} min={fromVal} max={TODAY}
-                onChange={e => { setToVal(e.target.value); setErroTo('') }}
-                className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[--brand]"
-              />
-              {erroTo && <p className="text-[11px] text-red-500 mt-1">{erroTo}</p>}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2">
-            <button
-              onClick={() => setPopoverOpen(false)}
-              className="text-xs text-zinc-500 hover:text-zinc-700 px-2 py-1"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={aplicar}
-              className="text-xs font-medium text-white px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 transition-colors"
-            >
-              Aplicar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
