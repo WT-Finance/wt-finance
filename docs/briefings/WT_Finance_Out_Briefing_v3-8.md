@@ -2,9 +2,9 @@
 
 **Data:** 2026-05-21  
 **Branch:** `feat/v3-8` (base: `feat/v3-7-design-system`)  
-**Commits:** 23 (13 missões + 8 correções pós-review + docs)  
+**Commits:** 29 (13 missões + 9 correções pós-review + docs)  
 **TypeScript:** limpo (`npx tsc --noEmit --skipLibCheck`)  
-**Migrations aplicadas:** 0039, 0040
+**Migrations aplicadas:** 0039, 0040, 0041
 
 ---
 
@@ -88,7 +88,7 @@ Criado `src/components/shared/list-drawer.tsx`. Botão "Ver mais" (sem contagem)
 
 **`AcumuladoRecebPagChart`:** label da linha de referência atualizado para "Total previsto de saídas: R$ X"; margem direita aumentada para 80px (espaço para o label); prop `operacaoLabel` no título.
 
-**`DropdownOperacao`:** seletor de operação via URL state (`?operacao=...`). Texto de busca, fechamento por clique externo, badge X para limpar. Mostra só o nome do casal. Lista ordenada alfabeticamente. Posicionado com `right-0` para não sair da tela.
+**`DropdownOperacao`:** seletor de operação via URL state (`?operacao=...`). Texto de busca, fechamento por clique externo, badge X para limpar. Lista ordenada alfabeticamente por nome do casal. Posicionado com `right-0` para não sair da tela.
 
 **`weddings-content.tsx`:** `get_operacoes_lista_weddings` no Promise.all; dropdown exibido acima dos gráficos; ambos filtrados pela operação selecionada.
 
@@ -129,10 +129,12 @@ View `analytics.vw_vendas_agregadas` agrega `raw.vendas_excel` por `(venda_numer
 | "Evento" | "Data do Evento" |
 | "Custos Int." | "Custos" |
 | Datas `dd/mm/aa` | "12 out 2027" (`fmtDateCompact`) |
-| Ordenação estática | Headers clicáveis com ↑/↓ toggle |
+| Ordenação estática | Todos os headers clicáveis com ▲/▼ toggle |
 | Default: Todos sem ordem clara | Realizados + Data do Evento desc |
 
 Pills usam `var(--brand-soft)` / `var(--brand)` / `var(--brand-deep)` via `style` inline, seguindo o padrão da sidebar.
+
+**Migration:** `0041_m13_sort_colunas_extras.sql` — estende o CASE de ordenação da RPC `get_operacoes_weddings` para incluir `nome_casal`, `hotel`, `faturamento` e `custos`.
 
 **Arquivo:** `src/components/weddings/lista-operacoes.tsx`
 
@@ -142,7 +144,13 @@ Pills usam `var(--brand-soft)` / `var(--brand)` / `var(--brand-deep)` via `style
 
 ### TopSection — barra lateral arredondada
 
-A barra da esquerda foi convertida de `border-l-4` para um elemento `<span>` absolutamente posicionado com `top-2 bottom-2 w-1 rounded-full` — pontas arredondadas como na versão anterior do componente, mantendo o fundo `--brand-soft` do Opção B.
+A barra da esquerda foi convertida de `border-l-4` para um elemento `<span>` absolutamente posicionado com `top-2 bottom-2 w-1 rounded-full` — pontas arredondadas como na versão anterior do componente.
+
+---
+
+### TopSection — fundo brand-soft ausente
+
+`bg-[--brand-soft]` como classe Tailwind não resolvia a variável CSS neste projeto. Corrigido para `style={{ background: 'var(--brand-soft)' }}` via inline style — mesmo padrão já adotado na sidebar para tokens de marca.
 
 ---
 
@@ -154,9 +162,7 @@ O filtro de visibilidade usava `pathname.startsWith(s.href + '/')`, o que fazia 
 
 ### "Ver mais" fixo na base de todos os cards
 
-O botão "Ver mais" flutuava dependendo do número de linhas, quebrando o alinhamento visual entre cards em grid. Solução: `flex flex-col` no wrapper do card + `flex-1` na área da tabela + footer sempre renderizado (botão ou `div` espaçador de mesma altura). Aplicado nos 5 cards com "Ver mais".
-
-Junto com esta correção: **Próximos Casamentos** passou de 5 para 6 linhas visíveis.
+O botão "Ver mais" flutuava dependendo do número de linhas, quebrando o alinhamento visual entre cards em grid. Solução: `flex flex-col` no wrapper do card + `flex-1` na área da tabela + footer sempre renderizado (botão ou `div` espaçador de mesma altura). Aplicado nos 5 cards com "Ver mais". Junto com esta correção: **Próximos Casamentos** passou de 5 para 6 linhas visíveis.
 
 ---
 
@@ -190,11 +196,18 @@ Junto com esta correção: **Próximos Casamentos** passou de 5 para 6 linhas vi
 
 ---
 
+### Lista de Operações — pills com cores da ID Visual
+
+As pills (Todas / Realizados / Futuros) estavam sem cor ativa. Corrigido com `style` inline: `background: 'var(--brand-soft)'`, `borderColor: 'var(--brand)'`, `color: 'var(--brand-deep)'` — mesmo padrão dos itens ativos da sidebar.
+
+---
+
 ### Dropdown Operação — posição, labels e ordenação
 
-- Posicionamento: `left-0` → `right-0` — o painel abre para a esquerda do botão, sem sair da página
-- Labels: cada item exibe apenas o nome do casal (`label.split(' - ')[1]`), sem o código W e sem a data duplicada
-- Ordenação: lista ordenada alfabeticamente por nome do casal (`localeCompare('pt-BR')`)
+- Posicionamento: `left-0` → `right-0` — o painel abre para a esquerda do botão, sem sair da página.
+- Labels na lista: passa a exibir o label completo `W - Casal - DD/MM/YYYY` para facilitar a identificação da operação. O botão do filtro continua exibindo apenas o nome do casal.
+- Ordenação: lista ordenada alfabeticamente por nome do casal (`localeCompare('pt-BR')`).
+- Largura: `w-72` → `w-96` para acomodar o label completo.
 
 ---
 
@@ -203,7 +216,7 @@ Junto com esta correção: **Próximos Casamentos** passou de 5 para 6 linhas vi
 | Área | Status |
 |------|--------|
 | TypeScript (`npx tsc --noEmit --skipLibCheck`) | ✅ Limpo |
-| Migrations 0039 e 0040 | ✅ Aplicadas no remote |
+| Migrations 0039, 0040 e 0041 | ✅ Aplicadas no remote |
 | Design tokens | ✅ Aplicados em todo o codebase |
 | Recharts tooltips | ✅ Design system em todos os gráficos Weddings |
 | ADRs 0045–0051 | ✅ Documentados |
@@ -232,20 +245,21 @@ Pendente desde v3.6. A v3.8 concluiu a reformulação da Lista de Operações �
 ```
 src/styles/tokens.css                                    ← Corporativo #4B4F54 separado do Group
 src/components/layout/sidebar.tsx                        ← logo placeholder, localStorage, fix sub-aba
-src/components/shared/top-section.tsx                    ← novo: Opção B com barra rounded-full
+src/components/shared/top-section.tsx                    ← novo: Opção B, barra rounded-full, inline style
 src/components/charts/custom-tooltip.tsx                 ← novo: tooltip design system
 src/components/shared/list-drawer.tsx                    ← novo: drawer "Ver mais"
 src/components/shared/kpi-card.tsx                       ← clamp() + alturas fixas
-src/components/weddings/proximos-casamentos-card.tsx     ← 3 colunas, 6 linhas, fmtDateCompact
+src/components/weddings/proximos-casamentos-card.tsx     ← 3 colunas, 6 linhas, fmtDateCompact, footer fixo
 src/components/performance/mix-produto-table.tsx         ← sem scroll, header nowrap, footer fixo
 src/components/performance/prejuizos-table.tsx           ← footer fixo
 src/components/weddings/fluxo-caixa-mensal.tsx           ← cores, ponto negativo, margin.right 80
 src/components/weddings/acumulado-receb-pag-chart.tsx    ← cores, label saídas, margin.right 80
-src/components/weddings/dropdown-operacao.tsx            ← novo: right-0, só casal, alfabético
+src/components/weddings/dropdown-operacao.tsx            ← novo: right-0, label completo, w-96, alfabético
 src/components/weddings/vendas-em-aberto-card.tsx        ← labels, sem min-w, footer fixo
-src/components/weddings/vendas-receita-negativa-card.tsx ← novo: Receita Negativa, sem min-w
+src/components/weddings/vendas-receita-negativa-card.tsx ← novo: Receita Negativa, sem min-w, footer fixo
 src/components/weddings/carteira-matrix-card.tsx         ← labels "entrega"
-src/components/weddings/lista-operacoes.tsx              ← reformulação completa M13 + pills brand
+src/components/weddings/lista-operacoes.tsx              ← reformulação M13: pills brand, todos os headers sortáveis, ▲/▼
+src/app/api/dashboard/weddings/operacoes/route.ts        ← enum ordenar_por estendido
 src/components/performance/weddings-content.tsx          ← TopSection, filtro operação
 src/components/performance/performance-content.tsx       ← TopSection, remove sparklines morto
 src/lib/fmt.ts                                           ← fmtDateCompact
@@ -253,4 +267,5 @@ src/types/api.ts                                         ← VendaEmAberto, Vend
 src/types/database.ts                                    ← RPCs M10/M11/M12
 supabase/migrations/0039_m10_filtro_operacao_acumulado.sql
 supabase/migrations/0040_m11_vw_vendas_agregadas.sql
+supabase/migrations/0041_m13_sort_colunas_extras.sql
 ```
