@@ -115,8 +115,8 @@ export default function KpiCard({
       {/* Main value */}
       <div className="min-h-16 flex items-center">
         <p
-          className={`font-extrabold tabular-nums leading-none ${valorColor}`}
-          style={{ fontSize: 'clamp(20px, 2.5vw, 32px)' }}
+          className={`font-extrabold tabular-nums leading-none whitespace-nowrap ${valorColor}`}
+          style={{ fontSize: 'clamp(16px, 1.8vw, 26px)' }}
         >
           {fmtValor(metrica.valor, formato)}
         </p>
