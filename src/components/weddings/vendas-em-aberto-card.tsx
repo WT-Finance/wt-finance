@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { VendasEmAberto } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
+import ListDrawer from '@/components/shared/list-drawer'
 
 const LIMITE = 5
 
@@ -11,10 +12,10 @@ interface Props {
 }
 
 export default function VendasEmAbertoCard({ data }: Props) {
-  const [verTodos, setVerTodos] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const vendas = data?.vendas ?? []
-  const visiveis = verTodos ? vendas : vendas.slice(0, LIMITE)
+  const visiveis = vendas.slice(0, LIMITE)
   const temMais = (data?.total ?? 0) > LIMITE
 
   if (!data || data.total === 0) {
@@ -83,11 +84,60 @@ export default function VendasEmAbertoCard({ data }: Props) {
 
       {temMais && (
         <button
-          onClick={() => setVerTodos(v => !v)}
+          onClick={() => setDrawerOpen(true)}
           className="mt-3 w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 border-t border-zinc-100 transition-colors"
         >
-          {verTodos ? 'Ver menos' : `Ver todos (${data.total})`}
+          Ver mais
         </button>
+      )}
+
+      {drawerOpen && (
+        <ListDrawer
+          titulo="Vendas em Aberto"
+          subtitulo={`${data.total} ${data.total === 1 ? 'venda' : 'vendas'} com situação Aberta no cadastro`}
+          onClose={() => setDrawerOpen(false)}
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100">
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal / Operação</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Produto</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Idade</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50">
+              {vendas.map((v, i) => {
+                const velha = v.idade_dias > 30
+                return (
+                  <tr key={i} className={velha ? 'bg-warning-bg hover:bg-warning-bg/80' : 'hover:bg-zinc-50'}>
+                    <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
+                      {fmtDate(v.data_venda)}
+                    </td>
+                    <td className="py-2 px-3 font-medium truncate max-w-40">
+                      <span className={velha ? 'text-warning' : 'text-zinc-800'}>
+                        {v.casal}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs">
+                      {v.produto}
+                    </td>
+                    <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
+                      {fmtBRL(v.valor_total)}
+                    </td>
+                    <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
+                      {v.idade_dias}d
+                      {velha && (
+                        <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </ListDrawer>
       )}
     </div>
   )

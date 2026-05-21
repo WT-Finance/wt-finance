@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { ProximosCasamentos } from '@/types/api'
 import { fmtDateCompact } from '@/lib/fmt'
+import ListDrawer from '@/components/shared/list-drawer'
 
 const LIMITE = 5
 
@@ -11,10 +12,10 @@ interface Props {
 }
 
 export default function ProximosCasamentosCard({ data18m }: Props) {
-  const [verTodos, setVerTodos] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const casamentos = data18m?.casamentos ?? []
-  const visiveis = verTodos ? casamentos : casamentos.slice(0, LIMITE)
+  const visiveis = casamentos.slice(0, LIMITE)
   const temMais = casamentos.length > LIMITE
 
   return (
@@ -58,11 +59,40 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
 
       {temMais && (
         <button
-          onClick={() => setVerTodos(v => !v)}
+          onClick={() => setDrawerOpen(true)}
           className="mt-3 w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 border-t border-zinc-100 transition-colors"
         >
-          {verTodos ? 'Ver menos' : 'Ver mais'}
+          Ver mais
         </button>
+      )}
+
+      {drawerOpen && (
+        <ListDrawer titulo="Próximos Casamentos a Entregar" onClose={() => setDrawerOpen(false)}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100">
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data do Evento</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50">
+              {casamentos.map((c, i) => (
+                <tr key={i} className="hover:bg-zinc-50">
+                  <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
+                    {c.data_casamento ? fmtDateCompact(c.data_casamento) : '—'}
+                  </td>
+                  <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
+                    {c.casal ?? '—'}
+                  </td>
+                  <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-40">
+                    {c.hotel ?? '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ListDrawer>
       )}
     </div>
   )

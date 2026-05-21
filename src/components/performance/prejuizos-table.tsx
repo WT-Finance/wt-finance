@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { PrejuizosDetalhe } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
+import ListDrawer from '@/components/shared/list-drawer'
 
 const LIMITE = 5
 
@@ -25,11 +26,11 @@ interface Props {
 }
 
 export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Prejuízo' }: Props) {
-  const [verTodos, setVerTodos] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const total = data?.total
   const vendas = data?.vendas ?? []
-  const visiveis = verTodos ? vendas : vendas.slice(0, LIMITE)
+  const visiveis = vendas.slice(0, LIMITE)
   const temMais = vendas.length > LIMITE
   const totalNo = data?.total_no_periodo ?? 0
 
@@ -93,11 +94,52 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
 
       {!loading && temMais && (
         <button
-          onClick={() => setVerTodos(v => !v)}
+          onClick={() => setDrawerOpen(true)}
           className="mt-3 w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 border-t border-zinc-100 transition-colors"
         >
-          {verTodos ? 'Ver menos' : `Ver todos (${totalNo > vendas.length ? totalNo : vendas.length})`}
+          Ver mais
         </button>
+      )}
+
+      {drawerOpen && (
+        <ListDrawer
+          titulo={titulo}
+          subtitulo={`Operações com margem negativa no período${totalNo > vendas.length ? ` · ${totalNo} no total` : ''}`}
+          onClose={() => setDrawerOpen(false)}
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100">
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Data</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Vendedor</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Produto</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Valor</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Receita</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50">
+              {vendas.map((v, i) => (
+                <tr key={i} className="hover:bg-zinc-50">
+                  <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
+                    {fmtDate(v.data_venda)}
+                  </td>
+                  <td className="py-2 px-3 text-zinc-700 font-medium truncate max-w-30">
+                    {v.vendedor_nome}
+                  </td>
+                  <td className="py-2 px-3 text-zinc-500 truncate max-w-40">
+                    {v.produto_nome}
+                  </td>
+                  <td className="py-2 px-3 text-right tabular-nums text-zinc-600">
+                    {fmtBRL(v.valor_total)}
+                  </td>
+                  <td className="py-2 px-3 text-right tabular-nums font-medium text-danger">
+                    {fmtBRL(v.receitas)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ListDrawer>
       )}
     </div>
   )
