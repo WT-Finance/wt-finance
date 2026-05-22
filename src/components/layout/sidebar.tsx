@@ -43,14 +43,13 @@ function WelcomeGroupLogo() {
   }
 
   return (
-    <div className="flex-1 min-w-0">
+    <div className="relative flex-1 min-w-0 h-10 overflow-hidden">
       <Image
         src="/logos/welcome-group.png"
         alt="Welcome Group"
-        width={160}
-        height={160}
+        fill
         priority
-        className="w-full h-auto max-w-[160px] object-contain"
+        className="object-cover object-center"
         onError={() => setImgError(true)}
       />
     </div>
@@ -84,7 +83,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
-      <div className="px-5 py-2 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
+      <div className="px-5 py-3 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
         <WelcomeGroupLogo />
         {onCollapse && (
           <button
