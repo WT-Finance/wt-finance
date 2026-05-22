@@ -41,13 +41,13 @@
 [data-theme="trips"] {
   --brand:      #0091B3;  /* Pantone 632 C */
   --brand-soft: #D9EEF5;
-  --brand-deep: #0D5257;  /* Pantone 7476 */
+  --brand-deep: #005670;  /* variação escura do Pantone 632 */
 }
 
 [data-theme="corporativo"] {
-  --brand:      #4B4F54;  /* Pantone 7540 oficial */
-  --brand-soft: #E5E7EA;
-  --brand-deep: #2C3338;
+  --brand:      #0D5257;  /* Pantone 7476 C — azul-teal */
+  --brand-soft: #DDE7E9;
+  --brand-deep: #072F33;
 }
 
 [data-theme="group"] {
