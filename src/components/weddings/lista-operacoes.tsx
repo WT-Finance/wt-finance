@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { Search } from 'lucide-react'
 import type { ListaOperacoes } from '@/types/api'
 import { fmtBRL, fmtDateLong } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
+import EmptyState from '@/components/shared/empty-state'
 
 // ── Status pills ──────────────────────────────────────────────────────────────
 
@@ -225,8 +227,8 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-sm text-zinc-400">
-                  Nenhuma operação encontrada.
+                <td colSpan={9}>
+                  <EmptyState icon={Search} message="Nenhuma operação encontrada para os filtros selecionados" />
                 </td>
               </tr>
             ) : (

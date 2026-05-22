@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { TrendingDown } from 'lucide-react'
 import type { VendasReceitaNegativa } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
+import EmptyState from '@/components/shared/empty-state'
 
 const LIMITE = 5
 
@@ -22,9 +24,7 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
     return (
       <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
         <p className="text-xs text-zinc-500 mb-3">Vendas com receita bruta negativa</p>
-        <div className="h-16 flex items-center justify-center text-sm text-zinc-400">
-          Nenhuma venda com receita negativa.
-        </div>
+        <EmptyState icon={TrendingDown} message="Nenhuma operação com receita negativa registrada" />
       </div>
     )
   }
