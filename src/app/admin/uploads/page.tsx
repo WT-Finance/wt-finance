@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Upload, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
+import { uploadLancamentosAction, uploadVendasAction } from './actions'
 
 interface StatusCarga {
   total: number
@@ -228,38 +229,27 @@ export default function AdminUploadsPage() {
   useEffect(() => { carregarStatus() }, [])
 
   async function enviarArquivo(
-    endpoint: string,
+    tipo: 'vendas' | 'lancamentos',
     arquivo: File,
     modo: 'preview' | 'executar',
-  ): Promise<{ res: Response; body: ResultadoCarga | { error: string } }> {
+  ): Promise<ResultadoCarga | { error: string }> {
     const formData = new FormData()
     formData.append('file', arquivo)
     formData.append('modo', modo)
-    const res = await fetch(endpoint, { method: 'POST', body: formData })
-    let body: ResultadoCarga | { error: string }
-    try {
-      body = await res.json()
-    } catch {
-      const text = await res.text().catch(() => '')
-      if (res.status === 413 || text.toLowerCase().includes('exceeded') || text.toLowerCase().includes('too large')) {
-        body = { error: `Arquivo muito grande para o servidor (HTTP ${res.status}). Verifique next.config.ts → serverActions.bodySizeLimit.` }
-      } else {
-        body = { error: `Resposta inesperada do servidor (HTTP ${res.status})${text ? ': ' + text.slice(0, 120) : ''}` }
-      }
-    }
-    return { res, body }
+    return tipo === 'vendas'
+      ? uploadVendasAction(formData)
+      : uploadLancamentosAction(formData)
   }
 
   async function handleArquivoSelecionado(tipo: 'vendas' | 'lancamentos', arquivo: File) {
-    const setter   = tipo === 'vendas' ? setVendas : setLanc
-    const endpoint = tipo === 'vendas' ? '/api/admin/upload-vendas' : '/api/admin/upload-lancamentos'
+    const setter = tipo === 'vendas' ? setVendas : setLanc
     setter(s => ({ ...s, estado: 'validando', arquivo, resultado: null, mensagem: '' }))
 
     try {
-      const { res, body } = await enviarArquivo(endpoint, arquivo, 'preview')
+      const body = await enviarArquivo(tipo, arquivo, 'preview')
 
-      if (!res.ok || 'error' in body) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: 'error' in body ? body.error : 'Erro de validação' }))
+      if ('error' in body) {
+        setter(s => ({ ...s, estado: 'erro', mensagem: body.error }))
         return
       }
 
@@ -277,19 +267,18 @@ export default function AdminUploadsPage() {
   }
 
   async function handleConfirmar(tipo: 'vendas' | 'lancamentos') {
-    const setter   = tipo === 'vendas' ? setVendas : setLanc
-    const estado   = tipo === 'vendas' ? vendas : lanc
-    const endpoint = tipo === 'vendas' ? '/api/admin/upload-vendas' : '/api/admin/upload-lancamentos'
+    const setter = tipo === 'vendas' ? setVendas : setLanc
+    const estado = tipo === 'vendas' ? vendas : lanc
     setModal(null)
 
     if (!estado.arquivo) return
     setter(s => ({ ...s, estado: 'carregando' }))
 
     try {
-      const { res, body } = await enviarArquivo(endpoint, estado.arquivo, 'executar')
+      const body = await enviarArquivo(tipo, estado.arquivo, 'executar')
 
-      if (!res.ok || 'error' in body) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: 'error' in body ? body.error : 'Erro na importação' }))
+      if ('error' in body) {
+        setter(s => ({ ...s, estado: 'erro', mensagem: body.error }))
         return
       }
 
