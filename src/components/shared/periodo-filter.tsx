@@ -120,26 +120,28 @@ export default function PeriodoFilter() {
               {popoverOpen && (
                 <div
                   ref={popoverRef}
-                  className="absolute top-full right-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-72"
+                  className="absolute top-full right-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-72 font-sans"
                 >
-                  <p className="text-xs font-semibold text-zinc-500 mb-3">Selecione o período:</p>
+                  <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-muted)' }}>Selecione o período:</p>
 
                   <div className="flex gap-3 mb-3">
                     <div className="flex-1">
-                      <label className="text-xs text-zinc-500 mb-1 block">Início</label>
+                      <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Início</label>
                       <input
                         type="date" value={fromVal} max={toVal || TODAY}
                         onChange={e => { setFromVal(e.target.value); setErroFrom('') }}
-                        className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[--brand]"
+                        className="w-full rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2"
+                        style={{ color: 'var(--text-primary)', borderColor: 'var(--border)', fontFamily: 'inherit', ['--tw-ring-color' as string]: 'var(--brand)' }}
                       />
                       {erroFrom && <p className="text-[11px] text-red-500 mt-1">{erroFrom}</p>}
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs text-zinc-500 mb-1 block">Fim</label>
+                      <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Fim</label>
                       <input
                         type="date" value={toVal} min={fromVal} max={TODAY}
                         onChange={e => { setToVal(e.target.value); setErroTo('') }}
-                        className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[--brand]"
+                        className="w-full rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2"
+                        style={{ color: 'var(--text-primary)', borderColor: 'var(--border)', fontFamily: 'inherit', ['--tw-ring-color' as string]: 'var(--brand)' }}
                       />
                       {erroTo && <p className="text-[11px] text-red-500 mt-1">{erroTo}</p>}
                     </div>
@@ -148,13 +150,17 @@ export default function PeriodoFilter() {
                   <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => setPopoverOpen(false)}
-                      className="text-xs text-zinc-500 hover:text-zinc-700 px-2 py-1"
+                      className="text-xs px-2 py-1 transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
                     >
                       Cancelar
                     </button>
                     <button
                       onClick={aplicar}
-                      className="text-xs font-medium text-white px-3 py-1.5 rounded-md bg-[--brand] hover:opacity-90 transition-opacity"
+                      className="text-xs font-medium text-white px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+                      style={{ background: 'var(--brand)' }}
                     >
                       Aplicar
                     </button>
