@@ -43,14 +43,13 @@ function WelcomeGroupLogo() {
   }
 
   return (
-    <div className="relative flex-1 min-w-0 h-8 overflow-hidden">
+    <div className="relative flex-1 min-w-0 h-10 overflow-hidden">
       <Image
         src="/logos/welcome-group.png"
         alt="Welcome Group"
         fill
         priority
-        quality={95}
-        className="object-cover object-center"
+        className="object-cover object-center scale-[0.82]"
         onError={() => setImgError(true)}
       />
     </div>
