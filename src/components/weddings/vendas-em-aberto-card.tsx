@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { Inbox } from 'lucide-react'
 import type { VendasEmAberto } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
+import EmptyState from '@/components/shared/empty-state'
 
 const LIMITE = 5
 
@@ -21,10 +23,8 @@ export default function VendasEmAbertoCard({ data }: Props) {
   if (!data || data.total === 0) {
     return (
       <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
-        <p className="text-xs text-zinc-500 mb-3">Vendas com situação Aberta no cadastro</p>
-        <div className="h-16 flex items-center justify-center text-sm text-zinc-400">
-          Nenhuma venda em aberto.
-        </div>
+        <p className="text-xs text-zinc-500 mb-3">Vendas com situação Aberta no sistema</p>
+        <EmptyState icon={Inbox} message="Nenhuma venda em aberto no momento" />
       </div>
     )
   }

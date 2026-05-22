@@ -11,7 +11,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "WT Finance",
-  description: "Dashboard analítico — Welcome Trips",
+  description: "Dashboard analítico — Welcome Group",
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({

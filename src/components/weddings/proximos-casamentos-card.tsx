@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { Calendar } from 'lucide-react'
 import type { ProximosCasamentos } from '@/types/api'
 import { fmtDateLong } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
+import EmptyState from '@/components/shared/empty-state'
 
 const LIMITE = 6
 
@@ -26,9 +28,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
 
       <div className="flex-1 min-h-0">
         {casamentos.length === 0 ? (
-          <p className="text-sm text-zinc-400 text-center py-6">
-            Nenhum casamento previsto.
-          </p>
+          <EmptyState icon={Calendar} message="Nenhum casamento previsto para o horizonte selecionado" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

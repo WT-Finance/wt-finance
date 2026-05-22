@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase } from 'lucide-react'
 
 const PERFORMANCE_SUBS = [
-  { href: '/performance',             label: 'Geral'       },
-  { href: '/performance/trips',       label: 'Trips'       },
-  { href: '/performance/weddings',    label: 'Weddings'    },
-  { href: '/performance/corporativo', label: 'Corporativo' },
+  { href: '/performance',             label: 'Geral',       icon: Building   },
+  { href: '/performance/trips',       label: 'Trips',       icon: Plane      },
+  { href: '/performance/weddings',    label: 'Weddings',    icon: Sparkles   },
+  { href: '/performance/corporativo', label: 'Corporativo', icon: Briefcase  },
 ]
 
 const NAV_ITEMS = [
@@ -25,22 +26,55 @@ interface SidebarContentProps {
   onCollapse?: () => void
 }
 
-function WelcomeGroupLogo() {
-  // SVG oficial a ser inserido quando disponível
+interface WelcomeGroupLogoProps {
+  src: string
+  alt: string
+}
+
+function WelcomeGroupLogo({ src, alt }: WelcomeGroupLogoProps) {
+  const [imgError, setImgError] = useState(false)
+
+  useEffect(() => { setImgError(false) }, [src])
+
+  if (imgError) {
+    return (
+      <div className="flex-1 min-w-0 flex flex-col items-center">
+        <p className="text-[15px] font-[800] leading-tight uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>
+          Welcome Group
+        </p>
+        <p className="text-[11px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>
+          Finance Dashboard
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex-1 min-w-0">
-      <p className="text-[15px] font-[800] leading-tight uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>
-        Welcome Group
-      </p>
-      <p className="text-[11px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>
-        Finance Dashboard
-      </p>
+    <div className="flex-1 min-w-0 flex flex-col items-center">
+      <div className="relative h-10 w-full overflow-hidden">
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          priority
+          className="object-cover object-center scale-[0.82]"
+          onError={() => setImgError(true)}
+        />
+      </div>
+      <div className="flex items-baseline gap-1 mt-4">
+        <span className="text-[14px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
+        <span className="text-[10px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>version 3.10</span>
+      </div>
     </div>
   )
 }
 
 function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
+  const logoSrc = pathname.startsWith('/performance/weddings')
+    ? '/logos/welcome-weddings.png'
+    : '/logos/welcome-group.png'
+  const logoAlt = pathname.startsWith('/performance/weddings') ? 'Welcome Weddings' : 'Welcome Group'
   const [perfOpen, setPerfOpen] = useState(true)
 
   // Hydrate from localStorage after mount (avoids SSR mismatch)
@@ -66,8 +100,8 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
-      <div className="px-5 py-4 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <WelcomeGroupLogo />
+      <div className="px-5 py-3 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
+        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} />
         {onCollapse && (
           <button
             onClick={onCollapse}
@@ -127,13 +161,19 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                           href={sub.href}
                           onClick={onNav}
                           className={[
-                            'block px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                            'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
                             subActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100',
                           ].join(' ')}
                           style={subActive
                             ? { background: 'var(--brand-soft)', color: 'var(--brand)' }
                             : undefined}
                         >
+                          <sub.icon
+                            size={14}
+                            strokeWidth={1.8}
+                            style={subActive ? { color: 'var(--brand)' } : undefined}
+                            className={subActive ? '' : 'text-zinc-400'}
+                          />
                           {sub.label}
                         </Link>
                       )
