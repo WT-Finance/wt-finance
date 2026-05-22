@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, AreaChart, Area,
   XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts'
+import CustomTooltip from '@/components/charts/custom-tooltip'
 import type { DrilldownOperacao, VisaoFinanceira } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 
@@ -372,9 +373,9 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                         width={52} tickCount={4}
                       />
                       <Tooltip
-                        formatter={(v, name) => [fmtBRL(Number(v)), name === 'entrada_acum' ? 'Entradas' : 'Saídas']}
-                        labelStyle={{ fontSize: 11 }}
-                        contentStyle={{ fontSize: 11, borderRadius: 6 }}
+                        content={<CustomTooltip
+                          formatter={(v, name) => [fmtBRL(v), name === 'entrada_acum' ? 'Entradas' : 'Saídas']}
+                        />}
                       />
                       <Area
                         type="monotone" dataKey="entrada_acum"
