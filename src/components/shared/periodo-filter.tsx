@@ -122,7 +122,7 @@ export default function PeriodoFilter() {
                   ref={popoverRef}
                   className="absolute top-full right-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-72"
                 >
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Período Personalizado</p>
+                  <p className="text-xs font-semibold text-zinc-500 mb-3">Selecione o período:</p>
 
                   <div className="flex gap-3 mb-3">
                     <div className="flex-1">
@@ -154,7 +154,7 @@ export default function PeriodoFilter() {
                     </button>
                     <button
                       onClick={aplicar}
-                      className="text-xs font-medium text-white px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                      className="text-xs font-medium text-white px-3 py-1.5 rounded-md bg-[--brand] hover:opacity-90 transition-opacity"
                     >
                       Aplicar
                     </button>
