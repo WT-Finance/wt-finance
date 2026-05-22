@@ -31,7 +31,7 @@ function WelcomeGroupLogo() {
 
   if (imgError) {
     return (
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex flex-col items-center">
         <p className="text-[15px] font-[800] leading-tight uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>
           Welcome Group
         </p>
@@ -43,8 +43,8 @@ function WelcomeGroupLogo() {
   }
 
   return (
-    <div className="flex-1 min-w-0">
-      <div className="relative h-10 overflow-hidden">
+    <div className="flex-1 min-w-0 flex flex-col items-center">
+      <div className="relative h-10 w-full overflow-hidden">
         <Image
           src="/logos/welcome-group.png"
           alt="Welcome Group"
@@ -55,8 +55,8 @@ function WelcomeGroupLogo() {
         />
       </div>
       <div className="flex items-baseline gap-1.5 mt-0.5">
-        <span className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>WT Finance</span>
-        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>version 3.10</span>
+        <span className="text-[11px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
+        <span className="text-[10px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>version 3.10</span>
       </div>
     </div>
   )
