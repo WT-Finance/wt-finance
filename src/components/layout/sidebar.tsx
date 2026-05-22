@@ -47,10 +47,10 @@ function WelcomeGroupLogo() {
       <Image
         src="/logos/welcome-group.png"
         alt="Welcome Group"
-        width={175}
-        height={40}
+        width={64}
+        height={64}
         priority
-        className="h-10 w-auto"
+        className="h-16 w-16 object-contain"
         onError={() => setImgError(true)}
       />
     </div>
