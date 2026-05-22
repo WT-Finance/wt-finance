@@ -148,7 +148,7 @@ Pendente desde v3.6.
 Atualmente o logo Weddings aparece apenas em `/performance/weddings`. Se surgirem sub-rotas como `/performance/weddings/operacao/:id`, a condição `pathname.startsWith('/performance/weddings')` já cobre — sem alteração necessária.
 
 **Favicon — ícone borrado na aba do navegador** ⚠️  
-O logo Welcome Group é um lockup horizontal complexo ("W + WELCOME GROUP") que fica inevitavelmente borrado em 16–32px. Tentativas realizadas na v3.10: substituição do `favicon.ico` padrão do Next.js pelo logo oficial, geração de `icon.png` 512×512 com recorte do símbolo W, remoção do `favicon.ico` de `src/app/` e `public/` para forçar uso do PNG via meta tag. Nenhuma resolveu de forma visível. Solução definitiva requer criar um ícone dedicado para favicon — apenas o símbolo "W" isolado, desenhado/vetorizado com espessura otimizada para 16px — fora do escopo de v3.10.
+O logo Welcome Group é um lockup horizontal complexo ("W + WELCOME GROUP") que fica inevitavelmente borrado em 16–32px. Tentativas realizadas na v3.10: substituição do `favicon.ico` padrão do Next.js pelo logo oficial, geração de `icon.png` 512×512 com recorte do símbolo W, remoção do `favicon.ico` de `src/app/` e `public/` para forçar uso do PNG via meta tag. Nenhuma resolveu de forma visível. A remoção do `public/favicon.ico` eliminou o ícone completamente, sendo revertida. Estado atual: `public/favicon.ico` (32×32/48×48, logo completo) + `src/app/icon.png` (512×512, símbolo W recortado) — ícone aparece mas borrado. Solução definitiva requer criar um ícone dedicado para favicon — apenas o símbolo "W" isolado, desenhado/vetorizado com espessura otimizada para 16px — fora do escopo de v3.10.
 
 ---
 
@@ -167,7 +167,7 @@ src/components/weddings/lista-operacoes.tsx               ← empty state (Searc
 src/components/weddings/weddings-composicao-section.tsx   ← skeleton estruturado
 public/logos/welcome-group.png                            ← novo: logo oficial Welcome Group
 public/logos/welcome-weddings.png                         ← novo: logo Welcome Weddings
-public/favicon.ico                                        ← removido (pós-review)
+public/favicon.ico                                        ← novo: favicon oficial (restaurado pós-review)
 src/app/favicon.ico                                       ← removido (substituído por icon.png)
 src/app/icon.png                                          ← novo: 512×512 símbolo W recortado
 public/apple-touch-icon.png                               ← novo: apple touch icon
