@@ -122,7 +122,7 @@ Adicionado ao final da sessão: `WelcomeGroupLogo` recebeu prop `src` (e `alt`).
 | Logo oficial na sidebar                      | ✅ Implementado     |
 | Logo dinâmico Weddings                       | ✅ Implementado     |
 | Ícones sub-abas Performance                  | ✅ Implementado     |
-| Favicon + apple-touch-icon                   | ✅ Atualizados      |
+| Favicon + apple-touch-icon                   | ⚠️ Parcial (ver pendências) |
 | Paleta Corporativo (Pantone 7476)            | ✅ Implementado     |
 | Tooltips Recharts unificados                 | ✅ Implementado     |
 | Empty states (4 componentes)                 | ✅ Implementado     |
@@ -147,6 +147,9 @@ Pendente desde v3.6.
 **Logo dinâmico — extensão para sub-rotas**  
 Atualmente o logo Weddings aparece apenas em `/performance/weddings`. Se surgirem sub-rotas como `/performance/weddings/operacao/:id`, a condição `pathname.startsWith('/performance/weddings')` já cobre — sem alteração necessária.
 
+**Favicon — ícone borrado na aba do navegador** ⚠️  
+O logo Welcome Group é um lockup horizontal complexo ("W + WELCOME GROUP") que fica inevitavelmente borrado em 16–32px. Tentativas realizadas na v3.10: substituição do `favicon.ico` padrão do Next.js pelo logo oficial, geração de `icon.png` 512×512 com recorte do símbolo W, remoção do `favicon.ico` de `src/app/` e `public/` para forçar uso do PNG via meta tag. Nenhuma resolveu de forma visível. Solução definitiva requer criar um ícone dedicado para favicon — apenas o símbolo "W" isolado, desenhado/vetorizado com espessura otimizada para 16px — fora do escopo de v3.10.
+
 ---
 
 ## Arquivos modificados ou criados na v3.10
@@ -164,7 +167,9 @@ src/components/weddings/lista-operacoes.tsx               ← empty state (Searc
 src/components/weddings/weddings-composicao-section.tsx   ← skeleton estruturado
 public/logos/welcome-group.png                            ← novo: logo oficial Welcome Group
 public/logos/welcome-weddings.png                         ← novo: logo Welcome Weddings
-public/favicon.ico                                        ← novo: favicon oficial
+public/favicon.ico                                        ← removido (pós-review)
+src/app/favicon.ico                                       ← removido (substituído por icon.png)
+src/app/icon.png                                          ← novo: 512×512 símbolo W recortado
 public/apple-touch-icon.png                               ← novo: apple touch icon
 docs/adr/0056-logo-welcome-group-sidebar.md               ← novo
 docs/adr/0057-icones-subabas-performance.md               ← novo
