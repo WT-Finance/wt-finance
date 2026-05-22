@@ -26,8 +26,15 @@ interface SidebarContentProps {
   onCollapse?: () => void
 }
 
-function WelcomeGroupLogo() {
+interface WelcomeGroupLogoProps {
+  src: string
+  alt: string
+}
+
+function WelcomeGroupLogo({ src, alt }: WelcomeGroupLogoProps) {
   const [imgError, setImgError] = useState(false)
+
+  useEffect(() => { setImgError(false) }, [src])
 
   if (imgError) {
     return (
@@ -46,8 +53,8 @@ function WelcomeGroupLogo() {
     <div className="flex-1 min-w-0 flex flex-col items-center">
       <div className="relative h-10 w-full overflow-hidden">
         <Image
-          src="/logos/welcome-group.png"
-          alt="Welcome Group"
+          src={src}
+          alt={alt}
           fill
           priority
           className="object-cover object-center scale-[0.82]"
@@ -64,6 +71,10 @@ function WelcomeGroupLogo() {
 
 function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
+  const logoSrc = pathname.startsWith('/performance/weddings')
+    ? '/logos/welcome-weddings.png'
+    : '/logos/welcome-group.png'
+  const logoAlt = pathname.startsWith('/performance/weddings') ? 'Welcome Weddings' : 'Welcome Group'
   const [perfOpen, setPerfOpen] = useState(true)
 
   // Hydrate from localStorage after mount (avoids SSR mismatch)
@@ -90,7 +101,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
       <div className="px-5 py-3 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <WelcomeGroupLogo />
+        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} />
         {onCollapse && (
           <button
             onClick={onCollapse}
