@@ -43,15 +43,21 @@ function WelcomeGroupLogo() {
   }
 
   return (
-    <div className="relative flex-1 min-w-0 h-10 overflow-hidden">
-      <Image
-        src="/logos/welcome-group.png"
-        alt="Welcome Group"
-        fill
-        priority
-        className="object-cover object-center scale-[0.82]"
-        onError={() => setImgError(true)}
-      />
+    <div className="flex-1 min-w-0">
+      <div className="relative h-10 overflow-hidden">
+        <Image
+          src="/logos/welcome-group.png"
+          alt="Welcome Group"
+          fill
+          priority
+          className="object-cover object-center scale-[0.82]"
+          onError={() => setImgError(true)}
+        />
+      </div>
+      <div className="flex items-baseline gap-1.5 mt-0.5">
+        <span className="text-[11px] font-medium" style={{ color: 'var(--text-primary)' }}>WT Finance</span>
+        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>version 3.10</span>
+      </div>
     </div>
   )
 }
