@@ -2,7 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Upload, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
-import { uploadLancamentosAction, uploadVendasAction } from './actions'
+import {
+  getLancamentosStatusAction,
+  inserirLoteLancamentosAction,
+  finalizarLancamentosAction,
+  uploadVendasAction,
+} from './actions'
+import { parseLancamentosFile } from '@/lib/carga/parse-lancamentos'
+import type { LancamentoRaw } from '@/lib/carga/lancamentos'
 
 interface StatusCarga {
   total: number
@@ -218,6 +225,7 @@ export default function AdminUploadsPage() {
   const [vendas,      setVendas]      = useState<EstadoUpload>(ESTADO_INICIAL)
   const [lanc,        setLanc]        = useState<EstadoUpload>(ESTADO_INICIAL)
   const [modal,       setModal]       = useState<'vendas' | 'lancamentos' | null>(null)
+  const lancLinhasRef                 = useRef<LancamentoRaw[]>([])
 
   async function carregarStatus() {
     try {
@@ -228,39 +236,63 @@ export default function AdminUploadsPage() {
 
   useEffect(() => { carregarStatus() }, [])
 
-  async function enviarArquivo(
-    tipo: 'vendas' | 'lancamentos',
+  async function enviarVendas(
     arquivo: File,
     modo: 'preview' | 'executar',
   ): Promise<ResultadoCarga | { error: string }> {
     const formData = new FormData()
     formData.append('file', arquivo)
     formData.append('modo', modo)
-    return tipo === 'vendas'
-      ? uploadVendasAction(formData)
-      : uploadLancamentosAction(formData)
+    return uploadVendasAction(formData)
   }
 
   async function handleArquivoSelecionado(tipo: 'vendas' | 'lancamentos', arquivo: File) {
     const setter = tipo === 'vendas' ? setVendas : setLanc
     setter(s => ({ ...s, estado: 'validando', arquivo, resultado: null, mensagem: '' }))
 
-    try {
-      const body = await enviarArquivo(tipo, arquivo, 'preview')
+    if (tipo === 'lancamentos') {
+      try {
+        const parseResult = await parseLancamentosFile(arquivo)
+        if ('error' in parseResult) {
+          setter(s => ({ ...s, estado: 'erro', mensagem: parseResult.error }))
+          return
+        }
+        const statusResult = await getLancamentosStatusAction()
+        if ('error' in statusResult) {
+          setter(s => ({ ...s, estado: 'erro', mensagem: statusResult.error }))
+          return
+        }
+        lancLinhasRef.current = parseResult
+        const resultado: ResultadoCarga = {
+          sucesso: true,
+          total_linhas: parseResult.length,
+          erros: [],
+          preview: {
+            antes:  { total_lancamentos: statusResult.total },
+            depois: { total_lancamentos: parseResult.length },
+          },
+        }
+        setter(s => ({ ...s, estado: 'aguardando_confirmacao', resultado }))
+        setModal('lancamentos')
+      } catch (err) {
+        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de parse' }))
+      }
+      return
+    }
 
+    try {
+      const body = await enviarVendas(arquivo, 'preview')
       if ('error' in body) {
         setter(s => ({ ...s, estado: 'erro', mensagem: body.error }))
         return
       }
-
       const resultado = body as ResultadoCarga
       if (!resultado.sucesso) {
         setter(s => ({ ...s, estado: 'erro', resultado, mensagem: resultado.erros[0] ?? 'Erro desconhecido' }))
         return
       }
-
       setter(s => ({ ...s, estado: 'aguardando_confirmacao', resultado }))
-      setModal(tipo)
+      setModal('vendas')
     } catch (err) {
       setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de rede' }))
     }
@@ -274,24 +306,48 @@ export default function AdminUploadsPage() {
     if (!estado.arquivo) return
     setter(s => ({ ...s, estado: 'carregando' }))
 
-    try {
-      const body = await enviarArquivo(tipo, estado.arquivo, 'executar')
+    if (tipo === 'lancamentos') {
+      const rows = lancLinhasRef.current
+      const totalAntes = estado.resultado?.preview?.antes?.total_lancamentos ?? 0
+      const BATCH = 1000
+      let inseridas = 0
+      try {
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const lote = rows.slice(i, i + BATCH)
+          const result = await inserirLoteLancamentosAction(lote, i === 0)
+          if ('error' in result) {
+            setter(s => ({ ...s, estado: 'erro', mensagem: result.error }))
+            return
+          }
+          inseridas += result.inseridas
+        }
+        const finalResult = await finalizarLancamentosAction(totalAntes, inseridas)
+        if ('error' in finalResult) {
+          setter(s => ({ ...s, estado: 'erro', mensagem: finalResult.error }))
+          return
+        }
+        lancLinhasRef.current = []
+        const msg = `${formatarNum(finalResult.total_linhas)} lançamentos importados com sucesso`
+        setter(s => ({ ...s, estado: 'sucesso', resultado: finalResult as unknown as ResultadoCarga, mensagem: msg }))
+        await carregarStatus()
+      } catch (err) {
+        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro na importação' }))
+      }
+      return
+    }
 
+    try {
+      const body = await enviarVendas(estado.arquivo, 'executar')
       if ('error' in body) {
         setter(s => ({ ...s, estado: 'erro', mensagem: body.error }))
         return
       }
-
       const resultado = body as ResultadoCarga
       if (!resultado.sucesso) {
         setter(s => ({ ...s, estado: 'erro', resultado, mensagem: resultado.erros[0] ?? 'Erro na importação' }))
         return
       }
-
-      const msg = tipo === 'vendas'
-        ? `${formatarNum(resultado.vendas_count ?? resultado.total_linhas)} vendas importadas com sucesso`
-        : `${formatarNum(resultado.total_linhas)} lançamentos importados com sucesso`
-
+      const msg = `${formatarNum(resultado.vendas_count ?? resultado.total_linhas)} vendas importadas com sucesso`
       setter(s => ({ ...s, estado: 'sucesso', resultado, mensagem: msg }))
       await carregarStatus()
     } catch (err) {
@@ -301,6 +357,7 @@ export default function AdminUploadsPage() {
 
   function handleCancelar(tipo: 'vendas' | 'lancamentos') {
     setModal(null)
+    if (tipo === 'lancamentos') lancLinhasRef.current = []
     const setter = tipo === 'vendas' ? setVendas : setLanc
     setter(ESTADO_INICIAL)
   }
