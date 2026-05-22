@@ -54,9 +54,9 @@ function WelcomeGroupLogo() {
           onError={() => setImgError(true)}
         />
       </div>
-      <div className="flex items-baseline gap-1.5 mt-2">
-        <span className="text-[12px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
-        <span className="text-[11px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>version 3.10</span>
+      <div className="flex items-baseline gap-2 mt-3">
+        <span className="text-[14px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
+        <span className="text-[12px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>version 3.10</span>
       </div>
     </div>
   )
