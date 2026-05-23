@@ -6,10 +6,14 @@ import {
   getLancamentosStatusAction,
   inserirLoteLancamentosAction,
   finalizarLancamentosAction,
-  uploadVendasAction,
+  getVendasStatusAction,
+  inserirLoteVendasAction,
+  finalizarVendasAction,
 } from './actions'
 import { parseLancamentosFile } from '@/lib/carga/parse-lancamentos'
+import { parseVendasProdutoFile } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoRaw } from '@/lib/carga/lancamentos'
+import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 
 interface StatusCarga {
   total: number
@@ -226,6 +230,7 @@ export default function AdminUploadsPage() {
   const [lanc,        setLanc]        = useState<EstadoUpload>(ESTADO_INICIAL)
   const [modal,       setModal]       = useState<'vendas' | 'lancamentos' | null>(null)
   const lancLinhasRef                 = useRef<LancamentoRaw[]>([])
+  const vendasLinhasRef               = useRef<VendaProdutoRaw[]>([])
 
   async function carregarStatus() {
     try {
@@ -236,19 +241,39 @@ export default function AdminUploadsPage() {
 
   useEffect(() => { carregarStatus() }, [])
 
-  async function enviarVendas(
-    arquivo: File,
-    modo: 'preview' | 'executar',
-  ): Promise<ResultadoCarga | { error: string }> {
-    const formData = new FormData()
-    formData.append('file', arquivo)
-    formData.append('modo', modo)
-    return uploadVendasAction(formData)
-  }
-
   async function handleArquivoSelecionado(tipo: 'vendas' | 'lancamentos', arquivo: File) {
     const setter = tipo === 'vendas' ? setVendas : setLanc
     setter(s => ({ ...s, estado: 'validando', arquivo, resultado: null, mensagem: '' }))
+
+    if (tipo === 'vendas') {
+      try {
+        const parseResult = await parseVendasProdutoFile(arquivo)
+        if ('error' in parseResult) {
+          setter(s => ({ ...s, estado: 'erro', mensagem: parseResult.error }))
+          return
+        }
+        const statusResult = await getVendasStatusAction()
+        if ('error' in statusResult) {
+          setter(s => ({ ...s, estado: 'erro', mensagem: statusResult.error }))
+          return
+        }
+        vendasLinhasRef.current = parseResult
+        const resultado: ResultadoCarga = {
+          sucesso: true,
+          total_linhas: parseResult.length,
+          erros: [],
+          preview: {
+            antes:  { total_vendas: statusResult.total },
+            depois: { total_vendas: parseResult.length },
+          },
+        }
+        setter(s => ({ ...s, estado: 'aguardando_confirmacao', resultado }))
+        setModal('vendas')
+      } catch (err) {
+        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de parse' }))
+      }
+      return
+    }
 
     if (tipo === 'lancamentos') {
       try {
@@ -280,22 +305,6 @@ export default function AdminUploadsPage() {
       return
     }
 
-    try {
-      const body = await enviarVendas(arquivo, 'preview')
-      if ('error' in body) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: body.error }))
-        return
-      }
-      const resultado = body as ResultadoCarga
-      if (!resultado.sucesso) {
-        setter(s => ({ ...s, estado: 'erro', resultado, mensagem: resultado.erros[0] ?? 'Erro desconhecido' }))
-        return
-      }
-      setter(s => ({ ...s, estado: 'aguardando_confirmacao', resultado }))
-      setModal('vendas')
-    } catch (err) {
-      setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de rede' }))
-    }
   }
 
   async function handleConfirmar(tipo: 'vendas' | 'lancamentos') {
@@ -305,6 +314,36 @@ export default function AdminUploadsPage() {
 
     if (!estado.arquivo) return
     setter(s => ({ ...s, estado: 'carregando' }))
+
+    if (tipo === 'vendas') {
+      const rows = vendasLinhasRef.current
+      const totalAntes = estado.resultado?.preview?.antes?.total_vendas ?? 0
+      const BATCH = 1000
+      let inseridas = 0
+      try {
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const lote = rows.slice(i, i + BATCH)
+          const result = await inserirLoteVendasAction(lote, i === 0)
+          if ('error' in result) {
+            setter(s => ({ ...s, estado: 'erro', mensagem: result.error }))
+            return
+          }
+          inseridas += result.inseridas
+        }
+        const finalResult = await finalizarVendasAction(totalAntes, inseridas)
+        if ('error' in finalResult) {
+          setter(s => ({ ...s, estado: 'erro', mensagem: finalResult.error }))
+          return
+        }
+        vendasLinhasRef.current = []
+        const msg = `${formatarNum(finalResult.vendas_count)} vendas importadas com sucesso`
+        setter(s => ({ ...s, estado: 'sucesso', resultado: finalResult as unknown as ResultadoCarga, mensagem: msg }))
+        await carregarStatus()
+      } catch (err) {
+        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro na importação' }))
+      }
+      return
+    }
 
     if (tipo === 'lancamentos') {
       const rows = lancLinhasRef.current
@@ -336,28 +375,12 @@ export default function AdminUploadsPage() {
       return
     }
 
-    try {
-      const body = await enviarVendas(estado.arquivo, 'executar')
-      if ('error' in body) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: body.error }))
-        return
-      }
-      const resultado = body as ResultadoCarga
-      if (!resultado.sucesso) {
-        setter(s => ({ ...s, estado: 'erro', resultado, mensagem: resultado.erros[0] ?? 'Erro na importação' }))
-        return
-      }
-      const msg = `${formatarNum(resultado.vendas_count ?? resultado.total_linhas)} vendas importadas com sucesso`
-      setter(s => ({ ...s, estado: 'sucesso', resultado, mensagem: msg }))
-      await carregarStatus()
-    } catch (err) {
-      setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de rede' }))
-    }
   }
 
   function handleCancelar(tipo: 'vendas' | 'lancamentos') {
     setModal(null)
     if (tipo === 'lancamentos') lancLinhasRef.current = []
+    if (tipo === 'vendas') vendasLinhasRef.current = []
     const setter = tipo === 'vendas' ? setVendas : setLanc
     setter(ESTADO_INICIAL)
   }
