@@ -56,6 +56,41 @@ export interface Database {
         }
         Update: Partial<Database['raw']['Tables']['vendas_excel']['Insert']>
       }
+      lancamentos: {
+        Row: {
+          id: number; arquivo_origem: string; carregado_em: string
+          numero: string | null; venda_no: number | null
+          emissao: string | null; vencimento: string | null; liquidacao: string | null
+          pessoa: string | null; descricao: string | null
+          descricao_categoria: string | null
+          valor: number
+          categoria: string | null; grupo_categoria: string | null; conta: string | null
+        }
+        Insert: Omit<Database['raw']['Tables']['lancamentos']['Row'], 'id' | 'carregado_em'>
+        Update: Partial<Database['raw']['Tables']['lancamentos']['Insert']>
+      }
+      vendas_pagamento: {
+        Row: {
+          id: number; arquivo_origem: string; carregado_em: string
+          venda_no: number | null; data_venda: string | null
+          forma_pagamento: string | null; conta: string | null
+          valor: number | null
+        }
+        Insert: Omit<Database['raw']['Tables']['vendas_pagamento']['Row'], 'id' | 'carregado_em'>
+        Update: Partial<Database['raw']['Tables']['vendas_pagamento']['Insert']>
+      }
+      contas_pagar_receber: {
+        Row: {
+          id: number; arquivo_origem: string; carregado_em: string
+          tipo_movimento: 'A_RECEBER' | 'A_PAGAR'
+          vencimento: string | null; liquidacao: string | null
+          pessoa: string | null; descricao: string | null
+          valor: number | null; valor_final: number | null
+          conferido: boolean | null
+        }
+        Insert: Omit<Database['raw']['Tables']['contas_pagar_receber']['Row'], 'id' | 'carregado_em'>
+        Update: Partial<Database['raw']['Tables']['contas_pagar_receber']['Insert']>
+      }
     }
   }
   analytics: {
@@ -483,6 +518,50 @@ export interface Database {
         Args: { p_from: string; p_to: string }
         Returns: Json
       }
+      // Lancamentos (uploads admin)
+      get_upload_status:             { Args: Record<string, never>; Returns: Json }
+      truncar_lancamentos:           { Args: Record<string, never>; Returns: void }
+      inserir_lote_lancamentos:      { Args: { p_linhas: unknown }; Returns: void }
+      regenerar_dim_operacao_weddings: { Args: Record<string, never>; Returns: void }
+      // Financeiro RPCs (v4.0)
+      regenerar_financeiro_lancamentos: { Args: Record<string, never>; Returns: void }
+      get_fluxo_caixa_mensal:  { Args: { p_from: string; p_to: string }; Returns: Json }
+      get_proximos_vencimentos: { Args: { p_limite?: number; p_offset?: number }; Returns: Json }
+      get_posicao_por_conta:   { Args: Record<string, never>; Returns: Json }
+      get_decomposicao_grupo:  { Args: { p_from: string; p_to: string }; Returns: Json }
+    }
+  }
+  financeiro: {
+    Tables: {
+      dim_categoria: {
+        Row:    { id: number; categoria: string; grupo_categoria: string }
+        Insert: { id?: number; categoria: string; grupo_categoria: string }
+        Update: Partial<{ categoria: string; grupo_categoria: string }>
+      }
+      dim_conta_bancaria: {
+        Row:    { id: number; conta: string; tipo: string }
+        Insert: { id?: number; conta: string; tipo: string }
+        Update: Partial<{ conta: string; tipo: string }>
+      }
+      fato_lancamentos: {
+        Row: {
+          id: number; arquivo_origem: string; carregado_em: string
+          numero: string | null; venda_no: number | null
+          emissao: string | null; vencimento: string | null; liquidacao: string | null
+          pessoa: string | null; descricao: string | null
+          descricao_categoria: string | null
+          valor: number
+          categoria_id: number | null; conta_bancaria_id: number | null
+        }
+        Insert: Omit<Database['financeiro']['Tables']['fato_lancamentos']['Row'], 'id' | 'carregado_em'>
+        Update: Partial<Database['financeiro']['Tables']['fato_lancamentos']['Insert']>
+      }
+    }
+    Views: {
+      vw_fluxo_caixa_mensal:    { Row: { mes: string; grupo_categoria: string; tipo: string; valor_total: number } }
+      vw_proximos_vencimentos:  { Row: { aging: string; tipo_movimento: string; count: number; valor_total: number } }
+      vw_posicao_por_conta:     { Row: { conta: string; tipo: string; saldo: number } }
+      vw_decomposicao_grupo:    { Row: { grupo_categoria: string; sinal: string; valor_total: number } }
     }
   }
 }
