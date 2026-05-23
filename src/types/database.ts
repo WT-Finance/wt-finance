@@ -433,10 +433,6 @@ export interface Database {
         Args: { p_setor?: string }
         Returns: Json
       }
-      get_sparklines: {
-        Args: { p_preset: string; p_from: string; p_to: string; p_setor?: string }
-        Returns: Json
-      }
       get_sumario_subsetor: {
         Args: { p_from: string; p_to: string }
         Returns: Json
