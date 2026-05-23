@@ -1,8 +1,9 @@
 'use server'
 
-import { carregarVendas } from '@/lib/carga/vendas'
+import { loadMetas } from '@/lib/carga/metas'
 import { getAdminClient } from '@/lib/supabase/admin'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
+import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -63,25 +64,102 @@ export async function finalizarLancamentosAction(
   }
 }
 
-export async function uploadVendasAction(formData: FormData) {
+// ---------------------------------------------------------------------------
+// Vendas (M3.1) — padrão lotes, parse client-side
+// ---------------------------------------------------------------------------
+
+export async function getVendasStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
   try {
-    const file = formData.get('file')
-    const modo = (formData.get('modo') as string) ?? 'preview'
+    const supabase = getAdminClient()
+    const { count, error } = await supabase
+      .schema('analytics')
+      .from('fato_venda')
+      .select('*', { count: 'exact', head: true })
+    if (error) return { error: error.message }
 
-    if (!(file instanceof Blob))
-      return { error: 'Campo "file" ausente ou inválido' }
-    if (modo !== 'preview' && modo !== 'executar')
-      return { error: 'Campo "modo" deve ser "preview" ou "executar"' }
+    const { data: latest } = await supabase
+      .schema('analytics')
+      .from('fato_venda')
+      .select('criado_em')
+      .order('criado_em', { ascending: false })
+      .limit(1)
+      .single()
 
-    const fileName = file instanceof File ? file.name : 'vendas.xlsx'
-    const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
-    if (ext && ext !== 'xlsx' && ext !== 'csv')
-      return { error: `Formato não suportado: .${ext}. Envie .xlsx ou .csv` }
-
-    const buffer = Buffer.from(await file.arrayBuffer())
-    return await carregarVendas(buffer, fileName, modo as 'preview' | 'executar')
+    return {
+      total: count ?? 0,
+      ultima_atualizacao: (latest as { criado_em: string } | null)?.criado_em ?? null,
+    }
   } catch (err) {
-    console.error('[upload-vendas]', err)
-    return { error: `Erro interno: ${err instanceof Error ? err.message : String(err)}` }
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function inserirLoteVendasAction(
+  lote: VendaProdutoRaw[],
+  isFirst: boolean,
+): Promise<{ inseridas: number } | { error: string }> {
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    if (isFirst) {
+      const { error: truncErr } = await bound('truncate_dynamic_tables')
+      if (truncErr) return { error: `Erro ao truncar tabelas: ${truncErr.message}` }
+
+      try { await loadMetas(false) } catch (e) {
+        return { error: `Erro ao carregar metas: ${e instanceof Error ? e.message : String(e)}` }
+      }
+    }
+
+    const { error } = await bound('inserir_lote_raw', { p_linhas: lote })
+    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
+
+    return { inseridas: lote.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function finalizarVendasAction(
+  totalAntes: number,
+  totalInseridas: number,
+): Promise<{
+  sucesso: boolean
+  total_linhas: number
+  vendas_count: number
+  fato_item_count: number
+  erros: string[]
+  preview: { antes: { total_vendas: number }; depois: { total_vendas: number } }
+} | { error: string }> {
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    const { data: transformData, error: transformErr } = await bound('transform_raw_to_analytics')
+    if (transformErr) return { error: `Erro na transformação: ${transformErr.message}` }
+
+    const resultado = transformData as { vendas_count: number; fato_venda_item_count: number } | null
+
+    const { error: dimErr } = await bound('regenerar_dim_operacao_weddings')
+    if (dimErr) return { error: `Erro ao regenerar operações Weddings: ${dimErr.message}` }
+
+    const { error: refreshErr } = await bound('refresh_all_materialized_views')
+    if (refreshErr) return { error: `Erro ao atualizar views: ${refreshErr.message}` }
+
+    return {
+      sucesso: true,
+      total_linhas: totalInseridas,
+      vendas_count: resultado?.vendas_count ?? 0,
+      fato_item_count: resultado?.fato_venda_item_count ?? 0,
+      erros: [],
+      preview: {
+        antes:  { total_vendas: totalAntes },
+        depois: { total_vendas: resultado?.vendas_count ?? 0 },
+      },
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
   }
 }
