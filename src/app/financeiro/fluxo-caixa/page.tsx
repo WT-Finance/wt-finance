@@ -13,9 +13,9 @@ interface SearchParams {
 }
 
 interface PosicaoConta {
-  conta:  string
-  tipo:   string
-  saldo:  number
+  conta:      string
+  tipo_conta: string
+  saldo:      number
 }
 
 interface DecomposicaoGrupo {
@@ -25,10 +25,18 @@ interface DecomposicaoGrupo {
 }
 
 interface ProximoVencimento {
-  aging:          'a_vencer' | 'vencido_30d' | 'vencido_30_90d' | 'vencido_90d_mais'
-  tipo_movimento: 'A_RECEBER' | 'A_PAGAR'
-  count:          number
-  valor_total:    number
+  id:              number
+  numero:          string | null
+  vencimento:      string
+  venda_no:        number | null
+  pessoa:          string | null
+  descricao:       string | null
+  valor:           number
+  categoria:       string | null
+  grupo_categoria: string | null
+  conta:           string | null
+  tipo_conta:      string | null
+  aging:           'a_vencer' | 'vencido_30d' | 'vencido_30_90d' | 'vencido_90d_mais'
 }
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -76,20 +84,38 @@ export default async function FluxoCaixaPage({
     rpc('get_proximos_vencimentos', { p_limite: 200, p_offset: 0 }),
   ])
 
-  const fluxoRows      = (fluxoRes.error      ? [] : fluxoRes.data      as FluxoMensalRow[])     ?? []
-  const decomposicao   = (decomposicaoRes.error ? [] : decomposicaoRes.data as DecomposicaoGrupo[]) ?? []
-  const posicoes       = (posicaoRes.error     ? [] : posicaoRes.data     as PosicaoConta[])       ?? []
-  const vencimentos    = (vencimentosRes.error  ? [] : vencimentosRes.data  as ProximoVencimento[]) ?? []
+  const fluxoRows    = (fluxoRes.error      ? null : fluxoRes.data      as FluxoMensalRow[]     | null) ?? []
+  const decomposicao = (decomposicaoRes.error ? null : decomposicaoRes.data as DecomposicaoGrupo[] | null) ?? []
+  const posicoes     = (posicaoRes.error     ? null : posicaoRes.data     as PosicaoConta[]       | null) ?? []
+
+  const vencimentosPayload = vencimentosRes.error
+    ? null
+    : (vencimentosRes.data as { items: ProximoVencimento[] | null; total: number } | null)
+  const vencimentos = vencimentosPayload?.items ?? []
 
   // KPIs aggregated from fluxo rows
-  const realizados = fluxoRows.filter(r => r.tipo === 'realizado')
+  const realizados    = fluxoRows.filter(r => r.tipo === 'realizado')
   const totalEntradas = realizados.filter(r => r.valor_total > 0).reduce((s, r) => s + r.valor_total, 0)
   const totalSaidas   = realizados.filter(r => r.valor_total < 0).reduce((s, r) => s + Math.abs(r.valor_total), 0)
   const saldoLiquido  = totalEntradas - totalSaidas
 
+  // A receber = unliquidated lançamentos with positive valor (entradas em aberto)
   const aReceber = vencimentos
-    .filter(v => v.tipo_movimento === 'A_RECEBER')
-    .reduce((s, v) => s + v.valor_total, 0)
+    .filter(v => v.valor > 0)
+    .reduce((s, v) => s + v.valor, 0)
+
+  // Aggregate vencimentos by aging bucket for summary table
+  type AgingBucket = { aging: string; aReceber: number; aPagar: number; count: number }
+  const agingOrder = ['a_vencer', 'vencido_30d', 'vencido_30_90d', 'vencido_90d_mais']
+  const agingMap = new Map<string, AgingBucket>()
+  for (const v of vencimentos) {
+    if (!agingMap.has(v.aging)) agingMap.set(v.aging, { aging: v.aging, aReceber: 0, aPagar: 0, count: 0 })
+    const row = agingMap.get(v.aging)!
+    row.count++
+    if (v.valor >= 0) row.aReceber += v.valor
+    else row.aPagar += Math.abs(v.valor)
+  }
+  const agingRows = agingOrder.map(a => agingMap.get(a)).filter(Boolean) as AgingBucket[]
 
   const temDados = fluxoRows.length > 0
 
@@ -191,7 +217,7 @@ export default async function FluxoCaixaPage({
                         <div>
                           <span className="text-zinc-700 font-medium">{p.conta}</span>
                           <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-zinc-100 text-zinc-400">
-                            {TIPO_CONTA_LABEL[p.tipo] ?? p.tipo}
+                            {TIPO_CONTA_LABEL[p.tipo_conta] ?? p.tipo_conta}
                           </span>
                         </div>
                         <span className={['font-medium tabular-nums', p.saldo >= 0 ? 'text-zinc-800' : 'text-red-600'].join(' ')}>
@@ -209,36 +235,31 @@ export default async function FluxoCaixaPage({
             </TopSection>
           </div>
 
-          {/* Próximos Vencimentos */}
-          {vencimentos.length > 0 && (
-            <TopSection titulo="Abertos por Aging">
+          {/* Títulos em Aberto por Aging */}
+          {agingRows.length > 0 && (
+            <TopSection titulo="Títulos em Aberto por Aging">
               <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-zinc-400 border-b border-zinc-100">
                         <th className="text-left pb-2 font-medium">Faixa</th>
-                        <th className="text-left pb-2 font-medium">Tipo</th>
                         <th className="text-right pb-2 font-medium">Qtd</th>
-                        <th className="text-right pb-2 font-medium">Total</th>
+                        <th className="text-right pb-2 font-medium">A Receber</th>
+                        <th className="text-right pb-2 font-medium">A Pagar</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {vencimentos.map((v, i) => (
-                        <tr key={i} className="border-b border-zinc-50 last:border-0">
-                          <td className="py-1.5 text-zinc-700">{AGING_LABEL[v.aging] ?? v.aging}</td>
-                          <td className="py-1.5">
-                            <span className={[
-                              'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                              v.tipo_movimento === 'A_RECEBER'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-amber-50 text-amber-700',
-                            ].join(' ')}>
-                              {v.tipo_movimento === 'A_RECEBER' ? 'A Receber' : 'A Pagar'}
-                            </span>
+                      {agingRows.map(r => (
+                        <tr key={r.aging} className="border-b border-zinc-50 last:border-0">
+                          <td className="py-1.5 text-zinc-700">{AGING_LABEL[r.aging] ?? r.aging}</td>
+                          <td className="py-1.5 text-right text-zinc-500">{r.count}</td>
+                          <td className="py-1.5 text-right font-medium text-emerald-700 tabular-nums">
+                            {r.aReceber > 0 ? fmtBRL(r.aReceber) : '—'}
                           </td>
-                          <td className="py-1.5 text-right text-zinc-600">{v.count}</td>
-                          <td className="py-1.5 text-right font-medium text-zinc-800 tabular-nums">{fmtBRL(v.valor_total)}</td>
+                          <td className="py-1.5 text-right font-medium text-amber-700 tabular-nums">
+                            {r.aPagar > 0 ? fmtBRL(r.aPagar) : '—'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
