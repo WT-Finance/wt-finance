@@ -21,6 +21,8 @@ export interface LancamentoFinanceiroRaw {
 }
 
 const COL_MAP: Record<string, keyof LancamentoFinanceiroRaw> = {
+  // "Número" header fica na col A (sempre vazia); número real fica na col C (__EMPTY_1)
+  '__EMPTY_1':              'numero',
   'Número':                 'numero',
   'Numero':                 'numero',
   'Lançamento Nº':          'numero',
@@ -67,7 +69,15 @@ function toIsoDate(value: unknown): string | null {
 
 function toNum(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null
-  const n = Number(String(value).replace(',', '.').trim())
+  if (typeof value === 'number') return value
+  let s = String(value).trim().replace(/[R$ ]/g, '').trim()
+  // BR format "8.840,00" → decimal comma; US/ERP format "8,840.00" → decimal period
+  if (/,\d{1,2}$/.test(s)) {
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else {
+    s = s.replace(/,/g, '')
+  }
+  const n = Number(s)
   return isNaN(n) ? null : n
 }
 

@@ -16,24 +16,10 @@ export async function getLancamentosFinanceiroStatusAction(): Promise<
 > {
   try {
     const supabase = getAdminClient()
-    const { count, error } = await supabase
-      .schema('raw')
-      .from('lancamentos')
-      .select('*', { count: 'exact', head: true })
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+    const { data, error } = await bound('contar_lancamentos_financeiro')
     if (error) return { error: error.message }
-
-    const { data: latest } = await supabase
-      .schema('raw')
-      .from('lancamentos')
-      .select('carregado_em')
-      .order('carregado_em', { ascending: false })
-      .limit(1)
-      .single()
-
-    return {
-      total: count ?? 0,
-      ultima_atualizacao: (latest as { carregado_em: string } | null)?.carregado_em ?? null,
-    }
+    return { total: (data as number) ?? 0, ultima_atualizacao: null }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }
@@ -46,14 +32,15 @@ export async function inserirLoteLancamentosFinanceiroAction(
 ): Promise<{ inseridas: number } | { error: string }> {
   try {
     const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
 
     if (isFirst) {
-      const { error } = await supabase.schema('raw').from('lancamentos').delete().neq('id', 0)
+      const { error } = await bound('truncar_lancamentos_financeiro')
       if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
     }
 
     const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await supabase.schema('raw').from('lancamentos').insert(rows)
+    const { error } = await bound('inserir_lote_lancamentos_financeiro', { p_linhas: rows })
     if (error) return { error: `Erro ao inserir lote: ${error.message}` }
 
     return { inseridas: lote.length }

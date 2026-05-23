@@ -524,11 +524,14 @@ export interface Database {
       inserir_lote_lancamentos:      { Args: { p_linhas: unknown }; Returns: void }
       regenerar_dim_operacao_weddings: { Args: Record<string, never>; Returns: void }
       // Financeiro RPCs (v4.0)
-      regenerar_financeiro_lancamentos: { Args: Record<string, never>; Returns: void }
-      get_fluxo_caixa_mensal:  { Args: { p_from: string; p_to: string }; Returns: Json }
-      get_proximos_vencimentos: { Args: { p_limite?: number; p_offset?: number }; Returns: Json }
-      get_posicao_por_conta:   { Args: Record<string, never>; Returns: Json }
-      get_decomposicao_grupo:  { Args: { p_from: string; p_to: string }; Returns: Json }
+      regenerar_financeiro_lancamentos:    { Args: Record<string, never>; Returns: void }
+      truncar_lancamentos_financeiro:      { Args: Record<string, never>; Returns: void }
+      inserir_lote_lancamentos_financeiro: { Args: { p_linhas: unknown }; Returns: void }
+      contar_lancamentos_financeiro:       { Args: Record<string, never>; Returns: number }
+      get_fluxo_caixa_mensal:   { Args: { p_from: string; p_to: string }; Returns: Json }
+      get_proximos_vencimentos:  { Args: { p_limite?: number; p_offset?: number }; Returns: Json }
+      get_posicao_por_conta:    { Args: Record<string, never>; Returns: Json }
+      get_decomposicao_grupo:   { Args: { p_from: string; p_to: string }; Returns: Json }
     }
   }
   financeiro: {
