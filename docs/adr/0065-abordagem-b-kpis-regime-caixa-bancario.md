@@ -13,8 +13,11 @@ WT Finance v4.0 calculava KPIs de Fluxo de Caixa usando Lançamentos puro (regim
 KPIs do topo do Fluxo de Caixa e o gráfico Fluxo Mensal passam a usar Abordagem B (regime caixa-banco). A regra:
 
 **Passado liquidado (Bloco 1 — regra refinada em migration 0068):**
-- Entradas (valor > 0): SEMPRE incluídas, mesmo que a conta seja cartão de crédito. Reembolsos de fornecedor, estornos, incentivos e similares registrados em contas-cartão são receita real e não têm contrapartida como "Fatura-Entrada" na CAP/CAR — portanto sem risco de dupla contagem.
-- Saídas (valor < 0): somente se a conta NÃO for cartão. Saídas individuais de cartão são excluídas e aparecem agregadas via Fatura no Bloco 2.
+- Entradas (valor > 0) em **qualquer conta**: SEMPRE incluídas, mesmo que a conta seja cartão de crédito.
+- Saídas (valor < 0) em contas **não-cartão**: incluídas normalmente.
+- Saídas (valor < 0) em contas **cartão**: EXCLUÍDAS do Bloco 1 — contabilizadas via Fatura-cartão no Bloco 2.
+
+**Por que entradas em cartão são incluídas:** Lançamentos com valor > 0 em contas-cartão (Reembolso Fornecedor, Desconto Obtido, Incentivo, Reversão de Perdas Financeiras, etc.) representam receita real que chegou no balanço do cartão. A CAP/CAR registra Faturas-cartão **sempre com Tipo='Saída'** — confirmado empiricamente na Investigação 3 do checkpoint M5 (34 faturas inspecionadas, nenhuma com Tipo='Entrada'). Portanto não há contrapartida possível como "Fatura-Entrada" e o risco de dupla contagem é zero.
 
 **Passado liquidado (Bloco 2):**
 - `CAP/CAR.ValorFinal WHERE Status IN ('Entrada','Saída') AND descricao LIKE 'Fatura %cartão%'`
