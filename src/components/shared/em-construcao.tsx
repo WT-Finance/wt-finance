@@ -21,12 +21,13 @@ export default function EmConstrucao({
       <Suspense fallback={null}>
         <PreviewButton />
       </Suspense>
-      <div className="mt-2 flex flex-col items-center gap-1">
+      <div className="mt-2 flex flex-col items-start gap-1">
         <p className="text-xs text-zinc-400">Você pode estar procurando:</p>
         <Link
           href="/performance/weddings"
-          className="text-xs text-zinc-500 underline hover:text-zinc-700"
+          className="flex items-center gap-1.5 text-xs text-zinc-500 underline hover:text-zinc-700"
         >
+          <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />
           Weddings
         </Link>
       </div>
