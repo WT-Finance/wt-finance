@@ -15,9 +15,7 @@ export default async function TripsPage({
 }) {
   const sp      = await searchParams
   const preview = sp.preview === '1'
-  return (
-    <EmConstrucao preview={preview}>
-      <PerformanceContent setor="Lazer" searchParams={sp} />
-    </EmConstrucao>
-  )
+  if (!preview) return <EmConstrucao preview={false}>{null}</EmConstrucao>
+
+  return <PerformanceContent setor="Lazer" searchParams={sp} />
 }

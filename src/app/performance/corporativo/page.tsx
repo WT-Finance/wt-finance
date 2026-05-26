@@ -15,9 +15,7 @@ export default async function CorporativoPage({
 }) {
   const sp      = await searchParams
   const preview = sp.preview === '1'
-  return (
-    <EmConstrucao preview={preview}>
-      <PerformanceContent setor="Corporativo" searchParams={sp} />
-    </EmConstrucao>
-  )
+  if (!preview) return <EmConstrucao preview={false}>{null}</EmConstrucao>
+
+  return <PerformanceContent setor="Corporativo" searchParams={sp} />
 }
