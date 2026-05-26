@@ -19,13 +19,17 @@ Padronizar o pipeline de upload em 4 etapas fixas para todas as fontes:
 3. **Server Actions com RPCs `SECURITY DEFINER`** — cada fonte tem um par de RPCs públicas (`truncar_*` + `inserir_lote_*`) no schema `public` que acessam as tabelas `raw.*` (necessário pela restrição PostgREST — ver ADR-0061)
 4. **Modal de confirmação antes de truncar+inserir** — exibe contagem de linhas detectadas e avisa que a operação substitui todos os dados atuais
 
-Implementação centralizada no componente `CardUpload` genérico em `src/app/admin/uploads/page.tsx`. Cada fonte é configurada por props (colunas esperadas, mapeamento de campos, RPCs a chamar).
+Implementação dividida em dois componentes:
+
+- **`CardUpload`** em `src/app/admin/uploads/page.tsx` — cobre as fontes operacionais (`tipo: 'vendas' | 'lancamentos'`), com lógica de parse e RPCs específicas por tipo tratada internamente nos handlers da página.
+- **`CardUploadFinanceiro`** em `src/app/admin/uploads/financeiro/page.tsx` — cobre as três fontes financeiras, iterando sobre um array de configuração `FONTES` (com `key`, `label` e `descricao`). A lógica de parse e RPCs também é tratada internamente por `switch` no handler, não via props de colunas/mapeamento.
 
 Fontes suportadas na v4.0:
-- Vendas por Produto (`raw.vendas_excel`) — existia desde v3.x, padronizada
-- Lançamentos (`raw.lancamentos`) — nova
-- Vendas por Forma de Pagamento (`raw.vendas_pagamento`) — nova
-- CAP/CAR (`raw.contas_pagar_receber`) — nova
+- Vendas por Produto (`raw.vendas_excel`) — existia desde v3.x, padronizada → `CardUpload`
+- Lançamentos por Operação (`raw.lancamentos`) — nova → `CardUpload`
+- Lançamentos por Categoria (`raw.lancamentos_financeiro`) — nova → `CardUploadFinanceiro`
+- Vendas por Forma de Pagamento (`raw.vendas_pagamento`) — nova → `CardUploadFinanceiro`
+- CAP/CAR (`raw.contas_pagar_receber`) — nova → `CardUploadFinanceiro`
 
 ## Consequências
 
