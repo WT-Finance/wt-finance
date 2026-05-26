@@ -57,13 +57,18 @@ function toIsoDate(value: unknown): string | null {
     const y = value.getFullYear()
     const m = String(value.getMonth() + 1).padStart(2, '0')
     const d = String(value.getDate()).padStart(2, '0')
+    if (d === '00' || y < 1900) return null  // Excel serial 0 / data inválida
     return `${y}-${m}-${d}`
   }
   const s = String(value).trim()
   if (!s) return null
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    if (s.endsWith('-00')) return null  // Excel serial 0 / dia inválido
+    return s
+  }
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
     const [d, m, y] = s.split('/')
+    if (d === '00') return null
     return `${y}-${m}-${d}`
   }
   return null

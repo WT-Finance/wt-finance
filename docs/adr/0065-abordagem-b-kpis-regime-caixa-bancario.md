@@ -12,17 +12,19 @@ WT Finance v4.0 calculava KPIs de Fluxo de Caixa usando Lançamentos puro (regim
 
 KPIs do topo do Fluxo de Caixa e o gráfico Fluxo Mensal passam a usar Abordagem B (regime caixa-banco). A regra:
 
-**Passado liquidado:**
-- Entradas: `Lançamentos.Valor WHERE Liquidacao IS NOT NULL AND Valor > 0` (qualquer conta)
-- Saídas: `Lançamentos.Valor WHERE Liquidacao IS NOT NULL AND Valor < 0 AND conta NOT IN cartões`
-- Mais: `CAP/CAR.ValorFinal WHERE Status IN ('Entrada','Saída') AND descricao LIKE 'Fatura %cartão%'`
+**Passado liquidado (Bloco 1 — regra refinada em migration 0068):**
+- Entradas (valor > 0): SEMPRE incluídas, mesmo que a conta seja cartão de crédito. Reembolsos de fornecedor, estornos, incentivos e similares registrados em contas-cartão são receita real e não têm contrapartida como "Fatura-Entrada" na CAP/CAR — portanto sem risco de dupla contagem.
+- Saídas (valor < 0): somente se a conta NÃO for cartão. Saídas individuais de cartão são excluídas e aparecem agregadas via Fatura no Bloco 2.
+
+**Passado liquidado (Bloco 2):**
+- `CAP/CAR.ValorFinal WHERE Status IN ('Entrada','Saída') AND descricao LIKE 'Fatura %cartão%'`
 
 **Futuro previsto:**
 - Entradas: `CAP/CAR.ValorFinal WHERE Status='A Receber Futuro' AND (conta_previsao IS NULL OR NOT cartão)`
 - Saídas: `CAP/CAR.ValorFinal WHERE Status='A Pagar Futuro' AND (conta_previsao IS NULL OR NOT cartão)`
 - Mais: `CAP/CAR.ValorFinal WHERE Status='A Pagar Futuro' AND descricao LIKE 'Fatura %'`
 
-Implementado via: `financeiro.vw_fluxo_caixa_kpis_b` (4 blocos UNION ALL) + RPCs `get_fluxo_caixa_kpis_b` e `get_fluxo_caixa_mensal_b` (migration 0065).
+Implementado via: `financeiro.vw_fluxo_caixa_kpis_b` (4 blocos UNION ALL) + RPCs `get_fluxo_caixa_kpis_b` e `get_fluxo_caixa_mensal_b` (migrations 0065 + 0068).
 
 ## Consequências
 
@@ -35,4 +37,6 @@ Implementado via: `financeiro.vw_fluxo_caixa_kpis_b` (4 blocos UNION ALL) + RPCs
 - Faturas-cartão consolidadas não têm Grupo de Categoria contábil → harmonização em B foi descartada
 - 725 títulos futuros sem Conta (Previsão) na CAP/CAR são tratados como não-cartão (Risco 3, impacto <2%)
 
-**Validação numérica (jan-mai 2026):** Abordagem B → Entradas R$12,69M | Saídas R$13,50M | Saldo −R$813K
+**Validação numérica (jan-mai 2026):** Abordagem B → Entradas R$12,69M | Saídas R$13,57M | Saldo ~−R$880K
+
+_Nota: spec original usava ~R$13,50M para saídas. A diferença de R$70K (0,5%) corresponde às saídas de TBO e Conta Investimento XP, ausentes de `dim_conta_bancaria` no momento da validação do spec e corretamente incluídas após migration 0067. O saldo levemente acima de −R$813K é consequência direta dessa correção._
