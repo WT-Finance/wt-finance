@@ -45,10 +45,27 @@ interface ProximoVencimento {
   aging:           'a_vencer' | 'vencido_ate_30d' | 'vencido_30_a_90d' | 'vencido_mais_90d'
 }
 
-function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+const TOOLTIP_KPI_REALIZADO =
+  "Reflete o fluxo de caixa bancário real, com gastos via cartão contabilizados no pagamento da fatura. Diferença esperada em relação à Decomposição por Grupo de Categoria devido ao ciclo de cartão (≤30 dias)."
+
+const TOOLTIP_A_RECEBER =
+  "Total previsto de entradas futuras da CAP/CAR (exceto faturas de cartão pendentes)."
+
+function KpiCard({ label, value, sub, tooltip }: { label: string; value: string; sub?: string; tooltip?: string }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
-      <p className="text-xs text-zinc-400 mb-1">{label}</p>
+      <div className="flex items-center gap-1 mb-1">
+        <p className="text-xs text-zinc-400">{label}</p>
+        {tooltip && (
+          <span title={tooltip} className="text-zinc-300 hover:text-zinc-500 cursor-help">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4"/>
+              <path d="M12 8h.01"/>
+            </svg>
+          </span>
+        )}
+      </div>
       <p className="text-xl font-semibold text-zinc-900 tabular-nums">{value}</p>
       {sub && <p className="text-xs text-zinc-400 mt-0.5">{sub}</p>}
     </div>
@@ -152,14 +169,15 @@ export default async function FluxoCaixaPage({
           {/* KPIs */}
           <TopSection titulo="Visão Geral">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <KpiCard label="Entradas realizadas"  value={fmtMi(totalEntradas)} />
-              <KpiCard label="Saídas realizadas"    value={fmtMi(totalSaidas)} />
+              <KpiCard label="Entradas realizadas"  value={fmtMi(totalEntradas)} tooltip={TOOLTIP_KPI_REALIZADO} />
+              <KpiCard label="Saídas realizadas"    value={fmtMi(totalSaidas)} tooltip={TOOLTIP_KPI_REALIZADO} />
               <KpiCard
                 label="Saldo líquido"
                 value={fmtMi(saldoLiquido)}
                 sub={saldoLiquido >= 0 ? 'Positivo' : 'Negativo'}
+                tooltip={TOOLTIP_KPI_REALIZADO}
               />
-              <KpiCard label="A receber (previsto)"  value={fmtMi(kpis.entradas_previstas)} />
+              <KpiCard label="A receber (previsto)"  value={fmtMi(kpis.entradas_previstas)} tooltip={TOOLTIP_A_RECEBER} />
             </div>
           </TopSection>
 
@@ -174,6 +192,9 @@ export default async function FluxoCaixaPage({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             {/* Decomposição */}
             <TopSection titulo="Composição do Período">
+              <p className="text-[11px] text-zinc-400 mb-3 -mt-1">
+                Decomposição por Grupo de Categoria (Lançamentos puro — regime contábil). Pode diferir levemente dos KPIs do topo, que refletem fluxo bancário real.
+              </p>
               <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm h-full">
                 {entradas.length === 0 && saidas.length === 0 ? (
                   <p className="text-xs text-zinc-400">Sem dados</p>
@@ -294,7 +315,7 @@ export default async function FluxoCaixaPage({
                       {vencimentos.map((v, i) => (
                         <tr key={v.numero ?? i} className="border-b border-zinc-50 last:border-0">
                           <td className="py-1.5 tabular-nums text-zinc-600 whitespace-nowrap">
-                            {new Date(v.vencimento).toLocaleDateString('pt-BR')}
+                            {new Date(v.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}
                           </td>
                           <td className="py-1.5">
                             <span className={[
