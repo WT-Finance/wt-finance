@@ -10,9 +10,14 @@ export default function PreviewButton() {
   return (
     <a
       href={`${pathname}?${params.toString()}`}
-      className="text-sm text-zinc-400 underline hover:text-zinc-600"
+      className="px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap"
+      style={{
+        background:  'var(--brand-soft)',
+        borderColor: 'var(--brand)',
+        color:       'var(--brand-deep)',
+      }}
     >
-      Ver preview →
+      Ver preview
     </a>
   )
 }
