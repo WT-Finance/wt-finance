@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Upload, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
 import {
   getLancamentosStatusAction,
@@ -119,10 +119,29 @@ function CardUpload({
   onCancelar:             () => void
   onConfirmar:            () => void
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const label    = tipo === 'vendas' ? 'Vendas' : 'Lançamentos por Operação'
-  const extensao = '.xlsx,.csv'
+  const inputRef  = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const label      = tipo === 'vendas' ? 'Vendas por Produto' : 'Lançamentos por Operação'
+  const extensao   = '.xlsx,.csv'
   const totalLabel = tipo === 'vendas' ? 'vendas' : 'lançamentos'
+  const ativo      = estado.estado === 'idle' || estado.estado === 'erro'
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    if (ativo) setIsDragging(true)
+  }, [ativo])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (!ativo) return
+    const f = e.dataTransfer.files?.[0]
+    if (f) onArquivoSelecionado(f)
+  }, [ativo, onArquivoSelecionado])
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -142,12 +161,18 @@ function CardUpload({
       {/* Zona de drop / arquivo selecionado */}
       <div
         className={[
-          'border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors mb-3',
-          estado.estado === 'idle' || estado.estado === 'erro'
-            ? 'border-zinc-200 hover:border-blue-300 hover:bg-blue-50/40'
-            : 'border-zinc-100 bg-zinc-50 cursor-default',
+          'border-2 border-dashed rounded-lg p-4 text-center transition-colors mb-3',
+          ativo ? 'cursor-pointer' : 'cursor-default',
+          ativo && isDragging
+            ? 'border-blue-400 bg-blue-50'
+            : ativo
+              ? 'border-zinc-200 hover:border-blue-300 hover:bg-blue-50/40'
+              : 'border-zinc-100 bg-zinc-50',
         ].join(' ')}
-        onClick={() => (estado.estado === 'idle' || estado.estado === 'erro') && inputRef.current?.click()}
+        onClick={() => ativo && inputRef.current?.click()}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <input
           ref={inputRef}
@@ -159,7 +184,7 @@ function CardUpload({
         {estado.estado === 'idle' && (
           <>
             <Upload size={16} className="mx-auto mb-1.5 text-zinc-400" />
-            <p className="text-xs text-zinc-500">Clique para selecionar um arquivo <span className="font-medium">.xlsx</span> ou <span className="font-medium">.csv</span></p>
+            <p className="text-xs text-zinc-500">Arraste ou clique para selecionar um arquivo <span className="font-medium">.xlsx</span> ou <span className="font-medium">.csv</span></p>
           </>
         )}
         {estado.estado === 'validando' && (
@@ -183,7 +208,7 @@ function CardUpload({
         {estado.estado === 'erro' && (
           <div>
             <p className="text-xs text-red-600 font-medium mb-1">{estado.mensagem}</p>
-            <p className="text-xs text-zinc-400">Clique para tentar com outro arquivo</p>
+            <p className="text-xs text-zinc-400">Arraste ou clique para tentar com outro arquivo</p>
           </div>
         )}
       </div>
