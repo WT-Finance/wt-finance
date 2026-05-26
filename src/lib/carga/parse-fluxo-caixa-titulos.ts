@@ -47,14 +47,9 @@ const COL_MAP: Record<string, keyof FluxoCaixaTituloRaw> = {
   'Valor_Final':      'valor_final',
   'Tipo':             'tipo',
   'Status':           'status',
-  'Data_Final':       'data_final',
-  'Data Final':       'data_final',
-  'Mes_Ano':          'mes_ano',
-  'Mês/Ano':          'mes_ano',
-  'Mes/Ano':          'mes_ano',
 }
 
-const COLUNAS_OBRIGATORIAS: (keyof FluxoCaixaTituloRaw)[] = ['tipo', 'status', 'data_final', 'valor_final']
+const COLUNAS_OBRIGATORIAS: (keyof FluxoCaixaTituloRaw)[] = ['tipo', 'status', 'valor_final']
 
 function toIsoDate(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null
@@ -149,16 +144,6 @@ export async function parseFluxoCaixaTitulosFile(
       )
       if (valorFinalRaw === null) continue
 
-      const dataFinalRaw = toIsoDate(
-        headers.reduce<unknown>((acc, h) => COL_MAP[h] === 'data_final' ? row[h] : acc, null)
-      )
-      if (!dataFinalRaw) continue
-
-      const mesAnoRaw = toStr(
-        headers.reduce<unknown>((acc, h) => COL_MAP[h] === 'mes_ano' ? row[h] : acc, null)
-      )
-      if (!mesAnoRaw) continue
-
       const item: FluxoCaixaTituloRaw = {
         numero:         null,
         emissao:        null,
@@ -173,15 +158,15 @@ export async function parseFluxoCaixaTitulosFile(
         valor_final:    valorFinalRaw,
         tipo,
         status,
-        data_final:     dataFinalRaw,
-        mes_ano:        mesAnoRaw,
+        data_final:     '',
+        mes_ano:        '',
       }
 
       for (const h of headers) {
         const campo = COL_MAP[h]
         if (!campo) continue
         // already handled
-        if (campo === 'tipo' || campo === 'status' || campo === 'data_final' || campo === 'mes_ano' || campo === 'valor_final') continue
+        if (campo === 'tipo' || campo === 'status' || campo === 'valor_final') continue
         const v = row[h]
         switch (campo) {
           case 'emissao':
@@ -191,6 +176,11 @@ export async function parseFluxoCaixaTitulosFile(
           default: (item as unknown as Record<string, string | null>)[campo as string] = toStr(v)
         }
       }
+
+      const dataFinal = item.liquidacao ?? item.vencimento
+      if (!dataFinal) continue
+      item.data_final = dataFinal
+      item.mes_ano    = dataFinal.slice(0, 7)
 
       result.push(item)
     }

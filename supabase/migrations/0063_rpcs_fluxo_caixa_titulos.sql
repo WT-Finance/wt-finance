@@ -2,30 +2,30 @@
 -- Padrão obrigatório: schemas raw não expostos via PostgREST (ADR-0061)
 
 CREATE OR REPLACE FUNCTION public.contar_fluxo_caixa_titulos()
-RETURNS BIGINT
+RETURNS INTEGER
 LANGUAGE sql
 SECURITY DEFINER
-SET search_path = raw, public
+SET search_path = ''
 AS $$
-  SELECT COUNT(*) FROM raw.fluxo_caixa_titulos;
+  SELECT COUNT(*)::integer FROM raw.fluxo_caixa_titulos;
 $$;
 
 CREATE OR REPLACE FUNCTION public.truncar_fluxo_caixa_titulos()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = raw, public
+SET search_path = ''
 AS $$
 BEGIN
   TRUNCATE raw.fluxo_caixa_titulos RESTART IDENTITY;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.inserir_lote_fluxo_caixa_titulos(p_linhas JSONB)
+CREATE OR REPLACE FUNCTION public.inserir_lote_fluxo_caixa_titulos(p_lote JSONB)
 RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = raw, public
+SET search_path = ''
 AS $$
 DECLARE n INTEGER;
 BEGIN
@@ -51,7 +51,7 @@ BEGIN
     x->>'status',
     (x->>'data_final')::DATE,
     x->>'mes_ano'
-  FROM jsonb_array_elements(p_linhas) AS x;
+  FROM jsonb_array_elements(p_lote) AS x;
   GET DIAGNOSTICS n = ROW_COUNT;
   RETURN n;
 END;
@@ -60,6 +60,6 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.contar_fluxo_caixa_titulos()              FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.truncar_fluxo_caixa_titulos()             FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.inserir_lote_fluxo_caixa_titulos(JSONB)   FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.contar_fluxo_caixa_titulos()               TO service_role;
-GRANT EXECUTE ON FUNCTION public.truncar_fluxo_caixa_titulos()              TO service_role;
-GRANT EXECUTE ON FUNCTION public.inserir_lote_fluxo_caixa_titulos(JSONB)    TO service_role;
+GRANT  EXECUTE ON FUNCTION public.contar_fluxo_caixa_titulos()               TO service_role;
+GRANT  EXECUTE ON FUNCTION public.truncar_fluxo_caixa_titulos()              TO service_role;
+GRANT  EXECUTE ON FUNCTION public.inserir_lote_fluxo_caixa_titulos(JSONB)    TO service_role;

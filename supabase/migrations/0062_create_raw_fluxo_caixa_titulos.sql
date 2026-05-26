@@ -29,6 +29,9 @@ CREATE INDEX idx_fct_vencimento      ON raw.fluxo_caixa_titulos(vencimento);
 CREATE INDEX idx_fct_conta_previsao  ON raw.fluxo_caixa_titulos(conta_previsao) WHERE conta_previsao IS NOT NULL;
 CREATE INDEX idx_fct_descricao       ON raw.fluxo_caixa_titulos(descricao);
 CREATE INDEX idx_fct_mes_ano         ON raw.fluxo_caixa_titulos(mes_ano);
+CREATE INDEX fct_liquidacao_idx      ON raw.fluxo_caixa_titulos (liquidacao);
+CREATE INDEX fct_tipo_idx            ON raw.fluxo_caixa_titulos (tipo);
 
-GRANT SELECT, INSERT, DELETE ON raw.fluxo_caixa_titulos TO service_role;
+GRANT SELECT ON raw.fluxo_caixa_titulos TO authenticated, anon;
+GRANT ALL    ON raw.fluxo_caixa_titulos TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE raw.fluxo_caixa_titulos_id_seq TO service_role;
