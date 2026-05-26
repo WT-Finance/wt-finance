@@ -12,6 +12,15 @@ interface SearchParams {
   to?:     string
 }
 
+interface KpisB {
+  entradas_realizadas: number
+  saidas_realizadas:   number
+  saldo_realizado:     number
+  entradas_previstas:  number
+  saidas_previstas:    number
+  saldo_previsto:      number
+}
+
 interface PosicaoConta {
   conta:      string
   tipo_conta: string
@@ -77,14 +86,19 @@ export default async function FluxoCaixaPage({
   type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
   const rpc = (db.rpc as unknown as BoundRpc).bind(db)
 
-  const [fluxoRes, decomposicaoRes, posicaoRes, vencimentosRes] = await Promise.all([
-    rpc('get_fluxo_caixa_mensal',  { p_from: from, p_to: to }),
-    rpc('get_decomposicao_grupo',  { p_from: from, p_to: to }),
+  const [fluxoRes, kpisRes, decomposicaoRes, posicaoRes, vencimentosRes] = await Promise.all([
+    rpc('get_fluxo_caixa_mensal_b', { p_from: from, p_to: to }),
+    rpc('get_fluxo_caixa_kpis_b',   { p_from: from, p_to: to }),
+    rpc('get_decomposicao_grupo',   { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_vencimentos', { p_limite: 200, p_offset: 0 }),
   ])
 
   const fluxoRows    = (fluxoRes.error      ? null : fluxoRes.data      as FluxoMensalRow[]     | null) ?? []
+  const kpis         = (kpisRes.error       ? null : kpisRes.data       as KpisB                | null) ?? {
+    entradas_realizadas: 0, saidas_realizadas: 0, saldo_realizado: 0,
+    entradas_previstas: 0, saidas_previstas: 0, saldo_previsto: 0,
+  }
   const decomposicao = (decomposicaoRes.error ? null : decomposicaoRes.data as DecomposicaoGrupo[] | null) ?? []
   const posicoes     = (posicaoRes.error     ? null : posicaoRes.data     as PosicaoConta[]       | null) ?? []
 
@@ -93,16 +107,10 @@ export default async function FluxoCaixaPage({
     : (vencimentosRes.data as { items: ProximoVencimento[] | null; total: number } | null)
   const vencimentos = vencimentosPayload?.items ?? []
 
-  // KPIs aggregated from fluxo rows
-  const realizados    = fluxoRows.filter(r => r.tipo === 'realizado')
-  const totalEntradas = realizados.filter(r => r.valor_total > 0).reduce((s, r) => s + r.valor_total, 0)
-  const totalSaidas   = realizados.filter(r => r.valor_total < 0).reduce((s, r) => s + Math.abs(r.valor_total), 0)
-  const saldoLiquido  = totalEntradas - totalSaidas
-
-  // A receber = unliquidated lançamentos with positive valor (entradas em aberto)
-  const aReceber = vencimentos
-    .filter(v => v.valor > 0)
-    .reduce((s, v) => s + v.valor, 0)
+  // KPIs from Abordagem B RPC
+  const totalEntradas = kpis.entradas_realizadas
+  const totalSaidas   = kpis.saidas_realizadas
+  const saldoLiquido  = kpis.saldo_realizado
 
   // Aggregate vencimentos by aging bucket for summary table
   type AgingBucket = { aging: string; aReceber: number; aPagar: number; count: number }
@@ -117,7 +125,7 @@ export default async function FluxoCaixaPage({
   }
   const agingRows = agingOrder.map(a => agingMap.get(a)).filter(Boolean) as AgingBucket[]
 
-  const temDados = fluxoRows.length > 0
+  const temDados = fluxoRows.length > 0 || kpis.entradas_realizadas > 0 || kpis.saidas_realizadas > 0
 
   const entradas = decomposicao.filter(d => d.sinal === 'entrada').sort((a, b) => b.valor_total - a.valor_total)
   const saidas   = decomposicao.filter(d => d.sinal === 'saida').sort((a, b) => b.valor_total - a.valor_total)
@@ -154,7 +162,7 @@ export default async function FluxoCaixaPage({
                 value={fmtMi(saldoLiquido)}
                 sub={saldoLiquido >= 0 ? 'Positivo' : 'Negativo'}
               />
-              <KpiCard label="A receber (aberto)"   value={fmtMi(aReceber)} />
+              <KpiCard label="A receber (previsto)"  value={fmtMi(kpis.entradas_previstas)} />
             </div>
           </TopSection>
 

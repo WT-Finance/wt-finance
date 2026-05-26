@@ -2,23 +2,24 @@
 
 import {
   ResponsiveContainer, ComposedChart, Bar,
-  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Line,
 } from 'recharts'
 import { fmtMi } from '@/lib/fmt'
 
 export interface FluxoMensalRow {
-  mes:           string
-  grupo_categoria: string
-  tipo:          'realizado' | 'previsto'
-  valor_total:   number
+  mes:             string   // 'YYYY-MM'
+  is_realizado:    boolean
+  entradas:        number
+  saidas:          number
+  saldo_acumulado: number
 }
 
 interface ChartPoint {
-  label:    string
-  entrada:  number
-  saida:    number
-  saldo:    number
-  previsto: boolean
+  label:       string
+  entrada:     number
+  saida:       number
+  saldo:       number
+  is_realizado: boolean
 }
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -28,23 +29,16 @@ function fmtMesLabel(mes: string): string {
   return `${MESES_ABREV[parseInt(m) - 1]}/${y.slice(2)}`
 }
 
-function agregadoPorMes(rows: FluxoMensalRow[]): ChartPoint[] {
-  const byMes = new Map<string, ChartPoint>()
-  for (const r of rows) {
-    if (!byMes.has(r.mes)) {
-      byMes.set(r.mes, { label: fmtMesLabel(r.mes), entrada: 0, saida: 0, saldo: 0, previsto: r.tipo === 'previsto' })
-    }
-    const pt = byMes.get(r.mes)!
-    if (r.valor_total > 0) pt.entrada += r.valor_total
-    else                   pt.saida  += Math.abs(r.valor_total)
-    if (r.tipo === 'previsto') pt.previsto = true
-  }
-  for (const pt of byMes.values()) {
-    pt.saldo = pt.entrada - pt.saida
-  }
-  return Array.from(byMes.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, v]) => v)
+function toChartPoints(rows: FluxoMensalRow[]): ChartPoint[] {
+  return [...rows]
+    .sort((a, b) => a.mes.localeCompare(b.mes))
+    .map(r => ({
+      label:        fmtMesLabel(r.mes),
+      entrada:      r.entradas,
+      saida:        r.saidas,
+      saldo:        r.saldo_acumulado,
+      is_realizado: r.is_realizado,
+    }))
 }
 
 interface TooltipProps {
@@ -60,7 +54,9 @@ function FluxoTooltip({ active, payload, label }: TooltipProps) {
       <p className="font-semibold text-zinc-700 mb-2">{label}</p>
       {payload.map(p => (
         <div key={p.name} className="flex justify-between gap-4 mb-1">
-          <span style={{ color: p.fill }}>{p.name === 'entrada' ? 'Entradas' : 'Saídas'}</span>
+          <span style={{ color: p.fill }}>
+            {p.name === 'entrada' ? 'Entradas' : p.name === 'saida' ? 'Saídas' : 'Saldo acum.'}
+          </span>
           <span className="font-medium text-zinc-700">{fmtMi(p.value)}</span>
         </div>
       ))}
@@ -74,9 +70,10 @@ interface Props {
 
 const COR_ENTRADA = '#0091B3'
 const COR_SAIDA   = '#D9A23F'
+const COR_SALDO   = '#6366f1'
 
 export default function FluxoMensalChart({ rows }: Props) {
-  const data = agregadoPorMes(rows)
+  const data = toChartPoints(rows)
 
   if (!data.length) {
     return (
@@ -85,6 +82,11 @@ export default function FluxoMensalChart({ rows }: Props) {
       </div>
     )
   }
+
+  // Recharts doesn't support per-point fillOpacity on Bar natively without Cell.
+  // We split into two datasets: realized and predicted, layered via stacking tricks.
+  // Simpler approach: render two Bar pairs with Cell per point using a custom shape.
+  // Even simpler: use a single Bar with cells and custom shape based on is_realizado.
 
   return (
     <div>
@@ -97,6 +99,10 @@ export default function FluxoMensalChart({ rows }: Props) {
           <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_SAIDA }} />
           Saídas
         </div>
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <span className="w-3 h-3 rounded-sm inline-block opacity-40" style={{ background: COR_ENTRADA }} />
+          Previsto
+        </div>
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <ComposedChart data={data} barGap={2} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
@@ -105,8 +111,58 @@ export default function FluxoMensalChart({ rows }: Props) {
           <YAxis tickFormatter={v => fmtMi(v as number)} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={72} />
           <Tooltip content={<FluxoTooltip />} />
           <ReferenceLine y={0} stroke="#e4e4e7" />
-          <Bar dataKey="entrada" name="entrada" fill={COR_ENTRADA} radius={[3, 3, 0, 0]} maxBarSize={36} opacity={1} />
-          <Bar dataKey="saida"   name="saida"   fill={COR_SAIDA}   radius={[3, 3, 0, 0]} maxBarSize={36} opacity={0.85} />
+          <Bar
+            dataKey="entrada"
+            name="entrada"
+            fill={COR_ENTRADA}
+            radius={[3, 3, 0, 0]}
+            maxBarSize={36}
+            shape={(props: unknown) => {
+              const p = props as { x: number; y: number; width: number; height: number; is_realizado: boolean }
+              return (
+                <rect
+                  x={p.x}
+                  y={p.y}
+                  width={p.width}
+                  height={p.height}
+                  fill={COR_ENTRADA}
+                  fillOpacity={p.is_realizado ? 1 : 0.4}
+                  rx={3}
+                  ry={3}
+                />
+              )
+            }}
+          />
+          <Bar
+            dataKey="saida"
+            name="saida"
+            fill={COR_SAIDA}
+            radius={[3, 3, 0, 0]}
+            maxBarSize={36}
+            shape={(props: unknown) => {
+              const p = props as { x: number; y: number; width: number; height: number; is_realizado: boolean }
+              return (
+                <rect
+                  x={p.x}
+                  y={p.y}
+                  width={p.width}
+                  height={p.height}
+                  fill={COR_SAIDA}
+                  fillOpacity={p.is_realizado ? 0.85 : 0.35}
+                  rx={3}
+                  ry={3}
+                />
+              )
+            }}
+          />
+          <Line
+            dataKey="saldo"
+            name="saldo"
+            stroke={COR_SALDO}
+            strokeWidth={2}
+            dot={false}
+            type="monotone"
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
