@@ -34,18 +34,15 @@ interface DecomposicaoGrupo {
 }
 
 interface ProximoVencimento {
-  id:              number
   numero:          string | null
   vencimento:      string
-  venda_no:        number | null
   pessoa:          string | null
   descricao:       string | null
-  valor:           number
-  categoria:       string | null
-  grupo_categoria: string | null
-  conta:           string | null
-  tipo_conta:      string | null
-  aging:           'a_vencer' | 'vencido_30d' | 'vencido_30_90d' | 'vencido_90d_mais'
+  valor_final:     number
+  tipo:            'Entrada' | 'Saída'
+  status:          string
+  dias_para_vencer: number
+  aging:           'a_vencer' | 'vencido_ate_30d' | 'vencido_30_a_90d' | 'vencido_mais_90d'
 }
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -59,10 +56,10 @@ function KpiCard({ label, value, sub }: { label: string; value: string; sub?: st
 }
 
 const AGING_LABEL: Record<string, string> = {
-  a_vencer:           'A vencer',
-  vencido_30d:        'Vencido ≤ 30 dias',
-  vencido_30_90d:     'Vencido 30–90 dias',
-  vencido_90d_mais:   'Vencido > 90 dias',
+  a_vencer:          'A vencer',
+  vencido_ate_30d:   'Vencido ≤ 30 dias',
+  vencido_30_a_90d:  'Vencido 30–90 dias',
+  vencido_mais_90d:  'Vencido > 90 dias',
 }
 
 const TIPO_CONTA_LABEL: Record<string, string> = {
@@ -91,7 +88,7 @@ export default async function FluxoCaixaPage({
     rpc('get_fluxo_caixa_kpis_b',   { p_from: from, p_to: to }),
     rpc('get_decomposicao_grupo',   { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
-    rpc('get_proximos_vencimentos', { p_limite: 200, p_offset: 0 }),
+    rpc('get_proximos_vencimentos_v2', { p_limite: 200, p_offset: 0 }),
   ])
 
   const fluxoRows    = (fluxoRes.error      ? null : fluxoRes.data      as FluxoMensalRow[]     | null) ?? []
@@ -114,14 +111,14 @@ export default async function FluxoCaixaPage({
 
   // Aggregate vencimentos by aging bucket for summary table
   type AgingBucket = { aging: string; aReceber: number; aPagar: number; count: number }
-  const agingOrder = ['a_vencer', 'vencido_30d', 'vencido_30_90d', 'vencido_90d_mais']
+  const agingOrder = ['a_vencer', 'vencido_ate_30d', 'vencido_30_a_90d', 'vencido_mais_90d']
   const agingMap = new Map<string, AgingBucket>()
   for (const v of vencimentos) {
     if (!agingMap.has(v.aging)) agingMap.set(v.aging, { aging: v.aging, aReceber: 0, aPagar: 0, count: 0 })
     const row = agingMap.get(v.aging)!
     row.count++
-    if (v.valor >= 0) row.aReceber += v.valor
-    else row.aPagar += Math.abs(v.valor)
+    if (v.tipo === 'Entrada') row.aReceber += v.valor_final
+    else row.aPagar += v.valor_final
   }
   const agingRows = agingOrder.map(a => agingMap.get(a)).filter(Boolean) as AgingBucket[]
 
@@ -267,6 +264,66 @@ export default async function FluxoCaixaPage({
                           </td>
                           <td className="py-1.5 text-right font-medium text-amber-700 tabular-nums">
                             {r.aPagar > 0 ? fmtBRL(r.aPagar) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </TopSection>
+          )}
+
+          {/* Próximos Vencimentos — lista de títulos */}
+          {vencimentos.length > 0 && (
+            <TopSection titulo="Próximos Vencimentos">
+              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-zinc-400 border-b border-zinc-100">
+                        <th className="text-left pb-2 font-medium">Vencimento</th>
+                        <th className="text-left pb-2 font-medium">Tipo</th>
+                        <th className="text-left pb-2 font-medium">Aging</th>
+                        <th className="text-left pb-2 font-medium">Pessoa</th>
+                        <th className="text-left pb-2 font-medium">Descrição</th>
+                        <th className="text-right pb-2 font-medium">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vencimentos.map((v, i) => (
+                        <tr key={v.numero ?? i} className="border-b border-zinc-50 last:border-0">
+                          <td className="py-1.5 tabular-nums text-zinc-600 whitespace-nowrap">
+                            {new Date(v.vencimento).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="py-1.5">
+                            <span className={[
+                              'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
+                              v.tipo === 'Entrada'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-amber-50 text-amber-700',
+                            ].join(' ')}>
+                              {v.tipo === 'Entrada' ? 'A Receber' : 'A Pagar'}
+                            </span>
+                          </td>
+                          <td className="py-1.5">
+                            <span className={[
+                              'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
+                              v.aging === 'a_vencer'
+                                ? 'bg-zinc-100 text-zinc-500'
+                                : v.aging === 'vencido_ate_30d'
+                                  ? 'bg-yellow-50 text-yellow-700'
+                                  : v.aging === 'vencido_30_a_90d'
+                                    ? 'bg-orange-50 text-orange-700'
+                                    : 'bg-red-50 text-red-700',
+                            ].join(' ')}>
+                              {AGING_LABEL[v.aging] ?? v.aging}
+                            </span>
+                          </td>
+                          <td className="py-1.5 text-zinc-600 max-w-[12rem] truncate">{v.pessoa ?? '—'}</td>
+                          <td className="py-1.5 text-zinc-500 max-w-[16rem] truncate">{v.descricao ?? '—'}</td>
+                          <td className="py-1.5 text-right font-medium tabular-nums text-zinc-800 whitespace-nowrap">
+                            {fmtBRL(v.valor_final)}
                           </td>
                         </tr>
                       ))}
