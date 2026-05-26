@@ -9,18 +9,18 @@ import {
   getVendasPagamentoStatusAction,
   inserirLoteVendasPagamentoAction,
   finalizarVendasPagamentoAction,
-  getContasPagarReceberStatusAction,
-  inserirLoteContasPagarReceberAction,
-  finalizarContasPagarReceberAction,
+  getFluxoCaixaTitulosStatusAction,
+  inserirLoteFluxoCaixaTitulosAction,
+  finalizarFluxoCaixaTitulosAction,
 } from './actions'
 import { parseLancamentosFinanceiroFile } from '@/lib/carga/parse-lancamentos-financeiro'
 import { parseVendasPagamentoFile } from '@/lib/carga/parse-vendas-pagamento'
-import { parseContasPagarReceberFile } from '@/lib/carga/parse-contas-pagar-receber'
+import { parseFluxoCaixaTitulosFile } from '@/lib/carga/parse-fluxo-caixa-titulos'
 import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
 import type { VendasPagamentoRaw } from '@/lib/carga/parse-vendas-pagamento'
-import type { ContaPagarReceberRaw } from '@/lib/carga/parse-contas-pagar-receber'
+import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
 
-type FonteFinanceira = 'lancamentos' | 'vendas_pagamento' | 'contas_pagar_receber'
+type FonteFinanceira = 'lancamentos' | 'vendas_pagamento' | 'fluxo_caixa_titulos'
 type EstadoCard = 'idle' | 'validando' | 'aguardando_confirmacao' | 'carregando' | 'sucesso' | 'erro'
 
 interface StatusCarga {
@@ -43,7 +43,7 @@ const ESTADO_INICIAL: EstadoUpload = {
 const FONTES: { key: FonteFinanceira; label: string; descricao: string }[] = [
   { key: 'lancamentos',          label: 'Lançamentos por Categoria', descricao: 'Export financeiro do ERP — inclui entradas e saídas por categoria' },
   { key: 'vendas_pagamento',     label: 'Vendas por Forma de Pagamento', descricao: 'Vendas discriminadas por instrumento de pagamento e conta bancária' },
-  { key: 'contas_pagar_receber', label: 'CAP/CAR', descricao: 'Contas a pagar e receber — adicione coluna tipo_movimento antes do upload' },
+  { key: 'fluxo_caixa_titulos', label: 'Fluxo de Caixa (CAP/CAR)', descricao: 'Contas a pagar e receber tratadas — export com colunas Tipo, Status, Data Final e Valor Final' },
 ]
 
 function formatarData(iso: string | null): string {
@@ -156,30 +156,30 @@ function CardUploadFinanceiro({
 
 export default function AdminUploadsFinanceiroPage() {
   const [status,  setStatus]  = useState<Record<FonteFinanceira, StatusCarga | null>>({
-    lancamentos: null, vendas_pagamento: null, contas_pagar_receber: null,
+    lancamentos: null, vendas_pagamento: null, fluxo_caixa_titulos: null,
   })
   const [estados, setEstados] = useState<Record<FonteFinanceira, EstadoUpload>>({
-    lancamentos: ESTADO_INICIAL, vendas_pagamento: ESTADO_INICIAL, contas_pagar_receber: ESTADO_INICIAL,
+    lancamentos: ESTADO_INICIAL, vendas_pagamento: ESTADO_INICIAL, fluxo_caixa_titulos: ESTADO_INICIAL,
   })
 
   const lancLinhasRef  = useRef<LancamentoFinanceiroRaw[]>([])
   const vpLinhasRef    = useRef<VendasPagamentoRaw[]>([])
-  const cprLinhasRef   = useRef<ContaPagarReceberRaw[]>([])
+  const fctLinhasRef   = useRef<FluxoCaixaTituloRaw[]>([])
 
   function setEstado(key: FonteFinanceira, patch: Partial<EstadoUpload>) {
     setEstados(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
   }
 
   async function carregarStatus() {
-    const [lancRes, vpRes, cprRes] = await Promise.allSettled([
+    const [lancRes, vpRes, fctRes] = await Promise.allSettled([
       getLancamentosFinanceiroStatusAction(),
       getVendasPagamentoStatusAction(),
-      getContasPagarReceberStatusAction(),
+      getFluxoCaixaTitulosStatusAction(),
     ])
     setStatus({
       lancamentos:          !('error' in (lancRes.status === 'fulfilled' ? lancRes.value : {})) && lancRes.status === 'fulfilled' ? lancRes.value as StatusCarga : null,
       vendas_pagamento:     !('error' in (vpRes.status === 'fulfilled' ? vpRes.value : {})) && vpRes.status === 'fulfilled' ? vpRes.value as StatusCarga : null,
-      contas_pagar_receber: !('error' in (cprRes.status === 'fulfilled' ? cprRes.value : {})) && cprRes.status === 'fulfilled' ? cprRes.value as StatusCarga : null,
+      fluxo_caixa_titulos:  !('error' in (fctRes.status === 'fulfilled' ? fctRes.value : {})) && fctRes.status === 'fulfilled' ? fctRes.value as StatusCarga : null,
     })
   }
 
@@ -189,7 +189,7 @@ export default function AdminUploadsFinanceiroPage() {
     setEstado(key, { estado: 'validando', arquivo, totalLinhas: 0, totalAntes: 0, mensagem: '' })
 
     try {
-      let linhas: LancamentoFinanceiroRaw[] | VendasPagamentoRaw[] | ContaPagarReceberRaw[]
+      let linhas: LancamentoFinanceiroRaw[] | VendasPagamentoRaw[] | FluxoCaixaTituloRaw[]
       let total: number
 
       if (key === 'lancamentos') {
@@ -205,11 +205,11 @@ export default function AdminUploadsFinanceiroPage() {
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
         linhas = res; total = st.total; vpLinhasRef.current = res
       } else {
-        const res = await parseContasPagarReceberFile(arquivo)
+        const res = await parseFluxoCaixaTitulosFile(arquivo)
         if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getContasPagarReceberStatusAction()
+        const st = await getFluxoCaixaTitulosStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhas = res; total = st.total; cprLinhasRef.current = res
+        linhas = res; total = st.total; fctLinhasRef.current = res
       }
 
       setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: linhas.length, totalAntes: total })
@@ -251,15 +251,15 @@ export default function AdminUploadsFinanceiroPage() {
         vpLinhasRef.current = []
 
       } else {
-        const rows = cprLinhasRef.current
+        const rows = fctLinhasRef.current
         for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteContasPagarReceberAction(rows.slice(i, i + BATCH), i === 0, nome)
+          const res = await inserirLoteFluxoCaixaTitulosAction(rows.slice(i, i + BATCH), i === 0, nome)
           if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
           inseridas += res.inseridas
         }
-        const fin = await finalizarContasPagarReceberAction(est.totalAntes, inseridas)
+        const fin = await finalizarFluxoCaixaTitulosAction(est.totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        cprLinhasRef.current = []
+        fctLinhasRef.current = []
       }
 
       setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
@@ -272,7 +272,7 @@ export default function AdminUploadsFinanceiroPage() {
   function handleCancelar(key: FonteFinanceira) {
     if (key === 'lancamentos')          lancLinhasRef.current = []
     if (key === 'vendas_pagamento')     vpLinhasRef.current = []
-    if (key === 'contas_pagar_receber') cprLinhasRef.current = []
+    if (key === 'fluxo_caixa_titulos')  fctLinhasRef.current = []
     setEstado(key, ESTADO_INICIAL)
   }
 
