@@ -145,7 +145,7 @@ export async function inserirLoteFluxoCaixaTitulosAction(
     }
 
     const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_fluxo_caixa_titulos', { p_linhas: rows })
+    const { error } = await bound('inserir_lote_fluxo_caixa_titulos', { p_lote: rows })
     if (error) return { error: `Erro ao inserir lote: ${error.message}` }
 
     return { inseridas: lote.length }

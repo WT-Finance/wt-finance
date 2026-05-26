@@ -223,7 +223,7 @@ export default function AdminUploadsFinanceiroPage() {
     if (!est.arquivo) return
     setEstado(key, { estado: 'carregando' })
 
-    const BATCH = 1000
+    const BATCH = 500
     const nome = est.arquivo.name
     let inseridas = 0
 
