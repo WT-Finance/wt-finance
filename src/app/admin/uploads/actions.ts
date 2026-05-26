@@ -73,23 +73,12 @@ export async function getVendasStatusAction(): Promise<
 > {
   try {
     const supabase = getAdminClient()
-    const { count, error } = await supabase
-      .schema('analytics')
-      .from('fato_venda')
-      .select('*', { count: 'exact', head: true })
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('get_upload_status')
     if (error) return { error: error.message }
-
-    const { data: latest } = await supabase
-      .schema('analytics')
-      .from('fato_venda')
-      .select('criado_em')
-      .order('criado_em', { ascending: false })
-      .limit(1)
-      .single()
-
+    const status = data as { vendas: { total: number; ultima_atualizacao: string | null } } | null
     return {
-      total: count ?? 0,
-      ultima_atualizacao: (latest as { criado_em: string } | null)?.criado_em ?? null,
+      total: status?.vendas?.total ?? 0,
+      ultima_atualizacao: status?.vendas?.ultima_atualizacao ?? null,
     }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }

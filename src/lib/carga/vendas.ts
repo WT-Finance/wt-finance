@@ -145,12 +145,8 @@ export async function carregarVendas(
   const supabase = getAdminClient()
   const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
 
-  const { count: countAntes } = await supabase
-    .schema('analytics')
-    .from('fato_venda')
-    .select('*', { count: 'exact', head: true })
-
-  const totalAntes = countAntes ?? 0
+  const { data: statusData } = await bound('get_upload_status')
+  const totalAntes = (statusData as { vendas?: { total?: number } } | null)?.vendas?.total ?? 0
 
   let linhas: LinhaRaw[]
   try {
