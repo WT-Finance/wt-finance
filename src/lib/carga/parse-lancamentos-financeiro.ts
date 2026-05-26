@@ -1,8 +1,8 @@
 'use client'
 
 // Cliente-safe — sem imports de DB ou Node.js.
-// Parseia "Lançamentos por categoria" do ERP financeiro.
-// Filtra apenas linhas de detalhe (Número numérico), ignorando cabeçalhos Grupo/Categoria.
+// Parseia "Lançamentos Financeiros" do ERP: estrutura tabular plana de 12 colunas.
+// Cada linha é um lançamento; sem linhas de cabeçalho intercaladas.
 // Valor preserva sinal: positivo = entrada, negativo = saída.
 
 export interface LancamentoFinanceiroRaw {
@@ -21,33 +21,28 @@ export interface LancamentoFinanceiroRaw {
 }
 
 const COL_MAP: Record<string, keyof LancamentoFinanceiroRaw> = {
-  // "Número" header fica na col A (sempre vazia); número real fica na col C (__EMPTY_1)
-  '__EMPTY_1':              'numero',
-  'Número':                 'numero',
-  'Numero':                 'numero',
-  'Lançamento Nº':          'numero',
-  'Venda Nº':               'venda_no',
-  'Venda.N.':               'venda_no',
-  'Emissão':                'emissao',
-  'Emissao':                'emissao',
-  'Vencimento':             'vencimento',
-  'Liquidação':             'liquidacao',
-  'Liquidacao':             'liquidacao',
-  'Pessoa':                 'pessoa',
-  'Descrição':              'descricao',
-  'Descricao':              'descricao',
-  'Descrição Categoria':    'descricao_categoria',
-  'DescriçãoCategoria':     'descricao_categoria',
-  'DescricaoCategoria':     'descricao_categoria',
-  'Valor':                  'valor',
-  'Categoria':              'categoria',
-  'Grupo de Categoria':     'grupo_categoria',
-  'GrupoCategoria':         'grupo_categoria',
-  'Grupo Categoria':        'grupo_categoria',
-  'Conta':                  'conta',
+  'Grupo_de_Categoria':  'grupo_categoria',
+  'Grupo de Categoria':  'grupo_categoria',
+  'Categoria':           'categoria',
+  'Numero':              'numero',
+  'Número':              'numero',
+  'Venda_Numero':        'venda_no',
+  'Venda Nº':            'venda_no',
+  'Emissao':             'emissao',
+  'Emissão':             'emissao',
+  'Vencimento':          'vencimento',
+  'Liquidacao':          'liquidacao',
+  'Liquidação':          'liquidacao',
+  'Pessoa':              'pessoa',
+  'Descricao':           'descricao',
+  'Descrição':           'descricao',
+  'Descricao_Categoria': 'descricao_categoria',
+  'Descrição Categoria': 'descricao_categoria',
+  'Valor':               'valor',
+  'Conta':               'conta',
 }
 
-const COLUNAS_OBRIGATORIAS = ['Valor', 'Vencimento']
+const COLUNAS_OBRIGATORIAS: (keyof LancamentoFinanceiroRaw)[] = ['vencimento', 'valor']
 
 function toIsoDate(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null
@@ -87,13 +82,6 @@ function toStr(value: unknown): string | null {
   return s || null
 }
 
-function isDetalhe(numero: unknown): boolean {
-  // Linhas de detalhe têm Número numérico; cabeçalhos Grupo/Categoria são texto
-  if (numero === null || numero === undefined || numero === '') return false
-  const n = String(numero).trim()
-  return /^\d+$/.test(n)
-}
-
 export async function parseLancamentosFinanceiroFile(
   file: File,
 ): Promise<LancamentoFinanceiroRaw[] | { error: string }> {
@@ -120,33 +108,23 @@ export async function parseLancamentosFinanceiroFile(
 
     const headers = Object.keys(rows[0]).map(k => k.trim())
 
-    for (const col of COLUNAS_OBRIGATORIAS) {
-      const found = headers.some(h =>
-        COL_MAP[h] !== undefined &&
-        (COL_MAP[h] === (col === 'Vencimento' ? 'vencimento' : 'valor'))
-      )
+    for (const campo of COLUNAS_OBRIGATORIAS) {
+      const found = headers.some(h => COL_MAP[h] === campo)
       if (!found) {
-        return { error: `Coluna obrigatória ausente: "${col}". Colunas encontradas: ${headers.join(', ')}` }
+        return { error: `Coluna obrigatória ausente: "${campo}". Colunas encontradas: ${headers.join(', ')}` }
       }
     }
 
     const result: LancamentoFinanceiroRaw[] = []
 
     for (const row of rows) {
-      // Detecta coluna Número pelo mapeamento
-      const numKey = headers.find(h => COL_MAP[h] === 'numero')
-      const numVal = numKey ? row[numKey] : null
-
-      // Ignora linhas que não são detalhe (cabeçalhos Grupo/Categoria)
-      if (!isDetalhe(numVal)) continue
-
       const valor = toNum(
         headers.reduce<unknown>((acc, h) => COL_MAP[h] === 'valor' ? row[h] : acc, null)
       )
       if (valor === null) continue
 
       const item: LancamentoFinanceiroRaw = {
-        numero:              toStr(numVal),
+        numero:              null,
         venda_no:            null,
         emissao:             null,
         vencimento:          null,
@@ -162,13 +140,14 @@ export async function parseLancamentosFinanceiroFile(
 
       for (const h of headers) {
         const campo = COL_MAP[h]
-        if (!campo || campo === 'numero' || campo === 'valor') continue
+        if (!campo || campo === 'valor') continue
         const v = row[h]
         switch (campo) {
           case 'emissao':
           case 'vencimento':
-          case 'liquidacao':        item[campo] = toIsoDate(v); break
-          case 'venda_no':          item.venda_no = toNum(v) !== null ? Math.round(toNum(v)!) : null; break
+          case 'liquidacao':  item[campo] = toIsoDate(v); break
+          case 'venda_no':    item.venda_no = toNum(v) !== null ? Math.round(toNum(v)!) : null; break
+          case 'numero':      item.numero = toStr(v); break
           default: (item as unknown as Record<string, string | null>)[campo as string] = toStr(v)
         }
       }
@@ -177,7 +156,7 @@ export async function parseLancamentosFinanceiroFile(
     }
 
     if (result.length === 0)
-      return { error: 'Nenhuma linha de detalhe encontrada (verifique se o arquivo tem coluna Número numérico)' }
+      return { error: 'Nenhuma linha válida encontrada (verifique se o arquivo tem coluna Valor preenchida)' }
 
     return result
   } catch (err) {
