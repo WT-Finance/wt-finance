@@ -15,10 +15,11 @@ export interface FluxoMensalRow {
 }
 
 interface ChartPoint {
-  label:       string
-  entrada:     number
-  saida:       number
-  saldo:       number
+  label:        string
+  entrada:      number
+  saida:        number
+  saldo_real:   number | null
+  saldo_prev:   number | null
   is_realizado: boolean
 }
 
@@ -36,7 +37,8 @@ function toChartPoints(rows: FluxoMensalRow[]): ChartPoint[] {
       label:        fmtMesLabel(r.mes),
       entrada:      r.entradas,
       saida:        r.saidas,
-      saldo:        r.saldo_acumulado,
+      saldo_real:   r.is_realizado ? r.saldo_acumulado : null,
+      saldo_prev:   r.is_realizado ? null : r.saldo_acumulado,
       is_realizado: r.is_realizado,
     }))
 }
@@ -55,7 +57,7 @@ function FluxoTooltip({ active, payload, label }: TooltipProps) {
       {payload.map(p => (
         <div key={p.name} className="flex justify-between gap-4 mb-1">
           <span style={{ color: p.fill }}>
-            {p.name === 'entrada' ? 'Entradas' : p.name === 'saida' ? 'Saídas' : 'Saldo acum.'}
+            {p.name === 'entrada' ? 'Entradas' : p.name === 'saida' ? 'Saídas' : p.name === 'saldo_real' || p.name === 'saldo_prev' ? 'Saldo acum.' : p.name}
           </span>
           <span className="font-medium text-zinc-700">{fmtMi(p.value)}</span>
         </div>
@@ -148,7 +150,7 @@ export default function FluxoMensalChart({ rows }: Props) {
                   width={p.width}
                   height={p.height}
                   fill={COR_SAIDA}
-                  fillOpacity={p.is_realizado ? 0.85 : 0.35}
+                  fillOpacity={p.is_realizado ? 1 : 0.4}
                   rx={3}
                   ry={3}
                 />
@@ -156,11 +158,22 @@ export default function FluxoMensalChart({ rows }: Props) {
             }}
           />
           <Line
-            dataKey="saldo"
-            name="saldo"
+            dataKey="saldo_real"
+            name="saldo_real"
             stroke={COR_SALDO}
             strokeWidth={2}
             dot={false}
+            connectNulls={true}
+            type="monotone"
+          />
+          <Line
+            dataKey="saldo_prev"
+            name="saldo_prev"
+            stroke={COR_SALDO}
+            strokeWidth={2}
+            strokeDasharray="5 3"
+            dot={false}
+            connectNulls={true}
             type="monotone"
           />
         </ComposedChart>
