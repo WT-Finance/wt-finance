@@ -15,12 +15,14 @@ import { getBenchmarks } from '@/lib/config'
 import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
 import { avaliarTodasRegras } from '@/lib/regras-alerta'
 import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12mSetores, DecomposicaoVariacao } from '@/types/api'
+import EmConstrucao from '@/components/shared/em-construcao'
 
 interface SearchParams {
-  preset?: string
-  from?: string
-  to?: string
-  setor?: string
+  preset?:   string
+  from?:     string
+  to?:       string
+  setor?:    string
+  preview?:  string
 }
 
 export default async function ExecutivaPage({
@@ -28,7 +30,10 @@ export default async function ExecutivaPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const sp    = await searchParams
+  const sp      = await searchParams
+  const preview = sp.preview === '1'
+  if (!preview) return <EmConstrucao preview={false}>{null}</EmConstrucao>
+
   const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
     resolverPeriodoCompleto(sp)
   const setor  = sp.setor ?? 'todos'
