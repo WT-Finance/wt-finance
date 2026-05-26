@@ -258,13 +258,14 @@ export default function AdminUploadsPage() {
           return
         }
         vendasLinhasRef.current = parseResult
+        const uniqueVendas = new Set(parseResult.map(r => r.venda_numero).filter(Boolean)).size
         const resultado: ResultadoCarga = {
           sucesso: true,
           total_linhas: parseResult.length,
           erros: [],
           preview: {
             antes:  { total_vendas: statusResult.total },
-            depois: { total_vendas: parseResult.length },
+            depois: { total_vendas: uniqueVendas },
           },
         }
         setter(s => ({ ...s, estado: 'aguardando_confirmacao', resultado }))
