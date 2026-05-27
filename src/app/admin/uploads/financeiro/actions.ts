@@ -3,7 +3,7 @@
 import { getAdminClient } from '@/lib/supabase/admin'
 import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
 import type { VendasPagamentoRaw } from '@/lib/carga/parse-vendas-pagamento'
-import type { ContaPagarReceberRaw } from '@/lib/carga/parse-contas-pagar-receber'
+import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -114,15 +114,15 @@ export async function finalizarVendasPagamentoAction(
 }
 
 // ---------------------------------------------------------------------------
-// CAP/CAR (raw.contas_pagar_receber)
+// CAP/CAR tratada (raw.fluxo_caixa_titulos)
 // ---------------------------------------------------------------------------
 
-export async function getContasPagarReceberStatusAction(): Promise<
+export async function getFluxoCaixaTitulosStatusAction(): Promise<
   { total: number; ultima_atualizacao: string | null } | { error: string }
 > {
   try {
     const supabase = getAdminClient()
-    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('contar_contas_pagar_receber')
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('contar_fluxo_caixa_titulos')
     if (error) return { error: error.message }
     return { total: (data as number) ?? 0, ultima_atualizacao: null }
   } catch (err) {
@@ -130,8 +130,8 @@ export async function getContasPagarReceberStatusAction(): Promise<
   }
 }
 
-export async function inserirLoteContasPagarReceberAction(
-  lote: ContaPagarReceberRaw[],
+export async function inserirLoteFluxoCaixaTitulosAction(
+  lote: FluxoCaixaTituloRaw[],
   isFirst: boolean,
   arquivoOrigem: string,
 ): Promise<{ inseridas: number } | { error: string }> {
@@ -140,12 +140,12 @@ export async function inserirLoteContasPagarReceberAction(
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
 
     if (isFirst) {
-      const { error } = await bound('truncar_contas_pagar_receber')
+      const { error } = await bound('truncar_fluxo_caixa_titulos')
       if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
     }
 
     const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_contas_pagar_receber', { p_linhas: rows })
+    const { error } = await bound('inserir_lote_fluxo_caixa_titulos', { p_lote: rows })
     if (error) return { error: `Erro ao inserir lote: ${error.message}` }
 
     return { inseridas: lote.length }
@@ -154,10 +154,10 @@ export async function inserirLoteContasPagarReceberAction(
   }
 }
 
-export async function finalizarContasPagarReceberAction(
+export async function finalizarFluxoCaixaTitulosAction(
   totalAntes: number,
   totalInseridas: number,
 ): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  // raw.contas_pagar_receber não tem transformação adicional por agora
+  // raw.fluxo_caixa_titulos não tem transformação adicional por agora
   return { sucesso: true, total_linhas: totalInseridas, erros: [] }
 }
