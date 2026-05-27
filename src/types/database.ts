@@ -530,8 +530,10 @@ export interface Database {
       contar_lancamentos_financeiro:       { Args: Record<string, never>; Returns: number }
       get_fluxo_caixa_mensal:   { Args: { p_from: string; p_to: string }; Returns: Json }
       get_proximos_vencimentos:  { Args: { p_limite?: number; p_offset?: number }; Returns: Json }
-      get_posicao_por_conta:    { Args: Record<string, never>; Returns: Json }
-      get_decomposicao_grupo:   { Args: { p_from: string; p_to: string }; Returns: Json }
+      get_posicao_por_conta:      { Args: Record<string, never>; Returns: Json }
+      get_decomposicao_grupo:     { Args: { p_from: string; p_to: string }; Returns: Json }
+      get_calendario_liquidez:    { Args: { p_mes_referencia: string }; Returns: Json }
+      get_lancamentos_do_dia:     { Args: { p_data: string }; Returns: Json }
     }
   }
   financeiro: {
