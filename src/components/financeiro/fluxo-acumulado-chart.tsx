@@ -135,7 +135,7 @@ export default function FluxoAcumuladoChart({ rows }: Props) {
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart
           data={data}
-          margin={{ top: 8, right: 80, bottom: 0, left: 0 }}
+          margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
           <XAxis
@@ -151,7 +151,7 @@ export default function FluxoAcumuladoChart({ rows }: Props) {
             tick={{ fontSize: 11, fill: '#71717a' }}
             axisLine={false}
             tickLine={false}
-            width={72}
+            width={80}
           />
           <Tooltip content={<AcumuladoTooltip />} />
 
