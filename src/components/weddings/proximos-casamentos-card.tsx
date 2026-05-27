@@ -13,6 +13,30 @@ interface Props {
   data18m: ProximosCasamentos | null
 }
 
+function ResultadoCell({ valor }: { valor: number }) {
+  const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
+
+  let colorClass: string
+  if (valor > 0) {
+    colorClass = 'text-green-600'
+  } else if (valor < 0) {
+    colorClass = 'text-red-600'
+  } else {
+    colorClass = 'text-zinc-400'
+  }
+
+  return (
+    <td className="py-2 px-3 text-xs tabular-nums text-right whitespace-nowrap">
+      <span
+        className={colorClass}
+        title="Valor ainda a receber menos valor ainda a pagar nesta operação"
+      >
+        {fmt}
+      </span>
+    </td>
+  )
+}
+
 export default function ProximosCasamentosCard({ data18m }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -37,6 +61,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
                   <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data do Evento</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
+                  <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-50">
@@ -51,6 +76,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
                     <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-40">
                       {c.hotel ?? '—'}
                     </td>
+                    <ResultadoCell valor={c.resultado_previsto ?? 0} />
                   </tr>
                 ))}
               </tbody>
@@ -80,6 +106,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data do Evento</th>
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
@@ -94,6 +121,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
                   <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-40">
                     {c.hotel ?? '—'}
                   </td>
+                  <ResultadoCell valor={c.resultado_previsto ?? 0} />
                 </tr>
               ))}
             </tbody>

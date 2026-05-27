@@ -342,6 +342,7 @@ export interface ProximoCasamento {
   receita_bruta:            number
   margem_pct:               number
   receita_liquida_prevista: number
+  resultado_previsto:       number
 }
 
 export interface ProximosCasamentos {
