@@ -5,18 +5,20 @@ import { fmtBRL, fmtMi } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 
 const LABELS: Record<string, string> = {
-  COMERCIAL:        'Comercial',
-  CONVIDADOS:       'Convidados',
-  'PRODUÇÃO':       'Produção',
-  PLANEJAMENTO:     'Planejamento',
-  NÃO_CLASSIFICADO: 'Não Classif.',
+  COMERCIAL:                  'Comercial',
+  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
+  'CONVIDADOS - Extras':      'Convidados – Extras',
+  'PRODUÇÃO':                 'Produção',
+  PLANEJAMENTO:               'Planejamento',
+  NÃO_CLASSIFICADO:           'Não Classif.',
 }
 
 const SUBSETOR_COLORS: Record<string, string> = {
-  COMERCIAL:    '#8C857B',
-  CONVIDADOS:   '#4B4F54',
-  'PRODUÇÃO':   '#874B52',
-  PLANEJAMENTO: '#8F7E35',
+  COMERCIAL:                  '#8C857B',
+  'CONVIDADOS - Hospedagens': '#4B4F54',
+  'CONVIDADOS - Extras':      '#7A8289',
+  'PRODUÇÃO':                 '#874B52',
+  PLANEJAMENTO:               '#8F7E35',
 }
 const FALLBACK_COLOR = '#BA7517'
 

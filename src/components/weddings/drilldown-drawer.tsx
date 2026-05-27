@@ -19,11 +19,13 @@ function fmtMi(v: number) {
 }
 
 const SUBSETOR_LABELS: Record<string, string> = {
-  COMERCIAL:        'Comercial',
-  CONVIDADOS:       'Convidados',
-  'PRODUÇÃO':       'Produção',
-  PLANEJAMENTO:     'Planejamento',
-  NÃO_CLASSIFICADO: 'Não Classif.',
+  COMERCIAL:                  'Comercial',
+  CONVIDADOS:                 'Convidados',
+  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
+  'CONVIDADOS - Extras':      'Convidados – Extras',
+  'PRODUÇÃO':                 'Produção',
+  PLANEJAMENTO:               'Planejamento',
+  NÃO_CLASSIFICADO:           'Não Classif.',
 }
 
 const SUBSETOR_COLORS = ['#BA7517', '#c8861e', '#d49530', '#dfa543', '#a16207']
