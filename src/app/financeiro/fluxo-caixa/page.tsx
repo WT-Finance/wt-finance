@@ -9,6 +9,8 @@ import ComposicaoPeriodo from '@/components/financeiro/composicao-periodo'
 import PosicaoPorConta from '@/components/financeiro/posicao-por-conta'
 import CollapsibleSection from '@/components/financeiro/collapsible-section'
 import TopSection from '@/components/shared/top-section'
+import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
+import ProximosLancamentosLateral from '@/components/financeiro/proximos-lancamentos-lateral'
 
 interface SearchParams {
   preset?: string
@@ -386,9 +388,19 @@ export default async function FluxoCaixaPage({
           />
         </div>
 
-        {/* Placeholder for M5 CalendarioLiquidez + M6 Lista */}
-        <div className="text-xs text-zinc-400 py-4 text-center rounded-xl border border-dashed border-zinc-200">
-          Calendário de Liquidez — disponível em breve
+        {/* Diário grid: Calendário (60%) + Lista (40%) */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          {/* Calendário — 60% (3 de 5 cols) */}
+          <div className="lg:col-span-3">
+            <Suspense fallback={<div className="h-64 animate-pulse bg-zinc-100 rounded-xl" />}>
+              <CalendarioLiquidez />
+            </Suspense>
+          </div>
+
+          {/* Lista Próximos Lançamentos — 40% (2 de 5 cols) */}
+          <div className="lg:col-span-2">
+            <ProximosLancamentosLateral vencimentos={vencimentos} />
+          </div>
         </div>
       </CollapsibleSection>
 
