@@ -7,7 +7,6 @@ import FluxoMensalChart, { type FluxoMensalV3Row } from '@/components/financeiro
 import FluxoAcumuladoChart, { type FluxoAcumuladoRow } from '@/components/financeiro/fluxo-acumulado-chart'
 import ComposicaoPeriodo from '@/components/financeiro/composicao-periodo'
 import PosicaoPorConta from '@/components/financeiro/posicao-por-conta'
-import CollapsibleSection from '@/components/financeiro/collapsible-section'
 import TopSection from '@/components/shared/top-section'
 import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
 import ProximosLancamentosLateral from '@/components/financeiro/proximos-lancamentos-lateral'
@@ -58,8 +57,19 @@ interface ProximoVencimento {
   aging:            'a_vencer' | 'vencido_ate_30d' | 'vencido_30_a_90d' | 'vencido_mais_90d'
 }
 
+interface ProximoLancamento {
+  numero:           string | null
+  vencimento:       string
+  pessoa:           string | null
+  descricao:        string | null
+  valor_final:      number
+  tipo:             'Entrada' | 'Saída'
+  status:           string
+  dias_para_vencer: number
+}
+
 const TOOLTIP_KPI_REALIZADO =
-  "Reflete o fluxo de caixa bancário real, com gastos via cartão contabilizados no pagamento da fatura. Diferença esperada em relação à Decomposição por Grupo de Categoria devido ao ciclo de cartão (≤30 dias)."
+  'Reflete o fluxo de caixa bancário real, com gastos via cartão contabilizados no pagamento da fatura. Diferença esperada em relação à Decomposição por Grupo de Categoria devido ao ciclo de cartão (≤30 dias).'
 
 function TooltipIcon({ text }: { text: string }) {
   return (
@@ -78,12 +88,13 @@ function KpiCard({ label, value, sub, tooltip, valueColor }: {
 }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white px-5 py-4 shadow-sm">
-      <div className="flex items-center gap-1 mb-1">
-        <p className="text-xs text-zinc-400">{label}</p>
+      <div className="flex items-center gap-1 mb-0.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
         {tooltip && <TooltipIcon text={tooltip} />}
       </div>
-      <p className="text-xl font-semibold tabular-nums" style={{ color: valueColor ?? '#18181b' }}>{value}</p>
-      {sub && <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
+      {sub && <p className="text-[10px] text-zinc-400 mb-3">{sub}</p>}
+      {!sub && <div className="mb-3" />}
+      <p className="text-2xl font-bold tabular-nums" style={{ color: valueColor ?? 'var(--text-primary)' }}>{value}</p>
     </div>
   )
 }
@@ -95,6 +106,15 @@ function NoDataMessage() {
       <p className="text-xs text-zinc-400 mt-1">
         Acesse <a href="/admin/uploads/financeiro" className="underline hover:text-zinc-600">Upload de Arquivos › Financeiro</a> para importar os dados
       </p>
+    </div>
+  )
+}
+
+function CardTitle({ titulo, subtitulo }: { titulo: string; subtitulo?: string }) {
+  return (
+    <div className="flex items-baseline gap-2 mb-4">
+      <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{titulo}</h3>
+      {subtitulo && <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{subtitulo}</span>}
     </div>
   )
 }
@@ -127,6 +147,7 @@ export default async function FluxoCaixaPage({
     decomposicaoRes,
     posicaoRes,
     vencimentosRes,
+    lancamentos10dRes,
   ] = await Promise.all([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
@@ -135,6 +156,7 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_vencimentos_v2',    { p_limite: 200, p_offset: 0 }),
+    rpc('get_proximos_lancamentos_10d'),
   ])
 
   const fluxoMensalRows    = (fluxoMensalRes.error    ? null : fluxoMensalRes.data    as FluxoMensalV3Row[]  | null) ?? []
@@ -160,12 +182,13 @@ export default async function FluxoCaixaPage({
     : (vencimentosRes.data as { items: ProximoVencimento[] | null; total: number } | null)
   const vencimentos = vencimentosPayload?.items ?? []
 
-  // KPIs from Abordagem B RPC
+  const lancamentos10d: ProximoLancamento[] =
+    (lancamentos10dRes.error ? null : lancamentos10dRes.data as ProximoLancamento[] | null) ?? []
+
   const totalEntradas = kpis.entradas_realizadas
   const totalSaidas   = kpis.saidas_realizadas
   const saldoLiquido  = kpis.saldo_realizado
 
-  // Aggregate vencimentos by aging bucket for summary table
   type AgingBucket = { aging: string; aReceber: number; aPagar: number; count: number }
   const agingOrder = ['a_vencer', 'vencido_ate_30d', 'vencido_30_a_90d', 'vencido_mais_90d']
   const agingMap = new Map<string, AgingBucket>()
@@ -189,11 +212,8 @@ export default async function FluxoCaixaPage({
     <div className="max-w-7xl mx-auto px-6 py-4">
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────────────────── */}
-      <CollapsibleSection
-        titulo="Visão Geral"
-        subtitulo="Retrospectiva analítica do período"
-        defaultExpanded
-      >
+      <TopSection titulo="Visão Geral">
+
         {/* Period filter pills */}
         <div className="mb-6">
           <Suspense>
@@ -228,146 +248,136 @@ export default async function FluxoCaixaPage({
 
         {temDados && (
           <>
-            {/* Fluxo Mensal chart */}
-            <TopSection titulo="Fluxo de Caixa Mensal">
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
-                <FluxoMensalChart rows={fluxoMensalRows} />
-              </div>
-            </TopSection>
+            {/* Fluxo Mensal chart — título dentro do card */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
+              <CardTitle titulo="Fluxo de Caixa Mensal" subtitulo="24 meses passados + 18 futuros" />
+              <FluxoMensalChart rows={fluxoMensalRows} />
+            </div>
 
-            {/* Acumulado chart */}
-            <TopSection titulo="Recebimentos e Pagamentos Acumulados">
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
-                <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
-              </div>
-            </TopSection>
+            {/* Acumulado chart — título dentro do card */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
+              <CardTitle titulo="Recebimentos e Pagamentos Acumulados" subtitulo="24 meses passados + 18 futuros" />
+              <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
+            </div>
 
-            {/* Composição + Posição por Conta */}
+            {/* Composição + Posição por Conta — títulos dentro dos cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-              <TopSection titulo="Composição do Período">
-                <p className="text-[11px] text-zinc-400 mb-3 -mt-1">
-                  Decomposição por Grupo de Categoria (Lançamentos puro — regime contábil). Pode diferir levemente dos KPIs do topo, que refletem fluxo bancário real.
+              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <CardTitle titulo="Composição do Período" />
+                <p className="text-[11px] text-zinc-400 mb-3 -mt-2">
+                  Decomposição por Grupo de Categoria (Lançamentos — regime contábil). Pode diferir levemente dos KPIs acima, que refletem fluxo bancário real.
                 </p>
-                <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-                  <ComposicaoPeriodo entradas={entradas} saidas={saidas} />
-                </div>
-              </TopSection>
-              <TopSection titulo="Posição por Conta">
-                <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-                  <PosicaoPorConta posicoes={posicoes} saldoTotal={saldoTotal} />
-                </div>
-              </TopSection>
+                <ComposicaoPeriodo entradas={entradas} saidas={saidas} />
+              </div>
+              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <CardTitle titulo="Posição por Conta" />
+                <PosicaoPorConta posicoes={posicoes} saldoTotal={saldoTotal} />
+              </div>
             </div>
 
             {/* Títulos em Aberto por Aging */}
             {agingRows.length > 0 && (
-              <TopSection titulo="Títulos em Aberto por Aging">
-                <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-zinc-400 border-b border-zinc-100">
-                          <th className="text-left pb-2 font-medium">Faixa</th>
-                          <th className="text-right pb-2 font-medium">Qtd</th>
-                          <th className="text-right pb-2 font-medium">A Receber</th>
-                          <th className="text-right pb-2 font-medium">A Pagar</th>
+              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
+                <CardTitle titulo="Títulos em Aberto por Aging" />
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-zinc-400 border-b border-zinc-100">
+                        <th className="text-left pb-2 font-medium">Faixa</th>
+                        <th className="text-right pb-2 font-medium">Qtd</th>
+                        <th className="text-right pb-2 font-medium">A Receber</th>
+                        <th className="text-right pb-2 font-medium">A Pagar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {agingRows.map(r => (
+                        <tr key={r.aging} className="border-b border-zinc-50 last:border-0">
+                          <td className="py-1.5 text-zinc-700">{AGING_LABEL[r.aging] ?? r.aging}</td>
+                          <td className="py-1.5 text-right text-zinc-500">{r.count}</td>
+                          <td className="py-1.5 text-right font-medium text-emerald-700 tabular-nums">
+                            {r.aReceber > 0 ? fmtBRL(r.aReceber) : '—'}
+                          </td>
+                          <td className="py-1.5 text-right font-medium text-amber-700 tabular-nums">
+                            {r.aPagar > 0 ? fmtBRL(r.aPagar) : '—'}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {agingRows.map(r => (
-                          <tr key={r.aging} className="border-b border-zinc-50 last:border-0">
-                            <td className="py-1.5 text-zinc-700">{AGING_LABEL[r.aging] ?? r.aging}</td>
-                            <td className="py-1.5 text-right text-zinc-500">{r.count}</td>
-                            <td className="py-1.5 text-right font-medium text-emerald-700 tabular-nums">
-                              {r.aReceber > 0 ? fmtBRL(r.aReceber) : '—'}
-                            </td>
-                            <td className="py-1.5 text-right font-medium text-amber-700 tabular-nums">
-                              {r.aPagar > 0 ? fmtBRL(r.aPagar) : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </TopSection>
+              </div>
             )}
 
             {/* Próximos Vencimentos */}
             {vencimentos.length > 0 && (
-              <TopSection titulo="Próximos Vencimentos">
-                <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="text-zinc-400 border-b border-zinc-100">
-                          <th className="text-left pb-2 font-medium">Vencimento</th>
-                          <th className="text-left pb-2 font-medium">Tipo</th>
-                          <th className="text-left pb-2 font-medium">Aging</th>
-                          <th className="text-left pb-2 font-medium">Pessoa</th>
-                          <th className="text-left pb-2 font-medium">Descrição</th>
-                          <th className="text-right pb-2 font-medium">Valor</th>
+              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <CardTitle titulo="Próximos Vencimentos" />
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-zinc-400 border-b border-zinc-100">
+                        <th className="text-left pb-2 font-medium">Vencimento</th>
+                        <th className="text-left pb-2 font-medium">Tipo</th>
+                        <th className="text-left pb-2 font-medium">Aging</th>
+                        <th className="text-left pb-2 font-medium">Pessoa</th>
+                        <th className="text-left pb-2 font-medium">Descrição</th>
+                        <th className="text-right pb-2 font-medium">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vencimentos.map((v, i) => (
+                        <tr key={v.numero ?? i} className="border-b border-zinc-50 last:border-0">
+                          <td className="py-1.5 tabular-nums text-zinc-600 whitespace-nowrap">
+                            {new Date(v.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="py-1.5">
+                            <span className={[
+                              'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
+                              v.tipo === 'Entrada'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-amber-50 text-amber-700',
+                            ].join(' ')}>
+                              {v.tipo === 'Entrada' ? 'A Receber' : 'A Pagar'}
+                            </span>
+                          </td>
+                          <td className="py-1.5">
+                            <span className={[
+                              'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
+                              v.aging === 'a_vencer'
+                                ? 'bg-zinc-100 text-zinc-500'
+                                : v.aging === 'vencido_ate_30d'
+                                  ? 'bg-yellow-50 text-yellow-700'
+                                  : v.aging === 'vencido_30_a_90d'
+                                    ? 'bg-orange-50 text-orange-700'
+                                    : 'bg-red-50 text-red-700',
+                            ].join(' ')}>
+                              {AGING_LABEL[v.aging] ?? v.aging}
+                            </span>
+                          </td>
+                          <td className="py-1.5 text-zinc-600 max-w-[12rem] truncate">{v.pessoa ?? '—'}</td>
+                          <td className="py-1.5 text-zinc-500 max-w-[16rem] truncate">{v.descricao ?? '—'}</td>
+                          <td className="py-1.5 text-right font-medium tabular-nums text-zinc-800 whitespace-nowrap">
+                            {fmtBRL(v.valor_final)}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {vencimentos.map((v, i) => (
-                          <tr key={v.numero ?? i} className="border-b border-zinc-50 last:border-0">
-                            <td className="py-1.5 tabular-nums text-zinc-600 whitespace-nowrap">
-                              {new Date(v.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}
-                            </td>
-                            <td className="py-1.5">
-                              <span className={[
-                                'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
-                                v.tipo === 'Entrada'
-                                  ? 'bg-emerald-50 text-emerald-700'
-                                  : 'bg-amber-50 text-amber-700',
-                              ].join(' ')}>
-                                {v.tipo === 'Entrada' ? 'A Receber' : 'A Pagar'}
-                              </span>
-                            </td>
-                            <td className="py-1.5">
-                              <span className={[
-                                'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
-                                v.aging === 'a_vencer'
-                                  ? 'bg-zinc-100 text-zinc-500'
-                                  : v.aging === 'vencido_ate_30d'
-                                    ? 'bg-yellow-50 text-yellow-700'
-                                    : v.aging === 'vencido_30_a_90d'
-                                      ? 'bg-orange-50 text-orange-700'
-                                      : 'bg-red-50 text-red-700',
-                              ].join(' ')}>
-                                {AGING_LABEL[v.aging] ?? v.aging}
-                              </span>
-                            </td>
-                            <td className="py-1.5 text-zinc-600 max-w-[12rem] truncate">{v.pessoa ?? '—'}</td>
-                            <td className="py-1.5 text-zinc-500 max-w-[16rem] truncate">{v.descricao ?? '—'}</td>
-                            <td className="py-1.5 text-right font-medium tabular-nums text-zinc-800 whitespace-nowrap">
-                              {fmtBRL(v.valor_final)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </TopSection>
+              </div>
             )}
           </>
         )}
-      </CollapsibleSection>
+      </TopSection>
 
       {/* ── FLUXO DE CAIXA DIÁRIO ─────────────────────────────────────────── */}
-      <CollapsibleSection
-        titulo="Fluxo de Caixa Diário"
-        subtitulo="Visão acionável — mês corrente"
-        defaultExpanded
-      >
+      <TopSection titulo="Fluxo de Caixa Diário">
+
         {/* 4 KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <KpiCard
             label="Saldo em Caixa"
             value={fmtMi(kpisDiario.saldo_em_caixa)}
-            valueColor={kpisDiario.saldo_em_caixa >= 0 ? 'var(--positive)' : 'var(--negative)'}
           />
           <KpiCard
             label="A Receber"
@@ -388,21 +398,19 @@ export default async function FluxoCaixaPage({
           />
         </div>
 
-        {/* Diário grid: Calendário (60%) + Lista (40%) */}
+        {/* Calendário (60%) + Lista Próximos Lançamentos (40%) */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Calendário — 60% (3 de 5 cols) */}
           <div className="lg:col-span-3">
             <Suspense fallback={<div className="h-64 animate-pulse bg-zinc-100 rounded-xl" />}>
               <CalendarioLiquidez />
             </Suspense>
           </div>
-
-          {/* Lista Próximos Lançamentos — 40% (2 de 5 cols) */}
           <div className="lg:col-span-2">
-            <ProximosLancamentosLateral vencimentos={vencimentos} />
+            <ProximosLancamentosLateral lancamentos={lancamentos10d} />
           </div>
         </div>
-      </CollapsibleSection>
+
+      </TopSection>
 
     </div>
   )
