@@ -56,11 +56,10 @@ function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function getCellStyle(dia: CalendarioDia, maxAbsSaldo: number): React.CSSProperties {
+function getCellStyle(dia: CalendarioDia): React.CSSProperties {
   if (dia.fora_do_mes) return { opacity: 0.35 }
-  const ratio = maxAbsSaldo > 0 ? dia.saldo_dia / maxAbsSaldo : 0
-  if (ratio > 0.1) return { background: '#f0fdf4' }
-  if (ratio < -0.1) return { background: '#fff1f2' }
+  if (dia.saldo_dia > 0) return { background: 'var(--positive-soft)' }
+  if (dia.saldo_dia < 0) return { background: 'var(--negative-soft)' }
   return {}
 }
 
@@ -249,12 +248,6 @@ export default function CalendarioLiquidez() {
     setLancamentos(null)
   }, [])
 
-  // ── Cell coloring ────────────────────────────────────────────────────────────
-  const maxAbsSaldo = Math.max(
-    ...cells.filter(c => !c.fora_do_mes).map(c => Math.abs(c.saldo_dia)),
-    1,
-  )
-
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
@@ -265,7 +258,7 @@ export default function CalendarioLiquidez() {
         </h3>
 
         {/* Header: navigation */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-0.5">
           <button
             onClick={mesAnterior}
             className="p-1.5 rounded hover:bg-zinc-100 text-zinc-500 hover:text-zinc-800 transition-colors"
@@ -276,17 +269,9 @@ export default function CalendarioLiquidez() {
             </svg>
           </button>
 
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="text-xs font-semibold text-zinc-600">
-              {formatMesAno(mesReferencia)}
-            </span>
-            <button
-              onClick={irHoje}
-              className="text-[10px] px-2 py-0.5 rounded border border-zinc-200 text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600 transition-colors"
-            >
-              Redefinir
-            </button>
-          </div>
+          <span className="text-xs font-semibold text-zinc-600">
+            {formatMesAno(mesReferencia)}
+          </span>
 
           <button
             onClick={mesProximo}
@@ -296,6 +281,14 @@ export default function CalendarioLiquidez() {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
+          </button>
+        </div>
+        <div className="flex justify-center mb-3">
+          <button
+            onClick={irHoje}
+            className="text-[9px] text-zinc-400 hover:text-zinc-600 transition-colors"
+          >
+            Redefinir
           </button>
         </div>
 
@@ -319,7 +312,7 @@ export default function CalendarioLiquidez() {
           <div className="grid grid-cols-7 gap-0.5">
             {cells.map(dia => {
               const cellStyle: React.CSSProperties = {
-                ...getCellStyle(dia, maxAbsSaldo),
+                ...getCellStyle(dia),
                 ...(dia.eh_hoje
                   ? { outline: '2px solid var(--brand)', outlineOffset: '-2px' }
                   : {}),
