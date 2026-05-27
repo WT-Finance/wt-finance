@@ -177,7 +177,6 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const [isExporting,  setIsExporting]  = useState(false)
-  const [allOperacoes, setAllOperacoes] = useState<OperacaoItem[]>([])
 
   const [requestState, setRequestState] = useState<{
     key: string
@@ -333,7 +332,6 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
       const res = await fetch(`/api/dashboard/weddings/operacoes?${allQueryString}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const resultado = await res.json() as ListaOperacoes
-      setAllOperacoes(resultado.operacoes)
       exportarParaExcel(resultado.operacoes, periodoLabel)
     } catch {
     } finally {
