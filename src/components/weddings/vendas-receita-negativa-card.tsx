@@ -54,9 +54,8 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {visiveis.map((item, i) => {
-              const muitoNegativo = item.receita < -1000
               return (
-                <tr key={i} className={muitoNegativo ? 'bg-danger-bg/40 hover:bg-danger-bg/70' : 'hover:bg-zinc-50'}>
+                <tr key={i} className="hover:bg-zinc-50">
                   <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                     {fmtDate(item.data_venda)}
                   </td>
@@ -110,9 +109,8 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {vendas.map((item, i) => {
-                const muitoNegativo = item.receita < -1000
                 return (
-                  <tr key={i} className={muitoNegativo ? 'bg-danger-bg/40 hover:bg-danger-bg/70' : 'hover:bg-zinc-50'}>
+                  <tr key={i} className="hover:bg-zinc-50">
                     <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                       {fmtDate(item.data_venda)}
                     </td>
