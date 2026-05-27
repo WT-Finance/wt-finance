@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtBRL } from '@/lib/fmt'
 
 export interface ProximoLancamento {
@@ -18,6 +19,8 @@ interface Props {
   lancamentos: ProximoLancamento[]
 }
 
+type Filtro = '5d' | '10d' | 'custom'
+
 const LIMITE_INICIAL = 9
 
 function formatDateShort(iso: string): string {
@@ -25,30 +28,108 @@ function formatDateShort(iso: string): string {
   return `${d}/${m}`
 }
 
-export default function ProximosLancamentosLateral({ lancamentos }: Props) {
-  const [expandido, setExpandido] = useState(false)
+export default function ProximosLancamentosLateral({ lancamentos: lancamentosDefault }: Props) {
+  const [filtro, setFiltro]           = useState<Filtro>('10d')
+  const [diasCustom, setDiasCustom]   = useState('30')
+  const [dadosCustom, setDadosCustom] = useState<ProximoLancamento[] | null>(null)
+  const [loading, setLoading]         = useState(false)
+  const [expandido, setExpandido]     = useState(false)
+
+  const lancamentos: ProximoLancamento[] =
+    filtro === '5d'  ? lancamentosDefault.filter(l => l.dias_para_vencer <= 5) :
+    filtro === '10d' ? lancamentosDefault :
+                       dadosCustom ?? []
 
   const visiveis = expandido ? lancamentos : lancamentos.slice(0, LIMITE_INICIAL)
   const temMais  = lancamentos.length > LIMITE_INICIAL
 
+  const handleFiltro = (f: Filtro) => {
+    setFiltro(f)
+    setExpandido(false)
+    if (f !== 'custom') setDadosCustom(null)
+  }
+
+  const aplicarCustom = async () => {
+    const dias = parseInt(diasCustom, 10)
+    if (!dias || dias <= 0) return
+    if (dias <= 10) {
+      setDadosCustom(lancamentosDefault.filter(l => l.dias_para_vencer <= dias))
+      return
+    }
+    setLoading(true)
+    const supabase = getBrowserClient()
+    const { data } = await supabase.rpc('get_proximos_lancamentos', { p_dias: dias })
+    setDadosCustom((data as ProximoLancamento[] | null) ?? [])
+    setLoading(false)
+  }
+
+  const pillClass = (f: Filtro) => [
+    'text-[11px] px-2.5 py-0.5 rounded-full border transition-colors',
+    filtro === f
+      ? 'bg-zinc-800 text-white border-zinc-800'
+      : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',
+  ].join(' ')
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-zinc-700">Próximos Lançamentos (10d)</h3>
-        <span className="text-[10px] text-zinc-400 tabular-nums">
-          {lancamentos.length > LIMITE_INICIAL && !expandido
-            ? `${LIMITE_INICIAL} de ${lancamentos.length}`
-            : `${lancamentos.length} itens`}
-        </span>
+    /* overflow-hidden tells CSS Grid to ignore this item's content height
+       when calculating the row height → calendar drives the row height;
+       this box then stretches to match via align-self:stretch + h-full  */
+    <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden h-full flex flex-col">
+
+      {/* Fixed header zone */}
+      <div className="px-4 pt-4 shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-zinc-700">Próximos Lançamentos</h3>
+          <span className="text-[10px] text-zinc-400 tabular-nums">
+            {lancamentos.length > LIMITE_INICIAL && !expandido
+              ? `${LIMITE_INICIAL} de ${lancamentos.length}`
+              : `${lancamentos.length} itens`}
+          </span>
+        </div>
+
+        {/* Pills */}
+        <div className="flex items-center gap-1.5 mb-3">
+          <button className={pillClass('5d')}     onClick={() => handleFiltro('5d')}>5 dias</button>
+          <button className={pillClass('10d')}    onClick={() => handleFiltro('10d')}>10 dias</button>
+          <button className={pillClass('custom')} onClick={() => handleFiltro('custom')}>Personalizado</button>
+        </div>
+
+        {/* Custom period */}
+        {filtro === 'custom' && (
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={diasCustom}
+              onChange={e => setDiasCustom(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && aplicarCustom()}
+              className="w-14 text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400 tabular-nums"
+            />
+            <span className="text-[11px] text-zinc-400">dias</span>
+            <button
+              onClick={aplicarCustom}
+              disabled={loading}
+              className="text-[11px] px-3 py-1 rounded border border-zinc-300 text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-40"
+            >
+              {loading ? '...' : 'Aplicar'}
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Scrollable list — fills remaining height */}
       {lancamentos.length === 0 ? (
-        <div className="py-8 text-center">
-          <p className="text-xs text-zinc-400">Nenhum vencimento nos próximos 10 dias</p>
+        <div className="flex-1 flex items-center justify-center px-4 pb-4">
+          <p className="text-xs text-zinc-400 text-center">
+            {filtro === 'custom' && dadosCustom === null
+              ? 'Informe um período e clique em Aplicar'
+              : 'Nenhum vencimento no período selecionado'}
+          </p>
         </div>
       ) : (
         <>
-          <div className="divide-y divide-zinc-50">
+          <div className="flex-1 overflow-y-auto min-h-0 px-4 divide-y divide-zinc-50">
             {visiveis.map((v, i) => {
               const isEntrada = v.tipo === 'Entrada'
               const isHoje    = v.dias_para_vencer === 0
@@ -98,7 +179,7 @@ export default function ProximosLancamentosLateral({ lancamentos }: Props) {
           {temMais && (
             <button
               onClick={() => setExpandido(e => !e)}
-              className="mt-3 w-full text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors py-1 border-t border-zinc-50"
+              className="shrink-0 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors py-2 px-4 border-t border-zinc-100"
             >
               {expandido
                 ? 'Ver menos'
