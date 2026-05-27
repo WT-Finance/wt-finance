@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  ResponsiveContainer, BarChart, Bar,
+  ResponsiveContainer, ComposedChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from 'recharts'
 import { fmtMi } from '@/lib/fmt'
@@ -21,34 +21,24 @@ function fmtMesLabel(mes: string): string {
   return `${MESES_ABREV[parseInt(m, 10) - 1]}/${y.slice(2)}`
 }
 
-function currentMesLabel(): string {
-  const now = new Date()
-  return `${MESES_ABREV[now.getMonth()]}/${String(now.getFullYear()).slice(2)}`
-}
-
-// ── Custom tooltip ────────────────────────────────────────────────────────────
-
-const SERIES_LABELS: Record<string, string> = {
-  acum_entrada_efetivada: 'Entradas efetivadas acum.',
-  acum_entrada_prevista:  'Entradas previstas acum.',
-  acum_saida_efetivada:   'Saídas efetivadas acum.',
-  acum_saida_prevista:    'Saídas previstas acum.',
-}
+// ── Tooltip ───────────────────────────────────────────────────────────────────
 
 interface TooltipProps {
   active?:  boolean
-  payload?: Array<{ name: string; value: number; color: string }>
+  payload?: Array<{ name: string; value: number }>
   label?:   string
 }
 
 function AcumuladoTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg shadow-md p-3 text-xs min-w-[210px]">
-      <p className="font-semibold text-zinc-700 mb-2">{label}</p>
+    <div className="bg-white border border-zinc-200 rounded-lg shadow-md p-3 text-xs min-w-[200px]">
+      <p className="font-semibold text-zinc-700 mb-2">{fmtMesLabel(label ?? '')}</p>
       {payload.map(p => (
         <div key={p.name} className="flex justify-between gap-4 mb-1">
-          <span style={{ color: p.color }}>{SERIES_LABELS[p.name] ?? p.name}</span>
+          <span className="text-zinc-500">
+            {p.name === 'entrada_acum' ? 'Entradas acum.' : 'Saídas acum.'}
+          </span>
           <span className="font-medium text-zinc-700">{fmtMi(p.value)}</span>
         </div>
       ))}
@@ -58,49 +48,53 @@ function AcumuladoTooltip({ active, payload, label }: TooltipProps) {
 
 // ── Legend ────────────────────────────────────────────────────────────────────
 
-function AcumuladoLegend() {
-  const items = [
-    { label: 'Entradas efetivadas acum.', color: 'var(--positive)', opacity: 1    },
-    { label: 'Entradas previstas acum.',  color: 'var(--positive)', opacity: 0.45 },
-    { label: 'Saídas efetivadas acum.',   color: 'var(--negative)', opacity: 1    },
-    { label: 'Saídas previstas acum.',    color: 'var(--negative)', opacity: 0.45 },
-  ]
+function LegendItem({ color, opacity, label }: { color: string; opacity: number; label: string }) {
   return (
-    <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
-      {items.map(it => (
-        <div key={it.label} className="flex items-center gap-1.5 text-xs text-zinc-500">
-          <span
-            className="w-3 h-3 rounded-sm inline-block"
-            style={{ background: it.color, opacity: it.opacity }}
-          />
-          {it.label}
-        </div>
-      ))}
+    <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+      <span className="inline-block w-3 h-3 rounded-sm" style={{ background: color, opacity }} />
+      {label}
     </div>
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+function AcumuladoLegend() {
+  return (
+    <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2">
+      <LegendItem color="var(--positive)" opacity={1}    label="Entradas acum. (efetivado)" />
+      <LegendItem color="var(--positive)" opacity={0.35} label="Entradas acum. (projetado)"  />
+      <LegendItem color="var(--negative)" opacity={1}    label="Saídas acum. (efetivado)"    />
+      <LegendItem color="var(--negative)" opacity={0.35} label="Saídas acum. (projetado)"    />
+    </div>
+  )
+}
+
+// ── Data transform ────────────────────────────────────────────────────────────
 
 interface ChartPoint {
-  label:                   string
-  acum_entrada_efetivada:  number
-  acum_entrada_prevista:   number
-  acum_saida_efetivada:    number
-  acum_saida_prevista:     number
+  mes:          string
+  entrada_acum: number
+  saida_acum:   number
+  eh_futuro:    boolean
 }
 
 function toChartPoints(rows: FluxoAcumuladoRow[]): ChartPoint[] {
+  const today = new Date()
+  const currentMes = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+
   return [...rows]
     .sort((a, b) => a.mes.localeCompare(b.mes))
-    .map(r => ({
-      label:                  fmtMesLabel(r.mes),
-      acum_entrada_efetivada: r.acum_entrada_efetivada,
-      acum_entrada_prevista:  r.acum_entrada_prevista,
-      acum_saida_efetivada:   r.acum_saida_efetivada,
-      acum_saida_prevista:    r.acum_saida_prevista,
-    }))
+    .map(r => {
+      const eh_futuro = r.mes > currentMes
+      return {
+        mes:          r.mes,
+        entrada_acum: eh_futuro ? r.acum_entrada_prevista : r.acum_entrada_efetivada,
+        saida_acum:   eh_futuro ? r.acum_saida_prevista   : r.acum_saida_efetivada,
+        eh_futuro,
+      }
+    })
 }
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
   rows: FluxoAcumuladoRow[]
@@ -117,74 +111,53 @@ export default function FluxoAcumuladoChart({ rows }: Props) {
     )
   }
 
-  const hojeLabel = currentMesLabel()
+  const firstFutureMes = data.find(d => d.eh_futuro)?.mes ?? null
 
   return (
     <div>
-      <ResponsiveContainer width="100%" height={260}>
-        <BarChart
+      <ResponsiveContainer width="100%" height={280}>
+        <ComposedChart
           data={data}
-          barCategoryGap="20%"
-          barGap={2}
-          margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
+          margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
           <XAxis
-            dataKey="label"
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
-            axisLine={false}
+            dataKey="mes"
+            tickFormatter={fmtMesLabel}
+            tick={{ fontSize: 10, fill: '#71717a' }}
             tickLine={false}
+            axisLine={false}
+            interval={2}
           />
           <YAxis
             tickFormatter={v => fmtMi(v as number)}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 11, fill: '#71717a' }}
             axisLine={false}
             tickLine={false}
-            width={80}
+            width={72}
           />
           <Tooltip content={<AcumuladoTooltip />} />
 
-          {/* Vertical reference line at current month */}
-          <ReferenceLine
-            x={hojeLabel}
-            stroke="#9ca3af"
-            strokeDasharray="4 4"
-            label={{ value: 'Hoje', position: 'insideTopRight', fontSize: 11, fill: '#9ca3af' }}
-          />
+          {firstFutureMes && (
+            <ReferenceLine
+              x={firstFutureMes}
+              stroke="#a1a1aa"
+              strokeDasharray="4 3"
+              label={{ value: 'Hoje', position: 'insideTopLeft', fontSize: 10, fill: '#71717a' }}
+            />
+          )}
 
-          <Bar
-            dataKey="acum_entrada_efetivada"
-            name="acum_entrada_efetivada"
-            fill="var(--positive)"
-            fillOpacity={1}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
-          />
-          <Bar
-            dataKey="acum_entrada_prevista"
-            name="acum_entrada_prevista"
-            fill="var(--positive)"
-            fillOpacity={0.45}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
-          />
-          <Bar
-            dataKey="acum_saida_efetivada"
-            name="acum_saida_efetivada"
-            fill="var(--negative)"
-            fillOpacity={1}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
-          />
-          <Bar
-            dataKey="acum_saida_prevista"
-            name="acum_saida_prevista"
-            fill="var(--negative)"
-            fillOpacity={0.45}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
-          />
-        </BarChart>
+          <Bar dataKey="entrada_acum" name="entrada_acum" radius={[2, 2, 0, 0]}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill="var(--positive)" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+            ))}
+          </Bar>
+          <Bar dataKey="saida_acum" name="saida_acum" radius={[2, 2, 0, 0]}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill="var(--negative)" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+            ))}
+          </Bar>
+        </ComposedChart>
       </ResponsiveContainer>
       <AcumuladoLegend />
     </div>

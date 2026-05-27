@@ -150,20 +150,21 @@ export default function FluxoMensalChart({ rows }: Props) {
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart
           data={data}
-          barCategoryGap="20%"
-          barGap={2}
-          margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
+          barCategoryGap="15%"
+          barGap={1}
+          margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 10, fill: '#71717a' }}
             axisLine={false}
             tickLine={false}
+            interval={2}
           />
           <YAxis
             tickFormatter={v => fmtMi(v as number)}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 11, fill: '#71717a' }}
             axisLine={false}
             tickLine={false}
             width={80}
@@ -176,32 +177,32 @@ export default function FluxoMensalChart({ rows }: Props) {
             name="entrada_efetivada"
             fill="var(--positive)"
             fillOpacity={1}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
+            radius={[2, 2, 0, 0]}
+            barSize={5}
           />
           <Bar
             dataKey="entrada_prevista"
             name="entrada_prevista"
             fill="var(--positive)"
             fillOpacity={0.45}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
+            radius={[2, 2, 0, 0]}
+            barSize={5}
           />
           <Bar
             dataKey="saida_efetivada"
             name="saida_efetivada"
             fill="var(--negative)"
             fillOpacity={1}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
+            radius={[2, 2, 0, 0]}
+            barSize={5}
           />
           <Bar
             dataKey="saida_prevista"
             name="saida_prevista"
             fill="var(--negative)"
             fillOpacity={0.45}
-            radius={[3, 3, 0, 0]}
-            maxBarSize={28}
+            radius={[2, 2, 0, 0]}
+            barSize={5}
           />
 
           <Line
