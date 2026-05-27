@@ -22,6 +22,8 @@ export interface VendaProdutoRaw {
   mes:                string | null
   data_inicio_evento: string | null
   fornecedor:         string | null
+  passageiros?:       string | null
+  tipo_contrato?:     string | null
 }
 
 const COL_MAP: Record<string, keyof VendaProdutoRaw> = {
@@ -41,6 +43,8 @@ const COL_MAP: Record<string, keyof VendaProdutoRaw> = {
   'Mês':             'mes',
   'Data de Início':  'data_inicio_evento',
   'Fornecedor':      'fornecedor',
+  'Passageiros':     'passageiros',
+  'Tipo de Contrato': 'tipo_contrato',
 }
 
 function toIsoDate(value: unknown): string | null {

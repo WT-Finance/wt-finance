@@ -20,7 +20,7 @@ const STATUS_PILLS = [
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      {[140, 80, 64, 72, 60, 44, 68, 72, 52].map((w, i) => (
+      {[140, 80, 64, 56, 120, 36, 72, 60, 44, 68, 72, 52].map((w, i) => (
         <td key={i} className="py-2.5 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: w }} />
         </td>
@@ -210,6 +210,9 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <SortTh field="nome_casal" {...sortThProps}>Operação / Casal</SortTh>
               <SortTh field="hotel" title="Hotel / fornecedor principal do casamento (Contrato=1)" {...sortThProps}>Hotel</SortTh>
               <SortTh field="data_evento" {...sortThProps}>Data do Evento</SortTh>
+              <SortTh field={null} title="Tipo de contrato (Tudo Incluído, Cardápio, etc.) — disponível após reimportação com nova coluna" {...sortThProps}>Contrato</SortTh>
+              <SortTh field={null} title="Passageiros cadastrados nas Diárias de Hospedagem — disponível após reimportação com nova coluna" {...sortThProps}>Passageiros</SortTh>
+              <SortTh field={null} right title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
               <SortTh field="receita" right title="Faturamento − repasse ao fornecedor (hotel, cia. aérea)" {...sortThProps}>Rec. Bruta</SortTh>
               <SortTh field="margem" right title="Receita Bruta ÷ Faturamento × 100" {...sortThProps}>Mg. Bruta</SortTh>
@@ -223,11 +226,11 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : erro ? (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-sm text-red-500">{erro}</td>
+                <td colSpan={12} className="py-6 text-center text-sm text-red-500">{erro}</td>
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={12}>
                   <EmptyState icon={Search} message="Nenhuma operação encontrada para os filtros selecionados" />
                 </td>
               </tr>
@@ -254,6 +257,33 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     </td>
                     <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
                       {op.data_evento ? fmtDateLong(op.data_evento) : <span className="text-zinc-300">—</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
+                      {op.tipo_contrato ?? <span className="text-zinc-300">—</span>}
+                    </td>
+                    <td className="py-2.5 px-3 text-xs text-zinc-500 max-w-30">
+                      {op.passageiros_raw ? (
+                        <span
+                          className="block truncate"
+                          title={op.passageiros_raw}
+                        >
+                          {op.passageiros_raw}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-300">—</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-xs whitespace-nowrap">
+                      {op.convidados == null || op.convidados === 0 ? (
+                        <span
+                          className="text-zinc-300"
+                          title={op.convidados === 0 ? 'Sem passageiros cadastrados nas Diárias desta operação' : undefined}
+                        >
+                          {op.convidados === 0 ? '0' : '—'}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-700">{op.convidados}</span>
+                      )}
                     </td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
                       {fmtBRL(op.faturamento)}

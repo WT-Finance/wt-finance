@@ -245,6 +245,9 @@ export interface OperacaoItem {
   hotel:              string | null
   custos_internos:    number
   margem_liquida_pct: number
+  tipo_contrato:      string | null
+  passageiros_raw:    string | null
+  convidados:         number | null
 }
 
 export interface ListaOperacoes {
