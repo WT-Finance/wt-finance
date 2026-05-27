@@ -1,6 +1,8 @@
 import { getAdminClient } from '@/lib/supabase/admin'
 import ContasBancariasForm from './contas-bancarias-form'
 
+export const dynamic = 'force-dynamic'
+
 const TIPOS_VALIDOS = [
   'banco',
   'gateway',
@@ -21,6 +23,7 @@ interface ContaBancaria {
 export default async function ContasBancariasPage() {
   const db = getAdminClient()
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: todasContas, error } = await (db as any)
     .from('financeiro.dim_conta_bancaria')
     .select('id, conta, tipo, eh_cartao_credito')
@@ -34,6 +37,7 @@ export default async function ContasBancariasPage() {
     )
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const contas: ContaBancaria[] = (todasContas ?? []).map((c: any) => ({
     id: c.id,
     conta: c.conta,

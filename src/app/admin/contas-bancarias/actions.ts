@@ -6,6 +6,7 @@ export async function salvarClassificacaoContas(
 ) {
   const db = getAdminClient()
   for (const u of updates) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (db as any)
       .from('financeiro.dim_conta_bancaria')
       .update({ tipo: u.tipo, eh_cartao_credito: u.eh_cartao_credito })

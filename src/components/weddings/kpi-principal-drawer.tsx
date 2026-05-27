@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtMi } from '@/lib/fmt'
-import { margemColor } from '@/lib/config'
 import ListDrawer from '@/components/shared/list-drawer'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import type { WeddingsDrawerData, SumarioSubsetor } from '@/types/api'

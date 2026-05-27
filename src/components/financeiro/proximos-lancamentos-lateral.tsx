@@ -40,7 +40,7 @@ function todayIso(): string {
   return format(new Date(), 'yyyy-MM-dd')
 }
 
-function LancamentoRow({ v, i }: { v: ProximoLancamento; i: number }) {
+function LancamentoRow({ v }: { v: ProximoLancamento }) {
   const isEntrada = v.tipo === 'Entrada'
   const isHoje    = v.dias_para_vencer === 0
 
@@ -241,7 +241,7 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
       ) : (
         <div className="divide-y divide-zinc-50">
           {lancamentos.map((v, i) => (
-            <LancamentoRow key={v.numero ?? i} v={v} i={i} />
+            <LancamentoRow key={v.numero ?? i} v={v} />
           ))}
         </div>
       )}
@@ -277,7 +277,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
           <>
             <div className="flex-1 overflow-y-auto min-h-0 px-4 divide-y divide-zinc-50">
               {visiveis.map((v, i) => (
-                <LancamentoRow key={v.numero ?? i} v={v} i={i} />
+                <LancamentoRow key={v.numero ?? i} v={v} />
               ))}
             </div>
 
