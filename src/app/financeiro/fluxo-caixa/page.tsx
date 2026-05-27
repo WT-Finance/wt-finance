@@ -210,11 +210,8 @@ export default async function FluxoCaixaPage({
 
         {temDados && (
           <>
-            {/* Fluxo Mensal chart — título dentro do card */}
-            <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
-              <CardTitle titulo="Fluxo de Caixa Mensal" subtitulo="24 meses passados + 18 futuros" />
-              <FluxoMensalChart rows={fluxoMensalRows} />
-            </div>
+            {/* Fluxo Mensal chart — card e título dentro do componente */}
+            <FluxoMensalChart rows={fluxoMensalRows} />
 
             {/* Acumulado chart — título dentro do card */}
             <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">

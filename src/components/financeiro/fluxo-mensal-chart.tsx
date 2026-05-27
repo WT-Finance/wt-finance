@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Line, Legend,
@@ -42,11 +43,11 @@ function ResultadoDot({ cx, cy, value }: DotProps) {
 // ── Custom tooltip ────────────────────────────────────────────────────────────
 
 const SERIES_LABELS: Record<string, string> = {
-  entrada_efetivada: 'Entradas efetivadas',
-  entrada_prevista:  'Entradas previstas',
-  saida_efetivada:   'Saídas efetivadas',
-  saida_prevista:    'Saídas previstas',
-  resultado_mensal:  'Resultado mensal',
+  entrada_efetivada:   'Entradas efetivadas',
+  entrada_prevista:    'Entradas previstas',
+  saida_efetivada_val: 'Saídas efetivadas',
+  saida_prevista_val:  'Saídas previstas',
+  resultado_mensal:    'Resultado mensal',
 }
 
 interface TooltipProps {
@@ -63,7 +64,7 @@ function FluxoTooltip({ active, payload, label }: TooltipProps) {
       {payload.map(p => (
         <div key={p.name} className="flex justify-between gap-4 mb-1">
           <span style={{ color: p.color }}>{SERIES_LABELS[p.name] ?? p.name}</span>
-          <span className="font-medium text-zinc-700">{fmtMi(p.value)}</span>
+          <span className="font-medium text-zinc-700">{fmtMi(Math.abs(p.value))}</span>
         </div>
       ))}
     </div>
@@ -106,47 +107,67 @@ function FluxoLegend() {
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Data transform ────────────────────────────────────────────────────────────
 
 interface ChartPoint {
-  label:              string
-  entrada_efetivada:  number
-  entrada_prevista:   number
-  saida_efetivada:    number
-  saida_prevista:     number
-  resultado_mensal:   number
+  label:               string
+  entrada_efetivada:   number
+  entrada_prevista:    number
+  saida_efetivada_val: number
+  saida_prevista_val:  number
+  resultado_mensal:    number
 }
 
-function toChartPoints(rows: FluxoMensalV3Row[]): ChartPoint[] {
+function toChartPoints(rows: FluxoMensalV3Row[], invertida: boolean): ChartPoint[] {
   return [...rows]
     .sort((a, b) => a.mes.localeCompare(b.mes))
     .map(r => ({
-      label:             fmtMesLabel(r.mes),
-      entrada_efetivada: r.entrada_efetivada,
-      entrada_prevista:  r.entrada_prevista,
-      saida_efetivada:   r.saida_efetivada,
-      saida_prevista:    r.saida_prevista,
-      resultado_mensal:  r.resultado_mensal,
+      label:               fmtMesLabel(r.mes),
+      entrada_efetivada:   r.entrada_efetivada,
+      entrada_prevista:    r.entrada_prevista,
+      saida_efetivada_val: invertida ? r.saida_efetivada : -r.saida_efetivada,
+      saida_prevista_val:  invertida ? r.saida_prevista  : -r.saida_prevista,
+      resultado_mensal:    r.resultado_mensal,
     }))
 }
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
   rows: FluxoMensalV3Row[]
 }
 
 export default function FluxoMensalChart({ rows }: Props) {
-  const data = toChartPoints(rows)
+  const [invertida, setInvertida] = useState(false)
+  const data = toChartPoints(rows, invertida)
+
+  const saidaRadius: [number, number, number, number] = invertida ? [2, 2, 0, 0] : [0, 0, 2, 2]
 
   if (!data.length) {
     return (
-      <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
-        Sem dados para o período
+      <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
+        <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
+          Sem dados para o período
+        </div>
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Fluxo de Caixa Mensal</h3>
+          <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>24 meses passados + 18 futuros</span>
+        </div>
+        <button
+          onClick={() => setInvertida(v => !v)}
+          className="text-xs text-zinc-500 border border-zinc-200 rounded px-2.5 py-1 hover:bg-zinc-50 active:bg-zinc-100 transition-colors shrink-0"
+        >
+          ⇅ Inverter saídas
+        </button>
+      </div>
+
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart
           data={data}
@@ -163,7 +184,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             interval={2}
           />
           <YAxis
-            tickFormatter={v => fmtMi(v as number)}
+            tickFormatter={v => fmtMi(Math.abs(v as number))}
             tick={{ fontSize: 11, fill: '#71717a' }}
             axisLine={false}
             tickLine={false}
@@ -179,6 +200,8 @@ export default function FluxoMensalChart({ rows }: Props) {
             fillOpacity={1}
             radius={[2, 2, 0, 0]}
             barSize={5}
+            animationDuration={400}
+            animationEasing="ease-in-out"
           />
           <Bar
             dataKey="entrada_prevista"
@@ -187,22 +210,28 @@ export default function FluxoMensalChart({ rows }: Props) {
             fillOpacity={0.45}
             radius={[2, 2, 0, 0]}
             barSize={5}
+            animationDuration={400}
+            animationEasing="ease-in-out"
           />
           <Bar
-            dataKey="saida_efetivada"
-            name="saida_efetivada"
+            dataKey="saida_efetivada_val"
+            name="saida_efetivada_val"
             fill="var(--negative)"
             fillOpacity={1}
-            radius={[2, 2, 0, 0]}
+            radius={saidaRadius}
             barSize={5}
+            animationDuration={400}
+            animationEasing="ease-in-out"
           />
           <Bar
-            dataKey="saida_prevista"
-            name="saida_prevista"
+            dataKey="saida_prevista_val"
+            name="saida_prevista_val"
             fill="var(--negative)"
             fillOpacity={0.45}
-            radius={[2, 2, 0, 0]}
+            radius={saidaRadius}
             barSize={5}
+            animationDuration={400}
+            animationEasing="ease-in-out"
           />
 
           <Line
@@ -213,6 +242,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             dot={(props: DotProps) => <ResultadoDot key={`dot-${props.cx}-${props.cy}`} {...props} />}
             activeDot={{ r: 5 }}
             type="monotone"
+            isAnimationActive={false}
           />
 
           {/* Legend hidden from Recharts — we render our own below */}
