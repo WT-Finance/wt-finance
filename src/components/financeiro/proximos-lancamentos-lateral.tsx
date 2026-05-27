@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { differenceInDays, parseISO, format } from 'date-fns'
 import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtBRL } from '@/lib/fmt'
@@ -44,33 +45,43 @@ function LancamentoRow({ v, i }: { v: ProximoLancamento; i: number }) {
   const isHoje    = v.dias_para_vencer === 0
 
   return (
-    <div key={v.numero ?? i} className="py-2 flex items-start justify-between gap-2">
-      <div className="flex items-start gap-2 min-w-0 flex-1">
-        <div className={[
-          'shrink-0 w-8 text-center rounded px-0.5 py-0.5',
-          isHoje ? 'bg-amber-50 text-amber-700' : 'bg-zinc-100 text-zinc-500',
-        ].join(' ')}>
-          <p className="text-[10px] font-semibold leading-none">
-            {formatDateShort(v.vencimento)}
-          </p>
-          {isHoje && (
-            <p className="text-[8px] leading-none mt-0.5 font-medium">hoje</p>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-zinc-700 truncate font-medium leading-snug">
-            {v.pessoa ?? '—'}
-          </p>
-          {v.descricao && (
-            <p className="text-[10px] text-zinc-400 truncate leading-snug">{v.descricao}</p>
-          )}
-        </div>
+    <div className="py-2 flex items-center gap-2">
+      {/* Icon */}
+      <span className="shrink-0" style={{ color: isEntrada ? 'var(--positive)' : 'var(--negative)' }}>
+        {isEntrada ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+      </span>
+
+      {/* Date badge */}
+      <div
+        className="shrink-0 rounded px-1.5 py-0.5 text-center min-w-8.5"
+        style={isHoje
+          ? { background: 'var(--neutral-soft)', color: 'var(--neutral)' }
+          : {}
+        }
+      >
+        <p className={['text-[10px] font-semibold leading-none tabular-nums', isHoje ? '' : 'text-zinc-500'].join(' ')}>
+          {formatDateShort(v.vencimento)}
+        </p>
+        {isHoje && <p className="text-[8px] leading-none mt-0.5 font-medium">hoje</p>}
       </div>
-      <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className={[
-          'inline-block px-1.5 py-0.5 rounded text-[9px] font-medium',
-          isEntrada ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
-        ].join(' ')}>
+
+      {/* Pessoa + descrição */}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-zinc-700 truncate font-medium leading-snug">{v.pessoa ?? '—'}</p>
+        {v.descricao && v.descricao !== 'Pagamento venda' && (
+          <p className="text-[10px] text-zinc-400 truncate leading-snug">{v.descricao}</p>
+        )}
+      </div>
+
+      {/* Badge + valor */}
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        <span
+          className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium"
+          style={isEntrada
+            ? { background: 'var(--positive-soft)', color: 'var(--positive-deep)' }
+            : { background: 'var(--negative-soft)', color: 'var(--negative-deep)' }
+          }
+        >
           {isEntrada ? 'A Receber' : 'A Pagar'}
         </span>
         <span
