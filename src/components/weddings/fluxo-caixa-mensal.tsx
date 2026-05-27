@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine,
@@ -33,6 +34,8 @@ interface Props {
 }
 
 export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
+  const [invertida, setInvertida] = useState(false)
+
   if (!data?.meses.length) return null
 
   const monthly = data.meses.map((m, i) => {
@@ -40,21 +43,31 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
     const entrada = m.entrada_acum - prev.entrada_acum
     const saida   = m.saida_acum   - prev.saida_acum
     return {
-      mes:       m.mes,
-      eh_futuro: m.eh_futuro,
+      mes:        m.mes,
+      eh_futuro:  m.eh_futuro,
       entrada,
-      saida_neg: -saida,
-      resultado: entrada - saida,
+      saida_val:  invertida ? saida : -saida,
+      resultado:  entrada - saida,
     }
   })
 
+  const saidaRadius: [number, number, number, number] = invertida ? [2, 2, 0, 0] : [0, 0, 2, 2]
+
   return (
     <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
-      <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-base font-semibold text-[--text-primary]">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-base font-semibold text-[--text-primary]">
             Fluxo de Caixa Mensal{operacaoLabel ? ` — ${operacaoLabel}` : ''}
           </h2>
-        <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
+          <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
+        </div>
+        <button
+          onClick={() => setInvertida(v => !v)}
+          className="text-xs text-zinc-500 border border-zinc-200 rounded px-2.5 py-1 hover:bg-zinc-50 active:bg-zinc-100 transition-colors shrink-0"
+        >
+          ⇅ Inverter saídas
+        </button>
       </div>
 
       <ResponsiveContainer width="100%" height={320}>
@@ -86,20 +99,34 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
                 {...props}
                 formatter={(value, name) => {
                   const v = value as number
-                  if (name === 'entrada')   return [fmtBRL(v),  'Entrada']
-                  if (name === 'saida_neg') return [fmtBRL(-v), 'Saída']
+                  if (name === 'entrada')  return [fmtBRL(v),        'Entrada']
+                  if (name === 'saida_val') return [fmtBRL(Math.abs(v)), 'Saída']
                   return [fmtBRL(v), 'Resultado']
                 }}
                 labelFormatter={label => fmtMesLabel(label as string)}
               />
             )}
           />
-          <Bar dataKey="entrada" name="entrada" radius={[2, 2, 0, 0]} maxBarSize={14}>
+          <Bar
+            dataKey="entrada"
+            name="entrada"
+            radius={[2, 2, 0, 0]}
+            maxBarSize={14}
+            animationDuration={400}
+            animationEasing="ease-in-out"
+          >
             {monthly.map((entry, i) => (
               <Cell key={i} fill={COR_ENTRADA} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
-          <Bar dataKey="saida_neg" name="saida_neg" radius={[0, 0, 2, 2]} maxBarSize={14}>
+          <Bar
+            dataKey="saida_val"
+            name="saida_val"
+            radius={saidaRadius}
+            maxBarSize={14}
+            animationDuration={400}
+            animationEasing="ease-in-out"
+          >
             {monthly.map((entry, i) => (
               <Cell key={i} fill={COR_SAIDA} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
@@ -110,6 +137,7 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
             name="resultado"
             stroke={COR_RESULTADO}
             strokeWidth={2}
+            isAnimationActive={false}
             dot={(props) => {
               const { cx, cy, payload } = props as { cx: number; cy: number; payload: { resultado: number } }
               if (payload.resultado < 0) {

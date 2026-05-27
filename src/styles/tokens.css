@@ -24,6 +24,21 @@
   --danger:     #B85C5C;  /* vermelho-terracota */
   --danger-bg:  #F5DDDD;
 
+  /* Fluxo de Caixa — paleta dessaturada (ADR-0081) */
+  /* Verdes: entradas e saldos positivos */
+  --positive:       #5F7A3D;  /* verde sage, harmônico com dourado Weddings */
+  --positive-soft:  #C4D5A6;  /* verde claro para fundos de células */
+  --positive-deep:  #3F5028;  /* verde escuro para acentos */
+
+  /* Vermelhos: saídas e saldos negativos */
+  --negative:       #A35442;  /* terracota dessaturada */
+  --negative-soft:  #E8C9C0;  /* rosa terra claro para fundos */
+  --negative-deep:  #6B2D1F;  /* bordô para pontos de Resultado negativo */
+
+  /* Amarelo: zonas neutras / atenção */
+  --neutral:        #C99E5E;  /* dourado pálido derivado do brand */
+  --neutral-soft:   #F5E6CC;  /* amarelo claro para células próximas de zero */
+
   /* Brand padrão: Weddings (Pantone 465 C) */
   --brand:      #BD965C;
   --brand-soft: #FBF1E1;
