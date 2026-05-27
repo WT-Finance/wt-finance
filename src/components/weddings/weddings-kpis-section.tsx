@@ -5,7 +5,7 @@ import { usePeriodoFilter } from '@/components/layout/period-filter-provider'
 import { fetchWeddingsKpis } from '@/app/performance/weddings/actions'
 import { fmtMi } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
-import ListDrawer from '@/components/shared/list-drawer'
+import KpiPrincipalDrawer from './kpi-principal-drawer'
 import type { ExecutivaKpis, KpiMetrica, SumarioSubsetor, SumarioSubsetorItem } from '@/types/api'
 import type { Benchmarks } from '@/lib/config'
 
@@ -199,11 +199,8 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
         })}
       </div>
 
-      {/* Drawer placeholder (M3 completará) */}
       {drawerOpen && (
-        <ListDrawer titulo="Análise de KPIs Weddings" onClose={() => setDrawerOpen(false)}>
-          <p className="text-sm text-zinc-400 py-8 text-center">Análise detalhada em implementação...</p>
-        </ListDrawer>
+        <KpiPrincipalDrawer onClose={() => setDrawerOpen(false)} />
       )}
     </div>
   )
