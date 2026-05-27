@@ -232,22 +232,23 @@ export interface SumarioSubsetor {
 export type OperacaoFlag = 'margem_negativa' | 'ncg_alto' | 'outlier'
 
 export interface OperacaoItem {
-  operacao:           string
-  nome_casal:         string | null
-  data_evento:        string | null
-  situacao:           'passado' | 'futuro' | 'sem_data'
-  faturamento:        number
-  receita:            number
-  margem_pct:         number
-  resultado_caixa:    number
-  ncg:                number
-  flags:              OperacaoFlag[]
-  hotel:              string | null
-  custos_internos:    number
-  margem_liquida_pct: number
-  tipo_contrato:      string | null
-  passageiros_raw:    string | null
-  convidados:         number | null
+  operacao:              string
+  nome_casal:            string | null
+  data_evento:           string | null
+  situacao:              'passado' | 'futuro' | 'sem_data'
+  faturamento:           number
+  receita:               number
+  margem_pct:            number
+  resultado_caixa:       number
+  ncg:                   number
+  flags:                 OperacaoFlag[]
+  hotel:                 string | null
+  custos_internos:       number
+  margem_liquida_pct:    number
+  data_venda_contrato:   string | null
+  tipo_contrato:         string | null
+  passageiros_raw:       string | null
+  convidados:            number | null
 }
 
 export interface ListaOperacoes {
