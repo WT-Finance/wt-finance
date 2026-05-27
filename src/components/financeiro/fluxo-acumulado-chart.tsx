@@ -64,6 +64,12 @@ function AcumuladoLegend() {
       <LegendItem color="var(--positive)" opacity={0.35} label="Entradas acum. (projetado)"  />
       <LegendItem color="var(--negative)" opacity={1}    label="Saídas acum. (efetivado)"    />
       <LegendItem color="var(--negative)" opacity={0.35} label="Saídas acum. (projetado)"    />
+      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+        <svg width="20" height="10">
+          <line x1="0" y1="5" x2="20" y2="5" stroke="#B85C5C" strokeWidth="1.5" />
+        </svg>
+        Total previsto de saídas
+      </div>
     </div>
   )
 }
@@ -81,17 +87,27 @@ function toChartPoints(rows: FluxoAcumuladoRow[]): ChartPoint[] {
   const today = new Date()
   const currentMes = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
 
-  return [...rows]
-    .sort((a, b) => a.mes.localeCompare(b.mes))
-    .map(r => {
-      const eh_futuro = r.mes > currentMes
-      return {
-        mes:          r.mes,
-        entrada_acum: eh_futuro ? r.acum_entrada_prevista : r.acum_entrada_efetivada,
-        saida_acum:   eh_futuro ? r.acum_saida_prevista   : r.acum_saida_efetivada,
-        eh_futuro,
-      }
-    })
+  const sorted = [...rows].sort((a, b) => a.mes.localeCompare(b.mes))
+
+  // Carry the last realized cumulative so future bars continue the curve
+  let lastEntrada = 0
+  let lastSaida   = 0
+  for (const r of sorted) {
+    if (r.mes <= currentMes) {
+      lastEntrada = r.acum_entrada_efetivada
+      lastSaida   = r.acum_saida_efetivada
+    }
+  }
+
+  return sorted.map(r => {
+    const eh_futuro = r.mes > currentMes
+    return {
+      mes:          r.mes,
+      entrada_acum: eh_futuro ? lastEntrada + r.acum_entrada_prevista : r.acum_entrada_efetivada,
+      saida_acum:   eh_futuro ? lastSaida   + r.acum_saida_prevista   : r.acum_saida_efetivada,
+      eh_futuro,
+    }
+  })
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -111,14 +127,15 @@ export default function FluxoAcumuladoChart({ rows }: Props) {
     )
   }
 
-  const firstFutureMes = data.find(d => d.eh_futuro)?.mes ?? null
+  const firstFutureMes    = data.find(d => d.eh_futuro)?.mes ?? null
+  const totalSaidasPrevisto = data.length ? data[data.length - 1].saida_acum : 0
 
   return (
     <div>
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart
           data={data}
-          margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+          margin={{ top: 8, right: 80, bottom: 0, left: 0 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
           <XAxis
@@ -137,6 +154,20 @@ export default function FluxoAcumuladoChart({ rows }: Props) {
             width={72}
           />
           <Tooltip content={<AcumuladoTooltip />} />
+
+          {totalSaidasPrevisto > 0 && (
+            <ReferenceLine
+              y={totalSaidasPrevisto}
+              stroke="#B85C5C"
+              strokeWidth={1.5}
+              label={{
+                value: `Total previsto de saídas: ${fmtMi(totalSaidasPrevisto)}`,
+                position: 'insideTopRight',
+                fontSize: 10,
+                fill: '#B85C5C',
+              }}
+            />
+          )}
 
           {firstFutureMes && (
             <ReferenceLine
