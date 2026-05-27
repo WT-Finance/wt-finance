@@ -66,7 +66,7 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
           onClick={() => setInvertida(v => !v)}
           className="text-xs text-zinc-500 border border-zinc-200 rounded px-2.5 py-1 hover:bg-zinc-50 active:bg-zinc-100 transition-colors shrink-0"
         >
-          {invertida ? '↓ Saídas abaixo' : '↑ Inverter saídas'}
+          ⇅ Inverter saídas
         </button>
       </div>
 
