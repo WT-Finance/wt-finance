@@ -145,7 +145,7 @@ export default function FluxoMensalChart({ rows }: Props) {
 
   if (!data.length) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
+      <div className="rounded-xl border border-[--border] bg-white p-5 mb-4">
         <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
           Sem dados para o período
         </div>
@@ -154,7 +154,7 @@ export default function FluxoMensalChart({ rows }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
+    <div className="rounded-xl border border-[--border] bg-white p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-baseline gap-2">
           <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Fluxo de Caixa Mensal</h3>

@@ -251,7 +251,7 @@ export default function CalendarioLiquidez() {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm flex-1">
+      <div className="rounded-xl border border-[--border] bg-white p-4 flex-1">
         {/* Card title */}
         <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
           Calendário de Liquidez

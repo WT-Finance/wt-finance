@@ -5,7 +5,7 @@ const fmtBRL = (v: number) =>
 
 function Card({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
       <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-zinc-900 tabular-nums">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-zinc-400">{sub}</p>}
@@ -15,7 +15,7 @@ function Card({ label, value, sub }: { label: string; value: string; sub?: strin
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] animate-pulse">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 animate-pulse">
       <div className="h-3 w-20 rounded bg-zinc-200" />
       <div className="mt-2 h-7 w-32 rounded bg-zinc-200" />
     </div>
