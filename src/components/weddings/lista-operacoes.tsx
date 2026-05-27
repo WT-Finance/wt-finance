@@ -105,7 +105,7 @@ function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
     'Faturamento (R$)':      op.faturamento ?? 0,
     'Rec. Bruta (R$)':       op.receita ?? 0,
     'Mg. Bruta (%)':         op.margem_pct ?? 0,
-    'Custos (R$)':           op.custos_internos > 0 ? op.custos_internos : '—',
+    'Custos (R$)':           op.custos_internos !== 0 ? op.custos_internos : '—',
     'Rec. Líq. (R$)':        op.resultado_caixa ?? 0,
     'Mg. Líq. (%)':          op.margem_liquida_pct ?? 0,
   }))
@@ -524,8 +524,8 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_pct)}`}>
                       {op.margem_pct.toFixed(1)}%
                     </td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-500 whitespace-nowrap">
-                      {op.custos_internos > 0 ? fmtBRL(op.custos_internos) : <span className="text-zinc-300">—</span>}
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs whitespace-nowrap ${op.custos_internos < 0 ? 'text-danger font-medium' : 'text-zinc-500'}`}>
+                      {op.custos_internos !== 0 ? fmtBRL(op.custos_internos) : <span className="text-zinc-300">—</span>}
                     </td>
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${rlNegativa ? 'text-danger' : 'text-zinc-700'}`}>
                       {fmtBRL(op.resultado_caixa)}
