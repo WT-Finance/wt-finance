@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
-import { fmtBRL, fmtMi } from '@/lib/fmt'
+import { fmtMi } from '@/lib/fmt'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import FluxoMensalChart, { type FluxoMensalV3Row } from '@/components/financeiro/fluxo-mensal-chart'
 import FluxoAcumuladoChart, { type FluxoAcumuladoRow } from '@/components/financeiro/fluxo-acumulado-chart'
@@ -43,18 +43,6 @@ interface DecomposicaoGrupo {
   grupo_categoria: string
   sinal:           'entrada' | 'saida'
   valor_total:     number
-}
-
-interface ProximoVencimento {
-  numero:           string | null
-  vencimento:       string
-  pessoa:           string | null
-  descricao:        string | null
-  valor_final:      number
-  tipo:             'Entrada' | 'Saída'
-  status:           string
-  dias_para_vencer: number
-  aging:            'a_vencer' | 'vencido_ate_30d' | 'vencido_30_a_90d' | 'vencido_mais_90d'
 }
 
 interface ProximoLancamento {
@@ -119,13 +107,6 @@ function CardTitle({ titulo, subtitulo }: { titulo: string; subtitulo?: string }
   )
 }
 
-const AGING_LABEL: Record<string, string> = {
-  a_vencer:          'A vencer',
-  vencido_ate_30d:   'Vencido ≤ 30 dias',
-  vencido_30_a_90d:  'Vencido 30–90 dias',
-  vencido_mais_90d:  'Vencido > 90 dias',
-}
-
 export default async function FluxoCaixaPage({
   searchParams,
 }: {
@@ -146,7 +127,6 @@ export default async function FluxoCaixaPage({
     kpisDiarioRes,
     decomposicaoRes,
     posicaoRes,
-    vencimentosRes,
     lancamentos10dRes,
   ] = await Promise.all([
     rpc('get_fluxo_caixa_mensal_v3'),
@@ -155,7 +135,6 @@ export default async function FluxoCaixaPage({
     rpc('get_fluxo_caixa_kpis_diario'),
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
-    rpc('get_proximos_vencimentos_v2',    { p_limite: 200, p_offset: 0 }),
     rpc('get_proximos_lancamentos_10d'),
   ])
 
@@ -177,29 +156,12 @@ export default async function FluxoCaixaPage({
   const decomposicao = (decomposicaoRes.error ? null : decomposicaoRes.data as DecomposicaoGrupo[] | null) ?? []
   const posicoes     = (posicaoRes.error      ? null : posicaoRes.data      as PosicaoConta[]       | null) ?? []
 
-  const vencimentosPayload = vencimentosRes.error
-    ? null
-    : (vencimentosRes.data as { items: ProximoVencimento[] | null; total: number } | null)
-  const vencimentos = vencimentosPayload?.items ?? []
-
   const lancamentos10d: ProximoLancamento[] =
     (lancamentos10dRes.error ? null : lancamentos10dRes.data as ProximoLancamento[] | null) ?? []
 
   const totalEntradas = kpis.entradas_realizadas
   const totalSaidas   = kpis.saidas_realizadas
   const saldoLiquido  = kpis.saldo_realizado
-
-  type AgingBucket = { aging: string; aReceber: number; aPagar: number; count: number }
-  const agingOrder = ['a_vencer', 'vencido_ate_30d', 'vencido_30_a_90d', 'vencido_mais_90d']
-  const agingMap = new Map<string, AgingBucket>()
-  for (const v of vencimentos) {
-    if (!agingMap.has(v.aging)) agingMap.set(v.aging, { aging: v.aging, aReceber: 0, aPagar: 0, count: 0 })
-    const row = agingMap.get(v.aging)!
-    row.count++
-    if (v.tipo === 'Entrada') row.aReceber += v.valor_final
-    else row.aPagar += v.valor_final
-  }
-  const agingRows = agingOrder.map(a => agingMap.get(a)).filter(Boolean) as AgingBucket[]
 
   const temDados = fluxoMensalRows.length > 0 || kpis.entradas_realizadas > 0 || kpis.saidas_realizadas > 0
 
@@ -275,97 +237,6 @@ export default async function FluxoCaixaPage({
               </div>
             </div>
 
-            {/* Títulos em Aberto por Aging */}
-            {agingRows.length > 0 && (
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm mb-4">
-                <CardTitle titulo="Títulos em Aberto por Aging" />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-zinc-400 border-b border-zinc-100">
-                        <th className="text-left pb-2 font-medium">Faixa</th>
-                        <th className="text-right pb-2 font-medium">Qtd</th>
-                        <th className="text-right pb-2 font-medium">A Receber</th>
-                        <th className="text-right pb-2 font-medium">A Pagar</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {agingRows.map(r => (
-                        <tr key={r.aging} className="border-b border-zinc-50 last:border-0">
-                          <td className="py-1.5 text-zinc-700">{AGING_LABEL[r.aging] ?? r.aging}</td>
-                          <td className="py-1.5 text-right text-zinc-500">{r.count}</td>
-                          <td className="py-1.5 text-right font-medium text-emerald-700 tabular-nums">
-                            {r.aReceber > 0 ? fmtBRL(r.aReceber) : '—'}
-                          </td>
-                          <td className="py-1.5 text-right font-medium text-amber-700 tabular-nums">
-                            {r.aPagar > 0 ? fmtBRL(r.aPagar) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Próximos Vencimentos */}
-            {vencimentos.length > 0 && (
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-                <CardTitle titulo="Próximos Vencimentos" />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-zinc-400 border-b border-zinc-100">
-                        <th className="text-left pb-2 font-medium">Vencimento</th>
-                        <th className="text-left pb-2 font-medium">Tipo</th>
-                        <th className="text-left pb-2 font-medium">Aging</th>
-                        <th className="text-left pb-2 font-medium">Pessoa</th>
-                        <th className="text-left pb-2 font-medium">Descrição</th>
-                        <th className="text-right pb-2 font-medium">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {vencimentos.map((v, i) => (
-                        <tr key={v.numero ?? i} className="border-b border-zinc-50 last:border-0">
-                          <td className="py-1.5 tabular-nums text-zinc-600 whitespace-nowrap">
-                            {new Date(v.vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}
-                          </td>
-                          <td className="py-1.5">
-                            <span className={[
-                              'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
-                              v.tipo === 'Entrada'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-amber-50 text-amber-700',
-                            ].join(' ')}>
-                              {v.tipo === 'Entrada' ? 'A Receber' : 'A Pagar'}
-                            </span>
-                          </td>
-                          <td className="py-1.5">
-                            <span className={[
-                              'inline-block px-1.5 py-0.5 rounded text-[10px] font-medium',
-                              v.aging === 'a_vencer'
-                                ? 'bg-zinc-100 text-zinc-500'
-                                : v.aging === 'vencido_ate_30d'
-                                  ? 'bg-yellow-50 text-yellow-700'
-                                  : v.aging === 'vencido_30_a_90d'
-                                    ? 'bg-orange-50 text-orange-700'
-                                    : 'bg-red-50 text-red-700',
-                            ].join(' ')}>
-                              {AGING_LABEL[v.aging] ?? v.aging}
-                            </span>
-                          </td>
-                          <td className="py-1.5 text-zinc-600 max-w-[12rem] truncate">{v.pessoa ?? '—'}</td>
-                          <td className="py-1.5 text-zinc-500 max-w-[16rem] truncate">{v.descricao ?? '—'}</td>
-                          <td className="py-1.5 text-right font-medium tabular-nums text-zinc-800 whitespace-nowrap">
-                            {fmtBRL(v.valor_final)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
           </>
         )}
       </TopSection>

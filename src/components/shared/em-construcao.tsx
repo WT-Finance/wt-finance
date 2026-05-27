@@ -32,7 +32,7 @@ export default function EmConstrucao({
         </Link>
         <Link
           href="/financeiro/fluxo-caixa"
-          className="flex items-center gap-1.5 text-xs text-[#BD965C] underline hover:opacity-80"
+          className="flex items-center gap-1.5 text-xs text-zinc-400 underline hover:opacity-80"
         >
           <span className="w-1 h-1 rounded-full bg-zinc-400 shrink-0" />
           Financeiro
