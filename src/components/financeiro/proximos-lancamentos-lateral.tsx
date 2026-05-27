@@ -84,13 +84,12 @@ function LancamentoRow({ v, i }: { v: ProximoLancamento; i: number }) {
   )
 }
 
-export default function ProximosLancamentosLateral({ lancamentos: lancamentosDefault }: Props) {
+// ── Drawer content with filter logic ─────────────────────────────────────────
+
+function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLancamento[] }) {
   const [filtro, setFiltro]           = useState<Filtro>('10d')
   const [dadosCustom, setDadosCustom] = useState<ProximoLancamento[] | null>(null)
   const [loading, setLoading]         = useState(false)
-  const [drawerOpen, setDrawerOpen]   = useState(false)
-
-  // Popover state
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [customFrom, setCustomFrom]   = useState(todayIso())
   const [customTo, setCustomTo]       = useState(todayIso())
@@ -112,9 +111,6 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
     filtro === '5d'  ? lancamentosDefault.filter(l => l.dias_para_vencer <= 5) :
     filtro === '10d' ? lancamentosDefault :
                        dadosCustom ?? []
-
-  const visiveis = lancamentos.slice(0, LIMITE_INICIAL)
-  const temMais  = lancamentos.length > LIMITE_INICIAL
 
   const handlePillClick = (f: Filtro) => {
     if (f === 'custom') {
@@ -166,82 +162,105 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
   ].join(' ')
 
   return (
+    <div>
+      {/* Pills + popover */}
+      <div className="relative mb-4" ref={popoverRef}>
+        <div className="flex items-center gap-1.5">
+          <button className={pillClass('5d')}  onClick={() => handlePillClick('5d')}>5 dias</button>
+          <button className={pillClass('10d')} onClick={() => handlePillClick('10d')}>10 dias</button>
+          <button
+            className={pillClass('custom')}
+            onClick={() => handlePillClick('custom')}
+            disabled={loading}
+          >
+            {loading ? '...' : customLabel}
+          </button>
+        </div>
+
+        {popoverOpen && (
+          <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
+            <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
+            <div className="space-y-2 mb-4">
+              <div>
+                <label className="text-[10px] text-zinc-400 block mb-1">De</label>
+                <input
+                  type="date"
+                  value={customFrom}
+                  onChange={e => setCustomFrom(e.target.value)}
+                  className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-400 block mb-1">Até</label>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  onChange={e => setCustomTo(e.target.value)}
+                  className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPopoverOpen(false)}
+                className="flex-1 text-[11px] text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={aplicarCustom}
+                className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors"
+                style={{ background: 'var(--brand)' }}
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* List */}
+      {lancamentos.length === 0 ? (
+        <p className="text-xs text-zinc-400 text-center py-8">
+          {filtro === 'custom' && dadosCustom === null
+            ? 'Selecione um período e clique em Aplicar'
+            : 'Nenhum vencimento no período selecionado'}
+        </p>
+      ) : (
+        <div className="divide-y divide-zinc-50">
+          {lancamentos.map((v, i) => (
+            <LancamentoRow key={v.numero ?? i} v={v} i={i} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function ProximosLancamentosLateral({ lancamentos: lancamentosDefault }: Props) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const visiveis = lancamentosDefault.slice(0, LIMITE_INICIAL)
+
+  return (
     <>
       <div className="rounded-xl border border-zinc-200 bg-white shadow-sm h-full flex flex-col">
 
-        {/* Fixed header */}
-        <div className="px-4 pt-4 shrink-0">
-          <div className="flex items-center justify-between mb-2">
+        {/* Header */}
+        <div className="px-4 pt-4 pb-1 shrink-0">
+          <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-zinc-700">Próximos Lançamentos</h3>
-            <span className="text-[10px] text-zinc-400 tabular-nums">{lancamentos.length} itens</span>
-          </div>
-
-          {/* Pills + popover */}
-          <div className="relative mb-3" ref={popoverRef}>
-            <div className="flex items-center gap-1.5">
-              <button className={pillClass('5d')}  onClick={() => handlePillClick('5d')}>5 dias</button>
-              <button className={pillClass('10d')} onClick={() => handlePillClick('10d')}>10 dias</button>
-              <button
-                className={pillClass('custom')}
-                onClick={() => handlePillClick('custom')}
-                disabled={loading}
-              >
-                {loading ? '...' : customLabel}
-              </button>
-            </div>
-
-            {popoverOpen && (
-              <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
-                <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
-                <div className="space-y-2 mb-4">
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">De</label>
-                    <input
-                      type="date"
-                      value={customFrom}
-                      onChange={e => setCustomFrom(e.target.value)}
-                      className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-zinc-400 block mb-1">Até</label>
-                    <input
-                      type="date"
-                      value={customTo}
-                      min={customFrom}
-                      onChange={e => setCustomTo(e.target.value)}
-                      className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPopoverOpen(false)}
-                    className="flex-1 text-[11px] text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={aplicarCustom}
-                    className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors"
-                    style={{ background: 'var(--brand)' }}
-                  >
-                    Aplicar
-                  </button>
-                </div>
-              </div>
-            )}
+            <span className="text-[10px] text-zinc-400 tabular-nums">{lancamentosDefault.length} itens</span>
           </div>
         </div>
 
         {/* List */}
-        {lancamentos.length === 0 ? (
+        {lancamentosDefault.length === 0 ? (
           <div className="flex-1 flex items-center justify-center px-4 pb-4">
-            <p className="text-xs text-zinc-400 text-center">
-              {filtro === 'custom' && dadosCustom === null
-                ? 'Selecione um período e clique em Aplicar'
-                : 'Nenhum vencimento no período selecionado'}
-            </p>
+            <p className="text-xs text-zinc-400 text-center">Nenhum vencimento nos próximos 10 dias</p>
           </div>
         ) : (
           <>
@@ -251,27 +270,21 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
               ))}
             </div>
 
-            {temMais && (
-              <div className="shrink-0 border-t border-zinc-100">
-                <button
-                  onClick={() => setDrawerOpen(true)}
-                  className="w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 transition-colors"
-                >
-                  Ver mais
-                </button>
-              </div>
-            )}
+            <div className="shrink-0 border-t border-zinc-100">
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 transition-colors"
+              >
+                Ver mais
+              </button>
+            </div>
           </>
         )}
       </div>
 
       {drawerOpen && (
         <ListDrawer titulo="Próximos Lançamentos" onClose={() => setDrawerOpen(false)}>
-          <div className="divide-y divide-zinc-50">
-            {lancamentos.map((v, i) => (
-              <LancamentoRow key={v.numero ?? i} v={v} i={i} />
-            ))}
-          </div>
+          <DrawerContent lancamentosDefault={lancamentosDefault} />
         </ListDrawer>
       )}
     </>
