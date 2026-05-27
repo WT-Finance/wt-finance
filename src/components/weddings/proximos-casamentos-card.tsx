@@ -29,7 +29,7 @@ function ResultadoCell({ valor }: { valor: number }) {
     <td className="py-2 px-3 text-xs tabular-nums text-right whitespace-nowrap">
       <span
         className={colorClass}
-        title="Valor ainda a receber menos valor ainda a pagar nesta operação"
+        title="Total de entradas menos total de saídas da operação (coincide com Rec. Líq. na Lista de Operações)"
       >
         {fmt}
       </span>
