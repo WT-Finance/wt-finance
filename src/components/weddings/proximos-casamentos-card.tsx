@@ -17,12 +17,12 @@ function ResultadoCell({ valor }: { valor: number }) {
   const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
   let colorClass: string
-  if (valor > 0) {
-    colorClass = 'text-green-600'
-  } else if (valor < 0) {
+  if (valor < 0) {
     colorClass = 'text-red-600'
-  } else {
+  } else if (valor === 0) {
     colorClass = 'text-zinc-400'
+  } else {
+    colorClass = 'text-zinc-700'
   }
 
   return (
