@@ -44,7 +44,7 @@ const COL_MAP: Record<string, keyof VendaProdutoRaw> = {
   'Data de Início':  'data_inicio_evento',
   'Fornecedor':      'fornecedor',
   'Passageiros':     'passageiros',
-  'Tipo de Contrato': 'tipo_contrato',
+  'Contr./ Voucher': 'tipo_contrato',
 }
 
 function toIsoDate(value: unknown): string | null {
