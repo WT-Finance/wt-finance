@@ -16,21 +16,9 @@ interface Props {
 function ResultadoCell({ valor }: { valor: number }) {
   const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
 
-  let colorClass: string
-  if (valor < 0) {
-    colorClass = 'text-red-600'
-  } else if (valor === 0) {
-    colorClass = 'text-zinc-400'
-  } else {
-    colorClass = 'text-zinc-700'
-  }
-
   return (
-    <td className="py-2 px-3 text-xs tabular-nums text-right whitespace-nowrap">
-      <span
-        className={colorClass}
-        title="Total de entradas menos total de saídas da operação (coincide com Rec. Líq. na Lista de Operações)"
-      >
+    <td className="py-2 px-3 text-xs tabular-nums text-right whitespace-nowrap text-zinc-500">
+      <span title="Total de entradas menos total de saídas da operação (coincide com Rec. Líq. na Lista de Operações)">
         {fmt}
       </span>
     </td>
