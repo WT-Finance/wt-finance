@@ -17,26 +17,34 @@ interface Props {
   lancamentos: ProximoLancamento[]
 }
 
+const LIMITE = 9
+
 function formatDateShort(iso: string): string {
   const [, m, d] = iso.split('-')
   return `${d}/${m}`
 }
 
 export default function ProximosLancamentosLateral({ lancamentos }: Props) {
+  const visiveis = lancamentos.slice(0, LIMITE)
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3 shrink-0">
+    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-zinc-700">Próximos Lançamentos (10d)</h3>
-        <span className="text-[10px] text-zinc-400 tabular-nums">{lancamentos.length} itens</span>
+        <span className="text-[10px] text-zinc-400 tabular-nums">
+          {lancamentos.length > LIMITE
+            ? `${LIMITE} de ${lancamentos.length}`
+            : `${lancamentos.length} itens`}
+        </span>
       </div>
 
       {lancamentos.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="py-8 text-center">
           <p className="text-xs text-zinc-400">Nenhum vencimento nos próximos 10 dias</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-zinc-50">
-          {lancamentos.map((v, i) => {
+        <div className="divide-y divide-zinc-50">
+          {visiveis.map((v, i) => {
             const isEntrada = v.tipo === 'Entrada'
             const isHoje    = v.dias_para_vencer === 0
 

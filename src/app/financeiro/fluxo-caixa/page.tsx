@@ -273,7 +273,7 @@ export default async function FluxoCaixaPage({
               <CalendarioLiquidez />
             </Suspense>
           </div>
-          <div className="lg:col-span-2 overflow-hidden flex flex-col">
+          <div className="lg:col-span-2">
             <ProximosLancamentosLateral lancamentos={lancamentos10d} />
           </div>
         </div>
