@@ -59,9 +59,9 @@ function toIsoDate(d: Date): string {
 function getCellStyle(dia: CalendarioDia, maxAbsSaldo: number): React.CSSProperties {
   if (dia.fora_do_mes) return { opacity: 0.35 }
   const ratio = maxAbsSaldo > 0 ? dia.saldo_dia / maxAbsSaldo : 0
-  if (ratio > 0.1) return { background: 'var(--positive-soft)' }
-  if (ratio < -0.1) return { background: 'var(--negative-soft)' }
-  return { background: 'var(--neutral-soft)' }
+  if (ratio > 0.1) return { background: '#f0fdf4' }
+  if (ratio < -0.1) return { background: '#fff1f2' }
+  return {}
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -259,6 +259,11 @@ export default function CalendarioLiquidez() {
   return (
     <>
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+        {/* Card title */}
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+          Calendário de Liquidez
+        </h3>
+
         {/* Header: navigation */}
         <div className="flex items-center justify-between mb-4">
           <button
@@ -271,15 +276,15 @@ export default function CalendarioLiquidez() {
             </svg>
           </button>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-zinc-700">
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-xs font-semibold text-zinc-600">
               {formatMesAno(mesReferencia)}
             </span>
             <button
               onClick={irHoje}
-              className="text-[11px] px-2 py-0.5 rounded border border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700 transition-colors"
+              className="text-[10px] px-2 py-0.5 rounded border border-zinc-200 text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600 transition-colors"
             >
-              Hoje
+              Redefinir
             </button>
           </div>
 
@@ -324,7 +329,7 @@ export default function CalendarioLiquidez() {
                 <button
                   key={dia.data}
                   onClick={() => abrirDia(dia)}
-                  className="rounded p-1 text-left min-h-[3.5rem] hover:brightness-95 transition-all cursor-pointer"
+                  className="rounded p-1 text-left min-h-14 hover:brightness-95 transition-all cursor-pointer"
                   style={cellStyle}
                 >
                   {/* Day number */}
@@ -369,16 +374,12 @@ export default function CalendarioLiquidez() {
         {/* Legend */}
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded" style={{ background: 'var(--positive-soft)' }} />
+            <div className="w-3 h-3 rounded" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }} />
             <span className="text-[10px] text-zinc-400">Saldo positivo</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded" style={{ background: 'var(--negative-soft)' }} />
+            <div className="w-3 h-3 rounded" style={{ background: '#fff1f2', border: '1px solid #fecdd3' }} />
             <span className="text-[10px] text-zinc-400">Saldo negativo</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded" style={{ background: 'var(--neutral-soft)' }} />
-            <span className="text-[10px] text-zinc-400">Neutro</span>
           </div>
         </div>
       </div>

@@ -267,13 +267,13 @@ export default async function FluxoCaixaPage({
         </div>
 
         {/* Calendário (60%) + Lista Próximos Lançamentos (40%) */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch">
           <div className="lg:col-span-3">
             <Suspense fallback={<div className="h-64 animate-pulse bg-zinc-100 rounded-xl" />}>
               <CalendarioLiquidez />
             </Suspense>
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 h-full">
             <ProximosLancamentosLateral lancamentos={lancamentos10d} />
           </div>
         </div>
