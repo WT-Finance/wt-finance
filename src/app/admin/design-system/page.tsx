@@ -118,10 +118,27 @@ export default function DesignSystemPage() {
       </Section>
 
       <Section id="pills" title="6. Pills e Botões de Filtro">
-        <div className="space-y-4">
+
+        {/* Especificação */}
+        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-5">
+          <p className="font-sans font-medium text-[var(--text-primary)] mb-2 not-italic">Padrão universal de pill</p>
+          <p>{'// Inativo'}</p>
+          <p>{'className="... rounded-full border font-medium'}</p>
+          <p className="pl-4">{'border-zinc-200 text-zinc-500'}</p>
+          <p className="pl-4">{'hover:border-zinc-300 hover:bg-zinc-50"'}</p>
+          <p className="mt-2">{'// Ativo — via inline style (tokens CSS)'}</p>
+          <p>{'style={{ background: "var(--brand-soft)",'}</p>
+          <p className="pl-8">{'borderColor: "var(--brand)",'}</p>
+          <p className="pl-8">{'color: "var(--brand-deep)" }}'}</p>
+          <p className="mt-2 font-sans font-medium text-[var(--text-primary)] not-italic">Tamanhos</p>
+          <p>{'md (Visão Geral, drawers analíticos): px-3 py-1 text-xs'}</p>
+          <p>{'sm (Próximos Lançamentos, filtros inline): px-2.5 py-0.5 text-[11px]'}</p>
+        </div>
+
+        <div className="space-y-5">
           <div>
-            <p className="text-xs text-[var(--text-muted)] mb-2">Pills de período (padrão)</p>
-            <div className="flex gap-2">
+            <p className="text-xs text-[var(--text-muted)] mb-2">Tamanho <code className="bg-zinc-100 px-1 rounded">md</code> — pills de período (Visão Geral, drawers de KPI)</p>
+            <div className="flex gap-2 flex-wrap">
               <PillDemo active>Este ano</PillDemo>
               <PillDemo>Este mês</PillDemo>
               <PillDemo>Últ. 3 meses</PillDemo>
@@ -129,11 +146,14 @@ export default function DesignSystemPage() {
             </div>
           </div>
           <div>
-            <p className="text-xs text-[var(--text-muted)] mb-2">Pills de tipo (Próximos Lançamentos)</p>
-            <div className="flex gap-2">
-              <PillDemo active>Todos</PillDemo>
-              <PillDemo>A pagar</PillDemo>
-              <PillDemo>A receber</PillDemo>
+            <p className="text-xs text-[var(--text-muted)] mb-2">Tamanho <code className="bg-zinc-100 px-1 rounded">sm</code> — pills de tipo e período compactos (Próximos Lançamentos)</p>
+            <div className="flex gap-2 flex-wrap">
+              <PillDemo active size="sm">Todos</PillDemo>
+              <PillDemo size="sm">A receber</PillDemo>
+              <PillDemo size="sm">A pagar</PillDemo>
+              <PillDemo active size="sm">10 dias</PillDemo>
+              <PillDemo size="sm">5 dias</PillDemo>
+              <PillDemo size="sm">Personalizado</PillDemo>
             </div>
           </div>
         </div>
@@ -220,6 +240,7 @@ export default function DesignSystemPage() {
             { name: 'CustomTooltip',         path: 'src/components/charts/custom-tooltip.tsx',           desc: 'Tooltip padronizado para gráficos Recharts' },
             { name: 'SumarioSubsetorCard',   path: 'src/components/weddings/sumario-subsetor.tsx',       desc: 'Tabela de composição por subsetor com barras' },
             { name: 'TopSection',            path: 'src/components/layout/top-section.tsx',              desc: 'Accordion de seção com header clicável' },
+            { name: 'SortTh',               path: 'src/components/financeiro/proximos-lancamentos-lateral.tsx', desc: 'Cabeçalho de coluna clicável com seta ▲▼ — padrão de Lista de Operações' },
           ].map(({ name, path, desc }) => (
             <div key={name} className="flex items-start gap-3 py-2 border-b border-zinc-100">
               <code className="text-xs font-medium text-[var(--brand)] w-44 shrink-0">{name}</code>
@@ -265,14 +286,15 @@ function ColorGrid({ items }: { items: { name: string; hex: string; usage?: stri
   )
 }
 
-function PillDemo({ children, active }: { children: ReactNode; active?: boolean }) {
+function PillDemo({ children, active, size = 'md' }: { children: ReactNode; active?: boolean; size?: 'md' | 'sm' }) {
+  const base = size === 'sm'
+    ? 'px-2.5 py-0.5 text-[11px]'
+    : 'px-3 py-1 text-xs'
   return (
-    <span className={[
-      'text-[11px] px-2.5 py-0.5 rounded-full border',
-      active
-        ? 'bg-zinc-800 text-white border-zinc-800'
-        : 'text-zinc-500 border-zinc-200',
-    ].join(' ')}>
+    <span
+      className={[base, 'rounded-full border font-medium transition-colors whitespace-nowrap', active ? '' : 'text-zinc-500 border-zinc-200'].join(' ')}
+      style={active ? { background: 'var(--brand-soft)', borderColor: 'var(--brand)', color: 'var(--brand-deep)' } : undefined}
+    >
       {children}
     </span>
   )
