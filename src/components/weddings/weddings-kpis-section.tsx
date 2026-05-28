@@ -125,11 +125,11 @@ const SUBSETOR_LABELS: Record<string, string> = {
 }
 
 const SUBSETOR_COLORS: Record<string, string> = {
-  COMERCIAL:                  '#8C857B',
-  'CONVIDADOS - Hospedagens': '#4B4F54',
-  'CONVIDADOS - Extras':      '#7A8289',
-  'PRODUÇÃO':                 '#874B52',
-  PLANEJAMENTO:               '#8F7E35',
+  COMERCIAL:                  'var(--subsetor-comercial)',
+  'CONVIDADOS - Hospedagens': 'var(--subsetor-hospedagens)',
+  'CONVIDADOS - Extras':      'var(--subsetor-extras)',
+  'PRODUÇÃO':                 'var(--subsetor-producao)',
+  PLANEJAMENTO:               'var(--subsetor-planejamento)',
 }
 const SUBSETOR_COLOR_FALLBACK = '#BA7517'
 
