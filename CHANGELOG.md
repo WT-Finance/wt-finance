@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [Unreleased]
+
+### Removido
+- Vista admin `/admin/contas-bancarias` (não utilizada na prática)
+- 6 RPCs órfãs: `get_fluxo_caixa_mensal`, `get_fluxo_caixa_mensal_b`, `get_historico_12m`, `get_proximos_vencimentos`, `get_proximos_vencimentos_v2`, `get_config_numeric` (migration 0093)
+
+---
+
 ## [4.5.0] — 2026-05-28
 
 ### Adicionado
