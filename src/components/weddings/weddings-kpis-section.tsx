@@ -72,24 +72,32 @@ function KpiColuna({
 }
 
 function SubsetorCard({
-  label,
+  title,
+  subtitle,
   data,
 }: {
-  label: string
+  title: string
+  subtitle?: string
   data: SumarioSubsetorItem | null
 }) {
   if (!data) {
     return (
-      <div className="bg-white rounded-lg border border-[--border] px-3 py-3.5">
-        <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide mb-2">{label}</p>
+      <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
+        <div className="mb-2 leading-tight">
+          <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
+          {subtitle && <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{subtitle}</p>}
+        </div>
         <p className="text-xs text-zinc-400">—</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-lg border border-[--border] px-3 py-3.5">
-      <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide mb-2 leading-tight">{label}</p>
+    <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
+      <div className="mb-2 leading-tight">
+        <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
+        {subtitle && <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{subtitle}</p>}
+      </div>
       <p className="text-xl font-bold tabular-nums mb-1" style={{ color: 'var(--brand)' }}>
         {fmtMi(data.faturamento)}
       </p>
@@ -121,11 +129,11 @@ const SUBSETOR_LABELS: Record<string, string> = {
 }
 
 const SUBSETOR_ORDER = [
+  'COMERCIAL',
+  'PLANEJAMENTO',
+  'PRODUÇÃO',
   'CONVIDADOS - Hospedagens',
   'CONVIDADOS - Extras',
-  'PRODUÇÃO',
-  'PLANEJAMENTO',
-  'COMERCIAL',
 ]
 
 // ── Componente principal ─────────────────────────────────────────────────────
@@ -178,16 +186,14 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
         onKeyDown={e => e.key === 'Enter' && setDrawerOpen(true)}
         aria-label="Abrir análise detalhada de KPIs"
       >
-        {/* Hint de abertura */}
-        <p className="text-[10px] text-[--brand] uppercase tracking-wide font-medium mb-3">
-          Visão Geral — clique para análise detalhada
-        </p>
-
         {/* Grid 3 colunas */}
         <div className="grid grid-cols-3 gap-4 divide-x divide-zinc-100">
           <KpiColuna rotulo="Faturamento"   metrica={kpis.faturamento} formato="brl" />
           <KpiColuna rotulo="Receita Bruta" metrica={kpis.receita}     formato="brl" padded />
           <KpiColuna rotulo="Margem"        metrica={kpis.margem_pct}  formato="pct" padded />
+        </div>
+        <div className="flex justify-end mt-3">
+          <span className="text-[11px] text-[--brand] font-medium">Ver mais ›</span>
         </div>
       </div>
 
@@ -195,7 +201,10 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {SUBSETOR_ORDER.map(key => {
           const s = subsetores.find(x => x.subsetor === key)
-          return <SubsetorCard key={key} label={SUBSETOR_LABELS[key] ?? key} data={s ?? null} />
+          const isConvidados = key.startsWith('CONVIDADOS - ')
+          const title    = isConvidados ? 'Convidados' : (SUBSETOR_LABELS[key] ?? key)
+          const subtitle = isConvidados ? key.replace('CONVIDADOS - ', '') : undefined
+          return <SubsetorCard key={key} title={title} subtitle={subtitle} data={s ?? null} />
         })}
       </div>
 
