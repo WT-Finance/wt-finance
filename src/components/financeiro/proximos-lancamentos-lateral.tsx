@@ -65,7 +65,7 @@ function LancamentoRow({ v }: { v: ProximoLancamento }) {
         <p className="text-[11px] font-medium text-zinc-700 truncate leading-none">
           {v.pessoa ?? '—'}
         </p>
-        {v.descricao && v.descricao !== 'Pagamento venda' && (
+        {v.descricao && (
           <p className="text-[9px] text-zinc-400 truncate leading-none mt-0.5">{v.descricao}</p>
         )}
       </td>
