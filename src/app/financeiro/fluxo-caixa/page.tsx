@@ -155,11 +155,8 @@ export default async function FluxoCaixaPage({
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
     rpc('get_gerencial_projecao_diaria', { p_dias: 90 }),
-    db.schema('analytics').from('gerencial_saldos').select('conta, saldo, ordem').order('ordem'),
-    db.schema('analytics').from('gerencial_lancamentos')
-      .select('id, tipo, pessoa, valor_final, descricao, conta_previsao, vencimento, origem')
-      .order('vencimento')
-      .limit(1000),
+    rpc('get_gerencial_saldos'),
+    rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
   ])
 
   const fluxoMensalRows    = (fluxoMensalRes.error    ? null : fluxoMensalRes.data    as FluxoMensalV3Row[]  | null) ?? []
