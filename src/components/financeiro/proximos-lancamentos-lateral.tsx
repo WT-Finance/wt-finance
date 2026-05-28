@@ -25,7 +25,7 @@ interface Props {
 type TipoFiltro = 'todos' | 'receber' | 'pagar'
 type Filtro = '5d' | '10d' | 'custom'
 
-const LIMITE_INICIAL = 9
+const LIMITE_INICIAL = 11
 
 function formatDateShort(iso: string): string {
   const [, m, d] = iso.split('-')
@@ -50,23 +50,15 @@ function LancamentoRow({ v }: { v: ProximoLancamento }) {
 
   return (
     <tr className="border-b border-zinc-50 last:border-0">
-      {/* Ícone + Data */}
+      {/* Ícone */}
+      <td className="py-1.5 pr-1 w-4 shrink-0">
+        <Icon size={12} style={{ color: cor }} />
+      </td>
+      {/* Data */}
       <td className="py-1.5 pr-2 whitespace-nowrap">
-        <div className="flex items-center gap-1">
-          <Icon size={12} style={{ color: cor }} className="shrink-0" />
-          {isHoje ? (
-            <span
-              className="text-[9px] font-semibold px-1 py-0.5 rounded"
-              style={{ background: 'var(--neutral-soft)', color: 'var(--neutral)' }}
-            >
-              HOJE
-            </span>
-          ) : (
-            <span className="text-[10px] text-zinc-500 tabular-nums">
-              {formatDateShort(v.vencimento)}
-            </span>
-          )}
-        </div>
+        <span className="text-[10px] text-zinc-500 tabular-nums">
+          {formatDateShort(v.vencimento)}
+        </span>
       </td>
       {/* Pessoa / Descrição */}
       <td className="py-1.5 min-w-0 max-w-0 w-full">
@@ -315,7 +307,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
         {/* Header */}
         <div className="px-4 pt-4 pb-2 shrink-0">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-zinc-700">Próximos Lançamentos</h3>
+            <h3 className="text-base font-semibold text-zinc-700">Próximos Lançamentos</h3>
             <span className="text-[10px] text-zinc-400 tabular-nums">{filtrados.length} itens</span>
           </div>
           <TipoPills value={tipoFiltro} onChange={setTipoFiltro} />
@@ -336,14 +328,15 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-zinc-100">
-                    <th className="py-1 text-left text-[9px] font-medium text-zinc-400 uppercase tracking-wide w-16">
+                    <th className="py-1 w-4" />
+                    <th className="py-1 text-left text-[9px] font-medium text-zinc-400 pr-2 w-12">
                       Data
                     </th>
-                    <th className="py-1 text-left text-[9px] font-medium text-zinc-400 uppercase tracking-wide">
+                    <th className="py-1 text-left text-[9px] font-medium text-zinc-400">
                       <span className="block">Pessoa</span>
                       <span className="block text-[8px] font-normal">Descrição</span>
                     </th>
-                    <th className="py-1 text-right text-[9px] font-medium text-zinc-400 uppercase tracking-wide">
+                    <th className="py-1 text-right text-[9px] font-medium text-zinc-400">
                       Valor
                     </th>
                   </tr>
