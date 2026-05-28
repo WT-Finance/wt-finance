@@ -51,7 +51,7 @@ function KpiColuna({
 
   return (
     <div className={padded ? 'pl-4' : ''}>
-      <p className="text-[11px] font-semibold text-[--text-muted] uppercase tracking-wide mb-1">{rotulo}</p>
+      <p className="text-xs font-semibold text-[--text-muted] uppercase tracking-wide mb-1">{rotulo}</p>
       <p className="text-2xl font-bold tabular-nums mb-1" style={{ color: 'var(--brand)' }}>
         {fmtValor(valor)}
       </p>
@@ -75,10 +75,12 @@ function SubsetorCard({
   title,
   subtitle,
   data,
+  color,
 }: {
   title: string
   subtitle?: string
   data: SumarioSubsetorItem | null
+  color?: string
 }) {
   if (!data) {
     return (
@@ -98,20 +100,21 @@ function SubsetorCard({
         <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
         {subtitle && <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{subtitle}</p>}
       </div>
-      <p className="text-xl font-bold tabular-nums mb-1" style={{ color: 'var(--brand)' }}>
+      <p className="text-xl font-bold tabular-nums mb-1.5" style={{ color: color ?? 'var(--brand)' }}>
         {fmtMi(data.faturamento)}
       </p>
-      <div className="h-px bg-zinc-100 my-1.5" />
-      <div className="space-y-0.5">
-        <div className="flex justify-between items-center">
-          <span className="text-[10px] text-zinc-400">Receita</span>
-          <span className="text-[10px] font-medium tabular-nums text-zinc-600">{fmtMi(data.receita)}</span>
+      <div className="h-px bg-zinc-100 mb-1.5" />
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] text-zinc-400 leading-none mb-0.5">Receita</p>
+          <p className="text-[10px] font-medium tabular-nums text-zinc-600 leading-none">{fmtMi(data.receita)}</p>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="text-[10px] text-zinc-400">Margem</span>
-          <span className={`text-[10px] font-semibold tabular-nums ${margemColor(data.margem_pct)}`}>
+        <div className="w-px self-stretch bg-zinc-100 shrink-0" />
+        <div className="min-w-0 flex-1 text-right">
+          <p className="text-[9px] text-zinc-400 leading-none mb-0.5">Margem</p>
+          <p className={`text-[10px] font-semibold tabular-nums leading-none ${margemColor(data.margem_pct)}`}>
             {data.margem_pct.toFixed(1)}%
-          </span>
+          </p>
         </div>
       </div>
     </div>
@@ -127,6 +130,15 @@ const SUBSETOR_LABELS: Record<string, string> = {
   PLANEJAMENTO:               'Planejamento',
   COMERCIAL:                  'Comercial',
 }
+
+const SUBSETOR_COLORS: Record<string, string> = {
+  COMERCIAL:                  '#8C857B',
+  'CONVIDADOS - Hospedagens': '#4B4F54',
+  'CONVIDADOS - Extras':      '#7A8289',
+  'PRODUÇÃO':                 '#874B52',
+  PLANEJAMENTO:               '#8F7E35',
+}
+const SUBSETOR_COLOR_FALLBACK = '#BA7517'
 
 const SUBSETOR_ORDER = [
   'COMERCIAL',
@@ -179,7 +191,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
     <div>
       {/* Card principal full-width */}
       <div
-        className="bg-white rounded-xl border-2 border-[--brand] px-5 py-4 mb-4 cursor-pointer hover:bg-zinc-50 transition-colors"
+        className="bg-white rounded-xl shadow-sm px-5 py-4 mb-4 cursor-pointer hover:bg-zinc-50 transition-colors"
         onClick={() => setDrawerOpen(true)}
         role="button"
         tabIndex={0}
@@ -204,7 +216,8 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
           const isConvidados = key.startsWith('CONVIDADOS - ')
           const title    = isConvidados ? 'Convidados' : (SUBSETOR_LABELS[key] ?? key)
           const subtitle = isConvidados ? key.replace('CONVIDADOS - ', '') : undefined
-          return <SubsetorCard key={key} title={title} subtitle={subtitle} data={s ?? null} />
+          const color    = SUBSETOR_COLORS[key] ?? SUBSETOR_COLOR_FALLBACK
+          return <SubsetorCard key={key} title={title} subtitle={subtitle} data={s ?? null} color={color} />
         })}
       </div>
 
