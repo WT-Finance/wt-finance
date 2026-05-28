@@ -311,7 +311,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
   const TODAY = isoDate(new Date())
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-baseline gap-2">

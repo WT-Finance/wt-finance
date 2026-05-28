@@ -27,7 +27,7 @@ export default function HistoricoMensalChart({
   }))
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <h2 className="text-sm font-semibold text-zinc-700 mb-4">Histórico Mensal</h2>
       {loading ? (
         <div className="h-64 animate-pulse bg-zinc-100 rounded-lg" />

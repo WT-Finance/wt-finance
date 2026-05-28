@@ -14,7 +14,7 @@ export function Card({ title, subtitle, children, className, featured, size = 'd
   const radius   = size === 'sm' ? 'rounded-lg'  : 'rounded-xl'
   const border   = featured
     ? 'border-2 border-[--brand]'
-    : 'border border-[--border]'
+    : 'shadow-sm'
 
   return (
     <div

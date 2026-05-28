@@ -21,7 +21,7 @@ export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_
   const semDados = pontos.every(p => p.faturamento === 0)
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-[--text-primary]">Tendência de Margem</h2>
         {data && (

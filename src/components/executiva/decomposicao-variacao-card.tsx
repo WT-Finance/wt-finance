@@ -59,7 +59,7 @@ export default function DecomposicaoVariacaoCard({ data }: Props) {
   const texto   = gerarTextoDecomposicao(data.variacao_total, setoresFiltrados)
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
         De onde veio a variação
       </p>

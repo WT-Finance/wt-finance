@@ -22,7 +22,7 @@ export default function VendasEmAbertoCard({ data }: Props) {
 
   if (!data || data.total === 0) {
     return (
-      <div className="bg-white rounded-xl border border-[--border] px-5 py-4 min-w-0">
+      <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0">
         <p className="text-xs text-zinc-500 mb-3">Vendas com situação Aberta no sistema</p>
         <EmptyState icon={Inbox} message="Nenhuma venda em aberto no momento" />
       </div>
@@ -30,7 +30,7 @@ export default function VendasEmAbertoCard({ data }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 min-w-0 flex flex-col">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0 flex flex-col">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas em Aberto</h2>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no sistema</p>

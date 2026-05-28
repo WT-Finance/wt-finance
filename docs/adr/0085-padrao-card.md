@@ -6,17 +6,19 @@
 
 ## Decisão
 
-Unificar o padrão visual de Card em todo o produto, adotando o estilo da Aba Financeira como referência. O estilo Weddings (com sombra, borda mais pronunciada) é deprecado.
+Unificar o padrão visual de Card em todo o produto usando `shadow-sm` (sem borda) como referência. O estilo flat com `border border-[--border]` introduzido temporariamente em v4.4 foi revertido — `shadow-sm` confere distinção visual discreta sem adicionar borda.
 
 ## Especificação do padrão único
 
 ```
 background:    #FFFFFF (bg-white)
-border:        1px solid var(--border) (#E8E0D2)
+border:        none (variante padrão)
 border-radius: 12px (rounded-xl)
 padding:       1rem 1.25rem (px-5 py-4) — default; ajustável via className
-box-shadow:    none
+box-shadow:    shadow-sm (Tailwind — ~0 1px 3px rgba(0,0,0,.12))
 ```
+
+> **Nota histórica:** v4.4 introduziu erroneamente `border border-[--border]` no lugar de `shadow-sm`. Corrigido no Fix #1 da mesma versão.
 
 ## Variantes via props em Card
 

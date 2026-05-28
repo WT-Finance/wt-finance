@@ -5,27 +5,45 @@ import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtMi } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
-import type { WeddingsDrawerData, SumarioSubsetor } from '@/types/api'
+import type { TendenciaMargem, ExecutivaKpis, SumarioSubsetor } from '@/types/api'
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
   LineChart,
   Line,
-  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from 'recharts'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Drawer data shape ─────────────────────────────────────────────────────────
 
-const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+interface DrawerData {
+  tendencia:    TendenciaMargem | null
+  yoyTendencia: TendenciaMargem | null
+  kpis:         ExecutivaKpis | null
+  sumario:      SumarioSubsetor | null
+}
 
-function fmtMesLabel(mes: string) {
-  const [, m] = mes.split('-')
-  return MESES_ABREV[parseInt(m, 10) - 1]
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+function toISO(d: Date) { return d.toISOString().slice(0, 10) }
+
+function computeAntDates(from: string, to: string) {
+  const fromD = new Date(from)
+  const toD   = new Date(to)
+  const ms    = toD.getTime() - fromD.getTime() + 86400000
+  const antTo = new Date(fromD.getTime() - 86400000)
+  const antFrom = new Date(antTo.getTime() - ms + 86400000)
+  return { from: toISO(antFrom), to: toISO(antTo) }
+}
+
+function computeYoyDates(from: string, to: string) {
+  const f = new Date(from); f.setFullYear(f.getFullYear() - 1)
+  const t = new Date(to);   t.setFullYear(t.getFullYear() - 1)
+  return { from: toISO(f), to: toISO(t) }
 }
 
 // ── Period pills ─────────────────────────────────────────────────────────────
@@ -42,11 +60,10 @@ const PILLS: { id: PillId; label: string }[] = [
 ]
 
 function pillToDates(pill: PillId): { from: string; to: string } | null {
-  const today  = new Date()
-  const y      = today.getFullYear()
-  const m      = today.getMonth()
+  const today   = new Date()
+  const y       = today.getFullYear()
+  const m       = today.getMonth()
 
-  const toISO  = (d: Date) => d.toISOString().slice(0, 10)
   const firstOf = (year: number, month: number) => new Date(year, month, 1)
   const lastOf  = (year: number, month: number) => new Date(year, month + 1, 0)
 
@@ -93,24 +110,6 @@ function DrawerTooltip({ active, payload, label }: {
   )
 }
 
-function TendenciaTooltip({ active, payload, label }: {
-  active?: boolean
-  payload?: { name: string; value: number; color: string }[]
-  label?: string
-}) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="bg-white border border-zinc-200 rounded-lg shadow-md px-3 py-2 text-xs">
-      <p className="font-medium text-zinc-700 mb-1">{label}</p>
-      {payload.map(p => (
-        <p key={p.name} className="tabular-nums" style={{ color: p.color }}>
-          {p.name}: {p.name === 'Margem %' ? `${p.value}%` : String(Math.round(p.value))}
-        </p>
-      ))}
-    </div>
-  )
-}
-
 // ── MetricBox ─────────────────────────────────────────────────────────────────
 
 function MetricBox({ label, value }: { label: string; value: string }) {
@@ -145,13 +144,13 @@ function LoadingSkeleton() {
 // ── Drawer body ───────────────────────────────────────────────────────────────
 
 function DrawerBody() {
-  const [activePill, setActivePill]         = useState<PillId>('este-ano')
-  const [data, setData]                     = useState<WeddingsDrawerData | null>(null)
-  const [loading, setLoading]               = useState(false)
-  const [customFrom, setCustomFrom]         = useState('')
-  const [customTo, setCustomTo]             = useState('')
+  const [activePill, setActivePill]             = useState<PillId>('este-ano')
+  const [data, setData]                         = useState<DrawerData | null>(null)
+  const [loading, setLoading]                   = useState(false)
+  const [customFrom, setCustomFrom]             = useState('')
+  const [customTo, setCustomTo]                 = useState('')
   const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [activeDates, setActiveDates]       = useState<{ from: string; to: string } | null>(null)
+  const [activeDates, setActiveDates]           = useState<{ from: string; to: string } | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
   // Close popover on outside click
@@ -171,14 +170,37 @@ function DrawerBody() {
     if (!activeDates) return
     let cancelled = false
     setLoading(true)
+
+    const { from: p_from, to: p_to } = activeDates
+    const ant = computeAntDates(p_from, p_to)
+    const yoy = computeYoyDates(p_from, p_to)
+
     const supabase = getBrowserClient()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(supabase.rpc as any)('get_kpi_weddings_drawer', { p_from: activeDates.from, p_to: activeDates.to })
-      .then(({ data: res }: { data: unknown }) => {
-        if (cancelled) return
-        setData((res as WeddingsDrawerData) ?? null)
-        setLoading(false)
+
+    Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.rpc as any)('get_tendencia_margem', { p_from, p_to, p_setor: 'Weddings' }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.rpc as any)('get_tendencia_margem', { p_from: yoy.from, p_to: yoy.to, p_setor: 'Weddings' }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.rpc as any)('get_executiva_kpis', {
+        p_from, p_to, p_setor: 'Weddings',
+        p_ant_from: ant.from, p_ant_to: ant.to,
+        p_yoy_from: yoy.from, p_yoy_to: yoy.to,
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.rpc as any)('get_sumario_subsetor', { p_from, p_to }),
+    ]).then(([tendRes, yoyRes, kpisRes, sumRes]) => {
+      if (cancelled) return
+      setData({
+        tendencia:    (tendRes.data as TendenciaMargem) ?? null,
+        yoyTendencia: (yoyRes.data as TendenciaMargem)  ?? null,
+        kpis:         (kpisRes.data as ExecutivaKpis)   ?? null,
+        sumario:      (sumRes.data as SumarioSubsetor)  ?? null,
       })
+      setLoading(false)
+    })
+
     return () => { cancelled = true }
   }, [activeDates])
 
@@ -213,30 +235,16 @@ function DrawerBody() {
       : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',
   ].join(' ')
 
-  // Build YoY merged data
-  const yoyMerged = (() => {
-    if (!data?.series?.length) return []
-    return data.series.map((s, i) => {
-      const yoy = data.yoy_series[i]
-      return {
-        label: fmtMesLabel(s.mes),
-        atual: s.faturamento,
-        anterior: yoy?.faturamento ?? 0,
-      }
-    })
-  })()
+  // Chart data helpers
+  const faturamentoData = data?.tendencia?.pontos ?? []
 
-  // Build SumarioSubsetor shape
-  const sumarioData: SumarioSubsetor | null = data && activeDates ? {
-    periodo:   { inicio: activeDates.from, fim: activeDates.to },
-    subsetores: data.subsetores,
-    total: {
-      n_vendas:    data.totais.n_vendas,
-      faturamento: data.totais.faturamento,
-      receita:     data.totais.receita,
-      margem_pct:  data.totais.margem_pct,
-    },
-  } : null
+  const yoyMerged = (data?.tendencia?.pontos ?? []).map((p, i) => ({
+    label:    p.label,
+    atual:    p.faturamento,
+    anterior: data?.yoyTendencia?.pontos[i]?.faturamento ?? 0,
+  }))
+
+  const margemData = data?.tendencia?.pontos ?? []
 
   return (
     <div>
@@ -306,12 +314,12 @@ function DrawerBody() {
         <p className="text-xs text-zinc-400 text-center py-8">Selecione um período</p>
       ) : (
         <div>
-          {/* 1. Faturamento e Receita mensais */}
+          {/* 1. Faturamento e Receita */}
           <SectionHeader label="Faturamento e Receita" />
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={data.series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <BarChart data={faturamentoData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="mes" tickFormatter={fmtMesLabel} tick={{ fontSize: 10 }} />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} />
               <YAxis tickFormatter={v => fmtMi(v)} width={60} tick={{ fontSize: 10 }} />
               <Tooltip content={<DrawerTooltip />} />
               <Bar dataKey="faturamento" name="Faturamento" fill="var(--brand)"      radius={[2, 2, 0, 0]} />
@@ -319,7 +327,7 @@ function DrawerBody() {
             </BarChart>
           </ResponsiveContainer>
 
-          {/* 2. Comparação YoY */}
+          {/* 2. Comparação Ano Anterior */}
           <SectionHeader label="Comparação Ano Anterior (Faturamento)" />
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={yoyMerged} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -345,55 +353,49 @@ function DrawerBody() {
             </LineChart>
           </ResponsiveContainer>
 
-          {/* 3. Tendências — Margem % e Nº Vendas */}
-          <SectionHeader label="Tendências — Margem e Nº de Vendas" />
-          <ResponsiveContainer width="100%" height={180}>
-            <ComposedChart data={data.series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          {/* 3. Tendência de Margem */}
+          <SectionHeader label="Tendência de Margem" />
+          <ResponsiveContainer width="100%" height={140}>
+            <LineChart data={margemData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="mes" tickFormatter={fmtMesLabel} tick={{ fontSize: 10 }} />
-              <YAxis
-                yAxisId="left"
-                orientation="left"
-                tickFormatter={v => `${v}%`}
-                tick={{ fontSize: 10 }}
-                width={40}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tickFormatter={v => String(Math.round(v))}
-                tick={{ fontSize: 10 }}
-                width={30}
-              />
-              <Tooltip content={<TendenciaTooltip />} />
-              <Bar
-                dataKey="n_vendas"
-                name="Nº Vendas"
-                fill="var(--brand-soft)"
-                yAxisId="right"
-                radius={[2, 2, 0, 0]}
-              />
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+              <YAxis tickFormatter={v => `${v}%`} width={40} tick={{ fontSize: 10 }} />
+              <Tooltip content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null
+                return (
+                  <div className="bg-white border border-zinc-200 rounded-lg shadow-md px-3 py-2 text-xs">
+                    <p className="font-medium text-zinc-700 mb-1">{label}</p>
+                    {payload.map((p) => (
+                      <p key={String(p.name)} className="tabular-nums" style={{ color: p.color }}>
+                        {p.name}: {typeof p.value === 'number' ? `${p.value.toFixed(1)}%` : String(p.value)}
+                      </p>
+                    ))}
+                  </div>
+                )
+              }} />
               <Line
                 dataKey="margem_pct"
                 name="Margem %"
                 stroke="var(--brand-deep)"
                 dot={false}
-                yAxisId="left"
                 strokeWidth={2}
               />
-            </ComposedChart>
+            </LineChart>
           </ResponsiveContainer>
 
-          {/* 4. Métricas inline */}
+          {/* 4. Indicadores */}
           <div className="grid grid-cols-3 gap-3 my-4">
-            <MetricBox label="Ticket Médio"  value={fmtMi(data.totais.ticket_medio)}  />
-            <MetricBox label="Receita Média" value={fmtMi(data.totais.receita_media)} />
-            <MetricBox label="Nº de Vendas"  value={String(data.totais.n_vendas)}     />
+            <MetricBox label="Faturamento"  value={fmtMi(data.kpis?.faturamento?.valor  ?? 0)} />
+            <MetricBox label="Receita"      value={fmtMi(data.kpis?.receita?.valor      ?? 0)} />
+            <MetricBox label="Margem"       value={`${(data.kpis?.margem_pct?.valor     ?? 0).toFixed(1)}%`} />
+            <MetricBox label="Nº Vendas"    value={String(data.kpis?.vendas?.valor      ?? 0)} />
+            <MetricBox label="Ticket Médio" value={fmtMi(data.kpis?.ticket_medio?.valor ?? 0)} />
+            <MetricBox label="Rec. Média"   value={fmtMi(data.kpis?.receita_media?.valor ?? 0)} />
           </div>
 
-          {/* 5. Composição por subsetor */}
+          {/* 5. Composição por Subsetor */}
           <SectionHeader label="Composição por Subsetor" />
-          <SumarioSubsetorCard data={sumarioData} />
+          <SumarioSubsetorCard data={data.sumario} />
         </div>
       )}
     </div>

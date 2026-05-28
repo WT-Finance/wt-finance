@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  ResponsiveContainer, ComposedChart, Bar, Cell,
+  ResponsiveContainer, ComposedChart, Bar, Cell, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from 'recharts'
 import { fmtMi } from '@/lib/fmt'
@@ -37,7 +37,9 @@ function AcumuladoTooltip({ active, payload, label }: TooltipProps) {
       {payload.map(p => (
         <div key={p.name} className="flex justify-between gap-4 mb-1">
           <span className="text-zinc-500">
-            {p.name === 'entrada_acum' ? 'Entradas acum.' : 'Saídas acum.'}
+            {p.name === 'entrada_acum'   ? 'Entradas acum.'    :
+             p.name === 'saida_acum'     ? 'Saídas acum.'      :
+                                           'Resultado acum.'}
           </span>
           <span className="font-medium text-zinc-700">{fmtMi(p.value)}</span>
         </div>
@@ -66,6 +68,12 @@ function AcumuladoLegend() {
       <LegendItem color="var(--negative)" opacity={0.35} label="Saídas acum. (projetado)"    />
       <div className="flex items-center gap-1.5 text-xs text-zinc-500">
         <svg width="20" height="10">
+          <line x1="0" y1="5" x2="20" y2="5" stroke="var(--text-primary)" strokeWidth="2" />
+        </svg>
+        Resultado acumulado
+      </div>
+      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+        <svg width="20" height="10">
           <line x1="0" y1="5" x2="20" y2="5" stroke="#B85C5C" strokeWidth="1.5" />
         </svg>
         Total previsto de saídas
@@ -77,10 +85,11 @@ function AcumuladoLegend() {
 // ── Data transform ────────────────────────────────────────────────────────────
 
 interface ChartPoint {
-  mes:          string
-  entrada_acum: number
-  saida_acum:   number
-  eh_futuro:    boolean
+  mes:            string
+  entrada_acum:   number
+  saida_acum:     number
+  resultado_acum: number
+  eh_futuro:      boolean
 }
 
 function toChartPoints(rows: FluxoAcumuladoRow[]): ChartPoint[] {
@@ -101,10 +110,13 @@ function toChartPoints(rows: FluxoAcumuladoRow[]): ChartPoint[] {
 
   return sorted.map(r => {
     const eh_futuro = r.mes > currentMes
+    const entrada = eh_futuro ? lastEntrada + r.acum_entrada_prevista : r.acum_entrada_efetivada
+    const saida   = eh_futuro ? lastSaida   + r.acum_saida_prevista   : r.acum_saida_efetivada
     return {
-      mes:          r.mes,
-      entrada_acum: eh_futuro ? lastEntrada + r.acum_entrada_prevista : r.acum_entrada_efetivada,
-      saida_acum:   eh_futuro ? lastSaida   + r.acum_saida_prevista   : r.acum_saida_efetivada,
+      mes:            r.mes,
+      entrada_acum:   entrada,
+      saida_acum:     saida,
+      resultado_acum: entrada - saida,
       eh_futuro,
     }
   })
@@ -188,6 +200,16 @@ export default function FluxoAcumuladoChart({ rows }: Props) {
               <Cell key={i} fill="var(--negative)" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
+          <Line
+            dataKey="resultado_acum"
+            name="resultado_acum"
+            stroke="var(--text-primary)"
+            strokeWidth={2}
+            dot={false}
+            type="monotone"
+            animationDuration={400}
+            animationEasing="ease-in-out"
+          />
         </ComposedChart>
       </ResponsiveContainer>
       <AcumuladoLegend />

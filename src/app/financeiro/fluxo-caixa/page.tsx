@@ -75,7 +75,7 @@ function KpiCard({ label, value, sub, tooltip, valueColor }: {
   label: string; value: string; sub?: string; tooltip?: string; valueColor?: string
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white px-5 py-4">
+    <div className="rounded-xl shadow-sm bg-white px-5 py-4">
       <div className="flex items-center gap-1 mb-0.5">
         <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
         {tooltip && <TooltipIcon text={tooltip} />}
@@ -214,21 +214,21 @@ export default async function FluxoCaixaPage({
             <FluxoMensalChart rows={fluxoMensalRows} />
 
             {/* Acumulado chart — título dentro do card */}
-            <div className="rounded-xl border border-zinc-200 bg-white p-5 mb-4">
+            <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
               <CardTitle titulo="Acumulado de Recebimentos e Pagamentos" subtitulo="24 meses passados + 18 futuros" />
               <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
             </div>
 
             {/* Composição + Posição por Conta — títulos dentro dos cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-              <div className="rounded-xl border border-zinc-200 bg-white p-5">
+              <div className="rounded-xl shadow-sm bg-white p-5">
                 <CardTitle titulo="Composição do Período" />
                 <p className="text-[11px] text-zinc-400 mb-3 -mt-2">
                   Decomposição por Grupo de Categoria (Lançamentos — regime contábil). Pode diferir levemente dos KPIs acima, que refletem fluxo bancário real.
                 </p>
                 <ComposicaoPeriodo entradas={entradas} saidas={saidas} />
               </div>
-              <div className="rounded-xl border border-zinc-200 bg-white p-5">
+              <div className="rounded-xl shadow-sm bg-white p-5">
                 <CardTitle titulo="Posição por Conta" />
                 <PosicaoPorConta posicoes={posicoes} saldoTotal={saldoTotal} />
               </div>

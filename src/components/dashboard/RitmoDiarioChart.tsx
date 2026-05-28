@@ -20,7 +20,7 @@ export default function RitmoDiarioChart({
   const color = SETOR_COLOR[setor] ?? '#6366f1'
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <h2 className="text-sm font-semibold text-zinc-700 mb-4">Ritmo Diário</h2>
       {loading ? (
         <div className="h-64 animate-pulse bg-zinc-100 rounded-lg" />
