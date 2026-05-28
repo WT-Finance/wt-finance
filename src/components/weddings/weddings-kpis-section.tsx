@@ -27,7 +27,6 @@ function KpiColuna({
   padded?: boolean
 }) {
   const valor  = metrica.valor
-  const varAnt = metrica.variacao_anterior
   const varYoy = metrica.variacao_yoy
 
   const fmtValor = (v: number | null) => {
@@ -56,11 +55,6 @@ function KpiColuna({
         {fmtValor(valor)}
       </p>
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        {varAnt != null && (
-          <span className="text-xs text-zinc-400">
-            MoM: {fmtVar(varAnt, metrica.is_pp)}
-          </span>
-        )}
         {varYoy != null && (
           <span className="text-xs text-zinc-400">
             YoY: {fmtVar(varYoy, metrica.is_pp)}
