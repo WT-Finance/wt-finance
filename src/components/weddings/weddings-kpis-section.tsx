@@ -70,12 +70,18 @@ function SubsetorCard({
   subtitle,
   data,
   color,
+  yoyFaturamento,
 }: {
   title: string
   subtitle?: string
   data: SumarioSubsetorItem | null
   color?: string
+  yoyFaturamento?: number | null
 }) {
+  const yoyPct = data && yoyFaturamento != null && yoyFaturamento > 0
+    ? ((data.faturamento - yoyFaturamento) / yoyFaturamento) * 100
+    : null
+
   if (!data) {
     return (
       <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
@@ -94,9 +100,19 @@ function SubsetorCard({
         <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
         {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
       </div>
-      <p className="text-xl font-bold tabular-nums mb-1" style={{ color: color ?? 'var(--brand)' }}>
-        {fmtMi(data.faturamento)}
-      </p>
+      <div className="flex items-baseline justify-between gap-1 mb-1">
+        <p className="text-xl font-bold tabular-nums" style={{ color: color ?? 'var(--brand)' }}>
+          {fmtMi(data.faturamento)}
+        </p>
+        {yoyPct != null && (
+          <span
+            className="text-[9px] font-semibold tabular-nums shrink-0"
+            style={{ color: yoyPct >= 0 ? 'var(--positive)' : 'var(--negative)' }}
+          >
+            {yoyPct >= 0 ? '↑' : '↓'}{Math.abs(yoyPct).toFixed(1)}%
+          </span>
+        )}
+      </div>
       <div className="h-px bg-zinc-100 my-1.5" />
       <div className="space-y-0.5">
         <div className="flex justify-between items-center">
@@ -146,10 +162,11 @@ const SUBSETOR_ORDER = [
 export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) {
   const { from, to, antFrom, antTo, yoyFrom, yoyTo } = usePeriodoFilter()
 
-  const [kpis, setKpis]           = useState<ExecutivaKpis | null>(null)
-  const [sumario, setSumario]     = useState<SumarioSubsetor | null>(null)
-  const [loading, setLoading]     = useState(true)
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [kpis, setKpis]               = useState<ExecutivaKpis | null>(null)
+  const [sumario, setSumario]         = useState<SumarioSubsetor | null>(null)
+  const [sumarioYoy, setSumarioYoy]   = useState<SumarioSubsetor | null>(null)
+  const [loading, setLoading]         = useState(true)
+  const [drawerOpen, setDrawerOpen]   = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -158,12 +175,14 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       if (cancelled) return
       setKpis(data.kpis)
       setSumario(data.sumario)
+      setSumarioYoy(data.sumarioYoy)
       setLoading(false)
     })
     return () => { cancelled = true }
   }, [from, to, antFrom, antTo, yoyFrom, yoyTo])
 
-  const subsetores = sumario?.subsetores ?? []
+  const subsetores    = sumario?.subsetores ?? []
+  const subsetoresYoy = sumarioYoy?.subsetores ?? []
 
   if (loading || !kpis) {
     return (
@@ -205,12 +224,22 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       {/* Cards de subsetor */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {SUBSETOR_ORDER.map(key => {
-          const s = subsetores.find(x => x.subsetor === key)
+          const s          = subsetores.find(x => x.subsetor === key)
+          const yoyItem    = subsetoresYoy.find(x => x.subsetor === key)
           const isConvidados = key.startsWith('CONVIDADOS - ')
           const title    = isConvidados ? 'Convidados' : (SUBSETOR_LABELS[key] ?? key)
           const subtitle = isConvidados ? key.replace('CONVIDADOS - ', '') : undefined
           const color    = SUBSETOR_COLORS[key] ?? SUBSETOR_COLOR_FALLBACK
-          return <SubsetorCard key={key} title={title} subtitle={subtitle} data={s ?? null} color={color} />
+          return (
+            <SubsetorCard
+              key={key}
+              title={title}
+              subtitle={subtitle}
+              data={s ?? null}
+              color={color}
+              yoyFaturamento={yoyItem?.faturamento ?? null}
+            />
+          )
         })}
       </div>
 
