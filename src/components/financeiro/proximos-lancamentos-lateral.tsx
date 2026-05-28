@@ -329,8 +329,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
                       Data
                     </th>
                     <th className="py-1 text-left text-[9px] font-medium text-zinc-400">
-                      <span className="block">Pessoa</span>
-                      <span className="block text-[8px] font-normal">Descrição</span>
+                      Pessoa
                     </th>
                     <th className="py-1 text-right text-[9px] font-medium text-zinc-400">
                       Valor

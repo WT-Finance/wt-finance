@@ -65,19 +65,6 @@ function KpiColuna({
   )
 }
 
-function YoyBadge({ pct, isPp }: { pct: number; isPp?: boolean }) {
-  const cor = pct >= 0 ? 'var(--positive)' : 'var(--negative)'
-  const sinal = pct >= 0 ? '+' : '−'
-  const valor = isPp
-    ? `${sinal}${Math.abs(pct).toFixed(1)} p.p.`
-    : `${pct >= 0 ? '↑' : '↓'}${Math.abs(pct).toFixed(1)}%`
-  return (
-    <span className="text-[9px] tabular-nums shrink-0" style={{ color: cor }}>
-      {valor} <span className="text-zinc-400">YoY</span>
-    </span>
-  )
-}
-
 function SubsetorCard({
   title,
   subtitle,
@@ -95,12 +82,18 @@ function SubsetorCard({
   yoyReceita?: number | null
   yoyMargemPct?: number | null
 }) {
-  const yoyFatPct    = data && yoyFaturamento != null && yoyFaturamento > 0
+  const yoyFatPct   = data && yoyFaturamento != null && yoyFaturamento > 0
     ? ((data.faturamento - yoyFaturamento) / yoyFaturamento) * 100 : null
-  const yoyRecPct    = data && yoyReceita != null && yoyReceita > 0
+  const yoyRecPct   = data && yoyReceita != null && yoyReceita > 0
     ? ((data.receita - yoyReceita) / yoyReceita) * 100 : null
-  const yoyMargemPp  = data && yoyMargemPct != null
+  const yoyMargemPp = data && yoyMargemPct != null
     ? data.margem_pct - yoyMargemPct : null
+
+  const hasYoy = yoyFatPct != null || yoyRecPct != null || yoyMargemPp != null
+
+  const yoyColor = (v: number) => v >= 0 ? 'var(--positive)' : 'var(--negative)'
+  const fmtPct   = (v: number) => `${v >= 0 ? '↑' : '↓'}${Math.abs(v).toFixed(1)}%`
+  const fmtPp    = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} p.p.`
 
   if (!data) {
     return (
@@ -114,36 +107,49 @@ function SubsetorCard({
     )
   }
 
+  const YoyCol = ({ val, fmt }: { val: number | null; fmt: (v: number) => string }) =>
+    val != null
+      ? <span className="text-[9px] tabular-nums w-[56px] text-right shrink-0" style={{ color: yoyColor(val) }}>{fmt(val)}</span>
+      : hasYoy ? <span className="w-[56px] shrink-0" /> : null
+
   return (
     <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
       <div className="mb-2 leading-tight min-h-[28px]">
         <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
         {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
       </div>
-      <div className="flex items-baseline justify-between gap-1 mb-1">
-        <p className="text-xl font-bold tabular-nums" style={{ color: color ?? 'var(--brand)' }}>
+
+      {/* Cabeçalho da coluna YoY */}
+      {hasYoy && (
+        <div className="flex justify-end mb-0.5">
+          <span className="text-[9px] text-zinc-400 w-[56px] text-right">YoY</span>
+        </div>
+      )}
+
+      {/* Faturamento */}
+      <div className="flex items-baseline gap-1 mb-1">
+        <p className="text-xl font-bold tabular-nums flex-1" style={{ color: color ?? 'var(--brand)' }}>
           {fmtMi(data.faturamento)}
         </p>
-        {yoyFatPct != null && <YoyBadge pct={yoyFatPct} />}
+        <YoyCol val={yoyFatPct} fmt={fmtPct} />
       </div>
+
       <div className="h-px bg-zinc-100 my-1.5" />
-      <div className="space-y-0.5">
-        <div className="flex justify-between items-baseline gap-1">
-          <span className="text-[10px] text-zinc-400 shrink-0">Receita</span>
-          <div className="flex items-baseline gap-1 min-w-0">
-            <span className="text-[10px] font-medium tabular-nums text-zinc-600">{fmtMi(data.receita)}</span>
-            {yoyRecPct != null && <YoyBadge pct={yoyRecPct} />}
-          </div>
-        </div>
-        <div className="flex justify-between items-baseline gap-1">
-          <span className="text-[10px] text-zinc-400 shrink-0">Margem</span>
-          <div className="flex items-baseline gap-1 min-w-0">
-            <span className={`text-[10px] font-semibold tabular-nums ${margemColor(data.margem_pct)}`}>
-              {data.margem_pct.toFixed(1)}%
-            </span>
-            {yoyMargemPp != null && <YoyBadge pct={yoyMargemPp} isPp />}
-          </div>
-        </div>
+
+      {/* Receita */}
+      <div className="flex items-baseline gap-1">
+        <span className="text-[10px] text-zinc-400 shrink-0">Receita</span>
+        <span className="text-[10px] font-medium tabular-nums text-zinc-600 flex-1 text-right">{fmtMi(data.receita)}</span>
+        <YoyCol val={yoyRecPct} fmt={fmtPct} />
+      </div>
+
+      {/* Margem */}
+      <div className="flex items-baseline gap-1 mt-0.5">
+        <span className="text-[10px] text-zinc-400 shrink-0">Margem</span>
+        <span className={`text-[10px] font-semibold tabular-nums flex-1 text-right ${margemColor(data.margem_pct)}`}>
+          {data.margem_pct.toFixed(1)}%
+        </span>
+        <YoyCol val={yoyMargemPp} fmt={fmtPp} />
       </div>
     </div>
   )
