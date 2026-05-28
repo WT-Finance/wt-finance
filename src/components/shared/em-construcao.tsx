@@ -25,7 +25,8 @@ export default function EmConstrucao({
         <p className="text-xs text-zinc-400">Você pode estar procurando:</p>
         <Link
           href="/performance/weddings"
-          className="flex items-center gap-1.5 text-xs text-[var(--brand)] underline hover:opacity-80"
+          className="flex items-center gap-1.5 text-xs underline hover:opacity-80"
+          style={{ color: 'var(--brand)' }}
         >
           <span className="w-1 h-1 rounded-full bg-zinc-400 shrink-0" />
           Weddings
