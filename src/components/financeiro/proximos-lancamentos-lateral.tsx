@@ -274,6 +274,14 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
           </p>
         ) : (
           <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-100">
+                <th className="py-1 w-4" />
+                <th className="py-1 text-left text-[9px] font-medium text-zinc-400 pr-2 w-12">Data</th>
+                <th className="py-1 text-left text-[9px] font-medium text-zinc-400">Pessoa</th>
+                <th className="py-1 text-right text-[9px] font-medium text-zinc-400">Valor</th>
+              </tr>
+            </thead>
             <tbody>
               {lancamentos.map((v, i) => (
                 <LancamentoRow key={v.numero ?? i} v={v} />
