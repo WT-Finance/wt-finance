@@ -10,6 +10,8 @@ import PosicaoPorConta from '@/components/financeiro/posicao-por-conta'
 import TopSection from '@/components/shared/top-section'
 import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
 import ProximosLancamentosLateral from '@/components/financeiro/proximos-lancamentos-lateral'
+import GerencialSection from '@/components/financeiro/gerencial/gerencial-section'
+import { type Lancamento } from '@/components/financeiro/gerencial/lancamento-row'
 
 interface SearchParams {
   preset?: string
@@ -54,6 +56,19 @@ interface ProximoLancamento {
   tipo:             'Entrada' | 'Saída'
   status:           string
   dias_para_vencer: number
+}
+
+interface GerencialSaldo {
+  conta: string
+  saldo: number
+  ordem: number
+}
+
+interface DiaProjecao {
+  data:       string
+  a_receber:  number
+  a_pagar:    number
+  resultado:  number
 }
 
 const TOOLTIP_KPI_REALIZADO =
@@ -128,6 +143,9 @@ export default async function FluxoCaixaPage({
     decomposicaoRes,
     posicaoRes,
     lancamentos10dRes,
+    projecaoRes,
+    saldosRes,
+    lancamentosGerencialRes,
   ] = await Promise.all([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
@@ -136,6 +154,12 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
+    rpc('get_gerencial_projecao_diaria', { p_dias: 90 }),
+    db.schema('analytics').from('gerencial_saldos').select('conta, saldo, ordem').order('ordem'),
+    db.schema('analytics').from('gerencial_lancamentos')
+      .select('id, tipo, pessoa, valor_final, descricao, conta_previsao, vencimento, origem')
+      .order('vencimento')
+      .limit(1000),
   ])
 
   const fluxoMensalRows    = (fluxoMensalRes.error    ? null : fluxoMensalRes.data    as FluxoMensalV3Row[]  | null) ?? []
@@ -158,6 +182,15 @@ export default async function FluxoCaixaPage({
 
   const lancamentos10d: ProximoLancamento[] =
     (lancamentos10dRes.error ? null : lancamentos10dRes.data as ProximoLancamento[] | null) ?? []
+
+  const projecaoGerencial: DiaProjecao[] =
+    (projecaoRes.error ? null : projecaoRes.data as DiaProjecao[] | null) ?? []
+
+  const saldosGerencial: GerencialSaldo[] =
+    (saldosRes.error ? null : saldosRes.data as GerencialSaldo[] | null) ?? []
+
+  const lancamentosGerencial: Lancamento[] =
+    (lancamentosGerencialRes.error ? null : lancamentosGerencialRes.data as Lancamento[] | null) ?? []
 
   const totalEntradas = kpis.entradas_realizadas
   const totalSaidas   = kpis.saidas_realizadas
@@ -239,7 +272,7 @@ export default async function FluxoCaixaPage({
       </TopSection>
 
       {/* ── FLUXO DE CAIXA DIÁRIO ─────────────────────────────────────────── */}
-      <TopSection titulo="Fluxo de Caixa Diário">
+      <TopSection titulo="Fluxo de Caixa Diário" subtitulo="Baseado em lançamentos de Contas a Pagar/a Receber">
 
         {/* 4 KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -278,6 +311,15 @@ export default async function FluxoCaixaPage({
           </div>
         </div>
 
+      </TopSection>
+
+      {/* ── FLUXO DE CAIXA GERENCIAL ──────────────────────────────────────── */}
+      <TopSection titulo="Fluxo de Caixa Gerencial" subtitulo="Baseado em planilha de previsão curada manualmente">
+        <GerencialSection
+          saldos={saldosGerencial}
+          projecao={projecaoGerencial}
+          lancamentos={lancamentosGerencial}
+        />
       </TopSection>
 
     </div>
