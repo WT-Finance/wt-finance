@@ -51,7 +51,7 @@ function KpiColuna({
 
   return (
     <div className={padded ? 'pl-4' : ''}>
-      <p className="text-[13px] font-semibold text-[--text-muted] uppercase tracking-wide mb-1">{rotulo}</p>
+      <p className="text-[14px] font-semibold text-[--text-muted] uppercase tracking-wide mb-1">{rotulo}</p>
       <p className="text-2xl font-bold tabular-nums mb-1" style={{ color: 'var(--brand)' }}>
         {fmtValor(valor)}
       </p>
@@ -86,7 +86,7 @@ function SubsetorCard({
     return (
       <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
         <div className="mb-2 leading-tight min-h-[28px]">
-          <p className="text-[11px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
+          <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
           {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
         </div>
         <p className="text-xs text-zinc-400">—</p>
@@ -97,8 +97,8 @@ function SubsetorCard({
   return (
     <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
       <div className="mb-2 leading-tight min-h-[28px]">
-        <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
-        {subtitle && <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{subtitle}</p>}
+        <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
+        {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
       </div>
       <p className="text-xl font-bold tabular-nums mb-1" style={{ color: color ?? 'var(--brand)' }}>
         {fmtMi(data.faturamento)}
