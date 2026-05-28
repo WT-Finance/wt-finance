@@ -7,8 +7,7 @@ interface Props {
   active?: boolean
   payload?: TooltipPayload
   label?: string | number
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  labelFormatter?: (label: any, payload?: any) => ReactNode
+  labelFormatter?: (label: unknown, payload?: unknown) => ReactNode
   formatter?: (value: number, name: string) => [string, string]
 }
 
