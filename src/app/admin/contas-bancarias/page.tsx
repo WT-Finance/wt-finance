@@ -56,7 +56,7 @@ export default async function ContasBancariasPage() {
       </div>
 
       {pendentes.length === 0 ? (
-        <div className="rounded-xl border border-[--border] bg-white px-5 py-4 mb-6">
+        <div className="rounded-xl shadow-sm bg-white px-5 py-4 mb-6">
           <p className="text-sm text-zinc-500">Nenhuma conta pendente de classificação.</p>
         </div>
       ) : (
@@ -69,7 +69,7 @@ export default async function ContasBancariasPage() {
       )}
 
       {/* Tabela de auditoria — contas já classificadas */}
-      <div className="rounded-xl border border-[--border] bg-white px-5 py-4">
+      <div className="rounded-xl shadow-sm bg-white px-5 py-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400 mb-3">
           Classificadas ({classificadas.length})
         </p>

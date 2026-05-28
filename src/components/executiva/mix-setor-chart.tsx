@@ -33,7 +33,7 @@ export default function MixSetorChart({ data, loading, preset = 'mes-passado' }:
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <h2 className="text-base font-semibold text-[--text-primary] mb-4">Mix por Setor</h2>
       {loading ? (
         <div className="h-48 animate-pulse bg-zinc-100 rounded-lg" />

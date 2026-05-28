@@ -18,7 +18,7 @@ export default function RankingVendedores({
   data, loading,
 }: { data: RankingVendedorItem[]; loading: boolean }) {
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <h2 className="text-sm font-semibold text-zinc-700 mb-3">Ranking Vendedores</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

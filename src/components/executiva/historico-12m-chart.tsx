@@ -90,7 +90,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
   const singleColor = SETOR_COLORS[setor] ?? 'var(--primary)'
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 mb-6">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4 mb-6">
       <h2 className="text-base font-semibold text-[--text-primary] mb-3">
         Faturamento · últimos 12 meses
       </h2>

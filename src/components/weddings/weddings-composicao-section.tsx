@@ -24,7 +24,7 @@ export default function WeddingsComposicaoSection() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+      <div className="bg-white rounded-xl shadow-sm px-5 py-4">
         <div className="h-5 w-48 rounded bg-zinc-100 animate-pulse mb-4" />
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (

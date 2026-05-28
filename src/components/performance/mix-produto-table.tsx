@@ -35,7 +35,7 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
   const temMais = produtos.length > LIMITE
 
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 min-w-0 overflow-hidden flex flex-col">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0 overflow-hidden flex flex-col">
       <div className="flex items-baseline gap-2 mb-3">
         <h2 className="text-base font-semibold text-[--text-primary] leading-snug">{titulo}</h2>
         {periodoLabel && <span className="text-xs" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>}

@@ -8,7 +8,7 @@ interface Props {
 
 export default function PrejuizosKpi({ data, loading }: Props) {
   return (
-    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
+    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
         Vendas com Prejuízo
       </p>
