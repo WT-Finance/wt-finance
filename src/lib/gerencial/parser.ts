@@ -41,24 +41,40 @@ export async function parseGerencialExcel(buffer: ArrayBuffer): Promise<ParseRes
   })
 
   if (rows.length === 0)
-    return { success: false, error: 'Aba Monde está vazia' }
+    return { success: false, error: 'Planilha está vazia' }
 
-  const sample   = rows[0]
-  const required = ['Tipo', 'Pessoa', 'Valor Final', 'Vencimento']
-  const missing  = required.filter(c => !(c in sample))
+  // Normaliza cabeçalhos: case-insensitive + trim
+  const sample    = rows[0]
+  const headers   = Object.keys(sample)
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+  const findCol   = (target: string) =>
+    headers.find(h => normalize(h) === normalize(target)) ?? null
+
+  const colTipo      = findCol('Tipo')
+  const colPessoa    = findCol('Pessoa')
+  const colValor     = findCol('Valor Final')
+  const colVenc      = findCol('Vencimento')
+  const colDesc      = findCol('Descrição') ?? findCol('Descricao') ?? findCol('Descrição')
+  const colConta     = findCol('Conta (Previsão)') ?? findCol('Conta (Previsao)') ?? findCol('Conta')
+
+  const missing: string[] = []
+  if (!colTipo)  missing.push('Tipo')
+  if (!colPessoa) missing.push('Pessoa')
+  if (!colValor) missing.push('Valor Final')
+  if (!colVenc)  missing.push('Vencimento')
   if (missing.length > 0)
-    return { success: false, error: `Colunas obrigatórias faltando: ${missing.join(', ')}` }
+    return { success: false, error: `Colunas obrigatórias faltando: ${missing.join(', ')}. Colunas encontradas: ${headers.join(', ')}` }
 
   const lancamentos: LancamentoPlanilha[] = []
   const warnings: string[] = []
 
   rows.forEach((row, idx) => {
-    const tipo     = String(row['Tipo']           ?? '').trim()
-    const pessoa   = String(row['Pessoa']          ?? '').trim()
-    const valorRaw = row['Valor Final']
-    const descricao = row['Descrição'] != null ? String(row['Descrição']).trim() || null : null
-    const conta     = row['Conta (Previsão)'] != null ? String(row['Conta (Previsão)']).trim() || null : null
-    const vencRaw  = row['Vencimento']
+    const tipo     = String(row[colTipo!]    ?? '').trim()
+    const pessoa   = String(row[colPessoa!]  ?? '').trim()
+    const valorRaw = row[colValor!]
+    const descricao = colDesc  && row[colDesc]  != null ? String(row[colDesc]).trim()  || null : null
+    const conta     = colConta && row[colConta] != null ? String(row[colConta]).trim() || null : null
+    const vencRaw  = row[colVenc!]
 
     if (!tipo || !pessoa || valorRaw == null || !vencRaw) {
       warnings.push(`Linha ${idx + 2} ignorada (campos obrigatórios faltando)`)
