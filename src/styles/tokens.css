@@ -51,6 +51,15 @@
   --subsetor-producao:     #874B52;
   --subsetor-hospedagens:  #4B4F54;
   --subsetor-extras:       #7A8289;
+
+  /* Tokens de gráfico — eixos, grid e séries (ADR-0090) */
+  --chart-axis-tick:   #52525b;   /* Cor de labels de eixo (zinc-600) */
+  --chart-grid:        #e4e4e7;   /* Cor do grid (zinc-200) */
+  --chart-success:     #10b981;   /* Séries de sucesso/positivo */
+  --chart-warning:     #f97316;   /* Séries de atenção */
+  --chart-danger:      #dc2626;   /* Séries de erro/negativo */
+  --chart-neutral:     #94a3b8;   /* Séries neutras */
+  --chart-info:        #6366f1;   /* Séries informativas */
 }
 
 /* ── Tokens por aba ──────────────────────────────────────────────────────── */
