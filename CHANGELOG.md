@@ -8,6 +8,13 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [Unreleased]
 
+### Alterado
+- Migrado `xlsx` para `@e965/xlsx` (fork mantido sem vulnerabilidades conhecidas)
+
+### Segurança
+- `npm audit fix` aplicado — sem advisories corrigíveis sem `--force`
+- Advisories restantes (exigem major bump via `--force`, fora do escopo): Next.js — GHSA-492v-c6pp-mqqv (high), GHSA-wfc6-r584-vfw7, GHSA-267c-6grr-h53f, GHSA-36qx-fr4f-26g5; PostCSS — GHSA-qx2v-qp2m-jg93 (moderate). Aguardam atualização oficial do Next.js.
+
 ### Removido
 - Vista admin `/admin/contas-bancarias` (não utilizada na prática)
 - 6 RPCs órfãs: `get_fluxo_caixa_mensal`, `get_fluxo_caixa_mensal_b`, `get_historico_12m`, `get_proximos_vencimentos`, `get_proximos_vencimentos_v2`, `get_config_numeric` (migration 0093)
