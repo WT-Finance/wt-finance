@@ -65,22 +65,42 @@ function KpiColuna({
   )
 }
 
+function YoyBadge({ pct, isPp }: { pct: number; isPp?: boolean }) {
+  const cor = pct >= 0 ? 'var(--positive)' : 'var(--negative)'
+  const sinal = pct >= 0 ? '+' : '−'
+  const valor = isPp
+    ? `${sinal}${Math.abs(pct).toFixed(1)} p.p.`
+    : `${pct >= 0 ? '↑' : '↓'}${Math.abs(pct).toFixed(1)}%`
+  return (
+    <span className="text-[9px] tabular-nums shrink-0" style={{ color: cor }}>
+      {valor} <span className="text-zinc-400">YoY</span>
+    </span>
+  )
+}
+
 function SubsetorCard({
   title,
   subtitle,
   data,
   color,
   yoyFaturamento,
+  yoyReceita,
+  yoyMargemPct,
 }: {
   title: string
   subtitle?: string
   data: SumarioSubsetorItem | null
   color?: string
   yoyFaturamento?: number | null
+  yoyReceita?: number | null
+  yoyMargemPct?: number | null
 }) {
-  const yoyPct = data && yoyFaturamento != null && yoyFaturamento > 0
-    ? ((data.faturamento - yoyFaturamento) / yoyFaturamento) * 100
-    : null
+  const yoyFatPct    = data && yoyFaturamento != null && yoyFaturamento > 0
+    ? ((data.faturamento - yoyFaturamento) / yoyFaturamento) * 100 : null
+  const yoyRecPct    = data && yoyReceita != null && yoyReceita > 0
+    ? ((data.receita - yoyReceita) / yoyReceita) * 100 : null
+  const yoyMargemPp  = data && yoyMargemPct != null
+    ? data.margem_pct - yoyMargemPct : null
 
   if (!data) {
     return (
@@ -104,26 +124,25 @@ function SubsetorCard({
         <p className="text-xl font-bold tabular-nums" style={{ color: color ?? 'var(--brand)' }}>
           {fmtMi(data.faturamento)}
         </p>
-        {yoyPct != null && (
-          <span
-            className="text-[9px] font-semibold tabular-nums shrink-0"
-            style={{ color: yoyPct >= 0 ? 'var(--positive)' : 'var(--negative)' }}
-          >
-            {yoyPct >= 0 ? '↑' : '↓'}{Math.abs(yoyPct).toFixed(1)}%
-          </span>
-        )}
+        {yoyFatPct != null && <YoyBadge pct={yoyFatPct} />}
       </div>
       <div className="h-px bg-zinc-100 my-1.5" />
       <div className="space-y-0.5">
-        <div className="flex justify-between items-center">
-          <span className="text-[10px] text-zinc-400">Receita</span>
-          <span className="text-[10px] font-medium tabular-nums text-zinc-600">{fmtMi(data.receita)}</span>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className="text-[10px] text-zinc-400 shrink-0">Receita</span>
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className="text-[10px] font-medium tabular-nums text-zinc-600">{fmtMi(data.receita)}</span>
+            {yoyRecPct != null && <YoyBadge pct={yoyRecPct} />}
+          </div>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="text-[10px] text-zinc-400">Margem</span>
-          <span className={`text-[10px] font-semibold tabular-nums ${margemColor(data.margem_pct)}`}>
-            {data.margem_pct.toFixed(1)}%
-          </span>
+        <div className="flex justify-between items-baseline gap-1">
+          <span className="text-[10px] text-zinc-400 shrink-0">Margem</span>
+          <div className="flex items-baseline gap-1 min-w-0">
+            <span className={`text-[10px] font-semibold tabular-nums ${margemColor(data.margem_pct)}`}>
+              {data.margem_pct.toFixed(1)}%
+            </span>
+            {yoyMargemPp != null && <YoyBadge pct={yoyMargemPp} isPp />}
+          </div>
         </div>
       </div>
     </div>
@@ -224,8 +243,8 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       {/* Cards de subsetor */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {SUBSETOR_ORDER.map(key => {
-          const s          = subsetores.find(x => x.subsetor === key)
-          const yoyItem    = subsetoresYoy.find(x => x.subsetor === key)
+          const s            = subsetores.find(x => x.subsetor === key)
+          const yoyItem      = subsetoresYoy.find(x => x.subsetor === key)
           const isConvidados = key.startsWith('CONVIDADOS - ')
           const title    = isConvidados ? 'Convidados' : (SUBSETOR_LABELS[key] ?? key)
           const subtitle = isConvidados ? key.replace('CONVIDADOS - ', '') : undefined
@@ -237,7 +256,9 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
               subtitle={subtitle}
               data={s ?? null}
               color={color}
-              yoyFaturamento={yoyItem?.faturamento ?? null}
+              yoyFaturamento={yoyItem?.faturamento   ?? null}
+              yoyReceita={yoyItem?.receita            ?? null}
+              yoyMargemPct={yoyItem?.margem_pct       ?? null}
             />
           )
         })}
