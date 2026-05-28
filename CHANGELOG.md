@@ -6,18 +6,32 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [Unreleased]
+## [4.6.0] — 2026-05-28
+
+### Adicionado
+- Fluxo de Caixa Gerencial — terceira seção da sub-aba, com Visualização Agregada e Base de Dados
+- Importação de planilha Excel de curadoria com mesclagem inteligente e preview de diff
+- CRUD inline de lançamentos gerenciais (edição, adição e remoção de linhas)
+- Saldos iniciais editáveis por conta (Itaú, Asaas, Blimboo, Clara)
+- Projeção diária acumulada espelhando cálculo da planilha de curadoria
+- Tokens semânticos de gráfico: `--chart-axis-tick`, `--chart-grid`, `--chart-success`, `--chart-warning`, `--chart-danger`, `--chart-neutral`, `--chart-info`
+- Layout admin compartilhado em `src/app/admin/layout.tsx`
+- ADR-0089 — Fluxo de Caixa Gerencial
+- ADR-0090 — Tokens semânticos de gráfico
+- `aria-label` em inputs date dos filtros de período
 
 ### Alterado
-- Migrado `xlsx` para `@e965/xlsx` (fork mantido sem vulnerabilidades conhecidas)
-
-### Segurança
-- `npm audit fix` aplicado — sem advisories corrigíveis sem `--force`
-- Advisories restantes (exigem major bump via `--force`, fora do escopo): Next.js — GHSA-492v-c6pp-mqqv (high), GHSA-wfc6-r584-vfw7, GHSA-267c-6grr-h53f, GHSA-36qx-fr4f-26g5; PostCSS — GHSA-qx2v-qp2m-jg93 (moderate). Aguardam atualização oficial do Next.js.
+- 25+ hex hardcoded em componentes Recharts substituídos por `var(--chart-*)`
+- Subtítulo diferenciador na Section "Fluxo de Caixa Diário": *Baseado em lançamentos de Contas a Pagar/a Receber*
+- Migrado `xlsx` para `@e965/xlsx` (fork ativamente mantido, sem vulnerabilidades)
 
 ### Removido
 - Vista admin `/admin/contas-bancarias` (não utilizada na prática)
-- 6 RPCs órfãs: `get_fluxo_caixa_mensal`, `get_fluxo_caixa_mensal_b`, `get_historico_12m`, `get_proximos_vencimentos`, `get_proximos_vencimentos_v2`, `get_config_numeric` (migration 0093)
+- 6 RPCs órfãs: `get_fluxo_caixa_mensal`, `get_fluxo_caixa_mensal_b`, `get_historico_12m`, `get_proximos_vencimentos`, `get_proximos_vencimentos_v2`, `get_config_numeric`
+
+### Corrigido
+- Vulnerabilidades npm via `npm audit fix` (`brace-expansion`, `ws`, `next`)
+- `labelFormatter` em `CustomTooltip` tipado corretamente para compatibilidade com Recharts
 
 ---
 
