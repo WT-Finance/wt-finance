@@ -311,7 +311,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
 
   return (
     <>
-      <div className="rounded-xl border border-[--border] bg-white flex-1 flex flex-col">
+      <div className="rounded-xl bg-white shadow-sm flex-1 flex flex-col">
         {/* Header */}
         <div className="px-4 pt-4 pb-2 shrink-0">
           <div className="flex items-center justify-between mb-2">
