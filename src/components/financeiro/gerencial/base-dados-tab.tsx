@@ -72,7 +72,7 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
         vencimento,
       })
       if (res.success) {
-        setItens(prev => [res.lancamento as Lancamento, ...prev])
+        setItens(prev => [res.lancamento as unknown as Lancamento, ...prev])
         setCriando(false)
         setNovosValores({})
       }

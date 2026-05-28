@@ -29,13 +29,10 @@ export default function ImportDrawer({ open, onClose }: Props) {
       if (!parseRes.success) { setErro(parseRes.error); return }
       setWarnings(parseRes.warnings)
       setPlanilha(parseRes.lancamentos)
-      try {
-        const d = await computeImportDiff(parseRes.lancamentos)
-        setDiff(d)
-        setEtapa('preview')
-      } catch (err) {
-        setErro(err instanceof Error ? err.message : 'Erro ao calcular diff')
-      }
+      const diffRes = await computeImportDiff(parseRes.lancamentos)
+      if (!diffRes.success) { setErro(diffRes.error); return }
+      setDiff(diffRes.diff)
+      setEtapa('preview')
     })
   }
 
