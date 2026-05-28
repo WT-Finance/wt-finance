@@ -178,18 +178,34 @@ export default function DesignSystemPage() {
       </Section>
 
       <Section id="drawers" title="9. Drawers — Padrão Estrutural">
-        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1">
-          <p>{'<ListDrawer titulo="..." onClose={...}>'}</p>
-          <p className="pl-4">{'<div className="sticky top-0 bg-white z-10 pb-3 border-b">'}</p>
-          <p className="pl-8">{'// Pills de tipo (se aplicável)'}</p>
-          <p className="pl-8">{'// Pills de período'}</p>
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          Subtítulo sempre via prop <code className="bg-zinc-100 px-1 rounded">subtitulo</code> do{' '}
+          <code className="bg-zinc-100 px-1 rounded">ListDrawer</code> — renderiza acima da linha
+          divisória do cabeçalho, não dentro do conteúdo.
+        </p>
+        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-4">
+          <p>{'<ListDrawer'}</p>
+          <p className="pl-4">{'titulo="Título do Drawer"'}</p>
+          <p className="pl-4">{'subtitulo="Descrição curta acima da linha divisória."  ← sempre aqui'}</p>
+          <p className="pl-4">{'onClose={...}'}</p>
+          <p>{'>'}</p>
+          <p className="pl-4">{'<div className="sticky top-0 bg-white z-10 pb-3 border-b border-zinc-100">'}</p>
+          <p className="pl-8">{'// Pills de tipo (Todos / A pagar / A receber) — se aplicável'}</p>
+          <p className="pl-8">{'// Pills de período (5d / 10d / Personalizado) — se aplicável'}</p>
           <p className="pl-4">{'</div>'}</p>
-          <p className="pl-4">{'<div className="overflow-y-auto">'}</p>
-          <p className="pl-8">{'// Conteúdo que rola sob o sticky'}</p>
+          <p className="pl-4">{'<div>  {/* rola sob o sticky */}'}</p>
+          <p className="pl-8">{'// Conteúdo principal'}</p>
           <p className="pl-4">{'</div>'}</p>
           <p>{'</ListDrawer>'}</p>
         </div>
-        <p className="text-xs text-[var(--text-muted)] mt-2">
+        <div className="text-xs text-[var(--text-muted)] space-y-1">
+          <p>Exemplos em produção:</p>
+          <ul className="list-disc pl-4 space-y-0.5">
+            <li>Próximos Lançamentos — <code className="bg-zinc-100 px-1 rounded">subtitulo="Próximos lançamentos de contas a pagar e a receber."</code></li>
+            <li>Próximos Casamentos a Entregar — <code className="bg-zinc-100 px-1 rounded">subtitulo="Listagem dos próximos casamentos a entregar"</code></li>
+          </ul>
+        </div>
+        <p className="text-xs text-[var(--text-muted)] mt-3">
           Componente base:{' '}
           <code className="bg-zinc-100 px-1 rounded">src/components/shared/list-drawer.tsx</code>
         </p>

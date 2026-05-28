@@ -200,10 +200,6 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
     <div className="flex flex-col h-full">
       {/* Sticky header */}
       <div className="sticky top-0 bg-white z-10 pb-3 border-b border-zinc-100">
-        <p className="text-xs text-zinc-400 mb-3">
-          Próximos lançamentos de contas a pagar e a receber.
-        </p>
-
         {/* Pills de tipo */}
         <TipoPills value={tipoFiltro} onChange={setTipoFiltro} />
 
@@ -362,7 +358,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
       </div>
 
       {drawerOpen && (
-        <ListDrawer titulo="Próximos Lançamentos" onClose={() => setDrawerOpen(false)}>
+        <ListDrawer titulo="Próximos Lançamentos" subtitulo="Próximos lançamentos de contas a pagar e a receber." onClose={() => setDrawerOpen(false)}>
           <DrawerContent lancamentosDefault={lancamentosDefault} />
         </ListDrawer>
       )}
