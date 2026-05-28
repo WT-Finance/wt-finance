@@ -36,7 +36,7 @@ interface DotProps {
 
 function ResultadoDot({ cx, cy, value }: DotProps) {
   if (cx === undefined || cy === undefined || value === undefined) return null
-  const fill = value >= 0 ? 'var(--text-primary)' : 'var(--negative-deep)'
+  const fill = value >= 0 ? 'var(--text-primary)' : 'var(--danger)'
   return <circle cx={cx} cy={cy} r={4} fill={fill} stroke="none" />
 }
 
@@ -80,7 +80,7 @@ function FluxoLegend() {
     { label: 'Saídas efetivadas',    color: 'var(--negative)',     opacity: 1,    type: 'rect' as const },
     { label: 'Saídas previstas',     color: 'var(--negative)',     opacity: 0.45, type: 'rect' as const },
     { label: 'Resultado mensal',     color: 'var(--text-primary)', opacity: 1,    type: 'line' as const },
-    { label: 'Resultado negativo',   color: 'var(--negative-deep)',opacity: 1,    type: 'dot'  as const },
+    { label: 'Resultado negativo',   color: 'var(--danger)', opacity: 1,    type: 'dot'  as const },
   ]
   return (
     <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
@@ -145,7 +145,7 @@ export default function FluxoMensalChart({ rows }: Props) {
 
   if (!data.length) {
     return (
-      <div className="rounded-xl border border-[--border] bg-white p-5 mb-4">
+      <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
         <div className="h-56 flex items-center justify-center text-sm text-zinc-400">
           Sem dados para o período
         </div>
@@ -154,7 +154,7 @@ export default function FluxoMensalChart({ rows }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-[--border] bg-white p-5 mb-4">
+    <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-baseline gap-2">
           <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Fluxo de Caixa Mensal</h3>
@@ -242,7 +242,8 @@ export default function FluxoMensalChart({ rows }: Props) {
             dot={(props: DotProps) => <ResultadoDot key={`dot-${props.cx}-${props.cy}`} {...props} />}
             activeDot={{ r: 5 }}
             type="monotone"
-            isAnimationActive={false}
+            animationDuration={400}
+            animationEasing="ease-in-out"
           />
 
           {/* Legend hidden from Recharts — we render our own below */}
