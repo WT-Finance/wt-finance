@@ -85,7 +85,7 @@ function SubsetorCard({
   if (!data) {
     return (
       <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
-        <div className="mb-2 leading-tight">
+        <div className="mb-2 leading-tight min-h-[28px]">
           <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
           {subtitle && <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{subtitle}</p>}
         </div>
@@ -96,25 +96,24 @@ function SubsetorCard({
 
   return (
     <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
-      <div className="mb-2 leading-tight">
+      <div className="mb-2 leading-tight min-h-[28px]">
         <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
         {subtitle && <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{subtitle}</p>}
       </div>
-      <p className="text-xl font-bold tabular-nums mb-1.5" style={{ color: color ?? 'var(--brand)' }}>
+      <p className="text-xl font-bold tabular-nums mb-1" style={{ color: color ?? 'var(--brand)' }}>
         {fmtMi(data.faturamento)}
       </p>
-      <div className="h-px bg-zinc-100 mb-1.5" />
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] text-zinc-400 leading-none mb-0.5">Receita</p>
-          <p className="text-[10px] font-medium tabular-nums text-zinc-600 leading-none">{fmtMi(data.receita)}</p>
+      <div className="h-px bg-zinc-100 my-1.5" />
+      <div className="space-y-0.5">
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] text-zinc-400">Receita</span>
+          <span className="text-[10px] font-medium tabular-nums text-zinc-600">{fmtMi(data.receita)}</span>
         </div>
-        <div className="w-px self-stretch bg-zinc-100 shrink-0" />
-        <div className="min-w-0 flex-1 text-right">
-          <p className="text-[9px] text-zinc-400 leading-none mb-0.5">Margem</p>
-          <p className={`text-[10px] font-semibold tabular-nums leading-none ${margemColor(data.margem_pct)}`}>
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] text-zinc-400">Margem</span>
+          <span className={`text-[10px] font-semibold tabular-nums ${margemColor(data.margem_pct)}`}>
             {data.margem_pct.toFixed(1)}%
-          </p>
+          </span>
         </div>
       </div>
     </div>
