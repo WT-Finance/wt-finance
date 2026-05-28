@@ -64,7 +64,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
         x={x} y={(y ?? 0) + 10}
         textAnchor="middle"
         fontSize={10}
-        fill={isActive ? 'var(--primary)' : '#a1a1aa'}
+        fill={isActive ? 'var(--primary)' : 'var(--chart-axis-tick)'}
         fontWeight={isActive ? 600 : 400}
       >
         {payload?.value}
@@ -76,7 +76,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
   function TopLabel({ index }: { index?: number; x?: number; y?: number; width?: number }) {
     const entry = index != null ? chartData[index] : null
     if (!entry || entry.total === 0) return null
-    const color  = entry.eh_atual ? 'var(--primary)' : '#a1a1aa'
+    const color  = entry.eh_atual ? 'var(--primary)' : 'var(--chart-axis-tick)'
     const weight = entry.eh_atual ? 600 : 400
     return (
       <text style={{ fontSize: 10, fill: color, fontWeight: weight }} textAnchor="middle">
@@ -101,7 +101,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
       ) : (
         <ResponsiveContainer width="100%" height={180}>
           <BarChart data={chartData} margin={{ top: 18, right: 4, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
             <XAxis
               dataKey="label"
               tick={(props) => <CustomXTick {...props} />}
@@ -112,7 +112,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
               domain={[0, 10_000_000]}
               ticks={Y_TICKS}
               tickFormatter={fmtYTick}
-              tick={{ fontSize: 10, fill: '#a1a1aa' }}
+              tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
               axisLine={false}
               tickLine={false}
               width={36}
@@ -173,7 +173,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
                   <Cell
                     key={i}
                     fill={
-                      entry.parcial  ? '#94a3b8'
+                      entry.parcial  ? 'var(--chart-neutral)'
                       : entry.eh_atual ? 'var(--primary)'
                       : singleColor
                     }

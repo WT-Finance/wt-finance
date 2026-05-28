@@ -20,7 +20,7 @@ function BarraSetor({ variacao, maxAbs, nome, variacaoPct }: BarraProps) {
   if (maxAbs === 0) return null
   const larguraPct = Math.round((Math.abs(variacao) / maxAbs) * 100)
   const positivo   = variacao >= 0
-  const cor        = positivo ? '#16a34a' : '#dc2626'
+  const cor        = positivo ? 'var(--chart-success)' : 'var(--chart-danger)'
   const sinal      = positivo ? '+' : ''
   const pctLabel   = variacaoPct != null
     ? ` (${sinal}${variacaoPct.toLocaleString('pt-BR', { minimumFractionDigits: 1 })}%)`

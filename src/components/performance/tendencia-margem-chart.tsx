@@ -38,16 +38,16 @@ export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_
       ) : (
         <ResponsiveContainer width="100%" height={224}>
           <LineChart data={pontos} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 10, fill: '#a1a1aa' }}
+              tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
               tickFormatter={v => `${v}%`}
-              tick={{ fontSize: 11, fill: '#71717a' }}
+              tick={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
               tickLine={false}
               axisLine={false}
               width={40}
@@ -66,12 +66,12 @@ export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_
                 />
               )}
             />
-            <ReferenceLine y={margemOk}     stroke="#10b981" strokeDasharray="4 4" strokeWidth={1} />
-            <ReferenceLine y={margemAlerta} stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={1} />
+            <ReferenceLine y={margemOk}     stroke="var(--chart-success)" strokeDasharray="4 4" strokeWidth={1} />
+            <ReferenceLine y={margemAlerta} stroke="var(--chart-warning)" strokeDasharray="4 4" strokeWidth={1} />
             <Line
               type="monotone"
               dataKey="margem_pct"
-              stroke="#6366f1"
+              stroke="var(--chart-info)"
               strokeWidth={2}
               dot={pontos.length <= 15}
               connectNulls={false}

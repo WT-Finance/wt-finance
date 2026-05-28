@@ -77,17 +77,17 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
           barCategoryGap="25%"
           barGap={0}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
           <XAxis
             dataKey="mes"
             tickFormatter={fmtMesLabel}
-            tick={{ fontSize: 10, fill: '#71717a' }}
+            tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
             tickLine={false}
             interval={2}
           />
           <YAxis
             tickFormatter={v => fmtMi(Math.abs(v as number))}
-            tick={{ fontSize: 11, fill: '#71717a' }}
+            tick={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
             tickLine={false}
             axisLine={false}
             width={72}

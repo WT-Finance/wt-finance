@@ -44,17 +44,17 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
 
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={data.meses} margin={{ top: 8, right: 80, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
           <XAxis
             dataKey="mes"
             tickFormatter={fmtMesLabel}
-            tick={{ fontSize: 10, fill: '#71717a' }}
+            tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
             tickLine={false}
             interval={2}
           />
           <YAxis
             tickFormatter={v => fmtMi(v as number)}
-            tick={{ fontSize: 11, fill: '#71717a' }}
+            tick={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
             tickLine={false}
             axisLine={false}
             width={72}
@@ -80,9 +80,9 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
           {mesHoje && (
             <ReferenceLine
               x={mesHoje}
-              stroke="#a1a1aa"
+              stroke="var(--chart-neutral)"
               strokeDasharray="4 3"
-              label={{ value: 'Hoje', position: 'insideTopLeft', fontSize: 10, fill: '#71717a' }}
+              label={{ value: 'Hoje', position: 'insideTopLeft', fontSize: 10, fill: 'var(--chart-axis-tick)' }}
             />
           )}
           <Bar dataKey="entrada_acum" name="entrada_acum" radius={[2,2,0,0]}>

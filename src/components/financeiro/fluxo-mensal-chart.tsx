@@ -175,23 +175,23 @@ export default function FluxoMensalChart({ rows }: Props) {
           barGap={1}
           margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: '#71717a' }}
+            tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
             axisLine={false}
             tickLine={false}
             interval={2}
           />
           <YAxis
             tickFormatter={v => fmtMi(Math.abs(v as number))}
-            tick={{ fontSize: 11, fill: '#71717a' }}
+            tick={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
             axisLine={false}
             tickLine={false}
             width={80}
           />
           <Tooltip content={<FluxoTooltip />} />
-          <ReferenceLine y={0} stroke="#e4e4e7" />
+          <ReferenceLine y={0} stroke="var(--chart-grid)" />
 
           <Bar
             dataKey="entrada_efetivada"
