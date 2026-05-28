@@ -3,23 +3,140 @@
 import { useEffect, useState } from 'react'
 import { usePeriodoFilter } from '@/components/layout/period-filter-provider'
 import { fetchWeddingsKpis } from '@/app/performance/weddings/actions'
-import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
-import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
-import MargemDrawerTrigger from '@/components/weddings/margem-drawer-trigger'
-import type { ExecutivaKpis, TendenciaMargem, SumarioSubsetor } from '@/types/api'
+import { fmtMi } from '@/lib/fmt'
+import { margemColor } from '@/lib/config'
+import KpiPrincipalDrawer from './kpi-principal-drawer'
+import type { ExecutivaKpis, KpiMetrica, SumarioSubsetor, SumarioSubsetorItem } from '@/types/api'
 import type { Benchmarks } from '@/lib/config'
 
 interface Props {
   benchmarks: Benchmarks
 }
 
-export default function WeddingsKpisSection({ benchmarks }: Props) {
-  const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } = usePeriodoFilter()
+// ── Subcomponentes inline ────────────────────────────────────────────────────
+
+function KpiColuna({
+  rotulo,
+  metrica,
+  formato,
+  padded,
+}: {
+  rotulo: string
+  metrica: KpiMetrica
+  formato: 'brl' | 'pct'
+  padded?: boolean
+}) {
+  const valor  = metrica.valor
+  const varAnt = metrica.variacao_anterior
+  const varYoy = metrica.variacao_yoy
+
+  const fmtValor = (v: number | null) => {
+    if (v == null) return '—'
+    return formato === 'pct'
+      ? `${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+      : fmtMi(v)
+  }
+
+  const fmtVar = (v: number | null, isPP?: boolean) => {
+    if (v == null) return null
+    const sinal  = v >= 0 ? '+' : ''
+    const sufixo = isPP ? ' p.p.' : '%'
+    const f      = `${sinal}${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${sufixo}`
+    return (
+      <span className={v >= 0 ? 'text-success' : 'text-danger'}>
+        {v >= 0 ? '↑' : '↓'} {f}
+      </span>
+    )
+  }
+
+  return (
+    <div className={padded ? 'pl-4' : ''}>
+      <p className="text-[11px] font-semibold text-[--text-muted] uppercase tracking-wide mb-1">{rotulo}</p>
+      <p className="text-2xl font-bold tabular-nums mb-1" style={{ color: 'var(--brand)' }}>
+        {fmtValor(valor)}
+      </p>
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {varAnt != null && (
+          <span className="text-xs text-zinc-400">
+            MoM: {fmtVar(varAnt, metrica.is_pp)}
+          </span>
+        )}
+        {varYoy != null && (
+          <span className="text-xs text-zinc-400">
+            YoY: {fmtVar(varYoy, metrica.is_pp)}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SubsetorCard({
+  label,
+  data,
+}: {
+  label: string
+  data: SumarioSubsetorItem | null
+}) {
+  if (!data) {
+    return (
+      <div className="bg-white rounded-lg border border-[--border] px-3 py-3.5">
+        <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide mb-2">{label}</p>
+        <p className="text-xs text-zinc-400">—</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-[--border] px-3 py-3.5">
+      <p className="text-[10px] font-semibold text-[--text-muted] uppercase tracking-wide mb-2 leading-tight">{label}</p>
+      <p className="text-xl font-bold tabular-nums mb-1" style={{ color: 'var(--brand)' }}>
+        {fmtMi(data.faturamento)}
+      </p>
+      <div className="h-px bg-zinc-100 my-1.5" />
+      <div className="space-y-0.5">
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] text-zinc-400">Receita</span>
+          <span className="text-[10px] font-medium tabular-nums text-zinc-600">{fmtMi(data.receita)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] text-zinc-400">Margem</span>
+          <span className={`text-[10px] font-semibold tabular-nums ${margemColor(data.margem_pct)}`}>
+            {data.margem_pct.toFixed(1)}%
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Mapeamento de subsetores ─────────────────────────────────────────────────
+
+const SUBSETOR_LABELS: Record<string, string> = {
+  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
+  'CONVIDADOS - Extras':      'Convidados – Extras',
+  'PRODUÇÃO':                 'Produção',
+  PLANEJAMENTO:               'Planejamento',
+  COMERCIAL:                  'Comercial',
+}
+
+const SUBSETOR_ORDER = [
+  'CONVIDADOS - Hospedagens',
+  'CONVIDADOS - Extras',
+  'PRODUÇÃO',
+  'PLANEJAMENTO',
+  'COMERCIAL',
+]
+
+// ── Componente principal ─────────────────────────────────────────────────────
+
+export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) {
+  const { from, to, antFrom, antTo, yoyFrom, yoyTo } = usePeriodoFilter()
 
   const [kpis, setKpis]           = useState<ExecutivaKpis | null>(null)
-  const [tendencia, setTendencia] = useState<TendenciaMargem | null>(null)
   const [sumario, setSumario]     = useState<SumarioSubsetor | null>(null)
   const [loading, setLoading]     = useState(true)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -27,89 +144,64 @@ export default function WeddingsKpisSection({ benchmarks }: Props) {
     fetchWeddingsKpis(from, to, antFrom, antTo, yoyFrom, yoyTo).then(data => {
       if (cancelled) return
       setKpis(data.kpis)
-      setTendencia(data.tendencia)
       setSumario(data.sumario)
       setLoading(false)
     })
     return () => { cancelled = true }
   }, [from, to, antFrom, antTo, yoyFrom, yoyTo])
 
-  const SETOR = 'Weddings'
+  const subsetores = sumario?.subsetores ?? []
+
+  if (loading || !kpis) {
+    return (
+      <div>
+        {/* Skeleton card principal */}
+        <div className="bg-zinc-100 animate-pulse rounded-xl h-24 mb-4" />
+        {/* Skeleton subsetores */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-zinc-100 animate-pulse rounded-lg h-24" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-        {loading || !kpis ? (
-          Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
-        ) : (
-          <>
-            <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={SETOR}>
-              <KpiCard
-                rotulo="Faturamento"
-                formula="Soma do valor total das vendas"
-                metrica={kpis.faturamento} formato="brl"
-                periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
-                isPeriodoProporcional={eParcial}
-                useBrandColor
-              />
-            </KpiDrawerTrigger>
+      {/* Card principal full-width */}
+      <div
+        className="bg-white rounded-xl border-2 border-[--brand] px-5 py-4 mb-4 cursor-pointer hover:bg-zinc-50 transition-colors"
+        onClick={() => setDrawerOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && setDrawerOpen(true)}
+        aria-label="Abrir análise detalhada de KPIs"
+      >
+        {/* Hint de abertura */}
+        <p className="text-[10px] text-[--brand] uppercase tracking-wide font-medium mb-3">
+          Visão Geral — clique para análise detalhada
+        </p>
 
-            <KpiDrawerTrigger metrica="receita" rotulo="Receita Bruta" setor={SETOR}>
-              <KpiCard
-                rotulo="Receita Bruta"
-                formula="Faturamento − pagamento ao fornecedor (hotel, cia. aérea). No turismo de agenciamento, a receita real é o que sobra após o repasse ao fornecedor. (ADR-0026)"
-                metrica={kpis.receita} formato="brl"
-                periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
-                isPeriodoProporcional={eParcial}
-                useBrandColor
-              />
-            </KpiDrawerTrigger>
-
-            <MargemDrawerTrigger
-              tendencia={tendencia}
-              sumario={sumario}
-              margemOk={benchmarks.margemAlvo}
-              margemAlerta={benchmarks.margemAtencao}
-            >
-              <KpiCard
-                rotulo="Margem %"
-                formula="Receita Bruta ÷ Faturamento × 100"
-                metrica={kpis.margem_pct} formato="pct"
-                periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
-                benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao}
-                isPeriodoProporcional={eParcial}
-              />
-            </MargemDrawerTrigger>
-
-            <KpiCard
-              rotulo="Ticket Médio"
-              formula="Faturamento ÷ Casamentos"
-              metrica={kpis.ticket_medio} formato="brl"
-              periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
-              isPeriodoProporcional={eParcial}
-              useBrandColor
-            />
-
-            <KpiCard
-              rotulo="Receita Média"
-              formula="Receita Bruta ÷ Casamentos"
-              metrica={kpis.receita_media} formato="brl"
-              periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
-              isPeriodoProporcional={eParcial}
-              useBrandColor
-            />
-
-            <KpiCard
-              rotulo="Casamentos Entregues"
-              formula="Operações com Contrato de Casamento realizadas no período"
-              metrica={kpis.vendas} formato="numero"
-              periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy}
-              isPeriodoProporcional={eParcial}
-              useBrandColor
-            />
-          </>
-        )}
+        {/* Grid 3 colunas */}
+        <div className="grid grid-cols-3 gap-4 divide-x divide-zinc-100">
+          <KpiColuna rotulo="Faturamento"   metrica={kpis.faturamento} formato="brl" />
+          <KpiColuna rotulo="Receita Bruta" metrica={kpis.receita}     formato="brl" padded />
+          <KpiColuna rotulo="Margem"        metrica={kpis.margem_pct}  formato="pct" padded />
+        </div>
       </div>
+
+      {/* Cards de subsetor */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {SUBSETOR_ORDER.map(key => {
+          const s = subsetores.find(x => x.subsetor === key)
+          return <SubsetorCard key={key} label={SUBSETOR_LABELS[key] ?? key} data={s ?? null} />
+        })}
+      </div>
+
+      {drawerOpen && (
+        <KpiPrincipalDrawer onClose={() => setDrawerOpen(false)} />
+      )}
     </div>
   )
 }

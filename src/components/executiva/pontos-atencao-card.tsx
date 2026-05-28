@@ -24,7 +24,7 @@ export default function PontosAtencaoCard({ resultado }: Props) {
   if (resultado.estado === 'sem_dados') return null
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] mt-6">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 mt-6">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">
         ⚠ Pontos de atenção
       </p>

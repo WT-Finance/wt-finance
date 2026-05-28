@@ -54,7 +54,7 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
   const saidaRadius: [number, number, number, number] = invertida ? [2, 2, 0, 0] : [0, 0, 2, 2]
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-baseline gap-2">
           <h2 className="text-base font-semibold text-[--text-primary]">

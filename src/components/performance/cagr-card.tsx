@@ -17,7 +17,7 @@ function Pct({ v }: { v: number | null }) {
 
 export default function CagrCard({ data, loading }: Props) {
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
       <h2 className="text-base font-semibold text-[--text-primary] mb-3">CAGR</h2>
 
       {loading ? (

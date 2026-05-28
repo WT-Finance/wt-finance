@@ -9,6 +9,8 @@ import EmptyState from '@/components/shared/empty-state'
 
 const LIMITE = 6
 
+type HorizontePill = '3m' | '6m' | '12m'
+
 interface Props {
   data18m: ProximosCasamentos | null
 }
@@ -25,6 +27,73 @@ function ResultadoCell({ valor }: { valor: number }) {
   )
 }
 
+function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamentos>['casamentos'] }) {
+  const [horizonte, setHorizonte] = useState<HorizontePill>('3m')
+
+  const hoje = new Date()
+  const limite = new Date(hoje)
+  if (horizonte === '3m')  limite.setMonth(limite.getMonth() + 3)
+  if (horizonte === '6m')  limite.setMonth(limite.getMonth() + 6)
+  if (horizonte === '12m') limite.setFullYear(limite.getFullYear() + 1)
+
+  const filtrados = casamentos.filter(c => {
+    if (!c.data_casamento) return false
+    return new Date(c.data_casamento) <= limite
+  })
+
+  return (
+    <>
+      <div className="flex items-center gap-1.5 mb-4">
+        {(['3m', '6m', '12m'] as HorizontePill[]).map(h => (
+          <button
+            key={h}
+            onClick={() => setHorizonte(h)}
+            className={[
+              'text-[11px] px-2.5 py-0.5 rounded-full border transition-colors',
+              horizonte === h
+                ? 'bg-zinc-800 text-white border-zinc-800'
+                : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',
+            ].join(' ')}
+          >
+            {h === '3m' ? '3 meses' : h === '6m' ? '6 meses' : '12 meses'}
+          </button>
+        ))}
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-zinc-100">
+            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data do Evento</th>
+            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
+            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
+            <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-50">
+          {filtrados.map((c, i) => (
+            <tr key={i} className="hover:bg-zinc-50">
+              <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
+                {c.data_casamento ? fmtDateLong(c.data_casamento) : '—'}
+              </td>
+              <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
+                {c.casal ?? '—'}
+              </td>
+              <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-40">
+                {c.hotel ?? '—'}
+              </td>
+              <ResultadoCell valor={c.resultado_previsto ?? 0} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {filtrados.length === 0 && (
+        <div className="py-8 text-center text-xs text-zinc-400">
+          Nenhum casamento no horizonte selecionado
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function ProximosCasamentosCard({ data18m }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -33,7 +102,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
   const temMais = casamentos.length > LIMITE
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 flex flex-col">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 min-w-0 flex flex-col">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-4">
         Próximos Casamentos a Entregar
       </h2>
@@ -87,33 +156,8 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
       </div>
 
       {drawerOpen && (
-        <ListDrawer titulo="Próximos Casamentos a Entregar" onClose={() => setDrawerOpen(false)}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-100">
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data do Evento</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-50">
-              {casamentos.map((c, i) => (
-                <tr key={i} className="hover:bg-zinc-50">
-                  <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                    {c.data_casamento ? fmtDateLong(c.data_casamento) : '—'}
-                  </td>
-                  <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
-                    {c.casal ?? '—'}
-                  </td>
-                  <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-40">
-                    {c.hotel ?? '—'}
-                  </td>
-                  <ResultadoCell valor={c.resultado_previsto ?? 0} />
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <ListDrawer titulo="Próximos Casamentos a Entregar" subtitulo="Listagem dos próximos casamentos a entregar" onClose={() => setDrawerOpen(false)}>
+          <DrawerContent casamentos={casamentos} />
         </ListDrawer>
       )}
     </div>

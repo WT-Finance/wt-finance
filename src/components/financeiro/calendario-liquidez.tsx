@@ -56,11 +56,16 @@ function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function getCellStyle(dia: CalendarioDia): React.CSSProperties {
+function getCellStyle(dia: CalendarioDia, maxAbs: number): React.CSSProperties {
   if (dia.fora_do_mes) return { opacity: 0.35 }
-  if (dia.saldo_dia > 0) return { background: 'var(--positive-soft)' }
-  if (dia.saldo_dia < 0) return { background: 'var(--negative-soft)' }
-  return {}
+  if (dia.saldo_dia === 0 || maxAbs === 0) return {}
+  const ratio   = Math.abs(dia.saldo_dia) / maxAbs
+  const opacity = Math.max(0.15, Math.min(1, ratio))
+  if (dia.saldo_dia > 0) {
+    return { background: `rgba(196, 213, 166, ${opacity.toFixed(2)})` }
+  } else {
+    return { background: `rgba(232, 201, 192, ${opacity.toFixed(2)})` }
+  }
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -251,7 +256,7 @@ export default function CalendarioLiquidez() {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm flex-1">
+      <div className="rounded-xl border border-[--border] bg-white p-4 flex-1">
         {/* Card title */}
         <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
           Calendário de Liquidez
@@ -310,68 +315,72 @@ export default function CalendarioLiquidez() {
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-0.5">
-            {cells.map(dia => {
-              const cellStyle: React.CSSProperties = {
-                ...getCellStyle(dia),
-                ...(dia.eh_hoje
-                  ? { outline: '2px solid var(--brand)', outlineOffset: '-2px' }
-                  : {}),
-              }
+            {(() => {
+              const inMonthCells = cells.filter(c => !c.fora_do_mes)
+              const maxAbsSaldo  = inMonthCells.length > 0
+                ? Math.max(...inMonthCells.map(c => Math.abs(c.saldo_dia)))
+                : 0
 
-              return (
+              return cells.map(dia => (
                 <button
                   key={dia.data}
                   onClick={() => abrirDia(dia)}
-                  className="rounded p-1 text-left min-h-14 hover:brightness-95 transition-all cursor-pointer"
-                  style={cellStyle}
+                  className="rounded p-1 text-left min-h-14 hover:brightness-95 transition-all cursor-pointer flex flex-col"
+                  style={{
+                    ...getCellStyle(dia, maxAbsSaldo),
+                    ...(dia.eh_hoje ? { outline: '2px solid var(--brand)', outlineOffset: '-2px' } : {}),
+                  }}
                 >
-                  {/* Day number */}
-                  <p className={[
-                    'text-xs font-semibold leading-none mb-0.5',
-                    dia.fora_do_mes ? 'text-zinc-300' : 'text-zinc-700',
-                  ].join(' ')}>
+                  {/* Day number — top-left, small */}
+                  <p className={['text-[10px] font-medium leading-none', dia.fora_do_mes ? 'text-zinc-300' : 'text-zinc-500'].join(' ')}>
                     {dia.dia}
                   </p>
 
-                  {/* Entradas / Saídas */}
+                  {/* Entradas / Saídas mini */}
                   {!dia.fora_do_mes && (dia.entradas_dia > 0 || dia.saidas_dia > 0) && (
-                    <div className="space-y-px">
+                    <div className="mt-0.5 space-y-px">
                       {dia.entradas_dia > 0 && (
-                        <p className="text-[9px] leading-none tabular-nums" style={{ color: 'var(--positive-deep)' }}>
+                        <p className="text-[8px] leading-none tabular-nums" style={{ color: 'var(--positive-deep)' }}>
                           +{fmtMi(dia.entradas_dia)}
                         </p>
                       )}
                       {dia.saidas_dia > 0 && (
-                        <p className="text-[9px] leading-none tabular-nums" style={{ color: 'var(--negative-deep)' }}>
+                        <p className="text-[8px] leading-none tabular-nums" style={{ color: 'var(--negative-deep)' }}>
                           -{fmtMi(dia.saidas_dia)}
                         </p>
                       )}
                     </div>
                   )}
 
-                  {/* Saldo */}
+                  {/* Saldo — dominant, at the bottom */}
                   {!dia.fora_do_mes && dia.saldo_dia !== 0 && (
                     <p
-                      className="text-[9px] font-semibold leading-none tabular-nums mt-0.5"
-                      style={{ color: dia.saldo_dia >= 0 ? 'var(--positive)' : 'var(--negative)' }}
+                      className="text-[10px] font-bold leading-none tabular-nums mt-auto pt-0.5"
+                      style={{ color: dia.saldo_dia >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)' }}
                     >
                       {fmtMi(dia.saldo_dia)}
                     </p>
                   )}
                 </button>
-              )
-            })}
+              ))
+            })()}
           </div>
         )}
 
         {/* Legend */}
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }} />
+            <div
+              className="w-16 h-3 rounded"
+              style={{ background: 'linear-gradient(to right, rgba(196,213,166,0.15), rgba(196,213,166,1))' }}
+            />
             <span className="text-[10px] text-zinc-400">Saldo positivo</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded" style={{ background: '#fff1f2', border: '1px solid #fecdd3' }} />
+            <div
+              className="w-16 h-3 rounded"
+              style={{ background: 'linear-gradient(to right, rgba(232,201,192,0.15), rgba(232,201,192,1))' }}
+            />
             <span className="text-[10px] text-zinc-400">Saldo negativo</span>
           </div>
         </div>

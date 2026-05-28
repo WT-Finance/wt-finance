@@ -22,7 +22,7 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
 
   if (!data || data.total === 0) {
     return (
-      <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0">
+      <div className="bg-white rounded-xl border border-[--border] px-5 py-4 min-w-0">
         <p className="text-xs text-zinc-500 mb-3">Vendas com receita bruta negativa</p>
         <EmptyState icon={TrendingDown} message="Nenhuma operação com receita negativa registrada" />
       </div>
@@ -32,7 +32,7 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
   const subtitulo = 'Vendas com receita bruta negativa'
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] min-w-0 flex flex-col">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 min-w-0 flex flex-col">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas com Receita Negativa</h2>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[13px] text-[--text-muted]">{subtitulo}</p>
@@ -54,9 +54,8 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {visiveis.map((item, i) => {
-              const muitoNegativo = item.receita < -1000
               return (
-                <tr key={i} className={muitoNegativo ? 'bg-danger-bg/40 hover:bg-danger-bg/70' : 'hover:bg-zinc-50'}>
+                <tr key={i} className="hover:bg-zinc-50">
                   <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                     {fmtDate(item.data_venda)}
                   </td>
@@ -110,9 +109,8 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {vendas.map((item, i) => {
-                const muitoNegativo = item.receita < -1000
                 return (
-                  <tr key={i} className={muitoNegativo ? 'bg-danger-bg/40 hover:bg-danger-bg/70' : 'hover:bg-zinc-50'}>
+                  <tr key={i} className="hover:bg-zinc-50">
                     <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                       {fmtDate(item.data_venda)}
                     </td>

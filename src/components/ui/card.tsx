@@ -5,14 +5,24 @@ interface CardProps {
   subtitle?:  string
   children:   ReactNode
   className?: string
+  featured?:  boolean
+  size?:      'default' | 'sm'
 }
 
-export function Card({ title, subtitle, children, className }: CardProps) {
+export function Card({ title, subtitle, children, className, featured, size = 'default' }: CardProps) {
+  const padding  = size === 'sm' ? 'px-3 py-3.5' : 'px-5 py-4'
+  const radius   = size === 'sm' ? 'rounded-lg'  : 'rounded-xl'
+  const border   = featured
+    ? 'border-2 border-[--brand]'
+    : 'border border-[--border]'
+
   return (
     <div
       className={[
-        'bg-white rounded-[10px] border border-[--border] px-6 py-5',
-        'shadow-[0_1px_3px_rgba(45,42,38,0.04)]',
+        'bg-white',
+        radius,
+        border,
+        padding,
         className ?? '',
       ].join(' ')}
     >

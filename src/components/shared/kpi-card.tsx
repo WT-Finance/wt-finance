@@ -100,7 +100,7 @@ export default function KpiCard({
   const valorColorStyle = (useBrandColor && benchmarkAlvo == null) ? 'var(--brand)' : undefined
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] h-full flex flex-col">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 h-full flex flex-col">
       {/* Label — h-8 acomoda até 2 linhas sem vazar sobre o valor */}
       <div className="h-8 flex items-start">
         <div className="relative group/tip flex-1">
@@ -172,7 +172,7 @@ export default function KpiCard({
 
 export function KpiCardSkeleton() {
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] animate-pulse">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 animate-pulse">
       <div className="h-3 w-24 rounded bg-zinc-200" />
       <div className="mt-2 h-7 w-32 rounded bg-zinc-200" />
       <div className="mt-2 space-y-1">

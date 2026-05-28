@@ -23,7 +23,7 @@ interface Props {
 export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
   if (!data || !data.meses.length) {
     return (
-      <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
+      <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
         <p className="text-sm text-zinc-400 text-center py-8">
           {data ? 'Sem lançamentos no período.' : 'Dados não disponíveis.'}
         </p>
@@ -34,7 +34,7 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
   const mesHoje = data.meses.find(m => m.eh_futuro)?.mes ?? null
 
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)]">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4">
       <div className="flex items-baseline gap-2 mb-4">
         <h2 className="text-base font-semibold text-[--text-primary]">
             Acumulado de Recebimentos e Pagamentos{operacaoLabel ? ` — ${operacaoLabel}` : ''}

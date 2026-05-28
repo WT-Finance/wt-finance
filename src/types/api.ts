@@ -398,3 +398,35 @@ export interface OperacaoListaItem {
   label:    string
 }
 export type OperacoesLista = OperacaoListaItem[]
+
+// ── V4.4: Drawer rico KPI principal Weddings (ADR-0086) ────────────────────
+
+export interface WeddingsDrawerSerie {
+  mes:         string        // 'YYYY-MM'
+  faturamento: number
+  receita:     number
+  margem_pct:  number
+  n_vendas:    number
+}
+
+export interface WeddingsDrawerYoySerie {
+  mes:         string
+  faturamento: number
+  receita:     number
+}
+
+export interface WeddingsDrawerTotais {
+  faturamento:  number
+  receita:      number
+  margem_pct:   number
+  n_vendas:     number
+  ticket_medio: number
+  receita_media: number
+}
+
+export interface WeddingsDrawerData {
+  series:     WeddingsDrawerSerie[]
+  yoy_series: WeddingsDrawerYoySerie[]
+  totais:     WeddingsDrawerTotais
+  subsetores: SumarioSubsetorItem[]
+}

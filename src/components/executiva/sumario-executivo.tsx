@@ -13,7 +13,7 @@ interface Props {
 
 export default function SumarioExecutivo({ texto }: Props) {
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] mb-6">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 mb-6">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">
         Resumo do período
       </p>
@@ -26,7 +26,7 @@ export default function SumarioExecutivo({ texto }: Props) {
 
 export function SumarioExecutivoSkeleton() {
   return (
-    <div className="bg-white rounded-[10px] border border-[--border] px-6 py-5 shadow-[0_1px_3px_rgba(45,42,38,0.04)] mb-6 animate-pulse">
+    <div className="bg-white rounded-xl border border-[--border] px-5 py-4 mb-6 animate-pulse">
       <div className="h-3 w-28 rounded bg-zinc-200 mb-3" />
       <div className="space-y-2">
         <div className="h-3 w-full rounded bg-zinc-100" />
