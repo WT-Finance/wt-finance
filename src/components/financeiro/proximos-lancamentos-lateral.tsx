@@ -41,6 +41,42 @@ function todayIso(): string {
   return format(new Date(), 'yyyy-MM-dd')
 }
 
+// --- Sort helper ---
+function sortLancamentos(items: ProximoLancamento[], ordem: string): ProximoLancamento[] {
+  const [field, dir] = ordem.split(':')
+  return [...items].sort((a, b) => {
+    let cmp = 0
+    if      (field === 'vencimento')  cmp = a.vencimento.localeCompare(b.vencimento)
+    else if (field === 'pessoa')      cmp = (a.pessoa ?? '').localeCompare(b.pessoa ?? '')
+    else if (field === 'valor_final') cmp = a.valor_final - b.valor_final
+    return dir === 'desc' ? -cmp : cmp
+  })
+}
+
+function SortTh({ children, field, right, ordem, onSort }: {
+  children: React.ReactNode
+  field: string
+  right?: boolean
+  ordem: string
+  onSort: (f: string) => void
+}) {
+  const [activeField, activeDir] = ordem.split(':')
+  const isActive = activeField === field
+  const arrow    = isActive ? (activeDir === 'asc' ? ' ▲' : ' ▼') : null
+  return (
+    <th
+      onClick={() => onSort(field)}
+      className={[
+        'py-1 text-[9px] font-medium cursor-pointer select-none whitespace-nowrap',
+        right ? 'text-right' : 'text-left',
+        isActive ? 'text-zinc-700' : 'text-zinc-400 hover:text-zinc-600',
+      ].join(' ')}
+    >
+      {children}{arrow}
+    </th>
+  )
+}
+
 // --- Linha tabular ---
 function LancamentoRow({ v }: { v: ProximoLancamento }) {
   const isEntrada = v.tipo === 'Entrada'
@@ -121,6 +157,7 @@ function TipoPills({
 function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLancamento[] }) {
   const [tipoFiltro, setTipoFiltro]     = useState<TipoFiltro>('todos')
   const [filtro, setFiltro]             = useState<Filtro>('10d')
+  const [ordem, setOrdem]               = useState('vencimento:asc')
   const [dadosCustom, setDadosCustom]   = useState<ProximoLancamento[] | null>(null)
   const [loading, setLoading]           = useState(false)
   const [popoverOpen, setPopoverOpen]   = useState(false)
@@ -145,11 +182,18 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
     filtro === '10d' ? lancamentosDefault :
                        dadosCustom ?? []
 
-  const lancamentos = tipoFiltro === 'todos'
+  const filtered = tipoFiltro === 'todos'
     ? baseData
     : baseData.filter(l =>
         tipoFiltro === 'receber' ? l.tipo === 'Entrada' : l.tipo === 'Saída'
       )
+
+  const lancamentos = sortLancamentos(filtered, ordem)
+
+  const handleSort = (field: string) => {
+    const [cur, dir] = ordem.split(':')
+    setOrdem(cur === field && dir === 'asc' ? `${field}:desc` : `${field}:asc`)
+  }
 
   const handlePillPeriodoClick = (f: Filtro) => {
     if (f === 'custom') {
@@ -277,9 +321,9 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
             <thead>
               <tr className="border-b border-zinc-100">
                 <th className="py-1 w-4" />
-                <th className="py-1 text-left text-[9px] font-medium text-zinc-400 pr-2 w-12">Data</th>
-                <th className="py-1 text-left text-[9px] font-medium text-zinc-400">Pessoa</th>
-                <th className="py-1 text-right text-[9px] font-medium text-zinc-400">Valor</th>
+                <SortTh field="vencimento"  ordem={ordem} onSort={handleSort} >Data</SortTh>
+                <SortTh field="pessoa"      ordem={ordem} onSort={handleSort} >Pessoa</SortTh>
+                <SortTh field="valor_final" ordem={ordem} onSort={handleSort} right>Valor</SortTh>
               </tr>
             </thead>
             <tbody>
