@@ -128,7 +128,7 @@ export default function PeriodoFilter() {
                     <div className="flex-1">
                       <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Início</label>
                       <input
-                        type="date" value={fromVal} max={toVal || TODAY}
+                        type="date" aria-label="Data inicial" value={fromVal} max={toVal || TODAY}
                         onChange={e => { setFromVal(e.target.value); setErroFrom('') }}
                         className="w-full rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2"
                         style={{ color: 'var(--text-primary)', borderColor: 'var(--border)', fontFamily: 'inherit', ['--tw-ring-color' as string]: 'var(--brand)' }}
@@ -138,7 +138,7 @@ export default function PeriodoFilter() {
                     <div className="flex-1">
                       <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Fim</label>
                       <input
-                        type="date" value={toVal} min={fromVal} max={TODAY}
+                        type="date" aria-label="Data final" value={toVal} min={fromVal} max={TODAY}
                         onChange={e => { setToVal(e.target.value); setErroTo('') }}
                         className="w-full rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2"
                         style={{ color: 'var(--text-primary)', borderColor: 'var(--border)', fontFamily: 'inherit', ['--tw-ring-color' as string]: 'var(--brand)' }}
