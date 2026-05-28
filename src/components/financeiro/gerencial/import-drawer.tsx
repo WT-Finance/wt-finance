@@ -1,7 +1,8 @@
 'use client'
 import { useState, useTransition } from 'react'
 import ListDrawer from '@/components/shared/list-drawer'
-import { parseImport, computeImportDiff, commitImport } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
+import { computeImportDiff, commitImport } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
+import { parseGerencialExcel } from '@/lib/gerencial/parser'
 import type { ImportDiff, LancamentoPlanilha } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 
 type Etapa = 'upload' | 'preview' | 'sucesso'
@@ -23,12 +24,19 @@ export default function ImportDrawer({ open, onClose }: Props) {
   const handleAnalisar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErro(null)
-    const fd = new FormData(e.currentTarget)
+    const file = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0]
+    if (!file) { setErro('Nenhum arquivo selecionado'); return }
+    if (file.size > 10 * 1024 * 1024) { setErro('Arquivo maior que 10MB'); return }
+
     startParsing(async () => {
-      const parseRes = await parseImport(fd)
+      // Parsing acontece no browser (evita xlsx no servidor serverless)
+      const buffer = await file.arrayBuffer()
+      const parseRes = await parseGerencialExcel(buffer)
       if (!parseRes.success) { setErro(parseRes.error); return }
       setWarnings(parseRes.warnings)
       setPlanilha(parseRes.lancamentos)
+
+      // Diff calculado via Server Action (apenas lógica de BD)
       const diffRes = await computeImportDiff(parseRes.lancamentos)
       if (!diffRes.success) { setErro(diffRes.error); return }
       setDiff(diffRes.diff)

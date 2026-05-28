@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { parseGerencialExcel, chaveDuplicata } from '@/lib/gerencial/parser'
-import type { LancamentoPlanilha }             from '@/lib/gerencial/parser'
+import { chaveDuplicata }      from '@/lib/gerencial/parser'
+import type { LancamentoPlanilha } from '@/lib/gerencial/parser'
 
 export type { LancamentoPlanilha }
 
@@ -23,23 +23,8 @@ function rpc(fn: string, args?: Record<string, unknown>) {
 }
 
 // ─── Importação ───────────────────────────────────────────────────────────────
-
-export async function parseImport(formData: FormData): Promise<
-  | { success: true;  lancamentos: LancamentoPlanilha[]; warnings: string[] }
-  | { success: false; error: string }
-> {
-  try {
-    const file = formData.get('file') as File | null
-    if (!file) return { success: false, error: 'Nenhum arquivo enviado' }
-    if (file.size > 10 * 1024 * 1024) return { success: false, error: 'Arquivo maior que 10MB' }
-    const buffer = await file.arrayBuffer()
-    const result = parseGerencialExcel(buffer)
-    if (!result.success) return { success: false, error: result.error }
-    return { success: true, lancamentos: result.lancamentos, warnings: result.warnings }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Erro ao processar arquivo' }
-  }
-}
+// Nota: o parsing do Excel acontece no cliente (import-drawer.tsx).
+// As Server Actions aqui recebem apenas dados já normalizados.
 
 export async function computeImportDiff(planilha: LancamentoPlanilha[]): Promise<
   | { success: true;  diff: ImportDiff }
