@@ -27,3 +27,11 @@
 **Justificativa:** Tokens permitem mudança de saturação em iteração futura sem refatorar componentes. Verde sage + terracota são harmônicos com a paleta existente e menos agressivos visualmente.
 
 **Risco:** Usuárias acostumadas a financeiro tradicional podem achar "sem energia". Mitigação: se feedback negativo, ajustar saturação via tokens sem tocar nos componentes.
+
+---
+
+## Nota retroativa (v4.5)
+
+Durante a v4.4, identificou-se que `var(--negative-deep)` (#6B2D1F, borgonha escuro) é pouco visível como cor de pontos negativos na linha de Resultado Mensal do gráfico Fluxo de Caixa Mensal da Aba Financeiro. A cor foi substituída por `var(--danger)` (#B85C5C, terracota), que oferece melhor visibilidade mantendo coerência com a identidade visual.
+
+`var(--negative-deep)` permanece definido como token mas seu uso é limitado a textos sobre fundo `--negative-soft` (alto contraste em badges). Pontos de gráfico negativos usam `var(--danger)`.

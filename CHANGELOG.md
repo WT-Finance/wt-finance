@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.5.0] — Unreleased
+
+### Removido
+- Migration 0089 (`get_kpi_weddings_drawer`) descartada definitivamente — drawer KPI principal usa RPCs existentes (`get_tendencia_margem`, `get_executiva_kpis`, `get_sumario_subsetor`)
+- RPC `get_sparklines` removida do banco (morta no frontend desde v3.9)
+
+---
+
 ## [4.4.0] — 2026-05-27
 
 ### Adicionado
