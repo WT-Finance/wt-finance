@@ -6,6 +6,44 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.5.0] — 2026-05-28
+
+### Adicionado
+- Tokens CSS semânticos para cores de subsetores Weddings (`--subsetor-comercial`, `--subsetor-planejamento`, `--subsetor-producao`, `--subsetor-hospedagens`, `--subsetor-extras`)
+- Página `/admin/design-system` — catálogo visual de tokens e componentes
+- Filtros de tipo (Todos / A pagar / A receber) em Próximos Lançamentos com pills sticky no drawer
+- Parâmetro `p_tipo` na RPC `get_proximos_lancamentos` (migration 0091)
+- YoY nos cards de subsetor Weddings — aguarda extensão da RPC `get_sumario_subsetor` (pendência M3b)
+- Relatório de audit completo em `docs/audits/2026-05-28-audit-completo-v4-5.md`
+- ADR-0087 — Tokens semânticos consolidados
+- ADR-0088 — Filtros sticky e padrão tabular em Próximos Lançamentos
+
+### Alterado
+- Próximos Lançamentos reformulado em formato tabular com 3 colunas (ícone+data | pessoa/descrição | valor)
+- Card principal KPIs Weddings: padding compactado (sem vazio excessivo abaixo de "Ver mais ›")
+- Cards Weddings: removido indicador MoM — exibido apenas YoY
+- "Composição do Período" renomeada para "Composição dos Lançamentos" com subtítulo "no período selecionado"
+- Cores de subsetores migradas de hex hardcoded para tokens semânticos `var(--subsetor-*)`
+- Nota retroativa adicionada ao ADR-0071/0081 sobre uso de `var(--danger)` em pontos de gráfico negativos
+
+### Corrigido
+- Função `calcularDuracao` em Lista de Operações Weddings: timezone-safe + silencia durações negativas
+- Import não usado em `periodo-filter.tsx`
+- Card residual com `border border-[--border]` migrado para `shadow-sm`
+
+### Removido
+- RPC `get_sparklines` — morta no frontend desde v3.9 (migration 0090)
+- Migration 0089 (`get_kpi_weddings_drawer`) descartada definitivamente — drawer KPI usa RPCs existentes
+
+### Pendências registradas para v4.6+
+- YoY nos cards de subsetor (aguarda extensão da RPC `get_sumario_subsetor`)
+- Middleware de proteção `/admin/*` (atualmente depende de proteção upstream)
+- 7 RPCs órfãs no banco
+- Vulnerabilidades npm (next, xlsx — sem fix oficial disponível)
+- Ver relatório completo em `docs/audits/2026-05-28-audit-completo-v4-5.md`
+
+---
+
 ## [4.4.0] — 2026-05-27
 
 ### Adicionado

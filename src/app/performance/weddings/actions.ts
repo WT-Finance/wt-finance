@@ -9,7 +9,7 @@ export async function fetchWeddingsKpis(
   yoyFrom: string, yoyTo: string,
 ) {
   const db = getServerClient()
-  const [kpisRes, tendRes, sumarioRes] = await Promise.all([
+  const [kpisRes, tendRes, sumarioRes, sumarioYoyRes] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: 'Weddings',
       p_ant_from: antFrom, p_ant_to: antTo,
@@ -17,11 +17,13 @@ export async function fetchWeddingsKpis(
     }),
     db.rpc('get_tendencia_margem', { p_from: from, p_to: to, p_setor: 'Weddings' }),
     db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
+    db.rpc('get_sumario_subsetor', { p_from: yoyFrom, p_to: yoyTo }),
   ])
   return {
-    kpis:      kpisRes.error    ? null : kpisRes.data    as unknown as ExecutivaKpis,
-    tendencia: tendRes.error    ? null : tendRes.data    as unknown as TendenciaMargem,
-    sumario:   sumarioRes.error ? null : sumarioRes.data as unknown as SumarioSubsetor,
+    kpis:       kpisRes.error       ? null : kpisRes.data       as unknown as ExecutivaKpis,
+    tendencia:  tendRes.error       ? null : tendRes.data       as unknown as TendenciaMargem,
+    sumario:    sumarioRes.error    ? null : sumarioRes.data    as unknown as SumarioSubsetor,
+    sumarioYoy: sumarioYoyRes.error ? null : sumarioYoyRes.data as unknown as SumarioSubsetor,
   }
 }
 

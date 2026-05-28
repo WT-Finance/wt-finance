@@ -22,9 +22,10 @@ interface Props {
   lancamentos: ProximoLancamento[]
 }
 
+type TipoFiltro = 'todos' | 'receber' | 'pagar'
 type Filtro = '5d' | '10d' | 'custom'
 
-const LIMITE_INICIAL = 9
+const LIMITE_INICIAL = 11
 
 function formatDateShort(iso: string): string {
   const [, m, d] = iso.split('-')
@@ -40,70 +41,128 @@ function todayIso(): string {
   return format(new Date(), 'yyyy-MM-dd')
 }
 
+// --- Sort helper ---
+function sortLancamentos(items: ProximoLancamento[], ordem: string): ProximoLancamento[] {
+  const [field, dir] = ordem.split(':')
+  return [...items].sort((a, b) => {
+    let cmp = 0
+    if      (field === 'vencimento')  cmp = a.vencimento.localeCompare(b.vencimento)
+    else if (field === 'pessoa')      cmp = (a.pessoa ?? '').localeCompare(b.pessoa ?? '')
+    else if (field === 'valor_final') cmp = a.valor_final - b.valor_final
+    return dir === 'desc' ? -cmp : cmp
+  })
+}
+
+function SortTh({ children, field, right, ordem, onSort }: {
+  children: React.ReactNode
+  field: string
+  right?: boolean
+  ordem: string
+  onSort: (f: string) => void
+}) {
+  const [activeField, activeDir] = ordem.split(':')
+  const isActive = activeField === field
+  const arrow    = isActive ? (activeDir === 'asc' ? ' ▲' : ' ▼') : null
+  return (
+    <th
+      onClick={() => onSort(field)}
+      className={[
+        'py-1 text-xs font-medium cursor-pointer select-none whitespace-nowrap',
+        right ? 'text-right' : 'text-left',
+        isActive ? 'text-zinc-700' : 'text-zinc-400 hover:text-zinc-600',
+      ].join(' ')}
+    >
+      {children}{arrow}
+    </th>
+  )
+}
+
+// --- Linha tabular ---
 function LancamentoRow({ v }: { v: ProximoLancamento }) {
   const isEntrada = v.tipo === 'Entrada'
   const isHoje    = v.dias_para_vencer === 0
+  const Icon      = isEntrada ? ArrowDownRight : ArrowUpRight
+  const cor       = isEntrada ? 'var(--positive)' : 'var(--negative)'
 
   return (
-    <div className="py-2 flex items-center gap-2">
-      {/* Icon */}
-      <span className="shrink-0" style={{ color: isEntrada ? 'var(--positive)' : 'var(--negative)' }}>
-        {isEntrada ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
-      </span>
-
-      {/* Date badge */}
-      <div
-        className="shrink-0 rounded px-1.5 py-0.5 text-center min-w-8.5"
-        style={isHoje
-          ? { background: 'var(--neutral-soft)', color: 'var(--neutral)' }
-          : {}
-        }
-      >
-        <p className={['text-[10px] font-semibold leading-none tabular-nums', isHoje ? '' : 'text-zinc-500'].join(' ')}>
+    <tr className="border-b border-zinc-50 last:border-0">
+      {/* Ícone */}
+      <td className="py-1.5 pr-1 w-4 shrink-0">
+        <Icon size={12} style={{ color: cor }} />
+      </td>
+      {/* Data */}
+      <td className="py-1.5 pr-2 whitespace-nowrap">
+        <span className="text-[10px] text-zinc-500 tabular-nums">
           {formatDateShort(v.vencimento)}
+        </span>
+      </td>
+      {/* Pessoa / Descrição */}
+      <td className="py-1.5 min-w-0 max-w-0 w-full">
+        <p className="text-[11px] font-medium text-zinc-700 truncate leading-none">
+          {v.pessoa ?? '—'}
         </p>
-        {isHoje && <p className="text-[8px] leading-none mt-0.5 font-medium">hoje</p>}
-      </div>
-
-      {/* Pessoa + descrição */}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-zinc-700 truncate font-medium leading-snug">{v.pessoa ?? '—'}</p>
-        {v.descricao && v.descricao !== 'Pagamento venda' && (
-          <p className="text-[10px] text-zinc-400 truncate leading-snug">{v.descricao}</p>
+        {v.descricao && (
+          <p className="text-[9px] text-zinc-400 truncate leading-none mt-0.5">{v.descricao}</p>
         )}
-      </div>
+      </td>
+      {/* Valor */}
+      <td className="py-1.5 pl-2 text-right whitespace-nowrap">
+        <span className="text-[10px] font-semibold tabular-nums" style={{ color: cor }}>
+          {isEntrada ? '+' : '-'}{fmtBRL(v.valor_final)}
+        </span>
+      </td>
+    </tr>
+  )
+}
 
-      {/* Badge + valor */}
-      <div className="flex flex-col items-end gap-0.5 shrink-0">
-        <span
-          className="inline-block px-1.5 py-0.5 rounded text-[9px] font-medium"
-          style={isEntrada
-            ? { background: 'var(--positive-soft)', color: 'var(--positive-deep)' }
-            : { background: 'var(--negative-soft)', color: 'var(--negative-deep)' }
-          }
+const PILL_ACTIVE_STYLE = {
+  background:  'var(--brand-soft)',
+  borderColor: 'var(--brand)',
+  color:       'var(--brand-deep)',
+}
+const PILL_BASE = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
+const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
+
+// --- Pills de tipo ---
+function TipoPills({
+  value,
+  onChange,
+}: {
+  value: TipoFiltro
+  onChange: (t: TipoFiltro) => void
+}) {
+  const pills: { id: TipoFiltro; label: string }[] = [
+    { id: 'todos',   label: 'Todos'     },
+    { id: 'receber', label: 'A receber' },
+    { id: 'pagar',   label: 'A pagar'   },
+  ]
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {pills.map(p => (
+        <button
+          key={p.id}
+          onClick={() => onChange(p.id)}
+          className={[PILL_BASE, value === p.id ? '' : PILL_INACTIVE].join(' ')}
+          style={value === p.id ? PILL_ACTIVE_STYLE : undefined}
         >
-          {isEntrada ? 'A Receber' : 'A Pagar'}
-        </span>
-        <span
-          className="text-[10px] font-semibold tabular-nums"
-          style={{ color: isEntrada ? 'var(--positive)' : 'var(--negative)' }}
-        >
-          {fmtBRL(v.valor_final)}
-        </span>
-      </div>
+          {p.label}
+        </button>
+      ))}
     </div>
   )
 }
 
-// ── Drawer content with filter logic ─────────────────────────────────────────
+// ── Drawer content ────────────────────────────────────────────────────────────
 
 function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLancamento[] }) {
-  const [filtro, setFiltro]           = useState<Filtro>('10d')
-  const [dadosCustom, setDadosCustom] = useState<ProximoLancamento[] | null>(null)
-  const [loading, setLoading]         = useState(false)
-  const [popoverOpen, setPopoverOpen] = useState(false)
-  const [customFrom, setCustomFrom]   = useState(todayIso())
-  const [customTo, setCustomTo]       = useState(todayIso())
+  const [tipoFiltro, setTipoFiltro]     = useState<TipoFiltro>('todos')
+  const [filtro, setFiltro]             = useState<Filtro>('10d')
+  const [ordem, setOrdem]               = useState('vencimento:asc')
+  const [dadosCustom, setDadosCustom]   = useState<ProximoLancamento[] | null>(null)
+  const [loading, setLoading]           = useState(false)
+  const [popoverOpen, setPopoverOpen]   = useState(false)
+  const [customFrom, setCustomFrom]     = useState(todayIso())
+  const [customTo, setCustomTo]         = useState(todayIso())
   const [appliedRange, setAppliedRange] = useState<{ from: string; to: string } | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
 
@@ -118,12 +177,25 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
     return () => document.removeEventListener('mousedown', handler)
   }, [popoverOpen])
 
-  const lancamentos: ProximoLancamento[] =
+  const baseData: ProximoLancamento[] =
     filtro === '5d'  ? lancamentosDefault.filter(l => l.dias_para_vencer <= 5) :
     filtro === '10d' ? lancamentosDefault :
                        dadosCustom ?? []
 
-  const handlePillClick = (f: Filtro) => {
+  const filtered = tipoFiltro === 'todos'
+    ? baseData
+    : baseData.filter(l =>
+        tipoFiltro === 'receber' ? l.tipo === 'Entrada' : l.tipo === 'Saída'
+      )
+
+  const lancamentos = sortLancamentos(filtered, ordem)
+
+  const handleSort = (field: string) => {
+    const [cur, dir] = ordem.split(':')
+    setOrdem(cur === field && dir === 'asc' ? `${field}:desc` : `${field}:asc`)
+  }
+
+  const handlePillPeriodoClick = (f: Filtro) => {
     if (f === 'custom') {
       setPopoverOpen(p => !p)
       return
@@ -165,120 +237,166 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
     ? `${fmtShort(appliedRange.from)} — ${fmtShort(appliedRange.to)}`
     : 'Personalizado'
 
-  const pillClass = (f: Filtro) => [
-    'text-[11px] px-2.5 py-0.5 rounded-full border transition-colors',
-    filtro === f
-      ? 'bg-zinc-800 text-white border-zinc-800'
-      : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',
-  ].join(' ')
+  const pillPeriodoClass = (f: Filtro) =>
+    [PILL_BASE, filtro === f ? '' : PILL_INACTIVE].join(' ')
+  const pillPeriodoStyle = (f: Filtro) =>
+    filtro === f ? PILL_ACTIVE_STYLE : undefined
 
   return (
-    <div>
-      {/* Pills + popover */}
-      <div className="relative mb-4" ref={popoverRef}>
-        <div className="flex items-center gap-1.5">
-          <button className={pillClass('5d')}  onClick={() => handlePillClick('5d')}>5 dias</button>
-          <button className={pillClass('10d')} onClick={() => handlePillClick('10d')}>10 dias</button>
-          <button
-            className={pillClass('custom')}
-            onClick={() => handlePillClick('custom')}
-            disabled={loading}
-          >
-            {loading ? '...' : customLabel}
-          </button>
-        </div>
+    <div className="flex flex-col h-full">
+      {/* Sticky header */}
+      <div className="sticky top-0 bg-white z-10 pb-3 border-b border-zinc-100">
+        {/* Pills de tipo */}
+        <TipoPills value={tipoFiltro} onChange={setTipoFiltro} />
 
-        {popoverOpen && (
-          <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
-            <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
-            <div className="space-y-2 mb-4">
-              <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">De</label>
-                <input
-                  type="date"
-                  value={customFrom}
-                  onChange={e => setCustomFrom(e.target.value)}
-                  className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">Até</label>
-                <input
-                  type="date"
-                  value={customTo}
-                  min={customFrom}
-                  onChange={e => setCustomTo(e.target.value)}
-                  className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPopoverOpen(false)}
-                className="flex-1 text-[11px] text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={aplicarCustom}
-                className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors"
-                style={{ background: 'var(--brand)' }}
-              >
-                Aplicar
-              </button>
-            </div>
+        {/* Pills de período */}
+        <div className="relative mt-2" ref={popoverRef}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className={pillPeriodoClass('5d')}  style={pillPeriodoStyle('5d')}  onClick={() => handlePillPeriodoClick('5d')}>5 dias</button>
+            <button className={pillPeriodoClass('10d')} style={pillPeriodoStyle('10d')} onClick={() => handlePillPeriodoClick('10d')}>10 dias</button>
+            <button
+              className={pillPeriodoClass('custom')}
+              style={pillPeriodoStyle('custom')}
+              onClick={() => handlePillPeriodoClick('custom')}
+              disabled={loading}
+            >
+              {loading ? '...' : customLabel}
+            </button>
           </div>
-        )}
+
+          {popoverOpen && (
+            <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
+              <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
+              <div className="space-y-2 mb-4">
+                <div>
+                  <label className="text-[10px] text-zinc-400 block mb-1">De</label>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={e => setCustomFrom(e.target.value)}
+                    className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-400 block mb-1">Até</label>
+                  <input
+                    type="date"
+                    value={customTo}
+                    min={customFrom}
+                    onChange={e => setCustomTo(e.target.value)}
+                    className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPopoverOpen(false)}
+                  className="flex-1 text-[11px] text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={aplicarCustom}
+                  className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors"
+                  style={{ background: 'var(--brand)' }}
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* List */}
-      {lancamentos.length === 0 ? (
-        <p className="text-xs text-zinc-400 text-center py-8">
-          {filtro === 'custom' && dadosCustom === null
-            ? 'Selecione um período e clique em Aplicar'
-            : 'Nenhum vencimento no período selecionado'}
-        </p>
-      ) : (
-        <div className="divide-y divide-zinc-50">
-          {lancamentos.map((v, i) => (
-            <LancamentoRow key={v.numero ?? i} v={v} />
-          ))}
-        </div>
-      )}
+      {/* Lista rolável */}
+      <div className="flex-1 overflow-y-auto pt-3">
+        {lancamentos.length === 0 ? (
+          <p className="text-xs text-zinc-400 text-center py-8">
+            {filtro === 'custom' && dadosCustom === null
+              ? 'Selecione um período e clique em Aplicar'
+              : 'Nenhum lançamento no período e filtro selecionados'}
+          </p>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-100">
+                <th className="py-1 w-4" />
+                <SortTh field="vencimento"  ordem={ordem} onSort={handleSort} >Data</SortTh>
+                <SortTh field="pessoa"      ordem={ordem} onSort={handleSort} >Pessoa</SortTh>
+                <SortTh field="valor_final" ordem={ordem} onSort={handleSort} right>Valor</SortTh>
+              </tr>
+            </thead>
+            <tbody>
+              {lancamentos.map((v, i) => (
+                <LancamentoRow key={v.numero ?? i} v={v} />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ProximosLancamentosLateral({ lancamentos: lancamentosDefault }: Props) {
+  const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('todos')
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const visiveis = lancamentosDefault.slice(0, LIMITE_INICIAL)
+  const filtrados = tipoFiltro === 'todos'
+    ? lancamentosDefault
+    : lancamentosDefault.filter(l =>
+        tipoFiltro === 'receber' ? l.tipo === 'Entrada' : l.tipo === 'Saída'
+      )
+
+  const visiveis = filtrados.slice(0, LIMITE_INICIAL)
 
   return (
     <>
-      <div className="rounded-xl shadow-sm bg-white flex-1 flex flex-col">
-
+      <div className="rounded-xl bg-white shadow-sm flex-1 flex flex-col">
         {/* Header */}
-        <div className="px-4 pt-4 pb-1 shrink-0">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-zinc-700">Próximos Lançamentos</h3>
-            <span className="text-[10px] text-zinc-400 tabular-nums">{lancamentosDefault.length} itens</span>
+        <div className="px-4 pt-4 pb-2 shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-semibold text-zinc-700">Próximos Lançamentos</h3>
+            <span className="text-[10px] text-zinc-400 tabular-nums">{filtrados.length} itens</span>
           </div>
+          <TipoPills value={tipoFiltro} onChange={setTipoFiltro} />
         </div>
 
-        {/* List */}
-        {lancamentosDefault.length === 0 ? (
+        {/* Tabela */}
+        {filtrados.length === 0 ? (
           <div className="flex-1 flex items-center justify-center px-4 pb-4">
-            <p className="text-xs text-zinc-400 text-center">Nenhum vencimento nos próximos 10 dias</p>
+            <p className="text-xs text-zinc-400 text-center">
+              {tipoFiltro === 'todos'
+                ? 'Nenhum vencimento nos próximos 10 dias'
+                : `Nenhum lançamento ${tipoFiltro === 'receber' ? 'a receber' : 'a pagar'} nos próximos 10 dias`}
+            </p>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto min-h-0 px-4 divide-y divide-zinc-50">
-              {visiveis.map((v, i) => (
-                <LancamentoRow key={v.numero ?? i} v={v} />
-              ))}
+            <div className="flex-1 overflow-y-auto min-h-0 px-4">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-zinc-100">
+                    <th className="py-1 w-4" />
+                    <th className="py-1 text-left text-[9px] font-medium text-zinc-400 pr-2 w-12">
+                      Data
+                    </th>
+                    <th className="py-1 text-left text-[9px] font-medium text-zinc-400">
+                      Pessoa
+                    </th>
+                    <th className="py-1 text-right text-[9px] font-medium text-zinc-400">
+                      Valor
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visiveis.map((v, i) => (
+                    <LancamentoRow key={v.numero ?? i} v={v} />
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             <div className="shrink-0 border-t border-zinc-100">
@@ -294,7 +412,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
       </div>
 
       {drawerOpen && (
-        <ListDrawer titulo="Próximos Lançamentos" onClose={() => setDrawerOpen(false)}>
+        <ListDrawer titulo="Próximos Lançamentos" subtitulo="Próximos lançamentos de contas a pagar e a receber." onClose={() => setDrawerOpen(false)}>
           <DrawerContent lancamentosDefault={lancamentosDefault} />
         </ListDrawer>
       )}

@@ -31,9 +31,13 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 
 function calcularDuracao(dataVenda: string | null, dataEvento: string | null): number | null {
   if (!dataVenda || !dataEvento) return null
-  return Math.round(
-    (new Date(dataEvento).getTime() - new Date(dataVenda).getTime()) / (1000 * 60 * 60 * 24)
-  )
+  // Usa string split para evitar ambiguidade de timezone com new Date('YYYY-MM-DD')
+  const [yv, mv, dv] = dataVenda.split('-').map(Number)
+  const [ye, me, de] = dataEvento.split('-').map(Number)
+  const msVenda  = Date.UTC(yv, mv - 1, dv)
+  const msEvento = Date.UTC(ye, me - 1, de)
+  const dias = Math.round((msEvento - msVenda) / (1000 * 60 * 60 * 24))
+  return dias >= 0 ? dias : null
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────

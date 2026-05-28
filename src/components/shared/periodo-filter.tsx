@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { format, parseISO, differenceInMonths } from 'date-fns'
-import { usePeriodoFilter, type PeriodoCustomizado } from '@/components/layout/period-filter-provider'
+import { usePeriodoFilter } from '@/components/layout/period-filter-provider'
 import type { PresetPeriodo } from '@/lib/periodo'
 
 const PILLS: { value: PresetPeriodo; label: string }[] = [
