@@ -27,12 +27,10 @@ export async function parseGerencialExcel(buffer: ArrayBuffer): Promise<ParseRes
     return { success: false, error: 'Arquivo Excel inválido ou corrompido' }
   }
 
-  const sheetName = workbook.SheetNames.find(n => n.toLowerCase() === 'monde')
+  // Usa a primeira aba disponível — não exige nome específico
+  const sheetName = workbook.SheetNames[0]
   if (!sheetName) {
-    return {
-      success: false,
-      error: `Aba "Monde" não encontrada. Abas disponíveis: ${workbook.SheetNames.join(', ')}`,
-    }
+    return { success: false, error: 'Arquivo Excel vazio (sem abas)' }
   }
 
   const sheet = workbook.Sheets[sheetName]
