@@ -5,7 +5,7 @@
  * Usa SheetJS com cellDates:true para converter serial de data do Excel em Date JS.
  */
 
-import * as XLSX from 'xlsx'
+import * as XLSX from '@e965/xlsx'
 import * as path from 'path'
 
 export interface LinhaRaw {
