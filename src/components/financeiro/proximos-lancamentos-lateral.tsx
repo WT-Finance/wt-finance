@@ -79,6 +79,14 @@ function LancamentoRow({ v }: { v: ProximoLancamento }) {
   )
 }
 
+const PILL_ACTIVE_STYLE = {
+  background:  'var(--brand-soft)',
+  borderColor: 'var(--brand)',
+  color:       'var(--brand-deep)',
+}
+const PILL_BASE = 'px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap'
+const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
+
 // --- Pills de tipo ---
 function TipoPills({
   value,
@@ -93,17 +101,13 @@ function TipoPills({
     { id: 'pagar',   label: 'A pagar'   },
   ]
   return (
-    <div className="flex gap-1.5">
+    <div className="flex gap-2 flex-wrap">
       {pills.map(p => (
         <button
           key={p.id}
           onClick={() => onChange(p.id)}
-          className={[
-            'text-[10px] px-2 py-0.5 rounded-full border transition-colors',
-            value === p.id
-              ? 'bg-zinc-800 text-white border-zinc-800'
-              : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',
-          ].join(' ')}
+          className={[PILL_BASE, value === p.id ? '' : PILL_INACTIVE].join(' ')}
+          style={value === p.id ? PILL_ACTIVE_STYLE : undefined}
         >
           {p.label}
         </button>
@@ -189,12 +193,10 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
     ? `${fmtShort(appliedRange.from)} — ${fmtShort(appliedRange.to)}`
     : 'Personalizado'
 
-  const pillPeriodoClass = (f: Filtro) => [
-    'text-[10px] px-2 py-0.5 rounded-full border transition-colors',
-    filtro === f
-      ? 'bg-zinc-800 text-white border-zinc-800'
-      : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',
-  ].join(' ')
+  const pillPeriodoClass = (f: Filtro) =>
+    [PILL_BASE, filtro === f ? '' : PILL_INACTIVE].join(' ')
+  const pillPeriodoStyle = (f: Filtro) =>
+    filtro === f ? PILL_ACTIVE_STYLE : undefined
 
   return (
     <div className="flex flex-col h-full">
@@ -205,11 +207,12 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
 
         {/* Pills de período */}
         <div className="relative mt-2" ref={popoverRef}>
-          <div className="flex items-center gap-1.5">
-            <button className={pillPeriodoClass('5d')}  onClick={() => handlePillPeriodoClick('5d')}>5 dias</button>
-            <button className={pillPeriodoClass('10d')} onClick={() => handlePillPeriodoClick('10d')}>10 dias</button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button className={pillPeriodoClass('5d')}  style={pillPeriodoStyle('5d')}  onClick={() => handlePillPeriodoClick('5d')}>5 dias</button>
+            <button className={pillPeriodoClass('10d')} style={pillPeriodoStyle('10d')} onClick={() => handlePillPeriodoClick('10d')}>10 dias</button>
             <button
               className={pillPeriodoClass('custom')}
+              style={pillPeriodoStyle('custom')}
               onClick={() => handlePillPeriodoClick('custom')}
               disabled={loading}
             >
