@@ -360,7 +360,19 @@ function DrawerBody() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} />
               <YAxis tickFormatter={v => `${v}%`} width={40} tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v: number) => `${v?.toFixed(1)}%`} />
+              <Tooltip content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null
+                return (
+                  <div className="bg-white border border-zinc-200 rounded-lg shadow-md px-3 py-2 text-xs">
+                    <p className="font-medium text-zinc-700 mb-1">{label}</p>
+                    {payload.map((p) => (
+                      <p key={String(p.name)} className="tabular-nums" style={{ color: p.color }}>
+                        {p.name}: {typeof p.value === 'number' ? `${p.value.toFixed(1)}%` : String(p.value)}
+                      </p>
+                    ))}
+                  </div>
+                )
+              }} />
               <Line
                 dataKey="margem_pct"
                 name="Margem %"
