@@ -5,7 +5,7 @@ import { fmtMi } from '@/lib/fmt'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import FluxoMensalChart, { type FluxoMensalV3Row } from '@/components/financeiro/fluxo-mensal-chart'
 import FluxoAcumuladoChart, { type FluxoAcumuladoRow } from '@/components/financeiro/fluxo-acumulado-chart'
-import ComposicaoPeriodo from '@/components/financeiro/composicao-periodo'
+import ComposicaoPeriodo from '@/components/financeiro/composicao-lancamentos'
 import PosicaoPorConta from '@/components/financeiro/posicao-por-conta'
 import TopSection from '@/components/shared/top-section'
 import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
@@ -222,7 +222,7 @@ export default async function FluxoCaixaPage({
             {/* Composição + Posição por Conta — títulos dentro dos cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
               <div className="rounded-xl shadow-sm bg-white p-5">
-                <CardTitle titulo="Composição do Período" />
+                <CardTitle titulo="Composição dos Lançamentos" subtitulo="no período selecionado" />
                 <p className="text-[11px] text-zinc-400 mb-3 -mt-2">
                   Decomposição por Grupo de Categoria (Lançamentos — regime contábil). Pode diferir levemente dos KPIs acima, que refletem fluxo bancário real.
                 </p>
