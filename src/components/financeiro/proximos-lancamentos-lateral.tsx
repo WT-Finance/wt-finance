@@ -67,7 +67,7 @@ function SortTh({ children, field, right, ordem, onSort }: {
     <th
       onClick={() => onSort(field)}
       className={[
-        'py-1 text-[9px] font-medium cursor-pointer select-none whitespace-nowrap',
+        'py-1 text-xs font-medium cursor-pointer select-none whitespace-nowrap',
         right ? 'text-right' : 'text-left',
         isActive ? 'text-zinc-700' : 'text-zinc-400 hover:text-zinc-600',
       ].join(' ')}
@@ -120,7 +120,7 @@ const PILL_ACTIVE_STYLE = {
   borderColor: 'var(--brand)',
   color:       'var(--brand-deep)',
 }
-const PILL_BASE = 'px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap'
+const PILL_BASE = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
 const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
 // --- Pills de tipo ---
