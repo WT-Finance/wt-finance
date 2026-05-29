@@ -6,6 +6,25 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.6.1] — 2026-05-28
+
+### Adicionado
+- Logos SVG Welcome Group e Welcome Weddings (alta resolução, @2x, @3x)
+- Ícones do browser: `favicon.ico`, `icon.svg` com dark mode (`@media (prefers-color-scheme: dark)`), `apple-icon.png` (180×180), ícones PWA `icon0.png` (192×192) e `icon1.png` (512×512)
+- Layout admin compartilhado (`src/app/admin/layout.tsx`) adicionado neste patch
+
+### Corrigido
+- Logo sidebar: `object-cover` → `object-contain` + `origin-left` corrige corte à esquerda no SVG
+- Sidebar usa logos `.svg` em vez de `.png` (qualidade superior)
+- `layout.tsx`: removidas referências manuais a `/apple-touch-icon.png` e `/favicon.ico` (Next.js auto-detecta os arquivos em `src/app/`)
+- `icon.svg`: dark mode usa branco (`#FFFFFF`) em vez de dourado
+- Link Weddings em `em-construcao.tsx` restaurado com cor `text-[#BD965C]`
+
+### Pendência técnica registrada
+- **Importação de planilha Gerencial (PEND-001)**: importação via Excel não funciona em produção — erro "An error occurred in the Server Components render" ao chamar `computeImportDiff` como Server Action. Parsing no browser funciona (`parseGerencialExcel`), dados chegam ao servidor, mas a execução da Server Action causa falha no re-render do Server Component. `ImportDrawer` foi isolado com `next/dynamic ssr:false` mas o erro persiste. Ver seção de investigação no out-briefing.
+
+---
+
 ## [4.6.0] — 2026-05-28
 
 ### Adicionado
