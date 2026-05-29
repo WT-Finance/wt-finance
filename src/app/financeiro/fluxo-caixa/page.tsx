@@ -154,9 +154,9 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
-    rpc('get_gerencial_projecao_diaria', { p_dias: 90 }),
-    rpc('get_gerencial_saldos'),
-    rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
+    rpc('get_gerencial_projecao_diaria', { p_dias: 90 }).catch(() => ({ data: null, error: { message: 'falha projecao' } })),
+    rpc('get_gerencial_saldos').catch(() => ({ data: null, error: { message: 'falha saldos' } })),
+    rpc('get_gerencial_lancamentos', { p_limit: 1000 }).catch(() => ({ data: null, error: { message: 'falha lancamentos' } })),
   ])
 
   const fluxoMensalRows    = (fluxoMensalRes.error    ? null : fluxoMensalRes.data    as FluxoMensalV3Row[]  | null) ?? []
