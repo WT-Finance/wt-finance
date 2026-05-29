@@ -143,9 +143,6 @@ export default async function FluxoCaixaPage({
     decomposicaoRes,
     posicaoRes,
     lancamentos10dRes,
-    projecaoRes,
-    saldosRes,
-    lancamentosGerencialRes,
   ] = await Promise.all([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
@@ -154,9 +151,6 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
-    rpc('get_gerencial_projecao_diaria', { p_dias: 90 }).catch(() => ({ data: null, error: { message: 'falha projecao' } })),
-    rpc('get_gerencial_saldos').catch(() => ({ data: null, error: { message: 'falha saldos' } })),
-    rpc('get_gerencial_lancamentos', { p_limit: 1000 }).catch(() => ({ data: null, error: { message: 'falha lancamentos' } })),
   ])
 
   const fluxoMensalRows    = (fluxoMensalRes.error    ? null : fluxoMensalRes.data    as FluxoMensalV3Row[]  | null) ?? []
@@ -180,14 +174,22 @@ export default async function FluxoCaixaPage({
   const lancamentos10d: ProximoLancamento[] =
     (lancamentos10dRes.error ? null : lancamentos10dRes.data as ProximoLancamento[] | null) ?? []
 
-  const projecaoGerencial: DiaProjecao[] =
-    (projecaoRes.error ? null : projecaoRes.data as DiaProjecao[] | null) ?? []
-
-  const saldosGerencial: GerencialSaldo[] =
-    (saldosRes.error ? null : saldosRes.data as GerencialSaldo[] | null) ?? []
-
-  const lancamentosGerencial: Lancamento[] =
-    (lancamentosGerencialRes.error ? null : lancamentosGerencialRes.data as Lancamento[] | null) ?? []
+  // Fetches Gerenciais isolados — falha não deve crashar a página principal
+  let projecaoGerencial: DiaProjecao[]  = []
+  let saldosGerencial:   GerencialSaldo[] = []
+  let lancamentosGerencial: Lancamento[]  = []
+  try {
+    const [projecaoRes, saldosRes, lancamentosGerencialRes] = await Promise.all([
+      rpc('get_gerencial_projecao_diaria', { p_dias: 90 }),
+      rpc('get_gerencial_saldos'),
+      rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
+    ])
+    projecaoGerencial    = (projecaoRes.error            ? null : projecaoRes.data            as DiaProjecao[]    | null) ?? []
+    saldosGerencial      = (saldosRes.error              ? null : saldosRes.data              as GerencialSaldo[] | null) ?? []
+    lancamentosGerencial = (lancamentosGerencialRes.error ? null : lancamentosGerencialRes.data as Lancamento[]    | null) ?? []
+  } catch {
+    // Dados gerenciais indisponíveis — seção renderiza vazia
+  }
 
   const totalEntradas = kpis.entradas_realizadas
   const totalSaidas   = kpis.saidas_realizadas
