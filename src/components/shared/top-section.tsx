@@ -2,10 +2,11 @@ import type { ReactNode } from 'react'
 
 interface Props {
   titulo: string
+  subtitulo?: string
   children: ReactNode
 }
 
-export default function TopSection({ titulo, children }: Props) {
+export default function TopSection({ titulo, subtitulo, children }: Props) {
   return (
     <details open className="group mb-8">
       <summary
@@ -26,6 +27,14 @@ export default function TopSection({ titulo, children }: Props) {
         >
           {titulo}
         </span>
+        {subtitulo && (
+          <span
+            className="text-sm font-normal normal-case tracking-normal"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            {subtitulo}
+          </span>
+        )}
       </summary>
       {children}
     </details>

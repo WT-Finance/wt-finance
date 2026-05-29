@@ -77,13 +77,13 @@ export default function PeriodoFilterUrl({ defaultPreset = 'mes-passado' }: Prop
       {preset === 'personalizado' && (
         <>
           <input
-            type="date" value={fromVal} min={MIN_DATE} max={toVal || MAX_DATE}
+            type="date" aria-label="Data inicial" value={fromVal} min={MIN_DATE} max={toVal || MAX_DATE}
             onChange={e => push('personalizado', e.target.value, toVal)}
             className={selectClass}
           />
           <span className="text-zinc-400 text-sm">até</span>
           <input
-            type="date" value={toVal} min={fromVal || MIN_DATE} max={MAX_DATE}
+            type="date" aria-label="Data final" value={toVal} min={fromVal || MIN_DATE} max={MAX_DATE}
             onChange={e => push('personalizado', fromVal, e.target.value)}
             className={selectClass}
           />

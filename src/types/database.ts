@@ -258,6 +258,54 @@ export interface Database {
         }
         Update: Partial<Database['analytics']['Tables']['fato_venda_item']['Insert']>
       }
+      gerencial_lancamentos: {
+        Row: {
+          id: number
+          tipo: 'A pagar' | 'A receber'
+          pessoa: string
+          valor_final: number
+          descricao: string | null
+          conta_previsao: string | null
+          vencimento: string
+          origem: 'planilha' | 'manual'
+          importado_em: string | null
+          importado_lote_id: string | null
+          criado_em: string
+          atualizado_em: string
+        }
+        Insert: {
+          id?: number
+          tipo: 'A pagar' | 'A receber'
+          pessoa: string
+          valor_final: number
+          descricao?: string | null
+          conta_previsao?: string | null
+          vencimento: string
+          origem: 'planilha' | 'manual'
+          importado_em?: string | null
+          importado_lote_id?: string | null
+          criado_em?: string
+          atualizado_em?: string
+        }
+        Update: Partial<Database['analytics']['Tables']['gerencial_lancamentos']['Insert']>
+      }
+      gerencial_saldos: {
+        Row: {
+          conta: string
+          saldo: number
+          ordem: number
+          ativo: boolean
+          atualizado_em: string
+        }
+        Insert: {
+          conta: string
+          saldo?: number
+          ordem?: number
+          ativo?: boolean
+          atualizado_em?: string
+        }
+        Update: Partial<Database['analytics']['Tables']['gerencial_saldos']['Insert']>
+      }
     }
     Views: {
       mv_vendas_diarias: {

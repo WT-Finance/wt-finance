@@ -51,12 +51,12 @@ export default function MixSetorChart({ data, loading, preset = 'mes-passado' }:
             <XAxis
               type="number"
               tickFormatter={v => `${((v as number) / 1_000_000).toFixed(1)}Mi`}
-              tick={{ fontSize: 10, fill: '#a1a1aa' }}
+              tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
               tickLine={false} axisLine={false}
             />
             <YAxis
               type="category" dataKey="name"
-              tick={{ fontSize: 12, fill: '#52525b' }}
+              tick={{ fontSize: 12, fill: 'var(--chart-axis-tick)' }}
               tickLine={false} axisLine={false} width={80}
             />
             <Tooltip
@@ -82,7 +82,7 @@ export default function MixSetorChart({ data, loading, preset = 'mes-passado' }:
                 dataKey="pct"
                 position="right"
                 formatter={(v: unknown) => `${(v as number).toFixed(1)}%`}
-                style={{ fontSize: 11, fill: '#71717a' }}
+                style={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
               />
             </Bar>
           </BarChart>

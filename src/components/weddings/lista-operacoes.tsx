@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Search, Download } from 'lucide-react'
-import * as XLSX from 'xlsx'
+import * as XLSX from '@e965/xlsx'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
 import { fmtBRL, fmtDateLong } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'

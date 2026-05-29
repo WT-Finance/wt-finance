@@ -272,6 +272,7 @@ function DrawerBody() {
                 <label className="text-[10px] text-zinc-400 block mb-1">De</label>
                 <input
                   type="date"
+                  aria-label="Data inicial"
                   value={customFrom}
                   onChange={e => setCustomFrom(e.target.value)}
                   className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
@@ -281,6 +282,7 @@ function DrawerBody() {
                 <label className="text-[10px] text-zinc-400 block mb-1">Até</label>
                 <input
                   type="date"
+                  aria-label="Data final"
                   value={customTo}
                   min={customFrom}
                   onChange={e => setCustomTo(e.target.value)}

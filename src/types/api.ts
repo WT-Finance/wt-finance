@@ -430,3 +430,35 @@ export interface WeddingsDrawerData {
   totais:     WeddingsDrawerTotais
   subsetores: SumarioSubsetorItem[]
 }
+
+// ── v4.6: Fluxo de Caixa Gerencial ──────────────────────────────────────────
+
+export interface GerencialLancamento {
+  id:                number
+  tipo:              'A pagar' | 'A receber'
+  pessoa:            string
+  valor_final:       number
+  descricao:         string | null
+  conta_previsao:    string | null
+  vencimento:        string  // YYYY-MM-DD
+  origem:            'planilha' | 'manual'
+  importado_em:      string | null
+  importado_lote_id: string | null
+  criado_em:         string
+  atualizado_em:     string
+}
+
+export interface GerencialSaldo {
+  conta:        string
+  saldo:        number
+  ordem:        number
+  ativo:        boolean
+  atualizado_em: string
+}
+
+export interface GerencialProjecaoDia {
+  data:       string  // YYYY-MM-DD
+  a_receber:  number
+  a_pagar:    number
+  resultado:  number
+}

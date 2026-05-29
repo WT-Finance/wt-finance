@@ -106,7 +106,7 @@ export async function parseContasPagarReceberFile(
   file: File,
 ): Promise<ContaPagarReceberRaw[] | { error: string }> {
   try {
-    const XLSX = await import('xlsx')
+    const XLSX = await import('@e965/xlsx')
     const ext = file.name.split('.').pop()?.toLowerCase()
 
     let workbook: ReturnType<typeof XLSX.read>

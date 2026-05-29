@@ -6,6 +6,54 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.6.1] — 2026-05-28
+
+### Adicionado
+- Logos SVG Welcome Group e Welcome Weddings (alta resolução, @2x, @3x)
+- Ícones do browser: `favicon.ico`, `icon.svg` com dark mode (`@media (prefers-color-scheme: dark)`), `apple-icon.png` (180×180), ícones PWA `icon0.png` (192×192) e `icon1.png` (512×512)
+- Layout admin compartilhado (`src/app/admin/layout.tsx`) adicionado neste patch
+
+### Corrigido
+- Logo sidebar: `object-cover` → `object-contain` + `origin-left` corrige corte à esquerda no SVG
+- Sidebar usa logos `.svg` em vez de `.png` (qualidade superior)
+- `layout.tsx`: removidas referências manuais a `/apple-touch-icon.png` e `/favicon.ico` (Next.js auto-detecta os arquivos em `src/app/`)
+- `icon.svg`: dark mode usa branco (`#FFFFFF`) em vez de dourado
+- Link Weddings em `em-construcao.tsx` restaurado com cor `text-[#BD965C]`
+
+### Pendência técnica registrada
+- **Importação de planilha Gerencial (PEND-001)**: importação via Excel não funciona em produção — erro "An error occurred in the Server Components render" ao chamar `computeImportDiff` como Server Action. Parsing no browser funciona (`parseGerencialExcel`), dados chegam ao servidor, mas a execução da Server Action causa falha no re-render do Server Component. `ImportDrawer` foi isolado com `next/dynamic ssr:false` mas o erro persiste. Ver seção de investigação no out-briefing.
+
+---
+
+## [4.6.0] — 2026-05-28
+
+### Adicionado
+- Fluxo de Caixa Gerencial — terceira seção da sub-aba, com Visualização Agregada e Base de Dados
+- Importação de planilha Excel de curadoria com mesclagem inteligente e preview de diff
+- CRUD inline de lançamentos gerenciais (edição, adição e remoção de linhas)
+- Saldos iniciais editáveis por conta (Itaú, Asaas, Blimboo, Clara)
+- Projeção diária acumulada espelhando cálculo da planilha de curadoria
+- Tokens semânticos de gráfico: `--chart-axis-tick`, `--chart-grid`, `--chart-success`, `--chart-warning`, `--chart-danger`, `--chart-neutral`, `--chart-info`
+- Layout admin compartilhado em `src/app/admin/layout.tsx`
+- ADR-0089 — Fluxo de Caixa Gerencial
+- ADR-0090 — Tokens semânticos de gráfico
+- `aria-label` em inputs date dos filtros de período
+
+### Alterado
+- 25+ hex hardcoded em componentes Recharts substituídos por `var(--chart-*)`
+- Subtítulo diferenciador na Section "Fluxo de Caixa Diário": *Baseado em lançamentos de Contas a Pagar/a Receber*
+- Migrado `xlsx` para `@e965/xlsx` (fork ativamente mantido, sem vulnerabilidades)
+
+### Removido
+- Vista admin `/admin/contas-bancarias` (não utilizada na prática)
+- 6 RPCs órfãs: `get_fluxo_caixa_mensal`, `get_fluxo_caixa_mensal_b`, `get_historico_12m`, `get_proximos_vencimentos`, `get_proximos_vencimentos_v2`, `get_config_numeric`
+
+### Corrigido
+- Vulnerabilidades npm via `npm audit fix` (`brace-expansion`, `ws`, `next`)
+- `labelFormatter` em `CustomTooltip` tipado corretamente para compatibilidade com Recharts
+
+---
+
 ## [4.5.0] — 2026-05-28
 
 ### Adicionado

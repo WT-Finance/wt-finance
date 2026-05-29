@@ -13,7 +13,7 @@ import { config as loadEnv } from 'dotenv'
 loadEnv({ path: '.env.local' })
 loadEnv()
 
-import * as XLSX from 'xlsx'
+import * as XLSX from '@e965/xlsx'
 import * as path from 'path'
 import * as fs from 'fs'
 import { getAdminClient } from '@/lib/supabase/admin'

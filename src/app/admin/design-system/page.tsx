@@ -180,21 +180,24 @@ export default function DesignSystemPage() {
       </Section>
 
       <Section id="graficos" title="8. Gráficos — Referência de Cores">
-        <div className="space-y-2 text-xs">
-          {[
-            { label: 'Entradas (barras)',        color: '#0091B3', code: '#0091B3 (Pantone 632)' },
-            { label: 'Saídas (barras)',          color: '#D9A23F', code: '#D9A23F (var(--warning))' },
-            { label: 'Resultado mensal (linha)', color: '#2D2A26', code: '#2D2A26 (var(--text-primary))' },
-            { label: 'Pontos negativos',         color: '#B85C5C', code: 'var(--danger)' },
-            { label: 'Grid lines',               color: '#f4f4f5', code: '#f4f4f5 (zinc-100)' },
-          ].map(({ label, color, code }) => (
-            <div key={label} className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded shrink-0" style={{ background: color }} />
-              <span className="w-48 text-[var(--text-primary)]">{label}</span>
-              <code className="text-[var(--text-muted)] bg-zinc-50 px-1.5 py-0.5 rounded">{code}</code>
-            </div>
-          ))}
-        </div>
+        <p className="text-xs text-[var(--text-muted)] mb-3">Tokens chart-* para uso em componentes Recharts</p>
+        <ColorGrid items={[
+          { name: '--chart-axis-tick', hex: '#52525b', usage: 'Labels de eixo X/Y' },
+          { name: '--chart-grid',      hex: '#e4e4e7', usage: 'Grid lines (dashed)' },
+          { name: '--chart-success',   hex: '#10b981', usage: 'Séries positivas/sucesso' },
+          { name: '--chart-warning',   hex: '#f97316', usage: 'Séries de atenção' },
+          { name: '--chart-danger',    hex: '#dc2626', usage: 'Séries negativas/erro' },
+          { name: '--chart-neutral',   hex: '#94a3b8', usage: 'Séries neutras' },
+          { name: '--chart-info',      hex: '#6366f1', usage: 'Séries informativas' },
+        ]} />
+        <p className="text-xs text-[var(--text-muted)] mt-4">Cores de série semânticas específicas (mantidas hardcoded por serem identitárias):</p>
+        <ColorGrid items={[
+          { name: 'Entradas (Fluxo)',  hex: '#0091B3', usage: 'Barras de entrada — Pantone 632' },
+          { name: 'Saídas (Fluxo)',    hex: '#D9A23F', usage: 'Barras de saída' },
+          { name: 'Resultado (linha)', hex: '#2D2A26', usage: 'Linha de resultado mensal' },
+          { name: 'Lazer',             hex: '#378ADD', usage: 'Setor Lazer (identitário)' },
+          { name: 'Corporativo',       hex: '#0F6E56', usage: 'Setor Corporativo (identitário)' },
+        ]} />
       </Section>
 
       <Section id="drawers" title="9. Drawers — Padrão Estrutural">

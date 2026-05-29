@@ -353,24 +353,24 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                     >
                       <defs>
                         <linearGradient id="gradEntrada" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#10b981" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}  />
+                          <stop offset="5%"  stopColor="var(--chart-success)" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="var(--chart-success)" stopOpacity={0.0}  />
                         </linearGradient>
                         <linearGradient id="gradSaida" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="#f97316" stopOpacity={0.20} />
-                          <stop offset="95%" stopColor="#f97316" stopOpacity={0.0}  />
+                          <stop offset="5%"  stopColor="var(--chart-warning)" stopOpacity={0.20} />
+                          <stop offset="95%" stopColor="var(--chart-warning)" stopOpacity={0.0}  />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
                       <XAxis
                         dataKey="mes"
-                        tick={{ fontSize: 9, fill: '#a1a1aa' }}
+                        tick={{ fontSize: 9, fill: 'var(--chart-axis-tick)' }}
                         axisLine={false} tickLine={false}
                         tickFormatter={s => s.slice(5)}
                       />
                       <YAxis
                         tickFormatter={v => fmtMi(Number(v))}
-                        tick={{ fontSize: 9, fill: '#a1a1aa' }}
+                        tick={{ fontSize: 9, fill: 'var(--chart-axis-tick)' }}
                         axisLine={false} tickLine={false}
                         width={52} tickCount={4}
                       />
@@ -381,12 +381,12 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                       />
                       <Area
                         type="monotone" dataKey="entrada_acum"
-                        stroke="#10b981" strokeWidth={2}
+                        stroke="var(--chart-success)" strokeWidth={2}
                         fill="url(#gradEntrada)" dot={false} isAnimationActive={false}
                       />
                       <Area
                         type="monotone" dataKey="saida_acum"
-                        stroke="#f97316" strokeWidth={2}
+                        stroke="var(--chart-warning)" strokeWidth={2}
                         fill="url(#gradSaida)" dot={false} isAnimationActive={false}
                       />
                     </AreaChart>
