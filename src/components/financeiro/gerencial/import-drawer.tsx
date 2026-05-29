@@ -1,47 +1,51 @@
 'use client'
 import { useState } from 'react'
 import ListDrawer from '@/components/shared/list-drawer'
-import { computeImportDiff, commitImport } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
-import { parseGerencialExcel } from '@/lib/gerencial/parser'
-import type { ImportDiff, LancamentoPlanilha } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
+import type { ImportDiff, ImportResumo } from '@/lib/gerencial/import-types'
 
 type Etapa = 'upload' | 'preview' | 'sucesso'
 
 interface Props { open: boolean; onClose: () => void }
 
+// Importação 100% via API Route /api/gerencial/import (ADR-0091).
+// Este componente NÃO importa @e965/xlsx nem Server Actions de parsing —
+// apenas faz fetch multipart. O parsing roda na API Route (runtime Node),
+// fora do contexto RSC. Isso resolve PEND-001.
 export default function ImportDrawer({ open, onClose }: Props) {
   const [etapa, setEtapa]       = useState<Etapa>('upload')
   const [erro, setErro]         = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
-  const [planilha, setPlanilha] = useState<LancamentoPlanilha[]>([])
+  const [file, setFile]         = useState<File | null>(null)
   const [diff, setDiff]         = useState<ImportDiff | null>(null)
-  const [resumo, setResumo]     = useState<{ adicionados: number; removidos: number; atualizados: number } | null>(null)
+  const [resumo, setResumo]     = useState<ImportResumo | null>(null)
   const [loading, setLoading]   = useState(false)
 
   if (!open) return null
 
-  // Mesmo padrão de uploads/page.tsx: await direto sem useTransition
+  const enviar = async (selectedFile: File, action: 'preview' | 'commit') => {
+    const fd = new FormData()
+    fd.append('file', selectedFile)
+    fd.append('action', action)
+    const res  = await fetch('/api/gerencial/import', { method: 'POST', body: fd })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? 'Erro na importação')
+    return data
+  }
+
   const handleAnalisar = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErro(null)
     setLoading(true)
 
-    const file = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0]
-    if (!file)                          { setErro('Nenhum arquivo selecionado'); setLoading(false); return }
-    if (file.size > 10 * 1024 * 1024)  { setErro('Arquivo maior que 10MB');     setLoading(false); return }
+    const selected = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files?.[0]
+    if (!selected)                         { setErro('Nenhum arquivo selecionado'); setLoading(false); return }
+    if (selected.size > 10 * 1024 * 1024)  { setErro('Arquivo maior que 10MB');     setLoading(false); return }
 
     try {
-      const buffer   = await file.arrayBuffer()
-      const parseRes = await parseGerencialExcel(buffer)
-      if (!parseRes.success) { setErro(parseRes.error); setLoading(false); return }
-
-      setWarnings(parseRes.warnings)
-      setPlanilha(parseRes.lancamentos)
-
-      const diffRes = await computeImportDiff(parseRes.lancamentos)
-      if (!diffRes.success) { setErro(diffRes.error); setLoading(false); return }
-
-      setDiff(diffRes.diff)
+      const data = await enviar(selected, 'preview')
+      setFile(selected)
+      setWarnings(data.warnings ?? [])
+      setDiff(data.diff)
       setEtapa('preview')
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro inesperado')
@@ -50,12 +54,12 @@ export default function ImportDrawer({ open, onClose }: Props) {
   }
 
   const handleConfirmar = async () => {
+    if (!file) return
     setErro(null)
     setLoading(true)
     try {
-      const res = await commitImport(planilha)
-      if (!res.success) { setErro(res.error); setLoading(false); return }
-      setResumo(res.resumo)
+      const data = await enviar(file, 'commit')
+      setResumo(data.resumo)
       setEtapa('sucesso')
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro ao confirmar importação')
@@ -64,7 +68,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
   }
 
   const handleFechar = () => {
-    setEtapa('upload'); setErro(null); setDiff(null); setResumo(null); setPlanilha([]); setWarnings([])
+    setEtapa('upload'); setErro(null); setDiff(null); setResumo(null); setFile(null); setWarnings([])
     onClose()
   }
 
