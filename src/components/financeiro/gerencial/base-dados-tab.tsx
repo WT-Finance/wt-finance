@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation'
 import { Plus, Upload } from 'lucide-react'
 import { createLancamento } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { LancamentoRow, type Lancamento } from './lancamento-row'
-import ImportDrawer from './import-drawer'
+import dynamic from 'next/dynamic'
+
+// ssr:false — ImportDrawer usa @e965/xlsx via dynamic import; o módulo falha
+// durante SSR do Next.js. Carregar apenas no browser resolve o conflito.
+const ImportDrawer = dynamic(() => import('./import-drawer'), { ssr: false })
 
 const PILL_BASE     = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
 const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'

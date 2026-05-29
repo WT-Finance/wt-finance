@@ -317,7 +317,11 @@ export default async function FluxoCaixaPage({
 
       {/* ── FLUXO DE CAIXA GERENCIAL ──────────────────────────────────────── */}
       <TopSection titulo="Fluxo de Caixa Gerencial" subtitulo="Baseado em planilha de previsão curada manualmente">
-        <p className="text-sm text-zinc-400">Em manutenção</p>
+        <GerencialSection
+          saldos={saldosGerencial}
+          projecao={projecaoGerencial}
+          lancamentos={lancamentosGerencial}
+        />
       </TopSection>
 
     </div>
