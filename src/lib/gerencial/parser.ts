@@ -52,6 +52,75 @@ export function parseValorMonetario(raw: unknown): number | null {
   return negativo ? -n : n
 }
 
+// Normaliza o tipo do lançamento de forma tolerante a caixa/acentos/variações.
+// Aceita: 'A pagar', 'A Pagar', 'a pagar', 'Pagar', 'Saída', 'Despesa' → 'A pagar'
+//         'A receber', 'A Receber', 'Receber', 'Entrada', 'Receita'   → 'A receber'
+export function parseTipo(raw: unknown): 'A pagar' | 'A receber' | null {
+  if (raw == null) return null
+  const s = String(raw).trim().toLowerCase()
+  if (!s) return null
+  if (/recebe|receita|entrada|crédito|credito|receb/.test(s)) return 'A receber'
+  if (/pagar|despesa|saída|saida|débito|debito|pagam/.test(s)) return 'A pagar'
+  return null
+}
+
+// Converte ISO (UTC-safe) a partir de componentes de calendário.
+function montarISO(ano: number, mes: number, dia: number): string | null {
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null
+  if (ano < 1900 || ano > 2200) return null
+  return `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+}
+
+// Parser robusto de vencimento. Aceita:
+//   - Date object (usa componentes UTC — Vercel roda em UTC, Brasil é UTC-3)
+//   - número serial do Excel (defensivo, caso cellDates não converta)
+//   - ISO 'YYYY-MM-DD' (+ hora opcional)
+//   - BR 'DD/MM/YYYY', 'DD-MM-YYYY', 'DD.MM.YYYY' (+ ano 2 dígitos)
+//   - US 'MM/DD/YYYY' (desambiguado quando 1º campo > 12)
+// Default BR (DD/MM) quando ambíguo — empresa brasileira.
+export function parseVencimento(raw: unknown): string | null {
+  if (raw == null) return null
+
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null
+    return montarISO(raw.getUTCFullYear(), raw.getUTCMonth() + 1, raw.getUTCDate())
+  }
+
+  if (typeof raw === 'number') {
+    if (!isFinite(raw) || raw <= 0) return null
+    // Serial do Excel: dias desde 1899-12-30 (epoch 1900 com bug do ano bissexto)
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(raw) * 86400000)
+    if (isNaN(d.getTime())) return null
+    return montarISO(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
+  }
+
+  const s = String(raw).trim()
+  if (!s) return null
+
+  // ISO: YYYY-MM-DD (com hora opcional)
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (m) return montarISO(+m[1], +m[2], +m[3])
+
+  // YYYY/MM/DD
+  m = s.match(/^(\d{4})[/.](\d{1,2})[/.](\d{1,2})/)
+  if (m) return montarISO(+m[1], +m[2], +m[3])
+
+  // DD/MM/YYYY | DD-MM-YYYY | DD.MM.YYYY (+ ano 2 dígitos)
+  m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/)
+  if (m) {
+    let a = +m[1], b = +m[2]   // a = 1º campo, b = 2º campo
+    let ano = +m[3]
+    if (ano < 100) ano += 2000
+    let dia: number, mes: number
+    if (a > 12 && b <= 12)      { dia = a; mes = b }   // claramente DD/MM
+    else if (b > 12 && a <= 12) { dia = b; mes = a }   // claramente MM/DD (US)
+    else                        { dia = a; mes = b }   // ambíguo → BR (DD/MM)
+    return montarISO(ano, mes, dia)
+  }
+
+  return null
+}
+
 export function parseGerencialExcel(buffer: ArrayBuffer): ParseResult {
   let workbook: ReturnType<typeof XLSX.read>
   try {
@@ -101,41 +170,44 @@ export function parseGerencialExcel(buffer: ArrayBuffer): ParseResult {
   const lancamentos: LancamentoPlanilha[] = []
   const warnings: string[] = []
 
+  // mostra valor cru + tipo do dado, para diagnóstico de formatos inesperados
+  const diag = (v: unknown) => `"${String(v)}" (${v instanceof Date ? 'Date' : typeof v})`
+
   rows.forEach((row, idx) => {
-    const tipo      = String(row[colTipo!]   ?? '').trim()
+    const linha     = idx + 2
     const pessoa    = String(row[colPessoa!] ?? '').trim()
+    const tipoRaw   = row[colTipo!]
     const valorRaw  = row[colValor!]
+    const vencRaw   = row[colVenc!]
     const descricao = colDesc  && row[colDesc]  != null ? String(row[colDesc]).trim()  || null : null
     const conta     = colConta && row[colConta] != null ? String(row[colConta]).trim() || null : null
-    const vencRaw   = row[colVenc!]
 
-    if (!tipo || !pessoa || valorRaw == null || !vencRaw) {
-      warnings.push(`Linha ${idx + 2} ignorada (campos obrigatórios faltando)`)
+    // Campos obrigatórios presentes?
+    if (tipoRaw == null || !pessoa || valorRaw == null || vencRaw == null) {
+      warnings.push(`Linha ${linha} ignorada (campos obrigatórios faltando)`)
       return
     }
-    if (tipo !== 'A pagar' && tipo !== 'A receber') {
-      warnings.push(`Linha ${idx + 2}: tipo inválido "${tipo}", ignorada`)
+
+    const tipo = parseTipo(tipoRaw)
+    if (!tipo) {
+      warnings.push(`Linha ${linha}: tipo inválido ${diag(tipoRaw)}, ignorada`)
       return
     }
 
     const valor = parseValorMonetario(valorRaw)
     if (valor == null || valor < 0) {
-      warnings.push(`Linha ${idx + 2}: valor inválido "${valorRaw}", ignorada`)
+      warnings.push(`Linha ${linha}: valor inválido ${diag(valorRaw)}, ignorada`)
       return
     }
 
-    let vencimento: string
-    if (typeof vencRaw === 'string' && /^\d{4}-\d{2}-\d{2}/.test(vencRaw)) {
-      vencimento = vencRaw.slice(0, 10)
-    } else if (vencRaw instanceof Date) {
-      vencimento = vencRaw.toISOString().slice(0, 10)
-    } else {
-      warnings.push(`Linha ${idx + 2}: vencimento inválido, ignorada`)
+    const vencimento = parseVencimento(vencRaw)
+    if (!vencimento) {
+      warnings.push(`Linha ${linha}: vencimento inválido ${diag(vencRaw)}, ignorada`)
       return
     }
 
     lancamentos.push({
-      tipo:           tipo as 'A pagar' | 'A receber',
+      tipo,
       pessoa,
       valor_final:    Math.round(valor * 100) / 100,
       descricao,
