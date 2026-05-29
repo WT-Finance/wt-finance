@@ -132,8 +132,11 @@ export default async function FluxoCaixaPage({
 
   const db = getAdminClient()
 
-  type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+  type RpcResult = { data: unknown; error: { message: string } | null }
+  type BoundRpc  = (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>
   const rpc = (db.rpc as unknown as BoundRpc).bind(db)
+
+  const empty: RpcResult = { data: null, error: null }
 
   const [
     fluxoMensalRes,
@@ -143,7 +146,7 @@ export default async function FluxoCaixaPage({
     decomposicaoRes,
     posicaoRes,
     lancamentos10dRes,
-  ] = await Promise.all([
+  ] = await Promise.allSettled([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
     rpc('get_fluxo_caixa_kpis_b',        { p_from: from, p_to: to }),
@@ -151,7 +154,7 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
-  ])
+  ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
 
   const fluxoMensalRows    = (fluxoMensalRes.error    ? null : fluxoMensalRes.data    as FluxoMensalV3Row[]  | null) ?? []
   const fluxoAcumuladoRows = (fluxoAcumuladoRes.error ? null : fluxoAcumuladoRes.data as FluxoAcumuladoRow[] | null) ?? []
