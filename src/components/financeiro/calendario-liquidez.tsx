@@ -56,6 +56,15 @@ function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+/**
+ * Valor compacto para as células estreitas do calendário (7 colunas).
+ * As labels "A receber"/"A pagar"/"Saldo" já dão contexto, então
+ * dispensamos o prefixo "R$ " e os sinais +/−.
+ */
+function fmtCelula(v: number): string {
+  return fmtMi(Math.abs(v)).replace('R$ ', '').replace('R$', '')
+}
+
 function getCellStyle(dia: CalendarioDia, maxAbs: number): React.CSSProperties {
   if (dia.fora_do_mes) return { opacity: 0.35 }
   if (dia.saldo_dia === 0 || maxAbs === 0) return {}
@@ -336,30 +345,33 @@ export default function CalendarioLiquidez() {
                     {dia.dia}
                   </p>
 
-                  {/* Entradas / Saídas mini */}
-                  {!dia.fora_do_mes && (dia.entradas_dia > 0 || dia.saidas_dia > 0) && (
-                    <div className="mt-0.5 space-y-px">
-                      {dia.entradas_dia > 0 && (
-                        <p className="text-[8px] leading-none tabular-nums" style={{ color: 'var(--positive-deep)' }}>
-                          +{fmtMi(dia.entradas_dia)}
-                        </p>
-                      )}
-                      {dia.saidas_dia > 0 && (
-                        <p className="text-[8px] leading-none tabular-nums" style={{ color: 'var(--negative-deep)' }}>
-                          -{fmtMi(dia.saidas_dia)}
-                        </p>
-                      )}
+                  {!dia.fora_do_mes && (dia.entradas_dia > 0 || dia.saidas_dia > 0 || dia.saldo_dia !== 0) && (
+                    <div className="mt-1 flex flex-col gap-px">
+                      {/* A receber */}
+                      <div className="flex items-baseline justify-between gap-0.5">
+                        <span className="text-[9px] leading-none text-zinc-400 shrink-0">A receber</span>
+                        <span className="text-[9px] leading-none tabular-nums truncate min-w-0 text-right" style={{ color: 'var(--positive-deep)' }}>
+                          {fmtCelula(dia.entradas_dia)}
+                        </span>
+                      </div>
+                      {/* A pagar */}
+                      <div className="flex items-baseline justify-between gap-0.5">
+                        <span className="text-[9px] leading-none text-zinc-400 shrink-0">A pagar</span>
+                        <span className="text-[9px] leading-none tabular-nums truncate min-w-0 text-right" style={{ color: 'var(--negative-deep)' }}>
+                          {fmtCelula(dia.saidas_dia)}
+                        </span>
+                      </div>
+                      {/* Saldo — label igual às demais, valor em destaque */}
+                      <div className="flex items-baseline justify-between gap-0.5 mt-px">
+                        <span className="text-[9px] leading-none text-zinc-500 font-medium shrink-0">Saldo</span>
+                        <span
+                          className="text-[11px] font-bold leading-none tabular-nums truncate min-w-0 text-right"
+                          style={{ color: dia.saldo_dia >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)' }}
+                        >
+                          {fmtCelula(dia.saldo_dia)}
+                        </span>
+                      </div>
                     </div>
-                  )}
-
-                  {/* Saldo — dominant, at the bottom */}
-                  {!dia.fora_do_mes && dia.saldo_dia !== 0 && (
-                    <p
-                      className="text-[10px] font-bold leading-none tabular-nums mt-auto pt-0.5"
-                      style={{ color: dia.saldo_dia >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)' }}
-                    >
-                      {fmtMi(dia.saldo_dia)}
-                    </p>
                   )}
                 </button>
               ))
