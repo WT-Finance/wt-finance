@@ -11,6 +11,47 @@ export type ParseResult =
   | { success: true;  lancamentos: LancamentoPlanilha[]; warnings: string[] }
   | { success: false; error: string }
 
+// Converte valor monetário robustamente. A planilha vem com `raw:false`, então
+// números formatados como moeda chegam como string (ex: " R$ 1,000.00 ").
+// Detecta o separador decimal pelo ÚLTIMO separador presente:
+//   "1,000.00"  → US  (vírgula milhar, ponto decimal) → 1000.00
+//   "1.000,00"  → BR  (ponto milhar, vírgula decimal)  → 1000.00
+export function parseValorMonetario(raw: unknown): number | null {
+  if (raw == null) return null
+  if (typeof raw === 'number') return isNaN(raw) ? null : raw
+
+  let s = String(raw).trim()
+  if (!s) return null
+
+  const negativo = /^-|\(.*\)$/.test(s)          // -1.000  ou  (1.000)
+  s = s.replace(/[^\d.,]/g, '')                  // remove R$, espaços, parênteses, etc.
+  if (!s) return null
+
+  const lastComma = s.lastIndexOf(',')
+  const lastDot   = s.lastIndexOf('.')
+
+  if (lastComma > -1 && lastDot > -1) {
+    if (lastComma > lastDot) {
+      // BR: ponto = milhar, vírgula = decimal
+      s = s.replace(/\./g, '').replace(',', '.')
+    } else {
+      // US: vírgula = milhar, ponto = decimal
+      s = s.replace(/,/g, '')
+    }
+  } else if (lastComma > -1) {
+    // só vírgula: decimal se 1-2 dígitos após; senão milhar
+    const aposVirgula = s.length - lastComma - 1
+    s = (aposVirgula === 1 || aposVirgula === 2)
+      ? s.replace(',', '.')
+      : s.replace(/,/g, '')
+  }
+  // só ponto (ou nenhum): ponto já é o decimal — nada a fazer
+
+  const n = Number(s)
+  if (isNaN(n)) return null
+  return negativo ? -n : n
+}
+
 export function parseGerencialExcel(buffer: ArrayBuffer): ParseResult {
   let workbook: ReturnType<typeof XLSX.read>
   try {
@@ -77,8 +118,8 @@ export function parseGerencialExcel(buffer: ArrayBuffer): ParseResult {
       return
     }
 
-    const valor = Number(valorRaw)
-    if (isNaN(valor) || valor < 0) {
+    const valor = parseValorMonetario(valorRaw)
+    if (valor == null || valor < 0) {
       warnings.push(`Linha ${idx + 2}: valor inválido "${valorRaw}", ignorada`)
       return
     }
