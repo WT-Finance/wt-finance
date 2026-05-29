@@ -108,7 +108,7 @@ export function parseVencimento(raw: unknown): string | null {
   // DD/MM/YYYY | DD-MM-YYYY | DD.MM.YYYY (+ ano 2 dígitos)
   m = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})/)
   if (m) {
-    let a = +m[1], b = +m[2]   // a = 1º campo, b = 2º campo
+    const a = +m[1], b = +m[2]   // a = 1º campo, b = 2º campo
     let ano = +m[3]
     if (ano < 100) ano += 2000
     let dia: number, mes: number
