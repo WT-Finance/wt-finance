@@ -16,8 +16,11 @@ export default function ImportDrawer({ open, onClose }: Props) {
   const [planilha, setPlanilha]       = useState<LancamentoPlanilha[]>([])
   const [diff, setDiff]               = useState<ImportDiff | null>(null)
   const [resumo, setResumo]           = useState<{ adicionados: number; removidos: number; atualizados: number } | null>(null)
-  const [isParsing, startParsing]     = useTransition()
+  const [isParsing, setIsParsing]     = useState(false)
+  const [isDiffing, startDiff]        = useTransition()
   const [isConfirming, startConfirm]  = useTransition()
+
+  const isParsing2 = isParsing || isDiffing
 
   if (!open) return null
 
@@ -28,16 +31,26 @@ export default function ImportDrawer({ open, onClose }: Props) {
     if (!file) { setErro('Nenhum arquivo selecionado'); return }
     if (file.size > 10 * 1024 * 1024) { setErro('Arquivo maior que 10MB'); return }
 
-    startParsing(async () => {
-      // Parsing acontece no browser (evita xlsx no servidor serverless)
+    // Etapa 1: parsing no browser (fora de startTransition — dynamic import)
+    setIsParsing(true)
+    let lancamentos
+    try {
       const buffer = await file.arrayBuffer()
       const parseRes = await parseGerencialExcel(buffer)
-      if (!parseRes.success) { setErro(parseRes.error); return }
+      if (!parseRes.success) { setErro(parseRes.error); setIsParsing(false); return }
       setWarnings(parseRes.warnings)
       setPlanilha(parseRes.lancamentos)
+      lancamentos = parseRes.lancamentos
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Erro ao processar arquivo')
+      setIsParsing(false)
+      return
+    }
+    setIsParsing(false)
 
-      // Diff calculado via Server Action (apenas lógica de BD)
-      const diffRes = await computeImportDiff(parseRes.lancamentos)
+    // Etapa 2: diff via Server Action (em startTransition separado)
+    startDiff(async () => {
+      const diffRes = await computeImportDiff(lancamentos)
       if (!diffRes.success) { setErro(diffRes.error); return }
       setDiff(diffRes.diff)
       setEtapa('preview')
@@ -66,10 +79,10 @@ export default function ImportDrawer({ open, onClose }: Props) {
           <input type="file" name="file" accept=".xlsx,.xls" required
             className="block w-full text-sm text-zinc-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border file:border-zinc-200 file:text-xs file:cursor-pointer" />
           {erro && <p className="text-sm text-red-500">{erro}</p>}
-          <button type="submit" disabled={isParsing}
+          <button type="submit" disabled={isParsing2}
             className="w-full py-2 rounded text-sm font-medium text-white transition-opacity disabled:opacity-50"
             style={{ background: 'var(--brand)' }}>
-            {isParsing ? 'Analisando…' : 'Analisar'}
+            {isParsing2 ? 'Analisando…' : 'Analisar'}
           </button>
         </form>
       )}
