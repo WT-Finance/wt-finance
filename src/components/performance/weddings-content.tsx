@@ -2,7 +2,6 @@ import { Suspense } from 'react'
 import PeriodoFilter from '@/components/shared/periodo-filter'
 import TopSection from '@/components/shared/top-section'
 import WeddingsKpisSection from '@/components/weddings/weddings-kpis-section'
-import WeddingsComposicaoSection from '@/components/weddings/weddings-composicao-section'
 import WeddingsMixSection from '@/components/weddings/weddings-mix-section'
 import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
@@ -77,12 +76,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           <WeddingsMixSection />
         </div>
 
-        {/* 3. Composição por Subsetor — estrutura analítica */}
-        <div className="mb-6">
-          <WeddingsComposicaoSection />
-        </div>
-
-        {/* 4. Carteira: Vendas × Entregas — par estratégico */}
+        {/* 3. Carteira: Vendas × Entregas — par estratégico */}
         <div className="mb-6">
           <CarteiraMartrixCard
             casamentos={cartCas}
@@ -91,7 +85,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           />
         </div>
 
-        {/* 5. Vendas em Aberto | Vendas com Receita Negativa — exceções operacionais */}
+        {/* 4. Vendas em Aberto | Vendas com Receita Negativa — exceções operacionais */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <VendasEmAbertoCard data={vendasAberto} />
           <VendasReceitaNegativaCard data={prejuizos} />
