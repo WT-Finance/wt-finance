@@ -57,13 +57,13 @@ function WelcomeGroupLogo({ src, alt }: WelcomeGroupLogoProps) {
 
   return (
     <div className="flex-1 min-w-0 flex flex-col items-center">
-      <div className="relative h-10 w-full overflow-hidden">
+      <div className="relative h-10 w-full">
         <Image
           src={src}
           alt={alt}
           fill
           priority
-          className="object-cover object-center scale-[0.82]"
+          className="object-contain object-left scale-[0.9] origin-left"
           onError={() => setImgError(true)}
         />
       </div>
