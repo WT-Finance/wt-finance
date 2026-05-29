@@ -183,7 +183,7 @@ export default async function FluxoCaixaPage({
   let lancamentosGerencial: Lancamento[]  = []
   try {
     const [projecaoRes, saldosRes, lancamentosGerencialRes] = await Promise.all([
-      rpc('get_gerencial_projecao_diaria', { p_dias: 90 }),
+      rpc('get_gerencial_projecao_diaria', { p_dias: 15 }),
       rpc('get_gerencial_saldos'),
       rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
     ])
