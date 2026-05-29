@@ -47,6 +47,13 @@ interface DecomposicaoGrupo {
   valor_total:     number
 }
 
+interface DecomposicaoCategoria {
+  categoria:       string
+  grupo_categoria: string
+  sinal:           'entrada' | 'saida'
+  valor_total:     number
+}
+
 interface ProximoLancamento {
   numero:           string | null
   vencimento:       string
@@ -144,6 +151,7 @@ export default async function FluxoCaixaPage({
     kpisRes,
     kpisDiarioRes,
     decomposicaoRes,
+    decomposicaoCategoriaRes,
     posicaoRes,
     lancamentos10dRes,
   ] = await Promise.allSettled([
@@ -152,6 +160,7 @@ export default async function FluxoCaixaPage({
     rpc('get_fluxo_caixa_kpis_b',        { p_from: from, p_to: to }),
     rpc('get_fluxo_caixa_kpis_diario'),
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
+    rpc('get_decomposicao_categoria',     { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
@@ -172,6 +181,8 @@ export default async function FluxoCaixaPage({
   }
 
   const decomposicao = (decomposicaoRes.error ? null : decomposicaoRes.data as DecomposicaoGrupo[] | null) ?? []
+  const decomposicaoCategorias =
+    (decomposicaoCategoriaRes.error ? null : decomposicaoCategoriaRes.data as DecomposicaoCategoria[] | null) ?? []
   const posicoes     = (posicaoRes.error      ? null : posicaoRes.data      as PosicaoConta[]       | null) ?? []
 
   const lancamentos10d: ProximoLancamento[] =
@@ -183,7 +194,7 @@ export default async function FluxoCaixaPage({
   let lancamentosGerencial: Lancamento[]  = []
   try {
     const [projecaoRes, saldosRes, lancamentosGerencialRes] = await Promise.all([
-      rpc('get_gerencial_projecao_diaria', { p_dias: 90 }),
+      rpc('get_gerencial_projecao_diaria', { p_dias: 15 }),
       rpc('get_gerencial_saldos'),
       rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
     ])
@@ -261,7 +272,7 @@ export default async function FluxoCaixaPage({
                 <p className="text-[11px] text-zinc-400 mb-3 -mt-2">
                   Decomposição por Grupo de Categoria (Lançamentos — regime contábil). Pode diferir levemente dos KPIs acima, que refletem fluxo bancário real.
                 </p>
-                <ComposicaoPeriodo entradas={entradas} saidas={saidas} />
+                <ComposicaoPeriodo entradas={entradas} saidas={saidas} categorias={decomposicaoCategorias} />
               </div>
               <div className="rounded-xl shadow-sm bg-white p-5">
                 <CardTitle titulo="Posição por Conta" />

@@ -6,6 +6,29 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.7.0] — 2026-05-29
+
+### Adicionado
+- Drawer "Análise Histórica" de Weddings: KPIs em faixa 3×2 no topo + dois gráficos stacked por subsetor (Faturamento e Receita, mesma escala Y) + Composição por Subsetor sem box (ADR-0092)
+- Composição dos Lançamentos com dois donuts (Entradas/Saídas) + agregação "Outros" + drill-down por categoria em lista (ADR-0093)
+- API Route `/api/gerencial/import` (runtime nodejs) para importação de planilha — resolve PEND-001 (ADR-0091)
+- RPC `get_weddings_historico_subsetor` (migration 0097) — série mensal por subsetor
+- RPC `get_decomposicao_categoria` + correção de `get_decomposicao_grupo` (migration 0098)
+- ADR-0091 (importação via API Route) + ADR-0092 (drawer Análise Histórica) + ADR-0093 (Composição donuts)
+
+### Alterado
+- Pills do drawer Weddings: Este ano / Últ. 3m / Últ. 6m / Últ. 12m / Personalizado (month picker, trava futuro); pills sticky
+- Composição por Subsetor removida da vista principal de Weddings (agora vive só no drawer)
+- Calendário de Liquidez: novo formato de dia com labels "A receber"/"A pagar"/"Saldo", sem sinais +/−; valor do Saldo em destaque
+- Projeção diária do Gerencial fixa em 15 dias
+
+### Corrigido
+- PEND-001: importação de planilha Gerencial — `@e965/xlsx` isolado do contexto RSC via API Route
+- Parser de importação robusto: valores monetários formatados (`R$ 1,000.00` US e BR), datas `DD/MM/YYYY` brasileiras, tipo case-insensitive
+- Bug de agregação na Composição dos Lançamentos: grupos de categoria duplicados (uma linha por mês) → agregação correta por grupo no período
+
+---
+
 ## [4.6.1] — 2026-05-28
 
 ### Adicionado

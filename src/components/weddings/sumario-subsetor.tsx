@@ -25,17 +25,26 @@ const FALLBACK_COLOR = '#BA7517'
 interface Props {
   data:          SumarioSubsetor | null
   periodoLabel?: string
+  /** Quando true, renderiza sem o wrapper bg-white/rounded/shadow e sem o título interno (apenas a tabela). */
+  semBox?:       boolean
 }
 
-export default function SumarioSubsetorCard({ data, periodoLabel }: Props) {
+export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false }: Props) {
+  const Wrapper = ({ children }: { children: React.ReactNode }) =>
+    semBox
+      ? <>{children}</>
+      : <div className="bg-white rounded-xl shadow-sm px-5 py-4">{children}</div>
+
   if (!data || data.subsetores.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-        <p className="text-xs text-[--text-subtle] mb-3">Distribuição de faturamento por subsetor no período</p>
+      <Wrapper>
+        {!semBox && (
+          <p className="text-xs text-[--text-subtle] mb-3">Distribuição de faturamento por subsetor no período</p>
+        )}
         <div className="h-32 flex items-center justify-center text-sm text-[--text-subtle]">
           Sem dados para o período selecionado.
         </div>
-      </div>
+      </Wrapper>
     )
   }
 
@@ -43,17 +52,21 @@ export default function SumarioSubsetorCard({ data, periodoLabel }: Props) {
   const nc         = data.subsetores.find(s => s.subsetor === 'NÃO_CLASSIFICADO')
 
   return (
-    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-      <div className="flex items-baseline gap-2 mb-3">
-        <h2 className="text-base font-semibold text-[--text-primary] leading-snug">Composição por Subsetor</h2>
-        {periodoLabel && <span className="text-xs" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>}
-      </div>
-      <div className="flex items-baseline gap-2 mb-4">
-        <p className="text-[13px] text-[--text-muted]">Distribuição de faturamento por subsetor no período</p>
-        <span className="text-xs text-[--text-subtle]">
-          {data.total.n_vendas} vendas · {fmtMi(data.total.faturamento)}
-        </span>
-      </div>
+    <Wrapper>
+      {!semBox && (
+        <>
+          <div className="flex items-baseline gap-2 mb-3">
+            <h2 className="text-base font-semibold text-[--text-primary] leading-snug">Composição por Subsetor</h2>
+            {periodoLabel && <span className="text-xs" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>}
+          </div>
+          <div className="flex items-baseline gap-2 mb-4">
+            <p className="text-[13px] text-[--text-muted]">Distribuição de faturamento por subsetor no período</p>
+            <span className="text-xs text-[--text-subtle]">
+              {data.total.n_vendas} vendas · {fmtMi(data.total.faturamento)}
+            </span>
+          </div>
+        </>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -145,6 +158,6 @@ export default function SumarioSubsetorCard({ data, periodoLabel }: Props) {
           </tbody>
         </table>
       </div>
-    </div>
+    </Wrapper>
   )
 }

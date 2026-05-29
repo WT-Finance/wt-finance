@@ -8,15 +8,56 @@ import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import type { TendenciaMargem, ExecutivaKpis, SumarioSubsetor } from '@/types/api'
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
 } from 'recharts'
+
+// ── Historico por subsetor (RPC get_weddings_historico_subsetor) ──────────────
+
+interface HistoricoSubsetorRow {
+  mes:         string  // 'YYYY-MM-DD' (primeiro dia do mês)
+  subsetor:    string
+  faturamento: number
+  receita:     number
+}
+
+// Ordem fixa de subsetores (mesma de get_sumario_subsetor) + cores do design system.
+// As chaves batem exatamente com dps.subsetor_detalhado retornado pela RPC.
+const SUBSETOR_ORDER: string[] = [
+  'COMERCIAL',
+  'PLANEJAMENTO',
+  'PRODUÇÃO',
+  'CONVIDADOS - Hospedagens',
+  'CONVIDADOS - Extras',
+  'NÃO_CLASSIFICADO',
+]
+
+const SUBSETOR_COLOR: Record<string, string> = {
+  COMERCIAL:                  'var(--subsetor-comercial)',
+  PLANEJAMENTO:               'var(--subsetor-planejamento)',
+  'PRODUÇÃO':                 'var(--subsetor-producao)',
+  'CONVIDADOS - Hospedagens': 'var(--subsetor-hospedagens)',
+  'CONVIDADOS - Extras':      'var(--subsetor-extras)',
+  NÃO_CLASSIFICADO:           '#BA7517',
+}
+
+const SUBSETOR_LABEL: Record<string, string> = {
+  COMERCIAL:                  'Comercial',
+  PLANEJAMENTO:               'Planejamento',
+  'PRODUÇÃO':                 'Produção',
+  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
+  'CONVIDADOS - Extras':      'Convidados – Extras',
+  NÃO_CLASSIFICADO:           'Não Classif.',
+}
+
+// Linha pivotada (um mês) para os BarCharts stacked.
+type StackedRow = { mes: string; label: string } & Record<string, number | string>
 
 // ── Drawer data shape ─────────────────────────────────────────────────────────
 
@@ -25,6 +66,7 @@ interface DrawerData {
   yoyTendencia: TendenciaMargem | null
   kpis:         ExecutivaKpis | null
   sumario:      SumarioSubsetor | null
+  historico:    HistoricoSubsetorRow[]
 }
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -46,17 +88,38 @@ function computeYoyDates(from: string, to: string) {
   return { from: toISO(f), to: toISO(t) }
 }
 
+// month string (YYYY-MM) helpers
+function currentMonthStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+function monthToFirstDay(ym: string) {
+  // ym = 'YYYY-MM' → primeiro dia do mês
+  return `${ym}-01`
+}
+function monthToLastDay(ym: string) {
+  // ym = 'YYYY-MM' → último dia do mês
+  const [y, m] = ym.split('-').map(Number)
+  return toISO(new Date(y, m, 0)) // dia 0 do mês seguinte = último dia do mês atual
+}
+
+// 'YYYY-MM-DD' (primeiro dia do mês) → 'Mmm/AA' (ex: 'jan/26')
+const MES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+function mesLabel(isoDay: string) {
+  const [y, m] = isoDay.split('-').map(Number)
+  return `${MES_ABREV[m - 1]}/${String(y).slice(-2)}`
+}
+
 // ── Period pills ─────────────────────────────────────────────────────────────
 
-type PillId = 'este-ano' | 'este-mes' | 'mes-anterior' | 'ult-3m' | 'ult-6m' | 'custom'
+type PillId = 'este-ano' | 'ult-3m' | 'ult-6m' | 'ult-12m' | 'custom'
 
 const PILLS: { id: PillId; label: string }[] = [
-  { id: 'este-ano',     label: 'Este ano'     },
-  { id: 'este-mes',     label: 'Este mês'      },
-  { id: 'mes-anterior', label: 'Mês anterior'  },
-  { id: 'ult-3m',       label: 'Últ. 3 meses'  },
-  { id: 'ult-6m',       label: 'Últ. 6 meses'  },
-  { id: 'custom',       label: 'Personalizado' },
+  { id: 'este-ano', label: 'Este ano'      },
+  { id: 'ult-3m',   label: 'Últ. 3 meses'  },
+  { id: 'ult-6m',   label: 'Últ. 6 meses'  },
+  { id: 'ult-12m',  label: 'Últ. 12 meses' },
+  { id: 'custom',   label: 'Personalizado' },
 ]
 
 function pillToDates(pill: PillId): { from: string; to: string } | null {
@@ -64,19 +127,11 @@ function pillToDates(pill: PillId): { from: string; to: string } | null {
   const y       = today.getFullYear()
   const m       = today.getMonth()
 
-  const firstOf = (year: number, month: number) => new Date(year, month, 1)
   const lastOf  = (year: number, month: number) => new Date(year, month + 1, 0)
 
   switch (pill) {
     case 'este-ano':
       return { from: `${y}-01-01`, to: toISO(lastOf(y, 11)) }
-    case 'este-mes':
-      return { from: toISO(firstOf(y, m)), to: toISO(lastOf(y, m)) }
-    case 'mes-anterior': {
-      const pm = m === 0 ? 11 : m - 1
-      const py = m === 0 ? y - 1 : y
-      return { from: toISO(firstOf(py, pm)), to: toISO(lastOf(py, pm)) }
-    }
     case 'ult-3m': {
       const from3 = new Date(y, m - 2, 1)
       return { from: toISO(from3), to: toISO(lastOf(y, m)) }
@@ -85,10 +140,24 @@ function pillToDates(pill: PillId): { from: string; to: string } | null {
       const from6 = new Date(y, m - 5, 1)
       return { from: toISO(from6), to: toISO(lastOf(y, m)) }
     }
+    case 'ult-12m': {
+      const from12 = new Date(y, m - 11, 1)
+      return { from: toISO(from12), to: toISO(lastOf(y, m)) }
+    }
     case 'custom':
       return null
   }
 }
+
+// ── Pill styling (padrão design system) ─────────────────────────────────────────
+
+const PILL_ACTIVE_STYLE = {
+  background:  'var(--brand-soft)',
+  borderColor: 'var(--brand)',
+  color:       'var(--brand-deep)',
+}
+const PILL_BASE = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
+const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
 // ── Custom tooltip ────────────────────────────────────────────────────────────
 
@@ -110,12 +179,60 @@ function DrawerTooltip({ active, payload, label }: {
   )
 }
 
-// ── MetricBox ─────────────────────────────────────────────────────────────────
+// ── Stacked tooltip (faturamento/receita por subsetor no mês) ───────────────────
 
-function MetricBox({ label, value }: { label: string; value: string }) {
+function StackedTooltip({ active, payload, label }: {
+  active?: boolean
+  payload?: { name?: string | number; dataKey?: string | number; value?: number; color?: string }[]
+  label?: string
+}) {
+  if (!active || !payload?.length) return null
+  // Mostra apenas segmentos com valor > 0, do maior para o menor.
+  const linhas = payload
+    .filter(p => typeof p.value === 'number' && p.value > 0)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+  if (!linhas.length) return null
+  const total = linhas.reduce((s, p) => s + (p.value ?? 0), 0)
   return (
-    <div className="bg-zinc-50 rounded-lg px-3 py-2.5 text-center">
-      <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">{label}</p>
+    <div className="bg-white border border-zinc-200 rounded-lg shadow-md px-3 py-2 text-xs">
+      <p className="font-medium text-zinc-700 mb-1">{label}</p>
+      {linhas.map(p => {
+        const key = String(p.dataKey ?? p.name)
+        return (
+          <p key={key} className="tabular-nums flex items-center gap-1.5" style={{ color: p.color }}>
+            <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: p.color }} />
+            {SUBSETOR_LABEL[key] ?? key}: {fmtMi(p.value ?? 0)}
+          </p>
+        )
+      })}
+      <p className="tabular-nums font-medium text-zinc-700 border-t border-zinc-100 mt-1 pt-1">
+        Total: {fmtMi(total)}
+      </p>
+    </div>
+  )
+}
+
+// ── Legenda compartilhada de subsetores ─────────────────────────────────────────
+
+function SubsetorLegend({ subsetores }: { subsetores: string[] }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 py-1">
+      {subsetores.map(s => (
+        <span key={s} className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+          <span className="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: SUBSETOR_COLOR[s] ?? '#BA7517' }} />
+          {SUBSETOR_LABEL[s] ?? s}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// ── KPI cell (faixa 3x2, sem card cinza) ────────────────────────────────────────
+
+function KpiCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-3 py-3 text-center">
+      <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
       <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--brand)' }}>{value}</p>
     </div>
   )
@@ -125,7 +242,7 @@ function MetricBox({ label, value }: { label: string; value: string }) {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2 mt-5">{label}</p>
+    <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2 mt-6">{label}</p>
   )
 }
 
@@ -134,9 +251,9 @@ function SectionHeader({ label }: { label: string }) {
 function LoadingSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="bg-zinc-100 animate-pulse rounded h-48" />
-      <div className="bg-zinc-100 animate-pulse rounded h-32" />
       <div className="bg-zinc-100 animate-pulse rounded h-24" />
+      <div className="bg-zinc-100 animate-pulse rounded h-40" />
+      <div className="bg-zinc-100 animate-pulse rounded h-32" />
     </div>
   )
 }
@@ -147,11 +264,13 @@ function DrawerBody() {
   const [activePill, setActivePill]             = useState<PillId>('este-ano')
   const [data, setData]                         = useState<DrawerData | null>(null)
   const [loading, setLoading]                   = useState(false)
-  const [customFrom, setCustomFrom]             = useState('')
-  const [customTo, setCustomTo]                 = useState('')
+  const [customFrom, setCustomFrom]             = useState('') // YYYY-MM
+  const [customTo, setCustomTo]                 = useState('') // YYYY-MM
   const [showCustomPicker, setShowCustomPicker] = useState(false)
   const [activeDates, setActiveDates]           = useState<{ from: string; to: string } | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
+
+  const maxMonth = currentMonthStr()
 
   // Close popover on outside click
   useEffect(() => {
@@ -190,13 +309,16 @@ function DrawerBody() {
       }),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.rpc as any)('get_sumario_subsetor', { p_from, p_to }),
-    ]).then(([tendRes, yoyRes, kpisRes, sumRes]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.rpc as any)('get_weddings_historico_subsetor', { p_from, p_to }),
+    ]).then(([tendRes, yoyRes, kpisRes, sumRes, histRes]) => {
       if (cancelled) return
       setData({
         tendencia:    (tendRes.data as TendenciaMargem) ?? null,
         yoyTendencia: (yoyRes.data as TendenciaMargem)  ?? null,
         kpis:         (kpisRes.data as ExecutivaKpis)   ?? null,
         sumario:      (sumRes.data as SumarioSubsetor)  ?? null,
+        historico:    (histRes.data as HistoricoSubsetorRow[]) ?? [],
       })
       setLoading(false)
     })
@@ -225,19 +347,16 @@ function DrawerBody() {
     if (!customFrom || !customTo) return
     setShowCustomPicker(false)
     setActivePill('custom')
-    setActiveDates({ from: customFrom, to: customTo })
+    setActiveDates({
+      from: monthToFirstDay(customFrom),
+      to:   monthToLastDay(customTo),
+    })
   }
 
-  const pillClass = (pill: PillId) => [
-    'text-[11px] px-2.5 py-0.5 rounded-full border transition-colors',
-    activePill === pill
-      ? 'bg-zinc-800 text-white border-zinc-800'
-      : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',
-  ].join(' ')
+  const pillClass  = (pill: PillId) => [PILL_BASE, activePill === pill ? '' : PILL_INACTIVE].join(' ')
+  const pillStyle  = (pill: PillId) => (activePill === pill ? PILL_ACTIVE_STYLE : undefined)
 
   // Chart data helpers
-  const faturamentoData = data?.tendencia?.pontos ?? []
-
   const yoyMerged = (data?.tendencia?.pontos ?? []).map((p, i) => ({
     label:    p.label,
     atual:    p.faturamento,
@@ -246,15 +365,57 @@ function DrawerBody() {
 
   const margemData = data?.tendencia?.pontos ?? []
 
+  // ── Stacked por subsetor (M2) ────────────────────────────────────────────────
+  // Pivota o array flat { mes, subsetor, faturamento, receita } em uma linha por mês
+  // com uma chave por subsetor presente. Os dois gráficos (fat/rec) compartilham
+  // a MESMA escala Y (max calculado sobre o FATURAMENTO mensal por subsetor).
+  const historico = data?.historico ?? []
+
+  // Subsetores que de fato aparecem no período, na ordem fixa.
+  const subsetoresPresentes = SUBSETOR_ORDER.filter(s =>
+    historico.some(r => r.subsetor === s),
+  )
+
+  function pivotar(metric: 'faturamento' | 'receita'): StackedRow[] {
+    const byMes = new Map<string, StackedRow>()
+    for (const r of historico) {
+      let row = byMes.get(r.mes)
+      if (!row) {
+        row = { mes: r.mes, label: mesLabel(r.mes) }
+        byMes.set(r.mes, row)
+      }
+      row[r.subsetor] = (Number(row[r.subsetor]) || 0) + (r[metric] ?? 0)
+    }
+    return [...byMes.values()].sort((a, b) => a.mes.localeCompare(b.mes))
+  }
+
+  const fatData = pivotar('faturamento')
+  const recData = pivotar('receita')
+
+  // Escala Y compartilhada: max do TOTAL de faturamento empilhado por mês.
+  const maxFatMensal = fatData.reduce((max, row) => {
+    const total = subsetoresPresentes.reduce((s, k) => s + (Number(row[k]) || 0), 0)
+    return Math.max(max, total)
+  }, 0)
+  // Pequena folga no topo para legibilidade.
+  const yMax = maxFatMensal > 0 ? maxFatMensal * 1.05 : 1
+  const yDomain: [number, number] = [0, yMax]
+  const temHistorico = historico.length > 0
+
   return (
     <div>
-      {/* Pills row */}
-      <div className="relative mb-4" ref={popoverRef}>
+      {/* Pills row — sticky no topo do drawer ao rolar */}
+      <div
+        className="sticky top-0 z-20 bg-white pb-3 mb-1 border-b border-zinc-100"
+        style={{ marginTop: '-4px', paddingTop: '4px' }}
+        ref={popoverRef}
+      >
         <div className="flex flex-wrap items-center gap-1.5">
           {PILLS.map(p => (
             <button
               key={p.id}
               className={pillClass(p.id)}
+              style={pillStyle(p.id)}
               onClick={() => handlePillClick(p.id)}
               disabled={loading}
             >
@@ -263,28 +424,30 @@ function DrawerBody() {
           ))}
         </div>
 
-        {/* Custom date picker popover */}
+        {/* Custom month picker popover (seleção por MÊS) */}
         {showCustomPicker && (
           <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
             <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
             <div className="space-y-2 mb-4">
               <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">De</label>
+                <label className="text-[10px] text-zinc-400 block mb-1">Mês inicial</label>
                 <input
-                  type="date"
-                  aria-label="Data inicial"
+                  type="month"
+                  aria-label="Mês inicial"
                   value={customFrom}
+                  max={maxMonth}
                   onChange={e => setCustomFrom(e.target.value)}
                   className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
                 />
               </div>
               <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">Até</label>
+                <label className="text-[10px] text-zinc-400 block mb-1">Mês final</label>
                 <input
-                  type="date"
-                  aria-label="Data final"
+                  type="month"
+                  aria-label="Mês final"
                   value={customTo}
-                  min={customFrom}
+                  min={customFrom || undefined}
+                  max={maxMonth}
                   onChange={e => setCustomTo(e.target.value)}
                   className="w-full text-xs border border-zinc-200 rounded px-2 py-1 text-zinc-700 focus:outline-none focus:border-zinc-400"
                 />
@@ -299,7 +462,8 @@ function DrawerBody() {
               </button>
               <button
                 onClick={aplicarCustom}
-                className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors"
+                disabled={!customFrom || !customTo}
+                className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors disabled:opacity-50"
                 style={{ background: 'var(--brand)' }}
               >
                 Aplicar
@@ -309,27 +473,91 @@ function DrawerBody() {
         )}
       </div>
 
-      {/* Loading or charts */}
+      {/* Loading or content */}
       {loading ? (
         <LoadingSkeleton />
       ) : !data ? (
         <p className="text-xs text-zinc-400 text-center py-8">Selecione um período</p>
       ) : (
         <div>
-          {/* 1. Faturamento e Receita */}
-          <SectionHeader label="Faturamento e Receita" />
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={faturamentoData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-              <YAxis tickFormatter={v => fmtMi(v)} width={60} tick={{ fontSize: 10 }} />
-              <Tooltip content={<DrawerTooltip />} />
-              <Bar dataKey="faturamento" name="Faturamento" fill="var(--brand)"      radius={[2, 2, 0, 0]} />
-              <Bar dataKey="receita"     name="Receita"     fill="var(--brand-deep)" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {/* KPIs — faixa 3x2 com divisórias finas, sem cards cinza */}
+          <div className="grid grid-cols-3 divide-x divide-y border border-zinc-100 rounded-lg overflow-hidden mt-4">
+            <KpiCell label="Faturamento"  value={fmtMi(data.kpis?.faturamento?.valor  ?? 0)} />
+            <KpiCell label="Receita"      value={fmtMi(data.kpis?.receita?.valor      ?? 0)} />
+            <KpiCell label="Margem"       value={`${(data.kpis?.margem_pct?.valor     ?? 0).toFixed(1)}%`} />
+            <KpiCell label="Nº Vendas"    value={String(data.kpis?.vendas?.valor      ?? 0)} />
+            <KpiCell label="Ticket Médio" value={fmtMi(data.kpis?.ticket_medio?.valor ?? 0)} />
+            <KpiCell label="Rec. Média"   value={fmtMi(data.kpis?.receita_media?.valor ?? 0)} />
+          </div>
 
-          {/* 2. Comparação Ano Anterior */}
+          {/* M2: gráficos stacked Faturamento + Receita por subsetor — mesma escala Y */}
+          {temHistorico && (
+            <div className="mt-6">
+              {/* Gráfico 1 — Faturamento por Subsetor */}
+              <SectionHeader label="Faturamento por Subsetor" />
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={fatData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }} interval={0} />
+                  <YAxis
+                    domain={yDomain}
+                    allowDataOverflow
+                    tickFormatter={v => fmtMi(v)}
+                    width={60}
+                    tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
+                  />
+                  <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
+                  {subsetoresPresentes.map(s => (
+                    <Bar
+                      key={s}
+                      dataKey={s}
+                      name={s}
+                      stackId="sub"
+                      fill={SUBSETOR_COLOR[s] ?? '#BA7517'}
+                      isAnimationActive={false}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* Gráfico 2 — Receita por Subsetor (MESMA escala Y do faturamento) */}
+              <SectionHeader label="Receita por Subsetor" />
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={recData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }} interval={0} />
+                  <YAxis
+                    domain={yDomain}
+                    allowDataOverflow
+                    tickFormatter={v => fmtMi(v)}
+                    width={60}
+                    tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
+                  />
+                  <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
+                  {subsetoresPresentes.map(s => (
+                    <Bar
+                      key={s}
+                      dataKey={s}
+                      name={s}
+                      stackId="sub"
+                      fill={SUBSETOR_COLOR[s] ?? '#BA7517'}
+                      isAnimationActive={false}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* Legenda ÚNICA, compartilhada entre os dois gráficos */}
+              <div className="mt-2 border-t border-zinc-100 pt-2">
+                <SubsetorLegend subsetores={subsetoresPresentes} />
+                <p className="text-[10px] text-zinc-400 text-center mt-1">
+                  Ambos os gráficos usam a mesma escala (R$); a receita é uma fração do faturamento.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Comparação Ano Anterior */}
           <SectionHeader label="Comparação Ano Anterior (Faturamento)" />
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={yoyMerged} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -355,7 +583,7 @@ function DrawerBody() {
             </LineChart>
           </ResponsiveContainer>
 
-          {/* 3. Tendência de Margem */}
+          {/* Tendência de Margem */}
           <SectionHeader label="Tendência de Margem" />
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={margemData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -385,19 +613,12 @@ function DrawerBody() {
             </LineChart>
           </ResponsiveContainer>
 
-          {/* 4. Indicadores */}
-          <div className="grid grid-cols-3 gap-3 my-4">
-            <MetricBox label="Faturamento"  value={fmtMi(data.kpis?.faturamento?.valor  ?? 0)} />
-            <MetricBox label="Receita"      value={fmtMi(data.kpis?.receita?.valor      ?? 0)} />
-            <MetricBox label="Margem"       value={`${(data.kpis?.margem_pct?.valor     ?? 0).toFixed(1)}%`} />
-            <MetricBox label="Nº Vendas"    value={String(data.kpis?.vendas?.valor      ?? 0)} />
-            <MetricBox label="Ticket Médio" value={fmtMi(data.kpis?.ticket_medio?.valor ?? 0)} />
-            <MetricBox label="Rec. Média"   value={fmtMi(data.kpis?.receita_media?.valor ?? 0)} />
+          {/* Composição por Subsetor — sem box, mesmo período das pills */}
+          <div className="flex items-baseline gap-2 mb-2 mt-6">
+            <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">Composição por Subsetor</p>
+            <span className="text-[11px]" style={{ color: 'var(--brand)' }}>no período selecionado</span>
           </div>
-
-          {/* 5. Composição por Subsetor */}
-          <SectionHeader label="Composição por Subsetor" />
-          <SumarioSubsetorCard data={data.sumario} />
+          <SumarioSubsetorCard data={data.sumario} semBox />
         </div>
       )}
     </div>
@@ -410,7 +631,11 @@ interface Props { onClose: () => void }
 
 export default function KpiPrincipalDrawer({ onClose }: Props) {
   return (
-    <ListDrawer titulo="Análise Weddings" onClose={onClose}>
+    <ListDrawer
+      titulo="Análise Histórica"
+      subtitulo="Análise da evolução histórica de faturamento e receita do setor"
+      onClose={onClose}
+    >
       <DrawerBody />
     </ListDrawer>
   )

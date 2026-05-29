@@ -1,18 +1,12 @@
 'use server'
 
+// IMPORTANTE: este módulo NÃO importa @e965/xlsx nem parser.ts (PEND-001).
+// A importação de planilha (parse + diff + commit) vive 100% na API Route
+// src/app/api/gerencial/import/route.ts (runtime Node, isolado do RSC).
+// Aqui ficam apenas as Server Actions de CRUD manual, que não tocam Excel.
+
 import { revalidatePath } from 'next/cache'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { chaveDuplicata }      from '@/lib/gerencial/parser'
-import type { LancamentoPlanilha } from '@/lib/gerencial/parser'
-
-export type { LancamentoPlanilha }
-
-export interface ImportDiff {
-  aAdicionar: LancamentoPlanilha[]
-  aRemover:   Array<{ id: number; tipo: string; pessoa: string; valor_final: number; vencimento: string }>
-  aManter:    number
-  aAtualizar: Array<{ id: number; atual: Record<string, unknown>; novo: LancamentoPlanilha; camposDivergentes: string[] }>
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>
@@ -20,92 +14,6 @@ type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; 
 function rpc(fn: string, args?: Record<string, unknown>) {
   const db = getAdminClient()
   return (db.rpc as unknown as Rpc)(fn, args)
-}
-
-// ─── Importação ───────────────────────────────────────────────────────────────
-// Nota: o parsing do Excel acontece no cliente (import-drawer.tsx).
-// As Server Actions aqui recebem apenas dados já normalizados.
-
-export async function computeImportDiff(planilha: LancamentoPlanilha[]): Promise<
-  | { success: true;  diff: ImportDiff }
-  | { success: false; error: string }
-> {
-  try {
-    const { data: atuais, error } = await rpc('get_gerencial_lancamentos_planilha')
-    if (error) return { success: false, error: `Falha ao carregar dados: ${error.message}` }
-
-    const mapAtuais   = new Map<string, Record<string, unknown>>()
-    const mapPlanilha = new Map<string, LancamentoPlanilha>()
-
-    ;(atuais as Record<string, unknown>[] ?? []).forEach(a =>
-      mapAtuais.set(chaveDuplicata(a as Parameters<typeof chaveDuplicata>[0]), a))
-    planilha.forEach(l => mapPlanilha.set(chaveDuplicata(l), l))
-
-    const diff: ImportDiff = { aAdicionar: [], aRemover: [], aManter: 0, aAtualizar: [] }
-
-    for (const [key, l] of mapPlanilha) {
-      if (!mapAtuais.has(key)) {
-        diff.aAdicionar.push(l)
-      } else {
-        const atual = mapAtuais.get(key)!
-        const divergentes: string[] = []
-        if ((atual.descricao ?? null) !== (l.descricao ?? null))           divergentes.push('descricao')
-        if ((atual.conta_previsao ?? null) !== (l.conta_previsao ?? null)) divergentes.push('conta_previsao')
-        divergentes.length > 0
-          ? diff.aAtualizar.push({ id: atual.id as number, atual, novo: l, camposDivergentes: divergentes })
-          : diff.aManter++
-      }
-    }
-    for (const [key, atual] of mapAtuais) {
-      if (!mapPlanilha.has(key))
-        diff.aRemover.push(atual as { id: number; tipo: string; pessoa: string; valor_final: number; vencimento: string })
-    }
-
-    return { success: true, diff }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Erro ao calcular diff' }
-  }
-}
-
-export async function commitImport(planilha: LancamentoPlanilha[]): Promise<
-  | { success: true;  loteId: string; resumo: { adicionados: number; removidos: number; atualizados: number } }
-  | { success: false; error: string }
-> {
-  try {
-    const diffRes = await computeImportDiff(planilha)
-    if (!diffRes.success) return diffRes
-    const diff = diffRes.diff
-
-    const loteId = crypto.randomUUID()
-    const agora  = new Date().toISOString()
-
-    const { data, error } = await rpc('batch_gerencial_import', {
-      p_adicionar:    diff.aAdicionar,
-      p_remover_ids:  diff.aRemover.map(r => r.id),
-      p_atualizar:    diff.aAtualizar.map(u => ({
-        id:            u.id,
-        descricao:     u.novo.descricao,
-        conta_previsao: u.novo.conta_previsao,
-      })),
-      p_lote_id:      loteId,
-      p_importado_em: agora,
-    })
-
-    if (error) return { success: false, error: error.message }
-
-    revalidatePath('/financeiro/fluxo-caixa')
-    return {
-      success: true,
-      loteId,
-      resumo: {
-        adicionados: data?.adicionados ?? diff.aAdicionar.length,
-        removidos:   data?.removidos   ?? diff.aRemover.length,
-        atualizados: data?.atualizados ?? diff.aAtualizar.length,
-      },
-    }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Erro na importação' }
-  }
 }
 
 // ─── CRUD manual ─────────────────────────────────────────────────────────────
