@@ -580,6 +580,7 @@ export interface Database {
       get_proximos_vencimentos:  { Args: { p_limite?: number; p_offset?: number }; Returns: Json }
       get_posicao_por_conta:      { Args: Record<string, never>; Returns: Json }
       get_decomposicao_grupo:     { Args: { p_from: string; p_to: string }; Returns: Json }
+      get_decomposicao_categoria: { Args: { p_from: string; p_to: string; p_grupo?: string }; Returns: Json }
       get_calendario_liquidez:    { Args: { p_mes_referencia: string }; Returns: Json }
       get_lancamentos_do_dia:        { Args: { p_data: string }; Returns: Json }
       get_proximos_lancamentos:      { Args: { p_dias?: number }; Returns: Json }
