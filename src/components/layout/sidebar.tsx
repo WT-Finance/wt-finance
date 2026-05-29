@@ -79,8 +79,8 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
   const isFinanceiroActive  = pathname.startsWith('/financeiro')
   const logoSrc = pathname.startsWith('/performance/weddings')
-    ? '/logos/welcome-weddings.png'
-    : '/logos/welcome-group.png'
+    ? '/logos/welcome-weddings.svg'
+    : '/logos/welcome-group.svg'
   const logoAlt = pathname.startsWith('/performance/weddings') ? 'Welcome Weddings' : 'Welcome Group'
   const [perfOpen, setPerfOpen]             = useState(true)
   const [financeiroOpen, setFinanceiroOpen] = useState(true)

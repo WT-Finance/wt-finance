@@ -12,10 +12,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "WT Finance",
   description: "Dashboard analítico — Welcome Group",
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
-  },
+  // favicon.ico, icon.svg e apple-icon.png em src/app/ são auto-detectados
+  // pelo Next.js 16 — não precisam ser declarados manualmente aqui
 };
 
 export default function RootLayout({
