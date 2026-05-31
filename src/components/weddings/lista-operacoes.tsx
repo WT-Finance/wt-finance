@@ -45,7 +45,7 @@ function calcularDuracao(dataVenda: string | null, dataEvento: string | null): n
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      {[140, 80, 64, 60, 56, 36, 72, 60, 44, 68, 72, 52].map((w, i) => (
+      {[140, 80, 64, 60, 56, 36, 72, 68, 52].map((w, i) => (
         <td key={i} className="py-2.5 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: w }} />
         </td>
@@ -106,12 +106,9 @@ function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
     'Duração (dias)':        calcularDuracao(op.data_venda_contrato, op.data_evento) ?? '—',
     'Contrato':              op.tipo_contrato ?? '—',
     'Conv.':                 op.convidados ?? 0,
-    'Faturamento (R$)':      op.faturamento ?? 0,
-    'Rec. Bruta (R$)':       op.receita ?? 0,
-    'Mg. Bruta (%)':         op.margem_pct ?? 0,
-    'Custos (R$)':           op.custos_internos !== 0 ? op.custos_internos : '—',
-    'Rec. Líq. (R$)':        op.resultado_caixa ?? 0,
-    'Mg. Líq. (%)':          op.margem_liquida_pct ?? 0,
+    'Faturamento (R$)':         op.faturamento ?? 0,
+    'Resultado Previsto (R$)':  op.resultado_caixa ?? 0,
+    'Margem (%)':               op.margem_liquida_pct ?? 0,
   }))
 
   const ws = XLSX.utils.json_to_sheet(dados)
@@ -454,11 +451,8 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <SortTh field="tipo_contrato" title="Tipo de contrato (Tudo Incluído, Cardápio, etc.) — disponível após reimportação com nova coluna" {...sortThProps}>Contrato</SortTh>
               <SortTh field="convidados" right title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
-              <SortTh field="receita" right title="Faturamento − repasse ao fornecedor (hotel, cia. aérea)" {...sortThProps}>Rec. Bruta</SortTh>
-              <SortTh field="margem" right title="Receita Bruta ÷ Faturamento × 100" {...sortThProps}>Mg. Bruta</SortTh>
-              <SortTh field="custos" right title="Receita Bruta − Custos Internos (estimado como RB − resultado de caixa quando positivo)" {...sortThProps}>Custos</SortTh>
-              <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Rec. Líq.</SortTh>
-              <SortTh field="ml" right title="Receita Líquida ÷ Faturamento × 100" {...sortThProps}>Mg. Líq.</SortTh>
+              <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Resultado Previsto</SortTh>
+              <SortTh field="ml" right title="Resultado Previsto ÷ Faturamento × 100" {...sortThProps}>Margem</SortTh>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
@@ -466,11 +460,11 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : erro ? (
               <tr>
-                <td colSpan={12} className="py-6 text-center text-sm text-red-500">{erro}</td>
+                <td colSpan={9} className="py-6 text-center text-sm text-red-500">{erro}</td>
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
-                <td colSpan={12}>
+                <td colSpan={9}>
                   <EmptyState icon={Search} message="Nenhuma operação encontrada para os filtros selecionados" />
                 </td>
               </tr>
@@ -521,15 +515,6 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     </td>
                     <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
                       {fmtBRL(op.faturamento)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
-                      {fmtBRL(op.receita)}
-                    </td>
-                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_pct)}`}>
-                      {op.margem_pct.toFixed(1)}%
-                    </td>
-                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs whitespace-nowrap ${op.custos_internos < 0 ? 'text-danger font-medium' : 'text-zinc-500'}`}>
-                      {op.custos_internos !== 0 ? fmtBRL(op.custos_internos) : <span className="text-zinc-300">—</span>}
                     </td>
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${rlNegativa ? 'text-danger' : 'text-zinc-700'}`}>
                       {fmtBRL(op.resultado_caixa)}
