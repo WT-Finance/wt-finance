@@ -70,26 +70,37 @@ function SubsetorCard({
   subtitle,
   data,
   color,
+  modo = 'faturamento',
   yoyFaturamento,
   yoyReceita,
   yoyMargemPct,
+  yoyContratos,
 }: {
   title: string
   subtitle?: string
   data: SumarioSubsetorItem | null
   color?: string
+  modo?: 'faturamento' | 'contratos'
   yoyFaturamento?: number | null
   yoyReceita?: number | null
   yoyMargemPct?: number | null
+  yoyContratos?: number | null
 }) {
-  const yoyFatPct   = data && yoyFaturamento != null && yoyFaturamento > 0
-    ? ((data.faturamento - yoyFaturamento) / yoyFaturamento) * 100 : null
+  const isContratos = modo === 'contratos'
+  const nContratos  = data?.n_contratos ?? 0
+
+  // YoY do valor principal: contagem de contratos OU faturamento, conforme o modo
+  const yoyPrincipalPct = isContratos
+    ? (data && yoyContratos != null && yoyContratos > 0
+        ? ((nContratos - yoyContratos) / yoyContratos) * 100 : null)
+    : (data && yoyFaturamento != null && yoyFaturamento > 0
+        ? ((data.faturamento - yoyFaturamento) / yoyFaturamento) * 100 : null)
   const yoyRecPct   = data && yoyReceita != null && yoyReceita > 0
     ? ((data.receita - yoyReceita) / yoyReceita) * 100 : null
   const yoyMargemPp = data && yoyMargemPct != null
     ? data.margem_pct - yoyMargemPct : null
 
-  const hasYoy = yoyFatPct != null || yoyRecPct != null || yoyMargemPp != null
+  const hasYoy = yoyPrincipalPct != null || yoyRecPct != null || yoyMargemPp != null
 
   const yoyColor = (v: number) => v >= 0 ? 'var(--positive)' : 'var(--negative)'
   const fmtPct   = (v: number) => `${v >= 0 ? '↑' : '↓'}${Math.abs(v).toFixed(1)}%`
@@ -126,12 +137,19 @@ function SubsetorCard({
         </div>
       )}
 
-      {/* Faturamento */}
+      {/* Valor principal: nº de contratos (Comercial) ou faturamento */}
       <div className="flex items-baseline gap-1 mb-1">
         <p className="text-xl font-bold tabular-nums flex-1" style={{ color: color ?? 'var(--brand)' }}>
-          {fmtMi(data.faturamento)}
+          {isContratos ? (
+            <>
+              {nContratos}
+              <span className="text-[10px] font-medium text-zinc-400 ml-1">contratos</span>
+            </>
+          ) : (
+            fmtMi(data.faturamento)
+          )}
         </p>
-        <YoyCol val={yoyFatPct} fmt={fmtPct} />
+        <YoyCol val={yoyPrincipalPct} fmt={fmtPct} />
       </div>
 
       <div className="h-px bg-zinc-100 my-1.5" />
@@ -262,9 +280,11 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
               subtitle={subtitle}
               data={s ?? null}
               color={color}
+              modo={key === 'COMERCIAL' ? 'contratos' : 'faturamento'}
               yoyFaturamento={yoyItem?.faturamento   ?? null}
               yoyReceita={yoyItem?.receita            ?? null}
               yoyMargemPct={yoyItem?.margem_pct       ?? null}
+              yoyContratos={yoyItem?.n_contratos      ?? null}
             />
           )
         })}
