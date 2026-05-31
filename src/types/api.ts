@@ -217,6 +217,7 @@ export interface DecomposicaoVariacao {
 export interface SumarioSubsetorItem {
   subsetor:        string
   n_vendas:        number
+  n_contratos?:    number   // contagem de "Contrato de Casamento" (relevante p/ COMERCIAL)
   faturamento:     number
   receita:         number
   margem_pct:      number
