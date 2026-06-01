@@ -60,6 +60,15 @@
   --chart-danger:      #dc2626;   /* Séries de erro/negativo */
   --chart-neutral:     #94a3b8;   /* Séries neutras */
   --chart-info:        #6366f1;   /* Séries informativas */
+
+  /* Cores semânticas de fluxo de caixa (identitárias) — entrada/saída (v4.8) */
+  --chart-fluxo-entrada: #0091B3;  /* Pantone 632 — entradas/recebimentos */
+  --chart-fluxo-saida:   #D9A23F;  /* mostarda — saídas/pagamentos */
+
+  /* Cores identitárias de setor macro — alinhadas aos gráficos executivos (v4.8) */
+  --setor-lazer:       #378ADD;   /* Trips / Lazer */
+  --setor-weddings:    #BA7517;   /* Weddings */
+  --setor-corporativo: #0F6E56;   /* Corporativo */
 }
 
 /* ── Tokens por aba ──────────────────────────────────────────────────────── */

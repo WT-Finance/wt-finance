@@ -69,16 +69,6 @@ export interface Database {
         Insert: Omit<Database['raw']['Tables']['lancamentos']['Row'], 'id' | 'carregado_em'>
         Update: Partial<Database['raw']['Tables']['lancamentos']['Insert']>
       }
-      vendas_pagamento: {
-        Row: {
-          id: number; arquivo_origem: string; carregado_em: string
-          venda_no: number | null; data_venda: string | null
-          forma_pagamento: string | null; conta: string | null
-          valor: number | null
-        }
-        Insert: Omit<Database['raw']['Tables']['vendas_pagamento']['Row'], 'id' | 'carregado_em'>
-        Update: Partial<Database['raw']['Tables']['vendas_pagamento']['Insert']>
-      }
       contas_pagar_receber: {
         Row: {
           id: number; arquivo_origem: string; carregado_em: string
@@ -576,6 +566,10 @@ export interface Database {
       truncar_lancamentos_financeiro:      { Args: Record<string, never>; Returns: void }
       inserir_lote_lancamentos_financeiro: { Args: { p_linhas: unknown }; Returns: void }
       contar_lancamentos_financeiro:       { Args: Record<string, never>; Returns: number }
+      // CAP/CAR tratada (raw.fluxo_caixa_titulos)
+      truncar_fluxo_caixa_titulos:         { Args: Record<string, never>; Returns: void }
+      inserir_lote_fluxo_caixa_titulos:    { Args: { p_lote: unknown }; Returns: void }
+      contar_fluxo_caixa_titulos:          { Args: Record<string, never>; Returns: number }
       get_fluxo_caixa_mensal:   { Args: { p_from: string; p_to: string }; Returns: Json }
       get_proximos_vencimentos:  { Args: { p_limite?: number; p_offset?: number }; Returns: Json }
       get_posicao_por_conta:      { Args: Record<string, never>; Returns: Json }

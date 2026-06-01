@@ -40,3 +40,47 @@ export function margemColor(
   if (v >= atencao) return 'text-warning'
   return 'text-danger'
 }
+
+// ── Cores de domínio para gráficos (consolidadas em v4.8 / M4) ────────────────
+// Antes duplicadas hardcoded em ~4 gráficos. Apontam para tokens CSS.
+
+/** Cor identitária por setor macro. Chaves batem com `setor_macro`/display. */
+export const SETOR_COLORS: Record<string, string> = {
+  Lazer:       'var(--setor-lazer)',
+  Weddings:    'var(--setor-weddings)',
+  Corporativo: 'var(--setor-corporativo)',
+}
+
+/** Ordem fixa de exibição dos subsetores Weddings (composição, stacks, legendas). */
+export const SUBSETOR_ORDER: readonly string[] = [
+  'COMERCIAL',
+  'PLANEJAMENTO',
+  'PRODUÇÃO',
+  'CONVIDADOS - Hospedagens',
+  'CONVIDADOS - Extras',
+]
+
+/** Cor por subsetor (token CSS). Chaves batem com `subsetor`/`subsetor_detalhado`. */
+export const SUBSETOR_COLORS: Record<string, string> = {
+  COMERCIAL:                  'var(--subsetor-comercial)',
+  PLANEJAMENTO:               'var(--subsetor-planejamento)',
+  'PRODUÇÃO':                 'var(--subsetor-producao)',
+  'CONVIDADOS - Hospedagens': 'var(--subsetor-hospedagens)',
+  'CONVIDADOS - Extras':      'var(--subsetor-extras)',
+}
+
+/** Rótulo amigável por subsetor (acentuação/capitalização corretas). */
+export const SUBSETOR_LABELS: Record<string, string> = {
+  COMERCIAL:                  'Comercial',
+  PLANEJAMENTO:               'Planejamento',
+  'PRODUÇÃO':                 'Produção',
+  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
+  'CONVIDADOS - Extras':      'Convidados – Extras',
+}
+
+/** Fallback de cor de subsetor desconhecido (dourado brand). */
+export const SUBSETOR_COLOR_FALLBACK = 'var(--brand)'
+
+/** Resolve a cor de um subsetor com fallback. */
+export const subsetorColor = (subsetor: string): string =>
+  SUBSETOR_COLORS[subsetor] ?? SUBSETOR_COLOR_FALLBACK

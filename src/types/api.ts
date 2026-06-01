@@ -276,24 +276,23 @@ export interface VisaoFinanceira {
   ncg:                number
 }
 
+// v4.8/M6: decomposição no MESMO formato de SumarioSubsetorItem, para reuso
+// direto em <SumarioSubsetorCard/> (faturamento, receita, margem_pct, pct_faturamento).
 export interface DecomposicaoSubsetorItem {
-  subsetor: string
-  receita:  number
-  pct:      number
+  subsetor:        string
+  faturamento:     number
+  receita:         number
+  margem_pct:      number
+  pct_faturamento: number
 }
 
+// v4.8/M6: curva CONTÍNUA de caixa acumulado (Efetivo + Projetado).
+// saldo_efetivo é null nos meses futuros (só realizado por liquidacao_dt).
 export interface AcumuladoMensalItem {
-  mes:          string
-  entrada_acum: number
-  saida_acum:   number
-}
-
-export interface LancamentoRecente {
-  data:      string | null
-  tipo:      'Entrada' | 'Saída'
-  descricao: string | null
-  valor:     number
-  status:    string | null
+  mes:             string         // 'YYYY-MM'
+  saldo_efetivo:   number | null
+  saldo_projetado: number
+  eh_futuro:       boolean
 }
 
 export interface DrilldownOperacao {
@@ -302,10 +301,12 @@ export interface DrilldownOperacao {
   data_evento:             string | null
   situacao:                'passado' | 'futuro' | 'sem_data'
   hotel:                   string | null
+  tipo_contrato:           string | null
+  convidados:              number | null
+  data_venda_contrato:     string | null   // 'YYYY-MM-DD'
   visao_financeira:        VisaoFinanceira
   decomposicao_subsetor:   DecomposicaoSubsetorItem[]
   acumulado_mensal:        AcumuladoMensalItem[]
-  lancamentos_recentes:    LancamentoRecente[]
 }
 
 export interface PipelineMesItem {
