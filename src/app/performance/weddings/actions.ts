@@ -32,9 +32,3 @@ export async function fetchWeddingsMix(from: string, to: string) {
   const res = await db.rpc('get_mix_produto', { p_from: from, p_to: to, p_setor: 'Weddings', p_limite: 10 })
   return res.error ? null : res.data as unknown as MixProduto
 }
-
-export async function fetchWeddingsComposicao(from: string, to: string) {
-  const db = getServerClient()
-  const res = await db.rpc('get_sumario_subsetor', { p_from: from, p_to: to })
-  return res.error ? null : res.data as unknown as SumarioSubsetor
-}
