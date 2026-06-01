@@ -19,7 +19,6 @@ import {
   ChartYAxisPct,
   ChartLegend,
   CustomTooltip,
-  chartColors,
   dashArrays,
   strokeWidths,
   barRadius,
@@ -181,14 +180,18 @@ function StackedTooltip({ active, payload, label }: {
       {linhas.map(p => {
         const key = String(p.dataKey ?? p.name)
         return (
-          <p key={key} className="tabular-nums flex items-center gap-1.5" style={{ color: p.color }}>
-            <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: p.color }} />
-            {subsetorLabel(key)}: {fmtMi(p.value ?? 0)}
+          <p key={key} className="flex items-center justify-between gap-4" style={{ color: p.color }}>
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: p.color }} />
+              <span className="truncate">{subsetorLabel(key)}</span>
+            </span>
+            <span className="tabular-nums shrink-0">{fmtMi(p.value ?? 0)}</span>
           </p>
         )
       })}
-      <p className="tabular-nums font-medium text-zinc-700 border-t border-zinc-100 mt-1 pt-1">
-        Total: {fmtMi(total)}
+      <p className="flex items-center justify-between gap-4 font-medium text-zinc-700 border-t border-zinc-100 mt-1 pt-1">
+        <span>Total</span>
+        <span className="tabular-nums shrink-0">{fmtMi(total)}</span>
       </p>
     </div>
   )
@@ -323,12 +326,19 @@ function DrawerBody() {
   const pillClass  = (pill: PillId) => [PILL_BASE, activePill === pill ? '' : PILL_INACTIVE].join(' ')
   const pillStyle  = (pill: PillId) => (activePill === pill ? PILL_ACTIVE_STYLE : undefined)
 
-  // Chart data helpers
-  const yoyMerged = (data?.tendencia?.pontos ?? []).map((p, i) => ({
-    label:    p.label,
-    atual:    p.faturamento,
-    anterior: data?.yoyTendencia?.pontos[i]?.faturamento ?? 0,
-  }))
+  // Chart data helpers — YoY com 4 séries: Faturamento e Receita, atual e ano anterior.
+  // COR distingue MÉTRICA (faturamento=dourado, receita=cinza-azulado);
+  // TRAÇO distingue PERÍODO (atual=sólido, anterior=tracejado). Escala Y única.
+  const yoyMerged = (data?.tendencia?.pontos ?? []).map((p, i) => {
+    const ant = data?.yoyTendencia?.pontos[i]
+    return {
+      label:             p.label,
+      fatAtual:          p.faturamento,
+      fatAnterior:       ant?.faturamento ?? 0,
+      receitaAtual:      p.receita,
+      receitaAnterior:   ant?.receita ?? 0,
+    }
+  })
 
   const margemData = data?.tendencia?.pontos ?? []
 
@@ -372,18 +382,24 @@ function DrawerBody() {
     type:  'rect',
   }))
 
-  // Legenda do YoY: sólido = período atual, tracejado = ano anterior (referência).
+  // Legenda do YoY (2×2): COR = métrica (Faturamento dourado / Receita cinza-azulado);
+  // TRAÇO = período (sólido = atual / tracejado = ano anterior, referência).
   const yoyLegendItems: ChartLegendItem[] = [
-    { label: 'Este período', color: 'var(--brand)',        type: 'line' },
-    { label: 'Ano anterior', color: chartColors.axisTick,  type: 'line', dashed: true },
+    { label: 'Faturamento (atual)',        color: 'var(--brand)',          type: 'line' },
+    { label: 'Faturamento (ano anterior)', color: 'var(--brand)',          type: 'line', dashed: true },
+    { label: 'Receita (atual)',            color: 'var(--text-secondary)', type: 'line' },
+    { label: 'Receita (ano anterior)',     color: 'var(--text-secondary)', type: 'line', dashed: true },
   ]
 
   return (
     <div>
-      {/* Pills row — sticky no topo do drawer ao rolar */}
+      {/* Pills row — bloco sticky CONTÍNUO grudado ao cabeçalho (sem fresta).
+          O scroll body do ListDrawer tem px-6 py-5; aqui o bloco é "esticado" com
+          margens negativas (-mx-6 / -mt-5) e recompensado com padding equivalente
+          para que o fundo branco cubra TODA a faixa superior do viewport de scroll
+          (topo e laterais), evitando que o conteúdo apareça por trás ao rolar. */}
       <div
-        className="sticky top-0 z-20 bg-white pb-3 mb-1 border-b border-zinc-100"
-        style={{ marginTop: '-4px', paddingTop: '4px' }}
+        className="sticky top-0 z-20 bg-white -mx-6 -mt-5 px-6 pt-5 pb-3 mb-1 border-b border-zinc-100"
         ref={popoverRef}
       >
         <div className="flex flex-wrap items-center gap-1.5">
@@ -400,9 +416,11 @@ function DrawerBody() {
           ))}
         </div>
 
-        {/* Custom month picker popover (seleção por MÊS) */}
+        {/* Custom month picker popover (seleção por MÊS).
+            left-6 compensa o px-6 do bloco sticky esticado (-mx-6), mantendo o
+            popover alinhado à borda esquerda das pills. */}
         {showCustomPicker && (
-          <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
+          <div className="absolute top-full left-6 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
             <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
             <div className="space-y-2 mb-4">
               <div>
@@ -477,7 +495,7 @@ function DrawerBody() {
                 <BarChart data={fatData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   {ChartGrid()}
                   {ChartXAxisMes('mes', { interval: 0 })}
-                  {ChartYAxisBRL({ width: 64 })}
+                  {ChartYAxisBRL({ width: 76 })}
                   <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
                   {subsetoresPresentes.map((s, idx) => (
                     <Bar
@@ -503,7 +521,7 @@ function DrawerBody() {
                 <BarChart data={recData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                   {ChartGrid()}
                   {ChartXAxisMes('mes', { interval: 0 })}
-                  {ChartYAxisBRL({ width: 64 })}
+                  {ChartYAxisBRL({ width: 76 })}
                   <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
                   {subsetoresPresentes.map((s, idx) => (
                     <Bar
@@ -522,27 +540,44 @@ function DrawerBody() {
             </div>
           )}
 
-          {/* Comparação Ano Anterior — SÓLIDO = período atual; TRACEJADO = ano anterior (ref.) */}
-          <SectionHeader label="Comparação Ano Anterior (Faturamento)" />
+          {/* Comparação Ano Anterior — COR = métrica (Faturamento dourado / Receita
+              cinza-azulado); TRAÇO = período (SÓLIDO atual / TRACEJADO ano anterior).
+              Escala Y única — a receita, naturalmente mais baixa, é aceitável. */}
+          <SectionHeader label="Comparação Ano Anterior" />
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={yoyMerged} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               {ChartGrid()}
               {ChartXAxisCategoria('label')}
-              {ChartYAxisBRL({ width: 64 })}
+              {ChartYAxisBRL({ width: 76 })}
               <Tooltip content={(p) => (
                 <CustomTooltip {...p} showColorDot formatter={(v, n) => [fmtMi(v), n]} />
               )} />
               <Line
-                dataKey="atual"
-                name="Este período"
+                dataKey="fatAtual"
+                name="Faturamento (atual)"
                 stroke="var(--brand)"
                 dot={false}
                 strokeWidth={strokeWidths.line}
               />
               <Line
-                dataKey="anterior"
-                name="Ano anterior"
-                stroke={chartColors.axisTick}
+                dataKey="fatAnterior"
+                name="Faturamento (ano anterior)"
+                stroke="var(--brand)"
+                dot={false}
+                strokeWidth={strokeWidths.lineDashed}
+                strokeDasharray={dashArrays.reference}
+              />
+              <Line
+                dataKey="receitaAtual"
+                name="Receita (atual)"
+                stroke="var(--text-secondary)"
+                dot={false}
+                strokeWidth={strokeWidths.line}
+              />
+              <Line
+                dataKey="receitaAnterior"
+                name="Receita (ano anterior)"
+                stroke="var(--text-secondary)"
                 dot={false}
                 strokeWidth={strokeWidths.lineDashed}
                 strokeDasharray={dashArrays.reference}
