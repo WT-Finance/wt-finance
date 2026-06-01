@@ -55,7 +55,7 @@ export default function CustomTooltip({ active, payload, label, labelFormatter, 
                 )}
                 {formattedName}
               </span>
-              <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500 }}>{formattedValue}</span>
+              <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{formattedValue}</span>
             </div>
           )
         })}
