@@ -246,7 +246,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
     <div>
       {/* Card principal full-width */}
       <div
-        className="bg-white rounded-xl shadow-sm px-5 pt-4 pb-2 mb-4 cursor-pointer hover:bg-zinc-50 transition-colors"
+        className="card-clicavel bg-white rounded-xl shadow-sm px-5 pt-4 pb-2 mb-4 cursor-pointer"
         onClick={() => setDrawerOpen(true)}
         role="button"
         tabIndex={0}
@@ -260,7 +260,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
           <KpiColuna rotulo="Margem"        metrica={kpis.margem_pct}  formato="pct" padded />
         </div>
         <div className="flex justify-end mt-2">
-          <span className="text-[11px] text-[--brand] font-medium">Ver mais ›</span>
+          <span className="card-clicavel-cta text-[11px] text-[--brand] font-medium">Ver mais ›</span>
         </div>
       </div>
 

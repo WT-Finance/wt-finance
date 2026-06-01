@@ -116,6 +116,50 @@ export default function DesignSystemPage() {
             <code className="text-[10px] text-[var(--text-muted)]">size=&quot;sm&quot;</code>
           </div>
         </div>
+
+        {/* Afordância de card clicável (v4.8.1) */}
+        <div className="mt-8">
+          <p className="font-medium text-[var(--text-primary)] text-sm mb-1">
+            Afordância de card clicável — hover na cor da aba
+          </p>
+          <p className="text-xs text-[var(--text-muted)] mb-3">
+            Card KPI que abre drawer ou navega. Em repouso é um card padrão{' '}
+            <code className="bg-zinc-100 px-1 rounded">shadow-sm</code>; no{' '}
+            <strong>hover</strong> (e foco por teclado), a borda e a sombra assumem a{' '}
+            cor da aba e a CTA &quot;Ver mais&quot; acompanha. Aplicar a classe{' '}
+            <code className="bg-zinc-100 px-1 rounded">card-clicavel</code> no card e{' '}
+            <code className="bg-zinc-100 px-1 rounded">card-clicavel-cta</code> no texto da CTA.
+            A regra é <em>keyed</em> em <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>,
+            então cada aba herda sua própria cor via{' '}
+            <code className="bg-zinc-100 px-1 rounded">[data-theme]</code> — sem duplicar regra por setor.
+          </p>
+
+          {/* Exemplo ao vivo, sob o tema da aba Weddings */}
+          <div data-theme="weddings" className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <div
+                className="card-clicavel bg-white rounded-xl shadow-sm px-5 py-4 cursor-pointer"
+                role="button"
+                tabIndex={0}
+              >
+                <p className="text-sm font-medium mb-1">Card clicável</p>
+                <p className="text-xs text-[var(--text-muted)] mb-2">Passe o mouse / Tab para focar</p>
+                <div className="flex justify-end">
+                  <span className="card-clicavel-cta text-[11px] text-[var(--brand)] font-medium">Ver mais ›</span>
+                </div>
+              </div>
+              <code className="text-[10px] text-[var(--text-muted)]">card-clicavel + card-clicavel-cta</code>
+            </div>
+          </div>
+
+          <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1">
+            <p>{'<div className="card-clicavel bg-white rounded-xl shadow-sm ..." role="button" tabIndex={0}>'}</p>
+            <p className="pl-4">{'...'}</p>
+            <p className="pl-4">{'<span className="card-clicavel-cta text-[--brand] ...">Ver mais ›</span>'}</p>
+            <p>{'</div>'}</p>
+            <p className="mt-2 not-italic font-sans">{'// repouso: shadow-sm · hover/foco: border + box-shadow = var(--brand), CTA → var(--brand-deep)'}</p>
+          </div>
+        </div>
       </Section>
 
       <Section id="pills" title="6. Pills e Botões de Filtro">
