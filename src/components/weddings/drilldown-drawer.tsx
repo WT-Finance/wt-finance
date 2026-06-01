@@ -7,7 +7,7 @@ import {
 } from 'recharts'
 import {
   ChartGrid, ChartXAxisMes, ChartYAxisBRL, ChartLegend, CustomTooltip,
-  chartColors, fluxoColors, chartMargins, strokeWidths, dashArrays, fillMonths,
+  chartColors, chartMargins, strokeWidths, dashArrays, fillMonths,
 } from '@/components/charts'
 import type { ChartLegendItem } from '@/components/charts'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
@@ -48,7 +48,7 @@ function InfoCell({ label, value, destaque }: {
   label: string; value: string; destaque?: boolean
 }) {
   return (
-    <div className="px-3 py-3 text-center">
+    <div className="bg-white px-3 py-3 text-center">
       <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
         {label}
       </p>
@@ -90,19 +90,26 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
   )
 }
 
-// ── Caixa Acumulado por Mês (Efetivo + Projetado) ───────────────────────────────
+// ── Caixa Acumulado por Mês (Entradas e Saídas — Efetivo + Projetado) ──────────
+
+// Cores semânticas do design system (tokens.css): verde harmônico c/ Weddings
+// para Entradas, terracota dessaturada para Saídas. Nunca hex hardcoded.
+const COR_ENTRADA = 'var(--positive)'
+const COR_SAIDA   = 'var(--negative)'
 
 type CurvaPonto = {
-  mes:             string         // 'YYYY-MM'
-  saldo_efetivo:   number | null
-  saldo_projetado: number | null
-  /** Cópia do efetivo + o ponto-junção do mês atual, para a linha sólida não "vazar". */
-  efetivo_plot:    number | null
+  mes:               string         // 'YYYY-MM'
+  entrada_projetada: number
+  saida_projetada:   number
+  /** Trecho sólido (realizado até hoje) + ponto-junção no mês atual, p/ não "vazar". */
+  entrada_efetiva_plot: number | null
+  saida_efetiva_plot:   number | null
 }
 
 /**
- * Curva contínua de caixa acumulado: trecho EFETIVO sólido (realizado, até hoje),
- * trecho PROJETADO tracejado (inclui agendado futuro), marcador vertical "hoje".
+ * Caixa acumulado contínuo, DUAS curvas: Entradas (verde) e Saídas (vermelho).
+ * Cada uma tem trecho EFETIVO sólido (realizado, até hoje) e trecho PROJETADO
+ * tracejado (inclui agendado futuro). Marcador vertical "hoje". Eixo X contínuo.
  */
 function CaixaAcumuladoChart({ rows }: { rows: AcumuladoMensalItem[] }) {
   const mesAtual = currentMonth()
@@ -113,37 +120,60 @@ function CaixaAcumuladoChart({ rows }: { rows: AcumuladoMensalItem[] }) {
     const continua = fillMonths<AcumuladoMensalItem>(
       rows,
       r => r.mes,
-      mes => ({ mes, saldo_efetivo: null, saldo_projetado: 0, eh_futuro: mes > mesAtual }),
+      mes => ({
+        mes,
+        entrada_efetiva:   null,
+        entrada_projetada: 0,
+        saida_efetiva:     null,
+        saida_projetada:   0,
+        eh_futuro:         mes > mesAtual,
+      }),
     )
-    // Saldo efetivo "carregado" para a frente até o último mês não-futuro (curva
+    // Efetivo "carregado" para a frente até o último mês não-futuro (a curva
     // realizada não cai a zero em meses sem liquidação).
-    // for-loop (não .map) para o forward-fill: a mutação de `ultimoEfetivo` fica
+    // for-loop (não .map) para o forward-fill: a mutação dos acumuladores fica
     // na execução síncrona do useMemo, sem escapar num callback (react-hooks/immutability).
     const out: CurvaPonto[] = []
-    let ultimoEfetivo: number | null = null
+    let ultimaEntrada: number | null = null
+    let ultimaSaida:   number | null = null
     for (const r of continua) {
-      if (!r.eh_futuro && r.saldo_efetivo != null) ultimoEfetivo = r.saldo_efetivo
-      const efetivo = r.eh_futuro ? null : (r.saldo_efetivo ?? ultimoEfetivo)
-      // ponto-junção: no primeiro mês futuro a linha sólida ainda toca o último
-      // valor efetivo, para emendar visualmente com a tracejada.
-      const efetivoPlot = r.mes === mesAtual ? (efetivo ?? ultimoEfetivo) : efetivo
+      if (!r.eh_futuro && r.entrada_efetiva != null) ultimaEntrada = r.entrada_efetiva
+      if (!r.eh_futuro && r.saida_efetiva   != null) ultimaSaida   = r.saida_efetiva
+      const entradaEf = r.eh_futuro ? null : (r.entrada_efetiva ?? ultimaEntrada)
+      const saidaEf   = r.eh_futuro ? null : (r.saida_efetiva   ?? ultimaSaida)
+      // ponto-junção: no mês atual a linha sólida ainda toca o último efetivo,
+      // para emendar visualmente com a tracejada.
+      const entradaPlot = r.mes === mesAtual ? (entradaEf ?? ultimaEntrada) : entradaEf
+      const saidaPlot   = r.mes === mesAtual ? (saidaEf   ?? ultimaSaida)   : saidaEf
       out.push({
-        mes:             r.mes,
-        saldo_efetivo:   efetivo,
-        saldo_projetado: r.saldo_projetado,
-        efetivo_plot:    efetivoPlot,
+        mes:                  r.mes,
+        entrada_projetada:    r.entrada_projetada,
+        saida_projetada:      r.saida_projetada,
+        entrada_efetiva_plot: entradaPlot,
+        saida_efetiva_plot:   saidaPlot,
       })
     }
     return out
   }, [rows, mesAtual])
 
   const legendItems: ChartLegendItem[] = [
-    { label: 'Efetivo (realizado)', color: fluxoColors.resultado, type: 'line' },
-    { label: 'Projetado (a liquidar)', color: chartColors.axisTick, type: 'line', dashed: true },
+    { label: 'Entradas',  color: COR_ENTRADA,        type: 'line' },
+    { label: 'Saídas',    color: COR_SAIDA,          type: 'line' },
+    { label: 'Projetado', color: chartColors.axisTick, type: 'line', dashed: true },
   ]
 
   // Marcador "hoje" só faz sentido se o mês atual estiver no intervalo.
   const temHoje = data.some(d => d.mes === mesAtual)
+
+  const tooltipLabel = (name: string): string => {
+    switch (name) {
+      case 'entrada_efetiva_plot': return 'Entradas (efetivo)'
+      case 'entrada_projetada':    return 'Entradas (projetado)'
+      case 'saida_efetiva_plot':   return 'Saídas (efetivo)'
+      case 'saida_projetada':      return 'Saídas (projetado)'
+      default:                     return name
+    }
+  }
 
   return (
     <div>
@@ -163,23 +193,31 @@ function CaixaAcumuladoChart({ rows }: { rows: AcumuladoMensalItem[] }) {
           <Tooltip
             content={<CustomTooltip
               labelFormatter={(l) => fmtAxisMes(String(l))}
-              formatter={(v, name) => [
-                fmtBRL(v),
-                name === 'efetivo_plot' ? 'Efetivo' : 'Projetado',
-              ]}
+              formatter={(v, name) => [fmtBRL(v), tooltipLabel(String(name))]}
             />}
           />
           {/* Projetado — tracejado, desenhado primeiro (fica "atrás"). */}
           <Line
-            type="monotone" dataKey="saldo_projetado"
-            stroke={chartColors.axisTick} strokeWidth={strokeWidths.lineDashed}
+            type="monotone" dataKey="entrada_projetada"
+            stroke={COR_ENTRADA} strokeWidth={strokeWidths.lineDashed}
+            strokeDasharray={dashArrays.reference}
+            dot={false} isAnimationActive={false} connectNulls
+          />
+          <Line
+            type="monotone" dataKey="saida_projetada"
+            stroke={COR_SAIDA} strokeWidth={strokeWidths.lineDashed}
             strokeDasharray={dashArrays.reference}
             dot={false} isAnimationActive={false} connectNulls
           />
           {/* Efetivo — sólido, por cima. */}
           <Line
-            type="monotone" dataKey="efetivo_plot"
-            stroke={fluxoColors.resultado} strokeWidth={strokeWidths.line}
+            type="monotone" dataKey="entrada_efetiva_plot"
+            stroke={COR_ENTRADA} strokeWidth={strokeWidths.line}
+            dot={false} isAnimationActive={false} connectNulls
+          />
+          <Line
+            type="monotone" dataKey="saida_efetiva_plot"
+            stroke={COR_SAIDA} strokeWidth={strokeWidths.line}
             dot={false} isAnimationActive={false} connectNulls
           />
         </LineChart>
@@ -297,7 +335,7 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
 
       {/* Panel */}
       <div
-        className="fixed inset-y-0 right-0 z-50 flex flex-col w-full md:w-[56vw] max-w-xl bg-white shadow-2xl"
+        className="fixed inset-y-0 right-0 z-50 flex flex-col w-full md:w-[60vw] max-w-2xl bg-white shadow-2xl"
         style={{
           transform:  visible ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -326,8 +364,9 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
           </button>
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+        {/* Scrollable content — espaçamento vertical generoso entre seções
+            (consistência com o drawer principal). */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-8">
           {loading ? (
             <div className="space-y-4 animate-pulse">
               <div className="h-24 rounded-xl bg-zinc-100" />
@@ -342,7 +381,9 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
               {/* ── 1. Informações Gerais — faixa 3×2 ─────────────────── */}
               <div>
                 <SectionTitle>Informações Gerais</SectionTitle>
-                <div className="grid grid-cols-3 divide-x divide-y border border-zinc-100 rounded-lg overflow-hidden">
+                {/* Divisórias finas via gap que revela o fundo (padrão do drawer
+                    principal): sem bordas fortes entre as células. */}
+                <div className="grid grid-cols-3 gap-px bg-zinc-100 border border-zinc-100 rounded-lg overflow-hidden">
                   <InfoCell
                     label="Duração"
                     value={duracaoDias != null ? `${duracaoDias} d` : '—'}

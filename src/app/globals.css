@@ -70,9 +70,10 @@
   --color-surface-strong: var(--surface-strong);
 
   /* Texto */
-  --color-text-primary: var(--text-primary);
-  --color-text-muted:   var(--text-muted);
-  --color-text-subtle:  var(--text-subtle);
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:     var(--text-muted);
+  --color-text-subtle:    var(--text-subtle);
 
   /* Bordas */
   --color-wt-border:        var(--border);
@@ -102,4 +103,28 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Avenir LT Std', 'Avenir Next', 'Inter', Arial, sans-serif;
+}
+
+/* ── Afordância de card clicável — hover na cor da aba (v4.8.1) ───────────── */
+/* Card KPI clicável (abre drawer / navega): em repouso é um card padrão       */
+/* shadow-sm; no hover, borda + sombra assumem a cor da aba (var(--brand)) e a */
+/* CTA "Ver mais" acompanha. Keyed em var(--brand): cada aba herda sua própria */
+/* cor via [data-theme] — não precisa duplicar a regra por setor.              */
+.card-clicavel {
+  border: 1px solid transparent;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.card-clicavel:hover,
+.card-clicavel:focus-visible {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand), 0 4px 12px -2px color-mix(in srgb, var(--brand) 35%, transparent);
+  outline: none;
+}
+/* CTA "Ver mais" — acompanha o hover/foco do card para a cor da aba */
+.card-clicavel .card-clicavel-cta {
+  transition: color 0.18s ease;
+}
+.card-clicavel:hover .card-clicavel-cta,
+.card-clicavel:focus-visible .card-clicavel-cta {
+  color: var(--brand-deep);
 }

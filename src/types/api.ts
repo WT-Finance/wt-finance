@@ -286,13 +286,16 @@ export interface DecomposicaoSubsetorItem {
   pct_faturamento: number
 }
 
-// v4.8/M6: curva CONTÍNUA de caixa acumulado (Efetivo + Projetado).
-// saldo_efetivo é null nos meses futuros (só realizado por liquidacao_dt).
+// v4.8.1/A5: curva CONTÍNUA de caixa acumulado, ENTRADAS e SAÍDAS separadas.
+// Efetivo (só liquidado, por liquidacao_dt) é null nos meses futuros;
+// projetado por COALESCE(liquidacao_dt, vencimento_dt) inclui o futuro.
 export interface AcumuladoMensalItem {
-  mes:             string         // 'YYYY-MM'
-  saldo_efetivo:   number | null
-  saldo_projetado: number
-  eh_futuro:       boolean
+  mes:               string         // 'YYYY-MM'
+  entrada_efetiva:   number | null
+  entrada_projetada: number
+  saida_efetiva:     number | null
+  saida_projetada:   number
+  eh_futuro:         boolean
 }
 
 export interface DrilldownOperacao {

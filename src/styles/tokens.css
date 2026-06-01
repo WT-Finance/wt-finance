@@ -3,9 +3,10 @@
 
 :root {
   /* Texto */
-  --text-primary: #2D2A26;
-  --text-muted:   #75777B;   /* Pantone Cool Gray 9 */
-  --text-subtle:  #ACA39A;   /* Pantone Warm Gray 5 */
+  --text-primary:   #2D2A26;
+  --text-secondary: #4B4F54;   /* cinza-azulado — H3, texto secundário */
+  --text-muted:     #75777B;   /* Pantone Cool Gray 9 */
+  --text-subtle:    #ACA39A;   /* Pantone Warm Gray 5 */
 
   /* Superfícies */
   --surface:        #FFFFFF;
