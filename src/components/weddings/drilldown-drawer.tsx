@@ -1,45 +1,36 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import {
-  ResponsiveContainer, AreaChart, Area,
-  XAxis, YAxis, Tooltip, CartesianGrid,
+  ResponsiveContainer, LineChart, Line, ReferenceLine, Tooltip,
 } from 'recharts'
-import CustomTooltip from '@/components/charts/custom-tooltip'
-import type { DrilldownOperacao, VisaoFinanceira } from '@/types/api'
-import { fmtBRL, fmtDate } from '@/lib/fmt'
+import {
+  ChartGrid, ChartXAxisMes, ChartYAxisBRL, ChartLegend, CustomTooltip,
+  chartColors, fluxoColors, chartMargins, strokeWidths, dashArrays, fillMonths,
+} from '@/components/charts'
+import type { ChartLegendItem } from '@/components/charts'
+import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
+import type {
+  DrilldownOperacao, VisaoFinanceira, SumarioSubsetor, AcumuladoMensalItem,
+} from '@/types/api'
+import { fmtBRL, fmtDateLong, fmtAxisMes } from '@/lib/fmt'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtMi(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mi`
-  if (Math.abs(v) >= 1_000)     return `R$ ${(v / 1_000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} k`
-  return fmtBRL(v)
+/** 'YYYY-MM' do mês atual (para o marcador "hoje" e o trecho efetivo/projetado). */
+function currentMonth(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-const SUBSETOR_LABELS: Record<string, string> = {
-  COMERCIAL:                  'Comercial',
-  CONVIDADOS:                 'Convidados',
-  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
-  'CONVIDADOS - Extras':      'Convidados – Extras',
-  'PRODUÇÃO':                 'Produção',
-  PLANEJAMENTO:               'Planejamento',
-  NÃO_CLASSIFICADO:           'Não Classif.',
-}
-
-const SUBSETOR_COLORS = ['#BA7517', '#c8861e', '#d49530', '#dfa543', '#a16207']
-
-const SITUACAO_LABEL: Record<string, string> = {
-  futuro:   'Futuro',
-  passado:  'Passado',
-  sem_data: 'Sem data',
-}
-
-const SITUACAO_CLS: Record<string, string> = {
-  futuro:   'bg-blue-100 text-blue-700',
-  passado:  'bg-zinc-100 text-zinc-600',
-  sem_data: 'bg-zinc-50  text-zinc-400',
+/** Duração em dias entre a venda do contrato e o evento. Null se faltar data. */
+function calcDuracaoDias(dataVenda: string | null, dataEvento: string | null): number | null {
+  if (!dataVenda || !dataEvento) return null
+  const v = new Date(dataVenda + 'T00:00:00')
+  const e = new Date(dataEvento + 'T00:00:00')
+  const dias = Math.round((e.getTime() - v.getTime()) / 86_400_000)
+  return Number.isFinite(dias) ? dias : null
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -52,6 +43,26 @@ function SectionTitle({ children }: { children: string }) {
   )
 }
 
+/** Célula da faixa 3×2 (padrão KpiCell do drawer principal). */
+function InfoCell({ label, value, destaque }: {
+  label: string; value: string; destaque?: boolean
+}) {
+  return (
+    <div className="px-3 py-3 text-center">
+      <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
+        {label}
+      </p>
+      <p
+        className="text-base font-bold tabular-nums"
+        style={{ color: destaque ? 'var(--brand)' : 'var(--text-primary)' }}
+      >
+        {value}
+      </p>
+    </div>
+  )
+}
+
+/** Linha de fluxo (Entradas/Saídas) com dois sub-valores. */
 function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }: {
   label: string; total: number
   sub1Label: string; sub1: number
@@ -79,75 +90,101 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
   )
 }
 
-function EqRow({
-  prefix, label, value, highlight, deduction, formula,
-}: {
-  prefix: string
-  label: string
-  value: number | null
-  highlight?: boolean
-  deduction?: boolean
-  formula?: string
-}) {
-  const textCls = highlight
-    ? value != null && value < 0 ? 'text-red-600 font-bold' : 'text-zinc-900 font-bold'
-    : deduction ? 'text-zinc-500' : 'text-zinc-700'
-  return (
-    <div className={`flex justify-between items-baseline py-1.5 ${highlight ? 'border-t border-zinc-200 mt-0.5' : ''}`}>
-      <div className="flex items-baseline gap-1.5 min-w-0">
-        <span className="text-[10px] text-zinc-400 w-5 shrink-0 tabular-nums">{prefix}</span>
-        <span className={`text-xs ${highlight ? 'font-semibold text-zinc-700' : deduction ? 'text-zinc-500' : 'text-zinc-600'}`}>
-          {label}
-        </span>
-        {formula && (
-          <span className="text-[10px] text-zinc-400 hidden sm:inline truncate">— {formula}</span>
-        )}
-      </div>
-      {value != null ? (
-        <span className={`text-xs tabular-nums shrink-0 ml-2 ${textCls}`}>
-          {deduction ? `(${fmtBRL(Math.abs(value))})` : fmtBRL(value)}
-        </span>
-      ) : (
-        <span className="text-xs text-zinc-300 shrink-0 ml-2">N/D</span>
-      )}
-    </div>
-  )
+// ── Caixa Acumulado por Mês (Efetivo + Projetado) ───────────────────────────────
+
+type CurvaPonto = {
+  mes:             string         // 'YYYY-MM'
+  saldo_efetivo:   number | null
+  saldo_projetado: number | null
+  /** Cópia do efetivo + o ponto-junção do mês atual, para a linha sólida não "vazar". */
+  efetivo_plot:    number | null
 }
 
-function EquacaoFinanceira({ vf }: { vf: VisaoFinanceira }) {
-  const custoFornecedor = vf.faturamento - vf.receita_bruta
-  const temCaixa = vf.entradas_total > 0 || vf.saidas_total > 0
+/**
+ * Curva contínua de caixa acumulado: trecho EFETIVO sólido (realizado, até hoje),
+ * trecho PROJETADO tracejado (inclui agendado futuro), marcador vertical "hoje".
+ */
+function CaixaAcumuladoChart({ rows }: { rows: AcumuladoMensalItem[] }) {
+  const mesAtual = currentMonth()
+
+  // Eixo X CONTÍNUO (preenche meses faltantes) + linha sólida ligada à tracejada
+  // no mês atual (ponto-junção), evitando o "buraco" entre as duas séries.
+  const data: CurvaPonto[] = useMemo(() => {
+    const continua = fillMonths<AcumuladoMensalItem>(
+      rows,
+      r => r.mes,
+      mes => ({ mes, saldo_efetivo: null, saldo_projetado: 0, eh_futuro: mes > mesAtual }),
+    )
+    // Saldo efetivo "carregado" para a frente até o último mês não-futuro (curva
+    // realizada não cai a zero em meses sem liquidação).
+    // for-loop (não .map) para o forward-fill: a mutação de `ultimoEfetivo` fica
+    // na execução síncrona do useMemo, sem escapar num callback (react-hooks/immutability).
+    const out: CurvaPonto[] = []
+    let ultimoEfetivo: number | null = null
+    for (const r of continua) {
+      if (!r.eh_futuro && r.saldo_efetivo != null) ultimoEfetivo = r.saldo_efetivo
+      const efetivo = r.eh_futuro ? null : (r.saldo_efetivo ?? ultimoEfetivo)
+      // ponto-junção: no primeiro mês futuro a linha sólida ainda toca o último
+      // valor efetivo, para emendar visualmente com a tracejada.
+      const efetivoPlot = r.mes === mesAtual ? (efetivo ?? ultimoEfetivo) : efetivo
+      out.push({
+        mes:             r.mes,
+        saldo_efetivo:   efetivo,
+        saldo_projetado: r.saldo_projetado,
+        efetivo_plot:    efetivoPlot,
+      })
+    }
+    return out
+  }, [rows, mesAtual])
+
+  const legendItems: ChartLegendItem[] = [
+    { label: 'Efetivo (realizado)', color: fluxoColors.resultado, type: 'line' },
+    { label: 'Projetado (a liquidar)', color: chartColors.axisTick, type: 'line', dashed: true },
+  ]
+
+  // Marcador "hoje" só faz sentido se o mês atual estiver no intervalo.
+  const temHoje = data.some(d => d.mes === mesAtual)
 
   return (
-    <div className="border border-zinc-100 rounded-lg px-3 py-1 mb-4 bg-zinc-50/40">
-      <EqRow
-        prefix=""    label="Faturamento"      value={vf.faturamento}
-        highlight    formula="valor total das vendas"
-      />
-      <EqRow
-        prefix="(−)" label="Custo Fornecedor" value={custoFornecedor}
-        deduction    formula="repasse hotel / cia. aérea"
-      />
-      <EqRow
-        prefix="="   label="Receita Bruta"    value={vf.receita_bruta}
-        highlight    formula={`${vf.margem_pct.toFixed(1)}% do faturamento`}
-      />
-      {temCaixa ? (
-        <>
-          <EqRow
-            prefix="(−)" label="Custos Internos" value={vf.custos_internos}
-            deduction    formula="RB − resultado de caixa"
+    <div>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={data} margin={chartMargins.default}>
+          {ChartGrid()}
+          {ChartXAxisMes('mes', { interval: 'preserveStartEnd' })}
+          {ChartYAxisBRL({ width: 64, abs: false })}
+          {temHoje && (
+            <ReferenceLine
+              x={mesAtual}
+              stroke={chartColors.axisTick}
+              strokeDasharray={dashArrays.reference}
+              label={{ value: 'hoje', position: 'insideTopRight', fontSize: 10, fill: chartColors.axisTick }}
+            />
+          )}
+          <Tooltip
+            content={<CustomTooltip
+              labelFormatter={(l) => fmtAxisMes(String(l))}
+              formatter={(v, name) => [
+                fmtBRL(v),
+                name === 'efetivo_plot' ? 'Efetivo' : 'Projetado',
+              ]}
+            />}
           />
-          <EqRow
-            prefix="="   label="Receita Líquida" value={vf.resultado_caixa}
-            highlight    formula={`${vf.margem_liquida_pct.toFixed(1)}% do faturamento`}
+          {/* Projetado — tracejado, desenhado primeiro (fica "atrás"). */}
+          <Line
+            type="monotone" dataKey="saldo_projetado"
+            stroke={chartColors.axisTick} strokeWidth={strokeWidths.lineDashed}
+            strokeDasharray={dashArrays.reference}
+            dot={false} isAnimationActive={false} connectNulls
           />
-        </>
-      ) : (
-        <p className="text-[10px] text-zinc-400 pt-1.5 pb-0.5 border-t border-zinc-100 mt-0.5">
-          Custos e Receita Líquida calculados após registro de lançamentos (caixa).
-        </p>
-      )}
+          {/* Efetivo — sólido, por cima. */}
+          <Line
+            type="monotone" dataKey="efetivo_plot"
+            stroke={fluxoColors.resultado} strokeWidth={strokeWidths.line}
+            dot={false} isAnimationActive={false} connectNulls
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <ChartLegend items={legendItems} />
     </div>
   )
 }
@@ -212,7 +249,42 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
 
   const loading = requestState.operacao !== operacao
   const data = loading ? null : requestState.data
-  const vf = data?.visao_financeira
+  const vf: VisaoFinanceira | undefined = data?.visao_financeira
+
+  // NCG no SINAL correto: (A pagar − A receber). >0 = necessidade (vermelho);
+  // <0 = sobra (verde). Computado no front a partir da visao_financeira.
+  const ncg = vf ? vf.a_pagar - vf.a_receber : 0
+
+  // Duração (dias) entre venda do contrato e evento.
+  const duracaoDias = calcDuracaoDias(data?.data_venda_contrato ?? null, data?.data_evento ?? null)
+
+  // Margem Bruta = Receita Bruta / Faturamento.
+  const margemBruta = vf && vf.faturamento > 0 ? (vf.receita_bruta / vf.faturamento) * 100 : 0
+
+  // Composição por Subsetor no formato SumarioSubsetor (reuso do card).
+  const sumario: SumarioSubsetor | null = useMemo(() => {
+    if (!data || data.decomposicao_subsetor.length === 0) return null
+    const subsetores = data.decomposicao_subsetor.map(s => ({
+      subsetor:        s.subsetor,
+      n_vendas:        0,
+      faturamento:     s.faturamento,
+      receita:         s.receita,
+      margem_pct:      s.margem_pct,
+      pct_faturamento: s.pct_faturamento,
+    }))
+    const faturamento = subsetores.reduce((acc, s) => acc + s.faturamento, 0)
+    const receita     = subsetores.reduce((acc, s) => acc + s.receita, 0)
+    return {
+      periodo:    { inicio: '', fim: '' },
+      subsetores,
+      total: {
+        n_vendas:   0,
+        faturamento,
+        receita,
+        margem_pct: faturamento > 0 ? Math.round((receita / faturamento) * 100 * 10) / 10 : 0,
+      },
+    }
+  }, [data])
 
   return (
     <>
@@ -231,25 +303,18 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
           transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {/* Header */}
+        {/* Header — empilhado, sem badge */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-zinc-100 shrink-0">
           <div className="min-w-0 pr-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-base font-semibold text-zinc-900 truncate">{operacao}</p>
-              {data && (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${SITUACAO_CLS[data.situacao] ?? 'bg-zinc-100 text-zinc-500'}`}>
-                  {SITUACAO_LABEL[data.situacao] ?? data.situacao}
-                </span>
-              )}
-            </div>
+            <p className="text-base font-semibold text-zinc-900 truncate">{operacao}</p>
             {data?.nome_casal && (
               <p className="text-sm text-zinc-500 mt-0.5 truncate">{data.nome_casal}</p>
             )}
             {data?.data_evento && (
-              <p className="text-xs text-zinc-400 mt-0.5">Evento: {fmtDate(data.data_evento)}</p>
+              <p className="text-xs text-zinc-400 mt-0.5">{fmtDateLong(data.data_evento)}</p>
             )}
             {data?.hotel && (
-              <p className="text-xs text-zinc-400 mt-0.5">Hotel: {data.hotel}</p>
+              <p className="text-xs text-zinc-400 mt-0.5 truncate">{data.hotel}</p>
             )}
           </div>
           <button
@@ -274,178 +339,78 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
             <p className="text-sm text-zinc-400 text-center py-12">Erro ao carregar dados da operação.</p>
           ) : (
             <>
-              {/* ── Seção 1: Visão Financeira ─────────────────────────── */}
+              {/* ── 1. Informações Gerais — faixa 3×2 ─────────────────── */}
               <div>
-                <SectionTitle>Equação Financeira</SectionTitle>
-
-                {/* Waterfall: Faturamento → RB → RL */}
-                <EquacaoFinanceira vf={vf} />
-
-                {/* Fluxo de caixa */}
-                <SectionTitle>Fluxo de Caixa</SectionTitle>
-                <div className="border border-zinc-100 rounded-lg p-3">
-                  <FluxoRow
-                    label="Entradas" total={vf.entradas_total} isEntrada
-                    sub1Label="Recebido"   sub1={vf.recebido}
-                    sub2Label="A Receber"  sub2={vf.a_receber}
+                <SectionTitle>Informações Gerais</SectionTitle>
+                <div className="grid grid-cols-3 divide-x divide-y border border-zinc-100 rounded-lg overflow-hidden">
+                  <InfoCell
+                    label="Duração"
+                    value={duracaoDias != null ? `${duracaoDias} d` : '—'}
                   />
-                  <FluxoRow
-                    label="Saídas"   total={vf.saidas_total} isEntrada={false}
-                    sub1Label="Pago"    sub1={vf.pago}
-                    sub2Label="A Pagar" sub2={vf.a_pagar}
+                  <InfoCell
+                    label="Tipo de Contrato"
+                    value={data.tipo_contrato ?? '—'}
                   />
-                  <div className="flex justify-between items-baseline pt-2 border-t border-zinc-100 mt-1">
-                    <div>
-                      <span className="text-xs font-semibold text-zinc-700">Resultado Caixa</span>
-                      <span className="text-[10px] text-zinc-400 ml-1">({vf.resultado_pct.toFixed(1)}%)</span>
-                    </div>
-                    <span className={`text-sm font-semibold tabular-nums ${vf.resultado_caixa >= 0 ? 'text-success' : 'text-danger'}`}>
-                      {fmtBRL(vf.resultado_caixa)}
-                    </span>
-                  </div>
-                  {vf.ncg > 0 && (
-                    <div className="flex justify-between items-baseline mt-1.5">
-                      <span className="text-xs text-zinc-500">NCG (capital de giro)</span>
-                      <span className={`text-xs tabular-nums font-medium ${vf.ncg > 50000 ? 'text-warning' : 'text-zinc-600'}`}>
-                        {fmtBRL(vf.ncg)}
-                      </span>
-                    </div>
-                  )}
+                  <InfoCell
+                    label="Convidados"
+                    value={data.convidados != null ? String(data.convidados) : '—'}
+                  />
+                  <InfoCell label="Faturamento"   value={fmtBRL(vf.faturamento)}   destaque />
+                  <InfoCell label="Receita Bruta" value={fmtBRL(vf.receita_bruta)} destaque />
+                  <InfoCell label="Margem Bruta"  value={`${margemBruta.toFixed(1)}%`} destaque />
                 </div>
               </div>
 
-              {/* ── Seção 2: Decomposição por Subsetor ───────────────── */}
-              {data.decomposicao_subsetor.length > 0 && (
-                <div>
-                  <SectionTitle>Receita por Subsetor</SectionTitle>
-                  <div className="space-y-2">
-                    {data.decomposicao_subsetor.map((item, i) => (
-                      <div key={item.subsetor}>
-                        <div className="flex justify-between items-baseline mb-1">
-                          <span className="text-xs text-zinc-700 font-medium">
-                            {SUBSETOR_LABELS[item.subsetor] ?? item.subsetor}
-                          </span>
-                          <div className="flex gap-3 text-xs tabular-nums">
-                            <span className="text-zinc-500">{item.pct.toFixed(1)}%</span>
-                            <span className="text-zinc-700 w-24 text-right">{fmtBRL(item.receita)}</span>
-                          </div>
-                        </div>
-                        <div className="h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${item.pct}%`, background: SUBSETOR_COLORS[i % SUBSETOR_COLORS.length] }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+              {/* ── 2. Fluxo de Caixa ─────────────────────────────────── */}
+              <div>
+                <SectionTitle>Fluxo de Caixa</SectionTitle>
+                <div className="border border-zinc-100 rounded-lg p-3">
+                  <div className="grid grid-cols-2 gap-x-4">
+                    <FluxoRow
+                      label="Entradas" total={vf.entradas_total} isEntrada
+                      sub1Label="Recebido"   sub1={vf.recebido}
+                      sub2Label="A receber"  sub2={vf.a_receber}
+                    />
+                    <FluxoRow
+                      label="Saídas"   total={vf.saidas_total} isEntrada={false}
+                      sub1Label="Pago"      sub1={vf.pago}
+                      sub2Label="A pagar"   sub2={vf.a_pagar}
+                    />
                   </div>
+                  <div className="grid grid-cols-2 gap-x-4 pt-2 border-t border-zinc-100 mt-1">
+                    <div className="flex justify-between items-baseline">
+                      <div>
+                        <span className="text-xs font-semibold text-zinc-700">Resultado Caixa</span>
+                        <span className="text-[10px] text-zinc-400 ml-1">({vf.resultado_pct.toFixed(1)}%)</span>
+                      </div>
+                      <span className={`text-sm font-semibold tabular-nums ${vf.resultado_caixa >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {fmtBRL(vf.resultado_caixa)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-xs font-semibold text-zinc-700">NCG</span>
+                      {/* >0 = necessidade (vermelho); <0 = sobra (verde). Só o valor colorido. */}
+                      <span className={`text-sm font-semibold tabular-nums ${ncg > 0 ? 'text-danger' : 'text-success'}`}>
+                        {fmtBRL(ncg)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 3. Composição por Subsetor ───────────────────────── */}
+              {sumario && (
+                <div>
+                  <SectionTitle>Composição por Subsetor</SectionTitle>
+                  <SumarioSubsetorCard data={sumario} semBox />
                 </div>
               )}
 
-              {/* ── Seção 3: Acumulado Mensal ─────────────────────────── */}
+              {/* ── 4. Caixa Acumulado por Mês (Efetivo + Projetado) ──── */}
               {data.acumulado_mensal.length > 0 && (
                 <div>
                   <SectionTitle>Caixa Acumulado por Mês</SectionTitle>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <AreaChart
-                      data={data.acumulado_mensal}
-                      margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-                    >
-                      <defs>
-                        <linearGradient id="gradEntrada" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="var(--chart-success)" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="var(--chart-success)" stopOpacity={0.0}  />
-                        </linearGradient>
-                        <linearGradient id="gradSaida" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor="var(--chart-warning)" stopOpacity={0.20} />
-                          <stop offset="95%" stopColor="var(--chart-warning)" stopOpacity={0.0}  />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
-                      <XAxis
-                        dataKey="mes"
-                        tick={{ fontSize: 9, fill: 'var(--chart-axis-tick)' }}
-                        axisLine={false} tickLine={false}
-                        tickFormatter={s => s.slice(5)}
-                      />
-                      <YAxis
-                        tickFormatter={v => fmtMi(Number(v))}
-                        tick={{ fontSize: 9, fill: 'var(--chart-axis-tick)' }}
-                        axisLine={false} tickLine={false}
-                        width={52} tickCount={4}
-                      />
-                      <Tooltip
-                        content={<CustomTooltip
-                          formatter={(v, name) => [fmtBRL(v), name === 'entrada_acum' ? 'Entradas' : 'Saídas']}
-                        />}
-                      />
-                      <Area
-                        type="monotone" dataKey="entrada_acum"
-                        stroke="var(--chart-success)" strokeWidth={2}
-                        fill="url(#gradEntrada)" dot={false} isAnimationActive={false}
-                      />
-                      <Area
-                        type="monotone" dataKey="saida_acum"
-                        stroke="var(--chart-warning)" strokeWidth={2}
-                        fill="url(#gradSaida)" dot={false} isAnimationActive={false}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                  <div className="flex gap-4 mt-1 justify-center">
-                    <span className="flex items-center gap-1 text-[10px] text-zinc-500">
-                      <span className="inline-block w-3 h-0.5 bg-emerald-500 rounded" /> Entradas
-                    </span>
-                    <span className="flex items-center gap-1 text-[10px] text-zinc-500">
-                      <span className="inline-block w-3 h-0.5 bg-orange-400 rounded" /> Saídas
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Seção 4: Lançamentos Recentes ─────────────────────── */}
-              {data.lancamentos_recentes.length > 0 && (
-                <div>
-                  <SectionTitle>Últimos Lançamentos</SectionTitle>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-zinc-100">
-                        <th className="py-1.5 text-left  font-medium text-zinc-400">Data</th>
-                        <th className="py-1.5 text-left  font-medium text-zinc-400">Tipo</th>
-                        <th className="py-1.5 text-left  font-medium text-zinc-400">Descrição</th>
-                        <th className="py-1.5 text-right font-medium text-zinc-400">Valor</th>
-                        <th className="py-1.5 text-right font-medium text-zinc-400">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-50">
-                      {data.lancamentos_recentes.map((l, i) => (
-                        <tr key={i} className="hover:bg-zinc-50">
-                          <td className="py-1.5 text-zinc-500 whitespace-nowrap">
-                            {l.data ? fmtDate(l.data) : '—'}
-                          </td>
-                          <td className="py-1.5 pr-2">
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              l.tipo === 'Entrada'
-                                ? 'bg-success-bg text-success'
-                                : 'bg-orange-50 text-orange-700'
-                            }`}>
-                              {l.tipo}
-                            </span>
-                          </td>
-                          <td className="py-1.5 text-zinc-600 max-w-40 truncate" title={l.descricao ?? ''}>
-                            {l.descricao ?? '—'}
-                          </td>
-                          <td className={`py-1.5 text-right tabular-nums font-medium ${
-                            l.tipo === 'Entrada' ? 'text-success' : 'text-orange-600'
-                          }`}>
-                            {fmtBRL(l.valor)}
-                          </td>
-                          <td className="py-1.5 text-right text-zinc-400 whitespace-nowrap">
-                            {l.status ?? '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <CaixaAcumuladoChart rows={data.acumulado_mensal} />
                 </div>
               )}
             </>
