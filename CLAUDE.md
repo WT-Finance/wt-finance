@@ -227,6 +227,7 @@ verdade é `docs/adr/`. Evitar colisão de número.
 - **Card:** padrão `shadow-sm` (não border destacado).
 - **Versionamento X.Y.Z** (ADR-0084): MAJOR quebra premissa de domínio; MINOR capacidade/reformulação; PATCH correção/polimento. Sidebar mostra X.Y.Z. CHANGELOG.md formato Keep-a-Changelog.
 - **Upload/parse de arquivo → API Route, não Server Action.** Libs como `@e965/xlsx` falham no SSR/RSC; API Route (`runtime = 'nodejs'`) isola do contexto React Server Components. (Descoberto no PEND-001/v4.7.)
+- **Gráficos → primitivos de `@/components/charts`.** Tema central, eixos/grade/linha-do-zero, `ChartLegend`, `CustomTooltip` e formatadores de eixo (`fmtAxisBRL`/`fmtAxisPct`/`fmtAxisMes`) — não reconfigurar Recharts à mão. Convenção: sólido = real/efetivo, tracejado = referência/projeção; eixo temporal sempre contínuo. Migração dos legados é incremental (quando tocados). (ADR-0095, v4.8.)
 
 ---
 
