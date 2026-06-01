@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import ChartShowcase from './chart-showcase'
 
 export const dynamic = 'force-dynamic'
 
@@ -179,24 +180,76 @@ export default function DesignSystemPage() {
         </div>
       </Section>
 
-      <Section id="graficos" title="8. Gráficos — Referência de Cores">
-        <p className="text-xs text-[var(--text-muted)] mb-3">Tokens chart-* para uso em componentes Recharts</p>
+      <Section id="graficos" title="8. Gráficos — Padrão (tom discreto)">
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Primitivos reutilizáveis em{' '}
+          <code className="bg-zinc-100 px-1 rounded">@/components/charts</code>. Tema central
+          em <code className="bg-zinc-100 px-1 rounded">chart-theme.ts</code> (cores, margens,
+          dasharrays, tamanhos). Eixos, grade, linha-zero e legenda vêm prontos — não
+          reimplementar. Cores sempre via token CSS.
+        </p>
+
+        {/* Exemplos visuais ao vivo */}
+        <ChartShowcase />
+
+        {/* Convenção sólido x tracejado */}
+        <div className="bg-zinc-50 rounded-xl p-4 mt-6 mb-6">
+          <p className="font-medium text-[var(--text-primary)] text-sm mb-2">Convenção sólido x tracejado</p>
+          <ul className="text-xs text-[var(--text-muted)] space-y-1 list-disc pl-4">
+            <li><strong>Sólido</strong> = dado real / efetivo. Linha principal 2px com pontos nos vértices.</li>
+            <li><strong>Tracejado <code className="bg-zinc-100 px-1 rounded">{'5 4'}</code></strong> = referência (ano anterior) ou projeção (futuro). Linha 1,5px.</li>
+            <li>Em barras, o <strong>previsto/projetado</strong> usa opacidade <code className="bg-zinc-100 px-1 rounded">FUTURE_OPACITY</code> (0.35); o efetivo, opacidade cheia.</li>
+            <li>Grade: horizontal tracejada <code className="bg-zinc-100 px-1 rounded">{'3 4'}</code> sutil, sem grade vertical. Linha do zero sólida e mais forte.</li>
+            <li>Barras: cantos 2px só nas pontas externas; stacks com segmentos internos contínuos (sem arredondar entre eles).</li>
+            <li>Eixo temporal sempre contínuo — usar <code className="bg-zinc-100 px-1 rounded">fillMonths()</code> para preencher meses sem dado.</li>
+          </ul>
+        </div>
+
+        {/* Formatadores de eixo */}
+        <p className="font-medium text-[var(--text-primary)] text-sm mb-2">Formatadores de eixo (<code className="bg-zinc-100 px-1 rounded">@/lib/fmt</code>)</p>
+        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-6">
+          <p>{'fmtAxisBRL(1_800_000)  → "R$ 1,8 Mi"   // tickFormatter do eixo Y'}</p>
+          <p>{'fmtAxisBRL(600_000)    → "R$ 600,0 k"'}</p>
+          <p>{'fmtAxisBRL(0)          → "R$ 0"'}</p>
+          <p>{'fmtAxisPct(14)         → "14%"          // eixo Y percentual'}</p>
+          <p>{'fmtAxisMes("2026-01")  → "jan/26"       // eixo X temporal (minúsculo)'}</p>
+        </div>
+
+        {/* Primitivos de componente */}
+        <p className="font-medium text-[var(--text-primary)] text-sm mb-2">Primitivos (<code className="bg-zinc-100 px-1 rounded">@/components/charts</code>)</p>
+        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-6">
+          <p className="text-[var(--text-primary)] not-italic font-sans font-medium mb-1">Factories (chamar como função dentro do chart):</p>
+          <p>{'{ChartGrid()}          // grade horizontal tracejada, sem vertical'}</p>
+          <p>{'{ChartZeroLine()}      // ReferenceLine y=0 sólida e forte'}</p>
+          <p>{'{ChartXAxisMes("mes")} // eixo X temporal "jan/26"'}</p>
+          <p>{'{ChartYAxisBRL()}      // eixo Y "R$ 1,8 Mi" (abs por padrão)'}</p>
+          <p>{'{ChartYAxisPct()} / {ChartXAxisBRL()} / {ChartYAxisCategoria("name")}'}</p>
+          <p>{'{ChartReferenceLineY(meta, { color, label })} // referência tracejada'}</p>
+          <p className="text-[var(--text-primary)] not-italic font-sans font-medium mt-2 mb-1">Componentes:</p>
+          <p>{'<ChartLegend items={[{ label, color, type, opacity, dashed }]} />'}</p>
+          <p>{'<CustomTooltip {...props} showColorDot formatter={...} labelFormatter={...} />'}</p>
+        </div>
+
+        {/* Tokens de cor */}
+        <p className="text-xs text-[var(--text-muted)] mb-2">Tokens estruturais e de série (via <code className="bg-zinc-100 px-1 rounded">chartColors</code> / <code className="bg-zinc-100 px-1 rounded">chartSeries</code>):</p>
         <ColorGrid items={[
           { name: '--chart-axis-tick', hex: '#52525b', usage: 'Labels de eixo X/Y' },
-          { name: '--chart-grid',      hex: '#e4e4e7', usage: 'Grid lines (dashed)' },
+          { name: '--chart-grid',      hex: '#e4e4e7', usage: 'Grade horizontal tracejada' },
+          { name: '--border-strong',   hex: '#D4C8B4', usage: 'Linha do zero (chartColors.zeroLine)' },
           { name: '--chart-success',   hex: '#10b981', usage: 'Séries positivas/sucesso' },
           { name: '--chart-warning',   hex: '#f97316', usage: 'Séries de atenção' },
           { name: '--chart-danger',    hex: '#dc2626', usage: 'Séries negativas/erro' },
-          { name: '--chart-neutral',   hex: '#94a3b8', usage: 'Séries neutras' },
+          { name: '--chart-neutral',   hex: '#94a3b8', usage: 'Séries neutras / "Outros"' },
           { name: '--chart-info',      hex: '#6366f1', usage: 'Séries informativas' },
         ]} />
-        <p className="text-xs text-[var(--text-muted)] mt-4">Cores de série semânticas específicas (mantidas hardcoded por serem identitárias):</p>
+        <p className="text-xs text-[var(--text-muted)] mt-4 mb-2">Cores semânticas identitárias (via <code className="bg-zinc-100 px-1 rounded">fluxoColors</code> / <code className="bg-zinc-100 px-1 rounded">SETOR_COLORS</code> em <code className="bg-zinc-100 px-1 rounded">@/lib/config</code>):</p>
         <ColorGrid items={[
-          { name: 'Entradas (Fluxo)',  hex: '#0091B3', usage: 'Barras de entrada — Pantone 632' },
-          { name: 'Saídas (Fluxo)',    hex: '#D9A23F', usage: 'Barras de saída' },
-          { name: 'Resultado (linha)', hex: '#2D2A26', usage: 'Linha de resultado mensal' },
-          { name: 'Lazer',             hex: '#378ADD', usage: 'Setor Lazer (identitário)' },
-          { name: 'Corporativo',       hex: '#0F6E56', usage: 'Setor Corporativo (identitário)' },
+          { name: '--chart-fluxo-entrada', hex: '#0091B3', usage: 'Entradas/recebimentos — Pantone 632' },
+          { name: '--chart-fluxo-saida',   hex: '#D9A23F', usage: 'Saídas/pagamentos' },
+          { name: 'fluxoColors.resultado', hex: '#2D2A26', usage: 'Linha de resultado (--text-primary)' },
+          { name: '--setor-lazer',         hex: '#378ADD', usage: 'Setor Lazer / Trips' },
+          { name: '--setor-weddings',      hex: '#BA7517', usage: 'Setor Weddings' },
+          { name: '--setor-corporativo',   hex: '#0F6E56', usage: 'Setor Corporativo' },
         ]} />
       </Section>
 
