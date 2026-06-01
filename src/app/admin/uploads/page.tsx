@@ -9,48 +9,84 @@ import {
   getVendasStatusAction,
   inserirLoteVendasAction,
   finalizarVendasAction,
+  getLancamentosFinanceiroStatusAction,
+  inserirLoteLancamentosFinanceiroAction,
+  finalizarLancamentosFinanceiroAction,
+  getFluxoCaixaTitulosStatusAction,
+  inserirLoteFluxoCaixaTitulosAction,
+  finalizarFluxoCaixaTitulosAction,
 } from './actions'
+import { ModalConfirmacaoUpload } from '@/components/admin/modal-confirmacao-upload'
 import { parseLancamentosFile } from '@/lib/carga/parse-lancamentos'
 import { parseVendasProdutoFile } from '@/lib/carga/parse-vendas-produto'
-import type { LancamentoRaw } from '@/lib/carga/lancamentos'
+import { parseLancamentosFinanceiroFile } from '@/lib/carga/parse-lancamentos-financeiro'
+import { parseFluxoCaixaTitulosFile } from '@/lib/carga/parse-fluxo-caixa-titulos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
+import type { LancamentoRaw } from '@/lib/carga/lancamentos'
+import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
+import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
+
+type BaseKey = 'vendas' | 'lancamentos' | 'lancamentos_financeiro' | 'fluxo_caixa_titulos'
+type EstadoCard = 'idle' | 'validando' | 'aguardando_confirmacao' | 'carregando' | 'sucesso' | 'erro'
 
 interface StatusCarga {
   total: number
   ultima_atualizacao: string | null
 }
 
-interface StatusGeral {
-  vendas:       StatusCarga
-  lancamentos:  StatusCarga
-}
-
-interface PreviewCarga {
-  antes:  { total_vendas?: number; total_lancamentos?: number }
-  depois: { total_vendas?: number; total_lancamentos?: number }
-}
-
-interface ResultadoCarga {
-  sucesso:     boolean
-  total_linhas: number
-  erros:       string[]
-  preview:     PreviewCarga
-  vendas_count?:    number
-  fato_item_count?: number
-}
-
-type EstadoCard = 'idle' | 'validando' | 'aguardando_confirmacao' | 'carregando' | 'sucesso' | 'erro'
-
 interface EstadoUpload {
-  estado:    EstadoCard
-  arquivo:   File | null
-  resultado: ResultadoCarga | null
-  mensagem:  string
+  estado:      EstadoCard
+  arquivo:     File | null
+  totalLinhas: number
+  totalAntes:  number
+  mensagem:    string
 }
 
 const ESTADO_INICIAL: EstadoUpload = {
-  estado: 'idle', arquivo: null, resultado: null, mensagem: ''
+  estado: 'idle', arquivo: null, totalLinhas: 0, totalAntes: 0, mensagem: '',
 }
+
+interface BaseConfig {
+  key:      BaseKey
+  label:    string
+  descricao: string
+  /** Tamanho de lote validado para esta base — não unificar (cabe em <3s). */
+  batch:    number
+  /** Sufixo do contador na linha de status (ex.: "vendas", "lançamentos", "registros"). */
+  unidade:  string
+}
+
+// Texto explicativo uniforme: cada base SUBSTITUI TODA a base; importar sempre completo.
+const BASES: BaseConfig[] = [
+  {
+    key: 'vendas',
+    label: 'Vendas por Produto',
+    descricao: 'Substitui toda a base de Vendas por Produto. Importe sempre o arquivo completo.',
+    batch: 1000,
+    unidade: 'vendas',
+  },
+  {
+    key: 'lancamentos',
+    label: 'Lançamentos por Operação',
+    descricao: 'Substitui toda a base de Lançamentos por Operação. Importe sempre o arquivo completo.',
+    batch: 1000,
+    unidade: 'lançamentos',
+  },
+  {
+    key: 'lancamentos_financeiro',
+    label: 'Lançamentos por Categoria',
+    descricao: 'Substitui toda a base de Lançamentos por Categoria. Importe sempre o arquivo completo.',
+    batch: 500,
+    unidade: 'registros',
+  },
+  {
+    key: 'fluxo_caixa_titulos',
+    label: 'Fluxo de Caixa (CAP/CAR)',
+    descricao: 'Substitui toda a base de Fluxo de Caixa (CAP/CAR). Importe sempre o arquivo completo.',
+    batch: 500,
+    unidade: 'registros',
+  },
+]
 
 function formatarData(iso: string | null): string {
   if (!iso) return 'Nunca'
@@ -61,70 +97,24 @@ function formatarNum(n: number): string {
   return n.toLocaleString('pt-BR')
 }
 
-function ModalConfirmacao({
-  tipo,
-  resultado,
-  onConfirmar,
-  onCancelar,
-}: {
-  tipo: 'vendas' | 'lancamentos'
-  resultado: ResultadoCarga
-  onConfirmar: () => void
-  onCancelar:  () => void
-}) {
-  const label = tipo === 'vendas' ? 'vendas' : 'lançamentos'
-  const antes  = tipo === 'vendas' ? resultado.preview.antes.total_vendas : resultado.preview.antes.total_lancamentos
-  const depois = tipo === 'vendas' ? resultado.preview.depois.total_vendas : resultado.preview.depois.total_lancamentos
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onCancelar} />
-      <div className="relative bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
-        <h3 className="text-base font-semibold text-zinc-900 mb-2">Confirmar importação</h3>
-        <p className="text-sm text-zinc-600 mb-4">
-          Vai apagar <span className="font-medium">{formatarNum(antes ?? 0)}</span> {label} atuais
-          e carregar <span className="font-medium">{formatarNum(depois ?? 0)}</span> novos. Esta ação não pode ser desfeita.
-        </p>
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onCancelar}
-            className="px-4 py-2 text-sm rounded-lg border border-zinc-200 text-zinc-700 hover:bg-zinc-50 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onConfirmar}
-            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium"
-          >
-            Confirmar importação
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function CardUpload({
-  tipo,
+  config,
   status,
   estado,
   onArquivoSelecionado,
   onCancelar,
   onConfirmar,
 }: {
-  tipo:                   'vendas' | 'lancamentos'
-  status:                 StatusCarga | null
-  estado:                 EstadoUpload
-  onArquivoSelecionado:   (f: File) => void
-  onCancelar:             () => void
-  onConfirmar:            () => void
+  config:               BaseConfig
+  status:               StatusCarga | null
+  estado:               EstadoUpload
+  onArquivoSelecionado: (f: File) => void
+  onCancelar:           () => void
+  onConfirmar:          () => void
 }) {
-  const inputRef  = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
-  const label      = tipo === 'vendas' ? 'Vendas por Produto' : 'Lançamentos por Operação'
-  const extensao   = '.xlsx,.csv'
-  const totalLabel = tipo === 'vendas' ? 'vendas' : 'lançamentos'
-  const ativo      = estado.estado === 'idle' || estado.estado === 'erro'
+  const ativo = estado.estado === 'idle' || estado.estado === 'erro'
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -145,18 +135,20 @@ function CardUpload({
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-1">
         <div>
-          <h2 className="text-sm font-semibold text-zinc-900">{label}</h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            {status ? (
-              <>Última atualização: {formatarData(status.ultima_atualizacao)} · {formatarNum(status.total)} {totalLabel}</>
-            ) : '—'}
-          </p>
+          <h2 className="text-sm font-semibold text-zinc-900">{config.label}</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">{config.descricao}</p>
         </div>
         {estado.estado === 'sucesso' && <CheckCircle size={18} className="text-emerald-500 shrink-0" />}
         {estado.estado === 'erro'    && <AlertTriangle size={18} className="text-red-500 shrink-0" />}
       </div>
+
+      <p className="text-xs text-zinc-400 mb-3">
+        {status ? (
+          <>Última atualização: {formatarData(status.ultima_atualizacao)} · {formatarNum(status.total)} {config.unidade}</>
+        ) : '—'}
+      </p>
 
       {/* Zona de drop / arquivo selecionado */}
       <div
@@ -177,7 +169,7 @@ function CardUpload({
         <input
           ref={inputRef}
           type="file"
-          accept={extensao}
+          accept=".xlsx,.csv"
           className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) onArquivoSelecionado(f); e.target.value = '' }}
         />
@@ -192,14 +184,14 @@ function CardUpload({
             <Loader2 size={14} className="animate-spin" /> Validando {estado.arquivo?.name}…
           </div>
         )}
-        {estado.estado === 'aguardando_confirmacao' && estado.resultado && (
+        {estado.estado === 'aguardando_confirmacao' && (
           <p className="text-xs text-zinc-700">
-            <span className="font-medium">{estado.arquivo?.name}</span> — {formatarNum(estado.resultado.total_linhas)} linhas válidas
+            <span className="font-medium">{estado.arquivo?.name}</span> — {formatarNum(estado.totalLinhas)} linhas válidas
           </p>
         )}
         {estado.estado === 'carregando' && (
           <div className="flex items-center justify-center gap-2 text-xs text-blue-600">
-            <Loader2 size={14} className="animate-spin" /> Importando {formatarNum(estado.resultado?.total_linhas ?? 0)} linhas…
+            <Loader2 size={14} className="animate-spin" /> Importando {formatarNum(estado.totalLinhas)} linhas…
           </div>
         )}
         {estado.estado === 'sucesso' && (
@@ -212,13 +204,6 @@ function CardUpload({
           </div>
         )}
       </div>
-
-      {/* Erros pontuais de linhas */}
-      {estado.resultado?.erros && estado.resultado.erros.length > 0 && estado.estado !== 'erro' && (
-        <p className="text-xs text-amber-600 mb-3">
-          {estado.resultado.erros.length} linha(s) com problemas ignoradas
-        </p>
-      )}
 
       {/* Botão Validar/Cancelar */}
       {(estado.estado === 'idle' || estado.estado === 'erro') && (
@@ -249,167 +234,173 @@ function CardUpload({
   )
 }
 
+// As linhas parseadas de cada base têm tipos diferentes; guardamos como unknown[]
+// por base e repassamos para a action correta no handleConfirmar.
+type LinhasRef = Record<BaseKey, unknown[]>
+
 export default function AdminUploadsPage() {
-  const [statusGeral, setStatusGeral] = useState<StatusGeral | null>(null)
-  const [vendas,      setVendas]      = useState<EstadoUpload>(ESTADO_INICIAL)
-  const [lanc,        setLanc]        = useState<EstadoUpload>(ESTADO_INICIAL)
-  const [modal,       setModal]       = useState<'vendas' | 'lancamentos' | null>(null)
-  const lancLinhasRef                 = useRef<LancamentoRaw[]>([])
-  const vendasLinhasRef               = useRef<VendaProdutoRaw[]>([])
+  const [status, setStatus] = useState<Record<BaseKey, StatusCarga | null>>({
+    vendas: null, lancamentos: null, lancamentos_financeiro: null, fluxo_caixa_titulos: null,
+  })
+  const [estados, setEstados] = useState<Record<BaseKey, EstadoUpload>>({
+    vendas: ESTADO_INICIAL, lancamentos: ESTADO_INICIAL,
+    lancamentos_financeiro: ESTADO_INICIAL, fluxo_caixa_titulos: ESTADO_INICIAL,
+  })
+  const [modal, setModal] = useState<BaseKey | null>(null)
 
-  async function carregarStatus() {
+  const linhasRef = useRef<LinhasRef>({
+    vendas: [], lancamentos: [], lancamentos_financeiro: [], fluxo_caixa_titulos: [],
+  })
+
+  function setEstado(key: BaseKey, patch: Partial<EstadoUpload>) {
+    setEstados(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+  }
+
+  const carregarStatus = useCallback(async () => {
+    const [vendasRes, lancRes, lancFinRes, fctRes] = await Promise.allSettled([
+      getVendasStatusAction(),
+      getLancamentosStatusAction(),
+      getLancamentosFinanceiroStatusAction(),
+      getFluxoCaixaTitulosStatusAction(),
+    ])
+
+    const toStatus = (
+      r: PromiseSettledResult<{ total: number; ultima_atualizacao?: string | null } | { error: string }>,
+    ): StatusCarga | null => {
+      if (r.status !== 'fulfilled' || 'error' in r.value) return null
+      return { total: r.value.total, ultima_atualizacao: r.value.ultima_atualizacao ?? null }
+    }
+
+    setStatus({
+      vendas:                 toStatus(vendasRes),
+      lancamentos:            toStatus(lancRes),
+      lancamentos_financeiro: toStatus(lancFinRes),
+      fluxo_caixa_titulos:    toStatus(fctRes),
+    })
+  }, [])
+
+  useEffect(() => { carregarStatus() }, [carregarStatus])
+
+  async function handleArquivoSelecionado(key: BaseKey, arquivo: File) {
+    setEstado(key, { estado: 'validando', arquivo, totalLinhas: 0, totalAntes: 0, mensagem: '' })
+
     try {
-      const res = await fetch('/api/admin/upload-status')
-      if (res.ok) setStatusGeral(await res.json())
-    } catch { /* silencia */ }
+      if (key === 'vendas') {
+        const res = await parseVendasProdutoFile(arquivo)
+        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+        const st = await getVendasStatusAction()
+        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
+        linhasRef.current.vendas = res
+        // "Depois" para vendas = nº de vendas únicas (não de linhas/itens).
+        const uniqueVendas = new Set(res.map(r => r.venda_numero).filter(Boolean)).size
+        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: uniqueVendas, totalAntes: st.total })
+      } else if (key === 'lancamentos') {
+        const res = await parseLancamentosFile(arquivo)
+        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+        const st = await getLancamentosStatusAction()
+        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
+        linhasRef.current.lancamentos = res
+        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
+      } else if (key === 'lancamentos_financeiro') {
+        const res = await parseLancamentosFinanceiroFile(arquivo)
+        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+        const st = await getLancamentosFinanceiroStatusAction()
+        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
+        linhasRef.current.lancamentos_financeiro = res
+        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
+      } else {
+        const res = await parseFluxoCaixaTitulosFile(arquivo)
+        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+        const st = await getFluxoCaixaTitulosStatusAction()
+        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
+        linhasRef.current.fluxo_caixa_titulos = res
+        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
+      }
+
+      setModal(key)
+    } catch (err) {
+      setEstado(key, { estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de parse' })
+    }
   }
 
-  useEffect(() => { carregarStatus() }, [])
-
-  async function handleArquivoSelecionado(tipo: 'vendas' | 'lancamentos', arquivo: File) {
-    const setter = tipo === 'vendas' ? setVendas : setLanc
-    setter(s => ({ ...s, estado: 'validando', arquivo, resultado: null, mensagem: '' }))
-
-    if (tipo === 'vendas') {
-      try {
-        const parseResult = await parseVendasProdutoFile(arquivo)
-        if ('error' in parseResult) {
-          setter(s => ({ ...s, estado: 'erro', mensagem: parseResult.error }))
-          return
-        }
-        const statusResult = await getVendasStatusAction()
-        if ('error' in statusResult) {
-          setter(s => ({ ...s, estado: 'erro', mensagem: statusResult.error }))
-          return
-        }
-        vendasLinhasRef.current = parseResult
-        const uniqueVendas = new Set(parseResult.map(r => r.venda_numero).filter(Boolean)).size
-        const resultado: ResultadoCarga = {
-          sucesso: true,
-          total_linhas: parseResult.length,
-          erros: [],
-          preview: {
-            antes:  { total_vendas: statusResult.total },
-            depois: { total_vendas: uniqueVendas },
-          },
-        }
-        setter(s => ({ ...s, estado: 'aguardando_confirmacao', resultado }))
-        setModal('vendas')
-      } catch (err) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de parse' }))
-      }
-      return
-    }
-
-    if (tipo === 'lancamentos') {
-      try {
-        const parseResult = await parseLancamentosFile(arquivo)
-        if ('error' in parseResult) {
-          setter(s => ({ ...s, estado: 'erro', mensagem: parseResult.error }))
-          return
-        }
-        const statusResult = await getLancamentosStatusAction()
-        if ('error' in statusResult) {
-          setter(s => ({ ...s, estado: 'erro', mensagem: statusResult.error }))
-          return
-        }
-        lancLinhasRef.current = parseResult
-        const resultado: ResultadoCarga = {
-          sucesso: true,
-          total_linhas: parseResult.length,
-          erros: [],
-          preview: {
-            antes:  { total_lancamentos: statusResult.total },
-            depois: { total_lancamentos: parseResult.length },
-          },
-        }
-        setter(s => ({ ...s, estado: 'aguardando_confirmacao', resultado }))
-        setModal('lancamentos')
-      } catch (err) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de parse' }))
-      }
-      return
-    }
-
-  }
-
-  async function handleConfirmar(tipo: 'vendas' | 'lancamentos') {
-    const setter = tipo === 'vendas' ? setVendas : setLanc
-    const estado = tipo === 'vendas' ? vendas : lanc
+  async function handleConfirmar(key: BaseKey) {
     setModal(null)
+    const est = estados[key]
+    if (!est.arquivo) return
 
-    if (!estado.arquivo) return
-    setter(s => ({ ...s, estado: 'carregando' }))
+    const config = BASES.find(b => b.key === key)!
+    const BATCH = config.batch
+    const nome = est.arquivo.name
+    const totalAntes = est.totalAntes
+    setEstado(key, { estado: 'carregando' })
 
-    if (tipo === 'vendas') {
-      const rows = vendasLinhasRef.current
-      const totalAntes = estado.resultado?.preview?.antes?.total_vendas ?? 0
-      const BATCH = 1000
-      let inseridas = 0
-      try {
+    try {
+      if (key === 'vendas') {
+        const rows = linhasRef.current.vendas as VendaProdutoRaw[]
+        let inseridas = 0
         for (let i = 0; i < rows.length; i += BATCH) {
-          const lote = rows.slice(i, i + BATCH)
-          const result = await inserirLoteVendasAction(lote, i === 0)
-          if ('error' in result) {
-            setter(s => ({ ...s, estado: 'erro', mensagem: result.error }))
-            return
-          }
-          inseridas += result.inseridas
+          const res = await inserirLoteVendasAction(rows.slice(i, i + BATCH), i === 0)
+          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+          inseridas += res.inseridas
         }
-        const finalResult = await finalizarVendasAction(totalAntes, inseridas)
-        if ('error' in finalResult) {
-          setter(s => ({ ...s, estado: 'erro', mensagem: finalResult.error }))
-          return
-        }
-        vendasLinhasRef.current = []
-        const msg = `${formatarNum(finalResult.vendas_count)} vendas importadas com sucesso`
-        setter(s => ({ ...s, estado: 'sucesso', resultado: finalResult as unknown as ResultadoCarga, mensagem: msg }))
-        await carregarStatus()
-      } catch (err) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro na importação' }))
-      }
-      return
-    }
+        const fin = await finalizarVendasAction(totalAntes, inseridas)
+        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
+        linhasRef.current.vendas = []
+        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.vendas_count)} vendas importadas com sucesso` })
 
-    if (tipo === 'lancamentos') {
-      const rows = lancLinhasRef.current
-      const totalAntes = estado.resultado?.preview?.antes?.total_lancamentos ?? 0
-      const BATCH = 1000
-      let inseridas = 0
-      try {
+      } else if (key === 'lancamentos') {
+        const rows = linhasRef.current.lancamentos as LancamentoRaw[]
+        let inseridas = 0
         for (let i = 0; i < rows.length; i += BATCH) {
-          const lote = rows.slice(i, i + BATCH)
-          const result = await inserirLoteLancamentosAction(lote, i === 0)
-          if ('error' in result) {
-            setter(s => ({ ...s, estado: 'erro', mensagem: result.error }))
-            return
-          }
-          inseridas += result.inseridas
+          const res = await inserirLoteLancamentosAction(rows.slice(i, i + BATCH), i === 0)
+          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+          inseridas += res.inseridas
         }
-        const finalResult = await finalizarLancamentosAction(totalAntes, inseridas)
-        if ('error' in finalResult) {
-          setter(s => ({ ...s, estado: 'erro', mensagem: finalResult.error }))
-          return
-        }
-        lancLinhasRef.current = []
-        const msg = `${formatarNum(finalResult.total_linhas)} lançamentos importados com sucesso`
-        setter(s => ({ ...s, estado: 'sucesso', resultado: finalResult as unknown as ResultadoCarga, mensagem: msg }))
-        await carregarStatus()
-      } catch (err) {
-        setter(s => ({ ...s, estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro na importação' }))
-      }
-      return
-    }
+        const fin = await finalizarLancamentosAction(totalAntes, inseridas)
+        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
+        linhasRef.current.lancamentos = []
+        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.total_linhas)} lançamentos importados com sucesso` })
 
+      } else if (key === 'lancamentos_financeiro') {
+        const rows = linhasRef.current.lancamentos_financeiro as LancamentoFinanceiroRaw[]
+        let inseridas = 0
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const res = await inserirLoteLancamentosFinanceiroAction(rows.slice(i, i + BATCH), i === 0, nome)
+          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+          inseridas += res.inseridas
+        }
+        const fin = await finalizarLancamentosFinanceiroAction(totalAntes, inseridas)
+        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
+        linhasRef.current.lancamentos_financeiro = []
+        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
+
+      } else {
+        const rows = linhasRef.current.fluxo_caixa_titulos as FluxoCaixaTituloRaw[]
+        let inseridas = 0
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const res = await inserirLoteFluxoCaixaTitulosAction(rows.slice(i, i + BATCH), i === 0, nome)
+          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+          inseridas += res.inseridas
+        }
+        const fin = await finalizarFluxoCaixaTitulosAction(totalAntes, inseridas)
+        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
+        linhasRef.current.fluxo_caixa_titulos = []
+        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
+      }
+
+      await carregarStatus()
+    } catch (err) {
+      setEstado(key, { estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro na importação' })
+    }
   }
 
-  function handleCancelar(tipo: 'vendas' | 'lancamentos') {
+  function handleCancelar(key: BaseKey) {
     setModal(null)
-    if (tipo === 'lancamentos') lancLinhasRef.current = []
-    if (tipo === 'vendas') vendasLinhasRef.current = []
-    const setter = tipo === 'vendas' ? setVendas : setLanc
-    setter(ESTADO_INICIAL)
+    linhasRef.current[key] = []
+    setEstado(key, { ...ESTADO_INICIAL })
   }
+
+  const modalConfig = modal ? BASES.find(b => b.key === modal)! : null
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -428,28 +419,24 @@ export default function AdminUploadsPage() {
       </div>
 
       <div className="space-y-4">
-        <CardUpload
-          tipo="vendas"
-          status={statusGeral?.vendas ?? null}
-          estado={vendas}
-          onArquivoSelecionado={f => handleArquivoSelecionado('vendas', f)}
-          onCancelar={() => handleCancelar('vendas')}
-          onConfirmar={() => setModal('vendas')}
-        />
-        <CardUpload
-          tipo="lancamentos"
-          status={statusGeral?.lancamentos ?? null}
-          estado={lanc}
-          onArquivoSelecionado={f => handleArquivoSelecionado('lancamentos', f)}
-          onCancelar={() => handleCancelar('lancamentos')}
-          onConfirmar={() => setModal('lancamentos')}
-        />
+        {BASES.map(config => (
+          <CardUpload
+            key={config.key}
+            config={config}
+            status={status[config.key]}
+            estado={estados[config.key]}
+            onArquivoSelecionado={f => handleArquivoSelecionado(config.key, f)}
+            onCancelar={() => handleCancelar(config.key)}
+            onConfirmar={() => setModal(config.key)}
+          />
+        ))}
       </div>
 
-      {modal && (modal === 'vendas' ? vendas : lanc).resultado && (
-        <ModalConfirmacao
-          tipo={modal}
-          resultado={(modal === 'vendas' ? vendas : lanc).resultado!}
+      {modal && modalConfig && estados[modal].estado === 'aguardando_confirmacao' && (
+        <ModalConfirmacaoUpload
+          baseLabel={modalConfig.label}
+          totalAntes={estados[modal].totalAntes}
+          totalDepois={estados[modal].totalLinhas}
           onConfirmar={() => handleConfirmar(modal)}
           onCancelar={() => handleCancelar(modal)}
         />

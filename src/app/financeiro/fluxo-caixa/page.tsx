@@ -114,7 +114,7 @@ function NoDataMessage() {
     <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-6 py-12 text-center">
       <p className="text-sm font-medium text-zinc-500">Nenhum lançamento financeiro importado ainda</p>
       <p className="text-xs text-zinc-400 mt-1">
-        Acesse <a href="/admin/uploads/financeiro" className="underline hover:text-zinc-600">Upload de Arquivos › Financeiro</a> para importar os dados
+        Acesse <a href="/admin/uploads" className="underline hover:text-zinc-600">Upload de Arquivos</a> para importar os dados
       </p>
     </div>
   )
