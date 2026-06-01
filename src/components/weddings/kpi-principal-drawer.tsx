@@ -7,14 +7,31 @@ import ListDrawer from '@/components/shared/list-drawer'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import type { TendenciaMargem, ExecutivaKpis, SumarioSubsetor } from '@/types/api'
 import {
+  SUBSETOR_ORDER,
+  SUBSETOR_LABELS,
+  subsetorColor,
+} from '@/lib/config'
+import {
+  ChartGrid,
+  ChartXAxisMes,
+  ChartXAxisCategoria,
+  ChartYAxisBRL,
+  ChartYAxisPct,
+  ChartLegend,
+  CustomTooltip,
+  chartColors,
+  dashArrays,
+  strokeWidths,
+  barRadius,
+  barSizes,
+  type ChartLegendItem,
+} from '@/components/charts'
+import {
   ResponsiveContainer,
   LineChart,
   Line,
   BarChart,
   Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
 } from 'recharts'
 
@@ -27,33 +44,16 @@ interface HistoricoSubsetorRow {
   receita:     number
 }
 
-// Ordem fixa de subsetores (mesma de get_sumario_subsetor) + cores do design system.
-// As chaves batem exatamente com dps.subsetor_detalhado retornado pela RPC.
-const SUBSETOR_ORDER: string[] = [
-  'COMERCIAL',
-  'PLANEJAMENTO',
-  'PRODUÇÃO',
-  'CONVIDADOS - Hospedagens',
-  'CONVIDADOS - Extras',
-  'NÃO_CLASSIFICADO',
-]
+// Ordem/cores/labels de subsetor vêm do design system ('@/lib/config'):
+// SUBSETOR_ORDER, subsetorColor(), SUBSETOR_LABELS. A RPC pode retornar também
+// 'NÃO_CLASSIFICADO', que não está no config — é apêndice no fim da ordem, com
+// cor de fallback (brand) e rótulo dedicado abaixo.
+const SUBSETOR_ORDER_DRAWER: string[] = [...SUBSETOR_ORDER, 'NÃO_CLASSIFICADO']
 
-const SUBSETOR_COLOR: Record<string, string> = {
-  COMERCIAL:                  'var(--subsetor-comercial)',
-  PLANEJAMENTO:               'var(--subsetor-planejamento)',
-  'PRODUÇÃO':                 'var(--subsetor-producao)',
-  'CONVIDADOS - Hospedagens': 'var(--subsetor-hospedagens)',
-  'CONVIDADOS - Extras':      'var(--subsetor-extras)',
-  NÃO_CLASSIFICADO:           '#BA7517',
-}
-
-const SUBSETOR_LABEL: Record<string, string> = {
-  COMERCIAL:                  'Comercial',
-  PLANEJAMENTO:               'Planejamento',
-  'PRODUÇÃO':                 'Produção',
-  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
-  'CONVIDADOS - Extras':      'Convidados – Extras',
-  NÃO_CLASSIFICADO:           'Não Classif.',
+// Rótulo de subsetor com fallback para o não-classificado (ausente do config).
+function subsetorLabel(s: string): string {
+  if (s === 'NÃO_CLASSIFICADO') return 'Não Classif.'
+  return SUBSETOR_LABELS[s] ?? s
 }
 
 // Linha pivotada (um mês) para os BarCharts stacked.
@@ -159,26 +159,6 @@ const PILL_ACTIVE_STYLE = {
 const PILL_BASE = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
 const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
-// ── Custom tooltip ────────────────────────────────────────────────────────────
-
-function DrawerTooltip({ active, payload, label }: {
-  active?: boolean
-  payload?: { name: string; value: number; color: string }[]
-  label?: string
-}) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="bg-white border border-zinc-200 rounded-lg shadow-md px-3 py-2 text-xs">
-      <p className="font-medium text-zinc-700 mb-1">{label}</p>
-      {payload.map(p => (
-        <p key={p.name} className="tabular-nums" style={{ color: p.color }}>
-          {p.name}: {fmtMi(p.value)}
-        </p>
-      ))}
-    </div>
-  )
-}
-
 // ── Stacked tooltip (faturamento/receita por subsetor no mês) ───────────────────
 
 function StackedTooltip({ active, payload, label }: {
@@ -193,15 +173,17 @@ function StackedTooltip({ active, payload, label }: {
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
   if (!linhas.length) return null
   const total = linhas.reduce((s, p) => s + (p.value ?? 0), 0)
+  // O eixo X agora keia em `mes` ('YYYY-MM-DD'); formata p/ 'jan/26' no header.
+  const header = label ? mesLabel(label) : ''
   return (
     <div className="bg-white border border-zinc-200 rounded-lg shadow-md px-3 py-2 text-xs">
-      <p className="font-medium text-zinc-700 mb-1">{label}</p>
+      <p className="font-medium text-zinc-700 mb-1">{header}</p>
       {linhas.map(p => {
         const key = String(p.dataKey ?? p.name)
         return (
           <p key={key} className="tabular-nums flex items-center gap-1.5" style={{ color: p.color }}>
             <span className="inline-block w-2 h-2 rounded-sm shrink-0" style={{ background: p.color }} />
-            {SUBSETOR_LABEL[key] ?? key}: {fmtMi(p.value ?? 0)}
+            {subsetorLabel(key)}: {fmtMi(p.value ?? 0)}
           </p>
         )
       })}
@@ -212,26 +194,11 @@ function StackedTooltip({ active, payload, label }: {
   )
 }
 
-// ── Legenda compartilhada de subsetores ─────────────────────────────────────────
-
-function SubsetorLegend({ subsetores }: { subsetores: string[] }) {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 py-1">
-      {subsetores.map(s => (
-        <span key={s} className="flex items-center gap-1.5 text-[10px] text-zinc-500">
-          <span className="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: SUBSETOR_COLOR[s] ?? '#BA7517' }} />
-          {SUBSETOR_LABEL[s] ?? s}
-        </span>
-      ))}
-    </div>
-  )
-}
-
 // ── KPI cell (faixa 3x2, sem card cinza) ────────────────────────────────────────
 
 function KpiCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="px-3 py-3 text-center">
+    <div className="bg-white px-3 py-3 text-center">
       <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
       <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--brand)' }}>{value}</p>
     </div>
@@ -367,12 +334,12 @@ function DrawerBody() {
 
   // ── Stacked por subsetor (M2) ────────────────────────────────────────────────
   // Pivota o array flat { mes, subsetor, faturamento, receita } em uma linha por mês
-  // com uma chave por subsetor presente. Os dois gráficos (fat/rec) compartilham
-  // a MESMA escala Y (max calculado sobre o FATURAMENTO mensal por subsetor).
+  // com uma chave por subsetor presente. Faturamento e Receita têm escalas Y
+  // INDEPENDENTES (M5): cada gráfico usa o próprio máximo mensal empilhado.
   const historico = data?.historico ?? []
 
   // Subsetores que de fato aparecem no período, na ordem fixa.
-  const subsetoresPresentes = SUBSETOR_ORDER.filter(s =>
+  const subsetoresPresentes = SUBSETOR_ORDER_DRAWER.filter(s =>
     historico.some(r => r.subsetor === s),
   )
 
@@ -392,15 +359,24 @@ function DrawerBody() {
   const fatData = pivotar('faturamento')
   const recData = pivotar('receita')
 
-  // Escala Y compartilhada: max do TOTAL de faturamento empilhado por mês.
-  const maxFatMensal = fatData.reduce((max, row) => {
-    const total = subsetoresPresentes.reduce((s, k) => s + (Number(row[k]) || 0), 0)
-    return Math.max(max, total)
-  }, 0)
-  // Pequena folga no topo para legibilidade.
-  const yMax = maxFatMensal > 0 ? maxFatMensal * 1.05 : 1
-  const yDomain: [number, number] = [0, yMax]
+  // Escalas Y INDEPENDENTES (M5): cada gráfico stacked auto-escala pelo próprio
+  // total mensal (o eixo BRL do primitivo parte de 0 e ajusta o topo sozinho).
+  // A receita é fração do faturamento, então o eixo próprio dá legibilidade ao
+  // seu detalhe interno — não mais a escala compartilhada do faturamento.
   const temHistorico = historico.length > 0
+
+  // Legenda única dos subsetores presentes — entre os dois gráficos stacked.
+  const subsetorLegendItems: ChartLegendItem[] = subsetoresPresentes.map(s => ({
+    label: subsetorLabel(s),
+    color: subsetorColor(s),
+    type:  'rect',
+  }))
+
+  // Legenda do YoY: sólido = período atual, tracejado = ano anterior (referência).
+  const yoyLegendItems: ChartLegendItem[] = [
+    { label: 'Este período', color: 'var(--brand)',        type: 'line' },
+    { label: 'Ano anterior', color: chartColors.axisTick,  type: 'line', dashed: true },
+  ]
 
   return (
     <div>
@@ -480,8 +456,9 @@ function DrawerBody() {
         <p className="text-xs text-zinc-400 text-center py-8">Selecione um período</p>
       ) : (
         <div>
-          {/* KPIs — faixa 3x2 com divisórias finas, sem cards cinza */}
-          <div className="grid grid-cols-3 divide-x divide-y border border-zinc-100 rounded-lg overflow-hidden mt-4">
+          {/* KPIs — faixa 3x2 uniforme (6 células iguais, sem sobra à direita).
+              Separadores finos via gap que revela o fundo (border-zinc-100). */}
+          <div className="grid grid-cols-3 gap-px bg-zinc-100 border border-zinc-100 rounded-lg overflow-hidden mt-4">
             <KpiCell label="Faturamento"  value={fmtMi(data.kpis?.faturamento?.valor  ?? 0)} />
             <KpiCell label="Receita"      value={fmtMi(data.kpis?.receita?.valor      ?? 0)} />
             <KpiCell label="Margem"       value={`${(data.kpis?.margem_pct?.valor     ?? 0).toFixed(1)}%`} />
@@ -490,125 +467,107 @@ function DrawerBody() {
             <KpiCell label="Rec. Média"   value={fmtMi(data.kpis?.receita_media?.valor ?? 0)} />
           </div>
 
-          {/* M2: gráficos stacked Faturamento + Receita por subsetor — mesma escala Y */}
+          {/* M2/M5: stacked Faturamento + Receita por subsetor.
+              Escalas Y INDEPENDENTES; legenda única ENTRE os dois gráficos. */}
           {temHistorico && (
             <div className="mt-6">
               {/* Gráfico 1 — Faturamento por Subsetor */}
               <SectionHeader label="Faturamento por Subsetor" />
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={fatData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }} interval={0} />
-                  <YAxis
-                    domain={yDomain}
-                    allowDataOverflow
-                    tickFormatter={v => fmtMi(v)}
-                    width={60}
-                    tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
-                  />
+                  {ChartGrid()}
+                  {ChartXAxisMes('mes', { interval: 0 })}
+                  {ChartYAxisBRL({ width: 64 })}
                   <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-                  {subsetoresPresentes.map(s => (
+                  {subsetoresPresentes.map((s, idx) => (
                     <Bar
                       key={s}
                       dataKey={s}
                       name={s}
                       stackId="sub"
-                      fill={SUBSETOR_COLOR[s] ?? '#BA7517'}
+                      fill={subsetorColor(s)}
+                      radius={idx === subsetoresPresentes.length - 1 ? barRadius.top : barRadius.none}
+                      barSize={barSizes.column}
                       isAnimationActive={false}
                     />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
 
-              {/* Gráfico 2 — Receita por Subsetor (MESMA escala Y do faturamento) */}
+              {/* Legenda ÚNICA — entre os dois gráficos stacked (M5) */}
+              <ChartLegend items={subsetorLegendItems} />
+
+              {/* Gráfico 2 — Receita por Subsetor (escala Y PRÓPRIA) */}
               <SectionHeader label="Receita por Subsetor" />
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={recData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }} interval={0} />
-                  <YAxis
-                    domain={yDomain}
-                    allowDataOverflow
-                    tickFormatter={v => fmtMi(v)}
-                    width={60}
-                    tick={{ fontSize: 10, fill: 'var(--chart-axis-tick)' }}
-                  />
+                  {ChartGrid()}
+                  {ChartXAxisMes('mes', { interval: 0 })}
+                  {ChartYAxisBRL({ width: 64 })}
                   <Tooltip content={<StackedTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-                  {subsetoresPresentes.map(s => (
+                  {subsetoresPresentes.map((s, idx) => (
                     <Bar
                       key={s}
                       dataKey={s}
                       name={s}
                       stackId="sub"
-                      fill={SUBSETOR_COLOR[s] ?? '#BA7517'}
+                      fill={subsetorColor(s)}
+                      radius={idx === subsetoresPresentes.length - 1 ? barRadius.top : barRadius.none}
+                      barSize={barSizes.column}
                       isAnimationActive={false}
                     />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
-
-              {/* Legenda ÚNICA, compartilhada entre os dois gráficos */}
-              <div className="mt-2 border-t border-zinc-100 pt-2">
-                <SubsetorLegend subsetores={subsetoresPresentes} />
-                <p className="text-[10px] text-zinc-400 text-center mt-1">
-                  Ambos os gráficos usam a mesma escala (R$); a receita é uma fração do faturamento.
-                </p>
-              </div>
             </div>
           )}
 
-          {/* Comparação Ano Anterior */}
+          {/* Comparação Ano Anterior — SÓLIDO = período atual; TRACEJADO = ano anterior (ref.) */}
           <SectionHeader label="Comparação Ano Anterior (Faturamento)" />
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={yoyMerged} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-              <YAxis tickFormatter={v => fmtMi(v)} width={60} tick={{ fontSize: 10 }} />
-              <Tooltip content={<DrawerTooltip />} />
+              {ChartGrid()}
+              {ChartXAxisCategoria('label')}
+              {ChartYAxisBRL({ width: 64 })}
+              <Tooltip content={(p) => (
+                <CustomTooltip {...p} showColorDot formatter={(v, n) => [fmtMi(v), n]} />
+              )} />
               <Line
                 dataKey="atual"
                 name="Este período"
                 stroke="var(--brand)"
                 dot={false}
-                strokeWidth={2}
+                strokeWidth={strokeWidths.line}
               />
               <Line
                 dataKey="anterior"
                 name="Ano anterior"
-                stroke="#aaa"
+                stroke={chartColors.axisTick}
                 dot={false}
-                strokeWidth={1.5}
-                strokeDasharray="4 3"
+                strokeWidth={strokeWidths.lineDashed}
+                strokeDasharray={dashArrays.reference}
               />
             </LineChart>
           </ResponsiveContainer>
+          <ChartLegend items={yoyLegendItems} />
 
           {/* Tendência de Margem */}
           <SectionHeader label="Tendência de Margem" />
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={margemData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-              <YAxis tickFormatter={v => `${v}%`} width={40} tick={{ fontSize: 10 }} />
-              <Tooltip content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null
-                return (
-                  <div className="bg-white border border-zinc-200 rounded-lg shadow-md px-3 py-2 text-xs">
-                    <p className="font-medium text-zinc-700 mb-1">{label}</p>
-                    {payload.map((p) => (
-                      <p key={String(p.name)} className="tabular-nums" style={{ color: p.color }}>
-                        {p.name}: {typeof p.value === 'number' ? `${p.value.toFixed(1)}%` : String(p.value)}
-                      </p>
-                    ))}
-                  </div>
-                )
-              }} />
+              {ChartGrid()}
+              {ChartXAxisCategoria('label')}
+              {ChartYAxisPct({ width: 44, casas: 0 })}
+              <Tooltip content={(p) => (
+                <CustomTooltip {...p} showColorDot
+                  formatter={(v, n) => [`${v.toFixed(1)}%`, n]} />
+              )} />
               <Line
                 dataKey="margem_pct"
                 name="Margem %"
                 stroke="var(--brand-deep)"
                 dot={false}
-                strokeWidth={2}
+                strokeWidth={strokeWidths.line}
               />
             </LineChart>
           </ResponsiveContainer>
