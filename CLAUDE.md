@@ -77,6 +77,31 @@ O `config.toml` expõe apenas `["public", "graphql_public"]`. Tabelas em `analyt
 **Regra:** todo acesso a tabelas de `analytics` é via RPCs `SECURITY DEFINER` no schema
 `public`. Mesmo padrão do resto do codebase. (Descoberto na v4.6.)
 
+### `dim_data` tem range fixo — FK em `fato_venda`
+`analytics.fato_venda.data_venda` tem FK para `analytics.dim_data(data)`, semeada com
+range FIXO (era 2024-2030; estendida para 2022-2030 na migration 0100). Subir Vendas
+com datas FORA do range faz `transform_raw_to_analytics` abortar em
+`fato_venda_data_venda_fkey`. Pior: o upload roda `truncate_dynamic_tables` (CASCADE)
+ANTES do transform — se o transform falha, `fato_venda` fica VAZIA em produção (os
+dados crus sobrevivem em `raw.vendas_excel`).
+
+**Regra:** ao surgir esse erro, estender `dim_data` (migration com `generate_series` +
+mesma derivação do seed `0002`, `ON CONFLICT (data) DO NOTHING`) e recuperar SEM
+re-upload via RPCs `transform_raw_to_analytics` → `regenerar_dim_operacao_weddings` →
+`refresh_all_materialized_views`. (Descoberto em mai/2026, migration 0100.)
+
+### RPCs chamadas pela UI correm como `anon` (statement_timeout = 3s)
+O front usa a **anon key** (`getServerClient`), e os roles têm timeout DIFERENTE:
+`anon`=3s, `authenticated`=8s, `service_role`=sem limite. Uma RPC que passe de 3s
+estoura `57014 canceling statement due to statement timeout` → HTTP 500 — mas **só pelo
+front**; testar via REST com a service role key NÃO reproduz (não tem timeout).
+
+**Regra:** toda RPC consumida pela UI precisa caber em <3s; não validar só com service
+role. Atenção a N+1 dentro de RPC de listagem (função escalar por linha) e a casts em
+coluna de JOIN que impedem índice — pioram conforme o dado cresce. (Custou caro em
+mai/2026: `contar_convidados_operacao` × ~140 ops estourou após o backfill 0100; fix na
+migration 0101.)
+
 ### Convenções de migration
 - Arquivos: `supabase/migrations/NNNN_nome.sql`, numeração sequencial.
 - RPCs: sempre `SECURITY DEFINER` + `REVOKE EXECUTE ... FROM PUBLIC` + `GRANT EXECUTE ... TO service_role`.
