@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Bar, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine,
+  XAxis, CartesianGrid, Tooltip, Cell, ReferenceLine,
 } from 'recharts'
 import type { AcumuladoWeddings } from '@/types/api'
-import { fmtBRL, fmtMi } from '@/lib/fmt'
+import { fmtBRL } from '@/lib/fmt'
 import CustomTooltip from '@/components/charts/custom-tooltip'
+import { ChartYAxisBRL } from '@/components/charts'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 function fmtMesLabel(mes: string): string {
@@ -85,13 +86,7 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
             tickLine={false}
             interval={2}
           />
-          <YAxis
-            tickFormatter={v => fmtMi(Math.abs(v as number))}
-            tick={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
-            tickLine={false}
-            axisLine={false}
-            width={72}
-          />
+          {ChartYAxisBRL({ width: 80, abs: true })}
           <ReferenceLine y={0} stroke="var(--border-strong)" strokeWidth={1.5} />
           <Tooltip
             content={(props) => (

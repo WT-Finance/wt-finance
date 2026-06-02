@@ -2,11 +2,12 @@
 
 import {
   ResponsiveContainer, ComposedChart, Bar, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
+  XAxis, CartesianGrid, Tooltip, ReferenceLine,
 } from 'recharts'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import type { AcumuladoWeddings } from '@/types/api'
 import CustomTooltip from '@/components/charts/custom-tooltip'
+import { ChartYAxisBRL } from '@/components/charts'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -52,13 +53,7 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
             tickLine={false}
             interval={2}
           />
-          <YAxis
-            tickFormatter={v => fmtMi(v as number)}
-            tick={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
-            tickLine={false}
-            axisLine={false}
-            width={72}
-          />
+          {ChartYAxisBRL({ width: 80, abs: false })}
           <Tooltip
             content={(props) => (
               <CustomTooltip
