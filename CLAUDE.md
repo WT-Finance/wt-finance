@@ -229,6 +229,11 @@ verdade é `docs/adr/`. Evitar colisão de número.
 - **Upload/parse de arquivo → API Route, não Server Action.** Libs como `@e965/xlsx` falham no SSR/RSC; API Route (`runtime = 'nodejs'`) isola do contexto React Server Components. (Descoberto no PEND-001/v4.7.)
 - **Gráficos → primitivos de `@/components/charts`.** Tema central, eixos/grade/linha-do-zero, `ChartLegend`, `CustomTooltip` e formatadores de eixo (`fmtAxisBRL`/`fmtAxisPct`/`fmtAxisMes`) — não reconfigurar Recharts à mão. Convenção: sólido = real/efetivo, tracejado = referência/projeção; eixo temporal sempre contínuo. Migração dos legados é incremental (quando tocados). (ADR-0095, v4.8.)
 - **Card KPI clicável → afordância no hover na cor da aba.** Borda + sombra + o CTA "Ver mais" mudam para `var(--brand)` (cor da aba, resolvida por `[data-theme]`). Utilitária `.card-clicavel`/`.card-clicavel-cta` em `globals.css`; abas futuras herdam pela var (sem regra por setor). (v4.8.1.)
+- **Responsividade (telas menores e maiores).** O layout precisa funcionar em larguras pequenas e grandes — validar nos dois extremos, não só no monitor do dev. Padrões que custaram caro (v4.8.x):
+  - **Cards num grid de altura igual:** o card deve ser `flex flex-col h-full` e o rodapé (ex.: Receita/Margem) usar `mt-auto`, para as linhas alinharem entre cards mesmo quando o valor principal quebra em 2 linhas em telas estreitas. Não confiar em altura implícita.
+  - **Tabelas em container estreito:** preferir `table-fixed w-full` + `truncate` nas colunas flexíveis (evita barra de rolagem horizontal). Em cards compactos, reduzir colunas (o detalhe completo fica no drawer); evitar `whitespace-nowrap` em texto largo.
+  - **Eixo Y de gráfico:** usar `ChartYAxisBRL`/`fmtAxisBRL` (rótulo compacto "R$ 1,8 Mi", 1 casa) — formato longo quebra linha em larguras menores.
+  - **Sticky dentro do `ListDrawer`** (scroll body `px-6 py-5`): para grudar pills/cabeçalho ao topo sem fresta, usar `sticky -top-5 -mx-6 -mt-5 px-6 pt-5` (o `-top-5/-mt-5` cancelam o `py-5` do scroll body). (Recorrente — não reinventar.)
 
 ---
 

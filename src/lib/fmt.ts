@@ -13,14 +13,24 @@ export const fmtMi = (v: number) => {
 
 /**
  * Formatador de TICK de eixo (valores monetários abreviados, SEM quebra de linha).
- * "R$ 1,8 Mi" / "R$ 600 k" / "R$ 0". Reusa a base de `fmtMi`, garantindo que o
- * zero saia limpo como "R$ 0" (e não "R$ 0,00"). Use em `tickFormatter` do eixo Y.
+ * "R$ 1,8 Mi" / "R$ 600 k" / "R$ 0" (ADR-0095). Usa 1 casa em Mi e 0 casas em k
+ * para manter o rótulo curto (fmtMi usa 2 casas em Mi e fica reservado a
+ * tooltips/totais). Use em `tickFormatter` do eixo Y.
  */
 export const fmtAxisBRL = (v: number): string => {
   const n = Number(v)
   if (n === 0) return 'R$ 0'
-  return fmtMi(n)
+  const a = Math.abs(n)
+  if (a >= 1_000_000)
+    return `R$ ${(n / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mi`
+  if (a >= 1_000)
+    return `R$ ${Math.round(n / 1_000).toLocaleString('pt-BR')} k`
+  return fmtBRL(n)
 }
+
+/** Duração em meses, 1 casa decimal: "3,7 meses". `dias` = dias corridos (30,44 d/mês). */
+export const fmtMeses = (dias: number): string =>
+  `${(dias / 30.44).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} meses`
 
 /**
  * Formatador de TICK percentual. "14%" / "-3,5%".
@@ -59,4 +69,10 @@ export const fmtDateCompact = (s: string): string => {
 export const fmtDateLong = (s: string): string => {
   const [y, m, d] = s.split('-')
   return `${d} de ${MESES_EXTENSO[parseInt(m, 10) - 1]} de ${y}`
+}
+
+/** Converte 'yyyy-MM-dd' para 'dd de mês de AAAA' (formato médio, ex: 17 de jun de 2026). */
+export const fmtDateMid = (iso: string): string => {
+  const [y, m, d] = iso.split('-')
+  return `${d} de ${MESES_COMPACTOS[parseInt(m, 10) - 1]} de ${y}`
 }

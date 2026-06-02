@@ -1,35 +1,17 @@
 'use client'
 
-import { useState } from 'react'
 import type { CarteiraWeddings } from '@/types/api'
-import { fmtMi } from '@/lib/fmt'
-
-type Metrica = 'casamentos' | 'faturamento' | 'receita_bruta'
 
 interface Props {
-  casamentos:    CarteiraWeddings | null
-  faturamento:   CarteiraWeddings | null
-  receita_bruta: CarteiraWeddings | null
+  casamentos: CarteiraWeddings | null
 }
 
-function fmtCelula(v: number, metrica: Metrica): string {
-  if (metrica === 'casamentos') return v > 0 ? String(v) : ''
-  if (v === 0) return ''
-  return fmtMi(v)
+function fmtCelula(v: number): string {
+  return v > 0 ? String(v) : ''
 }
 
-export default function CarteiraMartrixCard({ casamentos, faturamento, receita_bruta }: Props) {
-  const [metrica, setMetrica] = useState<Metrica>('casamentos')
-
-  const data = metrica === 'casamentos' ? casamentos
-    : metrica === 'faturamento'         ? faturamento
-    : receita_bruta
-
-  const labels: Record<Metrica, string> = {
-    casamentos:    'Casamentos',
-    faturamento:   'Faturamento',
-    receita_bruta: 'Receita Bruta',
-  }
+export default function CarteiraMartrixCard({ casamentos }: Props) {
+  const data = casamentos
 
   if (!data || data.linhas.length === 0) {
     return (
@@ -58,23 +40,8 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0">
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-4">Carteira: Vendas × Entregas</h2>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <div className="mb-4">
         <p className="text-[13px] text-[--text-muted]">Vendas por ano de venda × ano de entrega</p>
-        <div className="flex rounded-lg border border-zinc-200 overflow-hidden text-xs">
-          {(Object.keys(labels) as Metrica[]).map(m => (
-            <button
-              key={m}
-              onClick={() => setMetrica(m)}
-              className={`px-3 py-1.5 transition-colors ${
-                metrica === m
-                  ? 'bg-zinc-800 text-white'
-                  : 'text-zinc-500 hover:bg-zinc-50'
-              }`}
-            >
-              {labels[m]}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -111,7 +78,7 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
                     >
                       {v > 0 ? (
                         <span className={linha.ano_venda === ac ? 'font-semibold text-amber-700' : 'text-zinc-700'}>
-                          {fmtCelula(v, metrica)}
+                          {fmtCelula(v)}
                         </span>
                       ) : (
                         <span className="text-zinc-200">—</span>
@@ -120,7 +87,7 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
                   )
                 })}
                 <td className="py-2 px-3 text-right tabular-nums font-semibold text-zinc-800 border-b border-zinc-50 whitespace-nowrap">
-                  {fmtCelula(linha.total, metrica) || '—'}
+                  {fmtCelula(linha.total) || '—'}
                 </td>
               </tr>
             ))}
@@ -134,12 +101,12 @@ export default function CarteiraMartrixCard({ casamentos, faturamento, receita_b
                   const v = totalLinha.valores[ac] ?? 0
                   return (
                     <td key={ac} className="py-2 px-3 text-center tabular-nums text-zinc-700 border-t border-zinc-200 whitespace-nowrap">
-                      {v > 0 ? fmtCelula(v, metrica) : <span className="text-zinc-300">—</span>}
+                      {v > 0 ? fmtCelula(v) : <span className="text-zinc-300">—</span>}
                     </td>
                   )
                 })}
                 <td className="py-2 px-3 text-right tabular-nums text-zinc-800 border-t border-zinc-200 whitespace-nowrap">
-                  {fmtCelula(totalLinha.total, metrica) || '—'}
+                  {fmtCelula(totalLinha.total) || '—'}
                 </td>
               </tr>
             </tfoot>

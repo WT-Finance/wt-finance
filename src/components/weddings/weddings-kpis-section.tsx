@@ -108,7 +108,7 @@ function SubsetorCard({
 
   if (!data) {
     return (
-      <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
+      <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
         <div className="mb-2 leading-tight min-h-[28px]">
           <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
           {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
@@ -124,7 +124,7 @@ function SubsetorCard({
       : hasYoy ? <span className="w-[56px] shrink-0" /> : null
 
   return (
-    <div className="bg-white rounded-lg shadow-sm px-3 py-3.5">
+    <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
       <div className="mb-2 leading-tight min-h-[28px]">
         <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
         {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
@@ -139,7 +139,7 @@ function SubsetorCard({
 
       {/* Valor principal: nº de contratos (Comercial) ou faturamento */}
       <div className="flex items-baseline gap-1 mb-1">
-        <p className="text-xl font-bold tabular-nums flex-1" style={{ color: color ?? 'var(--brand)' }}>
+        <p className="text-xl lg:text-lg font-bold tabular-nums flex-1 whitespace-nowrap" style={{ color: color ?? 'var(--brand)' }}>
           {isContratos ? (
             <>
               {nContratos}
@@ -152,7 +152,7 @@ function SubsetorCard({
         <YoyCol val={yoyPrincipalPct} fmt={fmtPct} />
       </div>
 
-      <div className="h-px bg-zinc-100 my-1.5" />
+      <div className="h-px bg-zinc-100 mt-auto mb-1.5" />
 
       {/* Receita */}
       <div className="flex items-baseline gap-1">

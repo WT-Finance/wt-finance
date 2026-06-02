@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Search, Download } from 'lucide-react'
 import * as XLSX from '@e965/xlsx'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
-import { fmtBRL, fmtDateLong } from '@/lib/fmt'
+import { fmtDateLong, fmtMeses } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import EmptyState from '@/components/shared/empty-state'
 
@@ -40,6 +40,15 @@ function calcularDuracao(dataVenda: string | null, dataEvento: string | null): n
   return dias >= 0 ? dias : null
 }
 
+/** Duração em meses (1 casa) para export/ordenação. 30,44 d/mês. */
+function duracaoMeses(dataVenda: string | null, dataEvento: string | null): number | null {
+  const dias = calcularDuracao(dataVenda, dataEvento)
+  return dias != null ? Number((dias / 30.44).toFixed(1)) : null
+}
+
+/** Número pt-BR sem símbolo, para o formato contábil ("R$" à esquerda, valor à direita). */
+const numBRL = (v: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v)
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
@@ -58,17 +67,18 @@ interface SortThProps {
   children: ReactNode
   field: string | null
   right?: boolean
+  center?: boolean
   title?: string
   ordem: string
   onSort: (field: string) => void
 }
 
-function SortTh({ children, field, right, title, ordem, onSort }: SortThProps) {
+function SortTh({ children, field, right, center, title, ordem, onSort }: SortThProps) {
   const [activeField, activeDir] = ordem.split(':')
   const isActive = field !== null && activeField === field
   const arrow = isActive ? (activeDir === 'asc' ? '▲' : '▼') : null
 
-  const baseClass = `py-2 px-3 text-xs font-medium whitespace-nowrap ${right ? 'text-right' : 'text-left'}`
+  const baseClass = `py-2 px-3 text-xs font-medium whitespace-nowrap ${center ? 'text-center' : right ? 'text-right' : 'text-left'}`
   const colorClass = isActive ? 'text-[--text-primary]' : 'text-zinc-400'
   const cursorClass = field ? 'cursor-pointer select-none hover:text-zinc-600' : ''
   const helpClass = title && !field ? 'cursor-help underline decoration-dotted decoration-zinc-300' : ''
@@ -103,7 +113,7 @@ function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
     'Operação / Casal':      op.nome_casal ?? op.operacao,
     'Hotel':                 op.hotel ?? '—',
     'Data do Evento':        op.data_evento ? new Date(op.data_evento).toLocaleDateString('pt-BR') : '—',
-    'Duração (dias)':        calcularDuracao(op.data_venda_contrato, op.data_evento) ?? '—',
+    'Duração (meses)':       duracaoMeses(op.data_venda_contrato, op.data_evento) ?? '—',
     'Contrato':              op.tipo_contrato ?? '—',
     'Conv.':                 op.convidados ?? 0,
     'Faturamento (R$)':         op.faturamento ?? 0,
@@ -447,9 +457,9 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <SortTh field="nome_casal" {...sortThProps}>Operação / Casal</SortTh>
               <SortTh field="hotel" title="Hotel / fornecedor principal do casamento (Contrato=1)" {...sortThProps}>Hotel</SortTh>
               <SortTh field="data_evento" {...sortThProps}>Data do Evento</SortTh>
-              <SortTh field="duracao" title="Dias entre assinatura do contrato e data do casamento" {...sortThProps}>Duração</SortTh>
-              <SortTh field="tipo_contrato" title="Tipo de contrato (Tudo Incluído, Cardápio, etc.) — disponível após reimportação com nova coluna" {...sortThProps}>Contrato</SortTh>
-              <SortTh field="convidados" right title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
+              <SortTh field="duracao" right title="Meses entre assinatura do contrato e data do casamento" {...sortThProps}>Duração</SortTh>
+              <SortTh field="tipo_contrato" center title="Tipo de contrato (Tudo Incluído, Cardápio, etc.) — disponível após reimportação com nova coluna" {...sortThProps}>Contrato</SortTh>
+              <SortTh field="convidados" center title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
               <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Resultado Previsto</SortTh>
               <SortTh field="ml" right title="Resultado Previsto ÷ Faturamento × 100" {...sortThProps}>Margem</SortTh>
@@ -493,15 +503,15 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
                       {op.data_evento ? fmtDateLong(op.data_evento) : <span className="text-zinc-300">—</span>}
                     </td>
-                    <td className="py-2.5 px-3 text-xs whitespace-nowrap tabular-nums">
+                    <td className="py-2.5 px-3 text-right text-xs whitespace-nowrap tabular-nums">
                       {duracao !== null
-                        ? <span className="text-zinc-600">{duracao} dias</span>
+                        ? <span className="text-zinc-600">{fmtMeses(duracao)}</span>
                         : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
-                    <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-center text-xs text-zinc-600 whitespace-nowrap">
                       {op.tipo_contrato ?? <span className="text-zinc-300">—</span>}
                     </td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-xs whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-center tabular-nums text-xs whitespace-nowrap">
                       {op.convidados == null || op.convidados === 0 ? (
                         <span
                           className="text-zinc-300"
@@ -513,11 +523,17 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                         <span className="text-zinc-700">{op.convidados}</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-xs text-zinc-700 whitespace-nowrap">
-                      {fmtBRL(op.faturamento)}
+                    <td className="py-2.5 px-3 text-xs text-zinc-700 whitespace-nowrap">
+                      <span className="flex justify-between gap-2 tabular-nums">
+                        <span className="text-zinc-400">R$</span>
+                        <span>{numBRL(op.faturamento)}</span>
+                      </span>
                     </td>
-                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${rlNegativa ? 'text-danger' : 'text-zinc-700'}`}>
-                      {fmtBRL(op.resultado_caixa)}
+                    <td className="py-2.5 px-3 text-xs font-medium whitespace-nowrap">
+                      <span className="flex justify-between gap-2 tabular-nums">
+                        <span className="text-zinc-400">R$</span>
+                        <span className={rlNegativa ? 'text-danger' : 'text-zinc-700'}>{numBRL(op.resultado_caixa)}</span>
+                      </span>
                     </td>
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>
                       {op.margem_liquida_pct.toFixed(1)}%
