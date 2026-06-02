@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Calendar } from 'lucide-react'
 import type { ProximosCasamentos } from '@/types/api'
-import { fmtDateLong } from '@/lib/fmt'
+import { fmtDateMid } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 import EmptyState from '@/components/shared/empty-state'
 
@@ -62,7 +62,7 @@ function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamen
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-zinc-100">
-            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data do Evento</th>
+            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
             <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
             <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
             <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
@@ -72,7 +72,7 @@ function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamen
           {filtrados.map((c, i) => (
             <tr key={i} className="hover:bg-zinc-50">
               <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                {c.data_casamento ? fmtDateLong(c.data_casamento) : '—'}
+                {c.data_casamento ? fmtDateMid(c.data_casamento) : '—'}
               </td>
               <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
                 {c.casal ?? '—'}
@@ -115,7 +115,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-100">
-                  <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data do Evento</th>
+                  <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
                   <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
                   <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
@@ -125,12 +125,12 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
                 {visiveis.map((c, i) => (
                   <tr key={i} className="hover:bg-zinc-50">
                     <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                      {c.data_casamento ? fmtDateLong(c.data_casamento) : '—'}
+                      {c.data_casamento ? fmtDateMid(c.data_casamento) : '—'}
                     </td>
-                    <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
+                    <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-32">
                       {c.casal ?? '—'}
                     </td>
-                    <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-40">
+                    <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-28">
                       {c.hotel ?? '—'}
                     </td>
                     <ResultadoCell valor={c.resultado_previsto ?? 0} />

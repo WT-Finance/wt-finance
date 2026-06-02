@@ -22,18 +22,20 @@ interface Props {
   searchParams: { operacao?: string }
 }
 
+// OCULTADO v4.8.2 — cards de diagnóstico (Vendas em Aberto / Receita Negativa)
+// mantidos no código para possível retorno; basta alternar a flag para true.
+const MOSTRAR_VENDAS_DIAGNOSTICO = false
+
 export default async function WeddingsContent({ searchParams: sp }: Props) {
   const operacao = sp.operacao ?? null
   const db = getServerClient()
 
   const [
-    cartCasRes, cartFatRes, cartRbRes,
+    cartCasRes,
     proximosRes, benchmarks, acumuladoRes,
     vendasAbertoRes, operacoesRes, prejRes,
   ] = await Promise.all([
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
-    db.rpc('get_carteira_weddings', { p_metric: 'faturamento' }),
-    db.rpc('get_carteira_weddings', { p_metric: 'receita_bruta' }),
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
     db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18, p_operacao: operacao }),
@@ -44,8 +46,6 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   ])
 
   const cartCas       = cartCasRes.error      ? null : cartCasRes.data      as unknown as CarteiraWeddings
-  const cartFat       = cartFatRes.error      ? null : cartFatRes.data      as unknown as CarteiraWeddings
-  const cartRb        = cartRbRes.error       ? null : cartRbRes.data       as unknown as CarteiraWeddings
   const proximos      = proximosRes.error     ? null : proximosRes.data     as unknown as ProximosCasamentos
   const acumulado     = acumuladoRes.error    ? null : acumuladoRes.data    as unknown as AcumuladoWeddings
   const vendasAberto  = vendasAbertoRes.error ? null : vendasAbertoRes.data as unknown as VendasEmAberto
@@ -78,18 +78,17 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
         {/* 3. Carteira: Vendas × Entregas — par estratégico */}
         <div className="mb-6">
-          <CarteiraMartrixCard
-            casamentos={cartCas}
-            faturamento={cartFat}
-            receita_bruta={cartRb}
-          />
+          <CarteiraMartrixCard casamentos={cartCas} />
         </div>
 
         {/* 4. Vendas em Aberto | Vendas com Receita Negativa — exceções operacionais */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <VendasEmAbertoCard data={vendasAberto} />
-          <VendasReceitaNegativaCard data={prejuizos} />
-        </div>
+        {/* OCULTADO v4.8.2 — manter para possível retorno (alternar MOSTRAR_VENDAS_DIAGNOSTICO) */}
+        {MOSTRAR_VENDAS_DIAGNOSTICO && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <VendasEmAbertoCard data={vendasAberto} />
+            <VendasReceitaNegativaCard data={prejuizos} />
+          </div>
+        )}
 
       </TopSection>
 

@@ -60,3 +60,9 @@ export const fmtDateLong = (s: string): string => {
   const [y, m, d] = s.split('-')
   return `${d} de ${MESES_EXTENSO[parseInt(m, 10) - 1]} de ${y}`
 }
+
+/** Converte 'yyyy-MM-dd' para 'dd de mês de AAAA' (formato médio, ex: 17 de jun de 2026). */
+export const fmtDateMid = (iso: string): string => {
+  const [y, m, d] = iso.split('-')
+  return `${d} de ${MESES_COMPACTOS[parseInt(m, 10) - 1]} de ${y}`
+}
