@@ -45,9 +45,10 @@ interface HistoricoSubsetorRow {
 
 // Ordem/cores/labels de subsetor vêm do design system ('@/lib/config'):
 // SUBSETOR_ORDER, subsetorColor(), SUBSETOR_LABELS. A RPC pode retornar também
-// 'NÃO_CLASSIFICADO', que não está no config — é apêndice no fim da ordem, com
-// cor de fallback (brand) e rótulo dedicado abaixo.
-const SUBSETOR_ORDER_DRAWER: string[] = [...SUBSETOR_ORDER, 'NÃO_CLASSIFICADO']
+// 'NÃO_CLASSIFICADO', mas, por decisão do usuário, ele NÃO entra no detalhamento
+// por subsetor — fica de fora dos gráficos stacked e da legenda. Por isso a ordem
+// do drawer é exatamente a do config (sem apêndice de não-classificado).
+const SUBSETOR_ORDER_DRAWER: string[] = [...SUBSETOR_ORDER]
 
 // Rótulo de subsetor com fallback para o não-classificado (ausente do config).
 function subsetorLabel(s: string): string {
@@ -329,13 +330,21 @@ function DrawerBody() {
   // Chart data helpers — YoY com 4 séries: Faturamento e Receita, atual e ano anterior.
   // COR distingue MÉTRICA (faturamento=dourado, receita=cinza-azulado);
   // TRAÇO distingue PERÍODO (atual=sólido, anterior=tracejado). Escala Y única.
+  //
+  // As linhas ATUAIS param no mês corrente: meses futuros do período selecionado
+  // vêm com valor 0 da RPC, o que esticaria a linha "atual" até o fim do ano. Para
+  // esses meses (data_inicio além do mês atual), os valores atuais viram `null` e
+  // a Line (connectNulls=false) interrompe ali. As linhas do ANO ANTERIOR cobrem o
+  // período anterior completo (já consolidado) → mantêm seus valores.
+  const mesAtual = currentMonthStr() // 'YYYY-MM'
   const yoyMerged = (data?.tendencia?.pontos ?? []).map((p, i) => {
     const ant = data?.yoyTendencia?.pontos[i]
+    const futuro = p.data_inicio.slice(0, 7) > mesAtual
     return {
       label:             p.label,
-      fatAtual:          p.faturamento,
+      fatAtual:          futuro ? null : p.faturamento,
       fatAnterior:       ant?.faturamento ?? 0,
-      receitaAtual:      p.receita,
+      receitaAtual:      futuro ? null : p.receita,
       receitaAnterior:   ant?.receita ?? 0,
     }
   })
@@ -397,9 +406,14 @@ function DrawerBody() {
           O scroll body do ListDrawer tem px-6 py-5; aqui o bloco é "esticado" com
           margens negativas (-mx-6 / -mt-5) e recompensado com padding equivalente
           para que o fundo branco cubra TODA a faixa superior do viewport de scroll
-          (topo e laterais), evitando que o conteúdo apareça por trás ao rolar. */}
+          (topo e laterais), evitando que o conteúdo apareça por trás ao rolar.
+          O `sticky` ancora pela PADDING-BOX do container de scroll, que tem pt-5
+          (20px). Com `top-0` o bloco grudaria 20px ABAIXO do topo, deixando o
+          conteúdo aparecer naquela fresta. `-top-5` puxa a ancoragem 20px para
+          cima — exatamente o pt-5 do corpo — colando o bloco rente ao cabeçalho.
+          O pt-5 interno reposiciona as pills no lugar visual original. */}
       <div
-        className="sticky top-0 z-20 bg-white -mx-6 -mt-5 px-6 pt-5 pb-3 mb-1 border-b border-zinc-100"
+        className="sticky -top-5 z-20 bg-white -mx-6 -mt-5 px-6 pt-5 pb-3 mb-1 border-b border-zinc-100"
         ref={popoverRef}
       >
         <div className="flex flex-wrap items-center gap-1.5">
@@ -476,7 +490,8 @@ function DrawerBody() {
         <div>
           {/* KPIs — faixa 3x2 uniforme (6 células iguais, sem sobra à direita).
               Separadores finos via gap que revela o fundo (border-zinc-100). */}
-          <div className="grid grid-cols-3 gap-px bg-zinc-100 border border-zinc-100 rounded-lg overflow-hidden mt-4">
+          <SectionHeader label="Indicadores" />
+          <div className="grid grid-cols-3 gap-px bg-zinc-100 border border-zinc-100 rounded-lg overflow-hidden">
             <KpiCell label="Faturamento"  value={fmtMi(data.kpis?.faturamento?.valor  ?? 0)} />
             <KpiCell label="Receita"      value={fmtMi(data.kpis?.receita?.valor      ?? 0)} />
             <KpiCell label="Margem"       value={`${(data.kpis?.margem_pct?.valor     ?? 0).toFixed(1)}%`} />
@@ -558,6 +573,7 @@ function DrawerBody() {
                 stroke="var(--brand)"
                 dot={false}
                 strokeWidth={strokeWidths.line}
+                connectNulls={false}
               />
               <Line
                 dataKey="fatAnterior"
@@ -573,6 +589,7 @@ function DrawerBody() {
                 stroke="var(--text-secondary)"
                 dot={false}
                 strokeWidth={strokeWidths.line}
+                connectNulls={false}
               />
               <Line
                 dataKey="receitaAnterior"
@@ -586,13 +603,16 @@ function DrawerBody() {
           </ResponsiveContainer>
           <ChartLegend items={yoyLegendItems} />
 
-          {/* Tendência de Margem */}
+          {/* Tendência de Margem.
+              Eixo Y com a MESMA largura (76) e as MESMAS margens do gráfico de
+              Comparação Ano Anterior acima → áreas de plotagem idênticas, eixo X
+              (datas) verticalmente alinhado entre os dois. */}
           <SectionHeader label="Tendência de Margem" />
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={margemData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               {ChartGrid()}
               {ChartXAxisCategoria('label')}
-              {ChartYAxisPct({ width: 44, casas: 0 })}
+              {ChartYAxisPct({ width: 76, casas: 0 })}
               <Tooltip content={(p) => (
                 <CustomTooltip {...p} showColorDot
                   formatter={(v, n) => [`${v.toFixed(1)}%`, n]} />
