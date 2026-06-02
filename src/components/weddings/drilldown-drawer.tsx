@@ -76,7 +76,7 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
         <span className="text-xs font-semibold text-zinc-700">{label}</span>
         <span className={`text-sm font-semibold tabular-nums ${color}`}>{fmtBRL(total)}</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 pl-3 border-l-2 border-zinc-100">
+      <div className="grid grid-cols-1 gap-1.5 pl-3 border-l-2 border-zinc-100">
         <div>
           <p className="text-[10px] text-zinc-400">{sub1Label}</p>
           <p className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub1)}</p>
@@ -293,6 +293,10 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
   // <0 = sobra (verde). Computado no front a partir da visao_financeira.
   const ncg = vf ? vf.a_pagar - vf.a_receber : 0
 
+  // Resultado Previsto = projetado: (recebido + a receber) − (pago + a pagar),
+  // ou seja entradas_total − saidas_total. (Decisão do usuário, v4.8.2.)
+  const resultadoPrevisto = vf ? vf.entradas_total - vf.saidas_total : 0
+
   // Duração (dias) entre venda do contrato e evento.
   const duracaoDias = calcDuracaoDias(data?.data_venda_contrato ?? null, data?.data_evento ?? null)
 
@@ -387,14 +391,17 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                   <InfoCell
                     label="Duração"
                     value={duracaoDias != null ? `${duracaoDias} d` : '—'}
+                    destaque
                   />
                   <InfoCell
                     label="Tipo de Contrato"
                     value={data.tipo_contrato ?? '—'}
+                    destaque
                   />
                   <InfoCell
                     label="Convidados"
                     value={data.convidados != null ? String(data.convidados) : '—'}
+                    destaque
                   />
                   <InfoCell label="Faturamento"   value={fmtBRL(vf.faturamento)}   destaque />
                   <InfoCell label="Receita Bruta" value={fmtBRL(vf.receita_bruta)} destaque />
@@ -418,17 +425,23 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                       sub2Label="A pagar"   sub2={vf.a_pagar}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 pt-2 border-t border-zinc-100 mt-1">
-                    <div className="flex justify-between items-baseline">
+                  <div className="grid grid-cols-3 gap-x-4 pt-2 border-t border-zinc-100 mt-1">
+                    <div className="flex flex-col">
                       <div>
-                        <span className="text-xs font-semibold text-zinc-700">Resultado Caixa</span>
+                        <span className="text-xs font-semibold text-zinc-700">Resultado de Caixa</span>
                         <span className="text-[10px] text-zinc-400 ml-1">({vf.resultado_pct.toFixed(1)}%)</span>
                       </div>
                       <span className={`text-sm font-semibold tabular-nums ${vf.resultado_caixa >= 0 ? 'text-success' : 'text-danger'}`}>
                         {fmtBRL(vf.resultado_caixa)}
                       </span>
                     </div>
-                    <div className="flex justify-between items-baseline">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-zinc-700">Resultado Previsto</span>
+                      <span className={`text-sm font-semibold tabular-nums ${resultadoPrevisto >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {fmtBRL(resultadoPrevisto)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
                       <span className="text-xs font-semibold text-zinc-700">NCG</span>
                       {/* >0 = necessidade (vermelho); <0 = sobra (verde). Só o valor colorido. */}
                       <span className={`text-sm font-semibold tabular-nums ${ncg > 0 ? 'text-danger' : 'text-success'}`}>
