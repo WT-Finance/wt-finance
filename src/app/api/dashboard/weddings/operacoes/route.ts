@@ -10,7 +10,7 @@ const schema = z.object({
   subsetor:        z.enum(['COMERCIAL', 'CONVIDADOS', 'PRODUÇÃO', 'PLANEJAMENTO', 'NÃO_CLASSIFICADO', 'todos'])
                     .default('todos'),
   busca:           z.string().max(100).optional(),
-  ordenar_por:     z.enum(['data_evento', 'nome_casal', 'hotel', 'faturamento', 'receita', 'margem', 'custos', 'resultado', 'ml']).default('data_evento'),
+  ordenar_por:     z.enum(['data_evento', 'nome_casal', 'hotel', 'faturamento', 'receita', 'margem', 'custos', 'resultado', 'ml', 'duracao', 'tipo_contrato', 'convidados']).default('data_evento'),
   direcao:         z.enum(['asc', 'desc']).default('desc'),
   pagina:          z.coerce.number().int().min(1).default(1),
   por_pagina:      z.coerce.number().int().min(1).max(200).default(50),
