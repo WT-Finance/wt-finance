@@ -14,7 +14,7 @@ import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import type {
   DrilldownOperacao, VisaoFinanceira, SumarioSubsetor, AcumuladoMensalItem,
 } from '@/types/api'
-import { fmtBRL, fmtDateLong, fmtAxisMes } from '@/lib/fmt'
+import { fmtBRL, fmtDateLong, fmtAxisMes, fmtMeses } from '@/lib/fmt'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -390,7 +390,7 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                 <div className="grid grid-cols-3 gap-px bg-zinc-100 border border-zinc-100 rounded-lg overflow-hidden">
                   <InfoCell
                     label="Duração"
-                    value={duracaoDias != null ? `${duracaoDias} d` : '—'}
+                    value={duracaoDias != null ? fmtMeses(duracaoDias) : '—'}
                     destaque
                   />
                   <InfoCell

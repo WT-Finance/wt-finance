@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Search, Download } from 'lucide-react'
 import * as XLSX from '@e965/xlsx'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
-import { fmtBRL, fmtDateLong } from '@/lib/fmt'
+import { fmtBRL, fmtDateLong, fmtMeses } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import EmptyState from '@/components/shared/empty-state'
 
@@ -38,6 +38,12 @@ function calcularDuracao(dataVenda: string | null, dataEvento: string | null): n
   const msEvento = Date.UTC(ye, me - 1, de)
   const dias = Math.round((msEvento - msVenda) / (1000 * 60 * 60 * 24))
   return dias >= 0 ? dias : null
+}
+
+/** Duração em meses (1 casa) para export/ordenação. 30,44 d/mês. */
+function duracaoMeses(dataVenda: string | null, dataEvento: string | null): number | null {
+  const dias = calcularDuracao(dataVenda, dataEvento)
+  return dias != null ? Number((dias / 30.44).toFixed(1)) : null
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -103,7 +109,7 @@ function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
     'Operação / Casal':      op.nome_casal ?? op.operacao,
     'Hotel':                 op.hotel ?? '—',
     'Data do Evento':        op.data_evento ? new Date(op.data_evento).toLocaleDateString('pt-BR') : '—',
-    'Duração (dias)':        calcularDuracao(op.data_venda_contrato, op.data_evento) ?? '—',
+    'Duração (meses)':       duracaoMeses(op.data_venda_contrato, op.data_evento) ?? '—',
     'Contrato':              op.tipo_contrato ?? '—',
     'Conv.':                 op.convidados ?? 0,
     'Faturamento (R$)':         op.faturamento ?? 0,
@@ -447,7 +453,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <SortTh field="nome_casal" {...sortThProps}>Operação / Casal</SortTh>
               <SortTh field="hotel" title="Hotel / fornecedor principal do casamento (Contrato=1)" {...sortThProps}>Hotel</SortTh>
               <SortTh field="data_evento" {...sortThProps}>Data do Evento</SortTh>
-              <SortTh field="duracao" title="Dias entre assinatura do contrato e data do casamento" {...sortThProps}>Duração</SortTh>
+              <SortTh field="duracao" title="Meses entre assinatura do contrato e data do casamento" {...sortThProps}>Duração</SortTh>
               <SortTh field="tipo_contrato" title="Tipo de contrato (Tudo Incluído, Cardápio, etc.) — disponível após reimportação com nova coluna" {...sortThProps}>Contrato</SortTh>
               <SortTh field="convidados" right title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
@@ -495,7 +501,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     </td>
                     <td className="py-2.5 px-3 text-xs whitespace-nowrap tabular-nums">
                       {duracao !== null
-                        ? <span className="text-zinc-600">{duracao} dias</span>
+                        ? <span className="text-zinc-600">{fmtMeses(duracao)}</span>
                         : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                     <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">

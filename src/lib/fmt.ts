@@ -28,6 +28,10 @@ export const fmtAxisBRL = (v: number): string => {
   return fmtBRL(n)
 }
 
+/** Duração em meses, 1 casa decimal: "3,7 meses". `dias` = dias corridos (30,44 d/mês). */
+export const fmtMeses = (dias: number): string =>
+  `${(dias / 30.44).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} meses`
+
 /**
  * Formatador de TICK percentual. "14%" / "-3,5%".
  * `casas` controla casas decimais (default 0). Use em `tickFormatter` do eixo Y.
