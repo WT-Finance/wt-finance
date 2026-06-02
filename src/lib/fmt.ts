@@ -13,13 +13,19 @@ export const fmtMi = (v: number) => {
 
 /**
  * Formatador de TICK de eixo (valores monetários abreviados, SEM quebra de linha).
- * "R$ 1,8 Mi" / "R$ 600 k" / "R$ 0". Reusa a base de `fmtMi`, garantindo que o
- * zero saia limpo como "R$ 0" (e não "R$ 0,00"). Use em `tickFormatter` do eixo Y.
+ * "R$ 1,8 Mi" / "R$ 600 k" / "R$ 0" (ADR-0095). Usa 1 casa em Mi e 0 casas em k
+ * para manter o rótulo curto (fmtMi usa 2 casas em Mi e fica reservado a
+ * tooltips/totais). Use em `tickFormatter` do eixo Y.
  */
 export const fmtAxisBRL = (v: number): string => {
   const n = Number(v)
   if (n === 0) return 'R$ 0'
-  return fmtMi(n)
+  const a = Math.abs(n)
+  if (a >= 1_000_000)
+    return `R$ ${(n / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Mi`
+  if (a >= 1_000)
+    return `R$ ${Math.round(n / 1_000).toLocaleString('pt-BR')} k`
+  return fmtBRL(n)
 }
 
 /**

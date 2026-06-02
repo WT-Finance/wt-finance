@@ -76,14 +76,14 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
         <span className="text-xs font-semibold text-zinc-700">{label}</span>
         <span className={`text-sm font-semibold tabular-nums ${color}`}>{fmtBRL(total)}</span>
       </div>
-      <div className="grid grid-cols-1 gap-1.5 pl-3 border-l-2 border-zinc-100">
-        <div>
-          <p className="text-[10px] text-zinc-400">{sub1Label}</p>
-          <p className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub1)}</p>
+      <div className="grid grid-cols-1 gap-1 pl-3 border-l-2 border-zinc-100">
+        <div className="flex justify-between items-baseline">
+          <span className="text-[10px] text-zinc-400">{sub1Label}</span>
+          <span className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub1)}</span>
         </div>
-        <div>
-          <p className="text-[10px] text-zinc-400">{sub2Label}</p>
-          <p className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub2)}</p>
+        <div className="flex justify-between items-baseline">
+          <span className="text-[10px] text-zinc-400">{sub2Label}</span>
+          <span className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub2)}</span>
         </div>
       </div>
     </div>
