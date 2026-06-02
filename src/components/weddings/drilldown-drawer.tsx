@@ -427,10 +427,7 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                   </div>
                   <div className="grid grid-cols-3 gap-x-4 pt-2 border-t border-zinc-100 mt-1">
                     <div className="flex flex-col">
-                      <div>
-                        <span className="text-xs font-semibold text-zinc-700">Resultado de Caixa</span>
-                        <span className="text-[10px] text-zinc-400 ml-1">({vf.resultado_pct.toFixed(1)}%)</span>
-                      </div>
+                      <span className="text-xs font-semibold text-zinc-700">Resultado de Caixa</span>
                       <span className={`text-sm font-semibold tabular-nums ${vf.resultado_caixa >= 0 ? 'text-success' : 'text-danger'}`}>
                         {fmtBRL(vf.resultado_caixa)}
                       </span>
