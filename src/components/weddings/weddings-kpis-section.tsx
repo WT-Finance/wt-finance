@@ -139,7 +139,7 @@ function SubsetorCard({
 
       {/* Valor principal: nº de contratos (Comercial) ou faturamento */}
       <div className="flex items-baseline gap-1 mb-1">
-        <p className="text-xl font-bold tabular-nums flex-1" style={{ color: color ?? 'var(--brand)' }}>
+        <p className="text-xl lg:text-lg font-bold tabular-nums flex-1 whitespace-nowrap" style={{ color: color ?? 'var(--brand)' }}>
           {isContratos ? (
             <>
               {nContratos}

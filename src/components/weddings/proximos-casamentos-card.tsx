@@ -113,7 +113,8 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
         ) : (
           <table className="w-full table-fixed text-sm">
             <colgroup>
-              <col className="w-30" />
+              <col className="w-32" />
+              <col />
               <col />
               <col className="w-24" />
             </colgroup>
@@ -121,6 +122,7 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
               <tr className="border-b border-zinc-100">
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Data</th>
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
                 <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Resultado Previsto</th>
               </tr>
             </thead>
@@ -132,6 +134,9 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
                   </td>
                   <td className="py-2 px-3 text-zinc-800 font-medium truncate">
                     {c.casal ?? '—'}
+                  </td>
+                  <td className="py-2 px-3 text-zinc-500 text-xs truncate">
+                    {c.hotel ?? '—'}
                   </td>
                   <ResultadoCell valor={c.resultado_previsto ?? 0} />
                 </tr>
