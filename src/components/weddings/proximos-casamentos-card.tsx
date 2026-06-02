@@ -43,7 +43,7 @@ function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamen
 
   return (
     <>
-      <div className="flex items-center gap-1.5 mb-4">
+      <div className="sticky -top-5 z-20 bg-white -mx-6 -mt-5 px-6 pt-5 pb-3 mb-3 border-b border-zinc-100 flex items-center gap-1.5">
         {(['3m', '6m', '12m'] as HorizontePill[]).map(h => (
           <button
             key={h}
@@ -111,34 +111,33 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
         {casamentos.length === 0 ? (
           <EmptyState icon={Calendar} message="Nenhum casamento previsto para o horizonte selecionado" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-100">
-                  <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
-                  <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
-                  <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-30" />
+              <col />
+              <col className="w-24" />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-zinc-100">
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Data</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Resultado Previsto</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-50">
+              {visiveis.map((c, i) => (
+                <tr key={i} className="hover:bg-zinc-50">
+                  <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
+                    {c.data_casamento ? fmtDateMid(c.data_casamento) : '—'}
+                  </td>
+                  <td className="py-2 px-3 text-zinc-800 font-medium truncate">
+                    {c.casal ?? '—'}
+                  </td>
+                  <ResultadoCell valor={c.resultado_previsto ?? 0} />
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-50">
-                {visiveis.map((c, i) => (
-                  <tr key={i} className="hover:bg-zinc-50">
-                    <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                      {c.data_casamento ? fmtDateMid(c.data_casamento) : '—'}
-                    </td>
-                    <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-32">
-                      {c.casal ?? '—'}
-                    </td>
-                    <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-28">
-                      {c.hotel ?? '—'}
-                    </td>
-                    <ResultadoCell valor={c.resultado_previsto ?? 0} />
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
