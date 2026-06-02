@@ -116,14 +116,14 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
               <col className="w-32" />
               <col />
               <col />
-              <col className="w-24" />
+              <col className="w-28" />
             </colgroup>
             <thead>
               <tr className="border-b border-zinc-100">
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Data</th>
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
                 <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400">Resultado Previsto</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Prev.</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">

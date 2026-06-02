@@ -46,6 +46,7 @@ Produtos sem subsetor mapeado (NÃO_CLASSIFICADO) têm faturamento (~R$ 173k acu
 - **Lista de Operações — alinhamento das colunas:** Duração à direita; Contrato e Conv. centralizados (novo prop `center` no `SortTh`); Faturamento e Resultado Previsto em formato contábil ("R$" à esquerda via `flex justify-between`, valor à direita).
 - **Card de subsetor — valor principal sem quebra:** `whitespace-nowrap` + `lg:text-lg` (reduz a fonte só no layout de 5 colunas, onde quebrava em 2 linhas).
 - **Hotel reposto no card** de Próximos Casamentos — eu o havia removido por conta própria para matar o scroll; correção: manter as 4 colunas com `table-fixed`. Aprendizado: **não remover conteúdo sem pedido expresso** (registrado na memória).
+- **Próximos Casamentos:** cabeçalho "Resultado Previsto" → "Resultado Prev." sem quebra de linha (coluna alargada para `w-28`).
 
 ## Gates
 - ✅ build · ✅ tsc · ✅ lint **sem warnings novos** (corrigi 2 warnings de `YAxis` órfão dos subagentes; sorts Duração/Contrato/Conv. verificados 200 via anon).
