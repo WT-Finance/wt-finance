@@ -40,9 +40,12 @@ Produtos sem subsetor mapeado (NÃO_CLASSIFICADO) têm faturamento (~R$ 173k acu
 - **Drawer Operações / Fluxo de Caixa:** "Resultado de Caixa" sem o `(%)` entre parênteses e alinhado com Resultado Previsto/NCG; recebido/a receber/pago/a pagar com valor alinhado à direita (na borda do total de Entradas/Saídas).
 - **Eixo Y sem quebra (global):** `fmtAxisBRL` passou a 1 casa em Mi / 0 em k ("R$ 1,8 Mi" / "R$ 600 k", ADR-0095) — corrige o Acumulado de Recebimentos/Pagamentos e vale para todos os charts via `ChartYAxisBRL`.
 - **Card de subsetor (telas menores):** `flex flex-col h-full` + rodapé `mt-auto` → Receita/Margem alinham entre cards mesmo quando o valor quebra em 2 linhas.
-- **Próximos Casamentos:** tabela do card `table-fixed` sem scroll horizontal (Hotel sai do card; segue no drawer); pills do drawer agora flutuantes (sticky, padrão sem-fresta do `ListDrawer`).
+- **Próximos Casamentos:** tabela do card `table-fixed` + truncate → sem scroll horizontal **mantendo as 4 colunas** (Data/Casal/Hotel/Resultado); pills do drawer agora flutuantes (sticky, padrão sem-fresta do `ListDrawer`).
 - **Duração** em meses, 1 casa ("3,7 meses"), na Lista de Operações (tabela + export) e no drawer — helper `fmtMeses` (30,44 d/mês).
 - **Sort HTTP 400:** ordenar por Duração/Contrato/Convidados estourava 400 — o `z.enum` de `ordenar_por` na API route não incluía `duracao`/`tipo_contrato`/`convidados` (a RPC já suportava). Adicionados ao enum.
+- **Lista de Operações — alinhamento das colunas:** Duração à direita; Contrato e Conv. centralizados (novo prop `center` no `SortTh`); Faturamento e Resultado Previsto em formato contábil ("R$" à esquerda via `flex justify-between`, valor à direita).
+- **Card de subsetor — valor principal sem quebra:** `whitespace-nowrap` + `lg:text-lg` (reduz a fonte só no layout de 5 colunas, onde quebrava em 2 linhas).
+- **Hotel reposto no card** de Próximos Casamentos — eu o havia removido por conta própria para matar o scroll; correção: manter as 4 colunas com `table-fixed`. Aprendizado: **não remover conteúdo sem pedido expresso** (registrado na memória).
 
 ## Gates
 - ✅ build · ✅ tsc · ✅ lint **sem warnings novos** (corrigi 2 warnings de `YAxis` órfão dos subagentes; sorts Duração/Contrato/Conv. verificados 200 via anon).
