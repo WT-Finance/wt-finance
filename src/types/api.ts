@@ -240,6 +240,8 @@ export interface OperacaoItem {
   faturamento:           number
   receita:               number
   margem_pct:            number
+  entradas_total:        number
+  saidas_total:          number
   resultado_caixa:       number
   ncg:                   number
   flags:                 OperacaoFlag[]

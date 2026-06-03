@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Search, Download } from 'lucide-react'
 import * as XLSX from '@e965/xlsx'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
-import { fmtDateLong, fmtMeses } from '@/lib/fmt'
+import { fmtDateLong, fmtMeses, numBRL2 } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import EmptyState from '@/components/shared/empty-state'
 
@@ -45,9 +45,6 @@ function duracaoMeses(dataVenda: string | null, dataEvento: string | null): numb
   const dias = calcularDuracao(dataVenda, dataEvento)
   return dias != null ? Number((dias / 30.44).toFixed(1)) : null
 }
-
-/** Número pt-BR sem símbolo, para o formato contábil ("R$" à esquerda, valor à direita). */
-const numBRL = (v: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(v)
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -117,7 +114,8 @@ function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
     'Contrato':              op.tipo_contrato ?? '—',
     'Conv.':                 op.convidados ?? 0,
     'Faturamento (R$)':         op.faturamento ?? 0,
-    'Resultado Previsto (R$)':  op.resultado_caixa ?? 0,
+    // v4.9/M6: Resultado Previsto = entradas_total − saidas_total (mesma fórmula do drawer).
+    'Resultado Previsto (R$)':  (op.entradas_total ?? 0) - (op.saidas_total ?? 0),
     'Margem (%)':               op.margem_liquida_pct ?? 0,
   }))
 
@@ -480,7 +478,9 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               </tr>
             ) : (
               data.operacoes.map(op => {
-                const rlNegativa = op.resultado_caixa < 0
+                // v4.9/M6: Resultado Previsto = entradas_total − saidas_total (mesma fórmula do drawer).
+                const resultadoPrevisto = op.entradas_total - op.saidas_total
+                const rlNegativa = resultadoPrevisto < 0
                 const duracao = calcularDuracao(op.data_venda_contrato, op.data_evento)
                 return (
                   <tr
@@ -526,13 +526,13 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     <td className="py-2.5 px-3 text-xs text-zinc-700 whitespace-nowrap">
                       <span className="flex justify-between gap-2 tabular-nums">
                         <span className="text-zinc-400">R$</span>
-                        <span>{numBRL(op.faturamento)}</span>
+                        <span>{numBRL2(op.faturamento)}</span>
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-xs font-medium whitespace-nowrap">
                       <span className="flex justify-between gap-2 tabular-nums">
                         <span className="text-zinc-400">R$</span>
-                        <span className={rlNegativa ? 'text-danger' : 'text-zinc-700'}>{numBRL(op.resultado_caixa)}</span>
+                        <span className={rlNegativa ? 'text-danger' : 'text-zinc-700'}>{numBRL2(resultadoPrevisto)}</span>
                       </span>
                     </td>
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>

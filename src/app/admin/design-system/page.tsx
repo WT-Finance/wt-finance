@@ -259,6 +259,23 @@ export default function DesignSystemPage() {
           <p>{'fmtAxisMes("2026-01")  → "jan/26"       // eixo X temporal (minúsculo)'}</p>
         </div>
 
+        {/* Casas decimais por contexto (ADR-0100, v4.9/M8) */}
+        <p className="font-medium text-[var(--text-primary)] text-sm mb-2">Valor monetário: casas decimais por contexto (<code className="bg-zinc-100 px-1 rounded">@/lib/fmt</code>)</p>
+        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-2">
+          <p className="text-[var(--text-primary)] not-italic font-sans font-medium mb-1">Operação individual → 2 casas decimais:</p>
+          <p>{'fmtBRL2(344444.4)  → "R$ 344.444,40"   // Lista de Operações, drawer de operação'}</p>
+          <p>{'numBRL2(344444.4)  → "344.444,40"      // formato contábil (R$ à esquerda)'}</p>
+          <p className="text-[var(--text-primary)] not-italic font-sans font-medium mt-2 mb-1">Agregado / eixos de gráfico → abreviado:</p>
+          <p>{'fmtMi(1_800_000)   → "R$ 1,80 Mi"      // KPIs, totais agregados'}</p>
+          <p>{'fmtAxisBRL(...)    → "R$ 1,8 Mi"       // ticks de eixo (sempre abreviado)'}</p>
+        </div>
+        <p className="text-xs text-[var(--text-muted)] mb-6">
+          Convenção (ADR-0100): em <strong>contexto de operação individual</strong> (uma operação Weddings específica —
+          Lista de Operações e seu drawer), todo valor monetário usa 2 casas decimais via <code className="bg-zinc-100 px-1 rounded">fmtBRL2</code>/<code className="bg-zinc-100 px-1 rounded">numBRL2</code>.
+          Em contexto <strong>agregado</strong> e em <strong>eixos de gráfico</strong>, mantém-se o formato abreviado (<code className="bg-zinc-100 px-1 rounded">R$ 1,8 Mi</code>).
+          Sempre pelo helper central, nunca formatação local.
+        </p>
+
         {/* Primitivos de componente */}
         <p className="font-medium text-[var(--text-primary)] text-sm mb-2">Primitivos (<code className="bg-zinc-100 px-1 rounded">@/components/charts</code>)</p>
         <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-6">
