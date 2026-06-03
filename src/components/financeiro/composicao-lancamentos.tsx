@@ -100,7 +100,7 @@ function montarFatias(grupos: DecomposicaoGrupo[], paleta: string[]): {
     const valorOutros = agregados.reduce((s, g) => s + g.valor_total, 0)
     fatias.push({
       key: '__outros__',
-      label: 'Outros',
+      label: `Outros (${agregados.length} ${agregados.length === 1 ? 'grupo' : 'grupos'})`,
       valor: valorOutros,
       pct: (valorOutros / total) * 100,
       cor: COR_OUTROS,
@@ -112,75 +112,235 @@ function montarFatias(grupos: DecomposicaoGrupo[], paleta: string[]): {
   return { fatias, total }
 }
 
-// ── Lista de drill-down (categorias de um grupo / grupos de "Outros") ─────────
+// ── Item de drill-down (categorias de um grupo / grupos de "Outros") ──────────
 
 interface ItemLista {
   nome: string
   valor: number
 }
 
-function ListaDrill({
+// ── Donut (panorama) ─────────────────────────────────────────────────────────
+// Maior que o legado; sem legenda lateral (a tabela abaixo cumpre esse papel).
+// Continua clicável e sincroniza a seleção com a tabela do mesmo lado.
+
+function Donut({
   titulo,
-  itens,
-  totalGrupo,
-  cor,
+  fatias,
+  total,
+  sinal,
+  selecionado,
+  onSelecionar,
+}: {
+  titulo: string
+  fatias: Fatia[]
+  total: number
+  sinal: 'entrada' | 'saida'
+  selecionado: string | null
+  onSelecionar: (key: string) => void
+}) {
+  const corTitulo = sinal === 'entrada' ? 'var(--positive)' : 'var(--negative)'
+
+  if (!fatias.length) {
+    return (
+      <div className="flex flex-col items-center">
+        <p className="text-xs mb-3 font-medium" style={{ color: corTitulo }}>{titulo}</p>
+        <p className="text-xs text-zinc-400">Sem dados</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center">
+      <p className="text-xs mb-3 font-medium" style={{ color: corTitulo }}>{titulo}</p>
+      <div className="relative" style={{ width: 184, height: 184 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={fatias}
+              dataKey="valor"
+              nameKey="label"
+              cx="50%"
+              cy="50%"
+              innerRadius={62}
+              outerRadius={90}
+              paddingAngle={1.5}
+              stroke="none"
+              isAnimationActive={false}
+              onClick={(d) => {
+                const k = (d as unknown as { key?: string } | undefined)?.key
+                if (k) onSelecionar(k)
+              }}
+              className="cursor-pointer outline-none focus:outline-none"
+            >
+              {fatias.map(f => (
+                <Cell
+                  key={f.key}
+                  fill={f.cor}
+                  fillOpacity={!selecionado || selecionado === f.key ? 1 : 0.35}
+                  className="cursor-pointer outline-none focus:outline-none"
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-[10px] text-zinc-400 leading-tight">{titulo}</span>
+          <span className="text-base font-bold text-zinc-800 tabular-nums leading-tight">{fmtMi(total)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Tabela de decomposição (detalhe) ──────────────────────────────────────────
+// Grupo · % · Valor + linha de Total. Clicar num grupo abre o drill (categorias
+// do grupo, ou os grupos agregados de "Outros"). Sincroniza com o donut.
+
+function TabelaDecomposicao({
+  titulo,
+  fatias,
+  total,
+  sinal,
+  selecionado,
+  onSelecionar,
+  itensDrill,
+  totalDrill,
+  corDrill,
   onVoltar,
 }: {
   titulo: string
-  itens: ItemLista[]
-  totalGrupo: number
-  cor: string
+  fatias: Fatia[]
+  total: number
+  sinal: 'entrada' | 'saida'
+  selecionado: string | null
+  onSelecionar: (key: string) => void
+  itensDrill: ItemLista[] | null
+  totalDrill: number
+  corDrill: string
   onVoltar: () => void
 }) {
-  return (
-    <div className="mt-4 border-t border-zinc-100 pt-3">
-      <div className="flex items-center justify-between mb-2.5">
-        <p className="text-xs font-medium text-zinc-700 truncate pr-2">{titulo}</p>
-        <button
-          onClick={onVoltar}
-          className="shrink-0 inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors"
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          voltar
-        </button>
+  const corTitulo = sinal === 'entrada' ? 'var(--positive)' : 'var(--negative)'
+
+  if (!fatias.length) {
+    return (
+      <div>
+        <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
+        <p className="text-xs text-zinc-400">Sem dados</p>
       </div>
-      {itens.length === 0 ? (
-        <p className="text-[11px] text-zinc-400">Sem itens no período.</p>
-      ) : (
-        <div className="space-y-2">
-          {itens.map(it => {
-            const pct = totalGrupo > 0 ? (it.valor / totalGrupo) * 100 : 0
+    )
+  }
+
+  const fatiaSel = selecionado ? fatias.find(f => f.key === selecionado) ?? null : null
+
+  return (
+    <div>
+      <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
+
+      <table className="table-fixed w-full">
+        <thead>
+          <tr className="text-[10px] uppercase tracking-wide text-zinc-400">
+            <th className="text-left font-semibold pb-1.5">Grupo</th>
+            <th className="text-right font-semibold pb-1.5 w-14">%</th>
+            <th className="text-right font-semibold pb-1.5 w-24">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fatias.map(f => {
+            const ativo = selecionado === f.key
             return (
-              <div key={it.nome}>
-                <div className="flex justify-between items-baseline mb-0.5">
-                  <span className="text-[11px] text-zinc-600 truncate pr-2 min-w-0">
-                    {it.nome || '(sem categoria)'}
+              <tr
+                key={f.key}
+                onClick={() => onSelecionar(f.key)}
+                className={`cursor-pointer border-b border-zinc-50 transition-colors ${
+                  ativo ? 'bg-zinc-100' : 'hover:bg-zinc-50'
+                }`}
+              >
+                <td className="py-1.5 pr-2 min-w-0">
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
+                      style={{ background: f.cor, opacity: !selecionado || ativo ? 1 : 0.4 }}
+                    />
+                    <span className="text-[11px] text-zinc-700 truncate">{f.label}</span>
                   </span>
-                  <div className="flex items-baseline gap-1.5 shrink-0">
-                    <span className="text-[10px] text-zinc-400 tabular-nums">{pct.toFixed(1)}%</span>
-                    <span className="text-[11px] font-medium text-zinc-800 tabular-nums">{fmtBRL(it.valor)}</span>
-                  </div>
-                </div>
-                <div className="h-[3px] rounded-full bg-zinc-100 overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${pct.toFixed(1)}%`, background: cor, opacity: 0.55 }}
-                  />
-                </div>
-              </div>
+                </td>
+                <td className="py-1.5 text-right text-[10px] text-zinc-400 tabular-nums align-middle">
+                  {f.pct.toFixed(1)}%
+                </td>
+                <td className="py-1.5 text-right text-[11px] font-medium text-zinc-800 tabular-nums align-middle">
+                  {fmtMi(f.valor)}
+                </td>
+              </tr>
             )
           })}
+          {/* Total */}
+          <tr>
+            <td className="pt-2 text-[11px] font-semibold" style={{ color: corTitulo }}>Total</td>
+            <td className="pt-2 text-right text-[10px] text-zinc-400 tabular-nums">100%</td>
+            <td className="pt-2 text-right text-[11px] font-semibold tabular-nums" style={{ color: corTitulo }}>
+              {fmtMi(total)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Drill-down do grupo/“Outros” selecionado */}
+      {fatiaSel && itensDrill && (
+        <div className="mt-3 border-t border-zinc-100 pt-2.5">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] font-medium text-zinc-700 truncate pr-2">
+              {fatiaSel.ehOutros ? 'Outros grupos' : fatiaSel.label}
+            </p>
+            <button
+              onClick={onVoltar}
+              className="shrink-0 inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              voltar
+            </button>
+          </div>
+          {itensDrill.length === 0 ? (
+            <p className="text-[11px] text-zinc-400">Sem itens no período.</p>
+          ) : (
+            <div className="space-y-2">
+              {itensDrill.map(it => {
+                const pct = totalDrill > 0 ? (it.valor / totalDrill) * 100 : 0
+                return (
+                  <div key={it.nome}>
+                    <div className="flex justify-between items-baseline mb-0.5">
+                      <span className="text-[11px] text-zinc-600 truncate pr-2 min-w-0">
+                        {it.nome || '(sem categoria)'}
+                      </span>
+                      <div className="flex items-baseline gap-1.5 shrink-0">
+                        <span className="text-[10px] text-zinc-400 tabular-nums">{pct.toFixed(1)}%</span>
+                        <span className="text-[11px] font-medium text-zinc-800 tabular-nums">{fmtBRL(it.valor)}</span>
+                      </div>
+                    </div>
+                    <div className="h-[3px] rounded-full bg-zinc-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct.toFixed(1)}%`, background: corDrill, opacity: 0.55 }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// ── Um donut (entradas OU saídas) ─────────────────────────────────────────────
+// ── Um lado (entradas OU saídas): donut + tabela compartilham seleção ─────────
+// Custom hook (`use...`) para satisfazer as regras de hooks: o donut (em cima) e a
+// tabela (embaixo) ficam em grids distintos no layout, mas precisam compartilhar a
+// mesma seleção/drill — então a seleção vive aqui e devolvemos os dois nós prontos.
 
-function DonutLado({
+function useLado({
   titulo,
   grupos,
   paleta,
@@ -192,7 +352,10 @@ function DonutLado({
   paleta: string[]
   categorias: DecomposicaoCategoria[]
   sinal: 'entrada' | 'saida'
-}) {
+}): {
+  donut: React.ReactNode
+  tabela: React.ReactNode
+} {
   const [selecionado, setSelecionado] = useState<string | null>(null)
 
   const { fatias, total } = useMemo(() => montarFatias(grupos, paleta), [grupos, paleta])
@@ -210,150 +373,93 @@ function DonutLado({
     return m
   }, [categorias, sinal])
 
-  if (!fatias.length) {
-    return (
-      <div>
-        <p className="text-xs mb-3 font-medium text-zinc-500">{titulo}</p>
-        <p className="text-xs text-zinc-400">Sem dados</p>
-      </div>
-    )
-  }
+  const toggle = (key: string) => setSelecionado(s => (s === key ? null : key))
 
   const fatiaSel = selecionado ? fatias.find(f => f.key === selecionado) ?? null : null
 
   // Conteúdo do drill-down
-  let drill: { titulo: string; itens: ItemLista[]; totalGrupo: number; cor: string } | null = null
+  let itensDrill: ItemLista[] | null = null
+  let totalDrill = 0
+  let corDrill = COR_OUTROS
   if (fatiaSel) {
+    corDrill = fatiaSel.cor
+    totalDrill = fatiaSel.valor
     if (fatiaSel.ehOutros) {
-      const itens = (fatiaSel.gruposAgregados ?? []).map(g => {
+      itensDrill = (fatiaSel.gruposAgregados ?? []).map(g => {
         const grupo = grupos.find(x => x.grupo_categoria === g)
         return { nome: g || '(sem grupo)', valor: grupo?.valor_total ?? 0 }
       })
-      drill = {
-        titulo: 'Outros grupos',
-        itens,
-        totalGrupo: fatiaSel.valor,
-        cor: fatiaSel.cor,
-      }
     } else {
-      drill = {
-        titulo: fatiaSel.label,
-        itens: categoriasPorGrupo.get(fatiaSel.key) ?? [],
-        totalGrupo: fatiaSel.valor,
-        cor: fatiaSel.cor,
-      }
+      itensDrill = categoriasPorGrupo.get(fatiaSel.key) ?? []
     }
   }
 
-  return (
-    <div>
-      <p className="text-xs mb-3 font-medium" style={{ color: sinal === 'entrada' ? 'var(--positive)' : 'var(--negative)' }}>
-        {titulo}
-      </p>
-
-      <div className="flex items-center gap-3">
-        {/* Donut com total no centro */}
-        <div className="relative shrink-0" style={{ width: 132, height: 132 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={fatias}
-                dataKey="valor"
-                nameKey="label"
-                cx="50%"
-                cy="50%"
-                innerRadius={44}
-                outerRadius={64}
-                paddingAngle={1.5}
-                stroke="none"
-                isAnimationActive={false}
-                onClick={(d) => {
-                  const k = (d as unknown as { key?: string } | undefined)?.key
-                  if (k) setSelecionado(s => (s === k ? null : k))
-                }}
-                className="cursor-pointer outline-none focus:outline-none"
-              >
-                {fatias.map(f => (
-                  <Cell
-                    key={f.key}
-                    fill={f.cor}
-                    fillOpacity={!selecionado || selecionado === f.key ? 1 : 0.35}
-                    className="cursor-pointer outline-none focus:outline-none"
-                  />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-[10px] text-zinc-400 leading-tight">{titulo}</span>
-            <span className="text-sm font-bold text-zinc-800 tabular-nums leading-tight">{fmtMi(total)}</span>
-          </div>
-        </div>
-
-        {/* Legenda clicável */}
-        <div className="flex-1 min-w-0 space-y-1">
-          {fatias.map(f => {
-            const ativo = selecionado === f.key
-            return (
-              <button
-                key={f.key}
-                onClick={() => setSelecionado(s => (s === f.key ? null : f.key))}
-                className={`w-full flex items-center gap-1.5 text-left rounded px-1 py-0.5 transition-colors ${
-                  ativo ? 'bg-zinc-100' : 'hover:bg-zinc-50'
-                }`}
-              >
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
-                  style={{ background: f.cor, opacity: !selecionado || ativo ? 1 : 0.4 }}
-                />
-                <span className="text-[11px] text-zinc-600 truncate min-w-0 flex-1">{f.label}</span>
-                <span className="text-[10px] text-zinc-400 tabular-nums shrink-0">{f.pct.toFixed(1)}%</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {drill && (
-        <ListaDrill
-          titulo={drill.titulo}
-          itens={drill.itens}
-          totalGrupo={drill.totalGrupo}
-          cor={drill.cor}
-          onVoltar={() => setSelecionado(null)}
-        />
-      )}
-    </div>
-  )
+  return {
+    donut: (
+      <Donut
+        titulo={titulo}
+        fatias={fatias}
+        total={total}
+        sinal={sinal}
+        selecionado={selecionado}
+        onSelecionar={toggle}
+      />
+    ),
+    tabela: (
+      <TabelaDecomposicao
+        titulo={titulo}
+        fatias={fatias}
+        total={total}
+        sinal={sinal}
+        selecionado={selecionado}
+        onSelecionar={toggle}
+        itensDrill={itensDrill}
+        totalDrill={totalDrill}
+        corDrill={corDrill}
+        onVoltar={() => setSelecionado(null)}
+      />
+    ),
+  }
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
+// EM CIMA: dois donuts (panorama) lado a lado. ABAIXO: tabela de decomposição em
+// duas colunas (Entradas | Saídas). Donut e tabela do mesmo lado compartilham a
+// seleção/drill — redundância proposital (panorama + detalhe).
 
 export default function ComposicaoPeriodo({ entradas, saidas, categorias }: Props) {
+  const ladoEntradas = useLado({
+    titulo: 'Entradas',
+    grupos: entradas,
+    paleta: PALETA_ENTRADAS,
+    categorias,
+    sinal: 'entrada',
+  })
+  const ladoSaidas = useLado({
+    titulo: 'Saídas',
+    grupos: saidas,
+    paleta: PALETA_SAIDAS,
+    categorias,
+    sinal: 'saida',
+  })
+
   if (!entradas.length && !saidas.length) {
     return <p className="text-xs text-zinc-400">Sem dados</p>
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {entradas.length > 0 && (
-        <DonutLado
-          titulo="Entradas"
-          grupos={entradas}
-          paleta={PALETA_ENTRADAS}
-          categorias={categorias}
-          sinal="entrada"
-        />
-      )}
-      {saidas.length > 0 && (
-        <DonutLado
-          titulo="Saídas"
-          grupos={saidas}
-          paleta={PALETA_SAIDAS}
-          categorias={categorias}
-          sinal="saida"
-        />
-      )}
+    <div className="space-y-6">
+      {/* Donuts (panorama) — lado a lado, maiores */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 justify-items-center">
+        {ladoEntradas.donut}
+        {ladoSaidas.donut}
+      </div>
+
+      {/* Tabela de decomposição (detalhe) — duas colunas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 border-t border-zinc-100 pt-5">
+        {ladoEntradas.tabela}
+        {ladoSaidas.tabela}
+      </div>
     </div>
   )
 }
