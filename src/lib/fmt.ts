@@ -3,6 +3,23 @@ export const fmtBRL = (v: number) =>
     style: 'currency', currency: 'BRL', maximumFractionDigits: 0,
   }).format(v)
 
+/**
+ * Valor monetário com 2 casas decimais, para CONTEXTO DE OPERAÇÃO INDIVIDUAL
+ * (Lista de Operações, drawer de operação). "R$ 344.444,44". (ADR-0100, v4.9/M8.)
+ * Em contexto agregado / eixos de gráfico, usar fmtMi/fmtAxisBRL (abreviado).
+ */
+export const fmtBRL2 = (v: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(v)
+
+/**
+ * Número pt-BR com 2 casas, SEM símbolo — para o formato contábil ("R$" à esquerda,
+ * valor à direita) em contexto de operação individual. "344.444,44". (v4.9/M8.)
+ */
+export const numBRL2 = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
+
 export const fmtMi = (v: number) => {
   if (Math.abs(v) >= 1_000_000)
     return `R$ ${(v / 1_000_000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Mi`

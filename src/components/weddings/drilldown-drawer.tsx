@@ -14,7 +14,7 @@ import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import type {
   DrilldownOperacao, VisaoFinanceira, SumarioSubsetor, AcumuladoMensalItem,
 } from '@/types/api'
-import { fmtBRL, fmtDateLong, fmtAxisMes, fmtMeses } from '@/lib/fmt'
+import { fmtBRL2, fmtDateLong, fmtAxisMes, fmtMeses } from '@/lib/fmt'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,16 +74,16 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
     <div className="mb-3">
       <div className="flex justify-between items-baseline mb-1">
         <span className="text-xs font-semibold text-zinc-700">{label}</span>
-        <span className={`text-sm font-semibold tabular-nums ${color}`}>{fmtBRL(total)}</span>
+        <span className={`text-sm font-semibold tabular-nums ${color}`}>{fmtBRL2(total)}</span>
       </div>
       <div className="grid grid-cols-1 gap-1 pl-3 border-l-2 border-zinc-100">
         <div className="flex justify-between items-baseline">
           <span className="text-[10px] text-zinc-400">{sub1Label}</span>
-          <span className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub1)}</span>
+          <span className="text-xs tabular-nums text-zinc-600">{fmtBRL2(sub1)}</span>
         </div>
         <div className="flex justify-between items-baseline">
           <span className="text-[10px] text-zinc-400">{sub2Label}</span>
-          <span className="text-xs tabular-nums text-zinc-600">{fmtBRL(sub2)}</span>
+          <span className="text-xs tabular-nums text-zinc-600">{fmtBRL2(sub2)}</span>
         </div>
       </div>
     </div>
@@ -193,7 +193,7 @@ function CaixaAcumuladoChart({ rows }: { rows: AcumuladoMensalItem[] }) {
           <Tooltip
             content={<CustomTooltip
               labelFormatter={(l) => fmtAxisMes(String(l))}
-              formatter={(v, name) => [fmtBRL(v), tooltipLabel(String(name))]}
+              formatter={(v, name) => [fmtBRL2(v), tooltipLabel(String(name))]}
             />}
           />
           {/* Projetado — tracejado, desenhado primeiro (fica "atrás"). */}
@@ -403,8 +403,8 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                     value={data.convidados != null ? String(data.convidados) : '—'}
                     destaque
                   />
-                  <InfoCell label="Faturamento"   value={fmtBRL(vf.faturamento)}   destaque />
-                  <InfoCell label="Receita Bruta" value={fmtBRL(vf.receita_bruta)} destaque />
+                  <InfoCell label="Faturamento"   value={fmtBRL2(vf.faturamento)}   destaque />
+                  <InfoCell label="Receita Bruta" value={fmtBRL2(vf.receita_bruta)} destaque />
                   <InfoCell label="Margem Bruta"  value={`${margemBruta.toFixed(1)}%`} destaque />
                 </div>
               </div>
@@ -425,26 +425,23 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                       sub2Label="A pagar"   sub2={vf.a_pagar}
                     />
                   </div>
-                  <div className="grid grid-cols-3 gap-x-4 pt-2 border-t border-zinc-100 mt-1">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-zinc-700">Resultado de Caixa</span>
-                      <span className={`text-sm font-semibold tabular-nums ${vf.resultado_caixa >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {fmtBRL(vf.resultado_caixa)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-zinc-700">Resultado Previsto</span>
-                      <span className={`text-sm font-semibold tabular-nums ${resultadoPrevisto >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {fmtBRL(resultadoPrevisto)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-zinc-700">NCG</span>
-                      {/* >0 = necessidade (vermelho); <0 = sobra (verde). Só o valor colorido. */}
-                      <span className={`text-sm font-semibold tabular-nums ${ncg > 0 ? 'text-danger' : 'text-success'}`}>
-                        {fmtBRL(ncg)}
-                      </span>
-                    </div>
+                  {/* v4.9/M6: rótulos na 1ª linha, valores na 2ª — assim os 3 valores
+                      alinham horizontalmente mesmo quando um rótulo quebra em 2 linhas
+                      (telas estreitas). Mantém os 3 indicadores (decisão do usuário). */}
+                  <div className="grid grid-cols-3 grid-rows-[auto_auto] gap-x-4 gap-y-0.5 items-start pt-2 border-t border-zinc-100 mt-1">
+                    <span className="text-xs font-semibold text-zinc-700 leading-tight">Resultado de Caixa</span>
+                    <span className="text-xs font-semibold text-zinc-700 leading-tight">Resultado Previsto</span>
+                    {/* NCG: >0 = necessidade (vermelho); <0 = sobra (verde). Só o valor colorido. */}
+                    <span className="text-xs font-semibold text-zinc-700 leading-tight">NCG</span>
+                    <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ${vf.resultado_caixa >= 0 ? 'text-success' : 'text-danger'}`}>
+                      {fmtBRL2(vf.resultado_caixa)}
+                    </span>
+                    <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ${resultadoPrevisto >= 0 ? 'text-success' : 'text-danger'}`}>
+                      {fmtBRL2(resultadoPrevisto)}
+                    </span>
+                    <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ${ncg > 0 ? 'text-danger' : 'text-success'}`}>
+                      {fmtBRL2(ncg)}
+                    </span>
                   </div>
                 </div>
               </div>

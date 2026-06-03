@@ -29,6 +29,19 @@ function LegendItem({ color, opacity, label }: { color: string; opacity: number;
   )
 }
 
+// KPI pequeno e discreto (label uppercase + valor em tabular-nums) usado no canto
+// superior direito do card para os totais NÃO liquidados.
+function KpiNaoLiquidado({ label, valor, cor }: { label: string; valor: number; cor: string }) {
+  return (
+    <div className="flex flex-col items-end leading-tight">
+      <span className="text-[10px] uppercase tracking-wide text-[--text-muted]">{label}</span>
+      <span className="text-sm font-semibold tabular-nums" style={{ color: cor }}>
+        {fmtBRL(valor)}
+      </span>
+    </div>
+  )
+}
+
 interface Props {
   data: AcumuladoWeddings | null
   operacaoLabel?: string
@@ -56,19 +69,31 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-baseline gap-2">
           <h2 className="text-base font-semibold text-[--text-primary]">
             Fluxo de Caixa Mensal{operacaoLabel ? ` — ${operacaoLabel}` : ''}
           </h2>
           <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
         </div>
-        <button
-          onClick={() => setInvertida(v => !v)}
-          className="text-xs text-zinc-500 border border-zinc-200 rounded px-2.5 py-1 hover:bg-zinc-50 active:bg-zinc-100 transition-colors shrink-0"
-        >
-          ⇅ Inverter saídas
-        </button>
+        <div className="flex items-start gap-5 shrink-0">
+          {(data.total_a_receber != null || data.total_a_pagar != null) && (
+            <div className="flex items-start gap-5">
+              {data.total_a_receber != null && (
+                <KpiNaoLiquidado label="A receber" valor={data.total_a_receber} cor={COR_ENTRADA} />
+              )}
+              {data.total_a_pagar != null && (
+                <KpiNaoLiquidado label="A pagar" valor={data.total_a_pagar} cor={COR_SAIDA} />
+              )}
+            </div>
+          )}
+          <button
+            onClick={() => setInvertida(v => !v)}
+            className="text-xs text-zinc-500 border border-zinc-200 rounded px-2.5 py-1 hover:bg-zinc-50 active:bg-zinc-100 transition-colors shrink-0"
+          >
+            ⇅ Inverter saídas
+          </button>
+        </div>
       </div>
 
       <ResponsiveContainer width="100%" height={320}>

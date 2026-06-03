@@ -81,6 +81,11 @@ interface DiaProjecao {
 const TOOLTIP_KPI_REALIZADO =
   'Reflete o fluxo de caixa bancário real, com gastos via cartão contabilizados no pagamento da fatura. Diferença esperada em relação à Decomposição por Grupo de Categoria devido ao ciclo de cartão (≤30 dias).'
 
+// Feature flag (v4.9-M7): "Posição por Conta" temporariamente oculta a pedido da
+// diretoria. Componente, RPC (get_posicao_por_conta) e dados são MANTIDOS no código
+// para revisão futura — basta voltar a flag para `true`.
+const MOSTRAR_POSICAO_POR_CONTA = false
+
 function TooltipIcon({ text }: { text: string }) {
   return (
     <span title={text} className="text-zinc-300 hover:text-zinc-500 cursor-help">
@@ -265,8 +270,8 @@ export default async function FluxoCaixaPage({
               <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
             </div>
 
-            {/* Composição + Posição por Conta — títulos dentro dos cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            {/* Composição dos Lançamentos (largura total) — título dentro do card */}
+            <div className="grid grid-cols-1 gap-4 mb-4">
               <div className="rounded-xl shadow-sm bg-white p-5">
                 <CardTitle titulo="Composição dos Lançamentos" subtitulo="no período selecionado" />
                 <p className="text-[11px] text-zinc-400 mb-3 -mt-2">
@@ -274,10 +279,14 @@ export default async function FluxoCaixaPage({
                 </p>
                 <ComposicaoPeriodo entradas={entradas} saidas={saidas} categorias={decomposicaoCategorias} />
               </div>
-              <div className="rounded-xl shadow-sm bg-white p-5">
-                <CardTitle titulo="Posição por Conta" />
-                <PosicaoPorConta posicoes={posicoes} saldoTotal={saldoTotal} />
-              </div>
+
+              {/* Posição por Conta — oculta via flag (v4.9-M7); mantida p/ revisão futura */}
+              {MOSTRAR_POSICAO_POR_CONTA && (
+                <div className="rounded-xl shadow-sm bg-white p-5">
+                  <CardTitle titulo="Posição por Conta" />
+                  <PosicaoPorConta posicoes={posicoes} saldoTotal={saldoTotal} />
+                </div>
+              )}
             </div>
 
           </>

@@ -136,9 +136,24 @@ export function parseGerencialExcel(buffer: ArrayBuffer): ParseResult {
   }
 
   const sheet = workbook.Sheets[sheetName]
+  // Leitura PRINCIPAL com raw:false → reformata células para a string de exibição.
+  // É de propósito: parseValorMonetario espera strings tipo "R$ 8.840,00"; tipo,
+  // pessoa, descrição e conta também vêm como string aqui.
   const rows  = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
     raw:    false,
     dateNF: 'yyyy-mm-dd',
+    defval: null,
+  })
+
+  // Leitura PARALELA com raw:true → preserva o tipo NATIVO de cada célula. Com
+  // cellDates:true no XLSX.read, células de data chegam como Date (sem ambiguidade
+  // de locale). Usada APENAS para a coluna Vencimento, casada por índice de linha
+  // (ambas as leituras usam o mesmo sheet + defval:null → emitem as MESMAS linhas
+  // na MESMA ordem). Corrige a inversão dia/mês: o raw:false reformatava datas para
+  // o padrão americano mm-dd-yy da planilha, e o fallback de string assumia DD/MM no
+  // caso ambíguo (≤12/≤12), invertendo junho 1–12. (v4.9 M4)
+  const rowsRaw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    raw:    true,
     defval: null,
   })
 
@@ -178,7 +193,12 @@ export function parseGerencialExcel(buffer: ArrayBuffer): ParseResult {
     const pessoa    = String(row[colPessoa!] ?? '').trim()
     const tipoRaw   = row[colTipo!]
     const valorRaw  = row[colValor!]
-    const vencRaw   = row[colVenc!]
+    // Vencimento vem da leitura raw:true (Date nativo, sem ambiguidade de locale),
+    // casado por índice. Fallback para a versão string (raw:false) caso a célula
+    // não tenha valor nativo de data (ex.: data digitada como texto puro) — nesse
+    // caso parseVencimento usa a heurística de string (default BR).
+    const vencRawNativo = rowsRaw[idx]?.[colVenc!]
+    const vencRaw   = vencRawNativo ?? row[colVenc!]
     const descricao = colDesc  && row[colDesc]  != null ? String(row[colDesc]).trim()  || null : null
     const conta     = colConta && row[colConta] != null ? String(row[colConta]).trim() || null : null
 

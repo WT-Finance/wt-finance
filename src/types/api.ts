@@ -240,6 +240,8 @@ export interface OperacaoItem {
   faturamento:           number
   receita:               number
   margem_pct:            number
+  entradas_total:        number
+  saidas_total:          number
   resultado_caixa:       number
   ncg:                   number
   flags:                 OperacaoFlag[]
@@ -370,6 +372,10 @@ export interface AcumuladoMensalWeddingsItem {
 export interface AcumuladoWeddings {
   total_saidas: number
   meses:        AcumuladoMensalWeddingsItem[]
+  // v4.9/M5: totais NÃO liquidados (status pendente), independentes de vencimento.
+  // Opcionais: a RPC get_acumulado_weddings ainda NÃO os emite (ver dependência de backend).
+  total_a_receber?: number   // entradas não liquidadas ('A Receber Futuro')
+  total_a_pagar?:   number   // saídas não liquidadas ('A Pagar Futuro')
 }
 
 export interface VendaEmAberto {
