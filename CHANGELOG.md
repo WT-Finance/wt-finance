@@ -6,6 +6,19 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.9.2] — 2026-06-04
+
+Patch de integridade de dados sobre a v4.9.1. Re-baseia faturamento/receita/hotel das operações Weddings na Operação Própria, removendo contaminação do vínculo por `venda_n`. ADR-0102.
+
+### Corrigido
+- **Faturamento/receita/hotel/contrato/subsetor de operações Weddings contaminados pelo `venda_n`** — esses dados de Vendas eram derivados do join por `venda_n` (digitado nos Lançamentos), que apontava para vendas de outros casamentos. Caso confirmado: *W - Darlene e Adnan* exibia R$ 375.523 que eram **100% da W - Daniella e Augusto** (e a Daniella era contada duas vezes). Agora vêm da soma por **Operação Própria** (faturamento real da Darlene: R$ 8.999). Das 231 operações casadas, 214 ficam idênticas; mudam só as ~17 contaminadas; total Weddings ajusta de R$ 44,38 Mi → R$ 44,14 Mi (remoção das duplas contagens).
+- A correção abrange **a dim** (`regenerar_dim_operacao_weddings`, migration 0112: faturamento/receita/hotel) **e as RPCs** (migration 0113), pois a Lista de Operações e o drawer **recalculavam** faturamento/receita/subsetor/contrato por `venda_n` em vez de ler a dim. Com isso, o `venda_n` deixa de alimentar qualquer dado de Vendas na área Weddings — alinhando ao mapa de fontes: Hotel/Data/Duração/Contrato/Conv./Faturamento ← Vendas; Resultado Previsto ← Lançamentos; Margem = Resultado Previsto ÷ Faturamento.
+
+### Pendências sinalizadas
+- **Curadoria ERP:** corrigir os `venda_n` trocados nos Lançamentos (44374/44025/49444) e alinhar nomes de operação defasados (*Camila e Bruno* "SET"≠"SEP"; *Thelma* "DDMMAA") — estas ficam com faturamento 0 / "sem data" na Lista até o alinhamento.
+
+---
+
 ## [4.9.1] — 2026-06-04
 
 Patch de integridade de dados sobre a v4.9. Corrige a ingestão da coluna Operação Própria e a data do evento na Carteira e na Lista de Operações. ADR-0101.
