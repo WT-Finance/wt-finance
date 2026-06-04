@@ -33,14 +33,18 @@ export const chartSeries = {
 /**
  * Cores semânticas de FLUXO DE CAIXA (entrada / saída / resultado).
  * Usadas nos ComposedChart de Fluxo (Weddings e Financeiro).
- * São identitárias — entradas no azul-trips, saídas no mostarda, resultado no
- * preto institucional, ponto negativo no danger.
+ *
+ * Paleta canônica (ADR-0103, v4.10): entrada = `--positive` (verde sage),
+ * saída = `--negative` (terracota), resultado = preto institucional, ponto
+ * negativo no danger. É semântica fixa e IDÊNTICA em toda a plataforma — não
+ * herda a cor da aba. Substitui o antigo azul-trips/mostarda (#0091B3/#D9A23F),
+ * que colidia com `--brand` em Trips (#0091B3) e divergia do drawer de operação.
  */
 export const fluxoColors = {
-  entrada:           'var(--chart-fluxo-entrada)',   // #0091B3 (Pantone 632)
-  saida:             'var(--chart-fluxo-saida)',     // #D9A23F (mostarda)
-  resultado:         'var(--text-primary)',          // linha de resultado
-  resultadoNegativo: 'var(--danger)',                // ponto de resultado < 0
+  entrada:           'var(--positive)',     // verde sage — entradas/recebimentos
+  saida:             'var(--negative)',      // terracota — saídas/pagamentos
+  resultado:         'var(--text-primary)',  // linha de resultado
+  resultadoNegativo: 'var(--danger)',        // ponto de resultado < 0
 } as const
 
 /**

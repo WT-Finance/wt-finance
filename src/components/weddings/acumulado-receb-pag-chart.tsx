@@ -7,7 +7,7 @@ import {
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import type { AcumuladoWeddings } from '@/types/api'
 import CustomTooltip from '@/components/charts/custom-tooltip'
-import { ChartYAxisBRL } from '@/components/charts'
+import { ChartYAxisBRL, fluxoColors } from '@/components/charts'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
@@ -68,9 +68,9 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
           />
           <ReferenceLine
             y={data.total_saidas}
-            stroke="#B85C5C"
+            stroke={fluxoColors.resultadoNegativo}
             strokeWidth={1.5}
-            label={{ value: `Total previsto de saídas: ${fmtMi(data.total_saidas)}`, position: 'insideTopRight', fontSize: 10, fill: '#B85C5C' }}
+            label={{ value: `Total previsto de saídas: ${fmtMi(data.total_saidas)}`, position: 'insideTopRight', fontSize: 10, fill: fluxoColors.resultadoNegativo }}
           />
           {mesHoje && (
             <ReferenceLine
@@ -82,12 +82,12 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
           )}
           <Bar dataKey="entrada_acum" name="entrada_acum" radius={[2,2,0,0]}>
             {data.meses.map((entry, i) => (
-              <Cell key={i} fill="#0091B3" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+              <Cell key={i} fill={fluxoColors.entrada} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
           <Bar dataKey="saida_acum" name="saida_acum" radius={[2,2,0,0]}>
             {data.meses.map((entry, i) => (
-              <Cell key={i} fill="#D9A23F" fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+              <Cell key={i} fill={fluxoColors.saida} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
         </ComposedChart>
@@ -95,13 +95,13 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
 
       {/* Legenda manual — mais simples e controlável que o <Legend> do Recharts */}
       <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 ml-18">
-        <LegendItem color="#0091B3" opacity={1}    label="Entradas acum. (efetivado)" />
-        <LegendItem color="#0091B3" opacity={0.35} label="Entradas acum. (projetado)" />
-        <LegendItem color="#D9A23F" opacity={1}    label="Saídas acum. (efetivado)"   />
-        <LegendItem color="#D9A23F" opacity={0.35} label="Saídas acum. (projetado)"   />
-        <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+        <LegendItem color={fluxoColors.entrada} opacity={1}    label="Entradas acum. (efetivado)" />
+        <LegendItem color={fluxoColors.entrada} opacity={0.35} label="Entradas acum. (projetado)" />
+        <LegendItem color={fluxoColors.saida}   opacity={1}    label="Saídas acum. (efetivado)"   />
+        <LegendItem color={fluxoColors.saida}   opacity={0.35} label="Saídas acum. (projetado)"   />
+        <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
           <svg width="20" height="10">
-            <line x1="0" y1="5" x2="20" y2="5" stroke="#B85C5C" strokeWidth="1.5" />
+            <line x1="0" y1="5" x2="20" y2="5" stroke={fluxoColors.resultadoNegativo} strokeWidth="1.5" />
           </svg>
           Total previsto de saídas
         </div>

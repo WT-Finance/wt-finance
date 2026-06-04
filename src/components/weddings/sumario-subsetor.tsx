@@ -2,25 +2,11 @@
 
 import type { SumarioSubsetor } from '@/types/api'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
-import { margemColor } from '@/lib/config'
+import { margemColor, subsetorColor, SUBSETOR_LABELS } from '@/lib/config'
 
-const LABELS: Record<string, string> = {
-  COMERCIAL:                  'Comercial',
-  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
-  'CONVIDADOS - Extras':      'Convidados – Extras',
-  'PRODUÇÃO':                 'Produção',
-  PLANEJAMENTO:               'Planejamento',
-  NÃO_CLASSIFICADO:           'Não Classif.',
-}
-
-const SUBSETOR_COLORS: Record<string, string> = {
-  COMERCIAL:                  'var(--subsetor-comercial)',
-  'CONVIDADOS - Hospedagens': 'var(--subsetor-hospedagens)',
-  'CONVIDADOS - Extras':      'var(--subsetor-extras)',
-  'PRODUÇÃO':                 'var(--subsetor-producao)',
-  PLANEJAMENTO:               'var(--subsetor-planejamento)',
-}
-const FALLBACK_COLOR = '#BA7517'
+// Cores/rótulos de subsetor vêm de @/lib/config (fonte única). Fallback de
+// subsetor desconhecido = var(--brand) via subsetorColor (não mais #BA7517
+// hardcoded). NÃO_CLASSIFICADO tem rótulo próprio na sua linha. v4.10/ADR-0103.
 
 interface Props {
   data:          SumarioSubsetor | null
@@ -86,9 +72,9 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
                   <div className="flex items-center gap-2">
                     <span
                       className="inline-block w-2 h-2 rounded-full shrink-0"
-                      style={{ background: SUBSETOR_COLORS[s.subsetor] ?? FALLBACK_COLOR }}
+                      style={{ background: subsetorColor(s.subsetor) }}
                     />
-                    {LABELS[s.subsetor] ?? s.subsetor}
+                    {SUBSETOR_LABELS[s.subsetor] ?? s.subsetor}
                   </div>
                 </td>
                 <td className="py-2 px-2">
@@ -98,7 +84,7 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
                         className="h-full rounded-full"
                         style={{
                           width: `${s.pct_faturamento}%`,
-                          background: SUBSETOR_COLORS[s.subsetor] ?? FALLBACK_COLOR,
+                          background: subsetorColor(s.subsetor),
                         }}
                       />
                     </div>

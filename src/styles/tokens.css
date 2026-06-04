@@ -62,9 +62,10 @@
   --chart-neutral:     #94a3b8;   /* Séries neutras */
   --chart-info:        #6366f1;   /* Séries informativas */
 
-  /* Cores semânticas de fluxo de caixa (identitárias) — entrada/saída (v4.8) */
-  --chart-fluxo-entrada: #0091B3;  /* Pantone 632 — entradas/recebimentos */
-  --chart-fluxo-saida:   #D9A23F;  /* mostarda — saídas/pagamentos */
+  /* Fluxo de caixa: paleta canônica é --positive/--negative (ADR-0103, v4.10).
+     Os tokens --chart-fluxo-entrada/saida (azul/mostarda) foram REMOVIDOS — o
+     azul #0091B3 colidia com --brand de Trips. fluxoColors agora aponta para
+     --positive/--negative; não reintroduzir cor de fluxo dedicada. */
 
   /* Cores identitárias de setor macro — alinhadas aos gráficos executivos (v4.8) */
   --setor-lazer:       #378ADD;   /* Trips / Lazer */

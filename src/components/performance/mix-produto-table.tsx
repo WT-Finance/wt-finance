@@ -45,11 +45,11 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
-              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 w-8 whitespace-nowrap">#</th>
-              <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Produto</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Faturamento</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">%</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Margem</th>
+              <th className="py-2 px-3 text-left text-xs font-medium text-[--text-subtle] w-8 whitespace-nowrap">#</th>
+              <th className="py-2 px-3 text-left text-xs font-medium text-[--text-subtle] whitespace-nowrap">Produto</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-[--text-subtle] whitespace-nowrap">Faturamento</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-[--text-subtle] whitespace-nowrap">%</th>
+              <th className="py-2 px-3 text-right text-xs font-medium text-[--text-subtle] whitespace-nowrap">Margem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
@@ -58,7 +58,7 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
               : !data
               ? (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-sm text-zinc-400">
+                  <td colSpan={5} className="py-4 text-center text-sm text-[--text-subtle]">
                     Sem dados para o período selecionado.
                   </td>
                 </tr>
@@ -67,14 +67,14 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
                 <>
                   {visiveis.map((p, i) => (
                     <tr key={p.produto_nome} className="hover:bg-zinc-50">
-                      <td className="py-2 px-3 text-xs text-zinc-400">{i + 1}</td>
-                      <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-45">
+                      <td className="py-2 px-3 text-xs text-[--text-subtle]">{i + 1}</td>
+                      <td className="py-2 px-3 text-[--text-primary] font-medium truncate max-w-45">
                         {p.produto_nome}
                       </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-zinc-700">
+                      <td className="py-2 px-3 text-right tabular-nums text-[--text-secondary]">
                         {fmtBRL(p.faturamento)}
                       </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-zinc-500">
+                      <td className="py-2 px-3 text-right tabular-nums text-[--text-muted]">
                         {p.pct_faturamento.toFixed(1)}%
                       </td>
                       <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(p.margem_pct)}`}>
@@ -83,8 +83,8 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
                     </tr>
                   ))}
                   {!temMais && data.outros.quantidade_produtos > 0 && (
-                    <tr className="bg-zinc-50 text-zinc-500 italic">
-                      <td className="py-2 px-3 text-xs text-zinc-300">+{data.outros.quantidade_produtos}</td>
+                    <tr className="bg-zinc-50 text-[--text-muted] italic">
+                      <td className="py-2 px-3 text-xs text-[--text-subtle]">+{data.outros.quantidade_produtos}</td>
                       <td className="py-2 px-3 text-sm">Outros</td>
                       <td className="py-2 px-3 text-right tabular-nums not-italic">
                         {fmtBRL(data.outros.faturamento)}
@@ -107,7 +107,7 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
         {temMais ? (
           <button
             onClick={() => setDrawerOpen(true)}
-            className="w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 transition-colors"
+            className="w-full text-xs text-[--text-subtle] hover:text-[--text-secondary] py-1.5 transition-colors"
           >
             Ver mais
           </button>
@@ -121,24 +121,24 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-100">
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 w-8 whitespace-nowrap">#</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Produto</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Faturamento</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">%</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Margem</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-[--text-subtle] w-8 whitespace-nowrap">#</th>
+                <th className="py-2 px-3 text-left text-xs font-medium text-[--text-subtle] whitespace-nowrap">Produto</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-[--text-subtle] whitespace-nowrap">Faturamento</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-[--text-subtle] whitespace-nowrap">%</th>
+                <th className="py-2 px-3 text-right text-xs font-medium text-[--text-subtle] whitespace-nowrap">Margem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {produtos.map((p, i) => (
                 <tr key={p.produto_nome} className="hover:bg-zinc-50">
-                  <td className="py-2 px-3 text-xs text-zinc-400">{i + 1}</td>
-                  <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-45">
+                  <td className="py-2 px-3 text-xs text-[--text-subtle]">{i + 1}</td>
+                  <td className="py-2 px-3 text-[--text-primary] font-medium truncate max-w-45">
                     {p.produto_nome}
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-zinc-700">
+                  <td className="py-2 px-3 text-right tabular-nums text-[--text-secondary]">
                     {fmtBRL(p.faturamento)}
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-zinc-500">
+                  <td className="py-2 px-3 text-right tabular-nums text-[--text-muted]">
                     {p.pct_faturamento.toFixed(1)}%
                   </td>
                   <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(p.margem_pct)}`}>
@@ -147,8 +147,8 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
                 </tr>
               ))}
               {data.outros.quantidade_produtos > 0 && (
-                <tr className="bg-zinc-50 text-zinc-500 italic">
-                  <td className="py-2 px-3 text-xs text-zinc-300">+{data.outros.quantidade_produtos}</td>
+                <tr className="bg-zinc-50 text-[--text-muted] italic">
+                  <td className="py-2 px-3 text-xs text-[--text-subtle]">+{data.outros.quantidade_produtos}</td>
                   <td className="py-2 px-3 text-sm">Outros</td>
                   <td className="py-2 px-3 text-right tabular-nums not-italic">
                     {fmtBRL(data.outros.faturamento)}
