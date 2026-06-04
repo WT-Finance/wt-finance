@@ -6,6 +6,23 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.9.1] — 2026-06-04
+
+Patch de integridade de dados sobre a v4.9. Corrige a ingestão da coluna Operação Própria e a data do evento na Carteira e na Lista de Operações. ADR-0101.
+
+### Corrigido
+- **Parser de Vendas por Produto descartava a coluna "Operação Própria"** — o arquivo do ERP traz o cabeçalho como `Operação Propria` (sem acento em "Própria") e o parser casava `Operação Própria` ao pé da letra. Agora o casamento de cabeçalhos é **tolerante a acento/caixa/espaço** (corrige também `Mes`→`Mês`), e colunas não-mapeadas são avisadas no console em vez de sumirem em silêncio.
+- **3 casamentos apareciam no ano errado** na Carteira: Vendas × Entrega e na Lista de Operações. A `data_evento` era derivada pelo `venda_n` (digitado no Lançamentos), que apontava para o contrato de outro casamento de nome parecido (ex.: *Paula e Fernando* ligada à venda da *Paula e Bruno*). Agora `data_evento` vem **sempre da `Data Início` da linha `Contrato de casamento` da base de Vendas, casada pela Operação Própria** — as 3 voltam a 2027.
+
+### Alterado
+- **Carteira: Vendas × Entrega** passa a ser construída **somente da base VendasPorProduto** (`get_carteira_weddings`): cada casamento = 1 linha `Contrato de casamento`; linha = ano de Data Venda, coluna = ano de Data Início; faturamento/receita = soma dos produtos da operação. Não depende mais de `dim_operacao_weddings`.
+- **`regenerar_dim_operacao_weddings`** deriva `data_evento` e `data_venda_contrato` da Operação Própria (linha `Contrato de casamento`), sem fallback por `venda_n`. Operação com nome defasado no Lançamentos fica "sem data" honesto até alinhamento no ERP.
+
+### Pendências sinalizadas
+- `faturamento`/`receita`/`hotel` da dim ainda derivam do `venda_n` (mesma contaminação) — follow-up para re-basear na Operação Própria.
+
+---
+
 ## [4.9.0] — 2026-06-03
 
 Versão de **integridade de dados**: corrige três bugs de DADO que uma camada de transformação mascarava (Carteira, Convidados, Gerencial), adiciona uma coluna que elimina um join frágil, e leva ajustes visuais conectados (Weddings/Financeiro). ADRs 0097–0100.

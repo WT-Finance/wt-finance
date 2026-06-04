@@ -50,6 +50,22 @@ const COL_MAP: Record<string, keyof VendaProdutoRaw> = {
   'Operação Própria': 'operacao_propria',
 }
 
+/**
+ * Normaliza um cabeçalho para casamento TOLERANTE a acento, caixa e espaço.
+ * O ERP varia a grafia dos cabeçalhos entre exportações — ex.: "Operação Propria"
+ * (sem acento em "Própria"), "Mes" (sem acento). Casar o header ao pé da letra
+ * descarta a coluna em silêncio (custou caro: Data Início na v4.9, Operação Própria
+ * na v4.9.1). Normalizar evita que uma diferença de grafia derrube a ingestão.
+ */
+function normalizeHeader(h: string): string {
+  return h.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+// Lookup por cabeçalho normalizado (acento/caixa/espaço-insensível).
+const COL_MAP_NORM: Record<string, keyof VendaProdutoRaw> = Object.fromEntries(
+  Object.entries(COL_MAP).map(([k, v]) => [normalizeHeader(k), v]),
+)
+
 function toIsoDate(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null
   if (value instanceof Date) {
@@ -115,6 +131,14 @@ export async function parseVendasProdutoFile(
     const headers = (raw[0] as unknown[]).map(h => String(h ?? '').trim())
     const rows = raw.slice(1) as unknown[][]
 
+    // Avisa colunas presentes no arquivo que não casam com nenhum campo conhecido
+    // (mesmo com o casamento tolerante) — para um header novo/renomeado não passar
+    // despercebido como passou a Data Início (v4.9) e a Operação Própria (v4.9.1).
+    const naoMapeadas = headers.filter(h => h && !COL_MAP_NORM[normalizeHeader(h)])
+    if (naoMapeadas.length > 0) {
+      console.warn('[parse-vendas-produto] colunas não-mapeadas (ignoradas):', naoMapeadas)
+    }
+
     const result: VendaProdutoRaw[] = []
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
@@ -126,7 +150,7 @@ export async function parseVendasProdutoFile(
       }
 
       for (let j = 0; j < headers.length; j++) {
-        const campo = COL_MAP[headers[j]]
+        const campo = COL_MAP_NORM[normalizeHeader(headers[j])]
         if (!campo) continue
         const v = row[j]
         switch (campo) {
