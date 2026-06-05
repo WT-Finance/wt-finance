@@ -81,10 +81,10 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           {kpis ? (
             <>
-              <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor}>
+              <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor} drawer="rico">
                 <KpiCard rotulo="Faturamento" formula="Soma do valor total das vendas" metrica={kpis.faturamento} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
               </KpiDrawerTrigger>
-              <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor}>
+              <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor} drawer="rico">
                 <KpiCard rotulo="Receita" formula="Faturamento − custos e reembolsos" metrica={kpis.receita} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
               </KpiDrawerTrigger>
               <KpiCard rotulo="Margem %"      formula="Receita ÷ Faturamento × 100"      metrica={kpis.margem_pct}    formato="pct"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} />

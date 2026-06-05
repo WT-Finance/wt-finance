@@ -3,15 +3,19 @@
 import { useState, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import KpiDetailDrawer from './kpi-detail-drawer'
+import KpiPrincipalDrawer from '@/components/weddings/kpi-principal-drawer'
 
 interface Props {
   children:  ReactNode
   metrica:   'faturamento' | 'receita'
   rotulo:    string
   setor:     string
+  /** Qual drawer abrir: 'detalhe' (KpiDetailDrawer simples, padrão — Executiva)
+   *  ou 'rico' (KpiPrincipalDrawer parametrizado por setor — Performance/Trips/Corp). */
+  drawer?:   'detalhe' | 'rico'
 }
 
-export default function KpiDrawerTrigger({ children, metrica, rotulo, setor }: Props) {
+export default function KpiDrawerTrigger({ children, metrica, rotulo, setor, drawer = 'detalhe' }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -28,12 +32,14 @@ export default function KpiDrawerTrigger({ children, metrica, rotulo, setor }: P
       </div>
 
       {open && (
-        <KpiDetailDrawer
-          metrica={metrica}
-          rotulo={rotulo}
-          setor={setor}
-          onClose={() => setOpen(false)}
-        />
+        drawer === 'rico'
+          ? <KpiPrincipalDrawer setor={setor} onClose={() => setOpen(false)} />
+          : <KpiDetailDrawer
+              metrica={metrica}
+              rotulo={rotulo}
+              setor={setor}
+              onClose={() => setOpen(false)}
+            />
       )}
     </>
   )

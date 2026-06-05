@@ -268,7 +268,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       </div>
 
       {drawerOpen && (
-        <KpiPrincipalDrawer onClose={() => setDrawerOpen(false)} />
+        <KpiPrincipalDrawer setor="Weddings" onClose={() => setDrawerOpen(false)} />
       )}
     </div>
   )
