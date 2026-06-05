@@ -6,6 +6,21 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.11.0] — 2026-06-05
+
+Versão MINOR: dois acabamentos — (1) padrão unificado de **card-tabela** nas três abas; (2) **histórico de versões** clicável para a diretoria. Sem migration. ADR-0103 estendido (regra de cor de cash-flow), não criado novo.
+
+### Adicionado
+- **Histórico de versões para a diretoria** (M2/M3): o `version X.Y.Z` da sidebar vira clicável (hover sublinha, sem mudar cor) e abre um **modal central** (`ModalCentral`) rolável com o histórico em **linguagem de negócio** — entradas por versão/patch (mais recente no topo), tipo com ícone/cor (Novidade/Correção/Melhoria), descrição e data exata. Fonte: `src/data/changelog-diretoria.ts` (`CHANGELOG_DIRETORIA`), populado **retroativo desde a v4.0** (19 entradas).
+- **`CardTabela`** (`@/components/shared/card-tabela`, M1): componente base do padrão de card-tabela + utilitária `.card-tabela-vermais` (Ver mais neutro → cor da aba no hover) + constante `CARD_TABELA_TH`.
+
+### Alterado
+- **Padrão unificado de card-tabela** (M1): aplicado a Próximos Casamentos, Mix por Produto, Top Vendedores, Vendas em Aberto e Receita Negativa (Weddings + Trips/Corp). Título único sem subtítulo na página (subtítulo só no drawer); coluna `#` só em rankings; rótulo "no período selecionado" só onde o filtro se aplica; cabeçalho caixa-normal ~11px terciária; `table-fixed` + `colgroup`; Resultado Previsto (operação individual) via `fmtBRL2`. Top Vendedores ganha "no período selecionado". Documentado em `/admin/design-system`.
+- **CLAUDE.md** (M4): workflow + DoD ganham o ritual de gerar a entrada no `CHANGELOG_DIRETORIA` a cada versão/patch (linguagem de negócio).
+
+### Registro
+- **ADR-0103 estendido** (M4): formaliza que o cash-flow tem **dois contextos de cor deliberados** (identidade turquesa/mostarda nos cards de página de Weddings vs semântica `--positive`/`--negative` no drawer de operação) — **regra, não dívida**. Encerra a pendência antiga.
+
 ## [4.10.1] — 2026-06-05
 
 Versão PATCH: alinha o layout de **Trips e Corporativo** ao padrão de Weddings — uma única seção "Visão Geral" (recolhível) com card KPI principal único e clicável, no lugar dos KPIs soltos.
