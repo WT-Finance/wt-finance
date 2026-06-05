@@ -34,7 +34,7 @@ export default function VendasEmAbertoCard({ data }: Props) {
       <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas em Aberto</h2>
       <div className="flex items-center justify-between mb-3">
         <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no sistema</p>
-        <span className="text-xs text-warning font-medium">
+        <span className="text-xs font-medium text-[--brand]">
           {data.total} {data.total === 1 ? 'venda' : 'vendas'} em aberto
         </span>
       </div>
