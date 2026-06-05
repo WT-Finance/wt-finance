@@ -1,8 +1,7 @@
 import { Suspense } from 'react'
 import PeriodoPills from '@/components/shared/periodo-pills-url'
 import SetorFilter from '@/components/shared/setor-filter'
-import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
-import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
+import KpiPrincipalCard from '@/components/performance/kpi-principal-card'
 import MixSetorTable from '@/components/performance/mix-setor-table'
 import CagrCard from '@/components/performance/cagr-card'
 import TendenciaMargemChart from '@/components/performance/tendencia-margem-chart'
@@ -10,13 +9,15 @@ import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
 import TopVendedoresCard from '@/components/performance/top-vendedores-card'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
+import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import TopSection from '@/components/shared/top-section'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, CagrData, RankingVendedorItem, VendasEmAberto,
+  MixProduto, PrejuizosDetalhe, CagrData, RankingVendedorItem,
+  VendasEmAberto, VendasReceitaNegativa,
 } from '@/types/api'
 
 // v4.10/M5: Top Vendedores. A RPC get_ranking_vendedores é MENSAL (p_ano, p_mes);
@@ -82,8 +83,16 @@ interface Props {
 // entendimento da diretoria sobre a métrica (taxa alisada, sensível a histórico curto).
 const MOSTRAR_CAGR = false
 
+// v4.10.1: layout Trips/Corp no padrão de Weddings (uma única seção "Visão Geral"
+// com card KPI unificado, Mix por Produto | Top Vendedores e Vendas em Aberto |
+// Receita Negativa). As seções analíticas anteriores — Mix por Setor, Tendência
+// de Margem e Prejuízos (margem negativa) — saíram da visão por decisão do usuário,
+// mas o código (fetch + JSX) é mantido recuperável atrás desta flag. A Tendência
+// de Margem segue acessível dentro do drawer rico (card KPI → "Ver mais").
+const MOSTRAR_SECOES_LEGADAS = false
+
 export default async function PerformanceContent({ setor, searchParams: sp }: Props) {
-  const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
+  const { from, to, antFrom, antTo, yoyFrom, yoyTo } =
     resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
   const preset = sp.preset ?? 'este-ano'
 
@@ -93,6 +102,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
     [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, benchmarks],
     vendedores,
     vendasAbertoRes,
+    receitaNegRes,
   ] = await Promise.all([
     Promise.all([
       db.rpc('get_executiva_kpis', {
@@ -112,10 +122,13 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
       getBenchmarks(db),
     ] as const),
     fetchTopVendedores(db, from, to, setor),
-    // get_vendas_em_aberto: RPC nova (0114). `as any` enquanto não regeneramos os
-    // tipos do supabase — mesmo padrão de outras RPCs recém-criadas no projeto.
+    // get_vendas_em_aberto (0114) e get_vendas_receita_negativa (0115): RPCs novas.
+    // `as any` enquanto não regeneramos os tipos do supabase — padrão das RPCs
+    // recém-criadas no projeto.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (db.rpc as any)('get_vendas_em_aberto', { p_setor: setor, p_limite: 50, p_offset: 0 }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (db.rpc as any)('get_vendas_receita_negativa', { p_setor: setor, p_from: '2020-01-01', p_to: '2099-12-31' }),
   ])
 
   const kpis       = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
@@ -124,89 +137,84 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   const produtos   = prodRes.error  ? null : prodRes.data  as unknown as MixProduto
   const prejuizos  = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosDetalhe
   const cagr       = cagrRes.error  ? null : cagrRes.data  as unknown as CagrData
-  const vendasAberto = vendasAbertoRes?.error ? null : (vendasAbertoRes?.data as VendasEmAberto | undefined) ?? null
+  const vendasAberto    = vendasAbertoRes?.error ? null : (vendasAbertoRes?.data as VendasEmAberto | undefined) ?? null
+  const receitaNegativa = receitaNegRes?.error   ? null : (receitaNegRes?.data   as VendasReceitaNegativa | undefined) ?? null
 
   const mostrarSetorFilter = setor === 'todos'
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">
-      {/* Filtros */}
-      <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
-        <Suspense>
-          <PeriodoPills defaultPreset="este-ano" />
-        </Suspense>
-        {mostrarSetorFilter && (
-          <Suspense>
-            <SetorFilter />
-          </Suspense>
-        )}
-      </div>
 
-      {/* KPI Grid */}
+      {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-          {kpis ? (
-            <>
-              <KpiDrawerTrigger metrica="faturamento" rotulo="Faturamento" setor={setor} drawer="rico">
-                <KpiCard rotulo="Faturamento" formula="Soma do valor total das vendas" metrica={kpis.faturamento} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-              </KpiDrawerTrigger>
-              <KpiDrawerTrigger metrica="receita" rotulo="Receita" setor={setor} drawer="rico">
-                <KpiCard rotulo="Receita" formula="Faturamento − custos e reembolsos" metrica={kpis.receita} formato="brl" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-              </KpiDrawerTrigger>
-              <KpiCard rotulo="Margem %"      formula="Receita ÷ Faturamento × 100"      metrica={kpis.margem_pct}    formato="pct"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} benchmarkAlvo={benchmarks.margemAlvo} benchmarkAtencao={benchmarks.margemAtencao} isPeriodoProporcional={eParcial} />
-              <KpiCard rotulo="Vendas"        formula="Contagem de vendas no período"     metrica={kpis.vendas}        formato="numero" periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial}                                    />
-              <KpiCard rotulo="Ticket Médio"  formula="Faturamento ÷ Vendas"             metrica={kpis.ticket_medio}  formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial}   />
-              <KpiCard rotulo="Receita/Venda" formula="Receita ÷ Vendas"                 metrica={kpis.receita_media} formato="brl"    periodoAtual={kpis.periodo} periodoAnterior={kpis.periodo_anterior} periodoYoY={kpis.periodo_yoy} isPeriodoProporcional={eParcial} />
-            </>
-          ) : (
-            Array.from({ length: 6 }).map((_, i) => <KpiCardSkeleton key={i} />)
+
+        {/* Filtro de período — pills no início da Visão Geral (+ SetorFilter no Geral) */}
+        <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
+          <Suspense>
+            <PeriodoPills defaultPreset="este-ano" />
+          </Suspense>
+          {mostrarSetorFilter && (
+            <Suspense>
+              <SetorFilter />
+            </Suspense>
           )}
         </div>
-      </TopSection>
 
-      {/* Mix Setor (+ CAGR oculto por flag — M7). Sem CAGR, o Mix ocupa a largura toda. */}
-      <TopSection titulo="Mix por Setor">
-        {MOSTRAR_CAGR ? (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2">
-              <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
-            </div>
-            <div>
-              <CagrCard data={cagr} loading={false} />
-            </div>
-          </div>
-        ) : (
-          <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
-        )}
-      </TopSection>
-
-      {/* Tendência de margem */}
-      <TopSection titulo="Tendência de Margem">
-        <TendenciaMargemChart
-          data={tendencia}
-          loading={false}
-          margemOk={benchmarks.margemAlvo}
-          margemAlerta={benchmarks.margemAtencao}
-        />
-      </TopSection>
-
-      {/* Mix Produto + Prejuízos */}
-      <TopSection titulo="Mix de Produtos e Prejuízos">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <MixProdutoTable data={produtos}  loading={false} />
-          <PrejuizosTable  data={prejuizos} loading={false} />
+        {/* KPI principal — card único clicável (abre o drawer rico por setor) */}
+        <div className="mb-6">
+          {kpis ? (
+            <KpiPrincipalCard kpis={kpis} setor={setor} />
+          ) : (
+            <div className="bg-zinc-100 animate-pulse rounded-xl h-28" />
+          )}
         </div>
+
+        {/* Mix por Produto | Top Vendedores */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <MixProdutoTable data={produtos} loading={false} periodoLabel="no período selecionado" />
+          <TopVendedoresCard data={vendedores} />
+        </div>
+
+        {/* Vendas em Aberto | Vendas com Receita Negativa */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <VendasEmAbertoCard data={vendasAberto} />
+          <VendasReceitaNegativaCard data={receitaNegativa} />
+        </div>
+
       </TopSection>
 
-      {/* Vendas em Aberto (M6) — vendas com situação Aberta, por setor */}
-      <TopSection titulo="Vendas em Aberto">
-        <VendasEmAbertoCard data={vendasAberto} />
-      </TopSection>
+      {/* ── SEÇÕES LEGADAS (ocultas v4.10.1 — alternar MOSTRAR_SECOES_LEGADAS) ── */}
+      {MOSTRAR_SECOES_LEGADAS && (
+        <>
+          <TopSection titulo="Mix por Setor">
+            {MOSTRAR_CAGR ? (
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2">
+                  <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
+                </div>
+                <div>
+                  <CagrCard data={cagr} loading={false} />
+                </div>
+              </div>
+            ) : (
+              <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
+            )}
+          </TopSection>
 
-      {/* Top Vendedores (M5) — agregado pelo período, por setor */}
-      <TopSection titulo="Top Vendedores">
-        <TopVendedoresCard data={vendedores} />
-      </TopSection>
+          <TopSection titulo="Tendência de Margem">
+            <TendenciaMargemChart
+              data={tendencia}
+              loading={false}
+              margemOk={benchmarks.margemAlvo}
+              margemAlerta={benchmarks.margemAtencao}
+            />
+          </TopSection>
+
+          <TopSection titulo="Vendas com Prejuízo (margem negativa)">
+            <PrejuizosTable data={prejuizos} loading={false} />
+          </TopSection>
+        </>
+      )}
     </div>
   )
 }
