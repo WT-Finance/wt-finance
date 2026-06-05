@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 // Modal CENTRAL (sobre fundo escurecido), rolável, fecha no X / Esc / clique fora.
@@ -41,7 +42,12 @@ export default function ModalCentral({ titulo, subtitulo, onClose, children }: P
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  return (
+  // Portal no document.body: o modal é invocado de dentro da sidebar, cujo
+  // contexto de empilhamento ficaria ABAIXO do conteúdo principal — sem o portal,
+  // o z-50 não vence e o modal abre atrás dos cards. No body, fica na raiz.
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/50"
@@ -76,6 +82,7 @@ export default function ModalCentral({ titulo, subtitulo, onClose, children }: P
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
