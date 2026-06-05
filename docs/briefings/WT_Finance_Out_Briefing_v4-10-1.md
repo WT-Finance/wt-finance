@@ -2,6 +2,7 @@
 
 **Data:** 2026-06-05 · **Branch:** `feat/v4-10-1` · **Versão:** 4.10.0 → **4.10.1** (PATCH)
 **Tema:** Layout de Trips e Corporativo alinhado ao padrão de Weddings (card KPI principal único e clicável + disposição em "Visão Geral").
+**Status:** ✅ **Mergeada** — PR #93 (merge commit `3924f9a`, 2026-06-05). Deploy automático no merge. v4.10.1 fechada.
 
 ---
 
@@ -28,9 +29,9 @@ A aba **Geral** (`/performance`, setor `todos`) segue em construção (atrás de
 
 | # | O quê | Estado |
 |---|-------|--------|
-| **0115** | `get_vendas_receita_negativa(p_setor text='todos', p_from date, p_to date)` — vendas com receita bruta < 0 na `vw_vendas_agregadas`, por setor. Retorna o shape `VendasReceitaNegativa` ({ total, vendas[] }) — reusa `VendasReceitaNegativaCard` sem alteração. `SECURITY DEFINER` + `REVOKE…PUBLIC` + `GRANT…anon/authenticated/service_role`. A RPC weddings antiga (`get_vendas_prejuizo_weddings`) é mantida (consumida pela aba Weddings). | _A aplicar com confirmação_ + verificar via REST (anon <3s) |
+| **0115** | `get_vendas_receita_negativa(p_setor text='todos', p_from date, p_to date)` — vendas com receita bruta < 0 na `vw_vendas_agregadas`, por setor. Retorna o shape `VendasReceitaNegativa` ({ total, vendas[] }) — reusa `VendasReceitaNegativaCard` sem alteração. `SECURITY DEFINER` + `REVOKE…PUBLIC` + `GRANT…anon/authenticated/service_role`. A RPC weddings antiga (`get_vendas_prejuizo_weddings`) é mantida (consumida pela aba Weddings). | ✅ **Aplicada** (com confirmação do usuário) e **verificada via REST**: Lazer 203 · Corporativo · Weddings retornam; warm 0,2–0,7s (dentro do timeout anon) |
 
-Aditiva (RPC nova). Aplicar **antes do merge** (Trips/Corp chamam a RPC ao deployar).
+Aditiva (RPC nova), aplicada **antes do merge** (Trips/Corp chamam a RPC ao deployar).
 
 ## ADR
 - **Nenhum ADR novo.** A versão segue padrões já decididos: generalização de RPC por setor (padrão da 0114), card KPI clicável (v4.8.1) e seções por flag (padrão `MOSTRAR_CAGR`/`MOSTRAR_VENDAS_DIAGNOSTICO`).
@@ -44,11 +45,18 @@ Aditiva (RPC nova). Aplicar **antes do merge** (Trips/Corp chamam a RPC ao deplo
 
 ---
 
+## Ajustes pós-review (mesma branch)
+- **Pills à esquerda no padrão exato de Weddings:** `PeriodoPills` com rótulos completos ("Este ano (YTD)", "Últimos 3 meses", "Últimos 6 meses"), `gap-2` e label "Personalizado: dd/MM/yy — dd/MM/yy" quando há range custom; alinhamento à esquerda no `PerformanceContent` (removido `justify-end`).
+- **Badge "X vendas em aberto" na cor da aba:** de `text-warning` para `style={{ color: 'var(--brand)' }}` — herda a cor via `[data-theme]` (Trips turquesa / Corp verde). Caveat registrado: `text-[--brand]` (bracket) não resolveu para `var(--brand)` neste setup; usou-se `style` inline (padrão do codebase). Os destaques de venda >30d seguem em `warning`.
+
+---
+
 ## Gates
 - ✅ `npx tsc --noEmit` zero erros.
 - ✅ `npm run lint`: arquivos tocados sem problema NOVO. `weddings-kpis-section.tsx` mantém os 5 problemas pré-existentes do React Compiler (4 erros + 1 warning), idênticos ao baseline do `main` — só deslocados de linha pela extração do `KpiColuna`.
 - ✅ `npx next build` limpo.
-- ⏳ Smoke visual de `/performance/trips` e `/performance/corporativo` (preview do deploy) + verificação REST da 0115 — no fechamento/pós-merge.
+- ✅ Verificação REST da 0115 (anon <3s) feita antes do merge.
+- ✅ Smoke visual de `/performance/trips` e `/performance/corporativo` no preview do deploy — OK (versão mergeada).
 
 ## Pendências / follow-up
 - **Aba Geral (`/performance`, setor `todos`):** ainda em construção (preview). Ao ativá-la, reavaliar se Mix por Setor (breakdown cross-setor) deve voltar — para `todos` ele faz mais sentido que para um setor único. Hoje está atrás de `MOSTRAR_SECOES_LEGADAS`.
@@ -59,4 +67,4 @@ Aditiva (RPC nova). Aplicar **antes do merge** (Trips/Corp chamam a RPC ao deplo
 
 ## Arquivos
 **Novos:** `supabase/migrations/0115_get_vendas_receita_negativa_por_setor.sql`; `src/components/shared/kpi-coluna.tsx`; `src/components/performance/kpi-principal-card.tsx`; `docs/briefings/WT_Finance_Out_Briefing_v4-10-1.md`.
-**Modificados:** `src/components/performance/performance-content.tsx`; `src/components/weddings/weddings-kpis-section.tsx` (usa o `KpiColuna` compartilhado); `package.json`; `CHANGELOG.md`.
+**Modificados:** `src/components/performance/performance-content.tsx`; `src/components/weddings/weddings-kpis-section.tsx` (usa o `KpiColuna` compartilhado); `src/components/shared/periodo-pills-url.tsx` (ajuste pós-review); `src/components/weddings/vendas-em-aberto-card.tsx` (ajuste pós-review); `package.json`; `CHANGELOG.md`.
