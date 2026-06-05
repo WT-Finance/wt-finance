@@ -3,23 +3,25 @@
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type PresetPeriodo } from '@/lib/periodo'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
 // Pills de período sincronizadas pela URL (mesma lógica do PeriodoFilterUrl, mas
 // em pills no lugar do <select>). v4.10/M3 — usado no PerformanceContent (Geral/
-// Trips/Corp). A pill ativa usa a cor da aba (--brand via [data-theme]).
+// Trips/Corp). Rótulos/estilo idênticos ao PeriodoFilter de Weddings (v4.10.1).
+// A pill ativa usa a cor da aba (--brand via [data-theme]).
 
 const PILLS: { value: PresetPeriodo; label: string }[] = [
-  { value: 'este-ano',        label: 'Este ano'     },
-  { value: 'este-mes',        label: 'Este mês'     },
-  { value: 'mes-passado',     label: 'Mês anterior' },
-  { value: 'ultimos-3-meses', label: 'Últimos 3'    },
-  { value: 'ultimos-6-meses', label: 'Últimos 6'    },
-  { value: 'personalizado',   label: 'Personalizado'},
+  { value: 'este-ano',        label: 'Este ano (YTD)'  },
+  { value: 'este-mes',        label: 'Este mês'        },
+  { value: 'mes-passado',     label: 'Mês anterior'    },
+  { value: 'ultimos-3-meses', label: 'Últimos 3 meses' },
+  { value: 'ultimos-6-meses', label: 'Últimos 6 meses' },
+  { value: 'personalizado',   label: 'Personalizado'   },
 ]
 
 const LS_KEY   = 'wt-periodo-filter'
 const ISO      = (d: Date) => format(d, 'yyyy-MM-dd')
+const fmtShort = (iso: string) => format(parseISO(iso), 'dd/MM/yy')
 const MIN_DATE = '2024-01-01'
 const MAX_DATE = ISO(new Date())
 
@@ -84,7 +86,7 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
   }, [showCustom])
 
   return (
-    <div className="relative flex items-center gap-1.5 flex-wrap" ref={popoverRef}>
+    <div className="relative flex items-center gap-2 flex-wrap" ref={popoverRef}>
       {PILLS.map(p => (
         <button
           key={p.value}
@@ -96,7 +98,9 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
             push(p.value)
           }}
         >
-          {p.label}
+          {p.value === 'personalizado' && preset === 'personalizado' && fromVal && toVal
+            ? `Personalizado: ${fmtShort(fromVal)} — ${fmtShort(toVal)}`
+            : p.label}
         </button>
       ))}
 
