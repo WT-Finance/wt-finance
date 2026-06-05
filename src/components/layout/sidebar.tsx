@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3 } from 'lucide-react'
-import { APP_VERSION } from '@/lib/version'
+import VersionHistory from '@/components/layout/version-history'
 
 const PERFORMANCE_SUBS = [
   { href: '/performance',             label: 'Geral',       icon: Building   },
@@ -69,7 +69,7 @@ function WelcomeGroupLogo({ src, alt }: WelcomeGroupLogoProps) {
       </div>
       <div className="flex items-baseline gap-1 mt-4">
         <span className="text-[14px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
-        <span className="text-[10px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>version {APP_VERSION}</span>
+        <VersionHistory />
       </div>
     </div>
   )
