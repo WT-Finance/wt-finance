@@ -6,6 +6,18 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.10.1] — 2026-06-05
+
+Versão PATCH: alinha o layout de **Trips e Corporativo** ao padrão de Weddings — uma única seção "Visão Geral" (recolhível) com card KPI principal único e clicável, no lugar dos KPIs soltos.
+
+### Alterado
+- **Layout Trips/Corp no padrão Weddings:** `PerformanceContent` reorganizado em uma única `TopSection "Visão Geral"` contendo, nesta ordem: pills de período → **card KPI principal único** (Faturamento | Receita Bruta | Margem, clicável, abre o drawer rico por setor) → **Mix por Produto** ("no período selecionado") **|** **Top Vendedores** → **Vendas em Aberto** **|** **Vendas com Receita Negativa**.
+- **Card KPI unificado:** os 6 KPIs soltos deram lugar a um único card clicável (mesmo visual do card de topo de Weddings). `KpiColuna` extraído para componente compartilhado (`@/components/shared/kpi-coluna`); novo `KpiPrincipalCard` genérico por setor.
+- **Vendas com Receita Negativa** (Trips/Corp): passa a usar o card de Weddings (conceito "receita bruta negativa"), alimentado pela nova RPC `get_vendas_receita_negativa(p_setor, …)` (migration 0115). Antes a tela mostrava Prejuízos (margem negativa).
+
+### Removido (código preservado)
+- Seções **Mix por Setor**, **Tendência de Margem** e **Prejuízos (margem negativa)** saíram da visão de Trips/Corp, atrás da flag `MOSTRAR_SECOES_LEGADAS` (recuperáveis). A Tendência de Margem segue acessível dentro do drawer rico (card KPI → "Ver mais").
+
 ## [4.10.0] — 2026-06-04
 
 Versão MINOR: **ativa as abas Trips e Corporativo** (a infra já existia — RPCs por setor, tokens de cor, PerformanceContent) e **padroniza o sistema de cores** de toda a plataforma sob a paleta canônica (ADR-0103, extensão do 0095).
