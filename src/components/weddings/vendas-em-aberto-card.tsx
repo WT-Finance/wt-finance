@@ -6,11 +6,62 @@ import type { VendasEmAberto } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 import EmptyState from '@/components/shared/empty-state'
+import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 
 const LIMITE = 5
 
 interface Props {
   data: VendasEmAberto | null
+}
+
+function Colunas() {
+  return (
+    <colgroup>
+      <col className="w-24" />
+      <col className="w-20" />
+      <col />
+      <col className="w-28" />
+      <col className="w-14" />
+    </colgroup>
+  )
+}
+
+function Cabecalho() {
+  return (
+    <thead>
+      <tr className="border-b border-zinc-100">
+        <th className={`${CARD_TABELA_TH} text-left`}>Data da Venda</th>
+        <th className={`${CARD_TABELA_TH} text-left`}>Venda Nº</th>
+        <th className={`${CARD_TABELA_TH} text-left`}>Vendedor</th>
+        <th className={`${CARD_TABELA_TH} text-right`}>Valor Total</th>
+        <th className={`${CARD_TABELA_TH} text-right`}>Tempo</th>
+      </tr>
+    </thead>
+  )
+}
+
+function Linhas({ itens }: { itens: NonNullable<VendasEmAberto>['vendas'] }) {
+  return (
+    <>
+      {itens.map((v, i) => {
+        const velha = v.idade_dias > 30
+        return (
+          <tr key={i} className={velha ? 'bg-warning-bg hover:bg-warning-bg/80' : 'hover:bg-zinc-50'}>
+            <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">{fmtDate(v.data_venda)}</td>
+            <td className="py-2 px-3 font-medium truncate">
+              <span className={velha ? 'text-warning' : 'text-zinc-800'}>{v.venda_no}</span>
+            </td>
+            <td className="py-2 px-3 text-zinc-500 truncate text-xs">{v.vendedor}</td>
+            <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">{fmtBRL(v.valor_total)}</td>
+            <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
+              {v.idade_dias}d
+              {velha && <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>}
+            </td>
+          </tr>
+        )
+      })}
+    </>
+  )
 }
 
 export default function VendasEmAbertoCard({ data }: Props) {
@@ -22,78 +73,28 @@ export default function VendasEmAbertoCard({ data }: Props) {
 
   if (!data || data.total === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0">
-        <p className="text-xs text-zinc-500 mb-3">Vendas com situação Aberta no sistema</p>
+      <CardTabela titulo="Vendas em Aberto">
         <EmptyState icon={Inbox} message="Nenhuma venda em aberto no momento" />
-      </div>
+      </CardTabela>
     )
   }
 
+  // Selo de contagem na cor da aba (var(--brand) via [data-theme]) — v4.10.1.
+  const badge = (
+    <span className="text-xs font-medium" style={{ color: 'var(--brand)' }}>
+      {data.total} {data.total === 1 ? 'venda' : 'vendas'} em aberto
+    </span>
+  )
+
   return (
-    <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0 flex flex-col">
-      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-3">Vendas em Aberto</h2>
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[13px] text-[--text-muted]">Vendas com situação Aberta no sistema</p>
-        <span className="text-xs font-medium" style={{ color: 'var(--brand)' }}>
-          {data.total} {data.total === 1 ? 'venda' : 'vendas'} em aberto
-        </span>
-      </div>
-
-      <div className="flex-1 min-h-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-zinc-100">
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 whitespace-nowrap">Data da Venda</th>
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400">Venda Nº</th>
-              <th className="py-2 px-3 text-left  text-xs font-medium text-zinc-400 hidden sm:table-cell">Vendedor</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
-              <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Tempo</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-50">
-            {visiveis.map((v, i) => {
-              const velha = v.idade_dias > 30
-              return (
-                <tr key={i} className={velha ? 'bg-warning-bg hover:bg-warning-bg/80' : 'hover:bg-zinc-50'}>
-                  <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                    {fmtDate(v.data_venda)}
-                  </td>
-                  <td className="py-2 px-3 font-medium truncate max-w-40">
-                    <span className={velha ? 'text-warning' : 'text-zinc-800'}>
-                      {v.venda_no}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs hidden sm:table-cell">
-                    {v.vendedor}
-                  </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
-                    {fmtBRL(v.valor_total)}
-                  </td>
-                  <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
-                    {v.idade_dias}d
-                    {velha && (
-                      <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-3 border-t border-zinc-100">
-        {temMais ? (
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 transition-colors"
-          >
-            Ver mais
-          </button>
-        ) : (
-          <div className="py-1.5" />
-        )}
-      </div>
+    <CardTabela titulo="Vendas em Aberto" headerRight={badge} temMais={temMais} onVerMais={() => setDrawerOpen(true)}>
+      <table className="w-full table-fixed text-sm">
+        <Colunas />
+        <Cabecalho />
+        <tbody className="divide-y divide-zinc-50">
+          <Linhas itens={visiveis} />
+        </tbody>
+      </table>
 
       {drawerOpen && (
         <ListDrawer
@@ -101,48 +102,15 @@ export default function VendasEmAbertoCard({ data }: Props) {
           subtitulo={`${data.total} ${data.total === 1 ? 'venda' : 'vendas'} com situação Aberta no cadastro`}
           onClose={() => setDrawerOpen(false)}
         >
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-100">
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Venda Nº</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Vendedor</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Valor Total</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Tempo</th>
-              </tr>
-            </thead>
+          <table className="w-full table-fixed text-sm">
+            <Colunas />
+            <Cabecalho />
             <tbody className="divide-y divide-zinc-50">
-              {vendas.map((v, i) => {
-                const velha = v.idade_dias > 30
-                return (
-                  <tr key={i} className={velha ? 'bg-warning-bg hover:bg-warning-bg/80' : 'hover:bg-zinc-50'}>
-                    <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                      {fmtDate(v.data_venda)}
-                    </td>
-                    <td className="py-2 px-3 font-medium truncate max-w-40">
-                      <span className={velha ? 'text-warning' : 'text-zinc-800'}>
-                        {v.venda_no}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-zinc-500 truncate max-w-30 text-xs">
-                      {v.vendedor}
-                    </td>
-                    <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">
-                      {fmtBRL(v.valor_total)}
-                    </td>
-                    <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
-                      {v.idade_dias}d
-                      {velha && (
-                        <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
+              <Linhas itens={vendas} />
             </tbody>
           </table>
         </ListDrawer>
       )}
-    </div>
+    </CardTabela>
   )
 }

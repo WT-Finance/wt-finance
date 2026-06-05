@@ -173,7 +173,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
         {/* Mix por Produto | Top Vendedores */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <MixProdutoTable data={produtos} loading={false} periodoLabel="no período selecionado" />
-          <TopVendedoresCard data={vendedores} />
+          <TopVendedoresCard data={vendedores} periodoLabel="no período selecionado" />
         </div>
 
         {/* Vendas em Aberto | Vendas com Receita Negativa */}

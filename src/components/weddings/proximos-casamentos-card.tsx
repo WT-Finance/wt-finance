@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { Calendar } from 'lucide-react'
 import type { ProximosCasamentos } from '@/types/api'
-import { fmtDateMid } from '@/lib/fmt'
+import { fmtDateMid, fmtBRL2 } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 import EmptyState from '@/components/shared/empty-state'
+import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 
 const LIMITE = 6
 
@@ -15,15 +16,25 @@ interface Props {
   data18m: ProximosCasamentos | null
 }
 
+// Resultado Previsto = operação individual (um casamento) → 2 casas (ADR-0100), via fmtBRL2.
 function ResultadoCell({ valor }: { valor: number }) {
-  const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor)
-
   return (
     <td className="py-2 px-3 text-xs tabular-nums text-right whitespace-nowrap text-zinc-500">
       <span title="Total de entradas menos total de saídas da operação (coincide com Rec. Líq. na Lista de Operações)">
-        {fmt}
+        {fmtBRL2(valor)}
       </span>
     </td>
+  )
+}
+
+function Colunas() {
+  return (
+    <colgroup>
+      <col className="w-32" />
+      <col />
+      <col />
+      <col className="w-28" />
+    </colgroup>
   )
 }
 
@@ -59,13 +70,14 @@ function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamen
           </button>
         ))}
       </div>
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-sm">
+        <Colunas />
         <thead>
           <tr className="border-b border-zinc-100">
-            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400 whitespace-nowrap">Data</th>
-            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
-            <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
-            <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Previsto</th>
+            <th className={`${CARD_TABELA_TH} text-left`}>Data</th>
+            <th className={`${CARD_TABELA_TH} text-left`}>Casal</th>
+            <th className={`${CARD_TABELA_TH} text-left`}>Hotel</th>
+            <th className={`${CARD_TABELA_TH} text-right`}>Resultado Previsto</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-50">
@@ -74,10 +86,10 @@ function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamen
               <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
                 {c.data_casamento ? fmtDateMid(c.data_casamento) : '—'}
               </td>
-              <td className="py-2 px-3 text-zinc-800 font-medium truncate max-w-50">
+              <td className="py-2 px-3 text-zinc-800 font-medium truncate">
                 {c.casal ?? '—'}
               </td>
-              <td className="py-2 px-3 text-zinc-500 text-xs truncate max-w-40">
+              <td className="py-2 px-3 text-zinc-500 text-xs truncate">
                 {c.hotel ?? '—'}
               </td>
               <ResultadoCell valor={c.resultado_previsto ?? 0} />
@@ -102,68 +114,48 @@ export default function ProximosCasamentosCard({ data18m }: Props) {
   const temMais = casamentos.length > LIMITE
 
   return (
-    <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0 flex flex-col">
-      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-4">
-        Próximos Casamentos a Entregar
-      </h2>
-
-      <div className="flex-1 min-h-0">
-        {casamentos.length === 0 ? (
-          <EmptyState icon={Calendar} message="Nenhum casamento previsto para o horizonte selecionado" />
-        ) : (
-          <table className="w-full table-fixed text-sm">
-            <colgroup>
-              <col className="w-32" />
-              <col />
-              <col />
-              <col className="w-28" />
-            </colgroup>
-            <thead>
-              <tr className="border-b border-zinc-100">
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Data</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Casal</th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-zinc-400">Hotel</th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-zinc-400 whitespace-nowrap">Resultado Prev.</th>
+    <CardTabela
+      titulo="Próximos Casamentos a Entregar"
+      temMais={temMais}
+      onVerMais={() => setDrawerOpen(true)}
+    >
+      {casamentos.length === 0 ? (
+        <EmptyState icon={Calendar} message="Nenhum casamento previsto para o horizonte selecionado" />
+      ) : (
+        <table className="w-full table-fixed text-sm">
+          <Colunas />
+          <thead>
+            <tr className="border-b border-zinc-100">
+              <th className={`${CARD_TABELA_TH} text-left`}>Data</th>
+              <th className={`${CARD_TABELA_TH} text-left`}>Casal</th>
+              <th className={`${CARD_TABELA_TH} text-left`}>Hotel</th>
+              <th className={`${CARD_TABELA_TH} text-right`}>Resultado Prev.</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-50">
+            {visiveis.map((c, i) => (
+              <tr key={i} className="hover:bg-zinc-50">
+                <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
+                  {c.data_casamento ? fmtDateMid(c.data_casamento) : '—'}
+                </td>
+                <td className="py-2 px-3 text-zinc-800 font-medium truncate">
+                  {c.casal ?? '—'}
+                </td>
+                <td className="py-2 px-3 text-zinc-500 text-xs truncate">
+                  {c.hotel ?? '—'}
+                </td>
+                <ResultadoCell valor={c.resultado_previsto ?? 0} />
               </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-50">
-              {visiveis.map((c, i) => (
-                <tr key={i} className="hover:bg-zinc-50">
-                  <td className="py-2 px-3 text-zinc-500 tabular-nums text-xs whitespace-nowrap">
-                    {c.data_casamento ? fmtDateMid(c.data_casamento) : '—'}
-                  </td>
-                  <td className="py-2 px-3 text-zinc-800 font-medium truncate">
-                    {c.casal ?? '—'}
-                  </td>
-                  <td className="py-2 px-3 text-zinc-500 text-xs truncate">
-                    {c.hotel ?? '—'}
-                  </td>
-                  <ResultadoCell valor={c.resultado_previsto ?? 0} />
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="mt-3 border-t border-zinc-100">
-        {temMais ? (
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="w-full text-xs text-zinc-400 hover:text-zinc-600 py-1.5 transition-colors"
-          >
-            Ver mais
-          </button>
-        ) : (
-          <div className="py-1.5" />
-        )}
-      </div>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {drawerOpen && (
         <ListDrawer titulo="Próximos Casamentos a Entregar" subtitulo="Listagem dos próximos casamentos a entregar" onClose={() => setDrawerOpen(false)}>
           <DrawerContent casamentos={casamentos} />
         </ListDrawer>
       )}
-    </div>
+    </CardTabela>
   )
 }

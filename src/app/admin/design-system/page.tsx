@@ -205,6 +205,36 @@ export default function DesignSystemPage() {
       </Section>
 
       <Section id="tabelas" title="7. Tabelas e Listas">
+        {/* Padrão de card-tabela (v4.11) */}
+        <p className="font-medium text-[var(--text-primary)] text-sm mb-1">
+          Padrão de card-tabela — <code className="bg-zinc-100 px-1 rounded">CardTabela</code>
+        </p>
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          Cards cuja essência é uma tabela (Próximos Casamentos, Mix por Produto, Top Vendedores,
+          Vendas em Aberto, Receita Negativa) consomem o mesmo shell{' '}
+          <code className="bg-zinc-100 px-1 rounded">@/components/shared/card-tabela</code> nas três abas. Regras:
+        </p>
+        <ul className="text-xs text-[var(--text-muted)] space-y-1 list-disc pl-4 mb-4">
+          <li><strong>Título único</strong> no card; <strong>sem subtítulo na página</strong> — o subtítulo vive só dentro do drawer (prop <code className="bg-zinc-100 px-1 rounded">subtitulo</code> do ListDrawer).</li>
+          <li>Coluna <strong>“#”</strong> só em <strong>rankings</strong> (Mix por Produto, Top Vendedores). Listas cronológicas (Próximos Casamentos) não têm.</li>
+          <li>Rótulo <strong>“no período selecionado”</strong> (cor da aba) só em cards que respeitam o filtro de período. Cards atemporais/futuros não têm.</li>
+          <li>Cabeçalho de coluna: caixa normal, ~11px, cor terciária — usar <code className="bg-zinc-100 px-1 rounded">CARD_TABELA_TH</code> + <code className="bg-zinc-100 px-1 rounded">text-left/right</code>.</li>
+          <li>Valores à direita, <code className="bg-zinc-100 px-1 rounded">tabular-nums</code>. Casas decimais por contexto (ADR-0100): 2 casas só em operação individual (ex.: Resultado Previsto); agregados sem centavos.</li>
+          <li>Truncamento via <code className="bg-zinc-100 px-1 rounded">table-fixed</code> + <code className="bg-zinc-100 px-1 rounded">colgroup</code> com larguras + <code className="bg-zinc-100 px-1 rounded">truncate</code> (não <code className="bg-zinc-100 px-1 rounded">max-w</code> ad-hoc).</li>
+          <li><strong>“Ver mais”</strong>: cinza em repouso, cor da aba no hover (<code className="bg-zinc-100 px-1 rounded">.card-tabela-vermais</code>), divisória acima. Some quando não há mais itens.</li>
+        </ul>
+        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-6">
+          <p>{'<CardTabela titulo="Mix por Produto" periodoLabel="no período selecionado"'}</p>
+          <p className="pl-4">{'temMais={temMais} onVerMais={() => setDrawerOpen(true)}>'}</p>
+          <p className="pl-4">{'<table className="w-full table-fixed text-sm">'}</p>
+          <p className="pl-8">{'<colgroup><col className="w-8" /><col />...</colgroup>'}</p>
+          <p className="pl-8">{'<thead><th className={`${CARD_TABELA_TH} text-left`}>#</th>...</thead>'}</p>
+          <p className="pl-8">{'<tbody>...</tbody>'}</p>
+          <p className="pl-4">{'</table>'}</p>
+          <p className="pl-4">{'{open && <ListDrawer subtitulo="...">...lista completa...</ListDrawer>}'}</p>
+          <p>{'</CardTabela>'}</p>
+        </div>
+
         <div className="space-y-3">
           <p className="text-xs text-[var(--text-muted)] mb-2">Badges de tipo (Próximos Lançamentos)</p>
           <div className="flex gap-2 flex-wrap">
@@ -352,6 +382,7 @@ export default function DesignSystemPage() {
         <div className="space-y-2">
           {[
             { name: 'ListDrawer',            path: 'src/components/shared/list-drawer.tsx',              desc: 'Drawer lateral padrão com título e onClose' },
+            { name: 'CardTabela',            path: 'src/components/shared/card-tabela.tsx',              desc: 'Shell unificado de card-tabela (título, período, Ver mais→aba); usar com CARD_TABELA_TH + table-fixed' },
             { name: 'Card',                  path: 'src/components/ui/card.tsx',                         desc: 'Card com variantes default/featured/sm' },
             { name: 'PeriodoFilterPillsUrl', path: 'src/components/layout/periodo-filter-pills-url.tsx', desc: 'Pills de período com state em URL params' },
             { name: 'CustomTooltip',         path: 'src/components/charts/custom-tooltip.tsx',           desc: 'Tooltip padronizado para gráficos Recharts' },
