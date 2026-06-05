@@ -21,13 +21,15 @@ export default function KpiDrawerTrigger({ children, metrica, rotulo, setor, dra
   return (
     <>
       <div
-        className="relative cursor-pointer group/drawer rounded-xl hover:shadow-md transition-shadow h-full"
+        className="relative cursor-pointer group/drawer rounded-xl h-full card-clicavel"
         onClick={() => setOpen(true)}
         title={`Ver histórico — ${rotulo}`}
       >
         {children}
-        <span className="absolute bottom-3 right-3 opacity-20 group-hover/drawer:opacity-70 transition-opacity pointer-events-none">
-          <ChevronRight size={15} className="text-blue-600" />
+        {/* v4.10/M4: afordância na convenção .card-clicavel — hover assume a cor da
+            aba (--brand); a seta acompanha via .card-clicavel-cta (sem azul cravado). */}
+        <span className="card-clicavel-cta absolute bottom-3 right-3 text-[--text-subtle] opacity-40 group-hover/drawer:opacity-90 pointer-events-none">
+          <ChevronRight size={15} />
         </span>
       </div>
 
