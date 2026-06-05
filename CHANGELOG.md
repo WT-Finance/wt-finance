@@ -18,14 +18,16 @@ Versão MINOR: **ativa as abas Trips e Corporativo** (a infra já existia — RP
 - **Vendas em Aberto** por setor (M6): nova RPC `get_vendas_em_aberto(p_setor, …)` (migration 0114) generalizando a lógica weddings; Receita Negativa já presente como Prejuízos (`get_prejuizos` por setor).
 
 ### Alterado
-- **Sistema de cores canônico** (M1, ADR-0103): cor por contexto semântico, sempre via token. **Cash-flow** unificado em `--positive`/`--negative` (verde/terracota) em todos os lugares — elimina o `#0091B3`/`#D9A23F` hardcoded e a colisão com a cor de Trips. **Margem** em `--brand-deep` (elimina o indigo `#6366f1`). **Fallback de subsetor** central (`--brand`, fim do `#BA7517` hardcoded). **Mix por Produto** com tokens de texto (fim dos cinzas Tailwind crus).
+- **Sistema de cores canônico** (M1, ADR-0103): cor por contexto semântico, sempre via token. **Margem** em `--brand-deep` (elimina o indigo `#6366f1`). **Fallback de subsetor** central (`--brand`, fim do `#BA7517` hardcoded). **Mix por Produto** com tokens de texto (fim dos cinzas Tailwind crus). **Cash-flow:** semântica `--positive`/`--negative` no drawer de operação e no Financeiro; os **cards de cash-flow de Weddings** (Fluxo de Caixa Mensal, Acumulado de Recebimentos e Pagamentos) mantêm a **identidade visual** turquesa/mostarda (decisão de id visual — ver "Telas").
 - **Afordância de clique** (M4): card clicável usa `.card-clicavel` — hover assume a cor da aba; fim do azul hardcoded.
 - **CAGR ocultado** de Trips/Corp via flag (M7), código mantido (pendência futura).
+- **Fluxo de Caixa Mensal de Weddings:** rótulos dos totais não liquidados "A RECEBER"/"A PAGAR" → "Total a receber"/"Total a pagar" (caixa normal, não mais uppercase).
 
-### Telas que mudaram de cor (cash-flow → verde/terracota, intencional)
-- Weddings — card **Fluxo de Caixa Mensal** e gráfico **Caixa Acumulado** (entrada turquesa→verde, saída mostarda→terracota; agora acompanham o drawer de operação, que já era verde/terracota).
-- Weddings — **Tendência de Margem** no drawer simples (indigo→`--brand-deep`).
-- Financeiro — gráfico de fluxo acumulado: tokenização do ponto negativo (`#B85C5C`→`--danger`, sem mudança visual).
+### Telas que mudaram de cor (intencional)
+- Weddings — **Tendência de Margem** no drawer simples (indigo `#6366f1` → `--brand-deep` oliva).
+- Financeiro — gráfico de fluxo acumulado: tokenização do ponto negativo (`#B85C5C`→`--danger`, **sem mudança visual**).
+- Mix por Produto — textos de valor passam de cinza Tailwind para tokens (variação mínima).
+- (Os cards de cash-flow de Weddings **não** mudam de cor — decisão de manter a identidade turquesa/mostarda.)
 
 ---
 

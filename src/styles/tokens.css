@@ -62,10 +62,15 @@
   --chart-neutral:     #94a3b8;   /* Séries neutras */
   --chart-info:        #6366f1;   /* Séries informativas */
 
-  /* Fluxo de caixa: paleta canônica é --positive/--negative (ADR-0103, v4.10).
-     Os tokens --chart-fluxo-entrada/saida (azul/mostarda) foram REMOVIDOS — o
-     azul #0091B3 colidia com --brand de Trips. fluxoColors agora aponta para
-     --positive/--negative; não reintroduzir cor de fluxo dedicada. */
+  /* Cash-flow — IDENTIDADE VISUAL Welcome (turquesa/mostarda), usada nos cards de
+     cash-flow de Weddings (Fluxo de Caixa Mensal + Acumulado de Recebimentos e
+     Pagamentos). Decisão v4.10 (ADR-0103): preferida à paleta semântica
+     --positive/--negative para esses cards, por alinhamento à identidade visual.
+     Sem risco de colisão: são gráficos de Weddings ([data-theme=weddings],
+     --brand dourado) e Trips/Corp não têm cash-flow. fluxoColors (--positive/
+     --negative) segue como semântica do drawer de operação e do Financeiro. */
+  --chart-fluxo-entrada: #0091B3;  /* Pantone 632 — entradas/recebimentos */
+  --chart-fluxo-saida:   #D9A23F;  /* mostarda — saídas/pagamentos */
 
   /* Cores identitárias de setor macro — alinhadas aos gráficos executivos (v4.8) */
   --setor-lazer:       #378ADD;   /* Trips / Lazer */

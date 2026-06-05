@@ -15,7 +15,7 @@
 | Ênfase secundária | `var(--brand-deep)` | Mesma herança, tom mais profundo |
 | Multi-série YoY | Faturamento `var(--brand)` / Receita `var(--text-secondary)` | Cor = métrica; traço = período (sólido atual / tracejado anterior) |
 | **Margem** | `var(--brand-deep)` | Elimina o indigo `#6366f1` solto |
-| **Cash-flow** (entrada/saída/resultado) | `var(--positive)` / `var(--negative)` via `fluxoColors` | Semântica fixa, idêntica em todas as abas; elimina `#0091B3`/`#D9A23F` **e a colisão de Trips** |
+| **Cash-flow** (entrada/saída/resultado) | Semântica: `var(--positive)`/`var(--negative)` via `fluxoColors` (drawer de operação, Financeiro). **Exceção — cards de cash-flow da visão principal de Weddings** (Fluxo de Caixa Mensal, Acumulado de Recebimentos e Pagamentos): **identidade visual** turquesa/mostarda (`--chart-fluxo-entrada/saida`). | Decisão v4.10: nesses cards a id visual Welcome prevalece sobre a semântica. Sem colisão (Weddings é dourado; Trips/Corp não têm cash-flow). Resultado/ponto negativo seguem `--text-primary`/`--danger`. |
 | Composição interna (subsetor) | `var(--subsetor-*)` (fallback `var(--brand)` via `subsetorColor` de `@/lib/config`) | Só Weddings; identidade fixa, NÃO herda a aba |
 | Breakdown cross-setor | `var(--setor-*)` (`SETOR_COLORS`) | Só Executiva / futura aba Geral |
 | Cauda "Outros" / texto neutro em Mix | tokens de texto (`--text-muted`/`--text-subtle`) | Elimina cinzas Tailwind crus |
@@ -26,7 +26,7 @@
 
 ## Consequências
 
-- **Cash-flow canônico = `--positive`/`--negative`** (verde sage / terracota), centralizado em `fluxoColors` (`chart-theme.ts`). Os tokens `--chart-fluxo-entrada/saida` (azul/mostarda) foram removidos — eliminam a colisão com `--brand` de Trips na origem. Telas que mudaram de cor visualmente (Weddings): card **Fluxo de Caixa Mensal** e gráfico **Caixa Acumulado** (drawer da operação já estava em verde/terracota; agora os cards o acompanham). Mudança intencional, listada no out-briefing.
+- **Cash-flow:** a semântica `--positive`/`--negative` (verde sage / terracota) via `fluxoColors` (`chart-theme.ts`) é usada no **drawer de operação** (Caixa Acumulado por Mês) e no **Financeiro**. **Decisão v4.10 (revisão):** os **cards de cash-flow da visão principal de Weddings** — *Fluxo de Caixa Mensal* e *Acumulado de Recebimentos e Pagamentos* — voltaram à **identidade visual Welcome** turquesa (`--chart-fluxo-entrada` #0091B3, Pantone 632) / mostarda (`--chart-fluxo-saida` #D9A23F), por melhor alinhamento à id visual. Os tokens `--chart-fluxo-*` foram restaurados em `tokens.css` para esse fim. Sem colisão: esses gráficos são de Weddings (`[data-theme=weddings]`, `--brand` dourado) e Trips/Corp não têm cash-flow.
 - **Margem = `--brand-deep`** em todo lugar (`tendencia-margem-chart`), unificando com o drawer rico.
 - **Fallback de subsetor = `--brand`** (central, via `subsetorColor`); removido o `#BA7517` hardcoded local de `weddings-kpis-section` e `sumario-subsetor`.
 - **Risco de recriar a colisão:** uma sessão futura que hardcode `#0091B3` para série principal em Trips reintroduz o problema. Por isso: tudo via token; cash-flow em verde/terracota; e onde série principal coexistir com cash-flow numa tela de Trips, validar contraste (usar `--brand-deep` se preciso).

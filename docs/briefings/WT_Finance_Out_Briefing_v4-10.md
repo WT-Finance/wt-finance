@@ -34,15 +34,17 @@
 
 ---
 
-## ⚠️ Telas que mudaram de cor (intencional — Opção B)
+## ⚠️ Telas que mudaram de cor (intencional)
 
-A unificação do cash-flow para `--positive`/`--negative` (verde/terracota) muda visualmente:
-1. **Weddings — card "Fluxo de Caixa Mensal de Weddings"**: entrada turquesa (#0091B3) → verde sage (`--positive`); saída mostarda (#D9A23F) → terracota (`--negative`).
-2. **Weddings — gráfico "Caixa Acumulado por Mês"** (`acumulado-receb-pag-chart`): idem.
-   - Ambos agora **acompanham o drawer de operação** (Caixa Acumulado no drilldown), que já era verde/terracota — antes havia duas paletas para a mesma semântica.
-3. **Weddings — "Tendência de Margem"** (gráfico genérico `tendencia-margem-chart`, usado no margem-drawer): indigo (#6366f1) → `--brand-deep` (oliva), unificando com a Tendência de Margem do drawer rico.
-4. **Financeiro — "Fluxo Acumulado"**: ponto/linha de referência negativos `#B85C5C` → `var(--danger)` (tokenização; mesmo hex, **sem mudança visual**).
-5. **Mix por Produto** (Trips/Corp/Geral): textos de valor passam de cinza Tailwind cru para tokens (variação visual mínima).
+**Revisão (ajuste pós-implementação, decisão do usuário):** os cards de cash-flow de Weddings — **Fluxo de Caixa Mensal** e **Acumulado de Recebimentos e Pagamentos** — **mantêm a identidade visual** turquesa/mostarda (`--chart-fluxo-entrada/saida`), em vez de migrarem para `--positive`/`--negative`. Registrado no ADR-0103. Logo, esses dois cards **NÃO mudam de cor**.
+
+Mudanças visuais que permanecem:
+1. **Weddings — "Tendência de Margem"** (gráfico genérico `tendencia-margem-chart`, usado no margem-drawer): indigo (#6366f1) → `--brand-deep` (oliva), unificando com a Tendência de Margem do drawer rico.
+2. **Financeiro — "Fluxo Acumulado"**: ponto/linha de referência negativos `#B85C5C` → `var(--danger)` (tokenização; mesmo hex, **sem mudança visual**).
+3. **Mix por Produto** (Trips/Corp/Geral): textos de valor passam de cinza Tailwind cru para tokens (variação visual mínima).
+4. **Fluxo de Caixa Mensal de Weddings — rótulos** dos totais não liquidados: "A RECEBER"/"A PAGAR" → "Total a receber"/"Total a pagar" (caixa normal, não uppercase). *(Texto, não cor.)*
+
+**Aberto:** o drawer de operação ("Caixa Acumulado por Mês") segue em `--positive`/`--negative` (verde/terracota) — difere dos cards turquesa/mostarda. Confirmar se deve acompanhar a identidade dos cards.
 
 Nenhuma mudança de cor de SÉRIE em Trips/Corp por si (eram preview); as cores deles herdam a aba via `--brand` (turquesa/verde-escuro).
 

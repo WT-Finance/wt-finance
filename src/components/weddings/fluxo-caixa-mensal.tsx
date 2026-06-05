@@ -16,10 +16,11 @@ function fmtMesLabel(mes: string): string {
   return `${MESES_ABREV[parseInt(m) - 1]}/${y.slice(2)}`
 }
 
-// v4.10 (ADR-0103): paleta canônica de fluxo de caixa via fluxoColors —
-// entrada=--positive (verde), saída=--negative (terracota), resultado=--text-primary.
-const COR_ENTRADA   = fluxoColors.entrada
-const COR_SAIDA     = fluxoColors.saida
+// v4.10 (ADR-0103): cash-flow de Weddings na IDENTIDADE VISUAL Welcome —
+// entrada=turquesa, saída=mostarda (decisão de alinhamento à id visual). Resultado
+// e ponto negativo seguem tokens semânticos (fluxoColors).
+const COR_ENTRADA   = 'var(--chart-fluxo-entrada)'
+const COR_SAIDA     = 'var(--chart-fluxo-saida)'
 const COR_RESULTADO = fluxoColors.resultado
 
 function LegendItem({ color, opacity, label }: { color: string; opacity: number; label: string }) {
@@ -31,12 +32,12 @@ function LegendItem({ color, opacity, label }: { color: string; opacity: number;
   )
 }
 
-// KPI pequeno e discreto (label uppercase + valor em tabular-nums) usado no canto
-// superior direito do card para os totais NÃO liquidados.
+// KPI pequeno e discreto (valor em tabular-nums) usado no canto superior direito
+// do card para os totais NÃO liquidados. Rótulo em caixa normal (não uppercase).
 function KpiNaoLiquidado({ label, valor, cor }: { label: string; valor: number; cor: string }) {
   return (
     <div className="flex flex-col items-end leading-tight">
-      <span className="text-[10px] uppercase tracking-wide text-[--text-muted]">{label}</span>
+      <span className="text-[11px] text-[--text-muted]">{label}</span>
       <span className="text-sm font-semibold tabular-nums" style={{ color: cor }}>
         {fmtBRL(valor)}
       </span>
@@ -82,10 +83,10 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
           {(data.total_a_receber != null || data.total_a_pagar != null) && (
             <div className="flex items-start gap-5">
               {data.total_a_receber != null && (
-                <KpiNaoLiquidado label="A receber" valor={data.total_a_receber} cor={COR_ENTRADA} />
+                <KpiNaoLiquidado label="Total a receber" valor={data.total_a_receber} cor={COR_ENTRADA} />
               )}
               {data.total_a_pagar != null && (
-                <KpiNaoLiquidado label="A pagar" valor={data.total_a_pagar} cor={COR_SAIDA} />
+                <KpiNaoLiquidado label="Total a pagar" valor={data.total_a_pagar} cor={COR_SAIDA} />
               )}
             </div>
           )}

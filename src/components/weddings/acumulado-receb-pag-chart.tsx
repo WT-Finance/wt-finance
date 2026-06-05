@@ -82,12 +82,12 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
           )}
           <Bar dataKey="entrada_acum" name="entrada_acum" radius={[2,2,0,0]}>
             {data.meses.map((entry, i) => (
-              <Cell key={i} fill={fluxoColors.entrada} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+              <Cell key={i} fill={'var(--chart-fluxo-entrada)'} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
           <Bar dataKey="saida_acum" name="saida_acum" radius={[2,2,0,0]}>
             {data.meses.map((entry, i) => (
-              <Cell key={i} fill={fluxoColors.saida} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
+              <Cell key={i} fill={'var(--chart-fluxo-saida)'} fillOpacity={entry.eh_futuro ? 0.35 : 1} />
             ))}
           </Bar>
         </ComposedChart>
@@ -95,10 +95,10 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
 
       {/* Legenda manual — mais simples e controlável que o <Legend> do Recharts */}
       <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 ml-18">
-        <LegendItem color={fluxoColors.entrada} opacity={1}    label="Entradas acum. (efetivado)" />
-        <LegendItem color={fluxoColors.entrada} opacity={0.35} label="Entradas acum. (projetado)" />
-        <LegendItem color={fluxoColors.saida}   opacity={1}    label="Saídas acum. (efetivado)"   />
-        <LegendItem color={fluxoColors.saida}   opacity={0.35} label="Saídas acum. (projetado)"   />
+        <LegendItem color={'var(--chart-fluxo-entrada)'} opacity={1}    label="Entradas acum. (efetivado)" />
+        <LegendItem color={'var(--chart-fluxo-entrada)'} opacity={0.35} label="Entradas acum. (projetado)" />
+        <LegendItem color={'var(--chart-fluxo-saida)'}   opacity={1}    label="Saídas acum. (efetivado)"   />
+        <LegendItem color={'var(--chart-fluxo-saida)'}   opacity={0.35} label="Saídas acum. (projetado)"   />
         <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
           <svg width="20" height="10">
             <line x1="0" y1="5" x2="20" y2="5" stroke={fluxoColors.resultadoNegativo} strokeWidth="1.5" />
