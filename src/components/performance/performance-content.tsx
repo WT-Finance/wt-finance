@@ -148,8 +148,9 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">
 
-        {/* Filtro de período — pills no início da Visão Geral (+ SetorFilter no Geral) */}
-        <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
+        {/* Filtro de período — pills no início da Visão Geral, alinhadas à esquerda
+            (padrão de Weddings). SetorFilter (só no Geral) à direita. */}
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
           <Suspense>
             <PeriodoPills defaultPreset="este-ano" />
           </Suspense>
