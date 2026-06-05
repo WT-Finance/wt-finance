@@ -146,6 +146,7 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
 - Gerar out-briefing `.md` no formato consolidado: missões implementadas, migrations, ADRs, pendências, arquivos modificados.
 - **Verificar que todos os arquivos estão corretamente sincronizados.**
 - **Avaliar se a versão revelou aprendizado permanente para este CLAUDE.md** (ver "Manutenção deste arquivo" no topo).
+- **Entrada no `CHANGELOG_DIRETORIA`** (`src/data/changelog-diretoria.ts`): a cada versão/patch, adicionar **uma entrada no topo**, em **linguagem de negócio** — descrever o **efeito/implicação**, NUNCA o mecanismo (a diretoria não sabe o que é RPC/migration/componente). Com a **data da entrega** e o(s) **tipo(s)** (novidade/correção/melhoria). **TODAS as entregas entram** (granular, sem buracos); patches puramente técnicos ganham descrição genérica honesta (ex.: "Ajustes visuais e de formatação"). É o histórico que a diretoria lê pelo modal de versão. O detalhe técnico fica no out-briefing e no `CHANGELOG.md`. (v4.11)
 - **Limpar as worktrees** (ver abaixo).
 
 ### 7. PR
@@ -250,6 +251,7 @@ Uma versão está pronta quando:
 - [ ] Migrations aplicadas no remote (com confirmação) e RPCs verificadas via REST
 - [ ] ADRs novos registrados (numeração real verificada)
 - [ ] `CHANGELOG.md` com entrada da versão
+- [ ] Entrada da versão no `CHANGELOG_DIRETORIA` (`src/data/changelog-diretoria.ts`), em linguagem de negócio
 - [ ] `package.json` e `src/lib/version.ts` com a versão nova
 - [ ] Out-briefing `.md` gerado
 - [ ] CLAUDE.md avaliado (aprendizado permanente adicionado, se houver)

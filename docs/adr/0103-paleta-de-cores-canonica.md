@@ -1,7 +1,7 @@
 # ADR-0103 — Paleta de cores canônica (cor por contexto semântico)
 
 **Status:** Aceito
-**Data:** 2026-06-04
+**Data:** 2026-06-04 · **Atualizado:** 2026-06-05 (v4.11 — regra de cor de cash-flow formalizada nas Consequências)
 **Extensão de:** ADR-0095 (padrão de gráficos / primitivos `@/components/charts`)
 **Contexto:** A investigação adversarial da v4.9.x → v4.10 mapeou o uso de cor nas séries de dado e encontrou divergências reais — inclusive no próprio Weddings: cash-flow com duas paletas (drawer em `--positive`/`--negative`, cards hardcodando `#0091B3`/`#D9A23F`); margem ora `#6366f1` ora `--brand-deep`; fallback de subsetor hardcoded `#BA7517` divergindo do fallback central `--brand`; cinzas Tailwind crus no Mix por Produto. Além disso, há **duas cores por setor** que se confundiam: o **destaque** (`--brand`, cor da aba, resolvido por `[data-theme]`) e a **identidade** (`--setor-*`/`SETOR_COLORS`, para breakdown cross-setor). E uma **colisão**: `--brand` sob `[data-theme=trips]` (`#0091B3`) era idêntico ao antigo `fluxoColors.entrada` (`#0091B3`).
 
@@ -27,6 +27,7 @@
 ## Consequências
 
 - **Cash-flow:** a semântica `--positive`/`--negative` (verde sage / terracota) via `fluxoColors` (`chart-theme.ts`) é usada no **drawer de operação** (Caixa Acumulado por Mês) e no **Financeiro**. **Decisão v4.10 (revisão):** os **cards de cash-flow da visão principal de Weddings** — *Fluxo de Caixa Mensal* e *Acumulado de Recebimentos e Pagamentos* — voltaram à **identidade visual Welcome** turquesa (`--chart-fluxo-entrada` #0091B3, Pantone 632) / mostarda (`--chart-fluxo-saida` #D9A23F), por melhor alinhamento à id visual. Os tokens `--chart-fluxo-*` foram restaurados em `tokens.css` para esse fim. Sem colisão: esses gráficos são de Weddings (`[data-theme=weddings]`, `--brand` dourado) e Trips/Corp não têm cash-flow.
+- **Cash-flow tem DOIS contextos de cor — REGRA deliberada, NÃO dívida a corrigir** (formalizado na v4.11). São papéis distintos e intencionais: **IDENTIDADE** turquesa/mostarda (`--chart-fluxo-*`) nos **cards de PÁGINA de Weddings** (coesão com a identidade visual da área) vs **SEMÂNTICA** `--positive`/`--negative` no **drawer de operação** (contexto analítico de leitura entrada/saída). **Não unificar um no outro:** uma sessão futura NÃO deve "corrigir" a identidade dos cards para a semântica, nem a semântica do drawer para a identidade — ambos estão certos no seu contexto. (Esta linha encerra a antiga pendência "cor do drawer vs cards de cash-flow".)
 - **Margem = `--brand-deep`** em todo lugar (`tendencia-margem-chart`), unificando com o drawer rico.
 - **Fallback de subsetor = `--brand`** (central, via `subsetorColor`); removido o `#BA7517` hardcoded local de `weddings-kpis-section` e `sumario-subsetor`.
 - **Risco de recriar a colisão:** uma sessão futura que hardcode `#0091B3` para série principal em Trips reintroduz o problema. Por isso: tudo via token; cash-flow em verde/terracota; e onde série principal coexistir com cash-flow numa tela de Trips, validar contraste (usar `--brand-deep` se preciso).
