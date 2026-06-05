@@ -8,7 +8,7 @@ import {
 import type { AcumuladoWeddings } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
 import CustomTooltip from '@/components/charts/custom-tooltip'
-import { ChartYAxisBRL } from '@/components/charts'
+import { ChartYAxisBRL, fluxoColors } from '@/components/charts'
 
 const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 function fmtMesLabel(mes: string): string {
@@ -16,9 +16,12 @@ function fmtMesLabel(mes: string): string {
   return `${MESES_ABREV[parseInt(m) - 1]}/${y.slice(2)}`
 }
 
-const COR_ENTRADA   = '#0091B3'  // Pantone 632 — alinhado com Welcome Trips
-const COR_SAIDA     = '#D9A23F'  // token --warning
-const COR_RESULTADO = '#2D2A26'  // token --text-primary
+// v4.10 (ADR-0103): cash-flow de Weddings na IDENTIDADE VISUAL Welcome —
+// entrada=turquesa, saída=mostarda (decisão de alinhamento à id visual). Resultado
+// e ponto negativo seguem tokens semânticos (fluxoColors).
+const COR_ENTRADA   = 'var(--chart-fluxo-entrada)'
+const COR_SAIDA     = 'var(--chart-fluxo-saida)'
+const COR_RESULTADO = fluxoColors.resultado
 
 function LegendItem({ color, opacity, label }: { color: string; opacity: number; label: string }) {
   return (
@@ -29,12 +32,12 @@ function LegendItem({ color, opacity, label }: { color: string; opacity: number;
   )
 }
 
-// KPI pequeno e discreto (label uppercase + valor em tabular-nums) usado no canto
-// superior direito do card para os totais NÃO liquidados.
+// KPI pequeno e discreto (valor em tabular-nums) usado no canto superior direito
+// do card para os totais NÃO liquidados. Rótulo em caixa normal (não uppercase).
 function KpiNaoLiquidado({ label, valor, cor }: { label: string; valor: number; cor: string }) {
   return (
     <div className="flex flex-col items-end leading-tight">
-      <span className="text-[10px] uppercase tracking-wide text-[--text-muted]">{label}</span>
+      <span className="text-[11px] text-[--text-muted]">{label}</span>
       <span className="text-sm font-semibold tabular-nums" style={{ color: cor }}>
         {fmtBRL(valor)}
       </span>
@@ -80,10 +83,10 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
           {(data.total_a_receber != null || data.total_a_pagar != null) && (
             <div className="flex items-start gap-5">
               {data.total_a_receber != null && (
-                <KpiNaoLiquidado label="A receber" valor={data.total_a_receber} cor={COR_ENTRADA} />
+                <KpiNaoLiquidado label="Total a receber" valor={data.total_a_receber} cor={COR_ENTRADA} />
               )}
               {data.total_a_pagar != null && (
-                <KpiNaoLiquidado label="A pagar" valor={data.total_a_pagar} cor={COR_SAIDA} />
+                <KpiNaoLiquidado label="Total a pagar" valor={data.total_a_pagar} cor={COR_SAIDA} />
               )}
             </div>
           )}
@@ -162,7 +165,7 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
             dot={(props) => {
               const { cx, cy, payload } = props as { cx: number; cy: number; payload: { resultado: number } }
               if (payload.resultado < 0) {
-                return <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={4} fill="#B85C5C" stroke="none" />
+                return <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={4} fill={fluxoColors.resultadoNegativo} stroke="none" />
               }
               return <g key={`dot-${cx}-${cy}`} />
             }}
@@ -172,10 +175,10 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
       </ResponsiveContainer>
 
       <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 ml-18">
-        <LegendItem color="#0091B3"  opacity={1}    label="Entrada (efetivada)" />
-        <LegendItem color="#0091B3"  opacity={0.35} label="Entrada (prevista)"  />
-        <LegendItem color="#D9A23F"  opacity={1}    label="Saída (efetivada)"   />
-        <LegendItem color="#D9A23F"  opacity={0.35} label="Saída (prevista)"    />
+        <LegendItem color={COR_ENTRADA}  opacity={1}    label="Entrada (efetivada)" />
+        <LegendItem color={COR_ENTRADA}  opacity={0.35} label="Entrada (prevista)"  />
+        <LegendItem color={COR_SAIDA}    opacity={1}    label="Saída (efetivada)"   />
+        <LegendItem color={COR_SAIDA}    opacity={0.35} label="Saída (prevista)"    />
         <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
           <svg width="20" height="10">
             <line x1="0" y1="5" x2="20" y2="5" stroke={COR_RESULTADO} strokeWidth="2" />
@@ -183,7 +186,7 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
           Resultado mensal
         </div>
         <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
-          <span className="inline-block w-3 h-3 rounded-full" style={{ background: '#B85C5C' }} />
+          <span className="inline-block w-3 h-3 rounded-full" style={{ background: fluxoColors.resultadoNegativo }} />
           Resultado negativo
         </div>
       </div>

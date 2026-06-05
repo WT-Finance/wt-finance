@@ -6,6 +6,31 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.10.0] — 2026-06-04
+
+Versão MINOR: **ativa as abas Trips e Corporativo** (a infra já existia — RPCs por setor, tokens de cor, PerformanceContent) e **padroniza o sistema de cores** de toda a plataforma sob a paleta canônica (ADR-0103, extensão do 0095).
+
+### Adicionado
+- **Abas Trips e Corporativo ativas** (M8): removido o gate `?preview=1`; `/performance/trips` (setor Lazer) e `/performance/corporativo` renderizam a Visão Geral padrão.
+- **Drawer rico parametrizável por setor** (M2): Faturamento/Receita de Trips/Corp abrem o `KpiPrincipalDrawer` (Indicadores + Comparação Ano Anterior + Tendência de Margem), com as seções de subsetor **podadas** quando setor ≠ Weddings. Weddings mantém os subsetores.
+- **Pills de período** no PerformanceContent (M3), no lugar do dropdown; pill ativa na cor da aba.
+- **Top Vendedores** no PerformanceContent (M5): Faturamento + Receita por vendedor (5 + "Ver mais"), agregado pelo período via `get_ranking_vendedores` (mensal) somado pelos meses do intervalo.
+- **Vendas em Aberto** por setor (M6): nova RPC `get_vendas_em_aberto(p_setor, …)` (migration 0114) generalizando a lógica weddings; Receita Negativa já presente como Prejuízos (`get_prejuizos` por setor).
+
+### Alterado
+- **Sistema de cores canônico** (M1, ADR-0103): cor por contexto semântico, sempre via token. **Margem** em `--brand-deep` (elimina o indigo `#6366f1`). **Fallback de subsetor** central (`--brand`, fim do `#BA7517` hardcoded). **Mix por Produto** com tokens de texto (fim dos cinzas Tailwind crus). **Cash-flow:** semântica `--positive`/`--negative` no drawer de operação e no Financeiro; os **cards de cash-flow de Weddings** (Fluxo de Caixa Mensal, Acumulado de Recebimentos e Pagamentos) mantêm a **identidade visual** turquesa/mostarda (decisão de id visual — ver "Telas").
+- **Afordância de clique** (M4): card clicável usa `.card-clicavel` — hover assume a cor da aba; fim do azul hardcoded.
+- **CAGR ocultado** de Trips/Corp via flag (M7), código mantido (pendência futura).
+- **Fluxo de Caixa Mensal de Weddings:** rótulos dos totais não liquidados "A RECEBER"/"A PAGAR" → "Total a receber"/"Total a pagar" (caixa normal, não mais uppercase).
+
+### Telas que mudaram de cor (intencional)
+- Weddings — **Tendência de Margem** no drawer simples (indigo `#6366f1` → `--brand-deep` oliva).
+- Financeiro — gráfico de fluxo acumulado: tokenização do ponto negativo (`#B85C5C`→`--danger`, **sem mudança visual**).
+- Mix por Produto — textos de valor passam de cinza Tailwind para tokens (variação mínima).
+- (Os cards de cash-flow de Weddings **não** mudam de cor — decisão de manter a identidade turquesa/mostarda.)
+
+---
+
 ## [4.9.2] — 2026-06-04
 
 Patch de integridade de dados sobre a v4.9.1. Re-baseia faturamento/receita/hotel das operações Weddings na Operação Própria, removendo contaminação do vínculo por `venda_n`. ADR-0102.

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePeriodoFilter } from '@/components/layout/period-filter-provider'
 import { fetchWeddingsKpis } from '@/app/performance/weddings/actions'
 import { fmtMi } from '@/lib/fmt'
-import { margemColor } from '@/lib/config'
+import { margemColor, subsetorColor, SUBSETOR_LABELS, SUBSETOR_ORDER } from '@/lib/config'
 import KpiPrincipalDrawer from './kpi-principal-drawer'
 import type { ExecutivaKpis, KpiMetrica, SumarioSubsetor, SumarioSubsetorItem } from '@/types/api'
 import type { Benchmarks } from '@/lib/config'
@@ -173,32 +173,9 @@ function SubsetorCard({
   )
 }
 
-// ── Mapeamento de subsetores ─────────────────────────────────────────────────
-
-const SUBSETOR_LABELS: Record<string, string> = {
-  'CONVIDADOS - Hospedagens': 'Convidados – Hospedagens',
-  'CONVIDADOS - Extras':      'Convidados – Extras',
-  'PRODUÇÃO':                 'Produção',
-  PLANEJAMENTO:               'Planejamento',
-  COMERCIAL:                  'Comercial',
-}
-
-const SUBSETOR_COLORS: Record<string, string> = {
-  COMERCIAL:                  'var(--subsetor-comercial)',
-  'CONVIDADOS - Hospedagens': 'var(--subsetor-hospedagens)',
-  'CONVIDADOS - Extras':      'var(--subsetor-extras)',
-  'PRODUÇÃO':                 'var(--subsetor-producao)',
-  PLANEJAMENTO:               'var(--subsetor-planejamento)',
-}
-const SUBSETOR_COLOR_FALLBACK = '#BA7517'
-
-const SUBSETOR_ORDER = [
-  'COMERCIAL',
-  'PLANEJAMENTO',
-  'PRODUÇÃO',
-  'CONVIDADOS - Hospedagens',
-  'CONVIDADOS - Extras',
-]
+// Mapeamento de subsetores (cores/rótulos/ordem/fallback) vem de @/lib/config —
+// fonte única. Fallback de subsetor desconhecido = var(--brand) (não mais #BA7517
+// hardcoded, que divergia do drawer). v4.10/ADR-0103.
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
@@ -272,7 +249,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
           const isConvidados = key.startsWith('CONVIDADOS - ')
           const title    = isConvidados ? 'Convidados' : (SUBSETOR_LABELS[key] ?? key)
           const subtitle = isConvidados ? key.replace('CONVIDADOS - ', '') : undefined
-          const color    = SUBSETOR_COLORS[key] ?? SUBSETOR_COLOR_FALLBACK
+          const color    = subsetorColor(key)
           return (
             <SubsetorCard
               key={key}
@@ -291,7 +268,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       </div>
 
       {drawerOpen && (
-        <KpiPrincipalDrawer onClose={() => setDrawerOpen(false)} />
+        <KpiPrincipalDrawer setor="Weddings" onClose={() => setDrawerOpen(false)} />
       )}
     </div>
   )

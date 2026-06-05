@@ -1,0 +1,33 @@
+# ADR-0103 — Paleta de cores canônica (cor por contexto semântico)
+
+**Status:** Aceito
+**Data:** 2026-06-04
+**Extensão de:** ADR-0095 (padrão de gráficos / primitivos `@/components/charts`)
+**Contexto:** A investigação adversarial da v4.9.x → v4.10 mapeou o uso de cor nas séries de dado e encontrou divergências reais — inclusive no próprio Weddings: cash-flow com duas paletas (drawer em `--positive`/`--negative`, cards hardcodando `#0091B3`/`#D9A23F`); margem ora `#6366f1` ora `--brand-deep`; fallback de subsetor hardcoded `#BA7517` divergindo do fallback central `--brand`; cinzas Tailwind crus no Mix por Produto. Além disso, há **duas cores por setor** que se confundiam: o **destaque** (`--brand`, cor da aba, resolvido por `[data-theme]`) e a **identidade** (`--setor-*`/`SETOR_COLORS`, para breakdown cross-setor). E uma **colisão**: `--brand` sob `[data-theme=trips]` (`#0091B3`) era idêntico ao antigo `fluxoColors.entrada` (`#0091B3`).
+
+## Decisão
+
+**Regra mestra:** cor por **contexto semântico**, SEMPRE via token CSS, NUNCA hex literal num componente. Tabela canônica única:
+
+| Contexto | Cor canônica | Observação |
+|---|---|---|
+| Série principal única | `var(--brand)` | Herda a aba via `[data-theme]` (Weddings dourado, Trips turquesa, Corp verde-escuro) |
+| Ênfase secundária | `var(--brand-deep)` | Mesma herança, tom mais profundo |
+| Multi-série YoY | Faturamento `var(--brand)` / Receita `var(--text-secondary)` | Cor = métrica; traço = período (sólido atual / tracejado anterior) |
+| **Margem** | `var(--brand-deep)` | Elimina o indigo `#6366f1` solto |
+| **Cash-flow** (entrada/saída/resultado) | Semântica: `var(--positive)`/`var(--negative)` via `fluxoColors` (drawer de operação, Financeiro). **Exceção — cards de cash-flow da visão principal de Weddings** (Fluxo de Caixa Mensal, Acumulado de Recebimentos e Pagamentos): **identidade visual** turquesa/mostarda (`--chart-fluxo-entrada/saida`). | Decisão v4.10: nesses cards a id visual Welcome prevalece sobre a semântica. Sem colisão (Weddings é dourado; Trips/Corp não têm cash-flow). Resultado/ponto negativo seguem `--text-primary`/`--danger`. |
+| Composição interna (subsetor) | `var(--subsetor-*)` (fallback `var(--brand)` via `subsetorColor` de `@/lib/config`) | Só Weddings; identidade fixa, NÃO herda a aba |
+| Breakdown cross-setor | `var(--setor-*)` (`SETOR_COLORS`) | Só Executiva / futura aba Geral |
+| Cauda "Outros" / texto neutro em Mix | tokens de texto (`--text-muted`/`--text-subtle`) | Elimina cinzas Tailwind crus |
+
+**As duas cores por setor (papéis distintos):**
+- **Destaque** `--brand` (via `[data-theme]`): dentro da aba de um setor, as séries de dado usam o destaque, que herda a cor da aba automaticamente.
+- **Identidade** `--setor-*`: só em gráficos cross-setor (recorte por setor macro).
+
+## Consequências
+
+- **Cash-flow:** a semântica `--positive`/`--negative` (verde sage / terracota) via `fluxoColors` (`chart-theme.ts`) é usada no **drawer de operação** (Caixa Acumulado por Mês) e no **Financeiro**. **Decisão v4.10 (revisão):** os **cards de cash-flow da visão principal de Weddings** — *Fluxo de Caixa Mensal* e *Acumulado de Recebimentos e Pagamentos* — voltaram à **identidade visual Welcome** turquesa (`--chart-fluxo-entrada` #0091B3, Pantone 632) / mostarda (`--chart-fluxo-saida` #D9A23F), por melhor alinhamento à id visual. Os tokens `--chart-fluxo-*` foram restaurados em `tokens.css` para esse fim. Sem colisão: esses gráficos são de Weddings (`[data-theme=weddings]`, `--brand` dourado) e Trips/Corp não têm cash-flow.
+- **Margem = `--brand-deep`** em todo lugar (`tendencia-margem-chart`), unificando com o drawer rico.
+- **Fallback de subsetor = `--brand`** (central, via `subsetorColor`); removido o `#BA7517` hardcoded local de `weddings-kpis-section` e `sumario-subsetor`.
+- **Risco de recriar a colisão:** uma sessão futura que hardcode `#0091B3` para série principal em Trips reintroduz o problema. Por isso: tudo via token; cash-flow em verde/terracota; e onde série principal coexistir com cash-flow numa tela de Trips, validar contraste (usar `--brand-deep` se preciso).
+- **Convenção `--text-tertiary`:** o briefing citou `--text-tertiary`; o design system tem a escala primary/secondary/muted/subtle — usou-se `--text-muted` (terciário semântico existente), sem criar token duplicado.

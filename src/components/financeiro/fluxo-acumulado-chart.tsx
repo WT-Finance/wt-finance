@@ -74,7 +74,7 @@ function AcumuladoLegend() {
       </div>
       <div className="flex items-center gap-1.5 text-xs text-zinc-500">
         <svg width="20" height="10">
-          <line x1="0" y1="5" x2="20" y2="5" stroke="#B85C5C" strokeWidth="1.5" />
+          <line x1="0" y1="5" x2="20" y2="5" stroke="var(--danger)" strokeWidth="1.5" />
         </svg>
         Total previsto de saídas
       </div>
@@ -170,13 +170,13 @@ export default function FluxoAcumuladoChart({ rows }: Props) {
           {totalSaidasPrevisto > 0 && (
             <ReferenceLine
               y={totalSaidasPrevisto}
-              stroke="#B85C5C"
+              stroke="var(--danger)"
               strokeWidth={1.5}
               label={{
                 value: `Total previsto de saídas: ${fmtMi(totalSaidasPrevisto)}`,
                 position: 'insideTopRight',
                 fontSize: 10,
-                fill: '#B85C5C',
+                fill: 'var(--danger)',
               }}
             />
           )}

@@ -71,7 +71,7 @@ export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_
             <Line
               type="monotone"
               dataKey="margem_pct"
-              stroke="var(--chart-info)"
+              stroke="var(--brand-deep)"
               strokeWidth={2}
               dot={pontos.length <= 15}
               connectNulls={false}

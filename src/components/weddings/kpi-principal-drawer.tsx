@@ -231,7 +231,10 @@ function LoadingSkeleton() {
 
 // ── Drawer body ───────────────────────────────────────────────────────────────
 
-function DrawerBody() {
+function DrawerBody({ setor }: { setor: string }) {
+  // v4.10/M2: subsetores só existem em Weddings. Para Trips/Corp, as seções de
+  // subsetor (stacked Faturamento/Receita por Subsetor + Composição) são podadas.
+  const isWeddings = setor === 'Weddings'
   const [activePill, setActivePill]             = useState<PillId>('este-ano')
   const [data, setData]                         = useState<DrawerData | null>(null)
   const [loading, setLoading]                   = useState(false)
@@ -267,35 +270,42 @@ function DrawerBody() {
 
     const supabase = getBrowserClient()
 
-    Promise.all([
+    // RPCs parametrizadas por setor (herdam a aba). As de subsetor
+    // (get_sumario_subsetor / get_weddings_historico_subsetor) são específicas de
+    // Weddings — só consultadas quando isWeddings; para Trips/Corp ficam vazias.
+    const promessas: Promise<{ data: unknown }>[] = [
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.rpc as any)('get_tendencia_margem', { p_from, p_to, p_setor: 'Weddings' }),
+      (supabase.rpc as any)('get_tendencia_margem', { p_from, p_to, p_setor: setor }),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.rpc as any)('get_tendencia_margem', { p_from: yoy.from, p_to: yoy.to, p_setor: 'Weddings' }),
+      (supabase.rpc as any)('get_tendencia_margem', { p_from: yoy.from, p_to: yoy.to, p_setor: setor }),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.rpc as any)('get_executiva_kpis', {
-        p_from, p_to, p_setor: 'Weddings',
+        p_from, p_to, p_setor: setor,
         p_ant_from: ant.from, p_ant_to: ant.to,
         p_yoy_from: yoy.from, p_yoy_to: yoy.to,
       }),
+    ]
+    if (isWeddings) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.rpc as any)('get_sumario_subsetor', { p_from, p_to }),
+      promessas.push((supabase.rpc as any)('get_sumario_subsetor', { p_from, p_to }))
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.rpc as any)('get_weddings_historico_subsetor', { p_from, p_to }),
-    ]).then(([tendRes, yoyRes, kpisRes, sumRes, histRes]) => {
+      promessas.push((supabase.rpc as any)('get_weddings_historico_subsetor', { p_from, p_to }))
+    }
+
+    Promise.all(promessas).then(([tendRes, yoyRes, kpisRes, sumRes, histRes]) => {
       if (cancelled) return
       setData({
         tendencia:    (tendRes.data as TendenciaMargem) ?? null,
         yoyTendencia: (yoyRes.data as TendenciaMargem)  ?? null,
         kpis:         (kpisRes.data as ExecutivaKpis)   ?? null,
-        sumario:      (sumRes.data as SumarioSubsetor)  ?? null,
-        historico:    (histRes.data as HistoricoSubsetorRow[]) ?? [],
+        sumario:      isWeddings ? ((sumRes?.data as SumarioSubsetor) ?? null) : null,
+        historico:    isWeddings ? ((histRes?.data as HistoricoSubsetorRow[]) ?? []) : [],
       })
       setLoading(false)
     })
 
     return () => { cancelled = true }
-  }, [activeDates])
+  }, [activeDates, setor, isWeddings])
 
   // Initialize with este-ano
   useEffect(() => {
@@ -501,8 +511,9 @@ function DrawerBody() {
           </div>
 
           {/* M2/M5: stacked Faturamento + Receita por subsetor.
-              Escalas Y INDEPENDENTES; legenda única ENTRE os dois gráficos. */}
-          {temHistorico && (
+              Escalas Y INDEPENDENTES; legenda única ENTRE os dois gráficos.
+              v4.10/M2: só Weddings (Trips/Corp não têm subsetor → podado). */}
+          {isWeddings && temHistorico && (
             <div className="mt-6">
               {/* Gráfico 1 — Faturamento por Subsetor */}
               <SectionHeader label="Faturamento por Subsetor" />
@@ -627,12 +638,17 @@ function DrawerBody() {
             </LineChart>
           </ResponsiveContainer>
 
-          {/* Composição por Subsetor — sem box, mesmo período das pills */}
-          <div className="flex items-baseline gap-2 mb-2 mt-6">
-            <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">Composição por Subsetor</p>
-            <span className="text-[11px]" style={{ color: 'var(--brand)' }}>no período selecionado</span>
-          </div>
-          <SumarioSubsetorCard data={data.sumario} semBox />
+          {/* Composição por Subsetor — sem box, mesmo período das pills.
+              v4.10/M2: só Weddings (podado para Trips/Corp). */}
+          {isWeddings && (
+            <>
+              <div className="flex items-baseline gap-2 mb-2 mt-6">
+                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">Composição por Subsetor</p>
+                <span className="text-[11px]" style={{ color: 'var(--brand)' }}>no período selecionado</span>
+              </div>
+              <SumarioSubsetorCard data={data.sumario} semBox />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -641,16 +657,21 @@ function DrawerBody() {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-interface Props { onClose: () => void }
+interface Props {
+  /** Setor do conteúdo: 'Weddings' | 'Lazer' (Trips) | 'Corporativo' | 'todos'.
+   *  Para setor ≠ 'Weddings' as seções de subsetor são podadas (v4.10/M2). */
+  setor: string
+  onClose: () => void
+}
 
-export default function KpiPrincipalDrawer({ onClose }: Props) {
+export default function KpiPrincipalDrawer({ setor, onClose }: Props) {
   return (
     <ListDrawer
       titulo="Análise Histórica"
       subtitulo="Análise da evolução histórica de faturamento e receita do setor"
       onClose={onClose}
     >
-      <DrawerBody />
+      <DrawerBody setor={setor} />
     </ListDrawer>
   )
 }

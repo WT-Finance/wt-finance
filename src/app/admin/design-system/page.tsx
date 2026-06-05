@@ -305,8 +305,8 @@ export default function DesignSystemPage() {
         ]} />
         <p className="text-xs text-[var(--text-muted)] mt-4 mb-2">Cores semânticas identitárias (via <code className="bg-zinc-100 px-1 rounded">fluxoColors</code> / <code className="bg-zinc-100 px-1 rounded">SETOR_COLORS</code> em <code className="bg-zinc-100 px-1 rounded">@/lib/config</code>):</p>
         <ColorGrid items={[
-          { name: '--chart-fluxo-entrada', hex: '#0091B3', usage: 'Entradas/recebimentos — Pantone 632' },
-          { name: '--chart-fluxo-saida',   hex: '#D9A23F', usage: 'Saídas/pagamentos' },
+          { name: 'fluxoColors.entrada (--positive)', hex: '#5F7A3D', usage: 'Entradas/recebimentos (cash-flow canônico, ADR-0103)' },
+          { name: 'fluxoColors.saida (--negative)',   hex: '#A35442', usage: 'Saídas/pagamentos (cash-flow canônico, ADR-0103)' },
           { name: 'fluxoColors.resultado', hex: '#2D2A26', usage: 'Linha de resultado (--text-primary)' },
           { name: '--setor-lazer',         hex: '#378ADD', usage: 'Setor Lazer / Trips' },
           { name: '--setor-weddings',      hex: '#BA7517', usage: 'Setor Weddings' },
