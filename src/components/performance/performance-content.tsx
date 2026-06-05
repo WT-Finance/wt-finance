@@ -9,13 +9,14 @@ import TendenciaMargemChart from '@/components/performance/tendencia-margem-char
 import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
 import TopVendedoresCard from '@/components/performance/top-vendedores-card'
+import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import TopSection from '@/components/shared/top-section'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, CagrData, RankingVendedorItem,
+  MixProduto, PrejuizosDetalhe, CagrData, RankingVendedorItem, VendasEmAberto,
 } from '@/types/api'
 
 // v4.10/M5: Top Vendedores. A RPC get_ranking_vendedores é MENSAL (p_ano, p_mes);
@@ -91,6 +92,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   const [
     [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, benchmarks],
     vendedores,
+    vendasAbertoRes,
   ] = await Promise.all([
     Promise.all([
       db.rpc('get_executiva_kpis', {
@@ -110,6 +112,10 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
       getBenchmarks(db),
     ] as const),
     fetchTopVendedores(db, from, to, setor),
+    // get_vendas_em_aberto: RPC nova (0114). `as any` enquanto não regeneramos os
+    // tipos do supabase — mesmo padrão de outras RPCs recém-criadas no projeto.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (db.rpc as any)('get_vendas_em_aberto', { p_setor: setor, p_limite: 50, p_offset: 0 }),
   ])
 
   const kpis       = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
@@ -118,6 +124,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   const produtos   = prodRes.error  ? null : prodRes.data  as unknown as MixProduto
   const prejuizos  = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosDetalhe
   const cagr       = cagrRes.error  ? null : cagrRes.data  as unknown as CagrData
+  const vendasAberto = vendasAbertoRes?.error ? null : (vendasAbertoRes?.data as VendasEmAberto | undefined) ?? null
 
   const mostrarSetorFilter = setor === 'todos'
 
@@ -189,6 +196,11 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
           <MixProdutoTable data={produtos}  loading={false} />
           <PrejuizosTable  data={prejuizos} loading={false} />
         </div>
+      </TopSection>
+
+      {/* Vendas em Aberto (M6) — vendas com situação Aberta, por setor */}
+      <TopSection titulo="Vendas em Aberto">
+        <VendasEmAbertoCard data={vendasAberto} />
       </TopSection>
 
       {/* Top Vendedores (M5) — agregado pelo período, por setor */}
