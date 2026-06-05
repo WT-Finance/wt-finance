@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import PeriodoFilter from '@/components/shared/periodo-filter-url'
+import PeriodoPills from '@/components/shared/periodo-pills-url'
 import SetorFilter from '@/components/shared/setor-filter'
 import KpiCard, { KpiCardSkeleton } from '@/components/shared/kpi-card'
 import KpiDrawerTrigger from '@/components/shared/kpi-drawer-trigger'
@@ -67,7 +67,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
       {/* Filtros */}
       <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
         <Suspense>
-          <PeriodoFilter defaultPreset="este-ano" />
+          <PeriodoPills defaultPreset="este-ano" />
         </Suspense>
         {mostrarSetorFilter && (
           <Suspense>
