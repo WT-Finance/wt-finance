@@ -76,6 +76,11 @@ interface Props {
   searchParams: PeriodoSearchParams
 }
 
+// v4.10/M7: CAGR ocultado por ora via flag (código + RPC mantidos, como Posição
+// por Conta). Pendência: depende do horizonte de dado confiável por setor e do
+// entendimento da diretoria sobre a métrica (taxa alisada, sensível a histórico curto).
+const MOSTRAR_CAGR = false
+
 export default async function PerformanceContent({ setor, searchParams: sp }: Props) {
   const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
     resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
@@ -152,16 +157,20 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
         </div>
       </TopSection>
 
-      {/* Mix Setor + CAGR */}
+      {/* Mix Setor (+ CAGR oculto por flag — M7). Sem CAGR, o Mix ocupa a largura toda. */}
       <TopSection titulo="Mix por Setor">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2">
-            <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
+        {MOSTRAR_CAGR ? (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2">
+              <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
+            </div>
+            <div>
+              <CagrCard data={cagr} loading={false} />
+            </div>
           </div>
-          <div>
-            <CagrCard data={cagr} loading={false} />
-          </div>
-        </div>
+        ) : (
+          <MixSetorTable data={mix} loading={false} margemAlvo={benchmarks.margemAlvo} preset={preset} />
+        )}
       </TopSection>
 
       {/* Tendência de margem */}
