@@ -8,14 +8,62 @@ import CagrCard from '@/components/performance/cagr-card'
 import TendenciaMargemChart from '@/components/performance/tendencia-margem-chart'
 import MixProdutoTable from '@/components/performance/mix-produto-table'
 import PrejuizosTable from '@/components/performance/prejuizos-table'
+import TopVendedoresCard from '@/components/performance/top-vendedores-card'
 import TopSection from '@/components/shared/top-section'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, CagrData,
+  MixProduto, PrejuizosDetalhe, CagrData, RankingVendedorItem,
 } from '@/types/api'
+
+// v4.10/M5: Top Vendedores. A RPC get_ranking_vendedores é MENSAL (p_ano, p_mes);
+// para respeitar o período (range), enumeramos os meses do intervalo (capados no
+// mês atual) e agregamos por vendedor. As chamadas são paralelas (Promise.all),
+// sobre uma MV pré-computada → custo ≈ uma ida ao banco. Reusa a RPC existente
+// (sem RPC nova). Limite alto por mês (100) para o ranking do período ser exato.
+function mesesNoIntervalo(from: string, to: string): { ano: number; mes: number }[] {
+  const [fy, fm] = from.split('-').map(Number)
+  const [ty, tm] = to.split('-').map(Number)
+  const now = new Date()
+  const capY = now.getFullYear()
+  const capM = now.getMonth() + 1
+  const meses: { ano: number; mes: number }[] = []
+  let y = fy, m = fm
+  while ((y < ty || (y === ty && m <= tm)) && meses.length <= 36) {
+    if (y < capY || (y === capY && m <= capM)) meses.push({ ano: y, mes: m })
+    m++; if (m > 12) { m = 1; y++ }
+  }
+  return meses
+}
+
+async function fetchTopVendedores(
+  db: ReturnType<typeof getServerClient>,
+  from: string, to: string, setor: string,
+): Promise<RankingVendedorItem[]> {
+  const meses = mesesNoIntervalo(from, to)
+  if (meses.length === 0) return []
+  const results = await Promise.all(
+    meses.map(({ ano, mes }) =>
+      db.rpc('get_ranking_vendedores', { p_ano: ano, p_mes: mes, p_setor: setor, p_limite: 100 }),
+    ),
+  )
+  const acc = new Map<number, RankingVendedorItem>()
+  for (const r of results) {
+    const rows = (r.error ? [] : (r.data as unknown as RankingVendedorItem[])) ?? []
+    for (const v of rows) {
+      const cur = acc.get(v.vendedor_id) ?? {
+        vendedor_id: v.vendedor_id, nome: v.nome, valor_total: 0, receitas: 0, vendas_count: 0,
+      }
+      cur.valor_total  += v.valor_total
+      cur.receitas     += v.receitas
+      cur.vendas_count += v.vendas_count
+      acc.set(v.vendedor_id, cur)
+    }
+  }
+  return [...acc.values()].sort((a, b) => b.valor_total - a.valor_total)
+}
 
 interface PeriodoSearchParams {
   preset?: string
@@ -35,22 +83,28 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
 
   const db = getServerClient()
 
-  const [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, benchmarks] = await Promise.all([
-    db.rpc('get_executiva_kpis', {
-      p_from:     from,
-      p_to:       to,
-      p_setor:    setor,
-      p_ant_from: antFrom,
-      p_ant_to:   antTo,
-      p_yoy_from: yoyFrom,
-      p_yoy_to:   yoyTo,
-    }),
-    db.rpc('get_mix_setor',        { p_from: from, p_to: to, p_setor: setor }),
-    db.rpc('get_tendencia_margem', { p_from: from, p_to: to, p_setor: setor }),
-    db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
-    db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
-    db.rpc('get_cagr'),
-    getBenchmarks(db),
+  const [
+    [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, benchmarks],
+    vendedores,
+  ] = await Promise.all([
+    Promise.all([
+      db.rpc('get_executiva_kpis', {
+        p_from:     from,
+        p_to:       to,
+        p_setor:    setor,
+        p_ant_from: antFrom,
+        p_ant_to:   antTo,
+        p_yoy_from: yoyFrom,
+        p_yoy_to:   yoyTo,
+      }),
+      db.rpc('get_mix_setor',        { p_from: from, p_to: to, p_setor: setor }),
+      db.rpc('get_tendencia_margem', { p_from: from, p_to: to, p_setor: setor }),
+      db.rpc('get_mix_produto',      { p_from: from, p_to: to, p_setor: setor, p_limite: 10 }),
+      db.rpc('get_prejuizos',        { p_from: from, p_to: to, p_setor: setor, p_summary: false }),
+      db.rpc('get_cagr'),
+      getBenchmarks(db),
+    ] as const),
+    fetchTopVendedores(db, from, to, setor),
   ])
 
   const kpis       = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
@@ -126,6 +180,11 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
           <MixProdutoTable data={produtos}  loading={false} />
           <PrejuizosTable  data={prejuizos} loading={false} />
         </div>
+      </TopSection>
+
+      {/* Top Vendedores (M5) — agregado pelo período, por setor */}
+      <TopSection titulo="Top Vendedores">
+        <TopVendedoresCard data={vendedores} />
       </TopSection>
     </div>
   )
