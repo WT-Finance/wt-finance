@@ -11,13 +11,15 @@ import { X } from 'lucide-react'
 // trava de scroll do body e Escape herdadas do ListDrawer.
 
 interface Props {
-  titulo:     string
-  subtitulo?: string
-  onClose:    () => void
-  children:   ReactNode
+  titulo:           string
+  /** Conteúdo inline ao lado do título (ex.: "powered by …"). */
+  tituloAcessorio?: ReactNode
+  subtitulo?:       string
+  onClose:          () => void
+  children:         ReactNode
 }
 
-export default function ModalCentral({ titulo, subtitulo, onClose, children }: Props) {
+export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, onClose, children }: Props) {
   const [visible, setVisible] = useState(false)
 
   const handleClose = useCallback(() => {
@@ -67,7 +69,10 @@ export default function ModalCentral({ titulo, subtitulo, onClose, children }: P
       >
         <div className="flex items-start justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
           <div>
-            <p className="text-lg font-semibold text-zinc-900">{titulo}</p>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <p className="text-lg font-semibold text-zinc-900">{titulo}</p>
+              {tituloAcessorio}
+            </div>
             {subtitulo && <p className="text-sm text-zinc-400 mt-0.5">{subtitulo}</p>}
           </div>
           <button
