@@ -93,3 +93,14 @@ export const fmtDateMid = (iso: string): string => {
   const [y, m, d] = iso.split('-')
   return `${d} de ${MESES_COMPACTOS[parseInt(m, 10) - 1]} de ${y}`
 }
+
+/** Converte 'yyyy-MM-ddTHH:MM' para 'dd de mês de AAAA, às HHhMMmin' (ex: 05 de jun de 2026, às 17h53min).
+ *  Sem componente de hora, devolve só a data (formato médio). Parse por split — sem fuso. */
+export const fmtDataHora = (iso: string): string => {
+  const [data, hora] = iso.split('T')
+  const [y, m, d] = data.split('-')
+  const dataFmt = `${d} de ${MESES_COMPACTOS[parseInt(m, 10) - 1]} de ${y}`
+  if (!hora) return dataFmt
+  const [hh, mm] = hora.split(':')
+  return `${dataFmt}, às ${hh}h${mm}min`
+}

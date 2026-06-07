@@ -128,3 +128,14 @@ body {
 .card-clicavel:focus-visible .card-clicavel-cta {
   color: var(--brand-deep);
 }
+
+/* "Ver mais" do card-tabela (v4.11): neutro em repouso, cor da aba no hover.    */
+/* Diferente do .card-clicavel-cta (que reage ao hover do CARD inteiro): aqui o  */
+/* próprio "Ver mais" é o alvo. var(--brand) herda a aba via [data-theme].       */
+.card-tabela-vermais {
+  color: var(--text-subtle);
+  transition: color 0.18s ease;
+}
+.card-tabela-vermais:hover {
+  color: var(--brand);
+}

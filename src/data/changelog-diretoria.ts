@@ -1,0 +1,196 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGELOG da DIRETORIA — histórico de versões em LINGUAGEM DE NEGÓCIO.
+//
+// Separado do CHANGELOG.md técnico: aqui descreve-se o EFEITO e a IMPLICAÇÃO de
+// cada entrega, nunca o mecanismo. Público: diretoria e gestores. Lido pelo modal
+// de histórico (clique no "version X.Y.Z" da sidebar).
+//
+// REGRA DE MANUTENÇÃO (CLAUDE.md): a cada versão/patch, adicionar UMA entrada no
+// topo, com a data E HORA real da entrega, em linguagem de negócio. TODAS as
+// entregas aparecem — patches puramente técnicos ganham descrição genérica
+// honesta. Granular: cada versão/patch é uma entrada própria.
+//
+// `data`: datetime local 'YYYY-MM-DDTHH:MM' = momento real do merge (publicação) —
+// extraído do git (fuso -03). É o controle de produção. Ordem: mais recente no
+// topo. Marco zero: v4.0.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ChangelogTipo = 'novidade' | 'correcao' | 'melhoria'
+
+export interface ChangelogItem {
+  tipo:  ChangelogTipo
+  texto: string
+}
+
+export interface ChangelogEntrada {
+  /** Número de versão visível (ex.: "4.10.1"). */
+  versao: string
+  /** Data e hora reais da entrega (merge), local 'YYYY-MM-DDTHH:MM'. */
+  data:   string
+  itens:  ChangelogItem[]
+}
+
+export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
+  {
+    versao: '4.11.0',
+    data: '2026-06-05T17:59',
+    itens: [
+      { tipo: 'novidade', texto: 'Novo histórico de versões: clicando no número da versão (rodapé da barra lateral) abre-se um resumo das melhorias da plataforma em linguagem de negócio — um canal de acompanhamento da evolução para a diretoria.' },
+      { tipo: 'melhoria', texto: 'Padronização visual das tabelas-resumo (Próximos Casamentos, Mix por Produto, Top Vendedores, Vendas em Aberto e Receita Negativa) nas três áreas, para leitura mais consistente entre as abas.' },
+    ],
+  },
+  {
+    versao: '4.10.1',
+    data: '2026-06-05T15:13',
+    itens: [
+      { tipo: 'melhoria', texto: 'As abas Trips e Corporativo passam a ter o mesmo visual de Weddings: um único cartão de indicadores principais (Faturamento, Receita Bruta e Margem) clicável, reunido numa seção "Visão Geral", no lugar dos indicadores soltos.' },
+      { tipo: 'novidade', texto: 'Trips e Corporativo agora exibem o cartão de "Vendas com Receita Negativa" (vendas que entraram com receita abaixo de zero), útil para sinalizar lançamentos a investigar.' },
+      { tipo: 'melhoria', texto: 'Filtros de período padronizados e alinhados à esquerda; o selo de "vendas em aberto" passa a usar a cor da própria aba.' },
+    ],
+  },
+  {
+    versao: '4.10.0',
+    data: '2026-06-05T09:46',
+    itens: [
+      { tipo: 'novidade', texto: 'Abas Trips (lazer) e Corporativo entram no ar, com a mesma visão de indicadores de Weddings: faturamento, receita e margem, com detalhamento ao clicar.' },
+      { tipo: 'novidade', texto: 'Trips e Corporativo ganham ranking de Top Vendedores (faturamento e receita por vendedor no período) e o cartão de Vendas em Aberto por área.' },
+      { tipo: 'melhoria', texto: 'Padronização do sistema de cores de toda a plataforma: cada cor passa a ter um significado consistente entre telas (por exemplo, margem sempre na mesma cor).' },
+    ],
+  },
+  {
+    versao: '4.9.2',
+    data: '2026-06-04T16:55',
+    itens: [
+      { tipo: 'correcao', texto: 'Corrigida uma contaminação de dados que inflava o faturamento, a receita e o hotel de algumas operações de Weddings — o sistema cruzava informações de casamentos diferentes. Agora cada operação usa apenas os seus próprios dados de venda.' },
+      { tipo: 'correcao', texto: 'Das operações de Weddings, a grande maioria permanece idêntica; apenas as poucas contaminadas mudam, e o total da área ajusta de R$ 44,38 Mi para R$ 44,14 Mi (remoção de duplas contagens). Nenhuma operação ficou subcontada.' },
+    ],
+  },
+  {
+    versao: '4.9.1',
+    data: '2026-06-04T15:22',
+    itens: [
+      { tipo: 'correcao', texto: 'Corrigida a leitura da coluna "Operação Própria" na importação de Vendas, que vinha sendo descartada por uma diferença de acentuação no arquivo do ERP. A leitura agora tolera variações de acento e maiúsculas, e avisa quando uma coluna não é reconhecida.' },
+      { tipo: 'correcao', texto: 'Três casamentos apareciam no ano errado na Carteira por usarem a data de outro contrato de nome parecido. Agora a data do evento vem sempre do contrato correto.' },
+    ],
+  },
+  {
+    versao: '4.9.0',
+    data: '2026-06-03T17:14',
+    itens: [
+      { tipo: 'correcao', texto: 'A Carteira deixou de "adivinhar" o ano do evento a partir do nome da operação: agora usa apenas a data real do contrato e, quando ela falta, mostra "sem data" — sinalizando cadastro incompleto em vez de exibir um ano incorreto.' },
+      { tipo: 'correcao', texto: 'Corrigida a importação do Fluxo de Caixa Gerencial, que invertia dia e mês de algumas datas (cerca de 143 registros acertados); o mês passa a aparecer corretamente.' },
+      { tipo: 'novidade', texto: 'Novos indicadores no gráfico de Fluxo de Caixa Mensal de Weddings: total a receber e total a pagar ainda pendentes.' },
+      { tipo: 'melhoria', texto: 'Valores de operações individuais (Lista de Operações e detalhamento) passam a exibir 2 casas decimais; agregados seguem em formato abreviado (ex.: "R$ 1,8 Mi").' },
+    ],
+  },
+  {
+    versao: '4.8.2',
+    data: '2026-06-02T17:13',
+    itens: [
+      { tipo: 'melhoria', texto: 'Ajustes visuais e de formatação em vários cartões de Weddings: "Próximos Casamentos" com data em formato amigável e sem rolagem lateral; detalhamento da operação com o Fluxo de Caixa reorganizado; Carteira simplificada para Casamentos.' },
+      { tipo: 'correcao', texto: 'Corrigido um erro ao ordenar a Lista de Operações por Duração, Contrato ou Convidados.' },
+    ],
+  },
+  {
+    versao: '4.8.1',
+    data: '2026-06-01T17:41',
+    itens: [
+      { tipo: 'novidade', texto: 'Cartões clicáveis ganham um indicador visual: ao passar o mouse, a borda e o "Ver mais" assumem a cor da aba, deixando claro que o cartão abre um detalhamento.' },
+      { tipo: 'melhoria', texto: 'Refinos nos detalhamentos de Weddings: comparação com o ano anterior num único gráfico (faturamento e receita) e caixa acumulado com entradas e saídas separadas, marcando o dia de hoje.' },
+    ],
+  },
+  {
+    versao: '4.8.0',
+    data: '2026-06-01T16:38',
+    itens: [
+      { tipo: 'melhoria', texto: 'Área de importação de dados unificada e mais segura: as quatro bases passam a ficar numa única tela, cada uma avisando que a importação substitui toda a base e mostrando a contagem de registros antes e depois.' },
+      { tipo: 'melhoria', texto: 'Padronização visual de todos os gráficos da plataforma (eixos, grades, legendas e linhas), base para uma aparência consistente.' },
+      { tipo: 'melhoria', texto: 'Detalhamento da operação de Weddings reformulado; removidos blocos baseados em dados pouco confiáveis (Equação Financeira/Custos Internos).' },
+    ],
+  },
+  {
+    versao: '4.7.1',
+    data: '2026-05-31T19:31',
+    itens: [
+      { tipo: 'melhoria', texto: 'Lista de Operações de Weddings enxugada a pedido da diretoria: removidas colunas de custo intermediário; "Receita Líquida" renomeada para "Resultado Previsto" e "Margem Líquida" para "Margem" (refletido também na exportação para Excel).' },
+      { tipo: 'melhoria', texto: 'O cartão comercial de Weddings passa a destacar o número de contratos de casamento vendidos no período (com comparação ao ano anterior), em vez do faturamento.' },
+    ],
+  },
+  {
+    versao: '4.7.0',
+    data: '2026-05-29T11:34',
+    itens: [
+      { tipo: 'correcao', texto: 'Reativada a importação da planilha do Fluxo de Caixa Gerencial, que estava indisponível — agora funciona de ponta a ponta, aceitando formatos brasileiro e americano de valores e datas.' },
+      { tipo: 'novidade', texto: 'Novo detalhamento "Análise Histórica" no cartão principal de Weddings, com a evolução de faturamento e receita por subsetor.' },
+      { tipo: 'correcao', texto: 'Corrigido um erro de soma na Composição dos Lançamentos que duplicava grupos de categoria e gerava totais incorretos.' },
+    ],
+  },
+  {
+    versao: '4.6.1',
+    data: '2026-05-29T07:12',
+    itens: [
+      { tipo: 'melhoria', texto: 'Logos do Welcome Group e Welcome Weddings em alta resolução e novos ícones do aplicativo no navegador; corrigido o corte do logo na barra lateral.' },
+    ],
+  },
+  {
+    versao: '4.6.0',
+    data: '2026-05-29T07:12',
+    itens: [
+      { tipo: 'novidade', texto: 'Nova seção Fluxo de Caixa Gerencial, baseada na planilha de previsão curada manualmente, com projeção diária de saldo e base editável na própria tela.' },
+      { tipo: 'novidade', texto: 'Importação da planilha de curadoria com prévia das diferenças (o que será adicionado, removido ou alterado) antes de confirmar; saldos iniciais por conta ajustáveis.' },
+    ],
+  },
+  {
+    versao: '4.5.0',
+    data: '2026-05-28T15:12',
+    itens: [
+      { tipo: 'melhoria', texto: 'Cartões de subsetor de Weddings passam a exibir comparação com o ano anterior em Faturamento, Receita e Margem.' },
+      { tipo: 'melhoria', texto: 'Lista "Próximos Lançamentos" reformulada em tabela com filtros (Todos / A receber / A pagar) e ordenação por coluna.' },
+      { tipo: 'correcao', texto: 'Corrigido o cálculo de duração de operações de Weddings, que podia exibir valores negativos.' },
+    ],
+  },
+  {
+    versao: '4.4.0',
+    data: '2026-05-28T11:01',
+    itens: [
+      { tipo: 'novidade', texto: 'Indicadores de Weddings reformulados: um cartão principal (Faturamento, Receita e Margem) clicável que abre um detalhamento rico — evolução, comparação com o ano anterior, tendência de margem e composição por subsetor — mais cinco cartões por subsetor.' },
+      { tipo: 'novidade', texto: 'Calendário de Liquidez redesenhado como mapa de calor, com a intensidade da cor proporcional ao saldo do dia.' },
+      { tipo: 'melhoria', texto: 'A versão completa da plataforma passa a aparecer na barra lateral, com histórico de versões registrado.' },
+    ],
+  },
+  {
+    versao: '4.3.0',
+    data: '2026-05-27T17:41',
+    itens: [
+      { tipo: 'melhoria', texto: 'Fluxo de Caixa reorganizado em duas seções recolhíveis (visão geral do período e visão diária), com indicadores de Entradas, Saídas e Resultado de caixa reposicionados.' },
+      { tipo: 'novidade', texto: 'Novo Calendário de Liquidez: entradas, saídas e saldo por dia, navegável por mês e com detalhamento ao clicar em um dia, ao lado de uma lista de "Próximos Lançamentos".' },
+    ],
+  },
+  {
+    versao: '4.2.0',
+    data: '2026-05-27T08:55',
+    itens: [
+      { tipo: 'novidade', texto: 'A pedido da gestão de Weddings, a tabela "Próximos Casamentos a Entregar" passa a mostrar o Resultado Previsto de cada operação.' },
+      { tipo: 'novidade', texto: 'Lista de Operações enriquecida com novas colunas (Tipo de Contrato, Passageiros e Convidados), filtro de período, duração, paginação e exportação para Excel.' },
+      { tipo: 'correcao', texto: 'Corrigido um erro na Composição por Subsetor que exibia percentuais acima de 100%, mais ajustes solicitados na revisão com a gestão.' },
+    ],
+  },
+  {
+    versao: '4.1.0',
+    data: '2026-05-27T08:55',
+    itens: [
+      { tipo: 'melhoria', texto: 'Fluxo de Caixa reformulado para refletir melhor o caixa bancário: gastos no cartão passam a ser contabilizados quando a fatura é efetivamente paga, respondendo com mais precisão a "quanto saiu da conta neste mês?".' },
+      { tipo: 'correcao', texto: 'Corrigido o cadastro de contas bancárias que estava incompleto e deixava cerca de R$ 512 mil em entradas de fora dos cálculos; novas contas vindas do ERP passam a ser incorporadas automaticamente.' },
+      { tipo: 'novidade', texto: 'Tela "Próximos Vencimentos" reconstruída a partir das Contas a Pagar/Receber, com tipo e faixa de atraso corretos.' },
+    ],
+  },
+  {
+    versao: '4.0.0',
+    data: '2026-05-23T15:42',
+    itens: [
+      { tipo: 'novidade', texto: 'Marco inicial da área Financeiro: primeira versão do Fluxo de Caixa, com Entradas e Saídas realizadas, Saldo líquido e valores a receber em aberto.' },
+      { tipo: 'novidade', texto: 'Novas visões no Fluxo de Caixa: fluxo mensal, composição do período por categoria, posição por conta bancária e títulos em aberto por faixa de atraso.' },
+      { tipo: 'correcao', texto: 'Em Weddings, operações de Diárias/Pacote passam a exibir corretamente o hotel, que antes ficava em branco.' },
+    ],
+  },
+]
