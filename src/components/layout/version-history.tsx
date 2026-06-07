@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Sparkles, Wrench, TrendingUp, type LucideIcon } from 'lucide-react'
 import { APP_VERSION } from '@/lib/version'
 import { fmtDataHora } from '@/lib/fmt'
@@ -15,39 +16,19 @@ const TIPO_META: Record<ChangelogTipo, { label: string; Icon: LucideIcon; bg: st
   melhoria: { label: 'Melhoria', Icon: TrendingUp,  bg: 'var(--neutral-soft)',  color: 'var(--text-secondary)' },
 }
 
-// Marca "sunburst" do Claude (aproximação), monocromática em currentColor.
-function ClaudeLogo({ size = 13 }: { size?: number }) {
-  const rays = 12
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0">
-      {Array.from({ length: rays }).map((_, i) => {
-        const a = (i / rays) * Math.PI * 2
-        const inner = 2.2
-        const outer = i % 2 === 0 ? 10 : 7.4
-        return (
-          <line
-            key={i}
-            x1={12 + Math.cos(a) * inner}
-            y1={12 + Math.sin(a) * inner}
-            x2={12 + Math.cos(a) * outer}
-            y2={12 + Math.sin(a) * outer}
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-          />
-        )
-      })}
-    </svg>
-  )
-}
-
 export default function VersionHistory() {
   const [open, setOpen] = useState(false)
 
   const poweredBy = (
-    <span className="inline-flex items-center gap-1 text-[11px] italic text-zinc-400">
-      <ClaudeLogo />
-      powered by Claude Code
+    <span className="inline-flex items-center gap-1.5 text-[11px] italic text-zinc-400">
+      powered by
+      <Image
+        src="/logos/claude-seeklogo.svg"
+        alt="Claude"
+        width={58}
+        height={12}
+        className="inline-block translate-y-px"
+      />
     </span>
   )
 
