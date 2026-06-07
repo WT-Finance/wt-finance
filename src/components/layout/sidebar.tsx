@@ -35,9 +35,11 @@ interface SidebarContentProps {
 interface WelcomeGroupLogoProps {
   src: string
   alt: string
+  /** Recolore o logo para a cor da aba (var(--brand)) via máscara CSS. */
+  recolor?: boolean
 }
 
-function WelcomeGroupLogo({ src, alt }: WelcomeGroupLogoProps) {
+function WelcomeGroupLogo({ src, alt, recolor }: WelcomeGroupLogoProps) {
   const [imgError, setImgError] = useState(false)
 
   useEffect(() => { setImgError(false) }, [src])
@@ -58,14 +60,36 @@ function WelcomeGroupLogo({ src, alt }: WelcomeGroupLogoProps) {
   return (
     <div className="flex-1 min-w-0 flex flex-col items-center">
       <div className="relative h-10 w-full">
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          priority
-          className="object-contain object-left scale-[0.9] origin-left"
-          onError={() => setImgError(true)}
-        />
+        {recolor ? (
+          // Logo recolorido para a cor da aba: SVG como máscara + backgroundColor
+          // var(--brand) (resolve via [data-theme] no <html>). Mesma técnica do
+          // "powered by Claude" no modal de versões.
+          <div
+            role="img"
+            aria-label={alt}
+            className="absolute inset-0 scale-[0.9] origin-left"
+            style={{
+              backgroundColor: 'var(--brand)',
+              WebkitMaskImage: `url(${src})`,
+              maskImage: `url(${src})`,
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskSize: 'contain',
+              maskSize: 'contain',
+              WebkitMaskPosition: 'left center',
+              maskPosition: 'left center',
+            }}
+          />
+        ) : (
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            priority
+            className="object-contain object-left scale-[0.9] origin-left"
+            onError={() => setImgError(true)}
+          />
+        )}
       </div>
       <div className="flex items-baseline gap-1 mt-4">
         <span className="text-[14px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
@@ -84,6 +108,8 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
     pathname.startsWith('/performance/trips')       ? { logoSrc: '/logos/welcome-trips.svg',    logoAlt: 'Welcome Trips' }       :
     pathname.startsWith('/performance/corporativo') ? { logoSrc: '/logos/welcome-corp.svg',     logoAlt: 'Welcome Corporativo' } :
                                                       { logoSrc: '/logos/welcome-group.svg',    logoAlt: 'Welcome Group' }
+  // Corp: logo recolorido para a cor principal da aba (#0D5257).
+  const logoRecolor = pathname.startsWith('/performance/corporativo')
   const [perfOpen, setPerfOpen]             = useState(true)
   const [financeiroOpen, setFinanceiroOpen] = useState(true)
 
@@ -127,7 +153,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
       <div className="px-5 py-3 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} />
+        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} recolor={logoRecolor} />
         {onCollapse && (
           <button
             onClick={onCollapse}
