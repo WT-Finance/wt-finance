@@ -78,10 +78,12 @@ function WelcomeGroupLogo({ src, alt }: WelcomeGroupLogoProps) {
 function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
   const isFinanceiroActive  = pathname.startsWith('/financeiro')
-  const logoSrc = pathname.startsWith('/performance/weddings')
-    ? '/logos/welcome-weddings.svg'
-    : '/logos/welcome-group.svg'
-  const logoAlt = pathname.startsWith('/performance/weddings') ? 'Welcome Weddings' : 'Welcome Group'
+  // Logo por aba: cada área de Performance tem a sua identidade; fora delas, o Welcome Group.
+  const { logoSrc, logoAlt } =
+    pathname.startsWith('/performance/weddings')    ? { logoSrc: '/logos/welcome-weddings.svg', logoAlt: 'Welcome Weddings' }    :
+    pathname.startsWith('/performance/trips')       ? { logoSrc: '/logos/welcome-trips.svg',    logoAlt: 'Welcome Trips' }       :
+    pathname.startsWith('/performance/corporativo') ? { logoSrc: '/logos/welcome-corp.svg',     logoAlt: 'Welcome Corporativo' } :
+                                                      { logoSrc: '/logos/welcome-group.svg',    logoAlt: 'Welcome Group' }
   const [perfOpen, setPerfOpen]             = useState(true)
   const [financeiroOpen, setFinanceiroOpen] = useState(true)
 
