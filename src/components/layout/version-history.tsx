@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { Sparkles, Wrench, TrendingUp, type LucideIcon } from 'lucide-react'
 import { APP_VERSION } from '@/lib/version'
 import { fmtDataHora } from '@/lib/fmt'
@@ -19,15 +18,28 @@ const TIPO_META: Record<ChangelogTipo, { label: string; Icon: LucideIcon; bg: st
 export default function VersionHistory() {
   const [open, setOpen] = useState(false)
 
+  // Logo do Claude recolorido para o mesmo cinza do "powered by": o SVG é usado
+  // como máscara CSS e a cor vem de backgroundColor: currentColor (herda text-zinc-400).
   const poweredBy = (
     <span className="inline-flex items-center gap-1.5 text-[11px] italic text-zinc-400">
       powered by
-      <Image
-        src="/logos/claude-seeklogo.svg"
-        alt="Claude"
-        width={58}
-        height={12}
-        className="inline-block translate-y-px"
+      <span
+        role="img"
+        aria-label="Claude"
+        className="inline-block not-italic shrink-0"
+        style={{
+          width: 44,
+          height: 9.5,
+          backgroundColor: 'currentColor',
+          WebkitMaskImage: 'url(/logos/claude-seeklogo.svg)',
+          maskImage: 'url(/logos/claude-seeklogo.svg)',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+          WebkitMaskPosition: 'center',
+          maskPosition: 'center',
+        }}
       />
     </span>
   )
