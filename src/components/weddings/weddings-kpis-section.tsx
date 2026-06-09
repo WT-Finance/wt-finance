@@ -14,6 +14,21 @@ interface Props {
   benchmarks: Benchmarks
 }
 
+// ── Helpers de formatação YoY (nível de módulo) ──────────────────────────────
+
+const yoyColor = (v: number) => v >= 0 ? 'var(--positive)' : 'var(--negative)'
+const fmtPct   = (v: number) => `${v >= 0 ? '↑' : '↓'}${Math.abs(v).toFixed(1)}%`
+const fmtPp    = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} p.p.`
+
+// Coluna YoY — extraída para o nível do módulo (não criar componentes durante o
+// render). `hasYoy` controla o placeholder que mantém o alinhamento das colunas.
+function YoyCol({ val, fmt, hasYoy }: { val: number | null; fmt: (v: number) => string; hasYoy: boolean }) {
+  if (val != null) {
+    return <span className="text-[9px] tabular-nums w-[56px] text-right shrink-0" style={{ color: yoyColor(val) }}>{fmt(val)}</span>
+  }
+  return hasYoy ? <span className="w-[56px] shrink-0" /> : null
+}
+
 // ── Subcomponentes inline ────────────────────────────────────────────────────
 
 function SubsetorCard({
@@ -53,10 +68,6 @@ function SubsetorCard({
 
   const hasYoy = yoyPrincipalPct != null || yoyRecPct != null || yoyMargemPp != null
 
-  const yoyColor = (v: number) => v >= 0 ? 'var(--positive)' : 'var(--negative)'
-  const fmtPct   = (v: number) => `${v >= 0 ? '↑' : '↓'}${Math.abs(v).toFixed(1)}%`
-  const fmtPp    = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)} p.p.`
-
   if (!data) {
     return (
       <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
@@ -68,11 +79,6 @@ function SubsetorCard({
       </div>
     )
   }
-
-  const YoyCol = ({ val, fmt }: { val: number | null; fmt: (v: number) => string }) =>
-    val != null
-      ? <span className="text-[9px] tabular-nums w-[56px] text-right shrink-0" style={{ color: yoyColor(val) }}>{fmt(val)}</span>
-      : hasYoy ? <span className="w-[56px] shrink-0" /> : null
 
   return (
     <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
@@ -100,7 +106,7 @@ function SubsetorCard({
             fmtMi(data.faturamento)
           )}
         </p>
-        <YoyCol val={yoyPrincipalPct} fmt={fmtPct} />
+        <YoyCol val={yoyPrincipalPct} fmt={fmtPct} hasYoy={hasYoy} />
       </div>
 
       <div className="h-px bg-zinc-100 mt-auto mb-1.5" />
@@ -109,7 +115,7 @@ function SubsetorCard({
       <div className="flex items-baseline gap-1">
         <span className="text-[10px] text-zinc-400 shrink-0">Receita</span>
         <span className="text-[10px] font-medium tabular-nums text-zinc-600 flex-1 text-right">{fmtMi(data.receita)}</span>
-        <YoyCol val={yoyRecPct} fmt={fmtPct} />
+        <YoyCol val={yoyRecPct} fmt={fmtPct} hasYoy={hasYoy} />
       </div>
 
       {/* Margem */}
@@ -118,7 +124,7 @@ function SubsetorCard({
         <span className={`text-[10px] font-semibold tabular-nums flex-1 text-right ${margemColor(data.margem_pct)}`}>
           {data.margem_pct.toFixed(1)}%
         </span>
-        <YoyCol val={yoyMargemPp} fmt={fmtPp} />
+        <YoyCol val={yoyMargemPp} fmt={fmtPp} hasYoy={hasYoy} />
       </div>
     </div>
   )
@@ -131,26 +137,33 @@ function SubsetorCard({
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) {
+  void _benchmarks
   const { from, to, antFrom, antTo, yoyFrom, yoyTo } = usePeriodoFilter()
 
   const [kpis, setKpis]               = useState<ExecutivaKpis | null>(null)
   const [sumario, setSumario]         = useState<SumarioSubsetor | null>(null)
   const [sumarioYoy, setSumarioYoy]   = useState<SumarioSubsetor | null>(null)
-  const [loading, setLoading]         = useState(true)
+  // `loadedKey` é a combinação de filtros à qual os dados em estado correspondem.
+  // `loading` é DERIVADO (chave atual ≠ chave carregada) em vez de um setState
+  // síncrono no corpo do effect — mantém o mesmo comportamento visual (skeleton
+  // enquanto a busca da chave corrente não retornou).
+  const [loadedKey, setLoadedKey]     = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen]   = useState(false)
+
+  const currentKey = `${from}|${to}|${antFrom}|${antTo}|${yoyFrom}|${yoyTo}`
+  const loading = loadedKey !== currentKey || !kpis
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
     fetchWeddingsKpis(from, to, antFrom, antTo, yoyFrom, yoyTo).then(data => {
       if (cancelled) return
       setKpis(data.kpis)
       setSumario(data.sumario)
       setSumarioYoy(data.sumarioYoy)
-      setLoading(false)
+      setLoadedKey(currentKey)
     })
     return () => { cancelled = true }
-  }, [from, to, antFrom, antTo, yoyFrom, yoyTo])
+  }, [from, to, antFrom, antTo, yoyFrom, yoyTo, currentKey])
 
   const subsetores    = sumario?.subsetores ?? []
   const subsetoresYoy = sumarioYoy?.subsetores ?? []

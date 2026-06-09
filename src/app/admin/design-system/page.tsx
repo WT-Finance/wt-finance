@@ -368,8 +368,8 @@ export default function DesignSystemPage() {
         <div className="text-xs text-[var(--text-muted)] space-y-1">
           <p>Exemplos em produção:</p>
           <ul className="list-disc pl-4 space-y-0.5">
-            <li>Próximos Lançamentos — <code className="bg-zinc-100 px-1 rounded">subtitulo="Próximos lançamentos de contas a pagar e a receber."</code></li>
-            <li>Próximos Casamentos a Entregar — <code className="bg-zinc-100 px-1 rounded">subtitulo="Listagem dos próximos casamentos a entregar"</code></li>
+            <li>Próximos Lançamentos — <code className="bg-zinc-100 px-1 rounded">subtitulo=&quot;Próximos lançamentos de contas a pagar e a receber.&quot;</code></li>
+            <li>Próximos Casamentos a Entregar — <code className="bg-zinc-100 px-1 rounded">subtitulo=&quot;Listagem dos próximos casamentos a entregar&quot;</code></li>
           </ul>
         </div>
         <p className="text-xs text-[var(--text-muted)] mt-3">

@@ -25,6 +25,8 @@ interface Props {
 
 // OCULTADO v4.8.2 — cards de diagnóstico (Vendas em Aberto / Receita Negativa)
 // mantidos no código para possível retorno; basta alternar a flag para true.
+// MANTIDA (F12, v4.12): DESTRAVA = decisão da gestão de Weddings de reexpor o
+// diagnóstico na visão principal (hoje esses cards vivem ativos em Trips/Corp).
 const MOSTRAR_VENDAS_DIAGNOSTICO = false
 
 export default async function WeddingsContent({ searchParams: sp }: Props) {

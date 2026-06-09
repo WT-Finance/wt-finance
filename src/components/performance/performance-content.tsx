@@ -15,10 +15,11 @@ import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { unwrapRpc, unwrapRpcComErro } from '@/lib/rpc'
+import { parseRpc, mixProdutoSchema } from '@/lib/schemas-rpc'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, CagrData, RankingVendedorItem,
+  PrejuizosDetalhe, CagrData, RankingVendedorItem,
   VendasEmAberto, VendasReceitaNegativa,
 } from '@/types/api'
 
@@ -48,8 +49,9 @@ interface Props {
 }
 
 // v4.10/M7: CAGR ocultado por ora via flag (código + RPC mantidos, como Posição
-// por Conta). Pendência: depende do horizonte de dado confiável por setor e do
-// entendimento da diretoria sobre a métrica (taxa alisada, sensível a histórico curto).
+// por Conta). MANTIDA (F12, v4.12). DESTRAVA = horizonte de dado confiável por
+// setor + entendimento da diretoria sobre a métrica (taxa alisada, sensível a
+// histórico curto).
 const MOSTRAR_CAGR = false
 
 // v4.10.1: layout Trips/Corp no padrão de Weddings (uma única seção "Visão Geral"
@@ -58,6 +60,8 @@ const MOSTRAR_CAGR = false
 // de Margem e Prejuízos (margem negativa) — saíram da visão por decisão do usuário,
 // mas o código (fetch + JSX) é mantido recuperável atrás desta flag. A Tendência
 // de Margem segue acessível dentro do drawer rico (card KPI → "Ver mais").
+// MANTIDA (F12, v4.12). DESTRAVA = aba Geral (v5.0), onde Mix por Setor
+// (breakdown cross-setor) volta a fazer sentido.
 const MOSTRAR_SECOES_LEGADAS = false
 
 export default async function PerformanceContent({ setor, searchParams: sp }: Props) {
@@ -105,7 +109,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   const { data: kpis, erro: kpisErro } = unwrapRpcComErro<ExecutivaKpis>(kpisRes, 'get_executiva_kpis')
   const mix        = unwrapRpc<MixSetor>(mixRes, 'get_mix_setor')
   const tendencia  = unwrapRpc<TendenciaMargem>(tendRes, 'get_tendencia_margem')
-  const produtos   = unwrapRpc<MixProduto>(prodRes, 'get_mix_produto')
+  const produtos   = parseRpc(mixProdutoSchema, prodRes, 'get_mix_produto') // F7: valida shape
   const prejuizos  = unwrapRpc<PrejuizosDetalhe>(prejRes, 'get_prejuizos')
   const cagr       = unwrapRpc<CagrData>(cagrRes, 'get_cagr')
   const vendasAberto    = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto')

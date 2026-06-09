@@ -1,5 +1,10 @@
 # Bugs Resolvidos
 
+> **Legado / congelado (até v3.x).** Correções recentes ficam no
+> [`CHANGELOG.md`](../CHANGELOG.md) da raiz (seção "Corrigido") e nos out-briefings
+> por versão (`docs/briefings/`). Este arquivo preserva o histórico antigo e **não
+> recebe novas entradas**. (F13, v4.12.)
+
 Registro de bugs investigados e resolvidos (ou deliberadamente adiados) no WT Finance Dashboard.
 
 ---
