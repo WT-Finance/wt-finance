@@ -109,6 +109,11 @@ export default function VendasEmAbertoCard({ data }: Props) {
               <Linhas itens={vendas} />
             </tbody>
           </table>
+          {data.total > vendas.length && (
+            <p className="mt-3 text-xs text-[--text-muted]">
+              Mostrando as {vendas.length} mais recentes de {data.total}.
+            </p>
+          )}
         </ListDrawer>
       )}
     </CardTabela>

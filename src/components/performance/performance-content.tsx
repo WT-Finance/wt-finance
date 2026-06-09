@@ -11,60 +11,30 @@ import TopVendedoresCard from '@/components/performance/top-vendedores-card'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import TopSection from '@/components/shared/top-section'
+import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
+import { unwrapRpc, unwrapRpcComErro } from '@/lib/rpc'
+import { parseRpc, mixProdutoSchema } from '@/lib/schemas-rpc'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
-  MixProduto, PrejuizosDetalhe, CagrData, RankingVendedorItem,
+  PrejuizosDetalhe, CagrData, RankingVendedorItem,
   VendasEmAberto, VendasReceitaNegativa,
 } from '@/types/api'
 
-// v4.10/M5: Top Vendedores. A RPC get_ranking_vendedores é MENSAL (p_ano, p_mes);
-// para respeitar o período (range), enumeramos os meses do intervalo (capados no
-// mês atual) e agregamos por vendedor. As chamadas são paralelas (Promise.all),
-// sobre uma MV pré-computada → custo ≈ uma ida ao banco. Reusa a RPC existente
-// (sem RPC nova). Limite alto por mês (100) para o ranking do período ser exato.
-function mesesNoIntervalo(from: string, to: string): { ano: number; mes: number }[] {
-  const [fy, fm] = from.split('-').map(Number)
-  const [ty, tm] = to.split('-').map(Number)
-  const now = new Date()
-  const capY = now.getFullYear()
-  const capM = now.getMonth() + 1
-  const meses: { ano: number; mes: number }[] = []
-  let y = fy, m = fm
-  while ((y < ty || (y === ty && m <= tm)) && meses.length <= 36) {
-    if (y < capY || (y === capY && m <= capM)) meses.push({ ano: y, mes: m })
-    m++; if (m > 12) { m = 1; y++ }
-  }
-  return meses
-}
-
+// v4.12/M4 (F3): Top Vendedores em UMA chamada. get_ranking_vendedores_range
+// (migration 0117) agrega o intervalo de meses NO BANCO — fim do fan-out mensal
+// (até 36 chamadas) da v4.10. Limite alto (100) para o ranking do período ser exato.
 async function fetchTopVendedores(
   db: ReturnType<typeof getServerClient>,
   from: string, to: string, setor: string,
 ): Promise<RankingVendedorItem[]> {
-  const meses = mesesNoIntervalo(from, to)
-  if (meses.length === 0) return []
-  const results = await Promise.all(
-    meses.map(({ ano, mes }) =>
-      db.rpc('get_ranking_vendedores', { p_ano: ano, p_mes: mes, p_setor: setor, p_limite: 100 }),
-    ),
-  )
-  const acc = new Map<number, RankingVendedorItem>()
-  for (const r of results) {
-    const rows = (r.error ? [] : (r.data as unknown as RankingVendedorItem[])) ?? []
-    for (const v of rows) {
-      const cur = acc.get(v.vendedor_id) ?? {
-        vendedor_id: v.vendedor_id, nome: v.nome, valor_total: 0, receitas: 0, vendas_count: 0,
-      }
-      cur.valor_total  += v.valor_total
-      cur.receitas     += v.receitas
-      cur.vendas_count += v.vendas_count
-      acc.set(v.vendedor_id, cur)
-    }
-  }
-  return [...acc.values()].sort((a, b) => b.valor_total - a.valor_total)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await (db.rpc as any)('get_ranking_vendedores_range', {
+    p_from: from, p_to: to, p_setor: setor, p_limite: 100,
+  })
+  return unwrapRpc<RankingVendedorItem[]>(res, 'get_ranking_vendedores_range') ?? []
 }
 
 interface PeriodoSearchParams {
@@ -79,8 +49,9 @@ interface Props {
 }
 
 // v4.10/M7: CAGR ocultado por ora via flag (código + RPC mantidos, como Posição
-// por Conta). Pendência: depende do horizonte de dado confiável por setor e do
-// entendimento da diretoria sobre a métrica (taxa alisada, sensível a histórico curto).
+// por Conta). MANTIDA (F12, v4.12). DESTRAVA = horizonte de dado confiável por
+// setor + entendimento da diretoria sobre a métrica (taxa alisada, sensível a
+// histórico curto).
 const MOSTRAR_CAGR = false
 
 // v4.10.1: layout Trips/Corp no padrão de Weddings (uma única seção "Visão Geral"
@@ -89,6 +60,8 @@ const MOSTRAR_CAGR = false
 // de Margem e Prejuízos (margem negativa) — saíram da visão por decisão do usuário,
 // mas o código (fetch + JSX) é mantido recuperável atrás desta flag. A Tendência
 // de Margem segue acessível dentro do drawer rico (card KPI → "Ver mais").
+// MANTIDA (F12, v4.12). DESTRAVA = aba Geral (v5.0), onde Mix por Setor
+// (breakdown cross-setor) volta a fazer sentido.
 const MOSTRAR_SECOES_LEGADAS = false
 
 export default async function PerformanceContent({ setor, searchParams: sp }: Props) {
@@ -131,14 +104,16 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
     (db.rpc as any)('get_vendas_receita_negativa', { p_setor: setor, p_from: '2020-01-01', p_to: '2099-12-31' }),
   ])
 
-  const kpis       = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
-  const mix        = mixRes.error   ? null : mixRes.data   as unknown as MixSetor
-  const tendencia  = tendRes.error  ? null : tendRes.data  as unknown as TendenciaMargem
-  const produtos   = prodRes.error  ? null : prodRes.data  as unknown as MixProduto
-  const prejuizos  = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosDetalhe
-  const cagr       = cagrRes.error  ? null : cagrRes.data  as unknown as CagrData
-  const vendasAberto    = vendasAbertoRes?.error ? null : (vendasAbertoRes?.data as VendasEmAberto | undefined) ?? null
-  const receitaNegativa = receitaNegRes?.error   ? null : (receitaNegRes?.data   as VendasReceitaNegativa | undefined) ?? null
+  // F5 (v4.12): erro ≠ vazio. unwrapRpc loga a falha com contexto (sai do silêncio);
+  // o KPI principal usa a flag de erro para mostrar estado discreto em vez de skeleton eterno.
+  const { data: kpis, erro: kpisErro } = unwrapRpcComErro<ExecutivaKpis>(kpisRes, 'get_executiva_kpis')
+  const mix        = unwrapRpc<MixSetor>(mixRes, 'get_mix_setor')
+  const tendencia  = unwrapRpc<TendenciaMargem>(tendRes, 'get_tendencia_margem')
+  const produtos   = parseRpc(mixProdutoSchema, prodRes, 'get_mix_produto') // F7: valida shape
+  const prejuizos  = unwrapRpc<PrejuizosDetalhe>(prejRes, 'get_prejuizos')
+  const cagr       = unwrapRpc<CagrData>(cagrRes, 'get_cagr')
+  const vendasAberto    = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto')
+  const receitaNegativa = unwrapRpc<VendasReceitaNegativa>(receitaNegRes, 'get_vendas_receita_negativa')
 
   const mostrarSetorFilter = setor === 'todos'
 
@@ -163,7 +138,11 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
 
         {/* KPI principal — card único clicável (abre o drawer rico por setor) */}
         <div className="mb-6">
-          {kpis ? (
+          {kpisErro ? (
+            <div className="bg-white rounded-xl shadow-sm px-5 py-8 flex justify-center">
+              <ErroCarregamento />
+            </div>
+          ) : kpis ? (
             <KpiPrincipalCard kpis={kpis} setor={setor} />
           ) : (
             <div className="bg-zinc-100 animate-pulse rounded-xl h-28" />

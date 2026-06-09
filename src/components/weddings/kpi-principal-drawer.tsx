@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getBrowserClient } from '@/lib/supabase/client'
-import { fmtMi } from '@/lib/fmt'
+import { fmtMi, parseLocalDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import type { TendenciaMargem, ExecutivaKpis, SumarioSubsetor } from '@/types/api'
@@ -71,11 +71,14 @@ interface DrawerData {
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
-function toISO(d: Date) { return d.toISOString().slice(0, 10) }
+// toISO LOCAL (por componentes) — pareado com parseLocalDate; sem fuso. (F6, v4.12.)
+function toISO(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function computeAntDates(from: string, to: string) {
-  const fromD = new Date(from)
-  const toD   = new Date(to)
+  const fromD = parseLocalDate(from)
+  const toD   = parseLocalDate(to)
   const ms    = toD.getTime() - fromD.getTime() + 86400000
   const antTo = new Date(fromD.getTime() - 86400000)
   const antFrom = new Date(antTo.getTime() - ms + 86400000)
@@ -83,8 +86,8 @@ function computeAntDates(from: string, to: string) {
 }
 
 function computeYoyDates(from: string, to: string) {
-  const f = new Date(from); f.setFullYear(f.getFullYear() - 1)
-  const t = new Date(to);   t.setFullYear(t.getFullYear() - 1)
+  const f = parseLocalDate(from); f.setFullYear(f.getFullYear() - 1)
+  const t = parseLocalDate(to);   t.setFullYear(t.getFullYear() - 1)
   return { from: toISO(f), to: toISO(t) }
 }
 

@@ -1,5 +1,10 @@
 # Changelog — WT Finance Dashboard
 
+> **Legado / congelado (até v3.8).** O changelog técnico **canônico** é o
+> [`CHANGELOG.md`](../CHANGELOG.md) na raiz (Keep-a-Changelog, v4.4.0+); o histórico
+> em linguagem de negócio (diretoria) é `src/data/changelog-diretoria.ts`. Este
+> arquivo preserva o detalhe das versões v3.x e **não recebe novas entradas**. (F13, v4.12.)
+
 ## v3.8 — Refinamento Visual e Reformulação da Lista de Operações (maio/2026)
 
 ### v3.8-M1 — Cor Corporativo + logo sidebar placeholder

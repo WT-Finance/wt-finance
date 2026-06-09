@@ -32,6 +32,16 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.12.0',
+    data: '2026-06-09T19:02',
+    itens: [
+      { tipo: 'correcao', texto: 'Atualização de dados mais segura: se uma carga de Vendas falhar (ex.: planilha com datas fora do calendário), a base anterior é totalmente preservada — antes uma falha podia deixar os números zerados até a carga seguinte.' },
+      { tipo: 'melhoria', texto: 'Ranking de Top Vendedores mais rápido (uma única consulta ao banco no lugar de várias).' },
+      { tipo: 'melhoria', texto: 'Nova rede de testes automáticos que protege os cálculos (margem, períodos, formatação) e os principais relatórios contra erros introduzidos em mudanças futuras.' },
+      { tipo: 'correcao', texto: 'Mais confiabilidade no que aparece na tela: datas de eventos sem desvio de um dia e, quando um dado não carrega, a tela avisa claramente em vez de parecer "sem dados".' },
+    ],
+  },
+  {
     versao: '4.11.0',
     data: '2026-06-05T17:59',
     itens: [

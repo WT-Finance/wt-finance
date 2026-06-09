@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Search, Download } from 'lucide-react'
 import * as XLSX from '@e965/xlsx'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
-import { fmtDateLong, fmtMeses, numBRL2 } from '@/lib/fmt'
+import { fmtDateLong, fmtMeses, numBRL2, parseLocalDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import EmptyState from '@/components/shared/empty-state'
 
@@ -109,7 +109,7 @@ function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
   const dados = operacoes.map(op => ({
     'Operação / Casal':      op.nome_casal ?? op.operacao,
     'Hotel':                 op.hotel ?? '—',
-    'Data do Evento':        op.data_evento ? new Date(op.data_evento).toLocaleDateString('pt-BR') : '—',
+    'Data do Evento':        op.data_evento ? parseLocalDate(op.data_evento).toLocaleDateString('pt-BR') : '—',
     'Duração (meses)':       duracaoMeses(op.data_venda_contrato, op.data_evento) ?? '—',
     'Contrato':              op.tipo_contrato ?? '—',
     'Conv.':                 op.convidados ?? 0,

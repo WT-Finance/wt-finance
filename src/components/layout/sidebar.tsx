@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -40,9 +40,12 @@ interface WelcomeGroupLogoProps {
 }
 
 function WelcomeGroupLogo({ src, alt, recolor }: WelcomeGroupLogoProps) {
-  const [imgError, setImgError] = useState(false)
-
-  useEffect(() => { setImgError(false) }, [src])
+  // Guarda o `src` que falhou ao carregar, em vez de um booleano. `imgError` é
+  // DERIVADO (o src com erro é o atual?) — assim a troca de `src` "limpa" o erro
+  // sem precisar de setState síncrono num effect de reset. Mesmo comportamento:
+  // um novo logo ganha nova chance de carregar.
+  const [erroredSrc, setErroredSrc] = useState<string | null>(null)
+  const imgError = erroredSrc === src
 
   if (imgError) {
     return (
@@ -87,7 +90,7 @@ function WelcomeGroupLogo({ src, alt, recolor }: WelcomeGroupLogoProps) {
             fill
             priority
             className="object-contain object-left scale-[0.9] origin-left"
-            onError={() => setImgError(true)}
+            onError={() => setErroredSrc(src)}
           />
         )}
       </div>
@@ -110,16 +113,19 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                                                       { logoSrc: '/logos/welcome-group.svg',    logoAlt: 'Welcome Group' }
   // Corp: logo recolorido para a cor principal da aba (#0D5257).
   const logoRecolor = pathname.startsWith('/performance/corporativo')
-  const [perfOpen, setPerfOpen]             = useState(true)
-  const [financeiroOpen, setFinanceiroOpen] = useState(true)
-
-  // Hydrate from localStorage after mount (avoids SSR mismatch)
-  useEffect(() => {
+  // Inicialização preguiçosa a partir do localStorage (com guarda de window para
+  // SSR — no server a função roda e cai no default `true`). Evita o setState
+  // síncrono num useEffect de hidratação; mesmo default e mesma chave de antes.
+  const [perfOpen, setPerfOpen] = useState(() => {
+    if (typeof window === 'undefined') return true
     const stored = localStorage.getItem('sidebar-perf-open')
-    if (stored !== null) setPerfOpen(stored === 'true')
-    const storedFin = localStorage.getItem('sidebar-financeiro-open')
-    if (storedFin !== null) setFinanceiroOpen(storedFin === 'true')
-  }, [])
+    return stored !== null ? stored === 'true' : true
+  })
+  const [financeiroOpen, setFinanceiroOpen] = useState(() => {
+    if (typeof window === 'undefined') return true
+    const stored = localStorage.getItem('sidebar-financeiro-open')
+    return stored !== null ? stored === 'true' : true
+  })
 
   const handlePerfToggle = () => {
     setPerfOpen(prev => {

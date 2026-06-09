@@ -6,6 +6,29 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.12.0] — 2026-06-08
+
+Versão MINOR de saneamento técnico (pós-auditoria v4.11): ingestão de dados resistente a falha, rede de testes automatizados, confiabilidade do dado exibido e fim do fan-out no ranking. F1 (auth) ficou fora por decisão (ver ADR-0029).
+
+### Adicionado
+- **Rede de testes (Vitest)** (M2, ADR-0105): unit dos helpers puros (`fmt`, `periodo`, `decomposicao-variacao`, `normalizeHeader`/`toIsoDate`) + contrato das RPCs críticas via REST (shape + invariantes: soma do Mix ≈ 100, margem ≈ receita/faturamento, vendas ≤ limite). Gate novo `npm test`.
+- **Ingestão atômica de Vendas** (M1, ADR-0104, migration 0116): carga em staging → pré-validação (range de datas vs `dim_data`, contagem) → swap numa única transação (`promover_carga_vendas`). Falha → rollback → a base nunca fica vazia (corrige F2).
+- **`get_ranking_vendedores_range`** (M4, migration 0117): ranking por intervalo agregado no banco.
+- **Estado de erro discreto** (`ErroCarregamento`) e helpers `unwrapRpc`/`parseRpc` (Zod) para distinguir falha de RPC de período vazio.
+
+### Alterado
+- **Top Vendedores em 1 chamada** (M4, F3): fim do fan-out mensal (até 36 chamadas).
+- **erro ≠ vazio** (M3, F5): ~28 desembrulhos de RPC migrados para `unwrapRpc` (erro logado com contexto, não mais silencioso); KPI principal mostra estado de erro em vez de skeleton eterno.
+- **Datas locais** (M3, F6): `parseLocalDate` (parse de `YYYY-MM-DD` sem deslocamento de fuso) em `kpi-principal-drawer`, `proximos-casamentos`, `lista-operacoes`.
+- **Truncamento sinalizado** (M3, F8): drawers de Vendas em Aberto/Receita Negativa mostram "mostrando X de N".
+- **Headers de segurança** (M1, F10): HSTS, X-Frame-Options, nosniff, Referrer-Policy; `bodySizeLimit` 200mb→25mb.
+- **React Compiler** (M5, F9, escopado): zerado em `weddings-kpis-section`, `sidebar`, `design-system` (baseline ~25→13; restante = follow-up).
+- **Validação de shape (Zod)** (M5, F7): padrão `parseRpc` + `get_mix_produto` (semente; demais RPCs críticas = incremental).
+- Flags `MOSTRAR_*` mantidas e documentadas (F12); `docs/changelog.md`/`bugs-resolvidos.md` congelados — `CHANGELOG.md` (raiz) canônico (F13).
+
+### Registro
+- **ADR-0104** (ingestão atômica), **ADR-0105** (estratégia de testes), nota de reavaliação no **ADR-0029** (auth admin mantida conscientemente; F1 fora do escopo).
+
 ## [4.11.0] — 2026-06-05
 
 Versão MINOR: dois acabamentos — (1) padrão unificado de **card-tabela** nas três abas; (2) **histórico de versões** clicável para a diretoria. Sem migration. ADR-0103 estendido (regra de cor de cash-flow), não criado novo.

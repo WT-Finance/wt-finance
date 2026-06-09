@@ -42,6 +42,7 @@ npm run dev               # servidor local (next dev)
 npm run build             # build de produção (next build) — gate de fechamento
 npm run lint              # eslint — gate de fechamento
 npx tsc --noEmit          # typecheck (NÃO existe script dedicado; rodar assim) — gate
+npm test                  # vitest (unit + contrato RPC) — gate de fechamento (v4.12)
 npm run seed              # popular banco (tsx supabase/seed/seed.ts)
 ```
 
@@ -132,7 +133,7 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
 - **Reportar o progresso pelo chat** (sem criar arquivo de relatório).
 
 ### 3. Validação (gate)
-- `npm run build` limpo, `npx tsc --noEmit` zero erros, `npm run lint` sem warnings novos.
+- `npm run build` limpo, `npx tsc --noEmit` zero erros, `npm run lint` sem warnings novos, `npm test` verde.
 - Smoke tests das áreas afetadas.
 
 ### 4. Confirmação
@@ -247,6 +248,7 @@ Uma versão está pronta quando:
 - [ ] `npm run build` limpo
 - [ ] `npx tsc --noEmit` zero erros
 - [ ] `npm run lint` sem warnings novos
+- [ ] `npm test` verde (unit dos helpers + contrato das RPCs críticas) — ADR-0105
 - [ ] Smoke tests das áreas afetadas passando
 - [ ] Migrations aplicadas no remote (com confirmação) e RPCs verificadas via REST
 - [ ] ADRs novos registrados (numeração real verificada)
