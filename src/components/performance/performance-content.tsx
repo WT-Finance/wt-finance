@@ -15,12 +15,18 @@ import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { unwrapRpc, unwrapRpcComErro } from '@/lib/rpc'
-import { parseRpc, mixProdutoSchema } from '@/lib/schemas-rpc'
+import {
+  parseRpc,
+  mixProdutoSchema,
+  tendenciaMargemSchema,
+  rankingVendedoresRangeSchema,
+  vendasEmAbertoSchema,
+  vendasReceitaNegativaSchema,
+} from '@/lib/schemas-rpc'
 import { getBenchmarks } from '@/lib/config'
 import type {
-  ExecutivaKpis, MixSetor, TendenciaMargem,
+  ExecutivaKpis, MixSetor,
   PrejuizosDetalhe, CagrData, RankingVendedorItem,
-  VendasEmAberto, VendasReceitaNegativa,
 } from '@/types/api'
 
 // v4.12/M4 (F3): Top Vendedores em UMA chamada. get_ranking_vendedores_range
@@ -34,7 +40,7 @@ async function fetchTopVendedores(
   const res = await (db.rpc as any)('get_ranking_vendedores_range', {
     p_from: from, p_to: to, p_setor: setor, p_limite: 100,
   })
-  return unwrapRpc<RankingVendedorItem[]>(res, 'get_ranking_vendedores_range') ?? []
+  return parseRpc(rankingVendedoresRangeSchema, res, 'get_ranking_vendedores_range') ?? []
 }
 
 interface PeriodoSearchParams {
@@ -108,12 +114,12 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   // o KPI principal usa a flag de erro para mostrar estado discreto em vez de skeleton eterno.
   const { data: kpis, erro: kpisErro } = unwrapRpcComErro<ExecutivaKpis>(kpisRes, 'get_executiva_kpis')
   const mix        = unwrapRpc<MixSetor>(mixRes, 'get_mix_setor')
-  const tendencia  = unwrapRpc<TendenciaMargem>(tendRes, 'get_tendencia_margem')
+  const tendencia  = parseRpc(tendenciaMargemSchema, tendRes, 'get_tendencia_margem') // F7: valida shape
   const produtos   = parseRpc(mixProdutoSchema, prodRes, 'get_mix_produto') // F7: valida shape
   const prejuizos  = unwrapRpc<PrejuizosDetalhe>(prejRes, 'get_prejuizos')
   const cagr       = unwrapRpc<CagrData>(cagrRes, 'get_cagr')
-  const vendasAberto    = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto')
-  const receitaNegativa = unwrapRpc<VendasReceitaNegativa>(receitaNegRes, 'get_vendas_receita_negativa')
+  const vendasAberto    = parseRpc(vendasEmAbertoSchema, vendasAbertoRes, 'get_vendas_em_aberto') // F7
+  const receitaNegativa = parseRpc(vendasReceitaNegativaSchema, receitaNegRes, 'get_vendas_receita_negativa') // F7
 
   const mostrarSetorFilter = setor === 'todos'
 

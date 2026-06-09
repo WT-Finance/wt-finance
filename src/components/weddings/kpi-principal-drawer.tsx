@@ -5,6 +5,8 @@ import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtMi, parseLocalDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
+import { parseRpc, executivaKpisSchema, tendenciaMargemSchema } from '@/lib/schemas-rpc'
+import type { RpcLike } from '@/lib/rpc'
 import type { TendenciaMargem, ExecutivaKpis, SumarioSubsetor } from '@/types/api'
 import {
   SUBSETOR_ORDER,
@@ -276,7 +278,9 @@ function DrawerBody({ setor }: { setor: string }) {
     // RPCs parametrizadas por setor (herdam a aba). As de subsetor
     // (get_sumario_subsetor / get_weddings_historico_subsetor) são específicas de
     // Weddings — só consultadas quando isWeddings; para Trips/Corp ficam vazias.
-    const promessas: Promise<{ data: unknown }>[] = [
+    // RpcLike (não { data }): parseRpc (F7) precisa do campo `error` que o supabase-js
+    // sempre devolve em runtime, ainda que o tipo da chamada `as any` não o exponha.
+    const promessas: Promise<RpcLike>[] = [
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.rpc as any)('get_tendencia_margem', { p_from, p_to, p_setor: setor }),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -298,9 +302,10 @@ function DrawerBody({ setor }: { setor: string }) {
     Promise.all(promessas).then(([tendRes, yoyRes, kpisRes, sumRes, histRes]) => {
       if (cancelled) return
       setData({
-        tendencia:    (tendRes.data as TendenciaMargem) ?? null,
-        yoyTendencia: (yoyRes.data as TendenciaMargem)  ?? null,
-        kpis:         (kpisRes.data as ExecutivaKpis)   ?? null,
+        // F7 (v4.12.1): valida shape; drift/erro → null (logado em parseRpc).
+        tendencia:    parseRpc(tendenciaMargemSchema, tendRes, 'get_tendencia_margem'),
+        yoyTendencia: parseRpc(tendenciaMargemSchema, yoyRes, 'get_tendencia_margem (yoy)'),
+        kpis:         parseRpc(executivaKpisSchema, kpisRes, 'get_executiva_kpis'),
         sumario:      isWeddings ? ((sumRes?.data as SumarioSubsetor) ?? null) : null,
         historico:    isWeddings ? ((histRes?.data as HistoricoSubsetorRow[]) ?? []) : [],
       })

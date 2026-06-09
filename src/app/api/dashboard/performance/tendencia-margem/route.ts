@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getServerClient } from '@/lib/supabase/server'
-import type { TendenciaMargem } from '@/types/api'
+import { parseRpc, tendenciaMargemSchema } from '@/lib/schemas-rpc'
 
 const schema = z.object({
   from:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -16,9 +16,11 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
   const { from, to, setor } = parsed.data
   const client = getServerClient()
-  const { data, error } = await client.rpc('get_tendencia_margem', {
+  const res = await client.rpc('get_tendencia_margem', {
     p_from: from, p_to: to, p_setor: setor,
   })
-  if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json(data as unknown as TendenciaMargem)
+  // F7 (v4.12.1): valida shape; erro de RPC ou drift de contrato → null (logado em parseRpc).
+  const tendencia = parseRpc(tendenciaMargemSchema, res, 'get_tendencia_margem')
+  if (tendencia === null) return Response.json({ error: 'get_tendencia_margem' }, { status: 500 })
+  return Response.json(tendencia)
 }

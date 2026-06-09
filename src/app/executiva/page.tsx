@@ -12,10 +12,11 @@ import DecomposicaoVariacaoCard from '@/components/executiva/decomposicao-variac
 import PontosAtencaoCard from '@/components/executiva/pontos-atencao-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { unwrapRpc } from '@/lib/rpc'
+import { parseRpc, executivaKpisSchema } from '@/lib/schemas-rpc'
 import { getBenchmarks } from '@/lib/config'
 import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
 import { avaliarTodasRegras } from '@/lib/regras-alerta'
-import type { ExecutivaKpis, MixSetor, PrejuizosSummary, Historico12mSetores, DecomposicaoVariacao } from '@/types/api'
+import type { MixSetor, PrejuizosSummary, Historico12mSetores, DecomposicaoVariacao } from '@/types/api'
 import EmConstrucao from '@/components/shared/em-construcao'
 
 interface SearchParams {
@@ -61,7 +62,7 @@ export default async function ExecutivaPage({
     getBenchmarks(db),
   ])
 
-  const kpis         = unwrapRpc<ExecutivaKpis>(kpisRes, 'get_executiva_kpis')
+  const kpis         = parseRpc(executivaKpisSchema, kpisRes, 'get_executiva_kpis') // F7: valida shape
   const mix          = unwrapRpc<MixSetor>(mixRes, 'get_mix_setor')
   const prejuizos    = unwrapRpc<PrejuizosSummary>(prejRes, 'get_prejuizos')
   const prejuizosAnt = unwrapRpc<PrejuizosSummary>(prejAntRes, 'get_prejuizos (anterior)')

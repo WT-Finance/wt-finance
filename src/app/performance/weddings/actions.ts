@@ -2,7 +2,8 @@
 
 import { getServerClient } from '@/lib/supabase/server'
 import { unwrapRpc } from '@/lib/rpc'
-import type { ExecutivaKpis, TendenciaMargem, MixProduto, SumarioSubsetor } from '@/types/api'
+import { parseRpc, executivaKpisSchema, tendenciaMargemSchema } from '@/lib/schemas-rpc'
+import type { MixProduto, SumarioSubsetor } from '@/types/api'
 
 export async function fetchWeddingsKpis(
   from: string, to: string,
@@ -21,8 +22,8 @@ export async function fetchWeddingsKpis(
     db.rpc('get_sumario_subsetor', { p_from: yoyFrom, p_to: yoyTo }),
   ])
   return {
-    kpis:       unwrapRpc<ExecutivaKpis>(kpisRes, 'get_executiva_kpis'),
-    tendencia:  unwrapRpc<TendenciaMargem>(tendRes, 'get_tendencia_margem'),
+    kpis:       parseRpc(executivaKpisSchema, kpisRes, 'get_executiva_kpis'),       // F7
+    tendencia:  parseRpc(tendenciaMargemSchema, tendRes, 'get_tendencia_margem'),   // F7
     sumario:    unwrapRpc<SumarioSubsetor>(sumarioRes, 'get_sumario_subsetor'),
     sumarioYoy: unwrapRpc<SumarioSubsetor>(sumarioYoyRes, 'get_sumario_subsetor (yoy)'),
   }

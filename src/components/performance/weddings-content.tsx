@@ -13,9 +13,10 @@ import DropdownOperacao from '@/components/weddings/dropdown-operacao'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import { getServerClient } from '@/lib/supabase/server'
 import { unwrapRpc } from '@/lib/rpc'
+import { parseRpc, carteiraWeddingsSchema } from '@/lib/schemas-rpc'
 import { getBenchmarks } from '@/lib/config'
 import type {
-  CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
+  ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
   OperacoesLista, VendasReceitaNegativa,
 } from '@/types/api'
 
@@ -48,7 +49,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_vendas_prejuizo_weddings', { p_from: '2020-01-01', p_to: '2099-12-31' }),
   ])
 
-  const cartCas       = unwrapRpc<CarteiraWeddings>(cartCasRes, 'get_carteira_weddings')
+  const cartCas       = parseRpc(carteiraWeddingsSchema, cartCasRes, 'get_carteira_weddings') // F7
   const proximos      = unwrapRpc<ProximosCasamentos>(proximosRes, 'get_proximos_casamentos')
   const acumulado     = unwrapRpc<AcumuladoWeddings>(acumuladoRes, 'get_acumulado_weddings')
   const vendasAberto  = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto_weddings')
