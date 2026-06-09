@@ -25,3 +25,7 @@ A v3.4 mantém o dashboard público (sem login), como todas as versões anterior
 - Qualquer pessoa com a URL pode fazer upload. Mitigação: URL não está na navegação, fluxo tem confirmação explícita.
 - Quando v4 implementar login, `/admin/uploads` **será protegida automaticamente** pelo proxy de autenticação — sem precisar de mudança no código da página.
 - Esta decisão deve ser revisada se o dashboard se tornar mais público antes de v4 chegar.
+
+## Reavaliação — junho/2026 (pós-auditoria, v4.12)
+
+A auditoria técnica pós-v4.11 (achado F1) reapontou o risco: as rotas de upload (`/admin/uploads` e as API Routes `upload-vendas`/`upload-lancamentos`/`gerencial/import`) substituem toda a base e **não têm autenticação** (não há middleware nem checagem de identidade no projeto). Reavaliado conscientemente e **mantido** por ora: produto interno, URL não-linkada na navegação, fluxo com preview/confirmação antes de executar, e — desde a v4.12 — **ingestão atômica** (ADR-0104) que impede que uma carga deixe a base vazia. **Revisitar** assim que a exposição mudar (ex.: domínio público, mais usuários) — endurecer auth/admin permanece a frente recomendada. (F1 ficou **fora** do escopo da v4.12 por decisão do usuário.)

@@ -166,33 +166,43 @@ export async function carregarVendas(
     }
   }
 
-  const { error: truncErr } = await bound('truncate_dynamic_tables')
-  if (truncErr) return erroResult(totalAntes, `Erro ao truncar tabelas: ${truncErr.message}`)
+  // ── Ingestão ATÔMICA (v4.12/M1, ADR-0104): staging → validação → swap ──────────
+  // A base de leitura só é tocada dentro de promover_carga_vendas (transação única).
+  // Qualquer falha (validação ou transform) deixa a base ATUAL intacta.
 
+  // 1. Carrega o raw novo na STAGING (não-destrutivo).
+  const { error: limpErr } = await bound('limpar_staging_vendas')
+  if (limpErr) return erroResult(totalAntes, `Erro ao preparar a carga: ${limpErr.message}`)
+
+  const BATCH = 500
+  let inseridas = 0
+  for (let i = 0; i < linhas.length; i += BATCH) {
+    const { error } = await bound('inserir_lote_staging', { p_linhas: linhas.slice(i, i + BATCH) })
+    if (error) return erroResult(totalAntes, `Erro no batch ${Math.floor(i / BATCH) + 1}: ${error.message}`)
+    inseridas += Math.min(BATCH, linhas.length - i)
+  }
+
+  // 2. Pré-validação ANTES de qualquer destruição (range de datas vs dim_data, contagem).
+  const { data: valData, error: valErr } = await bound('validar_carga_staging')
+  if (valErr) return erroResult(totalAntes, `Erro na validação da carga: ${valErr.message}`)
+  const validacao = valData as { ok: boolean; erros?: string[] } | null
+  if (!validacao?.ok) {
+    return erroResult(totalAntes, (validacao?.erros ?? ['Validação da carga falhou.']).join(' '))
+  }
+
+  // 3. Metas (upsert idempotente — não destrói nada; fora da transação do swap).
   try {
     await loadMetas(false)
   } catch (err) {
     return erroResult(totalAntes, err instanceof Error ? err.message : String(err))
   }
 
-  const BATCH = 500
-  let inseridas = 0
-  for (let i = 0; i < linhas.length; i += BATCH) {
-    const { error } = await bound('inserir_lote_raw', { p_linhas: linhas.slice(i, i + BATCH) })
-    if (error) return erroResult(inseridas, `Erro no batch ${Math.floor(i / BATCH) + 1}: ${error.message}`)
-    inseridas += Math.min(BATCH, linhas.length - i)
-  }
-
-  const { data: transformData, error: transformErr } = await bound('transform_raw_to_analytics')
-  if (transformErr) return erroResult(inseridas, `Erro na transformação: ${transformErr.message}`)
+  // 4. Swap ATÔMICO: truncate + copia staging→raw + transform + dims + refresh.
+  //    Falha aqui → rollback no banco → a base NUNCA fica vazia.
+  const { data: transformData, error: promoverErr } = await bound('promover_carga_vendas')
+  if (promoverErr) return erroResult(totalAntes, `Erro ao promover a carga (base preservada): ${promoverErr.message}`)
 
   const resultado = transformData as { vendas_count: number; fato_venda_item_count: number } | null
-
-  const { error: dimErr } = await bound('regenerar_dim_operacao_weddings')
-  if (dimErr) return erroResult(inseridas, `Erro ao regenerar operações Weddings: ${dimErr.message}`)
-
-  const { error: refreshErr } = await bound('refresh_all_materialized_views')
-  if (refreshErr) return erroResult(inseridas, `Erro ao atualizar views materializadas: ${refreshErr.message}`)
 
   return {
     sucesso: true,
