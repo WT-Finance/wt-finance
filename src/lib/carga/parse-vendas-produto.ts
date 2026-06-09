@@ -57,7 +57,7 @@ const COL_MAP: Record<string, keyof VendaProdutoRaw> = {
  * descarta a coluna em silêncio (custou caro: Data Início na v4.9, Operação Própria
  * na v4.9.1). Normalizar evita que uma diferença de grafia derrube a ingestão.
  */
-function normalizeHeader(h: string): string {
+export function normalizeHeader(h: string): string {
   return h.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
@@ -66,7 +66,7 @@ const COL_MAP_NORM: Record<string, keyof VendaProdutoRaw> = Object.fromEntries(
   Object.entries(COL_MAP).map(([k, v]) => [normalizeHeader(k), v]),
 )
 
-function toIsoDate(value: unknown): string | null {
+export function toIsoDate(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null
   if (value instanceof Date) {
     const y = value.getFullYear()
