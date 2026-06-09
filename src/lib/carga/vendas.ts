@@ -1,128 +1,25 @@
 import * as XLSX from '@e965/xlsx'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { loadMetas } from '@/lib/carga/metas'
+import { parseVendasRows, type VendaProdutoRaw } from '@/lib/carga/vendas-parser'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
-interface LinhaRaw {
-  arquivo_origem:     string
-  linha_origem:       number
-  venda_numero:       string | null
-  data_venda:         string | null
-  vendedor:           string | null
-  pagante:            string | null
-  setor_macro:        string | null
-  setor:              string | null
-  setor_micro:        string | null
-  produto:            string | null
-  valor_total:        string | null
-  receitas:           string | null
-  contrato:           string | null
-  taxa_servico:       string | null
-  semana:             string | null
-  mes:                string | null
-  data_inicio_evento: string | null
-  fornecedor:         string | null
-}
+// Caminho de ingestão pela API Route (upload-vendas): lê o Buffer no SERVIDOR e
+// delega a transformação ao parser ÚNICO (vendas-parser.ts), o MESMO que a UI usa.
+// Antes, este caminho tinha um parser próprio (casamento exato de cabeçalho, sem
+// operacao_propria/passageiros/tipo_contrato) — uma carga por aqui regrediria a
+// correção da v4.9.x. Agora a paridade de colunas é garantida pelo núcleo único.
 
-const COL_MAP: Record<string, keyof LinhaRaw> = {
-  'Venda Nº':        'venda_numero',
-  'Data Venda':      'data_venda',
-  'Vendedor':        'vendedor',
-  'Pagante':         'pagante',
-  'Setor Macro':     'setor_macro',
-  'Setor':           'setor',
-  'Setor Micro':     'setor_micro',
-  'Produto':         'produto',
-  'Valor Total':     'valor_total',
-  'Receitas':        'receitas',
-  'Contrato':        'contrato',
-  'Taxa de Serviço': 'taxa_servico',
-  'Semana':          'semana',
-  'Mês':             'mes',
-  'Data de Início':  'data_inicio_evento',
-  'Fornecedor':      'fornecedor',
-}
-
-function toIsoDate(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null
-  if (value instanceof Date) {
-    const y = value.getFullYear()
-    const m = String(value.getMonth() + 1).padStart(2, '0')
-    const d = String(value.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }
-  if (typeof value === 'number') {
-    const date = XLSX.SSF.parse_date_code(value)
-    return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
-  }
-  if (typeof value === 'string') {
-    const s = value.trim()
-    if (!s) return null
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-      const [d, m, y] = s.split('/')
-      return `${y}-${m}-${d}`
-    }
-    return s
-  }
-  return null
-}
-
-function toBoolean(v: unknown): string | null {
-  if (v === null || v === undefined || v === '') return null
-  if (typeof v === 'boolean') return String(v)
-  const s = String(v).toLowerCase().trim()
-  if (s === 'sim' || s === 'true' || s === '1' || s === 's') return 'true'
-  if (s === 'não' || s === 'nao' || s === 'false' || s === '0' || s === 'n') return 'false'
-  return null
-}
-
-function toNumStr(v: unknown): string | null {
-  if (v === null || v === undefined || v === '') return null
-  const n = Number(v)
-  return isNaN(n) ? null : n.toFixed(2)
-}
-
-function toStr(v: unknown): string | null {
-  if (v === null || v === undefined) return null
-  const s = String(v).trim()
-  return s || null
-}
-
-function parseXlsxBuffer(buffer: Buffer, nomeArquivo: string): LinhaRaw[] {
+function parseXlsxBuffer(buffer: Buffer, nomeArquivo: string): VendaProdutoRaw[] {
   const workbook = XLSX.read(buffer, { cellDates: true, raw: false })
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null })
+  const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null })
 
-  if (rows.length < 2) throw new Error('Planilha vazia ou apenas com cabeçalho')
+  if (aoa.length < 2) throw new Error('Planilha vazia ou apenas com cabeçalho')
 
-  const headers = (rows[0] as unknown[]).map(h => (h === null ? '' : String(h).trim()))
-  const result: LinhaRaw[] = []
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i] as unknown[]
-    if (row.every(c => c === null || c === '')) continue
-
-    const raw: Partial<LinhaRaw> = { arquivo_origem: nomeArquivo, linha_origem: i + 1 }
-
-    for (let j = 0; j < headers.length; j++) {
-      const campo = COL_MAP[headers[j]]
-      if (!campo) continue
-      const v = row[j]
-      switch (campo) {
-        case 'data_venda':
-        case 'data_inicio_evento': raw[campo] = toIsoDate(v); break
-        case 'contrato':      raw.contrato    = toBoolean(v); break
-        case 'taxa_servico':  raw.taxa_servico= toBoolean(v); break
-        case 'valor_total':   raw.valor_total = toNumStr(v);  break
-        case 'receitas':      raw.receitas    = toNumStr(v);  break
-        case 'semana':        raw.semana = v !== null && v !== '' ? String(Math.round(Number(v))) : null; break
-        default: (raw as Record<string, string | null>)[campo] = toStr(v)
-      }
-    }
-    result.push(raw as LinhaRaw)
-  }
-  return result
+  const { linhas } = parseVendasRows(aoa, nomeArquivo)
+  return linhas
 }
 
 export interface ResultadoCargaVendas {
@@ -148,7 +45,7 @@ export async function carregarVendas(
   const { data: statusData } = await bound('get_upload_status')
   const totalAntes = (statusData as { vendas?: { total?: number } } | null)?.vendas?.total ?? 0
 
-  let linhas: LinhaRaw[]
+  let linhas: VendaProdutoRaw[]
   try {
     linhas = parseXlsxBuffer(buffer, nomeArquivo)
   } catch (err) {
