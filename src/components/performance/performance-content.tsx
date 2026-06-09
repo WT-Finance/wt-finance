@@ -22,51 +22,18 @@ import type {
   VendasEmAberto, VendasReceitaNegativa,
 } from '@/types/api'
 
-// v4.10/M5: Top Vendedores. A RPC get_ranking_vendedores é MENSAL (p_ano, p_mes);
-// para respeitar o período (range), enumeramos os meses do intervalo (capados no
-// mês atual) e agregamos por vendedor. As chamadas são paralelas (Promise.all),
-// sobre uma MV pré-computada → custo ≈ uma ida ao banco. Reusa a RPC existente
-// (sem RPC nova). Limite alto por mês (100) para o ranking do período ser exato.
-function mesesNoIntervalo(from: string, to: string): { ano: number; mes: number }[] {
-  const [fy, fm] = from.split('-').map(Number)
-  const [ty, tm] = to.split('-').map(Number)
-  const now = new Date()
-  const capY = now.getFullYear()
-  const capM = now.getMonth() + 1
-  const meses: { ano: number; mes: number }[] = []
-  let y = fy, m = fm
-  while ((y < ty || (y === ty && m <= tm)) && meses.length <= 36) {
-    if (y < capY || (y === capY && m <= capM)) meses.push({ ano: y, mes: m })
-    m++; if (m > 12) { m = 1; y++ }
-  }
-  return meses
-}
-
+// v4.12/M4 (F3): Top Vendedores em UMA chamada. get_ranking_vendedores_range
+// (migration 0117) agrega o intervalo de meses NO BANCO — fim do fan-out mensal
+// (até 36 chamadas) da v4.10. Limite alto (100) para o ranking do período ser exato.
 async function fetchTopVendedores(
   db: ReturnType<typeof getServerClient>,
   from: string, to: string, setor: string,
 ): Promise<RankingVendedorItem[]> {
-  const meses = mesesNoIntervalo(from, to)
-  if (meses.length === 0) return []
-  const results = await Promise.all(
-    meses.map(({ ano, mes }) =>
-      db.rpc('get_ranking_vendedores', { p_ano: ano, p_mes: mes, p_setor: setor, p_limite: 100 }),
-    ),
-  )
-  const acc = new Map<number, RankingVendedorItem>()
-  for (const r of results) {
-    const rows = (r.error ? [] : (r.data as unknown as RankingVendedorItem[])) ?? []
-    for (const v of rows) {
-      const cur = acc.get(v.vendedor_id) ?? {
-        vendedor_id: v.vendedor_id, nome: v.nome, valor_total: 0, receitas: 0, vendas_count: 0,
-      }
-      cur.valor_total  += v.valor_total
-      cur.receitas     += v.receitas
-      cur.vendas_count += v.vendas_count
-      acc.set(v.vendedor_id, cur)
-    }
-  }
-  return [...acc.values()].sort((a, b) => b.valor_total - a.valor_total)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const res = await (db.rpc as any)('get_ranking_vendedores_range', {
+    p_from: from, p_to: to, p_setor: setor, p_limite: 100,
+  })
+  return unwrapRpc<RankingVendedorItem[]>(res, 'get_ranking_vendedores_range') ?? []
 }
 
 interface PeriodoSearchParams {
