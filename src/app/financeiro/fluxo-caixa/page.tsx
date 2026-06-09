@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { unwrapRpc } from '@/lib/rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { fmtMi } from '@/lib/fmt'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
@@ -170,28 +171,28 @@ export default async function FluxoCaixaPage({
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
 
-  const fluxoMensalRows    = (fluxoMensalRes.error    ? null : fluxoMensalRes.data    as FluxoMensalV3Row[]  | null) ?? []
-  const fluxoAcumuladoRows = (fluxoAcumuladoRes.error ? null : fluxoAcumuladoRes.data as FluxoAcumuladoRow[] | null) ?? []
+  const fluxoMensalRows    = unwrapRpc<FluxoMensalV3Row[]>(fluxoMensalRes, 'get_fluxo_caixa_mensal_v3') ?? []
+  const fluxoAcumuladoRows = unwrapRpc<FluxoAcumuladoRow[]>(fluxoAcumuladoRes, 'get_fluxo_caixa_acumulado_v1') ?? []
 
-  const kpis = (kpisRes.error ? null : kpisRes.data as KpisB | null) ?? {
+  const kpis = unwrapRpc<KpisB>(kpisRes, 'get_fluxo_caixa_kpis_b') ?? {
     entradas_realizadas: 0, saidas_realizadas: 0, saldo_realizado: 0,
     entradas_previstas: 0, saidas_previstas: 0, saldo_previsto: 0,
   }
 
-  const kpisDiario: KpisDiario = (kpisDiarioRes.error ? null : kpisDiarioRes.data as KpisDiario | null) ?? {
+  const kpisDiario: KpisDiario = unwrapRpc<KpisDiario>(kpisDiarioRes, 'get_fluxo_caixa_kpis_diario') ?? {
     saldo_em_caixa: 0,
     a_receber_10d:  0,
     a_pagar_10d:    0,
     ncg_10d:        0,
   }
 
-  const decomposicao = (decomposicaoRes.error ? null : decomposicaoRes.data as DecomposicaoGrupo[] | null) ?? []
+  const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
   const decomposicaoCategorias =
-    (decomposicaoCategoriaRes.error ? null : decomposicaoCategoriaRes.data as DecomposicaoCategoria[] | null) ?? []
-  const posicoes     = (posicaoRes.error      ? null : posicaoRes.data      as PosicaoConta[]       | null) ?? []
+    unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
+  const posicoes     = unwrapRpc<PosicaoConta[]>(posicaoRes, 'get_posicao_por_conta') ?? []
 
   const lancamentos10d: ProximoLancamento[] =
-    (lancamentos10dRes.error ? null : lancamentos10dRes.data as ProximoLancamento[] | null) ?? []
+    unwrapRpc<ProximoLancamento[]>(lancamentos10dRes, 'get_proximos_lancamentos') ?? []
 
   // Fetches Gerenciais isolados — falha não deve crashar a página principal
   let projecaoGerencial: DiaProjecao[]  = []
@@ -203,9 +204,9 @@ export default async function FluxoCaixaPage({
       rpc('get_gerencial_saldos'),
       rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
     ])
-    projecaoGerencial    = (projecaoRes.error            ? null : projecaoRes.data            as DiaProjecao[]    | null) ?? []
-    saldosGerencial      = (saldosRes.error              ? null : saldosRes.data              as GerencialSaldo[] | null) ?? []
-    lancamentosGerencial = (lancamentosGerencialRes.error ? null : lancamentosGerencialRes.data as Lancamento[]    | null) ?? []
+    projecaoGerencial    = unwrapRpc<DiaProjecao[]>(projecaoRes, 'get_gerencial_projecao_diaria') ?? []
+    saldosGerencial      = unwrapRpc<GerencialSaldo[]>(saldosRes, 'get_gerencial_saldos') ?? []
+    lancamentosGerencial = unwrapRpc<Lancamento[]>(lancamentosGerencialRes, 'get_gerencial_lancamentos') ?? []
   } catch {
     // Dados gerenciais indisponíveis — seção renderiza vazia
   }

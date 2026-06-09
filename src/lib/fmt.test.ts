@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   fmtBRL, fmtBRL2, numBRL2, fmtMi, fmtAxisBRL, fmtMeses,
   fmtAxisPct, fmtAxisMes, fmtDate, fmtDateCompact, fmtDateLong, fmtDateMid, fmtDataHora,
+  parseLocalDate,
 } from './fmt'
 
 // Intl pt-BR usa NBSP (char 160) entre "R$" e o número; normalizamos para espaço comum.
@@ -67,5 +68,15 @@ describe('fmt — datas (parsing por split, sem fuso)', () => {
   it('fmtDataHora: com e sem hora', () => {
     expect(fmtDataHora('2026-06-05T17:53')).toBe('05 de jun de 2026, às 17h53min')
     expect(fmtDataHora('2026-06-05')).toBe('05 de jun de 2026')
+  })
+
+  it('parseLocalDate: parse LOCAL, sem deslocamento de fuso (F6)', () => {
+    const d = parseLocalDate('2026-06-08')
+    expect(d.getFullYear()).toBe(2026)
+    expect(d.getMonth()).toBe(5)  // junho (0-based)
+    expect(d.getDate()).toBe(8)   // NÃO 7 — o componente do dia é preservado
+    expect(d.getHours()).toBe(0)
+    // aceita 'yyyy-MM-ddT…' (ignora a hora)
+    expect(parseLocalDate('2026-12-31T10:00').getDate()).toBe(31)
   })
 })

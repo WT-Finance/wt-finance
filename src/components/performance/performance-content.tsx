@@ -11,8 +11,10 @@ import TopVendedoresCard from '@/components/performance/top-vendedores-card'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import TopSection from '@/components/shared/top-section'
+import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { getServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
+import { unwrapRpc, unwrapRpcComErro } from '@/lib/rpc'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ExecutivaKpis, MixSetor, TendenciaMargem,
@@ -131,14 +133,16 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
     (db.rpc as any)('get_vendas_receita_negativa', { p_setor: setor, p_from: '2020-01-01', p_to: '2099-12-31' }),
   ])
 
-  const kpis       = kpisRes.error  ? null : kpisRes.data  as unknown as ExecutivaKpis
-  const mix        = mixRes.error   ? null : mixRes.data   as unknown as MixSetor
-  const tendencia  = tendRes.error  ? null : tendRes.data  as unknown as TendenciaMargem
-  const produtos   = prodRes.error  ? null : prodRes.data  as unknown as MixProduto
-  const prejuizos  = prejRes.error  ? null : prejRes.data  as unknown as PrejuizosDetalhe
-  const cagr       = cagrRes.error  ? null : cagrRes.data  as unknown as CagrData
-  const vendasAberto    = vendasAbertoRes?.error ? null : (vendasAbertoRes?.data as VendasEmAberto | undefined) ?? null
-  const receitaNegativa = receitaNegRes?.error   ? null : (receitaNegRes?.data   as VendasReceitaNegativa | undefined) ?? null
+  // F5 (v4.12): erro ≠ vazio. unwrapRpc loga a falha com contexto (sai do silêncio);
+  // o KPI principal usa a flag de erro para mostrar estado discreto em vez de skeleton eterno.
+  const { data: kpis, erro: kpisErro } = unwrapRpcComErro<ExecutivaKpis>(kpisRes, 'get_executiva_kpis')
+  const mix        = unwrapRpc<MixSetor>(mixRes, 'get_mix_setor')
+  const tendencia  = unwrapRpc<TendenciaMargem>(tendRes, 'get_tendencia_margem')
+  const produtos   = unwrapRpc<MixProduto>(prodRes, 'get_mix_produto')
+  const prejuizos  = unwrapRpc<PrejuizosDetalhe>(prejRes, 'get_prejuizos')
+  const cagr       = unwrapRpc<CagrData>(cagrRes, 'get_cagr')
+  const vendasAberto    = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto')
+  const receitaNegativa = unwrapRpc<VendasReceitaNegativa>(receitaNegRes, 'get_vendas_receita_negativa')
 
   const mostrarSetorFilter = setor === 'todos'
 
@@ -163,7 +167,11 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
 
         {/* KPI principal — card único clicável (abre o drawer rico por setor) */}
         <div className="mb-6">
-          {kpis ? (
+          {kpisErro ? (
+            <div className="bg-white rounded-xl shadow-sm px-5 py-8 flex justify-center">
+              <ErroCarregamento />
+            </div>
+          ) : kpis ? (
             <KpiPrincipalCard kpis={kpis} setor={setor} />
           ) : (
             <div className="bg-zinc-100 animate-pulse rounded-xl h-28" />

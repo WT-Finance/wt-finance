@@ -11,6 +11,7 @@ import Historico12mChart from '@/components/executiva/historico-12m-chart'
 import DecomposicaoVariacaoCard from '@/components/executiva/decomposicao-variacao-card'
 import PontosAtencaoCard from '@/components/executiva/pontos-atencao-card'
 import { getServerClient } from '@/lib/supabase/server'
+import { unwrapRpc } from '@/lib/rpc'
 import { getBenchmarks } from '@/lib/config'
 import { gerarSumarioExecutivo } from '@/lib/sumario-executivo'
 import { avaliarTodasRegras } from '@/lib/regras-alerta'
@@ -60,12 +61,12 @@ export default async function ExecutivaPage({
     getBenchmarks(db),
   ])
 
-  const kpis         = kpisRes.error    ? null : kpisRes.data    as unknown as ExecutivaKpis
-  const mix          = mixRes.error     ? null : mixRes.data     as unknown as MixSetor
-  const prejuizos    = prejRes.error    ? null : prejRes.data    as unknown as PrejuizosSummary
-  const prejuizosAnt = prejAntRes.error ? null : prejAntRes.data as unknown as PrejuizosSummary
-  const historico    = histRes.error    ? null : histRes.data    as unknown as Historico12mSetores
-  const decomposicao = decompRes.error  ? null : decompRes.data  as unknown as DecomposicaoVariacao
+  const kpis         = unwrapRpc<ExecutivaKpis>(kpisRes, 'get_executiva_kpis')
+  const mix          = unwrapRpc<MixSetor>(mixRes, 'get_mix_setor')
+  const prejuizos    = unwrapRpc<PrejuizosSummary>(prejRes, 'get_prejuizos')
+  const prejuizosAnt = unwrapRpc<PrejuizosSummary>(prejAntRes, 'get_prejuizos (anterior)')
+  const historico    = unwrapRpc<Historico12mSetores>(histRes, 'get_historico_12m_setores')
+  const decomposicao = unwrapRpc<DecomposicaoVariacao>(decompRes, 'get_decomposicao_variacao')
 
   // Pontos de atenção — avaliados a partir dos dados já carregados, sem chamada extra ao banco
   const alertas = avaliarTodasRegras({

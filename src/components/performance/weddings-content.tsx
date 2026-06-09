@@ -12,6 +12,7 @@ import FluxoCaixaMensal from '@/components/weddings/fluxo-caixa-mensal'
 import DropdownOperacao from '@/components/weddings/dropdown-operacao'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import { getServerClient } from '@/lib/supabase/server'
+import { unwrapRpc } from '@/lib/rpc'
 import { getBenchmarks } from '@/lib/config'
 import type {
   CarteiraWeddings, ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
@@ -45,12 +46,12 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_vendas_prejuizo_weddings', { p_from: '2020-01-01', p_to: '2099-12-31' }),
   ])
 
-  const cartCas       = cartCasRes.error      ? null : cartCasRes.data      as unknown as CarteiraWeddings
-  const proximos      = proximosRes.error     ? null : proximosRes.data     as unknown as ProximosCasamentos
-  const acumulado     = acumuladoRes.error    ? null : acumuladoRes.data    as unknown as AcumuladoWeddings
-  const vendasAberto  = vendasAbertoRes.error ? null : vendasAbertoRes.data as unknown as VendasEmAberto
-  const operacoesList = operacoesRes.error    ? [] as OperacoesLista : operacoesRes.data as unknown as OperacoesLista
-  const prejuizos     = prejRes.error         ? null : prejRes.data         as unknown as VendasReceitaNegativa
+  const cartCas       = unwrapRpc<CarteiraWeddings>(cartCasRes, 'get_carteira_weddings')
+  const proximos      = unwrapRpc<ProximosCasamentos>(proximosRes, 'get_proximos_casamentos')
+  const acumulado     = unwrapRpc<AcumuladoWeddings>(acumuladoRes, 'get_acumulado_weddings')
+  const vendasAberto  = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto_weddings')
+  const operacoesList = unwrapRpc<OperacoesLista>(operacoesRes, 'get_operacoes_lista_weddings') ?? [] as OperacoesLista
+  const prejuizos     = unwrapRpc<VendasReceitaNegativa>(prejRes, 'get_vendas_prejuizo_weddings')
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-4">

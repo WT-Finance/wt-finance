@@ -94,6 +94,17 @@ export const fmtDateMid = (iso: string): string => {
   return `${d} de ${MESES_COMPACTOS[parseInt(m, 10) - 1]} de ${y}`
 }
 
+/**
+ * Parse LOCAL de uma data 'yyyy-MM-dd' (ou 'yyyy-MM-ddT…') → Date à meia-noite LOCAL.
+ * NUNCA usar `new Date('yyyy-MM-dd')`: o construtor interpreta data-only como UTC
+ * (meia-noite UTC = 21h do dia anterior em −03), deslocando o dia em comparações.
+ * Este helper parseia por componentes — sem fuso. (F6, v4.12.)
+ */
+export const parseLocalDate = (iso: string): Date => {
+  const [y, m, d] = iso.split('T')[0].split('-').map(Number)
+  return new Date(y, (m ?? 1) - 1, d ?? 1)
+}
+
 /** Converte 'yyyy-MM-ddTHH:MM' para 'dd de mês de AAAA, às HHhMMmin' (ex: 05 de jun de 2026, às 17h53min).
  *  Sem componente de hora, devolve só a data (formato médio). Parse por split — sem fuso. */
 export const fmtDataHora = (iso: string): string => {

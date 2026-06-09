@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Calendar } from 'lucide-react'
 import type { ProximosCasamentos } from '@/types/api'
-import { fmtDateMid, fmtBRL2 } from '@/lib/fmt'
+import { fmtDateMid, fmtBRL2, parseLocalDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
 import EmptyState from '@/components/shared/empty-state'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
@@ -49,7 +49,7 @@ function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamen
 
   const filtrados = casamentos.filter(c => {
     if (!c.data_casamento) return false
-    return new Date(c.data_casamento) <= limite
+    return parseLocalDate(c.data_casamento) <= limite  // F6: parse local, sem deslocamento de fuso
   })
 
   return (
