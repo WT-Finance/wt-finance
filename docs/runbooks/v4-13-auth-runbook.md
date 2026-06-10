@@ -17,8 +17,8 @@ merge. Após o merge, ativar na ordem:
 
 1. **Confirmar que a produção nova está no ar** (login funciona, telas carregam):
    abrir https://wt-finance.vercel.app → deve redirecionar a `/login`.
-2. **Ligar o enforcement** (fecha o acesso anônimo no banco):
-   - Pela UI: `/admin/acessos` → aba Sistema → "Modo estrito" — ou por SQL:
+2. **Ligar o enforcement** (fecha o acesso anônimo no banco). NÃO há toggle na UI —
+   é via SQL (Supabase Dashboard → SQL Editor, ou `npx supabase db query --linked`):
    ```sql
    select public.admin_set_enforcement(true);
    ```
