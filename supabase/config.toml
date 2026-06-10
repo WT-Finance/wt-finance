@@ -168,7 +168,10 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# v4.13: cadastro É só por convite (ADR-0106). Fonte versionada da intenção —
+# aplicar na ativação (Dashboard ou `supabase config push`). O RBAC já nega
+# acesso a conta não-convidada mesmo com o signup remoto aberto (defesa em camadas).
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
@@ -213,7 +216,8 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-enable_signup = true
+# v4.13: convite-only (ver [auth].enable_signup acima).
+enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true

@@ -53,6 +53,12 @@ no banco (`app.usuarios`, `app.convites`, `get_my_profile()` — tratados no ADR
   compartilham a mesma sessão (`@supabase/ssr`).
 - O JWT do usuário passa a fluir até o Postgres em TODAS as chamadas do app — pré-requisito
   do enforcement no banco (ADR-0108).
-- Login de quem não foi convidado é impossível por construção (não há signup público).
+- **Acesso** de quem não foi convidado é impossível por construção: ainda que o
+  endpoint de signup do GoTrue esteja aberto (fechado na ativação — runbook §1.4),
+  uma conta sem registro **ativo** em `app.rbac_usuarios` é negada em TODA RPC/rota
+  pelo `app.exigir_acesso` (independente da flag de enforcement) e não lê dado algum
+  (RLS deny-by-default + leitores service-role-only). O `signInWithOtp` do app usa
+  `shouldCreateUser:false`; o fechamento do signup remoto é defesa em profundidade.
+  (Precisão registrada pela auto-auditoria S11 da v4.13.)
 - Ativação pós-merge exige configurar Site URL/Redirect URLs no dashboard do Supabase
   (passo documentado no runbook de ativação do out-briefing v4.13).

@@ -70,6 +70,13 @@ describe('nextSeguro — anti open-redirect', () => {
     expect(nextSeguro('')).toBe('/')
     expect(nextSeguro(null)).toBe('/')
   })
+  it('rejeita backslash, codificados e /auth case-insensitive (endurecido S11)', () => {
+    expect(nextSeguro('/\\evil.com')).toBe('/')      // \ ≡ / no browser
+    expect(nextSeguro('/%2f%2fevil.com')).toBe('/')  // %2f = /
+    expect(nextSeguro('/%5cevil.com')).toBe('/')     // %5c = \
+    expect(nextSeguro('/AUTH/confirm')).toBe('/')
+    expect(nextSeguro('/auth')).toBe('/')
+  })
 })
 
 describe('catálogo — consistência interna', () => {

@@ -64,8 +64,12 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Tudo, exceto assets estáticos (_next, imagens, ícones, logos).
+  // Exclui APENAS assets reais, por prefixo/nome exato — NUNCA por "qualquer path
+  // terminado em .png/.svg" (isso furava a camada 1: uma rota dinâmica como
+  // /api/.../[id] com id terminado em .png escapava do proxy — achado da
+  // auto-auditoria S11). Páginas e APIs com ponto no nome agora SEMPRE passam pelo
+  // proxy. Ícones de metadata do Next ficam na raiz e são listados por nome.
   matcher: [
-    '/((?!_next/static|_next/image|favicon\\.ico|logos/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/|favicon\\.ico|icon\\.svg|icon\\.png|icon0\\.png|icon1\\.png|apple-icon\\.png|logos/).*)',
   ],
 }

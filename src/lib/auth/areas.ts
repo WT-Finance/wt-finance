@@ -95,8 +95,18 @@ export function rotaInicial(permissoes: readonly string[]): string | null {
   return null
 }
 
-/** `next` seguro para redirects pós-login (só caminhos relativos internos). */
+/**
+ * `next` seguro para redirects pós-login — só caminho relativo interno, à prova
+ * de open-redirect. Rejeita: não-relativos, protocolo-relativo (`//`), backslash
+ * (`\` que o browser trata como `/` → `/\evil.com` ≡ `//evil.com`), sequências
+ * codificadas (`%2f`/`%5c`) e a área de auth (case-insensitive). Endurecido após
+ * a auto-auditoria S11 (o filtro antigo deixava passar `/\evil.com`).
+ */
 export function nextSeguro(next: string | null | undefined): string {
-  if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/auth')) return '/'
+  if (!next || !next.startsWith('/')) return '/'
+  if (next.startsWith('//') || next.startsWith('/\\')) return '/'
+  if (/[\\]/.test(next)) return '/'
+  if (/%2f|%5c/i.test(next)) return '/'
+  if (/^\/auth(\/|$|\?)/i.test(next)) return '/'
   return next
 }

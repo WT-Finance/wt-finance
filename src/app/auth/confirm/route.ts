@@ -13,7 +13,11 @@ import { nextSeguro } from '@/lib/auth/areas'
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const tokenHash = searchParams.get('token_hash')
-  const type = searchParams.get('type') as EmailOtpType | null
+  // Allowlist explícita dos fluxos suportados — não fazer cast cego de query
+  // string para EmailOtpType (reduz superfície; achado de higiene da S11).
+  const TIPOS_OK: ReadonlyArray<EmailOtpType> = ['magiclink', 'email', 'invite', 'recovery', 'email_change']
+  const typeParam = searchParams.get('type')
+  const type = TIPOS_OK.includes(typeParam as EmailOtpType) ? (typeParam as EmailOtpType) : null
   const code = searchParams.get('code')
   const next = nextSeguro(searchParams.get('next'))
 

@@ -161,6 +161,13 @@ export async function definirAtivo(userId: string, ativo: boolean): Promise<Resu
       p_ativo:   ativo,
     })
     if (error) return { ok: false, erro: traduzirErro(error.message) }
+    // Revogação ATIVA ao desativar (defesa em profundidade — achado S11): além de
+    // negar por request (o guard do banco checa `ativo` em toda chamada), encerra
+    // as sessões/refresh tokens vivos do usuário para fechar a janela do JWT já
+    // emitido. Best-effort: a desativação já vale mesmo se o signOut falhar.
+    if (!ativo) {
+      try { await getAdminClient().auth.admin.signOut(userId) } catch { /* já negado por request */ }
+    }
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
