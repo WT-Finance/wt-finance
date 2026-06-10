@@ -143,11 +143,14 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
     expect(status).toBeGreaterThanOrEqual(400) // 42501 → 403 no PostgREST
   })
 
-  it('janela de compatibilidade (S5): leitura wrapped segue aberta a anon com flag OFF', async () => {
+  // Pós-ativação (v4.13.1): o enforcement está LIGADO em produção, então a leitura
+  // anônima é NEGADA. (Antes da ativação este teste afirmava o contrário — a janela
+  // de compatibilidade com a flag OFF; ver ADR-0108 e o runbook.)
+  it('enforcement ATIVO: leitura anônima é negada (sem JWT → 42501)', async () => {
     const status = await rpcAnonStatus('get_executiva_kpis', {
       p_from: '2026-01-01', p_to: '2026-01-31', p_setor: 'todos',
     })
-    expect(status).toBe(200)
+    expect(status).toBeGreaterThanOrEqual(400)
   })
 
   it('mutações destrutivas INACESSÍVEIS a anon (revogação dura)', async () => {

@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
-import type { ResultadoAcao, ResultadoConvite } from '@/components/admin/acessos/tipos'
+import type { ResultadoAcao, ResultadoConvite, ResultadoLink } from '@/components/admin/acessos/tipos'
 
 // v4.13 — server actions da administração de acessos. Todas finas: guard de
 // permissão + RPC com o cliente DE SESSÃO (o banco revalida o admin/acessos do
@@ -232,6 +232,56 @@ export async function excluirRole(id: number): Promise<ResultadoAcao> {
     const supabase = await getServerClient()
     const { error } = await supabase.rpc('admin_excluir_role', { p_role_id: id })
     if (error) return { ok: false, erro: traduzirErro(error.message) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, erro: comoErro(err) }
+  } finally {
+    revalidatePath('/admin/acessos')
+  }
+}
+
+/**
+ * Re-gera um link de acesso (magic link) sob demanda para um usuário já
+ * registrado — para quando o convite original expirou/foi consumido e o admin
+ * fechou o modal. NÃO envia e-mail (independe do rate limit do SMTP); devolve o
+ * link copiável (válido 24h, uso único — consumido só no POST de /auth/confirm).
+ */
+export async function gerarLinkAcesso(email: string): Promise<ResultadoLink> {
+  await requireAreaAction('admin/acessos')
+  try {
+    const origin = await origemRequest()
+    const { data, error } = await getAdminClient().auth.admin.generateLink({
+      type: 'magiclink',
+      email: email.trim().toLowerCase(),
+    })
+    if (error || !data.properties?.hashed_token) {
+      return { ok: false, erro: error?.message ?? 'Não foi possível gerar o link de acesso.' }
+    }
+    return {
+      ok: true,
+      link: `${origin}/auth/confirm?token_hash=${data.properties.hashed_token}&type=magiclink`,
+    }
+  } catch (err) {
+    return { ok: false, erro: comoErro(err) }
+  }
+}
+
+/**
+ * Exclui um usuário de vez (auth.users → CASCADE remove o vínculo RBAC).
+ * Anti-lockout: ninguém exclui a si mesmo. Diferente de «desativar», é
+ * irreversível — a UI confirma antes. Usa o service role (auth.admin), após o
+ * guard de admin/acessos do CHAMADOR.
+ */
+export async function excluirUsuario(userId: string): Promise<ResultadoAcao> {
+  await requireAreaAction('admin/acessos')
+  try {
+    const supabase = await getServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user && user.id === userId) {
+      return { ok: false, erro: 'Você não pode excluir a si mesmo.' }
+    }
+    const { error } = await getAdminClient().auth.admin.deleteUser(userId)
+    if (error) return { ok: false, erro: comoErro(error) }
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
