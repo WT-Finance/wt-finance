@@ -32,6 +32,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.13.1',
+    data: '2026-06-10T17:40',
+    itens: [
+      { tipo: 'correcao', texto: 'Convites de acesso confiáveis: corrigido o caso em que o link de acesso chegava "inválido" ao ser aberto. O link agora vale 24 horas e só é consumido quando a pessoa clica em "Entrar" — não mais ao ser pré-visualizado pelo WhatsApp ou e-mail.' },
+      { tipo: 'novidade', texto: 'Na tela de Usuários & Acessos, cada pessoa agora tem um botão para gerar e copiar um novo link de acesso na hora (útil quando o convite anterior expirou), e a opção de excluir um usuário em definitivo — além de apenas desativar.' },
+    ],
+  },
+  {
     versao: '4.13.0',
     data: '2026-06-10T04:30',
     itens: [

@@ -6,6 +6,23 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.13.1] — 2026-06-10
+
+Versão PATCH: robustez do convite/login (pós-ativação da v4.13). Corrige links de acesso que chegavam "inválidos" e fecha lacunas da UI de administração.
+
+### Corrigido
+- **Magic link consumido por preview de link** (`/auth/confirm`): a confirmação passa a ser **em dois passos** — o GET só renderiza um botão; o `verifyOtp` roda no **POST** do clique. Bots de pré-visualização (WhatsApp/e-mail/antivírus) fazem só GET e não queimam mais o token de uso único. (Era a causa de "link inválido ao clicar".)
+
+### Adicionado
+- **"Link de acesso" por usuário** na tela Usuários & Acessos: re-gera um magic link sob demanda (campo copiável) — resolve o caso de o convite ter expirado/sido consumido e o link não poder ser recuperado.
+- **"Excluir" usuário** (irreversível, com confirmação e proteção anti-lockout — não exclui a si mesmo), ao lado de "Desativar" (reversível).
+
+### Alterado
+- Validade do link de acesso de **1h → 24h** (config Supabase `mailer_otp_exp`), dando folga para o convidado abrir o link.
+
+### Operação
+- O e-mail nativo do Supabase tem limite baixo (2/h) e **SMTP próprio segue pendente** — para convidar em lote, usar o link copiável (não depende de e-mail).
+
 ## [4.13.0] — 2026-06-10
 
 Versão MINOR: **autenticação e autorização**. O dashboard deixa de ser público — login obrigatório por **magic link**, cadastro **só por convite**, e permissões **RBAC dinâmicas por área de navegação** (em Performance, granular por setor). Enforcement em 4 camadas com janela de compatibilidade para a `main` seguir funcionando até o merge. ADRs 0106–0109.
