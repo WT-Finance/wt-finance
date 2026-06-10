@@ -6,6 +6,26 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.13.0] — 2026-06-10
+
+Versão MINOR: **autenticação e autorização**. O dashboard deixa de ser público — login obrigatório por **magic link**, cadastro **só por convite**, e permissões **RBAC dinâmicas por área de navegação** (em Performance, granular por setor). Enforcement em 4 camadas com janela de compatibilidade para a `main` seguir funcionando até o merge. ADRs 0106–0109.
+
+### Adicionado
+- **Login por magic link** (`/login`, `/auth/confirm` server-side aceitando `token_hash` e `code` PKCE, `/auth/signout`), anti-enumeração, sem signup público. (ADR-0106)
+- **RBAC dinâmico** (migration 0119): roles criáveis com qualquer combinação de **11 áreas** de permissão; tabelas `app.rbac_*`; RPCs `admin_*` com anti-lockout; `get_minhas_permissoes`. Seed: role **Financeiro** (acesso total) + `yan@welcometrips.com.br`. (ADR-0107)
+- **UI de administração** (`/admin/acessos`): convidar usuário (com link de convite copiável), atribuir role, desativar/reativar; criar/editar roles com matriz de permissões. Quem administra é uma permissão (`admin/acessos`).
+- **Sessão SSR** (`@supabase/ssr`): `proxy.ts` (sessão obrigatória em tudo fora de `/login` e `/auth/*`), `getServerClient` por-request (RPCs correm como `authenticated`), guards `requireArea`/`requireAreaApi`/`requireAreaAction`. (ADR-0109)
+- **Página standalone do Fluxo de Caixa Gerencial** (`/financeiro/fluxo-caixa/gerencial`) como porta de entrada de quem só tem essa área.
+- Testes do mapa de áreas (`areas.test.ts`) + contrato RBAC no `rpc-contrato.test.ts` (paridade catálogo banco↔app, caminho negado, revogações). Suíte 68 → 84.
+
+### Segurança
+- **Enforcement em 4 camadas** (ADR-0108): proxy de sessão → guards de área (12 páginas, 23 rotas de API, 3 grupos de server actions) → guards nas RPCs do banco (44 wrappers `SECURITY DEFINER` por área, migration 0121) → **RLS deny-by-default** em todas as 33 tabelas dos 6 schemas (0120) com remoção das policies permissivas herdadas (0123).
+- **Correção crítica de exposição** (migration 0122): todas as 72 funções `public` tinham `EXECUTE` para `anon` por *default privileges* do Postgres — incluindo `truncate_dynamic_tables`/`promover_carga_vendas`. Revogadas; `ALTER DEFAULT PRIVILEGES` impede recorrência.
+- **Kill switch** (`app.config.auth_enforcement`): liga/desliga o enforcement anônimo no banco sem deploy — base do procedimento de emergência e da compatibilidade com a `main` (S5).
+
+### Notas de ativação (pós-merge)
+- Ligar o enforcement (`admin_set_enforcement(true)`), fechar o signup público do GoTrue e convidar os usuários reais — passo a passo no runbook `docs/runbooks/v4-13-auth-runbook.md`.
+
 ## [4.12.1] — 2026-06-09
 
 Versão PATCH (saneamento técnico pós-v4.12): unificação dos parsers de Vendas e expansão da validação de contrato (Zod) às RPCs críticas restantes. Sem mudança de comportamento visível — reforça a resiliência da ingestão e a detecção de divergência de dados.
