@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
+import { requireAreaApi } from '@/lib/auth/sessao'
+import { areasDoSetor, type Area } from '@/lib/auth/areas'
 import type { RankingProdutoItem } from '@/types/api'
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -23,7 +25,11 @@ export async function GET(request: NextRequest): Promise<Response> {
     return Response.json({ error: 'Parâmetro inválido: limite deve ser um inteiro entre 1 e 100.' }, { status: 400 })
   }
 
-  const client = getServerClient()
+  // Guard v4.13: rota alimenta Metas e a Executiva, além da aba do setor.
+  const sessao = await requireAreaApi([...new Set<Area>(['metas', 'executiva', ...areasDoSetor(setor)])])
+  if (sessao instanceof Response) return sessao
+
+  const client = await getServerClient()
   const { data, error } = await client.rpc('get_ranking_produtos', {
     p_ano: ano,
     p_mes: mes,

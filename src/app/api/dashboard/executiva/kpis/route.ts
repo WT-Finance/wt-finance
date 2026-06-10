@@ -1,6 +1,8 @@
 import { type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getServerClient } from '@/lib/supabase/server'
+import { requireAreaApi } from '@/lib/auth/sessao'
+import { areasDoSetor } from '@/lib/auth/areas'
 import { parseRpc, executivaKpisSchema } from '@/lib/schemas-rpc'
 
 const schema = z.object({
@@ -16,7 +18,12 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const { from, to, setor } = parsed.data
-  const client = getServerClient()
+
+  // Guard v4.13: área(s) do setor pedido ('todos' → executiva|performance).
+  const sessao = await requireAreaApi(areasDoSetor(setor))
+  if (sessao instanceof Response) return sessao
+
+  const client = await getServerClient()
   const res = await client.rpc('get_executiva_kpis', {
     p_from: from, p_to: to, p_setor: setor,
   })

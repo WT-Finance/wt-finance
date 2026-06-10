@@ -1,6 +1,7 @@
 'use server'
 
 import { getServerClient } from '@/lib/supabase/server'
+import { requireAreaAction } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
 import { parseRpc, executivaKpisSchema, tendenciaMargemSchema } from '@/lib/schemas-rpc'
 import type { MixProduto, SumarioSubsetor } from '@/types/api'
@@ -10,7 +11,8 @@ export async function fetchWeddingsKpis(
   antFrom: string, antTo: string,
   yoyFrom: string, yoyTo: string,
 ) {
-  const db = getServerClient()
+  await requireAreaAction('performance/weddings')
+  const db = await getServerClient()
   const [kpisRes, tendRes, sumarioRes, sumarioYoyRes] = await Promise.all([
     db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: 'Weddings',
@@ -30,7 +32,8 @@ export async function fetchWeddingsKpis(
 }
 
 export async function fetchWeddingsMix(from: string, to: string) {
-  const db = getServerClient()
+  await requireAreaAction('performance/weddings')
+  const db = await getServerClient()
   const res = await db.rpc('get_mix_produto', { p_from: from, p_to: to, p_setor: 'Weddings', p_limite: 10 })
   return unwrapRpc<MixProduto>(res, 'get_mix_produto')
 }

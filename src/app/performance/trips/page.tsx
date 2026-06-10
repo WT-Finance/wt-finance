@@ -1,4 +1,5 @@
 import PerformanceContent from '@/components/performance/performance-content'
+import { requireArea } from '@/lib/auth/sessao'
 
 interface SearchParams {
   preset?: string
@@ -12,6 +13,7 @@ export default async function TripsPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
+  await requireArea('performance/trips') // v4.13: guard de área (ADR-0109)
   const sp = await searchParams
   return <PerformanceContent setor="Lazer" searchParams={sp} />
 }

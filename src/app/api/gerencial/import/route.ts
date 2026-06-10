@@ -6,6 +6,7 @@
 export const runtime = 'nodejs'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAreaApi } from '@/lib/auth/sessao'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { parseGerencialExcel } from '@/lib/gerencial/parser'
 import { chaveDuplicata, type LancamentoPlanilha, type ImportDiff } from '@/lib/gerencial/import-types'
@@ -54,6 +55,10 @@ async function computeImportDiff(planilha: LancamentoPlanilha[]): Promise<Import
 }
 
 export async function POST(req: NextRequest) {
+  // Guard v4.13: importação do Gerencial; o trabalho segue com o admin client (service role).
+  const sessao = await requireAreaApi('financeiro/gerencial')
+  if (sessao instanceof Response) return sessao
+
   try {
     const formData = await req.formData()
     const file   = formData.get('file') as File | null

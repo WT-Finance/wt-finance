@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { requireArea } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { fmtMi } from '@/lib/fmt'
@@ -140,6 +141,10 @@ export default async function FluxoCaixaPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
+  // v4.13: guard de área (ADR-0109); a seção Gerencial exige permissão própria
+  const sessao      = await requireArea('financeiro/fluxo-caixa')
+  const temGerencial = sessao.permissoes.includes('financeiro/gerencial')
+
   const sp   = await searchParams
   const { from, to } = resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
 
@@ -194,21 +199,24 @@ export default async function FluxoCaixaPage({
   const lancamentos10d: ProximoLancamento[] =
     unwrapRpc<ProximoLancamento[]>(lancamentos10dRes, 'get_proximos_lancamentos') ?? []
 
-  // Fetches Gerenciais isolados — falha não deve crashar a página principal
+  // Fetches Gerenciais isolados — falha não deve crashar a página principal.
+  // v4.13: só dispara para quem TEM a área financeiro/gerencial (as RPCs exigem-na no banco).
   let projecaoGerencial: DiaProjecao[]  = []
   let saldosGerencial:   GerencialSaldo[] = []
   let lancamentosGerencial: Lancamento[]  = []
-  try {
-    const [projecaoRes, saldosRes, lancamentosGerencialRes] = await Promise.all([
-      rpc('get_gerencial_projecao_diaria', { p_dias: 15 }),
-      rpc('get_gerencial_saldos'),
-      rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
-    ])
-    projecaoGerencial    = unwrapRpc<DiaProjecao[]>(projecaoRes, 'get_gerencial_projecao_diaria') ?? []
-    saldosGerencial      = unwrapRpc<GerencialSaldo[]>(saldosRes, 'get_gerencial_saldos') ?? []
-    lancamentosGerencial = unwrapRpc<Lancamento[]>(lancamentosGerencialRes, 'get_gerencial_lancamentos') ?? []
-  } catch {
-    // Dados gerenciais indisponíveis — seção renderiza vazia
+  if (temGerencial) {
+    try {
+      const [projecaoRes, saldosRes, lancamentosGerencialRes] = await Promise.all([
+        rpc('get_gerencial_projecao_diaria', { p_dias: 15 }),
+        rpc('get_gerencial_saldos'),
+        rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
+      ])
+      projecaoGerencial    = unwrapRpc<DiaProjecao[]>(projecaoRes, 'get_gerencial_projecao_diaria') ?? []
+      saldosGerencial      = unwrapRpc<GerencialSaldo[]>(saldosRes, 'get_gerencial_saldos') ?? []
+      lancamentosGerencial = unwrapRpc<Lancamento[]>(lancamentosGerencialRes, 'get_gerencial_lancamentos') ?? []
+    } catch {
+      // Dados gerenciais indisponíveis — seção renderiza vazia
+    }
   }
 
   const totalEntradas = kpis.entradas_realizadas
@@ -336,14 +344,16 @@ export default async function FluxoCaixaPage({
 
       </TopSection>
 
-      {/* ── FLUXO DE CAIXA GERENCIAL ──────────────────────────────────────── */}
-      <TopSection titulo="Fluxo de Caixa Gerencial" subtitulo="Baseado em planilha de previsão curada manualmente">
-        <GerencialSection
-          saldos={saldosGerencial}
-          projecao={projecaoGerencial}
-          lancamentos={lancamentosGerencial}
-        />
-      </TopSection>
+      {/* ── FLUXO DE CAIXA GERENCIAL — só para quem tem a área financeiro/gerencial ── */}
+      {temGerencial && (
+        <TopSection titulo="Fluxo de Caixa Gerencial" subtitulo="Baseado em planilha de previsão curada manualmente">
+          <GerencialSection
+            saldos={saldosGerencial}
+            projecao={projecaoGerencial}
+            lancamentos={lancamentosGerencial}
+          />
+        </TopSection>
+      )}
 
     </div>
   )

@@ -1,9 +1,14 @@
 import type { NextRequest } from 'next/server'
+import { requireAreaApi } from '@/lib/auth/sessao'
 import { carregarLancamentos } from '@/lib/carga/lancamentos'
 
 const MAX_SIZE_BYTES = 50 * 1024 * 1024 // 50 MB
 
 export async function POST(request: NextRequest): Promise<Response> {
+  // Guard v4.13: área de uploads administrativos.
+  const sessao = await requireAreaApi('admin/uploads')
+  if (sessao instanceof Response) return sessao
+
   let formData: FormData
   try {
     formData = await request.formData()

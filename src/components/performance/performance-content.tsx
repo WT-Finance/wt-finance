@@ -12,7 +12,7 @@ import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import TopSection from '@/components/shared/top-section'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
-import { getServerClient } from '@/lib/supabase/server'
+import { getServerClient, type ServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { unwrapRpc, unwrapRpcComErro } from '@/lib/rpc'
 import {
@@ -33,7 +33,7 @@ import type {
 // (migration 0117) agrega o intervalo de meses NO BANCO — fim do fan-out mensal
 // (até 36 chamadas) da v4.10. Limite alto (100) para o ranking do período ser exato.
 async function fetchTopVendedores(
-  db: ReturnType<typeof getServerClient>,
+  db: ServerClient,
   from: string, to: string, setor: string,
 ): Promise<RankingVendedorItem[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +75,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
     resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
   const preset = sp.preset ?? 'este-ano'
 
-  const db = getServerClient()
+  const db = await getServerClient()
 
   const [
     [kpisRes, mixRes, tendRes, prodRes, prejRes, cagrRes, benchmarks],

@@ -4,30 +4,59 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, LogOut } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
 
-const PERFORMANCE_SUBS = [
-  { href: '/performance',             label: 'Geral',       icon: Building   },
-  { href: '/performance/trips',       label: 'Trips',       icon: Plane      },
-  { href: '/performance/weddings',    label: 'Weddings',    icon: Sparkles   },
-  { href: '/performance/corporativo', label: 'Corporativo', icon: Briefcase  },
+/** Dados do usuário logado, repassados pelo AppShell para identidade + filtro de navegação. */
+export interface UsuarioSidebar {
+  nome: string | null
+  email: string | null
+  role: string | null
+  permissoes: string[]
+}
+
+interface NavSubItem {
+  href: string
+  label: string
+  icon: LucideIcon
+  /** Área de permissão que libera o subitem. */
+  area: Area
+}
+
+interface NavItem {
+  href: string
+  label: string
+  Icon: LucideIcon
+  /** Área que libera o item; null = grupo (visível se algum subitem for permitido). */
+  area: Area | null
+}
+
+const PERFORMANCE_SUBS: NavSubItem[] = [
+  { href: '/performance',             label: 'Geral',       icon: Building,  area: 'performance'             },
+  { href: '/performance/trips',       label: 'Trips',       icon: Plane,     area: 'performance/trips'       },
+  { href: '/performance/weddings',    label: 'Weddings',    icon: Sparkles,  area: 'performance/weddings'    },
+  { href: '/performance/corporativo', label: 'Corporativo', icon: Briefcase, area: 'performance/corporativo' },
 ]
 
-const FINANCEIRO_SUBS = [
-  { href: '/financeiro/fluxo-caixa', label: 'Fluxo de Caixa', icon: BarChart3 },
+const FINANCEIRO_SUBS: NavSubItem[] = [
+  { href: '/financeiro/fluxo-caixa',           label: 'Fluxo de Caixa', icon: BarChart3, area: 'financeiro/fluxo-caixa' },
+  { href: '/financeiro/fluxo-caixa/gerencial', label: 'Gerencial',      icon: Table2,    area: 'financeiro/gerencial'   },
 ]
 
-const NAV_ITEMS = [
-  { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard },
-  { href: '/performance',    label: 'Performance',        Icon: TrendingUp       },
-  { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet           },
-  { href: '/metas',          label: 'Metas',              Icon: Target           },
-  { href: '/admin/uploads',  label: 'Upload de Arquivos', Icon: Upload           },
+const NAV_ITEMS: NavItem[] = [
+  { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva'     },
+  { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
+  { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
+  { href: '/metas',          label: 'Metas',              Icon: Target,          area: 'metas'         },
+  { href: '/admin/uploads',  label: 'Upload de Arquivos', Icon: Upload,          area: 'admin/uploads' },
+  { href: '/admin/acessos',  label: 'Usuários & Acessos', Icon: Users,           area: 'admin/acessos' },
 ]
 
 interface SidebarContentProps {
   pathname:    string
+  usuario:     UsuarioSidebar
   onNav?:      () => void
   onCollapse?: () => void
 }
@@ -102,7 +131,7 @@ function WelcomeGroupLogo({ src, alt, recolor }: WelcomeGroupLogoProps) {
   )
 }
 
-function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
+function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
   const isFinanceiroActive  = pathname.startsWith('/financeiro')
   // Logo por aba: cada área de Performance tem a sua identidade; fora delas, o Welcome Group.
@@ -143,16 +172,34 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
     })
   }
 
+  // ── RBAC: navegação filtrada pelas permissões do usuário ──
+  const pode = (area: Area) => usuario.permissoes.includes(area)
+
+  const performanceSubs = PERFORMANCE_SUBS.filter(s => pode(s.area))
+  const financeiroSubs  = FINANCEIRO_SUBS.filter(s => pode(s.area))
+
+  const navItems = NAV_ITEMS.filter(item => {
+    if (item.href === '/performance') return performanceSubs.length > 0
+    if (item.href === '/financeiro')  return financeiroSubs.length > 0
+    return item.area !== null && pode(item.area)
+  })
+
+  // Subitem ativo do Financeiro = o de prefixo MAIS específico (evita 'Fluxo de
+  // Caixa' e 'Gerencial' acesos ao mesmo tempo, já que um é sub-rota do outro).
+  const activeFinanceiroHref = financeiroSubs
+    .filter(s => pathname === s.href || pathname.startsWith(s.href + '/'))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null
+
   const visibleSubs = perfOpen
-    ? PERFORMANCE_SUBS
+    ? performanceSubs
     : isPerformanceActive
-    ? PERFORMANCE_SUBS.filter(s => pathname === s.href)
+    ? performanceSubs.filter(s => pathname === s.href)
     : []
 
   const visibleFinanceiroSubs = financeiroOpen
-    ? FINANCEIRO_SUBS
+    ? financeiroSubs
     : isFinanceiroActive
-    ? FINANCEIRO_SUBS.filter(s => pathname === s.href || pathname.startsWith(s.href + '/'))
+    ? financeiroSubs.filter(s => s.href === activeFinanceiroHref)
     : []
 
   return (
@@ -173,7 +220,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-3 space-y-0.5">
-        {NAV_ITEMS.map(({ href, label, Icon }) => {
+        {navItems.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`)
           const isPerformance = href === '/performance'
 
@@ -278,7 +325,7 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
                 {visibleFinanceiroSubs.length > 0 && (
                   <div className="mt-0.5 ml-4 pl-3 border-l border-zinc-200 space-y-0.5">
                     {visibleFinanceiroSubs.map(sub => {
-                      const subActive = pathname === sub.href || pathname.startsWith(sub.href + '/')
+                      const subActive = sub.href === activeFinanceiroHref
                       return (
                         <Link
                           key={sub.href}
@@ -336,8 +383,28 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
         })}
       </nav>
 
-      {/* Footer — reservado para v4 (avatar, logout) */}
-      <div className="h-14 px-3 border-t" style={{ borderColor: 'var(--sidebar-border)' }} />
+      {/* Footer — identidade do usuário logado + sair */}
+      <div className="h-14 px-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--sidebar-border)' }}>
+        <div className="flex-1 min-w-0" title={usuario.email ?? undefined}>
+          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+            {usuario.nome ?? usuario.email}
+          </p>
+          {usuario.role && (
+            <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
+              {usuario.role}
+            </p>
+          )}
+        </div>
+        <form action="/auth/signout" method="post">
+          <button
+            type="submit"
+            aria-label="Sair"
+            className="p-1.5 rounded text-zinc-400 hover:text-red-600 transition-colors"
+          >
+            <LogOut size={15} />
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -345,17 +412,18 @@ function SidebarContent({ pathname, onNav, onCollapse }: SidebarContentProps) {
 interface SidebarProps {
   mobileOpen:    boolean
   onMobileClose: () => void
+  usuario:       UsuarioSidebar
   onCollapse?:   () => void
 }
 
-export default function Sidebar({ mobileOpen, onMobileClose, onCollapse }: SidebarProps) {
+export default function Sidebar({ mobileOpen, onMobileClose, usuario, onCollapse }: SidebarProps) {
   const pathname = usePathname()
 
   return (
     <>
       {/* Desktop sidebar — sempre visível em lg+ */}
       <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0">
-        <SidebarContent pathname={pathname} onCollapse={onCollapse} />
+        <SidebarContent pathname={pathname} usuario={usuario} onCollapse={onCollapse} />
       </aside>
 
       {/* Mobile drawer */}
@@ -370,7 +438,7 @@ export default function Sidebar({ mobileOpen, onMobileClose, onCollapse }: Sideb
             >
               <X size={18} />
             </button>
-            <SidebarContent pathname={pathname} onNav={onMobileClose} />
+            <SidebarContent pathname={pathname} usuario={usuario} onNav={onMobileClose} />
           </aside>
         </div>
       )}
