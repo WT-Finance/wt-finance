@@ -32,7 +32,7 @@ const MOSTRAR_VENDAS_DIAGNOSTICO = false
 
 export default async function WeddingsContent({ searchParams: sp }: Props) {
   const operacao = sp.operacao ?? null
-  const db = getServerClient()
+  const db = await getServerClient()
 
   const [
     cartCasRes,

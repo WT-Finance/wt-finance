@@ -11,6 +11,7 @@ import Historico12mChart from '@/components/executiva/historico-12m-chart'
 import DecomposicaoVariacaoCard from '@/components/executiva/decomposicao-variacao-card'
 import PontosAtencaoCard from '@/components/executiva/pontos-atencao-card'
 import { getServerClient } from '@/lib/supabase/server'
+import { requireArea } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
 import { parseRpc, executivaKpisSchema } from '@/lib/schemas-rpc'
 import { getBenchmarks } from '@/lib/config'
@@ -32,6 +33,7 @@ export default async function ExecutivaPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
+  await requireArea('executiva') // v4.13: guard de área (ADR-0109)
   const sp      = await searchParams
   const preview = sp.preview === '1'
   if (!preview) return <EmConstrucao preview={false}>{null}</EmConstrucao>
@@ -41,7 +43,7 @@ export default async function ExecutivaPage({
   const setor  = sp.setor ?? 'todos'
   const preset = sp.preset ?? 'mes-passado'
 
-  const db = getServerClient()
+  const db = await getServerClient()
 
   const [
     kpisRes, mixRes, prejRes, prejAntRes,

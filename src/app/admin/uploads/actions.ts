@@ -2,6 +2,7 @@
 
 import { loadMetas } from '@/lib/carga/metas'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { requireAreaAction } from '@/lib/auth/sessao'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
@@ -10,6 +11,8 @@ import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
 export async function getLancamentosStatusAction(): Promise<{ total: number } | { error: string }> {
+  // Guard ANTES do try: negação de permissão deve lançar, não virar erro amigável.
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('get_upload_status')
@@ -25,6 +28,7 @@ export async function inserirLoteLancamentosAction(
   lote: LancamentoRaw[],
   isFirst: boolean,
 ): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
@@ -47,6 +51,7 @@ export async function finalizarLancamentosAction(
   totalAntes: number,
   totalInseridas: number,
 ): Promise<ResultadoCarga | { error: string }> {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const { error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_dim_operacao_weddings')
@@ -73,6 +78,7 @@ export async function finalizarLancamentosAction(
 export async function getVendasStatusAction(): Promise<
   { total: number; ultima_atualizacao: string | null } | { error: string }
 > {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('get_upload_status')
@@ -91,6 +97,7 @@ export async function inserirLoteVendasAction(
   lote: VendaProdutoRaw[],
   isFirst: boolean,
 ): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
@@ -124,6 +131,7 @@ export async function finalizarVendasAction(
   erros: string[]
   preview: { antes: { total_vendas: number }; depois: { total_vendas: number } }
 } | { error: string }> {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
@@ -164,6 +172,7 @@ export async function finalizarVendasAction(
 export async function getLancamentosFinanceiroStatusAction(): Promise<
   { total: number; ultima_atualizacao: string | null } | { error: string }
 > {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
@@ -180,6 +189,7 @@ export async function inserirLoteLancamentosFinanceiroAction(
   isFirst: boolean,
   arquivoOrigem: string,
 ): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
@@ -203,6 +213,7 @@ export async function finalizarLancamentosFinanceiroAction(
   totalAntes: number,
   totalInseridas: number,
 ): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const { error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_financeiro_lancamentos')
@@ -223,6 +234,7 @@ export async function finalizarLancamentosFinanceiroAction(
 export async function getFluxoCaixaTitulosStatusAction(): Promise<
   { total: number; ultima_atualizacao: string | null } | { error: string }
 > {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('contar_fluxo_caixa_titulos')
@@ -238,6 +250,7 @@ export async function inserirLoteFluxoCaixaTitulosAction(
   isFirst: boolean,
   arquivoOrigem: string,
 ): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
@@ -261,6 +274,7 @@ export async function finalizarFluxoCaixaTitulosAction(
   totalAntes: number,
   totalInseridas: number,
 ): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
   // raw.fluxo_caixa_titulos não tem transformação adicional por agora
   return { sucesso: true, total_linhas: totalInseridas, erros: [] }
 }

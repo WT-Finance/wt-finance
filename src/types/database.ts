@@ -578,6 +578,17 @@ export interface Database {
       get_calendario_liquidez:    { Args: { p_mes_referencia: string }; Returns: Json }
       get_lancamentos_do_dia:        { Args: { p_data: string }; Returns: Json }
       get_proximos_lancamentos:      { Args: { p_dias?: number }; Returns: Json }
+      // Auth + RBAC (v4.13)
+      get_minhas_permissoes:         { Args: Record<string, never>; Returns: Json }
+      admin_listar_areas:            { Args: Record<string, never>; Returns: Json }
+      admin_listar_roles:            { Args: Record<string, never>; Returns: Json }
+      admin_listar_usuarios:         { Args: Record<string, never>; Returns: Json }
+      admin_criar_role:              { Args: { p_nome: string; p_descricao: string; p_permissoes: string[] }; Returns: Json }
+      admin_atualizar_role:          { Args: { p_role_id: number; p_nome: string; p_descricao: string; p_permissoes: string[] }; Returns: Json }
+      admin_excluir_role:            { Args: { p_role_id: number }; Returns: Json }
+      admin_atribuir_role:           { Args: { p_user_id: string; p_role_id: number }; Returns: Json }
+      admin_definir_usuario_ativo:   { Args: { p_user_id: string; p_ativo: boolean }; Returns: Json }
+      admin_registrar_usuario:       { Args: { p_user_id: string; p_email: string; p_nome: string | null; p_role_id: number }; Returns: Json }
     }
   }
   financeiro: {

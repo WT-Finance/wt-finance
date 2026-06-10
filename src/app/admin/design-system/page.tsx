@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import ChartShowcase from './chart-showcase'
+import { requireArea } from '@/lib/auth/sessao'
 
 export const dynamic = 'force-dynamic'
 
-export default function DesignSystemPage() {
+export default async function DesignSystemPage() {
+  await requireArea('admin/design-system') // v4.13: guard de área (ADR-0109)
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
       <div className="mb-8">

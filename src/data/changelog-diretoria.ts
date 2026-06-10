@@ -32,6 +32,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.13.0',
+    data: '2026-06-10T04:30',
+    itens: [
+      { tipo: 'novidade', texto: 'O WT Finance agora pede login: o acesso deixa de ser por link aberto e passa a exigir entrada por e-mail (um link de acesso enviado a cada pessoa), com cadastro somente por convite. Fecha a porta para qualquer pessoa com o endereço do site abrir os dados da empresa.' },
+      { tipo: 'novidade', texto: 'Controle de acessos por perfil: é possível criar perfis com permissões sob medida — por área do sistema e, em Performance, por setor (Trips, Weddings, Corporativo) — e definir o que cada pessoa enxerga. Uma nova tela de Usuários & Acessos permite convidar pessoas, atribuir perfis e ativar/desativar contas.' },
+      { tipo: 'melhoria', texto: 'Proteção dos dados em todas as camadas: cada tela, relatório e informação só é entregue a quem tem permissão — inclusive as rotas administrativas de importação, que antes não exigiam identificação.' },
+    ],
+  },
+  {
     versao: '4.12.1',
     data: '2026-06-09T20:30',
     itens: [

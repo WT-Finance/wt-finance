@@ -7,6 +7,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { requireAreaAction } from '@/lib/auth/sessao'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>
@@ -29,6 +30,8 @@ export async function createLancamento(input: {
   | { success: true;  lancamento: Record<string, unknown> }
   | { success: false; error: string }
 > {
+  // Guard ANTES do try: negação de permissão deve lançar, não virar erro amigável.
+  await requireAreaAction('financeiro/gerencial')
   try {
     const { data, error } = await rpc('create_gerencial_lancamento', {
       p_tipo:           input.tipo,
@@ -51,6 +54,7 @@ export async function updateLancamento(id: number, campo: string, valor: unknown
   | { success: true }
   | { success: false; error: string }
 > {
+  await requireAreaAction('financeiro/gerencial')
   const CAMPOS_PERMITIDOS = ['tipo', 'pessoa', 'valor_final', 'descricao', 'conta_previsao', 'vencimento']
   if (!CAMPOS_PERMITIDOS.includes(campo))
     return { success: false, error: 'Campo não permitido' }
@@ -72,6 +76,7 @@ export async function deleteLancamento(id: number): Promise<
   | { success: true }
   | { success: false; error: string }
 > {
+  await requireAreaAction('financeiro/gerencial')
   try {
     const { error } = await rpc('delete_gerencial_lancamento', { p_id: id })
     if (error) return { success: false, error: error.message }
@@ -86,6 +91,7 @@ export async function updateSaldo(conta: string, novoSaldo: number): Promise<
   | { success: true }
   | { success: false; error: string }
 > {
+  await requireAreaAction('financeiro/gerencial')
   try {
     const { error } = await rpc('update_gerencial_saldo', {
       p_conta: conta,

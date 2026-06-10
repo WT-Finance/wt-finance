@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
+import { requireAreaApi } from '@/lib/auth/sessao'
+import { areasDoSetor } from '@/lib/auth/areas'
 import type { HistoricoMensalItem } from '@/types/api'
 
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
@@ -13,7 +15,11 @@ export async function GET(request: NextRequest): Promise<Response> {
   const metrica = searchParams.get('metrica') ?? 'faturamento'
   const setor   = searchParams.get('setor')   ?? 'todos'
 
-  const client = getServerClient()
+  // Guard v4.13: Executiva ou a(s) área(s) do setor pedido.
+  const sessao = await requireAreaApi(['executiva', ...areasDoSetor(setor)])
+  if (sessao instanceof Response) return sessao
+
+  const client = await getServerClient()
   const { data, error } = await client.rpc('get_historico_mensal', { p_setor: setor })
   if (error) return Response.json({ error: error.message }, { status: 500 })
 

@@ -98,3 +98,67 @@ describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REA
     expect(r.success, r.success ? '' : `${fn} drift: ${JSON.stringify(r.error!.issues.slice(0, 6))}`).toBe(true)
   })
 })
+
+// ── v4.13: contrato do RBAC (ADRs 0106-0108) ─────────────────────────────────
+// Valida as 4 propriedades de segurança verificáveis por REST:
+//  1. paridade do catálogo de áreas banco↔app;
+//  2. o caminho NEGADO do guard (anon + enforcement simulado → 42501/403);
+//  3. a janela de compatibilidade (anon + flag OFF → leitura segue 200 — S5);
+//  4. mutações destrutivas INACESSÍVEIS a anon (revogação dura da 0122).
+
+const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+async function rpcAnonStatus(fn: string, body: Record<string, unknown>): Promise<number> {
+  const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: {
+      apikey: ANON as string,
+      Authorization: `Bearer ${ANON as string}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  // consome o corpo para não vazar handle
+  await res.text()
+  return res.status
+}
+
+describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)', () => {
+  it('catálogo de áreas: banco (app.rbac_areas) ↔ app (AREAS) idênticos', async () => {
+    const { AREAS } = await import('./auth/areas')
+    const areas = await rpc('admin_listar_areas', {}) as unknown as Array<{ area: string }>
+    expect(Array.isArray(areas)).toBe(true)
+    expect(areas.map(a => a.area).sort()).toEqual([...AREAS].sort())
+  })
+
+  it('get_minhas_permissoes: shape estável mesmo sem usuário (service role)', async () => {
+    const d = await rpc('get_minhas_permissoes', {}) as { registrado?: boolean; ativo?: boolean; permissoes?: unknown[] }
+    expect(d.registrado).toBe(false)
+    expect(d.ativo).toBe(false)
+    expect(Array.isArray(d.permissoes)).toBe(true)
+  })
+
+  it('guard NEGA anon com enforcement simulado (rbac_verificar_guard → 403)', async () => {
+    const status = await rpcAnonStatus('rbac_verificar_guard', { p_area: 'executiva' })
+    expect(status).toBeGreaterThanOrEqual(400) // 42501 → 403 no PostgREST
+  })
+
+  it('janela de compatibilidade (S5): leitura wrapped segue aberta a anon com flag OFF', async () => {
+    const status = await rpcAnonStatus('get_executiva_kpis', {
+      p_from: '2026-01-01', p_to: '2026-01-31', p_setor: 'todos',
+    })
+    expect(status).toBe(200)
+  })
+
+  it('mutações destrutivas INACESSÍVEIS a anon (revogação dura)', async () => {
+    for (const fn of ['truncate_dynamic_tables', 'promover_carga_vendas', 'inserir_lote_raw']) {
+      const status = await rpcAnonStatus(fn, fn === 'inserir_lote_raw' ? { p_linhas: [] } : {})
+      expect(status, `${fn} deveria estar revogada para anon`).toBeGreaterThanOrEqual(400)
+    }
+  })
+
+  it('RPCs de administração exigem JWT (anon → erro)', async () => {
+    const status = await rpcAnonStatus('admin_listar_usuarios', {})
+    expect(status).toBeGreaterThanOrEqual(400)
+  })
+})

@@ -103,6 +103,16 @@ coluna de JOIN que impedem índice — pioram conforme o dado cresce. (Custou ca
 mai/2026: `contar_convidados_operacao` × ~140 ops estourou após o backfill 0100; fix na
 migration 0101.)
 
+### Auth e RBAC (v4.13) — enforcement em 4 camadas
+Login obrigatório (Supabase Auth, **magic link**, cadastro só por convite). Autorização **RBAC dinâmico por área** (`app.rbac_*`; 11 áreas; em Performance, granular por setor). ADRs 0106-0109.
+
+- **Sessão flui ao banco:** `getServerClient()` é **assíncrono** e por-request (`@supabase/ssr` + cookies) — sempre `await`. As RPCs do app correm como `authenticated` (timeout **8s**, não os 3s do anon). `getAdminClient()` (service role) só server-side para cargas e `auth.admin` (convites). `proxy.ts` (convenção Next 16, **não** `middleware.ts`) exige sessão fora de `/login` e `/auth/*`.
+- **Guards em toda superfície:** página → `requireArea(area)`; route handler → `requireAreaApi` (retorna `Response` 401/403); server action → `requireAreaAction`. Mapa único em `src/lib/auth/areas.ts`, **espelhado** em `app.rbac_areas` (paridade testada em `rpc-contrato.test.ts`). Rota nova **nasce protegida** (proxy + guard do banco); não esquecer o guard explícito.
+- **Toda RPC de leitura exposta é um wrapper** `SECURITY DEFINER` que chama `app.exigir_acesso(<áreas>)` e delega ao `<fn>__nucleo` (service-role-only). RPC nova consumida pela UI segue esse padrão (migration 0121); RPC com `p_setor` deriva a área via `app.areas_do_setor`.
+- **`anon`/`authenticated` por default têm EXECUTE em função nova** (default privileges do Supabase) — **custou caro:** as 72 funções tinham `anon` mesmo com `REVOKE ... FROM PUBLIC` (incl. `truncate_dynamic_tables`). A 0122 corrigiu com `ALTER DEFAULT PRIVILEGES ... REVOKE EXECUTE ... FROM anon, authenticated`. Todo `GRANT EXECUTE` é **explícito**; nunca contar com o default.
+- **RLS é deny-by-default e NÃO-permissivo:** RLS ligado em todas as tabelas dos 6 schemas, sem policy `USING true` (a 0123 removeu as herdadas). O app nunca acessa tabela direto (zero `.from()`), então RLS não afeta o caminho via RPC (owner `postgres` ignora RLS) — mas a policy permissiva é furo latente; manter a camada de RLS também fechada.
+- **Kill switch / compatibilidade:** `app.config.auth_enforcement` (bool). OFF = anon ainda lê (janela para a `main` sem auth até o merge); ON = anon negado em tudo. `select public.admin_set_enforcement(<bool>)` ou UPDATE direto — base do procedimento de emergência (runbook `docs/runbooks/v4-13-auth-runbook.md`). Anti-lockout vive nas RPCs `admin_*` (não dá para se auto-desativar nem tirar o próprio `admin/acessos`).
+
 ### Convenções de migration
 - Arquivos: `supabase/migrations/NNNN_nome.sql`, numeração sequencial.
 - RPCs: sempre `SECURITY DEFINER` + `REVOKE EXECUTE ... FROM PUBLIC` + `GRANT EXECUTE ... TO service_role`.

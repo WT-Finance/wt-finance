@@ -3,6 +3,7 @@ import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/layout/app-shell";
 import ThemeProvider from "@/components/layout/theme-provider";
+import { getSessao } from "@/lib/auth/sessao";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -16,11 +17,15 @@ export const metadata: Metadata = {
   // pelo Next.js 16 — não precisam ser declarados manualmente aqui
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // v4.13 (ADR-0109): sessão + permissões resolvidas no servidor, uma vez por
+  // request (React.cache). Sem sessão (ex.: /login), renderiza sem o chrome.
+  const sessao = await getSessao();
+
   return (
     <html
       lang="pt-BR"
@@ -28,7 +33,20 @@ export default function RootLayout({
     >
       <body className="h-full">
         <ThemeProvider />
-        <AppShell>{children}</AppShell>
+        {sessao.logado ? (
+          <AppShell
+            usuario={{
+              nome: sessao.nome,
+              email: sessao.email,
+              role: sessao.role,
+              permissoes: sessao.permissoes,
+            }}
+          >
+            {children}
+          </AppShell>
+        ) : (
+          children
+        )}
       </body>
     </html>
   );
