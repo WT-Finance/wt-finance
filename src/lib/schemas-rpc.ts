@@ -152,7 +152,11 @@ const operacaoItem = z.object({
   margem_liquida_pct:  z.number(),
   data_venda_contrato: z.string().nullable(),
   tipo_contrato:       z.string().nullable(),
-  passageiros_raw:     z.string().nullable(),
+  // get_operacoes_weddings NÃO emite passageiros_raw (o tipo TS o declarava, mas a
+  // RPC nunca o retornou; o componente também não o lê). `.optional()` reflete o
+  // contrato real — sem ele, `.nullable()` rejeita o campo ausente (undefined) e a
+  // Lista de Operações retornava HTTP 500. (v4.12.1, fix pós-M2.)
+  passageiros_raw:     z.string().nullable().optional(),
   convidados:          z.number().nullable(),
 }).passthrough()
 

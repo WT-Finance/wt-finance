@@ -1,4 +1,10 @@
 import { describe, it, expect } from 'vitest'
+import type { ZodType } from 'zod'
+import {
+  operacoesWeddingsSchema, carteiraWeddingsSchema, tendenciaMargemSchema,
+  rankingVendedoresRangeSchema, vendasReceitaNegativaSchema, executivaKpisSchema,
+  vendasEmAbertoSchema,
+} from './schemas-rpc'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
@@ -67,5 +73,28 @@ describe.skipIf(!ON)('contrato RPC — shape + invariantes', () => {
       const margemEsperada = (d.receita!.valor / fat) * 100
       expect(Math.abs(d.margem_pct!.valor - margemEsperada)).toBeLessThan(0.5)
     }
+  })
+})
+
+// F7 (v4.12.1): o schema Zod de cada RPC consumida por parseRpc PRECISA aceitar o
+// retorno REAL — senão parseRpc devolve null e a rota dá HTTP 500 / a tela degrada.
+// Foi exatamente o que escapou na Lista de Operações (get_operacoes_weddings): o
+// schema exigia passageiros_raw, que a RPC não emite. Este bloco roda o schema real
+// contra a RPC real e guarda contra essa classe de regressão em TODAS as 7 RPCs do M2.
+const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; schema: ZodType }> = [
+  { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'data_evento', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
+  { fn: 'get_carteira_weddings',         params: { p_metric: 'casamentos' },                                              schema: carteiraWeddingsSchema },
+  { fn: 'get_tendencia_margem',          params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },       schema: tendenciaMargemSchema },
+  { fn: 'get_ranking_vendedores_range',  params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 100 }, schema: rankingVendedoresRangeSchema },
+  { fn: 'get_vendas_receita_negativa',   params: { p_setor: 'Weddings', p_from: '2020-01-01', p_to: '2099-12-31' },       schema: vendasReceitaNegativaSchema },
+  { fn: 'get_executiva_kpis',            params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },       schema: executivaKpisSchema },
+  { fn: 'get_vendas_em_aberto',          params: { p_setor: 'Weddings', p_limite: 50, p_offset: 0 },                      schema: vendasEmAbertoSchema },
+]
+
+describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
+  it.each(CONTRATOS_PARSE_RPC)('$fn ↔ schema Zod', async ({ fn, params, schema }) => {
+    const d = await rpc(fn, params)
+    const r = schema.safeParse(d)
+    expect(r.success, r.success ? '' : `${fn} drift: ${JSON.stringify(r.error!.issues.slice(0, 6))}`).toBe(true)
   })
 })

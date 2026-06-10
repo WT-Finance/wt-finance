@@ -35,12 +35,17 @@ Ao investigar o P1 descobriu-se que os dois caminhos de Vendas divergiam em **pa
 ## RPCs cobertas por Zod (M2)
 `get_executiva_kpis`, `get_tendencia_margem`, `get_ranking_vendedores_range`, `get_vendas_em_aberto`, `get_vendas_receita_negativa`, `get_operacoes_weddings`, `get_carteira_weddings` — somadas à semente `get_mix_produto` (8 no total). Mantido em `unwrapRpcComErro` o `get_executiva_kpis` de `performance-content` (preserva a flag de erro que alimenta o `ErroCarregamento`).
 
+## Correção pós-M2 (mesmo PR) — HTTP 500 na Lista de Operações
+Após a entrega, a Lista de Operações (Weddings) retornava **HTTP 500**. Root cause (depurado via REST anon×service + `safeParse` dos dados reais): a RPC `get_operacoes_weddings` retorna 200 em ~0,3s (anon) — **não** era timeout nem erro de RPC. O `operacoesWeddingsSchema` (M2) exigia `passageiros_raw` (`z.string().nullable()`), mas a RPC **nunca emite esse campo** (o tipo TS `OperacaoItem` o declarava por engano; o componente nem o lê). `undefined` reprova em `.nullable()` → `parseRpc` → `null` → a rota retorna 500. O `unwrapRpc` antigo tolerava a mentira de tipo em silêncio; a validação do M2 a expôs.
+
+**Fix:** `passageiros_raw: z.string().nullable().optional()` (reflete o contrato real). **Varredura completa**: os 7 schemas do M2 foram validados contra o retorno REAL de cada RPC (via REST service role) — só `operacoesWeddingsSchema` divergia, e só nesse campo (todas as 233 operações). **Guard de regressão:** novo bloco em `rpc-contrato.test.ts` roda cada schema do M2 contra a RPC viva (`safeParse().success`), fechando a lacuna que deixou `get_operacoes_weddings` fora do contrato. Suíte 47 → **54**.
+
 ## ADRs
 - **Nenhum ADR novo.** A unificação é aplicação dos ADRs **0098/0099** (parser tolerante + `Date` nativo); a validação de shape é o padrão do **ADR-0105/F7**. (O prompt deixou o ADR a critério; a unificação não introduz premissa arquitetural nova.)
 
 ## Gates
 - `npx tsc --noEmit`: **0 erros** (a index signature do `.passthrough()` é atribuível aos tipos nominais — sem ajuste necessário).
-- `npm test`: **47/47** (35 → 47; +12 do parser unificado).
+- `npm test`: **54/54** (35 → 47 com o parser; +7 contract tests do fix pós-M2 = 54).
 - `npm run lint`: **13 problemas** (10 erros + 3 warnings) — **baseline inalterado** (React Compiler P3; nenhum novo de M1/M2).
 - `npm run build`: **limpo**.
 
