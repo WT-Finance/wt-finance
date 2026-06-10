@@ -6,6 +6,22 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.12.1] — 2026-06-09
+
+Versão PATCH (saneamento técnico pós-v4.12): unificação dos parsers de Vendas e expansão da validação de contrato (Zod) às RPCs críticas restantes. Sem mudança de comportamento visível — reforça a resiliência da ingestão e a detecção de divergência de dados.
+
+### Corrigido
+- **Parser único de Vendas** (M1): a importação de Vendas passa a ter um único parser (`src/lib/carga/vendas-parser.ts`, isomórfico), consumido pela UI (`/admin/uploads`) e pela API Route (`upload-vendas`). A via servidor tinha parser próprio que **não** populava `operacao_propria` — uma carga por ela regrediria silenciosamente a correção da v4.9.x (convidados zerados, datas de evento ausentes, faturamento das operações errado). Casamento de cabeçalho tolerante a acento/caixa/espaço + aviso de coluna não-mapeada, agora nos dois caminhos.
+- **`operacao_propria` no pipeline atômico** (M1, migration 0118): `inserir_lote_staging` e `promover_carga_vendas` (introduzidas na 0116) passam a gravar `operacao_propria` — a coluna existia na staging mas nunca era preenchida. Sem isso, unificar só o parser não fecharia a porta.
+
+### Alterado
+- **Validação de shape (Zod) nas RPCs críticas** (M2, F7): padrão `parseRpc` estendido de 1 para 8 RPCs — `get_executiva_kpis`, `get_tendencia_margem`, `get_ranking_vendedores_range`, `get_vendas_em_aberto`, `get_vendas_receita_negativa`, `get_operacoes_weddings`, `get_carteira_weddings` (além da semente `get_mix_produto`). Divergência de contrato → log + degradação para estado de erro (nunca quebra a tela em silêncio).
+
+### Testes
+- +12 testes do parser unificado (acento, `Data Início`/`Data de Início`, `Date` nativo, coluna não-mapeada, paridade de saída, mapeamento de `operacao_propria`). Suíte: 35 → 47.
+
+---
+
 ## [4.12.0] — 2026-06-08
 
 Versão MINOR de saneamento técnico (pós-auditoria v4.11): ingestão de dados resistente a falha, rede de testes automatizados, confiabilidade do dado exibido e fim do fan-out no ranking. F1 (auth) ficou fora por decisão (ver ADR-0029).

@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getServerClient } from '@/lib/supabase/server'
-import type { ListaOperacoes } from '@/types/api'
+import { parseRpc, operacoesWeddingsSchema } from '@/lib/schemas-rpc'
 
 const schema = z.object({
   status:          z.enum(['passado', 'futuro', 'sem_data', 'todos']).default('todos'),
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   const p = parsed.data
-  const { data, error } = await getServerClient().rpc('get_operacoes_weddings', {
+  const res = await getServerClient().rpc('get_operacoes_weddings', {
     p_status:          p.status,
     p_periodo_inicio:  p.periodo_inicio ?? null,
     p_periodo_fim:     p.periodo_fim    ?? null,
@@ -34,6 +34,8 @@ export async function GET(request: NextRequest): Promise<Response> {
     p_pagina:          p.pagina,
     p_por_pagina:      p.por_pagina,
   })
-  if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json(data as unknown as ListaOperacoes)
+  // F7 (v4.12.1): valida shape; erro de RPC ou drift de contrato → null (logado em parseRpc).
+  const operacoes = parseRpc(operacoesWeddingsSchema, res, 'get_operacoes_weddings')
+  if (operacoes === null) return Response.json({ error: 'get_operacoes_weddings' }, { status: 500 })
+  return Response.json(operacoes)
 }

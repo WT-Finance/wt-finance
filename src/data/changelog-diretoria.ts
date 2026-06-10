@@ -32,6 +32,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.12.1',
+    data: '2026-06-09T20:30',
+    itens: [
+      { tipo: 'correcao', texto: 'Reforços internos na importação de planilhas de Vendas: a leitura das colunas ficou mais tolerante a variações de cabeçalho (acentos, maiúsculas) e passou a preencher de forma consistente o vínculo de cada operação — evitando que uma reimportação volte a zerar convidados ou apagar datas de eventos.' },
+      { tipo: 'melhoria', texto: 'Verificação automática ampliada sobre os principais indicadores e listas: se a forma de um dado vindo da base divergir do esperado, a tela passa a sinalizar em vez de exibir um número silenciosamente errado.' },
+    ],
+  },
+  {
     versao: '4.12.0',
     data: '2026-06-09T19:02',
     itens: [
