@@ -38,3 +38,8 @@ export type ResultadoAcao =
 export type ResultadoConvite =
   | { ok: true; linkConvite: string | null }
   | { ok: false; erro: string }
+
+/** Retorno da geração de link de acesso sob demanda (re-copiar). */
+export type ResultadoLink =
+  | { ok: true; link: string }
+  | { ok: false; erro: string }
