@@ -2,10 +2,15 @@
 
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import Sidebar from './sidebar'
+import Sidebar, { type UsuarioSidebar } from './sidebar'
 import MobileHeader from './mobile-header'
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+interface AppShellProps {
+  usuario:  UsuarioSidebar
+  children: React.ReactNode
+}
+
+export default function AppShell({ usuario, children }: AppShellProps) {
   const [mobileOpen,    setMobileOpen]    = useState(false)
   const [sidebarOpen,   setSidebarOpen]   = useState(true)
 
@@ -19,6 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         ].join(' ')}
       >
         <Sidebar
+          usuario={usuario}
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
           onCollapse={() => setSidebarOpen(false)}
