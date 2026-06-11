@@ -6,6 +6,21 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.14.2] — 2026-06-11
+
+Versão PATCH: continuação dos refinamentos de plataforma da 4.14.1 — Design System no menu, nomenclatura mais clara na administração e botões de acessos alinhados às pills de período do Financeiro. ADR-0103 (extensão).
+
+### Adicionado
+- **Design System como aba na sidebar** (`/admin/design-system`, ícone Palette), **abaixo de "Usuários e Acessos"**, visível só para quem tiver a permissão `admin/design-system`. A página já era protegida pelo guard; agora tem entrada no menu.
+
+### Corrigido / Melhorado
+- **Renomes:** "Usuários & Acessos" → **"Usuários e Acessos"** (sidebar, título e rótulo da área — app + banco via migration **0126**); aba e termos **"Roles" → "Permissões"** em toda a tela de acessos (a chave de área/role no código não muda).
+- **Botões da página de acessos no formato das pills de período** (`rounded-full`, borda fina, `px-3 py-1`), com hierarquia: **primária e aba ativa em bege suave neutro** (`--action-soft`/`-border`/`-fg`, espelhando o ativo do tema group); **secundária** cinza contornada; **destrutiva** em tom de perigo. Cor sempre neutra do Group, via tokens dedicados (sem `var(--brand)`). Estilos centralizados em `botoes.ts`.
+- **Anel de foco das telas de plataforma só em `:focus-visible`** (teclado): clicar com o mouse numa aba/pill/botão não deixa mais o "sombreado"; inputs de texto seguem mostrando o anel ao clicar.
+
+### Banco
+- Migration **0126** (cosmética, já aplicada): rótulo da área `admin/acessos` em `app.rbac_areas` → "Usuários e Acessos". Não altera chaves, permissões nem guards.
+
 ## [4.14.1] — 2026-06-11
 
 Versão PATCH: refino visual e de UX das telas de plataforma (login, trocar-senha, solicitar-acesso, sem-acesso, admin/acessos), que nasceram fora da identidade visual. ADR-0103 estendido.
@@ -14,13 +29,9 @@ Versão PATCH: refino visual e de UX das telas de plataforma (login, trocar-senh
 - **Identidade neutra do Group nas telas de plataforma.** Eliminado o dourado de Weddings (`#BD965C`) hardcoded nessas telas; agora usam tokens neutros dedicados (`--action-primary` #3F4144, `--focus-ring`) e a utilitária `.foco-neutro`, independentes de `[data-theme]` (sem flash dourado pré-hidratação). Abas de setor seguem com suas cores.
 - **Telas públicas:** cabeçalho institucional único (logo + wordmark) padronizado nas quatro telas via novo `AuthHeader`; labels em caixa normal (fim do UPPERCASE); banner de erro via tokens `--danger`. No login: link **"Solicitar acesso"** e o texto do esqueci-a-senha movido para **dentro do card**, centralizado; microcopy "Voltar ao login".
 - **/admin/acessos:** tabela de usuários no padrão CardTabela (headers caixa normal, `colgroup`, "Último acesso" em `DD/MM/AAAA` sem truncar); ações de linha reduzidas a **Senha** e **Excluir**; **Excluir** agora pede **confirmação** (modal) e **revoga a sessão** do usuário (`auth.admin.signOut`) — herdando o que o "Desativar" fazia; pills no padrão preenchido neutro; checkboxes do design system (componente novo `ui/checkbox`); removido o destaque dourado do chip "Usuários & Acessos".
-- **Design System como aba na sidebar** (`/admin/design-system`), visível só para quem tiver a permissão `admin/design-system` (ícone Palette). A página já era protegida pelo guard; agora tem entrada no menu.
-- **Renomes de nomenclatura:** "Usuários & Acessos" → **"Usuários e Acessos"** (sidebar, título e rótulo da área — app + banco via migration **0126**); aba e termos **"Roles" → "Permissões"** em toda a tela de acessos (a chave de área/role no código não muda).
-- **Botões da página de acessos no formato pill** (mesmo padrão das pills de período do Financeiro): `rounded-full`, borda fina, `px-3 py-1`, com hierarquia por variante (primária preenchida neutra, secundária cinza, destrutiva em tom de perigo) — sempre em cor neutra do Group. Estilos centralizados em `botoes.ts`.
 
 ### Notas
 - As RPCs de desativar permanecem no banco (saíram só da UI). Selects nativos mantidos (sem Radix no projeto), com foco neutralizado.
-- Migration **0126** é só cosmética (rótulo da área); não altera chaves, permissões nem guards.
 
 ## [4.14.0] — 2026-06-10
 

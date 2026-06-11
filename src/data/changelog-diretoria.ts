@@ -32,13 +32,20 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.14.2',
+    data: '2026-06-11T18:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'Nomenclatura mais clara na administração: "Usuários e Acessos" e a aba "Permissões" (antes "Roles").' },
+      { tipo: 'melhoria', texto: 'Botões da área de administração padronizados, com a mesma aparência dos filtros do Financeiro — visual mais consistente.' },
+    ],
+  },
+  {
     versao: '4.14.1',
     data: '2026-06-11T12:00',
     itens: [
       { tipo: 'melhoria', texto: 'As telas de acesso e administração (entrada, troca de senha, solicitação de acesso e gestão de usuários) ganharam a identidade visual do Welcome Group e ficaram mais limpas e simples de usar.' },
       { tipo: 'melhoria', texto: 'Na tela de entrada, o pedido de acesso e a orientação de "esqueci a senha" ficaram mais claros e organizados.' },
       { tipo: 'melhoria', texto: 'Na gestão de usuários, excluir alguém agora pede uma confirmação e encerra o acesso da pessoa na hora — evitando exclusões acidentais.' },
-      { tipo: 'melhoria', texto: 'Nomenclatura mais clara na administração: "Usuários e Acessos" e a aba "Permissões" (antes "Roles"); botões padronizados para uma aparência mais consistente.' },
     ],
   },
   {
