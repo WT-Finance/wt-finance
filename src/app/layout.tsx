@@ -33,7 +33,7 @@ export default async function RootLayout({
     >
       <body className="h-full">
         <ThemeProvider />
-        {sessao.logado ? (
+        {sessao.logado && !sessao.precisaTrocarSenha ? (
           <AppShell
             usuario={{
               nome: sessao.nome,
@@ -45,6 +45,8 @@ export default async function RootLayout({
             {children}
           </AppShell>
         ) : (
+          // Sem chrome: anônimo (login/solicitar) e usuário em troca obrigatória
+          // de senha (só vê /trocar-senha em tela cheia).
           children
         )}
       </body>

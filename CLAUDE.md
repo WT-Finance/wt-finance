@@ -103,8 +103,10 @@ coluna de JOIN que impedem índice — pioram conforme o dado cresce. (Custou ca
 mai/2026: `contar_convidados_operacao` × ~140 ops estourou após o backfill 0100; fix na
 migration 0101.)
 
-### Auth e RBAC (v4.13) — enforcement em 4 camadas
-Login obrigatório (Supabase Auth, **magic link**, cadastro só por convite). Autorização **RBAC dinâmico por área** (`app.rbac_*`; 11 áreas; em Performance, granular por setor). ADRs 0106-0109.
+### Auth e RBAC (v4.13/v4.14) — enforcement em 4 camadas
+Login obrigatório (Supabase Auth). **Método primário = e-mail + SENHA** (v4.14, ADR-0110); o magic link (`/auth/confirm` em 2 passos) virou **recuperação/anti-lockout**, fora da tela de login. Autorização **RBAC dinâmico por área** (`app.rbac_*`; 11 áreas; em Performance, granular por setor). ADRs 0106-0110.
+
+- **Senha (v4.14):** admin cria usuário com **senha provisória exibida na tela** (não por e-mail — sem dependência de SMTP); flag `app.rbac_usuarios.precisa_trocar_senha` força a troca no 1º acesso. **Portão forte:** com a flag ligada, `requireArea` manda para `/trocar-senha` (página), 403 (API) ou lança (action) — antes de qualquer dado. Reset = admin gera nova provisória. Auto-cadastro = `/solicitar-acesso` (RPC `solicitar_acesso`, anon, 1 pendente/e-mail, nada criado até aprovar) + aba Solicitações. `senhaProvisoria()` ≥16 chars; mínimo de senha 8 (config). NUNCA persistir senha em claro.
 
 - **Sessão flui ao banco:** `getServerClient()` é **assíncrono** e por-request (`@supabase/ssr` + cookies) — sempre `await`. As RPCs do app correm como `authenticated` (timeout **8s**, não os 3s do anon). `getAdminClient()` (service role) só server-side para cargas e `auth.admin` (convites). `proxy.ts` (convenção Next 16, **não** `middleware.ts`) exige sessão fora de `/login` e `/auth/*`.
 - **Guards em toda superfície:** página → `requireArea(area)`; route handler → `requireAreaApi` (retorna `Response` 401/403); server action → `requireAreaAction`. Mapa único em `src/lib/auth/areas.ts`, **espelhado** em `app.rbac_areas` (paridade testada em `rpc-contrato.test.ts`). Rota nova **nasce protegida** (proxy + guard do banco); não esquecer o guard explícito.

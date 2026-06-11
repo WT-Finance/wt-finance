@@ -1,19 +1,28 @@
 'use server'
 
+import { randomBytes } from 'node:crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
-import type { ResultadoAcao, ResultadoConvite, ResultadoLink } from '@/components/admin/acessos/tipos'
+import type {
+  ResultadoAcao, ResultadoLink, ResultadoCriarUsuario, ResultadoSenha,
+} from '@/components/admin/acessos/tipos'
 
-// v4.13 — server actions da administração de acessos. Todas finas: guard de
+// v4.13/v4.14 — server actions da administração de acessos. Todas finas: guard de
 // permissão + RPC com o cliente DE SESSÃO (o banco revalida o admin/acessos do
 // CHAMADOR — o guard da UI é conveniência, o do banco é o backstop). O cliente
-// admin (service role) é usado SÓ para o Auth (convite / criação de usuário /
-// geração de link), nunca para as RPCs admin_*.
+// admin (service role) é usado SÓ para o Auth (criar usuário / senha / link),
+// nunca para as RPCs admin_*.
 
 type ClienteAdmin = ReturnType<typeof getAdminClient>
+
+/** Senha provisória forte (~20 chars base64url). NUNCA persistida em claro —
+ *  exibida uma vez ao admin; o Supabase guarda só o hash. */
+function senhaProvisoria(): string {
+  return randomBytes(15).toString('base64url')
+}
 
 /** Prefixos de erro do guard interno do banco → mensagem legível para a UI. */
 const ERROS_BANCO: ReadonlyArray<readonly [string, string]> = [
@@ -64,15 +73,17 @@ async function buscarUserIdPorEmail(admin: ClienteAdmin, email: string): Promise
 }
 
 /**
- * Convida um usuário: cria no Auth (convite por e-mail; fallback sem e-mail),
- * registra o vínculo via RPC com o cliente de sessão e gera um link de convite
- * copiável (fallback: ok sem link). E-mail já existente → só re-registra + link.
+ * Cria um usuário com SENHA PROVISÓRIA (v4.14): cria no Auth (e-mail já confirmado,
+ * pois o admin avaliza), vincula o RBAC via cliente de sessão (o banco valida o
+ * admin/acessos do chamador) e marca troca obrigatória de senha. Devolve a senha
+ * provisória para o admin repassar — NÃO envia e-mail (sem dependência de SMTP).
+ * E-mail já existente no Auth → reusa a conta e redefine a senha provisória.
  */
-export async function convidarUsuario(input: {
+export async function criarUsuario(input: {
   email: string
   nome?: string
   roleId: number
-}): Promise<ResultadoConvite> {
+}): Promise<ResultadoCriarUsuario> {
   await requireAreaAction('admin/acessos')
 
   const email = input.email.trim().toLowerCase()
@@ -83,51 +94,92 @@ export async function convidarUsuario(input: {
   }
 
   try {
-    const origin = await origemRequest()
     const admin = getAdminClient()
+    const senha = senhaProvisoria()
 
-    // 1) Usuário no Auth — convite por e-mail; se o envio falhar (rate limit /
-    //    SMTP), cria sem e-mail; se já existir, apenas localiza o id.
+    // 1) Conta no Auth com a senha provisória (e-mail confirmado).
     let userId: string | null = null
-    const convite = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${origin}/auth/confirm`,
-    })
-    if (!convite.error) {
-      userId = convite.data.user?.id ?? null
-    } else if (emailJaRegistrado(convite.error.message)) {
+    const criado = await admin.auth.admin.createUser({ email, password: senha, email_confirm: true })
+    if (!criado.error) {
+      userId = criado.data.user?.id ?? null
+    } else if (emailJaRegistrado(criado.error.message)) {
       userId = await buscarUserIdPorEmail(admin, email)
+      if (userId) await admin.auth.admin.updateUserById(userId, { password: senha, email_confirm: true })
     } else {
-      const criado = await admin.auth.admin.createUser({ email, email_confirm: true })
-      if (!criado.error) {
-        userId = criado.data.user?.id ?? null
-      } else if (emailJaRegistrado(criado.error.message)) {
-        userId = await buscarUserIdPorEmail(admin, email)
-      } else {
-        return { ok: false, erro: `Não foi possível criar o usuário: ${criado.error.message}` }
-      }
+      return { ok: false, erro: `Não foi possível criar o usuário: ${criado.error.message}` }
     }
-    if (!userId) {
-      return { ok: false, erro: 'Não foi possível localizar o usuário deste e-mail no Auth.' }
-    }
+    if (!userId) return { ok: false, erro: 'Não foi possível localizar o usuário deste e-mail no Auth.' }
 
-    // 2) Vínculo via cliente DE SESSÃO — o banco valida o admin/acessos do chamador.
+    // 2) Vínculo RBAC (cliente de SESSÃO — banco valida o admin do chamador).
     const supabase = await getServerClient()
     const { error: erroRegistro } = await supabase.rpc('admin_registrar_usuario', {
-      p_user_id: userId,
-      p_email:   email,
-      p_nome:    nome,
-      p_role_id: input.roleId,
+      p_user_id: userId, p_email: email, p_nome: nome, p_role_id: input.roleId,
     })
     if (erroRegistro) return { ok: false, erro: traduzirErro(erroRegistro.message) }
 
-    // 3) Link de convite copiável (fallback: ok sem link).
-    let linkConvite: string | null = null
-    const link = await admin.auth.admin.generateLink({ type: 'magiclink', email })
-    if (!link.error && link.data.properties?.hashed_token) {
-      linkConvite = `${origin}/auth/confirm?token_hash=${link.data.properties.hashed_token}&type=magiclink`
-    }
+    // 3) Força a troca da senha no 1º acesso.
+    await supabase.rpc('admin_marcar_trocar_senha', { p_user_id: userId })
 
-    return { ok: true, linkConvite }
+    return { ok: true, email, senha }
+  } catch (err) {
+    return { ok: false, erro: comoErro(err) }
+  } finally {
+    revalidatePath('/admin/acessos')
+  }
+}
+
+/**
+ * Reseta a senha de um usuário: gera nova senha provisória, força a troca no
+ * próximo acesso e devolve a senha para o admin repassar. ("Esqueci a senha".)
+ */
+export async function resetarSenha(userId: string): Promise<ResultadoSenha> {
+  await requireAreaAction('admin/acessos')
+  try {
+    const senha = senhaProvisoria()
+    const { error } = await getAdminClient().auth.admin.updateUserById(userId, { password: senha })
+    if (error) return { ok: false, erro: comoErro(error) }
+    const supabase = await getServerClient()
+    const { error: e2 } = await supabase.rpc('admin_marcar_trocar_senha', { p_user_id: userId })
+    if (e2) return { ok: false, erro: traduzirErro(e2.message) }
+    return { ok: true, senha }
+  } catch (err) {
+    return { ok: false, erro: comoErro(err) }
+  } finally {
+    revalidatePath('/admin/acessos')
+  }
+}
+
+/**
+ * Aprova uma solicitação de acesso: cria o usuário (senha provisória) e marca a
+ * solicitação como aprovada. Devolve a senha provisória para repassar.
+ */
+export async function aprovarSolicitacao(input: {
+  id: number
+  email: string
+  nome?: string
+  roleId: number
+}): Promise<ResultadoCriarUsuario> {
+  await requireAreaAction('admin/acessos')
+  const r = await criarUsuario({ email: input.email, nome: input.nome, roleId: input.roleId })
+  if (!r.ok) return r
+  try {
+    const supabase = await getServerClient()
+    await supabase.rpc('admin_decidir_solicitacao', { p_id: input.id, p_aprovar: true })
+  } catch (err) {
+    console.error('[aprovarSolicitacao] usuário criado, mas falhou ao marcar a solicitação:', err)
+  } finally {
+    revalidatePath('/admin/acessos')
+  }
+  return r
+}
+
+export async function rejeitarSolicitacao(id: number): Promise<ResultadoAcao> {
+  await requireAreaAction('admin/acessos')
+  try {
+    const supabase = await getServerClient()
+    const { error } = await supabase.rpc('admin_decidir_solicitacao', { p_id: id, p_aprovar: false })
+    if (error) return { ok: false, erro: traduzirErro(error.message) }
+    return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
   } finally {

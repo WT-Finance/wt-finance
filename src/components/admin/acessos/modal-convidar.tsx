@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Copy, Loader2, X } from 'lucide-react'
-import { convidarUsuario } from '@/app/admin/acessos/actions'
+import { criarUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin } from './tipos'
 
-// v4.13 — modal de convite: email + nome (opcional) + role. Em sucesso, mostra
-// o link de convite copiável (o e-mail pode ou não ter sido enviado pelo SMTP).
+// v4.14 — modal de criar usuário: email + nome (opcional) + role. Em sucesso,
+// mostra a SENHA PROVISÓRIA copiável (a pessoa troca no 1º acesso). Sem e-mail
+// (independe de SMTP). O componente segue exportado como ModalConvidar.
 
 const OURO = '#BD965C'
 
@@ -16,8 +17,8 @@ const INPUT_CLASSES =
   'focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20 transition'
 
 interface Sucesso {
-  email:       string
-  linkConvite: string | null
+  email: string
+  senha: string
 }
 
 export function ModalConvidar({
@@ -45,24 +46,24 @@ export function ModalConvidar({
       return
     }
     setEnviando(true)
-    const res = await convidarUsuario({ email, nome: nome.trim() || undefined, roleId: idRole })
+    const res = await criarUsuario({ email, nome: nome.trim() || undefined, roleId: idRole })
     setEnviando(false)
     if (!res.ok) {
       setErro(res.erro)
       return
     }
-    setSucesso({ email: email.trim().toLowerCase(), linkConvite: res.linkConvite })
+    setSucesso({ email: res.email, senha: res.senha })
     router.refresh()
   }
 
   async function handleCopiar() {
-    if (!sucesso?.linkConvite) return
+    if (!sucesso) return
     try {
-      await navigator.clipboard.writeText(sucesso.linkConvite)
+      await navigator.clipboard.writeText(sucesso.senha)
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2500)
     } catch {
-      setErro('Não foi possível copiar automaticamente — selecione o link e copie manualmente.')
+      setErro('Não foi possível copiar automaticamente — selecione a senha e copie manualmente.')
     }
   }
 
@@ -72,12 +73,12 @@ export function ModalConvidar({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="titulo-convidar"
+        aria-labelledby="titulo-criar"
         className="relative w-full max-w-md mx-4 rounded-xl bg-white p-6 shadow-xl"
       >
         <div className="flex items-start justify-between mb-4">
-          <h3 id="titulo-convidar" className="text-base font-semibold text-zinc-900">
-            Convidar usuário
+          <h3 id="titulo-criar" className="text-base font-semibold text-zinc-900">
+            Criar usuário
           </h3>
           <button
             type="button"
@@ -98,43 +99,32 @@ export function ModalConvidar({
         {!sucesso ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="convite-email" className="block text-xs font-medium text-zinc-600 mb-1">
+              <label htmlFor="criar-email" className="block text-xs font-medium text-zinc-600 mb-1">
                 E-mail <span className="text-red-500" aria-hidden="true">*</span>
               </label>
               <input
-                id="convite-email"
-                type="email"
-                required
-                autoFocus
-                value={email}
+                id="criar-email" type="email" required autoFocus value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="pessoa@welcometrips.com.br"
-                className={INPUT_CLASSES}
+                placeholder="pessoa@welcometrips.com.br" className={INPUT_CLASSES}
               />
             </div>
             <div>
-              <label htmlFor="convite-nome" className="block text-xs font-medium text-zinc-600 mb-1">
+              <label htmlFor="criar-nome" className="block text-xs font-medium text-zinc-600 mb-1">
                 Nome <span className="text-zinc-400 font-normal">(opcional)</span>
               </label>
               <input
-                id="convite-nome"
-                type="text"
-                value={nome}
+                id="criar-nome" type="text" value={nome}
                 onChange={e => setNome(e.target.value)}
-                placeholder="Nome da pessoa"
-                className={INPUT_CLASSES}
+                placeholder="Nome da pessoa" className={INPUT_CLASSES}
               />
             </div>
             <div>
-              <label htmlFor="convite-role" className="block text-xs font-medium text-zinc-600 mb-1">
+              <label htmlFor="criar-role" className="block text-xs font-medium text-zinc-600 mb-1">
                 Role <span className="text-red-500" aria-hidden="true">*</span>
               </label>
               <select
-                id="convite-role"
-                required
-                value={roleId}
-                onChange={e => setRoleId(e.target.value)}
-                className={INPUT_CLASSES}
+                id="criar-role" required value={roleId}
+                onChange={e => setRoleId(e.target.value)} className={INPUT_CLASSES}
               >
                 <option value="" disabled>Selecione uma role…</option>
                 {roles.map(r => (
@@ -143,71 +133,61 @@ export function ModalConvidar({
               </select>
               {roles.length === 0 && (
                 <p className="mt-1 text-xs text-amber-600">
-                  Nenhuma role cadastrada — crie uma na aba «Roles» antes de convidar.
+                  Nenhuma role cadastrada — crie uma na aba «Roles» antes de criar usuários.
                 </p>
               )}
             </div>
 
             <div className="flex justify-end gap-3 pt-1">
               <button
-                type="button"
-                onClick={onFechar}
+                type="button" onClick={onFechar}
                 className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
-                type="submit"
-                disabled={enviando || roles.length === 0}
+                type="submit" disabled={enviando || roles.length === 0}
                 className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
                 style={{ background: OURO }}
               >
                 {enviando && <Loader2 size={14} className="animate-spin" />}
-                {enviando ? 'Convidando…' : 'Convidar'}
+                {enviando ? 'Criando…' : 'Criar usuário'}
               </button>
             </div>
           </form>
         ) : (
           <div className="space-y-4">
             <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              Convite registrado para <span className="font-medium">{sucesso.email}</span>.
+              Usuário <span className="font-medium">{sucesso.email}</span> criado.
             </div>
 
-            {sucesso.linkConvite && (
-              <div>
-                <label htmlFor="convite-link" className="block text-xs font-medium text-zinc-600 mb-1">
-                  Link de convite (compartilhe com a pessoa)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="convite-link"
-                    type="text"
-                    readOnly
-                    value={sucesso.linkConvite}
-                    onFocus={e => e.target.select()}
-                    className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 outline-none focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCopiar}
-                    className="flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
-                  >
-                    {copiado
-                      ? <><Check size={14} className="text-emerald-600" /> Copiado</>
-                      : <><Copy size={14} /> Copiar</>}
-                  </button>
-                </div>
+            <div>
+              <label htmlFor="criar-senha" className="block text-xs font-medium text-zinc-600 mb-1">
+                Senha provisória (repasse para a pessoa)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="criar-senha" type="text" readOnly value={sucesso.senha}
+                  onFocus={e => e.target.select()}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-mono text-zinc-700 outline-none focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20"
+                />
+                <button
+                  type="button" onClick={handleCopiar}
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                >
+                  {copiado ? <><Check size={14} className="text-emerald-600" /> Copiado</> : <><Copy size={14} /> Copiar</>}
+                </button>
               </div>
-            )}
+            </div>
 
             <p className="text-xs text-zinc-400">
-              O convite também foi enviado por e-mail, se o envio estiver disponível.
+              A pessoa entra com o e-mail e esta senha, e será obrigada a definir uma nova no primeiro acesso.
+              Esta senha não será mostrada de novo — se perder, use «Resetar senha».
             </p>
 
             <div className="flex justify-end">
               <button
-                type="button"
-                onClick={onFechar}
+                type="button" onClick={onFechar}
                 className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
                 style={{ background: OURO }}
               >

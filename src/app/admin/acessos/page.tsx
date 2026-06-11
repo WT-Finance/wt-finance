@@ -2,7 +2,7 @@ import { requireArea } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
 import { AREAS, AREA_INFO } from '@/lib/auth/areas'
 import { AcessosContent } from '@/components/admin/acessos/acessos-content'
-import type { AreaCatalogo, RoleAdmin, UsuarioAdmin } from '@/components/admin/acessos/tipos'
+import type { AreaCatalogo, RoleAdmin, UsuarioAdmin, SolicitacaoAdmin } from '@/components/admin/acessos/tipos'
 import type { Json } from '@/types/database'
 
 // v4.13 — Usuários & Acessos: busca inicial server-side (RPCs admin_* com o
@@ -22,10 +22,11 @@ export default async function AcessosPage() {
   const sessao = await requireArea('admin/acessos')
   const supabase = await getServerClient()
 
-  const [usuariosRes, rolesRes, areasRes] = await Promise.all([
+  const [usuariosRes, rolesRes, areasRes, solicitacoesRes] = await Promise.all([
     supabase.rpc('admin_listar_usuarios'),
     supabase.rpc('admin_listar_roles'),
     supabase.rpc('admin_listar_areas'),
+    supabase.rpc('admin_listar_solicitacoes'),
   ])
 
   const erroCarga =
@@ -66,11 +67,22 @@ export default async function AcessosPage() {
     ? areasRpc
     : AREAS.map(a => ({ area: a, ...AREA_INFO[a] }))
 
+  const STATUS_OK = new Set(['pendente', 'aprovada', 'rejeitada'])
+  const solicitacoes: SolicitacaoAdmin[] = comoLista(solicitacoesRes.data).map(s => ({
+    id:          typeof s.id === 'number' ? s.id : 0,
+    email:       typeof s.email === 'string' ? s.email : '',
+    nome:        typeof s.nome === 'string' ? s.nome : null,
+    status:      (typeof s.status === 'string' && STATUS_OK.has(s.status) ? s.status : 'pendente') as SolicitacaoAdmin['status'],
+    criado_em:   typeof s.criado_em === 'string' ? s.criado_em : null,
+    decidido_em: typeof s.decidido_em === 'string' ? s.decidido_em : null,
+  })).filter(s => s.id !== 0)
+
   return (
     <AcessosContent
       usuarios={usuarios}
       roles={roles}
       areas={areas}
+      solicitacoes={solicitacoes}
       meuUserId={sessao.userId}
       erroCarga={erroCarga ? `Não foi possível carregar os dados de acessos: ${erroCarga}` : null}
     />
