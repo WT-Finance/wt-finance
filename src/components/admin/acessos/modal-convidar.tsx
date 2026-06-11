@@ -10,11 +10,8 @@ import type { RoleAdmin } from './tipos'
 // mostra a SENHA PROVISÓRIA copiável (a pessoa troca no 1º acesso). Sem e-mail
 // (independe de SMTP). O componente segue exportado como ModalConvidar.
 
-const OURO = '#BD965C'
-
 const INPUT_CLASSES =
-  'w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none ' +
-  'focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20 transition'
+  'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
 
 interface Sucesso {
   email: string
@@ -84,7 +81,7 @@ export function ModalConvidar({
             type="button"
             onClick={onFechar}
             aria-label="Fechar"
-            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+            className="foco-neutro rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
           >
             <X size={16} />
           </button>
@@ -141,14 +138,14 @@ export function ModalConvidar({
             <div className="flex justify-end gap-3 pt-1">
               <button
                 type="button" onClick={onFechar}
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                className="foco-neutro rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit" disabled={enviando || roles.length === 0}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-                style={{ background: OURO }}
+                className="foco-neutro flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'var(--action-primary)', color: '#fff' }}
               >
                 {enviando && <Loader2 size={14} className="animate-spin" />}
                 {enviando ? 'Criando…' : 'Criar usuário'}
@@ -169,13 +166,14 @@ export function ModalConvidar({
                 <input
                   id="criar-senha" type="text" readOnly value={sucesso.senha}
                   onFocus={e => e.target.select()}
-                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-mono text-zinc-700 outline-none focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20"
+                  className="foco-neutro w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-mono text-zinc-700 outline-none"
                 />
                 <button
                   type="button" onClick={handleCopiar}
-                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                  className="foco-neutro flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition hover:opacity-90"
+                  style={{ background: 'var(--action-primary)', color: '#fff' }}
                 >
-                  {copiado ? <><Check size={14} className="text-emerald-600" /> Copiado</> : <><Copy size={14} /> Copiar</>}
+                  {copiado ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
                 </button>
               </div>
             </div>
@@ -188,8 +186,8 @@ export function ModalConvidar({
             <div className="flex justify-end">
               <button
                 type="button" onClick={onFechar}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                style={{ background: OURO }}
+                className="foco-neutro rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90"
+                style={{ background: 'var(--action-primary)', color: '#fff' }}
               >
                 Fechar
               </button>

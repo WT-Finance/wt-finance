@@ -25,6 +25,15 @@
   --danger:     #B85C5C;  /* vermelho-terracota */
   --danger-bg:  #F5DDDD;
 
+  /* Plataforma — telas neutras do Group (auth, trocar-senha, solicitar-acesso,   */
+  /* sem-acesso, admin). Identidade institucional, INDEPENDENTE de [data-theme]:   */
+  /* não usam var(--brand) (cujo default no :root é o dourado de Weddings e        */
+  /* causaria flash dourado pré-hidratação). ADR-0103: nenhuma cor de setor atua   */
+  /* como cor geral. (v4.14.1)                                                     */
+  --action-primary:    #3F4144;            /* botão/realce institucional — Cool Gray escuro */
+  --action-primary-fg: #FFFFFF;
+  --focus-ring:        rgba(63, 65, 68, 0.20);  /* anel de foco neutro (substitui o dourado) */
+
   /* Fluxo de Caixa — paleta dessaturada (ADR-0081) */
   /* Verdes: entradas e saldos positivos */
   --positive:       #5F7A3D;  /* verde sage, harmônico com dourado Weddings */

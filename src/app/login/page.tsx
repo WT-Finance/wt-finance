@@ -1,11 +1,11 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { entrar } from './actions'
 import { nextSeguro } from '@/lib/auth/areas'
+import AuthHeader from '@/components/auth/auth-header'
 
 // v4.14 (ADR-0110): login por e-mail + senha. Sem magic link na tela (ele segue
-// existindo só como recuperação, via link gerado pelo admin). "Ainda não tenho
-// conta" leva à solicitação de acesso.
+// existindo só como recuperação, via link gerado pelo admin). "Solicitar acesso"
+// leva à solicitação de acesso.
 
 interface SearchParams {
   erro?: string
@@ -28,21 +28,17 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-4">
       <div className="w-full max-w-sm">
-        <div className="bg-white rounded-xl shadow-sm px-8 py-9">
-          <div className="flex flex-col items-center mb-7">
-            <div className="relative h-12 w-44">
-              <Image src="/logos/welcome-group.svg" alt="Welcome Group" fill priority className="object-contain" />
-            </div>
-            <p className="mt-3 text-[13px] font-[800] uppercase tracking-[1.5px]" style={{ color: '#BD965C' }}>
-              WT Finance
-            </p>
-          </div>
+        <AuthHeader className="flex flex-col items-center mb-7" />
 
+        <div className="bg-white rounded-xl shadow-sm px-8 py-9">
           <h1 className="text-base font-semibold mb-1" style={{ color: '#1A1814' }}>Entrar</h1>
           <p className="text-sm mb-5" style={{ color: '#75777B' }}>Acesse com seu e-mail corporativo e senha.</p>
 
           {mensagemErro && (
-            <p className="mb-4 text-sm rounded-lg border border-red-200 bg-red-50 text-red-700 px-3 py-2">
+            <p
+              className="mb-4 text-sm rounded-lg border px-3 py-2"
+              style={{ borderColor: 'var(--danger)', background: 'var(--danger-bg)', color: 'var(--danger)' }}
+            >
               {mensagemErro}
             </p>
           )}
@@ -50,7 +46,7 @@ export default async function LoginPage({
           <form action={entrar} className="space-y-4">
             <input type="hidden" name="next" value={next} />
             <div>
-              <label htmlFor="email" className="block text-xs font-medium uppercase tracking-wide mb-1.5" style={{ color: '#4B4F54' }}>
+              <label htmlFor="email" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 E-mail
               </label>
               <input
@@ -61,11 +57,11 @@ export default async function LoginPage({
                 autoComplete="email"
                 autoFocus
                 placeholder="voce@welcometrips.com.br"
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20 transition"
+                className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
               />
             </div>
             <div>
-              <label htmlFor="senha" className="block text-xs font-medium uppercase tracking-wide mb-1.5" style={{ color: '#4B4F54' }}>
+              <label htmlFor="senha" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Senha
               </label>
               <input
@@ -75,26 +71,32 @@ export default async function LoginPage({
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20 transition"
+                className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
               />
             </div>
             <button
               type="submit"
-              className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-              style={{ background: '#BD965C' }}
+              className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90"
+              style={{ background: 'var(--action-primary)', color: 'var(--action-primary-fg)' }}
             >
               Entrar
             </button>
           </form>
 
-          <div className="mt-5 text-center">
-            <Link href="/solicitar-acesso" className="text-sm font-medium hover:underline" style={{ color: '#BD965C' }}>
-              Ainda não tenho uma conta
+          <div className="mt-4 text-center">
+            <Link
+              href="/solicitar-acesso"
+              className="text-sm font-medium hover:underline"
+              style={{ color: 'var(--action-primary)' }}
+            >
+              Solicitar acesso
             </Link>
-            <p className="mt-3 text-xs leading-relaxed" style={{ color: '#75777B' }}>
-              Esqueceu a senha? Fale com o time Financeiro para receber uma nova.
-            </p>
           </div>
+
+          <p className="mt-3 text-xs leading-relaxed text-center" style={{ color: 'var(--text-muted)' }}>
+            Esqueceu a senha?<br />
+            Fale com o time Financeiro para receber uma nova.
+          </p>
         </div>
       </div>
     </div>

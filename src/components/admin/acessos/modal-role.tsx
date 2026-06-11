@@ -4,18 +4,16 @@ import { useMemo, useState } from 'react'
 import { Loader2, Trash2, X } from 'lucide-react'
 import { AREA_ADMIN } from '@/lib/auth/areas'
 import { atualizarRole, criarRole, excluirRole } from '@/app/admin/acessos/actions'
+import Checkbox from '@/components/ui/checkbox'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
 
 // v4.13 — formulário de role (criar/editar): nome, descrição e checkboxes de
 // permissões agrupadas por grupo (Geral/Performance/Financeiro/Administração).
-// Marcar admin/acessos exibe aviso destacado (meta-permissão). Excluir só
-// habilita com n_usuarios === 0 (o banco também bloqueia: ROLE_EM_USO).
-
-const OURO = '#BD965C'
+// Marcar admin/acessos exibe um aviso (meta-permissão). Excluir só habilita com
+// n_usuarios === 0 (o banco também bloqueia: ROLE_EM_USO).
 
 const INPUT_CLASSES =
-  'w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none ' +
-  'focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20 transition'
+  'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
 
 interface GrupoAreas {
   grupo: string
@@ -112,7 +110,7 @@ export function ModalRole({
             type="button"
             onClick={onFechar}
             aria-label="Fechar"
-            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+            className="foco-neutro rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
           >
             <X size={16} />
           </button>
@@ -165,18 +163,17 @@ export function ModalRole({
                   </legend>
                   <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
                     {itens.map(area => (
-                      <label
-                        key={area.area}
-                        className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700"
-                      >
-                        <input
-                          type="checkbox"
+                      <div key={area.area} className="flex items-center gap-2 text-sm text-zinc-700">
+                        <Checkbox
+                          id={`perm-${area.area}`}
                           checked={permissoes.includes(area.area)}
                           onChange={() => togglePermissao(area.area)}
-                          className="rounded border-zinc-300 accent-[#BD965C] outline-none focus-visible:ring-2 focus-visible:ring-[#BD965C]/20"
+                          aria-label={area.rotulo}
                         />
-                        <span className="truncate">{area.rotulo}</span>
-                      </label>
+                        <label htmlFor={`perm-${area.area}`} className="cursor-pointer truncate">
+                          {area.rotulo}
+                        </label>
+                      </div>
                     ))}
                   </div>
                 </fieldset>
@@ -187,8 +184,8 @@ export function ModalRole({
           {permissoes.includes(AREA_ADMIN) && (
             <div
               role="alert"
-              className="rounded-lg border px-3 py-2 text-xs text-zinc-800"
-              style={{ borderColor: OURO, background: 'rgba(189,150,92,0.08)' }}
+              className="rounded-lg border px-3 py-2 text-xs"
+              style={{ borderColor: 'var(--border-strong)', background: 'var(--surface-soft)', color: 'var(--text-secondary)' }}
             >
               <span className="font-semibold">Atenção:</span> esta role dá acesso à administração
               de usuários — quem a tiver pode convidar, desativar e alterar permissões de qualquer pessoa.
@@ -205,7 +202,7 @@ export function ModalRole({
                   title={podeExcluir
                     ? 'Excluir esta role'
                     : 'Há usuários com esta role — reatribua-os antes de excluir.'}
-                  className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-red-600 transition-colors hover:border-red-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="foco-neutro flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {excluindo ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   Excluir
@@ -217,15 +214,15 @@ export function ModalRole({
                 type="button"
                 onClick={onFechar}
                 disabled={ocupado}
-                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50"
+                className="foco-neutro rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={ocupado}
-                className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-                style={{ background: OURO }}
+                className="foco-neutro flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
+                style={{ background: 'var(--action-primary)', color: '#fff' }}
               >
                 {salvando && <Loader2 size={14} className="animate-spin" />}
                 {modo === 'criar' ? 'Criar role' : 'Salvar alterações'}

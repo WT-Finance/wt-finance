@@ -10,10 +10,9 @@ import { FaixaMensagem } from './faixa-mensagem'
 // v4.14 — aba Solicitações: aprovar (cria usuário + senha provisória) / rejeitar
 // pedidos de acesso vindos da tela pública /solicitar-acesso.
 
-const OURO = '#BD965C'
 const SELECT_CLASSES =
-  'rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 ' +
-  'outline-none focus:border-[#BD965C] focus:ring-2 focus:ring-[#BD965C]/20 transition disabled:opacity-50'
+  'foco-neutro rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 ' +
+  'outline-none transition disabled:opacity-50'
 
 function fmtData(iso: string | null): string {
   if (!iso) return '—'
@@ -92,10 +91,10 @@ export function AbaSolicitacoes({
               readOnly value={senha.valor} onFocus={e => e.currentTarget.select()}
               className="flex-1 rounded border border-zinc-200 bg-white px-2 py-1 text-xs font-mono text-zinc-700 outline-none"
             />
-            <button type="button" onClick={copiarSenha} className="inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium text-white hover:opacity-90" style={{ background: OURO }}>
+            <button type="button" onClick={copiarSenha} className="foco-neutro inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium hover:opacity-90" style={{ background: 'var(--action-primary)', color: '#fff' }}>
               {copiado ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
             </button>
-            <button type="button" onClick={() => setSenha(null)} aria-label="Fechar" className="rounded-lg border border-zinc-200 p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+            <button type="button" onClick={() => setSenha(null)} aria-label="Fechar" className="foco-neutro rounded-lg border border-zinc-200 p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
               <X size={14} />
             </button>
           </div>
@@ -145,15 +144,15 @@ export function AbaSolicitacoes({
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button" onClick={() => handleAprovar(s)} disabled={proc || roles.length === 0}
-                          className="inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-                          style={{ background: OURO }}
+                          className="foco-neutro inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium transition hover:opacity-90 disabled:opacity-50"
+                          style={{ background: 'var(--action-primary)', color: '#fff' }}
                         >
                           {proc && <Loader2 size={12} className="animate-spin" />}
                           Aprovar
                         </button>
                         <button
                           type="button" onClick={() => handleRejeitar(s)} disabled={proc}
-                          className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-3 py-1 text-xs font-medium text-red-600 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+                          className="foco-neutro inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-3 py-1 text-xs font-medium text-red-600 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
                         >
                           Rejeitar
                         </button>

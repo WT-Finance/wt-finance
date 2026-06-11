@@ -1,6 +1,6 @@
-import Image from 'next/image'
 import { confirmarAcesso } from './actions'
 import { nextSeguro } from '@/lib/auth/areas'
+import AuthHeader from '@/components/auth/auth-header'
 
 // v4.13.1: página de confirmação em DOIS passos (ADR-0106 + fix anti-preview).
 // O GET só RENDERIZA o botão — não confirma nada. A confirmação (verifyOtp) é o
@@ -26,16 +26,9 @@ export default async function ConfirmarAcessoPage({
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-4">
       <div className="w-full max-w-sm">
-        <div className="bg-white rounded-xl shadow-sm px-8 py-9 text-center">
-          <div className="flex flex-col items-center mb-7">
-            <div className="relative h-12 w-44">
-              <Image src="/logos/welcome-group.svg" alt="Welcome Group" fill priority className="object-contain" />
-            </div>
-            <p className="mt-3 text-[13px] font-[800] uppercase tracking-[1.5px]" style={{ color: '#BD965C' }}>
-              WT Finance
-            </p>
-          </div>
+        <AuthHeader className="flex flex-col items-center mb-7" />
 
+        <div className="bg-white rounded-xl shadow-sm px-8 py-9 text-center">
           {temToken ? (
             <>
               <h1 className="text-base font-semibold mb-1" style={{ color: '#1A1814' }}>
@@ -51,8 +44,8 @@ export default async function ConfirmarAcessoPage({
                 <input type="hidden" name="next"       value={next} />
                 <button
                   type="submit"
-                  className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-                  style={{ background: '#BD965C' }}
+                  className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90"
+                  style={{ background: 'var(--action-primary)', color: 'var(--action-primary-fg)' }}
                 >
                   Entrar no WT Finance
                 </button>
@@ -68,8 +61,8 @@ export default async function ConfirmarAcessoPage({
               </p>
               <a
                 href="/login"
-                className="inline-block w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ background: '#BD965C' }}
+                className="inline-block w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90"
+                style={{ background: 'var(--action-primary)', color: 'var(--action-primary-fg)' }}
               >
                 Ir para a entrada
               </a>

@@ -332,6 +332,10 @@ export async function excluirUsuario(userId: string): Promise<ResultadoAcao> {
     if (user && user.id === userId) {
       return { ok: false, erro: 'Você não pode excluir a si mesmo.' }
     }
+    // Revogação ATIVA de sessão (best-effort) antes de deletar: encerra os
+    // refresh tokens vivos para fechar a janela do JWT já emitido. A sessão
+    // cairia de qualquer forma com a exclusão; o try/catch evita abortar por isso.
+    try { await getAdminClient().auth.admin.signOut(userId) } catch { /* sessão cai com a exclusão */ }
     const { error } = await getAdminClient().auth.admin.deleteUser(userId)
     if (error) return { ok: false, erro: comoErro(error) }
     return { ok: true }
