@@ -32,3 +32,22 @@
 - **Fallback de subsetor = `--brand`** (central, via `subsetorColor`); removido o `#BA7517` hardcoded local de `weddings-kpis-section` e `sumario-subsetor`.
 - **Risco de recriar a colisão:** uma sessão futura que hardcode `#0091B3` para série principal em Trips reintroduz o problema. Por isso: tudo via token; cash-flow em verde/terracota; e onde série principal coexistir com cash-flow numa tela de Trips, validar contraste (usar `--brand-deep` se preciso).
 - **Convenção `--text-tertiary`:** o briefing citou `--text-tertiary`; o design system tem a escala primary/secondary/muted/subtle — usou-se `--text-muted` (terciário semântico existente), sem criar token duplicado.
+
+## Extensão v4.14.1 — setor × plataforma
+
+Regra que fecha a ambiguidade de "cor geral":
+
+> **Cada setor usa sua cor de destaque nas SUAS abas** (Weddings `#BD965C`, Trips `#0091B3`,
+> Corporativo `#0D5257`). **As telas de plataforma** — autenticação (`/login`, `/trocar-senha`,
+> `/solicitar-acesso`, `/auth/*`), `/sem-acesso`, `/admin/*` e demais rotas não-setoriais —
+> **usam o tema neutro do Group**. **Nenhuma cor de setor atua como cor geral.** O wordmark
+> **WT FINANCE é dinâmico**: cor do setor dentro das abas de setor, neutro no resto.
+
+**Implementação:** o `theme-provider` já resolve toda rota não-`/performance/*` para `[data-theme="group"]`
+(neutro). Mas o `:root` tem `--brand: #BD965C` como default (Weddings), que daria **flash dourado**
+nas telas de plataforma antes da hidratação do provider. Por isso essas telas **não usam
+`var(--brand)`** — usam **tokens neutros dedicados, independentes de `[data-theme]`**:
+`--action-primary` (#3F4144, botão/realce institucional Cool Gray escuro), `--action-primary-fg`,
+`--focus-ring` (anel de foco neutro), e a utilitária `.foco-neutro` (`globals.css`) para o foco de
+inputs/selects/checkboxes. Tela de plataforma nova **nasce com esses tokens** — nunca `#BD965C` nem
+`var(--brand)`. (v4.14.1: as telas de auth/admin, nascidas fora da identidade, foram trazidas a ela.)

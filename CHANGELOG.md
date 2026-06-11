@@ -6,6 +6,18 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.14.1] — 2026-06-11
+
+Versão PATCH: refino visual e de UX das telas de plataforma (login, trocar-senha, solicitar-acesso, sem-acesso, admin/acessos), que nasceram fora da identidade visual. ADR-0103 estendido.
+
+### Corrigido / Melhorado
+- **Identidade neutra do Group nas telas de plataforma.** Eliminado o dourado de Weddings (`#BD965C`) hardcoded nessas telas; agora usam tokens neutros dedicados (`--action-primary` #3F4144, `--focus-ring`) e a utilitária `.foco-neutro`, independentes de `[data-theme]` (sem flash dourado pré-hidratação). Abas de setor seguem com suas cores.
+- **Telas públicas:** cabeçalho institucional único (logo + wordmark) padronizado nas quatro telas via novo `AuthHeader`; labels em caixa normal (fim do UPPERCASE); banner de erro via tokens `--danger`. No login: link **"Solicitar acesso"** e o texto do esqueci-a-senha movido para **dentro do card**, centralizado; microcopy "Voltar ao login".
+- **/admin/acessos:** tabela de usuários no padrão CardTabela (headers caixa normal, `colgroup`, "Último acesso" em `DD/MM/AAAA` sem truncar); ações de linha reduzidas a **Senha** e **Excluir**; **Excluir** agora pede **confirmação** (modal) e **revoga a sessão** do usuário (`auth.admin.signOut`) — herdando o que o "Desativar" fazia; pills no padrão preenchido neutro; checkboxes do design system (componente novo `ui/checkbox`); removido o destaque dourado do chip "Usuários & Acessos".
+
+### Notas
+- As RPCs de desativar permanecem no banco (saíram só da UI). Selects nativos mantidos (sem Radix no projeto), com foco neutralizado.
+
 ## [4.14.0] — 2026-06-10
 
 Versão MINOR: **login por e-mail + senha** (substitui o magic link como método primário) com troca obrigatória no 1º acesso, e **solicitações de acesso** moderadas pelo admin. Reduz o atrito do login sem depender de SMTP. ADR-0110.
