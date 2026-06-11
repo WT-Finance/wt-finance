@@ -7,9 +7,10 @@ import { AREA_ADMIN } from '@/lib/auth/areas'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
 import { ModalRole } from './modal-role'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
 
-// v4.13 — aba Roles: cards com permissões (chips por rótulo) e formulário de
-// criação/edição em modal.
+// v4.13 — aba Permissões (antes "Roles"): cards de perfis com suas permissões
+// (chips por rótulo) e formulário de criação/edição em modal. Botões em pill.
 
 interface Mensagem { tipo: 'sucesso' | 'erro'; texto: string }
 
@@ -42,16 +43,16 @@ export function AbaRoles({
     <div>
       <div className="flex items-center justify-between gap-3 mb-4">
         <p className="text-sm text-zinc-500">
-          {roles.length === 1 ? '1 role cadastrada' : `${roles.length} roles cadastradas`}
+          {roles.length === 1 ? '1 permissão cadastrada' : `${roles.length} permissões cadastradas`}
         </p>
         <button
           type="button"
           onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}
-          className="foco-neutro flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90 outline-none"
-          style={{ background: 'var(--action-primary)', color: '#fff' }}
+          className={`${PILL} ${PILL_PRIMARIA}`}
+          style={PILL_PRIMARIA_STYLE}
         >
-          <Plus size={15} />
-          Nova role
+          <Plus size={13} />
+          Nova permissão
         </button>
       </div>
 
@@ -67,8 +68,8 @@ export function AbaRoles({
                 <button
                   type="button"
                   onClick={() => { setMsg(null); setModal({ modo: 'editar', role }) }}
-                  className="flex shrink-0 items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
-                  aria-label={`Editar role ${role.nome}`}
+                  className={`shrink-0 ${PILL} ${PILL_NEUTRO}`}
+                  aria-label={`Editar permissão ${role.nome}`}
                 >
                   <Pencil size={12} />
                   Editar
@@ -102,7 +103,7 @@ export function AbaRoles({
 
         {roles.length === 0 && (
           <div className="sm:col-span-2 rounded-xl border border-dashed border-zinc-200 bg-white px-4 py-10 text-center text-sm text-zinc-400">
-            Nenhuma role cadastrada ainda. Crie a primeira com «Nova role».
+            Nenhuma permissão cadastrada ainda. Crie a primeira com «Nova permissão».
           </div>
         )}
       </div>
