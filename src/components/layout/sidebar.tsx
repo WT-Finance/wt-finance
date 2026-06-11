@@ -51,8 +51,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: 'metas'         },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
-  { href: '/admin/design-system',  label: 'Design System',      Icon: Palette, area: 'admin/design-system'  },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,   area: 'admin/acessos'        },
+  { href: '/admin/design-system',  label: 'Design System',      Icon: Palette, area: 'admin/design-system'  },
 ]
 
 interface SidebarContentProps {

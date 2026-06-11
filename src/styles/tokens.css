@@ -33,6 +33,12 @@
   --action-primary:    #3F4144;            /* botão/realce institucional — Cool Gray escuro */
   --action-primary-fg: #FFFFFF;
   --focus-ring:        rgba(63, 65, 68, 0.20);  /* anel de foco neutro (substitui o dourado) */
+  /* Pill "ativa/primária" das telas de plataforma — MESMO visual das pills de       */
+  /* período (ativo bege), espelhando o tema group (--brand-soft/--brand/--brand-deep)*/
+  /* em valores fixos, p/ não depender de var(--brand) (evita flash dourado). v4.14.1 */
+  --action-soft:        #EAE6DD;           /* fundo da pill primária (= --brand-soft do group) */
+  --action-soft-border: #75777B;           /* borda (= --brand do group / Cool Gray 9) */
+  --action-soft-fg:     #4B4F54;           /* texto (= --brand-deep do group) */
 
   /* Fluxo de Caixa — paleta dessaturada (ADR-0081) */
   /* Verdes: entradas e saldos positivos */

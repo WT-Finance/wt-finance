@@ -5,6 +5,7 @@ import type { AreaCatalogo, RoleAdmin, UsuarioAdmin, SolicitacaoAdmin } from './
 import { AbaUsuarios } from './aba-usuarios'
 import { AbaRoles } from './aba-roles'
 import { AbaSolicitacoes } from './aba-solicitacoes'
+import { PILL_PRIMARIA_STYLE } from './botoes'
 
 // v4.13/v4.14 — conteúdo client da página Usuários & Acessos: header, pills de aba
 // (Usuários / Roles / Solicitações) e delegação. Dados vêm prontos da page (RSC).
@@ -67,9 +68,7 @@ export function AcessosContent({
               aria-controls={`painel-${key}`}
               onClick={() => setAba(key)}
               className={`${PILL_BASE} ${ativa ? '' : PILL_INACTIVE}`}
-              style={ativa
-                ? { background: 'var(--action-primary)', borderColor: 'var(--action-primary)', color: '#fff' }
-                : undefined}
+              style={ativa ? PILL_PRIMARIA_STYLE : undefined}
             >
               {label}
             </button>

@@ -16,10 +16,11 @@ export const PILL_NEUTRO = 'border-zinc-200 text-zinc-600 hover:border-zinc-300 
 /** Destrutiva — pill com tom de perigo (semântico, permitido fora da regra de marca). */
 export const PILL_PERIGO = 'border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50'
 
-/** Primária — pill preenchida no neutro institucional. Use junto com PILL_PRIMARIA_STYLE. */
-export const PILL_PRIMARIA = 'hover:opacity-90'
+/** Primária — pill no estilo "ativo" das pills de período (bege suave do tema group),
+ *  via tokens neutros fixos. Use junto com PILL_PRIMARIA_STYLE. */
+export const PILL_PRIMARIA = 'hover:brightness-95'
 export const PILL_PRIMARIA_STYLE: CSSProperties = {
-  background:  'var(--action-primary)',
-  borderColor: 'var(--action-primary)',
-  color:       'var(--action-primary-fg)',
+  background:  'var(--action-soft)',
+  borderColor: 'var(--action-soft-border)',
+  color:       'var(--action-soft-fg)',
 }
