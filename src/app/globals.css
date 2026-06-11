@@ -144,7 +144,12 @@ body {
 /* Inputs/selects/checkboxes das telas neutras (auth/admin) usam foco          */
 /* institucional cinza — nunca o anel dourado de Weddings. Independente de      */
 /* [data-theme]: keyed em tokens neutros do :root (--text-secondary/--focus-ring). */
-.foco-neutro:focus,
+.foco-neutro:focus {
+  outline: none;  /* sem outline do browser, mas SEM anel no clique de mouse */
+}
+/* O anel de foco só em :focus-visible (teclado) — clicar com o mouse num botão/      */
+/* pill/aba não deixa "sombreado". Inputs de texto ainda mostram o anel ao clicar     */
+/* (o browser os trata como focus-visible). v4.14.1                                    */
 .foco-neutro:focus-visible {
   outline: none;
   border-color: var(--text-secondary);
