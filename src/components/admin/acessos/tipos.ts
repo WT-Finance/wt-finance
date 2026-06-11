@@ -34,12 +34,27 @@ export type ResultadoAcao =
   | { ok: true }
   | { ok: false; erro: string }
 
-/** Retorno do convite: link copiável (null quando o generateLink falhou). */
-export type ResultadoConvite =
-  | { ok: true; linkConvite: string | null }
+/** Solicitação de acesso (auto-cadastro moderado, v4.14). */
+export interface SolicitacaoAdmin {
+  id:          number
+  email:       string
+  nome:        string | null
+  status:      'pendente' | 'aprovada' | 'rejeitada'
+  criado_em:   string | null
+  decidido_em: string | null
+}
+
+/** Criação de usuário (v4.14): devolve a senha provisória para exibir ao admin. */
+export type ResultadoCriarUsuario =
+  | { ok: true; email: string; senha: string }
   | { ok: false; erro: string }
 
-/** Retorno da geração de link de acesso sob demanda (re-copiar). */
+/** Reset de senha: nova senha provisória para exibir ao admin. */
+export type ResultadoSenha =
+  | { ok: true; senha: string }
+  | { ok: false; erro: string }
+
+/** Retorno da geração de link de acesso sob demanda (recuperação/anti-lockout). */
 export type ResultadoLink =
   | { ok: true; link: string }
   | { ok: false; erro: string }

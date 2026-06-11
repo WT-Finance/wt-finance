@@ -589,6 +589,11 @@ export interface Database {
       admin_atribuir_role:           { Args: { p_user_id: string; p_role_id: number }; Returns: Json }
       admin_definir_usuario_ativo:   { Args: { p_user_id: string; p_ativo: boolean }; Returns: Json }
       admin_registrar_usuario:       { Args: { p_user_id: string; p_email: string; p_nome: string | null; p_role_id: number }; Returns: Json }
+      admin_marcar_trocar_senha:     { Args: { p_user_id: string }; Returns: Json }
+      admin_listar_solicitacoes:     { Args: Record<string, never>; Returns: Json }
+      admin_decidir_solicitacao:     { Args: { p_id: number; p_aprovar: boolean; p_obs?: string | null }; Returns: Json }
+      marcar_senha_trocada:          { Args: Record<string, never>; Returns: undefined }
+      solicitar_acesso:              { Args: { p_email: string; p_nome?: string | null }; Returns: Json }
     }
   }
   financeiro: {

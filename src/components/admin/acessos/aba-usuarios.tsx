@@ -2,15 +2,14 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, UserPlus, Link2, Trash2, Copy, Check, X } from 'lucide-react'
-import { atribuirRole, definirAtivo, gerarLinkAcesso, excluirUsuario } from '@/app/admin/acessos/actions'
+import { Loader2, UserPlus, Link2, KeyRound, Trash2, Copy, Check, X } from 'lucide-react'
+import { atribuirRole, definirAtivo, gerarLinkAcesso, resetarSenha, excluirUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin, UsuarioAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
 import { ModalConvidar } from './modal-convidar'
 
-// v4.13 — aba Usuários: tabela com role inline (select otimista), status,
-// último acesso e desativar/reativar. Convite via modal (botão primário dourado).
-// v4.13.1: + "Link de acesso" (re-gera o magic link sob demanda) e "Excluir".
+// v4.14 — aba Usuários: criar usuário (senha provisória), role inline, status,
+// resetar senha, link de acesso (recuperação), desativar e excluir.
 
 const OURO = '#BD965C'
 
@@ -27,11 +26,10 @@ function fmtDataCurta(iso: string | null): string {
 }
 
 function BadgeStatus({ usuario }: { usuario: UsuarioAdmin }) {
-  // Desativado prevalece; convite pendente = nunca logou.
   const { classes, rotulo } = !usuario.ativo
     ? { classes: 'border-zinc-200 bg-zinc-100 text-zinc-500',   rotulo: 'Desativado' }
     : usuario.convite_pendente
-      ? { classes: 'border-amber-200 bg-amber-50 text-amber-700', rotulo: 'Convite pendente' }
+      ? { classes: 'border-amber-200 bg-amber-50 text-amber-700', rotulo: 'Aguardando 1º acesso' }
       : { classes: 'border-emerald-200 bg-emerald-50 text-emerald-700', rotulo: 'Ativo' }
 
   return (
@@ -42,6 +40,8 @@ function BadgeStatus({ usuario }: { usuario: UsuarioAdmin }) {
 }
 
 interface Mensagem { tipo: 'sucesso' | 'erro'; texto: string }
+// Credencial revelada (senha provisória de reset, ou link de acesso de recuperação).
+interface Revelado { tipo: 'senha' | 'link'; email: string; valor: string }
 
 export function AbaUsuarios({
   usuarios,
@@ -56,11 +56,9 @@ export function AbaUsuarios({
   const [, startTransition] = useTransition()
   const [msg, setMsg] = useState<Mensagem | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
-  // Override otimista do role por usuário; revertido se a action falhar.
   const [rolesOtimistas, setRolesOtimistas] = useState<Record<string, number>>({})
   const [rowPendente, setRowPendente] = useState<string | null>(null)
-  // Link de acesso re-gerado sob demanda (painel copiável).
-  const [linkAcesso, setLinkAcesso] = useState<{ email: string; link: string } | null>(null)
+  const [revelado, setRevelado] = useState<Revelado | null>(null)
   const [copiado, setCopiado] = useState(false)
 
   function handleMudarRole(usuario: UsuarioAdmin, novoRoleId: number) {
@@ -72,12 +70,7 @@ export function AbaUsuarios({
     startTransition(async () => {
       const res = await atribuirRole(usuario.user_id, novoRoleId)
       if (!res.ok) {
-        // Reverte o otimismo e mostra o erro traduzido pela action.
-        setRolesOtimistas(prev => {
-          const copia = { ...prev }
-          delete copia[usuario.user_id]
-          return copia
-        })
+        setRolesOtimistas(prev => { const c = { ...prev }; delete c[usuario.user_id]; return c })
         setMsg({ tipo: 'erro', texto: res.erro })
       } else {
         setMsg({ tipo: 'sucesso', texto: `Role de ${usuario.email} atualizada.` })
@@ -102,15 +95,33 @@ export function AbaUsuarios({
     })
   }
 
+  function handleResetarSenha(usuario: UsuarioAdmin) {
+    if (!window.confirm(`Gerar uma NOVA senha provisória para ${usuario.email}? A senha atual deixa de valer.`)) return
+    setMsg(null)
+    setRowPendente(usuario.user_id)
+    startTransition(async () => {
+      const res = await resetarSenha(usuario.user_id)
+      if (res.ok) {
+        setRevelado({ tipo: 'senha', email: usuario.email, valor: res.senha })
+        setCopiado(false)
+        try { await navigator.clipboard.writeText(res.senha); setCopiado(true) } catch { /* painel copiável abaixo */ }
+      } else {
+        setMsg({ tipo: 'erro', texto: res.erro })
+      }
+      setRowPendente(null)
+      router.refresh()
+    })
+  }
+
   function handleGerarLink(usuario: UsuarioAdmin) {
     setMsg(null)
     setRowPendente(usuario.user_id)
     startTransition(async () => {
       const res = await gerarLinkAcesso(usuario.email)
       if (res.ok) {
-        setLinkAcesso({ email: usuario.email, link: res.link })
+        setRevelado({ tipo: 'link', email: usuario.email, valor: res.link })
         setCopiado(false)
-        try { await navigator.clipboard.writeText(res.link); setCopiado(true) } catch { /* fallback: campo copiável abaixo */ }
+        try { await navigator.clipboard.writeText(res.link); setCopiado(true) } catch { /* painel copiável abaixo */ }
       } else {
         setMsg({ tipo: 'erro', texto: res.erro })
       }
@@ -129,7 +140,7 @@ export function AbaUsuarios({
       const res = await excluirUsuario(usuario.user_id)
       if (res.ok) {
         setMsg({ tipo: 'sucesso', texto: `${usuario.email} excluído.` })
-        if (linkAcesso?.email === usuario.email) setLinkAcesso(null)
+        if (revelado?.email === usuario.email) setRevelado(null)
       } else {
         setMsg({ tipo: 'erro', texto: res.erro })
       }
@@ -138,10 +149,10 @@ export function AbaUsuarios({
     })
   }
 
-  async function copiarPainel() {
-    if (!linkAcesso) return
+  async function copiarRevelado() {
+    if (!revelado) return
     try {
-      await navigator.clipboard.writeText(linkAcesso.link)
+      await navigator.clipboard.writeText(revelado.valor)
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2000)
     } catch { /* o campo já está selecionável */ }
@@ -160,38 +171,37 @@ export function AbaUsuarios({
           style={{ background: OURO }}
         >
           <UserPlus size={15} />
-          Convidar usuário
+          Criar usuário
         </button>
       </div>
 
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
 
-      {linkAcesso && (
+      {revelado && (
         <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3">
           <p className="text-xs text-zinc-600 mb-2">
-            Link de acesso para <span className="font-medium">{linkAcesso.email}</span> — válido 24h, uso único.
-            {' '}Peça à pessoa para <span className="font-medium">colar no navegador</span> (mandar como link clicável
-            no WhatsApp/e-mail pode consumir o link na pré-visualização).
+            {revelado.tipo === 'senha' ? (
+              <>Senha provisória de <span className="font-medium">{revelado.email}</span> — repasse à pessoa.
+                Ela troca no próximo acesso. Não será mostrada de novo.</>
+            ) : (
+              <>Link de acesso para <span className="font-medium">{revelado.email}</span> — válido 24h, uso único.
+                Peça para <span className="font-medium">colar no navegador</span> (link clicável no WhatsApp/e-mail pode consumi-lo).</>
+            )}
           </p>
           <div className="flex items-center gap-2">
             <input
-              readOnly
-              value={linkAcesso.link}
-              onFocus={e => e.currentTarget.select()}
-              className="flex-1 rounded border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 outline-none"
+              readOnly value={revelado.valor} onFocus={e => e.currentTarget.select()}
+              className={`flex-1 rounded border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-600 outline-none ${revelado.tipo === 'senha' ? 'font-mono' : ''}`}
             />
             <button
-              type="button"
-              onClick={copiarPainel}
+              type="button" onClick={copiarRevelado}
               className="inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium text-white transition hover:opacity-90"
               style={{ background: OURO }}
             >
               {copiado ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
             </button>
             <button
-              type="button"
-              onClick={() => setLinkAcesso(null)}
-              aria-label="Fechar"
+              type="button" onClick={() => setRevelado(null)} aria-label="Fechar"
               className="rounded-lg border border-zinc-200 p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
             >
               <X size={14} />
@@ -204,11 +214,11 @@ export function AbaUsuarios({
         <table className="table-fixed w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100 bg-zinc-50/60 text-left">
-              <th scope="col" className="w-[28%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Usuário</th>
-              <th scope="col" className="w-[19%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Role</th>
-              <th scope="col" className="w-[14%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Status</th>
-              <th scope="col" className="w-[13%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Último acesso</th>
-              <th scope="col" className="w-[26%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Ações</th>
+              <th scope="col" className="w-[26%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Usuário</th>
+              <th scope="col" className="w-[18%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Role</th>
+              <th scope="col" className="w-[13%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Status</th>
+              <th scope="col" className="w-[12%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Último acesso</th>
+              <th scope="col" className="w-[31%] px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -222,17 +232,13 @@ export function AbaUsuarios({
                     <p className="font-medium text-zinc-900 truncate">
                       {usuario.nome ?? usuario.email}
                       {souEu && (
-                        <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: OURO }}>
-                          você
-                        </span>
+                        <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: OURO }}>você</span>
                       )}
                     </p>
                     <p className="text-xs text-zinc-500 truncate">{usuario.email}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <label htmlFor={`role-${usuario.user_id}`} className="sr-only">
-                      Role de {usuario.email}
-                    </label>
+                    <label htmlFor={`role-${usuario.user_id}`} className="sr-only">Role de {usuario.email}</label>
                     <select
                       id={`role-${usuario.user_id}`}
                       value={roleAtual != null ? String(roleAtual) : ''}
@@ -241,33 +247,32 @@ export function AbaUsuarios({
                       className={SELECT_CLASSES}
                     >
                       {roleAtual == null && <option value="" disabled>Sem role</option>}
-                      {roles.map(r => (
-                        <option key={r.id} value={String(r.id)}>{r.nome}</option>
-                      ))}
+                      {roles.map(r => (<option key={r.id} value={String(r.id)}>{r.nome}</option>))}
                     </select>
                   </td>
-                  <td className="px-4 py-3">
-                    <BadgeStatus usuario={usuario} />
-                  </td>
+                  <td className="px-4 py-3"><BadgeStatus usuario={usuario} /></td>
                   <td className="px-4 py-3">
                     <span className="block truncate text-zinc-500">{fmtDataCurta(usuario.ultimo_login)}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-1">
                       <button
-                        type="button"
-                        onClick={() => handleGerarLink(usuario)}
-                        disabled={pendente}
-                        title="Gerar e copiar um link de acesso para este usuário"
+                        type="button" onClick={() => handleResetarSenha(usuario)} disabled={pendente}
+                        title="Gerar nova senha provisória (a pessoa troca no próximo acesso)"
                         className={`${BTN_ACAO} border-zinc-200 text-zinc-600 hover:bg-zinc-50`}
                       >
-                        {pendente ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
-                        Link
+                        {pendente ? <Loader2 size={12} className="animate-spin" /> : <KeyRound size={12} />}
+                        Senha
                       </button>
                       <button
-                        type="button"
-                        onClick={() => handleToggleAtivo(usuario)}
-                        disabled={pendente}
+                        type="button" onClick={() => handleGerarLink(usuario)} disabled={pendente}
+                        title="Gerar link de acesso (recuperação, sem senha)"
+                        className={`${BTN_ACAO} border-zinc-200 text-zinc-600 hover:bg-zinc-50`}
+                      >
+                        <Link2 size={12} /> Link
+                      </button>
+                      <button
+                        type="button" onClick={() => handleToggleAtivo(usuario)} disabled={pendente}
                         className={[
                           BTN_ACAO,
                           usuario.ativo
@@ -279,14 +284,11 @@ export function AbaUsuarios({
                       </button>
                       {!souEu && (
                         <button
-                          type="button"
-                          onClick={() => handleExcluir(usuario)}
-                          disabled={pendente}
+                          type="button" onClick={() => handleExcluir(usuario)} disabled={pendente}
                           title="Excluir definitivamente (irreversível)"
                           className={`${BTN_ACAO} border-zinc-200 text-red-600 hover:border-red-200 hover:bg-red-50`}
                         >
-                          <Trash2 size={12} />
-                          Excluir
+                          <Trash2 size={12} /> Excluir
                         </button>
                       )}
                     </div>
@@ -297,7 +299,7 @@ export function AbaUsuarios({
             {usuarios.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-10 text-center text-sm text-zinc-400">
-                  Nenhum usuário registrado ainda. Use «Convidar usuário» para começar.
+                  Nenhum usuário registrado ainda. Use «Criar usuário» para começar.
                 </td>
               </tr>
             )}

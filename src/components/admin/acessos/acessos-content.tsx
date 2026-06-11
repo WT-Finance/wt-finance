@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import type { AreaCatalogo, RoleAdmin, UsuarioAdmin } from './tipos'
+import type { AreaCatalogo, RoleAdmin, UsuarioAdmin, SolicitacaoAdmin } from './tipos'
 import { AbaUsuarios } from './aba-usuarios'
 import { AbaRoles } from './aba-roles'
+import { AbaSolicitacoes } from './aba-solicitacoes'
 
-// v4.13 — conteúdo client da página Usuários & Acessos: header, pills de aba
-// (Usuários / Roles) e delegação para as abas. Dados vêm prontos da page (RSC).
+// v4.13/v4.14 — conteúdo client da página Usuários & Acessos: header, pills de aba
+// (Usuários / Roles / Solicitações) e delegação. Dados vêm prontos da page (RSC).
 
 const OURO = '#BD965C'
 
@@ -15,34 +16,38 @@ const PILL_BASE =
   'outline-none focus-visible:ring-2 focus-visible:ring-[#BD965C]/20'
 const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
-type Aba = 'usuarios' | 'roles'
-
-const ABAS: { key: Aba; label: string }[] = [
-  { key: 'usuarios', label: 'Usuários' },
-  { key: 'roles',    label: 'Roles' },
-]
+type Aba = 'usuarios' | 'roles' | 'solicitacoes'
 
 export function AcessosContent({
   usuarios,
   roles,
   areas,
+  solicitacoes,
   meuUserId,
   erroCarga,
 }: {
-  usuarios:  UsuarioAdmin[]
-  roles:     RoleAdmin[]
-  areas:     AreaCatalogo[]
-  meuUserId: string | null
-  erroCarga: string | null
+  usuarios:     UsuarioAdmin[]
+  roles:        RoleAdmin[]
+  areas:        AreaCatalogo[]
+  solicitacoes: SolicitacaoAdmin[]
+  meuUserId:    string | null
+  erroCarga:    string | null
 }) {
   const [aba, setAba] = useState<Aba>('usuarios')
+  const pendentes = solicitacoes.filter(s => s.status === 'pendente').length
+
+  const ABAS: { key: Aba; label: string }[] = [
+    { key: 'usuarios',     label: 'Usuários' },
+    { key: 'roles',        label: 'Roles' },
+    { key: 'solicitacoes', label: pendentes > 0 ? `Solicitações (${pendentes})` : 'Solicitações' },
+  ]
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-12">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Usuários &amp; Acessos</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
-          Convide usuários, atribua roles e controle o que cada pessoa pode ver
+          Crie usuários, atribua roles, modere solicitações e controle o que cada pessoa pode ver
         </p>
       </div>
 
@@ -76,9 +81,9 @@ export function AcessosContent({
       </div>
 
       <div role="tabpanel" id={`painel-${aba}`} aria-labelledby={`tab-${aba}`}>
-        {aba === 'usuarios'
-          ? <AbaUsuarios usuarios={usuarios} roles={roles} meuUserId={meuUserId} />
-          : <AbaRoles roles={roles} areas={areas} />}
+        {aba === 'usuarios'     && <AbaUsuarios usuarios={usuarios} roles={roles} meuUserId={meuUserId} />}
+        {aba === 'roles'        && <AbaRoles roles={roles} areas={areas} />}
+        {aba === 'solicitacoes' && <AbaSolicitacoes solicitacoes={solicitacoes} roles={roles} />}
       </div>
     </div>
   )
