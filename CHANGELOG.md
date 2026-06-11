@@ -6,6 +6,26 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.14.0] — 2026-06-10
+
+Versão MINOR: **login por e-mail + senha** (substitui o magic link como método primário) com troca obrigatória no 1º acesso, e **solicitações de acesso** moderadas pelo admin. Reduz o atrito do login sem depender de SMTP. ADR-0110.
+
+### Adicionado
+- **Login por senha** (`/login` → `signInWithPassword`). O magic link sai da tela de login e passa a ser **recuperação/anti-lockout** (rota `/auth/confirm` + botão "Link" no admin).
+- **Criação de usuário com senha provisória** (admin): a senha é **exibida na tela (copiável)**, não por e-mail — sem dependência de SMTP. A pessoa é obrigada a trocar no 1º acesso (`/trocar-senha`).
+- **Reset de senha pelo admin** ("Resetar senha"): nova provisória + troca obrigatória. Cobre "esqueci a senha".
+- **Solicitação de acesso pública** (`/solicitar-acesso`, link "Ainda não tenho conta") + **aba Solicitações** em `/admin/acessos` (aprovar = cria usuário com senha provisória; rejeitar). Nada é criado sem aprovação.
+- **Excluir usuário** já existia (v4.13.1); mantido.
+- Role **Administrador** (todas as áreas) atribuída ao usuário inicial.
+
+### Segurança
+- **Troca obrigatória é portão forte:** com `precisa_trocar_senha` ligada, toda rota autenticada redireciona para `/trocar-senha` (páginas), 403 (APIs) ou bloqueia (actions).
+- **`solicitar_acesso`** é o único endpoint público novo (anon): valida e-mail, no máx. 1 pendente por e-mail, nada criado até aprovação. Senha mínima elevada para 8; provisória ≥16.
+- Migration **0125** (aditiva): coluna `precisa_trocar_senha`, tabela `app.rbac_solicitacoes` (RLS deny), RPCs (`solicitar_acesso`, `admin_listar_solicitacoes`, `admin_decidir_solicitacao`, `admin_marcar_trocar_senha`, `marcar_senha_trocada`), seed da role Administrador.
+
+### Reversibilidade
+- Tudo aditivo. Freio de emergência inalterado: kill switch (`admin_set_enforcement(false)`) + revert do deploy na Vercel (para v4.13.1 = volta ao magic link; para v4.12.1 = app público). Ver runbook.
+
 ## [4.13.1] — 2026-06-10
 
 Versão PATCH: robustez do convite/login (pós-ativação da v4.13). Corrige links de acesso que chegavam "inválidos" e fecha lacunas da UI de administração.

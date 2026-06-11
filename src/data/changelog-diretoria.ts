@@ -32,6 +32,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.14.0',
+    data: '2026-06-10T21:00',
+    itens: [
+      { tipo: 'novidade', texto: 'Login mais simples: agora a entrada é com e-mail e senha (não é mais preciso abrir o e-mail e clicar num link a cada acesso).' },
+      { tipo: 'novidade', texto: 'O administrador cria usuários com uma senha provisória mostrada na hora (para repassar à pessoa), e cada um define a própria senha no primeiro acesso. O administrador também pode redefinir a senha de alguém que esqueceu.' },
+      { tipo: 'novidade', texto: 'Quem ainda não tem conta pode pedir acesso pela própria tela de entrada ("Ainda não tenho uma conta"); o time Financeiro recebe a solicitação e aprova ou recusa numa nova tela de Solicitações.' },
+    ],
+  },
+  {
     versao: '4.13.1',
     data: '2026-06-10T17:40',
     itens: [

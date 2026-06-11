@@ -164,4 +164,16 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
     const status = await rpcAnonStatus('admin_listar_usuarios', {})
     expect(status).toBeGreaterThanOrEqual(400)
   })
+
+  // v4.14: solicitação de acesso pública × admin de solicitações fechado.
+  it('admin_listar_solicitacoes nega anon (sem JWT → erro)', async () => {
+    const status = await rpcAnonStatus('admin_listar_solicitacoes', {})
+    expect(status).toBeGreaterThanOrEqual(400)
+  })
+
+  it('solicitar_acesso é acessível por anon (e-mail inválido → 200 ok:false, sem inserir)', async () => {
+    // E-mail inválido de propósito: a RPC responde 200 sem gravar nada (não deixa lixo).
+    const status = await rpcAnonStatus('solicitar_acesso', { p_email: 'invalido-sem-arroba' })
+    expect(status).toBe(200)
+  })
 })

@@ -8,6 +8,31 @@ do repo (a CLI já está logada/linkada).
 
 ---
 
+## 0. v4.14 — login por SENHA (substitui o magic link como método primário)
+
+A partir da v4.14 a entrada é **e-mail + senha**. O magic link continua existindo só
+como **recuperação** (botão "Link" no admin / `/auth/confirm`). Operação:
+
+- **Criar usuário:** `/admin/acessos` → aba Usuários → "Criar usuário" (e-mail + nome +
+  role). O sistema mostra uma **senha provisória** na tela — copie e repasse à pessoa.
+  Ela entra com e-mail + essa senha e é obrigada a definir uma nova no 1º acesso.
+- **Esqueci a senha:** "Resetar senha" na linha do usuário → nova provisória (exibida) +
+  troca obrigatória. (Não há reset por e-mail enquanto não houver SMTP.)
+- **Solicitações:** quem não tem conta usa "Ainda não tenho uma conta" em `/login`
+  (`/solicitar-acesso`). O admin vê na aba **Solicitações** e Aprova (cria usuário +
+  senha provisória) ou Rejeita.
+- **Cutover dos usuários atuais (que entravam por magic link):** todos foram marcados
+  para trocar senha. Eles entram **uma vez** por um "Link" de acesso gerado no admin
+  (recuperação) e caem em `/trocar-senha` para definir a senha; daí em diante, senha.
+- **Lockout do admin:** se o admin não tiver senha, gere um "Link" de acesso para ele
+  (ou, no Dashboard → Authentication → Users → reset), entre e defina a senha.
+- **Emergência → voltar à v4.12.1 (app público):** Vercel → Deployments → o deployment
+  da v4.12.1 → "Promote to Production" **+** `select public.admin_set_enforcement(false)`.
+  Para voltar só ao magic link (v4.13.1), promova o deployment da v4.13.1. As migrations
+  0119-0125 são aditivas e não quebram nenhuma dessas versões.
+
+---
+
 ## 1. Ativação (depois do merge na main)
 
 O sistema sobe com o **enforcement do banco DESLIGADO** (janela de compatibilidade,
