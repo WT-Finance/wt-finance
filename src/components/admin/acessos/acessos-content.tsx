@@ -9,11 +9,8 @@ import { AbaSolicitacoes } from './aba-solicitacoes'
 // v4.13/v4.14 — conteúdo client da página Usuários & Acessos: header, pills de aba
 // (Usuários / Roles / Solicitações) e delegação. Dados vêm prontos da page (RSC).
 
-const OURO = '#BD965C'
-
 const PILL_BASE =
-  'px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors whitespace-nowrap ' +
-  'outline-none focus-visible:ring-2 focus-visible:ring-[#BD965C]/20'
+  'foco-neutro px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors whitespace-nowrap outline-none'
 const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
 type Aba = 'usuarios' | 'roles' | 'solicitacoes'
@@ -71,7 +68,7 @@ export function AcessosContent({
               onClick={() => setAba(key)}
               className={`${PILL_BASE} ${ativa ? '' : PILL_INACTIVE}`}
               style={ativa
-                ? { background: 'rgba(189,150,92,0.10)', borderColor: OURO, color: '#1A1814' }
+                ? { background: 'var(--action-primary)', borderColor: 'var(--action-primary)', color: '#fff' }
                 : undefined}
             >
               {label}
