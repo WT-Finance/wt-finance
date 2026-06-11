@@ -8,16 +8,14 @@ import type { RoleAdmin, UsuarioAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
 import { ModalConvidar } from './modal-convidar'
 import ModalCentral from '@/components/shared/modal-central'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
 
 // v4.14.1 — aba Usuários: criar usuário (senha provisória), role inline, status,
-// resetar senha e excluir (com confirmação em modal).
+// resetar senha e excluir (com confirmação em modal). Botões no formato pill (botoes.ts).
 
 const SELECT_CLASSES =
   'foco-neutro w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 ' +
   'outline-none transition disabled:opacity-50'
-
-const BTN_ACAO =
-  'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50'
 
 function fmtDataCurta(iso: string | null): string {
   if (!iso) return '—'
@@ -73,7 +71,7 @@ export function AbaUsuarios({
         setRolesOtimistas(prev => { const c = { ...prev }; delete c[usuario.user_id]; return c })
         setMsg({ tipo: 'erro', texto: res.erro })
       } else {
-        setMsg({ tipo: 'sucesso', texto: `Role de ${usuario.email} atualizada.` })
+        setMsg({ tipo: 'sucesso', texto: `Permissão de ${usuario.email} atualizada.` })
       }
       setRowPendente(null)
       router.refresh()
@@ -133,10 +131,10 @@ export function AbaUsuarios({
         <button
           type="button"
           onClick={() => setModalAberto(true)}
-          className="foco-neutro flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90 outline-none"
-          style={{ background: 'var(--action-primary)', color: '#fff' }}
+          className={`${PILL} ${PILL_PRIMARIA}`}
+          style={PILL_PRIMARIA_STYLE}
         >
-          <UserPlus size={15} />
+          <UserPlus size={13} />
           Criar usuário
         </button>
       </div>
@@ -156,14 +154,14 @@ export function AbaUsuarios({
             />
             <button
               type="button" onClick={copiarRevelado}
-              className="foco-neutro inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium transition hover:opacity-90"
-              style={{ background: 'var(--action-primary)', color: '#fff' }}
+              className={`${PILL} ${PILL_PRIMARIA}`}
+              style={PILL_PRIMARIA_STYLE}
             >
               {copiado ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
             </button>
             <button
               type="button" onClick={() => setRevelado(null)} aria-label="Fechar"
-              className="foco-neutro rounded-lg border border-zinc-200 p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+              className="foco-neutro rounded-full border border-zinc-200 p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
             >
               <X size={14} />
             </button>
@@ -183,7 +181,7 @@ export function AbaUsuarios({
           <thead>
             <tr className="border-b border-zinc-100 bg-zinc-50/60 text-left">
               <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Usuário</th>
-              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Role</th>
+              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Permissão</th>
               <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Status</th>
               <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Último acesso</th>
               <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Ações</th>
@@ -206,7 +204,7 @@ export function AbaUsuarios({
                     <p className="text-xs text-zinc-500 truncate">{usuario.email}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <label htmlFor={`role-${usuario.user_id}`} className="sr-only">Role de {usuario.email}</label>
+                    <label htmlFor={`role-${usuario.user_id}`} className="sr-only">Permissão de {usuario.email}</label>
                     <select
                       id={`role-${usuario.user_id}`}
                       value={roleAtual != null ? String(roleAtual) : ''}
@@ -227,7 +225,7 @@ export function AbaUsuarios({
                       <button
                         type="button" onClick={() => handleResetarSenha(usuario)} disabled={pendente}
                         title="Gerar nova senha provisória (a pessoa troca no próximo acesso)"
-                        className={`foco-neutro ${BTN_ACAO} border-zinc-200 text-zinc-600 hover:bg-zinc-50`}
+                        className={`${PILL} ${PILL_NEUTRO}`}
                       >
                         {pendente ? <Loader2 size={12} className="animate-spin" /> : <KeyRound size={12} />}
                         Senha
@@ -236,7 +234,7 @@ export function AbaUsuarios({
                         <button
                           type="button" onClick={() => setConfirmarExcluir(usuario)} disabled={pendente}
                           title="Excluir definitivamente (irreversível)"
-                          className="foco-neutro inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-400 hover:text-red-600 transition disabled:opacity-50"
+                          className={`${PILL} ${PILL_PERIGO}`}
                         >
                           <Trash2 size={12} /> Excluir
                         </button>
@@ -267,11 +265,11 @@ export function AbaUsuarios({
             Excluir definitivamente {confirmarExcluir.nome ?? confirmarExcluir.email} ({confirmarExcluir.email})?
             Esta ação não pode ser desfeita.
           </p>
-          <div className="mt-5 flex justify-end gap-3">
+          <div className="mt-5 flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setConfirmarExcluir(null)}
-              className="foco-neutro rounded-lg border border-zinc-200 px-3 py-1.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-50"
+              className={`${PILL} ${PILL_NEUTRO}`}
             >
               Cancelar
             </button>
@@ -279,7 +277,7 @@ export function AbaUsuarios({
               type="button"
               onClick={() => handleConfirmarExcluir(confirmarExcluir)}
               disabled={rowPendente === confirmarExcluir.user_id}
-              className="foco-neutro inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              className={`${PILL} ${PILL_PERIGO}`}
             >
               {rowPendente === confirmarExcluir.user_id && <Loader2 size={14} className="animate-spin" />}
               Excluir

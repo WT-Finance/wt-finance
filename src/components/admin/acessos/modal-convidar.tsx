@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Check, Copy, Loader2, X } from 'lucide-react'
 import { criarUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin } from './tipos'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
 
 // v4.14 — modal de criar usuário: email + nome (opcional) + role. Em sucesso,
 // mostra a SENHA PROVISÓRIA copiável (a pessoa troca no 1º acesso). Sem e-mail
@@ -39,7 +40,7 @@ export function ModalConvidar({
     setErro(null)
     const idRole = Number(roleId)
     if (!idRole) {
-      setErro('Selecione uma role para o novo usuário.')
+      setErro('Selecione uma permissão para o novo usuário.')
       return
     }
     setEnviando(true)
@@ -117,20 +118,20 @@ export function ModalConvidar({
             </div>
             <div>
               <label htmlFor="criar-role" className="block text-xs font-medium text-zinc-600 mb-1">
-                Role <span className="text-red-500" aria-hidden="true">*</span>
+                Permissão <span className="text-red-500" aria-hidden="true">*</span>
               </label>
               <select
                 id="criar-role" required value={roleId}
                 onChange={e => setRoleId(e.target.value)} className={INPUT_CLASSES}
               >
-                <option value="" disabled>Selecione uma role…</option>
+                <option value="" disabled>Selecione uma permissão…</option>
                 {roles.map(r => (
                   <option key={r.id} value={String(r.id)}>{r.nome}</option>
                 ))}
               </select>
               {roles.length === 0 && (
                 <p className="mt-1 text-xs text-amber-600">
-                  Nenhuma role cadastrada — crie uma na aba «Roles» antes de criar usuários.
+                  Nenhuma permissão cadastrada — crie uma na aba «Permissões» antes de criar usuários.
                 </p>
               )}
             </div>
@@ -138,14 +139,14 @@ export function ModalConvidar({
             <div className="flex justify-end gap-3 pt-1">
               <button
                 type="button" onClick={onFechar}
-                className="foco-neutro rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+                className={`${PILL} ${PILL_NEUTRO}`}
               >
                 Cancelar
               </button>
               <button
                 type="submit" disabled={enviando || roles.length === 0}
-                className="foco-neutro flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'var(--action-primary)', color: '#fff' }}
+                className={`${PILL} ${PILL_PRIMARIA}`}
+                style={PILL_PRIMARIA_STYLE}
               >
                 {enviando && <Loader2 size={14} className="animate-spin" />}
                 {enviando ? 'Criando…' : 'Criar usuário'}
@@ -170,8 +171,8 @@ export function ModalConvidar({
                 />
                 <button
                   type="button" onClick={handleCopiar}
-                  className="foco-neutro flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition hover:opacity-90"
-                  style={{ background: 'var(--action-primary)', color: '#fff' }}
+                  className={`shrink-0 ${PILL} ${PILL_PRIMARIA}`}
+                  style={PILL_PRIMARIA_STYLE}
                 >
                   {copiado ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
                 </button>
@@ -186,8 +187,8 @@ export function ModalConvidar({
             <div className="flex justify-end">
               <button
                 type="button" onClick={onFechar}
-                className="foco-neutro rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90"
-                style={{ background: 'var(--action-primary)', color: '#fff' }}
+                className={`${PILL} ${PILL_PRIMARIA}`}
+                style={PILL_PRIMARIA_STYLE}
               >
                 Fechar
               </button>

@@ -5,6 +5,7 @@ import type { AreaCatalogo, RoleAdmin, UsuarioAdmin, SolicitacaoAdmin } from './
 import { AbaUsuarios } from './aba-usuarios'
 import { AbaRoles } from './aba-roles'
 import { AbaSolicitacoes } from './aba-solicitacoes'
+import { PILL_PRIMARIA_STYLE } from './botoes'
 
 // v4.13/v4.14 — conteúdo client da página Usuários & Acessos: header, pills de aba
 // (Usuários / Roles / Solicitações) e delegação. Dados vêm prontos da page (RSC).
@@ -35,16 +36,16 @@ export function AcessosContent({
 
   const ABAS: { key: Aba; label: string }[] = [
     { key: 'usuarios',     label: 'Usuários' },
-    { key: 'roles',        label: 'Roles' },
+    { key: 'roles',        label: 'Permissões' },
     { key: 'solicitacoes', label: pendentes > 0 ? `Solicitações (${pendentes})` : 'Solicitações' },
   ]
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-12">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Usuários &amp; Acessos</h1>
+        <h1 className="text-xl font-semibold text-zinc-900">Usuários e Acessos</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
-          Crie usuários, atribua roles, modere solicitações e controle o que cada pessoa pode ver
+          Crie usuários, atribua permissões, modere solicitações e controle o que cada pessoa pode ver
         </p>
       </div>
 
@@ -67,9 +68,7 @@ export function AcessosContent({
               aria-controls={`painel-${key}`}
               onClick={() => setAba(key)}
               className={`${PILL_BASE} ${ativa ? '' : PILL_INACTIVE}`}
-              style={ativa
-                ? { background: 'var(--action-primary)', borderColor: 'var(--action-primary)', color: '#fff' }
-                : undefined}
+              style={ativa ? PILL_PRIMARIA_STYLE : undefined}
             >
               {label}
             </button>

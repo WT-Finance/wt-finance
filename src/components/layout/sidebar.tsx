@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, LogOut } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, Palette, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -50,8 +50,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: 'metas'         },
-  { href: '/admin/uploads',  label: 'Upload de Arquivos', Icon: Upload,          area: 'admin/uploads' },
-  { href: '/admin/acessos',  label: 'Usuários & Acessos', Icon: Users,           area: 'admin/acessos' },
+  { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
+  { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,   area: 'admin/acessos'        },
+  { href: '/admin/design-system',  label: 'Design System',      Icon: Palette, area: 'admin/design-system'  },
 ]
 
 interface SidebarContentProps {

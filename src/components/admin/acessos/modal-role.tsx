@@ -6,11 +6,12 @@ import { AREA_ADMIN } from '@/lib/auth/areas'
 import { atualizarRole, criarRole, excluirRole } from '@/app/admin/acessos/actions'
 import Checkbox from '@/components/ui/checkbox'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
 
-// v4.13 — formulário de role (criar/editar): nome, descrição e checkboxes de
-// permissões agrupadas por grupo (Geral/Performance/Financeiro/Administração).
+// v4.13 — formulário de permissão/perfil (criar/editar): nome, descrição e
+// checkboxes de áreas agrupadas (Geral/Performance/Financeiro/Administração).
 // Marcar admin/acessos exibe um aviso (meta-permissão). Excluir só habilita com
-// n_usuarios === 0 (o banco também bloqueia: ROLE_EM_USO).
+// n_usuarios === 0 (o banco também bloqueia: ROLE_EM_USO). Botões em pill.
 
 const INPUT_CLASSES =
   'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
@@ -64,7 +65,7 @@ export function ModalRole({
     e.preventDefault()
     setErro(null)
     if (!nome.trim()) {
-      setErro('Informe o nome da role.')
+      setErro('Informe o nome da permissão.')
       return
     }
     setSalvando(true)
@@ -76,12 +77,12 @@ export function ModalRole({
       setErro(res.erro)
       return
     }
-    onSalvo(modo === 'criar' ? `Role «${nome.trim()}» criada.` : `Role «${nome.trim()}» atualizada.`)
+    onSalvo(modo === 'criar' ? `Permissão «${nome.trim()}» criada.` : `Permissão «${nome.trim()}» atualizada.`)
   }
 
   async function handleExcluir() {
     if (!role) return
-    if (!window.confirm(`Excluir a role «${role.nome}»? Esta ação não pode ser desfeita.`)) return
+    if (!window.confirm(`Excluir a permissão «${role.nome}»? Esta ação não pode ser desfeita.`)) return
     setErro(null)
     setExcluindo(true)
     const res = await excluirRole(role.id)
@@ -90,7 +91,7 @@ export function ModalRole({
       setErro(res.erro)
       return
     }
-    onSalvo(`Role «${role.nome}» excluída.`)
+    onSalvo(`Permissão «${role.nome}» excluída.`)
   }
 
   return (
@@ -104,7 +105,7 @@ export function ModalRole({
       >
         <div className="flex items-start justify-between mb-4">
           <h3 id="titulo-role" className="text-base font-semibold text-zinc-900">
-            {modo === 'criar' ? 'Nova role' : `Editar role «${role?.nome}»`}
+            {modo === 'criar' ? 'Nova permissão' : `Editar permissão «${role?.nome}»`}
           </h3>
           <button
             type="button"
@@ -148,7 +149,7 @@ export function ModalRole({
               rows={2}
               value={descricao}
               onChange={e => setDescricao(e.target.value)}
-              placeholder="Para que serve esta role"
+              placeholder="Para que serve esta permissão"
               className={`${INPUT_CLASSES} resize-none`}
             />
           </div>
@@ -187,8 +188,8 @@ export function ModalRole({
               className="rounded-lg border px-3 py-2 text-xs"
               style={{ borderColor: 'var(--border-strong)', background: 'var(--surface-soft)', color: 'var(--text-secondary)' }}
             >
-              <span className="font-semibold">Atenção:</span> esta role dá acesso à administração
-              de usuários — quem a tiver pode convidar, desativar e alterar permissões de qualquer pessoa.
+              <span className="font-semibold">Atenção:</span> esta permissão dá acesso à administração
+              de usuários — quem a tiver pode criar, excluir e alterar permissões de qualquer pessoa.
             </div>
           )}
 
@@ -200,9 +201,9 @@ export function ModalRole({
                   onClick={handleExcluir}
                   disabled={!podeExcluir || ocupado}
                   title={podeExcluir
-                    ? 'Excluir esta role'
-                    : 'Há usuários com esta role — reatribua-os antes de excluir.'}
-                  className="foco-neutro flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    ? 'Excluir esta permissão'
+                    : 'Há usuários com esta permissão — reatribua-os antes de excluir.'}
+                  className={`${PILL} ${PILL_PERIGO} disabled:cursor-not-allowed`}
                 >
                   {excluindo ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                   Excluir
@@ -214,18 +215,18 @@ export function ModalRole({
                 type="button"
                 onClick={onFechar}
                 disabled={ocupado}
-                className="foco-neutro rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-50 disabled:opacity-50"
+                className={`${PILL} ${PILL_NEUTRO}`}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={ocupado}
-                className="foco-neutro flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
-                style={{ background: 'var(--action-primary)', color: '#fff' }}
+                className={`${PILL} ${PILL_PRIMARIA}`}
+                style={PILL_PRIMARIA_STYLE}
               >
                 {salvando && <Loader2 size={14} className="animate-spin" />}
-                {modo === 'criar' ? 'Criar role' : 'Salvar alterações'}
+                {modo === 'criar' ? 'Criar permissão' : 'Salvar alterações'}
               </button>
             </div>
           </div>

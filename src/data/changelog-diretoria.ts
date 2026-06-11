@@ -32,6 +32,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.14.2',
+    data: '2026-06-11T18:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'Nomenclatura mais clara na administração: "Usuários e Acessos" e a aba "Permissões" (antes "Roles").' },
+      { tipo: 'melhoria', texto: 'Botões da área de administração padronizados, com a mesma aparência dos filtros do Financeiro — visual mais consistente.' },
+    ],
+  },
+  {
     versao: '4.14.1',
     data: '2026-06-11T12:00',
     itens: [

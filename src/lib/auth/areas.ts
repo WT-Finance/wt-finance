@@ -33,7 +33,7 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   'metas':                   { rotulo: 'Metas',                     grupo: 'Geral',         ordem: 40 },
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },
-  'admin/acessos':           { rotulo: 'Usuários & Acessos',        grupo: 'Administração', ordem: 52 },
+  'admin/acessos':           { rotulo: 'Usuários e Acessos',        grupo: 'Administração', ordem: 52 },
 }
 
 /**

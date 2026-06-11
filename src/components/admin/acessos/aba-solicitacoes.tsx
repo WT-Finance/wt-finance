@@ -6,9 +6,10 @@ import { Loader2, Check, Copy, X } from 'lucide-react'
 import { aprovarSolicitacao, rejeitarSolicitacao } from '@/app/admin/acessos/actions'
 import type { RoleAdmin, SolicitacaoAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
+import { PILL, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
 
 // v4.14 — aba Solicitações: aprovar (cria usuário + senha provisória) / rejeitar
-// pedidos de acesso vindos da tela pública /solicitar-acesso.
+// pedidos de acesso vindos da tela pública /solicitar-acesso. Botões em pill.
 
 const SELECT_CLASSES =
   'foco-neutro rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 ' +
@@ -38,7 +39,7 @@ export function AbaSolicitacoes({
 
   function handleAprovar(s: SolicitacaoAdmin) {
     const roleId = roleEscolhida[s.id]
-    if (!roleId) { setMsg({ tipo: 'erro', texto: `Escolha uma role para ${s.email} antes de aprovar.` }); return }
+    if (!roleId) { setMsg({ tipo: 'erro', texto: `Escolha uma permissão para ${s.email} antes de aprovar.` }); return }
     setMsg(null)
     setPendenteId(s.id)
     startTransition(async () => {
@@ -91,10 +92,10 @@ export function AbaSolicitacoes({
               readOnly value={senha.valor} onFocus={e => e.currentTarget.select()}
               className="flex-1 rounded border border-zinc-200 bg-white px-2 py-1 text-xs font-mono text-zinc-700 outline-none"
             />
-            <button type="button" onClick={copiarSenha} className="foco-neutro inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium hover:opacity-90" style={{ background: 'var(--action-primary)', color: '#fff' }}>
+            <button type="button" onClick={copiarSenha} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
               {copiado ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
             </button>
-            <button type="button" onClick={() => setSenha(null)} aria-label="Fechar" className="foco-neutro rounded-lg border border-zinc-200 p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
+            <button type="button" onClick={() => setSenha(null)} aria-label="Fechar" className="foco-neutro rounded-full border border-zinc-200 p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600">
               <X size={14} />
             </button>
           </div>
@@ -113,7 +114,7 @@ export function AbaSolicitacoes({
               <tr className="border-b border-zinc-100 bg-zinc-50/60 text-left">
                 <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Solicitante</th>
                 <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Quando</th>
-                <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Aprovar com a role</th>
+                <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Aprovar com a permissão</th>
                 <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400 text-right">Ações</th>
               </tr>
             </thead>
@@ -128,7 +129,7 @@ export function AbaSolicitacoes({
                     </td>
                     <td className="px-4 py-3 text-zinc-500">{fmtData(s.criado_em)}</td>
                     <td className="px-4 py-3">
-                      <label htmlFor={`role-sol-${s.id}`} className="sr-only">Role para {s.email}</label>
+                      <label htmlFor={`role-sol-${s.id}`} className="sr-only">Permissão para {s.email}</label>
                       <select
                         id={`role-sol-${s.id}`}
                         value={roleEscolhida[s.id] ? String(roleEscolhida[s.id]) : ''}
@@ -144,15 +145,15 @@ export function AbaSolicitacoes({
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button" onClick={() => handleAprovar(s)} disabled={proc || roles.length === 0}
-                          className="foco-neutro inline-flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium transition hover:opacity-90 disabled:opacity-50"
-                          style={{ background: 'var(--action-primary)', color: '#fff' }}
+                          className={`${PILL} ${PILL_PRIMARIA}`}
+                          style={PILL_PRIMARIA_STYLE}
                         >
                           {proc && <Loader2 size={12} className="animate-spin" />}
                           Aprovar
                         </button>
                         <button
                           type="button" onClick={() => handleRejeitar(s)} disabled={proc}
-                          className="foco-neutro inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-3 py-1 text-xs font-medium text-red-600 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+                          className={`${PILL} ${PILL_PERIGO}`}
                         >
                           Rejeitar
                         </button>
