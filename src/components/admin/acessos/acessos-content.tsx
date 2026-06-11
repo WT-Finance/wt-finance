@@ -35,16 +35,16 @@ export function AcessosContent({
 
   const ABAS: { key: Aba; label: string }[] = [
     { key: 'usuarios',     label: 'Usuários' },
-    { key: 'roles',        label: 'Roles' },
+    { key: 'roles',        label: 'Permissões' },
     { key: 'solicitacoes', label: pendentes > 0 ? `Solicitações (${pendentes})` : 'Solicitações' },
   ]
 
   return (
     <div className="max-w-5xl mx-auto px-4 pb-12">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Usuários &amp; Acessos</h1>
+        <h1 className="text-xl font-semibold text-zinc-900">Usuários e Acessos</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
-          Crie usuários, atribua roles, modere solicitações e controle o que cada pessoa pode ver
+          Crie usuários, atribua permissões, modere solicitações e controle o que cada pessoa pode ver
         </p>
       </div>
 
