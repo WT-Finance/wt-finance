@@ -8,5 +8,6 @@ import { rotaInicial } from '@/lib/auth/areas'
 export default async function Home() {
   const sessao = await getSessao()
   if (!sessao.logado) redirect('/login')
+  if (sessao.precisaTrocarSenha) redirect('/trocar-senha')
   redirect(rotaInicial(sessao.permissoes) ?? '/sem-acesso')
 }

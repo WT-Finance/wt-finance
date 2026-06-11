@@ -9,34 +9,36 @@ import { type Area, AREA_ADMIN } from '@/lib/auth/areas'
 // Camada 2 do enforcement: requireArea (páginas), requireAreaApi (route handlers),
 // requireAreaAction (server actions). O banco (ADR-0108) é o backstop.
 
-/** get_minhas_permissoes → shape REAL da RPC (0119). */
+/** get_minhas_permissoes → shape REAL da RPC (0119/0125). */
 const minhasPermissoesSchema = z.object({
-  registrado: z.boolean(),
-  ativo:      z.boolean(),
-  permissoes: z.array(z.string()),
-  user_id:    z.string().optional(),
-  email:      z.string().nullable().optional(),
-  nome:       z.string().nullable().optional(),
-  role_id:    z.number().nullable().optional(),
-  role:       z.string().nullable().optional(),
+  registrado:           z.boolean(),
+  ativo:                z.boolean(),
+  permissoes:           z.array(z.string()),
+  user_id:              z.string().optional(),
+  email:                z.string().nullable().optional(),
+  nome:                 z.string().nullable().optional(),
+  role_id:              z.number().nullable().optional(),
+  role:                 z.string().nullable().optional(),
+  precisa_trocar_senha: z.boolean().optional(),
 }).passthrough()
 
 export interface Sessao {
-  logado:     boolean
-  registrado: boolean
-  ativo:      boolean
-  userId:     string | null
-  email:      string | null
-  nome:       string | null
-  role:       string | null
-  permissoes: string[]
-  isAdmin:    boolean
+  logado:            boolean
+  registrado:        boolean
+  ativo:             boolean
+  userId:            string | null
+  email:             string | null
+  nome:              string | null
+  role:              string | null
+  permissoes:        string[]
+  isAdmin:           boolean
+  precisaTrocarSenha: boolean
 }
 
 const SESSAO_ANONIMA: Sessao = {
   logado: false, registrado: false, ativo: false,
   userId: null, email: null, nome: null, role: null,
-  permissoes: [], isAdmin: false,
+  permissoes: [], isAdmin: false, precisaTrocarSenha: false,
 }
 
 /** Sessão + permissões do request atual (cacheada por request). */
@@ -55,15 +57,16 @@ export const getSessao = cache(async (): Promise<Sessao> => {
 
   const permissoes = perfil.ativo ? perfil.permissoes : []
   return {
-    logado:     true,
-    registrado: perfil.registrado,
-    ativo:      perfil.ativo,
-    userId:     user.id,
-    email:      perfil.email ?? user.email ?? null,
-    nome:       perfil.nome ?? null,
-    role:       perfil.role ?? null,
+    logado:             true,
+    registrado:         perfil.registrado,
+    ativo:              perfil.ativo,
+    userId:             user.id,
+    email:              perfil.email ?? user.email ?? null,
+    nome:               perfil.nome ?? null,
+    role:               perfil.role ?? null,
     permissoes,
-    isAdmin:    permissoes.includes(AREA_ADMIN),
+    isAdmin:            permissoes.includes(AREA_ADMIN),
+    precisaTrocarSenha: perfil.precisa_trocar_senha ?? false,
   }
 })
 
@@ -80,6 +83,9 @@ function temAlguma(sessao: Sessao, areas: Area[] | null): boolean {
 export async function requireArea(areas: Area[] | Area | null): Promise<Sessao> {
   const sessao = await getSessao()
   if (!sessao.logado) redirect('/login')
+  // Portão forte (v4.14): enquanto a troca de senha é obrigatória, TODA página
+  // autenticada manda para /trocar-senha (não dá para pular por URL).
+  if (sessao.precisaTrocarSenha) redirect('/trocar-senha')
   const lista = areas === null ? null : Array.isArray(areas) ? areas : [areas]
   if (!temAlguma(sessao, lista)) redirect('/sem-acesso')
   return sessao
@@ -94,6 +100,9 @@ export async function requireAreaApi(areas: Area[] | Area | null): Promise<Sessa
   if (!sessao.logado) {
     return Response.json({ error: 'AUTH_NECESSARIA' }, { status: 401 })
   }
+  if (sessao.precisaTrocarSenha) {
+    return Response.json({ error: 'TROCA_SENHA_OBRIGATORIA' }, { status: 403 })
+  }
   const lista = areas === null ? null : Array.isArray(areas) ? areas : [areas]
   if (!temAlguma(sessao, lista)) {
     return Response.json({ error: 'PERMISSAO_NEGADA' }, { status: 403 })
@@ -105,6 +114,7 @@ export async function requireAreaApi(areas: Area[] | Area | null): Promise<Sessa
 export async function requireAreaAction(areas: Area[] | Area | null): Promise<Sessao> {
   const sessao = await getSessao()
   if (!sessao.logado) throw new Error('AUTH_NECESSARIA')
+  if (sessao.precisaTrocarSenha) throw new Error('TROCA_SENHA_OBRIGATORIA')
   const lista = areas === null ? null : Array.isArray(areas) ? areas : [areas]
   if (!temAlguma(sessao, lista)) throw new Error('PERMISSAO_NEGADA')
   return sessao

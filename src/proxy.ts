@@ -9,7 +9,9 @@ import { createServerClient } from '@supabase/ssr'
 // lugar que pode regravar cookies de sessão em toda navegação.
 
 const PUBLIC_PREFIXES = ['/auth/']
-const PUBLIC_PATHS = new Set(['/login'])
+// /solicitar-acesso é público (pré-cadastro, sem sessão). /trocar-senha NÃO é
+// público: exige sessão (o guard manda o usuário logado para lá quando preciso).
+const PUBLIC_PATHS = new Set(['/login', '/solicitar-acesso'])
 
 function ehPublica(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true
