@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import ChartShowcase from './chart-showcase'
+import PlataformaShowcase from './plataforma-showcase'
 import { requireArea } from '@/lib/auth/sessao'
 
 export const dynamic = 'force-dynamic'
@@ -30,6 +31,7 @@ export default async function DesignSystemPage() {
           ['#graficos', '8. Gráficos'],
           ['#drawers', '9. Drawers'],
           ['#componentes', '10. Componentes'],
+          ['#plataforma', '11. Plataforma'],
         ].map(([href, label]) => (
           <a key={href} href={href}
             className="text-xs text-[var(--brand)] hover:underline px-2 py-1 rounded bg-zinc-50">
@@ -45,6 +47,31 @@ export default async function DesignSystemPage() {
           { name: '--text-secondary', hex: '#4B4F54', usage: 'H3, texto secundário' },
           { name: '--text-muted',     hex: '#75777B', usage: 'Legendas, sufixos, hints' },
           { name: '--border',         hex: '#E8E0D2', usage: 'Bordas suaves de separação' },
+        ]} />
+        <p className="text-xs text-zinc-400 mt-3 leading-relaxed">
+          Nuance: o swatch de <code className="bg-zinc-100 px-1 rounded">--brand</code> mostra o hex literal
+          (#BD965C, dourado de Weddings), mas <strong>nesta própria página</strong> (que roda no tema{' '}
+          <code className="bg-zinc-100 px-1 rounded">group</code>) <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>{' '}
+          resolve para o cinza neutro — toda rota não-setorial herda o neutro do Group via{' '}
+          <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>.
+        </p>
+
+        <p className="font-medium text-[var(--text-primary)] text-sm mt-6 mb-1">
+          Tokens neutros de plataforma <span className="text-[var(--text-muted)] font-normal">(auth/admin — v4.14.1/v4.14.2)</span>
+        </p>
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          Valores FIXOS, independentes de <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>: as telas de
+          plataforma nunca usam <code className="bg-zinc-100 px-1 rounded">var(--brand)</code> (evita flash dourado
+          pré-hidratação). Regra completa e demos em{' '}
+          <a href="#plataforma" className="text-[var(--brand)] hover:underline">11. Plataforma</a>.
+        </p>
+        <ColorGrid items={[
+          { name: '--action-primary',     hex: '#3F4144',            usage: 'CTA sólido (ex.: botão Entrar do login); realce institucional' },
+          { name: '--action-primary-fg',  hex: '#FFFFFF',            usage: 'Texto sobre --action-primary' },
+          { name: '--action-soft',        hex: '#EAE6DD',            usage: 'Pill ativa/primária de plataforma (bege)' },
+          { name: '--action-soft-border', hex: '#75777B',            usage: 'Borda da pill ativa de plataforma' },
+          { name: '--action-soft-fg',     hex: '#4B4F54',            usage: 'Texto da pill ativa de plataforma' },
+          { name: '--focus-ring',         hex: 'rgba(63,65,68,.20)', usage: 'Anel de foco neutro (.foco-neutro, só :focus-visible)' },
         ]} />
       </Section>
 
@@ -386,11 +413,16 @@ export default async function DesignSystemPage() {
             { name: 'ListDrawer',            path: 'src/components/shared/list-drawer.tsx',              desc: 'Drawer lateral padrão com título e onClose' },
             { name: 'CardTabela',            path: 'src/components/shared/card-tabela.tsx',              desc: 'Shell unificado de card-tabela (título, período, Ver mais→aba); usar com CARD_TABELA_TH + table-fixed' },
             { name: 'Card',                  path: 'src/components/ui/card.tsx',                         desc: 'Card com variantes default/featured/sm' },
-            { name: 'PeriodoFilterPillsUrl', path: 'src/components/layout/periodo-filter-pills-url.tsx', desc: 'Pills de período com state em URL params' },
+            { name: 'PeriodoFilterPillsUrl', path: 'src/components/shared/periodo-filter-pills-url.tsx', desc: 'Pills de filtro de período (default este-ano), state em URL params' },
+            { name: 'PeriodoPillsUrl',       path: 'src/components/shared/periodo-pills-url.tsx',        desc: 'Pills de período (Performance Geral/Trips/Corp), state em URL params' },
             { name: 'CustomTooltip',         path: 'src/components/charts/custom-tooltip.tsx',           desc: 'Tooltip padronizado para gráficos Recharts' },
             { name: 'SumarioSubsetorCard',   path: 'src/components/weddings/sumario-subsetor.tsx',       desc: 'Tabela de composição por subsetor com barras' },
             { name: 'TopSection',            path: 'src/components/layout/top-section.tsx',              desc: 'Accordion de seção com header clicável' },
             { name: 'SortTh',               path: 'src/components/financeiro/proximos-lancamentos-lateral.tsx', desc: 'Cabeçalho de coluna clicável com seta ▲▼ — padrão de Lista de Operações' },
+            { name: 'AuthHeader',            path: 'src/components/auth/auth-header.tsx',                desc: 'Cabeçalho institucional (logo + wordmark) das telas de plataforma — v4.14.1' },
+            { name: 'Checkbox',              path: 'src/components/ui/checkbox.tsx',                     desc: 'Checkbox do design system (substitui o nativo do browser) — v4.14.1' },
+            { name: 'ModalCentral',          path: 'src/components/shared/modal-central.tsx',            desc: 'Modal central genérico (confirmações, ex.: excluir usuário)' },
+            { name: 'botoes (pills plataforma)', path: 'src/components/admin/acessos/botoes.ts',         desc: 'Estilos de botão-pill de plataforma: PILL + PILL_NEUTRO/PILL_PERIGO/PILL_PRIMARIA(+STYLE) — v4.14.2' },
           ].map(({ name, path, desc }) => (
             <div key={name} className="flex items-start gap-3 py-2 border-b border-zinc-100">
               <code className="text-xs font-medium text-[var(--brand)] w-44 shrink-0">{name}</code>
@@ -401,6 +433,23 @@ export default async function DesignSystemPage() {
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section id="plataforma" title="11. Plataforma (auth / admin)">
+        {/* Regra setor × plataforma (ADR-0103, extensão v4.14.1) */}
+        <div className="bg-zinc-50 rounded-xl p-4 mb-6">
+          <p className="font-medium text-[var(--text-primary)] text-sm mb-2">Regra setor × plataforma (ADR-0103, extensão v4.14.1)</p>
+          <ul className="text-xs text-[var(--text-muted)] space-y-1 list-disc pl-4">
+            <li>Cada <strong>setor</strong> usa sua cor de destaque nas SUAS abas: Weddings <code className="bg-zinc-100 px-1 rounded">#BD965C</code>, Trips <code className="bg-zinc-100 px-1 rounded">#0091B3</code>, Corporativo <code className="bg-zinc-100 px-1 rounded">#0D5257</code> (via <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>, herdada por <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>).</li>
+            <li>As <strong>telas de plataforma</strong> — auth (<code className="bg-zinc-100 px-1 rounded">/login</code>, <code className="bg-zinc-100 px-1 rounded">/trocar-senha</code>, <code className="bg-zinc-100 px-1 rounded">/solicitar-acesso</code>, <code className="bg-zinc-100 px-1 rounded">/auth/*</code>), <code className="bg-zinc-100 px-1 rounded">/sem-acesso</code> e <code className="bg-zinc-100 px-1 rounded">/admin/*</code> — usam o <strong>tema neutro do Group</strong>. Nenhuma cor de setor atua como cor geral.</li>
+            <li><strong>Por que tokens dedicados</strong> (<code className="bg-zinc-100 px-1 rounded">--action-*</code>), e não <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>: o <code className="bg-zinc-100 px-1 rounded">:root</code> tem <code className="bg-zinc-100 px-1 rounded">--brand: #BD965C</code> (Weddings) como default → usar <code className="bg-zinc-100 px-1 rounded">var(--brand)</code> daria <strong>flash dourado pré-hidratação</strong>. Os tokens neutros são valores fixos, independentes de <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>.</li>
+            <li>O <strong>wordmark WT FINANCE</strong> é dinâmico: cor da aba dentro do setor, <code className="bg-zinc-100 px-1 rounded">--text-muted</code> (neutro) no resto.</li>
+            <li>Swatches dos tokens neutros em <a href="#brand" className="text-[var(--brand)] hover:underline">1. Paleta</a>.</li>
+          </ul>
+        </div>
+
+        {/* Demos ao vivo (botões, pill, foco, checkbox, CTA) */}
+        <PlataformaShowcase />
       </Section>
     </div>
   )

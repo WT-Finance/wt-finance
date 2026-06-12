@@ -157,6 +157,7 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
 - Aplicar correções apontadas pelo usuário; aguardar nova confirmação pós-correção quando relevante.
 
 ### 6. Out-briefing
+- **Out-briefing é parte do DoD, não pós-entrega:** nenhuma versão/patch fecha sem ele. (Custou caro: a v4.14.1 fechou sem out-briefing e exigiu backfill depois — v4.14.3.)
 - Gerar out-briefing `.md` no formato consolidado: missões implementadas, migrations, ADRs, pendências, arquivos modificados.
 - **Verificar que todos os arquivos estão corretamente sincronizados.**
 - **Avaliar se a versão revelou aprendizado permanente para este CLAUDE.md** (ver "Manutenção deste arquivo" no topo).
@@ -286,3 +287,4 @@ Uma versão está pronta quando:
 - **Não remover worktree** com trabalho não-merjado.
 - **Não usar `git add -A` cego** — adicionar arquivos específicos por missão.
 - **Não confiar na numeração de ADR do briefing** — verificar `docs/adr/` real.
+- **Não adicionar escopo a um PR/versão já mergeado.** Addendum pedido depois do merge do PR de origem vira **patch novo** (branch, PR e número de versão próprios), nunca commit tardio no escopo já fechado. (Precedente: v4.14.2 — ajustes pedidos "para fechar a 4.14.1" já mergeada foram para PR/versão próprios.)

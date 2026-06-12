@@ -32,6 +32,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.14.3',
+    data: '2026-06-12T12:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'A documentação interna do padrão visual da plataforma foi atualizada e ampliada — referência de desenvolvimento mais completa e fiel ao que está no ar.' },
+    ],
+  },
+  {
     versao: '4.14.2',
     data: '2026-06-11T18:00',
     itens: [

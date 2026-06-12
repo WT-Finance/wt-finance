@@ -6,6 +6,16 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.14.3] — 2026-06-12
+
+Versão PATCH: **documentação viva** do Design System (`/admin/design-system`) atualizada para refletir a família de tokens neutros de plataforma das v4.14.1/v4.14.2. Nenhum código de produto muda; sem migration.
+
+### Documentação
+- **§1 Paleta:** adicionados os 6 tokens neutros de plataforma (`--action-primary`, `--action-primary-fg`, `--action-soft`, `--action-soft-border`, `--action-soft-fg`, `--focus-ring`) + nota explicando que o swatch `--brand` mostra o hex literal mas, no tema `group` da própria página, `var(--brand)` resolve neutro.
+- **§10 Componentes:** corrigido o caminho de `PeriodoFilterPillsUrl` (`shared/`, não `layout/`); listados `PeriodoPillsUrl`, `AuthHeader`, `Checkbox` (`ui/checkbox`), `ModalCentral` e `botoes.ts`.
+- **§11 Plataforma (auth/admin) — nova:** regra setor × plataforma do ADR-0103 (extensão v4.14.1) e o porquê dos tokens dedicados (evitar flash dourado pré-hidratação), com **demos ao vivo** (componente `plataforma-showcase.tsx`) de hierarquia de botões (primária bege / secundária cinza / destrutiva), pill neutra, foco `:focus-visible`, Checkbox e CTA sólido.
+- **CLAUDE.md:** ratificados dois aprendizados — out-briefing é parte do DoD (não pós-entrega); addendum pós-merge vira patch novo.
+
 ## [4.14.2] — 2026-06-11
 
 Versão PATCH: continuação dos refinamentos de plataforma da 4.14.1 — Design System no menu, nomenclatura mais clara na administração e botões de acessos alinhados às pills de período do Financeiro. ADR-0103 (extensão).
