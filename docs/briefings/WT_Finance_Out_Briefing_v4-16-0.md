@@ -34,7 +34,7 @@
 8. **Tema:** ✅ telas neutras Group (tokens, pills `botoes.ts`, `.foco-neutro`); zero hex de setor nos arquivos novos.
 9. **Contrato Zod:** ✅ schemas de leitura + 6 testes de contrato vivos (96 testes no total).
 10. **Gates:** ✅ `tsc` 0 · `npm test` 96 (≥90) · `lint` 13 (baseline) · `build` limpo.
-11. **Preview:** ⏳ ver seção Preview/Verificação.
+11. **Preview:** ✅ **8/8** no deploy da branch (usuários descartáveis, 0 resíduo): `/solicitacoes` renderiza (Nova/Minhas/Caixa) + **aba "Solicitações" na sidebar**; tema neutro (zero `#BD965C`); `/admin/solicitacoes` liberado para a área e **negado (→ /sem-acesso)** sem ela; anon → `/login`. Click-through manual fica como smoke recomendado (ver roteiro).
 
 ## Auto-auditoria adversarial (§7) — EXECUTADA
 Harness com 3 perfis (solicitante, atendente-por-role, terceiro) + anon, usuários descartáveis, **0 resíduo** em produção. **25/25 PASS** cobrindo as matrizes 1 e 2, validação dinâmica, XOR, arquivamento e data pura.
