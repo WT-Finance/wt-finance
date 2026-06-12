@@ -4,6 +4,7 @@ import "./globals.css";
 import AppShell from "@/components/layout/app-shell";
 import ThemeProvider from "@/components/layout/theme-provider";
 import { getSessao } from "@/lib/auth/sessao";
+import { getPendencias } from "@/lib/solicitacoes/rpc";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -25,6 +26,9 @@ export default async function RootLayout({
   // v4.13 (ADR-0109): sessão + permissões resolvidas no servidor, uma vez por
   // request (React.cache). Sem sessão (ex.: /login), renderiza sem o chrome.
   const sessao = await getSessao();
+  // Badge de Solicitações: nº de abertas atribuídas a mim/minha role (por navegação).
+  const pendenciasSolicitacoes = sessao.logado && !sessao.precisaTrocarSenha
+    ? ((await getPendencias()) ?? 0) : 0;
 
   return (
     <html
@@ -40,6 +44,7 @@ export default async function RootLayout({
               email: sessao.email,
               role: sessao.role,
               permissoes: sessao.permissoes,
+              pendenciasSolicitacoes,
             }}
           >
             {children}

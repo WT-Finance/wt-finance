@@ -5,6 +5,9 @@ import {
   rankingVendedoresRangeSchema, vendasReceitaNegativaSchema, executivaKpisSchema,
   vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
 } from './schemas-rpc'
+import {
+  tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
+} from './solicitacoes/schemas'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
@@ -93,6 +96,13 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // rodar contra a RPC viva. promover_carga_vendas é destrutivo (swap da base) → NÃO
   // entra aqui; seu schema é coberto pelo teste estrutural abaixo.
   { fn: 'validar_carga_staging',         params: {},                                                                     schema: cargaValidacaoSchema },
+  // v4.16.0 Solicitações: leituras consumidas pela UI (service role → exigir_acesso
+  // retorna cedo; uid nulo → listas vazias, mas o SHAPE é validado contra a RPC viva).
+  { fn: 'solic_tipos_abertura',          params: {},                                                                     schema: tiposAberturaSchema },
+  { fn: 'solic_destinatarios',           params: {},                                                                     schema: destinatariosSchema },
+  { fn: 'admin_solic_listar_tipos',      params: {},                                                                     schema: tiposAdminSchema },
+  { fn: 'solic_minhas',                  params: {},                                                                     schema: solicitacoesListaSchema },
+  { fn: 'solic_caixa',                   params: { p_escopo: 'mim_e_role' },                                             schema: solicitacoesListaSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -188,6 +198,16 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
   it('RPCs de administração exigem JWT (anon → erro)', async () => {
     const status = await rpcAnonStatus('admin_listar_usuarios', {})
     expect(status).toBeGreaterThanOrEqual(400)
+  })
+
+  // v4.16.0 Solicitações: todas as RPCs (abertura, leitura, transição, admin) exigem
+  // sessão — anon negado em tudo (§2.2/§2.3 valem no banco).
+  it('Solicitações: anon negado em todas as RPCs', async () => {
+    for (const fn of ['solic_minhas', 'solic_caixa', 'solic_tipos_abertura', 'solic_destinatarios',
+                      'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos']) {
+      const status = await rpcAnonStatus(fn, {})
+      expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
+    }
   })
 
   // v4.14: solicitação de acesso pública × admin de solicitações fechado.
