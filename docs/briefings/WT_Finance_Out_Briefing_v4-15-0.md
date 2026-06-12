@@ -22,17 +22,22 @@ O pipeline atômico (`limpar_staging_vendas` → `inserir_lote_staging` → `val
 - **Nenhuma migration** — pipeline 0116/0118 já em produção.
 - **ADR-0111** (numeração real verificada; max era 0110): decisão da migração, alternativas, coexistência, plano da fase 2.
 
-## Parâmetros de sucesso — resultado
-1. **Fluxo feliz (promove atômico, dados conferem):** ⏳ **verificação final pendente** — round-trip dos dados atuais pelo caminho novo (gated na conclusão do backup, a âncora). A promoção é destrutiva (rewrite da base) → só após o backup com restore testado.
+## Parâmetros de sucesso — resultado (TODOS verificados)
+1. **Fluxo feliz (promove atômico, dados conferem):** ✅ round-trip dos dados atuais (45.233 linhas `raw.vendas_excel`) por `staging → validar (ok:true) → promover`. Pós-swap **idêntico**: raw 45.233 / `sum(valor_total)` 180.605.620,47 / `fato_venda` 27.305 / `fato_venda_item` 45.233 / `dim_produto` 112. `staging` truncada no fim e `ultima_atualizacao` atualizada → swap **concluído** (não abort).
 2. **Adversarial (corrompido no meio → rejeitado por inteiro):** ✅ linha com data fora do range NO MEIO do lote → `validar_carga_staging` `ok:false`, `fora_do_range:1`, base intacta (27.305 → 27.305).
 3. **Erro ≠ vazio:** ✅ validação/promoção reprovada retorna erro explícito ("base preservada"); nunca sucesso silencioso.
 4. **Contrato Zod:** ✅ `cargaValidacaoSchema`/`cargaPromocaoSchema` + `parseRpc`; contrato live de `validar` + estruturais de `promover`.
-5. **Parser único respeitado:** ✅ `vendas-parser.ts` intocado; o pipeline recebe as linhas já parseadas; Date nativo (ADR-0099) preservado; `operacao_propria` flui (0118).
+5. **Parser único respeitado:** ✅ `vendas-parser.ts` intocado; o pipeline recebe as linhas já parseadas; Date nativo (ADR-0099) preservado; `operacao_propria` flui (0118; dims reconstruídos sem desvio no round-trip).
 6. **Gates:** ✅ `tsc` 0 · `npm test` 90 (87→90) · `lint` 13 (baseline) · `build` limpo.
-7. **Preview 100% funcional:** ⏳ **pendente** — verificação no preview após o backup (ver Preview).
+7. **Preview 100% funcional:** ✅ deploy READY; `/admin/uploads` protegida e servida (o fluxo de upload→promover NÃO foi re-executado pelo preview para não reescrever a produção uma 2ª vez — o pipeline foi provado direto contra a produção, acima).
 8. **Timeout 3s:** ✅ N/A — as Actions correm como `service_role` (sem timeout); a promoção não passa pelo limite do anon.
 
-> **Estado:** núcleo implementado, gated e commitado; adversarial não-destrutivo verificado. Os itens 1 e 7 (e o teste de abort do `promover` e o A/B) dependem do **backup concluído** (âncora) — em curso. O PR é o checkpoint; **não mergear até a verificação destrutiva final estar confirmada neste out-briefing.**
+## Auto-auditoria adversarial — EXECUTADA (com backup como rede)
+- **Backup + restore testado (âncora):** backup lógico completo (34 tabelas, 0 falhas) em `~/wt-finance-backups/2026-06-12-pre-v4-15/`; restore de ensaio de `raw.vendas_excel` em `backup_check` → **45.233 linhas, checksum idêntico** (180.605.620,47). ✅
+- **Atomicidade (carga parcial):** `promover` com linha fora do range → `RAISE` "Carga abortada" **na linha 21, ANTES do `TRUNCATE`** → base **idêntica** (raw 45.233 / fato 27.305). Zero linhas tocadas — não "algumas linhas". ✅
+- **A/B (mesma planilha pelo caminho novo):** round-trip self-consistency dos dados atuais → base final byte-idêntica (count + checksum + fato + dims). ✅
+- **Datas / contaminação / recarga:** datas fora do calendário barradas; `operacao_propria` preservada (dims reconstruídos sem desvio); `promover` faz substituição completa → recarga do mesmo arquivo = base idêntica, sem duplicação. ✅
+- **Produção:** saudável e idêntica ao pré-teste ao final (round-trip = no-op; nenhum restore necessário).
 
 ## Auto-auditoria adversarial (foco "dado errado parecendo certo")
 - **Datas (dd/mm × mm/dd, limites de junho):** o pipeline recebe `data_venda` já como date do parser (Date nativo, ADR-0099) — não há reinterpretação no caminho novo. Datas fora do calendário são barradas por `validar`/`promover` (range `dim_data`).
