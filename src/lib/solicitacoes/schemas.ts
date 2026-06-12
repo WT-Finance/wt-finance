@@ -1,0 +1,90 @@
+import { z } from 'zod'
+
+// Contratos Zod do módulo de Solicitações (v4.16.0, ADR-0112). Espelham o RETORNO
+// REAL das RPCs (0128/0129) — validados por parseRpc e por rpc-contrato.test.ts.
+// Campos que a RPC às vezes não emite são .optional()/.nullable() (lição v4.12.1).
+
+export const TIPOS_CAMPO = ['texto_curto','texto_longo','numero','moeda','data','selecao','anexo'] as const
+export type TipoCampo = (typeof TIPOS_CAMPO)[number]
+export const STATUS_SOLIC = ['aberta','concluida','rejeitada','cancelada'] as const
+export type StatusSolic = (typeof STATUS_SOLIC)[number]
+
+// Definição de campo (para o construtor do admin e o motor de render da abertura).
+export const campoDefSchema = z.object({
+  id:          z.number().optional(),
+  rotulo:      z.string(),
+  tipo_campo:  z.enum(TIPOS_CAMPO),
+  obrigatorio: z.boolean(),
+  opcoes:      z.array(z.string()).nullable().optional(),
+  ordem:       z.number().optional(),
+})
+export type CampoDef = z.infer<typeof campoDefSchema>
+
+// Resposta gravada (snapshot imutável por solicitação).
+export const respostaSchema = z.object({
+  campo_id:    z.number(),
+  rotulo:      z.string(),
+  tipo_campo:  z.enum(TIPOS_CAMPO),
+  obrigatorio: z.boolean().optional(),
+  opcoes:      z.array(z.string()).nullable().optional(),
+  valor:       z.string().nullable(),
+})
+
+export const anexoSchema = z.object({
+  id:      z.number(),
+  campo_id: z.number().nullable().optional(),
+  nome:    z.string(),
+  mime:    z.string(),
+  tamanho: z.number(),
+})
+
+const destinatarioSchema = z.object({ tipo: z.enum(['usuario','role']), rotulo: z.string().nullable() })
+
+// Uma solicitação (saída de solic_json — minhas/caixa/detalhe).
+export const solicitacaoSchema = z.object({
+  id:                 z.number(),
+  tipo_id:            z.number(),
+  tipo_nome:          z.string().nullable(),
+  solicitante_email:  z.string().nullable(),
+  destinatario:       destinatarioSchema,
+  data_limite:        z.string(),               // date puro 'AAAA-MM-DD'
+  descricao:          z.string().nullable(),
+  status:             z.enum(STATUS_SOLIC),
+  respostas:          z.array(respostaSchema),
+  decidido_em:        z.string().nullable(),
+  decidido_por_email: z.string().nullable(),
+  justificativa:      z.string().nullable(),
+  criado_em:          z.string(),
+  anexos:             z.array(anexoSchema),
+}).passthrough()
+export type Solicitacao = z.infer<typeof solicitacaoSchema>
+
+export const solicitacoesListaSchema = z.array(solicitacaoSchema)
+
+// Tipos disponíveis para abertura (com campos).
+export const tipoAberturaSchema = z.object({
+  id:     z.number(),
+  nome:   z.string(),
+  campos: z.array(campoDefSchema),
+})
+export const tiposAberturaSchema = z.array(tipoAberturaSchema)
+export type TipoAbertura = z.infer<typeof tipoAberturaSchema>
+
+// Destinatários elegíveis.
+export const destinatariosSchema = z.object({
+  usuarios: z.array(z.object({ user_id: z.string(), email: z.string() })),
+  roles:    z.array(z.object({ id: z.number(), nome: z.string() })),
+})
+export type Destinatarios = z.infer<typeof destinatariosSchema>
+
+// Admin: tipos com contagens (para a lista do admin).
+export const tipoAdminSchema = z.object({
+  id:             z.number(),
+  nome:           z.string(),
+  arquivado:      z.boolean(),
+  n_campos:       z.number(),
+  n_solicitacoes: z.number(),
+  campos:         z.array(campoDefSchema),
+})
+export const tiposAdminSchema = z.array(tipoAdminSchema)
+export type TipoAdmin = z.infer<typeof tipoAdminSchema>

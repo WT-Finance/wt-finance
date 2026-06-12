@@ -14,6 +14,7 @@ export const AREAS = [
   'admin/uploads',
   'admin/design-system',
   'admin/acessos',
+  'solicitacoes',
 ] as const
 
 export type Area = (typeof AREAS)[number]
@@ -34,6 +35,7 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },
   'admin/acessos':           { rotulo: 'Usuários e Acessos',        grupo: 'Administração', ordem: 52 },
+  'solicitacoes':            { rotulo: 'Solicitações (gestão)',     grupo: 'Administração', ordem: 53 },
 }
 
 /**
@@ -68,7 +70,9 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']
+  if (p.startsWith('/admin/solicitacoes'))      return ['solicitacoes']
   if (p.startsWith('/admin'))                   return ['admin/acessos']
+  // /solicitacoes (abertura/minhas/caixa) cai no fallthrough → qualquer autenticado.
   return null
 }
 
