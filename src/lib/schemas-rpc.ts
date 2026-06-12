@@ -182,3 +182,30 @@ export const carteiraWeddingsSchema = z.object({
   anos_casamento: z.array(z.string()),
   linhas:         z.array(carteiraLinha),
 }).passthrough()
+
+// ── Pipeline ATÔMICO de Vendas (v4.15.0/F2-real) — staging → validação → swap ──
+// O caminho real da UI (Server Actions de /admin/uploads) passa a consumir o
+// pipeline 0116/0118 (ADR-0104). Estes schemas validam o SHAPE dos dois retornos
+// jsonb antes de a Action confiar nos campos.
+
+/** validar_carga_staging → pré-validação NÃO-destrutiva. Com staging vazia o retorno
+ *  é {ok:false,total:0,erros:[…]} (sem range/contagem) → os extras são .optional()
+ *  (reflete o contrato real; .nullable() sozinho reprovaria o campo ausente). */
+export const cargaValidacaoSchema = z.object({
+  ok:            z.boolean(),
+  total:         z.number(),
+  erros:         z.array(z.string()),
+  data_min:      z.string().nullable().optional(),
+  data_max:      z.string().nullable().optional(),
+  dim_min:       z.string().nullable().optional(),
+  dim_max:       z.string().nullable().optional(),
+  fora_do_range: z.number().optional(),
+}).passthrough()
+export type CargaValidacao = z.infer<typeof cargaValidacaoSchema>
+
+/** promover_carga_vendas → retorna o jsonb do transform (swap atômico bem-sucedido). */
+export const cargaPromocaoSchema = z.object({
+  vendas_count:          z.number(),
+  fato_venda_item_count: z.number(),
+}).passthrough()
+export type CargaPromocao = z.infer<typeof cargaPromocaoSchema>

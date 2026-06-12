@@ -3,7 +3,7 @@ import type { ZodType } from 'zod'
 import {
   operacoesWeddingsSchema, carteiraWeddingsSchema, tendenciaMargemSchema,
   rankingVendedoresRangeSchema, vendasReceitaNegativaSchema, executivaKpisSchema,
-  vendasEmAbertoSchema,
+  vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
 } from './schemas-rpc'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -89,6 +89,10 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   { fn: 'get_vendas_receita_negativa',   params: { p_setor: 'Weddings', p_from: '2020-01-01', p_to: '2099-12-31' },       schema: vendasReceitaNegativaSchema },
   { fn: 'get_executiva_kpis',            params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },       schema: executivaKpisSchema },
   { fn: 'get_vendas_em_aberto',          params: { p_setor: 'Weddings', p_limite: 50, p_offset: 0 },                      schema: vendasEmAbertoSchema },
+  // v4.15.0/F2-real: validar_carga_staging é NÃO-destrutivo (só lê a staging) → seguro
+  // rodar contra a RPC viva. promover_carga_vendas é destrutivo (swap da base) → NÃO
+  // entra aqui; seu schema é coberto pelo teste estrutural abaixo.
+  { fn: 'validar_carga_staging',         params: {},                                                                     schema: cargaValidacaoSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -96,6 +100,21 @@ describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REA
     const d = await rpc(fn, params)
     const r = schema.safeParse(d)
     expect(r.success, r.success ? '' : `${fn} drift: ${JSON.stringify(r.error!.issues.slice(0, 6))}`).toBe(true)
+  })
+})
+
+// promover_carga_vendas é DESTRUTIVO (trunca + recarrega a base) — não pode ser chamado
+// num teste. Cobrimos o SHAPE do seu retorno (o jsonb do transform) estruturalmente: o
+// caminho real (finalizarVendasAction) usa cargaPromocaoSchema via parseRpc, então o
+// contrato precisa aceitar { vendas_count, fato_venda_item_count } com extras tolerados.
+describe('contrato RPC — schema de promover_carga_vendas (estrutural, RPC destrutiva)', () => {
+  it('cargaPromocaoSchema aceita o retorno do transform (counts + extras)', () => {
+    const r = cargaPromocaoSchema.safeParse({ vendas_count: 27305, fato_venda_item_count: 41000, dim_produto_count: 120 })
+    expect(r.success).toBe(true)
+  })
+  it('cargaValidacaoSchema aceita o retorno de staging vazia (sem range)', () => {
+    const r = cargaValidacaoSchema.safeParse({ ok: false, total: 0, erros: ['Nenhuma linha válida na carga — arquivo vazio ou inválido.'] })
+    expect(r.success).toBe(true)
   })
 })
 
@@ -154,8 +173,14 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
   })
 
   it('mutações destrutivas INACESSÍVEIS a anon (revogação dura)', async () => {
-    for (const fn of ['truncate_dynamic_tables', 'promover_carga_vendas', 'inserir_lote_raw']) {
-      const status = await rpcAnonStatus(fn, fn === 'inserir_lote_raw' ? { p_linhas: [] } : {})
+    // Caminho antigo (coexiste) + pipeline atômico (0116/0118, usado pelo caminho real
+    // da UI via service role): TODAS service_role-only → anon negado (v4.15.0/F2-real).
+    const comLinhas = new Set(['inserir_lote_raw', 'inserir_lote_staging'])
+    for (const fn of [
+      'truncate_dynamic_tables', 'inserir_lote_raw',
+      'limpar_staging_vendas', 'inserir_lote_staging', 'validar_carga_staging', 'promover_carga_vendas',
+    ]) {
+      const status = await rpcAnonStatus(fn, comLinhas.has(fn) ? { p_linhas: [] } : {})
       expect(status, `${fn} deveria estar revogada para anon`).toBeGreaterThanOrEqual(400)
     }
   })
