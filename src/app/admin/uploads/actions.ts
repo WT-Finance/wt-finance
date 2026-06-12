@@ -3,6 +3,7 @@
 import { loadMetas } from '@/lib/carga/metas'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
+import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
@@ -102,16 +103,17 @@ export async function inserirLoteVendasAction(
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
 
+    // v4.15.0 (F2-real, ADR-0104): caminho real migrado ao pipeline ATÔMICO (0116/0118).
+    // NÃO trunca a base aqui (era `truncate_dynamic_tables` ANTES do transform → base
+    // ficava vazia se o transform falhasse). Em vez disso: limpa a STAGING (não-destrutivo)
+    // no 1º lote e carrega nela. O swap destrutivo só ocorre em finalizar → promover_carga_vendas,
+    // numa transação única. As metas saem daqui e vão para finalizar (após a validação passar).
     if (isFirst) {
-      const { error: truncErr } = await bound('truncate_dynamic_tables')
-      if (truncErr) return { error: `Erro ao truncar tabelas: ${truncErr.message}` }
-
-      try { await loadMetas(false) } catch (e) {
-        return { error: `Erro ao carregar metas: ${e instanceof Error ? e.message : String(e)}` }
-      }
+      const { error: limpErr } = await bound('limpar_staging_vendas')
+      if (limpErr) return { error: `Erro ao preparar a carga: ${limpErr.message}` }
     }
 
-    const { error } = await bound('inserir_lote_raw', { p_linhas: lote })
+    const { error } = await bound('inserir_lote_staging', { p_linhas: lote })
     if (error) return { error: `Erro ao inserir lote: ${error.message}` }
 
     return { inseridas: lote.length }
@@ -136,26 +138,39 @@ export async function finalizarVendasAction(
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
 
-    const { data: transformData, error: transformErr } = await bound('transform_raw_to_analytics')
-    if (transformErr) return { error: `Erro na transformação: ${transformErr.message}` }
+    // v4.15.0 (F2-real, ADR-0104): validação NÃO-destrutiva → metas → swap ATÔMICO.
+    // 1. Pré-validação ANTES de qualquer destruição (range de datas vs dim_data, contagem).
+    //    Erro de RPC ou validação reprovada → mensagem explícita; a base atual fica intacta.
+    const valRes = await bound('validar_carga_staging')
+    if (valRes.error) return { error: `Erro na validação da carga: ${valRes.error.message}. A base atual foi preservada.` }
+    const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_staging')
+    if (!validacao) return { error: 'A validação retornou em formato inesperado. A base atual foi preservada.' }
+    if (!validacao.ok) {
+      const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
+      return { error: `${msgs.join(' ')} A base atual foi preservada.` }
+    }
 
-    const resultado = transformData as { vendas_count: number; fato_venda_item_count: number } | null
+    // 2. Metas (upsert idempotente — fora da transação do swap; só após validar).
+    try { await loadMetas(false) } catch (e) {
+      return { error: `Erro ao carregar metas: ${e instanceof Error ? e.message : String(e)}` }
+    }
 
-    const { error: dimErr } = await bound('regenerar_dim_operacao_weddings')
-    if (dimErr) return { error: `Erro ao regenerar operações Weddings: ${dimErr.message}` }
-
-    const { error: refreshErr } = await bound('refresh_all_materialized_views')
-    if (refreshErr) return { error: `Erro ao atualizar views: ${refreshErr.message}` }
+    // 3. Swap ATÔMICO: truncate + copia staging→raw + transform + dims + refresh, tudo numa
+    //    transação. Falha aqui → ROLLBACK no banco → a base de leitura NUNCA fica vazia.
+    const promRes = await bound('promover_carga_vendas')
+    if (promRes.error) return { error: `Erro ao promover a carga (base preservada): ${promRes.error.message}` }
+    const promocao = parseRpc(cargaPromocaoSchema, promRes, 'promover_carga_vendas')
+    if (!promocao) return { error: 'A promoção retornou em formato inesperado.' }
 
     return {
       sucesso: true,
       total_linhas: totalInseridas,
-      vendas_count: resultado?.vendas_count ?? 0,
-      fato_item_count: resultado?.fato_venda_item_count ?? 0,
+      vendas_count: promocao.vendas_count,
+      fato_item_count: promocao.fato_venda_item_count,
       erros: [],
       preview: {
         antes:  { total_vendas: totalAntes },
-        depois: { total_vendas: resultado?.vendas_count ?? 0 },
+        depois: { total_vendas: promocao.vendas_count },
       },
     }
   } catch (err) {
