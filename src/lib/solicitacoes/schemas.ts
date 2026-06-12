@@ -55,6 +55,8 @@ export const solicitacaoSchema = z.object({
   decidido_por_email: z.string().nullable(),
   justificativa:      z.string().nullable(),
   criado_em:          z.string(),
+  sou_solicitante:    z.boolean().optional(),
+  sou_atendente:      z.boolean().optional(),
   anexos:             z.array(anexoSchema),
 }).passthrough()
 export type Solicitacao = z.infer<typeof solicitacaoSchema>

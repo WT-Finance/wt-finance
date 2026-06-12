@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, Palette, LogOut } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, Palette, Inbox, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -15,6 +15,8 @@ export interface UsuarioSidebar {
   email: string | null
   role: string | null
   permissoes: string[]
+  /** Nº de solicitações abertas atribuídas a mim/minha role (badge). v4.16.0. */
+  pendenciasSolicitacoes?: number
 }
 
 interface NavSubItem {
@@ -31,6 +33,8 @@ interface NavItem {
   Icon: LucideIcon
   /** Área que libera o item; null = grupo (visível se algum subitem for permitido). */
   area: Area | null
+  /** Sempre visível para qualquer autenticado (não gated por área). v4.16.0. */
+  sempre?: boolean
 }
 
 const PERFORMANCE_SUBS: NavSubItem[] = [
@@ -50,6 +54,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: 'metas'         },
+  { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, sempre: true },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,   area: 'admin/acessos'        },
   { href: '/admin/design-system',  label: 'Design System',      Icon: Palette, area: 'admin/design-system'  },
@@ -180,6 +185,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
   const financeiroSubs  = FINANCEIRO_SUBS.filter(s => pode(s.area))
 
   const navItems = NAV_ITEMS.filter(item => {
+    if (item.sempre) return true
     if (item.href === '/performance') return performanceSubs.length > 0
     if (item.href === '/financeiro')  return financeiroSubs.length > 0
     return item.area !== null && pode(item.area)
@@ -379,6 +385,12 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
                 className={active ? '' : 'text-zinc-400'}
               />
               {label}
+              {href === '/solicitacoes' && (usuario.pendenciasSolicitacoes ?? 0) > 0 && (
+                <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
+                  style={{ background: 'var(--action-primary)', color: 'var(--action-primary-fg)' }}>
+                  {usuario.pendenciasSolicitacoes}
+                </span>
+              )}
             </Link>
           )
         })}
