@@ -80,7 +80,7 @@ export default function MetasDashboard({ setor, ano, mes }: Props) {
   const data = state.data
 
   return (
-    <div className="max-w-screen-xl mx-auto px-6 py-4">
+    <div className="max-w-screen-xl mx-auto px-6">
       <div className="flex items-center justify-end mb-4">
         <FilterBar
           setor={setor} ano={ano} mes={mes}

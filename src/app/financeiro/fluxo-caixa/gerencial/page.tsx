@@ -45,7 +45,7 @@ export default async function GerencialPage() {
   const lancamentos = unwrapRpc<Lancamento[]>(lancamentosRes, 'get_gerencial_lancamentos') ?? []
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="max-w-7xl mx-auto px-6">
       <TopSection titulo="Fluxo de Caixa Gerencial" subtitulo="Baseado em planilha de previsão curada manualmente">
         <GerencialSection
           saldos={saldos}

@@ -44,7 +44,9 @@ export default function AppShell({ usuario, children }: AppShellProps) {
         )}
 
         <MobileHeader onOpen={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-auto">
+        {/* Respiro vertical ÚNICO das páginas (v4.16.1): o ritmo topo/base vive aqui.
+            Páginas NÃO definem py próprio — container = max-w-* mx-auto px-*. */}
+        <main className="flex-1 overflow-auto py-8">
           {children}
         </main>
       </div>
