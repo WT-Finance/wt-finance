@@ -32,6 +32,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.15.0',
+    data: '2026-06-12T18:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'O carregamento de planilhas de Vendas passou a validar o arquivo inteiro antes de gravar: cargas com erro não entram pela metade nem deixam os painéis vazios — ou tudo entra, ou nada muda e o sistema avisa o problema.' },
+    ],
+  },
+  {
     versao: '4.14.3',
     data: '2026-06-12T12:00',
     itens: [

@@ -6,6 +6,21 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.15.0] — 2026-06-12
+
+Versão MINOR: **F2-real, fase 1** — o caminho real de upload de Vendas (Server Actions de `/admin/uploads`) passa a usar o **pipeline atômico** de carga (staging → validação → swap). Carga com erro não esvazia mais a base. ADR-0111. Sem migration (o pipeline 0116/0118 já estava em produção desde a v4.12/v4.12.1).
+
+### Corrigido / Melhorado
+- **Upload de Vendas atômico (fecha o F2 para a UI).** `inserirLoteVendasAction`/`finalizarVendasAction` deixam de rodar `truncate_dynamic_tables` antes do transform; passam por `limpar_staging_vendas` → `inserir_lote_staging` → `validar_carga_staging` → `promover_carga_vendas` (transação única; ROLLBACK preserva a base). **Assinaturas e UX inalteradas** no fluxo de sucesso. Falha de validação/promoção retorna erro explícito ("base preservada"), nunca tela vazia.
+- **Contrato Zod** das RPCs do pipeline (`cargaValidacaoSchema`/`cargaPromocaoSchema`) validado por `parseRpc` no finalizar; testes de contrato (`validar_carga_staging` live; estruturais de `promover`); teste de segurança anon-negado estendido às RPCs de staging.
+
+### Coexistência / rollback
+- O caminho antigo (`truncate_dynamic_tables`, `inserir_lote_raw`, `transform_…` soltos) **permanece intacto** no banco — rollback = reverter as Actions (promover deployment anterior na Vercel), sem migration de desfazer.
+- **Fora do escopo (fase 2):** aposentar a rota vestigial `upload-vendas`, as RPCs antigas de carga e as RPCs órfãs de desativar usuário — só após ≥2 cargas reais validadas sem incidente.
+
+### Notas
+- Sem migration nesta versão. Backup lógico completo pré-v4.15 em `~/wt-finance-backups/2026-06-12-pre-v4-15/` (âncora de reversibilidade). Runbook: `docs/runbooks/v4-15-upload-vendas-runbook.md`.
+
 ## [4.14.3] — 2026-06-12
 
 Versão PATCH: **documentação viva** do Design System (`/admin/design-system`) atualizada para refletir a família de tokens neutros de plataforma das v4.14.1/v4.14.2. Nenhum código de produto muda; sem migration.
