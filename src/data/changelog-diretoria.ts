@@ -32,6 +32,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.16.0',
+    data: '2026-06-12T20:00',
+    itens: [
+      { tipo: 'novidade', texto: 'A plataforma passou a receber solicitações internas ao financeiro — como lançamentos de contas a pagar e pagamentos de emergência — com formulário próprio por tipo de pedido, anexos e acompanhamento de status, substituindo gradualmente o formulário externo e o Planner.' },
+      { tipo: 'novidade', texto: 'Qualquer pessoa abre uma solicitação e escolhe o destinatário (uma pessoa ou um setor/permissão); quem recebe acompanha tudo numa caixa de entrada organizada por tipo, conclui ou rejeita (com justificativa), e o solicitante pode cancelar. Um aviso na barra lateral mostra quantos pedidos estão pendentes para você.' },
+      { tipo: 'novidade', texto: 'O administrador cria e ajusta os tipos de solicitação e seus campos (texto, valor, data, lista de opções, anexo), sem precisar de desenvolvimento.' },
+    ],
+  },
+  {
     versao: '4.15.0',
     data: '2026-06-12T18:00',
     itens: [

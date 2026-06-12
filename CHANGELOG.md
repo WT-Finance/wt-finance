@@ -6,6 +6,23 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.16.0] — 2026-06-12
+
+Versão MINOR: **Módulo de Solicitações** — pedidos internos ao financeiro (lançamentos avulsos, pagamentos de emergência etc.) com tipos configuráveis, anexos e acompanhamento. Substitui (em convivência) o formulário externo + Planner. ADRs 0112 (campos dinâmicos) e 0113 (anexos/storage).
+
+### Adicionado
+- **Abertura por qualquer usuário** (`/solicitacoes`, aba nova na sidebar com badge de pendências): escolhe tipo, destinatário (usuário **ou** permissão), data-limite, descrição e os campos dinâmicos do tipo. **7 tipos de campo** (texto curto/longo, número, moeda, data, seleção, anexo) com validação **server-side**.
+- **Caixa de entrada (board estilo Planner):** colunas por tipo, cards por data-limite (vencida destacada), círculo conclui, concluídas recolhidas; sub-filtro mim/permissão e, para gestão, "Todas".
+- **Ciclo de vida:** Aberta → Concluída (atendente ou solicitante) / Rejeitada (atendente, justificativa obrigatória) / Cancelada (solicitante). Estados terminais; transições ilegais bloqueadas **no banco**.
+- **Anexos** (PDF/imagem/planilha ≤10 MB): bucket privado, upload validado no servidor, download por **signed URL** que respeita a visibilidade.
+- **Admin de tipos** (`/admin/solicitacoes`, área `solicitacoes`): construtor de campos (ordenar, obrigatório, opções de seleção); tipo em uso só **arquiva** (não exclui), preservando histórico; tipo virgem é excluível.
+
+### Segurança / dados
+- Tabelas `app.solicitacao_tipo/campo/solicitacao/anexo` **RLS deny-by-default**; todo acesso por RPC `SECURITY DEFINER` com `exigir_acesso` + filtro por `auth.uid()`/área (visibilidade §2.3 valendo no banco). Respostas gravadas como **snapshot imutável** (editar/arquivar o tipo não altera solicitações abertas). Auditoria adversarial 25/25 (ciclo de vida + visibilidade + validação, 3 perfis + anon).
+
+### Banco
+- Migrations **0127** (schema+RLS+área+bucket), **0128** (RPCs), **0129** (fix de visibilidade NULL-safe — achado da auto-auditoria), **0130** (flags de papel para a UI). Aplicadas; backup pré-v4.16 com restore testado.
+
 ## [4.15.0] — 2026-06-12
 
 Versão MINOR: **F2-real, fase 1** — o caminho real de upload de Vendas (Server Actions de `/admin/uploads`) passa a usar o **pipeline atômico** de carga (staging → validação → swap). Carga com erro não esvazia mais a base. ADR-0111. Sem migration (o pipeline 0116/0118 já estava em produção desde a v4.12/v4.12.1).
