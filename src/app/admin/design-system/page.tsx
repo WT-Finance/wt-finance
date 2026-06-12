@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import ChartShowcase from './chart-showcase'
+import PlataformaShowcase from './plataforma-showcase'
 import { requireArea } from '@/lib/auth/sessao'
 
 export const dynamic = 'force-dynamic'
@@ -30,6 +31,7 @@ export default async function DesignSystemPage() {
           ['#graficos', '8. Gráficos'],
           ['#drawers', '9. Drawers'],
           ['#componentes', '10. Componentes'],
+          ['#plataforma', '11. Plataforma'],
         ].map(([href, label]) => (
           <a key={href} href={href}
             className="text-xs text-[var(--brand)] hover:underline px-2 py-1 rounded bg-zinc-50">
@@ -431,6 +433,23 @@ export default async function DesignSystemPage() {
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section id="plataforma" title="11. Plataforma (auth / admin)">
+        {/* Regra setor × plataforma (ADR-0103, extensão v4.14.1) */}
+        <div className="bg-zinc-50 rounded-xl p-4 mb-6">
+          <p className="font-medium text-[var(--text-primary)] text-sm mb-2">Regra setor × plataforma (ADR-0103, extensão v4.14.1)</p>
+          <ul className="text-xs text-[var(--text-muted)] space-y-1 list-disc pl-4">
+            <li>Cada <strong>setor</strong> usa sua cor de destaque nas SUAS abas: Weddings <code className="bg-zinc-100 px-1 rounded">#BD965C</code>, Trips <code className="bg-zinc-100 px-1 rounded">#0091B3</code>, Corporativo <code className="bg-zinc-100 px-1 rounded">#0D5257</code> (via <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>, herdada por <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>).</li>
+            <li>As <strong>telas de plataforma</strong> — auth (<code className="bg-zinc-100 px-1 rounded">/login</code>, <code className="bg-zinc-100 px-1 rounded">/trocar-senha</code>, <code className="bg-zinc-100 px-1 rounded">/solicitar-acesso</code>, <code className="bg-zinc-100 px-1 rounded">/auth/*</code>), <code className="bg-zinc-100 px-1 rounded">/sem-acesso</code> e <code className="bg-zinc-100 px-1 rounded">/admin/*</code> — usam o <strong>tema neutro do Group</strong>. Nenhuma cor de setor atua como cor geral.</li>
+            <li><strong>Por que tokens dedicados</strong> (<code className="bg-zinc-100 px-1 rounded">--action-*</code>), e não <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>: o <code className="bg-zinc-100 px-1 rounded">:root</code> tem <code className="bg-zinc-100 px-1 rounded">--brand: #BD965C</code> (Weddings) como default → usar <code className="bg-zinc-100 px-1 rounded">var(--brand)</code> daria <strong>flash dourado pré-hidratação</strong>. Os tokens neutros são valores fixos, independentes de <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>.</li>
+            <li>O <strong>wordmark WT FINANCE</strong> é dinâmico: cor da aba dentro do setor, <code className="bg-zinc-100 px-1 rounded">--text-muted</code> (neutro) no resto.</li>
+            <li>Swatches dos tokens neutros em <a href="#brand" className="text-[var(--brand)] hover:underline">1. Paleta</a>.</li>
+          </ul>
+        </div>
+
+        {/* Demos ao vivo (botões, pill, foco, checkbox, CTA) */}
+        <PlataformaShowcase />
       </Section>
     </div>
   )
