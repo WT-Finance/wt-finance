@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, Palette, Inbox, LogOut } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, Palette, Inbox, ClipboardList, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -56,8 +56,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: 'metas'         },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, sempre: true },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
-  { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,   area: 'admin/acessos'        },
-  { href: '/admin/design-system',  label: 'Design System',      Icon: Palette, area: 'admin/design-system'  },
+  { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
+  { href: '/admin/solicitacoes',   label: 'Tipos de solicitação', Icon: ClipboardList, area: 'solicitacoes'       },
+  { href: '/admin/design-system',  label: 'Design System',      Icon: Palette,       area: 'admin/design-system'  },
 ]
 
 interface SidebarContentProps {
