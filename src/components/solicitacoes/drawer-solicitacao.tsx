@@ -5,20 +5,25 @@ import { useRouter } from 'next/navigation'
 import { Loader2, Download, Check, X, Ban } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
 import ModalCentral from '@/components/shared/modal-central'
+import ConfirmModal from '@/components/shared/confirm-modal'
 import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { CAMPO } from '@/lib/ui/campos'
 import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl } from '@/app/solicitacoes/actions'
 import { STATUS_LABEL, statusBadge, fmtDataBR, fmtValor, vencida } from '@/lib/solicitacoes/format'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
-const INPUT = 'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition resize-none'
+const INPUT = `${CAMPO} resize-none`
 
 export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; onClose: () => void }) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [rejeitando, setRejeitando] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
   const [justificativa, setJustificativa] = useState('')
+  // id do anexo sendo baixado no momento (impede duplo-clique e exibe spinner)
+  const [baixando, setBaixando] = useState<number | null>(null)
 
   const aberta = sol.status === 'aberta'
   const podeConcluir = aberta && (sol.sou_atendente || sol.sou_solicitante)
@@ -32,8 +37,32 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
     router.refresh(); onClose()
   }
   async function baixarAnexo(id: number) {
-    const r = await anexoUrl(id)
-    if (r.ok) window.open(r.url, '_blank', 'noopener'); else setErro(r.erro)
+    // Evita duplo-clique enquanto já há um download em progresso
+    if (baixando !== null) return
+    setErro(null)
+    setBaixando(id)
+    // Abre a janela de forma SÍNCRONA (antes do await) para não ser bloqueada pelo
+    // popup-blocker; depois redirecionamos para a URL assinada. Sem 'noopener' na
+    // feature string porque com ela window.open retorna null por especificação —
+    // zeramos o opener manualmente logo abaixo.
+    const w = window.open('', '_blank')
+    if (w) w.opener = null
+    try {
+      const r = await anexoUrl(id)
+      if (r.ok) {
+        if (w) {
+          w.location.href = r.url
+        } else {
+          // Fallback: o open síncrono já foi bloqueado — tenta o caminho direto
+          window.open(r.url, '_blank', 'noopener')
+        }
+      } else {
+        w?.close()
+        setErro(r.erro)
+      }
+    } finally {
+      setBaixando(null)
+    }
   }
 
   return (
@@ -60,8 +89,8 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
                 <dt className="text-xs text-zinc-500">{r.rotulo}</dt>
                 {r.tipo_campo === 'anexo'
                   ? <dd className="mt-0.5 space-y-1">{sol.anexos.filter(a => a.campo_id === r.campo_id).map(a => (
-                      <button key={a.id} type="button" onClick={() => baixarAnexo(a.id)} className="foco-neutro inline-flex items-center gap-1.5 rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50">
-                        <Download size={12} /> {a.nome}
+                      <button key={a.id} type="button" disabled={baixando !== null} onClick={() => baixarAnexo(a.id)} className="foco-neutro inline-flex items-center gap-1.5 rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-60">
+                        {baixando === a.id ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} {a.nome}
                       </button>))}
                       {sol.anexos.filter(a => a.campo_id === r.campo_id).length === 0 && <span className="text-zinc-400 text-xs">—</span>}
                     </dd>
@@ -77,7 +106,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
         <div className="mb-4">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Anexos</p>
           {sol.anexos.filter(a => a.campo_id == null).map(a => (
-            <button key={a.id} type="button" onClick={() => baixarAnexo(a.id)} className="foco-neutro mr-1 mb-1 inline-flex items-center gap-1.5 rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50"><Download size={12} /> {a.nome}</button>
+            <button key={a.id} type="button" disabled={baixando !== null} onClick={() => baixarAnexo(a.id)} className="foco-neutro mr-1 mb-1 inline-flex items-center gap-1.5 rounded border border-zinc-200 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-50 disabled:opacity-60">{baixando === a.id ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} {a.nome}</button>
           ))}
         </div>
       )}
@@ -93,8 +122,19 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
         <div className="sticky -bottom-5 -mx-6 -mb-5 px-6 py-3 bg-white border-t border-zinc-100 flex flex-wrap gap-2">
           {podeConcluir && <button type="button" disabled={ocupado} onClick={() => run(() => concluirSolicitacao(sol.id))} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>{ocupado ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Concluir</button>}
           {podeRejeitar && <button type="button" disabled={ocupado} onClick={() => setRejeitando(true)} className={`${PILL} ${PILL_PERIGO}`}><Ban size={13} /> Rejeitar</button>}
-          {podeCancelar && <button type="button" disabled={ocupado} onClick={() => run(() => cancelarSolicitacao(sol.id))} className={`${PILL} ${PILL_NEUTRO}`}><X size={13} /> Cancelar</button>}
+          {podeCancelar && <button type="button" disabled={ocupado} onClick={() => setCancelando(true)} className={`${PILL} ${PILL_NEUTRO}`}><X size={13} /> Cancelar</button>}
         </div>
+      )}
+
+      {cancelando && (
+        <ConfirmModal
+          titulo="Cancelar solicitação"
+          mensagem="Cancelar esta solicitação? Esta ação não pode ser desfeita."
+          confirmarLabel="Cancelar solicitação"
+          cancelarLabel="Voltar"
+          onConfirmar={() => run(() => cancelarSolicitacao(sol.id))}
+          onFechar={() => setCancelando(false)}
+        />
       )}
 
       {rejeitando && (
