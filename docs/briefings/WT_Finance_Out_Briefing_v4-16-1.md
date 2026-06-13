@@ -41,7 +41,7 @@
 - Sweep: 0 `text-[--token]` quebrado restante; 0 `var(var())`; 1 `window.confirm` (o item #8, intencional).
 
 ## Preview / Verificação
-(Ver seção atualizada após o deploy da branch.)
+**Smoke 6/6 no deploy da branch** (usuário descartável com as 3 áreas, 0 resíduo): `/solicitacoes`, `/admin/acessos` (render do `CardTabela`), `/admin/design-system` (§12 "Layout de Página") e `/admin/solicitacoes` retornam 200 e renderizam; tema neutro intacto (zero `#BD965C`); anon → `/login`. (Click-through visual — alinhamento de respiro, modais, foco — fica como smoke manual recomendado antes do merge.)
 
 ## Arquivos
 - **Fundação:** `src/lib/ui/{overlay-stack,campos}.ts`, `src/components/shared/{confirm-modal,modal-central,list-drawer}.tsx`, `src/app/globals.css`.
