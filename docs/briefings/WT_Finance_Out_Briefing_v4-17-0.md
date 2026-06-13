@@ -44,7 +44,19 @@ Backup lógico completo **antes da 1ª migration**: `~/wt-finance-backups/2026-0
 Fluxo de Caixa (M2/M4) e o tema dos R$ 17,97M **não entraram**; nenhum indicador de não-conciliado criado. Nenhum 🔵 surgiu no escopo.
 
 ## Preview / Verificação
-(Ver seção atualizada após o deploy — roteiro de smoke: login → dashboard Weddings; upload de Vendas; abrir/baixar anexo de solicitação como solicitante vs terceiro.)
+
+**Deploy de produção (2026-06-13):** merge `53baf1a` (PR #115) → deployment `dpl_3cQtcCa3…`, target `production`, state **READY** (runtime Node, bundler turbopack).
+
+**Smoke pós-deploy contra a app deployada (produção), 2026-06-13 — 5/5:**
+| # | Verificação | Resultado |
+|---|-------------|-----------|
+| 1 | **M1 vivo** — `anon` em RPC de leitura (`get_minhas_permissoes`, `solic_minhas_pendencias`) | **HTTP 401 / 42501** "permission denied for function" (negado) ✓ |
+| 2 | **Grants** — `has_function_privilege('anon', …)` em `public`+`app` | EXECUTE em **0** funções exceto `solicitar_acesso` (=**1**, mantida) ✓ |
+| 3 | **Objetos/lock** — `solic_promover_anexos` presente; `pg_advisory_xact_lock(4017001)` nas 3 fn do pipeline; `validar_carga_staging` emite `avisos` | todos presentes ✓ |
+| 4 | **Base íntegra** — `analytics.fato_venda` | **27.305 linhas** (não-vazia), derivada da carga registrada (`raw.vendas_excel` 45.233 linhas, `carregado_em` 2026-06-12) ✓ |
+| 5 | **Auth/RBAC + isolamento de anexos** | já verificados adversarialmente contra produção durante a execução (7/7 e 8/8); pós-deploy reconfirma comportamento vivo ✓ |
+
+Nota: o smoke de UI navegada (login no browser → dashboard → upload) não foi automatizado; a verificação acima cobre as camadas de autorização/dados em produção via REST/SQL, que é o núcleo de risco da v4.17.0.
 
 ## Arquivos (principais)
 - **Banco:** `supabase/migrations/0133..0136`.
