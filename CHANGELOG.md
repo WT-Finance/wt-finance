@@ -16,6 +16,10 @@ Versão PATCH: três quick-wins priorizados da auditoria técnica (relatório `d
 ### Dados
 - **Guarda contra descarte silencioso na carga de Vendas** (migration 0132): `validar_carga_staging` passou a reprovar a carga, **antes do swap**, quando há `setor`/`setor_micro` que não existe nas dimensões — exatamente as linhas que o `INNER JOIN` do transform descartaria sem erro nem rollback. Não altera o contrato (só acrescenta ao array `erros` e zera `ok`).
 
+### Interface
+- **Sidebar rolável** com scrollbar discreta (trilho transparente; o thumb fino só aparece ao passar o ponteiro e some quando não se interage) — acomoda o crescimento de abas sem cortar o rodapé (usuário/sair).
+- **Grupos com subabas (Performance e Financeiro) nascem recolhidos** a cada abertura/recarga do site (sem persistência); a subaba ativa continua visível quando o grupo está recolhido. Expandir/recolher segue funcionando e sobrevive à navegação dentro da sessão.
+
 ### Documentação
 - Registrada convenção permanente (CLAUDE.md): token CSS em classe Tailwind é `[var(--token)]`, nunca `[--token]` (forma v3 que o Tailwind 4 compila para CSS inválido) — guarda contra a regressão corrigida na v4.16.1.
 

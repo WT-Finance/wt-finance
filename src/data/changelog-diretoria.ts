@@ -36,6 +36,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     data: '2026-06-13T22:00',
     itens: [
       { tipo: 'melhoria', texto: 'Reforços de segurança e robustez nos bastidores: atualização da base tecnológica para corrigir vulnerabilidades conhecidas e uma proteção a mais na importação de Vendas, que agora bloqueia o carregamento se algum setor/subsetor vier fora do padrão — evitando que vendas sumam dos relatórios sem aviso.' },
+      { tipo: 'melhoria', texto: 'O menu lateral agora rola suavemente quando há muitas abas (com barra discreta que aparece só ao usar) e os grupos Performance e Financeiro abrem recolhidos, deixando a navegação mais limpa.' },
     ],
   },
   {

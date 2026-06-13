@@ -26,6 +26,11 @@
 ### QW3 — Convenção permanente anti-regressão (Tailwind v4)
 CLAUDE.md (Convenções de código): **token CSS em classe Tailwind é `[var(--token)]`, NUNCA `[--token]`** — a forma v3 compila para `color:--token` (CSS inválido) e a cor é silenciosamente descartada, sem erro de build/tsc/lint. Foi a raiz da incoerência visual corrigida app-wide na v4.16.1; agora está registrada para não voltar.
 
+### Extra (pedido do Yan, antes do merge) — Sidebar
+Fora dos 3 quick-wins, dois ajustes de sidebar pedidos para entrar na mesma entrega:
+- **Nav rolável** (`flex-1 min-h-0 overflow-y-auto`) com **scrollbar discreta** (utilitária `.scrollbar-discreta` em globals.css: trilho transparente, thumb fino que só aparece no hover/foco do container e some quando não se interage — token `--text-muted`). Resolve o corte do rodapé conforme as abas crescem.
+- **Performance e Financeiro nascem recolhidos** a cada abertura/recarga: removida a persistência em `localStorage`, estado inicial `false`. O estado em memória sobrevive à navegação client-side e a subaba ativa continua visível quando o grupo está recolhido.
+
 ## Gates
 - `npx tsc --noEmit` **0** · `npm run build` **limpo** (next 16.2.9) · `npm test` **97/97** (+1: contrato do `setor_fora`) · `npm run lint` **13 (baseline, zero novos)**.
 

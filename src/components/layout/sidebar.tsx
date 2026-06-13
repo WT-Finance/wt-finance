@@ -149,35 +149,15 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
                                                       { logoSrc: '/logos/welcome-group.svg',    logoAlt: 'Welcome Group' }
   // Corp: logo recolorido para a cor principal da aba (#0D5257).
   const logoRecolor = pathname.startsWith('/performance/corporativo')
-  // Inicialização preguiçosa a partir do localStorage (com guarda de window para
-  // SSR — no server a função roda e cai no default `true`). Evita o setState
-  // síncrono num useEffect de hidratação; mesmo default e mesma chave de antes.
-  const [perfOpen, setPerfOpen] = useState(() => {
-    if (typeof window === 'undefined') return true
-    const stored = localStorage.getItem('sidebar-perf-open')
-    return stored !== null ? stored === 'true' : true
-  })
-  const [financeiroOpen, setFinanceiroOpen] = useState(() => {
-    if (typeof window === 'undefined') return true
-    const stored = localStorage.getItem('sidebar-financeiro-open')
-    return stored !== null ? stored === 'true' : true
-  })
+  // Grupos com subabas (Performance, Financeiro) nascem RECOLHIDOS a cada abertura
+  // do site (v4.16.2) — sem persistência: o estado é só em memória, então sobrevive
+  // à navegação client-side mas volta a recolher num carregamento/refresh novo. (A
+  // subaba ATIVA ainda aparece quando recolhido — ver visibleSubs abaixo.)
+  const [perfOpen, setPerfOpen] = useState(false)
+  const [financeiroOpen, setFinanceiroOpen] = useState(false)
 
-  const handlePerfToggle = () => {
-    setPerfOpen(prev => {
-      const next = !prev
-      localStorage.setItem('sidebar-perf-open', String(next))
-      return next
-    })
-  }
-
-  const handleFinanceiroToggle = () => {
-    setFinanceiroOpen(prev => {
-      const next = !prev
-      localStorage.setItem('sidebar-financeiro-open', String(next))
-      return next
-    })
-  }
+  const handlePerfToggle = () => setPerfOpen(prev => !prev)
+  const handleFinanceiroToggle = () => setFinanceiroOpen(prev => !prev)
 
   // ── RBAC: navegação filtrada pelas permissões do usuário ──
   const pode = (area: Area) => usuario.permissoes.includes(area)
@@ -226,8 +206,8 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5">
+      {/* Nav — rolável quando há muitas abas; scrollbar discreta (some sem hover). */}
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-0.5 scrollbar-discreta">
         {navItems.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`)
           const isPerformance = href === '/performance'
