@@ -1,6 +1,6 @@
 {
   "name": "wt-finance-temp",
-  "version": "4.16.1",
+  "version": "4.16.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,7 +17,7 @@
     "@supabase/supabase-js": "^2.105.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^1.14.0",
-    "next": "16.2.4",
+    "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.8.1",
@@ -30,7 +30,7 @@
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",
