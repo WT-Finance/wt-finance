@@ -32,6 +32,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.17.1',
+    data: '2026-06-13T23:55',
+    itens: [
+      { tipo: 'melhoria', texto: 'Limpeza técnica interna: remoção de rotas e código em desuso da importação de Vendas e da administração de acessos, agora que o novo fluxo de importação foi confirmado em uso real. Nenhuma mudança visível nas telas.' },
+    ],
+  },
+  {
     versao: '4.17.0',
     data: '2026-06-13T23:30',
     itens: [
