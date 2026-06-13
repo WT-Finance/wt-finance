@@ -30,7 +30,7 @@ CLAUDE.md (Convenções de código): **token CSS em classe Tailwind é `[var(--t
 - `npx tsc --noEmit` **0** · `npm run build` **limpo** (next 16.2.9) · `npm test` **97/97** (+1: contrato do `setor_fora`) · `npm run lint` **13 (baseline, zero novos)**.
 
 ## Preview / Verificação
-(Ver seção atualizada após o deploy.)
+**Smoke 4/4 no deploy da branch** (usuário descartável, 0 resíduo), com foco no risco do bump do Next — a camada 1 (proxy): **anon `/solicitacoes` → `/login`** (proxy intacto pós-16.2.9), render autenticado de `/solicitacoes` e `/admin/acessos` (200), `/login` público 200. A migration 0132 foi verificada direto no banco (lógica + regressão de staging vazia).
 
 ## Arquivos
 - `package.json` (next/eslint/version), `package-lock.json`
