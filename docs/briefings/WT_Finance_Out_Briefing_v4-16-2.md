@@ -28,8 +28,9 @@ CLAUDE.md (Convenções de código): **token CSS em classe Tailwind é `[var(--t
 
 ### Extra (pedido do Yan, antes do merge) — Sidebar
 Fora dos 3 quick-wins, dois ajustes de sidebar pedidos para entrar na mesma entrega:
-- **Nav rolável** (`flex-1 min-h-0 overflow-y-auto`) com **scrollbar discreta** (utilitária `.scrollbar-discreta` em globals.css: trilho transparente, thumb fino que só aparece no hover/foco do container e some quando não se interage — token `--text-muted`). Resolve o corte do rodapé conforme as abas crescem.
+- **Nav rolável com barra de rolagem FLUTUANTE em overlay.** Primeira tentativa usou a barra nativa fina (`.scrollbar-discreta`), mas ela **reserva ~6px de largura quando há overflow → empurrava as abas** e o auto-hide via CSS não era confiável. Solução final: esconder a nativa por completo (`.scrollbar-none` → largura 0, **conteúdo não desloca**) e desenhar um thumb absoluto que flutua sobre o conteúdo. Implementação **imperativa** (posição/altura/opacidade via `ref`, mutadas em effects/handlers — ZERO React state) para evitar re-render por scroll e os rules do React Compiler (sem `setState` em effect, sem ler ref no render). Aparece ao rolar/hover, some após 1,2s (auto-hide), `pointer-events:none` (indicador puro — nunca intercepta clique), respeita `prefers-reduced-motion`. ResizeObserver (viewport + conteúdo) + re-medição em `pathname`/expand-collapse.
 - **Performance e Financeiro nascem recolhidos** a cada abertura/recarga: removida a persistência em `localStorage`, estado inicial `false`. O estado em memória sobrevive à navegação client-side e a subaba ativa continua visível quando o grupo está recolhido.
+- **Verificação:** revisão adversarial (3 lentes: correção/edge-cases, React-Compiler/SSR, UX/a11y/mobile) — aprovada, 0 bloqueante; achados de severidade baixa endereçados (drag removido → sem interceptação de clique nem afordância enganosa; `prefers-reduced-motion` adicionado).
 
 ## Gates
 - `npx tsc --noEmit` **0** · `npm run build` **limpo** (next 16.2.9) · `npm test` **97/97** (+1: contrato do `setor_fora`) · `npm run lint` **13 (baseline, zero novos)**.

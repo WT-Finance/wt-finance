@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -190,6 +190,55 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
     ? financeiroSubs.filter(s => s.href === activeFinanceiroHref)
     : []
 
+  // ── Barra de rolagem FLUTUANTE em overlay (v4.16.2) ──
+  // A nativa é escondida (`.scrollbar-none` → largura 0 → NÃO desloca o conteúdo);
+  // um thumb absoluto flutua sobre o conteúdo. Tudo IMPERATIVO (mutação de style via
+  // ref em effects/handlers, ZERO state) — evita re-render por scroll e os rules do
+  // React Compiler (sem setState em effect, sem ler ref no render).
+  const navViewRef    = useRef<HTMLElement | null>(null)
+  const navContentRef = useRef<HTMLDivElement | null>(null)
+  const thumbRef      = useRef<HTMLDivElement | null>(null)
+  const hideRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const measureThumb = useCallback(() => {
+    const el = navViewRef.current, th = thumbRef.current
+    if (!el || !th) return
+    const { scrollHeight, clientHeight, scrollTop } = el
+    if (scrollHeight <= clientHeight + 1) { th.style.display = 'none'; return }
+    const h = Math.max(28, Math.round((clientHeight / scrollHeight) * clientHeight))
+    const top = Math.round((scrollTop / (scrollHeight - clientHeight)) * (clientHeight - h))
+    th.style.display = 'block'
+    th.style.height = `${h}px`
+    th.style.transform = `translateY(${top}px)`
+  }, [])
+
+  // Indicador puro (pointer-events:none, ver JSX) — aparece e some sozinho; sem drag.
+  const revealThumb = useCallback(() => {
+    const th = thumbRef.current
+    if (th) th.style.opacity = '1'
+    if (hideRef.current) clearTimeout(hideRef.current)
+    hideRef.current = setTimeout(() => {
+      const t = thumbRef.current
+      if (t) t.style.opacity = '0'
+    }, 1200)
+  }, [])
+
+  // ResizeObserver: viewport (janela) E conteúdo (itens/subabas mudando de altura).
+  useEffect(() => {
+    const el = navViewRef.current
+    if (!el) return
+    measureThumb()
+    const ro = new ResizeObserver(() => measureThumb())
+    ro.observe(el)
+    if (navContentRef.current) ro.observe(navContentRef.current)
+    return () => { ro.disconnect(); if (hideRef.current) clearTimeout(hideRef.current) }
+  }, [measureThumb])
+
+  // Re-mede quando expandir/recolher um grupo (ou navegar) muda a altura do conteúdo.
+  useEffect(() => { measureThumb() }, [measureThumb, pathname, perfOpen, financeiroOpen, navItems.length])
+
+  const onNavScroll = useCallback(() => { measureThumb(); revealThumb() }, [measureThumb, revealThumb])
+
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
@@ -206,8 +255,19 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
         )}
       </div>
 
-      {/* Nav — rolável quando há muitas abas; scrollbar discreta (some sem hover). */}
-      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-0.5 scrollbar-discreta">
+      {/* Nav — rolável quando há muitas abas; barra de rolagem FLUTUANTE em overlay
+          (nativa escondida → não desloca o conteúdo; thumb some sozinho sem interação). */}
+      <div
+        className="flex-1 min-h-0 relative"
+        onMouseEnter={() => revealThumb()}
+        onMouseMove={() => revealThumb()}
+      >
+        <nav
+          ref={navViewRef}
+          onScroll={onNavScroll}
+          className="h-full overflow-y-auto scrollbar-none px-3 py-3"
+        >
+          <div ref={navContentRef} className="space-y-0.5">
         {navItems.map(({ href, label, Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`)
           const isPerformance = href === '/performance'
@@ -375,7 +435,26 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
             </Link>
           )
         })}
-      </nav>
+          </div>
+        </nav>
+
+        {/* Thumb flutuante: indicador PURO de posição (pointer-events:none → nunca
+            intercepta clique de aba). Posição/altura/opacidade via ref imperativo;
+            começa escondido (display:none, opacity:0) → sem deslocamento e sem flash no SSR.
+            motion-reduce desliga o fade para quem prefere menos movimento. */}
+        <div
+          ref={thumbRef}
+          aria-hidden
+          className="pointer-events-none absolute right-1 top-0 w-1.5 rounded-full transition-opacity duration-300 motion-reduce:transition-none"
+          style={{
+            display: 'none',
+            height: 0,
+            opacity: 0,
+            background: 'color-mix(in srgb, var(--text-muted) 55%, transparent)',
+            willChange: 'transform',
+          }}
+        />
+      </div>
 
       {/* Footer — identidade do usuário logado + sair */}
       <div className="h-14 px-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--sidebar-border)' }}>

@@ -143,33 +143,17 @@ body {
   outline: none;
 }
 
-/* Scrollbar DISCRETA (v4.16.2): trilho transparente e thumb fino que só aparece    */
-/* quando o ponteiro está sobre o container (ou ele recebe foco) — some quando não  */
-/* se interage. Usada na nav da sidebar, que rola quando há muitas abas.            */
-.scrollbar-discreta {
-  scrollbar-width: thin;                 /* Firefox */
-  scrollbar-color: transparent transparent;
+/* Esconde COMPLETAMENTE a barra de rolagem nativa (v4.16.2): largura 0 → não reserva  */
+/* espaço no layout (não desloca o conteúdo) e não desenha nada. Usada com a barra de  */
+/* rolagem flutuante custom (thumb em overlay) — ver useOverlayScrollbar na sidebar.   */
+.scrollbar-none {
+  scrollbar-width: none;                 /* Firefox */
+  -ms-overflow-style: none;              /* IE/Edge legado */
 }
-.scrollbar-discreta:hover,
-.scrollbar-discreta:focus-within {
-  scrollbar-color: color-mix(in srgb, var(--text-muted) 40%, transparent) transparent;
-}
-.scrollbar-discreta::-webkit-scrollbar {        /* WebKit/Chromium */
-  width: 6px;
-  height: 6px;
-}
-.scrollbar-discreta::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-discreta::-webkit-scrollbar-thumb {
-  background: transparent;                /* invisível em repouso */
-  border-radius: 9999px;
-  transition: background 0.2s ease;
-}
-.scrollbar-discreta:hover::-webkit-scrollbar-thumb,
-.scrollbar-discreta:focus-within::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-muted) 40%, transparent);
-}
-.scrollbar-discreta::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--text-muted) 60%, transparent);
+.scrollbar-none::-webkit-scrollbar {     /* WebKit/Chromium */
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 /* "Ver mais" do card-tabela (v4.11): neutro em repouso, cor da aba no hover.    */
