@@ -1,3 +1,4 @@
+import 'server-only' // M15 (v4.17.0): cliente service_role NUNCA pode vazar p/ o bundle client — falha o build se importado em componente client.
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 
