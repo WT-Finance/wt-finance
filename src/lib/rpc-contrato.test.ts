@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import type { ZodType } from 'zod'
+import { z, type ZodType } from 'zod'
 import {
   operacoesWeddingsSchema, carteiraWeddingsSchema, tendenciaMargemSchema,
   rankingVendedoresRangeSchema, vendasReceitaNegativaSchema, executivaKpisSchema,
   vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
+  mixProdutoSchema, minhasPermissoesSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
+  solicitacaoSchema,
 } from './solicitacoes/schemas'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -103,6 +105,10 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   { fn: 'admin_solic_listar_tipos',      params: {},                                                                     schema: tiposAdminSchema },
   { fn: 'solic_minhas',                  params: {},                                                                     schema: solicitacoesListaSchema },
   { fn: 'solic_caixa',                   params: { p_escopo: 'mim_e_role' },                                             schema: solicitacoesListaSchema },
+  // M13 (v4.17.0): schemas consumidos por parseRpc que faltavam na lista viva F7.
+  { fn: 'get_mix_produto',               params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 10 }, schema: mixProdutoSchema },
+  { fn: 'get_minhas_permissoes',         params: {},                                                                     schema: minhasPermissoesSchema },
+  { fn: 'solic_minhas_pendencias',       params: {},                                                                     schema: z.number() },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -110,6 +116,65 @@ describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REA
     const d = await rpc(fn, params)
     const r = schema.safeParse(d)
     expect(r.success, r.success ? '' : `${fn} drift: ${JSON.stringify(r.error!.issues.slice(0, 6))}`).toBe(true)
+  })
+})
+
+// M7 (v4.17.0): os contratos de solic_minhas/caixa rodam como service role → uid nulo →
+// LISTA VAZIA, então só validavam `[]` — nunca o ITEM (shape de solic_json) nem a
+// invariante NULL-safe da 0129 (sou_solicitante/sou_atendente boolean, nunca null). Como
+// service role não enxerga item (visibilidade por uid), cobrimos o item com um FIXTURE
+// capturado de solic_json REAL (produção, id 5). Falha sob drift: se solicitacaoSchema
+// deixar de aceitar o item real, ou se as flags regredirem para não-boolean, este teste
+// quebra — não passa trivialmente como o array vazio. (solic_detalhe não entra na F7 viva
+// porque retorna null p/ service role.)
+const SOLIC_JSON_FIXTURE = {
+  id: 5, tipo_id: 5, tipo_nome: 'Lançamentos de Contas a Pagar',
+  solicitante_email: 'yan@welcometrips.com.br',
+  destinatario: { tipo: 'usuario', rotulo: 'carine@welcometrips.com.br' },
+  data_limite: '2026-06-22', descricao: null, status: 'concluida',
+  decidido_em: '2026-06-12T20:36:28.332284+00:00',
+  decidido_por_email: 'carine@welcometrips.com.br', justificativa: null,
+  criado_em: '2026-06-12T20:28:35.456861+00:00',
+  sou_solicitante: false, sou_atendente: false,
+  respostas: [
+    { campo_id: 17, rotulo: 'Identificação do Fornecedor', tipo_campo: 'texto_curto', obrigatorio: true, opcoes: null, valor: 'TESTE' },
+    { campo_id: 19, rotulo: 'Setor', tipo_campo: 'selecao', obrigatorio: true, opcoes: ['Trips', 'Corporativo', 'Weddings'], valor: 'Trips' },
+    { campo_id: 21, rotulo: 'Valor', tipo_campo: 'moeda', obrigatorio: true, opcoes: null, valor: '1000' },
+    { campo_id: 23, rotulo: 'Anexos', tipo_campo: 'anexo', obrigatorio: true, opcoes: null, valor: null },
+    { campo_id: 26, rotulo: 'Prazo', tipo_campo: 'data', obrigatorio: true, opcoes: null, valor: '2026-06-22' },
+  ],
+  anexos: [{ campo_id: 23, id: 1, mime: 'application/pdf', nome: 'Invoice.pdf', tamanho: 165089 }],
+}
+
+describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129)', () => {
+  it('solicitacaoSchema aceita um item REAL de solic_json (não só [])', () => {
+    const r = solicitacaoSchema.safeParse(SOLIC_JSON_FIXTURE)
+    expect(r.success, r.success ? '' : `drift do item: ${JSON.stringify(r.error!.issues.slice(0, 8))}`).toBe(true)
+  })
+  it('flags de papel são BOOLEAN, nunca null (coalesce da 0129)', () => {
+    const r = solicitacaoSchema.parse(SOLIC_JSON_FIXTURE)
+    expect(typeof r.sou_solicitante).toBe('boolean')
+    expect(typeof r.sou_atendente).toBe('boolean')
+  })
+  it('o item-schema é estrito o suficiente p/ pegar drift (campo faltante reprova)', () => {
+    const semStatus: Record<string, unknown> = { ...SOLIC_JSON_FIXTURE }
+    delete semStatus.status
+    expect(solicitacaoSchema.safeParse(semStatus).success).toBe(false) // se passasse, o schema seria frouxo demais
+  })
+})
+
+// M10 (v4.17.0): o gate `npm test` era condicional — os blocos online (contrato/RBAC)
+// usam describe.skipIf(!ON), então sem .env.local o CI ficava VERDE sem rodar a parte de
+// segurança. Este teste SEMPRE roda: com REQUIRE_CONTRACT=1 (CI), FALHA se as credenciais
+// faltarem (os blocos online seriam pulados quando deveriam rodar). Local, sem a flag, passa.
+describe('gate de contrato — online obrigatório quando exigido (M10)', () => {
+  it('REQUIRE_CONTRACT=1 exige credenciais (online não pode ser pulado)', () => {
+    const exigido = process.env.REQUIRE_CONTRACT === '1'
+    if (exigido) {
+      expect(ON, 'REQUIRE_CONTRACT=1 mas faltam SUPABASE_URL/SERVICE_ROLE_KEY → contrato/RBAC seriam pulados').toBe(true)
+    } else {
+      expect(true).toBe(true) // offline: gate de unidade segue obrigatório; online é opcional
+    }
   })
 })
 

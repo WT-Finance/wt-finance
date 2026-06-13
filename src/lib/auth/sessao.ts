@@ -1,26 +1,13 @@
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
-import { z } from 'zod'
 import { getServerClient } from '@/lib/supabase/server'
-import { parseRpc } from '@/lib/schemas-rpc'
+import { parseRpc, minhasPermissoesSchema } from '@/lib/schemas-rpc'
 import { type Area, AREA_ADMIN } from '@/lib/auth/areas'
 
 // v4.13 (ADR-0109): sessão + permissões com UMA chamada por request (React.cache).
 // Camada 2 do enforcement: requireArea (páginas), requireAreaApi (route handlers),
 // requireAreaAction (server actions). O banco (ADR-0108) é o backstop.
-
-/** get_minhas_permissoes → shape REAL da RPC (0119/0125). */
-const minhasPermissoesSchema = z.object({
-  registrado:           z.boolean(),
-  ativo:                z.boolean(),
-  permissoes:           z.array(z.string()),
-  user_id:              z.string().optional(),
-  email:                z.string().nullable().optional(),
-  nome:                 z.string().nullable().optional(),
-  role_id:              z.number().nullable().optional(),
-  role:                 z.string().nullable().optional(),
-  precisa_trocar_senha: z.boolean().optional(),
-}).passthrough()
+// minhasPermissoesSchema vive em @/lib/schemas-rpc (M13/v4.17.0) p/ o teste de contrato.
 
 export interface Sessao {
   logado:            boolean
