@@ -86,3 +86,22 @@ node restaurar.mjs data/raw.vendas_excel.sql
 cd ~/projects/wt-finance
 npx supabase db query --linked 'select public.transform_raw_to_analytics(); select public.regenerar_dim_operacao_weddings(); select public.refresh_all_materialized_views();'
 ```
+
+---
+
+## Adendo v4.17.0 (Balde 3 — lock, op_propria, export, UNLOGGED)
+
+- **Concorrência (M3):** `limpar_staging_vendas`, `inserir_lote_staging` e
+  `promover_carga_vendas` adquirem `pg_advisory_xact_lock(4017001)` — a MESMA chave. Dois
+  uploads simultâneos **serializam** (o 2º espera o 1º); um upload não trunca/insere na staging
+  enquanto outro promove. Não há ação manual; é transparente.
+- **Staging é UNLOGGED (decisão mantida — performance):** `raw.vendas_excel_staging` não
+  sobrevive a crash/failover do Postgres no meio de uma carga multi-lote. Se isso ocorrer, a
+  validação retorna **"Nenhuma linha válida na carga — arquivo vazio ou inválido"** → a base de
+  leitura permanece intacta (o swap é atômico e só ocorre no `promover`). **Ação:** refazer o
+  upload do zero. A staging vazia nunca corrompe a base viva.
+- **Aviso de `operacao_propria` (não-bloqueante):** se a carga vier com `operacao_propria`
+  preenchida em menos da metade do percentual da base atual, a validação adiciona um AVISO
+  (a carga PROSSEGUE) — sinal de que a origem (ERP) pode ter parado de exportar a coluna.
+  Aparece anexado à mensagem de sucesso na tela de upload. Verificar a planilha de origem.
+- **Export da Lista de Operações:** agora pagina até cobrir o total (antes cortava em 200).

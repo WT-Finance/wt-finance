@@ -32,6 +32,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.17.0',
+    data: '2026-06-13T23:30',
+    itens: [
+      { tipo: 'melhoria', texto: 'Reforços internos de segurança e de confiabilidade dos dados financeiros, sem mudança visível nas telas: o acesso de leitura passou a exigir login em todos os pontos, a importação de Vendas ficou mais robusta (sem cruzar duas cargas simultâneas, sem cortar linhas no export e avisando se a planilha vier degradada), os valores monetários e datas são interpretados de forma única e correta, e os anexos das solicitações passaram a ser arquivados de forma definitiva.' },
+    ],
+  },
+  {
     versao: '4.16.2',
     data: '2026-06-13T22:00',
     itens: [
