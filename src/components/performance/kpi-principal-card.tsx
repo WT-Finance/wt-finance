@@ -34,7 +34,7 @@ export default function KpiPrincipalCard({ kpis, setor }: Props) {
           <KpiColuna rotulo="Margem"        metrica={kpis.margem_pct}  formato="pct" padded />
         </div>
         <div className="flex justify-end mt-2">
-          <span className="card-clicavel-cta text-[11px] text-[--brand] font-medium">Ver mais ›</span>
+          <span className="card-clicavel-cta text-[11px] text-[var(--brand)] font-medium">Ver mais ›</span>
         </div>
       </div>
 

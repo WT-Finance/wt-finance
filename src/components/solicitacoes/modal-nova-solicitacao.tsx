@@ -30,6 +30,11 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
 
   const tipo = tipos.find(t => t.id === tipoId)
 
+  // guarda de anexos: derivado do estado atual para evitar re-render de prop
+  const todosAnexos = Object.values(anexos).flat()
+  const subindo = todosAnexos.some(a => a.enviando)
+  const comAnexoErro = todosAnexos.some(a => a.erro)
+
   function trocarTipo(novo: number) {
     const temPreenchimento = Object.values(valores).some(Boolean) || Object.keys(anexos).length > 0
     if (temPreenchimento && !window.confirm('Trocar o tipo limpa os campos preenchidos. Continuar?')) return
@@ -62,6 +67,10 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
     const destinatario_role_id = destMode === 'role' ? (destRole ? Number(destRole) : null) : null
     const destinatario_user_id = destMode === 'usuario' ? (destUser || null) : null
     if (!destinatario_role_id && !destinatario_user_id) { setErro('Escolha um destinatário.'); return }
+    // guarda defensiva: impede race via teclado/submit duplo com anexo ainda subindo
+    if (subindo) { setErro('Aguarde o envio dos anexos terminar.'); return }
+    // avisa o usuário sobre anexo com falha (em vez de silenciar o erro)
+    if (comAnexoErro) { setErro('Há anexo com falha de envio — remova-o ou tente novamente.'); return }
     const anexosMeta = Object.values(anexos).flat().map(a => a.meta).filter((m): m is AnexoMeta => !!m)
     setEnviando(true)
     const res = await criarSolicitacao({
@@ -77,10 +86,10 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
     <ModalCentral titulo="Nova solicitação" subtitulo="Abra um pedido ao financeiro." onClose={onFechar}>
       {erro && <div className="mb-3"><FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} /></div>}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="ns-tipo" className="block text-xs font-medium text-zinc-600 mb-1">Tipo <span className="text-red-500">*</span></label>
-            <select id="ns-tipo" value={tipoId} onChange={e => trocarTipo(Number(e.target.value))} className={INPUT}>
+            <select id="ns-tipo" value={tipoId} onChange={e => trocarTipo(Number(e.target.value))} className={INPUT} autoFocus>
               <option value="">Selecione…</option>
               {tipos.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
@@ -126,8 +135,9 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
 
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" onClick={onFechar} className={`${PILL} ${PILL_NEUTRO}`}>Cancelar</button>
-          <button type="button" onClick={enviar} disabled={enviando} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
-            {enviando && <Loader2 size={13} className="animate-spin" />} Enviar solicitação
+          {/* desabilitado enquanto há upload em voo (subindo); erro de anexo é tratado via FaixaMensagem no clique */}
+          <button type="button" onClick={enviar} disabled={enviando || subindo} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
+            {(enviando || subindo) && <Loader2 size={13} className="animate-spin" />} Enviar solicitação
           </button>
         </div>
       </div>

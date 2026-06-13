@@ -1,13 +1,14 @@
 'use client'
 
 import { Paperclip, X } from 'lucide-react'
+import { CAMPO } from '@/lib/ui/campos'
 import type { CampoDef } from '@/lib/solicitacoes/schemas'
 
 // Motor de render dinâmico dos campos de um tipo (v4.16.0). Presentational: recebe a
 // definição + valores + callbacks; o modal orquestra upload de anexo. O SERVIDOR é a
 // fonte de verdade da validação (criar_solicitacao) — aqui só HTML5 + marca de obrigatório.
 
-const INPUT = 'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
+const INPUT = CAMPO
 
 export interface AnexoLocal { nome: string; enviando?: boolean; erro?: boolean }
 

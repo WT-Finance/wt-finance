@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { pushOverlay, popOverlay } from '@/lib/ui/overlay-stack'
 
 // Modal CENTRAL (sobre fundo escurecido), rolável, fecha no X / Esc / clique fora.
 // Segue o padrão do projeto (admin/modal-confirmacao-upload): container
@@ -21,6 +22,7 @@ interface Props {
 
 export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, onClose, children }: Props) {
   const [visible, setVisible] = useState(false)
+  const painelRef = useRef<HTMLDivElement>(null)
 
   const handleClose = useCallback(() => {
     setVisible(false)
@@ -32,11 +34,22 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, onClo
     return () => clearTimeout(t)
   }, [])
 
+  // Esc fecha só o overlay do topo (pilha global) — um modal aberto sobre um
+  // drawer não fecha os dois.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    const id = pushOverlay(handleClose)
+    return () => popOverlay(id)
   }, [handleClose])
+
+  // Foco inicial no painel + restauração do foco anterior ao fechar (a11y).
+  useEffect(() => {
+    const anterior = document.activeElement as HTMLElement | null
+    const alvo = painelRef.current?.querySelector<HTMLElement>(
+      'input, textarea, select, button:not([aria-label="Fechar"])',
+    ) ?? painelRef.current
+    alvo?.focus()
+    return () => anterior?.focus?.()
+  }, [])
 
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -57,7 +70,9 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, onClo
         onClick={handleClose}
       />
       <div
-        className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col"
+        ref={painelRef}
+        tabIndex={-1}
+        className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col outline-none"
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? 'scale(1)' : 'scale(0.97)',

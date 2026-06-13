@@ -32,7 +32,7 @@ interface Props {
 }
 
 /** Cabeçalho de coluna padrão: caixa normal, ~11px, cor terciária. Some `text-left`/`text-right`. */
-export const CARD_TABELA_TH = 'py-2 px-3 text-[11px] font-medium text-[--text-muted] whitespace-nowrap'
+export const CARD_TABELA_TH = 'py-2 px-3 text-[11px] font-medium text-[var(--text-muted)] whitespace-nowrap'
 
 export default function CardTabela({
   titulo, periodoLabel, headerRight, temMais, onVerMais, className, children,
@@ -41,7 +41,7 @@ export default function CardTabela({
     <div className={`bg-white rounded-xl shadow-sm px-5 py-4 min-w-0 overflow-hidden flex flex-col ${className ?? ''}`}>
       <div className="flex items-baseline justify-between gap-2 mb-3">
         <div className="flex items-baseline gap-2 min-w-0">
-          <h2 className="text-base font-semibold text-[--text-primary] leading-snug truncate">{titulo}</h2>
+          <h2 className="text-base font-semibold text-[var(--text-primary)] leading-snug truncate">{titulo}</h2>
           {periodoLabel && (
             <span className="text-xs shrink-0" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>
           )}

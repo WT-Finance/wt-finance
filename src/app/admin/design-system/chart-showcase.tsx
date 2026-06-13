@@ -112,10 +112,10 @@ export default function ChartShowcase() {
                 labelFormatter={(l) => String(l)}
                 formatter={(v, n) => [fmtBRL(Math.abs(v)), n === 'entrada' ? 'Entrada' : 'Saída']} />
             )} />
-            <Bar dataKey="entrada" name="entrada" radius={barRadius.top} barSize={barSizes.fluxo}>
+            <Bar dataKey="entrada" name="entrada" radius={barRadius.top} barSize={barSizes.fluxo} isAnimationActive={false}>
               {barData.map((d, i) => <Cell key={i} fill={fluxoColors.entrada} fillOpacity={d.ehFuturo ? FUTURE_OPACITY : 1} />)}
             </Bar>
-            <Bar dataKey="saida" name="saida" radius={barRadius.bottom} barSize={barSizes.fluxo}>
+            <Bar dataKey="saida" name="saida" radius={barRadius.bottom} barSize={barSizes.fluxo} isAnimationActive={false}>
               {barData.map((d, i) => <Cell key={i} fill={fluxoColors.saida} fillOpacity={d.ehFuturo ? FUTURE_OPACITY : 1} />)}
             </Bar>
           </ComposedChart>
@@ -142,6 +142,7 @@ export default function ChartShowcase() {
                 fill={SETOR_COLORS[s]}
                 radius={idx === SETORES.length - 1 ? barRadius.top : barRadius.none}
                 barSize={barSizes.column}
+                isAnimationActive={false}
               />
             ))}
           </BarChart>
@@ -164,11 +165,13 @@ export default function ChartShowcase() {
               type="monotone" dataKey="real" name="real"
               stroke={fluxoColors.resultado} strokeWidth={strokeWidths.line}
               dot={{ r: 2.5, fill: fluxoColors.resultado }} connectNulls={false}
+              isAnimationActive={false}
             />
             <Line
               type="monotone" dataKey="projecao" name="projecao"
               stroke={chartColors.axisTick} strokeWidth={strokeWidths.lineDashed}
               strokeDasharray={dashArrays.reference} dot={false} connectNulls={false}
+              isAnimationActive={false}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -213,7 +216,7 @@ export default function ChartShowcase() {
             <Tooltip content={(p) => (
               <CustomTooltip {...p} formatter={(v) => [fmtMi(v), 'Faturamento']} />
             )} />
-            <Bar dataKey="valor" radius={barRadius.right} maxBarSize={barSizes.horizontal}>
+            <Bar dataKey="valor" radius={barRadius.right} maxBarSize={barSizes.horizontal} isAnimationActive={false}>
               {horizData.map((d, i) => <Cell key={i} fill={d.cor} />)}
             </Bar>
           </BarChart>

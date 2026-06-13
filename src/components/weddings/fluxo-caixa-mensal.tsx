@@ -25,7 +25,7 @@ const COR_RESULTADO = fluxoColors.resultado
 
 function LegendItem({ color, opacity, label }: { color: string; opacity: number; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
+    <div className="flex items-center gap-1.5 text-xs text-[var(--text-subtle)]">
       <span className="inline-block w-3 h-3 rounded-sm shrink-0" style={{ background: color, opacity }} />
       {label}
     </div>
@@ -37,7 +37,7 @@ function LegendItem({ color, opacity, label }: { color: string; opacity: number;
 function KpiNaoLiquidado({ label, valor, cor }: { label: string; valor: number; cor: string }) {
   return (
     <div className="flex flex-col items-end leading-tight">
-      <span className="text-[11px] text-[--text-muted]">{label}</span>
+      <span className="text-[11px] text-[var(--text-muted)]">{label}</span>
       <span className="text-sm font-semibold tabular-nums" style={{ color: cor }}>
         {fmtBRL(valor)}
       </span>
@@ -74,10 +74,10 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-baseline gap-2">
-          <h2 className="text-base font-semibold text-[--text-primary]">
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Fluxo de Caixa Mensal{operacaoLabel ? ` — ${operacaoLabel}` : ''}
           </h2>
-          <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
+          <span className="text-[13px] text-[var(--text-muted)]">24 meses passados + 18 futuros</span>
         </div>
         <div className="flex items-start gap-5 shrink-0">
           {(data.total_a_receber != null || data.total_a_pagar != null) && (
@@ -179,13 +179,13 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
         <LegendItem color={COR_ENTRADA}  opacity={0.35} label="Entrada (prevista)"  />
         <LegendItem color={COR_SAIDA}    opacity={1}    label="Saída (efetivada)"   />
         <LegendItem color={COR_SAIDA}    opacity={0.35} label="Saída (prevista)"    />
-        <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--text-subtle)]">
           <svg width="20" height="10">
             <line x1="0" y1="5" x2="20" y2="5" stroke={COR_RESULTADO} strokeWidth="2" />
           </svg>
           Resultado mensal
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--text-subtle)]">
           <span className="inline-block w-3 h-3 rounded-full" style={{ background: fluxoColors.resultadoNegativo }} />
           Resultado negativo
         </div>

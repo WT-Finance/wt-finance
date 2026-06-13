@@ -13,7 +13,7 @@ export default async function TiposSolicitacaoPage() {
   const tipos = (await getTiposAdmin()) ?? []
 
   return (
-    <div className="max-w-5xl mx-auto px-4 pt-8 pb-12">
+    <div className="max-w-5xl mx-auto px-4">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Tipos de solicitação</h1>
         <p className="text-sm text-zinc-400 mt-0.5">

@@ -40,7 +40,7 @@ export default function KpiColuna({
 
   return (
     <div className={padded ? 'pl-4' : ''}>
-      <p className="text-[14px] font-semibold text-[--text-muted] uppercase tracking-wide mb-1">{rotulo}</p>
+      <p className="text-[14px] font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">{rotulo}</p>
       <p className="text-2xl font-bold tabular-nums mb-1" style={{ color: 'var(--brand)' }}>
         {fmtValor(valor)}
       </p>

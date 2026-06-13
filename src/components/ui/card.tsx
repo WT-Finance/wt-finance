@@ -13,7 +13,7 @@ export function Card({ title, subtitle, children, className, featured, size = 'd
   const padding  = size === 'sm' ? 'px-3 py-3.5' : 'px-5 py-4'
   const radius   = size === 'sm' ? 'rounded-lg'  : 'rounded-xl'
   const border   = featured
-    ? 'border-2 border-[--brand]'
+    ? 'border-2 border-[var(--brand)]'
     : 'shadow-sm'
 
   return (
@@ -28,8 +28,8 @@ export function Card({ title, subtitle, children, className, featured, size = 'd
     >
       {(title || subtitle) && (
         <div className="mb-4">
-          {title    && <h2 className="text-base font-semibold text-[--text-primary] leading-snug">{title}</h2>}
-          {subtitle && <p  className="text-[13px] text-[--text-muted] mt-0.5">{subtitle}</p>}
+          {title    && <h2 className="text-base font-semibold text-[var(--text-primary)] leading-snug">{title}</h2>}
+          {subtitle && <p  className="text-[13px] text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
         </div>
       )}
       {children}

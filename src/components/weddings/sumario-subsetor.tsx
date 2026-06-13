@@ -25,9 +25,9 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
     return (
       <Wrapper>
         {!semBox && (
-          <p className="text-xs text-[--text-subtle] mb-3">Distribuição de faturamento por subsetor no período</p>
+          <p className="text-xs text-[var(--text-subtle)] mb-3">Distribuição de faturamento por subsetor no período</p>
         )}
-        <div className="h-32 flex items-center justify-center text-sm text-[--text-subtle]">
+        <div className="h-32 flex items-center justify-center text-sm text-[var(--text-subtle)]">
           Sem dados para o período selecionado.
         </div>
       </Wrapper>
@@ -42,12 +42,12 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
       {!semBox && (
         <>
           <div className="flex items-baseline gap-2 mb-3">
-            <h2 className="text-base font-semibold text-[--text-primary] leading-snug">Composição por Subsetor</h2>
+            <h2 className="text-base font-semibold text-[var(--text-primary)] leading-snug">Composição por Subsetor</h2>
             {periodoLabel && <span className="text-xs" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>}
           </div>
           <div className="flex items-baseline gap-2 mb-4">
-            <p className="text-[13px] text-[--text-muted]">Distribuição de faturamento por subsetor no período</p>
-            <span className="text-xs text-[--text-subtle]">
+            <p className="text-[13px] text-[var(--text-muted)]">Distribuição de faturamento por subsetor no período</p>
+            <span className="text-xs text-[var(--text-subtle)]">
               {data.total.n_vendas} vendas · {fmtMi(data.total.faturamento)}
             </span>
           </div>
@@ -58,17 +58,17 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-zinc-100">
-              <th className="py-2 px-2 text-left  font-medium text-[--text-subtle] whitespace-nowrap">Subsetor</th>
-              <th className="py-2 px-2 text-left  font-medium text-[--text-subtle] w-36">Distribuição</th>
-              <th className="py-2 px-2 text-right font-medium text-[--text-subtle] whitespace-nowrap">Faturamento</th>
-              <th className="py-2 px-2 text-right font-medium text-[--text-subtle] whitespace-nowrap">Receita</th>
-              <th className="py-2 px-2 text-right font-medium text-[--text-subtle] whitespace-nowrap">Margem</th>
+              <th className="py-2 px-2 text-left  font-medium text-[var(--text-subtle)] whitespace-nowrap">Subsetor</th>
+              <th className="py-2 px-2 text-left  font-medium text-[var(--text-subtle)] w-36">Distribuição</th>
+              <th className="py-2 px-2 text-right font-medium text-[var(--text-subtle)] whitespace-nowrap">Faturamento</th>
+              <th className="py-2 px-2 text-right font-medium text-[var(--text-subtle)] whitespace-nowrap">Receita</th>
+              <th className="py-2 px-2 text-right font-medium text-[var(--text-subtle)] whitespace-nowrap">Margem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {classified.map(s => (
               <tr key={s.subsetor} className="hover:bg-zinc-50">
-                <td className="py-2 px-2 font-medium text-[--text-primary] whitespace-nowrap">
+                <td className="py-2 px-2 font-medium text-[var(--text-primary)] whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <span
                       className="inline-block w-2 h-2 rounded-full shrink-0"
@@ -88,13 +88,13 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
                         }}
                       />
                     </div>
-                    <span className="tabular-nums text-[--text-subtle] w-9 text-right shrink-0">
+                    <span className="tabular-nums text-[var(--text-subtle)] w-9 text-right shrink-0">
                       {s.pct_faturamento.toFixed(1)}%
                     </span>
                   </div>
                 </td>
-                <td className="py-2 px-2 text-right tabular-nums text-[--text-muted]">{fmtBRL(s.faturamento)}</td>
-                <td className="py-2 px-2 text-right tabular-nums text-[--text-muted]">{fmtBRL(s.receita)}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-[var(--text-muted)]">{fmtBRL(s.faturamento)}</td>
+                <td className="py-2 px-2 text-right tabular-nums text-[var(--text-muted)]">{fmtBRL(s.receita)}</td>
                 <td className={`py-2 px-2 text-right tabular-nums font-medium ${margemColor(s.margem_pct)}`}>
                   {s.margem_pct.toFixed(1)}%
                 </td>
@@ -103,15 +103,15 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
 
             {/* Linha de total */}
             <tr className="border-t border-zinc-200 bg-zinc-50 font-semibold">
-              <td className="py-2 px-2 text-[--text-primary]">Total</td>
+              <td className="py-2 px-2 text-[var(--text-primary)]">Total</td>
               <td className="py-2 px-2">
                 <div className="flex items-center gap-1.5">
                   <div className="flex-1 h-2 bg-zinc-200 rounded-full" />
-                  <span className="tabular-nums text-[--text-subtle] w-9 text-right shrink-0">100%</span>
+                  <span className="tabular-nums text-[var(--text-subtle)] w-9 text-right shrink-0">100%</span>
                 </div>
               </td>
-              <td className="py-2 px-2 text-right tabular-nums text-[--text-primary]">{fmtBRL(data.total.faturamento)}</td>
-              <td className="py-2 px-2 text-right tabular-nums text-[--text-primary]">{fmtBRL(data.total.receita)}</td>
+              <td className="py-2 px-2 text-right tabular-nums text-[var(--text-primary)]">{fmtBRL(data.total.faturamento)}</td>
+              <td className="py-2 px-2 text-right tabular-nums text-[var(--text-primary)]">{fmtBRL(data.total.receita)}</td>
               <td className={`py-2 px-2 text-right tabular-nums font-semibold ${margemColor(data.total.margem_pct)}`}>
                 {data.total.margem_pct.toFixed(1)}%
               </td>
@@ -119,7 +119,7 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
 
             {/* Linha NÃO_CLASSIFICADO (opcional) */}
             {nc && (
-              <tr className="bg-warning-bg border-t border-[--warning-bg]">
+              <tr className="bg-warning-bg border-t border-[var(--warning-bg)]">
                 <td className="py-2 px-2 text-warning font-medium whitespace-nowrap">Não Classif.</td>
                 <td className="py-2 px-2">
                   <div className="flex items-center gap-1.5">

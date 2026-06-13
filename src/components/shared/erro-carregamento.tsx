@@ -13,9 +13,9 @@ export default function ErroCarregamento({
   return (
     <div
       role="status"
-      className={`flex items-center gap-2 text-[13px] text-[--text-muted] ${className}`}
+      className={`flex items-center gap-2 text-[13px] text-[var(--text-muted)] ${className}`}
     >
-      <AlertCircle size={15} className="shrink-0 text-[--text-subtle]" />
+      <AlertCircle size={15} className="shrink-0 text-[var(--text-subtle)]" />
       <span>{mensagem}</span>
     </div>
   )

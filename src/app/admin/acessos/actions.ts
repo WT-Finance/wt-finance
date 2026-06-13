@@ -27,7 +27,7 @@ function senhaProvisoria(): string {
 /** Prefixos de erro do guard interno do banco → mensagem legível para a UI. */
 const ERROS_BANCO: ReadonlyArray<readonly [string, string]> = [
   ['ANTI_LOCKOUT',        'Ação bloqueada para impedir perda de acesso do próprio administrador.'],
-  ['ROLE_EM_USO',         'Há usuários com esta role. Reatribua-os a outra role antes de excluir.'],
+  ['ROLE_EM_USO',         'Há usuários com esta permissão. Reatribua-os a outra permissão antes de excluir.'],
   ['AREAS_INVALIDAS',     'Uma ou mais permissões selecionadas são inválidas. Recarregue a página e tente de novo.'],
   ['USUARIO_INEXISTENTE', 'Usuário não encontrado. Recarregue a página e tente de novo.'],
   ['PERMISSAO_NEGADA',    'Você não tem permissão para administrar usuários e acessos.'],
@@ -90,7 +90,7 @@ export async function criarUsuario(input: {
   const nome = input.nome?.trim() || null
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, erro: 'E-mail inválido.' }
   if (!Number.isInteger(input.roleId) || input.roleId <= 0) {
-    return { ok: false, erro: 'Selecione uma role válida.' }
+    return { ok: false, erro: 'Selecione uma permissão válida.' }
   }
 
   try {
@@ -141,11 +141,10 @@ export async function resetarSenha(userId: string): Promise<ResultadoSenha> {
     const supabase = await getServerClient()
     const { error: e2 } = await supabase.rpc('admin_marcar_trocar_senha', { p_user_id: userId })
     if (e2) return { ok: false, erro: traduzirErro(e2.message) }
+    revalidatePath('/admin/acessos')
     return { ok: true, senha }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }
 
@@ -167,9 +166,10 @@ export async function aprovarSolicitacao(input: {
     await supabase.rpc('admin_decidir_solicitacao', { p_id: input.id, p_aprovar: true })
   } catch (err) {
     console.error('[aprovarSolicitacao] usuário criado, mas falhou ao marcar a solicitação:', err)
-  } finally {
-    revalidatePath('/admin/acessos')
   }
+  // Revalida apenas no caminho de sucesso (usuário criado — mesmo que marcar a
+  // solicitação tenha falhado, o dado relevante mudou e o re-render é correto aqui).
+  revalidatePath('/admin/acessos')
   return r
 }
 
@@ -179,11 +179,10 @@ export async function rejeitarSolicitacao(id: number): Promise<ResultadoAcao> {
     const supabase = await getServerClient()
     const { error } = await supabase.rpc('admin_decidir_solicitacao', { p_id: id, p_aprovar: false })
     if (error) return { ok: false, erro: traduzirErro(error.message) }
+    revalidatePath('/admin/acessos')
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }
 
@@ -196,11 +195,10 @@ export async function atribuirRole(userId: string, roleId: number): Promise<Resu
       p_role_id: roleId,
     })
     if (error) return { ok: false, erro: traduzirErro(error.message) }
+    revalidatePath('/admin/acessos')
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }
 
@@ -220,11 +218,10 @@ export async function definirAtivo(userId: string, ativo: boolean): Promise<Resu
     if (!ativo) {
       try { await getAdminClient().auth.admin.signOut(userId) } catch { /* já negado por request */ }
     }
+    revalidatePath('/admin/acessos')
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }
 
@@ -235,7 +232,7 @@ export async function criarRole(input: {
 }): Promise<ResultadoAcao> {
   await requireAreaAction('admin/acessos')
   const nome = input.nome.trim()
-  if (!nome) return { ok: false, erro: 'Informe o nome da role.' }
+  if (!nome) return { ok: false, erro: 'Informe o nome da permissão.' }
   try {
     const supabase = await getServerClient()
     const { error } = await supabase.rpc('admin_criar_role', {
@@ -244,11 +241,10 @@ export async function criarRole(input: {
       p_permissoes: input.permissoes,
     })
     if (error) return { ok: false, erro: traduzirErro(error.message) }
+    revalidatePath('/admin/acessos')
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }
 
@@ -260,7 +256,7 @@ export async function atualizarRole(input: {
 }): Promise<ResultadoAcao> {
   await requireAreaAction('admin/acessos')
   const nome = input.nome.trim()
-  if (!nome) return { ok: false, erro: 'Informe o nome da role.' }
+  if (!nome) return { ok: false, erro: 'Informe o nome da permissão.' }
   try {
     const supabase = await getServerClient()
     const { error } = await supabase.rpc('admin_atualizar_role', {
@@ -270,11 +266,10 @@ export async function atualizarRole(input: {
       p_permissoes: input.permissoes,
     })
     if (error) return { ok: false, erro: traduzirErro(error.message) }
+    revalidatePath('/admin/acessos')
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }
 
@@ -284,11 +279,10 @@ export async function excluirRole(id: number): Promise<ResultadoAcao> {
     const supabase = await getServerClient()
     const { error } = await supabase.rpc('admin_excluir_role', { p_role_id: id })
     if (error) return { ok: false, erro: traduzirErro(error.message) }
+    revalidatePath('/admin/acessos')
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }
 
@@ -338,10 +332,9 @@ export async function excluirUsuario(userId: string): Promise<ResultadoAcao> {
     try { await getAdminClient().auth.admin.signOut(userId) } catch { /* sessão cai com a exclusão */ }
     const { error } = await getAdminClient().auth.admin.deleteUser(userId)
     if (error) return { ok: false, erro: comoErro(error) }
+    revalidatePath('/admin/acessos')
     return { ok: true }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
-  } finally {
-    revalidatePath('/admin/acessos')
   }
 }

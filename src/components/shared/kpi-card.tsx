@@ -104,7 +104,7 @@ export default function KpiCard({
       {/* Label — h-8 acomoda até 2 linhas sem vazar sobre o valor */}
       <div className="h-8 flex items-start">
         <div className="relative group/tip flex-1">
-          <p className="text-[11px] font-semibold text-[--text-muted] uppercase tracking-[0.5px] cursor-default leading-[1.3]">{rotulo}</p>
+          <p className="text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-[0.5px] cursor-default leading-[1.3]">{rotulo}</p>
           {formula && (
             <div className="pointer-events-none absolute left-0 top-5 z-20 invisible group-hover/tip:visible
                             bg-zinc-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg">

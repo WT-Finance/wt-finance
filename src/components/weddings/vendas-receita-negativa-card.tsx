@@ -101,7 +101,7 @@ export default function VendasReceitaNegativaCard({ data }: Props) {
             </tbody>
           </table>
           {data.total > vendas.length && (
-            <p className="mt-3 text-xs text-[--text-muted]">
+            <p className="mt-3 text-xs text-[var(--text-muted)]">
               Mostrando as {vendas.length} de {data.total}.
             </p>
           )}

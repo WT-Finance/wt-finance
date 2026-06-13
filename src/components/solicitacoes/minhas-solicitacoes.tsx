@@ -22,7 +22,15 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
           </tr></thead>
           <tbody>
             {solicitacoes.map(s => (
-              <tr key={s.id} onClick={() => onAbrir(s)} className="cursor-pointer border-b border-zinc-50 last:border-0 hover:bg-zinc-50">
+              <tr
+                key={s.id}
+                onClick={() => onAbrir(s)}
+                role="button"
+                tabIndex={0}
+                aria-label={`Abrir solicitação: ${s.tipo_nome ?? ''}`}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(s) } }}
+                className="foco-neutro cursor-pointer border-b border-zinc-50 last:border-0 hover:bg-zinc-50"
+              >
                 <td className="px-3 py-2.5">
                   <p className="font-medium text-zinc-900 truncate">{s.tipo_nome}</p>
                   <p className="text-xs text-zinc-500 truncate">{resumo(s.respostas)}</p>

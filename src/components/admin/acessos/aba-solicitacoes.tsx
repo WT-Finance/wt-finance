@@ -6,6 +6,7 @@ import { Loader2, Check, Copy, X } from 'lucide-react'
 import { aprovarSolicitacao, rejeitarSolicitacao } from '@/app/admin/acessos/actions'
 import type { RoleAdmin, SolicitacaoAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
+import ConfirmModal from '@/components/shared/confirm-modal'
 import { PILL, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
 
 // v4.14 — aba Solicitações: aprovar (cria usuário + senha provisória) / rejeitar
@@ -15,9 +16,11 @@ const SELECT_CLASSES =
   'foco-neutro rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 ' +
   'outline-none transition disabled:opacity-50'
 
+/** Converte ISO/timestamptz em 'DD/MM/AAAA' sem deslocar o dia (slice(0,10)). */
 function fmtData(iso: string | null): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+  const d = iso.slice(0, 10).split('-')
+  return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : iso
 }
 
 interface Mensagem { tipo: 'sucesso' | 'erro'; texto: string }
@@ -36,6 +39,7 @@ export function AbaSolicitacoes({
   const [roleEscolhida, setRoleEscolhida] = useState<Record<number, number>>({})
   const [senha, setSenha] = useState<{ email: string; valor: string } | null>(null)
   const [copiado, setCopiado] = useState(false)
+  const [rejeitar, setRejeitar] = useState<SolicitacaoAdmin | null>(null)
 
   function handleAprovar(s: SolicitacaoAdmin) {
     const roleId = roleEscolhida[s.id]
@@ -57,16 +61,14 @@ export function AbaSolicitacoes({
     })
   }
 
-  function handleRejeitar(s: SolicitacaoAdmin) {
-    if (!window.confirm(`Rejeitar a solicitação de ${s.email}?`)) return
+  // Rejeição confirmada pelo ConfirmModal (substitui window.confirm — coerência com as abas irmãs).
+  async function confirmarRejeitar(s: SolicitacaoAdmin) {
     setMsg(null)
     setPendenteId(s.id)
-    startTransition(async () => {
-      const res = await rejeitarSolicitacao(s.id)
-      setMsg(res.ok ? { tipo: 'sucesso', texto: `Solicitação de ${s.email} rejeitada.` } : { tipo: 'erro', texto: res.erro })
-      setPendenteId(null)
-      router.refresh()
-    })
+    const res = await rejeitarSolicitacao(s.id)
+    setMsg(res.ok ? { tipo: 'sucesso', texto: `Solicitação de ${s.email} rejeitada.` } : { tipo: 'erro', texto: res.erro })
+    setPendenteId(null)
+    router.refresh()
   }
 
   async function copiarSenha() {
@@ -109,13 +111,25 @@ export function AbaSolicitacoes({
 
       {pendentes.length > 0 && (
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden mb-6">
-          <table className="w-full text-sm">
+          {/* aviso âmbar quando não há permissões cadastradas — Aprovar ficará desabilitado */}
+          {roles.length === 0 && (
+            <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+              Nenhuma permissão cadastrada — crie ao menos uma permissão em Permissões para poder aprovar solicitações.
+            </div>
+          )}
+          <table className="table-fixed w-full text-sm">
+            <colgroup>
+              <col className="w-[34%]" />
+              <col className="w-[18%]" />
+              <col className="w-[26%]" />
+              <col className="w-[22%]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50/60 text-left">
-                <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Solicitante</th>
-                <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Quando</th>
-                <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400">Aprovar com a permissão</th>
-                <th className="px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-zinc-400 text-right">Ações</th>
+                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Solicitante</th>
+                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Quando</th>
+                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Aprovar com a permissão</th>
+                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -145,6 +159,7 @@ export function AbaSolicitacoes({
                       <div className="flex items-center justify-end gap-1">
                         <button
                           type="button" onClick={() => handleAprovar(s)} disabled={proc || roles.length === 0}
+                          title={roles.length === 0 ? 'Crie ao menos uma permissão antes de aprovar' : undefined}
                           className={`${PILL} ${PILL_PRIMARIA}`}
                           style={PILL_PRIMARIA_STYLE}
                         >
@@ -152,7 +167,7 @@ export function AbaSolicitacoes({
                           Aprovar
                         </button>
                         <button
-                          type="button" onClick={() => handleRejeitar(s)} disabled={proc}
+                          type="button" onClick={() => setRejeitar(s)} disabled={proc}
                           className={`${PILL} ${PILL_PERIGO}`}
                         >
                           Rejeitar
@@ -174,13 +189,23 @@ export function AbaSolicitacoes({
             {decididas.map(s => (
               <li key={s.id} className="flex items-center justify-between rounded-lg border border-zinc-100 px-3 py-2 text-sm">
                 <span className="truncate text-zinc-600">{s.email}</span>
-                <span className={`ml-2 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.status === 'aprovada' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-zinc-200 bg-zinc-100 text-zinc-500'}`}>
+                <span className={`ml-2 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.status === 'aprovada' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
                   {s.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'} · {fmtData(s.decidido_em)}
                 </span>
               </li>
             ))}
           </ul>
         </>
+      )}
+
+      {rejeitar && (
+        <ConfirmModal
+          titulo="Rejeitar solicitação"
+          mensagem={`Rejeitar a solicitação de acesso de ${rejeitar.email}?`}
+          confirmarLabel="Rejeitar"
+          onConfirmar={() => confirmarRejeitar(rejeitar)}
+          onFechar={() => setRejeitar(null)}
+        />
       )}
     </div>
   )
