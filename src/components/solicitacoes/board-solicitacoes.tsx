@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Loader2, AlertTriangle, ChevronDown } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
@@ -15,14 +16,26 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, podeGestao, on
 }) {
   const router = useRouter(); const pathname = usePathname(); const sp = useSearchParams()
   const [concluindo, setConcluindo] = useState<number | null>(null)
+  // mensagem de erro do botão "Concluir" — exibida via FaixaMensagem acima das pills de escopo
+  const [msg, setMsg] = useState<string | null>(null)
 
   function setEscopo(e: Escopo) {
     const p = new URLSearchParams(sp.toString()); p.set('escopo', e); p.set('view', 'caixa')
     router.push(`${pathname}?${p.toString()}`)
   }
+  // captura retorno da action E possíveis throws (rede/guard).
+  // router.refresh() removido: revalidatePath na action já devolve a rota
+  // re-renderizada no mesmo roundtrip (sem render duplo).
   async function concluir(id: number, e: React.MouseEvent) {
-    e.stopPropagation(); setConcluindo(id)
-    await concluirSolicitacao(id); setConcluindo(null); router.refresh()
+    e.stopPropagation(); setMsg(null); setConcluindo(id)
+    try {
+      const r = await concluirSolicitacao(id)
+      if (!r.ok) { setMsg(r.erro ?? 'Falha ao concluir.'); return }
+    } catch {
+      setMsg('Falha ao concluir.')
+    } finally {
+      setConcluindo(null)
+    }
   }
 
   // board exclui canceladas; colunas = tipos presentes (com abertas ou encerradas).
@@ -35,6 +48,8 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, podeGestao, on
 
   return (
     <div>
+      {/* faixa de erro do "Concluir" — aparece acima das pills de escopo */}
+      {msg && <FaixaMensagem tipo="erro" texto={msg} onFechar={() => setMsg(null)} />}
       <div className="flex gap-2 mb-4 flex-wrap">
         {escopoPills.map(([e, label]) => (
           <button key={e} type="button" onClick={() => setEscopo(e)} className={`${PILL} ${escopo === e ? PILL_PRIMARIA : PILL_NEUTRO}`} style={escopo === e ? PILL_PRIMARIA_STYLE : undefined}>{label}</button>
@@ -73,11 +88,22 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
   const podeConcluir = s.sou_atendente || s.sou_solicitante
   const venc = vencida(s.data_limite, s.status)
   return (
-    <div onClick={() => onAbrir(s)} className="card-clicavel cursor-pointer rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-sm">
+    // card-clicavel-neutra: variante de plataforma do card-clicavel (ADR-0103 ext. v4.14.1).
+    // hover usa tokens neutros Group (--action-soft-border/--focus-ring), sem var(--brand).
+    // role=button + tabIndex + onKeyDown: acessibilidade teclado; guard e.target !== e.currentTarget
+    // evita que Enter no botão "Concluir" interno borbulhe e abra o drawer junto.
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onAbrir(s)}
+      onKeyDown={e => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(s) } }}
+      className="card-clicavel-neutra foco-neutro cursor-pointer rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-sm"
+    >
       <div className="flex items-start gap-2">
+        {/* before:-inset-1: expande alvo de clique para ~24px sem alterar o visual de 16px */}
         <button type="button" disabled={!podeConcluir || concluindo} onClick={e => onConcluir(s.id, e)} aria-label="Concluir"
-          title={podeConcluir ? 'Concluir' : undefined}
-          className={`foco-neutro mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${podeConcluir ? 'border-zinc-400 hover:border-emerald-500 hover:bg-emerald-50' : 'border-zinc-200'}`}>
+          title={podeConcluir ? 'Concluir' : 'Sem permissão para concluir'}
+          className={`foco-neutro relative before:absolute before:-inset-1 before:content-[''] mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${podeConcluir ? 'border-zinc-400 hover:border-emerald-500 hover:bg-emerald-50' : 'border-zinc-200'}`}>
           {concluindo && <Loader2 size={10} className="animate-spin" />}
         </button>
         <div className="min-w-0 flex-1">
@@ -102,7 +128,16 @@ function Encerradas({ itens, onAbrir }: { itens: Solicitacao[]; onAbrir: (s: Sol
       </button>
       {aberto && <div className="space-y-1 mt-1">
         {itens.map(s => (
-          <div key={s.id} onClick={() => onAbrir(s)} className="cursor-pointer rounded border border-zinc-100 px-2 py-1.5 text-xs hover:bg-zinc-50">
+          // role=button + tabIndex + onKeyDown: acessibilidade teclado para itens de encerradas.
+          // foco-neutro: anel neutro de plataforma (mesmo padrão do botão "Concluídas" acima).
+          <div
+            key={s.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onAbrir(s)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(s) } }}
+            className="foco-neutro cursor-pointer rounded border border-zinc-100 px-2 py-1.5 text-xs hover:bg-zinc-50"
+          >
             <span className="text-zinc-600 truncate block">{s.solicitante_email}</span>
             <span className={s.status === 'rejeitada' ? 'text-red-500' : 'text-emerald-600'}>{s.status === 'rejeitada' ? 'Rejeitada' : 'Concluída'}</span>
           </div>

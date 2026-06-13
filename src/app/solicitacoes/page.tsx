@@ -15,15 +15,26 @@ export default async function SolicitacoesPage({ searchParams }: { searchParams:
   const podeGestao = sessao.permissoes.includes('solicitacoes')
   const escopo: Escopo = escopoReq === 'todas' && !podeGestao ? 'mim_e_role' : escopoReq
 
-  const [minhas, caixa, pendentes, tipos, destinatarios] = await Promise.all([
-    rpc.getMinhas(), rpc.getCaixa(escopo), rpc.getPendencias(), rpc.getTiposAbertura(), rpc.getDestinatarios(),
+  // Paralelo: apenas a lista da view atual (evita buscar as duas) + pendências + metadados.
+  // pendentes (contador da pill "Caixa de entrada (N)") sempre buscado — visível nas duas views.
+  const [lista, pendentes, tipos, destinatarios] = await Promise.all([
+    view === 'minhas' ? rpc.getMinhas() : rpc.getCaixa(escopo),
+    rpc.getPendencias(),
+    rpc.getTiposAbertura(),
+    rpc.getDestinatarios(),
   ])
+
+  // null em qualquer resultado = falha de RPC (as listas fazem coalesce p/ '[]', então null é sempre erro).
+  const erroCarga = [lista, pendentes, tipos, destinatarios].some(x => x === null)
+    ? 'Não foi possível carregar as solicitações. Recarregue a página.'
+    : null
 
   return (
     <SolicitacoesContent
       view={view} escopo={escopo}
-      minhas={minhas ?? []} caixa={caixa ?? []} pendentes={pendentes ?? 0} podeGestao={podeGestao}
+      lista={lista ?? []} pendentes={pendentes ?? 0} podeGestao={podeGestao}
       tipos={tipos ?? []} destinatarios={destinatarios ?? { usuarios: [], roles: [] }}
+      erroCarga={erroCarga}
     />
   )
 }

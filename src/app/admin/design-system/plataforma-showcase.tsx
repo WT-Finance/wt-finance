@@ -70,10 +70,11 @@ export default function PlataformaShowcase() {
       {/* 4. Checkbox */}
       <Bloco titulo="Checkbox do design system (ui/checkbox) — substitui o nativo do browser">
         <div className="flex flex-wrap items-center gap-5">
-          <label className="flex items-center gap-2 text-sm text-[var(--text-primary)] cursor-pointer">
+          {/* span em vez de label externo — evita label aninhado (label>label é HTML inválido) */}
+          <span className="flex items-center gap-2 text-sm text-text-primary">
             <Checkbox id="ds-chk-live" checked={marcado} onChange={() => setMarcado(v => !v)} aria-label="Exemplo interativo" />
-            Interativo (clique)
-          </label>
+            <label htmlFor="ds-chk-live" className="cursor-pointer">Interativo (clique)</label>
+          </span>
           <span className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
             <Checkbox id="ds-chk-on" checked onChange={() => {}} aria-label="Marcado" /> Marcado
           </span>

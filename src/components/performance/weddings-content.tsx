@@ -57,7 +57,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const prejuizos     = unwrapRpc<VendasReceitaNegativa>(prejRes, 'get_vendas_prejuizo_weddings')
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="max-w-7xl mx-auto px-6">
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">
@@ -104,7 +104,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-[--text-muted]">Filtrar gráficos por operação:</span>
+          <span className="text-sm text-[var(--text-muted)]">Filtrar gráficos por operação:</span>
           <Suspense>
             <DropdownOperacao
               operacoes={operacoesList}

@@ -52,7 +52,7 @@ export default function DropdownOperacao({ operacoes, operacaoAtiva }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm border border-[--border] rounded-lg bg-white hover:bg-zinc-50 transition-colors text-[--text-primary]"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-white hover:bg-zinc-50 transition-colors text-[var(--text-primary)]"
       >
         <span className="max-w-[220px] truncate">
           {labelAtiva ? labelAtiva.split(' - ')[1] ?? labelAtiva : 'Todas as operações'}
@@ -71,21 +71,21 @@ export default function DropdownOperacao({ operacoes, operacaoAtiva }: Props) {
       )}
 
       {open && (
-        <div className="absolute top-full mt-1 right-0 z-30 w-96 bg-white border border-[--border] rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute top-full mt-1 right-0 z-30 w-96 bg-white border border-[var(--border)] rounded-lg shadow-lg overflow-hidden">
           <div className="px-3 py-2 border-b border-zinc-100">
             <input
               type="text"
               placeholder="Buscar operação..."
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              className="w-full text-sm outline-none text-[--text-primary] placeholder:text-zinc-400"
+              className="w-full text-sm outline-none text-[var(--text-primary)] placeholder:text-zinc-400"
               autoFocus
             />
           </div>
           <div className="max-h-64 overflow-y-auto">
             <button
               onClick={() => handleSelect(null)}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 transition-colors ${!operacaoAtiva ? 'text-[--brand] font-medium' : 'text-[--text-muted]'}`}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 transition-colors ${!operacaoAtiva ? 'text-[var(--brand)] font-medium' : 'text-[var(--text-muted)]'}`}
             >
               Todas as operações
             </button>
@@ -93,7 +93,7 @@ export default function DropdownOperacao({ operacoes, operacaoAtiva }: Props) {
               <button
                 key={o.operacao}
                 onClick={() => handleSelect(o.operacao)}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 transition-colors ${operacaoAtiva === o.operacao ? 'text-[--brand] font-medium bg-[--brand-soft]' : 'text-[--text-primary]'}`}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-zinc-50 transition-colors ${operacaoAtiva === o.operacao ? 'text-[var(--brand)] font-medium bg-[var(--brand-soft)]' : 'text-[var(--text-primary)]'}`}
               >
                 {o.label}
               </button>

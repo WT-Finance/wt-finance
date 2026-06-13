@@ -27,7 +27,7 @@ export function FaixaMensagem({
           type="button"
           onClick={onFechar}
           aria-label="Fechar mensagem"
-          className="shrink-0 mt-0.5 opacity-60 hover:opacity-100 transition-opacity"
+          className="foco-neutro shrink-0 mt-0.5 rounded opacity-60 hover:opacity-100 transition-opacity"
         >
           <X size={14} />
         </button>

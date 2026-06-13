@@ -18,7 +18,7 @@ function Pct({ v }: { v: number | null }) {
 export default function CagrCard({ data, loading }: Props) {
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-      <h2 className="text-base font-semibold text-[--text-primary] mb-3">CAGR</h2>
+      <h2 className="text-base font-semibold text-[var(--text-primary)] mb-3">CAGR</h2>
 
       {loading ? (
         <div className="space-y-2 animate-pulse">

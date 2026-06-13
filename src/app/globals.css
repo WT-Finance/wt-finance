@@ -129,6 +129,20 @@ body {
   color: var(--brand-deep);
 }
 
+/* Variante NEUTRA de card clicável para telas de PLATAFORMA (admin/solicitações): */
+/* mesma afordância de hover/foco, mas em token neutro do Group (sem var(--brand), */
+/* que daria flash dourado em tela não-setorial). v4.16.1 — achado da auditoria.   */
+.card-clicavel-neutra {
+  border: 1px solid transparent;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.card-clicavel-neutra:hover,
+.card-clicavel-neutra:focus-visible {
+  border-color: var(--action-primary);
+  box-shadow: 0 0 0 1px var(--action-primary), 0 4px 12px -2px color-mix(in srgb, var(--action-primary) 30%, transparent);
+  outline: none;
+}
+
 /* "Ver mais" do card-tabela (v4.11): neutro em repouso, cor da aba no hover.    */
 /* Diferente do .card-clicavel-cta (que reage ao hover do CARD inteiro): aqui o  */
 /* próprio "Ver mais" é o alvo. var(--brand) herda a aba via [data-theme].       */

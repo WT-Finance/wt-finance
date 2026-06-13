@@ -6,6 +6,25 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.16.1] — 2026-06-13
+
+Versão PATCH: **revisão de design/UX/desempenho** das telas internas (Solicitações, Usuários e Acessos, Design System) — padronização de coerência entre telas a partir de uma auditoria multi-lente. Sem migration (UI-only; rollback = reverter deployment).
+
+### Corrigido
+- **Shorthand de CSS var do Tailwind v4 (app-wide):** `text-[--token]` (sintaxe v3) compilava para `color:--token` (CSS inválido) e a cor do token era **silenciosamente descartada** — raiz da incoerência visual. 81 ocorrências em 26 arquivos migradas para `[var(--token)]`. Commit isolado (revertível à parte).
+- **Esc fechava modal e drawer juntos:** pilha global de overlays (`@/lib/ui/overlay-stack`) faz o Esc fechar só o overlay do topo.
+- `fmtValor` de moeda lia `12.345` (milhar pt-BR) como `R$ 12,35`; datas em tabelas de Acessos podiam deslocar o dia.
+- Badge "Rejeitada" em Acessos era cinza (vermelho no módulo de Solicitações) — unificado.
+
+### Melhorado
+- **Respiro vertical único:** o `<main>` do AppShell concentra o padding topo/base (`py-8`); páginas não definem `py` próprio (corrige telas "grudadas" no topo). Documentado no Design System §12.
+- **Coerência de plataforma:** tabelas de Acessos → `CardTabela` (table-fixed/colgroup, cabeçalho padrão); pills locais → padrão `botoes.ts`; faixas de erro → `FaixaMensagem`; modais artesanais → `ModalCentral`; `window.confirm` destrutivos → `ConfirmModal`/`ModalCentral`; classes de input duplicadas → `CAMPO`/`CAMPO_COMPACTO`.
+- **Acessibilidade:** cards/linhas clicáveis operáveis por teclado (role/tabIndex/onKeyDown + foco neutro); foco inicial/restaurado em modais e drawer; `aria-label`/`title` em senha provisória e textos truncados; pills de visão com semântica de tabs.
+- **Desempenho:** página de Solicitações busca só a lista da view atual (não as duas); `getPendencias` com `React.cache()` (dedup layout+page); demos de gráfico do DS sem animação no mount.
+
+### Banco
+- Nenhuma migration. Mudanças exclusivamente de UI/apresentação.
+
 ## [4.16.0] — 2026-06-12
 
 Versão MINOR: **Módulo de Solicitações** — pedidos internos ao financeiro (lançamentos avulsos, pagamentos de emergência etc.) com tipos configuráveis, anexos e acompanhamento. Substitui (em convivência) o formulário externo + Planner. ADRs 0112 (campos dinâmicos) e 0113 (anexos/storage).

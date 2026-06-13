@@ -8,12 +8,12 @@ export const dynamic = 'force-dynamic'
 export default async function DesignSystemPage() {
   await requireArea('admin/design-system') // v4.13: guard de área (ADR-0109)
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-1">
+    <div className="max-w-5xl mx-auto px-4">
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-[var(--text-primary)]">
           Design System
         </h1>
-        <p className="text-sm text-[var(--text-muted)]">
+        <p className="text-sm text-[var(--text-muted)] mt-0.5">
           Catálogo visual de tokens e componentes do WT Finance. Referência interna para desenvolvimento.
         </p>
       </div>
@@ -32,6 +32,7 @@ export default async function DesignSystemPage() {
           ['#drawers', '9. Drawers'],
           ['#componentes', '10. Componentes'],
           ['#plataforma', '11. Plataforma'],
+          ['#layout', '12. Layout de Página'],
         ].map(([href, label]) => (
           <a key={href} href={href}
             className="text-xs text-[var(--brand)] hover:underline px-2 py-1 rounded bg-zinc-50">
@@ -135,7 +136,7 @@ export default async function DesignSystemPage() {
               <p className="text-sm font-medium mb-1">Featured</p>
               <p className="text-xs text-[var(--text-muted)]">border-2 brand</p>
             </div>
-            <code className="text-[10px] text-[var(--text-muted)]">border-2 border-[--brand]</code>
+            <code className="text-[10px] text-[var(--text-muted)]">border-2 border-[var(--brand)]</code>
           </div>
           <div>
             <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 mb-2">
@@ -184,7 +185,7 @@ export default async function DesignSystemPage() {
           <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1">
             <p>{'<div className="card-clicavel bg-white rounded-xl shadow-sm ..." role="button" tabIndex={0}>'}</p>
             <p className="pl-4">{'...'}</p>
-            <p className="pl-4">{'<span className="card-clicavel-cta text-[--brand] ...">Ver mais ›</span>'}</p>
+            <p className="pl-4">{'<span className="card-clicavel-cta text-[var(--brand)] ...">Ver mais ›</span>'}</p>
             <p>{'</div>'}</p>
             <p className="mt-2 not-italic font-sans">{'// repouso: shadow-sm · hover/foco: border + box-shadow = var(--brand), CTA → var(--brand-deep)'}</p>
           </div>
@@ -451,6 +452,28 @@ export default async function DesignSystemPage() {
         {/* Demos ao vivo (botões, pill, foco, checkbox, CTA) */}
         <PlataformaShowcase />
       </Section>
+
+      <Section id="layout" title="12. Layout de Página">
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          O <strong>respiro vertical</strong> (topo/base) das páginas vem de UM lugar só: o{' '}
+          <code className="bg-zinc-100 px-1 rounded">{'<main>'}</code> do AppShell tem{' '}
+          <code className="bg-zinc-100 px-1 rounded">py-8</code>. <strong>Páginas não definem{' '}
+          <code className="bg-zinc-100 px-1 rounded">py</code>/<code className="bg-zinc-100 px-1 rounded">pt</code>/<code className="bg-zinc-100 px-1 rounded">pb</code> próprios</strong> no
+          container raiz — antes da v4.16.1 cada tela inventava o seu (16px, 32px ou zero, caso em que
+          o conteúdo «grudava» no topo). A largura e o respiro <em>horizontal</em> continuam por tela.
+        </p>
+        <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-4">
+          <p className="font-sans font-medium text-[var(--text-primary)] not-italic mb-1">Container raiz de página:</p>
+          <p>{'<div className="max-w-7xl mx-auto px-6">   // dashboards (Executiva, Performance, Financeiro, Metas)'}</p>
+          <p>{'<div className="max-w-5xl mx-auto px-4">   // telas de plataforma (admin, solicitações)'}</p>
+          <p className="mt-2">{'// NUNCA: py-*, pt-*, pb-* no container raiz — o ritmo vertical é do <main> (py-8)'}</p>
+        </div>
+        <p className="text-xs text-[var(--text-muted)]">
+          Cabeçalho de página padrão: <code className="bg-zinc-100 px-1 rounded">h1 text-xl font-semibold</code> +
+          descrição <code className="bg-zinc-100 px-1 rounded">text-sm</code> em cor terciária, com{' '}
+          <code className="bg-zinc-100 px-1 rounded">mb-6</code> antes do conteúdo. Tela nova nasce assim.
+        </p>
+      </Section>
     </div>
   )
 }
@@ -475,7 +498,7 @@ function ColorGrid({ items }: { items: { name: string; hex: string; usage?: stri
           <div className="w-10 h-10 rounded-lg shrink-0 border border-zinc-200"
             style={{ backgroundColor: hex }} />
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-[var(--text-primary)] truncate">{name}</p>
+            <p className="text-[11px] font-medium text-[var(--text-primary)] truncate" title={name}>{name}</p>
             <p className="text-[10px] font-mono text-[var(--text-muted)]">{hex}</p>
             {usage && <p className="text-[10px] text-zinc-400 mt-0.5 leading-tight">{usage}</p>}
           </div>

@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import type { ZodType } from 'zod'
 import { z } from 'zod'
 import { getServerClient } from '@/lib/supabase/server'
@@ -22,4 +23,5 @@ export const getDetalhe        = (id: number) => call('solic_detalhe', { p_id: i
 export const getTiposAbertura  = () => call('solic_tipos_abertura', {}, S.tiposAberturaSchema)
 export const getDestinatarios  = () => call('solic_destinatarios', {}, S.destinatariosSchema)
 export const getTiposAdmin     = () => call('admin_solic_listar_tipos', {}, S.tiposAdminSchema)
-export const getPendencias     = () => call('solic_minhas_pendencias', {}, z.number())
+// cache() deduplica chamadas no mesmo request (layout + page chamam em paralelo)
+export const getPendencias     = cache(() => call('solic_minhas_pendencias', {}, z.number()))

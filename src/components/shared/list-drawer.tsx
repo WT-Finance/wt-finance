@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { pushOverlay, popOverlay } from '@/lib/ui/overlay-stack'
 
 interface Props {
   titulo: string
@@ -12,6 +13,7 @@ interface Props {
 
 export default function ListDrawer({ titulo, subtitulo, onClose, children }: Props) {
   const [visible, setVisible] = useState(false)
+  const painelRef = useRef<HTMLDivElement>(null)
 
   const handleClose = useCallback(() => {
     setVisible(false)
@@ -23,11 +25,18 @@ export default function ListDrawer({ titulo, subtitulo, onClose, children }: Pro
     return () => clearTimeout(t)
   }, [])
 
+  // Esc fecha só o overlay do topo (pilha global compartilhada com ModalCentral).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    const id = pushOverlay(handleClose)
+    return () => popOverlay(id)
   }, [handleClose])
+
+  // Foco inicial no painel + restauração ao fechar (a11y).
+  useEffect(() => {
+    const anterior = document.activeElement as HTMLElement | null
+    painelRef.current?.focus()
+    return () => anterior?.focus?.()
+  }, [])
 
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -43,7 +52,12 @@ export default function ListDrawer({ titulo, subtitulo, onClose, children }: Pro
         onClick={handleClose}
       />
       <div
-        className="fixed inset-y-0 right-0 z-50 flex flex-col w-full md:w-[60vw] max-w-2xl bg-white shadow-2xl"
+        ref={painelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        className="fixed inset-y-0 right-0 z-50 flex flex-col w-full md:w-[60vw] max-w-2xl bg-white shadow-2xl outline-none"
         style={{
           transform: visible ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',

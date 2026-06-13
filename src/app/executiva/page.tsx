@@ -113,7 +113,7 @@ export default async function ExecutivaPage({
   }) : null
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-4">
+    <div className="max-w-7xl mx-auto px-6">
       {/* Filtros */}
       <div className="flex items-center justify-end gap-3 mb-6 flex-wrap">
         <Suspense>

@@ -18,9 +18,12 @@ export function statusBadge(status: StatusSolic): string {
   }
 }
 
+// cacheado: construir Intl por chamada custa ~ms; format() cacheado custa µs
+const FMT_SP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' })
+
 /** Hoje em America/Sao_Paulo como 'AAAA-MM-DD' (data_limite é date puro, sem fuso). */
 export function hojeSP(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  return FMT_SP.format(new Date())
 }
 
 /** Vencida = data-limite anterior a hoje (SP) e ainda aberta. */
@@ -41,7 +44,19 @@ type Resposta = z.infer<typeof respostaSchema>
 export function fmtValor(r: Resposta): string {
   if (r.valor == null || r.valor === '') return '—'
   if (r.tipo_campo === 'moeda') {
-    const n = Number(r.valor.replace(',', '.'))
+    // Normaliza separadores pt-BR antes de converter para Number:
+    // (1) string com vírgula → é decimal pt-BR: remove pontos de milhar e troca vírgula por ponto.
+    //     ex.: '12.345,67' → '12345.67'; '12,34' → '12.34'
+    // (2) sem vírgula mas casando /^-?\d{1,3}(\.\d{3})+$/ → separador de milhar pt-BR puro:
+    //     ex.: '12.345' → '12345'; '-1.234' → '-1234'
+    // (3) caso contrário → manter como está (ex.: '12.34' já é decimal americano/float).
+    let s = r.valor
+    if (s.includes(',')) {
+      s = s.replace(/\./g, '').replace(',', '.')
+    } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+      s = s.replace(/\./g, '')
+    }
+    const n = Number(s)
     return Number.isFinite(n) ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : r.valor
   }
   if (r.tipo_campo === 'data') return fmtDataBR(r.valor)
