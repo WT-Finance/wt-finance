@@ -16,7 +16,7 @@ interface Props {
 
 export default function Checkbox({ checked, onChange, id, disabled, 'aria-label': ariaLabel }: Props) {
   return (
-    <label className="relative inline-flex items-center justify-center">
+    <label className={`relative inline-flex items-center justify-center ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
       <input
         id={id}
         type="checkbox"

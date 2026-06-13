@@ -32,6 +32,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.16.1',
+    data: '2026-06-13T18:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'Padronização visual e de usabilidade das telas internas (Solicitações, Usuários e Acessos, Design System): aparência mais consistente entre as telas, mais respiro no topo das páginas, e melhor leitura em telas menores.' },
+      { tipo: 'melhoria', texto: 'Confirmações e mensagens mais claras: ações que apagam algo passaram a pedir confirmação numa janela padrão (em vez do aviso simples do navegador), e os avisos de erro/sucesso ficaram uniformes.' },
+      { tipo: 'correcao', texto: 'Correção de um detalhe técnico que fazia algumas cores de texto não serem aplicadas, deixando telas com aparência desalinhada.' },
+    ],
+  },
+  {
     versao: '4.16.0',
     data: '2026-06-12T20:00',
     itens: [
