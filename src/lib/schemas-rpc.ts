@@ -201,6 +201,7 @@ export const cargaValidacaoSchema = z.object({
   dim_max:       z.string().nullable().optional(),
   fora_do_range: z.number().optional(),
   setor_fora:    z.number().optional(), // v4.16.2: linhas c/ setor/setor_micro fora das dims
+  avisos:        z.array(z.string()).optional(), // v4.17.0: avisos não-bloqueantes (queda de operacao_propria)
 }).passthrough()
 export type CargaValidacao = z.infer<typeof cargaValidacaoSchema>
 

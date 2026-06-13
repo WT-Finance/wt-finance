@@ -131,6 +131,7 @@ export async function finalizarVendasAction(
   vendas_count: number
   fato_item_count: number
   erros: string[]
+  avisos: string[]
   preview: { antes: { total_vendas: number }; depois: { total_vendas: number } }
 } | { error: string }> {
   await requireAreaAction('admin/uploads')
@@ -168,6 +169,7 @@ export async function finalizarVendasAction(
       vendas_count: promocao.vendas_count,
       fato_item_count: promocao.fato_venda_item_count,
       erros: [],
+      avisos: validacao.avisos ?? [], // op_propria (v4.17.0): degradação não-bloqueante
       preview: {
         antes:  { total_vendas: totalAntes },
         depois: { total_vendas: promocao.vendas_count },

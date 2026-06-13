@@ -346,7 +346,9 @@ export default function AdminUploadsPage() {
         const fin = await finalizarVendasAction(totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
         linhasRef.current.vendas = []
-        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.vendas_count)} vendas importadas com sucesso` })
+        // op_propria (v4.17.0): aviso não-bloqueante (ex.: queda de operacao_propria) anexado ao sucesso.
+        const avisoVendas = fin.avisos.length ? ` ⚠ ${fin.avisos.join(' ')}` : ''
+        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.vendas_count)} vendas importadas com sucesso${avisoVendas}` })
 
       } else if (key === 'lancamentos') {
         const rows = linhasRef.current.lancamentos as LancamentoRaw[]
