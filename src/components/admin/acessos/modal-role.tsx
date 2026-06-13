@@ -1,20 +1,22 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Loader2, Trash2, X } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { AREA_ADMIN } from '@/lib/auth/areas'
 import { atualizarRole, criarRole, excluirRole } from '@/app/admin/acessos/actions'
 import Checkbox from '@/components/ui/checkbox'
+import ConfirmModal from '@/components/shared/confirm-modal'
+import ModalCentral from '@/components/shared/modal-central'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { CAMPO } from '@/lib/ui/campos'
 
 // v4.13 — formulário de permissão/perfil (criar/editar): nome, descrição e
 // checkboxes de áreas agrupadas (Geral/Performance/Financeiro/Administração).
 // Marcar admin/acessos exibe um aviso (meta-permissão). Excluir só habilita com
 // n_usuarios === 0 (o banco também bloqueia: ROLE_EM_USO). Botões em pill.
-
-const INPUT_CLASSES =
-  'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
+// v4.16.1 — migrado para ModalCentral (Esc, scroll-lock, portal, animação);
+// INPUT_CLASSES → CAMPO de @/lib/ui/campos; window.confirm → ConfirmModal.
 
 interface GrupoAreas {
   grupo: string
@@ -40,6 +42,8 @@ export function ModalRole({
   const [salvando, setSalvando] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  // ConfirmModal de exclusão — substitui window.confirm (v4.16.1).
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false)
 
   // Áreas agrupadas na ordem do catálogo (grupo aparece na ordem do 1º item).
   const grupos = useMemo<GrupoAreas[]>(() => {
@@ -80,9 +84,14 @@ export function ModalRole({
     onSalvo(modo === 'criar' ? `Permissão «${nome.trim()}» criada.` : `Permissão «${nome.trim()}» atualizada.`)
   }
 
-  async function handleExcluir() {
+  // Abre o ConfirmModal; a exclusão de fato ocorre em confirmarExcluir.
+  function handleExcluir() {
     if (!role) return
-    if (!window.confirm(`Excluir a permissão «${role.nome}»? Esta ação não pode ser desfeita.`)) return
+    setConfirmandoExcluir(true)
+  }
+
+  async function confirmarExcluir() {
+    if (!role) return
     setErro(null)
     setExcluindo(true)
     const res = await excluirRole(role.id)
@@ -95,28 +104,11 @@ export function ModalRole({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onFechar} aria-hidden="true" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="titulo-role"
-        className="relative w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+    <>
+      <ModalCentral
+        titulo={modo === 'criar' ? 'Nova permissão' : `Editar permissão «${role?.nome}»`}
+        onClose={onFechar}
       >
-        <div className="flex items-start justify-between mb-4">
-          <h3 id="titulo-role" className="text-base font-semibold text-zinc-900">
-            {modo === 'criar' ? 'Nova permissão' : `Editar permissão «${role?.nome}»`}
-          </h3>
-          <button
-            type="button"
-            onClick={onFechar}
-            aria-label="Fechar"
-            className="foco-neutro rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
         {erro && (
           <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {erro}
@@ -136,7 +128,7 @@ export function ModalRole({
               value={nome}
               onChange={e => setNome(e.target.value)}
               placeholder="Ex.: Gestora Weddings"
-              className={INPUT_CLASSES}
+              className={CAMPO}
             />
           </div>
 
@@ -150,7 +142,7 @@ export function ModalRole({
               value={descricao}
               onChange={e => setDescricao(e.target.value)}
               placeholder="Para que serve esta permissão"
-              className={`${INPUT_CLASSES} resize-none`}
+              className={`${CAMPO} resize-none`}
             />
           </div>
 
@@ -231,7 +223,18 @@ export function ModalRole({
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </ModalCentral>
+
+      {/* Modal de confirmação da exclusão — substitui window.confirm. */}
+      {confirmandoExcluir && role && (
+        <ConfirmModal
+          titulo="Excluir permissão"
+          mensagem={`Excluir a permissão «${role.nome}»? Esta ação não pode ser desfeita.`}
+          confirmarLabel="Excluir"
+          onConfirmar={confirmarExcluir}
+          onFechar={() => setConfirmandoExcluir(false)}
+        />
+      )}
+    </>
   )
 }

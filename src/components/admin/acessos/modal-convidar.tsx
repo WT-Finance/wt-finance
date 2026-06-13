@@ -2,14 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy, Loader2, X } from 'lucide-react'
+import { Check, Copy, Loader2 } from 'lucide-react'
 import { criarUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin } from './tipos'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import ModalCentral from '@/components/shared/modal-central'
 
 // v4.14 — modal de criar usuário: email + nome (opcional) + role. Em sucesso,
 // mostra a SENHA PROVISÓRIA copiável (a pessoa troca no 1º acesso). Sem e-mail
 // (independe de SMTP). O componente segue exportado como ModalConvidar.
+// v4.16.1 — migrado para ModalCentral (portal, Esc, scroll-lock, animação uniformes).
 
 const INPUT_CLASSES =
   'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
@@ -66,136 +68,114 @@ export function ModalConvidar({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onFechar} aria-hidden="true" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="titulo-criar"
-        className="relative w-full max-w-md mx-4 rounded-xl bg-white p-6 shadow-xl"
-      >
-        <div className="flex items-start justify-between mb-4">
-          <h3 id="titulo-criar" className="text-base font-semibold text-zinc-900">
-            Criar usuário
-          </h3>
-          <button
-            type="button"
-            onClick={onFechar}
-            aria-label="Fechar"
-            className="foco-neutro rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
-          >
-            <X size={16} />
-          </button>
+    <ModalCentral titulo="Criar usuário" onClose={onFechar}>
+      {erro && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {erro}
         </div>
+      )}
 
-        {erro && (
-          <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {erro}
+      {!sucesso ? (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="criar-email" className="block text-xs font-medium text-zinc-600 mb-1">
+              E-mail <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="criar-email" type="email" required autoFocus value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="pessoa@welcometrips.com.br" className={INPUT_CLASSES}
+            />
           </div>
-        )}
+          <div>
+            <label htmlFor="criar-nome" className="block text-xs font-medium text-zinc-600 mb-1">
+              Nome <span className="text-zinc-400 font-normal">(opcional)</span>
+            </label>
+            <input
+              id="criar-nome" type="text" value={nome}
+              onChange={e => setNome(e.target.value)}
+              placeholder="Nome da pessoa" className={INPUT_CLASSES}
+            />
+          </div>
+          <div>
+            <label htmlFor="criar-role" className="block text-xs font-medium text-zinc-600 mb-1">
+              Permissão <span className="text-red-500" aria-hidden="true">*</span>
+            </label>
+            <select
+              id="criar-role" required value={roleId}
+              onChange={e => setRoleId(e.target.value)} className={INPUT_CLASSES}
+            >
+              <option value="" disabled>Selecione uma permissão…</option>
+              {roles.map(r => (
+                <option key={r.id} value={String(r.id)}>{r.nome}</option>
+              ))}
+            </select>
+            {roles.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">
+                Nenhuma permissão cadastrada — crie uma na aba «Permissões» antes de criar usuários.
+              </p>
+            )}
+          </div>
 
-        {!sucesso ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="criar-email" className="block text-xs font-medium text-zinc-600 mb-1">
-                E-mail <span className="text-red-500" aria-hidden="true">*</span>
-              </label>
-              <input
-                id="criar-email" type="email" required autoFocus value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="pessoa@welcometrips.com.br" className={INPUT_CLASSES}
-              />
-            </div>
-            <div>
-              <label htmlFor="criar-nome" className="block text-xs font-medium text-zinc-600 mb-1">
-                Nome <span className="text-zinc-400 font-normal">(opcional)</span>
-              </label>
-              <input
-                id="criar-nome" type="text" value={nome}
-                onChange={e => setNome(e.target.value)}
-                placeholder="Nome da pessoa" className={INPUT_CLASSES}
-              />
-            </div>
-            <div>
-              <label htmlFor="criar-role" className="block text-xs font-medium text-zinc-600 mb-1">
-                Permissão <span className="text-red-500" aria-hidden="true">*</span>
-              </label>
-              <select
-                id="criar-role" required value={roleId}
-                onChange={e => setRoleId(e.target.value)} className={INPUT_CLASSES}
-              >
-                <option value="" disabled>Selecione uma permissão…</option>
-                {roles.map(r => (
-                  <option key={r.id} value={String(r.id)}>{r.nome}</option>
-                ))}
-              </select>
-              {roles.length === 0 && (
-                <p className="mt-1 text-xs text-amber-600">
-                  Nenhuma permissão cadastrada — crie uma na aba «Permissões» antes de criar usuários.
-                </p>
-              )}
-            </div>
+          <div className="flex justify-end gap-3 pt-1">
+            <button
+              type="button" onClick={onFechar}
+              className={`${PILL} ${PILL_NEUTRO}`}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit" disabled={enviando || roles.length === 0}
+              className={`${PILL} ${PILL_PRIMARIA}`}
+              style={PILL_PRIMARIA_STYLE}
+            >
+              {enviando && <Loader2 size={14} className="animate-spin" />}
+              {enviando ? 'Criando…' : 'Criar usuário'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            Usuário <span className="font-medium">{sucesso.email}</span> criado.
+          </div>
 
-            <div className="flex justify-end gap-3 pt-1">
+          <div>
+            <label htmlFor="criar-senha" className="block text-xs font-medium text-zinc-600 mb-1">
+              Senha provisória (repasse para a pessoa)
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="criar-senha" type="text" readOnly value={sucesso.senha}
+                onFocus={e => e.target.select()}
+                className="foco-neutro w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-mono text-zinc-700 outline-none"
+              />
               <button
-                type="button" onClick={onFechar}
-                className={`${PILL} ${PILL_NEUTRO}`}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit" disabled={enviando || roles.length === 0}
-                className={`${PILL} ${PILL_PRIMARIA}`}
+                type="button" onClick={handleCopiar}
+                className={`shrink-0 ${PILL} ${PILL_PRIMARIA}`}
                 style={PILL_PRIMARIA_STYLE}
               >
-                {enviando && <Loader2 size={14} className="animate-spin" />}
-                {enviando ? 'Criando…' : 'Criar usuário'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="space-y-4">
-            <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              Usuário <span className="font-medium">{sucesso.email}</span> criado.
-            </div>
-
-            <div>
-              <label htmlFor="criar-senha" className="block text-xs font-medium text-zinc-600 mb-1">
-                Senha provisória (repasse para a pessoa)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="criar-senha" type="text" readOnly value={sucesso.senha}
-                  onFocus={e => e.target.select()}
-                  className="foco-neutro w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-mono text-zinc-700 outline-none"
-                />
-                <button
-                  type="button" onClick={handleCopiar}
-                  className={`shrink-0 ${PILL} ${PILL_PRIMARIA}`}
-                  style={PILL_PRIMARIA_STYLE}
-                >
-                  {copiado ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
-                </button>
-              </div>
-            </div>
-
-            <p className="text-xs text-zinc-400">
-              A pessoa entra com o e-mail e esta senha, e será obrigada a definir uma nova no primeiro acesso.
-              Esta senha não será mostrada de novo — se perder, use «Resetar senha».
-            </p>
-
-            <div className="flex justify-end">
-              <button
-                type="button" onClick={onFechar}
-                className={`${PILL} ${PILL_PRIMARIA}`}
-                style={PILL_PRIMARIA_STYLE}
-              >
-                Fechar
+                {copiado ? <><Check size={14} /> Copiado</> : <><Copy size={14} /> Copiar</>}
               </button>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+
+          <p className="text-xs text-zinc-400">
+            A pessoa entra com o e-mail e esta senha, e será obrigada a definir uma nova no primeiro acesso.
+            Esta senha não será mostrada de novo — se perder, use «Resetar senha».
+          </p>
+
+          <div className="flex justify-end">
+            <button
+              type="button" onClick={onFechar}
+              className={`${PILL} ${PILL_PRIMARIA}`}
+              style={PILL_PRIMARIA_STYLE}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+    </ModalCentral>
   )
 }

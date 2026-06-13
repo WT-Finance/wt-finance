@@ -8,14 +8,18 @@ import type { RoleAdmin, UsuarioAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
 import { ModalConvidar } from './modal-convidar'
 import ModalCentral from '@/components/shared/modal-central'
+import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
 
 // v4.14.1 — aba Usuários: criar usuário (senha provisória), role inline, status,
 // resetar senha e excluir (com confirmação em modal). Botões no formato pill (botoes.ts).
+// v4.16.1 — migrado para CardTabela; window.confirm de reset substituído por ModalCentral;
+//            aria-label no input de senha; title em truncados; otimista reconciliado;
+//            isPending da transition usada para bloquear linha até refresh concluir.
 
-const SELECT_CLASSES =
-  'foco-neutro w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 ' +
-  'outline-none transition disabled:opacity-50'
+interface Mensagem { tipo: 'sucesso' | 'erro'; texto: string }
+// Senha provisória revelada após reset (mostrada uma vez ao admin).
+interface Revelado { email: string; valor: string }
 
 function fmtDataCurta(iso: string | null): string {
   if (!iso) return '—'
@@ -36,10 +40,6 @@ function BadgeStatus({ usuario }: { usuario: UsuarioAdmin }) {
   )
 }
 
-interface Mensagem { tipo: 'sucesso' | 'erro'; texto: string }
-// Senha provisória revelada após reset (mostrada uma vez ao admin).
-interface Revelado { email: string; valor: string }
-
 export function AbaUsuarios({
   usuarios,
   roles,
@@ -50,14 +50,22 @@ export function AbaUsuarios({
   meuUserId: string | null
 }) {
   const router = useRouter()
-  const [, startTransition] = useTransition()
+  // isPending mantido: bloqueia a linha até o RSC novo aplicar (o refresh dentro da
+  // transition mantém isPending=true enquanto o servidor processa e entrega os novos dados).
+  const [isPending, startTransition] = useTransition()
   const [msg, setMsg] = useState<Mensagem | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
+  // rolesOtimistas: descartamos a entrada quando o dado do servidor já alcançou o
+  // valor otimista (usuario.role_id === rolesOtimistas[id]), evitando que o valor
+  // otimista sombree o servidor para sempre.
   const [rolesOtimistas, setRolesOtimistas] = useState<Record<string, number>>({})
+  // rowPendente: id da linha cuja transition ainda está em voo.
   const [rowPendente, setRowPendente] = useState<string | null>(null)
   const [revelado, setRevelado] = useState<Revelado | null>(null)
   const [copiado, setCopiado] = useState(false)
   const [confirmarExcluir, setConfirmarExcluir] = useState<UsuarioAdmin | null>(null)
+  // Estado para confirmação de reset de senha (substitui window.confirm).
+  const [confirmarReset, setConfirmarReset] = useState<UsuarioAdmin | null>(null)
 
   function handleMudarRole(usuario: UsuarioAdmin, novoRoleId: number) {
     const atual = rolesOtimistas[usuario.user_id] ?? usuario.role_id
@@ -68,6 +76,7 @@ export function AbaUsuarios({
     startTransition(async () => {
       const res = await atribuirRole(usuario.user_id, novoRoleId)
       if (!res.ok) {
+        // Reverte o otimista se a action falhou.
         setRolesOtimistas(prev => { const c = { ...prev }; delete c[usuario.user_id]; return c })
         setMsg({ tipo: 'erro', texto: res.erro })
       } else {
@@ -78,8 +87,14 @@ export function AbaUsuarios({
     })
   }
 
+  /** Abre o modal de confirmação de reset (separa o gatilho da execução). */
+  function abrirConfirmarReset(usuario: UsuarioAdmin) {
+    setConfirmarReset(usuario)
+  }
+
+  /** Executa o reset após confirmação no modal. */
   function handleResetarSenha(usuario: UsuarioAdmin) {
-    if (!window.confirm(`Gerar uma NOVA senha provisória para ${usuario.email}? A senha atual deixa de valer.`)) return
+    setConfirmarReset(null)
     setMsg(null)
     setRowPendente(usuario.user_id)
     startTransition(async () => {
@@ -122,23 +137,26 @@ export function AbaUsuarios({
     } catch { /* o campo já está selecionável */ }
   }
 
+  // CTA "Criar usuário" vai no headerRight do CardTabela, ao lado da contagem.
+  const headerRight = (
+    <div className="flex items-center gap-3">
+      <p className="text-sm text-zinc-500">
+        {usuarios.length === 1 ? '1 usuário registrado' : `${usuarios.length} usuários registrados`}
+      </p>
+      <button
+        type="button"
+        onClick={() => setModalAberto(true)}
+        className={`${PILL} ${PILL_PRIMARIA}`}
+        style={PILL_PRIMARIA_STYLE}
+      >
+        <UserPlus size={13} />
+        Criar usuário
+      </button>
+    </div>
+  )
+
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <p className="text-sm text-zinc-500">
-          {usuarios.length === 1 ? '1 usuário registrado' : `${usuarios.length} usuários registrados`}
-        </p>
-        <button
-          type="button"
-          onClick={() => setModalAberto(true)}
-          className={`${PILL} ${PILL_PRIMARIA}`}
-          style={PILL_PRIMARIA_STYLE}
-        >
-          <UserPlus size={13} />
-          Criar usuário
-        </button>
-      </div>
-
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
 
       {revelado && (
@@ -150,6 +168,7 @@ export function AbaUsuarios({
           <div className="flex items-center gap-2">
             <input
               readOnly value={revelado.valor} onFocus={e => e.currentTarget.select()}
+              aria-label={`Senha provisória de ${revelado.email}`}
               className="foco-neutro flex-1 rounded border border-zinc-200 bg-white px-2 py-1 text-xs font-mono text-zinc-600 outline-none"
             />
             <button
@@ -169,7 +188,9 @@ export function AbaUsuarios({
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+      {/* CardTabela unifica o chrome da tabela com as telas irmãs de Acessos.
+          Sem periodoLabel/temMais/onVerMais — tela de plataforma (ADR-0103 ext.). */}
+      <CardTabela titulo="Usuários" headerRight={headerRight}>
         <table className="table-fixed w-full text-sm">
           <colgroup>
             <col className="w-[28%]" />
@@ -179,51 +200,61 @@ export function AbaUsuarios({
             <col className="w-[27%]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-zinc-100 bg-zinc-50/60 text-left">
-              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Usuário</th>
-              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Permissão</th>
-              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Status</th>
-              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Último acesso</th>
-              <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Ações</th>
+            <tr className="border-b border-zinc-100 text-left">
+              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Usuário</th>
+              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Permissão</th>
+              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Status</th>
+              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Último acesso</th>
+              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {usuarios.map(usuario => {
-              const pendente = rowPendente === usuario.user_id
-              const roleAtual = rolesOtimistas[usuario.user_id] ?? usuario.role_id
+              // Descarta o otimista quando o servidor já alcançou o mesmo valor,
+              // evitando que o estado otimista sombree o dado real indefinidamente.
+              const roleOtimista = rolesOtimistas[usuario.user_id]
+              const roleAtual = (roleOtimista != null && roleOtimista !== usuario.role_id)
+                ? roleOtimista
+                : usuario.role_id
+              // Linha está pendente se é a linha em voo E a transition ainda não concluiu.
+              const pendente = isPending && rowPendente === usuario.user_id
               const souEu = meuUserId !== null && usuario.user_id === meuUserId
+              const nomeExibido = usuario.nome ?? usuario.email
               return (
                 <tr key={usuario.user_id} className="border-b border-zinc-50 last:border-0">
-                  <td className="px-4 py-3">
-                    <p className="font-medium text-zinc-900 truncate">
-                      {usuario.nome ?? usuario.email}
+                  <td className="px-3 py-2.5">
+                    {/* title garante leitura do nome completo quando truncado */}
+                    <p className="font-medium text-zinc-900 truncate" title={nomeExibido}>
+                      {nomeExibido}
                       {souEu && (
                         <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--action-primary)' }}>você</span>
                       )}
                     </p>
-                    <p className="text-xs text-zinc-500 truncate">{usuario.email}</p>
+                    <p className="text-xs text-zinc-500 truncate" title={usuario.email}>{usuario.email}</p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <label htmlFor={`role-${usuario.user_id}`} className="sr-only">Permissão de {usuario.email}</label>
                     <select
                       id={`role-${usuario.user_id}`}
                       value={roleAtual != null ? String(roleAtual) : ''}
                       disabled={pendente}
                       onChange={e => handleMudarRole(usuario, Number(e.target.value))}
-                      className={SELECT_CLASSES}
+                      className="foco-neutro w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 outline-none transition disabled:opacity-50"
                     >
                       {roleAtual == null && <option value="" disabled>Sem role</option>}
                       {roles.map(r => (<option key={r.id} value={String(r.id)}>{r.nome}</option>))}
                     </select>
                   </td>
-                  <td className="px-4 py-3"><BadgeStatus usuario={usuario} /></td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5"><BadgeStatus usuario={usuario} /></td>
+                  <td className="px-3 py-2.5">
                     <span className="block text-zinc-500">{fmtDataCurta(usuario.ultimo_login)}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
                     <div className="flex flex-wrap items-center gap-1">
                       <button
-                        type="button" onClick={() => handleResetarSenha(usuario)} disabled={pendente}
+                        type="button"
+                        onClick={() => abrirConfirmarReset(usuario)}
+                        disabled={pendente}
                         title="Gerar nova senha provisória (a pessoa troca no próximo acesso)"
                         className={`${PILL} ${PILL_NEUTRO}`}
                       >
@@ -246,19 +277,51 @@ export function AbaUsuarios({
             })}
             {usuarios.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-zinc-400">
+                <td colSpan={5} className="px-3 py-10 text-center text-sm text-zinc-400">
                   Nenhum usuário registrado ainda. Use «Criar usuário» para começar.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </CardTabela>
 
       {modalAberto && (
         <ModalConvidar roles={roles} onFechar={() => setModalAberto(false)} />
       )}
 
+      {/* Modal de confirmação de reset de senha — substitui window.confirm.
+          Pill da ação é PILL_PRIMARIA (não é exclusão; gatilho é PILL_NEUTRO). */}
+      {confirmarReset && (
+        <ModalCentral titulo="Gerar nova senha" onClose={() => setConfirmarReset(null)}>
+          <p className="text-sm text-zinc-600">
+            Gerar uma NOVA senha provisória para {confirmarReset.email}? A senha atual deixa de valer.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmarReset(null)}
+              className={`${PILL} ${PILL_NEUTRO}`}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => handleResetarSenha(confirmarReset)}
+              disabled={rowPendente === confirmarReset.user_id && isPending}
+              className={`${PILL} ${PILL_PRIMARIA}`}
+              style={PILL_PRIMARIA_STYLE}
+            >
+              {rowPendente === confirmarReset.user_id && isPending && (
+                <Loader2 size={14} className="animate-spin" />
+              )}
+              Gerar nova senha
+            </button>
+          </div>
+        </ModalCentral>
+      )}
+
+      {/* Modal de confirmação de exclusão de usuário (existia antes da v4.16.1). */}
       {confirmarExcluir && (
         <ModalCentral titulo="Excluir usuário" onClose={() => setConfirmarExcluir(null)}>
           <p className="text-sm text-zinc-600">
@@ -276,10 +339,12 @@ export function AbaUsuarios({
             <button
               type="button"
               onClick={() => handleConfirmarExcluir(confirmarExcluir)}
-              disabled={rowPendente === confirmarExcluir.user_id}
+              disabled={rowPendente === confirmarExcluir.user_id && isPending}
               className={`${PILL} ${PILL_PERIGO}`}
             >
-              {rowPendente === confirmarExcluir.user_id && <Loader2 size={14} className="animate-spin" />}
+              {rowPendente === confirmarExcluir.user_id && isPending && (
+                <Loader2 size={14} className="animate-spin" />
+              )}
               Excluir
             </button>
           </div>
