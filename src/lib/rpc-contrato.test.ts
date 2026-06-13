@@ -126,6 +126,16 @@ describe('contrato RPC — schema de promover_carga_vendas (estrutural, RPC dest
     const r = cargaValidacaoSchema.safeParse({ ok: false, total: 0, erros: ['Nenhuma linha válida na carga — arquivo vazio ou inválido.'] })
     expect(r.success).toBe(true)
   })
+  // v4.16.2: guarda de setor/setor_micro (migration 0132) — retorno com setor_fora + erro
+  it('cargaValidacaoSchema aceita o retorno com reprova de setor (setor_fora)', () => {
+    const r = cargaValidacaoSchema.safeParse({
+      ok: false, total: 100, data_min: '2026-01-01', data_max: '2026-03-01',
+      dim_min: '2022-01-01', dim_max: '2030-12-31', fora_do_range: 0, setor_fora: 12,
+      erros: ['12 venda(s) com setor/setor_micro fora das dimensões (seriam descartadas em silêncio pelo transform): setor=«Novo». Atualize analytics.dim_setor/dim_setor_micro antes de carregar.'],
+    })
+    expect(r.success).toBe(true)
+    expect(r.success && r.data.setor_fora).toBe(12)
+  })
 })
 
 // ── v4.13: contrato do RBAC (ADRs 0106-0108) ─────────────────────────────────

@@ -6,6 +6,26 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.16.2] — 2026-06-13
+
+Versão PATCH: três quick-wins priorizados da auditoria técnica (relatório `docs/auditoria/`). Sem mudança funcional visível.
+
+### Segurança
+- **`next` 16.2.4 → 16.2.9** (e `eslint-config-next` idem): resolve 13 advisories HIGH do Next, entre eles bypass de Middleware/Proxy via segment-prefetch e injeção de parâmetro de rota dinâmica — relevante porque o `proxy.ts` é a camada 1 do enforcement de auth. Patch dentro do minor (sem quebra).
+
+### Dados
+- **Guarda contra descarte silencioso na carga de Vendas** (migration 0132): `validar_carga_staging` passou a reprovar a carga, **antes do swap**, quando há `setor`/`setor_micro` que não existe nas dimensões — exatamente as linhas que o `INNER JOIN` do transform descartaria sem erro nem rollback. Não altera o contrato (só acrescenta ao array `erros` e zera `ok`).
+
+### Interface
+- **Sidebar rolável** com **barra de rolagem flutuante em overlay**: a barra nativa é escondida (não reserva largura, então o conteúdo **não desloca**) e um indicador fino flutua sobre o conteúdo, aparecendo ao rolar/passar o ponteiro e **sumindo sozinho** quando não há interação (respeita `prefers-reduced-motion`). Acomoda o crescimento de abas sem cortar o rodapé (usuário/sair).
+- **Grupos com subabas (Performance e Financeiro) nascem recolhidos** a cada abertura/recarga do site (sem persistência); a subaba ativa continua visível quando o grupo está recolhido. Expandir/recolher segue funcionando e sobrevive à navegação dentro da sessão.
+
+### Documentação
+- Registrada convenção permanente (CLAUDE.md): token CSS em classe Tailwind é `[var(--token)]`, nunca `[--token]` (forma v3 que o Tailwind 4 compila para CSS inválido) — guarda contra a regressão corrigida na v4.16.1.
+
+### Banco
+- Migration **0132** (CREATE OR REPLACE de `validar_carga_staging`, validation-only, reversível pela definição da 0116). Aplicada; verificada (lógica + regressão de staging vazia).
+
 ## [4.16.1] — 2026-06-13
 
 Versão PATCH: **revisão de design/UX/desempenho** das telas internas (Solicitações, Usuários e Acessos, Design System) — padronização de coerência entre telas a partir de uma auditoria multi-lente. Sem migration (UI-only; rollback = reverter deployment).

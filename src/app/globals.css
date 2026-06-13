@@ -143,6 +143,19 @@ body {
   outline: none;
 }
 
+/* Esconde COMPLETAMENTE a barra de rolagem nativa (v4.16.2): largura 0 → não reserva  */
+/* espaço no layout (não desloca o conteúdo) e não desenha nada. Usada com a barra de  */
+/* rolagem flutuante custom (thumb em overlay) — ver useOverlayScrollbar na sidebar.   */
+.scrollbar-none {
+  scrollbar-width: none;                 /* Firefox */
+  -ms-overflow-style: none;              /* IE/Edge legado */
+}
+.scrollbar-none::-webkit-scrollbar {     /* WebKit/Chromium */
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 /* "Ver mais" do card-tabela (v4.11): neutro em repouso, cor da aba no hover.    */
 /* Diferente do .card-clicavel-cta (que reage ao hover do CARD inteiro): aqui o  */
 /* próprio "Ver mais" é o alvo. var(--brand) herda a aba via [data-theme].       */
