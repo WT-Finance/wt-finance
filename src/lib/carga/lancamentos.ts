@@ -1,5 +1,6 @@
 import * as XLSX from '@e965/xlsx'
 import { getAdminClient } from '@/lib/supabase/admin'
+import { toNum, toIsoDate as toDate, toStr } from './coercao'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -29,36 +30,6 @@ export interface ResultadoCarga {
 }
 
 const COLUNAS_OBRIGATORIAS = ['Operacao', 'Valor', 'Tipo']
-
-function toDate(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null
-  if (value instanceof Date) {
-    const y = value.getFullYear()
-    const m = String(value.getMonth() + 1).padStart(2, '0')
-    const d = String(value.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }
-  const s = String(value).trim()
-  if (!s) return null
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-    const [d, m, y] = s.split('/')
-    return `${y}-${m}-${d}`
-  }
-  return null
-}
-
-function toNum(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const n = Number(String(value).replace(',', '.'))
-  return isNaN(n) ? null : n
-}
-
-function toStr(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  const s = String(value).trim()
-  return s || null
-}
 
 function parseCsvBuffer(buffer: Buffer): LancamentoRaw[] {
   // Decodifica como UTF-8 antes de passar ao SheetJS — sem isso, CSV UTF-8 é

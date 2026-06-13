@@ -40,7 +40,21 @@ const mixProdutoItem = z.object({
 export const mixProdutoSchema = z.object({
   produtos: z.array(mixProdutoItem),
   outros:   mixProdutoItem.extend({ quantidade_produtos: z.number() }),
-})
+}).passthrough() // M13 (v4.17.0): tolera campos extras do retorno real (era o único sem)
+
+/** get_minhas_permissoes → shape REAL da RPC (0119/0125). Movido de sessao.ts (M13)
+ *  para o módulo de schemas, p/ o teste de contrato (F7) importá-lo sem puxar server-only. */
+export const minhasPermissoesSchema = z.object({
+  registrado:           z.boolean(),
+  ativo:                z.boolean(),
+  permissoes:           z.array(z.string()),
+  user_id:              z.string().optional(),
+  email:                z.string().nullable().optional(),
+  nome:                 z.string().nullable().optional(),
+  role_id:              z.number().nullable().optional(),
+  role:                 z.string().nullable().optional(),
+  precisa_trocar_senha: z.boolean().optional(),
+}).passthrough()
 
 // ── get_executiva_kpis → ExecutivaKpis ───────────────────────────────────────
 
@@ -201,6 +215,7 @@ export const cargaValidacaoSchema = z.object({
   dim_max:       z.string().nullable().optional(),
   fora_do_range: z.number().optional(),
   setor_fora:    z.number().optional(), // v4.16.2: linhas c/ setor/setor_micro fora das dims
+  avisos:        z.array(z.string()).optional(), // v4.17.0: avisos não-bloqueantes (queda de operacao_propria)
 }).passthrough()
 export type CargaValidacao = z.infer<typeof cargaValidacaoSchema>
 

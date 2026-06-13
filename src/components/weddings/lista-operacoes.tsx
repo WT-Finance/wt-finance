@@ -214,22 +214,6 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
     return params.toString()
   }, [status, buscaDeb, ordem, pagina, pageSize, periodoAtivo])
 
-  const allQueryString = useMemo(() => {
-    const [ordenar_por, direcao] = ordem.split(':')
-    const params = new URLSearchParams({
-      status,
-      subsetor: 'todos',
-      ordenar_por,
-      direcao,
-      pagina: '1',
-      por_pagina: '200',
-    })
-    if (buscaDeb) params.set('busca', buscaDeb)
-    if (periodoAtivo.inicio) params.set('periodo_inicio', periodoAtivo.inicio)
-    if (periodoAtivo.fim)    params.set('periodo_fim',    periodoAtivo.fim)
-    return params.toString()
-  }, [status, buscaDeb, ordem, periodoAtivo])
-
   useEffect(() => {
     let cancelled = false
 
@@ -305,10 +289,30 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
   async function handleExportar() {
     setIsExporting(true)
     try {
-      const res = await fetch(`/api/dashboard/weddings/operacoes?${allQueryString}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const resultado = await res.json() as ListaOperacoes
-      exportarParaExcel(resultado.operacoes, periodoLabel)
+      // M6 (v4.17.0): pagina até cobrir data.total. Antes exportava só a 1ª página
+      // (cap fixo de 200), perdendo silenciosamente o resto (ex.: 232 ops → 32 fora).
+      const [ordenar_por, direcao] = ordem.split(':')
+      const PAGE = 200
+      const todas: OperacaoItem[] = []
+      let pag = 1
+      let total = Infinity
+      while (todas.length < total) {
+        const params = new URLSearchParams({
+          status, subsetor: 'todos', ordenar_por, direcao,
+          pagina: String(pag), por_pagina: String(PAGE),
+        })
+        if (buscaDeb) params.set('busca', buscaDeb)
+        if (periodoAtivo.inicio) params.set('periodo_inicio', periodoAtivo.inicio)
+        if (periodoAtivo.fim)    params.set('periodo_fim',    periodoAtivo.fim)
+        const res = await fetch(`/api/dashboard/weddings/operacoes?${params.toString()}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as ListaOperacoes
+        total = data.total
+        todas.push(...data.operacoes)
+        if (data.operacoes.length < PAGE || todas.length >= total) break
+        pag++
+      }
+      exportarParaExcel(todas, periodoLabel)
     } catch {
     } finally {
       setIsExporting(false)

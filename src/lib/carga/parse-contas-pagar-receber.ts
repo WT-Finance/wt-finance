@@ -1,5 +1,7 @@
 'use client'
 
+import { toNum, toIsoDate, toStr } from './coercao'
+
 // Cliente-safe — sem imports de DB ou Node.js.
 // Parseia CAP/CAR (Contas a Pagar e Receber).
 // Yan pré-trata a planilha antes do upload adicionando coluna tipo_movimento (A_RECEBER/A_PAGAR).
@@ -54,36 +56,6 @@ const COL_MAP: Record<string, keyof ContaPagarReceberRaw> = {
   'Conferido':            'conferido',
   'Operação Própria':     'operacao_propria',
   'Operacao Propria':     'operacao_propria',
-}
-
-function toIsoDate(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null
-  if (value instanceof Date) {
-    const y = value.getFullYear()
-    const m = String(value.getMonth() + 1).padStart(2, '0')
-    const d = String(value.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }
-  const s = String(value).trim()
-  if (!s) return null
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-    const [d, m, y] = s.split('/')
-    return `${y}-${m}-${d}`
-  }
-  return null
-}
-
-function toNum(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  const n = Number(String(value).replace(',', '.').trim())
-  return isNaN(n) ? null : n
-}
-
-function toStr(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  const s = String(value).trim()
-  return s || null
 }
 
 function toBool(value: unknown): boolean | null {

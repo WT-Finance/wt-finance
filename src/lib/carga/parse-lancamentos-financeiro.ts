@@ -1,5 +1,7 @@
 'use client'
 
+import { toNum, toIsoDate, toStr } from './coercao'
+
 // Cliente-safe — sem imports de DB ou Node.js.
 // Parseia "Lançamentos Financeiros" do ERP: estrutura tabular plana de 12 colunas.
 // Cada linha é um lançamento; sem linhas de cabeçalho intercaladas.
@@ -43,44 +45,6 @@ const COL_MAP: Record<string, keyof LancamentoFinanceiroRaw> = {
 }
 
 const COLUNAS_OBRIGATORIAS: (keyof LancamentoFinanceiroRaw)[] = ['vencimento', 'valor']
-
-function toIsoDate(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null
-  if (value instanceof Date) {
-    const y = value.getFullYear()
-    const m = String(value.getMonth() + 1).padStart(2, '0')
-    const d = String(value.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }
-  const s = String(value).trim()
-  if (!s) return null
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-    const [d, m, y] = s.split('/')
-    return `${y}-${m}-${d}`
-  }
-  return null
-}
-
-function toNum(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'number') return value
-  let s = String(value).trim().replace(/[R$ ]/g, '').trim()
-  // BR format "8.840,00" → decimal comma; US/ERP format "8,840.00" → decimal period
-  if (/,\d{1,2}$/.test(s)) {
-    s = s.replace(/\./g, '').replace(',', '.')
-  } else {
-    s = s.replace(/,/g, '')
-  }
-  const n = Number(s)
-  return isNaN(n) ? null : n
-}
-
-function toStr(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  const s = String(value).trim()
-  return s || null
-}
 
 export async function parseLancamentosFinanceiroFile(
   file: File,

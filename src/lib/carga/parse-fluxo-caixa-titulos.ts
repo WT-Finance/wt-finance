@@ -1,5 +1,7 @@
 'use client'
 
+import { toNum, toIsoDate, toStr } from './coercao'
+
 // Cliente-safe — sem imports de DB ou Node.js.
 // Parseia "CAP/CAR tratada" do ERP: Fluxo de Caixa Títulos.
 // 15 colunas incluindo Tipo, Status, Data_Final, Mes_Ano, Conta (Previsão).
@@ -50,49 +52,6 @@ const COL_MAP: Record<string, keyof FluxoCaixaTituloRaw> = {
 }
 
 const COLUNAS_OBRIGATORIAS: (keyof FluxoCaixaTituloRaw)[] = ['tipo', 'status', 'valor_final']
-
-function toIsoDate(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null
-  if (value instanceof Date) {
-    const y = value.getFullYear()
-    const m = String(value.getMonth() + 1).padStart(2, '0')
-    const d = String(value.getDate()).padStart(2, '0')
-    if (d === '00' || y < 1900) return null  // Excel serial 0 / data inválida
-    return `${y}-${m}-${d}`
-  }
-  const s = String(value).trim()
-  if (!s) return null
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    if (s.endsWith('-00')) return null  // Excel serial 0 / dia inválido
-    return s
-  }
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-    const [d, m, y] = s.split('/')
-    if (d === '00') return null
-    return `${y}-${m}-${d}`
-  }
-  return null
-}
-
-function toNum(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'number') return value
-  let s = String(value).trim().replace(/[R$ ]/g, '').trim()
-  // BR format "8.840,00" → decimal comma; US/ERP format "8,840.00" → decimal period
-  if (/,\d{1,2}$/.test(s)) {
-    s = s.replace(/\./g, '').replace(',', '.')
-  } else {
-    s = s.replace(/,/g, '')
-  }
-  const n = Number(s)
-  return isNaN(n) ? null : n
-}
-
-function toStr(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  const s = String(value).trim()
-  return s || null
-}
 
 export async function parseFluxoCaixaTitulosFile(
   file: File,

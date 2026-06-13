@@ -6,6 +6,29 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.17.0] — 2026-06-13
+
+Versão MINOR: **saneamento técnico** (triagem da auditoria de 2026-06-13). Absorve a fase 2 da F2-real. Migrations 0133–0136 (aditivas, retrocompatíveis; backup do dia com restore testado). Sem mudança de produto.
+
+### Segurança (Balde 1)
+- **Janela anônima encerrada (ADR-0114):** `exigir_acesso` com fail-open estreitado (contexto sem JWT só passa para superusuário real) e ramo anon removido; **REVOKE de `anon`** em todas as RPCs exceto `solicitar_acesso` (auto-cadastro, agora com rate-limit 5/min). Guard baseline em `/admin`, `server-only` no cliente service-role, guard no contador de pendências. Auditoria adversarial 7/7.
+
+### Dados / carga (Balde 2 + 3)
+- **Coerção numérica/data unificada:** módulo único `coercao.ts` (toNum/toIsoDate/toStr) elimina o `toNum` ingênuo que descartava valores BR com milhar (`8.840,00`); testes de tabela.
+- **Carga de Vendas:** advisory lock serializa o pipeline (uploads concorrentes não se cruzam); **export da Lista de Operações sem o teto de 200** (paginava só a 1ª página); aviso não-bloqueante quando `operacao_propria` despenca vs a base atual (detecta a origem parar de exportar a coluna).
+- **Anexos de solicitação promovidos** para o prefixo definitivo `sol/<id>/` após criar (antes ficavam em `tmp/`); `tmp/` passa a conter só órfãos. Auditoria de isolamento 8/8.
+
+### Gates / contratos (Balde 4)
+- Regra ESLint que reprova o shorthand `[--token]` do Tailwind (guarda da convenção da v4.16.1); 3 schemas Zod a mais na lista viva de contrato; cobertura do item real de `solic_json` (não só listas vazias); gate de contrato **online obrigatório** em CI (`REQUIRE_CONTRACT=1`).
+
+### Banco
+- Migrations **0133** (exigir_acesso + REVOKE anon + badge + rate-limit), **0134** (fecha grants anon de `app`), **0135** (advisory lock + aviso op_propria), **0136** (promoção de anexos). Todas aplicadas.
+
+### Não entrou
+- **M8** (tipagem do `database.ts`/`BoundRpc`) deferido pelo teto de reversibilidade (ADR-0115) — vira P-refactor; nada dos Baldes 1–4 foi desfeito.
+- **Aposentadoria da fase 2** (remover rota/RPCs vestigiais) não entrou: o gatilho (2 cargas reais sem incidente) não foi atingido — só 1 carga até aqui.
+- Fluxo de Caixa e o tema dos R$ 17,97M permanecem fora (decisões de produto).
+
 ## [4.16.2] — 2026-06-13
 
 Versão PATCH: três quick-wins priorizados da auditoria técnica (relatório `docs/auditoria/`). Sem mudança funcional visível.

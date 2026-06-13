@@ -64,3 +64,18 @@ some da sidebar ao voltar o deployment.
 
 Backup lógico completo pré-v4.16 em `~/wt-finance-backups/2026-06-12-pre-v4-16/`
 (restore testado). As migrations 0127-0130 não tocam dados pré-existentes.
+
+---
+
+## Adendo v4.17.0 (M17 — anexos promovidos)
+
+Anexos agora são **promovidos** após a criação da solicitação: o objeto sobe primeiro em
+`tmp/<uuid>/<arquivo>` e, no sucesso de `criar_solicitacao`, é movido (`storage.move`) para
+**`sol/<solicitacao_id>/<uuid>/<arquivo>`**, com o `storage_path` reescrito no banco pela RPC
+`solic_promover_anexos`. Implicações operacionais:
+- **`tmp/` contém só órfãos** — uploads que nunca viraram solicitação (ex.: usuário desistiu).
+  Um limpador periódico de `tmp/` é seguro (não há anexo "vivo" lá após a promoção).
+- **Anexos vivos vivem em `sol/<id>/`.** Ao apagar uma solicitação, o CASCADE remove os
+  metadados; o objeto em `sol/<id>/` exige remoção à parte no Storage.
+- A **visibilidade do download** (signed URL via `solic_anexo_path`) é inalterada pela promoção —
+  continua restrita a solicitante/atendente/gestão; terceiros seguem negados.

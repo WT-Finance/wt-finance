@@ -51,8 +51,30 @@ export async function criarSolicitacao(input: {
     }
     return { ok: false, erro: traduzir(error.message) }
   }
+  const id = (data as { id: number }).id
+
+  // M17 (v4.17.0): promove os anexos de tmp/<uuid>/<arq> → sol/<id>/<uuid>/<arq>.
+  // Move o objeto (service role) e atualiza o storage_path no banco para os movidos com
+  // sucesso. Best-effort: anexo que falhar o move permanece em tmp/ (ainda funcional);
+  // tmp/ passa a conter só órfãos. Não bloqueia o sucesso da criação.
+  const tmpAnexos = input.anexos.filter(a => a.storage_path.startsWith('tmp/'))
+  if (tmpAnexos.length) {
+    const storage = getAdminClient().storage.from(BUCKET)
+    const movidos: { de: string; para: string }[] = []
+    for (const a of tmpAnexos) {
+      const para = `sol/${id}/${a.storage_path.slice('tmp/'.length)}`
+      try {
+        const { error: mvErr } = await storage.move(a.storage_path, para)
+        if (!mvErr) movidos.push({ de: a.storage_path, para })
+      } catch { /* mantém em tmp/ */ }
+    }
+    if (movidos.length) {
+      try { await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: movidos }) } catch { /* best-effort */ }
+    }
+  }
+
   revalidatePath('/solicitacoes')
-  return { ok: true, id: (data as { id: number }).id }
+  return { ok: true, id }
 }
 
 // Upload de um anexo (validação server-side + service role). Retorna metadados p/ criar.
