@@ -28,7 +28,7 @@ export default function KpiDrawerTrigger({ children, metrica, rotulo, setor, dra
         {children}
         {/* v4.10/M4: afordância na convenção .card-clicavel — hover assume a cor da
             aba (--brand); a seta acompanha via .card-clicavel-cta (sem azul cravado). */}
-        <span className="card-clicavel-cta absolute bottom-3 right-3 text-[--text-subtle] opacity-40 group-hover/drawer:opacity-90 pointer-events-none">
+        <span className="card-clicavel-cta absolute bottom-3 right-3 text-[var(--text-subtle)] opacity-40 group-hover/drawer:opacity-90 pointer-events-none">
           <ChevronRight size={15} />
         </span>
       </div>

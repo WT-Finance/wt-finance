@@ -72,7 +72,7 @@ function SubsetorCard({
     return (
       <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
         <div className="mb-2 leading-tight min-h-[28px]">
-          <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
+          <p className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{title}</p>
           {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
         </div>
         <p className="text-xs text-zinc-400">—</p>
@@ -83,7 +83,7 @@ function SubsetorCard({
   return (
     <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
       <div className="mb-2 leading-tight min-h-[28px]">
-        <p className="text-[12px] font-semibold text-[--text-muted] uppercase tracking-wide">{title}</p>
+        <p className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{title}</p>
         {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
       </div>
 
@@ -201,7 +201,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
           <KpiColuna rotulo="Margem"        metrica={kpis.margem_pct}  formato="pct" padded />
         </div>
         <div className="flex justify-end mt-2">
-          <span className="card-clicavel-cta text-[11px] text-[--brand] font-medium">Ver mais ›</span>
+          <span className="card-clicavel-cta text-[11px] text-[var(--brand)] font-medium">Ver mais ›</span>
         </div>
       </div>
 

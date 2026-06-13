@@ -37,10 +37,10 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <div className="flex items-baseline gap-2 mb-4">
-        <h2 className="text-base font-semibold text-[--text-primary]">
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Acumulado de Recebimentos e Pagamentos{operacaoLabel ? ` — ${operacaoLabel}` : ''}
           </h2>
-        <span className="text-[13px] text-[--text-muted]">24 meses passados + 18 futuros</span>
+        <span className="text-[13px] text-[var(--text-muted)]">24 meses passados + 18 futuros</span>
       </div>
 
       <ResponsiveContainer width="100%" height={280}>
@@ -99,7 +99,7 @@ export default function AcumuladoRecebPagChart({ data, operacaoLabel }: Props) {
         <LegendItem color={'var(--chart-fluxo-entrada)'} opacity={0.35} label="Entradas acum. (projetado)" />
         <LegendItem color={'var(--chart-fluxo-saida)'}   opacity={1}    label="Saídas acum. (efetivado)"   />
         <LegendItem color={'var(--chart-fluxo-saida)'}   opacity={0.35} label="Saídas acum. (projetado)"   />
-        <div className="flex items-center gap-1.5 text-xs text-[--text-subtle]">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--text-subtle)]">
           <svg width="20" height="10">
             <line x1="0" y1="5" x2="20" y2="5" stroke={fluxoColors.resultadoNegativo} strokeWidth="1.5" />
           </svg>

@@ -42,10 +42,10 @@ function Linhas({ itens }: { itens: RankingVendedorItem[] }) {
     <>
       {itens.map((v, i) => (
         <tr key={v.vendedor_id} className="hover:bg-zinc-50">
-          <td className="py-2 px-3 text-xs text-[--text-subtle]">{i + 1}</td>
-          <td className="py-2 px-3 text-[--text-primary] font-medium truncate">{v.nome}</td>
-          <td className="py-2 px-3 text-right tabular-nums text-[--text-secondary]">{fmtBRL(v.valor_total)}</td>
-          <td className="py-2 px-3 text-right tabular-nums text-[--text-muted]">{fmtBRL(v.receitas)}</td>
+          <td className="py-2 px-3 text-xs text-[var(--text-subtle)]">{i + 1}</td>
+          <td className="py-2 px-3 text-[var(--text-primary)] font-medium truncate">{v.nome}</td>
+          <td className="py-2 px-3 text-right tabular-nums text-[var(--text-secondary)]">{fmtBRL(v.valor_total)}</td>
+          <td className="py-2 px-3 text-right tabular-nums text-[var(--text-muted)]">{fmtBRL(v.receitas)}</td>
         </tr>
       ))}
     </>
@@ -71,7 +71,7 @@ export default function TopVendedoresCard({ data, periodoLabel }: Props) {
         <tbody className="divide-y divide-zinc-50">
           {data.length === 0 ? (
             <tr>
-              <td colSpan={4} className="py-4 text-center text-sm text-[--text-subtle]">
+              <td colSpan={4} className="py-4 text-center text-sm text-[var(--text-subtle)]">
                 Sem vendedores no período selecionado.
               </td>
             </tr>

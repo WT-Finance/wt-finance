@@ -76,7 +76,7 @@ function SortTh({ children, field, right, center, title, ordem, onSort }: SortTh
   const arrow = isActive ? (activeDir === 'asc' ? '▲' : '▼') : null
 
   const baseClass = `py-2 px-3 text-xs font-medium whitespace-nowrap ${center ? 'text-center' : right ? 'text-right' : 'text-left'}`
-  const colorClass = isActive ? 'text-[--text-primary]' : 'text-zinc-400'
+  const colorClass = isActive ? 'text-[var(--text-primary)]' : 'text-zinc-400'
   const cursorClass = field ? 'cursor-pointer select-none hover:text-zinc-600' : ''
   const helpClass = title && !field ? 'cursor-help underline decoration-dotted decoration-zinc-300' : ''
 
@@ -324,7 +324,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-baseline gap-2">
-          <h2 className="text-base font-semibold text-[--text-primary]">Lista de Operações</h2>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">Lista de Operações</h2>
           {data && !loading && (
             <span className="text-xs text-zinc-400">{data.total} encontradas</span>
           )}

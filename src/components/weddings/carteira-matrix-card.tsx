@@ -39,9 +39,9 @@ export default function CarteiraMartrixCard({ casamentos }: Props) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4 min-w-0">
-      <h2 className="text-base font-semibold text-[--text-primary] leading-snug mb-4">Carteira: Vendas × Entregas</h2>
+      <h2 className="text-base font-semibold text-[var(--text-primary)] leading-snug mb-4">Carteira: Vendas × Entregas</h2>
       <div className="mb-4">
-        <p className="text-[13px] text-[--text-muted]">Vendas por ano de venda × ano de entrega</p>
+        <p className="text-[13px] text-[var(--text-muted)]">Vendas por ano de venda × ano de entrega</p>
       </div>
 
       <div className="overflow-x-auto">

@@ -23,7 +23,7 @@ export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-[--text-primary]">Tendência de Margem</h2>
+        <h2 className="text-base font-semibold text-[var(--text-primary)]">Tendência de Margem</h2>
         {data && (
           <span className="text-xs text-zinc-400 capitalize">{data.granularidade}</span>
         )}

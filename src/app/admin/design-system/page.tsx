@@ -136,7 +136,7 @@ export default async function DesignSystemPage() {
               <p className="text-sm font-medium mb-1">Featured</p>
               <p className="text-xs text-[var(--text-muted)]">border-2 brand</p>
             </div>
-            <code className="text-[10px] text-[var(--text-muted)]">border-2 border-[--brand]</code>
+            <code className="text-[10px] text-[var(--text-muted)]">border-2 border-[var(--brand)]</code>
           </div>
           <div>
             <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 mb-2">
@@ -185,7 +185,7 @@ export default async function DesignSystemPage() {
           <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1">
             <p>{'<div className="card-clicavel bg-white rounded-xl shadow-sm ..." role="button" tabIndex={0}>'}</p>
             <p className="pl-4">{'...'}</p>
-            <p className="pl-4">{'<span className="card-clicavel-cta text-[--brand] ...">Ver mais ›</span>'}</p>
+            <p className="pl-4">{'<span className="card-clicavel-cta text-[var(--brand)] ...">Ver mais ›</span>'}</p>
             <p>{'</div>'}</p>
             <p className="mt-2 not-italic font-sans">{'// repouso: shadow-sm · hover/foco: border + box-shadow = var(--brand), CTA → var(--brand-deep)'}</p>
           </div>
