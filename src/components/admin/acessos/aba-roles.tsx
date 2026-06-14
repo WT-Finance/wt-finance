@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Plus } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { AREA_ADMIN } from '@/lib/auth/areas'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
 import { ModalRole } from './modal-role'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { PILL, PILL_NEUTRO } from './botoes'
 
 // v4.13 — aba Permissões (antes "Roles"): cards de perfis com suas permissões
 // (chips por rótulo) e formulário de criação/edição em modal. Botões em pill.
@@ -22,12 +22,16 @@ type EstadoModal =
 export function AbaRoles({
   roles,
   areas,
+  criarAberto,
+  onFecharCriar,
 }: {
   roles: RoleAdmin[]
   areas: AreaCatalogo[]
+  criarAberto:   boolean        // v4.18/M4 — modal "Nova permissão" controlado pela linha das pills
+  onFecharCriar: () => void
 }) {
   const router = useRouter()
-  const [modal, setModal] = useState<EstadoModal>(null)
+  const [modal, setModal] = useState<EstadoModal>(null)  // só EDIÇÃO; "criar" vem da prop
   const [msg, setMsg] = useState<Mensagem | null>(null)
 
   const rotuloDe = (area: string) => areas.find(a => a.area === area)?.rotulo ?? area
@@ -35,26 +39,17 @@ export function AbaRoles({
 
   function handleSalvo(texto: string) {
     setModal(null)
+    onFecharCriar()   // fecha o modal "criar" no pai se foi ele (no-op se era edição)
     setMsg({ tipo: 'sucesso', texto })
     router.refresh()
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <p className="text-sm text-zinc-500">
-          {roles.length === 1 ? '1 permissão cadastrada' : `${roles.length} permissões cadastradas`}
-        </p>
-        <button
-          type="button"
-          onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}
-          className={`${PILL} ${PILL_PRIMARIA}`}
-          style={PILL_PRIMARIA_STYLE}
-        >
-          <Plus size={13} />
-          Nova permissão
-        </button>
-      </div>
+      {/* v4.18/M4 — "Nova permissão" foi para a LINHA DAS PILLS (AcessosContent). */}
+      <p className="text-sm text-zinc-500 mb-4">
+        {roles.length === 1 ? '1 permissão cadastrada' : `${roles.length} permissões cadastradas`}
+      </p>
 
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
 
@@ -108,12 +103,12 @@ export function AbaRoles({
         )}
       </div>
 
-      {modal && (
+      {(criarAberto || modal) && (
         <ModalRole
-          modo={modal.modo}
-          role={modal.modo === 'editar' ? modal.role : undefined}
+          modo={criarAberto ? 'criar' : (modal?.modo ?? 'criar')}
+          role={!criarAberto && modal?.modo === 'editar' ? modal.role : undefined}
           areas={areas}
-          onFechar={() => setModal(null)}
+          onFechar={() => { setModal(null); onFecharCriar() }}
           onSalvo={handleSalvo}
         />
       )}

@@ -8,20 +8,16 @@ import type { RoleAdmin, SolicitacaoAdmin } from './tipos'
 import { FaixaMensagem } from './faixa-mensagem'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import { PILL, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { fmtDataSP, fmtDataHoraSP } from '@/lib/fmt'
 
-// v4.14 — aba Solicitações: aprovar (cria usuário + senha provisória) / rejeitar
-// pedidos de acesso vindos da tela pública /solicitar-acesso. Botões em pill.
+// v4.14 — aba "Solicitações de acesso": aprovar (cria usuário + senha provisória) /
+// rejeitar pedidos de acesso vindos da tela pública /solicitar-acesso. Botões em pill.
+// v4.18/M4 — datas no fuso de São Paulo (Intl); histórico mais informativo (quem decidiu,
+// quando, motivo se rejeitada); badge do histórico vira texto.
 
 const SELECT_CLASSES =
   'foco-neutro rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-700 ' +
   'outline-none transition disabled:opacity-50'
-
-/** Converte ISO/timestamptz em 'DD/MM/AAAA' sem deslocar o dia (slice(0,10)). */
-function fmtData(iso: string | null): string {
-  if (!iso) return '—'
-  const d = iso.slice(0, 10).split('-')
-  return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : iso
-}
 
 interface Mensagem { tipo: 'sucesso' | 'erro'; texto: string }
 
@@ -141,7 +137,7 @@ export function AbaSolicitacoes({
                       <p className="font-medium text-zinc-900 truncate">{s.nome ?? s.email}</p>
                       {s.nome && <p className="text-xs text-zinc-500 truncate">{s.email}</p>}
                     </td>
-                    <td className="px-4 py-3 text-zinc-500">{fmtData(s.criado_em)}</td>
+                    <td className="px-4 py-3 text-zinc-500 tabular-nums">{fmtDataSP(s.criado_em)}</td>
                     <td className="px-4 py-3">
                       <label htmlFor={`role-sol-${s.id}`} className="sr-only">Permissão para {s.email}</label>
                       <select
@@ -187,11 +183,21 @@ export function AbaSolicitacoes({
           <p className="text-xs font-medium uppercase tracking-wider text-zinc-400 mb-2">Histórico</p>
           <ul className="space-y-1">
             {decididas.map(s => (
-              <li key={s.id} className="flex items-center justify-between rounded-lg border border-zinc-100 px-3 py-2 text-sm">
-                <span className="truncate text-zinc-600">{s.email}</span>
-                <span className={`ml-2 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.status === 'aprovada' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
-                  {s.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'} · {fmtData(s.decidido_em)}
-                </span>
+              <li key={s.id} className="rounded-lg border border-zinc-100 px-3 py-2 text-sm">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate text-zinc-700">{s.email}</span>
+                  {/* Badge virou TEXTO (v4.18/M4): "Aprovada/Rejeitada em DD/MM/AAAA às HH:MM por …" (fuso SP) */}
+                  <span className="shrink-0 text-xs text-zinc-500 tabular-nums">
+                    <span className={`font-medium ${s.status === 'aprovada' ? 'text-success' : 'text-danger'}`}>
+                      {s.status === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
+                    </span>
+                    {' em '}{fmtDataHoraSP(s.decidido_em)}
+                    {s.decidido_por_rotulo ? ` por ${s.decidido_por_rotulo}` : ''}
+                  </span>
+                </div>
+                {s.status === 'rejeitada' && s.observacao && (
+                  <p className="mt-1 text-xs text-zinc-500">Motivo: {s.observacao}</p>
+                )}
               </li>
             ))}
           </ul>

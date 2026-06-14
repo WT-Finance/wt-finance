@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { UserPlus, Plus } from 'lucide-react'
 import type { AreaCatalogo, RoleAdmin, UsuarioAdmin, SolicitacaoAdmin } from './tipos'
 import { AbaUsuarios } from './aba-usuarios'
 import { AbaRoles } from './aba-roles'
@@ -31,12 +32,15 @@ export function AcessosContent({
   erroCarga:    string | null
 }) {
   const [aba, setAba] = useState<Aba>('usuarios')
+  // v4.18/M4 — ação primária da aba ANCORADA na linha das pills (não dentro do box).
+  const [criarUsuario, setCriarUsuario] = useState(false)
+  const [criarPermissao, setCriarPermissao] = useState(false)
   const pendentes = solicitacoes.filter(s => s.status === 'pendente').length
 
   const ABAS: { key: Aba; label: string }[] = [
     { key: 'usuarios',     label: 'Usuários' },
     { key: 'roles',        label: 'Permissões' },
-    { key: 'solicitacoes', label: pendentes > 0 ? `Solicitações (${pendentes})` : 'Solicitações' },
+    { key: 'solicitacoes', label: pendentes > 0 ? `Solicitações de acesso (${pendentes})` : 'Solicitações de acesso' },
   ]
 
   return (
@@ -53,30 +57,45 @@ export function AcessosContent({
         <FaixaMensagem tipo="erro" texto={erroCarga} />
       )}
 
-      <div role="tablist" aria-label="Seções de administração de acessos" className="flex gap-2 mb-5">
-        {ABAS.map(({ key, label }) => {
-          const ativa = aba === key
-          return (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`tab-${key}`}
-              aria-selected={ativa}
-              aria-controls={`painel-${key}`}
-              onClick={() => setAba(key)}
-              className={`${PILL} whitespace-nowrap ${ativa ? PILL_PRIMARIA : PILL_NEUTRO}`}
-              style={ativa ? PILL_PRIMARIA_STYLE : undefined}
-            >
-              {label}
-            </button>
-          )
-        })}
+      {/* Linha das pills: abas à esquerda, AÇÃO PRIMÁRIA da aba à direita (v4.18/M4). */}
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div role="tablist" aria-label="Seções de administração de acessos" className="flex gap-2">
+          {ABAS.map(({ key, label }) => {
+            const ativa = aba === key
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                id={`tab-${key}`}
+                aria-selected={ativa}
+                aria-controls={`painel-${key}`}
+                onClick={() => setAba(key)}
+                className={`${PILL} whitespace-nowrap ${ativa ? PILL_PRIMARIA : PILL_NEUTRO}`}
+                style={ativa ? PILL_PRIMARIA_STYLE : undefined}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+        {aba === 'usuarios' && (
+          <button type="button" onClick={() => setCriarUsuario(true)}
+            className={`${PILL} ${PILL_PRIMARIA} whitespace-nowrap`} style={PILL_PRIMARIA_STYLE}>
+            <UserPlus size={13} /> Criar usuário
+          </button>
+        )}
+        {aba === 'roles' && (
+          <button type="button" onClick={() => setCriarPermissao(true)}
+            className={`${PILL} ${PILL_PRIMARIA} whitespace-nowrap`} style={PILL_PRIMARIA_STYLE}>
+            <Plus size={13} /> Nova permissão
+          </button>
+        )}
       </div>
 
       <div role="tabpanel" id={`painel-${aba}`} aria-labelledby={`tab-${aba}`}>
-        {aba === 'usuarios'     && <AbaUsuarios usuarios={usuarios} roles={roles} meuUserId={meuUserId} />}
-        {aba === 'roles'        && <AbaRoles roles={roles} areas={areas} />}
+        {aba === 'usuarios'     && <AbaUsuarios usuarios={usuarios} roles={roles} meuUserId={meuUserId} criarAberto={criarUsuario} onFecharCriar={() => setCriarUsuario(false)} />}
+        {aba === 'roles'        && <AbaRoles roles={roles} areas={areas} criarAberto={criarPermissao} onFecharCriar={() => setCriarPermissao(false)} />}
         {aba === 'solicitacoes' && <AbaSolicitacoes solicitacoes={solicitacoes} roles={roles} />}
       </div>
     </div>

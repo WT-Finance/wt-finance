@@ -42,6 +42,9 @@ export interface SolicitacaoAdmin {
   status:      'pendente' | 'aprovada' | 'rejeitada'
   criado_em:   string | null
   decidido_em: string | null
+  // v4.18/M4 — histórico mais informativo (admin_listar_solicitacoes, migration 0139):
+  decidido_por_rotulo: string | null   // nome ou e-mail de quem decidiu
+  observacao:          string | null   // motivo, quando rejeitada
 }
 
 /** Criação de usuário (v4.14): devolve a senha provisória para exibir ao admin. */
