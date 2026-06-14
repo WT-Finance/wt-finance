@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import { arquivarTipo, excluirTipo } from '@/app/admin/solicitacoes/actions'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
@@ -11,6 +11,11 @@ import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
 import ModalCentral from '@/components/shared/modal-central'
 import { EditorTipo } from './editor-tipo'
+
+/** Botão de ação da linha em ÍCONE (v4.19.0/M2). Mesmo padrão de aba-usuarios.tsx. */
+const ICON_BTN = 'foco-neutro inline-flex items-center justify-center rounded-md border p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+const ICON_NEUTRO = 'border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700'
+const ICON_PERIGO = 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
 
 // v4.16.0 (spec §2.4 C) — conteúdo client da página Tipos de Solicitação:
 // CTA "Novo tipo", tabela de tipos (arquivados ao final, com chip), ações por
@@ -137,31 +142,44 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
                       <td className="py-2.5 px-3 text-right tabular-nums text-zinc-600">{tipo.n_campos}</td>
                       <td className="py-2.5 px-3 text-right tabular-nums text-zinc-600">{tipo.n_solicitacoes}</td>
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center justify-end gap-2">
+                        {/* Ações da linha em ÍCONE (v4.19.0/M2): Editar · Arquivar/Desarquivar · Excluir.
+                            Mesmo padrão da tela irmã aba-usuarios.tsx (ICON_BTN/ICON_NEUTRO/ICON_PERIGO). */}
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => { setMsg(null); setModal({ modo: 'editar', tipo }) }}
                             disabled={linhaOcupada}
-                            className={`${PILL} ${PILL_NEUTRO}`}
+                            title="Editar"
+                            aria-label={`Editar tipo ${tipo.nome}`}
+                            className={`${ICON_BTN} ${ICON_NEUTRO}`}
                           >
-                            Editar
+                            <Pencil size={14} />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleArquivar(tipo)}
                             disabled={linhaOcupada}
-                            className={`${PILL} ${PILL_NEUTRO}`}
+                            title={tipo.arquivado ? 'Desarquivar' : 'Arquivar'}
+                            aria-label={tipo.arquivado ? `Desarquivar tipo ${tipo.nome}` : `Arquivar tipo ${tipo.nome}`}
+                            className={`${ICON_BTN} ${ICON_NEUTRO}`}
                           >
-                            {linhaOcupada && <Loader2 size={14} className="animate-spin" />}
-                            {tipo.arquivado ? 'Desarquivar' : 'Arquivar'}
+                            {linhaOcupada
+                              ? <Loader2 size={14} className="animate-spin" />
+                              : tipo.arquivado
+                                ? <ArchiveRestore size={14} />
+                                : <Archive size={14} />}
                           </button>
                           <button
                             type="button"
                             onClick={() => { setMsg(null); setConfirmarExcluir(tipo) }}
-                            disabled={linhaOcupada}
-                            className={`${PILL} ${PILL_PERIGO}`}
+                            disabled={linhaOcupada || tipo.n_solicitacoes > 0}
+                            title={tipo.n_solicitacoes > 0
+                              ? 'Não é possível excluir: este tipo já possui solicitações. Arquive-o para retirá-lo de uso.'
+                              : 'Excluir'}
+                            aria-label={`Excluir tipo ${tipo.nome}`}
+                            className={`${ICON_BTN} ${ICON_PERIGO}`}
                           >
-                            Excluir
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
