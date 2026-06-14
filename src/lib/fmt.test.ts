@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   fmtBRL, fmtBRL2, numBRL2, fmtMi, fmtAxisBRL, fmtMeses,
   fmtAxisPct, fmtAxisMes, fmtDate, fmtDateCompact, fmtDateLong, fmtDateMid, fmtDataHora,
+  fmtDataSP, fmtDataHoraSP,
   parseLocalDate,
 } from './fmt'
 
@@ -65,9 +66,20 @@ describe('fmt — datas (parsing por split, sem fuso)', () => {
     expect(fmtDateMid('2026-06-17')).toBe('17 de jun de 2026')
   })
 
-  it('fmtDataHora: com e sem hora', () => {
+  it('fmtDataHora: ingênuo (CHANGELOG local) exibe como está; timestamptz UTC converte p/ SP', () => {
+    // ingênuo (sem fuso) = data local do CHANGELOG_DIRETORIA → como está, sem deslocar
     expect(fmtDataHora('2026-06-05T17:53')).toBe('05 de jun de 2026, às 17h53min')
     expect(fmtDataHora('2026-06-05')).toBe('05 de jun de 2026')
+    // timestamptz UTC → fuso de São Paulo (UTC-3): 20:01Z → 17h01
+    expect(fmtDataHora('2026-06-14T20:01:12Z')).toBe('14 de jun de 2026, às 17h01min')
+  })
+
+  it('fmtDataSP/fmtDataHoraSP: timestamptz UTC no fuso de São Paulo, dia correto perto da meia-noite', () => {
+    // 02:30Z = 23:30 do DIA ANTERIOR em SP (UTC-3) — o split ingênuo erraria o dia
+    expect(fmtDataSP('2026-06-15T02:30:00Z')).toBe('14/06/2026')
+    expect(fmtDataHoraSP('2026-06-15T02:30:00Z')).toBe('14/06/2026 às 23:30')
+    expect(fmtDataHoraSP('2026-06-14T20:01:12Z')).toBe('14/06/2026 às 17:01')
+    expect(fmtDataHoraSP(null)).toBe('—')
   })
 
   it('parseLocalDate: parse LOCAL, sem deslocamento de fuso (F6)', () => {
