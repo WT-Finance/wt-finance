@@ -21,7 +21,7 @@ import type {
 } from '@/types/api'
 
 interface Props {
-  searchParams: { operacao?: string }
+  searchParams: { operacao?: string | string[] }
 }
 
 // OCULTADO v4.8.2 — cards de diagnóstico (Vendas em Aberto / Receita Negativa)
@@ -31,7 +31,9 @@ interface Props {
 const MOSTRAR_VENDAS_DIAGNOSTICO = false
 
 export default async function WeddingsContent({ searchParams: sp }: Props) {
-  const operacao = sp.operacao ?? null
+  // v4.19/M6: 'operacao' agora é LISTA. Normaliza string|string[]|undefined → string[].
+  // Conjunto vazio === "Todas as operações" (sem filtro). Só os 2 gráficos abaixo reagem.
+  const operacoes = ([] as string[]).concat(sp.operacao ?? [])
   const db = await getServerClient()
 
   const [
@@ -42,7 +44,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
-    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18, p_operacao: operacao }),
+    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18, p_operacoes: operacoes.length ? operacoes : null }),
     db.rpc('get_vendas_em_aberto_weddings', { p_limite: 50, p_offset: 0 }),
     db.rpc('get_operacoes_lista_weddings'),
     // Vendas com Receita Negativa: exibe histórico completo (ADR-0053)
@@ -55,6 +57,15 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const vendasAberto  = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto_weddings')
   const operacoesList = unwrapRpc<OperacoesLista>(operacoesRes, 'get_operacoes_lista_weddings') ?? [] as OperacoesLista
   const prejuizos     = unwrapRpc<VendasReceitaNegativa>(prejRes, 'get_vendas_prejuizo_weddings')
+
+  // v4.19/M6: rótulo dos 2 gráficos — nome único quando 1 op, "N operações" quando >1,
+  // undefined quando 0 (Todas → sem sufixo no título).
+  const nomeExibido = (op: string) =>
+    operacoesList.find(o => o.operacao === op)?.label.split(' - ')[1] ?? op
+  const operacaoLabel =
+    operacoes.length === 0 ? undefined
+    : operacoes.length === 1 ? nomeExibido(operacoes[0])
+    : `${operacoes.length} operações`
 
   return (
     <div className="max-w-7xl mx-auto px-6">
@@ -108,15 +119,15 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           <Suspense>
             <DropdownOperacao
               operacoes={operacoesList}
-              operacaoAtiva={operacao}
+              selecionadas={operacoes}
             />
           </Suspense>
         </div>
 
-        <FluxoCaixaMensal data={acumulado} operacaoLabel={operacoesList.find(o => o.operacao === operacao)?.label.split(' - ')[1] ?? undefined} />
+        <FluxoCaixaMensal data={acumulado} operacaoLabel={operacaoLabel} />
 
         <div className="mt-6">
-          <AcumuladoRecebPagChart data={acumulado} operacaoLabel={operacoesList.find(o => o.operacao === operacao)?.label.split(' - ')[1] ?? undefined} />
+          <AcumuladoRecebPagChart data={acumulado} operacaoLabel={operacaoLabel} />
         </div>
 
       </TopSection>
