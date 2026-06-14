@@ -39,6 +39,13 @@
   --action-soft:        #EAE6DD;           /* fundo da pill primária (= --brand-soft do group) */
   --action-soft-border: #75777B;           /* borda (= --brand do group / Cool Gray 9) */
   --action-soft-fg:     #4B4F54;           /* texto (= --brand-deep do group) */
+  /* AÇÃO ADMINISTRATIVA (gestão) — botões de supervisão em telas de plataforma        */
+  /* (Ver todas / Gerenciar solicitações), só para admin. Família Amber do sistema,    */
+  /* DISTINTA do --warning (status Pendente) e do dourado Weddings: se o warning mudar  */
+  /* de tom, a gestão NÃO muda junto. Passa contraste. (ADR-0103 ext., v4.18.0)         */
+  --gestao:       #BA7517;                 /* borda/realce âmbar de gestão */
+  --gestao-soft:  #FAEEDA;                 /* fundo suave */
+  --gestao-fg:    #633806;                 /* texto (contraste forte sobre o fundo suave) */
 
   /* Fluxo de Caixa — paleta dessaturada (ADR-0081) */
   /* Verdes: entradas e saldos positivos */

@@ -140,6 +140,26 @@ export async function resetarSenha(userId: string): Promise<ResultadoSenha> {
 }
 
 /**
+ * Edita o NOME de um usuário (v4.18/M4). Capacidade nova: cliente de SESSÃO chama
+ * admin_atualizar_nome (o banco revalida admin/acessos do CHAMADOR). Nome vazio é
+ * rejeitado no cliente E no banco. Não toca acesso/role/ativo (sem anti-lockout).
+ */
+export async function atualizarNome(userId: string, nome: string): Promise<ResultadoAcao> {
+  await requireAreaAction('admin/acessos')
+  const limpo = nome.trim()
+  if (!limpo) return { ok: false, erro: 'Informe um nome.' }
+  try {
+    const supabase = await getServerClient()
+    const { error } = await supabase.rpc('admin_atualizar_nome', { p_user_id: userId, p_nome: limpo })
+    if (error) return { ok: false, erro: traduzirErro(error.message) }
+    revalidatePath('/admin/acessos')
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, erro: comoErro(err) }
+  }
+}
+
+/**
  * Aprova uma solicitação de acesso: cria o usuário (senha provisória) e marca a
  * solicitação como aprovada. Devolve a senha provisória para repassar.
  */

@@ -32,6 +32,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.18.0',
+    data: '2026-06-14T18:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'A administração de usuários ficou mais clara: o status de cada pessoa aparece em destaque (Ativo/Pendente), passou a ser possível editar o nome de um usuário, e o último acesso agora mostra data e hora.' },
+      { tipo: 'melhoria', texto: 'O acompanhamento de solicitações foi reorganizado: a Caixa de entrada agrupa os pedidos por tipo (com filtro Abertas/Concluídas), e Minhas solicitações organiza por situação (Abertas/Concluídas/Rejeitadas). Pedidos cancelados ficam preservados e identificados.' },
+      { tipo: 'novidade', texto: 'O histórico passou a registrar quem concluiu/decidiu cada pedido e quando — base para relatórios futuros de solicitações. Administradores ganharam uma visão de supervisão ("Ver todas") para acompanhar tudo.' },
+    ],
+  },
+  {
     versao: '4.17.1',
     data: '2026-06-13T23:55',
     itens: [

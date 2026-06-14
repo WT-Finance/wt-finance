@@ -75,6 +75,8 @@ export default async function AcessosPage() {
     status:      (typeof s.status === 'string' && STATUS_OK.has(s.status) ? s.status : 'pendente') as SolicitacaoAdmin['status'],
     criado_em:   typeof s.criado_em === 'string' ? s.criado_em : null,
     decidido_em: typeof s.decidido_em === 'string' ? s.decidido_em : null,
+    decidido_por_rotulo: typeof s.decidido_por_rotulo === 'string' ? s.decidido_por_rotulo : null,
+    observacao:          typeof s.observacao === 'string' ? s.observacao : null,
   })).filter(s => s.id !== 0)
 
   return (

@@ -587,6 +587,7 @@ export interface Database {
       admin_atualizar_role:          { Args: { p_role_id: number; p_nome: string; p_descricao: string; p_permissoes: string[] }; Returns: Json }
       admin_excluir_role:            { Args: { p_role_id: number }; Returns: Json }
       admin_atribuir_role:           { Args: { p_user_id: string; p_role_id: number }; Returns: Json }
+      admin_atualizar_nome:          { Args: { p_user_id: string; p_nome: string }; Returns: Json }
       admin_registrar_usuario:       { Args: { p_user_id: string; p_email: string; p_nome: string | null; p_role_id: number }; Returns: Json }
       admin_marcar_trocar_senha:     { Args: { p_user_id: string }; Returns: Json }
       admin_listar_solicitacoes:     { Args: Record<string, never>; Returns: Json }

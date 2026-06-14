@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Checkbox from '@/components/ui/checkbox'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
 
 // Demos ao vivo da seção "11. Plataforma" do Design System (v4.14.3). Client component
 // (como o ChartShowcase) porque o Checkbox e o exemplo de foco são interativos. Usa os
@@ -47,6 +47,21 @@ export default function PlataformaShowcase() {
           Ativa = <code className="bg-zinc-100 px-1 rounded">--action-soft</code> (#EAE6DD) /
           borda <code className="bg-zinc-100 px-1 rounded">--action-soft-border</code> /
           texto <code className="bg-zinc-100 px-1 rounded">--action-soft-fg</code>. Nunca <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>.
+        </p>
+      </Bloco>
+
+      {/* 2b. Ação administrativa (gestão) — âmbar, distinto do warning */}
+      <Bloco titulo="Ação administrativa (gestão) — âmbar de supervisão, só admin (Ver todas / Gerenciar solicitações)">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={`${PILL} ${PILL_GESTAO}`} style={PILL_GESTAO_STYLE}>Ver todas</button>
+          <button type="button" className={`${PILL} ${PILL_GESTAO}`} style={PILL_GESTAO_STYLE}>Gerenciar solicitações</button>
+        </div>
+        <p className="text-[11px] text-zinc-400 mt-2">
+          Token <code className="bg-zinc-100 px-1 rounded">--gestao-soft</code> (#FAEEDA) /
+          borda <code className="bg-zinc-100 px-1 rounded">--gestao</code> (#BA7517) /
+          texto <code className="bg-zinc-100 px-1 rounded">--gestao-fg</code> (#633806).
+          Família Amber, mas <strong>distinto do <code className="bg-zinc-100 px-1 rounded">--warning</code></strong> (status
+          Pendente) e do dourado Weddings — se o warning mudar de tom, a gestão não muda junto. (ADR-0103 ext., v4.18.0)
         </p>
       </Bloco>
 

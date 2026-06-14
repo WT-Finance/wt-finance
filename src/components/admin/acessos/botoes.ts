@@ -24,3 +24,13 @@ export const PILL_PRIMARIA_STYLE: CSSProperties = {
   borderColor: 'var(--action-soft-border)',
   color:       'var(--action-soft-fg)',
 }
+
+/** Gestão / ação administrativa — âmbar de supervisão (Ver todas / Gerenciar solicitações),
+ *  só para admin. Token --gestao (DISTINTO do --warning/status e do dourado Weddings).
+ *  Use junto com PILL_GESTAO_STYLE. (ADR-0103 ext., v4.18.0) */
+export const PILL_GESTAO = 'hover:brightness-95'
+export const PILL_GESTAO_STYLE: CSSProperties = {
+  background:  'var(--gestao-soft)',
+  borderColor: 'var(--gestao)',
+  color:       'var(--gestao-fg)',
+}

@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2 } from 'lucide-react'
 import { arquivarTipo, excluirTipo } from '@/app/admin/solicitacoes/actions'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
 import ModalCentral from '@/components/shared/modal-central'
 import { EditorTipo } from './editor-tipo'
 
@@ -73,21 +74,25 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
 
   return (
     <>
+      {/* Ações da página (v4.18): "Ver solicitações" (âmbar --gestao, volta à página
+          Solicitações) à esquerda; "Novo tipo" FORA do box, à direita (padrão das demais páginas). */}
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <Link href="/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
+          <ArrowLeft size={13} /> Ver solicitações
+        </Link>
+        <button
+          type="button"
+          onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}
+          className={`${PILL} ${PILL_PRIMARIA} whitespace-nowrap`}
+          style={PILL_PRIMARIA_STYLE}
+        >
+          <Plus size={13} /> Novo tipo
+        </button>
+      </div>
+
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
 
-      <CardTabela
-        titulo="Tipos"
-        headerRight={
-          <button
-            type="button"
-            onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}
-            className={`${PILL} ${PILL_PRIMARIA}`}
-            style={PILL_PRIMARIA_STYLE}
-          >
-            + Novo tipo
-          </button>
-        }
-      >
+      <CardTabela titulo="Tipos">
         {/* overflow-x-auto evita clipping das ações em telas estreitas (min-w-160 = 640px garante ≥128px úteis para Nome) */}
         <div className="overflow-x-auto">
           <table className="w-full min-w-160 table-fixed text-sm">

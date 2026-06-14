@@ -105,9 +105,44 @@ export const parseLocalDate = (iso: string): Date => {
   return new Date(y, (m ?? 1) - 1, d ?? 1)
 }
 
-/** Converte 'yyyy-MM-ddTHH:MM' para 'dd de mês de AAAA, às HHhMMmin' (ex: 05 de jun de 2026, às 17h53min).
- *  Sem componente de hora, devolve só a data (formato médio). Parse por split — sem fuso. */
+// ── Data/hora no fuso de SÃO PAULO (a partir de timestamptz UTC do banco) ──────
+// Timestamps do banco (last_sign_in_at, decidido_em, criado_em…) são UTC. Exibir por
+// SPLIT de string mostra a hora UTC e pode ERRAR O DIA perto da meia-noite. Para
+// timestamptz, SEMPRE converter via Intl + timeZone (formatadores cacheados abaixo).
+const FMT_SP_DATA = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric',
+})
+const FMT_SP_HORA = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false,
+})
+/** Tem marcador de fuso (Z ou ±HH:MM)? → é timestamptz UTC, não datetime local ingênuo. */
+const temFuso = (iso: string): boolean => /[zZ]$|[+-]\d{2}:?\d{2}$/.test(iso)
+
+/** timestamptz (UTC) → 'DD/MM/AAAA' no fuso de São Paulo. */
+export const fmtDataSP = (iso: string | null): string => {
+  if (!iso) return '—'
+  const dt = new Date(iso)
+  return isNaN(dt.getTime()) ? '—' : FMT_SP_DATA.format(dt)
+}
+
+/** timestamptz (UTC) → 'DD/MM/AAAA às HH:MM' no fuso de São Paulo. */
+export const fmtDataHoraSP = (iso: string | null): string => {
+  if (!iso) return '—'
+  const dt = new Date(iso)
+  return isNaN(dt.getTime()) ? '—' : `${FMT_SP_DATA.format(dt)} às ${FMT_SP_HORA.format(dt)}`
+}
+
+/** 'dd de mês de AAAA, às HHhMMmin' (ex: 05 de jun de 2026, às 17h53min).
+ *  Se o ISO tem fuso (timestamptz UTC), converte ao fuso de São Paulo; se é ingênuo
+ *  (sem fuso — ex.: datas locais do CHANGELOG_DIRETORIA), exibe como está (sem deslocar). */
 export const fmtDataHora = (iso: string): string => {
+  if (temFuso(iso)) {
+    const dt = new Date(iso)
+    if (!isNaN(dt.getTime())) {
+      const [d, m, y] = FMT_SP_DATA.format(dt).split('/')
+      return `${d} de ${MESES_COMPACTOS[parseInt(m, 10) - 1]} de ${y}, às ${FMT_SP_HORA.format(dt).replace(':', 'h')}min`
+    }
+  }
   const [data, hora] = iso.split('T')
   const [y, m, d] = data.split('-')
   const dataFmt = `${d} de ${MESES_COMPACTOS[parseInt(m, 10) - 1]} de ${y}`
