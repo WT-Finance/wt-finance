@@ -64,17 +64,33 @@ O CLI não está instalado globalmente — sempre `npx supabase ...`, nunca `sup
 ### ⚠️ Produção direta, sem staging
 `--linked` aplica no banco de PRODUÇÃO (não há ambiente de staging separado; só
 existe `.env.local`). Uma migration ruim vai direto para produção, sem rede de proteção.
+Branching do Supabase foi avaliado e **descartado** (investigação 2026-06-13): o branch
+efêmero nasce sem dado de produção — pega erro de schema, **não** perda de dado (que é o
+nosso risco real: `dim_data` range fixo, timeout 3s, N+1 por volume), e a promoção no merge
+roda direto em prod sem re-validação. `supabase start` local depende de Docker, ausente no
+WSL2. A rede que cobre o risco que dói é o **backup-gate** (ver abaixo).
 
-**Regra (default):** preparar a migration livremente, mas **PEDIR CONFIRMAÇÃO ao usuário antes
-de aplicar (`db push`)**. A confirmação é a única barreira contra estrago irreversível.
+**Migration ADITIVA / retrocompatível** (CREATE, ADD COLUMN anulável, RPC nova, índice,
+GRANT/REVOKE, validação que só acrescenta a `erros`) — **regime autônomo: aplica SEM
+confirmação**, sob as duas âncoras:
+1. **Backup lógico do dia com restore testado ANTES da 1ª migration**
+   (`~/wt-finance-backups/AAAA-MM-DD-pre-vX/`, via `exportar.mjs`/`restaurar.mjs`).
+2. **Declaração prévia no header da migration:** o que faz, que é aditiva/retrocompatível
+   com a `main` viva, que não escreve em dados pré-existentes.
+(Ratificado 2026-06-13; prática das v4.15–v4.17.)
 
-**Âncora ratificada (2026-06-13) — regime autônomo:** quando o prompt da versão concede
-autonomia para aplicar migrations sem confirmação, a barreira passa a ser **(1) backup
-lógico do dia com restore testado ANTES da 1ª migration** (`~/wt-finance-backups/AAAA-MM-DD-pre-vX/`,
-via `exportar.mjs`/`restaurar.mjs`) **+ (2) declaração prévia no plano da missão** (no header da
-própria migration: o que faz, que é aditiva/retrocompatível, que não escreve em dados
-pré-existentes). Toda operação de **escrita ou destrutiva contra produção** exige as duas. Sem
-autonomia explícita, vale a confirmação. (v4.17.0.)
+**Migration DESTRUTIVA** (`DROP`, `TRUNCATE`, `ALTER` que remove/reescreve coluna ou dado,
+`UPDATE`/`DELETE` em dado existente) — **continua exigindo CONFIRMAÇÃO do usuário antes do
+`db push`**, além das duas âncoras acima. É a última barreira humana, e ela existe porque o
+backup-gate automático **ainda não foi construído**. Verificar **consumidores reais** antes de
+remover qualquer objeto: "órfão" pelo briefing pode ter uso vivo não-óbvio — ex.: a v4.17.1
+ia dropar `truncate_dynamic_tables`/`inserir_lote_raw` e a auto-auditoria achou o `npm run seed`
+consumindo-as; só `admin_definir_usuario_ativo` era de fato órfã.
+
+> **Quando o backup-gate existir** (backup + restore-test automático rodando como gate pré-`db push`,
+> ferramentas `exportar.mjs`/`restaurar.mjs` já prontas — falta scriptar; candidato de processo):
+> a confirmação de migration destrutiva é **substituída** por backup-gate verde + declaração prévia,
+> e o Code passa a aplicar destrutivas em autonomia também. Até lá, destrutiva = confirmação.
 
 Ao testar escrita em produção (ex.: commit de import), usar dados com nomes distintos
 e deletar logo em seguida.
@@ -131,6 +147,7 @@ Login obrigatório (Supabase Auth). **Método primário = e-mail + SENHA** (v4.1
 - RPCs: sempre `SECURITY DEFINER` + `REVOKE EXECUTE ... FROM PUBLIC` + `GRANT EXECUTE ... TO service_role`.
 - `max_rows = 1000` no PostgREST — limite de payload de RPCs/queries. Considerar em listagens grandes.
 - Subagentes que criam migration recebem o número exato e NÃO aplicam — o orquestrador aplica todas em lote, sequencialmente, depois.
+- **Antes de `DROP` de qualquer objeto, verificar consumidores reais** (grep no app **e** em `supabase/seed/`, mais auditoria cética). Classificação de "órfão" vinda do briefing não basta — ela errou na v4.17.1 (`truncate_dynamic_tables`/`inserir_lote_raw` pareciam soltas mas o `npm run seed` as usa; ficaram, marcadas seed-only). DROP é destrutivo: confirmação + reversibilidade documentada (corpo na migration de origem).
 
 ### Verificação pós-push
 Testar as RPCs novas via REST com a service role key antes de considerar pronto:
@@ -139,6 +156,28 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
   -H "apikey: $SVCKEY" -H "Authorization: Bearer $SVCKEY" \
   -H "Content-Type: application/json" -d '{...}'
 ```
+
+---
+
+## Regime de trabalho (default: autônomo)
+
+O **regime autônomo é o padrão** deste projeto (validado v4.13–v4.17). Dentro do escopo do
+briefing/prompt da versão, trabalha-se com **autonomia técnica total**: decisões técnicas
+(modelo de dados, organização de código, caminho de implementação) são do Claude Code;
+migrations aplicam-se **sem confirmação** sob as âncoras abaixo; não se pergunta o operacional.
+O que muda de versão para versão é a **fronteira de produto**, que o prompt define.
+
+Três coisas são invariantes e **não** dependem do prompt afrouxar:
+- **Auto-auditoria adversarial antes de declarar concluído.** É o que pega o "dado errado
+  parecendo certo" — incluindo erros do próprio briefing (ex.: a v4.17.1 descobriu que RPCs
+  que o briefing mandava dropar tinham consumidor vivo no `seed`; a auto-auditoria da v4.16.0
+  pegou o vazamento de permissão da 0129). Verificar a realidade contra o prompt; divergiu, **parar**.
+- **Merge humano é a única fronteira de entrada em produção.** O Code nunca mergeia nem deploya.
+- **Decisão de produto é do usuário.** Na dúvida se algo é técnico ou de produto, **é produto**:
+  registrar/perguntar, não decidir.
+
+**Checkpoints** (parar no meio e aguardar) são a exceção, pedidos explicitamente pelo prompt —
+ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de todas as missões.
 
 ---
 
@@ -216,7 +255,7 @@ Sem os symlinks e o `.temp/`, faltam `node_modules`, `.env.local` e o link do Su
 Tudo numa branch só → não há merge entre worktrees.
 ```bash
 npx tsc --noEmit && npx next build      # valida o conjunto
-# aplicar migrations em lote (com confirmação do usuário)
+# aplicar migrations em lote (aditivas sem confirmação sob as âncoras; destrutivas pedem confirmação)
 git add <arquivos da missão>            # commits específicos, um por missão
 git commit -m "feat(vX-Y-mN): ..."
 git push origin feat/vX-Y
@@ -279,7 +318,7 @@ Uma versão está pronta quando:
 - [ ] `npm run lint` sem warnings novos
 - [ ] `npm test` verde (unit dos helpers + contrato das RPCs críticas) — ADR-0105
 - [ ] Smoke tests das áreas afetadas passando
-- [ ] Migrations aplicadas no remote (com confirmação) e RPCs verificadas via REST
+- [ ] Migrations aplicadas no remote (aditivas sob âncora backup+declaração; destrutivas com confirmação) e RPCs verificadas via REST
 - [ ] ADRs novos registrados (numeração real verificada)
 - [ ] `CHANGELOG.md` com entrada da versão
 - [ ] Entrada da versão no `CHANGELOG_DIRETORIA` (`src/data/changelog-diretoria.ts`), em linguagem de negócio
@@ -293,11 +332,17 @@ Uma versão está pronta quando:
 
 ## Salvaguardas (o que NÃO fazer)
 
-- **Não aplicar migration** (`db push`) sem confirmação do usuário — é produção direta.
-- **Não fazer merge** de PR. **Não fazer deploy** (Vercel é automático no merge).
-- **Não expandir escopo** além do briefing da versão.
-- **Subagentes não rodam git/build/banco/servidor** — só editam arquivos.
+**Barreiras duras (nunca, independentemente do prompt):**
+- **Não fazer merge** de PR. **Não fazer deploy** (Vercel é automático no merge). Merge humano é a única fronteira.
+- **Não aplicar migration DESTRUTIVA** (`DROP`/`TRUNCATE`/`ALTER` que remove ou reescreve coluna/dado; `UPDATE`/`DELETE` em dado existente) **sem confirmação do usuário** — é produção direta, sem staging, e o backup-gate automático ainda não existe. (Migration **aditiva/retrocompatível** roda em autonomia sob as âncoras backup-do-dia + declaração prévia — ver "Banco de dados".)
+- **Não pular a auto-auditoria adversarial** antes de declarar concluído — é o que pega o "dado errado parecendo certo", inclusive erros do briefing.
+- **Subagentes não rodam git/build/banco/servidor** — só editam arquivos (race no índice git, banco e portas).
+- **Não decidir produto.** Item de fronteira de produto para e pergunta; na dúvida, é produto.
+
+**Disciplina (regra do projeto):**
+- **Não expandir escopo** além do briefing da versão — achado novo vira registro no out-briefing, não implementação no meio.
+- **Verificar consumidores reais antes de remover** qualquer objeto (RPC/rota/lib) — "órfão" pelo briefing pode ter uso vivo (precedente: `seed` na v4.17.1).
 - **Não remover worktree** com trabalho não-merjado.
 - **Não usar `git add -A` cego** — adicionar arquivos específicos por missão.
-- **Não confiar na numeração de ADR do briefing** — verificar `docs/adr/` real.
+- **Não confiar na numeração de ADR/migration do briefing** — verificar `docs/adr/` e `supabase/migrations/` reais.
 - **Não adicionar escopo a um PR/versão já mergeado.** Addendum pedido depois do merge do PR de origem vira **patch novo** (branch, PR e número de versão próprios), nunca commit tardio no escopo já fechado. (Precedente: v4.14.2 — ajustes pedidos "para fechar a 4.14.1" já mergeada foram para PR/versão próprios.)
