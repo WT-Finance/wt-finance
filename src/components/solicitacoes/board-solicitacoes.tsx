@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { Loader2, AlertTriangle, Eye, ClipboardList } from 'lucide-react'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
+import { Loader2, AlertTriangle } from 'lucide-react'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
 import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
@@ -21,22 +19,16 @@ const ENCERRADA_INFO: Record<string, { rotulo: string; cor: string }> = {
   cancelada: { rotulo: 'Cancelada pelo solicitante', cor: 'text-zinc-500' },
 }
 
-export default function BoardSolicitacoes({ solicitacoes, escopo, podeGestao, onAbrir }: {
-  solicitacoes: Solicitacao[]; escopo: Escopo; podeGestao: boolean; onAbrir: (s: Solicitacao) => void
+export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
+  solicitacoes: Solicitacao[]; escopo: Escopo; onAbrir: (s: Solicitacao) => void
 }) {
-  const router = useRouter(); const pathname = usePathname(); const sp = useSearchParams()
   const [concluindo, setConcluindo] = useState<number | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
-  // v4.18/M6 — filtro de STATUS (substitui os antigos filtros de visão "mim e minha
-  // permissão / só a mim"). O usuário SEMPRE vê mim + minha permissão (escopo mim_e_role);
-  // "Ver todas" (gestão) é um modo separado. Default: Abertas.
+  // v4.18/M6 — filtro de STATUS (substitui os antigos filtros de visão). O usuário SEMPRE
+  // vê mim + minha permissão; "Ver todas" (gestão, escopo=todas) fica na linha das abas.
   const [filtro, setFiltro] = useState<FiltroStatus>('abertas')
 
   const supervisao = escopo === 'todas'   // modo "Ver todas" (gestão) ativo
-  function setEscopo(e: Escopo) {
-    const p = new URLSearchParams(sp.toString()); p.set('escopo', e); p.set('view', 'caixa')
-    router.push(`${pathname}?${p.toString()}`)
-  }
 
   async function concluir(id: number, e: React.MouseEvent) {
     e.stopPropagation(); setMsg(null); setConcluindo(id)
@@ -61,37 +53,23 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, podeGestao, on
     <div>
       {msg && <FaixaMensagem tipo="erro" texto={msg} onFechar={() => setMsg(null)} />}
 
-      {/* Barra: filtro de STATUS (esquerda) · controles de GESTÃO em âmbar, só admin (direita). */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex gap-2">
-          {(['abertas', 'concluidas'] as FiltroStatus[]).map(f => (
-            <button key={f} type="button" onClick={() => setFiltro(f)}
-              className={`${PILL} ${filtro === f ? PILL_PRIMARIA : PILL_NEUTRO}`}
-              style={filtro === f ? PILL_PRIMARIA_STYLE : undefined}>
-              {f === 'abertas' ? 'Abertas' : 'Concluídas'}
-            </button>
-          ))}
-        </div>
-        {podeGestao && (
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setEscopo(supervisao ? 'mim_e_role' : 'todas')}
-              className={`${PILL} ${PILL_GESTAO}`} style={PILL_GESTAO_STYLE}
-              title="Visão de supervisão: todas as solicitações do sistema">
-              <Eye size={13} /> {supervisao ? 'Minha caixa' : 'Ver todas'}
-            </button>
-            <Link href="/admin/solicitacoes" className={`${PILL} ${PILL_GESTAO}`} style={PILL_GESTAO_STYLE}>
-              <ClipboardList size={13} /> Gerenciar solicitações
-            </Link>
-          </div>
-        )}
-      </div>
-
       {supervisao && (
         <p className="mb-3 rounded-lg border px-3 py-1.5 text-xs"
           style={{ background: 'var(--gestao-soft)', borderColor: 'var(--gestao)', color: 'var(--gestao-fg)' }}>
-          Modo supervisão — todas as solicitações do sistema. Use «Minha caixa» para voltar à sua visão.
+          Modo supervisão — todas as solicitações do sistema. Use «Minha caixa» (acima) para voltar à sua visão.
         </p>
       )}
+
+      {/* Filtro de STATUS: Abertas / Concluídas. */}
+      <div className="flex gap-2 mb-4">
+        {(['abertas', 'concluidas'] as FiltroStatus[]).map(f => (
+          <button key={f} type="button" onClick={() => setFiltro(f)}
+            className={`${PILL} ${filtro === f ? PILL_PRIMARIA : PILL_NEUTRO}`}
+            style={filtro === f ? PILL_PRIMARIA_STYLE : undefined}>
+            {f === 'abertas' ? 'Abertas' : 'Concluídas'}
+          </button>
+        ))}
+      </div>
 
       {tipos.length === 0 ? (
         <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-10 text-center text-sm text-zinc-400">{vazio}</p>
@@ -127,9 +105,6 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
   const venc = vencida(s.data_limite, s.status)
   const enc = ENCERRADA_INFO[s.status]
   return (
-    // card-clicavel-neutra: variante de plataforma do card-clicavel (ADR-0103 ext. v4.14.1).
-    // role=button + tabIndex + onKeyDown p/ teclado; guard e.target !== e.currentTarget evita
-    // que Enter no botão "Concluir" interno borbulhe e abra o drawer junto.
     <div
       role="button"
       tabIndex={0}
@@ -145,7 +120,6 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
             {concluindo && <Loader2 size={10} className="animate-spin" />}
           </button>
         ) : (
-          // Encerrada: sem círculo de concluir (leitura). Espaçador alinha com as abertas.
           <span className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
