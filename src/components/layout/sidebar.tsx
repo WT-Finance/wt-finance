@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, Palette, Inbox, ClipboardList, LogOut } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Users, Palette, Inbox, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -57,7 +57,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, sempre: true },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
-  { href: '/admin/solicitacoes',   label: 'Tipos de solicitação', Icon: ClipboardList, area: 'solicitacoes'       },
+  // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
+  // "Gerenciar solicitações" dentro de Solicitações (só admin). Rota /admin/solicitacoes intacta.
   { href: '/admin/design-system',  label: 'Design System',      Icon: Palette,       area: 'admin/design-system'  },
 ]
 
@@ -427,8 +428,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
               />
               {label}
               {href === '/solicitacoes' && (usuario.pendenciasSolicitacoes ?? 0) > 0 && (
-                <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-semibold"
-                  style={{ background: 'var(--action-primary)', color: 'var(--action-primary-fg)' }}>
+                <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger px-1.5 text-[10px] font-semibold text-white">
                   {usuario.pendenciasSolicitacoes}
                 </span>
               )}
