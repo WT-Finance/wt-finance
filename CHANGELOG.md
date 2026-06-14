@@ -6,6 +6,31 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.18.0] — 2026-06-14
+
+Versão MINOR: **reformulação do módulo de Solicitações + refino de Usuários/Acessos** (triagem dos ajustes pós-produção). Migrations 0138/0139 (aditivas, via backup-gate). Sem mudança no Fluxo de Caixa (dormente).
+
+### Usuários e Acessos (M1, M4)
+- **Editar nome de usuário** (capacidade nova): RPC `admin_atualizar_nome` (migration 0138, SECURITY DEFINER + `exigir_acesso`; nome vazio rejeitado) + ação + modal de edição. Reflete na tabela e na sidebar.
+- Tabela redisposta: **badges semânticas** (verde `success` Ativo / âmbar `warning` Pendente; "Aguardando 1º acesso" → **Pendente**); **Último acesso com data+hora** no fuso de São Paulo; **ações da linha em ícone** (Editar / Redefinir senha / Excluir).
+- **Ação primária na linha das pills** (à direita): "Criar usuário" e "Nova permissão" saem de dentro do box.
+- Aba "Solicitações" → **"Solicitações de acesso"**; histórico mais informativo (badge vira texto: "Aprovada/Rejeitada em DD/MM/AAAA às HH:MM por <quem>" + motivo se rejeitada) via `admin_listar_solicitacoes` estendida (migration 0139).
+
+### Solicitações (M6, M7)
+- **Caixa de entrada** (destinatário): colunas por **TIPO**; filtro de status **Abertas / Concluídas** (substitui os filtros de visão antigos — o usuário sempre vê mim + minha permissão); **Concluídas** inclui as canceladas-pelo-originador com a marca "Cancelada pelo solicitante" (dado permanece `status=cancelada`). Controles de gestão em **âmbar, só admin**: "Ver todas" (supervisão) e "Gerenciar solicitações". Abas reordenadas (Caixa primeiro + default); "Nova solicitação" na linha das abas.
+- **Minhas solicitações** (originador): colunas por **STATUS** (Abertas / Concluídas / Rejeitadas) sob o filtro **Ativas / Canceladas**; a coluna Concluídas mostra **quem concluiu e quando** (insumo do relatório futuro).
+
+### Fuso e Design System (M2, M3, M5)
+- **Datas no fuso de São Paulo** (`fmtDataSP`/`fmtDataHoraSP` via `Intl` + `timeZone`); `fmtDataHora` corrigido (não mostra mais hora UTC para timestamptz; ingênuo do CHANGELOG inalterado).
+- **Token de ação administrativa** `--gestao` (âmbar, distinto do `--warning`) + `PILL_GESTAO`, documentado no Design System e na extensão do ADR-0103.
+- Sidebar: badge de pendências em **vermelho**; "Tipos de solicitação" sai da sidebar (acessível por "Gerenciar solicitações").
+
+### Banco
+- Migration **0138** (`admin_atualizar_nome`) e **0139** (`admin_listar_solicitacoes` + decisor/motivo). Aditivas, aplicadas via `db:migrate`.
+
+### ADRs
+- **0117** — Solicitações: eixo de coluna por contexto (Caixa por tipo, Minhas por status) + token de gestão (ext. ADR-0103) + fuso SP nas datas.
+
 ## [4.17.1] — 2026-06-13
 
 Versão PATCH: **aposentadoria da fase 2 da F2-real** (executada após a 2ª carga real de Vendas confirmada por Yan). Remoção de código morto + uma RPC órfã. Migration 0137 (drop de função órfã, sem tocar dados).
