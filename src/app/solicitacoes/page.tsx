@@ -10,7 +10,9 @@ export default async function SolicitacoesPage({ searchParams }: { searchParams:
   // Qualquer autenticado e ativo (areasDaRota('/solicitacoes') = null).
   const sessao = await requireArea(null)
   const sp = await searchParams
-  const view: 'minhas' | 'caixa' = sp.view === 'caixa' ? 'caixa' : 'minhas'
+  // v4.18/M6 — Caixa de entrada é a aba primeira e o DEFAULT (reformulação centrada na
+  // fila de trabalho do destinatário); Minhas só quando pedida explicitamente.
+  const view: 'minhas' | 'caixa' = sp.view === 'minhas' ? 'minhas' : 'caixa'
   const escopoReq = (['mim_e_role', 'so_mim', 'todas'].includes(sp.escopo ?? '') ? sp.escopo : 'mim_e_role') as Escopo
   const podeGestao = sessao.permissoes.includes('solicitacoes')
   const escopo: Escopo = escopoReq === 'todas' && !podeGestao ? 'mim_e_role' : escopoReq

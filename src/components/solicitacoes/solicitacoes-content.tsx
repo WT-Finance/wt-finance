@@ -33,39 +33,42 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
 
   return (
     <div className="max-w-5xl mx-auto px-4">
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Solicitações</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">Abra pedidos ao financeiro e acompanhe os atribuídos a você.</p>
-        </div>
-        <button type="button" onClick={() => setNovaAberta(true)} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}><Plus size={14} /> Nova solicitação</button>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-zinc-900">Solicitações</h1>
+        <p className="text-sm text-zinc-400 mt-0.5">Abra pedidos ao financeiro e acompanhe os atribuídos a você.</p>
       </div>
 
-      {/* tablist: semântica de tabs para as duas visões (Minhas / Caixa de entrada) */}
-      <div role="tablist" aria-label="Visões de solicitações" className="flex gap-2 mb-5">
-        <button
-          type="button"
-          role="tab"
-          id="tab-minhas"
-          aria-selected={view === 'minhas'}
-          aria-controls="painel-minhas"
-          onClick={() => setView('minhas')}
-          className={`${PILL} ${view === 'minhas' ? PILL_PRIMARIA : PILL_NEUTRO}`}
-          style={view === 'minhas' ? PILL_PRIMARIA_STYLE : undefined}
-        >
-          Minhas solicitações
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id="tab-caixa"
-          aria-selected={view === 'caixa'}
-          aria-controls="painel-caixa"
-          onClick={() => setView('caixa')}
-          className={`${PILL} ${view === 'caixa' ? PILL_PRIMARIA : PILL_NEUTRO}`}
-          style={view === 'caixa' ? PILL_PRIMARIA_STYLE : undefined}
-        >
-          {pendentes > 0 ? `Caixa de entrada (${pendentes})` : 'Caixa de entrada'}
+      {/* Linha das abas (v4.18/M6): Caixa de entrada PRIMEIRO, Minhas depois; ação primária
+          "Nova solicitação" à direita (padrão de ação primária da plataforma). */}
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div role="tablist" aria-label="Visões de solicitações" className="flex gap-2">
+          <button
+            type="button"
+            role="tab"
+            id="tab-caixa"
+            aria-selected={view === 'caixa'}
+            aria-controls="painel-caixa"
+            onClick={() => setView('caixa')}
+            className={`${PILL} whitespace-nowrap ${view === 'caixa' ? PILL_PRIMARIA : PILL_NEUTRO}`}
+            style={view === 'caixa' ? PILL_PRIMARIA_STYLE : undefined}
+          >
+            {pendentes > 0 ? `Caixa de entrada (${pendentes})` : 'Caixa de entrada'}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-minhas"
+            aria-selected={view === 'minhas'}
+            aria-controls="painel-minhas"
+            onClick={() => setView('minhas')}
+            className={`${PILL} whitespace-nowrap ${view === 'minhas' ? PILL_PRIMARIA : PILL_NEUTRO}`}
+            style={view === 'minhas' ? PILL_PRIMARIA_STYLE : undefined}
+          >
+            Minhas solicitações
+          </button>
+        </div>
+        <button type="button" onClick={() => setNovaAberta(true)} className={`${PILL} ${PILL_PRIMARIA} whitespace-nowrap`} style={PILL_PRIMARIA_STYLE}>
+          <Plus size={14} /> Nova solicitação
         </button>
       </div>
 
