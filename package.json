@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "tsx --tsconfig tsconfig.json supabase/seed/seed.ts"
+    "seed": "tsx --tsconfig tsconfig.json supabase/seed/seed.ts",
+    "db:migrate": "node scripts/db-gate/migrate.mjs",
+    "db:gate": "node scripts/db-gate/gate.mjs"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
