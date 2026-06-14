@@ -51,3 +51,17 @@ nas telas de plataforma antes da hidratação do provider. Por isso essas telas 
 `--focus-ring` (anel de foco neutro), e a utilitária `.foco-neutro` (`globals.css`) para o foco de
 inputs/selects/checkboxes. Tela de plataforma nova **nasce com esses tokens** — nunca `#BD965C` nem
 `var(--brand)`. (v4.14.1: as telas de auth/admin, nascidas fora da identidade, foram trazidas a ela.)
+
+---
+
+## Extensão v4.18.0 — token de AÇÃO ADMINISTRATIVA (gestão)
+
+As telas de plataforma ganharam um token semântico de **ação administrativa** para os botões de
+**gestão/supervisão** (Ver todas / Gerenciar solicitações, só para admin): `--gestao` (#BA7517, borda/realce),
+`--gestao-soft` (#FAEEDA, fundo) e `--gestao-fg` (#633806, texto) — em `tokens.css`, consumidos pela pill
+`PILL_GESTAO`/`PILL_GESTAO_STYLE` (`botoes.ts`) e documentados em `/admin/design-system`.
+
+É **família Amber, mas DISTINTO do `--warning`** (status "Pendente") — embora visualmente próximos, são
+papéis diferentes: `--warning` é STATUS (semáforo), `--gestao` é AÇÃO administrativa. Mantê-los separados
+garante que, se um dia o `--warning` mudar de tom, os botões de gestão **não mudem junto**. Também distinto
+do dourado de Weddings (`--brand`). Regra inalterada: nenhum hex em componente — sempre via token.
