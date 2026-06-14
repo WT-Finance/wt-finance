@@ -61,7 +61,8 @@ export function EditorTipo({
   function adicionarCampo() {
     setLinhas(prev => [
       ...prev,
-      { _key: novaChave(), rotulo: '', tipo_campo: 'texto_curto', obrigatorio: false, opcoes: null },
+      { _key: novaChave(), rotulo: '', tipo_campo: 'texto_curto', obrigatorio: false, opcoes: null,
+        data_permite_passado: true, data_aviso_dias_futuro: null },
     ])
   }
 
@@ -80,6 +81,14 @@ export function EditorTipo({
         // Ao virar seleção, garantir ≥1 opção; ao deixar de ser, descartar opções.
         if (tipoCampo === 'selecao') {
           return { ...l, tipo_campo: tipoCampo, opcoes: l.opcoes && l.opcoes.length > 0 ? l.opcoes : [''] }
+        }
+        // Ao virar data, semear a config de data (permite passado ON por padrão).
+        if (tipoCampo === 'data') {
+          return {
+            ...l, tipo_campo: tipoCampo, opcoes: null,
+            data_permite_passado:   l.data_permite_passado ?? true,
+            data_aviso_dias_futuro: l.data_aviso_dias_futuro ?? null,
+          }
         }
         return { ...l, tipo_campo: tipoCampo, opcoes: null }
       }),
@@ -146,6 +155,9 @@ export function EditorTipo({
         l.tipo_campo === 'selecao'
           ? (l.opcoes ?? []).map(o => o.trim()).filter(Boolean)
           : null,
+      // Config de data só viaja quando o campo é 'data' (senão default no banco).
+      data_permite_passado:   l.tipo_campo === 'data' ? (l.data_permite_passado ?? true) : true,
+      data_aviso_dias_futuro: l.tipo_campo === 'data' ? (l.data_aviso_dias_futuro ?? null) : null,
       ordem: i,
     }))
 
@@ -270,6 +282,48 @@ export function EditorTipo({
                           >
                             <Plus size={12} /> Adicionar opção
                           </button>
+                        </div>
+                      )}
+
+                      {linha.tipo_campo === 'data' && (
+                        <div className="rounded-lg border border-zinc-100 bg-zinc-50/60 p-2.5">
+                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                            Regra de data
+                          </p>
+                          <div className="flex items-center gap-2 text-sm text-zinc-700">
+                            <Checkbox
+                              id={`data-passado-${linha._key}`}
+                              checked={linha.data_permite_passado ?? true}
+                              onChange={b => atualizarCampo(linha._key, { data_permite_passado: b })}
+                              aria-label="Permitir data anterior a hoje"
+                            />
+                            <label htmlFor={`data-passado-${linha._key}`} className="cursor-pointer">
+                              Permitir data anterior a hoje
+                            </label>
+                          </div>
+                          <div className="mt-2">
+                            <label htmlFor={`data-aviso-${linha._key}`} className="mb-1 block text-xs text-zinc-500">
+                              Avisar se a data estiver a mais de N dias no futuro
+                            </label>
+                            <input
+                              id={`data-aviso-${linha._key}`}
+                              type="number"
+                              min={1}
+                              inputMode="numeric"
+                              value={linha.data_aviso_dias_futuro ?? ''}
+                              onChange={e => {
+                                const n = e.target.value.trim()
+                                const parsed = Number(n)
+                                atualizarCampo(linha._key, {
+                                  data_aviso_dias_futuro:
+                                    n === '' || !Number.isFinite(parsed) ? null : Math.max(1, Math.trunc(parsed)),
+                                })
+                              }}
+                              placeholder="Sem aviso"
+                              aria-label={`Avisar se a data estiver a mais de N dias no futuro (campo ${index + 1})`}
+                              className={`${INPUT_CLASSES} w-40`}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

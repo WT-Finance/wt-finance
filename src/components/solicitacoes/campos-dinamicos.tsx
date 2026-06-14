@@ -2,6 +2,7 @@
 
 import { Paperclip, X } from 'lucide-react'
 import { CAMPO } from '@/lib/ui/campos'
+import { hojeSP } from '@/lib/solicitacoes/format'
 import type { CampoDef } from '@/lib/solicitacoes/schemas'
 
 // Motor de render dinâmico dos campos de um tipo (v4.16.0). Presentational: recebe a
@@ -9,6 +10,14 @@ import type { CampoDef } from '@/lib/solicitacoes/schemas'
 // fonte de verdade da validação (criar_solicitacao) — aqui só HTML5 + marca de obrigatório.
 
 const INPUT = CAMPO
+
+// Diferença em DIAS entre duas datas 'AAAA-MM-DD' (calendário puro, sem fuso).
+// Date.UTC dos componentes nos dois lados → o offset cancela; diff exato em dias inteiros.
+function diasEntre(deISO: string, ateISO: string): number {
+  const [ay, am, ad] = deISO.split('-').map(Number)
+  const [by, bm, bd] = ateISO.split('-').map(Number)
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000)
+}
 
 export interface AnexoLocal { nome: string; enviando?: boolean; erro?: boolean }
 
@@ -42,7 +51,30 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 {(campo.opcoes ?? []).map(op => <option key={op} value={op}>{op}</option>)}
               </select>
             ) : campo.tipo_campo === 'data' ? (
-              <input id={`campo-${id}`} type="date" value={v} onChange={e => onValor(id, e.target.value)} className={INPUT} />
+              (() => {
+                // Espelho client do bloqueio server-side (min) + aviso não-bloqueante (X dias no futuro).
+                const permitePassado = campo.data_permite_passado ?? true
+                const avisoDias = campo.data_aviso_dias_futuro ?? null
+                const hoje = hojeSP()
+                const mostraAviso = !!v && avisoDias != null && diasEntre(hoje, v) > avisoDias
+                return (
+                  <>
+                    <input
+                      id={`campo-${id}`}
+                      type="date"
+                      value={v}
+                      min={permitePassado ? undefined : hoje}
+                      onChange={e => onValor(id, e.target.value)}
+                      className={INPUT}
+                    />
+                    {mostraAviso && (
+                      <p className="mt-1 text-xs text-[var(--gestao-fg)]">
+                        Atenção: a data está a mais de {avisoDias} dias no futuro.
+                      </p>
+                    )}
+                  </>
+                )
+              })()
             ) : campo.tipo_campo === 'numero' || campo.tipo_campo === 'moeda' ? (
               <div className="relative">
                 {campo.tipo_campo === 'moeda' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">R$</span>}
