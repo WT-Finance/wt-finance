@@ -1,13 +1,12 @@
 'use server'
 
 import { randomBytes } from 'node:crypto'
-import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import type {
-  ResultadoAcao, ResultadoLink, ResultadoCriarUsuario, ResultadoSenha,
+  ResultadoAcao, ResultadoCriarUsuario, ResultadoSenha,
 } from '@/components/admin/acessos/tipos'
 
 // v4.13/v4.14 — server actions da administração de acessos. Todas finas: guard de
@@ -42,14 +41,6 @@ function traduzirErro(mensagem: string): string {
 
 function comoErro(err: unknown): string {
   return err instanceof Error ? traduzirErro(err.message) : String(err)
-}
-
-/** Origem pública do request (atrás do proxy da Vercel). */
-async function origemRequest(): Promise<string> {
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
-  const proto = h.get('x-forwarded-proto') ?? 'https'
-  return host ? `${proto}://${host}` : ''
 }
 
 function emailJaRegistrado(mensagem: string): boolean {
@@ -202,29 +193,6 @@ export async function atribuirRole(userId: string, roleId: number): Promise<Resu
   }
 }
 
-export async function definirAtivo(userId: string, ativo: boolean): Promise<ResultadoAcao> {
-  await requireAreaAction('admin/acessos')
-  try {
-    const supabase = await getServerClient()
-    const { error } = await supabase.rpc('admin_definir_usuario_ativo', {
-      p_user_id: userId,
-      p_ativo:   ativo,
-    })
-    if (error) return { ok: false, erro: traduzirErro(error.message) }
-    // Revogação ATIVA ao desativar (defesa em profundidade — achado S11): além de
-    // negar por request (o guard do banco checa `ativo` em toda chamada), encerra
-    // as sessões/refresh tokens vivos do usuário para fechar a janela do JWT já
-    // emitido. Best-effort: a desativação já vale mesmo se o signOut falhar.
-    if (!ativo) {
-      try { await getAdminClient().auth.admin.signOut(userId) } catch { /* já negado por request */ }
-    }
-    revalidatePath('/admin/acessos')
-    return { ok: true }
-  } catch (err) {
-    return { ok: false, erro: comoErro(err) }
-  }
-}
-
 export async function criarRole(input: {
   nome: string
   descricao: string
@@ -281,32 +249,6 @@ export async function excluirRole(id: number): Promise<ResultadoAcao> {
     if (error) return { ok: false, erro: traduzirErro(error.message) }
     revalidatePath('/admin/acessos')
     return { ok: true }
-  } catch (err) {
-    return { ok: false, erro: comoErro(err) }
-  }
-}
-
-/**
- * Re-gera um link de acesso (magic link) sob demanda para um usuário já
- * registrado — para quando o convite original expirou/foi consumido e o admin
- * fechou o modal. NÃO envia e-mail (independe do rate limit do SMTP); devolve o
- * link copiável (válido 24h, uso único — consumido só no POST de /auth/confirm).
- */
-export async function gerarLinkAcesso(email: string): Promise<ResultadoLink> {
-  await requireAreaAction('admin/acessos')
-  try {
-    const origin = await origemRequest()
-    const { data, error } = await getAdminClient().auth.admin.generateLink({
-      type: 'magiclink',
-      email: email.trim().toLowerCase(),
-    })
-    if (error || !data.properties?.hashed_token) {
-      return { ok: false, erro: error?.message ?? 'Não foi possível gerar o link de acesso.' }
-    }
-    return {
-      ok: true,
-      link: `${origin}/auth/confirm?token_hash=${data.properties.hashed_token}&type=magiclink`,
-    }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
   }

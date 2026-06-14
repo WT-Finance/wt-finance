@@ -53,8 +53,3 @@ export type ResultadoCriarUsuario =
 export type ResultadoSenha =
   | { ok: true; senha: string }
   | { ok: false; erro: string }
-
-/** Retorno da geração de link de acesso sob demanda (recuperação/anti-lockout). */
-export type ResultadoLink =
-  | { ok: true; link: string }
-  | { ok: false; erro: string }

@@ -6,6 +6,23 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.17.1] — 2026-06-13
+
+Versão PATCH: **aposentadoria da fase 2 da F2-real** (executada após a 2ª carga real de Vendas confirmada por Yan). Remoção de código morto + uma RPC órfã. Migration 0137 (drop de função órfã, sem tocar dados).
+
+### Removido
+- **Rota servidor vestigial `/api/admin/upload-vendas`** e a lib `src/lib/carga/vendas.ts` (`carregarVendas`/`ResultadoCargaVendas`) — caminho morto desde a v4.15.0 (a UI usa o pipeline atômico via Server Actions; zero chamadores).
+- **Rota órfã `/api/admin/upload-status`** — duplicata da Server Action `getLancamentosStatusAction` (a RPC `get_upload_status` permanece, usada por 3 chamadores vivos).
+- **Código de auth morto:** Server Actions órfãs `gerarLinkAcesso` (gerador de magic link sob demanda, fora da UI no modelo v4.14 de senha provisória) e `definirAtivo`, o helper `origemRequest`, e o tipo `ResultadoLink`.
+- **RPC órfã `admin_definir_usuario_ativo`** (migration 0137, DROP) — sem chamador após remover `definirAtivo`; era a capacidade de (des)ativar usuário no banco, fora da UI desde a v4.14.1. Reversível (corpo preservado na 0119).
+
+### Mantido (decisão v4.17.1, divergindo do briefing após verificação adversarial)
+- `truncate_dynamic_tables` e `inserir_lote_raw` **não foram dropadas**: a auditoria adversarial achou que `npm run seed` (`supabase/seed/seed.ts`) ainda as consome. A exposição de segurança de `truncate_dynamic_tables` já fora fechada na v4.17.0/M1 (REVOKE anon). Migrar o seed ao pipeline atômico ficou para depois (mais risco que valor agora).
+- Recovery trio (`transform_raw_to_analytics`/`regenerar_dim_operacao_weddings`/`refresh_all_materialized_views`) intacta.
+
+### Banco
+- Migration **0137** — `DROP FUNCTION admin_definir_usuario_ativo(uuid, boolean)`. Aplicada.
+
 ## [4.17.0] — 2026-06-13
 
 Versão MINOR: **saneamento técnico** (triagem da auditoria de 2026-06-13). Absorve a fase 2 da F2-real. Migrations 0133–0136 (aditivas, retrocompatíveis; backup do dia com restore testado). Sem mudança de produto.

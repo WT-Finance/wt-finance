@@ -1,12 +1,13 @@
 // Parser ÚNICO de Vendas por Produto — núcleo ISOMÓRFICO (sem 'use client', sem
-// imports de DB/Node). Os dois caminhos de ingestão consomem ESTE módulo:
-//   • UI (/admin/uploads)       → parse-vendas-produto.ts (lê o File no cliente)
-//   • API Route (upload-vendas) → carga/vendas.ts        (lê o Buffer no servidor)
-// Cada caminho só difere em COMO obtém a matriz de células (aoa); a transformação
-// cabeçalho→campo, as conversões e a PARIDADE de colunas (incl. operacao_propria,
-// passageiros, tipo_contrato) vivem aqui, uma vez só.
+// imports de DB/Node). O caminho VIVO de ingestão consome ESTE módulo:
+//   • UI (/admin/uploads) → parse-vendas-produto.ts (lê o File no cliente) → pipeline
+//     atômico (limpar_staging_vendas → inserir_lote_staging → validar → promover).
+// A transformação cabeçalho→campo, as conversões e a PARIDADE de colunas (incl.
+// operacao_propria, passageiros, tipo_contrato) vivem aqui, uma vez só.
+// (A antiga API Route servidor `upload-vendas` + `carga/vendas.ts` foram aposentadas
+// na v4.17.1, fase 2 da F2-real — eram caminho morto desde a v4.15.0.)
 //
-// Por que unificar: dois parsers divergentes já custou caro. A via servidor não
+// Por que parser único: dois parsers divergentes já custou caro. A via servidor não
 // populava operacao_propria — uma carga por ela faria a regeneração da dim achar o
 // vínculo NULL e regredir SILENCIOSAMENTE a correção da v4.9.x (convidados zeram,
 // datas de evento somem, faturamento das operações volta a errar). Um único parser
