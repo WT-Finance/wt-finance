@@ -123,7 +123,10 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
           <span className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-zinc-900 truncate">{s.solicitante_email}</p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-medium text-zinc-900 truncate">{s.solicitante_email}</p>
+            <span className="shrink-0 text-[11px] font-medium tabular-nums text-zinc-400">#{s.id}</span>
+          </div>
           <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
           <div className="mt-1.5 flex items-center justify-between gap-2">
             {aberta ? (

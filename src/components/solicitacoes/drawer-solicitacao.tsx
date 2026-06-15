@@ -98,7 +98,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   const anexosGerais = sol.anexos.filter(a => a.campo_id == null)
 
   return (
-    <ListDrawer titulo={sol.tipo_nome ?? 'Solicitação'} onClose={onClose}>
+    <ListDrawer titulo={sol.tipo_nome ?? 'Solicitação'} subtitulo={`Solicitação #${sol.id}`} onClose={onClose}>
       {erro && <div className="mb-4"><FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} /></div>}
 
       {/* ── Zona 1 — Cabeçalho: status + data-limite (vermelho se vencida) ───────── */}
