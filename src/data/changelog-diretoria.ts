@@ -32,6 +32,16 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.19.0',
+    data: '2026-06-14T21:00',
+    itens: [
+      { tipo: 'novidade', texto: 'Ao montar um tipo de solicitação, os campos de data agora podem exigir uma data válida: dá para impedir que o solicitante escolha uma data já passada e avisá-lo quando a data estiver muito longe no futuro.' },
+      { tipo: 'melhoria', texto: 'A tela de detalhe de uma solicitação ficou mais clara e organizada — informações principais, dados do pedido e anexos em blocos bem separados, com data e hora no horário de Brasília.' },
+      { tipo: 'melhoria', texto: 'Na administração de tipos de solicitação, as ações da lista ficaram mais enxutas (ícones) e a exclusão de um tipo que já tem pedidos fica claramente bloqueada, evitando erro depois do clique.' },
+      { tipo: 'novidade', texto: 'Na análise de Weddings, o filtro por operação passou a permitir selecionar várias operações ao mesmo tempo — os gráficos de fluxo de caixa passam a mostrar o total somado das operações escolhidas.' },
+    ],
+  },
+  {
     versao: '4.18.0',
     data: '2026-06-14T18:00',
     itens: [
