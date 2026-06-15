@@ -17,6 +17,7 @@ import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { verificar, imprimirRelatorio } from './verificar.mjs'
+import { closePool } from './lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO = '/home/yan-wt/projects/wt-finance'
@@ -53,7 +54,8 @@ if (backupDir) {
 // ── verificação ─────────────────────────────────────────────────────────────
 console.log(`→ verificando (restore-test ${mode === 'full' ? 'COMPLETO/follow-up' : 'SPOT subconjunto-chave'}) ...`)
 const t0 = Date.now()
-const res = verificar(backupDir, { mode })
+let res
+try { res = await verificar(backupDir, { mode }) } finally { await closePool() }
 const dur = ((Date.now() - t0) / 1000).toFixed(1)
 imprimirRelatorio(res)
 console.log(`duração da verificação: ${dur}s`)
