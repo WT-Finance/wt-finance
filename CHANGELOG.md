@@ -6,6 +6,22 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.20.0] — 2026-06-15
+
+Versão MINOR: **número de referência por solicitação e auditoria de movimentações navegável.** Sem migration (display + reaproveitamento de RPCs/drawer existentes) e um ajuste de ferramenta (gate worktree-aware). ADR-0120.
+
+### Solicitações — número de referência (#id) (M1)
+- Cada solicitação passa a exibir seu **número** (`#id`, a PK `app.solicitacao.id`) em 3 pontos que não o mostravam: card da **caixa-de-entrada** (gestão), card de **"Minhas solicitações"** e **cabeçalho do drawer** (subtítulo `Solicitação #id`).
+- **Apenas exibição** — o `id` já vinha em todos os payloads. **Sem RPC, sem migration.** Número **cru** (sequencial, com lacunas — como nota fiscal/pedido): não renumera nem materializa coluna contígua.
+
+### Movimentações — reformulação da auditoria (M2, M3, M4)
+- **Visual (M2):** colunas reordenadas para **Usuário · Ação · Solicitação · Quando**; coluna **Detalhe removida**; Solicitação mostra **só o número** (`#id`), não o tipo; nomes de ação em **particípio** (aberta/concluída/rejeitada/cancelada); **badges em tokens semânticos** (não hex): concluída=`success` (verde), rejeitada=`danger` (vermelho), cancelada=`warning` (âmbar, distinto do `--gestao`), aberta=neutra.
+- **Busca e ordenação (M3):** **busca única client-side** sobre **todas as colunas** + **ordenação por cabeçalho de coluna** (Quando desc por padrão), ambas sobre a lista já carregada (`getMovimentacoes`). `Array.sort` estável preserva a ordem da RPC em empates. **Sem RPC nova, sem paginação.**
+- **Linha clicável (M4):** clicar (ou Enter/Espaço) numa linha chama `detalheSolicitacao` (**server action** — `rpc.ts` é server-only) → `getDetalhe` → abre o **`DrawerSolicitacao`** reaproveitável. A **justificativa de rejeição** (que saiu da coluna Detalhe) aparece no drawer. Autorização já resolvida: página gestão-only + `solic_detalhe`/`pode_ver_solic` (gestor vê qualquer).
+
+### Ferramenta — backup-gate worktree-aware (M5)
+- `REPO` no `scripts/db-gate/` deixa de ser hardcoded para a raiz do `main` e resolve o **checkout atual** via `git rev-parse --show-toplevel` (fallback `process.cwd()`); fonte **única** em `lib.mjs` (`gate.mjs`/`migrate.mjs` importam). Rodado de uma worktree, o `db push` agora corre da worktree (enxerga a migration local) e continua funcionando do `main`. **Não afeta o backup-gate** (fala com produção via `SUPABASE_DB_URL`, independente do `REPO`) — só conserta a `cwd` do export/push.
+
 ## [4.19.1] — 2026-06-15
 
 Patch: **auditoria de movimentações das solicitações.** Migration 0142 (aditiva). Sem mudança de domínio.
