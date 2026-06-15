@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
+import { getDetalhe } from '@/lib/solicitacoes/rpc'
+import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 // Escrita do módulo de Solicitações. Transições/criação via cliente de SESSÃO
 // (o banco enforça quem pode — §2.2/§2.3). Storage (anexos) via service role (ADR-0113).
@@ -21,6 +23,15 @@ const MAX_BYTES = 10 * 1024 * 1024
 async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> {
   const sb = await getServerClient()
   return (sb.rpc as unknown as BoundRpc).bind(sb)(fn, args)
+}
+
+/** v4.20.0 — detalhe de uma solicitação p/ a página de auditoria de Movimentações (gestão-only):
+ *  a linha clicável busca o objeto completo (rpc.ts é server-only) e abre o DrawerSolicitacao
+ *  reaproveitável. Gate de superfície = área 'solicitacoes' (a página é gestão-only); o
+ *  solic_detalhe ainda refina por pode_ver_solic (gestor vê qualquer; não-participante → null). */
+export async function detalheSolicitacao(id: number): Promise<Solicitacao | null> {
+  await requireAreaAction('solicitacoes')
+  return getDetalhe(id)
 }
 
 export interface AnexoMeta { campo_id: number | null; storage_path: string; nome_arquivo: string; mime: string; tamanho_bytes: number }
