@@ -8,7 +8,7 @@ import {
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
-  solicitacaoSchema, campoDefSchema,
+  solicitacaoSchema, campoDefSchema, movimentacoesSchema,
 } from './solicitacoes/schemas'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -105,6 +105,9 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   { fn: 'admin_solic_listar_tipos',      params: {},                                                                     schema: tiposAdminSchema },
   { fn: 'solic_minhas',                  params: {},                                                                     schema: solicitacoesListaSchema },
   { fn: 'solic_caixa',                   params: { p_escopo: 'mim_e_role' },                                             schema: solicitacoesListaSchema },
+  // v4.19.1: auditoria de movimentações (gestão-only). Service role → exigir_acesso retorna
+  // cedo (lista vazia), mas o SHAPE (array de 7 chaves) é validado contra a RPC viva.
+  { fn: 'solic_movimentacoes',           params: {},                                                                     schema: movimentacoesSchema },
   // M13 (v4.17.0): schemas consumidos por parseRpc que faltavam na lista viva F7.
   { fn: 'get_mix_produto',               params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 10 }, schema: mixProdutoSchema },
   { fn: 'get_minhas_permissoes',         params: {},                                                                     schema: minhasPermissoesSchema },
@@ -306,7 +309,7 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
   // sessão — anon negado em tudo (§2.2/§2.3 valem no banco).
   it('Solicitações: anon negado em todas as RPCs', async () => {
     for (const fn of ['solic_minhas', 'solic_caixa', 'solic_tipos_abertura', 'solic_destinatarios',
-                      'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos']) {
+                      'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos', 'solic_movimentacoes']) {
       const status = await rpcAnonStatus(fn, {})
       expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
     }

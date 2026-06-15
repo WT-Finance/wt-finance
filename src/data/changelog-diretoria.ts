@@ -32,6 +32,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.19.1',
+    data: '2026-06-15T18:00',
+    itens: [
+      { tipo: 'novidade', texto: 'Na página de Solicitações, os gestores ganharam uma visão de "Movimentações": uma lista única que mostra quem abriu, concluiu, rejeitou ou cancelou cada solicitação e quando — para acompanhar e auditar o que foi feito.' },
+    ],
+  },
+  {
     versao: '4.19.0',
     data: '2026-06-14T21:00',
     itens: [
