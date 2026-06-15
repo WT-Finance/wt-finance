@@ -14,6 +14,7 @@
 // NUNCA logada. A conexão direta `db.<ref>` é IPv6-only (fora do WSL2); o pooler é IPv4.
 
 import { config } from 'dotenv'
+import { execFileSync } from 'node:child_process'
 import { createWriteStream, createReadStream } from 'node:fs'
 import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
@@ -22,7 +23,15 @@ import copyStreams from 'pg-copy-streams'
 
 const { to: copyTo, from: copyFrom } = copyStreams
 
-export const REPO = '/home/yan-wt/projects/wt-finance'
+// REPO = raiz do checkout ATUAL (worktree-aware, v4.20.0): git rev-parse na cwd, fallback cwd.
+// Antes era hardcoded p/ a raiz do main — rodado de uma worktree, o `db push` corria do main
+// (que não enxerga a migration da worktree → "Remote database is up to date" silencioso).
+// NÃO afeta o backup-gate (fala com produção via SUPABASE_DB_URL, independente do REPO);
+// só conserta a cwd do export/push. Fonte ÚNICA: gate.mjs/migrate.mjs importam este REPO.
+export const REPO = (() => {
+  try { return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() }
+  catch { return process.cwd() }
+})()
 export const SCHEMAS = ['analytics', 'app', 'audit', 'dim', 'financeiro', 'raw']
 
 config({ path: join(REPO, '.env.local') })
