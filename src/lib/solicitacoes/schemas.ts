@@ -17,6 +17,12 @@ export const campoDefSchema = z.object({
   obrigatorio: z.boolean(),
   opcoes:      z.array(z.string()).nullable().optional(),
   ordem:       z.number().optional(),
+  // Regra de data por campo (v4.19.0). Só fazem sentido quando tipo_campo='data'.
+  // .optional() (não só .nullable()): a RPC pode NÃO emitir (campo antigo / não-data)
+  // → optional aceita undefined; nullable sozinho reprovaria e parseRpc devolveria null
+  // (HTTP 500). data_aviso_dias_futuro é nullable+optional (null = sem aviso).
+  data_permite_passado:   z.boolean().optional(),
+  data_aviso_dias_futuro: z.number().int().nullable().optional(),
 })
 export type CampoDef = z.infer<typeof campoDefSchema>
 

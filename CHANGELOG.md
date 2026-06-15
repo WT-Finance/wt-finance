@@ -6,6 +6,24 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.19.0] — 2026-06-14
+
+Versão MINOR: **regra de data configurável por campo, refinos de Solicitações e multi-seleção de operações em Weddings.** Migrations 0140 (aditiva) e 0141 (levemente destrutiva, DROP+CREATE de função, com confirmação humana). ADR-0118.
+
+### Solicitações — regra de data por campo (M3, M4)
+- Um campo do tipo **data** num tipo de solicitação pode agora **proibir datas anteriores a hoje** (bloqueio) e **avisar** quando a data está a mais de N dias no futuro (aviso não-bloqueante).
+- **Bloqueio é server-side** (`criar_solicitacao`), com HOJE calculado no fuso de **São Paulo** (`America/Sao_Paulo`, nunca `current_date` do servidor); o `min` do campo no preenchimento é só o espelho do cliente. O aviso é puramente client-side (deixa enviar).
+- Armazenamento em colunas dedicadas (`data_permite_passado`, `data_aviso_dias_futuro`) em `app.solicitacao_campo` — **não** reusa `opcoes`. A regra **não** entra no snapshot imutável da solicitação (é portão de open-time). Migration 0140 aditiva (4 RPCs conhecem as colunas).
+
+### Solicitações — refinos visuais (M1, M2)
+- **Drawer de detalhe** redisposto em 3 zonas: cabeçalho (status + limite, vermelho se vencida), faixa de metadados (destinatário/solicitante/aberta em — com hora no fuso SP) e campos com hierarquia rótulo→valor em grade de dois; anexos em bloco próprio com ícone por tipo de arquivo.
+- **Tabela de tipos**: ações da linha em **ícone** (Editar / Arquivar-Desarquivar / Excluir, padrão de Usuários); **Excluir desabilitado com tooltip** quando o tipo já tem solicitações (a regra de só-excluir-tipo-virgem fica visível na UI).
+
+### Weddings — multi-seleção no filtro de operações (M5, M6)
+- O filtro "Filtrar gráficos por operação" passou a aceitar **múltiplas operações** (soma agregada do subconjunto); "Todas as operações" é mutuamente exclusiva e o rótulo do gatilho vira contador. Estado na URL (`operacao` como lista).
+- **Fronteira:** só os 2 gráficos da seção "Visão Analítica por Operação" (Fluxo de Caixa Mensal e Acumulado de Recebimentos e Pagamentos) reagem; KPIs/Mix/Carteira/Próximos seguem por período/setor.
+- RPC `get_acumulado_weddings`: 3º parâmetro `text → text[]` (`operacao = ANY(p_operacoes)`); migration 0141 DROP+CREATE de núcleo e wrapper, GRANTs realinhados (`authenticated`/`service_role`, nunca `anon`). Retorno inalterado.
+
 ## [4.18.0] — 2026-06-14
 
 Versão MINOR: **reformulação do módulo de Solicitações + refino de Usuários/Acessos** (triagem dos ajustes pós-produção). Migrations 0138/0139 (aditivas, via backup-gate). Sem mudança no Fluxo de Caixa (dormente).

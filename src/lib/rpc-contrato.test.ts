@@ -8,7 +8,7 @@ import {
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
-  solicitacaoSchema,
+  solicitacaoSchema, campoDefSchema,
 } from './solicitacoes/schemas'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -160,6 +160,33 @@ describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-
     const semStatus: Record<string, unknown> = { ...SOLIC_JSON_FIXTURE }
     delete semStatus.status
     expect(solicitacaoSchema.safeParse(semStatus).success).toBe(false) // se passasse, o schema seria frouxo demais
+  })
+})
+
+// v4.19.0/M4: regra de data por campo (data_permite_passado / data_aviso_dias_futuro)
+// trafega pela campoDefSchema (layer 5 da fontanaria). Se o schema NÃO listar as chaves,
+// o Zod as DESCARTA silenciosamente (objeto sem .passthrough()) e a regra "some sem erro
+// de build" — exatamente a classe de bug que o briefing alerta. Este teste prova que as
+// chaves SOBREVIVEM ao parse (não basta success: tem de manter o valor).
+describe('contrato — campoDefSchema preserva a regra de data (fontanaria layer 5)', () => {
+  it('campo data com permite_passado=false + aviso=30 sobrevive ao parse', () => {
+    const r = campoDefSchema.safeParse({
+      id: 99, rotulo: 'Prazo', tipo_campo: 'data', obrigatorio: true, opcoes: null, ordem: 0,
+      data_permite_passado: false, data_aviso_dias_futuro: 30,
+    })
+    expect(r.success, r.success ? '' : JSON.stringify(r.error!.issues)).toBe(true)
+    expect(r.success && r.data.data_permite_passado).toBe(false)
+    expect(r.success && r.data.data_aviso_dias_futuro).toBe(30)
+  })
+  it('campo data sem aviso (null) e campo legado sem as chaves são aceitos (optional)', () => {
+    expect(campoDefSchema.safeParse({
+      rotulo: 'Data', tipo_campo: 'data', obrigatorio: false, opcoes: null,
+      data_permite_passado: true, data_aviso_dias_futuro: null,
+    }).success).toBe(true)
+    // Campo antigo (pré-0140): RPC pode não emitir as chaves → optional tolera.
+    expect(campoDefSchema.safeParse({
+      rotulo: 'Antigo', tipo_campo: 'texto_curto', obrigatorio: false, opcoes: null,
+    }).success).toBe(true)
   })
 })
 

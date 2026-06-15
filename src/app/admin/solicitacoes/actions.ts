@@ -20,6 +20,10 @@ export async function salvarTipo(input: { id: number | null; nome: string; campo
     p_campos: input.campos.map(c => ({
       rotulo: c.rotulo, tipo_campo: c.tipo_campo, obrigatorio: c.obrigatorio,
       opcoes: c.tipo_campo === 'selecao' ? (c.opcoes ?? []) : null,
+      // Regra de data por campo (v4.19.0) — só relevante p/ tipo_campo='data'; o
+      // INSERT (0140) coalesce p/ default. Forwarding explícito: a RPC lê chaves nomeadas.
+      data_permite_passado:   c.tipo_campo === 'data' ? (c.data_permite_passado ?? true) : true,
+      data_aviso_dias_futuro: c.tipo_campo === 'data' ? (c.data_aviso_dias_futuro ?? null) : null,
     })),
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
