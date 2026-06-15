@@ -25,3 +25,5 @@ export const getDestinatarios  = () => call('solic_destinatarios', {}, S.destina
 export const getTiposAdmin     = () => call('admin_solic_listar_tipos', {}, S.tiposAdminSchema)
 // cache() deduplica chamadas no mesmo request (layout + page chamam em paralelo)
 export const getPendencias     = cache(() => call('solic_minhas_pendencias', {}, z.number()))
+// v4.19.1 — auditoria de movimentações (gestão-only; o banco valida 'solicitacoes' via exigir_acesso).
+export const getMovimentacoes  = () => call('solic_movimentacoes', {}, S.movimentacoesSchema)

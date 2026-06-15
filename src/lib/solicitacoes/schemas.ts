@@ -96,3 +96,23 @@ export const tipoAdminSchema = z.object({
 })
 export const tiposAdminSchema = z.array(tipoAdminSchema)
 export type TipoAdmin = z.infer<typeof tipoAdminSchema>
+
+// ── Movimentações (v4.19.1) — lista única de AUDITORIA, DERIVADA das colunas de
+// app.solicitacao via RPC solic_movimentacoes() (migration 0142). Gestão-only.
+// Cada item = abertura (solicitante/criado_em) OU decisão terminal (decidido_por/
+// decidido_em/status→ação). A RPC emite SEMPRE as 7 chaves (nenhuma .optional());
+// ator/tipo_nome/detalhe podem vir NULL → .nullable() (ator nulo se o usuário sumiu;
+// detalhe nulo na abertura e na decisão sem justificativa). acao é z.string() livre
+// (rótulo derivado) p/ não quebrar o parse se um rótulo novo surgir.
+export const movimentacaoSchema = z.object({
+  solicitacao_id: z.number(),
+  tipo_nome:      z.string().nullable(),
+  acao:           z.string(),                 // 'Abertura' | 'Conclusão' | 'Rejeição' | 'Cancelamento'
+  status_atual:   z.enum(STATUS_SOLIC),
+  ator:           z.string().nullable(),      // nome (ou e-mail) de quem fez a ação
+  em:             z.string(),                 // timestamptz (UTC) — exibir via fmtDataHoraSP
+  detalhe:        z.string().nullable(),      // justificativa (rejeição); senão null
+})
+export type Movimentacao = z.infer<typeof movimentacaoSchema>
+
+export const movimentacoesSchema = z.array(movimentacaoSchema)

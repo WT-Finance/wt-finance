@@ -6,6 +6,15 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.19.1] — 2026-06-15
+
+Patch: **auditoria de movimentações das solicitações.** Migration 0142 (aditiva). Sem mudança de domínio.
+
+### Solicitações — lista de movimentações (auditoria)
+- Novo botão âmbar **"Movimentações"** na página de Solicitações (gestão-only, ao lado de "Ver todas"/"Gerenciar solicitações") → nova página `/admin/solicitacoes/movimentacoes`.
+- **Lista única de auditoria** mostrando o que cada usuário fez em cada solicitação: **Abertura** (solicitante + `criado_em`), **Conclusão / Rejeição / Cancelamento** (quem decidiu + `decidido_em`, com a justificativa da rejeição), ordenada do mais recente. Colunas: Quando (fuso SP) · Ação · Solicitação · Quem · Detalhe.
+- **Derivada das colunas existentes** de `app.solicitacao` (sem tabela de eventos nova — `solicitacao_evento` segue fora); realiza o "relatório futuro" previsto no ADR-0117. RPC `solic_movimentacoes()` (migration 0142, `SECURITY DEFINER` + `exigir_acesso(['solicitacoes'])`, gestão-only). Gate de área = `requireArea('solicitacoes')` na página + `exigir_acesso` na RPC (o proxy só exige sessão).
+
 ## [4.19.0] — 2026-06-14
 
 Versão MINOR: **regra de data configurável por campo, refinos de Solicitações e multi-seleção de operações em Weddings.** Migrations 0140 (aditiva) e 0141 (levemente destrutiva, DROP+CREATE de função, com confirmação humana). ADR-0118.

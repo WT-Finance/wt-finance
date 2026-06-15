@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Plus, Eye, ClipboardList } from 'lucide-react'
+import { Plus, Eye, ClipboardList, History } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
 import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
 import MinhasSolicitacoes from './minhas-solicitacoes'
@@ -97,6 +97,9 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
               </button>
               <Link href="/admin/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
                 <ClipboardList size={13} /> Gerenciar solicitações
+              </Link>
+              <Link href="/admin/solicitacoes/movimentacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
+                <History size={13} /> Movimentações
               </Link>
             </>
           )}
