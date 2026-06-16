@@ -30,13 +30,14 @@
 ## Banco — migrations 0146 / 0147 / 0148
 - Todas **aditivas/retrocompatíveis**: 0146 ADD COLUMN + índice + backfill (colunas novas) + grants + RPCs novas/recriadas; 0147 CREATE OR REPLACE (só acrescenta guard + grant); 0148 RPC nova.
 - **Backup-gate VERDE** (38/38 tabelas, restore-test spot 4/4 idêntico, 2,2s via COPY).
-- ⚠️ **Push pendente de CONFIRMAÇÃO HUMANA CONSCIENTE:** a 0146 contém `UPDATE` de backfill → o heurístico marca destrutiva e o harness bloqueou o `Y` automatizado (correto: o prompt proíbe "deixar o EOF decidir"). As migrations estão prontas e o gate VERDE; o push aguarda a confirmação do Yan (ver "Pendência" abaixo). **Verificação das RPCs via REST/pooler será feita após o push.**
+- **APLICADAS em produção** (`db push` das 3, gate VERDE + confirmação humana consciente do Yan — o harness corretamente bloqueou o `Y` automatizado, pois o prompt proíbe "deixar o EOF decidir"; o Yan autorizou).
+- **Verificado pós-push:** `gerencial_saldos` com backfill correto (Itaú=isolada/consolidado/limite 200k; Asaas/Blimboo=consolidado; Clara=reserva); índice único de papel OK; 4 RPCs novas presentes; `get_gerencial_saldos` via REST devolve o shape novo (`limite`/`consolidado`/`papel`).
 
 ## Gates
 `tsc` **0** · `lint` **13** (baseline; zero novos — os 2 erros iniciais de prop-sync foram trocados pelo padrão React "ajustar estado na renderização") · `build` **limpo** (47/47) · `npm test` **125** (gerencial não está no contrato; sem regressão).
 
 ## Auto-auditoria adversarial (§8) — proporcional
-- **M2 (exaustiva):** cada RPC do gerencial tem `exigir_acesso(['financeiro/gerencial'])` na 1ª linha + `GRANT authenticated`; as 3 superfícies (página standalone, seção embutida, route) usam sessão. **A verificar pós-push:** authenticated-sem-área NEGADO no nível da RPC; remover o guard da página não vaza (a RPC barra). A seção embutida no Fluxo de Caixa só dispara para `temGerencial` (RPC exigiria a área de qualquer forma).
+- **M2 (exaustiva) — VERIFICADO ao vivo:** cada RPC do gerencial tem `exigir_acesso(['financeiro/gerencial'])` na 1ª linha + `GRANT authenticated`; as 3 superfícies (página standalone, seção embutida, route) usam sessão. **Prova pós-push:** `get_gerencial_saldos` e `get_gerencial_projecao_diaria` chamadas SEM JWT/área (via pooler, não-superuser) → **NEGADAS** com `AUTH_NECESSARIA` — a negação vale no nível da RPC, não só na página (antes da 0147 elas retornavam dados). A seção embutida no Fluxo de Caixa só dispara para `temGerencial`.
 - **CRUD de contas (exaustiva):** papel exclusivo no banco (índice único) + na RPC (libera de quem detinha); backfill preserva a tela; grants INSERT/DELETE restritos a authenticated+service_role.
 - **Cores (enxuta):** faixa amarela só na isolada e função do limite; tokens semânticos.
 - **Exclusão em massa (média):** hard delete por ids; aviso extra p/ planilha; reversível pelo re-import.
@@ -46,8 +47,8 @@
 - **App:** `src/app/financeiro/fluxo-caixa/gerencial/{page,actions}.ts(x)`, `src/app/financeiro/fluxo-caixa/page.tsx`, `src/app/api/gerencial/import/route.ts`, `src/components/financeiro/gerencial/{tipos.ts,contas-manager.tsx,visualizacao-agregada-tab.tsx,base-dados-tab.tsx,lancamento-row.tsx,gerencial-section.tsx}`.
 - **Fechamento:** `package.json`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, `docs/adr/0123-...md`, este out-briefing.
 
-## Pendência (bloqueante para o merge)
-**Aplicar as migrations 0146/0147/0148 em produção** com confirmação humana consciente (gate já VERDE). Sem isso, o app v4.21.0 quebraria em produção (colunas/RPCs ausentes). Sugerido: `npm run db:migrate -- --destrutiva` (o heurístico já trata como destrutiva; confirmar `Y` no prompt sabendo que é aditiva — colunas novas + backfill delas) **OU** `npx supabase db push --linked` da worktree, confirmando no prompt. Após aplicar, verificar as RPCs novas (REST/pooler) e o comportamento authenticated-sem-área.
+## Aplicação da migration (RESOLVIDA)
+As migrations 0146/0147/0148 foram **aplicadas em produção** (`npx supabase db push --linked`, gate VERDE + confirmação consciente do Yan) e **verificadas** (backfill, índice, RPCs, negação no nível da RPC, shape via REST). **Merge e deploy seguem com o usuário.**
 
 ## Fronteira de produto (respeitada)
 FORA: distribuição por conta / GROUP BY conta_previsao / normalização; projeções flexíveis; M4 (view lenta); destaque da 1ª data negativa; totais no rodapé.
