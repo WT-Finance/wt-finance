@@ -44,7 +44,7 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
     <div className="max-w-5xl mx-auto px-4">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Solicitações</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">Abra pedidos ao financeiro e acompanhe os atribuídos a você.</p>
+        <p className="text-sm text-zinc-400 mt-0.5">Abra pedidos ao financeiro e acompanhe os atribuídos a você</p>
       </div>
 
       {/* Linha das abas (v4.18): Caixa de entrada PRIMEIRO, Minhas depois; os botões de

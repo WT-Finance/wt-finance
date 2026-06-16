@@ -78,7 +78,10 @@ function CardMinha({ s, onAbrir }: { s: Solicitacao; onAbrir: (s: Solicitacao) =
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAbrir(s) } }}
       className="card-clicavel-neutra foco-neutro cursor-pointer rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-sm"
     >
-      <p className="text-sm font-medium text-zinc-900 truncate">{s.tipo_nome}</p>
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-medium text-zinc-900 truncate">{s.tipo_nome}</p>
+        <span className="shrink-0 text-[11px] font-medium tabular-nums text-zinc-400">#{s.id}</span>
+      </div>
       <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
       <div className="mt-1.5 flex items-center justify-between gap-2">
         <span className="text-[11px] text-zinc-400 truncate">{s.destinatario.rotulo}</span>

@@ -37,7 +37,10 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     ['/admin/uploads/financeiro',           ['admin/uploads']],
     ['/admin/design-system',                ['admin/design-system']],
     ['/admin/acessos',                      ['admin/acessos']],
+    ['/admin/solicitacoes',                 ['solicitacoes']],
+    ['/admin/solicitacoes/movimentacoes',   ['solicitacoes']],
     ['/admin',                              ['admin/acessos']],
+    ['/solicitacoes',                       ['solicitacoes/basico', 'solicitacoes']],
   ]
   it.each(casos)('%s → %j', (rota, esperado) => {
     expect(areasDaRota(rota)).toEqual(esperado)

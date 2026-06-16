@@ -14,7 +14,7 @@ export default async function DesignSystemPage() {
           Design System
         </h1>
         <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          Catálogo visual de tokens e componentes do WT Finance. Referência interna para desenvolvimento.
+          Catálogo visual de tokens e componentes do WT Finance. Referência interna para desenvolvimento
         </p>
       </div>
 

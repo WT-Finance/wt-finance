@@ -15,9 +15,9 @@ import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { REPO } from './lib.mjs'   // fonte única, worktree-aware (v4.20.0)
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = '/home/yan-wt/projects/wt-finance'
 const argv = process.argv.slice(2)
 const flag = n => argv.includes(n)
 

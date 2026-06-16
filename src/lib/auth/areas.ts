@@ -14,6 +14,7 @@ export const AREAS = [
   'admin/uploads',
   'admin/design-system',
   'admin/acessos',
+  'solicitacoes/basico',
   'solicitacoes',
 ] as const
 
@@ -35,7 +36,13 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },
   'admin/acessos':           { rotulo: 'Usuários e Acessos',        grupo: 'Administração', ordem: 52 },
-  'solicitacoes':            { rotulo: 'Solicitações (gestão)',     grupo: 'Administração', ordem: 53 },
+  // Solicitações em DOIS níveis (v4.20.0, ADR-0121): 'solicitacoes/basico' = acesso
+  // BÁSICO (caixa de entrada + minhas); 'solicitacoes' = GESTÃO (inclui o básico +
+  // Ver todas / Gerenciar / Movimentações). O nome 'solicitacoes' é histórico (sempre
+  // foi a área de gestão); a básica nasceu depois, daí o sufixo. Grupo próprio
+  // 'Solicitações' (migration 0144) p/ os dois níveis aparecerem juntos no editor de roles.
+  'solicitacoes/basico':     { rotulo: 'Solicitações',              grupo: 'Solicitações',  ordem: 53 },
+  'solicitacoes':            { rotulo: 'Solicitações (gestão)',     grupo: 'Solicitações',  ordem: 54 },
 }
 
 /**
@@ -72,7 +79,10 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']
   if (p.startsWith('/admin/solicitacoes'))      return ['solicitacoes']
   if (p.startsWith('/admin'))                   return ['admin/acessos']
-  // /solicitacoes (abertura/minhas/caixa) cai no fallthrough → qualquer autenticado.
+  // /solicitacoes (abertura/minhas/caixa): acesso BÁSICO ou GESTÃO (v4.20.0). A gestão
+  // inclui o básico, então qualquer das duas libera a página; os botões/rotas de gestão
+  // continuam exigindo só 'solicitacoes'. (/admin/solicitacoes já casou acima.)
+  if (p.startsWith('/solicitacoes'))            return ['solicitacoes/basico', 'solicitacoes']
   return null
 }
 

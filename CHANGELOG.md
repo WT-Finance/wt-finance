@@ -6,6 +6,31 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.20.0] — 2026-06-15
+
+Versão MINOR: **número de referência por solicitação, auditoria de movimentações navegável e permissão de Solicitações em dois níveis.** Migrations 0143 (aditiva) e 0144 (catálogo — UPDATE cosmético, com confirmação). ADRs 0120 e 0121.
+
+### Solicitações — número de referência (#id) (M1)
+- Cada solicitação passa a exibir seu **número** (`#id`, a PK `app.solicitacao.id`) em 3 pontos que não o mostravam: card da **caixa-de-entrada** (gestão), card de **"Minhas solicitações"** e **cabeçalho do drawer** (subtítulo `Solicitação #id`).
+- **Apenas exibição** — o `id` já vinha em todos os payloads. **Sem RPC, sem migration.** Número **cru** (sequencial, com lacunas — como nota fiscal/pedido): não renumera nem materializa coluna contígua.
+
+### Movimentações — reformulação da auditoria (M2, M3, M4)
+- **Visual (M2):** colunas reordenadas para **Usuário · Ação · Solicitação · Quando**; coluna **Detalhe removida**; Solicitação mostra **só o número** (`#id`), não o tipo; nomes de ação em **particípio** (aberta/concluída/rejeitada/cancelada); **badges em tokens semânticos** (não hex): concluída=`success` (verde), rejeitada=`danger` (vermelho), cancelada=`warning` (âmbar, distinto do `--gestao`), aberta=neutra.
+- **Busca e ordenação (M3):** **busca única client-side** sobre **todas as colunas** + **ordenação por cabeçalho de coluna** (Quando desc por padrão), ambas sobre a lista já carregada (`getMovimentacoes`). `Array.sort` estável preserva a ordem da RPC em empates. **Sem RPC nova, sem paginação.**
+- **Linha clicável (M4):** clicar (ou Enter/Espaço) numa linha chama `detalheSolicitacao` (**server action** — `rpc.ts` é server-only) → `getDetalhe` → abre o **`DrawerSolicitacao`** reaproveitável. A **justificativa de rejeição** (que saiu da coluna Detalhe) aparece no drawer. Autorização já resolvida: página gestão-only + `solic_detalhe`/`pode_ver_solic` (gestor vê qualquer).
+
+### Ferramenta — backup-gate worktree-aware (M5)
+- `REPO` no `scripts/db-gate/` deixa de ser hardcoded para a raiz do `main` e resolve o **checkout atual** via `git rev-parse --show-toplevel` (fallback `process.cwd()`); fonte **única** em `lib.mjs` (`gate.mjs`/`migrate.mjs` importam). Rodado de uma worktree, o `db push` agora corre da worktree (enxerga a migration local) e continua funcionando do `main`. **Não afeta o backup-gate** (fala com produção via `SUPABASE_DB_URL`, independente do `REPO`) — só conserta a `cwd` do export/push.
+
+### Solicitações — permissão em dois níveis (ajuste pré-merge, ADR-0121, migration 0143)
+- A página `/solicitacoes` (caixa de entrada + minhas) deixa de ser aberta a **qualquer autenticado** e passa a exigir a permissão **"Solicitações"** (área nova `solicitacoes/basico`). Os botões âmbar (Ver todas, Gerenciar solicitações, **Movimentações**) e as rotas `/admin/solicitacoes/*` continuam exigindo **"Solicitações (gestão)"** (área `solicitacoes`, **inalterada**). A gestão **inclui** a básica (guard com OR; item da sidebar via `areasAny`).
+- **Migration 0143 (aditiva):** cria a área `solicitacoes/basico` ("Solicitações", grupo Geral) e a **concede a todos os roles** (backfill não-quebra — ninguém perde o acesso de hoje; o admin remove depois). **Nenhum guard de gestão mudou** → conceder a básica a todos **não vaza** gestão (grants de `solicitacoes` seguem só no role de gestão). Aplicada (gate VERDE, 38/38, restore-test 4/4) e verificada via pooler.
+- O nome interno `solicitacoes` permanece = gestão (histórico); a básica nasceu com sufixo `/basico`. Decisão de não inverter para não reescrever ~10 funções `SECURITY DEFINER` (risco na camada de segurança). As RPCs básicas (dados self-scoped do próprio usuário) seguem em `exigir_acesso()` (login+ativo); o gate da feature é a página. Detalhe e fronteira aceita no ADR-0121.
+- **Migration 0144 (catálogo):** os dois níveis ganham um **grupo próprio "Solicitações"** em `app.rbac_areas` (`UPDATE` de `grupo`/`ordem` — sem mexer em grants/permissões) para aparecerem **lado a lado** no editor de permissões (antes a básica caía em "Geral" e a gestão em "Administração", separadas). Aplicada com backup-gate VERDE + confirmação humana (é `UPDATE`).
+
+### Ajustes visuais
+- Removido o ponto final dos subtítulos de página (Solicitações, Design System, Movimentações e a tela de login) — consistência (os demais já não tinham).
+
 ## [4.19.1] — 2026-06-15
 
 Patch: **auditoria de movimentações das solicitações.** Migration 0142 (aditiva). Sem mudança de domínio.

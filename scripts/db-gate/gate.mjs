@@ -17,10 +17,9 @@ import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { verificar, imprimirRelatorio } from './verificar.mjs'
-import { closePool } from './lib.mjs'
+import { closePool, REPO } from './lib.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const REPO = '/home/yan-wt/projects/wt-finance'
 const BACKUP_ROOT = join(homedir(), 'wt-finance-backups')
 
 const argv = process.argv.slice(2)
