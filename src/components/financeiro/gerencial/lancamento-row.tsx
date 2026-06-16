@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Trash2, Loader2, Check } from 'lucide-react'
+import { Trash2, Loader2, Check, FileSpreadsheet, PencilLine } from 'lucide-react'
 import { fmtBRL } from '@/lib/fmt'
 import { updateLancamento, deleteLancamento } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 
@@ -93,11 +93,13 @@ function EditableCell({
 }
 
 interface Props {
-  lancamento: Lancamento
-  onDelete:   () => void
+  lancamento:      Lancamento
+  onDelete:        () => void
+  selecionado?:    boolean
+  onToggleSelecao?: () => void
 }
 
-export function LancamentoRow({ lancamento: l, onDelete }: Props) {
+export function LancamentoRow({ lancamento: l, onDelete, selecionado = false, onToggleSelecao }: Props) {
   const [isPending, startDelete] = useTransition()
   const [confirmDel, setConfirmDel] = useState(false)
 
@@ -114,8 +116,14 @@ export function LancamentoRow({ lancamento: l, onDelete }: Props) {
     })
   }
 
+  const ehManual = l.origem === 'manual'
+
   return (
-    <tr className="border-b border-zinc-50 hover:bg-zinc-50/50">
+    <tr className={`border-b border-zinc-50 hover:bg-zinc-50/50 ${selecionado ? 'bg-[var(--brand-soft)]/30' : ''}`}>
+      <td className="py-1 px-2 text-center">
+        <input type="checkbox" checked={selecionado} onChange={onToggleSelecao}
+          className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar linha" />
+      </td>
       <EditableCell value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} />
       <EditableCell value={l.pessoa}         onSave={makeSaver('pessoa')} />
       <EditableCell value={l.valor_final}    onSave={makeSaver('valor_final')}    type="number" />
@@ -123,8 +131,10 @@ export function LancamentoRow({ lancamento: l, onDelete }: Props) {
       <EditableCell value={l.conta_previsao} onSave={makeSaver('conta_previsao')} />
       <EditableCell value={l.vencimento}     onSave={makeSaver('vencimento')}     type="date" />
       <td className="py-1 px-2">
-        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${l.origem === 'manual' ? 'bg-[var(--brand-soft)] text-[var(--brand-deep)]' : 'bg-zinc-100 text-zinc-500'}`}>
-          {l.origem}
+        <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-medium ${ehManual ? 'bg-[var(--brand-soft)] text-[var(--brand-deep)]' : 'bg-zinc-100 text-zinc-500'}`}
+          title={ehManual ? 'Linha criada manualmente' : 'Linha vinda da importação da planilha'}>
+          {ehManual ? <PencilLine size={11} /> : <FileSpreadsheet size={11} />}
+          {ehManual ? 'Manual' : 'Planilha'}
         </span>
       </td>
       <td className="py-1 px-2 text-right">
