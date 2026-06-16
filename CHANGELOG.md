@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.20.2] — 2026-06-16
+
+Patch: **desempenho do upload — parse em Web Worker + barra de progresso.** Sem migration. Sem mudança de banco.
+
+### A tela não trava mais ao importar
+- O parse do Excel (`XLSX.read` + `sheet_to_json` + `parseXxxRows`, ~45k linhas) era **síncrono na main thread** → o navegador mostrava "não está respondendo" e o spinner congelava durante a fase "Lendo planilha".
+- **Fix:** o parse roda agora num **Web Worker** (`src/lib/carga/parse.worker.ts`), fora da main thread — a UI fica fluida, o spinner anima e some o "não responde". Reaproveita os 4 parsers isomórficos (zero duplicação de lógica); vale para as **4 bases**. Helper `parseArquivoEmWorker` com **fallback** para o parse na main thread se o worker não carregar (a importação nunca quebra por causa do worker).
+
+### Barra de progresso no envio
+- O envio em lotes (`inserir_lote_*`) agora mostra **"Enviando… X%"** com barra de progresso e, ao terminar os lotes, **"Processando no servidor…"** (validação + promote). Antes era só um spinner com "Importando N linhas…".
+
 ## [4.20.1] — 2026-06-16
 
 Patch: **correção da importação de Vendas (timeout) e da "última atualização" das cargas.** Migration 0145 (aditiva). ADR-0122.

@@ -32,6 +32,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.20.2',
+    data: '2026-06-16T12:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'A importação de planilhas ficou mais fluida: a tela não trava mais (aquele "a página não está respondendo" sumiu) e agora mostra uma barra com o progresso do envio.' },
+    ],
+  },
+  {
     versao: '4.20.1',
     data: '2026-06-16T11:00',
     itens: [
