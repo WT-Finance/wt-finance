@@ -32,7 +32,7 @@ export default async function LoginPage({
 
         <div className="bg-white rounded-xl shadow-sm px-8 py-9">
           <h1 className="text-base font-semibold mb-1" style={{ color: '#1A1814' }}>Entrar</h1>
-          <p className="text-sm mb-5" style={{ color: '#75777B' }}>Acesse com seu e-mail corporativo e senha.</p>
+          <p className="text-sm mb-5" style={{ color: '#75777B' }}>Acesse com seu e-mail corporativo e senha</p>
 
           {mensagemErro && (
             <p
