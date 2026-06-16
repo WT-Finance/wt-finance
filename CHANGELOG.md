@@ -8,7 +8,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [4.20.0] — 2026-06-15
 
-Versão MINOR: **número de referência por solicitação e auditoria de movimentações navegável.** Sem migration (display + reaproveitamento de RPCs/drawer existentes) e um ajuste de ferramenta (gate worktree-aware). ADR-0120.
+Versão MINOR: **número de referência por solicitação, auditoria de movimentações navegável e permissão de Solicitações em dois níveis.** Migration 0143 (aditiva). ADRs 0120 e 0121.
 
 ### Solicitações — número de referência (#id) (M1)
 - Cada solicitação passa a exibir seu **número** (`#id`, a PK `app.solicitacao.id`) em 3 pontos que não o mostravam: card da **caixa-de-entrada** (gestão), card de **"Minhas solicitações"** e **cabeçalho do drawer** (subtítulo `Solicitação #id`).
@@ -21,6 +21,14 @@ Versão MINOR: **número de referência por solicitação e auditoria de movimen
 
 ### Ferramenta — backup-gate worktree-aware (M5)
 - `REPO` no `scripts/db-gate/` deixa de ser hardcoded para a raiz do `main` e resolve o **checkout atual** via `git rev-parse --show-toplevel` (fallback `process.cwd()`); fonte **única** em `lib.mjs` (`gate.mjs`/`migrate.mjs` importam). Rodado de uma worktree, o `db push` agora corre da worktree (enxerga a migration local) e continua funcionando do `main`. **Não afeta o backup-gate** (fala com produção via `SUPABASE_DB_URL`, independente do `REPO`) — só conserta a `cwd` do export/push.
+
+### Solicitações — permissão em dois níveis (ajuste pré-merge, ADR-0121, migration 0143)
+- A página `/solicitacoes` (caixa de entrada + minhas) deixa de ser aberta a **qualquer autenticado** e passa a exigir a permissão **"Solicitações"** (área nova `solicitacoes/basico`). Os botões âmbar (Ver todas, Gerenciar solicitações, **Movimentações**) e as rotas `/admin/solicitacoes/*` continuam exigindo **"Solicitações (gestão)"** (área `solicitacoes`, **inalterada**). A gestão **inclui** a básica (guard com OR; item da sidebar via `areasAny`).
+- **Migration 0143 (aditiva):** cria a área `solicitacoes/basico` ("Solicitações", grupo Geral) e a **concede a todos os roles** (backfill não-quebra — ninguém perde o acesso de hoje; o admin remove depois). **Nenhum guard de gestão mudou** → conceder a básica a todos **não vaza** gestão (grants de `solicitacoes` seguem só no role de gestão). Aplicada (gate VERDE, 38/38, restore-test 4/4) e verificada via pooler.
+- O nome interno `solicitacoes` permanece = gestão (histórico); a básica nasceu com sufixo `/basico`. Decisão de não inverter para não reescrever ~10 funções `SECURITY DEFINER` (risco na camada de segurança). As RPCs básicas (dados self-scoped do próprio usuário) seguem em `exigir_acesso()` (login+ativo); o gate da feature é a página. Detalhe e fronteira aceita no ADR-0121.
+
+### Ajustes visuais
+- Removido o ponto final dos subtítulos de página (Solicitações, Design System, Movimentações e a tela de login) — consistência (os demais já não tinham).
 
 ## [4.19.1] — 2026-06-15
 

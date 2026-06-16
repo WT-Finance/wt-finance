@@ -33,10 +33,11 @@ export interface ChangelogEntrada {
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
     versao: '4.20.0',
-    data: '2026-06-15T19:30',
+    data: '2026-06-15T22:00',
     itens: [
       { tipo: 'novidade', texto: 'Cada solicitação agora tem um número de referência, mostrado na caixa de entrada, em "Minhas solicitações" e no detalhe — para identificar e conversar sobre um pedido específico com clareza.' },
       { tipo: 'melhoria', texto: 'A visão de "Movimentações" (auditoria) ficou mais fácil de usar: ganhou um campo de busca e ordenação por coluna, e agora é possível clicar em qualquer linha para abrir o detalhe completo da solicitação — inclusive a justificativa de uma rejeição.' },
+      { tipo: 'novidade', texto: 'A área de Solicitações agora tem duas permissões separadas: uma básica (abrir pedidos, ver a caixa de entrada e as próprias solicitações) e uma de gestão (que inclui a básica e mais a supervisão — ver todas as solicitações, gerenciar os tipos e auditar as movimentações). Isso permite controlar com precisão quem apenas usa e quem também supervisiona.' },
     ],
   },
   {
