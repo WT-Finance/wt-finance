@@ -7,8 +7,10 @@ export const dynamic = 'force-dynamic'
 type Escopo = 'mim_e_role' | 'so_mim' | 'todas'
 
 export default async function SolicitacoesPage({ searchParams }: { searchParams: Promise<{ view?: string; escopo?: string }> }) {
-  // Qualquer autenticado e ativo (areasDaRota('/solicitacoes') = null).
-  const sessao = await requireArea(null)
+  // v4.20.0 (ADR-0121): acesso BÁSICO ('solicitacoes/basico': caixa + minhas) OU GESTÃO
+  // ('solicitacoes'). A gestão inclui o básico (OR). Antes era requireArea(null) = qualquer
+  // autenticado; agora a página exige a permissão de Solicitações.
+  const sessao = await requireArea(['solicitacoes/basico', 'solicitacoes'])
   const sp = await searchParams
   // v4.18/M6 — Caixa de entrada é a aba primeira e o DEFAULT (reformulação centrada na
   // fila de trabalho do destinatário); Minhas só quando pedida explicitamente.

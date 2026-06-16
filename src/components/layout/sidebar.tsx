@@ -35,6 +35,8 @@ interface NavItem {
   area: Area | null
   /** Sempre visível para qualquer autenticado (não gated por área). v4.16.0. */
   sempre?: boolean
+  /** Visível se o usuário tiver QUALQUER uma destas áreas (OR). v4.20.0. */
+  areasAny?: Area[]
 }
 
 const PERFORMANCE_SUBS: NavSubItem[] = [
@@ -55,7 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: 'metas'         },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
-  { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, sempre: true },
+  { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
   // "Gerenciar solicitações" dentro de Solicitações (só admin). Rota /admin/solicitacoes intacta.
@@ -168,6 +170,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
 
   const navItems = NAV_ITEMS.filter(item => {
     if (item.sempre) return true
+    if (item.areasAny) return item.areasAny.some(pode)
     if (item.href === '/performance') return performanceSubs.length > 0
     if (item.href === '/financeiro')  return financeiroSubs.length > 0
     return item.area !== null && pode(item.area)
