@@ -21,6 +21,7 @@ import { parseLancamentosFile } from '@/lib/carga/parse-lancamentos'
 import { parseVendasProdutoFile } from '@/lib/carga/parse-vendas-produto'
 import { parseLancamentosFinanceiroFile } from '@/lib/carga/parse-lancamentos-financeiro'
 import { parseFluxoCaixaTitulosFile } from '@/lib/carga/parse-fluxo-caixa-titulos'
+import { parseArquivoEmWorker } from '@/lib/carga/parse-em-worker'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoRaw } from '@/lib/carga/lancamentos'
 import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
@@ -40,10 +41,12 @@ interface EstadoUpload {
   totalLinhas: number
   totalAntes:  number
   mensagem:    string
+  /** Progresso do envio em lotes (null = sem barra; feito===total = aguardando servidor). */
+  progresso:   { feito: number; total: number } | null
 }
 
 const ESTADO_INICIAL: EstadoUpload = {
-  estado: 'idle', arquivo: null, totalLinhas: 0, totalAntes: 0, mensagem: '',
+  estado: 'idle', arquivo: null, totalLinhas: 0, totalAntes: 0, mensagem: '', progresso: null,
 }
 
 interface BaseConfig {
@@ -181,7 +184,7 @@ function CardUpload({
         )}
         {estado.estado === 'validando' && (
           <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
-            <Loader2 size={14} className="animate-spin" /> Validando {estado.arquivo?.name}…
+            <Loader2 size={14} className="animate-spin" /> Lendo planilha {estado.arquivo?.name}…
           </div>
         )}
         {estado.estado === 'aguardando_confirmacao' && (
@@ -189,11 +192,23 @@ function CardUpload({
             <span className="font-medium">{estado.arquivo?.name}</span> — {formatarNum(estado.totalLinhas)} linhas válidas
           </p>
         )}
-        {estado.estado === 'carregando' && (
-          <div className="flex items-center justify-center gap-2 text-xs text-blue-600">
-            <Loader2 size={14} className="animate-spin" /> Importando {formatarNum(estado.totalLinhas)} linhas…
-          </div>
-        )}
+        {estado.estado === 'carregando' && (() => {
+          const p = estado.progresso
+          const pct = p && p.total > 0 ? Math.round((100 * p.feito) / p.total) : 0
+          // feito < total → ainda enviando lotes; feito === total → aguardando o servidor (promote/transform).
+          const enviando = p ? p.feito < p.total : true
+          return (
+            <div className="text-xs text-blue-600">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Loader2 size={14} className="animate-spin" />
+                {enviando ? `Enviando… ${pct}%` : 'Processando no servidor…'}
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-100">
+                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${enviando ? pct : 100}%` }} />
+              </div>
+            </div>
+          )
+        })()}
         {estado.estado === 'sucesso' && (
           <p className="text-xs text-emerald-600 font-medium">{estado.mensagem}</p>
         )}
@@ -282,11 +297,11 @@ export default function AdminUploadsPage() {
   useEffect(() => { carregarStatus() }, [carregarStatus])
 
   async function handleArquivoSelecionado(key: BaseKey, arquivo: File) {
-    setEstado(key, { estado: 'validando', arquivo, totalLinhas: 0, totalAntes: 0, mensagem: '' })
+    setEstado(key, { estado: 'validando', arquivo, totalLinhas: 0, totalAntes: 0, mensagem: '', progresso: null })
 
     try {
       if (key === 'vendas') {
-        const res = await parseVendasProdutoFile(arquivo)
+        const res = await parseArquivoEmWorker<VendaProdutoRaw>('vendas', arquivo, parseVendasProdutoFile)
         if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
         const st = await getVendasStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
@@ -295,21 +310,21 @@ export default function AdminUploadsPage() {
         const uniqueVendas = new Set(res.map(r => r.venda_numero).filter(Boolean)).size
         setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: uniqueVendas, totalAntes: st.total })
       } else if (key === 'lancamentos') {
-        const res = await parseLancamentosFile(arquivo)
+        const res = await parseArquivoEmWorker<LancamentoRaw>('lancamentos', arquivo, parseLancamentosFile)
         if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
         const st = await getLancamentosStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
         linhasRef.current.lancamentos = res
         setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
       } else if (key === 'lancamentos_financeiro') {
-        const res = await parseLancamentosFinanceiroFile(arquivo)
+        const res = await parseArquivoEmWorker<LancamentoFinanceiroRaw>('lancamentos_financeiro', arquivo, parseLancamentosFinanceiroFile)
         if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
         const st = await getLancamentosFinanceiroStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
         linhasRef.current.lancamentos_financeiro = res
         setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
       } else {
-        const res = await parseFluxoCaixaTitulosFile(arquivo)
+        const res = await parseArquivoEmWorker<FluxoCaixaTituloRaw>('fluxo_caixa_titulos', arquivo, parseFluxoCaixaTitulosFile)
         if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
         const st = await getFluxoCaixaTitulosStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
@@ -338,10 +353,12 @@ export default function AdminUploadsPage() {
       if (key === 'vendas') {
         const rows = linhasRef.current.vendas as VendaProdutoRaw[]
         let inseridas = 0
+        setEstado(key, { progresso: { feito: 0, total: rows.length } })
         for (let i = 0; i < rows.length; i += BATCH) {
           const res = await inserirLoteVendasAction(rows.slice(i, i + BATCH), i === 0)
           if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
           inseridas += res.inseridas
+          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
         }
         const fin = await finalizarVendasAction(totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
@@ -353,10 +370,12 @@ export default function AdminUploadsPage() {
       } else if (key === 'lancamentos') {
         const rows = linhasRef.current.lancamentos as LancamentoRaw[]
         let inseridas = 0
+        setEstado(key, { progresso: { feito: 0, total: rows.length } })
         for (let i = 0; i < rows.length; i += BATCH) {
           const res = await inserirLoteLancamentosAction(rows.slice(i, i + BATCH), i === 0)
           if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
           inseridas += res.inseridas
+          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
         }
         const fin = await finalizarLancamentosAction(totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
@@ -366,10 +385,12 @@ export default function AdminUploadsPage() {
       } else if (key === 'lancamentos_financeiro') {
         const rows = linhasRef.current.lancamentos_financeiro as LancamentoFinanceiroRaw[]
         let inseridas = 0
+        setEstado(key, { progresso: { feito: 0, total: rows.length } })
         for (let i = 0; i < rows.length; i += BATCH) {
           const res = await inserirLoteLancamentosFinanceiroAction(rows.slice(i, i + BATCH), i === 0, nome)
           if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
           inseridas += res.inseridas
+          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
         }
         const fin = await finalizarLancamentosFinanceiroAction(totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
@@ -379,10 +400,12 @@ export default function AdminUploadsPage() {
       } else {
         const rows = linhasRef.current.fluxo_caixa_titulos as FluxoCaixaTituloRaw[]
         let inseridas = 0
+        setEstado(key, { progresso: { feito: 0, total: rows.length } })
         for (let i = 0; i < rows.length; i += BATCH) {
           const res = await inserirLoteFluxoCaixaTitulosAction(rows.slice(i, i + BATCH), i === 0, nome)
           if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
           inseridas += res.inseridas
+          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
         }
         const fin = await finalizarFluxoCaixaTitulosAction(totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
