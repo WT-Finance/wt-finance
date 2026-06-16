@@ -11,15 +11,22 @@ import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
-export async function getLancamentosStatusAction(): Promise<{ total: number } | { error: string }> {
+export async function getLancamentosStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
   // Guard ANTES do try: negação de permissão deve lançar, não virar erro amigável.
   await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
     const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('get_upload_status')
     if (error) return { error: error.message }
-    const status = data as { lancamentos: { total: number } } | null
-    return { total: status?.lancamentos?.total ?? 0 }
+    // v4.20.1: surfaceia ultima_atualizacao (MAX(importado_em)) — antes era descartada,
+    // então o card mostrava "Nunca"/valor velho mesmo com o dado fresco no banco.
+    const status = data as { lancamentos: { total: number; ultima_atualizacao: string | null } } | null
+    return {
+      total: status?.lancamentos?.total ?? 0,
+      ultima_atualizacao: status?.lancamentos?.ultima_atualizacao ?? null,
+    }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }
@@ -193,9 +200,11 @@ export async function getLancamentosFinanceiroStatusAction(): Promise<
   try {
     const supabase = getAdminClient()
     const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-    const { data, error } = await bound('contar_lancamentos_financeiro')
+    // v4.20.1: status_lancamentos_financeiro (count + MAX(carregado_em) de raw.lancamentos).
+    const { data, error } = await bound('status_lancamentos_financeiro')
     if (error) return { error: error.message }
-    return { total: (data as number) ?? 0, ultima_atualizacao: null }
+    const status = data as { total: number; ultima_atualizacao: string | null } | null
+    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }
@@ -254,9 +263,11 @@ export async function getFluxoCaixaTitulosStatusAction(): Promise<
   await requireAreaAction('admin/uploads')
   try {
     const supabase = getAdminClient()
-    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('contar_fluxo_caixa_titulos')
+    // v4.20.1: status_fluxo_caixa_titulos (count + MAX(carregado_em) de raw.fluxo_caixa_titulos).
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('status_fluxo_caixa_titulos')
     if (error) return { error: error.message }
-    return { total: (data as number) ?? 0, ultima_atualizacao: null }
+    const status = data as { total: number; ultima_atualizacao: string | null } | null
+    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

@@ -117,17 +117,27 @@ mesma derivação do seed `0002`, `ON CONFLICT (data) DO NOTHING`) e recuperar S
 re-upload via RPCs `transform_raw_to_analytics` → `regenerar_dim_operacao_weddings` →
 `refresh_all_materialized_views`. (Descoberto em mai/2026, migration 0100.)
 
-### RPCs chamadas pela UI correm como `anon` (statement_timeout = 3s)
-O front usa a **anon key** (`getServerClient`), e os roles têm timeout DIFERENTE:
-`anon`=3s, `authenticated`=8s, `service_role`=sem limite. Uma RPC que passe de 3s
-estoura `57014 canceling statement due to statement timeout` → HTTP 500 — mas **só pelo
-front**; testar via REST com a service role key NÃO reproduz (não tem timeout).
+### statement_timeout por role — o PostgREST aplica o rolconfig do papel a CADA requisição
+Os roles têm timeout DIFERENTE, vindo do `rolconfig` (`ALTER ROLE … SET statement_timeout`):
+`anon`=3s, `authenticated`=8s, `service_role`=**0 (sem limite), mas só porque a migration 0145
+setou isso EXPLICITAMENTE** (ADR-0122). Uma RPC que passe do limite estoura
+`57014 canceling statement due to statement timeout` → HTTP 500/erro de carga.
 
-**Regra:** toda RPC consumida pela UI precisa caber em <3s; não validar só com service
-role. Atenção a N+1 dentro de RPC de listagem (função escalar por linha) e a casts em
-coluna de JOIN que impedem índice — pioram conforme o dado cresce. (Custou caro em
-mai/2026: `contar_convidados_operacao` × ~140 ops estourou após o backfill 0100; fix na
-migration 0101.)
+**Como funciona (não é automático):** `SET ROLE` sozinho **não** aplica o rolconfig do papel-alvo
+(testado). É o **PostgREST que aplica o rolconfig do papel da requisição a cada chamada** — é assim
+que `anon`=3s/`authenticated`=8s valem. Se o rolconfig do papel **não** define `statement_timeout`,
+cai no **default do banco (120s)**. (Custou caro: o `service_role` ficou com rolconfig nulo → cargas
+pesadas via `getAdminClient` herdaram 120s e `promover_carga_vendas` estourou — v4.20.1, fix 0145.)
+
+**Regras:**
+- Toda RPC consumida pela UI (roda como **`authenticated`**, 8s) precisa caber nesse limite — não
+  validar só com service role. Atenção a N+1 em RPC de listagem (função escalar por linha) e a casts
+  em coluna de JOIN que impedem índice — pioram com o volume. (Custou caro: `contar_convidados_operacao`
+  × ~140 ops após o backfill 0100; fix 0101.)
+- **O timer é armado no statement EXTERNO do PostgREST e NÃO dá para desarmá-lo de dentro da função**
+  (testado: atributo `SET statement_timeout=0` na função e `SET LOCAL` no corpo não afetam o statement
+  em curso). Uma RPC de carga pesada (service_role) só escapa do timeout pelo **rolconfig do role** — não
+  por código da função. Mudou o timeout de um role? `NOTIFY pgrst, 'reload config'`.
 
 ### Auth e RBAC (v4.13/v4.14) — enforcement em 4 camadas
 Login obrigatório (Supabase Auth). **Método primário = e-mail + SENHA** (v4.14, ADR-0110); o magic link (`/auth/confirm` em 2 passos) virou **recuperação/anti-lockout**, fora da tela de login. Autorização **RBAC dinâmico por área** (`app.rbac_*`; 11 áreas; em Performance, granular por setor). ADRs 0106-0110.
