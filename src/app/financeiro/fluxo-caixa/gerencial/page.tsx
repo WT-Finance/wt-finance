@@ -1,34 +1,20 @@
-import { getAdminClient } from '@/lib/supabase/admin'
+import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
 import TopSection from '@/components/shared/top-section'
 import GerencialSection from '@/components/financeiro/gerencial/gerencial-section'
 import { type Lancamento } from '@/components/financeiro/gerencial/lancamento-row'
+import { type Conta, type DiaProjecao } from '@/components/financeiro/gerencial/tipos'
 
 // v4.13: entrada DIRETA do Fluxo de Caixa Gerencial (item próprio na sidebar).
-// Antes o Gerencial só existia embutido em /financeiro/fluxo-caixa — um usuário
-// com permissão APENAS de financeiro/gerencial não tinha porta de entrada. A
-// seção embutida continua existindo para quem tem as duas áreas; esta página
-// renderiza o MESMO componente, standalone. Mesmo padrão de dados da página de
-// fluxo (admin client server-side + unwrapRpc).
-
-interface GerencialSaldo {
-  conta: string
-  saldo: number
-  ordem: number
-}
-
-interface DiaProjecao {
-  data:      string
-  a_receber: number
-  a_pagar:   number
-  resultado: number
-}
+// v4.21.0 (M2): leitura via cliente de SESSÃO (getServerClient), não mais service role.
+// As RPCs do gerencial exigem exigir_acesso(['financeiro/gerencial']) no banco — a
+// negação vale no nível da RPC, não só neste guard de página.
 
 export default async function GerencialPage() {
   await requireArea('financeiro/gerencial')
 
-  const db = getAdminClient()
+  const db = await getServerClient()
   type RpcResult = { data: unknown; error: { message: string } | null }
   type BoundRpc  = (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>
   const rpc = (db.rpc as unknown as BoundRpc).bind(db)
@@ -41,7 +27,7 @@ export default async function GerencialPage() {
   ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : empty)))
 
   const projecao    = unwrapRpc<DiaProjecao[]>(projecaoRes, 'get_gerencial_projecao_diaria') ?? []
-  const saldos      = unwrapRpc<GerencialSaldo[]>(saldosRes, 'get_gerencial_saldos') ?? []
+  const saldos      = unwrapRpc<Conta[]>(saldosRes, 'get_gerencial_saldos') ?? []
   const lancamentos = unwrapRpc<Lancamento[]>(lancamentosRes, 'get_gerencial_lancamentos') ?? []
 
   return (
