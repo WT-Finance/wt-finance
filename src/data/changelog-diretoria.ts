@@ -32,6 +32,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.20.1',
+    data: '2026-06-16T11:00',
+    itens: [
+      { tipo: 'correcao', texto: 'A importação de "Vendas por Produto", que vinha falhando (a tela travava e dava erro de tempo esgotado), voltou a funcionar normalmente.' },
+      { tipo: 'correcao', texto: 'Na tela de Atualização de Dados, a "última atualização" (data e hora da última importação) agora aparece corretamente em todas as bases — antes só Vendas mostrava.' },
+    ],
+  },
+  {
     versao: '4.20.0',
     data: '2026-06-15T22:00',
     itens: [

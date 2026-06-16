@@ -6,6 +6,18 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.20.1] — 2026-06-16
+
+Patch: **correção da importação de Vendas (timeout) e da "última atualização" das cargas.** Migration 0145 (aditiva). ADR-0122.
+
+### Importação de Vendas por Produto voltou a funcionar (timeout)
+- `promover_carga_vendas` (TRUNCATE + copia staging→raw 45k + transform + dims + refresh de 4 MVs, numa transação) estourava `57014 canceling statement due to statement timeout`. **Causa:** o `service_role` estava com `rolconfig` **sem `statement_timeout`** → o PostgREST aplicava o **default do banco (120s)** às requisições dele, e o promote passa disso. (O `CLAUDE.md` documentava "service_role = sem limite" — havia derivado.)
+- **Fix:** migration `ALTER ROLE service_role SET statement_timeout = 0` (restaura o comportamento documentado; admin-only, runaway limitado pelo timeout da função serverless). O timer é armado no statement externo do PostgREST e **não** pode ser desarmado de dentro da função (testado) — a alavanca é o nível do role.
+
+### "Última atualização" agora aparece em todas as bases de importação
+- Antes, só **Vendas** mostrava a data; **Lançamentos por Operação** descartava `ultima_atualizacao` no `getLancamentosStatusAction` (mostrava "Nunca"/valor velho, embora `MAX(importado_em)` estivesse fresco no banco), e **Lançamentos por Categoria** + **Fluxo de Caixa** fixavam `null`.
+- **Fix:** `getLancamentosStatusAction` passa a expor `ultima_atualizacao` de `get_upload_status`; duas RPCs novas — `status_lancamentos_financeiro` e `status_fluxo_caixa_titulos` (count + `MAX(carregado_em)` das tabelas raw) — alimentam as outras duas. As 4 bases agora exibem a data/hora correta.
+
 ## [4.20.0] — 2026-06-15
 
 Versão MINOR: **número de referência por solicitação, auditoria de movimentações navegável e permissão de Solicitações em dois níveis.** Migrations 0143 (aditiva) e 0144 (catálogo — UPDATE cosmético, com confirmação). ADRs 0120 e 0121.
