@@ -39,9 +39,10 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // Solicitações em DOIS níveis (v4.20.0, ADR-0121): 'solicitacoes/basico' = acesso
   // BÁSICO (caixa de entrada + minhas); 'solicitacoes' = GESTÃO (inclui o básico +
   // Ver todas / Gerenciar / Movimentações). O nome 'solicitacoes' é histórico (sempre
-  // foi a área de gestão); a básica nasceu depois, daí o sufixo.
-  'solicitacoes/basico':     { rotulo: 'Solicitações',              grupo: 'Geral',         ordem: 45 },
-  'solicitacoes':            { rotulo: 'Solicitações (gestão)',     grupo: 'Administração', ordem: 53 },
+  // foi a área de gestão); a básica nasceu depois, daí o sufixo. Grupo próprio
+  // 'Solicitações' (migration 0144) p/ os dois níveis aparecerem juntos no editor de roles.
+  'solicitacoes/basico':     { rotulo: 'Solicitações',              grupo: 'Solicitações',  ordem: 53 },
+  'solicitacoes':            { rotulo: 'Solicitações (gestão)',     grupo: 'Solicitações',  ordem: 54 },
 }
 
 /**

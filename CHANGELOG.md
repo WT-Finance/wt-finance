@@ -8,7 +8,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [4.20.0] — 2026-06-15
 
-Versão MINOR: **número de referência por solicitação, auditoria de movimentações navegável e permissão de Solicitações em dois níveis.** Migration 0143 (aditiva). ADRs 0120 e 0121.
+Versão MINOR: **número de referência por solicitação, auditoria de movimentações navegável e permissão de Solicitações em dois níveis.** Migrations 0143 (aditiva) e 0144 (catálogo — UPDATE cosmético, com confirmação). ADRs 0120 e 0121.
 
 ### Solicitações — número de referência (#id) (M1)
 - Cada solicitação passa a exibir seu **número** (`#id`, a PK `app.solicitacao.id`) em 3 pontos que não o mostravam: card da **caixa-de-entrada** (gestão), card de **"Minhas solicitações"** e **cabeçalho do drawer** (subtítulo `Solicitação #id`).
@@ -26,6 +26,7 @@ Versão MINOR: **número de referência por solicitação, auditoria de moviment
 - A página `/solicitacoes` (caixa de entrada + minhas) deixa de ser aberta a **qualquer autenticado** e passa a exigir a permissão **"Solicitações"** (área nova `solicitacoes/basico`). Os botões âmbar (Ver todas, Gerenciar solicitações, **Movimentações**) e as rotas `/admin/solicitacoes/*` continuam exigindo **"Solicitações (gestão)"** (área `solicitacoes`, **inalterada**). A gestão **inclui** a básica (guard com OR; item da sidebar via `areasAny`).
 - **Migration 0143 (aditiva):** cria a área `solicitacoes/basico` ("Solicitações", grupo Geral) e a **concede a todos os roles** (backfill não-quebra — ninguém perde o acesso de hoje; o admin remove depois). **Nenhum guard de gestão mudou** → conceder a básica a todos **não vaza** gestão (grants de `solicitacoes` seguem só no role de gestão). Aplicada (gate VERDE, 38/38, restore-test 4/4) e verificada via pooler.
 - O nome interno `solicitacoes` permanece = gestão (histórico); a básica nasceu com sufixo `/basico`. Decisão de não inverter para não reescrever ~10 funções `SECURITY DEFINER` (risco na camada de segurança). As RPCs básicas (dados self-scoped do próprio usuário) seguem em `exigir_acesso()` (login+ativo); o gate da feature é a página. Detalhe e fronteira aceita no ADR-0121.
+- **Migration 0144 (catálogo):** os dois níveis ganham um **grupo próprio "Solicitações"** em `app.rbac_areas` (`UPDATE` de `grupo`/`ordem` — sem mexer em grants/permissões) para aparecerem **lado a lado** no editor de permissões (antes a básica caía em "Geral" e a gestão em "Administração", separadas). Aplicada com backup-gate VERDE + confirmação humana (é `UPDATE`).
 
 ### Ajustes visuais
 - Removido o ponto final dos subtítulos de página (Solicitações, Design System, Movimentações e a tela de login) — consistência (os demais já não tinham).

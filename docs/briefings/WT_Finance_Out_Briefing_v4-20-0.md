@@ -1,7 +1,7 @@
 # WT Finance — Out-Briefing v4.20.0
 
 **Data:** 2026-06-15 · **Branch:** `feat/v4-20-0-numeracao-movimentacoes` (base `main`) · **Versão:** 4.19.1 → **4.20.0** (MINOR)
-**Tema:** **Número de referência por solicitação, auditoria de movimentações navegável e permissão de Solicitações em dois níveis.** Migration 0143 (aditiva). ADRs 0120 e 0121. **Merge e deploy ficam com o usuário.**
+**Tema:** **Número de referência por solicitação, auditoria de movimentações navegável e permissão de Solicitações em dois níveis.** Migrations 0143 (aditiva) + 0144 (catálogo, UPDATE com confirmação). ADRs 0120 e 0121. **Merge e deploy ficam com o usuário.**
 
 > **Adendo pré-merge (a pedido do Yan):** após as 6 missões, três ajustes foram dobrados nesta mesma versão/PR (ainda não mergeada): **(1)** confirmar o botão Movimentações gestão-only (já era — fica dentro de `podeGestao`); **(2)** **separar a permissão de Solicitações em básica + gestão** (migration 0143, ADR-0121); **(3)** remover o ponto final dos subtítulos de página. Detalhe na seção "Adendo pré-merge" abaixo.
 
@@ -48,13 +48,15 @@ Três pedidos do Yan, dobrados na mesma versão/PR (ainda não mergeada):
 - **`solicitacoes`** (existente, rótulo **"Solicitações (gestão)"**, inalterada) = **gestão** (Ver todas, Gerenciar, Movimentações + `/admin/solicitacoes/*`). **Nenhum guard de gestão mudou** (`podeGestao`, `requireArea('solicitacoes')`, `exigir_acesso(['solicitacoes'])`, `tem_area('solicitacoes')`).
 - **Decisão-chave (risco):** manter `solicitacoes` = gestão (em vez de inverter) evita reescrever ~10 funções `SECURITY DEFINER` só para trocar a string — zero risco na camada de segurança e migration **puramente aditiva**. O usuário vê os **rótulos** ("Solicitações" / "Solicitações (gestão)"), que ficam como pedido; o nome interno `solicitacoes`=gestão é histórico (documentado em `areas.ts` e ADR-0121).
 - **Backfill não-quebra (decisão do Yan): conceder a básica a TODOS os roles.** A migration 0143 insere a área e dá `solicitacoes/basico` a todo role (admin remove depois). **Verificado em produção:** 2 roles, ambos com a básica (✓ todos); grants de `solicitacoes` (gestão) seguem em **1** role (inalterado) → **conceder a básica a todos NÃO vazou gestão**.
+- **Agrupamento no editor (migration 0144, follow-up do mesmo dia):** o Yan reportou não ver "os dois níveis". Diagnóstico: ambos **renderizavam**, mas em grupos diferentes — a básica em "Geral" (ordem 45), a gestão em "Administração" (ordem 53) — pois o `modal-role` agrupa por `grupo`. A 0144 (`UPDATE` de `grupo`/`ordem` em `rbac_areas`, **sem** tocar grants/permissões) move os dois para um grupo próprio **"Solicitações"** (básica 53, gestão 54), lado a lado (espelha como "Performance" reúne seus níveis). Como o editor lê o grupo do banco, o efeito é **imediato em produção**. Aplicada com backup-gate VERDE + **confirmação humana** (é `UPDATE`).
 - **Fronteira aceita:** as RPCs **básicas** (getMinhas/getCaixa próprio/getPendencias/criar…) seguem em `exigir_acesso()` (login+ativo). Os dados são **self-scoped** (do próprio chamador) — sem vazamento cross-user; o gate da feature é a **página**. É estritamente não-pior que hoje. Negação hard no nível da RPC básica = follow-up (recriar ~7 funções) se a diretoria quiser bloquear acesso por API direta.
 
 **(3) Subtítulos de página sem ponto final.** Removido o ponto final em Solicitações, Design System, Movimentações e a tela de login (os demais — Tipos, Upload, Acessos — já não tinham). A prosa instrucional multi-frase das telas de auth (trocar-senha, solicitar-acesso, sem-acesso) foi **mantida** (remover só o ponto final de texto com 2 frases ficaria incoerente) — me avise se quiser essas também.
 
-## Banco — migration 0143 (aditiva)
+## Banco — migrations 0143 (aditiva) + 0144 (catálogo)
 - **Base (M1–M6): nenhuma migration** (display + reaproveitamento de `getDetalhe`/`solicitacaoSchema`/`movimentacaoSchema`, intactos; sem drift de contrato).
 - **Adendo: migration 0143** (`0143_solicitacoes_area_basica.sql`) — **aditiva/retrocompatível**: só `INSERT` de catálogo (área `solicitacoes/basico`) + `INSERT` de grants (backfill a todos os roles), `ON CONFLICT DO NOTHING`. **Não** faz UPDATE/DELETE/DROP em dado pré-existente → regime autônomo (gate como rede, sem confirmação). **Aplicada:** backup-gate **VERDE** (38/38 tabelas, restore-test spot 4/4 idêntico, 26,1s via COPY) → `db push` da **worktree** (validou o REPO worktree-aware do M5 em produção). Verificada via pooler (áreas + backfill conferidos). Retrocompat com a `main` viva (v4.19.1): o app antigo ignora a área desconhecida e segue abrindo `/solicitacoes` a qualquer autenticado.
+- **Adendo: migration 0144** (`0144_solicitacoes_grupo_catalogo.sql`) — **DESTRUTIVA por regra** (`UPDATE` em `app.rbac_areas`), mas **só metadado de exibição** (grupo/ordem); sem perda de dado, sem tocar grants. Junta os dois níveis no grupo "Solicitações". **Aplicada com backup-gate VERDE + confirmação humana** (o usuário confirmou via pergunta direta). Verificada via pooler (grupo "Solicitações" com básica/gestão, ordens 53/54).
 
 ## Guarda (gestão-only, não reaberta)
 - A página `/admin/solicitacoes/movimentacoes` é **gestão-only** (`requireArea('solicitacoes')`).
@@ -88,7 +90,7 @@ Nada novo permanente/transversal/caro o bastante: o `react-hooks/static-componen
 - **M2/M3/M4:** `src/components/solicitacoes/movimentacoes-content.tsx` (rewrite), `src/app/solicitacoes/actions.ts` (server action `detalheSolicitacao`).
 - **M5:** `scripts/db-gate/lib.mjs`, `gate.mjs`, `migrate.mjs`.
 - **M6:** `package.json` (4.20.0; `src/lib/version.ts` deriva), `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, `docs/adr/0120-...md`, este out-briefing.
-- **Adendo — permissão (2):** `supabase/migrations/0143_solicitacoes_area_basica.sql`, `src/lib/auth/areas.ts`, `src/lib/auth/areas.test.ts`, `src/app/solicitacoes/page.tsx`, `src/components/layout/sidebar.tsx`, `docs/adr/0121-solicitacoes-permissao-basica-e-gestao.md`.
+- **Adendo — permissão (2):** `supabase/migrations/0143_solicitacoes_area_basica.sql`, **`supabase/migrations/0144_solicitacoes_grupo_catalogo.sql`** (agrupamento), `src/lib/auth/areas.ts` (área nova + grupo "Solicitações"), `src/lib/auth/areas.test.ts`, `src/app/solicitacoes/page.tsx`, `src/components/layout/sidebar.tsx`, `docs/adr/0121-solicitacoes-permissao-basica-e-gestao.md`.
 - **Adendo — subtítulos (3):** `src/components/solicitacoes/solicitacoes-content.tsx`, `src/app/admin/design-system/page.tsx`, `src/app/admin/solicitacoes/movimentacoes/page.tsx`, `src/app/login/page.tsx`.
 
 ## Commits
@@ -99,6 +101,7 @@ Nada novo permanente/transversal/caro o bastante: o `react-hooks/static-componen
 5. `feat(solicitacoes): permissao basica + gestao (migration 0143, ADR-0121)` (adendo 2)
 6. `style(ui): remove ponto final dos subtitulos de pagina` (adendo 3)
 7. `docs(release): changelog + diretoria + out-briefing do adendo v4.20.0`
+8. `fix(solicitacoes): agrupa os dois niveis no editor de permissoes (migration 0144)` (follow-up do adendo)
 
 ## Fronteira de produto (respeitada)
 Sem tabela de eventos nova; sem reabertura/reatribuição; sem numeração contígua materializada (lacunas aceitas por decisão do Yan). Lista somente-leitura, gestão-only. Nada do Fluxo de Caixa tocado. Backfill da área básica a todos os roles = decisão do Yan (não-quebra).
