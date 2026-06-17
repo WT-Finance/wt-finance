@@ -6,6 +6,28 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.21.0] — 2026-06-16
+
+Versão MINOR: **Fluxo de Caixa Gerencial — contas gerenciáveis, agregada configurável, cores por faixa + hardening (M2).** Migrations 0146 (aditiva), 0147 (hardening de RPCs), 0148 (RPC nova). ADR-0123.
+
+### Contas viram entidade gerenciável (M1)
+- `analytics.gerencial_saldos` estendida com `limite` (crédito), `consolidado` (booleano) e `papel` (`isolada`/`reserva`, exclusivos via índice único parcial). Grants `INSERT/DELETE` novos.
+- CRUD de conta: `create_gerencial_conta` / `update_gerencial_conta` (atributos + rename + papel exclusivo) / `delete_gerencial_conta`. UI: gerenciador de contas na Visualização Agregada (saldo/limite inline, checkbox consolidado, select de papel, adicionar/remover).
+- Backfill das 4 contas atuais preserva o comportamento (Itaú=isolada+consolidado+limite 200k; Asaas/Blimboo=consolidado; Clara=reserva).
+
+### Agregada data-driven + 3 projeções configuráveis (M3)
+- Removidos os nomes de conta hardcoded (`Itaú/Asaas/Blimboo/Clara`). As 3 colunas saem das contas: **Saldo [isolada]** = saldo da isolada + resultado do dia; **Consolidado** = soma das contas marcadas + resultado; **Consol.+[reserva]** = consolidado + reserva + resultado. Cabeçalhos dinâmicos seguem os papéis; coluna some se o papel não estiver atribuído.
+- Decisão de modelo: a agregada **não** distribui por conta (`conta_previsao` irrelevante); 3 bases de saldo sobre o **mesmo** resultado diário.
+
+### Cores por faixa de saldo (M4)
+- Coluna **isolada** (tem limite): 3 faixas via tokens semânticos — `< −limite` vermelho (`--danger`), `[−limite, 0)` amarelo (`--warning`), `≥ 0` verde (`--success`). **Consolidado** e **Consol.+reserva**: 2 faixas (vermelho/verde). A faixa amarela é função do `limite` da conta (não hardcodado).
+
+### Seleção e exclusão em massa (M5)
+- Checkbox por linha + "selecionar todos os visíveis" + **"Apagar selecionados (N)"** com confirmação. **Aviso extra** quando a seleção inclui linhas `origem='planilha'` (curadas — serão re-trazidas pelo próximo import). RPC `delete_gerencial_lancamentos_bulk`. Ícone de origem (planilha/manual) na base.
+
+### Hardening — fim do service role no gerencial (M2)
+- Todas as RPCs do gerencial (`get_gerencial_*`, CRUD de lançamento/conta, `batch_gerencial_import`) passam a chamar `app.exigir_acesso(['financeiro/gerencial'])` + `GRANT authenticated` — a negação vale **no nível da RPC**, não só na página. Página standalone, seção embutida do Fluxo de Caixa, actions e a API Route de import migradas de `getAdminClient` (service role) para o **cliente de sessão** (`getServerClient`). Defesa em profundidade real (achado da auditoria 2026-06-13/M2).
+
 ## [4.20.2] — 2026-06-16
 
 Patch: **desempenho do upload — parse em Web Worker + barra de progresso.** Sem migration. Sem mudança de banco.

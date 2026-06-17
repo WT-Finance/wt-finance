@@ -32,6 +32,16 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.21.0',
+    data: '2026-06-16T18:00',
+    itens: [
+      { tipo: 'novidade', texto: 'No Fluxo de Caixa Gerencial agora dá para gerenciar as contas: adicionar, remover, editar saldo inicial e limite de crédito de cada uma, e escolher quais entram no saldo consolidado.' },
+      { tipo: 'novidade', texto: 'A visão agregada passou a ler dessas contas configuráveis — o saldo consolidado e as colunas se ajustam automaticamente às contas e papéis que você definir, sem depender de nomes fixos.' },
+      { tipo: 'melhoria', texto: 'Os saldos projetados agora aparecem coloridos por faixa: verde (positivo), amarelo (dentro do limite de crédito) e vermelho (abaixo do limite) — fica imediato ver quando uma conta entra no vermelho.' },
+      { tipo: 'melhoria', texto: 'Na base de dados do gerencial, é possível selecionar várias linhas e apagá-las de uma vez (com aviso quando as linhas vêm da planilha importada).' },
+    ],
+  },
+  {
     versao: '4.20.2',
     data: '2026-06-16T12:00',
     itens: [

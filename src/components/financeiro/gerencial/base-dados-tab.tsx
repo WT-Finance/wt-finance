@@ -2,10 +2,11 @@
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload } from 'lucide-react'
-import { createLancamento } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
+import { Plus, Upload, Trash2, AlertTriangle } from 'lucide-react'
+import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import ImportDrawer from './import-drawer'
+import ConfirmModal from '@/components/shared/confirm-modal'
 
 const PILL_BASE     = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
 const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
@@ -31,8 +32,17 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
   const [novosValores, setNovosValores] = useState<Partial<Lancamento>>({})
   const [isPending, startCreate]        = useTransition()
   const [, startRefresh]                = useTransition()
+  // v4.21.0 (M5) — seleção/exclusão em massa.
+  const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
+  const [confirmBulk, setConfirmBulk]   = useState(false)
+  const [removendo, startRemover]       = useTransition()
 
   const primeiroInputRef = useRef<HTMLSelectElement>(null)
+
+  // Re-sincroniza com o servidor (router.refresh após import/mutações). Padrão React
+  // "ajustar estado na renderização" (sem efeito); limpa a seleção pois os ids mudam.
+  const [prevInicial, setPrevInicial] = useState(inicial)
+  if (inicial !== prevInicial) { setPrevInicial(inicial); setItens(inicial); setSelecionados(new Set()) }
 
   // Debounce busca 300ms
   useEffect(() => {
@@ -40,11 +50,8 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
     return () => clearTimeout(t)
   }, [buscaInput])
 
-  // Focar no primeiro campo ao abrir nova linha
   useEffect(() => {
-    if (criando && primeiroInputRef.current) {
-      primeiroInputRef.current.focus()
-    }
+    if (criando && primeiroInputRef.current) primeiroInputRef.current.focus()
   }, [criando])
 
   const filtrados = useMemo(() => {
@@ -54,14 +61,42 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
       .filter(l => !busca || l.pessoa.toLowerCase().includes(busca.toLowerCase()))
   }, [itens, tipoFiltro, origemFiltro, busca])
 
+  // ── Seleção ────────────────────────────────────────────────────────────────
+  const toggleSel = (id: number) => setSelecionados(prev => {
+    const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s
+  })
+  const idsVisiveis = filtrados.map(l => l.id)
+  const todosVisiveisSel = idsVisiveis.length > 0 && idsVisiveis.every(id => selecionados.has(id))
+  const toggleTodosVisiveis = () => setSelecionados(prev => {
+    const s = new Set(prev)
+    if (todosVisiveisSel) idsVisiveis.forEach(id => s.delete(id))
+    else idsVisiveis.forEach(id => s.add(id))
+    return s
+  })
+  const idsSelecionados = itens.filter(l => selecionados.has(l.id)).map(l => l.id)
+  const planilhaNaSelecao = itens.filter(l => selecionados.has(l.id) && l.origem === 'planilha').length
+
   const handleDelete = (id: number) => {
     setItens(prev => prev.filter(l => l.id !== id))
+    setSelecionados(prev => { const s = new Set(prev); s.delete(id); return s })
+  }
+
+  const handleApagarSelecionados = () => {
+    startRemover(async () => {
+      const res = await deleteLancamentosBulk(idsSelecionados)
+      setConfirmBulk(false)
+      if (res.success) {
+        const apagados = new Set(idsSelecionados)
+        setItens(prev => prev.filter(l => !apagados.has(l.id)))
+        setSelecionados(new Set())
+        router.refresh()
+      }
+    })
   }
 
   const handleSalvarNovo = () => {
     const { tipo, pessoa, valor_final, vencimento } = novosValores
     if (!tipo || !pessoa || valor_final == null || !vencimento) return
-
     startCreate(async () => {
       const res = await createLancamento({
         tipo: tipo as 'A pagar' | 'A receber',
@@ -81,9 +116,7 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
 
   const handleImportClose = (imported?: boolean) => {
     setImportOpen(false)
-    if (imported) {
-      startRefresh(() => { router.refresh() })
-    }
+    if (imported) startRefresh(() => { router.refresh() })
   }
 
   return (
@@ -91,51 +124,39 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
       {/* Header com filtros e ações */}
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div className="flex gap-2 flex-wrap items-center">
-          {/* Pills tipo */}
           {(['todos', 'receber', 'pagar'] as TipoFiltro[]).map(v => (
-            <button
-              key={v}
-              className={[PILL_BASE, tipoFiltro === v ? '' : PILL_INACTIVE].join(' ')}
-              style={tipoFiltro === v ? PILL_ACTIVE : undefined}
-              onClick={() => setTipoFiltro(v)}
-            >
+            <button key={v} className={[PILL_BASE, tipoFiltro === v ? '' : PILL_INACTIVE].join(' ')}
+              style={tipoFiltro === v ? PILL_ACTIVE : undefined} onClick={() => setTipoFiltro(v)}>
               {v === 'todos' ? 'Todos' : v === 'receber' ? 'A receber' : 'A pagar'}
             </button>
           ))}
           <span className="text-zinc-200">·</span>
-          {/* Pills origem */}
           {(['todos', 'planilha', 'manual'] as OrigemFiltro[]).map(v => (
-            <button
-              key={v}
-              className={[PILL_BASE, origemFiltro === v ? '' : PILL_INACTIVE].join(' ')}
-              style={origemFiltro === v ? PILL_ACTIVE : undefined}
-              onClick={() => setOrigemFiltro(v)}
-            >
+            <button key={v} className={[PILL_BASE, origemFiltro === v ? '' : PILL_INACTIVE].join(' ')}
+              style={origemFiltro === v ? PILL_ACTIVE : undefined} onClick={() => setOrigemFiltro(v)}>
               {v === 'todos' ? 'Toda origem' : v === 'planilha' ? 'Planilha' : 'Manual'}
             </button>
           ))}
         </div>
 
         <div className="flex gap-2 items-center">
-          <input
-            type="text"
-            placeholder="Buscar por pessoa…"
-            value={buscaInput}
-            onChange={e => setBuscaInput(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-zinc-200 rounded focus:outline-none focus:border-[var(--brand)]"
-          />
-          <button
-            onClick={() => setCriando(true)}
-            disabled={criando}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors disabled:opacity-50"
-          >
+          {selecionados.size > 0 && (
+            <button
+              onClick={() => setConfirmBulk(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded text-white transition-opacity"
+              style={{ background: 'var(--danger)' }}
+            >
+              <Trash2 size={12} /> Apagar selecionados ({selecionados.size})
+            </button>
+          )}
+          <input type="text" placeholder="Buscar por pessoa…" value={buscaInput} onChange={e => setBuscaInput(e.target.value)}
+            className="px-2.5 py-1.5 text-xs border border-zinc-200 rounded focus:outline-none focus:border-[var(--brand)]" />
+          <button onClick={() => setCriando(true)} disabled={criando}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors disabled:opacity-50">
             <Plus size={12} /> Nova linha
           </button>
-          <button
-            onClick={() => setImportOpen(true)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-white rounded transition-opacity"
-            style={{ background: 'var(--brand)' }}
-          >
+          <button onClick={() => setImportOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-white rounded transition-opacity" style={{ background: 'var(--brand)' }}>
             <Upload size={12} /> Importar
           </button>
         </div>
@@ -146,13 +167,17 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100 text-left">
+              <th className="py-2 px-2 w-[32px] text-center">
+                <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}
+                  className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
+              </th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[110px]">Tipo</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400">Pessoa</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 text-right w-[130px]">Valor</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[180px]">Descrição</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[140px]">Conta</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[110px]">Vencimento</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[80px]">Origem</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[100px]">Origem</th>
               <th className="py-2 px-2 w-[32px]"></th>
             </tr>
           </thead>
@@ -160,81 +185,51 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
             {/* Nova linha inline */}
             {criando && (
               <tr className="border-b border-[var(--brand)] bg-[var(--brand-soft)]/20">
+                <td className="py-1 px-2"></td>
                 <td className="py-1 px-2">
-                  <select
-                    ref={primeiroInputRef}
-                    value={novosValores.tipo ?? ''}
+                  <select ref={primeiroInputRef} value={novosValores.tipo ?? ''}
                     onChange={e => setNovosValores(p => ({ ...p, tipo: e.target.value as Lancamento['tipo'] }))}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white"
-                  >
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white">
                     <option value="">Tipo…</option>
                     <option>A pagar</option>
                     <option>A receber</option>
                   </select>
                 </td>
                 <td className="py-1 px-2">
-                  <input
-                    type="text"
-                    placeholder="Pessoa"
-                    value={novosValores.pessoa ?? ''}
+                  <input type="text" placeholder="Pessoa" value={novosValores.pessoa ?? ''}
                     onChange={e => setNovosValores(p => ({ ...p, pessoa: e.target.value }))}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5"
-                  />
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
                 <td className="py-1 px-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={novosValores.valor_final ?? ''}
+                  <input type="number" step="0.01" placeholder="0,00" value={novosValores.valor_final ?? ''}
                     onChange={e => setNovosValores(p => ({ ...p, valor_final: Number(e.target.value) }))}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 text-right"
-                  />
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 text-right" />
                 </td>
                 <td className="py-1 px-2">
-                  <input
-                    type="text"
-                    placeholder="Descrição"
-                    value={novosValores.descricao ?? ''}
+                  <input type="text" placeholder="Descrição" value={novosValores.descricao ?? ''}
                     onChange={e => setNovosValores(p => ({ ...p, descricao: e.target.value }))}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5"
-                  />
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
                 <td className="py-1 px-2">
-                  <input
-                    type="text"
-                    placeholder="Conta"
-                    value={novosValores.conta_previsao ?? ''}
+                  <input type="text" placeholder="Conta" value={novosValores.conta_previsao ?? ''}
                     onChange={e => setNovosValores(p => ({ ...p, conta_previsao: e.target.value }))}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5"
-                  />
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
                 <td className="py-1 px-2">
-                  <input
-                    type="date"
-                    value={novosValores.vencimento ?? ''}
+                  <input type="date" value={novosValores.vencimento ?? ''}
                     onChange={e => setNovosValores(p => ({ ...p, vencimento: e.target.value }))}
                     onKeyDown={e => { if (e.key === 'Enter') handleSalvarNovo() }}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5"
-                  />
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
                 <td className="py-1 px-2 text-[9px] text-zinc-400">manual</td>
                 <td className="py-1 px-2">
                   <div className="flex gap-1 justify-end">
-                    <button
-                      onClick={handleSalvarNovo}
-                      disabled={isPending}
-                      className="text-[10px] px-1.5 py-0.5 rounded text-white disabled:opacity-50"
-                      style={{ background: 'var(--brand)' }}
-                    >
+                    <button onClick={handleSalvarNovo} disabled={isPending}
+                      className="text-[10px] px-1.5 py-0.5 rounded text-white disabled:opacity-50" style={{ background: 'var(--brand)' }}>
                       Salvar
                     </button>
-                    <button
-                      onClick={() => { setCriando(false); setNovosValores({}) }}
-                      className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-200 text-zinc-400"
-                    >
-                      ✕
-                    </button>
+                    <button onClick={() => { setCriando(false); setNovosValores({}) }}
+                      className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-200 text-zinc-400">✕</button>
                   </div>
                 </td>
               </tr>
@@ -245,6 +240,8 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
                 key={l.id}
                 lancamento={l}
                 onDelete={() => handleDelete(l.id)}
+                selecionado={selecionados.has(l.id)}
+                onToggleSelecao={() => toggleSel(l.id)}
               />
             ))}
           </tbody>
@@ -254,12 +251,33 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
       {/* Footer */}
       <p className="mt-2 text-[10px] text-[var(--text-muted)]">
         {filtrados.length} de {itens.length} lançamentos
+        {selecionados.size > 0 && <> · {selecionados.size} selecionado(s)</>}
       </p>
 
-      <ImportDrawer
-        open={importOpen}
-        onClose={() => handleImportClose(true)}
-      />
+      <ImportDrawer open={importOpen} onClose={() => handleImportClose(true)} />
+
+      {confirmBulk && (
+        <ConfirmModal
+          titulo="Apagar lançamentos selecionados"
+          confirmarLabel={removendo ? 'Apagando…' : `Apagar ${selecionados.size}`}
+          onConfirmar={handleApagarSelecionados}
+          onFechar={() => setConfirmBulk(false)}
+          mensagem={
+            <div className="space-y-2">
+              <p>Apagar <strong>{selecionados.size}</strong> lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.</p>
+              {planilhaNaSelecao > 0 && (
+                <p className="flex items-start gap-1.5 rounded-lg border border-[var(--warning)] bg-[var(--warning-bg)] px-2.5 py-2 text-xs text-[var(--warning)]">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                  <span>
+                    <strong>{planilhaNaSelecao}</strong> {planilhaNaSelecao === 1 ? 'linha vem' : 'linhas vêm'} da planilha curada (origem <em>planilha</em>) —
+                    {' '}se ainda {planilhaNaSelecao === 1 ? 'estiver' : 'estiverem'} na planilha, {planilhaNaSelecao === 1 ? 'será re-trazida' : 'serão re-trazidas'} no próximo import.
+                  </span>
+                </p>
+              )}
+            </div>
+          }
+        />
+      )}
     </div>
   )
 }

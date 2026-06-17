@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getAdminClient } from '@/lib/supabase/admin'
+import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
@@ -14,6 +14,7 @@ import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
 import ProximosLancamentosLateral from '@/components/financeiro/proximos-lancamentos-lateral'
 import GerencialSection from '@/components/financeiro/gerencial/gerencial-section'
 import { type Lancamento } from '@/components/financeiro/gerencial/lancamento-row'
+import { type Conta as GerencialSaldo, type DiaProjecao } from '@/components/financeiro/gerencial/tipos'
 
 interface SearchParams {
   preset?: string
@@ -65,19 +66,6 @@ interface ProximoLancamento {
   tipo:             'Entrada' | 'Saída'
   status:           string
   dias_para_vencer: number
-}
-
-interface GerencialSaldo {
-  conta: string
-  saldo: number
-  ordem: number
-}
-
-interface DiaProjecao {
-  data:       string
-  a_receber:  number
-  a_pagar:    number
-  resultado:  number
 }
 
 const TOOLTIP_KPI_REALIZADO =
@@ -148,7 +136,9 @@ export default async function FluxoCaixaPage({
   const sp   = await searchParams
   const { from, to } = resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
 
-  const db = getAdminClient()
+  // v4.21.0 (M2): cliente de SESSÃO (não service role). RPCs de fluxo e gerenciais já
+  // exigem a área no banco; a seção gerencial só dispara para quem tem 'financeiro/gerencial'.
+  const db = await getServerClient()
 
   type RpcResult = { data: unknown; error: { message: string } | null }
   type BoundRpc  = (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>

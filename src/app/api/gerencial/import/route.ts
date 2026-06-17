@@ -7,15 +7,17 @@ export const runtime = 'nodejs'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAreaApi } from '@/lib/auth/sessao'
-import { getAdminClient } from '@/lib/supabase/admin'
+import { getServerClient } from '@/lib/supabase/server'
 import { parseGerencialExcel } from '@/lib/gerencial/parser'
 import { chaveDuplicata, type LancamentoPlanilha, type ImportDiff } from '@/lib/gerencial/import-types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>
 
-function rpc(fn: string, args?: Record<string, unknown>) {
-  const db = getAdminClient()
+// v4.21.0 (M2): cliente de SESSÃO (não service role). batch_gerencial_import /
+// get_gerencial_lancamentos_planilha exigem app.exigir_acesso(['financeiro/gerencial']).
+async function rpc(fn: string, args?: Record<string, unknown>) {
+  const db = await getServerClient()
   return (db.rpc as unknown as Rpc)(fn, args)
 }
 

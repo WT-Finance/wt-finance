@@ -4,22 +4,10 @@ import { useState } from 'react'
 import VisualizacaoAgregadaTab from './visualizacao-agregada-tab'
 import BaseDadosTab from './base-dados-tab'
 import { type Lancamento } from './lancamento-row'
-
-interface Saldo {
-  conta: string
-  saldo: number
-  ordem: number
-}
-
-interface DiaProjecao {
-  data: string
-  a_receber: number
-  a_pagar: number
-  resultado: number
-}
+import { type Conta, type DiaProjecao } from './tipos'
 
 interface Props {
-  saldos: Saldo[]
+  saldos: Conta[]
   projecao: DiaProjecao[]
   lancamentos: Lancamento[]
 }
