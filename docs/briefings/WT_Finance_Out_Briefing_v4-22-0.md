@@ -68,6 +68,20 @@ são contas reais → caem em "Outras" pelo catch-all. Header da migration e tes
 **Novos:** `src/components/shared/valor-contabil.tsx`, `src/components/financeiro/gerencial/contas-cards.tsx`, `src/lib/gerencial/normalizar-conta.ts` (+ `.test.ts`), `supabase/migrations/0149_gerencial_normaliza_conta_previsao.sql`, `docs/adr/0124-…md`, este out-briefing.
 **Modificados:** `visualizacao-agregada-tab.tsx`, `contas-manager.tsx`, `tipos.ts`, `base-dados-tab.tsx`, `lancamento-row.tsx`, `gerencial-section.tsx`, `api/gerencial/import/route.ts`, `app/admin/design-system/page.tsx`, `package.json`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, `CLAUDE.md`.
 
+## Patch pós-revisão (pré-merge, mesmo PR #128)
+Ajustes pedidos pelo Yan na revisão do PR (a v4.22.0 ainda não mergeou → entram como commits do mesmo PR, sem nova versão):
+1. **Drawer "Gerenciar contas":** subtítulo explicativo + tabela `table-fixed`/colgroup (coluna Conta flexível e truncada; removido o card-wrapper e o cabeçalho "Contas" redundantes) → sem rolagem horizontal.
+2. **Nova linha — botão "Salvar"** não sobrepõe mais o seletor de data: coluna de ações alargada (`w-[32px]`→`w-[96px]`; o Salvar+✕ transbordavam os 32px).
+3. **Base — cor por tipo:** valor de *A pagar* em vermelho (`--negative-deep`), *A receber* em verde (`--positive-deep`), via `accountingClassName` no `<ValorContabil>`.
+4. **Base — filtro de Tipo** funcional: a célula da linha de filtros virou `<select>` (Todos/A receber/A pagar) ligado ao `tipoFiltro` (a lógica já estava correta; faltava o controle — o texto "por tipo ↑" era inerte). Pills do topo mantidas.
+5. **Base — origem à direita + destaque:** ícone de origem movido para junto das ações (origem · destaque · lixeira). **Destaque PERSISTENTE** (decisão Yan): ícone de lata de tinta pinta a linha de amarelo, salvo no banco.
+6. **Base — filtro de Vencimento** vira botão **"Personalizado"** + popover Início/Fim (portal, visual igual ao período de Weddings) no lugar dos dois date-inputs empilhados que quebravam em 2 linhas.
+
+### Banco — migration 0150 (destaque persistente)
+- `ALTER TABLE ... ADD COLUMN destacado BOOLEAN NOT NULL DEFAULT false` + CREATE OR REPLACE de `get_gerencial_lancamentos` (SELECT ganha `destacado`), `create_gerencial_lancamento` (RETURN ganha `destacado`) e `update_gerencial_lancamento` (whitelist ganha `destacado`). **ADITIVA/retrocompatível.**
+- Wiring ponta-a-ponta (lição "fontanaria de N camadas"): migration → `update_gerencial_lancamento` whitelist → `CAMPOS_PERMITIDOS` na action → tipo `Lancamento` → leitura (`unwrapRpc`, sem Zod) → UI (toggle + fundo).
+- **NÃO** toca `get_gerencial_projecao_diaria` — a agregada ignora `destacado`. Heurística do db-gate marca destrutiva (falso-positivo: o corpo da função `update` contém o literal `UPDATE`) → aplicada sob **confirmação humana consciente**.
+
 ## Pendências / follow-ups
 - ~~Aplicar a migration 0149~~ — **FEITO**: aplicada em prod (2026-06-17) + verificada (distribuição esperada, checksums da projeção idênticos). Ver §Banco.
 - **FORA (registrado, não implementado):** agregada por conta (GROUP BY `conta_previsao`); cards no mobile (hoje rolagem); filtro de Valor por faixa (só `≥`); projeções flexíveis; `vw_fluxo_caixa_kpis_b` (view lenta — outro subsistema); destaque do 1º dia negativo; totais de rodapé.

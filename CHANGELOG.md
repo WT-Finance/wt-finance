@@ -8,7 +8,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [4.22.0] — 2026-06-17
 
-Versão MINOR: **Fluxo de Caixa Gerencial — refinamentos de UX, formato contábil e normalização de contas.** Migration 0149 (normalização de `conta_previsao`). ADR-0124. **Modelo da agregada INTOCADO** — `conta_previsao` continua irrelevante para a projeção (verificado por checksum antes/depois).
+Versão MINOR: **Fluxo de Caixa Gerencial — refinamentos de UX, formato contábil e normalização de contas.** Migrations 0149 (normalização de `conta_previsao`) e 0150 (destaque persistente). ADR-0124. **Modelo da agregada INTOCADO** — `conta_previsao` continua irrelevante para a projeção (verificado por checksum antes/depois).
 
 ### Saldos em cards + painel de gestão (M1)
 - Os saldos iniciais das contas saíram da tabela de gestão e viraram **cards** sempre visíveis na Visualização Agregada (`contas-cards.tsx`), com edição **inline apenas do saldo** (caminho otimista `updateConta` + `router.refresh`) e selo informativo do papel/consolidado.
@@ -33,6 +33,14 @@ Versão MINOR: **Fluxo de Caixa Gerencial — refinamentos de UX, formato contá
 
 ### Fechamento (M7)
 - 4.22.0; este CHANGELOG; CHANGELOG_DIRETORIA (negócio); ADR-0124; Design System §7 (formato contábil); CLAUDE.md (convenção `<ValorContabil>`); out-briefing.
+
+### Refinamentos pós-revisão (patch, pré-merge)
+- **Destaque persistente de lançamento (migration 0150):** ícone de lata de tinta por linha pinta o fundo de amarelo, salvo no banco (coluna `destacado`; toggle via `update_gerencial_lancamento`). ADITIVA/retrocompatível; **não** toca a projeção.
+- **Base — cores por tipo:** valor de *A pagar* em vermelho, *A receber* em verde.
+- **Base — ações reordenadas:** ícone de origem (planilha/manual) movido para a direita, junto de destaque e excluir (origem · destaque · lixeira); some o ícone de origem prefixando a Pessoa.
+- **Base — filtro de Tipo** funcional na linha de filtros (select Todos/A receber/A pagar) e **filtro de Vencimento por período** num botão "Personalizado" (popover Início/Fim), no lugar dos dois campos empilhados que quebravam o layout.
+- **Base — botão "Salvar"** da nova linha não sobrepõe mais o seletor de data (coluna de ações alargada).
+- **Drawer "Gerenciar contas":** subtítulo explicativo + tabela `table-fixed` (coluna Conta flexível/truncada) — fim da rolagem horizontal.
 
 ## [4.21.0] — 2026-06-16
 

@@ -41,6 +41,8 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       { tipo: 'melhoria', texto: 'Os saldos projetados agora têm a cor da faixa preenchendo a célula inteira (verde, amarelo ou vermelho), tornando imediato enxergar quando uma conta entra no vermelho.' },
       { tipo: 'melhoria', texto: 'A base de dados do gerencial ficou mais limpa e larga: colunas sem quebra de linha, filtros por coluna (pessoa, valor, conta, vencimento) e rolagem lateral em telas estreitas.' },
       { tipo: 'melhoria', texto: 'A conta de cada lançamento virou uma seleção padronizada (Itaú, Asaas, Blimboo e "Outras"), e a importação reconhece variações de escrita automaticamente — fim dos nomes de conta digitados de formas diferentes.' },
+      { tipo: 'novidade', texto: 'Na base de dados do gerencial, agora é possível destacar um lançamento (ícone de lata de tinta), pintando a linha de amarelo — o destaque fica salvo e ajuda a marcar lançamentos importantes.' },
+      { tipo: 'melhoria', texto: 'Os filtros da base de dados ficaram mais práticos: filtrar por tipo direto na coluna e escolher um período de vencimento pelo botão "Personalizado"; e os valores aparecem coloridos (vermelho para a pagar, verde para a receber).' },
     ],
   },
   {
