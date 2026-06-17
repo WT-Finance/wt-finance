@@ -7,19 +7,26 @@ import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import ImportDrawer from './import-drawer'
 import ConfirmModal from '@/components/shared/confirm-modal'
+import { type Conta } from './tipos'
+import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
 
 const PILL_BASE     = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
 const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 const PILL_ACTIVE   = { background: 'var(--brand-soft)', borderColor: 'var(--brand)', color: 'var(--brand-deep)' }
+
+// Input de filtro por coluna (texto/número/data) — visual discreto, alinhado às pills.
+const FILTRO_INPUT = 'w-full text-[11px] border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-[var(--brand)] placeholder:text-zinc-300'
 
 type TipoFiltro   = 'todos' | 'pagar' | 'receber'
 type OrigemFiltro = 'todos' | 'planilha' | 'manual'
 
 interface Props {
   lancamentos: Lancamento[]
+  /** Contas reais (gerencial_saldos) — alimentam o select de Conta e o filtro de Conta (M6). */
+  saldos: Conta[]
 }
 
-export default function BaseDadosTab({ lancamentos: inicial }: Props) {
+export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const router = useRouter()
 
   const [itens, setItens]               = useState<Lancamento[]>(inicial)
@@ -27,6 +34,13 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
   const [origemFiltro, setOrigemFiltro] = useState<OrigemFiltro>('todos')
   const [buscaInput, setBuscaInput]     = useState('')
   const [busca, setBusca]               = useState('')
+  // v4.22.0 (M5) — filtros por coluna (client-side, aditivos sobre a busca geral).
+  const [fPessoa, setFPessoa]           = useState('')
+  const [fValorMin, setFValorMin]       = useState('')
+  const [fDescricao, setFDescricao]     = useState('')
+  const [fConta, setFConta]             = useState('')        // '' = todas; nome da conta ou ROTULO_OUTRAS
+  const [fVencIni, setFVencIni]         = useState('')
+  const [fVencFim, setFVencFim]         = useState('')
   const [importOpen, setImportOpen]     = useState(false)
   const [criando, setCriando]           = useState(false)
   const [novosValores, setNovosValores] = useState<Partial<Lancamento>>({})
@@ -38,6 +52,10 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
   const [removendo, startRemover]       = useTransition()
 
   const primeiroInputRef = useRef<HTMLSelectElement>(null)
+
+  // Opções do select/filtro de Conta: contas reais + "Outras" (M6 — fim do texto livre).
+  const opcoesContas = useMemo(() => [...saldos.map(s => s.conta), ROTULO_OUTRAS], [saldos])
+  const contasReais  = useMemo(() => saldos.map(s => s.conta), [saldos])
 
   // Re-sincroniza com o servidor (router.refresh após import/mutações). Padrão React
   // "ajustar estado na renderização" (sem efeito); limpa a seleção pois os ids mudam.
@@ -55,11 +73,20 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
   }, [criando])
 
   const filtrados = useMemo(() => {
+    const valorMin = fValorMin.trim() === '' ? null : Number(fValorMin)
     return itens
+      // filtros existentes (não reescrever)
       .filter(l => tipoFiltro === 'todos' || l.tipo === (tipoFiltro === 'receber' ? 'A receber' : 'A pagar'))
       .filter(l => origemFiltro === 'todos' || l.origem === origemFiltro)
       .filter(l => !busca || l.pessoa.toLowerCase().includes(busca.toLowerCase()))
-  }, [itens, tipoFiltro, origemFiltro, busca])
+      // filtros por coluna (v4.22 / M5) — aditivos
+      .filter(l => !fPessoa || l.pessoa.toLowerCase().includes(fPessoa.toLowerCase()))
+      .filter(l => valorMin == null || Number.isNaN(valorMin) || l.valor_final >= valorMin)
+      .filter(l => !fDescricao || (l.descricao ?? '').toLowerCase().includes(fDescricao.toLowerCase()))
+      .filter(l => !fConta || canonizarConta(l.conta_previsao, contasReais) === fConta)
+      .filter(l => !fVencIni || l.vencimento >= fVencIni)
+      .filter(l => !fVencFim || l.vencimento <= fVencFim)
+  }, [itens, tipoFiltro, origemFiltro, busca, fPessoa, fValorMin, fDescricao, fConta, fVencIni, fVencFim, contasReais])
 
   // ── Seleção ────────────────────────────────────────────────────────────────
   const toggleSel = (id: number) => setSelecionados(prev => {
@@ -164,21 +191,53 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
 
       {/* Tabela */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed min-w-[760px]">
           <thead>
             <tr className="border-b border-zinc-100 text-left">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}
                   className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
               </th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[110px]">Tipo</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400">Pessoa</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[96px]">Tipo</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[150px]">Pessoa</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 text-right w-[130px]">Valor</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[180px]">Descrição</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[160px]">Descrição</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[140px]">Conta</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[110px]">Vencimento</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[100px]">Origem</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[120px]">Vencimento</th>
               <th className="py-2 px-2 w-[32px]"></th>
+            </tr>
+            {/* Filtros por coluna (v4.22 / M5) */}
+            <tr className="border-b border-zinc-100 align-top">
+              <th className="py-1.5 px-2"></th>
+              <th className="py-1.5 px-2 font-normal text-zinc-400 text-[10px]">por tipo ↑</th>
+              <th className="py-1.5 px-2">
+                <input type="text" placeholder="Pessoa…" value={fPessoa} onChange={e => setFPessoa(e.target.value)}
+                  className={FILTRO_INPUT} aria-label="Filtrar por pessoa" />
+              </th>
+              <th className="py-1.5 px-2">
+                <input type="number" step="0.01" placeholder="≥ valor" value={fValorMin} onChange={e => setFValorMin(e.target.value)}
+                  className={`${FILTRO_INPUT} text-right`} aria-label="Filtrar por valor mínimo" />
+              </th>
+              <th className="py-1.5 px-2">
+                <input type="text" placeholder="Descrição…" value={fDescricao} onChange={e => setFDescricao(e.target.value)}
+                  className={FILTRO_INPUT} aria-label="Filtrar por descrição" />
+              </th>
+              <th className="py-1.5 px-2">
+                <select value={fConta} onChange={e => setFConta(e.target.value)}
+                  className={FILTRO_INPUT} aria-label="Filtrar por conta">
+                  <option value="">Toda conta</option>
+                  {opcoesContas.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </th>
+              <th className="py-1.5 px-2">
+                <div className="flex flex-col gap-1">
+                  <input type="date" value={fVencIni} onChange={e => setFVencIni(e.target.value)}
+                    className={FILTRO_INPUT} aria-label="Vencimento de" title="Vencimento — início" />
+                  <input type="date" value={fVencFim} onChange={e => setFVencFim(e.target.value)}
+                    className={FILTRO_INPUT} aria-label="Vencimento até" title="Vencimento — fim" />
+                </div>
+              </th>
+              <th className="py-1.5 px-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -211,9 +270,12 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
                     className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
                 <td className="py-1 px-2">
-                  <input type="text" placeholder="Conta" value={novosValores.conta_previsao ?? ''}
-                    onChange={e => setNovosValores(p => ({ ...p, conta_previsao: e.target.value }))}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
+                  <select value={novosValores.conta_previsao ?? ''}
+                    onChange={e => setNovosValores(p => ({ ...p, conta_previsao: e.target.value || null }))}
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white">
+                    <option value="">Conta…</option>
+                    {opcoesContas.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </td>
                 <td className="py-1 px-2">
                   <input type="date" value={novosValores.vencimento ?? ''}
@@ -221,7 +283,6 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
                     onKeyDown={e => { if (e.key === 'Enter') handleSalvarNovo() }}
                     className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
-                <td className="py-1 px-2 text-[9px] text-zinc-400">manual</td>
                 <td className="py-1 px-2">
                   <div className="flex gap-1 justify-end">
                     <button onClick={handleSalvarNovo} disabled={isPending}
@@ -239,6 +300,7 @@ export default function BaseDadosTab({ lancamentos: inicial }: Props) {
               <LancamentoRow
                 key={l.id}
                 lancamento={l}
+                contasOpcoes={opcoesContas}
                 onDelete={() => handleDelete(l.id)}
                 selecionado={selecionados.has(l.id)}
                 onToggleSelecao={() => toggleSel(l.id)}
