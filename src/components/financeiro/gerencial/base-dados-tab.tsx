@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Upload, Trash2, AlertTriangle, CalendarRange } from 'lucide-react'
 import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import ImportDrawer from './import-drawer'
@@ -19,6 +20,86 @@ const FILTRO_INPUT = 'w-full text-[11px] border border-zinc-200 rounded px-1.5 p
 
 type TipoFiltro   = 'todos' | 'pagar' | 'receber'
 type OrigemFiltro = 'todos' | 'planilha' | 'manual'
+
+// dd/MM a partir de uma data ISO (yyyy-mm-dd) — `vencimento` é date puro (sem fuso), split é seguro.
+function fmtVencBr(iso: string): string {
+  const [, m, d] = iso.split('-')
+  return d && m ? `${d}/${m}` : iso
+}
+
+// v4.22 (patch, item 6): filtro de Vencimento por PERÍODO num botão "Personalizado" + popover
+// (substitui os dois date-inputs empilhados que quebravam em 2 linhas). Popover via portal
+// para escapar do overflow-x-auto da tabela; visual igual ao período personalizado de Weddings.
+function FiltroVencimento({ ini, fim, onChange }: {
+  ini: string; fim: string; onChange: (ini: string, fim: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos]   = useState<{ top: number; left: number } | null>(null)
+  const [li, setLi]     = useState(ini)
+  const [lf, setLf]     = useState(fim)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const ativo  = !!(ini || fim)
+
+  const abrir = () => {
+    const r = btnRef.current?.getBoundingClientRect()
+    if (r) setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 288) }) // 288 = w-72
+    setLi(ini); setLf(fim); setOpen(true)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const fechar = () => setOpen(false)
+    window.addEventListener('scroll', fechar, true)
+    window.addEventListener('resize', fechar)
+    return () => { window.removeEventListener('scroll', fechar, true); window.removeEventListener('resize', fechar) }
+  }, [open])
+
+  return (
+    <>
+      <button ref={btnRef} type="button" onClick={abrir}
+        title="Filtrar por período de vencimento"
+        className={`${FILTRO_INPUT} flex items-center justify-between gap-1 text-left ${ativo ? 'border-brand text-brand font-medium' : 'text-zinc-400'}`}>
+        <span className="truncate">{ativo ? `${ini ? fmtVencBr(ini) : '…'}–${fim ? fmtVencBr(fim) : '…'}` : 'Personalizado'}</span>
+        <CalendarRange size={12} className="shrink-0" />
+      </button>
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onMouseDown={() => setOpen(false)} />
+          <div className="fixed z-50 w-72 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 font-sans"
+            style={{ top: pos.top, left: pos.left }}>
+            <p className="text-xs font-semibold mb-3 text-[var(--text-muted)]">Selecione o período de vencimento:</p>
+            <div className="flex gap-3 mb-3">
+              <div className="flex-1">
+                <label className="text-xs mb-1 block text-[var(--text-muted)]">Início</label>
+                <input type="date" aria-label="Vencimento — início" value={li} max={lf || undefined}
+                  onChange={e => setLi(e.target.value)}
+                  className="w-full rounded-md border border-zinc-200 px-2 py-1.5 text-sm focus:outline-none focus:border-brand" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs mb-1 block text-[var(--text-muted)]">Fim</label>
+                <input type="date" aria-label="Vencimento — fim" value={lf} min={li || undefined}
+                  onChange={e => setLf(e.target.value)}
+                  className="w-full rounded-md border border-zinc-200 px-2 py-1.5 text-sm focus:outline-none focus:border-brand" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <button type="button" onClick={() => { setLi(''); setLf(''); onChange('', ''); setOpen(false) }}
+                className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors">Limpar</button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setOpen(false)}
+                  className="text-xs px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">Cancelar</button>
+                <button type="button" onClick={() => { onChange(li, lf); setOpen(false) }}
+                  className="text-xs font-medium text-white px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+                  style={{ background: 'var(--brand)' }}>Aplicar</button>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  )
+}
 
 interface Props {
   lancamentos: Lancamento[]
@@ -204,12 +285,19 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[160px]">Descrição</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[140px]">Conta</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[120px]">Vencimento</th>
-              <th className="py-2 px-2 w-[32px]"></th>
+              <th className="py-2 px-2 w-[96px]"></th>
             </tr>
             {/* Filtros por coluna (v4.22 / M5) */}
             <tr className="border-b border-zinc-100 align-top">
               <th className="py-1.5 px-2"></th>
-              <th className="py-1.5 px-2 font-normal text-zinc-400 text-[10px]">por tipo ↑</th>
+              <th className="py-1.5 px-2">
+                <select value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value as TipoFiltro)}
+                  className={FILTRO_INPUT} aria-label="Filtrar por tipo">
+                  <option value="todos">Todos</option>
+                  <option value="receber">A receber</option>
+                  <option value="pagar">A pagar</option>
+                </select>
+              </th>
               <th className="py-1.5 px-2">
                 <input type="text" placeholder="Pessoa…" value={fPessoa} onChange={e => setFPessoa(e.target.value)}
                   className={FILTRO_INPUT} aria-label="Filtrar por pessoa" />
@@ -230,12 +318,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
                 </select>
               </th>
               <th className="py-1.5 px-2">
-                <div className="flex flex-col gap-1">
-                  <input type="date" value={fVencIni} onChange={e => setFVencIni(e.target.value)}
-                    className={FILTRO_INPUT} aria-label="Vencimento de" title="Vencimento — início" />
-                  <input type="date" value={fVencFim} onChange={e => setFVencFim(e.target.value)}
-                    className={FILTRO_INPUT} aria-label="Vencimento até" title="Vencimento — fim" />
-                </div>
+                <FiltroVencimento ini={fVencIni} fim={fVencFim}
+                  onChange={(i, f) => { setFVencIni(i); setFVencFim(f) }} />
               </th>
               <th className="py-1.5 px-2"></th>
             </tr>
