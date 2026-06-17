@@ -69,7 +69,7 @@ function NomeCell({ nome, onSave }: { nome: string; onSave: (v: string) => Promi
     )
   }
   return (
-    <button onClick={() => setEditando(true)} className="text-sm font-medium hover:text-[var(--brand)] transition-colors" title="Clique para renomear">
+    <button onClick={() => setEditando(true)} className="text-sm font-medium hover:text-[var(--brand)] transition-colors block max-w-full truncate text-left" title={nome || 'Clique para renomear'}>
       {saving ? '…' : nome}
     </button>
   )
@@ -131,9 +131,8 @@ export default function ContasManager({ contas, onContasChange }: {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Contas</p>
+    <div>
+      <div className="flex items-center justify-end mb-3">
         {!adicionando && (
           <button onClick={() => setAdicionando(true)}
             className="flex items-center gap-1 px-2.5 py-1 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors">
@@ -144,17 +143,24 @@ export default function ContasManager({ contas, onContasChange }: {
 
       {erro && <p className="mb-2 text-xs text-[var(--danger)]">{erro}</p>}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
-          <thead>
-            <tr className="text-[11px] font-medium text-zinc-400 border-b border-zinc-100">
-              <th className="py-2 px-2 text-left">Conta</th>
-              <th className="py-2 px-2 text-right">Limite de crédito</th>
-              <th className="py-2 px-2 text-center">Consolidado</th>
-              <th className="py-2 px-2 text-center">Papel</th>
-              <th className="py-2 px-2 w-[36px]"></th>
-            </tr>
-          </thead>
+      {/* table-fixed + colgroup: a coluna Conta flexiona e trunca — sem rolagem horizontal no drawer. */}
+      <table className="w-full text-sm table-fixed">
+        <colgroup>
+          <col />
+          <col className="w-[116px]" />
+          <col className="w-[96px]" />
+          <col className="w-[116px]" />
+          <col className="w-[40px]" />
+        </colgroup>
+        <thead>
+          <tr className="text-[11px] font-medium text-zinc-400 border-b border-zinc-100">
+            <th className="py-2 px-2 text-left">Conta</th>
+            <th className="py-2 px-2 text-right">Limite</th>
+            <th className="py-2 px-2 text-center">Consolidado</th>
+            <th className="py-2 px-2 text-center">Papel</th>
+            <th className="py-2 px-2"></th>
+          </tr>
+        </thead>
           <tbody>
             {[...contas].sort((a, b) => a.ordem - b.ordem).map(c => (
               <tr key={c.conta} className="border-b border-zinc-50 last:border-0">
@@ -215,9 +221,8 @@ export default function ContasManager({ contas, onContasChange }: {
               </tr>
             )}
           </tbody>
-        </table>
-      </div>
-      <p className="mt-2 text-[10px] text-[var(--text-muted)]">
+      </table>
+      <p className="mt-3 text-[10px] text-[var(--text-muted)]">
         O saldo inicial de cada conta é editado nos cards. Marque <strong>Consolidado</strong> nas contas que somam no saldo consolidado. <strong>Papel</strong>: a conta <em>Principal</em> tem coluna própria (com faixas de limite); a <em>Rendimento</em> é somada à parte.
       </p>
     </div>
