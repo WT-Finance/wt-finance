@@ -10,6 +10,7 @@ import { requireAreaApi } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
 import { parseGerencialExcel } from '@/lib/gerencial/parser'
 import { chaveDuplicata, type LancamentoPlanilha, type ImportDiff } from '@/lib/gerencial/import-types'
+import { canonizarConta } from '@/lib/gerencial/normalizar-conta'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>
@@ -26,12 +27,20 @@ async function computeImportDiff(planilha: LancamentoPlanilha[]): Promise<Import
   const { data: atuais, error } = await rpc('get_gerencial_lancamentos_planilha')
   if (error) throw new Error(`Falha ao carregar dados: ${error.message}`)
 
+  // v4.22 (M6): import TOLERANTE — canoniza conta_previsao da planilha contra as contas reais
+  // (lower/unaccent/trim + aliases: "Banco Itau"→Itaú, "ASAAS"→Asaas; nulos/órfãos→"Outras").
+  // chaveDuplicata NÃO usa conta_previsao, então a chave não muda; a divergência crua→canônica
+  // cai em `aAtualizar` (re-import converge linhas antigas). NÃO afeta a agregada.
+  const { data: saldos } = await rpc('get_gerencial_saldos')
+  const contasReais = ((saldos as { conta: string }[] | null) ?? []).map(s => s.conta)
+  const planilhaCanon = planilha.map(l => ({ ...l, conta_previsao: canonizarConta(l.conta_previsao, contasReais) }))
+
   const mapAtuais   = new Map<string, Record<string, unknown>>()
   const mapPlanilha = new Map<string, LancamentoPlanilha>()
 
   ;(atuais as Record<string, unknown>[] ?? []).forEach(a =>
     mapAtuais.set(chaveDuplicata(a as Parameters<typeof chaveDuplicata>[0]), a))
-  planilha.forEach(l => mapPlanilha.set(chaveDuplicata(l), l))
+  planilhaCanon.forEach(l => mapPlanilha.set(chaveDuplicata(l), l))
 
   const diff: ImportDiff = { aAdicionar: [], aRemover: [], aManter: 0, aAtualizar: [] }
 
