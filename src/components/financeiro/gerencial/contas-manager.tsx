@@ -5,21 +5,23 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Check } from 'lucide-react'
 import { fmtBRL } from '@/lib/fmt'
 import { createConta, updateConta, deleteConta, type PapelConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
-import type { Conta } from './tipos'
+import { PAPEL_LABEL, type Conta } from './tipos'
 
 // v4.21.0 (M1) — mini-sistema de contas: CRUD + atributos (saldo inicial, limite de crédito,
 // "entra no consolidado", papel isolada/reserva). Estado local otimista + router.refresh()
 // para a projeção (componente irmão) recalcular. Papéis são exclusivos (0 ou 1 cada).
+//
+// v4.22 (M1): vira o PAINEL de gestão (dentro do drawer "Gerenciar contas"). O saldo inicial
+// saiu daqui e passou para a grade de cards (ContasCards). PAPEL_LABEL e o helper NumCell/parseNum
+// são exportados para a grade reaproveitar (não duplicar).
 
-const PAPEL_LABEL: Record<string, string> = { '': '—', isolada: 'Isolada', reserva: 'Reserva' }
-
-function parseNum(v: string): number | null {
+export function parseNum(v: string): number | null {
   const n = parseFloat(v.replace(/\./g, '').replace(',', '.'))
   return isNaN(n) ? null : n
 }
 
 /** Célula numérica clicável (saldo/limite). Vazio em `limite` = sem limite (null). */
-function NumCell({ valor, onSave, permiteVazio }: {
+export function NumCell({ valor, onSave, permiteVazio }: {
   valor: number | null; onSave: (v: number | null) => Promise<void>; permiteVazio?: boolean
 }) {
   const [editando, setEditando] = useState(false)
@@ -147,7 +149,6 @@ export default function ContasManager({ contas, onContasChange }: {
           <thead>
             <tr className="text-[11px] font-medium text-zinc-400 border-b border-zinc-100">
               <th className="py-2 px-2 text-left">Conta</th>
-              <th className="py-2 px-2 text-right">Saldo inicial</th>
               <th className="py-2 px-2 text-right">Limite de crédito</th>
               <th className="py-2 px-2 text-center">Consolidado</th>
               <th className="py-2 px-2 text-center">Papel</th>
@@ -158,9 +159,6 @@ export default function ContasManager({ contas, onContasChange }: {
             {[...contas].sort((a, b) => a.ordem - b.ordem).map(c => (
               <tr key={c.conta} className="border-b border-zinc-50 last:border-0">
                 <td className="py-1.5 px-2"><NomeCell nome={c.conta} onSave={v => editar(c.conta, { conta: v }, { nome: v })} /></td>
-                <td className="py-1.5 px-2 text-right">
-                  <NumCell valor={c.saldo} onSave={v => editar(c.conta, { saldo: v ?? 0 }, { saldo: v ?? 0 })} />
-                </td>
                 <td className="py-1.5 px-2 text-right">
                   <NumCell valor={c.limite} permiteVazio onSave={v => editar(c.conta, { limite: v }, { limite: v })} />
                 </td>
@@ -195,10 +193,6 @@ export default function ContasManager({ contas, onContasChange }: {
                     className="w-28 text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
                 <td className="py-1.5 px-2 text-right">
-                  <input placeholder="0" value={nova.saldo} onChange={e => setNova(p => ({ ...p, saldo: e.target.value }))}
-                    className="w-24 text-right text-xs border border-zinc-200 rounded px-1 py-0.5 tabular-nums" />
-                </td>
-                <td className="py-1.5 px-2 text-right">
                   <input placeholder="sem limite" value={nova.limite} onChange={e => setNova(p => ({ ...p, limite: e.target.value }))}
                     className="w-24 text-right text-xs border border-zinc-200 rounded px-1 py-0.5 tabular-nums" />
                 </td>
@@ -224,7 +218,7 @@ export default function ContasManager({ contas, onContasChange }: {
         </table>
       </div>
       <p className="mt-2 text-[10px] text-[var(--text-muted)]">
-        Marque <strong>Consolidado</strong> nas contas que somam no saldo consolidado. <strong>Papel</strong>: a conta <em>isolada</em> tem coluna própria (com faixas de limite); a <em>reserva</em> é somada à parte.
+        O saldo inicial de cada conta é editado nos cards. Marque <strong>Consolidado</strong> nas contas que somam no saldo consolidado. <strong>Papel</strong>: a conta <em>Principal</em> tem coluna própria (com faixas de limite); a <em>Rendimento</em> é somada à parte.
       </p>
     </div>
   )

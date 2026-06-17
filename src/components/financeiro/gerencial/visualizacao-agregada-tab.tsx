@@ -2,8 +2,11 @@
 import { useState, useMemo } from 'react'
 import { format, parseISO, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { fmtBRL } from '@/lib/fmt'
+import { Settings } from 'lucide-react'
+import ListDrawer from '@/components/shared/list-drawer'
+import { ValorContabil } from '@/components/shared/valor-contabil'
 import ContasManager from './contas-manager'
+import ContasCards from './contas-cards'
 import type { Conta, DiaProjecao } from './tipos'
 
 // v4.21.0 (M3+M4) — Visualização Agregada DATA-DRIVEN: as 3 projeções saem das contas
@@ -15,25 +18,29 @@ import type { Conta, DiaProjecao } from './tipos'
 //   • Isolada      = saldo da conta 'isolada'                       + resultado acumulado
 //   • Consolidado  = soma dos saldos das contas marcadas consolidado + resultado acumulado
 //   • Consol.+res. = Consolidado + saldo da conta 'reserva'          + resultado acumulado
+//
+// v4.22 (M1/M3/M4): grade de cards de saldo sempre visível + gestão movida para um ListDrawer
+// (botão engrenagem). Valores monetários em formato contábil (<ValorContabil>); faixa de cor
+// aplicada ao FUNDO do <td> de saldo (M4), texto escuro/legível por cima.
 
 interface Props {
   saldos: Conta[]
   projecao: DiaProjecao[]
 }
 
-// ── Faixas de cor (tokens semânticos) ───────────────────────────────────────
-// Isolada: 3 faixas quando tem limite (>0): < −limite vermelho; [−limite,0) amarelo; ≥0 verde.
+// ── Faixas de cor (tokens semânticos) — classe de FUNDO do <td> (v4.22, M4) ─────────────────
+// Principal: 3 faixas quando tem limite (>0): < −limite vermelho; [−limite,0) amarelo; ≥0 verde.
 function corIsolada(v: number, limite: number | null): string {
   if (limite != null && limite > 0) {
-    if (v < -limite) return 'text-[var(--danger)]'
-    if (v < 0)       return 'text-[var(--warning)]'
-    return 'text-[var(--success)]'
+    if (v < -limite) return 'bg-danger-bg'
+    if (v < 0)       return 'bg-warning-bg'
+    return 'bg-success-bg'
   }
-  return v < 0 ? 'text-[var(--danger)]' : 'text-[var(--success)]'
+  return v < 0 ? 'bg-danger-bg' : 'bg-success-bg'
 }
 // Consolidado / Consol.+reserva: 2 faixas (sem amarelo).
 function corDuasFaixas(v: number): string {
-  return v < 0 ? 'text-[var(--danger)]' : 'text-[var(--success)]'
+  return v < 0 ? 'bg-danger-bg' : 'bg-success-bg'
 }
 
 export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
@@ -43,6 +50,8 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
   // atualiza `contas` otimisticamente; isto cobre revalidações vindas do servidor.
   const [prevSaldos, setPrevSaldos] = useState(saldos)
   if (saldos !== prevSaldos) { setPrevSaldos(saldos); setContas(saldos) }
+
+  const [gerirOpen, setGerirOpen] = useState(false)
 
   const { linhas, isolada, reserva, isoladaLimite } = useMemo(() => {
     const isoladaConta = contas.find(c => c.papel === 'isolada') ?? null
@@ -70,7 +79,23 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
 
   return (
     <div className="space-y-6">
-      <ContasManager contas={contas} onContasChange={setContas} />
+      {/* Contas — grade de cards (saldo editável inline) + acesso à gestão (drawer). */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Contas</p>
+          <button onClick={() => setGerirOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors foco-neutro">
+            <Settings size={13} /> Gerenciar contas
+          </button>
+        </div>
+        <ContasCards contas={contas} onContasChange={setContas} />
+      </div>
+
+      {gerirOpen && (
+        <ListDrawer titulo="Gerenciar contas" onClose={() => setGerirOpen(false)}>
+          <ContasManager contas={contas} onContasChange={setContas} />
+        </ListDrawer>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm px-5 py-4 overflow-x-auto">
         <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-4">Projeção Diária</p>
@@ -100,26 +125,33 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
                       {format(parseISO(l.data), 'dd/MMM', { locale: ptBR })}
                       {hoje && <span className="ml-1 text-[10px] text-amber-600">hoje</span>}
                     </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-[var(--positive-deep)]">
-                      {l.a_receber > 0 ? fmtBRL(l.a_receber) : '—'}
+                    {/* Fluxos: sem fundo, cor só no número (M3). */}
+                    <td className="py-1.5 px-2">
+                      {l.a_receber > 0
+                        ? <ValorContabil valor={l.a_receber} className="text-[var(--positive-deep)]" />
+                        : <span className="block text-right text-zinc-300">—</span>}
                     </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-[var(--negative-deep)]">
-                      {l.a_pagar > 0 ? fmtBRL(l.a_pagar) : '—'}
+                    <td className="py-1.5 px-2">
+                      {l.a_pagar > 0
+                        ? <ValorContabil valor={l.a_pagar} className="text-[var(--negative-deep)]" />
+                        : <span className="block text-right text-zinc-300">—</span>}
                     </td>
-                    <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${l.resultado >= 0 ? 'text-[var(--positive-deep)]' : 'text-[var(--negative-deep)]'}`}>
-                      {fmtBRL(l.resultado)}
+                    <td className="py-1.5 px-2">
+                      <ValorContabil valor={l.resultado}
+                        className={`font-medium ${l.resultado >= 0 ? 'text-[var(--positive-deep)]' : 'text-[var(--negative-deep)]'}`} />
                     </td>
+                    {/* Saldos: faixa de cor no FUNDO do <td> (M4); número escuro/legível (M3). */}
                     {temIsolada && (
-                      <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${corIsolada(l.isolada, isoladaLimite)}`}>
-                        {fmtBRL(l.isolada)}
+                      <td className={`py-1.5 px-2 ${corIsolada(l.isolada, isoladaLimite)}`}>
+                        <ValorContabil valor={l.isolada} className="font-medium text-[var(--text-primary)]" />
                       </td>
                     )}
-                    <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${corDuasFaixas(l.consolidado)}`}>
-                      {fmtBRL(l.consolidado)}
+                    <td className={`py-1.5 px-2 ${corDuasFaixas(l.consolidado)}`}>
+                      <ValorContabil valor={l.consolidado} className="font-medium text-[var(--text-primary)]" />
                     </td>
                     {temReserva && (
-                      <td className={`py-1.5 px-2 text-right tabular-nums font-medium ${corDuasFaixas(l.consolReserva)}`}>
-                        {fmtBRL(l.consolReserva)}
+                      <td className={`py-1.5 px-2 ${corDuasFaixas(l.consolReserva)}`}>
+                        <ValorContabil valor={l.consolReserva} className="font-medium text-[var(--text-primary)]" />
                       </td>
                     )}
                   </tr>

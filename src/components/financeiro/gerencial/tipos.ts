@@ -2,6 +2,10 @@
 
 export type PapelConta = 'isolada' | 'reserva' | null
 
+// Rótulo de exibição do papel (v4.22). A CHAVE no banco continua 'isolada'/'reserva';
+// só o texto mudou para a linguagem de negócio "Principal"/"Rendimento".
+export const PAPEL_LABEL: Record<string, string> = { '': '—', isolada: 'Principal', reserva: 'Rendimento' }
+
 /** Conta gerenciável (analytics.gerencial_saldos). */
 export interface Conta {
   conta:       string
