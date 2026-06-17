@@ -53,8 +53,8 @@ são contas reais → caem em "Outras" pelo catch-all. Header da migration e tes
 - **Invariante da agregada (checksum antes/depois):**
   - Inputs row-level (`tipo|valor_final|vencimento`): `1909bb1347900e97967f600f80687959` (108 linhas) — **antes**.
   - Agregado diário (`vencimento/tipo/sum`): `20a939508d0346f990c7b2ceae1a7f19` — **antes**.
-  - Estes **não podem mudar** com o backfill (a 0149 só toca `conta_previsao`). _[após aplicar: confirmar idênticos — ver addendum]._
-- **Status:** **PRONTA — aguardando confirmação consciente** do Yan para `db push` (backup-gate como rede). Aplicação + verificação pós-push (distribuição + checksum idêntico + RPC via REST) entram como **addendum** a este out-briefing.
+  - Estes **não mudaram** com o backfill (a 0149 só toca `conta_previsao`). **Confirmado pós-push: byte-idênticos** (row-level `1909bb13…`, agregado `20a93950…`).
+- **Status:** **APLICADA em produção em 2026-06-17** sob **confirmação consciente** do Yan (wrapper `npm run db:migrate -- --destrutiva`; **backup-gate VERDE** — 38/38 tabelas exportadas, restore-test spot 4/4 com checksum idêntico, 4,1s). **Verificação pós-push:** distribuição final `Itaú×42 · Asaas×33 · Blimboo×13 · Outras×20` (= 108) **conforme esperado**; checksums dos inputs da projeção **idênticos** antes/depois → **agregada comprovadamente intocada**.
 
 ## Gates
 `tsc --noEmit` **0** · `lint` **13** (= baseline `main`; **zero novos** — o único toque em arquivo nosso é o aviso `exhaustive-deps` pré-existente do `useMemo` da agregada, que apenas mudou de linha 56→65) · `next build` **limpo** · `npm test` **131** (125 baseline + 6 novos `normalizar-conta`).
@@ -69,5 +69,5 @@ são contas reais → caem em "Outras" pelo catch-all. Header da migration e tes
 **Modificados:** `visualizacao-agregada-tab.tsx`, `contas-manager.tsx`, `tipos.ts`, `base-dados-tab.tsx`, `lancamento-row.tsx`, `gerencial-section.tsx`, `api/gerencial/import/route.ts`, `app/admin/design-system/page.tsx`, `package.json`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, `CLAUDE.md`.
 
 ## Pendências / follow-ups
-- **Aplicar a migration 0149** (confirmação consciente) + addendum de verificação.
+- ~~Aplicar a migration 0149~~ — **FEITO**: aplicada em prod (2026-06-17) + verificada (distribuição esperada, checksums da projeção idênticos). Ver §Banco.
 - **FORA (registrado, não implementado):** agregada por conta (GROUP BY `conta_previsao`); cards no mobile (hoje rolagem); filtro de Valor por faixa (só `≥`); projeções flexíveis; `vw_fluxo_caixa_kpis_b` (view lenta — outro subsistema); destaque do 1º dia negativo; totais de rodapé.
