@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, type ReactNode } from 'react'
-import { Trash2, Loader2, Check, FileSpreadsheet, PencilLine } from 'lucide-react'
+import { Trash2, Loader2, Check, FileSpreadsheet, PencilLine, PaintBucket } from 'lucide-react'
 import { updateLancamento, deleteLancamento } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 
@@ -14,12 +14,14 @@ export interface Lancamento {
   conta_previsao: string | null
   vencimento:     string
   origem:         string
+  /** Destaque persistente (v4.22 patch): pinta o fundo da linha de amarelo. */
+  destacado:      boolean
 }
 
 interface CellState { saving: boolean; saved: boolean; error: string | null }
 
 function EditableCell({
-  value, onSave, type = 'text', options, align = 'left', accounting = false, before, badge = false,
+  value, onSave, type = 'text', options, align = 'left', accounting = false, accountingClassName, before, badge = false,
 }: {
   value: string | number | null
   onSave: (v: string) => Promise<void>
@@ -29,6 +31,8 @@ function EditableCell({
   align?: 'left' | 'right'
   /** Renderiza o display do valor em formato contábil (<ValorContabil>). */
   accounting?: boolean
+  /** Classe de cor do número no display contábil (ex.: A pagar → vermelho). */
+  accountingClassName?: string
   /** Conteúdo opcional prefixado à célula de exibição (ex.: ícone de origem). */
   before?: ReactNode
   /** Exibe o valor (select) como pill compacto numa linha só (ex.: Tipo). */
@@ -103,8 +107,8 @@ function EditableCell({
           />
         ) : (
           <span onClick={() => setEditing(true)}
-            className="cursor-pointer text-xs hover:text-[var(--brand)] transition-colors block">
-            <ValorContabil valor={Number(value ?? 0)} />
+            className="cursor-pointer text-xs hover:opacity-70 transition-opacity block">
+            <ValorContabil valor={Number(value ?? 0)} className={accountingClassName} />
             {state.saved && <Check size={10} className="inline ml-1 text-green-500" />}
             {state.saving && <Loader2 size={10} className="inline ml-1 animate-spin" />}
           </span>
@@ -153,6 +157,9 @@ interface Props {
 export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, selecionado = false, onToggleSelecao }: Props) {
   const [isPending, startDelete] = useTransition()
   const [confirmDel, setConfirmDel] = useState(false)
+  // Destaque persistente (otimista local + persistência no banco via updateLancamento).
+  const [destacado, setDestacado] = useState(l.destacado)
+  const [, startDestaque] = useTransition()
 
   const makeSaver = (campo: string) => async (valor: string) => {
     const valorParsed = campo === 'valor_final' ? Number(valor) : valor || null
@@ -167,9 +174,15 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
     })
   }
 
+  const toggleDestaque = () => {
+    const novo = !destacado
+    setDestacado(novo)
+    startDestaque(async () => { await updateLancamento(l.id, 'destacado', novo) })
+  }
+
   const ehManual = l.origem === 'manual'
 
-  // Ícone discreto de origem, prefixado à célula Pessoa (a coluna Origem deixou de existir).
+  // Ícone discreto de origem — agora ao lado das ações (origem · destaque · lixeira).
   const iconeOrigem = (
     <span className="shrink-0 text-zinc-400"
       title={ehManual ? 'Linha criada manualmente' : 'Linha vinda da importação da planilha'}>
@@ -184,27 +197,44 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
     ? [contaAtual, ...contasOpcoes]
     : contasOpcoes
 
+  // Cor do valor por tipo (item 3): A pagar → vermelho, A receber → verde.
+  const corValor = l.tipo === 'A pagar' ? 'text-[var(--negative-deep)]' : 'text-[var(--positive-deep)]'
+
+  // Fundo da linha: seleção (transitória) prevalece; senão o destaque amarelo (persistente).
+  const bgLinha = selecionado ? 'bg-[var(--brand-soft)]/30' : destacado ? 'bg-amber-100' : 'hover:bg-zinc-50/50'
+
   return (
-    <tr className={`border-b border-zinc-50 hover:bg-zinc-50/50 ${selecionado ? 'bg-[var(--brand-soft)]/30' : ''}`}>
+    <tr className={`border-b border-zinc-50 ${bgLinha}`}>
       <td className="py-1 px-2 text-center">
         <input type="checkbox" checked={selecionado} onChange={onToggleSelecao}
           className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar linha" />
       </td>
       <EditableCell value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} badge />
-      <EditableCell value={l.pessoa}         onSave={makeSaver('pessoa')}         before={iconeOrigem} />
-      <EditableCell value={l.valor_final}    onSave={makeSaver('valor_final')}    accounting align="right" />
+      <EditableCell value={l.pessoa}         onSave={makeSaver('pessoa')} />
+      <EditableCell value={l.valor_final}    onSave={makeSaver('valor_final')}    accounting align="right" accountingClassName={corValor} />
       <EditableCell value={l.descricao}      onSave={makeSaver('descricao')} />
       <EditableCell value={l.conta_previsao} onSave={makeSaver('conta_previsao')} type="select" options={opcoesConta} />
       <EditableCell value={l.vencimento}     onSave={makeSaver('vencimento')}     type="date" />
-      <td className="py-1 px-2 text-right">
-        <button
-          onClick={handleDelete}
-          disabled={isPending}
-          title={confirmDel ? 'Clique novamente para confirmar' : 'Remover'}
-          className={`p-1 rounded transition-colors ${confirmDel ? 'text-red-500 bg-red-50' : 'text-zinc-300 hover:text-red-400'}`}
-        >
-          {isPending ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-        </button>
+      <td className="py-1 px-2">
+        <div className="flex items-center justify-end gap-1.5">
+          {iconeOrigem}
+          <button
+            onClick={toggleDestaque}
+            title={destacado ? 'Remover destaque' : 'Destacar linha'}
+            aria-pressed={destacado}
+            className={`p-1 rounded transition-colors ${destacado ? 'text-amber-500 bg-amber-50' : 'text-zinc-300 hover:text-amber-400'}`}
+          >
+            <PaintBucket size={12} />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isPending}
+            title={confirmDel ? 'Clique novamente para confirmar' : 'Remover'}
+            className={`p-1 rounded transition-colors ${confirmDel ? 'text-red-500 bg-red-50' : 'text-zinc-300 hover:text-red-400'}`}
+          >
+            {isPending ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+          </button>
+        </div>
       </td>
     </tr>
   )

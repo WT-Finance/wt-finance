@@ -63,7 +63,7 @@ export async function updateLancamento(id: number, campo: string, valor: unknown
   | { success: false; error: string }
 > {
   await requireAreaAction('financeiro/gerencial')
-  const CAMPOS_PERMITIDOS = ['tipo', 'pessoa', 'valor_final', 'descricao', 'conta_previsao', 'vencimento']
+  const CAMPOS_PERMITIDOS = ['tipo', 'pessoa', 'valor_final', 'descricao', 'conta_previsao', 'vencimento', 'destacado']
   if (!CAMPOS_PERMITIDOS.includes(campo))
     return { success: false, error: 'Campo não permitido' }
   try {
