@@ -282,6 +282,27 @@ export default async function DesignSystemPage() {
             </span>
           </div>
         </div>
+
+        {/* Formato contábil — R$ à esquerda, número à direita (v4.22) */}
+        <div className="space-y-2 mt-6">
+          <p className="font-medium text-[var(--text-primary)] text-sm mb-1">
+            Formato contábil — <code className="bg-zinc-100 px-1 rounded">@/components/shared/valor-contabil</code> (v4.22)
+          </p>
+          <p className="text-xs text-[var(--text-muted)] mb-2">
+            Em tabelas financeiras densas (Fluxo de Caixa Gerencial — projeção e base), o valor monetário usa o layout{' '}
+            <strong>contábil</strong>: <strong>“R$” ancorado à esquerda</strong> da célula e <strong>número à direita</strong>
+            (extremos opostos), com <strong>centavos</strong> e <code className="bg-zinc-100 px-1 rounded">tabular-nums</code> — os
+            dígitos alinham verticalmente entre as linhas. Componente único{' '}
+            <code className="bg-zinc-100 px-1 rounded">ValorContabil</code> (<code className="bg-zinc-100 px-1 rounded">flex justify-between</code>;
+            o “R$” em <code className="bg-zinc-100 px-1 rounded">--text-subtle</code>); a cor opcional
+            (<code className="bg-zinc-100 px-1 rounded">className</code>) pinta só o número. Nunca montar esse flex à mão.
+          </p>
+          <div className="bg-white border border-zinc-200 rounded-lg px-4 py-2 max-w-[16rem] space-y-1">
+            <div className="flex justify-between tabular-nums text-sm"><span className="text-[var(--text-subtle)]">R$</span><span className="text-[var(--text-primary)]">344.444,40</span></div>
+            <div className="flex justify-between tabular-nums text-sm"><span className="text-[var(--text-subtle)]">R$</span><span className="text-[var(--negative-deep)]">-12.500,00</span></div>
+            <div className="flex justify-between tabular-nums text-sm"><span className="text-[var(--text-subtle)]">R$</span><span className="text-[var(--text-primary)]">1.980,00</span></div>
+          </div>
+        </div>
       </Section>
 
       <Section id="graficos" title="8. Gráficos — Padrão (tom discreto)">
