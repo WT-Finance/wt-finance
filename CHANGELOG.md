@@ -6,6 +6,42 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.22.0] — 2026-06-17
+
+Versão MINOR: **Fluxo de Caixa Gerencial — refinamentos de UX, formato contábil e normalização de contas.** Migrations 0149 (normalização de `conta_previsao`) e 0150 (destaque persistente). ADR-0124. **Modelo da agregada INTOCADO** — `conta_previsao` continua irrelevante para a projeção (verificado por checksum antes/depois).
+
+### Saldos em cards + painel de gestão (M1)
+- Os saldos iniciais das contas saíram da tabela de gestão e viraram **cards** sempre visíveis na Visualização Agregada (`contas-cards.tsx`), com edição **inline apenas do saldo** (caminho otimista `updateConta` + `router.refresh`) e selo informativo do papel/consolidado.
+- "Gerenciar contas" virou um **painel** (botão engrenagem → `ListDrawer`) com a configuração estrutural — limite, consolidado, papel e CRUD — **sem** a coluna de saldo (que agora vive nos cards).
+
+### Nomenclatura + badges por token (M2)
+- Papéis renomeados na UI: **"isolada" → "Principal"**, **"reserva" → "Rendimento"** (`PAPEL_LABEL` em `tipos.ts`; a chave do banco — `isolada`/`reserva` — permanece). Badges usam **tokens do design system** (`--action-soft` para Principal, neutro zinc para Rendimento), sem hex.
+
+### Formato contábil (M3)
+- Novo componente único `@/components/shared/valor-contabil` (`<ValorContabil>`): **"R$" ancorado à esquerda** e **número à direita** (extremos opostos), **com centavos** e `tabular-nums` — dígitos alinhados entre linhas. Aplicado na projeção agregada e na base. Documentado no Design System (§7) e no CLAUDE.md.
+
+### Cores na célula (M4)
+- A faixa de cor passou a preencher o **fundo da célula** (`<td>`) do saldo (corrige a v4.21, que só pintava o texto): Principal com limite = 3 faixas (`--danger`/`--warning`/`--success`); Principal sem limite, Consolidado e Consol.+Rendimento = 2 faixas. Os **fluxos** (A Receber/A Pagar/Resultado) mantêm cor só no número.
+
+### Base: layout, responsividade e filtros (M5)
+- Linha sem quebra; Pessoa/Descrição encurtadas + `truncate` com nome completo no hover (`title`); Valor à direita em formato contábil; **origem** deixou de ser coluna e virou **ícone discreto** na célula Pessoa; `table-fixed` + `min-w` com rolagem horizontal em telas estreitas.
+- **Filtros por coluna** client-side (Pessoa, Valor ≥, Descrição, Conta, Vencimento), aditivos à busca geral e às pills de Tipo/Origem. Seleção/exclusão em massa preservada.
+
+### Normalização de `conta_previsao` (M6)
+- A Conta de cada lançamento virou **seleção** (contas reais + "Outras"), encerrando o texto livre. Importação **tolerante**: `lower`/`unaccent`/`trim` + aliases (`Banco Itau` → Itaú, `ASAAS` → Asaas); nulos/órfãos → "Outras". `@/lib/gerencial/normalizar-conta` (isomórfico, espelha o SQL) na API Route de import; `chaveDuplicata` **não** usa `conta_previsao`, então a divergência cru→canônico converge em `aAtualizar` (sem duplicar).
+- **Migration 0149:** backfill de `conta_previsao` das **108 linhas** reais (re-verificado em produção: `Banco Itau`×42 → Itaú, `ASAAS`×33 → Asaas, `Blimboo`×13, NULL×18 + `Caixa Economica`×1 + `USD 4.680`×1 → "Outras"). **Não** toca a projeção (`get_gerencial_projecao_diaria` ignora `conta_previsao`).
+
+### Fechamento (M7)
+- 4.22.0; este CHANGELOG; CHANGELOG_DIRETORIA (negócio); ADR-0124; Design System §7 (formato contábil); CLAUDE.md (convenção `<ValorContabil>`); out-briefing.
+
+### Refinamentos pós-revisão (patch, pré-merge)
+- **Destaque persistente de lançamento (migration 0150):** ícone de lata de tinta por linha pinta o fundo de amarelo, salvo no banco (coluna `destacado`; toggle via `update_gerencial_lancamento`). ADITIVA/retrocompatível; **não** toca a projeção.
+- **Base — cores por tipo:** valor de *A pagar* em vermelho, *A receber* em verde.
+- **Base — ações reordenadas:** ícone de origem (planilha/manual) movido para a direita, junto de destaque e excluir (origem · destaque · lixeira); some o ícone de origem prefixando a Pessoa.
+- **Base — filtro de Tipo** funcional na linha de filtros (select Todos/A receber/A pagar) e **filtro de Vencimento por período** num botão "Personalizado" (popover Início/Fim), no lugar dos dois campos empilhados que quebravam o layout.
+- **Base — botão "Salvar"** da nova linha não sobrepõe mais o seletor de data (coluna de ações alargada).
+- **Drawer "Gerenciar contas":** subtítulo explicativo + tabela `table-fixed` (coluna Conta flexível/truncada) — fim da rolagem horizontal.
+
 ## [4.21.0] — 2026-06-16
 
 Versão MINOR: **Fluxo de Caixa Gerencial — contas gerenciáveis, agregada configurável, cores por faixa + hardening (M2).** Migrations 0146 (aditiva), 0147 (hardening de RPCs), 0148 (RPC nova). ADR-0123.

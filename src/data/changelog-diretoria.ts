@@ -32,6 +32,20 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.22.0',
+    data: '2026-06-17T18:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'No Fluxo de Caixa Gerencial, os saldos iniciais das contas agora aparecem como cartões — dá para ajustar o saldo de cada conta direto ali; a configuração estrutural (limite, consolidado, papel) ficou num painel próprio em "Gerenciar contas".' },
+      { tipo: 'melhoria', texto: 'As contas passaram a ser chamadas de "Principal" e "Rendimento", nomes mais claros do que os anteriores.' },
+      { tipo: 'melhoria', texto: 'Os valores em dinheiro nas tabelas do gerencial ganharam formato contábil — "R$" à esquerda e o número alinhado à direita, com centavos — ficando mais fáceis de ler e de comparar entre as linhas.' },
+      { tipo: 'melhoria', texto: 'Os saldos projetados agora têm a cor da faixa preenchendo a célula inteira (verde, amarelo ou vermelho), tornando imediato enxergar quando uma conta entra no vermelho.' },
+      { tipo: 'melhoria', texto: 'A base de dados do gerencial ficou mais limpa e larga: colunas sem quebra de linha, filtros por coluna (pessoa, valor, conta, vencimento) e rolagem lateral em telas estreitas.' },
+      { tipo: 'melhoria', texto: 'A conta de cada lançamento virou uma seleção padronizada (Itaú, Asaas, Blimboo e "Outras"), e a importação reconhece variações de escrita automaticamente — fim dos nomes de conta digitados de formas diferentes.' },
+      { tipo: 'novidade', texto: 'Na base de dados do gerencial, agora é possível destacar um lançamento (ícone de lata de tinta), pintando a linha de amarelo — o destaque fica salvo e ajuda a marcar lançamentos importantes.' },
+      { tipo: 'melhoria', texto: 'Os filtros da base de dados ficaram mais práticos: filtrar por tipo direto na coluna e escolher um período de vencimento pelo botão "Personalizado"; e os valores aparecem coloridos (vermelho para a pagar, verde para a receber).' },
+    ],
+  },
+  {
     versao: '4.21.0',
     data: '2026-06-16T18:00',
     itens: [

@@ -39,7 +39,7 @@ export default function GerencialSection({ saldos, projecao, lancamentos }: Prop
       </div>
       {tab === 'agregada'
         ? <VisualizacaoAgregadaTab saldos={saldos} projecao={projecao} />
-        : <BaseDadosTab lancamentos={lancamentos} />
+        : <BaseDadosTab lancamentos={lancamentos} saldos={saldos} />
       }
     </div>
   )
