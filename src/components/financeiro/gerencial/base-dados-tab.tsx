@@ -113,9 +113,9 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const [itens, setItens]               = useState<Lancamento[]>(inicial)
   const [tipoFiltro, setTipoFiltro]     = useState<TipoFiltro>('todos')
   const [origemFiltro, setOrigemFiltro] = useState<OrigemFiltro>('todos')
-  const [buscaInput, setBuscaInput]     = useState('')
-  const [busca, setBusca]               = useState('')
-  // v4.22.0 (M5) — filtros por coluna (client-side, aditivos sobre a busca geral).
+  // v4.22.0 (M5) — filtros por coluna (client-side). v4.23.1: a busca por pessoa do topo saiu
+  // (redundante com o filtro de Pessoa na coluna); o tipo idem (filtro na coluna).
+
   const [fPessoa, setFPessoa]           = useState('')
   const [fValorMin, setFValorMin]       = useState('')
   const [fDescricao, setFDescricao]     = useState('')
@@ -144,12 +144,6 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const [prevInicial, setPrevInicial] = useState(inicial)
   if (inicial !== prevInicial) { setPrevInicial(inicial); setItens(inicial); setSelecionados(new Set()) }
 
-  // Debounce busca 300ms
-  useEffect(() => {
-    const t = setTimeout(() => setBusca(buscaInput), 300)
-    return () => clearTimeout(t)
-  }, [buscaInput])
-
   useEffect(() => {
     if (criando && primeiroInputRef.current) primeiroInputRef.current.focus()
   }, [criando])
@@ -160,7 +154,6 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       // filtros existentes (não reescrever)
       .filter(l => tipoFiltro === 'todos' || l.tipo === (tipoFiltro === 'receber' ? 'A receber' : 'A pagar'))
       .filter(l => origemFiltro === 'todos' || l.origem === origemFiltro)
-      .filter(l => !busca || l.pessoa.toLowerCase().includes(busca.toLowerCase()))
       // filtros por coluna (v4.22 / M5) — aditivos
       .filter(l => !fPessoa || l.pessoa.toLowerCase().includes(fPessoa.toLowerCase()))
       .filter(l => valorMin == null || Number.isNaN(valorMin) || l.valor_final >= valorMin)
@@ -169,7 +162,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       .filter(l => !fVencIni || l.vencimento >= fVencIni)
       .filter(l => !fVencFim || l.vencimento <= fVencFim)
       .filter(l => !fOriginador || (l.originador_nome ?? '').toLowerCase().includes(fOriginador.toLowerCase()))
-  }, [itens, tipoFiltro, origemFiltro, busca, fPessoa, fValorMin, fDescricao, fConta, fVencIni, fVencFim, fOriginador, contasReais])
+  }, [itens, tipoFiltro, origemFiltro, fPessoa, fValorMin, fDescricao, fConta, fVencIni, fVencFim, fOriginador, contasReais])
 
   // ── Seleção ────────────────────────────────────────────────────────────────
   const toggleSel = (id: number) => setSelecionados(prev => {
@@ -186,17 +179,36 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const idsSelecionados = itens.filter(l => selecionados.has(l.id)).map(l => l.id)
   const planilhaNaSelecao = itens.filter(l => selecionados.has(l.id) && l.origem === 'planilha').length
 
+  // v4.23.1 (item 3): a seleção acompanha o filtro de ORIGEM — ao trocar a origem com algo
+  // selecionado, a seleção é intersectada com os lançamentos daquela origem.
+  const mudarOrigem = (novo: OrigemFiltro) => {
+    setOrigemFiltro(novo)
+    setSelecionados(prev => {
+      if (prev.size === 0) return prev
+      const naOrigem = new Set(itens.filter(l => novo === 'todos' || l.origem === novo).map(l => l.id))
+      return new Set([...prev].filter(id => naOrigem.has(id)))
+    })
+  }
+
+  // v4.23.1 (item 3): nada selecionado → "Apagar todos" apaga a BASE inteira (ignora filtros);
+  // com seleção → "Apagar selecionados". Sempre sob confirmação (ConfirmModal).
+  const apagarTodos        = selecionados.size === 0
+  const idsParaApagar      = apagarTodos ? itens.map(l => l.id) : idsSelecionados
+  const planilhaParaApagar = apagarTodos ? itens.filter(l => l.origem === 'planilha').length : planilhaNaSelecao
+
   const handleDelete = (id: number) => {
     setItens(prev => prev.filter(l => l.id !== id))
     setSelecionados(prev => { const s = new Set(prev); s.delete(id); return s })
   }
 
-  const handleApagarSelecionados = () => {
+  const handleApagar = () => {
+    const ids = idsParaApagar
+    if (ids.length === 0) { setConfirmBulk(false); return }
     startRemover(async () => {
-      const res = await deleteLancamentosBulk(idsSelecionados)
+      const res = await deleteLancamentosBulk(ids)
       setConfirmBulk(false)
       if (res.success) {
-        const apagados = new Set(idsSelecionados)
+        const apagados = new Set(ids)
         setItens(prev => prev.filter(l => !apagados.has(l.id)))
         setSelecionados(new Set())
         router.refresh()
@@ -231,36 +243,18 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
 
   return (
     <div>
-      {/* Header com filtros e ações */}
+      {/* Header com filtros e ações (v4.23.1: tipo e busca por pessoa saíram — filtros na coluna). */}
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div className="flex gap-2 flex-wrap items-center">
-          {(['todos', 'receber', 'pagar'] as TipoFiltro[]).map(v => (
-            <button key={v} className={[PILL_BASE, tipoFiltro === v ? '' : PILL_INACTIVE].join(' ')}
-              style={tipoFiltro === v ? PILL_ACTIVE : undefined} onClick={() => setTipoFiltro(v)}>
-              {v === 'todos' ? 'Todos' : v === 'receber' ? 'A receber' : 'A pagar'}
-            </button>
-          ))}
-          <span className="text-zinc-200">·</span>
           {(['todos', 'planilha', 'manual'] as OrigemFiltro[]).map(v => (
             <button key={v} className={[PILL_BASE, origemFiltro === v ? '' : PILL_INACTIVE].join(' ')}
-              style={origemFiltro === v ? PILL_ACTIVE : undefined} onClick={() => setOrigemFiltro(v)}>
+              style={origemFiltro === v ? PILL_ACTIVE : undefined} onClick={() => mudarOrigem(v)}>
               {v === 'todos' ? 'Toda origem' : v === 'planilha' ? 'Planilha' : 'Manual'}
             </button>
           ))}
         </div>
 
         <div className="flex gap-2 items-center">
-          {selecionados.size > 0 && (
-            <button
-              onClick={() => setConfirmBulk(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded text-white transition-opacity"
-              style={{ background: 'var(--danger)' }}
-            >
-              <Trash2 size={12} /> Apagar selecionados ({selecionados.size})
-            </button>
-          )}
-          <input type="text" placeholder="Buscar por pessoa…" value={buscaInput} onChange={e => setBuscaInput(e.target.value)}
-            className="px-2.5 py-1.5 text-xs border border-zinc-200 rounded focus:outline-none focus:border-[var(--brand)]" />
           <button onClick={() => setCriando(true)} disabled={criando}
             className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors disabled:opacity-50">
             <Plus size={12} /> Nova linha
@@ -268,6 +262,12 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
           <button onClick={() => setImportOpen(true)}
             className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-white rounded transition-opacity" style={{ background: 'var(--brand)' }}>
             <Upload size={12} /> Importar
+          </button>
+          {/* Apagar (item 3): largura FIXA; rótulo alterna todos/selecionados; nada selecionado = base inteira. */}
+          <button onClick={() => setConfirmBulk(true)} disabled={itens.length === 0}
+            title={apagarTodos ? 'Apagar todos os lançamentos da base' : `Apagar ${selecionados.size} selecionado(s)`}
+            className="flex items-center justify-center gap-1 w-[164px] px-2.5 py-1.5 text-xs rounded border border-[var(--danger)] text-[var(--danger)] hover:bg-[var(--danger-bg)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <Trash2 size={12} /> {apagarTodos ? 'Apagar todos' : 'Apagar selecionados'}
           </button>
         </div>
       </div>
@@ -413,19 +413,21 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
 
       {confirmBulk && (
         <ConfirmModal
-          titulo="Apagar lançamentos selecionados"
-          confirmarLabel={removendo ? 'Apagando…' : `Apagar ${selecionados.size}`}
-          onConfirmar={handleApagarSelecionados}
+          titulo={apagarTodos ? 'Apagar TODOS os lançamentos' : 'Apagar lançamentos selecionados'}
+          confirmarLabel={removendo ? 'Apagando…' : apagarTodos ? `Apagar todos (${itens.length})` : `Apagar ${selecionados.size}`}
+          onConfirmar={handleApagar}
           onFechar={() => setConfirmBulk(false)}
           mensagem={
             <div className="space-y-2">
-              <p>Apagar <strong>{selecionados.size}</strong> lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.</p>
-              {planilhaNaSelecao > 0 && (
+              {apagarTodos
+                ? <p>Apagar <strong>TODOS os {itens.length}</strong> lançamentos da base? Isto ignora os filtros ativos na tela e <strong>não pode ser desfeito</strong>.</p>
+                : <p>Apagar <strong>{selecionados.size}</strong> lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.</p>}
+              {planilhaParaApagar > 0 && (
                 <p className="flex items-start gap-1.5 rounded-lg border border-[var(--warning)] bg-[var(--warning-bg)] px-2.5 py-2 text-xs text-[var(--warning)]">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   <span>
-                    <strong>{planilhaNaSelecao}</strong> {planilhaNaSelecao === 1 ? 'linha vem' : 'linhas vêm'} da planilha curada (origem <em>planilha</em>) —
-                    {' '}se ainda {planilhaNaSelecao === 1 ? 'estiver' : 'estiverem'} na planilha, {planilhaNaSelecao === 1 ? 'será re-trazida' : 'serão re-trazidas'} no próximo import.
+                    <strong>{planilhaParaApagar}</strong> {planilhaParaApagar === 1 ? 'linha vem' : 'linhas vêm'} da planilha curada (origem <em>planilha</em>) —
+                    {' '}se ainda {planilhaParaApagar === 1 ? 'estiver' : 'estiverem'} na planilha, {planilhaParaApagar === 1 ? 'será re-trazida' : 'serão re-trazidas'} no próximo import.
                   </span>
                 </p>
               )}
