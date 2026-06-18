@@ -2,7 +2,6 @@
 import { useState, useMemo } from 'react'
 import { format, parseISO, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Settings } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 import ContasManager from './contas-manager'
@@ -42,6 +41,10 @@ function corIsolada(v: number, limite: number | null): string {
 function corDuasFaixas(v: number): string {
   return v < 0 ? 'bg-danger-bg' : 'bg-success-bg'
 }
+// v4.22.1 — cor do TEXTO do saldo por sinal (≥0 verde / <0 vermelho), somada ao fundo de faixa.
+function corTextoSaldo(v: number): string {
+  return v >= 0 ? 'text-[var(--positive-deep)]' : 'text-[var(--negative-deep)]'
+}
 
 export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
   const [contas, setContas] = useState<Conta[]>(saldos)
@@ -52,6 +55,13 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
   if (saldos !== prevSaldos) { setPrevSaldos(saldos); setContas(saldos) }
 
   const [gerirOpen, setGerirOpen] = useState(false)
+  // v4.22.1 — janela de exibição da projeção: data inicial (default = hoje, a 1ª data vinda do
+  // servidor → dinâmico, vira o dia o default acompanha) + horizonte (15/30 dias). A projeção é
+  // buscada a partir de HOJE e o saldo acumulado roda desde hoje; aqui apenas FATIAMOS a exibição.
+  const [dataInicial, setDataInicial] = useState(projecao[0]?.data ?? '')
+  const [horizonte, setHorizonte]     = useState(15)
+  const minData = projecao[0]?.data
+  const maxData = projecao[projecao.length - 1]?.data
 
   const { linhas, isolada, reserva, isoladaLimite } = useMemo(() => {
     const isoladaConta = contas.find(c => c.papel === 'isolada') ?? null
@@ -73,23 +83,20 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
     return { linhas: rows, isolada: isoladaConta, reserva: reservaConta, isoladaLimite: isoladaConta?.limite ?? null }
   }, [contas, projecao])
 
+  // Fatia exibida: do `dataInicial` por `horizonte` dias (o acumulado já está correto desde hoje).
+  const linhasVisiveis = useMemo(
+    () => linhas.filter(l => !dataInicial || l.data >= dataInicial).slice(0, horizonte),
+    [linhas, dataInicial, horizonte],
+  )
+
   const temIsolada = isolada !== null
   const temReserva = reserva !== null
   const colSpanVazio = 4 + (temIsolada ? 1 : 0) + 1 + (temReserva ? 1 : 0)
 
   return (
     <div className="space-y-6">
-      {/* Contas — grade de cards (saldo editável inline) + acesso à gestão (drawer). */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Contas</p>
-          <button onClick={() => setGerirOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors foco-neutro">
-            <Settings size={13} /> Gerenciar contas
-          </button>
-        </div>
-        <ContasCards contas={contas} onContasChange={setContas} />
-      </div>
+      {/* Contas — grade de cards com cabeçalho e botão de gestão dentro do próprio box. */}
+      <ContasCards contas={contas} onContasChange={setContas} onGerir={() => setGerirOpen(true)} />
 
       {gerirOpen && (
         <ListDrawer titulo="Gerenciar contas"
@@ -100,7 +107,25 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
       )}
 
       <div className="bg-white rounded-xl shadow-sm px-5 py-4 overflow-x-auto">
-        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-4">Projeção Diária</p>
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Projeção Diária</p>
+          {projecao.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                A partir de
+                <input type="date" value={dataInicial} min={minData} max={maxData}
+                  onChange={e => setDataInicial(e.target.value || minData || '')}
+                  className="text-[11px] border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-brand" />
+              </label>
+              <select value={horizonte} onChange={e => setHorizonte(Number(e.target.value))}
+                aria-label="Horizonte da projeção"
+                className="text-[11px] border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-brand">
+                <option value={15}>15 dias</option>
+                <option value={30}>30 dias</option>
+              </select>
+            </div>
+          )}
+        </div>
         {projecao.length === 0 ? (
           <p className="text-sm text-zinc-400 py-8 text-center">
             Nenhum lançamento cadastrado. Importe a planilha ou adicione linhas manualmente na aba Base de Dados.
@@ -119,7 +144,7 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
               </tr>
             </thead>
             <tbody>
-              {linhas.map(l => {
+              {linhasVisiveis.map(l => {
                 const hoje = isToday(parseISO(l.data))
                 return (
                   <tr key={l.data} className={`border-b border-zinc-50 ${hoje ? 'bg-amber-50' : ''}`}>
@@ -142,25 +167,25 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
                       <ValorContabil valor={l.resultado}
                         className={`font-medium ${l.resultado >= 0 ? 'text-[var(--positive-deep)]' : 'text-[var(--negative-deep)]'}`} />
                     </td>
-                    {/* Saldos: faixa de cor no FUNDO do <td> (M4); número escuro/legível (M3). */}
+                    {/* Saldos: fundo de faixa no <td> (M4) + TEXTO por sinal ≥0 verde / <0 vermelho (v4.22.1). */}
                     {temIsolada && (
                       <td className={`py-1.5 px-2 ${corIsolada(l.isolada, isoladaLimite)}`}>
-                        <ValorContabil valor={l.isolada} className="font-medium text-[var(--text-primary)]" />
+                        <ValorContabil valor={l.isolada} className={`font-medium ${corTextoSaldo(l.isolada)}`} />
                       </td>
                     )}
                     <td className={`py-1.5 px-2 ${corDuasFaixas(l.consolidado)}`}>
-                      <ValorContabil valor={l.consolidado} className="font-medium text-[var(--text-primary)]" />
+                      <ValorContabil valor={l.consolidado} className={`font-medium ${corTextoSaldo(l.consolidado)}`} />
                     </td>
                     {temReserva && (
                       <td className={`py-1.5 px-2 ${corDuasFaixas(l.consolReserva)}`}>
-                        <ValorContabil valor={l.consolReserva} className="font-medium text-[var(--text-primary)]" />
+                        <ValorContabil valor={l.consolReserva} className={`font-medium ${corTextoSaldo(l.consolReserva)}`} />
                       </td>
                     )}
                   </tr>
                 )
               })}
-              {linhas.length === 0 && (
-                <tr><td colSpan={colSpanVazio} className="py-6 text-center text-sm text-zinc-400">Sem projeção.</td></tr>
+              {linhasVisiveis.length === 0 && (
+                <tr><td colSpan={colSpanVazio} className="py-6 text-center text-sm text-zinc-400">Sem dias no período selecionado.</td></tr>
               )}
             </tbody>
           </table>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Settings } from 'lucide-react'
 import { updateConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { NumCell } from './contas-manager'
 import { PAPEL_LABEL, type Conta } from './tipos'
@@ -12,9 +13,10 @@ import { PAPEL_LABEL, type Conta } from './tipos'
 // + router.refresh para a projeção recalcular). Selo do papel é INFORMATIVO (read-only):
 // "Principal" usa o trio neutro --action-soft (pill de plataforma); "Rendimento" usa zinc.
 
-export default function ContasCards({ contas, onContasChange }: {
+export default function ContasCards({ contas, onContasChange, onGerir }: {
   contas: Conta[]
   onContasChange: (c: Conta[]) => void
+  onGerir: () => void
 }) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
@@ -31,6 +33,13 @@ export default function ContasCards({ contas, onContasChange }: {
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Contas</p>
+        <button onClick={onGerir}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors foco-neutro">
+          <Settings size={13} /> Gerenciar contas
+        </button>
+      </div>
       {erro && <p className="mb-2 text-xs text-[var(--danger)]">{erro}</p>}
       {contas.length === 0 ? (
         <p className="text-sm text-zinc-400 py-4 text-center">
@@ -50,6 +59,7 @@ export default function ContasCards({ contas, onContasChange }: {
                 )}
               </div>
               <div className="text-right">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--text-subtle)]">Saldo</p>
                 <NumCell valor={c.saldo} onSave={v => editarSaldo(c.conta, v ?? 0)} />
               </div>
               {c.papel === 'isolada' && (
