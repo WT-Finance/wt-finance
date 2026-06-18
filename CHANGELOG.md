@@ -15,7 +15,8 @@ Patch: **Ajustes do Fluxo de Caixa Gerencial — correção crítica do saldo, r
 
 ### Base de Dados (itens 1–3)
 - Removidas as **pills de tipo** (Todos/A receber/A pagar) e a **busca por pessoa** do topo — redundantes com os filtros nas colunas Tipo e Pessoa.
-- O botão de exclusão virou **largura fixa** à direita de Importar, alternando o rótulo: **"Apagar todos"** (nada selecionado → apaga a base inteira, ignorando filtros) ou **"Apagar selecionados"**. A seleção **acompanha o filtro de origem**: trocar Planilha/Manual reescala a seleção para a origem visível. Exclusão sempre sob confirmação.
+- As **badges de Tipo** ganharam cor: **A pagar** vermelho, **A receber** verde (mesma semântica do valor; tokens do DS).
+- O botão de exclusão virou **largura fixa** à direita de Importar, alternando o rótulo: **"Apagar todos"** ou **"Apagar selecionados"**. **"Apagar todos"** (nada selecionado) **respeita o filtro de origem** — Toda origem = base inteira; Planilha/Manual = só aquela origem. Trocar o filtro de origem **reseta a seleção**. Exclusão sempre sob confirmação.
 
 ### Projeção Diária (itens 9–10)
 - Nova linha-âncora **"Saldo inicial"** no topo (acima de hoje): A Receber/A Pagar/Resultado em traço (—) e as colunas de saldo mostrando a abertura de Itaú, Consolidado e Consol.+reserva.

@@ -13,7 +13,8 @@ O `NumCell` (saldo dos cards + limite no painel) exibia `fmtBRL` (0 casas → "1
 ### Itens 1–3 — Base de Dados (`base-dados-tab.tsx`)
 - **(1)** Removidas as pills de tipo (Todos/A receber/A pagar) — redundantes com o filtro Tipo da coluna.
 - **(2)** Removida a busca por pessoa do topo (+ estado `busca`/`buscaInput` + debounce) — redundante com o filtro Pessoa da coluna.
-- **(3)** O botão de exclusão é **largura fixa** (`w-[164px]`), à direita de Importar, alternando o rótulo: **"Apagar todos"** (0 selecionados → apaga a BASE inteira, ignorando filtros — **decisão do Yan**) ou **"Apagar selecionados"**. `mudarOrigem` faz a seleção **acompanhar o filtro de origem** (intersecta a seleção com a origem visível). Confirmação obrigatória; a do "todos" avisa que ignora filtros e é irreversível.
+- **(badge, ajuste pós-revisão)** As **badges de Tipo** ganharam cor por valor: A pagar → vermelho (`--danger-bg`/`--danger`/`--negative-deep`), A receber → verde (`--success-bg`/`--success`/`--positive-deep`). Helper `tipoBadgeClasses` + prop `badgeClassFor` no `EditableCell` (genérico).
+- **(3)** O botão de exclusão é **largura fixa** (`w-[164px]`), à direita de Importar, alternando o rótulo: **"Apagar todos"** ou **"Apagar selecionados"**. **Ajuste pós-revisão (pedido do Yan):** "Apagar todos" (0 selecionados) **RESPEITA o filtro de origem** (`itensNaOrigem`: Toda → base inteira; Planilha/Manual → só aquela origem) — não mais a base inteira ignorando tudo; e trocar o filtro de origem **RESETA a seleção** (`mudarOrigem` → `setSelecionados(new Set())`, antes intersectava). Confirmação obrigatória; o modal mostra o escopo (" de origem Planilha/Manual") e a contagem real.
 
 ### Itens 9–10 — Projeção Diária (`visualizacao-agregada-tab.tsx`)
 - **(9)** Linha-âncora fixa **"Saldo inicial"** no topo: A Receber/A Pagar/Resultado em traço (—); colunas de saldo mostram a **abertura** da janela (`linhaVisivel[0].saldo − resultado` = saldo da véspera; no default = saldo configurado das contas).
@@ -35,7 +36,7 @@ O `NumCell` (saldo dos cards + limite no painel) exibia `fmtBRL` (0 casas → "1
 ## Auto-auditoria adversarial (1 revisor) — resultado
 - **Round-trip de dinheiro (item 11): PROVADO LIMPO** — a corrupção 105993,35→10599335 não pode recorrer; todos os formatos (BR com/sem milhar, US, negativo, vazio) voltam ao valor certo.
 - **Math do "Saldo inicial" (item 9): LIMPO** — `p0.isolada − p0.resultado = base + acumulado antes da janela`; default = saldo da conta; janela futura correta; float desprezível.
-- **Exclusão (item 3): 2 "footguns" deliberados, gated pelo ConfirmModal** (não são perda silenciosa): (A) trocar origem pode esvaziar a seleção → botão vira "Apagar todos" (base inteira) — composição literal das 2 decisões do Yan, com aviso forte no modal; (B) filtros de coluna escondem linhas selecionadas que "Apagar selecionados" ainda apaga — a contagem é exibida no modal e no rodapé. Mantidos por serem decisão de produto; documentados aqui.
+- **Exclusão (item 3): footgun (A) RESOLVIDO no ajuste pós-revisão** — trocar origem agora RESETA a seleção e "Apagar todos" RESPEITA a origem, então não há mais o flip para "base inteira". Resta o footgun (B): filtros de COLUNA (não origem) escondem linhas selecionadas que "Apagar selecionados" ainda apaga — a contagem é exibida no modal e no rodapé; o Yan pediu reset só na origem, então mantido (disclosed).
 - Achado de hardening endereçado: input inválido no saldo agora reverte (não zera).
 
 ## Gates
@@ -46,9 +47,13 @@ Avaliado — **sem alteração**. O bug do item 11 é uma instância concreta de
 
 ## Arquivos
 **Novos:** `supabase/migrations/0155_gerencial_lancamento_manual_destacado.sql`, este out-briefing.
-**Modificados:** `src/components/financeiro/gerencial/contas-manager.tsx` (NumCell: fmtBRL2 + toNum + editStr + guard), `.../visualizacao-agregada-tab.tsx` (Saldo inicial + headers), `.../base-dados-tab.tsx` (pills/busca removidas, botão Apagar todos/selecionados, mudarOrigem), `.../import-drawer.tsx` (Valor compacto/table-fixed, toggle condicional, título/instruções), `src/lib/gerencial/import-types.ts` (+`duplicatasPlanilha`), `src/lib/gerencial/import-types.test.ts` (+teste), `package.json`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`.
+**Modificados:** `src/components/financeiro/gerencial/contas-manager.tsx` (NumCell: fmtBRL2 + toNum + editStr + guard), `.../visualizacao-agregada-tab.tsx` (Saldo inicial + headers), `.../base-dados-tab.tsx` (pills/busca removidas, botão Apagar todos/selecionados, mudarOrigem reset + origem-scoped), `.../lancamento-row.tsx` (badge de Tipo colorido: `tipoBadgeClasses` + prop `badgeClassFor`), `.../import-drawer.tsx` (Valor compacto/table-fixed, toggle condicional, título/instruções), `src/lib/gerencial/import-types.ts` (+`duplicatasPlanilha`), `src/lib/gerencial/import-types.test.ts` (+teste), `package.json`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`.
 **Sem ADR** (ajustes/correção; nenhuma decisão arquitetural nova).
 
+## Ajustes pós-revisão (pedidos do Yan antes do fechamento, no mesmo PR)
+1. **Cor nas badges de Tipo** na base (A pagar vermelho / A receber verde).
+2. **Reset da seleção ao trocar o filtro de origem** + **"Apagar todos" respeita o filtro de origem** (revisão da decisão anterior "ignora filtros"). Isso resolveu o footgun (A) da auto-auditoria.
+
 ## Pendências / fora de escopo (achados → registro)
-- "Footguns" A/B da exclusão: deliberados (decisão de produto) + gated pelo modal. Se o Yan quiser, dá para (A) não flipar para "todos" quando a troca de origem esvazia a seleção e (B) limpar a seleção também nos filtros de coluna — vira ajuste próprio.
+- Footgun (B): filtros de COLUNA (Pessoa/Valor/etc., não origem) escondem linhas que continuam selecionadas e seriam apagadas por "Apagar selecionados" — contagem disclosed no modal/rodapé; o Yan pediu reset só na origem. Se incomodar, dá para limpar a seleção também nos filtros de coluna (ajuste próprio).
 - Input inválido em `NumCell` agora reverte; sem mensagem de erro explícita (silencioso, mas não destrutivo).
