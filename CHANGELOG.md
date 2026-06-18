@@ -6,6 +6,16 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.22.1] — 2026-06-17
+
+Patch: **Fluxo de Caixa Gerencial — ajustes de UX nos cards de saldo e na projeção diária + correção de fuso no "hoje".** Migration 0151 (aditiva).
+
+- **Cards de saldo:** o cabeçalho "Contas" e o botão "Gerenciar contas" passaram para **dentro** do box dos cards; cada card ganhou a legenda **"Saldo"** (cinza discreto, `--text-subtle`) acima do valor.
+- **Projeção diária — data inicial:** seletor de **data inicial** no topo do box, com padrão **dinâmico = hoje** (a 1ª data vinda do servidor; acompanha a virada do dia). O saldo acumulado continua correndo desde hoje — a seleção apenas **fatia a janela exibida**.
+- **Projeção diária — horizonte:** dropdown **15 (padrão) / 30 dias**. As páginas passam a buscar uma janela de 60 dias; a UI fatia por data inicial + horizonte (sem nova chamada ao servidor).
+- **Cor condicional:** os 3 saldos da projeção passam a ter **texto** verde (≥ 0) / vermelho (< 0), somado ao fundo de faixa; A Receber (verde), A Pagar (vermelho) e Resultado (por sinal) seguem como antes — todo valor monetário fica colorido.
+- **Correção de fuso — "hoje" da projeção (migration 0151):** a projeção usava `CURRENT_DATE`, avaliado em **UTC** pela sessão do banco — no fim da tarde de São Paulo (UTC−3) isso já era o dia seguinte, então a projeção (e o seletor de data inicial) começava em "amanhã". Agora a RPC `get_gerencial_projecao_diaria` deriva o dia corrente de `America/Sao_Paulo` (`(now() AT TIME ZONE 'America/Sao_Paulo')::date`). `CREATE OR REPLACE`, aditiva.
+
 ## [4.22.0] — 2026-06-17
 
 Versão MINOR: **Fluxo de Caixa Gerencial — refinamentos de UX, formato contábil e normalização de contas.** Migrations 0149 (normalização de `conta_previsao`) e 0150 (destaque persistente). ADR-0124. **Modelo da agregada INTOCADO** — `conta_previsao` continua irrelevante para a projeção (verificado por checksum antes/depois).

@@ -197,7 +197,8 @@ export default async function FluxoCaixaPage({
   if (temGerencial) {
     try {
       const [projecaoRes, saldosRes, lancamentosGerencialRes] = await Promise.all([
-        rpc('get_gerencial_projecao_diaria', { p_dias: 15 }),
+        // v4.22.1: janela ampla (60 dias); a UI fatia por data inicial + horizonte (15/30).
+        rpc('get_gerencial_projecao_diaria', { p_dias: 60 }),
         rpc('get_gerencial_saldos'),
         rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
       ])

@@ -32,6 +32,16 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.22.1',
+    data: '2026-06-17T22:30',
+    itens: [
+      { tipo: 'melhoria', texto: 'No Fluxo de Caixa Gerencial, os cartões de saldo das contas ficaram mais organizados: o título e o botão de gerenciar contas agora ficam dentro do próprio quadro, e cada cartão mostra a etiqueta "Saldo" junto do valor.' },
+      { tipo: 'novidade', texto: 'A projeção diária agora deixa escolher a partir de qual data começar (já vem em "hoje" automaticamente) e se a tabela mostra 15 ou 30 dias.' },
+      { tipo: 'melhoria', texto: 'Todos os valores da projeção diária ficam coloridos pelo sinal — verde quando positivo, vermelho quando negativo — facilitando a leitura rápida da situação de caixa.' },
+      { tipo: 'correcao', texto: 'A projeção diária agora começa corretamente no dia de hoje — antes, no fim da tarde, ela adiantava um dia por causa do fuso horário do servidor.' },
+    ],
+  },
+  {
     versao: '4.22.0',
     data: '2026-06-17T18:00',
     itens: [
