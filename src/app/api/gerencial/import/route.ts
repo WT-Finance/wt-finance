@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAreaApi } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
 import { parseGerencialExcel } from '@/lib/gerencial/parser'
-import { chaveDuplicata, type LancamentoPlanilha, type ImportDiff } from '@/lib/gerencial/import-types'
+import { computeDiffPorFatia, type LancamentoPlanilha, type LinhaFatia, type ImportDiff } from '@/lib/gerencial/import-types'
 import { canonizarConta } from '@/lib/gerencial/normalizar-conta'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,58 +22,52 @@ async function rpc(fn: string, args?: Record<string, unknown>) {
   return (db.rpc as unknown as Rpc)(fn, args)
 }
 
-// Calcula o diff entre a planilha parseada e os lançamentos origem='planilha' do banco
-async function computeImportDiff(planilha: LancamentoPlanilha[]): Promise<ImportDiff> {
+// v4.23.0 (M2/M3, ADR-0126): SINCRONIZAÇÃO POR FATIA. O diff sincroniza APENAS as linhas
+// origem='planilha' do PRÓPRIO importador (originador = ele) — a fatia do colega NUNCA entra
+// no cálculo (isolamento na origem; o DELETE da RPC reforça com `AND originador_id = eu`).
+// Linhas antigas sem originador (NULL) não pertencem à fatia de ninguém → nunca removidas.
+async function computeImportDiff(
+  planilha: LancamentoPlanilha[],
+  originadorId: string,
+  manterDuplicadas: boolean,
+): Promise<ImportDiff> {
   const { data: atuais, error } = await rpc('get_gerencial_lancamentos_planilha')
   if (error) throw new Error(`Falha ao carregar dados: ${error.message}`)
 
   // v4.22 (M6): import TOLERANTE — canoniza conta_previsao da planilha contra as contas reais
   // (lower/unaccent/trim + aliases: "Banco Itau"→Itaú, "ASAAS"→Asaas; nulos/órfãos→"Outras").
-  // chaveDuplicata NÃO usa conta_previsao, então a chave não muda; a divergência crua→canônica
-  // cai em `aAtualizar` (re-import converge linhas antigas). NÃO afeta a agregada.
+  // A fatia do banco já está canonizada; canonizar só a planilha realinha as duas pontas.
   const { data: saldos } = await rpc('get_gerencial_saldos')
   const contasReais = ((saldos as { conta: string }[] | null) ?? []).map(s => s.conta)
   const planilhaCanon = planilha.map(l => ({ ...l, conta_previsao: canonizarConta(l.conta_previsao, contasReais) }))
 
-  const mapAtuais   = new Map<string, Record<string, unknown>>()
-  const mapPlanilha = new Map<string, LancamentoPlanilha>()
+  // FATIA = só as linhas DELE. O filtro por originador_id é a 1ª barreira de isolamento.
+  const fatia: LinhaFatia[] = (atuais as Array<Record<string, unknown>> ?? [])
+    .filter(a => a.originador_id === originadorId)
+    .map(a => ({
+      id:             a.id as number,
+      tipo:           a.tipo as string,
+      pessoa:         a.pessoa as string,
+      valor_final:    Number(a.valor_final),
+      descricao:      (a.descricao as string | null) ?? null,
+      conta_previsao: (a.conta_previsao as string | null) ?? null,
+      vencimento:     a.vencimento as string,
+    }))
 
-  ;(atuais as Record<string, unknown>[] ?? []).forEach(a =>
-    mapAtuais.set(chaveDuplicata(a as Parameters<typeof chaveDuplicata>[0]), a))
-  planilhaCanon.forEach(l => mapPlanilha.set(chaveDuplicata(l), l))
-
-  const diff: ImportDiff = { aAdicionar: [], aRemover: [], aManter: 0, aAtualizar: [] }
-
-  for (const [key, l] of mapPlanilha) {
-    if (!mapAtuais.has(key)) {
-      diff.aAdicionar.push(l)
-    } else {
-      const atual = mapAtuais.get(key)!
-      const divergentes: string[] = []
-      if ((atual.descricao ?? null)      !== (l.descricao ?? null))      divergentes.push('descricao')
-      if ((atual.conta_previsao ?? null) !== (l.conta_previsao ?? null)) divergentes.push('conta_previsao')
-      divergentes.length > 0
-        ? diff.aAtualizar.push({ id: atual.id as number, atual, novo: l, camposDivergentes: divergentes })
-        : diff.aManter++
-    }
-  }
-  for (const [key, atual] of mapAtuais) {
-    if (!mapPlanilha.has(key))
-      diff.aRemover.push(atual as { id: number; tipo: string; pessoa: string; valor_final: number; vencimento: string })
-  }
-
-  return diff
+  return computeDiffPorFatia(planilhaCanon, fatia, manterDuplicadas)
 }
 
 export async function POST(req: NextRequest) {
-  // Guard v4.13: importação do Gerencial; o trabalho segue com o admin client (service role).
+  // Guard v4.13: importação do Gerencial. v4.23.0: a sessão identifica o ORIGINADOR da fatia.
   const sessao = await requireAreaApi('financeiro/gerencial')
   if (sessao instanceof Response) return sessao
+  if (!sessao.userId) return NextResponse.json({ error: 'Sessão sem usuário' }, { status: 403 })
 
   try {
     const formData = await req.formData()
     const file   = formData.get('file') as File | null
     const action = String(formData.get('action') ?? 'preview')
+    const manterDuplicadas = String(formData.get('manterDuplicadas') ?? 'false') === 'true'
 
     if (!file)                          return NextResponse.json({ error: 'Nenhum arquivo enviado' },  { status: 400 })
     if (file.size > 10 * 1024 * 1024)   return NextResponse.json({ error: 'Arquivo maior que 10MB' },  { status: 400 })
@@ -83,26 +77,35 @@ export async function POST(req: NextRequest) {
     if (!parseRes.success) return NextResponse.json({ error: parseRes.error }, { status: 422 })
 
     const { lancamentos, warnings } = parseRes
-    const diff = await computeImportDiff(lancamentos)
+    const diff = await computeImportDiff(lancamentos, sessao.userId, manterDuplicadas)
 
     if (action === 'preview') {
       return NextResponse.json({ diff, warnings })
     }
 
     if (action === 'commit') {
+      // Proteção pontual (M4): ids desmarcados em "a remover" — NÃO removidos neste commit
+      // (reaparecem na próxima importação; não viram manual). Só filtram a lista de remoção.
+      const protegidos = new Set<number>(
+        (() => { try { return JSON.parse(String(formData.get('protegidos') ?? '[]')) as number[] } catch { return [] } })(),
+      )
+      const removerIds = diff.aRemover.map(r => r.id).filter(id => !protegidos.has(id))
+
       const loteId = crypto.randomUUID()
       const agora  = new Date().toISOString()
 
       const { data, error } = await rpc('batch_gerencial_import', {
-        p_adicionar:   diff.aAdicionar,
-        p_remover_ids: diff.aRemover.map(r => r.id),
-        p_atualizar:   diff.aAtualizar.map(u => ({
+        p_adicionar:     diff.aAdicionar,
+        p_remover_ids:   removerIds,
+        p_atualizar:     diff.aAtualizar.map(u => ({
           id:             u.id,
           descricao:      u.novo.descricao,
           conta_previsao: u.novo.conta_previsao,
         })),
-        p_lote_id:      loteId,
-        p_importado_em: agora,
+        p_lote_id:        loteId,
+        p_importado_em:   agora,
+        p_originador_id:   sessao.userId,
+        p_originador_nome: sessao.nome ?? sessao.email ?? 'Usuário',
       })
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -110,7 +113,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         resumo: {
           adicionados: data?.adicionados ?? diff.aAdicionar.length,
-          removidos:   data?.removidos   ?? diff.aRemover.length,
+          removidos:   data?.removidos   ?? removerIds.length,
           atualizados: data?.atualizados ?? diff.aAtualizar.length,
         },
       })
