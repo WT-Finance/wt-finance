@@ -6,6 +6,18 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.22.3] — 2026-06-18
+
+Patch: **selos das contas no rodapé do card + cores por papel; correção das datas do changelog da diretoria.** Sem migration.
+
+### Cartões de contas (Fluxo de Caixa Gerencial)
+- Os selos do card foram para o **rodapé, à esquerda**, na ordem **papel → "Consolidado"**: "Consolidado" deixou o canto superior direito e passou a acompanhar "Principal"/"Rendimento" embaixo (`mt-auto`).
+- Cores por **token** do design system: **"Principal"** usa o âmbar de gestão (mesmo trio dos botões de Solicitações — `--gestao-soft`/`--gestao`/`--gestao-fg`); **"Rendimento"** usa verde (`--success-bg`/`--success`/`--positive-deep`); "Consolidado" segue neutro (zinc).
+- Subtítulo do drawer "Gerenciar contas" enxugado para "Configure limite, consolidação e papel de cada conta" (sem ponto final).
+
+### Correção das datas do `CHANGELOG_DIRETORIA`
+- As datas/horas de **v4.11.0 a v4.22.2** estavam **aproximadas/redondas** (digitadas à mão antes do merge e nunca reconciliadas). Corrigidas para o **horário real do merge** (de `git log --merges`, fuso −03). As de v4.0.0–v4.10.1 já estavam corretas. Convenção reforçada no `CLAUDE.md` e no header do arquivo: a `data` vem do git, nunca uma hora redonda chutada.
+
 ## [4.22.2] — 2026-06-17
 
 Patch: **Correção de fuso horário em TODA a plataforma — "hoje"/"este mês" agora em São Paulo.** Migration 0152 (aditiva). ADR-0125.
