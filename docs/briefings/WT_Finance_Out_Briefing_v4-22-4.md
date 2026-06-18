@@ -16,7 +16,7 @@ Ao adicionar uma conta, os ícones ✓/✕ ficavam espremidos na coluna estreita
 
 ## Banco — migration 0153
 - **ADITIVA / retrocompatível:** RPC nova; o `UPDATE` só roda sob ação do usuário (arrastar) e reescreve apenas a coluna `ordem`. Sem DDL de tabela, sem escrita em dado pré-existente fora de `ordem`.
-- ⚠️ O heurístico do db-gate marca destrutiva (literal `UPDATE` no corpo da função) → **aplicada sob confirmação humana consciente** (mesmo caso da 0150). _[após aplicar: ver §verificação]_
+- ⚠️ O heurístico do db-gate marca destrutiva (literal `UPDATE` no corpo da função) → **APLICADA em produção (2026-06-18) sob confirmação humana consciente** do Yan; backup-gate **VERDE**. **Verificado (read-only):** a RPC existe com `exigir_acesso` + `UPDATE ordem`; `GRANT` authenticated=true / anon=false; dry-run do `unnest WITH ORDINALITY` mapeia cada conta à posição correta (Itaú→1 … Pagar.me→5). Teste funcional final = arrastar no preview do PR (a chamada real exige sessão authenticated).
 
 ## Gates
 `tsc --noEmit` **0** · `lint` **13** (= baseline) · `next build` **limpo** (47/47) · `npm test` **131**.
