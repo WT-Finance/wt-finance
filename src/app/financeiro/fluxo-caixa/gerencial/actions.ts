@@ -191,6 +191,20 @@ export async function deleteConta(conta: string): Promise<{ success: true } | { 
   }
 }
 
+/** v4.22.4: reordena as contas (define a `ordem` = posição no array). Atômico no banco. */
+export async function reordenarContas(ordem: string[]): Promise<{ success: true } | { success: false; error: string }> {
+  await requireAreaAction('financeiro/gerencial')
+  if (!Array.isArray(ordem) || ordem.length === 0) return { success: false, error: 'Ordem vazia' }
+  try {
+    const { error } = await rpc('reordenar_gerencial_contas', { p_contas: ordem })
+    if (error) return { success: false, error: traduzirContaErro(error.message) }
+    revalidar()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Erro ao reordenar contas' }
+  }
+}
+
 function traduzirContaErro(msg: string): string {
   if (msg.includes('CONTA_VAZIA'))      return 'Informe o nome da conta.'
   if (msg.includes('CONTA_DUPLICADA'))  return 'Já existe uma conta com esse nome.'

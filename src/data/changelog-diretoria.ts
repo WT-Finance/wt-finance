@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.22.4',
+    data: '2026-06-18T09:41',
+    itens: [
+      { tipo: 'novidade', texto: 'Em "Gerenciar contas" (Fluxo de Caixa Gerencial), agora dá para reordenar as contas arrastando pelo ícone à esquerda de cada linha — a ordem escolhida passa a valer também para os cartões de saldo.' },
+      { tipo: 'melhoria', texto: 'Ao adicionar uma conta nova, os botões de salvar e cancelar ficaram mais claros, abaixo da tabela, sem sobreposição.' },
+    ],
+  },
+  {
     versao: '4.22.3',
     data: '2026-06-18T08:54',
     itens: [
