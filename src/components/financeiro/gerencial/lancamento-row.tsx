@@ -14,6 +14,8 @@ export interface Lancamento {
   conta_previsao: string | null
   vencimento:     string
   origem:         string
+  /** v4.23.0: quem importou/criou a linha (nome). NULL nas linhas anteriores à versão → "—". */
+  originador_nome: string | null
   /** Destaque persistente (v4.22 patch): pinta o fundo da linha de amarelo. */
   destacado:      boolean
 }
@@ -215,6 +217,12 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
       <EditableCell value={l.descricao}      onSave={makeSaver('descricao')} />
       <EditableCell value={l.conta_previsao} onSave={makeSaver('conta_previsao')} type="select" options={opcoesConta} />
       <EditableCell value={l.vencimento}     onSave={makeSaver('vencimento')}     type="date" />
+      {/* Originador (v4.23.0): só leitura — quem importou/criou. Distinto do ícone de origem. */}
+      <td className="py-1 px-2">
+        <span className="block truncate text-xs text-zinc-500" title={l.originador_nome ?? '—'}>
+          {l.originador_nome ?? '—'}
+        </span>
+      </td>
       <td className="py-1 px-2">
         <div className="flex items-center justify-end gap-1.5">
           {iconeOrigem}

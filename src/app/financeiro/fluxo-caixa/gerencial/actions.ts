@@ -39,7 +39,8 @@ export async function createLancamento(input: {
   | { success: true;  lancamento: Record<string, unknown> }
   | { success: false; error: string }
 > {
-  await requireAreaAction('financeiro/gerencial')
+  // v4.23.0: a sessão carimba o ORIGINADOR (quem criou a linha) — mesma coluna da importação.
+  const sessao = await requireAreaAction('financeiro/gerencial')
   try {
     const { data, error } = await rpc('create_gerencial_lancamento', {
       p_tipo:           input.tipo,
@@ -49,6 +50,8 @@ export async function createLancamento(input: {
       p_origem:         'manual',
       p_descricao:      input.descricao      ?? null,
       p_conta_previsao: input.conta_previsao ?? null,
+      p_originador_id:   sessao.userId,
+      p_originador_nome: sessao.nome ?? sessao.email ?? 'Usuário',
     })
     if (error) return { success: false, error: error.message }
     revalidar()

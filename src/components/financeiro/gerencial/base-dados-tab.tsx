@@ -122,6 +122,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const [fConta, setFConta]             = useState('')        // '' = todas; nome da conta ou ROTULO_OUTRAS
   const [fVencIni, setFVencIni]         = useState('')
   const [fVencFim, setFVencFim]         = useState('')
+  const [fOriginador, setFOriginador]   = useState('')        // v4.23.0 — filtro por originador (nome)
   const [importOpen, setImportOpen]     = useState(false)
   const [criando, setCriando]           = useState(false)
   const [novosValores, setNovosValores] = useState<Partial<Lancamento>>({})
@@ -167,7 +168,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       .filter(l => !fConta || canonizarConta(l.conta_previsao, contasReais) === fConta)
       .filter(l => !fVencIni || l.vencimento >= fVencIni)
       .filter(l => !fVencFim || l.vencimento <= fVencFim)
-  }, [itens, tipoFiltro, origemFiltro, busca, fPessoa, fValorMin, fDescricao, fConta, fVencIni, fVencFim, contasReais])
+      .filter(l => !fOriginador || (l.originador_nome ?? '').toLowerCase().includes(fOriginador.toLowerCase()))
+  }, [itens, tipoFiltro, origemFiltro, busca, fPessoa, fValorMin, fDescricao, fConta, fVencIni, fVencFim, fOriginador, contasReais])
 
   // ── Seleção ────────────────────────────────────────────────────────────────
   const toggleSel = (id: number) => setSelecionados(prev => {
@@ -272,7 +274,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
 
       {/* Tabela */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm table-fixed min-w-[760px]">
+        <table className="w-full text-sm table-fixed min-w-[860px]">
           <thead>
             <tr className="border-b border-zinc-100 text-left">
               <th className="py-2 px-2 w-[32px] text-center">
@@ -284,7 +286,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 text-right w-[130px]">Valor</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[160px]">Descrição</th>
               <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[140px]">Conta</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[120px]">Vencimento</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[104px]">Vencimento</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[110px]">Originador</th>
               <th className="py-2 px-2 w-[96px]"></th>
             </tr>
             {/* Filtros por coluna (v4.22 / M5) */}
@@ -320,6 +323,10 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
               <th className="py-1.5 px-2">
                 <FiltroVencimento ini={fVencIni} fim={fVencFim}
                   onChange={(i, f) => { setFVencIni(i); setFVencFim(f) }} />
+              </th>
+              <th className="py-1.5 px-2">
+                <input type="text" placeholder="Originador…" value={fOriginador} onChange={e => setFOriginador(e.target.value)}
+                  className={FILTRO_INPUT} aria-label="Filtrar por originador" />
               </th>
               <th className="py-1.5 px-2"></th>
             </tr>
@@ -367,6 +374,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
                     onKeyDown={e => { if (e.key === 'Enter') handleSalvarNovo() }}
                     className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
+                {/* Originador é definido no servidor (sessão) ao salvar; aparece após o refresh. */}
+                <td className="py-1 px-2 text-xs text-zinc-300">—</td>
                 <td className="py-1 px-2">
                   <div className="flex gap-1 justify-end">
                     <button onClick={handleSalvarNovo} disabled={isPending}
