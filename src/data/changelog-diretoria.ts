@@ -35,6 +35,16 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.23.0',
+    data: '2026-06-18T14:34',
+    itens: [
+      { tipo: 'novidade', texto: 'A importação da planilha do Fluxo de Caixa Gerencial agora é individual: cada pessoa sincroniza apenas os lançamentos que ela mesma importou ou criou. Antes, quando duas pessoas importavam suas planilhas, uma acabava apagando os lançamentos da outra. Agora a planilha de cada um é intocável pela importação de outro.' },
+      { tipo: 'novidade', texto: 'Os lançamentos passaram a mostrar quem os trouxe: uma nova coluna "Originador" identifica o responsável por cada linha (importada ou criada à mão), com filtro por nome. Lançamentos anteriores a esta versão aparecem sem responsável ("—").' },
+      { tipo: 'novidade', texto: 'Antes de confirmar uma importação, dá para conferir tudo num preview navegável: os lançamentos a adicionar, atualizar, manter e remover ficam em listas que abrem e fecham. Os "a remover" já vêm abertos, e é possível proteger linha por linha — desmarcar uma linha evita removê-la desta vez.' },
+      { tipo: 'melhoria', texto: 'A importação reconhece linhas idênticas de forma mais inteligente (ignora diferenças de espaço/maiúsculas) e oferece um interruptor "Manter duplicadas" para quem realmente precisa de lançamentos repetidos.' },
+    ],
+  },
+  {
     versao: '4.22.4',
     data: '2026-06-18T09:41',
     itens: [

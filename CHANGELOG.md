@@ -6,6 +6,28 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.23.0] — 2026-06-18
+
+Minor: **Importação do Fluxo de Caixa Gerencial sincroniza por fatia do originador, com dedup e preview navegável.** Migration 0154 (aditiva). ADR-0126.
+
+### Sincronização por fatia (ADR-0126)
+- A importação deixou de sincronizar contra **todas** as linhas `origem='planilha'` e passa a sincronizar **apenas a fatia do próprio importador** (linhas cujo `originador = ele`). Antes, dois importadores apagavam as linhas um do outro: cada `batch_gerencial_import` removia toda linha de planilha ausente da sua planilha, inclusive as do colega. **Invariante:** importar como A nunca adiciona/altera/remove linha de outro originador — provado com teste vivo de duas fatias (B byte-idêntico mesmo com os ids de B injetados adversarialmente em remover/atualizar).
+- **Dupla barreira:** a rota escopa a fatia por `sessao.userId` (linha do colega nunca entra no diff) e o `DELETE`/`UPDATE` do `batch_gerencial_import` reforça com `AND originador_id = p_originador_id` (backstop no banco). Linhas antigas sem originador (NULL) não pertencem à fatia de ninguém → nunca removidas pela sincronização.
+- A sincronização opera por **contagem** de linhas idênticas, não por presença: 2 na planilha + 2 na fatia = mantém 2; planilha cai para 1 → remove 1; sobe para 3 → adiciona 1.
+
+### Coluna Originador (M1)
+- Nova coluna **Originador** (só leitura) na base, após Vencimento, com filtro por nome. `analytics.gerencial_lancamentos` ganhou `originador_id`/`originador_nome` (migration 0154, aditiva, backfill NULL → "—"). A importação e o "+ Nova linha" carimbam o usuário da sessão.
+
+### Dedup por linha idêntica + toggle (M3)
+- Identidade de **6 campos normalizados** (tipo, pessoa, valor, descrição, conta, vencimento; trim/caixa/acento — reusa `normalizarChaveConta`). Toggle **"Manter duplicadas"** no preview: desligado (padrão) colapsa idênticas dentro da planilha; ligado mantém as duas (duplicatas reais).
+
+### Preview navegável (M4)
+- Preview com 4 grupos (**adicionar/atualizar/manter/remover**) expansíveis em formato de tabela, acordeão (1 por vez); **"a remover" aberto por padrão** com **proteção pontual por linha** (desmarcar = não remover neste commit; reaparece na próxima importação, não vira manual). Os outros 3 grupos são só leitura.
+
+### Notas
+- **Agregada intocada:** esta versão mexe na ingestão; as 3 projeções sobre saldo inicial e o cálculo do fluxo não mudam.
+- Endurecimentos da auto-auditoria: chave de centavos consistente (arredonda antes de formatar), `tipo` normalizado na chave lógica, contagem honesta de `atualizados` (`GET DIAGNOSTICS`).
+
 ## [4.22.4] — 2026-06-18
 
 Patch: **drawer "Gerenciar contas" — reordenação por arrastar-soltar + confirmação do "adicionar" abaixo da tabela.** Migration 0153 (RPC de reordenação).
