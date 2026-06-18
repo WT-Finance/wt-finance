@@ -97,6 +97,11 @@ describe('computeDiffPorFatia — toggle "manter duplicadas" (dentro da planilha
     const d = computeDiffPorFatia([p(), p()], [], true)
     expect(d.aAdicionar).toHaveLength(2)
   })
+  it('reporta duplicatasPlanilha (independe do toggle) — alimenta o aviso da UI', () => {
+    expect(computeDiffPorFatia([p(), p(), p({ pessoa: 'Z' })], [], false).duplicatasPlanilha).toBe(1)
+    expect(computeDiffPorFatia([p(), p()], [], true).duplicatasPlanilha).toBe(1)   // mesmo com o toggle ligado
+    expect(computeDiffPorFatia([p(), p({ pessoa: 'Z' })], [], false).duplicatasPlanilha).toBe(0)
+  })
 })
 
 describe('computeDiffPorFatia — isolamento (escopo da fatia)', () => {

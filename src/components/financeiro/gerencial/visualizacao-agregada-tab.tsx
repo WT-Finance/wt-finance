@@ -93,6 +93,16 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
   const temReserva = reserva !== null
   const colSpanVazio = 4 + (temIsolada ? 1 : 0) + 1 + (temReserva ? 1 : 0)
 
+  // v4.23.1 (item 9): linha-âncora "Saldo inicial" = abertura da janela exibida (saldo do dia
+  // ANTERIOR à 1ª linha visível = saldo_da_linha − resultado_do_dia). No default (janela desde
+  // hoje) é o saldo configurado das contas; numa janela futura, o acumulado até a véspera.
+  const p0 = linhasVisiveis[0]
+  const abertura = p0 ? {
+    isolada:       p0.isolada - p0.resultado,
+    consolidado:   p0.consolidado - p0.resultado,
+    consolReserva: p0.consolReserva - p0.resultado,
+  } : null
+
   return (
     <div className="space-y-6">
       {/* Contas — grade de cards com cabeçalho e botão de gestão dentro do próprio box. */}
@@ -137,13 +147,29 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
                 <th className="py-2 px-2 text-left">Dia</th>
                 <th className="py-2 px-2 text-right">A Receber</th>
                 <th className="py-2 px-2 text-right">A Pagar</th>
-                <th className="py-2 px-2 text-right">Resultado</th>
-                {temIsolada && <th className="py-2 px-2 text-right">Saldo {isolada!.conta}</th>}
-                <th className="py-2 px-2 text-right">Consolidado</th>
-                {temReserva && <th className="py-2 px-2 text-right">Consol.+{reserva!.conta}</th>}
+                <th className="py-2 px-2 text-right">Resultado do Dia</th>
+                {temIsolada && <th className="py-2 px-2 text-right">Saldo {isolada!.conta} (Final)</th>}
+                <th className="py-2 px-2 text-right">Consolidado (Final)</th>
+                {temReserva && <th className="py-2 px-2 text-right">Consol.+{reserva!.conta} (Final)</th>}
               </tr>
             </thead>
             <tbody>
+              {/* Linha-âncora fixa: saldo inicial da janela (item 9). Fluxos travados em traço. */}
+              {abertura && (
+                <tr className="border-b border-zinc-100 bg-zinc-50/70">
+                  <td className="py-1.5 px-2 font-medium text-[var(--text-muted)]">Saldo inicial</td>
+                  <td className="py-1.5 px-2"><span className="block text-right text-zinc-300">—</span></td>
+                  <td className="py-1.5 px-2"><span className="block text-right text-zinc-300">—</span></td>
+                  <td className="py-1.5 px-2"><span className="block text-right text-zinc-300">—</span></td>
+                  {temIsolada && (
+                    <td className="py-1.5 px-2"><ValorContabil valor={abertura.isolada} className={`font-medium ${corTextoSaldo(abertura.isolada)}`} /></td>
+                  )}
+                  <td className="py-1.5 px-2"><ValorContabil valor={abertura.consolidado} className={`font-medium ${corTextoSaldo(abertura.consolidado)}`} /></td>
+                  {temReserva && (
+                    <td className="py-1.5 px-2"><ValorContabil valor={abertura.consolReserva} className={`font-medium ${corTextoSaldo(abertura.consolReserva)}`} /></td>
+                  )}
+                </tr>
+              )}
               {linhasVisiveis.map(l => {
                 const hoje = isToday(parseISO(l.data))
                 return (

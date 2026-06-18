@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
-import { ValorContabil } from '@/components/shared/valor-contabil'
+import { numBRL2 } from '@/lib/fmt'
 import type { ImportDiff, ImportResumo, LinhaResumo } from '@/lib/gerencial/import-types'
 
 type Etapa = 'upload' | 'preview' | 'sucesso'
@@ -13,18 +13,23 @@ interface Props { open: boolean; onClose: () => void }
 // dd/MM a partir de ISO (yyyy-mm-dd) — vencimento é date puro (sem fuso), split é seguro.
 function fmtVenc(iso: string): string { const [, m, d] = iso.split('-'); return d && m ? `${d}/${m}` : iso }
 const corValor = (tipo: string) => tipo === 'A pagar' ? 'text-[var(--negative-deep)]' : 'text-[var(--positive-deep)]'
+// Valor compacto p/ o preview estreito (R$ junto do número, à direita) — evita o justify-between
+// do <ValorContabil> que estica a coluna e cortava a última coluna no drawer (item 4).
+const valorCompacto = (v: number, tipo: string) =>
+  <span className={`text-[11px] tabular-nums whitespace-nowrap ${corValor(tipo)}`}>R$ {numBRL2(v)}</span>
 
-// Cabeçalho da mini-tabela de um bucket (formato base, compacto).
+// Cabeçalho da mini-tabela de um bucket (formato base, compacto). As larguras são fixas
+// (table-fixed no <table>): Pessoa flexiona/trunca; o resto cabe sem rolagem horizontal (item 4).
 function CabecalhoBucket({ remover = false }: { remover?: boolean }) {
   return (
     <thead>
       <tr className="border-b border-zinc-100 text-left text-[10px] uppercase tracking-wide text-zinc-400">
-        {remover && <th className="py-1 px-1.5 w-[28px]" />}
-        <th className="py-1 px-1.5 w-[68px]">Tipo</th>
+        {remover && <th className="py-1 px-1 w-[24px]" />}
+        <th className="py-1 px-1.5 w-[58px]">Tipo</th>
         <th className="py-1 px-1.5">Pessoa</th>
-        <th className="py-1 px-1.5 text-right w-[96px]">Valor</th>
-        <th className="py-1 px-1.5 w-[96px]">Conta</th>
-        <th className="py-1 px-1.5 w-[56px]">Venc.</th>
+        <th className="py-1 px-1.5 text-right w-[104px]">Valor</th>
+        <th className="py-1 px-1.5 w-[72px]">Conta</th>
+        <th className="py-1 px-1.5 w-[48px]">Venc.</th>
       </tr>
     </thead>
   )
@@ -53,7 +58,7 @@ function CelulasLinha({ l }: { l: { tipo: string; pessoa: string; valor_final: n
     <>
       <td className="py-1 px-1.5 text-[11px] text-zinc-500 whitespace-nowrap">{l.tipo}</td>
       <td className="py-1 px-1.5 text-[11px]"><span className="block truncate" title={l.descricao ? `${l.pessoa} — ${l.descricao}` : l.pessoa}>{l.pessoa}</span></td>
-      <td className="py-1 px-1.5 text-right"><ValorContabil valor={l.valor_final} className={corValor(l.tipo)} /></td>
+      <td className="py-1 px-1.5 text-right">{valorCompacto(l.valor_final, l.tipo)}</td>
       <td className="py-1 px-1.5 text-[11px] text-zinc-500"><span className="block truncate" title={l.conta_previsao ?? '—'}>{l.conta_previsao ?? '—'}</span></td>
       <td className="py-1 px-1.5 text-[11px] text-zinc-500 whitespace-nowrap">{fmtVenc(l.vencimento)}</td>
     </>
@@ -156,7 +161,15 @@ export default function ImportDrawer({ open, onClose }: Props) {
   const removerEfetivo = diff ? diff.aRemover.length - protegidos.size : 0
 
   return (
-    <ListDrawer titulo="Importar Planilha" subtitulo="Importa a planilha de curadoria" onClose={handleFechar}>
+    <ListDrawer titulo="Importar lançamentos" subtitulo="Importa a planilha de lançamentos curada manualmente" onClose={handleFechar}>
+      {/* Instruções desde o início (item 7) — valem para upload e preview. */}
+      {etapa !== 'sucesso' && (
+        <div className="mb-4 rounded-lg bg-zinc-50 border border-zinc-100 px-3 py-2.5 text-xs leading-relaxed text-[var(--text-muted)]">
+          Ao importar a planilha, <strong>todos os lançamentos da importação anterior são substituídos</strong>. A
+          importação sincroniza apenas as suas linhas — lançamentos de outros usuários não são tocados.{' '}
+          <span className="font-semibold text-[var(--text-secondary)]">Lançamentos adicionados manualmente não são excluídos.</span>
+        </div>
+      )}
       {etapa === 'upload' && (
         <form onSubmit={handleAnalisar} className="space-y-4">
           <p className="text-sm text-[var(--text-muted)]">Selecione o arquivo Excel (.xlsx).</p>
@@ -173,29 +186,31 @@ export default function ImportDrawer({ open, onClose }: Props) {
 
       {etapa === 'preview' && diff && (
         <div className="space-y-4">
-          <p className="text-xs text-[var(--text-muted)]">
-            A importação sincroniza <strong>apenas as suas linhas</strong> (as que você importou ou criou).
-            Lançamentos de outros usuários não são tocados.
-          </p>
-
-          {/* Toggle "manter duplicadas" (M3) */}
-          <label className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 cursor-pointer">
-            <span className="text-xs text-zinc-600">
-              Manter duplicadas
-              <span className="block text-[10px] text-zinc-400">Linhas idênticas dentro da planilha contam separadamente.</span>
-            </span>
-            <input type="checkbox" checked={manterDup} disabled={loading}
-              onChange={e => handleToggleDup(e.target.checked)}
-              className="accent-[var(--brand)] cursor-pointer shrink-0" />
-          </label>
+          {/* Toggle "manter duplicadas" (item 5) — só aparece quando há duplicatas na planilha, e as informa. */}
+          {diff.duplicatasPlanilha > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-2">
+              <p className="text-xs text-amber-800">
+                Detectamos <strong>{diff.duplicatasPlanilha}</strong> {diff.duplicatasPlanilha === 1 ? 'linha idêntica repetida' : 'linhas idênticas repetidas'} dentro da planilha.
+              </p>
+              <label className="flex items-center justify-between gap-3 cursor-pointer">
+                <span className="text-xs text-zinc-700">
+                  Manter duplicadas
+                  <span className="block text-[10px] text-zinc-500">Tratar as linhas idênticas como lançamentos separados (em vez de uma só).</span>
+                </span>
+                <input type="checkbox" checked={manterDup} disabled={loading}
+                  onChange={e => handleToggleDup(e.target.checked)}
+                  className="accent-[var(--brand)] cursor-pointer shrink-0" />
+              </label>
+            </div>
+          )}
 
           {/* Buckets navegáveis (M4) — acordeão, 1 aberto por vez */}
           <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 overflow-hidden">
             <div>
               <BucketHeader k="adicionar" label="A adicionar" count={diff.aAdicionar.length} color="var(--positive-deep)" aberto={aberto} onToggle={toggleBucket} />
               {aberto === 'adicionar' && diff.aAdicionar.length > 0 && (
-                <div className="px-3 pb-2 overflow-x-auto">
-                  <table className="w-full"><CabecalhoBucket />
+                <div className="px-3 pb-2">
+                  <table className="w-full table-fixed"><CabecalhoBucket />
                     <tbody>{diff.aAdicionar.map((l, i) => <tr key={i} className="border-b border-zinc-50"><CelulasLinha l={l} /></tr>)}</tbody>
                   </table>
                 </div>
@@ -205,12 +220,12 @@ export default function ImportDrawer({ open, onClose }: Props) {
             <div>
               <BucketHeader k="atualizar" label="A atualizar" count={diff.aAtualizar.length} color="var(--brand)" aberto={aberto} onToggle={toggleBucket} />
               {aberto === 'atualizar' && diff.aAtualizar.length > 0 && (
-                <div className="px-3 pb-2 overflow-x-auto">
-                  <table className="w-full">
+                <div className="px-3 pb-2">
+                  <table className="w-full table-fixed">
                     <thead>
                       <tr className="border-b border-zinc-100 text-left text-[10px] uppercase tracking-wide text-zinc-400">
-                        <th className="py-1 px-1.5">Pessoa</th>
-                        <th className="py-1 px-1.5 text-right w-[96px]">Valor</th>
+                        <th className="py-1 px-1.5 w-[120px]">Pessoa</th>
+                        <th className="py-1 px-1.5 text-right w-[104px]">Valor</th>
                         <th className="py-1 px-1.5">Alterações</th>
                       </tr>
                     </thead>
@@ -218,7 +233,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
                       {diff.aAtualizar.map(u => (
                         <tr key={u.id} className="border-b border-zinc-50">
                           <td className="py-1 px-1.5 text-[11px]"><span className="block truncate" title={u.novo.pessoa}>{u.novo.pessoa}</span></td>
-                          <td className="py-1 px-1.5 text-right"><ValorContabil valor={u.novo.valor_final} className={corValor(u.novo.tipo)} /></td>
+                          <td className="py-1 px-1.5 text-right">{valorCompacto(u.novo.valor_final, u.novo.tipo)}</td>
                           <td className="py-1 px-1.5 text-[11px] text-zinc-500">
                             {u.camposDivergentes.map(c => {
                               const rotulo = c === 'descricao' ? 'descrição' : 'conta'
@@ -238,8 +253,8 @@ export default function ImportDrawer({ open, onClose }: Props) {
             <div>
               <BucketHeader k="manter" label="A manter" count={diff.aManter.length} color="var(--text-muted)" aberto={aberto} onToggle={toggleBucket} />
               {aberto === 'manter' && diff.aManter.length > 0 && (
-                <div className="px-3 pb-2 overflow-x-auto">
-                  <table className="w-full"><CabecalhoBucket />
+                <div className="px-3 pb-2">
+                  <table className="w-full table-fixed"><CabecalhoBucket />
                     <tbody>{diff.aManter.map((l: LinhaResumo) => <tr key={l.id} className="border-b border-zinc-50"><CelulasLinha l={l} /></tr>)}</tbody>
                   </table>
                 </div>
@@ -251,11 +266,11 @@ export default function ImportDrawer({ open, onClose }: Props) {
                 sufixo={protegidos.size > 0 ? `${protegidos.size} protegida(s) · ${removerEfetivo} a remover` : undefined}
                 aberto={aberto} onToggle={toggleBucket} />
               {aberto === 'remover' && diff.aRemover.length > 0 && (
-                <div className="px-3 pb-2 overflow-x-auto">
+                <div className="px-3 pb-2">
                   <p className="text-[10px] text-zinc-400 mb-1">
                     Desmarque para <strong>não remover desta vez</strong> — a linha reaparece na próxima importação (não vira manual).
                   </p>
-                  <table className="w-full"><CabecalhoBucket remover />
+                  <table className="w-full table-fixed"><CabecalhoBucket remover />
                     <tbody>{diff.aRemover.map((l: LinhaResumo) => (
                       <tr key={l.id} className={`border-b border-zinc-50 ${protegidos.has(l.id) ? 'opacity-50' : ''}`}>
                         <td className="py-1 px-1.5 text-center">

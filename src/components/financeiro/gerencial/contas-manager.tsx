@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, GripVertical } from 'lucide-react'
-import { fmtBRL } from '@/lib/fmt'
+import { fmtBRL2 } from '@/lib/fmt'
+import { toNum } from '@/lib/carga/coercao'
 import { createConta, updateConta, deleteConta, reordenarContas, type PapelConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { PAPEL_LABEL, type Conta } from './tipos'
 
@@ -12,27 +13,33 @@ import { PAPEL_LABEL, type Conta } from './tipos'
 // para a projeção (componente irmão) recalcular. Papéis são exclusivos (0 ou 1 cada).
 //
 // v4.22 (M1): vira o PAINEL de gestão (dentro do drawer "Gerenciar contas"). O saldo inicial
-// saiu daqui e passou para a grade de cards (ContasCards). PAPEL_LABEL e o helper NumCell/parseNum
-// são exportados para a grade reaproveitar (não duplicar).
+// saiu daqui e passou para a grade de cards (ContasCards). PAPEL_LABEL e NumCell são exportados
+// para a grade reaproveitar (não duplicar).
 // v4.22.4: puxador (drag-handle) por linha para reordenar (RPC reordenar_gerencial_contas; a ordem
 // rege os cards da agregada) + botões Salvar/Cancelar do "adicionar" ABAIXO da tabela (antes inline,
 // sobrepunham a coluna estreita de ações).
+// v4.23.1 (item 11): o parse de número usa o `toNum` CANÔNICO (@/lib/carga/coercao) — o parseNum
+// local antigo fazia `replace(/\./g,'')` e, semeado com `String(105993.35)`="105993.35", tratava o
+// ponto como milhar → 10599335 (corrupção). Exibição com fmtBRL2 (centavos; saldo é dinheiro).
 
-export function parseNum(v: string): number | null {
-  const n = parseFloat(v.replace(/\./g, '').replace(',', '.'))
-  return isNaN(n) ? null : n
-}
+/** Edita um número como string BR (vírgula decimal, 2 casas, sem milhar) — round-trip seguro com
+ *  toNum e imune a ruído de float (toFixed fixa 2 casas; toNum lê ",dd" como decimal BR). */
+const editStr = (v: number | null): string => (v == null ? '' : v.toFixed(2).replace('.', ','))
 
 /** Célula numérica clicável (saldo/limite). Vazio em `limite` = sem limite (null). */
 export function NumCell({ valor, onSave, permiteVazio }: {
   valor: number | null; onSave: (v: number | null) => Promise<void>; permiteVazio?: boolean
 }) {
   const [editando, setEditando] = useState(false)
-  const [txt, setTxt] = useState(valor == null ? '' : String(valor))
+  const [txt, setTxt] = useState(editStr(valor))
   const [saving, setSaving] = useState(false)
 
   const salvar = async () => {
-    const num = txt.trim() === '' ? (permiteVazio ? null : 0) : parseNum(txt)
+    const vazio = txt.trim() === ''
+    const num = vazio ? (permiteVazio ? null : 0) : toNum(txt)
+    // Entrada não-vazia que não é número (ex.: "abc") → INVÁLIDA: reverte sem salvar,
+    // para não zerar um saldo por digitação errada (item 11: "pode levar o usuário ao erro").
+    if (!vazio && num === null) { setTxt(editStr(valor)); setEditando(false); return }
     if (num === valor) { setEditando(false); return }
     setSaving(true); await onSave(num); setSaving(false); setEditando(false)
   }
@@ -47,10 +54,10 @@ export function NumCell({ valor, onSave, permiteVazio }: {
     )
   }
   return (
-    <button onClick={() => { setTxt(valor == null ? '' : String(valor)); setEditando(true) }}
+    <button onClick={() => { setTxt(editStr(valor)); setEditando(true) }}
       className="text-xs tabular-nums hover:text-[var(--brand)] transition-colors"
       title="Clique para editar">
-      {saving ? '…' : valor == null ? <span className="text-zinc-300">—</span> : fmtBRL(valor)}
+      {saving ? '…' : valor == null ? <span className="text-zinc-300">—</span> : fmtBRL2(valor)}
     </button>
   )
 }
@@ -123,8 +130,8 @@ export default function ContasManager({ contas, onContasChange }: {
     setErro(null)
     const res = await createConta({
       conta: nome,
-      saldo: parseNum(nova.saldo) ?? 0,
-      limite: nova.limite.trim() === '' ? null : parseNum(nova.limite),
+      saldo: toNum(nova.saldo) ?? 0,
+      limite: toNum(nova.limite),
       consolidado: nova.consolidado,
       papel: nova.papel,
     })

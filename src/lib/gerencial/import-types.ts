@@ -49,6 +49,9 @@ export interface ImportDiff {
   /** Linhas da fatia que permanecem intactas (idênticas à planilha). `.length` = contagem "a manter". */
   aManter:    LinhaResumo[]
   aAtualizar: Array<{ id: number; atual: Record<string, unknown>; novo: LancamentoPlanilha; camposDivergentes: string[] }>
+  /** Linhas idênticas (6 campos) repetidas DENTRO da própria planilha (independe do toggle).
+   *  >0 → a UI mostra o aviso e o controle "Manter duplicadas". (v4.23.1, item 5) */
+  duplicatasPlanilha: number
 }
 
 export interface ImportResumo {
@@ -93,6 +96,9 @@ export function computeDiffPorFatia(
   fatia: LinhaFatia[],
   manterDuplicadas: boolean,
 ): ImportDiff {
+  // Quantas linhas idênticas há a MAIS dentro da planilha (independe do toggle) — alimenta o aviso da UI.
+  const duplicatasPlanilha = planilhaRaw.length - new Set(planilhaRaw.map(chave6)).size
+
   // 1) Toggle: colapsa idênticas DENTRO da planilha (salvo "manter duplicadas").
   let planilha = planilhaRaw
   if (!manterDuplicadas) {
@@ -107,7 +113,7 @@ export function computeDiffPorFatia(
   for (const l of planilha) grupo(chaveLogica(l)).sheet.push(l)
   for (const l of [...fatia].sort((a, b) => a.id - b.id)) grupo(chaveLogica(l)).slice.push(l)
 
-  const diff: ImportDiff = { aAdicionar: [], aRemover: [], aManter: [], aAtualizar: [] }
+  const diff: ImportDiff = { aAdicionar: [], aRemover: [], aManter: [], aAtualizar: [], duplicatasPlanilha }
   const resumo = (r: LinhaFatia): LinhaResumo =>
     ({ id: r.id, tipo: r.tipo, pessoa: r.pessoa, valor_final: r.valor_final, vencimento: r.vencimento, descricao: r.descricao, conta_previsao: r.conta_previsao })
 

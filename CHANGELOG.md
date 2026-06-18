@@ -6,6 +6,29 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.23.1] — 2026-06-18
+
+Patch: **Ajustes do Fluxo de Caixa Gerencial — correção crítica do saldo, refino da base de dados, da projeção e do drawer de importação.** Migration 0155 (aditiva).
+
+### Correção crítica (item 11)
+- **Saldo dos cards parava de mostrar os centavos e corrompia ao editar.** O card exibia `fmtBRL` (0 casas → "105.993" em vez de "105.993,35"); ao clicar, semeava o input com `String(105993.35)`="105993.35" e o `parseNum` LOCAL tratava o ponto como milhar → salvava **10599335** (10 milhões). Corrigido: exibe `fmtBRL2` (centavos), parse pelo `toNum` **canônico** (`@/lib/carga/coercao`) e semeia o input em vírgula-decimal 2 casas (`toFixed(2)`) — round-trip à prova de ruído de float. Entrada inválida (ex.: "abc") reverte em vez de zerar o saldo.
+
+### Base de Dados (itens 1–3)
+- Removidas as **pills de tipo** (Todos/A receber/A pagar) e a **busca por pessoa** do topo — redundantes com os filtros nas colunas Tipo e Pessoa.
+- As **badges de Tipo** ganharam cor: **A pagar** vermelho, **A receber** verde (mesma semântica do valor; tokens do DS).
+- O botão de exclusão virou **largura fixa** à direita de Importar, alternando o rótulo: **"Apagar todos"** ou **"Apagar selecionados"**. **"Apagar todos"** (nada selecionado) **respeita o filtro de origem** — Toda origem = base inteira; Planilha/Manual = só aquela origem. Trocar o filtro de origem **reseta a seleção**. Exclusão sempre sob confirmação.
+
+### Projeção Diária (itens 9–10)
+- Nova linha-âncora **"Saldo inicial"** no topo (acima de hoje): A Receber/A Pagar/Resultado em traço (—) e as colunas de saldo mostrando a abertura de Itaú, Consolidado e Consol.+reserva.
+- Colunas renomeadas: **"Resultado do Dia"** e **"(Final)"** nas três colunas de saldo (Saldo Itaú (Final), Consolidado (Final), Consol.+reserva (Final)) — distinguindo do "Saldo inicial".
+
+### Drawer de importação (itens 4–8)
+- Coluna **Valor** compacta + tabelas `table-fixed` → sem rolagem horizontal (a última coluna não é mais cortada).
+- O controle **"Manter duplicadas"** só aparece **quando há duplicatas na planilha**, e informa quantas foram detectadas.
+- Título **"Importar lançamentos"** / subtítulo "Importa a planilha de lançamentos curada manualmente".
+- As **instruções** (substituição da importação anterior + manuais preservados) aparecem desde o início (etapa de upload), não só no preview.
+- **Lançamento manual nasce destacado** (lata-de-tinta ligada) — migration 0155 (`create_gerencial_lancamento` carimba `destacado` para origem manual).
+
 ## [4.23.0] — 2026-06-18
 
 Minor: **Importação do Fluxo de Caixa Gerencial sincroniza por fatia do originador, com dedup e preview navegável.** Migration 0154 (aditiva). ADR-0126.

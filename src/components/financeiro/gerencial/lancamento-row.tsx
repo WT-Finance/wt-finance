@@ -22,8 +22,15 @@ export interface Lancamento {
 
 interface CellState { saving: boolean; saved: boolean; error: string | null }
 
+// Cor do badge de Tipo (v4.23.1): A pagar → vermelho (saída), A receber → verde (entrada).
+// Mesma semântica do valor (corValor) e tokens do DS; fundo suave + texto/borda na cor.
+const tipoBadgeClasses = (v: string): string =>
+  v === 'A pagar'    ? 'border-[var(--danger)] bg-[var(--danger-bg)] text-[var(--negative-deep)]'
+  : v === 'A receber' ? 'border-[var(--success)] bg-[var(--success-bg)] text-[var(--positive-deep)]'
+  : 'border-zinc-200 bg-zinc-50 text-zinc-600'
+
 function EditableCell({
-  value, onSave, type = 'text', options, align = 'left', accounting = false, accountingClassName, before, badge = false,
+  value, onSave, type = 'text', options, align = 'left', accounting = false, accountingClassName, before, badge = false, badgeClassFor,
 }: {
   value: string | number | null
   onSave: (v: string) => Promise<void>
@@ -39,6 +46,8 @@ function EditableCell({
   before?: ReactNode
   /** Exibe o valor (select) como pill compacto numa linha só (ex.: Tipo). */
   badge?: boolean
+  /** Classes de cor do badge por valor (ex.: A pagar → vermelho, A receber → verde). */
+  badgeClassFor?: (v: string) => string
 }) {
   const [editing, setEditing]   = useState(false)
   const [localVal, setLocalVal] = useState(String(value ?? ''))
@@ -71,9 +80,10 @@ function EditableCell({
             {options.map(o => <option key={o}>{o}</option>)}
           </select>
         ) : badge ? (
-          // Pill compacto numa linha só (Tipo) — altura uniforme, sem quebra.
+          // Pill compacto numa linha só (Tipo) — altura uniforme, sem quebra. Cor por valor
+          // (badgeClassFor): A pagar → vermelho, A receber → verde (v4.23.1).
           <span onClick={() => setEditing(true)}
-            className="inline-flex items-center gap-1 cursor-pointer rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-600 whitespace-nowrap transition-colors hover:border-brand hover:text-brand"
+            className={`inline-flex items-center gap-1 cursor-pointer rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-opacity hover:opacity-70 ${badgeClassFor ? badgeClassFor(displaySelect) : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}
             title={displaySelect}>
             {displaySelect}
             {state.saved && <Check size={10} className="text-green-500" />}
@@ -211,7 +221,7 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
         <input type="checkbox" checked={selecionado} onChange={onToggleSelecao}
           className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar linha" />
       </td>
-      <EditableCell value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} badge />
+      <EditableCell value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} badge badgeClassFor={tipoBadgeClasses} />
       <EditableCell value={l.pessoa}         onSave={makeSaver('pessoa')} />
       <EditableCell value={l.valor_final}    onSave={makeSaver('valor_final')}    accounting align="right" accountingClassName={corValor} />
       <EditableCell value={l.descricao}      onSave={makeSaver('descricao')} />
