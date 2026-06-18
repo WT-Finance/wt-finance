@@ -6,6 +6,13 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.22.4] — 2026-06-18
+
+Patch: **drawer "Gerenciar contas" — reordenação por arrastar-soltar + confirmação do "adicionar" abaixo da tabela.** Migration 0153 (RPC de reordenação).
+
+- **Reordenar contas (drag-and-drop):** cada linha ganhou um **puxador** (`GripVertical`) na borda esquerda — arraste para reordenar. A ordem das linhas define a **ordem dos cards na Visualização Agregada**, persistida atomicamente via RPC `reordenar_gerencial_contas` (DnD nativo HTML5; reorder otimista + `router.refresh`).
+- **Botões do "adicionar" abaixo da tabela:** ao adicionar uma conta, os botões **Salvar/Cancelar** passaram para o **canto inferior direito, abaixo da tabela** — antes os ícones ✓/✕ ficavam espremidos na coluna estreita de ações, sobrepondo-se ao seletor de Papel.
+
 ## [4.22.3] — 2026-06-18
 
 Patch: **selos das contas no rodapé do card + cores por papel; correção das datas do changelog da diretoria.** Sem migration.
