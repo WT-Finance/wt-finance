@@ -32,6 +32,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.22.2',
+    data: '2026-06-17T23:30',
+    itens: [
+      { tipo: 'correcao', texto: 'Corrigimos o fuso horário em toda a plataforma: o "hoje" (e o "mês atual") agora seguem o horário de São Paulo. Antes, no fim da tarde/noite, alguns indicadores que dependem da data de hoje — como o calendário de liquidez, os próximos vencimentos e os recortes do mês corrente — adiantavam um dia. Agora batem com o calendário daqui.' },
+    ],
+  },
+  {
     versao: '4.22.1',
     data: '2026-06-17T22:30',
     itens: [
