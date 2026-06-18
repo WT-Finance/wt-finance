@@ -10,8 +10,10 @@ import { PAPEL_LABEL, type Conta } from './tipos'
 // v4.22 (M1) — grade de cards de saldo das contas, SEMPRE visível (a gestão — limite, papel,
 // consolidado, CRUD — vive no drawer "Gerenciar contas"). O card edita SÓ o saldo inicial,
 // inline, reaproveitando o NumCell do painel e o mesmo caminho otimista (map local + updateConta
-// + router.refresh para a projeção recalcular). Selo do papel é INFORMATIVO (read-only):
-// "Principal" usa o trio neutro --action-soft (pill de plataforma); "Rendimento" usa zinc.
+// + router.refresh para a projeção recalcular). Selos (read-only) no RODAPÉ do card, à esquerda,
+// papel PRIMEIRO: "Principal" = âmbar de gestão (mesmo trio dos botões de Solicitações, --gestao*);
+// "Rendimento" = verde do DS (--success-bg/--success/--positive-deep); "Consolidado" = neutro zinc.
+// Cor sempre por token (id visual da plataforma), nunca hex literal.
 
 export default function ContasCards({ contas, onContasChange, onGerir }: {
   contas: Conta[]
@@ -49,34 +51,36 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
         <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           {[...contas].sort((a, b) => a.ordem - b.ordem).map(c => (
             <div key={c.conta} className="border border-zinc-100 rounded-lg px-3 py-2.5 flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-[var(--text-primary)] truncate" title={c.conta}>{c.conta}</p>
+              <p className="text-sm font-medium text-[var(--text-primary)] truncate" title={c.conta}>{c.conta}</p>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--text-subtle)]">Saldo</p>
+                <NumCell valor={c.saldo} onSave={v => editarSaldo(c.conta, v ?? 0)} />
+              </div>
+              {/* Selos no rodapé, à esquerda — papel PRIMEIRO (Principal/Rendimento), depois Consolidado. */}
+              <div className="mt-auto flex flex-wrap items-center gap-1.5">
+                {c.papel === 'isolada' && (
+                  // "Principal": âmbar de gestão (mesmo trio dos botões de Solicitações).
+                  <span className="text-[10px] px-1.5 py-0.5 rounded border"
+                    style={{ background: 'var(--gestao-soft)', borderColor: 'var(--gestao)', color: 'var(--gestao-fg)' }}
+                    title="Conta principal — coluna própria na projeção, com faixas de limite">
+                    {PAPEL_LABEL.isolada}
+                  </span>
+                )}
+                {c.papel === 'reserva' && (
+                  // "Rendimento": verde do design system.
+                  <span className="text-[10px] px-1.5 py-0.5 rounded border"
+                    style={{ background: 'var(--success-bg)', borderColor: 'var(--success)', color: 'var(--positive-deep)' }}
+                    title="Conta de rendimento — somada à parte no consolidado">
+                    {PAPEL_LABEL.reserva}
+                  </span>
+                )}
                 {c.consolidado && (
-                  <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-zinc-50 text-zinc-400 border border-zinc-100"
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-50 text-zinc-400 border border-zinc-100"
                     title="Entra no saldo consolidado">
                     Consolidado
                   </span>
                 )}
               </div>
-              <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wide text-[var(--text-subtle)]">Saldo</p>
-                <NumCell valor={c.saldo} onSave={v => editarSaldo(c.conta, v ?? 0)} />
-              </div>
-              {c.papel === 'isolada' && (
-                // "Principal": pill neutra de plataforma (trio --action-soft).
-                <span
-                  className="self-start text-[10px] px-1.5 py-0.5 rounded border"
-                  style={{ background: 'var(--action-soft)', borderColor: 'var(--action-soft-border)', color: 'var(--action-soft-fg)' }}
-                >
-                  {PAPEL_LABEL.isolada}
-                </span>
-              )}
-              {c.papel === 'reserva' && (
-                // "Rendimento": neutro zinc.
-                <span className="self-start text-[10px] px-1.5 py-0.5 rounded border bg-zinc-100 text-zinc-600 border-zinc-200">
-                  {PAPEL_LABEL.reserva}
-                </span>
-              )}
             </div>
           ))}
         </div>

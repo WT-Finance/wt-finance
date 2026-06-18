@@ -11,8 +11,11 @@
 // honesta. Granular: cada versão/patch é uma entrada própria.
 //
 // `data`: datetime local 'YYYY-MM-DDTHH:MM' = momento real do merge (publicação) —
-// extraído do git (fuso -03). É o controle de produção. Ordem: mais recente no
-// topo. Marco zero: v4.0.
+// extraído do git (`git log --merges`, fuso -03). É o controle de produção. Ordem:
+// mais recente no topo. Marco zero: v4.0.
+// ⚠️ NUNCA inventar hora redonda. A entrada nasce ANTES do merge → use o horário real
+// de autoria e reconcilie ao tempo do merge depois. (v4.11.0–v4.22.2 saíram com horas
+// aproximadas e foram corrigidas em massa na v4.22.3 a partir do git.)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ChangelogTipo = 'novidade' | 'correcao' | 'melhoria'
@@ -32,15 +35,23 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.22.3',
+    data: '2026-06-18T08:54',
+    itens: [
+      { tipo: 'melhoria', texto: 'No Fluxo de Caixa Gerencial, os selos dos cartões de conta foram reorganizados (Principal/Rendimento e Consolidado agora juntos, no rodapé do cartão) e ganharam cor: âmbar para a conta Principal e verde para a de Rendimento.' },
+      { tipo: 'correcao', texto: 'Corrigimos as datas e horários exibidos neste histórico de versões — algumas entregas recentes apareciam com horário aproximado; agora refletem o horário real de publicação.' },
+    ],
+  },
+  {
     versao: '4.22.2',
-    data: '2026-06-17T23:30',
+    data: '2026-06-18T08:36',
     itens: [
       { tipo: 'correcao', texto: 'Corrigimos o fuso horário em toda a plataforma: o "hoje" (e o "mês atual") agora seguem o horário de São Paulo. Antes, no fim da tarde/noite, alguns indicadores que dependem da data de hoje — como o calendário de liquidez, os próximos vencimentos e os recortes do mês corrente — adiantavam um dia. Agora batem com o calendário daqui.' },
     ],
   },
   {
     versao: '4.22.1',
-    data: '2026-06-17T22:30',
+    data: '2026-06-17T22:45',
     itens: [
       { tipo: 'melhoria', texto: 'No Fluxo de Caixa Gerencial, os cartões de saldo das contas ficaram mais organizados: o título e o botão de gerenciar contas agora ficam dentro do próprio quadro, e cada cartão mostra a etiqueta "Saldo" junto do valor.' },
       { tipo: 'novidade', texto: 'A projeção diária agora deixa escolher a partir de qual data começar (já vem em "hoje" automaticamente) e se a tabela mostra 15 ou 30 dias.' },
@@ -50,7 +61,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.22.0',
-    data: '2026-06-17T18:00',
+    data: '2026-06-17T21:45',
     itens: [
       { tipo: 'melhoria', texto: 'No Fluxo de Caixa Gerencial, os saldos iniciais das contas agora aparecem como cartões — dá para ajustar o saldo de cada conta direto ali; a configuração estrutural (limite, consolidado, papel) ficou num painel próprio em "Gerenciar contas".' },
       { tipo: 'melhoria', texto: 'As contas passaram a ser chamadas de "Principal" e "Rendimento", nomes mais claros do que os anteriores.' },
@@ -64,7 +75,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.21.0',
-    data: '2026-06-16T18:00',
+    data: '2026-06-17T15:01',
     itens: [
       { tipo: 'novidade', texto: 'No Fluxo de Caixa Gerencial agora dá para gerenciar as contas: adicionar, remover, editar saldo inicial e limite de crédito de cada uma, e escolher quais entram no saldo consolidado.' },
       { tipo: 'novidade', texto: 'A visão agregada passou a ler dessas contas configuráveis — o saldo consolidado e as colunas se ajustam automaticamente às contas e papéis que você definir, sem depender de nomes fixos.' },
@@ -74,14 +85,14 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.20.2',
-    data: '2026-06-16T12:00',
+    data: '2026-06-16T12:07',
     itens: [
       { tipo: 'melhoria', texto: 'A importação de planilhas ficou mais fluida: a tela não trava mais (aquele "a página não está respondendo" sumiu) e agora mostra uma barra com o progresso do envio.' },
     ],
   },
   {
     versao: '4.20.1',
-    data: '2026-06-16T11:00',
+    data: '2026-06-16T12:03',
     itens: [
       { tipo: 'correcao', texto: 'A importação de "Vendas por Produto", que vinha falhando (a tela travava e dava erro de tempo esgotado), voltou a funcionar normalmente.' },
       { tipo: 'correcao', texto: 'Na tela de Atualização de Dados, a "última atualização" (data e hora da última importação) agora aparece corretamente em todas as bases — antes só Vendas mostrava.' },
@@ -89,7 +100,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.20.0',
-    data: '2026-06-15T22:00',
+    data: '2026-06-16T08:35',
     itens: [
       { tipo: 'novidade', texto: 'Cada solicitação agora tem um número de referência, mostrado na caixa de entrada, em "Minhas solicitações" e no detalhe — para identificar e conversar sobre um pedido específico com clareza.' },
       { tipo: 'melhoria', texto: 'A visão de "Movimentações" (auditoria) ficou mais fácil de usar: ganhou um campo de busca e ordenação por coluna, e agora é possível clicar em qualquer linha para abrir o detalhe completo da solicitação — inclusive a justificativa de uma rejeição.' },
@@ -98,14 +109,14 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.19.1',
-    data: '2026-06-15T18:00',
+    data: '2026-06-15T16:34',
     itens: [
       { tipo: 'novidade', texto: 'Na página de Solicitações, os gestores ganharam uma visão de "Movimentações": uma lista única que mostra quem abriu, concluiu, rejeitou ou cancelou cada solicitação e quando — para acompanhar e auditar o que foi feito.' },
     ],
   },
   {
     versao: '4.19.0',
-    data: '2026-06-14T21:00',
+    data: '2026-06-14T22:37',
     itens: [
       { tipo: 'novidade', texto: 'Ao montar um tipo de solicitação, os campos de data agora podem exigir uma data válida: dá para impedir que o solicitante escolha uma data já passada e avisá-lo quando a data estiver muito longe no futuro.' },
       { tipo: 'melhoria', texto: 'A tela de detalhe de uma solicitação ficou mais clara e organizada — informações principais, dados do pedido e anexos em blocos bem separados, com data e hora no horário de Brasília.' },
@@ -115,7 +126,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.18.0',
-    data: '2026-06-14T18:00',
+    data: '2026-06-14T19:15',
     itens: [
       { tipo: 'melhoria', texto: 'A administração de usuários ficou mais clara: o status de cada pessoa aparece em destaque (Ativo/Pendente), passou a ser possível editar o nome de um usuário, e o último acesso agora mostra data e hora.' },
       { tipo: 'melhoria', texto: 'O acompanhamento de solicitações foi reorganizado: a Caixa de entrada agrupa os pedidos por tipo (com filtro Abertas/Concluídas), e Minhas solicitações organiza por situação (Abertas/Concluídas/Rejeitadas). Pedidos cancelados ficam preservados e identificados.' },
@@ -124,21 +135,21 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.17.1',
-    data: '2026-06-13T23:55',
+    data: '2026-06-14T11:32',
     itens: [
       { tipo: 'melhoria', texto: 'Limpeza técnica interna: remoção de rotas e código em desuso da importação de Vendas e da administração de acessos, agora que o novo fluxo de importação foi confirmado em uso real. Nenhuma mudança visível nas telas.' },
     ],
   },
   {
     versao: '4.17.0',
-    data: '2026-06-13T23:30',
+    data: '2026-06-13T15:49',
     itens: [
       { tipo: 'melhoria', texto: 'Reforços internos de segurança e de confiabilidade dos dados financeiros, sem mudança visível nas telas: o acesso de leitura passou a exigir login em todos os pontos, a importação de Vendas ficou mais robusta (sem cruzar duas cargas simultâneas, sem cortar linhas no export e avisando se a planilha vier degradada), os valores monetários e datas são interpretados de forma única e correta, e os anexos das solicitações passaram a ser arquivados de forma definitiva.' },
     ],
   },
   {
     versao: '4.16.2',
-    data: '2026-06-13T22:00',
+    data: '2026-06-13T11:24',
     itens: [
       { tipo: 'melhoria', texto: 'Reforços de segurança e robustez nos bastidores: atualização da base tecnológica para corrigir vulnerabilidades conhecidas e uma proteção a mais na importação de Vendas, que agora bloqueia o carregamento se algum setor/subsetor vier fora do padrão — evitando que vendas sumam dos relatórios sem aviso.' },
       { tipo: 'melhoria', texto: 'O menu lateral agora rola suavemente quando há muitas abas (com barra discreta que aparece só ao usar) e os grupos Performance e Financeiro abrem recolhidos, deixando a navegação mais limpa.' },
@@ -146,7 +157,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.16.1',
-    data: '2026-06-13T18:00',
+    data: '2026-06-13T09:40',
     itens: [
       { tipo: 'melhoria', texto: 'Padronização visual e de usabilidade das telas internas (Solicitações, Usuários e Acessos, Design System): aparência mais consistente entre as telas, mais respiro no topo das páginas, e melhor leitura em telas menores.' },
       { tipo: 'melhoria', texto: 'Confirmações e mensagens mais claras: ações que apagam algo passaram a pedir confirmação numa janela padrão (em vez do aviso simples do navegador), e os avisos de erro/sucesso ficaram uniformes.' },
@@ -155,7 +166,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.16.0',
-    data: '2026-06-12T20:00',
+    data: '2026-06-12T17:29',
     itens: [
       { tipo: 'novidade', texto: 'A plataforma passou a receber solicitações internas ao financeiro — como lançamentos de contas a pagar e pagamentos de emergência — com formulário próprio por tipo de pedido, anexos e acompanhamento de status, substituindo gradualmente o formulário externo e o Planner.' },
       { tipo: 'novidade', texto: 'Qualquer pessoa abre uma solicitação e escolhe o destinatário (uma pessoa ou um setor/permissão); quem recebe acompanha tudo numa caixa de entrada organizada por tipo, conclui ou rejeita (com justificativa), e o solicitante pode cancelar. Um aviso na barra lateral mostra quantos pedidos estão pendentes para você.' },
@@ -164,21 +175,21 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.15.0',
-    data: '2026-06-12T18:00',
+    data: '2026-06-12T11:02',
     itens: [
       { tipo: 'melhoria', texto: 'O carregamento de planilhas de Vendas passou a validar o arquivo inteiro antes de gravar: cargas com erro não entram pela metade nem deixam os painéis vazios — ou tudo entra, ou nada muda e o sistema avisa o problema.' },
     ],
   },
   {
     versao: '4.14.3',
-    data: '2026-06-12T12:00',
+    data: '2026-06-12T09:57',
     itens: [
       { tipo: 'melhoria', texto: 'A documentação interna do padrão visual da plataforma foi atualizada e ampliada — referência de desenvolvimento mais completa e fiel ao que está no ar.' },
     ],
   },
   {
     versao: '4.14.2',
-    data: '2026-06-11T18:00',
+    data: '2026-06-11T17:24',
     itens: [
       { tipo: 'melhoria', texto: 'Nomenclatura mais clara na administração: "Usuários e Acessos" e a aba "Permissões" (antes "Roles").' },
       { tipo: 'melhoria', texto: 'Botões da área de administração padronizados, com a mesma aparência dos filtros do Financeiro — visual mais consistente.' },
@@ -186,7 +197,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.14.1',
-    data: '2026-06-11T12:00',
+    data: '2026-06-11T13:38',
     itens: [
       { tipo: 'melhoria', texto: 'As telas de acesso e administração (entrada, troca de senha, solicitação de acesso e gestão de usuários) ganharam a identidade visual do Welcome Group e ficaram mais limpas e simples de usar.' },
       { tipo: 'melhoria', texto: 'Na tela de entrada, o pedido de acesso e a orientação de "esqueci a senha" ficaram mais claros e organizados.' },
@@ -195,7 +206,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.14.0',
-    data: '2026-06-10T21:00',
+    data: '2026-06-11T09:31',
     itens: [
       { tipo: 'novidade', texto: 'Login mais simples: agora a entrada é com e-mail e senha (não é mais preciso abrir o e-mail e clicar num link a cada acesso).' },
       { tipo: 'novidade', texto: 'O administrador cria usuários com uma senha provisória mostrada na hora (para repassar à pessoa), e cada um define a própria senha no primeiro acesso. O administrador também pode redefinir a senha de alguém que esqueceu.' },
@@ -204,7 +215,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.13.1',
-    data: '2026-06-10T17:40',
+    data: '2026-06-10T17:38',
     itens: [
       { tipo: 'correcao', texto: 'Convites de acesso confiáveis: corrigido o caso em que o link de acesso chegava "inválido" ao ser aberto. O link agora vale 24 horas e só é consumido quando a pessoa clica em "Entrar" — não mais ao ser pré-visualizado pelo WhatsApp ou e-mail.' },
       { tipo: 'novidade', texto: 'Na tela de Usuários & Acessos, cada pessoa agora tem um botão para gerar e copiar um novo link de acesso na hora (útil quando o convite anterior expirou), e a opção de excluir um usuário em definitivo — além de apenas desativar.' },
@@ -212,7 +223,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.13.0',
-    data: '2026-06-10T04:30',
+    data: '2026-06-10T16:34',
     itens: [
       { tipo: 'novidade', texto: 'O WT Finance agora pede login: o acesso deixa de ser por link aberto e passa a exigir entrada por e-mail (um link de acesso enviado a cada pessoa), com cadastro somente por convite. Fecha a porta para qualquer pessoa com o endereço do site abrir os dados da empresa.' },
       { tipo: 'novidade', texto: 'Controle de acessos por perfil: é possível criar perfis com permissões sob medida — por área do sistema e, em Performance, por setor (Trips, Weddings, Corporativo) — e definir o que cada pessoa enxerga. Uma nova tela de Usuários & Acessos permite convidar pessoas, atribuir perfis e ativar/desativar contas.' },
@@ -221,7 +232,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.12.1',
-    data: '2026-06-09T20:30',
+    data: '2026-06-09T23:09',
     itens: [
       { tipo: 'correcao', texto: 'Reforços internos na importação de planilhas de Vendas: a leitura das colunas ficou mais tolerante a variações de cabeçalho (acentos, maiúsculas) e passou a preencher de forma consistente o vínculo de cada operação — evitando que uma reimportação volte a zerar convidados ou apagar datas de eventos.' },
       { tipo: 'melhoria', texto: 'Verificação automática ampliada sobre os principais indicadores e listas: se a forma de um dado vindo da base divergir do esperado, a tela passa a sinalizar em vez de exibir um número silenciosamente errado.' },
@@ -229,7 +240,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.12.0',
-    data: '2026-06-09T19:02',
+    data: '2026-06-09T19:17',
     itens: [
       { tipo: 'correcao', texto: 'Atualização de dados mais segura: se uma carga de Vendas falhar (ex.: planilha com datas fora do calendário), a base anterior é totalmente preservada — antes uma falha podia deixar os números zerados até a carga seguinte.' },
       { tipo: 'melhoria', texto: 'Ranking de Top Vendedores mais rápido (uma única consulta ao banco no lugar de várias).' },
@@ -239,7 +250,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '4.11.0',
-    data: '2026-06-05T17:59',
+    data: '2026-06-07T16:39',
     itens: [
       { tipo: 'novidade', texto: 'Novo histórico de versões: clicando no número da versão (rodapé da barra lateral) abre-se um resumo das melhorias da plataforma em linguagem de negócio — um canal de acompanhamento da evolução para a diretoria.' },
       { tipo: 'melhoria', texto: 'Padronização visual das tabelas-resumo (Próximos Casamentos, Mix por Produto, Top Vendedores, Vendas em Aberto e Receita Negativa) nas três áreas, para leitura mais consistente entre as abas.' },

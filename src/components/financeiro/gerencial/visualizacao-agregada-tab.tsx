@@ -100,7 +100,7 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
 
       {gerirOpen && (
         <ListDrawer titulo="Gerenciar contas"
-          subtitulo="Configure limite, consolidação e papel de cada conta. O saldo inicial é editado nos cartões."
+          subtitulo="Configure limite, consolidação e papel de cada conta"
           onClose={() => setGerirOpen(false)}>
           <ContasManager contas={contas} onContasChange={setContas} />
         </ListDrawer>
