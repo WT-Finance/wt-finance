@@ -179,22 +179,20 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const idsSelecionados = itens.filter(l => selecionados.has(l.id)).map(l => l.id)
   const planilhaNaSelecao = itens.filter(l => selecionados.has(l.id) && l.origem === 'planilha').length
 
-  // v4.23.1 (item 3): a seleção acompanha o filtro de ORIGEM — ao trocar a origem com algo
-  // selecionado, a seleção é intersectada com os lançamentos daquela origem.
+  // v4.23.1 (ajuste): trocar o filtro de ORIGEM RESETA a seleção (sai limpa).
   const mudarOrigem = (novo: OrigemFiltro) => {
     setOrigemFiltro(novo)
-    setSelecionados(prev => {
-      if (prev.size === 0) return prev
-      const naOrigem = new Set(itens.filter(l => novo === 'todos' || l.origem === novo).map(l => l.id))
-      return new Set([...prev].filter(id => naOrigem.has(id)))
-    })
+    setSelecionados(new Set())
   }
 
-  // v4.23.1 (item 3): nada selecionado → "Apagar todos" apaga a BASE inteira (ignora filtros);
-  // com seleção → "Apagar selecionados". Sempre sob confirmação (ConfirmModal).
+  // v4.23.1 (ajuste): nada selecionado → "Apagar todos" RESPEITA o filtro de origem
+  // (Toda → base inteira; Planilha → só planilha; Manual → só manual); com seleção →
+  // "Apagar selecionados". Sempre sob confirmação (ConfirmModal).
+  const itensNaOrigem      = itens.filter(l => origemFiltro === 'todos' || l.origem === origemFiltro)
   const apagarTodos        = selecionados.size === 0
-  const idsParaApagar      = apagarTodos ? itens.map(l => l.id) : idsSelecionados
-  const planilhaParaApagar = apagarTodos ? itens.filter(l => l.origem === 'planilha').length : planilhaNaSelecao
+  const idsParaApagar      = apagarTodos ? itensNaOrigem.map(l => l.id) : idsSelecionados
+  const planilhaParaApagar = apagarTodos ? itensNaOrigem.filter(l => l.origem === 'planilha').length : planilhaNaSelecao
+  const rotuloOrigem       = origemFiltro === 'planilha' ? ' de origem Planilha' : origemFiltro === 'manual' ? ' de origem Manual' : ''
 
   const handleDelete = (id: number) => {
     setItens(prev => prev.filter(l => l.id !== id))
@@ -263,9 +261,9 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
             className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-white rounded transition-opacity" style={{ background: 'var(--brand)' }}>
             <Upload size={12} /> Importar
           </button>
-          {/* Apagar (item 3): largura FIXA; rótulo alterna todos/selecionados; nada selecionado = base inteira. */}
-          <button onClick={() => setConfirmBulk(true)} disabled={itens.length === 0}
-            title={apagarTodos ? 'Apagar todos os lançamentos da base' : `Apagar ${selecionados.size} selecionado(s)`}
+          {/* Apagar (item 3): largura FIXA; rótulo alterna todos/selecionados; "todos" respeita a origem. */}
+          <button onClick={() => setConfirmBulk(true)} disabled={idsParaApagar.length === 0}
+            title={apagarTodos ? `Apagar todos os lançamentos${rotuloOrigem || ' da base'}` : `Apagar ${selecionados.size} selecionado(s)`}
             className="flex items-center justify-center gap-1 w-[164px] px-2.5 py-1.5 text-xs rounded border border-[var(--danger)] text-[var(--danger)] hover:bg-[var(--danger-bg)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
             <Trash2 size={12} /> {apagarTodos ? 'Apagar todos' : 'Apagar selecionados'}
           </button>
@@ -413,14 +411,14 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
 
       {confirmBulk && (
         <ConfirmModal
-          titulo={apagarTodos ? 'Apagar TODOS os lançamentos' : 'Apagar lançamentos selecionados'}
-          confirmarLabel={removendo ? 'Apagando…' : apagarTodos ? `Apagar todos (${itens.length})` : `Apagar ${selecionados.size}`}
+          titulo={apagarTodos ? 'Apagar todos os lançamentos' : 'Apagar lançamentos selecionados'}
+          confirmarLabel={removendo ? 'Apagando…' : apagarTodos ? `Apagar todos (${idsParaApagar.length})` : `Apagar ${selecionados.size}`}
           onConfirmar={handleApagar}
           onFechar={() => setConfirmBulk(false)}
           mensagem={
             <div className="space-y-2">
               {apagarTodos
-                ? <p>Apagar <strong>TODOS os {itens.length}</strong> lançamentos da base? Isto ignora os filtros ativos na tela e <strong>não pode ser desfeito</strong>.</p>
+                ? <p>Apagar <strong>todos os {idsParaApagar.length}</strong> lançamentos{rotuloOrigem}? Esta ação <strong>não pode ser desfeita</strong>.</p>
                 : <p>Apagar <strong>{selecionados.size}</strong> lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.</p>}
               {planilhaParaApagar > 0 && (
                 <p className="flex items-start gap-1.5 rounded-lg border border-[var(--warning)] bg-[var(--warning-bg)] px-2.5 py-2 text-xs text-[var(--warning)]">
