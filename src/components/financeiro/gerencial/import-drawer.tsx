@@ -1,16 +1,65 @@
 'use client'
 import { useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
-import type { ImportDiff, ImportResumo } from '@/lib/gerencial/import-types'
+import { ValorContabil } from '@/components/shared/valor-contabil'
+import type { ImportDiff, ImportResumo, LinhaResumo } from '@/lib/gerencial/import-types'
 
 type Etapa = 'upload' | 'preview' | 'sucesso'
+type BucketKey = 'adicionar' | 'atualizar' | 'manter' | 'remover'
 
 interface Props { open: boolean; onClose: () => void }
 
-// Importação 100% via API Route /api/gerencial/import (ADR-0091).
-// Este componente NÃO importa @e965/xlsx nem Server Actions de parsing —
-// apenas faz fetch multipart. O parsing roda na API Route (runtime Node),
-// fora do contexto RSC. Isso resolve PEND-001.
+// dd/MM a partir de ISO (yyyy-mm-dd) — vencimento é date puro (sem fuso), split é seguro.
+function fmtVenc(iso: string): string { const [, m, d] = iso.split('-'); return d && m ? `${d}/${m}` : iso }
+const corValor = (tipo: string) => tipo === 'A pagar' ? 'text-[var(--negative-deep)]' : 'text-[var(--positive-deep)]'
+
+// Cabeçalho da mini-tabela de um bucket (formato base, compacto).
+function CabecalhoBucket({ remover = false }: { remover?: boolean }) {
+  return (
+    <thead>
+      <tr className="border-b border-zinc-100 text-left text-[10px] uppercase tracking-wide text-zinc-400">
+        {remover && <th className="py-1 px-1.5 w-[28px]" />}
+        <th className="py-1 px-1.5 w-[68px]">Tipo</th>
+        <th className="py-1 px-1.5">Pessoa</th>
+        <th className="py-1 px-1.5 text-right w-[96px]">Valor</th>
+        <th className="py-1 px-1.5 w-[96px]">Conta</th>
+        <th className="py-1 px-1.5 w-[56px]">Venc.</th>
+      </tr>
+    </thead>
+  )
+}
+
+// Cabeçalho clicável de bucket (label + contagem + chevron). Módulo-level (static-components).
+function BucketHeader({ k, label, count, color, sufixo, aberto, onToggle }: {
+  k: BucketKey; label: string; count: number; color: string; sufixo?: string; aberto: BucketKey | null; onToggle: (k: BucketKey) => void
+}) {
+  return (
+    <button type="button" onClick={() => onToggle(k)} disabled={count === 0}
+      className="w-full flex items-center justify-between px-3 py-2 text-left disabled:opacity-50 disabled:cursor-default">
+      <span className="flex items-center gap-2">
+        {count > 0 ? (aberto === k ? <ChevronDown size={14} className="text-zinc-400" /> : <ChevronRight size={14} className="text-zinc-400" />) : <span className="w-[14px]" />}
+        <span className="text-xs font-medium text-zinc-600">{label}</span>
+        {sufixo && <span className="text-[10px] text-zinc-400">{sufixo}</span>}
+      </span>
+      <span className="text-lg font-bold tabular-nums" style={{ color }}>{count}</span>
+    </button>
+  )
+}
+
+// Célula comum de uma linha (tipo/pessoa/valor/conta/venc) — descrição vai no title.
+function CelulasLinha({ l }: { l: { tipo: string; pessoa: string; valor_final: number; conta_previsao: string | null; vencimento: string; descricao: string | null } }) {
+  return (
+    <>
+      <td className="py-1 px-1.5 text-[11px] text-zinc-500 whitespace-nowrap">{l.tipo}</td>
+      <td className="py-1 px-1.5 text-[11px]"><span className="block truncate" title={l.descricao ? `${l.pessoa} — ${l.descricao}` : l.pessoa}>{l.pessoa}</span></td>
+      <td className="py-1 px-1.5 text-right"><ValorContabil valor={l.valor_final} className={corValor(l.tipo)} /></td>
+      <td className="py-1 px-1.5 text-[11px] text-zinc-500"><span className="block truncate" title={l.conta_previsao ?? '—'}>{l.conta_previsao ?? '—'}</span></td>
+      <td className="py-1 px-1.5 text-[11px] text-zinc-500 whitespace-nowrap">{fmtVenc(l.vencimento)}</td>
+    </>
+  )
+}
+
 export default function ImportDrawer({ open, onClose }: Props) {
   const [etapa, setEtapa]       = useState<Etapa>('upload')
   const [erro, setErro]         = useState<string | null>(null)
@@ -19,13 +68,21 @@ export default function ImportDrawer({ open, onClose }: Props) {
   const [diff, setDiff]         = useState<ImportDiff | null>(null)
   const [resumo, setResumo]     = useState<ImportResumo | null>(null)
   const [loading, setLoading]   = useState(false)
+  // M3 — toggle "manter duplicadas" (OFF colapsa idênticas da planilha; ON mantém as duas).
+  const [manterDup, setManterDup] = useState(false)
+  // M4 — acordeão (1 bucket aberto por vez); "a remover" aberto por padrão.
+  const [aberto, setAberto]     = useState<BucketKey | null>('remover')
+  // M4 — proteção pontual: ids de "a remover" DESMARCADOS (não removidos neste commit).
+  const [protegidos, setProtegidos] = useState<Set<number>>(new Set())
 
   if (!open) return null
 
-  const enviar = async (selectedFile: File, action: 'preview' | 'commit') => {
+  const enviar = async (selectedFile: File, action: 'preview' | 'commit', manter: boolean, protegidosIds?: number[]) => {
     const fd = new FormData()
     fd.append('file', selectedFile)
     fd.append('action', action)
+    fd.append('manterDuplicadas', String(manter))
+    if (protegidosIds) fd.append('protegidos', JSON.stringify(protegidosIds))
     const res  = await fetch('/api/gerencial/import', { method: 'POST', body: fd })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error ?? 'Erro na importação')
@@ -42,13 +99,31 @@ export default function ImportDrawer({ open, onClose }: Props) {
     if (selected.size > 10 * 1024 * 1024)  { setErro('Arquivo maior que 10MB');     setLoading(false); return }
 
     try {
-      const data = await enviar(selected, 'preview')
+      const data = await enviar(selected, 'preview', manterDup)
       setFile(selected)
       setWarnings(data.warnings ?? [])
       setDiff(data.diff)
+      setProtegidos(new Set())
+      setAberto('remover')
       setEtapa('preview')
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro inesperado')
+    }
+    setLoading(false)
+  }
+
+  // Re-analisa com o novo estado do toggle (a contagem muda → o preview muda).
+  const handleToggleDup = async (novo: boolean) => {
+    setManterDup(novo)
+    if (!file) return
+    setErro(null); setLoading(true)
+    try {
+      const data = await enviar(file, 'preview', novo)
+      setWarnings(data.warnings ?? [])
+      setDiff(data.diff)
+      setProtegidos(new Set())   // ids podem ter mudado
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Erro ao reanalisar')
     }
     setLoading(false)
   }
@@ -58,7 +133,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
     setErro(null)
     setLoading(true)
     try {
-      const data = await enviar(file, 'commit')
+      const data = await enviar(file, 'commit', manterDup, [...protegidos])
       setResumo(data.resumo)
       setEtapa('sucesso')
     } catch (err) {
@@ -68,9 +143,17 @@ export default function ImportDrawer({ open, onClose }: Props) {
   }
 
   const handleFechar = () => {
-    setEtapa('upload'); setErro(null); setDiff(null); setResumo(null); setFile(null); setWarnings([])
+    setEtapa('upload'); setErro(null); setDiff(null); setResumo(null); setFile(null)
+    setWarnings([]); setManterDup(false); setProtegidos(new Set()); setAberto('remover')
     onClose()
   }
+
+  const toggleProteger = (id: number) => setProtegidos(prev => {
+    const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s
+  })
+  const toggleBucket = (k: BucketKey) => setAberto(prev => prev === k ? null : k)
+
+  const removerEfetivo = diff ? diff.aRemover.length - protegidos.size : 0
 
   return (
     <ListDrawer titulo="Importar Planilha" subtitulo="Importa a planilha de curadoria" onClose={handleFechar}>
@@ -90,19 +173,104 @@ export default function ImportDrawer({ open, onClose }: Props) {
 
       {etapa === 'preview' && diff && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'A adicionar', count: diff.aAdicionar.length, color: 'var(--positive-deep)' },
-              { label: 'A remover',   count: diff.aRemover.length,   color: 'var(--negative-deep)' },
-              { label: 'A atualizar', count: diff.aAtualizar.length, color: 'var(--brand)'         },
-              { label: 'A manter',    count: diff.aManter,           color: 'var(--text-muted)'     },
-            ].map(({ label, count, color }) => (
-              <div key={label} className="bg-zinc-50 rounded-lg px-3 py-2.5 text-center">
-                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wide mb-1">{label}</p>
-                <p className="text-2xl font-bold tabular-nums" style={{ color }}>{count}</p>
-              </div>
-            ))}
+          <p className="text-xs text-[var(--text-muted)]">
+            A importação sincroniza <strong>apenas as suas linhas</strong> (as que você importou ou criou).
+            Lançamentos de outros usuários não são tocados.
+          </p>
+
+          {/* Toggle "manter duplicadas" (M3) */}
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 cursor-pointer">
+            <span className="text-xs text-zinc-600">
+              Manter duplicadas
+              <span className="block text-[10px] text-zinc-400">Linhas idênticas dentro da planilha contam separadamente.</span>
+            </span>
+            <input type="checkbox" checked={manterDup} disabled={loading}
+              onChange={e => handleToggleDup(e.target.checked)}
+              className="accent-[var(--brand)] cursor-pointer shrink-0" />
+          </label>
+
+          {/* Buckets navegáveis (M4) — acordeão, 1 aberto por vez */}
+          <div className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 overflow-hidden">
+            <div>
+              <BucketHeader k="adicionar" label="A adicionar" count={diff.aAdicionar.length} color="var(--positive-deep)" aberto={aberto} onToggle={toggleBucket} />
+              {aberto === 'adicionar' && diff.aAdicionar.length > 0 && (
+                <div className="px-3 pb-2 overflow-x-auto">
+                  <table className="w-full"><CabecalhoBucket />
+                    <tbody>{diff.aAdicionar.map((l, i) => <tr key={i} className="border-b border-zinc-50"><CelulasLinha l={l} /></tr>)}</tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <BucketHeader k="atualizar" label="A atualizar" count={diff.aAtualizar.length} color="var(--brand)" aberto={aberto} onToggle={toggleBucket} />
+              {aberto === 'atualizar' && diff.aAtualizar.length > 0 && (
+                <div className="px-3 pb-2 overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-zinc-100 text-left text-[10px] uppercase tracking-wide text-zinc-400">
+                        <th className="py-1 px-1.5">Pessoa</th>
+                        <th className="py-1 px-1.5 text-right w-[96px]">Valor</th>
+                        <th className="py-1 px-1.5">Alterações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {diff.aAtualizar.map(u => (
+                        <tr key={u.id} className="border-b border-zinc-50">
+                          <td className="py-1 px-1.5 text-[11px]"><span className="block truncate" title={u.novo.pessoa}>{u.novo.pessoa}</span></td>
+                          <td className="py-1 px-1.5 text-right"><ValorContabil valor={u.novo.valor_final} className={corValor(u.novo.tipo)} /></td>
+                          <td className="py-1 px-1.5 text-[11px] text-zinc-500">
+                            {u.camposDivergentes.map(c => {
+                              const rotulo = c === 'descricao' ? 'descrição' : 'conta'
+                              const antigo = String((u.atual[c] as string | null) ?? '—')
+                              const novo   = String((c === 'descricao' ? u.novo.descricao : u.novo.conta_previsao) ?? '—')
+                              return <span key={c} className="block truncate" title={`${rotulo}: ${antigo} → ${novo}`}>{rotulo}: <span className="text-zinc-400 line-through">{antigo}</span> → {novo}</span>
+                            })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <BucketHeader k="manter" label="A manter" count={diff.aManter.length} color="var(--text-muted)" aberto={aberto} onToggle={toggleBucket} />
+              {aberto === 'manter' && diff.aManter.length > 0 && (
+                <div className="px-3 pb-2 overflow-x-auto">
+                  <table className="w-full"><CabecalhoBucket />
+                    <tbody>{diff.aManter.map((l: LinhaResumo) => <tr key={l.id} className="border-b border-zinc-50"><CelulasLinha l={l} /></tr>)}</tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <BucketHeader k="remover" label="A remover" count={diff.aRemover.length} color="var(--negative-deep)"
+                sufixo={protegidos.size > 0 ? `${protegidos.size} protegida(s) · ${removerEfetivo} a remover` : undefined}
+                aberto={aberto} onToggle={toggleBucket} />
+              {aberto === 'remover' && diff.aRemover.length > 0 && (
+                <div className="px-3 pb-2 overflow-x-auto">
+                  <p className="text-[10px] text-zinc-400 mb-1">
+                    Desmarque para <strong>não remover desta vez</strong> — a linha reaparece na próxima importação (não vira manual).
+                  </p>
+                  <table className="w-full"><CabecalhoBucket remover />
+                    <tbody>{diff.aRemover.map((l: LinhaResumo) => (
+                      <tr key={l.id} className={`border-b border-zinc-50 ${protegidos.has(l.id) ? 'opacity-50' : ''}`}>
+                        <td className="py-1 px-1.5 text-center">
+                          <input type="checkbox" checked={!protegidos.has(l.id)} onChange={() => toggleProteger(l.id)}
+                            className="accent-[var(--negative-deep)] cursor-pointer" aria-label="Remover esta linha" />
+                        </td>
+                        <CelulasLinha l={l} />
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
+
           {warnings.length > 0 && (
             <div className="bg-yellow-50 rounded p-3 text-xs text-yellow-700">
               <p className="font-medium mb-1">{warnings.length} linha(s) ignorada(s):</p>
@@ -119,7 +287,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
             <button onClick={handleConfirmar} disabled={loading}
               className="flex-1 py-2 rounded text-sm font-medium text-white disabled:opacity-50 transition-opacity"
               style={{ background: 'var(--brand)' }}>
-              {loading ? 'Confirmando…' : 'Confirmar importação'}
+              {loading ? 'Processando…' : 'Confirmar importação'}
             </button>
           </div>
         </div>
