@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.22.2] — 2026-06-17
+
+Patch: **Correção de fuso horário em TODA a plataforma — "hoje"/"este mês" agora em São Paulo.** Migration 0152 (aditiva). ADR-0125.
+
+- **Causa-raiz:** a sessão do banco roda em UTC, então `CURRENT_DATE`/`now()::date`/`date_trunc('month', CURRENT_DATE)` em ~15 RPCs + 1 view usavam o "hoje" de UTC — adiantado em um dia a partir das ~21h de São Paulo. Afetava calendário de liquidez ("é hoje"), próximos lançamentos/casamentos, KPIs do mês/ano corrente, idade de vendas em aberto, cortes de mês de Weddings/Performance, classificação "a vencer", além da projeção do Gerencial (já corrigida pontualmente na 0151).
+- **Fix sistêmico:** `ALTER ROLE anon|authenticated|service_role SET timezone = 'America/Sao_Paulo'`. O PostgREST aplica o `rolconfig` do papel por requisição (mesmo mecanismo do `statement_timeout`), então `CURRENT_DATE`/`now()` passam a refletir SP em **todas** as RPCs — atuais e futuras. **Reversível** (`RESET timezone`); o papel `postgres` (migrations/seed) **não** foi alterado.
+- **Sem regressão** (auditado): `timestamptz` continua o mesmo instante (o app já converte por `Intl`); `to_char`/texto de coluna DATE é independente de fuso. Auditoria das definições vivas + revisão adversarial em 3 dimensões → zero regressão.
+
 ## [4.22.1] — 2026-06-17
 
 Patch: **Fluxo de Caixa Gerencial — ajustes de UX nos cards de saldo e na projeção diária + correção de fuso no "hoje".** Migration 0151 (aditiva).
