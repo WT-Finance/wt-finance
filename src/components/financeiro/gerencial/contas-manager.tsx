@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Check } from 'lucide-react'
+import { Plus, Trash2, GripVertical } from 'lucide-react'
 import { fmtBRL } from '@/lib/fmt'
-import { createConta, updateConta, deleteConta, type PapelConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
+import { createConta, updateConta, deleteConta, reordenarContas, type PapelConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { PAPEL_LABEL, type Conta } from './tipos'
 
 // v4.21.0 (M1) — mini-sistema de contas: CRUD + atributos (saldo inicial, limite de crédito,
@@ -14,6 +14,9 @@ import { PAPEL_LABEL, type Conta } from './tipos'
 // v4.22 (M1): vira o PAINEL de gestão (dentro do drawer "Gerenciar contas"). O saldo inicial
 // saiu daqui e passou para a grade de cards (ContasCards). PAPEL_LABEL e o helper NumCell/parseNum
 // são exportados para a grade reaproveitar (não duplicar).
+// v4.22.4: puxador (drag-handle) por linha para reordenar (RPC reordenar_gerencial_contas; a ordem
+// rege os cards da agregada) + botões Salvar/Cancelar do "adicionar" ABAIXO da tabela (antes inline,
+// sobrepunham a coluna estreita de ações).
 
 export function parseNum(v: string): number | null {
   const n = parseFloat(v.replace(/\./g, '').replace(',', '.'))
@@ -86,6 +89,7 @@ export default function ContasManager({ contas, onContasChange }: {
   const [nova, setNova] = useState<{ conta: string; saldo: string; limite: string; consolidado: boolean; papel: PapelConta }>(
     { conta: '', saldo: '0', limite: '', consolidado: false, papel: null },
   )
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
 
   // Aplica um patch localmente (otimista) tratando exclusividade do papel.
   const aplicarLocal = (conta: string, patch: Partial<Conta>) => {
@@ -130,6 +134,26 @@ export default function ContasManager({ contas, onContasChange }: {
     router.refresh()
   }
 
+  const ordenadas = [...contas].sort((a, b) => a.ordem - b.ordem)
+
+  // Arrastar-soltar (puxador à esquerda): reordena local (otimista) + persiste a nova
+  // ordem (RPC reordenar_gerencial_contas) + refresh. A ordem define os cards da agregada.
+  const persistirOrdem = async (ordem: string[]) => {
+    setErro(null)
+    const res = await reordenarContas(ordem)
+    if (!res.success) setErro(res.error)
+    router.refresh()
+  }
+  const soltarEm = (dropIdx: number) => {
+    if (dragIdx === null || dragIdx === dropIdx) { setDragIdx(null); return }
+    const arr = [...ordenadas]
+    const [movido] = arr.splice(dragIdx, 1)
+    arr.splice(dropIdx, 0, movido)
+    onContasChange(arr.map((c, i) => ({ ...c, ordem: i + 1 })))
+    persistirOrdem(arr.map(c => c.conta))
+    setDragIdx(null)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-end mb-3">
@@ -143,9 +167,11 @@ export default function ContasManager({ contas, onContasChange }: {
 
       {erro && <p className="mb-2 text-xs text-[var(--danger)]">{erro}</p>}
 
-      {/* table-fixed + colgroup: a coluna Conta flexiona e trunca — sem rolagem horizontal no drawer. */}
+      {/* table-fixed + colgroup: Conta flexiona e trunca (sem rolagem horizontal). Coluna de
+          PUXADOR à esquerda — arraste para reordenar; a ordem define os cards da agregada. */}
       <table className="w-full text-sm table-fixed">
         <colgroup>
+          <col className="w-[28px]" />
           <col />
           <col className="w-[116px]" />
           <col className="w-[96px]" />
@@ -154,6 +180,7 @@ export default function ContasManager({ contas, onContasChange }: {
         </colgroup>
         <thead>
           <tr className="text-[11px] font-medium text-zinc-400 border-b border-zinc-100">
+            <th className="py-2 px-1"></th>
             <th className="py-2 px-2 text-left">Conta</th>
             <th className="py-2 px-2 text-right">Limite</th>
             <th className="py-2 px-2 text-center">Consolidado</th>
@@ -161,67 +188,87 @@ export default function ContasManager({ contas, onContasChange }: {
             <th className="py-2 px-2"></th>
           </tr>
         </thead>
-          <tbody>
-            {[...contas].sort((a, b) => a.ordem - b.ordem).map(c => (
-              <tr key={c.conta} className="border-b border-zinc-50 last:border-0">
-                <td className="py-1.5 px-2"><NomeCell nome={c.conta} onSave={v => editar(c.conta, { conta: v }, { nome: v })} /></td>
-                <td className="py-1.5 px-2 text-right">
-                  <NumCell valor={c.limite} permiteVazio onSave={v => editar(c.conta, { limite: v }, { limite: v })} />
-                </td>
-                <td className="py-1.5 px-2 text-center">
-                  <input type="checkbox" checked={c.consolidado}
-                    onChange={e => editar(c.conta, { consolidado: e.target.checked }, { consolidado: e.target.checked })}
-                    className="accent-[var(--brand)] cursor-pointer" aria-label={`${c.conta} entra no consolidado`} />
-                </td>
-                <td className="py-1.5 px-2 text-center">
-                  <select value={c.papel ?? ''}
-                    onChange={e => { const p = (e.target.value || null) as PapelConta; editar(c.conta, { papel: p }, { papel: p }) }}
-                    className="text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white cursor-pointer">
-                    {(['', 'isolada', 'reserva'] as const).map(v => <option key={v} value={v}>{PAPEL_LABEL[v]}</option>)}
-                  </select>
-                </td>
-                <td className="py-1.5 px-2 text-right">
-                  <button onClick={() => confirmDel === c.conta ? remover(c.conta) : setConfirmDel(c.conta)}
-                    onBlur={() => setConfirmDel(null)}
-                    title={confirmDel === c.conta ? 'Clique novamente para confirmar' : 'Remover conta'}
-                    className={`p-1 rounded transition-colors ${confirmDel === c.conta ? 'text-red-500 bg-red-50' : 'text-zinc-300 hover:text-red-400'}`}>
-                    <Trash2 size={13} />
-                  </button>
-                </td>
-              </tr>
-            ))}
+        <tbody>
+          {ordenadas.map((c, i) => (
+            <tr key={c.conta}
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => soltarEm(i)}
+              className={`border-b border-zinc-50 last:border-0 ${dragIdx === i ? 'opacity-40' : ''}`}>
+              <td className="py-1.5 px-1 text-center">
+                <span draggable onDragStart={() => setDragIdx(i)} onDragEnd={() => setDragIdx(null)}
+                  className="inline-flex cursor-grab text-zinc-300 hover:text-zinc-500 active:cursor-grabbing"
+                  title="Arraste para reordenar">
+                  <GripVertical size={14} />
+                </span>
+              </td>
+              <td className="py-1.5 px-2"><NomeCell nome={c.conta} onSave={v => editar(c.conta, { conta: v }, { nome: v })} /></td>
+              <td className="py-1.5 px-2 text-right">
+                <NumCell valor={c.limite} permiteVazio onSave={v => editar(c.conta, { limite: v }, { limite: v })} />
+              </td>
+              <td className="py-1.5 px-2 text-center">
+                <input type="checkbox" checked={c.consolidado}
+                  onChange={e => editar(c.conta, { consolidado: e.target.checked }, { consolidado: e.target.checked })}
+                  className="accent-[var(--brand)] cursor-pointer" aria-label={`${c.conta} entra no consolidado`} />
+              </td>
+              <td className="py-1.5 px-2 text-center">
+                <select value={c.papel ?? ''}
+                  onChange={e => { const p = (e.target.value || null) as PapelConta; editar(c.conta, { papel: p }, { papel: p }) }}
+                  className="text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white cursor-pointer">
+                  {(['', 'isolada', 'reserva'] as const).map(v => <option key={v} value={v}>{PAPEL_LABEL[v]}</option>)}
+                </select>
+              </td>
+              <td className="py-1.5 px-2 text-right">
+                <button onClick={() => confirmDel === c.conta ? remover(c.conta) : setConfirmDel(c.conta)}
+                  onBlur={() => setConfirmDel(null)}
+                  title={confirmDel === c.conta ? 'Clique novamente para confirmar' : 'Remover conta'}
+                  className={`p-1 rounded transition-colors ${confirmDel === c.conta ? 'text-red-500 bg-red-50' : 'text-zinc-300 hover:text-red-400'}`}>
+                  <Trash2 size={13} />
+                </button>
+              </td>
+            </tr>
+          ))}
 
-            {adicionando && (
-              <tr className="border-b border-[var(--brand)] bg-[var(--brand-soft)]/20">
-                <td className="py-1.5 px-2">
-                  <input autoFocus placeholder="Nome" value={nova.conta} onChange={e => setNova(p => ({ ...p, conta: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Enter') adicionar() }}
-                    className="w-28 text-xs border border-zinc-200 rounded px-1 py-0.5" />
-                </td>
-                <td className="py-1.5 px-2 text-right">
-                  <input placeholder="sem limite" value={nova.limite} onChange={e => setNova(p => ({ ...p, limite: e.target.value }))}
-                    className="w-24 text-right text-xs border border-zinc-200 rounded px-1 py-0.5 tabular-nums" />
-                </td>
-                <td className="py-1.5 px-2 text-center">
-                  <input type="checkbox" checked={nova.consolidado} onChange={e => setNova(p => ({ ...p, consolidado: e.target.checked }))}
-                    className="accent-[var(--brand)] cursor-pointer" />
-                </td>
-                <td className="py-1.5 px-2 text-center">
-                  <select value={nova.papel ?? ''} onChange={e => setNova(p => ({ ...p, papel: (e.target.value || null) as PapelConta }))}
-                    className="text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white">
-                    {(['', 'isolada', 'reserva'] as const).map(v => <option key={v} value={v}>{PAPEL_LABEL[v]}</option>)}
-                  </select>
-                </td>
-                <td className="py-1.5 px-2">
-                  <div className="flex gap-1 justify-end">
-                    <button onClick={adicionar} className="p-1 rounded text-white" style={{ background: 'var(--brand)' }} title="Salvar"><Check size={13} /></button>
-                    <button onClick={() => { setAdicionando(false); setErro(null) }} className="p-1 rounded border border-zinc-200 text-zinc-400" title="Cancelar">✕</button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
+          {adicionando && (
+            <tr className="border-b border-[var(--brand)] bg-[var(--brand-soft)]/20">
+              <td className="py-1.5 px-1"></td>
+              <td className="py-1.5 px-2">
+                <input autoFocus placeholder="Nome" value={nova.conta} onChange={e => setNova(p => ({ ...p, conta: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') adicionar() }}
+                  className="w-28 text-xs border border-zinc-200 rounded px-1 py-0.5" />
+              </td>
+              <td className="py-1.5 px-2 text-right">
+                <input placeholder="sem limite" value={nova.limite} onChange={e => setNova(p => ({ ...p, limite: e.target.value }))}
+                  className="w-24 text-right text-xs border border-zinc-200 rounded px-1 py-0.5 tabular-nums" />
+              </td>
+              <td className="py-1.5 px-2 text-center">
+                <input type="checkbox" checked={nova.consolidado} onChange={e => setNova(p => ({ ...p, consolidado: e.target.checked }))}
+                  className="accent-[var(--brand)] cursor-pointer" />
+              </td>
+              <td className="py-1.5 px-2 text-center">
+                <select value={nova.papel ?? ''} onChange={e => setNova(p => ({ ...p, papel: (e.target.value || null) as PapelConta }))}
+                  className="text-xs border border-zinc-200 rounded px-1 py-0.5 bg-white">
+                  {(['', 'isolada', 'reserva'] as const).map(v => <option key={v} value={v}>{PAPEL_LABEL[v]}</option>)}
+                </select>
+              </td>
+              <td className="py-1.5 px-2"></td>
+            </tr>
+          )}
+        </tbody>
       </table>
+
+      {adicionando && (
+        <div className="mt-3 flex justify-end gap-2">
+          <button
+            onClick={() => { setAdicionando(false); setErro(null); setNova({ conta: '', saldo: '0', limite: '', consolidado: false, papel: null }) }}
+            className="px-2.5 py-1 text-xs border border-zinc-200 rounded text-zinc-500 hover:border-zinc-300 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={adicionar}
+            className="px-2.5 py-1 text-xs rounded text-white transition-opacity hover:opacity-90" style={{ background: 'var(--brand)' }}>
+            Salvar
+          </button>
+        </div>
+      )}
       <p className="mt-3 text-[10px] text-[var(--text-muted)]">
         O saldo inicial de cada conta é editado nos cards. Marque <strong>Consolidado</strong> nas contas que somam no saldo consolidado. <strong>Papel</strong>: a conta <em>Principal</em> tem coluna própria (com faixas de limite); a <em>Rendimento</em> é somada à parte.
       </p>
