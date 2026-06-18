@@ -35,6 +35,16 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.23.1',
+    data: '2026-06-18T16:42',
+    itens: [
+      { tipo: 'correcao', texto: 'Corrigimos um erro no Fluxo de Caixa Gerencial: os saldos das contas não mostravam os centavos e, ao editar, o valor podia ser corrompido (um saldo de R$ 105.993,35 chegava a virar R$ 10.599.335). Agora os saldos sempre exibem os centavos e a edição preserva o valor corretamente.' },
+      { tipo: 'novidade', texto: 'A projeção diária ganhou uma linha "Saldo inicial" no topo, mostrando o saldo de abertura de cada conta antes dos lançamentos do período. As colunas de saldo passaram a indicar "(Final)" e a coluna de resultado virou "Resultado do Dia".' },
+      { tipo: 'melhoria', texto: 'Na base de dados do Fluxo de Caixa Gerencial, a barra de filtros ficou mais limpa (os filtros de tipo e a busca por pessoa agora vivem nas próprias colunas) e o botão de exclusão passou a alternar entre "Apagar selecionados" e "Apagar todos" conforme a seleção.' },
+      { tipo: 'melhoria', texto: 'A janela de importação de lançamentos ficou mais clara: os valores não são mais cortados, as instruções aparecem desde o início, o aviso de linhas duplicadas só surge quando elas existem, e lançamentos criados manualmente já vêm destacados.' },
+    ],
+  },
+  {
     versao: '4.23.0',
     data: '2026-06-18T14:34',
     itens: [
