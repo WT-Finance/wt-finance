@@ -6,7 +6,13 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [4.23.1] — 2026-06-18
+## [4.23.2] — 2026-06-19
+
+Patch: **Ajustes de UI do Fluxo de Caixa Gerencial + correção do salto de layout ao recolher seção (plataforma inteira).** Sem migration.
+
+- **Box "Contas" recolhível** (`contas-cards.tsx`): chevron ao lado do título "CONTAS" (igual à barra `TopSection`), recolhe/expande a grade de cards. Padrão = aberto; "Gerenciar contas" continua no cabeçalho.
+- **Salto de layout ao recolher seção — corrigido na plataforma inteira** (`app-shell.tsx`): o `<main>` (único scroll container) ganhou `scrollbar-gutter: stable`. A goteira da barra de rolagem fica reservada sempre, então o conteúdo centralizado (`mx-auto`) não desloca lateralmente quando a barra some/aparece — ao recolher/expandir um `TopSection` (Gerencial, Weddings, etc.) ou trocar para uma página mais curta. Convenção registrada no CLAUDE.md (§ Convenções de código) para não recorrer.
+- **Popover "Personalizado" de vencimento** (`base-dados-tab.tsx`): passou a ser **clampado ao viewport** (horizontal + abre para cima se não couber abaixo) — não escapa mais das bordas.
 
 Patch: **Ajustes do Fluxo de Caixa Gerencial — correção crítica do saldo, refino da base de dados, da projeção e do drawer de importação.** Migration 0155 (aditiva).
 
