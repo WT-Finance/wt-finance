@@ -35,6 +35,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.23.2',
+    data: '2026-06-19T13:15',
+    itens: [
+      { tipo: 'melhoria', texto: 'No Fluxo de Caixa Gerencial, o box "Contas" agora pode ser recolhido (basta clicar na setinha ao lado do título), dando mais espaço para a projeção quando você não precisa ver os saldos.' },
+      { tipo: 'correcao', texto: 'Corrigimos um pequeno "salto" do conteúdo para o lado que acontecia ao recolher/expandir as seções (no Gerencial, em Weddings e em outras telas). Agora a página fica firme no lugar.' },
+      { tipo: 'correcao', texto: 'O seletor de período "Personalizado" (filtro de vencimento da base do Gerencial) não escapa mais das bordas da tela.' },
+    ],
+  },
+  {
     versao: '4.23.1',
     data: '2026-06-18T16:42',
     itens: [

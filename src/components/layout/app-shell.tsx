@@ -45,8 +45,11 @@ export default function AppShell({ usuario, children }: AppShellProps) {
 
         <MobileHeader onOpen={() => setMobileOpen(true)} />
         {/* Respiro vertical ÚNICO das páginas (v4.16.1): o ritmo topo/base vive aqui.
-            Páginas NÃO definem py próprio — container = max-w-* mx-auto px-*. */}
-        <main className="flex-1 overflow-auto py-8">
+            Páginas NÃO definem py próprio — container = max-w-* mx-auto px-*.
+            scrollbar-gutter:stable (v4.23.2): reserva a goteira da barra de rolagem SEMPRE,
+            para o conteúdo centralizado (mx-auto) NÃO deslocar quando a barra some/aparece
+            ao recolher/expandir uma seção (TopSection) ou trocar de página. */}
+        <main className="flex-1 overflow-auto py-8 [scrollbar-gutter:stable]">
           {children}
         </main>
       </div>

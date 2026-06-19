@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Settings } from 'lucide-react'
+import { Settings, ChevronRight } from 'lucide-react'
 import { updateConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { NumCell } from './contas-manager'
 import { PAPEL_LABEL, type Conta } from './tipos'
@@ -22,6 +22,8 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
 }) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
+  // v4.23.2 (item 1): box recolhível com chevron, igual à barra TopSection. Padrão = aberto.
+  const [aberto, setAberto] = useState(true)
 
   // Edição otimista APENAS do saldo (não mexe em papel/limite/consolidado, logo sem
   // tratamento de exclusividade de papel — diferente do aplicarLocal do painel).
@@ -35,15 +37,20 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Contas</p>
+      <div className={`flex items-center justify-between ${aberto ? 'mb-3' : ''}`}>
+        <button type="button" onClick={() => setAberto(v => !v)} aria-expanded={aberto}
+          title={aberto ? 'Recolher' : 'Expandir'}
+          className="flex items-center gap-1.5 -ml-1 px-1 py-0.5 rounded foco-neutro">
+          <ChevronRight size={14} className={`text-[var(--text-muted)] transition-transform ${aberto ? 'rotate-90' : ''}`} />
+          <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Contas</span>
+        </button>
         <button onClick={onGerir}
           className="flex items-center gap-1.5 px-2.5 py-1 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors foco-neutro">
           <Settings size={13} /> Gerenciar contas
         </button>
       </div>
-      {erro && <p className="mb-2 text-xs text-[var(--danger)]">{erro}</p>}
-      {contas.length === 0 ? (
+      {aberto && erro && <p className="mb-2 text-xs text-[var(--danger)]">{erro}</p>}
+      {aberto && (contas.length === 0 ? (
         <p className="text-sm text-zinc-400 py-4 text-center">
           Nenhuma conta cadastrada. Use <strong>Gerenciar contas</strong> para adicionar.
         </p>
@@ -84,7 +91,7 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
             </div>
           ))}
         </div>
-      )}
+      ))}
     </div>
   )
 }
