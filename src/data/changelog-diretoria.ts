@@ -35,6 +35,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.23.3',
+    data: '2026-06-19T17:32',
+    itens: [
+      { tipo: 'melhoria', texto: 'Na janela de importação de lançamentos, quando o sistema detecta linhas duplicadas agora dá para abrir e ver exatamente quais são as linhas repetidas, em formato de lista — facilitando decidir se mantém ou não as duplicatas.' },
+      { tipo: 'melhoria', texto: 'Pequenos acertos visuais na janela de importação: textos em negrito padronizados e os números dos grupos (a adicionar, a remover, etc.) com tamanho mais equilibrado.' },
+      { tipo: 'melhoria', texto: 'Na base de dados do Fluxo de Caixa Gerencial, os filtros aplicados (de coluna e os botões de origem) agora permanecem ao alternar para a Visualização Agregada e voltar, sem precisar refazê-los.' },
+    ],
+  },
+  {
     versao: '4.23.2',
     data: '2026-06-19T13:15',
     itens: [
