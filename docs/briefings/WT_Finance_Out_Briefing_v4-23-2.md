@@ -15,8 +15,8 @@ Chevron ao lado do título "CONTAS" (mesma linguagem da barra `TopSection`: seta
 **Fix:** `scrollbar-gutter: stable` no `<main>` (`[scrollbar-gutter:stable]`) — a goteira da barra fica reservada SEMPRE, então a largura do content-box é constante e não há salto. Um único ponto cobre a plataforma inteira (todas as páginas renderizam dentro desse `<main>`).
 **Registrado no CLAUDE.md** (§ Convenções de código) como convenção permanente, para não recorrer: o `<main>` é o único scroll container e tem `scrollbar-gutter: stable`; não criar outro scroll container de página que reintroduza o salto.
 
-### Item 3 — Popover "Personalizado" de vencimento clampado ao viewport (`base-dados-tab.tsx`, `FiltroVencimento`)
-O popover (portal + `position: fixed`) só clampava a borda esquerda. Agora o `abrir()` clampa nos dois eixos: `left` em `[8, vw−296]` (popover de 288px sempre dentro da tela) e, se abrir abaixo estourar o fundo do viewport, **abre para cima**. Não escapa mais das bordas.
+### Item 3 — Popover "Personalizado" de vencimento clampado ao viewport + mais largo (`base-dados-tab.tsx`, `FiltroVencimento`)
+O popover (portal + `position: fixed`) só clampava a borda esquerda. Agora o `abrir()` clampa nos dois eixos: `left` em `[8, vw−W−8]` (sempre dentro da tela) e, se abrir abaixo estourar o fundo do viewport, **abre para cima**. **Pós-revisão (preview):** o box era estreito demais (`w-72`/288px) e cortava os dois campos de data; alargado para **340px** (`w-[340px]`, `W=340` no clamp) — como é ancorado à direita do botão, a largura extra estende para a **esquerda**.
 
 ## Auto-auditoria (self-review adversarial — 3 mudanças de UI, sem superfície de dados/segurança)
 - **Item 2:** `scrollbar-gutter: stable` elimina o salto (largura constante); tradeoff = goteira reservada (~15px) também em páginas curtas, mas **consistente** (sem pulo). Degrada com elegância em Safari < 18.2 (volta ao comportamento antigo, sem quebrar). `<main>` confirmado como único scroll container vertical.

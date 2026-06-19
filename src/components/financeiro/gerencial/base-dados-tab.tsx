@@ -44,7 +44,7 @@ function FiltroVencimento({ ini, fim, onChange }: {
     const r = btnRef.current?.getBoundingClientRect()
     if (r) {
       // v4.23.2 (item 3): clampar ao viewport para o popover NÃO escapar do box/tela.
-      const W = 288, H = 190, M = 8   // w-72 ≈ 288px; altura aprox. do popover; margem
+      const W = 340, H = 190, M = 8   // largura do popover (w-[340px]); altura aprox.; margem
       const left = Math.min(Math.max(M, r.right - W), window.innerWidth - W - M)
       const top  = r.bottom + 4 + H > window.innerHeight ? Math.max(M, r.top - 4 - H) : r.bottom + 4
       setPos({ top, left })
@@ -71,7 +71,7 @@ function FiltroVencimento({ ini, fim, onChange }: {
       {open && pos && createPortal(
         <>
           <div className="fixed inset-0 z-40" onMouseDown={() => setOpen(false)} />
-          <div className="fixed z-50 w-72 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 font-sans"
+          <div className="fixed z-50 w-[340px] bg-white border border-zinc-200 rounded-xl shadow-lg p-4 font-sans"
             style={{ top: pos.top, left: pos.left }}>
             <p className="text-xs font-semibold mb-3 text-[var(--text-muted)]">Selecione o período de vencimento:</p>
             <div className="flex gap-3 mb-3">
