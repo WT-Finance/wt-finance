@@ -6,7 +6,7 @@ import { numBRL2 } from '@/lib/fmt'
 import type { ImportDiff, ImportResumo, LinhaResumo } from '@/lib/gerencial/import-types'
 
 type Etapa = 'upload' | 'preview' | 'sucesso'
-type BucketKey = 'adicionar' | 'atualizar' | 'manter' | 'remover'
+type BucketKey = 'adicionar' | 'atualizar' | 'manter' | 'remover' | 'duplicatas'
 
 interface Props { open: boolean; onClose: () => void }
 
@@ -47,7 +47,7 @@ function BucketHeader({ k, label, count, color, sufixo, aberto, onToggle }: {
         <span className="text-xs font-medium text-zinc-600">{label}</span>
         {sufixo && <span className="text-[10px] text-zinc-400">{sufixo}</span>}
       </span>
-      <span className="text-lg font-bold tabular-nums" style={{ color }}>{count}</span>
+      <span className="text-sm font-bold tabular-nums" style={{ color }}>{count}</span>
     </button>
   )
 }
@@ -167,7 +167,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
         <div className="mb-4 rounded-lg bg-zinc-50 border border-zinc-100 px-3 py-2.5 text-xs leading-relaxed text-[var(--text-muted)]">
           Ao importar a planilha, <strong>todos os lançamentos da importação anterior são substituídos</strong>. A
           importação sincroniza apenas as suas linhas — lançamentos de outros usuários não são tocados.{' '}
-          <span className="font-semibold text-[var(--text-secondary)]">Lançamentos adicionados manualmente não são excluídos.</span>
+          <strong>Lançamentos adicionados manualmente não são excluídos.</strong>
         </div>
       )}
       {etapa === 'upload' && (
@@ -186,12 +186,24 @@ export default function ImportDrawer({ open, onClose }: Props) {
 
       {etapa === 'preview' && diff && (
         <div className="space-y-4">
-          {/* Toggle "manter duplicadas" (item 5) — só aparece quando há duplicatas na planilha, e as informa. */}
+          {/* Toggle "manter duplicadas" (item 5) — só aparece quando há duplicatas na planilha, e as informa.
+              v4.23.3 (item 2): o aviso vira expansível e lista QUAIS linhas duplicam (mesmo padrão dos buckets). */}
           {diff.duplicatasPlanilha > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-2">
-              <p className="text-xs text-amber-800">
-                Detectamos <strong>{diff.duplicatasPlanilha}</strong> {diff.duplicatasPlanilha === 1 ? 'linha idêntica repetida' : 'linhas idênticas repetidas'} dentro da planilha.
-              </p>
+              <button type="button" onClick={() => toggleBucket('duplicatas')}
+                className="w-full flex items-center gap-1.5 text-left">
+                {aberto === 'duplicatas' ? <ChevronDown size={14} className="shrink-0 text-amber-700" /> : <ChevronRight size={14} className="shrink-0 text-amber-700" />}
+                <span className="text-xs text-amber-800">
+                  Detectamos <strong>{diff.duplicatasPlanilha}</strong> {diff.duplicatasPlanilha === 1 ? 'linha idêntica repetida' : 'linhas idênticas repetidas'} dentro da planilha.
+                </span>
+              </button>
+              {aberto === 'duplicatas' && (
+                <div className="overflow-hidden rounded border border-amber-200 bg-white">
+                  <table className="w-full table-fixed"><CabecalhoBucket />
+                    <tbody>{diff.duplicatasLinhas.map((l, i) => <tr key={i} className="border-b border-zinc-50"><CelulasLinha l={l} /></tr>)}</tbody>
+                  </table>
+                </div>
+              )}
               <label className="flex items-center justify-between gap-3 cursor-pointer">
                 <span className="text-xs text-zinc-700">
                   Manter duplicadas

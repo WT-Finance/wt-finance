@@ -52,6 +52,9 @@ export interface ImportDiff {
   /** Linhas idênticas (6 campos) repetidas DENTRO da própria planilha (independe do toggle).
    *  >0 → a UI mostra o aviso e o controle "Manter duplicadas". (v4.23.1, item 5) */
   duplicatasPlanilha: number
+  /** As ocorrências REPETIDAS (2ª+) dentro da planilha — para a UI listar QUAIS linhas duplicam.
+   *  `.length === duplicatasPlanilha`. (v4.23.3, item 2) */
+  duplicatasLinhas: LancamentoPlanilha[]
 }
 
 export interface ImportResumo {
@@ -96,8 +99,15 @@ export function computeDiffPorFatia(
   fatia: LinhaFatia[],
   manterDuplicadas: boolean,
 ): ImportDiff {
-  // Quantas linhas idênticas há a MAIS dentro da planilha (independe do toggle) — alimenta o aviso da UI.
-  const duplicatasPlanilha = planilhaRaw.length - new Set(planilhaRaw.map(chave6)).size
+  // Linhas idênticas (6 campos) repetidas DENTRO da planilha (independe do toggle): coleta as
+  // ocorrências REPETIDAS (2ª+) p/ a UI listar QUAIS duplicam; a contagem alimenta o aviso.
+  const vistosDup = new Set<string>()
+  const duplicatasLinhas: LancamentoPlanilha[] = []
+  for (const l of planilhaRaw) {
+    const k = chave6(l)
+    if (vistosDup.has(k)) duplicatasLinhas.push(l); else vistosDup.add(k)
+  }
+  const duplicatasPlanilha = duplicatasLinhas.length
 
   // 1) Toggle: colapsa idênticas DENTRO da planilha (salvo "manter duplicadas").
   let planilha = planilhaRaw
@@ -113,7 +123,7 @@ export function computeDiffPorFatia(
   for (const l of planilha) grupo(chaveLogica(l)).sheet.push(l)
   for (const l of [...fatia].sort((a, b) => a.id - b.id)) grupo(chaveLogica(l)).slice.push(l)
 
-  const diff: ImportDiff = { aAdicionar: [], aRemover: [], aManter: [], aAtualizar: [], duplicatasPlanilha }
+  const diff: ImportDiff = { aAdicionar: [], aRemover: [], aManter: [], aAtualizar: [], duplicatasPlanilha, duplicatasLinhas }
   const resumo = (r: LinhaFatia): LinhaResumo =>
     ({ id: r.id, tipo: r.tipo, pessoa: r.pessoa, valor_final: r.valor_final, vencimento: r.vencimento, descricao: r.descricao, conta_previsao: r.conta_previsao })
 

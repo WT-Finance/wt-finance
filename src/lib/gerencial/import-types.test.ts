@@ -102,6 +102,13 @@ describe('computeDiffPorFatia — toggle "manter duplicadas" (dentro da planilha
     expect(computeDiffPorFatia([p(), p()], [], true).duplicatasPlanilha).toBe(1)   // mesmo com o toggle ligado
     expect(computeDiffPorFatia([p(), p({ pessoa: 'Z' })], [], false).duplicatasPlanilha).toBe(0)
   })
+  it('duplicatasLinhas lista as ocorrências REPETIDAS (2ª+), com .length = duplicatasPlanilha (v4.23.3)', () => {
+    const d = computeDiffPorFatia([p({ pessoa: 'A' }), p({ pessoa: 'A' }), p({ pessoa: 'B' })], [], false)
+    expect(d.duplicatasLinhas).toHaveLength(1)            // a 2ª ocorrência de "A"
+    expect(d.duplicatasLinhas[0].pessoa).toBe('A')
+    expect(d.duplicatasLinhas.length).toBe(d.duplicatasPlanilha)
+    expect(computeDiffPorFatia([p(), p({ pessoa: 'Z' })], [], false).duplicatasLinhas).toHaveLength(0)
+  })
 })
 
 describe('computeDiffPorFatia — isolamento (escopo da fatia)', () => {

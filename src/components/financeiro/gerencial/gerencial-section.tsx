@@ -37,10 +37,15 @@ export default function GerencialSection({ saldos, projecao, lancamentos }: Prop
           Base de Dados
         </button>
       </div>
-      {tab === 'agregada'
-        ? <VisualizacaoAgregadaTab saldos={saldos} projecao={projecao} />
-        : <BaseDadosTab lancamentos={lancamentos} saldos={saldos} />
-      }
+      {/* v4.23.3 (item 4): as duas abas ficam SEMPRE montadas (alterna por `hidden`), para os
+          filtros e pills da Base de Dados (estado local do componente) PERSISTIREM ao ir para a
+          Visualização Agregada e voltar. Trocar com render condicional desmontava e zerava tudo. */}
+      <div className={tab === 'agregada' ? '' : 'hidden'}>
+        <VisualizacaoAgregadaTab saldos={saldos} projecao={projecao} />
+      </div>
+      <div className={tab === 'base' ? '' : 'hidden'}>
+        <BaseDadosTab lancamentos={lancamentos} saldos={saldos} />
+      </div>
     </div>
   )
 }

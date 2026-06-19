@@ -6,6 +6,15 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.23.3] — 2026-06-19
+
+Patch: **Ajustes finos do drawer de importação + persistência dos filtros do Fluxo de Caixa Gerencial.** Sem migration.
+
+- **Negritos do texto do drawer normalizados** (`import-drawer.tsx`): a 2ª parte em negrito usava `font-semibold` + cor `--text-secondary` (vinha dos `*…*` do prompt); agora é `<strong>` igual à 1ª (mesmo peso e cor `--text-muted`).
+- **Linhas duplicadas listáveis** (`import-types.ts` + drawer): além de informar a contagem, o aviso de duplicatas vira **expansível** e mostra **quais** linhas duplicam, no mesmo formato de tabela das outras listas (acordeão, 1 aberta por vez). O diff passou a devolver `duplicatasLinhas` (as ocorrências repetidas).
+- **Números dos grupos do preview menos desproporcionais** (`import-drawer.tsx`): as contagens de "A adicionar/atualizar/manter/remover" caíram de `text-lg` para `text-sm` — proporcionais ao rótulo.
+- **Filtros da Base de Dados persistem ao trocar de aba** (`gerencial-section.tsx`): as abas "Visualização Agregada" e "Base de Dados" ficam ambas montadas (alternadas por `hidden`); ir para a Agregada e voltar não zera mais os filtros de coluna nem as pills.
+
 ## [4.23.2] — 2026-06-19
 
 Patch: **Ajustes de UI do Fluxo de Caixa Gerencial + correção do salto de layout ao recolher seção (plataforma inteira).** Sem migration.
