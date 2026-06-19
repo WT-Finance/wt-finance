@@ -42,7 +42,13 @@ function FiltroVencimento({ ini, fim, onChange }: {
 
   const abrir = () => {
     const r = btnRef.current?.getBoundingClientRect()
-    if (r) setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 288) }) // 288 = w-72
+    if (r) {
+      // v4.23.2 (item 3): clampar ao viewport para o popover NÃO escapar do box/tela.
+      const W = 288, H = 190, M = 8   // w-72 ≈ 288px; altura aprox. do popover; margem
+      const left = Math.min(Math.max(M, r.right - W), window.innerWidth - W - M)
+      const top  = r.bottom + 4 + H > window.innerHeight ? Math.max(M, r.top - 4 - H) : r.bottom + 4
+      setPos({ top, left })
+    }
     setLi(ini); setLf(fim); setOpen(true)
   }
 
