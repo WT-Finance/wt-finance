@@ -6,6 +6,15 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.24.2] — 2026-06-22
+
+PATCH: **Revisão visual do e-mail de senha (layout, logo, responsividade).** Sem migration, sem ADR.
+
+- **Logo transparente e centralizado** (`logo.ts`): o `welcome-group.png` tinha fundo preto baked-in (`hasAlpha:false`) → caixa preta no Outlook. Agora rasterizado do `welcome-group.svg` (vetor, sem fundo) via `sharp` → PNG transparente; centralizado por tabela (`align`).
+- **Botão "Acessar a plataforma" real** (`template.ts`): reconstruído como **célula de tabela** (`bgcolor` + link) — o Outlook ignora `background` em `<a>` inline (antes aparecia como texto cru).
+- **Layout em tabelas + inline**, hierarquia e espaçamento revistos, **divisória cinza** (era dourada), **sem negrito** em "definir uma nova senha no primeiro acesso".
+- **Responsivo:** cartão fluido (`width:100%`/`max-width:480px`) + `<style>` media query (≤480px reduz respiro lateral e a fonte da senha); `word-break` na senha.
+
 ## [4.24.1] — 2026-06-22
 
 PATCH: **Refinos visuais (cosmético).** Sem migration, sem ADR.
