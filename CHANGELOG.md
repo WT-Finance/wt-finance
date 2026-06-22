@@ -6,6 +6,15 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.24.1] — 2026-06-22
+
+PATCH: **Refinos visuais (cosmético).** Sem migration, sem ADR.
+
+- **E-mail de senha:** logo Welcome Group no topo (embutido via CID — attachment, compatível com Outlook; substitui o título tipográfico "WT FINANCE") + botão "Acessar a plataforma" (URL de `APP_BASE_URL`/`VERCEL_PROJECT_PRODUCTION_URL`, nunca hardcoded; omitido se ausente). `src/lib/email/{logo,config,template,index}.ts` + `email.test.ts`.
+- **Projeção do Gerencial** (`visualizacao-agregada-tab.tsx`): cores de valor positivo/negativo de `--positive-deep`/`--negative-deep` (quase pretos) → tokens base `--positive`/`--negative` — nítidos e legíveis sobre branco E sobre as faixas claras (`bg-success-bg`/`bg-danger-bg`). Só a cor muda; a matemática é idêntica.
+- **TopSection** (`top-section.tsx`): cantos `rounded-xl` (= raio dos cards) + `overflow-hidden` — propaga a todas as telas que usam a barra de seção.
+- **Verdes/hover da identidade:** hover da caixa de solicitação (`.card-clicavel-neutra`) com `--action-soft-border` (cinza suave) em vez do `--action-primary` (charcoal); bolinha de concluir (`board-solicitacoes`) e toast de sucesso (`FaixaMensagem`) alinhados ao token `success` (= badge "Ativo"), não emerald.
+
 ## [4.24.0] — 2026-06-22
 
 MINOR: **Envio da senha provisória por e-mail no fluxo de acesso (criação + reset administrativo).** Sem migration. ADR-0127.
