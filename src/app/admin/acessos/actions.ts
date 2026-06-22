@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
+import { enviarSenhaProvisoria } from '@/lib/email'
 import type {
   ResultadoAcao, ResultadoCriarUsuario, ResultadoSenha,
 } from '@/components/admin/acessos/tipos'
@@ -111,7 +112,15 @@ export async function criarUsuario(input: {
     // 3) Força a troca da senha no 1º acesso.
     await supabase.rpc('admin_marcar_trocar_senha', { p_user_id: userId })
 
-    return { ok: true, email, senha }
+    // 4) E-mail é camada ADICIONAL (v4.24.0): a senha já está pronta e será exibida
+    //    na tela. enviarSenhaProvisoria NÃO lança (retorna boolean) — o try/catch é
+    //    cinto de segurança extra. SMTP off/erro → emailEnviado=false, criação OK.
+    let emailEnviado = false
+    try {
+      emailEnviado = await enviarSenhaProvisoria({ para: email, nome, senha, tipo: 'criacao' })
+    } catch { /* fallback: a senha aparece na tela */ }
+
+    return { ok: true, email, senha, emailEnviado }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
   } finally {

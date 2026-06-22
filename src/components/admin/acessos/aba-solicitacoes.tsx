@@ -33,7 +33,7 @@ export function AbaSolicitacoes({
   const [msg, setMsg] = useState<Mensagem | null>(null)
   const [pendenteId, setPendenteId] = useState<number | null>(null)
   const [roleEscolhida, setRoleEscolhida] = useState<Record<number, number>>({})
-  const [senha, setSenha] = useState<{ email: string; valor: string } | null>(null)
+  const [senha, setSenha] = useState<{ email: string; valor: string; emailEnviado: boolean } | null>(null)
   const [copiado, setCopiado] = useState(false)
   const [rejeitar, setRejeitar] = useState<SolicitacaoAdmin | null>(null)
 
@@ -45,7 +45,7 @@ export function AbaSolicitacoes({
     startTransition(async () => {
       const res = await aprovarSolicitacao({ id: s.id, email: s.email, nome: s.nome ?? undefined, roleId })
       if (res.ok) {
-        setSenha({ email: res.email, valor: res.senha })
+        setSenha({ email: res.email, valor: res.senha, emailEnviado: res.emailEnviado })
         setCopiado(false)
         try { await navigator.clipboard.writeText(res.senha); setCopiado(true) } catch { /* painel copiável */ }
         setMsg({ tipo: 'sucesso', texto: `${res.email} aprovado e criado.` })
@@ -85,6 +85,12 @@ export function AbaSolicitacoes({
             Senha provisória de <span className="font-medium">{senha.email}</span> — repasse à pessoa.
             Ela troca no primeiro acesso. Não será mostrada de novo.
           </p>
+          {/* v4.24.0 — aviso de envio (a senha aparece sempre abaixo, fallback). */}
+          {senha.emailEnviado ? (
+            <p className="text-xs text-emerald-700 mb-2">Enviada por e-mail para {senha.email}.</p>
+          ) : (
+            <p className="text-xs text-amber-700 mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
+          )}
           <div className="flex items-center gap-2">
             <input
               readOnly value={senha.valor} onFocus={e => e.currentTarget.select()}
