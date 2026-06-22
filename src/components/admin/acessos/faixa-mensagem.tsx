@@ -12,8 +12,10 @@ export function FaixaMensagem({
   texto:    string
   onFechar?: () => void
 }) {
+  // v4.24.1 — sucesso usa o verde da identidade (--success via tokens, = badge "Ativo"),
+  // não o emerald off-palette. Erro segue o vermelho do Tailwind (fora do escopo deste patch).
   const cores = tipo === 'sucesso'
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    ? 'border-success bg-success-bg text-success'
     : 'border-red-200 bg-red-50 text-red-700'
 
   return (

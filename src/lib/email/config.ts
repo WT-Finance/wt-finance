@@ -45,6 +45,20 @@ export function getConfigSmtp(): ConfigSmtp | null {
   return _config
 }
 
+/**
+ * URL base do app para links no e-mail (ex.: "Acessar a plataforma"). Como o remetente,
+ * vem da config — NUNCA hardcoded. Ordem: APP_BASE_URL (canônica, permite domínio próprio)
+ * → VERCEL_PROJECT_PRODUCTION_URL (a URL que a Vercel conhece, sem protocolo) → null
+ * (link omitido; o e-mail segue válido). Sem barra final.
+ */
+export function getAppBaseUrl(): string | null {
+  const explicit = process.env.APP_BASE_URL?.trim()
+  if (explicit) return explicit.replace(/\/+$/, '')
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
+  if (vercel) return `https://${vercel.replace(/^https?:\/\//, '').replace(/\/+$/, '')}`
+  return null
+}
+
 /** Limpa o cache — uso EXCLUSIVO de teste (reavaliar process.env entre casos). */
 export function _resetConfigSmtpCache(): void {
   _config = undefined

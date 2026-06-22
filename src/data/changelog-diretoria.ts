@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.24.1',
+    data: '2026-06-22T17:16',
+    itens: [
+      { tipo: 'melhoria', texto: 'O e-mail de senha de acesso agora traz o logo do Welcome Group no topo e um botão "Acessar a plataforma" que leva direto ao sistema.' },
+      { tipo: 'melhoria', texto: 'Refinos visuais no Fluxo de Caixa Gerencial e nas telas de acesso: os valores positivos (verde) e negativos (vermelho) da projeção ficaram mais fáceis de distinguir, as barras de seção ganharam cantos mais arredondados, e os tons de verde (avisos de sucesso e o marcador de concluir) foram alinhados à identidade visual.' },
+    ],
+  },
+  {
     versao: '4.24.0',
     data: '2026-06-22T13:58',
     itens: [

@@ -42,8 +42,11 @@ function corDuasFaixas(v: number): string {
   return v < 0 ? 'bg-danger-bg' : 'bg-success-bg'
 }
 // v4.22.1 — cor do TEXTO do saldo por sinal (≥0 verde / <0 vermelho), somada ao fundo de faixa.
+// v4.24.1 — tokens BASE (--positive/--negative), não -deep: os -deep eram quase pretos e
+// positivo/negativo liam-se quase iguais; os base são nitidamente verde/vermelho e legíveis
+// tanto sobre branco quanto sobre as faixas claras (bg-success-bg/bg-danger-bg).
 function corTextoSaldo(v: number): string {
-  return v >= 0 ? 'text-[var(--positive-deep)]' : 'text-[var(--negative-deep)]'
+  return v >= 0 ? 'text-[var(--positive)]' : 'text-[var(--negative)]'
 }
 
 export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
@@ -181,17 +184,17 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
                     {/* Fluxos: sem fundo, cor só no número (M3). */}
                     <td className="py-1.5 px-2">
                       {l.a_receber > 0
-                        ? <ValorContabil valor={l.a_receber} className="text-[var(--positive-deep)]" />
+                        ? <ValorContabil valor={l.a_receber} className="text-[var(--positive)]" />
                         : <span className="block text-right text-zinc-300">—</span>}
                     </td>
                     <td className="py-1.5 px-2">
                       {l.a_pagar > 0
-                        ? <ValorContabil valor={l.a_pagar} className="text-[var(--negative-deep)]" />
+                        ? <ValorContabil valor={l.a_pagar} className="text-[var(--negative)]" />
                         : <span className="block text-right text-zinc-300">—</span>}
                     </td>
                     <td className="py-1.5 px-2">
                       <ValorContabil valor={l.resultado}
-                        className={`font-medium ${l.resultado >= 0 ? 'text-[var(--positive-deep)]' : 'text-[var(--negative-deep)]'}`} />
+                        className={`font-medium ${l.resultado >= 0 ? 'text-[var(--positive)]' : 'text-[var(--negative)]'}`} />
                     </td>
                     {/* Saldos: fundo de faixa no <td> (M4) + TEXTO por sinal ≥0 verde / <0 vermelho (v4.22.1). */}
                     {temIsolada && (
