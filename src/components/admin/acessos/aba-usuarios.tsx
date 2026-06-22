@@ -25,7 +25,7 @@ const ICON_PERIGO = 'border-red-200 text-red-600 hover:bg-red-50 hover:border-re
 
 interface Mensagem { tipo: 'sucesso' | 'erro'; texto: string }
 // Senha provisória revelada após reset (mostrada uma vez ao admin).
-interface Revelado { email: string; valor: string }
+interface Revelado { email: string; valor: string; emailEnviado: boolean }
 
 function BadgeStatus({ usuario }: { usuario: UsuarioAdmin }) {
   // Badges em tokens SEMÂNTICOS (v4.18/M4): verde success (Ativo), âmbar warning (Pendente).
@@ -109,7 +109,7 @@ export function AbaUsuarios({
     startTransition(async () => {
       const res = await resetarSenha(usuario.user_id)
       if (res.ok) {
-        setRevelado({ email: usuario.email, valor: res.senha })
+        setRevelado({ email: usuario.email, valor: res.senha, emailEnviado: res.emailEnviado })
         setCopiado(false)
         try { await navigator.clipboard.writeText(res.senha); setCopiado(true) } catch { /* painel copiável abaixo */ }
       } else {
@@ -185,6 +185,12 @@ export function AbaUsuarios({
             Senha provisória de <span className="font-medium">{revelado.email}</span> — repasse à pessoa.
             Ela troca no próximo acesso. Não será mostrada de novo.
           </p>
+          {/* v4.24.0 — aviso de envio (a senha aparece sempre abaixo, fallback). */}
+          {revelado.emailEnviado ? (
+            <p className="text-xs text-emerald-700 mb-2">Enviada por e-mail para {revelado.email}.</p>
+          ) : (
+            <p className="text-xs text-amber-700 mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
+          )}
           <div className="flex items-center gap-2">
             <input
               readOnly value={revelado.valor} onFocus={e => e.currentTarget.select()}

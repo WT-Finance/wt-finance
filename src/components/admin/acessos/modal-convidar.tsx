@@ -19,6 +19,7 @@ const INPUT_CLASSES =
 interface Sucesso {
   email: string
   senha: string
+  emailEnviado: boolean
 }
 
 export function ModalConvidar({
@@ -52,7 +53,7 @@ export function ModalConvidar({
       setErro(res.erro)
       return
     }
-    setSucesso({ email: res.email, senha: res.senha })
+    setSucesso({ email: res.email, senha: res.senha, emailEnviado: res.emailEnviado })
     router.refresh()
   }
 
@@ -139,6 +140,17 @@ export function ModalConvidar({
           <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             Usuário <span className="font-medium">{sucesso.email}</span> criado.
           </div>
+
+          {/* v4.24.0 — aviso de envio; a senha é exibida SEMPRE abaixo (fallback). */}
+          {sucesso.emailEnviado ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              A senha provisória foi enviada por e-mail para <span className="font-medium">{sucesso.email}</span>.
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Não foi possível enviar o e-mail — copie a senha abaixo e repasse à pessoa.
+            </div>
+          )}
 
           <div>
             <label htmlFor="criar-senha" className="block text-xs font-medium text-zinc-600 mb-1">
