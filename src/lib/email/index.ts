@@ -1,7 +1,8 @@
 import 'server-only'
 import nodemailer from 'nodemailer'
-import { getConfigSmtp } from './config'
+import { getConfigSmtp, getAppBaseUrl } from './config'
 import { templateSenhaProvisoria, type TipoSenha } from './template'
+import { LOGO_CID, LOGO_WELCOME_GROUP_PNG_BASE64 } from './logo'
 
 // v4.24.0 — Camada ÚNICA de envio de senha provisória (criação + reset; no futuro,
 // notificações de Solicitações reusam esta camada com novos templates). Chamada
@@ -32,9 +33,19 @@ export async function enviarSenhaProvisoria(input: {
       socketTimeout:     10_000,
     })
     const { assunto, html, text } = templateSenhaProvisoria({
-      nome: input.nome, senha: input.senha, tipo: input.tipo,
+      nome: input.nome, senha: input.senha, tipo: input.tipo, linkAcesso: getAppBaseUrl(),
     })
-    await transporter.sendMail({ from: cfg.from, to: input.para, subject: assunto, html, text })
+    await transporter.sendMail({
+      from: cfg.from, to: input.para, subject: assunto, html, text,
+      // Logo embutido via CID (não data-URI): attachment MIME referenciado por cid:welcome-logo
+      // no <img> do template — compatível com Outlook. Bytes vêm do bundle (logo.ts), não de public/.
+      attachments: [{
+        filename:    'welcome-group.png',
+        content:     Buffer.from(LOGO_WELCOME_GROUP_PNG_BASE64, 'base64'),
+        cid:         LOGO_CID,
+        contentType: 'image/png',
+      }],
+    })
     return true
   } catch (err) {
     console.error('[email] falha ao enviar senha provisória — seguindo com fallback (senha na tela):', err)

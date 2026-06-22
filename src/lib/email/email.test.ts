@@ -10,7 +10,7 @@ vi.mock('nodemailer', () => ({
 }))
 
 import { templateSenhaProvisoria } from './template'
-import { getConfigSmtp, _resetConfigSmtpCache } from './config'
+import { getConfigSmtp, getAppBaseUrl, _resetConfigSmtpCache } from './config'
 import { enviarSenhaProvisoria } from './index'
 
 const CHAVES_SMTP = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'] as const
@@ -52,6 +52,22 @@ describe('templateSenhaProvisoria — criação × reset', () => {
     expect(t.html).toContain('&lt;b&gt;')
     expect(t.html).not.toContain('<b>x</b>')
   })
+
+  it('embute o logo via CID com alt text (logo substitui o título tipográfico)', () => {
+    const t = templateSenhaProvisoria({ senha: 'x', tipo: 'criacao' })
+    expect(t.html).toContain('cid:welcome-logo')
+    expect(t.html).toContain('alt=')
+    expect(t.html).toContain('Welcome Group')
+  })
+
+  it('botão "Acessar a plataforma" aparece só com linkAcesso (html e text)', () => {
+    const com = templateSenhaProvisoria({ senha: 'x', tipo: 'criacao', linkAcesso: 'https://app.exemplo.com' })
+    expect(com.html).toContain('Acessar a plataforma')
+    expect(com.html).toContain('https://app.exemplo.com')
+    expect(com.text).toContain('https://app.exemplo.com')
+    const sem = templateSenhaProvisoria({ senha: 'x', tipo: 'criacao' })
+    expect(sem.html).not.toContain('Acessar a plataforma')
+  })
 })
 
 describe('getConfigSmtp — fallback-safe (config opcional)', () => {
@@ -75,6 +91,22 @@ describe('getConfigSmtp — fallback-safe (config opcional)', () => {
     process.env.SMTP_HOST = 'h'; process.env.SMTP_USER = 'u'
     _resetConfigSmtpCache()
     expect(getConfigSmtp()).toBeNull()
+  })
+})
+
+describe('getAppBaseUrl — da config, nunca hardcoded', () => {
+  beforeEach(() => { delete process.env.APP_BASE_URL; delete process.env.VERCEL_PROJECT_PRODUCTION_URL })
+
+  it('APP_BASE_URL definido → retorna sem barra final', () => {
+    process.env.APP_BASE_URL = 'https://wt.exemplo.com/'
+    expect(getAppBaseUrl()).toBe('https://wt.exemplo.com')
+  })
+  it('sem APP_BASE_URL → cai em VERCEL_PROJECT_PRODUCTION_URL (prefixa https)', () => {
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = 'wt-finance.vercel.app'
+    expect(getAppBaseUrl()).toBe('https://wt-finance.vercel.app')
+  })
+  it('nenhuma env → null (botão omitido, e-mail segue válido)', () => {
+    expect(getAppBaseUrl()).toBeNull()
   })
 })
 
