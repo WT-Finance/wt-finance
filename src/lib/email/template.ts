@@ -1,7 +1,9 @@
-// v4.24.0 — Template do e-mail de senha provisória (criação / reset administrativo).
-// Identidade sóbria Welcome, estilos INLINE (clientes de e-mail exigem) e SEM
-// dependência externa de imagem. Deixa claro que a senha é PROVISÓRIA e que será
-// trocada no primeiro acesso. Função pura — parametrizada por `tipo`.
+// v4.24.2 — Template do e-mail de senha provisória (criação / reset administrativo).
+// Layout em TABELAS + estilos INLINE (robusto no Outlook, que usa o motor do Word):
+// logo transparente centralizado, botão real em CÉLULA DE TABELA (o Outlook ignora
+// `background` em <a> inline) e cartão FLUIDO (width:100% + max-width) com media query
+// para telas pequenas. Logo via CID (sem dependência externa; ver index.ts). Função
+// pura — parametrizada por `tipo` e `linkAcesso`.
 
 import { LOGO_CID } from './logo'
 
@@ -14,10 +16,15 @@ export interface TemplateSenha {
 }
 
 const APP_NOME = 'WT Finance'
-const COR_TITULO  = '#1A1814'
-const COR_DOURADO = '#BD965C'
-const COR_TEXTO   = '#4B4F54'
-const COR_SUAVE   = '#75777B'
+// Paleta sóbria Welcome (hex inline — e-mail não aceita CSS var). Derivada dos tokens do DS.
+const COR_TITULO   = '#1A1814'   // preto WT — saudação, botão, senha
+const COR_TEXTO    = '#4B4F54'   // corpo
+const COR_LABEL    = '#75777B'   // rótulo "Senha provisória"
+const COR_TENUE    = '#9A9CA0'   // rodapé / nota discreta
+const COR_LINHA    = '#E0DDD5'   // divisória (cinza claro)
+const COR_BORDA    = '#ECEAE4'   // bordas do cartão / caixa da senha
+const COR_FUNDO    = '#F4F4F2'   // fundo da página
+const COR_SENHA_BG = '#FAF8F4'   // fundo da caixa da senha
 
 function escaparHtml(s: string): string {
   return s
@@ -54,38 +61,62 @@ export function templateSenhaProvisoria(input: {
     'Se você não esperava este e-mail, ignore-o ou fale com o administrador.\n\n' +
     `— ${APP_NOME}`
 
-  // Botão "Acessar a plataforma" — só quando há URL base (config). Cor sóbria (preto WT).
-  const botaoHtml = linkAcesso
-    ? `<div style="text-align:center;margin:0 0 20px;">
-        <a href="${escaparHtml(linkAcesso)}" style="display:inline-block;background:${COR_TITULO};color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold;padding:11px 24px;border-radius:8px;">Acessar a plataforma</a>
-      </div>`
+  // CTA "Acessar a plataforma" — só com URL base (config). Botão em CÉLULA DE TABELA
+  // (bgcolor + link dentro), porque o Outlook ignora `background` em <a> inline.
+  const botaoLinha = linkAcesso
+    ? `<tr><td class="em-pad" align="center" style="padding:28px 40px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:8px;">
+            <a href="${escaparHtml(linkAcesso)}" style="display:inline-block;padding:13px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">Acessar a plataforma</a>
+          </td></tr>
+        </table>
+      </td></tr>`
     : ''
 
-  // Logo Welcome Group embutido via CID (cid:welcome-logo) — anexado em index.ts. alt text
-  // garante e-mail legível mesmo sem renderizar a imagem. O logo já contém o nome (sem título).
+  // Logo Welcome Group transparente, centralizado, embutido via CID (anexo em index.ts).
+  // alt text garante leitura mesmo sem render. O logo já contém o nome (sem título tipográfico).
   const html =
-`<div style="margin:0;padding:0;background:#f4f4f2;">
-  <div style="max-width:480px;margin:0 auto;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
-    <div style="background:#ffffff;border-radius:12px;padding:32px;border:1px solid #ece9e3;">
-      <img src="cid:${LOGO_CID}" alt="WT Finance — Welcome Group" width="160" style="display:block;margin:0 auto;height:auto;border:0;" />
-      <div style="height:1px;background:${COR_DOURADO};opacity:0.5;margin:20px 0 24px;"></div>
-      <p style="font-size:15px;color:${COR_TITULO};margin:0 0 12px;">${escaparHtml(saudacao)},</p>
-      <p style="font-size:14px;line-height:1.6;color:${COR_TEXTO};margin:0 0 20px;">${intro}</p>
-      <div style="background:#faf8f4;border:1px solid #ece9e3;border-radius:8px;padding:16px;text-align:center;margin:0 0 20px;">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${COR_SUAVE};margin-bottom:6px;">Senha provisória</div>
-        <div style="font-family:'Courier New',monospace;font-size:20px;font-weight:bold;color:${COR_TITULO};letter-spacing:0.04em;word-break:break-all;">${escaparHtml(senha)}</div>
-      </div>
-      ${botaoHtml}
-      <p style="font-size:13px;line-height:1.6;color:${COR_TEXTO};margin:0 0 8px;">
-        Por segurança, você deverá <strong>definir uma nova senha no primeiro acesso</strong>.
-      </p>
-      <p style="font-size:12px;line-height:1.6;color:${COR_SUAVE};margin:16px 0 0;">
-        Se você não esperava este e-mail, ignore-o ou fale com o administrador.
-      </p>
-    </div>
-    <p style="font-size:11px;color:${COR_SUAVE};text-align:center;margin:16px 0 0;">${APP_NOME} · Welcome Group</p>
-  </div>
-</div>`
+`<style>
+  @media only screen and (max-width:480px) {
+    .em-card  { width:100% !important; }
+    .em-pad   { padding-left:24px !important; padding-right:24px !important; }
+    .em-senha { font-size:20px !important; letter-spacing:1px !important; }
+  }
+</style>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:${COR_FUNDO};font-family:Arial,Helvetica,sans-serif;">
+  <tr><td align="center" style="padding:40px 12px;">
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid ${COR_BORDA};border-radius:14px;">
+      <tr><td class="em-pad" align="center" style="padding:38px 40px 0;">
+        <img src="cid:${LOGO_CID}" alt="WT Finance — Welcome Group" width="184" style="display:block;width:184px;max-width:184px;height:auto;border:0;margin:0 auto;" />
+      </td></tr>
+      <tr><td class="em-pad" style="padding:26px 40px 0;">
+        <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:24px 40px 0;">
+        <p style="margin:0 0 10px;font-size:16px;color:${COR_TITULO};">${escaparHtml(saudacao)},</p>
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">${intro}</p>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:22px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:10px;">
+          <tr><td align="center" style="padding:22px 16px;">
+            <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:10px;">Senha provisória</div>
+            <div class="em-senha" style="font-family:'Courier New',Consolas,monospace;font-size:23px;font-weight:bold;color:${COR_TITULO};letter-spacing:2px;word-break:break-all;">${escaparHtml(senha)}</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      ${botaoLinha}
+      <tr><td class="em-pad" style="padding:30px 40px 0;">
+        <p style="margin:0;font-size:13px;line-height:1.65;color:${COR_TEXTO};">Por segurança, você deverá definir uma nova senha no primeiro acesso.</p>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:12px 40px 38px;">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:${COR_TENUE};">Se você não esperava este e-mail, ignore-o ou fale com o administrador.</p>
+      </td></tr>
+    </table>
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
+      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">WT&nbsp;FINANCE&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
+    </table>
+  </td></tr>
+</table>`
 
   return { assunto, html, text }
 }
