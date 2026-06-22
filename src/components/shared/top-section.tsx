@@ -10,7 +10,7 @@ export default function TopSection({ titulo, subtitulo, children }: Props) {
   return (
     <details open className="group mb-8">
       <summary
-        className="relative flex items-center gap-3 px-6 py-4.5 mb-6 cursor-pointer list-none select-none transition-all hover:brightness-95"
+        className="relative flex items-center gap-3 px-6 py-4.5 mb-6 cursor-pointer list-none select-none rounded-xl overflow-hidden transition-all hover:brightness-95"
         style={{ background: 'var(--brand-soft)' }}
       >
         <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full" style={{ background: 'var(--brand)' }} />
