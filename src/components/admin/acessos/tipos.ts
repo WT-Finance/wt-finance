@@ -53,7 +53,8 @@ export type ResultadoCriarUsuario =
   | { ok: true; email: string; senha: string; emailEnviado: boolean }
   | { ok: false; erro: string }
 
-/** Reset de senha: nova senha provisória para exibir ao admin. */
+/** Reset de senha: nova senha provisória para exibir ao admin.
+ *  v4.24.0 — emailEnviado: a senha também foi enviada por e-mail? (false = fallback). */
 export type ResultadoSenha =
-  | { ok: true; senha: string }
+  | { ok: true; senha: string; emailEnviado: boolean }
   | { ok: false; erro: string }
