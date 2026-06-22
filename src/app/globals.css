@@ -138,8 +138,10 @@ body {
 }
 .card-clicavel-neutra:hover,
 .card-clicavel-neutra:focus-visible {
-  border-color: var(--action-primary);
-  box-shadow: 0 0 0 1px var(--action-primary), 0 4px 12px -2px color-mix(in srgb, var(--action-primary) 30%, transparent);
+  /* v4.24.1 — realce SUAVE do DS (--action-soft-border, cinza) em vez do --action-primary
+     (charcoal), que lia como "borda preta crua" no hover da caixa de solicitação. */
+  border-color: var(--action-soft-border);
+  box-shadow: 0 0 0 1px var(--action-soft-border), 0 4px 12px -2px color-mix(in srgb, var(--action-soft-border) 30%, transparent);
   outline: none;
 }
 

@@ -116,7 +116,7 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
         {aberta ? (
           <button type="button" disabled={!podeConcluir || concluindo} onClick={e => onConcluir(s.id, e)} aria-label="Concluir"
             title={podeConcluir ? 'Concluir' : 'Sem permissão para concluir'}
-            className={`foco-neutro relative before:absolute before:-inset-1 before:content-[''] mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${podeConcluir ? 'border-zinc-400 hover:border-emerald-500 hover:bg-emerald-50' : 'border-zinc-200'}`}>
+            className={`foco-neutro relative before:absolute before:-inset-1 before:content-[''] mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${podeConcluir ? 'border-zinc-400 hover:border-success hover:bg-success-bg' : 'border-zinc-200'}`}>
             {concluindo && <Loader2 size={10} className="animate-spin" />}
           </button>
         ) : (
