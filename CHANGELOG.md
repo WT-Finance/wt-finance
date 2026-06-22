@@ -6,6 +6,15 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.24.0] — 2026-06-22
+
+MINOR: **Envio da senha provisória por e-mail no fluxo de acesso (criação + reset administrativo).** Sem migration. ADR-0127.
+
+- **Camada de e-mail reutilizável** (`src/lib/email/`, server-only): `config.ts` lê `SMTP_*` de `process.env` (fallback-safe — retorna `null` sem config, nunca lança); `template.ts` gera o e-mail de senha provisória (criação/reset, identidade sóbria, estilos inline, sem imagem externa); `index.ts` `enviarSenhaProvisoria()` usa `nodemailer` com timeout curto (~10s) e **retorna `boolean`, nunca lança**. Dep nova: `nodemailer`. Chaves `SMTP_*` no `.env.example` (só as chaves).
+- **Plugada na criação e no reset** (`actions.ts`): `criarUsuario`/`resetarSenha` chamam a camada em try/catch e estendem o retorno com `emailEnviado`. As 3 UIs (`modal-convidar`, `aba-usuarios`, `aba-solicitacoes`) exibem a senha **sempre** + aviso (enviada por e-mail | envio falhou — copie e repasse). O destinatário do reset vem do registro do Auth, não de input do cliente.
+- **Fallback-safe (invariante central):** SMTP indisponível/erro/config ausente → criar e resetar continuam e a senha segue exibida (copiável). **Zero hardcode** de credencial/remetente — só `.env.local`/Vercel. As `SMTP_*` precisam estar também na Vercel: runbook `docs/runbooks/v4-24-email-runbook.md`.
+- **Teste** `email.test.ts`: template criação×reset, escape de HTML do nome, config fallback, envio fallback/sucesso/erro (SMTP mockado).
+
 ## [4.23.3] — 2026-06-19
 
 Patch: **Ajustes finos do drawer de importação + persistência dos filtros do Fluxo de Caixa Gerencial.** Sem migration.

@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.24.0',
+    data: '2026-06-22T13:58',
+    itens: [
+      { tipo: 'novidade', texto: 'Ao criar um usuário ou redefinir a senha de alguém em Acessos, o sistema agora envia a senha provisória por e-mail automaticamente para a pessoa — não é mais preciso repassá-la apenas à mão.' },
+      { tipo: 'melhoria', texto: 'A senha provisória continua aparecendo na tela (copiável) em todos os casos: se o e-mail não puder ser enviado, um aviso indica isso e você repassa manualmente, como antes. O envio é um complemento e nunca impede criar ou redefinir o acesso.' },
+    ],
+  },
+  {
     versao: '4.23.3',
     data: '2026-06-19T17:32',
     itens: [
