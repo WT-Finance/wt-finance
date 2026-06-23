@@ -173,7 +173,7 @@ export function templateNotificacaoSolicitacao(input: {
 
   const justLinha = just
     ? `<tr><td class="em-pad" style="padding:16px 40px 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:8px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:12px;">
           <tr><td style="padding:14px 16px;">
             <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:6px;">Justificativa</div>
             <div style="font-size:14px;line-height:1.6;color:${COR_TEXTO};">${escaparHtml(just)}</div>
@@ -187,7 +187,7 @@ export function templateNotificacaoSolicitacao(input: {
   const botaoLinha = link
     ? `<tr><td class="em-pad" align="center" style="padding:26px 40px 0;">
         <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
-          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:8px;padding:14px 34px;">
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:12px;padding:14px 34px;">
             <a href="${escaparHtml(link)}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Acessar a plataforma</a>
           </td></tr>
         </table>
@@ -211,7 +211,7 @@ export function templateNotificacaoSolicitacao(input: {
         <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
       </td></tr>
       <tr><td class="em-pad" style="padding:26px 40px 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-left:3px solid ${cor};border-radius:8px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-left:3px solid ${cor};border-radius:12px;">
           <tr><td style="padding:16px 18px;">
             <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${cor};font-weight:bold;margin-bottom:7px;">Solicitação ${mov}</div>
             <div style="font-size:18px;font-weight:bold;line-height:1.4;color:${COR_TITULO};">${escaparHtml(titulo)}</div>
