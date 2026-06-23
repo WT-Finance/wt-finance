@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import noCoercaoReimpl from "./eslint-rules/no-coercao-reimpl.mjs";
 
 // A3 (v4.17.0): guarda da convenção do CLAUDE.md — token CSS em classe Tailwind é
 // `[var(--token)]`, NUNCA `[--token]` (forma v3 que o Tailwind 4 compila para CSS
@@ -72,6 +73,8 @@ const wtPlugin = {
   rules: {
     "no-tailwind-var-shorthand": tokenVarShorthandRule,
     "no-cor-hardcoded": corHardcodedRule,
+    // v4.27 (ADR-0130): coerção de número só em @/lib/carga/coercao (AST, ver eslint-rules/).
+    "no-coercao-reimpl": noCoercaoReimpl,
   },
 };
 
@@ -84,13 +87,22 @@ const eslintConfig = defineConfig([
     rules: {
       "wt/no-tailwind-var-shorthand": "error",
       "wt/no-cor-hardcoded": "error",
+      "wt/no-coercao-reimpl": "error",
     },
   },
   {
     // E-mail: hex inline é obrigatório (Outlook não resolve CSS var) → isenta a regra de cor.
     files: ["src/lib/email/**/*.{ts,tsx}"],
     plugins: { wt: wtPlugin },
-    rules: { "wt/no-cor-hardcoded": "off" },
+    rules: { "wt/no-cor-hardcoded": "off", "wt/no-coercao-reimpl": "off" },
+  },
+  {
+    // Coerção: coercao.ts é a IMPLEMENTAÇÃO canônica; os testes carregam padrões de
+    // coerção de propósito (oráculo congelado parseValorMonetarioLegado, sonda da regra).
+    // Ambos isentos da regra de reimplementação. (v4.27/ADR-0130)
+    files: ["src/lib/carga/coercao.ts", "**/*.test.ts"],
+    plugins: { wt: wtPlugin },
+    rules: { "wt/no-coercao-reimpl": "off" },
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
