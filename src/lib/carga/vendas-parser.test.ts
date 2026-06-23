@@ -105,3 +105,29 @@ describe('parseVendasRows — paridade de colunas dos dois caminhos de ingestão
     expect(parseVendasRows([], 'f').linhas).toHaveLength(0)
   })
 })
+
+describe('parseVendasRows — valor_total/receitas pelo toNum canônico (M1, v4.27)', () => {
+  // O caminho vivo entrega NÚMERO NATIVO (sheet_to_json header:1) → a saída string
+  // numérica (paridade do staging ::numeric) é idêntica à do toNumStr antigo. A troca
+  // só GANHA robustez no caso de string BR com milhar, que o toNumStr ingênuo
+  // (Number(String(v).replace(',','.'))) corrompia silenciosamente.
+  const H = ['Venda Nº', 'Valor Total', 'Receitas']
+
+  it('número nativo → string numérica (paridade do staging, inalterado)', () => {
+    const { linhas } = parseVendasRows([H, ['V1', 8840, 1234.56]], 'f')
+    expect(linhas[0].valor_total).toBe('8840')
+    expect(linhas[0].receitas).toBe('1234.56')
+  })
+
+  it('string BR com milhar → robusto (o toNumStr ingênuo dava 8.84 / NaN)', () => {
+    const { linhas } = parseVendasRows([H, ['V2', '8.840,00', 'R$ 1.234,56']], 'f')
+    expect(linhas[0].valor_total).toBe('8840')
+    expect(linhas[0].receitas).toBe('1234.56')
+  })
+
+  it('vazio/nulo/inválido → null', () => {
+    const { linhas } = parseVendasRows([H, ['V3', '', null]], 'f')
+    expect(linhas[0].valor_total).toBeNull()
+    expect(linhas[0].receitas).toBeNull()
+  })
+})

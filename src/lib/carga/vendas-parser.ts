@@ -12,6 +12,11 @@
 // vínculo NULL e regredir SILENCIOSAMENTE a correção da v4.9.x (convidados zeram,
 // datas de evento somem, faturamento das operações volta a errar). Um único parser
 // tolerante (casamento de cabeçalho insensível a acento/caixa/espaço) fecha a porta.
+//
+// Coerção numérica vem do módulo CANÔNICO (@/lib/carga/coercao) — nunca um toNum
+// local. O toNumStr ingênuo que vivia aqui (Number(String(v).replace(',','.')))
+// corrompia BR com milhar ("8.840,00" → 8.84); o toNum desambigua BR/US. (v4.27)
+import { toNum } from './coercao'
 
 export interface VendaProdutoRaw {
   arquivo_origem:     string
@@ -112,13 +117,6 @@ function toBoolean(v: unknown): string | null {
   return null
 }
 
-function toNumStr(v: unknown): string | null {
-  if (v === null || v === undefined || v === '') return null
-  const s = String(v).replace(',', '.').trim()
-  const n = parseFloat(s)
-  return isNaN(n) ? null : String(n)
-}
-
 function toStr(v: unknown): string | null {
   if (v === null || v === undefined) return null
   const s = String(v).trim()
@@ -167,8 +165,14 @@ export function parseVendasRows(
         case 'data_inicio_evento': linha[campo]        = toIsoDate(v); break
         case 'contrato':           linha.contrato      = toBoolean(v); break
         case 'taxa_servico':       linha.taxa_servico  = toBoolean(v); break
-        case 'valor_total':        linha.valor_total   = toNumStr(v);  break
-        case 'receitas':           linha.receitas      = toNumStr(v);  break
+        // valor_total/receitas viajam como STRING numérica (o staging casta
+        // ::numeric) — coerção canônica via toNum, depois String p/ a paridade.
+        case 'valor_total':
+        case 'receitas': {
+          const n = toNum(v)
+          ;(linha as Record<string, string | null>)[campo] = n === null ? null : String(n)
+          break
+        }
         case 'semana':             linha.semana = v !== null && v !== '' ? String(Math.round(Number(v))) : null; break
         default:                   (linha as Record<string, string | null>)[campo] = toStr(v)
       }
