@@ -9,7 +9,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   await requireArea(null)
   return (
     <div>
-      <div className="border-b border-[var(--color-border-tertiary,#e4e4e7)] bg-white px-6 py-3 mb-6">
+      {/* Faixa de seção FULL-BLEED encostada no topo da tela. O <main> do AppShell tem
+          py-8 (respiro vertical único do projeto, v4.16.1); o -mt-8 cancela SÓ o
+          padding-top do main para a faixa colar no limite superior (sem o gap estranho),
+          preservando o respiro inferior. Vale p/ todas as páginas /admin/*. */}
+      <div className="-mt-8 border-b border-[var(--color-border-tertiary,#e4e4e7)] bg-white px-6 py-3 mb-6">
         <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted,#75777B)]">
           Administração
         </p>

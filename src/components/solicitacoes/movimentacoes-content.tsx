@@ -24,15 +24,17 @@ const PARTICIPIO: Record<string, string> = {
 }
 const participio = (acao: string) => PARTICIPIO[acao] ?? acao.toLowerCase()
 
-/** Badge por AÇÃO em tokens semânticos (não hex): concluída=success(verde),
- *  rejeitada=danger(vermelho), cancelada=warning(âmbar — desistência, não falha; distinto
- *  do --gestao), aberta=neutra (estado de partida). */
+/** Badge por AÇÃO — paleta COERENTE com o e-mail de notificação (v4.25.1): Abertura=
+ *  dourado, Conclusão=verde(success), Rejeição=vermelho(danger), Cancelamento=cinza.
+ *  O dourado usa --brand (esta é tela de plataforma SEM [data-theme] → --brand=#BD965C
+ *  estável, sem flash); é cor de STATUS deliberada, não identidade de setor. */
 function acaoBadge(acao: string): string {
   switch (acao) {
+    case 'Abertura':     return 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]'
     case 'Conclusão':    return 'border-success bg-success-bg text-success'
     case 'Rejeição':     return 'border-danger bg-danger-bg text-danger'
-    case 'Cancelamento': return 'border-warning bg-warning-bg text-warning'
-    default:             return 'border-zinc-200 bg-zinc-100 text-zinc-500' // Abertura — neutra
+    case 'Cancelamento': return 'border-zinc-200 bg-zinc-100 text-zinc-500'
+    default:             return 'border-zinc-200 bg-zinc-100 text-zinc-500'
   }
 }
 

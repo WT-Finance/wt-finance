@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.25.1] — 2026-06-23
+
+PATCH: **Refino visual do e-mail de notificação de Solicitações** (introduzido na v4.25.0) + **faixa "Administração" colada ao topo**. Migration aditiva (0158, `CREATE OR REPLACE`). Refina ADR-0128 — sem ADR novo.
+
+- **`solic_emails_envolvidos` agora devolve NOMES e DATAS** (0158): `autor_rotulo` e `atribuido_rotulo` = nome do usuário (`coalesce(nullif(btrim(nome),''), email)`) ou nome da role — não mais e-mails crus (que renderizavam como links `mailto:` azuis); `criado_em_fmt`/`decidido_em_fmt` = `'DD/MM/AAAA às HH:MM'` no fuso de São Paulo (`to_char(... AT TIME ZONE 'America/Sao_Paulo')`). Mantém o gate `pode_ver_solic` e o oráculo de existência fechado (RAISE único `NAO_ENCONTRADA`/42501) herdados da 0157.
+- **Layout do e-mail revisto** (`template.ts`): removida a saudação "Olá,"; **data/hora da movimentação** sob o título ("Solicitação criada · 23/06/2026 às 10:04"); **badge de status colorido por movimentação** (criada=dourado `#BD965C`, concluída=verde `#5F7A3D`, rejeitada=vermelho `#A35442`, **cancelada=cinza `#75777B`** — variante nova) com faixa lateral; **botão real** "Acessar a plataforma" com padding na **célula** da tabela (corrige o "tarjado apertado"); "Atribuída a **{nome}**, por **{nome}**" em negrito, **sem a palavra "permissão"**.
+- **Badges da página Movimentações** (`movimentacoes-content.tsx`) **alinhadas à mesma paleta** de status para coerência visual com o e-mail: Abertura→dourado, Conclusão→verde, Rejeição→vermelho, **Cancelamento→cinza** (era âmbar/warning).
+- **Camada/contrato ajustados** ao novo shape: `emailsEnvolvidosSchema` (Zod), `enviarNotificacaoSolicitacao`/`templateNotificacaoSolicitacao` (param `quando`, sem `atribuidoTipo`), `notificarMovimentacao` (deriva `quando` de criado/decidido). Testes de e-mail atualizados (cancelada cinza, sem "permissão", data no corpo).
+- **Cantos arredondados** do card de status, do botão e da caixa de justificativa do e-mail (8px → 12px).
+- **Faixa "Administração" alinhada ao topo da tela** (`admin/layout.tsx`): `-mt-8` cancela o `padding-top` do `<main>` do AppShell, removendo o gap vertical estranho acima da faixa. Vale para todas as páginas `/admin/*` (Usuários e Acessos, Solicitações, Design System, Upload de Arquivos). Respiro inferior preservado.
+
 ## [4.25.0] — 2026-06-22
 
 MINOR: **Notificações por e-mail nas movimentações de Solicitações (tarefas).** Migration aditiva (0156 + 0157). ADR-0128.
