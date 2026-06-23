@@ -77,7 +77,7 @@ export default function CarteiraMartrixCard({ casamentos }: Props) {
                       style={{ backgroundColor: cellBg(linha.ano_venda, ac, v) || undefined }}
                     >
                       {v > 0 ? (
-                        <span className={linha.ano_venda === ac ? 'font-semibold text-amber-700' : 'text-zinc-700'}>
+                        <span className={linha.ano_venda === ac ? 'font-semibold text-warning' : 'text-zinc-700'}>
                           {fmtCelula(v)}
                         </span>
                       ) : (
@@ -114,9 +114,9 @@ export default function CarteiraMartrixCard({ casamentos }: Props) {
         </table>
       </div>
 
-      <p className="mt-3 text-[11px] text-zinc-400">
+      <p className="mt-3 text-2xs text-zinc-400">
         Linhas: ano da venda do Contrato · Colunas: ano da Entrega do casamento · Diagonal{' '}
-        <span className="inline-block w-3 h-2 rounded-sm bg-amber-400/60 align-middle" /> = vendas e entregas no mesmo ano
+        <span className="inline-block w-3 h-2 rounded-sm bg-warning/60 align-middle" /> = vendas e entregas no mesmo ano
       </p>
     </div>
   )

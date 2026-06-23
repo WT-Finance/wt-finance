@@ -94,10 +94,10 @@ function KpiCard({ label, value, sub, tooltip, valueColor }: {
   return (
     <div className="rounded-xl shadow-sm bg-white px-5 py-4">
       <div className="flex items-center gap-1 mb-0.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
+        <p className="text-2xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
         {tooltip && <TooltipIcon text={tooltip} />}
       </div>
-      {sub && <p className="text-[10px] text-zinc-400 mb-3">{sub}</p>}
+      {sub && <p className="text-3xs text-zinc-400 mb-3">{sub}</p>}
       {!sub && <div className="mb-3" />}
       <p className="text-2xl font-bold tabular-nums" style={{ color: valueColor ?? 'var(--text-primary)' }}>{value}</p>
     </div>
@@ -274,7 +274,7 @@ export default async function FluxoCaixaPage({
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div className="rounded-xl shadow-sm bg-white p-5">
                 <CardTitle titulo="Composição dos Lançamentos" subtitulo="no período selecionado" />
-                <p className="text-[11px] text-zinc-400 mb-3 -mt-2">
+                <p className="text-2xs text-zinc-400 mb-3 -mt-2">
                   Decomposição por Grupo de Categoria (Lançamentos — regime contábil). Pode diferir levemente dos KPIs acima, que refletem fluxo bancário real.
                 </p>
                 <ComposicaoPeriodo entradas={entradas} saidas={saidas} categorias={decomposicaoCategorias} />

@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Pencil } from 'lucide-react'
 import { AREA_ADMIN } from '@/lib/auth/areas'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
-import { FaixaMensagem } from './faixa-mensagem'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { ModalRole } from './modal-role'
-import { PILL, PILL_NEUTRO } from './botoes'
+import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 
 // v4.13 — aba Permissões (antes "Roles"): cards de perfis com suas permissões
 // (chips por rótulo) e formulário de criação/edição em modal. Botões em pill.
@@ -85,7 +85,7 @@ export function AbaRoles({
                 {permissoesOrdenadas.map(p => (
                   <span
                     key={p}
-                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-2xs font-medium text-zinc-600"
                     title={p === AREA_ADMIN ? 'Dá acesso à administração de usuários' : undefined}
                   >
                     {rotuloDe(p)}

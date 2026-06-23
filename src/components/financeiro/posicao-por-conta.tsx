@@ -92,7 +92,7 @@ function GrupoRow({ grupo }: { grupo: GrupoData }) {
             {getIcon(grupo.tipo)}
           </span>
           <span className="text-xs font-medium text-zinc-700">{grupo.label}</span>
-          <span className="text-[10px] text-zinc-400">· {grupo.contas.length} {grupo.contas.length === 1 ? 'conta' : 'contas'}</span>
+          <span className="text-3xs text-zinc-400">· {grupo.contas.length} {grupo.contas.length === 1 ? 'conta' : 'contas'}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span
@@ -117,7 +117,7 @@ function GrupoRow({ grupo }: { grupo: GrupoData }) {
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="text-xs text-zinc-700 font-medium truncate">{p.conta}</span>
-                <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] bg-zinc-100 text-zinc-400">
+                <span className="shrink-0 px-1.5 py-0.5 rounded text-3xs bg-zinc-100 text-zinc-400">
                   {getLabel(p.tipo_conta)}
                 </span>
               </div>

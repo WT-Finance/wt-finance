@@ -47,8 +47,6 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --primary: #2563eb;
-  --primary-bg: rgba(37, 99, 235, 0.08);
   --sidebar-bg: #fafafa;
   --sidebar-border: #e4e4e7;
 }
@@ -86,14 +84,68 @@
   --color-warning-bg: var(--warning-bg);
   --color-danger:     var(--danger);
   --color-danger-bg:  var(--danger-bg);
+
+  /* ── v4.26: tokens antes só acessíveis via [var(--token)]/style, agora expostos  */
+  /* como utilitárias (bg-, text-, border-, fill-), para o código parar de misturar */
+  /* a canônica text-text-muted com a forma arbitraria. Aditivo: nao muda nada       */
+  /* renderizado — apenas cria as classes utilitarias.                               */
+
+  /* Fluxo de caixa — paleta dessaturada (ADR-0081) */
+  --color-positive:      var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-positive-deep: var(--positive-deep);
+  --color-negative:      var(--negative);
+  --color-negative-soft: var(--negative-soft);
+  --color-negative-deep: var(--negative-deep);
+  --color-neutral:       var(--neutral);
+  --color-neutral-soft:  var(--neutral-soft);
+
+  /* Plataforma neutra (Group) — ADR-0103 */
+  --color-action-primary:     var(--action-primary);
+  --color-action-primary-fg:  var(--action-primary-fg);
+  --color-action-soft:        var(--action-soft);
+  --color-action-soft-border: var(--action-soft-border);
+  --color-action-soft-fg:     var(--action-soft-fg);
+
+  /* Ação administrativa (gestão) — âmbar de supervisão */
+  --color-gestao:      var(--gestao);
+  --color-gestao-soft: var(--gestao-soft);
+  --color-gestao-fg:   var(--gestao-fg);
+
+  /* Identidade de setor macro (gráficos cross-setor) */
+  --color-setor-lazer:       var(--setor-lazer);
+  --color-setor-weddings:    var(--setor-weddings);
+  --color-setor-corporativo: var(--setor-corporativo);
+
+  /* Subsetores Weddings */
+  --color-subsetor-comercial:    var(--subsetor-comercial);
+  --color-subsetor-planejamento: var(--subsetor-planejamento);
+  --color-subsetor-producao:     var(--subsetor-producao);
+  --color-subsetor-hospedagens:  var(--subsetor-hospedagens);
+  --color-subsetor-extras:       var(--subsetor-extras);
+
+  /* Gráfico — eixos/grid/séries (ADR-0090) + cash-flow identidade Welcome */
+  --color-chart-axis-tick:     var(--chart-axis-tick);
+  --color-chart-grid:          var(--chart-grid);
+  --color-chart-success:       var(--chart-success);
+  --color-chart-warning:       var(--chart-warning);
+  --color-chart-danger:        var(--chart-danger);
+  --color-chart-neutral:       var(--chart-neutral);
+  --color-chart-info:          var(--chart-info);
+  --color-chart-fluxo-entrada: var(--chart-fluxo-entrada);
+  --color-chart-fluxo-saida:   var(--chart-fluxo-saida);
+
+  /* Micro-texto — escala abaixo de text-xs (12px), p/ badges/tabelas densas.       */
+  /* Em PX (não rem) → byte-equivalente EXATO a text-[11px]/text-[10px] que ele      */
+  /* substitui (sem line-height pareada → só font-size, igual ao arbitrário). v4.26  */
+  --text-2xs: 11px;
+  --text-3xs: 10px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
-    --primary: #3b82f6;
-    --primary-bg: rgba(59, 130, 246, 0.12);
     --sidebar-bg: #111111;
     --sidebar-border: #27272a;
   }

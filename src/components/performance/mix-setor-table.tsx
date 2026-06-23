@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import type { MixSetor } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
-import { margemColor } from '@/lib/config'
+import { margemColor, SETOR_COLORS } from '@/lib/config'
 
 function fmtPP(v: number | null) {
   if (v == null) return '—'
@@ -78,7 +78,7 @@ export default function MixSetorTable({ data, loading, margemAlvo, preset = 'est
                       onClick={() => router.push(`/performance?setor=${s.setor_macro}&preset=${preset}`)}
                       title={`Filtrar por ${s.display_nome}`}
                     >
-                      <td className="py-2 px-3 font-medium" style={{ color: s.cor_hex }}>
+                      <td className="py-2 px-3 font-medium" style={{ color: SETOR_COLORS[s.setor_macro] ?? 'var(--chart-neutral)' }}>
                         {s.display_nome}
                       </td>
                       <td className="py-2 px-3 text-right tabular-nums text-zinc-700">

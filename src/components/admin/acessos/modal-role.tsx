@@ -8,8 +8,8 @@ import Checkbox from '@/components/ui/checkbox'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ModalCentral from '@/components/shared/modal-central'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
-import { CAMPO } from '@/lib/ui/campos'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import { Input, Textarea } from '@/components/ui/field'
 
 // v4.13 — formulário de permissão/perfil (criar/editar): nome, descrição e
 // checkboxes de áreas agrupadas (Geral/Performance/Financeiro/Administração).
@@ -110,7 +110,7 @@ export function ModalRole({
         onClose={onFechar}
       >
         {erro && (
-          <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div role="alert" className="mb-4 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
             {erro}
           </div>
         )}
@@ -118,9 +118,9 @@ export function ModalRole({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="role-nome" className="block text-xs font-medium text-zinc-600 mb-1">
-              Nome <span className="text-red-500" aria-hidden="true">*</span>
+              Nome <span className="text-danger" aria-hidden="true">*</span>
             </label>
-            <input
+            <Input
               id="role-nome"
               type="text"
               required
@@ -128,7 +128,6 @@ export function ModalRole({
               value={nome}
               onChange={e => setNome(e.target.value)}
               placeholder="Ex.: Gestora Weddings"
-              className={CAMPO}
             />
           </div>
 
@@ -136,13 +135,13 @@ export function ModalRole({
             <label htmlFor="role-descricao" className="block text-xs font-medium text-zinc-600 mb-1">
               Descrição
             </label>
-            <textarea
+            <Textarea
               id="role-descricao"
               rows={2}
               value={descricao}
               onChange={e => setDescricao(e.target.value)}
               placeholder="Para que serve esta permissão"
-              className={`${CAMPO} resize-none`}
+              className="resize-none"
             />
           </div>
 
@@ -151,7 +150,7 @@ export function ModalRole({
             <div className="space-y-3 rounded-lg border border-zinc-200 p-3">
               {grupos.map(({ grupo, itens }) => (
                 <fieldset key={grupo}>
-                  <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">
                     {grupo}
                   </legend>
                   <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">

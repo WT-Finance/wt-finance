@@ -6,6 +6,22 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.26.0] — 2026-06-23
+
+MINOR: **Base do Design System — consolidação, guard-rails e biblioteca de primitivos.** Sem migration (frontend/tooling). **ADR-0129** (operacionaliza o 0103). Empreitada em duas fases (A: base anti-regressão → checkpoint → B: primitivos). Invariante: **consolidar a referência, não mudar o pixel.**
+
+### Fase A — base anti-regressão
+- **Cor de setor 4→1**: `tokens.css --setor-*` vira a fonte única; os 3 gráficos hardcoded (historico-12m, RitmoDiario, HistoricoMensal) e `mix-setor-chart`/`mix-setor-table` passam a referenciar `SETOR_COLORS` (config). O DB `dim_setor_macro.cor_hex` deixa de renderizar (valores idênticos → pixel intacto).
+- **`@theme` expõe** positive/negative/neutral, action-*, gestao*, setor-*, subsetor-*, chart-* como utilitárias. **Micro-texto** `--text-2xs` (11px)/`--text-3xs` (10px). **Removido o `--primary` azul legado** (`#2563eb`): ênfase → `--brand-deep`, série principal → `--brand`.
+- **~126 cores cruas → tokens** (emerald/green→success, red→danger, amber/yellow→warning, blue de plataforma→action-*/focus-ring); auth `#1A1814`→`var(--text-primary)` (correção: o token é `#2D2A26`). ZINC intocado (follow-up).
+- **Guard-rails (ADR-0129):** lint **`wt/no-cor-hardcoded`** (cor crua do Tailwind + hex em classe = erro; zinc permitido; `src/lib/email` isento) + `tokens.test.ts` (protege a fonte da verdade). Reforço no CLAUDE.md.
+
+### Fase B — biblioteca de primitivos
+- **Primitivos canônicos** em `src/components/ui/`: `Button` (variantes sólido/contorno/ghost/ícone/ícone-borda/livre), `Input`/`Select`/`Textarea` (envolvem `CAMPO`/`CAMPO_COMPACTO`), `Badge` (success/danger/warning/brand/gestao/neutro/count), `Tabs` (ARIA tablist), `Tooltip` (dica de UI). Cores via token, foco `.foco-neutro`.
+- **Dedups (byte-equivalentes):** `PILL_BASE` local (5×) → `PILL_FILTRO*` em `shared/botoes`; `ICON_BTN`/`ICON_NEUTRO`/`ICON_PERIGO` (2 arq.) → `<Button variant="icone-borda">`; badge de contagem (2×) → `<Badge variant="count">`; campos `CAMPO`/`CAMPO_COMPACTO` → `<Input>`/`<Select>`/`<Textarea>`. Micro-texto `text-[11px]`/`text-[10px]` → `text-2xs`/`text-3xs` (px, byte-equivalente).
+- **Cheiros:** `FaixaMensagem` e `botoes.ts` movidos `admin/acessos/` → `shared/`. Página `/admin/design-system` e `docs/design-system.md` ressincronizados (`--text-primary #2D2A26`, temas Trips/Corp corretos, primitivos novos).
+- One-offs heterogêneos e o tema de tabs do gerencial ficam como estão (não exato-casamento — go-forward usa os primitivos).
+
 ## [4.25.1] — 2026-06-23
 
 PATCH: **Refino visual do e-mail de notificação de Solicitações** (introduzido na v4.25.0) + **faixa "Administração" colada ao topo**. Migration aditiva (0158, `CREATE OR REPLACE`). Refina ADR-0128 — sem ADR novo.

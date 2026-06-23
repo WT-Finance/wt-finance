@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { ArrowLeft, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react'
 import type { Movimentacao, Solicitacao } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
-import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 import DrawerSolicitacao from './drawer-solicitacao'
 import { detalheSolicitacao } from '@/app/solicitacoes/actions'
@@ -175,7 +175,7 @@ export default function MovimentacoesContent({ movimentacoes, erroCarga }: {
                       <span className="block truncate text-zinc-700" title={m.ator ?? '—'}>{m.ator ?? '—'}</span>
                     </td>
                     <td className="py-2.5 px-3 align-top">
-                      <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${acaoBadge(m.acao)}`}>
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-2xs font-medium whitespace-nowrap ${acaoBadge(m.acao)}`}>
                         {participio(m.acao)}
                       </span>
                     </td>

@@ -7,15 +7,11 @@ import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2 } fro
 import { arquivarTipo, excluirTipo } from '@/app/admin/solicitacoes/actions'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
+import Button from '@/components/ui/button'
 import ModalCentral from '@/components/shared/modal-central'
 import { EditorTipo } from './editor-tipo'
-
-/** Botão de ação da linha em ÍCONE (v4.19.0/M2). Mesmo padrão de aba-usuarios.tsx. */
-const ICON_BTN = 'foco-neutro inline-flex items-center justify-center rounded-md border p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-const ICON_NEUTRO = 'border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700'
-const ICON_PERIGO = 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
 
 // v4.16.0 (spec §2.4 C) — conteúdo client da página Tipos de Solicitação:
 // CTA "Novo tipo", tabela de tipos (arquivados ao final, com chip), ações por
@@ -133,7 +129,7 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
                             {tipo.nome}
                           </span>
                           {tipo.arquivado && (
-                            <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-500">
+                            <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-2xs font-medium text-zinc-500">
                               Arquivado
                             </span>
                           )}
@@ -145,42 +141,42 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
                         {/* Ações da linha em ÍCONE (v4.19.0/M2): Editar · Arquivar/Desarquivar · Excluir.
                             Mesmo padrão da tela irmã aba-usuarios.tsx (ICON_BTN/ICON_NEUTRO/ICON_PERIGO). */}
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
+                          <Button
+                            variant="icone-borda"
+                            tone="neutro"
                             onClick={() => { setMsg(null); setModal({ modo: 'editar', tipo }) }}
                             disabled={linhaOcupada}
                             title="Editar"
                             aria-label={`Editar tipo ${tipo.nome}`}
-                            className={`${ICON_BTN} ${ICON_NEUTRO}`}
                           >
                             <Pencil size={14} />
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            variant="icone-borda"
+                            tone="neutro"
                             onClick={() => handleArquivar(tipo)}
                             disabled={linhaOcupada}
                             title={tipo.arquivado ? 'Desarquivar' : 'Arquivar'}
                             aria-label={tipo.arquivado ? `Desarquivar tipo ${tipo.nome}` : `Arquivar tipo ${tipo.nome}`}
-                            className={`${ICON_BTN} ${ICON_NEUTRO}`}
                           >
                             {linhaOcupada
                               ? <Loader2 size={14} className="animate-spin" />
                               : tipo.arquivado
                                 ? <ArchiveRestore size={14} />
                                 : <Archive size={14} />}
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            variant="icone-borda"
+                            tone="perigo"
                             onClick={() => { setMsg(null); setConfirmarExcluir(tipo) }}
                             disabled={linhaOcupada || tipo.n_solicitacoes > 0}
                             title={tipo.n_solicitacoes > 0
                               ? 'Não é possível excluir: este tipo já possui solicitações. Arquive-o para retirá-lo de uso.'
                               : 'Excluir'}
                             aria-label={`Excluir tipo ${tipo.nome}`}
-                            className={`${ICON_BTN} ${ICON_PERIGO}`}
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>

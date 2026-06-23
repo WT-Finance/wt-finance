@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           padding-top do main para a faixa colar no limite superior (sem o gap estranho),
           preservando o respiro inferior. Vale p/ todas as páginas /admin/*. */}
       <div className="-mt-8 border-b border-[var(--color-border-tertiary,#e4e4e7)] bg-white px-6 py-3 mb-6">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted,#75777B)]">
+        <p className="text-2xs font-medium uppercase tracking-wider text-[var(--text-muted,#75777B)]">
           Administração
         </p>
       </div>

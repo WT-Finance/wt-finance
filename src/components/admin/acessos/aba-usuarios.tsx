@@ -5,17 +5,13 @@ import { useRouter } from 'next/navigation'
 import { Loader2, KeyRound, Trash2, Copy, Check, X, Pencil } from 'lucide-react'
 import { atribuirRole, atualizarNome, resetarSenha, excluirUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin, UsuarioAdmin } from './tipos'
-import { FaixaMensagem } from './faixa-mensagem'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { ModalConvidar } from './modal-convidar'
 import ModalCentral from '@/components/shared/modal-central'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import Button from '@/components/ui/button'
 import { fmtDataHoraSP } from '@/lib/fmt'
-
-/** Botão de ação da linha em ÍCONE (v4.18/M4). Compacto, com aria-label/title. */
-const ICON_BTN = 'foco-neutro inline-flex items-center justify-center rounded-md border p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-const ICON_NEUTRO = 'border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700'
-const ICON_PERIGO = 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
 
 // v4.14.1 — aba Usuários: criar usuário (senha provisória), role inline, status,
 // resetar senha e excluir (com confirmação em modal). Botões no formato pill (botoes.ts).
@@ -37,7 +33,7 @@ function BadgeStatus({ usuario }: { usuario: UsuarioAdmin }) {
       : { classes: 'border-success bg-success-bg text-success', rotulo: 'Ativo' }
 
   return (
-    <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${classes}`}>
+    <span className={`inline-block rounded-full border px-2 py-0.5 text-2xs font-medium whitespace-nowrap ${classes}`}>
       {rotulo}
     </span>
   )
@@ -187,9 +183,9 @@ export function AbaUsuarios({
           </p>
           {/* v4.24.0 — aviso de envio (a senha aparece sempre abaixo, fallback). */}
           {revelado.emailEnviado ? (
-            <p className="text-xs text-emerald-700 mb-2">Enviada por e-mail para {revelado.email}.</p>
+            <p className="text-xs text-success mb-2">Enviada por e-mail para {revelado.email}.</p>
           ) : (
-            <p className="text-xs text-amber-700 mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
+            <p className="text-xs text-warning mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
           )}
           <div className="flex items-center gap-2">
             <input
@@ -253,7 +249,7 @@ export function AbaUsuarios({
                     <p className="font-medium text-zinc-900 truncate" title={nomeExibido}>
                       {nomeExibido}
                       {souEu && (
-                        <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--action-primary)' }}>você</span>
+                        <span className="ml-1.5 text-3xs font-semibold uppercase tracking-wide" style={{ color: 'var(--action-primary)' }}>você</span>
                       )}
                     </p>
                     <p className="text-xs text-zinc-500 truncate" title={usuario.email}>{usuario.email}</p>
@@ -280,35 +276,34 @@ export function AbaUsuarios({
                   <td className="px-3 py-2.5">
                     {/* Ações da linha em ÍCONE (v4.18/M4): Editar nome · Redefinir senha · Excluir. */}
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
+                      <Button
+                        variant="icone-borda"
+                        tone="neutro"
                         onClick={() => abrirEditar(usuario)}
                         disabled={pendente}
                         title="Editar nome"
                         aria-label={`Editar nome de ${usuario.email}`}
-                        className={`${ICON_BTN} ${ICON_NEUTRO}`}
                       >
                         <Pencil size={14} />
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="icone-borda"
+                        tone="neutro"
                         onClick={() => abrirConfirmarReset(usuario)}
                         disabled={pendente}
                         title="Redefinir senha (gera nova provisória; a pessoa troca no próximo acesso)"
                         aria-label={`Redefinir senha de ${usuario.email}`}
-                        className={`${ICON_BTN} ${ICON_NEUTRO}`}
                       >
                         {pendente ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
-                      </button>
+                      </Button>
                       {!souEu && (
-                        <button
-                          type="button" onClick={() => setConfirmarExcluir(usuario)} disabled={pendente}
+                        <Button
+                          variant="icone-borda" tone="perigo" onClick={() => setConfirmarExcluir(usuario)} disabled={pendente}
                           title="Excluir definitivamente (irreversível)"
                           aria-label={`Excluir ${usuario.email}`}
-                          className={`${ICON_BTN} ${ICON_PERIGO}`}
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </td>

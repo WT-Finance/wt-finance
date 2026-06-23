@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { entrar } from './actions'
 import { nextSeguro } from '@/lib/auth/areas'
 import AuthHeader from '@/components/auth/auth-header'
+import { Input } from '@/components/ui/field'
 
 // v4.14 (ADR-0110): login por e-mail + senha. Sem magic link na tela (ele segue
 // existindo só como recuperação, via link gerado pelo admin). "Solicitar acesso"
@@ -31,8 +32,8 @@ export default async function LoginPage({
         <AuthHeader className="flex flex-col items-center mb-7" />
 
         <div className="bg-white rounded-xl shadow-sm px-8 py-9">
-          <h1 className="text-base font-semibold mb-1" style={{ color: '#1A1814' }}>Entrar</h1>
-          <p className="text-sm mb-5" style={{ color: '#75777B' }}>Acesse com seu e-mail corporativo e senha</p>
+          <h1 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Entrar</h1>
+          <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Acesse com seu e-mail corporativo e senha</p>
 
           {mensagemErro && (
             <p
@@ -49,7 +50,7 @@ export default async function LoginPage({
               <label htmlFor="email" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 E-mail
               </label>
-              <input
+              <Input
                 id="email"
                 name="email"
                 type="email"
@@ -57,21 +58,19 @@ export default async function LoginPage({
                 autoComplete="email"
                 autoFocus
                 placeholder="voce@welcometrips.com.br"
-                className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
               />
             </div>
             <div>
               <label htmlFor="senha" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Senha
               </label>
-              <input
+              <Input
                 id="senha"
                 name="senha"
                 type="password"
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
               />
             </div>
             <button

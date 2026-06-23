@@ -10,13 +10,10 @@ import ImportDrawer from './import-drawer'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import { type Conta } from './tipos'
 import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
-
-const PILL_BASE     = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
-const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
-const PILL_ACTIVE   = { background: 'var(--brand-soft)', borderColor: 'var(--brand)', color: 'var(--brand-deep)' }
+import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 
 // Input de filtro por coluna (texto/número/data) — visual discreto, alinhado às pills.
-const FILTRO_INPUT = 'w-full text-[11px] border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-[var(--brand)] placeholder:text-zinc-300'
+const FILTRO_INPUT = 'w-full text-2xs border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-[var(--brand)] placeholder:text-zinc-300'
 
 type TipoFiltro   = 'todos' | 'pagar' | 'receber'
 type OrigemFiltro = 'todos' | 'planilha' | 'manual'
@@ -251,8 +248,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div className="flex gap-2 flex-wrap items-center">
           {(['todos', 'planilha', 'manual'] as OrigemFiltro[]).map(v => (
-            <button key={v} className={[PILL_BASE, origemFiltro === v ? '' : PILL_INACTIVE].join(' ')}
-              style={origemFiltro === v ? PILL_ACTIVE : undefined} onClick={() => mudarOrigem(v)}>
+            <button key={v} className={[PILL_FILTRO_SM, origemFiltro === v ? '' : PILL_FILTRO_INATIVO].join(' ')}
+              style={origemFiltro === v ? PILL_FILTRO_ATIVO_STYLE : undefined} onClick={() => mudarOrigem(v)}>
               {v === 'todos' ? 'Toda origem' : v === 'planilha' ? 'Planilha' : 'Manual'}
             </button>
           ))}
@@ -383,11 +380,11 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
                 <td className="py-1 px-2">
                   <div className="flex gap-1 justify-end">
                     <button onClick={handleSalvarNovo} disabled={isPending}
-                      className="text-[10px] px-1.5 py-0.5 rounded text-white disabled:opacity-50" style={{ background: 'var(--brand)' }}>
+                      className="text-3xs px-1.5 py-0.5 rounded text-white disabled:opacity-50" style={{ background: 'var(--brand)' }}>
                       Salvar
                     </button>
                     <button onClick={() => { setCriando(false); setNovosValores({}) }}
-                      className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-200 text-zinc-400">✕</button>
+                      className="text-3xs px-1.5 py-0.5 rounded border border-zinc-200 text-zinc-400">✕</button>
                   </div>
                 </td>
               </tr>
@@ -408,7 +405,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       </div>
 
       {/* Footer */}
-      <p className="mt-2 text-[10px] text-[var(--text-muted)]">
+      <p className="mt-2 text-3xs text-[var(--text-muted)]">
         {filtrados.length} de {itens.length} lançamentos
         {selecionados.size > 0 && <> · {selecionados.size} selecionado(s)</>}
       </p>

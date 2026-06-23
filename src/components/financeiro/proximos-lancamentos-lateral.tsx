@@ -6,6 +6,7 @@ import { differenceInDays, parseISO, format } from 'date-fns'
 import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtBRL } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
+import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 
 export interface ProximoLancamento {
   numero:           string | null
@@ -92,13 +93,13 @@ function LancamentoRow({ v }: { v: ProximoLancamento }) {
       </td>
       {/* Data */}
       <td className="py-1.5 pr-2 whitespace-nowrap">
-        <span className="text-[10px] text-zinc-500 tabular-nums">
+        <span className="text-3xs text-zinc-500 tabular-nums">
           {formatDateShort(v.vencimento)}
         </span>
       </td>
       {/* Pessoa / Descrição */}
       <td className="py-1.5 min-w-0 max-w-0 w-full">
-        <p className="text-[11px] font-medium text-zinc-700 truncate leading-none">
+        <p className="text-2xs font-medium text-zinc-700 truncate leading-none">
           {v.pessoa ?? '—'}
         </p>
         {v.descricao && (
@@ -107,21 +108,13 @@ function LancamentoRow({ v }: { v: ProximoLancamento }) {
       </td>
       {/* Valor */}
       <td className="py-1.5 pl-2 text-right whitespace-nowrap">
-        <span className="text-[10px] font-semibold tabular-nums" style={{ color: cor }}>
+        <span className="text-3xs font-semibold tabular-nums" style={{ color: cor }}>
           {isEntrada ? '+' : '-'}{fmtBRL(v.valor_final)}
         </span>
       </td>
     </tr>
   )
 }
-
-const PILL_ACTIVE_STYLE = {
-  background:  'var(--brand-soft)',
-  borderColor: 'var(--brand)',
-  color:       'var(--brand-deep)',
-}
-const PILL_BASE = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
-const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
 // --- Pills de tipo ---
 function TipoPills({
@@ -142,8 +135,8 @@ function TipoPills({
         <button
           key={p.id}
           onClick={() => onChange(p.id)}
-          className={[PILL_BASE, value === p.id ? '' : PILL_INACTIVE].join(' ')}
-          style={value === p.id ? PILL_ACTIVE_STYLE : undefined}
+          className={[PILL_FILTRO_SM, value === p.id ? '' : PILL_FILTRO_INATIVO].join(' ')}
+          style={value === p.id ? PILL_FILTRO_ATIVO_STYLE : undefined}
         >
           {p.label}
         </button>
@@ -238,9 +231,9 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
     : 'Personalizado'
 
   const pillPeriodoClass = (f: Filtro) =>
-    [PILL_BASE, filtro === f ? '' : PILL_INACTIVE].join(' ')
+    [PILL_FILTRO_SM, filtro === f ? '' : PILL_FILTRO_INATIVO].join(' ')
   const pillPeriodoStyle = (f: Filtro) =>
-    filtro === f ? PILL_ACTIVE_STYLE : undefined
+    filtro === f ? PILL_FILTRO_ATIVO_STYLE : undefined
 
   return (
     <div className="flex flex-col h-full">
@@ -266,10 +259,10 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
 
           {popoverOpen && (
             <div className="absolute top-full left-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
-              <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
+              <p className="text-2xs font-medium text-zinc-500 mb-3">Período personalizado</p>
               <div className="space-y-2 mb-4">
                 <div>
-                  <label className="text-[10px] text-zinc-400 block mb-1">De</label>
+                  <label className="text-3xs text-zinc-400 block mb-1">De</label>
                   <input
                     type="date"
                     value={customFrom}
@@ -278,7 +271,7 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-zinc-400 block mb-1">Até</label>
+                  <label className="text-3xs text-zinc-400 block mb-1">Até</label>
                   <input
                     type="date"
                     value={customTo}
@@ -291,13 +284,13 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
               <div className="flex gap-2">
                 <button
                   onClick={() => setPopoverOpen(false)}
-                  className="flex-1 text-[11px] text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
+                  className="flex-1 text-2xs text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={aplicarCustom}
-                  className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors"
+                  className="flex-1 text-2xs text-white py-1.5 rounded transition-colors"
                   style={{ background: 'var(--brand)' }}
                 >
                   Aplicar
@@ -359,7 +352,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
         <div className="px-4 pt-4 pb-2 shrink-0">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-base font-semibold text-zinc-700">Próximos Lançamentos</h3>
-            <span className="text-[10px] text-zinc-400 tabular-nums">{filtrados.length} itens</span>
+            <span className="text-3xs text-zinc-400 tabular-nums">{filtrados.length} itens</span>
           </div>
           <TipoPills value={tipoFiltro} onChange={setTipoFiltro} />
         </div>

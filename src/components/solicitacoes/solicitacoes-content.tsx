@@ -4,8 +4,9 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, Eye, ClipboardList, History } from 'lucide-react'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
+import Badge from '@/components/ui/badge'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import MinhasSolicitacoes from './minhas-solicitacoes'
 import BoardSolicitacoes from './board-solicitacoes'
 import DrawerSolicitacao from './drawer-solicitacao'
@@ -64,9 +65,9 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
             >
               Caixa de entrada
               {pendentes > 0 && (
-                <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger px-1.5 text-[10px] font-semibold text-white">
+                <Badge variant="count">
                   {pendentes}
-                </span>
+                </Badge>
               )}
             </button>
             <button

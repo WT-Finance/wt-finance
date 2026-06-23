@@ -5,11 +5,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts'
 import type { RitmoDiarioItem } from '@/types/api'
+import { SETOR_COLORS } from '@/lib/config'
 import CustomTooltip from '@/components/charts/custom-tooltip'
-
-const SETOR_COLOR: Record<string, string> = {
-  Lazer: '#378ADD', Corporativo: '#0F6E56', Weddings: '#BA7517', todos: 'var(--chart-info)',
-}
 
 const fmtBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
@@ -17,7 +14,7 @@ const fmtBRL = (v: number) =>
 export default function RitmoDiarioChart({
   data, loading, setor,
 }: { data: RitmoDiarioItem[]; loading: boolean; setor: string }) {
-  const color = SETOR_COLOR[setor] ?? 'var(--chart-info)'
+  const color = SETOR_COLORS[setor] ?? 'var(--chart-info)'
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">

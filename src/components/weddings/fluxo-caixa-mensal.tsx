@@ -37,7 +37,7 @@ function LegendItem({ color, opacity, label }: { color: string; opacity: number;
 function KpiNaoLiquidado({ label, valor, cor }: { label: string; valor: number; cor: string }) {
   return (
     <div className="flex flex-col items-end leading-tight">
-      <span className="text-[11px] text-[var(--text-muted)]">{label}</span>
+      <span className="text-2xs text-[var(--text-muted)]">{label}</span>
       <span className="text-sm font-semibold tabular-nums" style={{ color: cor }}>
         {fmtBRL(valor)}
       </span>

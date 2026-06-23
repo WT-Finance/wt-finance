@@ -21,7 +21,7 @@ export default function VersionHistory() {
   // Logo do Claude recolorido para o mesmo cinza do "powered by": o SVG é usado
   // como máscara CSS e a cor vem de backgroundColor: currentColor (herda text-zinc-400).
   const poweredBy = (
-    <span className="inline-flex items-center gap-1.5 text-[11px] italic text-zinc-400">
+    <span className="inline-flex items-center gap-1.5 text-2xs italic text-zinc-400">
       powered by
       <span
         role="img"
@@ -48,7 +48,7 @@ export default function VersionHistory() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="text-[10px] font-medium tracking-[0.5px] hover:underline cursor-pointer"
+        className="text-3xs font-medium tracking-[0.5px] hover:underline cursor-pointer"
         style={{ color: 'var(--text-muted)' }}
         aria-label="Abrir histórico de versões"
       >
@@ -76,7 +76,7 @@ export default function VersionHistory() {
                     return (
                       <li key={i} className="flex gap-2.5">
                         <span
-                          className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 self-start"
+                          className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-3xs font-medium mt-0.5 self-start"
                           style={{ background: meta.bg, color: meta.color }}
                         >
                           <Icon size={11} />

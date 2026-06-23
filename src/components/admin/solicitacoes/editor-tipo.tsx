@@ -6,16 +6,14 @@ import { salvarTipo } from '@/app/admin/solicitacoes/actions'
 import { TIPOS_CAMPO, type CampoDef, type TipoAdmin, type TipoCampo } from '@/lib/solicitacoes/schemas'
 import ModalCentral from '@/components/shared/modal-central'
 import Checkbox from '@/components/ui/checkbox'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { Input, Select } from '@/components/ui/field'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 
 // v4.16.0 (spec §2.4 C) — editor de Tipo de Solicitação (criar/editar). Nome do
 // tipo + construtor de campos (rótulo, tipo, obrigatório, reordenar ↑/↓, remover;
 // sub-editor de opções para 'seleção'). Validação leve no client; o servidor
 // revalida. Tema neutro Group (tokens neutros, .foco-neutro, pills de @/.../botoes).
-
-const INPUT_CLASSES =
-  'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
 
 const ROTULO_TIPO: Record<TipoCampo, string> = {
   texto_curto: 'Texto curto',
@@ -182,9 +180,9 @@ export function EditorTipo({
 
         <div>
           <label htmlFor="tipo-nome" className="block text-xs font-medium text-zinc-600 mb-1">
-            Nome do tipo <span className="text-red-500" aria-hidden="true">*</span>
+            Nome do tipo <span className="text-danger" aria-hidden="true">*</span>
           </label>
-          <input
+          <Input
             id="tipo-nome"
             type="text"
             required
@@ -192,7 +190,6 @@ export function EditorTipo({
             value={nome}
             onChange={e => setNome(e.target.value)}
             placeholder="Ex.: Solicitação de pagamento"
-            className={INPUT_CLASSES}
           />
         </div>
 
@@ -214,25 +211,24 @@ export function EditorTipo({
                 <fieldset key={linha._key} className="rounded-lg border border-zinc-200 p-3">
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0 space-y-2">
-                      <input
+                      <Input
                         type="text"
                         value={linha.rotulo}
                         onChange={e => atualizarCampo(linha._key, { rotulo: e.target.value })}
                         placeholder="Rótulo do campo (ex.: Valor a pagar)"
                         aria-label={`Rótulo do campo ${index + 1}`}
-                        className={INPUT_CLASSES}
                       />
                       <div className="flex flex-wrap items-center gap-3">
-                        <select
+                        <Select
                           value={linha.tipo_campo}
                           onChange={e => mudarTipo(linha._key, e.target.value as TipoCampo)}
                           aria-label={`Tipo do campo ${index + 1}`}
-                          className={`${INPUT_CLASSES} w-auto`}
+                          className="w-auto"
                         >
                           {TIPOS_CAMPO.map(t => (
                             <option key={t} value={t}>{ROTULO_TIPO[t]}</option>
                           ))}
-                        </select>
+                        </Select>
                         <div className="flex items-center gap-2 text-sm text-zinc-700">
                           <Checkbox
                             id={`obrig-${linha._key}`}
@@ -248,19 +244,18 @@ export function EditorTipo({
 
                       {linha.tipo_campo === 'selecao' && (
                         <div className="rounded-lg border border-zinc-100 bg-zinc-50/60 p-2.5">
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">
                             Opções
                           </p>
                           <div className="space-y-1.5">
                             {(linha.opcoes ?? []).map((opcao, oi) => (
                               <div key={oi} className="flex items-center gap-2">
-                                <input
+                                <Input
                                   type="text"
                                   value={opcao}
                                   onChange={e => atualizarOpcao(linha._key, oi, e.target.value)}
                                   placeholder={`Opção ${oi + 1}`}
                                   aria-label={`Opção ${oi + 1} do campo ${index + 1}`}
-                                  className={INPUT_CLASSES}
                                 />
                                 <button
                                   type="button"
@@ -287,7 +282,7 @@ export function EditorTipo({
 
                       {linha.tipo_campo === 'data' && (
                         <div className="rounded-lg border border-zinc-100 bg-zinc-50/60 p-2.5">
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">
                             Regra de data
                           </p>
                           <div className="flex items-center gap-2 text-sm text-zinc-700">
@@ -305,7 +300,7 @@ export function EditorTipo({
                             <label htmlFor={`data-aviso-${linha._key}`} className="mb-1 block text-xs text-zinc-500">
                               Avisar se a data estiver a mais de N dias no futuro
                             </label>
-                            <input
+                            <Input
                               id={`data-aviso-${linha._key}`}
                               type="number"
                               min={1}
@@ -321,7 +316,7 @@ export function EditorTipo({
                               }}
                               placeholder="Sem aviso"
                               aria-label={`Avisar se a data estiver a mais de N dias no futuro (campo ${index + 1})`}
-                              className={`${INPUT_CLASSES} w-40`}
+                              className="w-40"
                             />
                           </div>
                         </div>
@@ -351,7 +346,7 @@ export function EditorTipo({
                         type="button"
                         onClick={() => removerCampo(linha._key)}
                         aria-label={`Remover campo ${index + 1}`}
-                        className="foco-neutro rounded-lg p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                        className="foco-neutro rounded-lg p-1 text-zinc-400 transition-colors hover:bg-danger-bg hover:text-danger"
                       >
                         <X size={16} />
                       </button>

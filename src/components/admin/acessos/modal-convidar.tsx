@@ -5,16 +5,14 @@ import { useRouter } from 'next/navigation'
 import { Check, Copy, Loader2 } from 'lucide-react'
 import { criarUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin } from './tipos'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'
+import { Input, Select } from '@/components/ui/field'
 
 // v4.14 — modal de criar usuário: email + nome (opcional) + role. Em sucesso,
 // mostra a SENHA PROVISÓRIA copiável (a pessoa troca no 1º acesso). Sem e-mail
 // (independe de SMTP). O componente segue exportado como ModalConvidar.
 // v4.16.1 — migrado para ModalCentral (portal, Esc, scroll-lock, animação uniformes).
-
-const INPUT_CLASSES =
-  'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
 
 interface Sucesso {
   email: string
@@ -71,7 +69,7 @@ export function ModalConvidar({
   return (
     <ModalCentral titulo="Criar usuário" onClose={onFechar}>
       {erro && (
-        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div role="alert" className="mb-4 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
           {erro}
         </div>
       )}
@@ -80,39 +78,39 @@ export function ModalConvidar({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="criar-email" className="block text-xs font-medium text-zinc-600 mb-1">
-              E-mail <span className="text-red-500" aria-hidden="true">*</span>
+              E-mail <span className="text-danger" aria-hidden="true">*</span>
             </label>
-            <input
+            <Input
               id="criar-email" type="email" required autoFocus value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="pessoa@welcometrips.com.br" className={INPUT_CLASSES}
+              placeholder="pessoa@welcometrips.com.br"
             />
           </div>
           <div>
             <label htmlFor="criar-nome" className="block text-xs font-medium text-zinc-600 mb-1">
               Nome <span className="text-zinc-400 font-normal">(opcional)</span>
             </label>
-            <input
+            <Input
               id="criar-nome" type="text" value={nome}
               onChange={e => setNome(e.target.value)}
-              placeholder="Nome da pessoa" className={INPUT_CLASSES}
+              placeholder="Nome da pessoa"
             />
           </div>
           <div>
             <label htmlFor="criar-role" className="block text-xs font-medium text-zinc-600 mb-1">
-              Permissão <span className="text-red-500" aria-hidden="true">*</span>
+              Permissão <span className="text-danger" aria-hidden="true">*</span>
             </label>
-            <select
+            <Select
               id="criar-role" required value={roleId}
-              onChange={e => setRoleId(e.target.value)} className={INPUT_CLASSES}
+              onChange={e => setRoleId(e.target.value)}
             >
               <option value="" disabled>Selecione uma permissão…</option>
               {roles.map(r => (
                 <option key={r.id} value={String(r.id)}>{r.nome}</option>
               ))}
-            </select>
+            </Select>
             {roles.length === 0 && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-warning">
                 Nenhuma permissão cadastrada — crie uma na aba «Permissões» antes de criar usuários.
               </p>
             )}
@@ -137,17 +135,17 @@ export function ModalConvidar({
         </form>
       ) : (
         <div className="space-y-4">
-          <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <div role="status" className="rounded-lg border border-success bg-success-bg px-3 py-2 text-sm text-success">
             Usuário <span className="font-medium">{sucesso.email}</span> criado.
           </div>
 
           {/* v4.24.0 — aviso de envio; a senha é exibida SEMPRE abaixo (fallback). */}
           {sucesso.emailEnviado ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            <div className="rounded-lg border border-success bg-success-bg px-3 py-2 text-xs text-success">
               A senha provisória foi enviada por e-mail para <span className="font-medium">{sucesso.email}</span>.
             </div>
           ) : (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <div className="rounded-lg border border-warning bg-warning-bg px-3 py-2 text-xs text-warning">
               Não foi possível enviar o e-mail — copie a senha abaixo e repasse à pessoa.
             </div>
           )}

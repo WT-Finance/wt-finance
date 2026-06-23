@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Checkbox from '@/components/ui/checkbox'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 
 // Demos ao vivo da seção "11. Plataforma" do Design System (v4.14.3). Client component
 // (como o ChartShowcase) porque o Checkbox e o exemplo de foco são interativos. Usa os
@@ -29,7 +29,7 @@ export default function PlataformaShowcase() {
           <button type="button" className={`${PILL} ${PILL_NEUTRO}`}>Editar</button>
           <button type="button" className={`${PILL} ${PILL_PERIGO}`}>Excluir</button>
         </div>
-        <div className="mt-2 bg-zinc-50 rounded-lg p-3 text-[11px] font-mono text-[var(--text-muted)] space-y-0.5">
+        <div className="mt-2 bg-zinc-50 rounded-lg p-3 text-2xs font-mono text-[var(--text-muted)] space-y-0.5">
           <p>{'<button className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>  // primária (bege)'}</p>
           <p>{'<button className={`${PILL} ${PILL_NEUTRO}`}>   // secundária (cinza contornada)'}</p>
           <p>{'<button className={`${PILL} ${PILL_PERIGO}`}>   // destrutiva (perigo)'}</p>
@@ -43,7 +43,7 @@ export default function PlataformaShowcase() {
           <button type="button" className={`${PILL} ${PILL_NEUTRO}`}>Permissões</button>
           <button type="button" className={`${PILL} ${PILL_NEUTRO}`}>Solicitações</button>
         </div>
-        <p className="text-[11px] text-zinc-400 mt-2">
+        <p className="text-2xs text-zinc-400 mt-2">
           Ativa = <code className="bg-zinc-100 px-1 rounded">--action-soft</code> (#EAE6DD) /
           borda <code className="bg-zinc-100 px-1 rounded">--action-soft-border</code> /
           texto <code className="bg-zinc-100 px-1 rounded">--action-soft-fg</code>. Nunca <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>.
@@ -56,7 +56,7 @@ export default function PlataformaShowcase() {
           <button type="button" className={`${PILL} ${PILL_GESTAO}`} style={PILL_GESTAO_STYLE}>Ver todas</button>
           <button type="button" className={`${PILL} ${PILL_GESTAO}`} style={PILL_GESTAO_STYLE}>Gerenciar solicitações</button>
         </div>
-        <p className="text-[11px] text-zinc-400 mt-2">
+        <p className="text-2xs text-zinc-400 mt-2">
           Token <code className="bg-zinc-100 px-1 rounded">--gestao-soft</code> (#FAEEDA) /
           borda <code className="bg-zinc-100 px-1 rounded">--gestao</code> (#BA7517) /
           texto <code className="bg-zinc-100 px-1 rounded">--gestao-fg</code> (#633806).
@@ -76,7 +76,7 @@ export default function PlataformaShowcase() {
             className="foco-neutro rounded-lg border border-zinc-300 px-3 py-1.5 text-sm outline-none"
           />
         </div>
-        <p className="text-[11px] text-zinc-400 mt-2">
+        <p className="text-2xs text-zinc-400 mt-2">
           Navegue por <strong>Tab</strong>: o anel neutro aparece. <strong>Clicar com o mouse no botão NÃO deixa anel</strong>
           (sem sombreado); o input de texto mostra o anel ao clicar, pois o browser o trata como focus-visible.
         </p>
@@ -109,7 +109,7 @@ export default function PlataformaShowcase() {
           >
             Entrar
           </button>
-          <p className="text-[11px] text-zinc-400">
+          <p className="text-2xs text-zinc-400">
             Botão sólido (ex.: Entrar do login). Usa <code className="bg-zinc-100 px-1 rounded">--action-primary</code> (#3F4144),
             não a pill bege — é o único CTA cheio das telas de plataforma.
           </p>

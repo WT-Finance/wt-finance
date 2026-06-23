@@ -8,6 +8,7 @@ import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRig
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
+import Badge from '@/components/ui/badge'
 
 /** Dados do usuário logado, repassados pelo AppShell para identidade + filtro de navegação. */
 export interface UsuarioSidebar {
@@ -92,7 +93,7 @@ function WelcomeGroupLogo({ src, alt, recolor }: WelcomeGroupLogoProps) {
         <p className="text-[15px] font-[800] leading-tight uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>
           Welcome Group
         </p>
-        <p className="text-[11px] font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>
+        <p className="text-2xs font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>
           Finance Dashboard
         </p>
       </div>
@@ -431,9 +432,9 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
               />
               {label}
               {href === '/solicitacoes' && (usuario.pendenciasSolicitacoes ?? 0) > 0 && (
-                <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger px-1.5 text-[10px] font-semibold text-white">
+                <Badge variant="count" className="ml-auto">
                   {usuario.pendenciasSolicitacoes}
-                </span>
+                </Badge>
               )}
             </Link>
           )
@@ -466,7 +467,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
             {usuario.nome ?? usuario.email}
           </p>
           {usuario.role && (
-            <p className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-2xs truncate" style={{ color: 'var(--text-muted)' }}>
               {usuario.role}
             </p>
           )}
@@ -475,7 +476,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
           <button
             type="submit"
             aria-label="Sair"
-            className="p-1.5 rounded text-zinc-400 hover:text-red-600 transition-colors"
+            className="p-1.5 rounded text-zinc-400 hover:text-danger transition-colors"
           >
             <LogOut size={15} />
           </button>

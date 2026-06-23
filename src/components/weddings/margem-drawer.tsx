@@ -88,7 +88,7 @@ export default function MargemDrawer({ tendencia, sumario, margemOk, margemAlert
 
           {subsetores.length > 0 && (
             <div>
-              <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+              <p className="text-2xs font-semibold text-zinc-400 uppercase tracking-wide mb-3">
                 Margem por Subsetor
               </p>
               <table className="w-full text-sm">

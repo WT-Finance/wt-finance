@@ -37,7 +37,7 @@ function calcDuracaoDias(dataVenda: string | null, dataEvento: string | null): n
 
 function SectionTitle({ children }: { children: string }) {
   return (
-    <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-3">
+    <p className="text-2xs font-semibold text-zinc-400 uppercase tracking-wide mb-3">
       {children}
     </p>
   )
@@ -49,7 +49,7 @@ function InfoCell({ label, value, destaque }: {
 }) {
   return (
     <div className="bg-white px-3 py-3 text-center">
-      <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-3xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
         {label}
       </p>
       <p
@@ -78,11 +78,11 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
       </div>
       <div className="grid grid-cols-1 gap-1 pl-3 border-l-2 border-zinc-100">
         <div className="flex justify-between items-baseline">
-          <span className="text-[10px] text-zinc-400">{sub1Label}</span>
+          <span className="text-3xs text-zinc-400">{sub1Label}</span>
           <span className="text-xs tabular-nums text-zinc-600">{fmtBRL2(sub1)}</span>
         </div>
         <div className="flex justify-between items-baseline">
-          <span className="text-[10px] text-zinc-400">{sub2Label}</span>
+          <span className="text-3xs text-zinc-400">{sub2Label}</span>
           <span className="text-xs tabular-nums text-zinc-600">{fmtBRL2(sub2)}</span>
         </div>
       </div>

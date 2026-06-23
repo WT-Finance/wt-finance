@@ -393,7 +393,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
           {periodoPreset === 'personalizado' && periodoCustom && (
             <button
               onClick={clearPeriodoCustom}
-              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-zinc-300 hover:bg-zinc-400 text-white flex items-center justify-center text-[10px] leading-none transition-colors"
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-zinc-300 hover:bg-zinc-400 text-white flex items-center justify-center text-3xs leading-none transition-colors"
               title="Limpar filtro de período"
             >
               ×
@@ -412,7 +412,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                   <input
                     type="date" value={customFrom} max={customTo || TODAY}
                     onChange={e => setCustomFrom(e.target.value)}
-                    className="w-full rounded-md border border-zinc-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-md border border-zinc-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                   />
                 </div>
                 <div className="flex-1">
@@ -420,7 +420,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                   <input
                     type="date" value={customTo} min={customFrom} max={TODAY}
                     onChange={e => setCustomTo(e.target.value)}
-                    className="w-full rounded-md border border-zinc-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-md border border-zinc-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                   />
                 </div>
               </div>
@@ -447,7 +447,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
         <input
           type="text" placeholder="Buscar por casal..."
           value={busca} onChange={e => setBusca(e.target.value)}
-          className="text-xs border border-zinc-200 rounded-lg px-2.5 h-8 text-zinc-700 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-200 min-w-44 ml-2"
+          className="text-xs border border-zinc-200 rounded-lg px-2.5 h-8 text-zinc-700 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] min-w-44 ml-2"
         />
       </div>
 
@@ -472,7 +472,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : erro ? (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-sm text-red-500">{erro}</td>
+                <td colSpan={9} className="py-6 text-center text-sm text-danger">{erro}</td>
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
@@ -562,7 +562,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <select
                 value={String(pageSize)}
                 onChange={e => handlePageSizeChange(e.target.value)}
-                className="text-xs border border-zinc-200 rounded-md px-1.5 h-7 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+                className="text-xs border border-zinc-200 rounded-md px-1.5 h-7 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] bg-white"
               >
                 <option value="10">10</option>
                 <option value="20">20</option>
@@ -585,7 +585,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                   onClick={() => setPagina(p)}
                   className={`w-7 h-7 text-xs rounded border ${
                     p === pagina
-                      ? 'border-blue-500 bg-blue-50 text-blue-600 font-semibold'
+                      ? 'border-action-soft-border bg-action-soft text-action-soft-fg font-semibold'
                       : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50'
                   }`}
                 >

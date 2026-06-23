@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { solicitarAcesso } from './actions'
 import AuthHeader from '@/components/auth/auth-header'
+import { Input } from '@/components/ui/field'
 
 // v4.14 (ADR-0110): solicitação de acesso pública. O admin aprova em /admin/acessos.
 
@@ -22,8 +23,8 @@ export default async function SolicitarAcessoPage({
         <div className="bg-white rounded-xl shadow-sm px-8 py-9">
           {enviado ? (
             <div className="text-center space-y-3">
-              <h1 className="text-base font-semibold" style={{ color: '#1A1814' }}>Solicitação registrada</h1>
-              <p className="text-sm leading-relaxed" style={{ color: '#75777B' }}>
+              <h1 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Solicitação registrada</h1>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                 Se o e-mail informado estiver apto, o time Financeiro vai analisar e liberar seu acesso.
                 Você será avisado quando a conta estiver pronta.
               </p>
@@ -37,8 +38,8 @@ export default async function SolicitarAcessoPage({
             </div>
           ) : (
             <>
-              <h1 className="text-base font-semibold mb-1" style={{ color: '#1A1814' }}>Solicitar acesso</h1>
-              <p className="text-sm mb-5" style={{ color: '#75777B' }}>
+              <h1 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Solicitar acesso</h1>
+              <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
                 Informe seu e-mail corporativo. O time Financeiro analisa e libera o acesso.
               </p>
 
@@ -56,19 +57,17 @@ export default async function SolicitarAcessoPage({
                   <label htmlFor="nome" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                     Nome <span className="text-zinc-400">(opcional)</span>
                   </label>
-                  <input
+                  <Input
                     id="nome" name="nome" type="text" autoComplete="name" placeholder="Seu nome"
-                    className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
                   />
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                     E-mail
                   </label>
-                  <input
+                  <Input
                     id="email" name="email" type="email" required autoComplete="email" autoFocus
                     placeholder="voce@welcometrips.com.br"
-                    className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
                   />
                 </div>
                 <button

@@ -4,13 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import CamposDinamicos, { type AnexoLocal } from './campos-dinamicos'
+import { Input, Select, Textarea } from '@/components/ui/field'
 import { criarSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import type { TipoAbertura, Destinatarios } from '@/lib/solicitacoes/schemas'
 
-const INPUT = 'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
 type AnexoItem = AnexoLocal & { meta?: AnexoMeta }
 
 export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }: {
@@ -88,45 +88,45 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label htmlFor="ns-tipo" className="block text-xs font-medium text-zinc-600 mb-1">Tipo <span className="text-red-500">*</span></label>
-            <select id="ns-tipo" value={tipoId} onChange={e => trocarTipo(Number(e.target.value))} className={INPUT} autoFocus>
+            <label htmlFor="ns-tipo" className="block text-xs font-medium text-zinc-600 mb-1">Tipo <span className="text-danger">*</span></label>
+            <Select id="ns-tipo" value={tipoId} onChange={e => trocarTipo(Number(e.target.value))} autoFocus>
               <option value="">Selecione…</option>
               {tipos.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
-            <label htmlFor="ns-data" className="block text-xs font-medium text-zinc-600 mb-1">Data limite <span className="text-red-500">*</span></label>
-            <input id="ns-data" type="date" value={dataLimite} onChange={e => setDataLimite(e.target.value)} className={INPUT} />
+            <label htmlFor="ns-data" className="block text-xs font-medium text-zinc-600 mb-1">Data limite <span className="text-danger">*</span></label>
+            <Input id="ns-data" type="date" value={dataLimite} onChange={e => setDataLimite(e.target.value)} />
           </div>
         </div>
 
         <div>
-          <span className="block text-xs font-medium text-zinc-600 mb-1">Destinatário <span className="text-red-500">*</span></span>
+          <span className="block text-xs font-medium text-zinc-600 mb-1">Destinatário <span className="text-danger">*</span></span>
           <div className="flex gap-2 mb-2">
             <button type="button" onClick={() => setDestMode('role')} className={`${PILL} ${destMode === 'role' ? PILL_PRIMARIA : PILL_NEUTRO}`} style={destMode === 'role' ? PILL_PRIMARIA_STYLE : undefined}>Permissão</button>
             <button type="button" onClick={() => setDestMode('usuario')} className={`${PILL} ${destMode === 'usuario' ? PILL_PRIMARIA : PILL_NEUTRO}`} style={destMode === 'usuario' ? PILL_PRIMARIA_STYLE : undefined}>Usuário</button>
           </div>
           {destMode === 'role' ? (
-            <select aria-label="Permissão destinatária" value={destRole} onChange={e => setDestRole(e.target.value)} className={INPUT}>
+            <Select aria-label="Permissão destinatária" value={destRole} onChange={e => setDestRole(e.target.value)}>
               <option value="">Selecione a permissão…</option>
               {destinatarios.roles.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
-            </select>
+            </Select>
           ) : (
-            <select aria-label="Usuário destinatário" value={destUser} onChange={e => setDestUser(e.target.value)} className={INPUT}>
+            <Select aria-label="Usuário destinatário" value={destUser} onChange={e => setDestUser(e.target.value)}>
               <option value="">Selecione o usuário…</option>
               {destinatarios.usuarios.map(u => <option key={u.user_id} value={u.user_id}>{u.email}</option>)}
-            </select>
+            </Select>
           )}
         </div>
 
         <div>
           <label htmlFor="ns-desc" className="block text-xs font-medium text-zinc-600 mb-1">Descrição</label>
-          <textarea id="ns-desc" rows={2} value={descricao} onChange={e => setDescricao(e.target.value)} className={`${INPUT} resize-none`} placeholder="Contexto do pedido (opcional)" />
+          <Textarea id="ns-desc" rows={2} value={descricao} onChange={e => setDescricao(e.target.value)} className="resize-none" placeholder="Contexto do pedido (opcional)" />
         </div>
 
         {tipo && tipo.campos.length > 0 && (
           <div className="border-t border-zinc-100 pt-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Campos de {tipo.nome}</p>
+            <p className="text-2xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">Campos de {tipo.nome}</p>
             <CamposDinamicos campos={tipo.campos} valores={valores}
               onValor={(id, val) => setValores(p => ({ ...p, [String(id)]: val }))}
               anexos={anexosUI} onAnexoSelect={onAnexoSelect} onAnexoRemove={onAnexoRemove} />

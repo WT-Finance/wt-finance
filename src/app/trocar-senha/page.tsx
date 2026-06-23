@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSessao } from '@/lib/auth/sessao'
 import { trocarSenha } from './actions'
 import AuthHeader from '@/components/auth/auth-header'
+import { Input } from '@/components/ui/field'
 
 // v4.14: troca obrigatória de senha. Tela cheia (o RootLayout não renderiza o
 // chrome enquanto precisaTrocarSenha). Quem não precisa trocar é mandado para a home.
@@ -30,8 +31,8 @@ export default async function TrocarSenhaPage({
         <AuthHeader className="flex flex-col items-center mb-7" />
 
         <div className="bg-white rounded-xl shadow-sm px-8 py-9">
-          <h1 className="text-base font-semibold mb-1" style={{ color: '#1A1814' }}>Defina sua senha</h1>
-          <p className="text-sm mb-5" style={{ color: '#75777B' }}>
+          <h1 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Defina sua senha</h1>
+          <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
             {sessao.email
               ? <>Você está entrando como <span className="font-medium">{sessao.email}</span>. Crie uma senha para continuar.</>
               : 'Crie uma senha para continuar.'}
@@ -51,20 +52,18 @@ export default async function TrocarSenhaPage({
               <label htmlFor="senha" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Nova senha
               </label>
-              <input
+              <Input
                 id="senha" name="senha" type="password" required minLength={8} autoFocus
                 autoComplete="new-password" placeholder="ao menos 8 caracteres"
-                className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
               />
             </div>
             <div>
               <label htmlFor="confirmar" className="block text-[13px] mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Confirmar senha
               </label>
-              <input
+              <Input
                 id="confirmar" name="confirmar" type="password" required minLength={8}
                 autoComplete="new-password" placeholder="repita a senha"
-                className="foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition"
               />
             </div>
             <button

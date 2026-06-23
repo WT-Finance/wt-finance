@@ -44,7 +44,7 @@ export function ModalConfirmacaoUpload({
           </button>
           <button
             onClick={onConfirmar}
-            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium"
+            className="px-4 py-2 text-sm rounded-lg bg-action-primary text-action-primary-fg hover:opacity-90 transition-colors font-medium"
           >
             Confirmar importação
           </button>
