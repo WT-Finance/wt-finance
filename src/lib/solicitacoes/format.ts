@@ -4,7 +4,7 @@ import type { respostaSchema } from './schemas'
 import { toNum } from '@/lib/carga/coercao'
 
 // Helpers de apresentação do módulo (client-safe). Cores semânticas neutras de
-// plataforma (sem var(--brand)); emerald/red são feedback semântico, permitidos.
+// plataforma (sem var(--brand)); feedback semântico via tokens --success/--danger.
 
 export const STATUS_LABEL: Record<StatusSolic, string> = {
   aberta: 'Aberta', concluida: 'Concluída', rejeitada: 'Rejeitada', cancelada: 'Cancelada',
@@ -12,8 +12,8 @@ export const STATUS_LABEL: Record<StatusSolic, string> = {
 
 export function statusBadge(status: StatusSolic): string {
   switch (status) {
-    case 'concluida': return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    case 'rejeitada': return 'border-red-200 bg-red-50 text-red-700'
+    case 'concluida': return 'border-success bg-success-bg text-success'
+    case 'rejeitada': return 'border-danger bg-danger-bg text-danger'
     case 'cancelada': return 'border-zinc-200 bg-zinc-100 text-zinc-400'
     default:          return 'border-zinc-300 bg-zinc-100 text-zinc-600' // aberta (informativo)
   }

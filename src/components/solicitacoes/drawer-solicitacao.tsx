@@ -104,7 +104,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
       {/* ── Zona 1 — Cabeçalho: status + data-limite (vermelho se vencida) ───────── */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4">
         <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusBadge(sol.status)}`}>{STATUS_LABEL[sol.status]}</span>
-        <span className={`text-sm ${venc ? 'font-semibold text-red-600' : 'text-zinc-500'}`}>
+        <span className={`text-sm ${venc ? 'font-semibold text-danger' : 'text-zinc-500'}`}>
           Limite: {fmtDataBR(sol.data_limite)}{venc && ' · vencida'}
         </span>
       </div>

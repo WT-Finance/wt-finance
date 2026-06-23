@@ -16,7 +16,7 @@ export function FaixaMensagem({
   // não o emerald off-palette. Erro segue o vermelho do Tailwind (fora do escopo deste patch).
   const cores = tipo === 'sucesso'
     ? 'border-success bg-success-bg text-success'
-    : 'border-red-200 bg-red-50 text-red-700'
+    : 'border-danger bg-danger-bg text-danger'
 
   return (
     <div

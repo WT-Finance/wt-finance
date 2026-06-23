@@ -55,7 +55,7 @@ function Linhas({ itens }: { itens: NonNullable<VendasEmAberto>['vendas'] }) {
             <td className="py-2 px-3 text-right tabular-nums text-zinc-700 whitespace-nowrap">{fmtBRL(v.valor_total)}</td>
             <td className={`py-2 px-3 text-right tabular-nums text-xs whitespace-nowrap font-medium ${velha ? 'text-warning' : 'text-zinc-400'}`}>
               {v.idade_dias}d
-              {velha && <span className="ml-1 text-amber-500" title="Mais de 30 dias em aberto">⚠</span>}
+              {velha && <span className="ml-1 text-warning" title="Mais de 30 dias em aberto">⚠</span>}
             </td>
           </tr>
         )

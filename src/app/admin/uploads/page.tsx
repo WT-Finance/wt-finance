@@ -143,8 +143,8 @@ function CardUpload({
           <h2 className="text-sm font-semibold text-zinc-900">{config.label}</h2>
           <p className="text-xs text-zinc-500 mt-0.5">{config.descricao}</p>
         </div>
-        {estado.estado === 'sucesso' && <CheckCircle size={18} className="text-emerald-500 shrink-0" />}
-        {estado.estado === 'erro'    && <AlertTriangle size={18} className="text-red-500 shrink-0" />}
+        {estado.estado === 'sucesso' && <CheckCircle size={18} className="text-success shrink-0" />}
+        {estado.estado === 'erro'    && <AlertTriangle size={18} className="text-danger shrink-0" />}
       </div>
 
       <p className="text-xs text-zinc-400 mb-3">
@@ -159,9 +159,9 @@ function CardUpload({
           'border-2 border-dashed rounded-lg p-4 text-center transition-colors mb-3',
           ativo ? 'cursor-pointer' : 'cursor-default',
           ativo && isDragging
-            ? 'border-blue-400 bg-blue-50'
+            ? 'border-action-soft-border bg-action-soft'
             : ativo
-              ? 'border-zinc-200 hover:border-blue-300 hover:bg-blue-50/40'
+              ? 'border-zinc-200 hover:border-action-soft-border hover:bg-action-soft/40'
               : 'border-zinc-100 bg-zinc-50',
         ].join(' ')}
         onClick={() => ativo && inputRef.current?.click()}
@@ -198,23 +198,23 @@ function CardUpload({
           // feito < total → ainda enviando lotes; feito === total → aguardando o servidor (promote/transform).
           const enviando = p ? p.feito < p.total : true
           return (
-            <div className="text-xs text-blue-600">
+            <div className="text-xs text-text-secondary">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Loader2 size={14} className="animate-spin" />
                 {enviando ? `Enviando… ${pct}%` : 'Processando no servidor…'}
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-blue-100">
-                <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${enviando ? pct : 100}%` }} />
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-action-soft">
+                <div className="h-full rounded-full bg-action-primary transition-all" style={{ width: `${enviando ? pct : 100}%` }} />
               </div>
             </div>
           )
         })()}
         {estado.estado === 'sucesso' && (
-          <p className="text-xs text-emerald-600 font-medium">{estado.mensagem}</p>
+          <p className="text-xs text-success font-medium">{estado.mensagem}</p>
         )}
         {estado.estado === 'erro' && (
           <div>
-            <p className="text-xs text-red-600 font-medium mb-1">{estado.mensagem}</p>
+            <p className="text-xs text-danger font-medium mb-1">{estado.mensagem}</p>
             <p className="text-xs text-zinc-400">Arraste ou clique para tentar com outro arquivo</p>
           </div>
         )}
@@ -239,7 +239,7 @@ function CardUpload({
           </button>
           <button
             onClick={onConfirmar}
-            className="flex-1 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium"
+            className="flex-1 px-4 py-2 text-sm rounded-lg bg-action-primary text-action-primary-fg hover:opacity-90 transition-colors font-medium"
           >
             Confirmar e importar
           </button>

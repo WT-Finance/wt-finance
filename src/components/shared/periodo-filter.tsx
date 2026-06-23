@@ -133,7 +133,7 @@ export default function PeriodoFilter() {
                         className="w-full rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2"
                         style={{ color: 'var(--text-primary)', borderColor: 'var(--border)', fontFamily: 'inherit', ['--tw-ring-color' as string]: 'var(--brand)' }}
                       />
-                      {erroFrom && <p className="text-[11px] text-red-500 mt-1">{erroFrom}</p>}
+                      {erroFrom && <p className="text-[11px] text-danger mt-1">{erroFrom}</p>}
                     </div>
                     <div className="flex-1">
                       <label className="text-xs mb-1 block" style={{ color: 'var(--text-muted)' }}>Fim</label>
@@ -143,7 +143,7 @@ export default function PeriodoFilter() {
                         className="w-full rounded-md border px-2 py-1.5 text-sm focus:outline-none focus:ring-2"
                         style={{ color: 'var(--text-primary)', borderColor: 'var(--border)', fontFamily: 'inherit', ['--tw-ring-color' as string]: 'var(--brand)' }}
                       />
-                      {erroTo && <p className="text-[11px] text-red-500 mt-1">{erroTo}</p>}
+                      {erroTo && <p className="text-[11px] text-danger mt-1">{erroTo}</p>}
                     </div>
                   </div>
 

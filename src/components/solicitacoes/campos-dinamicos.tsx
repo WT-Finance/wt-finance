@@ -40,7 +40,7 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
         return (
           <div key={id}>
             <label htmlFor={`campo-${id}`} className="block text-xs font-medium text-zinc-600 mb-1">
-              {campo.rotulo}{campo.obrigatorio && <span className="text-red-500" aria-hidden> *</span>}
+              {campo.rotulo}{campo.obrigatorio && <span className="text-danger" aria-hidden> *</span>}
             </label>
 
             {campo.tipo_campo === 'texto_longo' ? (
@@ -90,9 +90,9 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                     onChange={e => { if (e.target.files?.length) { onAnexoSelect(id, e.target.files); e.target.value = '' } }} />
                 </label>
                 {(anexos[id] ?? []).map((a, i) => (
-                  <div key={i} className={`mt-1 flex items-center justify-between gap-2 rounded border px-2 py-1 text-xs ${a.erro ? 'border-red-200 bg-red-50 text-red-600' : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}>
+                  <div key={i} className={`mt-1 flex items-center justify-between gap-2 rounded border px-2 py-1 text-xs ${a.erro ? 'border-danger bg-danger-bg text-danger' : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}>
                     <span className="truncate">{a.enviando ? 'Enviando… ' : ''}{a.nome}</span>
-                    <button type="button" onClick={() => onAnexoRemove(id, i)} aria-label="Remover" className="foco-neutro shrink-0 rounded p-0.5 text-zinc-400 hover:text-red-600"><X size={13} /></button>
+                    <button type="button" onClick={() => onAnexoRemove(id, i)} aria-label="Remover" className="foco-neutro shrink-0 rounded p-0.5 text-zinc-400 hover:text-danger"><X size={13} /></button>
                   </div>
                 ))}
               </div>

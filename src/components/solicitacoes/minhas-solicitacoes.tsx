@@ -86,7 +86,7 @@ function CardMinha({ s, onAbrir }: { s: Solicitacao; onAbrir: (s: Solicitacao) =
       <div className="mt-1.5 flex items-center justify-between gap-2">
         <span className="text-[11px] text-zinc-400 truncate">{s.destinatario.rotulo}</span>
         {s.status === 'aberta' && (
-          <span className={`inline-flex items-center gap-1 text-[11px] shrink-0 ${venc ? 'font-medium text-red-600' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
+          <span className={`inline-flex items-center gap-1 text-[11px] shrink-0 ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
         )}
       </div>
       {/* Concluídas: QUEM concluiu e QUANDO (fuso SP) — insumo do relatório futuro. */}

@@ -130,7 +130,7 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
           <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
           <div className="mt-1.5 flex items-center justify-between gap-2">
             {aberta ? (
-              <span className={`inline-flex items-center gap-1 text-[11px] ${venc ? 'font-medium text-red-600' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
+              <span className={`inline-flex items-center gap-1 text-[11px] ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
             ) : (
               <span className={`text-[11px] font-medium ${enc?.cor ?? 'text-zinc-400'}`}>{enc?.rotulo ?? 'Encerrada'}</span>
             )}

@@ -81,11 +81,11 @@ export default function TendenciaMargemChart({ data, loading, margemOk = MARGEM_
       )}
       <div className="mt-2 flex items-center gap-4 text-xs text-zinc-400">
         <span className="flex items-center gap-1">
-          <span className="inline-block w-4 border-t-2 border-dashed border-emerald-500" />
+          <span className="inline-block w-4 border-t-2 border-dashed border-success" />
           ≥{margemOk}% (ok)
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block w-4 border-t-2 border-dashed border-amber-400" />
+          <span className="inline-block w-4 border-t-2 border-dashed border-warning" />
           ≥{margemAlerta}% (atenção)
         </span>
       </div>

@@ -71,7 +71,7 @@ export function ModalConvidar({
   return (
     <ModalCentral titulo="Criar usuário" onClose={onFechar}>
       {erro && (
-        <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div role="alert" className="mb-4 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
           {erro}
         </div>
       )}
@@ -80,7 +80,7 @@ export function ModalConvidar({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="criar-email" className="block text-xs font-medium text-zinc-600 mb-1">
-              E-mail <span className="text-red-500" aria-hidden="true">*</span>
+              E-mail <span className="text-danger" aria-hidden="true">*</span>
             </label>
             <input
               id="criar-email" type="email" required autoFocus value={email}
@@ -100,7 +100,7 @@ export function ModalConvidar({
           </div>
           <div>
             <label htmlFor="criar-role" className="block text-xs font-medium text-zinc-600 mb-1">
-              Permissão <span className="text-red-500" aria-hidden="true">*</span>
+              Permissão <span className="text-danger" aria-hidden="true">*</span>
             </label>
             <select
               id="criar-role" required value={roleId}
@@ -112,7 +112,7 @@ export function ModalConvidar({
               ))}
             </select>
             {roles.length === 0 && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-warning">
                 Nenhuma permissão cadastrada — crie uma na aba «Permissões» antes de criar usuários.
               </p>
             )}
@@ -137,17 +137,17 @@ export function ModalConvidar({
         </form>
       ) : (
         <div className="space-y-4">
-          <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <div role="status" className="rounded-lg border border-success bg-success-bg px-3 py-2 text-sm text-success">
             Usuário <span className="font-medium">{sucesso.email}</span> criado.
           </div>
 
           {/* v4.24.0 — aviso de envio; a senha é exibida SEMPRE abaixo (fallback). */}
           {sucesso.emailEnviado ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            <div className="rounded-lg border border-success bg-success-bg px-3 py-2 text-xs text-success">
               A senha provisória foi enviada por e-mail para <span className="font-medium">{sucesso.email}</span>.
             </div>
           ) : (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <div className="rounded-lg border border-warning bg-warning-bg px-3 py-2 text-xs text-warning">
               Não foi possível enviar o e-mail — copie a senha abaixo e repasse à pessoa.
             </div>
           )}

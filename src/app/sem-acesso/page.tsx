@@ -18,15 +18,15 @@ export default async function SemAcessoPage() {
         <AuthHeader className="flex flex-col items-center mb-7" />
 
         <div className="bg-white rounded-xl shadow-sm px-8 py-9 text-center">
-          <h1 className="text-lg font-semibold mb-2" style={{ color: '#1A1814' }}>
+          <h1 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
             {sessao.ativo ? 'Sem acesso a esta área' : 'Conta sem acesso ativo'}
           </h1>
-          <p className="text-sm leading-relaxed mb-6" style={{ color: '#75777B' }}>
+          <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>
             {sessao.ativo
               ? 'Seu perfil não tem permissão para a área solicitada. Se você precisa deste acesso, fale com o time Financeiro.'
               : 'Sua conta foi autenticada, mas não tem um perfil de acesso ativo no WT Finance. Fale com o time Financeiro para liberar o acesso.'}
           </p>
-          <p className="text-xs mb-6" style={{ color: '#75777B' }}>
+          <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
             Conectado como <span className="font-medium">{sessao.email}</span>
           </p>
           <div className="flex items-center justify-center gap-3">

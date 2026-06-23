@@ -110,7 +110,7 @@ export function ModalRole({
         onClose={onFechar}
       >
         {erro && (
-          <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div role="alert" className="mb-4 rounded-lg border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
             {erro}
           </div>
         )}
@@ -118,7 +118,7 @@ export function ModalRole({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="role-nome" className="block text-xs font-medium text-zinc-600 mb-1">
-              Nome <span className="text-red-500" aria-hidden="true">*</span>
+              Nome <span className="text-danger" aria-hidden="true">*</span>
             </label>
             <input
               id="role-nome"

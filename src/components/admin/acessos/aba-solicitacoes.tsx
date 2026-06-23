@@ -87,9 +87,9 @@ export function AbaSolicitacoes({
           </p>
           {/* v4.24.0 — aviso de envio (a senha aparece sempre abaixo, fallback). */}
           {senha.emailEnviado ? (
-            <p className="text-xs text-emerald-700 mb-2">Enviada por e-mail para {senha.email}.</p>
+            <p className="text-xs text-success mb-2">Enviada por e-mail para {senha.email}.</p>
           ) : (
-            <p className="text-xs text-amber-700 mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
+            <p className="text-xs text-warning mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
           )}
           <div className="flex items-center gap-2">
             <input
@@ -115,7 +115,7 @@ export function AbaSolicitacoes({
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden mb-6">
           {/* aviso âmbar quando não há permissões cadastradas — Aprovar ficará desabilitado */}
           {roles.length === 0 && (
-            <div className="border-b border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+            <div className="border-b border-warning bg-warning-bg px-4 py-2 text-xs text-warning">
               Nenhuma permissão cadastrada — crie ao menos uma permissão em Permissões para poder aprovar solicitações.
             </div>
           )}

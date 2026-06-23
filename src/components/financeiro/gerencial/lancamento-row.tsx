@@ -86,7 +86,7 @@ function EditableCell({
             className={`inline-flex items-center gap-1 cursor-pointer rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-opacity hover:opacity-70 ${badgeClassFor ? badgeClassFor(displaySelect) : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}
             title={displaySelect}>
             {displaySelect}
-            {state.saved && <Check size={10} className="text-green-500" />}
+            {state.saved && <Check size={10} className="text-success" />}
             {state.saving && <Loader2 size={10} className="animate-spin" />}
           </span>
         ) : (
@@ -94,7 +94,7 @@ function EditableCell({
             className="cursor-pointer text-xs hover:text-[var(--brand)] transition-colors block truncate"
             title={displaySelect}>
             {displaySelect}
-            {state.saved && <Check size={10} className="inline ml-1 text-green-500" />}
+            {state.saved && <Check size={10} className="inline ml-1 text-success" />}
             {state.saving && <Loader2 size={10} className="inline ml-1 animate-spin" />}
           </span>
         )}
@@ -121,7 +121,7 @@ function EditableCell({
           <span onClick={() => setEditing(true)}
             className="cursor-pointer text-xs hover:opacity-70 transition-opacity block">
             <ValorContabil valor={Number(value ?? 0)} className={accountingClassName} />
-            {state.saved && <Check size={10} className="inline ml-1 text-green-500" />}
+            {state.saved && <Check size={10} className="inline ml-1 text-success" />}
             {state.saving && <Loader2 size={10} className="inline ml-1 animate-spin" />}
           </span>
         )}
@@ -149,7 +149,7 @@ function EditableCell({
           className="cursor-pointer text-xs hover:text-[var(--brand)] transition-colors flex items-center gap-1 min-w-0">
           {before}
           <span className="block truncate" title={String(displayValue)}>{displayValue}</span>
-          {state.saved && <Check size={10} className="inline ml-1 shrink-0 text-green-500" />}
+          {state.saved && <Check size={10} className="inline ml-1 shrink-0 text-success" />}
           {state.saving && <Loader2 size={10} className="inline ml-1 shrink-0 animate-spin" />}
         </span>
       )}
@@ -213,7 +213,7 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
   const corValor = l.tipo === 'A pagar' ? 'text-[var(--negative-deep)]' : 'text-[var(--positive-deep)]'
 
   // Fundo da linha: seleção (transitória) prevalece; senão o destaque amarelo (persistente).
-  const bgLinha = selecionado ? 'bg-[var(--brand-soft)]/30' : destacado ? 'bg-amber-100' : 'hover:bg-zinc-50/50'
+  const bgLinha = selecionado ? 'bg-[var(--brand-soft)]/30' : destacado ? 'bg-warning-bg' : 'hover:bg-zinc-50/50'
 
   return (
     <tr className={`border-b border-zinc-50 ${bgLinha}`}>
@@ -240,7 +240,7 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
             onClick={toggleDestaque}
             title={destacado ? 'Remover destaque' : 'Destacar linha'}
             aria-pressed={destacado}
-            className={`p-1 rounded transition-colors ${destacado ? 'text-amber-500 bg-amber-50' : 'text-zinc-300 hover:text-amber-400'}`}
+            className={`p-1 rounded transition-colors ${destacado ? 'text-warning bg-warning-bg' : 'text-zinc-300 hover:text-warning'}`}
           >
             <PaintBucket size={12} />
           </button>
@@ -248,7 +248,7 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
             onClick={handleDelete}
             disabled={isPending}
             title={confirmDel ? 'Clique novamente para confirmar' : 'Remover'}
-            className={`p-1 rounded transition-colors ${confirmDel ? 'text-red-500 bg-red-50' : 'text-zinc-300 hover:text-red-400'}`}
+            className={`p-1 rounded transition-colors ${confirmDel ? 'text-danger bg-danger-bg' : 'text-zinc-300 hover:text-danger'}`}
           >
             {isPending ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
           </button>

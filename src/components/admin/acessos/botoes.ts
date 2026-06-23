@@ -14,7 +14,7 @@ export const PILL =
 export const PILL_NEUTRO = 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
 
 /** Destrutiva — pill com tom de perigo (semântico, permitido fora da regra de marca). */
-export const PILL_PERIGO = 'border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50'
+export const PILL_PERIGO = 'border-danger text-danger hover:border-danger hover:bg-danger-bg'
 
 /** Primária — pill no estilo "ativo" das pills de período (bege suave do tema group),
  *  via tokens neutros fixos. Use junto com PILL_PRIMARIA_STYLE. */

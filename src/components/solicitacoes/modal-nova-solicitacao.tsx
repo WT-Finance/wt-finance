@@ -88,20 +88,20 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label htmlFor="ns-tipo" className="block text-xs font-medium text-zinc-600 mb-1">Tipo <span className="text-red-500">*</span></label>
+            <label htmlFor="ns-tipo" className="block text-xs font-medium text-zinc-600 mb-1">Tipo <span className="text-danger">*</span></label>
             <select id="ns-tipo" value={tipoId} onChange={e => trocarTipo(Number(e.target.value))} className={INPUT} autoFocus>
               <option value="">Selecione…</option>
               {tipos.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="ns-data" className="block text-xs font-medium text-zinc-600 mb-1">Data limite <span className="text-red-500">*</span></label>
+            <label htmlFor="ns-data" className="block text-xs font-medium text-zinc-600 mb-1">Data limite <span className="text-danger">*</span></label>
             <input id="ns-data" type="date" value={dataLimite} onChange={e => setDataLimite(e.target.value)} className={INPUT} />
           </div>
         </div>
 
         <div>
-          <span className="block text-xs font-medium text-zinc-600 mb-1">Destinatário <span className="text-red-500">*</span></span>
+          <span className="block text-xs font-medium text-zinc-600 mb-1">Destinatário <span className="text-danger">*</span></span>
           <div className="flex gap-2 mb-2">
             <button type="button" onClick={() => setDestMode('role')} className={`${PILL} ${destMode === 'role' ? PILL_PRIMARIA : PILL_NEUTRO}`} style={destMode === 'role' ? PILL_PRIMARIA_STYLE : undefined}>Permissão</button>
             <button type="button" onClick={() => setDestMode('usuario')} className={`${PILL} ${destMode === 'usuario' ? PILL_PRIMARIA : PILL_NEUTRO}`} style={destMode === 'usuario' ? PILL_PRIMARIA_STYLE : undefined}>Usuário</button>

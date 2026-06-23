@@ -175,8 +175,8 @@ function LancamentoRow({ lancamento: l }: { lancamento: LancamentoDia }) {
                 ? 'bg-zinc-100 text-zinc-500'
                 : 'bg-zinc-100 text-zinc-500'
               : isEntrada
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-amber-50 text-amber-700',
+                ? 'bg-success-bg text-success'
+                : 'bg-warning-bg text-warning',
           ].join(' ')}
         >
           {isEntrada ? (isFuturo ? 'A Receber' : 'Recebido') : (isFuturo ? 'A Pagar' : 'Pago')}

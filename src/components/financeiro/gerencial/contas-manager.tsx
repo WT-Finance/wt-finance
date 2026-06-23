@@ -228,7 +228,7 @@ export default function ContasManager({ contas, onContasChange }: {
                 <button onClick={() => confirmDel === c.conta ? remover(c.conta) : setConfirmDel(c.conta)}
                   onBlur={() => setConfirmDel(null)}
                   title={confirmDel === c.conta ? 'Clique novamente para confirmar' : 'Remover conta'}
-                  className={`p-1 rounded transition-colors ${confirmDel === c.conta ? 'text-red-500 bg-red-50' : 'text-zinc-300 hover:text-red-400'}`}>
+                  className={`p-1 rounded transition-colors ${confirmDel === c.conta ? 'text-danger bg-danger-bg' : 'text-zinc-300 hover:text-danger'}`}>
                   <Trash2 size={13} />
                 </button>
               </td>

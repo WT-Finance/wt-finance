@@ -176,10 +176,10 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
               {linhasVisiveis.map(l => {
                 const hoje = isToday(parseISO(l.data))
                 return (
-                  <tr key={l.data} className={`border-b border-zinc-50 ${hoje ? 'bg-amber-50' : ''}`}>
-                    <td className={`py-1.5 px-2 font-medium ${hoje ? 'text-amber-700' : ''}`}>
+                  <tr key={l.data} className={`border-b border-zinc-50 ${hoje ? 'bg-warning-bg' : ''}`}>
+                    <td className={`py-1.5 px-2 font-medium ${hoje ? 'text-warning' : ''}`}>
                       {format(parseISO(l.data), 'dd/MMM', { locale: ptBR })}
-                      {hoje && <span className="ml-1 text-[10px] text-amber-600">hoje</span>}
+                      {hoje && <span className="ml-1 text-[10px] text-warning">hoje</span>}
                     </td>
                     {/* Fluxos: sem fundo, cor só no número (M3). */}
                     <td className="py-1.5 px-2">

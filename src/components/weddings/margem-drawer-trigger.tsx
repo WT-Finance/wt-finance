@@ -25,7 +25,7 @@ export default function MargemDrawerTrigger({ children, tendencia, sumario, marg
       >
         {children}
         <span className="absolute bottom-3 right-3 opacity-20 group-hover/drawer:opacity-70 transition-opacity pointer-events-none">
-          <ChevronRight size={15} className="text-blue-600" />
+          <ChevronRight size={15} className="text-[var(--brand)]" />
         </span>
       </div>
 

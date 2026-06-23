@@ -15,7 +15,7 @@ import { fmtDataHoraSP } from '@/lib/fmt'
 /** Botão de ação da linha em ÍCONE (v4.18/M4). Compacto, com aria-label/title. */
 const ICON_BTN = 'foco-neutro inline-flex items-center justify-center rounded-md border p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
 const ICON_NEUTRO = 'border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700'
-const ICON_PERIGO = 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
+const ICON_PERIGO = 'border-danger text-danger hover:bg-danger-bg hover:border-danger'
 
 // v4.14.1 — aba Usuários: criar usuário (senha provisória), role inline, status,
 // resetar senha e excluir (com confirmação em modal). Botões no formato pill (botoes.ts).
@@ -187,9 +187,9 @@ export function AbaUsuarios({
           </p>
           {/* v4.24.0 — aviso de envio (a senha aparece sempre abaixo, fallback). */}
           {revelado.emailEnviado ? (
-            <p className="text-xs text-emerald-700 mb-2">Enviada por e-mail para {revelado.email}.</p>
+            <p className="text-xs text-success mb-2">Enviada por e-mail para {revelado.email}.</p>
           ) : (
-            <p className="text-xs text-amber-700 mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
+            <p className="text-xs text-warning mb-2">Não foi possível enviar o e-mail — copie e repasse manualmente.</p>
           )}
           <div className="flex items-center gap-2">
             <input

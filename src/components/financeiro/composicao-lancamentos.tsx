@@ -29,22 +29,24 @@ interface Props {
 // Entradas: viés verde sage. Saídas: viés terracota/quente. "Outros" sempre o
 // último tom (mais neutro/claro) de cada paleta.
 
+// Endpoints da paleta = tokens via var() (fonte única; mudar o token propaga aqui).
+// Os tons INTERMEDIÁRIOS (sem token correspondente) seguem hex — degradê do donut.
 const PALETA_ENTRADAS = [
-  '#5F7A3D', // --positive
+  'var(--positive)',
   '#7E9658',
   '#9FB37B',
-  '#3F5028', // --positive-deep
-  '#C4D5A6', // --positive-soft
+  'var(--positive-deep)',
+  'var(--positive-soft)',
 ]
 
 const PALETA_SAIDAS = [
-  '#A35442', // --negative
+  'var(--negative)',
   '#B97058',
   '#C98C6E',
-  '#6B2D1F', // --negative-deep
+  'var(--negative-deep)',
   '#9C7A6A',
   '#BFA292',
-  '#E8C9C0', // --negative-soft (reservada p/ "Outros")
+  'var(--negative-soft)', // reservada p/ "Outros"
 ]
 
 const COR_OUTROS = '#B8B2A8' // neutro morno

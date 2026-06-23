@@ -182,7 +182,7 @@ export function EditorTipo({
 
         <div>
           <label htmlFor="tipo-nome" className="block text-xs font-medium text-zinc-600 mb-1">
-            Nome do tipo <span className="text-red-500" aria-hidden="true">*</span>
+            Nome do tipo <span className="text-danger" aria-hidden="true">*</span>
           </label>
           <input
             id="tipo-nome"
@@ -351,7 +351,7 @@ export function EditorTipo({
                         type="button"
                         onClick={() => removerCampo(linha._key)}
                         aria-label={`Remover campo ${index + 1}`}
-                        className="foco-neutro rounded-lg p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                        className="foco-neutro rounded-lg p-1 text-zinc-400 transition-colors hover:bg-danger-bg hover:text-danger"
                       >
                         <X size={16} />
                       </button>

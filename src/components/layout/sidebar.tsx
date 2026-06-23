@@ -475,7 +475,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
           <button
             type="submit"
             aria-label="Sair"
-            className="p-1.5 rounded text-zinc-400 hover:text-red-600 transition-colors"
+            className="p-1.5 rounded text-zinc-400 hover:text-danger transition-colors"
           >
             <LogOut size={15} />
           </button>

@@ -15,7 +15,7 @@ import { EditorTipo } from './editor-tipo'
 /** Botão de ação da linha em ÍCONE (v4.19.0/M2). Mesmo padrão de aba-usuarios.tsx. */
 const ICON_BTN = 'foco-neutro inline-flex items-center justify-center rounded-md border p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
 const ICON_NEUTRO = 'border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700'
-const ICON_PERIGO = 'border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
+const ICON_PERIGO = 'border-danger text-danger hover:bg-danger-bg hover:border-danger'
 
 // v4.16.0 (spec §2.4 C) — conteúdo client da página Tipos de Solicitação:
 // CTA "Novo tipo", tabela de tipos (arquivados ao final, com chip), ações por
