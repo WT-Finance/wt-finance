@@ -116,3 +116,15 @@ export const movimentacaoSchema = z.object({
 export type Movimentacao = z.infer<typeof movimentacaoSchema>
 
 export const movimentacoesSchema = z.array(movimentacaoSchema)
+
+// ── Envolvidos para notificação por e-mail (v4.25.0) — retorno de solic_emails_envolvidos.
+// A RPC (gated por pode_ver_solic) resolve a role → membros ativos e devolve SÓ os e-mails
+// desta solicitação + o contexto mínimo do corpo. Shape estável (todas as chaves sempre).
+export const emailsEnvolvidosSchema = z.object({
+  tipo_nome:          z.string().nullable(),
+  autor_email:        z.string().nullable(),
+  atribuido_tipo:     z.enum(['usuario', 'role']),
+  atribuido_rotulo:   z.string().nullable(),
+  envolvidos_emails:  z.array(z.string()),
+})
+export type EmailsEnvolvidos = z.infer<typeof emailsEnvolvidosSchema>

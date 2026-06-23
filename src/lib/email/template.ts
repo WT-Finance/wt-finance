@@ -120,3 +120,110 @@ export function templateSenhaProvisoria(input: {
 
   return { assunto, html, text }
 }
+
+// ── v4.25.0 — Notificação de movimentação de Solicitação (tarefas) ──────────────
+// MESMO layout Outlook-safe (tabelas/inline/logo CID/botão em célula/responsivo).
+// Um e-mail ÚNICO para TODOS os envolvidos (autor + destinatário/membros da role),
+// parametrizado pela movimentação. Rejeição inclui a justificativa. Saudação genérica
+// (vai para vários). Reusa TemplateSenha como shape de retorno ({assunto,html,text}).
+// NOTA: o scaffold (outer/card/logo/divisória/rodapé) está duplicado do template de
+// senha de propósito — o de senha está validado no Outlook e não pode ser reverificado
+// daqui; extrair um layoutBaseEmail comum fica para quando ambos puderem ser conferidos
+// (ver docs/email-layout-guide.md §5).
+
+export type MovimentacaoEmail = 'criada' | 'concluida' | 'rejeitada' | 'cancelada'
+const MOV_PT: Record<MovimentacaoEmail, string> = {
+  criada: 'criada', concluida: 'concluída', rejeitada: 'rejeitada', cancelada: 'cancelada',
+}
+
+export function templateNotificacaoSolicitacao(input: {
+  movimentacao:    MovimentacaoEmail
+  titulo:          string
+  atribuidoTipo:   'usuario' | 'role'
+  atribuidoRotulo: string
+  autorRotulo:     string
+  justificativa?:  string | null
+  link?:           string | null
+}): TemplateSenha {
+  const mov   = MOV_PT[input.movimentacao]
+  const titulo = input.titulo
+  const link  = input.link?.trim() || null
+  const just  = input.movimentacao === 'rejeitada' ? (input.justificativa?.trim() || null) : null
+  const atribuido = input.atribuidoTipo === 'role'
+    ? `à permissão ${input.atribuidoRotulo}`
+    : `a ${input.atribuidoRotulo}`
+
+  const assunto = `${APP_NOME} — solicitação ${mov}: ${titulo}`
+
+  const text =
+    'Olá,\n\n' +
+    `A solicitação "${titulo}" foi ${mov}.\n\n` +
+    `Atribuída ${atribuido}, por ${input.autorRotulo}.\n\n` +
+    (just ? `Justificativa: ${just}\n\n` : '') +
+    (link ? `Acesse suas solicitações: ${link}\n\n` : '') +
+    'Você recebe este e-mail por estar envolvido nesta solicitação.\n\n' +
+    `— ${APP_NOME}`
+
+  const justLinha = just
+    ? `<tr><td class="em-pad" style="padding:18px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:10px;">
+          <tr><td style="padding:14px 16px;">
+            <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:6px;">Justificativa</div>
+            <div style="font-size:14px;line-height:1.6;color:${COR_TEXTO};">${escaparHtml(just)}</div>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : ''
+
+  const botaoLinha = link
+    ? `<tr><td class="em-pad" align="center" style="padding:28px 40px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:8px;">
+            <a href="${escaparHtml(link)}" style="display:inline-block;padding:13px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">Acessar a plataforma</a>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : ''
+
+  const html =
+`<style>
+  @media only screen and (max-width:480px) {
+    .em-card { width:100% !important; }
+    .em-pad  { padding-left:24px !important; padding-right:24px !important; }
+  }
+</style>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:${COR_FUNDO};font-family:Arial,Helvetica,sans-serif;">
+  <tr><td align="center" style="padding:40px 12px;">
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid ${COR_BORDA};border-radius:14px;">
+      <tr><td class="em-pad" align="center" style="padding:38px 40px 0;">
+        <img src="cid:${LOGO_CID}" alt="WT Finance — Welcome Group" width="184" style="display:block;width:184px;max-width:184px;height:auto;border:0;margin:0 auto;" />
+      </td></tr>
+      <tr><td class="em-pad" style="padding:26px 40px 0;">
+        <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:24px 40px 0;">
+        <p style="margin:0 0 16px;font-size:16px;color:${COR_TITULO};">Olá,</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:10px;">
+          <tr><td style="padding:18px 16px;">
+            <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:8px;">Solicitação ${mov}</div>
+            <div style="font-size:17px;font-weight:bold;line-height:1.4;color:${COR_TITULO};">${escaparHtml(titulo)}</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:16px 40px 0;">
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">Atribuída ${escaparHtml(atribuido)}, por ${escaparHtml(input.autorRotulo)}.</p>
+      </td></tr>
+      ${justLinha}
+      ${botaoLinha}
+      <tr><td class="em-pad" style="padding:28px 40px 38px;">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:${COR_TENUE};">Você recebe este e-mail por estar envolvido nesta solicitação.</p>
+      </td></tr>
+    </table>
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
+      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">WT&nbsp;FINANCE&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
+    </table>
+  </td></tr>
+</table>`
+
+  return { assunto, html, text }
+}

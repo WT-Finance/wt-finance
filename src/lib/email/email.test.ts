@@ -9,9 +9,9 @@ vi.mock('nodemailer', () => ({
   default: { createTransport: () => ({ sendMail: sendMailMock }) },
 }))
 
-import { templateSenhaProvisoria } from './template'
+import { templateSenhaProvisoria, templateNotificacaoSolicitacao } from './template'
 import { getConfigSmtp, getAppBaseUrl, _resetConfigSmtpCache } from './config'
-import { enviarSenhaProvisoria } from './index'
+import { enviarSenhaProvisoria, enviarNotificacaoSolicitacao } from './index'
 
 const CHAVES_SMTP = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'] as const
 function limparEnvSmtp() { CHAVES_SMTP.forEach(k => { delete process.env[k] }) }
@@ -137,5 +137,101 @@ describe('enviarSenhaProvisoria — NUNCA lança (boolean)', () => {
     sendMailMock.mockRejectedValueOnce(new Error('SMTP timeout'))
     const ok = await enviarSenhaProvisoria({ para: 'x@y.com', senha: 's', tipo: 'criacao' })
     expect(ok).toBe(false)
+  })
+})
+
+describe('templateNotificacaoSolicitacao — 4 movimentações', () => {
+  const base = { titulo: 'Lançamentos #42', atribuidoTipo: 'usuario' as const, atribuidoRotulo: 'carine@x.com', autorRotulo: 'yan@x.com' }
+
+  it('criada: assunto/título no html e text + logo CID', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'criada', ...base })
+    expect(t.assunto).toContain('criada')
+    expect(t.assunto).toContain('Lançamentos #42')
+    expect(t.html).toContain('Lançamentos #42')
+    expect(t.text).toContain('foi criada')
+    expect(t.html).toContain('cid:welcome-logo')
+  })
+
+  it('concluída: SEM justificativa mesmo se passada', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'concluida', ...base, justificativa: 'nao deveria aparecer' })
+    expect(t.assunto).toContain('concluída')
+    expect(t.html).not.toContain('Justificativa')
+    expect(t.html).not.toContain('nao deveria aparecer')
+  })
+
+  it('rejeitada: justificativa em html e text', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'rejeitada', ...base, justificativa: 'falta o anexo X' })
+    expect(t.assunto).toContain('rejeitada')
+    expect(t.html).toContain('Justificativa')
+    expect(t.html).toContain('falta o anexo X')
+    expect(t.text).toContain('falta o anexo X')
+  })
+
+  it('cancelada: contexto (atribuído/por) presente', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'cancelada', ...base })
+    expect(t.assunto).toContain('cancelada')
+    expect(t.html).toContain('carine@x.com')
+    expect(t.html).toContain('yan@x.com')
+  })
+
+  it('role: frase "à permissão"; botão só com link; escapa título', () => {
+    const r = templateNotificacaoSolicitacao({ movimentacao: 'criada', titulo: '<b>x</b> #1', atribuidoTipo: 'role', atribuidoRotulo: 'Financeiro', autorRotulo: 'yan@x.com', link: 'https://app.x.com/solicitacoes' })
+    expect(r.html).toContain('à permissão Financeiro')
+    expect(r.html).toContain('Acessar a plataforma')
+    expect(r.html).toContain('https://app.x.com/solicitacoes')
+    expect(r.html).toContain('&lt;b&gt;')
+    expect(r.html).not.toContain('<b>x</b>')
+    const sem = templateNotificacaoSolicitacao({ movimentacao: 'criada', ...base })
+    expect(sem.html).not.toContain('Acessar a plataforma')
+  })
+})
+
+describe('enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança', () => {
+  const args = { movimentacao: 'concluida' as const, titulo: 'T #1', atribuidoTipo: 'role' as const, atribuidoRotulo: 'Financeiro', autorRotulo: 'yan@x.com' }
+  beforeEach(() => {
+    sendMailMock.mockReset()
+    _resetConfigSmtpCache(); limparEnvSmtp()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('SMTP não configurado → 0 enviados, sem tentar enviar', async () => {
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com', 'b@x.com'], ...args })
+    expect(r).toEqual({ enviados: 0, total: 2 })
+    expect(sendMailMock).not.toHaveBeenCalled()
+  })
+
+  it('todos enviados → enviados = total', async () => {
+    configCompleta()
+    sendMailMock.mockResolvedValue({ messageId: 'ok' })
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com', 'b@x.com', 'c@x.com'], ...args })
+    expect(r).toEqual({ enviados: 3, total: 3 })
+    expect(sendMailMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('falha de UM destinatário não derruba os outros (best-effort)', async () => {
+    configCompleta()
+    sendMailMock
+      .mockResolvedValueOnce({ messageId: '1' })
+      .mockRejectedValueOnce(new Error('bounce'))
+      .mockResolvedValueOnce({ messageId: '3' })
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com', 'b@x.com', 'c@x.com'], ...args })
+    expect(r.total).toBe(3)
+    expect(r.enviados).toBe(2)
+  })
+
+  it('dedupe + sanidade: ignora repetidos e entradas sem @', async () => {
+    configCompleta()
+    sendMailMock.mockResolvedValue({ messageId: 'ok' })
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com', 'a@x.com', 'invalido', '  '], ...args })
+    expect(r).toEqual({ enviados: 1, total: 1 })
+    expect(sendMailMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('config presente mas paras vazio → 0/0, sem enviar', async () => {
+    configCompleta()
+    const r = await enviarNotificacaoSolicitacao({ paras: [], ...args })
+    expect(r).toEqual({ enviados: 0, total: 0 })
+    expect(sendMailMock).not.toHaveBeenCalled()
   })
 })

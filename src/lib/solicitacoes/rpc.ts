@@ -27,3 +27,6 @@ export const getTiposAdmin     = () => call('admin_solic_listar_tipos', {}, S.ti
 export const getPendencias     = cache(() => call('solic_minhas_pendencias', {}, z.number()))
 // v4.19.1 — auditoria de movimentações (gestão-only; o banco valida 'solicitacoes' via exigir_acesso).
 export const getMovimentacoes  = () => call('solic_movimentacoes', {}, S.movimentacoesSchema)
+// v4.25.0 — e-mails dos envolvidos (autor + destinatário/membros ativos da role) p/
+// notificar uma movimentação. Gated por pode_ver_solic na RPC; null se o caller não vê.
+export const getEmailsEnvolvidos = (id: number) => call('solic_emails_envolvidos', { p_id: id }, S.emailsEnvolvidosSchema)

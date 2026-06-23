@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
-import { getDetalhe } from '@/lib/solicitacoes/rpc'
+import { getDetalhe, getEmailsEnvolvidos } from '@/lib/solicitacoes/rpc'
+import { enviarNotificacaoSolicitacao, type MovimentacaoEmail } from '@/lib/email'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 // Escrita do módulo de Solicitações. Transições/criação via cliente de SESSÃO
@@ -23,6 +24,28 @@ const MAX_BYTES = 10 * 1024 * 1024
 async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> {
   const sb = await getServerClient()
   return (sb.rpc as unknown as BoundRpc).bind(sb)(fn, args)
+}
+
+/**
+ * v4.25.0 — Notifica por e-mail os ENVOLVIDOS (autor + destinatário/membros da role)
+ * após uma movimentação. FALLBACK-SAFE: NUNCA lança nem bloqueia a movimentação — RPC
+ * de fan-out ou SMTP indisponível/erro são silenciosamente ignorados (o e-mail é camada
+ * ADICIONAL). Chamada SÓ APÓS a movimentação já ter sido persistida (RPC sem erro).
+ */
+async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail, justificativa?: string | null): Promise<void> {
+  try {
+    const ctx = await getEmailsEnvolvidos(id)
+    if (!ctx || ctx.envolvidos_emails.length === 0) return
+    await enviarNotificacaoSolicitacao({
+      paras:           ctx.envolvidos_emails,
+      movimentacao,
+      titulo:          `${ctx.tipo_nome ?? 'Solicitação'} #${id}`,
+      atribuidoTipo:   ctx.atribuido_tipo,
+      atribuidoRotulo: ctx.atribuido_rotulo ?? '—',
+      autorRotulo:     ctx.autor_email ?? '—',
+      justificativa,
+    })
+  } catch { /* e-mail é camada ADICIONAL: jamais quebra a movimentação */ }
 }
 
 /** v4.20.0 — detalhe de uma solicitação p/ a página de auditoria de Movimentações (gestão-only):
@@ -84,6 +107,7 @@ export async function criarSolicitacao(input: {
     }
   }
 
+  await notificarMovimentacao(id, 'criada')
   revalidatePath('/solicitacoes')
   return { ok: true, id }
 }
@@ -122,6 +146,7 @@ export async function concluirSolicitacao(id: number): Promise<{ ok: boolean; er
   await requireAreaAction(null)
   const { error } = await rpcSessao('solic_concluir', { p_id: id })
   if (error) return { ok: false, erro: traduzir(error.message) }
+  await notificarMovimentacao(id, 'concluida')
   revalidatePath('/solicitacoes'); return { ok: true }
 }
 
@@ -129,6 +154,7 @@ export async function rejeitarSolicitacao(id: number, justificativa: string): Pr
   await requireAreaAction(null)
   const { error } = await rpcSessao('solic_rejeitar', { p_id: id, p_justificativa: justificativa })
   if (error) return { ok: false, erro: traduzir(error.message) }
+  await notificarMovimentacao(id, 'rejeitada', justificativa)
   revalidatePath('/solicitacoes'); return { ok: true }
 }
 
@@ -136,6 +162,7 @@ export async function cancelarSolicitacao(id: number): Promise<{ ok: boolean; er
   await requireAreaAction(null)
   const { error } = await rpcSessao('solic_cancelar', { p_id: id })
   if (error) return { ok: false, erro: traduzir(error.message) }
+  await notificarMovimentacao(id, 'cancelada')
   revalidatePath('/solicitacoes'); return { ok: true }
 }
 
