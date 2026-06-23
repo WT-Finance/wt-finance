@@ -57,3 +57,83 @@ describe('toStr', () => {
     expect(toStr(123)).toBe('123')
   })
 })
+
+describe('toNum — negativo entre parênteses (convenção contábil, v4.27)', () => {
+  // Extensão da v4.27 (ADR-0130): "(1.000)" → -1000. NÃO altera nenhum caso acima
+  // (nenhum tem parênteses) — invólucro detectado ANTES da desambiguação BR/US, que
+  // segue idêntica no conteúdo; só o sinal muda no fim.
+  it('parênteses = negativo, preservando a desambiguação BR/US do conteúdo', () => {
+    expect(toNum('(1.000)')).toBe(-1000)         // BR milhar puro
+    expect(toNum('(1.234,56)')).toBe(-1234.56)   // BR decimal
+    expect(toNum('(8.840,00)')).toBe(-8840)
+    expect(toNum('(1,234.56)')).toBe(-1234.56)   // US dentro dos parênteses
+  })
+  it('aceita R$ dentro ou fora dos parênteses', () => {
+    expect(toNum('R$ (1.234,56)')).toBe(-1234.56)
+    expect(toNum('(R$ 1.234,56)')).toBe(-1234.56)
+  })
+  it('parênteses vazios/lixo → null; positivo sem parênteses intacto', () => {
+    expect(toNum('()')).toBeNull()
+    expect(toNum('(abc)')).toBeNull()
+    expect(toNum('1.234,56')).toBe(1234.56)
+  })
+})
+
+// Oráculo CONGELADO do antigo gerencial/parser.ts:parseValorMonetario (removido na
+// v4.27/M2). Prova que o toNum ESTENDIDO concorda com ele em TODA entrada de moeda
+// realista — a não-regressão do import do Gerencial após convergir ao toNum.
+// (Arquivo de teste → isento da regra wt/no-coercao-reimpl.)
+function parseValorMonetarioLegado(raw: unknown): number | null {
+  if (raw == null) return null
+  if (typeof raw === 'number') return isNaN(raw) ? null : raw
+  let s = String(raw).trim()
+  if (!s) return null
+  const negativo = /^-|\(.*\)$/.test(s)
+  s = s.replace(/[^\d.,]/g, '')
+  if (!s) return null
+  const lastComma = s.lastIndexOf(',')
+  const lastDot = s.lastIndexOf('.')
+  if (lastComma > -1 && lastDot > -1) {
+    if (lastComma > lastDot) s = s.replace(/\./g, '').replace(',', '.')
+    else s = s.replace(/,/g, '')
+  } else if (lastComma > -1) {
+    const aposVirgula = s.length - lastComma - 1
+    s = aposVirgula === 1 || aposVirgula === 2 ? s.replace(',', '.') : s.replace(/,/g, '')
+  }
+  const n = Number(s)
+  if (isNaN(n)) return null
+  return negativo ? -n : n
+}
+
+describe('toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial)', () => {
+  // Formatos REAIS de moeda (raw:false do XLSX): BR/US, 2 casas, com/sem R$, positivos
+  // e negativos entre parênteses — onde o parseValorMonetario era usado. Os dois DEVEM
+  // concordar; é a prova da convergência.
+  const casosReais: Array<[string, number]> = [
+    ['R$ 1.000,00', 1000],
+    ['R$ 1.234,56', 1234.56],
+    ['1.000,00', 1000],
+    ['1.234,56', 1234.56],
+    ['R$ 1,000.00', 1000],
+    ['1,234.56', 1234.56],
+    ['12.345,67', 12345.67],
+    ['1.234.567,89', 1234567.89],
+    ['1,234,567.89', 1234567.89],
+    ['0,00', 0],
+    ['0.00', 0],
+    ['-1.234,56', -1234.56],
+    ['(R$ 1.000,00)', -1000],
+    ['(1.234,56)', -1234.56],
+    ['(1,234.56)', -1234.56],
+  ]
+  it.each(casosReais)('%s → mesmo valor nos dois caminhos', (entrada, esperado) => {
+    expect(toNum(entrada)).toBe(esperado)
+    expect(parseValorMonetarioLegado(entrada)).toBe(esperado)
+    expect(toNum(entrada)).toBe(parseValorMonetarioLegado(entrada))
+  })
+  it('números nativos: idênticos nos dois', () => {
+    for (const n of [1000, -50.5, 0, 8840.25]) {
+      expect(toNum(n)).toBe(parseValorMonetarioLegado(n))
+    }
+  })
+})

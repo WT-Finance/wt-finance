@@ -13,6 +13,8 @@
 //   - sem vírgula e casando ^-?\d{1,3}(\.\d{3})+$ → BR milhar puro (pontos removidos).
 //     Ex.: "1.234"→1234; "12.345"→12345; "-1.234"→-1234;
 //   - senão → ponto é decimal US, mantido. Ex.: "12.34"→12.34.
+//   - valor entre PARÊNTESES → NEGATIVO (convenção contábil), com o conteúdo pela
+//     regra acima. Ex.: "(1.000)"→-1000; "(1.234,56)"→-1234,56. (v4.27/ADR-0130)
 // (mesma lógica do antigo fmtValor de solicitacoes/format.ts, agora única.)
 
 /** Número robusto BR/US, ou null. Aceita number nativo (célula numérica). */
@@ -21,6 +23,15 @@ export function toNum(value: unknown): number | null {
   if (typeof value === 'number') return Number.isNaN(value) ? null : value
   let s = String(value).trim().replace(/[R$\s]/g, '').trim()
   if (!s) return null
+  // Negativo entre parênteses (convenção contábil, v4.27): "(1.000)" → -1000. O
+  // invólucro é detectado ANTES da desambiguação; o conteúdo segue a MESMA regra BR/US
+  // abaixo e o sinal é aplicado no fim. NÃO afeta nenhum caso sem parênteses. (ADR-0130)
+  let negativo = false
+  if (s.startsWith('(') && s.endsWith(')')) {
+    negativo = true
+    s = s.slice(1, -1).trim()
+    if (!s) return null
+  }
   if (/,\d{1,2}$/.test(s)) {
     s = s.replace(/\./g, '').replace(',', '.')        // BR decimal
   } else if (s.includes(',')) {
@@ -30,7 +41,8 @@ export function toNum(value: unknown): number | null {
   }
   // senão: ponto é decimal US ("12.34") → mantém
   const n = Number(s)
-  return Number.isNaN(n) ? null : n
+  if (Number.isNaN(n)) return null
+  return negativo ? -n : n
 }
 
 /**
