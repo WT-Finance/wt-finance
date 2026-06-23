@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.24.2',
+    data: '2026-06-22T18:51',
+    itens: [
+      { tipo: 'melhoria', texto: 'O e-mail de senha de acesso foi reformulado visualmente: logo do Welcome Group centralizado e sem fundo, o botão "Acessar a plataforma" agora aparece como botão de verdade (inclusive no Outlook), espaçamento e hierarquia mais limpos, e o layout se adapta a telas de celular.' },
+    ],
+  },
+  {
     versao: '4.24.1',
     data: '2026-06-22T17:16',
     itens: [
