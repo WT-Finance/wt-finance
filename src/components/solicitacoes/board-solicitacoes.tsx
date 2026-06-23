@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { Loader2, AlertTriangle } from 'lucide-react'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'

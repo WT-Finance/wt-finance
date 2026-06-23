@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
 import { fmtDataHoraSP } from '@/lib/fmt'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 // v4.18/M7 — Minhas solicitações (visão do originador): COLUNAS POR STATUS (Abertas /

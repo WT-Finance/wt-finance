@@ -34,3 +34,21 @@ export const PILL_GESTAO_STYLE: CSSProperties = {
   borderColor: 'var(--gestao)',
   color:       'var(--gestao-fg)',
 }
+
+// ── Pill de FILTRO / período ──────────────────────────────────────────────────
+// Família DISTINTA da PILL de ação acima (esta é a "pill de período/filtro", com
+// ativo dourado-da-aba via var(--brand-soft)). Antes duplicada como `PILL_BASE`
+// local em 5 arquivos (v4.26 — dedup). Duas dimensões: padrão e compacta (sm).
+export const PILL_FILTRO =
+  'rounded-full border px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap'
+export const PILL_FILTRO_SM =
+  'rounded-full border px-2.5 py-0.5 text-2xs font-medium transition-colors whitespace-nowrap'
+/** Estado inativo (consistente entre os usos). */
+export const PILL_FILTRO_INATIVO =
+  'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
+/** Estado ativo — dourado-da-aba (herda [data-theme] via var(--brand*)). */
+export const PILL_FILTRO_ATIVO_STYLE: CSSProperties = {
+  background:  'var(--brand-soft)',
+  borderColor: 'var(--brand)',
+  color:       'var(--brand-deep)',
+}

@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react'
 import ModalCentral from './modal-central'
-import { PILL, PILL_NEUTRO, PILL_PERIGO } from '@/components/admin/acessos/botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO } from '@/components/shared/botoes'
 
 // Confirmação destrutiva no padrão do design system (sobre ModalCentral), em vez
 // de window.confirm nativo. Trata estado de carregamento durante a ação async.

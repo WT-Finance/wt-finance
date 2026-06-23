@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Loader2, Check, Copy, X } from 'lucide-react'
 import { aprovarSolicitacao, rejeitarSolicitacao } from '@/app/admin/acessos/actions'
 import type { RoleAdmin, SolicitacaoAdmin } from './tipos'
-import { FaixaMensagem } from './faixa-mensagem'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import ConfirmModal from '@/components/shared/confirm-modal'
-import { PILL, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { PILL, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataSP, fmtDataHoraSP } from '@/lib/fmt'
 
 // v4.14 — aba "Solicitações de acesso": aprovar (cria usuário + senha provisória) /

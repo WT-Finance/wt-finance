@@ -6,8 +6,8 @@ import { salvarTipo } from '@/app/admin/solicitacoes/actions'
 import { TIPOS_CAMPO, type CampoDef, type TipoAdmin, type TipoCampo } from '@/lib/solicitacoes/schemas'
 import ModalCentral from '@/components/shared/modal-central'
 import Checkbox from '@/components/ui/checkbox'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/admin/acessos/botoes'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 
 // v4.16.0 (spec §2.4 C) — editor de Tipo de Solicitação (criar/editar). Nome do
 // tipo + construtor de campos (rótulo, tipo, obrigatório, reordenar ↑/↓, remover;

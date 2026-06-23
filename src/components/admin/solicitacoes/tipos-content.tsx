@@ -7,8 +7,8 @@ import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2 } fro
 import { arquivarTipo, excluirTipo } from '@/app/admin/solicitacoes/actions'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
-import { FaixaMensagem } from '@/components/admin/acessos/faixa-mensagem'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'
 import { EditorTipo } from './editor-tipo'
 

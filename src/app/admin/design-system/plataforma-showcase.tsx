@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Checkbox from '@/components/ui/checkbox'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/admin/acessos/botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 
 // Demos ao vivo da seção "11. Plataforma" do Design System (v4.14.3). Client component
 // (como o ChartShowcase) porque o Checkbox e o exemplo de foco são interativos. Usa os

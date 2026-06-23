@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Check, Copy, Loader2 } from 'lucide-react'
 import { criarUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin } from './tipos'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'
 
 // v4.14 — modal de criar usuário: email + nome (opcional) + role. Em sucesso,

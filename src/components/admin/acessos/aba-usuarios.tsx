@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { Loader2, KeyRound, Trash2, Copy, Check, X, Pencil } from 'lucide-react'
 import { atribuirRole, atualizarNome, resetarSenha, excluirUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin, UsuarioAdmin } from './tipos'
-import { FaixaMensagem } from './faixa-mensagem'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { ModalConvidar } from './modal-convidar'
 import ModalCentral from '@/components/shared/modal-central'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 
 /** Botão de ação da linha em ÍCONE (v4.18/M4). Compacto, com aria-label/title. */

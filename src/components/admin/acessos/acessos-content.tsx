@@ -6,8 +6,8 @@ import type { AreaCatalogo, RoleAdmin, UsuarioAdmin, SolicitacaoAdmin } from './
 import { AbaUsuarios } from './aba-usuarios'
 import { AbaRoles } from './aba-roles'
 import { AbaSolicitacoes } from './aba-solicitacoes'
-import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
-import { FaixaMensagem } from './faixa-mensagem'
+import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 
 // v4.13/v4.14 — conteúdo client da página Usuários & Acessos: header, pills de aba
 // (Usuários / Roles / Solicitações) e delegação. Dados vêm prontos da page (RSC).

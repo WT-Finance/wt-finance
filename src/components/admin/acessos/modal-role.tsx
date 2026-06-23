@@ -8,7 +8,7 @@ import Checkbox from '@/components/ui/checkbox'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ModalCentral from '@/components/shared/modal-central'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
-import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from './botoes'
+import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { CAMPO } from '@/lib/ui/campos'
 
 // v4.13 — formulário de permissão/perfil (criar/editar): nome, descrição e
