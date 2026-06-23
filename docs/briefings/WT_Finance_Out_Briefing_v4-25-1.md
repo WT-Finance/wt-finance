@@ -36,6 +36,10 @@ Após a v4.25.0 em produção, o usuário pediu um patch cosmético sobre o e-ma
 ### M4 — Fechamento (este commit)
 Versão 4.25.1, CHANGELOG.md, CHANGELOG_DIRETORIA (negócio), out-briefing. CLAUDE.md avaliado (nada permanente novo — refina regras de e-mail já documentadas).
 
+### Ajustes pré-merge (mesmo PR #142, ainda não mergeado)
+- **Cantos mais arredondados** no e-mail (`template.ts`): card de status, botão e caixa de justificativa de **8px → 12px** (estavam muito retos). Commit `b580306`.
+- **Faixa "Administração" colada ao topo** (`admin/layout.tsx`): `-mt-8` cancela o `padding-top` do `<main>` do AppShell (py-8 = respiro vertical único do projeto, v4.16.1), removendo o gap vertical estranho acima da faixa **em todas as páginas `/admin/*`**; respiro inferior preservado. A cadeia `RootLayout → AppShell <main py-8> → AdminLayout` não tem wrapper intermediário com padding, então o `-mt-8` cancela exatamente os 32px.
+
 ## Auto-auditoria
 - **Invariantes da v4.25.0 preservados:** o e-mail segue camada ADICIONAL (try/catch em `notificarMovimentacao`, `enviar*` nunca lança); a RPC mantém o gate `pode_ver_solic` e o oráculo fechado (0158 herda a estrutura da 0157 — verificado: `IF NOT FOUND OR NOT pode_ver_solic → RAISE NAO_ENCONTRADA/42501`); não vaza diretório (mesmo `UNION` de e-mails daquela solicitação; `nome`/role apenas dos já-envolvidos).
 - **Verificação no banco (pg, JWT de gestor simulado):** #7 → `{autor_rotulo:"Yan", atribuido_rotulo:"Financeiro", criado_em_fmt:"14/06/2026 às 12:07", envolvidos_emails:[3]}`; #8 → `{atribuido_rotulo:"Yan", decidido_em_fmt:"23/06/2026 às 09:53"}`.
