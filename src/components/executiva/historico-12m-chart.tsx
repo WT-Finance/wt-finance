@@ -6,15 +6,11 @@ import {
 } from 'recharts'
 import type { Historico12mSetores } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
+import { SETOR_COLORS } from '@/lib/config'
 import CustomTooltip from '@/components/charts/custom-tooltip'
 
 const MESES_SHORT = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
 
-const SETOR_COLORS: Record<string, string> = {
-  Lazer:       '#378ADD',
-  Weddings:    '#BA7517',
-  Corporativo: '#0F6E56',
-}
 const SETORES = ['Lazer', 'Weddings', 'Corporativo'] as const
 
 function fmtCurto(v: number): string {
@@ -64,7 +60,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
         x={x} y={(y ?? 0) + 10}
         textAnchor="middle"
         fontSize={10}
-        fill={isActive ? 'var(--primary)' : 'var(--chart-axis-tick)'}
+        fill={isActive ? 'var(--brand-deep)' : 'var(--chart-axis-tick)'}
         fontWeight={isActive ? 600 : 400}
       >
         {payload?.value}
@@ -76,7 +72,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
   function TopLabel({ index }: { index?: number; x?: number; y?: number; width?: number }) {
     const entry = index != null ? chartData[index] : null
     if (!entry || entry.total === 0) return null
-    const color  = entry.eh_atual ? 'var(--primary)' : 'var(--chart-axis-tick)'
+    const color  = entry.eh_atual ? 'var(--brand-deep)' : 'var(--chart-axis-tick)'
     const weight = entry.eh_atual ? 600 : 400
     return (
       <text style={{ fontSize: 10, fill: color, fontWeight: weight }} textAnchor="middle">
@@ -87,7 +83,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
 
   // Quando setor específico, exibe barra única na cor do setor (ou azul primário para eh_atual)
   const isTodos = setor === 'todos'
-  const singleColor = SETOR_COLORS[setor] ?? 'var(--primary)'
+  const singleColor = SETOR_COLORS[setor] ?? 'var(--chart-neutral)'
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4 mb-6">
@@ -174,7 +170,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
                     key={i}
                     fill={
                       entry.parcial  ? 'var(--chart-neutral)'
-                      : entry.eh_atual ? 'var(--primary)'
+                      : entry.eh_atual ? 'var(--brand-deep)'
                       : singleColor
                     }
                     fillOpacity={entry.parcial ? 0.6 : 1}

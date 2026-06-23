@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'next/navigation'
 import type { MixSetor } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
+import { SETOR_COLORS } from '@/lib/config'
 import CustomTooltip from '@/components/charts/custom-tooltip'
 
 interface Props {
@@ -24,7 +25,7 @@ export default function MixSetorChart({ data, loading, preset = 'mes-passado' }:
     faturamento:    s.faturamento,
     receita:        s.receita,
     pct:            s.pct_faturamento,
-    cor:            s.cor_hex,
+    cor:            SETOR_COLORS[s.setor_macro] ?? 'var(--chart-neutral)',
     margem:         s.margem_pct,
   })) ?? []
 
@@ -99,7 +100,7 @@ export default function MixSetorChart({ data, loading, preset = 'mes-passado' }:
               title={`Ver performance — ${s.display_nome}`}
             >
               <p className="text-xs text-zinc-400">{s.display_nome}</p>
-              <p className="text-sm font-semibold tabular-nums" style={{ color: s.cor_hex }}>
+              <p className="text-sm font-semibold tabular-nums" style={{ color: SETOR_COLORS[s.setor_macro] ?? 'var(--chart-neutral)' }}>
                 {s.margem_pct != null ? `${s.margem_pct.toFixed(1)}%` : '—'}
               </p>
               <p className="text-xs text-zinc-400">margem</p>

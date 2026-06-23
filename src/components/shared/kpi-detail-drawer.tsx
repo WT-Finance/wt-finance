@@ -161,10 +161,10 @@ export default function KpiDetailDrawer({ metrica, rotulo, setor, onClose }: Pro
                   <Line
                     type="monotone"
                     dataKey="valor"
-                    stroke="var(--primary)"
+                    stroke="var(--brand)"
                     strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 4, fill: 'var(--primary)', strokeWidth: 0 }}
+                    activeDot={{ r: 4, fill: 'var(--brand)', strokeWidth: 0 }}
                     isAnimationActive={false}
                   />
                 </LineChart>
