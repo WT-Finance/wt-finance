@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.27.0] — 2026-06-23
+
+MINOR: **Coerção numérica — convergência ao canônico + guard-rail (lint).** Sem migration, sem frente de dado (o traçado provou integridade: `raw.vendas_excel` = R$ 182,6 mi, batendo com `mv_vendas_diarias`). **ADR-0130** (operacionaliza a regra do `coercao.ts`; cita ADR-0099 e o bug v4.23.1). Irmã das guard-rails de cor (v4.26) e de var (v4.17).
+
+- **M1 — Vendas:** `vendas-parser.ts:toNumStr` (o **único `parseFloat`** do app) → `toNum` canônico de `@/lib/carga/coercao`, mantendo o retorno `string|null` (paridade do staging `::numeric`). O caminho vivo entrega número nativo → saída idêntica; ganha robustez no caso de string BR com milhar, que o `toNumStr` ingênuo (`Number(String(v).replace(',','.'))`) corrompia (`"8.840,00"` → `8.84`).
+- **M2 — `toNum` estendido + Gerencial converge:** o `toNum` passa a tratar **negativo entre parênteses** (`"(1.000)"` → `-1000`), convenção contábil, **preservando toda a lógica atual** (o invólucro é detectado antes da desambiguação BR/US; `coercao.test.ts` existente passa sem alteração, casos do parêntese entram como adição). `gerencial/parser.ts` converge ao `toNum` e o **`parseValorMonetario` é removido** (2º parser de dinheiro). Não-regressão provada por **oráculo congelado** (`parseValorMonetarioLegado`): concorda com o parser antigo em todo formato real de moeda. **Mudança semântica do parêntese vale platform-wide** (só afeta entradas `(x)`, que antes davam `null`).
+- **M3 — Lint `wt/no-coercao-reimpl` (AST) + sonda:** regra `error` em `src/**/*.{ts,tsx}` que mira **(1)** `parseFloat`; **(2)** `.replace` de separador na **direção número** (alimenta `Number`/`parseFloat` ou em função `:number` — o guard evita o sanitizador de `<input>` e o `toFixed().replace`); **(3)** definir função/const com nome de coerção, exceto formatadores (`BRL`/`format`). Isenta `coercao.ts`/`**/*.test.ts`/`src/lib/email/**` via `files:` override. **Sonda** (`RuleTester` + vitest, 14 casos) prova o disparo no padrão do bug e o silêncio nos benignos. Ligada **só depois** de M1/M2 (2 violações zeradas) → lint verde.
+
 ## [4.26.0] — 2026-06-23
 
 MINOR: **Base do Design System — consolidação, guard-rails e biblioteca de primitivos.** Sem migration (frontend/tooling). **ADR-0129** (operacionaliza o 0103). Empreitada em duas fases (A: base anti-regressão → checkpoint → B: primitivos). Invariante: **consolidar a referência, não mudar o pixel.**
