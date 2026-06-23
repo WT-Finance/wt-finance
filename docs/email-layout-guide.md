@@ -86,6 +86,15 @@ O Outlook desktop usa o **motor do Word** — ignora muito CSS moderno. O que cu
 - `SMTP_*` e `APP_BASE_URL` no `.env.local` **e** na **Vercel** (+ Redeploy). Runbook: `docs/runbooks/v4-24-email-runbook.md`.
 - Sem config, tudo cai no **fallback** (o e-mail não sai, o fluxo segue normalmente).
 
+## 8. Fan-out para múltiplos destinatários (v4.25.0)
+
+Quando um e-mail vai para N pessoas (ex.: notificar uma movimentação de Solicitação a todos os membros de uma permissão/role):
+
+- **Resolva os destinatários numa RPC gated** (`SECURITY DEFINER` + `pode_ver_solic`/equivalente) que devolve SÓ os e-mails daquele contexto — **nunca um diretório**. Use o **MESMO erro** para "não existe" e "não pode ver" (sem oráculo de existência — padrão `solic_detalhe`).
+- **Fan-out best-effort:** um `sendMail` por destinatário via `Promise.allSettled` — a falha de um **não** derruba os outros; a função **nunca lança** (retorna contagem `{enviados,total}`). Dedupe os e-mails antes.
+- **`await` o envio na server action — NÃO fire-and-forget.** Em serverless (Vercel) o trabalho após a resposta é morto no freeze da função → e-mails se perderiam. Aceite a latência (o timeout curto do transporter a limita); a integridade da ação já está garantida (e-mail é camada adicional, pós-persistência, em try/catch).
+- Referência viva: `enviarNotificacaoSolicitacao` + `solic_emails_envolvidos` (v4.25.0, ADR-0128).
+
 ## Histórico
 - **v4.24.0** (ADR-0127): camada de e-mail + senha provisória (fallback-safe).
 - **v4.24.1**: logo + botão "Acessar a plataforma".

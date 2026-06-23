@@ -6,6 +6,15 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.25.0] — 2026-06-22
+
+MINOR: **Notificações por e-mail nas movimentações de Solicitações (tarefas).** Migration aditiva (0156 + 0157). ADR-0128.
+
+- **RPC `solic_emails_envolvidos`** (0156/0157, `SECURITY DEFINER`, gated por `app.pode_ver_solic`): dada uma solicitação, resolve os e-mails dos envolvidos (autor + destinatário usuário OU todos os membros **ativos** da role) + contexto. **Não vaza diretório** (só os e-mails daquela solicitação, só a quem a vê); born-hardened (anon nunca). 0157 colapsa o erro de "não existe"/"não pode ver" (fecha o oráculo de existência — auto-auditoria adversarial).
+- **`enviarNotificacaoSolicitacao`** (`src/lib/email/`): e-mail único factual para **todos os envolvidos** (quem age também recebe), parametrizado por criada/concluída/rejeitada/cancelada (justificativa só na rejeição); **fan-out best-effort** (`Promise.allSettled`, a falha de um não derruba os outros), **nunca lança**. Reusa transporter/logo/`getAppBaseUrl` da v4.24 (template Outlook-safe). Link → caixa `/solicitacoes`.
+- **Plugado nas 4 movimentações** (`solicitacoes/actions.ts`) **após** a persistência, em try/catch **fallback-safe** — o e-mail jamais quebra a movimentação.
+- **+10 testes** (template ×4 movimentações + fan-out best-effort/dedupe/never-throws). Verificação adversarial no banco (gate `pode_ver_solic`, fan-out de role, oráculo fechado).
+
 ## [4.24.2] — 2026-06-22
 
 PATCH: **Revisão visual do e-mail de senha (layout, logo, responsividade).** Sem migration, sem ADR.

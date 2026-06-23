@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.25.0',
+    data: '2026-06-22T23:16',
+    itens: [
+      { tipo: 'novidade', texto: 'As Solicitações agora avisam por e-mail a cada movimentação: ao criar, concluir, rejeitar ou cancelar, todos os envolvidos (quem abriu e quem recebeu — ou todos os membros da permissão, quando a solicitação é atribuída a uma permissão) recebem um e-mail com o que aconteceu. A rejeição inclui a justificativa, e o e-mail traz um botão para acessar a plataforma.' },
+      { tipo: 'melhoria', texto: 'O aviso por e-mail é um complemento seguro: se o e-mail falhar ou o servidor de e-mail estiver indisponível, a movimentação acontece normalmente — nada trava por causa do e-mail.' },
+    ],
+  },
+  {
     versao: '4.24.2',
     data: '2026-06-22T18:51',
     itens: [
