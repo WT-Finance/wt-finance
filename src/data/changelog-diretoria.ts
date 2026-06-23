@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.25.1',
+    data: '2026-06-23T10:40',
+    itens: [
+      { tipo: 'melhoria', texto: 'O e-mail que avisa sobre as Solicitações ficou mais claro e fácil de ler: agora mostra o nome das pessoas (em vez do endereço de e-mail), a data e a hora do que aconteceu, e traz um botão de verdade para acessar a plataforma. Cada situação tem sua cor — criada (dourado), concluída (verde), rejeitada (vermelho) e cancelada (cinza) — e essas mesmas cores passam a valer também na tela de Movimentações das Solicitações, para tudo combinar.' },
+    ],
+  },
+  {
     versao: '4.25.0',
     data: '2026-06-22T23:16',
     itens: [
