@@ -122,9 +122,10 @@ export const movimentacoesSchema = z.array(movimentacaoSchema)
 // desta solicitação + o contexto mínimo do corpo. Shape estável (todas as chaves sempre).
 export const emailsEnvolvidosSchema = z.object({
   tipo_nome:          z.string().nullable(),
-  autor_email:        z.string().nullable(),
-  atribuido_tipo:     z.enum(['usuario', 'role']),
-  atribuido_rotulo:   z.string().nullable(),
+  autor_rotulo:       z.string().nullable(),   // v4.25.1: nome (fallback e-mail) do solicitante
+  atribuido_rotulo:   z.string().nullable(),   // nome da role OU nome (fallback e-mail) do usuário
+  criado_em_fmt:      z.string().nullable(),   // 'DD/MM/AAAA às HH:MM' (SP)
+  decidido_em_fmt:    z.string().nullable(),   // idem; null se ainda aberta
   envolvidos_emails:  z.array(z.string()),
 })
 export type EmailsEnvolvidos = z.infer<typeof emailsEnvolvidosSchema>

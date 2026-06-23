@@ -36,13 +36,15 @@ async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail
   try {
     const ctx = await getEmailsEnvolvidos(id)
     if (!ctx || ctx.envolvidos_emails.length === 0) return
+    // 'criada' usa o criado_em; concluir/rejeitar/cancelar usam o decidido_em (quando agiu).
+    const quando = movimentacao === 'criada' ? ctx.criado_em_fmt : ctx.decidido_em_fmt
     await enviarNotificacaoSolicitacao({
       paras:           ctx.envolvidos_emails,
       movimentacao,
       titulo:          `${ctx.tipo_nome ?? 'Solicitação'} #${id}`,
-      atribuidoTipo:   ctx.atribuido_tipo,
       atribuidoRotulo: ctx.atribuido_rotulo ?? '—',
-      autorRotulo:     ctx.autor_email ?? '—',
+      autorRotulo:     ctx.autor_rotulo ?? '—',
+      quando,
       justificativa,
     })
   } catch { /* e-mail é camada ADICIONAL: jamais quebra a movimentação */ }

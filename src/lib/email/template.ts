@@ -121,65 +121,74 @@ export function templateSenhaProvisoria(input: {
   return { assunto, html, text }
 }
 
-// ── v4.25.0 — Notificação de movimentação de Solicitação (tarefas) ──────────────
+// ── v4.25.0/v4.25.1 — Notificação de movimentação de Solicitação (tarefas) ──────
 // MESMO layout Outlook-safe (tabelas/inline/logo CID/botão em célula/responsivo).
 // Um e-mail ÚNICO para TODOS os envolvidos (autor + destinatário/membros da role),
-// parametrizado pela movimentação. Rejeição inclui a justificativa. Saudação genérica
-// (vai para vários). Reusa TemplateSenha como shape de retorno ({assunto,html,text}).
-// NOTA: o scaffold (outer/card/logo/divisória/rodapé) está duplicado do template de
-// senha de propósito — o de senha está validado no Outlook e não pode ser reverificado
-// daqui; extrair um layoutBaseEmail comum fica para quando ambos puderem ser conferidos
-// (ver docs/email-layout-guide.md §5).
+// parametrizado pela movimentação. v4.25.1: SEM "Olá"; NOMES (não e-mails); DATA/HORA;
+// badge de status COLORIDO por movimentação (mesma lógica das badges da página
+// Movimentações); "Atribuída a {rótulo}" (sem "permissão"); botão com padding na CÉLULA.
+// Rejeição inclui a justificativa. Reusa TemplateSenha como shape de retorno. (scaffold
+// duplicado de propósito — ver docs/email-layout-guide.md §5.)
 
 export type MovimentacaoEmail = 'criada' | 'concluida' | 'rejeitada' | 'cancelada'
 const MOV_PT: Record<MovimentacaoEmail, string> = {
   criada: 'criada', concluida: 'concluída', rejeitada: 'rejeitada', cancelada: 'cancelada',
 }
+// Cor do status (badge + faixa lateral) por movimentação — MESMA paleta das badges da
+// página Movimentações: criada=dourado, concluída=verde, rejeitada=vermelho, cancelada=cinza.
+const MOV_COR: Record<MovimentacaoEmail, string> = {
+  criada: '#BD965C', concluida: '#5F7A3D', rejeitada: '#A35442', cancelada: '#75777B',
+}
 
 export function templateNotificacaoSolicitacao(input: {
   movimentacao:    MovimentacaoEmail
   titulo:          string
-  atribuidoTipo:   'usuario' | 'role'
   atribuidoRotulo: string
   autorRotulo:     string
+  /** 'DD/MM/AAAA às HH:MM' (fuso SP) — quando a movimentação ocorreu. */
+  quando?:         string | null
   justificativa?:  string | null
   link?:           string | null
 }): TemplateSenha {
-  const mov   = MOV_PT[input.movimentacao]
+  const mov    = MOV_PT[input.movimentacao]
+  const cor    = MOV_COR[input.movimentacao]
   const titulo = input.titulo
-  const link  = input.link?.trim() || null
-  const just  = input.movimentacao === 'rejeitada' ? (input.justificativa?.trim() || null) : null
-  const atribuido = input.atribuidoTipo === 'role'
-    ? `à permissão ${input.atribuidoRotulo}`
-    : `a ${input.atribuidoRotulo}`
+  const quando = input.quando?.trim() || null
+  const link   = input.link?.trim() || null
+  const just   = input.movimentacao === 'rejeitada' ? (input.justificativa?.trim() || null) : null
 
   const assunto = `${APP_NOME} — solicitação ${mov}: ${titulo}`
 
   const text =
-    'Olá,\n\n' +
-    `A solicitação "${titulo}" foi ${mov}.\n\n` +
-    `Atribuída ${atribuido}, por ${input.autorRotulo}.\n\n` +
+    `A solicitação "${titulo}" foi ${mov}${quando ? ` em ${quando}` : ''}.\n\n` +
+    `Atribuída a ${input.atribuidoRotulo}, por ${input.autorRotulo}.\n\n` +
     (just ? `Justificativa: ${just}\n\n` : '') +
     (link ? `Acesse suas solicitações: ${link}\n\n` : '') +
     'Você recebe este e-mail por estar envolvido nesta solicitação.\n\n' +
     `— ${APP_NOME}`
 
+  const dataLinha = quando
+    ? `<div style="font-size:12px;color:${COR_TENUE};margin-top:7px;">${escaparHtml(quando)}</div>`
+    : ''
+
   const justLinha = just
-    ? `<tr><td class="em-pad" style="padding:18px 40px 0;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:10px;">
+    ? `<tr><td class="em-pad" style="padding:16px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:8px;">
           <tr><td style="padding:14px 16px;">
-            <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:6px;">Justificativa</div>
+            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:6px;">Justificativa</div>
             <div style="font-size:14px;line-height:1.6;color:${COR_TEXTO};">${escaparHtml(just)}</div>
           </td></tr>
         </table>
       </td></tr>`
     : ''
 
+  // Botão real: padding na CÉLULA (não no <a>) → renderiza sólido mesmo onde o cliente
+  // colapsa o inline-block do <a> (corrige o "tarjado apertado").
   const botaoLinha = link
-    ? `<tr><td class="em-pad" align="center" style="padding:28px 40px 0;">
+    ? `<tr><td class="em-pad" align="center" style="padding:26px 40px 0;">
         <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
-          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:8px;">
-            <a href="${escaparHtml(link)}" style="display:inline-block;padding:13px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">Acessar a plataforma</a>
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:8px;padding:14px 34px;">
+            <a href="${escaparHtml(link)}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Acessar a plataforma</a>
           </td></tr>
         </table>
       </td></tr>`
@@ -201,21 +210,21 @@ export function templateNotificacaoSolicitacao(input: {
       <tr><td class="em-pad" style="padding:26px 40px 0;">
         <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
       </td></tr>
-      <tr><td class="em-pad" style="padding:24px 40px 0;">
-        <p style="margin:0 0 16px;font-size:16px;color:${COR_TITULO};">Olá,</p>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:10px;">
-          <tr><td style="padding:18px 16px;">
-            <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:${COR_LABEL};margin-bottom:8px;">Solicitação ${mov}</div>
-            <div style="font-size:17px;font-weight:bold;line-height:1.4;color:${COR_TITULO};">${escaparHtml(titulo)}</div>
+      <tr><td class="em-pad" style="padding:26px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-left:3px solid ${cor};border-radius:8px;">
+          <tr><td style="padding:16px 18px;">
+            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${cor};font-weight:bold;margin-bottom:7px;">Solicitação ${mov}</div>
+            <div style="font-size:18px;font-weight:bold;line-height:1.4;color:${COR_TITULO};">${escaparHtml(titulo)}</div>
+            ${dataLinha}
           </td></tr>
         </table>
       </td></tr>
-      <tr><td class="em-pad" style="padding:16px 40px 0;">
-        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">Atribuída ${escaparHtml(atribuido)}, por ${escaparHtml(input.autorRotulo)}.</p>
+      <tr><td class="em-pad" style="padding:18px 40px 0;">
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">Atribuída a <strong style="color:${COR_TITULO};">${escaparHtml(input.atribuidoRotulo)}</strong>, por <strong style="color:${COR_TITULO};">${escaparHtml(input.autorRotulo)}</strong>.</p>
       </td></tr>
       ${justLinha}
       ${botaoLinha}
-      <tr><td class="em-pad" style="padding:28px 40px 38px;">
+      <tr><td class="em-pad" style="padding:26px 40px 38px;">
         <p style="margin:0;font-size:12px;line-height:1.6;color:${COR_TENUE};">Você recebe este e-mail por estar envolvido nesta solicitação.</p>
       </td></tr>
     </table>

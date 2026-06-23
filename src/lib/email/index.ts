@@ -70,9 +70,9 @@ export async function enviarNotificacaoSolicitacao(input: {
   paras:           string[]
   movimentacao:    MovimentacaoEmail
   titulo:          string
-  atribuidoTipo:   'usuario' | 'role'
   atribuidoRotulo: string
   autorRotulo:     string
+  quando?:         string | null
   justificativa?:  string | null
 }): Promise<{ enviados: number; total: number }> {
   const cfg = getConfigSmtp()
@@ -84,9 +84,9 @@ export async function enviarNotificacaoSolicitacao(input: {
     const { assunto, html, text } = templateNotificacaoSolicitacao({
       movimentacao:    input.movimentacao,
       titulo:          input.titulo,
-      atribuidoTipo:   input.atribuidoTipo,
       atribuidoRotulo: input.atribuidoRotulo,
       autorRotulo:     input.autorRotulo,
+      quando:          input.quando,
       justificativa:   input.justificativa,
       link:            base ? `${base}/solicitacoes` : null,
     })

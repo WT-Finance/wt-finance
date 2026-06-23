@@ -141,7 +141,7 @@ describe('enviarSenhaProvisoria — NUNCA lança (boolean)', () => {
 })
 
 describe('templateNotificacaoSolicitacao — 4 movimentações', () => {
-  const base = { titulo: 'Lançamentos #42', atribuidoTipo: 'usuario' as const, atribuidoRotulo: 'carine@x.com', autorRotulo: 'yan@x.com' }
+  const base = { titulo: 'Lançamentos #42', atribuidoRotulo: 'Carine Cardoso', autorRotulo: 'Yan Vieira' }
 
   it('criada: assunto/título no html e text + logo CID', () => {
     const t = templateNotificacaoSolicitacao({ movimentacao: 'criada', ...base })
@@ -167,16 +167,23 @@ describe('templateNotificacaoSolicitacao — 4 movimentações', () => {
     expect(t.text).toContain('falta o anexo X')
   })
 
-  it('cancelada: contexto (atribuído/por) presente', () => {
-    const t = templateNotificacaoSolicitacao({ movimentacao: 'cancelada', ...base })
+  it('cancelada: nomes (não e-mails) + data + badge cinza; sem "Olá"', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'cancelada', ...base, quando: '23/06/2026 às 10:04' })
     expect(t.assunto).toContain('cancelada')
-    expect(t.html).toContain('carine@x.com')
-    expect(t.html).toContain('yan@x.com')
+    expect(t.html).toContain('Carine Cardoso')
+    expect(t.html).toContain('Yan Vieira')
+    expect(t.html).toContain('23/06/2026 às 10:04')
+    expect(t.text).toContain('em 23/06/2026 às 10:04')
+    expect(t.html).toContain('#75777B')      // badge/faixa cinza (cancelada)
+    expect(t.html).not.toContain('Olá,')      // saudação removida
   })
 
-  it('role: frase "à permissão"; botão só com link; escapa título', () => {
-    const r = templateNotificacaoSolicitacao({ movimentacao: 'criada', titulo: '<b>x</b> #1', atribuidoTipo: 'role', atribuidoRotulo: 'Financeiro', autorRotulo: 'yan@x.com', link: 'https://app.x.com/solicitacoes' })
-    expect(r.html).toContain('à permissão Financeiro')
+  it('role: "Atribuída a {rótulo}" SEM "permissão"; badge dourado; botão; escapa título', () => {
+    const r = templateNotificacaoSolicitacao({ movimentacao: 'criada', titulo: '<b>x</b> #1', atribuidoRotulo: 'Financeiro', autorRotulo: 'Yan Vieira', link: 'https://app.x.com/solicitacoes' })
+    expect(r.html).toContain('Atribuída a <strong')
+    expect(r.html).toContain('Financeiro')
+    expect(r.html).not.toContain('permissão')
+    expect(r.html).toContain('#BD965C')       // badge dourado (criada)
     expect(r.html).toContain('Acessar a plataforma')
     expect(r.html).toContain('https://app.x.com/solicitacoes')
     expect(r.html).toContain('&lt;b&gt;')
@@ -187,7 +194,7 @@ describe('templateNotificacaoSolicitacao — 4 movimentações', () => {
 })
 
 describe('enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança', () => {
-  const args = { movimentacao: 'concluida' as const, titulo: 'T #1', atribuidoTipo: 'role' as const, atribuidoRotulo: 'Financeiro', autorRotulo: 'yan@x.com' }
+  const args = { movimentacao: 'concluida' as const, titulo: 'T #1', atribuidoRotulo: 'Financeiro', autorRotulo: 'Yan Vieira' }
   beforeEach(() => {
     sendMailMock.mockReset()
     _resetConfigSmtpCache(); limparEnvSmtp()
