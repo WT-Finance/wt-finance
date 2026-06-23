@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.26.0',
+    data: '2026-06-23T14:58',
+    itens: [
+      { tipo: 'melhoria', texto: 'Padronização visual ampla da plataforma: cores, botões, campos e etiquetas passaram a seguir um padrão único (a identidade Welcome), corrigindo pequenas inconsistências que apareciam de uma tela para outra. Não muda nada no comportamento nem nos números — é consistência visual.' },
+      { tipo: 'melhoria', texto: 'Criamos também mecanismos internos que mantêm essa consistência daqui pra frente: telas novas já nascem no padrão e desvios de cor são barrados automaticamente. É a base que prepara a plataforma para a próxima grande evolução (a visão Geral das três áreas).' },
+    ],
+  },
+  {
     versao: '4.25.1',
     data: '2026-06-23T10:40',
     itens: [
