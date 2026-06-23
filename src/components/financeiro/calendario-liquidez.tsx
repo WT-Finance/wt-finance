@@ -128,7 +128,7 @@ function DrillDownModal({
             <>
               {entradas.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Entradas</p>
+                  <p className="text-3xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">Entradas</p>
                   <div className="space-y-1.5">
                     {entradas.map((l, i) => (
                       <LancamentoRow key={l.numero ?? i} lancamento={l} />
@@ -138,7 +138,7 @@ function DrillDownModal({
               )}
               {saidas.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Saídas</p>
+                  <p className="text-3xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">Saídas</p>
                   <div className="space-y-1.5">
                     {saidas.map((l, i) => (
                       <LancamentoRow key={l.numero ?? `s${i}`} lancamento={l} />
@@ -163,7 +163,7 @@ function LancamentoRow({ lancamento: l }: { lancamento: LancamentoDia }) {
       <div className="min-w-0 flex-1">
         <p className="text-xs text-zinc-700 truncate font-medium">{l.pessoa ?? '—'}</p>
         {l.descricao && (
-          <p className="text-[10px] text-zinc-400 truncate">{l.descricao}</p>
+          <p className="text-3xs text-zinc-400 truncate">{l.descricao}</p>
         )}
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">
@@ -182,7 +182,7 @@ function LancamentoRow({ lancamento: l }: { lancamento: LancamentoDia }) {
           {isEntrada ? (isFuturo ? 'A Receber' : 'Recebido') : (isFuturo ? 'A Pagar' : 'Pago')}
         </span>
         <span
-          className="text-[10px] font-semibold tabular-nums"
+          className="text-3xs font-semibold tabular-nums"
           style={{ color: isEntrada ? 'var(--positive)' : 'var(--negative)' }}
         >
           {isEntrada ? '+' : '-'}{fmtBRL(l.valor_final)}
@@ -309,7 +309,7 @@ export default function CalendarioLiquidez() {
         {/* Day-of-week header */}
         <div className="grid grid-cols-7 mb-1">
           {DIAS_SEMANA.map(d => (
-            <div key={d} className="text-center text-[10px] font-medium text-zinc-400 py-1">
+            <div key={d} className="text-center text-3xs font-medium text-zinc-400 py-1">
               {d}
             </div>
           ))}
@@ -341,7 +341,7 @@ export default function CalendarioLiquidez() {
                   }}
                 >
                   {/* Day number — top-left, small */}
-                  <p className={['text-[10px] font-medium leading-none', dia.fora_do_mes ? 'text-zinc-300' : 'text-zinc-500'].join(' ')}>
+                  <p className={['text-3xs font-medium leading-none', dia.fora_do_mes ? 'text-zinc-300' : 'text-zinc-500'].join(' ')}>
                     {dia.dia}
                   </p>
 
@@ -365,7 +365,7 @@ export default function CalendarioLiquidez() {
                       <div className="flex items-baseline justify-between gap-0.5 mt-px">
                         <span className="text-[9px] leading-none text-zinc-500 font-medium shrink-0">Saldo</span>
                         <span
-                          className="text-[11px] font-bold leading-none tabular-nums truncate min-w-0 text-right"
+                          className="text-2xs font-bold leading-none tabular-nums truncate min-w-0 text-right"
                           style={{ color: dia.saldo_dia >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)' }}
                         >
                           {fmtCelula(dia.saldo_dia)}
@@ -386,14 +386,14 @@ export default function CalendarioLiquidez() {
               className="w-16 h-3 rounded"
               style={{ background: 'linear-gradient(to right, rgba(196,213,166,0.15), rgba(196,213,166,1))' }}
             />
-            <span className="text-[10px] text-zinc-400">Saldo positivo</span>
+            <span className="text-3xs text-zinc-400">Saldo positivo</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div
               className="w-16 h-3 rounded"
               style={{ background: 'linear-gradient(to right, rgba(232,201,192,0.15), rgba(232,201,192,1))' }}
             />
-            <span className="text-[10px] text-zinc-400">Saldo negativo</span>
+            <span className="text-3xs text-zinc-400">Saldo negativo</span>
           </div>
         </div>
       </div>

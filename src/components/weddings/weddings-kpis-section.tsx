@@ -73,7 +73,7 @@ function SubsetorCard({
       <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
         <div className="mb-2 leading-tight min-h-[28px]">
           <p className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{title}</p>
-          {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
+          {subtitle && <p className="text-3xs text-zinc-400 tracking-wide">{subtitle}</p>}
         </div>
         <p className="text-xs text-zinc-400">—</p>
       </div>
@@ -84,7 +84,7 @@ function SubsetorCard({
     <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 flex flex-col h-full">
       <div className="mb-2 leading-tight min-h-[28px]">
         <p className="text-[12px] font-semibold text-[var(--text-muted)] uppercase tracking-wide">{title}</p>
-        {subtitle && <p className="text-[10px] text-zinc-400 tracking-wide">{subtitle}</p>}
+        {subtitle && <p className="text-3xs text-zinc-400 tracking-wide">{subtitle}</p>}
       </div>
 
       {/* Cabeçalho da coluna YoY */}
@@ -100,7 +100,7 @@ function SubsetorCard({
           {isContratos ? (
             <>
               {nContratos}
-              <span className="text-[10px] font-medium text-zinc-400 ml-1">contratos</span>
+              <span className="text-3xs font-medium text-zinc-400 ml-1">contratos</span>
             </>
           ) : (
             fmtMi(data.faturamento)
@@ -113,15 +113,15 @@ function SubsetorCard({
 
       {/* Receita */}
       <div className="flex items-baseline gap-1">
-        <span className="text-[10px] text-zinc-400 shrink-0">Receita</span>
-        <span className="text-[10px] font-medium tabular-nums text-zinc-600 flex-1 text-right">{fmtMi(data.receita)}</span>
+        <span className="text-3xs text-zinc-400 shrink-0">Receita</span>
+        <span className="text-3xs font-medium tabular-nums text-zinc-600 flex-1 text-right">{fmtMi(data.receita)}</span>
         <YoyCol val={yoyRecPct} fmt={fmtPct} hasYoy={hasYoy} />
       </div>
 
       {/* Margem */}
       <div className="flex items-baseline gap-1 mt-0.5">
-        <span className="text-[10px] text-zinc-400 shrink-0">Margem</span>
-        <span className={`text-[10px] font-semibold tabular-nums flex-1 text-right ${margemColor(data.margem_pct)}`}>
+        <span className="text-3xs text-zinc-400 shrink-0">Margem</span>
+        <span className={`text-3xs font-semibold tabular-nums flex-1 text-right ${margemColor(data.margem_pct)}`}>
           {data.margem_pct.toFixed(1)}%
         </span>
         <YoyCol val={yoyMargemPp} fmt={fmtPp} hasYoy={hasYoy} />
@@ -201,7 +201,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
           <KpiColuna rotulo="Margem"        metrica={kpis.margem_pct}  formato="pct" padded />
         </div>
         <div className="flex justify-end mt-2">
-          <span className="card-clicavel-cta text-[11px] text-[var(--brand)] font-medium">Ver mais ›</span>
+          <span className="card-clicavel-cta text-2xs text-[var(--brand)] font-medium">Ver mais ›</span>
         </div>
       </div>
 

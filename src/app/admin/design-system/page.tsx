@@ -43,7 +43,7 @@ export default async function DesignSystemPage() {
 
       <Section id="brand" title="1. Paleta Brand Welcome">
         <ColorGrid items={[
-          { name: '--text-primary',   hex: '#1A1814', usage: 'Texto principal, H1' },
+          { name: '--text-primary',   hex: '#2D2A26', usage: 'Texto principal, H1' },
           { name: '--brand',          hex: '#BD965C', usage: 'Dourado Welcome — valores destaque, links' },
           { name: '--text-secondary', hex: '#4B4F54', usage: 'H3, texto secundário' },
           { name: '--text-muted',     hex: '#75777B', usage: 'Legendas, sufixos, hints' },
@@ -112,11 +112,11 @@ export default async function DesignSystemPage() {
             { label: 'H3 — Título de card',      cls: 'text-base font-semibold',                           code: 'text-base font-semibold' },
             { label: 'Corpo — Padrão',           cls: 'text-sm',                                           code: 'text-sm' },
             { label: 'Pequeno — Labels e hints', cls: 'text-xs text-[var(--text-muted)]',                  code: 'text-xs text-[var(--text-muted)]' },
-            { label: 'Mini — Badges e pills',    cls: 'text-[11px] font-medium',                           code: 'text-[11px] font-medium' },
+            { label: 'Mini — Badges e pills',    cls: 'text-2xs font-medium',                           code: 'text-2xs font-medium' },
           ].map(({ label, cls, code }) => (
             <div key={label} className="flex items-baseline justify-between gap-4 pb-3 border-b border-zinc-100">
               <span className={cls}>{label}</span>
-              <code className="text-[10px] text-[var(--text-muted)] bg-zinc-50 px-2 py-0.5 rounded">{code}</code>
+              <code className="text-3xs text-[var(--text-muted)] bg-zinc-50 px-2 py-0.5 rounded">{code}</code>
             </div>
           ))}
         </div>
@@ -129,21 +129,21 @@ export default async function DesignSystemPage() {
               <p className="text-sm font-medium mb-1">Default</p>
               <p className="text-xs text-[var(--text-muted)]">shadow-sm, rounded-xl</p>
             </div>
-            <code className="text-[10px] text-[var(--text-muted)]">shadow-sm</code>
+            <code className="text-3xs text-[var(--text-muted)]">shadow-sm</code>
           </div>
           <div>
             <div className="bg-white rounded-xl border-2 border-[var(--brand)] px-5 py-4 mb-2">
               <p className="text-sm font-medium mb-1">Featured</p>
               <p className="text-xs text-[var(--text-muted)]">border-2 brand</p>
             </div>
-            <code className="text-[10px] text-[var(--text-muted)]">border-2 border-[var(--brand)]</code>
+            <code className="text-3xs text-[var(--text-muted)]">border-2 border-[var(--brand)]</code>
           </div>
           <div>
             <div className="bg-white rounded-lg shadow-sm px-3 py-3.5 mb-2">
               <p className="text-sm font-medium mb-1">Size sm</p>
               <p className="text-xs text-[var(--text-muted)]">rounded-lg, padding menor</p>
             </div>
-            <code className="text-[10px] text-[var(--text-muted)]">size=&quot;sm&quot;</code>
+            <code className="text-3xs text-[var(--text-muted)]">size=&quot;sm&quot;</code>
           </div>
         </div>
 
@@ -175,10 +175,10 @@ export default async function DesignSystemPage() {
                 <p className="text-sm font-medium mb-1">Card clicável</p>
                 <p className="text-xs text-[var(--text-muted)] mb-2">Passe o mouse / Tab para focar</p>
                 <div className="flex justify-end">
-                  <span className="card-clicavel-cta text-[11px] text-[var(--brand)] font-medium">Ver mais ›</span>
+                  <span className="card-clicavel-cta text-2xs text-[var(--brand)] font-medium">Ver mais ›</span>
                 </div>
               </div>
-              <code className="text-[10px] text-[var(--text-muted)]">card-clicavel + card-clicavel-cta</code>
+              <code className="text-3xs text-[var(--text-muted)]">card-clicavel + card-clicavel-cta</code>
             </div>
           </div>
 
@@ -207,7 +207,7 @@ export default async function DesignSystemPage() {
           <p className="pl-8">{'color: "var(--brand-deep)" }}'}</p>
           <p className="mt-2 font-sans font-medium text-[var(--text-primary)] not-italic">Tamanhos</p>
           <p>{'md (Visão Geral, drawers analíticos): px-3 py-1 text-xs'}</p>
-          <p>{'sm (Próximos Lançamentos, filtros inline): px-2.5 py-0.5 text-[11px]'}</p>
+          <p>{'sm (Próximos Lançamentos, filtros inline): px-2.5 py-0.5 text-2xs'}</p>
         </div>
 
         <div className="space-y-5">
@@ -444,13 +444,19 @@ export default async function DesignSystemPage() {
             { name: 'AuthHeader',            path: 'src/components/auth/auth-header.tsx',                desc: 'Cabeçalho institucional (logo + wordmark) das telas de plataforma — v4.14.1' },
             { name: 'Checkbox',              path: 'src/components/ui/checkbox.tsx',                     desc: 'Checkbox do design system (substitui o nativo do browser) — v4.14.1' },
             { name: 'ModalCentral',          path: 'src/components/shared/modal-central.tsx',            desc: 'Modal central genérico (confirmações, ex.: excluir usuário)' },
-            { name: 'botoes (pills plataforma)', path: 'src/components/admin/acessos/botoes.ts',         desc: 'Estilos de botão-pill de plataforma: PILL + PILL_NEUTRO/PILL_PERIGO/PILL_PRIMARIA(+STYLE) — v4.14.2' },
+            { name: 'botoes (pills/consts)', path: 'src/components/shared/botoes.ts',                    desc: 'PILL + PILL_NEUTRO/PILL_PERIGO/PILL_PRIMARIA/PILL_GESTAO + PILL_FILTRO* (pills de filtro) — movido p/ shared na v4.26' },
+            { name: 'Button',                path: 'src/components/ui/button.tsx',                      desc: 'Botão canônico do DS: variantes solido/contorno/ghost/icone/icone-borda/livre — v4.26' },
+            { name: 'Input/Select/Textarea', path: 'src/components/ui/field.tsx',                       desc: 'Campos de plataforma (envolvem CAMPO/CAMPO_COMPACTO; foco .foco-neutro) — v4.26' },
+            { name: 'Badge',                 path: 'src/components/ui/badge.tsx',                       desc: 'Etiqueta semântica: success/danger/warning/brand/gestao/neutro/count — v4.26' },
+            { name: 'Tabs',                  path: 'src/components/ui/tabs.tsx',                        desc: 'Navegação por abas (pill + ARIA tablist; ativo bege de plataforma) — v4.26' },
+            { name: 'Tooltip',               path: 'src/components/ui/tooltip.tsx',                     desc: 'Dica on-hover de UI (CSS puro, tom escuro zinc-800) — v4.26' },
+            { name: 'FaixaMensagem',         path: 'src/components/shared/faixa-mensagem.tsx',          desc: 'Banner de mensagem sucesso/erro dispensável — movido p/ shared na v4.26' },
           ].map(({ name, path, desc }) => (
             <div key={name} className="flex items-start gap-3 py-2 border-b border-zinc-100">
               <code className="text-xs font-medium text-[var(--brand)] w-44 shrink-0">{name}</code>
               <div>
                 <p className="text-xs text-[var(--text-primary)]">{desc}</p>
-                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{path}</p>
+                <p className="text-3xs text-[var(--text-muted)] mt-0.5">{path}</p>
               </div>
             </div>
           ))}
@@ -519,9 +525,9 @@ function ColorGrid({ items }: { items: { name: string; hex: string; usage?: stri
           <div className="w-10 h-10 rounded-lg shrink-0 border border-zinc-200"
             style={{ backgroundColor: hex }} />
           <div className="min-w-0">
-            <p className="text-[11px] font-medium text-[var(--text-primary)] truncate" title={name}>{name}</p>
-            <p className="text-[10px] font-mono text-[var(--text-muted)]">{hex}</p>
-            {usage && <p className="text-[10px] text-zinc-400 mt-0.5 leading-tight">{usage}</p>}
+            <p className="text-2xs font-medium text-[var(--text-primary)] truncate" title={name}>{name}</p>
+            <p className="text-3xs font-mono text-[var(--text-muted)]">{hex}</p>
+            {usage && <p className="text-3xs text-zinc-400 mt-0.5 leading-tight">{usage}</p>}
           </div>
         </div>
       ))}
@@ -531,7 +537,7 @@ function ColorGrid({ items }: { items: { name: string; hex: string; usage?: stri
 
 function PillDemo({ children, active, size = 'md' }: { children: ReactNode; active?: boolean; size?: 'md' | 'sm' }) {
   const base = size === 'sm'
-    ? 'px-2.5 py-0.5 text-[11px]'
+    ? 'px-2.5 py-0.5 text-2xs'
     : 'px-3 py-1 text-xs'
   return (
     <span

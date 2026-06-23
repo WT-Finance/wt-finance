@@ -7,14 +7,12 @@ import { criarUsuario } from '@/app/admin/acessos/actions'
 import type { RoleAdmin } from './tipos'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'
+import { Input, Select } from '@/components/ui/field'
 
 // v4.14 — modal de criar usuário: email + nome (opcional) + role. Em sucesso,
 // mostra a SENHA PROVISÓRIA copiável (a pessoa troca no 1º acesso). Sem e-mail
 // (independe de SMTP). O componente segue exportado como ModalConvidar.
 // v4.16.1 — migrado para ModalCentral (portal, Esc, scroll-lock, animação uniformes).
-
-const INPUT_CLASSES =
-  'foco-neutro w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none transition'
 
 interface Sucesso {
   email: string
@@ -82,35 +80,35 @@ export function ModalConvidar({
             <label htmlFor="criar-email" className="block text-xs font-medium text-zinc-600 mb-1">
               E-mail <span className="text-danger" aria-hidden="true">*</span>
             </label>
-            <input
+            <Input
               id="criar-email" type="email" required autoFocus value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="pessoa@welcometrips.com.br" className={INPUT_CLASSES}
+              placeholder="pessoa@welcometrips.com.br"
             />
           </div>
           <div>
             <label htmlFor="criar-nome" className="block text-xs font-medium text-zinc-600 mb-1">
               Nome <span className="text-zinc-400 font-normal">(opcional)</span>
             </label>
-            <input
+            <Input
               id="criar-nome" type="text" value={nome}
               onChange={e => setNome(e.target.value)}
-              placeholder="Nome da pessoa" className={INPUT_CLASSES}
+              placeholder="Nome da pessoa"
             />
           </div>
           <div>
             <label htmlFor="criar-role" className="block text-xs font-medium text-zinc-600 mb-1">
               Permissão <span className="text-danger" aria-hidden="true">*</span>
             </label>
-            <select
+            <Select
               id="criar-role" required value={roleId}
-              onChange={e => setRoleId(e.target.value)} className={INPUT_CLASSES}
+              onChange={e => setRoleId(e.target.value)}
             >
               <option value="" disabled>Selecione uma permissão…</option>
               {roles.map(r => (
                 <option key={r.id} value={String(r.id)}>{r.nome}</option>
               ))}
-            </select>
+            </Select>
             {roles.length === 0 && (
               <p className="mt-1 text-xs text-warning">
                 Nenhuma permissão cadastrada — crie uma na aba «Permissões» antes de criar usuários.

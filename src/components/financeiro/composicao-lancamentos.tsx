@@ -186,7 +186,7 @@ function Donut({
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[10px] text-zinc-400 leading-tight">{titulo}</span>
+          <span className="text-3xs text-zinc-400 leading-tight">{titulo}</span>
           <span className="text-base font-bold text-zinc-800 tabular-nums leading-tight">{fmtMi(total)}</span>
         </div>
       </div>
@@ -240,7 +240,7 @@ function TabelaDecomposicao({
 
       <table className="table-fixed w-full">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wide text-zinc-400">
+          <tr className="text-3xs uppercase tracking-wide text-zinc-400">
             <th className="text-left font-semibold pb-1.5">Grupo</th>
             <th className="text-right font-semibold pb-1.5 w-14">%</th>
             <th className="text-right font-semibold pb-1.5 w-24">Valor</th>
@@ -263,13 +263,13 @@ function TabelaDecomposicao({
                       className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
                       style={{ background: f.cor, opacity: !selecionado || ativo ? 1 : 0.4 }}
                     />
-                    <span className="text-[11px] text-zinc-700 truncate">{f.label}</span>
+                    <span className="text-2xs text-zinc-700 truncate">{f.label}</span>
                   </span>
                 </td>
-                <td className="py-1.5 text-right text-[10px] text-zinc-400 tabular-nums align-middle">
+                <td className="py-1.5 text-right text-3xs text-zinc-400 tabular-nums align-middle">
                   {f.pct.toFixed(1)}%
                 </td>
-                <td className="py-1.5 text-right text-[11px] font-medium text-zinc-800 tabular-nums align-middle">
+                <td className="py-1.5 text-right text-2xs font-medium text-zinc-800 tabular-nums align-middle">
                   {fmtMi(f.valor)}
                 </td>
               </tr>
@@ -277,9 +277,9 @@ function TabelaDecomposicao({
           })}
           {/* Total */}
           <tr>
-            <td className="pt-2 text-[11px] font-semibold" style={{ color: corTitulo }}>Total</td>
-            <td className="pt-2 text-right text-[10px] text-zinc-400 tabular-nums">100%</td>
-            <td className="pt-2 text-right text-[11px] font-semibold tabular-nums" style={{ color: corTitulo }}>
+            <td className="pt-2 text-2xs font-semibold" style={{ color: corTitulo }}>Total</td>
+            <td className="pt-2 text-right text-3xs text-zinc-400 tabular-nums">100%</td>
+            <td className="pt-2 text-right text-2xs font-semibold tabular-nums" style={{ color: corTitulo }}>
               {fmtMi(total)}
             </td>
           </tr>
@@ -290,12 +290,12 @@ function TabelaDecomposicao({
       {fatiaSel && itensDrill && (
         <div className="mt-3 border-t border-zinc-100 pt-2.5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-medium text-zinc-700 truncate pr-2">
+            <p className="text-2xs font-medium text-zinc-700 truncate pr-2">
               {fatiaSel.ehOutros ? 'Outros grupos' : fatiaSel.label}
             </p>
             <button
               onClick={onVoltar}
-              className="shrink-0 inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors"
+              className="shrink-0 inline-flex items-center gap-1 text-2xs text-zinc-400 hover:text-zinc-600 transition-colors"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6" />
@@ -304,7 +304,7 @@ function TabelaDecomposicao({
             </button>
           </div>
           {itensDrill.length === 0 ? (
-            <p className="text-[11px] text-zinc-400">Sem itens no período.</p>
+            <p className="text-2xs text-zinc-400">Sem itens no período.</p>
           ) : (
             <div className="space-y-2">
               {itensDrill.map(it => {
@@ -312,12 +312,12 @@ function TabelaDecomposicao({
                 return (
                   <div key={it.nome}>
                     <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="text-[11px] text-zinc-600 truncate pr-2 min-w-0">
+                      <span className="text-2xs text-zinc-600 truncate pr-2 min-w-0">
                         {it.nome || '(sem categoria)'}
                       </span>
                       <div className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-[10px] text-zinc-400 tabular-nums">{pct.toFixed(1)}%</span>
-                        <span className="text-[11px] font-medium text-zinc-800 tabular-nums">{fmtBRL(it.valor)}</span>
+                        <span className="text-3xs text-zinc-400 tabular-nums">{pct.toFixed(1)}%</span>
+                        <span className="text-2xs font-medium text-zinc-800 tabular-nums">{fmtBRL(it.valor)}</span>
                       </div>
                     </div>
                     <div className="h-[3px] rounded-full bg-zinc-100 overflow-hidden">

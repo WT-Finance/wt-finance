@@ -16,14 +16,14 @@ const corValor = (tipo: string) => tipo === 'A pagar' ? 'text-[var(--negative-de
 // Valor compacto p/ o preview estreito (R$ junto do número, à direita) — evita o justify-between
 // do <ValorContabil> que estica a coluna e cortava a última coluna no drawer (item 4).
 const valorCompacto = (v: number, tipo: string) =>
-  <span className={`text-[11px] tabular-nums whitespace-nowrap ${corValor(tipo)}`}>R$ {numBRL2(v)}</span>
+  <span className={`text-2xs tabular-nums whitespace-nowrap ${corValor(tipo)}`}>R$ {numBRL2(v)}</span>
 
 // Cabeçalho da mini-tabela de um bucket (formato base, compacto). As larguras são fixas
 // (table-fixed no <table>): Pessoa flexiona/trunca; o resto cabe sem rolagem horizontal (item 4).
 function CabecalhoBucket({ remover = false }: { remover?: boolean }) {
   return (
     <thead>
-      <tr className="border-b border-zinc-100 text-left text-[10px] uppercase tracking-wide text-zinc-400">
+      <tr className="border-b border-zinc-100 text-left text-3xs uppercase tracking-wide text-zinc-400">
         {remover && <th className="py-1 px-1 w-[24px]" />}
         <th className="py-1 px-1.5 w-[58px]">Tipo</th>
         <th className="py-1 px-1.5">Pessoa</th>
@@ -45,7 +45,7 @@ function BucketHeader({ k, label, count, color, sufixo, aberto, onToggle }: {
       <span className="flex items-center gap-2">
         {count > 0 ? (aberto === k ? <ChevronDown size={14} className="text-zinc-400" /> : <ChevronRight size={14} className="text-zinc-400" />) : <span className="w-[14px]" />}
         <span className="text-xs font-medium text-zinc-600">{label}</span>
-        {sufixo && <span className="text-[10px] text-zinc-400">{sufixo}</span>}
+        {sufixo && <span className="text-3xs text-zinc-400">{sufixo}</span>}
       </span>
       <span className="text-sm font-bold tabular-nums" style={{ color }}>{count}</span>
     </button>
@@ -56,11 +56,11 @@ function BucketHeader({ k, label, count, color, sufixo, aberto, onToggle }: {
 function CelulasLinha({ l }: { l: { tipo: string; pessoa: string; valor_final: number; conta_previsao: string | null; vencimento: string; descricao: string | null } }) {
   return (
     <>
-      <td className="py-1 px-1.5 text-[11px] text-zinc-500 whitespace-nowrap">{l.tipo}</td>
-      <td className="py-1 px-1.5 text-[11px]"><span className="block truncate" title={l.descricao ? `${l.pessoa} — ${l.descricao}` : l.pessoa}>{l.pessoa}</span></td>
+      <td className="py-1 px-1.5 text-2xs text-zinc-500 whitespace-nowrap">{l.tipo}</td>
+      <td className="py-1 px-1.5 text-2xs"><span className="block truncate" title={l.descricao ? `${l.pessoa} — ${l.descricao}` : l.pessoa}>{l.pessoa}</span></td>
       <td className="py-1 px-1.5 text-right">{valorCompacto(l.valor_final, l.tipo)}</td>
-      <td className="py-1 px-1.5 text-[11px] text-zinc-500"><span className="block truncate" title={l.conta_previsao ?? '—'}>{l.conta_previsao ?? '—'}</span></td>
-      <td className="py-1 px-1.5 text-[11px] text-zinc-500 whitespace-nowrap">{fmtVenc(l.vencimento)}</td>
+      <td className="py-1 px-1.5 text-2xs text-zinc-500"><span className="block truncate" title={l.conta_previsao ?? '—'}>{l.conta_previsao ?? '—'}</span></td>
+      <td className="py-1 px-1.5 text-2xs text-zinc-500 whitespace-nowrap">{fmtVenc(l.vencimento)}</td>
     </>
   )
 }
@@ -207,7 +207,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
               <label className="flex items-center justify-between gap-3 cursor-pointer">
                 <span className="text-xs text-zinc-700">
                   Manter duplicadas
-                  <span className="block text-[10px] text-zinc-500">Tratar as linhas idênticas como lançamentos separados (em vez de uma só).</span>
+                  <span className="block text-3xs text-zinc-500">Tratar as linhas idênticas como lançamentos separados (em vez de uma só).</span>
                 </span>
                 <input type="checkbox" checked={manterDup} disabled={loading}
                   onChange={e => handleToggleDup(e.target.checked)}
@@ -235,7 +235,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
                 <div className="px-3 pb-2">
                   <table className="w-full table-fixed">
                     <thead>
-                      <tr className="border-b border-zinc-100 text-left text-[10px] uppercase tracking-wide text-zinc-400">
+                      <tr className="border-b border-zinc-100 text-left text-3xs uppercase tracking-wide text-zinc-400">
                         <th className="py-1 px-1.5 w-[120px]">Pessoa</th>
                         <th className="py-1 px-1.5 text-right w-[104px]">Valor</th>
                         <th className="py-1 px-1.5">Alterações</th>
@@ -244,9 +244,9 @@ export default function ImportDrawer({ open, onClose }: Props) {
                     <tbody>
                       {diff.aAtualizar.map(u => (
                         <tr key={u.id} className="border-b border-zinc-50">
-                          <td className="py-1 px-1.5 text-[11px]"><span className="block truncate" title={u.novo.pessoa}>{u.novo.pessoa}</span></td>
+                          <td className="py-1 px-1.5 text-2xs"><span className="block truncate" title={u.novo.pessoa}>{u.novo.pessoa}</span></td>
                           <td className="py-1 px-1.5 text-right">{valorCompacto(u.novo.valor_final, u.novo.tipo)}</td>
-                          <td className="py-1 px-1.5 text-[11px] text-zinc-500">
+                          <td className="py-1 px-1.5 text-2xs text-zinc-500">
                             {u.camposDivergentes.map(c => {
                               const rotulo = c === 'descricao' ? 'descrição' : 'conta'
                               const antigo = String((u.atual[c] as string | null) ?? '—')
@@ -279,7 +279,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
                 aberto={aberto} onToggle={toggleBucket} />
               {aberto === 'remover' && diff.aRemover.length > 0 && (
                 <div className="px-3 pb-2">
-                  <p className="text-[10px] text-zinc-400 mb-1">
+                  <p className="text-3xs text-zinc-400 mb-1">
                     Desmarque para <strong>não remover desta vez</strong> — a linha reaparece na próxima importação (não vira manual).
                   </p>
                   <table className="w-full table-fixed"><CabecalhoBucket remover />

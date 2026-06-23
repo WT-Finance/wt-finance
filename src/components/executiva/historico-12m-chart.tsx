@@ -191,7 +191,7 @@ export default function Historico12mChart({ data, setor = 'todos', eParcial = fa
       {isTodos && (
         <div className="flex items-center gap-4 mt-2 justify-end">
           {SETORES.map(s => (
-            <span key={s} className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+            <span key={s} className="flex items-center gap-1.5 text-2xs text-zinc-500">
               <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: SETOR_COLORS[s] }} />
               {s === 'Lazer' ? 'Trips' : s}
             </span>

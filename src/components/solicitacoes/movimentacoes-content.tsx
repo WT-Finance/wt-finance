@@ -175,7 +175,7 @@ export default function MovimentacoesContent({ movimentacoes, erroCarga }: {
                       <span className="block truncate text-zinc-700" title={m.ator ?? '—'}>{m.ator ?? '—'}</span>
                     </td>
                     <td className="py-2.5 px-3 align-top">
-                      <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${acaoBadge(m.acao)}`}>
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-2xs font-medium whitespace-nowrap ${acaoBadge(m.acao)}`}>
                         {participio(m.acao)}
                       </span>
                     </td>

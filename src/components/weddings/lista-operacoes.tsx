@@ -393,7 +393,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
           {periodoPreset === 'personalizado' && periodoCustom && (
             <button
               onClick={clearPeriodoCustom}
-              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-zinc-300 hover:bg-zinc-400 text-white flex items-center justify-center text-[10px] leading-none transition-colors"
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-zinc-300 hover:bg-zinc-400 text-white flex items-center justify-center text-3xs leading-none transition-colors"
               title="Limpar filtro de período"
             >
               ×

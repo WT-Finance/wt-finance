@@ -4,6 +4,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { type PresetPeriodo } from '@/lib/periodo'
 import { format, parseISO } from 'date-fns'
+import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 
 // Pills de período sincronizadas pela URL (mesma lógica do PeriodoFilterUrl, mas
 // em pills no lugar do <select>). v4.10/M3 — usado no PerformanceContent (Geral/
@@ -24,14 +25,6 @@ const ISO      = (d: Date) => format(d, 'yyyy-MM-dd')
 const fmtShort = (iso: string) => format(parseISO(iso), 'dd/MM/yy')
 const MIN_DATE = '2024-01-01'
 const MAX_DATE = ISO(new Date())
-
-const PILL_ACTIVE_STYLE = {
-  background:  'var(--brand-soft)',
-  borderColor: 'var(--brand)',
-  color:       'var(--brand-deep)',
-}
-const PILL_BASE     = 'px-3 py-1 rounded-full text-xs font-medium border transition-colors whitespace-nowrap'
-const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
 interface Props {
   defaultPreset?: PresetPeriodo
@@ -90,8 +83,8 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
       {PILLS.map(p => (
         <button
           key={p.value}
-          className={[PILL_BASE, preset === p.value ? '' : PILL_INACTIVE].join(' ')}
-          style={preset === p.value ? PILL_ACTIVE_STYLE : undefined}
+          className={[PILL_FILTRO, preset === p.value ? '' : PILL_FILTRO_INATIVO].join(' ')}
+          style={preset === p.value ? PILL_FILTRO_ATIVO_STYLE : undefined}
           onClick={() => {
             if (p.value === 'personalizado') { setShowCustom(s => !s); return }
             setShowCustom(false)
@@ -106,10 +99,10 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
 
       {showCustom && (
         <div className="absolute top-full right-0 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
-          <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
+          <p className="text-2xs font-medium text-zinc-500 mb-3">Período personalizado</p>
           <div className="space-y-2 mb-4">
             <div>
-              <label className="text-[10px] text-zinc-400 block mb-1">Data inicial</label>
+              <label className="text-3xs text-zinc-400 block mb-1">Data inicial</label>
               <input
                 type="date" aria-label="Data inicial" defaultValue={fromVal} min={MIN_DATE} max={MAX_DATE}
                 id="pp-from"
@@ -117,7 +110,7 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
               />
             </div>
             <div>
-              <label className="text-[10px] text-zinc-400 block mb-1">Data final</label>
+              <label className="text-3xs text-zinc-400 block mb-1">Data final</label>
               <input
                 type="date" aria-label="Data final" defaultValue={toVal} min={MIN_DATE} max={MAX_DATE}
                 id="pp-to"
@@ -128,7 +121,7 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
           <div className="flex gap-2">
             <button
               onClick={() => setShowCustom(false)}
-              className="flex-1 text-[11px] text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
+              className="flex-1 text-2xs text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
             >
               Cancelar
             </button>
@@ -140,7 +133,7 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
                 setShowCustom(false)
                 push('personalizado', f, t)
               }}
-              className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors"
+              className="flex-1 text-2xs text-white py-1.5 rounded transition-colors"
               style={{ background: 'var(--brand)' }}
             >
               Aplicar

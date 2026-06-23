@@ -80,28 +80,28 @@ function CardMinha({ s, onAbrir }: { s: Solicitacao; onAbrir: (s: Solicitacao) =
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-medium text-zinc-900 truncate">{s.tipo_nome}</p>
-        <span className="shrink-0 text-[11px] font-medium tabular-nums text-zinc-400">#{s.id}</span>
+        <span className="shrink-0 text-2xs font-medium tabular-nums text-zinc-400">#{s.id}</span>
       </div>
       <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
       <div className="mt-1.5 flex items-center justify-between gap-2">
-        <span className="text-[11px] text-zinc-400 truncate">{s.destinatario.rotulo}</span>
+        <span className="text-2xs text-zinc-400 truncate">{s.destinatario.rotulo}</span>
         {s.status === 'aberta' && (
-          <span className={`inline-flex items-center gap-1 text-[11px] shrink-0 ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
+          <span className={`inline-flex items-center gap-1 text-2xs shrink-0 ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
         )}
       </div>
       {/* Concluídas: QUEM concluiu e QUANDO (fuso SP) — insumo do relatório futuro. */}
       {s.status === 'concluida' && (
-        <p className="mt-1 text-[11px] font-medium text-success">
+        <p className="mt-1 text-2xs font-medium text-success">
           Concluída{s.decidido_em ? ` em ${fmtDataHoraSP(s.decidido_em)}` : ''}{s.decidido_por_email ? ` por ${s.decidido_por_email}` : ''}
         </p>
       )}
       {s.status === 'rejeitada' && (
-        <p className="mt-1 text-[11px] font-medium text-danger">
+        <p className="mt-1 text-2xs font-medium text-danger">
           Rejeitada{s.decidido_em ? ` em ${fmtDataHoraSP(s.decidido_em)}` : ''}{s.justificativa ? ` — ${s.justificativa}` : ''}
         </p>
       )}
       {s.status === 'cancelada' && (
-        <p className="mt-1 text-[11px] text-zinc-500">
+        <p className="mt-1 text-2xs text-zinc-500">
           Cancelada por você{s.decidido_em ? ` em ${fmtDataHoraSP(s.decidido_em)}` : ''}
         </p>
       )}

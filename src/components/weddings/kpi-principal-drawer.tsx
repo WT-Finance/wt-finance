@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtMi, parseLocalDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
+import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import { parseRpc, executivaKpisSchema, tendenciaMargemSchema } from '@/lib/schemas-rpc'
 import type { RpcLike } from '@/lib/rpc'
@@ -154,16 +155,6 @@ function pillToDates(pill: PillId): { from: string; to: string } | null {
   }
 }
 
-// ── Pill styling (padrão design system) ─────────────────────────────────────────
-
-const PILL_ACTIVE_STYLE = {
-  background:  'var(--brand-soft)',
-  borderColor: 'var(--brand)',
-  color:       'var(--brand-deep)',
-}
-const PILL_BASE = 'px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-colors whitespace-nowrap'
-const PILL_INACTIVE = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
-
 // ── Stacked tooltip (faturamento/receita por subsetor no mês) ───────────────────
 
 function StackedTooltip({ active, payload, label }: {
@@ -208,7 +199,7 @@ function StackedTooltip({ active, payload, label }: {
 function KpiCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-white px-3 py-3 text-center">
-      <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
+      <p className="text-3xs uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>{label}</p>
       <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--brand)' }}>{value}</p>
     </div>
   )
@@ -218,7 +209,7 @@ function KpiCell({ label, value }: { label: string; value: string }) {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2 mt-6">{label}</p>
+    <p className="text-2xs font-semibold text-zinc-400 uppercase tracking-wide mb-2 mt-6">{label}</p>
   )
 }
 
@@ -342,8 +333,8 @@ function DrawerBody({ setor }: { setor: string }) {
     })
   }
 
-  const pillClass  = (pill: PillId) => [PILL_BASE, activePill === pill ? '' : PILL_INACTIVE].join(' ')
-  const pillStyle  = (pill: PillId) => (activePill === pill ? PILL_ACTIVE_STYLE : undefined)
+  const pillClass  = (pill: PillId) => [PILL_FILTRO_SM, activePill === pill ? '' : PILL_FILTRO_INATIVO].join(' ')
+  const pillStyle  = (pill: PillId) => (activePill === pill ? PILL_FILTRO_ATIVO_STYLE : undefined)
 
   // Chart data helpers — YoY com 4 séries: Faturamento e Receita, atual e ano anterior.
   // COR distingue MÉTRICA (faturamento=dourado, receita=cinza-azulado);
@@ -453,10 +444,10 @@ function DrawerBody({ setor }: { setor: string }) {
             popover alinhado à borda esquerda das pills. */}
         {showCustomPicker && (
           <div className="absolute top-full left-6 mt-2 z-50 bg-white border border-zinc-200 rounded-xl shadow-lg p-4 w-64">
-            <p className="text-[11px] font-medium text-zinc-500 mb-3">Período personalizado</p>
+            <p className="text-2xs font-medium text-zinc-500 mb-3">Período personalizado</p>
             <div className="space-y-2 mb-4">
               <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">Mês inicial</label>
+                <label className="text-3xs text-zinc-400 block mb-1">Mês inicial</label>
                 <input
                   type="month"
                   aria-label="Mês inicial"
@@ -467,7 +458,7 @@ function DrawerBody({ setor }: { setor: string }) {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-zinc-400 block mb-1">Mês final</label>
+                <label className="text-3xs text-zinc-400 block mb-1">Mês final</label>
                 <input
                   type="month"
                   aria-label="Mês final"
@@ -482,14 +473,14 @@ function DrawerBody({ setor }: { setor: string }) {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCustomPicker(false)}
-                className="flex-1 text-[11px] text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
+                className="flex-1 text-2xs text-zinc-400 hover:text-zinc-600 py-1.5 rounded border border-zinc-200 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={aplicarCustom}
                 disabled={!customFrom || !customTo}
-                className="flex-1 text-[11px] text-white py-1.5 rounded transition-colors disabled:opacity-50"
+                className="flex-1 text-2xs text-white py-1.5 rounded transition-colors disabled:opacity-50"
                 style={{ background: 'var(--brand)' }}
               >
                 Aplicar
@@ -651,8 +642,8 @@ function DrawerBody({ setor }: { setor: string }) {
           {isWeddings && (
             <>
               <div className="flex items-baseline gap-2 mb-2 mt-6">
-                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">Composição por Subsetor</p>
-                <span className="text-[11px]" style={{ color: 'var(--brand)' }}>no período selecionado</span>
+                <p className="text-2xs font-semibold text-zinc-400 uppercase tracking-wide">Composição por Subsetor</p>
+                <span className="text-2xs" style={{ color: 'var(--brand)' }}>no período selecionado</span>
               </div>
               <SumarioSubsetorCard data={data.sumario} semBox />
             </>

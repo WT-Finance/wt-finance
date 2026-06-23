@@ -124,15 +124,15 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
           <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Projeção Diária</p>
           {projecao.length > 0 && (
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+              <label className="flex items-center gap-1.5 text-2xs text-[var(--text-muted)]">
                 A partir de
                 <input type="date" value={dataInicial} min={minData} max={maxData}
                   onChange={e => setDataInicial(e.target.value || minData || '')}
-                  className="text-[11px] border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-brand" />
+                  className="text-2xs border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-brand" />
               </label>
               <select value={horizonte} onChange={e => setHorizonte(Number(e.target.value))}
                 aria-label="Horizonte da projeção"
-                className="text-[11px] border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-brand">
+                className="text-2xs border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-brand">
                 <option value={15}>15 dias</option>
                 <option value={30}>30 dias</option>
               </select>
@@ -179,7 +179,7 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
                   <tr key={l.data} className={`border-b border-zinc-50 ${hoje ? 'bg-warning-bg' : ''}`}>
                     <td className={`py-1.5 px-2 font-medium ${hoje ? 'text-warning' : ''}`}>
                       {format(parseISO(l.data), 'dd/MMM', { locale: ptBR })}
-                      {hoje && <span className="ml-1 text-[10px] text-warning">hoje</span>}
+                      {hoje && <span className="ml-1 text-3xs text-warning">hoje</span>}
                     </td>
                     {/* Fluxos: sem fundo, cor só no número (M3). */}
                     <td className="py-1.5 px-2">

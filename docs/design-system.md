@@ -1,6 +1,8 @@
 # WT Finance — Design System
 
-**Versão:** 3.7 · Maio 2026
+**Versão:** 4.26 · Jun 2026
+
+> **Referência VIVA:** a página `/admin/design-system` reflete o código real (tokens, gráficos e estilos de plataforma importados de verdade). Cor é **SEMPRE via token** — cor crua do Tailwind ou hex em classe **quebram o lint** (`wt/no-cor-hardcoded`, ADR-0129); `zinc` é permitido; `src/lib/email` é isento. Primitivos canônicos em `src/components/ui/` (`Button`, `Input`/`Select`/`Textarea`, `Badge`, `Tabs`, `Tooltip`, `Card`, `Checkbox`). Micro-texto: `text-2xs` (11px) / `text-3xs` (10px).
 
 ## Tokens CSS
 
@@ -41,9 +43,10 @@ O token `--brand` muda conforme a aba ativa via `data-theme` no elemento `<html>
 
 | Aba           | `--brand`   | `--brand-soft` | `--brand-deep` |
 |--------------|-------------|----------------|----------------|
-| Weddings     | `#BD965C`   | `#FBF1E1`      | `#8F7E35`      |
-| Trips        | `#0091B3`   | `#D9EEF5`      | `#0D5257`      |
-| Corporativo  | `#75777B`   | `#EAE6DD`      | `#4B4F54`      |
+| Weddings      | `#BD965C`   | `#FBF1E1`      | `#8F7E35`      |
+| Trips         | `#0091B3`   | `#D9EEF5`      | `#005670`      |
+| Corporativo   | `#0D5257`   | `#DDE7E9`      | `#072F33`      |
+| Group (plat.) | `#75777B`   | `#EAE6DD`      | `#4B4F54`      |
 
 Classes Tailwind: `bg-brand`, `text-brand`, `border-brand`, `bg-brand-soft`, `bg-brand-deep`
 

@@ -128,10 +128,10 @@ export function AbaSolicitacoes({
             </colgroup>
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50/60 text-left">
-                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Solicitante</th>
-                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Quando</th>
-                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400">Aprovar com a permissão</th>
-                <th scope="col" className="px-4 py-2.5 text-[11px] font-medium text-zinc-400 text-right">Ações</th>
+                <th scope="col" className="px-4 py-2.5 text-2xs font-medium text-zinc-400">Solicitante</th>
+                <th scope="col" className="px-4 py-2.5 text-2xs font-medium text-zinc-400">Quando</th>
+                <th scope="col" className="px-4 py-2.5 text-2xs font-medium text-zinc-400">Aprovar com a permissão</th>
+                <th scope="col" className="px-4 py-2.5 text-2xs font-medium text-zinc-400 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>

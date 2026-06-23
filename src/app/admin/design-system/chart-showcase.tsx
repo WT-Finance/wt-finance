@@ -191,7 +191,7 @@ export default function ChartShowcase() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-[10px] text-[var(--text-muted)] leading-tight">Total</span>
+              <span className="text-3xs text-[var(--text-muted)] leading-tight">Total</span>
               <span className="text-sm font-bold text-[var(--text-primary)] tabular-nums leading-tight">{fmtMi(donutTotal)}</span>
             </div>
           </div>
@@ -199,8 +199,8 @@ export default function ChartShowcase() {
             {donutData.map(d => (
               <div key={d.label} className="flex items-center gap-1.5">
                 <span className="inline-block w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: d.cor }} />
-                <span className="text-[11px] text-[var(--text-muted)] truncate min-w-0 flex-1">{d.label}</span>
-                <span className="text-[10px] text-[var(--text-subtle)] tabular-nums shrink-0">{((d.valor / donutTotal) * 100).toFixed(1)}%</span>
+                <span className="text-2xs text-[var(--text-muted)] truncate min-w-0 flex-1">{d.label}</span>
+                <span className="text-3xs text-[var(--text-subtle)] tabular-nums shrink-0">{((d.valor / donutTotal) * 100).toFixed(1)}%</span>
               </div>
             ))}
           </div>
@@ -229,11 +229,11 @@ export default function ChartShowcase() {
           {subsetorMix.map(d => (
             <div key={d.subsetor}>
               <div className="flex items-center justify-between mb-1">
-                <span className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                <span className="flex items-center gap-1.5 text-2xs text-[var(--text-muted)]">
                   <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: subsetorColor(d.subsetor) }} />
                   {SUBSETOR_LABELS[d.subsetor] ?? d.subsetor}
                 </span>
-                <span className="text-[10px] text-[var(--text-subtle)] tabular-nums">{d.pct.toFixed(1)}%</span>
+                <span className="text-3xs text-[var(--text-subtle)] tabular-nums">{d.pct.toFixed(1)}%</span>
               </div>
               <div className="h-[5px] rounded-full bg-zinc-100 overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${(d.valor / subsetorMixMax) * 100}%`, background: subsetorColor(d.subsetor) }} />

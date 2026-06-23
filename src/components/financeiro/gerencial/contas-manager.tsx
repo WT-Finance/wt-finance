@@ -186,7 +186,7 @@ export default function ContasManager({ contas, onContasChange }: {
           <col className="w-[40px]" />
         </colgroup>
         <thead>
-          <tr className="text-[11px] font-medium text-zinc-400 border-b border-zinc-100">
+          <tr className="text-2xs font-medium text-zinc-400 border-b border-zinc-100">
             <th className="py-2 px-1"></th>
             <th className="py-2 px-2 text-left">Conta</th>
             <th className="py-2 px-2 text-right">Limite</th>
@@ -276,7 +276,7 @@ export default function ContasManager({ contas, onContasChange }: {
           </button>
         </div>
       )}
-      <p className="mt-3 text-[10px] text-[var(--text-muted)]">
+      <p className="mt-3 text-3xs text-[var(--text-muted)]">
         O saldo inicial de cada conta é editado nos cards. Marque <strong>Consolidado</strong> nas contas que somam no saldo consolidado. <strong>Papel</strong>: a conta <em>Principal</em> tem coluna própria (com faixas de limite); a <em>Rendimento</em> é somada à parte.
       </p>
     </div>

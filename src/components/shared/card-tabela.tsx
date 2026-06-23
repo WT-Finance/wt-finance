@@ -32,7 +32,7 @@ interface Props {
 }
 
 /** Cabeçalho de coluna padrão: caixa normal, ~11px, cor terciária. Some `text-left`/`text-right`. */
-export const CARD_TABELA_TH = 'py-2 px-3 text-[11px] font-medium text-[var(--text-muted)] whitespace-nowrap'
+export const CARD_TABELA_TH = 'py-2 px-3 text-2xs font-medium text-[var(--text-muted)] whitespace-nowrap'
 
 export default function CardTabela({
   titulo, periodoLabel, headerRight, temMais, onVerMais, className, children,

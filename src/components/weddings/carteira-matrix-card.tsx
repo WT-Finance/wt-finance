@@ -114,7 +114,7 @@ export default function CarteiraMartrixCard({ casamentos }: Props) {
         </table>
       </div>
 
-      <p className="mt-3 text-[11px] text-zinc-400">
+      <p className="mt-3 text-2xs text-zinc-400">
         Linhas: ano da venda do Contrato · Colunas: ano da Entrega do casamento · Diagonal{' '}
         <span className="inline-block w-3 h-2 rounded-sm bg-warning/60 align-middle" /> = vendas e entregas no mesmo ano
       </p>

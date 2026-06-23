@@ -118,7 +118,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
         </dl>
         {sol.descricao && (
           <div className="mt-2.5 border-t border-zinc-200/70 pt-2.5">
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">Descrição</dt>
+            <dt className="text-2xs font-medium uppercase tracking-wide text-zinc-400">Descrição</dt>
             <dd className="mt-0.5 whitespace-pre-wrap text-sm text-zinc-700">{sol.descricao}</dd>
           </div>
         )}
@@ -127,12 +127,12 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
       {/* ── Zona 3 — Campos preenchidos: rótulo pequeno → valor destacado (curtos em grade de dois) ── */}
       {(camposValor.length > 0 || camposAnexo.length > 0) && (
         <div className="mb-5">
-          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Campos</p>
+          <p className="mb-2.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Campos</p>
           {camposValor.length > 0 && (
             <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
               {camposValor.map(r => (
                 <div key={r.campo_id} className={r.tipo_campo === 'texto_longo' ? 'sm:col-span-2' : ''}>
-                  <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
+                  <dt className="text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
                   <dd className={`mt-0.5 text-sm font-medium text-zinc-800 ${r.tipo_campo === 'texto_longo' ? 'whitespace-pre-wrap font-normal' : ''}`}>{fmtValor(r)}</dd>
                 </div>
               ))}
@@ -142,7 +142,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
             const arquivos = sol.anexos.filter(a => a.campo_id === r.campo_id)
             return (
               <div key={r.campo_id} className="mt-3">
-                <dt className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
+                <dt className="mb-1.5 text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
                 {arquivos.length > 0
                   ? <div className="space-y-1.5">{arquivos.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
                   : <span className="text-xs text-zinc-400">—</span>}
@@ -155,7 +155,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
       {/* Anexos gerais (sem campo), se houver — bloco próprio */}
       {anexosGerais.length > 0 && (
         <div className="mb-5">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Anexos</p>
+          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Anexos</p>
           <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
         </div>
       )}
@@ -204,7 +204,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
 function Meta({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{rotulo}</dt>
+      <dt className="text-2xs font-medium uppercase tracking-wide text-zinc-400">{rotulo}</dt>
       <dd className="mt-0.5 truncate text-sm text-zinc-800" title={valor}>{valor}</dd>
     </div>
   )

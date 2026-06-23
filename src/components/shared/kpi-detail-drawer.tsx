@@ -172,7 +172,7 @@ export default function KpiDetailDrawer({ metrica, rotulo, setor, onClose }: Pro
 
               {/* Tabela últimos 6 meses */}
               <div className="mt-4">
-                <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">
+                <p className="text-2xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">
                   Últimos 6 meses
                 </p>
                 <table className="w-full text-sm">

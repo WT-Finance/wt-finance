@@ -125,16 +125,16 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
             <p className="text-sm font-medium text-zinc-900 truncate">{s.solicitante_email}</p>
-            <span className="shrink-0 text-[11px] font-medium tabular-nums text-zinc-400">#{s.id}</span>
+            <span className="shrink-0 text-2xs font-medium tabular-nums text-zinc-400">#{s.id}</span>
           </div>
           <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
           <div className="mt-1.5 flex items-center justify-between gap-2">
             {aberta ? (
-              <span className={`inline-flex items-center gap-1 text-[11px] ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
+              <span className={`inline-flex items-center gap-1 text-2xs ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
             ) : (
-              <span className={`text-[11px] font-medium ${enc?.cor ?? 'text-zinc-400'}`}>{enc?.rotulo ?? 'Encerrada'}</span>
+              <span className={`text-2xs font-medium ${enc?.cor ?? 'text-zinc-400'}`}>{enc?.rotulo ?? 'Encerrada'}</span>
             )}
-            <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 truncate max-w-[45%]">{s.destinatario.tipo === 'usuario' ? 'você' : s.destinatario.rotulo}</span>
+            <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-3xs text-zinc-500 truncate max-w-[45%]">{s.destinatario.tipo === 'usuario' ? 'você' : s.destinatario.rotulo}</span>
           </div>
         </div>
       </div>

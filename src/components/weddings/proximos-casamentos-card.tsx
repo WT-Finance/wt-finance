@@ -60,7 +60,7 @@ function DrawerContent({ casamentos }: { casamentos: NonNullable<ProximosCasamen
             key={h}
             onClick={() => setHorizonte(h)}
             className={[
-              'text-[11px] px-2.5 py-0.5 rounded-full border transition-colors',
+              'text-2xs px-2.5 py-0.5 rounded-full border transition-colors',
               horizonte === h
                 ? 'bg-zinc-800 text-white border-zinc-800'
                 : 'text-zinc-500 border-zinc-200 hover:border-zinc-400 hover:text-zinc-700',

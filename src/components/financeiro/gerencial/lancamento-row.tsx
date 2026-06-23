@@ -83,7 +83,7 @@ function EditableCell({
           // Pill compacto numa linha só (Tipo) — altura uniforme, sem quebra. Cor por valor
           // (badgeClassFor): A pagar → vermelho, A receber → verde (v4.23.1).
           <span onClick={() => setEditing(true)}
-            className={`inline-flex items-center gap-1 cursor-pointer rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-opacity hover:opacity-70 ${badgeClassFor ? badgeClassFor(displaySelect) : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}
+            className={`inline-flex items-center gap-1 cursor-pointer rounded-full border px-2 py-0.5 text-2xs font-medium whitespace-nowrap transition-opacity hover:opacity-70 ${badgeClassFor ? badgeClassFor(displaySelect) : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}
             title={displaySelect}>
             {displaySelect}
             {state.saved && <Check size={10} className="text-success" />}

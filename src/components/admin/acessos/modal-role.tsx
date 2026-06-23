@@ -9,7 +9,7 @@ import ConfirmModal from '@/components/shared/confirm-modal'
 import ModalCentral from '@/components/shared/modal-central'
 import type { AreaCatalogo, RoleAdmin } from './tipos'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
-import { CAMPO } from '@/lib/ui/campos'
+import { Input, Textarea } from '@/components/ui/field'
 
 // v4.13 — formulário de permissão/perfil (criar/editar): nome, descrição e
 // checkboxes de áreas agrupadas (Geral/Performance/Financeiro/Administração).
@@ -120,7 +120,7 @@ export function ModalRole({
             <label htmlFor="role-nome" className="block text-xs font-medium text-zinc-600 mb-1">
               Nome <span className="text-danger" aria-hidden="true">*</span>
             </label>
-            <input
+            <Input
               id="role-nome"
               type="text"
               required
@@ -128,7 +128,6 @@ export function ModalRole({
               value={nome}
               onChange={e => setNome(e.target.value)}
               placeholder="Ex.: Gestora Weddings"
-              className={CAMPO}
             />
           </div>
 
@@ -136,13 +135,13 @@ export function ModalRole({
             <label htmlFor="role-descricao" className="block text-xs font-medium text-zinc-600 mb-1">
               Descrição
             </label>
-            <textarea
+            <Textarea
               id="role-descricao"
               rows={2}
               value={descricao}
               onChange={e => setDescricao(e.target.value)}
               placeholder="Para que serve esta permissão"
-              className={`${CAMPO} resize-none`}
+              className="resize-none"
             />
           </div>
 
@@ -151,7 +150,7 @@ export function ModalRole({
             <div className="space-y-3 rounded-lg border border-zinc-200 p-3">
               {grupos.map(({ grupo, itens }) => (
                 <fieldset key={grupo}>
-                  <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  <legend className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">
                     {grupo}
                   </legend>
                   <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">

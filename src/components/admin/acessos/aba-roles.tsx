@@ -85,7 +85,7 @@ export function AbaRoles({
                 {permissoesOrdenadas.map(p => (
                   <span
                     key={p}
-                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-2xs font-medium text-zinc-600"
                     title={p === AREA_ADMIN ? 'Dá acesso à administração de usuários' : undefined}
                   >
                     {rotuloDe(p)}

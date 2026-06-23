@@ -1,15 +1,13 @@
 'use client'
 
 import { Paperclip, X } from 'lucide-react'
-import { CAMPO } from '@/lib/ui/campos'
+import { Input, Select, Textarea } from '@/components/ui/field'
 import { hojeSP } from '@/lib/solicitacoes/format'
 import type { CampoDef } from '@/lib/solicitacoes/schemas'
 
 // Motor de render dinâmico dos campos de um tipo (v4.16.0). Presentational: recebe a
 // definição + valores + callbacks; o modal orquestra upload de anexo. O SERVIDOR é a
 // fonte de verdade da validação (criar_solicitacao) — aqui só HTML5 + marca de obrigatório.
-
-const INPUT = CAMPO
 
 // Diferença em DIAS entre duas datas 'AAAA-MM-DD' (calendário puro, sem fuso).
 // Date.UTC dos componentes nos dois lados → o offset cancela; diff exato em dias inteiros.
@@ -44,12 +42,12 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
             </label>
 
             {campo.tipo_campo === 'texto_longo' ? (
-              <textarea id={`campo-${id}`} rows={3} value={v} onChange={e => onValor(id, e.target.value)} className={`${INPUT} resize-none`} />
+              <Textarea id={`campo-${id}`} rows={3} value={v} onChange={e => onValor(id, e.target.value)} className="resize-none" />
             ) : campo.tipo_campo === 'selecao' ? (
-              <select id={`campo-${id}`} value={v} onChange={e => onValor(id, e.target.value)} className={INPUT}>
+              <Select id={`campo-${id}`} value={v} onChange={e => onValor(id, e.target.value)}>
                 <option value="">Selecione…</option>
                 {(campo.opcoes ?? []).map(op => <option key={op} value={op}>{op}</option>)}
-              </select>
+              </Select>
             ) : campo.tipo_campo === 'data' ? (
               (() => {
                 // Espelho client do bloqueio server-side (min) + aviso não-bloqueante (X dias no futuro).
@@ -59,13 +57,12 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 const mostraAviso = !!v && avisoDias != null && diasEntre(hoje, v) > avisoDias
                 return (
                   <>
-                    <input
+                    <Input
                       id={`campo-${id}`}
                       type="date"
                       value={v}
                       min={permitePassado ? undefined : hoje}
                       onChange={e => onValor(id, e.target.value)}
-                      className={INPUT}
                     />
                     {mostraAviso && (
                       <p className="mt-1 text-xs text-[var(--gestao-fg)]">
@@ -78,9 +75,9 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
             ) : campo.tipo_campo === 'numero' || campo.tipo_campo === 'moeda' ? (
               <div className="relative">
                 {campo.tipo_campo === 'moeda' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">R$</span>}
-                <input id={`campo-${id}`} inputMode="decimal" value={v}
+                <Input id={`campo-${id}`} inputMode="decimal" value={v}
                   onChange={e => onValor(id, e.target.value.replace(/[^\d.,-]/g, ''))}
-                  className={`${INPUT} ${campo.tipo_campo === 'moeda' ? 'pl-9' : ''}`} placeholder="0" />
+                  className={campo.tipo_campo === 'moeda' ? 'pl-9' : ''} placeholder="0" />
               </div>
             ) : campo.tipo_campo === 'anexo' ? (
               <div>
@@ -97,7 +94,7 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 ))}
               </div>
             ) : (
-              <input id={`campo-${id}`} type="text" value={v} onChange={e => onValor(id, e.target.value)} className={INPUT} />
+              <Input id={`campo-${id}`} type="text" value={v} onChange={e => onValor(id, e.target.value)} />
             )}
           </div>
         )

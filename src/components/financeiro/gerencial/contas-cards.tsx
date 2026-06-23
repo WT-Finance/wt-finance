@@ -60,14 +60,14 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
             <div key={c.conta} className="border border-zinc-100 rounded-lg px-3 py-2.5 flex flex-col gap-2">
               <p className="text-sm font-medium text-[var(--text-primary)] truncate" title={c.conta}>{c.conta}</p>
               <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wide text-[var(--text-subtle)]">Saldo</p>
+                <p className="text-3xs uppercase tracking-wide text-[var(--text-subtle)]">Saldo</p>
                 <NumCell valor={c.saldo} onSave={v => editarSaldo(c.conta, v ?? 0)} />
               </div>
               {/* Selos no rodapé, à esquerda — papel PRIMEIRO (Principal/Rendimento), depois Consolidado. */}
               <div className="mt-auto flex flex-wrap items-center gap-1.5">
                 {c.papel === 'isolada' && (
                   // "Principal": âmbar de gestão (mesmo trio dos botões de Solicitações).
-                  <span className="text-[10px] px-1.5 py-0.5 rounded border"
+                  <span className="text-3xs px-1.5 py-0.5 rounded border"
                     style={{ background: 'var(--gestao-soft)', borderColor: 'var(--gestao)', color: 'var(--gestao-fg)' }}
                     title="Conta principal — coluna própria na projeção, com faixas de limite">
                     {PAPEL_LABEL.isolada}
@@ -75,14 +75,14 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
                 )}
                 {c.papel === 'reserva' && (
                   // "Rendimento": verde do design system.
-                  <span className="text-[10px] px-1.5 py-0.5 rounded border"
+                  <span className="text-3xs px-1.5 py-0.5 rounded border"
                     style={{ background: 'var(--success-bg)', borderColor: 'var(--success)', color: 'var(--positive-deep)' }}
                     title="Conta de rendimento — somada à parte no consolidado">
                     {PAPEL_LABEL.reserva}
                   </span>
                 )}
                 {c.consolidado && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-50 text-zinc-400 border border-zinc-100"
+                  <span className="text-3xs px-1.5 py-0.5 rounded bg-zinc-50 text-zinc-400 border border-zinc-100"
                     title="Entra no saldo consolidado">
                     Consolidado
                   </span>
