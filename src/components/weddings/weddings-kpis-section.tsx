@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { usePeriodoFilter } from '@/components/layout/period-filter-provider'
 import { fetchWeddingsKpis } from '@/app/performance/weddings/actions'
 import { fmtMi } from '@/lib/fmt'
@@ -149,6 +149,12 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
   // enquanto a busca da chave corrente não retornou).
   const [loadedKey, setLoadedKey]     = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen]   = useState(false)
+  // v4.27.3 (INP): abrir o drawer é uma TRANSIÇÃO (não-urgente). O mount do overlay
+  // do ListDrawer (fixed inset-0 + document.body.style.overflow='hidden' → reflow de
+  // página inteira) deixa de bloquear o frame de resposta ao clique. Muda QUANDO
+  // renderiza, não O QUE — o drawer abre com o mesmo conteúdo/aparência.
+  const [, startTransition] = useTransition()
+  const abrirDrawer = () => startTransition(() => setDrawerOpen(true))
 
   const currentKey = `${from}|${to}|${antFrom}|${antTo}|${yoyFrom}|${yoyTo}`
   const loading = loadedKey !== currentKey || !kpis
@@ -188,10 +194,10 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       {/* Card principal full-width */}
       <div
         className="card-clicavel bg-white rounded-xl shadow-sm px-5 pt-4 pb-2 mb-4 cursor-pointer"
-        onClick={() => setDrawerOpen(true)}
+        onClick={abrirDrawer}
         role="button"
         tabIndex={0}
-        onKeyDown={e => e.key === 'Enter' && setDrawerOpen(true)}
+        onKeyDown={e => { if (e.key === 'Enter') abrirDrawer() }}
         aria-label="Abrir análise detalhada de KPIs"
       >
         {/* Grid 3 colunas */}

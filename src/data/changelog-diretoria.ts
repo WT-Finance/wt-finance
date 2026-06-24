@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.27.3',
+    data: '2026-06-24T15:00',
+    itens: [
+      { tipo: 'melhoria', texto: 'O detalhamento do indicador principal de Weddings (o card que abre a análise ao clicar em "Ver mais") passou a abrir de forma mais ágil e responsiva ao clique. Não há mudança no que aparece — apenas mais fluidez na abertura.' },
+    ],
+  },
+  {
     versao: '4.27.2',
     data: '2026-06-24T09:46',
     itens: [
