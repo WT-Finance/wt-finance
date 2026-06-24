@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.27.0',
+    data: '2026-06-23T19:31',
+    itens: [
+      { tipo: 'melhoria', texto: 'Reforço de robustez na leitura dos valores importados das planilhas: a forma de interpretar números (inclusive os com separador de milhar e os valores negativos) passou a vir de um único método confiável, eliminando uma duplicação interna que, no futuro, poderia levar a divergências silenciosas. Nada muda no que aparece na tela e nenhum número já existente foi alterado.' },
+      { tipo: 'melhoria', texto: 'Criamos também uma trava automática que impede a reintrodução desse tipo de erro de conversão daqui pra frente — no mesmo espírito das travas de padronização visual da versão anterior.' },
+    ],
+  },
+  {
     versao: '4.26.0',
     data: '2026-06-23T14:58',
     itens: [
