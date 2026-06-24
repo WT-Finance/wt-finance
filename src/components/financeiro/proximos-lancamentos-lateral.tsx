@@ -81,7 +81,6 @@ function SortTh({ children, field, right, ordem, onSort }: {
 // --- Linha tabular ---
 function LancamentoRow({ v }: { v: ProximoLancamento }) {
   const isEntrada = v.tipo === 'Entrada'
-  const isHoje    = v.dias_para_vencer === 0
   const Icon      = isEntrada ? ArrowDownRight : ArrowUpRight
   const cor       = isEntrada ? 'var(--positive)' : 'var(--negative)'
 

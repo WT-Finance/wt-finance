@@ -294,7 +294,10 @@ export default function AdminUploadsPage() {
     })
   }, [])
 
-  useEffect(() => { carregarStatus() }, [carregarStatus])
+  // Carrega o status no mount. IIFE async: o setState (dentro de carregarStatus) cai DEPOIS
+  // do await — não é síncrono no efeito (react-hooks/set-state-in-effect). carregarStatus é
+  // reusado (pós-upload e botão de atualizar), por isso permanece um useCallback à parte.
+  useEffect(() => { void (async () => { await carregarStatus() })() }, [carregarStatus])
 
   async function handleArquivoSelecionado(key: BaseKey, arquivo: File) {
     setEstado(key, { estado: 'validando', arquivo, totalLinhas: 0, totalAntes: 0, mensagem: '', progresso: null })

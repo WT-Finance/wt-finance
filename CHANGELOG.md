@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.27.2] — 2026-06-24
+
+PATCH: **Higiene de lint — zera os 12 achados react-hooks pré-existentes.** Eram do bump do `eslint-plugin-react-hooks@7.1.1` (ruleset do React Compiler), idênticos no `main`; `npm run lint` volta a ficar **100% verde**. **SEM migration, sem ADR.** Comportamento observável preservado (conferência visual do Yan nos 2 itens de risco — renderização idêntica confirmada).
+
+- **2 triviais** (`no-unused-vars`): remove `_name` (arg não-usado do formatter Recharts) e `isHoje` (const morta).
+- **8 seguros:** `set-state-in-effect` de fetch (`weddings-mix`, `calendario-liquidez`, `kpi-principal-drawer`) → `loading` **derivado** de uma chave "última carregada" (sem `setLoading` síncrono no efeito; durante refetch segue mostrando os dados anteriores); init de mount do `kpi-principal-drawer` → **initializer** de `useState`; popover de período (`periodo-filter` + `-pills-url`) → inputs semeados no **handler de abrir**; carga de status do upload → **IIFE async** (setState após `await`); `immutability` da projeção agregada → soma acumulada por **prefix-sum** (sem reassignar `let`).
+- **2 com checkpoint** (`static-components`, `sumario-subsetor`): o `Wrapper` definido no render (que remontava a subárvore a cada render) foi **hasteado para o módulo** (`semBox` por prop). Conteúdo stateless → saída idêntica; **conferido visualmente** nos dois drawers de Weddings que o usam.
+
 ## [4.27.1] — 2026-06-23
 
 PATCH: **Backup-gate — EOF aborta migration destrutiva (fail-open) + heurístico com tokenizer.** Tooling de infra (`scripts/db-gate/`). **SEM migration de schema, sem mudança no app.** **ADR-0131** (estende 0116/0119).

@@ -233,11 +233,16 @@ function DrawerBody({ setor }: { setor: string }) {
   const isWeddings = setor === 'Weddings'
   const [activePill, setActivePill]             = useState<PillId>('este-ano')
   const [data, setData]                         = useState<DrawerData | null>(null)
-  const [loading, setLoading]                   = useState(false)
+  const [loadedKey, setLoadedKey]               = useState<string | null>(null)
   const [customFrom, setCustomFrom]             = useState('') // YYYY-MM
   const [customTo, setCustomTo]                 = useState('') // YYYY-MM
   const [showCustomPicker, setShowCustomPicker] = useState(false)
-  const [activeDates, setActiveDates]           = useState<{ from: string; to: string } | null>(null)
+  // Inicializa já com 'este-ano' (era um efeito de mount que setava — react-hooks/set-state-in-effect).
+  const [activeDates, setActiveDates]           = useState<{ from: string; to: string } | null>(() => pillToDates('este-ano'))
+  // loading DERIVADO: true enquanto a chave atual (datas+setor+aba) não for a última carregada
+  // (sem setLoading síncrono no efeito de fetch). Durante o refetch, segue mostrando os dados anteriores.
+  const fetchKey = activeDates ? `${activeDates.from}|${activeDates.to}|${setor}|${isWeddings}` : null
+  const loading  = loadedKey !== fetchKey
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const maxMonth = currentMonthStr()
@@ -258,7 +263,7 @@ function DrawerBody({ setor }: { setor: string }) {
   useEffect(() => {
     if (!activeDates) return
     let cancelled = false
-    setLoading(true)
+    const k = `${activeDates.from}|${activeDates.to}|${setor}|${isWeddings}`
 
     const { from: p_from, to: p_to } = activeDates
     const ant = computeAntDates(p_from, p_to)
@@ -300,17 +305,11 @@ function DrawerBody({ setor }: { setor: string }) {
         sumario:      isWeddings ? ((sumRes?.data as SumarioSubsetor) ?? null) : null,
         historico:    isWeddings ? ((histRes?.data as HistoricoSubsetorRow[]) ?? []) : [],
       })
-      setLoading(false)
+      setLoadedKey(k)
     })
 
     return () => { cancelled = true }
   }, [activeDates, setor, isWeddings])
-
-  // Initialize with este-ano
-  useEffect(() => {
-    const dates = pillToDates('este-ano')
-    if (dates) setActiveDates(dates)
-  }, [])
 
   const handlePillClick = (pill: PillId) => {
     if (pill === 'custom') {
