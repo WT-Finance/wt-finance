@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.27.3] — 2026-06-24
+
+PATCH: **Responsividade ao clique — INP do card de KPI principal (Weddings).** O clique no card de KPI principal de `/performance/weddings` (abre o drawer rico) media **INP ≈ 1840ms**. Aplicado o **lever nº1**: abrir o `KpiPrincipalDrawer` dentro de `useTransition` (`weddings-kpis-section`), tirando o mount síncrono do overlay (`fixed inset-0` + `overflow:hidden` → reflow) do frame de resposta ao input. **Muda QUANDO renderiza, não O QUE — visualmente idêntico.** Escopo estreito (só o card de Weddings, pior caminho medido). **SEM migration, sem ADR.** A medição INP antes/depois (navegador real) decide se a fase 2 (levers 2–3) é necessária — `<200ms` fecha o patch. Diagnóstico prévio (workflow adversarial) **refutou** a hipótese de re-render dos gráficos da página.
+
 ## [4.27.2] — 2026-06-24
 
 PATCH: **Higiene de lint — zera os 12 achados react-hooks pré-existentes.** Eram do bump do `eslint-plugin-react-hooks@7.1.1` (ruleset do React Compiler), idênticos no `main`; `npm run lint` volta a ficar **100% verde**. **SEM migration, sem ADR.** Comportamento observável preservado (conferência visual do Yan nos 2 itens de risco — renderização idêntica confirmada).
