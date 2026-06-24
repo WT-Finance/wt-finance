@@ -5,6 +5,7 @@ import AppShell from "@/components/layout/app-shell";
 import ThemeProvider from "@/components/layout/theme-provider";
 import { getSessao } from "@/lib/auth/sessao";
 import { getPendencias } from "@/lib/solicitacoes/rpc";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -54,6 +55,7 @@ export default async function RootLayout({
           // de senha (só vê /trocar-senha em tela cheia).
           children
         )}
+        <SpeedInsights />
       </body>
     </html>
   );
