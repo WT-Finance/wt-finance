@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.27.2',
+    data: '2026-06-24T09:46',
+    itens: [
+      { tipo: 'melhoria', texto: 'Limpeza técnica interna do código de algumas telas (Weddings, Fluxo de Caixa e filtros de período), deixando-o mais alinhado às boas práticas atuais. Não há mudança no que aparece ou no comportamento das telas — é manutenção de qualidade nos bastidores.' },
+    ],
+  },
+  {
     versao: '4.27.1',
     data: '2026-06-23T23:27',
     itens: [
