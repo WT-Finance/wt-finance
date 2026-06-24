@@ -9,7 +9,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // src/** (app) + scripts/** (tooling de infra — db-gate, v4.27.1).
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
     setupFiles: ['./vitest.setup.ts'],
     // Testes de contrato (REST) batem na rede e são mais lentos → timeout maior.
     testTimeout: 15_000,

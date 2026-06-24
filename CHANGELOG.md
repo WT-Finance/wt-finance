@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.27.1] — 2026-06-23
+
+PATCH: **Backup-gate — EOF aborta migration destrutiva (fail-open) + heurístico com tokenizer.** Tooling de infra (`scripts/db-gate/`). **SEM migration de schema, sem mudança no app.** **ADR-0131** (estende 0116/0119).
+
+- **M1 — EOF-abortar (segurança):** a confirmação de migration destrutiva passa a ser **do wrapper** (`migrate.mjs`), com **default ABORTAR** em stdin não-TTY/EOF (headless/pipe/CI). Antes o ramo destrutivo delegava ao prompt do `db push` (`stdio:'inherit'`), cujo default headless **prossegue** = fail-open; a segurança dependia do harness externo. Agora o EOF é barrado pelo **próprio código**, antes do gate. TTY → prompt explícito; aditiva → auto-confirma (inalterado). Provado live: `--destrutiva </dev/null` aborta (exit 1) sem rodar o gate.
+- **M2 — heurístico com TOKENIZER (top-level):** a classificação de "destrutiva" deixa de ser uma regex sobre o texto cru e passa por um **tokenizer** (`scripts/db-gate/classificar.mjs`) que excisa comentários, strings e corpos dollar-quoted (`$$…$$`, `$tag$…$tag$`, tags custom/aninhadas) e casa só o **top-level**. Fim dos falsos-positivos de DML no corpo de função: `0150`/`0153`/`0156` → aditiva, `0154` → warn (troca de assinatura); `0149` (UPDATE top-level real) e DROP/TRUNCATE/`ALTER…DROP` reais **seguem barrados**. **Falha fechada** (→ destrutiva) em corpo/comentário não fechado — nunca esconde um DROP top-level.
+- **Sonda** `scripts/db-gate/classificar.test.mjs` (30 casos, em `npm test`): 0149..0158 reais + adversarial (`DROP TABLE` top-level junto de `$$` com DML dentro → destrutiva) + fail-closed + os 3 caminhos do EOF. `vitest.config` passou a incluir `scripts/**/*.test.mjs`.
+
 ## [4.27.0] — 2026-06-23
 
 MINOR: **Coerção numérica — convergência ao canônico + guard-rail (lint).** Sem migration, sem frente de dado (o traçado provou integridade: `raw.vendas_excel` = R$ 182,6 mi, batendo com `mv_vendas_diarias`). **ADR-0130** (operacionaliza a regra do `coercao.ts`; cita ADR-0099 e o bug v4.23.1). Irmã das guard-rails de cor (v4.26) e de var (v4.17).

@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.27.1',
+    data: '2026-06-23T23:27',
+    itens: [
+      { tipo: 'melhoria', texto: 'Reforço de segurança no processo interno de atualização do banco de dados: mudanças que apagam ou reescrevem dados agora exigem sempre uma confirmação humana explícita e param automaticamente se forem disparadas sem essa confirmação, evitando qualquer alteração acidental. É um ganho de proteção nos bastidores — sem efeito visível no uso da plataforma.' },
+    ],
+  },
+  {
     versao: '4.27.0',
     data: '2026-06-23T19:31',
     itens: [
