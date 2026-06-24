@@ -15,15 +15,20 @@ interface Props {
   semBox?:       boolean
 }
 
-export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false }: Props) {
-  const Wrapper = ({ children }: { children: React.ReactNode }) =>
-    semBox
-      ? <>{children}</>
-      : <div className="bg-white rounded-xl shadow-sm px-5 py-4">{children}</div>
+// Wrapper hasteado para o MÓDULO (era definido no render → react-hooks/static-components:
+// criava um tipo de componente novo a cada render e REMONTAVA a subárvore). `semBox` vira
+// prop. O conteúdo é stateless → a saída renderizada é idêntica; só deixa de remontar à toa.
+// (v4.27.2 — conferir no preview que semBox on/off renderiza igual.)
+function Wrapper({ semBox, children }: { semBox: boolean; children: React.ReactNode }) {
+  return semBox
+    ? <>{children}</>
+    : <div className="bg-white rounded-xl shadow-sm px-5 py-4">{children}</div>
+}
 
+export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false }: Props) {
   if (!data || data.subsetores.length === 0) {
     return (
-      <Wrapper>
+      <Wrapper semBox={semBox}>
         {!semBox && (
           <p className="text-xs text-[var(--text-subtle)] mb-3">Distribuição de faturamento por subsetor no período</p>
         )}
@@ -38,7 +43,7 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
   const nc         = data.subsetores.find(s => s.subsetor === 'NÃO_CLASSIFICADO')
 
   return (
-    <Wrapper>
+    <Wrapper semBox={semBox}>
       {!semBox && (
         <>
           <div className="flex items-baseline gap-2 mb-3">
