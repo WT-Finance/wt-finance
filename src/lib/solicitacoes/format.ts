@@ -19,6 +19,20 @@ export function statusBadge(status: StatusSolic): string {
   }
 }
 
+/** Badge por AÇÃO — paleta COERENTE com o e-mail de notificação (v4.25.1): Abertura=
+ *  dourado, Conclusão=verde(success), Rejeição=vermelho(danger), Cancelamento=cinza.
+ *  O dourado usa --brand (esta é tela de plataforma SEM [data-theme] → --brand=#BD965C
+ *  estável, sem flash); é cor de STATUS deliberada, não identidade de setor. */
+export function acaoBadge(acao: string): string {
+  switch (acao) {
+    case 'Abertura':     return 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]'
+    case 'Conclusão':    return 'border-success bg-success-bg text-success'
+    case 'Rejeição':     return 'border-danger bg-danger-bg text-danger'
+    case 'Cancelamento': return 'border-zinc-200 bg-zinc-100 text-zinc-500'
+    default:             return 'border-zinc-200 bg-zinc-100 text-zinc-500'
+  }
+}
+
 // cacheado: construir Intl por chamada custa ~ms; format() cacheado custa µs
 const FMT_SP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' })
 
