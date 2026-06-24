@@ -225,3 +225,11 @@ export const cargaPromocaoSchema = z.object({
   fato_venda_item_count: z.number(),
 }).passthrough()
 export type CargaPromocao = z.infer<typeof cargaPromocaoSchema>
+
+/** cruzar_vendas_setor (v4.28.0, migration 0159) → pares ENCONTRADOS venda→setor.
+ *  Array (pode ser vazio). setor_macro é o valor REAL da base ('Lazer', não 'Trips'). */
+export const cruzarVendasSetorSchema = z.array(z.object({
+  venda_no:    z.string(),
+  setor_macro: z.string(),
+}).passthrough())
+export type CruzarVendasSetor = z.infer<typeof cruzarVendasSetorSchema>
