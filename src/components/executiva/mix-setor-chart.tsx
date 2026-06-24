@@ -64,7 +64,7 @@ export default function MixSetorChart({ data, loading, preset = 'mes-passado' }:
               content={(props) => (
                 <CustomTooltip
                   {...props}
-                  formatter={(value, _name) => [
+                  formatter={(value) => [
                     `${fmtMi(value as number)} (${(props.payload?.[0]?.payload as { pct?: number })?.pct?.toFixed(1) ?? ''}%)`,
                     'Faturamento',
                   ]}
