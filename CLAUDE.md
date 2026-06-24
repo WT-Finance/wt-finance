@@ -93,6 +93,15 @@ restore-test COMPLETO (follow-up). Continua valendo: **verificar consumidores re
 qualquer objeto — "órfão" pelo briefing pode ter uso vivo não-óbvio (ex.: a v4.17.1 ia dropar
 `truncate_dynamic_tables`/`inserir_lote_raw` e a auto-auditoria achou o `npm run seed` consumindo-as;
 só `admin_definir_usuario_ativo` era órfã).
+**A confirmação destrutiva vive no WRAPPER e o EOF ABORTA (v4.27.1, ADR-0131):** `migrate.mjs` pede a
+confirmação ele mesmo e, em stdin **não-TTY/EOF** (headless/pipe/CI/agente), **aborta antes do gate** —
+EOF nunca confirma (antes delegava ao prompt do `db push`, cujo default headless prosseguia = fail-open;
+a segurança dependia do harness). Por isso o **agente não consegue** aplicar destrutiva (sem TTY → aborta);
+só um humano num terminal aplica. A **classificação** "destrutiva" vem de `scripts/db-gate/classificar.mjs`
+(TOKENIZER que excisa comentários/strings/corpos `$$…$$` e casa só **top-level**), não mais regex sobre
+texto cru: DML no **corpo** de `CREATE FUNCTION` não é mais falso-positivo; `DROP FUNCTION` = **warn**
+(troca de assinatura); `DROP/TRUNCATE/ALTER…DROP`/`UPDATE`/`DELETE` top-level e ambiguidade do tokenizer
+= **destrutiva** (falha fechada). Sonda: `scripts/db-gate/classificar.test.mjs` (em `npm test`).
 
 Ao testar escrita em produção (ex.: commit de import), usar dados com nomes distintos
 e deletar logo em seguida.
