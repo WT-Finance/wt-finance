@@ -8,6 +8,7 @@ import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
+import { acaoBadge } from '@/lib/solicitacoes/format'
 import DrawerSolicitacao from './drawer-solicitacao'
 import { detalheSolicitacao } from '@/app/solicitacoes/actions'
 
@@ -23,20 +24,6 @@ const PARTICIPIO: Record<string, string> = {
   Abertura: 'aberta', Conclusão: 'concluída', Rejeição: 'rejeitada', Cancelamento: 'cancelada',
 }
 const participio = (acao: string) => PARTICIPIO[acao] ?? acao.toLowerCase()
-
-/** Badge por AÇÃO — paleta COERENTE com o e-mail de notificação (v4.25.1): Abertura=
- *  dourado, Conclusão=verde(success), Rejeição=vermelho(danger), Cancelamento=cinza.
- *  O dourado usa --brand (esta é tela de plataforma SEM [data-theme] → --brand=#BD965C
- *  estável, sem flash); é cor de STATUS deliberada, não identidade de setor. */
-function acaoBadge(acao: string): string {
-  switch (acao) {
-    case 'Abertura':     return 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]'
-    case 'Conclusão':    return 'border-success bg-success-bg text-success'
-    case 'Rejeição':     return 'border-danger bg-danger-bg text-danger'
-    case 'Cancelamento': return 'border-zinc-200 bg-zinc-100 text-zinc-500'
-    default:             return 'border-zinc-200 bg-zinc-100 text-zinc-500'
-  }
-}
 
 type Col = 'ator' | 'acao' | 'solicitacao' | 'quando'
 
