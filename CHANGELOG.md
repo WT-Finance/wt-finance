@@ -6,6 +6,15 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.28.0] — 2026-06-24
+
+MINOR: **Calculadora de Rateio (Financeiro) — capacidade nova, READ-ONLY.** Aba nova no sidebar de Financeiro (sob a permissão `financeiro/gerencial`): importa uma **fatura xlsx**, cruza cada `Venda Nº` com a base de vendas (`analytics.vw_vendas_agregadas`), busca o **Setor Macro** e **rateia o valor por setor** (proporcional, linha a linha, com sinal). Só exibe — **não grava nada**.
+
+- **Migration 0159 (aditiva):** RPC `public.cruzar_vendas_setor(text[])` `SECURITY DEFINER` read-only sobre a view (`analytics` não é exposto pela API), com `exigir_acesso('financeiro/gerencial')` + `GRANT authenticated`. **ADR-0132.**
+- **Invariante:** o setor lógico usa o valor REAL da base (**`Lazer`**); a conversão **`Lazer`→`Trips` é só na exibição** — cruzar por "Trips" jogaria toda venda de lazer em "Não identificado".
+- **Fechamento de conta:** `Corporativo + Trips + Weddings + Não identificado = total da fatura` (partição por construção; "Não identificado" sempre visível com valor).
+- Parse client-side com `@e965/xlsx` (fatura ~41 linhas, sem Web Worker; o arquivo não sobe ao servidor — só os números distintos viajam); coerção canônica (`toNum`); detecção de coluna por nome exato `Venda Nº`/`Valor`. Reusa primitivos/cores do DS (`SETOR_COLORS`). Auto-auditoria adversarial (6 céticos) verde nos 6 invariantes.
+
 ## [4.27.4] — 2026-06-25
 
 PATCH: **Botão "Acessar a plataforma" do e-mail de acesso/senha — render correto no Outlook.** O e-mail de senha provisória (criação/reset) renderizava o CTA como "texto com fundo preto apertado" no Outlook, porque o `padding` estava no `<a>` (que o Outlook ignora). Movido o `padding` para a **célula `<td>`** (`bgcolor` + `padding:14px 34px` + `border-radius:12px`), igual ao botão do e-mail de Solicitações (v4.25.1) — botão retangular de verdade. **SEM migration, sem ADR.** Só `src/lib/email/template.ts`.
