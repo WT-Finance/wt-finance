@@ -68,16 +68,6 @@ export default function PeriodoFilterPillsUrl({ defaultPreset = 'este-ano' }: Pr
     } catch {}
   }, [push, searchParams.size])
 
-  // Sync popover inputs when popover opens
-  useEffect(() => {
-    if (popoverOpen) {
-      setInputFrom(fromVal)
-      setInputTo(toVal)
-    }
-    setErroFrom('')
-    setErroTo('')
-  }, [popoverOpen]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // Close popover on outside click
   useEffect(() => {
     if (!popoverOpen) return
@@ -92,12 +82,21 @@ export default function PeriodoFilterPillsUrl({ defaultPreset = 'este-ano' }: Pr
 
   const handlePillClick = useCallback((value: PresetPeriodo) => {
     if (value === 'personalizado') {
-      setPopoverOpen(prev => !prev)
+      const abrindo = !popoverOpen
+      setPopoverOpen(abrindo)
+      // Semeia os inputs com os valores atuais (da URL) AO ABRIR — era um efeito on-open
+      // (react-hooks/set-state-in-effect; setar estado em handler de evento é o padrão).
+      if (abrindo) {
+        setInputFrom(fromVal)
+        setInputTo(toVal)
+        setErroFrom('')
+        setErroTo('')
+      }
       return
     }
     setPopoverOpen(false)
     push(value)
-  }, [push])
+  }, [popoverOpen, fromVal, toVal, push])
 
   function aplicar() {
     setErroFrom('')

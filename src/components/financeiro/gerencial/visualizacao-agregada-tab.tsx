@@ -73,9 +73,10 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
     const consolidadoBase = contas.filter(c => c.consolidado).reduce((s, c) => s + c.saldo, 0)
     const reservaBase     = consolidadoBase + (reservaConta?.saldo ?? 0)
 
-    let acc = 0
-    const rows = projecao.map(d => {
-      acc += d.resultado
+    // Soma acumulada por linha SEM reassignar um `let` capturado (react-hooks/immutability):
+    // cada `acc` é um prefix-sum local (projecao é pequena — ≤90 dias).
+    const rows = projecao.map((d, i) => {
+      const acc = projecao.slice(0, i + 1).reduce((s, x) => s + x.resultado, 0)
       return {
         ...d,
         isolada:      isoladaBase + acc,

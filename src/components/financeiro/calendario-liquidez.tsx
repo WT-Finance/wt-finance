@@ -199,8 +199,12 @@ export default function CalendarioLiquidez() {
   const [mesReferencia, setMesReferencia] = useState<Date>(
     new Date(hoje.getFullYear(), hoje.getMonth(), 1)
   )
-  const [cells, setCells]       = useState<CalendarioDia[]>([])
-  const [loading, setLoading]   = useState(true)
+  // Estado da carga: mês carregado + suas células. `cells`/`loading` são DERIVADOS abaixo —
+  // sem setState síncrono no efeito (react-hooks/set-state-in-effect).
+  const [loaded, setLoaded]     = useState<{ mes: string; cells: CalendarioDia[] }>({ mes: '', cells: [] })
+  const mesIso  = toIsoDate(mesReferencia) ?? ''
+  const loading = loaded.mes !== mesIso
+  const cells   = loaded.mes === mesIso ? loaded.cells : []
 
   // Drill-down state
   const [diaSelecionado, setDiaSelecionado]   = useState<string | null>(null)
@@ -215,10 +219,6 @@ export default function CalendarioLiquidez() {
   // ── Fetch calendar data ──────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setCells([])
-
-    const mesIso = toIsoDate(mesReferencia)
     const supabase = getBrowserClient()
 
     supabase
@@ -227,15 +227,14 @@ export default function CalendarioLiquidez() {
         if (cancelled) return
         if (error) {
           console.error('[CalendarioLiquidez]', error.message)
-          setLoading(false)
+          setLoaded({ mes: mesIso, cells: [] })
           return
         }
-        setCells((data as CalendarioDia[] | null) ?? [])
-        setLoading(false)
+        setLoaded({ mes: mesIso, cells: (data as CalendarioDia[] | null) ?? [] })
       })
 
     return () => { cancelled = true }
-  }, [mesReferencia])
+  }, [mesIso])
 
   // ── Drill-down handler ───────────────────────────────────────────────────────
   const abrirDia = useCallback((dia: CalendarioDia) => {

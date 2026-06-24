@@ -28,19 +28,6 @@ export default function PeriodoFilter() {
   const [erroTo, setErroTo]             = useState('')
   const popoverRef = useRef<HTMLDivElement>(null)
 
-  // Sync input state when popover opens
-  useEffect(() => {
-    if (popoverOpen && periodoCustomizado) {
-      setFromVal(toISO(periodoCustomizado.inicio))
-      setToVal(toISO(periodoCustomizado.fim))
-    } else if (popoverOpen) {
-      setFromVal('')
-      setToVal('')
-    }
-    setErroFrom('')
-    setErroTo('')
-  }, [popoverOpen]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // Close popover on outside click
   useEffect(() => {
     if (!popoverOpen) return
@@ -55,12 +42,21 @@ export default function PeriodoFilter() {
 
   const handlePillClick = useCallback((value: PresetPeriodo) => {
     if (value === 'personalizado') {
-      setPopoverOpen(prev => !prev)
+      const abrindo = !popoverOpen
+      setPopoverOpen(abrindo)
+      // Semeia os inputs a partir do período atual AO ABRIR (era um efeito on-open —
+      // react-hooks/set-state-in-effect; setar estado em handler de evento é o padrão idiomático).
+      if (abrindo) {
+        setFromVal(periodoCustomizado ? toISO(periodoCustomizado.inicio) : '')
+        setToVal(periodoCustomizado ? toISO(periodoCustomizado.fim) : '')
+        setErroFrom('')
+        setErroTo('')
+      }
       return
     }
     setPopoverOpen(false)
     setPeriodo(value)
-  }, [setPeriodo])
+  }, [popoverOpen, periodoCustomizado, setPeriodo])
 
   function aplicar() {
     setErroFrom('')
