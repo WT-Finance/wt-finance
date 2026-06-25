@@ -186,7 +186,7 @@ export default function CalculadoraRateio() {
 
       {/* Resultado */}
       {resultado && estado === 'pronto' && (
-        <Card title="Rateio por setor" subtitle="Proporcional ao valor de cada venda. Valores com sinal (a fatura é saída).">
+        <Card title="Rateio por Setor" subtitle="Proporcional ao valor de cada venda">
           <ul className="space-y-3">
             {resultado.baldes.map(b => {
               const vazio = b.linhas === 0
