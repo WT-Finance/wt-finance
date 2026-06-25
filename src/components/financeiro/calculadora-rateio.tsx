@@ -118,7 +118,7 @@ export default function CalculadoraRateio() {
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Calculadora de Rateio</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
-          Importe uma fatura — cruzamos cada venda com a base e rateamos o valor por setor. Nada é gravado.
+          Importe uma fatura para calcular o valor a ser rateado por setor
         </p>
       </div>
 
