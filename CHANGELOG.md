@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.27.4] — 2026-06-25
+
+PATCH: **Botão "Acessar a plataforma" do e-mail de acesso/senha — render correto no Outlook.** O e-mail de senha provisória (criação/reset) renderizava o CTA como "texto com fundo preto apertado" no Outlook, porque o `padding` estava no `<a>` (que o Outlook ignora). Movido o `padding` para a **célula `<td>`** (`bgcolor` + `padding:14px 34px` + `border-radius:12px`), igual ao botão do e-mail de Solicitações (v4.25.1) — botão retangular de verdade. **SEM migration, sem ADR.** Só `src/lib/email/template.ts`.
+
 ## [4.27.3] — 2026-06-24
 
 PATCH: **Responsividade ao clique — INP do card de KPI principal (Weddings).** O clique no card de KPI principal de `/performance/weddings` (abre o drawer rico) media **INP ≈ 1840ms**. Aplicado o **lever nº1**: abrir o `KpiPrincipalDrawer` dentro de `useTransition` (`weddings-kpis-section`), tirando o mount síncrono do overlay (`fixed inset-0` + `overflow:hidden` → reflow) do frame de resposta ao input. **Muda QUANDO renderiza, não O QUE — visualmente idêntico.** Escopo estreito (só o card de Weddings, pior caminho medido). **SEM migration, sem ADR.** A medição INP antes/depois (navegador real) decide se a fase 2 (levers 2–3) é necessária — `<200ms` fecha o patch. Diagnóstico prévio (workflow adversarial) **refutou** a hipótese de re-render dos gráficos da página.

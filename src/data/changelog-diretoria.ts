@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.27.4',
+    data: '2026-06-25T13:30',
+    itens: [
+      { tipo: 'correcao', texto: 'O botão "Acessar a plataforma" dos e-mails de acesso (senha provisória e redefinição de senha) voltou a aparecer como um botão retangular de verdade no Outlook — antes saía como um texto com um fundo preto apertado. Agora fica igual ao botão dos e-mails de Solicitações.' },
+    ],
+  },
+  {
     versao: '4.27.3',
     data: '2026-06-24T15:00',
     itens: [
