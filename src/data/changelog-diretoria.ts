@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.28.0',
+    data: '2026-06-24T17:47',
+    itens: [
+      { tipo: 'novidade', texto: 'Nova Calculadora de Rateio no Financeiro. Você importa a fatura de um fornecedor e o sistema distribui automaticamente o valor entre os setores (Corporativo, Trips e Weddings), a partir do número de cada venda na nossa base. Na hora, mostra quanto cabe a cada setor (em valor e em %), destacando separadamente o que não foi identificado — e a soma sempre fecha com o total da fatura. É só um cálculo de apoio: nada é gravado.' },
+    ],
+  },
+  {
     versao: '4.27.4',
     data: '2026-06-25T13:30',
     itens: [

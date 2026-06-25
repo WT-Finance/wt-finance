@@ -4,7 +4,7 @@ import {
   operacoesWeddingsSchema, carteiraWeddingsSchema, tendenciaMargemSchema,
   rankingVendedoresRangeSchema, vendasReceitaNegativaSchema, executivaKpisSchema,
   vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
-  mixProdutoSchema, minhasPermissoesSchema,
+  mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -112,6 +112,10 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   { fn: 'get_mix_produto',               params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 10 }, schema: mixProdutoSchema },
   { fn: 'get_minhas_permissoes',         params: {},                                                                     schema: minhasPermissoesSchema },
   { fn: 'solic_minhas_pendencias',       params: {},                                                                     schema: z.number() },
+  // v4.28.0: cruzamento da Calculadora de Rateio. 2 nº reais + 1 inexistente — o
+  // SHAPE (array de {venda_no, setor_macro}) é validado contra a RPC viva; o nº fake
+  // não volta (prova a diferença → 'Não identificado' é inferido no cliente).
+  { fn: 'cruzar_vendas_setor',           params: { p_vendas: ['71408', '71971', '99999999'] },                          schema: cruzarVendasSetorSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {

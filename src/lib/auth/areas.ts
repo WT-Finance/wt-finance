@@ -71,6 +71,7 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/performance/corporativo')) return ['performance/corporativo']
   if (p.startsWith('/performance'))             return ['performance']
   if (p.startsWith('/financeiro/fluxo-caixa/gerencial')) return ['financeiro/gerencial']
+  if (p.startsWith('/financeiro/calculadora-rateio'))    return ['financeiro/gerencial']
   if (p.startsWith('/financeiro'))              return ['financeiro/fluxo-caixa', 'financeiro/gerencial']
   if (p.startsWith('/executiva'))               return ['executiva']
   if (p.startsWith('/metas'))                   return ['metas']
