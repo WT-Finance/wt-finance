@@ -61,13 +61,15 @@ export function templateSenhaProvisoria(input: {
     'Se você não esperava este e-mail, ignore-o ou fale com o administrador.\n\n' +
     `— ${APP_NOME}`
 
-  // CTA "Acessar a plataforma" — só com URL base (config). Botão em CÉLULA DE TABELA
-  // (bgcolor + link dentro), porque o Outlook ignora `background` em <a> inline.
+  // CTA "Acessar a plataforma" — só com URL base (config). Botão em CÉLULA DE TABELA:
+  // o PADDING vai na <td> (não no <a>), porque o Outlook ignora `background`/`padding`
+  // em <a> inline e renderiza o "tarjado apertado". Mesmo padrão do e-mail de
+  // Solicitações (v4.25.1) — botão retangular de verdade, inclusive no Outlook.
   const botaoLinha = linkAcesso
     ? `<tr><td class="em-pad" align="center" style="padding:28px 40px 0;">
         <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
-          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:8px;">
-            <a href="${escaparHtml(linkAcesso)}" style="display:inline-block;padding:13px 32px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">Acessar a plataforma</a>
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:12px;padding:14px 34px;">
+            <a href="${escaparHtml(linkAcesso)}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Acessar a plataforma</a>
           </td></tr>
         </table>
       </td></tr>`
