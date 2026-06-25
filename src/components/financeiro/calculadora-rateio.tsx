@@ -3,15 +3,16 @@
 // Calculadora de Rateio (v4.28.0) — Financeiro. Importa uma fatura xlsx, cruza
 // cada Venda Nº com a base (setor macro), rateia o valor por setor e EXIBE
 // (READ-ONLY, não grava). Reusa @e965/xlsx (parse-fatura) + a server action de
-// cruzamento + os primitivos/cores do DS.
+// cruzamento + os primitivos/cores do DS. O dropzone (arrastar/clicar) + spinner +
+// barra de progresso espelham a tela de Atualização de Dados (admin/uploads), para
+// coerência de UX em toda a plataforma.
 //
 // INVARIANTE de exibição: o setor LÓGICO é o valor REAL da base ('Lazer'); aqui na
 // tela 'Lazer' vira 'Trips' (ROTULO). O cruzamento e os baldes nunca usam 'Trips'.
 
-import { useState } from 'react'
-import { Calculator, Upload, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
+import { useRef, useState, useCallback } from 'react'
+import { Upload, Loader2, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { numBRL2 } from '@/lib/fmt'
 import { SETOR_COLORS } from '@/lib/config'
 import { parseFaturaRateioFile } from '@/lib/rateio/parse-fatura'
@@ -34,29 +35,40 @@ const COR: Record<SetorLogico, string> = {
 const fmtPct = (p: number) =>
   `${(p * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 
-type Estado = 'vazio' | 'processando' | 'pronto'
+type Estado = 'vazio' | 'processando' | 'pronto' | 'erro'
+type Fase   = 'lendo' | 'cruzando'
+
+// Largura da barra por fase (determinística, reflete o estágio real — sem % falso).
+const LARGURA_FASE: Record<Fase, string> = { lendo: '40%', cruzando: '85%' }
+const LABEL_FASE:   Record<Fase, string> = { lendo: 'Lendo a fatura…', cruzando: 'Cruzando com a base de vendas…' }
 
 export default function CalculadoraRateio() {
-  const [estado, setEstado]         = useState<Estado>('vazio')
-  const [erro, setErro]             = useState<string | null>(null)
-  const [resultado, setResultado]   = useState<ResultadoRateio | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [estado, setEstado]           = useState<Estado>('vazio')
+  const [fase, setFase]               = useState<Fase>('lendo')
+  const [erro, setErro]               = useState<string | null>(null)
+  const [resultado, setResultado]     = useState<ResultadoRateio | null>(null)
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null)
-  const [verLinhas, setVerLinhas]   = useState(false)
+  const [verLinhas, setVerLinhas]     = useState(false)
+  const [isDragging, setIsDragging]   = useState(false)
+
+  const ativo = estado !== 'processando'
 
   async function processar(file: File) {
-    setErro(null); setEstado('processando'); setResultado(null); setVerLinhas(false)
+    setErro(null); setVerLinhas(false); setEstado('processando'); setFase('lendo')
 
     if (file.size > 10 * 1024 * 1024) {
-      setErro('Arquivo maior que 10MB.'); setEstado('vazio'); return
+      setErro('Arquivo maior que 10MB.'); setEstado('erro'); return
     }
 
     const parsed = await parseFaturaRateioFile(file)
-    if ('error' in parsed) { setErro(parsed.error); setEstado('vazio'); return }
+    if ('error' in parsed) { setErro(parsed.error); setEstado('erro'); return }
     if (parsed.faltando.length > 0) {
       setErro(`Coluna(s) não encontrada(s) no cabeçalho: ${parsed.faltando.join(', ')}. Confira a planilha.`)
-      setEstado('vazio'); return
+      setEstado('erro'); return
     }
 
+    setFase('cruzando')
     const numeros = Array.from(new Set(
       parsed.linhas.map(l => l.venda_numero).filter((v): v is string => v !== null),
     ))
@@ -66,7 +78,7 @@ export default function CalculadoraRateio() {
       pares = await cruzarVendasSetor(numeros)
     } catch {
       setErro('Não foi possível consultar a base de vendas. Tente novamente.')
-      setEstado('vazio'); return
+      setEstado('erro'); return
     }
 
     // Só setores REAIS entram no mapa; o que não casar cai em 'Não identificado' no cálculo.
@@ -78,6 +90,22 @@ export default function CalculadoraRateio() {
     setEstado('pronto')
   }
 
+  // ── Drag & drop (mesmo padrão da Atualização de Dados) ──────────────────────
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    if (estado !== 'processando') setIsDragging(true)
+  }, [estado])
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false)
+  }, [])
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (estado === 'processando') return
+    const f = e.dataTransfer.files?.[0]
+    if (f) void processar(f)
+  }, [estado])
+
   function onInput(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (f) void processar(f)
@@ -86,47 +114,75 @@ export default function CalculadoraRateio() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500">
-          <Calculator size={20} />
-        </span>
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--text-primary)] leading-tight">Calculadora de Rateio</h1>
-          <p className="text-sm text-[var(--text-muted)]">
-            Importe uma fatura — cruzamos cada venda com a base e rateamos o valor por setor. Nada é gravado.
-          </p>
-        </div>
+      {/* Cabeçalho — sem ícone, padrão das demais páginas (ex.: Atualização de Dados) */}
+      <div>
+        <h1 className="text-xl font-semibold text-zinc-900">Calculadora de Rateio</h1>
+        <p className="text-sm text-zinc-400 mt-0.5">
+          Importe uma fatura — cruzamos cada venda com a base e rateamos o valor por setor. Nada é gravado.
+        </p>
       </div>
 
-      {/* Upload */}
+      {/* Upload — dropzone arrastar/clicar + spinner/barra (espelha admin/uploads) */}
       <Card>
-        <label
-          htmlFor="fatura-input"
-          className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-6 py-8 text-center cursor-pointer transition-colors hover:border-zinc-400 hover:bg-zinc-100"
+        <div
+          className={[
+            'border-2 border-dashed rounded-lg p-6 text-center transition-colors',
+            ativo ? 'cursor-pointer' : 'cursor-default',
+            ativo && isDragging
+              ? 'border-action-soft-border bg-action-soft'
+              : ativo
+                ? 'border-zinc-200 hover:border-action-soft-border hover:bg-action-soft/40'
+                : 'border-zinc-100 bg-zinc-50',
+          ].join(' ')}
+          onClick={() => ativo && inputRef.current?.click()}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
         >
-          <Upload size={22} className="text-zinc-400" />
-          <span className="text-sm font-medium text-zinc-600">
-            {estado === 'processando' ? 'Processando…' : nomeArquivo ? 'Importar outra fatura' : 'Selecionar fatura (.xlsx, .csv)'}
-          </span>
-          <span className="text-2xs text-zinc-400">
-            A planilha precisa ter as colunas <b>Venda Nº</b> e <b>Valor</b>. O arquivo não é enviado nem armazenado.
-          </span>
           <input
-            id="fatura-input"
+            ref={inputRef}
             type="file"
             accept=".xlsx,.xls,.csv"
             className="hidden"
-            disabled={estado === 'processando'}
             onChange={onInput}
           />
-        </label>
-        {nomeArquivo && estado === 'pronto' && (
-          <p className="mt-2 text-2xs text-zinc-400">Fatura: <span className="text-zinc-600">{nomeArquivo}</span></p>
-        )}
-      </Card>
 
-      {erro && <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />}
+          {(estado === 'vazio' || estado === 'pronto') && (
+            <>
+              <Upload size={18} className="mx-auto mb-1.5 text-zinc-400" />
+              <p className="text-sm text-zinc-600">
+                Arraste ou clique para selecionar a fatura <span className="font-medium">.xlsx</span> ou <span className="font-medium">.csv</span>
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">
+                A planilha precisa ter as colunas <b>Venda Nº</b> e <b>Valor</b>. O arquivo não é enviado nem armazenado.
+              </p>
+              {estado === 'pronto' && nomeArquivo && (
+                <p className="mt-2 text-xs text-zinc-500">Fatura atual: <span className="font-medium">{nomeArquivo}</span> — clique para trocar</p>
+              )}
+            </>
+          )}
+
+          {estado === 'processando' && (
+            <div className="text-xs text-text-secondary">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Loader2 size={14} className="animate-spin" />
+                {LABEL_FASE[fase]}
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-action-soft">
+                <div className="h-full rounded-full bg-action-primary transition-all duration-500" style={{ width: LARGURA_FASE[fase] }} />
+              </div>
+            </div>
+          )}
+
+          {estado === 'erro' && (
+            <div>
+              <AlertTriangle size={18} className="mx-auto mb-1.5 text-danger" />
+              <p className="text-sm text-danger font-medium">{erro}</p>
+              <p className="mt-1 text-xs text-zinc-400">Arraste ou clique para tentar com outro arquivo</p>
+            </div>
+          )}
+        </div>
+      </Card>
 
       {/* Resultado */}
       {resultado && estado === 'pronto' && (

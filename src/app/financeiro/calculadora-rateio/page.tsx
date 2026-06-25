@@ -7,7 +7,7 @@ import CalculadoraRateio from '@/components/financeiro/calculadora-rateio'
 export default async function CalculadoraRateioPage() {
   await requireArea('financeiro/gerencial')
   return (
-    <div className="max-w-4xl mx-auto px-4">
+    <div className="max-w-2xl mx-auto px-4">
       <CalculadoraRateio />
     </div>
   )
