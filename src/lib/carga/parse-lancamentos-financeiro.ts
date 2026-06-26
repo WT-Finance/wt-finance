@@ -1,6 +1,7 @@
 'use client'
 
 import { toNum, toIsoDate, toStr } from './coercao'
+import { validarColunasObrigatorias, mensagemColunasFaltando, type RequisitoColuna } from './colunas-obrigatorias'
 
 // Cliente-safe — sem imports de DB ou Node.js.
 // Parseia "Lançamentos Financeiros" do ERP: estrutura tabular plana de 12 colunas.
@@ -45,6 +46,15 @@ const COL_MAP: Record<string, keyof LancamentoFinanceiroRaw> = {
 }
 
 const COLUNAS_OBRIGATORIAS: (keyof LancamentoFinanceiroRaw)[] = ['vencimento', 'valor']
+// Requisitos p/ o helper — aceitos DERIVADOS do COL_MAP (todas as variantes de header
+// que mapeiam ao campo); equivale exatamente a headers.some(h => COL_MAP[h] === campo).
+// Espelha a obrigatoriedade atual, não a muda. (v4.29.0)
+const REQUISITOS: RequisitoColuna[] = COLUNAS_OBRIGATORIAS.map(campo => {
+  const aceitos = Object.keys(COL_MAP).filter(k => COL_MAP[k] === campo)
+  return { label: aceitos[0] ?? campo, aceitos }
+})
+/** Colunas obrigatórias (rótulos amigáveis) — exibidas no card da UI. */
+export const LANCAMENTOS_FINANCEIRO_COLUNAS = REQUISITOS.map(r => r.label)
 
 export async function parseLancamentosFinanceiroFile(
   file: File,
@@ -71,13 +81,8 @@ export async function parseLancamentosFinanceiroFile(
     if (rows.length === 0) return { error: 'Arquivo vazio ou sem dados' }
 
     const headers = Object.keys(rows[0]).map(k => k.trim())
-
-    for (const campo of COLUNAS_OBRIGATORIAS) {
-      const found = headers.some(h => COL_MAP[h] === campo)
-      if (!found) {
-        return { error: `Coluna obrigatória ausente: "${campo}". Colunas encontradas: ${headers.join(', ')}` }
-      }
-    }
+    const faltando = validarColunasObrigatorias(headers, REQUISITOS)
+    if (faltando.length > 0) return { error: mensagemColunasFaltando(faltando) }
 
     const result: LancamentoFinanceiroRaw[] = []
 

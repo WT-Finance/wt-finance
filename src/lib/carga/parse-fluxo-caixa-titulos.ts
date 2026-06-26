@@ -1,6 +1,7 @@
 'use client'
 
 import { toNum, toIsoDate, toStr } from './coercao'
+import { validarColunasObrigatorias, mensagemColunasFaltando, type RequisitoColuna } from './colunas-obrigatorias'
 
 // Cliente-safe — sem imports de DB ou Node.js.
 // Parseia "CAP/CAR tratada" do ERP: Fluxo de Caixa Títulos.
@@ -52,6 +53,14 @@ const COL_MAP: Record<string, keyof FluxoCaixaTituloRaw> = {
 }
 
 const COLUNAS_OBRIGATORIAS: (keyof FluxoCaixaTituloRaw)[] = ['tipo', 'status', 'valor_final']
+// Requisitos p/ o helper — aceitos DERIVADOS do COL_MAP (variantes que mapeiam ao
+// campo); equivale exatamente a headers.some(h => COL_MAP[h] === campo). (v4.29.0)
+const REQUISITOS: RequisitoColuna[] = COLUNAS_OBRIGATORIAS.map(campo => {
+  const aceitos = Object.keys(COL_MAP).filter(k => COL_MAP[k] === campo)
+  return { label: aceitos[0] ?? campo, aceitos }
+})
+/** Colunas obrigatórias (rótulos amigáveis) — exibidas no card da UI. */
+export const FLUXO_TITULOS_COLUNAS = REQUISITOS.map(r => r.label)
 
 export async function parseFluxoCaixaTitulosFile(
   file: File,
@@ -78,13 +87,8 @@ export async function parseFluxoCaixaTitulosFile(
     if (rows.length === 0) return { error: 'Arquivo vazio ou sem dados' }
 
     const headers = Object.keys(rows[0]).map(k => k.trim())
-
-    for (const campo of COLUNAS_OBRIGATORIAS) {
-      const found = headers.some(h => COL_MAP[h] === campo)
-      if (!found) {
-        return { error: `Coluna obrigatória ausente: "${campo}". Colunas encontradas: ${headers.join(', ')}` }
-      }
-    }
+    const faltando = validarColunasObrigatorias(headers, REQUISITOS)
+    if (faltando.length > 0) return { error: mensagemColunasFaltando(faltando) }
 
     const result: FluxoCaixaTituloRaw[] = []
 

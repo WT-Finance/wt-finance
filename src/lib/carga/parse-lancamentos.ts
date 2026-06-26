@@ -1,7 +1,13 @@
 import type { LancamentoRaw } from './lancamentos'
 import { toNum, toIsoDate as toDate, toStr } from './coercao'
+import { validarColunasObrigatorias, mensagemColunasFaltando, type RequisitoColuna } from './colunas-obrigatorias'
 
 const COLUNAS_OBRIGATORIAS = ['Operacao', 'Valor', 'Tipo']
+// Requisitos p/ o helper compartilhado — checagem EXATA (= comportamento atual
+// headers.includes(col)). Espelha a obrigatoriedade existente, não a muda. (v4.29.0)
+const REQUISITOS: RequisitoColuna[] = COLUNAS_OBRIGATORIAS.map(c => ({ label: c, aceitos: [c] }))
+/** Colunas obrigatórias (rótulos) — exibidas no card da UI. */
+export const LANCAMENTOS_COLUNAS = COLUNAS_OBRIGATORIAS
 
 export async function parseLancamentosFile(
   file: File
@@ -25,10 +31,8 @@ export async function parseLancamentosFile(
     if (rows.length === 0) return { error: 'Arquivo vazio ou sem linhas válidas' }
 
     const headers = Object.keys(rows[0]).map(k => k.trim())
-    for (const col of COLUNAS_OBRIGATORIAS) {
-      if (!headers.includes(col))
-        return { error: `Coluna obrigatória ausente: "${col}". Colunas encontradas: ${headers.join(', ')}` }
-    }
+    const faltando = validarColunasObrigatorias(headers, REQUISITOS)
+    if (faltando.length > 0) return { error: mensagemColunasFaltando(faltando) }
 
     const resultado: LancamentoRaw[] = []
     for (let i = 0; i < rows.length; i++) {
