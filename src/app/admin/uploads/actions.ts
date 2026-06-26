@@ -8,6 +8,7 @@ import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
 import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
+import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -305,4 +306,83 @@ export async function finalizarFluxoCaixaTitulosAction(
   await requireAreaAction('admin/uploads')
   // raw.fluxo_caixa_titulos não tem transformação adicional por agora
   return { sucesso: true, total_linhas: totalInseridas, erros: [] }
+}
+
+// ---------------------------------------------------------------------------
+// Pessoas (v4.29.0) — cadastro fiscal do Monde. Padrão ATÔMICO (= Vendas, 0116):
+// limpar_staging_pessoas → inserir_lote_staging_pessoas → validar → promover (swap
+// numa transação; o Faturamento depende, a base não pode ficar vazia no meio).
+// ---------------------------------------------------------------------------
+
+export async function getPessoasStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('status_pessoas')
+    if (error) return { error: error.message }
+    const status = data as { total: number; ultima_atualizacao: string | null } | null
+    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function inserirLotePessoasAction(
+  lote: PessoaRaw[],
+  isFirst: boolean,
+): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    // 1º lote: limpa a STAGING (não-destrutivo; a base viva fica intacta até o swap).
+    if (isFirst) {
+      const { error: limpErr } = await bound('limpar_staging_pessoas')
+      if (limpErr) return { error: `Erro ao preparar a carga: ${limpErr.message}` }
+    }
+
+    const { error } = await bound('inserir_lote_staging_pessoas', { p_linhas: lote })
+    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
+
+    return { inseridas: lote.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function finalizarPessoasAction(
+  totalAntes: number,
+  totalInseridas: number,
+): Promise<{ sucesso: boolean; total_linhas: number; pessoas_count: number; erros: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    // Pré-validação NÃO-destrutiva (staging tem linhas?). Base atual intacta se reprovar.
+    const valRes = await bound('validar_carga_pessoas')
+    if (valRes.error) return { error: `Erro na validação da carga: ${valRes.error.message}. A base atual foi preservada.` }
+    const validacao = valRes.data as { ok: boolean; total: number; erros: string[] } | null
+    if (!validacao?.ok) {
+      const msgs = validacao?.erros?.length ? validacao.erros : ['Validação da carga falhou.']
+      return { error: `${msgs.join(' ')} A base atual foi preservada.` }
+    }
+
+    // Swap ATÔMICO: truncate raw.pessoas + copia staging→raw numa transação. Falha → ROLLBACK.
+    const promRes = await bound('promover_carga_pessoas')
+    if (promRes.error) return { error: `Erro ao promover a carga (base preservada): ${promRes.error.message}` }
+    const promocao = promRes.data as { pessoas_count: number } | null
+
+    return {
+      sucesso: true,
+      total_linhas: totalInseridas,
+      pessoas_count: promocao?.pessoas_count ?? totalInseridas,
+      erros: [],
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
 }
