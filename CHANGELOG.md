@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.31.0] — 2026-06-30
+
+MINOR · **Faturamento Corporativo — Fase 1b (emissão de boletos no SANDBOX + registro).** A funcionalidade mais sensível da plataforma — emite boletos de verdade via Asaas, ação irreversível sobre dinheiro. Toda esta entrega roda contra o **SANDBOX**. **ADR-0135 · migration 0162 (primeira de escrita-no-mundo).**
+
+- **Emissão a partir da revisão (1a):** na tela de revisão, marca-se as faturas **prontas** e clica-se em **Emitir**. Por fatura: `ensure_customer` (acha por CPF/CNPJ → usa; por nome → completa; senão cria, com endereço da base de pessoas) → **idempotência dupla** → `criar_boleto` (BOLETO, multa 2% / juros 2%, descrição padrão) → **registro**.
+- **Idempotência DUPLA:** (1) consulta `app.fatura_emissao_existentes` (nosso registro) e **pula** refs já emitidas; (2) `GET /payments?externalReference=<Fatura Cliente Nº>` no Asaas **antes** de criar. Rodar a mesma planilha 2× **não duplica** — provado no banco (reprocesso de sucesso retorna `id: null` e não sobrescreve).
+- **Falha parcial: continuar e reportar.** Cada fatura é uma transação independente — uma falha não aborta as outras. Resultado: "M emitidos, J falharam (motivo), K pulados", com link do boleto por linha.
+- **SANDBOX-first + ambiente sempre visível:** `ASAAS_BASE_URL` default = sandbox; produção só por env consciente (`api.asaas.com`). Badge de ambiente **sempre na tela**; produção exige **confirmação reforçada** (digitar "EMITIR"). A UI nunca decide nem mente o ambiente — vem do servidor.
+- **Chave server-only:** camada `src/lib/asaas/` com `import 'server-only'` (build falha se vazar ao cliente); `ASAAS_API_KEY`/`ASAAS_BASE_URL` 100% do env (padrão SMTP). Sem chave → emissão indisponível com aviso claro, nunca quebra.
+- **Migration 0162 (aditiva, escrita-no-mundo):** `app.fatura_emissao` (`fatura_cliente_no` UNIQUE = 2ª trava de idempotência; cobrado + retorno Asaas + ambiente + quem/quando + erro; RLS deny-by-default) + RPCs `registrar_emissao` (UPSERT idempotente, nunca sobrescreve sucesso) e `fatura_emissao_existentes` — ambas `SECURITY DEFINER` + `exigir_acesso('financeiro/faturamento-corp')`. Só boletos (NF/e-mail/download = fase 2). Auto-auditoria adversarial reforçada.
+
 ## [4.30.0] — 2026-06-30
 
 MINOR · READ-ONLY: **Faturamento Corporativo — Fase 1a (pipeline + revisão, SEM Asaas).** Primeira metade da Fase 1 do Faturamento, deliberadamente sem emissão. **ADR-0134.** Aba nova em Financeiro sob a área RBAC própria e apertada `financeiro/faturamento-corp`.

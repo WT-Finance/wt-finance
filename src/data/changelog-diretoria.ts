@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.31.0',
+    data: '2026-06-30T15:25',
+    itens: [
+      { tipo: 'novidade', texto: 'O Faturamento Corporativo agora emite boletos direto da plataforma. A partir da tela de revisão, marca-se as faturas prontas e, com uma confirmação, os boletos são gerados para os clientes — sem planilhas e scripts manuais. Nesta etapa tudo roda em ambiente de testes (sandbox), para validar com calma antes de ligar a emissão real; a tela mostra sempre, com destaque, em qual ambiente você está.' },
+      { tipo: 'novidade', texto: 'Segurança em primeiro lugar para uma ação que mexe com dinheiro: emitir duas vezes a mesma planilha não gera boletos duplicados (o sistema reconhece o que já foi emitido e pula), se um boleto falha os demais seguem normalmente (e você vê exatamente quais falharam e por quê), e toda emissão fica registrada — quem emitiu, quando, em qual ambiente e com qual resultado.' },
+    ],
+  },
+  {
     versao: '4.30.0',
     data: '2026-06-30T13:10',
     itens: [
