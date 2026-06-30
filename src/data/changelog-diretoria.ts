@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.30.0',
+    data: '2026-06-30T13:10',
+    itens: [
+      { tipo: 'novidade', texto: 'Primeiro passo do Faturamento Corporativo na plataforma: agora dá para importar a planilha de faturamento e ver, em uma tela de revisão, cada fatura já cruzada com o cadastro de clientes — quais estão prontas, quais estão com o cliente cadastrado mas faltando dados fiscais (CNPJ/endereço), e quais não foram encontradas. Por enquanto é só conferência: nada é emitido. A emissão dos boletos vem na próxima etapa, com toda a segurança.' },
+    ],
+  },
+  {
     versao: '4.29.0',
     data: '2026-06-26T18:12',
     itens: [

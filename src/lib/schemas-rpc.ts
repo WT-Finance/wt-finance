@@ -233,3 +233,27 @@ export const cruzarVendasSetorSchema = z.array(z.object({
   setor_macro: z.string(),
 }).passthrough())
 export type CruzarVendasSetor = z.infer<typeof cruzarVendasSetorSchema>
+
+/** buscar_pessoas (v4.29.0 migration 0160; gate estendido 0161) → cadastros (sem
+ *  carregado_em). Array (pode ser vazio). Campos TEXT; nome sempre presente (a RPC só
+ *  devolve linhas cujo nome casou). Usado pelo Faturamento Corporativo (v4.30.0). */
+export const buscarPessoasSchema = z.array(z.object({
+  nome:                z.string(),
+  razao_social:        z.string().nullable(),
+  cnpj:                z.string().nullable(),
+  cpf:                 z.string().nullable(),
+  cep:                 z.string().nullable(),
+  endereco:            z.string().nullable(),
+  numero:              z.string().nullable(),
+  complemento:         z.string().nullable(),
+  bairro:              z.string().nullable(),
+  cidade:              z.string().nullable(),
+  uf:                  z.string().nullable(),
+  pais:                z.string().nullable(),
+  inscricao_estadual:  z.string().nullable(),
+  inscricao_municipal: z.string().nullable(),
+  email:               z.string().nullable(),
+  telefone:            z.string().nullable(),
+  celular:             z.string().nullable(),
+}).passthrough())
+export type BuscarPessoas = z.infer<typeof buscarPessoasSchema>
