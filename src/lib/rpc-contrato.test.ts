@@ -4,7 +4,7 @@ import {
   operacoesWeddingsSchema, carteiraWeddingsSchema, tendenciaMargemSchema,
   rankingVendedoresRangeSchema, vendasReceitaNegativaSchema, executivaKpisSchema,
   vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
-  mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema,
+  mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema, buscarPessoasSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -116,6 +116,10 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // SHAPE (array de {venda_no, setor_macro}) é validado contra a RPC viva; o nº fake
   // não volta (prova a diferença → 'Não identificado' é inferido no cliente).
   { fn: 'cruzar_vendas_setor',           params: { p_vendas: ['71408', '71971', '99999999'] },                          schema: cruzarVendasSetorSchema },
+  // v4.30.0: lookup do Faturamento Corporativo. Service role passa o gate; valida o SHAPE
+  // (array de cadastros) contra a RPC viva. (raw.pessoas pode estar vazia → []; a forma do
+  // objeto é coberta pelo classificar.test com fixtures.)
+  { fn: 'buscar_pessoas',                params: { p_nomes: ['ZZ_INEXISTENTE_CONTRATO'] },                              schema: buscarPessoasSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
