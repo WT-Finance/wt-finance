@@ -6,6 +6,13 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.29.0] — 2026-06-26
+
+MINOR: **Base de Pessoas (Monde) + aviso de colunas obrigatórias na Atualização de Dados.** **Migration 0160 (aditiva) · ADR-0133.** Pré-requisito do Faturamento.
+
+- **Base de Pessoas (nova):** ingere a `pessoas.xlsx` (cadastro fiscal do Monde, ~64k) como base persistida em `admin/uploads`. `raw.pessoas` com todos os campos **TEXT** — documentos (`cnpj`/`cpf`/`cep`/inscrições) preservam zero à esquerda (nunca numérico); `nome` com **TRIM**. Carga **full-replace atômica** (staging → validar → promover swap numa transação; aborta se vazia → base nunca fica vazia), parse client-side em **Web Worker** (lotes de 500). Validação = **17 colunas presentes no cabeçalho** (não exige célula preenchida — a maioria vem vazia, e isso é esperado). RPC read-only `buscar_pessoas` (lookup por nome, para o Faturamento).
+- **Aviso de colunas obrigatórias (transversal, 5 bases):** helper compartilhado `validarColunasObrigatorias` — cada importação avisa claramente as colunas obrigatórias antes de processar, com mensagem amigável. **Não-regressão garantida:** o aviso ESPELHA o que cada parser já exigia (lista derivada do código), sem mudar o que cada base aceita/rejeita; Vendas segue tolerante. Auto-auditoria adversarial (4 céticos) verde, com foco na não-regressão das 4 bases existentes.
+
 ## [4.28.0] — 2026-06-24
 
 MINOR: **Calculadora de Rateio (Financeiro) — capacidade nova, READ-ONLY.** Aba nova no sidebar de Financeiro (sob a permissão `financeiro/gerencial`): importa uma **fatura xlsx**, cruza cada `Venda Nº` com a base de vendas (`analytics.vw_vendas_agregadas`), busca o **Setor Macro** e **rateia o valor por setor** (proporcional, linha a linha, com sinal). Só exibe — **não grava nada**.

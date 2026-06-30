@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.29.0',
+    data: '2026-06-26T18:12',
+    itens: [
+      { tipo: 'novidade', texto: 'A plataforma passa a ter a Base de Pessoas: o cadastro de clientes (com dados fiscais como CNPJ, CPF, endereço e inscrições, vindos do Monde) agora pode ser importado na Atualização de Dados, como já acontece com as outras bases. É um passo preparatório importante para a automação do faturamento.' },
+      { tipo: 'melhoria', texto: 'Todas as importações da Atualização de Dados agora avisam claramente quais colunas a planilha precisa ter — se faltar alguma, a mensagem é direta e aparece antes de processar, em vez de um erro técnico. Não muda o que cada importação aceita; só deixa a exigência explícita e mais amigável.' },
+    ],
+  },
+  {
     versao: '4.28.0',
     data: '2026-06-24T17:47',
     itens: [
