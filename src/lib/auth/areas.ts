@@ -10,6 +10,7 @@ export const AREAS = [
   'performance/corporativo',
   'financeiro/fluxo-caixa',
   'financeiro/gerencial',
+  'financeiro/faturamento-corp',
   'metas',
   'admin/uploads',
   'admin/design-system',
@@ -32,6 +33,7 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   'performance/corporativo': { rotulo: 'Performance — Corporativo', grupo: 'Performance',   ordem: 23 },
   'financeiro/fluxo-caixa':  { rotulo: 'Fluxo de Caixa',            grupo: 'Financeiro',    ordem: 30 },
   'financeiro/gerencial':    { rotulo: 'Fluxo de Caixa Gerencial',  grupo: 'Financeiro',    ordem: 31 },
+  'financeiro/faturamento-corp': { rotulo: 'Faturamento Corporativo', grupo: 'Financeiro',  ordem: 32 },
   'metas':                   { rotulo: 'Metas',                     grupo: 'Geral',         ordem: 40 },
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },
@@ -72,6 +74,7 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/performance'))             return ['performance']
   if (p.startsWith('/financeiro/fluxo-caixa/gerencial')) return ['financeiro/gerencial']
   if (p.startsWith('/financeiro/calculadora-rateio'))    return ['financeiro/gerencial']
+  if (p.startsWith('/financeiro/faturamento-corp'))      return ['financeiro/faturamento-corp']
   if (p.startsWith('/financeiro'))              return ['financeiro/fluxo-caixa', 'financeiro/gerencial']
   if (p.startsWith('/executiva'))               return ['executiva']
   if (p.startsWith('/metas'))                   return ['metas']
