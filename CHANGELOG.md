@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.30.0] — 2026-06-30
+
+MINOR · READ-ONLY: **Faturamento Corporativo — Fase 1a (pipeline + revisão, SEM Asaas).** Primeira metade da Fase 1 do Faturamento, deliberadamente sem emissão. **ADR-0134.** Aba nova em Financeiro sob a área RBAC própria e apertada `financeiro/faturamento-corp`.
+
+- **Pipeline + tela de revisão:** importa a planilha crua de faturamento → cruza cada cliente (coluna `Pessoa`, trimada) com a base de pessoas via `buscar_pessoas` (v4.29.0) → classifica cada fatura (**pronta** / **faltam dados fiscais** / **não identificado**) → tela de revisão com resumo, status por linha e toggle "Emitir". **A fase TERMINA na revisão — nada é emitido.**
+- **ZERO Asaas, ZERO escrita-no-mundo:** nenhuma chamada externa, nenhuma chave de API, nenhuma migration de escrita, nenhum botão que dispare. O cruzamento é read-only; a crua é processada no cliente (não persiste). A emissão de boletos (irreversível) é a Fase 1b.
+- **Migration 0161 (aditiva):** área RBAC `financeiro/faturamento-corp` (grupo Financeiro), concedida só aos administradores; gate de `buscar_pessoas` estendido para o novo consumidor. **`Fatura Cliente Nº` preservado como TEXT** (será o `externalReference`/idempotência da 1b). UI no padrão (dropzone + spinner 2 fases, verde Corporativo). Auto-auditoria adversarial (4 céticos) verde.
+
 ## [4.29.0] — 2026-06-26
 
 MINOR: **Base de Pessoas (Monde) + aviso de colunas obrigatórias na Atualização de Dados.** **Migration 0160 (aditiva) · ADR-0133.** Pré-requisito do Faturamento.
