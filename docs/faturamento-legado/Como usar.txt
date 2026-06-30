@@ -1,0 +1,58 @@
+Requisitos:	
+
+1. Arquivos na pasta "C:\Users\Usuario.WELLNB-24\Desktop\Faturamento"
+2. Arquivos necessários: 
+	2.1 requirements.txt
+	2.2 .env (com a chave da API e link do ambiente do Asaas
+Ambiente Produção:
+https://api.asaas.com/v3
+Ambiente Sandbox:
+https://sandbox.asaas.com/api/v3)
+	2.3 pessoas.xlsx (Cadastro de pessoas extraído do monde)
+	2.4 Faturamento Clientes - Corporativo.xlsx (planilha de clientes corporativos atualizada)
+	2.5 faturamento.R
+	2.6 asaas_from_simple_sheet.py
+	2.7 envio faturas.py
+	2.8 asaas_nfe_from_contas.py
+	2.9 asaas_nfe_refresh.py
+3. R e Python instalados no computador.
+
+
+Passo a Passo:
+
+1. Exportar planilha Fatura Clientes no monde com "faturamento". Necessário colunas Emissão, Pessoa, Vencimento, Valor Final e Fatura Cliente Nº.
+2. Executar script "faturamento.R". Irá gerar a planilha "contas.xslx". Ajustar colunas "Emitir Boleto", "Emitir NF" e "Valor NF Avulsa".
+3. Abrir prompt de comando (Windows + R > cmd > OK)
+
+==============================BOLETOS==============================
+4. No prompt de comando:
+	4.1 cd C:\Users\Usuario.WELLNB-24\Desktop\Faturamento
+	4.2 Executar o código abaixo (Vide alternativas). Irá gerar a planilha "out_boletos_simples.csv" com os links dos boletos gerados no Asaas.
+	# dry-run (não emite/teste)
+	python asaas_from_simple_sheet.py --input contas.xlsx --sheet "Sheet1"
+
+	# emitir com multa/juros padrão (2% / 2% ao mês)
+	python asaas_from_simple_sheet.py --input contas.xlsx --sheet "Sheet1" --emit
+
+	# emitir sobrescrevendo (ex.: multa 1.5% e juros 1%/mês)
+	python asaas_from_simple_sheet.py --input contas.xlsx --sheet "Sheet1" --emit --fine 1.5 --interest 1.0
+
+==============================NOTAS FISCAIS==============================
+5. No prompt de comando:
+	5.1 cd C:\Users\Usuario.WELLNB-24\Desktop\Faturamento
+	5.2 Executar o código abaixo. Irá gerar a planilha "out_notas_fiscais.csv" com os links das notas fiscais geradas no Asaas.
+	# emitir notas fiscais	
+	python asaas_nfe_from_contas.py --input contas.xlsx --sheet "Sheet1" --authorize --link-payment --iss 5
+6. Autorização das notas fiscais pode demorar alguns minutos.
+7. Após alguns minutos, no prompt de comando:
+	7.1 Executar o código abaixo.
+	# buscar link das notas autorizadas e fazer download na pasta indicada (Ajustar nome da pasta para o dia correto).
+	python asaas_nfe_refresh.py --csv out_notas_fiscais.csv --overwrite --download-pdf --dest "C:\Users\Usuario.WELLNB-24\Desktop\Faturamento\06.26\22.06"
+
+==============================ENVIO DOS EMAILS==============================
+8. Abrir o arquivo "envio faturas.py" com editor de texto e ajustar o código para a data certa da pasta referente ao dia do faturamento.
+9. Com os arquivos (fatura/nota fiscal) na pasta referente ao dia do faturamento, no prompt de comando:
+	9.1 python envio_faturas.py
+10. Verificar, corrigir se necessário e enviar os e-mails gerados.
+
+
