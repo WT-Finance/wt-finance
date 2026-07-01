@@ -205,11 +205,21 @@ describe('ensureCustomer estendido (NF) — completa endereço de cadastro exist
     expect(r.ok && r.data).toEqual({ customerId: 'cus_1', created: false, updated: false })
     expect(chamadas).toHaveLength(1)
   })
-  it('achado com endereço COMPLETO + completarEndereco → nenhum PUT (nada faltando)', async () => {
-    fila = [{ ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: 'Rua X', addressNumber: '10', province: 'Centro', postalCode: '66035145', city: 'Belém', state: 'PA' }] } }]
+  it('achado com endereço E e-mail COMPLETOS + completarEndereco → nenhum PUT (nada faltando)', async () => {
+    fila = [{ ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: 'Rua X', addressNumber: '10', province: 'Centro', postalCode: '66035145', city: 'Belém', state: 'PA', email: 'a@b.com' }] } }]
     const r = await ensureCustomer(dados, { completarEndereco: true })
     expect(r.ok && r.data.updated).toBe(false)
     expect(chamadas).toHaveLength(1)
+  })
+  it('achado por cpfCnpj SEM e-mail + completarEndereco → PUT completa o e-mail (a NF exige)', async () => {
+    fila = [
+      { ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: 'Rua X', addressNumber: '10', province: 'Centro', postalCode: '66035145', city: 'Belém', state: 'PA', email: null }] } },
+      { ok: true, status: 200, body: { id: 'cus_1' } }, // PUT só com email (endereço já completo)
+    ]
+    const r = await ensureCustomer(dados, { completarEndereco: true })
+    expect(r.ok && r.data.updated).toBe(true)
+    expect(chamadas[1].method).toBe('PUT')
+    expect(chamadas[1].body).toEqual({ email: 'a@b.com' }) // só o e-mail faltava
   })
   it('CEP inválido (≠ 8 dígitos) NÃO é enviado ao Asaas (fiel ao clean_cep do script)', async () => {
     const cepRuim = { ...dados, cep: '1234' } // 4 dígitos

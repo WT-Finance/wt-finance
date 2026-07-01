@@ -9,7 +9,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import { parseRpc, buscarPessoasSchema } from '@/lib/schemas-rpc'
 import type { PessoaCadastro } from '@/lib/faturamento/tipos'
-import { asaasAmbiente, asaasConfigurado, onlyDigits, type AsaasAmbiente } from '@/lib/asaas/client'
+import { asaasAmbiente, asaasConfigurado, onlyDigits, emailValido, type AsaasAmbiente } from '@/lib/asaas/client'
 import { ensureCustomer, type DadosCliente } from '@/lib/asaas/customers'
 import { findPaymentByExternalRef, criarBoleto } from '@/lib/asaas/boletos'
 import {
@@ -254,7 +254,8 @@ export interface NotaEmitir {
   modo:              'normal' | 'avulsa'
   valorBoleto:       number | null  // valor da fatura (usado se normal)
   valorAvulso:       number | null  // usado se avulsa
-  emissao:           string | null  // ISO — effectiveDate (fallback: hoje-SP no servidor)
+  // NOTA: a data de emissão da NF (effectiveDate) é SEMPRE hoje (o dia da emissão), NÃO a
+  // coluna "Emissão" da planilha — o Asaas recusa effectiveDate anterior à data atual.
 }
 
 export interface ItemNota {
@@ -357,6 +358,8 @@ export async function emitirNotas(
       if (!cadastro) { out.falharam.push({ ...base, erro: 'Cliente não encontrado na base de pessoas.' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente não encontrado na base.'); continue }
       if (!cpfCnpj)  { out.falharam.push({ ...base, erro: 'Cliente sem CPF/CNPJ na base.' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente sem CPF/CNPJ.'); continue }
       if (!cadastro.endereco || !cadastro.cep) { out.falharam.push({ ...base, erro: 'Cliente sem endereço/CEP na base (a NF exige).' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente sem endereço/CEP (NF exige).'); continue }
+      // E-mail do tomador é exigido pelo Asaas para autorizar a NFS-e (validação da API, não nossa).
+      if (!emailValido(cadastro.email)) { out.falharam.push({ ...base, erro: 'Cliente sem e-mail válido na base (a NF exige o e-mail do tomador).' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente sem e-mail válido (NF exige).'); continue }
 
       const dados: DadosCliente = {
         nome: pessoa || cadastro.nome, cpfCnpj, email: cadastro.email,
@@ -383,7 +386,7 @@ export async function emitirNotas(
       if (existente.data) {
         invoiceId = existente.data.id; status = existente.data.status; pdfUrl = existente.data.pdfUrl ?? null; jaExistia = true
       } else {
-        const eff = n.emissao || hojeSP()
+        const eff = hojeSP() // sempre HOJE (dia da emissão) — o Asaas recusa data anterior à atual
         const cr = await createInvoice({
           customer: paymentId ? null : customerId, payment: paymentId,
           value: valor, externalReference: ref, effectiveDate: eff,

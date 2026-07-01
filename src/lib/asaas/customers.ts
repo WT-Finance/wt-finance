@@ -93,6 +93,8 @@ export async function ensureCustomer(
   if (achadoDoc) {
     if (completar) {
       const body = enderecoFaltando(achadoDoc, d)
+      // E-mail também (a NF exige): completa se o cadastro do Asaas não tem e a base tem um válido.
+      if (d.email && emailValido(d.email) && !achadoDoc.email) body.email = d.email.trim()
       if (Object.keys(body).length) {
         const upd = await asaasReq<AsaasCustomer>('PUT', `/customers/${achadoDoc.id}`, { body })
         if (!upd.ok) return upd

@@ -10,7 +10,7 @@ A Fase 1 entregou a emissão de **boletos** (sandbox) com registro, idempotênci
 ## Decisão
 
 ### 1. Camada `src/lib/asaas/notas.ts` reusando o client + ensureCustomer estendido
-`createInvoice` (POST /invoices), `authorizeInvoice` (POST /invoices/{id}/authorize), `findInvoiceByExternalRef` (idempotência) e `getInvoiceById` (refresh) reusam o `asaasReq` server-only da Fase 1 (header `access_token`, timeout, erro `{errors:[…]}`, nunca lança). Campos fiscais **fixos da Welcome** (do script, não inventados): `serviceDescription` (texto da Portaria), `municipalServiceCode` 9.02 / `municipalServiceName` "Serviços diversos", `taxes` (ISS 5% parametrizável, demais 0, `retainIss` false), `deductions = value`, `effectiveDate` (Emissão → hoje-SP).
+`createInvoice` (POST /invoices), `authorizeInvoice` (POST /invoices/{id}/authorize), `findInvoiceByExternalRef` (idempotência) e `getInvoiceById` (refresh) reusam o `asaasReq` server-only da Fase 1 (header `access_token`, timeout, erro `{errors:[…]}`, nunca lança). Campos fiscais **fixos da Welcome** (do script, não inventados): `serviceDescription` (texto da Portaria), `municipalServiceCode` 9.02 / `municipalServiceName` "Serviços diversos", `taxes` (ISS 5% parametrizável, demais 0, `retainIss` false), `deductions = value`, `effectiveDate` = **sempre hoje-SP** (o dia da emissão — o Asaas recusa data anterior à atual; a coluna "Emissão" da crua **não** é usada para isso).
 
 ### 2. `ensureCustomer` estendido para endereço (gated por flag)
 A NF exige endereço no customer (o `create_invoice` não envia endereço nem inscrição do cliente — depende do cadastro do customer). `ensureCustomer(d, { completarEndereco: true })` completa `address/addressNumber/province/postalCode/city/state` de um cadastro existente via PUT quando faltando (o que o script faz em `needs_address_update`). **Sem a flag, o caminho do boleto (Fase 1) fica byte-idêntico** — não mexe no endereço de cadastro existente. A inscrição do cliente nunca é enviada; a do emitente (Welcome) já está no painel do Asaas (B6).
@@ -26,6 +26,9 @@ Tabela nova (não estende `app.fatura_emissao`, que é boleto-específica e sín
 
 ### 6. Mesmos invariantes da Fase 1
 Sandbox-first (ambiente resolvido no servidor, badge sempre visível, produção com confirmação reforçada enforced server-side); confirmação explícita antes de emitir; falha parcial (cada NF é transação independente); rastreabilidade (toda tentativa registrada). Só faturas prontas-NF emitem — re-validado server-side (o cliente não decide).
+
+### 7. E-mail do tomador exigido pela NFS-e (verificado no sandbox)
+O 1º teste no sandbox retornou *"E-mail do cliente incompleto"* — mensagem da **API do Asaas** (não do nosso código; surge via `errors[0].description`). O e-mail do tomador é, portanto, **exigido** para autorizar a NFS-e (o comentário do script legado "não é obrigatório na NFS-e" era otimista). Consequências: `ensureCustomer` (sob a flag NF) completa também o **e-mail** de um cadastro existente a partir da base (antes só completava o endereço no cadastro achado por CPF/CNPJ — gap); a **prontidão-NF** passa a exigir e-mail válido (`CPF/CNPJ + endereço + CEP + e-mail`), sinalizado na tela; re-validado server-side. Cliente sem e-mail na base não emite NF até o e-mail ser cadastrado no Monde.
 
 ## Consequências
 

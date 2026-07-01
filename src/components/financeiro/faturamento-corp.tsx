@@ -165,7 +165,7 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
     const payload: NotaEmitir[] = selecionadasNota.map(f => ({
       pessoa: (f.pessoa ?? '').trim(), fatura_cliente_no: f.fatura_cliente_no,
       modo: f.modoNf === 'avulsa' ? 'avulsa' : 'normal',
-      valorBoleto: f.valor, valorAvulso: f.valorAvulso, emissao: f.emissao,
+      valorBoleto: f.valor, valorAvulso: f.valorAvulso,
     }))
     try {
       const res = await emitirNotas(payload, { confirmacaoProducao: ehProducao })
@@ -435,7 +435,7 @@ function ControleNota({ fatura, desabilitado, onModo, onValorAvulso }: {
   onValorAvulso: (v: number | null) => void
 }) {
   if (!fatura.prontaNf) {
-    return <span className="text-3xs text-zinc-400">{fatura.status === 'nao_identificado' ? '—' : 'falta endereço/CEP p/ NF'}</span>
+    return <span className="text-3xs text-zinc-400">{fatura.status === 'nao_identificado' ? '—' : 'faltam dados fiscais p/ NF'}</span>
   }
   return (
     <div className="space-y-1">
