@@ -15,13 +15,22 @@ const fat = (pessoa: string | null, p: Partial<FaturaRaw> = {}): FaturaRaw => ({
 })
 
 describe('classificarFaturas — cruzamento da Fase 1a (v4.30.0)', () => {
-  it("casou + tem CPF/CNPJ → 'pronta' (emitir sugerido true)", () => {
+  it("casou + tem CPF/CNPJ + endereço/CEP → 'pronta' + prontaNf (emitir sugerido true)", () => {
     const mapa = mapaPorNome([cad('Acme Ltda', { cnpj: '00111222000133', endereco: 'Rua X', cep: '66035145' })])
     const { faturas, resumo } = classificarFaturas([fat('Acme Ltda')], mapa)
     expect(faturas[0].status).toBe('pronta')
     expect(faturas[0].faltam).toEqual([])
     expect(faturas[0].emitir).toBe(true)
+    expect(faturas[0].prontaNf).toBe(true) // CPF/CNPJ + endereço + CEP (e-mail NÃO entra — Asaas valida)
     expect(resumo.prontas).toBe(1)
+  })
+
+  it("SEM e-mail na base ainda é pronta-NF (permissivo: o Asaas valida o e-mail na emissão)", () => {
+    const mapa = mapaPorNome([cad('Sem Email SA', { cnpj: '55', endereco: 'Rua Z', cep: '22222222' })]) // sem email
+    const { faturas } = classificarFaturas([fat('Sem Email SA')], mapa)
+    expect(faturas[0].status).toBe('pronta')
+    expect(faturas[0].prontaNf).toBe(true)          // e-mail não bloqueia a prontidão-NF
+    expect(faturas[0].faltam).not.toContain('E-mail') // e-mail fora de camposFaltantes
   })
 
   it("casou mas SEM CPF/CNPJ → 'sem_dados_fiscais' (emitir false; faltam lista CPF/CNPJ)", () => {
@@ -52,6 +61,7 @@ describe('classificarFaturas — cruzamento da Fase 1a (v4.30.0)', () => {
     const { faturas } = classificarFaturas([fat('Delta')], mapa)
     expect(faturas[0].status).toBe('pronta')
     expect(faturas[0].faltam).toEqual(['Endereço', 'CEP'])
+    expect(faturas[0].prontaNf).toBe(false)
   })
 
   it('homônimo (>1 cadastro) → multiplos=true', () => {

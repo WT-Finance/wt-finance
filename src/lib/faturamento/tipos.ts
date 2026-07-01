@@ -41,6 +41,9 @@ export interface PessoaCadastro {
   celular:             string | null
 }
 
+/** Modo de emissão da NF por fatura (Fase 2). 'nao' = não emitir. */
+export type ModoNota = 'nao' | 'normal' | 'avulsa'
+
 /** Uma fatura já cruzada/classificada para a tela de revisão. */
 export interface FaturaClassificada extends FaturaRaw {
   status:    StatusCruzamento
@@ -51,6 +54,12 @@ export interface FaturaClassificada extends FaturaRaw {
   multiplos: boolean
   /** Sugestão default do toggle "Emitir Boleto" (o usuário decide; nada é emitido em 1a). */
   emitir:    boolean
+  /** Prontidão-NF (Fase 2): NF exige CPF/CNPJ + endereço + CEP (mais que o boleto). */
+  prontaNf:  boolean
+  /** Controle de NF por linha (Fase 2): 'nao' | 'normal' | 'avulsa'. Default 'nao'. */
+  modoNf:    ModoNota
+  /** Valor da NF avulsa (habilita só quando modoNf === 'avulsa'). */
+  valorAvulso: number | null
 }
 
 export interface ResumoFaturamento {

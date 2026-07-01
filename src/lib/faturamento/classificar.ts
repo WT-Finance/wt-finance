@@ -7,7 +7,9 @@ import type {
   FaturaRaw, FaturaClassificada, PessoaCadastro, StatusCruzamento, ResumoFaturamento,
 } from './tipos'
 
-/** Campos fiscais conferidos para a prontidão (boleto exige CPF/CNPJ; NF, endereço/CEP). */
+/** Campos fiscais conferidos para a prontidão (boleto exige CPF/CNPJ; a NF exige, além, endereço + CEP).
+ *  O e-mail do tomador NÃO entra aqui: é permissivo — o Asaas pode já ter o e-mail no cadastro dele
+ *  (mesmo sem na base); quem valida o e-mail é o Asaas na emissão (com aviso claro se faltar). */
 function camposFaltantes(p: PessoaCadastro): string[] {
   const faltam: string[] = []
   if (!p.cnpj && !p.cpf) faltam.push('CPF/CNPJ')
@@ -29,13 +31,16 @@ export function classificarFaturas(
     const matches = nome ? (mapa[nome] ?? []) : []
 
     if (matches.length === 0) {
-      return { ...f, status: 'nao_identificado', cadastro: null, faltam: [], multiplos: false, emitir: false }
+      return { ...f, status: 'nao_identificado', cadastro: null, faltam: [], multiplos: false, emitir: false, prontaNf: false, modoNf: 'nao', valorAvulso: null }
     }
 
     const cadastro = matches[0]
     const faltam = camposFaltantes(cadastro)
     const temCpfCnpj = Boolean(cadastro.cnpj || cadastro.cpf)
     const status: StatusCruzamento = temCpfCnpj ? 'pronta' : 'sem_dados_fiscais'
+    // Prontidão-NF (Fase 2): a NF exige CPF/CNPJ + endereço + CEP (mais que o boleto). O e-mail
+    // do tomador é validado pelo Asaas na emissão (permissivo: o Asaas pode já tê-lo no cadastro).
+    const prontaNf = temCpfCnpj && Boolean(cadastro.endereco) && Boolean(cadastro.cep)
 
     return {
       ...f,
@@ -44,6 +49,9 @@ export function classificarFaturas(
       faltam,
       multiplos: matches.length > 1,
       emitir: status === 'pronta', // sugestão; o usuário decide (nada é emitido em 1a)
+      prontaNf,
+      modoNf: 'nao',               // NF é opcional por linha; default não emitir (o Yan decide)
+      valorAvulso: null,
     }
   })
 

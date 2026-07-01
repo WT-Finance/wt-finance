@@ -6,6 +6,10 @@ vi.mock('server-only', () => ({}))
 import { asaasReq, asaasAmbiente, asaasConfigurado, onlyDigits, emailValido } from './client'
 import { ensureCustomer } from './customers'
 import { findPaymentByExternalRef, criarBoleto, descricaoBoleto } from './boletos'
+import {
+  externalReferenceNota, createInvoice, authorizeInvoice, findInvoiceByExternalRef, getInvoiceById,
+  NF_SERVICE_DESCRIPTION, NF_MUNICIPAL_CODE,
+} from './notas'
 
 // Mock de fetch: cada teste empilha as respostas na ordem das chamadas.
 type Resp = { ok: boolean; status: number; body: unknown }
@@ -128,5 +132,105 @@ describe('boletos — idempotência + criação', () => {
     expect(asaasConfigurado()).toBe(true)
     delete process.env.ASAAS_API_KEY
     expect(asaasConfigurado()).toBe(false)
+  })
+})
+
+describe('notas (NFS-e) — idempotência -AVULSA, campos fixos, XOR customer/payment, assíncrono', () => {
+  it('externalReferenceNota: normal usa a ref; avulsa recebe -AVULSA (não colidem)', () => {
+    expect(externalReferenceNota('FC-1', 'normal')).toBe('FC-1')
+    expect(externalReferenceNota('FC-1', 'avulsa')).toBe('FC-1-AVULSA')
+  })
+  it('createInvoice NORMAL vinculado ao boleto: payment enviado, customer OMITIDO (XOR) + campos fiscais fixos + deductions=value', async () => {
+    fila = [{ ok: true, status: 200, body: { id: 'inv_1', status: 'SCHEDULED' } }]
+    const r = await createInvoice({ payment: 'pay_1', value: 200, externalReference: 'FC-1', effectiveDate: '2026-06-30' })
+    expect(r.ok && r.data.id).toBe('inv_1')
+    const body = chamadas[0].body as Record<string, unknown>
+    expect(body).toMatchObject({
+      payment: 'pay_1', value: 200, deductions: 200, externalReference: 'FC-1', effectiveDate: '2026-06-30',
+      serviceDescription: NF_SERVICE_DESCRIPTION, municipalServiceCode: NF_MUNICIPAL_CODE,
+      taxes: { retainIss: false, iss: 5, pis: 0, cofins: 0, csll: 0, inss: 0, ir: 0 },
+    })
+    expect('customer' in body).toBe(false) // XOR: com payment, customer não vai
+  })
+  it('createInvoice AVULSA (sem payment): customer enviado, payment OMITIDO; ISS parametrizável', async () => {
+    fila = [{ ok: true, status: 200, body: { id: 'inv_2', status: 'SCHEDULED' } }]
+    await createInvoice({ customer: 'cus_9', value: 50, externalReference: 'FC-2-AVULSA', effectiveDate: '2026-06-30', iss: 3 })
+    const body = chamadas[0].body as Record<string, unknown>
+    expect(body.customer).toBe('cus_9')
+    expect('payment' in body).toBe(false)
+    expect((body.taxes as Record<string, unknown>).iss).toBe(3)
+  })
+  it('authorizeInvoice: POST /invoices/{id}/authorize', async () => {
+    fila = [{ ok: true, status: 200, body: { id: 'inv_1', status: 'PROCESSING' } }]
+    const r = await authorizeInvoice('inv_1')
+    expect(r.ok && r.data.status).toBe('PROCESSING')
+    expect(chamadas[0].method).toBe('POST')
+    expect(chamadas[0].url).toContain('/invoices/inv_1/authorize')
+  })
+  it('findInvoiceByExternalRef: existente → retorna; ausente → null', async () => {
+    fila = [{ ok: true, status: 200, body: { data: [{ id: 'inv_1', status: 'AUTHORIZED', pdfUrl: 'http://x' }] } }]
+    const a = await findInvoiceByExternalRef('FC-1')
+    expect(a.ok && a.data?.id).toBe('inv_1')
+    fila = [{ ok: true, status: 200, body: { data: [] } }]
+    const b = await findInvoiceByExternalRef('FC-9')
+    expect(b.ok && b.data).toBeNull()
+  })
+  it('getInvoiceById: refresh traz status + pdf/number quando AUTHORIZED', async () => {
+    fila = [{ ok: true, status: 200, body: { id: 'inv_1', status: 'AUTHORIZED', pdfUrl: 'http://pdf', number: '123' } }]
+    const r = await getInvoiceById('inv_1')
+    expect(r.ok && r.data.status).toBe('AUTHORIZED')
+    expect(r.ok && r.data.pdfUrl).toBe('http://pdf')
+    expect(chamadas[0].url).toContain('/invoices/inv_1')
+  })
+})
+
+describe('ensureCustomer estendido (NF) — completa endereço de cadastro existente', () => {
+  const dados = {
+    nome: 'Acme Ltda', cpfCnpj: '00111222000133', email: 'a@b.com',
+    endereco: 'Rua X', numero: '10', bairro: 'Centro', cep: '66035-145', cidade: 'Belém', uf: 'PA',
+  }
+  it('achado por cpfCnpj SEM endereço + completarEndereco → PUT preenche endereço', async () => {
+    fila = [
+      { ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: null, postalCode: null }] } },
+      { ok: true, status: 200, body: { id: 'cus_1' } }, // PUT
+    ]
+    const r = await ensureCustomer(dados, { completarEndereco: true })
+    expect(r.ok && r.data.updated).toBe(true)
+    expect(chamadas[1].method).toBe('PUT')
+    expect(chamadas[1].body).toMatchObject({ address: 'Rua X', addressNumber: '10', province: 'Centro', postalCode: '66035145', city: 'Belém', state: 'PA' })
+  })
+  it('SEM completarEndereco (boleto/Fase 1) → NÃO mexe no endereço (1 chamada só)', async () => {
+    fila = [{ ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: null }] } }]
+    const r = await ensureCustomer(dados)
+    expect(r.ok && r.data).toEqual({ customerId: 'cus_1', created: false, updated: false })
+    expect(chamadas).toHaveLength(1)
+  })
+  it('achado com endereço E e-mail COMPLETOS + completarEndereco → nenhum PUT (nada faltando)', async () => {
+    fila = [{ ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: 'Rua X', addressNumber: '10', province: 'Centro', postalCode: '66035145', city: 'Belém', state: 'PA', email: 'a@b.com' }] } }]
+    const r = await ensureCustomer(dados, { completarEndereco: true })
+    expect(r.ok && r.data.updated).toBe(false)
+    expect(chamadas).toHaveLength(1)
+  })
+  it('achado por cpfCnpj SEM e-mail + completarEndereco → PUT completa o e-mail (a NF exige)', async () => {
+    fila = [
+      { ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: 'Rua X', addressNumber: '10', province: 'Centro', postalCode: '66035145', city: 'Belém', state: 'PA', email: null }] } },
+      { ok: true, status: 200, body: { id: 'cus_1' } }, // PUT só com email (endereço já completo)
+    ]
+    const r = await ensureCustomer(dados, { completarEndereco: true })
+    expect(r.ok && r.data.updated).toBe(true)
+    expect(chamadas[1].method).toBe('PUT')
+    expect(chamadas[1].body).toEqual({ email: 'a@b.com' }) // só o e-mail faltava
+  })
+  it('CEP inválido (≠ 8 dígitos) NÃO é enviado ao Asaas (fiel ao clean_cep do script)', async () => {
+    const cepRuim = { ...dados, cep: '1234' } // 4 dígitos
+    fila = [
+      { ok: true, status: 200, body: { data: [{ id: 'cus_1', cpfCnpj: '00111222000133', address: null, postalCode: null }] } },
+      { ok: true, status: 200, body: { id: 'cus_1' } }, // PUT (endereço faltando, mas SEM postalCode)
+    ]
+    const r = await ensureCustomer(cepRuim, { completarEndereco: true })
+    expect(r.ok && r.data.updated).toBe(true)
+    const body = chamadas[1].body as Record<string, unknown>
+    expect('postalCode' in body).toBe(false) // CEP curto foi descartado
+    expect(body.address).toBe('Rua X')       // demais campos vão
   })
 })
