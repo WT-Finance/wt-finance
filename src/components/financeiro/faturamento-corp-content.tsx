@@ -6,7 +6,7 @@
 // por `hidden` p/ preservar o estado local de cada aba). A11y: role=tablist/tab/tabpanel.
 
 import { useState } from 'react'
-import FaturamentoCorp from './faturamento-corp'
+import FaturamentoCorp, { AmbienteBadge } from './faturamento-corp'
 import CadastroClientes, { type ClienteCorp } from './cadastro-clientes'
 import type { AsaasAmbiente } from '@/lib/asaas/client'
 
@@ -25,6 +25,18 @@ export default function FaturamentoCorpContent({ ambiente, configurado, clientes
 
   return (
     <div>
+      {/* Título + subtítulo da PÁGINA (compartilhados: persistem ao trocar de aba) + badge de
+          ambiente. As pills das abas ficam ABAIXO do título/subtítulo. */}
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <h1 className="text-xl font-semibold text-zinc-900">Faturamento Corporativo</h1>
+          <p className="text-sm text-zinc-400 mt-0.5">
+            Emita boletos e notas fiscais e gerencie o cadastro dos clientes corporativos.
+          </p>
+        </div>
+        <AmbienteBadge ambiente={ambiente} configurado={configurado} />
+      </div>
+
       <div role="tablist" aria-label="Faturamento Corporativo" className="flex gap-2 mb-6">
         <button role="tab" id="tab-emissao" aria-selected={aba === 'emissao'} aria-controls="painel-emissao"
           onClick={() => setAba('emissao')} className={`${PILL} ${aba === 'emissao' ? ATIVO : INATIVO}`}>

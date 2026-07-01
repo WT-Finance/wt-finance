@@ -25,7 +25,7 @@ v4.33.0, CHANGELOG, CHANGELOG_DIRETORIA, ADR-0137, este out-briefing.
 
 ## Invariantes — auto-auditoria adversarial reforçada (Workflow, 6 céticos + síntese)
 Rodou ANTES de fechar. Com julgamento (verifiquei cada "bloqueante"):
-1. **NÃO-REGRESSÃO da Emissão** ✅ — `FaturamentoCorp` byte-idêntico vs `main` (git diff vazio, confirmado pelo cético); wrapper só adiciona pills. **Endurecido:** o SSR do cadastro na `page.tsx` foi envolvido em `try/catch` → fallback `[]` (uma falha ao listar o cadastro NÃO derruba a página nem a aba Emissão).
+1. **NÃO-REGRESSÃO da Emissão** ✅ — a auditoria confirmou byte-idêntico; **após o ajuste do Yan** (título/subtítulo compartilhados no topo + pills abaixo), o `faturamento-corp.tsx` teve APENAS o cabeçalho removido (movido ao wrapper) e o `AmbienteBadge` exportado — a **lógica de emissão** (state, emitir boletos/notas, idempotência, falha parcial, ambiente, status de NF) permanece 100% intacta (não-regressão FUNCIONAL, verificada por `git diff`). **Endurecido:** o SSR do cadastro na `page.tsx` foi envolvido em `try/catch` → fallback `[]` (uma falha ao listar o cadastro NÃO derruba a página nem a aba Emissão).
 2. **Nome único** ✅ VERDE — UNIQUE normalizado (`app.norm_nome`: trim+minúsculo+colapso) em TODOS os caminhos (inserir/rename/import-vs-manual/dup-planilha) + índice no banco; provado.
 3. **Import mantém manual** ✅ — `DELETE origem='planilha'` + INSERT, atômico; manuais intocados (provado). **Achado "delete sem guard de origem" REFUTADO:** apagar uma linha **manual** é ação de usuário autorizada e obrigatória (adicionar manual → poder excluir); restringir a `origem='planilha'` quebraria isso. É o padrão do Gerencial (delete por id). O invariante real ("**import** preserva manual") vale.
 4. **Visão A** ✅ VERDE — emissão hermética: `faturamento-corp.tsx`/`actions.ts` NÃO importam nem consomem o cadastro (grep 0 matches); nada interpreta OBS/juros/multa; `buscar_cliente_corporativo` é só scaffolding.
@@ -52,4 +52,9 @@ O `docs/briefings/WT_Finance_Briefing_v4-33-0_Fase3_Cadastro.pdf` versionado no 
 
 ## Arquivos
 - **Novos:** `supabase/migrations/0164_cliente_corporativo.sql`; `src/lib/faturamento/parse-clientes-corp.ts` (+ `.test.ts`); `src/app/financeiro/faturamento-corp/cadastro-actions.ts`; `src/components/financeiro/cadastro-clientes.tsx`; `src/components/financeiro/faturamento-corp-content.tsx`; `docs/adr/0137-...md`; este out-briefing.
-- **Modificados:** `src/app/financeiro/faturamento-corp/page.tsx` (wrapper de abas + SSR do cadastro); `CHANGELOG.md`; `src/data/changelog-diretoria.ts`; `package.json`/`package-lock.json` (4.33.0). **`faturamento-corp.tsx` INALTERADO** (não-regressão).
+- **Modificados:** `src/app/financeiro/faturamento-corp/page.tsx` (wrapper de abas + SSR do cadastro); `CHANGELOG.md`; `src/data/changelog-diretoria.ts`; `package.json`/`package-lock.json` (4.33.0). **`faturamento-corp.tsx`** — só cabeçalho movido ao wrapper + `AmbienteBadge` exportado (ajuste do Yan); **lógica de emissão intacta**.
+
+## Ajustes pós-revisão do Yan (mesmo PR)
+1. **Título + subtítulo compartilhados no topo** da página (persistem ao trocar de aba), com as pills **Emissão / Cadastro de Clientes** e o badge de ambiente movidos para baixo deles (wrapper `faturamento-corp-content`). O cabeçalho saiu do `FaturamentoCorp` (só apresentação; emissão intacta).
+2. **Filtro de situação na tabela do cadastro** — movido do topo para a linha de filtros por coluna, ao lado da busca por empresa (sob a coluna Situação).
+3. **Botão "Limpar filtros"** na linha de filtros da Base de Dados do Fluxo de Caixa Gerencial (ao lado do filtro de Originador) — some quando não há filtro ativo; zera tipo/origem/pessoa/valor/descrição/conta/vencimento/originador.

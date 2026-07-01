@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload, Trash2, AlertTriangle, CalendarRange } from 'lucide-react'
+import { Plus, Upload, Trash2, AlertTriangle, CalendarRange, FilterX } from 'lucide-react'
 import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import ImportDrawer from './import-drawer'
@@ -167,6 +167,14 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       .filter(l => !fOriginador || (l.originador_nome ?? '').toLowerCase().includes(fOriginador.toLowerCase()))
   }, [itens, tipoFiltro, origemFiltro, fPessoa, fValorMin, fDescricao, fConta, fVencIni, fVencFim, fOriginador, contasReais])
 
+  // Algum filtro ativo? (mostra o "Limpar filtros"). Não conta a seleção.
+  const filtroAtivo = tipoFiltro !== 'todos' || origemFiltro !== 'todos'
+    || !!fPessoa || !!fValorMin || !!fDescricao || !!fConta || !!fVencIni || !!fVencFim || !!fOriginador
+  const limparFiltros = () => {
+    setTipoFiltro('todos'); setOrigemFiltro('todos')
+    setFPessoa(''); setFValorMin(''); setFDescricao(''); setFConta(''); setFVencIni(''); setFVencFim(''); setFOriginador('')
+  }
+
   // ── Seleção ────────────────────────────────────────────────────────────────
   const toggleSel = (id: number) => setSelecionados(prev => {
     const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s
@@ -329,7 +337,14 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
                 <input type="text" placeholder="Originador…" value={fOriginador} onChange={e => setFOriginador(e.target.value)}
                   className={FILTRO_INPUT} aria-label="Filtrar por originador" />
               </th>
-              <th className="py-1.5 px-2"></th>
+              <th className="py-1.5 px-2">
+                {filtroAtivo && (
+                  <button type="button" onClick={limparFiltros} title="Limpar filtros"
+                    className="flex items-center gap-1 text-2xs text-zinc-400 hover:text-[var(--brand)] transition-colors whitespace-nowrap">
+                    <FilterX size={12} /> Limpar
+                  </button>
+                )}
+              </th>
             </tr>
           </thead>
           <tbody>

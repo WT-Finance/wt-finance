@@ -265,12 +265,6 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               {v === 'todos' ? 'Toda origem' : v === 'planilha' ? 'Planilha' : 'Manual'}
             </button>
           ))}
-          <select value={situacaoFiltro} onChange={e => setSituacao(e.target.value as SituacaoFiltro)}
-            className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-2xs bg-white text-zinc-600 focus:outline-none" aria-label="Filtrar por situação">
-            <option value="todas">Toda situação</option>
-            <option value="ativo">Ativos</option>
-            <option value="inativo">Inativos</option>
-          </select>
         </div>
         <div className="flex gap-2 items-center">
           <button onClick={() => { setCriando(true); setErroNovo(null) }} disabled={criando}
@@ -312,7 +306,14 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
             <tr className="border-b border-zinc-100">
               <th className="py-1.5 px-2"></th>
               <th className="py-1.5 px-2"><input type="text" placeholder="Empresa…" value={fEmpresa} onChange={e => setFEmpresa(e.target.value)} className={FILTRO_INPUT} aria-label="Filtrar por empresa" /></th>
-              <th colSpan={10} className="py-1.5 px-2"></th>
+              <th className="py-1.5 px-2">
+                <select value={situacaoFiltro} onChange={e => setSituacao(e.target.value as SituacaoFiltro)} className={FILTRO_INPUT} aria-label="Filtrar por situação">
+                  <option value="todas">Toda</option>
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                </select>
+              </th>
+              <th colSpan={9} className="py-1.5 px-2"></th>
             </tr>
           </thead>
           <tbody>
