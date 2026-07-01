@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.33.1',
+    data: '2026-07-01T18:52',
+    itens: [
+      { tipo: 'melhoria', texto: 'A tela de emissão do Faturamento Corporativo ficou mais clara e fácil de ler. Agora a ordem segue o fluxo natural (importar → revisar → ver o resultado depois de emitir), o resultado de cada boleto e de cada nota aparece na sua própria coluna (o erro fica ao lado do que falhou), o valor da nota avulsa fica na mesma linha (sem a tabela “pulando”), e as faturas não identificadas de valor alto ganham destaque para não passarem despercebidas.' },
+      { tipo: 'melhoria', texto: 'Ao emitir, o resumo do resultado ficou enxuto: contadores em destaque e os erros agrupados por motivo (ex.: “Endereço do cliente incompleto · 6 faturas”), cada um com um “Ver detalhes” que abre a lista das faturas afetadas. Nada mudou na forma de emitir — só a apresentação, agora toda em português.' },
+    ],
+  },
+  {
     versao: '4.33.0',
     data: '2026-07-01T13:43',
     itens: [
