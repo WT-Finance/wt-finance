@@ -36,6 +36,16 @@ const fmtData = (iso: string | null) => iso ? iso.slice(0, 10).split('-').revers
 // externalReference da NF no cliente (espelha externalReferenceNota do server-only notas.ts).
 const refNota = (fcn: string, modo: ModoNota) => modo === 'avulsa' ? `${fcn}-AVULSA` : fcn
 
+// Status da NF (Asaas) → rótulo PT-BR (nunca inglês, ex.: "synchronized"). A NF é assíncrona:
+// SCHEDULED/SYNCHRONIZED/PENDING/PROCESSING = "processando"; AUTHORIZED = "autorizada".
+function labelStatusNota(st: string | null | undefined): string {
+  const s = (st ?? '').toUpperCase()
+  if (s === 'AUTHORIZED') return 'autorizada'
+  if (s === 'ERROR') return 'falhou'
+  if (s.includes('CANCEL')) return 'cancelada'
+  return 'processando'
+}
+
 type Estado = 'vazio' | 'processando' | 'pronto' | 'erro'
 type Fase   = 'lendo' | 'cruzando'
 const LARGURA: Record<Fase, string> = { lendo: '40%', cruzando: '85%' }
@@ -89,6 +99,16 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
     if (resultadoNota) for (const it of [...resultadoNota.emitidas, ...resultadoNota.jaExistiam, ...resultadoNota.falharam, ...resultadoNota.puladas]) m.set(it.ref, it)
     return m
   }, [resultadoNota])
+
+  // fatura_cliente_no → { valor, pessoa } — para o "Ver detalhes" do painel mostrar o valor.
+  const valorPorFatura = useMemo(() => {
+    const m = new Map<string, { valor: number | null; pessoa: string }>()
+    for (const f of faturas) if (f.fatura_cliente_no) m.set(f.fatura_cliente_no, { valor: f.valor, pessoa: (f.pessoa ?? '').trim() })
+    return m
+  }, [faturas])
+
+  // Já emitiu algo? (de-ênfase da coluna Cruzamento depois de emitir — o foco passa às colunas próprias.)
+  const jaEmitiu = !!(resultado || resultadoNota)
 
   // Boleto: só faturas PRONTAS marcadas.
   const selecionadas = useMemo(
@@ -266,18 +286,7 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
         </div>
       </Card>
 
-      {/* Resultados da emissão (aparecem após emitir) */}
-      {resultado && <ResultadoEmissaoCard resultado={resultado} />}
-      {resultadoNota && (
-        <ResultadoNotaCard
-          resultado={resultadoNota}
-          onAtualizar={() => void atualizarStatus()}
-          atualizando={atualizando}
-          podeAtualizar={temNotaComStatus}
-        />
-      )}
-
-      {/* Revisão */}
+      {/* Revisão (upload → revisão → resultado ABAIXO, após emitir — a ordem do fluxo real) */}
       {resumo && estado === 'pronto' && (
         <Card title="Revisão do faturamento" subtitle="Confira o cruzamento, marque os boletos e escolha as notas fiscais.">
           {/* Resumo no topo */}
@@ -290,16 +299,16 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[56rem] text-2xs">
+            <table className="w-full min-w-[62rem] text-2xs">
               <thead>
                 <tr className="border-b border-zinc-100 text-left uppercase tracking-wide text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
                   <th className="py-1.5 px-2 text-right w-28">Valor</th>
-                  <th className="py-1.5 px-2 w-24">Vencimento</th>
-                  <th className="py-1.5 px-2 w-28">Fatura Cliente Nº</th>
-                  <th className="py-1.5 px-2">Cruzamento</th>
-                  <th className="py-1.5 px-2 w-14 text-center">Boleto</th>
-                  <th className="py-1.5 px-2 w-44">Nota fiscal</th>
+                  <th className="py-1.5 px-2 w-20">Vencimento</th>
+                  <th className="py-1.5 px-2 w-24">Fatura Nº</th>
+                  <th className="py-1.5 px-2 w-40">Cruzamento</th>
+                  <th className="py-1.5 px-2 w-36">Boleto</th>
+                  <th className="py-1.5 px-2 w-52">Nota fiscal</th>
                 </tr>
               </thead>
               <tbody>
@@ -308,42 +317,45 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
                   const refNf = f.fatura_cliente_no ? refNota(f.fatura_cliente_no, f.modoNf) : ''
                   const rNota = refNf ? notaPorRef.get(refNf) : undefined
                   const stNota = refNf ? notaStatus[refNf] : undefined
+                  const naoIdent = f.status === 'nao_identificado'
                   return (
-                    <tr key={f.linha} className="border-b border-zinc-50 align-top">
-                      <td className="py-1.5 px-2 text-zinc-700">
-                        <span className="block">{f.pessoa ?? <span className="text-zinc-400">(sem nome)</span>}</span>
+                    <tr key={f.linha} className={`border-b border-zinc-50 align-top ${naoIdent ? 'bg-warning-bg/40' : ''}`}>
+                      <td className="py-1 px-2 text-zinc-700">
+                        <span className="block">{f.pessoa ?? <span className="text-warning font-medium">(sem nome)</span>}</span>
                         {f.multiplos && <span className="text-3xs text-warning">⚠ múltiplos cadastros com este nome</span>}
                       </td>
-                      <td className="py-1.5 px-2 text-right tabular-nums text-zinc-700">{f.valor !== null ? numBRL2(f.valor) : '—'}</td>
-                      <td className="py-1.5 px-2 tabular-nums text-zinc-600">{fmtData(f.vencimento)}</td>
-                      <td className="py-1.5 px-2 tabular-nums text-zinc-600">{f.fatura_cliente_no ?? '—'}</td>
-                      <td className="py-1.5 px-2">
-                        <span className={`inline-block rounded-full border px-2 py-0.5 text-3xs font-medium whitespace-nowrap ${STATUS_CLASSE[f.status]}`}>
+                      <td className={`py-1 px-2 text-right tabular-nums ${naoIdent ? 'text-warning font-semibold' : 'text-zinc-700'}`}>{f.valor !== null ? numBRL2(f.valor) : '—'}</td>
+                      <td className="py-1 px-2 tabular-nums text-zinc-600">{fmtData(f.vencimento)}</td>
+                      <td className="py-1 px-2 tabular-nums text-zinc-600">{f.fatura_cliente_no ?? '—'}</td>
+                      {/* Cruzamento: SÓ o status (de-ênfase depois de emitir — o foco vai p/ as colunas próprias). */}
+                      <td className="py-1 px-2">
+                        <span className={`inline-block rounded-full border px-2 py-0.5 text-3xs font-medium whitespace-nowrap ${STATUS_CLASSE[f.status]} ${jaEmitiu ? 'opacity-50' : ''}`}>
                           {STATUS_LABEL[f.status]}
                         </span>
-                        {f.faltam.length > 0 && f.status !== 'nao_identificado' && (
+                        {!jaEmitiu && f.faltam.length > 0 && f.status !== 'nao_identificado' && (
                           <span className="block mt-0.5 text-3xs text-zinc-400">faltam: {f.faltam.join(', ')}</span>
                         )}
-                        {rBol && <LinhaResultado item={rBol} />}
                       </td>
-                      <td className="py-1.5 px-2 text-center">
-                        <input
-                          type="checkbox"
-                          className="foco-neutro accent-[var(--setor-corporativo)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-                          checked={f.status === 'pronta' && f.emitir}
-                          disabled={f.status !== 'pronta' || emitindo}
-                          onChange={() => toggleEmitir(f.linha)}
-                          aria-label={`Marcar para emitir boleto — fatura ${f.fatura_cliente_no ?? f.linha}`}
-                        />
+                      {/* Boleto: checkbox (antes) → resultado co-locado (depois). */}
+                      <td className="py-1 px-2">
+                        {rBol ? <LinhaResultado item={rBol} /> : (
+                          <div className="text-center">
+                            <input
+                              type="checkbox"
+                              className="foco-neutro accent-[var(--setor-corporativo)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                              checked={f.status === 'pronta' && f.emitir}
+                              disabled={f.status !== 'pronta' || emitindo}
+                              onChange={() => toggleEmitir(f.linha)}
+                              aria-label={`Marcar para emitir boleto — fatura ${f.fatura_cliente_no ?? f.linha}`}
+                            />
+                          </div>
+                        )}
                       </td>
-                      <td className="py-1.5 px-2">
-                        <ControleNota
-                          fatura={f}
-                          desabilitado={emitindoNota}
-                          onModo={m => setModoNf(f.linha, m)}
-                          onValorAvulso={v => setValorAvulso(f.linha, v)}
-                        />
-                        {rNota && <LinhaResultadoNota item={rNota} status={stNota} />}
+                      {/* Nota fiscal: seletor (antes) → resultado co-locado (depois). */}
+                      <td className="py-1 px-2">
+                        {rNota
+                          ? <LinhaResultadoNota item={rNota} status={stNota} />
+                          : <ControleNota fatura={f} desabilitado={emitindoNota} onModo={m => setModoNf(f.linha, m)} onValorAvulso={v => setValorAvulso(f.linha, v)} />}
                       </td>
                     </tr>
                   )
@@ -390,9 +402,22 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
             <p className="mt-2 text-2xs text-warning">⚠ Asaas não configurado neste ambiente — a emissão está indisponível.</p>
           )}
           <p className="mt-3 text-3xs text-zinc-400">
-            A nota fiscal é opcional por fatura e exige endereço/CEP no cadastro. A NF é <b>assíncrona</b>: após emitir, fica “processando” até a prefeitura autorizar — use “Atualizar status” para ver o resultado e o link da nota.
+            Nota fiscal (opcional por fatura, exige endereço/CEP): <b>Normal</b> usa o valor da fatura, <b>Avulsa</b> um valor próprio.
+            A NF é <b>assíncrona</b> — após emitir fica “processando” até a prefeitura autorizar; use “Atualizar status” para ver o resultado e o link.
           </p>
         </Card>
+      )}
+
+      {/* Resultado — CONSEQUÊNCIA da emissão: aparece ABAIXO dos botões, só depois de emitir. */}
+      {resultado && <ResultadoEmissaoCard resultado={resultado} valorPorFatura={valorPorFatura} />}
+      {resultadoNota && (
+        <ResultadoNotaCard
+          resultado={resultadoNota}
+          valorPorFatura={valorPorFatura}
+          onAtualizar={() => void atualizarStatus()}
+          atualizando={atualizando}
+          podeAtualizar={temNotaComStatus}
+        />
       )}
 
       {/* Modais de confirmação */}
@@ -428,32 +453,34 @@ function ControleNota({ fatura, desabilitado, onModo, onValorAvulso }: {
   if (!fatura.prontaNf) {
     return <span className="text-3xs text-zinc-400">{fatura.status === 'nao_identificado' ? '—' : 'faltam dados fiscais p/ NF'}</span>
   }
+  // Rótulo CURTO no seletor (Normal/Avulsa/Não emitir; a explicação vive na legenda ao pé da
+  // tabela). Valor avulso INLINE (mesma linha, à direita) — altura constante em todas as linhas.
   return (
-    <div className="space-y-1">
+    <div className="flex items-center gap-1.5">
       <select
         value={fatura.modoNf}
         disabled={desabilitado}
         onChange={e => onModo(e.target.value as ModoNota)}
-        className="foco-neutro w-full rounded border border-zinc-200 bg-white px-1.5 py-1 text-3xs text-zinc-700 disabled:opacity-40"
+        className="foco-neutro shrink-0 rounded border border-zinc-200 bg-white px-1.5 py-1 text-3xs text-zinc-700 disabled:opacity-40"
         aria-label={`Nota fiscal — fatura ${fatura.fatura_cliente_no ?? fatura.linha}`}
       >
         <option value="nao">Não emitir</option>
-        <option value="normal">Normal (valor da fatura)</option>
-        <option value="avulsa">Avulsa (valor próprio)</option>
+        <option value="normal">Normal</option>
+        <option value="avulsa">Avulsa</option>
       </select>
       {fatura.modoNf === 'avulsa' && (
-        <div className="flex items-center gap-1">
+        <span className="flex items-center gap-0.5 min-w-0">
           <span className="text-3xs text-[var(--text-subtle)]">R$</span>
           <input
             type="number" step="0.01" min="0" inputMode="decimal"
             value={fatura.valorAvulso ?? ''}
             disabled={desabilitado}
             onChange={e => onValorAvulso(e.target.value === '' ? null : Number(e.target.value))}
-            className="foco-neutro w-full rounded border border-zinc-200 px-1.5 py-1 text-3xs tabular-nums text-zinc-700 disabled:opacity-40"
-            placeholder="valor avulso"
+            className="foco-neutro w-24 rounded border border-zinc-200 px-1.5 py-1 text-3xs tabular-nums text-right text-zinc-700 disabled:opacity-40"
+            placeholder="valor"
             aria-label="Valor da nota avulsa"
           />
-        </div>
+        </span>
       )}
     </div>
   )
@@ -475,13 +502,13 @@ export function AmbienteBadge({ ambiente, configurado }: Props) {
   )
 }
 
-// ── Resultado por fatura (boleto) na coluna Cruzamento ────────────────────────
+// ── Resultado por fatura (boleto) — co-locado na coluna Boleto ────────────────
 function LinhaResultado({ item }: { item: ItemEmissao }) {
   if (item.resultado === 'emitido' || item.resultado === 'ja_existia') {
     return (
-      <span className="mt-0.5 flex items-center gap-1 text-3xs text-success">
-        <CheckCircle2 size={11} />
-        {item.resultado === 'ja_existia' ? 'boleto já existia' : 'boleto emitido'}
+      <span className="flex flex-wrap items-center gap-1 text-3xs text-success">
+        <CheckCircle2 size={11} className="shrink-0" />
+        {item.resultado === 'ja_existia' ? 'já existia' : 'emitido'}
         {item.bankSlipUrl && (
           <a href={item.bankSlipUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver boleto <ExternalLink size={9} /></a>
         )}
@@ -489,14 +516,14 @@ function LinhaResultado({ item }: { item: ItemEmissao }) {
       </span>
     )
   }
-  if (item.resultado === 'pulado') return <span className="mt-0.5 block text-3xs text-zinc-400">boleto pulado (já emitido)</span>
-  return <span className="mt-0.5 block text-3xs text-danger">boleto falhou: {item.erro}</span>
+  if (item.resultado === 'pulado') return <span className="block text-3xs text-zinc-400">pulado (já emitido)</span>
+  return <span className="block text-3xs text-danger">falhou: {item.erro}</span>
 }
 
-// ── Resultado + status por fatura (nota) na coluna Nota fiscal ─────────────────
+// ── Resultado + status por fatura (nota) — co-locado na coluna Nota fiscal (PT-BR) ─────
 function LinhaResultadoNota({ item, status }: { item: ItemNota; status?: NotaStatus }) {
-  if (item.resultado === 'falhou') return <span className="mt-1 block text-3xs text-danger">falhou: {item.erro}</span>
-  if (item.resultado === 'pulada') return <span className="mt-1 block text-3xs text-zinc-400">pulada (já emitida)</span>
+  if (item.resultado === 'falhou') return <span className="block text-3xs text-danger">falhou: {item.erro}</span>
+  if (item.resultado === 'pulada') return <span className="block text-3xs text-zinc-400">pulada (já emitida)</span>
 
   const st = (status?.status ?? item.status ?? '').toUpperCase()
   const pdf = status?.pdfUrl ?? item.pdfUrl ?? null
@@ -504,17 +531,17 @@ function LinhaResultadoNota({ item, status }: { item: ItemNota; status?: NotaSta
   // NF criada mas autorização falhou: a nota existe, porém não foi autorizada — avisa (não mascara).
   if (item.avisoAutorizacao) {
     return (
-      <span className="mt-1 flex flex-wrap items-center gap-1 text-3xs text-warning">
-        <AlertTriangle size={11} /> NF criada, mas a autorização falhou: {item.avisoAutorizacao}
+      <span className="flex flex-wrap items-center gap-1 text-3xs text-warning">
+        <AlertTriangle size={11} className="shrink-0" /> criada, mas a autorização falhou: {item.avisoAutorizacao}
         {status?.number && <span className="text-zinc-400">nº {status.number}</span>}
         {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={9} /></a>}
       </span>
     )
   }
   return (
-    <span className={`mt-1 flex flex-wrap items-center gap-1 text-3xs ${autorizada ? 'text-success' : 'text-action-primary'}`}>
-      {autorizada ? <CheckCircle2 size={11} /> : <Loader2 size={11} className="animate-spin" />}
-      {autorizada ? 'NF autorizada' : `NF ${st ? st.toLowerCase() : 'processando'}`}
+    <span className={`flex flex-wrap items-center gap-1 text-3xs ${autorizada ? 'text-success' : 'text-action-primary'}`}>
+      {autorizada ? <CheckCircle2 size={11} className="shrink-0" /> : <Loader2 size={11} className="shrink-0 animate-spin" />}
+      {labelStatusNota(st)}
       {status?.number && <span className="text-zinc-400">nº {status.number}</span>}
       {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={9} /></a>}
       {item.registroFalhou && <span className="text-warning">(registro local falhou)</span>}
@@ -522,40 +549,98 @@ function LinhaResultadoNota({ item, status }: { item: ItemNota; status?: NotaSta
   )
 }
 
-// ── Painel de resultado da emissão de boletos ─────────────────────────────────
-function ResultadoEmissaoCard({ resultado }: { resultado: ResultadoEmissao }) {
-  const { emitidos, jaExistiam, falharam, pulados, ambiente } = resultado
-  const okN = emitidos.length + jaExistiam.length
+// ── Cartão de contagem (stat tile) — número em destaque + rótulo, tom semântico ──
+function Contagem({ n, rotulo, tom }: { n: number; rotulo: string; tom: 'success' | 'danger' | 'zinc' }) {
+  const cor = tom === 'success' ? 'text-success' : tom === 'danger' ? 'text-danger' : 'text-zinc-500'
   return (
-    <Card title="Resultado da emissão de boletos" subtitle={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'}`}>
-      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
-        <span className="text-success font-medium">{okN} {okN === 1 ? 'boleto' : 'boletos'} ok{jaExistiam.length > 0 ? ` (${jaExistiam.length} já existia${jaExistiam.length === 1 ? '' : 'm'})` : ''}</span>
-        {falharam.length > 0 && <span className="text-danger font-medium">{falharam.length} {falharam.length === 1 ? 'falhou' : 'falharam'}</span>}
-        {pulados.length > 0 && <span className="text-zinc-500">{pulados.length} pulada{pulados.length === 1 ? '' : 's'} (já emitidas)</span>}
+    <div className="rounded-lg border border-zinc-100 bg-zinc-50/60 px-3 py-2 min-w-[92px]">
+      <div className={`text-lg font-semibold tabular-nums leading-none ${cor}`}>{n}</div>
+      <div className="mt-1 text-3xs text-zinc-500">{rotulo}</div>
+    </div>
+  )
+}
+
+// ── Erros AGRUPADOS por motivo (cada motivo uma vez) + "Ver detalhes" (estado local) ──
+interface FaturaErro { pessoa: string; fatura: string; erro: string }
+function ErrosAgrupados({ itens, valorPorFatura }: {
+  itens: FaturaErro[]; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>
+}) {
+  const grupos = useMemo(() => {
+    const m = new Map<string, { pessoa: string; fatura: string; valor: number | null }[]>()
+    for (const it of itens) {
+      const arr = m.get(it.erro) ?? []
+      arr.push({ pessoa: it.pessoa || it.fatura, fatura: it.fatura, valor: valorPorFatura.get(it.fatura)?.valor ?? null })
+      m.set(it.erro, arr)
+    }
+    return [...m.entries()].sort((a, b) => b[1].length - a[1].length)
+  }, [itens, valorPorFatura])
+  if (grupos.length === 0) return null
+  return (
+    <div className="mt-3 border-t border-zinc-100 pt-3 space-y-1.5">
+      <p className="text-2xs font-medium text-zinc-600">{itens.length} {itens.length === 1 ? 'falha' : 'falhas'}, por motivo:</p>
+      {grupos.map(([motivo, faturas]) => <GrupoErro key={motivo} motivo={motivo} faturas={faturas} />)}
+    </div>
+  )
+}
+
+function GrupoErro({ motivo, faturas }: { motivo: string; faturas: { pessoa: string; fatura: string; valor: number | null }[] }) {
+  const [aberto, setAberto] = useState(false)
+  return (
+    <div className="text-2xs">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-zinc-600"><span className="text-danger">{motivo}</span> · {faturas.length} {faturas.length === 1 ? 'fatura' : 'faturas'}</span>
+        <button type="button" onClick={() => setAberto(a => !a)} aria-expanded={aberto}
+          className="foco-neutro shrink-0 text-3xs text-action-primary hover:underline">
+          {aberto ? 'Ocultar' : 'Ver detalhes'}
+        </button>
       </div>
-      {falharam.length > 0 && (
-        <ul className="mt-3 space-y-1 border-t border-zinc-100 pt-3 text-2xs text-zinc-600">
-          {falharam.map((it, i) => (<li key={`${it.ref}-${i}`}><span className="font-medium text-zinc-700">{it.pessoa || it.ref}</span> — <span className="text-danger">{it.erro}</span></li>))}
+      {aberto && (
+        <ul className="mt-1 mb-1.5 pl-3 space-y-0.5">
+          {faturas.map((f, i) => (
+            <li key={`${f.fatura}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-zinc-700">{f.pessoa}</span>
+              <span className="text-zinc-400">Fatura {f.fatura}</span>
+              {f.valor != null && <span className="tabular-nums text-zinc-500"><span className="text-[var(--text-subtle)]">R$</span> {numBRL2(f.valor)}</span>}
+            </li>
+          ))}
         </ul>
       )}
+    </div>
+  )
+}
+
+// ── Painel de resultado da emissão de boletos (cartões + erros agrupados) ─────
+function ResultadoEmissaoCard({ resultado, valorPorFatura }: {
+  resultado: ResultadoEmissao; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>
+}) {
+  const { emitidos, jaExistiam, falharam, pulados, ambiente } = resultado
+  return (
+    <Card title="Resultado da emissão de boletos" subtitle={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'}`}>
+      <div className="flex flex-wrap gap-3">
+        <Contagem n={emitidos.length} rotulo={emitidos.length === 1 ? 'boleto emitido' : 'boletos emitidos'} tom="success" />
+        {jaExistiam.length > 0 && <Contagem n={jaExistiam.length} rotulo="já emitidos" tom="zinc" />}
+        {pulados.length > 0 && <Contagem n={pulados.length} rotulo={pulados.length === 1 ? 'pulado' : 'pulados'} tom="zinc" />}
+        {falharam.length > 0 && <Contagem n={falharam.length} rotulo={falharam.length === 1 ? 'falhou' : 'falharam'} tom="danger" />}
+      </div>
+      <ErrosAgrupados itens={falharam.map(it => ({ pessoa: it.pessoa, fatura: it.ref, erro: it.erro ?? 'Erro' }))} valorPorFatura={valorPorFatura} />
       <p className="mt-3 text-3xs text-zinc-400">Cada boleto é independente: as falhas não afetam os já emitidos. Reprocessar não duplica — as faturas já emitidas são puladas.</p>
     </Card>
   )
 }
 
-// ── Painel de resultado da emissão de notas + atualizar status ────────────────
-function ResultadoNotaCard({ resultado, onAtualizar, atualizando, podeAtualizar }: {
-  resultado: ResultadoNotas; onAtualizar: () => void; atualizando: boolean; podeAtualizar: boolean
+// ── Painel de resultado da emissão de notas + atualizar status (cartões + erros agrupados) ──
+function ResultadoNotaCard({ resultado, valorPorFatura, onAtualizar, atualizando, podeAtualizar }: {
+  resultado: ResultadoNotas; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>; onAtualizar: () => void; atualizando: boolean; podeAtualizar: boolean
 }) {
   const { emitidas, jaExistiam, falharam, puladas, ambiente } = resultado
-  const okN = emitidas.length + jaExistiam.length
   return (
     <Card title="Resultado da emissão de notas fiscais" subtitle={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'} · a NF é assíncrona`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
-          <span className="text-success font-medium">{okN} {okN === 1 ? 'nota' : 'notas'} ok{jaExistiam.length > 0 ? ` (${jaExistiam.length} já existia${jaExistiam.length === 1 ? '' : 'm'})` : ''}</span>
-          {falharam.length > 0 && <span className="text-danger font-medium">{falharam.length} {falharam.length === 1 ? 'falhou' : 'falharam'}</span>}
-          {puladas.length > 0 && <span className="text-zinc-500">{puladas.length} pulada{puladas.length === 1 ? '' : 's'}</span>}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Contagem n={emitidas.length} rotulo={emitidas.length === 1 ? 'nota emitida' : 'notas emitidas'} tom="success" />
+          {jaExistiam.length > 0 && <Contagem n={jaExistiam.length} rotulo="já emitidas" tom="zinc" />}
+          {puladas.length > 0 && <Contagem n={puladas.length} rotulo={puladas.length === 1 ? 'pulada' : 'puladas'} tom="zinc" />}
+          {falharam.length > 0 && <Contagem n={falharam.length} rotulo={falharam.length === 1 ? 'falhou' : 'falharam'} tom="danger" />}
         </div>
         {podeAtualizar && (
           <button
@@ -567,11 +652,7 @@ function ResultadoNotaCard({ resultado, onAtualizar, atualizando, podeAtualizar 
           </button>
         )}
       </div>
-      {falharam.length > 0 && (
-        <ul className="mt-3 space-y-1 border-t border-zinc-100 pt-3 text-2xs text-zinc-600">
-          {falharam.map((it, i) => (<li key={`${it.ref}-${i}`}><span className="font-medium text-zinc-700">{it.pessoa || it.ref}</span> — <span className="text-danger">{it.erro}</span></li>))}
-        </ul>
-      )}
+      <ErrosAgrupados itens={falharam.map(it => ({ pessoa: it.pessoa, fatura: it.faturaClienteNo || it.ref, erro: it.erro ?? 'Erro' }))} valorPorFatura={valorPorFatura} />
       <p className="mt-3 text-3xs text-zinc-400">
         A autorização da prefeitura pode levar alguns minutos. Clique em “Atualizar status” para ver quando cada nota fica <b>autorizada</b> e abrir o link. Reprocessar não duplica — as notas já emitidas (normal e avulsa) são puladas.
       </p>
