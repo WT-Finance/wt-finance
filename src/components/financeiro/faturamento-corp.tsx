@@ -218,17 +218,8 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho + badge de ambiente (SEMPRE visível) */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Faturamento Corporativo</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">
-            Importe a planilha, confira o cruzamento e emita boletos e notas fiscais das faturas prontas.
-          </p>
-        </div>
-        <AmbienteBadge ambiente={ambiente} configurado={configurado} />
-      </div>
-
+      {/* Título/subtítulo + badge de ambiente vivem no wrapper de abas (faturamento-corp-content),
+          compartilhados entre Emissão e Cadastro. Aqui a Emissão começa direto no upload. */}
       {/* Upload */}
       <Card>
         <div
@@ -469,7 +460,7 @@ function ControleNota({ fatura, desabilitado, onModo, onValorAvulso }: {
 }
 
 // ── Badge de ambiente — SEMPRE visível; produção é forte e vermelho ───────────
-function AmbienteBadge({ ambiente, configurado }: Props) {
+export function AmbienteBadge({ ambiente, configurado }: Props) {
   if (ambiente === 'producao') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md border border-danger bg-danger-bg px-2.5 py-1 text-xs font-semibold text-danger">

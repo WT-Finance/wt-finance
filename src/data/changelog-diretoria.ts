@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.33.0',
+    data: '2026-07-01T13:43',
+    itens: [
+      { tipo: 'novidade', texto: 'O Faturamento Corporativo agora tem uma aba de Cadastro de Clientes: os dados dos clientes corporativos (situação, dias de faturamento, regras, juros/multa e os e-mails de destino) passam a viver na plataforma, importados da planilha e editáveis na tela — a planilha paralela deixa de ser necessária. É mais um passo rumo a ter, na própria plataforma, a base central de clientes da empresa.' },
+      { tipo: 'novidade', texto: 'A importação substitui os clientes vindos da planilha e preserva os que você cadastrou à mão; nomes duplicados são impedidos e avisados. Por ora o cadastro serve de referência (guarda e organiza as regras); aplicá-las automaticamente na emissão será um passo futuro. A parte de Emissão de boletos e notas continua funcionando exatamente como antes.' },
+    ],
+  },
+  {
     versao: '4.32.0',
     data: '2026-07-01T10:11',
     itens: [
