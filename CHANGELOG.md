@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.32.0] — 2026-07-01
+
+MINOR · **Faturamento Corporativo — Fase 2 (emissão de NOTAS FISCAIS / NFS-e no SANDBOX).** Documento fiscal — irreversível, mesmo rigor do boleto. Diferença estrutural: a NF é **assíncrona** (solicitada → processando → autorizada em minutos). **ADR-0136 · migration 0163 (escrita aditiva).**
+
+- **NF opcional por fatura, a partir da revisão:** controles na tela por linha — **Não emitir / Normal (valor = boleto) / Avulsa (valor próprio)**. Boleto segue sempre a base (Fase 1); a NF é um opcional por cima. Só faturas **prontas-NF** (CPF/CNPJ + **endereço + CEP**) habilitam a NF.
+- **Idempotência com `-AVULSA`:** antes de criar, consulta o registro (`nota_existentes`) e o Asaas (`GET /invoices?externalReference=`). NF normal usa a `Fatura Cliente Nº`; NF avulsa usa `<ref>-AVULSA` — chaves separadas que não colidem. Reprocessar a mesma planilha não duplica (normal e avulsa tratadas em separado).
+- **Assíncrona + refresh de status:** `createInvoice` + `authorizeInvoice` não deixam a nota pronta; a UI mostra “processando”. Um botão **Atualizar status** consulta o Asaas e, quando **AUTHORIZED**, grava número/PDF e mostra o link **“ver nota”** (abre o `pdfUrl`).
+- **`ensureCustomer` estendido:** a NF exige endereço no cliente — o cadastro existente sem endereço é completado (PUT) com os dados da base de pessoas antes de emitir. O caminho do boleto (Fase 1) fica inalterado.
+- **Campos fiscais fixos da Welcome** (do script legado): descrição de serviço, código municipal 9.02, ISS 5%, `deductions = value`, `effectiveDate` (Emissão → hoje). Vínculo **soft** ao boleto (`payment` XOR `customer`).
+- **Migration 0163 (aditiva):** `app.fatura_nota` (`external_reference` UNIQUE com `-AVULSA`, modo, valor, status que evolui, pdf/xml/number, ambiente, quem/quando; RLS deny-by-default) + RPCs `registrar_nota` (UPSERT que não sobrescreve nota criada), `atualizar_status_nota` (refresh) e `nota_existentes`. Confirmação explícita, falha parcial e rastreabilidade como a Fase 1. Auto-auditoria adversarial. **Pendência (Fase 4):** entrega elaborada do PDF (download/anexo) — a Fase 2 entrega o link.
+
 ## [4.31.0] — 2026-06-30
 
 MINOR · **Faturamento Corporativo — Fase 1b (emissão de boletos no SANDBOX + registro).** A funcionalidade mais sensível da plataforma — emite boletos de verdade via Asaas, ação irreversível sobre dinheiro. Toda esta entrega roda contra o **SANDBOX**. **ADR-0135 · migration 0162 (primeira de escrita-no-mundo).**

@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.32.0',
+    data: '2026-07-01T10:11',
+    itens: [
+      { tipo: 'novidade', texto: 'O Faturamento Corporativo agora também emite notas fiscais (NFS-e), direto da tela de revisão, junto com os boletos. Por fatura, escolhe-se se a nota sai: Normal (mesmo valor do boleto), Avulsa (com um valor próprio, quando a nota precisa ser de valor diferente da cobrança) ou não emitir. Como a nota fiscal depende dos dados de endereço do cliente, a tela mostra claramente quais faturas estão prontas para nota. Assim como os boletos, tudo roda em ambiente de testes (sandbox) nesta etapa.' },
+      { tipo: 'novidade', texto: 'A nota fiscal, por natureza, não fica pronta na hora — a prefeitura leva alguns minutos para autorizar. A plataforma acompanha isso: a nota aparece como “processando” e, com um clique em “Atualizar status”, mostra quando foi autorizada, com o número e um link para abrir a nota. Emitir duas vezes não duplica, e cada nota é independente — se uma falha, as demais seguem, e você vê exatamente o que aconteceu com cada uma.' },
+    ],
+  },
+  {
     versao: '4.31.0',
     data: '2026-06-30T15:25',
     itens: [
