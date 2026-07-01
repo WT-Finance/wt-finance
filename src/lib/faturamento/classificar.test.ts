@@ -15,22 +15,22 @@ const fat = (pessoa: string | null, p: Partial<FaturaRaw> = {}): FaturaRaw => ({
 })
 
 describe('classificarFaturas — cruzamento da Fase 1a (v4.30.0)', () => {
-  it("casou + tem CPF/CNPJ + endereço/CEP/e-mail → 'pronta' + prontaNf (emitir sugerido true)", () => {
-    const mapa = mapaPorNome([cad('Acme Ltda', { cnpj: '00111222000133', endereco: 'Rua X', cep: '66035145', email: 'contato@acme.com' })])
+  it("casou + tem CPF/CNPJ + endereço/CEP → 'pronta' + prontaNf (emitir sugerido true)", () => {
+    const mapa = mapaPorNome([cad('Acme Ltda', { cnpj: '00111222000133', endereco: 'Rua X', cep: '66035145' })])
     const { faturas, resumo } = classificarFaturas([fat('Acme Ltda')], mapa)
     expect(faturas[0].status).toBe('pronta')
     expect(faturas[0].faltam).toEqual([])
     expect(faturas[0].emitir).toBe(true)
-    expect(faturas[0].prontaNf).toBe(true) // tem CPF/CNPJ + endereço + CEP + e-mail
+    expect(faturas[0].prontaNf).toBe(true) // CPF/CNPJ + endereço + CEP (e-mail NÃO entra — Asaas valida)
     expect(resumo.prontas).toBe(1)
   })
 
-  it("pronta-boleto mas SEM e-mail → NÃO pronta-NF (o Asaas exige e-mail do tomador)", () => {
+  it("SEM e-mail na base ainda é pronta-NF (permissivo: o Asaas valida o e-mail na emissão)", () => {
     const mapa = mapaPorNome([cad('Sem Email SA', { cnpj: '55', endereco: 'Rua Z', cep: '22222222' })]) // sem email
     const { faturas } = classificarFaturas([fat('Sem Email SA')], mapa)
-    expect(faturas[0].status).toBe('pronta')     // boleto ok (só exige CPF/CNPJ)
-    expect(faturas[0].prontaNf).toBe(false)      // NF exige e-mail
-    expect(faturas[0].faltam).toContain('E-mail')
+    expect(faturas[0].status).toBe('pronta')
+    expect(faturas[0].prontaNf).toBe(true)          // e-mail não bloqueia a prontidão-NF
+    expect(faturas[0].faltam).not.toContain('E-mail') // e-mail fora de camposFaltantes
   })
 
   it("casou mas SEM CPF/CNPJ → 'sem_dados_fiscais' (emitir false; faltam lista CPF/CNPJ)", () => {
@@ -56,11 +56,11 @@ describe('classificarFaturas — cruzamento da Fase 1a (v4.30.0)', () => {
     expect(faturas[0].status).toBe('pronta')
   })
 
-  it('pronta mas falta Endereço/CEP/e-mail → faltam sinaliza (NF na fase 2), mas status pronta (boleto)', () => {
-    const mapa = mapaPorNome([cad('Delta', { cnpj: '77' })]) // tem cnpj, sem endereço/cep/email
+  it('pronta mas falta Endereço/CEP → faltam sinaliza (NF na fase 2), mas status pronta (boleto)', () => {
+    const mapa = mapaPorNome([cad('Delta', { cnpj: '77' })]) // tem cnpj, sem endereço/cep
     const { faturas } = classificarFaturas([fat('Delta')], mapa)
     expect(faturas[0].status).toBe('pronta')
-    expect(faturas[0].faltam).toEqual(['Endereço', 'CEP', 'E-mail'])
+    expect(faturas[0].faltam).toEqual(['Endereço', 'CEP'])
     expect(faturas[0].prontaNf).toBe(false)
   })
 

@@ -9,7 +9,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import { parseRpc, buscarPessoasSchema } from '@/lib/schemas-rpc'
 import type { PessoaCadastro } from '@/lib/faturamento/tipos'
-import { asaasAmbiente, asaasConfigurado, onlyDigits, emailValido, type AsaasAmbiente } from '@/lib/asaas/client'
+import { asaasAmbiente, asaasConfigurado, onlyDigits, type AsaasAmbiente } from '@/lib/asaas/client'
 import { ensureCustomer, type DadosCliente } from '@/lib/asaas/customers'
 import { findPaymentByExternalRef, criarBoleto } from '@/lib/asaas/boletos'
 import {
@@ -358,8 +358,8 @@ export async function emitirNotas(
       if (!cadastro) { out.falharam.push({ ...base, erro: 'Cliente não encontrado na base de pessoas.' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente não encontrado na base.'); continue }
       if (!cpfCnpj)  { out.falharam.push({ ...base, erro: 'Cliente sem CPF/CNPJ na base.' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente sem CPF/CNPJ.'); continue }
       if (!cadastro.endereco || !cadastro.cep) { out.falharam.push({ ...base, erro: 'Cliente sem endereço/CEP na base (a NF exige).' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente sem endereço/CEP (NF exige).'); continue }
-      // E-mail do tomador é exigido pelo Asaas para autorizar a NFS-e (validação da API, não nossa).
-      if (!emailValido(cadastro.email)) { out.falharam.push({ ...base, erro: 'Cliente sem e-mail válido na base (a NF exige o e-mail do tomador).' }); await registrarFalhaNota(db, base, valor, ambiente, 'Cliente sem e-mail válido (NF exige).'); continue }
+      // E-mail: NÃO barra aqui (permissivo). ensureCustomer completa o e-mail da base quando o Asaas
+      // não tem; se ficar sem e-mail em lugar nenhum, o Asaas recusa a NF e reportamos como falha parcial.
 
       const dados: DadosCliente = {
         nome: pessoa || cadastro.nome, cpfCnpj, email: cadastro.email,
