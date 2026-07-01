@@ -214,7 +214,7 @@ ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de t
 
 ### 2. Implementação
 - Seguir a estrutura de fases do prompt.
-- **Identificar oportunidades de paralelização proativamente**, garantindo não-conflito (ver "Paralelização" abaixo).
+- **Identificar oportunidades de paralelização proativamente**, garantindo não-conflito (ver "Subagentes e paralelização" abaixo).
 - Commits Conventional Commits em pt-BR, **um por missão**, com `git add <arquivos específicos>` — nunca `git add -A` cego.
 - Rodar `build` + `tsc` + `lint` ao final de cada missão, não só no fim de tudo.
 - **Reportar o progresso pelo chat** (sem criar arquivo de relatório).
@@ -244,8 +244,39 @@ ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de t
 
 ---
 
-## Paralelização (regra de ouro)
+## Subagentes e paralelização (regra de ouro)
 
+### Modelos por camada
+- **Sessão principal (orquestrador): Opus** — fixado em `.claude/settings.json`. Interpreta
+  o briefing, planeja, delega, serializa operações com estado e **revisa criticamente** o que
+  os subagentes retornam antes de integrar.
+- **Subagentes: Sonnet** — fixado no frontmatter de cada agente em `.claude/agents/`.
+- A sessão principal **não faz exploração extensa nem edição em massa diretamente** — isso é
+  trabalho dos subagentes; o ruído (leituras, buscas, tentativas) morre no contexto deles.
+
+### Agentes nomeados (`.claude/agents/`)
+- **`explorador`** (read-only: Read/Glob/Grep) — levantamento de contexto antes de implementar:
+  mapear arquivos e fluxos reais, localizar padrões, verificar numeração real de ADR/migration.
+  Retorna achados condensados; sinaliza riscos (RLS permissivo, caminho não-atômico) mesmo fora
+  do escopo perguntado.
+- **`implementador`** (editor: Read/Write/Edit/Glob/Grep) — escrita de código em blocos bem
+  especificados. **Editor puro**: não roda gates; edita e reporta. Migration nova recebe o
+  número exato do orquestrador e **não é aplicada** pelo subagente (regra já vigente em
+  "Convenções de migration").
+
+### Protocolo de delegação
+Subagentes **não veem o histórico da sessão** — cada delegação é autocontida e inclui:
+1. **Objetivo** — o que deve existir ao final, em uma frase.
+2. **Contexto** — arquivos/áreas envolvidos e achados relevantes do explorador (repassados).
+3. **Padrões** — convenções aplicáveis deste arquivo (tokens, primitivos de UI, coerção etc.).
+4. **Critério verificável de conclusão** — como saber que terminou. Como o subagente não roda
+   gates, o critério é de **estado dos arquivos** (o quê existe/mudou); `build`/`tsc`/`lint`/
+   `test` rodam depois, serializados pelo orquestrador.
+
+Dúvida de produto ou de arquitetura num subagente **retorna à sessão principal** — que decide
+(se técnico) ou pergunta ao usuário (se produto; na dúvida, é produto).
+
+### Regras de paralelização
 A paralelização acontece por **subagentes editando arquivos disjuntos dentro de uma
 única worktree da versão**. Não é uma worktree por missão.
 
