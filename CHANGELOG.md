@@ -6,6 +6,16 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.33.0] — 2026-07-01
+
+MINOR · **Faturamento Corporativo — Fase 3 (Cadastro de Clientes).** Traz a planilha paralela de clientes corporativos (241 clientes: situação, dias, regras, % juros/multa, destinatários) para a plataforma como **cadastro gerenciável** — rumo à base central de clientes. **ADR-0137 · migration 0164 (escrita aditiva).** Reusa a mecânica do Fluxo de Caixa Gerencial.
+
+- **Estrutura de abas:** Faturamento Corporativo ganha duas abas — **Emissão** (Fases 1a/1b/2, **preservada byte-idêntica** — a emissão de boletos/notas segue idêntica) e **Cadastro de Clientes** (novo).
+- **Cadastro gerenciável** (`app.cliente_corporativo`, RLS deny-by-default): tabela editável inline, filtro de origem (Toda/Planilha/Manual) + situação, Nova linha (manual), Importar, Apagar — reusando o padrão do Gerencial. **Import substitui só os de origem planilha e mantém os manuais**; reporta colisões com manuais e nomes repetidos na planilha (não quebra). **Nome único** (normalizado: trim + minúsculo + colapso de espaços) impede duplicados.
+- **Cadastro é REFERÊNCIA (Visão A):** as regras (obs, juros/multa, dias) ficam registradas e legíveis; a plataforma **NÃO** as aplica automaticamente no faturamento (evolução futura). A Emissão não consome o cadastro nesta fase.
+- **Destinatários como texto:** guarda a string concatenada ("email1; email2") do "ENVIAR PARA" (ignora as colunas EMAIL 1-6); o split é da Fase 4 (envio). Parser client-side (`parse-clientes-corp`, obrigatória EMPRESA).
+- **Migration 0164 (aditiva):** `app.cliente_corporativo` + RPCs `SECURITY DEFINER` (importar/inserir/atualizar/excluir/apagar/listar) + `buscar_cliente_corporativo` (lookup read-only, scaffolding para a Fase 4). Auto-auditoria adversarial.
+
 ## [4.32.0] — 2026-07-01
 
 MINOR · **Faturamento Corporativo — Fase 2 (emissão de NOTAS FISCAIS / NFS-e no SANDBOX).** Documento fiscal — irreversível, mesmo rigor do boleto. Diferença estrutural: a NF é **assíncrona** (solicitada → processando → autorizada em minutos). **ADR-0136 · migration 0163 (escrita aditiva).**
