@@ -23,9 +23,8 @@ export default async function FaturamentoCorpPage() {
     clientes = []
   }
 
-  return (
-    <div className="max-w-5xl mx-auto px-4">
-      <FaturamentoCorpContent ambiente={asaasAmbiente()} configurado={asaasConfigurado()} clientes={clientes} />
-    </div>
-  )
+  // A largura do container é decidida pelo wrapper conforme a aba ativa (Emissão 5xl,
+  // Cadastro 7xl para usar o espaço lateral na tabela densa) — por isso NÃO impomos max-w aqui.
+  return <FaturamentoCorpContent ambiente={asaasAmbiente()} configurado={asaasConfigurado()} clientes={clientes} />
+
 }

@@ -509,14 +509,18 @@ function ControleNota({ fatura, desabilitado, onModo, onValorAvulso }: {
 // ── Badge de ambiente — SEMPRE visível; produção é forte e vermelho ───────────
 export function AmbienteBadge({ ambiente, configurado }: Props) {
   if (ambiente === 'producao') {
+    // Produção = NEUTRO. A badge é só indicador; o gate real de "documentos reais" é a
+    // confirmação obrigatória (digitar EMITIR) no modal de emissão — essa trava NÃO muda.
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-md border border-danger bg-danger-bg px-2.5 py-1 text-xs font-semibold text-danger">
+      <span className="inline-flex items-center gap-1.5 rounded-md border border-action-soft-border bg-action-soft px-2.5 py-1 text-xs font-semibold text-action-primary">
         <ShieldAlert size={14} /> PRODUÇÃO · documentos reais
       </span>
     )
   }
+  // Sandbox = ÂMBAR (tokens --gestao, os mesmos dos botões de permissão específica) —
+  // destaca que se está em MODO TESTE (nada é real); some ao entrar em produção.
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-action-soft-border bg-action-soft px-2.5 py-1 text-xs font-medium text-action-primary">
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-gestao bg-gestao-soft px-2.5 py-1 text-xs font-medium text-gestao-fg">
       <FlaskConical size={14} /> Ambiente de testes (sandbox){!configurado && ' · sem chave'}
     </span>
   )
