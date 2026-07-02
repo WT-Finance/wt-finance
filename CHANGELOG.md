@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.34.1] — 2026-07-02
+
+PATCH · **Correção visual do cabeçalho fixo (sticky) das tabelas com scroll interno.** Sem migration. Nas tabelas de **Cadastro de Clientes** (Faturamento) e **Base de Dados** (Fluxo de Caixa Gerencial), ao rolar, linhas de dados **vazavam** através do cabeçalho fixo. Causa: em `border-collapse` o fundo aplicado no `<tr>` deixa a faixa da borda entre linhas transparente. Correção: fundo opaco nas **células** (`[&_th]:bg-white` + `bg-white` no `thead`), `z-20`, e divisória na célula da última linha do cabeçalho (`[&_tr:last-child_th]:border-b`). Padrão corrigido no CLAUDE.md e no Design System §7.
+
 ## [4.34.0] — 2026-07-01
 
 MINOR · **Acervo de Documentos (Financeiro) — capacidade nova.** Página `/financeiro/acervo`: biblioteca de documentos do financeiro em formato de glossário A–Z, com busca client-side e download por link temporário. **ADR-0139 · migration 0165 (aditiva, aplicada — backup-gate verde).**
