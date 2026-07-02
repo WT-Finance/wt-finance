@@ -282,9 +282,10 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       </div>
 
       {/* Tabela */}
-      <div className="overflow-x-auto">
+      {/* Scroll INTERNO da tabela (x + y) com o cabeçalho FIXO no topo (sticky). */}
+      <div className="overflow-auto max-h-[70vh]">
         <table className="w-full text-sm table-fixed min-w-[860px]">
-          <thead>
+          <thead className="sticky top-0 z-10 [&_tr]:bg-white">
             <tr className="border-b border-zinc-100 text-left">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}

@@ -253,7 +253,7 @@ export default function CalculadoraRateio() {
               <table className="w-full min-w-[28rem] table-fixed text-2xs">
                 <colgroup><col className="w-14" /><col className="w-28" /><col /><col className="w-32" /></colgroup>
                 <thead>
-                  <tr className="border-b border-zinc-100 text-left uppercase tracking-wide text-zinc-400">
+                  <tr className="border-b border-zinc-100 text-left font-medium text-zinc-400">
                     <th className="py-1 px-1.5">Linha</th>
                     <th className="py-1 px-1.5">Venda Nº</th>
                     <th className="py-1 px-1.5">Setor</th>
