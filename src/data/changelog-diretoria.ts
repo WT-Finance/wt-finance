@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.34.0',
+    data: '2026-07-01T23:05',
+    itens: [
+      { tipo: 'novidade', texto: 'Novo Acervo de Documentos na área Financeiro: uma biblioteca organizada de A a Z onde a equipe encontra modelos, manuais e documentos de referência, com busca por título, descrição ou nome do arquivo.' },
+      { tipo: 'novidade', texto: 'O acesso ao Acervo tem dois níveis de permissão — visualizar a biblioteca e adicionar/excluir documentos (com confirmação antes de excluir) — concedidos individualmente na tela de Usuários e Acessos, para que cada pessoa tenha só o acesso necessário.' },
+    ],
+  },
+  {
     versao: '4.33.2',
     data: '2026-07-02T09:41',
     itens: [

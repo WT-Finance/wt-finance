@@ -33,6 +33,7 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     ['/financeiro',                         ['financeiro/fluxo-caixa', 'financeiro/gerencial']],
     ['/financeiro/fluxo-caixa',             ['financeiro/fluxo-caixa', 'financeiro/gerencial']],
     ['/financeiro/fluxo-caixa/gerencial',   ['financeiro/gerencial']],
+    ['/financeiro/acervo',                  ['financeiro/acervo', 'financeiro/acervo/gestao']],
     ['/admin/uploads',                      ['admin/uploads']],
     ['/admin/uploads/financeiro',           ['admin/uploads']],
     ['/admin/design-system',                ['admin/design-system']],
