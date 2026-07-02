@@ -257,3 +257,19 @@ export const buscarPessoasSchema = z.array(z.object({
   celular:             z.string().nullable(),
 }).passthrough())
 export type BuscarPessoas = z.infer<typeof buscarPessoasSchema>
+
+/** Acervo de Documentos (v4.34.0, migration 0165) — item de acervo_listar/acervo_criar.
+ *  NUNCA inclui storage_path/criado_por (a RPC não os expõe). */
+export const acervoDocSchema = z.object({
+  id:            z.number(),
+  titulo:        z.string(),
+  descricao:     z.string(),
+  nome_arquivo:  z.string(),
+  mime:          z.string(),
+  tamanho_bytes: z.number(),
+  criado_em:     z.string(),
+}).passthrough()
+export type AcervoDocumento = z.infer<typeof acervoDocSchema>
+
+/** acervo_listar → array de documentos, ordenado por título. */
+export const acervoListaSchema = z.array(acervoDocSchema)
