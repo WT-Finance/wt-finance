@@ -11,6 +11,8 @@ export const AREAS = [
   'financeiro/fluxo-caixa',
   'financeiro/gerencial',
   'financeiro/faturamento-corp',
+  'financeiro/acervo',
+  'financeiro/acervo/gestao',
   'metas',
   'admin/uploads',
   'admin/design-system',
@@ -34,6 +36,12 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   'financeiro/fluxo-caixa':  { rotulo: 'Fluxo de Caixa',            grupo: 'Financeiro',    ordem: 30 },
   'financeiro/gerencial':    { rotulo: 'Fluxo de Caixa Gerencial',  grupo: 'Financeiro',    ordem: 31 },
   'financeiro/faturamento-corp': { rotulo: 'Faturamento Corporativo', grupo: 'Financeiro',  ordem: 32 },
+  // Acervo de Documentos em DOIS níveis (v4.34.0), mesmo padrão de
+  // solicitacoes/basico × solicitacoes (0127/0144): 'financeiro/acervo' = ver a
+  // biblioteca; 'financeiro/acervo/gestao' = adicionar documentos (INCLUI a visão —
+  // a página faz OR das duas áreas, então quem só tem gestão também vê).
+  'financeiro/acervo':        { rotulo: 'Acervo de Documentos',          grupo: 'Financeiro', ordem: 33 },
+  'financeiro/acervo/gestao': { rotulo: 'Acervo — Adicionar documentos', grupo: 'Financeiro', ordem: 34 },
   'metas':                   { rotulo: 'Metas',                     grupo: 'Geral',         ordem: 40 },
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },
@@ -75,6 +83,9 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/financeiro/fluxo-caixa/gerencial')) return ['financeiro/gerencial']
   if (p.startsWith('/financeiro/calculadora-rateio'))    return ['financeiro/gerencial']
   if (p.startsWith('/financeiro/faturamento-corp'))      return ['financeiro/faturamento-corp']
+  // Acervo em DOIS níveis: qualquer uma das duas libera a página (gestão inclui a
+  // visão); os botões de adicionar documento continuam exigindo só a de gestão.
+  if (p.startsWith('/financeiro/acervo'))       return ['financeiro/acervo', 'financeiro/acervo/gestao']
   if (p.startsWith('/financeiro'))              return ['financeiro/fluxo-caixa', 'financeiro/gerencial']
   if (p.startsWith('/executiva'))               return ['executiva']
   if (p.startsWith('/metas'))                   return ['metas']

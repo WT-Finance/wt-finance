@@ -5,6 +5,7 @@ import {
   rankingVendedoresRangeSchema, vendasReceitaNegativaSchema, executivaKpisSchema,
   vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
   mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema, buscarPessoasSchema,
+  acervoListaSchema, acervoDocSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -120,6 +121,10 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // (array de cadastros) contra a RPC viva. (raw.pessoas pode estar vazia → []; a forma do
   // objeto é coberta pelo classificar.test com fixtures.)
   { fn: 'buscar_pessoas',                params: { p_nomes: ['ZZ_INEXISTENTE_CONTRATO'] },                              schema: buscarPessoasSchema },
+  // v4.34.0: Acervo de Documentos. Service role passa o gate de exigir_acesso (retorna
+  // cedo, como as demais RPCs desta lista); o SHAPE (array de metadados, sem
+  // storage_path/criado_por) é validado contra a RPC viva.
+  { fn: 'acervo_listar',                 params: {},                                                                   schema: acervoListaSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -127,6 +132,17 @@ describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REA
     const d = await rpc(fn, params)
     const r = schema.safeParse(d)
     expect(r.success, r.success ? '' : `${fn} drift: ${JSON.stringify(r.error!.issues.slice(0, 6))}`).toBe(true)
+  })
+
+  // v4.34.0: proteção contra drift futuro — quando o acervo vivo tiver documentos reais,
+  // nenhum item pode vazar storage_path/criado_por (a RPC não deveria emiti-los; se um dia
+  // emitir, o schema com .passthrough() aceitaria em silêncio — este teste não).
+  it('acervo_listar: itens vivos (se houver) não vazam storage_path/criado_por', async () => {
+    const d = await rpc('acervo_listar', {}) as unknown as unknown[]
+    for (const item of d) {
+      expect(item).not.toHaveProperty('storage_path')
+      expect(item).not.toHaveProperty('criado_por')
+    }
   })
 })
 
@@ -171,6 +187,33 @@ describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-
     const semStatus: Record<string, unknown> = { ...SOLIC_JSON_FIXTURE }
     delete semStatus.status
     expect(solicitacaoSchema.safeParse(semStatus).success).toBe(false) // se passasse, o schema seria frouxo demais
+  })
+})
+
+// v4.34.0: o acervo em produção está VAZIO — o caso de acervo_listar em CONTRATOS_PARSE_RPC
+// valida `[]` e passa TRIVIALMENTE, sem exercitar nenhum item de verdade (mesma armadilha do
+// SOLIC_JSON_FIXTURE acima). Cobrimos o ITEM com um FIXTURE capturado do retorno REAL de
+// acervo_listar durante o round-trip E2E verificado da v4.34.0 (2026-07-01; o documento de
+// teste foi removido logo em seguida).
+const ACERVO_DOC_FIXTURE = {
+  id: 1,
+  mime: 'text/plain',
+  titulo: 'ZZZ TESTE E2E v4.34 — apagar',
+  criado_em: '2026-07-01T23:04:52.000317-03:00',
+  descricao: 'Registro de teste do round-trip — apagar.',
+  nome_arquivo: 'teste e2e (ação).txt',
+  tamanho_bytes: 30,
+}
+
+describe('contrato RPC — ITEM de acervo_listar (fixture real: acervo vivo estava vazio)', () => {
+  it('acervoDocSchema aceita um item REAL de acervo_listar (não só [])', () => {
+    const r = acervoDocSchema.safeParse(ACERVO_DOC_FIXTURE)
+    expect(r.success, r.success ? '' : `drift do item: ${JSON.stringify(r.error!.issues.slice(0, 8))}`).toBe(true)
+  })
+  it('o shape emitido pela RPC não vaza storage_path/criado_por (whitelist de chaves)', () => {
+    expect(Object.keys(ACERVO_DOC_FIXTURE).sort()).toEqual(
+      ['criado_em', 'descricao', 'id', 'mime', 'nome_arquivo', 'tamanho_bytes', 'titulo'],
+    )
   })
 })
 
@@ -319,6 +362,24 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
     for (const fn of ['solic_minhas', 'solic_caixa', 'solic_tipos_abertura', 'solic_destinatarios',
                       'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos', 'solic_movimentacoes']) {
       const status = await rpcAnonStatus(fn, {})
+      expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
+    }
+  })
+
+  // v4.34.0 Acervo de Documentos: leitura/escrita/download exigem sessão — anon negado
+  // nas 3 RPCs. acervo_criar com args mínimos garante que, mesmo que o guard falhasse,
+  // este teste pegaria ANTES de qualquer persistência (anon não tem EXECUTE → nada é criado).
+  it('Acervo: anon negado em todas as RPCs', async () => {
+    const params: Record<string, Record<string, unknown>> = {
+      acervo_listar: {},
+      acervo_criar: {
+        p_titulo: 'x', p_descricao: 'x', p_nome_arquivo: 'x', p_mime: 'x',
+        p_tamanho_bytes: 1, p_storage_path: 'docs/anon-negado/x',
+      },
+      acervo_doc_path: { p_doc_id: 1 },
+    }
+    for (const fn of ['acervo_listar', 'acervo_criar', 'acervo_doc_path']) {
+      const status = await rpcAnonStatus(fn, params[fn])
       expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
     }
   })

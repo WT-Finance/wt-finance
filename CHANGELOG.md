@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.34.0] — 2026-07-01
+
+MINOR · **Acervo de Documentos (Financeiro) — capacidade nova.** Página `/financeiro/acervo`: biblioteca de documentos do financeiro em formato de glossário A–Z, com busca client-side e download por link temporário. **ADR-0139 · migration 0165 (aditiva, aplicada — backup-gate verde).**
+
+- **Página nova sob RBAC próprio em DOIS níveis:** `financeiro/acervo` (ver a biblioteca) e `financeiro/acervo/gestao` (adicionar documentos — inclui a visão); guards de leitura fazem OR das duas. Botão "Adicionar" (âmbar, família de tokens `--gestao`) só aparece para quem tem a área de gestão. Grant inicial apertado (só roles com `admin/acessos`, mesmo padrão da 0161) — o admin libera outros roles pelo editor de Usuários e Acessos. Subitem novo na sidebar de Financeiro (`NavSubItem.areasAny`, campo novo, espelha o `areasAny` de `NavItem`).
+- **Glossário A–Z:** documentos agrupados pela letra inicial do título, ordem alfabética pt-BR acento-insensível, `#` por último. Busca por título/descrição/nome do arquivo (acento-insensível). Item mostra título > descrição > nome original do arquivo.
+- **Upload:** modal pede título + descrição (obrigatórios, validados em 3 camadas: client/action/RPC) + arquivo de **qualquer tipo**, máx. 25 MiB (client + action + `file_size_limit` do bucket). Binário sobe via service role a um bucket privado dedicado (`acervo-documentos`, sem policies em `storage.objects`); metadados persistem via RPC com o cliente de sessão (JWT real passa no gate). Nome do arquivo **sanitizado** no path do Storage (diacríticos removidos + whitelist de caracteres); nome original preservado como metadado de exibição/download. Cleanup best-effort do binário se a RPC falhar.
+- **Download por signed URL de 60s** (popup-safe — janela aberta antes do `await`, redirecionada depois).
+- **Migration 0165 (aditiva):** tabela `app.acervo_documento` (RLS deny-by-default) + bucket privado `acervo-documentos` (25 MiB, qualquer MIME) + as duas áreas RBAC + 3 RPCs no **padrão inline** (`exigir_acesso` como 1ª linha do corpo, sem o wrapper `__nucleo` da 0121 — retrofit legado, não mais o molde de RPC nova): `acervo_listar` (whitelist explícita, nunca expõe `storage_path`/`criado_por`), `acervo_criar` (só gestão), `acervo_doc_path` (devolve o path para a Action gerar a signed URL).
+- Verificação: REST smoke (listar `[]`; anon negado nas 3 RPCs; validação sem persistir) + round-trip E2E em produção (upload → criar → listar → doc_path → signed URL → download com conteúdo idêntico → limpeza total). Auto-auditoria adversarial: 3 correções aplicadas (`areasAny` na sidebar, fixture real + bloco anon-negado em `rpc-contrato.test.ts`, try/catch com cleanup na action de upload); risco aceito e documentado no ADR-0139 (`acervo_doc_path` devolve `storage_path` ao caller autenticado — mesmo desenho do precedente `solic_anexo_path`/ADR-0113).
+
 ## [4.33.1] — 2026-07-01
 
 PATCH · **Faturamento Corporativo — refinamento de UX da tela de Emissão** (só apresentação). **SEM migration.** **ADR-0138.** A lógica de emissão (Server Actions, camada Asaas, idempotência, falha parcial, assincronia da NF, confirmação de produção) é **byte-idêntica** — provado por `git diff` (só `faturamento-corp.tsx` mudou; aba Cadastro e camada intocadas).
