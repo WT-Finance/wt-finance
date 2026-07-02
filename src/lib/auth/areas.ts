@@ -38,10 +38,10 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   'financeiro/faturamento-corp': { rotulo: 'Faturamento Corporativo', grupo: 'Financeiro',  ordem: 32 },
   // Acervo de Documentos em DOIS níveis (v4.34.0), mesmo padrão de
   // solicitacoes/basico × solicitacoes (0127/0144): 'financeiro/acervo' = ver a
-  // biblioteca; 'financeiro/acervo/gestao' = adicionar documentos (INCLUI a visão —
-  // a página faz OR das duas áreas, então quem só tem gestão também vê).
+  // biblioteca; 'financeiro/acervo/gestao' = adicionar/excluir documentos (INCLUI a
+  // visão — a página faz OR das duas áreas, então quem só tem gestão também vê).
   'financeiro/acervo':        { rotulo: 'Acervo de Documentos',          grupo: 'Financeiro', ordem: 33 },
-  'financeiro/acervo/gestao': { rotulo: 'Acervo — Adicionar documentos', grupo: 'Financeiro', ordem: 34 },
+  'financeiro/acervo/gestao': { rotulo: 'Acervo de Documentos (gestão)', grupo: 'Financeiro', ordem: 34 },
   'metas':                   { rotulo: 'Metas',                     grupo: 'Geral',         ordem: 40 },
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },

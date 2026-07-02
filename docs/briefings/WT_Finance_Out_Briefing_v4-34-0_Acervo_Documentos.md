@@ -97,8 +97,14 @@ Um subagente cético revisou a implementação antes do fechamento. **Veredicto:
 - `package.json` / `package-lock.json` (bump de versão — feito pelo orquestrador)
 - `CLAUDE.md` (bullet de "Toda RPC de leitura exposta..." reescrito para documentar os dois padrões — inline para RPC nova, wrapper+`__nucleo` como legado de retrofit da 0121)
 
+## M6 — Ajustes de revisão (pedidos pós-implementação, mesmo PR)
+
+- **Sidebar:** "Acervo de Documentos" movido para o **topo** das subabas de Financeiro (`FINANCEIRO_SUBS`).
+- **Rótulo da permissão de gestão:** `'Acervo — Adicionar documentos'` → **`'Acervo de Documentos (gestão)'`**, seguindo o padrão de `'Solicitações (gestão)'`. A tela de Usuários e Acessos lê o rótulo do **banco** (`admin_listar_areas`), então a mudança exige a **migration `0167_acervo_rotulo_gestao.sql`** além do espelho `AREA_INFO` (atualizado em paridade). A 0167 é um `UPDATE` de 1 linha de catálogo (criada pela 0165 desta mesma versão) — **classificação DESTRUTIVA pelo regime** (UPDATE em dado existente), portanto **pendente de aplicação pelo usuário**: `npm run db:migrate -- --destrutiva` (confirmação humana no terminal, ADR-0131; o agente não consegue aplicar destrutiva por design). Idempotente; reversão documentada no header. Até a aplicação, a tela de Acessos mostra o rótulo antigo (vindo do banco).
+
 ## Pendências / fora de escopo
 
+- **Migration 0167 pendente de aplicação humana** (rótulo da permissão de gestão — ver M6): `npm run db:migrate -- --destrutiva`.
 - **Sem edição de documento** — decisão de produto; possível follow-up se solicitado. (A exclusão foi implementada na M5, mesma versão.)
 - **`PRIORIDADE_INICIAL` (redirect pós-login de `/`) não inclui as áreas do acervo** — um usuário cuja **única** área seja o acervo cai no fallback genérico de rota inicial em vez de abrir direto em `/financeiro/acervo`. Não afeta usuários que também têm outra área (caso mais comum hoje, dado o grant inicial apertado a admins). Achado a corrigir se/quando esse perfil de usuário existir.
 - **Binário órfão possível** se o cleanup best-effort da Action falhar após um erro na RPC — inofensivo (nunca listável, sem registro de metadados); limpeza manual eventual no Storage.
