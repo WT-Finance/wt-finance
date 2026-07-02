@@ -28,6 +28,7 @@ Aproveitando o PR aberto (ainda no checkpoint), nove ajustes de apresentação/d
 7. **Cadastro: “OBS” → “Observações”**.
 8. **Cadastro: filtro de origem removido** (pills Toda/Planilha/Manual + estado `origemFiltro` + escopo de origem no “Apagar todos”).
 9. **Cadastro: filtro de situação abre em “Ativo”** (default).
+10. **Cadastro: resumo + botões na mesma linha** — as contagens (à esquerda) e os botões Nova linha / Importar / Apagar (à direita) num único `flex justify-between`, em vez de linhas separadas.
 
 Não-regressão preservada: `classificar.ts` é a preparação da tela (defaults de seleção), não a emissão; `cadastro-clientes.tsx` é a aba Cadastro (não a Emissão). A camada Asaas e as Server Actions de emissão permanecem intocadas.
 

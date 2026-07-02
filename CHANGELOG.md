@@ -16,7 +16,7 @@ PATCH · **Faturamento Corporativo — refinamento de UX da tela de Emissão** (
 - **Painel de resultado enxuto:** cartões de contagem (número em destaque) + **erros agrupados por motivo** (cada motivo uma vez, ex.: “Endereço do cliente incompleto · 6 faturas”) com **“Ver detalhes”** que expande as faturas afetadas (Pessoa · Fatura Nº · Valor), acessível (`aria-expanded`).
 - **PT-BR em tudo:** removido o “NF synchronized” (status da NF mapeado para PT-BR — processando / autorizada / falhou / cancelada).
 - **Controles mais claros na revisão:** o boleto virou um seletor **Emitir / Não emitir** (espelhando o da nota); a **nota fiscal já vem “Normal” por padrão** nas faturas prontas para NF; a coluna **“Cruzamento” passou a se chamar “Status”**; o botão **Atualizar status** (↻) migrou para o **cabeçalho da coluna Nota fiscal** (onde as linhas de status vivem), como ícone único; as larguras de coluna foram ajustadas (`table-fixed`) para o texto da coluna Nota **não escapar** da tabela; os botões **“Emitir boletos” / “Emitir notas fiscais”** ficam **lado a lado**, sem número no rótulo (o de boleto ganhou ícone).
-- **Aba Cadastro de Clientes:** a coluna **OBS** virou **Observações**; o filtro de **origem** (Toda/Planilha/Manual) foi **removido**; a tabela abre já filtrando por **Ativos** (situação padrão).
+- **Aba Cadastro de Clientes:** a coluna **OBS** virou **Observações**; o filtro de **origem** (Toda/Planilha/Manual) foi **removido**; a tabela abre já filtrando por **Ativos** (situação padrão); o **resumo (contagens) e os botões de ação** (Nova linha / Importar / Apagar) passam a ficar **na mesma linha** — resumo à esquerda, botões à direita.
 
 ## [4.33.0] — 2026-07-01
 

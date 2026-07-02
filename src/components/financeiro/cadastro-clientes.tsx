@@ -228,29 +228,13 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Resumo + resultado do último import */}
-      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
-        <span className="font-semibold text-zinc-800">{totais.total} {totais.total === 1 ? 'cliente' : 'clientes'}</span>
-        <span className="text-zinc-500">{totais.planilha} da planilha · {totais.manual} manual</span>
-        <span className="text-success">{totais.ativos} {totais.ativos === 1 ? 'ativo' : 'ativos'}</span>
-      </div>
-
-      {resultado && (
-        <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-2xs text-zinc-600 space-y-1">
-          <p><b className="text-zinc-800">{resultado.inseridos}</b> {resultado.inseridos === 1 ? 'cliente importado' : 'clientes importados'} da planilha (os manuais foram preservados).</p>
-          {resultado.colisoesManual.length > 0 && (
-            <p className="flex items-start gap-1.5 text-warning"><AlertTriangle size={13} className="mt-0.5 shrink-0" />
-              <span>Estes nomes já existem como <b>manual</b> e não foram sobrescritos: {resultado.colisoesManual.join(', ')}.</span></p>
-          )}
-          {resultado.duplicadasPlanilha.length > 0 && (
-            <p className="text-zinc-500">Nomes repetidos na planilha (importado só o primeiro): {resultado.duplicadasPlanilha.join(', ')}.</p>
-          )}
+      {/* Resumo (esquerda) + controles (direita) na MESMA linha */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
+          <span className="font-semibold text-zinc-800">{totais.total} {totais.total === 1 ? 'cliente' : 'clientes'}</span>
+          <span className="text-zinc-500">{totais.planilha} da planilha · {totais.manual} manual</span>
+          <span className="text-success">{totais.ativos} {totais.ativos === 1 ? 'ativo' : 'ativos'}</span>
         </div>
-      )}
-      {erroImport && <p className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-2xs text-danger">{erroImport}</p>}
-
-      {/* Controles */}
-      <div className="flex items-center justify-end gap-3 flex-wrap">
         <div className="flex gap-2 items-center">
           <button onClick={() => { setCriando(true); setErroNovo(null) }} disabled={criando}
             className="flex items-center gap-1 px-2.5 py-1.5 text-xs border border-zinc-200 rounded hover:border-zinc-300 transition-colors disabled:opacity-50">
@@ -267,6 +251,21 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Resultado / erro do último import */}
+      {resultado && (
+        <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-2xs text-zinc-600 space-y-1">
+          <p><b className="text-zinc-800">{resultado.inseridos}</b> {resultado.inseridos === 1 ? 'cliente importado' : 'clientes importados'} da planilha (os manuais foram preservados).</p>
+          {resultado.colisoesManual.length > 0 && (
+            <p className="flex items-start gap-1.5 text-warning"><AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>Estes nomes já existem como <b>manual</b> e não foram sobrescritos: {resultado.colisoesManual.join(', ')}.</span></p>
+          )}
+          {resultado.duplicadasPlanilha.length > 0 && (
+            <p className="text-zinc-500">Nomes repetidos na planilha (importado só o primeiro): {resultado.duplicadasPlanilha.join(', ')}.</p>
+          )}
+        </div>
+      )}
+      {erroImport && <p className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-2xs text-danger">{erroImport}</p>}
 
       {/* Tabela */}
       <div className="overflow-x-auto">
