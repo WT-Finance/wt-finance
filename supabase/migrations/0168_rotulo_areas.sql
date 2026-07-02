@@ -1,7 +1,7 @@
--- 0167_rotulo_areas.sql — v4.33.2
--- (Número 0167: 0165 e 0166 já estão aplicadas em produção pelas migrations do Acervo
---  da branch v4.34.0/PR #160 — confirmado por `npx supabase migration list`. Usar 0165
---  aqui colidiria e o `db push` PULARIA esta migration. 0167 é o próximo livre.)
+-- 0168_rotulo_areas.sql — v4.33.2
+-- (Número 0168: a branch v4.34.0/PR #160 já usa 0165_acervo_documentos, 0166_acervo_excluir
+--  E 0167_acervo_rotulo_gestao. Usar 0165/0166/0167 aqui colidiria. 0168 é o próximo livre
+--  contando os arquivos de AMBAS as branches — verificado com `git ls-tree feat/v4-34`.)
 -- Padronização dos RÓTULOS das áreas de permissão (só metadado de EXIBIÇÃO no modal
 -- de "Usuários e Acessos"). O modal lê o rotulo de app.rbac_areas via admin_listar_areas
 -- (AREA_INFO em src/lib/auth/areas.ts é só fallback), então a mudança de rótulo só
