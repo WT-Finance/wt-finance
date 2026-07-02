@@ -10,6 +10,11 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 PATCH · **Correção visual do cabeçalho fixo (sticky) das tabelas com scroll interno.** Sem migration. Nas tabelas de **Cadastro de Clientes** (Faturamento) e **Base de Dados** (Fluxo de Caixa Gerencial), ao rolar, linhas de dados **vazavam** através do cabeçalho fixo. Causa-raiz: em `border-collapse` (default), fundo e borda **não acompanham o sticky** de forma confiável. Correção: tabela em **`border-separate border-spacing-0`** + fundo opaco nas **células** do cabeçalho (`[&_th]:bg-white`, `z-20`) + **toda borda horizontal movida para as células** (divisórias do cabeçalho por `first/last-child th`; linhas do corpo por `[&>td]:border-b` — borda de `<tr>` não renderiza em separate). As duas tabelas passam a viver dentro de um **Card** (fundo branco — não ficam mais coladas no fundo cru da página). Receita registrada no CLAUDE.md e no Design System §7.
 
+Refinos aprovados por mockup (mesmas duas tabelas):
+- **Sombra sob o cabeçalho ao rolar** — só aparece com a lista rolada (estado `rolado` via `onScroll`), reforçando o "flutuando sobre as linhas".
+- **Fim da rolagem horizontal** — sem `min-w`; colunas de baixo uso compactadas e colunas de texto (Contato/Destinatários/Observações; Descrição/Conta/Originador) **flexíveis com truncate** (o conteúdo completo permanece no tooltip e na edição inline).
+- **Tom no cabeçalho** — fundo `zinc-50` distingue o cabeçalho do corpo.
+
 ## [4.34.0] — 2026-07-01
 
 MINOR · **Acervo de Documentos (Financeiro) — capacidade nova.** Página `/financeiro/acervo`: biblioteca de documentos do financeiro em formato de glossário A–Z, com busca client-side e download por link temporário. **ADR-0139 · migration 0165 (aditiva, aplicada — backup-gate verde).**

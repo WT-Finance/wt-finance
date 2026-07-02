@@ -268,7 +268,12 @@ export default async function DesignSystemPage() {
           (borda de <code className="bg-zinc-100 px-1 rounded">tr</code> não renderiza em <em>separate</em>): divisórias do cabeçalho por{' '}
           <code className="bg-zinc-100 px-1 rounded">[&amp;_tr:first/last-child_th]:border-b</code> e, no corpo,{' '}
           <code className="bg-zinc-100 px-1 rounded">[&amp;&gt;td]:border-b [&amp;&gt;td]:border-zinc-50</code> na linha. A tabela vive dentro de um <strong>Card</strong>{' '}
-          (fundo branco — não fica colada no fundo cru da página).
+          (fundo branco — não fica colada no fundo cru da página). Refinos do padrão: cabeçalho em{' '}
+          <code className="bg-zinc-100 px-1 rounded">bg-zinc-50</code> (tom próprio, distinto do corpo); <strong>sombra sob o cabeçalho só quando a lista
+          está rolada</strong> (estado <code className="bg-zinc-100 px-1 rounded">rolado</code> setado no <code className="bg-zinc-100 px-1 rounded">onScroll</code> do container →{' '}
+          <code className="bg-zinc-100 px-1 rounded">[&amp;_tr:last-child_th]:shadow-[…]</code>); e <strong>sem <code className="bg-zinc-100 px-1 rounded">min-w</code></strong> —
+          colunas pequenas em px, colunas de texto <strong>sem width</strong> (em <code className="bg-zinc-100 px-1 rounded">table-fixed</code> dividem o
+          restante e truncam) → a tabela cabe no container <strong>sem barra de rolagem horizontal</strong>.
         </p>
 
         {/* Padrão de card-tabela (v4.11) */}

@@ -136,6 +136,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
   const [confirmBulk, setConfirmBulk]   = useState(false)
   const [removendo, startRemover]       = useTransition()
+  // Sombra sob o cabeçalho fixo só quando a lista está ROLADA (refino v4.34.1).
+  const [rolado, setRolado] = useState(false)
 
   const primeiroInputRef = useRef<HTMLSelectElement>(null)
 
@@ -288,23 +290,25 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       {/* Scroll INTERNO (x + y) com cabeçalho FIXO. border-separate (não collapse): em
           collapse, borda e fundo não acompanham o sticky de forma confiável e as linhas
           VAZAM pelo cabeçalho ao rolar. Em separate, cada CÉLULA pinta fundo + borda e
-          tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>. */}
-      <div className="overflow-auto max-h-[70vh]">
-        <table className="w-full text-sm table-fixed min-w-[860px] border-separate border-spacing-0">
-          <thead className="sticky top-0 z-20 [&_th]:bg-white [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
+          tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>.
+          Sem min-w: Descrição/Conta/Originador são flexíveis e truncam — a tabela cabe no
+          container sem barra horizontal (refino v4.34.1). */}
+      <div className="overflow-auto max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        <table className="w-full text-sm table-fixed border-separate border-spacing-0">
+          <thead className={`sticky top-0 z-20 [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}
                   className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
               </th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[96px]">Tipo</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[150px]">Pessoa</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 text-right w-[130px]">Valor</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[160px]">Descrição</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[140px]">Conta</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[104px]">Vencimento</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[110px]">Originador</th>
-              <th className="py-2 px-2 w-[96px]"></th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[92px]">Tipo</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[18%]">Pessoa</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 text-right w-[124px]">Valor</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400">Descrição</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400">Conta</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[100px]">Vencimento</th>
+              <th className="py-2 px-2 text-xs font-medium text-zinc-400">Originador</th>
+              <th className="py-2 px-2 w-[92px]"></th>
             </tr>
             {/* Filtros por coluna (v4.22 / M5) */}
             <tr className="align-top">

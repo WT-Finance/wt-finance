@@ -137,6 +137,9 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   const [resultado, setResultado]     = useState<ResultadoImportClientes | null>(null)
   const [, startRefresh]              = useTransition()
 
+  // Sombra sob o cabeçalho fixo só quando a lista está ROLADA (refino v4.34.1).
+  const [rolado, setRolado] = useState(false)
+
   // Re-sincroniza com o servidor após mutações (router.refresh). Padrão "ajustar na renderização".
   const [prevInicial, setPrevInicial] = useState(inicial)
   if (inicial !== prevInicial) { setPrevInicial(inicial); setItens(inicial); setSelecionados(new Set()) }
@@ -274,25 +277,26 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
       {/* Scroll INTERNO (x + y) com cabeçalho FIXO. border-separate (não collapse): em
           collapse, borda e fundo não acompanham o sticky de forma confiável e as linhas
           VAZAM pelo cabeçalho ao rolar. Em separate, cada CÉLULA pinta fundo + borda e
-          tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>. */}
-      <div className="overflow-auto max-h-[70vh]">
-        <table className="w-full text-sm table-fixed min-w-[1180px] border-separate border-spacing-0">
-          <thead className="sticky top-0 z-20 [&_th]:bg-white [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
+          tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>.
+          Sem min-w: as colunas de texto (Contato/Destinatários/Observações) são flexíveis e truncam — a tabela cabe no container sem barra horizontal (refino v4.34.1). */}
+      <div className="overflow-auto max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        <table className="w-full text-sm table-fixed border-separate border-spacing-0">
+          <thead className={`sticky top-0 z-20 [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left text-xs font-medium text-zinc-400">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosSel} onChange={toggleTodos} className="accent-[var(--setor-corporativo)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
               </th>
-              <th className="py-2 px-2 w-[190px]">Empresa</th>
-              <th className="py-2 px-2 w-[84px]">Situação</th>
-              <th className="py-2 px-2 w-[110px]">Faturar em</th>
-              <th className="py-2 px-2 w-[100px]">Vencimento</th>
-              <th className="py-2 px-2 w-[80px]">% Juros</th>
-              <th className="py-2 px-2 w-[80px]">% Multa</th>
-              <th className="py-2 px-2 w-[120px]">Forma pgto</th>
-              <th className="py-2 px-2 w-[120px]">Contato</th>
-              <th className="py-2 px-2 w-[200px]">Destinatários</th>
-              <th className="py-2 px-2 w-[200px]">Observações</th>
-              <th className="py-2 px-2 w-[64px]"></th>
+              <th className="py-2 px-2 w-[22%]">Empresa</th>
+              <th className="py-2 px-2 w-[64px]">Situação</th>
+              <th className="py-2 px-2 w-[88px]">Faturar em</th>
+              <th className="py-2 px-2 w-[84px]">Vencimento</th>
+              <th className="py-2 px-2 w-[56px]">% Juros</th>
+              <th className="py-2 px-2 w-[56px]">% Multa</th>
+              <th className="py-2 px-2 w-[78px]">Forma pgto</th>
+              <th className="py-2 px-2">Contato</th>
+              <th className="py-2 px-2">Destinatários</th>
+              <th className="py-2 px-2">Observações</th>
+              <th className="py-2 px-2 w-[40px]"></th>
             </tr>
             <tr>
               <th className="py-1.5 px-2"></th>
