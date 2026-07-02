@@ -39,7 +39,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     data: '2026-07-02T15:44',
     itens: [
       { tipo: 'correcao', texto: 'Correção visual nas tabelas do Cadastro de Clientes (Faturamento) e da Base de Dados do Fluxo de Caixa Gerencial: ao rolar a lista, o cabeçalho fixo agora fica sólido, sem deixar linhas “vazarem” por trás dele; as duas tabelas também ganharam um cartão de fundo branco, destacando-as do fundo da página.' },
-      { tipo: 'melhoria', texto: 'Refinos nas mesmas tabelas: o cabeçalho ganhou um tom próprio e uma sombra sutil ao rolar; e a barra de rolagem lateral foi eliminada — as colunas se ajustam à tela e os textos longos são abreviados com “…” (o conteúdo completo aparece ao passar o mouse ou ao editar).' },
+      { tipo: 'melhoria', texto: 'Refinos nas mesmas tabelas: o cabeçalho ganhou um tom próprio, cantos arredondados e uma sombra sutil ao rolar; a barra de rolagem lateral foi eliminada (as colunas se ajustam à tela, com os textos longos abreviados com “…” — o conteúdo completo aparece ao passar o mouse ou ao editar); e o Cadastro de Clientes ficou mais largo, aproveitando o espaço lateral da tela para as colunas respirarem.' },
     ],
   },
   {

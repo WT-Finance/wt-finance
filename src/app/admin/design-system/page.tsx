@@ -273,7 +273,10 @@ export default async function DesignSystemPage() {
           está rolada</strong> (estado <code className="bg-zinc-100 px-1 rounded">rolado</code> setado no <code className="bg-zinc-100 px-1 rounded">onScroll</code> do container →{' '}
           <code className="bg-zinc-100 px-1 rounded">[&amp;_tr:last-child_th]:shadow-[…]</code>); e <strong>sem <code className="bg-zinc-100 px-1 rounded">min-w</code></strong> —
           colunas pequenas em px, colunas de texto <strong>sem width</strong> (em <code className="bg-zinc-100 px-1 rounded">table-fixed</code> dividem o
-          restante e truncam) → a tabela cabe no container <strong>sem barra de rolagem horizontal</strong>.
+          restante e truncam) → a tabela cabe no container <strong>sem barra de rolagem horizontal</strong>. Os <strong>cantos superiores do cabeçalho</strong>
+          acompanham o Card: <code className="bg-zinc-100 px-1 rounded">[&amp;_tr:first-child_th:first-child]:rounded-tl-lg</code> +{' '}
+          <code className="bg-zinc-100 px-1 rounded">…th:last-child]:rounded-tr-lg</code> (só as células de canto da 1ª linha). Em telas densas
+          (muitas colunas), a página pode ir a <code className="bg-zinc-100 px-1 rounded">max-w-7xl</code> para aproveitar o espaço lateral (ex.: o Cadastro de Clientes).
         </p>
 
         {/* Padrão de card-tabela (v4.11) */}

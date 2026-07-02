@@ -295,7 +295,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
           container sem barra horizontal (refino v4.34.1). */}
       <div className="overflow-auto max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
         <table className="w-full text-sm table-fixed border-separate border-spacing-0">
-          <thead className={`sticky top-0 z-20 [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
+          <thead className={`sticky top-0 z-20 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}

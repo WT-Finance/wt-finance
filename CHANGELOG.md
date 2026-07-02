@@ -14,6 +14,8 @@ Refinos aprovados por mockup (mesmas duas tabelas):
 - **Sombra sob o cabeçalho ao rolar** — só aparece com a lista rolada (estado `rolado` via `onScroll`), reforçando o "flutuando sobre as linhas".
 - **Fim da rolagem horizontal** — sem `min-w`; colunas de baixo uso compactadas e colunas de texto (Contato/Destinatários/Observações; Descrição/Conta/Originador) **flexíveis com truncate** (o conteúdo completo permanece no tooltip e na edição inline).
 - **Tom no cabeçalho** — fundo `zinc-50` distingue o cabeçalho do corpo.
+- **Cantos do cabeçalho arredondados** — as células de canto da 1ª linha do `thead` ganham `rounded-tl-lg`/`rounded-tr-lg` p/ o header cinza acompanhar o Card (antes pontudo).
+- **Cadastro de Clientes mais largo** — a aba Cadastro passa a `max-w-7xl` (a Emissão segue em `5xl`; largura por-aba no wrapper) aproveitando o espaço lateral; % Juros/% Multa/Forma pgto relaxadas para não truncar valores comuns.
 
 ## [4.34.0] — 2026-07-01
 

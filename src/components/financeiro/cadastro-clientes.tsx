@@ -281,7 +281,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
           Sem min-w: as colunas de texto (Contato/Destinatários/Observações) são flexíveis e truncam — a tabela cabe no container sem barra horizontal (refino v4.34.1). */}
       <div className="overflow-auto max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
         <table className="w-full text-sm table-fixed border-separate border-spacing-0">
-          <thead className={`sticky top-0 z-20 [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
+          <thead className={`sticky top-0 z-20 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left text-xs font-medium text-zinc-400">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosSel} onChange={toggleTodos} className="accent-[var(--setor-corporativo)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
@@ -290,9 +290,9 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               <th className="py-2 px-2 w-[64px]">Situação</th>
               <th className="py-2 px-2 w-[88px]">Faturar em</th>
               <th className="py-2 px-2 w-[84px]">Vencimento</th>
-              <th className="py-2 px-2 w-[56px]">% Juros</th>
-              <th className="py-2 px-2 w-[56px]">% Multa</th>
-              <th className="py-2 px-2 w-[78px]">Forma pgto</th>
+              <th className="py-2 px-2 w-[72px]">% Juros</th>
+              <th className="py-2 px-2 w-[72px]">% Multa</th>
+              <th className="py-2 px-2 w-[100px]">Forma pgto</th>
               <th className="py-2 px-2">Contato</th>
               <th className="py-2 px-2">Destinatários</th>
               <th className="py-2 px-2">Observações</th>
