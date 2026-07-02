@@ -23,11 +23,10 @@ const INATIVO = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zi
 export default function FaturamentoCorpContent({ ambiente, configurado, clientes }: Props) {
   const [aba, setAba] = useState<'emissao' | 'cadastro'>('emissao')
 
-  // Largura por aba: Emissão fica no 5xl de sempre (inalterada); Cadastro vai a 7xl para
-  // aproveitar o espaço lateral vazio na tabela densa (11 colunas). O container mora AQUI
-  // (não no page.tsx) porque depende do estado `aba`.
+  // Largura ÚNICA nas duas abas (7xl) — sem "salto" de largura ao alternar Emissão↔Cadastro.
+  // O 7xl acomoda a tabela densa do Cadastro; a Emissão só fica mais folgada.
   return (
-    <div className={`${aba === 'cadastro' ? 'max-w-7xl' : 'max-w-5xl'} mx-auto px-4`}>
+    <div className="max-w-7xl mx-auto px-4">
       {/* Título + subtítulo da PÁGINA (compartilhados: persistem ao trocar de aba) + badge de
           ambiente. As pills das abas ficam ABAIXO do título/subtítulo. */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
