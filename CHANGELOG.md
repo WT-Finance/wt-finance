@@ -8,12 +8,12 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [4.33.2] — 2026-07-02
 
-PATCH · **Refino de tabelas (transversal) + padrão de cabeçalho no Design System.** Só apresentação/UI + **1 migration destrutiva de rótulo** (`0165`, aplicação humana). A lógica de emissão e os dados não mudam.
+PATCH · **Refino de tabelas (transversal) + padrão de cabeçalho no Design System.** Só apresentação/UI + **1 migration destrutiva de rótulo** (`0167`, aplicação humana). A lógica de emissão e os dados não mudam.
 
 - **Cabeçalho de tabela padronizado (toda a plataforma):** removida a caixa alta (`uppercase`/`tracking-wide`) dos cabeçalhos que divergiam (Emissão do Faturamento, Calculadora de Rateio, drawer de import do Gerencial, Composição de lançamentos), alinhando ao padrão único da Lista de Operações — **sem caixa alta, sem negrito, `font-medium` + cor terciária**. Registrado no **Design System §7** como padrão (inclui o padrão de scroll interno com cabeçalho fixo).
 - **Emissão (Faturamento):** botões “Emitir boletos”/“Emitir notas fiscais” alinhados **à direita**, na mesma linha dos resumos; coluna **Status** e largura mínima da tabela reduzidas para **eliminar a barra de rolagem horizontal** na revisão.
 - **Scroll interno com cabeçalho fixo:** nas tabelas do **Cadastro de Clientes** (Faturamento) e da **Base de Dados** do Fluxo de Caixa Gerencial, a rolagem passa a ser **interna à tabela** (`overflow-auto`, altura máxima) mantendo o **cabeçalho fixo** (`sticky`) ao rolar as linhas.
-- **Permissões (rótulos):** “Performance — X” → **“Performance/X”**; “Fluxo de Caixa Gerencial” → **“Gerencial”** (só o texto exibido no modal de Usuários e Acessos). Migration **`0165`** (UPDATE em `app.rbac_areas.rotulo` — destrutiva por classificação, **aplicação humana**). O rótulo do Acervo de Documentos fica na branch v4.34.0.
+- **Permissões (rótulos):** “Performance — X” → **“Performance/X”**; “Fluxo de Caixa Gerencial” → **“Gerencial”** (só o texto exibido no modal de Usuários e Acessos). Migration **`0167`** (UPDATE em `app.rbac_areas.rotulo` — destrutiva por classificação, **aplicação humana**). O rótulo do Acervo de Documentos fica na branch v4.34.0.
 
 ## [4.33.1] — 2026-07-01
 
