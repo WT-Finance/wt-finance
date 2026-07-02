@@ -240,7 +240,7 @@ function TabelaDecomposicao({
 
       <table className="table-fixed w-full">
         <thead>
-          <tr className="text-3xs uppercase tracking-wide text-zinc-400">
+          <tr className="text-3xs font-medium text-zinc-400">
             <th className="text-left font-semibold pb-1.5">Grupo</th>
             <th className="text-right font-semibold pb-1.5 w-14">%</th>
             <th className="text-right font-semibold pb-1.5 w-24">Valor</th>

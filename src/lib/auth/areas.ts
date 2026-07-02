@@ -29,12 +29,12 @@ export const AREA_ADMIN: Area = 'admin/acessos'
 /** Espelho de app.rbac_areas (rotulo/grupo/ordem) — usado pela UI de roles. */
 export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: number }> = {
   'executiva':               { rotulo: 'Executiva',                 grupo: 'Geral',         ordem: 10 },
-  'performance':             { rotulo: 'Performance — Geral',       grupo: 'Performance',   ordem: 20 },
-  'performance/trips':       { rotulo: 'Performance — Trips',       grupo: 'Performance',   ordem: 21 },
-  'performance/weddings':    { rotulo: 'Performance — Weddings',    grupo: 'Performance',   ordem: 22 },
-  'performance/corporativo': { rotulo: 'Performance — Corporativo', grupo: 'Performance',   ordem: 23 },
+  'performance':             { rotulo: 'Performance/Geral',         grupo: 'Performance',   ordem: 20 },
+  'performance/trips':       { rotulo: 'Performance/Trips',         grupo: 'Performance',   ordem: 21 },
+  'performance/weddings':    { rotulo: 'Performance/Weddings',      grupo: 'Performance',   ordem: 22 },
+  'performance/corporativo': { rotulo: 'Performance/Corporativo',   grupo: 'Performance',   ordem: 23 },
   'financeiro/fluxo-caixa':  { rotulo: 'Fluxo de Caixa',            grupo: 'Financeiro',    ordem: 30 },
-  'financeiro/gerencial':    { rotulo: 'Fluxo de Caixa Gerencial',  grupo: 'Financeiro',    ordem: 31 },
+  'financeiro/gerencial':    { rotulo: 'Gerencial',                 grupo: 'Financeiro',    ordem: 31 },
   'financeiro/faturamento-corp': { rotulo: 'Faturamento Corporativo', grupo: 'Financeiro',  ordem: 32 },
   // Acervo de Documentos em DOIS níveis (v4.34.0), mesmo padrão de
   // solicitacoes/basico × solicitacoes (0127/0144): 'financeiro/acervo' = ver a
