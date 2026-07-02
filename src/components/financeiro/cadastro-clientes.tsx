@@ -11,6 +11,7 @@ import { useState, useMemo, useRef, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Upload, Trash2, Loader2, Check, X, FileSpreadsheet, PencilLine, AlertTriangle } from 'lucide-react'
 import ConfirmModal from '@/components/shared/confirm-modal'
+import { Card } from '@/components/ui/card'
 import { parseClientesCorpFile } from '@/lib/faturamento/parse-clientes-corp'
 import {
   inserirClienteCorp, atualizarClienteCorp, excluirClienteCorp, apagarClientesCorp,
@@ -227,6 +228,8 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   }
 
   return (
+    // Card em volta: a tabela vive sobre fundo BRANCO (padrão DS), não no fundo cru da página.
+    <Card>
     <div className="space-y-4">
       {/* Resumo (esquerda) + controles (direita) na MESMA linha */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -268,11 +271,14 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
       {erroImport && <p className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-2xs text-danger">{erroImport}</p>}
 
       {/* Tabela */}
-      {/* Scroll INTERNO da tabela (x + y) com o cabeçalho FIXO no topo (sticky). */}
+      {/* Scroll INTERNO (x + y) com cabeçalho FIXO. border-separate (não collapse): em
+          collapse, borda e fundo não acompanham o sticky de forma confiável e as linhas
+          VAZAM pelo cabeçalho ao rolar. Em separate, cada CÉLULA pinta fundo + borda e
+          tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>. */}
       <div className="overflow-auto max-h-[70vh]">
-        <table className="w-full text-sm table-fixed min-w-[1180px]">
-          <thead className="sticky top-0 z-20 bg-white [&_th]:bg-white [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
-            <tr className="border-b border-zinc-100 text-left text-xs font-medium text-zinc-400">
+        <table className="w-full text-sm table-fixed min-w-[1180px] border-separate border-spacing-0">
+          <thead className="sticky top-0 z-20 [&_th]:bg-white [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
+            <tr className="text-left text-xs font-medium text-zinc-400">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosSel} onChange={toggleTodos} className="accent-[var(--setor-corporativo)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
               </th>
@@ -288,7 +294,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               <th className="py-2 px-2 w-[200px]">Observações</th>
               <th className="py-2 px-2 w-[64px]"></th>
             </tr>
-            <tr className="border-b border-zinc-100">
+            <tr>
               <th className="py-1.5 px-2"></th>
               <th className="py-1.5 px-2"><input type="text" placeholder="Empresa…" value={fEmpresa} onChange={e => setFEmpresa(e.target.value)} className={FILTRO_INPUT} aria-label="Filtrar por empresa" /></th>
               <th className="py-1.5 px-2">
@@ -303,7 +309,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
           </thead>
           <tbody>
             {criando && (
-              <tr className="border-b border-[var(--setor-corporativo)] bg-action-soft/30">
+              <tr className="[&>td]:border-b [&>td]:border-[var(--setor-corporativo)] bg-action-soft/30">
                 <td className="py-1 px-2"></td>
                 <td className="py-1 px-2"><input autoFocus type="text" placeholder="Empresa *" value={novo.empresa ?? ''} onChange={e => setNovo(p => ({ ...p, empresa: e.target.value }))} className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" /></td>
                 <td className="py-1 px-2">
@@ -358,6 +364,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
         />
       )}
     </div>
+    </Card>
   )
 }
 
@@ -378,7 +385,7 @@ function ClienteRow({ cliente: c, makeSaver, onDelete, selecionado, onToggleSel 
   }
 
   return (
-    <tr className={`border-b border-zinc-50 ${selecionado ? 'bg-action-soft/40' : 'hover:bg-zinc-50/50'}`}>
+    <tr className={`[&>td]:border-b [&>td]:border-zinc-50 ${selecionado ? 'bg-action-soft/40' : 'hover:bg-zinc-50/50'}`}>
       <td className="py-1 px-2 text-center">
         <input type="checkbox" checked={selecionado} onChange={onToggleSel} className="accent-[var(--setor-corporativo)] cursor-pointer" aria-label="Selecionar linha" />
       </td>

@@ -8,6 +8,7 @@ import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import ImportDrawer from './import-drawer'
 import ConfirmModal from '@/components/shared/confirm-modal'
+import { Card } from '@/components/ui/card'
 import { type Conta } from './tipos'
 import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
 import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
@@ -251,6 +252,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   }
 
   return (
+    // Card em volta: a tabela vive sobre fundo BRANCO (padrão DS), não no fundo cru da página.
+    <Card>
     <div>
       {/* Header com filtros e ações (v4.23.1: tipo e busca por pessoa saíram — filtros na coluna). */}
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
@@ -282,11 +285,14 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       </div>
 
       {/* Tabela */}
-      {/* Scroll INTERNO da tabela (x + y) com o cabeçalho FIXO no topo (sticky). */}
+      {/* Scroll INTERNO (x + y) com cabeçalho FIXO. border-separate (não collapse): em
+          collapse, borda e fundo não acompanham o sticky de forma confiável e as linhas
+          VAZAM pelo cabeçalho ao rolar. Em separate, cada CÉLULA pinta fundo + borda e
+          tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>. */}
       <div className="overflow-auto max-h-[70vh]">
-        <table className="w-full text-sm table-fixed min-w-[860px]">
-          <thead className="sticky top-0 z-20 bg-white [&_th]:bg-white [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
-            <tr className="border-b border-zinc-100 text-left">
+        <table className="w-full text-sm table-fixed min-w-[860px] border-separate border-spacing-0">
+          <thead className="sticky top-0 z-20 [&_th]:bg-white [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
+            <tr className="text-left">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}
                   className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
@@ -301,7 +307,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
               <th className="py-2 px-2 w-[96px]"></th>
             </tr>
             {/* Filtros por coluna (v4.22 / M5) */}
-            <tr className="border-b border-zinc-100 align-top">
+            <tr className="align-top">
               <th className="py-1.5 px-2"></th>
               <th className="py-1.5 px-2">
                 <select value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value as TipoFiltro)}
@@ -351,7 +357,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
           <tbody>
             {/* Nova linha inline */}
             {criando && (
-              <tr className="border-b border-[var(--brand)] bg-[var(--brand-soft)]/20">
+              <tr className="[&>td]:border-b [&>td]:border-[var(--brand)] bg-[var(--brand-soft)]/20">
                 <td className="py-1 px-2"></td>
                 <td className="py-1 px-2">
                   <select ref={primeiroInputRef} value={novosValores.tipo ?? ''}
@@ -453,5 +459,6 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
         />
       )}
     </div>
+    </Card>
   )
 }

@@ -8,7 +8,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [4.34.1] — 2026-07-02
 
-PATCH · **Correção visual do cabeçalho fixo (sticky) das tabelas com scroll interno.** Sem migration. Nas tabelas de **Cadastro de Clientes** (Faturamento) e **Base de Dados** (Fluxo de Caixa Gerencial), ao rolar, linhas de dados **vazavam** através do cabeçalho fixo. Causa: em `border-collapse` o fundo aplicado no `<tr>` deixa a faixa da borda entre linhas transparente. Correção: fundo opaco nas **células** (`[&_th]:bg-white` + `bg-white` no `thead`), `z-20`, e divisória na célula da última linha do cabeçalho (`[&_tr:last-child_th]:border-b`). Padrão corrigido no CLAUDE.md e no Design System §7.
+PATCH · **Correção visual do cabeçalho fixo (sticky) das tabelas com scroll interno.** Sem migration. Nas tabelas de **Cadastro de Clientes** (Faturamento) e **Base de Dados** (Fluxo de Caixa Gerencial), ao rolar, linhas de dados **vazavam** através do cabeçalho fixo. Causa-raiz: em `border-collapse` (default), fundo e borda **não acompanham o sticky** de forma confiável. Correção: tabela em **`border-separate border-spacing-0`** + fundo opaco nas **células** do cabeçalho (`[&_th]:bg-white`, `z-20`) + **toda borda horizontal movida para as células** (divisórias do cabeçalho por `first/last-child th`; linhas do corpo por `[&>td]:border-b` — borda de `<tr>` não renderiza em separate). As duas tabelas passam a viver dentro de um **Card** (fundo branco — não ficam mais coladas no fundo cru da página). Receita registrada no CLAUDE.md e no Design System §7.
 
 ## [4.34.0] — 2026-07-01
 

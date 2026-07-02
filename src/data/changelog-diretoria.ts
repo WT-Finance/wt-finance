@@ -38,7 +38,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     versao: '4.34.1',
     data: '2026-07-02T15:44',
     itens: [
-      { tipo: 'correcao', texto: 'Correção visual nas tabelas do Cadastro de Clientes (Faturamento) e da Base de Dados do Fluxo de Caixa Gerencial: ao rolar a lista, o cabeçalho fixo agora fica sólido, sem deixar linhas “vazarem” por trás dele.' },
+      { tipo: 'correcao', texto: 'Correção visual nas tabelas do Cadastro de Clientes (Faturamento) e da Base de Dados do Fluxo de Caixa Gerencial: ao rolar a lista, o cabeçalho fixo agora fica sólido, sem deixar linhas “vazarem” por trás dele; as duas tabelas também ganharam um cartão de fundo branco, destacando-as do fundo da página.' },
     ],
   },
   {

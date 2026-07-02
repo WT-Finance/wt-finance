@@ -260,10 +260,15 @@ export default async function DesignSystemPage() {
           </div>
         </div>
         <p className="text-xs text-[var(--text-muted)] mb-6">
-          <strong>Tabela longa com scroll interno + cabeçalho fixo</strong> (Cadastro de Clientes, Base de Dados do Gerencial):
-          o container rola por dentro — <code className="bg-zinc-100 px-1 rounded">overflow-auto max-h-[70vh]</code> — e o{' '}
-          <code className="bg-zinc-100 px-1 rounded">&lt;thead&gt;</code> fica fixo com{' '}
-          <code className="bg-zinc-100 px-1 rounded">sticky top-0 z-10 [&amp;_tr]:bg-white</code>: o cabeçalho não sai da tela ao rolar as linhas.
+          <strong>Tabela longa com scroll interno + cabeçalho fixo</strong> (Cadastro de Clientes, Base de Dados do Gerencial) — a receita completa (v4.34.1):
+          a tabela usa <code className="bg-zinc-100 px-1 rounded">border-separate border-spacing-0</code> (em <em>collapse</em>, fundo/borda não acompanham
+          o sticky e as linhas <strong>vazam</strong> pelo cabeçalho); o container rola por dentro — <code className="bg-zinc-100 px-1 rounded">overflow-auto max-h-[70vh]</code> —
+          e o <code className="bg-zinc-100 px-1 rounded">&lt;thead&gt;</code> fica fixo com <code className="bg-zinc-100 px-1 rounded">sticky top-0 z-20 [&amp;_th]:bg-white</code>{' '}
+          (fundo opaco nas <strong>células</strong>). <strong>Toda borda horizontal vai nas células, nunca no <code className="bg-zinc-100 px-1 rounded">&lt;tr&gt;</code></strong>{' '}
+          (borda de <code className="bg-zinc-100 px-1 rounded">tr</code> não renderiza em <em>separate</em>): divisórias do cabeçalho por{' '}
+          <code className="bg-zinc-100 px-1 rounded">[&amp;_tr:first/last-child_th]:border-b</code> e, no corpo,{' '}
+          <code className="bg-zinc-100 px-1 rounded">[&amp;&gt;td]:border-b [&amp;&gt;td]:border-zinc-50</code> na linha. A tabela vive dentro de um <strong>Card</strong>{' '}
+          (fundo branco — não fica colada no fundo cru da página).
         </p>
 
         {/* Padrão de card-tabela (v4.11) */}

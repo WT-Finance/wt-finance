@@ -216,7 +216,9 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
   const bgLinha = selecionado ? 'bg-[var(--brand-soft)]/30' : destacado ? 'bg-warning-bg' : 'hover:bg-zinc-50/50'
 
   return (
-    <tr className={`border-b border-zinc-50 ${bgLinha}`}>
+    // Borda nas CÉLULAS ([&>td]), não no <tr>: a tabela é border-separate (thead sticky)
+    // e borda de <tr> não renderiza em separate.
+    <tr className={`[&>td]:border-b [&>td]:border-zinc-50 ${bgLinha}`}>
       <td className="py-1 px-2 text-center">
         <input type="checkbox" checked={selecionado} onChange={onToggleSelecao}
           className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar linha" />
