@@ -366,9 +366,10 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
     }
   })
 
-  // v4.34.0 Acervo de Documentos: leitura/escrita/download exigem sessão — anon negado
-  // nas 3 RPCs. acervo_criar com args mínimos garante que, mesmo que o guard falhasse,
-  // este teste pegaria ANTES de qualquer persistência (anon não tem EXECUTE → nada é criado).
+  // v4.34.0 Acervo de Documentos: leitura/escrita/download/exclusão exigem sessão — anon
+  // negado nas 4 RPCs (acervo_excluir adicionada na M5, migration 0166). acervo_criar com
+  // args mínimos garante que, mesmo que o guard falhasse, este teste pegaria ANTES de
+  // qualquer persistência (anon não tem EXECUTE → nada é criado/apagado).
   it('Acervo: anon negado em todas as RPCs', async () => {
     const params: Record<string, Record<string, unknown>> = {
       acervo_listar: {},
@@ -377,8 +378,9 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
         p_tamanho_bytes: 1, p_storage_path: 'docs/anon-negado/x',
       },
       acervo_doc_path: { p_doc_id: 1 },
+      acervo_excluir: { p_doc_id: 1 },
     }
-    for (const fn of ['acervo_listar', 'acervo_criar', 'acervo_doc_path']) {
+    for (const fn of ['acervo_listar', 'acervo_criar', 'acervo_doc_path', 'acervo_excluir']) {
       const status = await rpcAnonStatus(fn, params[fn])
       expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
     }

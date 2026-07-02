@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search, Plus, Download, FileText, Upload, Loader2, X } from 'lucide-react'
+import { Search, Plus, Download, FileText, Upload, Loader2, X, Trash2 } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
+import ConfirmModal from '@/components/shared/confirm-modal'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 import Button from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/field'
-import { uploadDocumento, documentoUrl } from '@/app/financeiro/acervo/actions'
+import { uploadDocumento, documentoUrl, excluirDocumento } from '@/app/financeiro/acervo/actions'
 import type { AcervoDocumento } from '@/lib/schemas-rpc'
 
 // Acervo de Documentos (v4.34.0) — biblioteca em formato de GLOSSÁRIO: documentos agrupados
@@ -15,7 +16,9 @@ import type { AcervoDocumento } from '@/lib/schemas-rpc'
 // com A-Z). Busca client-side (título/descrição/nome do arquivo, acento-insensível). O botão
 // "Adicionar" só é renderizado quando `podeAdicionar` (calculado no server pela área de
 // gestão). Download com o padrão popup-safe de drawer-solicitacao.tsx (window.open síncrono
-// antes do await, redireciona para a signed URL depois).
+// antes do await, redireciona para a signed URL depois). Excluir (mesma área `podeAdicionar`
+// — migration 0166) usa ConfirmModal (mesmo padrão de aba-solicitacoes.tsx: o modal sempre
+// fecha após confirmar, sucesso ou falha; o erro aparece na FaixaMensagem da página).
 
 const LIMITE_BYTES = 25 * 1024 * 1024 // 25 MB
 
@@ -65,6 +68,9 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
   const [erroCarga, setErroCarga] = useState<string | null>(erroInicial ?? null)
   const [erroDownload, setErroDownload] = useState<string | null>(null)
   const [baixando, setBaixando] = useState<number | null>(null)
+  const [docParaExcluir, setDocParaExcluir] = useState<AcervoDocumento | null>(null)
+  const [excluindo, setExcluindo] = useState(false)
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null)
 
   const filtrados = useMemo(() => {
     const q = normalizar(busca.trim())
@@ -123,6 +129,26 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
     }
   }
 
+  async function excluir() {
+    const doc = docParaExcluir
+    if (!doc) return
+    setErroExclusao(null)
+    setExcluindo(true)
+    try {
+      const r = await excluirDocumento(doc.id)
+      if (r.ok) {
+        setDocumentos(prev => prev.filter(d => d.id !== doc.id))
+        setDocParaExcluir(null)
+      } else {
+        setErroExclusao(r.erro)
+      }
+    } catch {
+      setErroExclusao('Falha ao excluir o documento. Tente novamente.')
+    } finally {
+      setExcluindo(false)
+    }
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -149,6 +175,7 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
 
       {erroCarga && <FaixaMensagem tipo="erro" texto={erroCarga} onFechar={() => setErroCarga(null)} />}
       {erroDownload && <FaixaMensagem tipo="erro" texto={erroDownload} onFechar={() => setErroDownload(null)} />}
+      {erroExclusao && <FaixaMensagem tipo="erro" texto={erroExclusao} onFechar={() => setErroExclusao(null)} />}
 
       {grupos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-200 py-10 text-center">
@@ -173,13 +200,13 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
               </h2>
               <ul className="divide-y divide-zinc-100">
                 {docs.map(doc => (
-                  <li key={doc.id}>
+                  <li key={doc.id} className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => baixar(doc)}
                       disabled={baixando !== null}
                       aria-label={`Baixar ${doc.titulo}`}
-                      className="foco-neutro flex w-full items-center justify-between gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-zinc-50 disabled:opacity-60"
+                      className="foco-neutro flex flex-1 min-w-0 items-center justify-between gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-zinc-50 disabled:opacity-60"
                     >
                       <div className="min-w-0">
                         <p className="text-[15px] font-semibold text-text-primary truncate">{doc.titulo}</p>
@@ -194,6 +221,17 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
                         ? <Loader2 size={16} className="shrink-0 animate-spin text-zinc-400" />
                         : <Download size={16} className="shrink-0 text-zinc-400" />}
                     </button>
+                    {podeAdicionar && (
+                      <button
+                        type="button"
+                        onClick={() => setDocParaExcluir(doc)}
+                        disabled={excluindo}
+                        aria-label={`Excluir ${doc.titulo}`}
+                        className="foco-neutro shrink-0 rounded-lg p-2 text-zinc-400 transition-colors hover:bg-danger-bg hover:text-danger disabled:opacity-60"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -206,6 +244,16 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
         <ModalUpload
           onFechar={() => setModalAberto(false)}
           onCriado={doc => setDocumentos(prev => [...prev, doc])}
+        />
+      )}
+
+      {docParaExcluir && (
+        <ConfirmModal
+          titulo="Excluir documento"
+          mensagem={<>Excluir <strong>{docParaExcluir.titulo}</strong>? Esta ação não pode ser desfeita.</>}
+          confirmarLabel="Excluir"
+          onConfirmar={excluir}
+          onFechar={() => setDocParaExcluir(null)}
         />
       )}
     </div>

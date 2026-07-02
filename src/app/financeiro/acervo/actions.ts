@@ -141,3 +141,24 @@ export async function documentoUrl(docId: number): Promise<{ ok: true; url: stri
   if (erroSigned || !signed) return { ok: false, erro: 'Não foi possível gerar o link do documento.' }
   return { ok: true, url: signed.signedUrl }
 }
+
+/** Exclui um documento (migration 0166). Mesma área de adicionar
+ *  ('financeiro/acervo/gestao') — decisão de produto: quem pode adicionar também
+ *  pode excluir. A RPC apaga a LINHA e devolve o `storage_path`; o binário é
+ *  removido DEPOIS, best-effort — a linha já saiu do banco (é a fonte da
+ *  verdade), então uma falha na remoção do binário só deixa um objeto órfão
+ *  inofensivo no bucket (nunca listável, nunca baixável). */
+export async function excluirDocumento(docId: number): Promise<{ ok: true } | { ok: false; erro: string }> {
+  await requireAreaAction('financeiro/acervo/gestao')
+
+  const { data, error } = await rpcSessao('acervo_excluir', { p_doc_id: docId })
+  if (error) return { ok: false, erro: traduzir(error.message) }
+
+  const storagePath = (data as { storage_path?: string } | null)?.storage_path
+  if (storagePath) {
+    try { await getAdminClient().storage.from(BUCKET).remove([storagePath]) } catch { /* best-effort */ }
+  }
+
+  revalidatePath('/financeiro/acervo')
+  return { ok: true }
+}

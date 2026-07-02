@@ -1,11 +1,11 @@
 # WT Finance — Out-Briefing v4.34.0 · Acervo de Documentos
 
 **Data:** 2026-07-01 · **Branch:** `feat/v4-34` (base `main` @ v4.33.1) · **Versão:** 4.33.1 → **4.34.0** (MINOR — capacidade nova)
-**Tema:** Nova página `/financeiro/acervo` — biblioteca de documentos do financeiro em formato de glossário A–Z, com upload (título + descrição + arquivo de qualquer tipo) e download por link temporário. **ADR-0139 · migration 0165 (aditiva, aplicada, backup-gate verde).** **Merge e deploy ficam com o usuário.**
+**Tema:** Nova página `/financeiro/acervo` — biblioteca de documentos do financeiro em formato de glossário A–Z, com upload (título + descrição + arquivo de qualquer tipo), exclusão (com confirmação) e download por link temporário. **ADR-0139 · migration 0165 (aditiva, aplicada, backup-gate verde) + migration 0166 (aditiva, M5 — RPC `acervo_excluir`).** **Merge e deploy ficam com o usuário.**
 
 ## Resumo executivo
 
-O financeiro ganhou um repositório único de documentos de referência (modelos, manuais, políticas) dentro da plataforma, em vez de espalhados em e-mail/OneDrive. A tela é um glossário A–Z com busca client-side; qualquer usuário com a área pode ver e baixar, e só quem tem a área de gestão pode adicionar documento novo. O RBAC nasce em dois níveis (ver / gestão) e com grant inicial apertado (só administradores) — o mesmo desenho já validado em Solicitações e no Faturamento Corporativo. O binário vive num bucket privado dedicado do Storage, com download só via link assinado de curta duração gerado no servidor.
+O financeiro ganhou um repositório único de documentos de referência (modelos, manuais, políticas) dentro da plataforma, em vez de espalhados em e-mail/OneDrive. A tela é um glossário A–Z com busca client-side; qualquer usuário com a área pode ver e baixar, e só quem tem a área de gestão pode adicionar ou excluir documento (com confirmação antes de excluir). O RBAC nasce em dois níveis (ver / gestão) e com grant inicial apertado (só administradores) — o mesmo desenho já validado em Solicitações e no Faturamento Corporativo. O binário vive num bucket privado dedicado do Storage, com download só via link assinado de curta duração gerado no servidor.
 
 ## Missões implementadas
 
@@ -30,6 +30,14 @@ Ver seção própria abaixo — 3 correções aplicadas antes do fechamento.
 ### M4 — Documentação e fechamento
 `docs/adr/0139-acervo-documentos.md`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, este out-briefing, atualização pontual do `CLAUDE.md` (padrão inline de RPC nova documentado, distinto do wrapper+`__nucleo` legado da 0121).
 
+### M5 — Excluir documento (mesma versão, migration 0166)
+Botão de excluir ao lado do download em cada item do glossário, compartilhando a **mesma permissão** de adicionar (`financeiro/acervo/gestao` — reusa a prop `podeAdicionar` já existente, sem área nova).
+- **Migration `0166_acervo_excluir.sql` (aditiva):** RPC `public.acervo_excluir(p_doc_id bigint)`, mesmo padrão inline das 3 RPCs da 0165 (`PERFORM app.exigir_acesso(ARRAY['financeiro/acervo/gestao'])` como 1ª linha do corpo). `DELETE FROM app.acervo_documento ... RETURNING storage_path`; `NAO_ENCONTRADO` (mesmo padrão de `acervo_doc_path`) se o id não existir; retorna `{ storage_path }` para a Action remover o binário depois. Ordem deliberada (linha primeiro, binário depois, best-effort): uma falha na remoção do binário só deixa um objeto órfão inofensivo (nunca listável); a ordem inversa deixaria um documento listado com download quebrado.
+- **`src/app/financeiro/acervo/actions.ts`:** nova action `excluirDocumento(docId)` — `requireAreaAction('financeiro/acervo/gestao')`, chama `acervo_excluir` via cliente de sessão, remove o binário best-effort (`try/catch`, nunca lança) e `revalidatePath`.
+- **`src/components/financeiro/acervo-documentos.tsx`:** a linha do glossário (antes um único `<button>` filho do `<li>`) foi reestruturada — o botão de download vira `flex-1 min-w-0` e, condicionado a `podeAdicionar`, um botão-ícone de excluir (`Trash2`, tokens `hover:bg-danger-bg hover:text-danger`, mesmas classes do primitivo `Button variant="icone" tone="perigo"`) fica ao lado, fora do botão de download (corrige o botão-dentro-de-botão que existiria se a lixeira ficasse dentro do `<button>` de baixar). Clique abre `ConfirmModal` (título, nome do documento, aviso de irreversibilidade); confirmar chama `excluirDocumento`, remove da lista local em caso de sucesso. Segue o mesmo padrão real já usado em `aba-solicitacoes.tsx`: o `ConfirmModal` sempre fecha após `onConfirmar` resolver (sucesso ou falha, pois `onConfirmar` nunca lança) — o erro de falha aparece numa `FaixaMensagem` própria (`erroExclusao`) na página, não dentro do modal.
+- **`src/lib/rpc-contrato.test.ts`:** `acervo_excluir` adicionado ao bloco "Acervo: anon negado em todas as RPCs".
+- **Documentação:** `CHANGELOG.md`, `src/data/changelog-diretoria.ts` e este ADR-0139 atualizados na própria entrada da 4.34.0 (a versão ainda não tinha sido mergeada).
+
 ## Migration 0165 — aplicação e verificação
 
 **Aplicada em produção com backup-gate verde** (43 tabelas cobertas, restore-test spot 4/4). Declaração prévia no header da migration confirma o regime aditivo (só `CREATE TABLE`/bucket idempotente/`INSERT ... ON CONFLICT DO NOTHING` em catálogo RBAC/`CREATE FUNCTION`+`GRANT`/`REVOKE` — nenhuma tabela pré-existente tem coluna ou linha alterada além do `INSERT` idempotente de catálogo).
@@ -38,6 +46,17 @@ Ver seção própria abaixo — 3 correções aplicadas antes do fechamento.
 - **REST smoke:** `acervo_listar` retorna `[]` (acervo vazio); as 3 RPCs (`acervo_listar`, `acervo_criar`, `acervo_doc_path`) **negam anon** (status ≥ 400); `acervo_criar` com título/descrição vazios retorna `TITULO_OBRIGATORIO`/`DESCRICAO_OBRIGATORIA` **sem persistir**; `acervo_doc_path` com id inexistente retorna `NAO_ENCONTRADO`.
 - **Round-trip E2E em produção:** upload de um arquivo de teste → `acervo_criar` → `acervo_listar` mostra o item → `acervo_doc_path` devolve o path → signed URL gerada → download com **conteúdo idêntico** ao arquivo original → limpeza total (registro + binário removidos; `acervo_listar` voltou a `[]`).
 - **Gates:** `npx tsc --noEmit` → 0 erros · `npm run lint` → limpo · `npm test` → 302/302 (inclui os casos novos de `rpc-contrato.test.ts` e a paridade de áreas) · `npm run build` → limpo (rota `/financeiro/acervo` presente).
+
+## Migration 0166 — excluir documento (M5, **aplicada e verificada**)
+
+`supabase/migrations/0166_acervo_excluir.sql` (aditiva): cria só a RPC `acervo_excluir(p_doc_id bigint)`, mesmo padrão inline, mesma área (`financeiro/acervo/gestao`). **Aplicada em produção** via `npm run db:migrate -- --aditiva` (backup-gate VERDE, `db push` concluído em 2026-07-02).
+
+**Verificação executada (E2E em produção, com limpeza imediata):**
+- `acervo_excluir` **nega anon** (`permission denied for function`).
+- Id inexistente → `NAO_ENCONTRADO` (nada persiste).
+- Round-trip: upload de arquivo de teste → `acervo_criar` → `acervo_excluir` remove a linha e devolve o `storage_path` correto → `acervo_listar` não mostra mais o item → binário removido (como a Action faz, best-effort) → re-exclusão do mesmo id → `NAO_ENCONTRADO` (idempotente na prática).
+- **Gates re-executados após a M5:** `npx tsc --noEmit` → 0 erros · `npm run lint` → limpo · `npm test` → **306/306** (inclui `acervo_excluir` no bloco anon-negado) · `npm run build` → limpo.
+- Nota: durante a verificação o acervo em produção já continha **1 documento real** (uso já iniciado) — intocado pelos testes.
 
 ## ADR-0139
 
@@ -56,6 +75,7 @@ Um subagente cético revisou a implementação antes do fechamento. **Veredicto:
 
 **Novos:**
 - `supabase/migrations/0165_acervo_documentos.sql`
+- `supabase/migrations/0166_acervo_excluir.sql` (M5 — RPC `acervo_excluir`)
 - `src/app/financeiro/acervo/page.tsx`
 - `src/app/financeiro/acervo/actions.ts`
 - `src/components/financeiro/acervo-documentos.tsx`
@@ -68,16 +88,18 @@ Um subagente cético revisou a implementação antes do fechamento. **Veredicto:
 - `src/lib/auth/areas.ts` (as duas áreas novas + `areasDaRota`)
 - `src/lib/auth/areas.test.ts` (paridade/roteamento das áreas novas)
 - `src/lib/schemas-rpc.ts` (`acervoListaSchema`, `acervoDocSchema`)
-- `src/lib/rpc-contrato.test.ts` (caso em `CONTRATOS_PARSE_RPC`, fixture real do item, bloco anon-negado das 3 RPCs, teste de não-vazamento de `storage_path`/`criado_por`)
-- `docs/adr/0139-acervo-documentos.md` *(novo, listado acima)*
-- `CHANGELOG.md` (entrada 4.34.0)
-- `src/data/changelog-diretoria.ts` (entrada 4.34.0, linguagem de negócio)
+- `src/lib/rpc-contrato.test.ts` (caso em `CONTRATOS_PARSE_RPC`, fixture real do item, bloco anon-negado das 4 RPCs — incl. `acervo_excluir` da M5 —, teste de não-vazamento de `storage_path`/`criado_por`)
+- `src/app/financeiro/acervo/actions.ts` (M5: nova action `excluirDocumento`)
+- `src/components/financeiro/acervo-documentos.tsx` (M5: linha do glossário reestruturada — download `flex-1` + lixeira condicional a `podeAdicionar`, `ConfirmModal` antes de excluir)
+- `docs/adr/0139-acervo-documentos.md` *(novo, listado acima; M5 atualizou as seções de RBAC, RPC inline e risco de `storage_path`)*
+- `CHANGELOG.md` (entrada 4.34.0; M5 acrescentou bullet da exclusão)
+- `src/data/changelog-diretoria.ts` (entrada 4.34.0, linguagem de negócio; M5 ajustou o item de permissões para "adicionar/excluir")
 - `package.json` / `package-lock.json` (bump de versão — feito pelo orquestrador)
 - `CLAUDE.md` (bullet de "Toda RPC de leitura exposta..." reescrito para documentar os dois padrões — inline para RPC nova, wrapper+`__nucleo` como legado de retrofit da 0121)
 
 ## Pendências / fora de escopo
 
-- **Sem exclusão/edição de documento** — decisão de produto; possível follow-up se solicitado.
+- **Sem edição de documento** — decisão de produto; possível follow-up se solicitado. (A exclusão foi implementada na M5, mesma versão.)
 - **`PRIORIDADE_INICIAL` (redirect pós-login de `/`) não inclui as áreas do acervo** — um usuário cuja **única** área seja o acervo cai no fallback genérico de rota inicial em vez de abrir direto em `/financeiro/acervo`. Não afeta usuários que também têm outra área (caso mais comum hoje, dado o grant inicial apertado a admins). Achado a corrigir se/quando esse perfil de usuário existir.
 - **Binário órfão possível** se o cleanup best-effort da Action falhar após um erro na RPC — inofensivo (nunca listável, sem registro de metadados); limpeza manual eventual no Storage.
 - **Duas implementações de remoção de diacríticos** (uma na Action, para sanitizar o path do Storage; outra no componente, para normalizar título/descrição/nome na busca e no agrupamento) — equivalentes em resultado, mantidas separadas por servirem propósitos distintos (sanitização de path vs. normalização de comparação).
