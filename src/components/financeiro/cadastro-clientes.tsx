@@ -33,7 +33,6 @@ export interface ClienteCorp {
 }
 
 type CampoEditavel = 'empresa' | 'situacao' | 'faturar_em' | 'vencimento' | 'obs' | 'pct_juros' | 'pct_multa' | 'destinatarios' | 'forma_pgto' | 'contato_whats'
-type OrigemFiltro = 'todos' | 'planilha' | 'manual'
 type SituacaoFiltro = 'todas' | 'ativo' | 'inativo'
 
 const FILTRO_INPUT = 'w-full text-2xs border border-zinc-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-[var(--setor-corporativo)] placeholder:text-zinc-300'
@@ -121,8 +120,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   const inputFile = useRef<HTMLInputElement>(null)
 
   const [itens, setItens]             = useState<ClienteCorp[]>(inicial)
-  const [origemFiltro, setOrigem]     = useState<OrigemFiltro>('todos')
-  const [situacaoFiltro, setSituacao] = useState<SituacaoFiltro>('todas')
+  const [situacaoFiltro, setSituacao] = useState<SituacaoFiltro>('ativo')
   const [fEmpresa, setFEmpresa]       = useState('')
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
   const [confirmBulk, setConfirmBulk] = useState(false)
@@ -143,10 +141,9 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
   if (inicial !== prevInicial) { setPrevInicial(inicial); setItens(inicial); setSelecionados(new Set()) }
 
   const filtrados = useMemo(() => itens
-    .filter(c => origemFiltro === 'todos' || c.origem === origemFiltro)
     .filter(c => situacaoFiltro === 'todas' || (c.situacao ?? '') === situacaoFiltro)
     .filter(c => !fEmpresa || c.empresa.toLowerCase().includes(fEmpresa.toLowerCase())),
-  [itens, origemFiltro, situacaoFiltro, fEmpresa])
+  [itens, situacaoFiltro, fEmpresa])
 
   const totais = useMemo(() => ({
     total: itens.length,
@@ -164,13 +161,9 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
     if (todosSel) idsVisiveis.forEach(id => s.delete(id)); else idsVisiveis.forEach(id => s.add(id))
     return s
   })
-  const mudarOrigem = (o: OrigemFiltro) => { setOrigem(o); setSelecionados(new Set()) }
-
-  // Apagar: sem seleção → "todos" respeitando o filtro de origem; com seleção → selecionados.
-  const itensNaOrigem = itens.filter(c => origemFiltro === 'todos' || c.origem === origemFiltro)
-  const apagarTodos   = selecionados.size === 0
-  const idsApagar     = apagarTodos ? itensNaOrigem.map(c => c.id) : itens.filter(c => selecionados.has(c.id)).map(c => c.id)
-  const rotuloOrigem  = origemFiltro === 'planilha' ? ' de origem Planilha' : origemFiltro === 'manual' ? ' de origem Manual' : ''
+  // Apagar: sem seleção → todos; com seleção → selecionados.
+  const apagarTodos = selecionados.size === 0
+  const idsApagar   = apagarTodos ? itens.map(c => c.id) : itens.filter(c => selecionados.has(c.id)).map(c => c.id)
 
   const handleApagar = () => {
     if (idsApagar.length === 0) { setConfirmBulk(false); return }
@@ -235,36 +228,12 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Resumo + resultado do último import */}
-      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
-        <span className="font-semibold text-zinc-800">{totais.total} {totais.total === 1 ? 'cliente' : 'clientes'}</span>
-        <span className="text-zinc-500">{totais.planilha} da planilha · {totais.manual} manual</span>
-        <span className="text-success">{totais.ativos} {totais.ativos === 1 ? 'ativo' : 'ativos'}</span>
-      </div>
-
-      {resultado && (
-        <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-2xs text-zinc-600 space-y-1">
-          <p><b className="text-zinc-800">{resultado.inseridos}</b> {resultado.inseridos === 1 ? 'cliente importado' : 'clientes importados'} da planilha (os manuais foram preservados).</p>
-          {resultado.colisoesManual.length > 0 && (
-            <p className="flex items-start gap-1.5 text-warning"><AlertTriangle size={13} className="mt-0.5 shrink-0" />
-              <span>Estes nomes já existem como <b>manual</b> e não foram sobrescritos: {resultado.colisoesManual.join(', ')}.</span></p>
-          )}
-          {resultado.duplicadasPlanilha.length > 0 && (
-            <p className="text-zinc-500">Nomes repetidos na planilha (importado só o primeiro): {resultado.duplicadasPlanilha.join(', ')}.</p>
-          )}
-        </div>
-      )}
-      {erroImport && <p className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-2xs text-danger">{erroImport}</p>}
-
-      {/* Controles */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex gap-2 flex-wrap items-center">
-          {(['todos', 'planilha', 'manual'] as OrigemFiltro[]).map(v => (
-            <button key={v} onClick={() => mudarOrigem(v)}
-              className={['rounded-full border px-2.5 py-0.5 text-2xs font-medium transition-colors', origemFiltro === v ? 'border-action-soft-border bg-action-soft text-action-primary' : 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'].join(' ')}>
-              {v === 'todos' ? 'Toda origem' : v === 'planilha' ? 'Planilha' : 'Manual'}
-            </button>
-          ))}
+      {/* Resumo (esquerda) + controles (direita) na MESMA linha */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
+          <span className="font-semibold text-zinc-800">{totais.total} {totais.total === 1 ? 'cliente' : 'clientes'}</span>
+          <span className="text-zinc-500">{totais.planilha} da planilha · {totais.manual} manual</span>
+          <span className="text-success">{totais.ativos} {totais.ativos === 1 ? 'ativo' : 'ativos'}</span>
         </div>
         <div className="flex gap-2 items-center">
           <button onClick={() => { setCriando(true); setErroNovo(null) }} disabled={criando}
@@ -283,6 +252,21 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
         </div>
       </div>
 
+      {/* Resultado / erro do último import */}
+      {resultado && (
+        <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-2xs text-zinc-600 space-y-1">
+          <p><b className="text-zinc-800">{resultado.inseridos}</b> {resultado.inseridos === 1 ? 'cliente importado' : 'clientes importados'} da planilha (os manuais foram preservados).</p>
+          {resultado.colisoesManual.length > 0 && (
+            <p className="flex items-start gap-1.5 text-warning"><AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>Estes nomes já existem como <b>manual</b> e não foram sobrescritos: {resultado.colisoesManual.join(', ')}.</span></p>
+          )}
+          {resultado.duplicadasPlanilha.length > 0 && (
+            <p className="text-zinc-500">Nomes repetidos na planilha (importado só o primeiro): {resultado.duplicadasPlanilha.join(', ')}.</p>
+          )}
+        </div>
+      )}
+      {erroImport && <p className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-2xs text-danger">{erroImport}</p>}
+
       {/* Tabela */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm table-fixed min-w-[1180px]">
@@ -300,7 +284,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
               <th className="py-2 px-2 w-[120px]">Forma pgto</th>
               <th className="py-2 px-2 w-[120px]">Contato</th>
               <th className="py-2 px-2 w-[200px]">Destinatários</th>
-              <th className="py-2 px-2 w-[200px]">OBS</th>
+              <th className="py-2 px-2 w-[200px]">Observações</th>
               <th className="py-2 px-2 w-[64px]"></th>
             </tr>
             <tr className="border-b border-zinc-100">
@@ -367,7 +351,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
           onFechar={() => setConfirmBulk(false)}
           mensagem={
             <p>{apagarTodos
-              ? <>Apagar <strong>todos os {idsApagar.length}</strong> clientes{rotuloOrigem}? Esta ação <strong>não pode ser desfeita</strong>.</>
+              ? <>Apagar <strong>todos os {idsApagar.length}</strong> clientes? Esta ação <strong>não pode ser desfeita</strong>.</>
               : <>Apagar <strong>{selecionados.size}</strong> cliente(s) selecionado(s)? Esta ação não pode ser desfeita.</>}</p>
           }
         />

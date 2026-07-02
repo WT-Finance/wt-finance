@@ -50,7 +50,7 @@ export function classificarFaturas(
       multiplos: matches.length > 1,
       emitir: status === 'pronta', // sugestão; o usuário decide (nada é emitido em 1a)
       prontaNf,
-      modoNf: 'nao',               // NF é opcional por linha; default não emitir (o Yan decide)
+      modoNf: prontaNf ? 'normal' : 'nao', // default Normal quando a fatura está pronta p/ NF (o usuário decide)
       valorAvulso: null,
     }
   })

@@ -6,6 +6,18 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.33.1] — 2026-07-01
+
+PATCH · **Faturamento Corporativo — refinamento de UX da tela de Emissão** (só apresentação). **SEM migration.** **ADR-0138.** A lógica de emissão (Server Actions, camada Asaas, idempotência, falha parcial, assincronia da NF, confirmação de produção) é **byte-idêntica** — provado por `git diff` (só `faturamento-corp.tsx` mudou; aba Cadastro e camada intocadas).
+
+- **Tabela de revisão em dois momentos:** antes de emitir, a coluna **Cruzamento** mostra só o status (Pronta / Faltam dados fiscais / Não identificado); depois, o **resultado fica co-locado na coluna do próprio documento** — boleto na coluna Boleto (emitido + “ver boleto” / falhou / pulado), nota na coluna Nota (autorizada + “ver nota” / processando / falhou). Não-identificado de alto valor **destacado** (não some no rodapé). Valores à direita, tabulares; densidade menor; colunas de referência (Vencimento, Fatura Nº) mantidas.
+- **Nota fiscal com rótulo curto + valor avulso inline:** o seletor mostra Normal / Avulsa / Não emitir; o valor avulso fica **na mesma linha** (altura constante, sem “pulo”); a explicação vive na legenda ao pé da tabela.
+- **Ordem da tela = fluxo real:** upload → revisão (com os botões ao pé) → **resultado abaixo, só depois de emitir** (antes os painéis apareciam acima, invertidos).
+- **Painel de resultado enxuto:** cartões de contagem (número em destaque) + **erros agrupados por motivo** (cada motivo uma vez, ex.: “Endereço do cliente incompleto · 6 faturas”) com **“Ver detalhes”** que expande as faturas afetadas (Pessoa · Fatura Nº · Valor), acessível (`aria-expanded`).
+- **PT-BR em tudo:** removido o “NF synchronized” (status da NF mapeado para PT-BR — processando / autorizada / falhou / cancelada).
+- **Controles mais claros na revisão:** o boleto virou um seletor **Emitir / Não emitir** (espelhando o da nota); a **nota fiscal já vem “Normal” por padrão** nas faturas prontas para NF; a coluna **“Cruzamento” passou a se chamar “Status”**; o botão **Atualizar status** (↻) migrou para o **cabeçalho da coluna Nota fiscal** (onde as linhas de status vivem), como ícone único; as larguras de coluna foram ajustadas (`table-fixed`) para o texto da coluna Nota **não escapar** da tabela; os botões **“Emitir boletos” / “Emitir notas fiscais”** ficam **lado a lado**, sem número no rótulo (o de boleto ganhou ícone).
+- **Aba Cadastro de Clientes:** a coluna **OBS** virou **Observações**; o filtro de **origem** (Toda/Planilha/Manual) foi **removido**; a tabela abre já filtrando por **Ativos** (situação padrão); o **resumo (contagens) e os botões de ação** (Nova linha / Importar / Apagar) passam a ficar **na mesma linha** — resumo à esquerda, botões à direita.
+
 ## [4.33.0] — 2026-07-01
 
 MINOR · **Faturamento Corporativo — Fase 3 (Cadastro de Clientes).** Traz a planilha paralela de clientes corporativos (241 clientes: situação, dias, regras, % juros/multa, destinatários) para a plataforma como **cadastro gerenciável** — rumo à base central de clientes. **ADR-0137 · migration 0164 (escrita aditiva).** Reusa a mecânica do Fluxo de Caixa Gerencial.
