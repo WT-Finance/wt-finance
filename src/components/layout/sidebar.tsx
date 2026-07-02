@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Users, Palette, Inbox, LogOut } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -26,6 +26,8 @@ interface NavSubItem {
   icon: LucideIcon
   /** Área de permissão que libera o subitem. */
   area: Area
+  /** Visível se o usuário tiver QUALQUER uma destas áreas (OR). v4.34.0. */
+  areasAny?: Area[]
 }
 
 interface NavItem {
@@ -52,6 +54,7 @@ const FINANCEIRO_SUBS: NavSubItem[] = [
   { href: '/financeiro/fluxo-caixa/gerencial', label: 'Gerencial',            icon: Table2,     area: 'financeiro/gerencial'   },
   { href: '/financeiro/calculadora-rateio',    label: 'Calculadora de Rateio', icon: Calculator, area: 'financeiro/gerencial'  },
   { href: '/financeiro/faturamento-corp',      label: 'Faturamento Corporativo', icon: Receipt,  area: 'financeiro/faturamento-corp' },
+  { href: '/financeiro/acervo',                label: 'Acervo de Documentos', icon: Library, area: 'financeiro/acervo', areasAny: ['financeiro/acervo', 'financeiro/acervo/gestao'] },
 ]
 
 const NAV_ITEMS: NavItem[] = [
@@ -168,8 +171,8 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
   // ── RBAC: navegação filtrada pelas permissões do usuário ──
   const pode = (area: Area) => usuario.permissoes.includes(area)
 
-  const performanceSubs = PERFORMANCE_SUBS.filter(s => pode(s.area))
-  const financeiroSubs  = FINANCEIRO_SUBS.filter(s => pode(s.area))
+  const performanceSubs = PERFORMANCE_SUBS.filter(s => s.areasAny ? s.areasAny.some(pode) : pode(s.area))
+  const financeiroSubs  = FINANCEIRO_SUBS.filter(s => s.areasAny ? s.areasAny.some(pode) : pode(s.area))
 
   const navItems = NAV_ITEMS.filter(item => {
     if (item.sempre) return true
