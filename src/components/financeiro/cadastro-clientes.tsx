@@ -271,7 +271,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
       {/* Scroll INTERNO da tabela (x + y) com o cabeçalho FIXO no topo (sticky). */}
       <div className="overflow-auto max-h-[70vh]">
         <table className="w-full text-sm table-fixed min-w-[1180px]">
-          <thead className="sticky top-0 z-10 [&_tr]:bg-white">
+          <thead className="sticky top-0 z-20 bg-white [&_th]:bg-white [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
             <tr className="border-b border-zinc-100 text-left text-xs font-medium text-zinc-400">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosSel} onChange={toggleTodos} className="accent-[var(--setor-corporativo)] cursor-pointer" aria-label="Selecionar todos os visíveis" />

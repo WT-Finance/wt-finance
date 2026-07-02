@@ -285,7 +285,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       {/* Scroll INTERNO da tabela (x + y) com o cabeçalho FIXO no topo (sticky). */}
       <div className="overflow-auto max-h-[70vh]">
         <table className="w-full text-sm table-fixed min-w-[860px]">
-          <thead className="sticky top-0 z-10 [&_tr]:bg-white">
+          <thead className="sticky top-0 z-20 bg-white [&_th]:bg-white [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200">
             <tr className="border-b border-zinc-100 text-left">
               <th className="py-2 px-2 w-[32px] text-center">
                 <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}
