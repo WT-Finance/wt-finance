@@ -40,6 +40,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     itens: [
       { tipo: 'melhoria', texto: 'A tela de emissão do Faturamento Corporativo ficou mais clara e fácil de ler. Agora a ordem segue o fluxo natural (importar → revisar → ver o resultado depois de emitir), o resultado de cada boleto e de cada nota aparece na sua própria coluna (o erro fica ao lado do que falhou), o valor da nota avulsa fica na mesma linha (sem a tabela “pulando”), e as faturas não identificadas de valor alto ganham destaque para não passarem despercebidas.' },
       { tipo: 'melhoria', texto: 'Ao emitir, o resumo do resultado ficou enxuto: contadores em destaque e os erros agrupados por motivo (ex.: “Endereço do cliente incompleto · 6 faturas”), cada um com um “Ver detalhes” que abre a lista das faturas afetadas. Nada mudou na forma de emitir — só a apresentação, agora toda em português.' },
+      { tipo: 'melhoria', texto: 'Ajustes finos de usabilidade: na revisão, o boleto virou um seletor “Emitir / Não emitir” e a nota fiscal já vem marcada como “Normal” por padrão nas faturas prontas; os botões de emitir ficam lado a lado; e o botão de atualizar o status das notas foi para junto da própria coluna de notas. No Cadastro de Clientes, a tela abre já mostrando os clientes ativos.' },
     ],
   },
   {

@@ -7,7 +7,7 @@
 // pdfUrl quando autorizada. Ambiente sempre visível; produção = confirmação reforçada.
 
 import { useRef, useState, useCallback, useMemo } from 'react'
-import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2, ExternalLink, FileText, RefreshCw } from 'lucide-react'
+import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2, ExternalLink, FileText, RefreshCw, Barcode } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { numBRL2 } from '@/lib/fmt'
 import { SETOR_COLORS } from '@/lib/config'
@@ -153,8 +153,8 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
     setEstado('pronto')
   }
 
-  function toggleEmitir(linha: number) {
-    setFaturas(prev => prev.map(f => f.linha === linha && f.status === 'pronta' ? { ...f, emitir: !f.emitir } : f))
+  function setEmitir(linha: number, val: boolean) {
+    setFaturas(prev => prev.map(f => f.linha === linha && f.status === 'pronta' ? { ...f, emitir: val } : f))
   }
   function setModoNf(linha: number, modo: ModoNota) {
     setFaturas(prev => prev.map(f => f.linha === linha && f.prontaNf ? { ...f, modoNf: modo } : f))
@@ -299,16 +299,33 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[62rem] text-2xs">
+            {/* table-fixed: as larguras são respeitadas e o texto longo (ex.: "falhou: Endereço do
+                cliente incompleto") QUEBRA dentro da coluna Nota — não escapa nem estoura a tabela. */}
+            <table className="w-full table-fixed min-w-[62rem] text-2xs">
               <thead>
                 <tr className="border-b border-zinc-100 text-left uppercase tracking-wide text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
-                  <th className="py-1.5 px-2 text-right w-28">Valor</th>
-                  <th className="py-1.5 px-2 w-20">Vencimento</th>
-                  <th className="py-1.5 px-2 w-24">Fatura Nº</th>
-                  <th className="py-1.5 px-2 w-40">Cruzamento</th>
-                  <th className="py-1.5 px-2 w-36">Boleto</th>
-                  <th className="py-1.5 px-2 w-52">Nota fiscal</th>
+                  <th className="py-1.5 px-2 text-right w-24">Valor</th>
+                  <th className="py-1.5 px-2 w-24">Vencimento</th>
+                  <th className="py-1.5 px-2 w-20">Fatura Nº</th>
+                  <th className="py-1.5 px-2 w-36">Status</th>
+                  <th className="py-1.5 px-2 w-28">Boleto</th>
+                  <th className="py-1.5 px-2 w-56">
+                    {/* Atualizar status (↻) mora AQUI, ao lado do título da coluna cujas linhas ele
+                        atualiza — só aparece quando há nota emitida com status a acompanhar. */}
+                    <span className="inline-flex items-center gap-1.5">
+                      Nota fiscal
+                      {temNotaComStatus && (
+                        <button
+                          type="button" onClick={() => void atualizarStatus()} disabled={atualizando}
+                          title="Atualizar status das notas fiscais" aria-label="Atualizar status das notas fiscais"
+                          className="foco-neutro rounded p-0.5 text-zinc-400 hover:text-action-primary disabled:opacity-40"
+                        >
+                          <RefreshCw size={12} className={atualizando ? 'animate-spin' : ''} />
+                        </button>
+                      )}
+                    </span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -327,7 +344,7 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
                       <td className={`py-1 px-2 text-right tabular-nums ${naoIdent ? 'text-warning font-semibold' : 'text-zinc-700'}`}>{f.valor !== null ? numBRL2(f.valor) : '—'}</td>
                       <td className="py-1 px-2 tabular-nums text-zinc-600">{fmtData(f.vencimento)}</td>
                       <td className="py-1 px-2 tabular-nums text-zinc-600">{f.fatura_cliente_no ?? '—'}</td>
-                      {/* Cruzamento: SÓ o status (de-ênfase depois de emitir — o foco vai p/ as colunas próprias). */}
+                      {/* Status: SÓ o status do cruzamento (de-ênfase depois de emitir — o foco vai p/ as colunas próprias). */}
                       <td className="py-1 px-2">
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-3xs font-medium whitespace-nowrap ${STATUS_CLASSE[f.status]} ${jaEmitiu ? 'opacity-50' : ''}`}>
                           {STATUS_LABEL[f.status]}
@@ -336,20 +353,9 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
                           <span className="block mt-0.5 text-3xs text-zinc-400">faltam: {f.faltam.join(', ')}</span>
                         )}
                       </td>
-                      {/* Boleto: checkbox (antes) → resultado co-locado (depois). */}
+                      {/* Boleto: seletor Emitir/Não emitir (antes) → resultado co-locado (depois). */}
                       <td className="py-1 px-2">
-                        {rBol ? <LinhaResultado item={rBol} /> : (
-                          <div className="text-center">
-                            <input
-                              type="checkbox"
-                              className="foco-neutro accent-[var(--setor-corporativo)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-                              checked={f.status === 'pronta' && f.emitir}
-                              disabled={f.status !== 'pronta' || emitindo}
-                              onChange={() => toggleEmitir(f.linha)}
-                              aria-label={`Marcar para emitir boleto — fatura ${f.fatura_cliente_no ?? f.linha}`}
-                            />
-                          </div>
-                        )}
+                        {rBol ? <LinhaResultado item={rBol} /> : <ControleBoleto fatura={f} desabilitado={emitindo} onToggle={v => setEmitir(f.linha, v)} />}
                       </td>
                       {/* Nota fiscal: seletor (antes) → resultado co-locado (depois). */}
                       <td className="py-1 px-2">
@@ -364,38 +370,38 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
             </table>
           </div>
 
-          {/* Barra de ação — boleto */}
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
-            <p className="text-2xs text-zinc-500">
-              {selecionadas.length > 0
-                ? <>Boletos: <b className="text-zinc-700">{selecionadas.length}</b> {selecionadas.length === 1 ? 'fatura' : 'faturas'} · Total <span className="text-[var(--text-subtle)]">R$</span> <span className="tabular-nums text-zinc-700">{numBRL2(totalSelecionado)}</span></>
-                : 'Marque as faturas prontas para emitir boleto.'}
-            </p>
-            <button
-              type="button" onClick={abrirConfirmacao}
-              disabled={selecionadas.length === 0 || !configurado || emitindo}
-              className="inline-flex items-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {emitindo ? <Loader2 size={14} className="animate-spin" /> : null}
-              {emitindo ? 'Emitindo…' : `Emitir ${selecionadas.length || ''} ${selecionadas.length === 1 ? 'boleto' : 'boletos'}`.trim()}
-            </button>
-          </div>
-
-          {/* Barra de ação — nota fiscal */}
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-2xs text-zinc-500">
-              {selecionadasNota.length > 0
-                ? <>Notas fiscais: <b className="text-zinc-700">{selecionadasNota.length}</b> ({selecionadasNota.filter(f => f.modoNf === 'avulsa').length} avulsa{selecionadasNota.filter(f => f.modoNf === 'avulsa').length === 1 ? '' : 's'}) · Total <span className="text-[var(--text-subtle)]">R$</span> <span className="tabular-nums text-zinc-700">{numBRL2(totalNota)}</span></>
-                : 'Escolha as notas fiscais (Normal/Avulsa) nas faturas prontas para NF.'}
-            </p>
-            <button
-              type="button" onClick={abrirConfirmacaoNota}
-              disabled={selecionadasNota.length === 0 || !configurado || emitindoNota}
-              className="inline-flex items-center gap-2 rounded-md border border-action-soft-border bg-action-soft px-4 py-2 text-xs font-medium text-action-primary foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {emitindoNota ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-              {emitindoNota ? 'Emitindo…' : `Emitir ${selecionadasNota.length || ''} ${selecionadasNota.length === 1 ? 'nota fiscal' : 'notas fiscais'}`.trim()}
-            </button>
+          {/* Barra de ação — resumos + botões LADO A LADO (rótulo sem número). */}
+          <div className="mt-4 border-t border-zinc-100 pt-4">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-2xs text-zinc-500">
+              <p>
+                {selecionadas.length > 0
+                  ? <>Boletos: <b className="text-zinc-700">{selecionadas.length}</b> {selecionadas.length === 1 ? 'fatura' : 'faturas'} · Total <span className="text-[var(--text-subtle)]">R$</span> <span className="tabular-nums text-zinc-700">{numBRL2(totalSelecionado)}</span></>
+                  : 'Marque as faturas prontas para emitir boleto.'}
+              </p>
+              <p>
+                {selecionadasNota.length > 0
+                  ? <>Notas fiscais: <b className="text-zinc-700">{selecionadasNota.length}</b> ({selecionadasNota.filter(f => f.modoNf === 'avulsa').length} avulsa{selecionadasNota.filter(f => f.modoNf === 'avulsa').length === 1 ? '' : 's'}) · Total <span className="text-[var(--text-subtle)]">R$</span> <span className="tabular-nums text-zinc-700">{numBRL2(totalNota)}</span></>
+                  : 'Escolha as notas fiscais (Normal/Avulsa) nas faturas prontas para NF.'}
+              </p>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button" onClick={abrirConfirmacao}
+                disabled={selecionadas.length === 0 || !configurado || emitindo}
+                className="inline-flex items-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {emitindo ? <Loader2 size={14} className="animate-spin" /> : <Barcode size={14} />}
+                {emitindo ? 'Emitindo…' : 'Emitir boletos'}
+              </button>
+              <button
+                type="button" onClick={abrirConfirmacaoNota}
+                disabled={selecionadasNota.length === 0 || !configurado || emitindoNota}
+                className="inline-flex items-center gap-2 rounded-md border border-action-soft-border bg-action-soft px-4 py-2 text-xs font-medium text-action-primary foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {emitindoNota ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                {emitindoNota ? 'Emitindo…' : 'Emitir notas fiscais'}
+              </button>
+            </div>
           </div>
 
           {!configurado && (
@@ -403,22 +409,14 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
           )}
           <p className="mt-3 text-3xs text-zinc-400">
             Nota fiscal (opcional por fatura, exige endereço/CEP): <b>Normal</b> usa o valor da fatura, <b>Avulsa</b> um valor próprio.
-            A NF é <b>assíncrona</b> — após emitir fica “processando” até a prefeitura autorizar; use “Atualizar status” para ver o resultado e o link.
+            A NF é <b>assíncrona</b> — após emitir fica “processando” até a prefeitura autorizar; use o ícone <RefreshCw size={9} className="inline align-[-1px]" /> ao lado de “Nota fiscal” na tabela para atualizar o status.
           </p>
         </Card>
       )}
 
       {/* Resultado — CONSEQUÊNCIA da emissão: aparece ABAIXO dos botões, só depois de emitir. */}
       {resultado && <ResultadoEmissaoCard resultado={resultado} valorPorFatura={valorPorFatura} />}
-      {resultadoNota && (
-        <ResultadoNotaCard
-          resultado={resultadoNota}
-          valorPorFatura={valorPorFatura}
-          onAtualizar={() => void atualizarStatus()}
-          atualizando={atualizando}
-          podeAtualizar={temNotaComStatus}
-        />
-      )}
+      {resultadoNota && <ResultadoNotaCard resultado={resultadoNota} valorPorFatura={valorPorFatura} />}
 
       {/* Modais de confirmação */}
       {modalAberto && (
@@ -440,6 +438,28 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
         />
       )}
     </div>
+  )
+}
+
+// ── Controle de boleto por linha (Emitir / Não emitir; espelha o seletor da NF) ──
+function ControleBoleto({ fatura, desabilitado, onToggle }: {
+  fatura: FaturaClassificada
+  desabilitado: boolean
+  onToggle: (v: boolean) => void
+}) {
+  // Só faturas prontas (têm CPF/CNPJ) podem gerar boleto; as demais nem oferecem a opção.
+  if (fatura.status !== 'pronta') return <span className="text-3xs text-zinc-400">—</span>
+  return (
+    <select
+      value={fatura.emitir ? 'sim' : 'nao'}
+      disabled={desabilitado}
+      onChange={e => onToggle(e.target.value === 'sim')}
+      className="foco-neutro rounded border border-zinc-200 bg-white px-1.5 py-1 text-3xs text-zinc-700 disabled:opacity-40"
+      aria-label={`Boleto — fatura ${fatura.fatura_cliente_no ?? fatura.linha}`}
+    >
+      <option value="sim">Emitir</option>
+      <option value="nao">Não emitir</option>
+    </select>
   )
 }
 
@@ -628,33 +648,24 @@ function ResultadoEmissaoCard({ resultado, valorPorFatura }: {
   )
 }
 
-// ── Painel de resultado da emissão de notas + atualizar status (cartões + erros agrupados) ──
-function ResultadoNotaCard({ resultado, valorPorFatura, onAtualizar, atualizando, podeAtualizar }: {
-  resultado: ResultadoNotas; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>; onAtualizar: () => void; atualizando: boolean; podeAtualizar: boolean
+// ── Painel de resultado da emissão de notas (cartões + erros agrupados) ───────
+// O "Atualizar status" mora no cabeçalho da coluna Nota fiscal da tabela (que é onde
+// as linhas de status vivem); aqui o painel mostra só a contagem e os erros agrupados.
+function ResultadoNotaCard({ resultado, valorPorFatura }: {
+  resultado: ResultadoNotas; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>
 }) {
   const { emitidas, jaExistiam, falharam, puladas, ambiente } = resultado
   return (
     <Card title="Resultado da emissão de notas fiscais" subtitle={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'} · a NF é assíncrona`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap gap-3">
-          <Contagem n={emitidas.length} rotulo={emitidas.length === 1 ? 'nota emitida' : 'notas emitidas'} tom="success" />
-          {jaExistiam.length > 0 && <Contagem n={jaExistiam.length} rotulo="já emitidas" tom="zinc" />}
-          {puladas.length > 0 && <Contagem n={puladas.length} rotulo={puladas.length === 1 ? 'pulada' : 'puladas'} tom="zinc" />}
-          {falharam.length > 0 && <Contagem n={falharam.length} rotulo={falharam.length === 1 ? 'falhou' : 'falharam'} tom="danger" />}
-        </div>
-        {podeAtualizar && (
-          <button
-            type="button" onClick={onAtualizar} disabled={atualizando}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 px-3 py-1.5 text-2xs font-medium text-zinc-600 foco-neutro hover:bg-zinc-50 disabled:opacity-40"
-          >
-            {atualizando ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-            {atualizando ? 'Atualizando…' : 'Atualizar status'}
-          </button>
-        )}
+      <div className="flex flex-wrap gap-3">
+        <Contagem n={emitidas.length} rotulo={emitidas.length === 1 ? 'nota emitida' : 'notas emitidas'} tom="success" />
+        {jaExistiam.length > 0 && <Contagem n={jaExistiam.length} rotulo="já emitidas" tom="zinc" />}
+        {puladas.length > 0 && <Contagem n={puladas.length} rotulo={puladas.length === 1 ? 'pulada' : 'puladas'} tom="zinc" />}
+        {falharam.length > 0 && <Contagem n={falharam.length} rotulo={falharam.length === 1 ? 'falhou' : 'falharam'} tom="danger" />}
       </div>
       <ErrosAgrupados itens={falharam.map(it => ({ pessoa: it.pessoa, fatura: it.faturaClienteNo || it.ref, erro: it.erro ?? 'Erro' }))} valorPorFatura={valorPorFatura} />
       <p className="mt-3 text-3xs text-zinc-400">
-        A autorização da prefeitura pode levar alguns minutos. Clique em “Atualizar status” para ver quando cada nota fica <b>autorizada</b> e abrir o link. Reprocessar não duplica — as notas já emitidas (normal e avulsa) são puladas.
+        A autorização da prefeitura pode levar alguns minutos. Use o ícone <RefreshCw size={9} className="inline align-[-1px]" /> ao lado de “Nota fiscal” na tabela para atualizar o status e ver quando cada nota fica <b>autorizada</b> (e abrir o link). Reprocessar não duplica — as notas já emitidas (normal e avulsa) são puladas.
       </p>
     </Card>
   )

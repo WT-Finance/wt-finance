@@ -23,6 +23,9 @@ Cartões de contagem (número em destaque, tom semântico) + os erros **agrupado
 ### 4. PT-BR em tudo
 Status da NF do Asaas mapeado para PT-BR (`labelStatusNota`): processando / autorizada / falhou / cancelada — fim do "NF synchronized" e de qualquer resíduo em inglês.
 
+### 5. Refinos de controle (follow-up no mesmo PATCH)
+Coerência dos controles da revisão: o **boleto** vira um seletor **Emitir / Não emitir** (espelha o seletor da NF, em vez de um checkbox); a **NF já vem "Normal" por padrão** nas faturas prontas-NF (o usuário decide, mas o caminho comum não exige clique); a coluna **"Cruzamento" passa a "Status"**; as larguras usam **`table-fixed`** para o texto da coluna Nota quebrar dentro da coluna (não escapar); os botões **"Emitir boletos" / "Emitir notas fiscais"** ficam **lado a lado, sem número no rótulo**; e o **Atualizar status (↻)** migra para o **cabeçalho da coluna Nota fiscal** — junto das linhas de status que ele atualiza. Tudo apresentação/default; a emissão não muda.
+
 ## Invariante preservado (o crítico)
 
 **A lógica de emissão é byte-idêntica em comportamento.** Esta fase mexeu SÓ nos componentes de apresentação de `src/components/financeiro/faturamento-corp.tsx` (o que renderiza a tabela e os painéis) + helpers de exibição. As Server Actions (`emitirBoletos`/`emitirNotas`/`atualizarStatusNotas`), a camada `src/lib/asaas/`, a idempotência (dupla, `-AVULSA`), a falha parcial, o modelo assíncrono da NF e a confirmação de produção enforced **não mudaram** — provado por `git diff` (só `faturamento-corp.tsx` no diff; o único `useState` novo é o expansor local do "Ver detalhes"; as chamadas às actions permanecem idênticas). A aba Cadastro (Fase 3) e o wrapper de abas ficam intocados.

@@ -17,6 +17,20 @@ Só apresentação da aba **Emissão** do Faturamento Corporativo (a aba Cadastr
 - **Ordem:** upload → revisão (botões ao pé) → **resultado ABAIXO, só depois de emitir** (os painéis saíram de cima da revisão).
 - **Painel:** cartões de contagem (`Contagem`, número em destaque) + **erros agrupados por motivo** (`ErrosAgrupados`/`GrupoErro`) — cada motivo uma vez com a contagem + **“Ver detalhes”** (estado local, `aria-expanded`) que expande as faturas afetadas (Pessoa · Fatura Nº · Valor); “Ocultar” colapsa.
 
+### M4 — Ajustes de refino (mesmo PR #159, follow-up do Yan)
+Aproveitando o PR aberto (ainda no checkpoint), nove ajustes de apresentação/default — **sem tocar a lógica de emissão**:
+1. **Boleto vira seletor** Emitir / Não emitir (espelha o da NF); `ControleBoleto` substitui o checkbox. Handler `toggleEmitir` → `setEmitir(linha, val)` (mesmo efeito, valor explícito).
+2. **Default da NF = Normal** nas faturas prontas-NF (`classificar.ts`: `modoNf = prontaNf ? 'normal' : 'nao'`); as não-prontas nem exibem seletor.
+3. **Coluna “Cruzamento” → “Status”**.
+4. **Larguras ajustadas + `table-fixed`** — o texto da coluna Nota (“falhou: Endereço do cliente incompleto”) **quebra dentro da coluna** e não escapa/estoura a tabela.
+5. **Botões lado a lado, sem número** — “Emitir boletos” / “Emitir notas fiscais”; o de boleto ganhou ícone (`Barcode`).
+6. **Atualizar status (↻) migra para o cabeçalho da coluna Nota fiscal** — ícone único (spinner ao atualizar), aparece só quando há nota com status a acompanhar; saiu do painel de resultado (props `onAtualizar/atualizando/podeAtualizar` removidas do `ResultadoNotaCard`).
+7. **Cadastro: “OBS” → “Observações”**.
+8. **Cadastro: filtro de origem removido** (pills Toda/Planilha/Manual + estado `origemFiltro` + escopo de origem no “Apagar todos”).
+9. **Cadastro: filtro de situação abre em “Ativo”** (default).
+
+Não-regressão preservada: `classificar.ts` é a preparação da tela (defaults de seleção), não a emissão; `cadastro-clientes.tsx` é a aba Cadastro (não a Emissão). A camada Asaas e as Server Actions de emissão permanecem intocadas.
+
 ### M3 — Fechamento
 v4.33.1, CHANGELOG, CHANGELOG_DIRETORIA, ADR-0138, este out-briefing. SEM migration.
 
