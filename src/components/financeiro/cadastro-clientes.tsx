@@ -287,7 +287,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
                 <input type="checkbox" checked={todosSel} onChange={toggleTodos} className="accent-[var(--setor-corporativo)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
               </th>
               <th className="py-2 px-2 w-[22%]">Empresa</th>
-              <th className="py-2 px-2 w-[64px]">Situação</th>
+              <th className="py-2 px-2 w-[92px]">Situação</th>
               <th className="py-2 px-2 w-[88px]">Faturar em</th>
               <th className="py-2 px-2 w-[84px]">Vencimento</th>
               <th className="py-2 px-2 w-[72px]">% Juros</th>
