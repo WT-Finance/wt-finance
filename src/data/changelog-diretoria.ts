@@ -35,6 +35,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.33.2',
+    data: '2026-07-02T09:41',
+    itens: [
+      { tipo: 'melhoria', texto: 'Padronização visual das tabelas em toda a plataforma: os cabeçalhos de coluna passam a ter o mesmo estilo (sem caixa alta e mais leves), deixando as telas mais uniformes e fáceis de ler.' },
+      { tipo: 'melhoria', texto: 'No Faturamento Corporativo, os botões de emitir ficaram alinhados à direita junto do resumo e a tabela de revisão não tem mais barra de rolagem lateral. Nas tabelas maiores (Cadastro de Clientes e Base de Dados do Fluxo de Caixa Gerencial), a rolagem agora é interna à tabela, mantendo o cabeçalho sempre visível.' },
+      { tipo: 'melhoria', texto: 'Na tela de Usuários e Acessos, os nomes das permissões ficaram mais curtos e consistentes com o menu (“Performance/Trips”, “Gerencial”).' },
+    ],
+  },
+  {
     versao: '4.33.1',
     data: '2026-07-01T18:52',
     itens: [

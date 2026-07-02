@@ -235,6 +235,37 @@ export default async function DesignSystemPage() {
       </Section>
 
       <Section id="tabelas" title="7. Tabelas e Listas">
+        {/* Cabeçalho de tabela — padrão ÚNICO da plataforma (v4.33.2) */}
+        <p className="font-medium text-[var(--text-primary)] text-sm mb-1">
+          Cabeçalho de tabela — padrão único (v4.33.2)
+        </p>
+        <p className="text-xs text-[var(--text-muted)] mb-3">
+          Toda tabela da plataforma usa o MESMO estilo de cabeçalho de coluna, como na{' '}
+          <strong>Lista de Operações</strong>: <strong>caixa normal</strong> (nunca{' '}
+          <code className="bg-zinc-100 px-1 rounded">uppercase</code>/<code className="bg-zinc-100 px-1 rounded">tracking-wide</code>),
+          peso <code className="bg-zinc-100 px-1 rounded">font-medium</code> (nunca{' '}
+          <code className="bg-zinc-100 px-1 rounded">font-semibold</code>/<code className="bg-zinc-100 px-1 rounded">font-bold</code>),
+          tamanho pequeno (<code className="bg-zinc-100 px-1 rounded">text-xs</code>/<code className="bg-zinc-100 px-1 rounded">text-2xs</code>)
+          e cor terciária (<code className="bg-zinc-100 px-1 rounded">text-zinc-400</code>/<code className="bg-zinc-100 px-1 rounded">--text-muted</code>).
+          Em cards-tabela, a forma canônica é <code className="bg-zinc-100 px-1 rounded">CARD_TABELA_TH</code>. Nunca caixa alta em cabeçalho.
+        </p>
+        <div className="flex flex-wrap gap-6 mb-4 text-xs">
+          <div>
+            <p className="text-[var(--text-muted)] mb-1">✓ padrão</p>
+            <table><thead><tr className="text-left font-medium text-zinc-400 border-b border-zinc-100"><th className="py-1 pr-5">Pessoa</th><th className="py-1 pr-5">Valor</th><th className="py-1">Status</th></tr></thead></table>
+          </div>
+          <div>
+            <p className="text-[var(--text-muted)] mb-1">✗ evitar</p>
+            <table><thead><tr className="text-left uppercase tracking-wide text-zinc-400 border-b border-zinc-100"><th className="py-1 pr-5">Pessoa</th><th className="py-1 pr-5">Valor</th><th className="py-1">Status</th></tr></thead></table>
+          </div>
+        </div>
+        <p className="text-xs text-[var(--text-muted)] mb-6">
+          <strong>Tabela longa com scroll interno + cabeçalho fixo</strong> (Cadastro de Clientes, Base de Dados do Gerencial):
+          o container rola por dentro — <code className="bg-zinc-100 px-1 rounded">overflow-auto max-h-[70vh]</code> — e o{' '}
+          <code className="bg-zinc-100 px-1 rounded">&lt;thead&gt;</code> fica fixo com{' '}
+          <code className="bg-zinc-100 px-1 rounded">sticky top-0 z-10 [&amp;_tr]:bg-white</code>: o cabeçalho não sai da tela ao rolar as linhas.
+        </p>
+
         {/* Padrão de card-tabela (v4.11) */}
         <p className="font-medium text-[var(--text-primary)] text-sm mb-1">
           Padrão de card-tabela — <code className="bg-zinc-100 px-1 rounded">CardTabela</code>

@@ -301,14 +301,14 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
           <div className="overflow-x-auto">
             {/* table-fixed: as larguras são respeitadas e o texto longo (ex.: "falhou: Endereço do
                 cliente incompleto") QUEBRA dentro da coluna Nota — não escapa nem estoura a tabela. */}
-            <table className="w-full table-fixed min-w-[62rem] text-2xs">
+            <table className="w-full table-fixed min-w-[54rem] text-2xs">
               <thead>
-                <tr className="border-b border-zinc-100 text-left uppercase tracking-wide text-zinc-400">
+                <tr className="border-b border-zinc-100 text-left font-medium text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
                   <th className="py-1.5 px-2 text-right w-24">Valor</th>
                   <th className="py-1.5 px-2 w-24">Vencimento</th>
                   <th className="py-1.5 px-2 w-20">Fatura Nº</th>
-                  <th className="py-1.5 px-2 w-36">Status</th>
+                  <th className="py-1.5 px-2 w-28">Status</th>
                   <th className="py-1.5 px-2 w-28">Boleto</th>
                   <th className="py-1.5 px-2 w-56">
                     {/* Atualizar status (↻) mora AQUI, ao lado do título da coluna cujas linhas ele
@@ -370,8 +370,8 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
             </table>
           </div>
 
-          {/* Barra de ação — resumos + botões LADO A LADO (rótulo sem número). */}
-          <div className="mt-4 border-t border-zinc-100 pt-4">
+          {/* Barra de ação — resumos (esquerda) + botões (direita) na MESMA linha. */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-2xs text-zinc-500">
               <p>
                 {selecionadas.length > 0
@@ -384,7 +384,7 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
                   : 'Escolha as notas fiscais (Normal/Avulsa) nas faturas prontas para NF.'}
               </p>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button" onClick={abrirConfirmacao}
                 disabled={selecionadas.length === 0 || !configurado || emitindo}

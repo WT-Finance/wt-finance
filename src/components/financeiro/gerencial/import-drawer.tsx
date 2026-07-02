@@ -23,7 +23,7 @@ const valorCompacto = (v: number, tipo: string) =>
 function CabecalhoBucket({ remover = false }: { remover?: boolean }) {
   return (
     <thead>
-      <tr className="border-b border-zinc-100 text-left text-3xs uppercase tracking-wide text-zinc-400">
+      <tr className="border-b border-zinc-100 text-left text-3xs font-medium text-zinc-400">
         {remover && <th className="py-1 px-1 w-[24px]" />}
         <th className="py-1 px-1.5 w-[58px]">Tipo</th>
         <th className="py-1 px-1.5">Pessoa</th>
@@ -235,7 +235,7 @@ export default function ImportDrawer({ open, onClose }: Props) {
                 <div className="px-3 pb-2">
                   <table className="w-full table-fixed">
                     <thead>
-                      <tr className="border-b border-zinc-100 text-left text-3xs uppercase tracking-wide text-zinc-400">
+                      <tr className="border-b border-zinc-100 text-left text-3xs font-medium text-zinc-400">
                         <th className="py-1 px-1.5 w-[120px]">Pessoa</th>
                         <th className="py-1 px-1.5 text-right w-[104px]">Valor</th>
                         <th className="py-1 px-1.5">Alterações</th>

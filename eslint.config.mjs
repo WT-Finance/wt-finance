@@ -106,6 +106,11 @@ const eslintConfig = defineConfig([
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // Worktrees da versão (.worktrees/<branch>) são cópias isoladas do repo — o
+    // ignore ".next/**" da raiz NÃO cobre o .next ANINHADO delas, então sem esta
+    // linha o eslint varre o build gerado de uma worktree e reporta erros que não
+    // são do código-fonte. Worktree nunca deve ser lintada pela raiz.
+    ".worktrees/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
