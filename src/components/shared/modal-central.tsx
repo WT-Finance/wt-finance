@@ -13,14 +13,20 @@ import { pushOverlay, popOverlay } from '@/lib/ui/overlay-stack'
 
 interface Props {
   titulo:           string
-  /** Conteúdo inline ao lado do título (ex.: "powered by …"). */
+  /** Conteúdo inline ao lado do título (ex.: "powered by …" ou um badge de modo). */
   tituloAcessorio?: ReactNode
   subtitulo?:       string
+  /** Largura máxima do painel. Default 'lg' (comportamento original). '5xl' p/ tabelas densas. */
+  largura?:         'lg' | '2xl' | '4xl' | '5xl'
   onClose:          () => void
   children:         ReactNode
 }
 
-export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, onClose, children }: Props) {
+const MAX_W: Record<NonNullable<Props['largura']>, string> = {
+  lg: 'max-w-lg', '2xl': 'max-w-2xl', '4xl': 'max-w-4xl', '5xl': 'max-w-5xl',
+}
+
+export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largura = 'lg', onClose, children }: Props) {
   const [visible, setVisible] = useState(false)
   const painelRef = useRef<HTMLDivElement>(null)
 
@@ -72,7 +78,7 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, onClo
       <div
         ref={painelRef}
         tabIndex={-1}
-        className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col outline-none"
+        className={`relative bg-white rounded-xl shadow-2xl w-full ${MAX_W[largura]} max-h-[85vh] flex flex-col outline-none`}
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? 'scale(1)' : 'scale(0.97)',
