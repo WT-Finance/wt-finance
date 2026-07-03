@@ -568,7 +568,7 @@ export async function enviarEmailFatura(ref: string): Promise<ResultadoEmailFatu
     // 4) Envia (override do destinatário DENTRO da camada) e registra a tentativa (reais E efetivos).
     const env = await enviarFaturaEmail({
       ref: refT, cliente, destinatariosReais: validos,
-      boletoUrl: d.bank_slip_url, boletoLink: d.invoice_url ?? d.bank_slip_url, notaUrl,
+      boletoUrl: d.bank_slip_url, notaUrl,
     })
     const regRes = await (db.rpc as any)('registrar_email', {
       p_dados: {

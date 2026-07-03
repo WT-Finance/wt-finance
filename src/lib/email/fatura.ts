@@ -63,7 +63,6 @@ export async function enviarFaturaEmail(input: {
   cliente:            string
   destinatariosReais: string[]          // para onde IRIA no modo real (já validados)
   boletoUrl:          string            // bank_slip_url — PDF do boleto (anexo, sempre)
-  boletoLink?:        string | null     // invoice_url — link clicável no corpo (fallback = boletoUrl)
   notaUrl?:           string | null     // pdf_url da nota (só quando AUTORIZADA) → anexa a nota
 }): Promise<ResultadoEnvioFatura> {
   const modo = emailAmbiente()
@@ -103,7 +102,6 @@ export async function enviarFaturaEmail(input: {
     const { assunto, html, text } = templateFaturaEmail({
       cliente:          input.cliente,
       ref:              input.ref,
-      boletoLink:       input.boletoLink?.trim() || input.boletoUrl,
       temNota,
       teste:            modo === 'teste',
       destinatarioReal: input.destinatariosReais.join('; '),
