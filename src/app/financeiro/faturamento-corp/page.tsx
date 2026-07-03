@@ -2,6 +2,7 @@ import { requireArea } from '@/lib/auth/sessao'
 import FaturamentoCorpContent from '@/components/financeiro/faturamento-corp-content'
 import type { ClienteCorp } from '@/components/financeiro/cadastro-clientes'
 import { asaasAmbiente, asaasConfigurado } from '@/lib/asaas/client'
+import { emailAmbiente } from '@/lib/email/config'
 import { getServerClient } from '@/lib/supabase/server'
 
 // Faturamento Corporativo (v4.33.0/Fase 3). Duas abas: Emissão (Fases 1a/1b/2, preservada) e
@@ -25,6 +26,6 @@ export default async function FaturamentoCorpPage() {
 
   // A largura do container é decidida pelo wrapper conforme a aba ativa (Emissão 5xl,
   // Cadastro 7xl para usar o espaço lateral na tabela densa) — por isso NÃO impomos max-w aqui.
-  return <FaturamentoCorpContent ambiente={asaasAmbiente()} configurado={asaasConfigurado()} clientes={clientes} />
+  return <FaturamentoCorpContent ambiente={asaasAmbiente()} configurado={asaasConfigurado()} clientes={clientes} emailModo={emailAmbiente()} />
 
 }

@@ -398,3 +398,17 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
     expect(status).toBe(200)
   })
 })
+
+// v4.35.0 (Fase 4a) — smoke das RPCs de envio de e-mail (leitura; não escreve). Pega regressão
+// de RPC sumida/renomeada/gate quebrado (o `rpc` lança em HTTP != ok). registrar_email é write,
+// então NÃO é chamada aqui (não polui o registro).
+describe.skipIf(!ON)('contrato RPC — Faturamento Fase 4a (envio de e-mail)', () => {
+  it('buscar_docs_fatura([]) e email_existentes([], teste): alcançáveis; array vazio', async () => {
+    const docs = await rpc('buscar_docs_fatura', { p_refs: [] }) as unknown as unknown[]
+    expect(Array.isArray(docs)).toBe(true)
+    expect(docs).toHaveLength(0)
+    const enviadas = await rpc('email_existentes', { p_refs: [], p_modo: 'teste' }) as unknown as unknown[]
+    expect(Array.isArray(enviadas)).toBe(true)
+    expect(enviadas).toHaveLength(0)
+  })
+})

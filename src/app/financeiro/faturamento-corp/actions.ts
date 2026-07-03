@@ -16,6 +16,8 @@ import {
   createInvoice, authorizeInvoice, findInvoiceByExternalRef, getInvoiceById,
   externalReferenceNota, type ModoNota,
 } from '@/lib/asaas/notas'
+import { emailAmbiente } from '@/lib/email/config'
+import { enviarFaturaEmail, splitDestinatarios } from '@/lib/email/fatura'
 
 export async function cruzarFaturamento(nomes: string[]): Promise<PessoaCadastro[]> {
   await requireAreaAction('financeiro/faturamento-corp')
@@ -491,4 +493,97 @@ async function registrarFalhaNota(
     },
   })
   if (res?.error) console.error(`[faturamento] registro de NOTA (falha) falhou ref=${base.ref}:`, res.error)
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Fase 4a (v4.35.0) — ENVIO do e-mail de fatura (boleto + nota anexados) — MODO TESTE.
+//
+// Invariantes (todos server-side; o cliente só manda a `ref`):
+//   • MODO REAL INALCANÇÁVEL: recusa se emailAmbiente() != 'teste' (a virada é a 4b).
+//   • Tudo DERIVADO no servidor: documentos (buscar_docs_fatura), cliente/destinatários
+//     (buscar_cliente_corporativo + split/validação), idempotência (email_existentes no modo).
+//   • Regra da nota (decisão 1): nota presente e NÃO autorizada → fatura NÃO enviável.
+//   • Override do destinatário e fail-closed vivem na CAMADA (enviarFaturaEmail), não aqui.
+//   • Registro de TODA tentativa (sucesso ou erro) em app.fatura_email — reais E efetivos.
+// ───────────────────────────────────────────────────────────────────────────
+
+export interface ResultadoEmailFatura {
+  ref:                    string
+  resultado:              'enviado' | 'ja_enviado' | 'falhou'
+  destinatariosEfetivos?: string[]
+  anexos?:                { boleto: boolean; nota: boolean }
+  erro?:                  string
+}
+
+export async function enviarEmailFatura(ref: string): Promise<ResultadoEmailFatura> {
+  await requireAreaAction('financeiro/faturamento-corp') // authz: lança = negação (não é "falhou")
+  const falhar = (erro: string): ResultadoEmailFatura => ({ ref, resultado: 'falhou', erro })
+
+  // INVARIANTE 4a: modo real inalcançável — só 'teste' passa (fail-closed no servidor).
+  if (emailAmbiente() !== 'teste') {
+    return falhar('Envio de e-mail disponível apenas em MODO TESTE nesta versão.')
+  }
+  const refT = (ref ?? '').trim()
+  if (!refT) return falhar('Fatura sem número.')
+
+  const db = await getServerClient()
+  try {
+    // 1) Documentos da fatura (só faturas com boleto bem-sucedido voltam da RPC).
+    const docsRes = await (db.rpc as any)('buscar_docs_fatura', { p_refs: [refT] })
+    if (docsRes?.error) return falhar('Não foi possível ler os documentos da fatura.')
+    const docs = (docsRes?.data ?? []) as Array<{
+      fatura_cliente_no: string; pessoa_nome: string | null; bank_slip_url: string | null;
+      invoice_url: string | null; nota_pdf_url: string | null; nota_status: string | null
+    }>
+    const d = docs.find(x => x.fatura_cliente_no === refT)
+    if (!d)                return falhar('Boleto ainda não emitido para esta fatura.')
+    if (!d.bank_slip_url)  return falhar('Boleto sem PDF disponível para anexar.')
+    // Regra da nota: só é enviável quando a nota está AUTORIZADA **e com PDF pronto**. Uma nota
+    // presente mas não-pronta (não autorizada, ou autorizada sem pdf ainda — janela assíncrona) →
+    // fatura NÃO enviável (não envia boleto-only "por baixo" nem marca como já enviada). O
+    // "enviar só boleto" e o reenvio são da Fase 4b.
+    const notaPronta = d.nota_status === 'AUTHORIZED' && !!d.nota_pdf_url
+    if (d.nota_status && !notaPronta) {
+      return falhar('Nota fiscal pendente (não autorizada ou sem PDF) — fatura não enviável.')
+    }
+    const notaUrl = notaPronta ? d.nota_pdf_url! : undefined
+    const cliente = (d.pessoa_nome ?? '').trim()
+    if (!cliente) return falhar('Fatura sem nome de cliente para cruzar com o cadastro.')
+
+    // 2) Cadastro (por nome) → destinatários + situação (só ATIVO envia).
+    const cadRes = await (db.rpc as any)('buscar_cliente_corporativo', { p_nomes: [cliente] })
+    if (cadRes?.error) return falhar('Não foi possível consultar o cadastro de clientes.')
+    const cads = (cadRes?.data ?? []) as Array<{ empresa: string; situacao: string | null; destinatarios: string | null }>
+    if (!cads.length) return falhar('Cliente não está no Cadastro de Clientes.')
+    if ((cads[0].situacao ?? '').trim().toLowerCase() !== 'ativo') return falhar('Cliente inativo no cadastro.')
+    const { validos } = splitDestinatarios(cads[0].destinatarios)
+    if (validos.length === 0) return falhar('Nenhum destinatário válido no cadastro do cliente.')
+
+    // 3) Idempotência POR MODO: já enviado com sucesso em teste → pula.
+    const jaRes = await (db.rpc as any)('email_existentes', { p_refs: [refT], p_modo: 'teste' })
+    if (jaRes?.error) return falhar('Não foi possível verificar envios anteriores.')
+    const ja = (jaRes?.data ?? []) as string[]
+    if (Array.isArray(ja) && ja.includes(refT)) return { ref: refT, resultado: 'ja_enviado' }
+
+    // 4) Envia (override do destinatário DENTRO da camada) e registra a tentativa (reais E efetivos).
+    const env = await enviarFaturaEmail({
+      ref: refT, cliente, destinatariosReais: validos,
+      boletoUrl: d.bank_slip_url, boletoLink: d.invoice_url ?? d.bank_slip_url, notaUrl,
+    })
+    const regRes = await (db.rpc as any)('registrar_email', {
+      p_dados: {
+        fatura_cliente_no: refT, modo: 'teste',
+        destinatarios_reais: validos,
+        destinatarios_efetivos: env.destinatariosEfetivos ?? [],
+        anexos: env.anexos ?? { boleto: false, nota: false },
+        sucesso: env.ok, erro: env.erro ?? null,
+      },
+    })
+    if (regRes?.error) console.error(`[faturamento] registro de E-MAIL falhou ref=${refT}:`, regRes.error)
+
+    if (!env.ok) return falhar(env.erro ?? 'Falha no envio do e-mail.')
+    return { ref: refT, resultado: 'enviado', destinatariosEfetivos: env.destinatariosEfetivos, anexos: env.anexos }
+  } catch {
+    return falhar('Falha inesperada ao enviar o e-mail.')
+  }
 }
