@@ -513,6 +513,9 @@ export interface ResultadoEmailFatura {
   destinatariosEfetivos?: string[]
   anexos?:                { boleto: boolean; nota: boolean }
   erro?:                  string
+  /** Envio OK mas o registro em app.fatura_email falhou (idempotência NÃO gravada → risco de
+   *  reenvio duplicado na virada real). Espelha o registroFalhou de emitirBoletos/emitirNotas. */
+  registroFalhou?:        boolean
 }
 
 /** Opções da 4b (todas opcionais → o botão por-linha da 4a segue chamando só com `ref`). */
@@ -615,7 +618,8 @@ export async function enviarEmailFatura(ref: string, opts?: OpcoesEnvioFatura): 
     if (regRes?.error) console.error(`[faturamento] registro de E-MAIL falhou ref=${refT}:`, regRes.error)
 
     if (!env.ok) return falhar(env.erro ?? 'Falha no envio do e-mail.')
-    return { ref: refT, resultado: 'enviado', destinatariosEfetivos: env.destinatariosEfetivos, anexos: env.anexos }
+    // Envio OK; se o registro falhou, SINALIZA (não engole): a idempotência não foi gravada.
+    return { ref: refT, resultado: 'enviado', destinatariosEfetivos: env.destinatariosEfetivos, anexos: env.anexos, registroFalhou: !!regRes?.error }
   } catch {
     return falhar('Falha inesperada ao enviar o e-mail.')
   }
@@ -647,11 +651,11 @@ const normNome = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
  * TUDO no servidor: documentos (buscar_docs_fatura), cadastro (buscar_cliente_corporativo),
  * idempotência (email_existentes no modo atual). Ordena Atenção → Prontos → Enviados. Read-only.
  */
-export async function prepararEnvioEmails(refs: string[]): Promise<LinhaEnvioEmail[]> {
+export async function prepararEnvioEmails(refs: string[]): Promise<{ modo: 'teste' | 'real'; linhas: LinhaEnvioEmail[] }> {
   await requireAreaAction('financeiro/faturamento-corp')
-  const modo = emailAmbiente()
+  const modo = emailAmbiente()  // apurado no SERVIDOR a cada abertura — a UI usa ESTE valor p/ a dupla trava (não a prop de SSR, que pode estar obsoleta na virada).
   const uniq = Array.from(new Set((refs ?? []).map(r => (r ?? '').trim()).filter(Boolean)))
-  if (uniq.length === 0) return []
+  if (uniq.length === 0) return { modo, linhas: [] }
 
   const db = await getServerClient()
   const docsRes = await (db.rpc as any)('buscar_docs_fatura', { p_refs: uniq })
@@ -660,7 +664,7 @@ export async function prepararEnvioEmails(refs: string[]): Promise<LinhaEnvioEma
     fatura_cliente_no: string; pessoa_nome: string | null; bank_slip_url: string | null;
     invoice_url: string | null; nota_pdf_url: string | null; nota_status: string | null
   }>
-  if (docs.length === 0) return []
+  if (docs.length === 0) return { modo, linhas: [] }
 
   const nomes = Array.from(new Set(docs.map(d => (d.pessoa_nome ?? '').trim()).filter(Boolean)))
   const cadByNome = new Map<string, { situacao: string | null; destinatarios: string | null }>()
@@ -710,5 +714,5 @@ export async function prepararEnvioEmails(refs: string[]): Promise<LinhaEnvioEma
 
   const ordem: Record<LinhaEnvioEmail['estado'], number> = { atencao: 0, pronto: 1, enviado: 2 }
   linhas.sort((a, b) => ordem[a.estado] - ordem[b.estado] || a.pessoa.localeCompare(b.pessoa, 'pt-BR'))
-  return linhas
+  return { modo, linhas }
 }

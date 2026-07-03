@@ -140,11 +140,11 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   const jaEmitiu = !!(resultado || resultadoNota)
 
   // Refs com BOLETO emitido — elegíveis ao envio por e-mail (mesmo critério do botão por-linha 4a).
-  const refsComBoleto = useMemo(() => faturas
+  const refsComBoleto = useMemo(() => Array.from(new Set(faturas
     .filter(f => f.fatura_cliente_no)
     .map(f => ({ ref: f.fatura_cliente_no as string, r: resultadoPorRef.get(f.fatura_cliente_no as string) }))
     .filter(x => x.r && (x.r.resultado === 'emitido' || x.r.resultado === 'ja_existia' || x.r.resultado === 'pulado'))
-    .map(x => x.ref), [faturas, resultadoPorRef])
+    .map(x => x.ref))), [faturas, resultadoPorRef])
 
   // Boleto: só faturas PRONTAS marcadas.
   const selecionadas = useMemo(

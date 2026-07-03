@@ -7,7 +7,7 @@
 // Idempotência por modo (email_existentes) → reabrir o modal re-monta "Enviado" (resume). A dupla
 // trava do modo real é construída aqui (texto ENVIAR) mas não acionável (EMAIL_MODO segue teste).
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, AlertTriangle, PencilLine, ExternalLink } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
 import Badge from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import { prepararEnvioEmails, enviarEmailFatura, type LinhaEnvioEmail } from '@/
 
 type Estado = 'pronto' | 'atencao' | 'enviado'
 type Filtro = 'todos' | 'atencao' | 'prontos' | 'enviados'
-interface ResultadoLinha { fase: 'enviando' | 'enviado' | 'ja' | 'erro'; erro?: string }
+interface ResultadoLinha { fase: 'enviando' | 'enviado' | 'ja' | 'erro'; erro?: string; registroFalhou?: boolean }
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 const INTERVALO_MS = 2100 // throttle no cliente: ~30/min por construção (independe do maxDuration)
@@ -45,22 +45,28 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
   const [disparando, setDisparando]   = useState(false)
   const [progresso, setProgresso]     = useState<{ feito: number; total: number } | null>(null)
   const [confirmReal, setConfirmReal] = useState('')
+  const [modoServidor, setModoServidor] = useState<'teste' | 'real' | null>(null) // modo apurado no SERVIDOR (fresh)
+  const canceladoRef = useRef(false) // fechar o modal no meio do disparo interrompe o laço
 
   // Carga inicial (uma vez — `carregando` já nasce true, sem setState síncrono no efeito).
   useEffect(() => {
     let vivo = true
     prepararEnvioEmails(refs)
-      .then(ls => {
+      .then(res => {
         if (!vivo) return
-        setLinhas(ls)
+        setModoServidor(res.modo)
+        setLinhas(res.linhas)
         const d: Record<string, string> = {}
-        for (const l of ls) d[l.ref] = l.destinatarios
+        for (const l of res.linhas) d[l.ref] = l.destinatarios
         setDraft(d)
         setCarregando(false)
       })
       .catch(() => { if (vivo) { setErroCarga('Não foi possível preparar o envio (sessão ou permissão).'); setCarregando(false) } })
     return () => { vivo = false }
   }, [refs])
+
+  // Fechar/desmontar o modal no meio do disparo interrompe o laço (não deixa e-mails saindo em 2º plano).
+  useEffect(() => () => { canceladoRef.current = true }, [])
 
   // Estado AO VIVO de cada linha (recomputa conforme edição/só-boleto/reenvio/resultado).
   const estadoDe = useCallback((l: LinhaEnvioEmail): Estado => {
@@ -102,7 +108,9 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
     return (filtro === 'atencao' && e === 'atencao') || (filtro === 'prontos' && e === 'pronto') || (filtro === 'enviados' && e === 'enviado')
   }), [linhas, filtro, estadoDe])
 
-  const confirmadoReal = emailModo === 'real' ? confirmReal.trim().toUpperCase() === 'ENVIAR' : true
+  // Modo EFETIVO = o apurado no servidor (fresh); a prop de SSR pode estar obsoleta na virada.
+  const modoEfetivo = modoServidor ?? emailModo
+  const confirmadoReal = modoEfetivo === 'real' ? confirmReal.trim().toUpperCase() === 'ENVIAR' : true
 
   // Disparo em blocos: snapshot congelado dos PRONTOS → 1 por vez, ~2,1s entre chamadas.
   const enviarLote = useCallback(async () => {
@@ -117,6 +125,7 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
     setDisparando(true)
     setProgresso({ feito: 0, total: alvos.length })
     for (let i = 0; i < alvos.length; i++) {
+      if (canceladoRef.current) break // modal fechado no meio → interrompe o disparo
       const a = alvos[i]
       setResultado(p => ({ ...p, [a.ref]: { fase: 'enviando' } }))
       try {
@@ -126,7 +135,7 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
           forcarReenvio: a.forcarReenvio,
           confirmacaoReal: confirmadoReal,
         })
-        setResultado(p => ({ ...p, [a.ref]: res.resultado === 'enviado' ? { fase: 'enviado' } : res.resultado === 'ja_enviado' ? { fase: 'ja' } : { fase: 'erro', erro: res.erro } }))
+        setResultado(p => ({ ...p, [a.ref]: res.resultado === 'enviado' ? { fase: 'enviado', registroFalhou: res.registroFalhou } : res.resultado === 'ja_enviado' ? { fase: 'ja' } : { fase: 'erro', erro: res.erro } }))
       } catch {
         setResultado(p => ({ ...p, [a.ref]: { fase: 'erro', erro: 'Não foi possível enviar (sessão ou permissão).' } }))
       }
@@ -146,10 +155,10 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
   }, [resultado])
 
   const badgeModo = (
-    <span className={emailModo === 'real'
+    <span className={modoEfetivo === 'real'
       ? 'inline-flex items-center rounded-full border border-danger px-2 py-0.5 text-2xs font-semibold text-danger'
       : 'inline-flex items-center rounded-full border border-gestao bg-gestao-soft px-2 py-0.5 text-2xs font-semibold text-gestao-fg'}>
-      {emailModo === 'real' ? 'MODO REAL' : 'modo teste'}
+      {modoEfetivo === 'real' ? 'MODO REAL' : 'modo teste'}
     </span>
   )
 
@@ -223,6 +232,8 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
       <div className="flex flex-col gap-1 items-start">
         {badge}
         {mot && <span className="text-2xs text-zinc-500">{mot}</span>}
+        {r?.fase === 'enviado' && r.registroFalhou && <span className="text-2xs text-warning">⚠ registro local falhou</span>}
+        {e !== 'atencao' && (l.noCadastro || !l.ativo) && <span className="text-2xs text-warning">{l.noCadastro ? 'fora do cadastro — envio avulso' : 'cliente inativo — envio avulso'}</span>}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-2xs">
           {l.boletoUrl && (
             <a href={l.boletoUrl} target="_blank" rel="noreferrer" className="text-zinc-500 hover:text-zinc-800 inline-flex items-center gap-0.5"><ExternalLink size={10} />ver boleto</a>
@@ -308,12 +319,13 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
         <div className="mt-5 pt-4 border-t border-zinc-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-2xs text-zinc-400 max-w-md">As correções valem só para este envio — o permanente é no Cadastro de Clientes.</p>
           <div className="flex items-center gap-3">
-            {emailModo === 'real' && (
+            {modoEfetivo === 'real' && (
               <input
                 value={confirmReal}
                 onChange={e => setConfirmReal(e.target.value)}
+                disabled={disparando}
                 placeholder="digite ENVIAR"
-                className="w-32 text-xs rounded border border-danger px-2 py-1.5 foco-neutro"
+                className="w-32 text-xs rounded border border-danger px-2 py-1.5 foco-neutro disabled:opacity-50"
               />
             )}
             <button
