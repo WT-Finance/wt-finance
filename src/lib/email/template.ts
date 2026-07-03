@@ -238,3 +238,107 @@ export function templateNotificacaoSolicitacao(input: {
 
   return { assunto, html, text }
 }
+
+// ── v4.35.0 (Fase 4a) — E-mail de FATURA (boleto + nota anexados) ────────────────
+// MESMO layout Outlook-safe (tabelas/inline/logo CID/botão em célula/responsivo). Corpo
+// do legado (envio_faturas.py) com CORPO CONDICIONAL: menciona a nota fiscal SÓ quando ela
+// vai anexada (boleto-only não fala em nota). Em MODO TESTE, faixa âmbar no topo com o
+// destinatário REAL + prefixo no assunto (o e-mail vai para a caixa de teste, ver fatura.ts).
+// Assunto: 'Fatura Welcome Trips – {cliente} – Nº {ref}'. Reusa TemplateSenha como shape.
+
+// Tokens de teste (âmbar --gestao; e-mail usa hex inline — src/lib/email é isento do lint de cor).
+const COR_TESTE_BG    = '#FAEEDA'
+const COR_TESTE_BORDA = '#BA7517'
+const COR_TESTE_FG    = '#633806'
+
+export function templateFaturaEmail(input: {
+  cliente:           string
+  ref:               string
+  /** Link clicável do boleto no corpo (invoice_url preferido; fallback bank_slip_url). */
+  boletoLink?:       string | null
+  /** true → o corpo menciona a nota fiscal (ela vai anexada). */
+  temNota:           boolean
+  /** true → modo teste: prefixo no assunto + faixa no corpo com o destinatário real. */
+  teste:             boolean
+  /** Destinatário(s) real(is) — exibido só em modo teste ("iria para..."). */
+  destinatarioReal?: string | null
+}): TemplateSenha {
+  const cliente = input.cliente?.trim() || 'cliente'
+  const ref     = input.ref?.trim() || ''
+  const link    = input.boletoLink?.trim() || null
+  const real    = input.destinatarioReal?.trim() || '(sem destinatário)'
+
+  const assuntoBase = `Fatura Welcome Trips – ${cliente}${ref ? ` – Nº ${ref}` : ''}`
+  const assunto = input.teste ? `[TESTE — destinatário real: ${real}] ${assuntoBase}` : assuntoBase
+
+  // Corpo CONDICIONAL: a nota só é mencionada quando vai anexada.
+  const fraseAnexo = input.temNota
+    ? 'Segue em anexo a fatura referente aos serviços prestados, juntamente com a nota fiscal.'
+    : 'Segue em anexo a fatura referente aos serviços prestados.'
+
+  const text =
+    (input.teste ? `[MODO TESTE — este e-mail iria para: ${real}]\n\n` : '') +
+    'Prezados,\n\n' +
+    `${fraseAnexo}\n\n` +
+    (link ? `O boleto pode ser acessado através do link: ${link}\n\n` : '') +
+    'Caso tenham dúvidas, estamos à disposição.\n\n' +
+    `— ${APP_NOME}`
+
+  const faixaTeste = input.teste
+    ? `<tr><td class="em-pad" style="padding:22px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_TESTE_BG};border:1px solid ${COR_TESTE_BORDA};border-radius:10px;">
+          <tr><td style="padding:12px 16px;">
+            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_TESTE_FG};font-weight:bold;margin-bottom:4px;">Modo teste</div>
+            <div style="font-size:13px;line-height:1.55;color:${COR_TESTE_FG};">Este e-mail iria para: <strong>${escaparHtml(real)}</strong></div>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : ''
+
+  const botaoLinha = link
+    ? `<tr><td class="em-pad" align="center" style="padding:26px 40px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:12px;padding:14px 34px;">
+            <a href="${escaparHtml(link)}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Acessar o boleto</a>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : ''
+
+  const html =
+`<style>
+  @media only screen and (max-width:480px) {
+    .em-card { width:100% !important; }
+    .em-pad  { padding-left:24px !important; padding-right:24px !important; }
+  }
+</style>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:${COR_FUNDO};font-family:Arial,Helvetica,sans-serif;">
+  <tr><td align="center" style="padding:40px 12px;">
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid ${COR_BORDA};border-radius:14px;">
+      <tr><td class="em-pad" align="center" style="padding:38px 40px 0;">
+        <img src="cid:${LOGO_CID}" alt="WT Finance — Welcome Group" width="184" style="display:block;width:184px;max-width:184px;height:auto;border:0;margin:0 auto;" />
+      </td></tr>
+      <tr><td class="em-pad" style="padding:26px 40px 0;">
+        <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
+      </td></tr>
+      ${faixaTeste}
+      <tr><td class="em-pad" style="padding:24px 40px 0;">
+        <p style="margin:0 0 12px;font-size:16px;color:${COR_TITULO};">Prezados,</p>
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">${escaparHtml(fraseAnexo)}</p>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:14px 40px 0;">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:${COR_TENUE};">Fatura ${escaparHtml(cliente)}${ref ? ` — Nº ${escaparHtml(ref)}` : ''}. Os documentos (boleto${input.temNota ? ' e nota fiscal' : ''}) seguem em anexo neste e-mail.</p>
+      </td></tr>
+      ${botaoLinha}
+      <tr><td class="em-pad" style="padding:26px 40px 38px;">
+        <p style="margin:0;font-size:13px;line-height:1.65;color:${COR_TEXTO};">Caso tenham dúvidas, estamos à disposição.</p>
+      </td></tr>
+    </table>
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
+      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">WT&nbsp;FINANCE&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
+    </table>
+  </td></tr>
+</table>`
+
+  return { assunto, html, text }
+}

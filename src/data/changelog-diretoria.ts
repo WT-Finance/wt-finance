@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.35.0',
+    data: '2026-07-03T13:38',
+    itens: [
+      { tipo: 'novidade', texto: 'O Faturamento Corporativo agora envia, por e-mail, a fatura ao cliente com o boleto — e a nota fiscal, quando autorizada — já anexados, direto da tela de Emissão (uma fatura por vez). É a preparação do envio que fecha o ciclo do faturamento na plataforma.' },
+      { tipo: 'novidade', texto: 'Como um e-mail enviado não volta atrás, esta etapa roda em MODO TESTE: todos os e-mails vão para uma caixa de teste (nunca para o cliente), com o destinatário real indicado no assunto — para validar o conteúdo e os anexos com segurança. O envio de verdade será liberado na próxima etapa, com confirmação reforçada.' },
+    ],
+  },
+  {
     versao: '4.34.1',
     data: '2026-07-02T15:44',
     itens: [

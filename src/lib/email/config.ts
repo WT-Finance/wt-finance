@@ -63,3 +63,20 @@ export function getAppBaseUrl(): string | null {
 export function _resetConfigSmtpCache(): void {
   _config = undefined
 }
+
+// ── v4.35.0 (Fase 4a) — MODO do envio de e-mail de fatura ─────────────────────
+// E-mail SAI DE VERDADE (não há sandbox). O "sandbox do e-mail" é o MODO TESTE, com
+// override de destinatário. Molde do asaasAmbiente: derivado do env, resolvido no servidor.
+// FAIL-SAFE: default 'teste'; QUALQUER valor que não seja exatamente 'real' → 'teste'
+// (nunca cai em 'real' por engano). A virada para 'real' é decisão consciente (Fase 4b).
+export type EmailModo = 'teste' | 'real'
+
+/** Modo do envio de fatura. 'real' SÓ com EMAIL_MODO === 'real' (case-insensitive); tudo mais = 'teste'. */
+export function emailAmbiente(): EmailModo {
+  return process.env.EMAIL_MODO?.trim().toLowerCase() === 'real' ? 'real' : 'teste'
+}
+
+/** Destino do override em MODO TESTE. Ausente → o envio é recusado (fail-closed), nunca vaza. */
+export function getEmailTesteDestino(): string | null {
+  return process.env.EMAIL_TESTE_DESTINO?.trim() || null
+}

@@ -14,13 +14,15 @@ interface Props {
   ambiente:    AsaasAmbiente
   configurado: boolean
   clientes:    ClienteCorp[]
+  /** Modo do envio de e-mail de fatura (Fase 4a). Resolvido no servidor (emailAmbiente). */
+  emailModo:   'teste' | 'real'
 }
 
 const PILL = 'foco-neutro rounded-full border px-3 py-1 text-xs font-medium transition-colors'
 const ATIVO = 'border-action-soft-border bg-action-soft text-action-primary'
 const INATIVO = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 
-export default function FaturamentoCorpContent({ ambiente, configurado, clientes }: Props) {
+export default function FaturamentoCorpContent({ ambiente, configurado, clientes, emailModo }: Props) {
   const [aba, setAba] = useState<'emissao' | 'cadastro'>('emissao')
 
   // Largura ÚNICA nas duas abas (7xl) — sem "salto" de largura ao alternar Emissão↔Cadastro.
@@ -52,7 +54,7 @@ export default function FaturamentoCorpContent({ ambiente, configurado, clientes
 
       {/* Ambas SEMPRE montadas (alterna por hidden) — preserva o estado local de cada aba. */}
       <div role="tabpanel" id="painel-emissao" aria-labelledby="tab-emissao" className={aba === 'emissao' ? '' : 'hidden'}>
-        <FaturamentoCorp ambiente={ambiente} configurado={configurado} />
+        <FaturamentoCorp ambiente={ambiente} configurado={configurado} emailModo={emailModo} />
       </div>
       <div role="tabpanel" id="painel-cadastro" aria-labelledby="tab-cadastro" className={aba === 'cadastro' ? '' : 'hidden'}>
         <CadastroClientes clientes={clientes} />

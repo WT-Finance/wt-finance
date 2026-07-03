@@ -7,14 +7,14 @@
 // pdfUrl quando autorizada. Ambiente sempre visível; produção = confirmação reforçada.
 
 import { useRef, useState, useCallback, useMemo } from 'react'
-import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2, ExternalLink, FileText, RefreshCw, Barcode } from 'lucide-react'
+import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2, ExternalLink, FileText, RefreshCw, Barcode, Mail } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { numBRL2 } from '@/lib/fmt'
 import { SETOR_COLORS } from '@/lib/config'
 import { parseFaturamentoFile } from '@/lib/faturamento/parse-faturamento'
 import { classificarFaturas, mapaPorNome } from '@/lib/faturamento/classificar'
 import {
-  cruzarFaturamento, emitirBoletos, emitirNotas, atualizarStatusNotas,
+  cruzarFaturamento, emitirBoletos, emitirNotas, atualizarStatusNotas, enviarEmailFatura,
   type FaturaEmitir, type ResultadoEmissao, type ItemEmissao,
   type NotaEmitir, type ResultadoNotas, type ItemNota,
 } from '@/app/financeiro/faturamento-corp/actions'
@@ -54,12 +54,15 @@ const LABEL:   Record<Fase, string> = { lendo: 'Lendo a planilha…', cruzando: 
 /** Status corrente de uma NF (após emitir/atualizar). */
 interface NotaStatus { status: string | null; pdfUrl: string | null; number: string | null; invoiceId: string | null }
 
+/** Estado do envio de e-mail por fatura (UI, Fase 4a). */
+interface EmailEstado { fase: 'enviando' | 'enviado' | 'ja' | 'erro'; erro?: string }
+
 interface Props {
   ambiente:    AsaasAmbiente
   configurado: boolean
 }
 
-export default function FaturamentoCorp({ ambiente, configurado }: Props) {
+export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Props & { emailModo: 'teste' | 'real' }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [estado, setEstado]       = useState<Estado>('vazio')
   const [fase, setFase]           = useState<Fase>('lendo')
@@ -83,8 +86,29 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
   const [notaStatus, setNotaStatus]   = useState<Record<string, NotaStatus>>({}) // ref → status corrente
   const [atualizando, setAtualizando] = useState(false)
 
+  // Envio de e-mail de fatura (Fase 4a — MODO TESTE). ref → estado da UI (idle = ausente).
+  const [emailPorRef, setEmailPorRef] = useState<Record<string, EmailEstado>>({})
+
   const ativo = estado !== 'processando' && !emitindo && !emitindoNota
   const ehProducao = ambiente === 'producao'
+
+  // Dispara o envio (teste) de UMA fatura; tudo é derivado no servidor (só mandamos a ref).
+  async function enviarEmail(ref: string) {
+    setEmailPorRef(p => ({ ...p, [ref]: { fase: 'enviando' } }))
+    try {
+      const res = await enviarEmailFatura(ref)
+      setEmailPorRef(p => ({
+        ...p,
+        [ref]: res.resultado === 'enviado' ? { fase: 'enviado' }
+          : res.resultado === 'ja_enviado' ? { fase: 'ja' }
+          : { fase: 'erro', erro: res.erro },
+      }))
+    } catch {
+      // requireAreaAction pode LANÇAR (sessão expirada/permissão revogada) — o resultado
+      // discriminado da action não cobre isso; sem este catch o botão ficaria preso em "Enviando…".
+      setEmailPorRef(p => ({ ...p, [ref]: { fase: 'erro', erro: 'Não foi possível enviar (sessão ou permissão).' } }))
+    }
+  }
 
   // Mapa ref→resultado (boletos) — marca cada linha após emitir.
   const resultadoPorRef = useMemo(() => {
@@ -301,7 +325,7 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
           <div className="overflow-x-auto">
             {/* table-fixed: as larguras são respeitadas e o texto longo (ex.: "falhou: Endereço do
                 cliente incompleto") QUEBRA dentro da coluna Nota — não escapa nem estoura a tabela. */}
-            <table className="w-full table-fixed min-w-[54rem] text-2xs">
+            <table className="w-full table-fixed min-w-[64rem] text-2xs">
               <thead>
                 <tr className="border-b border-zinc-100 text-left font-medium text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
@@ -326,6 +350,7 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
                       )}
                     </span>
                   </th>
+                  <th className="py-1.5 px-2 w-40">E-mail</th>
                 </tr>
               </thead>
               <tbody>
@@ -335,6 +360,9 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
                   const rNota = refNf ? notaPorRef.get(refNf) : undefined
                   const stNota = refNf ? notaStatus[refNf] : undefined
                   const naoIdent = f.status === 'nao_identificado'
+                  // E-mail (4a): habilita só quando o BOLETO já foi emitido (a nota é opcional).
+                  const boletoOk = !!rBol && (rBol.resultado === 'emitido' || rBol.resultado === 'ja_existia' || rBol.resultado === 'pulado')
+                  const estEmail = f.fatura_cliente_no ? emailPorRef[f.fatura_cliente_no] : undefined
                   return (
                     <tr key={f.linha} className={`border-b border-zinc-50 align-top ${naoIdent ? 'bg-warning-bg/40' : ''}`}>
                       <td className="py-1 px-2 text-zinc-700">
@@ -362,6 +390,12 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
                         {rNota
                           ? <LinhaResultadoNota item={rNota} status={stNota} />
                           : <ControleNota fatura={f} desabilitado={emitindoNota} onModo={m => setModoNf(f.linha, m)} onValorAvulso={v => setValorAvulso(f.linha, v)} />}
+                      </td>
+                      {/* E-mail (4a, teste): botão só quando o boleto já foi emitido; resultado inline. */}
+                      <td className="py-1 px-2">
+                        {emailModo === 'teste' && boletoOk && f.fatura_cliente_no
+                          ? <EmailCell estado={estEmail} onEnviar={() => void enviarEmail(f.fatura_cliente_no!)} />
+                          : <span className="text-3xs text-zinc-400">—</span>}
                       </td>
                     </tr>
                   )
@@ -411,6 +445,19 @@ export default function FaturamentoCorp({ ambiente, configurado }: Props) {
             Nota fiscal (opcional por fatura, exige endereço/CEP): <b>Normal</b> usa o valor da fatura, <b>Avulsa</b> um valor próprio.
             A NF é <b>assíncrona</b> — após emitir fica “processando” até a prefeitura autorizar; use o ícone <RefreshCw size={9} className="inline align-[-1px]" /> ao lado de “Nota fiscal” na tabela para atualizar o status.
           </p>
+          {/* Envio de e-mail (Fase 4a): modo teste — badge âmbar + explicação; sem lote (4b). */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-3xs">
+            {emailModo === 'teste' ? (
+              <>
+                <span className="inline-flex items-center gap-1 rounded-md border border-gestao bg-gestao-soft px-2 py-0.5 font-medium text-gestao-fg">
+                  <FlaskConical size={11} /> E-mail: modo teste
+                </span>
+                <span className="text-zinc-400">os e-mails de fatura vão para a caixa de teste (não para o cliente); envie pelo botão “Enviar (teste)” na coluna E-mail, nas faturas com boleto emitido.</span>
+              </>
+            ) : (
+              <span className="text-warning">⚠ Envio de e-mail em modo real não está liberado nesta versão.</span>
+            )}
+          </div>
         </Card>
       )}
 
@@ -502,6 +549,23 @@ function ControleNota({ fatura, desabilitado, onModo, onValorAvulso }: {
           />
         </span>
       )}
+    </div>
+  )
+}
+
+// ── Envio de e-mail por fatura (Fase 4a — teste): botão → estado inline ───────
+function EmailCell({ estado, onEnviar }: { estado?: EmailEstado; onEnviar: () => void }) {
+  if (estado?.fase === 'enviando') return <span className="inline-flex items-center gap-1 text-3xs text-zinc-500"><Loader2 size={11} className="animate-spin" /> Enviando…</span>
+  if (estado?.fase === 'enviado')  return <span className="inline-flex items-center gap-1 text-3xs text-success"><CheckCircle2 size={11} className="shrink-0" /> enviado (teste)</span>
+  if (estado?.fase === 'ja')       return <span className="block text-3xs text-zinc-400">já enviado (teste)</span>
+  // idle ou erro → botão; na falha, mostra o motivo e permite tentar de novo.
+  return (
+    <div className="flex flex-col items-start gap-0.5">
+      <button type="button" onClick={onEnviar}
+        className="foco-neutro inline-flex items-center gap-1 rounded border border-zinc-200 bg-white px-2 py-1 text-3xs text-zinc-700 hover:border-zinc-300">
+        <Mail size={11} /> Enviar (teste)
+      </button>
+      {estado?.fase === 'erro' && <span className="block text-3xs text-danger">falhou: {estado.erro}</span>}
     </div>
   )
 }

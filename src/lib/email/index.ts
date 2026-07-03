@@ -14,8 +14,8 @@ import { LOGO_CID, LOGO_WELCOME_GROUP_PNG_BASE64 } from './logo'
 
 export type { TipoSenha, MovimentacaoEmail }
 
-/** Transporter SMTP com timeouts curtos (compartilhado). */
-function criarTransporter(cfg: ConfigSmtp) {
+/** Transporter SMTP com timeouts curtos (compartilhado — reusado por fatura.ts, v4.35.0). */
+export function criarTransporter(cfg: ConfigSmtp) {
   return nodemailer.createTransport({
     host:   cfg.host,
     port:   cfg.port,
@@ -27,8 +27,8 @@ function criarTransporter(cfg: ConfigSmtp) {
   })
 }
 
-/** Logo Welcome Group via CID (bytes no bundle, não public/; data-URI falha no Outlook). */
-function anexoLogo() {
+/** Logo Welcome Group via CID (bytes no bundle, não public/; data-URI falha no Outlook). Compartilhado. */
+export function anexoLogo() {
   return {
     filename:    'welcome-group.png',
     content:     Buffer.from(LOGO_WELCOME_GROUP_PNG_BASE64, 'base64'),
