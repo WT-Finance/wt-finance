@@ -12,7 +12,11 @@ import 'server-only'
 import { getConfigSmtp, emailAmbiente, getEmailTesteDestino } from './config'
 import { criarTransporter, anexoLogo } from './index'
 import { templateFaturaEmail } from './template'
-import { emailValido } from '@/lib/asaas/client'
+
+// splitDestinatarios/emailValido vivem em ./destinatarios (ISOMÓRFICO — sem server-only) para
+// serem a FONTE ÚNICA da regra, reusada pela célula editável do modal (cliente). Re-exportados
+// aqui por compatibilidade com os importadores existentes (as actions importam de '@/lib/email/fatura').
+export { splitDestinatarios, emailValido } from './destinatarios'
 
 export interface ResultadoEnvioFatura {
   ok:                     boolean
@@ -20,22 +24,6 @@ export interface ResultadoEnvioFatura {
   destinatariosEfetivos?: string[]
   anexos?:                { boleto: boolean; nota: boolean }
   erro?:                  string
-}
-
-/**
- * Split dos destinatários do cadastro (string "a@x; b@y") → válidos e inválidos.
- * Separa por ';', trima, descarta vazios e valida o formato de cada um (emailValido).
- * Dedupe preservando ordem. É desta fase (o cadastro só guarda a string).
- */
-export function splitDestinatarios(texto: string | null | undefined): { validos: string[]; invalidos: string[] } {
-  const partes = (texto ?? '').split(';').map(s => s.trim()).filter(Boolean)
-  const validos: string[] = []
-  const invalidos: string[] = []
-  for (const p of partes) {
-    if (emailValido(p)) validos.push(p)
-    else invalidos.push(p)
-  }
-  return { validos: [...new Set(validos)], invalidos }
 }
 
 /** Baixa um PDF (URL pública do Asaas) como Buffer, com timeout (~30s, como o asaasReq). Lança em falha. */
