@@ -158,9 +158,10 @@ function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoPr
           termina a ~81% da altura), então o gap óptico ao wordmark fica ~19px,
           igual ao ritmo do layout antigo. Setoriais mantêm o mt-4 de sempre. */}
       <div className={principal ? 'flex items-baseline gap-1 mt-2' : 'flex items-baseline gap-1 mt-4'}>
-        {/* TESTE de rebranding: byline "by Welcome" (itálico, sem negrito) no lugar
-            do wordmark "WT FINANCE"; estilo definitivo em escolha via mockup. */}
-        <span className="text-[14px] italic tracking-[1px]" style={{ color: 'var(--brand)' }}>by Welcome</span>
+        {/* TESTE de rebranding: byline "by WELCOME" — negrito (800 = Avenir Heavy,
+            mesmo peso do wordmark antigo), reto, 12px; receita escolhida pelo Yan
+            no mockup interativo. Casing literal (o "by" fica minúsculo). */}
+        <span className="text-[12px] font-[800] tracking-[1px]" style={{ color: 'var(--brand)' }}>by WELCOME</span>
         <VersionHistory />
       </div>
     </div>
