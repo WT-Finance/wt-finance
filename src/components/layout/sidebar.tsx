@@ -492,6 +492,17 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
 
       {/* Footer — identidade do usuário logado + sair */}
       <div className="h-14 px-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--sidebar-border)' }}>
+        {/* TESTE de rebranding: selo Welcome Group (versão VERTICAL do logo antigo,
+            cor baked #807f7e) à esquerda do nome/cargo — a marca Welcome segue
+            presente no rodapé enquanto o Janus assume o header. */}
+        <div className="relative h-9 w-12 shrink-0">
+          <Image
+            src="/logos/welcome-group-vert.svg"
+            alt="Welcome Group"
+            fill
+            className="object-contain object-left"
+          />
+        </div>
         <div className="flex-1 min-w-0" title={usuario.email ?? undefined}>
           <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
             {usuario.nome ?? usuario.email}
