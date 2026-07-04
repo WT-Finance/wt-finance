@@ -90,7 +90,9 @@ interface WelcomeGroupLogoProps {
    * 168px ≈ largura do logo antigo (respiro de ~12px por lado até o chevron no
    * desktop) e arte ~41px de altura (+23% vs a antiga, hierarquia preservada);
    * o wordmark aproxima com mt-2 (ritmo óptico ~19px, igual ao layout antigo).
-   * Logos de setor seguem no formato anterior (menores, à esquerda). */
+   * No teste, TODAS as variantes da sidebar usam este layout (o Janus assumiu
+   * também as subabas de Performance); o ramo legado (Image, h-10 à esquerda)
+   * permanece apenas como caminho de reversão. */
   principal?: boolean
 }
 
@@ -156,10 +158,9 @@ function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoPr
           termina a ~81% da altura), então o gap óptico ao wordmark fica ~19px,
           igual ao ritmo do layout antigo. Setoriais mantêm o mt-4 de sempre. */}
       <div className={principal ? 'flex items-baseline gap-1 mt-2' : 'flex items-baseline gap-1 mt-4'}>
-        {/* TESTE de rebranding: byline "by WELCOME" (itálico, sem negrito) no lugar
-            do wordmark "WT FINANCE". Casing literal (sem `uppercase`, o "by" fica
-            minúsculo). VersionHistory ao lado permanece intocado. */}
-        <span className="text-[14px] italic tracking-[1px]" style={{ color: 'var(--brand)' }}>by WELCOME</span>
+        {/* TESTE de rebranding: byline "by Welcome" (itálico, sem negrito) no lugar
+            do wordmark "WT FINANCE". VersionHistory ao lado permanece intocado. */}
+        <span className="text-[14px] italic tracking-[1px]" style={{ color: 'var(--brand)' }}>by Welcome</span>
         <VersionHistory />
       </div>
     </div>
@@ -169,16 +170,18 @@ function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoPr
 function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
   const isFinanceiroActive  = pathname.startsWith('/financeiro')
-  // Logo por aba: cada área de Performance tem a sua identidade; fora delas, o logo
-  // principal. `recolorTo` (opcional) achata o SVG numa cor só via máscara CSS.
-  // TESTE de rebranding (v-teste): o logo principal passou a ser o Janus, recolorido
-  // para o cinza do logo atual (Welcome Group = #807f7e) e exibido MAIOR e
-  // centralizado (`logoPrincipal`). Corp segue na cor da aba, formato anterior.
-  const { logoSrc, logoAlt, logoRecolorTo, logoPrincipal } =
-    pathname.startsWith('/performance/weddings')    ? { logoSrc: '/logos/welcome-weddings.svg', logoAlt: 'Welcome Weddings',   logoRecolorTo: undefined as string | undefined, logoPrincipal: false } :
-    pathname.startsWith('/performance/trips')       ? { logoSrc: '/logos/welcome-trips.svg',    logoAlt: 'Welcome Trips',      logoRecolorTo: undefined as string | undefined, logoPrincipal: false } :
-    pathname.startsWith('/performance/corporativo') ? { logoSrc: '/logos/welcome-corp.svg',     logoAlt: 'Welcome Corporativo', logoRecolorTo: 'var(--brand)' as string | undefined, logoPrincipal: false } :
-                                                      { logoSrc: '/logos/logo-janus.svg',       logoAlt: 'Janus',              logoRecolorTo: '#807f7e' as string | undefined, logoPrincipal: true }
+  // Logo por aba — TESTE de rebranding: o Janus assume TODAS as variantes da
+  // sidebar (mesmo layout do principal, caixa 168×48 centralizada), recolorido
+  // via máscara para a MESMA cor que o logo Welcome antigo exibia em cada página:
+  // Weddings/Trips usam o hex baked dos SVGs antigos (#c29864/#1e91b2 — note que
+  // difere dos tokens --brand #BD965C/#0091B3); Corp mantém var(--brand) (o logo
+  // antigo já era recolorido para a cor da aba via máscara); fora de Performance,
+  // o cinza institucional #807f7e do welcome-group.svg.
+  const logoRecolorTo =
+    pathname.startsWith('/performance/weddings')    ? '#c29864'      :
+    pathname.startsWith('/performance/trips')       ? '#1e91b2'      :
+    pathname.startsWith('/performance/corporativo') ? 'var(--brand)' :
+                                                      '#807f7e'
   // Grupos com subabas (Performance, Financeiro) nascem RECOLHIDOS a cada abertura
   // do site (v4.16.2) — sem persistência: o estado é só em memória, então sobrevive
   // à navegação client-side mas volta a recolher num carregamento/refresh novo. (A
@@ -274,7 +277,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
       <div className="px-5 py-3 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} recolorTo={logoRecolorTo} principal={logoPrincipal} />
+        <WelcomeGroupLogo src="/logos/logo-janus.svg" alt="Janus" recolorTo={logoRecolorTo} principal />
         {onCollapse && (
           <button
             onClick={onCollapse}
