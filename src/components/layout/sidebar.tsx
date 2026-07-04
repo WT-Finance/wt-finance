@@ -156,7 +156,10 @@ function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoPr
           termina a ~81% da altura), então o gap óptico ao wordmark fica ~19px,
           igual ao ritmo do layout antigo. Setoriais mantêm o mt-4 de sempre. */}
       <div className={principal ? 'flex items-baseline gap-1 mt-2' : 'flex items-baseline gap-1 mt-4'}>
-        <span className="text-[14px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
+        {/* TESTE de rebranding: byline "by WELCOME" (itálico, sem negrito) no lugar
+            do wordmark "WT FINANCE". Casing literal (sem `uppercase`, o "by" fica
+            minúsculo). VersionHistory ao lado permanece intocado. */}
+        <span className="text-[14px] italic tracking-[1px]" style={{ color: 'var(--brand)' }}>by WELCOME</span>
         <VersionHistory />
       </div>
     </div>
