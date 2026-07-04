@@ -85,9 +85,14 @@ interface WelcomeGroupLogoProps {
    * aceita token (`var(--brand)`) ou hex. Usado pelo Corporativo (cor da aba) e,
    * no teste de rebranding, pelo logo principal Janus (cinza do logo atual). */
   recolorTo?: string
+  /**
+   * Logo principal (teste de rebranding Janus): renderiza MAIOR (caixa h-14, sem
+   * downscale) e CENTRALIZADO nos dois eixos no espaço disponível do header.
+   * Logos de setor seguem no formato anterior (menores, à esquerda). */
+  principal?: boolean
 }
 
-function WelcomeGroupLogo({ src, alt, recolorTo }: WelcomeGroupLogoProps) {
+function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoProps) {
   // Guarda o `src` que falhou ao carregar, em vez de um booleano. `imgError` é
   // DERIVADO (o src com erro é o atual?) — assim a troca de `src` "limpa" o erro
   // sem precisar de setState síncrono num effect de reset. Mesmo comportamento:
@@ -110,15 +115,16 @@ function WelcomeGroupLogo({ src, alt, recolorTo }: WelcomeGroupLogoProps) {
 
   return (
     <div className="flex-1 min-w-0 flex flex-col items-center">
-      <div className="relative h-10 w-full">
+      <div className={principal ? 'relative h-14 w-full' : 'relative h-10 w-full'}>
         {recolorTo ? (
           // Logo recolorido: SVG como máscara + backgroundColor (token var(--brand)
           // que resolve via [data-theme] no <html>, ou hex fixo). Mesma técnica do
-          // "powered by Claude" no modal de versões.
+          // "powered by Claude" no modal de versões. O principal preenche a caixa
+          // inteira, centralizado; os de setor ficam menores, à esquerda.
           <div
             role="img"
             aria-label={alt}
-            className="absolute inset-0 scale-[0.9] origin-left"
+            className={principal ? 'absolute inset-0' : 'absolute inset-0 scale-[0.9] origin-left'}
             style={{
               backgroundColor: recolorTo,
               WebkitMaskImage: `url(${src})`,
@@ -127,8 +133,8 @@ function WelcomeGroupLogo({ src, alt, recolorTo }: WelcomeGroupLogoProps) {
               maskRepeat: 'no-repeat',
               WebkitMaskSize: 'contain',
               maskSize: 'contain',
-              WebkitMaskPosition: 'left center',
-              maskPosition: 'left center',
+              WebkitMaskPosition: principal ? 'center' : 'left center',
+              maskPosition: principal ? 'center' : 'left center',
             }}
           />
         ) : (
@@ -137,7 +143,7 @@ function WelcomeGroupLogo({ src, alt, recolorTo }: WelcomeGroupLogoProps) {
             alt={alt}
             fill
             priority
-            className="object-contain object-left scale-[0.9] origin-left"
+            className={principal ? 'object-contain' : 'object-contain object-left scale-[0.9] origin-left'}
             onError={() => setErroredSrc(src)}
           />
         )}
@@ -156,12 +162,13 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
   // Logo por aba: cada área de Performance tem a sua identidade; fora delas, o logo
   // principal. `recolorTo` (opcional) achata o SVG numa cor só via máscara CSS.
   // TESTE de rebranding (v-teste): o logo principal passou a ser o Janus, recolorido
-  // para o cinza do logo atual (Welcome Group = #807f7e). Corp segue na cor da aba.
-  const { logoSrc, logoAlt, logoRecolorTo } =
-    pathname.startsWith('/performance/weddings')    ? { logoSrc: '/logos/welcome-weddings.svg', logoAlt: 'Welcome Weddings',   logoRecolorTo: undefined as string | undefined } :
-    pathname.startsWith('/performance/trips')       ? { logoSrc: '/logos/welcome-trips.svg',    logoAlt: 'Welcome Trips',      logoRecolorTo: undefined as string | undefined } :
-    pathname.startsWith('/performance/corporativo') ? { logoSrc: '/logos/welcome-corp.svg',     logoAlt: 'Welcome Corporativo', logoRecolorTo: 'var(--brand)' as string | undefined } :
-                                                      { logoSrc: '/logos/logo-janus.svg',       logoAlt: 'Janus',              logoRecolorTo: '#807f7e' as string | undefined }
+  // para o cinza do logo atual (Welcome Group = #807f7e) e exibido MAIOR e
+  // centralizado (`logoPrincipal`). Corp segue na cor da aba, formato anterior.
+  const { logoSrc, logoAlt, logoRecolorTo, logoPrincipal } =
+    pathname.startsWith('/performance/weddings')    ? { logoSrc: '/logos/welcome-weddings.svg', logoAlt: 'Welcome Weddings',   logoRecolorTo: undefined as string | undefined, logoPrincipal: false } :
+    pathname.startsWith('/performance/trips')       ? { logoSrc: '/logos/welcome-trips.svg',    logoAlt: 'Welcome Trips',      logoRecolorTo: undefined as string | undefined, logoPrincipal: false } :
+    pathname.startsWith('/performance/corporativo') ? { logoSrc: '/logos/welcome-corp.svg',     logoAlt: 'Welcome Corporativo', logoRecolorTo: 'var(--brand)' as string | undefined, logoPrincipal: false } :
+                                                      { logoSrc: '/logos/logo-janus.svg',       logoAlt: 'Janus',              logoRecolorTo: '#807f7e' as string | undefined, logoPrincipal: true }
   // Grupos com subabas (Performance, Financeiro) nascem RECOLHIDOS a cada abertura
   // do site (v4.16.2) — sem persistência: o estado é só em memória, então sobrevive
   // à navegação client-side mas volta a recolher num carregamento/refresh novo. (A
@@ -257,7 +264,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
       <div className="px-5 py-3 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} recolorTo={logoRecolorTo} />
+        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} recolorTo={logoRecolorTo} principal={logoPrincipal} />
         {onCollapse && (
           <button
             onClick={onCollapse}
