@@ -86,8 +86,10 @@ interface WelcomeGroupLogoProps {
    * no teste de rebranding, pelo logo principal Janus (cinza do logo atual). */
   recolorTo?: string
   /**
-   * Logo principal (teste de rebranding Janus): renderiza MAIOR (caixa h-14, sem
-   * downscale) e CENTRALIZADO nos dois eixos no espaço disponível do header.
+   * Logo principal (teste de rebranding Janus): caixa fixa 168×48 centralizada —
+   * 168px ≈ largura do logo antigo (respiro de ~12px por lado até o chevron no
+   * desktop) e arte ~41px de altura (+23% vs a antiga, hierarquia preservada);
+   * o wordmark aproxima com mt-2 (ritmo óptico ~19px, igual ao layout antigo).
    * Logos de setor seguem no formato anterior (menores, à esquerda). */
   principal?: boolean
 }
@@ -115,7 +117,9 @@ function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoPr
 
   return (
     <div className="flex-1 min-w-0 flex flex-col items-center">
-      <div className={principal ? 'relative h-14 w-full' : 'relative h-10 w-full'}>
+      {/* Principal: caixa fixa 168×48 (o pai `items-center` centraliza) → folga
+          simétrica até o chevron no desktop e até o X do drawer no mobile. */}
+      <div className={principal ? 'relative h-12 w-[168px] max-w-full' : 'relative h-10 w-full'}>
         {recolorTo ? (
           // Logo recolorido: SVG como máscara + backgroundColor (token var(--brand)
           // que resolve via [data-theme] no <html>, ou hex fixo). Mesma técnica do
@@ -148,7 +152,10 @@ function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoPr
           />
         )}
       </div>
-      <div className="flex items-baseline gap-1 mt-4">
+      {/* Principal usa mt-2: a arte Janus tem respiro interno embaixo (o lettering
+          termina a ~81% da altura), então o gap óptico ao wordmark fica ~19px,
+          igual ao ritmo do layout antigo. Setoriais mantêm o mt-4 de sempre. */}
+      <div className={principal ? 'flex items-baseline gap-1 mt-2' : 'flex items-baseline gap-1 mt-4'}>
         <span className="text-[14px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
         <VersionHistory />
       </div>
