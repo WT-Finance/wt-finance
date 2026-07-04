@@ -490,18 +490,24 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
         />
       </div>
 
-      {/* Footer — identidade do usuário logado + sair */}
-      <div className="h-14 px-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--sidebar-border)' }}>
-        {/* TESTE de rebranding: selo Welcome Group (versão VERTICAL do logo antigo,
-            cor baked #807f7e) à esquerda do nome/cargo — a marca Welcome segue
-            presente no rodapé enquanto o Janus assume o header. */}
-        <div className="relative h-9 w-12 shrink-0">
-          <Image
-            src="/logos/welcome-group-vert.svg"
-            alt="Welcome Group"
-            fill
-            className="object-contain object-left"
-          />
+      {/* Footer — identidade do usuário logado + sair. min-h + py espelham o
+          respiro vertical aprovado no mockup do selo (rodapé cresce ao box). */}
+      <div className="min-h-14 px-4 py-2 border-t flex items-center gap-2.5" style={{ borderColor: 'var(--sidebar-border)' }}>
+        {/* TESTE de rebranding: selo Welcome Group (vertical, cor baked #807f7e)
+            num box branco arredondado — receita escolhida pelo Yan no mockup:
+            box 46px · respiro 4px · canto 12px · fundo branco · com borda. */}
+        <div
+          className="h-[46px] w-[46px] shrink-0 p-1 rounded-xl bg-white border"
+          style={{ borderColor: 'var(--sidebar-border)' }}
+        >
+          <div className="relative h-full w-full">
+            <Image
+              src="/logos/welcome-group-vert.svg"
+              alt="Welcome Group"
+              fill
+              className="object-contain"
+            />
+          </div>
         </div>
         <div className="flex-1 min-w-0" title={usuario.email ?? undefined}>
           <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
