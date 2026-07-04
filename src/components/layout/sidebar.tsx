@@ -77,18 +77,6 @@ interface SidebarContentProps {
   onCollapse?: () => void
 }
 
-/**
- * TEMPORÁRIO (teste de rebranding): variações da byline empilhadas no header
- * para escolha visual do Yan — a escolhida vira a única e este bloco sai.
- * Rótulo cinza à esquerda identifica cada opção. */
-const BYLINE_VARIANTES: { rotulo: string; texto: string; cls: string }[] = [
-  { rotulo: 'atual', texto: 'by Welcome', cls: 'text-[14px] italic tracking-[1px]' },
-  { rotulo: '1',     texto: 'by Welcome', cls: 'text-[14px] font-[800] tracking-[1px]' },
-  { rotulo: '2',     texto: 'by Welcome', cls: 'text-[13px] italic tracking-[1px]' },
-  { rotulo: '3',     texto: 'by WELCOME', cls: 'text-[14px] tracking-[1px]' },
-  { rotulo: '4',     texto: 'by WELCOME', cls: 'text-[14px] font-[800] tracking-[1px]' },
-]
-
 interface WelcomeGroupLogoProps {
   src: string
   alt: string
@@ -169,18 +157,11 @@ function WelcomeGroupLogo({ src, alt, recolorTo, principal }: WelcomeGroupLogoPr
       {/* Principal usa mt-2: a arte Janus tem respiro interno embaixo (o lettering
           termina a ~81% da altura), então o gap óptico ao wordmark fica ~19px,
           igual ao ritmo do layout antigo. Setoriais mantêm o mt-4 de sempre. */}
-      {/* TESTE de rebranding — comparação TEMPORÁRIA das variações da byline
-          (BYLINE_VARIANTES), uma embaixo da outra, cada uma com o version ao
-          lado para prever a composição final. Depois da escolha, volta a linha
-          única. */}
-      <div className={principal ? 'flex flex-col items-center gap-1 mt-2' : 'flex flex-col items-center gap-1 mt-4'}>
-        {BYLINE_VARIANTES.map(v => (
-          <div key={v.rotulo} className="flex items-baseline gap-1">
-            <span className="text-3xs tabular-nums w-6 text-right shrink-0" style={{ color: 'var(--text-muted)' }}>{v.rotulo}</span>
-            <span className={v.cls} style={{ color: 'var(--brand)' }}>{v.texto}</span>
-            <VersionHistory />
-          </div>
-        ))}
+      <div className={principal ? 'flex items-baseline gap-1 mt-2' : 'flex items-baseline gap-1 mt-4'}>
+        {/* TESTE de rebranding: byline "by Welcome" (itálico, sem negrito) no lugar
+            do wordmark "WT FINANCE"; estilo definitivo em escolha via mockup. */}
+        <span className="text-[14px] italic tracking-[1px]" style={{ color: 'var(--brand)' }}>by Welcome</span>
+        <VersionHistory />
       </div>
     </div>
   )
