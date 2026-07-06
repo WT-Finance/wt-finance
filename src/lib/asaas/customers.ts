@@ -80,11 +80,28 @@ function corpoEndereco(d: DadosCliente): Record<string, unknown> {
  *   completa via PUT com os dados da raw.pessoas. Sem a flag (boleto/Fase 1), NÃO mexe no
  *   endereço de um cadastro existente — comportamento da Fase 1 preservado byte-a-byte.
  */
+/**
+ * Cadeia do e-mail fiscal (Visão B parcial, v4.37.0): raw.pessoas (`emailPessoas`) se VÁLIDO;
+ * senão o fallback do Cadastro de Clientes (`emailFallback`) se válido; senão null. Só e-mail
+ * VÁLIDO contribui — uma string multi-e-mail com ';' é inválida em emailValido e CAI para o fallback.
+ */
+export function escolherEmailFiscal(
+  emailPessoas: string | null | undefined,
+  emailFallback: string | null | undefined,
+): string | null {
+  if (emailPessoas && emailValido(emailPessoas)) return emailPessoas.trim()
+  if (emailFallback && emailValido(emailFallback)) return emailFallback.trim()
+  return null
+}
+
 export async function ensureCustomer(
   d: DadosCliente,
-  opts?: { completarEndereco?: boolean },
+  opts?: { completarEndereco?: boolean; emailFallback?: string | null },
 ): Promise<AsaasResult<EnsureResult>> {
   const completar = opts?.completarEndereco === true
+  // E-mail a usar (cadeia): raw.pessoas (d.email) → fallback do Cadastro. Os ramos abaixo só setam
+  // quando o customer está SEM e-mail — NUNCA sobrescreve um e-mail que o Asaas já tem.
+  const emailFiscal = escolherEmailFiscal(d.email, opts?.emailFallback)
 
   // 1) por cpfCnpj
   const porDoc = await asaasReq<{ data?: AsaasCustomer[] }>('GET', '/customers', { params: { cpfCnpj: d.cpfCnpj, limit: '1' } })
@@ -94,7 +111,7 @@ export async function ensureCustomer(
     if (completar) {
       const body = enderecoFaltando(achadoDoc, d)
       // E-mail também (a NF exige): completa se o cadastro do Asaas não tem e a base tem um válido.
-      if (d.email && emailValido(d.email) && !achadoDoc.email) body.email = d.email.trim()
+      if (emailFiscal && !achadoDoc.email) body.email = emailFiscal
       if (Object.keys(body).length) {
         const upd = await asaasReq<AsaasCustomer>('PUT', `/customers/${achadoDoc.id}`, { body })
         if (!upd.ok) return upd
@@ -111,7 +128,7 @@ export async function ensureCustomer(
   if (achadoNome) {
     const body: Record<string, unknown> = {}
     if (!achadoNome.cpfCnpj) body.cpfCnpj = d.cpfCnpj
-    if (d.email && emailValido(d.email) && !achadoNome.email) body.email = d.email.trim()
+    if (emailFiscal && !achadoNome.email) body.email = emailFiscal
     if (completar) Object.assign(body, enderecoFaltando(achadoNome, d))
     if (Object.keys(body).length) {
       const upd = await asaasReq<AsaasCustomer>('PUT', `/customers/${achadoNome.id}`, { body })
@@ -123,7 +140,7 @@ export async function ensureCustomer(
 
   // 3) cria — name + cpfCnpj (mínimo do boleto) + email + endereço da raw.pessoas
   const body: Record<string, unknown> = { name: d.nome, cpfCnpj: d.cpfCnpj, ...corpoEndereco(d) }
-  if (d.email && emailValido(d.email)) body.email = d.email.trim()
+  if (emailFiscal) body.email = emailFiscal
 
   const criado = await asaasReq<AsaasCustomer>('POST', '/customers', { body })
   if (!criado.ok) return criado

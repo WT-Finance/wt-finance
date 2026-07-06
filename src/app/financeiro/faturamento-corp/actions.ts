@@ -18,6 +18,7 @@ import {
 } from '@/lib/asaas/notas'
 import { emailAmbiente } from '@/lib/email/config'
 import { enviarFaturaEmail, splitDestinatarios } from '@/lib/email/fatura'
+import { jurosMultaDoCadastro, JUROS_MULTA_DEFAULT } from '@/lib/faturamento/juros-multa'
 
 export async function cruzarFaturamento(nomes: string[]): Promise<PessoaCadastro[]> {
   await requireAreaAction('financeiro/faturamento-corp')
@@ -137,6 +138,20 @@ export async function emitirBoletos(
     return recusarTudo(`Nada emitido — ${msg}. Verifique e tente de novo.`)
   }
 
+  // Juros/multa por cliente (Visão B parcial, v4.37.0) — read-only e FAIL-SAFE: se a RPC do cadastro
+  // falhar, segue com defaults 2/2 (a emissão NUNCA cai por juros/multa). multa→fine, juros→interest.
+  const jmPorNome = new Map<string, { fine: number; interest: number }>()
+  try {
+    const nomesCorp = Array.from(new Set(faturas.map(f => (f.pessoa ?? '').trim()).filter(Boolean)))
+    const resCad = await (db.rpc as any)('buscar_cliente_corporativo', { p_nomes: nomesCorp })
+    if (!resCad?.error && Array.isArray(resCad?.data)) {
+      for (const c of resCad.data as Array<{ empresa?: string; pct_juros?: string | null; pct_multa?: string | null }>) {
+        const k = normNome(c.empresa ?? '')
+        if (k) jmPorNome.set(k, jurosMultaDoCadastro(c))
+      }
+    }
+  } catch { /* fail-safe: mapa vazio → defaults 2/2 */ }
+
   const out: ResultadoEmissao = { ambiente, emitidos: [], jaExistiam: [], falharam: [], pulados: [], total: faturas.length }
 
   // Sequencial: volume pequeno (uma planilha) e evita corrida no registro/idempotência.
@@ -170,10 +185,12 @@ export async function emitirBoletos(
       const existente = await findPaymentByExternalRef(ref)
       if (!existente.ok) { out.falharam.push({ ...base, erro: existente.error }); await registrarFalha(db, f, ref, pessoa, ambiente, existente.error); continue }
 
+      // Juros/multa do cadastro (default 2/2). Só emissão NOVA aplica — boleto já existente não retroage.
+      const jm = jmPorNome.get(normNome(pessoa)) ?? JUROS_MULTA_DEFAULT
       const boleto = existente.data
         ? { dado: existente.data, jaExistia: true }
         : await (async () => {
-            const cr = await criarBoleto({ customer: customerId, value: f.valor!, dueDate: f.vencimento!, externalReference: ref })
+            const cr = await criarBoleto({ customer: customerId, value: f.valor!, dueDate: f.vencimento!, externalReference: ref, fine: jm.fine, interest: jm.interest })
             return cr.ok ? { dado: cr.data, jaExistia: false } : { erro: cr.error }
           })()
 
@@ -339,6 +356,22 @@ export async function emitirNotas(
     return recusarTudo(`Nada emitido — ${msg}. Verifique e tente de novo.`)
   }
 
+  // Fallback de e-mail fiscal (Visão B parcial, v4.37.0) — read-only e FAIL-SAFE: se a RPC do
+  // cadastro falhar, segue SEM o degrau 3 (o e-mail vem do Asaas/pessoas, como antes).
+  // emailFallback = 1º destinatário VÁLIDO do Cadastro de Clientes (splitDestinatarios).
+  const emailFallbackPorNome = new Map<string, string>()
+  try {
+    const nomesCorp = Array.from(new Set(notas.map(n => (n.pessoa ?? '').trim()).filter(Boolean)))
+    const resCad = await (db.rpc as any)('buscar_cliente_corporativo', { p_nomes: nomesCorp })
+    if (!resCad?.error && Array.isArray(resCad?.data)) {
+      for (const c of resCad.data as Array<{ empresa?: string; destinatarios?: string | null }>) {
+        const k = normNome(c.empresa ?? '')
+        const primeiro = splitDestinatarios(c.destinatarios).validos[0]
+        if (k && primeiro) emailFallbackPorNome.set(k, primeiro)
+      }
+    }
+  } catch { /* fail-safe: sem fallback nesta rodada */ }
+
   const out: ResultadoNotas = { ambiente, emitidas: [], jaExistiam: [], falharam: [], puladas: [], total: notas.length }
 
   for (const n of notas) {
@@ -368,7 +401,8 @@ export async function emitirNotas(
         endereco: cadastro.endereco, numero: cadastro.numero, complemento: cadastro.complemento,
         bairro: cadastro.bairro, cep: cadastro.cep, cidade: cadastro.cidade, uf: cadastro.uf,
       }
-      const ens = await ensureCustomer(dados, { completarEndereco: true })
+      const emailFallback = emailFallbackPorNome.get(normNome(pessoa))
+      const ens = await ensureCustomer(dados, { completarEndereco: true, emailFallback })
       if (!ens.ok) { out.falharam.push({ ...base, erro: ens.error }); await registrarFalhaNota(db, base, valor, ambiente, ens.error); continue }
       const customerId = ens.data.customerId
 
