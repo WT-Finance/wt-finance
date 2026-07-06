@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.37.1',
+    data: '2026-07-06T16:49',
+    itens: [
+      { tipo: 'melhoria', texto: 'No cadastro de tipos de Solicitação, o aviso do campo de data agora tem direção: dá para escolher avisar quando a data está longe demais ("a mais de" X dias) ou perto demais ("a menos de" X dias, prazo curto). Antes só avisava quando estava muito no futuro. Os tipos já existentes continuam exatamente como estavam.' },
+    ],
+  },
+  {
     versao: '4.37.0',
     data: '2026-07-06T13:25',
     itens: [

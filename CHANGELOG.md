@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.37.1] — 2026-07-06
+
+PATCH · **Solicitações — aviso de data por campo ganha direção (a mais de / a menos de X dias).** No editor de tipos, o campo de data podia avisar apenas quando a data estava **a mais de** X dias no futuro. Agora um seletor **"a mais de / a menos de"** permite escolher o sentido — avisar quando a data está longe demais **ou** perto demais (prazo curto). **Migration 0171 (aditiva):** coluna `data_aviso_direcao` (default `'acima'`) + as 3 RPCs (`solic_tipos_abertura`, `admin_solic_listar_tipos`, `admin_solic_salvar_tipo`). **Retrocompatível:** todos os tipos já existentes nascem em `'acima'` — comportamento idêntico ao atual; só novos/editados escolhem o sentido. O aviso segue sendo só de UI (não bloqueia o envio). Estende ADR-0118.
+
 ## [4.37.0] — 2026-07-06
 
 MINOR · **Faturamento Corporativo — a Emissão consome o Cadastro (Visão B parcial, 2 campos).** Primeira evolução deliberada Visão A → Visão B, limitada a dois campos **estruturados** do Cadastro de Clientes. **Sem migration** (as RPCs existentes cobrem) · **ADR-0142** (emenda ao invariante "a Emissão não lê o cadastro" da Fase 3). **Nada retroage** (só emissões novas); a OBS em texto livre segue **não interpretada**.

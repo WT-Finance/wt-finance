@@ -60,7 +60,7 @@ export function EditorTipo({
     setLinhas(prev => [
       ...prev,
       { _key: novaChave(), rotulo: '', tipo_campo: 'texto_curto', obrigatorio: false, opcoes: null,
-        data_permite_passado: true, data_aviso_dias_futuro: null },
+        data_permite_passado: true, data_aviso_dias_futuro: null, data_aviso_direcao: 'acima' },
     ])
   }
 
@@ -86,6 +86,7 @@ export function EditorTipo({
             ...l, tipo_campo: tipoCampo, opcoes: null,
             data_permite_passado:   l.data_permite_passado ?? true,
             data_aviso_dias_futuro: l.data_aviso_dias_futuro ?? null,
+            data_aviso_direcao:     l.data_aviso_direcao ?? 'acima',
           }
         }
         return { ...l, tipo_campo: tipoCampo, opcoes: null }
@@ -156,6 +157,7 @@ export function EditorTipo({
       // Config de data só viaja quando o campo é 'data' (senão default no banco).
       data_permite_passado:   l.tipo_campo === 'data' ? (l.data_permite_passado ?? true) : true,
       data_aviso_dias_futuro: l.tipo_campo === 'data' ? (l.data_aviso_dias_futuro ?? null) : null,
+      data_aviso_direcao:     l.tipo_campo === 'data' ? (l.data_aviso_direcao ?? 'acima') : 'acima',
       ordem: i,
     }))
 
@@ -298,26 +300,40 @@ export function EditorTipo({
                           </div>
                           <div className="mt-2">
                             <label htmlFor={`data-aviso-${linha._key}`} className="mb-1 block text-xs text-zinc-500">
-                              Avisar se a data estiver a mais de N dias no futuro
+                              Avisar se a data estiver:
                             </label>
-                            <Input
-                              id={`data-aviso-${linha._key}`}
-                              type="number"
-                              min={1}
-                              inputMode="numeric"
-                              value={linha.data_aviso_dias_futuro ?? ''}
-                              onChange={e => {
-                                const n = e.target.value.trim()
-                                const parsed = Number(n)
-                                atualizarCampo(linha._key, {
-                                  data_aviso_dias_futuro:
-                                    n === '' || !Number.isFinite(parsed) ? null : Math.max(1, Math.trunc(parsed)),
-                                })
-                              }}
-                              placeholder="Sem aviso"
-                              aria-label={`Avisar se a data estiver a mais de N dias no futuro (campo ${index + 1})`}
-                              className="w-40"
-                            />
+                            <div className="flex items-center gap-2">
+                              <Select
+                                aria-label={`Direção do aviso de data (campo ${index + 1})`}
+                                value={linha.data_aviso_direcao ?? 'acima'}
+                                onChange={e => atualizarCampo(linha._key, { data_aviso_direcao: e.target.value === 'abaixo' ? 'abaixo' : 'acima' })}
+                                className="w-32 shrink-0"
+                              >
+                                <option value="acima">a mais de</option>
+                                <option value="abaixo">a menos de</option>
+                              </Select>
+                              <Input
+                                id={`data-aviso-${linha._key}`}
+                                type="number"
+                                min={1}
+                                inputMode="numeric"
+                                value={linha.data_aviso_dias_futuro ?? ''}
+                                onChange={e => {
+                                  const n = e.target.value.trim()
+                                  const parsed = Number(n)
+                                  atualizarCampo(linha._key, {
+                                    data_aviso_dias_futuro:
+                                      n === '' || !Number.isFinite(parsed) ? null : Math.max(1, Math.trunc(parsed)),
+                                  })
+                                }}
+                                placeholder="Sem aviso"
+                                aria-label={`Dias para o aviso (campo ${index + 1})`}
+                                className="w-28"
+                              />
+                              <span className="text-xs text-zinc-500 shrink-0">
+                                dias {(linha.data_aviso_direcao ?? 'acima') === 'abaixo' ? 'de hoje' : 'no futuro'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}

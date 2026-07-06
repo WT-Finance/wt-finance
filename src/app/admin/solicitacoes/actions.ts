@@ -24,6 +24,7 @@ export async function salvarTipo(input: { id: number | null; nome: string; campo
       // INSERT (0140) coalesce p/ default. Forwarding explícito: a RPC lê chaves nomeadas.
       data_permite_passado:   c.tipo_campo === 'data' ? (c.data_permite_passado ?? true) : true,
       data_aviso_dias_futuro: c.tipo_campo === 'data' ? (c.data_aviso_dias_futuro ?? null) : null,
+      data_aviso_direcao:     c.tipo_campo === 'data' ? (c.data_aviso_direcao ?? 'acima') : 'acima',
     })),
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
