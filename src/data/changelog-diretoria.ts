@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.37.0',
+    data: '2026-07-06T13:25',
+    itens: [
+      { tipo: 'melhoria', texto: 'Ao emitir boletos, o sistema passa a aplicar os percentuais de juros e multa definidos por cliente no Cadastro de Clientes. Quem não tiver um valor definido segue com o padrão de 2%. Antes, todos os boletos saíam com 2% fixo.' },
+      { tipo: 'correcao', texto: 'Ao emitir notas fiscais, quando o cliente não tem e-mail no sistema de cobrança, o sistema agora aproveita o e-mail cadastrado no Cadastro de Clientes — resolvendo notas que antes eram recusadas por "e-mail do cliente incompleto". O e-mail só completa quando falta; nunca substitui um já existente.' },
+    ],
+  },
+  {
     versao: '4.36.0',
     data: '2026-07-03T19:03',
     itens: [

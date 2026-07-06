@@ -6,6 +6,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.37.0] — 2026-07-06
+
+MINOR · **Faturamento Corporativo — a Emissão consome o Cadastro (Visão B parcial, 2 campos).** Primeira evolução deliberada Visão A → Visão B, limitada a dois campos **estruturados** do Cadastro de Clientes. **Sem migration** (as RPCs existentes cobrem) · **ADR-0142** (emenda ao invariante "a Emissão não lê o cadastro" da Fase 3). **Nada retroage** (só emissões novas); a OBS em texto livre segue **não interpretada**.
+
+- **Juros/multa por cliente no boleto:** o boleto passa a usar `pct_multa` → `fine` (multa, cobrança única no atraso) e `pct_juros` → `interest` (juros ao mês) do cadastro. Contrato **estrito** (`"1%"|"2%"|"5%"|"10%"`); **qualquer outra coisa** (vazio, formato diferente, cliente fora do cadastro) → **default 2%/2%**, silencioso. **A emissão nunca falha por juros/multa** (fail-safe), e a consulta ao cadastro é read-only e tolerante a falha (RPC caiu → defaults). **M0 (sandbox):** confirmado que o Asaas aceita multa de 10% (`fine:{value:10}`).
+- **Fallback de e-mail fiscal (NF):** ao emitir a nota, se o cliente **não tem e-mail no Asaas**, a cadeia agora tenta `raw.pessoas` (só e-mail válido e único; string com `;` é inválida e é ignorada) e, por fim, o **Cadastro de Clientes** (primeiro destinatário válido). O e-mail só **completa a lacuna** — nunca sobrescreve — e vira o e-mail fiscal permanente do cliente no Asaas. Resolve o caso de NF recusada por "e-mail do cliente incompleto".
+- **Sem UI nova** nesta versão (os valores aplicados ficam visíveis no próprio Asaas); mostrar juros/multa na tela e registrá-los em `fatura_emissao` são melhorias posteriores. A **virada** para produção (Asaas + e-mail) continua sendo decisão consciente do Yan.
+
 ## [4.36.0] — 2026-07-03
 
 MINOR · **Faturamento Corporativo — Fase 4b: revisão do envio + disparo em lote + a virada (construída, não acionada).** Segunda metade da Fase 4 — a **operação** sobre o pipeline da 4a: o modal **"Revisar envio"**, o disparo em **lote** e a **capacidade** da virada para produção. Com isto o Faturamento fica completo — da planilha ao e-mail — em **modo teste**. **ADR-0141 · sem migration** (as RPCs da 4a + `buscar_cliente_corporativo` cobrem). **A virada para o modo real é decisão consciente do Yan (junto com o Asaas); `EMAIL_MODO` segue `teste` → o modo real permanece inalcançável nesta entrega.**
