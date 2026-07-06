@@ -154,7 +154,7 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Acervo de Documentos</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
-          Biblioteca de documentos do financeiro — modelos, manuais e referências.
+          Biblioteca de documentos, modelos, manuais e referências.
         </p>
       </div>
 
