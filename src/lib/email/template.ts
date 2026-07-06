@@ -254,8 +254,6 @@ const COR_TESTE_FG    = '#633806'
 export function templateFaturaEmail(input: {
   cliente:           string
   ref:               string
-  /** Link clicável do boleto no corpo (invoice_url preferido; fallback bank_slip_url). */
-  boletoLink?:       string | null
   /** true → o corpo menciona a nota fiscal (ela vai anexada). */
   temNota:           boolean
   /** true → modo teste: prefixo no assunto + faixa no corpo com o destinatário real. */
@@ -265,22 +263,21 @@ export function templateFaturaEmail(input: {
 }): TemplateSenha {
   const cliente = input.cliente?.trim() || 'cliente'
   const ref     = input.ref?.trim() || ''
-  const link    = input.boletoLink?.trim() || null
   const real    = input.destinatarioReal?.trim() || '(sem destinatário)'
 
   const assuntoBase = `Fatura Welcome Trips – ${cliente}${ref ? ` – Nº ${ref}` : ''}`
   const assunto = input.teste ? `[TESTE — destinatário real: ${real}] ${assuntoBase}` : assuntoBase
 
-  // Corpo CONDICIONAL: a nota só é mencionada quando vai anexada.
+  // Corpo CONDICIONAL: a nota só é mencionada quando vai anexada. O boleto vai como ANEXO
+  // (sem botão/link no corpo — v4.36.0/M0); "Caso tenham dúvidas" fecha o mesmo bloco de corpo.
   const fraseAnexo = input.temNota
-    ? 'Segue em anexo a fatura referente aos serviços prestados, juntamente com a nota fiscal.'
-    : 'Segue em anexo a fatura referente aos serviços prestados.'
+    ? 'Segue em anexo a fatura referente aos serviços prestados, juntamente com boleto e nota fiscal.'
+    : 'Segue em anexo a fatura referente aos serviços prestados, juntamente com boleto.'
 
   const text =
     (input.teste ? `[MODO TESTE — este e-mail iria para: ${real}]\n\n` : '') +
     'Prezados,\n\n' +
     `${fraseAnexo}\n\n` +
-    (link ? `O boleto pode ser acessado através do link: ${link}\n\n` : '') +
     'Caso tenham dúvidas, estamos à disposição.\n\n' +
     `— ${APP_NOME}`
 
@@ -290,16 +287,6 @@ export function templateFaturaEmail(input: {
           <tr><td style="padding:12px 16px;">
             <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_TESTE_FG};font-weight:bold;margin-bottom:4px;">Modo teste</div>
             <div style="font-size:13px;line-height:1.55;color:${COR_TESTE_FG};">Este e-mail iria para: <strong>${escaparHtml(real)}</strong></div>
-          </td></tr>
-        </table>
-      </td></tr>`
-    : ''
-
-  const botaoLinha = link
-    ? `<tr><td class="em-pad" align="center" style="padding:26px 40px 0;">
-        <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
-          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:12px;padding:14px 34px;">
-            <a href="${escaparHtml(link)}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Acessar o boleto</a>
           </td></tr>
         </table>
       </td></tr>`
@@ -322,16 +309,10 @@ export function templateFaturaEmail(input: {
         <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
       </td></tr>
       ${faixaTeste}
-      <tr><td class="em-pad" style="padding:24px 40px 0;">
+      <tr><td class="em-pad" style="padding:24px 40px 38px;">
         <p style="margin:0 0 12px;font-size:16px;color:${COR_TITULO};">Prezados,</p>
-        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">${escaparHtml(fraseAnexo)}</p>
-      </td></tr>
-      <tr><td class="em-pad" style="padding:14px 40px 0;">
-        <p style="margin:0;font-size:13px;line-height:1.6;color:${COR_TENUE};">Fatura ${escaparHtml(cliente)}${ref ? ` — Nº ${escaparHtml(ref)}` : ''}. Os documentos (boleto${input.temNota ? ' e nota fiscal' : ''}) seguem em anexo neste e-mail.</p>
-      </td></tr>
-      ${botaoLinha}
-      <tr><td class="em-pad" style="padding:26px 40px 38px;">
-        <p style="margin:0;font-size:13px;line-height:1.65;color:${COR_TEXTO};">Caso tenham dúvidas, estamos à disposição.</p>
+        <p style="margin:0 0 14px;font-size:14px;line-height:1.65;color:${COR_TEXTO};">${escaparHtml(fraseAnexo)}</p>
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">Caso tenham dúvidas, estamos à disposição.</p>
       </td></tr>
     </table>
     <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">

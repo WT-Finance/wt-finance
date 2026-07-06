@@ -20,6 +20,7 @@ import {
 } from '@/app/financeiro/faturamento-corp/actions'
 import type { FaturaClassificada, ResumoFaturamento, StatusCruzamento, ModoNota } from '@/lib/faturamento/tipos'
 import type { AsaasAmbiente } from '@/lib/asaas/client'
+import RevisarEnvioModal from './revisar-envio-modal'
 
 const COR_CORP = SETOR_COLORS.Corporativo // var(--setor-corporativo) — cor do setor
 
@@ -89,6 +90,10 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   // Envio de e-mail de fatura (Fase 4a — MODO TESTE). ref → estado da UI (idle = ausente).
   const [emailPorRef, setEmailPorRef] = useState<Record<string, EmailEstado>>({})
 
+  // Envio em LOTE (Fase 4b): modal "Revisar envio". emailRefs = snapshot das refs elegíveis (congelado ao abrir).
+  const [modalEmail, setModalEmail] = useState(false)
+  const [emailRefs, setEmailRefs]   = useState<string[]>([])
+
   const ativo = estado !== 'processando' && !emitindo && !emitindoNota
   const ehProducao = ambiente === 'producao'
 
@@ -133,6 +138,13 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
 
   // Já emitiu algo? (de-ênfase da coluna Cruzamento depois de emitir — o foco passa às colunas próprias.)
   const jaEmitiu = !!(resultado || resultadoNota)
+
+  // Refs com BOLETO emitido — elegíveis ao envio por e-mail (mesmo critério do botão por-linha 4a).
+  const refsComBoleto = useMemo(() => Array.from(new Set(faturas
+    .filter(f => f.fatura_cliente_no)
+    .map(f => ({ ref: f.fatura_cliente_no as string, r: resultadoPorRef.get(f.fatura_cliente_no as string) }))
+    .filter(x => x.r && (x.r.resultado === 'emitido' || x.r.resultado === 'ja_existia' || x.r.resultado === 'pulado'))
+    .map(x => x.ref))), [faturas, resultadoPorRef])
 
   // Boleto: só faturas PRONTAS marcadas.
   const selecionadas = useMemo(
@@ -464,6 +476,26 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
       {/* Resultado — CONSEQUÊNCIA da emissão: aparece ABAIXO dos botões, só depois de emitir. */}
       {resultado && <ResultadoEmissaoCard resultado={resultado} valorPorFatura={valorPorFatura} />}
       {resultadoNota && <ResultadoNotaCard resultado={resultadoNota} valorPorFatura={valorPorFatura} />}
+
+      {/* Envio em LOTE (Fase 4b): pós-emissão, revisão + disparo em blocos no modal "Revisar envio". */}
+      {refsComBoleto.length > 0 && (
+        <Card className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-zinc-600">
+            <Mail size={15} className="text-zinc-400" />
+            <span>
+              <b className="text-zinc-700">{refsComBoleto.length}</b> {refsComBoleto.length === 1 ? 'fatura' : 'faturas'} com boleto emitido — revise e envie os e-mails{emailModo === 'teste' ? ' (modo teste)' : ''}.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setEmailRefs(refsComBoleto); setModalEmail(true) }}
+            className="inline-flex items-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90"
+          >
+            <Mail size={14} /> Revisar e enviar e-mails
+          </button>
+        </Card>
+      )}
+      {modalEmail && <RevisarEnvioModal refs={emailRefs} emailModo={emailModo} onClose={() => setModalEmail(false)} />}
 
       {/* Modais de confirmação */}
       {modalAberto && (

@@ -6,6 +6,16 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.36.0] — 2026-07-03
+
+MINOR · **Faturamento Corporativo — Fase 4b: revisão do envio + disparo em lote + a virada (construída, não acionada).** Segunda metade da Fase 4 — a **operação** sobre o pipeline da 4a: o modal **"Revisar envio"**, o disparo em **lote** e a **capacidade** da virada para produção. Com isto o Faturamento fica completo — da planilha ao e-mail — em **modo teste**. **ADR-0141 · sem migration** (as RPCs da 4a + `buscar_cliente_corporativo` cobrem). **A virada para o modo real é decisão consciente do Yan (junto com o Asaas); `EMAIL_MODO` segue `teste` → o modo real permanece inalcançável nesta entrega.**
+
+- **Checkpoint de layout do e-mail (M0):** o template da fatura foi revisado no cliente-alvo e ajustado (aprovado): sem botão "Acessar o boleto" (o boleto vai como anexo), corpo enxuto ("Segue em anexo a fatura … juntamente com boleto e nota fiscal" — só "boleto" quando sem nota) e "Caso tenham dúvidas" no mesmo bloco.
+- **Modal "Revisar envio" (tabela):** pills de filtro **Todos/Atenção/Prontos/Enviados** com contagem; colunas **Pessoa · Nº · Anexos · Destinatários · Status**. A célula de **destinatários é editável e efêmera** (vale só para este envio — sem gravar no Cadastro), com validação **ao vivo** (trecho inválido em vermelho). O **Status** classifica cada fatura em **Pronto / Atenção (com motivo) / Enviado**, com ações como links: **enviar só o boleto** (quando a nota está pendente), **reenviar** (deliberado) e **ver boleto**.
+- **Disparo em blocos, orquestrado pelo cliente:** um e-mail por vez, com **~2,1s de intervalo** (≤30/min por construção), **barra de progresso** e log por fatura. O **snapshot** de destinatários é **congelado** no clique e **re-validado no servidor** (o cliente nunca é fonte de verdade). **Resume por idempotência:** fechar e reabrir o modal re-monta os já enviados (via `email_existentes`) e continua dos restantes, sem duplicar.
+- **A virada (construída, não acionada):** quando o modo for `real`, a UI exigirá digitar **ENVIAR** e o servidor exigirá uma **confirmação explícita** (dupla trava, no molde do "EMITIR" de produção do Asaas). Testes cobrem a **recusa** do modo real sem confirmação. **Nada é enviado em real nesta versão.**
+- **Fonte única da validação de e-mail:** `splitDestinatarios`/`emailValido` extraídos para um módulo **isomórfico** (`src/lib/email/destinatarios`), reusado no servidor e na célula editável do cliente (sem duplicar a regra). `enviarEmailFatura` ganhou opções aditivas (override de destinatários, "só boleto", reenvio, confirmação real), preservando o botão por-linha da 4a.
+
 ## [4.35.0] — 2026-07-03
 
 MINOR · **Faturamento Corporativo — Fase 4a: pipeline de envio de e-mail de fatura (MODO TESTE).** Primeira metade da Fase 4 (a última antes da produção): a camada que envia o e-mail da fatura com **boleto e nota anexados**, isolada e em modo teste. **E-mail SAI DE VERDADE — não há sandbox; o modo real é INALCANÇÁVEL nesta versão, por construção.** **ADR-0140 · migration 0169 (aditiva).**

@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.36.0',
+    data: '2026-07-03T19:03',
+    itens: [
+      { tipo: 'novidade', texto: 'O envio dos e-mails de fatura agora tem uma tela de revisão em lote: dá para conferir e ajustar os destinatários de cada fatura (só para aquele envio), ver de relance o que está pronto e o que precisa de atenção, e disparar todos de uma vez com acompanhamento do progresso. Também é possível reenviar uma fatura ou enviar só o boleto quando a nota ainda não saiu.' },
+      { tipo: 'novidade', texto: 'Com isso o Faturamento Corporativo fica completo — da planilha ao e-mail ao cliente. O envio continua em MODO TESTE (tudo vai para a caixa de teste, nunca para o cliente); a virada para o envio real é uma decisão consciente, protegida por dupla confirmação, a ser feita junto com a ativação da cobrança.' },
+    ],
+  },
+  {
     versao: '4.35.0',
     data: '2026-07-03T13:38',
     itens: [

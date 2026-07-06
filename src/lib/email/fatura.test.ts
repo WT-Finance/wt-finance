@@ -81,20 +81,21 @@ describe('templateFaturaEmail — assunto, corpo condicional, prefixo de teste',
     expect(t.html).toContain('Modo teste')
     expect(t.html).toContain('a@x.com')
   })
-  it('com nota → corpo menciona a nota fiscal', () => {
+  it('com nota → corpo menciona boleto e nota fiscal', () => {
     const t = templateFaturaEmail({ cliente: 'ACME', ref: '1', temNota: true, teste: false })
-    expect(t.text).toContain('juntamente com a nota fiscal')
+    expect(t.text).toContain('juntamente com boleto e nota fiscal')
     expect(t.html).toContain('nota fiscal')
   })
-  it('SEM nota → corpo NÃO menciona a nota fiscal (condicional)', () => {
+  it('SEM nota → corpo menciona só o boleto, NÃO a nota fiscal (condicional)', () => {
     const t = templateFaturaEmail({ cliente: 'ACME', ref: '1', temNota: false, teste: false })
+    expect(t.text).toContain('juntamente com boleto.')
     expect(t.text).not.toContain('nota fiscal')
-    expect(t.html).not.toContain('juntamente com a nota')
+    expect(t.html).not.toContain('nota fiscal')
   })
-  it('link do boleto → botão + link; escapa o cliente', () => {
-    const t = templateFaturaEmail({ cliente: '<b>x</b>', ref: '1', temNota: false, teste: false, boletoLink: 'https://asaas/boleto/1' })
-    expect(t.html).toContain('Acessar o boleto')
-    expect(t.html).toContain('https://asaas/boleto/1')
+  it('SEM botão/link do boleto (vai só como anexo); escapa o destinatário real na faixa de teste', () => {
+    const t = templateFaturaEmail({ cliente: 'ACME', ref: '1', temNota: false, teste: true, destinatarioReal: '<b>x</b>@y.com' })
+    expect(t.html).not.toContain('Acessar o boleto')
+    expect(t.html).toContain('Caso tenham dúvidas, estamos à disposição.')
     expect(t.html).toContain('&lt;b&gt;')
     expect(t.html).not.toContain('<b>x</b>')
   })
@@ -114,7 +115,7 @@ describe('enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança', ()
     sendMailMock.mockResolvedValueOnce({ messageId: '1' })
     const r = await enviarFaturaEmail({
       ref: '10319', cliente: 'ACME', destinatariosReais: ['cliente@real.com'],
-      boletoUrl: 'https://asaas/b.pdf', boletoLink: 'https://asaas/pay', notaUrl: 'https://asaas/n.pdf',
+      boletoUrl: 'https://asaas/b.pdf', notaUrl: 'https://asaas/n.pdf',
     })
     expect(r.ok).toBe(true)
     expect(r.destinatariosEfetivos).toEqual(['caixa-teste@welcometrips.com.br'])

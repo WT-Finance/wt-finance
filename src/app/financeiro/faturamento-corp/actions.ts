@@ -513,15 +513,35 @@ export interface ResultadoEmailFatura {
   destinatariosEfetivos?: string[]
   anexos?:                { boleto: boolean; nota: boolean }
   erro?:                  string
+  /** Envio OK mas o registro em app.fatura_email falhou (idempotência NÃO gravada → risco de
+   *  reenvio duplicado na virada real). Espelha o registroFalhou de emitirBoletos/emitirNotas. */
+  registroFalhou?:        boolean
 }
 
-export async function enviarEmailFatura(ref: string): Promise<ResultadoEmailFatura> {
+/** Opções da 4b (todas opcionais → o botão por-linha da 4a segue chamando só com `ref`). */
+export interface OpcoesEnvioFatura {
+  /** Snapshot efêmero do modal "Revisar envio": destinatários editados p/ ESTE envio.
+   *  RE-VALIDADOS no servidor (splitDestinatarios) — o cliente nunca é fonte de verdade.
+   *  Presente → ignora o cadastro (permite envio avulso a cliente inativo/fora do cadastro). */
+  destinatariosOverride?: string[]
+  /** true → envia SÓ o boleto (não anexa a nota, mesmo pendente). Ação explícita do modal. */
+  soBoleto?: boolean
+  /** true → reenvio deliberado: pula a idempotência (email_existentes). */
+  forcarReenvio?: boolean
+  /** Dupla trava do modo REAL (M4): sem esta confirmação, real é RECUSADO. EMAIL_MODO segue 'teste'
+   *  em todos os ambientes → o modo real permanece INALCANÇÁVEL nesta entrega (a virada é do Yan). */
+  confirmacaoReal?: boolean
+}
+
+export async function enviarEmailFatura(ref: string, opts?: OpcoesEnvioFatura): Promise<ResultadoEmailFatura> {
   await requireAreaAction('financeiro/faturamento-corp') // authz: lança = negação (não é "falhou")
   const falhar = (erro: string): ResultadoEmailFatura => ({ ref, resultado: 'falhou', erro })
 
-  // INVARIANTE 4a: modo real inalcançável — só 'teste' passa (fail-closed no servidor).
-  if (emailAmbiente() !== 'teste') {
-    return falhar('Envio de e-mail disponível apenas em MODO TESTE nesta versão.')
+  // Modo: 'teste' (default fail-safe) ou 'real'. Dupla trava do real CONSTRUÍDA mas não acionável
+  // (EMAIL_MODO fica 'teste' em todos os ambientes → o ramo real nunca roda; testes cobrem a recusa).
+  const modo = emailAmbiente()
+  if (modo === 'real' && !opts?.confirmacaoReal) {
+    return falhar('Envio em modo REAL exige confirmação explícita (dupla trava).')
   }
   const refT = (ref ?? '').trim()
   if (!refT) return falhar('Fatura sem número.')
@@ -538,41 +558,57 @@ export async function enviarEmailFatura(ref: string): Promise<ResultadoEmailFatu
     const d = docs.find(x => x.fatura_cliente_no === refT)
     if (!d)                return falhar('Boleto ainda não emitido para esta fatura.')
     if (!d.bank_slip_url)  return falhar('Boleto sem PDF disponível para anexar.')
-    // Regra da nota: só é enviável quando a nota está AUTORIZADA **e com PDF pronto**. Uma nota
-    // presente mas não-pronta (não autorizada, ou autorizada sem pdf ainda — janela assíncrona) →
-    // fatura NÃO enviável (não envia boleto-only "por baixo" nem marca como já enviada). O
-    // "enviar só boleto" e o reenvio são da Fase 4b.
+
+    // Regra da nota: enviável só com nota AUTORIZADA + PDF pronto. Nota presente mas não-pronta →
+    // fatura NÃO enviável — EXCETO quando o operador escolhe "enviar só o boleto" (opts.soBoleto),
+    // que anexa só o boleto (o corpo condicional do template omite a nota). (Fase 4b.)
     const notaPronta = d.nota_status === 'AUTHORIZED' && !!d.nota_pdf_url
-    if (d.nota_status && !notaPronta) {
-      return falhar('Nota fiscal pendente (não autorizada ou sem PDF) — fatura não enviável.')
+    let notaUrl: string | undefined
+    if (opts?.soBoleto) {
+      notaUrl = undefined
+    } else {
+      if (d.nota_status && !notaPronta) {
+        return falhar('Nota fiscal pendente (não autorizada ou sem PDF) — fatura não enviável.')
+      }
+      notaUrl = notaPronta ? d.nota_pdf_url! : undefined
     }
-    const notaUrl = notaPronta ? d.nota_pdf_url! : undefined
     const cliente = (d.pessoa_nome ?? '').trim()
     if (!cliente) return falhar('Fatura sem nome de cliente para cruzar com o cadastro.')
 
-    // 2) Cadastro (por nome) → destinatários + situação (só ATIVO envia).
-    const cadRes = await (db.rpc as any)('buscar_cliente_corporativo', { p_nomes: [cliente] })
-    if (cadRes?.error) return falhar('Não foi possível consultar o cadastro de clientes.')
-    const cads = (cadRes?.data ?? []) as Array<{ empresa: string; situacao: string | null; destinatarios: string | null }>
-    if (!cads.length) return falhar('Cliente não está no Cadastro de Clientes.')
-    if ((cads[0].situacao ?? '').trim().toLowerCase() !== 'ativo') return falhar('Cliente inativo no cadastro.')
-    const { validos } = splitDestinatarios(cads[0].destinatarios)
-    if (validos.length === 0) return falhar('Nenhum destinatário válido no cadastro do cliente.')
+    // 2) Destinatários: override efêmero do modal (RE-VALIDADO aqui) OU o cadastro (botão por-linha 4a).
+    let validos: string[]
+    if (opts?.destinatariosOverride && opts.destinatariosOverride.length > 0) {
+      // Snapshot do modal — permite envio avulso (cliente inativo/fora do cadastro) desde que
+      // haja ≥1 destinatário válido. O servidor RE-VALIDA (nunca confia só no cliente).
+      validos = splitDestinatarios(opts.destinatariosOverride.join(';')).validos
+      if (validos.length === 0) return falhar('Nenhum destinatário válido informado.')
+    } else {
+      // Caminho do cadastro (botão por-linha da 4a): exige cliente ATIVO com destinatário válido.
+      const cadRes = await (db.rpc as any)('buscar_cliente_corporativo', { p_nomes: [cliente] })
+      if (cadRes?.error) return falhar('Não foi possível consultar o cadastro de clientes.')
+      const cads = (cadRes?.data ?? []) as Array<{ empresa: string; situacao: string | null; destinatarios: string | null }>
+      if (!cads.length) return falhar('Cliente não está no Cadastro de Clientes.')
+      if ((cads[0].situacao ?? '').trim().toLowerCase() !== 'ativo') return falhar('Cliente inativo no cadastro.')
+      validos = splitDestinatarios(cads[0].destinatarios).validos
+      if (validos.length === 0) return falhar('Nenhum destinatário válido no cadastro do cliente.')
+    }
 
-    // 3) Idempotência POR MODO: já enviado com sucesso em teste → pula.
-    const jaRes = await (db.rpc as any)('email_existentes', { p_refs: [refT], p_modo: 'teste' })
-    if (jaRes?.error) return falhar('Não foi possível verificar envios anteriores.')
-    const ja = (jaRes?.data ?? []) as string[]
-    if (Array.isArray(ja) && ja.includes(refT)) return { ref: refT, resultado: 'ja_enviado' }
+    // 3) Idempotência POR MODO: já enviado com sucesso NESTE modo → pula (salvo reenvio deliberado).
+    if (!opts?.forcarReenvio) {
+      const jaRes = await (db.rpc as any)('email_existentes', { p_refs: [refT], p_modo: modo })
+      if (jaRes?.error) return falhar('Não foi possível verificar envios anteriores.')
+      const ja = (jaRes?.data ?? []) as string[]
+      if (Array.isArray(ja) && ja.includes(refT)) return { ref: refT, resultado: 'ja_enviado' }
+    }
 
-    // 4) Envia (override do destinatário DENTRO da camada) e registra a tentativa (reais E efetivos).
+    // 4) Envia (override do destinatário + modo vivem na CAMADA enviarFaturaEmail) e registra a tentativa.
     const env = await enviarFaturaEmail({
       ref: refT, cliente, destinatariosReais: validos,
-      boletoUrl: d.bank_slip_url, boletoLink: d.invoice_url ?? d.bank_slip_url, notaUrl,
+      boletoUrl: d.bank_slip_url, notaUrl,
     })
     const regRes = await (db.rpc as any)('registrar_email', {
       p_dados: {
-        fatura_cliente_no: refT, modo: 'teste',
+        fatura_cliente_no: refT, modo,
         destinatarios_reais: validos,
         destinatarios_efetivos: env.destinatariosEfetivos ?? [],
         anexos: env.anexos ?? { boleto: false, nota: false },
@@ -582,8 +618,101 @@ export async function enviarEmailFatura(ref: string): Promise<ResultadoEmailFatu
     if (regRes?.error) console.error(`[faturamento] registro de E-MAIL falhou ref=${refT}:`, regRes.error)
 
     if (!env.ok) return falhar(env.erro ?? 'Falha no envio do e-mail.')
-    return { ref: refT, resultado: 'enviado', destinatariosEfetivos: env.destinatariosEfetivos, anexos: env.anexos }
+    // Envio OK; se o registro falhou, SINALIZA (não engole): a idempotência não foi gravada.
+    return { ref: refT, resultado: 'enviado', destinatariosEfetivos: env.destinatariosEfetivos, anexos: env.anexos, registroFalhou: !!regRes?.error }
   } catch {
     return falhar('Falha inesperada ao enviar o e-mail.')
   }
+}
+
+// ── Fase 4b (M1) — preparo do modal "Revisar envio": estado por fatura (tudo server-side) ─────
+/** Uma linha do modal de envio em lote. Os fatos (nota/cadastro/idempotência) vêm daqui; o
+ *  cliente recompõe o estado AO VIVO conforme edita destinatários / escolhe "só boleto". */
+export interface LinhaEnvioEmail {
+  ref:           string
+  pessoa:        string
+  /** invoice_url (preferido) ou bank_slip_url — p/ o link "ver boleto" no modal. */
+  boletoUrl:     string | null
+  notaPronta:    boolean   // nota AUTORIZADA + PDF → anexa
+  notaPendente:  boolean   // nota presente mas não-pronta → bloqueia (salvo "só boleto")
+  anexosLabel:   string    // "boleto e nota" | "boleto (nota pendente)" | "boleto"
+  destinatarios: string    // seed editável (string do cadastro; '' se fora do cadastro)
+  noCadastro:    boolean
+  ativo:         boolean   // cadastro com situação 'ativo'
+  jaEnviado:     boolean   // já enviado com sucesso NESTE modo (idempotência)
+  estado:        'pronto' | 'atencao' | 'enviado'  // estado INICIAL (o cliente recomputa ao editar)
+  motivo?:       string    // rótulo do porquê (quando 'atencao')
+}
+
+const normNome = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+
+/**
+ * Monta a lista do modal a partir das refs das faturas da sessão que têm boleto emitido. Deriva
+ * TUDO no servidor: documentos (buscar_docs_fatura), cadastro (buscar_cliente_corporativo),
+ * idempotência (email_existentes no modo atual). Ordena Atenção → Prontos → Enviados. Read-only.
+ */
+export async function prepararEnvioEmails(refs: string[]): Promise<{ modo: 'teste' | 'real'; linhas: LinhaEnvioEmail[] }> {
+  await requireAreaAction('financeiro/faturamento-corp')
+  const modo = emailAmbiente()  // apurado no SERVIDOR a cada abertura — a UI usa ESTE valor p/ a dupla trava (não a prop de SSR, que pode estar obsoleta na virada).
+  const uniq = Array.from(new Set((refs ?? []).map(r => (r ?? '').trim()).filter(Boolean)))
+  if (uniq.length === 0) return { modo, linhas: [] }
+
+  const db = await getServerClient()
+  const docsRes = await (db.rpc as any)('buscar_docs_fatura', { p_refs: uniq })
+  if (docsRes?.error) throw new Error('Falha ao ler documentos das faturas.')
+  const docs = (docsRes?.data ?? []) as Array<{
+    fatura_cliente_no: string; pessoa_nome: string | null; bank_slip_url: string | null;
+    invoice_url: string | null; nota_pdf_url: string | null; nota_status: string | null
+  }>
+  if (docs.length === 0) return { modo, linhas: [] }
+
+  const nomes = Array.from(new Set(docs.map(d => (d.pessoa_nome ?? '').trim()).filter(Boolean)))
+  const cadByNome = new Map<string, { situacao: string | null; destinatarios: string | null }>()
+  if (nomes.length) {
+    const cadRes = await (db.rpc as any)('buscar_cliente_corporativo', { p_nomes: nomes })
+    const cads = (cadRes?.data ?? []) as Array<{ empresa: string; situacao: string | null; destinatarios: string | null }>
+    for (const c of cads) cadByNome.set(normNome(c.empresa ?? ''), { situacao: c.situacao, destinatarios: c.destinatarios })
+  }
+
+  const jaRes = await (db.rpc as any)('email_existentes', { p_refs: uniq, p_modo: modo })
+  const jaSet = new Set(((jaRes?.data ?? []) as string[]))
+
+  const linhas: LinhaEnvioEmail[] = docs.map(d => {
+    const ref = d.fatura_cliente_no
+    const pessoa = (d.pessoa_nome ?? '').trim()
+    const notaPronta = d.nota_status === 'AUTHORIZED' && !!d.nota_pdf_url
+    const notaPendente = !!d.nota_status && !notaPronta
+    const cad = cadByNome.get(normNome(pessoa))
+    const noCadastro = !cad
+    const ativo = ((cad?.situacao ?? '').trim().toLowerCase() === 'ativo')
+    const destinatarios = cad?.destinatarios ?? ''
+    const { validos, invalidos } = splitDestinatarios(destinatarios)
+    const jaEnviado = jaSet.has(ref)
+
+    let estado: LinhaEnvioEmail['estado']
+    let motivo: string | undefined
+    if (jaEnviado) {
+      estado = 'enviado'
+    } else if (validos.length > 0 && !notaPendente && ativo && !noCadastro) {
+      estado = 'pronto'
+    } else {
+      estado = 'atencao'
+      motivo = noCadastro ? 'Cliente fora do Cadastro'
+        : !ativo ? 'Cliente inativo no Cadastro'
+        : notaPendente ? 'Nota fiscal pendente'
+        : invalidos.length > 0 ? 'Destinatário inválido'
+        : 'Sem destinatário'
+    }
+
+    const anexosLabel = notaPronta ? 'boleto e nota' : notaPendente ? 'boleto (nota pendente)' : 'boleto'
+    return {
+      ref, pessoa, boletoUrl: d.invoice_url ?? d.bank_slip_url,
+      notaPronta, notaPendente, anexosLabel, destinatarios,
+      noCadastro, ativo, jaEnviado, estado, motivo,
+    }
+  })
+
+  const ordem: Record<LinhaEnvioEmail['estado'], number> = { atencao: 0, pronto: 1, enviado: 2 }
+  linhas.sort((a, b) => ordem[a.estado] - ordem[b.estado] || a.pessoa.localeCompare(b.pessoa, 'pt-BR'))
+  return { modo, linhas }
 }
