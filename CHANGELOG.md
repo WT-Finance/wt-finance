@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.38.0] — 2026-07-06
+
+MINOR · **Faturamento Corporativo — melhorias de interface (resultado em modal, re-hidratação, Revisar envio final).** Pacote de UI pós-Faturamento-completo, aprovado por mockup. **Lógica de emissão/envio inalterada** — muda a apresentação + registro/leitura.
+
+- **Resultado da emissão sai dos painéis inline e vira DOIS MODAIS sob demanda.** A barra de ações ganha "dois momentos": cada `Emitir X` vira `Ver resultado · X` (largura fixa por botão — não "pula" na troca de texto) quando há resultado no banco; `Enviar e-mails` fixo à direita (sem contador). O **modal de boletos** mostra Pessoa · Fatura Nº · Valor (contábil) · **Juros · Multa aplicados** · Status (emitido/já emitido/falhou + motivo); juros/multa do cadastro em negrito, padrão discreto, desconhecido `—`. O **modal de notas** traz "Atualizar status" dentro. A coluna E-mail por-linha some (o envio vive no lote).
+- **Re-hidratação:** ao carregar/cruzar a planilha, a tela consulta o banco e repõe os status (boleto/nota/e-mail) **sem reemitir** — a tela lembra o que já foi feito mesmo após recarregar; o `invoice_id` re-hidratado faz o "Atualizar status" da nota funcionar pós-reload.
+- **Migration 0172 (aditiva):** colunas `juros_aplicado`/`multa_aplicada` em `app.fatura_emissao` (gravadas na emissão nova; registros antigos ficam `NULL` → exibem `—`, sem inventar valor retroativo) + RPCs de leitura `resultado_boletos`/`resultado_notas` (incluem os que falharam).
+- **Revisar envio (lote) na forma final:** anexos como badges clicáveis (Boleto ↗ / Nota fiscal ↗), status como **mensagens puras em 4 cores** (Pronto / Sem destinatário / Nota fiscal pendente / Já enviado) e coluna **Enviar** com checkbox (marcar "Nota fiscal pendente" = enviar só o boleto; marcar "Já enviado" = reenvio; "Sem destinatário" desabilitado até corrigir; o cabeçalho marca só os Prontos). Cabeçalho e rodapé fixos ao rolar; contador "N marcados" só no rodapé.
+
+ADR-0143 (emenda ao registro/leitura do Faturamento). Sem mudança na lógica de emissão, no throttle do lote nem na dupla-trava do modo real.
+
 ## [4.37.1] — 2026-07-06
 
 PATCH · **Solicitações — aviso de data por campo ganha direção (a mais de / a menos de X dias).** No editor de tipos, o campo de data podia avisar apenas quando a data estava **a mais de** X dias no futuro. Agora um seletor **"a mais de / a menos de"** permite escolher o sentido — avisar quando a data está longe demais **ou** perto demais (prazo curto). **Migration 0171 (aditiva):** coluna `data_aviso_direcao` (default `'acima'`) + as 3 RPCs (`solic_tipos_abertura`, `admin_solic_listar_tipos`, `admin_solic_salvar_tipo`). **Retrocompatível:** todos os tipos já existentes nascem em `'acima'` — comportamento idêntico ao atual; só novos/editados escolhem o sentido. O aviso segue sendo só de UI (não bloqueia o envio). Estende ADR-0118.

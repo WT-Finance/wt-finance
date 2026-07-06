@@ -35,6 +35,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.38.0',
+    data: '2026-07-06T19:21',
+    itens: [
+      { tipo: 'melhoria', texto: 'O Faturamento Corporativo ganhou uma revisão de interface. O resultado de cada emissão deixa de ficar espalhado na tela e passa a abrir em um painel próprio: um para os boletos (com pessoa, valor e os percentuais de juros e multa efetivamente aplicados a cada um) e outro para as notas fiscais (com o status e a opção de atualizá-lo ali mesmo). Os botões de ação passam a ter dois momentos — "Emitir" antes e "Ver resultado" depois — sem mudar de tamanho.' },
+      { tipo: 'melhoria', texto: 'A tela agora lembra o que já foi feito: ao recarregar a página ou subir a planilha de novo, ela consulta o sistema e mostra o que já foi emitido e enviado, sem reemitir nada. Notas emitidas antes voltam a permitir a atualização de status mesmo depois de recarregar.' },
+      { tipo: 'melhoria', texto: 'A tela de revisão de envio de e-mails ficou mais clara: o status de cada fatura vira uma mensagem direta em cores (Pronto, Sem destinatário, Nota fiscal pendente, Já enviado), os anexos viram atalhos clicáveis para abrir o boleto e a nota, e uma coluna de seleção deixa marcar exatamente o que enviar — inclusive optar por mandar só o boleto quando a nota ainda não saiu, ou reenviar uma fatura já enviada. O total de selecionados aparece junto ao botão de envio.' },
+    ],
+  },
+  {
     versao: '4.37.1',
     data: '2026-07-06T16:49',
     itens: [
