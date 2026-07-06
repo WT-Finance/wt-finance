@@ -23,6 +23,8 @@ export const campoDefSchema = z.object({
   // (HTTP 500). data_aviso_dias_futuro é nullable+optional (null = sem aviso).
   data_permite_passado:   z.boolean().optional(),
   data_aviso_dias_futuro: z.number().int().nullable().optional(),
+  // Direção do aviso (v4.37.1): 'acima' = a mais de X dias (default, retrocompat); 'abaixo' = a menos de X dias.
+  data_aviso_direcao:     z.enum(['acima', 'abaixo']).optional(),
 })
 export type CampoDef = z.infer<typeof campoDefSchema>
 

@@ -53,8 +53,11 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 // Espelho client do bloqueio server-side (min) + aviso não-bloqueante (X dias no futuro).
                 const permitePassado = campo.data_permite_passado ?? true
                 const avisoDias = campo.data_aviso_dias_futuro ?? null
+                const avisoDirecao = campo.data_aviso_direcao ?? 'acima'
                 const hoje = hojeSP()
-                const mostraAviso = !!v && avisoDias != null && diasEntre(hoje, v) > avisoDias
+                const dias = v ? diasEntre(hoje, v) : null
+                // 'abaixo' = a data está próxima demais (a menos de X dias); 'acima' = longe demais (a mais de X).
+                const mostraAviso = dias != null && avisoDias != null && (avisoDirecao === 'abaixo' ? dias < avisoDias : dias > avisoDias)
                 return (
                   <>
                     <Input
@@ -66,7 +69,9 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                     />
                     {mostraAviso && (
                       <p className="mt-1 text-xs text-[var(--gestao-fg)]">
-                        Atenção: a data está a mais de {avisoDias} dias no futuro.
+                        {avisoDirecao === 'abaixo'
+                          ? `Atenção: a data está a menos de ${avisoDias} dias de hoje.`
+                          : `Atenção: a data está a mais de ${avisoDias} dias no futuro.`}
                       </p>
                     )}
                   </>

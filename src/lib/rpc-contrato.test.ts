@@ -223,14 +223,20 @@ describe('contrato RPC — ITEM de acervo_listar (fixture real: acervo vivo esta
 // de build" — exatamente a classe de bug que o briefing alerta. Este teste prova que as
 // chaves SOBREVIVEM ao parse (não basta success: tem de manter o valor).
 describe('contrato — campoDefSchema preserva a regra de data (fontanaria layer 5)', () => {
-  it('campo data com permite_passado=false + aviso=30 sobrevive ao parse', () => {
+  it('campo data com permite_passado=false + aviso=30 + direcao=abaixo sobrevive ao parse', () => {
     const r = campoDefSchema.safeParse({
       id: 99, rotulo: 'Prazo', tipo_campo: 'data', obrigatorio: true, opcoes: null, ordem: 0,
-      data_permite_passado: false, data_aviso_dias_futuro: 30,
+      data_permite_passado: false, data_aviso_dias_futuro: 30, data_aviso_direcao: 'abaixo',
     })
     expect(r.success, r.success ? '' : JSON.stringify(r.error!.issues)).toBe(true)
     expect(r.success && r.data.data_permite_passado).toBe(false)
     expect(r.success && r.data.data_aviso_dias_futuro).toBe(30)
+    expect(r.success && r.data.data_aviso_direcao).toBe('abaixo')  // v4.37.1 — chave nova sobrevive
+  })
+  it('data_aviso_direcao inválida é rejeitada (enum acima/abaixo)', () => {
+    expect(campoDefSchema.safeParse({
+      rotulo: 'X', tipo_campo: 'data', obrigatorio: false, opcoes: null, data_aviso_direcao: 'lateral',
+    }).success).toBe(false)
   })
   it('campo data sem aviso (null) e campo legado sem as chaves são aceitos (optional)', () => {
     expect(campoDefSchema.safeParse({
