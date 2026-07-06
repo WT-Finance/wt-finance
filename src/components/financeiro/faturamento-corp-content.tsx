@@ -35,7 +35,7 @@ export default function FaturamentoCorpContent({ ambiente, configurado, clientes
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">Faturamento Corporativo</h1>
           <p className="text-sm text-zinc-400 mt-0.5">
-            Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos.
+            Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos
           </p>
         </div>
         <AmbienteBadge ambiente={ambiente} configurado={configurado} />

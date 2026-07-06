@@ -10,8 +10,8 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 PATCH · **Ajustes visuais/de texto.** Sem migration.
 - **Editor de tipos de Solicitação — layout do aviso de data:** o seletor de direção (v4.37.1) esticava em largura cheia (herdava `w-full` de `CAMPO`), empurrando o campo de dias e o rótulo para fora do modal (rolagem horizontal). O seletor e o input passam a ter **largura fixa** (wrappers `w-32`/`w-28`, o `w-full` interno preenche o wrapper — sem conflito de utilitárias), com `flex-wrap` de segurança; o rótulo virou só "dias" (a direção já vem do seletor "a mais de / a menos de").
-- **Subtítulo do Acervo de Documentos:** "Biblioteca de documentos, modelos, manuais e referências."
-- **Subtítulo do Faturamento Corporativo:** "Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos."
+- **Subtítulo do Acervo de Documentos:** "Biblioteca de documentos, modelos, manuais e referências"
+- **Subtítulo do Faturamento Corporativo:** "Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos"
 
 ## [4.37.1] — 2026-07-06
 

@@ -5,8 +5,8 @@
 
 ## Mudanças
 1. **Editor de tipos de Solicitação — largura do aviso de data:** o seletor de direção adicionado na v4.37.1 esticava em **largura cheia** (o `Select`/`Input` do DS herdam `w-full` de `CAMPO`; um `w-32` direto conflita com o `w-full` e perde de forma indeterminada) — o seletor tomava a linha toda e empurrava o campo de dias e o rótulo para fora do modal (rolagem horizontal, texto cortado, como no print do Yan). **Correção:** o `Select` e o `Input` passam a viver em **wrappers de largura fixa** (`w-32` / `w-28`) — o `w-full` interno preenche o wrapper, sem conflito de utilitárias; a linha ganhou `flex-wrap` (rede) e o sufixo virou só **"dias"** (a direção já é dita pelo seletor "a mais de / a menos de"). `src/components/admin/solicitacoes/editor-tipo.tsx`.
-2. **Subtítulo do Acervo de Documentos** → "Biblioteca de documentos, modelos, manuais e referências." (`acervo-documentos.tsx`).
-3. **Subtítulo do Faturamento Corporativo** → "Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos." (`faturamento-corp-content.tsx`).
+2. **Subtítulo do Acervo de Documentos** → "Biblioteca de documentos, modelos, manuais e referências" (`acervo-documentos.tsx`).
+3. **Subtítulo do Faturamento Corporativo** → "Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos" (`faturamento-corp-content.tsx`).
 
 ## Notas
 - **Só texto/CSS** — nenhuma lógica, RPC, migration ou schema alterados. O comportamento do aviso (v4.37.1) e a idempotência/regra de data seguem intactos.
