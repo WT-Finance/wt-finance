@@ -29,6 +29,8 @@ v4.37.0, CHANGELOG, CHANGELOG_DIRETORIA, ADR-0142, este out-briefing.
 5. **Nada retroage** ✅ — só emissão nova; idempotências/confirmações/falha parcial inalteradas.
 6. **OBS não interpretada; não tocar 4a/4b/cadastro/tela de revisão** ✅.
 
+**Auditoria adversarial (explorador cético, seguindo a cadeia banco→RPC→wiring→payload):** os **6 invariantes CONFIRMADOS** — sem inversão no wiring (4 saltos, todos por propriedade nomeada), sem sobrescrita de e-mail, sem aborto por cadastro, sem cruzamento de cliente. Dois **residuais NÃO-bloqueantes e pré-existentes** (não introduzidos por esta versão): **(1)** `buscar_cliente_corporativo` não passa por `parseRpc`/Zod — como esta versão a torna financeiramente relevante e o desenho é fail-safe, um drift silencioso viraria "todo mundo 2/2" sem sintoma → **mitigado com um smoke de contrato** (`rpc-contrato.test.ts`, pega drop/rename/grant; drift de coluna continua candidato a teste com fixture semeada — follow-up); **(2)** o casamento por nome (`normNome`) é a mesma fragilidade de `buscar_pessoas`, agora alcançando dinheiro/e-mail — mas o `UNIQUE` em `app.norm_nome(empresa)` impede troca entre homônimos, e diferença de acento **falha para o lado seguro** (default 2/2), nunca cruza. Registrado; correção do cruzamento-por-nome é transversal e fora desta versão.
+
 ## Gate de fechamento
 `npx tsc --noEmit` → **0** · `npm test` → **343** (332 base + 6 juros-multa + 5 customers) · `eslint` nos arquivos alterados → **0** (o `npm run lint` full está estourando o timeout por carga da máquina — como só 5 arquivos mudaram e o `main` estava limpo, não há warning novo; reconferir full quando a máquina estiver ociosa) · `npm run build` → verificar no fechamento. **Sem migration.**
 

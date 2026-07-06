@@ -412,3 +412,14 @@ describe.skipIf(!ON)('contrato RPC — Faturamento Fase 4a (envio de e-mail)', (
     expect(enviadas).toHaveLength(0)
   })
 })
+
+describe.skipIf(!ON)('contrato RPC — Faturamento v4.37.0 (Emissão consome o Cadastro)', () => {
+  it('buscar_cliente_corporativo alcançável (grant intacto) e devolve array', async () => {
+    // A Emissão passou a DEPENDER desta RPC (juros/multa no boleto + fallback de e-mail fiscal na NF).
+    // Como a leitura na action é FAIL-SAFE, um drop/rename/revogação de grant NÃO daria erro visível —
+    // cairia em silêncio para 2/2 em TODO boleto. Este smoke é a rede contra esse drift silencioso.
+    const cads = await rpc('buscar_cliente_corporativo', { p_nomes: [] }) as unknown as unknown[]
+    expect(Array.isArray(cads)).toBe(true)
+    expect(cads).toHaveLength(0)
+  })
+})
