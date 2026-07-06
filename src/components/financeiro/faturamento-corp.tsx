@@ -9,14 +9,18 @@
 import { useRef, useState, useCallback, useMemo } from 'react'
 import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2, ExternalLink, FileText, RefreshCw, Barcode, Mail } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import ModalCentral from '@/components/shared/modal-central'
+import { ValorContabil } from '@/components/shared/valor-contabil'
 import { numBRL2 } from '@/lib/fmt'
 import { SETOR_COLORS } from '@/lib/config'
 import { parseFaturamentoFile } from '@/lib/faturamento/parse-faturamento'
 import { classificarFaturas, mapaPorNome } from '@/lib/faturamento/classificar'
 import {
-  cruzarFaturamento, emitirBoletos, emitirNotas, atualizarStatusNotas, enviarEmailFatura,
+  cruzarFaturamento, emitirBoletos, emitirNotas, atualizarStatusNotas,
+  resultadoBoletos, resultadoNotas, emailEnviados,
   type FaturaEmitir, type ResultadoEmissao, type ItemEmissao,
   type NotaEmitir, type ResultadoNotas, type ItemNota,
+  type BoletoResultado, type NotaResultado,
 } from '@/app/financeiro/faturamento-corp/actions'
 import type { FaturaClassificada, ResumoFaturamento, StatusCruzamento, ModoNota } from '@/lib/faturamento/tipos'
 import type { AsaasAmbiente } from '@/lib/asaas/client'
@@ -55,8 +59,11 @@ const LABEL:   Record<Fase, string> = { lendo: 'Lendo a planilha…', cruzando: 
 /** Status corrente de uma NF (após emitir/atualizar). */
 interface NotaStatus { status: string | null; pdfUrl: string | null; number: string | null; invoiceId: string | null }
 
-/** Estado do envio de e-mail por fatura (UI, Fase 4a). */
-interface EmailEstado { fase: 'enviando' | 'enviado' | 'ja' | 'erro'; erro?: string }
+// Juros/multa PADRÃO aplicados quando o cliente não tem valor próprio no Cadastro (v4.37.0).
+// No modal de resultado, um percentual = ao padrão aparece DISCRETO; ≠ padrão (valor do cadastro,
+// ex.: 1%/5%/10%) aparece em NEGRITO — destaca o que foge do usual. NULL (emissão antiga ou boleto
+// que já existia) exibe "—" (nunca inventamos 2% retroativo — invariante da migration 0172).
+const JM_PADRAO = 2
 
 interface Props {
   ambiente:    AsaasAmbiente
@@ -87,8 +94,14 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   const [notaStatus, setNotaStatus]   = useState<Record<string, NotaStatus>>({}) // ref → status corrente
   const [atualizando, setAtualizando] = useState(false)
 
-  // Envio de e-mail de fatura (Fase 4a — MODO TESTE). ref → estado da UI (idle = ausente).
-  const [emailPorRef, setEmailPorRef] = useState<Record<string, EmailEstado>>({})
+  // Estado LIDO DO BANCO (v4.38.0) — a FONTE que sobrevive ao reload. Populado ao cruzar
+  // (re-hidratação, sem reemitir) e re-lido após cada emissão. Alimenta os modais "Ver resultado",
+  // os botões de "dois momentos" e o elegível ao envio. Leituras fail-safe (action → [] em erro).
+  const [boletosDB, setBoletosDB]       = useState<BoletoResultado[]>([])
+  const [notasDB, setNotasDB]           = useState<NotaResultado[]>([])
+  const [emailFeitos, setEmailFeitos]   = useState<string[]>([]) // refs já enviadas por e-mail no modo atual
+  const [modalResBol, setModalResBol]   = useState(false) // "Ver resultado · boletos"
+  const [modalResNota, setModalResNota] = useState(false) // "Ver resultado · notas fiscais"
 
   // Envio em LOTE (Fase 4b): modal "Revisar envio". emailRefs = snapshot das refs elegíveis (congelado ao abrir).
   const [modalEmail, setModalEmail] = useState(false)
@@ -97,54 +110,57 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   const ativo = estado !== 'processando' && !emitindo && !emitindoNota
   const ehProducao = ambiente === 'producao'
 
-  // Dispara o envio (teste) de UMA fatura; tudo é derivado no servidor (só mandamos a ref).
-  async function enviarEmail(ref: string) {
-    setEmailPorRef(p => ({ ...p, [ref]: { fase: 'enviando' } }))
-    try {
-      const res = await enviarEmailFatura(ref)
-      setEmailPorRef(p => ({
-        ...p,
-        [ref]: res.resultado === 'enviado' ? { fase: 'enviado' }
-          : res.resultado === 'ja_enviado' ? { fase: 'ja' }
-          : { fase: 'erro', erro: res.erro },
-      }))
-    } catch {
-      // requireAreaAction pode LANÇAR (sessão expirada/permissão revogada) — o resultado
-      // discriminado da action não cobre isso; sem este catch o botão ficaria preso em "Enviando…".
-      setEmailPorRef(p => ({ ...p, [ref]: { fase: 'erro', erro: 'Não foi possível enviar (sessão ou permissão).' } }))
-    }
-  }
+  // Re-lê o estado do banco (boletos/notas/e-mail) das refs carregadas. Chamada ao CRUZAR
+  // (re-hidratação — a tela lembra o que já foi feito, SEM reemitir) e após cada emissão. As três
+  // leituras são fail-safe (a action devolve [] em erro) → leitura que caia não quebra a tela, só
+  // segue com o que tinha. Semeia notaStatus (invoiceId) p/ o "Atualizar status" funcionar após
+  // reload (fecha o follow-up da Fase 2) — sem sobrescrever um status já atualizado na sessão.
+  const recarregarResultados = useCallback(async (refs: string[]) => {
+    if (refs.length === 0) { setBoletosDB([]); setNotasDB([]); setEmailFeitos([]); return }
+    const [bol, nts, mails] = await Promise.all([resultadoBoletos(refs), resultadoNotas(refs), emailEnviados(refs)])
+    setBoletosDB(bol); setNotasDB(nts); setEmailFeitos(mails)
+    if (nts.length > 0) setNotaStatus(prev => {
+      const next = { ...prev }
+      for (const n of nts) if (!next[n.externalReference]) next[n.externalReference] = { status: n.status, pdfUrl: n.pdfUrl, number: n.number, invoiceId: n.invoiceId }
+      return next
+    })
+  }, [])
 
-  // Mapa ref→resultado (boletos) — marca cada linha após emitir.
+  // Mapa ref→resultado de SESSÃO (boletos) — o resultado rico logo após emitir (distingue
+  // emitido/já-existia/pulado/falhou + aviso de registro local). O de-para do banco vem abaixo.
   const resultadoPorRef = useMemo(() => {
     const m = new Map<string, ItemEmissao>()
     if (resultado) for (const it of [...resultado.emitidos, ...resultado.jaExistiam, ...resultado.falharam, ...resultado.pulados]) m.set(it.ref, it)
     return m
   }, [resultado])
 
-  // Mapa ref→resultado (notas).
+  // Mapa ref→resultado de SESSÃO (notas).
   const notaPorRef = useMemo(() => {
     const m = new Map<string, ItemNota>()
     if (resultadoNota) for (const it of [...resultadoNota.emitidas, ...resultadoNota.jaExistiam, ...resultadoNota.falharam, ...resultadoNota.puladas]) m.set(it.ref, it)
     return m
   }, [resultadoNota])
 
-  // fatura_cliente_no → { valor, pessoa } — para o "Ver detalhes" do painel mostrar o valor.
-  const valorPorFatura = useMemo(() => {
-    const m = new Map<string, { valor: number | null; pessoa: string }>()
-    for (const f of faturas) if (f.fatura_cliente_no) m.set(f.fatura_cliente_no, { valor: f.valor, pessoa: (f.pessoa ?? '').trim() })
+  // De-para LIDO DO BANCO (sobrevive ao reload): boleto por ref; nota por fatura_cliente_no
+  // (1ª encontrada — normal ou avulsa; o modal de notas lista todas por external_reference).
+  const boletosPorRef = useMemo(() => new Map(boletosDB.map(b => [b.ref, b] as const)), [boletosDB])
+  const notaDBPorFcn = useMemo(() => {
+    const m = new Map<string, NotaResultado>()
+    for (const n of notasDB) if (n.ref && !m.has(n.ref)) m.set(n.ref, n)
     return m
-  }, [faturas])
+  }, [notasDB])
 
-  // Já emitiu algo? (de-ênfase da coluna Cruzamento depois de emitir — o foco passa às colunas próprias.)
-  const jaEmitiu = !!(resultado || resultadoNota)
+  // Refs carregadas (todas as faturas com nº) — usadas para re-hidratar após emitir/atualizar.
+  const refsCarregadas = useMemo(
+    () => Array.from(new Set(faturas.map(f => f.fatura_cliente_no).filter((r): r is string => !!r))),
+    [faturas],
+  )
 
-  // Refs com BOLETO emitido — elegíveis ao envio por e-mail (mesmo critério do botão por-linha 4a).
-  const refsComBoleto = useMemo(() => Array.from(new Set(faturas
-    .filter(f => f.fatura_cliente_no)
-    .map(f => ({ ref: f.fatura_cliente_no as string, r: resultadoPorRef.get(f.fatura_cliente_no as string) }))
-    .filter(x => x.r && (x.r.resultado === 'emitido' || x.r.resultado === 'ja_existia' || x.r.resultado === 'pulado'))
-    .map(x => x.ref))), [faturas, resultadoPorRef])
+  // Já emitiu algo? (de-ênfase da coluna Cruzamento — o foco passa às colunas/modais próprios.)
+  const jaEmitiu = !!resultado || !!resultadoNota || boletosDB.length > 0 || notasDB.length > 0
+
+  // Refs com BOLETO emitido (do BANCO) — elegíveis ao envio por e-mail; sobrevive ao reload.
+  const refsComBoleto = useMemo(() => boletosDB.filter(b => b.emitido).map(b => b.ref), [boletosDB])
 
   // Boleto: só faturas PRONTAS marcadas.
   const selecionadas = useMemo(
@@ -163,8 +179,8 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
     [selecionadasNota],
   )
 
-  async function processar(file: File) {
-    setErro(null); setEstado('processando'); setFase('lendo'); setResumo(null); setFaturas([]); setResultado(null); setResNota(null); setNotaStatus({})
+  const processar = useCallback(async (file: File) => {
+    setErro(null); setEstado('processando'); setFase('lendo'); setResumo(null); setFaturas([]); setResultado(null); setResNota(null); setNotaStatus({}); setBoletosDB([]); setNotasDB([]); setEmailFeitos([])
 
     if (file.size > 10 * 1024 * 1024) { setErro('Arquivo maior que 10MB.'); setEstado('erro'); return }
 
@@ -187,7 +203,10 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
     setResumo(r)
     setNome(file.name)
     setEstado('pronto')
-  }
+    // Re-hidratação: a tela lembra o que já foi emitido/enviado p/ estas faturas (sem reemitir).
+    const refs = Array.from(new Set(classificadas.map(f => f.fatura_cliente_no).filter((x): x is string => !!x)))
+    void recarregarResultados(refs)
+  }, [recarregarResultados])
 
   function setEmitir(linha: number, val: boolean) {
     setFaturas(prev => prev.map(f => f.linha === linha && f.status === 'pronta' ? { ...f, emitir: val } : f))
@@ -211,7 +230,10 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
       setResultado(res)
     } catch {
       setResultado({ ambiente, emitidos: [], jaExistiam: [], falharam: payload.map(p => ({ ref: p.fatura_cliente_no ?? '(sem nº)', pessoa: p.pessoa, resultado: 'falhou' as const, erro: 'Falha inesperada ao emitir. Nada confirmado — verifique e tente de novo.' })), pulados: [], total: payload.length })
-    } finally { setEmitindo(false) }
+    } finally {
+      setEmitindo(false)
+      void recarregarResultados(refsCarregadas) // reflete no banco (modal "Ver resultado" + botões)
+    }
   }
 
   // ── Emitir notas fiscais (Fase 2) ───────────────────────────────────────────
@@ -236,7 +258,10 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
       })
     } catch {
       setResNota({ ambiente, emitidas: [], jaExistiam: [], falharam: payload.map(p => ({ ref: p.fatura_cliente_no ?? '(sem nº)', faturaClienteNo: p.fatura_cliente_no ?? '', pessoa: p.pessoa, modo: p.modo, resultado: 'falhou' as const, erro: 'Falha inesperada ao emitir. Nada confirmado — verifique e tente de novo.' })), puladas: [], total: payload.length })
-    } finally { setEmitNota(false) }
+    } finally {
+      setEmitNota(false)
+      void recarregarResultados(refsCarregadas) // reflete no banco (modal "Ver resultado" + botões)
+    }
   }
 
   async function atualizarStatus() {
@@ -255,7 +280,10 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
         }
         return next
       })
-    } catch { /* silencioso — o usuário pode tentar de novo */ } finally { setAtualizando(false) }
+    } catch { /* silencioso — o usuário pode tentar de novo */ } finally {
+      setAtualizando(false)
+      void recarregarResultados(refsCarregadas) // o status persistido no banco alimenta o modal de notas
+    }
   }
 
   // ── Drag & drop ─────────────────────────────────────────────────────────────
@@ -265,7 +293,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
     e.preventDefault(); setDragging(false)
     if (!ativo) return
     const f = e.dataTransfer.files?.[0]; if (f) void processar(f)
-  }, [ativo])
+  }, [ativo, processar])
   function onInput(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (f) void processar(f); e.target.value = ''
   }
@@ -337,7 +365,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
           <div className="overflow-x-auto">
             {/* table-fixed: as larguras são respeitadas e o texto longo (ex.: "falhou: Endereço do
                 cliente incompleto") QUEBRA dentro da coluna Nota — não escapa nem estoura a tabela. */}
-            <table className="w-full table-fixed min-w-[64rem] text-2xs">
+            <table className="w-full table-fixed min-w-[54rem] text-2xs">
               <thead>
                 <tr className="border-b border-zinc-100 text-left font-medium text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
@@ -362,19 +390,22 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                       )}
                     </span>
                   </th>
-                  <th className="py-1.5 px-2 w-40">E-mail</th>
                 </tr>
               </thead>
               <tbody>
                 {faturas.map(f => {
-                  const rBol = f.fatura_cliente_no ? resultadoPorRef.get(f.fatura_cliente_no) : undefined
-                  const refNf = f.fatura_cliente_no ? refNota(f.fatura_cliente_no, f.modoNf) : ''
-                  const rNota = refNf ? notaPorRef.get(refNf) : undefined
-                  const stNota = refNf ? notaStatus[refNf] : undefined
+                  const fcn = f.fatura_cliente_no
+                  // Boleto: resultado de SESSÃO (rico) → senão o do BANCO (re-hidratado) → senão o seletor.
+                  const bolSess = fcn ? resultadoPorRef.get(fcn) : undefined
+                  const bolDB   = fcn ? boletosPorRef.get(fcn) : undefined
+                  const rBol    = bolSess ?? (bolDB ? dbToItemBoleto(bolDB) : undefined)
+                  // Nota: sessão (external_reference do modo escolhido) → senão a do BANCO (por nº da fatura).
+                  const refNf    = fcn ? refNota(fcn, f.modoNf) : ''
+                  const notaSess = refNf ? notaPorRef.get(refNf) : undefined
+                  const notaDB   = fcn ? notaDBPorFcn.get(fcn) : undefined
+                  const rNota    = notaSess ?? (notaDB ? dbToItemNota(notaDB) : undefined)
+                  const stNota   = rNota ? notaStatus[rNota.ref] : undefined
                   const naoIdent = f.status === 'nao_identificado'
-                  // E-mail (4a): habilita só quando o BOLETO já foi emitido (a nota é opcional).
-                  const boletoOk = !!rBol && (rBol.resultado === 'emitido' || rBol.resultado === 'ja_existia' || rBol.resultado === 'pulado')
-                  const estEmail = f.fatura_cliente_no ? emailPorRef[f.fatura_cliente_no] : undefined
                   return (
                     <tr key={f.linha} className={`border-b border-zinc-50 align-top ${naoIdent ? 'bg-warning-bg/40' : ''}`}>
                       <td className="py-1 px-2 text-zinc-700">
@@ -383,8 +414,8 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                       </td>
                       <td className={`py-1 px-2 text-right tabular-nums ${naoIdent ? 'text-warning font-semibold' : 'text-zinc-700'}`}>{f.valor !== null ? numBRL2(f.valor) : '—'}</td>
                       <td className="py-1 px-2 tabular-nums text-zinc-600">{fmtData(f.vencimento)}</td>
-                      <td className="py-1 px-2 tabular-nums text-zinc-600">{f.fatura_cliente_no ?? '—'}</td>
-                      {/* Status: SÓ o status do cruzamento (de-ênfase depois de emitir — o foco vai p/ as colunas próprias). */}
+                      <td className="py-1 px-2 tabular-nums text-zinc-600">{fcn ?? '—'}</td>
+                      {/* Status: SÓ o status do cruzamento (de-ênfase depois de emitir — o foco vai p/ colunas/modais próprios). */}
                       <td className="py-1 px-2">
                         <span className={`inline-block rounded-full border px-2 py-0.5 text-3xs font-medium whitespace-nowrap ${STATUS_CLASSE[f.status]} ${jaEmitiu ? 'opacity-50' : ''}`}>
                           {STATUS_LABEL[f.status]}
@@ -393,21 +424,15 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                           <span className="block mt-0.5 text-3xs text-zinc-400">faltam: {f.faltam.join(', ')}</span>
                         )}
                       </td>
-                      {/* Boleto: seletor Emitir/Não emitir (antes) → resultado co-locado (depois). */}
+                      {/* Boleto: seletor Emitir/Não emitir (antes) → resultado co-locado (depois; sessão ou banco). */}
                       <td className="py-1 px-2">
                         {rBol ? <LinhaResultado item={rBol} /> : <ControleBoleto fatura={f} desabilitado={emitindo} onToggle={v => setEmitir(f.linha, v)} />}
                       </td>
-                      {/* Nota fiscal: seletor (antes) → resultado co-locado (depois). */}
+                      {/* Nota fiscal: seletor (antes) → resultado co-locado (depois; sessão ou banco). */}
                       <td className="py-1 px-2">
                         {rNota
                           ? <LinhaResultadoNota item={rNota} status={stNota} />
                           : <ControleNota fatura={f} desabilitado={emitindoNota} onModo={m => setModoNf(f.linha, m)} onValorAvulso={v => setValorAvulso(f.linha, v)} />}
-                      </td>
-                      {/* E-mail (4a, teste): botão só quando o boleto já foi emitido; resultado inline. */}
-                      <td className="py-1 px-2">
-                        {emailModo === 'teste' && boletoOk && f.fatura_cliente_no
-                          ? <EmailCell estado={estEmail} onEnviar={() => void enviarEmail(f.fatura_cliente_no!)} />
-                          : <span className="text-3xs text-zinc-400">—</span>}
                       </td>
                     </tr>
                   )
@@ -416,7 +441,8 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
             </table>
           </div>
 
-          {/* Barra de ação — resumos (esquerda) + botões (direita) na MESMA linha. */}
+          {/* Barra de ação — DOIS MOMENTOS: cada "Emitir X" vira "Ver resultado · X" após a emissão
+              (largura FIXA por botão: não pula na troca de texto). "Enviar e-mails" fixo à direita. */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-2xs text-zinc-500">
               <p>
@@ -429,23 +455,56 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                   ? <>Notas fiscais: <b className="text-zinc-700">{selecionadasNota.length}</b> ({selecionadasNota.filter(f => f.modoNf === 'avulsa').length} avulsa{selecionadasNota.filter(f => f.modoNf === 'avulsa').length === 1 ? '' : 's'}) · Total <span className="text-[var(--text-subtle)]">R$</span> <span className="tabular-nums text-zinc-700">{numBRL2(totalNota)}</span></>
                   : 'Escolha as notas fiscais (Normal/Avulsa) nas faturas prontas para NF.'}
               </p>
+              {refsComBoleto.length > 0 && (
+                <p>E-mails: <b className="text-zinc-700">{refsComBoleto.length}</b> com boleto{emailFeitos.length > 0 ? <> · <b className="text-zinc-700">{emailFeitos.length}</b> já enviado{emailFeitos.length === 1 ? '' : 's'}</> : ''}{emailModo === 'teste' ? ' (modo teste)' : ''}</p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {/* Boleto — Emitir ↔ Ver resultado (min-w igual nos dois momentos). */}
+              {boletosDB.length > 0 ? (
+                <button
+                  type="button" onClick={() => setModalResBol(true)}
+                  className="inline-flex min-w-[13rem] items-center justify-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90"
+                >
+                  <Barcode size={14} /> Ver resultado · {boletosDB.length} {boletosDB.length === 1 ? 'boleto' : 'boletos'}
+                </button>
+              ) : (
+                <button
+                  type="button" onClick={abrirConfirmacao}
+                  disabled={selecionadas.length === 0 || !configurado || emitindo}
+                  className="inline-flex min-w-[13rem] items-center justify-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {emitindo ? <Loader2 size={14} className="animate-spin" /> : <Barcode size={14} />}
+                  {emitindo ? 'Emitindo…' : 'Emitir boletos'}
+                </button>
+              )}
+              {/* Nota — Emitir ↔ Ver resultado (min-w igual nos dois momentos). */}
+              {notasDB.length > 0 ? (
+                <button
+                  type="button" onClick={() => setModalResNota(true)}
+                  className="inline-flex min-w-[13rem] items-center justify-center gap-2 rounded-md border border-action-soft-border bg-action-soft px-4 py-2 text-xs font-medium text-action-primary foco-neutro transition-opacity hover:opacity-90"
+                >
+                  <FileText size={14} /> Ver resultado · {notasDB.length} {notasDB.length === 1 ? 'nota' : 'notas'}
+                </button>
+              ) : (
+                <button
+                  type="button" onClick={abrirConfirmacaoNota}
+                  disabled={selecionadasNota.length === 0 || !configurado || emitindoNota}
+                  className="inline-flex min-w-[13rem] items-center justify-center gap-2 rounded-md border border-action-soft-border bg-action-soft px-4 py-2 text-xs font-medium text-action-primary foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {emitindoNota ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                  {emitindoNota ? 'Emitindo…' : 'Emitir notas fiscais'}
+                </button>
+              )}
+              {/* Enviar e-mails — fixo à direita, SEM contador (o contador vive no rodapé do modal). */}
               <button
-                type="button" onClick={abrirConfirmacao}
-                disabled={selecionadas.length === 0 || !configurado || emitindo}
-                className="inline-flex items-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                type="button"
+                onClick={() => { setEmailRefs(refsComBoleto); setModalEmail(true) }}
+                disabled={refsComBoleto.length === 0}
+                title={refsComBoleto.length === 0 ? 'Emita boletos primeiro' : undefined}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {emitindo ? <Loader2 size={14} className="animate-spin" /> : <Barcode size={14} />}
-                {emitindo ? 'Emitindo…' : 'Emitir boletos'}
-              </button>
-              <button
-                type="button" onClick={abrirConfirmacaoNota}
-                disabled={selecionadasNota.length === 0 || !configurado || emitindoNota}
-                className="inline-flex items-center gap-2 rounded-md border border-action-soft-border bg-action-soft px-4 py-2 text-xs font-medium text-action-primary foco-neutro transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {emitindoNota ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
-                {emitindoNota ? 'Emitindo…' : 'Emitir notas fiscais'}
+                <Mail size={14} /> Enviar e-mails
               </button>
             </div>
           </div>
@@ -455,16 +514,16 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
           )}
           <p className="mt-3 text-3xs text-zinc-400">
             Nota fiscal (opcional por fatura, exige endereço/CEP): <b>Normal</b> usa o valor da fatura, <b>Avulsa</b> um valor próprio.
-            A NF é <b>assíncrona</b> — após emitir fica “processando” até a prefeitura autorizar; use o ícone <RefreshCw size={9} className="inline align-[-1px]" /> ao lado de “Nota fiscal” na tabela para atualizar o status.
+            A NF é <b>assíncrona</b> — após emitir fica “processando” até a prefeitura autorizar; use o ícone <RefreshCw size={9} className="inline align-[-1px]" /> ao lado de “Nota fiscal” na tabela (ou “Atualizar status” no modal de resultado) para atualizar o status.
           </p>
-          {/* Envio de e-mail (Fase 4a): modo teste — badge âmbar + explicação; sem lote (4b). */}
+          {/* Envio de e-mail: badge de modo + como disparar (lote via "Enviar e-mails"). */}
           <div className="mt-3 flex flex-wrap items-center gap-2 text-3xs">
             {emailModo === 'teste' ? (
               <>
                 <span className="inline-flex items-center gap-1 rounded-md border border-gestao bg-gestao-soft px-2 py-0.5 font-medium text-gestao-fg">
                   <FlaskConical size={11} /> E-mail: modo teste
                 </span>
-                <span className="text-zinc-400">os e-mails de fatura vão para a caixa de teste (não para o cliente); envie pelo botão “Enviar (teste)” na coluna E-mail, nas faturas com boleto emitido.</span>
+                <span className="text-zinc-400">os e-mails de fatura vão para a caixa de teste (não para o cliente); use <b>Enviar e-mails</b> para revisar os destinatários e disparar em lote.</span>
               </>
             ) : (
               <span className="text-warning">⚠ Envio de e-mail em modo real não está liberado nesta versão.</span>
@@ -473,29 +532,20 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
         </Card>
       )}
 
-      {/* Resultado — CONSEQUÊNCIA da emissão: aparece ABAIXO dos botões, só depois de emitir. */}
-      {resultado && <ResultadoEmissaoCard resultado={resultado} valorPorFatura={valorPorFatura} />}
-      {resultadoNota && <ResultadoNotaCard resultado={resultadoNota} valorPorFatura={valorPorFatura} />}
-
-      {/* Envio em LOTE (Fase 4b): pós-emissão, revisão + disparo em blocos no modal "Revisar envio". */}
-      {refsComBoleto.length > 0 && (
-        <Card className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-zinc-600">
-            <Mail size={15} className="text-zinc-400" />
-            <span>
-              <b className="text-zinc-700">{refsComBoleto.length}</b> {refsComBoleto.length === 1 ? 'fatura' : 'faturas'} com boleto emitido — revise e envie os e-mails{emailModo === 'teste' ? ' (modo teste)' : ''}.
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => { setEmailRefs(refsComBoleto); setModalEmail(true) }}
-            className="inline-flex items-center gap-2 rounded-md bg-action-primary px-4 py-2 text-xs font-medium text-action-primary-fg foco-neutro transition-opacity hover:opacity-90"
-          >
-            <Mail size={14} /> Revisar e enviar e-mails
-          </button>
-        </Card>
-      )}
+      {/* Envio em LOTE (Fase 4b): revisão + disparo em blocos no modal "Revisar envio". */}
       {modalEmail && <RevisarEnvioModal refs={emailRefs} emailModo={emailModo} onClose={() => setModalEmail(false)} />}
+
+      {/* Resultado da emissão (v4.38.0): modais SOB DEMANDA, lidos do BANCO (sobrevivem ao reload). */}
+      {modalResBol && (
+        <ModalResultadoBoletos boletos={boletosDB} sessMap={resultadoPorRef} ambiente={ambiente} onClose={() => setModalResBol(false)} />
+      )}
+      {modalResNota && (
+        <ModalResultadoNotas
+          notas={notasDB} notaStatus={notaStatus} sessMap={notaPorRef} ambiente={ambiente}
+          atualizando={atualizando} temAtualizar={temNotaComStatus}
+          onAtualizar={() => void atualizarStatus()} onClose={() => setModalResNota(false)}
+        />
+      )}
 
       {/* Modais de confirmação */}
       {modalAberto && (
@@ -585,21 +635,25 @@ function ControleNota({ fatura, desabilitado, onModo, onValorAvulso }: {
   )
 }
 
-// ── Envio de e-mail por fatura (Fase 4a — teste): botão → estado inline ───────
-function EmailCell({ estado, onEnviar }: { estado?: EmailEstado; onEnviar: () => void }) {
-  if (estado?.fase === 'enviando') return <span className="inline-flex items-center gap-1 text-3xs text-zinc-500"><Loader2 size={11} className="animate-spin" /> Enviando…</span>
-  if (estado?.fase === 'enviado')  return <span className="inline-flex items-center gap-1 text-3xs text-success"><CheckCircle2 size={11} className="shrink-0" /> enviado (teste)</span>
-  if (estado?.fase === 'ja')       return <span className="block text-3xs text-zinc-400">já enviado (teste)</span>
-  // idle ou erro → botão; na falha, mostra o motivo e permite tentar de novo.
-  return (
-    <div className="flex flex-col items-start gap-0.5">
-      <button type="button" onClick={onEnviar}
-        className="foco-neutro inline-flex items-center gap-1 rounded border border-zinc-200 bg-white px-2 py-1 text-3xs text-zinc-700 hover:border-zinc-300">
-        <Mail size={11} /> Enviar (teste)
-      </button>
-      {estado?.fase === 'erro' && <span className="block text-3xs text-danger">falhou: {estado.erro}</span>}
-    </div>
-  )
+// ── Adaptadores BANCO → Item (re-hidratação) ───────────────────────────────────
+// O resultado lido do banco (BoletoResultado/NotaResultado) é convertido ao shape de SESSÃO
+// (ItemEmissao/ItemNota) para as MESMAS linhas de resultado co-locadas servirem sessão E reload.
+// Perde-se a distinção emitido/já-existia (o banco não a guarda) — no reload tudo emitido é
+// "emitido", o que é fiel (o boleto ESTÁ emitido); o `registroFalhou` é, por natureza, só de
+// sessão (quando ele ocorre não há linha no banco para re-hidratar).
+function dbToItemBoleto(b: BoletoResultado): ItemEmissao {
+  return {
+    ref: b.ref, pessoa: b.pessoa ?? '', resultado: b.emitido ? 'emitido' : 'falhou',
+    bankSlipUrl: b.bankSlipUrl, invoiceUrl: b.invoiceUrl, status: b.status, erro: b.erro ?? undefined,
+  }
+}
+function dbToItemNota(n: NotaResultado): ItemNota {
+  const falhou = (n.status ?? '').toUpperCase() === 'ERROR'
+  return {
+    ref: n.externalReference, faturaClienteNo: n.ref ?? '', pessoa: n.pessoa ?? '', modo: n.modo,
+    resultado: falhou ? 'falhou' : 'emitida', invoiceId: n.invoiceId, status: n.status,
+    pdfUrl: n.pdfUrl, erro: n.erro ?? undefined,
+  }
 }
 
 // ── Badge de ambiente — SEMPRE visível; produção é forte e vermelho ───────────
@@ -680,94 +734,196 @@ function Contagem({ n, rotulo, tom }: { n: number; rotulo: string; tom: 'success
   )
 }
 
-// ── Erros AGRUPADOS por motivo (cada motivo uma vez) + "Ver detalhes" (estado local) ──
-interface FaturaErro { pessoa: string; fatura: string; erro: string }
-function ErrosAgrupados({ itens, valorPorFatura }: {
-  itens: FaturaErro[]; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>
+// Percentual aplicado (juros/multa) no modal de boletos: ≠ padrão → NEGRITO (valor do cadastro);
+// = padrão → discreto; NULL (emissão antiga / boleto que já existia) → "—" (nunca inventa retroativo).
+function Percentual({ v }: { v: number | null }) {
+  if (v == null) return <span className="text-zinc-300">—</span>
+  return <span className={v === JM_PADRAO ? 'text-zinc-400' : 'font-semibold text-zinc-700'}>{v}%</span>
+}
+
+// Link "ver ↗" do boleto (prefere o bank slip; cai no invoice do Asaas).
+function VerBoleto({ b }: { b: BoletoResultado }) {
+  const url = b.bankSlipUrl ?? b.invoiceUrl
+  if (!url) return null
+  return <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver <ExternalLink size={10} /></a>
+}
+
+// Classe do cabeçalho fixo (receita border-separate/DS §7): fundo opaco nas células, divisória e
+// cantos arredondados na 1ª linha, sombra só ao rolar. Reusada pelos dois modais de resultado.
+function theadFixo(rolado: boolean): string {
+  return `sticky top-0 z-20 text-left font-medium text-zinc-400 [&_th]:bg-zinc-50 [&_th]:py-2 [&_th]:px-2 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-200 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg ${rolado ? '[&_tr:last-child_th]:shadow-[0_2px_4px_-2px_rgba(0,0,0,0.12)]' : ''}`
+}
+
+// ── Modal "Ver resultado · boletos" (v4.38.0) — LIDO DO BANCO, sob demanda ─────
+// Contagens fixas no topo + tabela rolável (cabeçalho fixo). Valor em formato contábil; juros/multa
+// aplicados (do cadastro em negrito, padrão discreto, NULL "—"). Status distingue emitido/já-emitido
+// (via resultado de sessão quando presente) e falhou (com motivo).
+function ModalResultadoBoletos({ boletos, sessMap, ambiente, onClose }: {
+  boletos:  BoletoResultado[]
+  sessMap:  Map<string, ItemEmissao>
+  ambiente: AsaasAmbiente
+  onClose:  () => void
 }) {
-  const grupos = useMemo(() => {
-    const m = new Map<string, { pessoa: string; fatura: string; valor: number | null }[]>()
-    for (const it of itens) {
-      const arr = m.get(it.erro) ?? []
-      arr.push({ pessoa: it.pessoa || it.fatura, fatura: it.fatura, valor: valorPorFatura.get(it.fatura)?.valor ?? null })
-      m.set(it.erro, arr)
-    }
-    return [...m.entries()].sort((a, b) => b[1].length - a[1].length)
-  }, [itens, valorPorFatura])
-  if (grupos.length === 0) return null
+  const [rolado, setRolado] = useState(false)
+  const linhas = boletos.map(b => {
+    const s = sessMap.get(b.ref)
+    const estado: 'emitido' | 'ja' | 'falhou' =
+      s ? (s.resultado === 'emitido' ? 'emitido' : s.resultado === 'falhou' ? 'falhou' : 'ja')
+        : (b.emitido ? 'emitido' : 'falhou')
+    const erro = estado === 'falhou' ? (s?.erro ?? b.erro) : null
+    return { b, estado, erro }
+  })
+  const nEmit = linhas.filter(l => l.estado === 'emitido').length
+  const nJa   = linhas.filter(l => l.estado === 'ja').length
+  const nFal  = linhas.filter(l => l.estado === 'falhou').length
+
   return (
-    <div className="mt-3 border-t border-zinc-100 pt-3 space-y-1.5">
-      <p className="text-2xs font-medium text-zinc-600">{itens.length} {itens.length === 1 ? 'falha' : 'falhas'}, por motivo:</p>
-      {grupos.map(([motivo, faturas]) => <GrupoErro key={motivo} motivo={motivo} faturas={faturas} />)}
-    </div>
+    <ModalCentral
+      titulo="Resultado da emissão de boletos"
+      subtitulo={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'}`}
+      largura="4xl" corpoFlex onClose={onClose}
+    >
+      <div className="shrink-0 px-6 pt-5 pb-3 flex flex-wrap gap-3">
+        <Contagem n={nEmit} rotulo={nEmit === 1 ? 'boleto emitido' : 'boletos emitidos'} tom="success" />
+        {nJa > 0 && <Contagem n={nJa} rotulo={nJa === 1 ? 'já emitido' : 'já emitidos'} tom="zinc" />}
+        {nFal > 0 && <Contagem n={nFal} rotulo={nFal === 1 ? 'falhou' : 'falharam'} tom="danger" />}
+      </div>
+      <div className="flex-1 min-h-0 overflow-auto px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        <table className="w-full border-separate border-spacing-0 text-xs">
+          <thead className={theadFixo(rolado)}>
+            <tr>
+              <th>Pessoa</th>
+              <th className="w-24">Fatura Nº</th>
+              <th className="w-36 text-right">Valor</th>
+              <th className="w-16 text-right">Juros</th>
+              <th className="w-16 text-right">Multa</th>
+              <th className="w-52">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map(({ b, estado, erro }) => (
+              <tr key={b.ref} className="align-top [&>td]:border-b [&>td]:border-zinc-50 [&>td]:py-1.5 [&>td]:px-2">
+                <td className="text-zinc-700">{b.pessoa || '—'}</td>
+                <td className="tabular-nums text-zinc-500">{b.ref}</td>
+                <td className="text-zinc-700">{b.valor != null ? <ValorContabil valor={b.valor} /> : <span className="block text-right text-zinc-400">—</span>}</td>
+                <td className="text-right"><Percentual v={b.jurosAplicado} /></td>
+                <td className="text-right"><Percentual v={b.multaAplicada} /></td>
+                <td>
+                  {estado === 'emitido' && (
+                    <span className="inline-flex flex-wrap items-center gap-1 text-2xs text-success"><CheckCircle2 size={12} className="shrink-0" /> emitido <VerBoleto b={b} /></span>
+                  )}
+                  {estado === 'ja' && (
+                    <span className="inline-flex flex-wrap items-center gap-1 text-2xs text-zinc-500"><CheckCircle2 size={12} className="shrink-0" /> já emitido <VerBoleto b={b} /></span>
+                  )}
+                  {estado === 'falhou' && (
+                    <span className="block text-2xs text-danger">falhou{erro ? `: ${erro}` : ''}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ModalCentral>
   )
 }
 
-function GrupoErro({ motivo, faturas }: { motivo: string; faturas: { pessoa: string; fatura: string; valor: number | null }[] }) {
-  const [aberto, setAberto] = useState(false)
-  return (
-    <div className="text-2xs">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-zinc-600"><span className="text-danger">{motivo}</span> · {faturas.length} {faturas.length === 1 ? 'fatura' : 'faturas'}</span>
-        <button type="button" onClick={() => setAberto(a => !a)} aria-expanded={aberto}
-          className="foco-neutro shrink-0 text-3xs text-action-primary hover:underline">
-          {aberto ? 'Ocultar' : 'Ver detalhes'}
-        </button>
-      </div>
-      {aberto && (
-        <ul className="mt-1 mb-1.5 pl-3 space-y-0.5">
-          {faturas.map((f, i) => (
-            <li key={`${f.fatura}-${i}`} className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-zinc-700">{f.pessoa}</span>
-              <span className="text-zinc-400">Fatura {f.fatura}</span>
-              {f.valor != null && <span className="tabular-nums text-zinc-500"><span className="text-[var(--text-subtle)]">R$</span> {numBRL2(f.valor)}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-// ── Painel de resultado da emissão de boletos (cartões + erros agrupados) ─────
-function ResultadoEmissaoCard({ resultado, valorPorFatura }: {
-  resultado: ResultadoEmissao; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>
+// ── Modal "Ver resultado · notas fiscais" (v4.38.0) — LIDO DO BANCO ────────────
+// Contagens + "Atualizar status" fixos no topo (o ↻ do cabeçalho da coluna na tabela permanece);
+// tabela rolável com status PT-BR (autorizada/processando/falhou/já emitida) + link "ver nota".
+function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando, temAtualizar, onAtualizar, onClose }: {
+  notas:       NotaResultado[]
+  notaStatus:  Record<string, NotaStatus>
+  sessMap:     Map<string, ItemNota>
+  ambiente:    AsaasAmbiente
+  atualizando: boolean
+  temAtualizar: boolean
+  onAtualizar: () => void
+  onClose:     () => void
 }) {
-  const { emitidos, jaExistiam, falharam, pulados, ambiente } = resultado
-  return (
-    <Card title="Resultado da emissão de boletos" subtitle={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'}`}>
-      <div className="flex flex-wrap gap-3">
-        <Contagem n={emitidos.length} rotulo={emitidos.length === 1 ? 'boleto emitido' : 'boletos emitidos'} tom="success" />
-        {jaExistiam.length > 0 && <Contagem n={jaExistiam.length} rotulo="já emitidos" tom="zinc" />}
-        {pulados.length > 0 && <Contagem n={pulados.length} rotulo={pulados.length === 1 ? 'pulado' : 'pulados'} tom="zinc" />}
-        {falharam.length > 0 && <Contagem n={falharam.length} rotulo={falharam.length === 1 ? 'falhou' : 'falharam'} tom="danger" />}
-      </div>
-      <ErrosAgrupados itens={falharam.map(it => ({ pessoa: it.pessoa, fatura: it.ref, erro: it.erro ?? 'Erro' }))} valorPorFatura={valorPorFatura} />
-      <p className="mt-3 text-3xs text-zinc-400">Cada boleto é independente: as falhas não afetam os já emitidos. Reprocessar não duplica — as faturas já emitidas são puladas.</p>
-    </Card>
-  )
-}
+  const [rolado, setRolado] = useState(false)
+  const linhas = notas.map(n => {
+    const st = notaStatus[n.externalReference]
+    const status = (st?.status ?? n.status ?? '').toUpperCase()
+    const pdf = st?.pdfUrl ?? n.pdfUrl ?? null
+    const number = st?.number ?? n.number ?? null
+    const s = sessMap.get(n.externalReference)
+    const ja = s?.resultado === 'ja_existia' || s?.resultado === 'pulada'
+    const falhou = status === 'ERROR' || s?.resultado === 'falhou'
+    return { n, status, pdf, number, ja, falhou, erro: n.erro ?? s?.erro ?? null, aviso: s?.avisoAutorizacao }
+  })
+  const nOk  = linhas.filter(l => !l.falhou && !l.ja).length
+  const nJa  = linhas.filter(l => l.ja && !l.falhou).length
+  const nFal = linhas.filter(l => l.falhou).length
 
-// ── Painel de resultado da emissão de notas (cartões + erros agrupados) ───────
-// O "Atualizar status" mora no cabeçalho da coluna Nota fiscal da tabela (que é onde
-// as linhas de status vivem); aqui o painel mostra só a contagem e os erros agrupados.
-function ResultadoNotaCard({ resultado, valorPorFatura }: {
-  resultado: ResultadoNotas; valorPorFatura: Map<string, { valor: number | null; pessoa: string }>
-}) {
-  const { emitidas, jaExistiam, falharam, puladas, ambiente } = resultado
   return (
-    <Card title="Resultado da emissão de notas fiscais" subtitle={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'} · a NF é assíncrona`}>
-      <div className="flex flex-wrap gap-3">
-        <Contagem n={emitidas.length} rotulo={emitidas.length === 1 ? 'nota emitida' : 'notas emitidas'} tom="success" />
-        {jaExistiam.length > 0 && <Contagem n={jaExistiam.length} rotulo="já emitidas" tom="zinc" />}
-        {puladas.length > 0 && <Contagem n={puladas.length} rotulo={puladas.length === 1 ? 'pulada' : 'puladas'} tom="zinc" />}
-        {falharam.length > 0 && <Contagem n={falharam.length} rotulo={falharam.length === 1 ? 'falhou' : 'falharam'} tom="danger" />}
+    <ModalCentral
+      titulo="Resultado da emissão de notas fiscais"
+      subtitulo={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'} · a NF é assíncrona`}
+      largura="4xl" corpoFlex onClose={onClose}
+    >
+      <div className="shrink-0 px-6 pt-5 pb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Contagem n={nOk} rotulo={nOk === 1 ? 'nota' : 'notas'} tom="success" />
+          {nJa > 0 && <Contagem n={nJa} rotulo={nJa === 1 ? 'já emitida' : 'já emitidas'} tom="zinc" />}
+          {nFal > 0 && <Contagem n={nFal} rotulo={nFal === 1 ? 'falhou' : 'falharam'} tom="danger" />}
+        </div>
+        {temAtualizar && (
+          <button
+            type="button" onClick={onAtualizar} disabled={atualizando}
+            className="foco-neutro inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-300 disabled:opacity-40"
+          >
+            <RefreshCw size={13} className={atualizando ? 'animate-spin' : ''} /> Atualizar status
+          </button>
+        )}
       </div>
-      <ErrosAgrupados itens={falharam.map(it => ({ pessoa: it.pessoa, fatura: it.faturaClienteNo || it.ref, erro: it.erro ?? 'Erro' }))} valorPorFatura={valorPorFatura} />
-      <p className="mt-3 text-3xs text-zinc-400">
-        A autorização da prefeitura pode levar alguns minutos. Use o ícone <RefreshCw size={9} className="inline align-[-1px]" /> ao lado de “Nota fiscal” na tabela para atualizar o status e ver quando cada nota fica <b>autorizada</b> (e abrir o link). Reprocessar não duplica — as notas já emitidas (normal e avulsa) são puladas.
-      </p>
-    </Card>
+      <div className="flex-1 min-h-0 overflow-auto px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        <table className="w-full border-separate border-spacing-0 text-xs">
+          <thead className={theadFixo(rolado)}>
+            <tr>
+              <th>Pessoa</th>
+              <th className="w-24">Fatura Nº</th>
+              <th className="w-20">Tipo</th>
+              <th className="w-36 text-right">Valor</th>
+              <th className="w-64">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map(({ n, status, pdf, number, ja, falhou, erro, aviso }) => (
+              <tr key={n.externalReference} className="align-top [&>td]:border-b [&>td]:border-zinc-50 [&>td]:py-1.5 [&>td]:px-2">
+                <td className="text-zinc-700">{n.pessoa || '—'}</td>
+                <td className="tabular-nums text-zinc-500">{n.ref ?? '—'}</td>
+                <td className="text-zinc-500 capitalize">{n.modo}</td>
+                <td className="text-zinc-700">{n.valor != null ? <ValorContabil valor={n.valor} /> : <span className="block text-right text-zinc-400">—</span>}</td>
+                <td>
+                  {falhou ? (
+                    <span className="block text-2xs text-danger">falhou{erro ? `: ${erro}` : ''}</span>
+                  ) : ja ? (
+                    <span className="inline-flex flex-wrap items-center gap-1 text-2xs text-zinc-500">
+                      já emitida
+                      {number && <span className="text-zinc-400">nº {number}</span>}
+                      {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={10} /></a>}
+                    </span>
+                  ) : aviso ? (
+                    <span className="inline-flex flex-wrap items-center gap-1 text-2xs text-warning">
+                      <AlertTriangle size={12} className="shrink-0" /> criada, mas a autorização falhou: {aviso}
+                      {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={10} /></a>}
+                    </span>
+                  ) : (
+                    <span className={`inline-flex flex-wrap items-center gap-1 text-2xs ${status === 'AUTHORIZED' ? 'text-success' : 'text-action-primary'}`}>
+                      {status === 'AUTHORIZED' ? <CheckCircle2 size={12} className="shrink-0" /> : <Loader2 size={12} className="shrink-0 animate-spin" />}
+                      {labelStatusNota(status)}
+                      {number && <span className="text-zinc-400">nº {number}</span>}
+                      {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={10} /></a>}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </ModalCentral>
   )
 }
 
