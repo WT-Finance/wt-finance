@@ -118,7 +118,13 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
     else                     setDesmarcado(p => ({ ...p, [l.ref]: !marcar }))
   }
 
-  const prontos = useMemo(() => linhas.filter(l => situacaoDe(l) === 'pronto'), [linhas, situacaoDe])
+  // Prontos AINDA em jogo (exclui os que já saíram/estão saindo neste disparo) — o checkbox do
+  // cabeçalho e sua contagem só falam dos que dá para (des)marcar agora; senão o header ficaria
+  // "marcado" após um lote enquanto o rodapé já mostra 0 marcados.
+  const prontos = useMemo(() => linhas.filter(l => {
+    const f = resultado[l.ref]?.fase
+    return f !== 'enviando' && f !== 'enviado' && f !== 'ja' && situacaoDe(l) === 'pronto'
+  }), [linhas, situacaoDe, resultado])
   const prontosMarcados = useMemo(() => prontos.filter(l => !desmarcado[l.ref]).length, [prontos, desmarcado])
 
   // Cabeçalho marca/desmarca SÓ os Pronto (nunca pendente/enviado em massa).

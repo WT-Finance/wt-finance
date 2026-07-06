@@ -117,13 +117,19 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   // reload (fecha o follow-up da Fase 2) — sem sobrescrever um status já atualizado na sessão.
   const recarregarResultados = useCallback(async (refs: string[]) => {
     if (refs.length === 0) { setBoletosDB([]); setNotasDB([]); setEmailFeitos([]); return }
-    const [bol, nts, mails] = await Promise.all([resultadoBoletos(refs), resultadoNotas(refs), emailEnviados(refs)])
-    setBoletosDB(bol); setNotasDB(nts); setEmailFeitos(mails)
-    if (nts.length > 0) setNotaStatus(prev => {
-      const next = { ...prev }
-      for (const n of nts) if (!next[n.externalReference]) next[n.externalReference] = { status: n.status, pdfUrl: n.pdfUrl, number: n.number, invoiceId: n.invoiceId }
-      return next
-    })
+    try {
+      const [bol, nts, mails] = await Promise.all([resultadoBoletos(refs), resultadoNotas(refs), emailEnviados(refs)])
+      setBoletosDB(bol); setNotasDB(nts); setEmailFeitos(mails)
+      if (nts.length > 0) setNotaStatus(prev => {
+        const next = { ...prev }
+        for (const n of nts) if (!next[n.externalReference]) next[n.externalReference] = { status: n.status, pdfUrl: n.pdfUrl, number: n.number, invoiceId: n.invoiceId }
+        return next
+      })
+    } catch {
+      // Fail-safe (invariante #3): a leitura pode LANÇAR (requireAreaAction em sessão expirada/
+      // permissão revogada), não só devolver erro. Engolimos aqui — a tela segue com o que já
+      // tinha (no cruzar os status ficam vazios → seletores; nada quebra nem vira unhandled rejection).
+    }
   }, [])
 
   // Mapa ref→resultado de SESSÃO (boletos) — o resultado rico logo após emitir (distingue
