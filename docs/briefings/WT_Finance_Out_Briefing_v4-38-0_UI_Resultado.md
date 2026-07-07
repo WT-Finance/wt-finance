@@ -99,3 +99,15 @@ Segunda leva de feedback do Yan no PR aberto (opção explícita: **mesmo PR**, 
 **Gate (adendo 2):** `tsc` 0 · `eslint` (arquivos alterados) 0 · `build` exit 0. Testes inalterados (nenhum arquivo coberto por teste mudou). Sem migration.
 
 **Arquivos (adendo 2):** `src/components/financeiro/acervo-documentos.tsx`, `src/app/financeiro/acervo/page.tsx`, `src/app/admin/uploads/page.tsx`, `src/app/financeiro/calculadora-rateio/page.tsx`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, este out-briefing.
+
+---
+
+## Adendo 3 — Barra de rolagem horizontal FANTASMA na tabela de revisão (causa-raiz achada por medição)
+
+Sintoma: barra de rolagem horizontal persistente na tabela de revisão do Faturamento, revelando **espaço vazio** ao rolar — mesmo em tela larga, e mesmo após remover o `min-w` e estreitar colunas.
+
+**Causa-raiz (medida em repro HTML isolado, servido local + medido via `scrollWidth` no navegador):** o primitivo `Tooltip` (`src/components/ui/tooltip.tsx`) aplica **`whitespace-nowrap`** no balão. O `CabecalhoAjuda` (o "?" dos cabeçalhos Status/Boleto/Nota) passa texto LONGO e adicionava só `whitespace-normal` (sem `!`), que **NÃO vencia** o `whitespace-nowrap` da base (ordem do CSS). Resultado: o balão (invisível, `visibility:hidden` — que **ainda contribui para o `scrollWidth`**) virava uma linha gigante e transbordava **~313px à direita** → barra horizontal com "espaço vazio". Repro: balão `nowrap` → overflow **313px**; balão `whitespace:normal` → **0px**.
+
+**Fix:** `!whitespace-normal` (important) no `CabecalhoAjuda` — força o wrap do balão (313px → 0). Não mexe no primitivo `Tooltip` (outras dicas são curtas e dependem do nowrap). Também revertida a coluna Nota para `w-56` (não quebra mais linha — a redução anterior para `w-36` foi diagnóstico equivocado) e Vencimento/Fatura para `w-24`/`w-20`, reduzindo a largura da coluna Pessoa (pedido do Yan). O `min-w` da tabela permanece removido (padrão canônico).
+
+**LIÇÃO (custou caro — 3 tentativas erradas antes de MEDIR):** o `Tooltip` de `@/components/ui` tem `whitespace-nowrap` no balão + `position:absolute`; com conteúdo LONGO isso transborda invisivelmente e cria barra de rolagem fantasma no container `overflow-x-auto`. Para tooltip de texto longo, forçar `!whitespace-normal` + largura fixa. E: **diagnosticar overflow horizontal MEDINDO `scrollWidth` vs `clientWidth`** (repro isolado quando a página exige auth), não teorizando.
