@@ -44,6 +44,14 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     ],
   },
   {
+    versao: '4.37.2',
+    data: '2026-07-06T17:13',
+    itens: [
+      { tipo: 'correcao', texto: 'Ajuste visual no editor de tipos de Solicitação: o seletor do aviso de data ("a mais de / a menos de") agora cabe corretamente na janela, sem cortar o campo de dias.' },
+      { tipo: 'melhoria', texto: 'Descrições revisadas: o Acervo de Documentos ("Biblioteca de documentos, modelos, manuais e referências") e o Faturamento Corporativo ("Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos") passam a descrever melhor o que cada tela faz.' },
+    ],
+  },
+  {
     versao: '4.37.1',
     data: '2026-07-06T16:49',
     itens: [
