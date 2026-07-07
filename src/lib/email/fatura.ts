@@ -22,9 +22,21 @@ export interface ResultadoEnvioFatura {
   ok:                     boolean
   /** Para onde FOI de fato (em teste = o override EMAIL_TESTE_DESTINO). */
   destinatariosEfetivos?: string[]
-  anexos?:                { boleto: boolean; nota: boolean }
+  anexos?:                { boleto: boolean; nota: boolean; outros?: number }
   erro?:                  string
 }
+
+/** Um anexo EXTRA ("Outros") escolhido no modal — conteúdo em base64 (o arquivo é local do
+ *  operador; viaja no payload da action). Decodificado e anexado AQUI, no ponto único da camada. */
+export interface AnexoExtra {
+  nome:   string
+  tipo:   string   // MIME (ex.: application/pdf); default octet-stream se ausente
+  base64: string
+}
+
+// Limite defensivo do conjunto de anexos "Outros" de UM e-mail (o disparo é 1 fatura por chamada;
+// o bodySizeLimit da action é 25mb). Estourar = e-mail NÃO enviado (mesma regra do boleto/nota).
+const LIMITE_ANEXOS_EXTRA = 15 * 1024 * 1024
 
 /** Baixa um PDF (URL pública do Asaas) como Buffer, com timeout (~30s, como o asaasReq). Lança em falha. */
 async function baixarPdf(url: string): Promise<Buffer> {
@@ -52,6 +64,7 @@ export async function enviarFaturaEmail(input: {
   destinatariosReais: string[]          // para onde IRIA no modo real (já validados)
   boletoUrl:          string            // bank_slip_url — PDF do boleto (anexo, sempre)
   notaUrl?:           string | null     // pdf_url da nota (só quando AUTORIZADA) → anexa a nota
+  anexosExtra?:       AnexoExtra[]       // "Outros" (base64) escolhidos no modal — anexados aqui
 }): Promise<ResultadoEnvioFatura> {
   const modo = emailAmbiente()
 
@@ -87,6 +100,29 @@ export async function enviarFaturaEmail(input: {
       }
     }
 
+    // Anexos "Outros" (base64 → Buffer). Conteúdo inválido/vazio ou conjunto acima do limite =
+    // e-mail NÃO enviado com motivo claro (nunca envio incompleto silencioso — regra da camada).
+    const extras: { filename: string; content: Buffer; contentType: string }[] = []
+    if (input.anexosExtra?.length) {
+      let total = 0
+      for (const a of input.anexosExtra) {
+        let buf: Buffer
+        try {
+          buf = Buffer.from(a.base64 ?? '', 'base64')
+        } catch {
+          return { ok: false, erro: `Anexo "${a.nome}" inválido — e-mail não enviado.` }
+        }
+        if (buf.length === 0) return { ok: false, erro: `Anexo "${a.nome}" vazio — e-mail não enviado.` }
+        total += buf.length
+        if (total > LIMITE_ANEXOS_EXTRA) return { ok: false, erro: 'Anexos extra excedem 15 MB — e-mail não enviado.' }
+        extras.push({
+          filename: (a.nome || 'anexo').replace(/[\\/\r\n]/g, '_'), // sem path/quebra no filename
+          content: buf,
+          contentType: a.tipo || 'application/octet-stream',
+        })
+      }
+    }
+
     const { assunto, html, text } = templateFaturaEmail({
       cliente:          input.cliente,
       ref:              input.ref,
@@ -99,12 +135,13 @@ export async function enviarFaturaEmail(input: {
       anexoLogo(),
       { filename: `boleto-${input.ref}.pdf`, content: boletoBuf, contentType: 'application/pdf' },
       ...(notaBuf ? [{ filename: `nota-${input.ref}.pdf`, content: notaBuf, contentType: 'application/pdf' }] : []),
+      ...extras,
     ]
 
     await criarTransporter(cfg).sendMail({
       from: cfg.from, to: efetivos.join(', '), subject: assunto, html, text, attachments,
     })
-    return { ok: true, destinatariosEfetivos: efetivos, anexos: { boleto: true, nota: temNota } }
+    return { ok: true, destinatariosEfetivos: efetivos, anexos: { boleto: true, nota: temNota, outros: extras.length } }
   } catch (err) {
     console.error('[email] falha ao enviar e-mail de fatura:', err)
     return { ok: false, erro: 'Falha ao enviar o e-mail (SMTP).' }

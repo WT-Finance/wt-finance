@@ -18,6 +18,14 @@ interface Props {
   subtitulo?:       string
   /** Largura máxima do painel. Default 'lg' (comportamento original). '5xl' p/ tabelas densas. */
   largura?:         'lg' | '2xl' | '4xl' | '5xl'
+  /** Rodapé FIXO (fora do scroll do corpo): shrink-0 + border-t. Ausente = sem rodapé. */
+  rodape?:          ReactNode
+  /** Corpo como flex-col SEM scroll próprio — o caller controla o scroll interno (sub-cabeçalho
+   *  fixo + tabela `flex-1 min-h-0 overflow-auto`). Default false = corpo rola como bloco (px-6 py-5). */
+  corpoFlex?:       boolean
+  /** Altura FIXA do painel (h-[85vh]) em vez de max-h-[85vh] — o modal não "pula" de tamanho
+   *  conforme o nº de linhas, e o estado de carga preenche a área toda. Default false. */
+  alturaFixa?:      boolean
   onClose:          () => void
   children:         ReactNode
 }
@@ -26,7 +34,7 @@ const MAX_W: Record<NonNullable<Props['largura']>, string> = {
   lg: 'max-w-lg', '2xl': 'max-w-2xl', '4xl': 'max-w-4xl', '5xl': 'max-w-5xl',
 }
 
-export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largura = 'lg', onClose, children }: Props) {
+export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largura = 'lg', rodape, corpoFlex = false, alturaFixa = false, onClose, children }: Props) {
   const [visible, setVisible] = useState(false)
   const painelRef = useRef<HTMLDivElement>(null)
 
@@ -78,7 +86,7 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largu
       <div
         ref={painelRef}
         tabIndex={-1}
-        className={`relative bg-white rounded-xl shadow-2xl w-full ${MAX_W[largura]} max-h-[85vh] flex flex-col outline-none`}
+        className={`relative bg-white rounded-xl shadow-2xl w-full ${MAX_W[largura]} ${alturaFixa ? 'h-[85vh]' : 'max-h-[85vh]'} flex flex-col outline-none`}
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? 'scale(1)' : 'scale(0.97)',
@@ -104,9 +112,14 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largu
             <X size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className={corpoFlex ? 'flex-1 min-h-0 flex flex-col' : 'flex-1 overflow-y-auto px-6 py-5'}>
           {children}
         </div>
+        {rodape && (
+          <div className="shrink-0 border-t border-zinc-100 px-6 py-3">
+            {rodape}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

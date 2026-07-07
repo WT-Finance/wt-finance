@@ -247,15 +247,8 @@ function CardUpload({
         )}
       </div>
 
-      {/* Botão Validar/Cancelar */}
-      {(estado.estado === 'idle' || estado.estado === 'erro') && (
-        <button
-          disabled
-          className="w-full px-4 py-2 text-sm rounded-lg bg-zinc-100 text-zinc-400 cursor-not-allowed"
-        >
-          Selecione um arquivo para importar
-        </button>
-      )}
+      {/* Botão Cancelar/Confirmar (o "Selecione um arquivo…" desabilitado foi removido — era inerte:
+          a seleção acontece na própria zona de arrastar/clicar acima). */}
       {estado.estado === 'aguardando_confirmacao' && (
         <div className="flex gap-2">
           <button
@@ -483,7 +476,7 @@ export default function AdminUploadsPage() {
   const modalConfig = modal ? BASES.find(b => b.key === modal)! : null
 
   return (
-    <div className="max-w-2xl mx-auto px-4">
+    <div className="max-w-7xl mx-auto px-4">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">Atualização de Dados</h1>

@@ -6,6 +6,34 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.38.0] — 2026-07-06
+
+MINOR · **Faturamento Corporativo — melhorias de interface (resultado em modal, re-hidratação, Revisar envio final).** Pacote de UI pós-Faturamento-completo, aprovado por mockup. **Lógica de emissão/envio inalterada** — muda a apresentação + registro/leitura.
+
+- **Resultado da emissão sai dos painéis inline e vira DOIS MODAIS sob demanda.** A barra de ações ganha "dois momentos": cada `Emitir X` vira `Ver resultado · X` (largura fixa por botão — não "pula" na troca de texto) quando há resultado no banco; `Enviar e-mails` fixo à direita (sem contador). O **modal de boletos** mostra Pessoa · Fatura Nº · Valor (contábil) · **Juros · Multa aplicados** · Status (emitido/já emitido/falhou + motivo); juros/multa do cadastro em negrito, padrão discreto, desconhecido `—`. O **modal de notas** traz "Atualizar status" dentro. A coluna E-mail por-linha some (o envio vive no lote).
+- **Re-hidratação:** ao carregar/cruzar a planilha, a tela consulta o banco e repõe os status (boleto/nota/e-mail) **sem reemitir** — a tela lembra o que já foi feito mesmo após recarregar; o `invoice_id` re-hidratado faz o "Atualizar status" da nota funcionar pós-reload.
+- **Migration 0172 (aditiva):** colunas `juros_aplicado`/`multa_aplicada` em `app.fatura_emissao` (gravadas na emissão nova; registros antigos ficam `NULL` → exibem `—`, sem inventar valor retroativo) + RPCs de leitura `resultado_boletos`/`resultado_notas` (incluem os que falharam).
+- **Revisar envio (lote) na forma final:** anexos como badges clicáveis (Boleto ↗ / Nota fiscal ↗), status como **mensagens puras em 4 cores** (Pronto / Sem destinatário / Nota fiscal pendente / Já enviado) e coluna **Enviar** com checkbox (marcar "Nota fiscal pendente" = enviar só o boleto; marcar "Já enviado" = reenvio; "Sem destinatário" desabilitado até corrigir; o cabeçalho marca só os Prontos). Cabeçalho e rodapé fixos ao rolar; contador "N marcados" só no rodapé.
+
+### Ajustes de interface (rodada pós-mockup, mesmo PR)
+
+- **Nota fiscal em erro não fica mais "processando" para sempre.** A classificação do status da NF virou **fonte única** (`src/lib/faturamento/status-nota.ts`) com **fail-safe INVERTIDO**: só um allowlist POSITIVO de estados de andamento (SCHEDULED/SYNCHRONIZED/PENDING/PROCESSING/IN_PROCESS + vazio) exibe spinner "processando"; AUTHORIZED = autorizada (verde); CANCEL* = cancelada; **qualquer outro (ERROR e desconhecidos) = falhou** (vermelho, `AlertTriangle`, sem spinner, com motivo). Antes, um status de erro desconhecido caía no default "processando" e girava eternamente. A mesma classificação serve a tabela de revisão e os dois modais. Um aviso de autorização congelado deixa de mascarar uma nota que um refresh posterior autorizou.
+- **Migration 0173 (aditiva):** `atualizar_status_nota` passa a `erro = COALESCE(p_dados->>'erro', erro)` — o refresh de status não apaga mais o motivo capturado na emissão (única coluna que faltava COALESCE; as demais já tinham).
+- **Anexos "Outros" no Revisar envio:** upload por-linha na coluna Anexos → anexados ao e-mail daquela fatura, além do boleto/nota. Decodificados e anexados **no ponto único da camada** (`src/lib/email/fatura.ts`); anexo inválido/vazio/acima de 15 MB **falha o envio com motivo** (nunca e-mail incompleto). `anexos.outros` registra a contagem em `fatura_email`.
+- **Barra de ações:** removida a linha de resumo de e-mail (o estado vive no modal "Revisar e-mails"); botões à direita, na mesma linha. **Legendas ao pé da tabela** substituídas por um **"?" com tooltip** nos cabeçalhos Status / Boleto / Nota fiscal.
+- **"Atualizar status"** saiu do cabeçalho da coluna (↻) e virou **botão bordado à direita, sempre visível** (desabilitado quando não há nota com status a acompanhar).
+- **Coluna Valor da revisão** em formato **contábil** (`ValorContabil`); **coluna Boleto alargada** (o "ver boleto" não quebra linha); nos modais de resultado, a **coluna Pessoa trunca** com reticências + `title`.
+- **Barra de rolagem horizontal fantasma na tabela de revisão — corrigida.** A causa era o **tooltip "?" do cabeçalho**: o primitivo `Tooltip` aplica `whitespace-nowrap` no balão e o texto longo da dica (invisível, `visibility:hidden`) virava uma linha gigante que transbordava ~313px à direita, criando barra horizontal com "espaço vazio" (medido em repro isolado). Forçado o wrap do balão com `!whitespace-normal`. Também removido o `min-width` da tabela (padrão canônico — cabe sempre no container; Pessoa encolhe e quebra com `break-words`).
+- **Modais com tamanho fixo** (`alturaFixa` → `h-[85vh]`) — não "pulam" conforme o nº de linhas; o "Revisar e-mails" ganhou título/subtítulo ("Revisar e-mails antes do envio" / "Revise as informações antes do envio dos e-mails, edite destinatários e inclua anexos") e os modais de resultado, subtítulo ("Confira o status das emissões … através da API do Asaas") + chip de ambiente.
+
+### Outros ajustes de interface (mesmo PR)
+
+- **Acervo de Documentos:** só a **lista rola** — título e busca ficam fixos no topo (página em altura cheia; a lista num scroll interno com `scrollbar-gutter:stable`, seguindo a lição do `<main>` do AppShell). A linha **deixa de ser inteira clicável**: o download acontece só pelo **botão de download**, que ganhou realce (sombreado) no hover, como o botão da lixeira.
+- **Padronização da largura das telas de upload:** Calculadora de Rateio e Upload de Arquivos passam a usar a **largura cheia** (`max-w-7xl`), igual ao Faturamento Corporativo — antes eram `max-w-2xl` (mais estreitas).
+- **Upload de Arquivos:** removido o botão desabilitado "Selecione um arquivo para importar" (era inerte — a seleção acontece na própria zona de arrastar/clicar).
+
+ADR-0143 (emenda ao registro/leitura do Faturamento). Sem mudança na lógica de emissão, no throttle do lote nem na dupla-trava do modo real.
+
 ## [4.37.2] — 2026-07-06
 
 PATCH · **Ajustes visuais/de texto.** Sem migration.

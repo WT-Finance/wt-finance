@@ -196,9 +196,13 @@ export async function emitirBoletos(
 
       if ('erro' in boleto) { out.falharam.push({ ...base, erro: boleto.erro }); await registrarFalha(db, f, ref, pessoa, ambiente, boleto.erro); continue }
 
-      // Registro de sucesso (idempotente no banco — não sobrescreve sucesso anterior).
+      // Registro de sucesso (idempotente no banco — não sobrescreve sucesso anterior). Grava o
+      // juros/multa aplicado SÓ quando o boleto foi CRIADO agora; jaExistia → NULL (não sabemos o
+      // que o Asaas aplicou na criação original — NUNCA inventa retroativo).
       const registroFalhou = !(await registrarSucesso(db, {
         ref, pessoa, valor: f.valor!, vencimento: f.vencimento!, ambiente, customerId, boleto: boleto.dado,
+        juros: boleto.jaExistia ? null : jm.interest,
+        multa: boleto.jaExistia ? null : jm.fine,
       }))
 
       const item: ItemEmissao = {
@@ -221,7 +225,7 @@ export async function emitirBoletos(
 
 async function registrarSucesso(
   db: any,
-  p: { ref: string; pessoa: string; valor: number; vencimento: string; ambiente: AsaasAmbiente; customerId: string; boleto: { id: string; status: string; bankSlipUrl?: string | null; invoiceUrl?: string | null; nossoNumero?: string | null } },
+  p: { ref: string; pessoa: string; valor: number; vencimento: string; ambiente: AsaasAmbiente; customerId: string; boleto: { id: string; status: string; bankSlipUrl?: string | null; invoiceUrl?: string | null; nossoNumero?: string | null }; juros?: number | null; multa?: number | null },
 ): Promise<boolean> {
   const res = await (db.rpc as any)('registrar_emissao', {
     p_dados: {
@@ -229,6 +233,7 @@ async function registrarSucesso(
       asaas_customer_id: p.customerId, asaas_payment_id: p.boleto.id, status: p.boleto.status,
       bank_slip_url: p.boleto.bankSlipUrl ?? null, invoice_url: p.boleto.invoiceUrl ?? null,
       nosso_numero: p.boleto.nossoNumero ?? null, ambiente: p.ambiente, erro: null,
+      juros_aplicado: p.juros ?? null, multa_aplicada: p.multa ?? null,
     },
   })
   // Observabilidade: boleto JÁ existe no Asaas mas o registro local falhou — não pode passar
@@ -562,6 +567,10 @@ export interface OpcoesEnvioFatura {
   soBoleto?: boolean
   /** true → reenvio deliberado: pula a idempotência (email_existentes). */
   forcarReenvio?: boolean
+  /** Anexos "Outros" (base64) escolhidos por-linha no modal — decodificados e anexados NA CAMADA
+   *  (enviarFaturaEmail). O cliente é a origem do conteúdo; anexo inválido/vazio/acima do limite
+   *  faz o envio FALHAR com motivo (nunca e-mail incompleto silencioso). */
+  anexosExtra?: { nome: string; tipo: string; base64: string }[]
   /** Dupla trava do modo REAL (M4): sem esta confirmação, real é RECUSADO. EMAIL_MODO segue 'teste'
    *  em todos os ambientes → o modo real permanece INALCANÇÁVEL nesta entrega (a virada é do Yan). */
   confirmacaoReal?: boolean
@@ -638,7 +647,7 @@ export async function enviarEmailFatura(ref: string, opts?: OpcoesEnvioFatura): 
     // 4) Envia (override do destinatário + modo vivem na CAMADA enviarFaturaEmail) e registra a tentativa.
     const env = await enviarFaturaEmail({
       ref: refT, cliente, destinatariosReais: validos,
-      boletoUrl: d.bank_slip_url, notaUrl,
+      boletoUrl: d.bank_slip_url, notaUrl, anexosExtra: opts?.anexosExtra,
     })
     const regRes = await (db.rpc as any)('registrar_email', {
       p_dados: {
@@ -665,8 +674,10 @@ export async function enviarEmailFatura(ref: string, opts?: OpcoesEnvioFatura): 
 export interface LinhaEnvioEmail {
   ref:           string
   pessoa:        string
-  /** invoice_url (preferido) ou bank_slip_url — p/ o link "ver boleto" no modal. */
+  /** invoice_url (preferido) ou bank_slip_url — p/ o badge "Boleto ↗" no modal. */
   boletoUrl:     string | null
+  /** pdf_url da nota (quando autorizada) — p/ o badge "Nota fiscal ↗"; null = sem nota pronta. */
+  notaUrl:       string | null
   notaPronta:    boolean   // nota AUTORIZADA + PDF → anexa
   notaPendente:  boolean   // nota presente mas não-pronta → bloqueia (salvo "só boleto")
   anexosLabel:   string    // "boleto e nota" | "boleto (nota pendente)" | "boleto"
@@ -740,7 +751,7 @@ export async function prepararEnvioEmails(refs: string[]): Promise<{ modo: 'test
 
     const anexosLabel = notaPronta ? 'boleto e nota' : notaPendente ? 'boleto (nota pendente)' : 'boleto'
     return {
-      ref, pessoa, boletoUrl: d.invoice_url ?? d.bank_slip_url,
+      ref, pessoa, boletoUrl: d.invoice_url ?? d.bank_slip_url, notaUrl: d.nota_pdf_url ?? null,
       notaPronta, notaPendente, anexosLabel, destinatarios,
       noCadastro, ativo, jaEnviado, estado, motivo,
     }
@@ -750,3 +761,73 @@ export async function prepararEnvioEmails(refs: string[]): Promise<{ modo: 'test
   linhas.sort((a, b) => ordem[a.estado] - ordem[b.estado] || a.pessoa.localeCompare(b.pessoa, 'pt-BR'))
   return { modo, linhas }
 }
+
+// ── v4.38.0 (M1) — LEITURA do resultado/estado por ref: modais lidos do banco (sobrevivem a reload)
+//    + re-hidratação ao cruzar a planilha. TODAS fail-safe: erro de leitura → [] (a tela segue como
+//    hoje, sessão; nunca quebra o fluxo). Read-only; nenhuma escrita. ───────────────────────────────
+
+/** Estado do boleto por ref (do banco). `emitido` = tem asaas_payment_id; senão status='erro'=falhou. */
+export interface BoletoResultado {
+  ref:           string
+  pessoa:        string | null
+  valor:         number | null
+  vencimento:    string | null
+  emitido:       boolean
+  status:        string | null
+  bankSlipUrl:   string | null
+  invoiceUrl:    string | null
+  jurosAplicado: number | null   // NULL (antigo / boleto que já existia) → a UI exibe "—"
+  multaAplicada: number | null
+  erro:          string | null
+}
+
+export async function resultadoBoletos(refs: string[]): Promise<BoletoResultado[]> {
+  await requireAreaAction('financeiro/faturamento-corp')
+  const uniq = Array.from(new Set((refs ?? []).map(r => (r ?? '').trim()).filter(Boolean)))
+  if (uniq.length === 0) return []
+  const db = await getServerClient()
+  const res = await (db.rpc as any)('resultado_boletos', { p_refs: uniq })
+  if (res?.error || !Array.isArray(res?.data)) return []   // fail-safe (invariante: leitura caiu → tela segue)
+  return (res.data as Array<Record<string, unknown>>).map(r => ({
+    ref: String(r.fatura_cliente_no), pessoa: (r.pessoa_nome as string) ?? null,
+    valor: r.valor == null ? null : Number(r.valor), vencimento: (r.vencimento as string) ?? null,
+    emitido: !!r.asaas_payment_id, status: (r.status as string) ?? null,
+    bankSlipUrl: (r.bank_slip_url as string) ?? null, invoiceUrl: (r.invoice_url as string) ?? null,
+    jurosAplicado: r.juros_aplicado == null ? null : Number(r.juros_aplicado),
+    multaAplicada: r.multa_aplicada == null ? null : Number(r.multa_aplicada),
+    erro: (r.erro as string) ?? null,
+  }))
+}
+
+/** Estado da nota por ref (do banco). Uma ref pode ter normal + avulsa (external_reference distintos). */
+export interface NotaResultado {
+  externalReference: string
+  ref:               string | null
+  pessoa:            string | null
+  modo:              ModoNota
+  valor:             number | null
+  status:            string | null
+  number:            string | null
+  pdfUrl:            string | null
+  invoiceId:         string | null   // re-hidratado → o "Atualizar status" funciona pós-reload (fecha follow-up Fase 2)
+  erro:              string | null
+}
+
+export async function resultadoNotas(refs: string[]): Promise<NotaResultado[]> {
+  await requireAreaAction('financeiro/faturamento-corp')
+  const uniq = Array.from(new Set((refs ?? []).map(r => (r ?? '').trim()).filter(Boolean)))
+  if (uniq.length === 0) return []
+  const db = await getServerClient()
+  const res = await (db.rpc as any)('resultado_notas', { p_refs: uniq })
+  if (res?.error || !Array.isArray(res?.data)) return []
+  return (res.data as Array<Record<string, unknown>>).map(r => ({
+    externalReference: String(r.external_reference), ref: (r.fatura_cliente_no as string) ?? null,
+    pessoa: (r.pessoa_nome as string) ?? null, modo: (r.modo as ModoNota),
+    valor: r.valor == null ? null : Number(r.valor), status: (r.status as string) ?? null,
+    number: (r.number as string) ?? null, pdfUrl: (r.pdf_url as string) ?? null,
+    invoiceId: (r.asaas_invoice_id as string) ?? null, erro: (r.erro as string) ?? null,
+  }))
+}
+// (emailEnviados foi removido na v4.38.0/ajustes: era consumido só pela linha de resumo de e-mail
+//  da barra de ações, retirada a pedido; o estado "já enviado" é re-derivado no modal "Revisar
+//  e-mails" via prepararEnvioEmails — não há mais consumidor. Ver email_existentes/0169.)

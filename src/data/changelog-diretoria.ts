@@ -35,6 +35,20 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.38.0',
+    data: '2026-07-06T19:21',
+    itens: [
+      { tipo: 'melhoria', texto: 'O Faturamento Corporativo ganhou uma revisão de interface. O resultado de cada emissão deixa de ficar espalhado na tela e passa a abrir em um painel próprio: um para os boletos (com pessoa, valor e os percentuais de juros e multa efetivamente aplicados a cada um) e outro para as notas fiscais (com o status e a opção de atualizá-lo ali mesmo). Os botões de ação passam a ter dois momentos — "Emitir" antes e "Ver resultado" depois — sem mudar de tamanho.' },
+      { tipo: 'melhoria', texto: 'A tela agora lembra o que já foi feito: ao recarregar a página ou subir a planilha de novo, ela consulta o sistema e mostra o que já foi emitido e enviado, sem reemitir nada. Notas emitidas antes voltam a permitir a atualização de status mesmo depois de recarregar.' },
+      { tipo: 'melhoria', texto: 'A tela de revisão de envio de e-mails ficou mais clara: o status de cada fatura vira uma mensagem direta em cores (Pronto, Sem destinatário, Nota fiscal pendente, Já enviado), os anexos viram atalhos clicáveis para abrir o boleto e a nota, e uma coluna de seleção deixa marcar exatamente o que enviar — inclusive optar por mandar só o boleto quando a nota ainda não saiu, ou reenviar uma fatura já enviada. O total de selecionados aparece junto ao botão de envio.' },
+      { tipo: 'correcao', texto: 'Notas fiscais que a prefeitura recusa agora aparecem claramente como "falhou", com o motivo, em vez de ficarem indicando "processando" indefinidamente. As que estão de fato em andamento continuam sinalizadas como tal, e uma nota que se autoriza numa atualização de status passa a aparecer como autorizada.' },
+      { tipo: 'novidade', texto: 'Na revisão de envio de e-mails, agora é possível anexar documentos adicionais a cada fatura, além do boleto e da nota fiscal — útil quando o cliente pede um comprovante ou documento extra junto.' },
+      { tipo: 'melhoria', texto: 'Outros acertos de apresentação no Faturamento: dicas de ajuda ("?") nos títulos das colunas, botão de atualizar status das notas sempre à mão, valores em formato contábil, nomes de clientes que não quebram linha e painéis com tamanho estável (não "saltam" conforme o número de linhas).' },
+      { tipo: 'melhoria', texto: 'No Acervo de Documentos, o título e a busca agora ficam fixos no topo e só a lista de documentos rola — mais fácil pesquisar em acervos grandes. O download passa a ser só pelo botão de download (a linha inteira não é mais clicável, evitando downloads acidentais).' },
+      { tipo: 'melhoria', texto: 'As telas de importação de planilhas (Upload de Arquivos e Calculadora de Rateio) passam a usar a largura cheia da tela, padronizadas com o Faturamento Corporativo. No Upload de Arquivos, um botão sem função ("Selecione um arquivo para importar") foi removido.' },
+    ],
+  },
+  {
     versao: '4.37.2',
     data: '2026-07-06T17:13',
     itens: [
