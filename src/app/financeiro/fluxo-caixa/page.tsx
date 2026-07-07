@@ -146,6 +146,11 @@ export default async function FluxoCaixaPage({
 
   const empty: RpcResult = { data: null, error: null }
 
+  // v4.39.0 (M4/P2b): UM único estágio de RPCs (antes eram 2 blocos seriais — 8 + 3). Os 3
+  // gerenciais entram por spread CONDICIONAL (só disparam para quem tem a área; para os demais o
+  // array tem 8 itens e os slots gerenciais caem no default `= empty`). Sem dependência de dados
+  // entre os blocos → seguro paralelizar. `allSettled`→`empty` preserva o invariante "a seção
+  // gerencial indisponível NÃO derruba a página principal" (cada falha vira `empty`, não throw).
   const [
     fluxoMensalRes,
     fluxoAcumuladoRes,
@@ -155,6 +160,9 @@ export default async function FluxoCaixaPage({
     decomposicaoCategoriaRes,
     posicaoRes,
     lancamentos10dRes,
+    projecaoRes            = empty,
+    saldosRes              = empty,
+    lancamentosGerencialRes = empty,
   ] = await Promise.allSettled([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
@@ -164,6 +172,12 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_categoria',     { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_proximos_lancamentos', { p_dias: 10 }),
+    // Gerenciais (v4.22.1: janela ampla 60d; a UI fatia por horizonte). Só para quem tem a área.
+    ...(temGerencial ? [
+      rpc('get_gerencial_projecao_diaria', { p_dias: 60 }),
+      rpc('get_gerencial_saldos'),
+      rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
+    ] : []),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
 
   const fluxoMensalRows    = unwrapRpc<FluxoMensalV3Row[]>(fluxoMensalRes, 'get_fluxo_caixa_mensal_v3') ?? []
@@ -189,25 +203,16 @@ export default async function FluxoCaixaPage({
   const lancamentos10d: ProximoLancamento[] =
     unwrapRpc<ProximoLancamento[]>(lancamentos10dRes, 'get_proximos_lancamentos') ?? []
 
-  // Fetches Gerenciais isolados — falha não deve crashar a página principal.
-  // v4.13: só dispara para quem TEM a área financeiro/gerencial (as RPCs exigem-na no banco).
+  // Dados Gerenciais — já buscados no estágio único acima (sem 2º await). Falha de qualquer um
+  // veio como `empty` (allSettled) → unwrapRpc devolve null → `?? []`; a seção só renderiza vazia,
+  // nunca crasha a página principal (mesmo invariante de antes, agora sem hop serial extra).
   let projecaoGerencial: DiaProjecao[]  = []
   let saldosGerencial:   GerencialSaldo[] = []
   let lancamentosGerencial: Lancamento[]  = []
   if (temGerencial) {
-    try {
-      const [projecaoRes, saldosRes, lancamentosGerencialRes] = await Promise.all([
-        // v4.22.1: janela ampla (60 dias); a UI fatia por data inicial + horizonte (15/30).
-        rpc('get_gerencial_projecao_diaria', { p_dias: 60 }),
-        rpc('get_gerencial_saldos'),
-        rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
-      ])
-      projecaoGerencial    = unwrapRpc<DiaProjecao[]>(projecaoRes, 'get_gerencial_projecao_diaria') ?? []
-      saldosGerencial      = unwrapRpc<GerencialSaldo[]>(saldosRes, 'get_gerencial_saldos') ?? []
-      lancamentosGerencial = unwrapRpc<Lancamento[]>(lancamentosGerencialRes, 'get_gerencial_lancamentos') ?? []
-    } catch {
-      // Dados gerenciais indisponíveis — seção renderiza vazia
-    }
+    projecaoGerencial    = unwrapRpc<DiaProjecao[]>(projecaoRes, 'get_gerencial_projecao_diaria') ?? []
+    saldosGerencial      = unwrapRpc<GerencialSaldo[]>(saldosRes, 'get_gerencial_saldos') ?? []
+    lancamentosGerencial = unwrapRpc<Lancamento[]>(lancamentosGerencialRes, 'get_gerencial_lancamentos') ?? []
   }
 
   const totalEntradas = kpis.entradas_realizadas
