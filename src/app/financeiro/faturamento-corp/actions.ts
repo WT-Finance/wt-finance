@@ -567,6 +567,10 @@ export interface OpcoesEnvioFatura {
   soBoleto?: boolean
   /** true → reenvio deliberado: pula a idempotência (email_existentes). */
   forcarReenvio?: boolean
+  /** Anexos "Outros" (base64) escolhidos por-linha no modal — decodificados e anexados NA CAMADA
+   *  (enviarFaturaEmail). O cliente é a origem do conteúdo; anexo inválido/vazio/acima do limite
+   *  faz o envio FALHAR com motivo (nunca e-mail incompleto silencioso). */
+  anexosExtra?: { nome: string; tipo: string; base64: string }[]
   /** Dupla trava do modo REAL (M4): sem esta confirmação, real é RECUSADO. EMAIL_MODO segue 'teste'
    *  em todos os ambientes → o modo real permanece INALCANÇÁVEL nesta entrega (a virada é do Yan). */
   confirmacaoReal?: boolean
@@ -643,7 +647,7 @@ export async function enviarEmailFatura(ref: string, opts?: OpcoesEnvioFatura): 
     // 4) Envia (override do destinatário + modo vivem na CAMADA enviarFaturaEmail) e registra a tentativa.
     const env = await enviarFaturaEmail({
       ref: refT, cliente, destinatariosReais: validos,
-      boletoUrl: d.bank_slip_url, notaUrl,
+      boletoUrl: d.bank_slip_url, notaUrl, anexosExtra: opts?.anexosExtra,
     })
     const regRes = await (db.rpc as any)('registrar_email', {
       p_dados: {
@@ -824,13 +828,6 @@ export async function resultadoNotas(refs: string[]): Promise<NotaResultado[]> {
     invoiceId: (r.asaas_invoice_id as string) ?? null, erro: (r.erro as string) ?? null,
   }))
 }
-
-/** Refs já enviadas por e-mail com sucesso NO MODO ATUAL (re-hidratação do estado de e-mail). */
-export async function emailEnviados(refs: string[]): Promise<string[]> {
-  await requireAreaAction('financeiro/faturamento-corp')
-  const uniq = Array.from(new Set((refs ?? []).map(r => (r ?? '').trim()).filter(Boolean)))
-  if (uniq.length === 0) return []
-  const db = await getServerClient()
-  const res = await (db.rpc as any)('email_existentes', { p_refs: uniq, p_modo: emailAmbiente() })
-  return (res?.error || !Array.isArray(res?.data)) ? [] : (res.data as string[])
-}
+// (emailEnviados foi removido na v4.38.0/ajustes: era consumido só pela linha de resumo de e-mail
+//  da barra de ações, retirada a pedido; o estado "já enviado" é re-derivado no modal "Revisar
+//  e-mails" via prepararEnvioEmails — não há mais consumidor. Ver email_existentes/0169.)

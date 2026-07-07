@@ -119,7 +119,7 @@ describe('enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança', ()
     })
     expect(r.ok).toBe(true)
     expect(r.destinatariosEfetivos).toEqual(['caixa-teste@welcometrips.com.br'])
-    expect(r.anexos).toEqual({ boleto: true, nota: true })
+    expect(r.anexos).toEqual({ boleto: true, nota: true, outros: 0 })
     const arg = sendMailMock.mock.calls[0][0]
     expect(arg.to).toBe('caixa-teste@welcometrips.com.br')       // override: NÃO o real
     expect(arg.subject).toContain('[TESTE — destinatário real: cliente@real.com]')
@@ -133,9 +133,39 @@ describe('enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança', ()
     sendMailMock.mockResolvedValueOnce({ messageId: '1' })
     const r = await enviarFaturaEmail({ ref: '1', cliente: 'ACME', destinatariosReais: ['c@x.com'], boletoUrl: 'https://asaas/b.pdf' })
     expect(r.ok).toBe(true)
-    expect(r.anexos).toEqual({ boleto: true, nota: false })
+    expect(r.anexos).toEqual({ boleto: true, nota: false, outros: 0 })
     expect(sendMailMock.mock.calls[0][0].attachments).toHaveLength(2)
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('anexos "Outros" (base64) entram como anexos extra; anexos.outros conta; filename sanitizado', async () => {
+    ambienteTesteConfig()
+    fetchMock.mockResolvedValue(pdfOk())
+    sendMailMock.mockResolvedValueOnce({ messageId: '1' })
+    const r = await enviarFaturaEmail({
+      ref: '1', cliente: 'ACME', destinatariosReais: ['c@x.com'], boletoUrl: 'https://asaas/b.pdf',
+      anexosExtra: [
+        { nome: 'contrato.pdf', tipo: 'application/pdf', base64: Buffer.from('conteudo-1').toString('base64') },
+        { nome: 'a/b\\c.txt', tipo: 'text/plain', base64: Buffer.from('conteudo-2').toString('base64') },
+      ],
+    })
+    expect(r.ok).toBe(true)
+    expect(r.anexos).toEqual({ boleto: true, nota: false, outros: 2 })
+    const attachments = sendMailMock.mock.calls[0][0].attachments
+    expect(attachments).toHaveLength(4)              // logo + boleto + 2 "Outros"
+    expect(attachments[3].filename).toBe('a_b_c.txt') // sem path/quebra no filename
+  })
+
+  it('anexo "Outros" vazio → envio FALHA (não manda incompleto)', async () => {
+    ambienteTesteConfig()
+    fetchMock.mockResolvedValue(pdfOk())
+    const r = await enviarFaturaEmail({
+      ref: '1', cliente: 'ACME', destinatariosReais: ['c@x.com'], boletoUrl: 'https://asaas/b.pdf',
+      anexosExtra: [{ nome: 'vazio.pdf', tipo: 'application/pdf', base64: '' }],
+    })
+    expect(r.ok).toBe(false)
+    expect(r.erro).toContain('vazio')
+    expect(sendMailMock).not.toHaveBeenCalled()
   })
 
   it('FAIL-CLOSED: modo teste sem EMAIL_TESTE_DESTINO → recusa, NÃO envia nem baixa', async () => {

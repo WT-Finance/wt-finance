@@ -18,7 +18,7 @@
 // nem sublabels no status. Cabeçalho e rodapé fixos (a tabela rola por dentro — receita DS §7).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, AlertTriangle, PencilLine, ExternalLink } from 'lucide-react'
+import { Loader2, AlertTriangle, PencilLine, ExternalLink, Paperclip, X } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { splitDestinatarios, emailValido } from '@/lib/email/destinatarios'
@@ -32,6 +32,22 @@ interface ResultadoLinha { fase: 'enviando' | 'enviado' | 'ja' | 'erro'; erro?: 
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 const INTERVALO_MS = 2100 // throttle no cliente: ~30/min por construção (independe do maxDuration)
+
+// Anexo "Outros" (v4.38.0): arquivo local do operador anexado a UM e-mail, além de boleto/nota.
+// Viaja em base64 no payload da action (bodySizeLimit 25mb; 1 fatura por chamada). Limite defensivo
+// por arquivo — o corte final e a regra "anexo-falha = envio-falha" vivem na camada src/lib/email.
+interface AnexoExtra { nome: string; tipo: string; base64: string }
+const LIM_ANEXO_MB = 10
+
+/** File → base64 puro (sem o prefixo data:...;base64,). Usado no upload por-linha de "Outros". */
+function fileParaBase64(f: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => { const s = String(r.result); resolve(s.slice(s.indexOf(',') + 1)) }
+    r.onerror = () => reject(new Error('não foi possível ler o arquivo'))
+    r.readAsDataURL(f)
+  })
+}
 
 interface Props {
   refs:      string[]
@@ -49,6 +65,8 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
   const [soBoleto, setSoBoleto]     = useState<Record<string, boolean>>({})   // marcar "nota pendente" → só boleto
   const [reenviar, setReenviar]     = useState<Record<string, boolean>>({})   // marcar "já enviado" → reenvio
   const [desmarcado, setDesmarcado] = useState<Record<string, boolean>>({})   // desmarcar um Pronto (default = marcado)
+  const [anexosExtra, setAnexosExtra] = useState<Record<string, AnexoExtra[]>>({}) // "Outros" por-linha
+  const [avisoAnexo, setAvisoAnexo]   = useState<Record<string, string>>({})       // arquivo rejeitado (grande/ilegível)
   const [resultado, setResultado]   = useState<Record<string, ResultadoLinha>>({})
   const [editando, setEditando]     = useState<string | null>(null)
 
@@ -127,6 +145,24 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
   }), [linhas, situacaoDe, resultado])
   const prontosMarcados = useMemo(() => prontos.filter(l => !desmarcado[l.ref]).length, [prontos, desmarcado])
 
+  // Anexos "Outros" por-linha: lê os arquivos como base64, aplica o limite por arquivo e acumula.
+  // Arquivo grande/ilegível é IGNORADO com um aviso na célula (nunca falha o modal).
+  async function adicionarAnexos(ref: string, files: FileList | null) {
+    if (!files || files.length === 0) return
+    const novos: AnexoExtra[] = []
+    let rejeitados = 0
+    for (const f of Array.from(files)) {
+      if (f.size > LIM_ANEXO_MB * 1024 * 1024) { rejeitados++; continue }
+      try { novos.push({ nome: f.name, tipo: f.type || 'application/octet-stream', base64: await fileParaBase64(f) }) }
+      catch { rejeitados++ }
+    }
+    if (novos.length) setAnexosExtra(p => ({ ...p, [ref]: [...(p[ref] ?? []), ...novos] }))
+    setAvisoAnexo(p => ({ ...p, [ref]: rejeitados > 0 ? `${rejeitados} arquivo(s) acima de ${LIM_ANEXO_MB} MB ou ilegível(is) — ignorado(s)` : '' }))
+  }
+  function removerAnexo(ref: string, idx: number) {
+    setAnexosExtra(p => ({ ...p, [ref]: (p[ref] ?? []).filter((_, i) => i !== idx) }))
+  }
+
   // Cabeçalho marca/desmarca SÓ os Pronto (nunca pendente/enviado em massa).
   function alternarTodosPronto(marcar: boolean) {
     setDesmarcado(prev => {
@@ -174,6 +210,7 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
       destinatariosOverride: splitDestinatarios(draft[l.ref] ?? '').validos,
       soBoleto: !!soBoleto[l.ref],
       forcarReenvio: !!reenviar[l.ref],
+      anexosExtra: anexosExtra[l.ref] ?? [],
     }))
     if (alvos.length === 0) return
     setDisparando(true)
@@ -187,6 +224,7 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
           destinatariosOverride: a.destinatariosOverride,
           soBoleto: a.soBoleto,
           forcarReenvio: a.forcarReenvio,
+          anexosExtra: a.anexosExtra,
           confirmacaoReal: confirmadoReal,
         })
         setResultado(p => ({ ...p, [a.ref]: res.resultado === 'enviado' ? { fase: 'enviado', registroFalhou: res.registroFalhou } : res.resultado === 'ja_enviado' ? { fase: 'ja' } : { fase: 'erro', erro: res.erro } }))
@@ -197,7 +235,7 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
       if (i < alvos.length - 1) await delay(INTERVALO_MS)
     }
     setDisparando(false)
-  }, [disparando, confirmadoReal, linhas, marcadoDe, draft, soBoleto, reenviar])
+  }, [disparando, confirmadoReal, linhas, marcadoDe, draft, soBoleto, reenviar, anexosExtra])
 
   const resumo = useMemo(() => {
     const vals = Object.values(resultado)
@@ -271,15 +309,40 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
     )
   }
 
-  // ── Célula de anexos: badges clicáveis que ABREM os arquivos (boleto / nota). "Só boleto" oculta a nota. ──
+  // ── Célula de anexos: badges do boleto/nota (abrem o arquivo) + anexos "Outros" (upload por-linha,
+  //    removíveis) + botão de adicionar. "Só boleto" oculta a nota. Os "Outros" viajam no disparo. ──
   function celulaAnexos(l: LinhaEnvioEmail) {
     const so = !!soBoleto[l.ref]
+    const extras = anexosExtra[l.ref] ?? []
+    const aviso = avisoAnexo[l.ref]
+    const semAnexo = !l.boletoUrl && !l.notaUrl && extras.length === 0
     return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {l.boletoUrl && <BadgeAnexo url={l.boletoUrl} label="Boleto" />}
-        {!so && l.notaUrl && <BadgeAnexo url={l.notaUrl} label="Nota fiscal" />}
-        {so && <span className="text-2xs text-zinc-400 italic">só boleto</span>}
-        {!l.boletoUrl && !l.notaUrl && <span className="text-2xs text-zinc-300">—</span>}
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {l.boletoUrl && <BadgeAnexo url={l.boletoUrl} label="Boleto" />}
+          {!so && l.notaUrl && <BadgeAnexo url={l.notaUrl} label="Nota fiscal" />}
+          {so && <span className="text-2xs text-zinc-400 italic">só boleto</span>}
+          {semAnexo && <span className="text-2xs text-zinc-300">—</span>}
+          {extras.map((a, i) => (
+            <span key={i} className="inline-flex max-w-[10rem] items-center gap-1 rounded border border-action-soft-border bg-action-soft px-1.5 py-0.5 text-2xs text-action-primary">
+              <span className="truncate" title={a.nome}>{a.nome}</span>
+              {!disparando && (
+                <button type="button" onClick={() => removerAnexo(l.ref, i)} aria-label={`Remover anexo ${a.nome}`}
+                  className="foco-neutro shrink-0 text-action-primary/70 hover:text-danger">
+                  <X size={10} />
+                </button>
+              )}
+            </span>
+          ))}
+          {!disparando && (
+            <label className="foco-neutro inline-flex cursor-pointer items-center gap-0.5 rounded border border-dashed border-zinc-300 px-1.5 py-0.5 text-2xs text-zinc-500 hover:border-zinc-400 hover:text-zinc-700">
+              <Paperclip size={10} /> Outros
+              <input type="file" multiple className="hidden"
+                onChange={e => { void adicionarAnexos(l.ref, e.target.files); e.target.value = '' }} />
+            </label>
+          )}
+        </div>
+        {aviso && <span className="text-3xs text-warning">{aviso}</span>}
       </div>
     )
   }
@@ -342,7 +405,11 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
   ) : undefined
 
   return (
-    <ModalCentral titulo="Revisar envio" tituloAcessorio={badgeModo} largura="5xl" corpoFlex rodape={rodape} onClose={onClose}>
+    <ModalCentral
+      titulo="Revisar e-mails antes do envio"
+      subtitulo="Revise as informações antes do envio dos e-mails, edite destinatários e inclua anexos"
+      tituloAcessorio={badgeModo} largura="5xl" corpoFlex alturaFixa rodape={rodape} onClose={onClose}
+    >
       {carregando ? (
         <div className="flex-1 flex items-center justify-center text-zinc-400 text-sm"><Loader2 size={18} className="animate-spin mr-2" /> Preparando o envio…</div>
       ) : erroCarga ? (
@@ -372,8 +439,8 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
                 <tr>
                   <th>Pessoa</th>
                   <th className="w-20">Fatura Nº</th>
-                  <th className="w-44">Anexos</th>
-                  <th className="w-[32%]">Destinatários</th>
+                  <th className="w-52">Anexos</th>
+                  <th className="w-[30%]">Destinatários</th>
                   <th className="w-40">Status</th>
                   <th className="w-16 text-center">
                     <span className="inline-flex items-center justify-center" title="Marcar/desmarcar todos os Prontos">
