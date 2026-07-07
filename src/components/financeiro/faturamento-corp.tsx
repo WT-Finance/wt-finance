@@ -376,16 +376,20 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
           <div className="overflow-x-auto">
             {/* table-fixed: as larguras são respeitadas e o texto longo (ex.: "falhou: Endereço do
                 cliente incompleto") QUEBRA dentro da coluna Nota — não escapa nem estoura a tabela. */}
-            <table className="w-full table-fixed min-w-[56rem] text-2xs">
+            {/* Sem min-w (padrão canônico de tabela rolável do projeto): a tabela cabe SEMPRE no
+                container (w-full), sem barra de rolagem horizontal — a coluna Pessoa (sem width)
+                absorve o restante e encolhe nas telas menores; break-words evita que um nome longo
+                estoure a largura. Colunas fixas enxutas para dar respiro à Pessoa. */}
+            <table className="w-full table-fixed text-2xs">
               <thead>
                 <tr className="border-b border-zinc-100 text-left font-medium text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
                   <th className="py-1.5 px-2 text-right w-28">Valor</th>
-                  <th className="py-1.5 px-2 w-24">Vencimento</th>
-                  <th className="py-1.5 px-2 w-20">Fatura Nº</th>
+                  <th className="py-1.5 px-2 w-20">Vencimento</th>
+                  <th className="py-1.5 px-2 w-16">Fatura Nº</th>
                   <th className="py-1.5 px-2 w-28"><CabecalhoAjuda titulo="Status" ajuda="Resultado do cruzamento com a base de pessoas: Pronta (tem CPF/CNPJ), Faltam dados fiscais ou Não identificado. Depois de emitir, o foco passa às colunas Boleto e Nota fiscal." /></th>
                   <th className="py-1.5 px-2 w-36"><CabecalhoAjuda titulo="Boleto" ajuda="Marque Emitir nas faturas prontas para gerar o boleto no Asaas. Após emitir, o resultado (com o link do boleto) aparece nesta coluna." /></th>
-                  <th className="py-1.5 px-2 w-56"><CabecalhoAjuda titulo="Nota fiscal" abreEsquerda ajuda="Opcional por fatura (exige endereço e CEP). Normal usa o valor da fatura; Avulsa, um valor próprio. A NF é assíncrona — use “Atualizar status” para acompanhar até autorizar." /></th>
+                  <th className="py-1.5 px-2 w-48"><CabecalhoAjuda titulo="Nota fiscal" abreEsquerda ajuda="Opcional por fatura (exige endereço e CEP). Normal usa o valor da fatura; Avulsa, um valor próprio. A NF é assíncrona — use “Atualizar status” para acompanhar até autorizar." /></th>
                 </tr>
               </thead>
               <tbody>
@@ -405,7 +409,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                   return (
                     <tr key={f.linha} className={`border-b border-zinc-50 align-top ${naoIdent ? 'bg-warning-bg/40' : ''}`}>
                       <td className="py-1 px-2 text-zinc-700">
-                        <span className="block">{f.pessoa ?? <span className="text-warning font-medium">(sem nome)</span>}</span>
+                        <span className="block break-words">{f.pessoa ?? <span className="text-warning font-medium">(sem nome)</span>}</span>
                         {f.multiplos && <span className="text-3xs text-warning">⚠ múltiplos cadastros com este nome</span>}
                       </td>
                       <td className="py-1 px-2">{f.valor !== null ? <ValorContabil valor={f.valor} className={naoIdent ? 'text-warning font-semibold' : 'text-zinc-700'} /> : <span className="block text-right text-zinc-400">—</span>}</td>
