@@ -62,10 +62,14 @@
   --neutral:        #C99E5E;  /* dourado pálido derivado do brand */
   --neutral-soft:   #F5E6CC;  /* amarelo claro para células próximas de zero */
 
-  /* Brand padrão: Weddings (Pantone 465 C) */
-  --brand:      #BD965C;
-  --brand-soft: #FBF1E1;
-  --brand-deep: #8F7E35;  /* Pantone 7768, oliva */
+  /* Brand padrão: NEUTRO do Grupo (Pantone Cool Gray 9) — v4.40.0/ADR-0145. O default
+     dourado (#BD965C) era um resquício de quando Weddings era a única aba; o dourado é SÓ
+     de Weddings (ADR-0103) e vive no override [data-theme="weddings"] abaixo. O repouso da
+     plataforma (pré-hidratação e telas não-setoriais) é o mesmo trio do tema "group" —
+     sem flash dourado antes do ThemeProvider setar o data-theme. */
+  --brand:      #75777B;
+  --brand-soft: #EAE6DD;
+  --brand-deep: #4B4F54;
 
   /* Cores semânticas dos subsetores Weddings */
   /* Alinhadas às barras do gráfico Composição por Subsetor */
