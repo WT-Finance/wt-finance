@@ -130,3 +130,33 @@ Receita (inegociável):
 Primitivos/templates: `SkeletonHeader`, `SkeletonFiltros`, `SkeletonKpis`, `SkeletonGrafico`,
 `SkeletonTabela`; templates `SkeletonDashboard` (KPIs+gráficos) e `SkeletonPaginaTabela` (busca+tabela).
 Um `loading.tsx` num segmento cobre suas subrotas (ex.: `/performance` cobre trips/corporativo/weddings).
+
+## Identidade Janus (v4.40.0, ADR-0145)
+
+**Fronteira de marca:** Janus = plataforma INTERNA (sidebar, headers, auth, title, e-mails
+internos, onboarding). O cliente externo vê só **Welcome** (e-mail de fatura 100% Welcome Trips
+— invariante provado por diff/teste). Repo/`package.json` não renomeiam.
+
+**Logo = máscara CSS + token (regra única).** O SVG monocromático entra como `mask-image` e a
+cor é `backgroundColor: var(--brand)` — o asset nunca é editado; no repouso o logo é neutro
+(#75777B, novo default do `:root`) e nas abas setoriais herda o override de `[data-theme]`.
+Receita do header: caixa `h-12 w-[168px]` centralizada, `mask-size: contain`, posição `center`;
+byline "by WELCOME" `text-[12px] font-[800] tracking-[1px]` cor `var(--brand)`, gap `mt-2`;
+selo Welcome vertical no rodapé: box `46px · p-1 · rounded-xl · bg-white · border`.
+
+**`--brand` default = neutro do Grupo.** O dourado #BD965C é SÓ de Weddings (override
+`[data-theme=weddings]`); o `:root` tem o trio do tema group (#75777B/#EAE6DD/#4B4F54).
+Nunca reintroduzir dourado como default nem hardcodear #BD965C fora do contexto Weddings
+(e-mail é isento — hex inline obrigatório).
+
+**Lockup duplo (e-mails internos):** `[JANUS] | [WELCOME GROUP]` — tabela de células
+(Outlook-safe), divisor de 1px em célula própria (`bgcolor`, nunca border), gaps de 18px em
+células vazias, artes com ALTURAS ÓPTICAS casadas (36px exibidos; rasters 93px de altura).
+CIDs no bundle (`janus-logo` + `welcome-logo`). A fatura usa só o Welcome.
+
+**Modal de onboarding (receita):** overlay `bg-black/50` + painel `max-w-lg rounded-2xl p-8`
+centrado; lockup duplo horizontal (empilha no mobile: `flex-col sm:flex-row`, divisor `w-px`
+só no desktop); título serif via `style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}`
+(a troca para Trajan Pro é essa linha); corpo `text-sm text-zinc-600`; CTA `bg-action-primary`
+(tokens neutros de plataforma — nunca `var(--brand)`). Flag no banco (`onboarding_visto_em`),
+promise fora do caminho bloqueante, fail-safe (falha → não exibe).

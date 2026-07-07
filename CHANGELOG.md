@@ -6,6 +6,18 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.40.0] — 2026-07-07
+
+MINOR · **Rebranding Janus — o fechamento da v4.** A plataforma interna assume a identidade **Janus**; o cliente externo continua vendo só **Welcome** (e-mail de fatura 100% intocado — provado por diff). Absorve o teste aprovado `test/rebrand-janus-sidebar` (PR #166, fechado sem merge). **Migration 0174 (aditiva)** · ADR-0145.
+
+- **Sidebar Janus sobre tokens (M1):** logo no header (caixa 168×48, máscara CSS — asset nunca editado, cor no componente), byline "by WELCOME" (12px/800/reto), selo Welcome vertical no rodapé (box 46/4/12/branco/borda). REGRA ÚNICA de cor: `var(--brand)` — neutro no repouso, override setorial via `[data-theme]` (tokens, não os hex baked do teste). Ramo legado do `WelcomeGroupLogo` removido; fallback de erro → "Janus" (sonda `Image()`).
+- **Superfícies restantes (M2):** wordmark JANUS nos headers desktop/mobile e telas de auth; textos "WT Finance"→"Janus" (/sem-acesso, /auth/confirm, design-system). Repo/`package.json` não renomeados.
+- **Saneamento `--brand` (M3):** o default do `:root` (#BD965C, resquício) vira o **neutro do Grupo** (#75777B/-soft/-deep) — o dourado é SÓ de Weddings (ADR-0103), vivo no override; fim do flash dourado pré-hidratação nas telas group. Overrides setoriais e Weddings intactos; inventário completo no out-briefing; docs vivas corrigidas.
+- **E-mails internos (M4):** senha provisória + notificação de solicitação ganham cabeçalho **lockup duplo [JANUS] | [WELCOME GROUP]** (tabela Outlook-safe, divisor 1px, alturas ópticas casadas) e textos Janus (`APP_NOME_INTERNO`; `APP_NOME` congelado para a fatura). **Fatura intocada** (`templateFaturaEmail`/`fatura.ts`/`fatura.test.ts` sem diff).
+- **Modal "Welcome to Janus" (M5):** 1× por usuário, controlado no **banco** (migration 0174: `onboarding_visto_em` + RPCs inline; nunca localStorage). Texto verbatim, lockup duplo (empilha no mobile), título serif (stack Georgia; Trajan futura = 1 linha), "Começar" grava. Promise fora do caminho bloqueante (Suspense+`use`); **fail-safe**: consulta falhou → não exibe.
+- **Histórico colapsado por major (M6):** majors anteriores dobram num grupo expansível ("Versões N.x — N versões"); major atual mostra as ~5 recentes + expansor. Regra derivada de `APP_VERSION` (sem hardcode) — na v5.0.0 a v4 dobra sozinha. Nada apagado.
+- **Favicon + title (M0, gate):** ícones do símbolo bifronte (16/32 = corte com traço engrossado + tile branco; 180/192/512 = lockup completo) com régua aprovada pelo Yan antes de aplicar; `title` "Janus · Welcome Group".
+
 ## [4.39.0] — 2026-07-07
 
 MINOR · **Performance e navegabilidade (loading states + caminho crítico).** A plataforma não mandava nenhum byte até todo o trabalho do servidor terminar e não tinha nenhum `loading.tsx` — parecia travada ao navegar. Ataca a **percepção** e o **caminho crítico serial**, **sem migration** e **sem tocar em auth** (P2c fica para depois da virada) nem em contrato de dados. ADR-0144.
