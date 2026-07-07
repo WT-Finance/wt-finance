@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { format, parseISO, differenceInMonths } from 'date-fns'
 import type { PresetPeriodo } from '@/lib/periodo'
@@ -27,6 +27,7 @@ export default function PeriodoFilterPillsUrl({ defaultPreset = 'este-ano' }: Pr
   const router       = useRouter()
   const pathname     = usePathname()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
   const preset  = (searchParams.get('preset') as PresetPeriodo | null) ?? defaultPreset
   const fromVal = searchParams.get('from') ?? ''
@@ -49,7 +50,7 @@ export default function PeriodoFilterPillsUrl({ defaultPreset = 'este-ano' }: Pr
       params.delete('from')
       params.delete('to')
     }
-    router.push(`${pathname}?${params.toString()}`)
+    startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }, [router, pathname, searchParams])
 
   // Persist to localStorage when URL params change
@@ -129,7 +130,13 @@ export default function PeriodoFilterPillsUrl({ defaultPreset = 'este-ano' }: Pr
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div
+      className={[
+        'flex items-center gap-2 flex-wrap transition-opacity',
+        isPending ? 'opacity-60 pointer-events-none' : '',
+      ].join(' ')}
+      aria-busy={isPending}
+    >
       {PILLS.map(pill => {
         const isActive = preset === pill.value
 

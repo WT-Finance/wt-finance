@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { type PresetPeriodo } from '@/lib/periodo'
 import { format, parseISO } from 'date-fns'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
@@ -35,6 +35,7 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
   const pathname     = usePathname()
   const searchParams = useSearchParams()
   const [showCustom, setShowCustom] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const popoverRef = useRef<HTMLDivElement>(null)
 
   const preset  = (searchParams.get('preset') as PresetPeriodo | null) ?? defaultPreset
@@ -51,7 +52,7 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
       params.delete('from')
       params.delete('to')
     }
-    router.push(`${pathname}?${params.toString()}`)
+    startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }, [router, pathname, searchParams])
 
   // Persiste a escolha (mesma chave do select, para continuidade entre as abas).
@@ -79,7 +80,14 @@ export default function PeriodoPillsUrl({ defaultPreset = 'mes-passado' }: Props
   }, [showCustom])
 
   return (
-    <div className="relative flex items-center gap-2 flex-wrap" ref={popoverRef}>
+    <div
+      className={[
+        'relative flex items-center gap-2 flex-wrap transition-opacity',
+        isPending ? 'opacity-60 pointer-events-none' : '',
+      ].join(' ')}
+      ref={popoverRef}
+      aria-busy={isPending}
+    >
       {PILLS.map(p => (
         <button
           key={p.value}
