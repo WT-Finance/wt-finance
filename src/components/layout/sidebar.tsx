@@ -96,72 +96,67 @@ interface SidebarContentProps {
   onCollapse?: () => void
 }
 
-interface WelcomeGroupLogoProps {
-  src: string
-  alt: string
-  /** Recolore o logo para a cor da aba (var(--brand)) via máscara CSS. */
-  recolor?: boolean
-}
+const JANUS_LOGO_SRC = '/logos/logo-janus.svg'
 
-function WelcomeGroupLogo({ src, alt, recolor }: WelcomeGroupLogoProps) {
-  // Guarda o `src` que falhou ao carregar, em vez de um booleano. `imgError` é
-  // DERIVADO (o src com erro é o atual?) — assim a troca de `src` "limpa" o erro
-  // sem precisar de setState síncrono num effect de reset. Mesmo comportamento:
-  // um novo logo ganha nova chance de carregar.
-  const [erroredSrc, setErroredSrc] = useState<string | null>(null)
-  const imgError = erroredSrc === src
+// ── Logo Janus do header (v4.40.0, ADR-0145 — absorve o teste test/rebrand-janus-sidebar) ──
+// Caixa fixa 168×48 centralizada (respiro ~12px/lado até o chevron; ritmo do header antigo),
+// arte via MÁSCARA CSS (SVG monocromático como mask-image + backgroundColor) — o asset nunca é
+// editado; a cor vive aqui. REGRA ÚNICA de cor: `var(--brand)` — no repouso é o neutro do Grupo
+// (#75777B, novo default) e nas abas setoriais herda o override via [data-theme] (Weddings
+// dourado, Trips turquesa, Corp verde) — tokens, não os hex baked do teste (decisão do Yan).
+// Byline "by WELCOME" 12px/800/reto (receita do mockup), gap mt-2 (≈19px ópticos — o lettering
+// da arte termina a ~81% da altura). O ramo legado do WelcomeGroupLogo (Image h-10 à esquerda,
+// scale-[0.9]) foi removido; os SVGs antigos permanecem em public/logos (histórico).
+function JanusLogo() {
+  // A máscara CSS não expõe onError — uma SONDA (Image() em efeito, mesma URL → mesmo cache)
+  // detecta falha de carga e ativa o fallback textual "Janus" (setState em callback async, ok).
+  const [erro, setErro] = useState(false)
+  useEffect(() => {
+    const probe = new window.Image()
+    probe.onerror = () => setErro(true)
+    probe.src = JANUS_LOGO_SRC
+  }, [])
 
-  if (imgError) {
+  const byline = (
+    <div className="flex items-baseline gap-1 mt-2">
+      {/* Byline "by WELCOME" — negrito (800 = Avenir Heavy), reto, 12px, casing literal. */}
+      <span className="text-[12px] font-[800] tracking-[1px]" style={{ color: 'var(--brand)' }}>by WELCOME</span>
+      <VersionHistory />
+    </div>
+  )
+
+  if (erro) {
     return (
       <div className="flex-1 min-w-0 flex flex-col items-center">
         <p className="text-[15px] font-[800] leading-tight uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>
-          Welcome Group
+          Janus
         </p>
-        <p className="text-2xs font-medium tracking-[0.5px]" style={{ color: 'var(--text-muted)' }}>
-          Finance Dashboard
-        </p>
+        {byline}
       </div>
     )
   }
 
   return (
     <div className="flex-1 min-w-0 flex flex-col items-center">
-      <div className="relative h-10 w-full">
-        {recolor ? (
-          // Logo recolorido para a cor da aba: SVG como máscara + backgroundColor
-          // var(--brand) (resolve via [data-theme] no <html>). Mesma técnica do
-          // "powered by Claude" no modal de versões.
-          <div
-            role="img"
-            aria-label={alt}
-            className="absolute inset-0 scale-[0.9] origin-left"
-            style={{
-              backgroundColor: 'var(--brand)',
-              WebkitMaskImage: `url(${src})`,
-              maskImage: `url(${src})`,
-              WebkitMaskRepeat: 'no-repeat',
-              maskRepeat: 'no-repeat',
-              WebkitMaskSize: 'contain',
-              maskSize: 'contain',
-              WebkitMaskPosition: 'left center',
-              maskPosition: 'left center',
-            }}
-          />
-        ) : (
-          <Image
-            src={src}
-            alt={alt}
-            fill
-            priority
-            className="object-contain object-left scale-[0.9] origin-left"
-            onError={() => setErroredSrc(src)}
-          />
-        )}
+      <div className="relative h-12 w-[168px] max-w-full">
+        <div
+          role="img"
+          aria-label="Janus"
+          className="absolute inset-0"
+          style={{
+            backgroundColor: 'var(--brand)',
+            WebkitMaskImage: `url(${JANUS_LOGO_SRC})`,
+            maskImage: `url(${JANUS_LOGO_SRC})`,
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskSize: 'contain',
+            maskSize: 'contain',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+          }}
+        />
       </div>
-      <div className="flex items-baseline gap-1 mt-4">
-        <span className="text-[14px] font-[800] uppercase tracking-[1px]" style={{ color: 'var(--brand)' }}>WT Finance</span>
-        <VersionHistory />
-      </div>
+      {byline}
     </div>
   )
 }
@@ -169,14 +164,8 @@ function WelcomeGroupLogo({ src, alt, recolor }: WelcomeGroupLogoProps) {
 function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContentProps) {
   const isPerformanceActive = pathname.startsWith('/performance')
   const isFinanceiroActive  = pathname.startsWith('/financeiro')
-  // Logo por aba: cada área de Performance tem a sua identidade; fora delas, o Welcome Group.
-  const { logoSrc, logoAlt } =
-    pathname.startsWith('/performance/weddings')    ? { logoSrc: '/logos/welcome-weddings.svg', logoAlt: 'Welcome Weddings' }    :
-    pathname.startsWith('/performance/trips')       ? { logoSrc: '/logos/welcome-trips.svg',    logoAlt: 'Welcome Trips' }       :
-    pathname.startsWith('/performance/corporativo') ? { logoSrc: '/logos/welcome-corp.svg',     logoAlt: 'Welcome Corporativo' } :
-                                                      { logoSrc: '/logos/welcome-group.svg',    logoAlt: 'Welcome Group' }
-  // Corp: logo recolorido para a cor principal da aba (#0D5257).
-  const logoRecolor = pathname.startsWith('/performance/corporativo')
+  // Logo: Janus em TODAS as variantes, cor única `var(--brand)` (o [data-theme] resolve o
+  // override setorial por aba; fora de Performance, o neutro do Grupo) — ver JanusLogo acima.
   // Grupos com subabas (Performance, Financeiro) nascem RECOLHIDOS a cada abertura
   // do site (v4.16.2) — sem persistência: o estado é só em memória, então sobrevive
   // à navegação client-side mas volta a recolher num carregamento/refresh novo. (A
@@ -272,7 +261,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
     <div className="flex flex-col h-full" style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}>
       {/* Header */}
       <div className="px-5 py-3 border-b relative flex items-center" style={{ borderColor: 'var(--sidebar-border)' }}>
-        <WelcomeGroupLogo src={logoSrc} alt={logoAlt} recolor={logoRecolor} />
+        <JanusLogo />
         {onCollapse && (
           <button
             onClick={onCollapse}
@@ -480,8 +469,24 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
         />
       </div>
 
-      {/* Footer — identidade do usuário logado + sair */}
-      <div className="h-14 px-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--sidebar-border)' }}>
+      {/* Footer — identidade do usuário logado + sair. min-h + py acomodam o selo (receita do
+          mockup aprovado). Narrativa: o Janus assume o header; a marca Welcome permanece aqui. */}
+      <div className="min-h-14 px-4 py-2 border-t flex items-center gap-2.5" style={{ borderColor: 'var(--sidebar-border)' }}>
+        {/* Selo Welcome Group vertical em box — receita: 46px · respiro 4px · canto 12px ·
+            fundo branco · com borda. (Image fill ignora o padding do pai → wrapper relative.) */}
+        <div
+          className="h-[46px] w-[46px] shrink-0 p-1 rounded-xl bg-white border"
+          style={{ borderColor: 'var(--sidebar-border)' }}
+        >
+          <div className="relative h-full w-full">
+            <Image
+              src="/logos/welcome-group-vert.svg"
+              alt="Welcome Group"
+              fill
+              className="object-contain"
+            />
+          </div>
+        </div>
         <div className="flex-1 min-w-0" title={usuario.email ?? undefined}>
           <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
             {usuario.nome ?? usuario.email}
