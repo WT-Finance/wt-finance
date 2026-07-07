@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Search, Download } from 'lucide-react'
-import * as XLSX from '@e965/xlsx'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
 import { fmtDateLong, fmtMeses, numBRL2, parseLocalDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
@@ -105,7 +104,12 @@ function SortTh({ children, field, right, center, title, ordem, onSort }: SortTh
 
 // ── Excel export ──────────────────────────────────────────────────────────────
 
-function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
+async function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string) {
+  // Import dinâmico (P3b, v4.39.0/M5): tira o @e965/xlsx do bundle inicial —
+  // só carrega quando o usuário efetivamente clica em "Exportar" (padrão do
+  // resto do app; ver @/lib/carga/parse-vendas-produto.ts).
+  const XLSX = await import('@e965/xlsx')
+
   const dados = operacoes.map(op => ({
     'Operação / Casal':      op.nome_casal ?? op.operacao,
     'Hotel':                 op.hotel ?? '—',
@@ -312,7 +316,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
         if (data.operacoes.length < PAGE || todas.length >= total) break
         pag++
       }
-      exportarParaExcel(todas, periodoLabel)
+      await exportarParaExcel(todas, periodoLabel)
     } catch {
     } finally {
       setIsExporting(false)

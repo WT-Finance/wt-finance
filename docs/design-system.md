@@ -110,3 +110,23 @@ Apenas as 2 grandes seções mantêm comportamento recolhível (ADR-0042):
 Cards individuais ficam sempre visíveis.
 
 `TopSection` usa padrão de alta visibilidade (chevron 20px, bold, fundo `--brand-soft`, faixa lateral `--brand`).
+
+## Skeletons de carregamento (v4.39.0)
+
+Estados de carregamento por rota via `loading.tsx` (App Router) + módulo reutilizável
+`src/components/shared/skeletons.tsx`. O App Router mostra o skeleton **imediatamente** ao
+navegar, enquanto o RSC da página resolve.
+
+Receita (inegociável):
+- **Silhueta aproximada da página real** — header + filtros + cards/tabela/gráficos nas dimensões
+  aproximadas. **Sem CLS:** alturas/larguras fixas; a troca skeleton→conteúdo não "pula".
+- **Tom neutro** — `bg-zinc-100`/`bg-zinc-200` + `animate-pulse`. Nunca token de marca no skeleton.
+- **A sidebar NUNCA entra no skeleton** — `loading.tsx` só substitui o slot `children` do `<main>`
+  do AppShell (a sidebar é irmã, não filha); o layout permanece.
+- **Mesmo container da página** — cada `loading.tsx` envolve o skeleton no mesmo `max-w-*`/`px-*`
+  da sua page (senão CLS). Use `SkeletonPagina container="…"`.
+- **Puros de markup** — server components, zero JS/hook.
+
+Primitivos/templates: `SkeletonHeader`, `SkeletonFiltros`, `SkeletonKpis`, `SkeletonGrafico`,
+`SkeletonTabela`; templates `SkeletonDashboard` (KPIs+gráficos) e `SkeletonPaginaTabela` (busca+tabela).
+Um `loading.tsx` num segmento cobre suas subrotas (ex.: `/performance` cobre trips/corporativo/weddings).

@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.39.0',
+    data: '2026-07-07T14:50',
+    itens: [
+      { tipo: 'melhoria', texto: 'A plataforma responde imediatamente ao navegar. Antes, ao abrir uma tela, ela parecia travada até tudo carregar; agora aparece na hora um esqueleto da página (cabeçalho, filtros, cards e tabela em cinza) e o conteúdo real entra por cima assim que fica pronto — a barra lateral permanece sempre no lugar. Trocar o período ou o setor nos filtros também passa a mostrar que o clique foi registrado, em vez de parecer que nada aconteceu.' },
+      { tipo: 'melhoria', texto: 'Telas mais leves e rápidas para começar a usar: o contador de solicitações da barra lateral deixou de atrasar a abertura de qualquer página (ele aparece sozinho, logo depois), o Fluxo de Caixa busca seus dados de uma vez só (antes eram duas etapas em sequência), e recursos pesados — como os gráficos de detalhe e a exportação para Excel — só são carregados quando você realmente os usa, deixando o carregamento inicial mais enxuto.' },
+    ],
+  },
+  {
     versao: '4.38.0',
     data: '2026-07-06T19:21',
     itens: [

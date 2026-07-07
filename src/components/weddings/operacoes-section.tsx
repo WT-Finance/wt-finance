@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import ListaOperacoesCard from '@/components/weddings/lista-operacoes'
-import DrilldownDrawer from '@/components/weddings/drilldown-drawer'
+import DrilldownDrawer from '@/components/weddings/drilldown-drawer-lazy'
 
 export default function OperacoesSection() {
   const [selectedOperacao, setSelectedOperacao] = useState<string | null>(null)

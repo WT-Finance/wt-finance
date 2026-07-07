@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import KpiDetailDrawer from './kpi-detail-drawer'
-import KpiPrincipalDrawer from '@/components/weddings/kpi-principal-drawer'
+import KpiPrincipalDrawer from '@/components/weddings/kpi-principal-drawer-lazy'
 
 interface Props {
   children:  ReactNode

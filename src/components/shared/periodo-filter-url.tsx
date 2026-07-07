@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useTransition } from 'react'
 import { type PresetPeriodo } from '@/lib/periodo'
 import { format } from 'date-fns'
 
@@ -27,6 +27,7 @@ export default function PeriodoFilterUrl({ defaultPreset = 'mes-passado' }: Prop
   const router       = useRouter()
   const pathname     = usePathname()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
   const preset  = (searchParams.get('preset') as PresetPeriodo | null) ?? defaultPreset
   const fromVal = searchParams.get('from') ?? ''
@@ -42,7 +43,7 @@ export default function PeriodoFilterUrl({ defaultPreset = 'mes-passado' }: Prop
       params.delete('from')
       params.delete('to')
     }
-    router.push(`${pathname}?${params.toString()}`)
+    startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }, [router, pathname, searchParams])
 
   useEffect(() => {
@@ -61,13 +62,15 @@ export default function PeriodoFilterUrl({ defaultPreset = 'mes-passado' }: Prop
 
   const selectClass =
     'rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400'
+  const selectClassPending = [selectClass, isPending ? 'opacity-60 pointer-events-none' : ''].join(' ')
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-2 flex-wrap transition-opacity" aria-busy={isPending}>
       <select
         value={preset}
         onChange={e => push(e.target.value as PresetPeriodo)}
-        className={selectClass}
+        disabled={isPending}
+        className={selectClassPending}
       >
         {PRESETS.map(p => (
           <option key={p.value} value={p.value}>{p.label}</option>
@@ -79,13 +82,15 @@ export default function PeriodoFilterUrl({ defaultPreset = 'mes-passado' }: Prop
           <input
             type="date" aria-label="Data inicial" value={fromVal} min={MIN_DATE} max={toVal || MAX_DATE}
             onChange={e => push('personalizado', e.target.value, toVal)}
-            className={selectClass}
+            disabled={isPending}
+            className={selectClassPending}
           />
           <span className="text-zinc-400 text-sm">até</span>
           <input
             type="date" aria-label="Data final" value={toVal} min={fromVal || MIN_DATE} max={MAX_DATE}
             onChange={e => push('personalizado', fromVal, e.target.value)}
-            className={selectClass}
+            disabled={isPending}
+            className={selectClassPending}
           />
         </>
       )}
