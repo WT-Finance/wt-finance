@@ -23,6 +23,9 @@ interface Props {
   /** Corpo como flex-col SEM scroll próprio — o caller controla o scroll interno (sub-cabeçalho
    *  fixo + tabela `flex-1 min-h-0 overflow-auto`). Default false = corpo rola como bloco (px-6 py-5). */
   corpoFlex?:       boolean
+  /** Altura FIXA do painel (h-[85vh]) em vez de max-h-[85vh] — o modal não "pula" de tamanho
+   *  conforme o nº de linhas, e o estado de carga preenche a área toda. Default false. */
+  alturaFixa?:      boolean
   onClose:          () => void
   children:         ReactNode
 }
@@ -31,7 +34,7 @@ const MAX_W: Record<NonNullable<Props['largura']>, string> = {
   lg: 'max-w-lg', '2xl': 'max-w-2xl', '4xl': 'max-w-4xl', '5xl': 'max-w-5xl',
 }
 
-export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largura = 'lg', rodape, corpoFlex = false, onClose, children }: Props) {
+export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largura = 'lg', rodape, corpoFlex = false, alturaFixa = false, onClose, children }: Props) {
   const [visible, setVisible] = useState(false)
   const painelRef = useRef<HTMLDivElement>(null)
 
@@ -83,7 +86,7 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largu
       <div
         ref={painelRef}
         tabIndex={-1}
-        className={`relative bg-white rounded-xl shadow-2xl w-full ${MAX_W[largura]} max-h-[85vh] flex flex-col outline-none`}
+        className={`relative bg-white rounded-xl shadow-2xl w-full ${MAX_W[largura]} ${alturaFixa ? 'h-[85vh]' : 'max-h-[85vh]'} flex flex-col outline-none`}
         style={{
           opacity: visible ? 1 : 0,
           transform: visible ? 'scale(1)' : 'scale(0.97)',

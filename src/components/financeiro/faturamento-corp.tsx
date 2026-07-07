@@ -9,15 +9,17 @@
 import { useRef, useState, useCallback, useMemo } from 'react'
 import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2, ExternalLink, FileText, RefreshCw, Barcode, Mail } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import Tooltip from '@/components/ui/tooltip'
 import ModalCentral from '@/components/shared/modal-central'
 import { ValorContabil } from '@/components/shared/valor-contabil'
+import { classificarStatusNota, labelClasseNota } from '@/lib/faturamento/status-nota'
 import { numBRL2 } from '@/lib/fmt'
 import { SETOR_COLORS } from '@/lib/config'
 import { parseFaturamentoFile } from '@/lib/faturamento/parse-faturamento'
 import { classificarFaturas, mapaPorNome } from '@/lib/faturamento/classificar'
 import {
   cruzarFaturamento, emitirBoletos, emitirNotas, atualizarStatusNotas,
-  resultadoBoletos, resultadoNotas, emailEnviados,
+  resultadoBoletos, resultadoNotas,
   type FaturaEmitir, type ResultadoEmissao, type ItemEmissao,
   type NotaEmitir, type ResultadoNotas, type ItemNota,
   type BoletoResultado, type NotaResultado,
@@ -41,15 +43,8 @@ const fmtData = (iso: string | null) => iso ? iso.slice(0, 10).split('-').revers
 // externalReference da NF no cliente (espelha externalReferenceNota do server-only notas.ts).
 const refNota = (fcn: string, modo: ModoNota) => modo === 'avulsa' ? `${fcn}-AVULSA` : fcn
 
-// Status da NF (Asaas) → rótulo PT-BR (nunca inglês, ex.: "synchronized"). A NF é assíncrona:
-// SCHEDULED/SYNCHRONIZED/PENDING/PROCESSING = "processando"; AUTHORIZED = "autorizada".
-function labelStatusNota(st: string | null | undefined): string {
-  const s = (st ?? '').toUpperCase()
-  if (s === 'AUTHORIZED') return 'autorizada'
-  if (s === 'ERROR') return 'falhou'
-  if (s.includes('CANCEL')) return 'cancelada'
-  return 'processando'
-}
+// A classificação de status da NF (autorizada/processando/cancelada/falhou) vive em
+// @/lib/faturamento/status-nota (FONTE ÚNICA, fail-safe invertido — desconhecido = falhou).
 
 type Estado = 'vazio' | 'processando' | 'pronto' | 'erro'
 type Fase   = 'lendo' | 'cruzando'
@@ -99,7 +94,6 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   // os botões de "dois momentos" e o elegível ao envio. Leituras fail-safe (action → [] em erro).
   const [boletosDB, setBoletosDB]       = useState<BoletoResultado[]>([])
   const [notasDB, setNotasDB]           = useState<NotaResultado[]>([])
-  const [emailFeitos, setEmailFeitos]   = useState<string[]>([]) // refs já enviadas por e-mail no modo atual
   const [modalResBol, setModalResBol]   = useState(false) // "Ver resultado · boletos"
   const [modalResNota, setModalResNota] = useState(false) // "Ver resultado · notas fiscais"
 
@@ -110,16 +104,17 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   const ativo = estado !== 'processando' && !emitindo && !emitindoNota
   const ehProducao = ambiente === 'producao'
 
-  // Re-lê o estado do banco (boletos/notas/e-mail) das refs carregadas. Chamada ao CRUZAR
-  // (re-hidratação — a tela lembra o que já foi feito, SEM reemitir) e após cada emissão. As três
-  // leituras são fail-safe (a action devolve [] em erro) → leitura que caia não quebra a tela, só
-  // segue com o que tinha. Semeia notaStatus (invoiceId) p/ o "Atualizar status" funcionar após
-  // reload (fecha o follow-up da Fase 2) — sem sobrescrever um status já atualizado na sessão.
+  // Re-lê o estado do banco (boletos/notas) das refs carregadas. Chamada ao CRUZAR (re-hidratação —
+  // a tela lembra o que já foi feito, SEM reemitir) e após cada emissão. As leituras são fail-safe
+  // (a action devolve [] em erro) → leitura que caia não quebra a tela, só segue com o que tinha.
+  // Semeia notaStatus (invoiceId) p/ o "Atualizar status" funcionar após reload (fecha o follow-up
+  // da Fase 2) — sem sobrescrever um status já atualizado na sessão. (O estado de e-mail já enviado
+  // é re-derivado no modal "Revisar e-mails" por prepararEnvioEmails — não precisa aqui.)
   const recarregarResultados = useCallback(async (refs: string[]) => {
-    if (refs.length === 0) { setBoletosDB([]); setNotasDB([]); setEmailFeitos([]); return }
+    if (refs.length === 0) { setBoletosDB([]); setNotasDB([]); return }
     try {
-      const [bol, nts, mails] = await Promise.all([resultadoBoletos(refs), resultadoNotas(refs), emailEnviados(refs)])
-      setBoletosDB(bol); setNotasDB(nts); setEmailFeitos(mails)
+      const [bol, nts] = await Promise.all([resultadoBoletos(refs), resultadoNotas(refs)])
+      setBoletosDB(bol); setNotasDB(nts)
       if (nts.length > 0) setNotaStatus(prev => {
         const next = { ...prev }
         for (const n of nts) if (!next[n.externalReference]) next[n.externalReference] = { status: n.status, pdfUrl: n.pdfUrl, number: n.number, invoiceId: n.invoiceId }
@@ -186,7 +181,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
   )
 
   const processar = useCallback(async (file: File) => {
-    setErro(null); setEstado('processando'); setFase('lendo'); setResumo(null); setFaturas([]); setResultado(null); setResNota(null); setNotaStatus({}); setBoletosDB([]); setNotasDB([]); setEmailFeitos([])
+    setErro(null); setEstado('processando'); setFase('lendo'); setResumo(null); setFaturas([]); setResultado(null); setResNota(null); setNotaStatus({}); setBoletosDB([]); setNotasDB([])
 
     if (file.size > 10 * 1024 * 1024) { setErro('Arquivo maior que 10MB.'); setEstado('erro'); return }
 
@@ -359,43 +354,38 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
       {/* Revisão (upload → revisão → resultado ABAIXO, após emitir — a ordem do fluxo real) */}
       {resumo && estado === 'pronto' && (
         <Card title="Revisão do faturamento" subtitle="Confira o cruzamento, marque os boletos e escolha as notas fiscais.">
-          {/* Resumo no topo */}
-          <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-zinc-100 pb-3 mb-3 text-sm">
-            <span className="font-semibold" style={{ color: COR_CORP }}>{resumo.total} {resumo.total === 1 ? 'fatura' : 'faturas'}</span>
-            <span className="text-zinc-500">Total <span className="text-[var(--text-subtle)] text-2xs">R$</span> <span className="tabular-nums font-medium text-zinc-700">{numBRL2(resumo.valorTotal)}</span></span>
-            <span className="text-success">{resumo.prontas} {resumo.prontas === 1 ? 'pronta' : 'prontas'}</span>
-            <span className="text-warning">{resumo.semDados} sem dados fiscais</span>
-            <span className="text-zinc-500">{resumo.naoIdentificadas} não identificadas</span>
+          {/* Resumo no topo + "Atualizar status" à direita (SEMPRE visível; desabilitado enquanto
+              não houver nota emitida com status a acompanhar — o ↻ saiu do cabeçalho da coluna). */}
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-3 mb-3">
+            <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
+              <span className="font-semibold" style={{ color: COR_CORP }}>{resumo.total} {resumo.total === 1 ? 'fatura' : 'faturas'}</span>
+              <span className="text-zinc-500">Total <span className="text-[var(--text-subtle)] text-2xs">R$</span> <span className="tabular-nums font-medium text-zinc-700">{numBRL2(resumo.valorTotal)}</span></span>
+              <span className="text-success">{resumo.prontas} {resumo.prontas === 1 ? 'pronta' : 'prontas'}</span>
+              <span className="text-warning">{resumo.semDados} sem dados fiscais</span>
+              <span className="text-zinc-500">{resumo.naoIdentificadas} não identificadas</span>
+            </div>
+            <button
+              type="button" onClick={() => void atualizarStatus()} disabled={!temNotaComStatus || atualizando}
+              title={temNotaComStatus ? 'Atualizar o status das notas fiscais junto ao Asaas' : 'Emita notas fiscais para acompanhar o status'}
+              className="foco-neutro shrink-0 inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RefreshCw size={13} className={atualizando ? 'animate-spin' : ''} /> Atualizar status
+            </button>
           </div>
 
           <div className="overflow-x-auto">
             {/* table-fixed: as larguras são respeitadas e o texto longo (ex.: "falhou: Endereço do
                 cliente incompleto") QUEBRA dentro da coluna Nota — não escapa nem estoura a tabela. */}
-            <table className="w-full table-fixed min-w-[54rem] text-2xs">
+            <table className="w-full table-fixed min-w-[56rem] text-2xs">
               <thead>
                 <tr className="border-b border-zinc-100 text-left font-medium text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
-                  <th className="py-1.5 px-2 text-right w-24">Valor</th>
+                  <th className="py-1.5 px-2 text-right w-28">Valor</th>
                   <th className="py-1.5 px-2 w-24">Vencimento</th>
                   <th className="py-1.5 px-2 w-20">Fatura Nº</th>
-                  <th className="py-1.5 px-2 w-28">Status</th>
-                  <th className="py-1.5 px-2 w-28">Boleto</th>
-                  <th className="py-1.5 px-2 w-56">
-                    {/* Atualizar status (↻) mora AQUI, ao lado do título da coluna cujas linhas ele
-                        atualiza — só aparece quando há nota emitida com status a acompanhar. */}
-                    <span className="inline-flex items-center gap-1.5">
-                      Nota fiscal
-                      {temNotaComStatus && (
-                        <button
-                          type="button" onClick={() => void atualizarStatus()} disabled={atualizando}
-                          title="Atualizar status das notas fiscais" aria-label="Atualizar status das notas fiscais"
-                          className="foco-neutro rounded p-0.5 text-zinc-400 hover:text-action-primary disabled:opacity-40"
-                        >
-                          <RefreshCw size={12} className={atualizando ? 'animate-spin' : ''} />
-                        </button>
-                      )}
-                    </span>
-                  </th>
+                  <th className="py-1.5 px-2 w-28"><CabecalhoAjuda titulo="Status" ajuda="Resultado do cruzamento com a base de pessoas: Pronta (tem CPF/CNPJ), Faltam dados fiscais ou Não identificado. Depois de emitir, o foco passa às colunas Boleto e Nota fiscal." /></th>
+                  <th className="py-1.5 px-2 w-36"><CabecalhoAjuda titulo="Boleto" ajuda="Marque Emitir nas faturas prontas para gerar o boleto no Asaas. Após emitir, o resultado (com o link do boleto) aparece nesta coluna." /></th>
+                  <th className="py-1.5 px-2 w-56"><CabecalhoAjuda titulo="Nota fiscal" abreEsquerda ajuda="Opcional por fatura (exige endereço e CEP). Normal usa o valor da fatura; Avulsa, um valor próprio. A NF é assíncrona — use “Atualizar status” para acompanhar até autorizar." /></th>
                 </tr>
               </thead>
               <tbody>
@@ -418,7 +408,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                         <span className="block">{f.pessoa ?? <span className="text-warning font-medium">(sem nome)</span>}</span>
                         {f.multiplos && <span className="text-3xs text-warning">⚠ múltiplos cadastros com este nome</span>}
                       </td>
-                      <td className={`py-1 px-2 text-right tabular-nums ${naoIdent ? 'text-warning font-semibold' : 'text-zinc-700'}`}>{f.valor !== null ? numBRL2(f.valor) : '—'}</td>
+                      <td className="py-1 px-2">{f.valor !== null ? <ValorContabil valor={f.valor} className={naoIdent ? 'text-warning font-semibold' : 'text-zinc-700'} /> : <span className="block text-right text-zinc-400">—</span>}</td>
                       <td className="py-1 px-2 tabular-nums text-zinc-600">{fmtData(f.vencimento)}</td>
                       <td className="py-1 px-2 tabular-nums text-zinc-600">{fcn ?? '—'}</td>
                       {/* Status: SÓ o status do cruzamento (de-ênfase depois de emitir — o foco vai p/ colunas/modais próprios). */}
@@ -448,9 +438,10 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
           </div>
 
           {/* Barra de ação — DOIS MOMENTOS: cada "Emitir X" vira "Ver resultado · X" após a emissão
-              (largura FIXA por botão: não pula na troca de texto). "Enviar e-mails" fixo à direita. */}
+              (largura FIXA por botão: não pula na troca de texto). "Enviar e-mails" fixo à direita.
+              As informações de e-mail saíram daqui (vivem no modal "Revisar e-mails"). */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4">
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-2xs text-zinc-500">
+            <div className="flex min-w-0 flex-wrap gap-x-6 gap-y-1 text-2xs text-zinc-500">
               <p>
                 {selecionadas.length > 0
                   ? <>Boletos: <b className="text-zinc-700">{selecionadas.length}</b> {selecionadas.length === 1 ? 'fatura' : 'faturas'} · Total <span className="text-[var(--text-subtle)]">R$</span> <span className="tabular-nums text-zinc-700">{numBRL2(totalSelecionado)}</span></>
@@ -461,11 +452,8 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                   ? <>Notas fiscais: <b className="text-zinc-700">{selecionadasNota.length}</b> ({selecionadasNota.filter(f => f.modoNf === 'avulsa').length} avulsa{selecionadasNota.filter(f => f.modoNf === 'avulsa').length === 1 ? '' : 's'}) · Total <span className="text-[var(--text-subtle)]">R$</span> <span className="tabular-nums text-zinc-700">{numBRL2(totalNota)}</span></>
                   : 'Escolha as notas fiscais (Normal/Avulsa) nas faturas prontas para NF.'}
               </p>
-              {refsComBoleto.length > 0 && (
-                <p>E-mails: <b className="text-zinc-700">{refsComBoleto.length}</b> com boleto{emailFeitos.length > 0 ? <> · <b className="text-zinc-700">{emailFeitos.length}</b> já enviado{emailFeitos.length === 1 ? '' : 's'}</> : ''}{emailModo === 'teste' ? ' (modo teste)' : ''}</p>
-              )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {/* Boleto — Emitir ↔ Ver resultado (min-w igual nos dois momentos). */}
               {boletosDB.length > 0 ? (
                 <button
@@ -518,23 +506,6 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
           {!configurado && (
             <p className="mt-2 text-2xs text-warning">⚠ Asaas não configurado neste ambiente — a emissão está indisponível.</p>
           )}
-          <p className="mt-3 text-3xs text-zinc-400">
-            Nota fiscal (opcional por fatura, exige endereço/CEP): <b>Normal</b> usa o valor da fatura, <b>Avulsa</b> um valor próprio.
-            A NF é <b>assíncrona</b> — após emitir fica “processando” até a prefeitura autorizar; use o ícone <RefreshCw size={9} className="inline align-[-1px]" /> ao lado de “Nota fiscal” na tabela (ou “Atualizar status” no modal de resultado) para atualizar o status.
-          </p>
-          {/* Envio de e-mail: badge de modo + como disparar (lote via "Enviar e-mails"). */}
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-3xs">
-            {emailModo === 'teste' ? (
-              <>
-                <span className="inline-flex items-center gap-1 rounded-md border border-gestao bg-gestao-soft px-2 py-0.5 font-medium text-gestao-fg">
-                  <FlaskConical size={11} /> E-mail: modo teste
-                </span>
-                <span className="text-zinc-400">os e-mails de fatura vão para a caixa de teste (não para o cliente); use <b>Enviar e-mails</b> para revisar os destinatários e disparar em lote.</span>
-              </>
-            ) : (
-              <span className="text-warning">⚠ Envio de e-mail em modo real não está liberado nesta versão.</span>
-            )}
-          </div>
         </Card>
       )}
 
@@ -654,7 +625,7 @@ function dbToItemBoleto(b: BoletoResultado): ItemEmissao {
   }
 }
 function dbToItemNota(n: NotaResultado): ItemNota {
-  const falhou = (n.status ?? '').toUpperCase() === 'ERROR'
+  const falhou = classificarStatusNota(n.status) === 'falhou'
   return {
     ref: n.externalReference, faturaClienteNo: n.ref ?? '', pessoa: n.pessoa ?? '', modo: n.modo,
     resultado: falhou ? 'falhou' : 'emitida', invoiceId: n.invoiceId, status: n.status,
@@ -701,31 +672,74 @@ function LinhaResultado({ item }: { item: ItemEmissao }) {
 }
 
 // ── Resultado + status por fatura (nota) — co-locado na coluna Nota fiscal (PT-BR) ─────
+// A classe é decidida pelo status FRESCO (status?.status ?? item.status), via classificarStatusNota
+// (fail-safe invertido) — nunca pelo `resultado` congelado na emissão. Falha (status desconhecido/
+// ERROR ou refresh que veio rejeitado) = VERMELHO, sem spinner, com motivo — nunca "processando" eterno.
 function LinhaResultadoNota({ item, status }: { item: ItemNota; status?: NotaStatus }) {
-  if (item.resultado === 'falhou') return <span className="block text-3xs text-danger">falhou: {item.erro}</span>
   if (item.resultado === 'pulada') return <span className="block text-3xs text-zinc-400">pulada (já emitida)</span>
 
-  const st = (status?.status ?? item.status ?? '').toUpperCase()
-  const pdf = status?.pdfUrl ?? item.pdfUrl ?? null
-  const autorizada = st === 'AUTHORIZED'
-  // NF criada mas autorização falhou: a nota existe, porém não foi autorizada — avisa (não mascara).
-  if (item.avisoAutorizacao) {
+  const stRaw  = status?.status ?? item.status ?? null
+  const pdf    = status?.pdfUrl ?? item.pdfUrl ?? null
+  const number = status?.number
+  const classe = classificarStatusNota(stRaw)
+
+  // Falha de EMISSÃO ou re-hidratada como falha: vermelho + ícone + motivo (erro persistido ou o
+  // status cru). Nunca "falhou: " órfão sem motivo — mesmo tratamento da falha por status abaixo.
+  if (item.resultado === 'falhou') {
+    const motivo = item.erro || (stRaw ? `status ${stRaw}` : null)
+    return (
+      <span className="flex flex-wrap items-center gap-1 text-3xs text-danger">
+        <AlertTriangle size={11} className="shrink-0" /> falhou{motivo ? `: ${motivo}` : ''}
+      </span>
+    )
+  }
+
+  // NF criada mas autorização falhou NA EMISSÃO — só enquanto a nota NÃO estiver autorizada; se um
+  // refresh posterior a autorizou (classe 'autorizada'), o aviso congelado não deve mascarar o verde.
+  if (item.avisoAutorizacao && classe !== 'autorizada') {
     return (
       <span className="flex flex-wrap items-center gap-1 text-3xs text-warning">
         <AlertTriangle size={11} className="shrink-0" /> criada, mas a autorização falhou: {item.avisoAutorizacao}
-        {status?.number && <span className="text-zinc-400">nº {status.number}</span>}
+        {number && <span className="text-zinc-400">nº {number}</span>}
         {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={9} /></a>}
       </span>
     )
   }
+
+  // Falha por STATUS (ex.: rejeitada pela prefeitura APÓS emitir) — vermelho, SEM spinner, com motivo.
+  if (classe === 'falhou') {
+    const motivo = item.erro || (stRaw ? `status ${stRaw}` : null)
+    return (
+      <span className="flex flex-wrap items-center gap-1 text-3xs text-danger">
+        <AlertTriangle size={11} className="shrink-0" /> falhou{motivo ? `: ${motivo}` : ''}
+        {number && <span className="text-zinc-400">nº {number}</span>}
+      </span>
+    )
+  }
+  const autorizada = classe === 'autorizada'
+  const cor = autorizada ? 'text-success' : classe === 'cancelada' ? 'text-zinc-500' : 'text-action-primary'
   return (
-    <span className={`flex flex-wrap items-center gap-1 text-3xs ${autorizada ? 'text-success' : 'text-action-primary'}`}>
-      {autorizada ? <CheckCircle2 size={11} className="shrink-0" /> : <Loader2 size={11} className="shrink-0 animate-spin" />}
-      {labelStatusNota(st)}
-      {status?.number && <span className="text-zinc-400">nº {status.number}</span>}
+    <span className={`flex flex-wrap items-center gap-1 text-3xs ${cor}`}>
+      {autorizada ? <CheckCircle2 size={11} className="shrink-0" /> : classe === 'cancelada' ? null : <Loader2 size={11} className="shrink-0 animate-spin" />}
+      {labelClasseNota(classe)}
+      {number && <span className="text-zinc-400">nº {number}</span>}
       {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={9} /></a>}
       {item.registroFalhou && <span className="text-warning">(registro local falhou)</span>}
     </span>
+  )
+}
+
+// ── Cabeçalho de coluna com "?" discreto → tooltip explicativo (Status/Boleto/Nota fiscal) ──
+// A explicação que ficava na legenda ao pé da tabela vive AQUI (dica sob demanda). `abreEsquerda`
+// abre o balão para a esquerda (coluna colada à borda direita, não vaza do container rolável).
+function CabecalhoAjuda({ titulo, ajuda, abreEsquerda = false }: { titulo: string; ajuda: string; abreEsquerda?: boolean }) {
+  return (
+    <Tooltip conteudo={ajuda} className={`z-30 w-60 whitespace-normal font-normal leading-snug ${abreEsquerda ? '!left-auto right-0' : ''}`}>
+      <span className="inline-flex items-center gap-1">
+        {titulo}
+        <span aria-hidden className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
+      </span>
+    </Tooltip>
   )
 }
 
@@ -760,6 +774,14 @@ function theadFixo(rolado: boolean): string {
   return `sticky top-0 z-20 text-left font-medium text-zinc-400 [&_th]:bg-zinc-50 [&_th]:py-2 [&_th]:px-2 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-200 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg ${rolado ? '[&_tr:last-child_th]:shadow-[0_2px_4px_-2px_rgba(0,0,0,0.12)]' : ''}`
 }
 
+// Chip de ambiente para o cabeçalho dos modais de resultado (sandbox âmbar / produção neutro) —
+// preserva o sinal "estes documentos são de teste ou reais" ao lado do título.
+function ChipAmbiente({ ambiente }: { ambiente: AsaasAmbiente }) {
+  return ambiente === 'producao'
+    ? <span className="inline-flex items-center rounded-full border border-action-soft-border bg-action-soft px-2 py-0.5 text-2xs font-semibold text-action-primary">PRODUÇÃO</span>
+    : <span className="inline-flex items-center rounded-full border border-gestao bg-gestao-soft px-2 py-0.5 text-2xs font-semibold text-gestao-fg">sandbox (testes)</span>
+}
+
 // ── Modal "Ver resultado · boletos" (v4.38.0) — LIDO DO BANCO, sob demanda ─────
 // Contagens fixas no topo + tabela rolável (cabeçalho fixo). Valor em formato contábil; juros/multa
 // aplicados (do cadastro em negrito, padrão discreto, NULL "—"). Status distingue emitido/já-emitido
@@ -786,8 +808,9 @@ function ModalResultadoBoletos({ boletos, sessMap, ambiente, onClose }: {
   return (
     <ModalCentral
       titulo="Resultado da emissão de boletos"
-      subtitulo={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'}`}
-      largura="4xl" corpoFlex onClose={onClose}
+      subtitulo="Confira o status das emissões de boleto através da API do Asaas"
+      tituloAcessorio={<ChipAmbiente ambiente={ambiente} />}
+      largura="4xl" corpoFlex alturaFixa onClose={onClose}
     >
       <div className="shrink-0 px-6 pt-5 pb-3 flex flex-wrap gap-3">
         <Contagem n={nEmit} rotulo={nEmit === 1 ? 'boleto emitido' : 'boletos emitidos'} tom="success" />
@@ -795,7 +818,7 @@ function ModalResultadoBoletos({ boletos, sessMap, ambiente, onClose }: {
         {nFal > 0 && <Contagem n={nFal} rotulo={nFal === 1 ? 'falhou' : 'falharam'} tom="danger" />}
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
-        <table className="w-full border-separate border-spacing-0 text-xs">
+        <table className="w-full table-fixed border-separate border-spacing-0 text-xs">
           <thead className={theadFixo(rolado)}>
             <tr>
               <th>Pessoa</th>
@@ -809,7 +832,7 @@ function ModalResultadoBoletos({ boletos, sessMap, ambiente, onClose }: {
           <tbody>
             {linhas.map(({ b, estado, erro }) => (
               <tr key={b.ref} className="align-top [&>td]:border-b [&>td]:border-zinc-50 [&>td]:py-1.5 [&>td]:px-2">
-                <td className="text-zinc-700">{b.pessoa || '—'}</td>
+                <td className="text-zinc-700"><span className="block truncate" title={b.pessoa || undefined}>{b.pessoa || '—'}</span></td>
                 <td className="tabular-nums text-zinc-500">{b.ref}</td>
                 <td className="text-zinc-700">{b.valor != null ? <ValorContabil valor={b.valor} /> : <span className="block text-right text-zinc-400">—</span>}</td>
                 <td className="text-right"><Percentual v={b.jurosAplicado} /></td>
@@ -835,8 +858,9 @@ function ModalResultadoBoletos({ boletos, sessMap, ambiente, onClose }: {
 }
 
 // ── Modal "Ver resultado · notas fiscais" (v4.38.0) — LIDO DO BANCO ────────────
-// Contagens + "Atualizar status" fixos no topo (o ↻ do cabeçalho da coluna na tabela permanece);
-// tabela rolável com status PT-BR (autorizada/processando/falhou/já emitida) + link "ver nota".
+// Contagens + "Atualizar status" fixos no topo; tabela rolável com status PT-BR classificado
+// (autorizada/processando/cancelada/falhou/já emitida) + link "ver nota". A classe vem do status
+// FRESCO via classificarStatusNota (fail-safe invertido) — nota rejeitada = falhou (vermelho, sem spinner).
 function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando, temAtualizar, onAtualizar, onClose }: {
   notas:       NotaResultado[]
   notaStatus:  Record<string, NotaStatus>
@@ -850,13 +874,17 @@ function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando
   const [rolado, setRolado] = useState(false)
   const linhas = notas.map(n => {
     const st = notaStatus[n.externalReference]
-    const status = (st?.status ?? n.status ?? '').toUpperCase()
+    const stRaw = st?.status ?? n.status ?? null
+    const classe = classificarStatusNota(stRaw)
     const pdf = st?.pdfUrl ?? n.pdfUrl ?? null
     const number = st?.number ?? n.number ?? null
     const s = sessMap.get(n.externalReference)
-    const ja = s?.resultado === 'ja_existia' || s?.resultado === 'pulada'
-    const falhou = status === 'ERROR' || s?.resultado === 'falhou'
-    return { n, status, pdf, number, ja, falhou, erro: n.erro ?? s?.erro ?? null, aviso: s?.avisoAutorizacao }
+    const falhou = classe === 'falhou' || s?.resultado === 'falhou'
+    const ja = (s?.resultado === 'ja_existia' || s?.resultado === 'pulada') && !falhou
+    // aviso de autorização só enquanto NÃO autorizada — um refresh que autorizou não deve exibir
+    // "criada, mas a autorização falhou" sobre uma nota já verde.
+    const aviso = classe === 'autorizada' ? undefined : s?.avisoAutorizacao
+    return { n, stRaw, classe, pdf, number, ja, falhou, erro: n.erro ?? s?.erro ?? null, aviso }
   })
   const nOk  = linhas.filter(l => !l.falhou && !l.ja).length
   const nJa  = linhas.filter(l => l.ja && !l.falhou).length
@@ -865,8 +893,9 @@ function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando
   return (
     <ModalCentral
       titulo="Resultado da emissão de notas fiscais"
-      subtitulo={`Ambiente: ${ambiente === 'producao' ? 'PRODUÇÃO' : 'sandbox (testes)'} · a NF é assíncrona`}
-      largura="4xl" corpoFlex onClose={onClose}
+      subtitulo="Confira o status das emissões de notas fiscais através da API do Asaas"
+      tituloAcessorio={<ChipAmbiente ambiente={ambiente} />}
+      largura="4xl" corpoFlex alturaFixa onClose={onClose}
     >
       <div className="shrink-0 px-6 pt-5 pb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-3">
@@ -884,7 +913,7 @@ function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando
         )}
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
-        <table className="w-full border-separate border-spacing-0 text-xs">
+        <table className="w-full table-fixed border-separate border-spacing-0 text-xs">
           <thead className={theadFixo(rolado)}>
             <tr>
               <th>Pessoa</th>
@@ -895,15 +924,18 @@ function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando
             </tr>
           </thead>
           <tbody>
-            {linhas.map(({ n, status, pdf, number, ja, falhou, erro, aviso }) => (
+            {linhas.map(({ n, stRaw, classe, pdf, number, ja, falhou, erro, aviso }) => (
               <tr key={n.externalReference} className="align-top [&>td]:border-b [&>td]:border-zinc-50 [&>td]:py-1.5 [&>td]:px-2">
-                <td className="text-zinc-700">{n.pessoa || '—'}</td>
+                <td className="text-zinc-700"><span className="block truncate" title={n.pessoa || undefined}>{n.pessoa || '—'}</span></td>
                 <td className="tabular-nums text-zinc-500">{n.ref ?? '—'}</td>
                 <td className="text-zinc-500 capitalize">{n.modo}</td>
                 <td className="text-zinc-700">{n.valor != null ? <ValorContabil valor={n.valor} /> : <span className="block text-right text-zinc-400">—</span>}</td>
                 <td>
                   {falhou ? (
-                    <span className="block text-2xs text-danger">falhou{erro ? `: ${erro}` : ''}</span>
+                    <span className="flex flex-wrap items-center gap-1 text-2xs text-danger">
+                      <AlertTriangle size={12} className="shrink-0" /> falhou{erro ? `: ${erro}` : stRaw ? ` (status ${stRaw})` : ''}
+                      {number && <span className="text-zinc-400">nº {number}</span>}
+                    </span>
                   ) : ja ? (
                     <span className="inline-flex flex-wrap items-center gap-1 text-2xs text-zinc-500">
                       já emitida
@@ -916,9 +948,9 @@ function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando
                       {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={10} /></a>}
                     </span>
                   ) : (
-                    <span className={`inline-flex flex-wrap items-center gap-1 text-2xs ${status === 'AUTHORIZED' ? 'text-success' : 'text-action-primary'}`}>
-                      {status === 'AUTHORIZED' ? <CheckCircle2 size={12} className="shrink-0" /> : <Loader2 size={12} className="shrink-0 animate-spin" />}
-                      {labelStatusNota(status)}
+                    <span className={`inline-flex flex-wrap items-center gap-1 text-2xs ${classe === 'autorizada' ? 'text-success' : classe === 'cancelada' ? 'text-zinc-500' : 'text-action-primary'}`}>
+                      {classe === 'autorizada' ? <CheckCircle2 size={12} className="shrink-0" /> : classe === 'cancelada' ? null : <Loader2 size={12} className="shrink-0 animate-spin" />}
+                      {labelClasseNota(classe)}
                       {number && <span className="text-zinc-400">nº {number}</span>}
                       {pdf && <a href={pdf} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline">ver nota <ExternalLink size={10} /></a>}
                     </span>
