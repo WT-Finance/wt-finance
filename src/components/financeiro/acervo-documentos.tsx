@@ -150,8 +150,9 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
   }
 
   return (
-    <div>
-      <div className="mb-6">
+    // Coluna flex de altura cheia: título + busca FIXOS (shrink-0) e só a lista rola por dentro.
+    <div className="flex flex-1 min-h-0 flex-col">
+      <div className="mb-6 shrink-0">
         <h1 className="text-xl font-semibold text-zinc-900">Acervo de Documentos</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
           Biblioteca de documentos, modelos, manuais e referências
@@ -177,6 +178,9 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
       {erroDownload && <FaixaMensagem tipo="erro" texto={erroDownload} onFechar={() => setErroDownload(null)} />}
       {erroExclusao && <FaixaMensagem tipo="erro" texto={erroExclusao} onFechar={() => setErroExclusao(null)} />}
 
+      {/* Só a LISTA rola. scrollbar-gutter:stable reserva a goteira → sem "salto" lateral quando a
+          barra aparece/some (mesma lição do <main> do AppShell, DS §12). */}
+      <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable]">
       {grupos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-200 py-10 text-center">
           {busca.trim() ? (
@@ -200,26 +204,27 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
               </h2>
               <ul className="divide-y divide-zinc-100">
                 {docs.map(doc => (
-                  <li key={doc.id} className="flex items-center gap-1">
+                  <li key={doc.id} className="flex items-center gap-2 px-1 py-2.5">
+                    {/* A linha NÃO é mais clicável — o download acontece só pelo botão à direita. */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-semibold text-text-primary truncate">{doc.titulo}</p>
+                      {doc.descricao && (
+                        <p className="text-sm text-text-muted mt-0.5 line-clamp-2">{doc.descricao}</p>
+                      )}
+                      <p className="mt-1 flex items-center gap-1 text-xs text-text-subtle">
+                        <FileText size={12} className="shrink-0" /> <span className="truncate">{doc.nome_arquivo}</span>
+                      </p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => baixar(doc)}
                       disabled={baixando !== null}
                       aria-label={`Baixar ${doc.titulo}`}
-                      className="foco-neutro flex flex-1 min-w-0 items-center justify-between gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-zinc-50 disabled:opacity-60"
+                      className="foco-neutro shrink-0 rounded-lg p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-60"
                     >
-                      <div className="min-w-0">
-                        <p className="text-[15px] font-semibold text-text-primary truncate">{doc.titulo}</p>
-                        {doc.descricao && (
-                          <p className="text-sm text-text-muted mt-0.5 line-clamp-2">{doc.descricao}</p>
-                        )}
-                        <p className="mt-1 flex items-center gap-1 text-xs text-text-subtle">
-                          <FileText size={12} className="shrink-0" /> <span className="truncate">{doc.nome_arquivo}</span>
-                        </p>
-                      </div>
                       {baixando === doc.id
-                        ? <Loader2 size={16} className="shrink-0 animate-spin text-zinc-400" />
-                        : <Download size={16} className="shrink-0 text-zinc-400" />}
+                        ? <Loader2 size={15} className="animate-spin" />
+                        : <Download size={15} />}
                     </button>
                     {podeAdicionar && (
                       <button
@@ -239,6 +244,7 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
           ))}
         </div>
       )}
+      </div>
 
       {modalAberto && (
         <ModalUpload

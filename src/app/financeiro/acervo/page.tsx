@@ -23,8 +23,10 @@ export default async function AcervoPage() {
     erroInicial = 'Não foi possível carregar o acervo.'
   }
 
+  // h-full + flex-col: a página preenche a altura do <main> (o único scroll container do AppShell)
+  // para que só a LISTA role por dentro (título + busca fixos); ver AcervoDocumentos.
   return (
-    <div className="max-w-5xl mx-auto px-4">
+    <div className="max-w-5xl mx-auto px-4 h-full flex flex-col">
       <AcervoDocumentos documentosIniciais={documentos} podeAdicionar={podeAdicionar} erroInicial={erroInicial} />
     </div>
   )
