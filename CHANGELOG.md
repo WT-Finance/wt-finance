@@ -6,6 +6,16 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.39.0] — 2026-07-07
+
+MINOR · **Performance e navegabilidade (loading states + caminho crítico).** A plataforma não mandava nenhum byte até todo o trabalho do servidor terminar e não tinha nenhum `loading.tsx` — parecia travada ao navegar. Ataca a **percepção** e o **caminho crítico serial**, **sem migration** e **sem tocar em auth** (P2c fica para depois da virada) nem em contrato de dados. ADR-0144.
+
+- **`loading.tsx` com skeleton por segmento (M1):** módulo `src/components/shared/skeletons.tsx` (silhuetas reutilizáveis — header/filtros/KPIs/gráficos/tabela; tom neutro `zinc` + `animate-pulse`, sem CLS) + `loading.tsx` nas rotas pesadas (Performance ×4 via um único arquivo, Fluxo de Caixa, Gerencial, Solicitações, Admin·Solicitações+Movimentações, Admin·Acessos, Acervo, Faturamento). O App Router mostra o skeleton **imediatamente** ao navegar; a **sidebar nunca entra no skeleton** (o `loading.tsx` só substitui o `<main>`); cada um usa o **mesmo container** da sua página (sem salto).
+- **`useTransition`/`isPending` nos filtros (M2):** os 4 filtros de período/setor que navegam via `router.push` (Fluxo de Caixa, Performance, Executiva) envolvem o push em `startTransition` e mostram **espera visível** (pills esmaecidas + `aria-busy`; selects desabilitados) — o clique nunca "morre". **Semântica idêntica** (mesma URL/params).
+- **Badge de pendências fora do caminho bloqueante (M3):** o layout deixa de fazer `await getPendencias()` (era um hop serial que atrasava o 1º byte) e passa a **transmitir a promise** para a Sidebar, consumida via **Suspense + `use()`** — o badge streama e aparece ao resolver; a **falha do badge é inofensiva** (`.catch(() => null)` → o layout nunca espera nem quebra). −1 hop serial em toda navegação.
+- **Fluxo de Caixa em 1 estágio de RPCs (M4):** os 2 blocos seriais (8 + 3 gerenciais) viram **um único `Promise.allSettled`** (gerenciais por spread condicional — só para quem tem a área; sem dependência de dados). Mesmos contratos, mesmos resultados; a seção gerencial indisponível continua não derrubando a página. 1 estágio serial a menos na página mais pesada.
+- **Bundle (M5):** os 2 drawers com Recharts (`KpiPrincipalDrawer`, `DrilldownDrawer`) carregam via `next/dynamic(ssr:false)` (fallback leve no 1º clique) e o `@e965/xlsx` (chunk de ~472 KB) sai do import estático de `lista-operacoes.tsx` para `await import(...)` **dentro** do handler de Download — recharts (drawers) e xlsx saem do first-load de Performance/Weddings, carregando **sob demanda**. Drawers e download idênticos ao usuário.
+
 ## [4.38.0] — 2026-07-06
 
 MINOR · **Faturamento Corporativo — melhorias de interface (resultado em modal, re-hidratação, Revisar envio final).** Pacote de UI pós-Faturamento-completo, aprovado por mockup. **Lógica de emissão/envio inalterada** — muda a apresentação + registro/leitura.
