@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, use, Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -16,8 +16,27 @@ export interface UsuarioSidebar {
   email: string | null
   role: string | null
   permissoes: string[]
-  /** Nº de solicitações abertas atribuídas a mim/minha role (badge). v4.16.0. */
-  pendenciasSolicitacoes?: number
+  /** Nº de solicitações abertas atribuídas a mim/minha role (badge). v4.16.0.
+   *  v4.39.0 (M3): PROMISE (não número) — resolvida fora do caminho bloqueante do layout e
+   *  consumida via Suspense + `use` no badge. `.catch(()=>null)` no layout → falha inofensiva. */
+  pendenciasPromise?: Promise<number | null>
+}
+
+// Badge de pendências (v4.39.0/M3): consome a promise com `use` dentro de um Suspense (fallback
+// nulo = sem badge enquanto carrega). Módulo-nível (nunca componente no render). Sem promise ou
+// valor ≤ 0 → não renderiza nada. Falha já vira null no layout (.catch) → o `use` nunca lança.
+function BadgePendencias({ promise }: { promise?: Promise<number | null> }) {
+  if (!promise) return null
+  return (
+    <Suspense fallback={null}>
+      <ContagemPendencias promise={promise} />
+    </Suspense>
+  )
+}
+function ContagemPendencias({ promise }: { promise: Promise<number | null> }) {
+  const n = use(promise)
+  if (!n || n <= 0) return null
+  return <Badge variant="count" className="ml-auto">{n}</Badge>
 }
 
 interface NavSubItem {
@@ -436,11 +455,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
                 className={active ? '' : 'text-zinc-400'}
               />
               {label}
-              {href === '/solicitacoes' && (usuario.pendenciasSolicitacoes ?? 0) > 0 && (
-                <Badge variant="count" className="ml-auto">
-                  {usuario.pendenciasSolicitacoes}
-                </Badge>
-              )}
+              {href === '/solicitacoes' && <BadgePendencias promise={usuario.pendenciasPromise} />}
             </Link>
           )
         })}

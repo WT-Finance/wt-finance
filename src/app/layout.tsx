@@ -27,9 +27,12 @@ export default async function RootLayout({
   // v4.13 (ADR-0109): sessão + permissões resolvidas no servidor, uma vez por
   // request (React.cache). Sem sessão (ex.: /login), renderiza sem o chrome.
   const sessao = await getSessao();
-  // Badge de Solicitações: nº de abertas atribuídas a mim/minha role (por navegação).
-  const pendenciasSolicitacoes = sessao.logado && !sessao.precisaTrocarSenha
-    ? ((await getPendencias()) ?? 0) : 0;
+  // Badge de Solicitações: nº de abertas atribuídas a mim/minha role.
+  // v4.39.0 (M3/P2a): NÃO se faz `await` aqui — a PROMISE flui para a Sidebar (Suspense + `use`),
+  // FORA do caminho bloqueante do layout. Antes, `await getPendencias()` era um hop serial que
+  // atrasava o 1º byte. `.catch(() => null)` torna a falha do badge inofensiva (badge some, app segue).
+  const pendenciasPromise: Promise<number | null> = sessao.logado && !sessao.precisaTrocarSenha
+    ? getPendencias().catch(() => null) : Promise.resolve(null);
 
   return (
     <html
@@ -45,7 +48,7 @@ export default async function RootLayout({
               email: sessao.email,
               role: sessao.role,
               permissoes: sessao.permissoes,
-              pendenciasSolicitacoes,
+              pendenciasPromise,
             }}
           >
             {children}
