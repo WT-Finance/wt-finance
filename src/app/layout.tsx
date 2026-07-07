@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/layout/app-shell";
 import ThemeProvider from "@/components/layout/theme-provider";
+import WelcomeJanusModal from "@/components/onboarding/welcome-janus-modal";
 import { getSessao } from "@/lib/auth/sessao";
 import { getPendencias } from "@/lib/solicitacoes/rpc";
+import { getOnboardingVisto } from "@/lib/onboarding";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const geistMono = Geist_Mono({
@@ -33,6 +36,11 @@ export default async function RootLayout({
   // atrasava o 1º byte. `.catch(() => null)` torna a falha do badge inofensiva (badge some, app segue).
   const pendenciasPromise: Promise<number | null> = sessao.logado && !sessao.precisaTrocarSenha
     ? getPendencias().catch(() => null) : Promise.resolve(null);
+  // Onboarding "Welcome to Janus" (v4.40.0): mesma técnica — promise NÃO-aguardada (fora do
+  // caminho bloqueante), consumida via Suspense+use no modal. Falha → true (visto) → não exibe
+  // (fail-safe: o onboarding jamais trava o app). O `.catch` é cinto duplo (a lib já é fail-safe).
+  const onboardingVistoPromise: Promise<boolean> = sessao.logado && !sessao.precisaTrocarSenha
+    ? getOnboardingVisto().catch(() => true) : Promise.resolve(true);
 
   return (
     <html
@@ -42,17 +50,24 @@ export default async function RootLayout({
       <body className="h-full">
         <ThemeProvider />
         {sessao.logado && !sessao.precisaTrocarSenha ? (
-          <AppShell
-            usuario={{
-              nome: sessao.nome,
-              email: sessao.email,
-              role: sessao.role,
-              permissoes: sessao.permissoes,
-              pendenciasPromise,
-            }}
-          >
-            {children}
-          </AppShell>
+          <>
+            <AppShell
+              usuario={{
+                nome: sessao.nome,
+                email: sessao.email,
+                role: sessao.role,
+                permissoes: sessao.permissoes,
+                pendenciasPromise,
+              }}
+            >
+              {children}
+            </AppShell>
+            {/* Onboarding 1× por usuário — streama fora do caminho bloqueante (Suspense+use);
+                visto/falha → o componente rende null. */}
+            <Suspense fallback={null}>
+              <WelcomeJanusModal vistoPromise={onboardingVistoPromise} />
+            </Suspense>
+          </>
         ) : (
           // Sem chrome: anônimo (login/solicitar) e usuário em troca obrigatória
           // de senha (só vê /trocar-senha em tela cheia).
