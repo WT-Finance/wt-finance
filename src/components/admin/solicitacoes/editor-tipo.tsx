@@ -302,37 +302,39 @@ export function EditorTipo({
                             <label htmlFor={`data-aviso-${linha._key}`} className="mb-1 block text-xs text-zinc-500">
                               Avisar se a data estiver:
                             </label>
-                            <div className="flex items-center gap-2">
-                              <Select
-                                aria-label={`Direção do aviso de data (campo ${index + 1})`}
-                                value={linha.data_aviso_direcao ?? 'acima'}
-                                onChange={e => atualizarCampo(linha._key, { data_aviso_direcao: e.target.value === 'abaixo' ? 'abaixo' : 'acima' })}
-                                className="w-32 shrink-0"
-                              >
-                                <option value="acima">a mais de</option>
-                                <option value="abaixo">a menos de</option>
-                              </Select>
-                              <Input
-                                id={`data-aviso-${linha._key}`}
-                                type="number"
-                                min={1}
-                                inputMode="numeric"
-                                value={linha.data_aviso_dias_futuro ?? ''}
-                                onChange={e => {
-                                  const n = e.target.value.trim()
-                                  const parsed = Number(n)
-                                  atualizarCampo(linha._key, {
-                                    data_aviso_dias_futuro:
-                                      n === '' || !Number.isFinite(parsed) ? null : Math.max(1, Math.trunc(parsed)),
-                                  })
-                                }}
-                                placeholder="Sem aviso"
-                                aria-label={`Dias para o aviso (campo ${index + 1})`}
-                                className="w-28"
-                              />
-                              <span className="text-xs text-zinc-500 shrink-0">
-                                dias {(linha.data_aviso_direcao ?? 'acima') === 'abaixo' ? 'de hoje' : 'no futuro'}
-                              </span>
+                            {/* Wrappers de largura fixa: Input/Select herdam w-full de CAMPO — pôr w-32 direto
+                                conflita com o w-full (indeterminado). O wrapper controla; flex-wrap evita overflow. */}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="w-32 shrink-0">
+                                <Select
+                                  aria-label={`Direção do aviso de data (campo ${index + 1})`}
+                                  value={linha.data_aviso_direcao ?? 'acima'}
+                                  onChange={e => atualizarCampo(linha._key, { data_aviso_direcao: e.target.value === 'abaixo' ? 'abaixo' : 'acima' })}
+                                >
+                                  <option value="acima">a mais de</option>
+                                  <option value="abaixo">a menos de</option>
+                                </Select>
+                              </div>
+                              <div className="w-28 shrink-0">
+                                <Input
+                                  id={`data-aviso-${linha._key}`}
+                                  type="number"
+                                  min={1}
+                                  inputMode="numeric"
+                                  value={linha.data_aviso_dias_futuro ?? ''}
+                                  onChange={e => {
+                                    const n = e.target.value.trim()
+                                    const parsed = Number(n)
+                                    atualizarCampo(linha._key, {
+                                      data_aviso_dias_futuro:
+                                        n === '' || !Number.isFinite(parsed) ? null : Math.max(1, Math.trunc(parsed)),
+                                    })
+                                  }}
+                                  placeholder="Sem aviso"
+                                  aria-label={`Dias para o aviso (campo ${index + 1})`}
+                                />
+                              </div>
+                              <span className="text-xs text-zinc-500 shrink-0 whitespace-nowrap">dias</span>
                             </div>
                           </div>
                         </div>

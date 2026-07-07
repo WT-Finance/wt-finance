@@ -6,6 +6,13 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.37.2] — 2026-07-06
+
+PATCH · **Ajustes visuais/de texto.** Sem migration.
+- **Editor de tipos de Solicitação — layout do aviso de data:** o seletor de direção (v4.37.1) esticava em largura cheia (herdava `w-full` de `CAMPO`), empurrando o campo de dias e o rótulo para fora do modal (rolagem horizontal). O seletor e o input passam a ter **largura fixa** (wrappers `w-32`/`w-28`, o `w-full` interno preenche o wrapper — sem conflito de utilitárias), com `flex-wrap` de segurança; o rótulo virou só "dias" (a direção já vem do seletor "a mais de / a menos de").
+- **Subtítulo do Acervo de Documentos:** "Biblioteca de documentos, modelos, manuais e referências"
+- **Subtítulo do Faturamento Corporativo:** "Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos"
+
 ## [4.37.1] — 2026-07-06
 
 PATCH · **Solicitações — aviso de data por campo ganha direção (a mais de / a menos de X dias).** No editor de tipos, o campo de data podia avisar apenas quando a data estava **a mais de** X dias no futuro. Agora um seletor **"a mais de / a menos de"** permite escolher o sentido — avisar quando a data está longe demais **ou** perto demais (prazo curto). **Migration 0171 (aditiva):** coluna `data_aviso_direcao` (default `'acima'`) + as 3 RPCs (`solic_tipos_abertura`, `admin_solic_listar_tipos`, `admin_solic_salvar_tipo`). **Retrocompatível:** todos os tipos já existentes nascem em `'acima'` — comportamento idêntico ao atual; só novos/editados escolhem o sentido. O aviso segue sendo só de UI (não bloqueia o envio). Estende ADR-0118.
