@@ -17,7 +17,7 @@ export default function LayoutHeader() {
       <div className="max-w-screen-xl mx-auto px-6">
         <div className="flex items-center gap-8 h-14">
           <span className="text-base font-semibold text-zinc-900 tracking-tight shrink-0">
-            WT Finance
+            JANUS
           </span>
           <nav className="flex items-end h-full gap-1">
             {TABS.map(tab => {

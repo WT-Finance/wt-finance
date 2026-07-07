@@ -1,7 +1,7 @@
 import Image from 'next/image'
 
 // v4.14.1: cabeçalho institucional reutilizável das telas públicas/auth.
-// Logo Welcome Group + wordmark "WT Finance" em neutro (sem dourado).
+// Logo Welcome Group + wordmark "Janus" em neutro (sem dourado).
 
 export default function AuthHeader({
   className = 'flex flex-col items-center',
@@ -23,7 +23,7 @@ export default function AuthHeader({
         className="mt-3 text-[13px] font-[800] uppercase tracking-[1.5px]"
         style={{ color: 'var(--text-muted)' }}
       >
-        WT Finance
+        JANUS
       </p>
     </div>
   )

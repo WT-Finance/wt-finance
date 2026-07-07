@@ -19,7 +19,7 @@ export default function MobileHeader({ onOpen }: Props) {
       >
         <Menu size={20} />
       </button>
-      <span className="text-sm font-semibold text-zinc-900">WT Finance</span>
+      <span className="text-sm font-semibold text-zinc-900">JANUS</span>
     </header>
   )
 }

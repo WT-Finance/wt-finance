@@ -24,7 +24,7 @@ export default async function SemAcessoPage() {
           <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>
             {sessao.ativo
               ? 'Seu perfil não tem permissão para a área solicitada. Se você precisa deste acesso, fale com o time Financeiro.'
-              : 'Sua conta foi autenticada, mas não tem um perfil de acesso ativo no WT Finance. Fale com o time Financeiro para liberar o acesso.'}
+              : 'Sua conta foi autenticada, mas não tem um perfil de acesso ativo no Janus. Fale com o time Financeiro para liberar o acesso.'}
           </p>
           <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
             Conectado como <span className="font-medium">{sessao.email}</span>

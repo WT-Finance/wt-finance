@@ -14,7 +14,7 @@ export default async function DesignSystemPage() {
           Design System
         </h1>
         <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          Catálogo visual de tokens e componentes do WT Finance. Referência interna para desenvolvimento
+          Catálogo visual de tokens e componentes do Janus. Referência interna para desenvolvimento
         </p>
       </div>
 
@@ -515,7 +515,7 @@ export default async function DesignSystemPage() {
             <li>Cada <strong>setor</strong> usa sua cor de destaque nas SUAS abas: Weddings <code className="bg-zinc-100 px-1 rounded">#BD965C</code>, Trips <code className="bg-zinc-100 px-1 rounded">#0091B3</code>, Corporativo <code className="bg-zinc-100 px-1 rounded">#0D5257</code> (via <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>, herdada por <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>).</li>
             <li>As <strong>telas de plataforma</strong> — auth (<code className="bg-zinc-100 px-1 rounded">/login</code>, <code className="bg-zinc-100 px-1 rounded">/trocar-senha</code>, <code className="bg-zinc-100 px-1 rounded">/solicitar-acesso</code>, <code className="bg-zinc-100 px-1 rounded">/auth/*</code>), <code className="bg-zinc-100 px-1 rounded">/sem-acesso</code> e <code className="bg-zinc-100 px-1 rounded">/admin/*</code> — usam o <strong>tema neutro do Group</strong>. Nenhuma cor de setor atua como cor geral.</li>
             <li><strong>Por que tokens dedicados</strong> (<code className="bg-zinc-100 px-1 rounded">--action-*</code>), e não <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>: o <code className="bg-zinc-100 px-1 rounded">:root</code> tem <code className="bg-zinc-100 px-1 rounded">--brand: #BD965C</code> (Weddings) como default → usar <code className="bg-zinc-100 px-1 rounded">var(--brand)</code> daria <strong>flash dourado pré-hidratação</strong>. Os tokens neutros são valores fixos, independentes de <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>.</li>
-            <li>O <strong>wordmark WT FINANCE</strong> é dinâmico: cor da aba dentro do setor, <code className="bg-zinc-100 px-1 rounded">--text-muted</code> (neutro) no resto.</li>
+            <li>O <strong>wordmark JANUS</strong> é dinâmico: cor da aba dentro do setor, <code className="bg-zinc-100 px-1 rounded">--text-muted</code> (neutro) no resto.</li>
             <li>Swatches dos tokens neutros em <a href="#brand" className="text-[var(--brand)] hover:underline">1. Paleta</a>.</li>
           </ul>
         </div>

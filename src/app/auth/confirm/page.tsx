@@ -35,7 +35,7 @@ export default async function ConfirmarAcessoPage({
                 Confirmar acesso
               </h1>
               <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
-                Clique no botão abaixo para entrar no WT Finance.
+                Clique no botão abaixo para entrar no Janus.
               </p>
               <form action={confirmarAcesso}>
                 <input type="hidden" name="token_hash" value={sp.token_hash ?? ''} />
@@ -47,7 +47,7 @@ export default async function ConfirmarAcessoPage({
                   className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90"
                   style={{ background: 'var(--action-primary)', color: 'var(--action-primary-fg)' }}
                 >
-                  Entrar no WT Finance
+                  Entrar no Janus
                 </button>
               </form>
             </>
