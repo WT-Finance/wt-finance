@@ -25,6 +25,12 @@ MINOR · **Faturamento Corporativo — melhorias de interface (resultado em moda
 - **Coluna Valor da revisão** em formato **contábil** (`ValorContabil`); **coluna Boleto alargada** (o "ver boleto" não quebra linha); nos modais de resultado, a **coluna Pessoa trunca** com reticências + `title`.
 - **Modais com tamanho fixo** (`alturaFixa` → `h-[85vh]`) — não "pulam" conforme o nº de linhas; o "Revisar e-mails" ganhou título/subtítulo ("Revisar e-mails antes do envio" / "Revise as informações antes do envio dos e-mails, edite destinatários e inclua anexos") e os modais de resultado, subtítulo ("Confira o status das emissões … através da API do Asaas") + chip de ambiente.
 
+### Outros ajustes de interface (mesmo PR)
+
+- **Acervo de Documentos:** só a **lista rola** — título e busca ficam fixos no topo (página em altura cheia; a lista num scroll interno com `scrollbar-gutter:stable`, seguindo a lição do `<main>` do AppShell). A linha **deixa de ser inteira clicável**: o download acontece só pelo **botão de download**, que ganhou realce (sombreado) no hover, como o botão da lixeira.
+- **Padronização da largura das telas de upload:** Calculadora de Rateio e Upload de Arquivos passam a usar a **largura cheia** (`max-w-7xl`), igual ao Faturamento Corporativo — antes eram `max-w-2xl` (mais estreitas).
+- **Upload de Arquivos:** removido o botão desabilitado "Selecione um arquivo para importar" (era inerte — a seleção acontece na própria zona de arrastar/clicar).
+
 ADR-0143 (emenda ao registro/leitura do Faturamento). Sem mudança na lógica de emissão, no throttle do lote nem na dupla-trava do modo real.
 
 ## [4.37.2] — 2026-07-06

@@ -44,6 +44,8 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       { tipo: 'correcao', texto: 'Notas fiscais que a prefeitura recusa agora aparecem claramente como "falhou", com o motivo, em vez de ficarem indicando "processando" indefinidamente. As que estão de fato em andamento continuam sinalizadas como tal, e uma nota que se autoriza numa atualização de status passa a aparecer como autorizada.' },
       { tipo: 'novidade', texto: 'Na revisão de envio de e-mails, agora é possível anexar documentos adicionais a cada fatura, além do boleto e da nota fiscal — útil quando o cliente pede um comprovante ou documento extra junto.' },
       { tipo: 'melhoria', texto: 'Outros acertos de apresentação no Faturamento: dicas de ajuda ("?") nos títulos das colunas, botão de atualizar status das notas sempre à mão, valores em formato contábil, nomes de clientes que não quebram linha e painéis com tamanho estável (não "saltam" conforme o número de linhas).' },
+      { tipo: 'melhoria', texto: 'No Acervo de Documentos, o título e a busca agora ficam fixos no topo e só a lista de documentos rola — mais fácil pesquisar em acervos grandes. O download passa a ser só pelo botão de download (a linha inteira não é mais clicável, evitando downloads acidentais).' },
+      { tipo: 'melhoria', texto: 'As telas de importação de planilhas (Upload de Arquivos e Calculadora de Rateio) passam a usar a largura cheia da tela, padronizadas com o Faturamento Corporativo. No Upload de Arquivos, um botão sem função ("Selecione um arquivo para importar") foi removido.' },
     ],
   },
   {

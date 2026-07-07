@@ -84,3 +84,18 @@ Feedback do Yan sobre o PR aberto (ainda **não mergeado** → mesma versão 4.3
 - **Banco:** `supabase/migrations/0173_atualizar_status_nota_preserva_erro.sql` (aditiva).
 - **App:** `src/lib/faturamento/status-nota.ts` (+ `.test.ts`) NOVO; `src/components/financeiro/faturamento-corp.tsx` (itens 1-8,11); `src/components/financeiro/revisar-envio-modal.tsx` (8,9,10,11); `src/components/shared/modal-central.tsx` (`alturaFixa`); `src/app/financeiro/faturamento-corp/actions.ts` (`anexosExtra`; remoção de `emailEnviados`); `src/lib/email/fatura.ts` (+ `.test.ts`) (anexos "Outros").
 - **Docs/versão:** `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, este out-briefing. (Versão permanece **4.38.0**; sem ADR novo — polimento sob ADR-0143.)
+
+---
+
+## Adendo 2 — Ajustes de interface transversais (mesmo PR #171, 2026-07-07)
+
+Segunda leva de feedback do Yan no PR aberto (opção explícita: **mesmo PR**, apesar de tocar áreas fora do Faturamento — registrado honestamente no CHANGELOG/diretoria). Sem migration, sem mudança de lógica.
+
+- **Acervo de Documentos — só a lista rola.** Página em **altura cheia** (`acervo/page.tsx`: container `h-full flex flex-col`); `AcervoDocumentos` vira coluna flex (`flex flex-1 min-h-0 flex-col`) com **título + busca + faixas de erro FIXOS** (`shrink-0`) e a **lista** num wrapper `flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable]`. O `<main>` do AppShell continua o único scroll container global; a página apenas o preenche e rola a lista por dentro — o `scrollbar-gutter:stable` evita o "salto" lateral (mesma lição do DS §12). Padrão de altura resolve: `<main>` é `flex-1` de altura definida.
+- **Acervo — linha não é mais clicável; download só no botão.** O `<li>` deixa de ser um `<button>` de linha inteira: o conteúdo textual vira um `<div>` e o **download** acontece por um botão de ícone dedicado à direita, com **hover sombreado** (`hover:bg-zinc-100 hover:text-zinc-700`), espelhando o botão da lixeira (`hover:bg-danger-bg hover:text-danger`). Evita downloads acidentais ao clicar na linha.
+- **Largura padronizada das telas de upload de arquivo externo.** Calculadora de Rateio (`calculadora-rateio/page.tsx`) e Upload de Arquivos (`admin/uploads/page.tsx`) sobem de `max-w-2xl` → **`max-w-7xl`**, igual ao Faturamento Corporativo (referência) — as três telas de upload passam a ter a mesma largura cheia.
+- **Upload de Arquivos — botão morto removido.** O botão desabilitado "Selecione um arquivo para importar" (renderizado nos estados `idle`/`erro`) era inerte — a seleção sempre foi na zona de arrastar/clicar acima. Removido.
+
+**Gate (adendo 2):** `tsc` 0 · `eslint` (arquivos alterados) 0 · `build` exit 0. Testes inalterados (nenhum arquivo coberto por teste mudou). Sem migration.
+
+**Arquivos (adendo 2):** `src/components/financeiro/acervo-documentos.tsx`, `src/app/financeiro/acervo/page.tsx`, `src/app/admin/uploads/page.tsx`, `src/app/financeiro/calculadora-rateio/page.tsx`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, este out-briefing.
