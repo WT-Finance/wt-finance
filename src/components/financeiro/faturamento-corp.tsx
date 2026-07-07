@@ -389,7 +389,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                   <th className="py-1.5 px-2 w-16">Fatura Nº</th>
                   <th className="py-1.5 px-2 w-28"><CabecalhoAjuda titulo="Status" ajuda="Resultado do cruzamento com a base de pessoas: Pronta (tem CPF/CNPJ), Faltam dados fiscais ou Não identificado. Depois de emitir, o foco passa às colunas Boleto e Nota fiscal." /></th>
                   <th className="py-1.5 px-2 w-36"><CabecalhoAjuda titulo="Boleto" ajuda="Marque Emitir nas faturas prontas para gerar o boleto no Asaas. Após emitir, o resultado (com o link do boleto) aparece nesta coluna." /></th>
-                  <th className="py-1.5 px-2 w-48"><CabecalhoAjuda titulo="Nota fiscal" abreEsquerda ajuda="Opcional por fatura (exige endereço e CEP). Normal usa o valor da fatura; Avulsa, um valor próprio. A NF é assíncrona — use “Atualizar status” para acompanhar até autorizar." /></th>
+                  <th className="py-1.5 px-2 w-36"><CabecalhoAjuda titulo="Nota fiscal" abreEsquerda ajuda="Opcional por fatura (exige endereço e CEP). Normal usa o valor da fatura; Avulsa, um valor próprio. A NF é assíncrona — use “Atualizar status” para acompanhar até autorizar." /></th>
                 </tr>
               </thead>
               <tbody>
