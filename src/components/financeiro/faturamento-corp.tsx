@@ -385,11 +385,11 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                 <tr className="border-b border-zinc-100 text-left font-medium text-zinc-400">
                   <th className="py-1.5 px-2">Pessoa</th>
                   <th className="py-1.5 px-2 text-right w-28">Valor</th>
-                  <th className="py-1.5 px-2 w-20">Vencimento</th>
-                  <th className="py-1.5 px-2 w-16">Fatura Nº</th>
+                  <th className="py-1.5 px-2 w-24">Vencimento</th>
+                  <th className="py-1.5 px-2 w-20">Fatura Nº</th>
                   <th className="py-1.5 px-2 w-28"><CabecalhoAjuda titulo="Status" ajuda="Resultado do cruzamento com a base de pessoas: Pronta (tem CPF/CNPJ), Faltam dados fiscais ou Não identificado. Depois de emitir, o foco passa às colunas Boleto e Nota fiscal." /></th>
                   <th className="py-1.5 px-2 w-36"><CabecalhoAjuda titulo="Boleto" ajuda="Marque Emitir nas faturas prontas para gerar o boleto no Asaas. Após emitir, o resultado (com o link do boleto) aparece nesta coluna." /></th>
-                  <th className="py-1.5 px-2 w-36"><CabecalhoAjuda titulo="Nota fiscal" abreEsquerda ajuda="Opcional por fatura (exige endereço e CEP). Normal usa o valor da fatura; Avulsa, um valor próprio. A NF é assíncrona — use “Atualizar status” para acompanhar até autorizar." /></th>
+                  <th className="py-1.5 px-2 w-56"><CabecalhoAjuda titulo="Nota fiscal" abreEsquerda ajuda="Opcional por fatura (exige endereço e CEP). Normal usa o valor da fatura; Avulsa, um valor próprio. A NF é assíncrona — use “Atualizar status” para acompanhar até autorizar." /></th>
                 </tr>
               </thead>
               <tbody>
@@ -737,8 +737,12 @@ function LinhaResultadoNota({ item, status }: { item: ItemNota; status?: NotaSta
 // A explicação que ficava na legenda ao pé da tabela vive AQUI (dica sob demanda). `abreEsquerda`
 // abre o balão para a esquerda (coluna colada à borda direita, não vaza do container rolável).
 function CabecalhoAjuda({ titulo, ajuda, abreEsquerda = false }: { titulo: string; ajuda: string; abreEsquerda?: boolean }) {
+  // !whitespace-normal (important): o primitivo Tooltip aplica `whitespace-nowrap` na base; sem o
+  // `!`, o texto longo da dica NÃO quebrava e virava uma linha gigante INVISÍVEL (visibility:hidden)
+  // que transbordava à direita → barra de rolagem horizontal com "espaço vazio". Forçar o wrap zera
+  // o overflow (medido: 313px → 0px). Ver DS §7. (v4.38.0/ajuste)
   return (
-    <Tooltip conteudo={ajuda} className={`z-30 w-60 whitespace-normal font-normal leading-snug ${abreEsquerda ? '!left-auto right-0' : ''}`}>
+    <Tooltip conteudo={ajuda} className={`z-30 w-60 !whitespace-normal font-normal leading-snug ${abreEsquerda ? '!left-auto right-0' : ''}`}>
       <span className="inline-flex items-center gap-1">
         {titulo}
         <span aria-hidden className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
