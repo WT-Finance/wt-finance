@@ -50,3 +50,37 @@
 - **Banco:** `supabase/migrations/0172_fatura_emissao_juros_multa_leitura.sql` (aditiva).
 - **App:** `src/app/financeiro/faturamento-corp/actions.ts` (grava aplicado + 3 leituras fail-safe + `notaUrl`), `src/components/financeiro/faturamento-corp.tsx` (barra dois momentos, re-hidratação, 2 modais), `src/components/financeiro/revisar-envio-modal.tsx` (status puro + checkbox), `src/components/shared/modal-central.tsx` (`rodape` + `corpoFlex`).
 - **Docs/versão:** `docs/adr/0143-resultado-emissao-modais-rehidratacao.md`, `package.json`/`package-lock.json` (4.38.0), `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, este out-briefing.
+
+---
+
+## Adendo — Ajustes pós-mockup (rodada de 11 itens, mesmo PR #171, 2026-07-07)
+
+Feedback do Yan sobre o PR aberto (ainda **não mergeado** → mesma versão 4.38.0, commits adicionais; não é versão nova). Lógica de emissão/envio segue intacta.
+
+1. **Nota em erro não fica mais "processando" eterno.** Causa-raiz: a classificação usava allowlist NEGATIVO (default → "processando") e o render combinava spinner + cor neutra com status de erro. Correção: módulo **`src/lib/faturamento/status-nota.ts`** (`classificarStatusNota`/`labelClasseNota`), **fonte única** para tabela + 2 modais, com **fail-safe INVERTIDO** — allowlist POSITIVO de andamento (`SCHEDULED/SYNCHRONIZED/PENDING/PROCESSING/IN_PROCESS/PROCESSING_CANCELLATION` + vazio); `AUTHORIZED`=autorizada; `CANCEL*`=cancelada; **qualquer outro (ERROR/desconhecido)=falhou** (vermelho, `AlertTriangle`, sem spinner, com motivo). `dbToItemNota`, `LinhaResultadoNota` e `ModalResultadoNotas` reescritos para classificar pelo status **fresco** (`status ?? item.status`), nunca pelo `resultado` congelado. Teste de tabela em `status-nota.test.ts`. **Migration 0173 (aditiva):** `atualizar_status_nota` → `erro = COALESCE(...)` (o refresh não apaga o motivo de emissão — era a única coluna sem COALESCE). *Nota:* o vocabulário de erro da NF nunca foi confirmado empiricamente; "desconhecido = falhou" é a escolha segura (nunca mascara erro). Validar a string real de rejeição em sandbox segue como follow-up.
+2. **Barra de ações:** removida a linha "E-mails: N com boleto…" (o estado vive no modal); botões à direita, mesma linha (com `flex-wrap` p/ telas estreitas).
+3. **Legendas ao pé da tabela** (parágrafo NF + bloco de e-mail) removidas → **"?" com tooltip** (`CabecalhoAjuda`, primitivo `Tooltip`) nos cabeçalhos **Status / Boleto / Nota fiscal** (Nota abre à esquerda p/ não vazar do container rolável). Aviso "!configurado" preservado.
+4. **Coluna Boleto alargada** (`w-28`→`w-36`, `min-w` 54→56rem): "ver boleto" não quebra linha.
+5. **"Atualizar status"** saiu do cabeçalho da coluna (↻) → **botão bordado à direita, sempre visível** (desabilitado sem nota com status).
+6. **Coluna Valor da revisão** em formato **contábil** (`<ValorContabil>`).
+7. **Coluna Pessoa** dos 2 modais **trunca** (reticências + `title`) via `table-fixed`.
+8/9. **Modais com tamanho fixo** — nova prop **`alturaFixa`** de `ModalCentral` (`h-[85vh]`) nos 3 modais; o estado de carga do "Revisar e-mails" preenche a altura (não colapsa).
+10. **Anexos "Outros"** no Revisar envio: **upload por-linha** na coluna Anexos → badges removíveis → base64 no payload → `OpcoesEnvioFatura.anexosExtra` → **camada `enviarFaturaEmail`** decodifica e anexa (ponto único). **Anexo inválido/vazio/>15 MB = envio FALHA com motivo** (mesma regra do boleto/nota; nunca e-mail incompleto). `filename` sanitizado (sem path/quebra). Contagem em `anexos.outros` (jsonb aditivo do `registrar_email`). Limite por arquivo no cliente = 10 MB; `bodySizeLimit` já é 25 MB. Testes novos em `fatura.test.ts`. **Decisão:** por-linha (cada e-mail é de uma fatura) — não global.
+11. **Subtítulos/títulos:** modais de resultado → "Confira o status das emissões de {boleto|notas fiscais} através da API do Asaas" + chip de ambiente (sandbox/produção); "Revisar e-mails" → título "Revisar e-mails antes do envio" + subtítulo "Revise as informações antes do envio dos e-mails, edite destinatários e inclua anexos".
+
+### Achados da auto-auditoria adversarial (rodada de ajustes) — tratados
+- **`emailEnviados` (action) virou código morto** (só a linha de e-mail removida a consumia) → **removida** (era desta mesma branch não-mergeada; o modal re-deriva "já enviado" via `prepararEnvioEmails`). Estado `emailFeitos`/fetch correspondentes removidos de `faturamento-corp.tsx`.
+- **Falha re-hidratada sem motivo** exibia `falhou:` (dois-pontos órfão, sem ícone) → unificado com o ramo rico (`AlertTriangle` + `item.erro || status`).
+- **Aviso de autorização congelado** podia mascarar uma nota autorizada num refresh posterior → gate `classe !== 'autorizada'` na tabela e no modal.
+
+### Follow-ups registrados (fora de escopo desta entrega)
+- Confirmar em sandbox a **string real de rejeição** da prefeitura para exibir o motivo fresco no refresh (hoje o refresh preserva o erro de emissão via COALESCE, mas o Asaas GET-invoice não expõe campo de erro modelado).
+- `CANCELLATION_DENIED` é rotulado "cancelada" (borda impossível no nosso fluxo — não emitimos cancelamento); parидade com o comportamento anterior, deixado como está.
+
+### Gate (rodada de ajustes)
+`npx tsc --noEmit` → **0** · `npm test` → **354** verdes · `eslint` nos arquivos alterados → **0** · `npm run build` → exit **0** (a worktree de ajustes nasceu **sem** o corpus não-versionado, então o build roda limpo). **Migration 0173 aplicada** via `npm run db:migrate -- --aditiva` (backup-gate **VERDE**: 45/45 tabelas, restore-test spot 4/4 conferido) e a RPC verificada via REST (HTTP 200, no-op).
+
+### Arquivos (adendo)
+- **Banco:** `supabase/migrations/0173_atualizar_status_nota_preserva_erro.sql` (aditiva).
+- **App:** `src/lib/faturamento/status-nota.ts` (+ `.test.ts`) NOVO; `src/components/financeiro/faturamento-corp.tsx` (itens 1-8,11); `src/components/financeiro/revisar-envio-modal.tsx` (8,9,10,11); `src/components/shared/modal-central.tsx` (`alturaFixa`); `src/app/financeiro/faturamento-corp/actions.ts` (`anexosExtra`; remoção de `emailEnviados`); `src/lib/email/fatura.ts` (+ `.test.ts`) (anexos "Outros").
+- **Docs/versão:** `CHANGELOG.md`, `src/data/changelog-diretoria.ts`, este out-briefing. (Versão permanece **4.38.0**; sem ADR novo — polimento sob ADR-0143.)
