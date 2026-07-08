@@ -5,7 +5,7 @@ import {
   templateSenhaProvisoria, templateNotificacaoSolicitacao,
   type TipoSenha, type MovimentacaoEmail,
 } from './template'
-import { LOGO_CID, LOGO_WELCOME_GROUP_PNG_BASE64 } from './logo'
+import { LOGO_CID, LOGO_WELCOME_GROUP_PNG_BASE64, LOGO_JANUS_CID, LOGO_JANUS_PNG_BASE64 } from './logo'
 
 // v4.24.0 / v4.25.0 — Camada ÚNICA de envio (server-only). FALLBACK-SAFE acima de tudo:
 // nunca lança; sem config (SMTP off) ou erro de envio → não envia e o chamador segue.
@@ -37,6 +37,21 @@ export function anexoLogo() {
   }
 }
 
+/**
+ * v4.40.0 (Rebranding Janus) — Logo Janus via CID, mesmo padrão do `anexoLogo()`. Usado SÓ
+ * nos e-mails INTERNOS (senha provisória + notificação de solicitação), junto do `anexoLogo()`,
+ * para o cabeçalho de lockup duplo [JANUS] | [WELCOME GROUP]. O e-mail de FATURA (cliente,
+ * `fatura.ts`) continua anexando SÓ `anexoLogo()` — fronteira intocável.
+ */
+export function anexoLogoJanus() {
+  return {
+    filename:    'janus.png',
+    content:     Buffer.from(LOGO_JANUS_PNG_BASE64, 'base64'),
+    cid:         LOGO_JANUS_CID,
+    contentType: 'image/png',
+  }
+}
+
 /** Senha provisória (criação/reset) — 1 destinatário. Retorna boolean, NUNCA lança. */
 export async function enviarSenhaProvisoria(input: {
   para:  string
@@ -51,7 +66,7 @@ export async function enviarSenhaProvisoria(input: {
       nome: input.nome, senha: input.senha, tipo: input.tipo, linkAcesso: getAppBaseUrl(),
     })
     await criarTransporter(cfg).sendMail({
-      from: cfg.from, to: input.para, subject: assunto, html, text, attachments: [anexoLogo()],
+      from: cfg.from, to: input.para, subject: assunto, html, text, attachments: [anexoLogo(), anexoLogoJanus()],
     })
     return true
   } catch (err) {
@@ -91,9 +106,9 @@ export async function enviarNotificacaoSolicitacao(input: {
       link:            base ? `${base}/solicitacoes` : null,
     })
     const transporter = criarTransporter(cfg)
-    const anexo = anexoLogo()
+    const anexos = [anexoLogo(), anexoLogoJanus()]
     const r = await Promise.allSettled(paras.map(para =>
-      transporter.sendMail({ from: cfg.from, to: para, subject: assunto, html, text, attachments: [anexo] }),
+      transporter.sendMail({ from: cfg.from, to: para, subject: assunto, html, text, attachments: anexos }),
     ))
     const enviados = r.filter(x => x.status === 'fulfilled').length
     if (enviados < paras.length) {

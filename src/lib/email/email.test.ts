@@ -53,11 +53,31 @@ describe('templateSenhaProvisoria — criação × reset', () => {
     expect(t.html).not.toContain('<b>x</b>')
   })
 
-  it('embute o logo via CID com alt text (logo substitui o título tipográfico)', () => {
+  it('embute o lockup duplo [Janus] | [Welcome Group] via CID, com alt text', () => {
     const t = templateSenhaProvisoria({ senha: 'x', tipo: 'criacao' })
     expect(t.html).toContain('cid:welcome-logo')
+    expect(t.html).toContain('cid:janus-logo')
     expect(t.html).toContain('alt=')
+    expect(t.html).toContain('alt="Janus"')
     expect(t.html).toContain('Welcome Group')
+  })
+
+  it('textos internos usam "Janus" (não "WT Finance")', () => {
+    const t = templateSenhaProvisoria({ senha: 'x', tipo: 'criacao' })
+    expect(t.assunto).toContain('Janus')
+    expect(t.text).toContain('plataforma Janus')
+    expect(t.text).toContain('— Janus')
+    expect(t.html).toContain('JANUS')
+  })
+
+  it('formato do assunto interno = "[Assunto] | Janus" (checkpoint v4.40.0)', () => {
+    expect(templateSenhaProvisoria({ senha: 'x', tipo: 'criacao' }).assunto).toBe('Seu acesso foi criado | Janus')
+    expect(templateSenhaProvisoria({ senha: 'x', tipo: 'reset' }).assunto).toBe('Sua senha foi redefinida | Janus')
+    const n = templateNotificacaoSolicitacao({
+      movimentacao: 'criada', titulo: 'Contas a pagar #15',
+      atribuidoRotulo: 'Yan', autorRotulo: 'Yan', quando: null, justificativa: null, link: null,
+    })
+    expect(n.assunto).toBe('Solicitação criada: Contas a pagar #15 | Janus')
   })
 
   it('botão "Acessar a plataforma" aparece só com linkAcesso (html e text)', () => {
@@ -143,13 +163,16 @@ describe('enviarSenhaProvisoria — NUNCA lança (boolean)', () => {
 describe('templateNotificacaoSolicitacao — 4 movimentações', () => {
   const base = { titulo: 'Lançamentos #42', atribuidoRotulo: 'Carine Cardoso', autorRotulo: 'Yan Vieira' }
 
-  it('criada: assunto/título no html e text + logo CID', () => {
+  it('criada: assunto/título no html e text + lockup duplo (2 CIDs) + "Janus"', () => {
     const t = templateNotificacaoSolicitacao({ movimentacao: 'criada', ...base })
     expect(t.assunto).toContain('criada')
     expect(t.assunto).toContain('Lançamentos #42')
+    expect(t.assunto).toContain('Janus')
     expect(t.html).toContain('Lançamentos #42')
     expect(t.text).toContain('foi criada')
     expect(t.html).toContain('cid:welcome-logo')
+    expect(t.html).toContain('cid:janus-logo')
+    expect(t.text).toContain('— Janus')
   })
 
   it('concluída: SEM justificativa mesmo se passada', () => {

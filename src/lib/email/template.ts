@@ -5,7 +5,7 @@
 // para telas pequenas. Logo via CID (sem dependência externa; ver index.ts). Função
 // pura — parametrizada por `tipo` e `linkAcesso`.
 
-import { LOGO_CID } from './logo'
+import { LOGO_CID, LOGO_JANUS_CID } from './logo'
 
 export type TipoSenha = 'criacao' | 'reset'
 
@@ -15,7 +15,11 @@ export interface TemplateSenha {
   text:    string
 }
 
+// `APP_NOME` é consumida TAMBÉM por `templateFaturaEmail` (e-mail de CLIENTE, intocável —
+// ADR-0145/v4.40.0). NUNCA alterar o valor desta const. `APP_NOME_INTERNO` ('Janus') é usada
+// SÓ pelos dois templates internos (senha provisória + notificação de solicitação).
 const APP_NOME = 'WT Finance'
+const APP_NOME_INTERNO = 'Janus'
 // Paleta sóbria Welcome (hex inline — e-mail não aceita CSS var). Derivada dos tokens do DS.
 const COR_TITULO   = '#1A1814'   // preto WT — saudação, botão, senha
 const COR_TEXTO    = '#4B4F54'   // corpo
@@ -32,6 +36,32 @@ function escaparHtml(s: string): string {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 }
 
+// v4.40.0 (Rebranding Janus) — cabeçalho de LOCKUP DUPLO [JANUS] | [WELCOME GROUP], só para os
+// e-mails INTERNOS (senha provisória + notificação de solicitação). Tabela de 3 "colunas" (logo +
+// divisória + logo) com gaps em células vazias (nunca margin, ignorado pelo Outlook). Alturas
+// ÓPTICAS: Janus 36px (147×36); Welcome LEVEMENTE menor, 32px (165×32) — harmonia entre as artes,
+// ajuste do checkpoint v4.40.0. `vertical-align:middle` nas células.
+// A divisória: DIV interno com height + line-height IGUAIS (+ mso-line-height-rule:exactly) —
+// a 1ª versão (height só no <td> com font-size:0/line-height:0) era COLAPSADA pelo motor
+// Word do Outlook e a barra saía CORTADA (visto no Outlook real, checkpoint). Nunca border-left.
+function lockupDuploHtml(): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+          <tr>
+            <td align="center" valign="middle" style="padding:0;">
+              <img src="cid:${LOGO_JANUS_CID}" alt="Janus" width="147" height="36" style="display:block;width:147px;height:36px;max-width:147px;border:0;" />
+            </td>
+            <td width="18" style="width:18px;font-size:0;line-height:0;">&nbsp;</td>
+            <td width="1" valign="middle" style="width:1px;padding:0;">
+              <div style="width:1px;height:40px;line-height:40px;mso-line-height-rule:exactly;font-size:0;background-color:${COR_LINHA};">&nbsp;</div>
+            </td>
+            <td width="18" style="width:18px;font-size:0;line-height:0;">&nbsp;</td>
+            <td align="center" valign="middle" style="padding:0;">
+              <img src="cid:${LOGO_CID}" alt="Welcome Group" width="165" height="32" style="display:block;width:165px;height:32px;max-width:165px;border:0;" />
+            </td>
+          </tr>
+        </table>`
+}
+
 export function templateSenhaProvisoria(input: {
   nome?: string | null
   senha: string
@@ -44,13 +74,14 @@ export function templateSenhaProvisoria(input: {
   const linkAcesso = input.linkAcesso?.trim() || null
   const saudacao = nome ? `Olá, ${nome}` : 'Olá'
 
+  // Formato do assunto interno (checkpoint v4.40.0): "[Assunto] | Janus".
   const assunto = tipo === 'criacao'
-    ? `${APP_NOME} — seu acesso foi criado`
-    : `${APP_NOME} — sua senha foi redefinida`
+    ? `Seu acesso foi criado | ${APP_NOME_INTERNO}`
+    : `Sua senha foi redefinida | ${APP_NOME_INTERNO}`
 
   const intro = tipo === 'criacao'
-    ? 'Seu acesso à plataforma WT Finance foi criado. Use a senha provisória abaixo para entrar:'
-    : 'A senha de acesso à plataforma WT Finance foi redefinida. Use a senha provisória abaixo para entrar:'
+    ? `Seu acesso à plataforma ${APP_NOME_INTERNO} foi criado. Use a senha provisória abaixo para entrar:`
+    : `A senha de acesso à plataforma ${APP_NOME_INTERNO} foi redefinida. Use a senha provisória abaixo para entrar:`
 
   const text =
     `${saudacao},\n\n` +
@@ -59,7 +90,7 @@ export function templateSenhaProvisoria(input: {
     (linkAcesso ? `Acesse a plataforma: ${linkAcesso}\n\n` : '') +
     'Por segurança, você deverá definir uma nova senha no primeiro acesso.\n\n' +
     'Se você não esperava este e-mail, ignore-o ou fale com o administrador.\n\n' +
-    `— ${APP_NOME}`
+    `— ${APP_NOME_INTERNO}`
 
   // CTA "Acessar a plataforma" — só com URL base (config). Botão em CÉLULA DE TABELA:
   // o PADDING vai na <td> (não no <a>), porque o Outlook ignora `background`/`padding`
@@ -75,8 +106,8 @@ export function templateSenhaProvisoria(input: {
       </td></tr>`
     : ''
 
-  // Logo Welcome Group transparente, centralizado, embutido via CID (anexo em index.ts).
-  // alt text garante leitura mesmo sem render. O logo já contém o nome (sem título tipográfico).
+  // Cabeçalho: lockup duplo [JANUS] | [WELCOME GROUP] (v4.40.0) — só nos internos, ver
+  // `lockupDuploHtml()`. alt text garante leitura mesmo sem render de imagem.
   const html =
 `<style>
   @media only screen and (max-width:480px) {
@@ -89,7 +120,7 @@ export function templateSenhaProvisoria(input: {
   <tr><td align="center" style="padding:40px 12px;">
     <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid ${COR_BORDA};border-radius:14px;">
       <tr><td class="em-pad" align="center" style="padding:38px 40px 0;">
-        <img src="cid:${LOGO_CID}" alt="WT Finance — Welcome Group" width="184" style="display:block;width:184px;max-width:184px;height:auto;border:0;margin:0 auto;" />
+        ${lockupDuploHtml()}
       </td></tr>
       <tr><td class="em-pad" style="padding:26px 40px 0;">
         <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
@@ -115,7 +146,7 @@ export function templateSenhaProvisoria(input: {
       </td></tr>
     </table>
     <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
-      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">WT&nbsp;FINANCE&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
+      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">JANUS&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
     </table>
   </td></tr>
 </table>`
@@ -159,7 +190,8 @@ export function templateNotificacaoSolicitacao(input: {
   const link   = input.link?.trim() || null
   const just   = input.movimentacao === 'rejeitada' ? (input.justificativa?.trim() || null) : null
 
-  const assunto = `${APP_NOME} — solicitação ${mov}: ${titulo}`
+  // Formato do assunto interno (checkpoint v4.40.0): "[Assunto] | Janus".
+  const assunto = `Solicitação ${mov}: ${titulo} | ${APP_NOME_INTERNO}`
 
   const text =
     `A solicitação "${titulo}" foi ${mov}${quando ? ` em ${quando}` : ''}.\n\n` +
@@ -167,7 +199,7 @@ export function templateNotificacaoSolicitacao(input: {
     (just ? `Justificativa: ${just}\n\n` : '') +
     (link ? `Acesse suas solicitações: ${link}\n\n` : '') +
     'Você recebe este e-mail por estar envolvido nesta solicitação.\n\n' +
-    `— ${APP_NOME}`
+    `— ${APP_NOME_INTERNO}`
 
   const dataLinha = quando
     ? `<div style="font-size:12px;color:${COR_TENUE};margin-top:7px;">${escaparHtml(quando)}</div>`
@@ -207,7 +239,7 @@ export function templateNotificacaoSolicitacao(input: {
   <tr><td align="center" style="padding:40px 12px;">
     <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid ${COR_BORDA};border-radius:14px;">
       <tr><td class="em-pad" align="center" style="padding:38px 40px 0;">
-        <img src="cid:${LOGO_CID}" alt="WT Finance — Welcome Group" width="184" style="display:block;width:184px;max-width:184px;height:auto;border:0;margin:0 auto;" />
+        ${lockupDuploHtml()}
       </td></tr>
       <tr><td class="em-pad" style="padding:26px 40px 0;">
         <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
@@ -231,7 +263,7 @@ export function templateNotificacaoSolicitacao(input: {
       </td></tr>
     </table>
     <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
-      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">WT&nbsp;FINANCE&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
+      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">JANUS&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
     </table>
   </td></tr>
 </table>`

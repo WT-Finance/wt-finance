@@ -14,7 +14,7 @@ export default async function DesignSystemPage() {
           Design System
         </h1>
         <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          Catálogo visual de tokens e componentes do WT Finance. Referência interna para desenvolvimento
+          Catálogo visual de tokens e componentes do Janus. Referência interna para desenvolvimento
         </p>
       </div>
 
@@ -44,17 +44,25 @@ export default async function DesignSystemPage() {
       <Section id="brand" title="1. Paleta Brand Welcome">
         <ColorGrid items={[
           { name: '--text-primary',   hex: '#2D2A26', usage: 'Texto principal, H1' },
-          { name: '--brand',          hex: '#BD965C', usage: 'Dourado Welcome — valores destaque, links' },
+          { name: '--brand',          hex: '#75777B', usage: 'Cor de destaque — NEUTRO do Grupo no repouso; overrides setoriais por [data-theme] (v4.40.0)' },
           { name: '--text-secondary', hex: '#4B4F54', usage: 'H3, texto secundário' },
           { name: '--text-muted',     hex: '#75777B', usage: 'Legendas, sufixos, hints' },
           { name: '--border',         hex: '#E8E0D2', usage: 'Bordas suaves de separação' },
         ]} />
+
+        <p className="font-medium text-[var(--text-primary)] text-sm mt-6 mb-1">
+          Destaques setoriais <span className="text-[var(--text-muted)] font-normal">(overrides do --brand por [data-theme] — ADR-0103)</span>
+        </p>
+        <ColorGrid items={[
+          { name: '--brand · Weddings',    hex: '#BD965C', usage: 'Dourado — SÓ nas abas de Weddings (Pantone 465 C)' },
+          { name: '--brand · Trips',       hex: '#0091B3', usage: 'Turquesa — abas de Trips (Pantone 632 C)' },
+          { name: '--brand · Corporativo', hex: '#0D5257', usage: 'Verde-teal — abas do Corporativo (Pantone 7476 C)' },
+        ]} />
         <p className="text-xs text-zinc-400 mt-3 leading-relaxed">
-          Nuance: o swatch de <code className="bg-zinc-100 px-1 rounded">--brand</code> mostra o hex literal
-          (#BD965C, dourado de Weddings), mas <strong>nesta própria página</strong> (que roda no tema{' '}
-          <code className="bg-zinc-100 px-1 rounded">group</code>) <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>{' '}
-          resolve para o cinza neutro — toda rota não-setorial herda o neutro do Group via{' '}
-          <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>.
+          Desde a v4.40.0 (ADR-0145) o default do <code className="bg-zinc-100 px-1 rounded">:root</code> é o
+          próprio NEUTRO do Grupo (#75777B) — o dourado #BD965C é <strong>só de Weddings</strong>, via override{' '}
+          <code className="bg-zinc-100 px-1 rounded">[data-theme=weddings]</code> (Trips #0091B3, Corporativo #0D5257).
+          Toda rota não-setorial resolve para o neutro.
         </p>
 
         <p className="font-medium text-[var(--text-primary)] text-sm mt-6 mb-1">
@@ -62,8 +70,8 @@ export default async function DesignSystemPage() {
         </p>
         <p className="text-xs text-[var(--text-muted)] mb-3">
           Valores FIXOS, independentes de <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>: as telas de
-          plataforma nunca usam <code className="bg-zinc-100 px-1 rounded">var(--brand)</code> (evita flash dourado
-          pré-hidratação). Regra completa e demos em{' '}
+          plataforma nunca usam <code className="bg-zinc-100 px-1 rounded">var(--brand)</code> (a cor de plataforma
+          não deve reagir ao tema). Regra completa e demos em{' '}
           <a href="#plataforma" className="text-[var(--brand)] hover:underline">11. Plataforma</a>.
         </p>
         <ColorGrid items={[
@@ -514,8 +522,8 @@ export default async function DesignSystemPage() {
           <ul className="text-xs text-[var(--text-muted)] space-y-1 list-disc pl-4">
             <li>Cada <strong>setor</strong> usa sua cor de destaque nas SUAS abas: Weddings <code className="bg-zinc-100 px-1 rounded">#BD965C</code>, Trips <code className="bg-zinc-100 px-1 rounded">#0091B3</code>, Corporativo <code className="bg-zinc-100 px-1 rounded">#0D5257</code> (via <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>, herdada por <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>).</li>
             <li>As <strong>telas de plataforma</strong> — auth (<code className="bg-zinc-100 px-1 rounded">/login</code>, <code className="bg-zinc-100 px-1 rounded">/trocar-senha</code>, <code className="bg-zinc-100 px-1 rounded">/solicitar-acesso</code>, <code className="bg-zinc-100 px-1 rounded">/auth/*</code>), <code className="bg-zinc-100 px-1 rounded">/sem-acesso</code> e <code className="bg-zinc-100 px-1 rounded">/admin/*</code> — usam o <strong>tema neutro do Group</strong>. Nenhuma cor de setor atua como cor geral.</li>
-            <li><strong>Por que tokens dedicados</strong> (<code className="bg-zinc-100 px-1 rounded">--action-*</code>), e não <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>: o <code className="bg-zinc-100 px-1 rounded">:root</code> tem <code className="bg-zinc-100 px-1 rounded">--brand: #BD965C</code> (Weddings) como default → usar <code className="bg-zinc-100 px-1 rounded">var(--brand)</code> daria <strong>flash dourado pré-hidratação</strong>. Os tokens neutros são valores fixos, independentes de <code className="bg-zinc-100 px-1 rounded">[data-theme]</code>.</li>
-            <li>O <strong>wordmark WT FINANCE</strong> é dinâmico: cor da aba dentro do setor, <code className="bg-zinc-100 px-1 rounded">--text-muted</code> (neutro) no resto.</li>
+            <li><strong>Por que tokens dedicados</strong> (<code className="bg-zinc-100 px-1 rounded">--action-*</code>), e não <code className="bg-zinc-100 px-1 rounded">var(--brand)</code>: os tokens neutros são valores fixos, <strong>independentes de <code className="bg-zinc-100 px-1 rounded">[data-theme]</code></strong> — a cor da tela de plataforma não deve reagir ao tema. (Desde a v4.40.0/ADR-0145 o default do <code className="bg-zinc-100 px-1 rounded">:root</code> é o próprio neutro <code className="bg-zinc-100 px-1 rounded">#75777B</code> — o dourado é só de Weddings, via override; o antigo flash dourado pré-hidratação deixou de existir.)</li>
+            <li>O <strong>wordmark JANUS</strong> é dinâmico: cor da aba dentro do setor, <code className="bg-zinc-100 px-1 rounded">--text-muted</code> (neutro) no resto.</li>
             <li>Swatches dos tokens neutros em <a href="#brand" className="text-[var(--brand)] hover:underline">1. Paleta</a>.</li>
           </ul>
         </div>

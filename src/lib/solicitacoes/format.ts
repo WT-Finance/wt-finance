@@ -19,10 +19,12 @@ export function statusBadge(status: StatusSolic): string {
   }
 }
 
-/** Badge por AÇÃO — paleta COERENTE com o e-mail de notificação (v4.25.1): Abertura=
- *  dourado, Conclusão=verde(success), Rejeição=vermelho(danger), Cancelamento=cinza.
- *  O dourado usa --brand (esta é tela de plataforma SEM [data-theme] → --brand=#BD965C
- *  estável, sem flash); é cor de STATUS deliberada, não identidade de setor. */
+/** Badge por AÇÃO: Conclusão=verde(success), Rejeição=vermelho(danger), Cancelamento=cinza;
+ *  Abertura usa o trio --brand — que nesta tela (tema group; e, desde a v4.40.0, também o
+ *  default do :root) resolve para o NEUTRO do Grupo, não dourado. (O comentário antigo dizia
+ *  "--brand=#BD965C estável" — impreciso: a rota sempre teve [data-theme=group]; o e-mail de
+ *  notificação mantém o dourado #BD965C hardcoded como cor de status — paridade UI×e-mail é
+ *  pendência registrada no out-briefing v4.40.0.) */
 export function acaoBadge(acao: string): string {
   switch (acao) {
     case 'Abertura':     return 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]'
