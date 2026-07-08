@@ -49,6 +49,15 @@ export default async function DesignSystemPage() {
           { name: '--text-muted',     hex: '#75777B', usage: 'Legendas, sufixos, hints' },
           { name: '--border',         hex: '#E8E0D2', usage: 'Bordas suaves de separação' },
         ]} />
+
+        <p className="font-medium text-[var(--text-primary)] text-sm mt-6 mb-1">
+          Destaques setoriais <span className="text-[var(--text-muted)] font-normal">(overrides do --brand por [data-theme] — ADR-0103)</span>
+        </p>
+        <ColorGrid items={[
+          { name: '--brand · Weddings',    hex: '#BD965C', usage: 'Dourado — SÓ nas abas de Weddings (Pantone 465 C)' },
+          { name: '--brand · Trips',       hex: '#0091B3', usage: 'Turquesa — abas de Trips (Pantone 632 C)' },
+          { name: '--brand · Corporativo', hex: '#0D5257', usage: 'Verde-teal — abas do Corporativo (Pantone 7476 C)' },
+        ]} />
         <p className="text-xs text-zinc-400 mt-3 leading-relaxed">
           Desde a v4.40.0 (ADR-0145) o default do <code className="bg-zinc-100 px-1 rounded">:root</code> é o
           próprio NEUTRO do Grupo (#75777B) — o dourado #BD965C é <strong>só de Weddings</strong>, via override{' '}

@@ -78,3 +78,11 @@ FORA: e-mails de cliente; renomear repo; Trajan Pro (troca de 1 linha futura); l
 ## Adendo — Checkpoint rodada 2 (2026-07-08)
 
 **Decisões do Yan:** previews dos e-mails **APROVADOS**; mockup do login **APROVADO** (a hierarquia óptica 36/32 do e-mail já estava aplicada no `auth-header` — confirmado); **sidebar = opção B**: sem o byline "by WELCOME", com o "version X.X.X" **centralizado** sob o logo (a marca Welcome permanece no selo do rodapé). Aplicado em `JanusLogo` (sidebar.tsx) + docs (CHANGELOG/ADR §2b/DS doc) atualizados. Gates verdes.
+
+---
+
+## Adendo — Checkpoint rodada 3 (2026-07-08)
+
+1. **"version X.X.X" alinhado à DIREITA da caixa do logo** (168px — a arte preenche a largura, então alinha com o "S" do wordmark). Preview enviado.
+2. **Barra de rolagem auto-hide vira PADRÃO do DS:** extraído da sidebar o componente **`<ScrollAutoHide>`** (`shared/scroll-auto-hide.tsx` — nativa escondida + thumb overlay que some sozinho, mecânica imperativa) e aplicado no **Acervo de Documentos** (substitui o `overflow-y-auto` + `scrollbar-gutter`); seção "Barras de rolagem" adicionada ao DS doc (exceção: o `<main>` do AppShell mantém nativa + gutter). A sidebar mantém a implementação embutida (origem do padrão; migração incremental).
+3. **Paleta do design-system ganha os destaques setoriais:** Weddings #BD965C, Trips #0091B3, Corporativo #0D5257 (overrides do `--brand` por `[data-theme]`, ADR-0103) — em ColorGrid próprio sob a Paleta Brand Welcome.
