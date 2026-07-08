@@ -116,6 +116,40 @@ describe('calcularRitmo', () => {
     expect(r.hoje).toBe('2026-02-10')
   })
 
+  it('alvo de % Rec — média ponderada pela VT pró-rata dos meses COM alvo', () => {
+    const r = calcularRitmo({
+      from: '2026-01-01', to: '2026-02-28', ultimaVenda: '2026-03-01',
+      metas: [
+        { ano: 2026, mes: 1, valorMeta: 3100, pctReceita: 10 },
+        { ano: 2026, mes: 2, valorMeta: 2800, pctReceita: 20 },
+      ],
+      serie: [],
+    })
+    // (3100·0,10 + 2800·0,20) / 5900 = 870/5900 = 14,7458%
+    expect(r.pctReceitaAlvo).toBeCloseTo((870 / 5900) * 100, 4)
+  })
+
+  it('alvo de % Rec — mês sem alvo é EXCLUÍDO (não distorce)', () => {
+    const r = calcularRitmo({
+      from: '2026-01-01', to: '2026-02-28', ultimaVenda: '2026-03-01',
+      metas: [
+        { ano: 2026, mes: 1, valorMeta: 3100, pctReceita: 10 },
+        { ano: 2026, mes: 2, valorMeta: 2800, pctReceita: null },
+      ],
+      serie: [],
+    })
+    expect(r.pctReceitaAlvo).toBeCloseTo(10, 6) // só janeiro conta
+  })
+
+  it('alvo de % Rec — nenhum mês com alvo → null', () => {
+    const r = calcularRitmo({
+      from: '2026-07-01', to: '2026-07-31', ultimaVenda: '2026-07-31',
+      metas: [{ ano: 2026, mes: 7, valorMeta: 3100 }],
+      serie: [],
+    })
+    expect(r.pctReceitaAlvo).toBeNull()
+  })
+
   it('período FUTURO (última venda antes do início) — nada esperado, ritmo indefinido', () => {
     const r = calcularRitmo({
       from: '2026-08-01', to: '2026-08-31', ultimaVenda: '2026-07-06',

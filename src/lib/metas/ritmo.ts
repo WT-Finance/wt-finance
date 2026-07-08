@@ -20,6 +20,8 @@ export interface MetaMensal {
   ano: number
   mes: number
   valorMeta: number
+  /** Alvo de % Rec (receita/VT) do mês. null = alvo ainda não cadastrado. */
+  pctReceita?: number | null
 }
 
 /** Ponto diário de realizado (data ISO 'yyyy-MM-dd', valor = faturamento do dia). */
@@ -68,6 +70,9 @@ export interface RitmoResultado {
   status: RitmoStatus | null   // régua aplicada ao ritmo
   parcial: boolean             // "hoje" < to (período ainda em curso)
   pontos: PontoAcumulado[]     // séries acumuladas p/ o gráfico
+  /** Alvo de % Rec do período: média dos alvos mensais PONDERADA pela meta VT pró-rata
+   *  (só meses com alvo cadastrado). null enquanto nenhum mês do período tiver alvo. */
+  pctReceitaAlvo: number | null
 }
 
 /**
@@ -89,6 +94,30 @@ function metaAcumulada(metas: MetaMensal[], from: Date, ate: Date): number {
     }
   }
   return acc
+}
+
+/**
+ * Alvo de % Rec do período: para os meses do período QUE TÊM alvo cadastrado,
+ * média dos alvos ponderada pela meta VT pró-rata (Σ VT·pct / Σ VT). Assim um mês
+ * grande pesa mais e meses sem alvo não distorcem. null se nenhum mês tem alvo.
+ */
+function pctReceitaAlvoPeriodo(metas: MetaMensal[], from: Date, to: Date): number | null {
+  let vtBase = 0
+  let recAlvo = 0
+  for (const m of metas) {
+    if (m.pctReceita == null) continue
+    const mStart = new Date(m.ano, m.mes - 1, 1)
+    const mEnd = endOfMonth(mStart)
+    const oStart = maxDate([from, mStart])
+    const oEnd = minDate([to, mEnd])
+    if (!isBefore(oEnd, oStart)) {
+      const dias = differenceInCalendarDays(oEnd, oStart) + 1
+      const vt = (m.valorMeta * dias) / getDaysInMonth(mStart)
+      vtBase += vt
+      recAlvo += vt * (m.pctReceita / 100)
+    }
+  }
+  return vtBase > 0 ? (recAlvo / vtBase) * 100 : null
 }
 
 export function calcularRitmo(input: RitmoInput): RitmoResultado {
@@ -131,5 +160,6 @@ export function calcularRitmo(input: RitmoInput): RitmoResultado {
     status: classificarRitmo(ritmoPct),
     parcial,
     pontos,
+    pctReceitaAlvo: pctReceitaAlvoPeriodo(input.metas, from, to),
   }
 }
