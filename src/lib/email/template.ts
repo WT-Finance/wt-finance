@@ -74,9 +74,10 @@ export function templateSenhaProvisoria(input: {
   const linkAcesso = input.linkAcesso?.trim() || null
   const saudacao = nome ? `Olá, ${nome}` : 'Olá'
 
+  // Formato do assunto interno (checkpoint v4.40.0): "[Assunto] | Janus".
   const assunto = tipo === 'criacao'
-    ? `${APP_NOME_INTERNO} — seu acesso foi criado`
-    : `${APP_NOME_INTERNO} — sua senha foi redefinida`
+    ? `Seu acesso foi criado | ${APP_NOME_INTERNO}`
+    : `Sua senha foi redefinida | ${APP_NOME_INTERNO}`
 
   const intro = tipo === 'criacao'
     ? `Seu acesso à plataforma ${APP_NOME_INTERNO} foi criado. Use a senha provisória abaixo para entrar:`
@@ -189,7 +190,8 @@ export function templateNotificacaoSolicitacao(input: {
   const link   = input.link?.trim() || null
   const just   = input.movimentacao === 'rejeitada' ? (input.justificativa?.trim() || null) : null
 
-  const assunto = `${APP_NOME_INTERNO} — solicitação ${mov}: ${titulo}`
+  // Formato do assunto interno (checkpoint v4.40.0): "[Assunto] | Janus".
+  const assunto = `Solicitação ${mov}: ${titulo} | ${APP_NOME_INTERNO}`
 
   const text =
     `A solicitação "${titulo}" foi ${mov}${quando ? ` em ${quando}` : ''}.\n\n` +

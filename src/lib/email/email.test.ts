@@ -70,6 +70,16 @@ describe('templateSenhaProvisoria — criação × reset', () => {
     expect(t.html).toContain('JANUS')
   })
 
+  it('formato do assunto interno = "[Assunto] | Janus" (checkpoint v4.40.0)', () => {
+    expect(templateSenhaProvisoria({ senha: 'x', tipo: 'criacao' }).assunto).toBe('Seu acesso foi criado | Janus')
+    expect(templateSenhaProvisoria({ senha: 'x', tipo: 'reset' }).assunto).toBe('Sua senha foi redefinida | Janus')
+    const n = templateNotificacaoSolicitacao({
+      movimentacao: 'criada', titulo: 'Contas a pagar #15',
+      atribuidoRotulo: 'Yan', autorRotulo: 'Yan', quando: null, justificativa: null, link: null,
+    })
+    expect(n.assunto).toBe('Solicitação criada: Contas a pagar #15 | Janus')
+  })
+
   it('botão "Acessar a plataforma" aparece só com linkAcesso (html e text)', () => {
     const com = templateSenhaProvisoria({ senha: 'x', tipo: 'criacao', linkAcesso: 'https://app.exemplo.com' })
     expect(com.html).toContain('Acessar a plataforma')

@@ -92,3 +92,5 @@ FORA: e-mails de cliente; renomear repo; Trajan Pro (troca de 1 linha futura); l
 ## Fechamento — checkpoint COMPLETO aprovado (2026-07-08)
 
 Yan aprovou tudo ("tudo ok, podemos fechar"). Itens finais do DoD: lição do divisor Outlook adicionada ao `docs/email-layout-guide.md` (regra 3b); **CLAUDE.md** ganhou a fronteira de MARCA na convenção de e-mail (interno=Janus/lockup duplo; cliente=Welcome, nunca 'Janus' — aprendizado permanente/transversal); data da entrada da diretoria reconciliada ao horário real de autoria final (2026-07-08T09:30 — reconciliar ao merge se divergir muito). PR #173 marcado ready for review. **Merge e deploy ficam com o Yan. Com o merge, a v4 está FECHADA.**
+
+**Ajuste final (2026-07-08):** formato do ASSUNTO dos e-mails internos = **"[Assunto] | Janus"** — "Seu acesso foi criado | Janus", "Sua senha foi redefinida | Janus", "Solicitação criada: {título} | Janus". Formato travado por teste (`email.test.ts`). Fatura intocada (assunto próprio "Fatura Welcome Trips – …").
