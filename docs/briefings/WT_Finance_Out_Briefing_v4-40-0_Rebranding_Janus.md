@@ -57,3 +57,18 @@ v4.40.0 (`package.json`+lock; `version.ts` deriva), CHANGELOG, CHANGELOG_DIRETOR
 
 ## Fronteira
 FORA: e-mails de cliente; renomear repo; Trajan Pro (troca de 1 linha futura); lógica de negócio. **Depois desta versão a v4 está FECHADA** — restam a virada do Faturamento e a v5.0.0.
+
+---
+
+## Adendo — Checkpoint do Yan (rodada 1, 2026-07-07/08)
+
+**Veredito do gate M0 (favicon):** o corte do símbolo bifronte **não ficou legível em 16/32** → **os ícones ATUAIS permanecem** (decisão do Yan). A arte bifronte é detalhada demais para favicon pequeno; a receita do pipeline (crop do viewBox + stroke nos paths preenchidos + tile branco) fica registrada aqui para retomada futura com uma arte simplificada. O **`title` foi aplicado**: "Janus · Welcome Group" (+ `description` alinhada ao posicionamento).
+
+**Ajustes pedidos e feitos:**
+1. **Divisor do lockup CORTADO no Outlook real** — a célula com `height` no `<td>` + `font-size:0/line-height:0` era colapsada pelo motor Word. Fix: DIV interno com `height:40px` + `line-height:40px` + `mso-line-height-rule:exactly`. **LIÇÃO Outlook (junta-se às do email-layout-guide):** altura de divisor/spacer nunca só no `<td>` — sempre num elemento interno com height+line-height iguais.
+2. **Welcome levemente menor no lockup** (harmonia óptica): 186×36 → **165×32**; Janus segue 147×36. Vale para os 2 e-mails internos e para o login.
+3. **Login com lockup duplo** — `auth-header.tsx` vira `[JANUS] | [WELCOME GROUP]` (barra fina, mesmas alturas ópticas 36/32) e o wordmark textual "JANUS" **saiu**. Contrato dos 5 call-sites preservado (className externa intacta).
+4. **Swatch do design-system corrigido** — a Paleta ainda exibia `--brand` como `#BD965C` dourado; agora mostra o default real `#75777B` (neutro do Grupo) com a explicação dos overrides setoriais.
+5. **Dourado do e-mail de solicitação ("SOLICITAÇÃO CRIADA") — confirmado intocado:** é `#BD965C` **hardcoded no template** (isento por convenção Outlook), **não usa token** — o saneamento do `--brand` não o afeta (verificado na auditoria e no preview regenerado).
+
+**Pendente de decisão (mockup enviado):** sidebar **sem** o "by WELCOME" com "version X.X.X" centralizado (opção B) × atual com byline (opção A). Aguardando o veredito do Yan para aplicar (ou manter A).

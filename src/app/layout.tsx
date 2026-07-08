@@ -16,8 +16,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WT Finance",
-  description: "Dashboard analítico — Welcome Group",
+  // v4.40.0 (M0): title Janus; os ÍCONES permanecem os atuais — decisão do gate do Yan
+  // (o corte do símbolo bifronte não ficou legível em 16/32; régua no out-briefing).
+  title: "Janus · Welcome Group",
+  description: "Plataforma de gestão administrativa e análise de dados — Welcome Group",
   // favicon.ico, icon.svg e apple-icon.png em src/app/ são auto-detectados
   // pelo Next.js 16 — não precisam ser declarados manualmente aqui
 };

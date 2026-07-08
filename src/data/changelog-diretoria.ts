@@ -38,7 +38,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     versao: '4.40.0',
     data: '2026-07-07T16:02',
     itens: [
-      { tipo: 'novidade', texto: 'A plataforma ganha a identidade Janus — novo nome e novo logotipo (o deus de duas faces: uma olha os dados do passado, a outra as projeções à frente), criados pelo time Financeiro para a plataforma que reúne performance, faturamento e fluxo de caixa. A marca aparece na barra lateral, nos cabeçalhos e nos comunicados internos, sempre acompanhada da assinatura Welcome Group. Nada muda para o cliente externo: boletos, notas e e-mails de fatura continuam 100% com a marca Welcome.' },
+      { tipo: 'novidade', texto: 'A plataforma ganha a identidade Janus — novo nome e novo logotipo (o deus de duas faces: uma olha os dados do passado, a outra as projeções à frente), criados pelo time Financeiro para a plataforma que reúne performance, faturamento e fluxo de caixa. A marca aparece na barra lateral, nos cabeçalhos, no título da aba do navegador e nos comunicados internos, sempre acompanhada da assinatura Welcome Group. Nada muda para o cliente externo: boletos, notas e e-mails de fatura continuam 100% com a marca Welcome.' },
       { tipo: 'novidade', texto: 'No primeiro acesso após a novidade, uma tela de boas-vindas apresenta o Janus a cada usuário — aparece uma única vez, em qualquer dispositivo.' },
       { tipo: 'melhoria', texto: 'O histórico de versões (aberto pelo número de versão na barra lateral) ficou mais organizado: as versões mais antigas se agrupam automaticamente, mantendo o histórico completo acessível sem uma lista interminável.' },
     ],

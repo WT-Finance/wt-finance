@@ -33,7 +33,7 @@ O logo renderiza por **máscara CSS** (`mask-image` do SVG monocromático + `bac
 - **Fail-safe absoluto:** a consulta flui **fora do caminho bloqueante** do layout (promise + Suspense/`use`, técnica do badge v4.39); falha → conta como visto → **não exibe** (o onboarding jamais trava o app); a marcação falha em silêncio (o modal fecha localmente).
 
 ### 6. Favicon com gate de legibilidade (M0)
-Do `logo-janus-vert.svg`: tamanhos grandes (180/192/512) usam o **lockup completo**; 16/32 usam o **corte do símbolo bifronte** sem wordmark, com **traço engrossado** (stroke 12 adicionado só aos paths preenchidos do SVG derivado — os `fill:none` continuam invisíveis) e **tile branco**. Régua comparativa 16/32/48/180 **apresentada ao Yan para aprovação — nada se aplica antes do ok** (gate). `title`: **"Janus · Welcome Group"**. Texto nunca entra no favicon pequeno.
+O pipeline foi construído do `logo-janus-vert.svg` (grandes = lockup completo; 16/32 = corte do símbolo bifronte com traço engrossado — stroke 12 só nos paths preenchidos — e tile branco) e a régua 16/32/48/180 foi apresentada ao Yan (gate). **Veredito do gate: o símbolo não ficou legível em 16/32 — os ícones ATUAIS permanecem** (a arte bifronte é detalhada demais para favicon pequeno; receita registrada no out-briefing para retomada futura com uma arte simplificada). O `title` mudou para **"Janus · Welcome Group"**. Texto nunca entra no favicon pequeno.
 
 ### 7. Histórico de versões: colapsar, nunca apagar
 `VersionHistory` agrupa por **major derivado do dado + `APP_VERSION`** (sem hardcode): majors anteriores colapsados ("Versões N.x — N versões"); major atual mostra as ~5 recentes + expansor. Quando a v5.0.0 chegar, a v4 inteira dobra sozinha. Dado íntegro.

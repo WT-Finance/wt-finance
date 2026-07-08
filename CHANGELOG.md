@@ -16,7 +16,7 @@ MINOR · **Rebranding Janus — o fechamento da v4.** A plataforma interna assum
 - **E-mails internos (M4):** senha provisória + notificação de solicitação ganham cabeçalho **lockup duplo [JANUS] | [WELCOME GROUP]** (tabela Outlook-safe, divisor 1px, alturas ópticas casadas) e textos Janus (`APP_NOME_INTERNO`; `APP_NOME` congelado para a fatura). **Fatura intocada** (`templateFaturaEmail`/`fatura.ts`/`fatura.test.ts` sem diff).
 - **Modal "Welcome to Janus" (M5):** 1× por usuário, controlado no **banco** (migration 0174: `onboarding_visto_em` + RPCs inline; nunca localStorage). Texto verbatim, lockup duplo (empilha no mobile), título serif (stack Georgia; Trajan futura = 1 linha), "Começar" grava. Promise fora do caminho bloqueante (Suspense+`use`); **fail-safe**: consulta falhou → não exibe.
 - **Histórico colapsado por major (M6):** majors anteriores dobram num grupo expansível ("Versões N.x — N versões"); major atual mostra as ~5 recentes + expansor. Regra derivada de `APP_VERSION` (sem hardcode) — na v5.0.0 a v4 dobra sozinha. Nada apagado.
-- **Favicon + title (M0, gate):** ícones do símbolo bifronte (16/32 = corte com traço engrossado + tile branco; 180/192/512 = lockup completo) — régua comparativa ENVIADA ao Yan; aplica-se (favicon + `title` "Janus · Welcome Group") somente após o ok, em commit próprio.
+- **Favicon + title (M0, gate DECIDIDO):** a régua comparativa (16/32/48/180) foi apresentada e o corte do símbolo bifronte **não ficou legível em 16/32** — decisão do Yan: **manter os ícones atuais**. O `title` da aba muda para **"Janus · Welcome Group"** (e a `description` acompanha o posicionamento da plataforma).
 
 ## [4.39.0] — 2026-07-07
 
