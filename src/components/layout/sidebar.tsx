@@ -4,11 +4,12 @@ import { useState, useRef, useEffect, useCallback, use, Suspense } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, ChevronRight, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut, LineChart, ClipboardList } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
 import Badge from '@/components/ui/badge'
+import NavGroup, { type NavSubItem } from '@/components/layout/nav-group'
 
 /** Dados do usuário logado, repassados pelo AppShell para identidade + filtro de navegação. */
 export interface UsuarioSidebar {
@@ -39,16 +40,6 @@ function ContagemPendencias({ promise }: { promise: Promise<number | null> }) {
   return <Badge variant="count" className="ml-auto">{n}</Badge>
 }
 
-interface NavSubItem {
-  href: string
-  label: string
-  icon: LucideIcon
-  /** Área de permissão que libera o subitem. */
-  area: Area
-  /** Visível se o usuário tiver QUALQUER uma destas áreas (OR). v4.34.0. */
-  areasAny?: Area[]
-}
-
 interface NavItem {
   href: string
   label: string
@@ -76,11 +67,26 @@ const FINANCEIRO_SUBS: NavSubItem[] = [
   { href: '/financeiro/faturamento-corp',      label: 'Faturamento Corporativo', icon: Receipt,  area: 'financeiro/faturamento-corp' },
 ]
 
+// Metas em DOIS níveis (v5.0.0), mesmo padrão de solicitacoes/acervo: 'metas' (edição,
+// libera as duas subabas) e 'metas/acompanhamento' (só leitura, libera só a 1ª).
+const METAS_SUBS: NavSubItem[] = [
+  { href: '/metas',          label: 'Acompanhamento das Metas', icon: LineChart,     area: 'metas/acompanhamento', areasAny: ['metas/acompanhamento', 'metas'] },
+  { href: '/metas/cadastro', label: 'Cadastro de Metas',        icon: ClipboardList, area: 'metas' },
+]
+
+/** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
+ *  saber "isto é um grupo" (o resto do render/filtro é genérico via NavGroup). */
+const NAV_GROUPS: Record<string, NavSubItem[]> = {
+  '/performance': PERFORMANCE_SUBS,
+  '/financeiro':  FINANCEIRO_SUBS,
+  '/metas':       METAS_SUBS,
+}
+
 const NAV_ITEMS: NavItem[] = [
   { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva'     },
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
-  { href: '/metas',          label: 'Metas',              Icon: Target,          area: 'metas'         },
+  { href: '/metas',          label: 'Metas',              Icon: Target,          area: null            },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
@@ -164,51 +170,28 @@ function JanusLogo() {
 }
 
 function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContentProps) {
-  const isPerformanceActive = pathname.startsWith('/performance')
-  const isFinanceiroActive  = pathname.startsWith('/financeiro')
   // Logo: Janus em TODAS as variantes, cor única `var(--brand)` (o [data-theme] resolve o
   // override setorial por aba; fora de Performance, o neutro do Grupo) — ver JanusLogo acima.
-  // Grupos com subabas (Performance, Financeiro) nascem RECOLHIDOS a cada abertura
+  // Grupos com subabas (Performance, Financeiro, Metas) nascem RECOLHIDOS a cada abertura
   // do site (v4.16.2) — sem persistência: o estado é só em memória, então sobrevive
   // à navegação client-side mas volta a recolher num carregamento/refresh novo. (A
-  // subaba ATIVA ainda aparece quando recolhido — ver visibleSubs abaixo.)
-  const [perfOpen, setPerfOpen] = useState(false)
-  const [financeiroOpen, setFinanceiroOpen] = useState(false)
-
-  const handlePerfToggle = () => setPerfOpen(prev => !prev)
-  const handleFinanceiroToggle = () => setFinanceiroOpen(prev => !prev)
+  // subaba ATIVA ainda aparece quando recolhido — lógica dentro do NavGroup, v5.0.0.)
+  // Um único mapa href→aberto (em vez de um useState por grupo) generaliza sem crescer
+  // a cada seção nova.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const toggleGroup = (href: string) => setOpenGroups(prev => ({ ...prev, [href]: !prev[href] }))
 
   // ── RBAC: navegação filtrada pelas permissões do usuário ──
   const pode = (area: Area) => usuario.permissoes.includes(area)
-
-  const performanceSubs = PERFORMANCE_SUBS.filter(s => s.areasAny ? s.areasAny.some(pode) : pode(s.area))
-  const financeiroSubs  = FINANCEIRO_SUBS.filter(s => s.areasAny ? s.areasAny.some(pode) : pode(s.area))
+  const subVisivel = (s: NavSubItem) => (s.areasAny ? s.areasAny.some(pode) : pode(s.area))
 
   const navItems = NAV_ITEMS.filter(item => {
     if (item.sempre) return true
     if (item.areasAny) return item.areasAny.some(pode)
-    if (item.href === '/performance') return performanceSubs.length > 0
-    if (item.href === '/financeiro')  return financeiroSubs.length > 0
+    const grupo = NAV_GROUPS[item.href]
+    if (grupo) return grupo.some(subVisivel)
     return item.area !== null && pode(item.area)
   })
-
-  // Subitem ativo do Financeiro = o de prefixo MAIS específico (evita 'Fluxo de
-  // Caixa' e 'Gerencial' acesos ao mesmo tempo, já que um é sub-rota do outro).
-  const activeFinanceiroHref = financeiroSubs
-    .filter(s => pathname === s.href || pathname.startsWith(s.href + '/'))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null
-
-  const visibleSubs = perfOpen
-    ? performanceSubs
-    : isPerformanceActive
-    ? performanceSubs.filter(s => pathname === s.href)
-    : []
-
-  const visibleFinanceiroSubs = financeiroOpen
-    ? financeiroSubs
-    : isFinanceiroActive
-    ? financeiroSubs.filter(s => s.href === activeFinanceiroHref)
-    : []
 
   // ── Barra de rolagem FLUTUANTE em overlay (v4.16.2) ──
   // A nativa é escondida (`.scrollbar-none` → largura 0 → NÃO desloca o conteúdo);
@@ -255,7 +238,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
   }, [measureThumb])
 
   // Re-mede quando expandir/recolher um grupo (ou navegar) muda a altura do conteúdo.
-  useEffect(() => { measureThumb() }, [measureThumb, pathname, perfOpen, financeiroOpen, navItems.length])
+  useEffect(() => { measureThumb() }, [measureThumb, pathname, openGroups, navItems.length])
 
   const onNavScroll = useCallback(() => { measureThumb(); revealThumb() }, [measureThumb, revealThumb])
 
@@ -289,140 +272,26 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
         >
           <div ref={navContentRef} className="space-y-0.5">
         {navItems.map(({ href, label, Icon }) => {
+          const grupo = NAV_GROUPS[href]
+
+          if (grupo) {
+            return (
+              <NavGroup
+                key={href}
+                label={label}
+                Icon={Icon}
+                href={href}
+                subs={grupo}
+                pathname={pathname}
+                pode={pode}
+                open={!!openGroups[href]}
+                onToggle={() => toggleGroup(href)}
+                onNav={onNav}
+              />
+            )
+          }
+
           const active = pathname === href || pathname.startsWith(`${href}/`)
-          const isPerformance = href === '/performance'
-
-          if (isPerformance) {
-            return (
-              <div key={href}>
-                <button
-                  onClick={handlePerfToggle}
-                  className={[
-                    'w-full flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
-                    isPerformanceActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
-                  ].join(' ')}
-                  style={isPerformanceActive
-                    ? { background: 'var(--brand-soft)', color: 'var(--brand)' }
-                    : undefined}
-                >
-                  {isPerformanceActive && (
-                    <span
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
-                      style={{ background: 'var(--brand)' }}
-                    />
-                  )}
-                  <Icon
-                    size={16}
-                    style={isPerformanceActive ? { color: 'var(--brand)' } : undefined}
-                    className={isPerformanceActive ? '' : 'text-zinc-400'}
-                  />
-                  <span className="flex-1 text-left">{label}</span>
-                  <ChevronRight
-                    size={14}
-                    className={['transition-transform shrink-0', perfOpen ? 'rotate-90' : ''].join(' ')}
-                    style={{ color: isPerformanceActive ? 'var(--brand)' : undefined }}
-                  />
-                </button>
-
-                {visibleSubs.length > 0 && (
-                  <div className="mt-0.5 ml-4 pl-3 border-l border-zinc-200 space-y-0.5">
-                    {visibleSubs.map(sub => {
-                      const subActive = pathname === sub.href
-                      return (
-                        <Link
-                          key={sub.href}
-                          href={sub.href}
-                          onClick={onNav}
-                          className={[
-                            'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                            subActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100',
-                          ].join(' ')}
-                          style={subActive
-                            ? { background: 'var(--brand-soft)', color: 'var(--brand)' }
-                            : undefined}
-                        >
-                          <sub.icon
-                            size={14}
-                            strokeWidth={1.8}
-                            style={subActive ? { color: 'var(--brand)' } : undefined}
-                            className={subActive ? '' : 'text-zinc-400'}
-                          />
-                          {sub.label}
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          }
-
-          const isFinanceiro = href === '/financeiro'
-          if (isFinanceiro) {
-            return (
-              <div key={href}>
-                <button
-                  onClick={handleFinanceiroToggle}
-                  className={[
-                    'w-full flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium transition-colors relative',
-                    isFinanceiroActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100',
-                  ].join(' ')}
-                  style={isFinanceiroActive
-                    ? { background: 'var(--brand-soft)', color: 'var(--brand)' }
-                    : undefined}
-                >
-                  {isFinanceiroActive && (
-                    <span
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
-                      style={{ background: 'var(--brand)' }}
-                    />
-                  )}
-                  <Icon
-                    size={16}
-                    style={isFinanceiroActive ? { color: 'var(--brand)' } : undefined}
-                    className={isFinanceiroActive ? '' : 'text-zinc-400'}
-                  />
-                  <span className="flex-1 text-left">{label}</span>
-                  <ChevronRight
-                    size={14}
-                    className={['transition-transform shrink-0', financeiroOpen ? 'rotate-90' : ''].join(' ')}
-                    style={{ color: isFinanceiroActive ? 'var(--brand)' : undefined }}
-                  />
-                </button>
-
-                {visibleFinanceiroSubs.length > 0 && (
-                  <div className="mt-0.5 ml-4 pl-3 border-l border-zinc-200 space-y-0.5">
-                    {visibleFinanceiroSubs.map(sub => {
-                      const subActive = sub.href === activeFinanceiroHref
-                      return (
-                        <Link
-                          key={sub.href}
-                          href={sub.href}
-                          onClick={onNav}
-                          className={[
-                            'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                            subActive ? 'font-semibold' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100',
-                          ].join(' ')}
-                          style={subActive
-                            ? { background: 'var(--brand-soft)', color: 'var(--brand)' }
-                            : undefined}
-                        >
-                          <sub.icon
-                            size={14}
-                            strokeWidth={1.8}
-                            style={subActive ? { color: 'var(--brand)' } : undefined}
-                            className={subActive ? '' : 'text-zinc-400'}
-                          />
-                          {sub.label}
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          }
-
           return (
             <Link
               key={href}
