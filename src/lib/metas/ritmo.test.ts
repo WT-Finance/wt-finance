@@ -1,0 +1,131 @@
+import { describe, it, expect } from 'vitest'
+import {
+  calcularRitmo, classificarRitmo,
+  RITMO_META_ATINGIDA, RITMO_ATENCAO,
+  type MetaMensal, type PontoDia,
+} from './ritmo'
+
+// Metas de 100/dia por construção (mês de 31d = 3100; 28d = 2800; 30d = 3000),
+// para os números da pró-rata saírem redondos e conferíveis a olho.
+const JUL = (v = 3100): MetaMensal => ({ ano: 2026, mes: 7, valorMeta: v })
+const serieDe = (dias: Array<[string, number]>): PontoDia[] =>
+  dias.map(([data, valor]) => ({ data, valor }))
+
+describe('classificarRitmo — régua (constantes nomeadas)', () => {
+  it('limiares', () => {
+    expect(RITMO_META_ATINGIDA).toBe(100)
+    expect(RITMO_ATENCAO).toBe(60)
+    expect(classificarRitmo(120)).toBe('verde')
+    expect(classificarRitmo(100)).toBe('verde')
+    expect(classificarRitmo(80)).toBe('ambar')
+    expect(classificarRitmo(60)).toBe('ambar')
+    expect(classificarRitmo(59.9)).toBe('vermelho')
+    expect(classificarRitmo(0)).toBe('vermelho')
+    expect(classificarRitmo(null)).toBeNull()
+    expect(classificarRitmo(Infinity)).toBeNull()
+  })
+})
+
+describe('calcularRitmo', () => {
+  it('mês parcial — hoje = última venda no meio do mês', () => {
+    const r = calcularRitmo({
+      from: '2026-07-01', to: '2026-07-31', ultimaVenda: '2026-07-10',
+      metas: [JUL(3100)],
+      serie: serieDe([['2026-07-03', 400], ['2026-07-08', 500]]), // realizado 900
+    })
+    expect(r.metaPeriodo).toBeCloseTo(3100, 6)   // mês inteiro (31 × 100)
+    expect(r.esperadoAteHoje).toBeCloseTo(1000, 6) // dias 1..10 (10 × 100)
+    expect(r.realizado).toBe(900)
+    expect(r.pctMeta).toBeCloseTo((900 / 3100) * 100, 6)
+    expect(r.ritmoPct).toBeCloseTo(90, 6)        // 900 / 1000
+    expect(r.status).toBe('ambar')
+    expect(r.parcial).toBe(true)
+    expect(r.hoje).toBe('2026-07-10')
+    // gráfico: 31 pontos; último dia = meta cheia, real futuro (null)
+    expect(r.pontos).toHaveLength(31)
+    expect(r.pontos[30].metaAcum).toBeCloseTo(3100, 6)
+    expect(r.pontos[30].realAcum).toBeNull()
+    expect(r.pontos[30].futuro).toBe(true)
+    expect(r.pontos[9].realAcum).toBe(900)       // dia 10 (idx 9) — acumulado até hoje
+    expect(r.pontos[9].futuro).toBe(false)
+  })
+
+  it('YTD parcial (este-ano) — pró-rata do mês corrente', () => {
+    // Jan..Jun cheios (3100+2800+3100+3000+3100+3000 = 18100) + Jul 1..10 (1000)
+    const metas: MetaMensal[] = [
+      { ano: 2026, mes: 1, valorMeta: 3100 }, { ano: 2026, mes: 2, valorMeta: 2800 },
+      { ano: 2026, mes: 3, valorMeta: 3100 }, { ano: 2026, mes: 4, valorMeta: 3000 },
+      { ano: 2026, mes: 5, valorMeta: 3100 }, { ano: 2026, mes: 6, valorMeta: 3000 },
+      { ano: 2026, mes: 7, valorMeta: 3100 },
+    ]
+    const r = calcularRitmo({
+      from: '2026-01-01', to: '2026-12-31', ultimaVenda: '2026-07-10',
+      metas, serie: serieDe([['2026-04-01', 19100]]),
+    })
+    expect(r.esperadoAteHoje).toBeCloseTo(18100 + 1000, 6) // até 10/jul
+    expect(r.realizado).toBe(19100)
+    expect(r.ritmoPct).toBeCloseTo((19100 / 19100) * 100, 6) // 100 → verde
+    expect(r.status).toBe('verde')
+    expect(r.parcial).toBe(true)
+  })
+
+  it('multi-mês FECHADO — hoje = to; esperado = meta do período', () => {
+    const r = calcularRitmo({
+      from: '2026-01-01', to: '2026-02-28', ultimaVenda: '2026-06-01', // depois do fim
+      metas: [{ ano: 2026, mes: 1, valorMeta: 3100 }, { ano: 2026, mes: 2, valorMeta: 2800 }],
+      serie: serieDe([['2026-01-15', 5900]]),
+    })
+    expect(r.metaPeriodo).toBeCloseTo(5900, 6)
+    expect(r.esperadoAteHoje).toBeCloseTo(5900, 6) // fechado → esperado = meta cheia
+    expect(r.ritmoPct).toBeCloseTo(100, 6)
+    expect(r.pctMeta).toBeCloseTo(100, 6)          // com esperado=meta, ritmo == %meta
+    expect(r.status).toBe('verde')
+    expect(r.parcial).toBe(false)
+    expect(r.hoje).toBe('2026-02-28')
+  })
+
+  it('personalizado cortando meses nas DUAS bordas', () => {
+    // 15..31 jan (17×100=1700) + 1..10 fev (10×100=1000) = 2700
+    const r = calcularRitmo({
+      from: '2026-01-15', to: '2026-02-10', ultimaVenda: '2026-02-10',
+      metas: [{ ano: 2026, mes: 1, valorMeta: 3100 }, { ano: 2026, mes: 2, valorMeta: 2800 }],
+      serie: serieDe([['2026-01-20', 1350]]),
+    })
+    expect(r.metaPeriodo).toBeCloseTo(2700, 6)
+    expect(r.esperadoAteHoje).toBeCloseTo(2700, 6) // hoje = to
+    expect(r.pctMeta).toBeCloseTo(50, 6)           // 1350 / 2700
+    expect(r.parcial).toBe(false)
+  })
+
+  it('hoje = última venda dentro de período multi-mês em curso', () => {
+    // esperado = jan cheio (3100) + fev 1..10 (1000) = 4100
+    const r = calcularRitmo({
+      from: '2026-01-01', to: '2026-03-31', ultimaVenda: '2026-02-10',
+      metas: [
+        { ano: 2026, mes: 1, valorMeta: 3100 },
+        { ano: 2026, mes: 2, valorMeta: 2800 },
+        { ano: 2026, mes: 3, valorMeta: 3100 },
+      ],
+      serie: serieDe([['2026-01-05', 4100]]),
+    })
+    expect(r.metaPeriodo).toBeCloseTo(3100 + 2800 + 3100, 6)
+    expect(r.esperadoAteHoje).toBeCloseTo(4100, 6)
+    expect(r.ritmoPct).toBeCloseTo(100, 6)
+    expect(r.status).toBe('verde')
+    expect(r.parcial).toBe(true)
+    expect(r.hoje).toBe('2026-02-10')
+  })
+
+  it('período FUTURO (última venda antes do início) — nada esperado, ritmo indefinido', () => {
+    const r = calcularRitmo({
+      from: '2026-08-01', to: '2026-08-31', ultimaVenda: '2026-07-06',
+      metas: [{ ano: 2026, mes: 8, valorMeta: 3100 }],
+      serie: [],
+    })
+    expect(r.realizado).toBe(0)
+    expect(r.esperadoAteHoje).toBe(0)
+    expect(r.ritmoPct).toBeNull()
+    expect(r.status).toBeNull()
+    expect(r.pctMeta).toBeCloseTo(0, 6)
+  })
+})
