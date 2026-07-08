@@ -6,6 +6,7 @@ import {
   vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
   mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema, buscarPessoasSchema,
   acervoListaSchema, acervoDocSchema,
+  metasListarSchema, metasRitmoDiarioSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -125,6 +126,10 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // cedo, como as demais RPCs desta lista); o SHAPE (array de metadados, sem
   // storage_path/criado_por) é validado contra a RPC viva.
   { fn: 'acervo_listar',                 params: {},                                                                   schema: acervoListaSchema },
+  // v5.0.0 Metas: leituras consumidas pela UI. Service role passa o gate exigir_acesso
+  // (retorna cedo); o SHAPE é validado contra a RPC viva (108 metas de seed + série real).
+  { fn: 'metas_listar',                  params: { p_ano: 2026 },                                                      schema: metasListarSchema },
+  { fn: 'metas_ritmo_diario',            params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },    schema: metasRitmoDiarioSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -313,6 +318,23 @@ async function rpcAnonStatus(fn: string, body: Record<string, unknown>): Promise
   await res.text()
   return res.status
 }
+
+// v5.0.0 — FONTE ÚNICA DO REAL: a série de metas_ritmo_diario tem de somar EXATAMENTE
+// o faturamento de get_executiva_kpis no mesmo range/setor (mesma mv_vendas_diarias,
+// mesmo JOIN/WHERE). Se divergir, "faturamento de X" em Metas ≠ em Performance — o que
+// o invariante proíbe. Cobre 'todos' + os 3 setores (nome interno; Lazer = display Trips).
+describe.skipIf(!ON)('contrato Metas — paridade com a Performance (fonte única)', () => {
+  const RANGE = { p_from: '2026-01-01', p_to: '2026-06-30' }
+  it.each(['todos', 'Weddings', 'Lazer', 'Corporativo'])(
+    'metas_ritmo_diario[%s].Σserie = get_executiva_kpis.faturamento',
+    async (setor) => {
+      const ritmo = await rpc('metas_ritmo_diario', { ...RANGE, p_setor: setor }) as { serie: Array<{ valor_total: number }> }
+      const kpis  = await rpc('get_executiva_kpis',  { ...RANGE, p_setor: setor }) as { faturamento: { valor: number } }
+      const soma = ritmo.serie.reduce((s, d) => s + Number(d.valor_total), 0)
+      expect(soma).toBeCloseTo(Number(kpis.faturamento.valor), 2)
+    },
+  )
+})
 
 describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)', () => {
   it('catálogo de áreas: banco (app.rbac_areas) ↔ app (AREAS) idênticos', async () => {
