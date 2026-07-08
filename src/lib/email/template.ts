@@ -38,11 +38,12 @@ function escaparHtml(s: string): string {
 
 // v4.40.0 (Rebranding Janus) — cabeçalho de LOCKUP DUPLO [JANUS] | [WELCOME GROUP], só para os
 // e-mails INTERNOS (senha provisória + notificação de solicitação). Tabela de 3 "colunas" (logo +
-// divisória + logo) com gaps em células vazias (nunca margin, ignorado pelo Outlook). As duas artes
-// têm o MESMO raster height (93px) — exibidas com a MESMA altura óptica (36px) mantendo a proporção
-// original (Janus 379×93 → 147×36; Welcome 480×93 → 186×36), `vertical-align:middle` nas células.
-// A divisória é uma célula de 1px com bgcolor (nunca border-left, que o Outlook trata de forma
-// inconsistente em <td>). `height` como ATRIBUTO (não só CSS) por robustez no motor do Outlook/Word.
+// divisória + logo) com gaps em células vazias (nunca margin, ignorado pelo Outlook). Alturas
+// ÓPTICAS: Janus 36px (147×36); Welcome LEVEMENTE menor, 32px (165×32) — harmonia entre as artes,
+// ajuste do checkpoint v4.40.0. `vertical-align:middle` nas células.
+// A divisória: DIV interno com height + line-height IGUAIS (+ mso-line-height-rule:exactly) —
+// a 1ª versão (height só no <td> com font-size:0/line-height:0) era COLAPSADA pelo motor
+// Word do Outlook e a barra saía CORTADA (visto no Outlook real, checkpoint). Nunca border-left.
 function lockupDuploHtml(): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
           <tr>
@@ -50,10 +51,12 @@ function lockupDuploHtml(): string {
               <img src="cid:${LOGO_JANUS_CID}" alt="Janus" width="147" height="36" style="display:block;width:147px;height:36px;max-width:147px;border:0;" />
             </td>
             <td width="18" style="width:18px;font-size:0;line-height:0;">&nbsp;</td>
-            <td width="1" height="40" bgcolor="${COR_LINHA}" style="width:1px;font-size:0;line-height:0;">&nbsp;</td>
+            <td width="1" valign="middle" style="width:1px;padding:0;">
+              <div style="width:1px;height:40px;line-height:40px;mso-line-height-rule:exactly;font-size:0;background-color:${COR_LINHA};">&nbsp;</div>
+            </td>
             <td width="18" style="width:18px;font-size:0;line-height:0;">&nbsp;</td>
             <td align="center" valign="middle" style="padding:0;">
-              <img src="cid:${LOGO_CID}" alt="Welcome Group" width="186" height="36" style="display:block;width:186px;height:36px;max-width:186px;border:0;" />
+              <img src="cid:${LOGO_CID}" alt="Welcome Group" width="165" height="32" style="display:block;width:165px;height:32px;max-width:165px;border:0;" />
             </td>
           </tr>
         </table>`
