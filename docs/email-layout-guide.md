@@ -40,6 +40,10 @@ O Outlook desktop usa o **motor do Word** — ignora muito CSS moderno. O que cu
    </tr></table>
    ```
    `border-radius` não aparece no Outlook (botão quadrado lá — aceitável).
+3b. **Divisor/spacer vertical = elemento INTERNO com `height` + `line-height` IGUAIS** (+
+   `mso-line-height-rule:exactly`). `height` só no `<td>` com `font-size:0/line-height:0` é
+   **colapsado** pelo Word — a barra sai cortada (bug do lockup duplo, checkpoint v4.40.0):
+   `<td><div style="width:1px;height:40px;line-height:40px;mso-line-height-rule:exactly;font-size:0;background-color:…">&nbsp;</div></td>`
 4. **Centralizar por `align="center"`** na `<td>`/`<table>` — nunca por `margin:0 auto`.
 5. **Logo: PNG TRANSPARENTE rasterizado do SVG.** Um PNG "transparente" pode ter **fundo baked-in** (vira **caixa preta** no Outlook — foi o bug da v4.24.1). Cheque com sharp (`metadata().hasAlpha` deve ser `true`; amostre um canto 1px). Gere do SVG:
    ```ts

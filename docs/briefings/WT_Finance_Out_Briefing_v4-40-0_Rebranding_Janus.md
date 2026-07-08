@@ -86,3 +86,9 @@ FORA: e-mails de cliente; renomear repo; Trajan Pro (troca de 1 linha futura); l
 1. **"version X.X.X" alinhado à DIREITA da caixa do logo** (168px — a arte preenche a largura, então alinha com o "S" do wordmark). Preview enviado.
 2. **Barra de rolagem auto-hide vira PADRÃO do DS:** extraído da sidebar o componente **`<ScrollAutoHide>`** (`shared/scroll-auto-hide.tsx` — nativa escondida + thumb overlay que some sozinho, mecânica imperativa) e aplicado no **Acervo de Documentos** (substitui o `overflow-y-auto` + `scrollbar-gutter`); seção "Barras de rolagem" adicionada ao DS doc (exceção: o `<main>` do AppShell mantém nativa + gutter). A sidebar mantém a implementação embutida (origem do padrão; migração incremental).
 3. **Paleta do design-system ganha os destaques setoriais:** Weddings #BD965C, Trips #0091B3, Corporativo #0D5257 (overrides do `--brand` por `[data-theme]`, ADR-0103) — em ColorGrid próprio sob a Paleta Brand Welcome.
+
+---
+
+## Fechamento — checkpoint COMPLETO aprovado (2026-07-08)
+
+Yan aprovou tudo ("tudo ok, podemos fechar"). Itens finais do DoD: lição do divisor Outlook adicionada ao `docs/email-layout-guide.md` (regra 3b); **CLAUDE.md** ganhou a fronteira de MARCA na convenção de e-mail (interno=Janus/lockup duplo; cliente=Welcome, nunca 'Janus' — aprendizado permanente/transversal); data da entrada da diretoria reconciliada ao horário real de autoria final (2026-07-08T09:30 — reconciliar ao merge se divergir muito). PR #173 marcado ready for review. **Merge e deploy ficam com o Yan. Com o merge, a v4 está FECHADA.**
