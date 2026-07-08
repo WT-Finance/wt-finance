@@ -160,3 +160,16 @@ só no desktop); título serif via `style={{ fontFamily: "Georgia, 'Times New Ro
 (a troca para Trajan Pro é essa linha); corpo `text-sm text-zinc-600`; CTA `bg-action-primary`
 (tokens neutros de plataforma — nunca `var(--brand)`). Flag no banco (`onboarding_visto_em`),
 promise fora do caminho bloqueante, fail-safe (falha → não exibe).
+
+## Barras de rolagem (v4.40.0 — padrão)
+
+Container rolável INTERNO (lista/painel dentro de uma página) usa a **barra flutuante
+auto-hide**: a scrollbar nativa é escondida (`.scrollbar-none` — largura 0, não desloca o
+conteúdo, sem "goteira") e um **thumb em overlay** aparece ao rolar/hover e **some sozinho**
+(~1,2s). Componente pronto: **`<ScrollAutoHide>`** (`src/components/shared/scroll-auto-hide.tsx`)
+— substitui o `<div className="overflow-y-auto">`; a `className` vai no viewport. Mecânica
+imperativa (refs, zero state — não re-renderiza por scroll). Exemplos vivos: a **sidebar**
+(implementação própria embutida, a origem do padrão) e o **Acervo de Documentos**.
+
+Exceção: o `<main>` do AppShell mantém a scrollbar NATIVA com `scrollbar-gutter: stable`
+(DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos.

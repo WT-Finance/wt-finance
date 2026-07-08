@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Search, Plus, Download, FileText, Upload, Loader2, X, Trash2 } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
@@ -178,9 +179,9 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
       {erroDownload && <FaixaMensagem tipo="erro" texto={erroDownload} onFechar={() => setErroDownload(null)} />}
       {erroExclusao && <FaixaMensagem tipo="erro" texto={erroExclusao} onFechar={() => setErroExclusao(null)} />}
 
-      {/* Só a LISTA rola. scrollbar-gutter:stable reserva a goteira → sem "salto" lateral quando a
-          barra aparece/some (mesma lição do <main> do AppShell, DS §12). */}
-      <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-gutter:stable]">
+      {/* Só a LISTA rola — com a barra FLUTUANTE auto-hide do DS (some quando não usada, como a
+          da sidebar; overlay → não desloca o conteúdo, dispensa scrollbar-gutter). v4.40.0. */}
+      <ScrollAutoHide>
       {grupos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-200 py-10 text-center">
           {busca.trim() ? (
@@ -244,7 +245,7 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
           ))}
         </div>
       )}
-      </div>
+      </ScrollAutoHide>
 
       {modalAberto && (
         <ModalUpload
