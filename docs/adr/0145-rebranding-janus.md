@@ -32,7 +32,7 @@ O logo renderiza por **máscara CSS** (`mask-image` do SVG monocromático + `bac
 
 ### 5. Onboarding "Welcome to Janus" — 1× por usuário, no BANCO
 - **Migration 0174 (aditiva):** `app.rbac_usuarios.onboarding_visto_em timestamptz` + RPCs inline `onboarding_visto`/`marcar_onboarding_visto` (guard `app.exigir_acesso()` de autenticado ativo — dado do próprio usuário; molde de `solic_minhas_pendencias`).
-- **Nunca `localStorage`** (multi-dispositivo). Texto **VERBATIM** do Yan (título serif "Welcome to Janus" — stack Georgia; quando a Trajan Pro entrar no repo, a troca é a linha `fontFamily` do componente); botão "Começar" grava (idempotente); **sem** "by WELCOME", **sem** microcopy de rever, **sem** lar permanente.
+- **Nunca `localStorage`** (multi-dispositivo). Texto **VERBATIM** do Yan (título "Welcome to Janus"); botão "Começar" grava (idempotente); **sem** "by WELCOME", **sem** microcopy de rever, **sem** lar permanente. *(Emenda v4.40.1: o título saiu da serifa Georgia para a fonte da IDENTIDADE — Avenir LT Std 85 Heavy, caixa alta + tracking, no cinza da marca `--text-muted`/#75777B — mockup B aprovado pelo Yan; a nota "Trajan = 1 linha" ficou obsoleta para o título.)*
 - **Fail-safe absoluto:** a consulta flui **fora do caminho bloqueante** do layout (promise + Suspense/`use`, técnica do badge v4.39); falha → conta como visto → **não exibe** (o onboarding jamais trava o app); a marcação falha em silêncio (o modal fecha localmente).
 
 ### 6. Favicon com gate de legibilidade (M0)

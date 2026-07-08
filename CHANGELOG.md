@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [4.40.1] — 2026-07-08
+
+PATCH · **Título do modal de boas-vindas na fonte da identidade.** "Welcome to Janus" sai da serifa (Georgia) para a **Avenir LT Std 85 Heavy** — o mesmo estilo do antigo wordmark (caixa alta + tracking, via CSS; o texto verbatim permanece) — no **cinza da marca** (`--text-muted` #75777B) em vez de preto. Mockup B aprovado pelo Yan. Sem migration.
+
 ## [4.40.0] — 2026-07-07
 
 MINOR · **Rebranding Janus — o fechamento da v4.** A plataforma interna assume a identidade **Janus**; o cliente externo continua vendo só **Welcome** (e-mail de fatura 100% intocado — provado por diff). Absorve o teste aprovado `test/rebrand-janus-sidebar` (PR #166, fechado sem merge). **Migration 0174 (aditiva)** · ADR-0145.
