@@ -10,8 +10,8 @@
 // SEM "by WELCOME", SEM microcopy de rever, SEM lar permanente.
 //
 // Tela de PLATAFORMA (aparece em qualquer rota): tokens NEUTROS dedicados (--action-primary),
-// nunca var(--brand) (ADR-0103 ext. v4.14.1). Título em SERIFA — stack Georgia; quando a
-// Trajan Pro entrar no repo, a troca é SÓ a linha `fontFamily` abaixo (registrado no ADR).
+// nunca var(--brand) (ADR-0103 ext. v4.14.1). Título na fonte da IDENTIDADE (Avenir Heavy,
+// caixa alta + tracking — v4.40.1, mockup B aprovado; a serifa Georgia da v4.40.0 saiu).
 
 import { use, useState, useTransition } from 'react'
 import Image from 'next/image'
@@ -45,9 +45,14 @@ export default function WelcomeJanusModal({ vistoPromise }: { vistoPromise: Prom
           </div>
         </div>
 
+        {/* Título na FONTE DA IDENTIDADE (v4.40.1 — mockup B aprovado): Avenir LT Std 85 Heavy
+            (a fonte global do app, peso 800 — o mesmo estilo do antigo wordmark "WT FINANCE":
+            caixa alta + tracking) no CINZA DA MARCA (--text-muted = #75777B, token de plataforma).
+            O texto verbatim permanece "Welcome to Janus" no JSX (a caixa alta é CSS). A serifa
+            Georgia saiu; a nota "Trajan = 1 linha" do ADR-0145 fica obsoleta para este título. */}
         <h1
-          className="mt-7 text-2xl text-zinc-900"
-          style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+          className="mt-7 text-xl font-[800] uppercase tracking-[2px]"
+          style={{ color: 'var(--text-muted)' }}
         >
           Welcome to Janus
         </h1>

@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '4.40.1',
+    data: '2026-07-08T10:19',
+    itens: [
+      { tipo: 'melhoria', texto: 'A tela de boas-vindas do Janus ganhou o título na tipografia oficial da marca, alinhada ao restante da identidade visual.' },
+    ],
+  },
+  {
     versao: '4.40.0',
     data: '2026-07-08T09:30',
     itens: [
