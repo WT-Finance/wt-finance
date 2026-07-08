@@ -118,10 +118,11 @@ function JanusLogo() {
     probe.src = JANUS_LOGO_SRC
   }, [])
 
-  // Sob o logo: SÓ o "version X.X.X" centralizado — o byline "by WELCOME" saiu no checkpoint
-  // da v4.40.0 (decisão do Yan, mockup A/B; a marca Welcome permanece no selo do rodapé).
+  // Sob o logo: SÓ o "version X.X.X", alinhado à DIREITA da caixa do logo (168px — a arte
+  // preenche a largura toda, então a borda direita da caixa ≈ o "S" do wordmark; ajuste do
+  // checkpoint). O byline "by WELCOME" saiu (a marca Welcome permanece no selo do rodapé).
   const byline = (
-    <div className="flex justify-center mt-2">
+    <div className="w-[168px] max-w-full mx-auto flex justify-end mt-2">
       <VersionHistory />
     </div>
   )
