@@ -72,3 +72,9 @@ FORA: e-mails de cliente; renomear repo; Trajan Pro (troca de 1 linha futura); l
 5. **Dourado do e-mail de solicitação ("SOLICITAÇÃO CRIADA") — confirmado intocado:** é `#BD965C` **hardcoded no template** (isento por convenção Outlook), **não usa token** — o saneamento do `--brand` não o afeta (verificado na auditoria e no preview regenerado).
 
 **Pendente de decisão (mockup enviado):** sidebar **sem** o "by WELCOME" com "version X.X.X" centralizado (opção B) × atual com byline (opção A). Aguardando o veredito do Yan para aplicar (ou manter A).
+
+---
+
+## Adendo — Checkpoint rodada 2 (2026-07-08)
+
+**Decisões do Yan:** previews dos e-mails **APROVADOS**; mockup do login **APROVADO** (a hierarquia óptica 36/32 do e-mail já estava aplicada no `auth-header` — confirmado); **sidebar = opção B**: sem o byline "by WELCOME", com o "version X.X.X" **centralizado** sob o logo (a marca Welcome permanece no selo do rodapé). Aplicado em `JanusLogo` (sidebar.tsx) + docs (CHANGELOG/ADR §2b/DS doc) atualizados. Gates verdes.

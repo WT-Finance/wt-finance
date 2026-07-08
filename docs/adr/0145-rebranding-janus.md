@@ -21,6 +21,9 @@ O default do `:root` (`--brand:#BD965C` dourado) era um **resquício** de quando
 - **Trade-off registrado:** em cold-load direto numa aba de Weddings, o flash pré-hidratação agora é cinza→dourado (antes o default coincidia). Inerente a qualquer default ≠ dourado; aceito.
 - Inventário completo de `var(--brand)`/`#BD965C` no out-briefing. Achados anexos: docs vivas corrigidas (design-system §11, comentário de `acaoBadge`); paridade do badge "Abertura" UI (neutro, tema group — já era assim) × e-mail (dourado hardcoded, isento por convenção Outlook) registrada como pendência de produto.
 
+### 2b. Checkpoint (decisões finais do Yan sobre a sidebar/auth)
+No checkpoint, o Yan decidiu: **sidebar SEM o byline "by WELCOME"** — sob o logo fica só o "version X.X.X" centralizado (a marca Welcome permanece no selo do rodapé); **telas de auth com o lockup duplo** `[JANUS] | [WELCOME GROUP]` (sem wordmark textual); **hierarquia óptica do lockup**: Janus 36px, Welcome levemente menor (32px) — vale para e-mails E auth.
+
 ### 3. Tokens, não baked — regra única do logo
 As cores por variante do teste (hex baked dos SVGs antigos: `#807f7e`/`#c29864`/`#1e91b2`) **migram para os tokens**: o logo usa **`var(--brand)`** — no repouso é neutro; nas abas setoriais herda o override via `[data-theme]`. Um só ponto de verdade de cor; abas futuras herdam de graça.
 

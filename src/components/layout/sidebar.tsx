@@ -104,8 +104,9 @@ const JANUS_LOGO_SRC = '/logos/logo-janus.svg'
 // editado; a cor vive aqui. REGRA ÚNICA de cor: `var(--brand)` — no repouso é o neutro do Grupo
 // (#75777B, novo default) e nas abas setoriais herda o override via [data-theme] (Weddings
 // dourado, Trips turquesa, Corp verde) — tokens, não os hex baked do teste (decisão do Yan).
-// Byline "by WELCOME" 12px/800/reto (receita do mockup), gap mt-2 (≈19px ópticos — o lettering
-// da arte termina a ~81% da altura). O ramo legado do WelcomeGroupLogo (Image h-10 à esquerda,
+// Sob o logo, o "version X.X.X" centralizado (gap mt-2 ≈19px ópticos — o lettering da arte
+// termina a ~81% da altura); o byline "by WELCOME" do teste saiu no checkpoint (a marca Welcome
+// permanece no selo do rodapé). O ramo legado do WelcomeGroupLogo (Image h-10 à esquerda,
 // scale-[0.9]) foi removido; os SVGs antigos permanecem em public/logos (histórico).
 function JanusLogo() {
   // A máscara CSS não expõe onError — uma SONDA (Image() em efeito, mesma URL → mesmo cache)
@@ -117,10 +118,10 @@ function JanusLogo() {
     probe.src = JANUS_LOGO_SRC
   }, [])
 
+  // Sob o logo: SÓ o "version X.X.X" centralizado — o byline "by WELCOME" saiu no checkpoint
+  // da v4.40.0 (decisão do Yan, mockup A/B; a marca Welcome permanece no selo do rodapé).
   const byline = (
-    <div className="flex items-baseline gap-1 mt-2">
-      {/* Byline "by WELCOME" — negrito (800 = Avenir Heavy), reto, 12px, casing literal. */}
-      <span className="text-[12px] font-[800] tracking-[1px]" style={{ color: 'var(--brand)' }}>by WELCOME</span>
+    <div className="flex justify-center mt-2">
       <VersionHistory />
     </div>
   )

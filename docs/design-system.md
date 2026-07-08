@@ -141,8 +141,8 @@ internos, onboarding). O cliente externo vê só **Welcome** (e-mail de fatura 1
 cor é `backgroundColor: var(--brand)` — o asset nunca é editado; no repouso o logo é neutro
 (#75777B, novo default do `:root`) e nas abas setoriais herda o override de `[data-theme]`.
 Receita do header: caixa `h-12 w-[168px]` centralizada, `mask-size: contain`, posição `center`;
-byline "by WELCOME" `text-[12px] font-[800] tracking-[1px]` cor `var(--brand)`, gap `mt-2`;
-selo Welcome vertical no rodapé: box `46px · p-1 · rounded-xl · bg-white · border`.
+abaixo do logo, SÓ o "version X.X.X" centralizado (`mt-2`) — sem byline (decisão do checkpoint
+v4.40.0; a marca Welcome vive no selo do rodapé): box `46px · p-1 · rounded-xl · bg-white · border`.
 
 **`--brand` default = neutro do Grupo.** O dourado #BD965C é SÓ de Weddings (override
 `[data-theme=weddings]`); o `:root` tem o trio do tema group (#75777B/#EAE6DD/#4B4F54).
