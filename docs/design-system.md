@@ -173,3 +173,33 @@ imperativa (refs, zero state — não re-renderiza por scroll). Exemplos vivos: 
 
 Exceção: o `<main>` do AppShell mantém a scrollbar NATIVA com `scrollbar-gutter: stable`
 (DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos.
+
+## Gauge — medidor em semicírculo (v5.0.0)
+
+Primitivo `<Gauge>` (`@/components/shared/gauge`) para "quanto de um alvo foi atingido".
+Meia-lua de 180° (abertura para cima), componente PURO (sem hooks/`'use client'`).
+
+Props: `valorPct` (0..100+, fração preenchida = min(valorPct,100)/100; o centro mostra o % real),
+`cor` (string `var()` do ARCO — **identidade**: `--setor-*` no setor, neutro no Group; nunca hex),
+`centroTitulo` (número grande), `centroSubtitulo` (ReactNode — o chamador injeta o "ritmo X%"
+colorido), `tick?: {pct,label}` (marcador de pace COM valor, ex.: "R$ 1,65 Mi"),
+`tamanho?: 'grande'|'setor'`, `ariaLabel` (obrigatório; `role="img"`).
+
+Regra de cor: o **arco** é identidade (ADR-0103 — dourado de Weddings é legítimo no gauge de
+Weddings). A **régua de status** (verde/âmbar/vermelho) NÃO entra no arco — ela colore só textos
+como "ritmo X%" (responsabilidade do chamador, via `text-success`/`text-warning`/`text-danger`).
+A trilha de fundo é neutra (`zinc-200`). Usado nos cards do Acompanhamento de Metas; reusável na v5.1.
+
+## Metas — Acompanhamento & Cadastro (v5.0.0)
+
+Seção Metas (tema **group**, neutro): **Acompanhamento** (`/metas`) e **Cadastro** (`/metas/cadastro`).
+- **Acompanhamento**: pills de período (`PeriodoFilterPillsUrl`, `defaultPreset="este-ano"`) → aviso de
+  parcialidade → card Group (`<Gauge tamanho="grande">` neutro + faixa de 3 KPIs) → 3 cards setoriais
+  (`<Gauge tamanho="setor">` na cor do setor) → gráfico "Ritmo do período" (realizado acumulado sólido
+  na cor do setor × meta acumulada tracejada, `ReferenceLine` "Hoje" + `ReferenceDot` do esperado).
+- **Cadastro**: grade anual 12 meses × 3 setores × [Meta VT, % Rec] com **Group computado ao vivo**
+  (coluna read-only, fundo distinto), total no rodapé, **autosave por célula** (blur/Enter → loader →
+  check; reverte em erro — padrão `contas-manager`, nunca `lancamento-row`) e rodapé de auditoria.
+- **Fonte única**: o real vem de `get_executiva_kpis`; meta/ritmo do módulo puro `calcularRitmo`
+  (`@/lib/metas/ritmo` — pró-rata por dias, régua com constantes nomeadas, "hoje" = última venda).
+  Display "Trips"/chave "Lazer". Cor de identidade via `SETOR_COLORS`.

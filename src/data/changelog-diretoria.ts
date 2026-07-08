@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.0.0',
+    data: '2026-07-08T16:24',
+    itens: [
+      { tipo: 'novidade', texto: 'As metas comerciais de faturamento por setor entram na plataforma. Uma nova tela de Acompanhamento mostra, em tempo real, quanto Trips, Weddings, Corporativo e o Grupo já faturaram frente à meta do período — com o "ritmo" em relação ao esperado até a data e a comparação com o mesmo período do ano anterior. Uma tela de Cadastro permite definir as metas mês a mês. Substitui o painel de metas provisório.' },
+    ],
+  },
+  {
     versao: '4.40.1',
     data: '2026-07-08T10:19',
     itens: [
