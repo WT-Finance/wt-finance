@@ -68,18 +68,25 @@ export default function RitmoChart({ setores }: Props) {
             />
             {ChartYAxisBRL()}
 
-            <ReferenceLine
-              x={painel.ritmo.hoje}
-              stroke={chartSeries.neutral}
-              strokeDasharray="4 3"
-              label={{ value: 'Hoje', position: 'insideTopLeft', fontSize: 10, fill: chartColors.axisTick }}
-            />
-            <ReferenceDot
-              x={painel.ritmo.hoje}
-              y={painel.ritmo.esperadoAteHoje}
-              r={4}
-              fill={chartColors.axisTick}
-            />
+            {/* "Hoje"/esperado só quando a data cai no domínio do gráfico (pontos vão de
+                from a to). Período à frente da última venda (hoje < from) → não renderiza,
+                evitando marcador fora do eixo (glitch do Recharts). */}
+            {painel.ritmo.pontos.some(p => p.data === painel.ritmo.hoje) && (
+              <>
+                <ReferenceLine
+                  x={painel.ritmo.hoje}
+                  stroke={chartSeries.neutral}
+                  strokeDasharray="4 3"
+                  label={{ value: 'Hoje', position: 'insideTopLeft', fontSize: 10, fill: chartColors.axisTick }}
+                />
+                <ReferenceDot
+                  x={painel.ritmo.hoje}
+                  y={painel.ritmo.esperadoAteHoje}
+                  r={4}
+                  fill={chartColors.axisTick}
+                />
+              </>
+            )}
 
             <Line
               type="monotone"
