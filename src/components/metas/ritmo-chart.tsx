@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import {
-  LineChart, Line, XAxis, ResponsiveContainer, ReferenceLine, ReferenceDot, Tooltip,
+  ComposedChart, Area, Line, XAxis, ResponsiveContainer, ReferenceLine, ReferenceDot, Tooltip,
 } from 'recharts'
 import { Card } from '@/components/ui/card'
 import Tabs from '@/components/ui/tabs'
@@ -14,9 +14,9 @@ import { fmtMi } from '@/lib/fmt'
 import { corRitmo } from '@/components/metas/meta-card'
 import type { PainelSetor } from '@/components/metas/tipos'
 
-// Gráfico "Ritmo do período" — linha do realizado acumulado (sólida, cor do painel)
-// contra a meta acumulada pró-rata (tracejada, neutra), com marcador de "hoje" e do
-// "esperado até hoje". Um painel por vez (mini-pills), Group como default (v5.0.0).
+// Gráfico "Ritmo do período" — realizado acumulado (área+linha sólida, cor do
+// painel) contra a meta acumulada pró-rata (tracejada, neutra), com marcador de
+// "hoje" e anel do "esperado até hoje". Um painel por vez (pills), Group default.
 
 /** 'yyyy-MM-dd' → 'dd/MM' (tick de eixo/tooltip; data pura, sem fuso). */
 function fmtDiaMes(iso: string): string {
@@ -35,15 +35,18 @@ export default function RitmoChart({ setores }: Props) {
   if (!painel) return null
 
   const pctLabel = painel.ritmo.ritmoPct == null ? '—' : `${Math.round(painel.ritmo.ritmoPct)}%`
+  // ~9 rótulos no eixo X, independente do tamanho do período
+  const tickIntervalo = Math.max(0, Math.ceil(painel.ritmo.pontos.length / 9) - 1)
 
   return (
-    <Card>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <Card className="px-5 py-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Ritmo do período</h3>
-          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-            % do esperado: <span className={corRitmo(painel.ritmo.ritmoPct)}>{pctLabel}</span>
-          </p>
+          <h3 className="text-base font-semibold leading-snug text-[var(--text-primary)]">Ritmo do período</h3>
+          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-zinc-100 bg-zinc-50 px-2.5 py-0.5 text-xs text-[var(--text-muted)]">
+            % do esperado até hoje:
+            <span className={`font-semibold ${corRitmo(painel.ritmo.ritmoPct)}`}>{pctLabel}</span>
+          </div>
         </div>
 
         <Tabs
@@ -56,7 +59,7 @@ export default function RitmoChart({ setores }: Props) {
 
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={painel.ritmo.pontos} margin={chartMargins.default}>
+          <ComposedChart data={painel.ritmo.pontos} margin={chartMargins.default}>
             {ChartGrid()}
             <XAxis
               dataKey="data"
@@ -64,9 +67,22 @@ export default function RitmoChart({ setores }: Props) {
               tick={{ fontSize: tickFontSize.x, fill: chartColors.axisTick }}
               tickLine={false}
               axisLine={false}
-              interval="preserveStartEnd"
+              interval={tickIntervalo}
+              tickMargin={8}
             />
             {ChartYAxisBRL()}
+
+            {/* Sombra sob o realizado — reforça o acumulado sem virar segunda série */}
+            <Area
+              type="monotone"
+              dataKey="realAcum"
+              legendType="none"
+              tooltipType="none"
+              stroke="none"
+              fill={painel.cor}
+              fillOpacity={0.07}
+              connectNulls={false}
+            />
 
             {/* "Hoje"/esperado só quando a data cai no domínio do gráfico (pontos vão de
                 from a to). Período à frente da última venda (hoje < from) → não renderiza,
@@ -82,8 +98,10 @@ export default function RitmoChart({ setores }: Props) {
                 <ReferenceDot
                   x={painel.ritmo.hoje}
                   y={painel.ritmo.esperadoAteHoje}
-                  r={4}
-                  fill={chartColors.axisTick}
+                  r={4.5}
+                  className="fill-white"
+                  stroke={chartColors.axisTick}
+                  strokeWidth={2}
                 />
               </>
             )}
@@ -115,14 +133,14 @@ export default function RitmoChart({ setores }: Props) {
                 />
               }
             />
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
       <ChartLegend
         items={[
-          { label: 'Realizado', color: painel.cor,           type: 'line' },
-          { label: 'Meta',      color: chartColors.axisTick, type: 'line', dashed: true },
+          { label: 'Realizado acumulado', color: painel.cor,           type: 'line' },
+          { label: 'Meta acumulada',      color: chartColors.axisTick, type: 'line', dashed: true },
         ]}
       />
     </Card>

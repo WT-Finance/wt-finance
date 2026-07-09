@@ -32,24 +32,23 @@ export default function AcompanhamentoContent({ data }: Props) {
         </p>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         <PeriodoFilterPillsUrl defaultPreset="este-ano" />
+        {data.eParcial && (
+          <p className="text-xs text-[var(--text-muted)]">
+            Dados{data.ultimaVenda ? ` até ${fmtDiaMes(data.ultimaVenda)}` : ''} · comparações proporcionais
+            (YoY no mesmo intervalo do ano anterior)
+          </p>
+        )}
       </div>
 
-      {data.eParcial && (
-        <p className="mb-4 text-xs text-[var(--text-muted)]">
-          Comparações proporcionais{data.ultimaVenda ? ` até ${fmtDiaMes(data.ultimaVenda)}` : ''} · YoY no
-          mesmo intervalo do ano anterior.
-        </p>
-      )}
-
       {group && (
-        <div className="mb-6">
+        <div className="mb-4">
           <MetaCard painel={group} tamanho="grande" />
         </div>
       )}
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-4 grid gap-4 md:grid-cols-3">
         {setoresResto.map(setor => (
           <MetaCard key={setor.key} painel={setor} tamanho="setor" />
         ))}

@@ -3,31 +3,32 @@ import type { ReactNode } from 'react'
 // ── Gauge (medidor em semicírculo) ──────────────────────────────────────────
 // Primitivo de DS reutilizável para os cards de Metas (v5.0.0) e reúso futuro
 // (v5.1). Componente PURO — sem hooks, sem 'use client', sem fetch: recebe
-// tudo por props e desenha um SVG de 180° (meia-lua, abertura para cima).
+// tudo por props e desenha um SVG de 180° (meia-lua, abertura para cima) com o
+// NÚMERO DENTRO DO VÃO do arco (overlay absoluto — o gauge é uma peça só, não
+// um arco com texto embaixo).
 //
 // A cor do ARCO de progresso é IDENTIDADE (setorial ou de marca — ADR-0103);
-// o chamador decide qual token/var passar em `cor`. A régua de status (ex.:
-// "no ritmo" / "atrás" / "à frente") é responsabilidade do CHAMADOR — este
-// componente não interpreta o valor, só desenha o que recebe (inclusive no
-// `centroSubtitulo`, que pode trazer um <span> colorido injetado por fora).
+// o chamador decide qual token/var passar em `cor`. A régua de status (verde/
+// âmbar/vermelho) é responsabilidade do CHAMADOR — este componente não
+// interpreta o valor, só desenha o que recebe (inclusive no `centroSubtitulo`,
+// que pode trazer um <span> colorido injetado por fora).
 //
 // Matemática: centro (cx, cy) na base do semicírculo, raio r. Para uma fração
 // f ∈ [0,1] do arco (0 = extremo esquerdo, 1 = extremo direito), o ângulo em
 // radianos é θ = π − f·π; como o SVG tem y crescendo para baixo, o ponto é
 // x = cx + r·cos(θ), y = cy − r·sin(θ). O arco de f=0 a f=1 é desenhado com
-// um único `<path d="M x0 y0 A r r 0 0 1 x1 y1">` (sweep-flag 1, sentido
-// horário do lado esquerdo para o direito). O preenchimento usa `pathLength`
-// fixo (100) + `strokeDasharray`/`strokeDashoffset`, o que evita ter que medir
-// o comprimento real do arco em px.
+// um único `<path d="M x0 y0 A r r 0 0 1 x1 y1">` (sweep-flag 1). O
+// preenchimento usa `pathLength` fixo (100) + `strokeDasharray`/`strokeDashoffset`,
+// o que evita medir o comprimento real do arco em px.
 
 export interface GaugeProps {
   /** 0..100+ — fração preenchida do arco = min(valorPct,100)/100. O texto do centro mostra o % REAL (pode passar de 100). */
   valorPct: number
-  /** Cor do ARCO de progresso — string CSS já pronta (ex.: 'var(--setor-weddings)', 'var(--brand)', 'var(--text-muted)'). NUNCA hex literal. */
+  /** Cor do ARCO de progresso — string CSS já pronta (ex.: 'var(--setor-weddings)', 'var(--text-muted)'). NUNCA hex literal. */
   cor: string
   /** Texto grande no centro (ex.: '68%'). */
   centroTitulo: string
-  /** Subtítulo abaixo do número central; ReactNode porque o chamador injeta trechos coloridos (ex.: 'da meta · ritmo <span>90%</span>'). */
+  /** Subtítulo abaixo do número central; ReactNode porque o chamador injeta trechos coloridos (ex.: 'ritmo <span>90%</span>'). */
   centroSubtitulo?: ReactNode
   /** Marcador de PACE ("o esperado até hoje") sobre o arco, COM valor. pct 0..100 = posição no arco; label = texto (ex.: 'R$ 1,65 Mi'). Opcional. */
   tick?: { pct: number; label: string }
@@ -37,21 +38,27 @@ export interface GaugeProps {
   ariaLabel: string
 }
 
-/** Dimensões por tamanho — viewBox e espessura do traço do arco. */
+/** Dimensões por tamanho — viewBox, espessura do traço e tipografia do centro. */
 const DIMENSOES = {
   grande: {
-    largura: 240,
-    espessuraArco: 16,
-    maxW: 'max-w-[240px]',
-    textoTitulo: 'text-3xl',
+    largura: 260,
+    espessuraArco: 18,
+    maxW: 'max-w-[260px]',
+    textoTitulo: 'text-4xl',
+    textoSub: 'text-xs',
   },
   setor: {
-    largura: 160,
-    espessuraArco: 11,
-    maxW: 'max-w-[160px]',
-    textoTitulo: 'text-2xl',
+    largura: 180,
+    espessuraArco: 12,
+    maxW: 'max-w-[180px]',
+    textoTitulo: 'text-[26px]',
+    textoSub: 'text-[11px]',
   },
 } as const
+
+// Folga vertical EXTRA no topo do viewBox — o rótulo do tick fica fora do arco
+// e, perto do topo, subiria além de y=0 sem esta margem.
+const FOLGA_TOPO = 16
 
 /** Ponto sobre o semicírculo (cx, cy, r) na fração f ∈ [0,1] do arco (esquerda → direita). */
 function pontoNoArco(cx: number, cy: number, r: number, f: number) {
@@ -71,10 +78,10 @@ export default function Gauge({
   tamanho = 'setor',
   ariaLabel,
 }: GaugeProps) {
-  const { largura, espessuraArco, maxW, textoTitulo } = DIMENSOES[tamanho]
+  const { largura, espessuraArco, maxW, textoTitulo, textoSub } = DIMENSOES[tamanho]
 
-  // viewBox: altura = metade da largura + folga para a espessura do traço
-  // (senão as pontas arredondadas do stroke são cortadas).
+  // viewBox: altura = metade da largura + folga para as pontas arredondadas do
+  // stroke; o topo ganha FOLGA_TOPO extra para o rótulo do tick nunca cortar.
   const folga = espessuraArco
   const altura = largura / 2 + folga
   const cx = largura / 2
@@ -83,13 +90,14 @@ export default function Gauge({
 
   const fracao = Math.min(Math.max(valorPct, 0), 100) / 100
 
-  // Extremos do arco (esquerda = f=0, direita = f=1) — fixos, não dependem do valor.
   const inicio = pontoNoArco(cx, cy, r, 0)
   const fim = pontoNoArco(cx, cy, r, 1)
   const pathArco = `M ${inicio.x} ${inicio.y} A ${r} ${r} 0 0 1 ${fim.x} ${fim.y}`
 
-  // Tick de pace: um pequeno traço radial atravessando a espessura do arco,
-  // na posição tick.pct (0..100 → f = pct/100), mais o rótulo textual do valor.
+  // Tick de pace: traço radial atravessando a espessura do arco na posição
+  // tick.pct, com o rótulo do valor RADIALMENTE PARA FORA (lado esquerdo do
+  // semicírculo → texto termina no ponto; lado direito → começa; topo → centrado
+  // acima). Assim o texto nunca invade o arco.
   let tickElementos: ReactNode = null
   if (tick) {
     const fTick = Math.min(Math.max(tick.pct, 0), 100) / 100
@@ -98,13 +106,19 @@ export default function Gauge({
     const pInterno = pontoNoArco(cx, cy, rInterno, fTick)
     const pExterno = pontoNoArco(cx, cy, rExterno, fTick)
 
-    // Rótulo posicionado um pouco além da borda externa do arco, na mesma
-    // direção radial do tick (afasta o texto do traço).
-    const rLabel = rExterno + 10
+    const rLabel = rExterno + 7
     const pLabel = pontoNoArco(cx, cy, rLabel, fTick)
-    // Ancoragem horizontal do texto conforme o lado do semicírculo, para o
-    // rótulo não vazar para fora do viewBox nas pontas.
-    const anchor = fTick < 0.15 ? 'start' : fTick > 0.85 ? 'end' : 'middle'
+    const anchor = fTick < 0.36 ? 'end' : fTick > 0.64 ? 'start' : 'middle'
+    const dy = anchor === 'middle' ? -3 : 3 // topo: sobe; laterais: centra na linha radial
+
+    // Clamp horizontal: o rótulo nunca sai do viewBox (largura estimada por
+    // caractere, ~4.6px na fonte de 9px). Quando o clamp o empurra sobre a
+    // trilha, o halo branco (paint-order: stroke) mantém a leitura.
+    const estW = tick.label.length * 4.6
+    let lx = pLabel.x
+    if (anchor === 'end') lx = Math.max(lx, estW + 2)
+    else if (anchor === 'start') lx = Math.min(lx, largura - estW - 2)
+    else lx = Math.min(Math.max(lx, estW / 2 + 2), largura - estW / 2 - 2)
 
     tickElementos = (
       <g aria-hidden="true">
@@ -113,15 +127,18 @@ export default function Gauge({
           y1={pInterno.y}
           x2={pExterno.x}
           y2={pExterno.y}
-          className="stroke-zinc-500"
+          className="stroke-zinc-400"
           strokeWidth={2}
           strokeLinecap="round"
         />
         <text
-          x={pLabel.x}
+          x={lx}
           y={pLabel.y}
+          dy={dy}
           textAnchor={anchor}
-          className="fill-zinc-500 text-[9px]"
+          strokeWidth={3}
+          style={{ paintOrder: 'stroke' }}
+          className="fill-zinc-400 stroke-white text-[9px] font-medium"
         >
           {tick.label}
         </text>
@@ -130,9 +147,9 @@ export default function Gauge({
   }
 
   return (
-    <div className={`flex w-full flex-col items-center ${maxW}`}>
+    <div className={`relative w-full ${maxW} mx-auto`}>
       <svg
-        viewBox={`0 0 ${largura} ${altura}`}
+        viewBox={`0 ${-FOLGA_TOPO} ${largura} ${altura + FOLGA_TOPO}`}
         role="img"
         aria-label={ariaLabel}
         className="w-full"
@@ -141,7 +158,7 @@ export default function Gauge({
         <path
           d={pathArco}
           fill="none"
-          className="stroke-zinc-200"
+          className="stroke-zinc-100"
           strokeWidth={espessuraArco}
           strokeLinecap="round"
         />
@@ -161,16 +178,17 @@ export default function Gauge({
         {tickElementos}
       </svg>
 
-      {/* Centro: número grande + subtítulo, abaixo do arco (o semicírculo abre para cima) */}
-      <div className="-mt-1 flex flex-col items-center text-center">
-        <span
-          className={`${textoTitulo} font-semibold tabular-nums text-[var(--text-primary)]`}
-        >
+      {/* Centro DENTRO do vão do arco: número grande + subtítulo, ancorados à base. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-0.5 text-center"
+      >
+        <span className={`${textoTitulo} font-bold leading-none tabular-nums text-[var(--text-primary)]`}>
           {centroTitulo}
         </span>
-        {centroSubtitulo != null ? (
-          <span className="text-2xs text-[var(--text-muted)]">{centroSubtitulo}</span>
-        ) : null}
+        {centroSubtitulo != null && (
+          <span className={`mt-1 ${textoSub} leading-tight text-[var(--text-muted)]`}>{centroSubtitulo}</span>
+        )}
       </div>
     </div>
   )

@@ -7,13 +7,17 @@
 //
 // Tela de PLATAFORMA (tema group): sem var(--brand); a única cor "viva" é a identidade
 // de cada setor no cabeçalho (prop `cor`, já um `var(--setor-*)` vindo de SETOR_COLORS).
-// Padrão de célula editável com reversão modelado em
-// `src/components/financeiro/cadastro-clientes.tsx` (EditableCell) — aqui adaptado para
-// DOIS campos por linha que compartilham um único ciclo de salvamento/estado.
+// Padrão de célula editável com reversão modelado em contas-manager.tsx (checa res.ok
+// e reverte) — nunca o de lancamento-row (que não reverte).
+//
+// Visual (checkpoint v5.0.0): o valor contábil vive num BLOCO DE LARGURA FIXA dentro
+// da célula (o "R$" fica ancorado perto do número — em célula larga, o justify-between
+// cru abriria um abismo entre eles); grupos de setor separados por borda vertical;
+// affordance de edição = lápis no hover; colunas Group com fundo próprio (read-only).
 
 import { useState, Fragment, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Loader2, Check, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Check, X, Pencil, History } from 'lucide-react'
 import { toNum } from '@/lib/carga/coercao'
 import { fmtDataHoraSP, fmtMi } from '@/lib/fmt'
 import { ValorContabil } from '@/components/shared/valor-contabil'
@@ -53,11 +57,13 @@ const MESES = [
 const ANO_MIN = 2022
 const ANO_MAX = 2030
 
+// Larguras dos blocos de valor (mantêm o "R$" colado no número e o alinhamento
+// vertical entre linhas; a folga da célula vira goteira ENTRE colunas).
+const W_MOEDA = 'w-[8.25rem]'
+const W_PCT   = 'w-[3.5rem]'
+
 type CelulaValor  = { valorMeta: number | null; pctReceita: number | null }
 type CelulaEstado = { saving: boolean; saved: boolean; erro: string | null }
-// Total anual: Meta VT sempre soma (nunca nula, mesmo que 0); % Rec pode não ter base
-// ponderável ainda — tipo PRÓPRIO (não CelulaValor) para não carregar `number | null`
-// num valor que na prática nunca é nulo (evita cast no call-site do fmtMi).
 type TotalAno = { valorMeta: number; pctReceita: number | null }
 
 const chave = (setorId: number, mes: number): string => `${setorId}-${mes}`
@@ -133,28 +139,34 @@ function totalGroupAno(valores: Record<string, CelulaValor>, setores: SetorCol[]
   return { valorMeta: somaVt, pctReceita: somaVtComPct > 0 ? somaPonderada / somaVtComPct : null }
 }
 
-// ── Navegação por ano (?ano=) — startTransition para não "travar" o clique (padrão v4.39). ──
+// ── Navegação por ano (?ano=) — controle segmentado; startTransition p/ o clique
+// não "morrer" (padrão v4.39). ──
 function NavegacaoAno({ ano, pending, onMudar }: { ano: number; pending: boolean; onMudar: (novo: number) => void }) {
   return (
-    <div className={`flex items-center gap-1.5 ${pending ? 'opacity-60 pointer-events-none' : ''}`} aria-busy={pending}>
+    <div
+      className={`inline-flex items-stretch overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm ${pending ? 'pointer-events-none opacity-60' : ''}`}
+      aria-busy={pending}
+    >
       <button
         type="button"
         onClick={() => onMudar(ano - 1)}
         disabled={ano <= ANO_MIN}
         aria-label="Ano anterior"
-        className="foco-neutro rounded border border-zinc-200 p-1 text-zinc-500 transition-colors hover:border-zinc-300 disabled:cursor-not-allowed disabled:opacity-30"
+        className="foco-neutro px-2.5 py-1.5 text-zinc-500 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30"
       >
-        <ChevronLeft size={14} />
+        <ChevronLeft size={15} />
       </button>
-      <span className="w-12 text-center text-sm font-medium tabular-nums text-zinc-700">{ano}</span>
+      <span className="flex items-center border-x border-zinc-100 px-4 text-sm font-semibold tabular-nums text-zinc-800">
+        {pending ? <Loader2 size={14} className="animate-spin text-zinc-400" /> : ano}
+      </span>
       <button
         type="button"
         onClick={() => onMudar(ano + 1)}
         disabled={ano >= ANO_MAX}
         aria-label="Próximo ano"
-        className="foco-neutro rounded border border-zinc-200 p-1 text-zinc-500 transition-colors hover:border-zinc-300 disabled:cursor-not-allowed disabled:opacity-30"
+        className="foco-neutro px-2.5 py-1.5 text-zinc-500 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-30"
       >
-        <ChevronRight size={14} />
+        <ChevronRight size={15} />
       </button>
     </div>
   )
@@ -191,21 +203,26 @@ function CelulaEditavel({ valor, tipo, estado, onSalvar }: {
   const saved  = estado?.saved  ?? false
   const erro   = estado?.erro   ?? null
 
+  const wBloco = tipo === 'moeda' ? W_MOEDA : W_PCT
+
   if (editando) {
     return (
-      <input
-        autoFocus
-        inputMode="decimal"
-        value={txt}
-        onChange={e => setTxt(e.target.value)}
-        onBlur={confirmar}
-        onKeyDown={e => {
-          if (e.key === 'Enter') confirmar()
-          if (e.key === 'Escape') setEditando(false)
-        }}
-        placeholder={tipo === 'moeda' ? '0,00' : '0,0'}
-        className="w-full rounded border border-[var(--action-soft-border)] px-1.5 py-1 text-right text-xs tabular-nums outline-none"
-      />
+      <span className="flex w-full justify-end px-1">
+        <input
+          autoFocus
+          inputMode="decimal"
+          value={txt}
+          onChange={e => setTxt(e.target.value)}
+          onBlur={confirmar}
+          onKeyDown={e => {
+            if (e.key === 'Enter') confirmar()
+            if (e.key === 'Escape') setEditando(false)
+          }}
+          placeholder={tipo === 'moeda' ? '0,00' : '0,0'}
+          aria-label={tipo === 'moeda' ? 'Meta VT (R$)' : 'Alvo de % Rec'}
+          className={`${wBloco} rounded-md border border-[var(--action-soft-border)] bg-white px-1.5 py-1 text-right text-[13px] tabular-nums shadow-sm outline-none`}
+        />
+      </span>
     )
   }
 
@@ -214,19 +231,40 @@ function CelulaEditavel({ valor, tipo, estado, onSalvar }: {
       type="button"
       onClick={abrir}
       title={erro ?? 'Clique para editar'}
-      className="flex w-full items-center gap-1 text-xs transition-colors hover:text-[var(--action-primary)]"
+      className="group flex w-full cursor-text items-center justify-end gap-1.5 rounded-md px-1 py-1 text-[13px] transition-colors hover:bg-zinc-100/70"
     >
-      <span className="min-w-0 flex-1 text-right">
+      {/* Slot de status/affordance: loader > check > erro > lápis-no-hover */}
+      <span className="flex w-3.5 shrink-0 justify-center">
+        {saving
+          ? <Loader2 size={12} className="animate-spin text-zinc-400" />
+          : saved
+            ? <Check size={12} className="text-success" />
+            : erro
+              ? <X size={12} className="text-danger" />
+              : <Pencil size={11} className="text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100" />}
+      </span>
+      <span className={`${wBloco} shrink-0`}>
         {valor === null
-          ? <span className="text-zinc-300">—</span>
+          ? <span className="block text-right text-zinc-300">—</span>
           : tipo === 'moeda'
             ? <ValorContabil valor={valor} />
-            : <span className="tabular-nums">{fmtPct(valor)}</span>}
+            : <span className="block text-right tabular-nums text-[var(--text-primary)]">{fmtPct(valor)}</span>}
       </span>
-      {saving && <Loader2 size={11} className="shrink-0 animate-spin text-zinc-400" />}
-      {saved  && <Check   size={11} className="shrink-0 text-success" />}
-      {erro   && <X       size={11} className="shrink-0 text-danger" />}
     </button>
+  )
+}
+
+/** Bloco read-only do Group (mesmas larguras das células editáveis, sem affordance). */
+function CelulaGroup({ valor, tipo, forte }: { valor: number | null; tipo: 'moeda' | 'percentual'; forte?: boolean }) {
+  const wBloco = tipo === 'moeda' ? W_MOEDA : W_PCT
+  return (
+    <span className={`ml-auto block ${wBloco} ${forte ? 'font-semibold text-zinc-800' : 'font-medium text-zinc-700'}`}>
+      {valor === null
+        ? <span className="block text-right text-zinc-300">—</span>
+        : tipo === 'moeda'
+          ? <ValorContabil valor={valor} />
+          : <span className="block text-right tabular-nums">{fmtPct(valor)}</span>}
+    </span>
   )
 }
 
@@ -299,13 +337,17 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
 
   const totGroupAno = totalGroupAno(valores, setores)
 
+  // Separadores verticais entre grupos de setor; bloco Group com fundo próprio.
+  const sepGrupo = 'border-l border-zinc-100'
+  const blocoGroup = 'border-l border-zinc-200 bg-zinc-50/70'
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">Metas — Cadastro</h1>
-          <p className="text-sm text-zinc-400">
-            Grade anual por setor. As colunas Group somam automaticamente e não são editáveis.
+          <p className="mt-0.5 text-sm text-zinc-400">
+            Metas mensais de faturamento (Meta VT) e alvo de receita (% Rec) por setor
           </p>
         </div>
         <NavegacaoAno ano={ano} pending={isPending} onMudar={mudarAno} />
@@ -315,37 +357,51 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
         <FaixaMensagem tipo="erro" texto={erroGlobal} onFechar={() => setErroGlobal(null)} />
       )}
 
-      <Card>
+      <Card className="px-5 py-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-[var(--text-muted)]">
+            As colunas <span className="font-medium text-zinc-500">Group</span> somam os setores automaticamente e não são editáveis.
+          </p>
+          <p className="flex items-center gap-1.5 text-2xs text-zinc-400">
+            <Pencil size={11} className="text-zinc-300" />
+            Clique numa célula para editar · Enter salva · Esc cancela
+          </p>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th rowSpan={2} className="border-b border-zinc-100 px-2 py-2 text-left align-bottom text-xs font-medium text-zinc-400">
+                <th rowSpan={2} className="w-[6.5rem] border-b border-zinc-200 px-2 pb-2 text-left align-bottom text-xs font-medium text-zinc-400">
                   Mês
                 </th>
                 {setores.map(s => (
                   <th
                     key={s.id}
                     colSpan={2}
-                    className="border-b border-zinc-100 px-2 py-1 text-center text-xs font-medium"
+                    className={`border-b border-zinc-100 px-2 pb-1.5 pt-0.5 text-center text-[13px] font-semibold ${sepGrupo}`}
                     style={{ color: s.cor }}
                   >
                     {s.display}
                   </th>
                 ))}
-                <th colSpan={2} className="border-b border-zinc-100 bg-zinc-50 px-2 py-1 text-center text-xs font-medium text-zinc-400">
+                <th colSpan={2} className={`border-b border-zinc-100 px-2 pb-1.5 pt-0.5 text-center text-[13px] font-semibold text-zinc-500 ${blocoGroup}`}>
                   Group
                 </th>
               </tr>
               <tr>
                 {setores.map(s => (
                   <Fragment key={s.id}>
-                    <th className="border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">Meta VT</th>
-                    <th className="border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">% Rec</th>
+                    <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${sepGrupo}`}>Meta VT</th>
+                    <th title="Alvo de receita como % do faturamento (VT)" className="border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">
+                      % Rec
+                    </th>
                   </Fragment>
                 ))}
-                <th className="border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">Meta VT</th>
-                <th className="border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">% Rec</th>
+                <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${blocoGroup}`}>Meta VT</th>
+                <th title="Receita do Group = média dos alvos ponderada pela Meta VT" className={`border-b border-zinc-200 bg-zinc-50/70 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400`}>
+                  % Rec
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -353,15 +409,15 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
                 const mes = idx + 1
                 const group = computarGroupMes(valores, setores, mes)
                 return (
-                  <tr key={mes} className="[&>td]:border-b [&>td]:border-zinc-50">
-                    <td className="px-2 py-1.5 text-xs text-zinc-600">{nomeMes}</td>
+                  <tr key={mes} className="transition-colors hover:bg-zinc-50/50 [&>td]:border-b [&>td]:border-zinc-50">
+                    <td className="px-2 py-1 text-[13px] text-zinc-600">{nomeMes}</td>
                     {setores.map(s => {
                       const k = chave(s.id, mes)
                       const cel = valores[k] ?? { valorMeta: null, pctReceita: null }
                       const estado = estados[k]
                       return (
                         <Fragment key={s.id}>
-                          <td className="px-2 py-1">
+                          <td className={`px-1 py-0.5 ${sepGrupo}`}>
                             <CelulaEditavel
                               valor={cel.valorMeta}
                               tipo="moeda"
@@ -369,7 +425,7 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
                               onSalvar={v => void salvarCelula(s.id, mes, { valorMeta: v })}
                             />
                           </td>
-                          <td className="px-2 py-1">
+                          <td className="px-1 py-0.5">
                             <CelulaEditavel
                               valor={cel.pctReceita}
                               tipo="percentual"
@@ -380,13 +436,11 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
                         </Fragment>
                       )
                     })}
-                    <td className="bg-zinc-50 px-2 py-1 text-right text-xs">
-                      {group.valorMeta === null
-                        ? <span className="text-zinc-300">—</span>
-                        : <ValorContabil valor={group.valorMeta} />}
+                    <td className={`px-2 py-0.5 ${blocoGroup}`}>
+                      <CelulaGroup valor={group.valorMeta} tipo="moeda" />
                     </td>
-                    <td className="bg-zinc-50 px-2 py-1 text-right text-xs tabular-nums">
-                      {group.pctReceita === null ? <span className="text-zinc-300">—</span> : fmtPct(group.pctReceita)}
+                    <td className="bg-zinc-50/70 px-2 py-0.5">
+                      <CelulaGroup valor={group.pctReceita} tipo="percentual" />
                     </td>
                   </tr>
                 )
@@ -394,20 +448,20 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
             </tbody>
             <tfoot>
               <tr className="[&>td]:border-t [&>td]:border-zinc-200">
-                <td className="px-2 py-2 text-xs font-medium text-zinc-600">Total {ano}</td>
+                <td className="px-2 py-2.5 text-[13px] font-semibold text-zinc-700">Total {ano}</td>
                 {setores.map(s => {
                   const tot = totalSetorAno(valores, s.id)
                   return (
                     <Fragment key={s.id}>
-                      <td className="px-2 py-2 text-right text-xs font-medium tabular-nums text-zinc-700">{fmtMi(tot.valorMeta)}</td>
-                      <td className="px-2 py-2 text-right text-xs font-medium tabular-nums text-zinc-700">
+                      <td className={`px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums text-zinc-800 ${sepGrupo}`}>{fmtMi(tot.valorMeta)}</td>
+                      <td className="px-2 py-2.5 text-right text-[13px] font-medium tabular-nums text-zinc-600">
                         {tot.pctReceita === null ? <span className="text-zinc-300">—</span> : fmtPct(tot.pctReceita)}
                       </td>
                     </Fragment>
                   )
                 })}
-                <td className="bg-zinc-50 px-2 py-2 text-right text-xs font-medium tabular-nums text-zinc-700">{fmtMi(totGroupAno.valorMeta)}</td>
-                <td className="bg-zinc-50 px-2 py-2 text-right text-xs font-medium tabular-nums text-zinc-700">
+                <td className={`px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums text-zinc-900 ${blocoGroup}`}>{fmtMi(totGroupAno.valorMeta)}</td>
+                <td className="bg-zinc-50/70 px-2 py-2.5 text-right text-[13px] font-medium tabular-nums text-zinc-600">
                   {totGroupAno.pctReceita === null ? <span className="text-zinc-300">—</span> : fmtPct(totGroupAno.pctReceita)}
                 </td>
               </tr>
@@ -416,9 +470,10 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
         </div>
       </Card>
 
-      <p className="mt-3 text-xs text-[var(--text-muted)]">
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+        <History size={13} className="text-zinc-300" />
         {ultimaAlteracao
-          ? `Última alteração: ${ultimaAlteracao.alterado_por ?? '—'} · ${fmtDataHoraSP(ultimaAlteracao.alterado_em)}`
+          ? <>Última alteração por <span className="font-medium text-zinc-500">{ultimaAlteracao.alterado_por ?? '—'}</span> · {fmtDataHoraSP(ultimaAlteracao.alterado_em)}</>
           : 'Nenhuma alteração registrada.'}
       </p>
     </div>
