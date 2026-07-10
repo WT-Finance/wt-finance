@@ -1,29 +1,38 @@
 'use client'
 
-// Cadastro de Metas (v5.0.0) — grade anual 12 meses × 3 setores × [Meta VT, % Rec],
-// com autosave por célula (a linha setor×mês inteira é enviada a cada save) e reversão
-// LOCAL em erro. A coluna Group (soma de VT; média de % Rec ponderada pela VT) é
-// COMPUTADA no cliente, ao vivo, a partir do estado local — nunca persistida.
+// Cadastro de Metas (v5.0.0) — grade anual 12 meses × 3 setores × [Faturamento, % Rec],
+// com EDIÇÃO LOCAL + SALVAR EM LOTE (adendo pós-checkpoint). Enter/blur confirma a
+// célula só no estado do cliente (sem chamar o servidor); o "Salvar" do rodapé envia
+// TODAS as linhas pendentes de uma vez via `salvarMetas`. A coluna Group (soma de
+// Faturamento; média de % Rec ponderada pelo Faturamento) é COMPUTADA no cliente, ao
+// vivo, a partir do estado local (`valores`) — nunca persistida.
 //
 // Tela de PLATAFORMA (tema group): sem var(--brand); a única cor "viva" é a identidade
 // de cada setor no cabeçalho (prop `cor`, já um `var(--setor-*)` vindo de SETOR_COLORS).
-// Padrão de célula editável com reversão modelado em contas-manager.tsx (checa res.ok
-// e reverte) — nunca o de lancamento-row (que não reverte).
 //
-// Visual (checkpoint v5.0.0): o valor contábil vive num BLOCO DE LARGURA FIXA dentro
-// da célula (o "R$" fica ancorado perto do número — em célula larga, o justify-between
-// cru abriria um abismo entre eles); grupos de setor separados por borda vertical;
-// affordance de edição = lápis no hover; colunas Group com fundo próprio (read-only).
+// Dirty/pendências: `valores` (edição corrente) é comparado contra `baseline` (a
+// verdade do servidor, re-hidratada quando `metas` muda — inclusive após o
+// `router.refresh()` do Salvar, que é o que zera dirty/pendências). Célula suja =
+// ponto âmbar; LINHA pendente (persistável) exige Faturamento != null (a RPC não aceita
+// valor_meta nulo) — uma linha só-com-%-mudado fica suja mas não conta nem é enviada.
+//
+// Visual (mockup v2): moldura interna (border+rounded+overflow-hidden) em volta da
+// tabela; valor contábil em BLOCO DE LARGURA FIXA dentro da célula (o "R$" ancorado
+// perto do número); grupos de setor separados por borda vertical; affordance de edição
+// = lápis no hover (ponto âmbar substitui o lápis quando a célula está suja); colunas
+// Group com fundo próprio (read-only); linha Total no mesmo cinza do Group, em formato
+// contábil pleno (sem abreviação "Mi").
 
-import { useState, Fragment, useTransition } from 'react'
+import { useState, useEffect, useRef, Fragment, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Loader2, Check, X, Pencil, History } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Pencil, History, CopyPlus } from 'lucide-react'
 import { toNum } from '@/lib/carga/coercao'
-import { fmtDataHoraSP, fmtMi } from '@/lib/fmt'
+import { fmtDataHoraSP } from '@/lib/fmt'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { Card } from '@/components/ui/card'
-import { salvarMeta } from '@/app/metas/cadastro/actions'
+import Button from '@/components/ui/button'
+import { salvarMetas, type MetaCelula } from '@/app/metas/cadastro/actions'
 
 export interface MetaItem {
   setor_macro_id: number
@@ -62,9 +71,8 @@ const ANO_MAX = 2030
 const W_MOEDA = 'w-[8.25rem]'
 const W_PCT   = 'w-[3.5rem]'
 
-type CelulaValor  = { valorMeta: number | null; pctReceita: number | null }
-type CelulaEstado = { saving: boolean; saved: boolean; erro: string | null }
-type TotalAno = { valorMeta: number; pctReceita: number | null }
+type CelulaValor = { valorMeta: number | null; pctReceita: number | null }
+type TotalAno     = { valorMeta: number; pctReceita: number | null }
 
 const chave = (setorId: number, mes: number): string => `${setorId}-${mes}`
 
@@ -76,12 +84,17 @@ function construirMapa(lista: MetaItem[]): Record<string, CelulaValor> {
   return mapa
 }
 
+/** Diferença de UM campo entre o valor corrente e o baseline (null-safe). */
+function celulaDiferente(a: CelulaValor | undefined, b: CelulaValor | undefined, campo: keyof CelulaValor): boolean {
+  return (a?.[campo] ?? null) !== (b?.[campo] ?? null)
+}
+
 /** "12,5%" — 1 casa, sem zeros à direita forçados. */
 function fmtPct(v: number): string {
   return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
 }
 
-/** Group de um MÊS: soma de Meta VT; % Rec = média ponderada por VT (só setores com % informado). */
+/** Group de um MÊS: soma de Faturamento; % Rec = média ponderada por Faturamento (só setores com % informado). */
 function computarGroupMes(valores: Record<string, CelulaValor>, setores: SetorCol[], mes: number): CelulaValor {
   let somaVt = 0
   let temVt = false
@@ -103,7 +116,7 @@ function computarGroupMes(valores: Record<string, CelulaValor>, setores: SetorCo
   }
 }
 
-/** Total ANUAL de um setor (soma das 12 linhas de Meta VT; % Rec ponderado por VT). */
+/** Total ANUAL de um setor (soma das 12 linhas de Faturamento; % Rec ponderado por Faturamento). */
 function totalSetorAno(valores: Record<string, CelulaValor>, setorId: number): TotalAno {
   let somaVt = 0
   let somaPonderada = 0
@@ -172,15 +185,82 @@ function NavegacaoAno({ ano, pending, onMudar }: { ano: number; pending: boolean
   )
 }
 
-// ── Célula editável (Meta VT ou % Rec). Exibe/edita UM campo; o save envia a LINHA
-// inteira (feito pelo pai via onSalvar). Reverte sozinha entradas não-numéricas
-// (não chama onSalvar); a reversão de FALHA DE SERVIDOR é do pai (estado `valor`
-// vem de volta ao anterior, refletindo aqui via prop). ──
-function CelulaEditavel({ valor, tipo, estado, onSalvar }: {
-  valor:    number | null
-  tipo:     'moeda' | 'percentual'
-  estado?:  CelulaEstado
-  onSalvar: (novo: number | null) => void
+// ── Ícone "Aplicar ao ano" no cabeçalho de cada coluna % Rec — popover de 1 campo
+// que seta o mesmo alvo nos 12 meses do setor de uma vez (atalho para a carga
+// inicial da meta: digitar 1x em vez de 12). Fecha ao aplicar/Esc/clique-fora. ──
+function CabecalhoPctRec({ aberto, valor, onAbrir, onFechar, onValorChange, onAplicar }: {
+  aberto:        boolean
+  valor:         string
+  onAbrir:       () => void
+  onFechar:      () => void
+  onValorChange: (v: string) => void
+  onAplicar:     () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!aberto) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onFechar()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [aberto, onFechar])
+
+  return (
+    <span className="relative inline-flex items-center gap-1">
+      <span title="Alvo de receita como % do faturamento (VT)">% Rec</span>
+      <button
+        type="button"
+        onClick={onAbrir}
+        title="Aplicar um % Rec a todos os meses"
+        className="foco-neutro text-zinc-300 transition-colors hover:text-zinc-500"
+      >
+        <CopyPlus size={12} />
+      </button>
+      {aberto && (
+        <div
+          ref={ref}
+          className="absolute right-0 top-full z-30 mt-1.5 w-40 rounded-lg border border-zinc-200 bg-white p-2 text-left shadow-lg"
+        >
+          <label className="mb-1 block text-2xs font-normal text-zinc-400">% Rec p/ os 12 meses</label>
+          <div className="flex items-center gap-1.5">
+            <input
+              autoFocus
+              inputMode="decimal"
+              value={valor}
+              onChange={e => onValorChange(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') onAplicar()
+                if (e.key === 'Escape') onFechar()
+              }}
+              placeholder="0,0"
+              aria-label="% Rec a aplicar nos 12 meses"
+              className="w-16 rounded-md border border-zinc-200 px-1.5 py-1 text-right text-[13px] tabular-nums outline-none"
+            />
+            <button
+              type="button"
+              onClick={onAplicar}
+              className="foco-neutro shrink-0 rounded-md bg-action-primary px-2 py-1 text-2xs font-semibold text-action-primary-fg transition hover:opacity-90"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+      )}
+    </span>
+  )
+}
+
+// ── Célula editável (Faturamento ou % Rec). Enter/blur CONFIRMA LOCALMENTE (só
+// atualiza o estado do pai via onConfirmar — nada é enviado ao servidor aqui); Esc
+// cancela a edição sem alterar o valor. Reverte sozinha entradas não-numéricas.
+// `dirty` (célula difere do baseline) pinta um ponto âmbar no lugar do lápis. ──
+function CelulaEditavel({ valor, tipo, dirty, onConfirmar }: {
+  valor:       number | null
+  tipo:        'moeda' | 'percentual'
+  dirty:       boolean
+  onConfirmar: (novo: number | null) => void
 }) {
   const [editando, setEditando] = useState(false)
   const [txt, setTxt] = useState(() => (valor === null ? '' : valor.toFixed(2).replace('.', ',')))
@@ -196,12 +276,8 @@ function CelulaEditavel({ valor, tipo, estado, onSalvar }: {
     setEditando(false)
     if (!vazio && num === null) return // entrada não-numérica: descarta, mantém o valor anterior
     if (num === valor) return
-    onSalvar(num)
+    onConfirmar(num)
   }
-
-  const saving = estado?.saving ?? false
-  const saved  = estado?.saved  ?? false
-  const erro   = estado?.erro   ?? null
 
   const wBloco = tipo === 'moeda' ? W_MOEDA : W_PCT
 
@@ -219,7 +295,7 @@ function CelulaEditavel({ valor, tipo, estado, onSalvar }: {
             if (e.key === 'Escape') setEditando(false)
           }}
           placeholder={tipo === 'moeda' ? '0,00' : '0,0'}
-          aria-label={tipo === 'moeda' ? 'Meta VT (R$)' : 'Alvo de % Rec'}
+          aria-label={tipo === 'moeda' ? 'Faturamento (R$)' : 'Alvo de % Rec'}
           className={`${wBloco} rounded-md border border-[var(--action-soft-border)] bg-white px-1.5 py-1 text-right text-[13px] tabular-nums shadow-sm outline-none`}
         />
       </span>
@@ -230,18 +306,14 @@ function CelulaEditavel({ valor, tipo, estado, onSalvar }: {
     <button
       type="button"
       onClick={abrir}
-      title={erro ?? 'Clique para editar'}
+      title={dirty ? 'Alteração não salva — clique para editar' : 'Clique para editar'}
       className="group flex w-full cursor-text items-center justify-end gap-1.5 rounded-md px-1 py-1 text-[13px] transition-colors hover:bg-zinc-100/70"
     >
-      {/* Slot de status/affordance: loader > check > erro > lápis-no-hover */}
+      {/* Slot de affordance: ponto âmbar (suja) > lápis-no-hover (limpa) */}
       <span className="flex w-3.5 shrink-0 justify-center">
-        {saving
-          ? <Loader2 size={12} className="animate-spin text-zinc-400" />
-          : saved
-            ? <Check size={12} className="text-success" />
-            : erro
-              ? <X size={12} className="text-danger" />
-              : <Pencil size={11} className="text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100" />}
+        {dirty
+          ? <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />
+          : <Pencil size={11} className="text-zinc-300 opacity-0 transition-opacity group-hover:opacity-100" />}
       </span>
       <span className={`${wBloco} shrink-0`}>
         {valor === null
@@ -273,65 +345,125 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
 
-  const [valores, setValores] = useState<Record<string, CelulaValor>>(() => construirMapa(metas))
-  const [estados, setEstados] = useState<Record<string, CelulaEstado>>({})
+  // `valores` = edição corrente (o que a grade mostra); `baseline` = a verdade do
+  // servidor (o que já está gravado). Dirty/pendência sempre compara os dois.
+  const [valores, setValores]   = useState<Record<string, CelulaValor>>(() => construirMapa(metas))
+  const [baseline, setBaseline] = useState<Record<string, CelulaValor>>(() => construirMapa(metas))
   const [erroGlobal, setErroGlobal] = useState<string | null>(null)
+  const [salvando, setSalvando] = useState(false)
 
-  // Re-hidrata quando o servidor troca o ano (nova navegação → novo `metas`). Padrão
-  // "ajustar durante a renderização" (mesmo usado em cadastro-clientes.tsx).
+  // "Aplicar ao ano" — qual setor tem o popover aberto + o valor digitado.
+  const [aplicarSetor, setAplicarSetor] = useState<number | null>(null)
+  const [aplicarTxt, setAplicarTxt] = useState('')
+
+  // Re-hidrata quando o servidor troca de dado (nova navegação de ano OU o
+  // `router.refresh()` pós-Salvar): valores E baseline convergem à verdade nova, o que
+  // zera dirty/pendências de graça. Padrão "ajustar durante a renderização" (mesmo
+  // usado em cadastro-clientes.tsx).
   const [metasPrev, setMetasPrev] = useState(metas)
   if (metas !== metasPrev) {
     setMetasPrev(metas)
     setValores(construirMapa(metas))
-    setEstados({})
+    setBaseline(construirMapa(metas))
+    setErroGlobal(null)
+    setAplicarSetor(null)
   }
+
+  // Pendências: linhas (setor×mês) que diferem do baseline E têm Faturamento != null
+  // (persistáveis — a RPC exige valor_meta não-nulo). Uma linha só-com-%-mudado sem
+  // Faturamento fica "suja" (ponto âmbar na célula) mas não conta nem é enviada.
+  const pendentes: MetaCelula[] = []
+  for (const s of setores) {
+    for (let mes = 1; mes <= 12; mes++) {
+      const k = chave(s.id, mes)
+      const atual = valores[k]
+      const base  = baseline[k]
+      const mudou = celulaDiferente(atual, base, 'valorMeta') || celulaDiferente(atual, base, 'pctReceita')
+      const valorMeta = atual?.valorMeta ?? null
+      if (mudou && valorMeta != null) {
+        pendentes.push({ setorMacroId: s.id, ano, mes, valorMeta, pctReceita: atual?.pctReceita ?? null })
+      }
+    }
+  }
+  const pendCount = pendentes.length
+
+  // Avisa ao fechar/recarregar a aba com pendências (a guarda de troca de ano usa
+  // window.confirm; esta cobre a saída da página em si).
+  useEffect(() => {
+    function handler(e: BeforeUnloadEvent) {
+      if (pendCount > 0) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [pendCount])
 
   function mudarAno(novo: number) {
     if (novo < ANO_MIN || novo > ANO_MAX) return
+    if (pendCount > 0) {
+      const ok = window.confirm(`Há ${pendCount} alteração(ões) não salva(s). Descartar e trocar de ano?`)
+      if (!ok) return
+    }
     const params = new URLSearchParams()
     params.set('ano', String(novo))
     startTransition(() => router.push(`${pathname}?${params.toString()}`))
   }
 
-  // Uma célula edita um campo; o save sempre envia a LINHA (setor×mês) inteira —
-  // `metas_upsert` grava valor_meta E pct_receita juntos. Limpar a Meta VT não é uma
-  // operação suportada (a RPC exige valor >= 0, não nulo): mantém o anterior, sem salvar.
-  async function salvarCelula(setorId: number, mes: number, patch: Partial<CelulaValor>) {
+  // Confirma UM campo de UMA célula localmente — só atualiza `valores`; a persistência
+  // real acontece em bloco, no `salvar()`.
+  function confirmarCelula(setorId: number, mes: number, campo: keyof CelulaValor, novo: number | null) {
     const k = chave(setorId, mes)
-    const anterior = valores[k] ?? { valorMeta: null, pctReceita: null }
+    setValores(prev => ({
+      ...prev,
+      [k]: { ...(prev[k] ?? { valorMeta: null, pctReceita: null }), [campo]: novo },
+    }))
+  }
 
-    if ('valorMeta' in patch && patch.valorMeta === null) return
+  function abrirAplicar(setorId: number) {
+    setAplicarSetor(setorId)
+    setAplicarTxt('')
+  }
+  function fecharAplicar() {
+    setAplicarSetor(null)
+    setAplicarTxt('')
+  }
+  // Aplica o mesmo % Rec aos 12 meses do setor (localmente — vira pendência; só
+  // persiste quando "Salvar" for clicado).
+  function aplicarAoAno(setorId: number) {
+    const num = toNum(aplicarTxt)
+    if (num === null) { fecharAplicar(); return }
+    setValores(prev => {
+      const novo = { ...prev }
+      for (let mes = 1; mes <= 12; mes++) {
+        const k = chave(setorId, mes)
+        novo[k] = { ...(novo[k] ?? { valorMeta: null, pctReceita: null }), pctReceita: num }
+      }
+      return novo
+    })
+    fecharAplicar()
+  }
 
-    const atual: CelulaValor = { ...anterior, ...patch }
-
-    if (atual.valorMeta === null) {
-      // Só o % Rec foi preenchido, sem Meta VT ainda — guarda localmente, nada a persistir.
-      setValores(prev => ({ ...prev, [k]: atual }))
-      return
-    }
-
-    setValores(prev => ({ ...prev, [k]: atual }))
-    setEstados(prev => ({ ...prev, [k]: { saving: true, saved: false, erro: null } }))
-
-    let res: { ok: true } | { ok: false; erro: string }
+  // Salva em LOTE as linhas pendentes (`metas_upsert` via `salvarMetas`). Sucesso →
+  // router.refresh() (o servidor refaz o fetch; o `metas` novo re-hidrata valores E
+  // baseline acima, zerando dirty/pendências e atualizando a nota de auditoria — nada
+  // além disso é necessário aqui). Erro → mantém `valores`/dirty/pendências intactos e
+  // mostra a faixa no topo; nada se perde, retry possível.
+  async function salvar() {
+    setSalvando(true)
+    setErroGlobal(null)
+    let res: { ok: true; gravadas: number } | { ok: false; erro: string }
     try {
-      res = await salvarMeta({ setorMacroId: setorId, ano, mes, valorMeta: atual.valorMeta, pctReceita: atual.pctReceita })
+      res = await salvarMetas(pendentes)
     } catch {
-      res = { ok: false, erro: 'Falha ao salvar a meta. Tente novamente.' }
+      res = { ok: false, erro: 'Falha ao salvar as metas. Tente novamente.' }
     }
-
+    setSalvando(false)
     if (res.ok) {
-      setEstados(prev => ({ ...prev, [k]: { saving: false, saved: true, erro: null } }))
-      setTimeout(() => {
-        setEstados(prev => (prev[k] ? { ...prev, [k]: { ...prev[k], saved: false } } : prev))
-      }, 1500)
+      router.refresh()
     } else {
-      setValores(prev => ({ ...prev, [k]: anterior })) // reverte
-      setEstados(prev => ({ ...prev, [k]: { saving: false, saved: false, erro: res.erro } }))
       setErroGlobal(res.erro)
-      setTimeout(() => {
-        setEstados(prev => (prev[k] ? { ...prev, [k]: { ...prev[k], erro: null } } : prev))
-      }, 3000)
     }
   }
 
@@ -345,9 +477,9 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
     <div>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Metas — Cadastro</h1>
+          <h1 className="text-xl font-semibold text-zinc-900">Cadastro de Metas</h1>
           <p className="mt-0.5 text-sm text-zinc-400">
-            Metas mensais de faturamento (Meta VT) e alvo de receita (% Rec) por setor
+            Metas mensais de faturamento e a receita alvo por setor
           </p>
         </div>
         <NavegacaoAno ano={ano} pending={isPending} onMudar={mudarAno} />
@@ -358,17 +490,12 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
       )}
 
       <Card className="px-5 py-4">
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-[var(--text-muted)]">
-            As colunas <span className="font-medium text-zinc-500">Group</span> somam os setores automaticamente e não são editáveis.
-          </p>
-          <p className="flex items-center gap-1.5 text-2xs text-zinc-400">
-            <Pencil size={11} className="text-zinc-300" />
-            Clique numa célula para editar · Enter salva · Esc cancela
-          </p>
-        </div>
+        <p className="mb-2 flex items-center gap-1.5 text-2xs text-zinc-400">
+          <Pencil size={11} className="text-zinc-300" />
+          Clique numa célula para editar
+        </p>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-hidden rounded-lg border border-zinc-200">
           <table className="w-full text-sm">
             <thead>
               <tr>
@@ -392,14 +519,21 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
               <tr>
                 {setores.map(s => (
                   <Fragment key={s.id}>
-                    <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${sepGrupo}`}>Meta VT</th>
-                    <th title="Alvo de receita como % do faturamento (VT)" className="border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">
-                      % Rec
+                    <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${sepGrupo}`}>Faturamento</th>
+                    <th className="border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">
+                      <CabecalhoPctRec
+                        aberto={aplicarSetor === s.id}
+                        valor={aplicarTxt}
+                        onAbrir={() => abrirAplicar(s.id)}
+                        onFechar={fecharAplicar}
+                        onValorChange={setAplicarTxt}
+                        onAplicar={() => aplicarAoAno(s.id)}
+                      />
                     </th>
                   </Fragment>
                 ))}
-                <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${blocoGroup}`}>Meta VT</th>
-                <th title="Receita do Group = média dos alvos ponderada pela Meta VT" className={`border-b border-zinc-200 bg-zinc-50/70 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400`}>
+                <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${blocoGroup}`}>Faturamento</th>
+                <th title="Receita do Group = média dos alvos ponderada pelo Faturamento" className="border-b border-zinc-200 bg-zinc-50/70 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">
                   % Rec
                 </th>
               </tr>
@@ -414,23 +548,23 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
                     {setores.map(s => {
                       const k = chave(s.id, mes)
                       const cel = valores[k] ?? { valorMeta: null, pctReceita: null }
-                      const estado = estados[k]
+                      const base = baseline[k]
                       return (
                         <Fragment key={s.id}>
                           <td className={`px-1 py-0.5 ${sepGrupo}`}>
                             <CelulaEditavel
                               valor={cel.valorMeta}
                               tipo="moeda"
-                              estado={estado}
-                              onSalvar={v => void salvarCelula(s.id, mes, { valorMeta: v })}
+                              dirty={celulaDiferente(cel, base, 'valorMeta')}
+                              onConfirmar={v => confirmarCelula(s.id, mes, 'valorMeta', v)}
                             />
                           </td>
                           <td className="px-1 py-0.5">
                             <CelulaEditavel
                               valor={cel.pctReceita}
                               tipo="percentual"
-                              estado={estado}
-                              onSalvar={v => void salvarCelula(s.id, mes, { pctReceita: v })}
+                              dirty={celulaDiferente(cel, base, 'pctReceita')}
+                              onConfirmar={v => confirmarCelula(s.id, mes, 'pctReceita', v)}
                             />
                           </td>
                         </Fragment>
@@ -447,35 +581,54 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
               })}
             </tbody>
             <tfoot>
-              <tr className="[&>td]:border-t [&>td]:border-zinc-200">
-                <td className="px-2 py-2.5 text-[13px] font-semibold text-zinc-700">Total {ano}</td>
+              <tr className="bg-zinc-50/70 [&>td]:border-t [&>td]:border-zinc-200">
+                <td className="px-2 py-2.5 text-[13px] font-semibold text-zinc-700">Total</td>
                 {setores.map(s => {
                   const tot = totalSetorAno(valores, s.id)
                   return (
                     <Fragment key={s.id}>
-                      <td className={`px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums text-zinc-800 ${sepGrupo}`}>{fmtMi(tot.valorMeta)}</td>
+                      <td className={`px-2 py-2.5 ${sepGrupo}`}>
+                        <span className={`ml-auto block ${W_MOEDA} text-[13px] font-semibold tabular-nums text-zinc-800`}>
+                          <ValorContabil valor={tot.valorMeta} />
+                        </span>
+                      </td>
                       <td className="px-2 py-2.5 text-right text-[13px] font-medium tabular-nums text-zinc-600">
                         {tot.pctReceita === null ? <span className="text-zinc-300">—</span> : fmtPct(tot.pctReceita)}
                       </td>
                     </Fragment>
                   )
                 })}
-                <td className={`px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums text-zinc-900 ${blocoGroup}`}>{fmtMi(totGroupAno.valorMeta)}</td>
-                <td className="bg-zinc-50/70 px-2 py-2.5 text-right text-[13px] font-medium tabular-nums text-zinc-600">
+                <td className="border-l border-zinc-200 px-2 py-2.5">
+                  <span className={`ml-auto block ${W_MOEDA} text-[13px] font-semibold tabular-nums text-zinc-900`}>
+                    <ValorContabil valor={totGroupAno.valorMeta} />
+                  </span>
+                </td>
+                <td className="px-2 py-2.5 text-right text-[13px] font-medium tabular-nums text-zinc-600">
                   {totGroupAno.pctReceita === null ? <span className="text-zinc-300">—</span> : fmtPct(totGroupAno.pctReceita)}
                 </td>
               </tr>
             </tfoot>
           </table>
         </div>
-      </Card>
 
-      <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-        <History size={13} className="text-zinc-300" />
-        {ultimaAlteracao
-          ? <>Última alteração por <span className="font-medium text-zinc-500">{ultimaAlteracao.alterado_por ?? '—'}</span> · {fmtDataHoraSP(ultimaAlteracao.alterado_em)}</>
-          : 'Nenhuma alteração registrada.'}
-      </p>
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+          {pendCount > 0 ? (
+            <span className="text-xs font-medium text-warning">
+              {pendCount} alteração(ões) não salva(s)
+            </span>
+          ) : (
+            <p className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+              <History size={13} className="text-zinc-300" />
+              {ultimaAlteracao
+                ? <>Última alteração por <span className="font-medium text-zinc-500">{ultimaAlteracao.alterado_por ?? '—'}</span> · {fmtDataHoraSP(ultimaAlteracao.alterado_em)}</>
+                : 'Nenhuma alteração registrada.'}
+            </p>
+          )}
+          <Button variant="solido" size="sm" disabled={pendCount === 0 || salvando} onClick={() => void salvar()}>
+            {salvando ? 'Salvando…' : 'Salvar'}
+          </Button>
+        </div>
+      </Card>
     </div>
   )
 }
