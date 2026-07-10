@@ -1,22 +1,22 @@
 import { fmtMi } from '@/lib/fmt'
 
 // ── <MetaProgressBar> — barra de progresso de meta (v5.0.0) ──────────────────
-// Elemento central dos cards do Acompanhamento de Metas (substitui o Gauge).
-// Trilha neutra + preenchimento = % da meta (na COR DE IDENTIDADE do painel;
-// Group = neutro), tick MUDO na posição do "esperado até hoje", e um tooltip
-// ESCURO no hover (padrão do provisório) com decorrido/esperado/realizado e a
-// conclusão colorida (adiantado = success · abaixo = danger).
+// Elemento central dos cards do Acompanhamento de Metas. Trilha neutra +
+// preenchimento = % da meta (na COR DE IDENTIDADE do painel; Group = neutro),
+// tick MUDO na posição do "esperado até hoje", e um tooltip ESCURO no hover que
+// SAI DA LINHA DO ESPERADO (seta para baixo apontando o tick), com decorrido/
+// esperado/realizado e a conclusão colorida. O esperado é LINEAR (meta × fração
+// do período decorrida), então o tick fica em `pctEsperado` = `pctDecorrido`.
 //
-// Componente PURO (sem 'use client'): o tooltip é CSS-only (group-hover), então
-// funciona sem JS. A régua de status colore SÓ a conclusão do tooltip — a barra
-// em si é sempre a cor de identidade.
+// Componente PURO (tooltip CSS-only via group-hover). A régua de status colore só
+// a conclusão do tooltip — a barra em si é sempre a cor de identidade.
 
 export interface MetaProgressBarProps {
   /** Preenchimento: % da meta (realizado/meta). null → barra vazia. Largura clampa em 100. */
   pctMeta: number | null
-  /** Posição do tick "esperado": esperado/meta × 100 (0..100). */
+  /** Posição do tick "esperado": esperado/meta × 100 (0..100) = % do período decorrido. */
   pctEsperado: number
-  /** Cor do preenchimento — identidade (var(--setor-*)) ou neutro (Group). NUNCA hex. */
+  /** Cor do preenchimento — identidade (var(--marca-*)) ou neutro (Group). NUNCA hex. */
   cor: string
   /** Espessura da barra em px (12 no Group, 10 nos setoriais). Default 10. */
   altura?: number
@@ -54,10 +54,16 @@ export default function MetaProgressBar({
         style={{ left: `${tick}%` }}
       />
 
-      {/* Tooltip escuro no hover (CSS-only). Ancorado acima-à-esquerda da barra. */}
+      {/* Tooltip escuro no hover — SAI DA LINHA DO ESPERADO: a SETA fica sobre o tick e a
+          CAIXA abre para o lado com espaço (esquerda se o tick passou da metade, direita
+          senão) → nunca vaza para fora perto das extremidades. Seta ancorada a 1,25rem da
+          borda do balão, e o balão posicionado para essa seta cair exatamente no tick. */}
       <div
         role="tooltip"
-        className="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-max min-w-[13rem] max-w-[16rem] rounded-lg bg-zinc-800 px-3 py-2.5 text-white shadow-lg group-hover/bar:visible"
+        style={tick >= 50
+          ? { right: `calc((100% - ${tick}%) - 1.25rem)` }
+          : { left: `calc(${tick}% - 1.25rem)` }}
+        className="pointer-events-none invisible absolute bottom-full z-20 mb-2 w-max min-w-[13rem] max-w-[15rem] rounded-lg bg-zinc-800 px-3 py-2.5 text-white shadow-lg group-hover/bar:visible"
       >
         <p className="mb-1.5 text-2xs font-medium text-zinc-300">
           {Math.round(pctDecorrido)}% do período decorrido
@@ -77,6 +83,11 @@ export default function MetaProgressBar({
             ? <span className="text-success">+{fmtMi(gap)} adiantado</span>
             : <span className="text-danger">{fmtMi(gap)} abaixo do esperado</span>}
         </div>
+        {/* Seta p/ baixo (o tick), a 1,25rem da borda ancorada. */}
+        <span
+          aria-hidden="true"
+          className={`absolute top-full h-2 w-2 -translate-y-1/2 rotate-45 bg-zinc-800 ${tick >= 50 ? 'right-5' : 'left-5'}`}
+        />
       </div>
     </div>
   )

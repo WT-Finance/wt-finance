@@ -181,14 +181,19 @@ cards do Acompanhamento de Metas. Componente PURO (o tooltip é CSS-only `group-
 *(Substituiu o antigo `<Gauge>` semicírculo, removido no adendo v5.0.0 por decisão do Yan.)*
 
 - **Trilha** neutra (`bg-zinc-100`, cantos plenos); **preenchimento** = `pctMeta` (realizado/meta,
-  clampa em 100) na **cor de IDENTIDADE** do painel (`--setor-*`; Group = neutro `--text-muted`) —
-  nunca hex, nunca `--brand`.
-- **Tick MUDO** na posição `pctEsperado` (esperado/meta), atravessando a barra (`bg-zinc-500`).
-- **Tooltip ESCURO** no hover (zinc-800): título `"N% do período decorrido"` (`pctDecorrido`),
-  linhas `Esperado`/`Realizado` (R$), e a conclusão colorida pela régua — `+R$ Z adiantado`
-  (`text-success`) ou `R$ Z abaixo do esperado` (`text-danger`). O esperado NÃO é texto fixo no card.
+  clampa em 100) na **cor de MARCA** do painel (`--marca-*` via `SETOR_MARCA_COLORS`; Group = neutro
+  `--text-muted`) — nunca hex. *(Metas usa a cor de marca de cada setor, não a `--setor-*` de gráficos
+  cross-setor — exceção deliberada ao ADR-0103, ver ADR-0146; cada card É o card daquele setor.)*
+- **Tick MUDO** na posição `pctEsperado` (= `% do período decorrido`, pois o esperado é LINEAR),
+  atravessando a barra (`bg-zinc-500`).
+- **Tooltip ESCURO** no hover (zinc-800) que **SAI DA LINHA DO ESPERADO** (seta no tick; a caixa abre
+  para o lado com espaço, sem vazar da tela): título `"N% do período decorrido"` (`pctDecorrido`),
+  linhas `Esperado`/`Realizado` (R$), e a conclusão colorida — `+R$ Z adiantado` (`text-success`) ou
+  `R$ Z abaixo do esperado` (`text-danger`).
 - Props: `pctMeta`, `pctEsperado`, `cor`, `altura` (12 Group / 10 setorial), `pctDecorrido`,
-  `esperado`, `realizado`. Régua colore só a conclusão/`% do esperado` — nunca a barra (identidade).
+  `esperado`, `realizado`. Régua (verde/âmbar/vermelho) colore só o "% da meta" e a conclusão — nunca a barra.
+- **Esperado LINEAR** (`@/lib/metas/ritmo`): `esperado = metaPeriodo × dias_decorridos/dias_período`.
+  O card compara "X% da meta" (régua-colorido) vs "Y% esperado" (referência neutra = % do período).
 
 ## Metas — Acompanhamento & Cadastro (v5.0.0)
 

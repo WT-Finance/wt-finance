@@ -26,9 +26,9 @@ export default function AcompanhamentoContent({ data }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Metas — Acompanhamento</h1>
+        <h1 className="text-xl font-semibold text-zinc-900">Acompanhamento das Metas</h1>
         <p className="mt-0.5 text-sm text-zinc-400">
-          Ritmo do faturamento e da receita contra a meta cadastrada, por setor
+          Acompanhe o progresso do faturamento e receita em relação às metas
         </p>
       </div>
 

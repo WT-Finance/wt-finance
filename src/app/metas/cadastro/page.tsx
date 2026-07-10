@@ -2,7 +2,7 @@ import { requireArea } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
 import { parseRpc, metasListarSchema } from '@/lib/schemas-rpc'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
-import { SETOR_COLORS } from '@/lib/config'
+import { SETOR_MARCA_COLORS } from '@/lib/config'
 import CadastroGrade from '@/components/metas/cadastro-grade'
 
 // Cadastro de Metas (v5.0.0) — grade anual 12 meses × 3 setores × [Meta VT, % Rec],
@@ -16,9 +16,9 @@ interface SearchParams {
 // Setores na ordem de exibição (Trips/Weddings/Corporativo). id = dim_setor_macro.id
 // (chave), display = rótulo, cor = identidade cross-setor. Group NÃO é cadastrável.
 const SETORES = [
-  { id: 1, nome: 'Lazer',       display: 'Trips',       cor: SETOR_COLORS.Lazer },
-  { id: 2, nome: 'Weddings',    display: 'Weddings',    cor: SETOR_COLORS.Weddings },
-  { id: 3, nome: 'Corporativo', display: 'Corporativo', cor: SETOR_COLORS.Corporativo },
+  { id: 1, nome: 'Lazer',       display: 'Trips',       cor: SETOR_MARCA_COLORS.Lazer },
+  { id: 2, nome: 'Weddings',    display: 'Weddings',    cor: SETOR_MARCA_COLORS.Weddings },
+  { id: 3, nome: 'Corporativo', display: 'Corporativo', cor: SETOR_MARCA_COLORS.Corporativo },
 ]
 
 export default async function CadastroMetasPage({ searchParams }: { searchParams: Promise<SearchParams> }) {

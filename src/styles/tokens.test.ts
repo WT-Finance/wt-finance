@@ -27,6 +27,7 @@ const ANCORAS = [
   '--chart-danger', '--chart-neutral', '--chart-info',
   '--chart-fluxo-entrada', '--chart-fluxo-saida',
   '--setor-lazer', '--setor-weddings', '--setor-corporativo',
+  '--marca-lazer', '--marca-weddings', '--marca-corporativo',
 ]
 
 describe('tokens.css — fonte da verdade do Design System (ADR-0129)', () => {

@@ -137,8 +137,13 @@ export function calcularRitmo(input: RitmoInput): RitmoResultado {
   const diasDecorridos = Math.min(Math.max(differenceInCalendarDays(hoje, from) + 1, 0), diasPeriodo)
   const pctDecorrido = diasPeriodo > 0 ? (diasDecorridos / diasPeriodo) * 100 : 0
 
+  // metaPeriodo = soma das metas mensais tocadas, com bordas parciais pró-rata (trata
+  // período arbitrário). O ESPERADO é LINEAR sobre o período: esperado = meta × fração
+  // de tempo decorrida (decisão do produto — "se 30% do período passou, esperava-se 30%
+  // da meta"). Assim esperado/meta === pctDecorrido, e a comparação é "X% da meta vs
+  // Y% esperado". (Distinto do acúmulo mês-a-mês; ver ADR-0146 emenda.)
   const metaPeriodo = metaAcumulada(input.metas, from, to)
-  const esperadoAteHoje = metaAcumulada(input.metas, from, hoje)
+  const esperadoAteHoje = metaPeriodo * (pctDecorrido / 100)
   const realizado = input.serie.reduce((s, p) => s + p.valor, 0)
 
   const pctMeta = metaPeriodo > 0 ? (realizado / metaPeriodo) * 100 : null
@@ -150,10 +155,13 @@ export function calcularRitmo(input: RitmoInput): RitmoResultado {
     const iso = format(d, 'yyyy-MM-dd')
     const futuro = isAfter(d, hoje)
     if (!futuro) realAcum += serieMap.get(iso) ?? 0
+    // meta acumulada LINEAR (rampa reta 0 → metaPeriodo ao longo dos dias do período) —
+    // consistente com o esperado; o marcador do "esperado até hoje" cai exatamente sobre ela.
+    const fracDia = diasPeriodo > 0 ? (differenceInCalendarDays(d, from) + 1) / diasPeriodo : 0
     return {
       data: iso,
       realAcum: futuro ? null : realAcum,
-      metaAcum: metaAcumulada(input.metas, from, d),
+      metaAcum: metaPeriodo * fracDia,
       futuro,
     }
   })

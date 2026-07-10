@@ -100,6 +100,24 @@ Após os primeiros previews, o Yan decidiu (firme) três mudanças de superfíci
 Os rótulos acompanham: "Meta VT" → "Faturamento"; subabas da sidebar "Acompanhamento"/"Cadastro"; o
 antigo "ritmo X%" vira "% do esperado" em toda a superfície. O gráfico "Ritmo do período" permanece.
 
+**Rodada 2 do checkpoint** (mesmos mockups, ajustes finos):
+
+4. **Esperado é LINEAR sobre o período.** `esperado(hoje) = metaPeriodo × (dias decorridos / dias do
+   período)` — "se 30% do período passou, esperava-se 30% da meta". Assim `esperado/meta ≡ % do período
+   decorrido`, e o card compara **"X% da meta" (nosso) vs "Y% esperado" (referência)**; a régua colore o
+   "% da meta". Substitui o acúmulo mês-a-mês do esperado (que ponderava por mês) — `metaPeriodo` continua
+   sendo a soma das metas mensais com bordas pró-rata; só o ACÚMULO/esperado virou linear. A linha de meta
+   do gráfico também virou rampa reta (o marcador do esperado cai sobre ela). Título "Acompanhamento das
+   Metas"; "Faturamento" sai do topo do card Group (a label WELCOME GROUP já titula).
+
+5. **Cards de Metas usam a cor de MARCA de cada setor, não a identidade `--setor-*`.** Trips #0091B3,
+   Weddings #BD965C, Corporativo #0D5257 (o `--brand` de cada aba), expostos como tokens standalone
+   `--marca-*` (`SETOR_MARCA_COLORS`) para uso cross-contexto (Metas roda em tema group). **Delibera-se
+   uma EXCEÇÃO ao "cross-setor = --setor-*" (ADR-0103):** cada card de Metas É o card daquele setor, então
+   leva a cor de marca dele (não a paleta de gráficos cross-setor). Os gráficos cross-setor (Executiva,
+   breakdown) seguem em `--setor-*`. O tooltip da barra sai da LINHA DO ESPERADO (seta no tick; a caixa
+   abre para o lado com espaço, sem vazar).
+
 ## Fora de escopo
 
 Metas por Vendedor (M1/M2/M3, níveis TP) → v5.1. Aba Geral/mix cross-setor (destravável) → futuro.

@@ -4,7 +4,7 @@ import { parseRpc, executivaKpisSchema, metasListarSchema, metasRitmoDiarioSchem
 import { resolverPeriodoCompleto, formatarLabelPeriodo } from '@/lib/periodo'
 import { calcularRitmo, type MetaMensal, type PontoDia } from '@/lib/metas/ritmo'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
-import { SETOR_COLORS } from '@/lib/config'
+import { SETOR_MARCA_COLORS } from '@/lib/config'
 import AcompanhamentoContent from '@/components/metas/acompanhamento-content'
 import type { PainelSetor } from '@/components/metas/tipos'
 
@@ -25,9 +25,9 @@ interface SearchParams {
 // (Lazer); display = 'Trips' etc.
 const PAINEIS: { key: string; display: string; cor: string }[] = [
   { key: 'todos',       display: 'Group',       cor: 'var(--text-muted)' },
-  { key: 'Lazer',       display: 'Trips',       cor: SETOR_COLORS.Lazer },
-  { key: 'Weddings',    display: 'Weddings',    cor: SETOR_COLORS.Weddings },
-  { key: 'Corporativo', display: 'Corporativo', cor: SETOR_COLORS.Corporativo },
+  { key: 'Lazer',       display: 'Trips',       cor: SETOR_MARCA_COLORS.Lazer },
+  { key: 'Weddings',    display: 'Weddings',    cor: SETOR_MARCA_COLORS.Weddings },
+  { key: 'Corporativo', display: 'Corporativo', cor: SETOR_MARCA_COLORS.Corporativo },
 ]
 
 interface MetaRow {

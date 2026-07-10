@@ -50,8 +50,10 @@ describe('calcularRitmo', () => {
     expect(r.pontos[9].futuro).toBe(false)
   })
 
-  it('YTD parcial (este-ano) — pró-rata do mês corrente', () => {
-    // Jan..Jun cheios (3100+2800+3100+3000+3100+3000 = 18100) + Jul 1..10 (1000)
+  it('YTD parcial (este-ano) — esperado linear até hoje', () => {
+    // YTD = Jan1 até o FIM do mês corrente (Jul31, como resolvePeriodo('este-ano')).
+    // metaPeriodo = 21200 (7 meses a 100/dia · 212 dias); decorrido = 191/212 dias →
+    // esperado LINEAR = 21200·191/212 = 19100.
     const metas: MetaMensal[] = [
       { ano: 2026, mes: 1, valorMeta: 3100 }, { ano: 2026, mes: 2, valorMeta: 2800 },
       { ano: 2026, mes: 3, valorMeta: 3100 }, { ano: 2026, mes: 4, valorMeta: 3000 },
@@ -59,12 +61,12 @@ describe('calcularRitmo', () => {
       { ano: 2026, mes: 7, valorMeta: 3100 },
     ]
     const r = calcularRitmo({
-      from: '2026-01-01', to: '2026-12-31', ultimaVenda: '2026-07-10',
+      from: '2026-01-01', to: '2026-07-31', ultimaVenda: '2026-07-10',
       metas, serie: serieDe([['2026-04-01', 19100]]),
     })
-    expect(r.esperadoAteHoje).toBeCloseTo(18100 + 1000, 6) // até 10/jul
+    expect(r.esperadoAteHoje).toBeCloseTo(19100, 4) // 21200·191/212
     expect(r.realizado).toBe(19100)
-    expect(r.ritmoPct).toBeCloseTo((19100 / 19100) * 100, 6) // 100 → verde
+    expect(r.ritmoPct).toBeCloseTo(100, 4) // realizado == esperado → verde
     expect(r.status).toBe('verde')
     expect(r.parcial).toBe(true)
   })
@@ -163,6 +165,26 @@ describe('calcularRitmo', () => {
       metas: [JUL(3100)], serie: [],
     })
     expect(fechado.pctDecorrido).toBeCloseTo(100, 6)
+  })
+
+  it('esperado é LINEAR (meta × dias decorridos/dias período), não acúmulo mês-a-mês', () => {
+    // Jan meta 3100 (≈100/dia) + Fev meta 5600 (≈200/dia); período Jan-Fev, hoje 14/fev.
+    const r = calcularRitmo({
+      from: '2026-01-01', to: '2026-02-28', ultimaVenda: '2026-02-14',
+      metas: [
+        { ano: 2026, mes: 1, valorMeta: 3100 },
+        { ano: 2026, mes: 2, valorMeta: 5600 },
+      ],
+      serie: [],
+    })
+    // metaPeriodo = 8700; decorrido = 45/59 dias; esperado LINEAR = 8700·45/59 = 6635,59
+    // (acúmulo mês-a-mês daria 3100 + 14·200 = 5900 — o teste trava o modelo linear).
+    expect(r.metaPeriodo).toBeCloseTo(8700, 6)
+    expect(r.esperadoAteHoje).toBeCloseTo((8700 * 45) / 59, 2)
+    expect(r.esperadoAteHoje).not.toBeCloseTo(5900, 0)
+    // o marcador do esperado cai sobre a linha de meta (rampa linear) no dia de hoje
+    const hojePonto = r.pontos.find(p => p.data === '2026-02-14')
+    expect(hojePonto?.metaAcum).toBeCloseTo(r.esperadoAteHoje, 2)
   })
 
   it('período FUTURO (última venda antes do início) — nada esperado, ritmo indefinido', () => {
