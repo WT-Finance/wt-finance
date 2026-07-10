@@ -49,3 +49,22 @@ O acompanhamento de metas comerciais de faturamento (VT) por setor entra na plat
 
 ## Checkpoint do Yan (antes do merge)
 Metas 2026 visíveis na grade + digitar %Rec (autosave + histórico); Faturamento do Acompanhamento == Performance no mesmo período (conferência cruzada — provado por teste, confirmar na tela); gauges/régua/gráfico com seletor; usuário só-leitura barrado do Cadastro; histórico com a v4 dobrada; "está na língua da casa?".
+
+---
+
+## Adendo de UI (checkpoint · sobre mockups v7/v8 do Acompanhamento e v2 do Cadastro)
+
+Ajustes decididos pelo Yan sobre a v5.0.0 ainda aberta — sem alterar o motor (fonte única, `fonte='real'`, histórico por célula, permissões, módulo de ritmo). ADR-0146 emendado; DS doc atualizado (Gauge sai, entra `<MetaProgressBar>` + padrão "edição local + salvar em lote").
+
+**A — Acompanhamento (gauges → barras):**
+- `<Gauge>` REMOVIDO (componente + usos + seção do DS). Novo primitivo **`<MetaProgressBar>`**: trilha neutra + preenchimento na cor de identidade (Group neutro), tick mudo do esperado, **tooltip escuro** no hover (`N% do período decorrido` + Esperado/Realizado + conclusão colorida `adiantado`/`abaixo do esperado`). Espessura 12px (Group) / 10px (setoriais).
+- **YoY REMOVIDO** de toda a superfície de Metas (o motor ainda devolve; a superfície não exibe). Rótulo "ritmo" → "% do esperado". **Margem** = delta em **p.p. contra o alvo** de %Rec, colorido (acima=success/abaixo=danger), no lugar do ✓ binário.
+- Card Group no molde v8 (label `WELCOME GROUP`, Faturamento sem YoY, `% da meta`/`% do esperado`, barra, rodapé Receita | Margem). Gráfico "Ritmo do período" mantido.
+- Novo campo testado no módulo: `RitmoResultado.pctDecorrido` (% do período em dias, base do tooltip).
+
+**B — Cadastro (autosave → salvar em lote + refinos):**
+- Mecânica: **edição local** (Enter/blur confirma no cliente; célula suja = ponto âmbar; Group/Total ao vivo) + **Salvar em lote** (`salvarMetas` → um `metas_upsert` com todas as pendências; histórico segue por célula). Rodapé com **"N alterações não salvas"** + botão **Salvar** (desabilitado sem pendências). **Guarda de saída** (troca de ano `window.confirm` + `beforeunload`). Erro no salvar mantém as pendências (retry).
+- **"Aplicar ao ano"** no cabeçalho de cada % Rec (popover) — preenche os 12 meses do setor como pendências (a primeira carga dos alvos em poucos gestos).
+- Refinos: moldura interna da tabela; "Meta VT" → **"Faturamento"**; frase do Group removida (só o hint "Clique numa célula para editar"); linha **Total** (sem ano) em contábil pleno, no cinza do Group; título/subtítulo novos; subabas da sidebar "Acompanhamento"/"Cadastro".
+
+**Gates do adendo:** tsc 0 · eslint 0 · next build OK · vitest **374** (10→11 no ritmo, com `pctDecorrido`). Validação visual por screenshots SSR dos componentes reais (harness local não-commitado), incluindo o tooltip escuro forçado.

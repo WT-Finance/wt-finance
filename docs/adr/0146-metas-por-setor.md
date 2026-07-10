@@ -73,6 +73,33 @@ com valores chumbados. A v5.0.0 absorve o provisório com **Acompanhamento** (le
   `PeriodoFilterPillsUrl` sem criar uma 4ª variante. Fica como follow-up para patch dedicado.
 - Follow-up operacional: aplicar a migration 0176 (destrutiva) quando conveniente.
 
+## Emenda — adendo de UI (v5.0.0, sobre mockups aprovados)
+
+Após os primeiros previews, o Yan decidiu (firme) três mudanças de superfície, sem alterar o motor:
+
+1. **Gauge → barra.** O `<Gauge>` semicírculo SAI (componente, usos e seção do DS doc). O elemento
+   central dos cards vira `<MetaProgressBar>` (trilha + preenchimento na cor de identidade + tick mudo
+   do esperado + tooltip escuro com decorrido/esperado/realizado/conclusão). Motivo: a barra comunica
+   "quanto do combinado já entregou, e se está no ritmo" de forma mais direta e comparável entre setores;
+   o esperado sai de texto fixo para o hover. Espessura 12px (Group) / 10px (setoriais) marca hierarquia.
+
+2. **YoY REMOVIDO da superfície de Metas** (cards e rodapés — inteira). Motivo: *Metas responde "estamos
+   entregando o combinado?"; Performance responde "estamos melhores que o ano passado?"* — cada página
+   com a sua pergunta. O motor (RPCs `get_executiva_kpis` etc.) continua devolvendo YoY; só a superfície
+   de Metas não o exibe (os campos saíram do contrato de apresentação `PainelSetor`). A **Margem** troca o
+   ✓ binário por **delta em p.p. contra o alvo** de %Rec, colorido (acima=success, abaixo=danger).
+
+3. **Cadastro: autosave-por-célula → edição local + salvar em lote.** Clique/Enter confirma LOCALMENTE
+   (Group/Total recalculam ao vivo; célula suja = ponto âmbar); um botão **Salvar** persiste tudo numa
+   chamada `metas_upsert` (o **histórico continua por célula** no banco). Rodapé com contador "N alterações
+   não salvas". **Guarda de saída** (trocar de ano / fechar aba com pendências → confirmação; a edição
+   nunca evapora). "**Aplicar ao ano**" no cabeçalho de cada %Rec preenche os 12 meses do setor como
+   pendências (caso de uso: a primeira carga dos alvos em poucos gestos). Motivo: a grade tem ~72 células;
+   salvar a cada tecla é ruidoso e frágil — lote + guarda é o padrão certo para edição em massa.
+
+Os rótulos acompanham: "Meta VT" → "Faturamento"; subabas da sidebar "Acompanhamento"/"Cadastro"; o
+antigo "ritmo X%" vira "% do esperado" em toda a superfície. O gráfico "Ritmo do período" permanece.
+
 ## Fora de escopo
 
 Metas por Vendedor (M1/M2/M3, níveis TP) → v5.1. Aba Geral/mix cross-setor (destravável) → futuro.

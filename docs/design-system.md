@@ -174,32 +174,45 @@ imperativa (refs, zero state — não re-renderiza por scroll). Exemplos vivos: 
 Exceção: o `<main>` do AppShell mantém a scrollbar NATIVA com `scrollbar-gutter: stable`
 (DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos.
 
-## Gauge — medidor em semicírculo (v5.0.0)
+## MetaProgressBar — barra de progresso de meta (v5.0.0)
 
-Primitivo `<Gauge>` (`@/components/shared/gauge`) para "quanto de um alvo foi atingido".
-Meia-lua de 180° (abertura para cima), componente PURO (sem hooks/`'use client'`).
+Primitivo `<MetaProgressBar>` (`@/components/shared/meta-progress-bar`) — elemento central dos
+cards do Acompanhamento de Metas. Componente PURO (o tooltip é CSS-only `group-hover`, sem JS).
+*(Substituiu o antigo `<Gauge>` semicírculo, removido no adendo v5.0.0 por decisão do Yan.)*
 
-Props: `valorPct` (0..100+, fração preenchida = min(valorPct,100)/100; o centro mostra o % real),
-`cor` (string `var()` do ARCO — **identidade**: `--setor-*` no setor, neutro no Group; nunca hex),
-`centroTitulo` (número grande), `centroSubtitulo` (ReactNode — o chamador injeta o "ritmo X%"
-colorido), `tick?: {pct,label}` (marcador de pace COM valor, ex.: "R$ 1,65 Mi"),
-`tamanho?: 'grande'|'setor'`, `ariaLabel` (obrigatório; `role="img"`).
-
-Regra de cor: o **arco** é identidade (ADR-0103 — dourado de Weddings é legítimo no gauge de
-Weddings). A **régua de status** (verde/âmbar/vermelho) NÃO entra no arco — ela colore só textos
-como "ritmo X%" (responsabilidade do chamador, via `text-success`/`text-warning`/`text-danger`).
-A trilha de fundo é neutra (`zinc-200`). Usado nos cards do Acompanhamento de Metas; reusável na v5.1.
+- **Trilha** neutra (`bg-zinc-100`, cantos plenos); **preenchimento** = `pctMeta` (realizado/meta,
+  clampa em 100) na **cor de IDENTIDADE** do painel (`--setor-*`; Group = neutro `--text-muted`) —
+  nunca hex, nunca `--brand`.
+- **Tick MUDO** na posição `pctEsperado` (esperado/meta), atravessando a barra (`bg-zinc-500`).
+- **Tooltip ESCURO** no hover (zinc-800): título `"N% do período decorrido"` (`pctDecorrido`),
+  linhas `Esperado`/`Realizado` (R$), e a conclusão colorida pela régua — `+R$ Z adiantado`
+  (`text-success`) ou `R$ Z abaixo do esperado` (`text-danger`). O esperado NÃO é texto fixo no card.
+- Props: `pctMeta`, `pctEsperado`, `cor`, `altura` (12 Group / 10 setorial), `pctDecorrido`,
+  `esperado`, `realizado`. Régua colore só a conclusão/`% do esperado` — nunca a barra (identidade).
 
 ## Metas — Acompanhamento & Cadastro (v5.0.0)
 
-Seção Metas (tema **group**, neutro): **Acompanhamento** (`/metas`) e **Cadastro** (`/metas/cadastro`).
+Seção Metas (tema **group**, neutro): **Acompanhamento** (`/metas`) e **Cadastro** (`/metas/cadastro`);
+subabas "Acompanhamento" / "Cadastro" na sidebar (o grupo "Metas" dá o contexto).
 - **Acompanhamento**: pills de período (`PeriodoFilterPillsUrl`, `defaultPreset="este-ano"`) → aviso de
-  parcialidade → card Group (`<Gauge tamanho="grande">` neutro + faixa de 3 KPIs) → 3 cards setoriais
-  (`<Gauge tamanho="setor">` na cor do setor) → gráfico "Ritmo do período" (realizado acumulado sólido
-  na cor do setor × meta acumulada tracejada, `ReferenceLine` "Hoje" + `ReferenceDot` do esperado).
-- **Cadastro**: grade anual 12 meses × 3 setores × [Meta VT, % Rec] com **Group computado ao vivo**
-  (coluna read-only, fundo distinto), total no rodapé, **autosave por célula** (blur/Enter → loader →
-  check; reverte em erro — padrão `contas-manager`, nunca `lancamento-row`) e rodapé de auditoria.
+  parcialidade → card Group (label `WELCOME GROUP`, Faturamento + `% da meta`/`% do esperado` +
+  `<MetaProgressBar altura=12>` + rodapé Receita | Margem) → 3 cards setoriais (`<MetaProgressBar altura=10>`
+  na cor do setor) → gráfico "Ritmo do período". **SEM YoY na superfície** (Metas responde "entregamos o
+  combinado?"; Performance responde "melhoramos vs ano passado?"); a **Margem** mostra o delta em **p.p.
+  contra o alvo** de %Rec, colorido (acima=success, abaixo=danger).
+- **Cadastro**: grade anual 12 meses × 3 setores × [Faturamento, % Rec] com **Group computado ao vivo**
+  (coluna read-only, fundo distinto), Total em formato contábil pleno, e **edição local + salvar em lote**
+  (ver padrão abaixo). "Aplicar ao ano" no cabeçalho de cada % Rec preenche os 12 meses do setor.
 - **Fonte única**: o real vem de `get_executiva_kpis`; meta/ritmo do módulo puro `calcularRitmo`
-  (`@/lib/metas/ritmo` — pró-rata por dias, régua com constantes nomeadas, "hoje" = última venda).
-  Display "Trips"/chave "Lazer". Cor de identidade via `SETOR_COLORS`.
+  (`@/lib/metas/ritmo` — pró-rata por dias, régua com constantes nomeadas, "hoje" = última venda,
+  `pctDecorrido`). Display "Trips"/chave "Lazer". Cor de identidade via `SETOR_COLORS`.
+
+### Padrão: edição local + salvar em lote (com contador e guarda)
+Grade editável com muitas células (Cadastro de Metas) NÃO faz autosave por célula. Em vez disso:
+clique → edita → **Enter/blur confirma LOCALMENTE** (Esc cancela), a célula suja ganha **ponto âmbar**
+(`bg-warning`), e derivados (Group/Total) recalculam ao vivo. O rodapé mostra **"N alterações não
+salvas"** + botão **Salvar** (desabilitado sem pendências) que persiste TUDO numa chamada
+(o histórico continua por célula no banco). **Guarda de saída**: trocar de contexto/ano ou fechar a aba
+com pendências → confirmação explícita (`window.confirm` + `beforeunload`) — a edição nunca evapora.
+Erro no salvar mantém as pendências marcadas (retry). (Distinto do autosave-por-célula de
+`contas-manager`/`lancamento-row`, para grades pequenas.)
