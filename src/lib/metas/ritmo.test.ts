@@ -150,6 +150,21 @@ describe('calcularRitmo', () => {
     expect(r.pctReceitaAlvo).toBeNull()
   })
 
+  it('pctDecorrido — dias corridos até hoje / dias do período', () => {
+    // Jul (31d), última venda 10/jul → 10/31 ≈ 32,26%
+    const parcial = calcularRitmo({
+      from: '2026-07-01', to: '2026-07-31', ultimaVenda: '2026-07-10',
+      metas: [JUL(3100)], serie: [],
+    })
+    expect(parcial.pctDecorrido).toBeCloseTo((10 / 31) * 100, 4)
+    // período fechado (última venda depois do fim) → 100%
+    const fechado = calcularRitmo({
+      from: '2026-07-01', to: '2026-07-31', ultimaVenda: '2026-08-15',
+      metas: [JUL(3100)], serie: [],
+    })
+    expect(fechado.pctDecorrido).toBeCloseTo(100, 6)
+  })
+
   it('período FUTURO (última venda antes do início) — nada esperado, ritmo indefinido', () => {
     const r = calcularRitmo({
       from: '2026-08-01', to: '2026-08-31', ultimaVenda: '2026-07-06',

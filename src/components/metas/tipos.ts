@@ -15,12 +15,8 @@ export interface PainelSetor {
   cor: string
   /** Faturamento (VT) realizado no período — da fonte única. */
   faturamento: number | null
-  /** Variação YoY do faturamento em % (proporcional; herdada da Performance). */
-  faturamentoYoY: number | null
   /** Receita realizada no período. */
   receita: number | null
-  /** Variação YoY da receita em %. */
-  receitaYoY: number | null
   /** % Rec REALIZADO = receita/faturamento (o margem_pct da Performance). */
   margemPct: number | null
   /** Ritmo (meta do período, % da meta, esperado, ritmo%, status, pontos do gráfico). */

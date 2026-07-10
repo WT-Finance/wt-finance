@@ -70,8 +70,8 @@ const FINANCEIRO_SUBS: NavSubItem[] = [
 // Metas em DOIS níveis (v5.0.0), mesmo padrão de solicitacoes/acervo: 'metas' (edição,
 // libera as duas subabas) e 'metas/acompanhamento' (só leitura, libera só a 1ª).
 const METAS_SUBS: NavSubItem[] = [
-  { href: '/metas',          label: 'Acompanhamento das Metas', icon: LineChart,     area: 'metas/acompanhamento', areasAny: ['metas/acompanhamento', 'metas'] },
-  { href: '/metas/cadastro', label: 'Cadastro de Metas',        icon: ClipboardList, area: 'metas' },
+  { href: '/metas',          label: 'Acompanhamento', icon: LineChart,     area: 'metas/acompanhamento', areasAny: ['metas/acompanhamento', 'metas'] },
+  { href: '/metas/cadastro', label: 'Cadastro',       icon: ClipboardList, area: 'metas' },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa

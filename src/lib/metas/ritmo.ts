@@ -70,6 +70,9 @@ export interface RitmoResultado {
   status: RitmoStatus | null   // régua aplicada ao ritmo
   parcial: boolean             // "hoje" < to (período ainda em curso)
   pontos: PontoAcumulado[]     // séries acumuladas p/ o gráfico
+  /** % do PERÍODO (em dias corridos) já decorrido até "hoje" — 0..100. Base do
+   *  título do tooltip da barra ("N% do período decorrido"). Difere do ritmo/% da meta. */
+  pctDecorrido: number
   /** Alvo de % Rec do período: média dos alvos mensais PONDERADA pela meta VT pró-rata
    *  (só meses com alvo cadastrado). null enquanto nenhum mês do período tiver alvo. */
   pctReceitaAlvo: number | null
@@ -129,6 +132,11 @@ export function calcularRitmo(input: RitmoInput): RitmoResultado {
   const hoje = ultima ? (isAfter(ultima, to) ? to : ultima) : to
   const parcial = isBefore(hoje, to)
 
+  // % do período decorrido em DIAS (tempo), independente do ritmo de faturamento.
+  const diasPeriodo = differenceInCalendarDays(to, from) + 1
+  const diasDecorridos = Math.min(Math.max(differenceInCalendarDays(hoje, from) + 1, 0), diasPeriodo)
+  const pctDecorrido = diasPeriodo > 0 ? (diasDecorridos / diasPeriodo) * 100 : 0
+
   const metaPeriodo = metaAcumulada(input.metas, from, to)
   const esperadoAteHoje = metaAcumulada(input.metas, from, hoje)
   const realizado = input.serie.reduce((s, p) => s + p.valor, 0)
@@ -160,6 +168,7 @@ export function calcularRitmo(input: RitmoInput): RitmoResultado {
     status: classificarRitmo(ritmoPct),
     parcial,
     pontos,
+    pctDecorrido,
     pctReceitaAlvo: pctReceitaAlvoPeriodo(input.metas, from, to),
   }
 }

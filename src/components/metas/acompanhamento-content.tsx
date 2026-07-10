@@ -36,8 +36,8 @@ export default function AcompanhamentoContent({ data }: Props) {
         <PeriodoFilterPillsUrl defaultPreset="este-ano" />
         {data.eParcial && (
           <p className="text-xs text-[var(--text-muted)]">
-            Dados{data.ultimaVenda ? ` até ${fmtDiaMes(data.ultimaVenda)}` : ''} · comparações proporcionais
-            (YoY no mesmo intervalo do ano anterior)
+            Dados{data.ultimaVenda ? ` até ${fmtDiaMes(data.ultimaVenda)}` : ''} · o esperado é a meta
+            proporcional aos dias já corridos
           </p>
         )}
       </div>

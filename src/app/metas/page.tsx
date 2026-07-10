@@ -20,9 +20,9 @@ interface SearchParams {
   to?:     string
 }
 
-// Ordem e identidade dos painéis. Group = neutro (gauge central neutro, M3);
-// setores usam a cor de identidade cross-setor (SETOR_COLORS, ADR-0103). Chave =
-// nome interno do banco (Lazer); display = 'Trips' etc.
+// Ordem e identidade dos painéis. Group = barra neutra; setores usam a cor de
+// identidade cross-setor (SETOR_COLORS, ADR-0103). Chave = nome interno do banco
+// (Lazer); display = 'Trips' etc.
 const PAINEIS: { key: string; display: string; cor: string }[] = [
   { key: 'todos',       display: 'Group',       cor: 'var(--text-muted)' },
   { key: 'Lazer',       display: 'Trips',       cor: SETOR_COLORS.Lazer },
@@ -115,9 +115,7 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
       display: p.display,
       cor: p.cor,
       faturamento:    kpis?.faturamento.valor ?? null,
-      faturamentoYoY: kpis?.faturamento.variacao_yoy ?? null,
       receita:        kpis?.receita.valor ?? null,
-      receitaYoY:     kpis?.receita.variacao_yoy ?? null,
       margemPct:      kpis?.margem_pct.valor ?? null,
       ritmo,
     }

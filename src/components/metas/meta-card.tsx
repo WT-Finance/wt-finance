@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react'
 import { Card } from '@/components/ui/card'
-import Gauge from '@/components/shared/gauge'
+import MetaProgressBar from '@/components/shared/meta-progress-bar'
 import { fmtMi } from '@/lib/fmt'
 import { classificarRitmo } from '@/lib/metas/ritmo'
 import type { PainelSetor } from '@/components/metas/tipos'
 
 // Card de UM painel (Group ou setor) do Acompanhamento de Metas (v5.0.0).
-// 'grande' (Group) = layout HORIZONTAL no molde do card principal de Weddings:
-// gauge à esquerda + 3 colunas de KPI (rótulo uppercase, valor bold, linha YoY).
-// 'setor' = card vertical compacto: header colorido + gauge + linhas divididas.
-// A régua de status (verde/âmbar/vermelho) SÓ colore o "ritmo X%"/"% do esperado" —
-// nunca o arco do Gauge (identidade) nem o resto do card.
+// Elemento central = <MetaProgressBar> (barra + tick + tooltip). SEM YoY na
+// superfície (decisão v5.0.0: Metas responde "entregamos o combinado?", não
+// "melhoramos vs ano passado?"). Margem = delta em p.p. contra o alvo de %Rec,
+// colorido pela régua. "% do esperado" (o antigo "ritmo") colorido pela régua.
+// A régua só colore "% do esperado" e a margem — nunca a barra (identidade).
 
 const COR_REGUA: Record<'verde' | 'ambar' | 'vermelho', string> = {
   verde:     'text-success',
@@ -28,55 +28,41 @@ export function corRitmo(pct: number | null): string {
 const fmtNum1 = (v: number) =>
   v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 const fmtPct1 = (v: number) => `${fmtNum1(v)}%`
-
 const fmtMiOuTraco = (v: number | null): string => (v == null ? '—' : fmtMi(v))
+const round = (v: number | null): string => (v == null ? '—' : `${Math.round(v)}%`)
 
-/** "YoY: ↑ +4,2%" no padrão de KpiColuna (prefixo neutro, variação colorida). */
-function Yoy({ pct }: { pct: number | null }) {
-  if (pct == null) return <span className="text-xs text-zinc-400">YoY: —</span>
-  const isPos = pct >= 0
+/** "82% do esperado", com o número colorido pela régua e "do esperado" discreto. */
+function EsperadoLabel({ pct }: { pct: number | null }) {
   return (
-    <span className="text-xs text-zinc-400">
-      YoY:{' '}
-      <span className={isPos ? 'text-success' : 'text-danger'}>
-        {isPos ? '↑' : '↓'} {isPos ? '+' : '−'}{fmtPct1(Math.abs(pct))}
-      </span>
+    <span className="text-sm">
+      <span className={`font-semibold ${corRitmo(pct)}`}>{round(pct)}</span>{' '}
+      <span className="text-[var(--text-muted)]">do esperado</span>
     </span>
   )
 }
 
-/** Indicador da Receita realizada contra o alvo de %Rec do período. */
-function alvoIndicador(margemPct: number | null, pctReceitaAlvo: number | null): ReactNode {
-  if (margemPct == null) return null
-  if (pctReceitaAlvo == null) return null
-  if (margemPct >= pctReceitaAlvo) {
-    return <span className="text-success">✓ alvo</span>
+/** "13,9% −0,1 p.p. vs alvo 14%" — margem realizada + delta em p.p. contra o alvo
+ *  (colorido: acima=success, abaixo=danger). `compacto` (cards setoriais) omite o
+ *  "vs alvo X%" p/ caber numa linha — o delta+cor já dizem acima/abaixo. Sem alvo → só a margem. */
+function Margem({ margemPct, alvo, compacto }: { margemPct: number | null; alvo: number | null; compacto?: boolean }) {
+  if (margemPct == null) return <span className="text-[var(--text-primary)]">—</span>
+  if (alvo == null) {
+    return <span className="tabular-nums text-[var(--text-primary)]">{fmtPct1(margemPct)}</span>
   }
-  const delta = margemPct - pctReceitaAlvo
-  return <span className="text-danger">{fmtNum1(delta)} p.p. do alvo</span>
-}
-
-/** Coluna de KPI do card Group — tipografia do card principal (KpiColuna), valor neutro. */
-function KpiBloco({ label, valor, sub }: { label: string; valor: string; sub?: ReactNode }) {
+  const delta = margemPct - alvo
+  const cor = delta >= 0 ? 'text-success' : 'text-danger'
+  const sinal = delta >= 0 ? '+' : '−'
   return (
-    <div className="min-w-0 px-5 first:pl-0 last:pr-0">
-      <p className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
-      <p className="mb-1 text-2xl font-bold tabular-nums text-[var(--text-primary)]">{valor}</p>
-      {sub != null && <div className="flex flex-wrap items-center gap-x-2 text-xs text-zinc-400">{sub}</div>}
-    </div>
+    <span className="whitespace-nowrap tabular-nums text-[var(--text-primary)]">
+      {fmtPct1(margemPct)}{' '}
+      <span className={`text-xs font-medium ${cor}`}>{sinal}{fmtNum1(Math.abs(delta))} p.p.</span>
+      {!compacto && <> <span className="text-xs text-[var(--text-muted)]">vs alvo {fmtPct1(alvo)}</span></>}
+    </span>
   )
 }
 
-function LinhaValor({ label, valor, extra }: { label: string; valor: ReactNode; extra?: ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between py-1.5 text-[13px]">
-      <span className="text-[var(--text-muted)]">{label}</span>
-      <span className="flex items-baseline gap-2 font-medium tabular-nums text-[var(--text-primary)]">
-        {valor}
-        {extra != null && <span className="text-xs font-normal">{extra}</span>}
-      </span>
-    </div>
-  )
+function Klabel({ children }: { children: ReactNode }) {
+  return <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{children}</p>
 }
 
 interface Props {
@@ -85,70 +71,50 @@ interface Props {
 }
 
 export default function MetaCard({ painel, tamanho }: Props) {
-  const { display, cor, faturamento, faturamentoYoY, receita, receitaYoY, margemPct, ritmo } = painel
+  const { display, cor, faturamento, receita, margemPct, ritmo } = painel
 
-  const tick = ritmo.metaPeriodo > 0
-    ? { pct: (ritmo.esperadoAteHoje / ritmo.metaPeriodo) * 100, label: fmtMi(ritmo.esperadoAteHoje) }
-    : undefined
-
-  const corReguaRitmo = corRitmo(ritmo.ritmoPct)
-  const centroTitulo = ritmo.pctMeta == null ? '—' : `${Math.round(ritmo.pctMeta)}%`
-  const ritmoLabel = ritmo.ritmoPct == null ? '—' : `${Math.round(ritmo.ritmoPct)}%`
-  const centroSubtitulo = (
-    <>da meta · ritmo <span className={`font-semibold ${corReguaRitmo}`}>{ritmoLabel}</span></>
+  const pctEsperadoTick = ritmo.metaPeriodo > 0 ? (ritmo.esperadoAteHoje / ritmo.metaPeriodo) * 100 : 0
+  const barra = (altura: number) => (
+    <MetaProgressBar
+      pctMeta={ritmo.pctMeta}
+      pctEsperado={pctEsperadoTick}
+      cor={cor}
+      altura={altura}
+      pctDecorrido={ritmo.pctDecorrido}
+      esperado={ritmo.esperadoAteHoje}
+      realizado={ritmo.realizado}
+    />
   )
-  const ariaLabel =
-    `${display}: ${centroTitulo} da meta do período, ritmo ${ritmoLabel === '—' ? 'indisponível' : ritmoLabel}`
 
   if (tamanho === 'grande') {
     return (
       <Card className="px-6 py-5">
-        <div className="flex flex-col items-center gap-8 lg:flex-row">
-          {/* Gauge à esquerda, com a identidade do painel */}
-          <div className="flex w-full max-w-[300px] shrink-0 flex-col items-center lg:w-[300px]">
-            <p className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-              {display}
-            </p>
-            <Gauge
-              tamanho="grande"
-              cor={cor}
-              valorPct={ritmo.pctMeta ?? 0}
-              tick={tick}
-              centroTitulo={centroTitulo}
-              centroSubtitulo={centroSubtitulo}
-              ariaLabel={ariaLabel}
-            />
-          </div>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+          {display === 'Group' ? 'Welcome Group' : display}
+        </p>
 
-          {/* 3 colunas de KPI no molde do card principal de Weddings */}
-          <div className="grid w-full flex-1 grid-cols-1 gap-y-5 sm:grid-cols-3 sm:divide-x sm:divide-zinc-100">
-            <KpiBloco
-              label="Faturamento"
-              valor={fmtMiOuTraco(faturamento)}
-              sub={<Yoy pct={faturamentoYoY} />}
-            />
-            <KpiBloco
-              label="Meta do período"
-              valor={fmtMi(ritmo.metaPeriodo)}
-              sub={<span>esperado até hoje: <span className="font-medium text-zinc-500">{fmtMi(ritmo.esperadoAteHoje)}</span></span>}
-            />
-            <KpiBloco
-              label="Receita"
-              valor={fmtMiOuTraco(receita)}
-              sub={
-                <>
-                  <Yoy pct={receitaYoY} />
-                  {margemPct != null && (
-                    <span>
-                      margem {fmtPct1(margemPct)}
-                      {alvoIndicador(margemPct, ritmo.pctReceitaAlvo) != null && (
-                        <> · {alvoIndicador(margemPct, ritmo.pctReceitaAlvo)}</>
-                      )}
-                    </span>
-                  )}
-                </>
-              }
-            />
+        <div className="mb-2 flex items-end justify-between gap-6">
+          <div>
+            <Klabel>Faturamento</Klabel>
+            <p className="mt-1 text-3xl font-bold tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(faturamento)}</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
+          </div>
+          <div className="text-right">
+            <p><span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{round(ritmo.pctMeta)}</span> <span className="text-sm text-[var(--text-muted)]">da meta</span></p>
+            <p className="mt-0.5"><EsperadoLabel pct={ritmo.ritmoPct} /></p>
+          </div>
+        </div>
+
+        {barra(12)}
+
+        <div className="mt-4 grid grid-cols-2 divide-x divide-zinc-100 border-t border-zinc-100 pt-4">
+          <div className="pr-5">
+            <Klabel>Receita</Klabel>
+            <p className="mt-1 text-xl font-bold tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</p>
+          </div>
+          <div className="pl-5">
+            <Klabel>Margem</Klabel>
+            <p className="mt-1 text-xl font-bold"><Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} /></p>
           </div>
         </div>
       </Card>
@@ -157,30 +123,22 @@ export default function MetaCard({ painel, tamanho }: Props) {
 
   return (
     <Card className="flex h-full flex-col px-5 py-4">
-      <div className="mb-3 flex items-baseline justify-between">
-        <span className="text-[15px] font-semibold" style={{ color: cor }}>{display}</span>
-        <Yoy pct={faturamentoYoY} />
+      <p className="text-[15px] font-semibold" style={{ color: cor }}>{display}</p>
+
+      <div className="mt-2 flex items-baseline justify-between gap-3">
+        <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(faturamento)}</span>
+        <span className="text-sm"><span className="font-semibold tabular-nums text-[var(--text-primary)]">{round(ritmo.pctMeta)}</span> <span className="text-[var(--text-muted)]">da meta</span></span>
+      </div>
+      <div className="mt-0.5 flex items-baseline justify-between gap-3 text-sm">
+        <span className="text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></span>
+        <EsperadoLabel pct={ritmo.ritmoPct} />
       </div>
 
-      <Gauge
-        tamanho="setor"
-        cor={cor}
-        valorPct={ritmo.pctMeta ?? 0}
-        tick={tick}
-        centroTitulo={centroTitulo}
-        centroSubtitulo={centroSubtitulo}
-        ariaLabel={ariaLabel}
-      />
+      <div className="mt-3">{barra(10)}</div>
 
-      <div className="mt-auto divide-y divide-zinc-50 border-t border-zinc-100 pt-1.5">
-        <LinhaValor label="Realizado" valor={fmtMiOuTraco(faturamento)} />
-        <LinhaValor label="Meta"      valor={fmtMi(ritmo.metaPeriodo)} />
-        <LinhaValor label="Receita"   valor={fmtMiOuTraco(receita)} />
-        <LinhaValor
-          label="Margem"
-          valor={margemPct == null ? '—' : fmtPct1(margemPct)}
-          extra={alvoIndicador(margemPct, ritmo.pctReceitaAlvo)}
-        />
+      <div className="mt-auto flex items-baseline justify-between gap-3 border-t border-zinc-100 pt-3 text-[13px]">
+        <span className="whitespace-nowrap text-[var(--text-muted)]">Receita <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span></span>
+        <span className="text-[var(--text-muted)]">Margem <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} compacto /></span>
       </div>
     </Card>
   )
