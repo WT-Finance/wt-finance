@@ -31,8 +31,9 @@ pedido **novo**.
 
 ## Pendências / operacional (Yan)
 - **Aplicar a migration 0177** no terminal (`npm run db:migrate -- --aditiva`) — depois da
-  0175/0176 da v5.0.0. Sem ela, o app não quebra (a Action degrada fail-safe: RPC inexistente
-  → catch → segue e redireciona), mas o e-mail não dispara.
+  0175/0176 da v5.0.0. **A ordem deploy×migration é segura:** se o deploy vier antes da 0177,
+  a Action detecta o erro da RPC nova e faz **fallback** para a `solicitar_acesso` legada — o
+  pedido NUNCA se perde; só a notificação por e-mail espera a 0177 (dispara no próximo pedido).
 - **`SMTP_*` na Vercel** (já requisito das notificações existentes) — sem SMTP, degrada em
   silêncio (0 enviados).
 - **Follow-up:** caso de contrato em `rpc-contrato.test.ts` para `solicitar_acesso_admin`

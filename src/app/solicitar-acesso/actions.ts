@@ -37,19 +37,28 @@ export async function solicitarAcesso(formData: FormData): Promise<void> {
 
   try {
     const supabase = getAdminClient()
-    const { data } = await (supabase.rpc as unknown as AdminRpc)('solicitar_acesso_admin', {
+    const rpc = supabase.rpc as unknown as AdminRpc
+    const { data, error } = await rpc('solicitar_acesso_admin', {
       p_email: email,
       p_nome: nome || null,
     })
-    const res = data as { inserida?: boolean; emails?: string[] } | null
-    // Só notifica em pedido NOVO (inserida) — evita avisar em reenvios/duplicatas.
-    if (res?.inserida && Array.isArray(res.emails) && res.emails.length > 0) {
-      await enviarNotificacaoAcessoSolicitado({
-        paras:            res.emails,
-        emailSolicitante: email,
-        nomeSolicitante:  nome || null,
-        quando:           agoraFormatado(),
-      })
+    if (error) {
+      // FALLBACK: a RPC nova (migration 0177) pode ainda não estar aplicada em produção
+      // (janela deploy-antes-da-migration). Garante o INSERT pelo caminho legado
+      // solicitar_acesso — o pedido NUNCA se perde; só não sai a notificação (segue no
+      // próximo pedido, após a 0177). service_role tem EXECUTE em solicitar_acesso.
+      await rpc('solicitar_acesso', { p_email: email, p_nome: nome || null })
+    } else {
+      const res = data as { inserida?: boolean; emails?: string[] } | null
+      // Só notifica em pedido NOVO (inserida) — evita avisar em reenvios/duplicatas.
+      if (res?.inserida && Array.isArray(res.emails) && res.emails.length > 0) {
+        await enviarNotificacaoAcessoSolicitado({
+          paras:            res.emails,
+          emailSolicitante: email,
+          nomeSolicitante:  nome || null,
+          quando:           agoraFormatado(),
+        })
+      }
     }
   } catch (err) {
     // Anti-enumeração + best-effort: não revela falhas; loga para diagnóstico.
