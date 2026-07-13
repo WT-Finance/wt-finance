@@ -5,11 +5,11 @@ import { classificarRitmo } from '@/lib/metas/ritmo'
 import type { PainelSetor } from '@/components/metas/tipos'
 
 // Card de UM painel (Group ou setor) do Acompanhamento de Metas (v5.0.0).
-// Elemento central = <MetaProgressBar> (barra + tick + tooltip). SEM YoY na
-// superfície. Comparação central: "X% da meta" (nosso realizado) vs "Y% esperado"
-// (fração da meta esperada por agora = % do período decorrido, pois o esperado é
-// LINEAR). A régua (verde/âmbar/vermelho) colore o "% da meta" (o sinal de ritmo);
-// "esperado" é referência neutra. Margem = delta em p.p. contra o alvo de %Rec.
+// Elemento central = <MetaProgressBar>. Título e VALOR do faturamento na cor de
+// identidade do painel (setor = marca; Group = cinza da marca). "X% da meta" e
+// "Y% esperado" recebem a MESMA cor, pela distância entre eles (verde se meta ≥
+// esperado; âmbar até 3 p.p. abaixo; vermelho mais que isso). Margem = delta em
+// p.p. contra o alvo de %Rec.
 
 const COR_REGUA: Record<'verde' | 'ambar' | 'vermelho', string> = {
   verde:     'text-success',
@@ -17,8 +17,8 @@ const COR_REGUA: Record<'verde' | 'ambar' | 'vermelho', string> = {
   vermelho:  'text-danger',
 }
 
-/** Classe Tailwind para a régua de ritmo — null (sem meta/dado) cai no neutro.
- *  Exportado para o gráfico "Ritmo do período" (ritmo-chart.tsx) reusar a MESMA régua. */
+/** Régua de ritmo (realizado/esperado) — mantida para o gráfico "Ritmo do período"
+ *  (ritmo-chart.tsx) reusar no rótulo "% do esperado até hoje". */
 export function corRitmo(pct: number | null): string {
   const status = classificarRitmo(pct)
   return status ? COR_REGUA[status] : 'text-[var(--text-muted)]'
@@ -30,9 +30,19 @@ const fmtPct1 = (v: number) => `${fmtNum1(v)}%`
 const fmtMiOuTraco = (v: number | null): string => (v == null ? '—' : fmtMi(v))
 const pctRound = (v: number | null): string => (v == null ? '—' : `${Math.round(v)}%`)
 
-/** "13,9% −0,1 p.p. vs alvo 14%" — margem realizada + delta em p.p. contra o alvo
- *  (colorido: acima=success, abaixo=danger). `compacto` omite o "vs alvo X%". */
-function Margem({ margemPct, alvo, compacto }: { margemPct: number | null; alvo: number | null; compacto?: boolean }) {
+/** Cor COMUM de "% da meta" e "% esperado", pela distância (p.p.) entre elas:
+ *  meta ≥ esperado → verde; até 3 p.p. abaixo → âmbar; mais que 3 p.p. abaixo → vermelho. */
+function corComparacao(pctMeta: number | null, pctEsperado: number | null): string {
+  if (pctMeta == null || pctEsperado == null) return 'text-[var(--text-muted)]'
+  const diff = pctMeta - pctEsperado
+  if (diff >= 0) return 'text-success'
+  if (diff >= -3) return 'text-warning'
+  return 'text-danger'
+}
+
+/** "13,9% −0,1 p.p. vs alvo 14%" — margem + delta p.p. contra o alvo (colorido) + alvo
+ *  (sem casas, peso normal). Sem alvo cadastrado → só a margem. */
+function Margem({ margemPct, alvo }: { margemPct: number | null; alvo: number | null }) {
   if (margemPct == null) return <span className="text-[var(--text-primary)]">—</span>
   if (alvo == null) {
     return <span className="tabular-nums text-[var(--text-primary)]">{fmtPct1(margemPct)}</span>
@@ -43,27 +53,27 @@ function Margem({ margemPct, alvo, compacto }: { margemPct: number | null; alvo:
   return (
     <span className="whitespace-nowrap tabular-nums text-[var(--text-primary)]">
       {fmtPct1(margemPct)}{' '}
-      <span className={`text-xs font-medium ${cor}`}>{sinal}{fmtNum1(Math.abs(delta))} p.p.</span>
-      {!compacto && <> <span className="text-xs text-[var(--text-muted)]">vs alvo {fmtPct1(alvo)}</span></>}
+      <span className={`text-xs font-medium ${cor}`}>{sinal}{fmtNum1(Math.abs(delta))} p.p.</span>{' '}
+      <span className="text-xs font-normal text-[var(--text-muted)]">vs alvo {Math.round(alvo)}%</span>
     </span>
   )
 }
 
-/** "X% da meta" — realizado, colorido pela régua. Tamanho por card. */
-function PctDaMeta({ pctMeta, ritmoPct, grande }: { pctMeta: number | null; ritmoPct: number | null; grande?: boolean }) {
+/** "X% da meta" — número na cor da comparação; tamanho = o do faturamento do card. */
+function PctDaMeta({ pctMeta, corNum, grande }: { pctMeta: number | null; corNum: string; grande?: boolean }) {
   return (
     <span className="whitespace-nowrap">
-      <span className={`${grande ? 'text-2xl' : 'text-base'} font-bold tabular-nums ${corRitmo(ritmoPct)}`}>{pctRound(pctMeta)}</span>{' '}
+      <span className={`${grande ? 'text-3xl' : 'text-2xl'} font-bold tabular-nums ${corNum}`}>{pctRound(pctMeta)}</span>{' '}
       <span className="text-sm text-[var(--text-muted)]">da meta</span>
     </span>
   )
 }
 
-/** "Y% esperado" — a fração da meta esperada por agora (referência neutra). */
-function PctEsperado({ pct }: { pct: number | null }) {
+/** "Y% esperado" — referência; o número na MESMA cor da comparação. */
+function PctEsperado({ pct, corNum }: { pct: number | null; corNum: string }) {
   return (
     <span className="whitespace-nowrap text-sm">
-      <span className="font-medium tabular-nums text-[var(--text-secondary)]">{pctRound(pct)}</span>{' '}
+      <span className={`font-medium tabular-nums ${corNum}`}>{pctRound(pct)}</span>{' '}
       <span className="text-[var(--text-muted)]">esperado</span>
     </span>
   )
@@ -83,6 +93,7 @@ export default function MetaCard({ painel, tamanho }: Props) {
 
   // Esperado como % da meta = fração do período decorrida (esperado é linear).
   const pctEsperado = ritmo.metaPeriodo > 0 ? (ritmo.esperadoAteHoje / ritmo.metaPeriodo) * 100 : null
+  const corNum = corComparacao(ritmo.pctMeta, pctEsperado)
   const ariaLabel =
     `${display}: ${pctRound(ritmo.pctMeta)} da meta; esperado ${pctRound(pctEsperado)} do período`
 
@@ -101,19 +112,17 @@ export default function MetaCard({ painel, tamanho }: Props) {
   if (tamanho === 'grande') {
     return (
       <Card className="px-6 py-5">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-          {display === 'Group' ? 'Welcome Group' : display}
-        </p>
+        <p className="mb-3 text-[15px] font-semibold" style={{ color: cor }}>{display}</p>
 
         {/* Duas linhas PAREADAS: faturamento ↔ "% da meta"; Meta ↔ "% esperado". */}
         <div className="mb-2">
           <div className="flex items-baseline justify-between gap-6">
-            <p className="text-3xl font-bold tabular-nums text-[var(--text-primary)]" aria-label={ariaLabel}>{fmtMiOuTraco(faturamento)}</p>
-            <PctDaMeta grande pctMeta={ritmo.pctMeta} ritmoPct={ritmo.ritmoPct} />
+            <p className="text-3xl font-bold tabular-nums" style={{ color: cor }} aria-label={ariaLabel}>{fmtMiOuTraco(faturamento)}</p>
+            <PctDaMeta grande pctMeta={ritmo.pctMeta} corNum={corNum} />
           </div>
           <div className="mt-1 flex items-baseline justify-between gap-6">
             <p className="text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
-            <PctEsperado pct={pctEsperado} />
+            <PctEsperado pct={pctEsperado} corNum={corNum} />
           </div>
         </div>
 
@@ -137,28 +146,23 @@ export default function MetaCard({ painel, tamanho }: Props) {
     <Card className="flex h-full flex-col px-5 py-4">
       <p className="text-[15px] font-semibold" style={{ color: cor }}>{display}</p>
 
-      {/* Duas linhas PAREADAS: faturamento ↔ "% da meta"; Meta ↔ "% esperado". */}
+      {/* Duas linhas PAREADAS: faturamento (cor do setor) ↔ "% da meta"; Meta ↔ "% esperado". */}
       <div className="mt-2 flex items-baseline justify-between gap-3">
-        <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]" aria-label={ariaLabel}>{fmtMiOuTraco(faturamento)}</span>
-        <PctDaMeta pctMeta={ritmo.pctMeta} ritmoPct={ritmo.ritmoPct} />
+        <span className="text-2xl font-bold tabular-nums" style={{ color: cor }} aria-label={ariaLabel}>{fmtMiOuTraco(faturamento)}</span>
+        <PctDaMeta pctMeta={ritmo.pctMeta} corNum={corNum} />
       </div>
       <div className="mt-0.5 flex items-baseline justify-between gap-3">
         <p className="text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
-        <PctEsperado pct={pctEsperado} />
+        <PctEsperado pct={pctEsperado} corNum={corNum} />
       </div>
 
       <div className="mt-3">{barra(10)}</div>
 
-      {/* Receita e Margem em LINHAS separadas (molde dos subcards de subsetor de Weddings). */}
-      <div className="mt-auto border-t border-zinc-100 pt-2">
-        <div className="flex items-baseline justify-between py-1 text-[13px]">
-          <span className="text-[var(--text-muted)]">Receita</span>
-          <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span>
-        </div>
-        <div className="flex items-baseline justify-between py-1 text-[13px]">
-          <span className="text-[var(--text-muted)]">Margem</span>
-          <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} compacto />
-        </div>
+      {/* Receita e Margem na MESMA linha, separadas por | (com "vs alvo"), como no Group. */}
+      <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs">
+        <span className="text-[var(--text-muted)]">Receita <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span></span>
+        <span className="text-zinc-300" aria-hidden>|</span>
+        <span className="text-[var(--text-muted)]">Margem <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} /></span>
       </div>
     </Card>
   )
