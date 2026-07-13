@@ -182,6 +182,13 @@ Props:
   pois `className` vai no viewport (cujo único filho é o wrapper de conteúdo). Padding fica em
   `className` (preserva o cálculo do sticky `-top-5`).
 
+**Thumb ACIMA do cabeçalho sticky (v5.0.0):** o wrapper do `<ScrollAutoHide>` é `isolate`
+(cria stacking context) e o thumb é `z-30`, então numa **tabela densa com `<thead>` sticky
+`z-20`** (§7) a barra flutuante fica **por cima do header** — sem isso ela some atrás do cabeçalho
+fixo ao rolar. Já é automático no primitivo: não precisa fazer nada no call-site. (Regra p/ QUALQUER
+header fixo: se um container com header sticky não usar o primitivo, o indicador de rolagem tem de
+ter `z-index` maior que o do header.)
+
 Migração (regra de escoteiro + varredura v5.0.0): trocar `<div className="overflow-* …">` por
 `<ScrollAutoHide …>`; remover `overflow-*`/`flex-1`/`min-h-0`/`h-full`, manter padding/max-h/min-w
 em `className`, mover `space-y-*` para `contentClassName`. Migrados na varredura: modais

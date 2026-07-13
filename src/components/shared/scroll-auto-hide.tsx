@@ -138,8 +138,11 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
 
   const thumbBg = 'color-mix(in srgb, var(--text-muted) 55%, transparent)'
 
+  // `isolate` cria um stacking context no wrapper: o thumb (z-30) fica ACIMA de um
+  // cabeçalho sticky interno (`sticky top-0 z-20`, DS §7) — sem isso a barra some atrás
+  // do header nas tabelas densas — e o z-30 não vaza para fora do wrapper.
   return (
-    <div className="relative flex-1 min-h-0" onMouseEnter={reveal} onMouseMove={reveal}>
+    <div className="relative isolate flex-1 min-h-0" onMouseEnter={reveal} onMouseMove={reveal}>
       <div ref={viewRef} onScroll={onScroll} className={`h-full ${OVERFLOW[eixo]} scrollbar-none ${className}`}>
         <div ref={contentRef} className={contentClassName}>{children}</div>
       </div>
@@ -147,7 +150,7 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
         <div
           ref={thumbYRef}
           onPointerDown={iniciarArraste('y')}
-          className="absolute right-1 top-0 w-1.5 cursor-grab touch-none rounded-full transition-opacity duration-300 motion-reduce:transition-none"
+          className="absolute right-1 top-0 z-30 w-1.5 cursor-grab touch-none rounded-full transition-opacity duration-300 motion-reduce:transition-none"
           style={{ display: 'none', height: 0, opacity: 0, background: thumbBg, willChange: 'transform' }}
         />
       )}
@@ -155,7 +158,7 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
         <div
           ref={thumbXRef}
           onPointerDown={iniciarArraste('x')}
-          className="absolute bottom-1 left-0 h-1.5 cursor-grab touch-none rounded-full transition-opacity duration-300 motion-reduce:transition-none"
+          className="absolute bottom-1 left-0 z-30 h-1.5 cursor-grab touch-none rounded-full transition-opacity duration-300 motion-reduce:transition-none"
           style={{ display: 'none', width: 0, opacity: 0, background: thumbBg, willChange: 'transform' }}
         />
       )}

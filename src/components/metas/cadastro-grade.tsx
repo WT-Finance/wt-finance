@@ -499,9 +499,9 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
           <table className="w-full text-sm">
             <thead>
               <tr>
-                <th rowSpan={2} className="w-[6.5rem] border-b border-zinc-200 px-2 pb-2 text-left align-bottom text-xs font-medium text-zinc-400">
-                  Mês
-                </th>
+                {/* Canto: célula de cima VAZIA com fundo cinza (acompanha a faixa dos
+                    setores); "Mês" desce para a 2ª linha, coerente com as demais colunas. */}
+                <th aria-hidden className="w-[6.5rem] border-b border-zinc-100 bg-zinc-50" />
                 {setores.map(s => (
                   <th
                     key={s.id}
@@ -517,6 +517,7 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
                 </th>
               </tr>
               <tr>
+                <th className="w-[6.5rem] border-b border-zinc-200 px-2 py-1.5 text-left text-2xs font-medium text-zinc-400">Mês</th>
                 {setores.map(s => (
                   <Fragment key={s.id}>
                     <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${sepGrupo}`}>Faturamento</th>

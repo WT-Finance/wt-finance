@@ -41,8 +41,9 @@ function corComparacao(pctMeta: number | null, pctEsperado: number | null): stri
 }
 
 /** "13,9% −0,1 p.p. vs alvo 14%" — margem + delta p.p. contra o alvo (colorido) + alvo
- *  (sem casas, peso normal). Sem alvo cadastrado → só a margem. */
-function Margem({ margemPct, alvo }: { margemPct: number | null; alvo: number | null }) {
+ *  (sem casas, peso normal). `corValor` pinta TAMBÉM o valor (verde ≥ alvo, vermelho abaixo).
+ *  Sem alvo cadastrado → só a margem. */
+function Margem({ margemPct, alvo, corValor }: { margemPct: number | null; alvo: number | null; corValor?: boolean }) {
   if (margemPct == null) return <span className="text-[var(--text-primary)]">—</span>
   if (alvo == null) {
     return <span className="tabular-nums text-[var(--text-primary)]">{fmtPct1(margemPct)}</span>
@@ -51,19 +52,20 @@ function Margem({ margemPct, alvo }: { margemPct: number | null; alvo: number | 
   const cor = delta >= 0 ? 'text-success' : 'text-danger'
   const sinal = delta >= 0 ? '+' : '−'
   return (
-    <span className="whitespace-nowrap tabular-nums text-[var(--text-primary)]">
-      {fmtPct1(margemPct)}{' '}
+    <span className="whitespace-nowrap tabular-nums">
+      <span className={corValor ? cor : 'text-[var(--text-primary)]'}>{fmtPct1(margemPct)}</span>{' '}
       <span className={`text-xs font-medium ${cor}`}>{sinal}{fmtNum1(Math.abs(delta))} p.p.</span>{' '}
       <span className="text-xs font-normal text-[var(--text-muted)]">vs alvo {Math.round(alvo)}%</span>
     </span>
   )
 }
 
-/** "X% da meta" — número na cor da comparação; tamanho = o do faturamento do card. */
-function PctDaMeta({ pctMeta, corNum, grande }: { pctMeta: number | null; corNum: string; grande?: boolean }) {
+/** "X% da meta" — número na cor da comparação. Tamanho ÚNICO (text-xl) no Group e nos
+ *  setores: entre o faturamento (3xl/2xl) e o esperado (sm), gerando a hierarquia. */
+function PctDaMeta({ pctMeta, corNum }: { pctMeta: number | null; corNum: string }) {
   return (
     <span className="whitespace-nowrap">
-      <span className={`${grande ? 'text-3xl' : 'text-2xl'} font-bold tabular-nums ${corNum}`}>{pctRound(pctMeta)}</span>{' '}
+      <span className={`text-xl font-bold tabular-nums ${corNum}`}>{pctRound(pctMeta)}</span>{' '}
       <span className="text-sm text-[var(--text-muted)]">da meta</span>
     </span>
   )
@@ -118,7 +120,7 @@ export default function MetaCard({ painel, tamanho }: Props) {
         <div className="mb-2">
           <div className="flex items-baseline justify-between gap-6">
             <p className="text-3xl font-bold tabular-nums" style={{ color: cor }} aria-label={ariaLabel}>{fmtMiOuTraco(faturamento)}</p>
-            <PctDaMeta grande pctMeta={ritmo.pctMeta} corNum={corNum} />
+            <PctDaMeta pctMeta={ritmo.pctMeta} corNum={corNum} />
           </div>
           <div className="mt-1 flex items-baseline justify-between gap-6">
             <p className="text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
@@ -158,11 +160,12 @@ export default function MetaCard({ painel, tamanho }: Props) {
 
       <div className="mt-3">{barra(10)}</div>
 
-      {/* Receita e Margem na MESMA linha, separadas por | (com "vs alvo"), como no Group. */}
-      <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs">
+      {/* Receita e Margem na MESMA linha (alinhadas à ESQUERDA), separadas por |, como no
+          Group. O valor da margem é colorido (verde ≥ alvo, vermelho abaixo). */}
+      <div className="mt-auto flex flex-wrap items-baseline justify-start gap-x-2 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs">
         <span className="text-[var(--text-muted)]">Receita <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span></span>
         <span className="text-zinc-300" aria-hidden>|</span>
-        <span className="text-[var(--text-muted)]">Margem <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} /></span>
+        <span className="text-[var(--text-muted)]">Margem <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} corValor /></span>
       </div>
     </Card>
   )
