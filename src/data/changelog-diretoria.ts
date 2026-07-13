@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.0.1',
+    data: '2026-07-13T14:01',
+    itens: [
+      { tipo: 'novidade', texto: 'Quando alguém pede acesso à plataforma pela tela de entrada, os responsáveis por Usuários & Acessos agora recebem um e-mail avisando, com os dados de quem solicitou e um atalho para aprovar ou recusar. Antes, o pedido só aparecia dentro da plataforma e podia passar despercebido. O aviso é enviado uma única vez por pedido novo.' },
+    ],
+  },
+  {
     versao: '5.0.0',
     data: '2026-07-08T16:24',
     itens: [

@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.0.1] — 2026-07-13
+
+PATCH · **Aviso por e-mail de nova solicitação de acesso.** Quando alguém pede acesso pela tela de login (`/solicitar-acesso`), quem administra **Usuários & Acessos** passa a receber um e-mail (identidade interna Janus) com os dados do solicitante e um botão para revisar/aprovar — antes ninguém era avisado. Só dispara em **pedido novo** (não em reenvios). Nova RPC `solicitar_acesso_admin` (**service_role-only** — não abre diretório de e-mails a anônimo); envio **best-effort** (nunca bloqueia o pedido); anti-enumeração preservada. **Migration 0177 (aditiva)** · ADR-0147.
+
 ## [5.0.0] — 2026-07-08
 
 MAJOR · **Metas por Setor — a abertura da major 5.** O acompanhamento de metas comerciais de faturamento (VT) por setor entra na plataforma, substituindo o dashboard provisório. **Migration 0175 (aditiva)** · ADR-0146. Base v4.40.1.

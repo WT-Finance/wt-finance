@@ -2,7 +2,7 @@ import 'server-only'
 import nodemailer from 'nodemailer'
 import { getConfigSmtp, getAppBaseUrl, type ConfigSmtp } from './config'
 import {
-  templateSenhaProvisoria, templateNotificacaoSolicitacao,
+  templateSenhaProvisoria, templateNotificacaoSolicitacao, templateNotificacaoAcessoSolicitado,
   type TipoSenha, type MovimentacaoEmail,
 } from './template'
 import { LOGO_CID, LOGO_WELCOME_GROUP_PNG_BASE64, LOGO_JANUS_CID, LOGO_JANUS_PNG_BASE64 } from './logo'
@@ -117,6 +117,45 @@ export async function enviarNotificacaoSolicitacao(input: {
     return { enviados, total: paras.length }
   } catch (err) {
     console.error('[email] notificação de solicitação falhou (best-effort, ignorado):', err)
+    return { enviados: 0, total: paras.length }
+  }
+}
+
+/**
+ * v5.0.1 — Notificação de NOVA SOLICITAÇÃO DE ACESSO para os administradores de Usuários &
+ * Acessos. Mesmo e-mail para todos (fan-out best-effort, um envio por destinatário em paralelo;
+ * a falha de um não derruba os outros nem o chamador). NUNCA lança (sem config → 0 enviados).
+ * Link → /admin/acessos (getAppBaseUrl). `quando` já vem formatado pelo chamador.
+ */
+export async function enviarNotificacaoAcessoSolicitado(input: {
+  paras:            string[]
+  emailSolicitante: string
+  nomeSolicitante?: string | null
+  quando?:          string | null
+}): Promise<{ enviados: number; total: number }> {
+  const cfg = getConfigSmtp()
+  const paras = [...new Set(input.paras.map(p => p.trim()).filter(p => p.includes('@')))]
+  if (!cfg || paras.length === 0) return { enviados: 0, total: paras.length }
+  try {
+    const base = getAppBaseUrl()
+    const { assunto, html, text } = templateNotificacaoAcessoSolicitado({
+      emailSolicitante: input.emailSolicitante,
+      nomeSolicitante:  input.nomeSolicitante,
+      quando:           input.quando,
+      link:             base ? `${base}/admin/acessos` : null,
+    })
+    const transporter = criarTransporter(cfg)
+    const anexos = [anexoLogo(), anexoLogoJanus()]
+    const r = await Promise.allSettled(paras.map(para =>
+      transporter.sendMail({ from: cfg.from, to: para, subject: assunto, html, text, attachments: anexos }),
+    ))
+    const enviados = r.filter(x => x.status === 'fulfilled').length
+    if (enviados < paras.length) {
+      console.error(`[email] notificação de acesso: ${enviados}/${paras.length} enviados (falhas best-effort).`)
+    }
+    return { enviados, total: paras.length }
+  } catch (err) {
+    console.error('[email] notificação de acesso falhou (best-effort, ignorado):', err)
     return { enviados: 0, total: paras.length }
   }
 }
