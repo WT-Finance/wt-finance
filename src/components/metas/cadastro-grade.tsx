@@ -490,7 +490,7 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
       )}
 
       <Card className="px-5 py-4">
-        <p className="mb-2 flex items-center gap-1.5 text-2xs text-zinc-400">
+        <p className="mb-2 flex items-center justify-end gap-1.5 text-2xs text-zinc-400">
           <Pencil size={11} className="text-zinc-300" />
           Clique numa célula para editar
         </p>

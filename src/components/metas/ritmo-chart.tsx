@@ -65,15 +65,17 @@ export default function RitmoChart({ setores }: Props) {
             />
             {ChartYAxisBRL()}
 
-            {/* Sombra sob o realizado — reforça o acumulado sem virar segunda série */}
+            {/* Realizado acumulado = UMA série só (área sombreada + linha sólida) → o tooltip
+                mostra só "Realizado" (antes o par Area+Line duplicava numa entrada "realAcum"). */}
             <Area
               type="monotone"
               dataKey="realAcum"
-              legendType="none"
-              tooltipType="none"
-              stroke="none"
+              name="Realizado"
+              stroke={painel.cor}
+              strokeWidth={strokeWidths.line}
               fill={painel.cor}
               fillOpacity={0.07}
+              dot={false}
               connectNulls={false}
             />
 
@@ -101,17 +103,8 @@ export default function RitmoChart({ setores }: Props) {
 
             <Line
               type="monotone"
-              dataKey="realAcum"
-              name="Realizado"
-              stroke={painel.cor}
-              strokeWidth={strokeWidths.line}
-              dot={false}
-              connectNulls={false}
-            />
-            <Line
-              type="monotone"
               dataKey="metaAcum"
-              name="Meta"
+              name="Esperado"
               stroke={chartColors.axisTick}
               strokeDasharray={dashArrays.reference}
               strokeWidth={strokeWidths.lineDashed}
@@ -133,7 +126,7 @@ export default function RitmoChart({ setores }: Props) {
       <ChartLegend
         items={[
           { label: 'Realizado acumulado', color: painel.cor,           type: 'line' },
-          { label: 'Meta acumulada',      color: chartColors.axisTick, type: 'line', dashed: true },
+          { label: 'Esperado acumulado',  color: chartColors.axisTick, type: 'line', dashed: true },
         ]}
       />
     </Card>

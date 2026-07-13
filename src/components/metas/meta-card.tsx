@@ -123,7 +123,7 @@ export default function MetaCard({ painel, tamanho }: Props) {
           </div>
           <div className="pl-5">
             <Klabel>Margem</Klabel>
-            <p className="mt-1 text-xl font-bold"><Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} /></p>
+            <p className="mt-1 text-xl font-bold"><Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} corValor /></p>
           </div>
         </div>
       </Card>
@@ -146,16 +146,23 @@ export default function MetaCard({ painel, tamanho }: Props) {
 
       <div className="mt-3">{barra(10)}</div>
 
-      {/* Métrica à ESQUERDA, Margem à DIREITA (justify-between), na mesma linha. Em Weddings
-          a métrica é "Contratos" (nº de contratos de casamento vendidos), nos demais é "Receita".
-          O valor da margem é colorido (verde ≥ alvo, vermelho abaixo). */}
-      <div className="mt-auto flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs">
-        {key === 'Weddings' ? (
-          <span className="text-[var(--text-muted)]">Contratos <span className="font-medium tabular-nums text-[var(--text-primary)]">{contratos == null ? '—' : contratos.toLocaleString('pt-BR')}</span></span>
-        ) : (
-          <span className="text-[var(--text-muted)]">Receita <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span></span>
-        )}
-        <span className="text-[var(--text-muted)]">Margem <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} corValor /></span>
+      {/* Métrica e Margem em DUAS LINHAS empilhadas (rótulo à esquerda, valor à direita —
+          molde dos subcards de subsetor). Em Weddings a 1ª linha é "Contratos" (nº de contratos
+          de casamento vendidos); nos demais é "Receita". Valor da margem colorido (verde ≥ alvo,
+          vermelho abaixo). */}
+      <div className="mt-auto border-t border-zinc-100 pt-2">
+        <div className="flex items-baseline justify-between py-1 text-[13px]">
+          <span className="text-[var(--text-muted)]">{key === 'Weddings' ? 'Contratos' : 'Receita'}</span>
+          <span className="font-medium tabular-nums text-[var(--text-primary)]">
+            {key === 'Weddings'
+              ? (contratos == null ? '—' : contratos.toLocaleString('pt-BR'))
+              : fmtMiOuTraco(receita)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between py-1 text-[13px]">
+          <span className="text-[var(--text-muted)]">Margem</span>
+          <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} corValor />
+        </div>
       </div>
     </Card>
   )
