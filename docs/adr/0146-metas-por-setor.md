@@ -118,6 +118,19 @@ antigo "ritmo X%" vira "% do esperado" em toda a superfície. O gráfico "Ritmo 
    breakdown) seguem em `--setor-*`. O tooltip da barra sai da LINHA DO ESPERADO (seta no tick; a caixa
    abre para o lado com espaço, sem vazar).
 
+**Rodada 3 do checkpoint:**
+
+6. **Períodos calendário-fixos.** As pills do Acompanhamento viram **Mensal (default) / Trimestral /
+   Semestral / Anual** — o corte-calendário corrente que contém hoje (1º trimestre = jan–mar; nunca
+   janela móvel tipo "últimos 3 meses"; sem Personalizado). Motivo: metas são cadastradas por
+   mês-calendário — o acompanhamento fecha nos mesmos cortes em que a meta é combinada. Módulo puro
+   `periodo-metas.ts` (testado) + `MetasPeriodoPills` (URL `?periodo=`; ativa em `--action-soft`).
+   Metas deixa de usar as pills de janela móvel da plataforma.
+
+7. **Seta do esperado + balão animado.** O tick reto que atravessava a barra vira uma **seta estática**
+   apontando para baixo (o mesmo desenho/tom da seta do balão — "de onde o balão nasce"); no hover, o
+   balão abre com animação fluída (fade+deslize nos dois sentidos, `motion-reduce` respeitado).
+
 ## Fora de escopo
 
 Metas por Vendedor (M1/M2/M3, níveis TP) → v5.1. Aba Geral/mix cross-setor (destravável) → futuro.

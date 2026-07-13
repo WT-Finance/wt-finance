@@ -184,11 +184,13 @@ cards do Acompanhamento de Metas. Componente PURO (o tooltip é CSS-only `group-
   clampa em 100) na **cor de MARCA** do painel (`--marca-*` via `SETOR_MARCA_COLORS`; Group = neutro
   `--text-muted`) — nunca hex. *(Metas usa a cor de marca de cada setor, não a `--setor-*` de gráficos
   cross-setor — exceção deliberada ao ADR-0103, ver ADR-0146; cada card É o card daquele setor.)*
-- **Tick MUDO** na posição `pctEsperado` (= `% do período decorrido`, pois o esperado é LINEAR),
-  atravessando a barra (`bg-zinc-500`).
-- **Tooltip ESCURO** no hover (zinc-800) que **SAI DA LINHA DO ESPERADO** (seta no tick; a caixa abre
-  para o lado com espaço, sem vazar da tela): título `"N% do período decorrido"` (`pctDecorrido`),
-  linhas `Esperado`/`Realizado` (R$), e a conclusão colorida — `+R$ Z adiantado` (`text-success`) ou
+- **SETA do esperado** na posição `pctEsperado` (= `% do período decorrido`, pois o esperado é
+  LINEAR): um marcador estático apontando para baixo, acima da barra (mesmo tom escuro da seta do
+  balão — é "de onde o balão nasce"). Sem linha atravessando a barra.
+- **Tooltip ESCURO** no hover (zinc-800) que **NASCE DA SETA** com animação fluída de abrir/fechar
+  (fade + deslize via opacity/transform, `motion-reduce` respeitado; a caixa abre para o lado com
+  espaço, sem vazar da tela): título `"N% do período decorrido"` (`pctDecorrido`), linhas
+  `Esperado`/`Realizado` (R$), e a conclusão colorida — `+R$ Z adiantado` (`text-success`) ou
   `R$ Z abaixo do esperado` (`text-danger`).
 - Props: `pctMeta`, `pctEsperado`, `cor`, `altura` (12 Group / 10 setorial), `pctDecorrido`,
   `esperado`, `realizado`. Régua (verde/âmbar/vermelho) colore só o "% da meta" e a conclusão — nunca a barra.
@@ -199,7 +201,9 @@ cards do Acompanhamento de Metas. Componente PURO (o tooltip é CSS-only `group-
 
 Seção Metas (tema **group**, neutro): **Acompanhamento** (`/metas`) e **Cadastro** (`/metas/cadastro`);
 subabas "Acompanhamento" / "Cadastro" na sidebar (o grupo "Metas" dá o contexto).
-- **Acompanhamento**: pills de período (`PeriodoFilterPillsUrl`, `defaultPreset="este-ano"`) → aviso de
+- **Acompanhamento**: pills próprias **calendário-fixas** (`MetasPeriodoPills` + `@/lib/metas/periodo-metas`):
+  **Mensal (default) / Trimestral / Semestral / Anual** — o corte-calendário CORRENTE (1º tri = jan–mar,
+  nunca "últimos 3 meses"; sem Personalizado). Distintas das pills de janela móvel da Performance. → aviso de
   parcialidade → card Group (label `WELCOME GROUP`, Faturamento + `% da meta`/`% do esperado` +
   `<MetaProgressBar altura=12>` + rodapé Receita | Margem) → 3 cards setoriais (`<MetaProgressBar altura=10>`
   na cor do setor) → gráfico "Ritmo do período". **SEM YoY na superfície** (Metas responde "entregamos o

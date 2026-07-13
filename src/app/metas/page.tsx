@@ -1,7 +1,8 @@
 import { requireArea } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
 import { parseRpc, executivaKpisSchema, metasListarSchema, metasRitmoDiarioSchema } from '@/lib/schemas-rpc'
-import { resolverPeriodoCompleto, formatarLabelPeriodo } from '@/lib/periodo'
+import { format } from 'date-fns'
+import { resolverPeriodoMetas, isPresetMetas } from '@/lib/metas/periodo-metas'
 import { calcularRitmo, type MetaMensal, type PontoDia } from '@/lib/metas/ritmo'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
 import { SETOR_MARCA_COLORS } from '@/lib/config'
@@ -15,9 +16,7 @@ import type { PainelSetor } from '@/components/metas/tipos'
 // com OR ['metas/acompanhamento','metas'].
 
 interface SearchParams {
-  preset?: string
-  from?:   string
-  to?:     string
+  periodo?: string
 }
 
 // Ordem e identidade dos painéis. Group = barra neutra; setores usam a cor de
@@ -69,9 +68,11 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
   await requireArea(['metas/acompanhamento', 'metas'])
   const sp = await searchParams
 
-  const { from, to, antFrom, antTo, yoyFrom, yoyTo, eParcial } =
-    resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
-  const preset = sp.preset ?? 'este-ano'
+  // Cortes CALENDÁRIO-FIXOS (Mensal default / Trimestral / Semestral / Anual) —
+  // o período corrente que contém hoje (periodo-metas.ts). Sem janela móvel.
+  const preset = isPresetMetas(sp.periodo) ? sp.periodo : 'mensal'
+  const { from, to, label } = resolverPeriodoMetas(preset)
+  const eParcial = to >= format(new Date(), 'yyyy-MM-dd')
 
   const db = await getServerClient()
 
@@ -81,7 +82,6 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
   const [kpisResArr, metasResArr, ritmoResArr] = await Promise.all([
     Promise.all(PAINEIS.map(p => db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: p.key,
-      p_ant_from: antFrom, p_ant_to: antTo, p_yoy_from: yoyFrom, p_yoy_to: yoyTo,
     }))),
     Promise.all(anos.map(a => rpcMetas(db, 'metas_listar', { p_ano: a }))),
     Promise.all(PAINEIS.map(p => rpcMetas(db, 'metas_ritmo_diario', { p_from: from, p_to: to, p_setor: p.key }))),
@@ -129,7 +129,7 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
       <AcompanhamentoContent
         data={{
           preset,
-          periodoLabel: formatarLabelPeriodo(preset, from, to),
+          periodoLabel: label,
           from, to, eParcial, ultimaVenda, setores,
         }}
       />

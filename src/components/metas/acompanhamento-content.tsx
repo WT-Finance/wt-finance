@@ -1,6 +1,6 @@
 'use client'
 
-import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
+import MetasPeriodoPills from '@/components/metas/metas-periodo-pills'
 import MetaCard from '@/components/metas/meta-card'
 import RitmoChart from '@/components/metas/ritmo-chart'
 import type { AcompanhamentoData } from '@/components/metas/tipos'
@@ -33,7 +33,7 @@ export default function AcompanhamentoContent({ data }: Props) {
       </div>
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-        <PeriodoFilterPillsUrl defaultPreset="este-ano" />
+        <MetasPeriodoPills />
         {data.eParcial && (
           <p className="text-xs text-[var(--text-muted)]">
             Dados{data.ultimaVenda ? ` até ${fmtDiaMes(data.ultimaVenda)}` : ''} · o esperado é a meta

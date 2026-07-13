@@ -38,7 +38,7 @@ export default function MetaProgressBar({
   const gap = Math.abs(realizado - esperado)
 
   return (
-    <div className="group/bar relative py-1.5">
+    <div className="group/bar relative pb-1 pt-2">
       {/* Trilha + preenchimento */}
       <div className="relative w-full overflow-hidden rounded-full bg-zinc-100" style={{ height: altura }}>
         <div
@@ -47,23 +47,25 @@ export default function MetaProgressBar({
         />
       </div>
 
-      {/* Tick MUDO do esperado — atravessa a barra (poka para fora em cima/baixo). */}
-      <div
+      {/* SETA do esperado — marcador estático apontando para baixo, exatamente como a
+          seta de onde o balão "nasce" (mesmo tom escuro). O balão abre a partir dela. */}
+      <span
         aria-hidden="true"
-        className="pointer-events-none absolute -top-0.5 -bottom-0.5 w-0.5 -translate-x-1/2 rounded-full bg-zinc-500"
+        className="absolute top-0 h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[7px] border-x-transparent border-t-zinc-800"
         style={{ left: `${tick}%` }}
       />
 
-      {/* Tooltip escuro no hover — SAI DA LINHA DO ESPERADO: a SETA fica sobre o tick e a
-          CAIXA abre para o lado com espaço (esquerda se o tick passou da metade, direita
-          senão) → nunca vaza para fora perto das extremidades. Seta ancorada a 1,25rem da
-          borda do balão, e o balão posicionado para essa seta cair exatamente no tick. */}
+      {/* Tooltip escuro no hover — nasce DA SETA do esperado, com animação fluída de
+          abrir/fechar (fade + deslize; via opacity/transform, funciona nos dois sentidos).
+          A CAIXA abre para o lado com espaço (esquerda se o tick passou da metade, direita
+          senão) → nunca vaza para fora perto das extremidades. Seta do balão ancorada a
+          1,25rem da borda, posicionada para cair exatamente sobre a seta estática. */}
       <div
         role="tooltip"
         style={tick >= 50
           ? { right: `calc((100% - ${tick}%) - 1.25rem)` }
           : { left: `calc(${tick}% - 1.25rem)` }}
-        className="pointer-events-none invisible absolute bottom-full z-20 mb-2 w-max min-w-[13rem] max-w-[15rem] rounded-lg bg-zinc-800 px-3 py-2.5 text-white shadow-lg group-hover/bar:visible"
+        className="pointer-events-none absolute bottom-full z-20 mb-2 w-max min-w-[13rem] max-w-[15rem] translate-y-1 rounded-lg bg-zinc-800 px-3 py-2.5 text-white opacity-0 shadow-lg transition-[opacity,transform] duration-200 ease-out group-hover/bar:translate-y-0 group-hover/bar:opacity-100 motion-reduce:transition-none"
       >
         <p className="mb-1.5 text-2xs font-medium text-zinc-300">
           {Math.round(pctDecorrido)}% do período decorrido
