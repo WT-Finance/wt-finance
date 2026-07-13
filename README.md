@@ -2,36 +2,57 @@
 
 Plataforma interna de acompanhamento e análise financeira do **Welcome Group**.
 
-O objetivo é centralizar os dados da empresa em uma base analítica única — substituindo fluxos baseados em Power BI, RPA e planilhas soltas — por uma aplicação web com dados versionados, APIs próprias e visões executivas por área de negócio.
+O objetivo é centralizar os dados da empresa em uma base analítica única — substituindo fluxos baseados em Power BI, RPA e planilhas soltas — por uma aplicação web com dados versionados, APIs próprias, controle de acesso por área e visões executivas por setor de negócio. A plataforma cobre hoje três frentes: **Performance** (vendas por setor), **Financeiro** (fluxo de caixa, faturamento, acervo) e **Metas**.
 
-> **Versão atual: 4.11.0.** A versão completa aparece no rodapé da barra lateral; clicar nela abre o **histórico de versões em linguagem de negócio** (modal voltado à diretoria).
+> **Versão atual: 5.0.0** (julho/2026) — a abertura da major 5, com **Metas por Setor**. A versão completa aparece sob o logotipo na barra lateral; clicar nela abre o **histórico de versões em linguagem de negócio** (modal voltado à diretoria, agrupado por major).
 
-## Estado atual (junho/2026)
+> **Identidade:** internamente a plataforma se chama **Janus** (o deus de duas faces — uma olha os dados do passado, a outra as projeções à frente); o cliente externo continua vendo apenas a marca **Welcome** (boletos, notas fiscais e e-mails de fatura são 100% Welcome). O repositório e o `package.json` mantêm o nome histórico `wt-finance`.
 
-Todas as áreas de Performance estão ativas, além do Financeiro:
+---
+
+## Estado atual (julho/2026)
+
+Acesso a cada tela é controlado por **permissão de área (RBAC)** — ver [Autenticação e permissões](#autenticação-e-permissões). As áreas abaixo estão agrupadas como aparecem na barra lateral e no editor de acessos.
 
 | Área | Rota | Estado |
 |------|------|--------|
-| **Weddings** (casamentos) | `/performance/weddings` | Mais madura — carteira Vendas×Entregas, próximos casamentos, KPIs por subsetor com drawer rico, fluxo de caixa por operação, lista de operações |
-| **Trips** (lazer) | `/performance/trips` | Ativa — KPIs principais, Mix por Produto, Top Vendedores, Vendas em Aberto e Receita Negativa |
-| **Corporativo** | `/performance/corporativo` | Ativa — mesma visão de Trips, com identidade visual própria |
-| **Geral** | `/performance` | Em construção (atrás de `?preview=1`); herda o layout de Performance |
-| **Executiva** | `/executiva` | Sumário executivo e KPIs consolidados (rota inicial) |
-| **Metas** | `/metas` | Dashboard de metas mensais por setor |
-| **Financeiro — Fluxo de Caixa** | `/financeiro/fluxo-caixa` | Regime caixa-banco, calendário de liquidez, próximos lançamentos |
-| **Financeiro — Gerencial** | `/financeiro/fluxo-caixa/gerencial` | Fluxo de caixa gerencial (planilha de previsão curada), editável |
-| **Admin — Uploads** | `/admin/uploads` | Carga manual das bases (rota administrativa sensível — ver Segurança) |
-| **Admin — Design System** | `/admin/design-system` | Catálogo de tokens e componentes |
+| **Executiva** | `/executiva` | Sumário executivo / KPIs consolidados do Grupo. **Em construção** — só renderiza com `?preview=1` na URL. |
+| **Performance — Geral** | `/performance` | Visão cross-setor. **Em construção** (`?preview=1`); herda o layout de Performance. |
+| **Performance — Trips** (lazer) | `/performance/trips` | Ativa — KPIs principais, Mix por Produto, Top Vendedores, Vendas em Aberto e Receita Negativa. |
+| **Performance — Weddings** (casamentos) | `/performance/weddings` | Mais madura — carteira Vendas×Entregas, próximos casamentos, KPIs por subsetor com drawer rico, fluxo de caixa por operação, lista de operações. |
+| **Performance — Corporativo** | `/performance/corporativo` | Ativa — mesma visão de Trips, com identidade visual própria. |
+| **Financeiro — Fluxo de Caixa** | `/financeiro/fluxo-caixa` | Regime caixa-banco, calendário de liquidez, próximos lançamentos, posição por conta. |
+| **Financeiro — Gerencial** | `/financeiro/fluxo-caixa/gerencial` | Fluxo de caixa gerencial (planilha de previsão curada), editável; saldos de contas gerenciáveis. |
+| **Financeiro — Faturamento Corporativo** | `/financeiro/faturamento-corp` | Emissão de boletos e NFS-e (via Asaas) + disparo de e-mails + Cadastro de clientes corporativos. |
+| **Financeiro — Acervo de Documentos** | `/financeiro/acervo` | Biblioteca de documentos/modelos/manuais (RBAC em dois níveis: ver × gerir). |
+| **Financeiro — Calculadora de Rateio** | `/financeiro/calculadora-rateio` | Upload de fatura → cruzamento read-only com vendas por setor. |
+| **Metas — Acompanhamento** | `/metas` | **Novo (v5.0.0)** — realizado × meta por setor e Grupo, com o ritmo em relação ao esperado até a data. |
+| **Metas — Cadastro** | `/metas/cadastro` | **Novo (v5.0.0)** — grade anual editável (12 meses × setor: Faturamento + % Rec), edição em lote. |
+| **Solicitações** | `/solicitacoes` | Caixa de entrada / minhas solicitações / gestão (dois níveis de acesso). |
+| **Admin — Upload de Arquivos** | `/admin/uploads` | Carga manual das bases (Vendas, Lançamentos, Contas, Títulos, Pessoas). |
+| **Admin — Usuários e Acessos** | `/admin/acessos` | Gestão de usuários, roles/permissões e solicitações de acesso. |
+| **Admin — Tipos de Solicitação** | `/admin/solicitacoes` | Configuração dos tipos de solicitação + auditoria de movimentações. |
+| **Admin — Design System** | `/admin/design-system` | Catálogo de tokens e componentes (referência interna). |
+
+Telas de autenticação, fora do AppShell: `/login` (e-mail + senha), `/trocar-senha` (troca obrigatória no 1º acesso), `/solicitar-acesso` (auto-cadastro público), `/auth/confirm` (magic link em 2 passos, anti-lockout) e `/sem-acesso`.
 
 ## Stack
 
-- **Next.js 16.2.4** (App Router) · **React 19.2.4** · **TypeScript** estrito
+- **Next.js 16.2.9** (App Router) · **React 19.2.4** · **TypeScript** estrito
 - **Tailwind CSS 4** · **Recharts 3** · **lucide-react** · padrão visual shadcn/ui
-- **Supabase / Postgres** via PostgREST · `@supabase/ssr` + `@supabase/supabase-js`
-- **Zod** (validação) · **@e965/xlsx** (ingestão de planilhas)
+- **Supabase / Postgres** via PostgREST · `@supabase/ssr` + `@supabase/supabase-js` (auth por sessão, cliente por-request)
+- **Zod 4** (validação de contrato de RPC) · **@e965/xlsx** (ingestão de planilhas) · **nodemailer** (e-mail transacional)
+- **Vitest** (testes de unidade + contrato de RPC) · **@vercel/speed-insights**
 - Deploy: **Vercel** (automático no merge para `main`)
 
-Não há suíte de testes automatizados no projeto (ver "Limitações conhecidas").
+## Autenticação e permissões
+
+Login **obrigatório** em toda a plataforma (Supabase Auth). O método primário é **e-mail + senha** (ADR-0110); o magic link (`/auth/confirm`) ficou como recuperação/anti-lockout.
+
+- **Criação de usuário:** admin cria com **senha provisória exibida na tela** (e, se houver SMTP, também enviada por e-mail); uma flag força a troca no 1º acesso, com portão forte antes de qualquer dado. Auto-cadastro público via `/solicitar-acesso`.
+- **Autorização RBAC dinâmica por área** (ADRs 0106–0110): a unidade de permissão é a **área de navegação** (em Performance, granular por setor). O catálogo vive em `src/lib/auth/areas.ts` e é **espelhado** em `app.rbac_areas` (paridade testada em `rpc-contrato.test.ts`). Áreas com padrão **ver × editar** (dois níveis): Solicitações, Acervo e Metas.
+- **Enforcement em 4 camadas:** `src/proxy.ts` (convenção Next 16, exige sessão fora de `/login` e `/auth/*`) → página (`requireArea`) → route handler (`requireAreaApi`) → server action (`requireAreaAction`). **Toda RPC de leitura é `SECURITY DEFINER` e chama `app.exigir_acesso(<áreas>)` antes de tocar dado.**
+- **`anon` não executa nenhuma RPC de dado** (só `solicitar_acesso`, com rate-limit). As RPCs consumidas pela UI rodam como `authenticated`. **RLS é deny-by-default** em todas as tabelas dos schemas.
 
 ## Arquitetura de dados
 
@@ -39,114 +60,145 @@ O dado percorre um pipeline de schemas no Postgres:
 
 ```
 Planilha (Excel/CSV)
-   │  upload (UI /admin/uploads ou API Route, runtime nodejs)
+   │  upload (UI /admin/uploads → API Route, runtime nodejs; ou npm run seed)
    ▼
 schema raw         ← dados crus, próximos do arquivo de origem
+   │  pipeline atômico de Vendas (staging → validação → promoção em transação)
    │  RPCs: transform_raw_to_analytics
    │        → regenerar_dim_operacao_weddings
    │        → refresh_all_materialized_views
    ▼
 schema analytics   ← dimensões, fatos, views e materialized views
-   │  RPCs SECURITY DEFINER no schema public
+   │  RPCs SECURITY DEFINER no schema public (exigir_acesso → dado)
    ▼
-Frontend (anon key, via PostgREST)
+Frontend (sessão authenticated, via PostgREST)
 ```
 
-Schemas: **`raw`** (cru), **`analytics`** (dims/fatos/MVs/views), **`app`** (config de negócio, ex.: `app.meta_setor`), **`audit`**, **`public`** (RPCs expostas).
+**Schemas Postgres:** `raw` (cru), `analytics` (dims/fatos/MVs/views), `app` (config de negócio, RBAC, Solicitações, Faturamento, Acervo, Metas), `financeiro` (fluxo de caixa: dims/fatos/views), `dim` (normalização de hotel), `audit` (log de ingestão), `public` (**só RPCs** — a superfície exposta).
 
-**Regras importantes do banco:**
+**Regras importantes do banco** (detalhadas no `CLAUDE.md`):
 
-- **Só `public` e `graphql_public` são expostos** pela API (`supabase/config.toml`). O schema `analytics` **não é acessível** diretamente — todo acesso é por **RPCs `SECURITY DEFINER` no `public`** (com `REVOKE EXECUTE FROM PUBLIC` + `GRANT` aos roles).
-- O front usa a **anon key**, cujo `statement_timeout` é **3s**. Toda RPC consumida pela UI precisa caber nesse limite (validar pelo front, não só com a service role).
-- `analytics.fato_venda.data_venda` tem FK para `analytics.dim_data`, semeada com **range fixo de datas**. Subir vendas fora do range quebra o transform.
-- O upload roda `truncate_dynamic_tables` (CASCADE) **antes** do transform — se o transform falhar, os fatos ficam vazios em produção (dados crus sobrevivem em `raw`).
+- **Só `public` e `graphql_public` são expostos** pela API (`supabase/config.toml`). `analytics`, `app`, `financeiro` etc. **não são acessíveis** diretamente — todo acesso é por **RPCs `SECURITY DEFINER` no `public`** (`REVOKE EXECUTE FROM PUBLIC, anon` + `GRANT` explícito aos roles).
+- **`statement_timeout` por role** (aplicado pelo PostgREST a cada requisição): `anon` = 3s, `authenticated` = 8s, `service_role` = 0 (sem limite, setado explicitamente). Toda RPC consumida pela UI (roda como `authenticated`) precisa caber em 8s — validar pelo front, não só com a service role.
+- **Fuso:** os roles do app (`anon`/`authenticated`/`service_role`) rodam em `America/Sao_Paulo`; migrations e `npm run seed` rodam como `postgres` em **UTC**.
+- `analytics.fato_venda.data_venda` tem FK para `analytics.dim_data` (range fixo semeado) — subir vendas fora do range quebra o transform.
+- `max_rows = 1000` no PostgREST — limite de payload de RPCs/listagens.
 
-São **104 migrations** (até `0115_*`) e **77 RPCs** no schema `public`.
+São **165 migrations** (até `0176_*`), **mais de 170 RPCs** vivas no schema `public` e **126 ADRs** (até `0146`).
 
 ## Estrutura do projeto
 
 ```
 src/
+  proxy.ts                   guarda de sessão (convenção Next 16; não é middleware.ts)
   app/
-    page.tsx                 redireciona para /executiva
-    executiva/               sumário executivo
-    metas/                   metas por setor
-    performance/             Geral, Trips, Corporativo, Weddings
-    financeiro/fluxo-caixa/  Fluxo de Caixa + Gerencial
-    admin/uploads|design-system
-    api/                     Route Handlers (dashboard/*, admin/*, gerencial/import, …)
+    (auth)                   login, trocar-senha, solicitar-acesso, auth/confirm, sem-acesso
+    executiva/               sumário executivo (preview)
+    performance/             Geral (preview), Trips, Corporativo, Weddings
+    financeiro/              fluxo-caixa (+ gerencial), acervo, calculadora-rateio, faturamento-corp
+    metas/ (+ cadastro/)     Acompanhamento e Cadastro de metas  ← v5.0.0
+    solicitacoes/            caixa/minhas/gestão
+    admin/                   uploads, acessos, solicitacoes (+ movimentacoes), design-system
+    api/                     Route Handlers (dashboard/*, gerencial/import, admin/*, auth/*)
+    loading.tsx              skeletons por segmento pesado (ADR-0144)
   components/
-    weddings/                área Weddings (drawer rico, carteira, operações…)
-    performance/             KPIs por setor, Mix por Produto, Top Vendedores…
-    financeiro/ (+ gerencial/) fluxo de caixa, calendário, composição
+    ui/                      primitivos do DS (Button, Input/Select/Textarea, Badge, Card, Tabs…)
+    layout/                  sidebar, app-shell, header, theme-provider, nav-group, version-history
+    shared/                  drawers, card-tabela, valor-contabil, skeletons, scroll-auto-hide, pills…
     charts/                  primitivos Recharts (tema, eixos, legenda, tooltip)
-    shared/                  CardTabela, ModalCentral, ListDrawer, pills, KPIs…
-    layout/                  sidebar, app-shell, theme-provider, version-history
-    executiva/ · dashboard/ · ui/ · admin/
+    performance/ weddings/ executiva/   KPIs e gráficos por setor
+    financeiro/              fluxo de caixa, gerencial, faturamento, acervo, calculadora-rateio
+    metas/                   MetaProgressBar, cards, grade de cadastro  ← v5.0.0
+    onboarding/              modal de boas-vindas Janus
+    solicitacoes/ admin/
   lib/
-    carga/                   parsers de ingestão (vendas, lançamentos, contas…)
+    auth/                    areas.ts (catálogo RBAC) · sessao.ts (requireArea*)
+    supabase/                clients server (async, per-request) / browser / admin (service role)
+    carga/                   parsers isomórficos de ingestão + coercao.ts (canônico) + Web Worker
     gerencial/               parser do fluxo de caixa gerencial
-    supabase/                clients server / browser / admin
-    config.ts · fmt.ts · periodo.ts · version.ts · …
+    email/                   camada server-only de e-mail (fallback-safe; modo teste)
+    faturamento/ asaas/      emissão de boletos/NF, status, juros/multa, cliente Asaas
+    rateio/                  calculadora de rateio
+    metas/                   ritmo, período, rpc-metas  ← v5.0.0
+    config.ts · fmt.ts · periodo.ts · version.ts · schemas-rpc.ts · rpc.ts · …
   data/
     changelog-diretoria.ts   histórico de versões em linguagem de negócio (modal)
   types/
     api.ts · database.ts
 
 supabase/
-  migrations/                evolução do schema + RPCs (104 arquivos)
-  seed/                      seed local e dados (data/ é git-ignored)
+  migrations/                evolução do schema + RPCs (165 arquivos, até 0176)
+  seed/                      seed local (supabase/seed/data/ é git-ignored)
+  config.toml                expõe só public + graphql_public; max_rows = 1000
+
+scripts/
+  db-gate/                   backup-gate de migrations (migrate.mjs, gate.mjs, classificar.mjs…)
 
 docs/
-  adr/                       Architecture Decision Records (84)
+  adr/                       Architecture Decision Records (126)
   briefings/                 briefings e out-briefings por versão
-  audits/ · changelog.md · bugs-resolvidos.md · design-system.md
+  runbooks/                  runbooks operacionais (auth, e-mail, backup-gate…)
+  audits/ · design-system.md · email-layout-guide.md · changelog.md · bugs-resolvidos.md
 ```
 
 ## Convenções
 
-- **Design System Welcome** (`docs/design-system.md`, `/admin/design-system`): cores via **tokens CSS**, nunca hex hardcoded. Cor por aba resolvida via `[data-theme]` no `<html>`.
-- **Paleta canônica — cor por contexto semântico** (ADR-0103): série principal = `var(--brand)`; cash-flow tem dois contextos deliberados (identidade turquesa/mostarda nos cards de página de Weddings × semântica `--positive`/`--negative` no drawer).
-- **Gráficos**: primitivos centrais em `@/components/charts` (ADR-0095) — sólido = realizado, tracejado = projeção/referência.
-- **Card-tabela** (v4.11): shell único `CardTabela` para os cards que são tabela (Mix por Produto, Top Vendedores, Próximos Casamentos, Vendas em Aberto, Receita Negativa).
-- **Casas decimais por contexto** (ADR-0100): 2 casas em operação individual (`fmtBRL2`); agregados abreviados (`fmtMi`/`fmtAxisBRL`).
-- **Versionamento X.Y.Z** (ADR-0084): MAJOR = quebra de premissa; MINOR = capacidade; PATCH = correção/polimento. `CHANGELOG.md` no formato Keep-a-Changelog.
-- **Changelog da diretoria** (`src/data/changelog-diretoria.ts`): a cada versão/patch, uma entrada em linguagem de negócio (efeito, não mecanismo), com data/hora da entrega.
-- **Processo de versão** (ver `CLAUDE.md`): briefing → worktree por versão → missões (commits Conventional Commits em pt-BR) → gates (`build`/`tsc`/`lint`) → out-briefing → PR (o merge e o deploy são do usuário).
+- **Design System Welcome** (`docs/design-system.md`, `/admin/design-system`): cores via **tokens CSS**, nunca hex hardcoded — cor crua/hex em classe **quebra o lint** (`wt/no-cor-hardcoded`). Cor por aba resolvida via `[data-theme]` no `<html>`.
+- **Primitivos únicos:** UI nova usa os componentes de `src/components/ui/` e os gráficos os primitivos de `@/components/charts` (sólido = realizado, tracejado = projeção/referência) — não reinventa botão/campo/eixo.
+- **Coerção de célula** (número/data/string) vem só de `@/lib/carga/coercao.ts` — reimplementar quebra o lint (`wt/no-coercao-reimpl`).
+- **Fuso e formatação:** `timestamptz` sempre exibido em São Paulo via `fmtDataSP`/`fmtDataHoraSP` (`Intl` + `timeZone`), nunca split de string. Casas decimais por contexto (`fmtBRL2` em operação individual, `fmtMi`/`fmtAxisBRL` em agregados).
+- **Ingestão pesada** (upload/parse de planilha) → **API Route** (`runtime = 'nodejs'`), nunca Server Action; parse client-side vai em **Web Worker**.
+- **E-mail** → camada única `src/lib/email/` (server-only), **fallback-safe** (nunca lança; falha de SMTP não quebra o fluxo). E-mail interno = marca **Janus**; e-mail de cliente (fatura) = marca **Welcome**, intocável.
+- **Versionamento X.Y.Z** (ADR-0084): MAJOR quebra premissa de domínio; MINOR capacidade; PATCH correção/polimento. `CHANGELOG.md` no formato Keep-a-Changelog; entrada de negócio em `src/data/changelog-diretoria.ts` a cada versão.
+- **Processo de versão** (ver `CLAUDE.md`): briefing → worktree por versão → missões (Conventional Commits em pt-BR) → gates (`build`/`tsc`/`lint`/`test`) → auto-auditoria adversarial → out-briefing → PR. **O merge e o deploy são do usuário.**
 
 ## Pré-requisitos
 
 - Node.js 20+
 - npm
 - Acesso ao projeto Supabase remoto (CLI via `npx supabase …`)
-- `.env.local` preenchido
+- `.env.local` preenchido (ver abaixo)
 
 ## Setup local
 
 ```bash
 npm install
-cp .env.example .env.local   # e preencha as variáveis abaixo
+cp .env.example .env.local   # e preencha as variáveis
 ```
 
-Variáveis de ambiente:
+Variáveis de ambiente (ver `.env.example` para as notas completas):
 
 ```bash
+# Supabase (obrigatórias)
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>   # sensível — só backend/seed/server-side
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+
+# E-mail SMTP (opcional — sem elas, a senha provisória fica só na tela)
+SMTP_HOST= SMTP_PORT= SMTP_SECURE= SMTP_USER= SMTP_PASS= SMTP_FROM=
+
+# Faturamento — envio de e-mail de fatura (server-only)
+EMAIL_MODO=teste            # != 'real' (ou ausente) = modo teste (fail-safe)
+EMAIL_TESTE_DESTINO=        # obrigatório em teste: todos os e-mails vão para cá
+APP_BASE_URL=               # URL canônica p/ o link "Acessar a plataforma" no e-mail
+
+# Asaas — boletos/NF do Faturamento Corporativo (sandbox-first)
+ASAAS_API_KEY=              # chave do ambiente correspondente (sandbox ≠ produção)
+ASAAS_BASE_URL=             # vazio = SANDBOX; produção só ao definir a URL de prod
 ```
 
-> `SUPABASE_SERVICE_ROLE_KEY` é sensível — nunca exponha no cliente.
+> `SUPABASE_SERVICE_ROLE_KEY`, `SMTP_PASS` e `ASAAS_API_KEY` são sensíveis — nunca exponha no cliente nem comite valores reais. As variáveis de e-mail/Asaas precisam existir **também** no ambiente da Vercel.
 
 ## Banco de dados
 
 ```bash
-npx supabase migration list                 # inspecionar local vs remote (read-only, seguro)
-echo "Y" | npx supabase db push --linked     # APLICAR migrations no remote (ESCREVE — produção direta)
+npx supabase migration list            # inspecionar local vs remote (read-only, seguro)
+npm run db:migrate -- --aditiva        # aplica migration ADITIVA (backup-gate como rede → push auto)
+npm run db:migrate -- --destrutiva     # backup-gate + push COM CONFIRMAÇÃO HUMANA (não auto)
 ```
 
-> Não há ambiente de staging separado: `--linked` aplica em **produção**. Aplique migrations com cautela e confirmação.
+> **Produção direta, sem staging:** `--linked` aplica no banco de **produção**. O wrapper `npm run db:migrate` roda um **backup-gate** antes do push (backup-do-dia + checagem de completude + restore-test spot num schema descartável) — uma **rede de recuperação**, não autorização. Migration **aditiva** roda em regime autônomo sob o gate; migration **destrutiva** (`DROP`/`TRUNCATE`/`ALTER` que remove dado) **exige confirmação humana** e é abortada em stdin não-TTY. Runbook: `docs/runbooks/db-backup-gate-runbook.md`.
 
 ## Carga de dados
 
@@ -158,7 +210,7 @@ npm run seed
 
 O seed limpa as tabelas dinâmicas, insere os dados crus, recarrega metas, transforma `raw`→`analytics`, regenera `analytics.dim_operacao_weddings` e atualiza as materialized views.
 
-**Carga manual pela UI:** `/admin/uploads` (vendas, lançamentos, contas a pagar/receber) e `/admin/uploads/financeiro`. Cada importação **substitui toda a base** correspondente.
+**Carga manual pela UI:** `/admin/uploads` (Vendas, Lançamentos, Contas a pagar/receber, Títulos do Fluxo de Caixa, Pessoas). Cada importação **substitui toda a base** correspondente. Vendas usa um **pipeline atômico** (staging → validação → promoção em transação): uma carga com erro faz ROLLBACK e **não esvazia** a base viva.
 
 ## Rodando a aplicação
 
@@ -171,12 +223,11 @@ npm run start    # serve o build
 Checks de fechamento (gates):
 
 ```bash
-npm run lint
-npx tsc --noEmit
-npm run build
+npm run lint       # eslint (regras de DS + coerção)
+npx tsc --noEmit   # typecheck (não há script dedicado — rode assim)
+npm run build      # build de produção
+npm test           # vitest (unit + contrato de RPC)
 ```
-
-> Não existe script de typecheck no `package.json`; rode `npx tsc --noEmit` diretamente.
 
 ## Scripts
 
@@ -186,31 +237,33 @@ npm run build
 | `npm run build` | Build de produção |
 | `npm run start` | Serve o build |
 | `npm run lint` | ESLint |
+| `npm test` | Vitest (unit + contrato de RPC) |
+| `npm run test:watch` | Vitest em watch |
 | `npm run seed` | Carga completa via Supabase service role |
+| `npm run db:migrate` | Aplica migration com backup-gate (`-- --aditiva` / `-- --destrutiva`) |
+| `npm run db:gate` | Roda só o backup-gate (backup + restore-test spot) |
+
+## Testes
+
+Há uma suíte **Vitest** (~29 arquivos de teste em `src/`), rodada no gate de fechamento (`npm test`). Cobre helpers puros e — o mais crítico — o **contrato das RPCs** (`rpc-contrato.test.ts` roda `safeParse` dos schemas Zod contra a RPC viva) e a **paridade RBAC** app↔banco (`areas.test.ts`). Também protege tokens-âncora do DS (`tokens.test.ts`), a coerção de célula (`coercao.test.ts` + sonda de lint), o tokenizer do backup-gate e os módulos de e-mail, faturamento e metas.
 
 ## Segurança (estado atual)
 
-- **`/admin/uploads` e as API Routes de upload não têm autenticação** (decisão registrada em ADR-0029). Como cada importação substitui toda a base, trate essas rotas como **sensíveis** — endurecer auth/admin é uma frente de trabalho conhecida.
-- A `SUPABASE_SERVICE_ROLE_KEY` só é usada server-side (seed, rotas administrativas). Nunca no cliente.
-- RPCs de UI são `SECURITY DEFINER` com `REVOKE … FROM PUBLIC` e `search_path` fixo.
+- **Toda a plataforma está atrás de autenticação e RBAC** (4 camadas: `proxy.ts` → página → API → action; ver [Autenticação e permissões](#autenticação-e-permissões)). Rotas administrativas sensíveis (`/admin/uploads`, `/admin/acessos`) exigem a área correspondente; não há mais superfície aberta sem sessão além das telas de auth e do auto-cadastro (`solicitar_acesso`, com rate-limit).
+- `anon` não executa nenhuma RPC de dado; RLS é **deny-by-default** (sem policy permissiva `USING true`) em todas as tabelas dos schemas. O app nunca acessa tabela direto — sempre via RPC `SECURITY DEFINER` com `search_path` fixo e `exigir_acesso`.
+- A `SUPABASE_SERVICE_ROLE_KEY` (e `ASAAS_API_KEY`, `SMTP_PASS`) só são usadas server-side. Nunca no cliente.
+- **Faturamento e e-mail são sandbox-first / fail-closed:** Asaas usa o **sandbox** por padrão (produção só ao definir `ASAAS_BASE_URL`); o e-mail de fatura roda em **modo teste** por padrão (todos os destinatários viram `EMAIL_TESTE_DESTINO`; sem ele, o envio é recusado — nunca vaza para o cliente).
 
 ## Documentação
 
-- **`CLAUDE.md`** — como se trabalha no projeto (workflow, comandos, banco, convenções, salvaguardas).
-- **`docs/adr/`** — decisões arquiteturais (84 ADRs).
-- **`docs/briefings/`** — briefings e out-briefings por versão.
-- **`CHANGELOG.md`** (técnico) e **`src/data/changelog-diretoria.ts`** (negócio/diretoria).
-- **`docs/design-system.md`**, **`docs/bugs-resolvidos.md`**, **`docs/audits/`**.
+- **`CLAUDE.md`** — como se trabalha no projeto (workflow, comandos, banco, convenções, salvaguardas). Documento vivo, fonte da verdade operacional.
+- **`docs/adr/`** — decisões arquiteturais (126 ADRs; a numeração real é a fonte da verdade).
+- **`docs/runbooks/`** — procedimentos operacionais (auth, e-mail/SMTP, upload de Vendas, backup-gate).
+- **`docs/design-system.md`** e **`docs/email-layout-guide.md`** — padrões visuais e de e-mail.
+- **`CHANGELOG.md`** (técnico) e **`src/data/changelog-diretoria.ts`** (negócio, lido pelo modal de versão).
 
-## Limitações conhecidas / frentes futuras
+## Limitações conhecidas
 
-- **Sem testes automatizados** — relevante para um sistema financeiro.
-- **Admin sem autenticação** (uploads destrutivos) — endurecimento pendente.
-- **Aba Geral** (`/performance`) ainda em construção; **DRE evolutiva** e **RPA/atualização automática** no roadmap.
-- Curadoria de dados do ERP (vínculos `venda_n`, nomes de operação) segue como pendência operacional.
-
-## Observações operacionais
-
-- Não commite `.env.local` nem dados em `supabase/seed/data/`.
-- Depois de alterar migrations, rode `npx supabase db push --linked` e confirme com `migration list`.
-- Depois de alterar carga/RPCs, valide `lint` + `tsc` + `build` e, quando possível, uma carga real no preview.
+- **`/executiva` e `/performance` (Geral)** ainda estão **em construção** — só renderizam com `?preview=1` na URL.
+- A migration destrutiva **`0176`** (aposenta o dashboard de metas legado, removendo 4 RPCs órfãs) está **preparada mas pendente de aplicação humana** — o Acompanhamento de Metas (v5.0.0) já é a tela viva; o dashboard v1 só sai do banco após aplicar a 0176.
+- **Sem ambiente de staging:** migrations vão direto para produção (mitigado pelo backup-gate). Ver `CLAUDE.md` § Banco de dados.
