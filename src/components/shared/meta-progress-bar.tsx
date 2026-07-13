@@ -69,10 +69,12 @@ export default function MetaProgressBar({
   }, [tick, esperado, realizado, pctDecorrido])
 
   // Estilo do balão: medido (px, clampado ao viewport) OU fallback CSS (no-JS/SSR:
-  // centrado no tick, ~13,5rem de largura). transform-origin acompanha a seta.
+  // centrado no tick, ~13,5rem de largura). transform-origin acompanha a seta. A sombra
+  // (mesma do CustomTooltip dos gráficos) vai inline p/ não usar cor crua em classe.
+  const sombra = '0 4px 12px rgba(45,42,38,0.08)'
   const tipStyle = pos
-    ? { left: `${pos.left}px`, transformOrigin: `${pos.caret}px 100%` }
-    : { left: `calc(${tick}% - 6.75rem)`, transformOrigin: '50% 100%' }
+    ? { left: `${pos.left}px`, transformOrigin: `${pos.caret}px 100%`, boxShadow: sombra }
+    : { left: `calc(${tick}% - 6.75rem)`, transformOrigin: '50% 100%', boxShadow: sombra }
 
   return (
     <div ref={containerRef} className="group/bar relative pb-1 pt-2">
@@ -84,35 +86,37 @@ export default function MetaProgressBar({
         />
       </div>
 
-      {/* SETA do esperado — marcador estático apontando para baixo; é a PONTA do balão. */}
+      {/* SETA do esperado — marcador estático apontando para baixo; é a PONTA do balão.
+          Cor = borda dos tooltips (--border), alinhada ao estilo dos demais. */}
       <span
         aria-hidden="true"
-        className="absolute top-0 h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[7px] border-x-transparent border-t-zinc-800"
+        className="absolute top-0 h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[7px] border-x-transparent border-t-[var(--border)]"
         style={{ left: `${tick}%` }}
       />
 
-      {/* Tooltip escuro no hover — nasce da seta (scale+fade a partir do tick), clampado ao
-          viewport pelo módulo puro (nunca vaza; a seta desliza dentro da caixa perto das bordas). */}
+      {/* Tooltip no hover — nasce da seta (scale+fade a partir do tick), clampado ao viewport
+          pelo módulo puro (nunca vaza). Fundo branco + borda cinza + sombra, alinhado ao
+          CustomTooltip dos gráficos. */}
       <div
         ref={tipRef}
         role="tooltip"
         style={tipStyle}
-        className="pointer-events-none absolute bottom-full z-20 w-max min-w-[13rem] max-w-[15rem] scale-90 rounded-lg bg-zinc-800 px-3 py-2.5 text-white opacity-0 shadow-lg transition-[opacity,transform] duration-200 ease-out group-hover/bar:scale-100 group-hover/bar:opacity-100 motion-reduce:transition-none"
+        className="pointer-events-none absolute bottom-full z-20 w-max min-w-[13rem] max-w-[15rem] scale-90 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--text-primary)] opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/bar:scale-100 group-hover/bar:opacity-100 motion-reduce:transition-none"
       >
-        <p className="mb-1.5 text-2xs font-medium text-zinc-300">
+        <p className="mb-1.5 text-2xs font-medium text-[var(--text-muted)]">
           {Math.round(pctDecorrido)}% do período decorrido
         </p>
         <div className="flex flex-col gap-1 text-xs tabular-nums">
           <div className="flex items-baseline justify-between gap-4">
-            <span className="text-zinc-400">Esperado</span>
+            <span className="text-[var(--text-muted)]">Esperado</span>
             <span>{fmtMi(esperado)}</span>
           </div>
           <div className="flex items-baseline justify-between gap-4">
-            <span className="text-zinc-400">Realizado</span>
+            <span className="text-[var(--text-muted)]">Realizado</span>
             <span>{fmtMi(realizado)}</span>
           </div>
         </div>
-        <div className="mt-2 border-t border-zinc-700 pt-1.5 text-xs font-medium">
+        <div className="mt-2 border-t border-[var(--border)] pt-1.5 text-xs font-medium">
           {adiantado
             ? <span className="text-success">+{fmtMi(gap)} adiantado</span>
             : <span className="text-danger">{fmtMi(gap)} abaixo do esperado</span>}
