@@ -79,3 +79,17 @@ Ajustes decididos pelo Yan sobre a v5.0.0 ainda aberta — sem alterar o motor (
 - *Histórico de versões:* cabeçalhos **colapsáveis por major** ("v5 ›"/"v4 ›", chevron rotaciona, **sem contagem**), major atual **aberto por padrão**; **modal de tamanho fixo** (`alturaFixa`+`corpoFlex`+`<ScrollAutoHide>`) — não pula ao colapsar.
 
 **Gates da Rodada 5:** tsc 0 · eslint 0 · next build OK · vitest **399** (10 novos em `scrollbar-math.test.ts`). 3 commits, push para a PR #175.
+
+**Rodada 6 (checkpoint — refinos finais dos cards + gráfico + Contratos):**
+- *Weddings:* o painel de Weddings mostra **"Contratos"** (nº de contratos de casamento vendidos no período) no lugar de "Receita" — mesmo número do card do subsetor Comercial da Performance (`get_sumario_subsetor` → COMERCIAL `n_contratos`, já em produção; shape validado por REST). Fail-safe: a RPC exige `performance/weddings`; sem acesso, degrada p/ "Contratos —" (leitura por `getServerClient`).
+- *Cards:* "% da meta" volta a um tamanho menor (`text-xl`), IGUAL no Group e nos setores (entre faturamento e esperado); valor da **Margem colorido** (verde ≥ alvo, vermelho abaixo) em TODOS os painéis, inclusive o Group; Receita/Contratos e Margem em **duas linhas empilhadas** (rótulo esq., valor dir.).
+- *Barra "Visão geral":* todo o corpo do Acompanhamento passa a viver sob uma barra recolhível `<TopSection>` "VISÃO GERAL" (neutra do group), abaixo do título/subtítulo.
+- *Última atualização:* a nota de parcialidade vira **"Última atualização em DD de mês de AAAA, HH:MM"** (ícone de relógio; novo `fmtDataHoraLongoSP`, fuso SP). Fonte: `MAX(criado_em)` de `fato_venda` via `get_upload_status` — leitura server-side de agregado NÃO-sensível pelo **admin client** (authenticated não tem EXECUTE; 0122), fail-safe. *[Dívida: idealmente uma RPC guardada por Metas — bloqueada pela migration pendente atrás da 0176.]*
+- *Gráfico "Ritmo do período":* removido o selo "% do esperado até hoje: N%"; pills de setor recebem a **cor de identidade** quando ativas (`Tabs` ganha `corAtiva` opt-in); o realizado vira **uma série só** (área+linha) → tooltip mostra só "Realizado" (fim do "realAcum" duplicado) e a meta é rotulada **"Esperado"** (tooltip + legenda "Esperado acumulado").
+- *Cadastro de Metas:* canto superior da coluna **Mês** dividido em duas células (a de cima vazia, fundo cinza, acompanha a faixa dos setores; "Mês" na 2ª linha); hint "Clique numa célula para editar" alinhado à **direita**.
+- *Tooltip da barra de meta:* passa de escuro para **fundo branco + borda cinza + sombra** (mesmo estilo do `CustomTooltip` dos gráficos), texto escuro, seta na cor da borda.
+- *Barra de rolagem (v5.0.0):* thumb do `<ScrollAutoHide>` **arrastável** + horizontal + `onScroll` + `isolate`/`z-30` (fica acima do header sticky); adoção plataforma-wide. Módulo puro `@/lib/ui/scrollbar-math` (+10 testes).
+
+**Gates Rodada 6:** tsc 0 · eslint 0 · next build OK · vitest **399**. Verificação por screenshots SSR (cards nos 3 estados de cor, canto Mês, barra "Visão geral", tooltip). Vários commits, push para a PR #175.
+
+**Follow-up fora da v5.0.0 (aprovado, patch próprio):** e-mail "Nova solicitação de acesso" para quem administra Usuários & Acessos (hoje NENHUM aviso é disparado no auto-cadastro). Mockup aprovado (identidade Janus, botão "Acessar a plataforma"). Plano: RPC `service_role`-only (sem abrir diretório a anon), envio best-effort, notificar só em pedido NOVO, migration 0177. ADR-0147.
