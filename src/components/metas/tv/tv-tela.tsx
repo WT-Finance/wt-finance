@@ -66,7 +66,8 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
             <Image src="/logos/logo-janus.svg" alt="Janus" fill priority className="object-contain object-left" />
           </span>
           <span className="h-12 w-px shrink-0 bg-[var(--border-strong)]" aria-hidden />
-          <span className="relative block h-14 w-72">
+          {/* Welcome LEVEMENTE menor que o Janus (harmonia óptica — mesma régua dos e-mails). */}
+          <span className="relative block h-12 w-60">
             <Image src="/logos/welcome-group.svg" alt="Welcome Group" fill className="object-contain object-left" />
           </span>
           <span className="ml-4 text-2xl text-[var(--text-secondary)]">Metas · {data.periodoLabel}</span>
