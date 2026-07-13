@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.1.0] — 2026-07-13
+
+MINOR · **Modo TV — Metas na parede do comercial.** Nova rota irmã `/metas/tv`: uma pele de exibição do Acompanhamento em tela cheia (16:9, tema claro, **zero interação**) para deixar as metas do comercial numa TV. Group + 3 setores numa só tela, com a barra na cor do setor, a seta do esperado e o "% da meta" colorido pela mesma régua do app. Botão **"Modo TV"** no cabeçalho do Acompanhamento abre a rota (a sidebar fica intocada). Auto-refresh ~10min (interim, a ser substituído pelo tempo-real da API). **FONTE ÚNICA**: reusa a MESMA orquestração da v5.0 (`carregarAcompanhamento` extraída), sem terceiro caminho de dados. **SEM migration** · ADR-0148.
+
 ## [5.0.1] — 2026-07-13
 
 PATCH · **Aviso por e-mail de nova solicitação de acesso.** Quando alguém pede acesso pela tela de login (`/solicitar-acesso`), quem administra **Usuários & Acessos** passa a receber um e-mail (identidade interna Janus) com os dados do solicitante e um botão para revisar/aprovar — antes ninguém era avisado. Só dispara em **pedido novo** (não em reenvios). Nova RPC `solicitar_acesso_admin` (**service_role-only** — não abre diretório de e-mails a anônimo); envio **best-effort** (nunca bloqueia o pedido); anti-enumeração preservada. **Migration 0177 (aditiva)** · ADR-0147.

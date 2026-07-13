@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.0',
+    data: '2026-07-13T16:31',
+    itens: [
+      { tipo: 'novidade', texto: 'As metas do comercial agora podem ficar na TV da sala. Uma nova tela em modo apresentação mostra, em tela cheia e sem distrações, quanto Trips, Weddings, Corporativo e o Grupo já faturaram frente à meta do mês — com o mesmo indicador de ritmo (verde/amarelo/vermelho) do Acompanhamento. Abre pelo botão "Modo TV" no topo do Acompanhamento e se atualiza sozinha ao longo do dia.' },
+    ],
+  },
+  {
     versao: '5.0.1',
     data: '2026-07-13T14:01',
     itens: [

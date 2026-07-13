@@ -256,3 +256,25 @@ salvas"** + botão **Salvar** (desabilitado sem pendências) que persiste TUDO n
 com pendências → confirmação explícita (`window.confirm` + `beforeunload`) — a edição nunca evapora.
 Erro no salvar mantém as pendências marcadas (retry). (Distinto do autosave-por-célula de
 `contas-manager`/`lancamento-row`, para grades pequenas.)
+
+## Tela de exibição / quiosque (Modo TV — v5.1.0)
+
+Padrão para uma **pele de exibição** de uma tela existente numa TV/parede: tela cheia, tema claro,
+**zero interação** (sem pills/tooltip/hover/botão), tudo grande e legível do fundo da sala.
+Primeiro caso: `/metas/tv` (Modo TV do Acompanhamento). Regras:
+
+- **Reusa os DADOS e a linguagem visual da tela-mãe — sem terceiro caminho.** A orquestração de
+  dados é extraída para um módulo compartilhado (`carregar-acompanhamento.ts`) consumido pela tela
+  normal E pela TV; os números batem por construção. A régua de cor e os primitivos (barra + seta)
+  são os mesmos (`corComparacao`, `<MetaProgressBar>`); a barra usa `mostrarTooltip={false}` (o
+  balão de hover some) e `setaEscala` para ampliar a seta sem mudar o desenho/tom.
+- **Sem AppShell por curto-circuito de pathname, não por route group.** Como o AppShell vive no
+  layout raiz, a rota de exibição é liberada do chrome via `usePathname()` no próprio AppShell (e no
+  modal de onboarding), renderizando `{children}` puro. Ocupa o viewport por `h-screen` — **sem
+  Fullscreen API**. Sidebar e proxy/auth intocados. (ADR-0148.)
+- **Interação zero; a leitura vem de elementos fixos** (a seta + uma legenda fixa no rodapé
+  substituem o que era hover na tela-mãe).
+- **Auto-refresh é INTERIM**: um client isolado (`router.refresh()` em intervalo), fácil de remover
+  quando houver tempo-real. Nunca acoplar lógica a ele.
+- **Auth por usuário dedicado de mínimo privilégio** (só a área de leitura da tela exibida), criado
+  na UI de Usuários & Acessos — sem migration.
