@@ -1,15 +1,21 @@
+'use client'
+
+import { useLayoutEffect, useRef, useState } from 'react'
 import { fmtMi } from '@/lib/fmt'
+import { clampTooltip, type ClampResult } from '@/lib/metas/tooltip-clamp'
 
 // ── <MetaProgressBar> — barra de progresso de meta (v5.0.0) ──────────────────
 // Elemento central dos cards do Acompanhamento de Metas. Trilha neutra +
 // preenchimento = % da meta (na COR DE IDENTIDADE do painel; Group = neutro),
-// tick MUDO na posição do "esperado até hoje", e um tooltip ESCURO no hover que
-// SAI DA LINHA DO ESPERADO (seta para baixo apontando o tick), com decorrido/
-// esperado/realizado e a conclusão colorida. O esperado é LINEAR (meta × fração
-// do período decorrida), então o tick fica em `pctEsperado` = `pctDecorrido`.
+// SETA estática na posição do "esperado até hoje" (o esperado é LINEAR → o tick
+// fica em `pctEsperado` = `pctDecorrido`), e um tooltip ESCURO no hover que NASCE
+// DA SETA (a seta é a ponta do balão; a caixa cresce a partir dela com scale+fade).
 //
-// Componente PURO (tooltip CSS-only via group-hover). A régua de status colore só
-// a conclusão do tooltip — a barra em si é sempre a cor de identidade.
+// Client component: mede a barra/balão e faz o CLAMP AO VIEWPORT (lógica pura em
+// `@/lib/metas/tooltip-clamp`, testada) — a caixa nunca vaza para fora da tela;
+// perto das bordas ela desliza para dentro e a seta desliza dentro dela para
+// continuar apontando o tick. `transform-origin` acompanha a seta (a animação
+// "cresce da seta" em qualquer posição). A régua de status colore só a conclusão.
 
 export interface MetaProgressBarProps {
   /** Preenchimento: % da meta (realizado/meta). null → barra vazia. Largura clampa em 100. */
@@ -37,8 +43,39 @@ export default function MetaProgressBar({
   const adiantado = realizado >= esperado
   const gap = Math.abs(realizado - esperado)
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  const tipRef = useRef<HTMLDivElement>(null)
+  // pos = null até medir (SSR / pré-hidratação) → cai no fallback CSS abaixo.
+  const [pos, setPos] = useState<ClampResult | null>(null)
+
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    const tip = tipRef.current
+    if (!container || !tip) return
+
+    function medir() {
+      if (!container || !tip) return
+      const cr = container.getBoundingClientRect()
+      setPos(clampTooltip({
+        tickX: cr.left + (tick / 100) * cr.width,
+        tipW: tip.offsetWidth,
+        viewportW: window.innerWidth,
+        containerLeft: cr.left,
+      }))
+    }
+    medir()
+    window.addEventListener('resize', medir)
+    return () => window.removeEventListener('resize', medir)
+  }, [tick, esperado, realizado, pctDecorrido])
+
+  // Estilo do balão: medido (px, clampado ao viewport) OU fallback CSS (no-JS/SSR:
+  // centrado no tick, ~13,5rem de largura). transform-origin acompanha a seta.
+  const tipStyle = pos
+    ? { left: `${pos.left}px`, transformOrigin: `${pos.caret}px 100%` }
+    : { left: `calc(${tick}% - 6.75rem)`, transformOrigin: '50% 100%' }
+
   return (
-    <div className="group/bar relative pb-1 pt-2">
+    <div ref={containerRef} className="group/bar relative pb-1 pt-2">
       {/* Trilha + preenchimento */}
       <div className="relative w-full overflow-hidden rounded-full bg-zinc-100" style={{ height: altura }}>
         <div
@@ -47,23 +84,19 @@ export default function MetaProgressBar({
         />
       </div>
 
-      {/* SETA do esperado — marcador estático apontando para baixo, exatamente como a
-          seta de onde o balão "nasce" (mesmo tom escuro). O balão abre a partir dela. */}
+      {/* SETA do esperado — marcador estático apontando para baixo; é a PONTA do balão. */}
       <span
         aria-hidden="true"
         className="absolute top-0 h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[7px] border-x-transparent border-t-zinc-800"
         style={{ left: `${tick}%` }}
       />
 
-      {/* Tooltip escuro no hover — a SETA estática é a PRÓPRIA PONTA do balão: a caixa
-          encosta nela (sem folga, sem segunda seta) e cresce A PARTIR dela (scale+fade com
-          transform-origin no ponto da seta), nos dois sentidos. A caixa abre para o lado
-          com espaço (esquerda se o tick passou da metade, direita senão) → nunca vaza. */}
+      {/* Tooltip escuro no hover — nasce da seta (scale+fade a partir do tick), clampado ao
+          viewport pelo módulo puro (nunca vaza; a seta desliza dentro da caixa perto das bordas). */}
       <div
+        ref={tipRef}
         role="tooltip"
-        style={tick >= 50
-          ? { right: `calc((100% - ${tick}%) - 1.25rem)`, transformOrigin: 'calc(100% - 1.25rem) 100%' }
-          : { left: `calc(${tick}% - 1.25rem)`, transformOrigin: '1.25rem 100%' }}
+        style={tipStyle}
         className="pointer-events-none absolute bottom-full z-20 w-max min-w-[13rem] max-w-[15rem] scale-90 rounded-lg bg-zinc-800 px-3 py-2.5 text-white opacity-0 shadow-lg transition-[opacity,transform] duration-200 ease-out group-hover/bar:scale-100 group-hover/bar:opacity-100 motion-reduce:transition-none"
       >
         <p className="mb-1.5 text-2xs font-medium text-zinc-300">
@@ -84,7 +117,6 @@ export default function MetaProgressBar({
             ? <span className="text-success">+{fmtMi(gap)} adiantado</span>
             : <span className="text-danger">{fmtMi(gap)} abaixo do esperado</span>}
         </div>
-        {/* Sem seta própria: a SETA ESTÁTICA da barra é a ponta do balão (a caixa encosta nela). */}
       </div>
     </div>
   )

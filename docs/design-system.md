@@ -189,8 +189,9 @@ cards do Acompanhamento de Metas. Componente PURO (o tooltip é CSS-only `group-
   balão — é "de onde o balão nasce"). Sem linha atravessando a barra.
 - **Tooltip ESCURO** no hover (zinc-800): a seta estática é a PRÓPRIA PONTA do balão — a caixa
   encosta nela (sem segunda seta) e **cresce a partir dela** (scale+fade com transform-origin no
-  ponto da seta, nos dois sentidos; `motion-reduce` respeitado; a caixa abre para o lado com
-  espaço, sem vazar da tela): título `"N% do período decorrido"` (`pctDecorrido`), linhas
+  ponto da seta; `motion-reduce` respeitado). **CLAMP ao viewport** (client: mede a barra/balão →
+  lógica pura `@/lib/metas/tooltip-clamp`, testada): perto das bordas a caixa desliza para dentro
+  da tela e a seta desliza dentro dela para seguir apontando o tick — nunca vaza: título `"N% do período decorrido"` (`pctDecorrido`), linhas
   `Esperado`/`Realizado` (R$), e a conclusão colorida — `+R$ Z adiantado` (`text-success`) ou
   `R$ Z abaixo do esperado` (`text-danger`).
 - Props: `pctMeta`, `pctEsperado`, `cor`, `altura` (12 Group / 10 setorial), `pctDecorrido`,
