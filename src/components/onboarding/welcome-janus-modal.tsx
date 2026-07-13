@@ -14,15 +14,18 @@
 // caixa alta + tracking — v4.40.1, mockup B aprovado; a serifa Georgia da v4.40.0 saiu).
 
 import { use, useState, useTransition } from 'react'
+import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { marcarOnboardingVisto } from '@/lib/onboarding'
 
 export default function WelcomeJanusModal({ vistoPromise }: { vistoPromise: Promise<boolean> }) {
   const visto = use(vistoPromise)
+  const pathname = usePathname()
   const [fechado, setFechado] = useState(false)
   const [, startTransition] = useTransition()
 
-  if (visto || fechado) return null
+  // Modo TV (v5.1.0): a pele /metas/tv é sem chrome — o modal de onboarding não aparece lá.
+  if (visto || fechado || pathname === '/metas/tv') return null
 
   function comecar() {
     // Fecha IMEDIATO (percepção) e grava em transition; falha da gravação é silenciosa

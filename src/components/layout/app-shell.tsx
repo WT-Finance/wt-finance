@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import Sidebar, { type UsuarioSidebar } from './sidebar'
 import MobileHeader from './mobile-header'
@@ -10,9 +11,18 @@ interface AppShellProps {
   children: React.ReactNode
 }
 
+// Rota do Modo TV (v5.1.0): a pele /metas/tv ocupa a tela inteira, SEM sidebar/header.
+// Como o AppShell é montado no layout raiz (não há route group para o chrome), o jeito
+// mínimo e não-invasivo de "não ter AppShell" nessa rota é este curto-circuito por
+// pathname — sem tocar o proxy/auth nem a Sidebar. (ADR-0148.)
+const ROTA_SEM_CHROME = '/metas/tv'
+
 export default function AppShell({ usuario, children }: AppShellProps) {
+  const pathname = usePathname()
   const [mobileOpen,    setMobileOpen]    = useState(false)
   const [sidebarOpen,   setSidebarOpen]   = useState(true)
+
+  if (pathname === ROTA_SEM_CHROME) return <>{children}</>
 
   return (
     <div className="flex h-screen overflow-hidden bg-zinc-50">
