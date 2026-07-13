@@ -55,17 +55,16 @@ export default function MetaProgressBar({
         style={{ left: `${tick}%` }}
       />
 
-      {/* Tooltip escuro no hover — nasce DA SETA do esperado, com animação fluída de
-          abrir/fechar (fade + deslize; via opacity/transform, funciona nos dois sentidos).
-          A CAIXA abre para o lado com espaço (esquerda se o tick passou da metade, direita
-          senão) → nunca vaza para fora perto das extremidades. Seta do balão ancorada a
-          1,25rem da borda, posicionada para cair exatamente sobre a seta estática. */}
+      {/* Tooltip escuro no hover — a SETA estática é a PRÓPRIA PONTA do balão: a caixa
+          encosta nela (sem folga, sem segunda seta) e cresce A PARTIR dela (scale+fade com
+          transform-origin no ponto da seta), nos dois sentidos. A caixa abre para o lado
+          com espaço (esquerda se o tick passou da metade, direita senão) → nunca vaza. */}
       <div
         role="tooltip"
         style={tick >= 50
-          ? { right: `calc((100% - ${tick}%) - 1.25rem)` }
-          : { left: `calc(${tick}% - 1.25rem)` }}
-        className="pointer-events-none absolute bottom-full z-20 mb-2 w-max min-w-[13rem] max-w-[15rem] translate-y-1 rounded-lg bg-zinc-800 px-3 py-2.5 text-white opacity-0 shadow-lg transition-[opacity,transform] duration-200 ease-out group-hover/bar:translate-y-0 group-hover/bar:opacity-100 motion-reduce:transition-none"
+          ? { right: `calc((100% - ${tick}%) - 1.25rem)`, transformOrigin: 'calc(100% - 1.25rem) 100%' }
+          : { left: `calc(${tick}% - 1.25rem)`, transformOrigin: '1.25rem 100%' }}
+        className="pointer-events-none absolute bottom-full z-20 w-max min-w-[13rem] max-w-[15rem] scale-90 rounded-lg bg-zinc-800 px-3 py-2.5 text-white opacity-0 shadow-lg transition-[opacity,transform] duration-200 ease-out group-hover/bar:scale-100 group-hover/bar:opacity-100 motion-reduce:transition-none"
       >
         <p className="mb-1.5 text-2xs font-medium text-zinc-300">
           {Math.round(pctDecorrido)}% do período decorrido
@@ -85,11 +84,7 @@ export default function MetaProgressBar({
             ? <span className="text-success">+{fmtMi(gap)} adiantado</span>
             : <span className="text-danger">{fmtMi(gap)} abaixo do esperado</span>}
         </div>
-        {/* Seta p/ baixo (o tick), a 1,25rem da borda ancorada. */}
-        <span
-          aria-hidden="true"
-          className={`absolute top-full h-2 w-2 -translate-y-1/2 rotate-45 bg-zinc-800 ${tick >= 50 ? 'right-5' : 'left-5'}`}
-        />
+        {/* Sem seta própria: a SETA ESTÁTICA da barra é a ponta do balão (a caixa encosta nela). */}
       </div>
     </div>
   )

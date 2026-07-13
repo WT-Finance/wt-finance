@@ -49,22 +49,23 @@ function Margem({ margemPct, alvo, compacto }: { margemPct: number | null; alvo:
   )
 }
 
-/** "74% da meta / 80% esperado": o realizado (régua-colorido) vs a fração esperada
- *  por agora (neutra). Alinhado à direita. */
-function ProgressoVsEsperado({ pctMeta, pctEsperado, ritmoPct, grande }: {
-  pctMeta: number | null; pctEsperado: number | null; ritmoPct: number | null; grande?: boolean
-}) {
+/** "X% da meta" — realizado, colorido pela régua. Tamanho por card. */
+function PctDaMeta({ pctMeta, ritmoPct, grande }: { pctMeta: number | null; ritmoPct: number | null; grande?: boolean }) {
   return (
-    <div className="text-right leading-tight">
-      <p>
-        <span className={`${grande ? 'text-2xl' : 'text-base'} font-bold tabular-nums ${corRitmo(ritmoPct)}`}>{pctRound(pctMeta)}</span>{' '}
-        <span className="text-sm text-[var(--text-muted)]">da meta</span>
-      </p>
-      <p className="mt-0.5">
-        <span className="text-sm font-medium tabular-nums text-[var(--text-secondary)]">{pctRound(pctEsperado)}</span>{' '}
-        <span className="text-sm text-[var(--text-muted)]">esperado</span>
-      </p>
-    </div>
+    <span className="whitespace-nowrap">
+      <span className={`${grande ? 'text-2xl' : 'text-base'} font-bold tabular-nums ${corRitmo(ritmoPct)}`}>{pctRound(pctMeta)}</span>{' '}
+      <span className="text-sm text-[var(--text-muted)]">da meta</span>
+    </span>
+  )
+}
+
+/** "Y% esperado" — a fração da meta esperada por agora (referência neutra). */
+function PctEsperado({ pct }: { pct: number | null }) {
+  return (
+    <span className="whitespace-nowrap text-sm">
+      <span className="font-medium tabular-nums text-[var(--text-secondary)]">{pctRound(pct)}</span>{' '}
+      <span className="text-[var(--text-muted)]">esperado</span>
+    </span>
   )
 }
 
@@ -104,12 +105,16 @@ export default function MetaCard({ painel, tamanho }: Props) {
           {display === 'Group' ? 'Welcome Group' : display}
         </p>
 
-        <div className="mb-2 flex items-end justify-between gap-6">
-          <div>
+        {/* Duas linhas PAREADAS: faturamento ↔ "% da meta"; Meta ↔ "% esperado". */}
+        <div className="mb-2">
+          <div className="flex items-baseline justify-between gap-6">
             <p className="text-3xl font-bold tabular-nums text-[var(--text-primary)]" aria-label={ariaLabel}>{fmtMiOuTraco(faturamento)}</p>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
+            <PctDaMeta grande pctMeta={ritmo.pctMeta} ritmoPct={ritmo.ritmoPct} />
           </div>
-          <ProgressoVsEsperado grande pctMeta={ritmo.pctMeta} pctEsperado={pctEsperado} ritmoPct={ritmo.ritmoPct} />
+          <div className="mt-1 flex items-baseline justify-between gap-6">
+            <p className="text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
+            <PctEsperado pct={pctEsperado} />
+          </div>
         </div>
 
         {barra(12)}
@@ -132,11 +137,15 @@ export default function MetaCard({ painel, tamanho }: Props) {
     <Card className="flex h-full flex-col px-5 py-4">
       <p className="text-[15px] font-semibold" style={{ color: cor }}>{display}</p>
 
-      <div className="mt-2 flex items-end justify-between gap-3">
+      {/* Duas linhas PAREADAS: faturamento ↔ "% da meta"; Meta ↔ "% esperado". */}
+      <div className="mt-2 flex items-baseline justify-between gap-3">
         <span className="text-2xl font-bold tabular-nums text-[var(--text-primary)]" aria-label={ariaLabel}>{fmtMiOuTraco(faturamento)}</span>
-        <ProgressoVsEsperado pctMeta={ritmo.pctMeta} pctEsperado={pctEsperado} ritmoPct={ritmo.ritmoPct} />
+        <PctDaMeta pctMeta={ritmo.pctMeta} ritmoPct={ritmo.ritmoPct} />
       </div>
-      <p className="mt-0.5 text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
+      <div className="mt-0.5 flex items-baseline justify-between gap-3">
+        <p className="text-sm text-[var(--text-muted)]">Meta: <span className="tabular-nums">{fmtMi(ritmo.metaPeriodo)}</span></p>
+        <PctEsperado pct={pctEsperado} />
+      </div>
 
       <div className="mt-3">{barra(10)}</div>
 
