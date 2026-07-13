@@ -355,3 +355,102 @@ export function templateFaturaEmail(input: {
 
   return { assunto, html, text }
 }
+
+// ── v5.0.1 — Notificação de NOVA SOLICITAÇÃO DE ACESSO (auto-cadastro na tela de login) ──
+// Para quem administra Usuários & Acessos. E-mail INTERNO → lockup duplo [JANUS] | [WELCOME
+// GROUP] (mesmo shell Outlook-safe dos demais internos: tabelas/inline/logo CID/botão em
+// célula/responsivo). Fan-out best-effort no index.ts. Reusa TemplateSenha como shape.
+export function templateNotificacaoAcessoSolicitado(input: {
+  emailSolicitante: string
+  nomeSolicitante?: string | null
+  /** Momento do pedido, JÁ formatado (ex.: "13 de julho de 2026, 11:35"). */
+  quando?:          string | null
+  /** URL da tela Usuários & Acessos p/ o botão. Ausente → sem botão. */
+  link?:            string | null
+}): TemplateSenha {
+  const email  = input.emailSolicitante.trim()
+  const nome   = input.nomeSolicitante?.trim() || null
+  const quando = input.quando?.trim() || null
+  const link   = input.link?.trim() || null
+
+  const assunto = `Nova solicitação de acesso | ${APP_NOME_INTERNO}`
+
+  const text =
+    'Nova solicitação de acesso\n\n' +
+    'Um novo pedido de acesso à plataforma foi registrado na tela de login. ' +
+    'Revise e aprove ou recuse em Usuários & Acessos.\n\n' +
+    `E-mail: ${email}\n` +
+    (nome ? `Nome informado: ${nome}\n` : '') +
+    (quando ? `Solicitado em: ${quando}\n` : '') +
+    (link ? `\nAcesse a plataforma: ${link}\n` : '') +
+    '\nNada é criado até a aprovação — o solicitante só recebe acesso (e a senha provisória) depois que você aprovar.\n\n' +
+    'Você recebe este aviso porque administra Usuários & Acessos.\n\n' +
+    `— ${APP_NOME_INTERNO}`
+
+  // Caixa de dados: rótulo à esquerda, valor à direita, com divisórias entre as linhas.
+  const linhaInfo = (rotulo: string, valor: string, bold = false) =>
+    `<tr>
+      <td style="padding:9px 0;font-size:13px;color:${COR_LABEL};white-space:nowrap;">${escaparHtml(rotulo)}</td>
+      <td align="right" style="padding:9px 0;font-size:14px;color:${COR_TITULO};${bold ? 'font-weight:bold;' : ''}">${escaparHtml(valor)}</td>
+    </tr>`
+  const divisoria = `<tr><td colspan="2" style="border-top:1px solid ${COR_BORDA};font-size:0;line-height:0;">&nbsp;</td></tr>`
+  const linhas = [linhaInfo('E-mail', email, true)]
+  if (nome)   linhas.push(divisoria, linhaInfo('Nome informado', nome))
+  if (quando) linhas.push(divisoria, linhaInfo('Solicitado em', quando))
+
+  // Botão em CÉLULA (padding na <td>, não no <a> — Outlook). Texto "Acessar a plataforma".
+  const botaoLinha = link
+    ? `<tr><td class="em-pad" align="center" style="padding:28px 40px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:12px;padding:14px 34px;">
+            <a href="${escaparHtml(link)}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Acessar a plataforma</a>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : ''
+
+  const html =
+`<style>
+  @media only screen and (max-width:480px) {
+    .em-card { width:100% !important; }
+    .em-pad  { padding-left:24px !important; padding-right:24px !important; }
+  }
+</style>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:${COR_FUNDO};font-family:Arial,Helvetica,sans-serif;">
+  <tr><td align="center" style="padding:40px 12px;">
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid ${COR_BORDA};border-radius:14px;">
+      <tr><td class="em-pad" align="center" style="padding:38px 40px 0;">
+        ${lockupDuploHtml()}
+      </td></tr>
+      <tr><td class="em-pad" style="padding:26px 40px 0;">
+        <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:24px 40px 0;">
+        <p style="margin:0 0 10px;font-size:16px;color:${COR_TITULO};">Nova solicitação de acesso</p>
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">Um novo pedido de acesso à plataforma foi registrado na tela de login. Revise os dados e aprove ou recuse em <b>Usuários &amp; Acessos</b>.</p>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:22px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:10px;">
+          <tr><td style="padding:6px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              ${linhas.join('')}
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+      ${botaoLinha}
+      <tr><td class="em-pad" style="padding:30px 40px 0;">
+        <p style="margin:0;font-size:13px;line-height:1.65;color:${COR_TEXTO};">Nada é criado até a aprovação — o solicitante só recebe acesso (e a senha provisória) depois que você aprovar.</p>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:12px 40px 38px;">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:${COR_TENUE};">Você recebe este aviso porque administra Usuários &amp; Acessos.</p>
+      </td></tr>
+    </table>
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
+      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">JANUS&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
+    </table>
+  </td></tr>
+</table>`
+
+  return { assunto, html, text }
+}
