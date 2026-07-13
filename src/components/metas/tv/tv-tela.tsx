@@ -46,16 +46,30 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
   const corGroup = corComparacao(group.ritmo.pctMeta, pctEsperado(group))
   const corGroupSeta = corComparacaoValor(group.ritmo.pctMeta, pctEsperado(group))
 
+  // [TESTE v5.1.0] Fundo com blooms suaves das 3 cores de setor (Trips/Weddings/Corp) sobre o
+  // off-white da casa — cartões brancos "flutuam" sobre o gradiente. Inline (color-mix + var()).
+  // Se não agradar, reverter para `bg-[var(--surface-soft)]`.
+  const fundo =
+    'radial-gradient(60% 75% at 6% 0%, color-mix(in srgb, var(--marca-lazer) 15%, transparent), transparent 68%),' +
+    'radial-gradient(55% 70% at 94% 4%, color-mix(in srgb, var(--marca-weddings) 15%, transparent), transparent 68%),' +
+    'radial-gradient(75% 75% at 50% 100%, color-mix(in srgb, var(--marca-corporativo) 12%, transparent), transparent 70%),' +
+    'var(--surface-soft)'
+
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--surface-soft)] px-12 py-8 text-[var(--text-primary)]">
+    <div className="flex h-screen w-full flex-col overflow-hidden px-12 py-8 text-[var(--text-primary)]" style={{ background: fundo }}>
       {/* Cabeçalho — logo Janus (não o wordmark escrito) + período à esquerda; à direita a
           data da última atualização + tela cheia + sair. */}
       <header className="flex items-center justify-between gap-6">
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-6">
+          {/* Lockup duplo [JANUS] | [WELCOME GROUP] — mesma composição dos e-mails internos. */}
           <span className="relative block h-16 w-64">
             <Image src="/logos/logo-janus.svg" alt="Janus" fill priority className="object-contain object-left" />
           </span>
-          <span className="text-2xl text-[var(--text-secondary)]">Metas · {data.periodoLabel}</span>
+          <span className="h-12 w-px shrink-0 bg-[var(--border-strong)]" aria-hidden />
+          <span className="relative block h-14 w-72">
+            <Image src="/logos/welcome-group.svg" alt="Welcome Group" fill className="object-contain object-left" />
+          </span>
+          <span className="ml-4 text-2xl text-[var(--text-secondary)]">Metas · {data.periodoLabel}</span>
         </div>
         <div className="flex items-center gap-6">
           {data.ultimaAtualizacao && (
@@ -103,16 +117,20 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
           return (
             <div key={s.key} className="flex flex-col rounded-2xl bg-white px-8 py-7 shadow-sm">
               <p className="text-3xl font-semibold" style={{ color: s.cor }}>{s.display}</p>
-              {/* Cluster valor + % + meta + barra, centrado verticalmente no card. */}
+              {/* Cluster centrado. Mesmo FORMATO do Group: só o valor à esquerda; "% da meta"
+                  + "de R$ {meta}" empilhados à direita, com o bloco de 2 linhas proporcional
+                  à altura do valor do faturamento (alinhamento visual). */}
               <div className="flex flex-1 flex-col justify-center">
-                <div className="flex items-baseline justify-between gap-4">
+                <div className="flex items-end justify-between gap-4">
                   <span className="whitespace-nowrap text-5xl font-bold tabular-nums" style={{ color: s.cor }}>{fmtMiOuTraco(s.faturamento)}</span>
-                  <span className="whitespace-nowrap">
-                    <span className={`text-4xl font-bold tabular-nums ${cor}`}>{pctRound(s.ritmo.pctMeta)}</span>
-                    <span className="ml-2 text-lg text-[var(--text-muted)]">da meta</span>
-                  </span>
+                  <div className="whitespace-nowrap text-right">
+                    <div>
+                      <span className={`text-3xl font-bold tabular-nums ${cor}`}>{pctRound(s.ritmo.pctMeta)}</span>
+                      <span className="ml-2 text-base text-[var(--text-muted)]">da meta</span>
+                    </div>
+                    <p className="mt-0.5 text-base text-[var(--text-muted)]">de <span className="tabular-nums">{fmtMiOuTraco(s.ritmo.metaPeriodo)}</span></p>
+                  </div>
                 </div>
-                <p className="mt-3 text-xl text-[var(--text-muted)]">de <span className="tabular-nums">{fmtMiOuTraco(s.ritmo.metaPeriodo)}</span></p>
                 <div className="mt-8">{barra(s, 20, 1.8)}</div>
               </div>
             </div>
