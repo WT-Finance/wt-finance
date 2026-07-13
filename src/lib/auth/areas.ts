@@ -14,6 +14,7 @@ export const AREAS = [
   'financeiro/acervo',
   'financeiro/acervo/gestao',
   'metas',
+  'metas/acompanhamento',
   'admin/uploads',
   'admin/design-system',
   'admin/acessos',
@@ -42,7 +43,13 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // visão — a página faz OR das duas áreas, então quem só tem gestão também vê).
   'financeiro/acervo':        { rotulo: 'Acervo de Documentos',          grupo: 'Financeiro', ordem: 33 },
   'financeiro/acervo/gestao': { rotulo: 'Acervo de Documentos (gestão)', grupo: 'Financeiro', ordem: 34 },
+  // Metas em DOIS níveis (v5.0.0), mesmo padrão de solicitacoes/acervo: 'metas' (nome
+  // histórico) = GESTÃO (Cadastro — definir/editar metas, e inclui a visão); a nova
+  // 'metas/acompanhamento' = VER o Acompanhamento (liderança). A página de Acompanhamento
+  // faz OR das duas; o Cadastro e a RPC de escrita exigem só 'metas'. O rótulo de 'metas'
+  // fica 'Metas' (espelha a linha intacta de rbac_areas — renomear seria UPDATE destrutivo).
   'metas':                   { rotulo: 'Metas',                     grupo: 'Geral',         ordem: 40 },
+  'metas/acompanhamento':    { rotulo: 'Metas — Acompanhamento',    grupo: 'Geral',         ordem: 41 },
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },
   'admin/acessos':           { rotulo: 'Usuários e Acessos',        grupo: 'Administração', ordem: 52 },
@@ -88,7 +95,10 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/financeiro/acervo'))       return ['financeiro/acervo', 'financeiro/acervo/gestao']
   if (p.startsWith('/financeiro'))              return ['financeiro/fluxo-caixa', 'financeiro/gerencial']
   if (p.startsWith('/executiva'))               return ['executiva']
-  if (p.startsWith('/metas'))                   return ['metas']
+  // Metas em DOIS níveis (v5.0.0): /metas/cadastro exige a área forte 'metas' (editar);
+  // o Acompanhamento (/metas e /metas/acompanhamento) libera com qualquer uma das duas.
+  if (p.startsWith('/metas/cadastro'))          return ['metas']
+  if (p.startsWith('/metas'))                   return ['metas/acompanhamento', 'metas']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']

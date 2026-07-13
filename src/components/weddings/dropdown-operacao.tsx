@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { ChevronDown, Check } from 'lucide-react'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import type { OperacoesLista } from '@/types/api'
 
 interface Props {
@@ -86,7 +87,7 @@ export default function DropdownOperacao({ operacoes, selecionadas }: Props) {
               autoFocus
             />
           </div>
-          <div className="max-h-64 overflow-y-auto">
+          <ScrollAutoHide className="max-h-64">
             <button
               onClick={selecionarTodas}
               className={`flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 transition-colors ${todasAtiva ? 'text-[var(--brand)] font-medium bg-[var(--brand-soft)]' : 'text-[var(--text-muted)]'}`}
@@ -114,7 +115,7 @@ export default function DropdownOperacao({ operacoes, selecionadas }: Props) {
             {filtradas.length === 0 && (
               <p className="px-3 py-4 text-sm text-zinc-400 text-center">Nenhum resultado</p>
             )}
-          </div>
+          </ScrollAutoHide>
         </div>
       )}
     </div>

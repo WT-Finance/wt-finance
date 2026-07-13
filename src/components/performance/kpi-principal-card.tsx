@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import KpiColuna from '@/components/shared/kpi-coluna'
-import KpiPrincipalDrawer from '@/components/weddings/kpi-principal-drawer-lazy'
+import KpiPrincipalDrawer from './kpi-principal-drawer-lazy'
 import type { ExecutivaKpis } from '@/types/api'
 
 interface Props {

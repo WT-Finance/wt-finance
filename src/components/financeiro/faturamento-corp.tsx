@@ -11,6 +11,7 @@ import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2
 import { Card } from '@/components/ui/card'
 import Tooltip from '@/components/ui/tooltip'
 import ModalCentral from '@/components/shared/modal-central'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 import { classificarStatusNota, labelClasseNota } from '@/lib/faturamento/status-nota'
 import { numBRL2 } from '@/lib/fmt'
@@ -373,7 +374,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          <ScrollAutoHide eixo="x">
             {/* table-fixed: as larguras são respeitadas e o texto longo (ex.: "falhou: Endereço do
                 cliente incompleto") QUEBRA dentro da coluna Nota — não escapa nem estoura a tabela. */}
             {/* Sem min-w (padrão canônico de tabela rolável do projeto): a tabela cabe SEMPRE no
@@ -439,7 +440,7 @@ export default function FaturamentoCorp({ ambiente, configurado, emailModo }: Pr
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollAutoHide>
 
           {/* Barra de ação — DOIS MOMENTOS: cada "Emitir X" vira "Ver resultado · X" após a emissão
               (largura FIXA por botão: não pula na troca de texto). "Enviar e-mails" fixo à direita.
@@ -825,7 +826,7 @@ function ModalResultadoBoletos({ boletos, sessMap, ambiente, onClose }: {
         {nJa > 0 && <Contagem n={nJa} rotulo={nJa === 1 ? 'já emitido' : 'já emitidos'} tom="zinc" />}
         {nFal > 0 && <Contagem n={nFal} rotulo={nFal === 1 ? 'falhou' : 'falharam'} tom="danger" />}
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+      <ScrollAutoHide eixo="both" className="px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
         <table className="w-full table-fixed border-separate border-spacing-0 text-xs">
           <thead className={theadFixo(rolado)}>
             <tr>
@@ -860,7 +861,7 @@ function ModalResultadoBoletos({ boletos, sessMap, ambiente, onClose }: {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
     </ModalCentral>
   )
 }
@@ -920,7 +921,7 @@ function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando
           </button>
         )}
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+      <ScrollAutoHide eixo="both" className="px-6 pb-5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
         <table className="w-full table-fixed border-separate border-spacing-0 text-xs">
           <thead className={theadFixo(rolado)}>
             <tr>
@@ -968,7 +969,7 @@ function ModalResultadoNotas({ notas, notaStatus, sessMap, ambiente, atualizando
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
     </ModalCentral>
   )
 }

@@ -6,6 +6,7 @@ import type { ListaOperacoes, OperacaoItem } from '@/types/api'
 import { fmtDateLong, fmtMeses, numBRL2, parseLocalDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import EmptyState from '@/components/shared/empty-state'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 // ── Status pills ──────────────────────────────────────────────────────────────
 
@@ -456,7 +457,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
       </div>
 
       {/* Tabela */}
-      <div className="overflow-x-auto">
+      <ScrollAutoHide eixo="x">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
@@ -552,7 +553,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
 
       {/* Paginação */}
       {!loading && data && (totalPaginas > 1 || data.total > 0) && (

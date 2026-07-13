@@ -102,6 +102,13 @@
   --setor-lazer:       #378ADD;   /* Trips / Lazer */
   --setor-weddings:    #BA7517;   /* Weddings */
   --setor-corporativo: #0F6E56;   /* Corporativo */
+
+  /* Cores de MARCA por setor = o --brand de cada aba, exposto como token standalone
+     para uso CROSS-CONTEXTO (Metas roda em tema group e mostra os 3 setores com a cor
+     de MARCA de cada um). Espelham os overrides [data-theme] de --brand (v5.0.0). */
+  --marca-lazer:       #0091B3;   /* Trips — Pantone 632 C */
+  --marca-weddings:    #BD965C;   /* Weddings — dourado */
+  --marca-corporativo: #0D5257;   /* Corporativo — Pantone 7476 C */
 }
 
 /* ── Tokens por aba ──────────────────────────────────────────────────────── */

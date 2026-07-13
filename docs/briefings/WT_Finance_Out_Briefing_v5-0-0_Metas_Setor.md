@@ -1,0 +1,95 @@
+# Out-Briefing — v5.0.0 · Metas por Setor (a abertura da major 5)
+
+**Tipo:** MAJOR (4.40.1 → 5.0.0) · **Migrations:** 0175 (aditiva, APLICADA) + 0176 (destrutiva, PREPARADA/não-aplicada) · **ADR:** 0146 · **Base:** `main` @ v4.40.1 · **Branch:** `feat/v5-0-0-metas-por-setor` · **PR:** #175 (draft).
+
+O acompanhamento de metas comerciais de faturamento (VT) por setor entra na plataforma, absorvendo o "Dash Comercial" provisório. A rota `/metas` (que tinha o dashboard v1 legado atrás de um "em construção") passa a ser real, com duas subabas: **Acompanhamento** e **Cadastro**.
+
+## Missões
+
+### M1 — Banco + módulo de ritmo (migration 0175, aditiva; backup-gate VERDE)
+- `ALTER TABLE app.meta_setor ADD COLUMN pct_receita numeric(5,2)` (CHECK 0..100, inline) + `pct_receita`/`pct_receita_anterior` no `meta_setor_historico` (**tabela ativada** nesta versão).
+- Área RBAC **`metas/acompanhamento`** (leitura) — INSERT aditivo; a `metas` existente vira a de edição. `areas.ts` + `areasDaRota` (`/metas` → OR; `/metas/cadastro` → só `metas`).
+- RPCs inline: `metas_listar(p_ano)`, `metas_ritmo_diario(p_from,p_to,p_setor)` (leitura, areasAny), `metas_upsert(p_metas)` (escrita, só `metas`; upsert + histórico; `fonte='real'`; chave `setor_macro_id`).
+- Módulo puro `src/lib/metas/ritmo.ts` (pró-rata por dias, "hoje" = última venda, régua com constantes nomeadas, alvo de %Rec ponderado por VT) + **10 testes**.
+- **FONTE ÚNICA PROVADA POR TESTE** (`rpc-contrato.test.ts`): `Σ(metas_ritmo_diario.serie) === get_executiva_kpis.faturamento` para todos/Weddings/Lazer/Corporativo (mesma `mv_vendas_diarias`, mesmo JOIN/WHERE). Paridade de áreas banco↔app coberta.
+
+### M2 — Primitivos e dívidas
+- **`<Gauge>`** (`@/components/shared/gauge`): medidor semicírculo, arco em cor de identidade, tick de pace com valor, `role="img"`. Receita no DS doc.
+- **`<NavGroup>`** genérico na sidebar: Performance/Financeiro migrados sem regressão + nova seção **Metas** (Acompanhamento/Cadastro). Toggle unificado (mapa `openGroups`), ativo por prefixo mais específico.
+- **`kpi-principal-drawer`** realocado `weddings/` → `performance/` (pendência 14c; 3 importadores + wrapper lazy; sem mudança de contrato).
+- CLAUDE.md: regra de escoteiro do `<ScrollAutoHide>`.
+- **DEFERIDO (reportado): consolidação das 3 pills de período.** A variante de Weddings é baseada em **Context** (`usePeriodoFilter`, lida por `weddings-kpis-section` e `weddings-mix-section` além das pills); migrá-la para URL é **troca de comportamento em 4 dashboards vivos** e o invariante é não-regressão. Metas reusa `PeriodoFilterPillsUrl` (a base) sem criar uma 4ª variante. **Recomendação:** patch dedicado se/quando quiser a unificação.
+
+### M3 — Acompanhamento (`/metas`)
+- Server Component orquestra: `get_executiva_kpis` × 4 (Group+3 setores) + `metas_listar` (por ano do período) + `metas_ritmo_diario` × 4, tudo em `Promise.all`; `calcularRitmo` server-side por setor (Group = soma computada; %Rec Group ponderado por VT).
+- UI: pills → aviso de parcialidade → card **Group** (gauge grande neutro + faixa de 3 KPIs: Faturamento+YoY / Meta do período+esperado / Receita+alvo) → 3 cards setoriais (gauge na cor do setor + Realizado/Meta/Receita) → gráfico **"Ritmo do período"** (seletor `<Tabs>` Group/Trips/Weddings/Corporativo; realizado acumulado sólido na cor do setor × meta acumulada tracejada; `ReferenceLine` "Hoje" + `ReferenceDot` do esperado; "% do esperado" na régua). `loading.tsx` (skeleton).
+- Régua (`RITMO_META_ATINGIDA`/`RITMO_ATENCAO`) colore SÓ "ritmo X%"/"% do esperado". Tema group. Display "Trips" / chave "Lazer".
+
+### M4 — Cadastro (`/metas/cadastro`, área forte `metas`)
+- Grade anual 12 meses × 3 setores × [Meta VT, % Rec] + **Group computado ao vivo no cliente** (coluna read-only, fundo distinto) + total no rodapé + navegação por ano (`?ano=`).
+- **Autosave por célula** (blur/Enter → loader → check) com **reversão em erro** (padrão `contas-manager`, não `lancamento-row`) + `FaixaMensagem`. Parse via `toNum` (coerção canônica). Auditoria da última alteração (`fmtDataHoraSP`). Escrita → `metas_upsert` (grava histórico).
+
+### M5 — Aposentadoria cética do dashboard v1
+- **PROVA (grep)**: `MetasDashboard.tsx`, 6 componentes `components/dashboard/*` e 5 API Routes (`/api/{kpis,ritmo-diario,ranking-vendedores,ranking-produtos,historico-mensal}`) eram consumidos SÓ pela árvore de `/metas` → **removidos** (código morto).
+- **`get_historico_mensal` PERMANECE** — 2º consumidor vivo: Executiva via `/api/dashboard/kpi-historico` → `KpiDetailDrawer`. (A ROTA `/api/historico-mensal` era metas-only e saiu; a RPC fica.)
+- **Migration 0176 (DESTRUTIVA)** — DROP das 4 RPCs órfãs (`get_kpis`/`get_ritmo_diario`/`get_ranking_vendedores`/`get_ranking_produtos` + `__nucleo`) — **PREPARADA mas NÃO aplicada** (destrutiva exige confirmação humana num TTY, ADR-0131). `get_historico_mensal` fora do DROP.
+
+### M6 — Fechamento
+- `package.json` → **5.0.0** (`version.ts` deriva sozinho). CHANGELOG.md + CHANGELOG_DIRETORIA (linguagem de negócio) com a entrada 5.0.0. ADR-0146. DS doc (Gauge + seção Metas).
+- **Histórico da diretoria dobra a v4 sozinho:** com `APP_VERSION=5.0.0` e a 1ª entrada `5.0.0` no topo, `VersionHistory` (agrupa por major derivado, sem hardcode) mostra o grupo **"Versões 4.x — 79 versões"** colapsado. (Confirmar visualmente no checkpoint.)
+
+## Gates
+- `npx tsc --noEmit`: 0 · `npx eslint <arquivos>`: 0 · `npx next build`: OK (`/metas` e `/metas/cadastro` como rotas dinâmicas) · `npx vitest run`: **373 testes verdes** (10 do ritmo + paridade da fonte única + contrato).
+
+## Pendências / follow-ups
+- **Operacional (Yan):** aplicar a migration **0176** (destrutiva) quando conveniente — `npm run db:migrate -- --destrutiva` num terminal.
+- **Produto (Yan, no checkpoint):** digitar os **% Rec** no Cadastro (hoje só `valor_meta` existe no seed; o alvo de %Rec nasce vazio → cards mostram "—" até preencher).
+- **Dívida (opcional):** consolidação das 3 pills de período (patch dedicado).
+- **v5.1 (fora):** Metas por Vendedor (M1/M2/M3, TPs).
+
+## Checkpoint do Yan (antes do merge)
+Metas 2026 visíveis na grade + digitar %Rec (autosave + histórico); Faturamento do Acompanhamento == Performance no mesmo período (conferência cruzada — provado por teste, confirmar na tela); gauges/régua/gráfico com seletor; usuário só-leitura barrado do Cadastro; histórico com a v4 dobrada; "está na língua da casa?".
+
+---
+
+## Adendo de UI (checkpoint · sobre mockups v7/v8 do Acompanhamento e v2 do Cadastro)
+
+Ajustes decididos pelo Yan sobre a v5.0.0 ainda aberta — sem alterar o motor (fonte única, `fonte='real'`, histórico por célula, permissões, módulo de ritmo). ADR-0146 emendado; DS doc atualizado (Gauge sai, entra `<MetaProgressBar>` + padrão "edição local + salvar em lote").
+
+**A — Acompanhamento (gauges → barras):**
+- `<Gauge>` REMOVIDO (componente + usos + seção do DS). Novo primitivo **`<MetaProgressBar>`**: trilha neutra + preenchimento na cor de identidade (Group neutro), tick mudo do esperado, **tooltip escuro** no hover (`N% do período decorrido` + Esperado/Realizado + conclusão colorida `adiantado`/`abaixo do esperado`). Espessura 12px (Group) / 10px (setoriais).
+- **YoY REMOVIDO** de toda a superfície de Metas (o motor ainda devolve; a superfície não exibe). Rótulo "ritmo" → "% do esperado". **Margem** = delta em **p.p. contra o alvo** de %Rec, colorido (acima=success/abaixo=danger), no lugar do ✓ binário.
+- Card Group no molde v8 (label `WELCOME GROUP`, Faturamento sem YoY, `% da meta`/`% do esperado`, barra, rodapé Receita | Margem). Gráfico "Ritmo do período" mantido.
+- Novo campo testado no módulo: `RitmoResultado.pctDecorrido` (% do período em dias, base do tooltip).
+
+**B — Cadastro (autosave → salvar em lote + refinos):**
+- Mecânica: **edição local** (Enter/blur confirma no cliente; célula suja = ponto âmbar; Group/Total ao vivo) + **Salvar em lote** (`salvarMetas` → um `metas_upsert` com todas as pendências; histórico segue por célula). Rodapé com **"N alterações não salvas"** + botão **Salvar** (desabilitado sem pendências). **Guarda de saída** (troca de ano `window.confirm` + `beforeunload`). Erro no salvar mantém as pendências (retry).
+- **"Aplicar ao ano"** no cabeçalho de cada % Rec (popover) — preenche os 12 meses do setor como pendências (a primeira carga dos alvos em poucos gestos).
+- Refinos: moldura interna da tabela; "Meta VT" → **"Faturamento"**; frase do Group removida (só o hint "Clique numa célula para editar"); linha **Total** (sem ano) em contábil pleno, no cinza do Group; título/subtítulo novos; subabas da sidebar "Acompanhamento"/"Cadastro".
+
+**Gates do adendo:** tsc 0 · eslint 0 · next build OK · vitest **374** (10→11 no ritmo, com `pctDecorrido`). Validação visual por screenshots SSR dos componentes reais (harness local não-commitado), incluindo o tooltip escuro forçado.
+
+**Rodada 4 (checkpoint):** pills do Acompanhamento viram **Mensal (default) / Trimestral / Semestral / Anual** — cortes **calendário-fixos** (1º tri = jan–mar; o período CORRENTE que contém hoje; sem Personalizado), módulo puro `periodo-metas.ts` (+10 testes) + `MetasPeriodoPills` (`?periodo=`, ativa em `--action-soft`); Metas deixa de usar as pills de janela móvel. O tick reto do esperado vira **SETA estática** (mesmo desenho/tom da seta do balão) e o balão **nasce da seta com animação fluída** (fade+deslize, dois sentidos, `motion-reduce` ok). Gates: tsc 0 · eslint 0 · build 0 · vitest **385**.
+
+**Rodada 4b (clamp do balão):** o balão da barra ganha **clamp ao viewport** (módulo puro `tooltip-clamp.ts`, testado + varredura): perto das bordas a caixa desliza para dentro da tela e a seta desliza dentro dela para seguir apontando o tick — nunca vaza. `<MetaProgressBar>` vira client (mede via `useLayoutEffect`+resize; fallback CSS no SSR).
+
+**Rodada 5 (6 ajustes de UI + varredura de barras de rolagem):**
+- *Cards do Acompanhamento (meta-card):* Group vira **"Group"** (negrito, não caixa-alta) e o **valor do faturamento** leva a cor de identidade (Group = cinza da marca `--text-muted`; setores = `--marca-*`). **"% da meta" e "% esperado"** passam a ter a **MESMA cor** pela distância em p.p. entre elas (novo classificador `corComparacao`: ≥0 verde · até −3 âmbar · <−3 vermelho; só os números). Setoriais: **Receita | Margem na mesma linha** com **"vs alvo X%"**; no Group o "vs alvo" perde negrito e casas decimais (14,0% → 14%). **"% da meta" dos setores no tamanho do faturamento** (text-2xl; Group text-3xl). Verificado por screenshot SSR (verde/âmbar/vermelho).
+- *Barra de rolagem (item central + varredura):* fecha o furo "só rola com a roda do mouse" — o thumb da barra flutuante auto-hide agora é **ARRASTÁVEL** (pointer capture, sem mudar o visual). Módulo puro testado `@/lib/ui/scrollbar-math` (+10 testes). `<ScrollAutoHide>` ganha **arraste**, **eixo `y|x|both`** (horizontal), **`onScroll`** (sombra do header sticky) e **`contentClassName`**. **Sidebar** também arrastável. **Adoção plataforma-wide**: ModalCentral (corpo), ListDrawer, KpiDetailDrawer, drawers de Weddings, Calendário de Liquidez, Próximos Lançamentos, tabelas densas com sticky (Cadastro de Clientes, Faturamento Corp ×3, Revisar envio, Base de Dados) e tabelas horizontais (Lista de Operações, Mix por Setor, Prejuízos, Movimentações, Carteira, Sumário por Subsetor, Visualização Agregada, Calculadora de Rateio, Tipos). Exceções: `<main>` do AppShell e board Kanban de Solicitações (barra nativa de propósito). Registrado no DS.
+- *Histórico de versões:* cabeçalhos **colapsáveis por major** ("v5 ›"/"v4 ›", chevron rotaciona, **sem contagem**), major atual **aberto por padrão**; **modal de tamanho fixo** (`alturaFixa`+`corpoFlex`+`<ScrollAutoHide>`) — não pula ao colapsar.
+
+**Gates da Rodada 5:** tsc 0 · eslint 0 · next build OK · vitest **399** (10 novos em `scrollbar-math.test.ts`). 3 commits, push para a PR #175.
+
+**Rodada 6 (checkpoint — refinos finais dos cards + gráfico + Contratos):**
+- *Weddings:* o painel de Weddings mostra **"Contratos"** (nº de contratos de casamento vendidos no período) no lugar de "Receita" — mesmo número do card do subsetor Comercial da Performance (`get_sumario_subsetor` → COMERCIAL `n_contratos`, já em produção; shape validado por REST). Fail-safe: a RPC exige `performance/weddings`; sem acesso, degrada p/ "Contratos —" (leitura por `getServerClient`).
+- *Cards:* "% da meta" volta a um tamanho menor (`text-xl`), IGUAL no Group e nos setores (entre faturamento e esperado); valor da **Margem colorido** (verde ≥ alvo, vermelho abaixo) em TODOS os painéis, inclusive o Group; Receita/Contratos e Margem em **duas linhas empilhadas** (rótulo esq., valor dir.).
+- *Barra "Visão geral":* todo o corpo do Acompanhamento passa a viver sob uma barra recolhível `<TopSection>` "VISÃO GERAL" (neutra do group), abaixo do título/subtítulo.
+- *Última atualização:* a nota de parcialidade vira **"Última atualização em DD de mês de AAAA, HH:MM"** (ícone de relógio; novo `fmtDataHoraLongoSP`, fuso SP). Fonte: `MAX(criado_em)` de `fato_venda` via `get_upload_status` — leitura server-side de agregado NÃO-sensível pelo **admin client** (authenticated não tem EXECUTE; 0122), fail-safe. *[Dívida: idealmente uma RPC guardada por Metas — bloqueada pela migration pendente atrás da 0176.]*
+- *Gráfico "Ritmo do período":* removido o selo "% do esperado até hoje: N%"; pills de setor recebem a **cor de identidade** quando ativas (`Tabs` ganha `corAtiva` opt-in); o realizado vira **uma série só** (área+linha) → tooltip mostra só "Realizado" (fim do "realAcum" duplicado) e a meta é rotulada **"Esperado"** (tooltip + legenda "Esperado acumulado").
+- *Cadastro de Metas:* canto superior da coluna **Mês** dividido em duas células (a de cima vazia, fundo cinza, acompanha a faixa dos setores; "Mês" na 2ª linha); hint "Clique numa célula para editar" alinhado à **direita**.
+- *Tooltip da barra de meta:* passa de escuro para **fundo branco + borda cinza + sombra** (mesmo estilo do `CustomTooltip` dos gráficos), texto escuro, seta na cor da borda.
+- *Barra de rolagem (v5.0.0):* thumb do `<ScrollAutoHide>` **arrastável** + horizontal + `onScroll` + `isolate`/`z-30` (fica acima do header sticky); adoção plataforma-wide. Módulo puro `@/lib/ui/scrollbar-math` (+10 testes).
+
+**Gates Rodada 6:** tsc 0 · eslint 0 · next build OK · vitest **399**. Verificação por screenshots SSR (cards nos 3 estados de cor, canto Mês, barra "Visão geral", tooltip). Vários commits, push para a PR #175.
+
+**Follow-up fora da v5.0.0 (aprovado, patch próprio):** e-mail "Nova solicitação de acesso" para quem administra Usuários & Acessos (hoje NENHUM aviso é disparado no auto-cadastro). Mockup aprovado (identidade Janus, botão "Acessar a plataforma"). Plano: RPC `service_role`-only (sem abrir diretório a anon), envio best-effort, notificar só em pedido NOVO, migration 0177. ADR-0147.

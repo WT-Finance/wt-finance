@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtMi, fmtBRL } from '@/lib/fmt'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ function DrillDownModal({
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 px-5 py-3">
+        <ScrollAutoHide className="px-5 py-3">
           {lancamentos === null ? (
             <p className="text-xs text-zinc-400 py-4 text-center">Carregando...</p>
           ) : lancamentos.length === 0 ? (
@@ -148,7 +149,7 @@ function DrillDownModal({
               )}
             </>
           )}
-        </div>
+        </ScrollAutoHide>
       </div>
     </div>
   )

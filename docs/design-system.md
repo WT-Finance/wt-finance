@@ -161,15 +161,98 @@ só no desktop); título serif via `style={{ fontFamily: "Georgia, 'Times New Ro
 (tokens neutros de plataforma — nunca `var(--brand)`). Flag no banco (`onboarding_visto_em`),
 promise fora do caminho bloqueante, fail-safe (falha → não exibe).
 
-## Barras de rolagem (v4.40.0 — padrão)
+## Barras de rolagem (v4.40.0; ARRASTÁVEL + horizontal em v5.0.0 — padrão)
 
-Container rolável INTERNO (lista/painel dentro de uma página) usa a **barra flutuante
-auto-hide**: a scrollbar nativa é escondida (`.scrollbar-none` — largura 0, não desloca o
-conteúdo, sem "goteira") e um **thumb em overlay** aparece ao rolar/hover e **some sozinho**
-(~1,2s). Componente pronto: **`<ScrollAutoHide>`** (`src/components/shared/scroll-auto-hide.tsx`)
-— substitui o `<div className="overflow-y-auto">`; a `className` vai no viewport. Mecânica
-imperativa (refs, zero state — não re-renderiza por scroll). Exemplos vivos: a **sidebar**
-(implementação própria embutida, a origem do padrão) e o **Acervo de Documentos**.
+**TODO** container rolável INTERNO (lista/painel/tabela dentro de uma página, vertical OU
+horizontal) usa a **barra flutuante auto-hide**: a scrollbar nativa é escondida
+(`.scrollbar-none` — largura 0, não desloca o conteúdo, sem "goteira") e um **thumb em
+overlay** aparece ao rolar/hover e **some sozinho** (~1,2s). O thumb é **ARRASTÁVEL** (pointer
+capture — arrastar e mouse-scroll funcionam; v5.0.0 fechou o furo de "só rola com a roda do
+mouse"). Componente único: **`<ScrollAutoHide>`** (`src/components/shared/scroll-auto-hide.tsx`).
+Mecânica imperativa (refs, zero state — não re-renderiza por scroll); matemática pura e testada
+em `@/lib/ui/scrollbar-math` (`scrollbar-math.test.ts`).
+
+Props:
+- `className` → vai no **viewport** (o que rola). Coloque **padding** (`px/py`), `max-h-*`,
+  `min-w-*`. NUNCA `overflow-*`, `scrollbar-*`, `flex-1`, `min-h-0`, `h-full` (o wrapper já provê).
+- `eixo` → `'y'` (default) · `'x'` (horizontal) · `'both'` (tabela densa, os dois eixos).
+- `onScroll` → repassado ao viewport; usar p/ acender a **sombra do cabeçalho sticky** (§7):
+  `onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}`.
+- `contentClassName` → SÓ para espaçamento **entre filhos** (`space-y-*`, `flex flex-col gap-*`),
+  pois `className` vai no viewport (cujo único filho é o wrapper de conteúdo). Padding fica em
+  `className` (preserva o cálculo do sticky `-top-5`).
+
+**Thumb ACIMA do cabeçalho sticky (v5.0.0):** o wrapper do `<ScrollAutoHide>` é `isolate`
+(cria stacking context) e o thumb é `z-30`, então numa **tabela densa com `<thead>` sticky
+`z-20`** (§7) a barra flutuante fica **por cima do header** — sem isso ela some atrás do cabeçalho
+fixo ao rolar. Já é automático no primitivo: não precisa fazer nada no call-site. (Regra p/ QUALQUER
+header fixo: se um container com header sticky não usar o primitivo, o indicador de rolagem tem de
+ter `z-index` maior que o do header.)
+
+Migração (regra de escoteiro + varredura v5.0.0): trocar `<div className="overflow-* …">` por
+`<ScrollAutoHide …>`; remover `overflow-*`/`flex-1`/`min-h-0`/`h-full`, manter padding/max-h/min-w
+em `className`, mover `space-y-*` para `contentClassName`. Migrados na varredura: modais
+(`ModalCentral` corpo), drawers (`ListDrawer`, `KpiDetailDrawer`, drilldown/margem de Weddings,
+Calendário de Liquidez, Próximos Lançamentos), tabelas densas com sticky (Cadastro de Clientes,
+Faturamento Corp, Revisar envio, Base de Dados) e tabelas horizontais (Lista de Operações, Mix
+por Setor, Prejuízos, Movimentações, Carteira, Sumário por Subsetor, etc.). A **sidebar** mantém
+implementação própria embutida (mesma mecânica; também arrastável desde a v5.0.0).
 
 Exceção: o `<main>` do AppShell mantém a scrollbar NATIVA com `scrollbar-gutter: stable`
-(DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos.
+(DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos. E o
+**board Kanban de Solicitações** mantém a barra nativa visível de propósito (afordância "há mais
+colunas a rolar").
+
+## MetaProgressBar — barra de progresso de meta (v5.0.0)
+
+Primitivo `<MetaProgressBar>` (`@/components/shared/meta-progress-bar`) — elemento central dos
+cards do Acompanhamento de Metas. Componente PURO (o tooltip é CSS-only `group-hover`, sem JS).
+*(Substituiu o antigo `<Gauge>` semicírculo, removido no adendo v5.0.0 por decisão do Yan.)*
+
+- **Trilha** neutra (`bg-zinc-100`, cantos plenos); **preenchimento** = `pctMeta` (realizado/meta,
+  clampa em 100) na **cor de MARCA** do painel (`--marca-*` via `SETOR_MARCA_COLORS`; Group = neutro
+  `--text-muted`) — nunca hex. *(Metas usa a cor de marca de cada setor, não a `--setor-*` de gráficos
+  cross-setor — exceção deliberada ao ADR-0103, ver ADR-0146; cada card É o card daquele setor.)*
+- **SETA do esperado** na posição `pctEsperado` (= `% do período decorrido`, pois o esperado é
+  LINEAR): um marcador estático apontando para baixo, acima da barra (mesmo tom escuro da seta do
+  balão — é "de onde o balão nasce"). Sem linha atravessando a barra.
+- **Tooltip ESCURO** no hover (zinc-800): a seta estática é a PRÓPRIA PONTA do balão — a caixa
+  encosta nela (sem segunda seta) e **cresce a partir dela** (scale+fade com transform-origin no
+  ponto da seta; `motion-reduce` respeitado). **CLAMP ao viewport** (client: mede a barra/balão →
+  lógica pura `@/lib/metas/tooltip-clamp`, testada): perto das bordas a caixa desliza para dentro
+  da tela e a seta desliza dentro dela para seguir apontando o tick — nunca vaza: título `"N% do período decorrido"` (`pctDecorrido`), linhas
+  `Esperado`/`Realizado` (R$), e a conclusão colorida — `+R$ Z adiantado` (`text-success`) ou
+  `R$ Z abaixo do esperado` (`text-danger`).
+- Props: `pctMeta`, `pctEsperado`, `cor`, `altura` (12 Group / 10 setorial), `pctDecorrido`,
+  `esperado`, `realizado`. Régua (verde/âmbar/vermelho) colore só o "% da meta" e a conclusão — nunca a barra.
+- **Esperado LINEAR** (`@/lib/metas/ritmo`): `esperado = metaPeriodo × dias_decorridos/dias_período`.
+  O card compara "X% da meta" (régua-colorido) vs "Y% esperado" (referência neutra = % do período).
+
+## Metas — Acompanhamento & Cadastro (v5.0.0)
+
+Seção Metas (tema **group**, neutro): **Acompanhamento** (`/metas`) e **Cadastro** (`/metas/cadastro`);
+subabas "Acompanhamento" / "Cadastro" na sidebar (o grupo "Metas" dá o contexto).
+- **Acompanhamento**: pills próprias **calendário-fixas** (`MetasPeriodoPills` + `@/lib/metas/periodo-metas`):
+  **Mensal (default) / Trimestral / Semestral / Anual** — o corte-calendário CORRENTE (1º tri = jan–mar,
+  nunca "últimos 3 meses"; sem Personalizado). Distintas das pills de janela móvel da Performance. → aviso de
+  parcialidade → card Group (label `WELCOME GROUP`, Faturamento + `% da meta`/`% do esperado` +
+  `<MetaProgressBar altura=12>` + rodapé Receita | Margem) → 3 cards setoriais (`<MetaProgressBar altura=10>`
+  na cor do setor) → gráfico "Ritmo do período". **SEM YoY na superfície** (Metas responde "entregamos o
+  combinado?"; Performance responde "melhoramos vs ano passado?"); a **Margem** mostra o delta em **p.p.
+  contra o alvo** de %Rec, colorido (acima=success, abaixo=danger).
+- **Cadastro**: grade anual 12 meses × 3 setores × [Faturamento, % Rec] com **Group computado ao vivo**
+  (coluna read-only, fundo distinto), Total em formato contábil pleno, e **edição local + salvar em lote**
+  (ver padrão abaixo). "Aplicar ao ano" no cabeçalho de cada % Rec preenche os 12 meses do setor.
+- **Fonte única**: o real vem de `get_executiva_kpis`; meta/ritmo do módulo puro `calcularRitmo`
+  (`@/lib/metas/ritmo` — pró-rata por dias, régua com constantes nomeadas, "hoje" = última venda,
+  `pctDecorrido`). Display "Trips"/chave "Lazer". Cor de identidade via `SETOR_COLORS`.
+
+### Padrão: edição local + salvar em lote (com contador e guarda)
+Grade editável com muitas células (Cadastro de Metas) NÃO faz autosave por célula. Em vez disso:
+clique → edita → **Enter/blur confirma LOCALMENTE** (Esc cancela), a célula suja ganha **ponto âmbar**
+(`bg-warning`), e derivados (Group/Total) recalculam ao vivo. O rodapé mostra **"N alterações não
+salvas"** + botão **Salvar** (desabilitado sem pendências) que persiste TUDO numa chamada
+(o histórico continua por célula no banco). **Guarda de saída**: trocar de contexto/ano ou fechar a aba
+com pendências → confirmação explícita (`window.confirm` + `beforeunload`) — a edição nunca evapora.
+Erro no salvar mantém as pendências marcadas (retry). (Distinto do autosave-por-célula de
+`contas-manager`/`lancamento-row`, para grades pequenas.)

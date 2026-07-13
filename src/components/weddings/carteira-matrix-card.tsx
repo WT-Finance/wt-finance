@@ -1,6 +1,7 @@
 'use client'
 
 import type { CarteiraWeddings } from '@/types/api'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 interface Props {
   casamentos: CarteiraWeddings | null
@@ -44,7 +45,7 @@ export default function CarteiraMartrixCard({ casamentos }: Props) {
         <p className="text-[13px] text-[var(--text-muted)]">Vendas por ano de venda × ano de entrega</p>
       </div>
 
-      <div className="overflow-x-auto">
+      <ScrollAutoHide eixo="x">
         <table className="text-xs border-collapse w-full">
           <thead>
             <tr>
@@ -112,7 +113,7 @@ export default function CarteiraMartrixCard({ casamentos }: Props) {
             </tfoot>
           )}
         </table>
-      </div>
+      </ScrollAutoHide>
 
       <p className="mt-3 text-2xs text-zinc-400">
         Linhas: ano da venda do Contrato · Colunas: ano da Entrega do casamento · Diagonal{' '}

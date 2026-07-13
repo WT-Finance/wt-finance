@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { PrejuizosDetalhe } from '@/types/api'
 import { fmtBRL, fmtDate } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 const LIMITE = 5
 
@@ -46,7 +47,7 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
         )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-x-auto">
+      <ScrollAutoHide eixo="x">
         <table className="w-full min-w-96 text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
@@ -90,7 +91,7 @@ export default function PrejuizosTable({ data, loading, titulo = 'Vendas com Pre
             }
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
 
       {!loading && (
         <div className="mt-3 border-t border-zinc-100">

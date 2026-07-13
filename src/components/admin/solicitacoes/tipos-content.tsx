@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2 } fro
 import { arquivarTipo, excluirTipo } from '@/app/admin/solicitacoes/actions'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 import Button from '@/components/ui/button'
@@ -94,8 +95,8 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
 
       <CardTabela titulo="Tipos">
-        {/* overflow-x-auto evita clipping das ações em telas estreitas (min-w-160 = 640px garante ≥128px úteis para Nome) */}
-        <div className="overflow-x-auto">
+        {/* ScrollAutoHide (eixo x) evita clipping das ações em telas estreitas (min-w-160 = 640px garante ≥128px úteis para Nome) */}
+        <ScrollAutoHide eixo="x">
           <table className="w-full min-w-160 table-fixed text-sm">
             <colgroup>
               <col />
@@ -185,7 +186,7 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
               )}
             </tbody>
           </table>
-        </div>
+        </ScrollAutoHide>
       </CardTabela>
 
       {/* Modal de confirmação de exclusão — substitui window.confirm (padrão da tela irmã aba-usuarios.tsx). */}

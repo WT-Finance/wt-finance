@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, AlertTriangle, PencilLine, ExternalLink, Paperclip, X } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { splitDestinatarios, emailValido } from '@/lib/email/destinatarios'
 import { prepararEnvioEmails, enviarEmailFatura, type LinhaEnvioEmail } from '@/app/financeiro/faturamento-corp/actions'
@@ -433,7 +434,7 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
           </div>
 
           {/* Tabela rolável — cabeçalho fixo (receita border-separate/DS §7). */}
-          <div className="flex-1 min-h-0 overflow-auto px-6 pb-4" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+          <ScrollAutoHide eixo="both" className="px-6 pb-4" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
             <table className="w-full border-separate border-spacing-0 text-left">
               <thead className={`sticky top-0 z-20 text-2xs font-medium text-zinc-400 [&_th]:bg-zinc-50 [&_th]:py-2 [&_th]:px-2 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-200 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg ${rolado ? '[&_tr:last-child_th]:shadow-[0_2px_4px_-2px_rgba(0,0,0,0.12)]' : ''}`}>
                 <tr>
@@ -479,7 +480,7 @@ export default function RevisarEnvioModal({ refs, emailModo, onClose }: Props) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollAutoHide>
         </>
       )}
     </ModalCentral>

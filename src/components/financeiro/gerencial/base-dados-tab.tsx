@@ -8,6 +8,7 @@ import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import ImportDrawer from './import-drawer'
 import ConfirmModal from '@/components/shared/confirm-modal'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import { type Conta } from './tipos'
 import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
@@ -293,7 +294,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
           tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>.
           Sem min-w: Descrição/Conta/Originador são flexíveis e truncam — a tabela cabe no
           container sem barra horizontal (refino v4.34.1). */}
-      <div className="overflow-auto max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+      <ScrollAutoHide eixo="both" className="max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
         <table className="w-full text-sm table-fixed border-separate border-spacing-0">
           <thead className={`sticky top-0 z-20 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left">
@@ -428,7 +429,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
 
       {/* Footer */}
       <p className="mt-2 text-3xs text-[var(--text-muted)]">

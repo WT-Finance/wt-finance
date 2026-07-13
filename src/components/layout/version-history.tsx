@@ -5,6 +5,7 @@ import { Sparkles, Wrench, TrendingUp, ChevronRight, type LucideIcon } from 'luc
 import { APP_VERSION } from '@/lib/version'
 import { fmtDataHora } from '@/lib/fmt'
 import ModalCentral from '@/components/shared/modal-central'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { CHANGELOG_DIRETORIA, type ChangelogTipo, type ChangelogEntrada } from '@/data/changelog-diretoria'
 
 // Metadados visuais por tipo. Cores FIXAS (paleta dessaturada global), não
@@ -17,11 +18,8 @@ const TIPO_META: Record<ChangelogTipo, { label: string; Icon: LucideIcon; bg: st
 
 // Major da versão atual do app (ex.: "4" para "4.39.0"). Deriva de APP_VERSION —
 // nenhuma versão fica hardcoded. Quando APP_VERSION virar 5.x, todo o grupo 4.x
-// automaticamente deixa de ser o "major atual" e passa a colapsar sozinho.
+// automaticamente deixa de ser o "major atual" e passa a nascer colapsado.
 const MAJOR_ATUAL = APP_VERSION.split('.')[0]
-
-// Quantas entradas do major ATUAL aparecem sem precisar expandir.
-const QTD_RECENTES_MAJOR_ATUAL = 5
 
 interface Grupo {
   major:    string
@@ -73,51 +71,30 @@ function EntradaChangelog({ entrada }: { entrada: ChangelogEntrada }) {
   )
 }
 
-interface GrupoChangelogProps {
-  grupo:               Grupo
-  isMajorAtual:        boolean
-  expandido:           boolean
-  mostrarTodasAtual:   boolean
-  onToggleMajor:       () => void
-  onMostrarTodasAtual: () => void
+interface GrupoMajorProps {
+  major:    string
+  entradas: ChangelogEntrada[]
+  aberto:   boolean
+  onToggle: () => void
 }
 
-// Major ATUAL: mostra as ~5 entradas mais recentes; o resto do MESMO major fica
-// atrás de um "Mostrar mais N versões" discreto. Major ANTERIOR: fica inteiro
-// colapsado atrás de um cabeçalho expansível "Versões N.x — N versões". Nada é
-// removido — só a exibição inicial muda.
-function GrupoChangelog({ grupo, isMajorAtual, expandido, mostrarTodasAtual, onToggleMajor, onMostrarTodasAtual }: GrupoChangelogProps) {
-  if (isMajorAtual) {
-    const visiveis = mostrarTodasAtual ? grupo.entradas : grupo.entradas.slice(0, QTD_RECENTES_MAJOR_ATUAL)
-    const restantes = grupo.entradas.length - visiveis.length
-    return (
-      <div className="space-y-6">
-        {visiveis.map(entrada => <EntradaChangelog key={entrada.versao} entrada={entrada} />)}
-        {restantes > 0 && (
-          <button
-            onClick={onMostrarTodasAtual}
-            className="text-xs font-medium text-zinc-400 hover:text-zinc-600 hover:underline cursor-pointer"
-          >
-            Mostrar mais {restantes} {restantes === 1 ? 'versão' : 'versões'}
-          </button>
-        )}
-      </div>
-    )
-  }
-
+// Cada major é um cabeçalho colapsável "v{major} ›" — sem contagem de versões.
+// O major ATUAL nasce aberto; os demais nascem fechados (controlado pelo caller).
+// Componente hasteado para o módulo (mesma exigência do react-hooks/static-components).
+function GrupoMajor({ major, entradas, aberto, onToggle }: GrupoMajorProps) {
   return (
     <div>
       <button
-        onClick={onToggleMajor}
-        className="w-full flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 cursor-pointer"
-        aria-expanded={expandido}
+        onClick={onToggle}
+        aria-expanded={aberto}
+        className="w-full flex items-center gap-1.5 border-b border-zinc-100 pb-2 cursor-pointer"
       >
-        <ChevronRight size={13} className={`transition-transform ${expandido ? 'rotate-90' : ''}`} />
-        Versões {grupo.major}.x — {grupo.entradas.length} {grupo.entradas.length === 1 ? 'versão' : 'versões'}
+        <ChevronRight size={15} className={`text-zinc-400 transition-transform ${aberto ? 'rotate-90' : ''}`} />
+        <span className="text-sm font-semibold text-zinc-700">v{major}</span>
       </button>
-      {expandido && (
+      {aberto && (
         <div className="space-y-6 mt-4">
-          {grupo.entradas.map(entrada => <EntradaChangelog key={entrada.versao} entrada={entrada} />)}
+          {entradas.map(entrada => <EntradaChangelog key={entrada.versao} entrada={entrada} />)}
         </div>
       )}
     </div>
@@ -126,13 +103,12 @@ function GrupoChangelog({ grupo, isMajorAtual, expandido, mostrarTodasAtual, onT
 
 export default function VersionHistory() {
   const [open, setOpen] = useState(false)
-  const [mostrarTodasAtual, setMostrarTodasAtual] = useState(false)
-  const [majorsExpandidos, setMajorsExpandidos] = useState<Set<string>>(() => new Set())
+  const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set([MAJOR_ATUAL]))
 
   const grupos = agruparPorMajor(CHANGELOG_DIRETORIA)
 
   function alternarMajor(major: string) {
-    setMajorsExpandidos(prev => {
+    setExpandidos(prev => {
       const novo = new Set(prev)
       if (novo.has(major)) novo.delete(major)
       else novo.add(major)
@@ -182,21 +158,23 @@ export default function VersionHistory() {
           titulo="Histórico de versões"
           tituloAcessorio={poweredBy}
           subtitulo="Registro histórico de implementações das versões"
+          alturaFixa
+          corpoFlex
           onClose={() => setOpen(false)}
         >
-          <div className="space-y-6">
-            {grupos.map(grupo => (
-              <GrupoChangelog
-                key={grupo.major}
-                grupo={grupo}
-                isMajorAtual={grupo.major === MAJOR_ATUAL}
-                expandido={majorsExpandidos.has(grupo.major)}
-                mostrarTodasAtual={mostrarTodasAtual}
-                onToggleMajor={() => alternarMajor(grupo.major)}
-                onMostrarTodasAtual={() => setMostrarTodasAtual(true)}
-              />
-            ))}
-          </div>
+          <ScrollAutoHide className="px-6 py-5">
+            <div className="space-y-6">
+              {grupos.map(grupo => (
+                <GrupoMajor
+                  key={grupo.major}
+                  major={grupo.major}
+                  entradas={grupo.entradas}
+                  aberto={expandidos.has(grupo.major)}
+                  onToggle={() => alternarMajor(grupo.major)}
+                />
+              ))}
+            </div>
+          </ScrollAutoHide>
         </ModalCentral>
       )}
     </>

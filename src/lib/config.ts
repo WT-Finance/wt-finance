@@ -44,11 +44,20 @@ export function margemColor(
 // ── Cores de domínio para gráficos (consolidadas em v4.8 / M4) ────────────────
 // Antes duplicadas hardcoded em ~4 gráficos. Apontam para tokens CSS.
 
-/** Cor identitária por setor macro. Chaves batem com `setor_macro`/display. */
+/** Cor identitária por setor macro (palette de gráficos cross-setor). Chaves batem com `setor_macro`/display. */
 export const SETOR_COLORS: Record<string, string> = {
   Lazer:       'var(--setor-lazer)',
   Weddings:    'var(--setor-weddings)',
   Corporativo: 'var(--setor-corporativo)',
+}
+
+/** Cor de MARCA por setor (o --brand de cada aba, cross-contexto). Usada nos cards de
+ *  Metas (tema group) para dar a cada setor a sua cor de marca. Distinta de SETOR_COLORS
+ *  (identidade de gráficos). Chaves batem com `setor_macro`/nome interno. */
+export const SETOR_MARCA_COLORS: Record<string, string> = {
+  Lazer:       'var(--marca-lazer)',
+  Weddings:    'var(--marca-weddings)',
+  Corporativo: 'var(--marca-corporativo)',
 }
 
 /** Ordem fixa de exibição dos subsetores Weddings (composição, stacks, legendas). */

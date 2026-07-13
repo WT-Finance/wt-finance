@@ -22,13 +22,19 @@ interface TabsProps {
   onChange:   (id: string) => void
   ariaLabel?: string
   className?: string
+  /** Cor (var()) da pill ATIVA — opt-in: quando dada, a pill ativa fica sólida nessa cor
+   *  com texto branco (ex.: cor de identidade do setor). Sem ela, o ativo é o bege neutro. */
+  corAtiva?:  string
 }
 
-export default function Tabs({ items, ativo, onChange, ariaLabel, className = '' }: TabsProps) {
+export default function Tabs({ items, ativo, onChange, ariaLabel, className = '', corAtiva }: TabsProps) {
   return (
     <div role="tablist" aria-label={ariaLabel} className={`flex flex-wrap gap-2 ${className}`}>
       {items.map(t => {
         const sel = t.id === ativo
+        const estiloAtivo = corAtiva
+          ? { background: corAtiva, color: '#fff', borderColor: corAtiva }
+          : PILL_PRIMARIA_STYLE
         return (
           <button
             key={t.id}
@@ -38,7 +44,7 @@ export default function Tabs({ items, ativo, onChange, ariaLabel, className = ''
             aria-selected={sel}
             onClick={() => onChange(t.id)}
             className={`${PILL} whitespace-nowrap ${sel ? PILL_PRIMARIA : PILL_NEUTRO}`}
-            style={sel ? PILL_PRIMARIA_STYLE : undefined}
+            style={sel ? estiloAtivo : undefined}
           >
             {t.label}
             {t.count != null && t.count}

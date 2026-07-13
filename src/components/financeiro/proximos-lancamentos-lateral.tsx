@@ -6,6 +6,7 @@ import { differenceInDays, parseISO, format } from 'date-fns'
 import { getBrowserClient } from '@/lib/supabase/client'
 import { fmtBRL } from '@/lib/fmt'
 import ListDrawer from '@/components/shared/list-drawer'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 
 export interface ProximoLancamento {
@@ -301,7 +302,7 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
       </div>
 
       {/* Lista rolável */}
-      <div className="flex-1 overflow-y-auto pt-3">
+      <ScrollAutoHide className="pt-3">
         {lancamentos.length === 0 ? (
           <p className="text-xs text-zinc-400 text-center py-8">
             {filtro === 'custom' && dadosCustom === null
@@ -325,7 +326,7 @@ function DrawerContent({ lancamentosDefault }: { lancamentosDefault: ProximoLanc
             </tbody>
           </table>
         )}
-      </div>
+      </ScrollAutoHide>
     </div>
   )
 }
@@ -367,7 +368,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto min-h-0 px-4">
+            <ScrollAutoHide className="px-4">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-zinc-100">
@@ -389,7 +390,7 @@ export default function ProximosLancamentosLateral({ lancamentos: lancamentosDef
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollAutoHide>
 
             <div className="shrink-0 border-t border-zinc-100">
               <button

@@ -83,6 +83,39 @@ export const executivaKpisSchema = z.object({
   receita_media:    kpiMetrica,
 }).passthrough()
 
+// ── Metas por Setor (v5.0.0) ─────────────────────────────────────────────────
+
+const metaMensalItem = z.object({
+  setor_macro_id: z.number(),
+  setor_nome:     z.string(),
+  setor_display:  z.string(),
+  mes:            z.number(),
+  valor_meta:     z.number(),
+  pct_receita:    z.number().nullable(),
+})
+
+/** metas_listar(p_ano) → { ano, metas[], ultima_alteracao } */
+export const metasListarSchema = z.object({
+  ano:   z.number(),
+  metas: z.array(metaMensalItem),
+  ultima_alteracao: z.object({
+    alterado_em:  z.string(),
+    alterado_por: z.string().nullable(),
+  }).nullable(),
+}).passthrough()
+
+const ritmoDiaItem = z.object({
+  data:        z.string(),
+  valor_total: z.number(),
+  receitas:    z.number(),
+})
+
+/** metas_ritmo_diario(p_from,p_to,p_setor) → { serie[], ultima_venda } */
+export const metasRitmoDiarioSchema = z.object({
+  serie:        z.array(ritmoDiaItem),
+  ultima_venda: z.string().nullable(),
+}).passthrough()
+
 // ── get_tendencia_margem → TendenciaMargem ───────────────────────────────────
 
 const tendenciaMargemPonto = z.object({

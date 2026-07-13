@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.0.0] — 2026-07-08
+
+MAJOR · **Metas por Setor — a abertura da major 5.** O acompanhamento de metas comerciais de faturamento (VT) por setor entra na plataforma, substituindo o dashboard provisório. **Migration 0175 (aditiva)** · ADR-0146. Base v4.40.1.
+
+- **Banco (M1):** `app.meta_setor` ganha `pct_receita` (alvo de % Rec) e o histórico é ATIVADO (auditoria de quem/quando/valor anterior). Área RBAC `metas/acompanhamento` (leitura) ao lado da `metas` (edição). RPCs inline `metas_listar`/`metas_ritmo_diario`/`metas_upsert`. **Fonte única PROVADA por teste**: a série de `metas_ritmo_diario` soma exatamente o faturamento de `get_executiva_kpis` (mesma `mv_vendas_diarias`).
+- **Ritmo (M1):** módulo puro `src/lib/metas/ritmo.ts` — meta do período = soma das metas mensais tocadas, **pró-rata por dias** nos meses parciais; "hoje" = data da última venda carregada; régua com constantes nomeadas; alvo de % Rec ponderado por VT. 10 testes.
+- **Primitivos (M2):** `<MetaProgressBar>` (barra de meta com tick + tooltip escuro); `<NavGroup>` genérico na sidebar (Performance/Financeiro/Metas); `kpi-principal-drawer` realocado de `weddings/`→`performance/`. *(Consolidação das 3 pills de período deferida — a variante de Weddings é Context, migrar arriscaria regressão; Metas reusa a base.)*
+- **Acompanhamento (M3):** `/metas` — card Group (Faturamento + `% da meta`/`% do esperado` + barra + Receita | Margem) + 3 cards setoriais (barra na cor do setor). **Sem YoY na superfície** (Metas mede entrega da meta, não variação anual); Margem = delta em p.p. contra o alvo. Gráfico "Ritmo do período". Group computado. Tema group.
+- **Cadastro (M4):** `/metas/cadastro` — grade anual 12×3 (Faturamento + % Rec) com Group computado ao vivo, **edição local + salvar em lote** (contador de pendências + botão Salvar + guarda de saída), "aplicar ao ano" no % Rec, Total em contábil pleno e auditoria da última alteração.
+- **Aposentadoria (M5):** dashboard v1 legado removido (provado órfão); migration destrutiva 0176 (DROP das 4 RPCs órfãs) preparada, **pendente de aplicação humana** (`get_historico_mensal` preservada — consumida pela Executiva).
+
 ## [4.40.1] — 2026-07-08
 
 PATCH · **Título do modal de boas-vindas na fonte da identidade.** "Welcome to Janus" sai da serifa (Georgia) para a **Avenir LT Std 85 Heavy** — o mesmo estilo do antigo wordmark (caixa alta + tracking, via CSS; o texto verbatim permanece) — no **cinza da marca** (`--text-muted` #75777B) em vez de preto. Mockup B aprovado pelo Yan. Sem migration.
