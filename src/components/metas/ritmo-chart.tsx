@@ -11,7 +11,6 @@ import {
   dashArrays, strokeWidths, chartMargins, chartColors, chartSeries, tickFontSize,
 } from '@/components/charts'
 import { fmtMi } from '@/lib/fmt'
-import { corRitmo } from '@/components/metas/meta-card'
 import type { PainelSetor } from '@/components/metas/tipos'
 
 // Gráfico "Ritmo do período" — realizado acumulado (área+linha sólida, cor do
@@ -34,25 +33,19 @@ export default function RitmoChart({ setores }: Props) {
 
   if (!painel) return null
 
-  const pctLabel = painel.ritmo.ritmoPct == null ? '—' : `${Math.round(painel.ritmo.ritmoPct)}%`
   // ~9 rótulos no eixo X, independente do tamanho do período
   const tickIntervalo = Math.max(0, Math.ceil(painel.ritmo.pontos.length / 9) - 1)
 
   return (
     <Card className="px-5 py-4">
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold leading-snug text-[var(--text-primary)]">Ritmo do período</h3>
-          <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-zinc-100 bg-zinc-50 px-2.5 py-0.5 text-xs text-[var(--text-muted)]">
-            % do esperado até hoje:
-            <span className={`font-semibold ${corRitmo(painel.ritmo.ritmoPct)}`}>{pctLabel}</span>
-          </div>
-        </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-base font-semibold leading-snug text-[var(--text-primary)]">Ritmo do período</h3>
 
         <Tabs
           items={setores.map(s => ({ id: s.key, label: s.display }))}
           ativo={painel.key}
           onChange={setSelecionado}
+          corAtiva={painel.cor}
           ariaLabel="Selecionar painel do gráfico de ritmo"
         />
       </div>

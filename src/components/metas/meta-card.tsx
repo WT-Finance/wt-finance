@@ -1,7 +1,6 @@
 import { Card } from '@/components/ui/card'
 import MetaProgressBar from '@/components/shared/meta-progress-bar'
 import { fmtMi } from '@/lib/fmt'
-import { classificarRitmo } from '@/lib/metas/ritmo'
 import type { PainelSetor } from '@/components/metas/tipos'
 
 // Card de UM painel (Group ou setor) do Acompanhamento de Metas (v5.0.0).
@@ -10,19 +9,6 @@ import type { PainelSetor } from '@/components/metas/tipos'
 // "Y% esperado" recebem a MESMA cor, pela distância entre eles (verde se meta ≥
 // esperado; âmbar até 3 p.p. abaixo; vermelho mais que isso). Margem = delta em
 // p.p. contra o alvo de %Rec.
-
-const COR_REGUA: Record<'verde' | 'ambar' | 'vermelho', string> = {
-  verde:     'text-success',
-  ambar:     'text-warning',
-  vermelho:  'text-danger',
-}
-
-/** Régua de ritmo (realizado/esperado) — mantida para o gráfico "Ritmo do período"
- *  (ritmo-chart.tsx) reusar no rótulo "% do esperado até hoje". */
-export function corRitmo(pct: number | null): string {
-  const status = classificarRitmo(pct)
-  return status ? COR_REGUA[status] : 'text-[var(--text-muted)]'
-}
 
 const fmtNum1 = (v: number) =>
   v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -160,16 +146,15 @@ export default function MetaCard({ painel, tamanho }: Props) {
 
       <div className="mt-3">{barra(10)}</div>
 
-      {/* Métrica esquerda e Margem na MESMA linha (alinhadas à ESQUERDA), separadas por |,
-          como no Group. Em Weddings a métrica é "Contratos" (nº de contratos de casamento
-          vendidos), nos demais é "Receita". O valor da margem é colorido (verde ≥ alvo, vermelho abaixo). */}
-      <div className="mt-auto flex flex-wrap items-baseline justify-start gap-x-2 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs">
+      {/* Métrica à ESQUERDA, Margem à DIREITA (justify-between), na mesma linha. Em Weddings
+          a métrica é "Contratos" (nº de contratos de casamento vendidos), nos demais é "Receita".
+          O valor da margem é colorido (verde ≥ alvo, vermelho abaixo). */}
+      <div className="mt-auto flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs">
         {key === 'Weddings' ? (
           <span className="text-[var(--text-muted)]">Contratos <span className="font-medium tabular-nums text-[var(--text-primary)]">{contratos == null ? '—' : contratos.toLocaleString('pt-BR')}</span></span>
         ) : (
           <span className="text-[var(--text-muted)]">Receita <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span></span>
         )}
-        <span className="text-zinc-300" aria-hidden>|</span>
         <span className="text-[var(--text-muted)]">Margem <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} corValor /></span>
       </div>
     </Card>
