@@ -11,6 +11,7 @@ import {
 } from '@/components/charts'
 import type { ChartLegendItem } from '@/components/charts'
 import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import type {
   DrilldownOperacao, VisaoFinanceira, SumarioSubsetor, AcumuladoMensalItem,
 } from '@/types/api'
@@ -370,7 +371,7 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
 
         {/* Scrollable content — espaçamento vertical generoso entre seções
             (consistência com o drawer principal). */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-8">
+        <ScrollAutoHide className="px-5 py-5" contentClassName="space-y-8">
           {loading ? (
             <div className="space-y-4 animate-pulse">
               <div className="h-24 rounded-xl bg-zinc-100" />
@@ -463,7 +464,7 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
               )}
             </>
           )}
-        </div>
+        </ScrollAutoHide>
       </div>
     </>
   )

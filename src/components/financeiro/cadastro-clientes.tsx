@@ -11,6 +11,7 @@ import { useState, useMemo, useRef, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Upload, Trash2, Loader2, Check, X, FileSpreadsheet, PencilLine, AlertTriangle } from 'lucide-react'
 import ConfirmModal from '@/components/shared/confirm-modal'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import { parseClientesCorpFile } from '@/lib/faturamento/parse-clientes-corp'
 import {
@@ -279,7 +280,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
           VAZAM pelo cabeçalho ao rolar. Em separate, cada CÉLULA pinta fundo + borda e
           tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>.
           Sem min-w: as colunas de texto (Contato/Destinatários/Observações) são flexíveis e truncam — a tabela cabe no container sem barra horizontal (refino v4.34.1). */}
-      <div className="overflow-auto max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+      <ScrollAutoHide eixo="both" className="max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
         <table className="w-full text-sm table-fixed border-separate border-spacing-0">
           <thead className={`sticky top-0 z-20 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left text-xs font-medium text-zinc-400">
@@ -346,7 +347,7 @@ export default function CadastroClientes({ clientes: inicial }: Props) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
 
       <p className="mt-1 text-3xs text-zinc-400">
         {filtrados.length} de {itens.length} {itens.length === 1 ? 'cliente' : 'clientes'}

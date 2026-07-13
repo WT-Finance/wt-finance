@@ -1,6 +1,7 @@
 'use client'
 
 import type { SumarioSubsetor } from '@/types/api'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import { margemColor, subsetorColor, SUBSETOR_LABELS } from '@/lib/config'
 
@@ -59,7 +60,7 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
         </>
       )}
 
-      <div className="overflow-x-auto">
+      <ScrollAutoHide eixo="x">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-zinc-100">
@@ -148,7 +149,7 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
     </Wrapper>
   )
 }

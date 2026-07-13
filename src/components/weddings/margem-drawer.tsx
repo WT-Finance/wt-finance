@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import TendenciaMargemChart from '@/components/performance/tendencia-margem-chart'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import type { TendenciaMargem, SumarioSubsetor } from '@/types/api'
 import { fmtBRL } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
@@ -78,7 +79,7 @@ export default function MargemDrawer({ tendencia, sumario, margemOk, margemAlert
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+        <ScrollAutoHide className="px-6 py-5" contentClassName="space-y-6">
           <TendenciaMargemChart
             data={tendencia}
             loading={false}
@@ -123,7 +124,7 @@ export default function MargemDrawer({ tendencia, sumario, margemOk, margemAlert
               </table>
             </div>
           )}
-        </div>
+        </ScrollAutoHide>
       </div>
     </>
   )

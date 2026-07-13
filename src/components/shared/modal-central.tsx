@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { pushOverlay, popOverlay } from '@/lib/ui/overlay-stack'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 // Modal CENTRAL (sobre fundo escurecido), rolável, fecha no X / Esc / clique fora.
 // Segue o padrão do projeto (admin/modal-confirmacao-upload): container
@@ -112,9 +113,11 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largu
             <X size={18} />
           </button>
         </div>
-        <div className={corpoFlex ? 'flex-1 min-h-0 flex flex-col' : 'flex-1 overflow-y-auto px-6 py-5'}>
-          {children}
-        </div>
+        {corpoFlex ? (
+          <div className="flex-1 min-h-0 flex flex-col">{children}</div>
+        ) : (
+          <ScrollAutoHide className="px-6 py-5">{children}</ScrollAutoHide>
+        )}
         {rodape && (
           <div className="shrink-0 border-t border-zinc-100 px-6 py-3">
             {rodape}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, use, Suspense } from 'react'
+import { useState, useRef, useEffect, useCallback, use, Suspense, type PointerEvent as ReactPointerEvent } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -10,6 +10,7 @@ import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
 import Badge from '@/components/ui/badge'
 import NavGroup, { type NavSubItem } from '@/components/layout/nav-group'
+import { scrollAoArrastar } from '@/lib/ui/scrollbar-math'
 
 /** Dados do usuário logado, repassados pelo AppShell para identidade + filtro de navegação. */
 export interface UsuarioSidebar {
@@ -202,6 +203,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
   const navContentRef = useRef<HTMLDivElement | null>(null)
   const thumbRef      = useRef<HTMLDivElement | null>(null)
   const hideRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const draggingRef   = useRef(false)
 
   const measureThumb = useCallback(() => {
     const el = navViewRef.current, th = thumbRef.current
@@ -215,16 +217,48 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
     th.style.transform = `translateY(${top}px)`
   }, [])
 
-  // Indicador puro (pointer-events:none, ver JSX) — aparece e some sozinho; sem drag.
+  // Aparece e some sozinho; não some no meio de um arraste (draggingRef).
   const revealThumb = useCallback(() => {
     const th = thumbRef.current
     if (th) th.style.opacity = '1'
     if (hideRef.current) clearTimeout(hideRef.current)
     hideRef.current = setTimeout(() => {
+      if (draggingRef.current) return
       const t = thumbRef.current
       if (t) t.style.opacity = '0'
     }, 1200)
   }, [])
+
+  // Arraste do thumb → scrollTop (pointer capture); mesma proporção do measureThumb.
+  const iniciarArraste = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
+    const el = navViewRef.current, th = thumbRef.current
+    if (!el || !th) return
+    e.preventDefault()
+    e.stopPropagation()
+    th.setPointerCapture(e.pointerId)
+    draggingRef.current = true
+    th.style.cursor = 'grabbing'
+    revealThumb()
+    const inicio = e.clientY
+    const base = el.scrollTop
+    const scrollSize = el.scrollHeight
+    const clientSize = el.clientHeight
+    const mover = (ev: PointerEvent) => {
+      el.scrollTop = scrollAoArrastar(ev.clientY - inicio, base, scrollSize, clientSize)
+    }
+    const soltar = () => {
+      draggingRef.current = false
+      th.style.cursor = 'grab'
+      th.releasePointerCapture(e.pointerId)
+      th.removeEventListener('pointermove', mover)
+      th.removeEventListener('pointerup', soltar)
+      th.removeEventListener('pointercancel', soltar)
+      revealThumb()
+    }
+    th.addEventListener('pointermove', mover)
+    th.addEventListener('pointerup', soltar)
+    th.addEventListener('pointercancel', soltar)
+  }, [revealThumb])
 
   // ResizeObserver: viewport (janela) E conteúdo (itens/subabas mudando de altura).
   useEffect(() => {
@@ -322,14 +356,15 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
           </div>
         </nav>
 
-        {/* Thumb flutuante: indicador PURO de posição (pointer-events:none → nunca
-            intercepta clique de aba). Posição/altura/opacidade via ref imperativo;
-            começa escondido (display:none, opacity:0) → sem deslocamento e sem flash no SSR.
+        {/* Thumb flutuante ARRASTÁVEL (v5.0.0): mesma aparência de antes; agora aceita
+            arraste (pointer capture) além do mouse-scroll. Ocupa só a faixa da barra (6px
+            na direita) → não intercepta clique de aba. Posição/altura/opacidade via ref
+            imperativo; começa escondido (display:none, opacity:0) → sem flash no SSR.
             motion-reduce desliga o fade para quem prefere menos movimento. */}
         <div
           ref={thumbRef}
-          aria-hidden
-          className="pointer-events-none absolute right-1 top-0 w-1.5 rounded-full transition-opacity duration-300 motion-reduce:transition-none"
+          onPointerDown={iniciarArraste}
+          className="absolute right-1 top-0 w-1.5 cursor-grab touch-none rounded-full transition-opacity duration-300 motion-reduce:transition-none"
           style={{
             display: 'none',
             height: 0,

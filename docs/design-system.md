@@ -161,18 +161,40 @@ só no desktop); título serif via `style={{ fontFamily: "Georgia, 'Times New Ro
 (tokens neutros de plataforma — nunca `var(--brand)`). Flag no banco (`onboarding_visto_em`),
 promise fora do caminho bloqueante, fail-safe (falha → não exibe).
 
-## Barras de rolagem (v4.40.0 — padrão)
+## Barras de rolagem (v4.40.0; ARRASTÁVEL + horizontal em v5.0.0 — padrão)
 
-Container rolável INTERNO (lista/painel dentro de uma página) usa a **barra flutuante
-auto-hide**: a scrollbar nativa é escondida (`.scrollbar-none` — largura 0, não desloca o
-conteúdo, sem "goteira") e um **thumb em overlay** aparece ao rolar/hover e **some sozinho**
-(~1,2s). Componente pronto: **`<ScrollAutoHide>`** (`src/components/shared/scroll-auto-hide.tsx`)
-— substitui o `<div className="overflow-y-auto">`; a `className` vai no viewport. Mecânica
-imperativa (refs, zero state — não re-renderiza por scroll). Exemplos vivos: a **sidebar**
-(implementação própria embutida, a origem do padrão) e o **Acervo de Documentos**.
+**TODO** container rolável INTERNO (lista/painel/tabela dentro de uma página, vertical OU
+horizontal) usa a **barra flutuante auto-hide**: a scrollbar nativa é escondida
+(`.scrollbar-none` — largura 0, não desloca o conteúdo, sem "goteira") e um **thumb em
+overlay** aparece ao rolar/hover e **some sozinho** (~1,2s). O thumb é **ARRASTÁVEL** (pointer
+capture — arrastar e mouse-scroll funcionam; v5.0.0 fechou o furo de "só rola com a roda do
+mouse"). Componente único: **`<ScrollAutoHide>`** (`src/components/shared/scroll-auto-hide.tsx`).
+Mecânica imperativa (refs, zero state — não re-renderiza por scroll); matemática pura e testada
+em `@/lib/ui/scrollbar-math` (`scrollbar-math.test.ts`).
+
+Props:
+- `className` → vai no **viewport** (o que rola). Coloque **padding** (`px/py`), `max-h-*`,
+  `min-w-*`. NUNCA `overflow-*`, `scrollbar-*`, `flex-1`, `min-h-0`, `h-full` (o wrapper já provê).
+- `eixo` → `'y'` (default) · `'x'` (horizontal) · `'both'` (tabela densa, os dois eixos).
+- `onScroll` → repassado ao viewport; usar p/ acender a **sombra do cabeçalho sticky** (§7):
+  `onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}`.
+- `contentClassName` → SÓ para espaçamento **entre filhos** (`space-y-*`, `flex flex-col gap-*`),
+  pois `className` vai no viewport (cujo único filho é o wrapper de conteúdo). Padding fica em
+  `className` (preserva o cálculo do sticky `-top-5`).
+
+Migração (regra de escoteiro + varredura v5.0.0): trocar `<div className="overflow-* …">` por
+`<ScrollAutoHide …>`; remover `overflow-*`/`flex-1`/`min-h-0`/`h-full`, manter padding/max-h/min-w
+em `className`, mover `space-y-*` para `contentClassName`. Migrados na varredura: modais
+(`ModalCentral` corpo), drawers (`ListDrawer`, `KpiDetailDrawer`, drilldown/margem de Weddings,
+Calendário de Liquidez, Próximos Lançamentos), tabelas densas com sticky (Cadastro de Clientes,
+Faturamento Corp, Revisar envio, Base de Dados) e tabelas horizontais (Lista de Operações, Mix
+por Setor, Prejuízos, Movimentações, Carteira, Sumário por Subsetor, etc.). A **sidebar** mantém
+implementação própria embutida (mesma mecânica; também arrastável desde a v5.0.0).
 
 Exceção: o `<main>` do AppShell mantém a scrollbar NATIVA com `scrollbar-gutter: stable`
-(DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos.
+(DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos. E o
+**board Kanban de Solicitações** mantém a barra nativa visível de propósito (afordância "há mais
+colunas a rolar").
 
 ## MetaProgressBar — barra de progresso de meta (v5.0.0)
 

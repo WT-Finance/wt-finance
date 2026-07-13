@@ -13,6 +13,7 @@
 import { useRef, useState, useCallback } from 'react'
 import { Upload, Loader2, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { numBRL2 } from '@/lib/fmt'
 import { SETOR_COLORS } from '@/lib/config'
 import { parseFaturaRateioFile } from '@/lib/rateio/parse-fatura'
@@ -249,7 +250,7 @@ export default function CalculadoraRateio() {
             {verLinhas ? 'Ocultar' : 'Ver'} as {resultado.resolvidas.length} linhas
           </button>
           {verLinhas && (
-            <div className="mt-2 overflow-x-auto">
+            <ScrollAutoHide eixo="x" className="mt-2">
               <table className="w-full min-w-[28rem] table-fixed text-2xs">
                 <colgroup><col className="w-14" /><col className="w-28" /><col /><col className="w-32" /></colgroup>
                 <thead>
@@ -276,7 +277,7 @@ export default function CalculadoraRateio() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollAutoHide>
           )}
         </Card>
       )}

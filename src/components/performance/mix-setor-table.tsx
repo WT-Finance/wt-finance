@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { MixSetor } from '@/types/api'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { fmtBRL } from '@/lib/fmt'
 import { margemColor, SETOR_COLORS } from '@/lib/config'
 
@@ -43,7 +44,7 @@ export default function MixSetorTable({ data, loading, margemAlvo, preset = 'est
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <h2 className="text-base font-semibold text-[var(--text-primary)] mb-3">Mix por Setor</h2>
-      <div className="overflow-x-auto">
+      <ScrollAutoHide eixo="x">
         <table className="w-full min-w-120 text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
@@ -126,7 +127,7 @@ export default function MixSetorTable({ data, loading, margemAlvo, preset = 'est
               )}
           </tbody>
         </table>
-      </div>
+      </ScrollAutoHide>
     </div>
   )
 }

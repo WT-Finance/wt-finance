@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import { format, parseISO, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import ListDrawer from '@/components/shared/list-drawer'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 import ContasManager from './contas-manager'
 import ContasCards from './contas-cards'
@@ -120,7 +121,7 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
         </ListDrawer>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm px-5 py-4 overflow-x-auto">
+      <ScrollAutoHide eixo="x" className="bg-white rounded-xl shadow-sm px-5 py-4">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Projeção Diária</p>
           {projecao.length > 0 && (
@@ -220,7 +221,7 @@ export default function VisualizacaoAgregadaTab({ saldos, projecao }: Props) {
             </tbody>
           </table>
         )}
-      </div>
+      </ScrollAutoHide>
     </div>
   )
 }

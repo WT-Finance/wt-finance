@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, Search, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from 'lucide-react'
 import type { Movimentacao, Solicitacao } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
@@ -124,7 +125,7 @@ export default function MovimentacoesContent({ movimentacoes, erroCarga }: {
       {erro && <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />}
 
       <CardTabela titulo="Movimentações" headerRight={headerRight}>
-        <div className="overflow-x-auto">
+        <ScrollAutoHide eixo="x">
           <table className="w-full min-w-[40rem] table-fixed text-sm">
             <colgroup>
               <col />{/* Usuário */}
@@ -180,7 +181,7 @@ export default function MovimentacoesContent({ movimentacoes, erroCarga }: {
               )}
             </tbody>
           </table>
-        </div>
+        </ScrollAutoHide>
       </CardTabela>
 
       {aberta && <DrawerSolicitacao sol={aberta} onClose={() => setAberta(null)} />}

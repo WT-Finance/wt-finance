@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { pushOverlay, popOverlay } from '@/lib/ui/overlay-stack'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 interface Props {
   titulo: string
@@ -76,9 +77,9 @@ export default function ListDrawer({ titulo, subtitulo, onClose, children }: Pro
             <X size={18} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <ScrollAutoHide className="px-6 py-5">
           {children}
-        </div>
+        </ScrollAutoHide>
       </div>
     </>
   )

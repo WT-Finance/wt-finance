@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { fmtMi } from '@/lib/fmt'
 import CustomTooltip from '@/components/charts/custom-tooltip'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 interface SeriePonto {
   ano: number; mes: number; label: string; valor: number
@@ -121,7 +122,7 @@ export default function KpiDetailDrawer({ metrica, rotulo, setor, onClose }: Pro
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <ScrollAutoHide className="px-6 py-5">
           {loading ? (
             <div className="space-y-4 animate-pulse">
               <div className="h-52 rounded-xl bg-zinc-100" />
@@ -198,7 +199,7 @@ export default function KpiDetailDrawer({ metrica, rotulo, setor, onClose }: Pro
               </div>
             </>
           )}
-        </div>
+        </ScrollAutoHide>
       </div>
     </>
   )
