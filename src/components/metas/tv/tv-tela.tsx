@@ -1,6 +1,8 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import MetaProgressBar from '@/components/shared/meta-progress-bar'
 import TvAutoRefresh from '@/components/metas/tv/tv-auto-refresh'
+import TvFullscreenButton from '@/components/metas/tv/tv-fullscreen-button'
 import { corComparacao } from '@/lib/metas/cor-comparacao'
 import { fmtMi, fmtDataHoraLongoSP } from '@/lib/fmt'
 import type { AcompanhamentoData, PainelSetor } from '@/components/metas/tipos'
@@ -43,38 +45,43 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--surface-soft)] px-12 py-8 text-[var(--text-primary)]">
-      {/* Cabeçalho */}
-      <header className="flex items-baseline justify-between gap-6">
-        <div className="flex items-baseline gap-6">
-          <span className="text-4xl font-[800] uppercase tracking-[4px]" style={{ color: 'var(--text-muted)' }}>Janus</span>
+      {/* Cabeçalho — logo Janus (não o wordmark escrito) + período à esquerda; à direita a
+          data da última atualização + tela cheia + sair. */}
+      <header className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-6">
+          <span className="relative block h-11 w-44">
+            <Image src="/logos/logo-janus.svg" alt="Janus" fill priority className="object-contain object-left" />
+          </span>
           <span className="text-2xl text-[var(--text-secondary)]">Metas · {data.periodoLabel}</span>
         </div>
-        <div className="flex items-baseline gap-8">
+        <div className="flex items-center gap-8">
           {data.ultimaAtualizacao && (
             <span className="text-lg text-[var(--text-muted)]">
               Atualizado em {fmtDataHoraLongoSP(data.ultimaAtualizacao)}
             </span>
           )}
+          <TvFullscreenButton />
           <Link href="/metas" className="foco-neutro text-base text-[var(--text-muted)] transition-colors hover:text-[var(--text-secondary)]">
-            Sair do modo TV
+            Sair do modo de exibição
           </Link>
         </div>
       </header>
 
       {/* Faixa GROUP */}
-      <section className="mt-8 rounded-2xl bg-white px-10 py-7 shadow-sm">
+      <section className="mt-8 rounded-2xl bg-white px-10 py-8 shadow-sm">
         <div className="flex items-end justify-between gap-10">
           <div>
             <p className="text-2xl font-semibold" style={{ color: group.cor }}>{group.display}</p>
-            <p className="mt-1 text-6xl font-bold tabular-nums" style={{ color: group.cor }}>{fmtMiOuTraco(group.faturamento)}</p>
-            <p className="mt-2 text-xl text-[var(--text-muted)]">Meta do mês: <span className="tabular-nums">{fmtMiOuTraco(group.ritmo.metaPeriodo)}</span></p>
+            {/* respiro abaixo de "Group" (coerente com os cards setoriais) */}
+            <p className="mt-5 text-6xl font-bold tabular-nums" style={{ color: group.cor }}>{fmtMiOuTraco(group.faturamento)}</p>
+            <p className="mt-2 text-xl text-[var(--text-muted)]">de <span className="tabular-nums">{fmtMiOuTraco(group.ritmo.metaPeriodo)}</span></p>
           </div>
           <div className="whitespace-nowrap text-right">
-            <span className={`text-7xl font-bold tabular-nums ${corGroup}`}>{pctRound(group.ritmo.pctMeta)}</span>
-            <span className="ml-3 text-2xl text-[var(--text-muted)]">da meta</span>
+            <span className={`text-5xl font-bold tabular-nums ${corGroup}`}>{pctRound(group.ritmo.pctMeta)}</span>
+            <span className="ml-3 text-xl text-[var(--text-muted)]">da meta</span>
           </div>
         </div>
-        <div className="mt-5">{barra(group, 22, 2)}</div>
+        <div className="mt-6">{barra(group, 22, 2)}</div>
       </section>
 
       {/* 3 cards setoriais */}
@@ -89,7 +96,7 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
                 <div className="flex items-baseline justify-between gap-4">
                   <span className="whitespace-nowrap text-5xl font-bold tabular-nums" style={{ color: s.cor }}>{fmtMiOuTraco(s.faturamento)}</span>
                   <span className="whitespace-nowrap">
-                    <span className={`text-5xl font-bold tabular-nums ${cor}`}>{pctRound(s.ritmo.pctMeta)}</span>
+                    <span className={`text-4xl font-bold tabular-nums ${cor}`}>{pctRound(s.ritmo.pctMeta)}</span>
                     <span className="ml-2 text-lg text-[var(--text-muted)]">da meta</span>
                   </span>
                 </div>

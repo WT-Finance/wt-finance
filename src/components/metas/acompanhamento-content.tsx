@@ -38,7 +38,7 @@ export default function AcompanhamentoContent({ data }: Props) {
           title="Abrir em tela cheia para a TV da sala"
         >
           <Monitor size={16} className="text-zinc-400" />
-          Modo TV
+          Modo de Exibição
         </Link>
       </div>
 
