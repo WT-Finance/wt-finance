@@ -19,6 +19,9 @@ export interface PainelSetor {
   receita: number | null
   /** % Rec REALIZADO = receita/faturamento (o margem_pct da Performance). */
   margemPct: number | null
+  /** Nº de contratos de casamento vendidos no período (subsetor COMERCIAL de Weddings,
+   *  de get_sumario_subsetor). SÓ preenchido no painel Weddings; null nos demais. */
+  contratos?: number | null
   /** Ritmo (meta do período, % da meta, esperado, ritmo%, status, pontos do gráfico). */
   ritmo: RitmoResultado
 }

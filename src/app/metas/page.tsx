@@ -8,6 +8,7 @@ import { rpcMetas } from '@/lib/metas/rpc-metas'
 import { SETOR_MARCA_COLORS } from '@/lib/config'
 import AcompanhamentoContent from '@/components/metas/acompanhamento-content'
 import type { PainelSetor } from '@/components/metas/tipos'
+import type { SumarioSubsetorItem } from '@/types/api'
 
 // Acompanhamento das Metas (v5.0.0) — substitui o dashboard v1 legado em /metas.
 // FONTE ÚNICA DO REAL: get_executiva_kpis por setor (mesmo motor da Performance).
@@ -79,13 +80,22 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
   // Anos que o período toca (1 ou 2) → uma metas_listar por ano.
   const anos = [...new Set([Number(from.slice(0, 4)), Number(to.slice(0, 4))])]
 
-  const [kpisResArr, metasResArr, ritmoResArr] = await Promise.all([
+  const [kpisResArr, metasResArr, ritmoResArr, sumRes] = await Promise.all([
     Promise.all(PAINEIS.map(p => db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: p.key,
     }))),
     Promise.all(anos.map(a => rpcMetas(db, 'metas_listar', { p_ano: a }))),
     Promise.all(PAINEIS.map(p => rpcMetas(db, 'metas_ritmo_diario', { p_from: from, p_to: to, p_setor: p.key }))),
+    // Contratos de casamento (subsetor COMERCIAL de Weddings) — mesma RPC do card da
+    // Performance de Weddings. Fail-safe: erro/negação (a RPC exige 'performance/weddings')
+    // degrada p/ null → o painel mostra "Contratos —" sem quebrar a página.
+    db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
   ])
+
+  const contratosWeddings: number | null = sumRes.error
+    ? null
+    : (((sumRes.data as { subsetores?: SumarioSubsetorItem[] } | null)?.subsetores ?? [])
+        .find(s => s.subsetor === 'COMERCIAL')?.n_contratos ?? null)
 
   // Metas de todos os anos do período (fonte='real', filtrada pela RPC).
   const metaRows: MetaRow[] = metasResArr.flatMap((res, i) => {
@@ -117,6 +127,7 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
       faturamento:    kpis?.faturamento.valor ?? null,
       receita:        kpis?.receita.valor ?? null,
       margemPct:      kpis?.margem_pct.valor ?? null,
+      contratos:      p.key === 'Weddings' ? contratosWeddings : null,
       ritmo,
     }
   })

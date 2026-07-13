@@ -91,7 +91,7 @@ interface Props {
 }
 
 export default function MetaCard({ painel, tamanho }: Props) {
-  const { display, cor, faturamento, receita, margemPct, ritmo } = painel
+  const { key, display, cor, faturamento, receita, margemPct, contratos, ritmo } = painel
 
   // Esperado como % da meta = fração do período decorrida (esperado é linear).
   const pctEsperado = ritmo.metaPeriodo > 0 ? (ritmo.esperadoAteHoje / ritmo.metaPeriodo) * 100 : null
@@ -160,10 +160,15 @@ export default function MetaCard({ painel, tamanho }: Props) {
 
       <div className="mt-3">{barra(10)}</div>
 
-      {/* Receita e Margem na MESMA linha (alinhadas à ESQUERDA), separadas por |, como no
-          Group. O valor da margem é colorido (verde ≥ alvo, vermelho abaixo). */}
+      {/* Métrica esquerda e Margem na MESMA linha (alinhadas à ESQUERDA), separadas por |,
+          como no Group. Em Weddings a métrica é "Contratos" (nº de contratos de casamento
+          vendidos), nos demais é "Receita". O valor da margem é colorido (verde ≥ alvo, vermelho abaixo). */}
       <div className="mt-auto flex flex-wrap items-baseline justify-start gap-x-2 gap-y-1 border-t border-zinc-100 pt-2.5 text-xs">
-        <span className="text-[var(--text-muted)]">Receita <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span></span>
+        {key === 'Weddings' ? (
+          <span className="text-[var(--text-muted)]">Contratos <span className="font-medium tabular-nums text-[var(--text-primary)]">{contratos == null ? '—' : contratos.toLocaleString('pt-BR')}</span></span>
+        ) : (
+          <span className="text-[var(--text-muted)]">Receita <span className="font-medium tabular-nums text-[var(--text-primary)]">{fmtMiOuTraco(receita)}</span></span>
+        )}
         <span className="text-zinc-300" aria-hidden>|</span>
         <span className="text-[var(--text-muted)]">Margem <Margem margemPct={margemPct} alvo={ritmo.pctReceitaAlvo} corValor /></span>
       </div>
