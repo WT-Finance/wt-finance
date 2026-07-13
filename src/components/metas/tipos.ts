@@ -35,6 +35,9 @@ export interface AcompanhamentoData {
   eParcial: boolean
   /** Data da última venda carregada (ISO) — o "hoje" do produto. */
   ultimaVenda: string | null
+  /** timestamptz (UTC) da última carga de Vendas (MAX criado_em de fato_venda) — "última
+   *  atualização" exibida no topo. null se indisponível. */
+  ultimaAtualizacao: string | null
   /** [Group, Trips, Weddings, Corporativo] — nesta ordem. */
   setores: PainelSetor[]
 }

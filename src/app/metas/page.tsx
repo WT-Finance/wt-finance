@@ -1,5 +1,6 @@
 import { requireArea } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
+import { getAdminClient } from '@/lib/supabase/admin'
 import { parseRpc, executivaKpisSchema, metasListarSchema, metasRitmoDiarioSchema } from '@/lib/schemas-rpc'
 import { format } from 'date-fns'
 import { resolverPeriodoMetas, isPresetMetas } from '@/lib/metas/periodo-metas'
@@ -97,6 +98,19 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
     : (((sumRes.data as { subsetores?: SumarioSubsetorItem[] } | null)?.subsetores ?? [])
         .find(s => s.subsetor === 'COMERCIAL')?.n_contratos ?? null)
 
+  // "Última atualização" = MAX(criado_em) de fato_venda, exposto só por get_upload_status
+  // (service-role; a 0122 removeu EXECUTE de authenticated). Leitura server-side de um
+  // agregado NÃO-sensível pelo admin client; fail-safe (erro → null → o topo omite a linha).
+  // [Ideal: uma RPC guardada por Metas, pendente da migration bloqueada pela 0176 destrutiva.]
+  let ultimaAtualizacao: string | null = null
+  try {
+    const stRes = await getAdminClient().rpc('get_upload_status')
+    if (!stRes.error) {
+      ultimaAtualizacao = (stRes.data as { vendas?: { ultima_atualizacao?: string | null } } | null)
+        ?.vendas?.ultima_atualizacao ?? null
+    }
+  } catch { ultimaAtualizacao = null }
+
   // Metas de todos os anos do período (fonte='real', filtrada pela RPC).
   const metaRows: MetaRow[] = metasResArr.flatMap((res, i) => {
     const parsed = parseRpc(metasListarSchema, res, `metas_listar ${anos[i]}`)
@@ -141,7 +155,7 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
         data={{
           preset,
           periodoLabel: label,
-          from, to, eParcial, ultimaVenda, setores,
+          from, to, eParcial, ultimaVenda, ultimaAtualizacao, setores,
         }}
       />
     </div>

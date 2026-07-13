@@ -132,6 +132,17 @@ export const fmtDataHoraSP = (iso: string | null): string => {
   return isNaN(dt.getTime()) ? '—' : `${FMT_SP_DATA.format(dt)} às ${FMT_SP_HORA.format(dt)}`
 }
 
+const FMT_SP_DATA_LONGA = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo', day: 'numeric', month: 'long', year: 'numeric',
+})
+/** timestamptz (UTC) → 'DD de mês de AAAA, HH:MM' no fuso de São Paulo
+ *  (ex.: 13 de julho de 2026, 11:35). */
+export const fmtDataHoraLongoSP = (iso: string | null): string => {
+  if (!iso) return '—'
+  const dt = new Date(iso)
+  return isNaN(dt.getTime()) ? '—' : `${FMT_SP_DATA_LONGA.format(dt)}, ${FMT_SP_HORA.format(dt)}`
+}
+
 /** 'dd de mês de AAAA, às HHhMMmin' (ex: 05 de jun de 2026, às 17h53min).
  *  Se o ISO tem fuso (timestamptz UTC), converte ao fuso de São Paulo; se é ingênuo
  *  (sem fuso — ex.: datas locais do CHANGELOG_DIRETORIA), exibe como está (sem deslocar). */
