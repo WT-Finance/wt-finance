@@ -25,11 +25,11 @@ export default function TvFullscreenButton() {
     <button
       type="button"
       onClick={alternar}
-      className="foco-neutro inline-flex items-center gap-1.5 text-base text-[var(--text-muted)] transition-colors hover:text-[var(--text-secondary)]"
+      aria-label={cheio ? 'Sair da tela cheia' : 'Tela cheia'}
       title={cheio ? 'Sair da tela cheia' : 'Tela cheia'}
+      className="foco-neutro inline-flex items-center text-[var(--text-muted)] transition-colors hover:text-[var(--text-secondary)]"
     >
-      {cheio ? <Minimize size={18} /> : <Maximize size={18} />}
-      Tela cheia
+      {cheio ? <Minimize size={22} /> : <Maximize size={22} />}
     </button>
   )
 }

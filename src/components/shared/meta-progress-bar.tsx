@@ -37,11 +37,14 @@ export interface MetaProgressBarProps {
   mostrarTooltip?: boolean
   /** Escala da SETA (mantém desenho/tom; só amplia para leitura de parede). Default 1. */
   setaEscala?: number
+  /** Cor da SETA (CSS var). Default '--border' (cinza, como nos gráficos). No Modo TV recebe
+   *  a cor do "% da meta" (régua verde/âmbar/vermelho). NUNCA hex cru. */
+  corSeta?: string
 }
 
 export default function MetaProgressBar({
   pctMeta, pctEsperado, cor, altura = 10, pctDecorrido, esperado, realizado,
-  mostrarTooltip = true, setaEscala = 1,
+  mostrarTooltip = true, setaEscala = 1, corSeta = 'var(--border)',
 }: MetaProgressBarProps) {
   const fill = Math.min(Math.max(pctMeta ?? 0, 0), 100)
   const tick = Math.min(Math.max(pctEsperado, 0), 100)
@@ -106,7 +109,7 @@ export default function MetaProgressBar({
           borderRightWidth: 5 * setaEscala,
           borderTopWidth: 7 * setaEscala,
           borderColor: 'transparent',
-          borderTopColor: 'var(--border)',
+          borderTopColor: corSeta,
         }}
       />
 

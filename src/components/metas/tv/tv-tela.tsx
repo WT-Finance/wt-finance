@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { X } from 'lucide-react'
 import MetaProgressBar from '@/components/shared/meta-progress-bar'
 import TvAutoRefresh from '@/components/metas/tv/tv-auto-refresh'
 import TvFullscreenButton from '@/components/metas/tv/tv-fullscreen-button'
-import { corComparacao } from '@/lib/metas/cor-comparacao'
+import { corComparacao, corComparacaoValor } from '@/lib/metas/cor-comparacao'
 import { fmtMi, fmtDataHoraLongoSP } from '@/lib/fmt'
 import type { AcompanhamentoData, PainelSetor } from '@/components/metas/tipos'
 
@@ -29,6 +30,7 @@ function barra(p: PainelSetor, altura: number, setaEscala: number) {
       cor={p.cor}
       altura={altura}
       setaEscala={setaEscala}
+      corSeta={corComparacaoValor(p.ritmo.pctMeta, pctEsperado(p))}
       mostrarTooltip={false}
       pctDecorrido={p.ritmo.pctDecorrido}
       esperado={p.ritmo.esperadoAteHoje}
@@ -42,27 +44,34 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
   if (!group) return null
 
   const corGroup = corComparacao(group.ritmo.pctMeta, pctEsperado(group))
+  const corGroupSeta = corComparacaoValor(group.ritmo.pctMeta, pctEsperado(group))
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-[var(--surface-soft)] px-12 py-8 text-[var(--text-primary)]">
       {/* Cabeçalho — logo Janus (não o wordmark escrito) + período à esquerda; à direita a
           data da última atualização + tela cheia + sair. */}
       <header className="flex items-center justify-between gap-6">
-        <div className="flex items-center gap-6">
-          <span className="relative block h-11 w-44">
+        <div className="flex items-center gap-10">
+          <span className="relative block h-16 w-64">
             <Image src="/logos/logo-janus.svg" alt="Janus" fill priority className="object-contain object-left" />
           </span>
           <span className="text-2xl text-[var(--text-secondary)]">Metas · {data.periodoLabel}</span>
         </div>
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-6">
           {data.ultimaAtualizacao && (
             <span className="text-lg text-[var(--text-muted)]">
               Atualizado em {fmtDataHoraLongoSP(data.ultimaAtualizacao)}
             </span>
           )}
+          {/* Ações só-ícone (v5.1.0/checkpoint): tela cheia + X para sair. */}
           <TvFullscreenButton />
-          <Link href="/metas" className="foco-neutro text-base text-[var(--text-muted)] transition-colors hover:text-[var(--text-secondary)]">
-            Sair do modo de exibição
+          <Link
+            href="/metas"
+            aria-label="Sair do modo de exibição"
+            title="Sair do modo de exibição"
+            className="foco-neutro text-[var(--text-muted)] transition-colors hover:text-[var(--text-secondary)]"
+          >
+            <X size={22} />
           </Link>
         </div>
       </header>
@@ -72,13 +81,16 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
         <div className="flex items-end justify-between gap-10">
           <div>
             <p className="text-2xl font-semibold" style={{ color: group.cor }}>{group.display}</p>
-            {/* respiro abaixo de "Group" (coerente com os cards setoriais) */}
+            {/* respiro abaixo de "Group" (coerente com os cards setoriais). SÓ o valor à esq. */}
             <p className="mt-5 text-6xl font-bold tabular-nums" style={{ color: group.cor }}>{fmtMiOuTraco(group.faturamento)}</p>
-            <p className="mt-2 text-xl text-[var(--text-muted)]">de <span className="tabular-nums">{fmtMiOuTraco(group.ritmo.metaPeriodo)}</span></p>
           </div>
+          {/* À direita: "% da meta" + "de R$ {meta}" na linha de baixo. */}
           <div className="whitespace-nowrap text-right">
-            <span className={`text-5xl font-bold tabular-nums ${corGroup}`}>{pctRound(group.ritmo.pctMeta)}</span>
-            <span className="ml-3 text-xl text-[var(--text-muted)]">da meta</span>
+            <div>
+              <span className={`text-5xl font-bold tabular-nums ${corGroup}`}>{pctRound(group.ritmo.pctMeta)}</span>
+              <span className="ml-3 text-xl text-[var(--text-muted)]">da meta</span>
+            </div>
+            <p className="mt-1 text-xl text-[var(--text-muted)]">de <span className="tabular-nums">{fmtMiOuTraco(group.ritmo.metaPeriodo)}</span></p>
           </div>
         </div>
         <div className="mt-6">{barra(group, 22, 2)}</div>
@@ -113,7 +125,7 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
         <span
           aria-hidden
           className="inline-block h-0 w-0"
-          style={{ borderStyle: 'solid', borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8, borderColor: 'transparent', borderTopColor: 'var(--border)' }}
+          style={{ borderStyle: 'solid', borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 8, borderColor: 'transparent', borderTopColor: corGroupSeta }}
         />
         A seta indica o valor esperado para hoje, considerando o período já decorrido no mês.
       </footer>
