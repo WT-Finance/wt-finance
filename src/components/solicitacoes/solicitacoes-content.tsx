@@ -42,7 +42,7 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
   }
 
   return (
-    <div className="px-4">
+    <div className="h-full flex flex-col">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Solicitações</h1>
         <p className="text-sm text-zinc-400 mt-0.5">Abra pedidos ao financeiro e acompanhe os atribuídos a você</p>
@@ -112,13 +112,15 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
 
       {erroCarga && <FaixaMensagem tipo="erro" texto={erroCarga} />}
 
-      {/* tabpanel: só o conteúdo condicional fica aqui; drawer e modal ficam fora */}
+      {/* tabpanel: só o conteúdo condicional fica aqui; drawer e modal ficam fora.
+          flex-1 min-h-0 → o painel preenche a altura restante do <main> (a cadeia flex desce
+          até as colunas, que rolam por dentro em vez de sobrar espaço embaixo — v5.1.1). */}
       <div
         role="tabpanel"
         id={`painel-${view}`}
         aria-labelledby={`tab-${view}`}
         aria-busy={isPending}
-        className={isPending ? 'opacity-60 pointer-events-none transition-opacity' : undefined}
+        className={`flex-1 min-h-0 flex flex-col${isPending ? ' opacity-60 pointer-events-none transition-opacity' : ''}`}
       >
         {view === 'minhas'
           ? <MinhasSolicitacoes solicitacoes={lista} onAbrir={setAberta} />

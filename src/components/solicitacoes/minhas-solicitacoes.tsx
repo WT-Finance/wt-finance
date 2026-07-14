@@ -27,7 +27,7 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
   const canceladas = solicitacoes.filter(s => s.status === 'cancelada')
 
   return (
-    <div>
+    <div className="h-full flex flex-col min-h-0">
       <div className="flex gap-2 mb-4">
         {(['ativas', 'canceladas'] as Filtro[]).map(f => (
           <button key={f} type="button" onClick={() => setFiltro(f)}
@@ -39,19 +39,21 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
       </div>
 
       {filtro === 'ativas' ? (
-        <div className="grid gap-4 sm:grid-cols-3">
+        // sm:flex-1 + grid-rows minmax(0,1fr) → as 3 colunas preenchem a altura restante em
+        // ≥sm (cada coluna rola por dentro); no mobile empilham em altura natural. (v5.1.1)
+        <div className="grid gap-4 sm:grid-cols-3 sm:flex-1 sm:min-h-0 sm:grid-rows-[minmax(0,1fr)]">
           {COLUNAS.map(col => {
             const itens = solicitacoes.filter(s => s.status === col.status)
             if (col.status === 'aberta') itens.sort((a, b) => a.data_limite.localeCompare(b.data_limite))
             return (
-              <div key={col.status}>
+              <div key={col.status} className="flex flex-col min-h-0">
                 {/* Header da coluna FIXO (fora do scroll); os cards rolam por dentro com a
                     barra flutuante do DS — padrão de painel em colunas (v5.1.1, DS). */}
                 <div className="flex items-center justify-between mb-1 px-1">
                   <h3 className="text-sm font-semibold text-zinc-700">{col.titulo}</h3>
                   <span className="text-xs text-zinc-400">{itens.length}</span>
                 </div>
-                <ScrollAutoHide className="max-h-[max(18rem,calc(100vh-24rem))] pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">
+                <ScrollAutoHide className="pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">
                   {itens.length === 0 && <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-xs text-zinc-400">—</div>}
                   {itens.map(s => <CardMinha key={s.id} s={s} onAbrir={onAbrir} />)}
                 </ScrollAutoHide>

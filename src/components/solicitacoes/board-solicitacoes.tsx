@@ -51,7 +51,7 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
   const vazio = filtro === 'abertas' ? 'Nenhuma solicitação aberta na sua caixa de entrada.' : 'Nenhuma solicitação encerrada.'
 
   return (
-    <div>
+    <div className="h-full flex flex-col min-h-0">
       {msg && <FaixaMensagem tipo="erro" texto={msg} onFechar={() => setMsg(null)} />}
 
       {supervisao && (
@@ -75,21 +75,21 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
       {tipos.length === 0 ? (
         <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-10 text-center text-sm text-zinc-400">{vazio}</p>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="flex gap-4 overflow-x-auto pb-2 flex-1 min-h-0">
           {tipos.map(([tipoId, tipoNome]) => {
             const itens = filtrada.filter(s => s.tipo_id === tipoId)
             const ordenados = filtro === 'abertas'
               ? [...itens].sort((a, b) => a.data_limite.localeCompare(b.data_limite))
               : itens
             return (
-              <div key={tipoId} className="w-72 shrink-0">
+              <div key={tipoId} className="w-72 shrink-0 flex flex-col min-h-0">
                 {/* Header da coluna FIXO (fora do scroll); os cards rolam por dentro com a
                     barra flutuante do DS — padrão de painel em colunas (v5.1.1, DS). */}
                 <div className="flex items-center justify-between mb-1 px-1">
                   <h3 className="text-sm font-semibold text-zinc-700 truncate">{tipoNome}</h3>
                   <span className="text-xs text-zinc-400">{ordenados.length}</span>
                 </div>
-                <ScrollAutoHide className="max-h-[max(18rem,calc(100vh-24rem))] pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">
+                <ScrollAutoHide className="pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">
                   {ordenados.length === 0 && <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-xs text-zinc-400">—</div>}
                   {ordenados.map(s => <Card key={s.id} s={s} onAbrir={onAbrir} concluindo={concluindo === s.id} onConcluir={concluir} />)}
                 </ScrollAutoHide>
