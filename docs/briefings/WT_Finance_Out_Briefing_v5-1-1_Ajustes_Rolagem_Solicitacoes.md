@@ -49,3 +49,37 @@ números acima) — o SSR não renderiza `ModalCentral` (portal), por isso a pro
 `h-full` em viewport de scroll é armadilha: só funciona sob altura DEFINIDA. Cadeia flex
 (`flex-col` → `flex-1 min-h-0`) cobre definida E `max-h`. Registrado no DS §Barras de rolagem
 ("Dimensionamento do viewport") para não reintroduzirem.
+
+## 2ª rodada de checkpoint (2026-07-14) — pós-preview do Yan
+
+5. **Tooltip da Data limite cortado dentro do modal:** o balão abria à direita e era recortado
+   pelo viewport rolável. Fix `!left-auto right-0` (abre à esquerda, padrão `CabecalhoAjuda` do
+   Faturamento). Provado por medição DOM (balão 518→742 dentro do viewport 384→896, sem vazar).
+
+6. **Nova Solicitação — texto (clareza do destinatário):** subtítulo →
+   "Abra um pedido para um usuário ou para um grupo de usuários" (sem ponto final, como os demais);
+   o modo de destinatário **"Permissão" → "Grupo"** (rótulo do toggle + placeholder "Selecione o
+   grupo…" + `aria-label`), coerente com "grupo de usuários". **Só rótulo de UI** — o modo interno
+   segue `destMode='role'` e a lógica de destinatário/RBAC é intocada.
+
+7. **Colunas de Solicitações — borda do hover cortada + barra colada (BUG visual):** o
+   `box-shadow` de realce do hover (`.card-clicavel-neutra`, ring 1px + drop-shadow) do **1º card**
+   de cada coluna era cortado no topo pelo `overflow` do viewport (sem `pt`), e o thumb vertical
+   (`right-1 w-1.5`, 4–10px da borda) ficava em cima do card (só `px-1`). Fix: viewport
+   `pl-1 pr-4 pt-2 pb-2` (`pt-2` = respiro topo p/ o ring; `pr-4` = goteira p/ o thumb) +
+   header `mb-1` (compensa o gap). Vale para caixa de entrada e Minhas solicitações; DS atualizado.
+
+8. **Largura total das páginas (pedido: "todas as páginas devem usar toda a largura"):** removido
+   o cap `max-w-7xl`/`max-w-5xl mx-auto` de **TODOS** os containers-raiz — 16 páginas/conteúdos
+   (Executiva, Performance, Weddings, Metas, Metas/Cadastro, Fluxo de Caixa, Gerencial, Acervo,
+   Calculadora de Rateio, Faturamento Corp, Uploads, Solicitações, Admin/Solicitações,
+   Movimentações, Acessos, Design System) + **10 skeletons `loading.tsx`** (mantidos em paridade
+   com a página, senão saltaria na troca). Preservado o `px-*` (respiro horizontal) e o
+   `scrollbar-gutter:stable` do `<main>`. **Convenção atualizada** em CLAUDE.md §Respiro,
+   na DS page (`/admin/design-system`) e no comentário do `<main>` (AppShell). `modal-central.tsx`
+   (largura de MODAL) e blocos internos estreitos (`max-w-xl` de forms) **não** foram tocados.
+
+**Nota de escopo/tradeoff (item 8):** largura total contradiz a convenção anterior (7xl/5xl por
+tipo de tela) — foi decisão de produto explícita do Yan. Em monitores muito largos, dashboards e
+tabelas passam a esticar de ponta a ponta; se alguma tela específica ficar esparsa, é ajuste
+pontual de `px`/`max-w` por tela (reversível), não reversão da convenção.
