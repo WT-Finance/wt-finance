@@ -3,7 +3,7 @@ import { SkeletonPagina, SkeletonHeader, SkeletonFiltros, SkeletonTabela } from 
 // Admin · Acessos: header + abas (Usuários/Roles/Áreas/Solicitações) + tabela. px-4.
 export default function Loading() {
   return (
-    <SkeletonPagina container="px-4">
+    <SkeletonPagina>
       <SkeletonHeader />
       <SkeletonFiltros n={4} />
       <SkeletonTabela linhas={8} />

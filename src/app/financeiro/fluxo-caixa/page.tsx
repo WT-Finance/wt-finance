@@ -227,7 +227,7 @@ export default async function FluxoCaixaPage({
   const saldoTotal = posicoes.reduce((s, p) => s + p.saldo, 0)
 
   return (
-    <div className="px-6">
+    <div>
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">

@@ -4,7 +4,7 @@ import { SkeletonPagina, SkeletonHeader, SkeletonTabela } from '@/components/sha
 // página (px-6), padrão do Acervo para layout fora dos templates. (v4.39.0)
 export default function Loading() {
   return (
-    <SkeletonPagina container="px-6">
+    <SkeletonPagina>
       <SkeletonHeader />
       <SkeletonTabela linhas={12} />
     </SkeletonPagina>

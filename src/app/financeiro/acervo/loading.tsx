@@ -5,7 +5,7 @@ import { SkeletonHeader } from '@/components/shared/skeletons'
 // rola por dentro (flex-1). Tom neutro, sem CLS.
 export default function Loading() {
   return (
-    <div className="px-4 h-full flex flex-col" aria-hidden="true">
+    <div className="h-full flex flex-col" aria-hidden="true">
       <SkeletonHeader />
       {/* Busca fixa */}
       <div className="mb-6 shrink-0"><div className="animate-pulse rounded-lg bg-zinc-100 h-10 w-72 max-w-full" /></div>

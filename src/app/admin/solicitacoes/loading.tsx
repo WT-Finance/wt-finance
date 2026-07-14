@@ -3,7 +3,7 @@ import { SkeletonPagina, SkeletonPaginaTabela } from '@/components/shared/skelet
 // Admin · Solicitações (e a subrota /movimentacoes, mesma silhueta de tabela). px-4.
 export default function Loading() {
   return (
-    <SkeletonPagina container="px-4">
+    <SkeletonPagina>
       <SkeletonPaginaTabela linhas={8} />
     </SkeletonPagina>
   )

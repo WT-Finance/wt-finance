@@ -4,7 +4,7 @@ import { SkeletonPagina, SkeletonDashboard } from '@/components/shared/skeletons
 // no MESMO container da página (px-6) para não saltar na troca. (v4.39.0)
 export default function Loading() {
   return (
-    <SkeletonPagina container="px-6">
+    <SkeletonPagina>
       <SkeletonDashboard kpis={4} />
     </SkeletonPagina>
   )

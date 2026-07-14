@@ -32,7 +32,7 @@ export default async function GerencialPage() {
   const lancamentos = unwrapRpc<Lancamento[]>(lancamentosRes, 'get_gerencial_lancamentos') ?? []
 
   return (
-    <div className="px-6">
+    <div>
       <TopSection titulo="Fluxo de Caixa Gerencial" subtitulo="Baseado em planilha de previsão curada manualmente">
         <GerencialSection
           saldos={saldos}

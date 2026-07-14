@@ -5,7 +5,7 @@ import { SkeletonPagina, SkeletonDashboard } from '@/components/shared/skeletons
 // skeleton IMEDIATAMENTE ao navegar para o segmento, enquanto o RSC da página resolve.
 export default function Loading() {
   return (
-    <SkeletonPagina container="px-6">
+    <SkeletonPagina>
       <SkeletonDashboard kpis={4} />
     </SkeletonPagina>
   )

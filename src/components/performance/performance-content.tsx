@@ -124,7 +124,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   const mostrarSetorFilter = setor === 'todos'
 
   return (
-    <div className="px-6">
+    <div>
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">

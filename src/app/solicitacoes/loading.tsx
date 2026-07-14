@@ -3,7 +3,7 @@ import { SkeletonPagina, SkeletonPaginaTabela } from '@/components/shared/skelet
 // Solicitações (caixa de entrada — tabela densa). Container px-4.
 export default function Loading() {
   return (
-    <SkeletonPagina container="px-4">
+    <SkeletonPagina>
       <SkeletonPaginaTabela linhas={8} />
     </SkeletonPagina>
   )

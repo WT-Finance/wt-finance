@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export default async function DesignSystemPage() {
   await requireArea('admin/design-system') // v4.13: guard de área (ADR-0109)
   return (
-    <div className="px-4">
+    <div>
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">
           Design System
@@ -539,16 +539,18 @@ export default async function DesignSystemPage() {
           <code className="bg-zinc-100 px-1 rounded">py-8</code>. <strong>Páginas não definem{' '}
           <code className="bg-zinc-100 px-1 rounded">py</code>/<code className="bg-zinc-100 px-1 rounded">pt</code>/<code className="bg-zinc-100 px-1 rounded">pb</code> próprios</strong> no
           container raiz — antes da v4.16.1 cada tela inventava o seu (16px, 32px ou zero, caso em que
-          o conteúdo «grudava» no topo). A <strong>largura é TOTAL</strong> (v5.1.1): o container raiz usa
-          toda a largura disponível do <code className="bg-zinc-100 px-1 rounded">{'<main>'}</code> — sem{' '}
-          <code className="bg-zinc-100 px-1 rounded">max-w</code>/<code className="bg-zinc-100 px-1 rounded">mx-auto</code> — só com respiro
-          <em> horizontal</em> (<code className="bg-zinc-100 px-1 rounded">px-*</code>).
+          o conteúdo «grudava» no topo). A <strong>largura é TOTAL e o respiro horizontal também vem do{' '}
+          <code className="bg-zinc-100 px-1 rounded">{'<main>'}</code></strong> (v5.1.1): o{' '}
+          <code className="bg-zinc-100 px-1 rounded">{'<main>'}</code> tem <code className="bg-zinc-100 px-1 rounded">px-8 py-8</code> e o
+          container raiz da página usa toda a largura restante — <strong>sem{' '}
+          <code className="bg-zinc-100 px-1 rounded">max-w</code>/<code className="bg-zinc-100 px-1 rounded">mx-auto</code>/<code className="bg-zinc-100 px-1 rounded">px</code>/<code className="bg-zinc-100 px-1 rounded">py</code> próprios</strong>.
+          Afinar o gap conteúdo↔sidebar = mudar só o <code className="bg-zinc-100 px-1 rounded">px</code> do <code className="bg-zinc-100 px-1 rounded">{'<main>'}</code>.
         </p>
         <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-4">
-          <p className="font-sans font-medium text-[var(--text-primary)] not-italic mb-1">Container raiz de página:</p>
-          <p>{'<div className="px-6">   // dashboards (Executiva, Performance, Financeiro, Metas)'}</p>
-          <p>{'<div className="px-4">   // telas de plataforma (admin, solicitações)'}</p>
-          <p className="mt-2">{'// largura TOTAL (v5.1.1) — NUNCA max-w/mx-auto no container raiz, nem py-*/pt-*/pb-* (ritmo vertical é do <main> py-8)'}</p>
+          <p className="font-sans font-medium text-[var(--text-primary)] not-italic mb-1">Respiro (fonte única) + container raiz:</p>
+          <p>{'<main className="px-8 py-8 …">   // AppShell — respiro ÚNICO (horizontal + vertical)'}</p>
+          <p>{'  <div>…</div>                    // container raiz da página: SEM px/py/max-w/mx-auto'}</p>
+          <p className="mt-2">{'// exceção: página que preenche a altura usa <div className="h-full flex flex-col"> (ex.: Acervo, Solicitações)'}</p>
         </div>
         <p className="text-xs text-[var(--text-muted)]">
           Cabeçalho de página padrão: <code className="bg-zinc-100 px-1 rounded">h1 text-xl font-semibold</code> +

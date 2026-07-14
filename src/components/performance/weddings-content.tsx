@@ -68,7 +68,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     : `${operacoes.length} operações`
 
   return (
-    <div className="px-6">
+    <div>
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">

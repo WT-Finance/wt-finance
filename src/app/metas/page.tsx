@@ -22,7 +22,7 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
   const data = await carregarAcompanhamento(preset)
 
   return (
-    <div className="px-6">
+    <div>
       <AcompanhamentoContent data={data} />
     </div>
   )
