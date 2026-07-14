@@ -200,8 +200,28 @@ implementação própria embutida (mesma mecânica; também arrastável desde a 
 
 Exceção: o `<main>` do AppShell mantém a scrollbar NATIVA com `scrollbar-gutter: stable`
 (DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos. E o
-**board Kanban de Solicitações** mantém a barra nativa visível de propósito (afordância "há mais
-colunas a rolar").
+container HORIZONTAL do **board Kanban de Solicitações** mantém a barra nativa visível de
+propósito (afordância "há mais colunas a rolar") — as COLUNAS dele rolam pelo padrão abaixo.
+
+**Dimensionamento do viewport (v5.1.1):** o viewport dimensiona por **cadeia flex**
+(`flex-1 min-h-0` dentro do wrapper `flex-col`), NUNCA `h-full` — porcentagem de altura não
+resolve quando o ancestral tem altura INDEFINIDA (ex.: painel de modal `max-h-[85vh]`) e o
+conteúdo VAZAVA sem barra (bug do modal de Nova Solicitação). Em fluxo normal a cadeia degrada
+para altura de conteúdo (capada pelo `max-h` da `className`). Não reintroduzir `h-full`.
+
+**Padrão: painel em COLUNAS (kanban/status) — v5.1.1.** Toda visão em colunas de cards
+(caixa de entrada de Solicitações, Minhas solicitações) usa: **header da coluna FIXO** (título +
+contagem, FORA do scroll) e os cards rolando por dentro com
+`<ScrollAutoHide className="pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">` — cada coluna tem a
+própria barra. **A altura PREENCHE o espaço disponível por CADEIA FLEX** (v5.1.1), não por `max-h`
+fixo: a página é `h-full flex flex-col` → o painel (tabpanel) `flex-1 min-h-0` → o container de
+colunas (`flex ... overflow-x-auto` no board / `grid sm:grid-cols-3 sm:grid-rows-[minmax(0,1fr)]` em
+Minhas) `flex-1 min-h-0` → cada coluna `flex flex-col min-h-0` → o `<ScrollAutoHide>` (já `flex-1`
+por dentro) enche o resto e rola. Antes o `max-h-[calc(100vh-24rem)]` sobrava espaço embaixo e era
+frágil (offset chumbado). O **padding do viewport é assimétrico de propósito**: `pr-4` abre uma
+**goteira à direita** para o thumb vertical (`right-1 w-1.5`, 4–10px da borda) não ficar em cima do
+card, e `pt-2` dá **respiro no topo** para o `box-shadow` de realce do hover (`.card-clicavel-neutra`)
+do PRIMEIRO card não ser cortado pelo `overflow` do viewport. Painel novo desse tipo nasce assim.
 
 ## MetaProgressBar — barra de progresso de meta (v5.0.0)
 

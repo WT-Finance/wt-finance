@@ -141,9 +141,15 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
   // `isolate` cria um stacking context no wrapper: o thumb (z-30) fica ACIMA de um
   // cabeçalho sticky interno (`sticky top-0 z-20`, DS §7) — sem isso a barra some atrás
   // do header nas tabelas densas — e o z-30 não vaza para fora do wrapper.
+  //
+  // O viewport dimensiona por CADEIA FLEX (`flex-1 min-h-0` dentro do wrapper flex-col),
+  // NÃO por `h-full`: porcentagem de altura não resolve quando o ancestral tem altura
+  // INDEFINIDA (ex.: painel de modal com `max-h-[85vh]`) — o conteúdo vazava do modal sem
+  // barra (bug v5.1.1, Nova Solicitação). A cadeia flex propaga o limite nos dois casos
+  // (altura definida OU max-h) e, em fluxo normal, degrada para altura de conteúdo.
   return (
-    <div className="relative isolate flex-1 min-h-0" onMouseEnter={reveal} onMouseMove={reveal}>
-      <div ref={viewRef} onScroll={onScroll} className={`h-full ${OVERFLOW[eixo]} scrollbar-none ${className}`}>
+    <div className="relative isolate flex min-h-0 flex-1 flex-col" onMouseEnter={reveal} onMouseMove={reveal}>
+      <div ref={viewRef} onScroll={onScroll} className={`min-h-0 flex-1 ${OVERFLOW[eixo]} scrollbar-none ${className}`}>
         <div ref={contentRef} className={contentClassName}>{children}</div>
       </div>
       {temY && (

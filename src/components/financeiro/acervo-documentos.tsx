@@ -180,8 +180,9 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
       {erroExclusao && <FaixaMensagem tipo="erro" texto={erroExclusao} onFechar={() => setErroExclusao(null)} />}
 
       {/* Só a LISTA rola — com a barra FLUTUANTE auto-hide do DS (some quando não usada, como a
-          da sidebar; overlay → não desloca o conteúdo, dispensa scrollbar-gutter). v4.40.0. */}
-      <ScrollAutoHide>
+          da sidebar; overlay → não desloca o conteúdo, dispensa scrollbar-gutter). v4.40.0.
+          pr-5 (v5.1.1): respiro entre os botões de ação (download/excluir) e a barra overlay. */}
+      <ScrollAutoHide className="pr-5">
       {grupos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-200 py-10 text-center">
           {busca.trim() ? (

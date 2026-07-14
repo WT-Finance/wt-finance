@@ -44,7 +44,7 @@ export function AcessosContent({
   ]
 
   return (
-    <div className="max-w-5xl mx-auto px-4">
+    <div>
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Usuários e Acessos</h1>
         <p className="text-sm text-zinc-400 mt-0.5">

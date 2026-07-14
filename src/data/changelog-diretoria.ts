@@ -35,6 +35,20 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.1',
+    data: '2026-07-14T10:15',
+    itens: [
+      { tipo: 'correcao', texto: 'A janela de Nova Solicitação voltou a rolar corretamente — o formulário estava transbordando para fora da janela em pedidos com muitos campos. Ela também passou a ter tamanho fixo, sem mudar de altura conforme o tipo escolhido.' },
+      { tipo: 'melhoria', texto: 'Nas Solicitações, cada coluna do painel agora rola separadamente, com o título sempre visível — listas longas não empurram mais as demais colunas. Um pequeno "?" ao lado da Data limite explica o prazo padrão de 3 dias.' },
+      { tipo: 'melhoria', texto: 'No Acervo de Documentos, os botões de baixar e excluir ganharam um respiro da barra de rolagem, evitando cliques acidentais.' },
+      { tipo: 'melhoria', texto: 'Todas as telas passaram a usar a largura total da página — o conteúdo, que antes ficava centralizado com muito espaço vazio nas laterais, agora aproveita todo o espaço disponível.' },
+      { tipo: 'melhoria', texto: 'Na Nova Solicitação, o destinatário ficou mais claro: o subtítulo explica que o pedido pode ir para um usuário ou para um grupo de usuários, e a opção antes chamada «Permissão» passou a se chamar «Grupo».' },
+      { tipo: 'correcao', texto: 'Nas colunas de Solicitações, a borda de destaque do primeiro card ao passar o mouse não é mais cortada e a barra de rolagem ganhou um respiro das laterais dos cards.' },
+      { tipo: 'melhoria', texto: 'As telas ganharam mais respiro entre o conteúdo e o menu lateral — o conteúdo não fica mais colado na barra da esquerda.' },
+      { tipo: 'melhoria', texto: 'O painel de Solicitações passou a ocupar toda a altura da tela: as colunas ficam mais altas e mostram mais pedidos antes de precisar rolar, sem aquele espaço vazio embaixo.' },
+    ],
+  },
+  {
     versao: '5.1.0',
     data: '2026-07-13T16:31',
     itens: [

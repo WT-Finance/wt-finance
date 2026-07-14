@@ -2,7 +2,8 @@
 // página (header + filtros + cards + tabela/gráficos), em tom NEUTRO do DS (zinc + animate-pulse),
 // SEM CLS (alturas/larguras fixas em px/rem → a troca skeleton→conteúdo não "pula"). Puros de
 // markup (server components, zero JS). NUNCA incluem a sidebar — vivem só dentro do `<main>` via
-// `loading.tsx`, que envolve o skeleton no MESMO container (max-w/px) da sua página.
+// `loading.tsx`. O respiro horizontal (px) vem do `<main>` (fonte única, v5.1.1) — o skeleton
+// só passa `container` para EXTRAS de layout da página (ex.: `h-full flex flex-col`), não px/max-w.
 //
 // Cor: `bg-zinc-100`/`bg-zinc-200` é cinza de UI neutro (permitido pelo lint `wt/no-cor-hardcoded`;
 // não é cor semântica). Nada de token de marca no skeleton (tom neutro por decisão do briefing).
@@ -69,8 +70,9 @@ export function SkeletonTabela({ linhas = 8, titulo = true }: { linhas?: number;
   )
 }
 
-/** Envelope: aplica o container (max-w/px) da página ao redor do skeleton (sem `py` — vem do <main>). */
-export function SkeletonPagina({ container, children }: { container: string; children: ReactNode }) {
+/** Envelope do skeleton. `container` só p/ EXTRAS de layout (ex.: `h-full flex flex-col`) — o
+ *  respiro horizontal (px) e o vertical (py) vêm do `<main>` (fonte única, v5.1.1). */
+export function SkeletonPagina({ container = '', children }: { container?: string; children: ReactNode }) {
   return <div className={container} aria-hidden="true">{children}</div>
 }
 

@@ -28,7 +28,7 @@ export default function FaturamentoCorpContent({ ambiente, configurado, clientes
   // Largura ÚNICA nas duas abas (7xl) — sem "salto" de largura ao alternar Emissão↔Cadastro.
   // O 7xl acomoda a tabela densa do Cadastro; a Emissão só fica mais folgada.
   return (
-    <div className="max-w-7xl mx-auto px-4">
+    <div>
       {/* Título + subtítulo da PÁGINA (compartilhados: persistem ao trocar de aba) + badge de
           ambiente. As pills das abas ficam ABAIXO do título/subtítulo. */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
