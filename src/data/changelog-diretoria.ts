@@ -44,6 +44,8 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       { tipo: 'melhoria', texto: 'Todas as telas passaram a usar a largura total da página — o conteúdo, que antes ficava centralizado com muito espaço vazio nas laterais, agora aproveita todo o espaço disponível.' },
       { tipo: 'melhoria', texto: 'Na Nova Solicitação, o destinatário ficou mais claro: o subtítulo explica que o pedido pode ir para um usuário ou para um grupo de usuários, e a opção antes chamada «Permissão» passou a se chamar «Grupo».' },
       { tipo: 'correcao', texto: 'Nas colunas de Solicitações, a borda de destaque do primeiro card ao passar o mouse não é mais cortada e a barra de rolagem ganhou um respiro das laterais dos cards.' },
+      { tipo: 'melhoria', texto: 'As telas ganharam mais respiro entre o conteúdo e o menu lateral — o conteúdo não fica mais colado na barra da esquerda.' },
+      { tipo: 'melhoria', texto: 'O painel de Solicitações passou a ocupar toda a altura da tela: as colunas ficam mais altas e mostram mais pedidos antes de precisar rolar, sem aquele espaço vazio embaixo.' },
     ],
   },
   {

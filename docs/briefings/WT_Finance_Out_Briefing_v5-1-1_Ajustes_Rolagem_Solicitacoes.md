@@ -83,3 +83,25 @@ números acima) — o SSR não renderiza `ModalCentral` (portal), por isso a pro
 tipo de tela) — foi decisão de produto explícita do Yan. Em monitores muito largos, dashboards e
 tabelas passam a esticar de ponta a ponta; se alguma tela específica ficar esparsa, é ajuste
 pontual de `px`/`max-w` por tela (reversível), não reversão da convenção.
+
+## 3ª rodada de checkpoint (2026-07-14) — pós-preview do Yan
+
+9. **Respiro conteúdo↔sidebar vira FONTE ÚNICA no `<main>`** (pedido: "aumentar o respiro à
+   esquerda"): o `<main>` do AppShell ganha `px-8` e o `px-4`/`px-6` próprio de cada página é
+   **removido** — o respiro horizontal passa a viver num lugar só (como o `py-8` vertical já vivia).
+   `SkeletonPagina.container` virou **opcional** (default `''`); os `loading.tsx` deixam de passar
+   `px`. **Afinar o gap lateral no futuro = mudar só o `px` do `<main>`**, não 26 páginas.
+   Convenção reescrita em CLAUDE.md §Respiro, DS page e comentário do `<main>`. Exceção preservada:
+   página que preenche a altura mantém `h-full flex flex-col` no root (Acervo, Solicitações).
+
+10. **Painel de Solicitações preenche a ALTURA** (pedido: "há espaço abaixo não utilizado"): trocado
+    o `max-h-[max(18rem,calc(100vh-24rem))]` fixo (offset chumbado que sobrava espaço embaixo) por
+    uma **cadeia flex de altura** — página `h-full flex flex-col` → tabpanel `flex-1 min-h-0` →
+    board `h-full flex-col` / grid `sm:grid-rows-[minmax(0,1fr)]` → container de colunas
+    `flex-1 min-h-0` → coluna `flex flex-col min-h-0` → `<ScrollAutoHide>` (já `flex-1` por dentro).
+    As colunas vão até o rodapé do `<main>` e rolam por dentro; em Minhas, o preenchimento é só em
+    `≥sm` (no mobile as 3 colunas empilham em altura natural). Vale para Caixa de entrada e Minhas
+    solicitações; padrão de "painel em colunas" reescrito no DS. **PROVADO por medição DOM** (cadeia
+    real replicada com playwright, viewport 1440×900): `<main>` 900px, container de colunas
+    190→868px = **fim exato do `<main>` (gap abaixo = 0px)**, coluna de 12 cards com viewport 651px
+    rolando 1030px de conteúdo (`ROLA_INTERNO: true`).
