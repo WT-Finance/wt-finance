@@ -2,7 +2,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { X } from 'lucide-react'
 import MetaProgressBar from '@/components/shared/meta-progress-bar'
-import TvAutoRefresh from '@/components/metas/tv/tv-auto-refresh'
 import TvFullscreenButton from '@/components/metas/tv/tv-fullscreen-button'
 import { corComparacao, corComparacaoValor } from '@/lib/metas/cor-comparacao'
 import { fmtMi, fmtDataHoraLongoSP } from '@/lib/fmt'
@@ -148,8 +147,6 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
         />
         A seta indica o valor esperado para hoje, considerando o período já decorrido no mês.
       </footer>
-
-      <TvAutoRefresh />
     </div>
   )
 }

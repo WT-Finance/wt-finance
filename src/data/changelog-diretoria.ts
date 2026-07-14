@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.4',
+    data: '2026-07-14T20:30',
+    itens: [
+      { tipo: 'melhoria', texto: 'A base de vendas passou a ser alimentada diretamente pela integração com o Monde (o ERP), no lugar da planilha importada à mão — dado mais completo e atualizado ao longo do dia. A metodologia é a MESMA: faturamento, receita e margem calculados igual, e as metas de 14% seguem valendo. Os meses já fechados continuam idênticos; os mais recentes ficam um pouco mais completos e atuais. A troca é reversível e a planilha manual permanece como reserva.' },
+    ],
+  },
+  {
     versao: '5.1.3',
     data: '2026-07-14T19:50',
     itens: [
