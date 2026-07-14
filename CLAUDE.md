@@ -113,6 +113,23 @@ O `config.toml` expõe apenas `["public", "graphql_public"]`. Tabelas em `analyt
 **Regra:** todo acesso a tabelas de `analytics` é via RPCs `SECURITY DEFINER` no schema
 `public`. Mesmo padrão do resto do codebase. (Descoberto na v4.6.)
 
+### Fonte de produção das vendas: espelho Monde × upload (fallback) — v5.1.4/ADR-0151
+A partir da v5.1.4, a fonte das vendas pode ser **virada** do upload de Excel para o **espelho
+Monde** (`monde.mv_vendas_diarias`) por **REPOINT reversível** (migration 0181): as 7 funções
+**PURA-mv** (`get_executiva_kpis__nucleo`, `metas_ritmo_diario`, `get_tendencia_margem__nucleo`,
+`get_decomposicao_variacao__nucleo`, `get_historico_12m_setores__nucleo`, `get_mix_setor__nucleo`,
+`get_historico_mensal__nucleo`) leem o Monde via **views-compat** (`monde.mv_vendas_diarias_compat`
+com `setor_macro_id`; `monde.mv_vendas_mensais`). O **fato do upload é INTOCADO** → rollback = o
+bloco DOWN da 0181 (repoint de volta a `analytics.*`), **nunca restauração de dado**; o upload é
+**FALLBACK DORMENTE**. **`get_mix_produto`/`get_cagr` NÃO viram** — leem o `fato_venda` DIRETO
+(breakdown por produto / anos completos), então seguem no upload até o *fato* do Monde existir
+(escopo futuro). Metas ≡ Performance por construção (mesma `get_executiva_kpis`); definição de
+receita/margem inalterada (o diagnóstico provou paridade ~99% ao centavo; delta = currency que some
+pós-flip). Agendamento da sincronização: **Supabase `pg_cron`+`pg_net` ~15min** (0182, secrets no
+Vault) → `/api/monde/ingest?mode=incremental`; o Cron da Vercel fica dormente/redundante. **O flip
+é aplicado pelo Yan** (gate: comunicação à diretoria antes; migration NÃO auto-aplicada). Espelho
+Monde ingerido na v5.1.2 (schema `monde`); paridade de receita provada no diagnóstico da virada.
+
 ### `dim_data` tem range fixo — FK em `fato_venda`
 `analytics.fato_venda.data_venda` tem FK para `analytics.dim_data(data)`, semeada com
 range FIXO (era 2024-2030; estendida para 2022-2030 na migration 0100). Subir Vendas
