@@ -35,6 +35,15 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.1',
+    data: '2026-07-14T10:15',
+    itens: [
+      { tipo: 'correcao', texto: 'A janela de Nova Solicitação voltou a rolar corretamente — o formulário estava transbordando para fora da janela em pedidos com muitos campos. Ela também passou a ter tamanho fixo, sem mudar de altura conforme o tipo escolhido.' },
+      { tipo: 'melhoria', texto: 'Nas Solicitações, cada coluna do painel agora rola separadamente, com o título sempre visível — listas longas não empurram mais as demais colunas. Um pequeno "?" ao lado da Data limite explica o prazo padrão de 3 dias.' },
+      { tipo: 'melhoria', texto: 'No Acervo de Documentos, os botões de baixar e excluir ganharam um respiro da barra de rolagem, evitando cliques acidentais.' },
+    ],
+  },
+  {
     versao: '5.1.0',
     data: '2026-07-13T16:31',
     itens: [

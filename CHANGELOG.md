@@ -6,6 +6,10 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.1.1] — 2026-07-14
+
+PATCH · **Correções de rolagem e ajustes de Solicitações.** (1) **Modal de Nova Solicitação consertado**: o conteúdo vazava do painel sem barra de rolagem — regressão da migração das barras (v5.0.0): o viewport do `<ScrollAutoHide>` usava `h-full` (porcentagem), que não resolve em ancestral de altura INDEFINIDA (`max-h-[85vh]` do `ModalCentral`); o viewport passa a dimensionar por **cadeia flex** (`flex-1 min-h-0`), válida p/ altura definida OU max-h. O modal também ganha **altura fixa** (`alturaFixa`) — não "pula" quando o Tipo troca os campos. (2) **Acervo**: respiro entre os botões de ação e a barra flutuante (`pr-5`). (3) **Painéis de Solicitações em colunas** (caixa de entrada e Minhas solicitações): cada coluna com **barra própria** e **header fixo** (`max-h` viewport-relativo) — registrado no DS como padrão de painel em colunas. (4) **"?" na Data limite** da Nova Solicitação com a dica "prazo padrão de 3 dias" (padrão do Faturamento). SEM migration.
+
 ## [5.1.0] — 2026-07-13
 
 MINOR · **Modo TV — Metas na parede do comercial.** Nova rota irmã `/metas/tv`: uma pele de exibição do Acompanhamento em tela cheia (16:9, tema claro, **zero interação**) para deixar as metas do comercial numa TV. Group + 3 setores numa só tela, com a barra na cor do setor, a seta do esperado e o "% da meta" colorido pela mesma régua do app. Botão **"Modo de Exibição"** no cabeçalho do Acompanhamento abre a rota (a sidebar fica intocada). Auto-refresh ~10min (interim, a ser substituído pelo tempo-real da API). **FONTE ÚNICA**: reusa a MESMA orquestração da v5.0 (`carregarAcompanhamento` extraída), sem terceiro caminho de dados. **SEM migration** · ADR-0148.

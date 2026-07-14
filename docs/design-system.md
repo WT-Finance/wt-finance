@@ -200,8 +200,21 @@ implementação própria embutida (mesma mecânica; também arrastável desde a 
 
 Exceção: o `<main>` do AppShell mantém a scrollbar NATIVA com `scrollbar-gutter: stable`
 (DS §12) — é o scroll do documento; o padrão auto-hide vale para containers internos. E o
-**board Kanban de Solicitações** mantém a barra nativa visível de propósito (afordância "há mais
-colunas a rolar").
+container HORIZONTAL do **board Kanban de Solicitações** mantém a barra nativa visível de
+propósito (afordância "há mais colunas a rolar") — as COLUNAS dele rolam pelo padrão abaixo.
+
+**Dimensionamento do viewport (v5.1.1):** o viewport dimensiona por **cadeia flex**
+(`flex-1 min-h-0` dentro do wrapper `flex-col`), NUNCA `h-full` — porcentagem de altura não
+resolve quando o ancestral tem altura INDEFINIDA (ex.: painel de modal `max-h-[85vh]`) e o
+conteúdo VAZAVA sem barra (bug do modal de Nova Solicitação). Em fluxo normal a cadeia degrada
+para altura de conteúdo (capada pelo `max-h` da `className`). Não reintroduzir `h-full`.
+
+**Padrão: painel em COLUNAS (kanban/status) — v5.1.1.** Toda visão em colunas de cards
+(caixa de entrada de Solicitações, Minhas solicitações) usa: **header da coluna FIXO** (título +
+contagem, FORA do scroll) e os cards rolando por dentro com `<ScrollAutoHide
+className="max-h-[max(18rem,calc(100vh-24rem))] px-1 pb-1" contentClassName="space-y-2">` —
+cada coluna tem a própria barra; a altura é viewport-relativa com piso de 18rem. Painel novo
+desse tipo nasce assim.
 
 ## MetaProgressBar — barra de progresso de meta (v5.0.0)
 
