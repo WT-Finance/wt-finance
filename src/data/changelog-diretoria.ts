@@ -35,6 +35,13 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.3',
+    data: '2026-07-14T19:50',
+    itens: [
+      { tipo: 'melhoria', texto: 'Melhorias internas no processo de desenvolvimento e na confiabilidade da plataforma: cada entrega passa por uma revisão independente do código e por verificações automáticas de qualidade antes de ir ao ar, reduzindo a chance de um erro chegar às telas. Sem mudança visível para quem usa.' },
+    ],
+  },
+  {
     versao: '5.1.2',
     data: '2026-07-14T12:15',
     itens: [
