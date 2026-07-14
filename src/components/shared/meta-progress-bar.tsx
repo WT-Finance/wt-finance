@@ -32,10 +32,19 @@ export interface MetaProgressBarProps {
   esperado: number
   /** Realizado (R$) — linha do tooltip. */
   realizado: number
+  /** Exibe o tooltip escuro no hover. Default true. No Modo TV (v5.1.0) = false: a barra
+   *  fica SÓ com trilha+preenchimento+seta (zero interação; a legenda fixa substitui o balão). */
+  mostrarTooltip?: boolean
+  /** Escala da SETA (mantém desenho/tom; só amplia para leitura de parede). Default 1. */
+  setaEscala?: number
+  /** Cor da SETA (CSS var). Default '--border' (cinza, como nos gráficos). No Modo TV recebe
+   *  a cor do "% da meta" (régua verde/âmbar/vermelho). NUNCA hex cru. */
+  corSeta?: string
 }
 
 export default function MetaProgressBar({
   pctMeta, pctEsperado, cor, altura = 10, pctDecorrido, esperado, realizado,
+  mostrarTooltip = true, setaEscala = 1, corSeta = 'var(--border)',
 }: MetaProgressBarProps) {
   const fill = Math.min(Math.max(pctMeta ?? 0, 0), 100)
   const tick = Math.min(Math.max(pctEsperado, 0), 100)
@@ -49,6 +58,7 @@ export default function MetaProgressBar({
   const [pos, setPos] = useState<ClampResult | null>(null)
 
   useLayoutEffect(() => {
+    if (!mostrarTooltip) return   // Modo TV: sem balão → não mede nem escuta resize.
     const container = containerRef.current
     const tip = tipRef.current
     if (!container || !tip) return
@@ -66,7 +76,7 @@ export default function MetaProgressBar({
     medir()
     window.addEventListener('resize', medir)
     return () => window.removeEventListener('resize', medir)
-  }, [tick, esperado, realizado, pctDecorrido])
+  }, [tick, esperado, realizado, pctDecorrido, mostrarTooltip])
 
   // Estilo do balão: medido (px, clampado ao viewport) OU fallback CSS (no-JS/SSR:
   // centrado no tick, ~13,5rem de largura). transform-origin acompanha a seta. A sombra
@@ -87,41 +97,52 @@ export default function MetaProgressBar({
       </div>
 
       {/* SETA do esperado — marcador estático apontando para baixo; é a PONTA do balão.
-          Cor = borda dos tooltips (--border), alinhada ao estilo dos demais. */}
+          Cor = borda dos tooltips (--border). Tamanho via `setaEscala` (mesmo desenho/tom;
+          só amplia para leitura de parede no Modo TV). Larguras inline p/ escalar. */}
       <span
         aria-hidden="true"
-        className="absolute top-0 h-0 w-0 -translate-x-1/2 border-x-[5px] border-t-[7px] border-x-transparent border-t-[var(--border)]"
-        style={{ left: `${tick}%` }}
+        className="absolute top-0 h-0 w-0 -translate-x-1/2"
+        style={{
+          left: `${tick}%`,
+          borderStyle: 'solid',
+          borderLeftWidth: 5 * setaEscala,
+          borderRightWidth: 5 * setaEscala,
+          borderTopWidth: 7 * setaEscala,
+          borderColor: 'transparent',
+          borderTopColor: corSeta,
+        }}
       />
 
       {/* Tooltip no hover — nasce da seta (scale+fade a partir do tick), clampado ao viewport
           pelo módulo puro (nunca vaza). Fundo branco + borda cinza + sombra, alinhado ao
-          CustomTooltip dos gráficos. */}
-      <div
-        ref={tipRef}
-        role="tooltip"
-        style={tipStyle}
-        className="pointer-events-none absolute bottom-full z-20 w-max min-w-[13rem] max-w-[15rem] scale-90 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--text-primary)] opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/bar:scale-100 group-hover/bar:opacity-100 motion-reduce:transition-none"
-      >
-        <p className="mb-1.5 text-2xs font-medium text-[var(--text-muted)]">
-          {Math.round(pctDecorrido)}% do período decorrido
-        </p>
-        <div className="flex flex-col gap-1 text-xs tabular-nums">
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="text-[var(--text-muted)]">Esperado</span>
-            <span>{fmtMi(esperado)}</span>
+          CustomTooltip dos gráficos. No Modo TV (mostrarTooltip=false) não é renderizado. */}
+      {mostrarTooltip && (
+        <div
+          ref={tipRef}
+          role="tooltip"
+          style={tipStyle}
+          className="pointer-events-none absolute bottom-full z-20 w-max min-w-[13rem] max-w-[15rem] scale-90 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--text-primary)] opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover/bar:scale-100 group-hover/bar:opacity-100 motion-reduce:transition-none"
+        >
+          <p className="mb-1.5 text-2xs font-medium text-[var(--text-muted)]">
+            {Math.round(pctDecorrido)}% do período decorrido
+          </p>
+          <div className="flex flex-col gap-1 text-xs tabular-nums">
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="text-[var(--text-muted)]">Esperado</span>
+              <span>{fmtMi(esperado)}</span>
+            </div>
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="text-[var(--text-muted)]">Realizado</span>
+              <span>{fmtMi(realizado)}</span>
+            </div>
           </div>
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="text-[var(--text-muted)]">Realizado</span>
-            <span>{fmtMi(realizado)}</span>
+          <div className="mt-2 border-t border-[var(--border)] pt-1.5 text-xs font-medium">
+            {adiantado
+              ? <span className="text-success">+{fmtMi(gap)} adiantado</span>
+              : <span className="text-danger">{fmtMi(gap)} abaixo do esperado</span>}
           </div>
         </div>
-        <div className="mt-2 border-t border-[var(--border)] pt-1.5 text-xs font-medium">
-          {adiantado
-            ? <span className="text-success">+{fmtMi(gap)} adiantado</span>
-            : <span className="text-danger">{fmtMi(gap)} abaixo do esperado</span>}
-        </div>
-      </div>
+      )}
     </div>
   )
 }

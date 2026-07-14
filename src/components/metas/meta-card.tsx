@@ -1,6 +1,7 @@
 import { Card } from '@/components/ui/card'
 import MetaProgressBar from '@/components/shared/meta-progress-bar'
 import { fmtMi } from '@/lib/fmt'
+import { corComparacao } from '@/lib/metas/cor-comparacao'
 import type { PainelSetor } from '@/components/metas/tipos'
 
 // Card de UM painel (Group ou setor) do Acompanhamento de Metas (v5.0.0).
@@ -15,16 +16,6 @@ const fmtNum1 = (v: number) =>
 const fmtPct1 = (v: number) => `${fmtNum1(v)}%`
 const fmtMiOuTraco = (v: number | null): string => (v == null ? '—' : fmtMi(v))
 const pctRound = (v: number | null): string => (v == null ? '—' : `${Math.round(v)}%`)
-
-/** Cor COMUM de "% da meta" e "% esperado", pela distância (p.p.) entre elas:
- *  meta ≥ esperado → verde; até 3 p.p. abaixo → âmbar; mais que 3 p.p. abaixo → vermelho. */
-function corComparacao(pctMeta: number | null, pctEsperado: number | null): string {
-  if (pctMeta == null || pctEsperado == null) return 'text-[var(--text-muted)]'
-  const diff = pctMeta - pctEsperado
-  if (diff >= 0) return 'text-success'
-  if (diff >= -3) return 'text-warning'
-  return 'text-danger'
-}
 
 /** "13,9% −0,1 p.p. vs alvo 14%" — margem + delta p.p. contra o alvo (colorido) + alvo
  *  (sem casas, peso normal). `corValor` pinta TAMBÉM o valor (verde ≥ alvo, vermelho abaixo).

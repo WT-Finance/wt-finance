@@ -1,6 +1,7 @@
 'use client'
 
-import { Clock } from 'lucide-react'
+import Link from 'next/link'
+import { Clock, Monitor } from 'lucide-react'
 import MetasPeriodoPills from '@/components/metas/metas-periodo-pills'
 import MetaCard from '@/components/metas/meta-card'
 import RitmoChart from '@/components/metas/ritmo-chart'
@@ -22,11 +23,23 @@ export default function AcompanhamentoContent({ data }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Acompanhamento das Metas</h1>
-        <p className="mt-0.5 text-sm text-zinc-400">
-          Acompanhe o progresso do faturamento e receita em relação às metas
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-zinc-900">Acompanhamento das Metas</h1>
+          <p className="mt-0.5 text-sm text-zinc-400">
+            Acompanhe o progresso do faturamento e receita em relação às metas
+          </p>
+        </div>
+        {/* Modo TV (v5.1.0): AÇÃO sobre a tela vista (não item de sidebar) → abre a pele
+            /metas/tv em tela cheia, mantendo o período corrente. Tokens neutros de plataforma. */}
+        <Link
+          href={`/metas/tv?periodo=${data.preset}`}
+          className="foco-neutro inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+          title="Abrir em tela cheia para a TV da sala"
+        >
+          <Monitor size={16} className="text-zinc-400" />
+          Modo de Exibição
+        </Link>
       </div>
 
       <TopSection titulo="Visão geral">
