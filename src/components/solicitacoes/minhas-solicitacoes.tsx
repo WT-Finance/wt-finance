@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
 import { fmtDataHoraSP } from '@/lib/fmt'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 // v4.18/M7 — Minhas solicitações (visão do originador): COLUNAS POR STATUS (Abertas /
@@ -44,14 +45,16 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
             if (col.status === 'aberta') itens.sort((a, b) => a.data_limite.localeCompare(b.data_limite))
             return (
               <div key={col.status}>
+                {/* Header da coluna FIXO (fora do scroll); os cards rolam por dentro com a
+                    barra flutuante do DS — padrão de painel em colunas (v5.1.1, DS). */}
                 <div className="flex items-center justify-between mb-2 px-1">
                   <h3 className="text-sm font-semibold text-zinc-700">{col.titulo}</h3>
                   <span className="text-xs text-zinc-400">{itens.length}</span>
                 </div>
-                <div className="space-y-2">
+                <ScrollAutoHide className="max-h-[max(18rem,calc(100vh-24rem))] px-1 pb-1" contentClassName="space-y-2">
                   {itens.length === 0 && <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-xs text-zinc-400">—</div>}
                   {itens.map(s => <CardMinha key={s.id} s={s} onAbrir={onAbrir} />)}
-                </div>
+                </ScrollAutoHide>
               </div>
             )
           })}

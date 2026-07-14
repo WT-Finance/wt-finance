@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Loader2, AlertTriangle } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
@@ -82,14 +83,16 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
               : itens
             return (
               <div key={tipoId} className="w-72 shrink-0">
+                {/* Header da coluna FIXO (fora do scroll); os cards rolam por dentro com a
+                    barra flutuante do DS — padrão de painel em colunas (v5.1.1, DS). */}
                 <div className="flex items-center justify-between mb-2 px-1">
                   <h3 className="text-sm font-semibold text-zinc-700 truncate">{tipoNome}</h3>
                   <span className="text-xs text-zinc-400">{ordenados.length}</span>
                 </div>
-                <div className="space-y-2">
+                <ScrollAutoHide className="max-h-[max(18rem,calc(100vh-24rem))] px-1 pb-1" contentClassName="space-y-2">
                   {ordenados.length === 0 && <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-xs text-zinc-400">—</div>}
                   {ordenados.map(s => <Card key={s.id} s={s} onAbrir={onAbrir} concluindo={concluindo === s.id} onConcluir={concluir} />)}
-                </div>
+                </ScrollAutoHide>
               </div>
             )
           })}
