@@ -14,7 +14,7 @@ A fonte de produção das Metas **segue no upload**; a virada é o **PASSO 2** (
 | **M2** | Lib server-only `src/lib/monde/` — `client.ts` (HTTP `x-api-key`, paginação por `total`, timeout+retry, `cache:'no-store'`), `schemas.ts` (Zod **tolerante**: `.passthrough()`+defaults → API mudar não quebra), `sectors.ts` (mapa micro→macro provado; Welcome→null). |
 | **M3** | `transform.ts` — exclusões (Welcome; setor fora do mapa; venda sem item ativo), vendedor de Weddings do custom_field, **síntese dos 3 flags** (documentada, ADR-0149). |
 | **M4** | **Migration 0179** — `monde.mv_vendas_diarias` (mesma lógica da produção; só **itens ativos**). Não substitui a mv de produção. |
-| **M5** | Núcleo `ingest.ts` (lista→detalhe c/ concorrência→transform→staging→promover→refresh) + **API Route** `/api/monde/ingest` (`runtime nodejs`, auth por `CRON_SECRET` **ou** sessão admin; modos incremental/window/backfill resumível por mês) + **`vercel.json`** (Cron `*/15`). |
+| **M5** | Núcleo `ingest.ts` (lista→detalhe c/ concorrência→transform→staging→promover→refresh) + **API Route** `/api/monde/ingest` (`runtime nodejs`, auth por `CRON_SECRET` **ou** sessão admin; modos incremental/window/backfill resumível por mês) + **`vercel.json`** (Cron **diário** `0 9 * * *` — plano-safe; ver nota abaixo). |
 | **M6** | **Migration 0180** (RPC `monde_comparacao_mensal`, gate metas) + tela `/metas/comparacao` (só-leitura, sem virada) — upload × Monde mês a mês (Group + setores), Δ; link discreto no Acompanhamento. |
 | **M7** | Auto-refresh do Modo TV **mapeado** (`src/components/metas/tv/tv-auto-refresh.tsx`, `setInterval router.refresh` 600s, isolado `[INTERIM DESCARTÁVEL]`). **NÃO removido** — remoção é do passo 2. |
 | **M8** | v5.1.2 · CHANGELOG + CHANGELOG_DIRETORIA (sem prometer virada) · ADR-0149 · este out-briefing. |
@@ -74,7 +74,7 @@ O briefing (M3) dizia que a transform de produção **descarta a linha** sem `co
 
 - **`MONDE_API_KEY`** e **`CRON_SECRET`** no ambiente da **Vercel** (a chave já está no `.env.local`; o Cron precisa do secret p/ autenticar).
 - **Backfill completo** 2023→hoje (≈29k) via `/api/monde/ingest?mode=backfill` (resumível por mês) — a demonstração populou só jun/2025 + jun/2026.
-- **Vercel Cron** exige plano Pro para `*/15`.
+- **Cron:** o schedule commitado é **diário** (`0 9 * * *`) porque cron **sub-diário (`*/15`) é Pro-only** e o Vercel **rejeita o deploy inteiro** em Hobby se o `vercel.json` pedir isso (foi o que impediu o 1º deploy do branch). No **passo 2** (virada, quando a frescura importa e o plano permitir), subir para `*/15`. O cron **só funciona após o `CRON_SECRET`** estar na Vercel (sem ele, a rota retorna 401 — benigno).
 
 ## Passo 2 (a virada) — runbook a parte, decisão do Yan
 

@@ -79,7 +79,9 @@ posterior do Yan, com runbook próprio.
    `valor_total`/`receitas` por `data_venda × setor_macro`, contagem DISTINCT de venda; **não
    substitui** a mv de produção. Refresh manual pós-ingestão. É o lado "Monde" da comparação.
 
-8. **Ingestão por Vercel Cron ~15min + backfill resumível (0178/M5).** API Route
+8. **Ingestão por Vercel Cron + backfill resumível (0178/M5).** Schedule commitado **diário**
+   (`0 9 * * *`) — cron sub-diário (`*/15`) é **Pro-only** e o Vercel **rejeita o deploy** em Hobby
+   se o `vercel.json` pedir isso (bloqueou o 1º deploy do branch); o `*/15` fica p/ o passo 2. API Route
    (`runtime='nodejs'`, server-only) protegida por `CRON_SECRET`; janela incremental (from/to
    recente, com sobreposição, idempotente) no cron; modo **backfill** (2023→hoje ≈29k) resumível
    por cursor (cada invocação processa um lote dentro do orçamento e salva o cursor). Detalhe por
