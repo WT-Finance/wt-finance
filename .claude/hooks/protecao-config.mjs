@@ -19,13 +19,14 @@ try {
 const fp = String(input.tool_input?.file_path ?? '');
 if (!fp) process.exit(0);
 
-// ATENÇÃO (missão de instalação): conferir/ajustar o caminho REAL das regras wt/*
-// (eslint-plugin local) no repositório e incluí-lo abaixo.
+// Regras wt/* (verificado na instalação, v5.1.3): `no-cor-hardcoded` e
+// `no-tailwind-var-shorthand` são INLINE em eslint.config.mjs (cobertas pela regex de
+// eslint.config abaixo); `no-coercao-reimpl` vive em eslint-rules/ (regex própria abaixo).
 const PROTEGIDOS = [
   /(^|\/)eslint\.config\.[cm]?js$/,
   /(^|\/)tsconfig(\.[\w-]+)?\.json$/,
   /(^|\/)\.prettierrc(\.[\w]+)?$/,
-  /(^|\/)eslint-rules\//,          // regras wt/* — ajustar ao caminho real
+  /(^|\/)eslint-rules\//,          // regras wt/* locais (ex.: no-coercao-reimpl)
   /(^|\/)\.claude\/hooks\//,       // os próprios hooks não se desarmam
   /(^|\/)\.claude\/settings\.json$/,
 ];
