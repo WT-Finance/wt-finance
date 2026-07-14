@@ -212,9 +212,12 @@ para altura de conteúdo (capada pelo `max-h` da `className`). Não reintroduzir
 **Padrão: painel em COLUNAS (kanban/status) — v5.1.1.** Toda visão em colunas de cards
 (caixa de entrada de Solicitações, Minhas solicitações) usa: **header da coluna FIXO** (título +
 contagem, FORA do scroll) e os cards rolando por dentro com `<ScrollAutoHide
-className="max-h-[max(18rem,calc(100vh-24rem))] px-1 pb-1" contentClassName="space-y-2">` —
-cada coluna tem a própria barra; a altura é viewport-relativa com piso de 18rem. Painel novo
-desse tipo nasce assim.
+className="max-h-[max(18rem,calc(100vh-24rem))] pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">` —
+cada coluna tem a própria barra; a altura é viewport-relativa com piso de 18rem. O **padding do
+viewport é assimétrico de propósito** (v5.1.1): `pr-4` abre uma **goteira à direita** para o thumb
+vertical (`right-1 w-1.5`, 4–10px da borda) não ficar em cima do card, e `pt-2` dá **respiro no topo**
+para o `box-shadow` de realce do hover (`.card-clicavel-neutra`) do PRIMEIRO card não ser cortado pelo
+`overflow` do viewport. Painel novo desse tipo nasce assim.
 
 ## MetaProgressBar — barra de progresso de meta (v5.0.0)
 
