@@ -35,6 +35,14 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.2',
+    data: '2026-07-14T12:15',
+    itens: [
+      { tipo: 'novidade', texto: 'O Janus passou a ler as vendas diretamente do sistema do Monde e a mantê-las numa base paralela, atualizada sozinha ao longo do dia. Por ora isso alimenta apenas uma tela de conferência — as Metas e a Performance seguem exatamente como antes; a troca da fonte oficial virá numa etapa seguinte, só depois de validada.' },
+      { tipo: 'novidade', texto: 'Nova tela interna de comparação (dentro de Metas): mostra, mês a mês, o faturamento, a receita e o número de vendas da base atual (planilha) lado a lado com o que veio do Monde, para conferir as diferenças antes de qualquer mudança. É só leitura.' },
+    ],
+  },
+  {
     versao: '5.1.1',
     data: '2026-07-14T10:15',
     itens: [

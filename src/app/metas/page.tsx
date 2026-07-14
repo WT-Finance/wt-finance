@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { requireArea } from '@/lib/auth/sessao'
 import { isPresetMetas } from '@/lib/metas/periodo-metas'
 import { carregarAcompanhamento } from '@/lib/metas/carregar-acompanhamento'
@@ -23,6 +24,17 @@ export default async function MetasPage({ searchParams }: { searchParams: Promis
 
   return (
     <div>
+      {/* Link discreto de acesso à validação Upload × Monde (v5.1.2/M6). Fica aqui (não
+          dentro de AcompanhamentoContent, fora do escopo desta missão) — a página já
+          re-gateia a área, então o link pode aparecer sempre que /metas é vista. */}
+      <div className="mb-1 flex justify-end">
+        <Link
+          href="/metas/comparacao"
+          className="foco-neutro text-xs text-zinc-400 underline-offset-2 transition-colors hover:text-zinc-600 hover:underline"
+        >
+          Comparação (Monde)
+        </Link>
+      </div>
       <AcompanhamentoContent data={data} />
     </div>
   )
