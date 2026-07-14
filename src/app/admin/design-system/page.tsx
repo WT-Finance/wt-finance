@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export default async function DesignSystemPage() {
   await requireArea('admin/design-system') // v4.13: guard de área (ADR-0109)
   return (
-    <div className="max-w-5xl mx-auto px-4">
+    <div className="px-4">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">
           Design System
@@ -283,8 +283,8 @@ export default async function DesignSystemPage() {
           colunas pequenas em px, colunas de texto <strong>sem width</strong> (em <code className="bg-zinc-100 px-1 rounded">table-fixed</code> dividem o
           restante e truncam) → a tabela cabe no container <strong>sem barra de rolagem horizontal</strong>. Os <strong>cantos superiores do cabeçalho</strong>
           acompanham o Card: <code className="bg-zinc-100 px-1 rounded">[&amp;_tr:first-child_th:first-child]:rounded-tl-lg</code> +{' '}
-          <code className="bg-zinc-100 px-1 rounded">…th:last-child]:rounded-tr-lg</code> (só as células de canto da 1ª linha). Em telas densas
-          (muitas colunas), a página pode ir a <code className="bg-zinc-100 px-1 rounded">max-w-7xl</code> para aproveitar o espaço lateral (ex.: o Cadastro de Clientes).
+          <code className="bg-zinc-100 px-1 rounded">…th:last-child]:rounded-tr-lg</code> (só as células de canto da 1ª linha). Como toda
+          página usa a <strong>largura total</strong> (v5.1.1), a tabela densa já dispõe de todo o espaço lateral (ex.: o Cadastro de Clientes).
         </p>
 
         {/* Padrão de card-tabela (v4.11) */}
@@ -539,13 +539,16 @@ export default async function DesignSystemPage() {
           <code className="bg-zinc-100 px-1 rounded">py-8</code>. <strong>Páginas não definem{' '}
           <code className="bg-zinc-100 px-1 rounded">py</code>/<code className="bg-zinc-100 px-1 rounded">pt</code>/<code className="bg-zinc-100 px-1 rounded">pb</code> próprios</strong> no
           container raiz — antes da v4.16.1 cada tela inventava o seu (16px, 32px ou zero, caso em que
-          o conteúdo «grudava» no topo). A largura e o respiro <em>horizontal</em> continuam por tela.
+          o conteúdo «grudava» no topo). A <strong>largura é TOTAL</strong> (v5.1.1): o container raiz usa
+          toda a largura disponível do <code className="bg-zinc-100 px-1 rounded">{'<main>'}</code> — sem{' '}
+          <code className="bg-zinc-100 px-1 rounded">max-w</code>/<code className="bg-zinc-100 px-1 rounded">mx-auto</code> — só com respiro
+          <em> horizontal</em> (<code className="bg-zinc-100 px-1 rounded">px-*</code>).
         </p>
         <div className="bg-zinc-50 rounded-xl p-4 text-xs font-mono text-[var(--text-muted)] space-y-1 mb-4">
           <p className="font-sans font-medium text-[var(--text-primary)] not-italic mb-1">Container raiz de página:</p>
-          <p>{'<div className="max-w-7xl mx-auto px-6">   // dashboards (Executiva, Performance, Financeiro, Metas)'}</p>
-          <p>{'<div className="max-w-5xl mx-auto px-4">   // telas de plataforma (admin, solicitações)'}</p>
-          <p className="mt-2">{'// NUNCA: py-*, pt-*, pb-* no container raiz — o ritmo vertical é do <main> (py-8)'}</p>
+          <p>{'<div className="px-6">   // dashboards (Executiva, Performance, Financeiro, Metas)'}</p>
+          <p>{'<div className="px-4">   // telas de plataforma (admin, solicitações)'}</p>
+          <p className="mt-2">{'// largura TOTAL (v5.1.1) — NUNCA max-w/mx-auto no container raiz, nem py-*/pt-*/pb-* (ritmo vertical é do <main> py-8)'}</p>
         </div>
         <p className="text-xs text-[var(--text-muted)]">
           Cabeçalho de página padrão: <code className="bg-zinc-100 px-1 rounded">h1 text-xl font-semibold</code> +
