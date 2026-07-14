@@ -8,6 +8,7 @@ import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import CamposDinamicos, { type AnexoLocal } from './campos-dinamicos'
 import { Input, Select, Textarea } from '@/components/ui/field'
+import Tooltip from '@/components/ui/tooltip'
 import { criarSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import type { TipoAbertura, Destinatarios } from '@/lib/solicitacoes/schemas'
 
@@ -82,8 +83,10 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
     router.refresh(); onFechar()
   }
 
+  // alturaFixa (v5.1.1): o modal não "pula" de tamanho quando o Tipo troca os campos
+  // dinâmicos — o corpo rola por dentro (ScrollAutoHide do ModalCentral).
   return (
-    <ModalCentral titulo="Nova solicitação" subtitulo="Abra um pedido ao financeiro." onClose={onFechar}>
+    <ModalCentral titulo="Nova solicitação" subtitulo="Abra um pedido ao financeiro." alturaFixa onClose={onFechar}>
       {erro && <div className="mb-3"><FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} /></div>}
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -95,7 +98,16 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
             </Select>
           </div>
           <div>
-            <label htmlFor="ns-data" className="block text-xs font-medium text-zinc-600 mb-1">Data limite <span className="text-danger">*</span></label>
+            <label htmlFor="ns-data" className="block text-xs font-medium text-zinc-600 mb-1">
+              Data limite <span className="text-danger">*</span>
+              {/* "?" discreto → dica on-hover (mesmo padrão dos cabeçalhos do Faturamento, v4.38). */}
+              <Tooltip
+                conteudo="Data limite para resposta da solicitação. Prazo padrão de 3 dias."
+                className="z-30 w-56 !whitespace-normal font-normal leading-snug"
+              >
+                <span aria-label="Ajuda sobre a data limite" className="ml-1 inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
+              </Tooltip>
+            </label>
             <Input id="ns-data" type="date" value={dataLimite} onChange={e => setDataLimite(e.target.value)} />
           </div>
         </div>
