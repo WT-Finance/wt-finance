@@ -1,7 +1,7 @@
-# CLAUDE.md — WT Finance
+# CLAUDE.md — Janus
 
-Plataforma financeira interna do Welcome Group. Este arquivo define como se trabalha
-neste projeto. Vale para toda sessão. Conteúdo específico de cada versão vem no
+Janus (ex-WT Finance), plataforma financeira interna do Welcome Group. Este arquivo
+define como se trabalha neste projeto. Vale para toda sessão. Conteúdo específico de cada versão vem no
 briefing (`/docs/briefings/*.pdf`) e no prompt da versão, não aqui.
 
 ---
@@ -209,17 +209,31 @@ ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de t
 ## Workflow de versão
 
 ### 1. Recebimento
+- Ler `docs/WORKING-CONTEXT.md` — a verdade atual do projeto (versão, bloqueios, filas) —
+  antes de explorar o repositório. O hook `contexto-sessao` injeta o conteúdo no início da
+  sessão; se ausente, ler manualmente.
 - Ler o briefing em `/docs/briefings/<versão>.pdf` + o prompt `.md` da versão.
 - **Confirmar entendimento do escopo antes de implementar.** Se houver ambiguidade real, perguntar; senão, prosseguir.
 
 ### 2. Implementação
 - Seguir a estrutura de fases do prompt.
+- **Pesquisar antes de codar:** antes de criar utilitário/helper/abstração nova, verificar se
+  já existe no repositório (grep) e se há biblioteca consolidada que resolva 80%+ do problema.
+  Adotar/estender > construir. (Reinventar o que já existe é a causa-raiz histórica de
+  divergência — precedentes: `coercao.ts`, primitivos de `ui/`, parsers de Vendas.)
+- **Compactação estratégica:** em versões multi-fase, executar `/compact` na fronteira entre
+  fases (fim da exploração → implementação; fim de um milestone), nunca no meio de uma missão.
+  Preserva o plano e descarta o ruído de exploração.
 - **Identificar oportunidades de paralelização proativamente**, garantindo não-conflito (ver "Subagentes e paralelização" abaixo).
 - Commits Conventional Commits em pt-BR, **um por missão**, com `git add <arquivos específicos>` — nunca `git add -A` cego.
 - Rodar `build` + `tsc` + `lint` ao final de cada missão, não só no fim de tudo.
 - **Reportar o progresso pelo chat** (sem criar arquivo de relatório).
 
-### 3. Validação (gate)
+### 3. Revisão e validação (gate)
+- **Antes dos gates, despachar a revisão de contexto separado:** `revisor` (sempre) e
+  `revisor-db` (se a versão contém migration/RPC), em paralelo — são read-only, não conflitam.
+  Achados **CRÍTICO/ALTO** voltam ao implementador para correção antes dos gates; MÉDIO/BAIXO
+  são endereçados ou registrados no out-briefing com justificativa. (Ver "Protocolo de revisão".)
 - `npm run build` limpo, `npx tsc --noEmit` zero erros, `npm run lint` sem warnings novos, `npm test` verde.
 - Smoke tests das áreas afetadas.
 
@@ -232,7 +246,8 @@ ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de t
 
 ### 6. Out-briefing
 - **Out-briefing é parte do DoD, não pós-entrega:** nenhuma versão/patch fecha sem ele. (Custou caro: a v4.14.1 fechou sem out-briefing e exigiu backfill depois — v4.14.3.)
-- Gerar out-briefing `.md` no formato consolidado: missões implementadas, migrations, ADRs, pendências, arquivos modificados.
+- Gerar out-briefing `.md` no formato consolidado: missões implementadas, migrations, ADRs, pendências, arquivos modificados — incluindo a seção **Parecer da revisão** (achados do `revisor`/`revisor-db` e como foram endereçados).
+- **Atualizar `docs/WORKING-CONTEXT.md`** (versão, bloqueios, filas ativas, data) — é o que a próxima sessão lê antes de explorar.
 - **Verificar que todos os arquivos estão corretamente sincronizados.**
 - **Avaliar se a versão revelou aprendizado permanente para este CLAUDE.md** (ver "Manutenção deste arquivo" no topo).
 - **Entrada no `CHANGELOG_DIRETORIA`** (`src/data/changelog-diretoria.ts`): a cada versão/patch, adicionar **uma entrada no topo**, em **linguagem de negócio** — descrever o **efeito/implicação**, NUNCA o mecanismo (a diretoria não sabe o que é RPC/migration/componente). Com a **data/hora REAL do merge** (de `git log --merges`, fuso −03) e o(s) **tipo(s)** (novidade/correção/melhoria). **A `data` NUNCA é uma hora redonda chutada** — a entrada nasce **antes** do merge, então registre o **horário real de autoria** (`date`/`git`) e, idealmente, **reconcilie ao tempo do merge** quando ele acontecer (a v4.11.0–v4.22.2 saíram com horas aproximadas/redondas e foram corrigidas em massa na v4.22.3). **TODAS as entregas entram** (granular, sem buracos); patches puramente técnicos ganham descrição genérica honesta (ex.: "Ajustes visuais e de formatação"). É o histórico que a diretoria lê pelo modal de versão. O detalhe técnico fica no out-briefing e no `CHANGELOG.md`. (v4.11)
@@ -263,6 +278,18 @@ ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de t
   especificados. **Editor puro**: não roda gates; edita e reporta. Migration nova recebe o
   número exato do orquestrador e **não é aplicada** pelo subagente (regra já vigente em
   "Convenções de migration").
+- **`revisor`** (read-only: Read/Glob/Grep) — **revisão de contexto SEPARADO** após a
+  implementação, antes dos gates e da auto-auditoria do orquestrador. Recebe a lista exata de
+  arquivos modificados + objetivo da missão + convenções aplicáveis; devolve parecer por
+  severidade (CRÍTICO/ALTO/MÉDIO/BAIXO) com `arquivo:linha` e recomendação. Não edita, não
+  roda nada. **Complementa, não substitui, a auto-auditoria adversarial:** o revisor não
+  carrega o viés de ancoragem de quem planejou/dirigiu a implementação.
+- **`revisor-db`** (read-only: Read/Glob/Grep) — revisão especializada de migrations e RPCs
+  **antes da aplicação** (e antes de qualquer checkpoint humano de banco). Checklist próprio:
+  RBAC inline, REVOKE/GRANT explícitos, `coalesce` em predicado anulável, orçamento de 8s,
+  índices, fuso em migration, consumidores reais antes de DROP. Acionado sempre que a versão
+  contém migration/RPC — o parecer dele chega ao usuário JUNTO com a migration no checkpoint
+  destrutivo.
 
 ### Protocolo de delegação
 Subagentes **não veem o histórico da sessão** — cada delegação é autocontida e inclui:
@@ -275,6 +302,16 @@ Subagentes **não veem o histórico da sessão** — cada delegação é autocon
 
 Dúvida de produto ou de arquitetura num subagente **retorna à sessão principal** — que decide
 (se técnico) ou pergunta ao usuário (se produto; na dúvida, é produto).
+
+### Protocolo de revisão
+Ao fim das missões de implementação de uma fase (ou da versão, se curta), o orquestrador
+despacha o **`revisor`** (sempre) e o **`revisor-db`** (se houve migration/RPC) — em paralelo.
+A delegação é autocontida como qualquer outra e inclui: (1) objetivo da missão revisada,
+(2) lista exata de arquivos/migrations modificados, (3) convenções deste arquivo aplicáveis
+ao escopo. Achados **CRÍTICO/ALTO → correção pelo implementador antes dos gates**; a correção
+volta ao revisor apenas se estrutural. MÉDIO/BAIXO → endereçar ou registrar no out-briefing
+com justificativa. Revisores nunca editam nem rodam comandos; achado de revisor também não
+expande escopo — vira correção (se dentro do escopo da versão) ou registro (se fora).
 
 ### Regras de paralelização
 A paralelização acontece por **subagentes editando arquivos disjuntos dentro de uma
@@ -325,6 +362,29 @@ git worktree remove .worktrees/feat-vX-Y --force
 git worktree prune
 ```
 Nunca remover worktree com trabalho não-merjado.
+
+---
+
+## Hooks do harness (`.claude/`)
+
+Três hooks determinísticos complementam as regras deste arquivo — **enforcement mecânico,
+não lembrete** (convenção sozinha não segura; mesmo racional do lint `wt/*`, v4.26/v4.27):
+
+- **`protecao-config` (PreToolUse — BLOQUEIA):** edição em `eslint.config.*`, `tsconfig*.json`,
+  `.prettierrc*` e nas regras `wt/*` é bloqueada. Gate incômodo se resolve corrigindo o
+  código, nunca afrouxando a config. Alteração legítima de config = **checkpoint com o
+  usuário** e reexecução com `WT_PERMITIR_CONFIG=1` no ambiente.
+- **`gate-stop` (Stop — BLOQUEIA):** ao fim de cada resposta com `.ts/.tsx` modificados em
+  `src/`, varre `console.log` residual e o shorthand Tailwind inválido `-[--token]` (a classe
+  de bug silencioso das 81 ocorrências, v4.16.1). Achou → a resposta não fecha até corrigir.
+  `build`/`tsc`/`lint`/`test` continuam sendo os gates serializados de fim de missão (rodar
+  `tsc` a cada resposta seria lento demais); o hook cobre o que é barato varrer sempre.
+- **`contexto-sessao` (SessionStart — informativo):** injeta `docs/WORKING-CONTEXT.md` no
+  contexto da sessão nova.
+
+Hooks vivem em `.claude/hooks/*.mjs`, registrados em `.claude/settings.json`. Escape geral
+de emergência: `WT_DESLIGAR_HOOKS=1` (todos os hooks saem limpos) — uso excepcional,
+registrado no out-briefing.
 
 ---
 
@@ -387,13 +447,15 @@ Uma versão está pronta quando:
 - [ ] `npx tsc --noEmit` zero erros
 - [ ] `npm run lint` sem warnings novos
 - [ ] `npm test` verde (unit dos helpers + contrato das RPCs críticas) — ADR-0105
+- [ ] Parecer do `revisor` (e do `revisor-db`, se houve migration/RPC) emitido; CRÍTICO/ALTO endereçados
 - [ ] Smoke tests das áreas afetadas passando
 - [ ] Migrations aplicadas via `npm run db:migrate` (backup-gate rede verde; **destrutiva com confirmação humana**) e RPCs verificadas via REST
 - [ ] ADRs novos registrados (numeração real verificada)
 - [ ] `CHANGELOG.md` com entrada da versão
 - [ ] Entrada da versão no `CHANGELOG_DIRETORIA` (`src/data/changelog-diretoria.ts`), em linguagem de negócio
 - [ ] `package.json` e `src/lib/version.ts` com a versão nova
-- [ ] Out-briefing `.md` gerado
+- [ ] Out-briefing `.md` gerado (com a seção Parecer da revisão)
+- [ ] `docs/WORKING-CONTEXT.md` atualizado (versão, bloqueios, filas, data)
 - [ ] CLAUDE.md avaliado (aprendizado permanente adicionado, se houver)
 - [ ] Worktree limpa (após merge)
 - [ ] PR aberto (merge e deploy ficam com o usuário)
@@ -410,6 +472,7 @@ Uma versão está pronta quando:
 - **Não decidir produto.** Item de fronteira de produto para e pergunta; na dúvida, é produto.
 
 **Disciplina (regra do projeto):**
+- **Não editar config de gate para silenciar erro** (`eslint.config.*`, `tsconfig*.json`, `.prettierrc*`, regras `wt/*`) — corrigir o código. Alteração legítima de config exige checkpoint com o usuário (o hook `protecao-config` bloqueia; `WT_PERMITIR_CONFIG=1` só após o checkpoint).
 - **Não expandir escopo** além do briefing da versão — achado novo vira registro no out-briefing, não implementação no meio.
 - **Verificar consumidores reais antes de remover** qualquer objeto (RPC/rota/lib) — "órfão" pelo briefing pode ter uso vivo (precedente: `seed` na v4.17.1).
 - **Não remover worktree** com trabalho não-merjado.
