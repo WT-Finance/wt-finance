@@ -86,7 +86,7 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
   // alturaFixa (v5.1.1): o modal não "pula" de tamanho quando o Tipo troca os campos
   // dinâmicos — o corpo rola por dentro (ScrollAutoHide do ModalCentral).
   return (
-    <ModalCentral titulo="Nova solicitação" subtitulo="Abra um pedido ao financeiro." alturaFixa onClose={onFechar}>
+    <ModalCentral titulo="Nova solicitação" subtitulo="Abra um pedido para um usuário ou para um grupo de usuários" alturaFixa onClose={onFechar}>
       {erro && <div className="mb-3"><FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} /></div>}
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -117,12 +117,12 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
         <div>
           <span className="block text-xs font-medium text-zinc-600 mb-1">Destinatário <span className="text-danger">*</span></span>
           <div className="flex gap-2 mb-2">
-            <button type="button" onClick={() => setDestMode('role')} className={`${PILL} ${destMode === 'role' ? PILL_PRIMARIA : PILL_NEUTRO}`} style={destMode === 'role' ? PILL_PRIMARIA_STYLE : undefined}>Permissão</button>
+            <button type="button" onClick={() => setDestMode('role')} className={`${PILL} ${destMode === 'role' ? PILL_PRIMARIA : PILL_NEUTRO}`} style={destMode === 'role' ? PILL_PRIMARIA_STYLE : undefined}>Grupo</button>
             <button type="button" onClick={() => setDestMode('usuario')} className={`${PILL} ${destMode === 'usuario' ? PILL_PRIMARIA : PILL_NEUTRO}`} style={destMode === 'usuario' ? PILL_PRIMARIA_STYLE : undefined}>Usuário</button>
           </div>
           {destMode === 'role' ? (
-            <Select aria-label="Permissão destinatária" value={destRole} onChange={e => setDestRole(e.target.value)}>
-              <option value="">Selecione a permissão…</option>
+            <Select aria-label="Grupo destinatário" value={destRole} onChange={e => setDestRole(e.target.value)}>
+              <option value="">Selecione o grupo…</option>
               {destinatarios.roles.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
             </Select>
           ) : (
