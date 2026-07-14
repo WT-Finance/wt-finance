@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-14 · v5.1.3 (em execução)
+Última atualização: 2026-07-14 · v5.1.3 (upgrade do harness)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,10 +9,10 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.2`
-- Versão em execução (worktree/branch ativa): `5.1.3 — patch/v5-1-3` (upgrade do harness)
+- Versão em produção (main): `5.1.3` (a partir do merge do PR do harness)
+- Versão em execução (worktree/branch ativa): nenhuma
 - Última migration aplicada: `0180_monde_comparacao_mensal.sql`
-- Último ADR registrado: `0149` (esta versão registra o `0150`)
+- Último ADR registrado: `0150`
 
 ## Bloqueios vigentes
 
@@ -38,10 +38,12 @@
 
 ## Cuidados desta fase (o que uma sessão nova precisa saber AGORA)
 
-- **Hooks do harness (v5.1.3) valem só em sessão NOVA (bootstrapping).** A partir da próxima
-  sessão, editar config de gate (`eslint.config.*`, `tsconfig*.json`, `.prettierrc*`, `eslint-rules/`,
-  `.claude/`) exige checkpoint com o usuário + reexecução com `WT_PERMITIR_CONFIG=1`. O `gate-stop`
-  bloqueia a resposta se sobrar `console.log` ou shorthand `-[--token]` em `.ts/.tsx` de `src/`.
+- **Hooks do harness ATIVOS (instalados na v5.1.3).** Editar config de gate (`eslint.config.*`,
+  `tsconfig*.json`, `.prettierrc*`, `eslint-rules/`, `.claude/`) é bloqueado — exige checkpoint com o
+  usuário + reexecução com `WT_PERMITIR_CONFIG=1`. O `gate-stop` bloqueia a resposta se sobrar
+  `console.log` ou shorthand `-[--token]` em `.ts/.tsx` de `src/`. Escape geral: `WT_DESLIGAR_HOOKS=1`.
+- **`.claude/settings.json` versionado tem só a chave `hooks`** — NÃO fixa o `model` do orquestrador
+  (o CLAUDE.md menciona Opus fixado ali; fixar de fato é decisão pendente do usuário — v5.1.3).
 - **Protocolo de revisão de contexto separado:** despachar `revisor` (sempre) e `revisor-db`
   (se houver migration/RPC) ANTES dos gates e da auto-auditoria — read-only, não conflitam.
 - Não tratar `monde.*` como fonte de verdade das telas até o passo 2 (é espelho, não fonte viva).
