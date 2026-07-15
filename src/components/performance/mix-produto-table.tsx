@@ -2,19 +2,19 @@
 
 import { useState } from 'react'
 import type { MixProduto } from '@/types/api'
-import { fmtBRL } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
 import ListDrawer from '@/components/shared/list-drawer'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
+import { ValorContabil } from '@/components/shared/valor-contabil'
 
-const LIMITE = 5
+const LIMITE = 6
 
 function Colunas() {
   return (
     <colgroup>
       <col className="w-8" />
       <col />
-      <col className="w-28" />
+      <col className="w-40" />
       <col className="w-14" />
       <col className="w-16" />
     </colgroup>
@@ -54,7 +54,7 @@ function LinhaProduto({ pos, nome, faturamento, pct, margem }: {
     <tr className="hover:bg-zinc-50">
       <td className="py-2 px-3 text-xs text-[var(--text-subtle)]">{pos}</td>
       <td className="py-2 px-3 text-[var(--text-primary)] font-medium truncate">{nome}</td>
-      <td className="py-2 px-3 text-right tabular-nums text-[var(--text-secondary)]">{fmtBRL(faturamento)}</td>
+      <td className="py-2 px-3 text-[var(--text-secondary)]"><ValorContabil valor={faturamento} /></td>
       <td className="py-2 px-3 text-right tabular-nums text-[var(--text-muted)]">{pct.toFixed(1)}%</td>
       <td className={`py-2 px-3 text-right tabular-nums font-medium ${margemColor(margem)}`}>
         {margem != null ? `${margem.toFixed(1)}%` : '—'}
@@ -108,7 +108,7 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
                   <tr className="bg-zinc-50 text-[var(--text-muted)] italic">
                     <td className="py-2 px-3 text-xs text-[var(--text-subtle)]">+{data.outros.quantidade_produtos}</td>
                     <td className="py-2 px-3 text-sm truncate">Outros</td>
-                    <td className="py-2 px-3 text-right tabular-nums not-italic">{fmtBRL(data.outros.faturamento)}</td>
+                    <td className="py-2 px-3 not-italic"><ValorContabil valor={data.outros.faturamento} /></td>
                     <td className="py-2 px-3 text-right tabular-nums not-italic">{data.outros.pct_faturamento.toFixed(1)}%</td>
                     <td className={`py-2 px-3 text-right tabular-nums not-italic font-medium ${margemColor(data.outros.margem_pct)}`}>
                       {data.outros.margem_pct != null ? `${data.outros.margem_pct.toFixed(1)}%` : '—'}
@@ -134,7 +134,7 @@ export default function MixProdutoTable({ data, loading, titulo = 'Mix por Produ
                 <tr className="bg-zinc-50 text-[var(--text-muted)] italic">
                   <td className="py-2 px-3 text-xs text-[var(--text-subtle)]">+{data.outros.quantidade_produtos}</td>
                   <td className="py-2 px-3 text-sm truncate">Outros</td>
-                  <td className="py-2 px-3 text-right tabular-nums not-italic">{fmtBRL(data.outros.faturamento)}</td>
+                  <td className="py-2 px-3 not-italic"><ValorContabil valor={data.outros.faturamento} /></td>
                   <td className="py-2 px-3 text-right tabular-nums not-italic">{data.outros.pct_faturamento.toFixed(1)}%</td>
                   <td className={`py-2 px-3 text-right tabular-nums not-italic font-medium ${margemColor(data.outros.margem_pct)}`}>
                     {data.outros.margem_pct != null ? `${data.outros.margem_pct.toFixed(1)}%` : '—'}

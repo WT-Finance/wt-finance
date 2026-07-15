@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { Search, Download } from 'lucide-react'
+import { Search, Download, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
 import { fmtDateLong, fmtMeses, numBRL2, parseLocalDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
@@ -73,7 +73,6 @@ interface SortThProps {
 function SortTh({ children, field, right, center, title, ordem, onSort }: SortThProps) {
   const [activeField, activeDir] = ordem.split(':')
   const isActive = field !== null && activeField === field
-  const arrow = isActive ? (activeDir === 'asc' ? '▲' : '▼') : null
 
   const baseClass = `py-2 px-3 text-xs font-medium whitespace-nowrap ${center ? 'text-center' : right ? 'text-right' : 'text-left'}`
   const colorClass = isActive ? 'text-[var(--text-primary)]' : 'text-zinc-400'
@@ -97,8 +96,14 @@ function SortTh({ children, field, right, center, title, ordem, onSort }: SortTh
       onClick={() => onSort(field)}
       className={`${baseClass} ${colorClass} ${cursorClass}`}
     >
-      {children}
-      {arrow && <span className="ml-0.5">{arrow}</span>}
+      {/* Setinha de ordenação no padrão da tabela de Movimentações (v5.1.9): ícones lucide —
+          ativo = ArrowUp/ArrowDown; ordenável inativo = ArrowUpDown cinza. */}
+      <span className="inline-flex items-center gap-1 align-middle">
+        {children}
+        {isActive
+          ? (activeDir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+          : <ArrowUpDown size={12} className="text-zinc-300" />}
+      </span>
     </th>
   )
 }

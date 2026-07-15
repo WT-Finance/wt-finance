@@ -30,6 +30,10 @@ O rename de rótulo é `UPDATE app.rbac_areas SET rotulo = ...` → o classifica
 
 `npx tsc --noEmit` · `npx eslint` (arquivos alterados) · `npm test` · `npx next build` — [preencher]. **revisor** + **revisor-db** (migration 0184) — [preencher]. Sem ADR.
 
+## Ressalva de renderização (revisor, 3º round — registrada)
+
+O `CardTabela` usa `overflow-hidden` (corta, não rola). Com o Faturamento do Mix por Produto em `w-40` (contábil), as colunas fixas somam ~312px — cabem **folgado no uso real** (desktop, grid 2-col em `lg+` → card ~548px, sobra ~196px p/ "Produto"), mas em **janela MUITO estreita (<~400px / mobile)** o excesso é cortado sem scroll (dado pode sumir). É comportamento **pré-existente** do `CardTabela` (a tabela já não cabia a 375px antes, com `w-28`); o app é desktop-first. Follow-up possível: `min-w` + `ScrollAutoHide eixo="x"` dentro do `CardTabela` se o mobile virar caso de uso.
+
 ## Pendências (inalteradas)
 
 - (após esta) você aplicar a **0184** (rótulos) em TTY.
