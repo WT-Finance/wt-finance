@@ -3,7 +3,7 @@
 import { useId, useState, type ReactNode } from 'react'
 
 // TopSection — barra recolhível de seção com "linha-cortina" (v5.1.9, aprovada em mockup
-// interativo pelo Yan: curva fluida cubic-bezier(.32,.72,0,1), 380ms).
+// interativo pelo Yan: curva fluida cubic-bezier(.32,.72,0,1), 450ms).
 //
 // Mecânica: a BARRA nunca muda de altura; o conteúdo SAI POR BAIXO dela, revelado de cima
 // para baixo (janela de revelação animando `grid-template-rows` 0fr↔1fr — o conteúdo fica
@@ -40,7 +40,7 @@ export default function TopSection({ titulo, subtitulo, children }: Props) {
       >
         <span className="absolute left-0 top-2 bottom-2 w-1 rounded-full" style={{ background: 'var(--brand)' }} />
         <svg
-          className={`w-5 h-5 shrink-0 transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${aberto ? 'rotate-90' : ''}`}
+          className={`w-5 h-5 shrink-0 transition-transform duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${aberto ? 'rotate-90' : ''}`}
           style={{ color: 'var(--brand-deep)' }}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
         >
@@ -70,7 +70,7 @@ export default function TopSection({ titulo, subtitulo, children }: Props) {
       <div
         id={idConteudo}
         inert={!aberto}
-        className="grid transition-[grid-template-rows] duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+        className="grid transition-[grid-template-rows] duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
         style={{ gridTemplateRows: aberto ? '1fr' : '0fr' }}
       >
         <div className="relative min-h-0 overflow-hidden">

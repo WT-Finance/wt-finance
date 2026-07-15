@@ -101,15 +101,48 @@ Especificações:
 
 ---
 
-## Seções recolhíveis
+## Seções recolhíveis — padrão "linha-cortina" (v5.1.9)
 
-Apenas as 2 grandes seções mantêm comportamento recolhível (ADR-0042):
+Apenas as grandes seções mantêm comportamento recolhível (ADR-0042):
 - **Visão Geral** (`TopSection`)
 - **Visão Analítica por Operação** (`TopSection`)
 
 Cards individuais ficam sempre visíveis.
 
-`TopSection` usa padrão de alta visibilidade (chevron 20px, bold, fundo `--brand-soft`, faixa lateral `--brand`).
+`TopSection` (`src/components/shared/top-section.tsx`) usa padrão de alta visibilidade
+(chevron 20px, bold, fundo `--brand-soft`, faixa lateral `--brand`) e, desde a v5.1.9, a
+animação **"linha-cortina"** (aprovada em mockup interativo) — **o padrão de TODA barra
+horizontal recolhível da plataforma**:
+
+- **A barra fica FIXA** (nunca muda de altura) — é o "trilho" da cortina.
+- **O conteúdo sai por baixo dela**, revelado de cima para baixo: a janela de revelação
+  anima `grid-template-rows` `0fr↔1fr` (o conteúdo fica ancorado no topo do clip — efeito
+  de cortina desenrolando, não de bloco empurrado).
+- **A linha separadora fica presa à borda inferior da janela** (`absolute bottom:0`), sempre
+  ao final do conteúdo visível: **desce à frente ao abrir e sobe à frente ao fechar**, como a
+  haste de uma cortina. Cor: gradiente `color-mix` sobre `--brand-deep` (fade nas pontas).
+- **Timing: `450ms` · `cubic-bezier(.32,.72,0,1)`** (escolhidos pelo Yan no mockup).
+- Acessibilidade: conteúdo fechado fica **`inert`** (fora do tab-order/leitor de tela — o
+  `<details>` que este padrão substituiu fazia isso via `display:none`); `motion-reduce`
+  desliga a transição. Estado só em memória (nasce aberto); conteúdo permanece montado.
+- ⚠️ A janela usa `overflow-hidden`: popover `position:absolute` (não-portal) dentro da
+  seção depende de haver conteúdo abaixo do gatilho; para popover que possa estourar o
+  clip, usar `createPortal` (padrão de `base-dados-tab.tsx`).
+
+Barra recolhível NOVA nasce com o `TopSection` (não reinventar o accordion).
+
+## Badge de seção "Administração" (v5.1.9)
+
+Toda tela da subárvore `/admin/*` exibe o selo **"Administração"** no canto superior direito,
+**alinhado à altura do título da página** — substitui a antiga faixa branca full-bleed.
+Vive em UM lugar só: `src/app/admin/layout.tsx` (wrapper `relative` + badge `absolute right-0
+top-0 z-10`; tela admin nova ganha o selo de graça, sem gap sobrando).
+
+Receita (âmbar de gestão — o canônico "ação administrativa só-admin"; NÃO confundir com a
+badge "PRODUÇÃO" do Faturamento, que é neutra por decisão):
+`inline-flex items-center gap-1.5 rounded-md border border-gestao bg-gestao-soft px-2.5 py-1
+text-xs font-semibold text-gestao-fg` + ícone `VenetianMask` (14px). O top-right das páginas
+admin fica RESERVADO ao selo (o refresh manual de `/admin/uploads` saiu na v5.1.9).
 
 ## Skeletons de carregamento (v4.39.0)
 

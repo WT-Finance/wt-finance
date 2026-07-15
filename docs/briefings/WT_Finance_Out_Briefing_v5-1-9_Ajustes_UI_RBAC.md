@@ -38,7 +38,7 @@ O `CardTabela` usa `overflow-hidden` (corta, não rola). Com o Faturamento do Mi
 
 Reescrita do `TopSection` (padrão plataforma-wide de barra recolhível): a barra fica FIXA e o
 conteúdo sai por baixo dela, revelado de cima p/ baixo, com a **linha separadora presa à borda
-inferior da janela** — desce à frente ao abrir e sobe ao fechar (cortina). **380ms,
+inferior da janela** — desce à frente ao abrir e sobe ao fechar (cortina). **450ms,
 `cubic-bezier(.32,.72,0,1)`** (valores escolhidos pelo Yan no mockup interativo). Substitui o
 `<details open>` (sem animação). Estado em memória (nasce aberto); conteúdo montado quando fechado
 + **`inert`** (achado ALTO do revisor endereçado: sem o inert, o conteúdo fechado ficava invisível

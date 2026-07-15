@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { Clock } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
@@ -177,7 +178,9 @@ export default function ComparacaoContent({ linhas, ultimaSincronizacao }: Props
             )
           })}
         </div>
-        <p className="text-xs text-zinc-400">
+        {/* Mesmo padrão do Acompanhamento (ícone de relógio + rótulo). v5.1.9. */}
+        <p className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+          <Clock size={13} className="text-zinc-400" />
           Última atualização em {fmtDataHoraLongoSP(ultimaSincronizacao ?? null)}
         </p>
       </div>
