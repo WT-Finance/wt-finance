@@ -13,6 +13,15 @@ const PUBLIC_PREFIXES = ['/auth/']
 // público: exige sessão (o guard manda o usuário logado para lá quando preciso).
 const PUBLIC_PATHS = new Set(['/login', '/solicitar-acesso'])
 
+// Rotas de API que fazem a PRÓPRIA autenticação NO HANDLER (cron secret OU sessão admin) — o
+// middleware NÃO exige sessão aqui, senão o request do cron (que manda só o Bearer do CRON_SECRET,
+// SEM cookie de sessão) morre com 401 (`AUTH_NECESSARIA`) ANTES de chegar ao handler. O handler é
+// quem autoriza: `/api/monde/ingest` checa CRON_SECRET e, se não bater, `requireAreaApi(['admin/uploads'])`
+// (que re-valida a sessão — o proxy apenas duplicava essa checagem). (v5.1.7/ADR-0153 — bug latente
+// desde a v5.1.2: a rota nasceu com bypass de cron no handler mas não fora isentada do proxy, então o
+// cron nunca autenticava.)
+const API_AUTH_PROPRIA = new Set(['/api/monde/ingest'])
+
 function ehPublica(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true
   return PUBLIC_PREFIXES.some(p => pathname.startsWith(p))
@@ -43,7 +52,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  if (!user && !ehPublica(pathname)) {
+  if (!user && !ehPublica(pathname) && !API_AUTH_PROPRIA.has(pathname)) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'AUTH_NECESSARIA' }, { status: 401 })
     }
