@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.7',
+    data: '2026-07-15T11:18',
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Correção que restabelece a atualização automática das vendas a partir do Monde: a sincronização periódica estava sendo barrada por uma camada de segurança do sistema e não se completava; com o ajuste, os dados de vendas voltam a ser atualizados sozinhos ao longo do dia — refletindo nas Metas e no Modo de Exibição (TV).',
+      },
+    ],
+  },
+  {
     versao: '5.1.6',
     data: '2026-07-15T10:49',
     itens: [

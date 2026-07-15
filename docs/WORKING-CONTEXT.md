@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.6 (auto-refresh de /metas e Modo TV; rótulo → Monde na v5.1.5)
+Última atualização: 2026-07-15 · v5.1.7 (fix: o cron do Monde estava bloqueado pelo `proxy.ts` — 401)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,10 +9,10 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.6` (auto-refresh de /metas e Modo TV; rótulo lê o Monde; virada v5.1.4 aplicada)
+- Versão em produção (main): `5.1.7` (fix do cron do Monde no proxy; auto-refresh v5.1.6; rótulo lê o Monde; virada aplicada)
 - Versão em execução (worktree/branch ativa): nenhuma
-- Última migration **aplicada**: `0182_monde_agendamento_supabase.sql` — o **flip (0181/0182) foi aplicado**: as 7 funções PURA-mv leem o Monde e o cron `*/15` está agendado (**porém retornando 401 — ingestão parada desde 14/07; ver Bloqueios**)
-- Último ADR registrado: `0152`
+- Última migration **aplicada**: `0182_monde_agendamento_supabase.sql` — o **flip (0181/0182) foi aplicado**: as 7 funções PURA-mv leem o Monde e o cron `*/15` está agendado (**retornava 401 por bug no `proxy.ts` — corrigido na v5.1.7; após deploy deve virar 200; ver Bloqueios**)
+- Último ADR registrado: `0153`
 
 ## Bloqueios vigentes
 
@@ -25,12 +25,14 @@
   `get_prejuizos`/`get_sumario_subsetor`/`get_weddings_historico_subsetor` (Weddings: subsetor/produto/
   operação-própria). (O rótulo "Última atualização" foi repontado ao Monde na v5.1.5 — não depende mais do upload.)
   **NÃO parar o upload** enquanto essas funções lerem `fato_venda` (o Scope B resolve — ver abaixo).
-- **Cron do Monde em 401 — ingestão PARADA (falta o lado da Vercel).** O `pg_cron` (`*/15`) dispara mas
-  `/api/monde/ingest` (`wt-janus.vercel.app`) responde **HTTP 401**. Diagnóstico 15/07: o **Vault já está
-  certo** (`monde_cron_secret` atualizado pelo Yan às 13:13 UTC — 64 chars, limpo, sem dup; `monde_app_url`
-  = produção), mas os ticks 13:30/13:45 (pós-ajuste) seguem 401 → o **`CRON_SECRET` da Vercel (Production)
-  ainda ≠ Vault**, ou não foi redeployado. Espelho congelado desde 14/07 22:03 UTC. Fix (Yan): pôr em
-  `CRON_SECRET` (Vercel Production) o MESMO valor do Vault + **redeploy** (env só vale em deploy novo).
+- **Cron do Monde em 401 — CAUSA-RAIZ ACHADA; fix na v5.1.7 (aguarda deploy).** NÃO era o secret: o
+  `proxy.ts` (middleware, camada 1) exigia sessão em `/api/monde/ingest` e cortava o request do cron
+  (só o Bearer do CRON_SECRET, sem cookie) com `{"error":"AUTH_NECESSARIA"}` **antes** do handler — a
+  checagem do CRON_SECRET nunca rodava (bug latente desde a v5.1.2). A **v5.1.7** isenta a rota do portão
+  de sessão do proxy (`API_AUTH_PROPRIA`; ADR-0153); o handler segue autenticando (CRON_SECRET ou sessão
+  admin). O `CRON_SECRET` Vercel=Vault já foi acertado. **Após o merge+deploy da v5.1.7, verificar:**
+  `net._http_response`→200 e `monde_ingest_status().ultima_sync` avançar. Espelho congelado desde
+  14/07 22:03 UTC até lá.
 - **`SMTP_*` na Vercel** — sem eles, as notificações por e-mail degradam em silêncio (0 enviados).
 - **% Rec no Cadastro de Metas** — alvos de %Rec nascem vazios; enquanto o Yan não os digita,
   os cards de Metas mostram "—" no "% da meta".
@@ -47,6 +49,7 @@
   `get_weddings_historico_subsetor` (Weddings: subsetor). Feito isso, o upload de Vendas **pode ser
   desligado de vez**. Até lá, ele segue necessário para essas telas.
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116; hoje só o spot-check roda).
+- `CRON_SECRET` do handler `/api/monde/ingest` em comparação **constant-time** (`crypto.timingSafeEqual`) — hardening pré-existente da v5.1.2 (baixo risco; HTTPS/Vault protegem). Achado BAIXO do revisor v5.1.7.
 - Caso de contrato para `solicitar_acesso_admin` em `rpc-contrato.test.ts` (0177 já em produção).
 - Tokenização do `zinc` (follow-up do lint de cor, v4.26).
 - Consolidação das 3 pills de período (dívida opcional, patch dedicado).
