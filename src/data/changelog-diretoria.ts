@@ -35,8 +35,19 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.6',
+    data: '2026-07-15T10:49',
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'A tela de Metas e o Modo de Exibição (TV) passam a se atualizar sozinhos: os números e a "Última atualização" avançam periodicamente sem precisar recarregar a página — a TV da sala comercial reflete o andamento das metas ao longo do dia sem ninguém intervir.',
+      },
+    ],
+  },
+  {
     versao: '5.1.5',
-    data: '2026-07-15T12:45',
+    data: '2026-07-15T10:40',
     itens: [
       {
         tipo: 'correcao',
