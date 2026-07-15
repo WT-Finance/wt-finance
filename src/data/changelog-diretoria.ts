@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.8',
+    data: '2026-07-15T12:17',
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'O "Última atualização" das Metas (e do Modo de Exibição/TV) passa a mostrar a hora da última sincronização automática com o Monde, avançando a cada ciclo — antes só mudava quando entrava venda nova, o que fazia a hora parecer "parada" em períodos sem movimento.',
+      },
+    ],
+  },
+  {
     versao: '5.1.7',
     data: '2026-07-15T11:18',
     itens: [
