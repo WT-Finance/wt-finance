@@ -6,6 +6,7 @@ import MetasPeriodoPills from '@/components/metas/metas-periodo-pills'
 import MetaCard from '@/components/metas/meta-card'
 import RitmoChart from '@/components/metas/ritmo-chart'
 import TopSection from '@/components/shared/top-section'
+import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
 import { fmtDataHoraLongoSP } from '@/lib/fmt'
 import type { AcompanhamentoData } from '@/components/metas/tipos'
 
@@ -23,6 +24,8 @@ export default function AcompanhamentoContent({ data }: Props) {
 
   return (
     <div>
+      {/* Auto-refresh (v5.1.6): a tela converge ao dado do banco (cron ~15min) sem reload — 5min. */}
+      <MetasAutoRefresh intervaloMs={300_000} />
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">Acompanhamento das Metas</h1>

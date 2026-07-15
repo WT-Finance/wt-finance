@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { X } from 'lucide-react'
 import MetaProgressBar from '@/components/shared/meta-progress-bar'
 import TvFullscreenButton from '@/components/metas/tv/tv-fullscreen-button'
+import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
 import { corComparacao, corComparacaoValor } from '@/lib/metas/cor-comparacao'
 import { fmtMi, fmtDataHoraLongoSP } from '@/lib/fmt'
 import type { AcompanhamentoData, PainelSetor } from '@/components/metas/tipos'
@@ -56,6 +57,8 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden px-12 py-8 text-[var(--text-primary)]" style={{ background: fundo }}>
+      {/* Auto-refresh (v5.1.6): a parede converge ao dado do banco (cron ~15min) sem reload — 60s. */}
+      <MetasAutoRefresh intervaloMs={60_000} />
       {/* Cabeçalho — logo Janus (não o wordmark escrito) + período à esquerda; à direita a
           data da última atualização + tela cheia + sair. */}
       <header className="flex items-center justify-between gap-6">
