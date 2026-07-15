@@ -89,22 +89,22 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
     : (((sumRes.data as { subsetores?: SumarioSubsetorItem[] } | null)?.subsetores ?? [])
         .find(s => s.subsetor === 'COMERCIAL')?.n_contratos ?? null)
 
-  // "Última atualização" = frescor do espelho Monde: max(sincronizado_em), i.e. o instante
-  // da última ingestão via API que tocou dado (exposto por monde_ingest_status.ultima_sync,
-  // service-role). A virada (v5.1.4) tornou o Monde a fonte viva das vendas; antes este
-  // rótulo vinha de get_upload_status → MAX(fato_venda.criado_em) = data do UPLOAD manual de
-  // Excel (hoje fallback dormente), que congelava e passava a mentir pós-virada. Leitura
-  // server-side de agregado NÃO-sensível pelo admin client; fail-safe (erro → null → o topo
-  // omite a linha). monde_ingest_status não está no database.ts congelado → tipagem frouxa
-  // (mesmo padrão de rpcMetas/acervo/faturamento).
+  // "Última atualização" = timestamp da última SINCRONIZAÇÃO com o Monde
+  // (monde_ingest_status.ultima_sincronizacao = max(atualizado_em) de monde.ingest_control) —
+  // avança a cada pull do cron (~15min), MESMO sem venda nova. (v5.1.8: antes usava
+  // ultima_sync = MAX(sincronizado_em) = último DADO mudado, que congelava em janelas sem
+  // venda; o Yan pediu que mostrasse sempre a última vez que sincronizou.) Fallback a
+  // ultima_sync se a coluna nova vier vazia. Leitura server-side de agregado NÃO-sensível
+  // pelo admin client; fail-safe (erro → null → o topo omite a linha). monde_ingest_status
+  // não está no database.ts congelado → tipagem frouxa (padrão rpcMetas/acervo/faturamento).
   let ultimaAtualizacao: string | null = null
   try {
     const admin = getAdminClient()
     const chamarStatus = admin.rpc as unknown as (fn: string) => Promise<{ data: unknown; error: unknown }>
     const stRes = await chamarStatus.call(admin, 'monde_ingest_status')
     if (!stRes.error) {
-      ultimaAtualizacao = (stRes.data as { ultima_sync?: string | null } | null)
-        ?.ultima_sync ?? null
+      const st = stRes.data as { ultima_sincronizacao?: string | null; ultima_sync?: string | null } | null
+      ultimaAtualizacao = st?.ultima_sincronizacao ?? st?.ultima_sync ?? null
     }
   } catch { ultimaAtualizacao = null }
 
