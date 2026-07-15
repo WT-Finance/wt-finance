@@ -1,6 +1,6 @@
 import 'server-only'
 import { getServerClient } from '@/lib/supabase/server'
-import { getAdminClient } from '@/lib/supabase/admin'
+import { buscarUltimaSincronizacaoMonde } from '@/lib/metas/ultima-sincronizacao'
 import { parseRpc, executivaKpisSchema, metasListarSchema, metasRitmoDiarioSchema } from '@/lib/schemas-rpc'
 import { format } from 'date-fns'
 import { resolverPeriodoMetas, type PresetMetas } from '@/lib/metas/periodo-metas'
@@ -89,24 +89,9 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
     : (((sumRes.data as { subsetores?: SumarioSubsetorItem[] } | null)?.subsetores ?? [])
         .find(s => s.subsetor === 'COMERCIAL')?.n_contratos ?? null)
 
-  // "Última atualização" = timestamp da última SINCRONIZAÇÃO com o Monde
-  // (monde_ingest_status.ultima_sincronizacao = max(atualizado_em) de monde.ingest_control) —
-  // avança a cada pull do cron (~15min), MESMO sem venda nova. (v5.1.8: antes usava
-  // ultima_sync = MAX(sincronizado_em) = último DADO mudado, que congelava em janelas sem
-  // venda; o Yan pediu que mostrasse sempre a última vez que sincronizou.) Fallback a
-  // ultima_sync se a coluna nova vier vazia. Leitura server-side de agregado NÃO-sensível
-  // pelo admin client; fail-safe (erro → null → o topo omite a linha). monde_ingest_status
-  // não está no database.ts congelado → tipagem frouxa (padrão rpcMetas/acervo/faturamento).
-  let ultimaAtualizacao: string | null = null
-  try {
-    const admin = getAdminClient()
-    const chamarStatus = admin.rpc as unknown as (fn: string) => Promise<{ data: unknown; error: unknown }>
-    const stRes = await chamarStatus.call(admin, 'monde_ingest_status')
-    if (!stRes.error) {
-      const st = stRes.data as { ultima_sincronizacao?: string | null; ultima_sync?: string | null } | null
-      ultimaAtualizacao = st?.ultima_sincronizacao ?? st?.ultima_sync ?? null
-    }
-  } catch { ultimaAtualizacao = null }
+  // "Última atualização" = frescor do espelho Monde = última SINCRONIZAÇÃO (não o último dado
+  // mudado). Helper compartilhado com /metas/comparacao (v5.1.9); fail-safe → null (o topo omite).
+  const ultimaAtualizacao = await buscarUltimaSincronizacaoMonde()
 
   // Metas de todos os anos do período (fonte='real', filtrada pela RPC).
   const metaRows: MetaRow[] = metasResArr.flatMap((res, i) => {

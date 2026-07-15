@@ -18,7 +18,7 @@
 
 - **Badge âmbar = tokens `gestao`** (`border-gestao`/`bg-gestao-soft`/`text-gestao-fg`) — a badge "PRODUÇÃO" que você apontou é **NEUTRA** por decisão de design; o âmbar canônico "admin/gestão só-admin" do DS é o `gestao`. Usei esse.
 - **Ícone do badge Admin:** `VenetianMask` (máscara — o "agente secreto/incógnito" canônico do lucide). Alternativas disponíveis: `Glasses`, `HatGlasses`, `ShieldUser`.
-- **Badge Admin em fluxo normal** (linha à direita, não `absolute`) — evita colidir com controles top-right das páginas (ex.: o refresh de `/admin/uploads`). Se preferir inline com o título de cada página, é outro ajuste.
+- **Badge Admin `absolute` no canto sup. direito, alinhada à altura do título** (2º round) — sem gap sobrando. O botão de refresh manual de `/admin/uploads` foi removido (o status já recarrega no mount/pós-upload), liberando o top-right p/ a badge sem colisão.
 - **Botão "Modo de Comparação"** com a forma `rounded-lg` (igual ao vizinho "Modo de Exibição"), não pill — coerência com o botão ao lado.
 - **Ícone de alerta "em construção":** `TriangleAlert` (`text-warning`), à direita do item.
 

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
-import { numBRL2, fmtAxisMes, fmtDate } from '@/lib/fmt'
+import { numBRL2, fmtAxisMes, fmtDataHoraLongoSP } from '@/lib/fmt'
 
 // Pivô + tabela da Comparação Upload × Monde (v5.1.2/M6). Puramente de apresentação:
 // o dado já chega calculado pela RPC `monde_comparacao_mensal` (uma linha por
@@ -135,11 +135,11 @@ function LinhaTabela({ mes, dado, zebra, negrito }: {
 
 interface Props {
   linhas: LinhaComparacao[]
-  from: string
-  to: string
+  /** timestamptz (UTC) da última sincronização com o Monde (monde_ingest_status). v5.1.9. */
+  ultimaSincronizacao?: string | null
 }
 
-export default function ComparacaoContent({ linhas, from, to }: Props) {
+export default function ComparacaoContent({ linhas, ultimaSincronizacao }: Props) {
   const [setor, setSetor] = useState<SetorKey>('Group')
 
   const porMes = useMemo(() => {
@@ -178,7 +178,7 @@ export default function ComparacaoContent({ linhas, from, to }: Props) {
           })}
         </div>
         <p className="text-xs text-zinc-400">
-          Período analisado: {fmtDate(from)} – {fmtDate(to)}
+          Última atualização em {fmtDataHoraLongoSP(ultimaSincronizacao ?? null)}
         </p>
       </div>
 

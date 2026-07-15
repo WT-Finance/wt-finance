@@ -11,7 +11,7 @@
 
 - Versão em produção (main): `5.1.9` (ajustes UI/RBAC — botão Modo de Comparação, sidebar reordenada, badge Admin; cron do Monde OK; virada aplicada)
 - Versão em execução (worktree/branch ativa): nenhuma
-- Última migration **aplicada**: `0183_monde_status_ultima_sincronizacao.sql`. Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**. ⏳ **`0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas) AGUARDA aplicação DESTRUTIVA pelo Yan** (`npm run db:migrate -- --destrutiva`; só rótulo, chaves intocadas — precedente 0168).
+- Última migration **aplicada**: `0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas — aplicada pelo Yan). Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**.
 - Último ADR registrado: `0153`
 
 ## Bloqueios vigentes

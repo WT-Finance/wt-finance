@@ -9,17 +9,14 @@ import { requireArea } from '@/lib/auth/sessao'
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await requireArea(null)
   return (
-    <div>
-      {/* Badge de seção (v5.1.9): substitui a antiga faixa full-bleed "Administração". Âmbar de
-          gestão (tokens --gestao*, o canônico "ação administrativa só-admin" do DS), no canto
-          superior direito. Fluxo normal (não absolute) → não colide com controles top-right das
-          páginas (ex.: o refresh de /admin/uploads); a página vem logo abaixo. Sem a faixa não
-          sobra espaço (o conteúdo sobe); o `mb-3` é só o respiro badge↔conteúdo. Vale p/ /admin/*. */}
-      <div className="mb-3 flex justify-end">
-        <span className="inline-flex items-center gap-1.5 rounded-md border border-gestao bg-gestao-soft px-2.5 py-1 text-xs font-semibold text-gestao-fg">
-          <VenetianMask size={14} /> Administração
-        </span>
-      </div>
+    <div className="relative">
+      {/* Badge de seção (v5.1.9): âmbar de gestão (tokens --gestao*) no canto superior direito,
+          ALINHADO à altura do título de cada página — `absolute` (fora do fluxo) → não deixa
+          espaço sobrando E fica na linha do H1. Cada página /admin/* tem o H1 à esquerda e o
+          top-right livre (o refresh de /admin/uploads saiu na v5.1.9). Vale p/ toda /admin/*. */}
+      <span className="absolute right-0 top-0 z-10 inline-flex items-center gap-1.5 rounded-md border border-gestao bg-gestao-soft px-2.5 py-1 text-xs font-semibold text-gestao-fg">
+        <VenetianMask size={14} /> Administração
+      </span>
       {children}
     </div>
   )
