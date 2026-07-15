@@ -4,6 +4,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
 import { parseRpc } from '@/lib/schemas-rpc'
 import ComparacaoContent from '@/components/metas/comparacao-content'
+import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
 
 // Comparação Upload × Monde (v5.1.2/M6) — tela SÓ-LEITURA de validação, mês a mês,
 // entre a fonte que hoje alimenta as Metas (upload) e a ingestão paralela da API
@@ -46,6 +47,9 @@ export default async function ComparacaoMondePage() {
 
   return (
     <div>
+      {/* Auto-refresh (v5.1.9): a comparação também é Server Component → converge ao dado do
+          Monde (cron ~15min) sem reload, como o Acompanhamento (5min). */}
+      <MetasAutoRefresh intervaloMs={300_000} />
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Comparação — Upload × Monde</h1>
         <p className="mt-0.5 max-w-2xl text-sm text-zinc-400">

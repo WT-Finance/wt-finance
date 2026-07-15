@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { VenetianMask } from 'lucide-react'
 import { requireArea } from '@/lib/auth/sessao'
 
 // Guard baseline de TODA a subárvore /admin (v4.17.0/Balde 1). Antes este layout não
@@ -9,14 +10,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   await requireArea(null)
   return (
     <div>
-      {/* Faixa de seção FULL-BLEED encostada no topo da tela. O <main> do AppShell tem
-          py-8 (respiro vertical único do projeto, v4.16.1); o -mt-8 cancela SÓ o
-          padding-top do main para a faixa colar no limite superior (sem o gap estranho),
-          preservando o respiro inferior. Vale p/ todas as páginas /admin/*. */}
-      <div className="-mt-8 border-b border-[var(--color-border-tertiary,#e4e4e7)] bg-white px-6 py-3 mb-6">
-        <p className="text-2xs font-medium uppercase tracking-wider text-[var(--text-muted,#75777B)]">
-          Administração
-        </p>
+      {/* Badge de seção (v5.1.9): substitui a antiga faixa full-bleed "Administração". Âmbar de
+          gestão (tokens --gestao*, o canônico "ação administrativa só-admin" do DS), no canto
+          superior direito. Fluxo normal (não absolute) → não colide com controles top-right das
+          páginas (ex.: o refresh de /admin/uploads); a página vem logo abaixo. Sem a faixa não
+          sobra espaço (o conteúdo sobe); o `mb-3` é só o respiro badge↔conteúdo. Vale p/ /admin/*. */}
+      <div className="mb-3 flex justify-end">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-gestao bg-gestao-soft px-2.5 py-1 text-xs font-semibold text-gestao-fg">
+          <VenetianMask size={14} /> Administração
+        </span>
       </div>
       {children}
     </div>

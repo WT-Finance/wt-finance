@@ -43,13 +43,14 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // visão — a página faz OR das duas áreas, então quem só tem gestão também vê).
   'financeiro/acervo':        { rotulo: 'Acervo de Documentos',          grupo: 'Financeiro', ordem: 33 },
   'financeiro/acervo/gestao': { rotulo: 'Acervo de Documentos (gestão)', grupo: 'Financeiro', ordem: 34 },
-  // Metas em DOIS níveis (v5.0.0), mesmo padrão de solicitacoes/acervo: 'metas' (nome
-  // histórico) = GESTÃO (Cadastro — definir/editar metas, e inclui a visão); a nova
-  // 'metas/acompanhamento' = VER o Acompanhamento (liderança). A página de Acompanhamento
-  // faz OR das duas; o Cadastro e a RPC de escrita exigem só 'metas'. O rótulo de 'metas'
-  // fica 'Metas' (espelha a linha intacta de rbac_areas — renomear seria UPDATE destrutivo).
-  'metas':                   { rotulo: 'Metas',                     grupo: 'Geral',         ordem: 40 },
-  'metas/acompanhamento':    { rotulo: 'Metas — Acompanhamento',    grupo: 'Geral',         ordem: 41 },
+  // Metas em DOIS níveis (v5.0.0): a CHAVE 'metas' (nome histórico) = GESTÃO/Cadastro (definir/
+  // editar metas, inclui a visão + o botão "Modo de Comparação", v5.1.9); 'metas/acompanhamento'
+  // = VER o Acompanhamento (liderança). A página de Acompanhamento faz OR das duas; o Cadastro e
+  // a RPC de escrita exigem só 'metas'. RÓTULOS renomeados na v5.1.9 (CHAVES intocadas) para
+  // "Metas/Cadastro" e "Metas/Acompanhamento" — aqui é só fallback; o rótulo vivo vem de
+  // app.rbac_areas (migration 0184; UPDATE de dado = destrutivo, aplicado pelo humano).
+  'metas':                   { rotulo: 'Metas/Cadastro',            grupo: 'Geral',         ordem: 40 },
+  'metas/acompanhamento':    { rotulo: 'Metas/Acompanhamento',      grupo: 'Geral',         ordem: 41 },
   'admin/uploads':           { rotulo: 'Upload de Arquivos',        grupo: 'Administração', ordem: 50 },
   'admin/design-system':     { rotulo: 'Design System',             grupo: 'Administração', ordem: 51 },
   'admin/acessos':           { rotulo: 'Usuários e Acessos',        grupo: 'Administração', ordem: 52 },

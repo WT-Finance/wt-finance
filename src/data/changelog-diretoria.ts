@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.9',
+    data: '2026-07-15T13:25',
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'Ajustes visuais e de organização: a tela de Metas ganhou um botão "Modo de Comparação" (para quem administra as metas) e a comparação com o Monde passou a se atualizar sozinha; a lista de clientes do Faturamento ficou mais legível em telas menores; o menu lateral foi reordenado, com Metas em destaque acima do Financeiro; e as telas administrativas passaram a exibir um selo "Administração" no canto superior direito.',
+      },
+    ],
+  },
+  {
     versao: '5.1.8',
     data: '2026-07-15T12:17',
     itens: [

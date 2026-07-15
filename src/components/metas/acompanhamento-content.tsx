@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock, Monitor } from 'lucide-react'
+import { Clock, Monitor, GitCompare } from 'lucide-react'
 import MetasPeriodoPills from '@/components/metas/metas-periodo-pills'
 import MetaCard from '@/components/metas/meta-card'
 import RitmoChart from '@/components/metas/ritmo-chart'
@@ -17,9 +17,11 @@ import type { AcompanhamentoData } from '@/components/metas/tipos'
 
 interface Props {
   data: AcompanhamentoData
+  /** Usuário tem a área 'metas' (Cadastro) → mostra o botão "Modo de Comparação". v5.1.9. */
+  podeComparar?: boolean
 }
 
-export default function AcompanhamentoContent({ data }: Props) {
+export default function AcompanhamentoContent({ data, podeComparar }: Props) {
   const [group, ...setoresResto] = data.setores
 
   return (
@@ -33,16 +35,28 @@ export default function AcompanhamentoContent({ data }: Props) {
             Acompanhe o progresso do faturamento e receita em relação às metas
           </p>
         </div>
-        {/* Modo TV (v5.1.0): AÇÃO sobre a tela vista (não item de sidebar) → abre a pele
-            /metas/tv em tela cheia, mantendo o período corrente. Tokens neutros de plataforma. */}
-        <Link
-          href={`/metas/tv?periodo=${data.preset}`}
-          className="foco-neutro inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
-          title="Abrir em tela cheia para a TV da sala"
-        >
-          <Monitor size={16} className="text-zinc-400" />
-          Modo de Exibição
-        </Link>
+        {/* Ações sobre a tela vista (v5.1.9): "Modo de Comparação" (âmbar de gestão, só quem
+            tem a área 'metas'/Cadastro) à ESQUERDA + "Modo de Exibição" (TV, neutro). */}
+        <div className="flex shrink-0 items-center gap-2">
+          {podeComparar && (
+            <Link
+              href="/metas/comparacao"
+              className="foco-neutro inline-flex items-center gap-1.5 rounded-lg border border-gestao bg-gestao-soft px-3 py-1.5 text-sm font-medium text-gestao-fg transition-opacity hover:opacity-90"
+              title="Comparar as vendas do Monde com o upload manual"
+            >
+              <GitCompare size={16} />
+              Modo de Comparação
+            </Link>
+          )}
+          <Link
+            href={`/metas/tv?periodo=${data.preset}`}
+            className="foco-neutro inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+            title="Abrir em tela cheia para a TV da sala"
+          >
+            <Monitor size={16} className="text-zinc-400" />
+            Modo de Exibição
+          </Link>
+        </div>
       </div>
 
       <TopSection titulo="Visão geral">

@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.8 (rótulo "Última atualização" = última sincronização com o Monde)
+Última atualização: 2026-07-15 · v5.1.9 (ajustes UI/RBAC: botão Modo de Comparação, sidebar reordenada, badge Admin, rótulos de Metas)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,9 +9,9 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.8` (rótulo = última sincronização; cron do Monde OK—200; auto-refresh v5.1.6; virada aplicada)
+- Versão em produção (main): `5.1.9` (ajustes UI/RBAC — botão Modo de Comparação, sidebar reordenada, badge Admin; cron do Monde OK; virada aplicada)
 - Versão em execução (worktree/branch ativa): nenhuma
-- Última migration **aplicada**: `0183_monde_status_ultima_sincronizacao.sql` (aditiva — expõe `ultima_sincronizacao` no status do Monde). Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min desde o deploy da v5.1.7)**.
+- Última migration **aplicada**: `0183_monde_status_ultima_sincronizacao.sql`. Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**. ⏳ **`0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas) AGUARDA aplicação DESTRUTIVA pelo Yan** (`npm run db:migrate -- --destrutiva`; só rótulo, chaves intocadas — precedente 0168).
 - Último ADR registrado: `0153`
 
 ## Bloqueios vigentes
