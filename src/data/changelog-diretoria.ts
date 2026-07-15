@@ -41,7 +41,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       {
         tipo: 'melhoria',
         texto:
-          'Ajustes visuais e de organização: a tela de Metas ganhou um botão "Modo de Comparação" (para quem administra as metas) e a comparação com o Monde passou a se atualizar sozinha; a lista de clientes do Faturamento ficou mais legível em telas menores; o menu lateral foi reordenado, com Metas em destaque acima do Financeiro; e as telas administrativas passaram a exibir um selo "Administração" no canto superior direito.',
+          'Ajustes visuais e de organização: a tela de Metas ganhou um botão "Modo de Comparação" (para quem administra as metas) e a comparação com o Monde passou a se atualizar sozinha; a lista de clientes do Faturamento ficou mais legível em telas menores; o menu lateral foi reordenado, com Metas em destaque acima do Financeiro; as telas administrativas passaram a exibir um selo "Administração" no canto superior direito; valores em Weddings adotaram o formato contábil; e as seções recolhíveis das telas ganharam uma animação suave de abrir e fechar.',
       },
     ],
   },

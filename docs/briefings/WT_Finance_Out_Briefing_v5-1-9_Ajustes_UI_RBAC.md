@@ -34,6 +34,26 @@ O rename de rótulo é `UPDATE app.rbac_areas SET rotulo = ...` → o classifica
 
 O `CardTabela` usa `overflow-hidden` (corta, não rola). Com o Faturamento do Mix por Produto em `w-40` (contábil), as colunas fixas somam ~312px — cabem **folgado no uso real** (desktop, grid 2-col em `lg+` → card ~548px, sobra ~196px p/ "Produto"), mas em **janela MUITO estreita (<~400px / mobile)** o excesso é cortado sem scroll (dado pode sumir). É comportamento **pré-existente** do `CardTabela` (a tabela já não cabia a 375px antes, com `w-28`); o app é desktop-first. Follow-up possível: `min-w` + `ScrollAutoHide eixo="x"` dentro do `CardTabela` se o mobile virar caso de uso.
 
+## TopSection "linha-cortina" (4º round — aprovado em mockup)
+
+Reescrita do `TopSection` (padrão plataforma-wide de barra recolhível): a barra fica FIXA e o
+conteúdo sai por baixo dela, revelado de cima p/ baixo, com a **linha separadora presa à borda
+inferior da janela** — desce à frente ao abrir e sobe ao fechar (cortina). **380ms,
+`cubic-bezier(.32,.72,0,1)`** (valores escolhidos pelo Yan no mockup interativo). Substitui o
+`<details open>` (sem animação). Estado em memória (nasce aberto); conteúdo montado quando fechado
++ **`inert`** (achado ALTO do revisor endereçado: sem o inert, o conteúdo fechado ficava invisível
+mas focável por teclado/leitor de tela — o `<details>` antigo o removia do tab-order).
+
+**Riscos registrados (revisor, aceitos):**
+- **MÉDIO:** o clip da cortina (`overflow-hidden`, novo) pode cortar popovers `position:absolute`
+  não-portal de 4 componentes usados dentro de TopSections (`periodo-filter`, `periodo-filter-pills-url`,
+  `periodo-pills-url`, `dropdown-operacao`). **Hoje não se manifesta** (sempre há conteúdo substancial
+  abaixo do gatilho, então a janela é alta o bastante), mas é invariante implícita — conferir os 4
+  popovers no preview; follow-up possível: portar p/ `createPortal` (padrão já existente em
+  `base-dados-tab.tsx`).
+- **BAIXO:** sombras `shadow-sm` de cards encostados nas bordas laterais são cortadas pelo clip
+  (imperceptível hoje; relevante se algum consumidor usar shadow maior).
+
 ## Pendências (inalteradas)
 
 - (após esta) você aplicar a **0184** (rótulos) em TTY.
