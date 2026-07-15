@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.5',
+    data: '2026-07-15T12:45',
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Nas Metas — inclusive no Modo de Exibição (TV) — a informação "Última atualização" passa a mostrar a data e a hora da última sincronização automática com o Monde, refletindo o quão recentes são os números que estão na tela (antes exibia a data do último envio manual de planilha, que podia ficar defasada).',
+      },
+    ],
+  },
+  {
     versao: '5.1.4',
     data: '2026-07-14T20:30',
     itens: [

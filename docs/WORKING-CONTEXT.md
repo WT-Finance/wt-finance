@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.4 (A Virada — flip APLICADO; Metas/Performance leem o Monde)
+Última atualização: 2026-07-15 · v5.1.5 (rótulo "Última atualização" → Monde; virada v5.1.4 aplicada)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,9 +9,9 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.4` (A Virada — PR #182)
+- Versão em produção (main): `5.1.5` (rótulo "Última atualização" lê o Monde; virada v5.1.4 aplicada)
 - Versão em execução (worktree/branch ativa): nenhuma
-- Última migration **aplicada**: `0182_monde_agendamento_supabase.sql` — o **flip (0181/0182) foi aplicado**: as 7 funções PURA-mv leem o Monde e o cron `*/15` está ativo (conferido ao vivo em 2026-07-15)
+- Última migration **aplicada**: `0182_monde_agendamento_supabase.sql` — o **flip (0181/0182) foi aplicado**: as 7 funções PURA-mv leem o Monde e o cron `*/15` está agendado (**porém retornando 401 — ingestão parada desde 14/07; ver Bloqueios**)
 - Último ADR registrado: `0151`
 
 ## Bloqueios vigentes
@@ -23,8 +23,12 @@
   centavo (2026-06 e 2026-07). O **upload de Excel virou fallback dormente** — MAS **ainda é a única
   fonte** de: `get_mix_produto`/`get_cagr` (Performance: mix por produto / CAGR), `get_pipeline_weddings`/
   `get_prejuizos`/`get_sumario_subsetor`/`get_weddings_historico_subsetor` (Weddings: subsetor/produto/
-  operação-própria) e do rótulo "Última atualização" (`get_upload_status` = `MAX(criado_em)` de `fato_venda`).
-  **NÃO parar o upload** até o *fato* item-level do Monde existir (Scope B, abaixo).
+  operação-própria). (O rótulo "Última atualização" foi repontado ao Monde na v5.1.5 — não depende mais do upload.)
+  **NÃO parar o upload** enquanto essas funções lerem `fato_venda` (o Scope B resolve — ver abaixo).
+- **Cron do Monde retornando 401 — ingestão PARADA.** O `pg_cron` (`*/15`) dispara, mas `/api/monde/ingest`
+  responde **HTTP 401**: o `CRON_SECRET` da Vercel **não bate** com o `monde_cron_secret` do Vault (ambos
+  existem; valores divergem). O espelho Monde está **congelado desde 14/07 22:03 UTC** — a fonte viva de
+  Metas/Performance NÃO atualiza. Fix (Yan): igualar `CRON_SECRET` (Vercel) ao `monde_cron_secret` (Vault).
 - **`SMTP_*` na Vercel** — sem eles, as notificações por e-mail degradam em silêncio (0 enviados).
 - **% Rec no Cadastro de Metas** — alvos de %Rec nascem vazios; enquanto o Yan não os digita,
   os cards de Metas mostram "—" no "% da meta".
@@ -32,12 +36,10 @@
 
 ## Filas ativas (próximos passos já decididos)
 
-- **Rótulo "Última atualização" defasado (follow-up):** em `/metas` e `/metas/tv` vem de
-  `get_upload_status`→`MAX(fato_venda.criado_em)` (upload manual, hoje dormente), não do frescor do
-  Monde — congela quando o upload parar. Repontar para o frescor real (`monde.ingest_control` /
-  `MAX(monde.mv_vendas_diarias.data_venda)`). Patch dedicado.
-- **Monde — Scope B:** ingerir o *fato* item-level do Monde (produto/subsetor/operação-própria) para
-  virar `get_mix_produto`/`get_cagr` + as 4 funções de Weddings e enfim aposentar o upload de Vendas.
+- **Monde — Scope B:** o dado item-level **já está ingerido** (`monde.venda_item`: produto/product_kind/
+  fornecedor/passageiros; `monde.venda`: setor_micro/operação-própria; cobertura **2023→2026**). Falta
+  **construir o fato/mv item-level** a partir dele e repontar `get_mix_produto`/`get_cagr` + as 4 funções
+  de Weddings — aí o upload de Vendas pode ser aposentado de vez.
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116; hoje só o spot-check roda).
 - Caso de contrato para `solicitar_acesso_admin` em `rpc-contrato.test.ts` (0177 já em produção).
 - Tokenização do `zinc` (follow-up do lint de cor, v4.26).
@@ -50,11 +52,12 @@
   `tsconfig*.json`, `.prettierrc*`, `eslint-rules/`, `.claude/`) é bloqueado — exige checkpoint com o
   usuário + reexecução com `WT_PERMITIR_CONFIG=1`. O `gate-stop` bloqueia a resposta se sobrar
   `console.log` ou shorthand `-[--token]` em `.ts/.tsx` de `src/`. Escape geral: `WT_DESLIGAR_HOOKS=1`.
-- **`.claude/settings.json` versionado tem só a chave `hooks`** — NÃO fixa o `model` do orquestrador
-  (o CLAUDE.md menciona Opus fixado ali; fixar de fato é decisão pendente do usuário — v5.1.3).
+- **`.claude/settings.json` versionado tem só a chave `hooks`** — o `model` do orquestrador **NÃO é
+  predefinido** (decisão do Yan, v5.1.5): escolhe-se por sessão, Opus recomendado. O CLAUDE.md foi
+  corrigido (§Modelos por camada — antes dizia "Opus fixado ali", o que nunca foi verdade).
 - **Protocolo de revisão de contexto separado:** despachar `revisor` (sempre) e `revisor-db`
   (se houver migration/RPC) ANTES dos gates e da auto-auditoria — read-only, não conflitam.
-- `monde.*` **é a fonte viva** das telas executivas/Metas desde o flip (v5.1.4). Mas mix-por-produto, CAGR, as telas de **Weddings** (subsetor/pipeline/prejuízos) e o rótulo "Última atualização" ainda vêm do **upload** — não assumir que tudo já é Monde.
+- `monde.*` **é a fonte viva** das telas executivas/Metas desde o flip (v5.1.4); o rótulo "Última atualização" também (v5.1.5). Mas mix-por-produto, CAGR e as telas de **Weddings** (subsetor/pipeline/prejuízos) ainda vêm do **upload** — não assumir que tudo já é Monde.
 
 ---
 Regra de manutenção: item resolvido SAI (não é log). Aprendizado permanente NÃO fica
