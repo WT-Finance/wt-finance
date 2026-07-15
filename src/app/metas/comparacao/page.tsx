@@ -1,9 +1,11 @@
 import { z } from 'zod'
 import { requireArea } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
+import { buscarUltimaSincronizacaoMonde } from '@/lib/metas/ultima-sincronizacao'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
 import { parseRpc } from '@/lib/schemas-rpc'
 import ComparacaoContent from '@/components/metas/comparacao-content'
+import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
 
 // Comparação Upload × Monde (v5.1.2/M6) — tela SÓ-LEITURA de validação, mês a mês,
 // entre a fonte que hoje alimenta as Metas (upload) e a ingestão paralela da API
@@ -44,17 +46,23 @@ export default async function ComparacaoMondePage() {
   // mostra o aviso "sem dados", igual a um período legitimamente sem ingestão).
   const linhas = parseRpc(comparacaoMensalSchema, res, 'monde_comparacao_mensal') ?? []
 
+  // "Última atualização" = frescor do espelho Monde (última sincronização) — mesmo helper do
+  // Acompanhamento. Fail-safe → null.
+  const ultimaSincronizacao = await buscarUltimaSincronizacaoMonde()
+
   return (
     <div>
+      {/* Auto-refresh (v5.1.9): a comparação também é Server Component → converge ao dado do
+          Monde (cron ~15min) sem reload, como o Acompanhamento (5min). */}
+      <MetasAutoRefresh intervaloMs={300_000} />
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Comparação — Upload × Monde</h1>
+        <h1 className="text-xl font-semibold text-zinc-900">Comparação - Upload manual | API Monde</h1>
         <p className="mt-0.5 max-w-2xl text-sm text-zinc-400">
-          Validação só-leitura: a fonte das Metas continua sendo o upload; nada aqui altera
-          dado. O Monde é populado só nos meses já ingeridos — por isso meses sem ingestão
-          aparecem com o lado Monde zerado.
+          Comparação visual (read-only) dos dados provenientes do mecanismo de upload manual frente
+          aos dados provenientes da integração com a API do Monde.
         </p>
       </div>
-      <ComparacaoContent linhas={linhas} from={from} to={to} />
+      <ComparacaoContent linhas={linhas} ultimaSincronizacao={ultimaSincronizacao} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Upload, CheckCircle, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
+import { Upload, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
 import {
   getLancamentosStatusAction,
   inserirLoteLancamentosAction,
@@ -318,7 +318,7 @@ export default function AdminUploadsPage() {
 
   // Carrega o status no mount. IIFE async: o setState (dentro de carregarStatus) cai DEPOIS
   // do await — não é síncrono no efeito (react-hooks/set-state-in-effect). carregarStatus é
-  // reusado (pós-upload e botão de atualizar), por isso permanece um useCallback à parte.
+  // reusado (mount e pós-upload), por isso permanece um useCallback à parte.
   useEffect(() => { void (async () => { await carregarStatus() })() }, [carregarStatus])
 
   async function handleArquivoSelecionado(key: BaseKey, arquivo: File) {
@@ -477,18 +477,11 @@ export default function AdminUploadsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">Atualização de Dados</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">Importe planilhas para atualizar a base do dashboard</p>
+          <p className="text-sm text-zinc-400 mt-0.5">Importe planilhas para atualizar a base de dados da plataforma</p>
         </div>
-        <button
-          onClick={carregarStatus}
-          className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors"
-          aria-label="Atualizar status"
-        >
-          <RefreshCw size={15} />
-        </button>
       </div>
 
       <div className="space-y-4">

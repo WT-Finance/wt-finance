@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, use, Suspense, type PointerEv
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut, LineChart, ClipboardList } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -51,10 +51,12 @@ interface NavItem {
   sempre?: boolean
   /** Visível se o usuário tiver QUALQUER uma destas áreas (OR). v4.20.0. */
   areasAny?: Area[]
+  /** Rota atrás do gate "em construção" (preview) → ícone triangular de alerta à direita. v5.1.9. */
+  emConstrucao?: boolean
 }
 
 const PERFORMANCE_SUBS: NavSubItem[] = [
-  { href: '/performance',             label: 'Geral',       icon: Building,  area: 'performance'             },
+  { href: '/performance',             label: 'Geral',       icon: Building,  area: 'performance', emConstrucao: true },
   { href: '/performance/trips',       label: 'Trips',       icon: Plane,     area: 'performance/trips'       },
   { href: '/performance/weddings',    label: 'Weddings',    icon: Sparkles,  area: 'performance/weddings'    },
   { href: '/performance/corporativo', label: 'Corporativo', icon: Briefcase, area: 'performance/corporativo' },
@@ -83,13 +85,16 @@ const NAV_GROUPS: Record<string, NavSubItem[]> = {
   '/metas':       METAS_SUBS,
 }
 
+// Ordem da sidebar (v5.1.9): Executiva › Performance › Metas › Financeiro › Solicitações
+// › Upload de Arquivos › Usuários e Acessos › Design System. Metas subiu p/ cima de
+// Financeiro; Solicitações subiu p/ cima de Upload de Arquivos.
 const NAV_ITEMS: NavItem[] = [
-  { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva'     },
+  { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva', emConstrucao: true },
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
-  { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: null            },
-  { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
+  { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
+  { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
   // "Gerenciar solicitações" dentro de Solicitações (só admin). Rota /admin/solicitacoes intacta.
@@ -305,7 +310,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
           className="h-full overflow-y-auto scrollbar-none px-3 py-3"
         >
           <div ref={navContentRef} className="space-y-0.5">
-        {navItems.map(({ href, label, Icon }) => {
+        {navItems.map(({ href, label, Icon, emConstrucao }) => {
           const grupo = NAV_GROUPS[href]
 
           if (grupo) {
@@ -349,6 +354,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
                 className={active ? '' : 'text-zinc-400'}
               />
               {label}
+              {emConstrucao && <TriangleAlert size={14} className="ml-auto shrink-0 text-warning" aria-label="Em construção" />}
               {href === '/solicitacoes' && <BadgePendencias promise={usuario.pendenciasPromise} />}
             </Link>
           )

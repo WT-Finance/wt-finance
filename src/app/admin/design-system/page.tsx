@@ -491,7 +491,7 @@ export default async function DesignSystemPage() {
             { name: 'PeriodoPillsUrl',       path: 'src/components/shared/periodo-pills-url.tsx',        desc: 'Pills de período (Performance Geral/Trips/Corp), state em URL params' },
             { name: 'CustomTooltip',         path: 'src/components/charts/custom-tooltip.tsx',           desc: 'Tooltip padronizado para gráficos Recharts' },
             { name: 'SumarioSubsetorCard',   path: 'src/components/weddings/sumario-subsetor.tsx',       desc: 'Tabela de composição por subsetor com barras' },
-            { name: 'TopSection',            path: 'src/components/layout/top-section.tsx',              desc: 'Accordion de seção com header clicável' },
+            { name: 'TopSection',            path: 'src/components/shared/top-section.tsx',              desc: 'Barra recolhível com "linha-cortina" (450ms; barra fixa, conteúdo sai por baixo, linha desce à frente) — padrão de toda seção recolhível, v5.1.9' },
             { name: 'SortTh',               path: 'src/components/financeiro/proximos-lancamentos-lateral.tsx', desc: 'Cabeçalho de coluna clicável com seta ▲▼ — padrão de Lista de Operações' },
             { name: 'AuthHeader',            path: 'src/components/auth/auth-header.tsx',                desc: 'Cabeçalho institucional (logo + wordmark) das telas de plataforma — v4.14.1' },
             { name: 'Checkbox',              path: 'src/components/ui/checkbox.tsx',                     desc: 'Checkbox do design system (substitui o nativo do browser) — v4.14.1' },

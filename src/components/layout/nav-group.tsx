@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, TriangleAlert } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 
@@ -13,6 +13,8 @@ export interface NavSubItem {
   area: Area
   /** Visível se o usuário tiver QUALQUER uma destas áreas (OR). v4.34.0. */
   areasAny?: Area[]
+  /** Rota atrás do gate "em construção" (preview) → ícone triangular de alerta à direita. v5.1.9. */
+  emConstrucao?: boolean
 }
 
 interface NavGroupProps {
@@ -112,6 +114,7 @@ export default function NavGroup({ label, Icon, href, subs, pathname, pode, open
                   className={subActive ? '' : 'text-zinc-400'}
                 />
                 {sub.label}
+                {sub.emConstrucao && <TriangleAlert size={13} className="ml-auto shrink-0 text-warning" aria-label="Em construção" />}
               </Link>
             )
           })}

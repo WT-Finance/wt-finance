@@ -23,16 +23,25 @@ export default function EmConstrucao({
       </Suspense>
       <div className="mt-2 flex flex-col items-start gap-1">
         <p className="text-xs text-zinc-400">Você pode estar procurando:</p>
+        {/* v5.1.9: mesma cor/estilo em todos os links (antes Weddings=brand e Financeiro=zinc
+            divergiam) + link novo para Metas (Acompanhamento). */}
+        <Link
+          href="/metas"
+          className="flex items-center gap-1.5 text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-700"
+        >
+          <span className="w-1 h-1 rounded-full bg-zinc-400 shrink-0" />
+          Metas
+        </Link>
         <Link
           href="/performance/weddings"
-          className="flex items-center gap-1.5 text-xs text-brand underline hover:opacity-80"
+          className="flex items-center gap-1.5 text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-700"
         >
           <span className="w-1 h-1 rounded-full bg-zinc-400 shrink-0" />
           Weddings
         </Link>
         <Link
           href="/financeiro/fluxo-caixa"
-          className="flex items-center gap-1.5 text-xs text-zinc-400 underline hover:opacity-80"
+          className="flex items-center gap-1.5 text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-700"
         >
           <span className="w-1 h-1 rounded-full bg-zinc-400 shrink-0" />
           Financeiro

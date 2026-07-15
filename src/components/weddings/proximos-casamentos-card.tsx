@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Calendar } from 'lucide-react'
 import type { ProximosCasamentos } from '@/types/api'
-import { fmtDateMid, fmtBRL2, parseLocalDate } from '@/lib/fmt'
+import { fmtDateMid, parseLocalDate } from '@/lib/fmt'
+import { ValorContabil } from '@/components/shared/valor-contabil'
 import ListDrawer from '@/components/shared/list-drawer'
 import EmptyState from '@/components/shared/empty-state'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
@@ -16,13 +17,15 @@ interface Props {
   data18m: ProximosCasamentos | null
 }
 
-// Resultado Previsto = operação individual (um casamento) → 2 casas (ADR-0100), via fmtBRL2.
+// Resultado Previsto = operação individual (um casamento) → 2 casas (ADR-0100), formato
+// CONTÁBIL (v5.1.9): "R$" à esquerda + número à direita (ValorContabil, numBRL2).
 function ResultadoCell({ valor }: { valor: number }) {
   return (
-    <td className="py-2 px-3 text-xs tabular-nums text-right whitespace-nowrap text-zinc-500">
-      <span title="Total de entradas menos total de saídas da operação (coincide com Rec. Líq. na Lista de Operações)">
-        {fmtBRL2(valor)}
-      </span>
+    <td
+      className="py-2 px-3 text-xs text-zinc-500"
+      title="Total de entradas menos total de saídas da operação (coincide com Rec. Líq. na Lista de Operações)"
+    >
+      <ValorContabil valor={valor} />
     </td>
   )
 }
@@ -33,7 +36,7 @@ function Colunas() {
       <col className="w-32" />
       <col />
       <col />
-      <col className="w-28" />
+      <col className="w-32" />
     </colgroup>
   )
 }
