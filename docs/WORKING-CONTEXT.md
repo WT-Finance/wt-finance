@@ -36,10 +36,14 @@
 
 ## Filas ativas (próximos passos já decididos)
 
-- **Monde — Scope B:** o dado item-level **já está ingerido** (`monde.venda_item`: produto/product_kind/
-  fornecedor/passageiros; `monde.venda`: setor_micro/operação-própria; cobertura **2023→2026**). Falta
-  **construir o fato/mv item-level** a partir dele e repontar `get_mix_produto`/`get_cagr` + as 4 funções
-  de Weddings — aí o upload de Vendas pode ser aposentado de vez.
+- **Monde — Scope B (APOSENTAR o upload manual de Vendas):** confirmado **VIÁVEL** na análise da
+  v5.1.5 — o dado item-level **já está ingerido no espelho** (`monde.venda_item`: produto/product_kind/
+  fornecedor/passageiros; `monde.venda`: setor_micro/operação-própria; cobertura **2023→2026**), toda a
+  granularidade que hoje só o upload fornece. Falta **construir o fato/mv item-level** a partir dele e
+  repontar as **6 funções** que ainda leem `analytics.fato_venda` DIRETO — `get_mix_produto`, `get_cagr`
+  (Performance: mix por produto / CAGR) + `get_pipeline_weddings`, `get_prejuizos`, `get_sumario_subsetor`,
+  `get_weddings_historico_subsetor` (Weddings: subsetor). Feito isso, o upload de Vendas **pode ser
+  desligado de vez**. Até lá, ele segue necessário para essas telas.
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116; hoje só o spot-check roda).
 - Caso de contrato para `solicitar_acesso_admin` em `rpc-contrato.test.ts` (0177 já em produção).
 - Tokenização do `zinc` (follow-up do lint de cor, v4.26).
