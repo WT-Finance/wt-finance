@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.4 (A Virada — código mergeado; flip pendente do Yan)
+Última atualização: 2026-07-15 · v5.1.4 (A Virada — flip APLICADO; Metas/Performance leem o Monde)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -11,18 +11,20 @@
 
 - Versão em produção (main): `5.1.4` (A Virada — PR #182)
 - Versão em execução (worktree/branch ativa): nenhuma
-- Última migration **aplicada**: `0180_monde_comparacao_mensal.sql` — as `0181`/`0182` da virada existem no repo mas **NÃO foram aplicadas** (flip = gate do Yan)
+- Última migration **aplicada**: `0182_monde_agendamento_supabase.sql` — o **flip (0181/0182) foi aplicado**: as 7 funções PURA-mv leem o Monde e o cron `*/15` está ativo (conferido ao vivo em 2026-07-15)
 - Último ADR registrado: `0151`
 
 ## Bloqueios vigentes
 
 - **Faturamento roda em MODO TESTE** — o flip de produção (Asaas produção + `EMAIL_MODO=real`)
   é decisão do Yan, fora do código. A dupla trava do modo real está construída, não acionada.
-- **A virada (Monde como fonte das vendas) tem o CÓDIGO MERGEADO (v5.1.4), mas o FLIP NÃO foi aplicado** —
-  as migrations `0181` (repoint reversível das 7 funções PURA-mv) + `0182` (agendamento pg_cron+pg_net)
-  estão no repo, **não aplicadas**. Aplicá-las é gate do Yan, **após comunicar a diretoria**. Até lá, a
-  fonte VIVA das vendas segue o **upload**. Pendente: secrets no Vault (`monde_cron_secret` + URL de
-  produção) e `MONDE_API_KEY` na Vercel. `get_mix_produto`/`get_cagr` (leem o fato direto) ficam no upload.
+- **Virada Monde APLICADA (v5.1.4):** as 7 funções PURA-mv (Metas/Performance/Executiva/drawers) leem o
+  espelho Monde (`monde.mv_vendas_diarias_compat`); cron `*/15` ativo; paridade ao vivo conferida ao
+  centavo (2026-06 e 2026-07). O **upload de Excel virou fallback dormente** — MAS **ainda é a única
+  fonte** de: `get_mix_produto`/`get_cagr` (Performance: mix por produto / CAGR), `get_pipeline_weddings`/
+  `get_prejuizos`/`get_sumario_subsetor`/`get_weddings_historico_subsetor` (Weddings: subsetor/produto/
+  operação-própria) e do rótulo "Última atualização" (`get_upload_status` = `MAX(criado_em)` de `fato_venda`).
+  **NÃO parar o upload** até o *fato* item-level do Monde existir (Scope B, abaixo).
 - **`SMTP_*` na Vercel** — sem eles, as notificações por e-mail degradam em silêncio (0 enviados).
 - **% Rec no Cadastro de Metas** — alvos de %Rec nascem vazios; enquanto o Yan não os digita,
   os cards de Metas mostram "—" no "% da meta".
@@ -30,9 +32,12 @@
 
 ## Filas ativas (próximos passos já decididos)
 
-- **Monde — aplicar a virada:** o código está em main (v5.1.4); falta o Yan **aplicar** `0181`/`0182`
-  (flip + agendamento Supabase ~15min) após comunicar a diretoria — runbook no out-briefing da v5.1.4.
-  O Cron da Vercel fica dormente/redundante depois disso.
+- **Rótulo "Última atualização" defasado (follow-up):** em `/metas` e `/metas/tv` vem de
+  `get_upload_status`→`MAX(fato_venda.criado_em)` (upload manual, hoje dormente), não do frescor do
+  Monde — congela quando o upload parar. Repontar para o frescor real (`monde.ingest_control` /
+  `MAX(monde.mv_vendas_diarias.data_venda)`). Patch dedicado.
+- **Monde — Scope B:** ingerir o *fato* item-level do Monde (produto/subsetor/operação-própria) para
+  virar `get_mix_produto`/`get_cagr` + as 4 funções de Weddings e enfim aposentar o upload de Vendas.
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116; hoje só o spot-check roda).
 - Caso de contrato para `solicitar_acesso_admin` em `rpc-contrato.test.ts` (0177 já em produção).
 - Tokenização do `zinc` (follow-up do lint de cor, v4.26).
@@ -49,7 +54,7 @@
   (o CLAUDE.md menciona Opus fixado ali; fixar de fato é decisão pendente do usuário — v5.1.3).
 - **Protocolo de revisão de contexto separado:** despachar `revisor` (sempre) e `revisor-db`
   (se houver migration/RPC) ANTES dos gates e da auto-auditoria — read-only, não conflitam.
-- Não tratar `monde.*` como fonte de verdade das telas até o **flip (0181) ser aplicado** (hoje ainda é espelho, não fonte viva).
+- `monde.*` **é a fonte viva** das telas executivas/Metas desde o flip (v5.1.4). Mas mix-por-produto, CAGR, as telas de **Weddings** (subsetor/pipeline/prejuízos) e o rótulo "Última atualização" ainda vêm do **upload** — não assumir que tudo já é Monde.
 
 ---
 Regra de manutenção: item resolvido SAI (não é log). Aprendizado permanente NÃO fica
