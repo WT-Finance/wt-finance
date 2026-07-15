@@ -35,8 +35,10 @@ export interface AcompanhamentoData {
   eParcial: boolean
   /** Data da última venda carregada (ISO) — o "hoje" do produto. */
   ultimaVenda: string | null
-  /** timestamptz (UTC) da última carga de Vendas (MAX criado_em de fato_venda) — "última
-   *  atualização" exibida no topo. null se indisponível. */
+  /** timestamptz (UTC) da última sincronização do espelho Monde
+   *  (monde_ingest_status.ultima_sync = MAX(sincronizado_em) de monde.venda) — "última
+   *  atualização" exibida no topo (v5.1.5; antes era MAX(criado_em) de fato_venda = upload
+   *  manual, que congelava pós-virada). null se indisponível. */
   ultimaAtualizacao: string | null
   /** [Group, Trips, Weddings, Corporativo] — nesta ordem. */
   setores: PainelSetor[]

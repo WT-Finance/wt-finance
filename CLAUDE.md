@@ -279,9 +279,10 @@ ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de t
 ## Subagentes e paralelização (regra de ouro)
 
 ### Modelos por camada
-- **Sessão principal (orquestrador): Opus** — fixado em `.claude/settings.json`. Interpreta
-  o briefing, planeja, delega, serializa operações com estado e **revisa criticamente** o que
-  os subagentes retornam antes de integrar.
+- **Sessão principal (orquestrador): Opus recomendado, NÃO predefinido.** O modelo do orquestrador
+  **não é fixado** em `.claude/settings.json` (o arquivo versionado tem só a chave `hooks`) — escolhe-se
+  por sessão; Opus é o recomendado, não um default cravado. Interpreta o briefing, planeja, delega,
+  serializa operações com estado e **revisa criticamente** o que os subagentes retornam antes de integrar.
 - **Subagentes: Sonnet** — fixado no frontmatter de cada agente em `.claude/agents/`.
 - A sessão principal **não faz exploração extensa nem edição em massa diretamente** — isso é
   trabalho dos subagentes; o ruído (leituras, buscas, tentativas) morre no contexto deles.
