@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.9 (ajustes UI/RBAC: botão Modo de Comparação, sidebar reordenada, badge Admin, rótulos de Metas)
+Última atualização: 2026-07-15 · v5.1.10 (sombra dos cards nas seções recolhíveis do TopSection)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -10,7 +10,7 @@
 ## Verdade atual
 
 - Versão em produção (main): `5.1.9` (ajustes UI/RBAC — botão Modo de Comparação, sidebar reordenada, badge Admin; cron do Monde OK; virada aplicada)
-- Versão em execução (worktree/branch ativa): nenhuma
+- Versão em execução (worktree/branch ativa): `feat/v5-1-10-sombra-cards` (patch: folga lateral no clip do TopSection para a sombra dos cards não ser cortada — PR aberto, sem migration)
 - Última migration **aplicada**: `0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas — aplicada pelo Yan). Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**.
 - Último ADR registrado: `0153`
 
