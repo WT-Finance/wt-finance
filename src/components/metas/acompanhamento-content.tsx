@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock, Monitor, GitCompare } from 'lucide-react'
+import { Monitor, GitCompare } from 'lucide-react'
 import MetasPeriodoPills from '@/components/metas/metas-periodo-pills'
 import MetaCard from '@/components/metas/meta-card'
 import RitmoChart from '@/components/metas/ritmo-chart'
 import TopSection from '@/components/shared/top-section'
 import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
-import { fmtDataHoraLongoSP } from '@/lib/fmt'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import type { AcompanhamentoData } from '@/components/metas/tipos'
 
 // Página montada do Acompanhamento de Metas (v5.0.0): título/subtítulo fixos e, abaixo
@@ -62,12 +62,7 @@ export default function AcompanhamentoContent({ data, podeComparar }: Props) {
       <TopSection titulo="Visão geral">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <MetasPeriodoPills />
-          {data.ultimaAtualizacao && (
-            <p className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-              <Clock size={13} className="text-zinc-400" />
-              Última atualização em {fmtDataHoraLongoSP(data.ultimaAtualizacao)}
-            </p>
-          )}
+          <UltimaAtualizacao iso={data.ultimaAtualizacao} className="text-xs" />
         </div>
 
         {group && (

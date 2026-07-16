@@ -4,8 +4,9 @@ import { X } from 'lucide-react'
 import MetaProgressBar from '@/components/shared/meta-progress-bar'
 import TvFullscreenButton from '@/components/metas/tv/tv-fullscreen-button'
 import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { corComparacao, corComparacaoValor } from '@/lib/metas/cor-comparacao'
-import { fmtMi, fmtDataHoraLongoSP } from '@/lib/fmt'
+import { fmtMi } from '@/lib/fmt'
 import type { AcompanhamentoData, PainelSetor } from '@/components/metas/tipos'
 
 // ── Modo TV (v5.1.0) — pele de exibição do Acompanhamento para a parede do comercial ──
@@ -75,11 +76,12 @@ export default function TvTela({ data }: { data: AcompanhamentoData }) {
           <span className="ml-4 text-2xl text-[var(--text-secondary)]">Metas · {data.periodoLabel}</span>
         </div>
         <div className="flex items-center gap-6">
-          {data.ultimaAtualizacao && (
-            <span className="text-lg text-[var(--text-muted)]">
-              Atualizado em {fmtDataHoraLongoSP(data.ultimaAtualizacao)}
-            </span>
-          )}
+          <UltimaAtualizacao
+            iso={data.ultimaAtualizacao}
+            prefixo="Atualizado em"
+            className="text-lg"
+            iconSize={18}
+          />
           {/* Ações só-ícone (v5.1.0/checkpoint): tela cheia + X para sair. */}
           <TvFullscreenButton />
           <Link

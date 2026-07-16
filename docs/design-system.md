@@ -263,6 +263,27 @@ frágil (offset chumbado). O **padding do viewport é assimétrico de propósito
 card, e `pt-2` dá **respiro no topo** para o `box-shadow` de realce do hover (`.card-clicavel-neutra`)
 do PRIMEIRO card não ser cortado pelo `overflow` do viewport. Painel novo desse tipo nasce assim.
 
+## Rótulo "Última atualização" — sinal de saúde da sincronização (v5.1.11)
+
+Componente `<UltimaAtualizacao>` (`@/components/metas/ultima-atualizacao`) — o rótulo "Última
+atualização em <ts>" das telas de Metas (Acompanhamento, Comparação e Modo TV). Mostra a última
+**sincronização** com o Monde (`monde_ingest_status.ultima_sincronizacao`, v5.1.8) e, quando ela
+**não avança há mais de 45 min** (3 ticks do cron de 15 min), fica **vermelho** (`text-danger`) com
+o relógio trocado por um `TriangleAlert` — sinaliza que a integração pode ter parado **sem depender
+de alguém reparar no horário**.
+
+- O atraso é avaliado no **cliente** contra o horário atual e re-checado a cada 30 s (o rótulo cruza
+  para vermelho sozinho ao passar do limite; volta ao neutro quando a sincronização é retomada, via
+  o auto-refresh de 5 min). Começa NEUTRO no 1º render (o servidor não sabe o "agora" do cliente →
+  sem mismatch de hidratação) e reavalia no efeito.
+- Lógica pura e testável em `@/lib/metas/sync-atraso` (`sincronizacaoAtrasada(iso, agoraMs)`,
+  `LIMITE_ATRASO_MS` = 45 min). Comparação de **instante** (fuso-agnóstica); o fuso só importa p/ exibir.
+- **Cor:** o componente é dono da cor — passe só `className` de LAYOUT/tamanho (`text-xs`/`text-lg`),
+  nunca cor (senão conflita com o `text-danger` do estado atrasado). Cor OK via `corNeutra`
+  (default `text-[var(--text-muted)]`).
+- **Cobre a falha DURA** (API fora do ar / cron parado → marcador congela). **Não cobre a SILENCIOSA**
+  (API 200 sem vendas → marcador avança e engana). Ver o cabeçalho de `sync-atraso.ts`.
+
 ## MetaProgressBar — barra de progresso de meta (v5.0.0)
 
 Primitivo `<MetaProgressBar>` (`@/components/shared/meta-progress-bar`) — elemento central dos

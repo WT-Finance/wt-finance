@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.1.11',
+    data: '2026-07-15T21:16',
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'O aviso de "Última atualização" nas telas de Metas (incluindo a exibição na TV) agora fica vermelho quando os dados param de chegar da integração com o Monde por mais de 45 minutos — assim dá para perceber na hora se a atualização automática parou, sem precisar conferir o horário.',
+      },
+    ],
+  },
+  {
     versao: '5.1.10',
     data: '2026-07-15T16:52',
     itens: [
