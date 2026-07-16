@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.9 (ajustes UI/RBAC: botão Modo de Comparação, sidebar reordenada, badge Admin, rótulos de Metas)
+Última atualização: 2026-07-15 · v5.1.11 (rótulo "Última atualização" fica vermelho se a sincronização do Monde atrasar >45min)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,8 +9,8 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.9` (ajustes UI/RBAC — botão Modo de Comparação, sidebar reordenada, badge Admin; cron do Monde OK; virada aplicada)
-- Versão em execução (worktree/branch ativa): nenhuma
+- Versão em produção (main): `5.1.9` (ajustes UI/RBAC; cron do Monde OK; virada aplicada)
+- Versão em execução (worktree/branch ativa): **dois patches abertos** — `feat/v5-1-10-sombra-cards` (#188, sombra dos cards no TopSection) e `feat/v5-1-11-alerta-sync` (rótulo vermelho se sync atrasar). Independentes; **mergear o #188 (v5.1.10) primeiro** (conflito trivial de versão/CHANGELOG no 2º; reconciliar bump). Nenhum tem migration.
 - Última migration **aplicada**: `0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas — aplicada pelo Yan). Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**.
 - Último ADR registrado: `0153`
 
@@ -40,6 +40,7 @@
   (Performance: mix por produto / CAGR) + `get_pipeline_weddings`, `get_prejuizos`, `get_sumario_subsetor`,
   `get_weddings_historico_subsetor` (Weddings: subsetor). Feito isso, o upload de Vendas **pode ser
   desligado de vez**. Até lá, ele segue necessário para essas telas.
+- **Saúde da sincronização Monde:** a v5.1.11 cobriu a falha DURA com sinal PASSIVO (rótulo vermelho >45min). Follow-ups possíveis: (2) **alerta ATIVO por e-mail** (não depender de olhar a tela; reusa `src/lib/email`); (3) detectar a falha **SILENCIOSA** (API 200 sem vendas — o marcador avança e engana; cruzar `ultima_sync`/`max_data`, calibrar contra janelas quietas).
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116; hoje só o spot-check roda).
 - `CRON_SECRET` do handler `/api/monde/ingest` em comparação **constant-time** (`crypto.timingSafeEqual`) — hardening pré-existente da v5.1.2 (baixo risco; HTTPS/Vault protegem). Achado BAIXO do revisor v5.1.7.
 - Caso de contrato para `solicitar_acesso_admin` em `rpc-contrato.test.ts` (0177 já em produção).

@@ -1,11 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Clock } from 'lucide-react'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
-import { numBRL2, fmtAxisMes, fmtDataHoraLongoSP } from '@/lib/fmt'
+import { numBRL2, fmtAxisMes } from '@/lib/fmt'
 
 // Pivô + tabela da Comparação Upload × Monde (v5.1.2/M6). Puramente de apresentação:
 // o dado já chega calculado pela RPC `monde_comparacao_mensal` (uma linha por
@@ -178,11 +178,8 @@ export default function ComparacaoContent({ linhas, ultimaSincronizacao }: Props
             )
           })}
         </div>
-        {/* Mesmo padrão do Acompanhamento (ícone de relógio + rótulo). v5.1.9. */}
-        <p className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-          <Clock size={13} className="text-zinc-400" />
-          Última atualização em {fmtDataHoraLongoSP(ultimaSincronizacao ?? null)}
-        </p>
+        {/* Mesmo padrão do Acompanhamento; fica vermelho se a sincronização atrasar (v5.1.11). */}
+        <UltimaAtualizacao iso={ultimaSincronizacao ?? null} className="text-xs" />
       </div>
 
       {linhas.length === 0 ? (
