@@ -73,14 +73,24 @@ export default function TopSection({ titulo, subtitulo, children }: Props) {
         className="grid transition-[grid-template-rows] duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
         style={{ gridTemplateRows: aberto ? '1fr' : '0fr' }}
       >
-        <div className="relative min-h-0 overflow-hidden">
+        {/* `overflow-hidden` é o clip vertical da cortina — mas clipa TAMBÉM na horizontal,
+            cortando a SOMBRA dos cards encostados nas bordas laterais (o hover de `.card-clicavel`
+            sangra ~10px: `0 4px 12px -2px`). Idioma padrão para "deixar a sombra respirar dentro de
+            um clip": estender o clip 16px p/ cada lado (`-mx-4`, entrando na px-8 do <main> — sobra
+            16px, sem barra horizontal) e re-padronizar o conteúdo de volta (`px-4`) — o conteúdo
+            segue ALINHADO à barra, mas o padding-box do clip acomoda a sombra com folga (16 − 10 =
+            ~6px). A folga vertical já vem do pt-6/pb-5. (v5.1.10 — corrige a regressão do clip
+            introduzido na v5.1.9/4º round.) */}
+        <div className="relative min-h-0 overflow-hidden -mx-4 px-4">
           {/* pt-6 = o respiro barra↔conteúdo (revelado junto, parte da cortina);
               pb-5 = respiro conteúdo↔linha. */}
           <div className="pt-6 pb-5">{children}</div>
-          {/* A linha-cortina: presa à borda inferior da janela de revelação. */}
+          {/* A linha-cortina: presa à borda inferior da janela de revelação. `inset-x-7` (28px) =
+              os 16px de padding lateral do clip + 12px → mantém a linha 12px dentro do conteúdo
+              (posição idêntica à v5.1.9, quando era `inset-x-3` num clip sem padding). */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-3 bottom-0 h-0.5 rounded-full"
+            className="pointer-events-none absolute inset-x-7 bottom-0 h-0.5 rounded-full"
             style={{
               background:
                 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--brand-deep) 55%, transparent) 8%, color-mix(in srgb, var(--brand-deep) 55%, transparent) 92%, transparent)',

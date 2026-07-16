@@ -9,8 +9,8 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.9` (ajustes UI/RBAC; cron do Monde OK; virada aplicada)
-- Versão em execução (worktree/branch ativa): **dois patches abertos** — `feat/v5-1-10-sombra-cards` (#188, sombra dos cards no TopSection) e `feat/v5-1-11-alerta-sync` (rótulo vermelho se sync atrasar). Independentes; **mergear o #188 (v5.1.10) primeiro** (conflito trivial de versão/CHANGELOG no 2º; reconciliar bump). Nenhum tem migration.
+- Versão em produção (main): `5.1.10` (sombra dos cards nas seções recolhíveis; #188 mergeado)
+- Versão em execução (worktree/branch ativa): `feat/v5-1-11-alerta-sync` (#189 — rótulo "Última atualização" fica vermelho se a sync do Monde atrasar >45min; sem migration)
 - Última migration **aplicada**: `0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas — aplicada pelo Yan). Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**.
 - Último ADR registrado: `0153`
 

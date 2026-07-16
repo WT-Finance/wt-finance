@@ -122,6 +122,13 @@ horizontal recolhível da plataforma**:
   ao final do conteúdo visível: **desce à frente ao abrir e sobe à frente ao fechar**, como a
   haste de uma cortina. Cor: gradiente `color-mix` sobre `--brand-deep` (fade nas pontas).
 - **Timing: `450ms` · `cubic-bezier(.32,.72,0,1)`** (escolhidos pelo Yan no mockup).
+- **Folga lateral p/ a sombra dos cards (v5.1.10):** o `overflow-hidden` da janela clipa também
+  na horizontal e cortaria a **sombra dos cards encostados nas bordas** (o hover de `.card-clicavel`
+  sangra ~10px). O clip é estendido 16px p/ cada lado com `-mx-4` (entra na `px-8` do `<main>`, sem
+  gerar barra horizontal) e o conteúdo é re-padronizado com `px-4` (segue ALINHADO à barra) → o
+  padding-box do clip acomoda a sombra com folga (~6px). É o **idioma padrão** "deixar a sombra respirar
+  dentro de um clip"; qualquer clip novo que envolva cards com sombra deve segui-lo (a linha-cortina
+  compensa com `inset-x-7` = 16px de padding + 12px de inset). A folga vertical já vem do `pt-6/pb-5`.
 - Acessibilidade: conteúdo fechado fica **`inert`** (fora do tab-order/leitor de tela — o
   `<details>` que este padrão substituiu fazia isso via `display:none`); `motion-reduce`
   desliga a transição. Estado só em memória (nasce aberto); conteúdo permanece montado.

@@ -46,6 +46,17 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     ],
   },
   {
+    versao: '5.1.10',
+    data: '2026-07-15T16:52',
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Acabamento visual: a sombra dos cartões que ficam nas bordas das seções recolhíveis não é mais cortada ao abrir ou passar o mouse — o efeito agora fica uniforme em todas as telas.',
+      },
+    ],
+  },
+  {
     versao: '5.1.9',
     data: '2026-07-15T13:25',
     itens: [
