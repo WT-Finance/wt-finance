@@ -115,13 +115,29 @@ export async function deleteLancamentosBulk(ids: number[]): Promise<
 
 export type PapelConta = 'isolada' | 'reserva' | null
 
-export async function updateSaldo(conta: string, novoSaldo: number): Promise<
+/** 'yyyy-MM-dd' de HOJE no fuso de São Paulo (en-CA formata em ISO ordenável). Mesmo padrão
+ *  local usado em faturamento-corp/actions.ts e api/monde/ingest/route.ts (sem helper
+ *  compartilhado — é um one-liner, duplicado de propósito). */
+function hojeSP(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+}
+
+/**
+ * v5.2.0 (M5): overload de 3 args da RPC (`update_gerencial_saldo(p_conta, p_saldo,
+ * p_data_saldo)`, migration 0189) — grava também a DATA a que o saldo se refere (base do
+ * "staleness" exibido no card da conta; distinta de `atualizado_em`, que é sempre "agora").
+ * `dataSaldo` é OPCIONAL e retrocompatível: omitido → assume HOJE (fuso SP) — quem só edita o
+ * NÚMERO do saldo está, por padrão, confirmando-o "hoje"; a data fica explícita quando o
+ * chamador edita o campo de data em si (preservando o saldo atual).
+ */
+export async function updateSaldo(conta: string, novoSaldo: number, dataSaldo?: string | null): Promise<
   | { success: true }
   | { success: false; error: string }
 > {
   await requireAreaAction('financeiro/gerencial')
   try {
-    const { error } = await rpc('update_gerencial_saldo', { p_conta: conta, p_saldo: novoSaldo })
+    const p_data_saldo = dataSaldo === undefined ? hojeSP() : dataSaldo
+    const { error } = await rpc('update_gerencial_saldo', { p_conta: conta, p_saldo: novoSaldo, p_data_saldo })
     if (error) return { success: false, error: error.message }
     revalidar()
     return { success: true }

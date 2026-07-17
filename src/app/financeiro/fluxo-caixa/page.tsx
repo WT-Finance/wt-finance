@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
+import { parseRpc } from '@/lib/schemas-rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { fmtMi } from '@/lib/fmt'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
@@ -11,10 +12,17 @@ import ComposicaoPeriodo from '@/components/financeiro/composicao-lancamentos'
 import PosicaoPorConta from '@/components/financeiro/posicao-por-conta'
 import TopSection from '@/components/shared/top-section'
 import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
-import ProximosLancamentosLateral from '@/components/financeiro/proximos-lancamentos-lateral'
-import GerencialSection from '@/components/financeiro/gerencial/gerencial-section'
-import { type Lancamento } from '@/components/financeiro/gerencial/lancamento-row'
-import { type Conta as GerencialSaldo, type DiaProjecao } from '@/components/financeiro/gerencial/tipos'
+import RunwaySemanal from '@/components/financeiro/runway-semanal'
+import HorizontePrevisto from '@/components/financeiro/horizonte-previsto'
+import RepasseMensal from '@/components/financeiro/repasse-mensal'
+import RankingCaixa from '@/components/financeiro/ranking-caixa'
+import SaldoCaixaKpi from '@/components/financeiro/saldo-caixa-kpi'
+import type { Conta } from '@/components/financeiro/gerencial/tipos'
+import {
+  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema,
+  type RepasseMensalRow, type HorizonteBloco,
+  type RunwaySemanal as RunwaySemanalData, type RankingCaixa as RankingCaixaData,
+} from '@/lib/fluxo/rpc-fluxo'
 
 interface SearchParams {
   preset?: string
@@ -57,17 +65,6 @@ interface DecomposicaoCategoria {
   valor_total:     number
 }
 
-interface ProximoLancamento {
-  numero:           string | null
-  vencimento:       string
-  pessoa:           string | null
-  descricao:        string | null
-  valor_final:      number
-  tipo:             'Entrada' | 'Saída'
-  status:           string
-  dias_para_vencer: number
-}
-
 const TOOLTIP_KPI_REALIZADO =
   'Reflete o fluxo de caixa bancário real, com gastos via cartão contabilizados no pagamento da fatura. Diferença esperada em relação à Decomposição por Grupo de Categoria devido ao ciclo de cartão (≤30 dias).'
 
@@ -75,6 +72,11 @@ const TOOLTIP_KPI_REALIZADO =
 // diretoria. Componente, RPC (get_posicao_por_conta) e dados são MANTIDOS no código
 // para revisão futura — basta voltar a flag para `true`.
 const MOSTRAR_POSICAO_POR_CONTA = false
+
+/** Ano de hoje em America/Sao_Paulo — alimenta get_repasse_mensal(p_ano). */
+function hojeSP(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+}
 
 function TooltipIcon({ text }: { text: string }) {
   return (
@@ -129,15 +131,13 @@ export default async function FluxoCaixaPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  // v4.13: guard de área (ADR-0109); a seção Gerencial exige permissão própria
-  const sessao      = await requireArea('financeiro/fluxo-caixa')
-  const temGerencial = sessao.permissoes.includes('financeiro/gerencial')
+  // v4.13: guard de área (ADR-0109).
+  await requireArea('financeiro/fluxo-caixa')
 
   const sp   = await searchParams
   const { from, to } = resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
+  const anoAtual = Number(hojeSP().slice(0, 4))
 
-  // v4.21.0 (M2): cliente de SESSÃO (não service role). RPCs de fluxo e gerenciais já
-  // exigem a área no banco; a seção gerencial só dispara para quem tem 'financeiro/gerencial'.
   const db = await getServerClient()
 
   type RpcResult = { data: unknown; error: { message: string } | null }
@@ -146,11 +146,11 @@ export default async function FluxoCaixaPage({
 
   const empty: RpcResult = { data: null, error: null }
 
-  // v4.39.0 (M4/P2b): UM único estágio de RPCs (antes eram 2 blocos seriais — 8 + 3). Os 3
-  // gerenciais entram por spread CONDICIONAL (só disparam para quem tem a área; para os demais o
-  // array tem 8 itens e os slots gerenciais caem no default `= empty`). Sem dependência de dados
-  // entre os blocos → seguro paralelizar. `allSettled`→`empty` preserva o invariante "a seção
-  // gerencial indisponível NÃO derruba a página principal" (cada falha vira `empty`, não throw).
+  // v5.2.0/Onda 1 (M4): um único estágio de RPCs (mesmo padrão da v4.39.0). `get_gerencial_saldos`
+  // alimenta o Saldo de Caixa KPI (Projetado) — a própria RPC exige 'financeiro/gerencial'
+  // internamente (exigir_acesso); quem não tem a área recebe erro AQUI (Promise.allSettled/`rpc`
+  // não lançam), e o KPI degrada para "—" (unwrapRpc → null → []) sem quebrar a página. As 4 RPCs
+  // novas (repasse mensal, horizonte, runway semanal, ranking de caixa) entram no mesmo estágio.
   const [
     fluxoMensalRes,
     fluxoAcumuladoRes,
@@ -159,10 +159,11 @@ export default async function FluxoCaixaPage({
     decomposicaoRes,
     decomposicaoCategoriaRes,
     posicaoRes,
-    lancamentos10dRes,
-    projecaoRes            = empty,
-    saldosRes              = empty,
-    lancamentosGerencialRes = empty,
+    saldosRes,
+    repasseMensalRes,
+    horizonteRes,
+    runwaySemanalRes,
+    rankingRes,
   ] = await Promise.allSettled([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
@@ -171,13 +172,11 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_decomposicao_categoria',     { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
-    rpc('get_proximos_lancamentos', { p_dias: 10 }),
-    // Gerenciais (v4.22.1: janela ampla 60d; a UI fatia por horizonte). Só para quem tem a área.
-    ...(temGerencial ? [
-      rpc('get_gerencial_projecao_diaria', { p_dias: 60 }),
-      rpc('get_gerencial_saldos'),
-      rpc('get_gerencial_lancamentos', { p_limit: 1000 }),
-    ] : []),
+    rpc('get_gerencial_saldos'),
+    rpc('get_repasse_mensal',      { p_ano: anoAtual }),
+    rpc('get_fluxo_horizonte'),
+    rpc('get_fluxo_runway_semanal'),
+    rpc('get_fluxo_ranking'),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
 
   const fluxoMensalRows    = unwrapRpc<FluxoMensalV3Row[]>(fluxoMensalRes, 'get_fluxo_caixa_mensal_v3') ?? []
@@ -198,22 +197,23 @@ export default async function FluxoCaixaPage({
   const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
   const decomposicaoCategorias =
     unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
-  const posicoes     = unwrapRpc<PosicaoConta[]>(posicaoRes, 'get_posicao_por_conta') ?? []
+  const posicoes = unwrapRpc<PosicaoConta[]>(posicaoRes, 'get_posicao_por_conta') ?? []
 
-  const lancamentos10d: ProximoLancamento[] =
-    unwrapRpc<ProximoLancamento[]>(lancamentos10dRes, 'get_proximos_lancamentos') ?? []
+  // Saldos gerenciais (Conta[]) — vazio (fail-safe) quando o usuário não tem financeiro/gerencial
+  // ou a RPC falha; SaldoCaixaKpi degrada para "—" nesse caso, sem quebrar a página.
+  const saldosGerencial: Conta[] = unwrapRpc<Conta[]>(saldosRes, 'get_gerencial_saldos') ?? []
 
-  // Dados Gerenciais — já buscados no estágio único acima (sem 2º await). Falha de qualquer um
-  // veio como `empty` (allSettled) → unwrapRpc devolve null → `?? []`; a seção só renderiza vazia,
-  // nunca crasha a página principal (mesmo invariante de antes, agora sem hop serial extra).
-  let projecaoGerencial: DiaProjecao[]  = []
-  let saldosGerencial:   GerencialSaldo[] = []
-  let lancamentosGerencial: Lancamento[]  = []
-  if (temGerencial) {
-    projecaoGerencial    = unwrapRpc<DiaProjecao[]>(projecaoRes, 'get_gerencial_projecao_diaria') ?? []
-    saldosGerencial      = unwrapRpc<GerencialSaldo[]>(saldosRes, 'get_gerencial_saldos') ?? []
-    lancamentosGerencial = unwrapRpc<Lancamento[]>(lancamentosGerencialRes, 'get_gerencial_lancamentos') ?? []
-  }
+  // As 4 RPCs novas do Onda 1 — schema Zod valida o SHAPE; falha (RPC quebrada/drift) degrada
+  // para o "vazio" do tipo, e cada componente novo já trata array/objeto vazio internamente
+  // ("sem dados"), preservando o invariante "seção indisponível não derruba a página".
+  const repasseMensalRows: RepasseMensalRow[] =
+    parseRpc(repasseMensalSchema, repasseMensalRes, 'get_repasse_mensal') ?? []
+  const horizonteBlocos: HorizonteBloco[] =
+    parseRpc(horizonteSchema, horizonteRes, 'get_fluxo_horizonte') ?? []
+  const runwaySemanal: RunwaySemanalData =
+    parseRpc(runwaySemanalSchema, runwaySemanalRes, 'get_fluxo_runway_semanal') ?? { saldo_operacional: 0, semanas: [] }
+  const rankingCaixa: RankingCaixaData =
+    parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
 
   const totalEntradas = kpis.entradas_realizadas
   const totalSaidas   = kpis.saidas_realizadas
@@ -229,8 +229,49 @@ export default async function FluxoCaixaPage({
   return (
     <div>
 
-      {/* ── VISÃO GERAL ──────────────────────────────────────────────────────── */}
-      <TopSection titulo="Visão Geral">
+      {/* ── FLUXO PROJETADO ──────────────────────────────────────────────── */}
+      <TopSection titulo="Fluxo Projetado" subtitulo="Baseado em lançamentos de Contas a Pagar/a Receber">
+
+        {/* 4 KPI cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <SaldoCaixaKpi saldos={saldosGerencial} />
+          <KpiCard
+            label="A Receber"
+            value={fmtMi(kpisDiario.a_receber_10d)}
+            sub="próx. 10 dias"
+          />
+          <KpiCard
+            label="A Pagar"
+            value={fmtMi(kpisDiario.a_pagar_10d)}
+            sub="próx. 10 dias"
+          />
+          <KpiCard
+            label="NCG"
+            value={fmtMi(kpisDiario.ncg_10d)}
+            sub="próx. 10 dias"
+            valueColor={kpisDiario.ncg_10d >= 0 ? 'var(--positive)' : 'var(--negative)'}
+            tooltip="Necessidade de Capital de Giro: A Receber − A Pagar nos próximos 10 dias"
+          />
+        </div>
+
+        {/* Calendário (60%) + Runway Semanal (40%) */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-4">
+          <div className="lg:col-span-3 flex flex-col">
+            <Suspense fallback={<div className="h-64 animate-pulse bg-zinc-100 rounded-xl" />}>
+              <CalendarioLiquidez />
+            </Suspense>
+          </div>
+          <div className="lg:col-span-2 flex flex-col">
+            <RunwaySemanal data={runwaySemanal} />
+          </div>
+        </div>
+
+        <HorizontePrevisto blocos={horizonteBlocos} />
+
+      </TopSection>
+
+      {/* ── FLUXO REALIZADO ──────────────────────────────────────────────── */}
+      <TopSection titulo="Fluxo Realizado">
 
         {/* Period filter pills */}
         <div className="mb-6">
@@ -275,6 +316,16 @@ export default async function FluxoCaixaPage({
               <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
             </div>
 
+            {/* Repasse Mensal (v5.2.0/Onda 1) */}
+            <div className="mb-4">
+              <RepasseMensal rows={repasseMensalRows} />
+            </div>
+
+            {/* Ranking de Caixa (v5.2.0/Onda 1) */}
+            <div className="mb-4">
+              <RankingCaixa data={rankingCaixa} />
+            </div>
+
             {/* Composição dos Lançamentos (largura total) — título dentro do card */}
             <div className="grid grid-cols-1 gap-4 mb-4">
               <div className="rounded-xl shadow-sm bg-white p-5">
@@ -297,59 +348,6 @@ export default async function FluxoCaixaPage({
           </>
         )}
       </TopSection>
-
-      {/* ── FLUXO DE CAIXA DIÁRIO ─────────────────────────────────────────── */}
-      <TopSection titulo="Fluxo de Caixa Diário" subtitulo="Baseado em lançamentos de Contas a Pagar/a Receber">
-
-        {/* 4 KPI cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <KpiCard
-            label="Saldo em Caixa"
-            value={fmtMi(kpisDiario.saldo_em_caixa)}
-          />
-          <KpiCard
-            label="A Receber"
-            value={fmtMi(kpisDiario.a_receber_10d)}
-            sub="próx. 10 dias"
-          />
-          <KpiCard
-            label="A Pagar"
-            value={fmtMi(kpisDiario.a_pagar_10d)}
-            sub="próx. 10 dias"
-          />
-          <KpiCard
-            label="NCG"
-            value={fmtMi(kpisDiario.ncg_10d)}
-            sub="próx. 10 dias"
-            valueColor={kpisDiario.ncg_10d >= 0 ? 'var(--positive)' : 'var(--negative)'}
-            tooltip="Necessidade de Capital de Giro: A Receber − A Pagar nos próximos 10 dias"
-          />
-        </div>
-
-        {/* Calendário (60%) + Lista Próximos Lançamentos (40%) */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-3 flex flex-col">
-            <Suspense fallback={<div className="h-64 animate-pulse bg-zinc-100 rounded-xl" />}>
-              <CalendarioLiquidez />
-            </Suspense>
-          </div>
-          <div className="lg:col-span-2 flex flex-col">
-            <ProximosLancamentosLateral lancamentos={lancamentos10d} />
-          </div>
-        </div>
-
-      </TopSection>
-
-      {/* ── FLUXO DE CAIXA GERENCIAL — só para quem tem a área financeiro/gerencial ── */}
-      {temGerencial && (
-        <TopSection titulo="Fluxo de Caixa Gerencial" subtitulo="Baseado em planilha de previsão curada manualmente">
-          <GerencialSection
-            saldos={saldosGerencial}
-            projecao={projecaoGerencial}
-            lancamentos={lancamentosGerencial}
-          />
-        </TopSection>
-      )}
 
     </div>
   )
