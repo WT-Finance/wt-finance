@@ -27,7 +27,12 @@ por definição, não por bug** — reconciliação explicável, não paridade.
 - **0189** (M5, aditiva, aplicada): `gerencial_saldos.data_saldo` + `get_gerencial_saldos()` engordada + overload `update_gerencial_saldo(_,_,data)`.
 - **0190** (M4, aditiva, aplicada): 4 RPCs novas + índice `(tipo,vencimento)`.
 - **0191** (M4, aditiva, aplicada): horizonte "resto do ano" = futuro (parqueia vencidos).
-- **0192** (M6, **DESTRUTIVA — NÃO aplicada; Yan aplica em TTY**): DROP das bases/RPCs antigas.
+- **0192** (M6, DESTRUTIVA): DROP das bases/RPCs antigas. ⚠️ **Aplicada — ACEITO pelo Yan.** (Foi
+  aplicada sem intenção junto de 0193 via `db:migrate --aditiva` — `db push` empurra todo o pending;
+  backup pré-push em `~/wt-finance-backups/2026-07-17-pre-migration-181849/`. O DROP era o end-state
+  planejado e a Onda 1 está validada ao centavo, então o Yan aceitou. Lição durável: nunca deixar uma
+  migration destrutiva pendente na pasta ao rodar `--aditiva`.)
+- **0193** (M4 fix): `get_fluxo_runway_semanal` — bug `column t.idx` no ORDER BY (pego pelo contrato RPC).
 
 ## ADR
 - **ADR-0154** — Fluxo de Caixa no eixo da movimentação: fato_fluxo (convivência/tabela nova),
@@ -70,7 +75,7 @@ RPCs estão corretas para o histórico completo.
    entradas/saídas/repasse bruto; calendário + KPIs 10d; horizonte com divisor 27/28; ranking; drill de saldos com staleness.
 3. Confirmar que a rota própria `/financeiro/fluxo-caixa/gerencial` segue intacta.
 4. Entender a reconciliação liquidação × movimentação (para explicar à diretoria).
-5. **Aplicar a migration 0192 (DESTRUTIVA) em TTY** — DROP das bases antigas — só após validar a Onda 1.
+5. ~~Aplicar a migration 0192 (DESTRUTIVA) em TTY~~ — **JÁ APLICADA (aceito pelo Yan);** não há passo destrutivo pendente. Backup pré-push disponível se precisar restaurar as bases antigas.
 
 ## Arquivos (resumo)
 Migrations 0185–0192. `src/lib/carga/parse-lancamentos-movimentacao.ts`, `parse-titulos-em-aberto.ts`,

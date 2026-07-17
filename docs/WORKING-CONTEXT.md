@@ -11,7 +11,7 @@
 
 - Versão em produção (main): `5.1.11` (#189 mergeado — rótulo vermelho se a sync do Monde atrasar)
 - Versão em execução (worktree/branch ativa): `feat/v5-2-0-fluxo-caixa-onda1` (Fluxo de Caixa Onda 1; PR aberto). **Backend aplicado + validado; frontend done; gates verdes.**
-- Última migration **aplicada**: `0191_fix_horizonte_resto_ano_futuro.sql` (v5.2.0; 0185–0191 aditivas aplicadas via db:migrate). **`0192` (DROP das bases antigas do Fluxo de Caixa) é DESTRUTIVA e NÃO foi aplicada — aguarda o Yan aplicar em TTY após validar a Onda 1.**
+- Última migration **aplicada**: `0193_fix_runway_idx.sql` (v5.2.0; **0185–0193 TODAS aplicadas**). ⚠️ **`0192` (DROP das bases antigas do Fluxo de Caixa, DESTRUTIVA) foi aplicada — ACEITO pelo Yan.** (Aplicada sem querer junto de 0193 via `db:migrate --aditiva`, que empurra todo o pending; backup pré-push `~/wt-finance-backups/2026-07-17-pre-migration-181849/`. O DROP era o end-state planejado; a Onda 1 está validada ao centavo. Lição: nunca deixar migration destrutiva pendente na pasta ao rodar `--aditiva`.)
 - Último ADR registrado: `0154` (Fluxo de Caixa no eixo da movimentação)
 
 ## Bloqueios vigentes
@@ -19,9 +19,9 @@
 - **v5.2.0 Fluxo de Caixa Onda 1 — aguarda CHECKPOINT do Yan (antes do merge):** (1) subir as 2 bases
   reais de PRODUÇÃO (histórico 2024+) pelos 2 cards novos de Upload — a amostra de dev é só-2026, então
   os comparativos multi-ano (margem do ano anterior, ranking YTD×YTD, histórico 24m, anual) só populam
-  com o upload de produção; (2) conferir a Visão Geral reformada contra o dashboard da controladoria;
-  (3) **aplicar a migration 0192 (DESTRUTIVA) em TTY** — DROP das bases antigas — só após validar. O
-  merged-sem-0192 é funcional (bases antigas dormem). Reconciliação: repasse bate ao centavo (meses
+  com o upload de produção; (2) conferir a Visão Geral reformada contra o dashboard da controladoria.
+  (O DROP das bases antigas — 0192 — JÁ FOI APLICADO e aceito; não há passo destrutivo pendente.)
+  Reconciliação: repasse bate ao centavo (meses
   fechados); delta residual = data-base (modelo diário). Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-2-0_FluxoCaixa_Onda1.md`.
 - **Faturamento roda em MODO TESTE** — o flip de produção (Asaas produção + `EMAIL_MODO=real`)
   é decisão do Yan, fora do código. A dupla trava do modo real está construída, não acionada.
