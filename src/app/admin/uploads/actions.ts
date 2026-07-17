@@ -443,7 +443,8 @@ export async function finalizarLancamentosMovimentacaoAction(
   totalInseridas: number,
 ): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
   await requireAreaAction('admin/uploads')
-  return { sucesso: true, total_linhas: totalInseridas, erros: [] }
+  // M2: regenera o fato_fluxo (realizado por movimentação + previsto), lendo AS DUAS bases novas.
+  return regenerarFluxoCaixa(totalInseridas)
 }
 
 // ---------------------------------------------------------------------------
@@ -500,5 +501,30 @@ export async function finalizarTitulosEmAbertoAction(
   totalInseridas: number,
 ): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
   await requireAreaAction('admin/uploads')
-  return { sucesso: true, total_linhas: totalInseridas, erros: [] }
+  // M2: regenera o fato_fluxo lendo AS DUAS bases novas (previsto por vencimento + realizado por movimentação).
+  return regenerarFluxoCaixa(totalInseridas)
+}
+
+// Regenera financeiro.fato_fluxo (M2, eixo movimentação). Chamado no finalizar dos DOIS
+// uploads (movimentação e em-aberto) — a RPC lê ambas as bases. Idempotente (TRUNCATE+rebuild).
+// Surfacea contas NOVAS não classificadas como aviso (nunca em silêncio — invariante 3).
+async function regenerarFluxoCaixa(
+  totalInseridas: number,
+): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  try {
+    const supabase = getAdminClient()
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_fluxo_caixa')
+    if (error) return { error: `Erro ao regenerar fluxo de caixa: ${error.message}` }
+    const meta = data as { contas_novas?: string[]; contas_novas_n?: number } | null
+    const erros: string[] = []
+    if (meta?.contas_novas_n && meta.contas_novas_n > 0) {
+      erros.push(
+        `Atenção: ${meta.contas_novas_n} conta(s) nova(s) não classificada(s) automaticamente: ` +
+          `${(meta.contas_novas ?? []).join(', ')}. Confira a classificação de cartão em dim_conta_bancaria.`,
+      )
+    }
+    return { sucesso: true, total_linhas: totalInseridas, erros }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
 }
