@@ -63,6 +63,8 @@ npm run db:migrate -- --destrutiva    # backup-gate rede → db push COM CONFIRM
 
 O CLI não está instalado globalmente — sempre `npx supabase ...`, nunca `supabase ...`.
 
+**⚠️ `db push` aplica TODO o conjunto PENDENTE, não só a migration que você acabou de escrever — e `--aditiva` NÃO bloqueia uma destrutiva que esteja no pending.** Uma migration DESTRUTIVA escrita-mas-ainda-não-aplicada, deixada na pasta `supabase/migrations/`, é varrida junto no próximo `npm run db:migrate -- --aditiva` (o wrapper roda o backup-gate como rede, mas empurra tudo o que falta). Regra: **não escreva a migration destrutiva na pasta antes da hora de aplicá-la**; prepare-a só quando for rodar `--destrutiva` (TTY, com confirmação humana). Se precisar preparar o SQL destrutivo antes, guarde-o FORA de `supabase/migrations/` até o momento de aplicar. (Custou caro: a v5.2.0 dropou as bases antigas do Fluxo de Caixa sem querer ao aplicar um fix aditivo, porque a migration de DROP estava pendente na pasta — o backup pré-push salvou a recuperabilidade, mas a barreira "destrutiva só com humano" foi furada por essa via.)
+
 ### ⚠️ Produção direta, sem staging
 `--linked` aplica no banco de PRODUÇÃO (não há ambiente de staging separado; só
 existe `.env.local`). Uma migration ruim vai direto para produção, sem rede de proteção.
