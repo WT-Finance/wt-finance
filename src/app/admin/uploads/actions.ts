@@ -9,6 +9,8 @@ import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
 import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
+import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
+import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -385,4 +387,118 @@ export async function finalizarPessoasAction(
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Lançamentos por Movimentação (raw.lancamentos_movimentacao) — Fluxo de Caixa
+// Onda 1, v5.2.0/M1. Mesmo padrão de Lançamentos por Categoria (full-swap; batch
+// 500; arquivo_origem carregado por linha). Nasce AO LADO de raw.lancamentos —
+// nada lê esta base ainda (o fato passa a lê-la no M2).
+// ---------------------------------------------------------------------------
+
+export async function getLancamentosMovimentacaoStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+    const { data, error } = await bound('status_lancamentos_movimentacao')
+    if (error) return { error: error.message }
+    const status = data as { total: number; ultima_atualizacao: string | null } | null
+    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function inserirLoteLancamentosMovimentacaoAction(
+  lote: LancamentoMovimentacaoRaw[],
+  isFirst: boolean,
+  arquivoOrigem: string,
+): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    if (isFirst) {
+      const { error } = await bound('truncar_lancamentos_movimentacao')
+      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
+    }
+
+    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
+    const { error } = await bound('inserir_lote_lancamentos_movimentacao', { p_linhas: rows })
+    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
+
+    return { inseridas: lote.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+// M1: sem transformação (o fato passa a ler esta base no M2 — regenerar_financeiro_lancamentos v2).
+export async function finalizarLancamentosMovimentacaoAction(
+  totalAntes: number,
+  totalInseridas: number,
+): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  return { sucesso: true, total_linhas: totalInseridas, erros: [] }
+}
+
+// ---------------------------------------------------------------------------
+// Lançamentos por Vencimento em aberto (raw.titulos_em_aberto) — Fluxo de Caixa
+// Onda 1, v5.2.0/M1. Mesmo padrão de Fluxo de Caixa (CAP/CAR). Nasce AO LADO de
+// raw.fluxo_caixa_titulos — nada lê esta base ainda (o roteamento do previsto
+// passa a lê-la no M2/M3).
+// ---------------------------------------------------------------------------
+
+export async function getTitulosEmAbertoStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+    const { data, error } = await bound('status_titulos_em_aberto')
+    if (error) return { error: error.message }
+    const status = data as { total: number; ultima_atualizacao: string | null } | null
+    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function inserirLoteTitulosEmAbertoAction(
+  lote: TituloEmAbertoRaw[],
+  isFirst: boolean,
+  arquivoOrigem: string,
+): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    if (isFirst) {
+      const { error } = await bound('truncar_titulos_em_aberto')
+      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
+    }
+
+    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
+    const { error } = await bound('inserir_lote_titulos_em_aberto', { p_linhas: rows })
+    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
+
+    return { inseridas: lote.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+// M1: sem transformação (o roteamento previsto×realizado passa a ler esta base no M2/M3).
+export async function finalizarTitulosEmAbertoAction(
+  totalAntes: number,
+  totalInseridas: number,
+): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  return { sucesso: true, total_linhas: totalInseridas, erros: [] }
 }
