@@ -1,28 +1,35 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import Badge from '@/components/ui/badge'
-import type { Conta } from '@/components/financeiro/gerencial/tipos'
 import { fmtMi, fmtBRL2, fmtDate } from '@/lib/fmt'
+import { toNum } from '@/lib/carga/coercao'
+import { atualizarSaldoCaixaAction } from '@/app/financeiro/fluxo-caixa/actions'
+import type { SaldoCaixaConta } from '@/lib/fluxo/rpc-fluxo'
 
-// Saldo de Caixa (v5.2.0/Onda 1, M4) — KPI do topo do Fluxo Projetado. OPERACIONAL =
-// soma dos saldos das contas com papel ≠ 'reserva' (regra do modelo §3.6: caixa
-// operacional = total − reserva); a Reserva (papel='reserva', ex.: XP/Clara) é mostrada
-// SEPARADA, nunca somada ao operacional. Clique abre o drill por conta, com o mesmo
-// staleness (dias desde `data_saldo`) e limiares de
-// src/components/financeiro/gerencial/contas-cards.tsx (rotuloStaleness, v5.2.0/M5) —
-// mesma leitura de "saldo desatualizado" em toda a plataforma.
+// Saldo de Caixa (v5.2.0/Onda 1) — KPI do topo do Fluxo Projetado. OPERACIONAL = soma dos
+// saldos das contas com reserva=false; a Reserva (reserva=true, ex.: XP/Clara) é mostrada
+// SEPARADA, nunca somada ao operacional. Clique abre o drill por conta.
+//
+// Ajuste do checkpoint do Yan: a fonte é a tabela PRÓPRIA do Fluxo Projetado
+// (financeiro.saldo_caixa, via get_saldo_caixa/atualizar_saldo_caixa — migration 0194),
+// DESCONECTADA de analytics.gerencial_saldos — /fluxo-caixa/gerencial evolui separado a
+// partir daqui. O modal do drill agora é EDITÁVEL (saldo + data por conta). O idioma de
+// edição (célula numérica / célula de data click-to-edit) é MIRRORED de
+// gerencial/contas-cards.tsx, mas mantido LOCAL — sem importar o módulo gerencial (o
+// desacoplamento é o ponto: as duas telas não compartilham mais tipo nem estado).
 //
 // `data_saldo` é DATE PURO (sem fuso) — nunca `new Date(dataSaldo)`/fmtDataSP nele (o
 // construtor trata data-only como meia-noite UTC e o dia "volta" em fuso negativo; landmine
-// documentada em contas-cards.tsx). Usa-se `fmtDate` (split de string, sem conversão) e a
-// comparação por componentes abaixo — igual ao padrão já adotado ali.
+// documentada em gerencial/contas-cards.tsx). Usa-se `fmtDate` (split de string, sem
+// conversão) e a comparação por componentes abaixo — igual ao padrão já adotado ali.
 
 interface Props {
-  /** RPC get_gerencial_saldos(). Vazio quando o usuário não tem financeiro/gerencial
+  /** RPC get_saldo_caixa(). Vazio quando o usuário não tem financeiro/fluxo-caixa
    *  (a página degrada o KPI para "—" em vez de quebrar — RBAC próprio da RPC). */
-  saldos: Conta[]
+  saldos: SaldoCaixaConta[]
 }
 
 function hojeSP(): string {
@@ -36,7 +43,7 @@ function diasDesde(dataSaldo: string | null | undefined): number | null {
   return Math.round((Date.UTC(hy, hm - 1, hd) - Date.UTC(dy, dm - 1, dd)) / 86_400_000)
 }
 
-/** Mesmos limiares de contas-cards.tsx: neutro até 3 dias, atenção 4–7, alerta >7. */
+/** Mesmos limiares de gerencial/contas-cards.tsx: neutro até 3 dias, atenção 4–7, alerta >7. */
 function rotuloStaleness(dias: number | null): { texto: string; cor: string; badge: 'warning' | 'danger' | null } {
   if (dias === null) return { texto: 'sem data',      cor: 'text-zinc-300', badge: null }
   if (dias < 0)       return { texto: 'data futura',   cor: 'text-zinc-400', badge: null }
@@ -45,6 +52,11 @@ function rotuloStaleness(dias: number | null): { texto: string; cor: string; bad
   if (dias <= 7)      return { texto: `há ${dias} dias`, cor: 'text-warning', badge: 'warning' }
   return                     { texto: `há ${dias} dias`, cor: 'text-danger',  badge: 'danger' }
 }
+
+/** Saldo BR (vírgula decimal, 2 casas) — round-trip seguro com `toNum` canônico (mesmo idioma
+ *  de NumCell em gerencial/contas-manager.tsx; redefinido aqui para não importar o módulo
+ *  gerencial). */
+const editStr = (v: number): string => v.toFixed(2).replace('.', ',')
 
 export default function SaldoCaixaKpi({ saldos }: Props) {
   const [drillOpen, setDrillOpen] = useState(false)
@@ -59,8 +71,8 @@ export default function SaldoCaixaKpi({ saldos }: Props) {
     )
   }
 
-  const operacionais = saldos.filter(c => c.papel !== 'reserva')
-  const reservas      = saldos.filter(c => c.papel === 'reserva')
+  const operacionais = saldos.filter(c => !c.reserva)
+  const reservas      = saldos.filter(c => c.reserva)
   const saldoOperacional = operacionais.reduce((s, c) => s + c.saldo, 0)
   const saldoReserva     = reservas.reduce((s, c) => s + c.saldo, 0)
 
@@ -91,14 +103,33 @@ export default function SaldoCaixaKpi({ saldos }: Props) {
       </div>
 
       {drillOpen && (
-        <SaldoDrillModal saldos={saldos} onClose={() => setDrillOpen(false)} />
+        <SaldoDrillModal saldosIniciais={saldos} onClose={() => setDrillOpen(false)} />
       )}
     </>
   )
 }
 
-function SaldoDrillModal({ saldos, onClose }: { saldos: Conta[]; onClose: () => void }) {
+function SaldoDrillModal({ saldosIniciais, onClose }: { saldosIniciais: SaldoCaixaConta[]; onClose: () => void }) {
+  const router = useRouter()
+  const [saldos, setSaldos] = useState(saldosIniciais)
+  const [erro, setErro] = useState<Record<string, string>>({})
   const ordenados = [...saldos].sort((a, b) => a.ordem - b.ordem)
+
+  // Edição otimista (saldo E/OU data — a RPC sempre grava os dois juntos; o caller passa o
+  // valor CORRENTE do campo que não está sendo editado). Erro → reverte o estado local e
+  // mostra mensagem discreta na linha (sem refetch — o revert local já é a fonte da verdade).
+  const salvar = async (conta: string, novoSaldo: number, novaData: string | null) => {
+    setErro(prev => { const n = { ...prev }; delete n[conta]; return n })
+    const anterior = saldos
+    setSaldos(prev => prev.map(c => (c.conta === conta ? { ...c, saldo: novoSaldo, data_saldo: novaData } : c)))
+    const res = await atualizarSaldoCaixaAction(conta, novoSaldo, novaData)
+    if ('error' in res) {
+      setSaldos(anterior)
+      setErro(prev => ({ ...prev, [conta]: res.error }))
+      return
+    }
+    router.refresh() // re-hidrata o KPI/servidor (a página lê get_saldo_caixa de novo)
+  }
 
   return (
     <div
@@ -126,36 +157,94 @@ function SaldoDrillModal({ saldos, onClose }: { saldos: Conta[]; onClose: () => 
 
         <ScrollAutoHide className="px-5 py-3">
           {ordenados.map(c => {
-            const dias = diasDesde(c.data_saldo)
-            const { texto, cor, badge } = rotuloStaleness(dias)
+            const { badge } = rotuloStaleness(diasDesde(c.data_saldo))
             return (
               <div key={c.conta} className="flex items-center justify-between gap-3 py-2 border-b border-zinc-50 last:border-0">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-zinc-700 truncate">
                     {c.conta}
-                    {c.papel === 'reserva' && <span className="ml-1.5 text-3xs text-zinc-400">(reserva)</span>}
+                    {c.reserva && <span className="ml-1.5 text-3xs text-zinc-400">(reserva)</span>}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span
-                      className={`text-3xs ${cor}`}
-                      title={c.data_saldo ? `Saldo referente a ${fmtDate(c.data_saldo)}` : 'Sem data informada'}
-                    >
-                      {texto}
-                    </span>
+                    <DataSaldoCell valor={c.data_saldo} onSave={v => salvar(c.conta, c.saldo, v)} />
                     {badge && <Badge variant={badge}>Desatualizado</Badge>}
                   </div>
+                  {erro[c.conta] && <p className="text-3xs text-danger mt-0.5">{erro[c.conta]}</p>}
                 </div>
-                <p
-                  className="text-xs font-semibold tabular-nums shrink-0"
-                  style={{ color: c.saldo >= 0 ? 'var(--positive)' : 'var(--negative)' }}
-                >
-                  {fmtBRL2(c.saldo)}
-                </p>
+                <SaldoCell valor={c.saldo} onSave={v => salvar(c.conta, v, c.data_saldo)} />
               </div>
             )
           })}
         </ScrollAutoHide>
       </div>
     </div>
+  )
+}
+
+/** Saldo — clique para editar (mirror de NumCell em gerencial/contas-manager.tsx: input
+ *  texto, parse com `toNum` canônico no blur/Enter, Esc cancela, campo vazio → 0 — sem
+ *  importar o módulo gerencial). */
+function SaldoCell({ valor, onSave }: { valor: number; onSave: (v: number) => Promise<void> }) {
+  const [editando, setEditando] = useState(false)
+  const [txt, setTxt] = useState(editStr(valor))
+  const [saving, setSaving] = useState(false)
+
+  const salvar = async () => {
+    const vazio = txt.trim() === ''
+    const num = vazio ? 0 : toNum(txt)
+    if (!vazio && num === null) { setTxt(editStr(valor)); setEditando(false); return }
+    if (num === valor) { setEditando(false); return }
+    setSaving(true); await onSave(num as number); setSaving(false); setEditando(false)
+  }
+  if (editando) {
+    return (
+      <input
+        autoFocus value={txt} onChange={e => setTxt(e.target.value)} onBlur={salvar}
+        onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') { setTxt(editStr(valor)); setEditando(false) } }}
+        className="w-28 text-right text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none tabular-nums shrink-0"
+      />
+    )
+  }
+  return (
+    <button onClick={() => { setTxt(editStr(valor)); setEditando(true) }}
+      className="text-xs font-semibold tabular-nums shrink-0 hover:text-[var(--brand)] transition-colors"
+      style={{ color: valor >= 0 ? 'var(--positive)' : 'var(--negative)' }}
+      title="Clique para editar">
+      {saving ? '…' : fmtBRL2(valor)}
+    </button>
+  )
+}
+
+/** Data a que o saldo se refere — clique para editar (mirror de DataSaldoCell em
+ *  gerencial/contas-cards.tsx: `<input type="date">` nativo, blur/Enter salva). O texto
+ *  exibido em repouso é o STALENESS; a data exata fica no `title`. */
+function DataSaldoCell({ valor, onSave }: {
+  valor: string | null; onSave: (v: string | null) => Promise<void>
+}) {
+  const [editando, setEditando] = useState(false)
+  const [txt, setTxt] = useState(valor ?? '')
+  const [saving, setSaving] = useState(false)
+
+  const salvar = async () => {
+    const v = txt.trim() === '' ? null : txt
+    if (v === valor) { setEditando(false); return }
+    setSaving(true); await onSave(v); setSaving(false); setEditando(false)
+  }
+  if (editando) {
+    return (
+      <input
+        autoFocus type="date" value={txt} onChange={e => setTxt(e.target.value)} onBlur={salvar}
+        onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') setEditando(false) }}
+        className="text-2xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none"
+      />
+    )
+  }
+  const { texto, cor } = rotuloStaleness(diasDesde(valor))
+  return (
+    <button onClick={() => { setTxt(valor ?? ''); setEditando(true) }}
+      className={`text-3xs hover:text-[var(--brand)] transition-colors ${cor}`}
+      title={valor ? `Saldo referente a ${fmtDate(valor)} — clique para editar` : 'Sem data informada — clique para preencher'}>
+      {saving ? '…' : texto}
+    </button>
   )
 }

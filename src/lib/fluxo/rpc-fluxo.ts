@@ -31,20 +31,58 @@ export const repasseMensalSchema = z.array(repasseMensalRowSchema)
 
 export type RepasseMensalRow = z.infer<typeof repasseMensalRowSchema>
 
-// ── get_fluxo_horizonte() → HorizonteBloco[] ─────────────────────────────────
-// Buckets: "Resto de <ano> (lançado)", anos seguintes, "Pós-2028 · isolado do horizonte".
+// ── get_fluxo_horizonte() → HorizonteData (v2 mensal, ajuste do checkpoint) ───
+// 12 meses ROLANTES em layout de calendário (jan–dez): mês < mês-corrente exibe o mesmo
+// mês do ANO SEGUINTE; mês corrente = resto do mês (parcial=true); mês > corrente = mês
+// cheio do ano corrente. `anos` = consolidados SEM dupla contagem: ano+1 traz só os meses
+// não exibidos nas colunas (resto=true, m ≥ mês-corrente); ano+2 cheio.
 
-export const horizonteBlocoSchema = z.object({
-  l:   z.string(),
-  liq: z.number(),
-  e:   z.number(),
-  s:   z.number(),
-  n:   z.number(),
+export const horizonteMesSchema = z.object({
+  mes:     z.number(),
+  ano:     z.number(),
+  parcial: z.boolean(),
+  liq:     z.number(),
+  e:       z.number(),
+  s:       z.number(),
+  n:       z.number(),
 }).passthrough()
 
-export const horizonteSchema = z.array(horizonteBlocoSchema)
+export const horizonteAnoSchema = z.object({
+  ano:   z.number(),
+  resto: z.boolean(),
+  liq:   z.number(),
+  e:     z.number(),
+  s:     z.number(),
+  n:     z.number(),
+}).passthrough()
 
-export type HorizonteBloco = z.infer<typeof horizonteBlocoSchema>
+export const horizonteSchema = z.object({
+  mes_corrente: z.number(),
+  ano_corrente: z.number(),
+  meses:        z.array(horizonteMesSchema),
+  anos:         z.array(horizonteAnoSchema),
+}).passthrough()
+
+export type HorizonteMes  = z.infer<typeof horizonteMesSchema>
+export type HorizonteAno  = z.infer<typeof horizonteAnoSchema>
+export type HorizonteData = z.infer<typeof horizonteSchema>
+
+// ── get_saldo_caixa() → SaldoCaixaConta[] (tabela própria financeiro.saldo_caixa) ──
+// Desconectado de analytics.gerencial_saldos (ajuste do checkpoint): o saldo do Fluxo
+// Projetado é preenchível no modal do drill (atualizar_saldo_caixa). Reserva separada.
+
+export const saldoCaixaContaSchema = z.object({
+  conta:         z.string(),
+  saldo:         z.number(),
+  ordem:         z.number(),
+  data_saldo:    z.string().nullable(),
+  reserva:       z.boolean(),
+  atualizado_em: z.string(),
+}).passthrough()
+
+export const saldoCaixaSchema = z.array(saldoCaixaContaSchema)
+
+export type SaldoCaixaConta = z.infer<typeof saldoCaixaContaSchema>
 
 // ── get_fluxo_runway_semanal() → RunwaySemanal ───────────────────────────────
 // 13 semanas; acc = saldo projetado acumulado (saldo_operacional + Σ liq até a semana).

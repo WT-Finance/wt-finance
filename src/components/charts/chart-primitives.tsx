@@ -108,18 +108,24 @@ export function ChartXAxisMes(
 
 /**
  * Eixo X categórico genérico (labels já prontos nos dados), tick discreto.
+ * `angle`/`height` (opcionais) inclinam o rótulo na diagonal (`textAnchor="end"`)
+ * — útil quando há muitas categorias e o rótulo não cabe horizontal; `fontSize`
+ * sobrepõe o tamanho padrão do tick (`tickFontSize.x`).
  */
 export function ChartXAxisCategoria(
   dataKey: string,
-  opts?: { interval?: number | 'preserveStartEnd' },
+  opts?: { interval?: number | 'preserveStartEnd'; angle?: number; fontSize?: number; height?: number },
 ): ReactElement {
   return (
     <XAxis
       dataKey={dataKey}
-      tick={{ fontSize: tickFontSize.x, fill: chartColors.axisTick }}
+      tick={{ fontSize: opts?.fontSize ?? tickFontSize.x, fill: chartColors.axisTick }}
       tickLine={false}
       axisLine={false}
       interval={opts?.interval ?? 'preserveStartEnd'}
+      angle={opts?.angle}
+      textAnchor={opts?.angle !== undefined ? 'end' : undefined}
+      height={opts?.height}
     />
   )
 }

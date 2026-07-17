@@ -7,7 +7,7 @@ import {
   ChartGrid, ChartZeroLine, ChartXAxisCategoria, ChartYAxisBRL,
   CustomTooltip, ChartLegend, fluxoColors, barRadius, barSizes,
 } from '@/components/charts'
-import { fmtMi, fmtBRL } from '@/lib/fmt'
+import { fmtBRL } from '@/lib/fmt'
 import type { RunwaySemanal as RunwaySemanalData } from '@/lib/fluxo/rpc-fluxo'
 
 // Runway Semanal (v5.2.0/Onda 1) — 13 semanas de recebimentos/pagamentos previstos
@@ -64,18 +64,14 @@ export default function RunwaySemanal({ data }: Props) {
 
   return (
     <div className="rounded-xl shadow-sm bg-white p-5 flex-1 flex flex-col">
-      <div className="flex items-baseline justify-between gap-2 mb-1">
+      <div className="flex items-baseline justify-between gap-2 mb-3">
         <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Runway Semanal</h3>
-        <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{semanas.length} semanas</span>
       </div>
-      <p className="text-2xs mb-3" style={{ color: 'var(--text-muted)' }}>
-        Saldo operacional atual: <span className="font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{fmtMi(data.saldo_operacional)}</span>
-      </p>
 
       <ResponsiveContainer width="100%" height={220}>
         <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }} barGap={1}>
           {ChartGrid()}
-          {ChartXAxisCategoria('label', { interval: 0 })}
+          {ChartXAxisCategoria('label', { interval: 0, angle: -45, fontSize: 10, height: 36 })}
           {ChartYAxisBRL()}
           {ChartZeroLine()}
           <Tooltip
@@ -120,10 +116,6 @@ export default function RunwaySemanal({ data }: Props) {
         }}
       >
         {runwayLabel}
-      </p>
-      <p className="text-3xs mt-2" style={{ color: 'var(--text-subtle)' }}>
-        Projeção com base nos lançamentos já previstos (Contas a Pagar/a Receber) — não é garantia de
-        caixa; muda conforme novos lançamentos entram.
       </p>
     </div>
   )

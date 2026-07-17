@@ -69,6 +69,27 @@ RPCs estão corretas para o histórico completo.
 - **Próximos Lançamentos (lista lateral)** saiu da página (a grade Projetado é Calendário | Runway, per mockup) — confirmar no checkpoint se a lista deve voltar em algum lugar.
 - **Onda 2:** página "DRE Gerencial" (struct de 159 linhas como seed). **Parqueados:** vencidos em aberto, aderência/qualidade da previsão, maturação/ledger, leitura líquida do repasse, aposentar `gerencial_lancamentos`, parser comendo o formato cru do Monde.
 
+## Ajustes do checkpoint (round 2, pré-merge — pedidos do Yan)
+1. Subtítulo "Baseado em lançamentos…" removido da barra do Fluxo Projetado.
+2. **Saldo de Caixa desconectado do Gerencial:** tabela própria `financeiro.saldo_caixa` (migration
+   **0194**, seed one-time copiando as contas; `papel`→flag `reserva` com COALESCE — achado CRÍTICO
+   do revisor-db endereçado) + RPCs `get_saldo_caixa`/`atualizar_saldo_caixa`; o modal do drill virou
+   EDITÁVEL (saldo + data por conta, otimista + router.refresh). Runway repontado à tabela nova.
+   `analytics.gerencial_saldos` e a rota Gerencial seguem intactos. (Sem CRUD de conta nova na tabela
+   própria — follow-up se precisar.)
+3. Runway despoluído (sem "13 semanas"/saldo/nota; rótulos do eixo X na diagonal, menores —
+   `ChartXAxisCategoria` ganhou opts `angle/fontSize/height` aditivos).
+4. **Horizonte Previsto v2** (RPC reescrita na 0194): 12 meses ROLANTES em calendário (mês passado →
+   mesmo mês do ano seguinte, em CINZA neutro; mês corrente = resto, com *; meses futuros do ano em
+   verde/vermelho pelo sinal) + anos consolidados **sem dupla contagem** (2027* = só jul–dez, já que
+   jan–jun/27 estão nas colunas; 2028 cheio) — decisão técnica anti-dupla-contagem, sinalizada ao Yan.
+5. Repasse Mensal → gráfico de LINHA (ano corrente sólido + anterior tracejado + mês negativo em
+   vermelho, labels nos pontos) com o indicador (saldo bruto do ano) à esquerda no mesmo box.
+6. Ranking de Caixa com a hierarquia do modelo: 2 cards (atenção/positivo), prioridades 1–5, formato
+   contábil (parênteses), chips gasto/receita, YTD×YTD.
+Gates re-rodados verdes (tsc/lint/**445 testes**/build); contrato cobre get_saldo_caixa + invariante
+12 meses/2 anos do horizonte.
+
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
 2. Conferir a Visão Geral reformada contra o dashboard da controladoria (mesma base ~15-16/07):

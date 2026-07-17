@@ -1,127 +1,172 @@
 'use client'
 
 import {
-  ResponsiveContainer, ComposedChart, Bar, Line, Tooltip,
+  ResponsiveContainer, ComposedChart, Bar, Rectangle, Tooltip,
 } from 'recharts'
+import type { BarShapeProps } from 'recharts'
 import {
   ChartGrid, ChartZeroLine, ChartXAxisCategoria, ChartYAxisBRL,
-  CustomTooltip, ChartLegend, fluxoColors, barRadius, barSizes,
+  ChartLegend, fluxoColors, chartSeries, barRadius, barSizes,
 } from '@/components/charts'
-import { fmtMi, fmtBRL } from '@/lib/fmt'
-import type { HorizonteBloco } from '@/lib/fluxo/rpc-fluxo'
+import { fmtBRL } from '@/lib/fmt'
+import type { HorizonteData } from '@/lib/fluxo/rpc-fluxo'
 
-// Horizonte Previsto (v5.2.0/Onda 1) — mapa de compromissos JÁ LANÇADOS por bloco
-// temporal ("Resto de <ano> (lançado)", anos seguintes). É um retrato do que já foi
-// lançado no sistema, NÃO uma previsão/projeção de negócio — daí o aviso. O bloco
-// "Pós-2028 · isolado do horizonte" fica fora do eixo contínuo (separado por um
-// divisor visual): tende a ter poucos lançamentos e distorceria a escala dos demais.
+// Horizonte Previsto (lançado) (v5.2.0/Onda 1, ajuste do checkpoint) — 16 categorias:
+// 12 meses ROLANTES em layout de calendário (jan–dez: mês < mês-corrente mostra o mesmo
+// mês do ANO SEGUINTE já rolado; mês-corrente é parcial; mês > corrente é o mês cheio do
+// ano corrente), um SPACER (respiro visual) e os 2 anos consolidados SEM dupla contagem
+// (ano+1 só os meses não exibidos nas colunas; ano+2 cheio). UMA série de barras (liq,
+// já assinado por `fato_fluxo` — não renegar) colorida por SINAL: superávit (verde) /
+// déficit (vermelho) — EXCETO os meses "rolados" do ano seguinte (ainda não é o horizonte
+// do ano corrente, é o próximo ciclo de calendário já lançado), que ficam em CINZA NEUTRO
+// (`chartSeries.neutral`) independente do sinal. As 2 barras anuais consolidadas sempre
+// coloridas pelo sinal.
+
+const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 interface Props {
-  blocos: HorizonteBloco[]
+  data: HorizonteData
 }
 
-const MARCA_ISOLADO = 'isolado'
+type Cor = 'sup' | 'def' | 'neutro' | null
 
-export default function HorizontePrevisto({ blocos }: Props) {
-  if (!blocos.length) {
-    return (
-      <div className="rounded-xl shadow-sm bg-white p-5">
-        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto</h3>
-        <div className="h-40 flex items-center justify-center text-sm text-zinc-400">Sem dados</div>
-      </div>
-    )
-  }
+interface ChartPoint {
+  l:    string
+  e:    number | null
+  sVal: number | null
+  liq:  number | null
+  n:    number
+  cor:  Cor
+}
 
-  const principais = blocos.filter(b => !b.l.toLowerCase().includes(MARCA_ISOLADO))
-  const isolado    = blocos.find(b => b.l.toLowerCase().includes(MARCA_ISOLADO)) ?? null
+interface TooltipProps {
+  active?:  boolean
+  payload?: Array<{ payload: ChartPoint }>
+}
 
-  // `s` já vem NEGATIVO (fato_fluxo.valor é assinado); a barra de saída renderiza p/ baixo
-  // sem negação extra (mesma convenção do runway; barRadius.bottom = saída invertida).
-  const chartData = principais.map(b => ({
-    l:      b.l,
-    e:      b.e,
-    sVal:   b.s,
-    liq:    b.liq,
-    n:      b.n,
-  }))
-
+function HorizonteTooltip({ active, payload }: TooltipProps) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  if (d.liq === null) return null // spacer — sem tooltip
   return (
-    <div className="rounded-xl shadow-sm bg-white p-5">
-      <div className="flex items-baseline justify-between gap-2 mb-1">
-        <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto</h3>
-      </div>
-      <p className="text-2xs mb-3" style={{ color: 'var(--text-muted)' }}>
-        Mapa de compromissos já lançados por período — não é previsão de negócio.
-      </p>
-
-      <ResponsiveContainer width="100%" height={220}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }} barGap={4}>
-          {ChartGrid()}
-          {ChartXAxisCategoria('l', { interval: 0 })}
-          {ChartYAxisBRL()}
-          {ChartZeroLine()}
-          <Tooltip
-            content={(props) => (
-              <CustomTooltip
-                {...props}
-                formatter={(value: number, name: string) => {
-                  if (name === 'e')    return [fmtBRL(value), 'Entradas lançadas']
-                  if (name === 'sVal') return [fmtBRL(Math.abs(value)), 'Saídas lançadas']
-                  return [fmtBRL(value), 'Líquido']
-                }}
-              />
-            )}
-          />
-          <Bar dataKey="e"    name="e"    fill={fluxoColors.entrada} radius={barRadius.top}    barSize={barSizes.column} />
-          <Bar dataKey="sVal" name="sVal" fill={fluxoColors.saida}   radius={barRadius.bottom} barSize={barSizes.column} />
-          <Line
-            dataKey="liq"
-            name="liq"
-            stroke={fluxoColors.resultado}
-            strokeWidth={2}
-            dot={{ r: 4, fill: fluxoColors.resultado, strokeWidth: 0 }}
-            type="monotone"
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
-
-      <ChartLegend
-        items={[
-          { label: 'Entradas lançadas', color: fluxoColors.entrada,   type: 'rect' },
-          { label: 'Saídas lançadas',   color: fluxoColors.saida,     type: 'rect' },
-          { label: 'Líquido do bloco',  color: fluxoColors.resultado, type: 'line' },
-        ]}
-      />
-
-      {/* Resumo por bloco (inclui o nº de lançamentos, que o gráfico não mostra) — o bloco
-          isolado vem separado por um divisor vertical, já que fica fora do eixo contínuo. */}
-      <div className="flex items-stretch gap-3 mt-4 flex-wrap">
-        {principais.map(b => (
-          <BlocoChip key={b.l} bloco={b} />
-        ))}
-        {isolado && (
-          <>
-            <div className="w-px self-stretch bg-zinc-200" aria-hidden />
-            <BlocoChip bloco={isolado} isolado />
-          </>
-        )}
+    <div style={{
+      background: 'var(--surface)', border: '0.5px solid var(--border)', borderRadius: 8,
+      padding: '12px 16px', boxShadow: '0 4px 12px rgba(45,42,38,0.08)', minWidth: 190,
+    }}>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>{d.l}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <TooltipRow label="Entradas"     value={fmtBRL(d.e ?? 0)} />
+        <TooltipRow label="Saídas"       value={fmtBRL(Math.abs(d.sVal ?? 0))} />
+        <TooltipRow label="Líquido"      value={fmtBRL(d.liq)} />
+        <TooltipRow label="Lançamentos"  value={String(d.n)} />
       </div>
     </div>
   )
 }
 
-function BlocoChip({ bloco, isolado = false }: { bloco: HorizonteBloco; isolado?: boolean }) {
-  const cor = bloco.liq >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)'
+function TooltipRow({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={[
-        'rounded-lg px-3 py-2 min-w-[140px]',
-        isolado ? 'bg-zinc-50 border border-dashed border-zinc-200' : 'bg-zinc-50',
-      ].join(' ')}
-    >
-      <p className="text-2xs font-medium truncate" style={{ color: 'var(--text-muted)' }}>{bloco.l}</p>
-      <p className="text-sm font-semibold tabular-nums mt-0.5" style={{ color: cor }}>{fmtMi(bloco.liq)}</p>
-      <p className="text-3xs mt-0.5" style={{ color: 'var(--text-subtle)' }}>{bloco.n} lançamento{bloco.n === 1 ? '' : 's'}</p>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    </div>
+  )
+}
+
+function corDe(p: ChartPoint): string {
+  if (p.cor === 'neutro') return chartSeries.neutral
+  if (p.cor === 'def')    return fluxoColors.saida
+  return fluxoColors.entrada
+}
+
+function radiusDe(p: ChartPoint) {
+  return (p.liq === null || p.liq >= 0) ? barRadius.top : barRadius.bottom
+}
+
+// Cada barra é colorida/arredondada por SINAL individualmente (superávit/déficit/
+// rolado) — `shape` no lugar de `radius`/`fill` fixos no `<Bar>`, já que o raio "para
+// cima" (positiva) e "para baixo" (negativa) muda por categoria. `Cell` não aceita
+// `radius` na tipagem do recharts; `shape` + `Rectangle` é o caminho suportado. Definido
+// no MÓDULO (não no render) — só depende do `payload` da própria barra, sem closure.
+function BarraHorizonte(props: BarShapeProps) {
+  const p = props.payload as ChartPoint
+  return <Rectangle {...props} fill={corDe(p)} radius={radiusDe(p)} />
+}
+
+export default function HorizontePrevisto({ data }: Props) {
+  if (!data.meses.length) {
+    return (
+      <div className="rounded-xl shadow-sm bg-white p-5">
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto (lançado)</h3>
+        <div className="h-40 flex items-center justify-center text-sm text-zinc-400">Sem dados</div>
+      </div>
+    )
+  }
+
+  const anoSeguinte = data.ano_corrente + 1
+
+  // Meses < mês-corrente já rolam para o ano seguinte (ex.: Jan/27..Jun/27 em jul/26) —
+  // esses ficam em cinza neutro; o resto (mês-corrente..dez, ano corrente) é colorido
+  // pelo sinal, igual às barras anuais.
+  const pontosMes: ChartPoint[] = [...data.meses]
+    .sort((a, b) => a.mes - b.mes)
+    .map(m => ({
+      l:    `${MESES[m.mes - 1]}/${String(m.ano).slice(-2)}${m.parcial ? '*' : ''}`,
+      e:    m.e,
+      sVal: m.s,
+      liq:  m.liq,
+      n:    m.n,
+      cor:  m.ano > data.ano_corrente ? 'neutro' : (m.liq >= 0 ? 'sup' : 'def'),
+    }))
+
+  const spacer: ChartPoint = { l: '', e: null, sVal: null, liq: null, n: 0, cor: null }
+
+  const pontosAno: ChartPoint[] = [...data.anos]
+    .sort((a, b) => a.ano - b.ano)
+    .map(a => ({
+      l:    `${a.ano}${a.resto ? '*' : ''}`,
+      e:    a.e,
+      sVal: a.s,
+      liq:  a.liq,
+      n:    a.n,
+      cor:  a.liq >= 0 ? 'sup' : 'def',
+    }))
+
+  const chartData: ChartPoint[] = [...pontosMes, spacer, ...pontosAno]
+
+  // Subtítulo dinâmico — nunca hardcoda "jul"/"jun": deriva de `mes_corrente`.
+  const restoIni = MESES[data.mes_corrente - 1].toLowerCase()
+  const colFim   = data.mes_corrente > 1 ? MESES[data.mes_corrente - 2].toLowerCase() : null
+  const notaColunas = colFim ? ` (jan–${colFim} já nas colunas)` : ''
+
+  return (
+    <div className="rounded-xl shadow-sm bg-white p-5">
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto (lançado)</h3>
+      </div>
+      <p className="text-2xs mb-3" style={{ color: 'var(--text-muted)' }}>
+        Resultado líquido do previsto por vencimento · * = resto do período · {anoSeguinte}*
+        {' '}= {restoIni}–dez{notaColunas} · mapa de compromissos assumidos, não previsão
+      </p>
+
+      <ResponsiveContainer width="100%" height={240}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+          {ChartGrid()}
+          {ChartXAxisCategoria('l', { interval: 0, angle: -45, fontSize: 10, height: 36 })}
+          {ChartYAxisBRL()}
+          {ChartZeroLine()}
+          <Tooltip content={<HorizonteTooltip />} />
+          <Bar dataKey="liq" name="liq" barSize={barSizes.column} shape={BarraHorizonte} />
+        </ComposedChart>
+      </ResponsiveContainer>
+
+      <ChartLegend
+        items={[
+          { label: 'Superávit',              color: fluxoColors.entrada,   type: 'rect' },
+          { label: 'Déficit',                color: fluxoColors.saida,     type: 'rect' },
+          { label: `${anoSeguinte} (meses)`,  color: chartSeries.neutral,   type: 'rect' },
+        ]}
+      />
     </div>
   )
 }

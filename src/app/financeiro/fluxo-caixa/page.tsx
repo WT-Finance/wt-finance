@@ -17,10 +17,9 @@ import HorizontePrevisto from '@/components/financeiro/horizonte-previsto'
 import RepasseMensal from '@/components/financeiro/repasse-mensal'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import SaldoCaixaKpi from '@/components/financeiro/saldo-caixa-kpi'
-import type { Conta } from '@/components/financeiro/gerencial/tipos'
 import {
-  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema,
-  type RepasseMensalRow, type HorizonteBloco,
+  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
+  type RepasseMensalRow, type HorizonteData, type SaldoCaixaConta,
   type RunwaySemanal as RunwaySemanalData, type RankingCaixa as RankingCaixaData,
 } from '@/lib/fluxo/rpc-fluxo'
 
@@ -146,10 +145,10 @@ export default async function FluxoCaixaPage({
 
   const empty: RpcResult = { data: null, error: null }
 
-  // v5.2.0/Onda 1 (M4): um único estágio de RPCs (mesmo padrão da v4.39.0). `get_gerencial_saldos`
-  // alimenta o Saldo de Caixa KPI (Projetado) — a própria RPC exige 'financeiro/gerencial'
-  // internamente (exigir_acesso); quem não tem a área recebe erro AQUI (Promise.allSettled/`rpc`
-  // não lançam), e o KPI degrada para "—" (unwrapRpc → null → []) sem quebrar a página. As 4 RPCs
+  // v5.2.0/Onda 1 (M4): um único estágio de RPCs (mesmo padrão da v4.39.0). `get_saldo_caixa`
+  // alimenta o Saldo de Caixa KPI (Projetado) — tabela PRÓPRIA financeiro.saldo_caixa
+  // (desconectada do Fluxo de Caixa Gerencial no ajuste do checkpoint), preenchível no modal
+  // do drill. RPC falhou/sem acesso → KPI degrada para "—" sem quebrar a página. As 4 RPCs
   // novas (repasse mensal, horizonte, runway semanal, ranking de caixa) entram no mesmo estágio.
   const [
     fluxoMensalRes,
@@ -172,7 +171,7 @@ export default async function FluxoCaixaPage({
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_decomposicao_categoria',     { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
-    rpc('get_gerencial_saldos'),
+    rpc('get_saldo_caixa'),
     rpc('get_repasse_mensal',      { p_ano: anoAtual }),
     rpc('get_fluxo_horizonte'),
     rpc('get_fluxo_runway_semanal'),
@@ -199,17 +198,18 @@ export default async function FluxoCaixaPage({
     unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
   const posicoes = unwrapRpc<PosicaoConta[]>(posicaoRes, 'get_posicao_por_conta') ?? []
 
-  // Saldos gerenciais (Conta[]) — vazio (fail-safe) quando o usuário não tem financeiro/gerencial
-  // ou a RPC falha; SaldoCaixaKpi degrada para "—" nesse caso, sem quebrar a página.
-  const saldosGerencial: Conta[] = unwrapRpc<Conta[]>(saldosRes, 'get_gerencial_saldos') ?? []
+  // Saldo de caixa PRÓPRIO do Fluxo Projetado (financeiro.saldo_caixa) — vazio (fail-safe)
+  // se a RPC falhar; SaldoCaixaKpi degrada para "—" nesse caso, sem quebrar a página.
+  const saldosCaixa: SaldoCaixaConta[] = parseRpc(saldoCaixaSchema, saldosRes, 'get_saldo_caixa') ?? []
 
   // As 4 RPCs novas do Onda 1 — schema Zod valida o SHAPE; falha (RPC quebrada/drift) degrada
   // para o "vazio" do tipo, e cada componente novo já trata array/objeto vazio internamente
   // ("sem dados"), preservando o invariante "seção indisponível não derruba a página".
   const repasseMensalRows: RepasseMensalRow[] =
     parseRpc(repasseMensalSchema, repasseMensalRes, 'get_repasse_mensal') ?? []
-  const horizonteBlocos: HorizonteBloco[] =
-    parseRpc(horizonteSchema, horizonteRes, 'get_fluxo_horizonte') ?? []
+  const horizonte: HorizonteData =
+    parseRpc(horizonteSchema, horizonteRes, 'get_fluxo_horizonte') ??
+    { mes_corrente: 0, ano_corrente: 0, meses: [], anos: [] }
   const runwaySemanal: RunwaySemanalData =
     parseRpc(runwaySemanalSchema, runwaySemanalRes, 'get_fluxo_runway_semanal') ?? { saldo_operacional: 0, semanas: [] }
   const rankingCaixa: RankingCaixaData =
@@ -230,11 +230,11 @@ export default async function FluxoCaixaPage({
     <div>
 
       {/* ── FLUXO PROJETADO ──────────────────────────────────────────────── */}
-      <TopSection titulo="Fluxo Projetado" subtitulo="Baseado em lançamentos de Contas a Pagar/a Receber">
+      <TopSection titulo="Fluxo Projetado">
 
         {/* 4 KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <SaldoCaixaKpi saldos={saldosGerencial} />
+          <SaldoCaixaKpi saldos={saldosCaixa} />
           <KpiCard
             label="A Receber"
             value={fmtMi(kpisDiario.a_receber_10d)}
@@ -266,7 +266,7 @@ export default async function FluxoCaixaPage({
           </div>
         </div>
 
-        <HorizontePrevisto blocos={horizonteBlocos} />
+        <HorizontePrevisto data={horizonte} />
 
       </TopSection>
 

@@ -1,105 +1,156 @@
-import { fmtMi, fmtAxisPct } from '@/lib/fmt'
 import Badge from '@/components/ui/badge'
+import { numBRL2, fmtAxisPct } from '@/lib/fmt'
 import type { RankingCaixa as RankingCaixaData, RankingItem } from '@/lib/fluxo/rpc-fluxo'
 
-// Ranking de Caixa (v5.2.0/Onda 1) — categorias que mais PIORARAM/MELHORARAM o caixa,
-// YTD × YTD do ano anterior (get_fluxo_ranking). Já vem ordenado do backend por |Δ|
-// (maior impacto no topo) — a ordem em si é o marcador de prioridade (nº da linha).
+// Ranking de Caixa (v5.2.0/Onda 1, ajuste do checkpoint do Yan) — dois CARDS lado a lado
+// ("Pioraram"/"Melhoraram" o caixa), no modelo contábil da controladoria: categorias YTD ×
+// YTD do ano anterior (get_fluxo_ranking), já ordenadas pelo backend por |Δ| (maior impacto
+// no topo — a ordem em si é o marcador de prioridade). No card "Pioraram", as 5 primeiras
+// linhas ganham marcador numérico de prioridade + fundo suave (é o que a controladoria olha
+// primeiro). Substitui a versão anterior de 2 colunas simples, sem título/nota gerais — os
+// cards são autoexplicativos.
 
 interface Props {
   data: RankingCaixaData
 }
 
+/** Ano corrente no fuso de São Paulo (mesmo idioma de hojeSP() usado no resto do Fluxo). */
+function anoAtualSP(): number {
+  return Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 4))
+}
+
 export default function RankingCaixa({ data }: Props) {
-  const semDados = data.pioraram.length === 0 && data.melhoraram.length === 0
+  const anoAtual    = anoAtualSP()
+  const anoAnterior = anoAtual - 1
+  const semDados    = data.pioraram.length === 0 && data.melhoraram.length === 0
 
   if (semDados) {
     return (
       <div className="rounded-xl shadow-sm bg-white p-5">
-        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Ranking de Caixa</h3>
         <p className="text-sm text-zinc-400">Sem dados comparáveis (YTD × YTD ano anterior)</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded-xl shadow-sm bg-white p-5">
-      <div className="mb-1">
-        <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Ranking de Caixa</h3>
-      </div>
-      <p className="text-2xs mb-4" style={{ color: 'var(--text-muted)' }}>
-        Categorias com maior variação de impacto no caixa — este ano até hoje vs. mesmo período do ano anterior.
-      </p>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
-        <RankingColuna titulo="Pioraram o caixa" itens={data.pioraram} tom="negativo" />
-        <RankingColuna titulo="Melhoraram o caixa" itens={data.melhoraram} tom="positivo" />
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <RankingCard
+        titulo="Pioraram o caixa — atenção"
+        subtitulo={`maior gasto ou menor receita vs ${anoAnterior} · 1–5 = prioridade · etiqueta indica gasto/receita`}
+        itens={data.pioraram}
+        tom="negativo"
+        anoAtual={anoAtual}
+        anoAnterior={anoAnterior}
+        prioridade
+      />
+      <RankingCard
+        titulo="Melhoraram o caixa — positivo"
+        subtitulo={`menor gasto ou maior receita vs ${anoAnterior}`}
+        itens={data.melhoraram}
+        tom="positivo"
+        anoAtual={anoAtual}
+        anoAnterior={anoAnterior}
+      />
     </div>
   )
 }
 
-function RankingColuna({ titulo, itens, tom }: {
-  titulo: string
-  itens:  RankingItem[]
-  tom:    'positivo' | 'negativo'
+function RankingCard({ titulo, subtitulo, itens, tom, anoAtual, anoAnterior, prioridade = false }: {
+  titulo:      string
+  subtitulo:   string
+  itens:       RankingItem[]
+  tom:         'positivo' | 'negativo'
+  anoAtual:    number
+  anoAnterior: number
+  prioridade?: boolean
 }) {
-  const corTitulo = tom === 'positivo' ? 'var(--positive)'      : 'var(--negative)'
-  const corDelta   = tom === 'positivo' ? 'var(--positive-deep)' : 'var(--negative-deep)'
-
-  if (!itens.length) {
-    return (
-      <div>
-        <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
-        <p className="text-xs text-zinc-400">Sem categorias nesta lista</p>
-      </div>
-    )
-  }
+  const negativo  = tom === 'negativo'
+  const corTitulo = negativo ? 'text-[var(--negative-deep)]' : 'text-[var(--positive-deep)]'
+  const corBorda  = negativo ? 'border-[var(--negative-soft)]' : 'border-[var(--positive-soft)]'
+  const corDelta  = negativo ? 'text-[var(--negative-deep)]' : 'text-[var(--positive-deep)]'
 
   return (
-    <div>
-      <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
-      <table className="w-full">
-        <thead>
-          <tr className="text-3xs font-medium text-zinc-400">
-            <th className="text-left pb-1.5 w-5">#</th>
-            <th className="text-left pb-1.5">Categoria</th>
-            <th className="text-right pb-1.5">Variação</th>
-          </tr>
-        </thead>
-        <tbody>
-          {itens.map((it, i) => {
-            const semBase = it.t25 === 0
-            const sinal   = it.d >= 0 ? '+' : '−'
-            return (
-              <tr key={it.c} className="border-b border-zinc-50 last:border-0">
-                <td className="py-1.5 pr-1 text-2xs text-zinc-400 tabular-nums align-top">{i + 1}</td>
-                <td className="py-1.5 pr-2 min-w-0 align-top">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-2xs text-zinc-700 truncate">{it.c || '(sem categoria)'}</span>
-                    <Badge variant="neutro" className="shrink-0">
-                      {it.nat === 'desp' ? 'Despesa' : 'Receita'}
-                    </Badge>
-                  </div>
-                  <p className="text-3xs text-zinc-400 tabular-nums">
-                    {fmtMi(it.t25)} → {fmtMi(it.t26)}
-                  </p>
-                </td>
-                <td className="py-1.5 text-right align-top">
-                  <p className="text-2xs font-semibold tabular-nums" style={{ color: corDelta }}>
-                    {sinal}{fmtMi(Math.abs(it.d))}
-                  </p>
-                  <p className="text-3xs text-zinc-400 tabular-nums">
-                    {semBase || it.pct == null
-                      ? 'sem base comparável'
-                      : `${it.pct >= 0 ? '+' : ''}${fmtAxisPct(it.pct, 0)}`}
-                  </p>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className={`rounded-xl shadow-sm bg-white p-5 border ${corBorda}`}>
+      <h3 className={`text-sm font-semibold ${corTitulo}`}>{titulo}</h3>
+      <p className="text-2xs mt-0.5 mb-3 text-zinc-400">{subtitulo}</p>
+
+      {itens.length === 0 ? (
+        <p className="text-xs text-zinc-400 py-2">Sem categorias nesta lista</p>
+      ) : (
+        <table className="w-full">
+          <thead>
+            <tr className="text-2xs font-medium text-zinc-400">
+              {prioridade && <th className="text-left pb-1.5 w-5" />}
+              <th className="text-left pb-1.5">Categoria</th>
+              <th className="text-right pb-1.5 pl-2">YTD {anoAnterior}</th>
+              <th className="text-right pb-1.5 pl-2">YTD {anoAtual}</th>
+              <th className="text-right pb-1.5 pl-2">Δ R$</th>
+              <th className="text-right pb-1.5 pl-2">Δ %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {itens.map((it, i) => {
+              const marcado = prioridade && i < 5
+              return (
+                <tr
+                  key={it.c}
+                  className={`border-b border-zinc-50 last:border-0 ${marcado ? 'bg-[var(--negative-soft)]' : ''}`}
+                >
+                  {prioridade && (
+                    <td className="py-1.5 pr-1 align-top">
+                      {marcado && (
+                        <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full bg-[var(--negative-deep)] text-white text-3xs font-semibold tabular-nums">
+                          {i + 1}
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  <td className="py-1.5 pr-2 min-w-0 align-top">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Badge variant="neutro">{it.nat === 'desp' ? 'gasto' : 'receita'}</Badge>
+                      <span className="text-2xs text-zinc-700 truncate">{it.c || '(sem categoria)'}</span>
+                    </div>
+                  </td>
+                  <td className="py-1.5 pl-2 text-right align-top">
+                    <ValorParen v={it.t25} />
+                  </td>
+                  <td className="py-1.5 pl-2 text-right align-top">
+                    <ValorParen v={it.t26} />
+                  </td>
+                  <td className="py-1.5 pl-2 text-right align-top">
+                    <ValorParen v={it.d} corClasse={corDelta} />
+                  </td>
+                  <td className="py-1.5 pl-2 text-right align-top">
+                    {it.pct === null ? (
+                      <span className="text-3xs text-zinc-400">sem base</span>
+                    ) : (
+                      <span className={`text-2xs font-medium tabular-nums ${corDelta}`}>
+                        {it.pct >= 0 ? '+' : ''}{fmtAxisPct(it.pct, 1)}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
+  )
+}
+
+/**
+ * Formato contábil (modelo da controladoria): negativo entre parênteses + cor de alerta;
+ * positivo normal (herda a cor do texto). `corClasse` FORÇA a cor (usado no Δ R$, que segue
+ * o tom do card, não o sinal bruto do valor individual — embora aqui coincidam sempre, já
+ * que o backend só traz delta<0 no card "Pioraram" e delta>0 no "Melhoraram").
+ */
+function ValorParen({ v, corClasse }: { v: number; corClasse?: string }) {
+  const neg = v < 0
+  const cor = corClasse ?? (neg ? 'text-[var(--negative-deep)]' : '')
+  return (
+    <span className={`text-2xs font-medium tabular-nums ${cor}`}>
+      {neg ? `(${numBRL2(Math.abs(v))})` : numBRL2(v)}
+    </span>
   )
 }

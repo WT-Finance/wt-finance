@@ -13,7 +13,7 @@ import {
   solicitacaoSchema, campoDefSchema, movimentacoesSchema,
 } from './solicitacoes/schemas'
 import {
-  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema,
+  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
 } from './fluxo/rpc-fluxo'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -475,5 +475,14 @@ describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1)', () => {
   it('get_fluxo_ranking(): {pioraram[], melhoraram[]}', async () => {
     const d = await rpc('get_fluxo_ranking', { p_limite: 7 })
     expect(rankingCaixaSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_saldo_caixa(): [{conta,saldo,ordem,data_saldo?,reserva,atualizado_em}] (tabela própria)', async () => {
+    const d = await rpc('get_saldo_caixa', {})
+    expect(saldoCaixaSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_horizonte() v2: 12 meses rolantes + 2 anos consolidados', async () => {
+    const d = await rpc('get_fluxo_horizonte', {}) as { meses?: unknown[]; anos?: unknown[] }
+    expect(d.meses?.length).toBe(12)
+    expect(d.anos?.length).toBe(2)
   })
 })
