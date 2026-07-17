@@ -62,9 +62,9 @@ function RankingColuna({ titulo, itens, tom }: {
       <table className="w-full">
         <thead>
           <tr className="text-3xs font-medium text-zinc-400">
-            <th className="text-left font-semibold pb-1.5 w-5">#</th>
-            <th className="text-left font-semibold pb-1.5">Categoria</th>
-            <th className="text-right font-semibold pb-1.5">Variação</th>
+            <th className="text-left pb-1.5 w-5">#</th>
+            <th className="text-left pb-1.5">Categoria</th>
+            <th className="text-right pb-1.5">Variação</th>
           </tr>
         </thead>
         <tbody>

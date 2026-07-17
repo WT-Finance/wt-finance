@@ -12,6 +12,9 @@ import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
   solicitacaoSchema, campoDefSchema, movimentacoesSchema,
 } from './solicitacoes/schemas'
+import {
+  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema,
+} from './fluxo/rpc-fluxo'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
@@ -449,5 +452,28 @@ describe.skipIf(!ON)('contrato RPC — Faturamento v4.37.0 (Emissão consome o C
     const cads = await rpc('buscar_cliente_corporativo', { p_nomes: [] }) as unknown as unknown[]
     expect(Array.isArray(cads)).toBe(true)
     expect(cads).toHaveLength(0)
+  })
+})
+
+describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1)', () => {
+  // As 4 RPCs novas do eixo movimentação. Gated (exigir_acesso) — a service role passa
+  // (mesmo caminho das demais RPCs gated aqui). Schemas em @/lib/fluxo/rpc-fluxo.
+  it('get_repasse_mensal(ano): [{mes,ent,sal,pct?,pct_ant?}] — repasse BRUTO', async () => {
+    const d = await rpc('get_repasse_mensal', { p_ano: 2026 })
+    expect(repasseMensalSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_horizonte(): [{l,liq,e,s,n}]', async () => {
+    const d = await rpc('get_fluxo_horizonte', {})
+    expect(horizonteSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_runway_semanal(): {saldo_operacional, semanas[13]}', async () => {
+    const d = await rpc('get_fluxo_runway_semanal', {})
+    const p = runwaySemanalSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) expect(p.data.semanas.length).toBe(13)
+  })
+  it('get_fluxo_ranking(): {pioraram[], melhoraram[]}', async () => {
+    const d = await rpc('get_fluxo_ranking', { p_limite: 7 })
+    expect(rankingCaixaSchema.safeParse(d).success).toBe(true)
   })
 })

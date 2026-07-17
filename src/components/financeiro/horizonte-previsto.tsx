@@ -35,10 +35,12 @@ export default function HorizontePrevisto({ blocos }: Props) {
   const principais = blocos.filter(b => !b.l.toLowerCase().includes(MARCA_ISOLADO))
   const isolado    = blocos.find(b => b.l.toLowerCase().includes(MARCA_ISOLADO)) ?? null
 
+  // `s` já vem NEGATIVO (fato_fluxo.valor é assinado); a barra de saída renderiza p/ baixo
+  // sem negação extra (mesma convenção do runway; barRadius.bottom = saída invertida).
   const chartData = principais.map(b => ({
     l:      b.l,
     e:      b.e,
-    sVal:   -b.s,
+    sVal:   b.s,
     liq:    b.liq,
     n:      b.n,
   }))

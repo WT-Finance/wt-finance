@@ -20,12 +20,6 @@ interface Props {
   data: RunwaySemanalData
 }
 
-/** 'yyyy-MM-dd' → 'dd/MM' (rótulo de semana; data pura, sem fuso). */
-function fmtSemanaLabel(iso: string): string {
-  const [, m, d] = iso.split('-')
-  return `${d}/${m}`
-}
-
 interface DotProps {
   cx?:    number
   cy?:    number
@@ -50,12 +44,14 @@ export default function RunwaySemanal({ data }: Props) {
     )
   }
 
+  // `ini`/`fim` já vêm formatados 'DD/MM' do banco (to_char). `pag` já vem NEGATIVO
+  // (fato_fluxo.valor é assinado); a barra de saída renderiza p/ baixo sem negação extra.
   const chartData = semanas.map(s => ({
-    label:  fmtSemanaLabel(s.ini),
+    label:  s.ini,
     ini:    s.ini,
     fim:    s.fim,
     rec:    s.rec,
-    pagVal: -s.pag,
+    pagVal: s.pag,
     acc:    s.acc,
   }))
 
