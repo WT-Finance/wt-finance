@@ -137,7 +137,7 @@ export function ChartXAxisCategoria(
  * `abs` (default true) mostra o módulo — útil quando saídas vão para baixo.
  */
 export function ChartYAxisBRL(
-  opts?: { width?: number; abs?: boolean },
+  opts?: { width?: number; abs?: boolean; domain?: [number, number]; ticks?: number[] },
 ): ReactElement {
   const abs = opts?.abs ?? true
   return (
@@ -147,6 +147,10 @@ export function ChartYAxisBRL(
       tickLine={false}
       axisLine={false}
       width={opts?.width ?? 72}
+      // Aditivos (v5.2.0): domínio/ticks explícitos — p/ escala SIMÉTRICA com o zero
+      // centralizado (ex.: Horizonte Previsto). undefined → default do recharts.
+      domain={opts?.domain}
+      ticks={opts?.ticks}
     />
   )
 }

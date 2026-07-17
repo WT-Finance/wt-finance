@@ -1,12 +1,12 @@
 'use client'
 
 import {
-  ResponsiveContainer, ComposedChart, Bar, Rectangle, Tooltip,
+  ResponsiveContainer, ComposedChart, Bar, Rectangle, Tooltip, ReferenceLine,
 } from 'recharts'
 import type { BarShapeProps } from 'recharts'
 import {
   ChartGrid, ChartZeroLine, ChartXAxisCategoria, ChartYAxisBRL,
-  ChartLegend, fluxoColors, chartSeries, barRadius, barSizes,
+  ChartLegend, fluxoColors, chartSeries, chartColors,
 } from '@/components/charts'
 import { fmtBRL } from '@/lib/fmt'
 import type { HorizonteData } from '@/lib/fluxo/rpc-fluxo'
@@ -79,8 +79,13 @@ function corDe(p: ChartPoint): string {
   return fluxoColors.entrada
 }
 
+// Barras mais largas e mais arredondadas que o padrão `column` (pedido do checkpoint —
+// 16 categorias num card full-width comportam barras generosas, como na referência).
+const RAIO_CIMA:  [number, number, number, number] = [6, 6, 0, 0]
+const RAIO_BAIXO: [number, number, number, number] = [0, 0, 6, 6]
+
 function radiusDe(p: ChartPoint) {
-  return (p.liq === null || p.liq >= 0) ? barRadius.top : barRadius.bottom
+  return (p.liq === null || p.liq >= 0) ? RAIO_CIMA : RAIO_BAIXO
 }
 
 // Cada barra é colorida/arredondada por SINAL individualmente (superávit/déficit/
@@ -134,6 +139,14 @@ export default function HorizontePrevisto({ data }: Props) {
 
   const chartData: ChartPoint[] = [...pontosMes, spacer, ...pontosAno]
 
+  // Escala SIMÉTRICA (zero centralizado, pedido do checkpoint): teto = maior |liq| arredondado
+  // para cima num múltiplo "redondo" (2×passo decimal) — com os dados atuais dá ±R$ 8 Mi, como
+  // na referência. Ticks em quartos (−teto, −teto/2, 0, +teto/2, +teto).
+  const maxAbs = Math.max(...chartData.map(p => Math.abs(p.liq ?? 0)), 1)
+  const passo  = Math.pow(10, Math.floor(Math.log10(maxAbs)))
+  const teto   = Math.ceil(maxAbs / (2 * passo)) * (2 * passo)
+  const ticksY = [-teto, -teto / 2, 0, teto / 2, teto]
+
   // Subtítulo dinâmico — nunca hardcoda "jul"/"jun": deriva de `mes_corrente`.
   const restoIni = MESES[data.mes_corrente - 1].toLowerCase()
   const colFim   = data.mes_corrente > 1 ? MESES[data.mes_corrente - 2].toLowerCase() : null
@@ -149,14 +162,16 @@ export default function HorizontePrevisto({ data }: Props) {
         {' '}= {restoIni}–dez{notaColunas} · mapa de compromissos assumidos, não previsão
       </p>
 
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           {ChartGrid()}
           {ChartXAxisCategoria('l', { interval: 0, angle: -45, fontSize: 10, height: 36 })}
-          {ChartYAxisBRL()}
+          {ChartYAxisBRL({ domain: [-teto, teto], ticks: ticksY })}
           {ChartZeroLine()}
+          {/* Divisor tracejado entre Dez e os anos consolidados — ancorado no slot do spacer. */}
+          <ReferenceLine x="" stroke={chartColors.axisTick} strokeDasharray="4 4" />
           <Tooltip content={<HorizonteTooltip />} />
-          <Bar dataKey="liq" name="liq" barSize={barSizes.column} shape={BarraHorizonte} />
+          <Bar dataKey="liq" name="liq" barSize={30} shape={BarraHorizonte} />
         </ComposedChart>
       </ResponsiveContainer>
 
