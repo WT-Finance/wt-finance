@@ -2,13 +2,11 @@
 // são síncronos e pesados (~45k linhas) — na main thread travavam a página ("não está
 // respondendo") e congelavam o spinner. Aqui rodam FORA da main thread, mantendo a UI fluida.
 //
-// Reaproveita os 4 parsers isomórficos (sem DOM; `@e965/xlsx` via import dinâmico) — zero
+// Reaproveita os parsers isomórficos (sem DOM; `@e965/xlsx` via import dinâmico) — zero
 // duplicação de lógica. O `File` é clonável para o worker (structured clone).
 
 import { parseVendasProdutoFile } from './parse-vendas-produto'
 import { parseLancamentosFile } from './parse-lancamentos'
-import { parseLancamentosFinanceiroFile } from './parse-lancamentos-financeiro'
-import { parseFluxoCaixaTitulosFile } from './parse-fluxo-caixa-titulos'
 import { parsePessoasFile } from './parse-pessoas'
 import { parseLancamentosMovimentacaoFile } from './parse-lancamentos-movimentacao'
 import { parseTitulosEmAbertoFile } from './parse-titulos-em-aberto'
@@ -16,8 +14,6 @@ import { parseTitulosEmAbertoFile } from './parse-titulos-em-aberto'
 export type ParseKind =
   | 'vendas'
   | 'lancamentos'
-  | 'lancamentos_financeiro'
-  | 'fluxo_caixa_titulos'
   | 'pessoas'
   | 'lancamentos_movimentacao'
   | 'titulos_em_aberto'
@@ -26,8 +22,6 @@ export type ParseKind =
 const PARSERS: Record<ParseKind, (f: File) => Promise<any>> = {
   vendas: parseVendasProdutoFile,
   lancamentos: parseLancamentosFile,
-  lancamentos_financeiro: parseLancamentosFinanceiroFile,
-  fluxo_caixa_titulos: parseFluxoCaixaTitulosFile,
   pessoas: parsePessoasFile,
   lancamentos_movimentacao: parseLancamentosMovimentacaoFile,
   titulos_em_aberto: parseTitulosEmAbertoFile,

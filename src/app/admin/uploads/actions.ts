@@ -6,8 +6,6 @@ import { requireAreaAction } from '@/lib/auth/sessao'
 import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
-import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
-import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
 import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
 import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
@@ -191,126 +189,6 @@ export async function finalizarVendasAction(
 }
 
 // ---------------------------------------------------------------------------
-// Lançamentos por Categoria (raw.lancamentos financeiro → financeiro.fato_lancamentos)
-// Migrado de uploads/financeiro na unificação v4.8 (batch 500; finaliza com
-// regenerar_financeiro_lancamentos).
-// ---------------------------------------------------------------------------
-
-export async function getLancamentosFinanceiroStatusAction(): Promise<
-  { total: number; ultima_atualizacao: string | null } | { error: string }
-> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-    // v4.20.1: status_lancamentos_financeiro (count + MAX(carregado_em) de raw.lancamentos).
-    const { data, error } = await bound('status_lancamentos_financeiro')
-    if (error) return { error: error.message }
-    const status = data as { total: number; ultima_atualizacao: string | null } | null
-    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function inserirLoteLancamentosFinanceiroAction(
-  lote: LancamentoFinanceiroRaw[],
-  isFirst: boolean,
-  arquivoOrigem: string,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_lancamentos_financeiro')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_lancamentos_financeiro', { p_linhas: rows })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarLancamentosFinanceiroAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const { error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_financeiro_lancamentos')
-    if (error) return { error: `Erro ao regenerar fato: ${error.message}` }
-
-    return { sucesso: true, total_linhas: totalInseridas, erros: [] }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Fluxo de Caixa CAP/CAR tratada (raw.fluxo_caixa_titulos)
-// Migrado de uploads/financeiro na unificação v4.8 (batch 500; sem transformação
-// pós-insert).
-// ---------------------------------------------------------------------------
-
-export async function getFluxoCaixaTitulosStatusAction(): Promise<
-  { total: number; ultima_atualizacao: string | null } | { error: string }
-> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    // v4.20.1: status_fluxo_caixa_titulos (count + MAX(carregado_em) de raw.fluxo_caixa_titulos).
-    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('status_fluxo_caixa_titulos')
-    if (error) return { error: error.message }
-    const status = data as { total: number; ultima_atualizacao: string | null } | null
-    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function inserirLoteFluxoCaixaTitulosAction(
-  lote: FluxoCaixaTituloRaw[],
-  isFirst: boolean,
-  arquivoOrigem: string,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_fluxo_caixa_titulos')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_fluxo_caixa_titulos', { p_lote: rows })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarFluxoCaixaTitulosAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  // raw.fluxo_caixa_titulos não tem transformação adicional por agora
-  return { sucesso: true, total_linhas: totalInseridas, erros: [] }
-}
-
-// ---------------------------------------------------------------------------
 // Pessoas (v4.29.0) — cadastro fiscal do Monde. Padrão ATÔMICO (= Vendas, 0116):
 // limpar_staging_pessoas → inserir_lote_staging_pessoas → validar → promover (swap
 // numa transação; o Faturamento depende, a base não pode ficar vazia no meio).
@@ -391,9 +269,9 @@ export async function finalizarPessoasAction(
 
 // ---------------------------------------------------------------------------
 // Lançamentos por Movimentação (raw.lancamentos_movimentacao) — Fluxo de Caixa
-// Onda 1, v5.2.0/M1. Mesmo padrão de Lançamentos por Categoria (full-swap; batch
-// 500; arquivo_origem carregado por linha). Nasce AO LADO de raw.lancamentos —
-// nada lê esta base ainda (o fato passa a lê-la no M2).
+// Onda 1, v5.2.0. Full-swap (batch 500; arquivo_origem carregado por linha).
+// financeiro.fato_fluxo (regenerar_fluxo_caixa) lê esta base — realizado por
+// data_movimentacao + previsto por movimentação futura (M2).
 // ---------------------------------------------------------------------------
 
 export async function getLancamentosMovimentacaoStatusAction(): Promise<
@@ -437,21 +315,19 @@ export async function inserirLoteLancamentosMovimentacaoAction(
   }
 }
 
-// M1: sem transformação (o fato passa a ler esta base no M2 — regenerar_financeiro_lancamentos v2).
 export async function finalizarLancamentosMovimentacaoAction(
   totalAntes: number,
   totalInseridas: number,
 ): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
   await requireAreaAction('admin/uploads')
-  // M2: regenera o fato_fluxo (realizado por movimentação + previsto), lendo AS DUAS bases novas.
+  // Regenera financeiro.fato_fluxo (realizado por movimentação + previsto), lendo AS DUAS bases novas.
   return regenerarFluxoCaixa(totalInseridas)
 }
 
 // ---------------------------------------------------------------------------
 // Lançamentos por Vencimento em aberto (raw.titulos_em_aberto) — Fluxo de Caixa
-// Onda 1, v5.2.0/M1. Mesmo padrão de Fluxo de Caixa (CAP/CAR). Nasce AO LADO de
-// raw.fluxo_caixa_titulos — nada lê esta base ainda (o roteamento do previsto
-// passa a lê-la no M2/M3).
+// Onda 1, v5.2.0. Mesmo padrão do Lançamentos por Movimentação. O previsto por
+// vencimento é lido por financeiro.fato_fluxo (regenerar_fluxo_caixa).
 // ---------------------------------------------------------------------------
 
 export async function getTitulosEmAbertoStatusAction(): Promise<
@@ -495,7 +371,6 @@ export async function inserirLoteTitulosEmAbertoAction(
   }
 }
 
-// M1: sem transformação (o roteamento previsto×realizado passa a ler esta base no M2/M3).
 export async function finalizarTitulosEmAbertoAction(
   totalAntes: number,
   totalInseridas: number,

@@ -35,6 +35,22 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.2.0',
+    data: '2026-07-17T14:48',
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Fluxo de Caixa reformulado (1ª onda do modelo da controladoria). O "realizado" passa a ser medido pela data em que o dinheiro DE FATO entrou ou saiu da conta (antes era pela data de baixa) — os valores da visão geral mudam de definição, é esperado, não é erro. A página foi reorganizada em duas partes: "Projetado" (saldo de caixa por conta, o que há a receber e a pagar nos próximos dias, calendário, projeção de liquidez das próximas 13 semanas e o horizonte de compromissos já lançados) e "Realizado" (entradas, saídas, resultado, margem do repasse e um ranking do que mais melhorou ou piorou o caixa no ano). A conferência contra o painel da controladoria bate ao centavo nos meses fechados.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O saldo de cada conta agora guarda a data a que se refere e mostra há quanto tempo não é atualizado, para dar confiança na leitura de caixa. A tela de importação recebe as duas novas bases do fluxo de caixa; a área "Gerencial" saiu da página de Fluxo de Caixa (deixou de aparecer duplicada) e continua no seu próprio menu.',
+      },
+    ],
+  },
+  {
     versao: '5.1.11',
     data: '2026-07-15T21:16',
     itens: [

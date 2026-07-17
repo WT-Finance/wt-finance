@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.11 (rótulo "Última atualização" fica vermelho se a sincronização do Monde atrasar >45min)
+Última atualização: 2026-07-17 · v5.2.0 (Fluxo de Caixa Onda 1 — realizado no eixo da MOVIMENTAÇÃO + reforma da página; PR aberto, aguardando checkpoint do Yan)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,13 +9,20 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.10` (sombra dos cards nas seções recolhíveis; #188 mergeado)
-- Versão em execução (worktree/branch ativa): `feat/v5-1-11-alerta-sync` (#189 — rótulo "Última atualização" fica vermelho se a sync do Monde atrasar >45min; sem migration)
-- Última migration **aplicada**: `0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas — aplicada pelo Yan). Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**.
-- Último ADR registrado: `0153`
+- Versão em produção (main): `5.1.11` (#189 mergeado — rótulo vermelho se a sync do Monde atrasar)
+- Versão em execução (worktree/branch ativa): `feat/v5-2-0-fluxo-caixa-onda1` (Fluxo de Caixa Onda 1; PR aberto). **Backend aplicado + validado; frontend done; gates verdes.**
+- Última migration **aplicada**: `0191_fix_horizonte_resto_ano_futuro.sql` (v5.2.0; 0185–0191 aditivas aplicadas via db:migrate). **`0192` (DROP das bases antigas do Fluxo de Caixa) é DESTRUTIVA e NÃO foi aplicada — aguarda o Yan aplicar em TTY após validar a Onda 1.**
+- Último ADR registrado: `0154` (Fluxo de Caixa no eixo da movimentação)
 
 ## Bloqueios vigentes
 
+- **v5.2.0 Fluxo de Caixa Onda 1 — aguarda CHECKPOINT do Yan (antes do merge):** (1) subir as 2 bases
+  reais de PRODUÇÃO (histórico 2024+) pelos 2 cards novos de Upload — a amostra de dev é só-2026, então
+  os comparativos multi-ano (margem do ano anterior, ranking YTD×YTD, histórico 24m, anual) só populam
+  com o upload de produção; (2) conferir a Visão Geral reformada contra o dashboard da controladoria;
+  (3) **aplicar a migration 0192 (DESTRUTIVA) em TTY** — DROP das bases antigas — só após validar. O
+  merged-sem-0192 é funcional (bases antigas dormem). Reconciliação: repasse bate ao centavo (meses
+  fechados); delta residual = data-base (modelo diário). Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-2-0_FluxoCaixa_Onda1.md`.
 - **Faturamento roda em MODO TESTE** — o flip de produção (Asaas produção + `EMAIL_MODO=real`)
   é decisão do Yan, fora do código. A dupla trava do modo real está construída, não acionada.
 - **Virada Monde APLICADA (v5.1.4):** as 7 funções PURA-mv (Metas/Performance/Executiva/drawers) leem o
