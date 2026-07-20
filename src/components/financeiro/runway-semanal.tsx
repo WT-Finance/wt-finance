@@ -1,11 +1,11 @@
 'use client'
 
 import {
-  ResponsiveContainer, ComposedChart, Bar, Line, Tooltip,
+  ResponsiveContainer, ComposedChart, Line, Tooltip,
 } from 'recharts'
 import {
   ChartGrid, ChartZeroLine, ChartXAxisCategoria, ChartYAxisBRL,
-  CustomTooltip, ChartLegend, fluxoColors, barRadius, barSizes,
+  CustomTooltip, ChartLegend, fluxoColors,
 } from '@/components/charts'
 import { fmtBRL } from '@/lib/fmt'
 import type { RunwaySemanal as RunwaySemanalData } from '@/lib/fluxo/rpc-fluxo'
@@ -44,15 +44,12 @@ export default function RunwaySemanal({ data }: Props) {
     )
   }
 
-  // `ini`/`fim` já vêm formatados 'DD/MM' do banco (to_char). `pag` já vem NEGATIVO
-  // (fato_fluxo.valor é assinado); a barra de saída renderiza p/ baixo sem negação extra.
+  // `ini` já vem formatado 'DD/MM' do banco (to_char). O gráfico mostra só a LINHA do
+  // saldo projetado acumulado (`acc`) — recebimentos/pagamentos previstos alimentam o
+  // acumulado no banco, mas não são plotados como barras (decisão do checkpoint).
   const chartData = semanas.map(s => ({
-    label:  s.ini,
-    ini:    s.ini,
-    fim:    s.fim,
-    rec:    s.rec,
-    pagVal: s.pag,
-    acc:    s.acc,
+    label: s.ini,
+    acc:   s.acc,
   }))
 
   // Runway = 1ª semana em que o saldo projetado acumulado fica negativo.
@@ -69,7 +66,7 @@ export default function RunwaySemanal({ data }: Props) {
       </div>
 
       <ResponsiveContainer width="100%" height={220}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }} barGap={1}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           {ChartGrid()}
           {ChartXAxisCategoria('label', { interval: 0, angle: -45, fontSize: 10, height: 36 })}
           {ChartYAxisBRL()}
@@ -78,18 +75,10 @@ export default function RunwaySemanal({ data }: Props) {
             content={(props) => (
               <CustomTooltip
                 {...props}
-                formatter={(value: number, name: string) => {
-                  if (name === 'rec')    return [fmtBRL(value), 'Recebimentos previstos']
-                  if (name === 'pagVal') return [fmtBRL(Math.abs(value)), 'Pagamentos previstos']
-                  return [fmtBRL(value), 'Saldo projetado']
-                }}
+                formatter={(value: number) => [fmtBRL(value), 'Saldo projetado']}
               />
             )}
           />
-          <Bar dataKey="rec"    name="rec"    fill={fluxoColors.entrada} radius={barRadius.top}    barSize={barSizes.column} />
-          {/* pagVal desce (valor negativo); `barRadius.top` arredonda a ponta LIVRE
-              (a base, aqui), não o eixo — ver nota em chart-theme/barRadius. */}
-          <Bar dataKey="pagVal" name="pagVal" fill={fluxoColors.saida}   radius={barRadius.top} barSize={barSizes.column} />
           <Line
             dataKey="acc"
             name="acc"
@@ -104,9 +93,7 @@ export default function RunwaySemanal({ data }: Props) {
 
       <ChartLegend
         items={[
-          { label: 'Recebimentos previstos', color: fluxoColors.entrada,   type: 'rect' },
-          { label: 'Pagamentos previstos',   color: fluxoColors.saida,     type: 'rect' },
-          { label: 'Saldo projetado',        color: fluxoColors.resultado, type: 'line' },
+          { label: 'Saldo projetado', color: fluxoColors.resultado, type: 'line' },
         ]}
       />
 

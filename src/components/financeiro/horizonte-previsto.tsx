@@ -138,13 +138,16 @@ export default function HorizontePrevisto({ data }: Props) {
 
   const chartData: ChartPoint[] = [...pontosMes, spacer, ...pontosAno]
 
-  // Escala SIMÉTRICA (zero centralizado, pedido do checkpoint): teto = maior |liq| arredondado
-  // para cima num múltiplo "redondo" (2×passo decimal) — com os dados atuais dá ±R$ 8 Mi, como
-  // na referência. Ticks em quartos (−teto, −teto/2, 0, +teto/2, +teto).
+  // Escala ASSIMÉTRICA (pedido do checkpoint): mais espaço p/ BAIXO, onde os déficits dominam.
+  // `teto` = maior |liq| arredondado p/ cima num múltiplo "redondo" (2×passo decimal) — com os
+  // dados atuais dá 8 Mi. Base = −teto (−8 Mi); topo = metade (+4 Mi), mas nunca menor que o maior
+  // superávit real (anti-clip, caso um mês positivo passe de teto/2). Ticks a cada teto/2: +4/0/−4/−8.
   const maxAbs = Math.max(...chartData.map(p => Math.abs(p.liq ?? 0)), 1)
   const passo  = Math.pow(10, Math.floor(Math.log10(maxAbs)))
   const teto   = Math.ceil(maxAbs / (2 * passo)) * (2 * passo)
-  const ticksY = [-teto, -teto / 2, 0, teto / 2, teto]
+  const maxPos = Math.max(...chartData.map(p => Math.max(p.liq ?? 0, 0)), 0)
+  const topo   = Math.max(teto / 2, Math.ceil(maxPos / passo) * passo)
+  const ticksY = [topo, 0, -teto / 2, -teto]
 
   // Subtítulo dinâmico — nunca hardcoda "jul"/"jun": deriva de `mes_corrente`.
   const restoIni = MESES[data.mes_corrente - 1].toLowerCase()
@@ -165,7 +168,7 @@ export default function HorizontePrevisto({ data }: Props) {
         <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
           {ChartGrid()}
           {ChartXAxisCategoria('l', { interval: 0, angle: -45, fontSize: 10, height: 36 })}
-          {ChartYAxisBRL({ domain: [-teto, teto], ticks: ticksY })}
+          {ChartYAxisBRL({ domain: [-teto, topo], ticks: ticksY })}
           {ChartZeroLine()}
           {/* Divisor tracejado entre Dez e os anos consolidados — ancorado no slot do spacer. */}
           <ReferenceLine x="" stroke={chartColors.axisTick} strokeDasharray="4 4" />
