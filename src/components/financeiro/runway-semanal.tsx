@@ -87,7 +87,9 @@ export default function RunwaySemanal({ data }: Props) {
             )}
           />
           <Bar dataKey="rec"    name="rec"    fill={fluxoColors.entrada} radius={barRadius.top}    barSize={barSizes.column} />
-          <Bar dataKey="pagVal" name="pagVal" fill={fluxoColors.saida}   radius={barRadius.bottom} barSize={barSizes.column} />
+          {/* pagVal desce (valor negativo); `barRadius.top` arredonda a ponta LIVRE
+              (a base, aqui), não o eixo — ver nota em chart-theme/barRadius. */}
+          <Bar dataKey="pagVal" name="pagVal" fill={fluxoColors.saida}   radius={barRadius.top} barSize={barSizes.column} />
           <Line
             dataKey="acc"
             name="acc"

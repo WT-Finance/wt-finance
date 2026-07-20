@@ -68,7 +68,11 @@ export default function FluxoCaixaMensal({ data, operacaoLabel }: Props) {
     }
   })
 
-  const saidaRadius: [number, number, number, number] = invertida ? [2, 2, 0, 0] : [0, 0, 2, 2]
+  // Ponta LIVRE sempre arredondada, dê a saída para cima (invertida) ou para baixo
+  // (padrão, valor negativo): `[2,2,0,0]` arredonda a ponta oposta ao eixo nos dois
+  // sentidos (o Recharts inverte o `ySign` na barra negativa). Antes o ramo `: [0,0,2,2]`
+  // arredondava o EIXO na saída que desce — errado. Ver chart-theme/barRadius.
+  const saidaRadius: [number, number, number, number] = [2, 2, 0, 0]
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">

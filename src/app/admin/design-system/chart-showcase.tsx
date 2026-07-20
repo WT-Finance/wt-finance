@@ -115,7 +115,7 @@ export default function ChartShowcase() {
             <Bar dataKey="entrada" name="entrada" radius={barRadius.top} barSize={barSizes.fluxo} isAnimationActive={false}>
               {barData.map((d, i) => <Cell key={i} fill={fluxoColors.entrada} fillOpacity={d.ehFuturo ? FUTURE_OPACITY : 1} />)}
             </Bar>
-            <Bar dataKey="saida" name="saida" radius={barRadius.bottom} barSize={barSizes.fluxo} isAnimationActive={false}>
+            <Bar dataKey="saida" name="saida" radius={barRadius.top} barSize={barSizes.fluxo} isAnimationActive={false}>
               {barData.map((d, i) => <Cell key={i} fill={fluxoColors.saida} fillOpacity={d.ehFuturo ? FUTURE_OPACITY : 1} />)}
             </Bar>
           </ComposedChart>

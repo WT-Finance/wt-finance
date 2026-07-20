@@ -81,21 +81,20 @@ function corDe(p: ChartPoint): string {
 
 // Barras mais largas e mais arredondadas que o padrão `column` (pedido do checkpoint —
 // 16 categorias num card full-width comportam barras generosas, como na referência).
-const RAIO_CIMA:  [number, number, number, number] = [6, 6, 0, 0]
-const RAIO_BAIXO: [number, number, number, number] = [0, 0, 6, 6]
+// Ponta LIVRE sempre arredondada, inclusive nos déficits que DESCEM: `[r,r,0,0]`
+// arredonda a ponta oposta à linha do zero nos dois sentidos, porque o Recharts inverte
+// o `ySign` na barra negativa (a "ponta de baixo" só arredonda com `[0,0,r,r]` na barra
+// POSITIVA; na negativa `[0,0,r,r]` grudaria no EIXO). Mesma regra de `barRadius.top`.
+const RAIO_LIVRE: [number, number, number, number] = [6, 6, 0, 0]
 
-function radiusDe(p: ChartPoint) {
-  return (p.liq === null || p.liq >= 0) ? RAIO_CIMA : RAIO_BAIXO
-}
-
-// Cada barra é colorida/arredondada por SINAL individualmente (superávit/déficit/
-// rolado) — `shape` no lugar de `radius`/`fill` fixos no `<Bar>`, já que o raio "para
-// cima" (positiva) e "para baixo" (negativa) muda por categoria. `Cell` não aceita
-// `radius` na tipagem do recharts; `shape` + `Rectangle` é o caminho suportado. Definido
-// no MÓDULO (não no render) — só depende do `payload` da própria barra, sem closure.
+// Cada barra é COLORIDA por SINAL individualmente (superávit/déficit/rolado) — `shape` no
+// lugar de `fill` fixo no `<Bar>`, já que a COR muda por categoria (o raio é constante:
+// sempre a ponta livre). `Cell` não aceita `radius` na tipagem do recharts; `shape` +
+// `Rectangle` é o caminho suportado. Definido no MÓDULO (não no render) — só depende do
+// `payload` da própria barra, sem closure.
 function BarraHorizonte(props: BarShapeProps) {
   const p = props.payload as ChartPoint
-  return <Rectangle {...props} fill={corDe(p)} radius={radiusDe(p)} />
+  return <Rectangle {...props} fill={corDe(p)} radius={RAIO_LIVRE} />
 }
 
 export default function HorizontePrevisto({ data }: Props) {
