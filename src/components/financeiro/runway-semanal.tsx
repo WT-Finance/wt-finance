@@ -7,7 +7,7 @@ import {
   ChartGrid, ChartZeroLine, ChartXAxisCategoria, ChartYAxisBRL,
   CustomTooltip, ChartLegend, fluxoColors,
 } from '@/components/charts'
-import { fmtBRL } from '@/lib/fmt'
+import { fmtBRL, numBRL2 } from '@/lib/fmt'
 import type { RunwaySemanal as RunwaySemanalData } from '@/lib/fluxo/rpc-fluxo'
 
 // Runway Semanal (v5.2.0/Onda 1) — 13 semanas de recebimentos/pagamentos previstos
@@ -32,6 +32,17 @@ function AccDot({ cx, cy, value }: DotProps) {
   return <circle cx={cx} cy={cy} r={3.5} fill={fill} stroke="none" />
 }
 
+/**
+ * Valor no formato contábil da tabela (mesmo idioma do ranking): negativo entre
+ * parênteses e em cor de alerta; positivo herda a cor do texto (ou a `cor` forçada).
+ * Cor sempre via token — nunca hex.
+ */
+function Valor({ v, cor }: { v: number; cor?: string }) {
+  const neg   = v < 0
+  const style = cor ? { color: cor } : (neg ? { color: 'var(--negative-deep)' } : undefined)
+  return <span style={style}>{neg ? `(${numBRL2(Math.abs(v))})` : numBRL2(v)}</span>
+}
+
 export default function RunwaySemanal({ data }: Props) {
   const semanas = data.semanas
 
@@ -53,12 +64,8 @@ export default function RunwaySemanal({ data }: Props) {
     acc:   s.acc,
   }))
 
-  // Runway = 1ª semana em que o saldo projetado acumulado fica negativo.
-  const idxNegativo = semanas.findIndex(s => s.acc < 0)
-  const seguro       = idxNegativo === -1
-  const runwayLabel  = seguro
-    ? `Saldo projetado permanece positivo nas ${semanas.length} semanas`
-    : `Saldo projetado fica negativo em ${idxNegativo + 1} semana${idxNegativo === 0 ? '' : 's'}`
+  // As primeiras semanas abrem em tabela abaixo do gráfico (aproveita o espaço do card).
+  const linhas = semanas.slice(0, 5)
 
   return (
     <div className="rounded-xl shadow-sm bg-white p-5 flex-1 flex flex-col">
@@ -98,15 +105,29 @@ export default function RunwaySemanal({ data }: Props) {
         ]}
       />
 
-      <p
-        className="text-2xs mt-3 rounded-md px-2.5 py-1.5 font-medium"
-        style={{
-          background: seguro ? 'var(--positive-soft)' : 'var(--negative-soft)',
-          color:      seguro ? 'var(--positive-deep)' : 'var(--negative-deep)',
-        }}
-      >
-        {runwayLabel}
-      </p>
+      {/* Próximas semanas em tabela (só as que cabem no espaço do card; SEM container
+          rolável → nunca aparece barra de rolagem). Cabeçalho no padrão da plataforma
+          (caixa normal, font-medium, cor terciária); números contábeis com tabular-nums. */}
+      <table className="w-full mt-4 tabular-nums">
+        <thead>
+          <tr className="text-2xs text-zinc-400 [&>th]:font-medium [&>th]:pb-1.5">
+            <th className="text-left">Semana</th>
+            <th className="text-right pl-2">A receber</th>
+            <th className="text-right pl-2">A pagar</th>
+            <th className="text-right pl-2 whitespace-nowrap">Saldo acumulado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhas.map((s, i) => (
+            <tr key={i} className="text-2xs [&>td]:py-1.5 [&>td]:border-t [&>td]:border-zinc-100">
+              <td className="text-left text-zinc-600 whitespace-nowrap">{s.ini} – {s.fim}</td>
+              <td className="text-right pl-2 whitespace-nowrap"><Valor v={s.rec} cor="var(--positive-deep)" /></td>
+              <td className="text-right pl-2 whitespace-nowrap"><Valor v={s.pag} /></td>
+              <td className="text-right pl-2 whitespace-nowrap font-medium" style={{ color: 'var(--text-primary)' }}><Valor v={s.acc} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
