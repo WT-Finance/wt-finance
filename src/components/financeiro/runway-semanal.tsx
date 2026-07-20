@@ -7,7 +7,8 @@ import {
   ChartGrid, ChartZeroLine, ChartXAxisCategoria, ChartYAxisBRL,
   CustomTooltip, ChartLegend, fluxoColors,
 } from '@/components/charts'
-import { fmtBRL, numBRL2 } from '@/lib/fmt'
+import { fmtBRL } from '@/lib/fmt'
+import { ValorContabil } from '@/components/shared/valor-contabil'
 import type { RunwaySemanal as RunwaySemanalData } from '@/lib/fluxo/rpc-fluxo'
 
 // Runway Semanal (v5.2.0/Onda 1) — 13 semanas de recebimentos/pagamentos previstos
@@ -30,18 +31,6 @@ function AccDot({ cx, cy, value }: DotProps) {
   if (cx === undefined || cy === undefined || value === undefined) return null
   const fill = value >= 0 ? fluxoColors.resultado : fluxoColors.resultadoNegativo
   return <circle cx={cx} cy={cy} r={3.5} fill={fill} stroke="none" />
-}
-
-/**
- * Valor da tabela: negativo com SINAL DE MENOS (o `numBRL2`/Intl já emite o "-") e em
- * vermelho nítido (`--danger`); positivo herda a cor do texto (ou a `cor` forçada — ex.:
- * verde `--success` do "A receber"). Cor sempre via token — nunca hex. Tokens semânticos
- * claros (não os `-deep` escuros) para as colunas se distinguirem à vista.
- */
-function Valor({ v, cor }: { v: number; cor?: string }) {
-  const neg   = v < 0
-  const style = cor ? { color: cor } : (neg ? { color: 'var(--danger)' } : undefined)
-  return <span style={style}>{numBRL2(v)}</span>
 }
 
 export default function RunwaySemanal({ data }: Props) {
@@ -113,18 +102,18 @@ export default function RunwaySemanal({ data }: Props) {
         <thead>
           <tr className="text-2xs text-zinc-400 [&>th]:font-medium [&>th]:pb-1.5">
             <th className="text-left">Semana</th>
-            <th className="text-right pl-2">A receber</th>
-            <th className="text-right pl-2">A pagar</th>
-            <th className="text-right pl-2 whitespace-nowrap">Saldo acumulado</th>
+            <th className="text-right pl-3">A receber</th>
+            <th className="text-right pl-3">A pagar</th>
+            <th className="text-right pl-3 whitespace-nowrap">Saldo acumulado</th>
           </tr>
         </thead>
         <tbody>
           {linhas.map((s, i) => (
             <tr key={i} className="text-2xs [&>td]:py-1.5 [&>td]:border-t [&>td]:border-zinc-100">
               <td className="text-left text-zinc-600 whitespace-nowrap">{s.ini} – {s.fim}</td>
-              <td className="text-right pl-2 whitespace-nowrap"><Valor v={s.rec} cor="var(--success)" /></td>
-              <td className="text-right pl-2 whitespace-nowrap"><Valor v={s.pag} /></td>
-              <td className="text-right pl-2 whitespace-nowrap font-medium" style={{ color: 'var(--text-primary)' }}><Valor v={s.acc} /></td>
+              <td className="pl-3"><ValorContabil valor={s.rec} className="text-success" /></td>
+              <td className="pl-3"><ValorContabil valor={s.pag} className="text-danger" /></td>
+              <td className="pl-3"><ValorContabil valor={s.acc} className={`font-medium ${s.acc >= 0 ? 'text-success' : 'text-danger'}`} /></td>
             </tr>
           ))}
         </tbody>
