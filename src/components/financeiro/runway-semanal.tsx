@@ -33,14 +33,15 @@ function AccDot({ cx, cy, value }: DotProps) {
 }
 
 /**
- * Valor no formato contábil da tabela (mesmo idioma do ranking): negativo entre
- * parênteses e em cor de alerta; positivo herda a cor do texto (ou a `cor` forçada).
- * Cor sempre via token — nunca hex.
+ * Valor da tabela: negativo com SINAL DE MENOS (o `numBRL2`/Intl já emite o "-") e em
+ * vermelho nítido (`--danger`); positivo herda a cor do texto (ou a `cor` forçada — ex.:
+ * verde `--success` do "A receber"). Cor sempre via token — nunca hex. Tokens semânticos
+ * claros (não os `-deep` escuros) para as colunas se distinguirem à vista.
  */
 function Valor({ v, cor }: { v: number; cor?: string }) {
   const neg   = v < 0
-  const style = cor ? { color: cor } : (neg ? { color: 'var(--negative-deep)' } : undefined)
-  return <span style={style}>{neg ? `(${numBRL2(Math.abs(v))})` : numBRL2(v)}</span>
+  const style = cor ? { color: cor } : (neg ? { color: 'var(--danger)' } : undefined)
+  return <span style={style}>{numBRL2(v)}</span>
 }
 
 export default function RunwaySemanal({ data }: Props) {
@@ -121,7 +122,7 @@ export default function RunwaySemanal({ data }: Props) {
           {linhas.map((s, i) => (
             <tr key={i} className="text-2xs [&>td]:py-1.5 [&>td]:border-t [&>td]:border-zinc-100">
               <td className="text-left text-zinc-600 whitespace-nowrap">{s.ini} – {s.fim}</td>
-              <td className="text-right pl-2 whitespace-nowrap"><Valor v={s.rec} cor="var(--positive-deep)" /></td>
+              <td className="text-right pl-2 whitespace-nowrap"><Valor v={s.rec} cor="var(--success)" /></td>
               <td className="text-right pl-2 whitespace-nowrap"><Valor v={s.pag} /></td>
               <td className="text-right pl-2 whitespace-nowrap font-medium" style={{ color: 'var(--text-primary)' }}><Valor v={s.acc} /></td>
             </tr>
