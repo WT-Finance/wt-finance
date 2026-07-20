@@ -44,11 +44,12 @@ export default function RunwaySemanal({ data }: Props) {
     )
   }
 
-  // `ini` já vem formatado 'DD/MM' do banco (to_char). O gráfico mostra só a LINHA do
-  // saldo projetado acumulado (`acc`) — recebimentos/pagamentos previstos alimentam o
-  // acumulado no banco, mas não são plotados como barras (decisão do checkpoint).
+  // Rótulo = data de FIM da semana (`fim`, 'DD/MM' do to_char): o `acc` é o saldo projetado
+  // ao FIM da semana (saldo op + Σ dos movimentos previstos até o fim daquela semana), então
+  // rotular pelo fim alinha rótulo↔valor. O gráfico mostra só a LINHA do saldo acumulado —
+  // recebimentos/pagamentos previstos alimentam o acumulado no banco, sem barras (checkpoint).
   const chartData = semanas.map(s => ({
-    label: s.ini,
+    label: s.fim,
     acc:   s.acc,
   }))
 
