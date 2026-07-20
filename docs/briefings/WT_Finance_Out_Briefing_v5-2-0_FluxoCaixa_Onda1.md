@@ -90,6 +90,30 @@ RPCs estão corretas para o histórico completo.
 Gates re-rodados verdes (tsc/lint/**445 testes**/build); contrato cobre get_saldo_caixa + invariante
 12 meses/2 anos do horizonte.
 
+## Ajustes do checkpoint (round 3 e round 4, pré-merge — pedidos do Yan)
+**Round 3:** (1) Horizonte com escala Y SIMÉTRICA (zero centralizado, ±R$ 8 Mi com os dados atuais),
+barras mais largas/arredondadas e divisor tracejado antes dos anos consolidados; (2) Ranking de Caixa
+repensado por inteiro — layout ADAPTATIVO que esconde as colunas ano-anterior/Δ quando não há base
+comparável (amostra só-2026), prioridade 1–5 só no card "Pioraram", contábil, chips gasto/receita.
+
+**Round 4 — arredondamento de barras (correção PLATAFORMA-WIDE, commit `02082a2`):** quando uma barra
+aponta PARA BAIXO (valor negativo, abaixo do eixo x), o canto arredondado ficava na ponta encostada no
+eixo, não na ponta livre. Causa: o Recharts passa ao `Rectangle` `height` ASSINADO (negativo na barra
+que desce) e o `ySign` de `getRectanglePath` inverte, fazendo os índices `[0,1]` do raio grudarem SEMPRE
+na ponta do valor (a livre) e `[2,3]` no eixo — logo `[r,r,0,0]` arredonda a ponta livre nos DOIS
+sentidos e `[0,0,r,r]` pega o eixo (o bug). Provado empiricamente reproduzindo `getRectanglePath`.
+Corrigidos os 5 gráficos com barra que desce + o tema: `chart-theme.ts` (convenção documentada em
+`barRadius.top`/`.bottom`), `chart-showcase` (ref do DS), `runway-semanal` (pagVal), `horizonte-previsto`
+(`radiusDe`→`RAIO_LIVRE`), `fluxo-mensal-chart` e `weddings/fluxo-caixa-mensal` (botão "Inverter saídas":
+`saidaRadius` deixou de alternar e virou constante `[2,2,0,0]`, correto nos 2 estados). Gráficos com
+`[2,2,0,0]` uniforme (acumulados, histórico-12m, mix horizontal, stack do drawer) já estavam certos —
+`[2,2,0,0]` é o raio universal da ponta livre. **revisor de contexto APROVADO** (confirmou a geometria e
+a completude; nenhum CRÍTICO/ALTO/MÉDIO). Gates verdes (tsc 0/lint/445 testes/build).
+- **BAIXO (registros do revisor):** `barRadius.bottom` ficou órfão (sem consumidor) após a correção —
+  mantido por completude/simetria, documentado como "arredonda o eixo, raramente desejado" (não removido
+  por prudência/escopo). `horizonte-previsto` usa `RAIO_LIVRE=[6,6,0,0]` local (barra generosa do card) —
+  candidato a variante nomeada no `chart-theme` (`barRadius.topLg`) se o padrão se repetir.
+
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
 2. Conferir a Visão Geral reformada contra o dashboard da controladoria (mesma base ~15-16/07):
