@@ -113,7 +113,7 @@ export default function HorizontePrevisto({ data }: Props) {
   const pontosMes: ChartPoint[] = [...data.meses]
     .sort((a, b) => a.mes - b.mes)
     .map(m => ({
-      l:    `${MESES[m.mes - 1]}/${String(m.ano).slice(-2)}${m.parcial ? '*' : ''}`,
+      l:    `${MESES[m.mes - 1]}/${String(m.ano).slice(-2)}`,
       e:    m.e,
       sVal: m.s,
       liq:  m.liq,
@@ -126,7 +126,7 @@ export default function HorizontePrevisto({ data }: Props) {
   const pontosAno: ChartPoint[] = [...data.anos]
     .sort((a, b) => a.ano - b.ano)
     .map(a => ({
-      l:    `${a.ano}${a.resto ? '*' : ''}`,
+      l:    `${a.ano}`,
       e:    a.e,
       sVal: a.s,
       liq:  a.liq,
