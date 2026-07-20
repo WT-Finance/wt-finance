@@ -95,10 +95,13 @@ export default function RunwaySemanal({ data }: Props) {
         ]}
       />
 
+      {/* Divisória entre o gráfico (e sua legenda) e a tabela abaixo. */}
+      <div className="border-t border-zinc-100 mt-4" />
+
       {/* Próximas semanas em tabela (só as que cabem no espaço do card; SEM container
           rolável → nunca aparece barra de rolagem). Cabeçalho no padrão da plataforma
           (caixa normal, font-medium, cor terciária); números contábeis com tabular-nums. */}
-      <table className="w-full mt-4 tabular-nums">
+      <table className="w-full mt-3 tabular-nums">
         <thead>
           <tr className="text-2xs text-zinc-400 [&>th]:font-medium [&>th]:pb-1.5">
             <th className="text-left">Semana</th>
