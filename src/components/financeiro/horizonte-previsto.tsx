@@ -101,13 +101,11 @@ export default function HorizontePrevisto({ data }: Props) {
   if (!data.meses.length) {
     return (
       <div className="rounded-xl shadow-sm bg-white p-5">
-        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto (lançado)</h3>
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto</h3>
         <div className="h-40 flex items-center justify-center text-sm text-zinc-400">Sem dados</div>
       </div>
     )
   }
-
-  const anoSeguinte = data.ano_corrente + 1
 
   // Meses < mês-corrente já rolam para o ano seguinte (ex.: Jan/27..Jun/27 em jul/26) —
   // esses ficam em cinza neutro; o resto (mês-corrente..dez, ano corrente) é colorido
@@ -149,20 +147,9 @@ export default function HorizontePrevisto({ data }: Props) {
   const topo   = Math.max(teto / 2, Math.ceil(maxPos / passo) * passo)
   const ticksY = [topo, 0, -teto / 2, -teto]
 
-  // Subtítulo dinâmico — nunca hardcoda "jul"/"jun": deriva de `mes_corrente`.
-  const restoIni = MESES[data.mes_corrente - 1].toLowerCase()
-  const colFim   = data.mes_corrente > 1 ? MESES[data.mes_corrente - 2].toLowerCase() : null
-  const notaColunas = colFim ? ` (jan–${colFim} já nas colunas)` : ''
-
   return (
     <div className="rounded-xl shadow-sm bg-white p-5">
-      <div className="flex items-baseline justify-between gap-2 mb-1">
-        <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto (lançado)</h3>
-      </div>
-      <p className="text-2xs mb-3" style={{ color: 'var(--text-muted)' }}>
-        Resultado líquido do previsto por vencimento · * = resto do período · {anoSeguinte}*
-        {' '}= {restoIni}–dez{notaColunas} · mapa de compromissos assumidos, não previsão
-      </p>
+      <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Horizonte Previsto</h3>
 
       <ResponsiveContainer width="100%" height={260}>
         {/* top: 20 (não 8) p/ o rótulo do tick do TOPO (+4 Mi) não ser cortado na borda —
@@ -183,7 +170,7 @@ export default function HorizontePrevisto({ data }: Props) {
         items={[
           { label: 'Superávit',              color: fluxoColors.entrada,   type: 'rect' },
           { label: 'Déficit',                color: fluxoColors.saida,     type: 'rect' },
-          { label: `${anoSeguinte} (meses)`,  color: chartSeries.neutral,   type: 'rect' },
+          { label: 'Correspondente ao ano seguinte', color: chartSeries.neutral, type: 'rect' },
         ]}
       />
     </div>
