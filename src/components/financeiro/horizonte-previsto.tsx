@@ -165,7 +165,9 @@ export default function HorizontePrevisto({ data }: Props) {
       </p>
 
       <ResponsiveContainer width="100%" height={260}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+        {/* top: 20 (não 8) p/ o rótulo do tick do TOPO (+4 Mi) não ser cortado na borda —
+            o tick fica na aresta superior do plot e o texto centrado precisa de folga. */}
+        <ComposedChart data={chartData} margin={{ top: 20, right: 16, bottom: 0, left: 0 }}>
           {ChartGrid()}
           {ChartXAxisCategoria('l', { interval: 0, angle: -45, fontSize: 10, height: 36 })}
           {ChartYAxisBRL({ domain: [-teto, topo], ticks: ticksY })}
