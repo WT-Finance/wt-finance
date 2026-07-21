@@ -25,8 +25,16 @@ export const campoDefSchema = z.object({
   data_aviso_dias_futuro: z.number().int().nullable().optional(),
   // Direção do aviso (v4.37.1): 'acima' = a mais de X dias (default, retrocompat); 'abaixo' = a menos de X dias.
   data_aviso_direcao:     z.enum(['acima', 'abaixo']).optional(),
+  // Chave ESTÁVEL do campo (v5.4.0/M1, migration 0950) — sobrevive ao apaga-e-recria
+  // do editor (admin_solic_salvar_tipo faz DELETE+INSERT a cada save). .optional():
+  // a RPC pode ainda não emitir durante o deploy (janela do retrofit); campo NOVO
+  // (ainda não salvo) também não tem chave.
+  chave: z.string().nullable().optional(),
 })
 export type CampoDef = z.infer<typeof campoDefSchema>
+
+// Role com acesso à criação externa (rótulo para exibição no editor de tipos).
+const apiRolePermitidaSchema = z.object({ id: z.number(), nome: z.string() })
 
 // Resposta gravada (snapshot imutável por solicitação).
 export const respostaSchema = z.object({
@@ -95,6 +103,14 @@ export const tipoAdminSchema = z.object({
   n_campos:       z.number(),
   n_solicitacoes: z.number(),
   campos:         z.array(campoDefSchema),
+  // Fundações da API externa (v5.4.0/M1, migration 0950). .optional()/.nullable():
+  // a RPC pode ainda não emitir estas chaves durante o deploy (lição v4.12.1 —
+  // parseRpc reprova undefined em campo só .nullable(); aqui não há .nullable()
+  // sozinho para nenhum destes, todos toleram ausência).
+  slug:                       z.string().nullable().optional(),
+  exposto_via_api:            z.boolean().optional(),
+  exige_referencia_conclusao: z.boolean().optional(),
+  api_roles_permitidas:       z.array(apiRolePermitidaSchema).optional(),
 })
 export const tiposAdminSchema = z.array(tipoAdminSchema)
 export type TipoAdmin = z.infer<typeof tipoAdminSchema>

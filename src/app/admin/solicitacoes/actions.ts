@@ -13,7 +13,16 @@ async function rpcSessao(fn: string, args: Record<string, unknown>) {
   return (sb.rpc as unknown as BoundRpc).bind(sb)(fn, args)
 }
 
-export async function salvarTipo(input: { id: number | null; nome: string; campos: CampoDef[] }): Promise<{ ok: true; id: number } | { ok: false; erro: string }> {
+export async function salvarTipo(input: {
+  id: number | null
+  nome: string
+  campos: CampoDef[]
+  // Fundações da API externa (v5.4.0/M1) — viajam em p_config; a RPC ignora slug
+  // (nunca muda na edição) e gera/persiste as demais conforme o payload.
+  exposto_via_api: boolean
+  exige_referencia_conclusao: boolean
+  api_roles_permitidas: number[]
+}): Promise<{ ok: true; id: number } | { ok: false; erro: string }> {
   await requireAreaAction('solicitacoes')
   const { data, error } = await rpcSessao('admin_solic_salvar_tipo', {
     p_id: input.id, p_nome: input.nome,
@@ -25,7 +34,16 @@ export async function salvarTipo(input: { id: number | null; nome: string; campo
       data_permite_passado:   c.tipo_campo === 'data' ? (c.data_permite_passado ?? true) : true,
       data_aviso_dias_futuro: c.tipo_campo === 'data' ? (c.data_aviso_dias_futuro ?? null) : null,
       data_aviso_direcao:     c.tipo_campo === 'data' ? (c.data_aviso_direcao ?? 'acima') : 'acima',
+      // Chave ESTÁVEL (v5.4.0/M1, migration 0950): campo PREEXISTENTE reenvia a
+      // própria chave (o editor a exibe read-only) — sobrevive ao apaga-e-recria.
+      // Campo NOVO viaja sem chave (null); o servidor gera a partir do rótulo.
+      chave: c.chave ?? null,
     })),
+    p_config: {
+      exposto_via_api: input.exposto_via_api,
+      exige_referencia_conclusao: input.exige_referencia_conclusao,
+      api_roles_permitidas: input.api_roles_permitidas,
+    },
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
   revalidatePath('/admin/solicitacoes')
@@ -55,6 +73,8 @@ function traduzir(msg: string): string {
     TIPO_EM_USO: 'Este tipo tem solicitações vinculadas — arquive-o em vez de excluir.',
     TIPO_INEXISTENTE: 'Tipo não encontrado.',
     PERMISSAO_NEGADA: 'Você não tem permissão para administrar tipos.',
+    CHAVE_INVALIDA: 'Chave de campo inválida.',
+    ROLE_INVALIDA: 'Uma das permissões selecionadas para a API externa é inválida.',
   }
   return m[msg.split(':')[0]?.trim()] ?? msg.replace(/^[A-Z_]+:\s*/, '')
 }

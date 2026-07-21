@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2, KeyRound } from 'lucide-react'
 import { arquivarTipo, excluirTipo } from '@/app/admin/solicitacoes/actions'
-import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
+import type { Destinatarios, TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
@@ -22,7 +22,7 @@ import { EditorTipo } from './editor-tipo'
 type Msg = { tipo: 'sucesso' | 'erro'; texto: string }
 type ModalState = { modo: 'criar' } | { modo: 'editar'; tipo: TipoAdmin } | null
 
-export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
+export function TiposContent({ tipos, roles }: { tipos: TipoAdmin[]; roles: Destinatarios['roles'] }) {
   const router = useRouter()
   const [modal, setModal] = useState<ModalState>(null)
   const [msg, setMsg] = useState<Msg | null>(null)
@@ -77,11 +77,17 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
   return (
     <>
       {/* Ações da página (v4.18): "Ver solicitações" (âmbar --gestao, volta à página
-          Solicitações) à esquerda; "Novo tipo" FORA do box, à direita (padrão das demais páginas). */}
+          Solicitações) à esquerda; "Novo tipo" FORA do box, à direita (padrão das demais páginas).
+          v5.4.0: "Chaves de API" leva à gestão das chaves da API externa (mesma área RBAC). */}
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-        <Link href="/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-          <ArrowLeft size={13} /> Ver solicitações
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
+            <ArrowLeft size={13} /> Ver solicitações
+          </Link>
+          <Link href="/admin/chaves-api" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
+            <KeyRound size={13} /> Chaves de API
+          </Link>
+        </div>
         <button
           type="button"
           onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}
@@ -221,6 +227,7 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
         <EditorTipo
           modo={modal.modo}
           tipo={modal.modo === 'editar' ? modal.tipo : undefined}
+          roles={roles}
           onFechar={() => setModal(null)}
           onSalvo={handleSalvo}
         />
