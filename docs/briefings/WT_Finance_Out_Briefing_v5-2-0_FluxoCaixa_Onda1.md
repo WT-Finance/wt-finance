@@ -137,10 +137,10 @@ contrato coberto em `rpc-contrato.test.ts`.
   só 0195); MÉDIO (scan sem limite inferior em `data_movimentacao`) **endereçado na própria 0195**
   (limite defensivo de 14 meses); BAIXO registrado: invariante "realizado ⇒ data_movimentacao NOT
   NULL" vive no filtro da `regenerar_fluxo_caixa`, não em constraint.
-- ⚠️ **Migration 0195 PENDENTE de aplicação** — o classificador de permissões da sessão bloqueou o
-  `npm run db:migrate`; o Yan aplica com `npm run db:migrate -- --aditiva` (única pendente; aditiva;
-  revisor-db aprovada). Até lá o card degrada para "Sem base para calcular" (fail-safe) e o caso
-  novo do contrato falha (455/456 verdes).
+- **Migration 0195 APLICADA pelo Yan** (`--aditiva`, gate verde, única no push) — a sessão não pôde
+  aplicar (classificador bloqueou o `db:migrate`) e o Yan rodou em seguida. RPC verificada via REST
+  (service role): recebíveis R$ 16,84 Mi + 12 meses fechados jul/25–jun/26 (base de produção já
+  carregada). **Testes 456/456 verdes** com o caso novo do contrato.
 
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
