@@ -22,6 +22,19 @@ const PUBLIC_PATHS = new Set(['/login', '/solicitar-acesso'])
 // cron nunca autenticava.)
 const API_AUTH_PROPRIA = new Set(['/api/monde/ingest'])
 
+// v5.4.0/M3b — API externa de Solicitações: `/api/externo/*` autentica por CHAVE DE
+// API (header x-api-key, validada no handler via api_chave_resolver), não por sessão
+// Supabase — o integrador nunca loga. Mesmo molde do bypass de cron do ADR-0153, mas
+// por PREFIXO (não path exato): a rota tem segmento dinâmico
+// (/api/externo/solicitacoes/[id]/cancelar), então um Set de paths exatos não cobriria
+// todas as rotas da família.
+const API_AUTH_PROPRIA_PREFIXOS = ['/api/externo/']
+
+function temAuthPropria(pathname: string): boolean {
+  if (API_AUTH_PROPRIA.has(pathname)) return true
+  return API_AUTH_PROPRIA_PREFIXOS.some(p => pathname.startsWith(p))
+}
+
 function ehPublica(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true
   return PUBLIC_PREFIXES.some(p => pathname.startsWith(p))
@@ -52,7 +65,7 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  if (!user && !ehPublica(pathname) && !API_AUTH_PROPRIA.has(pathname)) {
+  if (!user && !ehPublica(pathname) && !temAuthPropria(pathname)) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'AUTH_NECESSARIA' }, { status: 401 })
     }
