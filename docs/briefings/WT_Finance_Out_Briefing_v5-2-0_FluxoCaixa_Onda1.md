@@ -114,6 +114,34 @@ a completude; nenhum CRÍTICO/ALTO/MÉDIO). Gates verdes (tsc 0/lint/445 testes/
   por prudência/escopo). `horizonte-previsto` usa `RAIO_LIVRE=[6,6,0,0]` local (barra generosa do card) —
   candidato a variante nomeada no `chart-theme` (`barRadius.topLg`) se o padrão se repetir.
 
+## Ajustes do checkpoint (rounds 5–6, pré-merge — pedidos do Yan)
+**Round 5 (commits 49b332d…af2c5a6):** Runway Semanal só com a LINHA do saldo (barras removidas;
+rótulo = data de FIM da semana, alinhado ao acumulado); aviso substituído por tabela das próximas
+5 semanas (Semana · A receber · A pagar · Saldo acumulado — `ValorContabil`, verde/vermelho
+`--success`/`--danger`, negativo com sinal de menos, saldo positivo verde, divisória antes da
+tabela). Horizonte: eixo Y assimétrico +4/−8 Mi (anti-clip no topo; margem p/ o rótulo +4 Mi),
+título "Horizonte Previsto" sem subtítulo, legenda cinza "Correspondente ao ano seguinte", sem "*".
+
+**Round 6 — card "Tempo de Vida · Runway de Caixa" (NOVO, acima do Horizonte):** régua 0–12 meses
+(0–3 risco / 3–6 atenção / 6–12 ideal turismo, tokens soft) com o indicador = **recebíveis em
+aberto ÷ saída média mensal**, em DUAS estimativas pontuais — **sem** e **com antecipação (−4%
+nos recebíveis)** — cada uma com **IC 95%** (t de Student sobre a média das saídas mensais
+fechadas; IC da razão = R/(m±t·SE), teto aberto se o denominador for indistinguível de zero).
+Estatística pura em `src/lib/fluxo/cobertura.ts` (10 unit tests, incl. IC calculado à mão);
+RPC `get_fluxo_cobertura` (migration **0195**, aditiva) devolve numerador (previsto de entrada,
+inclui vencidos, dentro do corte) + série do denominador (saídas realizadas por mês FECHADO de
+movimentação, ≤12, janela defensiva de 14 meses). Componente RSC `tempo-vida-caixa.tsx`;
+contrato coberto em `rpc-contrato.test.ts`.
+- **revisor-db (0195): APROVADA COM RESSALVAS** — CRÍTICO era confirmar que a 0192 destrutiva não
+  estava mais pendente antes do push (confirmado aplicada via `migration list`; conjunto pendente =
+  só 0195); MÉDIO (scan sem limite inferior em `data_movimentacao`) **endereçado na própria 0195**
+  (limite defensivo de 14 meses); BAIXO registrado: invariante "realizado ⇒ data_movimentacao NOT
+  NULL" vive no filtro da `regenerar_fluxo_caixa`, não em constraint.
+- ⚠️ **Migration 0195 PENDENTE de aplicação** — o classificador de permissões da sessão bloqueou o
+  `npm run db:migrate`; o Yan aplica com `npm run db:migrate -- --aditiva` (única pendente; aditiva;
+  revisor-db aprovada). Até lá o card degrada para "Sem base para calcular" (fail-safe) e o caso
+  novo do contrato falha (455/456 verdes).
+
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
 2. Conferir a Visão Geral reformada contra o dashboard da controladoria (mesma base ~15-16/07):

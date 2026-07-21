@@ -17,10 +17,13 @@ import HorizontePrevisto from '@/components/financeiro/horizonte-previsto'
 import RepasseMensal from '@/components/financeiro/repasse-mensal'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import SaldoCaixaKpi from '@/components/financeiro/saldo-caixa-kpi'
+import TempoVidaCaixa from '@/components/financeiro/tempo-vida-caixa'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
+  coberturaSchema,
   type RepasseMensalRow, type HorizonteData, type SaldoCaixaConta,
   type RunwaySemanal as RunwaySemanalData, type RankingCaixa as RankingCaixaData,
+  type CoberturaData,
 } from '@/lib/fluxo/rpc-fluxo'
 
 interface SearchParams {
@@ -163,6 +166,7 @@ export default async function FluxoCaixaPage({
     horizonteRes,
     runwaySemanalRes,
     rankingRes,
+    coberturaRes,
   ] = await Promise.allSettled([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
@@ -176,6 +180,7 @@ export default async function FluxoCaixaPage({
     rpc('get_fluxo_horizonte'),
     rpc('get_fluxo_runway_semanal'),
     rpc('get_fluxo_ranking'),
+    rpc('get_fluxo_cobertura'),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
 
   const fluxoMensalRows    = unwrapRpc<FluxoMensalV3Row[]>(fluxoMensalRes, 'get_fluxo_caixa_mensal_v3') ?? []
@@ -214,6 +219,8 @@ export default async function FluxoCaixaPage({
     parseRpc(runwaySemanalSchema, runwaySemanalRes, 'get_fluxo_runway_semanal') ?? { saldo_operacional: 0, semanas: [] }
   const rankingCaixa: RankingCaixaData =
     parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
+  const cobertura: CoberturaData =
+    parseRpc(coberturaSchema, coberturaRes, 'get_fluxo_cobertura') ?? { recebiveis: 0, saidas_mensais: [] }
 
   const totalEntradas = kpis.entradas_realizadas
   const totalSaidas   = kpis.saidas_realizadas
@@ -264,6 +271,10 @@ export default async function FluxoCaixaPage({
           <div className="lg:col-span-2 flex flex-col">
             <RunwaySemanal data={runwaySemanal} />
           </div>
+        </div>
+
+        <div className="mb-4">
+          <TempoVidaCaixa data={cobertura} />
         </div>
 
         <HorizontePrevisto data={horizonte} />

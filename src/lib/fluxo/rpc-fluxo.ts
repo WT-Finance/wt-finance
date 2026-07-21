@@ -124,3 +124,16 @@ export const rankingCaixaSchema = z.object({
 
 export type RankingItem  = z.infer<typeof rankingItemSchema>
 export type RankingCaixa = z.infer<typeof rankingCaixaSchema>
+
+// ── get_fluxo_cobertura() → CoberturaData (Runway de Caixa, 0195) ────────────
+// Numerador (recebíveis em aberto, inclui vencidos, dentro do corte) + série do
+// denominador (saídas realizadas por mês FECHADO de movimentação, ≤12 meses, ASC).
+// A estatística (média, IC 95% t de Student, antecipação 4%) é do app:
+// src/lib/fluxo/cobertura.ts (unit-testada).
+
+export const coberturaSchema = z.object({
+  recebiveis:     z.number(),
+  saidas_mensais: z.array(z.object({ mes: z.string(), s: z.number() }).passthrough()),
+}).passthrough()
+
+export type CoberturaData = z.infer<typeof coberturaSchema>

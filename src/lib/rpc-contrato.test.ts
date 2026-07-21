@@ -14,6 +14,7 @@ import {
 } from './solicitacoes/schemas'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
+  coberturaSchema,
 } from './fluxo/rpc-fluxo'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -484,5 +485,15 @@ describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1)', () => {
     const d = await rpc('get_fluxo_horizonte', {}) as { meses?: unknown[]; anos?: unknown[] }
     expect(d.meses?.length).toBe(12)
     expect(d.anos?.length).toBe(2)
+  })
+  it('get_fluxo_cobertura(): {recebiveis, saidas_mensais[≤12 fechados, ASC]}', async () => {
+    const d = await rpc('get_fluxo_cobertura', {})
+    const p = coberturaSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) {
+      expect(p.data.saidas_mensais.length).toBeLessThanOrEqual(12)
+      const meses = p.data.saidas_mensais.map(m => m.mes)
+      expect([...meses].sort()).toEqual(meses) // ordem ASC determinística
+    }
   })
 })
