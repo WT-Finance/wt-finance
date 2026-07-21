@@ -144,9 +144,13 @@ export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string
   return { ok: true, url: signed.signedUrl }
 }
 
-export async function concluirSolicitacao(id: number): Promise<{ ok: boolean; erro?: string }> {
+// v5.4.0/M4 (ADR-0953): `referencia` é OBRIGATÓRIA para tipos com
+// `exige_referencia_conclusao` (o banco enforça — REFERENCIA_OBRIGATORIA); para
+// os demais tipos, undefined/'' equivale a NULL (comportamento IDÊNTICO ao
+// anterior).
+export async function concluirSolicitacao(id: number, referencia?: string): Promise<{ ok: boolean; erro?: string }> {
   await requireAreaAction(null)
-  const { error } = await rpcSessao('solic_concluir', { p_id: id })
+  const { error } = await rpcSessao('solic_concluir', { p_id: id, p_referencia: referencia ?? null })
   if (error) return { ok: false, erro: traduzir(error.message) }
   await notificarMovimentacao(id, 'concluida')
   revalidatePath('/solicitacoes'); return { ok: true }
@@ -182,6 +186,7 @@ function traduzir(msg: string): string {
     JUSTIFICATIVA_OBRIGATORIA: 'A justificativa é obrigatória para rejeitar.',
     NAO_ENCONTRADA: 'Solicitação não encontrada.',
     AUTH_NECESSARIA: 'Sessão necessária.',
+    REFERENCIA_OBRIGATORIA: 'Informe a referência externa (ex.: nº do lançamento) para concluir.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
   return m[prefixo] ?? msg.replace(/^[A-Z_]+:\s*/, '')

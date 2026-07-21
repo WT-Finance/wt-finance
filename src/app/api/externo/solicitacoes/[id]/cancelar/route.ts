@@ -7,18 +7,23 @@ export const runtime = 'nodejs'
 
 import {
   autenticarChamada, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
+  getEmailsEnvolvidosSvc,
 } from '@/lib/api-externa/http'
-import { getEmailsEnvolvidos } from '@/lib/solicitacoes/rpc'
+import { processarOutboxUmaVez } from '@/lib/api-externa/outbox'
 import { enviarNotificacaoSolicitacao } from '@/lib/email'
 
 const ROTA = '/api/externo/solicitacoes/[id]/cancelar'
 
 interface ResultadoCancelamento { ok: true; id: number; status: string }
 
-/** Notificação best-effort — mesma limitação conhecida documentada em ../route.ts (notificarCriacao). */
+/**
+ * Notificação best-effort — v5.4.0/M4 (ADR-0953) FIX da limitação conhecida do M3b:
+ * usa `getEmailsEnvolvidosSvc` (RPC `solic_emails_envolvidos_svc`, service_role-only,
+ * sem os guards de sessão que a rota HTTP não tem como satisfazer — ver ../route.ts).
+ */
 async function notificarCancelamento(id: number): Promise<void> {
   try {
-    const ctx = await getEmailsEnvolvidos(id)
+    const ctx = await getEmailsEnvolvidosSvc(id)
     if (!ctx || ctx.envolvidos_emails.length === 0) return
     await enviarNotificacaoSolicitacao({
       paras:           ctx.envolvidos_emails,
@@ -63,6 +68,11 @@ export async function POST(
 
   const resultado = data as ResultadoCancelamento
   await notificarCancelamento(resultado.id)
+
+  // v5.4.0/M4 (ADR-0953): entrega INLINE best-effort, AGUARDADA antes do return
+  // (serverless mata trabalho pós-resposta — lição v4.25). Nunca lança; o cron
+  // (~5min) cobre o que não sair daqui.
+  try { await processarOutboxUmaVez(5, 5_000) } catch { /* a varredura do cron cobre */ }
 
   const resposta = Response.json({ ok: true, id: resultado.id, status: resultado.status }, { status: 200 })
   await registrarChamada(chave.id, ROTA, 200)

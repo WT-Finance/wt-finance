@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, AlertTriangle } from 'lucide-react'
+import { Loader2, AlertTriangle, Check } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
+import ModalCentral from '@/components/shared/modal-central'
+import { CAMPO } from '@/lib/ui/campos'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
@@ -28,6 +30,12 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
   // v4.18/M6 — filtro de STATUS (substitui os antigos filtros de visão). O usuário SEMPRE
   // vê mim + minha permissão; "Ver todas" (gestão, escopo=todas) fica na linha das abas.
   const [filtro, setFiltro] = useState<FiltroStatus>('abertas')
+  // v5.4.0/M4 (ADR-0953): quando a solicitação exige referência externa, o clique
+  // rápido do card abre este mini-form em vez de concluir direto (comportamento
+  // IDÊNTICO ao anterior para as demais solicitações).
+  const [pedindoReferencia, setPedindoReferencia] = useState<Solicitacao | null>(null)
+  const [referenciaValor, setReferenciaValor] = useState('')
+  const [confirmandoReferencia, setConfirmandoReferencia] = useState(false)
 
   const supervisao = escopo === 'todas'   // modo "Ver todas" (gestão) ativo
 
@@ -40,6 +48,24 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
       setMsg('Falha ao concluir.')
     } finally {
       setConcluindo(null)
+    }
+  }
+
+  function fecharPedidoReferencia() {
+    setPedindoReferencia(null); setReferenciaValor('')
+  }
+
+  async function confirmarComReferencia() {
+    if (!pedindoReferencia) return
+    setMsg(null); setConfirmandoReferencia(true)
+    try {
+      const r = await concluirSolicitacao(pedindoReferencia.id, referenciaValor.trim())
+      if (!r.ok) { setMsg(r.erro ?? 'Falha ao concluir.'); return }
+      fecharPedidoReferencia()
+    } catch {
+      setMsg('Falha ao concluir.')
+    } finally {
+      setConfirmandoReferencia(false)
     }
   }
 
@@ -91,18 +117,45 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
                 </div>
                 <ScrollAutoHide className="pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">
                   {ordenados.length === 0 && <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-xs text-zinc-400">—</div>}
-                  {ordenados.map(s => <Card key={s.id} s={s} onAbrir={onAbrir} concluindo={concluindo === s.id} onConcluir={concluir} />)}
+                  {ordenados.map(s => (
+                    <Card key={s.id} s={s} onAbrir={onAbrir} concluindo={concluindo === s.id} onConcluir={concluir} onPedirReferencia={setPedindoReferencia} />
+                  ))}
                 </ScrollAutoHide>
               </div>
             )
           })}
         </div>
       )}
+
+      {pedindoReferencia && (
+        <ModalCentral
+          titulo="Concluir solicitação"
+          subtitulo="Este tipo exige uma referência externa (ex.: nº do lançamento) para concluir."
+          onClose={fecharPedidoReferencia}
+        >
+          <input
+            autoFocus value={referenciaValor} onChange={e => setReferenciaValor(e.target.value)}
+            className={CAMPO} placeholder="Referência externa (ex.: nº do lançamento)"
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={fecharPedidoReferencia} className={`${PILL} ${PILL_NEUTRO}`}>Voltar</button>
+            <button type="button" disabled={confirmandoReferencia || referenciaValor.trim().length === 0}
+              onClick={confirmarComReferencia}
+              className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
+              {confirmandoReferencia ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Concluir
+            </button>
+          </div>
+        </ModalCentral>
+      )}
     </div>
   )
 }
 
-function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir: (s: Solicitacao) => void; concluindo: boolean; onConcluir: (id: number, e: React.MouseEvent) => void }) {
+function Card({ s, onAbrir, concluindo, onConcluir, onPedirReferencia }: {
+  s: Solicitacao; onAbrir: (s: Solicitacao) => void; concluindo: boolean
+  onConcluir: (id: number, e: React.MouseEvent) => void
+  onPedirReferencia: (s: Solicitacao) => void
+}) {
   const aberta = s.status === 'aberta'
   const podeConcluir = s.sou_atendente || s.sou_solicitante
   const venc = vencida(s.data_limite, s.status)
@@ -117,7 +170,9 @@ function Card({ s, onAbrir, concluindo, onConcluir }: { s: Solicitacao; onAbrir:
     >
       <div className="flex items-start gap-2">
         {aberta ? (
-          <button type="button" disabled={!podeConcluir || concluindo} onClick={e => onConcluir(s.id, e)} aria-label="Concluir"
+          <button
+            type="button" disabled={!podeConcluir || concluindo} aria-label="Concluir"
+            onClick={e => { e.stopPropagation(); if (s.exige_referencia_conclusao) onPedirReferencia(s); else onConcluir(s.id, e) }}
             title={podeConcluir ? 'Concluir' : 'Sem permissão para concluir'}
             className={`foco-neutro relative before:absolute before:-inset-1 before:content-[''] mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${podeConcluir ? 'border-zinc-400 hover:border-success hover:bg-success-bg' : 'border-zinc-200'}`}>
             {concluindo && <Loader2 size={10} className="animate-spin" />}

@@ -33,6 +33,11 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   const [rejeitando, setRejeitando] = useState(false)
   const [cancelando, setCancelando] = useState(false)
   const [justificativa, setJustificativa] = useState('')
+  // v5.4.0/M4 (ADR-0953): mini-form de referência externa — só aparece quando o
+  // TIPO exige (sol.exige_referencia_conclusao); sem o flag, Concluir permanece
+  // um clique único (comportamento IDÊNTICO ao anterior).
+  const [concluindoReferencia, setConcluindoReferencia] = useState(false)
+  const [referenciaConclusao, setReferenciaConclusao] = useState('')
   // id do anexo sendo baixado no momento (impede duplo-clique e exibe spinner)
   const [baixando, setBaixando] = useState<number | null>(null)
 
@@ -164,12 +169,21 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
         <div className="border-t border-zinc-100 pt-3 mb-4 text-xs text-zinc-500">
           <p>{STATUS_LABEL[sol.status]} por {sol.decidido_por_email ?? '—'} em {fmtDataHoraSP(sol.decidido_em)}.</p>
           {sol.justificativa && <p className="mt-1"><span className="font-medium">Justificativa:</span> {sol.justificativa}</p>}
+          {sol.referencia_conclusao && <p className="mt-1"><span className="font-medium">Referência externa:</span> {sol.referencia_conclusao}</p>}
         </div>
       )}
 
       {(podeConcluir || podeRejeitar || podeCancelar) && (
         <div className="sticky -bottom-5 -mx-6 -mb-5 px-6 py-3 bg-white border-t border-zinc-100 flex flex-wrap gap-2">
-          {podeConcluir && <button type="button" disabled={ocupado} onClick={() => run(() => concluirSolicitacao(sol.id))} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>{ocupado ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Concluir</button>}
+          {podeConcluir && (
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => sol.exige_referencia_conclusao ? setConcluindoReferencia(true) : run(() => concluirSolicitacao(sol.id))}
+              className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}
+            >
+              {ocupado ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Concluir
+            </button>
+          )}
           {podeRejeitar && <button type="button" disabled={ocupado} onClick={() => setRejeitando(true)} className={`${PILL} ${PILL_PERIGO}`}><Ban size={13} /> Rejeitar</button>}
           {podeCancelar && <button type="button" disabled={ocupado} onClick={() => setCancelando(true)} className={`${PILL} ${PILL_NEUTRO}`}><X size={13} /> Cancelar</button>}
         </div>
@@ -194,6 +208,27 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
             <button type="button" disabled={ocupado || justificativa.trim().length === 0}
               onClick={() => { setRejeitando(false); run(() => rejeitarSolicitacao(sol.id, justificativa)) }}
               className={`${PILL} ${PILL_PERIGO}`}>Rejeitar</button>
+          </div>
+        </ModalCentral>
+      )}
+
+      {concluindoReferencia && (
+        <ModalCentral
+          titulo="Concluir solicitação"
+          subtitulo="Este tipo exige uma referência externa (ex.: nº do lançamento) para concluir."
+          onClose={() => setConcluindoReferencia(false)}
+        >
+          <input
+            autoFocus value={referenciaConclusao} onChange={e => setReferenciaConclusao(e.target.value)}
+            className={CAMPO} placeholder="Referência externa (ex.: nº do lançamento)"
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => setConcluindoReferencia(false)} className={`${PILL} ${PILL_NEUTRO}`}>Voltar</button>
+            <button type="button" disabled={ocupado || referenciaConclusao.trim().length === 0}
+              onClick={() => { setConcluindoReferencia(false); run(() => concluirSolicitacao(sol.id, referenciaConclusao.trim())) }}
+              className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
+              {ocupado ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Concluir
+            </button>
           </div>
         </ModalCentral>
       )}

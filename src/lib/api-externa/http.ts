@@ -151,6 +151,44 @@ export function traduzirErroRpc(message: string): Response {
   return respostaErro('ERRO_INTERNO', 'Erro interno ao processar a requisição.', 500)
 }
 
+export interface EmailsEnvolvidosSvc {
+  tipo_nome:         string | null
+  autor_rotulo:      string | null
+  atribuido_rotulo:  string | null
+  criado_em_fmt:     string | null
+  decidido_em_fmt:   string | null
+  envolvidos_emails: string[]
+}
+
+function comoEmailsEnvolvidos(x: unknown): EmailsEnvolvidosSvc | null {
+  if (typeof x !== 'object' || x === null) return null
+  const o = x as Record<string, unknown>
+  return {
+    tipo_nome:         typeof o.tipo_nome === 'string' ? o.tipo_nome : null,
+    autor_rotulo:      typeof o.autor_rotulo === 'string' ? o.autor_rotulo : null,
+    atribuido_rotulo:  typeof o.atribuido_rotulo === 'string' ? o.atribuido_rotulo : null,
+    criado_em_fmt:     typeof o.criado_em_fmt === 'string' ? o.criado_em_fmt : null,
+    decidido_em_fmt:   typeof o.decidido_em_fmt === 'string' ? o.decidido_em_fmt : null,
+    envolvidos_emails: Array.isArray(o.envolvidos_emails)
+      ? o.envolvidos_emails.filter((e): e is string => typeof e === 'string')
+      : [],
+  }
+}
+
+/**
+ * Envolvidos de uma solicitação (v5.4.0/M4, ADR-0953) via a variante SERVICE-ROLE
+ * de `solic_emails_envolvidos` (migration 0953: `solic_emails_envolvidos_svc`) —
+ * esta porta (rotas `/api/externo/*`) NÃO tem sessão de usuário (chave de API,
+ * não JWT Supabase); a RPC gated por `exigir_acesso`/`pode_ver_solic` sempre
+ * negaria aqui (limitação conhecida do M3b, agora corrigida). `null` em erro de
+ * RPC — fallback-safe; o caller trata como "sem envolvidos" e pula o e-mail.
+ */
+export async function getEmailsEnvolvidosSvc(id: number): Promise<EmailsEnvolvidosSvc | null> {
+  const { data, error } = await chamarRpcExterna('solic_emails_envolvidos_svc', { p_id: id })
+  if (error) return null
+  return comoEmailsEnvolvidos(data)
+}
+
 /**
  * Registra a chamada no log de auditoria (`api_chamada_log`). BEST-EFFORT: nunca
  * lança nem afeta a resposta ao integrador — é uma camada ADICIONAL de observabilidade

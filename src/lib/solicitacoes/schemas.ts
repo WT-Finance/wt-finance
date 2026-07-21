@@ -74,6 +74,11 @@ export const solicitacaoSchema = z.object({
   sou_solicitante:    z.boolean().optional(),
   sou_atendente:      z.boolean().optional(),
   anexos:             z.array(anexoSchema),
+  // v5.4.0/M4 (ADR-0953): flag do TIPO (exige referência externa p/ concluir) +
+  // a referência já gravada. .optional(): a RPC pode ainda não emitir durante o
+  // deploy (janela do rollout da migration 0953 — lição v4.12.1).
+  exige_referencia_conclusao: z.boolean().optional(),
+  referencia_conclusao:       z.string().nullable().optional(),
 }).passthrough()
 export type Solicitacao = z.infer<typeof solicitacaoSchema>
 

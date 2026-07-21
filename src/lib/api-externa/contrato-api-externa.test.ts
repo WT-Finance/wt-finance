@@ -7,21 +7,23 @@ import { createHash } from 'node:crypto'
 // é fixture de teste, não lógica sob teste. sha256 hex, idêntico ao runtime.
 const hashSegredo = (s: string): string => createHash('sha256').update(s, 'utf8').digest('hex')
 
-// v5.4.0/M3b — CONTRATO das RPCs de runtime da API externa de Solicitações
+// v5.4.0/M3b+M4 — CONTRATO das RPCs de runtime da API externa de Solicitações
 // (criar_solicitacao_externa / cancelar_solicitacao_externa / solic_tipos_api,
 // migration 0952) + PARIDADE de validação com a UI (a mesma
 // app.solic_validar_e_snapshotar valida as duas portas — mudar uma regra muda as
 // duas de uma vez) + preservação de CHAVE ESTÁVEL de campo na edição de tipo
-// (admin_solic_salvar_tipo, migration 0950).
+// (admin_solic_salvar_tipo, migration 0950) + outbox de callbacks at-least-once
+// (api_outbox_enfileirar/reivindicar/resultado, referência externa obrigatória
+// na conclusão via solic_concluir, migration 0953/ADR-0953).
 //
 // Casos via RPC REST (service key — padrão rpc-contrato.test.ts); fixtures
 // (roles/tipo/campos/chave de teste) montadas e limpas via `pg` direto
 // (SUPABASE_DB_URL — padrão virada-paridade.test.ts), pois não há RPC de escrita
 // alcançável sem sessão para essas tabelas de configuração. Skip TOTAL offline
-// (sem env) OU se a migration 0952 ainda não tiver sido aplicada no remoto —
-// sondado via pg_proc (uma chamada REST com corpo vazio daria 404 tanto para
-// "função não existe" quanto para "função existe mas não bate overload", o que
-// seria um falso-negativo; consultar o catálogo é inequívoco).
+// (sem env) OU se as migrations 0952/0953 ainda não tiverem sido aplicadas no
+// remoto — sondado via pg_proc (uma chamada REST com corpo vazio daria 404 tanto
+// para "função não existe" quanto para "função existe mas não bate overload", o
+// que seria um falso-negativo; consultar o catálogo é inequívoco).
 
 const RAW  = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const HOST = RAW.replace(/\/+$/, '').replace(/\/rest\/v1$/, '')
@@ -37,8 +39,13 @@ async function sondarRpcPronta(): Promise<boolean> {
   const c = new pg.Client({ connectionString: DB })
   try {
     await c.connect()
-    const r = await c.query(`SELECT 1 FROM pg_proc WHERE proname = 'criar_solicitacao_externa'`)
-    return (r.rowCount ?? 0) > 0
+    // Exige 0952 (criar_solicitacao_externa) E 0953 (api_outbox_reivindicar) —
+    // este arquivo tem casos das DUAS migrations; um remoto com só a 0952 deve
+    // SKIPAR o arquivo todo, não falhar nos casos novos de outbox.
+    const r = await c.query(
+      `SELECT count(*)::int n FROM pg_proc WHERE proname IN ('criar_solicitacao_externa', 'api_outbox_reivindicar')`,
+    )
+    return (r.rows[0]?.n ?? 0) >= 2
   } catch {
     return false
   } finally {
@@ -47,8 +54,8 @@ async function sondarRpcPronta(): Promise<boolean> {
 }
 
 // Top-level await: suportado pelo vite-node do Vitest (módulos ESM) — necessário
-// para que `describe.skipIf` já saiba, de forma SÍNCRONA, se a migration 0952
-// (aplicada em paralelo por outra missão) já está no remoto.
+// para que `describe.skipIf` já saiba, de forma SÍNCRONA, se as migrations
+// 0952/0953 (aplicadas em paralelo por outras missões) já estão no remoto.
 const RPC_PRONTA = await sondarRpcPronta()
 
 interface RespostaRpc { ok: boolean; status: number; data: unknown; erro: string | null }
@@ -76,15 +83,19 @@ function prefixo(erro: string | null): string {
   return (idx === -1 ? m : m.slice(0, idx)).trim()
 }
 
-describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações (v5.4.0/M3b, migration 0952)', () => {
+describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações (v5.4.0/M3b+M4, migrations 0952/0953)', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let client: any
   let roleId = 0
   let roleForaId = 0
   let tipoId = 0
   let tipoForaWhitelistId = 0
+  let tipoComReferenciaId = 0   // v5.4.0/M4 (ADR-0953): exige_referencia_conclusao=true
   let chaveId = 0
   let solicitacaoId = 0
+  let solicitacaoRefId = 0      // solicitação do tipo acima (fixture do teste de conclusão)
+  let outboxClaimTestId = 0     // item cru inserido p/ testar api_outbox_reivindicar/resultado
+  let roboUserId = ''           // uid do robô (solicitante das solicitações externas) — reusado p/ simular JWT
 
   const SEGREDO_TESTE = 'jns_zzteste_v540_contrato_api_externa'
   const IDEM_FELIZ = 'zz-v540-idem-feliz'
@@ -135,19 +146,44 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
        RETURNING id::int AS id`, [roleId])
     tipoForaWhitelistId = t2.rows[0].id
 
-    // Robô: reaproveita um user_id JÁ cadastrado (nunca INSERT em auth.users via pg).
-    const u = await client.query(`SELECT user_id FROM app.rbac_usuarios LIMIT 1`)
-    const roboUserId = u.rows[0].user_id as string
+    // Robô: reaproveita um user_id JÁ cadastrado ATIVO (nunca INSERT em auth.users via
+    // pg). ATIVO é exigido a mais nesta versão (v5.4.0/M4): além de FK para
+    // robo_user_id, este mesmo uid é reusado para SIMULAR o JWT de um usuário real ao
+    // testar solic_concluir via `pg` (app.exigir_acesso exige ativo=true — ver os
+    // testes de outbox/conclusão abaixo).
+    const u = await client.query(`SELECT user_id FROM app.rbac_usuarios WHERE ativo LIMIT 1`)
+    roboUserId = u.rows[0].user_id as string
 
+    // callback_url/callback_segredo preenchidos (v5.4.0/M4): sem eles, todo item da
+    // outbox desta chave seria marcado 'esgotado' na hora por api_outbox_reivindicar
+    // (chave sem callback nunca é entregável). Domínio .invalid (RFC 2606, nunca
+    // resolve) — os testes abaixo não fazem HTTP de verdade, só exercitam o mecanismo
+    // de claim/backoff no banco.
     const c = await client.query(
-      `INSERT INTO app.api_chave (plataforma, segredo_hash, whitelist_tipos, robo_user_id)
-       VALUES ('ZZ_TESTE_API_V540', $1, ARRAY[$2]::bigint[], $3)
+      `INSERT INTO app.api_chave (plataforma, segredo_hash, whitelist_tipos, robo_user_id, callback_url, callback_segredo)
+       VALUES ('ZZ_TESTE_API_V540', $1, ARRAY[$2]::bigint[], $3, 'https://example.invalid/zz-callback-teste', 'zz-callback-segredo-teste')
        RETURNING id::int AS id`, [hashSegredo(SEGREDO_TESTE), tipoId, roboUserId])
     chaveId = c.rows[0].id
+
+    // Tipo que EXIGE referência externa na conclusão (ADR-0953) — fixture dos testes
+    // de solic_concluir abaixo. Sem campos: p_campos:{} basta p/ criar via API.
+    const t3 = await client.query(
+      `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api, exige_referencia_conclusao, api_roles_permitidas)
+       VALUES ('ZZ Teste API v5.4.0 (exige referência)', 'zz_teste_api_v540_ref', true, true, ARRAY[$1]::bigint[])
+       RETURNING id::int AS id`, [roleId])
+    tipoComReferenciaId = t3.rows[0].id
+
+    await client.query(
+      `UPDATE app.api_chave SET whitelist_tipos = whitelist_tipos || ARRAY[$1]::bigint[] WHERE id = $2`,
+      [tipoComReferenciaId, chaveId],
+    )
   })
 
   afterAll(async () => {
     if (!client) return
+    // v5.4.0/M4 (ADR-0953): outbox ANTES do api_chave (FK chave_id) e ANTES da
+    // solicitacao_tipo (via a solicitacao, removida na linha seguinte).
+    await client.query(`DELETE FROM app.api_outbox WHERE chave_id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao WHERE origem_chave_id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.api_chamada_log WHERE chave_id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.api_chave WHERE id = $1`, [chaveId]).catch(() => {})
@@ -155,6 +191,8 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao_campo WHERE tipo_id = $1`, [tipoForaWhitelistId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoForaWhitelistId]).catch(() => {})
+    await client.query(`DELETE FROM app.solicitacao_campo WHERE tipo_id = $1`, [tipoComReferenciaId]).catch(() => {})
+    await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoComReferenciaId]).catch(() => {})
     await client.query(`DELETE FROM app.rbac_roles WHERE id = $1`, [roleId]).catch(() => {})
     await client.query(`DELETE FROM app.rbac_roles WHERE id = $1`, [roleForaId]).catch(() => {})
     await client.end().catch(() => {})
@@ -348,12 +386,129 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(porRotulo['Observação Nova']).toBeTruthy()
     expect(porRotulo['Observação Nova']).not.toBe('')
   })
+
+  // ── (7) outbox de callbacks — at-least-once (ADR-0953, v5.4.0/M4) ────────────
+  it('outbox: a criação externa (testada em (1)) enfileirou exatamente 1 item solicitacao.criada — o retry idempotente (testado em (3)) não duplicou', async () => {
+    const r = await client.query(
+      `SELECT count(*)::int n FROM app.api_outbox WHERE solicitacao_id = $1 AND evento = 'solicitacao.criada'`,
+      [solicitacaoId],
+    )
+    expect(r.rows[0].n).toBe(1)
+  })
+
+  it('outbox: o cancelamento externo (testado em (4)) enfileirou solicitacao.cancelada', async () => {
+    const r = await client.query(
+      `SELECT count(*)::int n FROM app.api_outbox WHERE solicitacao_id = $1 AND evento = 'solicitacao.cancelada'`,
+      [solicitacaoId],
+    )
+    expect(r.rows[0].n).toBe(1)
+  })
+
+  it('cria a solicitação-fixture do tipo que exige referência (p/ os testes de solic_concluir abaixo)', async () => {
+    const r = await chamarRpc('criar_solicitacao_externa', {
+      p_chave_id:           chaveId,
+      p_tipo_slug:          'zz_teste_api_v540_ref',
+      p_destinatario:       'ZZ_TESTE_API_V540',
+      p_titulo:             'Teste de conclusão com referência',
+      p_campos:             {},
+      p_data_limite:        '2027-01-01',
+      p_chave_idempotencia: 'zz-v540-ref-fixture',
+      p_referencia_origem:  null,
+    })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const d = r.data as { id: number }
+    solicitacaoRefId = d.id
+  })
+
+  // As duas chamadas abaixo passam por `pg` (conexão direta — superusuário passa o
+  // gate de app.exigir_acesso), mas app.pode_ver_solic/sou_atendente ainda dependem
+  // de um uid resolvido via `request.jwt.claims` — SIMULADO via
+  // set_config('request.jwt.claims', …, false) [escopo de SESSÃO — o `client` é uma
+  // conexão única persistente (pg.Client), então o valor sobrevive entre chamadas
+  // .query() separadas; sempre resetado no `finally` para NÃO vazar para as demais
+  // queries do `client` (incl. o cleanup do afterAll)]. sub = roboUserId = o
+  // SOLICITANTE desta solicitação (criada com solicitante_id = robô da chave),
+  // então `v_sol.solicitante_id = uid_jwt()` autoriza a conclusão.
+  async function comoRobo<T>(fn: () => Promise<T>): Promise<T> {
+    await client.query(
+      `SELECT set_config('request.jwt.claims', json_build_object('sub', $1::text, 'role', 'authenticated')::text, false)`,
+      [roboUserId],
+    )
+    try {
+      return await fn()
+    } finally {
+      await client.query(`SELECT set_config('request.jwt.claims', NULL, false)`)
+    }
+  }
+
+  it('solic_concluir: tipo exige referência e nenhuma foi informada → REFERENCIA_OBRIGATORIA', async () => {
+    await expect(comoRobo(() =>
+      client.query(`SELECT public.solic_concluir($1::bigint, NULL)`, [solicitacaoRefId]),
+    )).rejects.toThrow(/REFERENCIA_OBRIGATORIA/)
+  })
+
+  it('solic_concluir: com referência → grava referencia_conclusao e enfileira solicitacao.concluida com payload.referencia', async () => {
+    await comoRobo(() =>
+      client.query(`SELECT public.solic_concluir($1::bigint, $2::text)`, [solicitacaoRefId, 'LANC-12345']),
+    )
+
+    const sol = await client.query(`SELECT status, referencia_conclusao FROM app.solicitacao WHERE id = $1`, [solicitacaoRefId])
+    expect(sol.rows[0].status).toBe('concluida')
+    expect(sol.rows[0].referencia_conclusao).toBe('LANC-12345')
+
+    const outbox = await client.query(
+      `SELECT payload FROM app.api_outbox WHERE solicitacao_id = $1 AND evento = 'solicitacao.concluida'`,
+      [solicitacaoRefId],
+    )
+    expect(outbox.rows.length).toBe(1)
+    expect(outbox.rows[0].payload.referencia).toBe('LANC-12345')
+  })
+
+  // NOTA (risco de teste, não de produto): esta suíte roda contra o banco REAL (não
+  // há staging — ver CLAUDE.md), e a migration 0953 agenda o pg_cron
+  // 'api-outbox-processar' a cada 5min. Em tese, se o tick do cron cair EXATAMENTE
+  // entre o INSERT abaixo e a chamada a api_outbox_reivindicar, o cron poderia
+  // reivindicar este item antes do teste (o callback_url .invalid falharia,
+  // reagendando com proximo_retry futuro, e o teste não o encontraria mais
+  // 'pendente'). Extremamente improvável na janela de execução do `npm test`; não
+  // mitigado aqui (exigiria mockar o agendador, fora do escopo desta suíte).
+  it('api_outbox_reivindicar: devolve o item pendente e incrementa tentativas', async () => {
+    const insert = await client.query(
+      `INSERT INTO app.api_outbox (chave_id, evento, solicitacao_id, payload)
+       VALUES ($1, 'zz.teste.reivindicar', $2, '{"x":1}'::jsonb) RETURNING id::int AS id`,
+      [chaveId, solicitacaoId],
+    )
+    outboxClaimTestId = insert.rows[0].id
+
+    const r = await chamarRpc('api_outbox_reivindicar', { p_limite: 100 })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const itens = r.data as Array<{ outbox_id: number; evento: string; tentativas: number; callback_url: string; callback_segredo: string | null }>
+    const achado = itens.find(i => i.outbox_id === outboxClaimTestId)
+    expect(achado).toBeTruthy()
+    expect(achado!.evento).toBe('zz.teste.reivindicar')
+    expect(achado!.tentativas).toBe(1)
+    expect(achado!.callback_url).toBe('https://example.invalid/zz-callback-teste')
+  })
+
+  it('api_outbox_resultado(false): reagenda com proximo_retry FUTURO (backoff exponencial)', async () => {
+    const antes = await client.query(`SELECT status FROM app.api_outbox WHERE id = $1`, [outboxClaimTestId])
+    expect(antes.rows[0].status).toBe('pendente')
+
+    const r = await chamarRpc('api_outbox_resultado', { p_id: outboxClaimTestId, p_sucesso: false, p_erro: 'HTTP 500 (teste)' })
+    expect(r.ok, r.erro ?? '').toBe(true)
+
+    const depois = await client.query(`SELECT status, proximo_retry, ultimo_erro FROM app.api_outbox WHERE id = $1`, [outboxClaimTestId])
+    expect(depois.rows[0].status).toBe('pendente')
+    expect(new Date(depois.rows[0].proximo_retry).getTime()).toBeGreaterThan(Date.now())
+    expect(depois.rows[0].ultimo_erro).toBe('HTTP 500 (teste)')
+  })
 })
 
 // Sempre roda (mesmo offline) — deixa visível, no relatório do `npm test`, que a
-// suíte acima depende de env (.env.local) + da migration 0952 já aplicada no remoto.
+// suíte acima depende de env (.env.local) + das migrations 0952/0953 já aplicadas
+// no remoto.
 describe('gate — API externa de Solicitações: suíte de contrato é pulada, não falha, sem env/migration', () => {
-  it('sem SUPABASE_URL/SERVICE_ROLE_KEY/SUPABASE_DB_URL ou sem a migration 0952: skipIf, não erro', () => {
+  it('sem SUPABASE_URL/SERVICE_ROLE_KEY/SUPABASE_DB_URL ou sem as migrations 0952/0953: skipIf, não erro', () => {
     expect(true).toBe(true)
   })
 })

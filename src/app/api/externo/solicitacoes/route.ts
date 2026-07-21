@@ -10,8 +10,9 @@ export const runtime = 'nodejs'
 import { z } from 'zod'
 import {
   autenticarChamada, lerBodyLimitado, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
+  getEmailsEnvolvidosSvc,
 } from '@/lib/api-externa/http'
-import { getEmailsEnvolvidos } from '@/lib/solicitacoes/rpc'
+import { processarOutboxUmaVez } from '@/lib/api-externa/outbox'
 import { enviarNotificacaoSolicitacao } from '@/lib/email'
 
 const ROTA = '/api/externo/solicitacoes'
@@ -45,19 +46,16 @@ interface ResultadoCriacao {
  * Notifica os envolvidos por e-mail (mesmo padrão de src/app/solicitacoes/actions.ts).
  * BEST-EFFORT: jamais afeta a resposta ao integrador.
  *
- * LIMITAÇÃO CONHECIDA (reportada no out-briefing): `solic_emails_envolvidos` exige
- * `app.pode_ver_solic()` (área 'solicitacoes' OU uid_jwt() batendo solicitante/
- * destinatário) — esta rota não tem sessão de usuário (autentica por chave de API,
- * não por JWT Supabase), então `getServerClient()` corre como `anon`/sem claims e a
- * RPC nega antes de devolver os e-mails. O catch abaixo absorve isso silenciosamente
- * (como o design pede), mas na prática a notificação por e-mail de uma solicitação
- * criada via API externa NÃO dispara hoje — precisaria de uma variante de
- * `solic_emails_envolvidos` tolerante a `service_role` (fora do escopo desta missão,
- * que não altera migrations).
+ * v5.4.0/M4 (ADR-0953): FIX da limitação conhecida do M3b — `solic_emails_envolvidos`
+ * exige `app.pode_ver_solic()`/`exigir_acesso()` (área 'solicitacoes' OU uid_jwt()
+ * batendo solicitante/destinatário), e esta rota NÃO tem sessão de usuário (chave de
+ * API, não JWT Supabase) — a RPC gated sempre negava aqui. `getEmailsEnvolvidosSvc`
+ * chama a variante `solic_emails_envolvidos_svc` (migration 0953, service_role-only,
+ * sem os guards de sessão), corrigindo o fan-out.
  */
 async function notificarCriacao(id: number): Promise<void> {
   try {
-    const ctx = await getEmailsEnvolvidos(id)
+    const ctx = await getEmailsEnvolvidosSvc(id)
     if (!ctx || ctx.envolvidos_emails.length === 0) return
     await enviarNotificacaoSolicitacao({
       paras:           ctx.envolvidos_emails,
@@ -114,6 +112,12 @@ export async function POST(req: Request): Promise<Response> {
   if (!resultado.idempotente) {
     await notificarCriacao(resultado.id)
   }
+
+  // v5.4.0/M4 (ADR-0953): tentativa de entrega INLINE, best-effort (latência boa no
+  // caminho feliz) — AGUARDADA antes do return (serverless mata trabalho pós-resposta,
+  // lição v4.25). Timeout curto (5s) e nunca lança: o item permanece 'pendente' e o
+  // cron (~5min) tenta de novo se isto falhar/exceder o tempo.
+  try { await processarOutboxUmaVez(5, 5_000) } catch { /* a varredura do cron cobre */ }
 
   const http = resultado.idempotente ? 200 : 201
   const resposta = Response.json({
