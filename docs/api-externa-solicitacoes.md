@@ -1,0 +1,181 @@
+# Janus — API Externa de Solicitações · Contrato do integrador
+
+> **Versão do contrato:** v5.4.0 · julho/2026
+> **Público:** equipes de plataformas internas do Welcome Group que criam solicitações no Janus
+> (primeiro integrador: TARS/CRM). **Este documento substitui qualquer levantamento anterior
+> como fonte da integração.** O Janus é o dono do formato; a plataforma de origem se adapta a
+> este contrato. A fonte viva do contrato é o endpoint de descoberta (`GET /tipos`) — este
+> documento o espelha; em caso de dúvida, o que a descoberta devolve é a verdade.
+
+---
+
+## 1. Conceitos em 30 segundos
+
+- Uma **solicitação** é uma tarefa aberta para uma **equipe** (role) do Janus, com campos
+  definidos pelo **tipo** (cadastro do Janus). Estados possíveis: `aberta` →
+  `concluida` | `rejeitada` | `cancelada`. **Não existe estado "aprovado"** nem estados
+  intermediários — se a sua plataforma tem um conceito próprio de aprovação, ele vive do seu
+  lado; para o Janus a solicitação está aberta até alguém concluí-la, rejeitá-la ou cancelá-la.
+- Cada plataforma integradora recebe uma **chave de API** com uma **lista de tipos autorizados**.
+  As solicitações criadas pela chave aparecem no Janus como abertas pela **integração** (ex.:
+  "Integração TARS") — proveniência clara para quem atende.
+- Toda mudança de estado gera um **callback** HTTP para a sua URL cadastrada (seção 6).
+
+## 2. Autenticação
+
+- Toda chamada leva o header **`x-api-key: <segredo>`**. O segredo é entregue **uma única vez**
+  na criação da chave (o Janus guarda apenas o hash — não há como recuperá-lo; perdeu → revoga
+  e gera outra).
+- Chave revogada recusa **imediatamente** (`401`). Todas as chamadas são registradas em log.
+- Limite de payload: **64 KB** por requisição (`413` acima disso).
+
+## 3. Descoberta — `GET /api/externo/tipos`
+
+Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um:
+
+```json
+{
+  "ok": true,
+  "tipos": [
+    {
+      "slug": "abatimento_de_creditos",
+      "nome": "Abatimento de créditos",
+      "exige_referencia_conclusao": true,
+      "destinos": [ { "id": 4, "nome": "Financeiro" } ],
+      "campos": [
+        { "chave": "valor",     "rotulo": "Valor",     "tipo_campo": "moeda",   "obrigatorio": true,  "opcoes": null, "data_permite_passado": true },
+        { "chave": "moeda",     "rotulo": "Moeda",     "tipo_campo": "selecao", "obrigatorio": true,  "opcoes": ["BRL","USD","EUR"], "data_permite_passado": true },
+        { "chave": "categoria", "rotulo": "Categoria", "tipo_campo": "selecao", "obrigatorio": true,  "opcoes": ["fornecedor","reembolso","adiantamento","taxa","outro"], "data_permite_passado": true }
+      ]
+    }
+  ]
+}
+```
+
+- **`slug`** identifica o tipo e **`chave`** identifica cada campo — ambos **estáveis**: o Janus
+  garante que edições no cadastro (renomear rótulos, reordenar, adicionar campos) **não mudam**
+  slugs/chaves existentes. Programe contra eles, nunca contra rótulos.
+- **`destinos`** são as equipes válidas para o campo `destinatario` (seção 4).
+- `tipo_campo` ∈ `texto_curto · texto_longo · numero · moeda · data · selecao`.
+  Campo `data` com `data_permite_passado: false` recusa datas anteriores a hoje (fuso
+  São Paulo). Campos de anexo não são expostos via API nesta versão.
+
+## 4. Criar — `POST /api/externo/solicitacoes`
+
+```json
+{
+  "tipo": "abatimento_de_creditos",
+  "chave_idempotencia": "pedido-b1e2c3d4",
+  "titulo": "DW | Ana & Bruno — decoração, sinal de 30%",
+  "destinatario": "Financeiro",
+  "data_limite": "2026-07-25",
+  "campos": {
+    "valor": "1500,00",
+    "moeda": "BRL",
+    "categoria": "fornecedor",
+    "descricao": "Pagar decoração — sinal de 30%",
+    "fornecedor": "Flores & Cia",
+    "forma_pagamento": "PIX",
+    "urgencia": "normal",
+    "solicitante_origem": "Camila Seixas"
+  },
+  "referencia_origem": "b1e2c3d4-…"
+}
+```
+
+Resposta (`201` na criação; `200` quando idempotente — seção 5):
+
+```json
+{ "ok": true, "id": 123, "status": "aberta",
+  "destinatario": { "id": 4, "nome": "Financeiro" }, "idempotente": false }
+```
+
+Regras:
+
+- **`destinatario` é obrigatório e é sempre uma equipe** (role) — pelo **nome exato**
+  (case-insensitive) ou pelo **`id`** numérico devolvido em `destinos` (o id é estável; o nome
+  pode ser renomeado no Janus — prefira o id). Equipe inexistente ou fora da lista do tipo →
+  **erro estruturado, nunca fallback**. O destinatário **resolvido é ecoado** na resposta e nos
+  callbacks — exiba-o ("aberto para a equipe X") e detecte erro de fila no primeiro disparo.
+  Errou a fila? **Cancele e recrie** (não existe reatribuição via API).
+- **`data_limite`** (`AAAA-MM-DD`) é obrigatória — é o prazo da tarefa (ex.: o prazo de
+  pagamento do abatimento).
+- **`campos`** é um objeto `{chave: valor}` com **valores string**. Números/moeda aceitam vírgula
+  ou ponto decimal (`"1500,00"` ou `"1500.00"`). Chave desconhecida → erro `CAMPO_DESCONHECIDO`
+  (nada é ignorado silenciosamente). A validação é **idêntica** à do formulário humano do Janus:
+  o que a tela recusa, a API recusa.
+- **`titulo`** (recomendado): o texto curto que identifica a solicitação nas listas do Janus —
+  inclua o contexto (ex.: o casamento). `referencia_origem`: o id do registro no SEU sistema;
+  volta em todos os callbacks.
+
+## 5. Idempotência e retry
+
+- `chave_idempotencia` é **obrigatória** e única por chave de API. Recomendação: use o id do
+  registro de origem (ex.: `pedido_id`).
+- Reenviar com a mesma `chave_idempotencia` **não duplica**: devolve `200` com o **mesmo `id`**
+  e `"idempotente": true` (e não reenvia e-mails). Retry com backoff é seguro e bem-vindo.
+
+## 6. Callbacks (mudanças de estado → sua URL)
+
+O Janus envia `POST` à **URL de callback** cadastrada na sua chave, com o header
+**`x-callback-secret: <segredo de saída>`** (valide-o!). Quatro eventos:
+
+| Evento | Quando | Campos extras |
+|---|---|---|
+| `solicitacao.criada` | criação via API confirmada | — |
+| `solicitacao.concluida` | equipe concluiu | `referencia` (obrigatória quando o tipo exige — ex.: nº do lançamento no Monde) |
+| `solicitacao.rejeitada` | equipe rejeitou | `justificativa` |
+| `solicitacao.cancelada` | cancelada (pela origem ou no Janus) | — |
+
+Payload:
+
+```json
+{ "evento": "solicitacao.concluida", "solicitacao_id": 123,
+  "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
+  "status": "concluida", "destinatario": { "id": 4, "nome": "Financeiro" },
+  "referencia": "MONDE-88123", "ocorrido_em": "2026-07-25T14:03:00-03:00" }
+```
+
+- **Entrega at-least-once:** responda `2xx` rápido (só enfileire do seu lado). Você **pode
+  receber o mesmo evento mais de uma vez** — deduplique por `evento + solicitacao_id`.
+- Sem `2xx`, o Janus retenta com backoff exponencial (2, 4, 8… minutos, teto 4 h) até 8
+  tentativas; depois marca como esgotado (visível no log da chave, no admin do Janus).
+- Não há callback de "aprovado" — não existe esse estado (seção 1).
+
+## 7. Cancelar — `POST /api/externo/solicitacoes/{id}/cancelar`
+
+- Só cancela solicitações **criadas pela sua chave** e **ainda abertas**.
+- Já concluída/rejeitada/cancelada → `409` com `CONFLITO_ESTADO: <status atual>` — o conflito é
+  **reportado, não aplicado** (o estado do Janus não muda; sincronize o seu lado pelo callback).
+
+## 8. Erros
+
+Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..." } }`.
+
+| Código | HTTP | Significado |
+|---|---|---|
+| `AUTH_AUSENTE` / `AUTH_INVALIDA` / `CHAVE_INVALIDA` | 401 | Sem chave, chave errada ou revogada |
+| `TIPO_NAO_AUTORIZADO` | 403 | Tipo existe mas não está na whitelist da sua chave |
+| `NAO_ENCONTRADA` | 404 | Solicitação inexistente **ou de outra chave** |
+| `CONFLITO_ESTADO` | 409 | Cancelamento de solicitação não-aberta |
+| `PAYLOAD_EXCEDE_LIMITE` | 413 | Corpo acima de 64 KB |
+| `JSON_INVALIDO` / `PAYLOAD_INVALIDO` | 400/422 | Corpo não é JSON válido / shape errado |
+| `TIPO_INVALIDO` | 422 | Slug inexistente, arquivado ou não exposto |
+| `IDEMPOTENCIA_OBRIGATORIA` | 422 | Falta `chave_idempotencia` |
+| `DESTINATARIO_OBRIGATORIO` / `DESTINATARIO_INVALIDO` / `DESTINATARIO_NAO_PERMITIDO` | 422 | Sem destinatário / equipe inexistente / fora da lista do tipo |
+| `DATA_LIMITE_OBRIGATORIA` | 422 | Falta `data_limite` |
+| `CAMPO_DESCONHECIDO` | 422 | Chave de campo que o tipo não tem |
+| `CAMPO_OBRIGATORIO` / `VALOR_INVALIDO` | 422 | Validação de campo (mesmas regras da tela) |
+| `TIPO_EXIGE_ANEXO` | 422 | Tipo tem anexo obrigatório (indisponível via API nesta versão) |
+| `ERRO_INTERNO` | 500 | Falha inesperada (tente novamente com backoff) |
+
+## 9. Fora desta versão (não peça, ainda)
+
+Anexos via API · criação "em nome de" um usuário humano · estados/eventos de aprovação ·
+assinatura HMAC de callbacks (hoje: segredo em header) · reatribuição de destinatário.
+
+---
+
+*Dúvidas do contrato: Yan (Financeiro/Janus). O cadastro do tipo (campos, opções, equipes
+válidas) é gerido no Janus — mudanças ADITIVAS (campo novo opcional) não quebram a integração;
+o `GET /tipos` sempre reflete o vigente.*

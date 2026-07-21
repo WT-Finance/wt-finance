@@ -366,13 +366,34 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
       { chave: 'categoria',   rotulo: 'Categoria',      tipo_campo: 'selecao',     obrigatorio: true, opcoes: ['a', 'b'] },
       { rotulo: 'Observação Nova', tipo_campo: 'texto_curto', obrigatorio: false }, // sem chave → gerada
     ]
-    const rEdit = await client.query(
-      `SELECT public.admin_solic_salvar_tipo($1, $2, $3::jsonb, $4::jsonb) AS r`,
-      [
-        tipoId, 'ZZ Teste API v5.4.0', JSON.stringify(camposPayload),
-        JSON.stringify({ exposto_via_api: true, api_roles_permitidas: [roleId] }),
-      ],
+    // admin_solic_salvar_tipo exige a ÁREA 'solicitacoes' — simular o JWT de um
+    // usuário ativo QUE TEM a área, com set_config LOCAL dentro de uma transação
+    // explícita (o pooler em transaction mode não preserva config de sessão entre
+    // queries; dentro de BEGIN/COMMIT a conexão é a mesma e o escopo local basta).
+    const rAdmin = await client.query(
+      `SELECT u.user_id FROM app.rbac_usuarios u
+       JOIN app.rbac_role_permissoes rp ON rp.role_id = u.role_id
+       WHERE u.ativo AND rp.area = 'solicitacoes' LIMIT 1`,
     )
+    expect(rAdmin.rows.length, 'precisa existir 1 usuário ativo com a área solicitacoes').toBeGreaterThan(0)
+    const adminUid = rAdmin.rows[0].user_id as string
+
+    let rEdit
+    try {
+      await client.query('BEGIN')
+      await client.query(`SELECT set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: adminUid })])
+      rEdit = await client.query(
+        `SELECT public.admin_solic_salvar_tipo($1, $2, $3::jsonb, $4::jsonb) AS r`,
+        [
+          tipoId, 'ZZ Teste API v5.4.0', JSON.stringify(camposPayload),
+          JSON.stringify({ exposto_via_api: true, api_roles_permitidas: [roleId] }),
+        ],
+      )
+      await client.query('COMMIT')
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {})
+      throw e
+    }
     expect(rEdit.rows[0].r.ok).toBe(true)
 
     const depois = await client.query(`SELECT chave, rotulo FROM app.solicitacao_campo WHERE tipo_id = $1 ORDER BY ordem`, [tipoId])
