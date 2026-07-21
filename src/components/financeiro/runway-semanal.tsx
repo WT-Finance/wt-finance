@@ -9,6 +9,7 @@ import {
 } from '@/components/charts'
 import { fmtBRL } from '@/lib/fmt'
 import { ValorContabil } from '@/components/shared/valor-contabil'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import type { RunwaySemanal as RunwaySemanalData } from '@/lib/fluxo/rpc-fluxo'
 
 // Runway Semanal (v5.2.0/Onda 1) — 13 semanas de recebimentos/pagamentos previstos
@@ -98,10 +99,13 @@ export default function RunwaySemanal({ data }: Props) {
       {/* Divisória entre o gráfico (e sua legenda) e a tabela abaixo. */}
       <div className="border-t border-zinc-100 mt-4" />
 
-      {/* Próximas semanas em tabela (só as que cabem no espaço do card; SEM container
-          rolável → nunca aparece barra de rolagem). Cabeçalho no padrão da plataforma
+      {/* Próximas semanas em tabela. Em tela estreita as 4 colunas contábeis não cabem —
+          min-w + <ScrollAutoHide eixo="x"> (convenção da plataforma): rola na horizontal
+          com a barra overlay abaixo do limite; acima, preenche o card sem scroll. Sem
+          scroll VERTICAL (as 5 linhas sempre cabem). Cabeçalho no padrão da plataforma
           (caixa normal, font-medium, cor terciária); números contábeis com tabular-nums. */}
-      <table className="w-full mt-3 tabular-nums">
+      <ScrollAutoHide eixo="x" className="mt-3">
+      <table className="w-full min-w-[460px] tabular-nums">
         <thead>
           <tr className="text-2xs text-zinc-400 [&>th]:font-medium [&>th]:pb-1.5">
             <th className="text-left">Semana</th>
@@ -121,6 +125,7 @@ export default function RunwaySemanal({ data }: Props) {
           ))}
         </tbody>
       </table>
+      </ScrollAutoHide>
     </div>
   )
 }

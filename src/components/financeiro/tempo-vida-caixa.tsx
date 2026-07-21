@@ -1,5 +1,6 @@
-import { fmtMi, fmtAxisMes } from '@/lib/fmt'
-import { calcularCobertura, FATOR_ANTECIPACAO, type CoberturaEstimativa } from '@/lib/fluxo/cobertura'
+import { fmtAxisMes } from '@/lib/fmt'
+import Tooltip from '@/components/ui/tooltip'
+import { calcularCobertura, type CoberturaEstimativa } from '@/lib/fluxo/cobertura'
 import type { CoberturaData } from '@/lib/fluxo/rpc-fluxo'
 
 // Tempo de Vida · Runway de Caixa (v5.2.0, ajuste do checkpoint) — régua de fôlego no
@@ -32,17 +33,6 @@ function fmtMExtenso(v: number): string {
 /** 'IC 2,9–5,2m' (teto aberto → '2,9m–∞'). */
 function fmtIC(e: CoberturaEstimativa): string {
   return e.icHi === null ? `IC ${fmtM(e.icLo)}–∞` : `IC ${fmtM(e.icLo)}–${fmtM(e.icHi)}`
-}
-
-/** Mês/ano (SP) alcançado a partir de hoje somando `meses` (fracionário) — 'nov/26'. */
-function mesCobertura(meses: number): string {
-  const d = new Date(Date.now() + meses * 30.4375 * 86_400_000)
-  const parts = new Intl.DateTimeFormat('pt-BR', {
-    month: 'short', year: '2-digit', timeZone: 'America/Sao_Paulo',
-  }).formatToParts(d)
-  const mes = parts.find(p => p.type === 'month')?.value.replace('.', '') ?? ''
-  const ano = parts.find(p => p.type === 'year')?.value ?? ''
-  return `${mes}/${ano}`
 }
 
 function zonaDe(meses: number): { rotulo: string; bg: string; fg: string } {
@@ -89,9 +79,10 @@ function Marcador({ e, cor, lado, rotulo, tracejado = false }: {
       {e.icHi !== null && (
         <div className={`absolute ${cima ? 'bottom-[10px]' : 'top-[10px]'} w-px h-[7px]`} style={{ left: `${pHi}%`, background: cor, opacity: 0.55 }} />
       )}
-      {/* estimativa pontual + pino até a régua */}
+      {/* estimativa pontual + pino até a régua (o pino de BAIXO atravessa a linha da
+          escala — h-4 + mt-0.5 = 18px — que fica colada na barra) */}
       <div className={`absolute ${cima ? 'bottom-[9px]' : 'top-[9px]'} w-2.5 h-2.5 rounded-full -translate-x-1/2`} style={{ left: `${pPonto}%`, background: cor }} />
-      <div className={`absolute ${cima ? 'bottom-0' : 'top-0'} w-0.5 h-[11px] -translate-x-1/2`} style={{ left: `${pPonto}%`, background: cor }} />
+      <div className={`absolute ${cima ? 'bottom-0 h-[11px]' : '-top-[18px] h-[29px]'} w-0.5 -translate-x-1/2`} style={{ left: `${pPonto}%`, background: cor }} />
     </div>
   )
 }
@@ -106,7 +97,7 @@ export default function TempoVidaCaixa({ data }: Props) {
   if (!calc) {
     return (
       <div className="rounded-xl shadow-sm bg-white p-5">
-        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Tempo de Vida · Runway de Caixa</h3>
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Tempo de Vida</h3>
         <div className="h-24 flex items-center justify-center text-sm text-zinc-400">
           Sem base para calcular (recebíveis em aberto e meses fechados de movimentação)
         </div>
@@ -122,36 +113,24 @@ export default function TempoVidaCaixa({ data }: Props) {
 
   return (
     <div className="rounded-xl shadow-sm bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3 mb-2">
-        {/* Bloco esquerdo — título, número-manchete e zona */}
-        <div>
-          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Tempo de Vida · Runway de Caixa</h3>
-          <div className="flex items-baseline gap-3 mt-1">
-            <span className="text-3xl font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
-              {fmtMExtenso(calc.semTaxa.meses)}
-            </span>
-            <span className="rounded px-2 py-0.5 text-2xs font-medium" style={{ background: zona.bg, color: zona.fg }}>
-              {zona.rotulo}
-            </span>
-          </div>
-          <p className="text-2xs mt-1 text-zinc-400">recebíveis em aberto ÷ saída média mensal · IC 95%</p>
+      <div className="mb-2">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Tempo de Vida</h3>
+          {/* Botão "?" de explicação — mesmo padrão do resto da plataforma (Tooltip + círculo). */}
+          <Tooltip
+            conteudo={`Recebíveis em aberto ÷ saída média mensal (${janela}, n=${calc.n}) · IC 95% via t de Student · "com antecipação" desconta a taxa média de 4% dos recebíveis · régua com o que está lançado hoje — não inclui saldo bancário nem vendas futuras.`}
+            className="z-30 w-72 !whitespace-normal font-normal leading-snug"
+          >
+            <span aria-label="Como o Tempo de Vida é calculado" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
+          </Tooltip>
         </div>
-
-        {/* Bloco direito — as duas contas, por extenso */}
-        <div className="text-xs space-y-1 min-w-0" style={{ color: 'var(--text-secondary)' }}>
-          <p>
-            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Sem antecipação:</span>{' '}
-            {fmtMi(data.recebiveis)} em aberto ÷ {fmtMi(calc.mediaSaida)}/mês →{' '}
-            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{fmtMExtenso(calc.semTaxa.meses)}</span>, até {mesCobertura(calc.semTaxa.meses)} ({fmtIC(calc.semTaxa)})
-          </p>
-          <p>
-            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Com antecipação (−4%):</span>{' '}
-            {fmtMi(data.recebiveis * FATOR_ANTECIPACAO)} ÷ {fmtMi(calc.mediaSaida)}/mês →{' '}
-            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{fmtMExtenso(calc.comTaxa.meses)}</span>, até {mesCobertura(calc.comTaxa.meses)} ({fmtIC(calc.comTaxa)})
-          </p>
-          <p className="text-2xs text-zinc-400">
-            Régua com o que está lançado hoje (não inclui saldo bancário nem vendas futuras) · saída média de {janela} (n={calc.n})
-          </p>
+        <div className="flex items-baseline gap-3 mt-1">
+          <span className="text-3xl font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
+            {fmtMExtenso(calc.semTaxa.meses)}
+          </span>
+          <span className="rounded px-2 py-0.5 text-2xs font-medium" style={{ background: zona.bg, color: zona.fg }}>
+            {zona.rotulo}
+          </span>
         </div>
       </div>
 
@@ -165,16 +144,16 @@ export default function TempoVidaCaixa({ data }: Props) {
         <div className="flex items-center justify-center text-2xs font-medium" style={{ width: '50%', background: 'var(--positive-soft)', color: 'var(--positive-deep)' }}>ideal turismo · 6–12</div>
       </div>
 
-      {/* Marcador COM antecipação (abaixo da régua; cenário derivado → tracejado) */}
-      <Marcador e={calc.comTaxa} cor="var(--text-muted)" lado="baixo" rotulo="com antecipação (−4%)" tracejado />
-
-      {/* Escala */}
-      <div className="relative h-4 text-2xs text-zinc-400">
+      {/* Escala — COLADA na barra (o marcador de baixo vem depois, com o pino atravessando) */}
+      <div className="relative h-4 mt-0.5 text-2xs text-zinc-400">
         <span className="absolute left-0">0m</span>
         <span className="absolute -translate-x-1/2" style={{ left: '25%' }}>3m</span>
         <span className="absolute -translate-x-1/2" style={{ left: '50%' }}>6m</span>
         <span className="absolute right-0">12m</span>
       </div>
+
+      {/* Marcador COM antecipação (abaixo da régua; cenário derivado → tracejado) */}
+      <Marcador e={calc.comTaxa} cor="var(--text-muted)" lado="baixo" rotulo="com antecipação (−4%)" tracejado />
     </div>
   )
 }
