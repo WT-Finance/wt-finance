@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-15 · v5.1.11 (rótulo "Última atualização" fica vermelho se a sincronização do Monde atrasar >45min)
+Última atualização: 2026-07-21 · v5.4.0 (API Externa de Solicitações — PR #191 AGUARDANDO a v5.3.0)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,10 +9,10 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.10` (sombra dos cards nas seções recolhíveis; #188 mergeado)
-- Versão em execução (worktree/branch ativa): `feat/v5-1-11-alerta-sync` (#189 — rótulo "Última atualização" fica vermelho se a sync do Monde atrasar >45min; sem migration)
-- Última migration **aplicada**: `0184_rotulo_areas_metas.sql` (v5.1.9, rename dos rótulos de Metas — aplicada pelo Yan). Flip (0181/0182) aplicado; **cron do Monde OK (200, ingerindo ~15min)**.
-- Último ADR registrado: `0153`
+- Versão em produção (main): `5.1.11` (alerta de sync atrasada; #189 mergeado)
+- Versões em execução (PARALELAS): `feat/v5-2-0-fluxo-caixa-onda1` (arco Fluxo de Caixa, v5.2.0/v5.3.0 — worktree do Yan) e `feat/v5-4-0-api-externa` (**PR #191 pronto e AGUARDANDO — merge SÓ após a v5.3.0**; checklist de merge no out-briefing v5.4.0: rebase → renumerar migrations 0950–0954/ADRs 0950–0953 → `migration repair` → proxy.ts).
+- Última migration **aplicada**: `0954` (v5.4.0, faixa PROVISÓRIA 0950–0954 — aditivas, backup-gate verde; 0185–0195 são da v5.2.0/v5.3.0, também aplicadas). Cron do Monde OK; cron `api-outbox-processar` agendado (404 inofensivo até o deploy do merge — nota no out-briefing v5.4.0).
+- Último ADR registrado: `0153` (+ 0950–0953 PROVISÓRIOS da v5.4.0, renumerar no merge)
 
 ## Bloqueios vigentes
 

@@ -533,3 +533,29 @@ describe('gate — API externa de Solicitações: suíte de contrato é pulada, 
     expect(true).toBe(true)
   })
 })
+
+// ── Sonda de NEGAÇÃO (achado MÉDIO do revisor-db v5.4.0): as RPCs de runtime da API
+// externa são service_role-ONLY — anon E authenticated devem ser recusados SEMPRE.
+// O SQL de REVOKE/GRANT foi conferido manualmente nas migrations; esta sonda impede
+// que uma regressão futura (ex.: default privilege reintroduzido) passe despercebida.
+const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const RPCS_SERVICE_ONLY = [
+  'api_chave_resolver', 'api_chamada_registrar', 'criar_solicitacao_externa',
+  'cancelar_solicitacao_externa', 'solic_tipos_api', 'api_outbox_reivindicar',
+  'api_outbox_resultado', 'solic_emails_envolvidos_svc', 'api_retrofit_contratos',
+] as const
+
+describe.skipIf(!ON || !RPC_PRONTA || !ANON)('negação — RPCs service-only da API externa recusam anon', () => {
+  it.each([...RPCS_SERVICE_ONLY])('%s: anon não executa (nunca 2xx)', async (fn) => {
+    const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: ANON as string, Authorization: `Bearer ${ANON as string}`, 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    // REVOKE de anon → PostgREST responde 401/403/404 (função invisível/negada) —
+    // qualquer coisa MENOS sucesso. Argumentos vazios de propósito: a negação de
+    // privilégio acontece ANTES da validação de parâmetros.
+    expect(res.status, `${fn} respondeu ${res.status}`).toBeGreaterThanOrEqual(400)
+  })
+})

@@ -6,6 +6,9 @@
 // Idempotente por (chave, chave_idempotencia): reenviar o mesmo par devolve o MESMO
 // id (idempotente:true, HTTP 200) em vez de duplicar (HTTP 201 na 1ª vez).
 export const runtime = 'nodejs'
+// Orçamento explícito (revisor v5.4.0): e-mail best-effort (~10s) + entrega inline da
+// outbox (até 15s de budget) cabem com folga — a resposta nunca é abortada pela plataforma.
+export const maxDuration = 60
 
 import { z } from 'zod'
 import {
@@ -40,6 +43,25 @@ interface ResultadoCriacao {
   status:      string
   destinatario: { id: number; nome: string }
   idempotente: boolean
+}
+
+/**
+ * Narrowing DEFENSIVO do retorno da RPC (revisor v5.4.0): um drift de shape (campo
+ * renomeado/omitido) não pode degradar em silêncio — `idempotente: undefined` faria
+ * a rota reenviar e-mail em replay e responder 201 sempre, quebrando o contrato de
+ * idempotência. Drift → 500 explícito (o integrador retenta; nada é corrompido).
+ */
+function comoResultadoCriacao(data: unknown): ResultadoCriacao | null {
+  if (!data || typeof data !== 'object') return null
+  const d = data as Record<string, unknown>
+  const dest = d.destinatario as Record<string, unknown> | undefined
+  if (typeof d.id !== 'number' || d.id <= 0) return null
+  if (typeof d.status !== 'string' || typeof d.idempotente !== 'boolean') return null
+  if (!dest || typeof dest.id !== 'number' || typeof dest.nome !== 'string') return null
+  return {
+    ok: true, id: d.id, status: d.status,
+    destinatario: { id: dest.id, nome: dest.nome }, idempotente: d.idempotente,
+  }
 }
 
 /**
@@ -108,7 +130,11 @@ export async function POST(req: Request): Promise<Response> {
     return resposta
   }
 
-  const resultado = data as ResultadoCriacao
+  const resultado = comoResultadoCriacao(data)
+  if (!resultado) {
+    await registrarChamada(chave.id, ROTA, 500, 'shape inesperado no retorno de criar_solicitacao_externa')
+    return respostaErro('ERRO_INTERNO', 'Falha inesperada. Tente novamente com backoff.', 500)
+  }
   if (!resultado.idempotente) {
     await notificarCriacao(resultado.id)
   }
@@ -117,7 +143,7 @@ export async function POST(req: Request): Promise<Response> {
   // caminho feliz) — AGUARDADA antes do return (serverless mata trabalho pós-resposta,
   // lição v4.25). Timeout curto (5s) e nunca lança: o item permanece 'pendente' e o
   // cron (~5min) tenta de novo se isto falhar/exceder o tempo.
-  try { await processarOutboxUmaVez(5, 5_000) } catch { /* a varredura do cron cobre */ }
+  try { await processarOutboxUmaVez(5, 5_000, 15_000) } catch { /* a varredura do cron cobre */ }
 
   const http = resultado.idempotente ? 200 : 201
   const resposta = Response.json({

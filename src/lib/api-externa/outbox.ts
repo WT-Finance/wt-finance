@@ -45,15 +45,21 @@ export interface ResultadoOutbox { processados: number; entregues: number; falha
  * RPC/rede/callback vira item que permanece 'pendente' (o próximo tick tenta
  * de novo) — o pior resultado possível é `{processados:0,...}`.
  */
-export async function processarOutboxUmaVez(limite = 20, timeoutMs = 10_000): Promise<ResultadoOutbox> {
+export async function processarOutboxUmaVez(limite = 20, timeoutMs = 10_000, budgetMs = 45_000): Promise<ResultadoOutbox> {
   let entregues = 0
   let falhas = 0
+  const inicio = Date.now()
   try {
     const { data, error } = await chamarRpcExterna('api_outbox_reivindicar', { p_limite: limite })
     if (error) return { processados: 0, entregues: 0, falhas: 0 }
     const itens = comoItens(data)
 
     for (const item of itens) {
+      // Corte por ORÇAMENTO de tempo (revisor v5.4.0): sob degradação (callbacks lentos),
+      // 20×10s estouraria o maxDuration da rota — melhor parar a tempo. Item reivindicado
+      // e não resolvido volta a ser elegível no próximo tick (o claim não trava status;
+      // at-least-once por contrato — o assinante deduplica).
+      if (Date.now() - inicio > budgetMs) break
       let sucesso = false
       let erro: string | null = null
       try {

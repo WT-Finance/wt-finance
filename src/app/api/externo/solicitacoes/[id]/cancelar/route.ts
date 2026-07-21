@@ -4,6 +4,8 @@
 // pertence à chave — não é um cancelamento genérico por id). SEM estado "aprovada":
 // só a transição para 'cancelada', mesma máquina de estados existente.
 export const runtime = 'nodejs'
+// Orçamento explícito (revisor v5.4.0): e-mail best-effort + entrega inline cabem com folga.
+export const maxDuration = 60
 
 import {
   autenticarChamada, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
@@ -15,6 +17,14 @@ import { enviarNotificacaoSolicitacao } from '@/lib/email'
 const ROTA = '/api/externo/solicitacoes/[id]/cancelar'
 
 interface ResultadoCancelamento { ok: true; id: number; status: string }
+
+/** Narrowing defensivo do retorno da RPC (revisor v5.4.0) — drift de shape → 500 explícito. */
+function comoResultadoCancelamento(data: unknown): ResultadoCancelamento | null {
+  if (!data || typeof data !== 'object') return null
+  const d = data as Record<string, unknown>
+  if (typeof d.id !== 'number' || d.id <= 0 || typeof d.status !== 'string') return null
+  return { ok: true, id: d.id, status: d.status }
+}
 
 /**
  * Notificação best-effort — v5.4.0/M4 (ADR-0953) FIX da limitação conhecida do M3b:
@@ -66,13 +76,17 @@ export async function POST(
     return resposta
   }
 
-  const resultado = data as ResultadoCancelamento
+  const resultado = comoResultadoCancelamento(data)
+  if (!resultado) {
+    await registrarChamada(chave.id, ROTA, 500, 'shape inesperado no retorno de cancelar_solicitacao_externa')
+    return respostaErro('ERRO_INTERNO', 'Falha inesperada. Tente novamente com backoff.', 500)
+  }
   await notificarCancelamento(resultado.id)
 
   // v5.4.0/M4 (ADR-0953): entrega INLINE best-effort, AGUARDADA antes do return
   // (serverless mata trabalho pós-resposta — lição v4.25). Nunca lança; o cron
   // (~5min) cobre o que não sair daqui.
-  try { await processarOutboxUmaVez(5, 5_000) } catch { /* a varredura do cron cobre */ }
+  try { await processarOutboxUmaVez(5, 5_000, 15_000) } catch { /* a varredura do cron cobre */ }
 
   const resposta = Response.json({ ok: true, id: resultado.id, status: resultado.status }, { status: 200 })
   await registrarChamada(chave.id, ROTA, 200)

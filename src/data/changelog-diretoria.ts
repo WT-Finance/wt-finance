@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.4.0',
+    data: '2026-07-21T14:44',
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'As Solicitações agora podem ser abertas por outros sistemas da empresa, com segurança e rastreabilidade: cada sistema recebe uma credencial própria, só abre os tipos autorizados, e a equipe responsável recebe e trata normalmente pela plataforma — o sistema de origem é avisado automaticamente quando a solicitação é concluída, rejeitada ou cancelada. Primeira integração: os pedidos de uso do dinheiro do casal, disparados do CRM pelas consultoras de Weddings, chegam direto como solicitações para o Financeiro.',
+      },
+    ],
+  },
+  {
     versao: '5.1.11',
     data: '2026-07-15T21:16',
     itens: [
