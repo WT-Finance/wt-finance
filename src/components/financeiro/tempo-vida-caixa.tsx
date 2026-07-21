@@ -35,12 +35,6 @@ function fmtIC(e: CoberturaEstimativa): string {
   return e.icHi === null ? `IC ${fmtM(e.icLo)}–∞` : `IC ${fmtM(e.icLo)}–${fmtM(e.icHi)}`
 }
 
-function zonaDe(meses: number): { rotulo: string; bg: string; fg: string } {
-  if (meses < 3) return { rotulo: 'zona de risco (<3 meses)',        bg: 'var(--negative-soft)', fg: 'var(--negative-deep)' }
-  if (meses < 6) return { rotulo: 'zona de atenção (3–6 meses)',     bg: 'var(--warning-bg)',    fg: 'var(--warning)' }
-  return             { rotulo: 'no ideal turismo (6–12 meses)',      bg: 'var(--positive-soft)', fg: 'var(--positive-deep)' }
-}
-
 /** Whisker do IC + ponto + pino, numa faixa própria (acima ou abaixo da régua). */
 function Marcador({ e, cor, lado, rotulo, tracejado = false }: {
   e:          CoberturaEstimativa
@@ -109,7 +103,6 @@ export default function TempoVidaCaixa({ data }: Props) {
   const janela = meses.length === 1
     ? fmtAxisMes(meses[0].mes)
     : `${fmtAxisMes(meses[0].mes)}–${fmtAxisMes(meses[meses.length - 1].mes)}`
-  const zona = zonaDe(calc.semTaxa.meses)
 
   return (
     <div className="rounded-xl shadow-sm bg-white p-5">
@@ -124,12 +117,14 @@ export default function TempoVidaCaixa({ data }: Props) {
             <span aria-label="Como o Tempo de Vida é calculado" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
           </Tooltip>
         </div>
-        <div className="flex items-baseline gap-3 mt-1">
+        <div className="flex items-baseline gap-2 mt-1">
           <span className="text-3xl font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>
             {fmtMExtenso(calc.semTaxa.meses)}
           </span>
-          <span className="rounded px-2 py-0.5 text-2xs font-medium" style={{ background: zona.bg, color: zona.fg }}>
-            {zona.rotulo}
+          {/* Pior cenário = piso do IC 95% da estimativa COM antecipação (a leitura mais
+              conservadora do card: taxa descontada E saída média na ponta alta do IC). */}
+          <span className="text-sm text-zinc-400 tabular-nums">
+            | {fmtMExtenso(calc.comTaxa.icLo)} no pior cenário
           </span>
         </div>
       </div>
@@ -141,7 +136,7 @@ export default function TempoVidaCaixa({ data }: Props) {
       <div className="flex h-7 rounded-full overflow-hidden">
         <div className="flex items-center justify-center text-2xs font-medium" style={{ width: '25%', background: 'var(--negative-soft)', color: 'var(--negative-deep)' }}>risco</div>
         <div className="flex items-center justify-center text-2xs font-medium" style={{ width: '25%', background: 'var(--warning-bg)', color: 'var(--warning)' }}>atenção</div>
-        <div className="flex items-center justify-center text-2xs font-medium" style={{ width: '50%', background: 'var(--positive-soft)', color: 'var(--positive-deep)' }}>ideal turismo · 6–12</div>
+        <div className="flex items-center justify-center text-2xs font-medium" style={{ width: '50%', background: 'var(--positive-soft)', color: 'var(--positive-deep)' }}>ideal</div>
       </div>
 
       {/* Escala — COLADA na barra (o marcador de baixo vem depois, com o pino atravessando) */}
