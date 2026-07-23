@@ -111,9 +111,13 @@ BEGIN
       IF v_atual IS NOT NULL THEN
         RAISE EXCEPTION 'Conflito ao desfazer: já existe uma linha com o id % (recriada depois). Recarregue e tente de novo.', v_id;
       END IF;
+      -- atualizado_em NÃO é copiado do snapshot: o DEFAULT now() carimba o momento da RESTAURAÇÃO.
+      -- Assim, um token de trava otimista antigo (de antes da exclusão) NÃO volta a "bater" após um
+      -- ciclo excluir→desfazer — quem via a linha antiga é forçado a recarregar. criado_em é
+      -- preservado (historicamente a linha é a mesma).
       INSERT INTO analytics.gerencial_lancamentos
         (id, tipo, pessoa, valor_final, descricao, conta_previsao, vencimento, origem,
-         importado_em, importado_lote_id, criado_em, atualizado_em, destacado, originador_id, originador_nome)
+         importado_em, importado_lote_id, criado_em, destacado, originador_id, originador_nome)
       VALUES (
         (e.dados_antes->>'id')::bigint,
         e.dados_antes->>'tipo',
@@ -126,7 +130,6 @@ BEGIN
         (e.dados_antes->>'importado_em')::timestamptz,
         (e.dados_antes->>'importado_lote_id')::uuid,
         (e.dados_antes->>'criado_em')::timestamptz,
-        (e.dados_antes->>'atualizado_em')::timestamptz,
         (e.dados_antes->>'destacado')::boolean,
         (e.dados_antes->>'originador_id')::uuid,
         e.dados_antes->>'originador_nome'

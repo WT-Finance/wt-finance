@@ -263,6 +263,13 @@ export type HistoricoEntrada = {
   origem_undo: string | null
 }
 
+/** Mensagens do desfazer em linguagem de usuário (a negação do banco vem crua de exigir_acesso). */
+function traduzirDesfazerErro(msg: string): string {
+  if (msg.includes('PERMISSAO_NEGADA'))
+    return 'Você não tem permissão para desfazer esta ação. Reverter a ação de outra pessoa ou uma alteração em massa exige perfil de administrador.'
+  return msg
+}
+
 export async function historicoLotes(limite = 50, offset = 0): Promise<
   | { success: true; lotes: HistoricoLote[] }
   | { success: false; error: string }
@@ -298,7 +305,7 @@ export async function desfazerLote(lote: string): Promise<
   await requireAreaAction('financeiro/gerencial')
   try {
     const { data, error } = await rpc('gerencial_desfazer_lote', { p_lote: lote })
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: traduzirDesfazerErro(error.message) }
     revalidar()
     return { success: true, revertidos: (data as { revertidos?: number } | null)?.revertidos ?? 0 }
   } catch (e) {
@@ -313,7 +320,7 @@ export async function desfazerLinha(diarioId: number): Promise<
   await requireAreaAction('financeiro/gerencial')
   try {
     const { data, error } = await rpc('gerencial_desfazer_linha', { p_diario_id: diarioId })
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: traduzirDesfazerErro(error.message) }
     revalidar()
     return { success: true, revertidos: (data as { revertidos?: number } | null)?.revertidos ?? 0 }
   } catch (e) {

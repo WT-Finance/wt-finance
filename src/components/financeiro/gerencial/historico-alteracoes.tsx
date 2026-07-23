@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { ChevronRight, Undo2, RotateCcw, Loader2, AlertTriangle } from 'lucide-react'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
-import { fmtDataHoraSP, numBRL2 } from '@/lib/fmt'
+import { fmtDataHoraSP, numBRL2, fmtDate } from '@/lib/fmt'
 import {
   historicoLotes, historicoLoteDetalhe, desfazerLote, desfazerLinha,
   type HistoricoLote, type HistoricoEntrada,
@@ -38,12 +38,22 @@ const CAMPOS_DIFF: { k: string; rot: string }[] = [
   { k: 'vencimento', rot: 'Vencimento' }, { k: 'destacado', rot: 'Destaque' },
 ]
 
+/** Formata um campo do lançamento para o diff, na convenção do DS: valor→"R$ 1.234,56",
+ *  vencimento→"dd/mm/aaaa", destaque→"Sim"/"Não"; demais como texto. */
+function fmtCampo(k: string, v: unknown): string {
+  if (v == null || v === '') return '—'
+  if (k === 'valor_final') return `R$ ${numBRL2(Number(v))}`
+  if (k === 'vencimento') return fmtDate(String(v))
+  if (k === 'destacado') return (v === true || v === 'true') ? 'Sim' : 'Não'
+  return String(v)
+}
+
 function diffCampos(e: HistoricoEntrada): { rot: string; de: string; para: string }[] {
   if (e.operacao !== 'U' || !e.dados_antes || !e.dados_depois) return []
   const a = e.dados_antes, b = e.dados_depois
   return CAMPOS_DIFF
     .filter(({ k }) => String(a[k] ?? '') !== String(b[k] ?? ''))
-    .map(({ k, rot }) => ({ rot, de: String(a[k] ?? '—'), para: String(b[k] ?? '—') }))
+    .map(({ k, rot }) => ({ rot, de: fmtCampo(k, a[k]), para: fmtCampo(k, b[k]) }))
 }
 
 function LoteDetalhe({ lote, onDesfeito }: { lote: string; onDesfeito: () => void }) {

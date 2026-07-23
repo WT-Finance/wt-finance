@@ -110,6 +110,12 @@ describe('fmt — máscara de moeda em tempo real (v5.2.1/M1)', () => {
     expect(mascaraMoeda('-10000')).toEqual({ display: '-R$ 100,00', valor: -100 })
     expect(mascaraMoeda('-')).toEqual({ display: '-', valor: null })
   })
+  it('guarda de precisão: dígitos além de 15 caem (NUMERIC(15,2), abaixo de MAX_SAFE_INTEGER)', () => {
+    // 15 dígitos = 13 inteiros + 2 decimais (máx da coluna); o 16º+ é descartado.
+    const r = mascaraMoeda('12345678901234567') // 17 dígitos
+    expect(r.display).toBe('R$ 1.234.567.890.123,45')
+    expect(r.valor).toBeCloseTo(1234567890123.45, 2)
+  })
 })
 
 describe('fmt — staleness de saldo (v5.2.1/M1, fonte única)', () => {

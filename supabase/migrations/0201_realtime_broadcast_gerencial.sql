@@ -11,9 +11,13 @@
 -- ADITIVA: função/triggers/policy NOVOS; não toca dados nem a tabela alvo. Fail-safe: se o
 -- realtime.send falhar (ou a versão do Realtime não suportar), a exceção é engolida — a ESCRITA
 -- do Gerencial nunca quebra (a AUDITORIA é o diário/0199; o broadcast é só o "aviso vivo").
--- ⚠️ CHECKPOINT: broadcast em canal PRIVADO depende de a Autorização de Realtime estar habilitada
---   no projeto HOSPEDADO (toggle de dashboard/Management API, fora deste arquivo). Confirmar no
---   checkpoint; se indisponível, a página degrada para polling (fallback documentado no cliente).
+-- ⚠️ CHECKPOINT (BLOQUEANTE): broadcast em canal PRIVADO depende de o schema `realtime` do projeto
+--   HOSPEDADO ter `realtime.topic()`/`realtime.send()` e da Autorização de Realtime (canais
+--   privados) habilitada no dashboard/Management API. Verificar ANTES de aplicar:
+--     select proname from pg_proc where pronamespace='realtime'::regnamespace and proname in ('topic','send');
+--   Se `realtime.topic()` não existir, a CREATE POLICY abaixo FALHA na aplicação. Por isso ela vem
+--   ANTES dos triggers: se falhar, só o helper (idempotente) terá sido criado, e a reaplicação
+--   (após habilitar) não colide com trigger já existente. Se indisponível, degradar p/ polling.
 
 -- ── 1. Helper booleano de autorização de canal (genérico, reutilizável) ──────────
 -- SECURITY DEFINER porque lê app.rbac_usuarios/permissoes_de (schema `app`, fechado). GRANT a
@@ -30,7 +34,21 @@ $$;
 REVOKE EXECUTE ON FUNCTION app.pode_assinar_area(text) FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION app.pode_assinar_area(text) TO authenticated, service_role;
 
--- ── 2. Trigger de broadcast — STATEMENT-level com transition tables ──────────────
+-- ── 2. Policy de leitura do canal privado (broadcast) do Gerencial ───────────────
+-- (ANTES dos triggers de propósito — ver nota de checkpoint. É o único statement que pode falhar
+--  na aplicação por dependência externa do Realtime.) realtime.messages tem RLS ligada por padrão
+--  e sem policy (nega). Esta libera SÓ o tópico 'gerencial_lancamentos', SÓ p/ quem está ativo e
+--  tem a área. Sem USING(true).
+DROP POLICY IF EXISTS "gerencial_broadcast_leitura" ON realtime.messages;
+CREATE POLICY "gerencial_broadcast_leitura"
+  ON realtime.messages FOR SELECT TO authenticated
+  USING (
+    realtime.messages.extension = 'broadcast'
+    AND realtime.topic() = 'gerencial_lancamentos'
+    AND app.pode_assinar_area('financeiro/gerencial')
+  );
+
+-- ── 3. Trigger de broadcast — STATEMENT-level com transition tables ──────────────
 -- UMA mensagem por statement, com a CONTAGEM de linhas (a exclusão em massa é um único DELETE →
 -- 1 mensagem "N linhas", não N mensagens). Payload: autor (id+nome — o cliente ignora as próprias
 -- mudanças), operação e nº de linhas. A mesma função serve os 3 triggers; cada branch só toca a
@@ -42,6 +60,12 @@ DECLARE
   v_nome text;
   v_n    int;
 BEGIN
+  -- Só há "aviso vivo" para edição INTERATIVA (um usuário logado). Operação de sistema
+  -- (service_role, auth.uid() nulo) — sobretudo a importação de planilha, que insere linha a
+  -- linha num loop — NÃO faz broadcast: evitaria inundar os clientes com N mensagens. O DIÁRIO
+  -- (0199) ainda audita tudo, inclusive a importação; só o aviso vivo é interativo-only.
+  IF v_uid IS NULL THEN RETURN NULL; END IF;
+
   IF TG_OP = 'DELETE' THEN
     SELECT count(*) INTO v_n FROM oldtab;
   ELSE
@@ -79,17 +103,5 @@ CREATE TRIGGER trg_broadcast_gerencial_del
   AFTER DELETE ON analytics.gerencial_lancamentos
   REFERENCING OLD TABLE AS oldtab FOR EACH STATEMENT
   EXECUTE FUNCTION financeiro.fn_broadcast_gerencial();
-
--- ── 3. Policy de leitura do canal privado (broadcast) do Gerencial ───────────────
--- realtime.messages tem RLS ligada por padrão e sem policy (nega). Esta policy libera SÓ o tópico
--- 'gerencial_lancamentos', SÓ para quem está ativo e tem a área. Sem USING(true).
-DROP POLICY IF EXISTS "gerencial_broadcast_leitura" ON realtime.messages;
-CREATE POLICY "gerencial_broadcast_leitura"
-  ON realtime.messages FOR SELECT TO authenticated
-  USING (
-    realtime.messages.extension = 'broadcast'
-    AND realtime.topic() = 'gerencial_lancamentos'
-    AND app.pode_assinar_area('financeiro/gerencial')
-  );
 
 NOTIFY pgrst, 'reload schema';

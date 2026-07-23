@@ -24,7 +24,7 @@ export interface Lancamento {
   atualizado_em:  string | null
 }
 
-interface CellState { saving: boolean; saved: boolean; error: string | null }
+interface CellState { saving: boolean; saved: boolean }
 
 // Cor do badge de Tipo (v4.23.1): A pagar → vermelho (saída), A receber → verde (entrada).
 // Mesma semântica do valor (corValor) e tokens do DS; fundo suave + texto/borda na cor.
@@ -55,20 +55,20 @@ function EditableCell({
 }) {
   const [editing, setEditing]   = useState(false)
   const [localVal, setLocalVal] = useState(String(value ?? ''))
-  const [state, setState]       = useState<CellState>({ saving: false, saved: false, error: null })
+  const [state, setState]       = useState<CellState>({ saving: false, saved: false })
 
   const save = async () => {
     if (localVal === String(value ?? '')) { setEditing(false); return }
-    setState({ saving: true, saved: false, error: null })
+    setState({ saving: true, saved: false })
     try {
       await onSave(localVal)
-      setState({ saving: false, saved: true, error: null })
+      setState({ saving: false, saved: true })
       setEditing(false)
       setTimeout(() => setState(s => ({ ...s, saved: false })), 1200)
     } catch {
-      // Falha (ex.: conflito de trava otimista): NÃO marca "salvo". O aviso e o recarregamento
-      // ficam a cargo do onConflito da linha (banner no topo da Base de Dados + router.refresh).
-      setState({ saving: false, saved: false, error: 'erro' })
+      // Falha (ex.: conflito de trava otimista): NÃO marca "salvo" (sem check verde). O aviso e o
+      // recarregamento ficam a cargo do onConflito da linha (banner no topo + router.refresh).
+      setState({ saving: false, saved: false })
       setEditing(false)
     }
   }

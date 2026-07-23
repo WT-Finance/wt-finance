@@ -62,6 +62,13 @@ BEGIN
     v_op := 'D'; v_antes := to_jsonb(OLD);   v_depois := NULL;          v_regid := to_jsonb(OLD)->>'id';
   END IF;
 
+  -- Genérico assume PK na coluna `id` (todas as tabelas editáveis do projeto seguem isso). Se um dia
+  -- for anexado a uma tabela SEM `id`, falha AQUI com mensagem legível, não com um erro críptico de
+  -- NOT NULL — é o ponto de generalização a revisitar quando promover o padrão a outra tabela.
+  IF v_regid IS NULL THEN
+    RAISE EXCEPTION 'diario_alteracoes: tabela %.% sem coluna id — o trigger genérico exige PK "id".', TG_TABLE_SCHEMA, TG_TABLE_NAME;
+  END IF;
+
   -- Nome do autor: denormalizado no momento do fato (retenção total). Sem linha → NULL (não falha).
   SELECT u.nome INTO v_nome FROM app.rbac_usuarios u WHERE u.user_id = v_uid;
 

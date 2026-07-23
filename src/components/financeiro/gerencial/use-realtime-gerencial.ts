@@ -29,6 +29,10 @@ export function useRealtimeGerencial(
   useEffect(() => {
     let ativo = true
     let canal: ReturnType<ReturnType<typeof getBrowserClient>['channel']> | null = null
+    // Debounce: coalesce rajadas de mudanças (várias edições rápidas de outro usuário) num único
+    // aviso+refresh, com o último payload. Evita thrashing de router.refresh.
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let pendente: GerencialBroadcast | null = null
 
     void (async () => {
       try {
@@ -44,7 +48,9 @@ export function useRealtimeGerencial(
             const p = (msg as { payload?: GerencialBroadcast }).payload
             if (!ativo || !p) return
             if (p.usuario_id && usuarioId && p.usuario_id === usuarioId) return // própria mudança → sem aviso
-            cbRef.current(p)
+            pendente = p
+            if (timer) clearTimeout(timer)
+            timer = setTimeout(() => { if (ativo && pendente) cbRef.current(pendente); pendente = null }, 600)
           })
           .subscribe()
       } catch {
@@ -54,6 +60,7 @@ export function useRealtimeGerencial(
 
     return () => {
       ativo = false
+      if (timer) clearTimeout(timer)
       try {
         if (canal) getBrowserClient().removeChannel(canal)
       } catch {
