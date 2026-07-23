@@ -150,3 +150,11 @@ export const previstoDiarioSchema = z.object({
 }).passthrough()
 
 export type PrevistoDiario = z.infer<typeof previstoDiarioSchema>
+
+// ── get_saldo_repasse(p_from, p_to) → { sal } (0198) ─────────────────────────
+// Repasse BRUTO do PERÍODO filtrado (mesmas categorias hardcoded da 0190); alimenta a
+// célula "Saldo de repasse" do card principal do Realizado, sensível às pills.
+
+export const saldoRepasseSchema = z.object({ sal: z.number() }).passthrough()
+
+export type SaldoRepasse = z.infer<typeof saldoRepasseSchema>

@@ -14,7 +14,7 @@ import {
 } from './solicitacoes/schemas'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
-  coberturaSchema, previstoDiarioSchema,
+  coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
 } from './fluxo/rpc-fluxo'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -495,6 +495,10 @@ describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1)', () => {
       const meses = p.data.saidas_mensais.map(m => m.mes)
       expect([...meses].sort()).toEqual(meses) // ordem ASC determinística
     }
+  })
+  it('get_saldo_repasse(from,to): { sal } — repasse bruto do período', async () => {
+    const d = await rpc('get_saldo_repasse', { p_from: '2026-01-01', p_to: '2026-12-31' })
+    expect(saldoRepasseSchema.safeParse(d).success).toBe(true)
   })
   it('get_fluxo_previsto_diario(): {vencido_r/p, dias[d≥hoje, ASC]}', async () => {
     const d = await rpc('get_fluxo_previsto_diario', {})

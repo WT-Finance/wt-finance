@@ -20,7 +20,7 @@ import UiTooltip from '@/components/ui/tooltip'
 import TempoVidaCaixa from '@/components/financeiro/tempo-vida-caixa'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
-  coberturaSchema, previstoDiarioSchema,
+  coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
   type RepasseMensalRow, type HorizonteData, type SaldoCaixaConta,
   type RunwaySemanal as RunwaySemanalData, type RankingCaixa as RankingCaixaData,
   type CoberturaData, type PrevistoDiario,
@@ -135,6 +135,7 @@ export default async function FluxoCaixaPage({
     runwaySemanalRes,
     rankingRes,
     coberturaRes,
+    saldoRepasseRes,
   ] = await Promise.allSettled([
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
@@ -147,6 +148,7 @@ export default async function FluxoCaixaPage({
     rpc('get_fluxo_runway_semanal'),
     rpc('get_fluxo_ranking'),
     rpc('get_fluxo_cobertura'),
+    rpc('get_saldo_repasse', { p_from: from, p_to: to }),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
 
   const fluxoMensalRows    = unwrapRpc<FluxoMensalV3Row[]>(fluxoMensalRes, 'get_fluxo_caixa_mensal_v3') ?? []
@@ -188,9 +190,10 @@ export default async function FluxoCaixaPage({
   const totalSaidas   = kpis.saidas_realizadas
   const saldoLiquido  = kpis.saldo_realizado
 
-  // Saldo de repasse (bruto) ACUMULADO NO ANO — a RPC do repasse é anual por construção
-  // (não segue as pills de período); o sub da célula deixa isso explícito (mockup).
-  const saldoRepasseBruto = repasseMensalRows.reduce((s, r) => s + r.sal, 0)
+  // Saldo de repasse do PERÍODO filtrado (0198) — sensível às pills como os demais
+  // indicadores (ajuste do checkpoint; antes era o acumulado do ano).
+  const saldoRepasse =
+    parseRpc(saldoRepasseSchema, saldoRepasseRes, 'get_saldo_repasse')?.sal ?? 0
 
   const temDados = fluxoMensalRows.length > 0 || kpis.entradas_realizadas > 0 || kpis.saidas_realizadas > 0
 
@@ -232,7 +235,8 @@ export default async function FluxoCaixaPage({
       <TopSection titulo="Fluxo Realizado">
 
         {/* Card PRINCIPAL do Realizado (mockup do checkpoint aprovado): pills de período
-            DENTRO do card + KPIs do período + Saldo de repasse (bruto, acumulado no ano). */}
+            DENTRO do card + os 4 indicadores do PERÍODO filtrado (Resultado, Entradas,
+            Saídas e Saldo de repasse — todos sensíveis às pills; repasse via 0198). */}
         <div className="rounded-xl shadow-sm bg-white px-5 py-4 mb-6">
           <div className="mb-5">
             <Suspense>
@@ -256,9 +260,9 @@ export default async function FluxoCaixaPage({
             />
             <KpiCelula
               label="Saldo de repasse"
-              value={fmtMi(saldoRepasseBruto)}
-              tooltip="Repasse BRUTO acumulado no ano: Entrada de Clientes − Pagamento ao Fornecedor. Não segue o período selecionado acima."
-              valueColor={saldoRepasseBruto >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)'}
+              value={fmtMi(saldoRepasse)}
+              tooltip="Repasse BRUTO do período selecionado: Entrada de Clientes − Pagamento ao Fornecedor."
+              valueColor={saldoRepasse >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)'}
             />
           </div>
         </div>
