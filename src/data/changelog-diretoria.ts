@@ -48,6 +48,11 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
         texto:
           'O saldo de cada conta agora guarda a data a que se refere e mostra há quanto tempo não é atualizado, para dar confiança na leitura de caixa. A tela de importação recebe as duas novas bases do fluxo de caixa; a área "Gerencial" saiu da página de Fluxo de Caixa (deixou de aparecer duplicada) e continua no seu próprio menu.',
       },
+      {
+        tipo: 'novidade',
+        texto:
+          'O Projetado ganhou um "Runway de Caixa": em quantos meses os recebíveis já lançados cobrem a saída média mensal, com faixa de confiança e um cenário considerando a antecipação de recebíveis. O horizonte de "a receber / a pagar / necessidade de caixa" virou ajustável (por dias, meses ou tudo o que está lançado). Criada também a nova aba "DRE", que começa com a composição dos lançamentos por categoria e será a base do demonstrativo por fluxo de caixa nas próximas ondas.',
+      },
     ],
   },
   {

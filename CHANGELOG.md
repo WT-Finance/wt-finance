@@ -17,7 +17,8 @@ MINOR · **Fluxo de Caixa · Onda 1 — o realizado passa a ser medido pela DATA
 - **Saldo por data (M5, 0189):** `gerencial_saldos` ganha `data_saldo` (a data a que o saldo se refere), com edição na tela e indicador de "quão velho" está o saldo (staleness).
 - **Repasse = BRUTO** (decisão de produto) — a leitura líquida do reembolso fica registrada no ADR-0154 como discussão futura.
 - **`0192` DESTRUTIVA (preparada, aplicada por humano em TTY):** DROP das bases/RPCs antigas do Fluxo de Caixa após a validação. Seed e código de upload antigos migrados às bases novas.
-- Comparativos multi-ano (margem do ano anterior, ranking, histórico) populam com o upload de produção (histórico 2024+). ADR-0154; migrations 0185–0192; sem quebra de auth.
+- **Refinos do checkpoint (rounds pré-merge, migrations 0194–0198):** Projetado com **card ÚNICO de posição** — Saldo de Caixa (editável, saldo + data por conta) | A receber · A pagar · NCG com **horizonte ajustável** (Dias/Meses/Sempre por slider); **Runway de Caixa** ("Tempo de vida" em meses = recebíveis em aberto ÷ saída média, com IC 95% e cenário com/sem antecipação); Projeção Semanal só com a linha do saldo + tabela das próximas semanas. Realizado com **card principal** (pills + KPIs + saldo de repasse, todos por período), **Tendência da Margem de Repasse** em card próprio e **Maiores variações** (ex-ranking) em card único ordenável. Nova aba **DRE** (`/financeiro/dre`, área RBAC própria) com a Composição dos Lançamentos. Correção plataforma-wide do arredondamento de barras que descem.
+- Comparativos multi-ano (margem do ano anterior, ranking, histórico) populam com o upload de produção (histórico 2024+, já carregado). ADR-0154; migrations 0185–0198; sem quebra de auth.
 
 ## [5.1.11] — 2026-07-15
 
