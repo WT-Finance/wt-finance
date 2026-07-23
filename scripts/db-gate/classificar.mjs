@@ -106,7 +106,15 @@ const DESTRUTIVO = [
 // Troca de ASSINATURA de RPC: não é perda de dado, mas merece um olhar humano.
 const WARN = [/\bDROP\s+(FUNCTION|PROCEDURE|ROUTINE|AGGREGATE)\b/i]
 
+// CREATE TRIGGER é DDL ADITIVA: cria um gatilho e NÃO destrói/muta dado nem schema. A lista de
+// eventos (`AFTER INSERT OR UPDATE OR DELETE` / `AFTER UPDATE ON …`) contém as palavras
+// UPDATE/DELETE como NOME DE EVENTO — não como statement de mutação. Sem esta exceção, o
+// /\bUPDATE\s+\w/ dava FALSO-POSITIVO (destrutiva) em toda migration que cria trigger (v5.2.1).
+// Só isenta o CREATE; `DROP TRIGGER` permanece destrutivo pela regra de DROP acima.
+const CREATE_TRIGGER = /^\s*CREATE\s+(OR\s+REPLACE\s+)?(CONSTRAINT\s+)?TRIGGER\b/i
+
 function classificarStatement(st) {
+  if (CREATE_TRIGGER.test(st)) return 'aditiva'
   if (DESTRUTIVO.some(re => re.test(st))) return 'destrutiva'
   if (WARN.some(re => re.test(st))) return 'warn'
   return 'aditiva'

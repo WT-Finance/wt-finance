@@ -41,7 +41,7 @@
 
 ### Aplicação das migrations (checkpoint)
 1. **Verificar o Realtime** (pré-condição BLOQUEANTE do 0201): `select proname from pg_proc where pronamespace='realtime'::regnamespace and proname in ('topic','send');` e confirmar no dashboard que a Autorização de Realtime (canais privados) está habilitada. Se `realtime.topic()` não existir, o `CREATE POLICY` do 0201 falha na aplicação (a policy vem antes dos triggers de propósito → reaplicação limpa após habilitar).
-2. Trazer as provisórias **0950–0954** (v5.4.0) como cópias **untracked** para `supabase/migrations/` (existem na worktree `feat+v5-4-0-api-externa`); aplicar com **`npm run db:migrate -- --aditiva --fora-de-ordem`**; **remover as cópias antes do merge**. Nunca `migration repair`.
+2. Trazer as provisórias **0950–0954** (v5.4.0) como cópias **untracked** para `supabase/migrations/` (existem na worktree `feat+v5-4-0-api-externa`); aplicar com **`npm run db:migrate -- --aditiva --fora-de-ordem`**; **remover as cópias antes do merge**. Nunca `migration repair`. (As 4 classificam **aditiva** no gate — o classificador foi ajustado nesta versão para não dar falso-positivo de destrutiva em `CREATE TRIGGER` cujo evento contém `UPDATE`/`DELETE`.)
 3. **⚠️ Ordem obrigatória: aplicar as migrations ANTES do merge/deploy.** O cliente chama os *overloads* novos (ex.: `update_gerencial_lancamento` de 3 args); sem as migrations aplicadas, as edições do Gerencial quebrariam (função inexistente). Fluxo: aplicar (checkpoint) → mergear → deploy automático.
 4. Verificar as RPCs via REST (service key) após aplicar.
 
