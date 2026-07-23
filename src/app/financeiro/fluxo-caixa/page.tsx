@@ -16,6 +16,7 @@ import HorizontePrevisto from '@/components/financeiro/horizonte-previsto'
 import RepasseMensal from '@/components/financeiro/repasse-mensal'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import PosicaoProjetado from '@/components/financeiro/posicao-projetado'
+import UiTooltip from '@/components/ui/tooltip'
 import TempoVidaCaixa from '@/components/financeiro/tempo-vida-caixa'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
@@ -46,9 +47,6 @@ interface PosicaoConta {
   saldo:      number
 }
 
-const TOOLTIP_KPI_REALIZADO =
-  'Reflete o fluxo de caixa bancário real, com gastos via cartão contabilizados no pagamento da fatura. Diferença esperada em relação à Decomposição por Grupo de Categoria devido ao ciclo de cartão (≤30 dias).'
-
 // Feature flag (v4.9-M7): "Posição por Conta" temporariamente oculta a pedido da
 // diretoria. Componente, RPC (get_posicao_por_conta) e dados são MANTIDOS no código
 // para revisão futura — basta voltar a flag para `true`.
@@ -59,31 +57,22 @@ function hojeSP(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 }
 
-function TooltipIcon({ text }: { text: string }) {
-  return (
-    <span title={text} className="text-zinc-300 hover:text-zinc-500 cursor-help">
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 16v-4"/>
-        <path d="M12 8h.01"/>
-      </svg>
-    </span>
-  )
-}
-
 /** Célula de KPI do card principal do Realizado — divisórias verticais entre células
- *  (mesmo idioma do card de posição do Projetado), no lugar dos KPI cards separados
- *  (mockup do checkpoint aprovado). */
-function KpiCelula({ label, value, sub, tooltip, valueColor, primeiro = false }: {
-  label: string; value: string; sub?: string; tooltip?: string; valueColor?: string; primeiro?: boolean
+ *  (mesmo idioma do card de posição do Projetado). Sem subtítulos (checkpoint); ajuda
+ *  pontual via botão "?" (padrão da plataforma), só onde pedida. */
+function KpiCelula({ label, value, tooltip, valueColor, primeiro = false }: {
+  label: string; value: string; tooltip?: string; valueColor?: string; primeiro?: boolean
 }) {
   return (
     <div className={`flex-1 min-w-[150px] ${primeiro ? 'pr-7' : 'px-7 border-l border-zinc-100'}`}>
-      <div className="flex items-center gap-1">
-        <p className="text-2xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
-        {tooltip && <TooltipIcon text={tooltip} />}
-      </div>
-      {sub && <p className="text-3xs text-zinc-400 mt-px">{sub}</p>}
+      <p className="text-2xs font-semibold uppercase tracking-wide inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+        {label}
+        {tooltip && (
+          <UiTooltip conteudo={tooltip} className="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
+            <span aria-label={`Ajuda sobre ${label}`} className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
+          </UiTooltip>
+        )}
+      </p>
       <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: valueColor ?? 'var(--text-primary)' }}>{value}</p>
     </div>
   )
@@ -252,29 +241,23 @@ export default async function FluxoCaixaPage({
           </div>
           <div className="flex flex-wrap gap-y-4">
             <KpiCelula
+              label="Resultado de caixa"
+              value={fmtMi(saldoLiquido)}
+              valueColor={saldoLiquido >= 0 ? 'var(--positive)' : 'var(--negative)'}
+              primeiro
+            />
+            <KpiCelula
               label="Entradas realizadas"
               value={fmtMi(totalEntradas)}
-              sub="do período"
-              tooltip={TOOLTIP_KPI_REALIZADO}
-              primeiro
             />
             <KpiCelula
               label="Saídas realizadas"
               value={fmtMi(totalSaidas)}
-              sub="do período"
-              tooltip={TOOLTIP_KPI_REALIZADO}
             />
             <KpiCelula
-              label="Resultado de caixa"
-              value={fmtMi(saldoLiquido)}
-              sub="do período"
-              tooltip={TOOLTIP_KPI_REALIZADO}
-              valueColor={saldoLiquido >= 0 ? 'var(--positive)' : 'var(--negative)'}
-            />
-            <KpiCelula
-              label="Saldo de repasse (bruto)"
+              label="Saldo de repasse"
               value={fmtMi(saldoRepasseBruto)}
-              sub="acumulado no ano · Entrada de Clientes − Pagto ao Fornecedor"
+              tooltip="Repasse BRUTO acumulado no ano: Entrada de Clientes − Pagamento ao Fornecedor. Não segue o período selecionado acima."
               valueColor={saldoRepasseBruto >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)'}
             />
           </div>
