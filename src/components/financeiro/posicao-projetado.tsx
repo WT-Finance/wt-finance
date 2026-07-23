@@ -181,10 +181,12 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
             />
           </div>
 
-          {/* Controle do horizonte — abaixo dos indicadores (checkpoint): slider ocupa
-              TODO o espaço restante (largura estável — o rótulo e os rádios têm largura
-              fixa, então o slider não "pula" ao trocar o modo); seletor de modo à
-              DIREITA, como grupo de RÁDIO. */}
+          {/* Controle do horizonte — abaixo dos indicadores (checkpoint): subtítulo
+              "Horizonte de tempo:", slider ocupando TODO o espaço restante (largura
+              estável — rótulo e rádios têm largura fixa, então o slider não "pula" ao
+              trocar o modo) e seletor de modo à DIREITA, como grupo de RÁDIO. */}
+          <div>
+          <p className="text-2xs font-medium text-zinc-400 mb-1.5">Horizonte de tempo:</p>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex flex-col gap-px flex-1 min-w-[260px]">
               <input
@@ -240,6 +242,7 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
                 </label>
               ))}
             </div>
+          </div>
           </div>
         </div>
       </div>
