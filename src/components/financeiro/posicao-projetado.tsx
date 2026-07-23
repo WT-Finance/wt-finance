@@ -42,8 +42,8 @@ interface Props {
 type Modo = 'dias' | 'meses' | 'sempre'
 
 const HORIZONTE: Record<'dias' | 'meses', { min: number; max: number; padrao: number; menor: number; maiores: number[] }> = {
-  dias:  { min: 1, max: 90, padrao: 10, menor: 6, maiores: [30, 60, 90] },
-  meses: { min: 1, max: 12, padrao: 3,  menor: 1, maiores: [3, 6, 9, 12] },
+  dias:  { min: 1, max: 180, padrao: 10, menor: 10, maiores: [30, 60, 90, 120, 150, 180] },
+  meses: { min: 1, max: 18,  padrao: 3,  menor: 1,  maiores: [3, 6, 9, 12, 15, 18] },
 }
 
 /** ISO + n dias (aritmética UTC pura sobre a string — sem fuso). */
@@ -116,7 +116,9 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
   const [valor, setValor]         = useState(HORIZONTE.dias.padrao)
 
   const { rec, pag, rotulo } = useMemo(() => somarJanela(previsto, modo, valor), [previsto, modo, valor])
-  const ncg = rec - pag
+  // NCG = A PAGAR − A RECEBER (ajuste do checkpoint): positivo = FALTA caixa no horizonte
+  // (vermelho); negativo = sobra (verde). Inverte o sinal e a cor do card antigo.
+  const ncg = pag - rec
 
   const operacionais     = saldos.filter(c => !c.reserva)
   const reservas         = saldos.filter(c => c.reserva)
@@ -160,49 +162,46 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
           )}
         </div>
 
-        {/* ── A receber · A pagar · NCG + controle de horizonte ───────────── */}
-        <div className="flex-1 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        {/* ── A receber · A pagar · NCG + controle de horizonte ABAIXO ────── */}
+        <div className="flex-1 flex flex-col justify-between gap-y-4">
           <div className="flex flex-wrap gap-y-3">
             <KpiJanela label="A Receber" valor={rec} primeiro />
             <KpiJanela label="A Pagar"   valor={pag} />
             <KpiJanela
               label="NCG"
               valor={ncg}
-              cor={ncg >= 0 ? 'var(--positive)' : 'var(--negative)'}
-              tooltip="Necessidade de Capital de Giro: A Receber − A Pagar no horizonte selecionado"
+              cor={ncg > 0 ? 'var(--negative)' : 'var(--positive)'}
+              tooltip="Necessidade de Capital de Giro: A Pagar − A Receber no horizonte selecionado. Positiva (vermelha) = falta caixa; negativa (verde) = sobra."
             />
           </div>
 
-          {/* Controle do horizonte (variante A do mockup: no cabeçalho dos KPIs) */}
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <select
-              value={modo}
-              onChange={e => trocarModo(e.target.value as Modo)}
-              aria-label="Unidade do horizonte"
-              className="text-2xs font-medium rounded-full border px-2.5 py-1 cursor-pointer foco-neutro"
-              /* pill ativa de página SETORIAL = família --brand-* (a mesma da pill de
-                 período desta página), não --action-* (reservada a telas de plataforma)
-                 — achado MÉDIO do revisor. Visual idêntico hoje; acompanha o tema. */
-              style={{ background: 'var(--brand-soft)', borderColor: 'var(--brand)', color: 'var(--brand-deep)' }}
-            >
-              <option value="dias">Dias</option>
-              <option value="meses">Meses</option>
-              <option value="sempre">Sempre</option>
-            </select>
-            <div className="flex flex-col gap-px">
+          {/* Controle do horizonte — abaixo dos indicadores, slider longo (checkpoint). */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <DropdownPill
+              valor={modo}
+              opcoes={[
+                { value: 'dias',   label: 'Dias'   },
+                { value: 'meses',  label: 'Meses'  },
+                { value: 'sempre', label: 'Sempre' },
+              ]}
+              onChange={v => trocarModo(v as Modo)}
+              ariaLabel="Unidade do horizonte"
+            />
+            <div className="flex flex-col gap-px flex-1 min-w-[240px] max-w-[460px]">
               <input
                 type="range"
                 min={cfg?.min ?? 1}
-                max={cfg?.max ?? 90}
+                max={cfg?.max ?? 180}
                 value={valor}
                 disabled={!cfg}
                 onChange={e => setValor(Number(e.target.value))}
                 aria-label="Horizonte"
-                className="w-[176px] disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                 style={{ accentColor: 'var(--text-secondary)' }}
               />
-              {/* régua de marcações — riscos menores + rótulo nos marcos */}
-              <div className="relative h-[15px] w-[176px]" aria-hidden>
+              {/* régua de marcações — riscos menores + rótulo nos marcos (% da largura,
+                  compensando a meia-largura do thumb — funciona com o slider fluido) */}
+              <div className="relative h-[15px] w-full" aria-hidden>
                 {cfg && Array.from({ length: Math.floor((cfg.max - cfg.menor) / cfg.menor) + 1 }, (_, i) => {
                   const v = cfg.menor * (i + 1)
                   const f = (v - cfg.min) / (cfg.max - cfg.min)
@@ -232,6 +231,61 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
         <SaldoDrillModal saldosIniciais={saldos} onClose={() => setDrillOpen(false)} />
       )}
     </>
+  )
+}
+
+/**
+ * Dropdown em forma de PILL com menu PRÓPRIO (arredondado, sombra do DS) — o popup do
+ * `<select>` nativo é o do sistema operacional (quadrado/cinza, inestilizável) e destoava
+ * da pill (ajuste do checkpoint). Pill ativa na família `--brand-*` (a mesma da pill de
+ * período da página). Fecha em clique-fora (backdrop) e Escape.
+ */
+function DropdownPill({ valor, opcoes, onChange, ariaLabel }: {
+  valor:     string
+  opcoes:    { value: string; label: string }[]
+  onChange:  (v: string) => void
+  ariaLabel: string
+}) {
+  const [aberto, setAberto] = useState(false)
+  const atual = opcoes.find(o => o.value === valor)?.label ?? valor
+
+  return (
+    <div className="relative" onKeyDown={e => { if (e.key === 'Escape') setAberto(false) }}>
+      <button
+        type="button"
+        onClick={() => setAberto(v => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        aria-label={ariaLabel}
+        className="inline-flex items-center gap-1 text-2xs font-medium rounded-full border px-2.5 py-1 cursor-pointer foco-neutro"
+        style={{ background: 'var(--brand-soft)', borderColor: 'var(--brand)', color: 'var(--brand-deep)' }}
+      >
+        {atual}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {aberto && (
+        <>
+          {/* backdrop: clique-fora fecha */}
+          <div className="fixed inset-0 z-10" onClick={() => setAberto(false)} />
+          <ul role="listbox" aria-label={ariaLabel} className="absolute z-20 mt-1 min-w-[110px] rounded-lg border border-zinc-200 bg-white shadow-lg py-1">
+            {opcoes.map(o => (
+              <li key={o.value} role="option" aria-selected={o.value === valor}>
+                <button
+                  type="button"
+                  onClick={() => { onChange(o.value); setAberto(false) }}
+                  className={`w-full text-left px-3 py-1.5 text-2xs hover:bg-zinc-50 ${o.value === valor ? 'font-semibold' : 'text-zinc-600'}`}
+                  style={o.value === valor ? { color: 'var(--brand-deep)' } : undefined}
+                >
+                  {o.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   )
 }
 
