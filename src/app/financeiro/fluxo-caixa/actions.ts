@@ -28,7 +28,7 @@ function hojeSP(): string {
 /**
  * Atualiza saldo + data (RPC `atualizar_saldo_caixa`, migration 0194) de uma conta da tabela
  * PRÓPRIA do Fluxo Projetado. Os DOIS campos são gravados juntos — o caller (modal do drill em
- * saldo-caixa-kpi.tsx) passa o valor CORRENTE do campo que não está sendo editado.
+ * posicao-projetado.tsx) passa o valor CORRENTE do campo que não está sendo editado.
  * `dataSaldo` nulo/vazio assume HOJE (SP) — mesma regra de `updateSaldo` em gerencial/actions.ts.
  */
 export async function atualizarSaldoCaixaAction(

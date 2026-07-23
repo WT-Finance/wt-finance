@@ -16,14 +16,14 @@ import RunwaySemanal from '@/components/financeiro/runway-semanal'
 import HorizontePrevisto from '@/components/financeiro/horizonte-previsto'
 import RepasseMensal from '@/components/financeiro/repasse-mensal'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
-import SaldoCaixaKpi from '@/components/financeiro/saldo-caixa-kpi'
+import PosicaoProjetado from '@/components/financeiro/posicao-projetado'
 import TempoVidaCaixa from '@/components/financeiro/tempo-vida-caixa'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
-  coberturaSchema,
+  coberturaSchema, previstoDiarioSchema,
   type RepasseMensalRow, type HorizonteData, type SaldoCaixaConta,
   type RunwaySemanal as RunwaySemanalData, type RankingCaixa as RankingCaixaData,
-  type CoberturaData,
+  type CoberturaData, type PrevistoDiario,
 } from '@/lib/fluxo/rpc-fluxo'
 
 interface SearchParams {
@@ -39,13 +39,6 @@ interface KpisB {
   entradas_previstas:  number
   saidas_previstas:    number
   saldo_previsto:      number
-}
-
-interface KpisDiario {
-  saldo_em_caixa: number
-  a_receber_10d:  number
-  a_pagar_10d:    number
-  ncg_10d:        number
 }
 
 interface PosicaoConta {
@@ -157,7 +150,7 @@ export default async function FluxoCaixaPage({
     fluxoMensalRes,
     fluxoAcumuladoRes,
     kpisRes,
-    kpisDiarioRes,
+    previstoDiarioRes,
     decomposicaoRes,
     decomposicaoCategoriaRes,
     posicaoRes,
@@ -171,7 +164,7 @@ export default async function FluxoCaixaPage({
     rpc('get_fluxo_caixa_mensal_v3'),
     rpc('get_fluxo_caixa_acumulado_v1'),
     rpc('get_fluxo_caixa_kpis_b',        { p_from: from, p_to: to }),
-    rpc('get_fluxo_caixa_kpis_diario'),
+    rpc('get_fluxo_previsto_diario'),
     rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
     rpc('get_decomposicao_categoria',     { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
@@ -191,12 +184,11 @@ export default async function FluxoCaixaPage({
     entradas_previstas: 0, saidas_previstas: 0, saldo_previsto: 0,
   }
 
-  const kpisDiario: KpisDiario = unwrapRpc<KpisDiario>(kpisDiarioRes, 'get_fluxo_caixa_kpis_diario') ?? {
-    saldo_em_caixa: 0,
-    a_receber_10d:  0,
-    a_pagar_10d:    0,
-    ncg_10d:        0,
-  }
+  // Série diária do previsto (0196) — o card de posição soma a janela do horizonte no
+  // cliente. Falha → série vazia (KPIs zeram, card não quebra a página).
+  const previstoDiario: PrevistoDiario =
+    parseRpc(previstoDiarioSchema, previstoDiarioRes, 'get_fluxo_previsto_diario') ??
+    { vencido_r: 0, vencido_p: 0, dias: [] }
 
   const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
   const decomposicaoCategorias =
@@ -204,7 +196,7 @@ export default async function FluxoCaixaPage({
   const posicoes = unwrapRpc<PosicaoConta[]>(posicaoRes, 'get_posicao_por_conta') ?? []
 
   // Saldo de caixa PRÓPRIO do Fluxo Projetado (financeiro.saldo_caixa) — vazio (fail-safe)
-  // se a RPC falhar; SaldoCaixaKpi degrada para "—" nesse caso, sem quebrar a página.
+  // se a RPC falhar; PosicaoProjetado degrada o saldo para "—" nesse caso, sem quebrar a página.
   const saldosCaixa: SaldoCaixaConta[] = parseRpc(saldoCaixaSchema, saldosRes, 'get_saldo_caixa') ?? []
 
   // As 4 RPCs novas do Onda 1 — schema Zod valida o SHAPE; falha (RPC quebrada/drift) degrada
@@ -239,26 +231,10 @@ export default async function FluxoCaixaPage({
       {/* ── FLUXO PROJETADO ──────────────────────────────────────────────── */}
       <TopSection titulo="Fluxo Projetado">
 
-        {/* 4 KPI cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <SaldoCaixaKpi saldos={saldosCaixa} />
-          <KpiCard
-            label="A Receber"
-            value={fmtMi(kpisDiario.a_receber_10d)}
-            sub="próx. 10 dias"
-          />
-          <KpiCard
-            label="A Pagar"
-            value={fmtMi(kpisDiario.a_pagar_10d)}
-            sub="próx. 10 dias"
-          />
-          <KpiCard
-            label="NCG"
-            value={fmtMi(kpisDiario.ncg_10d)}
-            sub="próx. 10 dias"
-            valueColor={kpisDiario.ncg_10d >= 0 ? 'var(--positive)' : 'var(--negative)'}
-            tooltip="Necessidade de Capital de Giro: A Receber − A Pagar nos próximos 10 dias"
-          />
+        {/* Card ÚNICO de posição (checkpoint/mockup variante A): Saldo de Caixa |
+            A receber · A pagar · NCG com horizonte ajustável (Dias/Meses/Sempre). */}
+        <div className="mb-6">
+          <PosicaoProjetado saldos={saldosCaixa} previsto={previstoDiario} />
         </div>
 
         {/* Calendário (60%) + Runway Semanal (40%) */}

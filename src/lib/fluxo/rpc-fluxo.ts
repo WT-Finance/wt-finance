@@ -137,3 +137,16 @@ export const coberturaSchema = z.object({
 }).passthrough()
 
 export type CoberturaData = z.infer<typeof coberturaSchema>
+
+// ── get_fluxo_previsto_diario() → PrevistoDiario (horizonte dinâmico, 0196) ──
+// Série diária do previsto por vencimento (d ≥ hoje, dentro do corte; r = entradas,
+// p = magnitude das saídas) + balde único dos vencidos (só o horizonte "Sempre" usa).
+// O card de posição soma a janela no CLIENTE (slider instantâneo, sem RPC por ajuste).
+
+export const previstoDiarioSchema = z.object({
+  vencido_r: z.number(),
+  vencido_p: z.number(),
+  dias:      z.array(z.object({ d: z.string(), r: z.number(), p: z.number() }).passthrough()),
+}).passthrough()
+
+export type PrevistoDiario = z.infer<typeof previstoDiarioSchema>
