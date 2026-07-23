@@ -229,6 +229,14 @@ fixo ao rolar. Já é automático no primitivo: não precisa fazer nada no call-
 header fixo: se um container com header sticky não usar o primitivo, o indicador de rolagem tem de
 ter `z-index` maior que o do header.)
 
+**Respiro do thumb nas pontas (v5.2.0 — padrão):** o thumb **não encosta** nas bordas do
+container — o trilho útil é `clientSize − 2×THUMB_FOLGA` (8px por ponta, constante canônica em
+`@/lib/ui/scrollbar-math`). A folga entra na GEOMETRIA (`thumbGeom`) **e** na conversão do arraste
+(`scrollAoArrastar`) — passar aos dois, senão a proporção do arraste descola do trilho. Vale para
+o `<ScrollAutoHide>` (ambos os eixos) e para a cópia da sidebar (que desde a v5.2.0 consome o
+`thumbGeom` compartilhado — fim da conta duplicada). (Origem: checkpoint v5.2.0 — o thumb da
+sidebar colava no topo/rodapé.)
+
 Migração (regra de escoteiro + varredura v5.0.0): trocar `<div className="overflow-* …">` por
 `<ScrollAutoHide …>`; remover `overflow-*`/`flex-1`/`min-h-0`/`h-full`, manter padding/max-h/min-w
 em `className`, mover `space-y-*` para `contentClassName`. Migrados na varredura: modais
@@ -262,6 +270,18 @@ frágil (offset chumbado). O **padding do viewport é assimétrico de propósito
 **goteira à direita** para o thumb vertical (`right-1 w-1.5`, 4–10px da borda) não ficar em cima do
 card, e `pt-2` dá **respiro no topo** para o `box-shadow` de realce do hover (`.card-clicavel-neutra`)
 do PRIMEIRO card não ser cortado pelo `overflow` do viewport. Painel novo desse tipo nasce assim.
+
+## Cabeçalho de tabela ORDENÁVEL (v5.2.0 — padrão)
+
+Coluna ordenável usa o idioma da **Lista de Operações** (o exemplo vivo mais antigo):
+o `<th>` vira um `<button>` com o rótulo + ícone **lucide tamanho 12** —
+- coluna **ativa**: `<ArrowUp size={12} />` (asc) ou `<ArrowDown size={12} />` (desc), na cor do texto;
+- coluna ordenável **inativa**: `<ArrowUpDown size={12} className="text-zinc-300" />`.
+
+Nada de caracteres unicode (▲/▼/↕) nem outros ícones — um idioma só, plataforma inteira.
+Exemplos vivos: `SortTh` em `weddings/lista-operacoes.tsx` e `ThOrdenavel` em
+`financeiro/ranking-caixa.tsx` ("Maiores variações"). (Registrado na v5.2.0: o padrão existia
+só como código vivo e uma implementação nova recriou outro símbolo — documentado para não repetir.)
 
 ## Rótulo "Última atualização" — sinal de saúde da sincronização (v5.1.11)
 

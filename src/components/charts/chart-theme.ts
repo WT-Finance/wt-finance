@@ -89,9 +89,22 @@ export const strokeWidths = {
 
 /** Raios de canto padrão de barras (só nas pontas externas). */
 export const barRadius = {
-  /** Coluna vertical apontando para cima (topo arredondado). */
+  /**
+   * Ponta LIVRE arredondada (a oposta à linha do zero). É o raio padrão de QUALQUER
+   * coluna vertical — apontando para cima **ou para baixo**. Por quê: o Recharts passa
+   * `y` = pixel do valor e `height = base − valor` (assinado, NEGATIVO na barra que
+   * desce), então o `ySign` do `getRectanglePath` inverte e os índices `[0,1]` do array
+   * de raio SEMPRE grudam na ponta do valor (a livre) e `[2,3]` na base (o eixo). Ou
+   * seja, `[r,r,0,0]` arredonda a ponta livre nos DOIS sentidos — inclusive nas saídas
+   * que descem e nos gráficos com botão "inverter". Não use `bottom` para "arredondar a
+   * base de uma barra que desce": isso pega o eixo, não a ponta. (Provado v5.2.0.)
+   */
   top:    [2, 2, 0, 0] as [number, number, number, number],
-  /** Coluna vertical apontando para baixo (base arredondada) — saídas invertidas. */
+  /**
+   * Arredonda a ponta ENCOSTADA no eixo (linha do zero) — quase nunca o que se quer numa
+   * coluna. Mantido só por completude/simetria; para arredondar a ponta livre (o caso
+   * comum, para cima OU para baixo) use `top`. Ver a nota em `top` sobre o `ySign`.
+   */
   bottom: [0, 0, 2, 2] as [number, number, number, number],
   /** Barra horizontal (ponta direita arredondada). */
   right:  [0, 4, 4, 0] as [number, number, number, number],

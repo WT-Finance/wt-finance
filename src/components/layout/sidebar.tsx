@@ -4,13 +4,13 @@ import { useState, useRef, useEffect, useCallback, use, Suspense, type PointerEv
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert, FileSpreadsheet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
 import Badge from '@/components/ui/badge'
 import NavGroup, { type NavSubItem } from '@/components/layout/nav-group'
-import { scrollAoArrastar } from '@/lib/ui/scrollbar-math'
+import { thumbGeom, scrollAoArrastar, THUMB_FOLGA } from '@/lib/ui/scrollbar-math'
 
 /** Dados do usuário logado, repassados pelo AppShell para identidade + filtro de navegação. */
 export interface UsuarioSidebar {
@@ -66,6 +66,7 @@ const FINANCEIRO_SUBS: NavSubItem[] = [
   { href: '/financeiro/acervo',                label: 'Acervo de Documentos', icon: Library, area: 'financeiro/acervo', areasAny: ['financeiro/acervo', 'financeiro/acervo/gestao'] },
   { href: '/financeiro/fluxo-caixa',           label: 'Fluxo de Caixa',       icon: BarChart3,  area: 'financeiro/fluxo-caixa' },
   { href: '/financeiro/fluxo-caixa/gerencial', label: 'Gerencial',            icon: Table2,     area: 'financeiro/gerencial'   },
+  { href: '/financeiro/dre',                   label: 'DRE',                  icon: FileSpreadsheet, area: 'financeiro/dre' },
   { href: '/financeiro/calculadora-rateio',    label: 'Calculadora de Rateio', icon: Calculator, area: 'financeiro/gerencial'  },
   { href: '/financeiro/faturamento-corp',      label: 'Faturamento Corporativo', icon: Receipt,  area: 'financeiro/faturamento-corp' },
 ]
@@ -213,13 +214,13 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
   const measureThumb = useCallback(() => {
     const el = navViewRef.current, th = thumbRef.current
     if (!el || !th) return
-    const { scrollHeight, clientHeight, scrollTop } = el
-    if (scrollHeight <= clientHeight + 1) { th.style.display = 'none'; return }
-    const h = Math.max(28, Math.round((clientHeight / scrollHeight) * clientHeight))
-    const top = Math.round((scrollTop / (scrollHeight - clientHeight)) * (clientHeight - h))
+    // Geometria compartilhada de @/lib/ui/scrollbar-math (fim da cópia local da conta) —
+    // com o respiro padrão nas pontas do trilho (THUMB_FOLGA, DS §Barras de rolagem).
+    const g = thumbGeom(el.scrollHeight, el.clientHeight, el.scrollTop, THUMB_FOLGA)
+    if (!g.visivel) { th.style.display = 'none'; return }
     th.style.display = 'block'
-    th.style.height = `${h}px`
-    th.style.transform = `translateY(${top}px)`
+    th.style.height = `${g.tamanho}px`
+    th.style.transform = `translateY(${g.pos}px)`
   }, [])
 
   // Aparece e some sozinho; não some no meio de um arraste (draggingRef).
@@ -249,7 +250,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
     const scrollSize = el.scrollHeight
     const clientSize = el.clientHeight
     const mover = (ev: PointerEvent) => {
-      el.scrollTop = scrollAoArrastar(ev.clientY - inicio, base, scrollSize, clientSize)
+      el.scrollTop = scrollAoArrastar(ev.clientY - inicio, base, scrollSize, clientSize, THUMB_FOLGA)
     }
     const soltar = () => {
       draggingRef.current = false

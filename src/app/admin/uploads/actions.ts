@@ -6,9 +6,9 @@ import { requireAreaAction } from '@/lib/auth/sessao'
 import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
-import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
-import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
+import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
+import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -189,126 +189,6 @@ export async function finalizarVendasAction(
 }
 
 // ---------------------------------------------------------------------------
-// Lançamentos por Categoria (raw.lancamentos financeiro → financeiro.fato_lancamentos)
-// Migrado de uploads/financeiro na unificação v4.8 (batch 500; finaliza com
-// regenerar_financeiro_lancamentos).
-// ---------------------------------------------------------------------------
-
-export async function getLancamentosFinanceiroStatusAction(): Promise<
-  { total: number; ultima_atualizacao: string | null } | { error: string }
-> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-    // v4.20.1: status_lancamentos_financeiro (count + MAX(carregado_em) de raw.lancamentos).
-    const { data, error } = await bound('status_lancamentos_financeiro')
-    if (error) return { error: error.message }
-    const status = data as { total: number; ultima_atualizacao: string | null } | null
-    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function inserirLoteLancamentosFinanceiroAction(
-  lote: LancamentoFinanceiroRaw[],
-  isFirst: boolean,
-  arquivoOrigem: string,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_lancamentos_financeiro')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_lancamentos_financeiro', { p_linhas: rows })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarLancamentosFinanceiroAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const { error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_financeiro_lancamentos')
-    if (error) return { error: `Erro ao regenerar fato: ${error.message}` }
-
-    return { sucesso: true, total_linhas: totalInseridas, erros: [] }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Fluxo de Caixa CAP/CAR tratada (raw.fluxo_caixa_titulos)
-// Migrado de uploads/financeiro na unificação v4.8 (batch 500; sem transformação
-// pós-insert).
-// ---------------------------------------------------------------------------
-
-export async function getFluxoCaixaTitulosStatusAction(): Promise<
-  { total: number; ultima_atualizacao: string | null } | { error: string }
-> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    // v4.20.1: status_fluxo_caixa_titulos (count + MAX(carregado_em) de raw.fluxo_caixa_titulos).
-    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('status_fluxo_caixa_titulos')
-    if (error) return { error: error.message }
-    const status = data as { total: number; ultima_atualizacao: string | null } | null
-    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function inserirLoteFluxoCaixaTitulosAction(
-  lote: FluxoCaixaTituloRaw[],
-  isFirst: boolean,
-  arquivoOrigem: string,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_fluxo_caixa_titulos')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_fluxo_caixa_titulos', { p_lote: rows })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarFluxoCaixaTitulosAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  // raw.fluxo_caixa_titulos não tem transformação adicional por agora
-  return { sucesso: true, total_linhas: totalInseridas, erros: [] }
-}
-
-// ---------------------------------------------------------------------------
 // Pessoas (v4.29.0) — cadastro fiscal do Monde. Padrão ATÔMICO (= Vendas, 0116):
 // limpar_staging_pessoas → inserir_lote_staging_pessoas → validar → promover (swap
 // numa transação; o Faturamento depende, a base não pode ficar vazia no meio).
@@ -382,6 +262,143 @@ export async function finalizarPessoasAction(
       pessoas_count: promocao?.pessoas_count ?? totalInseridas,
       erros: [],
     }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lançamentos por Movimentação (raw.lancamentos_movimentacao) — Fluxo de Caixa
+// Onda 1, v5.2.0. Full-swap (batch 500; arquivo_origem carregado por linha).
+// financeiro.fato_fluxo (regenerar_fluxo_caixa) lê esta base — realizado por
+// data_movimentacao + previsto por movimentação futura (M2).
+// ---------------------------------------------------------------------------
+
+export async function getLancamentosMovimentacaoStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+    const { data, error } = await bound('status_lancamentos_movimentacao')
+    if (error) return { error: error.message }
+    const status = data as { total: number; ultima_atualizacao: string | null } | null
+    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function inserirLoteLancamentosMovimentacaoAction(
+  lote: LancamentoMovimentacaoRaw[],
+  isFirst: boolean,
+  arquivoOrigem: string,
+): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    if (isFirst) {
+      const { error } = await bound('truncar_lancamentos_movimentacao')
+      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
+    }
+
+    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
+    const { error } = await bound('inserir_lote_lancamentos_movimentacao', { p_linhas: rows })
+    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
+
+    return { inseridas: lote.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function finalizarLancamentosMovimentacaoAction(
+  totalAntes: number,
+  totalInseridas: number,
+): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  // Regenera financeiro.fato_fluxo (realizado por movimentação + previsto), lendo AS DUAS bases novas.
+  return regenerarFluxoCaixa(totalInseridas)
+}
+
+// ---------------------------------------------------------------------------
+// Lançamentos por Vencimento em aberto (raw.titulos_em_aberto) — Fluxo de Caixa
+// Onda 1, v5.2.0. Mesmo padrão do Lançamentos por Movimentação. O previsto por
+// vencimento é lido por financeiro.fato_fluxo (regenerar_fluxo_caixa).
+// ---------------------------------------------------------------------------
+
+export async function getTitulosEmAbertoStatusAction(): Promise<
+  { total: number; ultima_atualizacao: string | null } | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+    const { data, error } = await bound('status_titulos_em_aberto')
+    if (error) return { error: error.message }
+    const status = data as { total: number; ultima_atualizacao: string | null } | null
+    return { total: status?.total ?? 0, ultima_atualizacao: status?.ultima_atualizacao ?? null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function inserirLoteTitulosEmAbertoAction(
+  lote: TituloEmAbertoRaw[],
+  isFirst: boolean,
+  arquivoOrigem: string,
+): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    if (isFirst) {
+      const { error } = await bound('truncar_titulos_em_aberto')
+      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
+    }
+
+    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
+    const { error } = await bound('inserir_lote_titulos_em_aberto', { p_linhas: rows })
+    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
+
+    return { inseridas: lote.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function finalizarTitulosEmAbertoAction(
+  totalAntes: number,
+  totalInseridas: number,
+): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  // M2: regenera o fato_fluxo lendo AS DUAS bases novas (previsto por vencimento + realizado por movimentação).
+  return regenerarFluxoCaixa(totalInseridas)
+}
+
+// Regenera financeiro.fato_fluxo (M2, eixo movimentação). Chamado no finalizar dos DOIS
+// uploads (movimentação e em-aberto) — a RPC lê ambas as bases. Idempotente (TRUNCATE+rebuild).
+// Surfacea contas NOVAS não classificadas como aviso (nunca em silêncio — invariante 3).
+async function regenerarFluxoCaixa(
+  totalInseridas: number,
+): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
+  try {
+    const supabase = getAdminClient()
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_fluxo_caixa')
+    if (error) return { error: `Erro ao regenerar fluxo de caixa: ${error.message}` }
+    const meta = data as { contas_novas?: string[]; contas_novas_n?: number } | null
+    const erros: string[] = []
+    if (meta?.contas_novas_n && meta.contas_novas_n > 0) {
+      erros.push(
+        `Atenção: ${meta.contas_novas_n} conta(s) nova(s) não classificada(s) automaticamente: ` +
+          `${(meta.contas_novas ?? []).join(', ')}. Confira a classificação de cartão em dim_conta_bancaria.`,
+      )
+    }
+    return { sucesso: true, total_linhas: totalInseridas, erros }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

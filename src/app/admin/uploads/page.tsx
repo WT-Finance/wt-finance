@@ -9,12 +9,12 @@ import {
   getVendasStatusAction,
   inserirLoteVendasAction,
   finalizarVendasAction,
-  getLancamentosFinanceiroStatusAction,
-  inserirLoteLancamentosFinanceiroAction,
-  finalizarLancamentosFinanceiroAction,
-  getFluxoCaixaTitulosStatusAction,
-  inserirLoteFluxoCaixaTitulosAction,
-  finalizarFluxoCaixaTitulosAction,
+  getLancamentosMovimentacaoStatusAction,
+  inserirLoteLancamentosMovimentacaoAction,
+  finalizarLancamentosMovimentacaoAction,
+  getTitulosEmAbertoStatusAction,
+  inserirLoteTitulosEmAbertoAction,
+  finalizarTitulosEmAbertoAction,
   getPessoasStatusAction,
   inserirLotePessoasAction,
   finalizarPessoasAction,
@@ -22,17 +22,17 @@ import {
 import { ModalConfirmacaoUpload } from '@/components/admin/modal-confirmacao-upload'
 import { parseLancamentosFile, LANCAMENTOS_COLUNAS } from '@/lib/carga/parse-lancamentos'
 import { parseVendasProdutoFile } from '@/lib/carga/parse-vendas-produto'
-import { parseLancamentosFinanceiroFile, LANCAMENTOS_FINANCEIRO_COLUNAS } from '@/lib/carga/parse-lancamentos-financeiro'
-import { parseFluxoCaixaTitulosFile, FLUXO_TITULOS_COLUNAS } from '@/lib/carga/parse-fluxo-caixa-titulos'
+import { parseLancamentosMovimentacaoFile, LANCAMENTOS_MOVIMENTACAO_COLUNAS } from '@/lib/carga/parse-lancamentos-movimentacao'
+import { parseTitulosEmAbertoFile, TITULOS_EM_ABERTO_COLUNAS } from '@/lib/carga/parse-titulos-em-aberto'
 import { parsePessoasFile, PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
 import { parseArquivoEmWorker } from '@/lib/carga/parse-em-worker'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoRaw } from '@/lib/carga/lancamentos'
-import type { LancamentoFinanceiroRaw } from '@/lib/carga/parse-lancamentos-financeiro'
-import type { FluxoCaixaTituloRaw } from '@/lib/carga/parse-fluxo-caixa-titulos'
+import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
+import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
 
-type BaseKey = 'vendas' | 'lancamentos' | 'lancamentos_financeiro' | 'fluxo_caixa_titulos' | 'pessoas'
+type BaseKey = 'vendas' | 'lancamentos' | 'lancamentos_movimentacao' | 'titulos_em_aberto' | 'pessoas'
 type EstadoCard = 'idle' | 'validando' | 'aguardando_confirmacao' | 'carregando' | 'sucesso' | 'erro'
 
 interface StatusCarga {
@@ -86,20 +86,20 @@ const BASES: BaseConfig[] = [
     obrigatorias: LANCAMENTOS_COLUNAS,
   },
   {
-    key: 'lancamentos_financeiro',
-    label: 'Lançamentos por Categoria',
-    descricao: 'Substitui toda a base de Lançamentos por Categoria. Importe sempre o arquivo completo.',
+    key: 'lancamentos_movimentacao',
+    label: 'Lançamentos por Movimentação',
+    descricao: 'Substitui toda a base de Lançamentos por Movimentação (realizado — data em que o dinheiro entrou/saiu da conta). Importe sempre o arquivo completo.',
     batch: 500,
     unidade: 'registros',
-    obrigatorias: LANCAMENTOS_FINANCEIRO_COLUNAS,
+    obrigatorias: LANCAMENTOS_MOVIMENTACAO_COLUNAS,
   },
   {
-    key: 'fluxo_caixa_titulos',
-    label: 'Fluxo de Caixa (CAP/CAR)',
-    descricao: 'Substitui toda a base de Fluxo de Caixa (CAP/CAR). Importe sempre o arquivo completo.',
+    key: 'titulos_em_aberto',
+    label: 'Lançamentos por Vencimento (em aberto)',
+    descricao: 'Substitui toda a base de títulos em aberto (previsto — por data de vencimento). Importe sempre o arquivo completo.',
     batch: 500,
     unidade: 'registros',
-    obrigatorias: FLUXO_TITULOS_COLUNAS,
+    obrigatorias: TITULOS_EM_ABERTO_COLUNAS,
   },
   {
     key: 'pessoas',
@@ -275,16 +275,16 @@ type LinhasRef = Record<BaseKey, unknown[]>
 
 export default function AdminUploadsPage() {
   const [status, setStatus] = useState<Record<BaseKey, StatusCarga | null>>({
-    vendas: null, lancamentos: null, lancamentos_financeiro: null, fluxo_caixa_titulos: null, pessoas: null,
+    vendas: null, lancamentos: null, lancamentos_movimentacao: null, titulos_em_aberto: null, pessoas: null,
   })
   const [estados, setEstados] = useState<Record<BaseKey, EstadoUpload>>({
     vendas: ESTADO_INICIAL, lancamentos: ESTADO_INICIAL,
-    lancamentos_financeiro: ESTADO_INICIAL, fluxo_caixa_titulos: ESTADO_INICIAL, pessoas: ESTADO_INICIAL,
+    lancamentos_movimentacao: ESTADO_INICIAL, titulos_em_aberto: ESTADO_INICIAL, pessoas: ESTADO_INICIAL,
   })
   const [modal, setModal] = useState<BaseKey | null>(null)
 
   const linhasRef = useRef<LinhasRef>({
-    vendas: [], lancamentos: [], lancamentos_financeiro: [], fluxo_caixa_titulos: [], pessoas: [],
+    vendas: [], lancamentos: [], lancamentos_movimentacao: [], titulos_em_aberto: [], pessoas: [],
   })
 
   function setEstado(key: BaseKey, patch: Partial<EstadoUpload>) {
@@ -292,11 +292,11 @@ export default function AdminUploadsPage() {
   }
 
   const carregarStatus = useCallback(async () => {
-    const [vendasRes, lancRes, lancFinRes, fctRes, pessoasRes] = await Promise.allSettled([
+    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes] = await Promise.allSettled([
       getVendasStatusAction(),
       getLancamentosStatusAction(),
-      getLancamentosFinanceiroStatusAction(),
-      getFluxoCaixaTitulosStatusAction(),
+      getLancamentosMovimentacaoStatusAction(),
+      getTitulosEmAbertoStatusAction(),
       getPessoasStatusAction(),
     ])
 
@@ -308,11 +308,11 @@ export default function AdminUploadsPage() {
     }
 
     setStatus({
-      vendas:                 toStatus(vendasRes),
-      lancamentos:            toStatus(lancRes),
-      lancamentos_financeiro: toStatus(lancFinRes),
-      fluxo_caixa_titulos:    toStatus(fctRes),
-      pessoas:                toStatus(pessoasRes),
+      vendas:                    toStatus(vendasRes),
+      lancamentos:               toStatus(lancRes),
+      lancamentos_movimentacao:  toStatus(lancMovRes),
+      titulos_em_aberto:         toStatus(titAbertoRes),
+      pessoas:                   toStatus(pessoasRes),
     })
   }, [])
 
@@ -341,19 +341,19 @@ export default function AdminUploadsPage() {
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
         linhasRef.current.lancamentos = res
         setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
-      } else if (key === 'lancamentos_financeiro') {
-        const res = await parseArquivoEmWorker<LancamentoFinanceiroRaw>('lancamentos_financeiro', arquivo, parseLancamentosFinanceiroFile)
+      } else if (key === 'lancamentos_movimentacao') {
+        const res = await parseArquivoEmWorker<LancamentoMovimentacaoRaw>('lancamentos_movimentacao', arquivo, parseLancamentosMovimentacaoFile)
         if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getLancamentosFinanceiroStatusAction()
+        const st = await getLancamentosMovimentacaoStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.lancamentos_financeiro = res
+        linhasRef.current.lancamentos_movimentacao = res
         setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
-      } else if (key === 'fluxo_caixa_titulos') {
-        const res = await parseArquivoEmWorker<FluxoCaixaTituloRaw>('fluxo_caixa_titulos', arquivo, parseFluxoCaixaTitulosFile)
+      } else if (key === 'titulos_em_aberto') {
+        const res = await parseArquivoEmWorker<TituloEmAbertoRaw>('titulos_em_aberto', arquivo, parseTitulosEmAbertoFile)
         if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getFluxoCaixaTitulosStatusAction()
+        const st = await getTitulosEmAbertoStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.fluxo_caixa_titulos = res
+        linhasRef.current.titulos_em_aberto = res
         setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
       } else {
         const res = await parseArquivoEmWorker<PessoaRaw>('pessoas', arquivo, parsePessoasFile)
@@ -414,34 +414,34 @@ export default function AdminUploadsPage() {
         linhasRef.current.lancamentos = []
         setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.total_linhas)} lançamentos importados com sucesso` })
 
-      } else if (key === 'lancamentos_financeiro') {
-        const rows = linhasRef.current.lancamentos_financeiro as LancamentoFinanceiroRaw[]
+      } else if (key === 'lancamentos_movimentacao') {
+        const rows = linhasRef.current.lancamentos_movimentacao as LancamentoMovimentacaoRaw[]
         let inseridas = 0
         setEstado(key, { progresso: { feito: 0, total: rows.length } })
         for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteLancamentosFinanceiroAction(rows.slice(i, i + BATCH), i === 0, nome)
+          const res = await inserirLoteLancamentosMovimentacaoAction(rows.slice(i, i + BATCH), i === 0, nome)
           if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
           inseridas += res.inseridas
           setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
         }
-        const fin = await finalizarLancamentosFinanceiroAction(totalAntes, inseridas)
+        const fin = await finalizarLancamentosMovimentacaoAction(totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.lancamentos_financeiro = []
+        linhasRef.current.lancamentos_movimentacao = []
         setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
 
-      } else if (key === 'fluxo_caixa_titulos') {
-        const rows = linhasRef.current.fluxo_caixa_titulos as FluxoCaixaTituloRaw[]
+      } else if (key === 'titulos_em_aberto') {
+        const rows = linhasRef.current.titulos_em_aberto as TituloEmAbertoRaw[]
         let inseridas = 0
         setEstado(key, { progresso: { feito: 0, total: rows.length } })
         for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteFluxoCaixaTitulosAction(rows.slice(i, i + BATCH), i === 0, nome)
+          const res = await inserirLoteTitulosEmAbertoAction(rows.slice(i, i + BATCH), i === 0, nome)
           if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
           inseridas += res.inseridas
           setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
         }
-        const fin = await finalizarFluxoCaixaTitulosAction(totalAntes, inseridas)
+        const fin = await finalizarTitulosEmAbertoAction(totalAntes, inseridas)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.fluxo_caixa_titulos = []
+        linhasRef.current.titulos_em_aberto = []
         setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
 
       } else {

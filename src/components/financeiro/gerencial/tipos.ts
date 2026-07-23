@@ -15,6 +15,12 @@ export interface Conta {
   limite:      number | null      // crédito; alimenta a faixa amarela (só a isolada usa)
   consolidado: boolean            // entra na soma do "Consolidado"
   papel:       PapelConta         // 'isolada' (coluna individual) | 'reserva' (somada à parte) | null
+  // v5.2.0 (M5) — migration 0189. `data_saldo`: date PURO (sem fuso) a que o saldo se REFERE
+  // (distinto de `atualizado_em` = quando o registro foi editado) — base do "staleness" exibido
+  // no card de cada conta. `atualizado_em` é timestamptz (UTC); exibir via fmtDataHoraSP se um
+  // dia precisar aparecer na tela (hoje só compõe o tipo — não renderizado nos cards).
+  data_saldo:    string | null
+  atualizado_em: string
 }
 
 export interface DiaProjecao {

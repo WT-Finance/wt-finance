@@ -12,6 +12,10 @@ import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
   solicitacaoSchema, campoDefSchema, movimentacoesSchema,
 } from './solicitacoes/schemas'
+import {
+  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
+  coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
+} from './fluxo/rpc-fluxo'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
@@ -449,5 +453,62 @@ describe.skipIf(!ON)('contrato RPC — Faturamento v4.37.0 (Emissão consome o C
     const cads = await rpc('buscar_cliente_corporativo', { p_nomes: [] }) as unknown as unknown[]
     expect(Array.isArray(cads)).toBe(true)
     expect(cads).toHaveLength(0)
+  })
+})
+
+describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1)', () => {
+  // As 4 RPCs novas do eixo movimentação. Gated (exigir_acesso) — a service role passa
+  // (mesmo caminho das demais RPCs gated aqui). Schemas em @/lib/fluxo/rpc-fluxo.
+  it('get_repasse_mensal(ano): [{mes,ent,sal,pct?,pct_ant?}] — repasse BRUTO', async () => {
+    const d = await rpc('get_repasse_mensal', { p_ano: 2026 })
+    expect(repasseMensalSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_horizonte(): [{l,liq,e,s,n}]', async () => {
+    const d = await rpc('get_fluxo_horizonte', {})
+    expect(horizonteSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_runway_semanal(): {saldo_operacional, semanas[13]}', async () => {
+    const d = await rpc('get_fluxo_runway_semanal', {})
+    const p = runwaySemanalSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) expect(p.data.semanas.length).toBe(13)
+  })
+  it('get_fluxo_ranking(): {pioraram[], melhoraram[]}', async () => {
+    const d = await rpc('get_fluxo_ranking', { p_limite: 7 })
+    expect(rankingCaixaSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_saldo_caixa(): [{conta,saldo,ordem,data_saldo?,reserva,atualizado_em}] (tabela própria)', async () => {
+    const d = await rpc('get_saldo_caixa', {})
+    expect(saldoCaixaSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_horizonte() v2: 12 meses rolantes + 2 anos consolidados', async () => {
+    const d = await rpc('get_fluxo_horizonte', {}) as { meses?: unknown[]; anos?: unknown[] }
+    expect(d.meses?.length).toBe(12)
+    expect(d.anos?.length).toBe(2)
+  })
+  it('get_fluxo_cobertura(): {recebiveis, saidas_mensais[≤12 fechados, ASC]}', async () => {
+    const d = await rpc('get_fluxo_cobertura', {})
+    const p = coberturaSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) {
+      expect(p.data.saidas_mensais.length).toBeLessThanOrEqual(12)
+      const meses = p.data.saidas_mensais.map(m => m.mes)
+      expect([...meses].sort()).toEqual(meses) // ordem ASC determinística
+    }
+  })
+  it('get_saldo_repasse(from,to): { sal } — repasse bruto do período', async () => {
+    const d = await rpc('get_saldo_repasse', { p_from: '2026-01-01', p_to: '2026-12-31' })
+    expect(saldoRepasseSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_previsto_diario(): {vencido_r/p, dias[d≥hoje, ASC]}', async () => {
+    const d = await rpc('get_fluxo_previsto_diario', {})
+    const p = previstoDiarioSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) {
+      const ds = p.data.dias.map(x => x.d)
+      expect([...ds].sort()).toEqual(ds) // ordem ASC determinística (o cliente soma com break)
+      const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+      if (ds.length) expect(ds[0] >= hoje).toBe(true) // vencidos ficam no balde, não na série
+    }
   })
 })
