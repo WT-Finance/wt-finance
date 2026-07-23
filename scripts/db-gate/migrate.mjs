@@ -28,6 +28,15 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const argv = process.argv.slice(2)
 const flag = n => argv.includes(n)
 
+// --fora-de-ordem (opt-in EXPLÍCITO por execução): repassa `--include-all` ao db push,
+// aceitando migration LOCAL com número menor que o último remoto. Necessário enquanto as
+// provisórias 0950–0954 da v5.4.0 (PR #191) ocupam o topo do histórico remoto — toda
+// aditiva nova (ex.: 0196) fica "fora de ordem" até o merge da v5.4.0 renumerá-las.
+// NÃO afrouxa o gate: classificação, backup-rede e confirmação destrutiva continuam
+// idênticos; o flag só muda a aceitação de ORDEM do conjunto pendente (que é o mesmo).
+const foraDeOrdem = flag('--fora-de-ordem')
+const pushArgs = ['supabase', 'db', 'push', '--linked', ...(foraDeOrdem ? ['--include-all'] : [])]
+
 // ── nível da(s) migration(s) pendente(s): 'aditiva' | 'warn' | 'destrutiva' ──
 // Usa o classificador PURO (tokenizer + top-level) por arquivo; agrega pelo MAIS forte.
 function heuristicaNivel() {
@@ -103,7 +112,7 @@ if (destrutiva) {
   }
   try {
     // O humano já confirmou AQUI → auto-responde o prompt do próprio `db push`.
-    execFileSync('npx', ['supabase', 'db', 'push', '--linked'], { cwd: REPO, input: 'Y\n', stdio: ['pipe', 'inherit', 'inherit'] })
+    execFileSync('npx', pushArgs, { cwd: REPO, input: 'Y\n', stdio: ['pipe', 'inherit', 'inherit'] })
   } catch (e) {
     console.error('✗ db push não concluído (recusado/abortado):', String(e.message || e).slice(0, 160))
     process.exit(1)
@@ -112,7 +121,7 @@ if (destrutiva) {
   // Migration ADITIVA/retrocompatível: regime autônomo — aplica.
   console.log('\n✓ gate verde → aplicando migration aditiva (db push)...\n')
   try {
-    execFileSync('npx', ['supabase', 'db', 'push', '--linked'], { cwd: REPO, input: 'Y\n', stdio: ['pipe', 'inherit', 'inherit'] })
+    execFileSync('npx', pushArgs, { cwd: REPO, input: 'Y\n', stdio: ['pipe', 'inherit', 'inherit'] })
   } catch (e) {
     console.error('✗ db push falhou:', String(e.message || e).slice(0, 160))
     process.exit(1)
