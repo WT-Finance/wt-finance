@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-23 · v5.2.0 (Fluxo de Caixa Onda 1 — realizado no eixo da MOVIMENTAÇÃO + reforma da página; checkpoint concluído, PR pronto para merge — bloqueado só pelo Vercel Hobby)
+Última atualização: 2026-07-23 · v5.2.1 (Gerencial — colaboração segura na Base de Dados: diário append-only + desfazer auditado + realtime por broadcast + trava otimista, mais acabamentos; implementado, PR draft, aguarda checkpoint + aplicação das migrations)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -9,21 +9,26 @@
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.11` (#189 mergeado — rótulo vermelho se a sync do Monde atrasar)
-- Versão em execução (worktree/branch ativa): `feat/v5-2-0-fluxo-caixa-onda1` (PR #190, draft). **Checkpoint do Yan concluído (14 rounds); gates verdes (tsc/lint/460 testes/build); PR MERGEABLE, 0 conflitos.** Falta só o Yan marcar pronto + mergear — bloqueado pelo check do **Vercel** (plano Hobby recusa deploy de repo privado de org; billing do Yan).
-- **Migrations 0185–0198 TODAS aplicadas** (produção 2024+ carregada; `fato_fluxo` ~152k). ⚠️ `0192` (DROP destrutiva) aplicada e ACEITA. As aditivas do checkpoint (0194–0198) precisaram de **`npm run db:migrate -- --aditiva --fora-de-ordem`** (flag nova) porque as provisórias 0950–0954 da v5.4.0/PR #191 ocupam o topo do histórico remoto — **toda aditiva nova precisa do flag até o merge da v5.4.0 renumerá-las**.
-- Último ADR registrado: `0154` (Fluxo de Caixa no eixo da movimentação)
-- **Ações do Yan p/ fechar:** (1) resolver Vercel (upgrade Pro); (2) marcar PR #190 pronto + mergear; (3) conceder a área RBAC **DRE** às roles no editor de acessos.
+- Versão em produção (main): `5.2.0` (#190 mergeado — Fluxo de Caixa Onda 1, eixo da movimentação; merge `097ffa4`)
+- Versão em execução (worktree/branch ativa): `feat/v5-2-1-gerencial-colaboracao` (PR draft). Colaboração segura na Base de Dados do Gerencial (M2–M5) + acabamentos (M1). **Gates locais verdes (tsc 0 / lint / 467 testes / build).** Revisor e revisor-db APROVARAM (0 CRÍTICO/ALTO; MÉDIOs endereçados).
+- **Migrations 0199–0202 (v5.2.1) NÃO aplicadas** (job em background). Aplicação + verificação via REST no **checkpoint** — ver out-briefing. As 0185–0198 (v5.2.0) já em produção.
+- ⚠️ **Aditiva nova ainda precisa de `npm run db:migrate -- --aditiva --fora-de-ordem`** + cópias untracked das 0950–0954 (v5.4.0/PR #191 ocupam o topo do remoto), removidas antes do merge — até a v5.4.0 renumerá-las.
+- Último ADR registrado: `0155` (diário append-only + undo auditado + realtime broadcast + trava otimista — v5.2.1)
+- **Ações do Yan p/ fechar a v5.2.1 (checkpoint):** (1) verificar Realtime hospedado (`realtime.topic()`/`realtime.send()` + autorização de canal privado no dashboard) — BLOQUEANTE do 0201; (2) aplicar 0199–0202 (`--aditiva --fora-de-ordem` + cópias untracked) **ANTES do merge** (o cliente chama overloads novos das RPCs); (3) testar com 2 usuários reais (simultaneidade + simular o incidente de exclusão em massa e reverter pelo Histórico); (4) marcar PR pronto + mergear.
+- **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro (Hobby recusa) — pendência de billing do Yan, herdada da v5.2.0.
 
 ## Bloqueios vigentes
 
-- **v5.2.0 Fluxo de Caixa Onda 1 — aguarda CHECKPOINT do Yan (antes do merge):** (1) subir as 2 bases
-  reais de PRODUÇÃO (histórico 2024+) pelos 2 cards novos de Upload — a amostra de dev é só-2026, então
-  os comparativos multi-ano (margem do ano anterior, ranking YTD×YTD, histórico 24m, anual) só populam
-  com o upload de produção; (2) conferir a Visão Geral reformada contra o dashboard da controladoria.
-  (O DROP das bases antigas — 0192 — JÁ FOI APLICADO e aceito; não há passo destrutivo pendente.)
-  Reconciliação: repasse bate ao centavo (meses
-  fechados); delta residual = data-base (modelo diário). Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-2-0_FluxoCaixa_Onda1.md`.
+- **v5.2.1 Gerencial: colaboração segura — aguarda CHECKPOINT do Yan (antes do merge):** implementado
+  e revisado (gates verdes; revisor/revisor-db APROVARAM). Falta: (1) **verificar o Realtime hospedado**
+  — `realtime.topic()`/`realtime.send()` existirem + autorização de canal privado ligada no dashboard
+  (BLOQUEANTE do 0201; se faltar, degradar p/ polling); (2) **aplicar 0199–0202 ANTES do merge**
+  (`--aditiva --fora-de-ordem` + cópias untracked das 0950–0954, removidas antes do merge) — o cliente
+  chama overloads NOVOS das RPCs, então sem as migrations aplicadas as edições do Gerencial quebram;
+  (3) testar com 2 usuários reais: simultaneidade (mudança de A aparece p/ B em segundos; conflito de
+  salvar avisa em vez de sobrescrever) e **simular o incidente** (excluir em massa → confirmação forte →
+  reverter pelo Histórico em 1 ação); conferir a máscara de moeda nas 2 superfícies e que o Gerencial
+  segue normal para quem só edita. Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-2-1_Gerencial_Colaboracao.md`.
 - **Faturamento roda em MODO TESTE** — o flip de produção (Asaas produção + `EMAIL_MODO=real`)
   é decisão do Yan, fora do código. A dupla trava do modo real está construída, não acionada.
 - **Virada Monde APLICADA (v5.1.4):** as 7 funções PURA-mv (Metas/Performance/Executiva/drawers) leem o

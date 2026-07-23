@@ -35,6 +35,27 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.2.1',
+    data: '2026-07-23T16:29',
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'As edições da Base de Dados do Fluxo de Caixa Gerencial agora têm histórico e desfazer. Toda alteração (criar, editar ou excluir uma linha) fica registrada — quem fez, quando e quantas linhas — num painel "Histórico de alterações" logo abaixo da base. Dá para reverter uma ação inteira ou uma linha específica em um clique. Isso responde ao episódio em que a base foi apagada por engano sem volta: agora uma exclusão em massa pode ser revertida pelo histórico. Reverter suas próprias edições unitárias é livre; reverter a ação de outra pessoa ou uma reversão em massa exige perfil de administrador.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Trabalho simultâneo ficou seguro. Quando outra pessoa altera a base, você vê um aviso discreto ("Fulano alterou N linhas") e a lista se atualiza sozinha em segundos. E se duas pessoas editarem a mesma linha ao mesmo tempo, ao salvar o sistema avisa que a linha mudou e recarrega — nunca sobrescreve em silêncio o trabalho do outro.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Ao digitar valores de saldo (nos cartões de conta do Gerencial e na janela "Editar saldos" do Fluxo de Caixa), o campo agora formata o dinheiro em tempo real no padrão brasileiro (R$, milhar com ponto, vírgula nos centavos), inclusive ao colar. E o rótulo "sem data" saiu: quando um saldo não tem data de referência, o campo fica neutro e discreto, em vez de sinalizar alerta.',
+      },
+    ],
+  },
+  {
     versao: '5.2.0',
     data: '2026-07-17T14:48',
     itens: [
