@@ -178,6 +178,24 @@ redundante hoje (defensivo); tooltip "?" só hover é padrão pré-existente do 
 - Decisões em aberto do mockup (não implementadas): persistência do horizonte escolhido (por
   usuário/sessão) — hoje reseta a cada visita.
 
+## Ajustes do checkpoint (rounds 9–10, pré-merge — pedidos do Yan)
+**Round 9 (94abc82):** aba **/financeiro/dre** criada ("DRE por Fluxo de Caixa" — pills + Composição
+dos Lançamentos MOVIDA do Fluxo; semente da Onda 2); Projeção Semanal sem scroll no card (colunas
+menores, min-w 436). **Round 10 (bcc327c):** card PRINCIPAL do Realizado (mockup aprovado): pills
+DENTRO + Entradas/Saídas/Resultado do período + Saldo de repasse bruto (acumulado no ano, sub
+explícito — a RPC é anual); RepasseMensal vira card próprio "Tendência da Margem de Repasse".
+**DRE com área RBAC PRÓPRIA** (decisão do Yan; migration **0197**, revisor-db APROVADA — GRANT/REVOKE
+redeclarados + reversão documentada): ordem 35, seed gate apertado (só admins — **o admin concede às
+demais roles no editor**), wrappers de decomposição aceitam ['executiva','financeiro/dre'];
+areasDaRota com match preciso (MÉDIO do revisor endereçado). Refino do card de posição: slider
+ABAIXO dos indicadores (fluido, Dias≤180/Meses≤18), **NCG = A Pagar − A Receber** (positiva vermelha
+= falta caixa; negativa verde), dropdown do modo em pill com menu próprio arredondado.
+- ⚠️ **Migration 0197 PENDENTE** — Yan aplica com `npm run db:migrate -- --aditiva --fora-de-ordem`
+  (única pendente). Até lá: aba DRE só para quem tem a área (ninguém), paridade do contrato 1 caso
+  vermelho. Registros: TOOLTIP_KPI_REALIZADO ainda cita a Decomposição (que mudou de aba) — texto a
+  revisitar; PRIORIDADE_INICIAL sem financeiro/dre (lacuna pré-existente das áreas estreitas);
+  Vercel Hobby ainda bloqueando deploys (Yan resolvendo).
+
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
 2. Conferir a Visão Geral reformada contra o dashboard da controladoria (mesma base ~15-16/07):
