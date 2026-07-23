@@ -42,10 +42,13 @@ interface Props {
 
 type Modo = 'dias' | 'meses' | 'sempre'
 
-const HORIZONTE: Record<'dias' | 'meses', { min: number; max: number; padrao: number; menor: number; maiores: number[] }> = {
-  dias:  { min: 1, max: 180, padrao: 10, menor: 10, maiores: [30, 60, 90, 120, 150, 180] },
-  meses: { min: 1, max: 18,  padrao: 3,  menor: 1,  maiores: [3, 6, 9, 12, 15, 18] },
-}
+// Escala ÚNICA do slider (10–180) para os DOIS modos — geometria idêntica, os marcos
+// não "pulam" ao trocar Dias↔Meses (ajuste do checkpoint): em Dias o valor é o próprio
+// dia (passo 1, 10–180); em Meses o slider anda de 10 em 10 e o MÊS = valor÷10 (1–18).
+// Só os rótulos dos marcos trocam (30↔3, 60↔6, …, 180↔18).
+const ESCALA = { min: 10, max: 180, menor: 10, maiores: [30, 60, 90, 120, 150, 180] } as const
+/** Valor PADRÃO do slider por modo (em unidades do slider; meses: 30 → 3 meses). */
+const PADRAO: Record<'dias' | 'meses', number> = { dias: 10, meses: 30 }
 
 /** ISO + n dias (aritmética UTC pura sobre a string — sem fuso). */
 function somarDias(iso: string, n: number): string {
@@ -62,22 +65,24 @@ function somarMeses(iso: string, n: number): string {
   return new Date(Date.UTC(y, m - 1 + n, Math.min(d, ultimoDia))).toISOString().slice(0, 10)
 }
 
-/** Soma a janela do horizonte sobre a série diária (strings ISO comparam cronológico). */
+/** Soma a janela do horizonte sobre a série diária (strings ISO comparam cronológico).
+ *  `valor` está em UNIDADES DO SLIDER (escala única 10–180; em meses, mês = valor÷10). */
 function somarJanela(previsto: PrevistoDiario, modo: Modo, valor: number) {
   if (modo === 'sempre') {
     let rec = previsto.vencido_r, pag = previsto.vencido_p
     for (const dia of previsto.dias) { rec += dia.r; pag += dia.p }
     return { rec, pag, rotulo: 'todo o lançado' }
   }
+  const n      = modo === 'meses' ? valor / 10 : valor
   const hoje   = hojeSP()
-  const limite = modo === 'dias' ? somarDias(hoje, valor) : somarMeses(hoje, valor)
+  const limite = modo === 'dias' ? somarDias(hoje, n) : somarMeses(hoje, n)
   let rec = 0, pag = 0
   for (const dia of previsto.dias) {
     if (dia.d > limite) break // série vem ordenada ASC da RPC
     rec += dia.r; pag += dia.p
   }
-  const unidade = modo === 'dias' ? (valor === 1 ? 'dia' : 'dias') : (valor === 1 ? 'mês' : 'meses')
-  return { rec, pag, rotulo: `próx. ${valor} ${unidade}` }
+  const unidade = modo === 'dias' ? 'dias' : (n === 1 ? 'mês' : 'meses')
+  return { rec, pag, rotulo: `próx. ${n} ${unidade}` }
 }
 
 /** Posição na régua do slider (compensa a meia-largura do thumb, ~7px). */
@@ -114,7 +119,7 @@ const editStr = (v: number): string => v.toFixed(2).replace('.', ',')
 export default function PosicaoProjetado({ saldos, previsto }: Props) {
   const [drillOpen, setDrillOpen] = useState(false)
   const [modo, setModo]           = useState<Modo>('dias')
-  const [valor, setValor]         = useState(HORIZONTE.dias.padrao)
+  const [valor, setValor]         = useState(PADRAO.dias)
 
   const { rec, pag, rotulo } = useMemo(() => somarJanela(previsto, modo, valor), [previsto, modo, valor])
   // NCG = A PAGAR − A RECEBER (ajuste do checkpoint): positivo = FALTA caixa no horizonte
@@ -128,10 +133,10 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
 
   const trocarModo = (m: Modo) => {
     setModo(m)
-    if (m !== 'sempre') setValor(HORIZONTE[m].padrao)
+    if (m !== 'sempre') setValor(PADRAO[m])
   }
 
-  const cfg = modo === 'sempre' ? null : HORIZONTE[modo]
+  const ativo = modo !== 'sempre'
 
   return (
     <>
@@ -184,22 +189,23 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
             <div className="flex flex-col gap-px flex-1 min-w-[260px]">
               <input
                 type="range"
-                min={cfg?.min ?? 1}
-                max={cfg?.max ?? 180}
+                min={ESCALA.min}
+                max={ESCALA.max}
+                step={modo === 'meses' ? 10 : 1}
                 value={valor}
-                disabled={!cfg}
+                disabled={!ativo}
                 onChange={e => setValor(Number(e.target.value))}
                 aria-label="Horizonte"
                 className="w-full disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                 style={{ accentColor: 'var(--text-secondary)' }}
               />
-              {/* régua de marcações — riscos menores + rótulo nos marcos (% da largura,
-                  compensando a meia-largura do thumb — funciona com o slider fluido) */}
+              {/* régua de marcações — GEOMETRIA FIXA (escala única): mesmos riscos e
+                  posições nos dois modos; só o RÓTULO do marco troca (30↔3, …, 180↔18) */}
               <div className="relative h-[15px] w-full" aria-hidden>
-                {cfg && Array.from({ length: Math.floor((cfg.max - cfg.menor) / cfg.menor) + 1 }, (_, i) => {
-                  const v = cfg.menor * (i + 1)
-                  const f = (v - cfg.min) / (cfg.max - cfg.min)
-                  const marco = cfg.maiores.includes(v)
+                {ativo && Array.from({ length: Math.floor((ESCALA.max - ESCALA.min) / ESCALA.menor) }, (_, i) => {
+                  const v = ESCALA.min + ESCALA.menor * (i + 1)
+                  const f = (v - ESCALA.min) / (ESCALA.max - ESCALA.min)
+                  const marco = (ESCALA.maiores as readonly number[]).includes(v)
                   return (
                     <span key={v}>
                       <span
@@ -208,7 +214,7 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
                       />
                       {marco && (
                         <span className="absolute top-1.5 -translate-x-1/2 text-[9.5px] text-zinc-400 tabular-nums" style={{ left: posTick(f) }}>
-                          {v}
+                          {modo === 'meses' ? v / 10 : v}
                         </span>
                       )}
                     </span>
