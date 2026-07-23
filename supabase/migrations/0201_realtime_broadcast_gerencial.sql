@@ -38,8 +38,10 @@ GRANT  EXECUTE ON FUNCTION app.pode_assinar_area(text) TO authenticated, service
 -- (ANTES dos triggers de propósito — ver nota de checkpoint. É o único statement que pode falhar
 --  na aplicação por dependência externa do Realtime.) realtime.messages tem RLS ligada por padrão
 --  e sem policy (nega). Esta libera SÓ o tópico 'gerencial_lancamentos', SÓ p/ quem está ativo e
---  tem a área. Sem USING(true).
-DROP POLICY IF EXISTS "gerencial_broadcast_leitura" ON realtime.messages;
+--  tem a área. Sem USING(true). (Sem DROP POLICY IF EXISTS de propósito: manteria o 0201
+--  puramente ADITIVO — DROP POLICY é classificado destrutivo pelo backup-gate. A policy é NOVA;
+--  se a aplicação falhar aqui por versão do Realtime, ela não chega a existir e a reaplicação
+--  recria limpo — por isso a policy vem antes dos triggers.)
 CREATE POLICY "gerencial_broadcast_leitura"
   ON realtime.messages FOR SELECT TO authenticated
   USING (
