@@ -53,4 +53,14 @@ describe('scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max]
     expect(noFim).toBe(300)
     expect(scrollAoArrastar(-150, noFim, 600, 300)).toBe(0) // volta ao topo
   })
+
+  it('folga (respiro nas pontas, v5.2.0): thumb começa em folga e termina em client − folga', () => {
+    const inicio = thumbGeom(600, 300, 0, 8)
+    expect(inicio.pos).toBe(8) // não encosta no topo
+    const fim = thumbGeom(600, 300, 300, 8) // scroll no máximo (600 − 300)
+    expect(fim.pos + fim.tamanho).toBe(300 - 8) // não encosta no rodapé
+    // arraste consistente com a mesma folga: percorrer o trilho útil inteiro chega ao máximo
+    const livre = (300 - 2 * 8) - fim.tamanho
+    expect(scrollAoArrastar(livre, 0, 600, 300, 8)).toBe(300)
+  })
 })

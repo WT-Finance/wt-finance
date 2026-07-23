@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import UiTooltip from '@/components/ui/tooltip'
 import type { RankingCaixa as RankingCaixaData, RankingItem } from '@/lib/fluxo/rpc-fluxo'
 import { numBRL2, fmtAxisPct } from '@/lib/fmt'
@@ -178,7 +179,8 @@ function TabelaVariacao({ titulo, corTitulo, itens, temBase, anoAtual, anoAnteri
   )
 }
 
-/** Cabeçalho ORDENÁVEL — clique alterna a direção; a seta indica a coluna ativa. */
+/** Cabeçalho ORDENÁVEL — idioma da Lista de Operações (padrão do DS): ativo =
+ *  ArrowUp/ArrowDown; ordenável inativo = ArrowUpDown cinza. */
 function ThOrdenavel({ rotulo, ativo, dir, onClick, largura }: {
   rotulo:  string
   ativo:   boolean
@@ -195,7 +197,9 @@ function ThOrdenavel({ rotulo, ativo, dir, onClick, largura }: {
         aria-label={`Ordenar por ${rotulo}`}
       >
         {rotulo}
-        <span className="text-[8px] leading-none" aria-hidden>{ativo ? (dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+        {ativo
+          ? (dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+          : <ArrowUpDown size={12} className="text-zinc-300" />}
       </button>
     </th>
   )

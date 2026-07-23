@@ -18,7 +18,7 @@
 // A sidebar mantém a implementação própria embutida (mesma mecânica; migração incremental).
 
 import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode, type UIEvent } from 'react'
-import { thumbGeom, scrollAoArrastar } from '@/lib/ui/scrollbar-math'
+import { thumbGeom, scrollAoArrastar, THUMB_FOLGA } from '@/lib/ui/scrollbar-math'
 
 type Eixo = 'y' | 'x' | 'both'
 
@@ -57,13 +57,13 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
     if (!el) return
     const ty = thumbYRef.current
     if (ty) {
-      const g = thumbGeom(el.scrollHeight, el.clientHeight, el.scrollTop)
+      const g = thumbGeom(el.scrollHeight, el.clientHeight, el.scrollTop, THUMB_FOLGA)
       if (!g.visivel) ty.style.display = 'none'
       else { ty.style.display = 'block'; ty.style.height = `${g.tamanho}px`; ty.style.transform = `translateY(${g.pos}px)` }
     }
     const tx = thumbXRef.current
     if (tx) {
-      const g = thumbGeom(el.scrollWidth, el.clientWidth, el.scrollLeft)
+      const g = thumbGeom(el.scrollWidth, el.clientWidth, el.scrollLeft, THUMB_FOLGA)
       if (!g.visivel) tx.style.display = 'none'
       else { tx.style.display = 'block'; tx.style.width = `${g.tamanho}px`; tx.style.transform = `translateX(${g.pos}px)` }
     }
@@ -118,7 +118,7 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
 
     const mover = (ev: PointerEvent) => {
       const delta = (axis === 'y' ? ev.clientY : ev.clientX) - inicio
-      const novo = scrollAoArrastar(delta, scrollBase, scrollSize, clientSize)
+      const novo = scrollAoArrastar(delta, scrollBase, scrollSize, clientSize, THUMB_FOLGA)
       if (axis === 'y') el.scrollTop = novo
       else el.scrollLeft = novo
     }
