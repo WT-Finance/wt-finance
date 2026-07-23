@@ -40,7 +40,7 @@ export default function RunwaySemanal({ data }: Props) {
   if (!semanas.length) {
     return (
       <div className="rounded-xl shadow-sm bg-white p-5 flex-1 flex flex-col">
-        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Runway Semanal</h3>
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Projeção Semanal</h3>
         <div className="flex-1 flex items-center justify-center text-sm text-zinc-400">Sem dados</div>
       </div>
     )
@@ -61,7 +61,7 @@ export default function RunwaySemanal({ data }: Props) {
   return (
     <div className="rounded-xl shadow-sm bg-white p-5 flex-1 flex flex-col">
       <div className="flex items-baseline justify-between gap-2 mb-3">
-        <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Runway Semanal</h3>
+        <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Projeção Semanal</h3>
       </div>
 
       <ResponsiveContainer width="100%" height={220}>
@@ -99,13 +99,20 @@ export default function RunwaySemanal({ data }: Props) {
       {/* Divisória entre o gráfico (e sua legenda) e a tabela abaixo. */}
       <div className="border-t border-zinc-100 mt-4" />
 
-      {/* Próximas semanas em tabela. Em tela estreita as 4 colunas contábeis não cabem —
-          min-w + <ScrollAutoHide eixo="x"> (convenção da plataforma): rola na horizontal
-          com a barra overlay abaixo do limite; acima, preenche o card sem scroll. Sem
-          scroll VERTICAL (as 5 linhas sempre cabem). Cabeçalho no padrão da plataforma
+      {/* Próximas semanas em tabela. `table-fixed` (convenção p/ container estreito): as
+          colunas dividem EXATAMENTE a largura disponível — o conteúdo nowrap não consegue
+          alargar a tabela além do card (era o que cortava a última coluna no layout auto).
+          Abaixo do min-w, rola na horizontal via <ScrollAutoHide eixo="x"> (barra overlay);
+          sem scroll VERTICAL (as 5 linhas sempre cabem). Cabeçalho no padrão da plataforma
           (caixa normal, font-medium, cor terciária); números contábeis com tabular-nums. */}
       <ScrollAutoHide eixo="x" className="mt-3">
-      <table className="w-full min-w-[460px] tabular-nums">
+      <table className="w-full min-w-[480px] table-fixed tabular-nums">
+        <colgroup>
+          <col className="w-[92px]" />
+          <col />
+          <col />
+          <col />
+        </colgroup>
         <thead>
           <tr className="text-2xs text-zinc-400 [&>th]:font-medium [&>th]:pb-1.5">
             <th className="text-left">Semana</th>

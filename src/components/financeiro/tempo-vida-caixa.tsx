@@ -91,7 +91,7 @@ export default function TempoVidaCaixa({ data }: Props) {
   if (!calc) {
     return (
       <div className="rounded-xl shadow-sm bg-white p-5">
-        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Tempo de Vida</h3>
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Runway de Caixa</h3>
         <div className="h-24 flex items-center justify-center text-sm text-zinc-400">
           Sem base para calcular (recebíveis em aberto e meses fechados de movimentação)
         </div>
@@ -108,13 +108,13 @@ export default function TempoVidaCaixa({ data }: Props) {
     <div className="rounded-xl shadow-sm bg-white p-5">
       <div className="mb-2">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Tempo de Vida</h3>
+          <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Runway de Caixa</h3>
           {/* Botão "?" de explicação — mesmo padrão do resto da plataforma (Tooltip + círculo). */}
           <Tooltip
             conteudo={`Recebíveis em aberto ÷ saída média mensal (${janela}, n=${calc.n}) · IC 95% via t de Student · "com antecipação" desconta a taxa média de 4% dos recebíveis · régua com o que está lançado hoje — não inclui saldo bancário nem vendas futuras.`}
             className="z-30 w-72 !whitespace-normal font-normal leading-snug"
           >
-            <span aria-label="Como o Tempo de Vida é calculado" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
+            <span aria-label="Como o Runway de Caixa é calculado" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
           </Tooltip>
         </div>
         <div className="flex items-baseline gap-2 mt-1">
