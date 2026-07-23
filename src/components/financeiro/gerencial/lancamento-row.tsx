@@ -18,6 +18,10 @@ export interface Lancamento {
   originador_nome: string | null
   /** Destaque persistente (v4.22 patch): pinta o fundo da linha de amarelo. */
   destacado:      boolean
+  /** v5.2.1 (M5): token da trava otimista (atualizado_em, ISO). Reenviado ao salvar/excluir para
+   *  o banco recusar a escrita se a linha mudou por baixo. NULL só em linha recém-criada localmente
+   *  antes do refresh (sem trava até re-hidratar). */
+  atualizado_em:  string | null
 }
 
 interface CellState { saving: boolean; saved: boolean; error: string | null }
@@ -56,10 +60,17 @@ function EditableCell({
   const save = async () => {
     if (localVal === String(value ?? '')) { setEditing(false); return }
     setState({ saving: true, saved: false, error: null })
-    await onSave(localVal)
-    setState({ saving: false, saved: true, error: null })
-    setEditing(false)
-    setTimeout(() => setState(s => ({ ...s, saved: false })), 1200)
+    try {
+      await onSave(localVal)
+      setState({ saving: false, saved: true, error: null })
+      setEditing(false)
+      setTimeout(() => setState(s => ({ ...s, saved: false })), 1200)
+    } catch {
+      // Falha (ex.: conflito de trava otimista): NÃO marca "salvo". O aviso e o recarregamento
+      // ficam a cargo do onConflito da linha (banner no topo da Base de Dados + router.refresh).
+      setState({ saving: false, saved: false, error: 'erro' })
+      setEditing(false)
+    }
   }
 
   const tdAlign = align === 'right' ? 'text-right' : ''
@@ -164,32 +175,41 @@ interface Props {
   contasOpcoes:    string[]
   selecionado?:    boolean
   onToggleSelecao?: () => void
+  /** v5.2.1 (M5): conflito de trava otimista (ou negação) → o pai avisa e recarrega. */
+  onConflito?:     (msg: string) => void
 }
 
-export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, selecionado = false, onToggleSelecao }: Props) {
+export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, selecionado = false, onToggleSelecao, onConflito }: Props) {
   const [isPending, startDelete] = useTransition()
   const [confirmDel, setConfirmDel] = useState(false)
   // Destaque persistente (otimista local + persistência no banco via updateLancamento).
   const [destacado, setDestacado] = useState(l.destacado)
   const [, startDestaque] = useTransition()
 
+  // v5.2.1 (M5): reenvia o token `atualizado_em` para a trava otimista. Falha → propaga o conflito
+  // (banner + refresh no pai) e LANÇA, para o EditableCell não marcar "salvo".
   const makeSaver = (campo: string) => async (valor: string) => {
     const valorParsed = campo === 'valor_final' ? Number(valor) : valor || null
-    await updateLancamento(l.id, campo, valorParsed)
+    const res = await updateLancamento(l.id, campo, valorParsed, l.atualizado_em)
+    if (!res.success) { onConflito?.(res.error); throw new Error(res.error) }
   }
 
   const handleDelete = () => {
     if (!confirmDel) { setConfirmDel(true); return }
     startDelete(async () => {
-      await deleteLancamento(l.id)
-      onDelete()
+      const res = await deleteLancamento(l.id, l.atualizado_em)
+      if (res.success) onDelete()
+      else onConflito?.(res.error)
     })
   }
 
   const toggleDestaque = () => {
     const novo = !destacado
     setDestacado(novo)
-    startDestaque(async () => { await updateLancamento(l.id, 'destacado', novo) })
+    startDestaque(async () => {
+      const res = await updateLancamento(l.id, 'destacado', novo, l.atualizado_em)
+      if (!res.success) { setDestacado(!novo); onConflito?.(res.error) } // reverte o otimista
+    })
   }
 
   const ehManual = l.origem === 'manual'

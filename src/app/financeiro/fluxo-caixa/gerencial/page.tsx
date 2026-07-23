@@ -12,7 +12,7 @@ import { type Conta, type DiaProjecao } from '@/components/financeiro/gerencial/
 // negação vale no nível da RPC, não só neste guard de página.
 
 export default async function GerencialPage() {
-  await requireArea('financeiro/gerencial')
+  const sessao = await requireArea('financeiro/gerencial')
 
   const db = await getServerClient()
   type RpcResult = { data: unknown; error: { message: string } | null }
@@ -38,6 +38,7 @@ export default async function GerencialPage() {
           saldos={saldos}
           projecao={projecao}
           lancamentos={lancamentos}
+          usuarioId={sessao.userId}
         />
       </TopSection>
     </div>

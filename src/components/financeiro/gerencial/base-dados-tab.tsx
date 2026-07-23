@@ -3,9 +3,11 @@
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload, Trash2, AlertTriangle, CalendarRange, FilterX } from 'lucide-react'
+import { Plus, Upload, Trash2, AlertTriangle, CalendarRange, FilterX, X } from 'lucide-react'
 import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { LancamentoRow, type Lancamento } from './lancamento-row'
+import HistoricoAlteracoes from './historico-alteracoes'
+import { useRealtimeGerencial } from './use-realtime-gerencial'
 import ImportDrawer from './import-drawer'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
@@ -110,10 +112,22 @@ interface Props {
   lancamentos: Lancamento[]
   /** Contas reais (gerencial_saldos) — alimentam o select de Conta e o filtro de Conta (M6). */
   saldos: Conta[]
+  /** v5.2.1 (M4): usuário atual — o realtime ignora as PRÓPRIAS mudanças (sem auto-aviso). */
+  usuarioId?: string | null
 }
 
-export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
+export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId = null }: Props) {
   const router = useRouter()
+  // v5.2.1: aviso vivo (banner) compartilhado por CONFLITO de trava (M5) e por mudança de OUTRO
+  // usuário (M4); histKey força o painel de Histórico a recarregar após qualquer mudança/desfazer.
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [histKey, setHistKey] = useState(0)
+  const avisarErecarregar = (msg: string) => { setAviso(msg); setHistKey(k => k + 1); router.refresh() }
+
+  useRealtimeGerencial(usuarioId, p => {
+    const quem = p.usuario_nome ?? 'Outro usuário'
+    avisarErecarregar(`${quem} alterou ${p.n} ${p.n === 1 ? 'linha' : 'linhas'}.`)
+  })
 
   const [itens, setItens]               = useState<Lancamento[]>(inicial)
   const [tipoFiltro, setTipoFiltro]     = useState<TipoFiltro>('todos')
@@ -217,14 +231,22 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   const handleApagar = () => {
     const ids = idsParaApagar
     if (ids.length === 0) { setConfirmBulk(false); return }
+    // v5.2.1 (M5): trava otimista em bloco — envia o atualizado_em de cada linha; o banco aborta
+    // se ALGUMA mudou por baixo (conflito → avisa, nada é apagado em silêncio).
+    const idSet = new Set(ids)
+    const esperados: Record<string, string> = {}
+    for (const l of itens) if (idSet.has(l.id) && l.atualizado_em) esperados[String(l.id)] = l.atualizado_em
     startRemover(async () => {
-      const res = await deleteLancamentosBulk(ids)
+      const res = await deleteLancamentosBulk(ids, esperados)
       setConfirmBulk(false)
       if (res.success) {
         const apagados = new Set(ids)
         setItens(prev => prev.filter(l => !apagados.has(l.id)))
         setSelecionados(new Set())
+        setHistKey(k => k + 1)
         router.refresh()
+      } else {
+        avisarErecarregar(res.error)
       }
     })
   }
@@ -255,9 +277,22 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
   }
 
   return (
-    // Card em volta: a tabela vive sobre fundo BRANCO (padrão DS), não no fundo cru da página.
+    <>
+    {/* Card em volta: a tabela vive sobre fundo BRANCO (padrão DS), não no fundo cru da página. */}
     <Card>
     <div>
+      {/* Aviso vivo (v5.2.1): conflito de trava (M5) ou mudança de outro usuário (M4). */}
+      {aviso && (
+        <div className="mb-3 flex items-start justify-between gap-2 rounded-lg border border-[var(--warning)] bg-[var(--warning-bg)] px-3 py-2 text-xs text-[var(--warning)]">
+          <span className="flex items-start gap-1.5">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            <span>{aviso} A lista foi atualizada.</span>
+          </span>
+          <button onClick={() => setAviso(null)} title="Dispensar" className="shrink-0 opacity-70 hover:opacity-100">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       {/* Header com filtros e ações (v4.23.1: tipo e busca por pessoa saíram — filtros na coluna). */}
       <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
         <div className="flex gap-2 flex-wrap items-center">
@@ -425,6 +460,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
                 onDelete={() => handleDelete(l.id)}
                 selecionado={selecionados.has(l.id)}
                 onToggleSelecao={() => toggleSel(l.id)}
+                onConflito={avisarErecarregar}
               />
             ))}
           </tbody>
@@ -448,8 +484,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
           mensagem={
             <div className="space-y-2">
               {apagarTodos
-                ? <p>Apagar <strong>todos os {idsParaApagar.length}</strong> lançamentos{rotuloOrigem}? Esta ação <strong>não pode ser desfeita</strong>.</p>
-                : <p>Apagar <strong>{selecionados.size}</strong> lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.</p>}
+                ? <p>Apagar <strong>todos os {idsParaApagar.length}</strong> lançamentos{rotuloOrigem}? Você pode reverter pelo <strong>Histórico de alterações</strong> logo abaixo.</p>
+                : <p>Apagar <strong>{selecionados.size}</strong> lançamento(s) selecionado(s)? Você pode reverter pelo <strong>Histórico de alterações</strong> logo abaixo.</p>}
               {planilhaParaApagar > 0 && (
                 <p className="flex items-start gap-1.5 rounded-lg border border-[var(--warning)] bg-[var(--warning-bg)] px-2.5 py-2 text-xs text-[var(--warning)]">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
@@ -465,5 +501,8 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos }: Props) {
       )}
     </div>
     </Card>
+    {/* v5.2.1 (M3): painel de histórico + desfazer, logo abaixo da base. */}
+    <HistoricoAlteracoes recarregarKey={histKey} onDesfeito={() => { setHistKey(k => k + 1); router.refresh() }} />
+    </>
   )
 }
