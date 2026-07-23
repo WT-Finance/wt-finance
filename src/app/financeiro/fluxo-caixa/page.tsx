@@ -52,6 +52,11 @@ interface PosicaoConta {
 // para revisão futura — basta voltar a flag para `true`.
 const MOSTRAR_POSICAO_POR_CONTA = false
 
+// Feature flag (v5.2.0, checkpoint): "Acumulado de Recebimentos e Pagamentos" oculto do
+// Fluxo Realizado — código MANTIDO por enquanto (voltar a flag se o card retornar); se
+// não voltar, remover na próxima auditoria de código morto.
+const MOSTRAR_ACUMULADO = false
+
 /** Ano de hoje em America/Sao_Paulo — alimenta get_repasse_mensal(p_ano). */
 function hojeSP(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
@@ -279,11 +284,13 @@ export default async function FluxoCaixaPage({
             {/* Fluxo Mensal chart — card e título dentro do componente */}
             <FluxoMensalChart rows={fluxoMensalRows} />
 
-            {/* Acumulado chart — título dentro do card */}
-            <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
-              <CardTitle titulo="Acumulado de Recebimentos e Pagamentos" subtitulo="24 meses passados + 18 futuros" />
-              <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
-            </div>
+            {/* Acumulado chart — oculto via flag (v5.2.0, checkpoint); código mantido */}
+            {MOSTRAR_ACUMULADO && (
+              <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
+                <CardTitle titulo="Acumulado de Recebimentos e Pagamentos" subtitulo="24 meses passados + 18 futuros" />
+                <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
+              </div>
+            )}
 
             {/* Ranking de Caixa (v5.2.0/Onda 1) */}
             <div className="mb-4">

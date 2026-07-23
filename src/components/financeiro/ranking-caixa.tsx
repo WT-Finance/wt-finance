@@ -137,12 +137,9 @@ function TabelaVariacao({ titulo, corTitulo, itens, temBase, anoAtual, anoAnteri
             {ordenados.map(it => (
               <tr key={it.c} className="[&:last-child>td]:border-0">
                 <td className="py-2 align-middle border-b border-zinc-50 pr-2 min-w-0">
-                  {/* natureza pela COR do nome: vermelho = gasto, verde = receita */}
-                  <span
-                    className="block truncate text-2xs font-medium"
-                    style={{ color: it.nat === 'desp' ? 'var(--danger)' : 'var(--success)' }}
-                    title={it.c}
-                  >
+                  {/* nome sempre NEUTRO (checkpoint) — a natureza aparece na cor dos
+                      VALORES (verde = dinheiro entrando, vermelho = saindo) */}
+                  <span className="block truncate text-2xs font-medium text-zinc-700" title={it.c}>
                     {it.c || '(sem categoria)'}
                   </span>
                 </td>
@@ -206,12 +203,13 @@ function ThOrdenavel({ rotulo, ativo, dir, onClick, largura }: {
 }
 
 /**
- * Formato contábil (modelo da controladoria): negativo entre parênteses e em cor de
- * alerta; positivo herda a cor do texto. `cor` força a cor (Var. segue o sinal).
+ * Formato contábil (modelo da controladoria): negativo entre parênteses e VERMELHO;
+ * positivo (receita/dinheiro entrando) VERDE — a natureza vive na cor do valor
+ * (checkpoint), não no nome. `cor` força a cor (Var. segue o próprio sinal).
  */
 function ValorParen({ v, cor }: { v: number; cor?: string }) {
   const neg   = v < 0
-  const style = cor ? { color: cor } : (neg ? { color: 'var(--danger)' } : undefined)
+  const style = { color: cor ?? (neg ? 'var(--danger)' : 'var(--success)') }
   return (
     <span className="text-2xs font-medium tabular-nums" style={style}>
       {neg ? `(${numBRL2(Math.abs(v))})` : numBRL2(v)}
