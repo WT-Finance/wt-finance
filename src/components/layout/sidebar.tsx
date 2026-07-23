@@ -66,8 +66,7 @@ const FINANCEIRO_SUBS: NavSubItem[] = [
   { href: '/financeiro/acervo',                label: 'Acervo de Documentos', icon: Library, area: 'financeiro/acervo', areasAny: ['financeiro/acervo', 'financeiro/acervo/gestao'] },
   { href: '/financeiro/fluxo-caixa',           label: 'Fluxo de Caixa',       icon: BarChart3,  area: 'financeiro/fluxo-caixa' },
   { href: '/financeiro/fluxo-caixa/gerencial', label: 'Gerencial',            icon: Table2,     area: 'financeiro/gerencial'   },
-  // DRE reusa a área do Fluxo de Caixa (o card veio de lá; área própria = Onda 2 da DRE).
-  { href: '/financeiro/dre',                   label: 'DRE',                  icon: FileSpreadsheet, area: 'financeiro/fluxo-caixa' },
+  { href: '/financeiro/dre',                   label: 'DRE',                  icon: FileSpreadsheet, area: 'financeiro/dre' },
   { href: '/financeiro/calculadora-rateio',    label: 'Calculadora de Rateio', icon: Calculator, area: 'financeiro/gerencial'  },
   { href: '/financeiro/faturamento-corp',      label: 'Faturamento Corporativo', icon: Receipt,  area: 'financeiro/faturamento-corp' },
 ]

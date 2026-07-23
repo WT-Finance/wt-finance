@@ -71,18 +71,20 @@ function TooltipIcon({ text }: { text: string }) {
   )
 }
 
-function KpiCard({ label, value, sub, tooltip, valueColor }: {
-  label: string; value: string; sub?: string; tooltip?: string; valueColor?: string
+/** Célula de KPI do card principal do Realizado — divisórias verticais entre células
+ *  (mesmo idioma do card de posição do Projetado), no lugar dos KPI cards separados
+ *  (mockup do checkpoint aprovado). */
+function KpiCelula({ label, value, sub, tooltip, valueColor, primeiro = false }: {
+  label: string; value: string; sub?: string; tooltip?: string; valueColor?: string; primeiro?: boolean
 }) {
   return (
-    <div className="rounded-xl shadow-sm bg-white px-5 py-4">
-      <div className="flex items-center gap-1 mb-0.5">
+    <div className={`min-w-[150px] max-w-[240px] ${primeiro ? 'pr-7' : 'px-7 border-l border-zinc-100'}`}>
+      <div className="flex items-center gap-1">
         <p className="text-2xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
         {tooltip && <TooltipIcon text={tooltip} />}
       </div>
-      {sub && <p className="text-3xs text-zinc-400 mb-3">{sub}</p>}
-      {!sub && <div className="mb-3" />}
-      <p className="text-2xl font-bold tabular-nums" style={{ color: valueColor ?? 'var(--text-primary)' }}>{value}</p>
+      {sub && <p className="text-3xs text-zinc-400 mt-px">{sub}</p>}
+      <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: valueColor ?? 'var(--text-primary)' }}>{value}</p>
     </div>
   )
 }
@@ -197,6 +199,10 @@ export default async function FluxoCaixaPage({
   const totalSaidas   = kpis.saidas_realizadas
   const saldoLiquido  = kpis.saldo_realizado
 
+  // Saldo de repasse (bruto) ACUMULADO NO ANO — a RPC do repasse é anual por construção
+  // (não segue as pills de período); o sub da célula deixa isso explícito (mockup).
+  const saldoRepasseBruto = repasseMensalRows.reduce((s, r) => s + r.sal, 0)
+
   const temDados = fluxoMensalRows.length > 0 || kpis.entradas_realizadas > 0 || kpis.saidas_realizadas > 0
 
   const saldoTotal = posicoes.reduce((s, p) => s + p.saldo, 0)
@@ -236,34 +242,42 @@ export default async function FluxoCaixaPage({
       {/* ── FLUXO REALIZADO ──────────────────────────────────────────────── */}
       <TopSection titulo="Fluxo Realizado">
 
-        {/* Period filter pills */}
-        <div className="mb-6">
-          <Suspense>
-            <PeriodoFilterPillsUrl defaultPreset="este-ano" />
-          </Suspense>
-        </div>
-
-        {/* 3 KPI cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <KpiCard
-            label="Entradas realizadas"
-            value={fmtMi(totalEntradas)}
-            sub="do período"
-            tooltip={TOOLTIP_KPI_REALIZADO}
-          />
-          <KpiCard
-            label="Saídas realizadas"
-            value={fmtMi(totalSaidas)}
-            sub="do período"
-            tooltip={TOOLTIP_KPI_REALIZADO}
-          />
-          <KpiCard
-            label="Resultado de caixa"
-            value={fmtMi(saldoLiquido)}
-            sub="do período"
-            tooltip={TOOLTIP_KPI_REALIZADO}
-            valueColor={saldoLiquido >= 0 ? 'var(--positive)' : 'var(--negative)'}
-          />
+        {/* Card PRINCIPAL do Realizado (mockup do checkpoint aprovado): pills de período
+            DENTRO do card + KPIs do período + Saldo de repasse (bruto, acumulado no ano). */}
+        <div className="rounded-xl shadow-sm bg-white px-5 py-4 mb-6">
+          <div className="mb-5">
+            <Suspense>
+              <PeriodoFilterPillsUrl defaultPreset="este-ano" />
+            </Suspense>
+          </div>
+          <div className="flex flex-wrap gap-y-4">
+            <KpiCelula
+              label="Entradas realizadas"
+              value={fmtMi(totalEntradas)}
+              sub="do período"
+              tooltip={TOOLTIP_KPI_REALIZADO}
+              primeiro
+            />
+            <KpiCelula
+              label="Saídas realizadas"
+              value={fmtMi(totalSaidas)}
+              sub="do período"
+              tooltip={TOOLTIP_KPI_REALIZADO}
+            />
+            <KpiCelula
+              label="Resultado de caixa"
+              value={fmtMi(saldoLiquido)}
+              sub="do período"
+              tooltip={TOOLTIP_KPI_REALIZADO}
+              valueColor={saldoLiquido >= 0 ? 'var(--positive)' : 'var(--negative)'}
+            />
+            <KpiCelula
+              label="Saldo de repasse (bruto)"
+              value={fmtMi(saldoRepasseBruto)}
+              sub="acumulado no ano · Entrada de Clientes − Pagto ao Fornecedor"
+              valueColor={saldoRepasseBruto >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)'}
+            />
+          </div>
         </div>
 
         {!temDados && <NoDataMessage />}

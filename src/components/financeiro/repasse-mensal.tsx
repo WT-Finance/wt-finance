@@ -7,12 +7,12 @@ import {
   ChartGrid, ChartXAxisCategoria, ChartYAxisPct, ChartZeroLine, ChartLegend,
   fluxoColors, dashArrays, strokeWidths,
 } from '@/components/charts'
-import { fmtMi, fmtBRL, fmtAxisPct } from '@/lib/fmt'
+import { fmtBRL, fmtAxisPct } from '@/lib/fmt'
 import type { RepasseMensalRow } from '@/lib/fluxo/rpc-fluxo'
 
-// Margem do Repasse (v5.2.0/Onda 1, ajuste do checkpoint) — indicador (saldo de repasse
-// bruto acumulado no ano) + linha da margem mês a mês, no MESMO box (referência: "Margem
-// do repasse" do modelo da controladoria). Linha sólida = ano corrente (SÓLIDO = real);
+// Tendência da Margem de Repasse (v5.2.0, checkpoint) — card PRÓPRIO com a linha da
+// margem mês a mês (o indicador "Saldo de repasse bruto" mudou para o card principal
+// do Realizado, no mockup aprovado). Linha sólida = ano corrente (SÓLIDO = real);
 // linha tracejada = ano anterior, como REFERÊNCIA (TRACEJADO = referência/comparação —
 // convenção da plataforma). Mês com margem negativa ganha um dot vermelho (`--danger`)
 // na linha do ano corrente.
@@ -97,7 +97,7 @@ export default function RepasseMensal({ rows }: Props) {
   if (!rows.length) {
     return (
       <div className="rounded-xl shadow-sm bg-white p-5">
-        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Margem do repasse</h3>
+        <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Tendência da Margem de Repasse</h3>
         <div className="h-40 flex items-center justify-center text-sm text-zinc-400">Sem dados para o ano</div>
       </div>
     )
@@ -105,8 +105,6 @@ export default function RepasseMensal({ rows }: Props) {
 
   const anoCorrente  = Number(hojeSP().slice(0, 4))
   const anoAnterior  = anoCorrente - 1
-
-  const saldoBruto = rows.reduce((s, r) => s + r.sal, 0)
 
   const chartData: ChartPoint[] = [...rows]
     .sort((a, b) => a.mes - b.mes)
@@ -121,26 +119,14 @@ export default function RepasseMensal({ rows }: Props) {
 
   return (
     <div className="rounded-xl shadow-sm bg-white p-5">
-      <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Margem do repasse</h3>
+      <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Tendência da Margem de Repasse</h3>
       <p className="text-2xs mb-3" style={{ color: 'var(--text-muted)' }}>
         saldo repasse ÷ entradas de clientes · mês a mês · tracejada = {anoAnterior}
       </p>
 
-      <div className="flex gap-6 items-center">
-        <div className="min-w-[160px] pr-6 border-r shrink-0" style={{ borderColor: 'var(--border)' }}>
-          <p className="text-2xs" style={{ color: 'var(--text-muted)' }}>Saldo de repasse (bruto)</p>
-          <p
-            className="text-2xl font-bold tabular-nums mt-1"
-            style={{ color: saldoBruto >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)' }}
-          >
-            {fmtMi(saldoBruto)}
-          </p>
-          <p className="text-3xs mt-1" style={{ color: 'var(--text-subtle)' }}>
-            acumulado no ano · Entrada de Clientes − Pagamento ao Fornecedor
-          </p>
-        </div>
-
-        <div className="flex-1 min-w-0">
+      {/* O indicador "Saldo de repasse (bruto)" MUDOU para o card principal do Realizado
+          (mockup do checkpoint) — aqui fica só a tendência, em card próprio. */}
+      <div className="min-w-0">
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData} margin={{ top: 16, right: 16, bottom: 0, left: 0 }}>
               {ChartGrid()}
@@ -180,7 +166,6 @@ export default function RepasseMensal({ rows }: Props) {
               { label: 'Mês negativo',        color: 'var(--danger)',       type: 'dot' },
             ]}
           />
-        </div>
       </div>
     </div>
   )

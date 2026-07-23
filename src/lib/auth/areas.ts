@@ -13,6 +13,7 @@ export const AREAS = [
   'financeiro/faturamento-corp',
   'financeiro/acervo',
   'financeiro/acervo/gestao',
+  'financeiro/dre',
   'metas',
   'metas/acompanhamento',
   'admin/uploads',
@@ -43,6 +44,9 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // visão — a página faz OR das duas áreas, então quem só tem gestão também vê).
   'financeiro/acervo':        { rotulo: 'Acervo de Documentos',          grupo: 'Financeiro', ordem: 33 },
   'financeiro/acervo/gestao': { rotulo: 'Acervo de Documentos (gestão)', grupo: 'Financeiro', ordem: 34 },
+  // DRE (v5.2.0, checkpoint): área própria da aba /financeiro/dre (migration 0197) —
+  // gate apertado no seed (só admins); o admin concede aos demais pelo editor de roles.
+  'financeiro/dre':           { rotulo: 'DRE',                           grupo: 'Financeiro', ordem: 35 },
   // Metas em DOIS níveis (v5.0.0): a CHAVE 'metas' (nome histórico) = GESTÃO/Cadastro (definir/
   // editar metas, inclui a visão + o botão "Modo de Comparação", v5.1.9); 'metas/acompanhamento'
   // = VER o Acompanhamento (liderança). A página de Acompanhamento faz OR das duas; o Cadastro e
@@ -94,6 +98,7 @@ export function areasDaRota(pathname: string): Area[] | null {
   // Acervo em DOIS níveis: qualquer uma das duas libera a página (gestão inclui a
   // visão); os botões de adicionar documento continuam exigindo só a de gestão.
   if (p.startsWith('/financeiro/acervo'))       return ['financeiro/acervo', 'financeiro/acervo/gestao']
+  if (p.startsWith('/financeiro/dre'))          return ['financeiro/dre']
   if (p.startsWith('/financeiro'))              return ['financeiro/fluxo-caixa', 'financeiro/gerencial']
   if (p.startsWith('/executiva'))               return ['executiva']
   // Metas em DOIS níveis (v5.0.0): /metas/cadastro exige a área forte 'metas' (editar);

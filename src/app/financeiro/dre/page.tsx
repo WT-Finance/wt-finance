@@ -12,9 +12,9 @@ import TopSection from '@/components/shared/top-section'
 // do Fluxo de Caixa: aqui ela é a semente da futura DRE por Fluxo de Caixa (Onda 2, a
 // struct de 159 linhas da controladoria).
 //
-// RBAC: reusa a área 'financeiro/fluxo-caixa' (o card veio de lá; mesma audiência, e as
-// RPCs de decomposição já exigem essa área no banco). Área própria 'financeiro/dre' fica
-// para quando a DRE ganhar corpo na Onda 2 — decisão registrada no out-briefing.
+// RBAC: área PRÓPRIA 'financeiro/dre' (decisão do Yan; migration 0197) — seed gate
+// apertado (só admins); o admin concede aos demais pelo editor de roles. Os wrappers de
+// decomposição aceitam ['executiva','financeiro/dre'] desde a 0197.
 
 interface SearchParams {
   preset?: string
@@ -49,7 +49,7 @@ export default async function DrePage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  await requireArea('financeiro/fluxo-caixa')
+  await requireArea('financeiro/dre')
 
   const sp = await searchParams
   const { from, to } = resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
