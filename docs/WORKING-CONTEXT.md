@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-17 · v5.2.0 (Fluxo de Caixa Onda 1 — realizado no eixo da MOVIMENTAÇÃO + reforma da página; PR aberto, aguardando checkpoint do Yan)
+Última atualização: 2026-07-23 · v5.2.0 (Fluxo de Caixa Onda 1 — realizado no eixo da MOVIMENTAÇÃO + reforma da página; checkpoint concluído, PR pronto para merge — bloqueado só pelo Vercel Hobby)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -10,9 +10,10 @@
 ## Verdade atual
 
 - Versão em produção (main): `5.1.11` (#189 mergeado — rótulo vermelho se a sync do Monde atrasar)
-- Versão em execução (worktree/branch ativa): `feat/v5-2-0-fluxo-caixa-onda1` (Fluxo de Caixa Onda 1; PR aberto). **Backend aplicado + validado; frontend done; gates verdes.**
-- Última migration **aplicada**: `0193_fix_runway_idx.sql` (v5.2.0; **0185–0193 TODAS aplicadas**). ⚠️ **`0192` (DROP das bases antigas do Fluxo de Caixa, DESTRUTIVA) foi aplicada — ACEITO pelo Yan.** (Aplicada sem querer junto de 0193 via `db:migrate --aditiva`, que empurra todo o pending; backup pré-push `~/wt-finance-backups/2026-07-17-pre-migration-181849/`. O DROP era o end-state planejado; a Onda 1 está validada ao centavo. Lição: nunca deixar migration destrutiva pendente na pasta ao rodar `--aditiva`.)
+- Versão em execução (worktree/branch ativa): `feat/v5-2-0-fluxo-caixa-onda1` (PR #190, draft). **Checkpoint do Yan concluído (14 rounds); gates verdes (tsc/lint/460 testes/build); PR MERGEABLE, 0 conflitos.** Falta só o Yan marcar pronto + mergear — bloqueado pelo check do **Vercel** (plano Hobby recusa deploy de repo privado de org; billing do Yan).
+- **Migrations 0185–0198 TODAS aplicadas** (produção 2024+ carregada; `fato_fluxo` ~152k). ⚠️ `0192` (DROP destrutiva) aplicada e ACEITA. As aditivas do checkpoint (0194–0198) precisaram de **`npm run db:migrate -- --aditiva --fora-de-ordem`** (flag nova) porque as provisórias 0950–0954 da v5.4.0/PR #191 ocupam o topo do histórico remoto — **toda aditiva nova precisa do flag até o merge da v5.4.0 renumerá-las**.
 - Último ADR registrado: `0154` (Fluxo de Caixa no eixo da movimentação)
+- **Ações do Yan p/ fechar:** (1) resolver Vercel (upgrade Pro); (2) marcar PR #190 pronto + mergear; (3) conceder a área RBAC **DRE** às roles no editor de acessos.
 
 ## Bloqueios vigentes
 
