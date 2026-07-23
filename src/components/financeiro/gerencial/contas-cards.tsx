@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Settings, ChevronRight } from 'lucide-react'
-import { fmtDate } from '@/lib/fmt'
+import { fmtDate, hojeSP, diasDesde, rotuloStaleness } from '@/lib/fmt'
 import { updateSaldo } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { NumCell } from './contas-manager'
 import { PAPEL_LABEL, type Conta } from './tipos'
@@ -20,35 +20,13 @@ import { PAPEL_LABEL, type Conta } from './tipos'
 // Editar SÓ o número (NumCell) grava data_saldo = HOJE por padrão (a action assume isso quando
 // a data não vem explícita); editar a data (DataSaldoCell) preserva o saldo atual e só corrige a
 // referência — os dois caminhos passam pelo MESMO updateSaldo (RPC update_gerencial_saldo de 3
-// args). O rótulo visível da célula de data É o staleness ("há N dias"/"hoje"/"sem data"); a
-// data exata (fmtDate — sem conversão de fuso, `data_saldo` é `date` puro) vai no tooltip.
-
-/** Dias corridos entre `dataSaldo` ('YYYY-MM-DD', date puro — SEM fuso) e HOJE em São Paulo.
- *  NUNCA `new Date(dataSaldo)` direto: o construtor trata data-only como meia-noite UTC e, ao
- *  formatar num fuso negativo, o dia pode "voltar" (landmine documentada em @/lib/fmt via
- *  parseLocalDate) — aqui os dois lados são comparados como calendário puro (Date.UTC),
- *  independente do fuso de quem roda o código. */
-function hojeSP(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
-}
-function diasDesde(dataSaldo: string | null): number | null {
-  if (!dataSaldo) return null
-  const [hy, hm, hd] = hojeSP().split('-').map(Number)
-  const [dy, dm, dd] = dataSaldo.split('-').map(Number)
-  return Math.round((Date.UTC(hy, hm - 1, hd) - Date.UTC(dy, dm - 1, dd)) / 86_400_000)
-}
-
-/** Rótulo + cor do staleness. Neutro até 3 dias; atenção (--warning) de 4 a 7; alerta (--danger)
- *  acima de 7 — não há um limiar de referência no briefing, este é o adotado para o drill por
- *  conta (M5). Cor SEMPRE por token (nunca hex). */
-function rotuloStaleness(dias: number | null): { texto: string; cor: string } {
-  if (dias === null) return { texto: 'sem data', cor: 'text-zinc-300' }
-  if (dias < 0)       return { texto: 'data futura', cor: 'text-zinc-400' }
-  if (dias === 0)      return { texto: 'hoje', cor: 'text-zinc-400' }
-  if (dias <= 3)       return { texto: `há ${dias} dia${dias > 1 ? 's' : ''}`, cor: 'text-zinc-400' }
-  if (dias <= 7)       return { texto: `há ${dias} dias`, cor: 'text-warning' }
-  return                     { texto: `há ${dias} dias`, cor: 'text-danger' }
-}
+// args). O rótulo visível da célula de data É o staleness ("há N dias"/"hoje"); SEM data → um
+// placeholder neutro "—" clicável (v5.2.1/M1 extinguiu o rótulo "sem data": nulo = nada). A data
+// exata (fmtDate — sem conversão de fuso, `data_saldo` é `date` puro) vai no tooltip.
+//
+// v5.2.1 (M1) — `hojeSP`/`diasDesde`/`rotuloStaleness` deixaram de ser locais: são a FONTE ÚNICA
+// de @/lib/fmt, compartilhada com o drill do projetado (posicao-projetado.tsx), resolvendo a
+// duplicação sinalizada na v5.2.0.
 
 /** Data a que o saldo se refere — clique para editar (mesmo padrão de NumCell/NomeCell:
  *  clique abre o `<input type="date">` nativo, blur/Enter salva). O texto exibido em repouso é
@@ -77,9 +55,9 @@ function DataSaldoCell({ valor, onSave }: {
   const { texto, cor } = rotuloStaleness(diasDesde(valor))
   return (
     <button onClick={() => { setTxt(valor ?? ''); setEditando(true) }}
-      className={`text-2xs hover:text-[var(--brand)] transition-colors ${cor}`}
-      title={valor ? `Saldo referente a ${fmtDate(valor)} — clique para editar` : 'Sem data informada — clique para preencher'}>
-      {saving ? '…' : texto}
+      className={`text-2xs hover:text-[var(--brand)] transition-colors ${cor || 'text-zinc-300'}`}
+      title={valor ? `Saldo referente a ${fmtDate(valor)} — clique para editar` : 'Definir data do saldo'}>
+      {saving ? '…' : (texto || '—')}
     </button>
   )
 }

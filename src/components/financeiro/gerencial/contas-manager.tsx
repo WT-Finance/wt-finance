@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, GripVertical } from 'lucide-react'
 import { fmtBRL2 } from '@/lib/fmt'
 import { toNum } from '@/lib/carga/coercao'
+import { InputMoeda } from '@/components/shared/input-moeda'
 import { createConta, updateConta, deleteConta, reordenarContas, type PapelConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { PAPEL_LABEL, type Conta } from './tipos'
 
@@ -22,39 +23,35 @@ import { PAPEL_LABEL, type Conta } from './tipos'
 // local antigo fazia `replace(/\./g,'')` e, semeado com `String(105993.35)`="105993.35", tratava o
 // ponto como milhar → 10599335 (corrupção). Exibição com fmtBRL2 (centavos; saldo é dinheiro).
 
-/** Edita um número como string BR (vírgula decimal, 2 casas, sem milhar) — round-trip seguro com
- *  toNum e imune a ruído de float (toFixed fixa 2 casas; toNum lê ",dd" como decimal BR). */
-const editStr = (v: number | null): string => (v == null ? '' : v.toFixed(2).replace('.', ','))
-
-/** Célula numérica clicável (saldo/limite). Vazio em `limite` = sem limite (null). */
+/** Célula numérica clicável (saldo/limite). Vazio em `limite` = sem limite (null). O input de
+ *  edição usa a máscara de moeda pt-BR em tempo real compartilhada (InputMoeda, v5.2.1/M1) —
+ *  antes era `<input>` texto-livre + editStr + parse-no-blur com toNum. */
 export function NumCell({ valor, onSave, permiteVazio }: {
   valor: number | null; onSave: (v: number | null) => Promise<void>; permiteVazio?: boolean
 }) {
   const [editando, setEditando] = useState(false)
-  const [txt, setTxt] = useState(editStr(valor))
   const [saving, setSaving] = useState(false)
 
-  const salvar = async () => {
-    const vazio = txt.trim() === ''
-    const num = vazio ? (permiteVazio ? null : 0) : toNum(txt)
-    // Entrada não-vazia que não é número (ex.: "abc") → INVÁLIDA: reverte sem salvar,
-    // para não zerar um saldo por digitação errada (item 11: "pode levar o usuário ao erro").
-    if (!vazio && num === null) { setTxt(editStr(valor)); setEditando(false); return }
+  // Entrada inválida é impossível pela máscara (só dígitos contam); comparar ao valor atual
+  // evita salvar sem mudança. Mantém o caminho otimista da célula (item 11, v4.23.1).
+  const commit = async (num: number | null) => {
     if (num === valor) { setEditando(false); return }
     setSaving(true); await onSave(num); setSaving(false); setEditando(false)
   }
   if (editando) {
     return (
-      <input
-        autoFocus value={txt} onChange={e => setTxt(e.target.value)} onBlur={salvar}
-        onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') setEditando(false) }}
+      <InputMoeda
+        valorInicial={valor}
+        permiteVazio={permiteVazio}
+        onCommit={commit}
+        onCancel={() => setEditando(false)}
         placeholder={permiteVazio ? 'sem limite' : '0'}
-        className="w-24 text-right text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none tabular-nums"
+        className="w-28 text-right text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none tabular-nums"
       />
     )
   }
   return (
-    <button onClick={() => { setTxt(editStr(valor)); setEditando(true) }}
+    <button onClick={() => setEditando(true)}
       className="text-xs tabular-nums hover:text-[var(--brand)] transition-colors"
       title="Clique para editar">
       {saving ? '…' : valor == null ? <span className="text-zinc-300">—</span> : fmtBRL2(valor)}

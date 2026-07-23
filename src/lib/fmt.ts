@@ -161,3 +161,56 @@ export const fmtDataHora = (iso: string): string => {
   const [hh, mm] = hora.split(':')
   return `${dataFmt}, às ${hh}h${mm}min`
 }
+
+// ── "Hoje" no fuso de São Paulo (data pura 'YYYY-MM-DD') ────────────────────────
+/** Data de HOJE no fuso de São Paulo como 'YYYY-MM-DD' (calendário puro, sem hora).
+ *  `en-CA` formata em ISO. Home canônico deste helper — há cópias locais espalhadas
+ *  (solicitações, actions do Fluxo, páginas) cuja consolidação total é dívida conhecida;
+ *  a v5.2.1/M1 unificou aqui os usos das duas superfícies de saldo do Fluxo de Caixa. */
+export function hojeSP(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+}
+
+// ── Staleness da data de um saldo (fonte única — dedupe v5.2.1/M1) ──────────────
+/** Dias corridos entre `dataSaldo` ('YYYY-MM-DD', date puro — SEM fuso) e HOJE em São
+ *  Paulo. Compara como calendário puro (Date.UTC dos dois lados), nunca `new Date(iso)`
+ *  direto (data-only vira meia-noite UTC e "volta" um dia num fuso negativo; ver
+ *  parseLocalDate). `null` quando não há data. */
+export function diasDesde(dataSaldo: string | null | undefined): number | null {
+  if (!dataSaldo) return null
+  const [hy, hm, hd] = hojeSP().split('-').map(Number)
+  const [dy, dm, dd] = dataSaldo.split('-').map(Number)
+  return Math.round((Date.UTC(hy, hm - 1, hd) - Date.UTC(dy, dm - 1, dd)) / 86_400_000)
+}
+
+/** Rótulo + cor (token) + badge do staleness da data de um saldo. Neutro até 3 dias;
+ *  atenção (--warning) de 4 a 7; alerta (--danger) acima de 7. **`dias === null` (sem data)
+ *  → SEM staleness**: a v5.2.1/M1 extinguiu o rótulo "sem data" (decisão do Yan: "nulo =
+ *  nada"); a célula chamadora renderiza um placeholder neutro clicável. Cor sempre por
+ *  token. Fonte única das duas superfícies do Fluxo de Caixa (cards do Gerencial e drill
+ *  do projetado), que antes duplicavam esta lógica. */
+export function rotuloStaleness(dias: number | null): {
+  texto: string; cor: string; badge: 'warning' | 'danger' | null
+} {
+  if (dias === null) return { texto: '',            cor: '',              badge: null }
+  if (dias < 0)       return { texto: 'data futura', cor: 'text-zinc-400', badge: null }
+  if (dias === 0)     return { texto: 'hoje',        cor: 'text-zinc-400', badge: null }
+  if (dias <= 3)      return { texto: `há ${dias} dia${dias > 1 ? 's' : ''}`, cor: 'text-zinc-400', badge: null }
+  if (dias <= 7)      return { texto: `há ${dias} dias`, cor: 'text-warning', badge: 'warning' }
+  return                     { texto: `há ${dias} dias`, cor: 'text-danger',  badge: 'danger' }
+}
+
+// ── Máscara de moeda pt-BR em tempo real ("dígitos como centavos") — v5.2.1/M1 ──
+/** Máscara de moeda pt-BR em tempo real. O estado interno são os DÍGITOS CRUS lidos do
+ *  campo (todo não-dígito é descartado — colar funciona), interpretados como CENTAVOS e
+ *  reformatados a cada tecla: digitar `122829,13` → `R$ 122.829,13`. Um `-` em qualquer
+ *  posição torna o valor negativo (saldos de conta podem ser negativos). Campo vazio →
+ *  `valor: null`. É MÁSCARA DE DIGITAÇÃO ao vivo, não coerção de planilha (essa é o `toNum`
+ *  de @/lib/carga/coercao); por isso vive aqui em fmt, não lá. */
+export function mascaraMoeda(raw: string): { display: string; valor: number | null } {
+  const neg = raw.includes('-')
+  const digits = raw.replace(/\D/g, '').slice(0, 15) // guarda de precisão (NUMERIC(15,2))
+  if (digits === '') return { display: neg ? '-' : '', valor: null }
+  const abs = Number(digits) / 100
+  return { display: `${neg ? '-' : ''}R$ ${numBRL2(abs)}`, valor: (neg ? -1 : 1) * abs }
+}
