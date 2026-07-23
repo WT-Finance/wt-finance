@@ -142,6 +142,30 @@ contrato coberto em `rpc-contrato.test.ts`.
   (service role): recebíveis R$ 16,84 Mi + 12 meses fechados jul/25–jun/26 (base de produção já
   carregada). **Testes 456/456 verdes** com o caso novo do contrato.
 
+## Ajustes do checkpoint (rounds 7–8, pré-merge — pedidos do Yan)
+**Round 7 (0a6d741…0bb806c):** Runway de Caixa refinado (título "Tempo de Vida"→"Runway de Caixa",
+fórmula/nota viram botão "?" com Tooltip, bloco explicativo removido, escala colada na barra,
+faixa "ideal", badge fora, manchete com "| X,X meses no pior cenário" = piso do IC com antecipação);
+"Runway Semanal"→"Projeção Semanal"; tabela da Projeção sem corte (**table-fixed** + colgroup — no
+layout auto o min-content nowrap alargava a tabela além do card; min-w 480 + ScrollAutoHide abaixo).
+
+**Round 8 — card ÚNICO de posição do Fluxo Projetado (commit a6d2961; modelo fechado em MOCKUP
+INTERATIVO, variante A aprovada):** os 4 KPI cards viram um card — Saldo de Caixa (+ reserva +
+"Editar saldos ›" no modal editável) | A receber · A pagar · NCG com divisórias verticais e
+**horizonte ajustável** no cabeçalho (dropdown Dias 1–90/Meses 1–12/Sempre + slider com régua de
+marcações 30/60/90 e 3/6/9/12; "Sempre" trava e soma todo o lançado incl. vencidos). Migration
+**0196** (aditiva, **revisor-db APROVADA**): `get_fluxo_previsto_diario` = série diária do previsto
++ balde de vencidos; o cliente soma a janela (slider instantâneo). Semântica = BETWEEN hoje..hoje+N
+do card antigo; `get_fluxo_caixa_kpis_diario` sai da página (fica no banco). `saldo-caixa-kpi.tsx`
+→ `posicao-projetado.tsx` (git mv). **revisor APROVADO**; MÉDIOs endereçados (somarMeses com clamp
+no fim do mês; pill do select em `--brand-*`, não `--action-*`); BAIXOs corrigidos (dedupe hojeSP,
+comentários do rename). Registro (BAIXO revisor-db): `NOT pos_corte` no balde de vencidos é
+redundante hoje (defensivo); tooltip "?" só hover é padrão pré-existente do primitivo.
+- ⚠️ **Migration 0196 PENDENTE de aplicação** (classificador da sessão bloqueia `db:migrate`; o Yan
+  aplica com `--aditiva` — única pendente). Até lá: KPIs do card zeram (fail-safe) e contrato 456/457.
+- Decisões em aberto do mockup (não implementadas): persistência do horizonte escolhido (por
+  usuário/sessão) — hoje reseta a cada visita.
+
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
 2. Conferir a Visão Geral reformada contra o dashboard da controladoria (mesma base ~15-16/07):
