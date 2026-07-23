@@ -161,8 +161,20 @@ do card antigo; `get_fluxo_caixa_kpis_diario` sai da página (fica no banco). `s
 no fim do mês; pill do select em `--brand-*`, não `--action-*`); BAIXOs corrigidos (dedupe hojeSP,
 comentários do rename). Registro (BAIXO revisor-db): `NOT pos_corte` no balde de vencidos é
 redundante hoje (defensivo); tooltip "?" só hover é padrão pré-existente do primitivo.
-- ⚠️ **Migration 0196 PENDENTE de aplicação** (classificador da sessão bloqueia `db:migrate`; o Yan
-  aplica com `--aditiva` — única pendente). Até lá: KPIs do card zeram (fail-safe) e contrato 456/457.
+- **Migration 0196 APLICADA pelo Yan** (gate verde). O push esbarrou 2× no histórico remoto: (1) as
+  provisórias **0950–0954 da v5.4.0** (PR #191) constam aplicadas no remoto e não existiam nesta
+  branch — resolvido trazendo os arquivos como cópias UNTRACKED só para o CLI (removidas após o
+  push; **não** se usou `migration repair`, que falsificaria o histórico e quebraria o checklist de
+  renumeração da v5.4.0); (2) a 0196 é "menor" que 0954 → fora de ordem — resolvido com o flag novo
+  **`--fora-de-ordem`** do wrapper (commit aec5d93; repassa `--include-all` ao db push, opt-in por
+  execução, sem afrouxar classificação/backup/confirmação). **Toda aditiva nova precisa do flag até
+  o merge da v5.4.0 renumerar as provisórias.** RPC verificada via REST (série desde hoje + balde de
+  vencidos 1,48/1,88 Mi); **testes 457/457**.
+- ⚠️ **Vercel parou de deployar (preview E produção futura):** o plano Hobby não aceita integração
+  Git de repositório privado de ORGANIZAÇÃO — falha desde ~21/07 ("Cannot deploy from a private
+  GitHub organization repository on the Hobby plan"); o último deploy verde é anterior. **O merge da
+  v5.2.0 não vai deployar até resolver** — decisão do Yan (upgrade Pro é o caminho indicado; Hobby é
+  não-comercial de todo modo).
 - Decisões em aberto do mockup (não implementadas): persistência do horizonte escolhido (por
   usuário/sessão) — hoje reseta a cada visita.
 
