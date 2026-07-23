@@ -199,6 +199,17 @@ ABAIXO dos indicadores (fluido, Dias≤180/Meses≤18), **NCG = A Pagar − A Re
   PRIORIDADE_INICIAL sem financeiro/dre (lacuna pré-existente das áreas estreitas); Vercel Hobby
   ainda bloqueando deploys (Yan resolvendo).
 
+## Ajustes do checkpoint (rounds 11–14, pré-merge — pedidos do Yan)
+Refinos do card de posição: células flex-1 (largura toda), slider em ESCALA ÚNICA 10–180 (meses =
+valor÷10 — marcos fixos entre os modos; mín. dias = 10) ABAIXO dos indicadores com subtítulo
+"Horizonte de tempo:", rádios à direita (DropdownPill removido), NCG = A Pagar − A Receber (positiva
+vermelha = falta caixa). Pills de período com `scroll:false` (platform-wide, não pula ao topo).
+Realizado: Resultado 1º, sem subtítulos/"i", "?" no Saldo de repasse e na Tendência; **Saldo de
+repasse SENSÍVEL ao período** — RPC `get_saldo_repasse` (migration **0198**, revisor-db APROVADA,
+**APLICADA pelo Yan**; YTD bate AO CENTAVO com a soma da mensal; **testes 459/459**). Ranking →
+**"Maiores variações"**: card único com divisória, títulos coloridos, natureza pela cor do nome,
+sem prioridade/fundo, colunas Var. (R$)/Var. (%) ORDENÁVEIS (padrão Var. R$), "?" no título.
+
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
 2. Conferir a Visão Geral reformada contra o dashboard da controladoria (mesma base ~15-16/07):
