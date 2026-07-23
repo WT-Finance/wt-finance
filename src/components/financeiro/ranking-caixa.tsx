@@ -62,7 +62,7 @@ export default function RankingCaixa({ data }: Props) {
         <div className="md:pr-6">
           <TabelaVariacao
             titulo="Pioraram o caixa"
-            corTitulo="var(--negative-deep)"
+            corTitulo="var(--danger)"
             itens={data.pioraram}
             temBase={temBase}
             anoAtual={anoAtual}
@@ -73,7 +73,7 @@ export default function RankingCaixa({ data }: Props) {
         <div className="md:pl-6">
           <TabelaVariacao
             titulo="Melhoraram o caixa"
-            corTitulo="var(--positive-deep)"
+            corTitulo="var(--success)"
             itens={data.melhoraram}
             temBase={temBase}
             anoAtual={anoAtual}
@@ -139,7 +139,7 @@ function TabelaVariacao({ titulo, corTitulo, itens, temBase, anoAtual, anoAnteri
                   {/* natureza pela COR do nome: vermelho = gasto, verde = receita */}
                   <span
                     className="block truncate text-2xs font-medium"
-                    style={{ color: it.nat === 'desp' ? 'var(--negative-deep)' : 'var(--positive-deep)' }}
+                    style={{ color: it.nat === 'desp' ? 'var(--danger)' : 'var(--success)' }}
                     title={it.c}
                   >
                     {it.c || '(sem categoria)'}
@@ -155,7 +155,7 @@ function TabelaVariacao({ titulo, corTitulo, itens, temBase, anoAtual, anoAnteri
                 </td>
                 {temBase && (
                   <td className="py-2 align-middle border-b border-zinc-50 pl-2 text-right whitespace-nowrap">
-                    <ValorParen v={it.d} cor={it.d >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)'} />
+                    <ValorParen v={it.d} cor={it.d >= 0 ? 'var(--success)' : 'var(--danger)'} />
                   </td>
                 )}
                 {temBase && (
@@ -163,7 +163,7 @@ function TabelaVariacao({ titulo, corTitulo, itens, temBase, anoAtual, anoAnteri
                     {it.pct === null ? (
                       <span className="text-2xs text-zinc-300">—</span>
                     ) : (
-                      <span className="text-2xs font-medium tabular-nums" style={{ color: it.pct >= 0 ? 'var(--positive-deep)' : 'var(--negative-deep)' }}>
+                      <span className="text-2xs font-medium tabular-nums" style={{ color: it.pct >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                         {it.pct >= 0 ? '+' : ''}{fmtAxisPct(it.pct, 1)}
                       </span>
                     )}
@@ -207,7 +207,7 @@ function ThOrdenavel({ rotulo, ativo, dir, onClick, largura }: {
  */
 function ValorParen({ v, cor }: { v: number; cor?: string }) {
   const neg   = v < 0
-  const style = cor ? { color: cor } : (neg ? { color: 'var(--negative-deep)' } : undefined)
+  const style = cor ? { color: cor } : (neg ? { color: 'var(--danger)' } : undefined)
   return (
     <span className="text-2xs font-medium tabular-nums" style={style}>
       {neg ? `(${numBRL2(Math.abs(v))})` : numBRL2(v)}

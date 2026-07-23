@@ -142,7 +142,9 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
     <>
       <div className="rounded-xl shadow-sm bg-white px-5 py-4 flex flex-col md:flex-row gap-4 md:gap-6">
         {/* ── Saldo de Caixa (imune ao horizonte) ─────────────────────────── */}
-        <div className="md:min-w-[190px] md:pr-6 md:border-r pb-3 md:pb-0 border-b md:border-b-0 border-zinc-100 flex flex-col">
+        {/* Largura FIXA generosa (não mais min-w estreito) — equilibra com a folga que
+            sobrava à direita das células (ajuste do checkpoint). */}
+        <div className="md:w-[260px] md:shrink-0 md:pr-6 md:border-r pb-3 md:pb-0 border-b md:border-b-0 border-zinc-100 flex flex-col">
           <p className="text-2xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Saldo de Caixa</p>
           <p className="text-3xs text-zinc-400 mb-2">operacional · exclui reserva</p>
           {saldos.length === 0 ? (
