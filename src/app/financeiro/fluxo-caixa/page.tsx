@@ -8,7 +8,6 @@ import { fmtMi } from '@/lib/fmt'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import FluxoMensalChart, { type FluxoMensalV3Row } from '@/components/financeiro/fluxo-mensal-chart'
 import FluxoAcumuladoChart, { type FluxoAcumuladoRow } from '@/components/financeiro/fluxo-acumulado-chart'
-import ComposicaoPeriodo from '@/components/financeiro/composicao-lancamentos'
 import PosicaoPorConta from '@/components/financeiro/posicao-por-conta'
 import TopSection from '@/components/shared/top-section'
 import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
@@ -45,19 +44,6 @@ interface PosicaoConta {
   conta:      string
   tipo_conta: string
   saldo:      number
-}
-
-interface DecomposicaoGrupo {
-  grupo_categoria: string
-  sinal:           'entrada' | 'saida'
-  valor_total:     number
-}
-
-interface DecomposicaoCategoria {
-  categoria:       string
-  grupo_categoria: string
-  sinal:           'entrada' | 'saida'
-  valor_total:     number
 }
 
 const TOOLTIP_KPI_REALIZADO =
@@ -151,8 +137,6 @@ export default async function FluxoCaixaPage({
     fluxoAcumuladoRes,
     kpisRes,
     previstoDiarioRes,
-    decomposicaoRes,
-    decomposicaoCategoriaRes,
     posicaoRes,
     saldosRes,
     repasseMensalRes,
@@ -165,8 +149,6 @@ export default async function FluxoCaixaPage({
     rpc('get_fluxo_caixa_acumulado_v1'),
     rpc('get_fluxo_caixa_kpis_b',        { p_from: from, p_to: to }),
     rpc('get_fluxo_previsto_diario'),
-    rpc('get_decomposicao_grupo',         { p_from: from, p_to: to }),
-    rpc('get_decomposicao_categoria',     { p_from: from, p_to: to }),
     rpc('get_posicao_por_conta'),
     rpc('get_saldo_caixa'),
     rpc('get_repasse_mensal',      { p_ano: anoAtual }),
@@ -190,9 +172,6 @@ export default async function FluxoCaixaPage({
     parseRpc(previstoDiarioSchema, previstoDiarioRes, 'get_fluxo_previsto_diario') ??
     { vencido_r: 0, vencido_p: 0, dias: [] }
 
-  const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
-  const decomposicaoCategorias =
-    unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
   const posicoes = unwrapRpc<PosicaoConta[]>(posicaoRes, 'get_posicao_por_conta') ?? []
 
   // Saldo de caixa PRÓPRIO do Fluxo Projetado (financeiro.saldo_caixa) — vazio (fail-safe)
@@ -219,9 +198,6 @@ export default async function FluxoCaixaPage({
   const saldoLiquido  = kpis.saldo_realizado
 
   const temDados = fluxoMensalRows.length > 0 || kpis.entradas_realizadas > 0 || kpis.saidas_realizadas > 0
-
-  const entradas = decomposicao.filter(d => d.sinal === 'entrada').sort((a, b) => b.valor_total - a.valor_total)
-  const saidas   = decomposicao.filter(d => d.sinal === 'saida').sort((a, b) => b.valor_total - a.valor_total)
 
   const saldoTotal = posicoes.reduce((s, p) => s + p.saldo, 0)
 
@@ -313,24 +289,16 @@ export default async function FluxoCaixaPage({
               <RankingCaixa data={rankingCaixa} />
             </div>
 
-            {/* Composição dos Lançamentos (largura total) — título dentro do card */}
-            <div className="grid grid-cols-1 gap-4 mb-4">
-              <div className="rounded-xl shadow-sm bg-white p-5">
-                <CardTitle titulo="Composição dos Lançamentos" subtitulo="no período selecionado" />
-                <p className="text-2xs text-zinc-400 mb-3 -mt-2">
-                  Decomposição por Grupo de Categoria (Lançamentos — regime contábil). Pode diferir levemente dos KPIs acima, que refletem fluxo bancário real.
-                </p>
-                <ComposicaoPeriodo entradas={entradas} saidas={saidas} categorias={decomposicaoCategorias} />
-              </div>
+            {/* Composição dos Lançamentos MUDOU para a aba DRE (/financeiro/dre) —
+                checkpoint v5.2.0: lá é a semente da DRE por Fluxo de Caixa (Onda 2). */}
 
-              {/* Posição por Conta — oculta via flag (v4.9-M7); mantida p/ revisão futura */}
-              {MOSTRAR_POSICAO_POR_CONTA && (
-                <div className="rounded-xl shadow-sm bg-white p-5">
-                  <CardTitle titulo="Posição por Conta" />
-                  <PosicaoPorConta posicoes={posicoes} saldoTotal={saldoTotal} />
-                </div>
-              )}
-            </div>
+            {/* Posição por Conta — oculta via flag (v4.9-M7); mantida p/ revisão futura */}
+            {MOSTRAR_POSICAO_POR_CONTA && (
+              <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
+                <CardTitle titulo="Posição por Conta" />
+                <PosicaoPorConta posicoes={posicoes} saldoTotal={saldoTotal} />
+              </div>
+            )}
 
           </>
         )}

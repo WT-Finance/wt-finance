@@ -106,9 +106,11 @@ export default function RunwaySemanal({ data }: Props) {
           sem scroll VERTICAL (as 5 linhas sempre cabem). Cabeçalho no padrão da plataforma
           (caixa normal, font-medium, cor terciária); números contábeis com tabular-nums. */}
       <ScrollAutoHide eixo="x" className="mt-3">
-      <table className="w-full min-w-[480px] table-fixed tabular-nums">
+      {/* min-w 436 = Semana 84 + 3×~117 — cabe SEM scroll no card 2/5 do grid (checkpoint);
+          abaixo disso (tela pequena de verdade) a barra overlay assume. */}
+      <table className="w-full min-w-[436px] table-fixed tabular-nums">
         <colgroup>
-          <col className="w-[92px]" />
+          <col className="w-[84px]" />
           <col />
           <col />
           <col />
@@ -116,18 +118,18 @@ export default function RunwaySemanal({ data }: Props) {
         <thead>
           <tr className="text-2xs text-zinc-400 [&>th]:font-medium [&>th]:pb-1.5">
             <th className="text-left">Semana</th>
-            <th className="text-right pl-3">A receber</th>
-            <th className="text-right pl-3">A pagar</th>
-            <th className="text-right pl-3 whitespace-nowrap">Saldo acumulado</th>
+            <th className="text-right pl-2">A receber</th>
+            <th className="text-right pl-2">A pagar</th>
+            <th className="text-right pl-2 whitespace-nowrap">Saldo acumulado</th>
           </tr>
         </thead>
         <tbody>
           {linhas.map((s, i) => (
             <tr key={i} className="text-2xs [&>td]:py-1.5 [&>td]:border-t [&>td]:border-zinc-100">
               <td className="text-left text-zinc-600 whitespace-nowrap">{s.ini} – {s.fim}</td>
-              <td className="pl-3"><ValorContabil valor={s.rec} className="text-success" /></td>
-              <td className="pl-3"><ValorContabil valor={s.pag} className="text-danger" /></td>
-              <td className="pl-3"><ValorContabil valor={s.acc} className={`font-medium ${s.acc >= 0 ? 'text-success' : 'text-danger'}`} /></td>
+              <td className="pl-2"><ValorContabil valor={s.rec} className="text-success" /></td>
+              <td className="pl-2"><ValorContabil valor={s.pag} className="text-danger" /></td>
+              <td className="pl-2"><ValorContabil valor={s.acc} className={`font-medium ${s.acc >= 0 ? 'text-success' : 'text-danger'}`} /></td>
             </tr>
           ))}
         </tbody>
