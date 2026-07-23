@@ -10,10 +10,11 @@ import { toNum } from '@/lib/carga/coercao'
 import { atualizarSaldoCaixaAction } from '@/app/financeiro/fluxo-caixa/actions'
 import type { SaldoCaixaConta, PrevistoDiario } from '@/lib/fluxo/rpc-fluxo'
 
-// Posição do Fluxo Projetado (v5.2.0, checkpoint — modelo fechado no mockup, variante A):
-// os 4 KPI cards viraram UM card — bloco Saldo de Caixa | A receber · A pagar · NCG com
-// HORIZONTE AJUSTÁVEL (dropdown Dias/Meses/Sempre + slider com régua de marcações, no
-// cabeçalho dos KPIs). A janela é somada NO CLIENTE sobre a série diária do previsto
+// Posição do Fluxo Projetado (v5.2.0, checkpoint — modelo do mockup + refinos):
+// os 4 KPI cards viraram UM card — bloco Saldo de Caixa | A receber · A pagar · NCG
+// (células distribuídas na largura toda) com HORIZONTE AJUSTÁVEL ABAIXO dos indicadores:
+// slider fluido com régua de marcações (Dias ≤180 / Meses ≤18) + seletor de modo em
+// RÁDIO à direita (Dias/Meses/Sempre). A janela é somada NO CLIENTE sobre a série diária
 // (get_fluxo_previsto_diario, 0196) — slider instantâneo, sem RPC por ajuste. Semântica
 // idêntica ao card antigo de 10 dias: vencimento em hoje..hoje+N inclusive, vencidos FORA;
 // "Sempre" = todo o lançado (inclui o balde de vencidos), dentro do corte.
@@ -175,19 +176,12 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
             />
           </div>
 
-          {/* Controle do horizonte — abaixo dos indicadores, slider longo (checkpoint). */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <DropdownPill
-              valor={modo}
-              opcoes={[
-                { value: 'dias',   label: 'Dias'   },
-                { value: 'meses',  label: 'Meses'  },
-                { value: 'sempre', label: 'Sempre' },
-              ]}
-              onChange={v => trocarModo(v as Modo)}
-              ariaLabel="Unidade do horizonte"
-            />
-            <div className="flex flex-col gap-px flex-1 min-w-[240px] max-w-[460px]">
+          {/* Controle do horizonte — abaixo dos indicadores (checkpoint): slider ocupa
+              TODO o espaço restante (largura estável — o rótulo e os rádios têm largura
+              fixa, então o slider não "pula" ao trocar o modo); seletor de modo à
+              DIREITA, como grupo de RÁDIO. */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex flex-col gap-px flex-1 min-w-[260px]">
               <input
                 type="range"
                 min={cfg?.min ?? 1}
@@ -222,7 +216,24 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
                 })}
               </div>
             </div>
-            <span className="text-2xs text-zinc-500 tabular-nums min-w-[92px]">{rotulo}</span>
+            {/* larguras FIXAS (rótulo + rádios) — o slider flex-1 não muda ao trocar o modo */}
+            <span className="text-2xs text-zinc-500 tabular-nums w-[104px] shrink-0">{rotulo}</span>
+            <div role="radiogroup" aria-label="Unidade do horizonte" className="flex items-center gap-3 shrink-0">
+              {([['dias', 'Dias'], ['meses', 'Meses'], ['sempre', 'Sempre']] as [Modo, string][]).map(([v, l]) => (
+                <label key={v} className="flex items-center gap-1.5 text-2xs text-zinc-600 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="horizonte-modo"
+                    value={v}
+                    checked={modo === v}
+                    onChange={() => trocarModo(v)}
+                    className="cursor-pointer"
+                    style={{ accentColor: 'var(--brand)' }}
+                  />
+                  {l}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -231,61 +242,6 @@ export default function PosicaoProjetado({ saldos, previsto }: Props) {
         <SaldoDrillModal saldosIniciais={saldos} onClose={() => setDrillOpen(false)} />
       )}
     </>
-  )
-}
-
-/**
- * Dropdown em forma de PILL com menu PRÓPRIO (arredondado, sombra do DS) — o popup do
- * `<select>` nativo é o do sistema operacional (quadrado/cinza, inestilizável) e destoava
- * da pill (ajuste do checkpoint). Pill ativa na família `--brand-*` (a mesma da pill de
- * período da página). Fecha em clique-fora (backdrop) e Escape.
- */
-function DropdownPill({ valor, opcoes, onChange, ariaLabel }: {
-  valor:     string
-  opcoes:    { value: string; label: string }[]
-  onChange:  (v: string) => void
-  ariaLabel: string
-}) {
-  const [aberto, setAberto] = useState(false)
-  const atual = opcoes.find(o => o.value === valor)?.label ?? valor
-
-  return (
-    <div className="relative" onKeyDown={e => { if (e.key === 'Escape') setAberto(false) }}>
-      <button
-        type="button"
-        onClick={() => setAberto(v => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={aberto}
-        aria-label={ariaLabel}
-        className="inline-flex items-center gap-1 text-2xs font-medium rounded-full border px-2.5 py-1 cursor-pointer foco-neutro"
-        style={{ background: 'var(--brand-soft)', borderColor: 'var(--brand)', color: 'var(--brand-deep)' }}
-      >
-        {atual}
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
-      {aberto && (
-        <>
-          {/* backdrop: clique-fora fecha */}
-          <div className="fixed inset-0 z-10" onClick={() => setAberto(false)} />
-          <ul role="listbox" aria-label={ariaLabel} className="absolute z-20 mt-1 min-w-[110px] rounded-lg border border-zinc-200 bg-white shadow-lg py-1">
-            {opcoes.map(o => (
-              <li key={o.value} role="option" aria-selected={o.value === valor}>
-                <button
-                  type="button"
-                  onClick={() => { onChange(o.value); setAberto(false) }}
-                  className={`w-full text-left px-3 py-1.5 text-2xs hover:bg-zinc-50 ${o.value === valor ? 'font-semibold' : 'text-zinc-600'}`}
-                  style={o.value === valor ? { color: 'var(--brand-deep)' } : undefined}
-                >
-                  {o.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
   )
 }
 
@@ -309,7 +265,7 @@ function KpiJanela({ label, valor, cor, tooltip, primeiro = false }: {
     </p>
   )
   return (
-    <div className={`min-w-[120px] ${primeiro ? 'pr-7' : 'px-7 border-l border-zinc-100'}`}>
+    <div className={`flex-1 min-w-[120px] ${primeiro ? 'pr-7' : 'px-7 border-l border-zinc-100'}`}>
       {rotulo}
       <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: cor ?? 'var(--text-primary)' }}>
         {fmtMi(valor)}

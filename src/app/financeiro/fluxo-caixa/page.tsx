@@ -78,7 +78,7 @@ function KpiCelula({ label, value, sub, tooltip, valueColor, primeiro = false }:
   label: string; value: string; sub?: string; tooltip?: string; valueColor?: string; primeiro?: boolean
 }) {
   return (
-    <div className={`min-w-[150px] max-w-[240px] ${primeiro ? 'pr-7' : 'px-7 border-l border-zinc-100'}`}>
+    <div className={`flex-1 min-w-[150px] ${primeiro ? 'pr-7' : 'px-7 border-l border-zinc-100'}`}>
       <div className="flex items-center gap-1">
         <p className="text-2xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{label}</p>
         {tooltip && <TooltipIcon text={tooltip} />}
@@ -284,6 +284,11 @@ export default async function FluxoCaixaPage({
 
         {temDados && (
           <>
+            {/* Tendência da Margem de Repasse — LOGO ABAIXO do card principal (checkpoint) */}
+            <div className="mb-4">
+              <RepasseMensal rows={repasseMensalRows} />
+            </div>
+
             {/* Fluxo Mensal chart — card e título dentro do componente */}
             <FluxoMensalChart rows={fluxoMensalRows} />
 
@@ -291,11 +296,6 @@ export default async function FluxoCaixaPage({
             <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
               <CardTitle titulo="Acumulado de Recebimentos e Pagamentos" subtitulo="24 meses passados + 18 futuros" />
               <FluxoAcumuladoChart rows={fluxoAcumuladoRows} />
-            </div>
-
-            {/* Repasse Mensal (v5.2.0/Onda 1) */}
-            <div className="mb-4">
-              <RepasseMensal rows={repasseMensalRows} />
             </div>
 
             {/* Ranking de Caixa (v5.2.0/Onda 1) */}
