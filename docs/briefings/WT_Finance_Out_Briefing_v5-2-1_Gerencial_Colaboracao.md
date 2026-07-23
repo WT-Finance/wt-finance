@@ -3,7 +3,7 @@
 **Base:** `main` @ v5.2.0 (`097ffa4`) · **Branch:** `feat/v5-2-1-gerencial-colaboracao` · **PATCH** · **ADR-0155**
 **Motivação real:** um usuário apagou toda a Base de Dados do Gerencial sem reversão possível; e edições simultâneas podiam se atropelar sem ninguém ver.
 
-> **Migrations 0199–0202 NÃO foram aplicadas nesta sessão** (job em background, não interativo). Aplicação + verificação via REST ficam para o **checkpoint do Yan** (que já exige a feature no ar com 2 usuários reais) — mesmo padrão da v5.2.0. Ver "Aplicação das migrations" abaixo.
+> **Migrations 0199–0202 APLICADAS em produção** (2026-07-23, pelo Yan via `--aditiva --fora-de-ordem`, gate verde). O harness bloqueou o `db:migrate` autônomo (escrita em produção) → o Yan rodou o comando. Pré-check do Realtime (`realtime.topic()`/`send()`) passou antes. Objetos **verificados por introspecção**: tabela do diário (11 cols), trigger AFTER row-level, 3 triggers statement-level de broadcast, policy em `realtime.messages` (via `pode_assinar_area`), 8 funções novas, overloads 2/3-arg da trava, `get_gerencial_lancamentos` expõe `atualizado_em`. Resta o **teste funcional com 2 usuários** (app) + o merge. Ver "Aplicação das migrations" abaixo.
 
 ## Missões implementadas
 
