@@ -190,11 +190,14 @@ demais roles no editor**), wrappers de decomposição aceitam ['executiva','fina
 areasDaRota com match preciso (MÉDIO do revisor endereçado). Refino do card de posição: slider
 ABAIXO dos indicadores (fluido, Dias≤180/Meses≤18), **NCG = A Pagar − A Receber** (positiva vermelha
 = falta caixa; negativa verde), dropdown do modo em pill com menu próprio arredondado.
-- ⚠️ **Migration 0197 PENDENTE** — Yan aplica com `npm run db:migrate -- --aditiva --fora-de-ordem`
-  (única pendente). Até lá: aba DRE só para quem tem a área (ninguém), paridade do contrato 1 caso
-  vermelho. Registros: TOOLTIP_KPI_REALIZADO ainda cita a Decomposição (que mudou de aba) — texto a
-  revisitar; PRIORIDADE_INICIAL sem financeiro/dre (lacuna pré-existente das áreas estreitas);
-  Vercel Hobby ainda bloqueando deploys (Yan resolvendo).
+- **Migration 0197 APLICADA pelo Yan** (`--aditiva --fora-de-ordem`, gate verde; as cópias untracked
+  das 0950–0954 precisaram voltar à pasta — desta vez FICAM até o fim do checkpoint; remover antes
+  do merge e OBRIGATORIAMENTE antes de qualquer push pós-renumeração da v5.4.0). Verificado no
+  banco: área criada (ordem 35), seed no role Administrador, wrappers aceitando financeiro/dre.
+  **Testes 458/458** (paridade verde). **Yan concede a área "DRE" às demais roles no editor.**
+  Registros: TOOLTIP_KPI_REALIZADO ainda cita a Decomposição (que mudou de aba) — texto a revisitar;
+  PRIORIDADE_INICIAL sem financeiro/dre (lacuna pré-existente das áreas estreitas); Vercel Hobby
+  ainda bloqueando deploys (Yan resolvendo).
 
 ## CHECKPOINT do Yan (antes do merge)
 1. Subir as 2 bases reais de produção (com histórico 2024+) pelos cards novos de Upload.
