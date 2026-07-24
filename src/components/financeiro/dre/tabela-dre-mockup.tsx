@@ -5,13 +5,20 @@
 // Alvo: qualidade visual/interação de produção, para servir de gate antes da M4 (tabela
 // real sobre get_dre_mensal). Removível/substituível quando a RPC chegar.
 //
-// Desenho FINAL (gate do estudo visual, docs/relatorios/dre-estudo-visual.html):
-// "Régua contábil" (hierarquia por borda/peso/caixa, ZERO preenchimento de banda) +
-// "Faixa + sinal" (natureza receita×gasto só na régua vertical da coluna Conta dos
-// blocos; sinal na TINTA só nas linhas de resultado) + "Fundo âmbar" (previsto marca o
-// TEMPO no fundo, nunca na tinta — as duas dimensões não competem) + sans tabular +
-// densidade compacta. As variantes NÃO escolhidas (banda bege/tinta, faixa isolada,
-// tinta âmbar, mono, confortável) ficam só no estudo, não aqui.
+// Desenho FINAL (rodada visual pedida pelo Yan após o gate do estudo, docs/relatorios/
+// dre-estudo-visual.html): hierarquia por BANDA EM ESCALA DE CINZA (`--band`/`--band-soft`,
+// tokens novos, neutro-quente — NÃO zinc/hex) em vez da régua contábil; SEM faixa de
+// natureza (a distinção receita×gasto não vive mais numa régua vertical da coluna Conta —
+// vai direto na TINTA do valor, verde/vermelho por SINAL em QUALQUER tipo de linha, com
+// tons `*-deep` sobre banda cinza para manter contraste AA); densidade CONFORTÁVEL (células
+// 32px, texto-base 13px); o previsto (colunas Jul·P..Dez, 2026) agora é RECOLHÍVEL
+// horizontalmente (toggle no cabeçalho, soma numa única coluna); e a tabela vira um BOX com
+// borda própria dentro do card, com respiro (`p-5`) nos quatro lados. "Fundo âmbar"
+// (previsto marca o TEMPO no fundo) atravessa a coluna inteira MENOS o `blocoH` — em `sub`/
+// `tot` ele é misturado à banda via `color-mix` de tokens (ver `CelulaValor`; sem isso, a
+// visão padrão tudo-recolhido, composta só de bandas, perderia a marcação de previsto). As
+// variantes NÃO escolhidas (régua contábil, faixa de natureza, tinta âmbar, mono) ficam só
+// no estudo visual, não aqui.
 //
 // Estrutura: blocoH (agregador-topo) → sub (agregador-meio, ex.: Despesas Administrativas)
 // → cat (categoria-folha). `cat.g` aponta para a CHAVE do pai (blocoH OU sub) — visibilidade
@@ -30,12 +37,19 @@
 //
 // ⚠️ ARMADILHA DO CABEÇALHO DE 2 LINHAS: as `th` com `rowSpan={2}` (Conta / Total do ano)
 // existem SÓ na 1ª <tr> — um seletor CSS do tipo "última linha do thead" nunca as alcança.
-// Por isso a régua de base (`border-b-[1.5px] border-b-text-primary`) e a sombra-ao-rolar
+// Por isso a régua de base (`border-b-[1.5px] border-b-wt-border-strong`) e a sombra-ao-rolar
 // são aplicadas DIRETAMENTE nessas duas células, além da 2ª linha (não via um seletor
 // genérico). (Achado ALTO do revisor na v5.3.0/M0 — o padrão do DS pressupõe 1 linha.)
+//
+// ⚠️ PREVISTO RECOLHÍVEL: `previstoAberto` decide se as 6 colunas de previsto (2026,
+// índices 7..12) aparecem separadas ou somadas numa ÚNICA coluna agregada — o índice do
+// corte (7) NÃO muda entre os dois estados (a coluna agregada ocupa o mesmo lugar), então
+// `previsto`/`corte` (calculados por índice em `LinhaDreTr`) não precisam de ramo extra.
+// `colunasVisiveis`/`rotulosVisiveis` fazem a colagem; o "Total do ano" nunca usa a versão
+// recolhida (sempre soma as 13 colunas reais — o recolhimento é só de EXIBIÇÃO).
 
-import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import Button from '@/components/ui/button'
 import Checkbox from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/field'
@@ -45,39 +59,15 @@ import { fmtContabil } from './fmt-contabil'
 import { LINHAS, BANDEJA, EXPANSIVEIS, DATA_BASE, type LinhaDre, type TipoLinha } from './mockup-dados'
 
 type Ano = 2026 | 2025
-type Natureza = 'e' | 's' | 'm' | 'r'
 
 const MESES_26 = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul·R', 'Jul·P', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 const MESES_25 = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
 // A partir do índice 7, em 2026, a coluna é PREVISTO (Jul·P em diante); em 2025 (ano
-// fechado) não há previsto — usa-se Infinity para que nenhum índice real bata.
+// fechado) não há previsto — usa-se Infinity para que nenhum índice real bata. O MESMO
+// índice 7 é o "corte" quando o previsto está RECOLHIDO (a coluna agregada ocupa esse
+// lugar) — ver `colunasVisiveis`/`rotulosVisiveis` abaixo.
 const IDX_PREVISTO_26 = 7
-
-/** Natureza por CHAVE de bloco/totalizador (blocoH/sub/tot) — categorias (`k=null`) não
- *  entram aqui e caem no fallback transparente. Espelha o `nat` do estudo visual. */
-const NATUREZA: Record<string, Natureza> = {
-  ENT_H: 'e', RB_H: 'e', RV: 'e', RFIN: 'e', RNOP: 'e',
-  PAG_H: 's', IMP_H: 's', CUSTO: 's', DESP_H: 's', ADM: 's', COM: 's', IMOB: 's', FIN: 's',
-  MKT: 's', ESTR: 's', RH: 's', RHB: 's', DNOP: 's', INV_H: 's', INV: 's', DIST_LUCROS: 's',
-  ONOP_H: 'm',
-  REPASSE: 'r', ROL: 'r', LB: 'r', LOP: 'r', LL: 'r', RAIR: 'r', REX: 'r',
-}
-
-const BORDA_NATUREZA: Record<Natureza, string> = {
-  e: 'border-l-positive',
-  s: 'border-l-negative',
-  m: 'border-l-neutral',
-  r: 'border-l-brand',
-}
-
-/** Cor da régua vertical (3px) da coluna Conta — só nos blocos/totalizadores com chave
- *  mapeada; categorias e demais linhas ficam transparentes (a largura do texto não muda). */
-function corNaturezaBorda(k: string | null): string {
-  if (k == null) return 'border-l-transparent'
-  const nat = NATUREZA[k]
-  return nat ? BORDA_NATUREZA[nat] : 'border-l-transparent'
-}
 
 function normalizar(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -87,59 +77,76 @@ function somaAno(valores: number[]): number {
   return valores.reduce((acc, v) => acc + v, 0)
 }
 
+/** Soma as colunas de previsto (índice >= 7) numa ÚNICA coluna agregada quando `colapsar`
+ *  é true (2026 com o previsto recolhido); em 2025 (ano fechado, sem previsto) ou em 2026
+ *  com o previsto aberto, devolve os valores como estão. O índice do corte (7) não muda
+ *  entre os dois estados — a coluna agregada ocupa o MESMO índice, então `previsto`/`corte`
+ *  (calculados por índice em `LinhaDreTr`/`LinhaBandejaTr`) não precisam de ramo extra. */
+function colunasVisiveis(valores: number[], colapsar: boolean): number[] {
+  if (!colapsar) return valores
+  return [...valores.slice(0, IDX_PREVISTO_26), somaAno(valores.slice(IDX_PREVISTO_26))]
+}
+
+/** Mesmo colapso, para os RÓTULOS dos meses (2ª linha do cabeçalho). */
+function rotulosVisiveis(meses: string[], colapsar: boolean): string[] {
+  if (!colapsar) return meses
+  return [...meses.slice(0, IDX_PREVISTO_26), 'Jul·P–Dez']
+}
+
 interface EstiloLinha {
-  /** border-t/border-b da régua de hierarquia — aplicada a TODAS as <td> da linha. */
+  /** border-t/border-b da hierarquia (banda cinza substitui a régua contábil). */
   borda: string
-  /** só 'tot': acrescenta border-b-[3px] + borderBottomStyle:'double' (régua dupla). */
-  reguaDupla: boolean
+  /** fundo-padrão da linha (fora do previsto) — também usado na coluna Conta/Total do ano. */
+  bg: string
+  /** fundo no hover (`group-hover`) — vazio quando o tipo não ganha realce (blocoH: já é a
+   *  banda mais escura das quatro, um hover a mais competiria com a hierarquia). */
+  bgHover: string
   /** classes do <span> do rótulo (peso/caixa/tamanho/cor) na célula Conta. */
   rotulo: string
   /** padding-left da célula Conta (escada de indentação). */
   indent: string
-  /** peso/tamanho do valor numérico (SEM cor — a cor é resolvida à parte). */
+  /** peso/tamanho do valor numérico (SEM cor — a cor é resolvida por SINAL, ver CelulaValor). */
   peso: string
-  /** cor do valor numérico quando não-zero e a linha não é 'tot'. */
-  corPadrao: string
 }
 
 function estiloLinha(t: TipoLinha): EstiloLinha {
   switch (t) {
     case 'blocoH':
       return {
-        borda: 'border-t-[1.5px] border-t-text-primary border-b border-b-transparent',
-        reguaDupla: false,
-        rotulo: 'uppercase tracking-[0.07em] text-[10.5px] font-bold text-text-primary',
+        borda: 'border-b border-b-wt-border',
+        bg: 'bg-band',
+        bgHover: '',
+        rotulo: 'uppercase tracking-[0.05em] text-[11px] font-semibold text-text-primary',
         indent: 'pl-3',
         peso: 'font-bold',
-        corPadrao: 'text-text-primary',
       }
     case 'sub':
       return {
-        borda: 'border-t border-t-wt-border border-b border-b-transparent',
-        reguaDupla: false,
-        rotulo: 'text-[13px] font-semibold text-text-secondary',
+        borda: 'border-b border-b-wt-border',
+        bg: 'bg-band-soft',
+        bgHover: 'group-hover:bg-band',
+        rotulo: 'text-[13px] font-semibold text-text-primary',
         indent: 'pl-[26px]',
         peso: 'font-semibold',
-        corPadrao: 'text-text-secondary',
       }
     case 'tot':
       return {
-        borda: 'border-t-[1.5px] border-t-text-primary',
-        reguaDupla: true,
+        borda: 'border-t-[1.5px] border-t-wt-border-strong border-b-[1.5px] border-b-wt-border-strong',
+        bg: 'bg-band-soft',
+        bgHover: 'group-hover:bg-band',
         rotulo: 'font-bold text-[13px] text-text-primary',
         indent: 'pl-3',
         peso: 'font-bold text-[13px]',
-        corPadrao: 'text-text-primary',
       }
     case 'cat':
     default:
       return {
-        borda: 'border-b border-b-wt-border',
-        reguaDupla: false,
+        borda: 'border-b border-b-wt-border/60',
+        bg: 'bg-surface',
+        bgHover: 'group-hover:bg-surface-strong',
         rotulo: 'text-[13px] text-text-secondary',
         indent: 'pl-11',
         peso: '',
-        corPadrao: 'text-text-secondary',
       }
   }
 }
@@ -153,40 +160,45 @@ interface CelulaValorProps {
   corte: boolean
   totalAno?: boolean
   peso: string
-  corPadrao: string
+  bg: string
+  bgHover: string
   borda: string
-  reguaDupla: boolean
 }
 
-/** Célula de valor mensal ou do total do ano. Sinal na tinta SÓ em linhas de resultado
- *  ('tot'); zero sempre em travessão discreto. Positivo/zero reservam a largura do ")"
- *  (span invisível) para a coluna não desalinhar — negativo já vem balanceado do
- *  `fmtContabil`. Previsto marca o FUNDO (âmbar), nunca a tinta — as duas dimensões
- *  (tempo × sinal) não competem.
+/** Célula de valor mensal ou do total do ano. Cor por SINAL em toda linha (não-zero):
+ *  `cat` (fundo claro, branco ou âmbar) usa os tons base (`--positive`/`--negative`);
+ *  `blocoH`/`sub`/`tot` (fundo de BANDA cinza) usam os tons `*-deep` — medido: os tons
+ *  base dão 3,88–4,31:1 sobre `--band`/`--band-soft` (reprovam AA, 4.5:1 mínimo para texto
+ *  pequeno); os `*-deep` dão 7–10:1. Zero sempre em travessão discreto. Positivo/zero
+ *  reservam a largura do ")" (span invisível) para a coluna não desalinhar — negativo já
+ *  vem balanceado do `fmtContabil`.
  *
- *  O âmbar é CONTÍNUO na coluna, inclusive nas linhas de bloco: o previsto é uma
- *  propriedade da COLUNA (tempo), então interrompê-lo por linha confundiria as duas
- *  dimensões e deixaria buracos brancos nos 7 cabeçalhos de bloco. (No estudo visual
- *  as bandas coloridas ficavam de fora do âmbar; aqui a régua contábil não tem banda,
- *  então não há o que preservar.) */
-function CelulaValor({ valor, tipo, previsto, corte, totalAno = false, peso, corPadrao, borda, reguaDupla }: CelulaValorProps) {
+ *  O âmbar do previsto atravessa TODA a coluna, menos o `blocoH` (como no estudo aprovado):
+ *  a visão padrão da tabela é tudo-recolhido — só linhas de banda visíveis — e se as bandas
+ *  cobrissem o âmbar, a marcação de previsto SUMIRIA exatamente na visão inicial. Em `sub`/
+ *  `tot` o âmbar é MISTURADO à banda por `color-mix` de tokens (não existe token da
+ *  combinação; a mistura é 100% derivada de tokens, opaca — segura para sticky). O `blocoH`
+ *  (a banda mais forte, só 7 linhas) fica de fora para a hierarquia não se diluir. */
+const BG_PREV_BANDA = 'bg-[color-mix(in_srgb,var(--warning-bg)_55%,var(--band-soft))]'
+
+function CelulaValor({ valor, tipo, previsto, corte, totalAno = false, peso, bg, bgHover, borda }: CelulaValorProps) {
   const zero = Math.abs(valor) < 0.005
   const negativo = !zero && valor < 0
+  const banda = tipo === 'blocoH' || tipo === 'sub' || tipo === 'tot'
   const cor = zero
     ? 'text-text-subtle'
-    : tipo === 'tot'
-      ? (negativo ? 'text-negative-deep' : 'text-positive-deep')
-      : corPadrao
-  const ambar = previsto
-  const fundo = ambar ? 'bg-warning-bg/50 group-hover:bg-warning-bg' : 'bg-surface group-hover:bg-surface-strong'
+    : negativo
+      ? (banda ? 'text-negative-deep' : 'text-negative')
+      : (banda ? 'text-positive-deep' : 'text-positive')
+  const fundo = !previsto || tipo === 'blocoH'
+    ? `${bg} ${bgHover}`
+    : banda
+      ? BG_PREV_BANDA
+      : 'bg-warning-bg/50 group-hover:bg-warning-bg'
   const bordaCorte = corte ? 'border-l-2 border-l-wt-border-strong' : ''
   const bordaTotal = totalAno ? `border-l border-l-wt-border-strong ${peso === '' ? 'font-medium' : ''}` : ''
-  const bordaDupla = reguaDupla ? 'border-b-[3px] border-b-text-primary' : ''
   return (
-    <td
-      className={`h-[27px] px-[9px] text-right tabular-nums whitespace-nowrap ${fundo} ${borda} ${bordaDupla} ${bordaCorte} ${bordaTotal} ${peso} ${cor}`}
-      style={reguaDupla ? { borderBottomStyle: 'double' } : undefined}
-    >
+    <td className={`h-8 px-[9px] text-right tabular-nums whitespace-nowrap ${fundo} ${borda} ${bordaCorte} ${bordaTotal} ${peso} ${cor}`}>
       {fmtContabil(valor)}
       {!negativo && <span className="invisible">)</span>}
     </td>
@@ -198,8 +210,8 @@ interface CelulaContaProps {
   rotuloClasse: string
   indent: string
   borda: string
-  reguaDupla: boolean
-  corNatureza: string
+  bg: string
+  bgHover: string
   estrela: boolean
   expansivel: boolean
   aberto: boolean
@@ -207,15 +219,12 @@ interface CelulaContaProps {
   contagem?: string
 }
 
-/** Célula sticky da coluna Conta — régua vertical (natureza) + chevron + rótulo + nota
- *  da controladoria ('*') + contagem do bloco. Fundo SEMPRE opaco (nunca translúcido —
- *  vazaria valores por baixo no scroll horizontal). */
-function CelulaConta({ rotulo, rotuloClasse, indent, borda, reguaDupla, corNatureza, estrela, expansivel, aberto, onToggle, contagem }: CelulaContaProps) {
+/** Célula sticky da coluna Conta — chevron + rótulo + nota da controladoria ('*') +
+ *  contagem do bloco. Fundo SEMPRE opaco, na cor da BANDA da linha (nunca translúcido —
+ *  vazaria valores por baixo no scroll horizontal). Sem régua de natureza (removida). */
+function CelulaConta({ rotulo, rotuloClasse, indent, borda, bg, bgHover, estrela, expansivel, aberto, onToggle, contagem }: CelulaContaProps) {
   return (
-    <td
-      className={`sticky left-0 z-10 h-[27px] w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong border-l-[3px] bg-surface pr-3 group-hover:bg-surface-strong ${indent} ${borda} ${reguaDupla ? 'border-b-[3px] border-b-text-primary' : ''} ${corNatureza}`}
-      style={reguaDupla ? { borderBottomStyle: 'double' } : undefined}
-    >
+    <td className={`sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pr-3 ${bg} ${bgHover} ${indent} ${borda}`}>
       <div className="flex min-w-0 items-center gap-1.5">
         {expansivel && onToggle && (
           <button
@@ -240,17 +249,21 @@ interface LinhaDreTrProps {
   linha: LinhaDre
   ano: Ano
   idxPrevisto: number
+  colapsar: boolean
   expansivel: boolean
   aberto: boolean
   onToggle?: () => void
   contagem?: string
 }
 
-/** Uma linha completa da tabela (blocoH/sub/cat/tot): Conta + 12/13 meses + total do ano. */
-function LinhaDreTr({ linha, ano, idxPrevisto, expansivel, aberto, onToggle, contagem }: LinhaDreTrProps) {
+/** Uma linha completa da tabela (blocoH/sub/cat/tot): Conta + meses (ou a versão recolhida
+ *  do previsto) + total do ano. O total do ano SEMPRE soma as 13/12 colunas reais — o
+ *  recolhimento (`colapsar`) é só de EXIBIÇÃO das colunas mensais. */
+function LinhaDreTr({ linha, ano, idxPrevisto, colapsar, expansivel, aberto, onToggle, contagem }: LinhaDreTrProps) {
   const estilo = estiloLinha(linha.t)
-  const valores = ano === 2026 ? linha.m26 : linha.m25
-  const totalAno = somaAno(valores)
+  const valoresBase = ano === 2026 ? linha.m26 : linha.m25
+  const totalAno = somaAno(valoresBase)
+  const valores = colunasVisiveis(valoresBase, colapsar)
   return (
     <tr className="group">
       <CelulaConta
@@ -258,8 +271,8 @@ function LinhaDreTr({ linha, ano, idxPrevisto, expansivel, aberto, onToggle, con
         rotuloClasse={estilo.rotulo}
         indent={estilo.indent}
         borda={estilo.borda}
-        reguaDupla={estilo.reguaDupla}
-        corNatureza={corNaturezaBorda(linha.k)}
+        bg={estilo.bg}
+        bgHover={estilo.bgHover}
         estrela={linha.estrela}
         expansivel={expansivel}
         aberto={aberto}
@@ -274,9 +287,9 @@ function LinhaDreTr({ linha, ano, idxPrevisto, expansivel, aberto, onToggle, con
           previsto={idx >= idxPrevisto}
           corte={idx === idxPrevisto}
           peso={estilo.peso}
-          corPadrao={estilo.corPadrao}
+          bg={estilo.bg}
+          bgHover={estilo.bgHover}
           borda={estilo.borda}
-          reguaDupla={estilo.reguaDupla}
         />
       ))}
       <CelulaValor
@@ -286,16 +299,17 @@ function LinhaDreTr({ linha, ano, idxPrevisto, expansivel, aberto, onToggle, con
         corte={false}
         totalAno
         peso={estilo.peso}
-        corPadrao={estilo.corPadrao}
+        bg={estilo.bg}
+        bgHover={estilo.bgHover}
         borda={estilo.borda}
-        reguaDupla={estilo.reguaDupla}
       />
     </tr>
   )
 }
 
-/** Célula de valor da bandeja "Não classificadas" — mesma lógica de sinal/parênteses,
- *  fundo âmbar diluído (a categoria é órfã do de-para, não faz parte da hierarquia). */
+/** Célula de valor da bandeja "Não classificadas" — mesma lógica de parênteses/zero, sem
+ *  cor por sinal (a bandeja é órfã do de-para, fora da hierarquia — mantém o neutro), fundo
+ *  âmbar (a categoria pode cair em qualquer mês, inclusive previsto). */
 function CelulaValorBandeja({ valor, corte, totalAno = false }: { valor: number; corte: boolean; totalAno?: boolean }) {
   const zero = Math.abs(valor) < 0.005
   const negativo = !zero && valor < 0
@@ -303,7 +317,7 @@ function CelulaValorBandeja({ valor, corte, totalAno = false }: { valor: number;
   const bordaCorte = corte ? 'border-l-2 border-l-wt-border-strong' : ''
   const bordaTotal = totalAno ? 'border-l border-l-wt-border-strong font-medium' : ''
   return (
-    <td className={`h-[27px] px-[9px] text-right tabular-nums whitespace-nowrap bg-warning-bg group-hover:bg-neutral-soft ${cor} ${bordaCorte} ${bordaTotal}`}>
+    <td className={`h-8 px-[9px] text-right tabular-nums whitespace-nowrap bg-warning-bg group-hover:bg-neutral-soft ${cor} ${bordaCorte} ${bordaTotal}`}>
       {fmtContabil(valor)}
       {!negativo && <span className="invisible">)</span>}
     </td>
@@ -311,16 +325,21 @@ function CelulaValorBandeja({ valor, corte, totalAno = false }: { valor: number;
 }
 
 /** Linha de categoria órfã da bandeja "Não classificadas" (sempre visível — não entra
- *  no sistema de busca/zerados/abertos, que é só para a hierarquia real). */
-function LinhaBandejaTr({ linha, ano, idxPrevisto }: { linha: LinhaDre; ano: Ano; idxPrevisto: number }) {
-  const valores = ano === 2026 ? linha.m26 : linha.m25
-  const totalAno = somaAno(valores)
+ *  no sistema de busca/zerados/abertos, que é só para a hierarquia real). Acompanha o
+ *  recolhimento do previsto como qualquer outra linha. */
+function LinhaBandejaTr({ linha, ano, idxPrevisto, colapsar }: { linha: LinhaDre; ano: Ano; idxPrevisto: number; colapsar: boolean }) {
+  const valoresBase = ano === 2026 ? linha.m26 : linha.m25
+  const totalAno = somaAno(valoresBase)
+  const valores = colunasVisiveis(valoresBase, colapsar)
   return (
     <tr className="group">
       {/* fundo OPACO (não `/40`): célula sticky translúcida deixa os valores das colunas
           passarem por baixo do rótulo no scroll horizontal. O hover usa --neutral-soft,
           o âmbar um passo mais saturado do DS. */}
-      <td className="sticky left-0 z-10 h-[27px] w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong border-l-[3px] border-l-warning bg-warning-bg pl-[26px] pr-3 group-hover:bg-neutral-soft">
+      <td
+        className="sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong border-l-[3px] border-l-warning bg-warning-bg pl-[26px] pr-3 group-hover:bg-neutral-soft"
+        title="Mockup: valores ilustrativos — o dado real desta categoria vive em 2023"
+      >
         <span className="truncate text-[13px] text-text-secondary">{linha.l}</span>
       </td>
       {valores.map((v, idx) => (
@@ -331,12 +350,19 @@ function LinhaBandejaTr({ linha, ano, idxPrevisto }: { linha: LinhaDre; ano: Ano
   )
 }
 
-export default function TabelaDreMockup() {
+interface TabelaDreMockupProps {
+  /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada na toolbar,
+   *  à direita, antes de "Expandir tudo". */
+  slotAcoes?: ReactNode
+}
+
+export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
   const [ano, setAno] = useState<Ano>(2026)
   const [abertos, setAbertos] = useState<Set<string>>(() => new Set())
   const [rolado, setRolado] = useState(false)
   const [busca, setBusca] = useState('')
   const [esconderZerados, setEsconderZerados] = useState(false)
+  const [previstoAberto, setPrevistoAberto] = useState(true)
 
   const toggleAberto = (k: string) => setAbertos(prev => {
     const s = new Set(prev)
@@ -349,7 +375,10 @@ export default function TabelaDreMockup() {
 
   const meses = ano === 2026 ? MESES_26 : MESES_25
   const idxPrevisto = ano === 2026 ? IDX_PREVISTO_26 : Number.POSITIVE_INFINITY
-  const totalColunas = 1 + meses.length + 1 // Conta + meses + Total do ano
+  const colapsar = ano === 2026 && !previstoAberto
+  const mesesVisiveis = rotulosVisiveis(meses, colapsar)
+  const totalColunas = 1 + mesesVisiveis.length + 1 // Conta + meses (visíveis) + Total do ano
+  const minW = colapsar ? 'min-w-[1180px]' : 'min-w-[1480px]'
 
   // ── Visibilidade: busca (auto-expande, ignora abertos) × zerados × abertos ──
   const termo = normalizar(busca.trim())
@@ -383,19 +412,19 @@ export default function TabelaDreMockup() {
     return acc
   }, { blocoH: 0, sub: 0, cat: 0, tot: 0 })
 
-  const linhasRenderizadas = LINHAS.filter((l, i) => (l.t === 'cat' ? catVisivel.get(i) === true : blocoVisivel(l)))
-  const totalLinhasTabela = LINHAS.length + BANDEJA.length + 1 // + linha-cabeçalho da bandeja
-  const nVisivel = linhasRenderizadas.length + BANDEJA.length + 1
+  // Contagem do rodapé (só com filtro ativo): categorias que PASSAM no filtro — não as
+  // "visíveis" (que dependem de bloco aberto e fariam "0 de 130" com tudo recolhido).
+  const nCatsVisiveis = [...achadosPorBloco.values()].reduce((a, n) => a + n, 0)
 
   const bordaBaseHeader = [
-    'border-b-[1.5px] border-b-text-primary',
+    'border-b-[1.5px] border-b-wt-border-strong',
     rolado ? 'shadow-[0_4px_6px_-4px_rgba(45,42,38,0.12)]' : '',
   ].filter(Boolean).join(' ')
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface shadow-sm">
+    <div className="rounded-xl bg-surface p-5 shadow-sm">
       {/* ── Toolbar ── */}
-      <div className="flex flex-wrap items-start justify-between gap-3 p-5 pb-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {([2026, 2025] as Ano[]).map(a => (
             <button
@@ -434,176 +463,182 @@ export default function TabelaDreMockup() {
               Esconder linhas zeradas
             </label>
           </div>
+          {slotAcoes}
           <Button variant="ghost" size="sm" onClick={expandirTudo}>Expandir tudo</Button>
           <Button variant="ghost" size="sm" onClick={recolherTudo}>Recolher tudo</Button>
         </div>
       </div>
 
-      <ScrollAutoHide eixo="both" className="max-h-[74vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
-        <table className="w-full min-w-[1480px] border-separate border-spacing-0 text-[12.5px]">
-          <thead className="sticky top-0 z-20">
-            {ano === 2026 ? (
-              <>
-                <tr>
-                  <th
-                    rowSpan={2}
-                    className={`sticky left-0 z-30 w-[330px] min-w-[330px] max-w-[330px] rounded-tl-lg border-r border-r-wt-border-strong bg-surface pl-3 pr-3 text-left text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
-                  >
-                    Conta
-                  </th>
-                  <th className="whitespace-nowrap bg-surface px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary" colSpan={IDX_PREVISTO_26}>
-                    Realizado · movimentação
-                  </th>
-                  <th
-                    className="whitespace-nowrap border-l-2 border-l-wt-border-strong bg-surface px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
-                    colSpan={meses.length - IDX_PREVISTO_26}
-                  >
-                    Previsto · vencimento
-                    <span className="ml-1.5 rounded-sm bg-warning-bg px-1 align-[1px] text-[8.5px] tracking-[0.06em] text-warning-deep">corte 15/07</span>
-                  </th>
-                  <th
-                    rowSpan={2}
-                    className={`w-[140px] min-w-[140px] rounded-tr-lg border-l border-l-wt-border-strong bg-surface px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
-                  >
-                    Total do ano
-                  </th>
-                </tr>
-                <tr>
-                  {meses.map((m, i) => (
+      {/* ── Box da tabela — borda própria, cantos clipam o cabeçalho sticky ── */}
+      <div className="overflow-hidden rounded-lg border border-wt-border">
+        <ScrollAutoHide eixo="both" className="max-h-[74vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+          <table className={`w-full ${minW} border-separate border-spacing-0 text-[13px]`}>
+            <thead className="sticky top-0 z-20 [&_th]:bg-band">
+              {ano === 2026 ? (
+                <>
+                  <tr>
                     <th
-                      key={m}
-                      className={[
-                        'h-[25px] bg-surface px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em]',
-                        i >= IDX_PREVISTO_26 ? 'text-warning-deep' : 'text-text-secondary',
-                        i === IDX_PREVISTO_26 ? 'border-l-2 border-l-wt-border-strong' : '',
-                        bordaBaseHeader,
-                      ].join(' ')}
+                      rowSpan={2}
+                      className={`sticky left-0 z-30 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pl-3 pr-3 text-left text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
                     >
-                      {m}
+                      Conta
                     </th>
-                  ))}
-                </tr>
-              </>
-            ) : (
-              <>
-                <tr>
-                  <th
-                    rowSpan={2}
-                    className={`sticky left-0 z-30 w-[330px] min-w-[330px] max-w-[330px] rounded-tl-lg border-r border-r-wt-border-strong bg-surface pl-3 pr-3 text-left text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
-                  >
-                    Conta
-                  </th>
-                  <th className="whitespace-nowrap bg-surface px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary" colSpan={12}>
-                    Realizado · movimentação (ano fechado)
-                  </th>
-                  <th
-                    rowSpan={2}
-                    className={`w-[140px] min-w-[140px] rounded-tr-lg border-l border-l-wt-border-strong bg-surface px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
-                  >
-                    Total do ano
-                  </th>
-                </tr>
-                <tr>
-                  {meses.map(m => (
-                    <th key={m} className={`h-[25px] bg-surface px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}>
-                      {m}
+                    <th className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary" colSpan={IDX_PREVISTO_26}>
+                      Realizado · movimentação
                     </th>
-                  ))}
-                </tr>
-              </>
-            )}
-          </thead>
+                    <th
+                      className="whitespace-nowrap border-l-2 border-l-wt-border-strong px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
+                      colSpan={colapsar ? 1 : meses.length - IDX_PREVISTO_26}
+                    >
+                      <span className="flex w-full items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPrevistoAberto(v => !v)}
+                          aria-expanded={previstoAberto}
+                          aria-label="Recolher/Expandir colunas de previsto"
+                          className="foco-neutro inline-flex shrink-0 items-center justify-center rounded p-0.5 text-warning-deep transition-colors hover:bg-warning-bg"
+                        >
+                          {previstoAberto ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
+                        </button>
+                        <span>Previsto · vencimento</span>
+                        <span className="rounded-sm bg-warning-bg px-1 align-[1px] text-[8.5px] tracking-[0.06em] text-warning-deep">corte 15/07</span>
+                      </span>
+                    </th>
+                    <th
+                      rowSpan={2}
+                      className={`w-[140px] min-w-[140px] border-l border-l-wt-border-strong px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
+                    >
+                      Total do ano
+                    </th>
+                  </tr>
+                  <tr>
+                    {mesesVisiveis.map((m, i) => (
+                      <th
+                        key={m}
+                        className={[
+                          'h-[25px] px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em]',
+                          i >= IDX_PREVISTO_26 ? 'text-warning-deep' : 'text-text-secondary',
+                          i === IDX_PREVISTO_26 ? 'border-l-2 border-l-wt-border-strong' : '',
+                          bordaBaseHeader,
+                        ].join(' ')}
+                      >
+                        {m}
+                      </th>
+                    ))}
+                  </tr>
+                </>
+              ) : (
+                <>
+                  <tr>
+                    <th
+                      rowSpan={2}
+                      className={`sticky left-0 z-30 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pl-3 pr-3 text-left text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
+                    >
+                      Conta
+                    </th>
+                    <th className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary" colSpan={12}>
+                      Realizado · movimentação (ano fechado)
+                    </th>
+                    <th
+                      rowSpan={2}
+                      className={`w-[140px] min-w-[140px] border-l border-l-wt-border-strong px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
+                    >
+                      Total do ano
+                    </th>
+                  </tr>
+                  <tr>
+                    {meses.map(m => (
+                      <th key={m} className={`h-[25px] px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}>
+                        {m}
+                      </th>
+                    ))}
+                  </tr>
+                </>
+              )}
+            </thead>
 
-          <tbody>
-            {LINHAS.map((l, i) => {
-              if (l.t === 'cat') {
-                if (catVisivel.get(i) !== true) return null
+            <tbody>
+              {LINHAS.map((l, i) => {
+                if (l.t === 'cat') {
+                  if (catVisivel.get(i) !== true) return null
+                  return (
+                    <LinhaDreTr
+                      key={`cat-${l.g}-${i}`}
+                      linha={l}
+                      ano={ano}
+                      idxPrevisto={idxPrevisto}
+                      colapsar={colapsar}
+                      expansivel={false}
+                      aberto={false}
+                    />
+                  )
+                }
+                if (!blocoVisivel(l)) return null
+                const chave = l.k
+                const expansivel = chave != null && EXPANSIVEIS.includes(chave)
+                const aberto = termo !== '' || (chave != null && abertos.has(chave))
+                const onToggle = expansivel && chave != null ? () => toggleAberto(chave) : undefined
+                const totalDoBloco = chave != null ? totalPorBloco.get(chave) ?? 0 : 0
+                const achadosDoBloco = chave != null ? achadosPorBloco.get(chave) ?? 0 : 0
+                const contagem = expansivel
+                  ? (filtroAtivo && achadosDoBloco !== totalDoBloco ? `${achadosDoBloco} de ${totalDoBloco}` : String(totalDoBloco))
+                  : undefined
                 return (
                   <LinhaDreTr
-                    key={`cat-${l.g}-${i}`}
+                    key={`${l.t}-${chave ?? l.l}-${i}`}
                     linha={l}
                     ano={ano}
                     idxPrevisto={idxPrevisto}
-                    expansivel={false}
-                    aberto={false}
+                    colapsar={colapsar}
+                    expansivel={expansivel}
+                    aberto={aberto}
+                    onToggle={onToggle}
+                    contagem={contagem}
                   />
                 )
-              }
-              if (!blocoVisivel(l)) return null
-              const chave = l.k
-              const expansivel = chave != null && EXPANSIVEIS.includes(chave)
-              const aberto = termo !== '' || (chave != null && abertos.has(chave))
-              const onToggle = expansivel && chave != null ? () => toggleAberto(chave) : undefined
-              const totalDoBloco = chave != null ? totalPorBloco.get(chave) ?? 0 : 0
-              const achadosDoBloco = chave != null ? achadosPorBloco.get(chave) ?? 0 : 0
-              const contagem = expansivel
-                ? (filtroAtivo && achadosDoBloco !== totalDoBloco ? `${achadosDoBloco} de ${totalDoBloco}` : String(totalDoBloco))
-                : undefined
-              return (
-                <LinhaDreTr
-                  key={`${l.t}-${chave ?? l.l}-${i}`}
-                  linha={l}
-                  ano={ano}
-                  idxPrevisto={idxPrevisto}
-                  expansivel={expansivel}
-                  aberto={aberto}
-                  onToggle={onToggle}
-                  contagem={contagem}
-                />
-              )
-            })}
+              })}
 
-            {/* Bandeja "Não classificadas" — categoria(s) órfã(s) do de-para (fora do
-                sistema de busca/zerados/abertos). Rótulo na célula STICKY (visível mesmo
-                com scroll horizontal); explicador na faixa restante. */}
-            <tr>
-              <td className="sticky left-0 z-10 h-[27px] w-[330px] min-w-[330px] max-w-[330px] border-t-[1.5px] border-t-warning border-l-[3px] border-l-warning bg-warning-bg pl-3 pr-3 whitespace-nowrap">
-                <span className="text-[11.5px] font-semibold text-warning-deep">Não classificadas ({BANDEJA.length})</span>
-              </td>
-              <td className="border-t-[1.5px] border-t-warning bg-warning-bg px-[9px] text-[10.5px] text-text-muted" colSpan={totalColunas - 1}>
-                categorias do Monde sem bloco na estrutura — nada some em silêncio
-              </td>
-            </tr>
-            {BANDEJA.map((l, i) => (
-              <LinhaBandejaTr key={`bandeja-${l.l}-${i}`} linha={l} ano={ano} idxPrevisto={idxPrevisto} />
-            ))}
-          </tbody>
-        </table>
-      </ScrollAutoHide>
+              {/* Bandeja "Não classificadas" — categoria(s) órfã(s) do de-para (fora do
+                  sistema de busca/zerados/abertos). Rótulo na célula STICKY (visível mesmo
+                  com scroll horizontal); explicador na faixa restante. */}
+              <tr>
+                <td className="sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-t-[1.5px] border-t-warning border-l-[3px] border-l-warning bg-warning-bg pl-3 pr-3 whitespace-nowrap">
+                  <span className="text-[11.5px] font-semibold text-warning-deep">Não classificadas ({BANDEJA.length})</span>
+                </td>
+                <td className="border-t-[1.5px] border-t-warning bg-warning-bg px-[9px] text-[10.5px] text-warning-deep" colSpan={totalColunas - 1}>
+                  categorias do Monde sem bloco na estrutura — nada some em silêncio
+                </td>
+              </tr>
+              {BANDEJA.map((l, i) => (
+                <LinhaBandejaTr key={`bandeja-${l.l}-${i}`} linha={l} ano={ano} idxPrevisto={idxPrevisto} colapsar={colapsar} />
+              ))}
+            </tbody>
+          </table>
+        </ScrollAutoHide>
+      </div>
 
-      {/* ── Rodapé: legenda + notas ── */}
-      <div className="flex flex-col gap-2 border-t border-t-wt-border p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <span className="h-[11px] w-[11px] rounded-sm bg-positive" /> Entrada / receita
+      {/* ── Rodapé enxuto (conferência visual do Yan: "limpar o que polui"): UMA linha de
+          legenda; a contagem só aparece quando um FILTRO está reduzindo a lista (fora
+          disso é ruído). As notas de mockup/decisões saíram da UI — viveem no PR/gate;
+          a origem ilustrativa da bandeja virou `title` na própria linha. ── */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+          <span className="h-2.5 w-2.5 rounded-sm bg-positive" /> receita / entrada
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+          <span className="h-2.5 w-2.5 rounded-sm bg-negative" /> gasto / saída
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+          <span className="h-2.5 w-2.5 rounded-sm border border-warning bg-warning-bg" /> previsto (vencimento)
+        </span>
+        <span className="flex items-center gap-1 text-[11px] text-text-muted">
+          <sup className="text-warning-deep">*</sup> nota da controladoria
+        </span>
+        {filtroAtivo && (
+          <span className="ml-auto text-[11px] text-text-muted">
+            Mostrando {nCatsVisiveis} de {contagemPorTipo.cat} categorias
           </span>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <span className="h-[11px] w-[11px] rounded-sm bg-negative" /> Saída / gasto
-          </span>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <span className="h-[11px] w-[11px] rounded-sm bg-neutral" /> Misto
-          </span>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <span className="h-[11px] w-[11px] rounded-sm bg-brand" /> Linha de resultado
-          </span>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <span className="h-[11px] w-[11px] rounded-sm border border-warning bg-warning-bg" /> Previsto
-          </span>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-text-secondary">
-            <sup className="text-warning-deep">*</sup> Nota da controladoria
-          </span>
-        </div>
-        <p className="text-[10.5px] text-text-muted">
-          Mostrando {nVisivel} de {totalLinhasTabela} linhas · {contagemPorTipo.blocoH} cabeçalhos de bloco,{' '}
-          {contagemPorTipo.sub} sub-blocos, {contagemPorTipo.cat} categorias, {contagemPorTipo.tot} totalizadores.
-        </p>
-        <p className="text-[10.5px] text-text-muted">
-          Mockup (M0) — dados reais da controladoria (base 15/07/2026); os valores da categoria da bandeja são ilustrativos.
-        </p>
-        <p className="text-[10.5px] text-text-muted">
-          Total do ano = soma das colunas mensais exibidas. O modelo da controladoria soma também os vencidos em aberto
-          (sem coluna neste recorte) — em validação.
-        </p>
+        )}
       </div>
     </div>
   )

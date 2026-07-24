@@ -17,6 +17,13 @@
   --border:        #E8E0D2;
   --border-strong: #D4C8B4;
 
+  /* Bandas neutras de agrupamento (tabelas financeiras densas — nasceu na DRE, v5.3.0).
+     Cinza NEUTRO-QUENTE alinhado à plataforma bege — deliberadamente NÃO o zinc (frio/
+     azulado) nem o --border (tan). Primeiro passo da tokenização do cinza (follow-up
+     do lint de cor, v4.26). --band = cabeçalho de bloco; --band-soft = sub-bloco. */
+  --band:      #E8E6E1;
+  --band-soft: #F3F2EE;
+
   /* Feedback (terrosos refinados) */
   --success:    #4F8E54;  /* verde-musgo */
   --success-bg: #E8F0E4;

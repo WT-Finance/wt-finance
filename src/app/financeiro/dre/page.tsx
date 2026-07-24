@@ -1,4 +1,6 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
+import { SquarePen } from 'lucide-react'
 import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
@@ -6,15 +8,23 @@ import { resolverPeriodoCompleto } from '@/lib/periodo'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import ComposicaoPeriodo from '@/components/financeiro/composicao-lancamentos'
 import TopSection from '@/components/shared/top-section'
+import TabelaDreMockup from '@/components/financeiro/dre/tabela-dre-mockup'
+import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 
-// DRE (v5.2.0, checkpoint) — nova aba do Financeiro. Nasce com a "Composição dos
-// Lançamentos" (decomposição por Grupo de Categoria, regime contábil), MOVIDA da página
-// do Fluxo de Caixa: aqui ela é a semente da futura DRE por Fluxo de Caixa (Onda 2, a
-// struct de 159 linhas da controladoria).
+// DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
+// (159 linhas) na aba definitiva. FASE DE MOCKUP (M0, gate do Yan): a tabela ainda lê
+// FIXTURE (dados reais da controladoria, base 15/07/2026); a M3/M4 trocam a fixture pela
+// RPC `get_dre_mensal` sem mudar esta página. O editor da estrutura viva vive em página
+// própria (/financeiro/dre/estrutura), atrás do botão "Editar estrutura" da toolbar.
 //
-// RBAC: área PRÓPRIA 'financeiro/dre' (decisão do Yan; migration 0197) — seed gate
-// apertado (só admins); o admin concede aos demais pelo editor de roles. Os wrappers de
-// decomposição aceitam ['executiva','financeiro/dre'] desde a 0197.
+// A Composição dos Lançamentos (semente da aba desde a v5.2.0) fica MANTIDA em TopSection
+// próprio, COLAPSADO por padrão (decisão do briefing; destino final adiado). Nota de
+// regime corrigida: desde a 0188 as RPCs de decomposição leem o MESMO
+// `financeiro.fato_fluxo` da DRE (eixo da movimentação) — o aviso antigo de "regime
+// contábil ≠ fluxo bancário" ficou obsoleto.
+//
+// RBAC: área própria 'financeiro/dre' (0197) — cobre ver E editar a estrutura (decisão
+// firme; divisão ver/editar = futuro se precisar).
 
 interface SearchParams {
   preset?: string
@@ -33,15 +43,6 @@ interface DecomposicaoCategoria {
   grupo_categoria: string
   sinal:           'entrada' | 'saida'
   valor_total:     number
-}
-
-function CardTitle({ titulo, subtitulo }: { titulo: string; subtitulo?: string }) {
-  return (
-    <div className="flex items-baseline gap-2 mb-4">
-      <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{titulo}</h3>
-      {subtitulo && <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{subtitulo}</span>}
-    </div>
-  )
 }
 
 export default async function DrePage({
@@ -74,25 +75,37 @@ export default async function DrePage({
 
   return (
     <div>
-      <TopSection titulo="DRE por Fluxo de Caixa">
+      <TopSection
+        titulo="DRE por Fluxo de Caixa"
+        subtitulo="estrutura oficial da controladoria · mês corrente híbrido (realizado + previsto)"
+      >
+        <TabelaDreMockup
+          slotAcoes={
+            <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
+              <SquarePen size={13} />
+              Editar estrutura
+            </Link>
+          }
+        />
+      </TopSection>
 
-        {/* Pills de período (mesma semântica de URL da página do Fluxo) */}
+      <TopSection
+        titulo="Composição dos Lançamentos"
+        subtitulo="decomposição por Grupo de Categoria no período"
+        defaultAberto={false}
+      >
         <div className="mb-6">
           <Suspense>
             <PeriodoFilterPillsUrl defaultPreset="este-ano" />
           </Suspense>
         </div>
-
-        {/* Composição dos Lançamentos — movida do Fluxo de Caixa (checkpoint v5.2.0) */}
-        <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
-          <CardTitle titulo="Composição dos Lançamentos" subtitulo="no período selecionado" />
-          <p className="text-2xs text-zinc-400 mb-3 -mt-2">
-            Decomposição por Grupo de Categoria (Lançamentos — regime contábil). Pode diferir levemente
-            dos KPIs do Fluxo de Caixa, que refletem fluxo bancário real.
+        <div className="rounded-xl shadow-sm bg-surface p-5">
+          <p className="text-2xs text-text-subtle mb-3">
+            Mesma base da DRE (lançamentos pelo eixo da movimentação) — visão agregada por grupo,
+            com detalhamento por categoria ao clicar.
           </p>
           <ComposicaoPeriodo entradas={entradas} saidas={saidas} categorias={categorias} />
         </div>
-
       </TopSection>
     </div>
   )

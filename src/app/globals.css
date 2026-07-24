@@ -76,6 +76,8 @@
   /* Bordas */
   --color-wt-border:        var(--border);
   --color-wt-border-strong: var(--border-strong);
+  --color-band:      var(--band);
+  --color-band-soft: var(--band-soft);
 
   /* Feedback */
   --color-success:    var(--success);

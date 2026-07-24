@@ -7,6 +7,13 @@
 // visíveis, salvar em lote (mock, sem persistência). Fonte: mockup-dados.ts
 // (fixture LINHAS/BANDEJA/EXCLUIDAS/FORMULAS). Removível quando a estrutura
 // real (M1+) chegar via RPC.
+//
+// Direção visual (rodada 2): a faixa vertical de NATUREZA foi descartada pelo
+// usuário (poluía o card) — a hierarquia agora é por BANDA CINZA (tokens
+// `--band`/`--band-soft`, alinhados à plataforma) nos headers de bloco e nas
+// âncoras de fórmula, e a cor por SINAL passou a viver nos próprios valores
+// (verde = receita/entrada, vermelho = gasto/saída). Tudo dentro de UM card
+// externo com respiro — os blocos viraram BOXES sem sombra própria.
 // =============================================================================
 
 import { useState, type ReactNode } from 'react'
@@ -48,32 +55,13 @@ type ModalMoverEstado =
   | { modo: 'reincluir'; catKey: string }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Natureza dos blocos (entrada × saída × misto × resultado) — pinta a faixa
-// vertical do card/âncora. Classificação por CHAVE do bloco (estável); ausente
-// (linha órfã sem chave própria) = faixa transparente, mesma largura, para
-// nada deslocar o layout.
+// Cor por SINAL (substitui a faixa de natureza) — verde para valor positivo
+// (receita/entrada), vermelho para negativo (gasto/saída); zero fica neutro.
+// Usada nas linhas de categoria, na bandeja e nas excluídas.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Natureza = 'e' | 's' | 'm' | 'r'
-
-const NATUREZA: Record<string, Natureza> = {
-  ENT_H: 'e', RB_H: 'e', RV: 'e', RFIN: 'e', RNOP: 'e',
-  PAG_H: 's', IMP_H: 's', CUSTO: 's', DESP_H: 's', ADM: 's', COM: 's', IMOB: 's', FIN: 's',
-  MKT: 's', ESTR: 's', RH: 's', RHB: 's', DNOP: 's', INV_H: 's', INV: 's', DIST_LUCROS: 's',
-  ONOP_H: 'm',
-  REPASSE: 'r', ROL: 'r', LB: 'r', LOP: 'r', LL: 'r', RAIR: 'r', REX: 'r',
-}
-
-const BORDA_POR_NATUREZA: Record<Natureza, string> = {
-  e: 'border-l-positive',
-  s: 'border-l-negative',
-  m: 'border-l-neutral',
-  r: 'border-l-brand',
-}
-
-function faixaNatureza(chave: string): string {
-  const nat = NATUREZA[chave]
-  return `border-l-[3px] ${nat ? BORDA_POR_NATUREZA[nat] : 'border-l-transparent'}`
+function corValor(v: number): string {
+  return v < 0 ? 'text-negative' : v > 0 ? 'text-positive' : 'text-text-subtle'
 }
 
 // Chaves DETERMINÍSTICAS pelo nome — os nomes de categoria são únicos na DRE
@@ -214,7 +202,7 @@ function FaixaAncora({ item, rotulosPorChave }: { item: BlocoItem; rotulosPorCha
   const legivel   = item.formula?.map(k => rotulosPorChave[k] ?? k).join(' + ') ?? ''
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg border border-wt-border bg-surface-soft px-3 py-2 ${faixaNatureza(item.chave)}`}
+      className="flex items-center gap-2 rounded-lg border border-wt-border bg-band px-3 py-2"
       title={item.formula ? `Ancorada por chave de bloco — não reordenável · = ${porChaves}` : 'Ancorada por chave de bloco — não reordenável'}
     >
       <Lock size={12} className="shrink-0 text-text-subtle" aria-hidden="true" />
@@ -250,7 +238,7 @@ function LinhaCategoria({
   onExcluir: () => void
 }) {
   return (
-    <div className="flex items-center gap-2 border-b border-wt-border/60 px-4 py-2 last:border-b-0">
+    <div className="flex items-center gap-2 border-b border-wt-border/60 px-4 py-2.5 last:border-b-0">
       <p className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">
         {nome}
         {estrela && (
@@ -259,7 +247,7 @@ function LinhaCategoria({
           </sup>
         )}
       </p>
-      <p className="shrink-0 text-xs tabular-nums text-text-muted">{fmtContabil(total)}</p>
+      <p className={`shrink-0 text-xs tabular-nums ${corValor(total)}`}>{fmtContabil(total)}</p>
       <div className="flex shrink-0 items-center gap-0.5">
         <Button
           variant="icone"
@@ -315,10 +303,12 @@ function CardBloco({
   onExcluirCat: (catKey: string) => void
 }) {
   const subtotal = subtotalCats(bloco.cats)
+  // -deep (não a base): sobre a banda cinza (--band-soft) os tons base de sinal
+  // reprovam AA (contraste medido 3,88–4,31:1); os -deep sobem a 7–10:1.
   const corSubtotal = subtotal < 0 ? 'text-negative-deep' : subtotal > 0 ? 'text-positive-deep' : 'text-text-muted'
   return (
-    <div className={`rounded-xl bg-surface shadow-sm ${faixaNatureza(bloco.chave)}`}>
-      <div className="flex items-center gap-2 border-b border-wt-border px-4 py-3">
+    <div className="overflow-hidden rounded-lg border border-wt-border bg-surface">
+      <div className="flex items-center gap-2 border-b border-wt-border bg-band-soft px-4 py-3">
         <p className="text-sm font-medium text-text-primary">{bloco.rotulo}</p>
         <span className="rounded bg-surface-strong px-1.5 py-0.5 font-mono text-2xs text-text-muted">{bloco.chave}</span>
         <span className="text-2xs text-text-subtle">
@@ -351,7 +341,7 @@ function CardBloco({
 function BandejaCard({ itens, onClassificar }: { itens: CatEditor[]; onClassificar: (catKey: string) => void }) {
   if (itens.length === 0) return null
   return (
-    <div className="rounded-xl border border-warning border-l-[3px] border-l-warning bg-warning-bg">
+    <div className="rounded-lg border border-l-[3px] border-warning border-l-warning bg-warning-bg">
       <div className="flex flex-wrap items-center gap-2 border-b border-warning/40 px-4 py-3">
         <Badge variant="warning">Não classificadas</Badge>
         <span className="text-2xs text-warning-deep">
@@ -370,7 +360,7 @@ function BandejaCard({ itens, onClassificar }: { itens: CatEditor[]; onClassific
               <p className="truncate text-[13px] text-text-primary">{cat.nome}</p>
               <p className="text-2xs text-warning-deep">Sem bloco mapeado — aguardando classificação</p>
             </div>
-            <p className="shrink-0 text-xs tabular-nums text-text-muted">{fmtContabil(cat.total)}</p>
+            <p className={`shrink-0 text-xs tabular-nums ${corValor(cat.total)}`}>{fmtContabil(cat.total)}</p>
             <button type="button" onClick={() => onClassificar(cat.key)} className={`${PILL} ${PILL_NEUTRO} shrink-0`}>
               Classificar…
             </button>
@@ -390,7 +380,7 @@ function ExcluidasCard({
 }) {
   if (itens.length === 0) return null
   return (
-    <div className="rounded-xl border border-wt-border border-l-[3px] border-l-text-subtle bg-surface-soft">
+    <div className="rounded-lg border border-wt-border bg-surface-soft">
       <div className="border-b border-wt-border px-4 py-3">
         <p className="text-sm font-medium text-text-primary">Excluídas da DRE</p>
         <p className="text-2xs text-text-muted">
@@ -405,7 +395,7 @@ function ExcluidasCard({
               <p className="truncate text-[13px] text-text-secondary">{item.nome}</p>
               <p className="text-2xs text-text-subtle">{item.grupoMonde}</p>
             </div>
-            <p className="shrink-0 text-xs tabular-nums text-text-muted">{fmtContabil(item.total)}</p>
+            <p className={`shrink-0 text-xs tabular-nums ${corValor(item.total)}`}>{fmtContabil(item.total)}</p>
             <button
               type="button"
               onClick={() => onReincluir(item.key)}
@@ -635,51 +625,34 @@ export default function EditorDreMockup() {
   const rotulosPorChave = Object.fromEntries(blocos.map(b => [b.chave, b.rotulo]))
 
   return (
-    <div className="space-y-3">
-      <p className="text-2xs text-text-subtle">
-        Mockup (M0) — nada é persistido. Na implementação real: salvar em lote (padrão Metas) + diário/undo auditado
-        (M2/M5) + trava otimista.
-      </p>
+    <div className="rounded-xl bg-surface p-5 shadow-sm">
+      {/* Conferência visual do Yan ("limpar o que polui"): aviso reduzido a uma linha sem
+          jargão interno (padrão Metas/M2/M5 vivem no PR, não na tela); a legenda
+          verde/vermelho saiu — é redundante com a da DRE e com os próprios valores. */}
+      <p className="text-2xs text-text-subtle">Mockup — as alterações ainda não são salvas.</p>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-positive" aria-hidden="true" />
-          Entrada
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-negative" aria-hidden="true" />
-          Saída
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-neutral" aria-hidden="true" />
-          Misto
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
-          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-brand" aria-hidden="true" />
-          Resultado
-        </span>
+      <div className="mt-3 space-y-3">
+        {blocos.map(item =>
+          item.cats.length > 0 ? (
+            <CardBloco
+              key={item.chave}
+              bloco={item}
+              onSubirCat={index => moverCategoria(item.chave, index, -1)}
+              onDescerCat={index => moverCategoria(item.chave, index, 1)}
+              onMoverCat={catKey => abrirMover(item.chave, catKey)}
+              onExcluirCat={catKey => abrirExcluir(item.chave, catKey)}
+            />
+          ) : (
+            <FaixaAncora key={item.chave} item={item} rotulosPorChave={rotulosPorChave} />
+          ),
+        )}
+
+        <BandejaCard itens={bandeja} onClassificar={abrirClassificar} />
+        <ExcluidasCard itens={excluidas} onReincluir={abrirReincluir} />
       </div>
 
-      {blocos.map(item =>
-        item.cats.length > 0 ? (
-          <CardBloco
-            key={item.chave}
-            bloco={item}
-            onSubirCat={index => moverCategoria(item.chave, index, -1)}
-            onDescerCat={index => moverCategoria(item.chave, index, 1)}
-            onMoverCat={catKey => abrirMover(item.chave, catKey)}
-            onExcluirCat={catKey => abrirExcluir(item.chave, catKey)}
-          />
-        ) : (
-          <FaixaAncora key={item.chave} item={item} rotulosPorChave={rotulosPorChave} />
-        ),
-      )}
-
-      <BandejaCard itens={bandeja} onClassificar={abrirClassificar} />
-      <ExcluidasCard itens={excluidas} onReincluir={abrirReincluir} />
-
       {(alteracoes.length > 0 || salvoEm) && (
-        <div className="sticky bottom-0 z-10 flex items-center justify-between rounded-b-xl border-t border-wt-border bg-surface px-4 py-3">
+        <div className="sticky bottom-0 -mx-5 -mb-5 mt-3 flex items-center justify-between rounded-b-xl border-t border-wt-border bg-surface px-5 py-3">
           {alteracoes.length > 0 ? (
             <>
               <p className="text-xs text-text-muted" title={alteracoes.join('\n')}>
