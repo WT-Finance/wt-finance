@@ -3,7 +3,11 @@
 **Base:** `main` @ v5.2.0 (`097ffa4`) · **Branch:** `feat/v5-2-1-gerencial-colaboracao` · **PATCH** · **ADR-0155**
 **Motivação real:** um usuário apagou toda a Base de Dados do Gerencial sem reversão possível; e edições simultâneas podiam se atropelar sem ninguém ver.
 
-> **Migrations 0199–0202 APLICADAS em produção** (2026-07-23, pelo Yan via `--aditiva --fora-de-ordem`, gate verde). O harness bloqueou o `db:migrate` autônomo (escrita em produção) → o Yan rodou o comando. Pré-check do Realtime (`realtime.topic()`/`send()`) passou antes. Objetos **verificados por introspecção**: tabela do diário (11 cols), trigger AFTER row-level, 3 triggers statement-level de broadcast, policy em `realtime.messages` (via `pode_assinar_area`), 8 funções novas, overloads 2/3-arg da trava, `get_gerencial_lancamentos` expõe `atualizado_em`. Resta o **teste funcional com 2 usuários** (app) + o merge. Ver "Aplicação das migrations" abaixo.
+> **Migrations 0199–0203 APLICADAS em produção** (23–24/07, pelo Yan via `--aditiva --fora-de-ordem`, gate verde — o harness bloqueia o `db:migrate` autônomo). Objetos verificados por introspecção (tabela/triggers/policy/8 funções/overloads/token). **Realtime confirmado FUNCIONANDO ponta-a-ponta** (`realtime.send` de teste → aviso ao vivo no app). **Histórico corrigido** (0203; ver "Correções durante o checkpoint"). Resta: remover as cópias untracked 0950–0954 antes do merge + o merge.
+>
+> ### Correções durante o checkpoint (24/07)
+> - **0203 — `gerencial_historico_lotes`/`gerencial_desfazer_lote` quebravam com `function max(uuid) does not exist`.** Postgres não tem `max()`/`min()` para `uuid`; corrigido para `max(usuario_id::text)::uuid` (um lote = um autor). **Escapou da revisão e do meu smoke** porque o `db query` bate no `exigir_acesso` (papel sem JWT) ANTES de executar o corpo → o erro só surgiu na tela do usuário. Lição no CLAUDE.md (§Verificação pós-push): verificar RPC gated **executando via REST/service_role**, não só introspecção. Fix aplicado (0203) e verificado (agregado roda contra os 75 registros do diário).
+> - **Cópias untracked 0950–0954 devem FICAR durante todo o checkpoint** (removi-as cedo demais após a 1ª aplicação → o `db push` do 0203 falhou com "Remote migration versions not found in local"). Regra: elas ficam na pasta enquanto houver qualquer `db:migrate` no checkpoint; sair só ANTES do merge.
 
 ## Missões implementadas
 
@@ -37,7 +41,7 @@
 - Cliente: `LancamentoRow` reenvia o token e surfaça o conflito (`onConflito` → banner + refresh; `EditableCell` não marca "salvo" falso). Bulk-delete envia o mapa de versões.
 
 ## Migrations
-`0199_diario_alteracoes.sql`, `0200_diario_historico_desfazer.sql`, `0201_realtime_broadcast_gerencial.sql`, `0202_gerencial_trava_otimista.sql` — **todas aditivas**.
+`0199_diario_alteracoes.sql`, `0200_diario_historico_desfazer.sql`, `0201_realtime_broadcast_gerencial.sql`, `0202_gerencial_trava_otimista.sql`, `0203_fix_historico_max_uuid.sql` (fix pós-aplicação) — **todas aditivas**.
 
 ### Aplicação das migrations (checkpoint)
 1. **Verificar o Realtime** (pré-condição BLOQUEANTE do 0201): `select proname from pg_proc where pronamespace='realtime'::regnamespace and proname in ('topic','send');` e confirmar no dashboard que a Autorização de Realtime (canais privados) está habilitada. Se `realtime.topic()` não existir, o `CREATE POLICY` do 0201 falha na aplicação (a policy vem antes dos triggers de propósito → reaplicação limpa após habilitar).
