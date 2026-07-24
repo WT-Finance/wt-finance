@@ -80,8 +80,9 @@
   /* Feedback */
   --color-success:    var(--success);
   --color-success-bg: var(--success-bg);
-  --color-warning:    var(--warning);
-  --color-warning-bg: var(--warning-bg);
+  --color-warning:      var(--warning);
+  --color-warning-bg:   var(--warning-bg);
+  --color-warning-deep: var(--warning-deep);
   --color-danger:     var(--danger);
   --color-danger-bg:  var(--danger-bg);
 

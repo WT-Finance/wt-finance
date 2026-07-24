@@ -47,6 +47,35 @@ type ModalMoverEstado =
   | { modo: 'classificar'; catKey: string }
   | { modo: 'reincluir'; catKey: string }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Natureza dos blocos (entrada × saída × misto × resultado) — pinta a faixa
+// vertical do card/âncora. Classificação por CHAVE do bloco (estável); ausente
+// (linha órfã sem chave própria) = faixa transparente, mesma largura, para
+// nada deslocar o layout.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Natureza = 'e' | 's' | 'm' | 'r'
+
+const NATUREZA: Record<string, Natureza> = {
+  ENT_H: 'e', RB_H: 'e', RV: 'e', RFIN: 'e', RNOP: 'e',
+  PAG_H: 's', IMP_H: 's', CUSTO: 's', DESP_H: 's', ADM: 's', COM: 's', IMOB: 's', FIN: 's',
+  MKT: 's', ESTR: 's', RH: 's', RHB: 's', DNOP: 's', INV_H: 's', INV: 's', DIST_LUCROS: 's',
+  ONOP_H: 'm',
+  REPASSE: 'r', ROL: 'r', LB: 'r', LOP: 'r', LL: 'r', RAIR: 'r', REX: 'r',
+}
+
+const BORDA_POR_NATUREZA: Record<Natureza, string> = {
+  e: 'border-l-positive',
+  s: 'border-l-negative',
+  m: 'border-l-neutral',
+  r: 'border-l-brand',
+}
+
+function faixaNatureza(chave: string): string {
+  const nat = NATUREZA[chave]
+  return `border-l-[3px] ${nat ? BORDA_POR_NATUREZA[nat] : 'border-l-transparent'}`
+}
+
 // Chaves DETERMINÍSTICAS pelo nome — os nomes de categoria são únicos na DRE
 // (0 duplicatas, provado na investigação). Nada de contador módulo-level: mutação
 // durante o render viola a regra de imutabilidade do react-hooks v7.
@@ -119,7 +148,7 @@ function construirMensagemExcluir(blocos: BlocoItem[], blocoChave: string, catKe
         {' → '}
         <span className="tabular-nums font-medium">{fmtContabilBRL(novo)}</span>
       </p>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-text-muted">
         A categoria continua visível em Excluídas e pode ser reincluída a qualquer momento.
       </p>
     </div>
@@ -185,15 +214,15 @@ function FaixaAncora({ item, rotulosPorChave }: { item: BlocoItem; rotulosPorCha
   const legivel   = item.formula?.map(k => rotulosPorChave[k] ?? k).join(' + ') ?? ''
   return (
     <div
-      className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2"
+      className={`flex items-center gap-2 rounded-lg border border-wt-border bg-surface-soft px-3 py-2 ${faixaNatureza(item.chave)}`}
       title={item.formula ? `Ancorada por chave de bloco — não reordenável · = ${porChaves}` : 'Ancorada por chave de bloco — não reordenável'}
     >
-      <Lock size={12} className="shrink-0 text-zinc-400" aria-hidden="true" />
-      <p className="shrink-0 text-[13px] font-medium text-zinc-700">{item.rotulo}</p>
+      <Lock size={12} className="shrink-0 text-text-subtle" aria-hidden="true" />
+      <p className="shrink-0 text-[13px] font-medium text-text-primary">{item.rotulo}</p>
       {item.formula ? (
-        <p className="truncate text-2xs text-zinc-400">= {legivel}</p>
+        <p className="truncate text-2xs text-text-subtle">= {legivel}</p>
       ) : (
-        <p className="truncate text-2xs text-zinc-400 italic">valor direto — sem categorias</p>
+        <p className="truncate text-2xs text-text-subtle italic">valor direto — sem categorias</p>
       )}
     </div>
   )
@@ -221,16 +250,16 @@ function LinhaCategoria({
   onExcluir: () => void
 }) {
   return (
-    <div className="flex items-center gap-2 border-b border-zinc-50 px-4 py-2 last:border-b-0">
-      <p className="min-w-0 flex-1 truncate text-[13px] text-zinc-700">
+    <div className="flex items-center gap-2 border-b border-wt-border/60 px-4 py-2 last:border-b-0">
+      <p className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">
         {nome}
         {estrela && (
-          <sup className="text-warning" title="Nota da controladoria">
+          <sup className="text-warning-deep" title="Nota da controladoria">
             *
           </sup>
         )}
       </p>
-      <p className="shrink-0 text-xs tabular-nums text-zinc-500">{fmtContabil(total)}</p>
+      <p className="shrink-0 text-xs tabular-nums text-text-muted">{fmtContabil(total)}</p>
       <div className="flex shrink-0 items-center gap-0.5">
         <Button
           variant="icone"
@@ -286,15 +315,16 @@ function CardBloco({
   onExcluirCat: (catKey: string) => void
 }) {
   const subtotal = subtotalCats(bloco.cats)
+  const corSubtotal = subtotal < 0 ? 'text-negative-deep' : subtotal > 0 ? 'text-positive-deep' : 'text-text-muted'
   return (
-    <div className="rounded-xl bg-white shadow-sm">
-      <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3">
-        <p className="text-sm font-medium text-zinc-800">{bloco.rotulo}</p>
-        <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-2xs text-zinc-500">{bloco.chave}</span>
-        <span className="text-2xs text-zinc-400">
+    <div className={`rounded-xl bg-surface shadow-sm ${faixaNatureza(bloco.chave)}`}>
+      <div className="flex items-center gap-2 border-b border-wt-border px-4 py-3">
+        <p className="text-sm font-medium text-text-primary">{bloco.rotulo}</p>
+        <span className="rounded bg-surface-strong px-1.5 py-0.5 font-mono text-2xs text-text-muted">{bloco.chave}</span>
+        <span className="text-2xs text-text-subtle">
           {bloco.cats.length} categoria{bloco.cats.length === 1 ? '' : 's'}
         </span>
-        <span className="ml-auto shrink-0 text-sm font-medium tabular-nums text-zinc-700">
+        <span className={`ml-auto shrink-0 text-sm font-medium tabular-nums ${corSubtotal}`}>
           {fmtContabilBRL(subtotal)}
         </span>
       </div>
@@ -321,13 +351,13 @@ function CardBloco({
 function BandejaCard({ itens, onClassificar }: { itens: CatEditor[]; onClassificar: (catKey: string) => void }) {
   if (itens.length === 0) return null
   return (
-    <div className="rounded-xl border border-warning bg-warning-bg">
+    <div className="rounded-xl border border-warning border-l-[3px] border-l-warning bg-warning-bg">
       <div className="flex flex-wrap items-center gap-2 border-b border-warning/40 px-4 py-3">
         <Badge variant="warning">Não classificadas</Badge>
-        <span className="text-2xs text-zinc-500">
+        <span className="text-2xs text-warning-deep">
           {itens.length} categoria{itens.length === 1 ? '' : 's'}
         </span>
-        <span className="text-2xs text-zinc-500">
+        <span className="text-2xs text-warning-deep">
           categorias novas do Monde aparecem aqui — nada some em silêncio
         </span>
       </div>
@@ -335,10 +365,12 @@ function BandejaCard({ itens, onClassificar }: { itens: CatEditor[]; onClassific
         {itens.map(cat => (
           <div key={cat.key} className="flex items-center gap-2 border-b border-warning/20 px-4 py-2 last:border-b-0">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] text-zinc-700">{cat.nome}</p>
-              <p className="text-2xs text-zinc-400">Sem bloco mapeado — aguardando classificação</p>
+              {/* nome na tinta primária (contraste alto sobre o âmbar) e a nota em âmbar
+                  escuro: dentro do card, o nome precisa pesar mais que o explicador. */}
+              <p className="truncate text-[13px] text-text-primary">{cat.nome}</p>
+              <p className="text-2xs text-warning-deep">Sem bloco mapeado — aguardando classificação</p>
             </div>
-            <p className="shrink-0 text-xs tabular-nums text-zinc-500">{fmtContabil(cat.total)}</p>
+            <p className="shrink-0 text-xs tabular-nums text-text-muted">{fmtContabil(cat.total)}</p>
             <button type="button" onClick={() => onClassificar(cat.key)} className={`${PILL} ${PILL_NEUTRO} shrink-0`}>
               Classificar…
             </button>
@@ -358,22 +390,22 @@ function ExcluidasCard({
 }) {
   if (itens.length === 0) return null
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50">
-      <div className="border-b border-zinc-200 px-4 py-3">
-        <p className="text-sm font-medium text-zinc-700">Excluídas da DRE</p>
-        <p className="text-2xs text-zinc-500">
+    <div className="rounded-xl border border-wt-border border-l-[3px] border-l-text-subtle bg-surface-soft">
+      <div className="border-b border-wt-border px-4 py-3">
+        <p className="text-sm font-medium text-text-primary">Excluídas da DRE</p>
+        <p className="text-2xs text-text-muted">
           transferências internas de caixa (valores reais, netam a zero) — fora da DRE por não serem
           resultado; seguem visíveis e reversíveis
         </p>
       </div>
       <div>
         {itens.map(item => (
-          <div key={item.key} className="flex items-center gap-2 border-b border-zinc-100 px-4 py-2 last:border-b-0">
+          <div key={item.key} className="flex items-center gap-2 border-b border-wt-border px-4 py-2 last:border-b-0">
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] text-zinc-700">{item.nome}</p>
-              <p className="text-2xs text-zinc-400">{item.grupoMonde}</p>
+              <p className="truncate text-[13px] text-text-secondary">{item.nome}</p>
+              <p className="text-2xs text-text-subtle">{item.grupoMonde}</p>
             </div>
-            <p className="shrink-0 text-xs tabular-nums text-zinc-500">{fmtContabil(item.total)}</p>
+            <p className="shrink-0 text-xs tabular-nums text-text-muted">{fmtContabil(item.total)}</p>
             <button
               type="button"
               onClick={() => onReincluir(item.key)}
@@ -433,9 +465,9 @@ function MoverModal({
     >
       <div className="space-y-4">
         <div>
-          <p className="mb-2 text-xs font-medium text-zinc-500">{acaoTexto}</p>
+          <p className="mb-2 text-xs font-medium text-text-muted">{acaoTexto}</p>
           {destinos.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-zinc-200 px-3 py-4 text-center text-sm text-zinc-400">
+            <p className="rounded-lg border border-dashed border-wt-border px-3 py-4 text-center text-sm text-text-subtle">
               Nenhum bloco de destino disponível.
             </p>
           ) : (
@@ -448,7 +480,7 @@ function MoverModal({
                   className={`foco-neutro w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                     selecionado === d.chave
                       ? 'border-action-soft-border bg-action-soft text-action-soft-fg'
-                      : 'border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                      : 'border-wt-border text-text-secondary hover:bg-surface-strong'
                   }`}
                 >
                   {d.rotulo}
@@ -459,16 +491,16 @@ function MoverModal({
         </div>
 
         {destinoSel && (
-          <div className="space-y-1.5 rounded-lg border border-zinc-100 bg-zinc-50 p-3">
-            <p className="text-2xs font-medium text-zinc-500">Efeito nos subtotais</p>
+          <div className="space-y-1.5 rounded-lg border border-wt-border bg-surface-soft p-3">
+            <p className="text-2xs font-medium text-text-muted">Efeito nos subtotais</p>
             {origem && (
-              <p className="text-xs text-zinc-600">
+              <p className="text-xs text-text-secondary">
                 {origem.rotulo}: <span className="tabular-nums">{fmtContabilBRL(origem.atual)}</span>
                 {' → '}
                 <span className="font-medium tabular-nums">{fmtContabilBRL(origem.atual - cat.total)}</span>
               </p>
             )}
-            <p className="text-xs text-zinc-600">
+            <p className="text-xs text-text-secondary">
               {destinoSel.rotulo}: <span className="tabular-nums">{fmtContabilBRL(destinoSel.atual)}</span>
               {' → '}
               <span className="font-medium tabular-nums">{fmtContabilBRL(destinoSel.atual + cat.total)}</span>
@@ -604,10 +636,29 @@ export default function EditorDreMockup() {
 
   return (
     <div className="space-y-3">
-      <p className="text-2xs text-zinc-400">
+      <p className="text-2xs text-text-subtle">
         Mockup (M0) — nada é persistido. Na implementação real: salvar em lote (padrão Metas) + diário/undo auditado
         (M2/M5) + trava otimista.
       </p>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-positive" aria-hidden="true" />
+          Entrada
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-negative" aria-hidden="true" />
+          Saída
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-neutral" aria-hidden="true" />
+          Misto
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-text-secondary">
+          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm bg-brand" aria-hidden="true" />
+          Resultado
+        </span>
+      </div>
 
       {blocos.map(item =>
         item.cats.length > 0 ? (
@@ -628,10 +679,10 @@ export default function EditorDreMockup() {
       <ExcluidasCard itens={excluidas} onReincluir={abrirReincluir} />
 
       {(alteracoes.length > 0 || salvoEm) && (
-        <div className="sticky bottom-0 z-10 flex items-center justify-between rounded-b-xl border-t border-zinc-200 bg-white px-4 py-3">
+        <div className="sticky bottom-0 z-10 flex items-center justify-between rounded-b-xl border-t border-wt-border bg-surface px-4 py-3">
           {alteracoes.length > 0 ? (
             <>
-              <p className="text-xs text-zinc-500" title={alteracoes.join('\n')}>
+              <p className="text-xs text-text-muted" title={alteracoes.join('\n')}>
                 {pluralAlteracoes(alteracoes.length)}
               </p>
               <Button variant="solido" onClick={salvar} disabled={salvando}>

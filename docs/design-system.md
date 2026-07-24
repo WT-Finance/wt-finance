@@ -60,6 +60,14 @@ Classes Tailwind: `bg-brand`, `text-brand`, `border-brand`, `bg-brand-soft`, `bg
 
 Classes Tailwind: `text-success`, `bg-success-bg`, `text-warning`, `bg-warning-bg`, `text-danger`, `bg-danger-bg`
 
+⚠️ **`--warning` não serve como TINTA em corpo pequeno** — #D9A23F sobre branco dá **2,29:1**
+(reprova AA). Para texto âmbar use **`--warning-deep`** (#8A6413, classe `text-warning-deep`):
+5,37:1 sobre branco, 4,70:1 sobre `--warning-bg`, 4,77:1 sobre `--surface-soft`. Segue a convenção
+`*-deep` de `--positive-deep`/`--negative-deep`. O `--warning` continua sendo o certo para **fundo,
+borda e ícone**. Não recorra a `--gestao-fg` para isso: o DS separa a família de gestão de propósito
+(gestão é "ação administrativa" e não acompanha mudanças do warning). (v5.3.0, nasceu nas colunas de
+PREVISTO da DRE.)
+
 ---
 
 ## Tipografia

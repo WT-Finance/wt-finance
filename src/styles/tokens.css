@@ -20,8 +20,16 @@
   /* Feedback (terrosos refinados) */
   --success:    #4F8E54;  /* verde-musgo */
   --success-bg: #E8F0E4;
-  --warning:    #D9A23F;  /* mostarda, derivado do dourado */
-  --warning-bg: #FAEFD5;
+  --warning:      #D9A23F;  /* mostarda, derivado do dourado */
+  --warning-bg:   #FAEFD5;
+  /* Âmbar ESCURO para TEXTO (mesma família do --warning, contraste de corpo pequeno):
+     o --warning puro não passa AA como tinta (2,0:1 sobre branco). Este passa sobre
+     branco (5,4:1) e sobre --warning-bg (4,7:1). Segue a convenção *-deep de
+     --positive-deep/--negative-deep. Nasceu na DRE (v5.3.0), onde as colunas de
+     PREVISTO precisam de rótulo âmbar legível. Antes disso, telas que precisavam de
+     tinta âmbar recorriam a --gestao-fg, que o DS separa de propósito (gestão é
+     "ação administrativa" e não acompanha mudanças do warning). */
+  --warning-deep: #8A6413;
   --danger:     #B85C5C;  /* vermelho-terracota */
   --danger-bg:  #F5DDDD;
 

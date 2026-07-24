@@ -19,13 +19,24 @@ export default async function DreMockupPage() {
         titulo="Mockup · Tabela DRE"
         subtitulo="gate da v5.3.0 — dados reais da controladoria (base 15/07/2026); nada é persistido"
       >
-        <div className="rounded-lg border border-[var(--warning)]/40 bg-[var(--warning-bg)]/50 px-4 py-3 mb-4 text-xs text-zinc-600">
-          <span className="font-medium">Pontos em validação neste gate:</span>{' '}
-          (1) mês corrente híbrido em duas colunas (Jul·R | Jul·P) com divisor tracejado;{' '}
-          (2) meses previstos em âmbar; (3) negativos em parênteses (contábil);{' '}
-          (4) <span className="font-medium">Total do ano = soma das colunas mensais</span> — o modelo da
-          controladoria soma também os vencidos em aberto, que não têm coluna neste recorte;{' '}
-          (5) bandeja “Não classificadas” ao fim (valores ilustrativos — o dado real da órfã vive em 2023).
+        <div className="rounded-lg border border-wt-border bg-surface-soft px-4 py-3 mb-4 text-xs text-text-secondary">
+          <p>
+            <span className="font-medium text-text-primary">Desenho aplicado</span> (rodada visual,
+            sobre o estudo aprovado): hierarquia em <span className="font-medium">régua contábil</span>{' '}
+            — sem bandas coloridas, com régua dupla no resultado, como um demonstrativo impresso;{' '}
+            <span className="font-medium">natureza na faixa</span> (entrada sage · saída terracota ·
+            misto dourado · resultado cinza-marca) e <span className="font-medium">sinal na tinta só
+            nas linhas de resultado</span>; <span className="font-medium">previsto no fundo</span>{' '}
+            (âmbar marca o tempo, a tinta fica livre para o sinal); figuras tabulares da Avenir;
+            paleta quente do DS no lugar do cinza frio.
+          </p>
+          <p className="mt-2">
+            <span className="font-medium text-text-primary">Ainda para você decidir:</span>{' '}
+            o <span className="font-medium">Total do ano</span> soma apenas as colunas mensais — o
+            modelo da controladoria soma <span className="font-medium">também os vencidos em aberto</span>{' '}
+            (−R$ 306.512 no resultado do exercício), que não têm coluna neste recorte. Somar no total,
+            dar coluna própria, ou manter como está?
+          </p>
         </div>
         <TabelaDreMockup />
       </TopSection>
