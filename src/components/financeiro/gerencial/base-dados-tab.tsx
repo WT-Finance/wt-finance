@@ -161,9 +161,16 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
   const contasReais  = useMemo(() => saldos.map(s => s.conta), [saldos])
 
   // Re-sincroniza com o servidor (router.refresh após import/mutações). Padrão React
-  // "ajustar estado na renderização" (sem efeito); limpa a seleção pois os ids mudam.
+  // "ajustar estado na renderização" (sem efeito). v5.2.1 (b): refresh NÃO-destrutivo — PRESERVA a
+  // seleção (antes zerava a cada atualização, atrapalhando ação em massa); só descarta ids que
+  // sumiram do servidor. (A trava é preservada por linha: LancamentoRow congela o token em edição.)
   const [prevInicial, setPrevInicial] = useState(inicial)
-  if (inicial !== prevInicial) { setPrevInicial(inicial); setItens(inicial); setSelecionados(new Set()) }
+  if (inicial !== prevInicial) {
+    setPrevInicial(inicial)
+    setItens(inicial)
+    const idsVivos = new Set(inicial.map(l => l.id))
+    setSelecionados(prev => new Set([...prev].filter(id => idsVivos.has(id))))
+  }
 
   useEffect(() => {
     if (criando && primeiroInputRef.current) primeiroInputRef.current.focus()

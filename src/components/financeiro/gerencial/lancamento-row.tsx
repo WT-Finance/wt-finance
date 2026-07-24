@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
+import { useState, useTransition, useEffect, useCallback, type ReactNode } from 'react'
 import { Trash2, Loader2, Check, FileSpreadsheet, PencilLine, PaintBucket } from 'lucide-react'
 import { updateLancamento, deleteLancamento } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { ValorContabil } from '@/components/shared/valor-contabil'
@@ -34,10 +34,12 @@ const tipoBadgeClasses = (v: string): string =>
   : 'border-zinc-200 bg-zinc-50 text-zinc-600'
 
 function EditableCell({
-  value, onSave, type = 'text', options, align = 'left', accounting = false, accountingClassName, before, badge = false, badgeClassFor,
+  value, onSave, type = 'text', options, align = 'left', accounting = false, accountingClassName, before, badge = false, badgeClassFor, onEditingChange,
 }: {
   value: string | number | null
   onSave: (v: string) => Promise<void>
+  /** v5.2.1 (b): avisa a linha quando esta célula entra/sai de edição (para congelar o token da trava). */
+  onEditingChange?: (editing: boolean) => void
   type?: 'text' | 'number' | 'date' | 'select'
   options?: string[]
   /** Alinhamento da célula de exibição (Valor → 'right'). */
@@ -56,6 +58,8 @@ function EditableCell({
   const [editing, setEditing]   = useState(false)
   const [localVal, setLocalVal] = useState(String(value ?? ''))
   const [state, setState]       = useState<CellState>({ saving: false, saved: false })
+  // v5.2.1 (b): reporta o estado de edição à linha (onEditingChange é estável — useCallback no pai).
+  useEffect(() => { onEditingChange?.(editing) }, [editing, onEditingChange])
 
   const save = async () => {
     if (localVal === String(value ?? '')) { setEditing(false); return }
@@ -186,18 +190,31 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
   const [destacado, setDestacado] = useState(l.destacado)
   const [, startDestaque] = useTransition()
 
+  // v5.2.1 (b): refresh não-destrutivo. Enquanto QUALQUER célula está em edição (emEdicao > 0), congela
+  // o token da trava (`atualizado_em`) — assim um refresh (Realtime/otimista) que chegue no meio NÃO
+  // troca o token por baixo, o que furaria a detecção de conflito no salvar. Ocioso → o token acompanha
+  // o dado fresco do servidor. `marcarEdicao` é estável (useCallback) — as células dependem dele no efeito.
+  const [emEdicao, setEmEdicao] = useState(0)
+  // Token congelado durante a edição: segue o prop quando OCIOSO (padrão "ajustar estado na render",
+  // idêntico ao prevInicial da base-dados-tab), frozen enquanto emEdicao > 0. State (não ref) para o
+  // salvar poder lê-lo sem violar react-hooks/refs.
+  const [tokenTrava, setTokenTrava] = useState(l.atualizado_em)
+  const [prevToken, setPrevToken]   = useState(l.atualizado_em)
+  if (emEdicao === 0 && l.atualizado_em !== prevToken) { setPrevToken(l.atualizado_em); setTokenTrava(l.atualizado_em) }
+  const marcarEdicao = useCallback((ativo: boolean) => setEmEdicao(n => Math.max(0, n + (ativo ? 1 : -1))), [])
+
   // v5.2.1 (M5): reenvia o token `atualizado_em` para a trava otimista. Falha → propaga o conflito
   // (banner + refresh no pai) e LANÇA, para o EditableCell não marcar "salvo".
   const makeSaver = (campo: string) => async (valor: string) => {
     const valorParsed = campo === 'valor_final' ? Number(valor) : valor || null
-    const res = await updateLancamento(l.id, campo, valorParsed, l.atualizado_em)
+    const res = await updateLancamento(l.id, campo, valorParsed, tokenTrava)
     if (!res.success) { onConflito?.(res.error); throw new Error(res.error) }
   }
 
   const handleDelete = () => {
     if (!confirmDel) { setConfirmDel(true); return }
     startDelete(async () => {
-      const res = await deleteLancamento(l.id, l.atualizado_em)
+      const res = await deleteLancamento(l.id, tokenTrava)
       if (res.success) onDelete()
       else onConflito?.(res.error)
     })
@@ -207,7 +224,7 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
     const novo = !destacado
     setDestacado(novo)
     startDestaque(async () => {
-      const res = await updateLancamento(l.id, 'destacado', novo, l.atualizado_em)
+      const res = await updateLancamento(l.id, 'destacado', novo, tokenTrava)
       if (!res.success) { setDestacado(!novo); onConflito?.(res.error) } // reverte o otimista
     })
   }
@@ -243,12 +260,12 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
         <input type="checkbox" checked={selecionado} onChange={onToggleSelecao}
           className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar linha" />
       </td>
-      <EditableCell value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} badge badgeClassFor={tipoBadgeClasses} />
-      <EditableCell value={l.pessoa}         onSave={makeSaver('pessoa')} />
-      <EditableCell value={l.valor_final}    onSave={makeSaver('valor_final')}    accounting align="right" accountingClassName={corValor} />
-      <EditableCell value={l.descricao}      onSave={makeSaver('descricao')} />
-      <EditableCell value={l.conta_previsao} onSave={makeSaver('conta_previsao')} type="select" options={opcoesConta} />
-      <EditableCell value={l.vencimento}     onSave={makeSaver('vencimento')}     type="date" />
+      <EditableCell onEditingChange={marcarEdicao} value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} badge badgeClassFor={tipoBadgeClasses} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.pessoa}         onSave={makeSaver('pessoa')} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.valor_final}    onSave={makeSaver('valor_final')}    accounting align="right" accountingClassName={corValor} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.descricao}      onSave={makeSaver('descricao')} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.conta_previsao} onSave={makeSaver('conta_previsao')} type="select" options={opcoesConta} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.vencimento}     onSave={makeSaver('vencimento')}     type="date" />
       {/* Originador (v4.23.0): só leitura — quem importou/criou. Distinto do ícone de origem. */}
       <td className="py-1 px-2">
         <span className="block truncate text-xs text-zinc-500" title={l.originador_nome ?? '—'}>
