@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { pushOverlay, popOverlay } from '@/lib/ui/overlay-stack'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
@@ -45,7 +46,12 @@ export default function ListDrawer({ titulo, subtitulo, onClose, children }: Pro
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  return (
+  // Portal para o document.body: o overlay/painel são `position: fixed` e devem se referenciar à
+  // VIEWPORT. Renderizados fundo numa árvore complexa (ex.: dentro do TopSection — grid 0fr/1fr +
+  // overflow-hidden + min-h-0 da "linha-cortina"), o fixed se comportava mal e o painel "vazava" no
+  // rodapé (v5.2.1). O portal os leva ao topo do DOM, imune a qualquer clip/containment de ancestral —
+  // mesmo idioma do popover de FiltroVencimento (base-dados-tab). (a11y/Esc/foco inalterados.)
+  return createPortal(
     <>
       <div
         className="fixed inset-0 z-40"
@@ -81,6 +87,7 @@ export default function ListDrawer({ titulo, subtitulo, onClose, children }: Pro
           {children}
         </ScrollAutoHide>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }

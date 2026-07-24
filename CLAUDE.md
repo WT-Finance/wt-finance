@@ -200,6 +200,7 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
   -H "apikey: $SVCKEY" -H "Authorization: Bearer $SVCKEY" \
   -H "Content-Type: application/json" -d '{...}'
 ```
+**A verificação REST com `service_role` EXECUTA o corpo da RPC** (o `service_role` é o ramo *trusted* de `exigir_acesso`) — é o que pega erro de RUNTIME no corpo. **Introspecção via `npx supabase db query` NÃO substitui isso**: o `db query` roda num papel sem JWT e não-superusuário, então `exigir_acesso` **nega ANTES do corpo** e mascara qualquer erro lá dentro. (Custou caro: `gerencial_historico_lotes` foi a produção com `max(usuario_id)` na v5.2.1 — o Postgres **não tem `max()`/`min()` para `uuid`** (agregue via `::text`), mas o smoke por `db query` parou no gate de acesso e não executou o corpo; só quebrou na tela do usuário. Fix 0203. Para agregado de RPC gated, execute-a via REST/service_role, não só introspecção.)
 
 ---
 

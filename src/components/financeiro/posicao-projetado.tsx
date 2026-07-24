@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import Badge from '@/components/ui/badge'
 import Tooltip from '@/components/ui/tooltip'
-import { fmtMi, fmtBRL2, fmtDate } from '@/lib/fmt'
-import { toNum } from '@/lib/carga/coercao'
+import { fmtMi, fmtBRL2, fmtDate, hojeSP, diasDesde, rotuloStaleness } from '@/lib/fmt'
+import { InputMoeda } from '@/components/shared/input-moeda'
 import { atualizarSaldoCaixaAction } from '@/app/financeiro/fluxo-caixa/actions'
 import type { SaldoCaixaConta, PrevistoDiario } from '@/lib/fluxo/rpc-fluxo'
 
@@ -90,31 +90,10 @@ function posTick(f: number): string {
   return `calc(7px + ${(f * 100).toFixed(2)}% - ${(f * 14).toFixed(2)}px)`
 }
 
-function hojeSP(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
-}
-
-function diasDesde(dataSaldo: string | null | undefined): number | null {
-  if (!dataSaldo) return null
-  const [hy, hm, hd] = hojeSP().split('-').map(Number)
-  const [dy, dm, dd] = dataSaldo.split('-').map(Number)
-  return Math.round((Date.UTC(hy, hm - 1, hd) - Date.UTC(dy, dm - 1, dd)) / 86_400_000)
-}
-
-/** Mesmos limiares de gerencial/contas-cards.tsx: neutro até 3 dias, atenção 4–7, alerta >7. */
-function rotuloStaleness(dias: number | null): { texto: string; cor: string; badge: 'warning' | 'danger' | null } {
-  if (dias === null) return { texto: 'sem data',      cor: 'text-zinc-300', badge: null }
-  if (dias < 0)       return { texto: 'data futura',   cor: 'text-zinc-400', badge: null }
-  if (dias === 0)     return { texto: 'hoje',          cor: 'text-zinc-400', badge: null }
-  if (dias <= 3)      return { texto: `há ${dias} dia${dias > 1 ? 's' : ''}`, cor: 'text-zinc-400', badge: null }
-  if (dias <= 7)      return { texto: `há ${dias} dias`, cor: 'text-warning', badge: 'warning' }
-  return                     { texto: `há ${dias} dias`, cor: 'text-danger',  badge: 'danger' }
-}
-
-/** Saldo BR (vírgula decimal, 2 casas) — round-trip seguro com `toNum` canônico (mesmo idioma
- *  de NumCell em gerencial/contas-manager.tsx; redefinido aqui para não importar o módulo
- *  gerencial). */
-const editStr = (v: number): string => v.toFixed(2).replace('.', ',')
+// v5.2.1 (M1) — hojeSP/diasDesde/rotuloStaleness e a edição de saldo deixaram de ser locais:
+// vêm da FONTE ÚNICA @/lib/fmt (+ InputMoeda, máscara de moeda em tempo real), compartilhada com
+// os cards do Gerencial — resolvendo a duplicação sinalizada na v5.2.0 (editStr/staleness antes
+// "redefinidos aqui para não importar o módulo gerencial").
 
 export default function PosicaoProjetado({ saldos, previsto }: Props) {
   const [drillOpen, setDrillOpen] = useState(false)
@@ -362,27 +341,26 @@ function SaldoDrillModal({ saldosIniciais, onClose }: { saldosIniciais: SaldoCai
  *  importar o módulo gerencial). */
 function SaldoCell({ valor, onSave }: { valor: number; onSave: (v: number) => Promise<void> }) {
   const [editando, setEditando] = useState(false)
-  const [txt, setTxt] = useState(editStr(valor))
   const [saving, setSaving] = useState(false)
 
-  const salvar = async () => {
-    const vazio = txt.trim() === ''
-    const num = vazio ? 0 : toNum(txt)
-    if (!vazio && num === null) { setTxt(editStr(valor)); setEditando(false); return }
-    if (num === valor) { setEditando(false); return }
-    setSaving(true); await onSave(num as number); setSaving(false); setEditando(false)
+  // Máscara de moeda em tempo real (InputMoeda); vazio → 0 (saldo não é anulável aqui).
+  const commit = async (num: number | null) => {
+    const n = num ?? 0
+    if (n === valor) { setEditando(false); return }
+    setSaving(true); await onSave(n); setSaving(false); setEditando(false)
   }
   if (editando) {
     return (
-      <input
-        autoFocus value={txt} onChange={e => setTxt(e.target.value)} onBlur={salvar}
-        onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') { setTxt(editStr(valor)); setEditando(false) } }}
+      <InputMoeda
+        valorInicial={valor}
+        onCommit={commit}
+        onCancel={() => setEditando(false)}
         className="w-28 text-right text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none tabular-nums shrink-0"
       />
     )
   }
   return (
-    <button onClick={() => { setTxt(editStr(valor)); setEditando(true) }}
+    <button onClick={() => setEditando(true)}
       className="text-xs font-semibold tabular-nums shrink-0 hover:text-[var(--brand)] transition-colors"
       style={{ color: valor >= 0 ? 'var(--positive)' : 'var(--negative)' }}
       title="Clique para editar">
@@ -418,9 +396,9 @@ function DataSaldoCell({ valor, onSave }: {
   const { texto, cor } = rotuloStaleness(diasDesde(valor))
   return (
     <button onClick={() => { setTxt(valor ?? ''); setEditando(true) }}
-      className={`text-3xs hover:text-[var(--brand)] transition-colors ${cor}`}
-      title={valor ? `Saldo referente a ${fmtDate(valor)} — clique para editar` : 'Sem data informada — clique para preencher'}>
-      {saving ? '…' : texto}
+      className={`text-3xs hover:text-[var(--brand)] transition-colors ${cor || 'text-zinc-300'}`}
+      title={valor ? `Saldo referente a ${fmtDate(valor)} — clique para editar` : 'Definir data do saldo'}>
+      {saving ? '…' : (texto || '—')}
     </button>
   )
 }

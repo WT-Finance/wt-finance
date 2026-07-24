@@ -93,6 +93,17 @@ describe('classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP
     const sql = `CREATE OR REPLACE FUNCTION public.update_gerencial_lancamento(p_id bigint, p_updates jsonb) RETURNS boolean AS $$ BEGIN RETURN true; END $$ LANGUAGE plpgsql;`
     expect(classificarSql(sql).nivel).toBe('aditiva')
   })
+  it('CREATE TRIGGER com evento UPDATE/DELETE NÃO é mutação (aditiva — falso-positivo v5.2.1)', () => {
+    // eventos = nome de evento, não statement de dado (0199)
+    expect(classificarSql('CREATE TRIGGER trg AFTER INSERT OR UPDATE OR DELETE ON analytics.t FOR EACH ROW EXECUTE FUNCTION f();').nivel).toBe('aditiva')
+    // (0201)
+    expect(classificarSql('CREATE TRIGGER trg AFTER UPDATE ON analytics.t REFERENCING NEW TABLE AS n FOR EACH STATEMENT EXECUTE FUNCTION f();').nivel).toBe('aditiva')
+    // CREATE OR REPLACE / CONSTRAINT TRIGGER também
+    expect(classificarSql('CREATE OR REPLACE TRIGGER trg BEFORE UPDATE ON t FOR EACH ROW EXECUTE FUNCTION f();').nivel).toBe('aditiva')
+  })
+  it('DROP TRIGGER continua destrutivo (a isenção é SÓ do CREATE)', () => {
+    expect(classificarSql('DROP TRIGGER trg ON analytics.t;').nivel).toBe('destrutiva')
+  })
 })
 
 describe('confirmaDestrutivaEOF — EOF/headless NUNCA confirma (inverte o default do CLI)', () => {

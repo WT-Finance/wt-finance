@@ -379,3 +379,29 @@ Primeiro caso: `/metas/tv` (Modo TV do Acompanhamento). Regras:
   quando houver tempo-real. Nunca acoplar lógica a ele.
 - **Auth por usuário dedicado de mínimo privilégio** (só a área de leitura da tela exibida), criado
   na UI de Usuários & Acessos — sem migration.
+
+## Painel de Histórico de alterações + desfazer (v5.2.1, ADR-0155)
+
+Padrão reutilizável de auditoria+reversão sobre uma tabela editável (nasce no Gerencial,
+generalizável). Componente `historico-alteracoes.tsx`.
+
+- **Colapsável**, mesmo idioma do `TopSection`/`ContasCards` (chevron `ChevronRight` que gira,
+  rótulo `text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]`, `foco-neutro`).
+  Carrega os lotes só ao abrir; recarrega por `recarregarKey` (o pai incrementa após qualquer
+  mudança/desfazer).
+- **Agrupado por LOTE** (uma transação = uma "ação"): cada item mostra operação (Inclusão/Edição/
+  Exclusão/Alterações/Reversão), autor, data-hora (`fmtDataHoraSP`) e nº de linhas; expande para o
+  **antes→depois** por linha (campos alterados com `line-through` no "de" e tom neutro no "para").
+  Lista rolável via `<ScrollAutoHide>` (nunca `overflow-*` cru).
+- **Fricção proporcional:** desfazer em MASSA (lote > 1 linha) abre `ConfirmModal` (confirmação
+  forte, com `AlertTriangle` e a contagem); desfazer unitário é direto; desfazer por linha usa o
+  duplo-clique-confirma (mesmo idioma da lixeira das linhas).
+- **`lote_id` viaja como STRING** ponta-a-ponta (bigint/txid pode passar de 2^53 — `Number()`
+  perderia precisão; o PostgREST casta a string p/ bigint no servidor). Regra: IDs de banco que
+  possam estourar 2^53 nunca viram `number` no cliente.
+- **Aviso vivo compartilhado:** o banner de topo da Base de Dados (âmbar `--warning`, dispensável)
+  serve tanto o CONFLITO de trava otimista quanto a mudança de OUTRO usuário (realtime) — um só
+  mecanismo, sempre seguido de `router.refresh()`.
+- **Realtime é fail-safe e por broadcast** (não polling, não `postgres_changes`): o hook
+  `useRealtimeGerencial` assina o canal privado, ignora as próprias mudanças (por `usuario_id`) e
+  degrada em silêncio se o Realtime cair (a página nunca quebra). ADR-0155 §3.

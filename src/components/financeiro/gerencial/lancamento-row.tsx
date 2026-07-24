@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
+import { useState, useTransition, useEffect, useCallback, type ReactNode } from 'react'
 import { Trash2, Loader2, Check, FileSpreadsheet, PencilLine, PaintBucket } from 'lucide-react'
 import { updateLancamento, deleteLancamento } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { ValorContabil } from '@/components/shared/valor-contabil'
+import { mascaraMoeda, numBRL2 } from '@/lib/fmt'
 
 export interface Lancamento {
   id:             number
@@ -18,9 +19,13 @@ export interface Lancamento {
   originador_nome: string | null
   /** Destaque persistente (v4.22 patch): pinta o fundo da linha de amarelo. */
   destacado:      boolean
+  /** v5.2.1 (M5): token da trava otimista (atualizado_em, ISO). Reenviado ao salvar/excluir para
+   *  o banco recusar a escrita se a linha mudou por baixo. NULL só em linha recém-criada localmente
+   *  antes do refresh (sem trava até re-hidratar). */
+  atualizado_em:  string | null
 }
 
-interface CellState { saving: boolean; saved: boolean; error: string | null }
+interface CellState { saving: boolean; saved: boolean }
 
 // Cor do badge de Tipo (v4.23.1): A pagar → vermelho (saída), A receber → verde (entrada).
 // Mesma semântica do valor (corValor) e tokens do DS; fundo suave + texto/borda na cor.
@@ -30,10 +35,12 @@ const tipoBadgeClasses = (v: string): string =>
   : 'border-zinc-200 bg-zinc-50 text-zinc-600'
 
 function EditableCell({
-  value, onSave, type = 'text', options, align = 'left', accounting = false, accountingClassName, before, badge = false, badgeClassFor,
+  value, onSave, type = 'text', options, align = 'left', accounting = false, accountingClassName, before, badge = false, badgeClassFor, onEditingChange,
 }: {
   value: string | number | null
   onSave: (v: string) => Promise<void>
+  /** v5.2.1 (b): avisa a linha quando esta célula entra/sai de edição (para congelar o token da trava). */
+  onEditingChange?: (editing: boolean) => void
   type?: 'text' | 'number' | 'date' | 'select'
   options?: string[]
   /** Alinhamento da célula de exibição (Valor → 'right'). */
@@ -51,15 +58,27 @@ function EditableCell({
 }) {
   const [editing, setEditing]   = useState(false)
   const [localVal, setLocalVal] = useState(String(value ?? ''))
-  const [state, setState]       = useState<CellState>({ saving: false, saved: false, error: null })
+  const [state, setState]       = useState<CellState>({ saving: false, saved: false })
+  // v5.2.1 (b): reporta o estado de edição à linha (onEditingChange é estável — useCallback no pai).
+  useEffect(() => { onEditingChange?.(editing) }, [editing, onEditingChange])
 
   const save = async () => {
-    if (localVal === String(value ?? '')) { setEditing(false); return }
-    setState({ saving: true, saved: false, error: null })
-    await onSave(localVal)
-    setState({ saving: false, saved: true, error: null })
-    setEditing(false)
-    setTimeout(() => setState(s => ({ ...s, saved: false })), 1200)
+    // Valor (accounting) edita com MÁSCARA de moeda: `localVal` é "R$ 1.234,56"; parseia para o
+    // número cru (string) antes de comparar/salvar. Demais campos salvam o texto direto.
+    const bruto = accounting ? String(mascaraMoeda(localVal).valor ?? 0) : localVal
+    if (bruto === String(value ?? '')) { setEditing(false); return }
+    setState({ saving: true, saved: false })
+    try {
+      await onSave(bruto)
+      setState({ saving: false, saved: true })
+      setEditing(false)
+      setTimeout(() => setState(s => ({ ...s, saved: false })), 1200)
+    } catch {
+      // Falha (ex.: conflito de trava otimista): NÃO marca "salvo" (sem check verde). O aviso e o
+      // recarregamento ficam a cargo do onConflito da linha (banner no topo + router.refresh).
+      setState({ saving: false, saved: false })
+      setEditing(false)
+    }
   }
 
   const tdAlign = align === 'right' ? 'text-right' : ''
@@ -107,22 +126,30 @@ function EditableCell({
     return (
       <td className={`py-1 px-2 ${tdAlign}`}>
         {editing ? (
+          // Máscara de moeda pt-BR em tempo real (mesma dos saldos); `inputMode="numeric"` (sem
+          // type=number → SEM as setas de spinner). O seed vem do clique no display.
           <input
             autoFocus
-            type="number"
-            step="0.01"
+            inputMode="numeric"
             value={localVal}
-            onChange={e => setLocalVal(e.target.value)}
+            onChange={e => setLocalVal(mascaraMoeda(e.target.value).display)}
             onBlur={save}
             onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
-            className="w-full text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none min-w-0 text-right"
+            className="w-full text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none min-w-0 text-right tabular-nums"
           />
         ) : (
-          <span onClick={() => setEditing(true)}
-            className="cursor-pointer text-xs hover:opacity-70 transition-opacity block">
+          <span onClick={() => { setLocalVal(value == null ? '' : `R$ ${numBRL2(Number(value))}`); setEditing(true) }}
+            className="relative block cursor-pointer text-xs hover:opacity-70 transition-opacity">
             <ValorContabil valor={Number(value ?? 0)} className={accountingClassName} />
-            {state.saved && <Check size={10} className="inline ml-1 text-success" />}
-            {state.saving && <Loader2 size={10} className="inline ml-1 animate-spin" />}
+            {(state.saving || state.saved) && (
+              // Indicador ABSOLUTO — não desloca o layout (antes o check inline quebrava linha e
+              // "saltava" p/ baixo): à esquerda, na folga entre o "R$" e o número.
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 leading-none">
+                {state.saving
+                  ? <Loader2 size={10} className="animate-spin text-zinc-400" />
+                  : <Check size={10} className="text-success" />}
+              </span>
+            )}
           </span>
         )}
       </td>
@@ -164,32 +191,54 @@ interface Props {
   contasOpcoes:    string[]
   selecionado?:    boolean
   onToggleSelecao?: () => void
+  /** v5.2.1 (M5): conflito de trava otimista (ou negação) → o pai avisa e recarrega. */
+  onConflito?:     (msg: string) => void
 }
 
-export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, selecionado = false, onToggleSelecao }: Props) {
+export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, selecionado = false, onToggleSelecao, onConflito }: Props) {
   const [isPending, startDelete] = useTransition()
   const [confirmDel, setConfirmDel] = useState(false)
   // Destaque persistente (otimista local + persistência no banco via updateLancamento).
   const [destacado, setDestacado] = useState(l.destacado)
   const [, startDestaque] = useTransition()
 
+  // v5.2.1 (b): refresh não-destrutivo. Enquanto QUALQUER célula está em edição (emEdicao > 0), congela
+  // o token da trava (`atualizado_em`) — assim um refresh (Realtime/otimista) que chegue no meio NÃO
+  // troca o token por baixo, o que furaria a detecção de conflito no salvar. Ocioso → o token acompanha
+  // o dado fresco do servidor. `marcarEdicao` é estável (useCallback) — as células dependem dele no efeito.
+  const [emEdicao, setEmEdicao] = useState(0)
+  // Token congelado durante a edição: segue o prop quando OCIOSO (padrão "ajustar estado na render",
+  // idêntico ao prevInicial da base-dados-tab), frozen enquanto emEdicao > 0. State (não ref) para o
+  // salvar poder lê-lo sem violar react-hooks/refs.
+  const [tokenTrava, setTokenTrava] = useState(l.atualizado_em)
+  const [prevToken, setPrevToken]   = useState(l.atualizado_em)
+  if (emEdicao === 0 && l.atualizado_em !== prevToken) { setPrevToken(l.atualizado_em); setTokenTrava(l.atualizado_em) }
+  const marcarEdicao = useCallback((ativo: boolean) => setEmEdicao(n => Math.max(0, n + (ativo ? 1 : -1))), [])
+
+  // v5.2.1 (M5): reenvia o token `atualizado_em` para a trava otimista. Falha → propaga o conflito
+  // (banner + refresh no pai) e LANÇA, para o EditableCell não marcar "salvo".
   const makeSaver = (campo: string) => async (valor: string) => {
     const valorParsed = campo === 'valor_final' ? Number(valor) : valor || null
-    await updateLancamento(l.id, campo, valorParsed)
+    const res = await updateLancamento(l.id, campo, valorParsed, tokenTrava)
+    if (!res.success) { onConflito?.(res.error); throw new Error(res.error) }
   }
 
   const handleDelete = () => {
     if (!confirmDel) { setConfirmDel(true); return }
     startDelete(async () => {
-      await deleteLancamento(l.id)
-      onDelete()
+      const res = await deleteLancamento(l.id, tokenTrava)
+      if (res.success) onDelete()
+      else onConflito?.(res.error)
     })
   }
 
   const toggleDestaque = () => {
     const novo = !destacado
     setDestacado(novo)
-    startDestaque(async () => { await updateLancamento(l.id, 'destacado', novo) })
+    startDestaque(async () => {
+      const res = await updateLancamento(l.id, 'destacado', novo, tokenTrava)
+      if (!res.success) { setDestacado(!novo); onConflito?.(res.error) } // reverte o otimista
+    })
   }
 
   const ehManual = l.origem === 'manual'
@@ -223,12 +272,12 @@ export function LancamentoRow({ lancamento: l, onDelete, contasOpcoes, seleciona
         <input type="checkbox" checked={selecionado} onChange={onToggleSelecao}
           className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar linha" />
       </td>
-      <EditableCell value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} badge badgeClassFor={tipoBadgeClasses} />
-      <EditableCell value={l.pessoa}         onSave={makeSaver('pessoa')} />
-      <EditableCell value={l.valor_final}    onSave={makeSaver('valor_final')}    accounting align="right" accountingClassName={corValor} />
-      <EditableCell value={l.descricao}      onSave={makeSaver('descricao')} />
-      <EditableCell value={l.conta_previsao} onSave={makeSaver('conta_previsao')} type="select" options={opcoesConta} />
-      <EditableCell value={l.vencimento}     onSave={makeSaver('vencimento')}     type="date" />
+      <EditableCell onEditingChange={marcarEdicao} value={l.tipo}           onSave={makeSaver('tipo')}           type="select" options={['A pagar', 'A receber']} badge badgeClassFor={tipoBadgeClasses} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.pessoa}         onSave={makeSaver('pessoa')} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.valor_final}    onSave={makeSaver('valor_final')}    accounting align="right" accountingClassName={corValor} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.descricao}      onSave={makeSaver('descricao')} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.conta_previsao} onSave={makeSaver('conta_previsao')} type="select" options={opcoesConta} />
+      <EditableCell onEditingChange={marcarEdicao} value={l.vencimento}     onSave={makeSaver('vencimento')}     type="date" />
       {/* Originador (v4.23.0): só leitura — quem importou/criou. Distinto do ícone de origem. */}
       <td className="py-1 px-2">
         <span className="block truncate text-xs text-zinc-500" title={l.originador_nome ?? '—'}>

@@ -61,7 +61,10 @@ export async function createLancamento(input: {
   }
 }
 
-export async function updateLancamento(id: number, campo: string, valor: unknown): Promise<
+// v5.2.1 (M5): TRAVA OTIMISTA. `esperadoAtualizadoEm` é o `atualizado_em` da linha no momento
+// em que o cliente a carregou; a RPC recusa (erro amigável) se a linha mudou por baixo. Omitido/
+// null = sem trava (retrocompat). O caller (LancamentoRow) surfaça o conflito e recarrega.
+export async function updateLancamento(id: number, campo: string, valor: unknown, esperadoAtualizadoEm?: string | null): Promise<
   | { success: true }
   | { success: false; error: string }
 > {
@@ -70,7 +73,9 @@ export async function updateLancamento(id: number, campo: string, valor: unknown
   if (!CAMPOS_PERMITIDOS.includes(campo))
     return { success: false, error: 'Campo não permitido' }
   try {
-    const { error } = await rpc('update_gerencial_lancamento', { p_id: id, p_updates: { [campo]: valor } })
+    const { error } = await rpc('update_gerencial_lancamento', {
+      p_id: id, p_updates: { [campo]: valor }, p_esperado_atualizado_em: esperadoAtualizadoEm ?? null,
+    })
     if (error) return { success: false, error: error.message }
     revalidar()
     return { success: true }
@@ -79,13 +84,13 @@ export async function updateLancamento(id: number, campo: string, valor: unknown
   }
 }
 
-export async function deleteLancamento(id: number): Promise<
+export async function deleteLancamento(id: number, esperadoAtualizadoEm?: string | null): Promise<
   | { success: true }
   | { success: false; error: string }
 > {
   await requireAreaAction('financeiro/gerencial')
   try {
-    const { error } = await rpc('delete_gerencial_lancamento', { p_id: id })
+    const { error } = await rpc('delete_gerencial_lancamento', { p_id: id, p_esperado_atualizado_em: esperadoAtualizadoEm ?? null })
     if (error) return { success: false, error: error.message }
     revalidar()
     return { success: true }
@@ -94,15 +99,16 @@ export async function deleteLancamento(id: number): Promise<
   }
 }
 
-/** v4.21.0 (M5): exclusão em massa. Devolve a contagem realmente apagada. */
-export async function deleteLancamentosBulk(ids: number[]): Promise<
+/** v4.21.0 (M5): exclusão em massa. Devolve a contagem realmente apagada. v5.2.1: `esperados`
+ *  mapeia id→atualizado_em (trava otimista em bloco — aborta se alguma linha mudou por baixo). */
+export async function deleteLancamentosBulk(ids: number[], esperados?: Record<string, string>): Promise<
   | { success: true; removidos: number }
   | { success: false; error: string }
 > {
   await requireAreaAction('financeiro/gerencial')
   if (!Array.isArray(ids) || ids.length === 0) return { success: false, error: 'Nenhuma linha selecionada' }
   try {
-    const { data, error } = await rpc('delete_gerencial_lancamentos_bulk', { p_ids: ids })
+    const { data, error } = await rpc('delete_gerencial_lancamentos_bulk', { p_ids: ids, p_esperados: esperados ?? null })
     if (error) return { success: false, error: error.message }
     revalidar()
     return { success: true, removidos: typeof data === 'number' ? data : ids.length }
@@ -230,4 +236,94 @@ function traduzirContaErro(msg: string): string {
   if (msg.includes('PAPEL_INVALIDO'))   return 'Papel inválido.'
   if (msg.includes('PERMISSAO_NEGADA')) return 'Você não tem permissão para gerenciar o Fluxo de Caixa Gerencial.'
   return msg
+}
+
+// ─── Histórico de alterações + desfazer (v5.2.1 / M3) ─────────────────────────
+// Leitura do diário (0199) agrupado por lote (0200) + reversão auditada. `lote_id` viaja como
+// STRING (bigint/txid pode passar de 2^53 — Number() perderia precisão; o PostgREST casta a
+// string para bigint no servidor sem perda). Conflito na reversão volta como erro amigável.
+
+export type HistoricoLote = {
+  lote_id: string
+  criado_em: string
+  usuario_id: string | null
+  usuario_nome: string | null
+  n_linhas: number
+  operacoes: ('I' | 'U' | 'D')[]
+  is_undo: boolean
+}
+export type HistoricoEntrada = {
+  id: number
+  operacao: 'I' | 'U' | 'D'
+  registro_id: string
+  dados_antes: Record<string, unknown> | null
+  dados_depois: Record<string, unknown> | null
+  usuario_nome: string | null
+  criado_em: string
+  origem_undo: string | null
+}
+
+/** Mensagens do desfazer em linguagem de usuário (a negação do banco vem crua de exigir_acesso). */
+function traduzirDesfazerErro(msg: string): string {
+  if (msg.includes('PERMISSAO_NEGADA'))
+    return 'Você não tem permissão para desfazer esta ação. Reverter a ação de outra pessoa ou uma alteração em massa exige perfil de administrador.'
+  return msg
+}
+
+export async function historicoLotes(limite = 50, offset = 0): Promise<
+  | { success: true; lotes: HistoricoLote[] }
+  | { success: false; error: string }
+> {
+  await requireAreaAction('financeiro/gerencial')
+  try {
+    const { data, error } = await rpc('gerencial_historico_lotes', { p_limit: limite, p_offset: offset })
+    if (error) return { success: false, error: error.message }
+    return { success: true, lotes: (data as HistoricoLote[] | null) ?? [] }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Erro ao carregar histórico' }
+  }
+}
+
+export async function historicoLoteDetalhe(lote: string): Promise<
+  | { success: true; entradas: HistoricoEntrada[] }
+  | { success: false; error: string }
+> {
+  await requireAreaAction('financeiro/gerencial')
+  try {
+    const { data, error } = await rpc('gerencial_historico_lote', { p_lote: lote })
+    if (error) return { success: false, error: error.message }
+    return { success: true, entradas: (data as HistoricoEntrada[] | null) ?? [] }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Erro ao carregar detalhe' }
+  }
+}
+
+export async function desfazerLote(lote: string): Promise<
+  | { success: true; revertidos: number }
+  | { success: false; error: string }
+> {
+  await requireAreaAction('financeiro/gerencial')
+  try {
+    const { data, error } = await rpc('gerencial_desfazer_lote', { p_lote: lote })
+    if (error) return { success: false, error: traduzirDesfazerErro(error.message) }
+    revalidar()
+    return { success: true, revertidos: (data as { revertidos?: number } | null)?.revertidos ?? 0 }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Erro ao desfazer' }
+  }
+}
+
+export async function desfazerLinha(diarioId: number): Promise<
+  | { success: true; revertidos: number }
+  | { success: false; error: string }
+> {
+  await requireAreaAction('financeiro/gerencial')
+  try {
+    const { data, error } = await rpc('gerencial_desfazer_linha', { p_diario_id: diarioId })
+    if (error) return { success: false, error: traduzirDesfazerErro(error.message) }
+    revalidar()
+    return { success: true, revertidos: (data as { revertidos?: number } | null)?.revertidos ?? 0 }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Erro ao desfazer' }
+  }
 }

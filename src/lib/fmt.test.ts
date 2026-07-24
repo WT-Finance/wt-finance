@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   fmtBRL, fmtBRL2, numBRL2, fmtMi, fmtAxisBRL, fmtMeses,
   fmtAxisPct, fmtAxisMes, fmtDate, fmtDateCompact, fmtDateLong, fmtDateMid, fmtDataHora,
   fmtDataSP, fmtDataHoraSP,
   parseLocalDate,
+  mascaraMoeda, rotuloStaleness, diasDesde,
 } from './fmt'
 
 // Intl pt-BR usa NBSP (char 160) entre "R$" e o número; normalizamos para espaço comum.
@@ -90,5 +91,55 @@ describe('fmt — datas (parsing por split, sem fuso)', () => {
     expect(d.getHours()).toBe(0)
     // aceita 'yyyy-MM-ddT…' (ignora a hora)
     expect(parseLocalDate('2026-12-31T10:00').getDate()).toBe(31)
+  })
+})
+
+describe('fmt — máscara de moeda em tempo real (v5.2.1/M1)', () => {
+  it('interpreta os dígitos como CENTAVOS e formata pt-BR', () => {
+    // "digitar 122829,13 exibe R$ 122.829,13" (a vírgula é só mais um não-dígito)
+    expect(mascaraMoeda('122829,13')).toEqual({ display: 'R$ 122.829,13', valor: 122829.13 })
+    expect(mascaraMoeda('100000')).toEqual({ display: 'R$ 1.000,00', valor: 1000 })
+    expect(mascaraMoeda('5')).toEqual({ display: 'R$ 0,05', valor: 0.05 })
+  })
+  it('vazio → valor null; descarta não-dígitos (colar) e é idempotente sobre o já-formatado', () => {
+    expect(mascaraMoeda('')).toEqual({ display: '', valor: null })
+    expect(mascaraMoeda('abc')).toEqual({ display: '', valor: null })
+    expect(mascaraMoeda('R$ 1.234,56')).toEqual({ display: 'R$ 1.234,56', valor: 1234.56 })
+  })
+  it('sinal negativo — saldos de conta podem ser negativos', () => {
+    expect(mascaraMoeda('-10000')).toEqual({ display: '-R$ 100,00', valor: -100 })
+    expect(mascaraMoeda('-')).toEqual({ display: '-', valor: null })
+  })
+  it('guarda de precisão: dígitos além de 15 caem (NUMERIC(15,2), abaixo de MAX_SAFE_INTEGER)', () => {
+    // 15 dígitos = 13 inteiros + 2 decimais (máx da coluna); o 16º+ é descartado.
+    const r = mascaraMoeda('12345678901234567') // 17 dígitos
+    expect(r.display).toBe('R$ 1.234.567.890.123,45')
+    expect(r.valor).toBeCloseTo(1234567890123.45, 2)
+  })
+})
+
+describe('fmt — staleness de saldo (v5.2.1/M1, fonte única)', () => {
+  it('sem data (null) → SEM staleness (decisão do Yan: "nulo = nada")', () => {
+    expect(rotuloStaleness(null)).toEqual({ texto: '', cor: '', badge: null })
+  })
+  it('limiares: neutro ≤3 dias, atenção 4–7 (warning), alerta >7 (danger); futura/hoje neutros', () => {
+    expect(rotuloStaleness(-2)).toEqual({ texto: 'data futura', cor: 'text-zinc-400', badge: null })
+    expect(rotuloStaleness(0)).toEqual({ texto: 'hoje', cor: 'text-zinc-400', badge: null })
+    expect(rotuloStaleness(1)).toEqual({ texto: 'há 1 dia', cor: 'text-zinc-400', badge: null })
+    expect(rotuloStaleness(3)).toEqual({ texto: 'há 3 dias', cor: 'text-zinc-400', badge: null })
+    expect(rotuloStaleness(5)).toEqual({ texto: 'há 5 dias', cor: 'text-warning', badge: 'warning' })
+    expect(rotuloStaleness(10)).toEqual({ texto: 'há 10 dias', cor: 'text-danger', badge: 'danger' })
+  })
+})
+
+describe('fmt — diasDesde (v5.2.1/M1)', () => {
+  afterEach(() => vi.useRealTimers())
+  it('dias corridos entre a data e HOJE (São Paulo); null sem data', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-23T12:00:00Z')) // ~09h em SP → dia 23
+    expect(diasDesde(null)).toBeNull()
+    expect(diasDesde('2026-07-23')).toBe(0)
+    expect(diasDesde('2026-07-20')).toBe(3)
+    expect(diasDesde('2026-07-24')).toBe(-1)
   })
 })
