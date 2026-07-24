@@ -3,11 +3,18 @@
 **Base:** `main` @ v5.2.0 (`097ffa4`) · **Branch:** `feat/v5-2-1-gerencial-colaboracao` · **PATCH** · **ADR-0155**
 **Motivação real:** um usuário apagou toda a Base de Dados do Gerencial sem reversão possível; e edições simultâneas podiam se atropelar sem ninguém ver.
 
-> **Migrations 0199–0203 APLICADAS em produção** (23–24/07, pelo Yan via `--aditiva --fora-de-ordem`, gate verde — o harness bloqueia o `db:migrate` autônomo). Objetos verificados por introspecção (tabela/triggers/policy/8 funções/overloads/token). **Realtime confirmado FUNCIONANDO ponta-a-ponta** (`realtime.send` de teste → aviso ao vivo no app). **Histórico corrigido** (0203; ver "Correções durante o checkpoint"). Resta: remover as cópias untracked 0950–0954 antes do merge + o merge.
+> **Migrations 0199–0203 APLICADAS em produção** (23–24/07, pelo Yan via `--aditiva --fora-de-ordem`, gate verde — o harness bloqueia o `db:migrate` autônomo). Objetos verificados por introspecção (tabela/triggers/policy/8 funções/overloads/token). **Realtime confirmado FUNCIONANDO ponta-a-ponta** (`realtime.send` de teste → aviso ao vivo no app). **Histórico corrigido** (0203) e todos os ajustes de UI do checkpoint aplicados (ver "Correções durante o checkpoint"). **Resta apenas o MERGE do PR #192** (cópias untracked 0950–0954 já removidas; migrations já em produção).
 >
 > ### Correções durante o checkpoint (24/07)
 > - **0203 — `gerencial_historico_lotes`/`gerencial_desfazer_lote` quebravam com `function max(uuid) does not exist`.** Postgres não tem `max()`/`min()` para `uuid`; corrigido para `max(usuario_id::text)::uuid` (um lote = um autor). **Escapou da revisão e do meu smoke** porque o `db query` bate no `exigir_acesso` (papel sem JWT) ANTES de executar o corpo → o erro só surgiu na tela do usuário. Lição no CLAUDE.md (§Verificação pós-push): verificar RPC gated **executando via REST/service_role**, não só introspecção. Fix aplicado (0203) e verificado (agregado roda contra os 75 registros do diário).
-> - **Cópias untracked 0950–0954 devem FICAR durante todo o checkpoint** (removi-as cedo demais após a 1ª aplicação → o `db push` do 0203 falhou com "Remote migration versions not found in local"). Regra: elas ficam na pasta enquanto houver qualquer `db:migrate` no checkpoint; sair só ANTES do merge.
+> - **Cópias untracked 0950–0954 devem FICAR durante todo o checkpoint** (removi-as cedo demais após a 1ª aplicação → o `db push` do 0203 falhou com "Remote migration versions not found in local"). Regra: elas ficam na pasta enquanto houver qualquer `db:migrate` no checkpoint; sair só ANTES do merge. (Já removidas no fim do checkpoint.)
+> - **Ajustes de UI/robustez do checkpoint (pedidos do Yan) — client-only, sem migration:**
+>   - (b) **Refresh NÃO-destrutivo:** o refresh (Realtime/otimista) preserva a seleção (não zera mais a cada tick) e **congela o token da trava enquanto a linha está em edição** (`LancamentoRow`, `emEdicao`) — fecha o furo de um refresh trocar o `atualizado_em` por baixo e contornar a detecção de conflito.
+>   - **`ListDrawer` via `createPortal(document.body)`** — corrige o drawer "Gerenciar contas" vazando no rodapé: o overlay/painel `fixed` estavam contidos pela árvore animada do `TopSection` (grid 0fr/1fr + overflow-hidden + min-h-0); o portal os leva ao topo do DOM, imune a clip/containment. Vale p/ todos os consumidores do ListDrawer.
+>   - **Cards de saldo:** campo de DATA (staleness) removido — o card mostra só o saldo (`data_saldo` segue no banco).
+>   - **Coluna Valor (Base de Dados):** máscara de moeda pt-BR em tempo real ao editar, **sem setas de spinner** (`inputMode` texto); indicador de "salvo" reposicionado (absoluto, à esquerda entre "R$" e o número, **sem saltar**). Filtro "≥ valor" também sem setas (texto + `toNum`).
+>   - **Respiro da barra de rolagem:** Base de Dados `pr-3`, Histórico `pr-4`; ícone decorativo (spinner) removido do cabeçalho do Histórico.
+>   - **Ícone de importação concluída:** emoji ✅ → `Check` minimalista em círculo suave (tokens de sucesso do DS).
 
 ## Missões implementadas
 

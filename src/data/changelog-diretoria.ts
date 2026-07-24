@@ -36,7 +36,7 @@ export interface ChangelogEntrada {
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
     versao: '5.2.1',
-    data: '2026-07-23T16:29',
+    data: '2026-07-24T13:34',
     itens: [
       {
         tipo: 'novidade',
