@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { ChevronRight, Undo2, RotateCcw, Loader2, AlertTriangle } from 'lucide-react'
+import { ChevronRight, Undo2, Loader2, AlertTriangle } from 'lucide-react'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { fmtDataHoraSP, numBRL2, fmtDate } from '@/lib/fmt'
@@ -167,7 +167,6 @@ export default function HistoricoAlteracoes({ recarregarKey, onDesfeito }: {
           <ChevronRight size={14} className={`text-[var(--text-muted)] transition-transform ${aberto ? 'rotate-90' : ''}`} />
           <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Histórico de alterações</span>
         </button>
-        <RotateCcw size={13} className="text-zinc-300" />
       </div>
 
       {aberto && (

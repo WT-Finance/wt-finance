@@ -336,7 +336,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
           tudo gruda junto — por isso as bordas ficam nos th/td, nunca no <tr>.
           Sem min-w: Descrição/Conta/Originador são flexíveis e truncam — a tabela cabe no
           container sem barra horizontal (refino v4.34.1). */}
-      <ScrollAutoHide eixo="both" className="max-h-[70vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+      <ScrollAutoHide eixo="both" className="max-h-[70vh] pr-3" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
         <table className="w-full text-sm table-fixed border-separate border-spacing-0">
           <thead className={`sticky top-0 z-20 [&_tr:first-child_th:first-child]:rounded-tl-lg [&_tr:first-child_th:last-child]:rounded-tr-lg [&_th]:bg-zinc-50 [&_tr:first-child_th]:border-b [&_tr:first-child_th]:border-zinc-100 [&_tr:last-child_th]:border-b [&_tr:last-child_th]:border-zinc-200 ${rolado ? '[&_tr:last-child_th]:shadow-[0_6px_8px_-6px_rgba(28,25,23,0.22)]' : ''}`}>
             <tr className="text-left">

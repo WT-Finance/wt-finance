@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Settings, ChevronRight } from 'lucide-react'
-import { fmtDate, hojeSP, diasDesde, rotuloStaleness } from '@/lib/fmt'
+import { hojeSP } from '@/lib/fmt'
 import { updateSaldo } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { NumCell } from './contas-manager'
 import { PAPEL_LABEL, type Conta } from './tipos'
@@ -16,51 +16,9 @@ import { PAPEL_LABEL, type Conta } from './tipos'
 // "Rendimento" = verde do DS (--success-bg/--success/--positive-deep); "Consolidado" = neutro zinc.
 // Cor sempre por token (id visual da plataforma), nunca hex literal.
 //
-// v5.2.0 (M5) — `data_saldo`: a DATA a que o saldo se refere (distinta de quando foi editado).
-// Editar SÓ o número (NumCell) grava data_saldo = HOJE por padrão (a action assume isso quando
-// a data não vem explícita); editar a data (DataSaldoCell) preserva o saldo atual e só corrige a
-// referência — os dois caminhos passam pelo MESMO updateSaldo (RPC update_gerencial_saldo de 3
-// args). O rótulo visível da célula de data É o staleness ("há N dias"/"hoje"); SEM data → um
-// placeholder neutro "—" clicável (v5.2.1/M1 extinguiu o rótulo "sem data": nulo = nada). A data
-// exata (fmtDate — sem conversão de fuso, `data_saldo` é `date` puro) vai no tooltip.
-//
-// v5.2.1 (M1) — `hojeSP`/`diasDesde`/`rotuloStaleness` deixaram de ser locais: são a FONTE ÚNICA
-// de @/lib/fmt, compartilhada com o drill do projetado (posicao-projetado.tsx), resolvendo a
-// duplicação sinalizada na v5.2.0.
-
-/** Data a que o saldo se refere — clique para editar (mesmo padrão de NumCell/NomeCell:
- *  clique abre o `<input type="date">` nativo, blur/Enter salva). O texto exibido em repouso é
- *  o STALENESS; a data exata fica no `title`. */
-function DataSaldoCell({ valor, onSave }: {
-  valor: string | null; onSave: (v: string | null) => Promise<void>
-}) {
-  const [editando, setEditando] = useState(false)
-  const [txt, setTxt] = useState(valor ?? '')
-  const [saving, setSaving] = useState(false)
-
-  const salvar = async () => {
-    const v = txt.trim() === '' ? null : txt
-    if (v === valor) { setEditando(false); return }
-    setSaving(true); await onSave(v); setSaving(false); setEditando(false)
-  }
-  if (editando) {
-    return (
-      <input
-        autoFocus type="date" value={txt} onChange={e => setTxt(e.target.value)} onBlur={salvar}
-        onKeyDown={e => { if (e.key === 'Enter') salvar(); if (e.key === 'Escape') setEditando(false) }}
-        className="text-2xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none"
-      />
-    )
-  }
-  const { texto, cor } = rotuloStaleness(diasDesde(valor))
-  return (
-    <button onClick={() => { setTxt(valor ?? ''); setEditando(true) }}
-      className={`text-2xs hover:text-[var(--brand)] transition-colors ${cor || 'text-zinc-300'}`}
-      title={valor ? `Saldo referente a ${fmtDate(valor)} — clique para editar` : 'Definir data do saldo'}>
-      {saving ? '…' : (texto || '—')}
-    </button>
-  )
-}
+// v5.2.1 — o campo de DATA do saldo (staleness "há N dias"/"hoje") foi REMOVIDO dos cards a pedido:
+// o card mostra só o saldo. A coluna `data_saldo` continua no banco (o `updateSaldo` grava
+// data_saldo = HOJE por padrão), apenas não é mais exibida/editada aqui.
 
 export default function ContasCards({ contas, onContasChange, onGerir }: {
   contas: Conta[]
@@ -78,16 +36,6 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
     setErro(null)
     onContasChange(contas.map(c => (c.conta === conta ? { ...c, saldo, data_saldo: hojeSP() } : c)))
     const res = await updateSaldo(conta, saldo)
-    if (!res.success) { setErro(res.error); router.refresh(); return }
-    router.refresh()
-  }
-
-  // Edição otimista SÓ da data — preserva o saldo atual (RPC sempre grava os dois juntos).
-  const editarDataSaldo = async (conta: string, dataSaldo: string | null) => {
-    setErro(null)
-    const atual = contas.find(c => c.conta === conta)
-    onContasChange(contas.map(c => (c.conta === conta ? { ...c, data_saldo: dataSaldo } : c)))
-    const res = await updateSaldo(conta, atual?.saldo ?? 0, dataSaldo)
     if (!res.success) { setErro(res.error); router.refresh(); return }
     router.refresh()
   }
@@ -119,7 +67,6 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
               <div className="text-right">
                 <p className="text-3xs uppercase tracking-wide text-[var(--text-subtle)]">Saldo</p>
                 <NumCell valor={c.saldo} onSave={v => editarSaldo(c.conta, v ?? 0)} />
-                <DataSaldoCell valor={c.data_saldo} onSave={d => editarDataSaldo(c.conta, d)} />
               </div>
               {/* Selos no rodapé, à esquerda — papel PRIMEIRO (Principal/Rendimento), depois Consolidado. */}
               <div className="mt-auto flex flex-wrap items-center gap-1.5">
