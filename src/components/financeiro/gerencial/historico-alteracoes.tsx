@@ -177,7 +177,7 @@ export default function HistoricoAlteracoes({ recarregarKey, onDesfeito }: {
           ) : lotes.length === 0 ? (
             <p className="text-2xs text-zinc-400 py-3 text-center">Nenhuma alteração registrada ainda.</p>
           ) : (
-            <ScrollAutoHide className="max-h-[420px]" contentClassName="space-y-1.5">
+            <ScrollAutoHide className="max-h-[420px] pr-4" contentClassName="space-y-1.5">
               {lotes.map(l => {
                 const aberto2 = expandido === l.lote_id
                 return (

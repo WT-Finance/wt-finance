@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useCallback, type ReactNode } from 
 import { Trash2, Loader2, Check, FileSpreadsheet, PencilLine, PaintBucket } from 'lucide-react'
 import { updateLancamento, deleteLancamento } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { ValorContabil } from '@/components/shared/valor-contabil'
+import { mascaraMoeda, numBRL2 } from '@/lib/fmt'
 
 export interface Lancamento {
   id:             number
@@ -62,10 +63,13 @@ function EditableCell({
   useEffect(() => { onEditingChange?.(editing) }, [editing, onEditingChange])
 
   const save = async () => {
-    if (localVal === String(value ?? '')) { setEditing(false); return }
+    // Valor (accounting) edita com MÁSCARA de moeda: `localVal` é "R$ 1.234,56"; parseia para o
+    // número cru (string) antes de comparar/salvar. Demais campos salvam o texto direto.
+    const bruto = accounting ? String(mascaraMoeda(localVal).valor ?? 0) : localVal
+    if (bruto === String(value ?? '')) { setEditing(false); return }
     setState({ saving: true, saved: false })
     try {
-      await onSave(localVal)
+      await onSave(bruto)
       setState({ saving: false, saved: true })
       setEditing(false)
       setTimeout(() => setState(s => ({ ...s, saved: false })), 1200)
@@ -122,22 +126,30 @@ function EditableCell({
     return (
       <td className={`py-1 px-2 ${tdAlign}`}>
         {editing ? (
+          // Máscara de moeda pt-BR em tempo real (mesma dos saldos); `inputMode="numeric"` (sem
+          // type=number → SEM as setas de spinner). O seed vem do clique no display.
           <input
             autoFocus
-            type="number"
-            step="0.01"
+            inputMode="numeric"
             value={localVal}
-            onChange={e => setLocalVal(e.target.value)}
+            onChange={e => setLocalVal(mascaraMoeda(e.target.value).display)}
             onBlur={save}
             onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
-            className="w-full text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none min-w-0 text-right"
+            className="w-full text-xs border border-[var(--brand)] rounded px-1 py-0.5 outline-none min-w-0 text-right tabular-nums"
           />
         ) : (
-          <span onClick={() => setEditing(true)}
-            className="cursor-pointer text-xs hover:opacity-70 transition-opacity block">
+          <span onClick={() => { setLocalVal(value == null ? '' : `R$ ${numBRL2(Number(value))}`); setEditing(true) }}
+            className="relative block cursor-pointer text-xs hover:opacity-70 transition-opacity">
             <ValorContabil valor={Number(value ?? 0)} className={accountingClassName} />
-            {state.saved && <Check size={10} className="inline ml-1 text-success" />}
-            {state.saving && <Loader2 size={10} className="inline ml-1 animate-spin" />}
+            {(state.saving || state.saved) && (
+              // Indicador ABSOLUTO — não desloca o layout (antes o check inline quebrava linha e
+              // "saltava" p/ baixo): à esquerda, na folga entre o "R$" e o número.
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 leading-none">
+                {state.saving
+                  ? <Loader2 size={10} className="animate-spin text-zinc-400" />
+                  : <Check size={10} className="text-success" />}
+              </span>
+            )}
           </span>
         )}
       </td>

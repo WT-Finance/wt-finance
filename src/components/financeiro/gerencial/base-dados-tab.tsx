@@ -14,6 +14,7 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import { type Conta } from './tipos'
 import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
+import { toNum } from '@/lib/carga/coercao'
 import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 
 // Input de filtro por coluna (texto/número/data) — visual discreto, alinhado às pills.
@@ -177,14 +178,14 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
   }, [criando])
 
   const filtrados = useMemo(() => {
-    const valorMin = fValorMin.trim() === '' ? null : Number(fValorMin)
+    const valorMin = toNum(fValorMin)   // BR-aware; null se vazio/inválido
     return itens
       // filtros existentes (não reescrever)
       .filter(l => tipoFiltro === 'todos' || l.tipo === (tipoFiltro === 'receber' ? 'A receber' : 'A pagar'))
       .filter(l => origemFiltro === 'todos' || l.origem === origemFiltro)
       // filtros por coluna (v4.22 / M5) — aditivos
       .filter(l => !fPessoa || l.pessoa.toLowerCase().includes(fPessoa.toLowerCase()))
-      .filter(l => valorMin == null || Number.isNaN(valorMin) || l.valor_final >= valorMin)
+      .filter(l => valorMin == null || l.valor_final >= valorMin)
       .filter(l => !fDescricao || (l.descricao ?? '').toLowerCase().includes(fDescricao.toLowerCase()))
       .filter(l => !fConta || canonizarConta(l.conta_previsao, contasReais) === fConta)
       .filter(l => !fVencIni || l.vencimento >= fVencIni)
@@ -369,7 +370,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
                   className={FILTRO_INPUT} aria-label="Filtrar por pessoa" />
               </th>
               <th className="py-1.5 px-2">
-                <input type="number" step="0.01" placeholder="≥ valor" value={fValorMin} onChange={e => setFValorMin(e.target.value)}
+                <input type="text" inputMode="decimal" placeholder="≥ valor" value={fValorMin} onChange={e => setFValorMin(e.target.value)}
                   className={`${FILTRO_INPUT} text-right`} aria-label="Filtrar por valor mínimo" />
               </th>
               <th className="py-1.5 px-2">
