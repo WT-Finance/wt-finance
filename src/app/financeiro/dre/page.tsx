@@ -3,19 +3,25 @@ import Link from 'next/link'
 import { SquarePen } from 'lucide-react'
 import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
-import { unwrapRpc } from '@/lib/rpc'
+import { unwrapRpc, type RpcLike } from '@/lib/rpc'
+import { parseRpc } from '@/lib/schemas-rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
+import { hojeSP } from '@/lib/fmt'
+import { rpcDre } from '@/lib/dre/rpc-dre'
+import { dreMensalSchema } from '@/lib/dre/schemas'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import ComposicaoPeriodo from '@/components/financeiro/composicao-lancamentos'
 import TopSection from '@/components/shared/top-section'
-import TabelaDreMockup from '@/components/financeiro/dre/tabela-dre-mockup'
+import TabelaDre from '@/components/financeiro/dre/tabela-dre'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 
 // DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
-// (159 linhas) na aba definitiva. FASE DE MOCKUP (M0, gate do Yan): a tabela ainda lê
-// FIXTURE (dados reais da controladoria, base 15/07/2026); a M3/M4 trocam a fixture pela
-// RPC `get_dre_mensal` sem mudar esta página. O editor da estrutura viva vive em página
-// própria (/financeiro/dre/estrutura), atrás do botão "Editar estrutura" da toolbar.
+// (159 linhas) na aba definitiva. M4: a tabela lê a estrutura viva + o fato real via
+// `get_dre_mensal` (a fixture da M0 saiu deste caminho — ver tabela-dre.tsx). Ano
+// navegável por `?ano=` (pills na própria TabelaDre), janela de 3 anos
+// [corrente-2, corrente], default = ano corrente no fuso de São Paulo. O editor da
+// estrutura viva vive em página própria (/financeiro/dre/estrutura), atrás do botão
+// "Editar estrutura" da toolbar.
 //
 // A Composição dos Lançamentos (semente da aba desde a v5.2.0) fica MANTIDA em TopSection
 // próprio, COLAPSADO por padrão (decisão do briefing; destino final adiado). Nota de
@@ -30,6 +36,7 @@ interface SearchParams {
   preset?: string
   from?:   string
   to?:     string
+  ano?:    string
 }
 
 interface DecomposicaoGrupo {
@@ -45,6 +52,10 @@ interface DecomposicaoCategoria {
   valor_total:     number
 }
 
+function clamp(v: number, min: number, max: number): number {
+  return Math.min(Math.max(v, min), max)
+}
+
 export default async function DrePage({
   searchParams,
 }: {
@@ -55,17 +66,28 @@ export default async function DrePage({
   const sp = await searchParams
   const { from, to } = resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
 
-  const db = await getServerClient()
-  type RpcResult = { data: unknown; error: { message: string } | null }
-  type BoundRpc  = (fn: string, args?: Record<string, unknown>) => Promise<RpcResult>
-  const rpc = (db.rpc as unknown as BoundRpc).bind(db)
+  // Ano corrente NO FUSO DE SÃO PAULO — nunca `new Date().getFullYear()` cru (o
+  // runtime do servidor roda em UTC; perto da virada do ano isso adiantaria/
+  // atrasaria em relação ao calendário de SP). `hojeSP()` é o helper canônico.
+  const anoCorrente     = parseInt(hojeSP().slice(0, 4), 10)
+  const anoPedido       = parseInt(sp.ano ?? '', 10) || anoCorrente
+  const ano             = clamp(anoPedido, anoCorrente - 2, anoCorrente)
+  const anosDisponiveis = [anoCorrente - 2, anoCorrente - 1, anoCorrente]
 
-  const empty: RpcResult = { data: null, error: null }
-  const [decomposicaoRes, decomposicaoCategoriaRes] = await Promise.allSettled([
-    rpc('get_decomposicao_grupo',     { p_from: from, p_to: to }),
-    rpc('get_decomposicao_categoria', { p_from: from, p_to: to }),
+  const db = await getServerClient()
+
+  // As 3 chamadas em UM `Promise.allSettled` (não serializar) — `rpcDre` é o helper
+  // de tipagem frouxa genérico do módulo (não específico de DRE apesar do nome),
+  // reaproveitado aqui para as duas RPCs de Composição também, unificando o tipo
+  // de retorno (`RpcLike`) sem o cast ad-hoc local que existia antes.
+  const empty: RpcLike = { data: null, error: null }
+  const [dreRes, decomposicaoRes, decomposicaoCategoriaRes] = await Promise.allSettled([
+    rpcDre(db, 'get_dre_mensal',          { p_ano: ano }),
+    rpcDre(db, 'get_decomposicao_grupo',     { p_from: from, p_to: to }),
+    rpcDre(db, 'get_decomposicao_categoria', { p_from: from, p_to: to }),
   ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : empty)))
 
+  const dre          = parseRpc(dreMensalSchema, dreRes, 'get_dre_mensal')
   const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
   const categorias   =
     unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
@@ -79,7 +101,10 @@ export default async function DrePage({
         titulo="DRE por Fluxo de Caixa"
         subtitulo="estrutura oficial da controladoria · mês corrente híbrido (realizado + previsto)"
       >
-        <TabelaDreMockup
+        <TabelaDre
+          dados={dre}
+          ano={ano}
+          anosDisponiveis={anosDisponiveis}
           slotAcoes={
             <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
               <SquarePen size={13} />

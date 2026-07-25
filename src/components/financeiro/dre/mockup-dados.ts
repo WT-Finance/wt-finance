@@ -1,9 +1,12 @@
 // =============================================================================
-// FIXTURE DO MOCKUP DA DRE (v5.3.0 · M0) — NÃO é código de produção.
+// ORÁCULO CONGELADO da DRE (v5.3.0) — NÃO é código de produção e NADA no app o
+// importa desde a M4/M5 (a tabela e o editor leem get_dre_mensal/dre_estrutura).
 // Gerado do objeto D do dashboard da controladoria (docs/referencias/modelo de
-// dashboard fluxo de caixa.html, data-base 15/07/2026). Valores REAIS — servem de
-// alvo de paridade visual para o gate de mockup. Removível quando a M4 entregar
-// a tabela real sobre get_dre_mensal.
+// dashboard fluxo de caixa.html, data-base 15/07/2026). Valores REAIS congelados:
+// é o alvo da AUDITORIA DE PARIDADE do fechamento (out-briefing) — motor exato se
+// os meses fechados baterem, descontadas re-edições retroativas do Monde pós-15/07
+// (nomeadas na auditoria). Manter enquanto a paridade for referência; remover
+// quando a controladoria aposentar o dashboard antigo.
 // m26: 13 colunas [Jan..Jun, Jul·R, Jul·P, Ago..Dez] · m25: [Jan..Dez/2025]
 // venc: vencidos em aberto (o modelo soma no "Total 2026"; SEM coluna própria aqui —
 // ponto sinalizado ao Yan no gate).
