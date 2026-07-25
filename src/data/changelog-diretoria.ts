@@ -35,6 +35,27 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.3.0',
+    data: '2026-07-25T15:29', // autoria real; reconciliar ao horário do merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A DRE por Fluxo de Caixa chegou à plataforma, na aba Financeiro → DRE. É o mesmo demonstrativo que a controladoria mantinha em ferramenta separada — a estrutura oficial completa (entradas de clientes, repasse, receita, custos, despesas por área e as linhas de resultado até o Resultado do Exercício), mês a mês, com o ano navegável. O mês corrente aparece dividido em duas colunas: o que já se realizou até hoje e o que ainda está previsto para o restante do mês; os meses futuros mostram o previsto por vencimento, em tom âmbar. Valores em verde são receitas/entradas e em vermelho gastos/saídas; as colunas de previsto podem ser recolhidas para focar no realizado. Há busca por categoria e um filtro para esconder linhas zeradas.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A estrutura desse demonstrativo agora é viva e editável pela própria plataforma (botão "Editar estrutura"): dá para reordenar categorias dentro de um bloco, mover uma categoria de um bloco para outro (vendo o efeito nos subtotais antes de confirmar), e excluir ou reincluir categorias que não devem compor o resultado (como transferências internas entre contas). Categorias novas que surgirem no Monde nunca somem: aparecem automaticamente numa bandeja "Não classificadas" até alguém as posicionar. Toda alteração fica registrada num histórico com autor e data, e pode ser desfeita — o mesmo mecanismo de segurança que estreou na Base de Dados do Gerencial.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os números da DRE saem da mesma base de lançamentos do Fluxo de Caixa (eixo da movimentação bancária) e foram conferidos, mês fechado a mês fechado, contra o dashboard que a controladoria usava — as linhas de resultado batem ao centavo, descontadas apenas re-edições feitas no próprio Monde depois da data de referência.',
+      },
+    ],
+  },
+  {
     versao: '5.2.1',
     data: '2026-07-24T13:34',
     itens: [

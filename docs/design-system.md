@@ -413,3 +413,36 @@ generalizável). Componente `historico-alteracoes.tsx`.
 - **Realtime é fail-safe e por broadcast** (não polling, não `postgres_changes`): o hook
   `useRealtimeGerencial` assina o canal privado, ignora as próprias mudanças (por `usuario_id`) e
   degrada em silêncio se o Realtime cair (a página nunca quebra). ADR-0155 §3.
+
+## Tabela hierárquica da DRE + bandas neutras (v5.3.0, ADR-0156)
+
+A DRE por Fluxo de Caixa (`/financeiro/dre`, `tabela-dre.tsx`) fixa o padrão de
+**demonstrativo hierárquico denso** da plataforma:
+
+- **Bandas neutras de agrupamento**: tokens `--band` (#E8E6E1, cabeçalho de bloco) e
+  `--band-soft` (#F3F2EE, sub-bloco) — cinza NEUTRO-QUENTE alinhado à plataforma
+  (deliberadamente nem o zinc frio, nem o `--border` tan; primeiro passo da tokenização
+  do cinza, follow-up v4.26). **Linhas de resultado em banda ESCURA** `--action-primary`
+  com rótulo `--action-primary-fg` e valores nos tons `-soft` (`--positive-soft`/
+  `--negative-soft`, 6,5:1 — os tons base reprovam AA sobre as bandas).
+- **Cor por SINAL nos valores** (verde receita / vermelho gasto), parênteses contábeis
+  com largura reservada (`<span class="invisible">)</span>` nos positivos/zeros), zero
+  como travessão `--text-subtle`.
+- **Previsto = escala ÂMBAR por nível** (tempo no FUNDO, sinal na TINTA): cada banda tem
+  o par âmbar via `color-mix` de tokens (cat → `warning-bg/50`; claro → 60% de warning-bg
+  sobre `--band`; soft → 60% sobre `--band-soft`; escuro → 22% de `--warning` sobre
+  `--action-primary` — mais que isso derruba os `-soft` abaixo de AA). Colunas de
+  previsto RECOLHÍVEIS numa coluna-soma (toggle acessível no cabeçalho do grupo).
+- **Chevron de expansão sempre à DIREITA** da célula de rótulo; a célula inteira é o
+  botão (padrão acordeão). Célula sticky SEMPRE com fundo opaco da banda da linha.
+- **Cabeçalho sticky de 2 linhas**: as células `rowSpan={2}` existem só na 1ª `<tr>` —
+  régua de base e sombra-ao-rolar vão DIRETAMENTE nelas (nunca por seletor de "última
+  linha do thead"); ver a nota em CLAUDE.md §Cabeçalho de tabela.
+- **Respiro dos thumbs nos limites**: gutter interno `pr/pb-1.5` no viewport do
+  `<ScrollAutoHide>` — nos extremos o thumb flutua sobre o gutter, não sobre a última
+  coluna/linha (o mesmo respiro que a sidebar obtém via padding do nav).
+- **Bandeja "Não classificadas"** ao fim (âmbar, rótulo na célula sticky): órfãs do
+  de-para sempre visíveis — nada some em silêncio.
+
+O editor da estrutura (`/financeiro/dre/estrutura`, `editor-dre.tsx`) segue o padrão de
+edição em lote do Cadastro de Metas + o painel de histórico prop-izado (ADR-0155/0156).
