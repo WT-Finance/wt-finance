@@ -109,6 +109,11 @@ interface EstiloLinha {
   peso: string
 }
 
+// Hierarquia INVERTIDA (rodada 3, pedido do Yan): grupos de categoria em cinza CLARO
+// (blocoH = --band, sub = --band-soft) e as LINHAS DE RESULTADO em cinza ESCURO
+// (--action-primary, o dark neutro institucional da plataforma — independente de tema),
+// com o rótulo em --action-primary-fg. É a inversão que dá a hierarquia: o olho varre os
+// grupos claros e PARA nos resultados escuros.
 function estiloLinha(t: TipoLinha): EstiloLinha {
   switch (t) {
     case 'blocoH':
@@ -131,12 +136,13 @@ function estiloLinha(t: TipoLinha): EstiloLinha {
       }
     case 'tot':
       return {
-        borda: 'border-t-[1.5px] border-t-wt-border-strong border-b-[1.5px] border-b-wt-border-strong',
-        bg: 'bg-band-soft',
-        bgHover: 'group-hover:bg-band',
-        rotulo: 'font-bold text-[13px] text-text-primary',
+        // Banda escura já É a ênfase — sem réguas pesadas por cima.
+        borda: 'border-b border-b-wt-border',
+        bg: 'bg-action-primary',
+        bgHover: '',
+        rotulo: 'font-semibold text-[13px] text-action-primary-fg',
         indent: 'pl-3',
-        peso: 'font-bold text-[13px]',
+        peso: 'font-semibold text-[13px]',
       }
     case 'cat':
     default:
@@ -166,35 +172,39 @@ interface CelulaValorProps {
 }
 
 /** Célula de valor mensal ou do total do ano. Cor por SINAL em toda linha (não-zero):
- *  `cat` (fundo claro, branco ou âmbar) usa os tons base (`--positive`/`--negative`);
- *  `blocoH`/`sub`/`tot` (fundo de BANDA cinza) usam os tons `*-deep` — medido: os tons
- *  base dão 3,88–4,31:1 sobre `--band`/`--band-soft` (reprovam AA, 4.5:1 mínimo para texto
- *  pequeno); os `*-deep` dão 7–10:1. Zero sempre em travessão discreto. Positivo/zero
- *  reservam a largura do ")" (span invisível) para a coluna não desalinhar — negativo já
- *  vem balanceado do `fmtContabil`.
+ *  `cat` (fundo claro) usa os tons base; `blocoH`/`sub` (bandas cinza CLARAS) usam `*-deep`
+ *  (base dá 3,88–4,31:1 sobre as bandas — reprova AA; deep dá 7–10:1); `tot` (banda ESCURA)
+ *  usa os tons `*-soft` COMO TINTA (6,5:1 sobre --action-primary; 4,6:1 sobre a variante
+ *  âmbar-escura — medido). Zero sempre em travessão discreto. Positivo/zero reservam a
+ *  largura do ")" (span invisível) para a coluna não desalinhar.
  *
- *  O âmbar do previsto atravessa TODA a coluna, menos o `blocoH` (como no estudo aprovado):
- *  a visão padrão da tabela é tudo-recolhido — só linhas de banda visíveis — e se as bandas
- *  cobrissem o âmbar, a marcação de previsto SUMIRIA exatamente na visão inicial. Em `sub`/
- *  `tot` o âmbar é MISTURADO à banda por `color-mix` de tokens (não existe token da
- *  combinação; a mistura é 100% derivada de tokens, opaca — segura para sticky). O `blocoH`
- *  (a banda mais forte, só 7 linhas) fica de fora para a hierarquia não se diluir. */
-const BG_PREV_BANDA = 'bg-[color-mix(in_srgb,var(--warning-bg)_55%,var(--band-soft))]'
+ *  PREVISTO = a escala de cinza vira escala ÂMBAR (rodada 3): cada nível de fundo tem o
+ *  seu par âmbar, misturado por `color-mix` de tokens (opaco — seguro para sticky):
+ *  cat→warning-bg/50 · blocoH→60% warning-bg sobre --band · sub→60% sobre --band-soft ·
+ *  tot→22% de --warning sobre --action-primary (mais que isso derruba o contraste dos
+ *  tons -soft abaixo de AA). */
+const BG_PREV_CLARO  = 'bg-[color-mix(in_srgb,var(--warning-bg)_60%,var(--band))]'
+const BG_PREV_SOFT   = 'bg-[color-mix(in_srgb,var(--warning-bg)_60%,var(--band-soft))]'
+const BG_PREV_ESCURO = 'bg-[color-mix(in_srgb,var(--warning)_22%,var(--action-primary))]'
+
+const BG_PREVISTO: Record<TipoLinha, string> = {
+  cat:    'bg-warning-bg/50 group-hover:bg-warning-bg',
+  blocoH: BG_PREV_CLARO,
+  sub:    BG_PREV_SOFT,
+  tot:    BG_PREV_ESCURO,
+}
 
 function CelulaValor({ valor, tipo, previsto, corte, totalAno = false, peso, bg, bgHover, borda }: CelulaValorProps) {
   const zero = Math.abs(valor) < 0.005
   const negativo = !zero && valor < 0
-  const banda = tipo === 'blocoH' || tipo === 'sub' || tipo === 'tot'
+  const escuro = tipo === 'tot'
+  const bandaClara = tipo === 'blocoH' || tipo === 'sub'
   const cor = zero
     ? 'text-text-subtle'
     : negativo
-      ? (banda ? 'text-negative-deep' : 'text-negative')
-      : (banda ? 'text-positive-deep' : 'text-positive')
-  const fundo = !previsto || tipo === 'blocoH'
-    ? `${bg} ${bgHover}`
-    : banda
-      ? BG_PREV_BANDA
-      : 'bg-warning-bg/50 group-hover:bg-warning-bg'
+      ? (escuro ? 'text-negative-soft' : bandaClara ? 'text-negative-deep' : 'text-negative')
+      : (escuro ? 'text-positive-soft' : bandaClara ? 'text-positive-deep' : 'text-positive')
+  const fundo = previsto ? BG_PREVISTO[tipo] : `${bg} ${bgHover}`
   const bordaCorte = corte ? 'border-l-2 border-l-wt-border-strong' : ''
   const bordaTotal = totalAno ? `border-l border-l-wt-border-strong ${peso === '' ? 'font-medium' : ''}` : ''
   return (
@@ -216,31 +226,38 @@ interface CelulaContaProps {
   expansivel: boolean
   aberto: boolean
   onToggle?: () => void
-  contagem?: string
 }
 
-/** Célula sticky da coluna Conta — chevron + rótulo + nota da controladoria ('*') +
- *  contagem do bloco. Fundo SEMPRE opaco, na cor da BANDA da linha (nunca translúcido —
- *  vazaria valores por baixo no scroll horizontal). Sem régua de natureza (removida). */
-function CelulaConta({ rotulo, rotuloClasse, indent, borda, bg, bgHover, estrela, expansivel, aberto, onToggle, contagem }: CelulaContaProps) {
+/** Célula sticky da coluna Conta — rótulo à esquerda e o chevron de expansão SEMPRE à
+ *  DIREITA da célula (rodada 3; sem a contagem de categorias). Linha expansível = a célula
+ *  INTEIRA é o botão (alvo de clique grande, padrão acordeão). Fundo SEMPRE opaco, na cor
+ *  da banda da linha (translúcido vazaria valores por baixo no scroll horizontal). */
+function CelulaConta({ rotulo, rotuloClasse, indent, borda, bg, bgHover, estrela, expansivel, aberto, onToggle }: CelulaContaProps) {
+  const conteudoRotulo = (
+    <span className={`truncate ${rotuloClasse}`}>
+      {rotulo}
+      {estrela && <sup className="text-warning-deep" title="Nota da controladoria">*</sup>}
+    </span>
+  )
   return (
-    <td className={`sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pr-3 ${bg} ${bgHover} ${indent} ${borda}`}>
-      <div className="flex min-w-0 items-center gap-1.5">
-        {expansivel && onToggle && (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-expanded={aberto}
-            aria-label={`${aberto ? 'Recolher' : 'Expandir'} ${rotulo}`}
-            className="foco-neutro inline-flex shrink-0 items-center justify-center rounded p-0.5 text-text-muted transition-colors hover:bg-surface-soft hover:text-text-secondary"
-          >
-            <ChevronRight size={14} className={`transition-transform ${aberto ? 'rotate-90' : ''}`} />
-          </button>
-        )}
-        <span className={`truncate ${rotuloClasse}`}>{rotulo}</span>
-        {estrela && <sup className="text-warning-deep" title="Nota da controladoria">*</sup>}
-        {contagem != null && <span className="text-[10px] text-text-subtle">{contagem}</span>}
-      </div>
+    <td className={`sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pr-2 ${bg} ${bgHover} ${indent} ${borda}`}>
+      {expansivel && onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={aberto}
+          aria-label={`${aberto ? 'Recolher' : 'Expandir'} ${rotulo}`}
+          className="foco-neutro flex w-full min-w-0 items-center justify-between gap-1.5 text-left"
+        >
+          {conteudoRotulo}
+          <ChevronRight
+            size={14}
+            className={`shrink-0 text-text-muted transition-transform ${aberto ? 'rotate-90' : ''}`}
+          />
+        </button>
+      ) : (
+        <div className="flex min-w-0 items-center">{conteudoRotulo}</div>
+      )}
     </td>
   )
 }
@@ -253,13 +270,12 @@ interface LinhaDreTrProps {
   expansivel: boolean
   aberto: boolean
   onToggle?: () => void
-  contagem?: string
 }
 
 /** Uma linha completa da tabela (blocoH/sub/cat/tot): Conta + meses (ou a versão recolhida
  *  do previsto) + total do ano. O total do ano SEMPRE soma as 13/12 colunas reais — o
  *  recolhimento (`colapsar`) é só de EXIBIÇÃO das colunas mensais. */
-function LinhaDreTr({ linha, ano, idxPrevisto, colapsar, expansivel, aberto, onToggle, contagem }: LinhaDreTrProps) {
+function LinhaDreTr({ linha, ano, idxPrevisto, colapsar, expansivel, aberto, onToggle }: LinhaDreTrProps) {
   const estilo = estiloLinha(linha.t)
   const valoresBase = ano === 2026 ? linha.m26 : linha.m25
   const totalAno = somaAno(valoresBase)
@@ -277,7 +293,6 @@ function LinhaDreTr({ linha, ano, idxPrevisto, colapsar, expansivel, aberto, onT
         expansivel={expansivel}
         aberto={aberto}
         onToggle={onToggle}
-        contagem={contagem}
       />
       {valores.map((v, idx) => (
         <CelulaValor
@@ -384,12 +399,10 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
   const termo = normalizar(busca.trim())
   const filtroAtivo = termo !== '' || esconderZerados
   const achadosPorBloco = new Map<string, number>()
-  const totalPorBloco = new Map<string, number>()
   const catVisivel = new Map<number, boolean>()
 
   LINHAS.forEach((l, i) => {
     if (l.t !== 'cat' || l.g == null) return
-    totalPorBloco.set(l.g, (totalPorBloco.get(l.g) ?? 0) + 1)
     const totalRow = somaAno(ano === 2026 ? l.m26 : l.m25)
     const casa = termo === '' || normalizar(l.l).includes(termo)
     const zeroOk = !esconderZerados || Math.abs(totalRow) >= 0.005
@@ -471,7 +484,10 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
 
       {/* ── Box da tabela — borda própria, cantos clipam o cabeçalho sticky ── */}
       <div className="overflow-hidden rounded-lg border border-wt-border">
-        <ScrollAutoHide eixo="both" className="max-h-[74vh]" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        {/* Box maior (80vh, rodada 3) + gutter interno `pr/pb` nos LIMITES do scroll: nos
+            extremos, o thumb do ScrollAutoHide flutua sobre o gutter vazio em vez de cobrir
+            a última coluna/linha — o mesmo respiro que a sidebar tem via padding do nav. */}
+        <ScrollAutoHide eixo="both" className="max-h-[80vh] pr-1.5 pb-1.5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
           <table className={`w-full ${minW} border-separate border-spacing-0 text-[13px]`}>
             <thead className="sticky top-0 z-20 [&_th]:bg-band">
               {ano === 2026 ? (
@@ -483,10 +499,17 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
                     >
                       Conta
                     </th>
-                    <th className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary" colSpan={IDX_PREVISTO_26}>
-                      Realizado · movimentação
+                    {/* Rótulos enxutos (rodada 3): só "Realizado" / "Previsto" — a semântica
+                        completa (movimentação × vencimento, corte 15/07) fica no `title`. */}
+                    <th
+                      title="Realizado por data de movimentação"
+                      className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
+                      colSpan={IDX_PREVISTO_26}
+                    >
+                      Realizado
                     </th>
                     <th
+                      title="Previsto por vencimento — corte na data-base 15/07"
                       className="whitespace-nowrap border-l-2 border-l-wt-border-strong px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
                       colSpan={colapsar ? 1 : meses.length - IDX_PREVISTO_26}
                     >
@@ -500,8 +523,7 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
                         >
                           {previstoAberto ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
                         </button>
-                        <span>Previsto · vencimento</span>
-                        <span className="rounded-sm bg-warning-bg px-1 align-[1px] text-[8.5px] tracking-[0.06em] text-warning-deep">corte 15/07</span>
+                        <span>Previsto</span>
                       </span>
                     </th>
                     <th
@@ -536,8 +558,12 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
                     >
                       Conta
                     </th>
-                    <th className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary" colSpan={12}>
-                      Realizado · movimentação (ano fechado)
+                    <th
+                      title="Ano fechado — tudo realizado (por data de movimentação)"
+                      className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
+                      colSpan={12}
+                    >
+                      Realizado
                     </th>
                     <th
                       rowSpan={2}
@@ -578,11 +604,6 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
                 const expansivel = chave != null && EXPANSIVEIS.includes(chave)
                 const aberto = termo !== '' || (chave != null && abertos.has(chave))
                 const onToggle = expansivel && chave != null ? () => toggleAberto(chave) : undefined
-                const totalDoBloco = chave != null ? totalPorBloco.get(chave) ?? 0 : 0
-                const achadosDoBloco = chave != null ? achadosPorBloco.get(chave) ?? 0 : 0
-                const contagem = expansivel
-                  ? (filtroAtivo && achadosDoBloco !== totalDoBloco ? `${achadosDoBloco} de ${totalDoBloco}` : String(totalDoBloco))
-                  : undefined
                 return (
                   <LinhaDreTr
                     key={`${l.t}-${chave ?? l.l}-${i}`}
@@ -593,7 +614,6 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
                     expansivel={expansivel}
                     aberto={aberto}
                     onToggle={onToggle}
-                    contagem={contagem}
                   />
                 )
               })}
@@ -619,27 +639,15 @@ export default function TabelaDreMockup({ slotAcoes }: TabelaDreMockupProps) {
 
       {/* ── Rodapé enxuto (conferência visual do Yan: "limpar o que polui"): UMA linha de
           legenda; a contagem só aparece quando um FILTRO está reduzindo a lista (fora
-          disso é ruído). As notas de mockup/decisões saíram da UI — viveem no PR/gate;
-          a origem ilustrativa da bandeja virou `title` na própria linha. ── */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-          <span className="h-2.5 w-2.5 rounded-sm bg-positive" /> receita / entrada
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-          <span className="h-2.5 w-2.5 rounded-sm bg-negative" /> gasto / saída
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-          <span className="h-2.5 w-2.5 rounded-sm border border-warning bg-warning-bg" /> previsto (vencimento)
-        </span>
-        <span className="flex items-center gap-1 text-[11px] text-text-muted">
-          <sup className="text-warning-deep">*</sup> nota da controladoria
-        </span>
-        {filtroAtivo && (
-          <span className="ml-auto text-[11px] text-text-muted">
-            Mostrando {nCatsVisiveis} de {contagemPorTipo.cat} categorias
-          </span>
-        )}
-      </div>
+          disso é ruído). As notas de mockup/decisões saíram da UI — vivem no PR/gate;
+          a origem ilustrativa da bandeja virou `title` na própria linha. Rodada 3: a
+          LEGENDA também saiu (pedido do Yan) — verde/vermelho e o âmbar do previsto são
+          auto-evidentes com os cabeçalhos "Realizado | Previsto". ── */}
+      {filtroAtivo && (
+        <p className="mt-3 text-right text-[11px] text-text-muted">
+          Mostrando {nCatsVisiveis} de {contagemPorTipo.cat} categorias
+        </p>
+      )}
     </div>
   )
 }

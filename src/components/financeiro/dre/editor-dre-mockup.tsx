@@ -198,19 +198,21 @@ function FaixaAncora({ item, rotulosPorChave }: { item: BlocoItem; rotulosPorCha
   // A fórmula é exibida com os RÓTULOS dos insumos (legível para quem lê a DRE), não com as
   // chaves internas; a forma por chaves — que é o que de fato ancora o cálculo — fica no
   // `title`, preservando a rastreabilidade. (Achado MÉDIO do revisor.)
+  // Faixa ESCURA (rodada 3): as âncoras são as linhas de RESULTADO — mesma inversão da
+  // tabela (grupos claros, resultado escuro em --action-primary).
   const porChaves = item.formula?.join(' + ') ?? ''
   const legivel   = item.formula?.map(k => rotulosPorChave[k] ?? k).join(' + ') ?? ''
   return (
     <div
-      className="flex items-center gap-2 rounded-lg border border-wt-border bg-band px-3 py-2"
+      className="flex items-center gap-2 rounded-lg bg-action-primary px-3 py-2"
       title={item.formula ? `Ancorada por chave de bloco — não reordenável · = ${porChaves}` : 'Ancorada por chave de bloco — não reordenável'}
     >
-      <Lock size={12} className="shrink-0 text-text-subtle" aria-hidden="true" />
-      <p className="shrink-0 text-[13px] font-medium text-text-primary">{item.rotulo}</p>
+      <Lock size={12} className="shrink-0 text-action-primary-fg/50" aria-hidden="true" />
+      <p className="shrink-0 text-[13px] font-medium text-action-primary-fg">{item.rotulo}</p>
       {item.formula ? (
-        <p className="truncate text-2xs text-text-subtle">= {legivel}</p>
+        <p className="truncate text-2xs text-action-primary-fg/60">= {legivel}</p>
       ) : (
-        <p className="truncate text-2xs text-text-subtle italic">valor direto — sem categorias</p>
+        <p className="truncate text-2xs text-action-primary-fg/60 italic">valor direto — sem categorias</p>
       )}
     </div>
   )
@@ -664,8 +666,11 @@ export default function EditorDreMockup() {
               </Button>
             </>
           ) : (
+            // Honestidade do mock (rodada 3 — "por que a classificação não funciona?"):
+            // a mudança vale SÓ nesta tela; dizer "salvas" sem ressalva fazia parecer que a
+            // DRE deveria refletir — e ela só reflete quando a persistência real chegar.
             <p className="flex items-center gap-1.5 text-xs font-medium text-success">
-              <Check size={14} /> Alterações salvas (mock)
+              <Check size={14} /> Alterações aplicadas nesta tela — a DRE ainda não as reflete (mockup)
             </p>
           )}
         </div>
