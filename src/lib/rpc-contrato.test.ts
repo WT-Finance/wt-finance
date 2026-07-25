@@ -16,11 +16,17 @@ import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
   coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
 } from './fluxo/rpc-fluxo'
+import {
+  dreMensalSchema, dreEstruturaSchema, salvarEstruturaResultSchema, historicoLotesSchema,
+  historicoEntradasSchema,
+} from './dre/schemas'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
 // negócio. skipIf sem credenciais → o gate `npm test` passa offline; com .env.local
-// carregado (vitest.setup.ts), roda de verdade. Só LEITURA — nunca escreve.
+// carregado (vitest.setup.ts), roda de verdade. Só LEITURA — com UMA exceção
+// deliberada: o caso de dre_estrutura_salvar envia um lote VAZIO (no-op, gravadas=0)
+// para exercitar a trava otimista; nenhum dado muda.
 
 // A URL do .env pode vir como host puro OU já com /rest/v1 (e/ou trailing slash).
 // Normalizamos para o host e remontamos o endpoint REST — evita /rest/v1//rest/v1.
@@ -510,5 +516,95 @@ describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1)', () => {
       const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
       if (ds.length) expect(ds[0] >= hoje).toBe(true) // vencidos ficam no balde, não na série
     }
+  })
+})
+
+// ── DRE por Fluxo de Caixa (v5.3.0 · Onda 2 — migrations 0204–0208) ─────────────
+// A estrutura é VIVA (editável): os casos validam INVARIANTES estruturais e o shape,
+// nunca o conteúdo exato do seed (que o editor pode legitimamente mudar).
+describe.skipIf(!ON)('contrato RPC — DRE (v5.3.0)', () => {
+  it('get_dre_mensal: shape + fórmula do grafo viva (REPASSE = ENT_H + PAG_H ao centavo)', async () => {
+    const anoSP = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 4))
+    const d = await rpc('get_dre_mensal', { p_ano: anoSP })
+    const p = dreMensalSchema.safeParse(d)
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    if (!p.success) return
+    const linhas = p.data.linhas
+    expect(p.data.relacao).toBe('corrente')
+    expect(p.data.mes_corrente).not.toBeNull()
+    // blocos e categorias presentes; toda cat aponta p/ bloco existente
+    const chaves = new Set(linhas.filter(l => l.t !== 'cat' && l.chave).map(l => l.chave as string))
+    expect(chaves.size).toBeGreaterThanOrEqual(20)
+    for (const c of linhas.filter(l => l.t === 'cat')) expect(chaves.has(c.g as string)).toBe(true)
+    // fórmula ancorada por chave, checada VIVA: REPASSE = ENT_H + PAG_H, mês a mês
+    const by = (k: string) => linhas.find(l => l.chave === k)
+    const ent = by('ENT_H'); const pag = by('PAG_H'); const rep = by('REPASSE')
+    expect(ent && pag && rep).toBeTruthy()
+    if (ent && pag && rep) {
+      for (let i = 0; i < 12; i++) {
+        expect(Math.abs(ent.meses[i] + pag.meses[i] - rep.meses[i])).toBeLessThan(0.01)
+      }
+      const pe = (ent.prev_corrente ?? 0) + (pag.prev_corrente ?? 0)
+      expect(Math.abs(pe - (rep.prev_corrente ?? 0))).toBeLessThan(0.01)
+    }
+  })
+
+  it('get_dre_mensal (ano fechado): tudo realizado, sem coluna híbrida', async () => {
+    const anoSP = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 4))
+    const d = await rpc('get_dre_mensal', { p_ano: anoSP - 1 })
+    const p = dreMensalSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (!p.success) return
+    expect(p.data.relacao).toBe('fechado')
+    expect(p.data.mes_corrente).toBeNull()
+    for (const l of p.data.linhas.slice(0, 5)) expect(l.prev_corrente ?? null).toBeNull()
+  })
+
+  it('dre_estrutura: shape + invariantes (XOR excluída/bloco; fórmulas referenciam chaves reais)', async () => {
+    const d = await rpc('dre_estrutura', {})
+    const p = dreEstruturaSchema.safeParse(d)
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    if (!p.success) return
+    expect(p.data.token).not.toBeNull()
+    const chaves = new Set(p.data.blocos.map(b => b.chave))
+    for (const b of p.data.blocos) for (const ins of b.formula ?? []) expect(chaves.has(ins)).toBe(true)
+    for (const m of p.data.maps) {
+      expect(m.excluida ? m.bloco_chave === null : m.bloco_chave !== null).toBe(true)
+      if (m.bloco_chave) expect(chaves.has(m.bloco_chave)).toBe(true)
+    }
+    // bandeja e maps são disjuntos (nada some em silêncio, nada duplica)
+    const mapeadas = new Set(p.data.maps.map(m => m.categoria_id))
+    for (const b of p.data.bandeja) expect(mapeadas.has(b.categoria_id)).toBe(false)
+  })
+
+  it('dre_estrutura_salvar: lote vazio é no-op; token errado → DRE_CONFLITO (nada muda)', async () => {
+    const est = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const ok = salvarEstruturaResultSchema.parse(
+      await rpc('dre_estrutura_salvar', { p_maps: [], p_token: est.token }),
+    )
+    expect(ok.ok).toBe(true)
+    expect(ok.gravadas).toBe(0)
+    await expect(
+      rpc('dre_estrutura_salvar', { p_maps: [], p_token: '1970-01-01T00:00:00Z' }),
+    ).rejects.toThrow(/DRE_CONFLITO/)
+  })
+
+  it('dre_estrutura_historico_lotes: shape (lista pode ser vazia)', async () => {
+    const d = await rpc('dre_estrutura_historico_lotes', { p_limit: 5, p_offset: 0 })
+    expect(historicoLotesSchema.safeParse(d).success).toBe(true)
+  })
+})
+
+// As 3 RPCs de undo/detalhe da estrutura, EXECUTADAS (não introspecção — lição 0203):
+// ids inexistentes exercitam o corpo até o guard, com efeito zero em produção.
+describe.skipIf(!ON)('contrato RPC — DRE undo/detalhe (execução inofensiva)', () => {
+  it('dre_estrutura_historico_lote: id inexistente → lista vazia (corpo executa)', async () => {
+    const d = await rpc('dre_estrutura_historico_lote', { p_lote: 1 })
+    expect(historicoEntradasSchema.safeParse(d).success).toBe(true)
+    expect(Array.isArray(d) ? d.length : -1).toBe(0)
+  })
+  it('dre_estrutura_desfazer_lote/linha: id inexistente → erro amigável, nada muda', async () => {
+    await expect(rpc('dre_estrutura_desfazer_lote', { p_lote: 1 })).rejects.toThrow(/inexistente/)
+    await expect(rpc('dre_estrutura_desfazer_linha', { p_diario_id: 1 })).rejects.toThrow(/inexistente/)
   })
 })
