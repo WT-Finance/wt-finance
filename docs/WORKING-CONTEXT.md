@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-25 · v5.3.0 (DRE Gerencial Onda 2 — estrutura viva + tabela mensal híbrida + editor auditado; implementada, PR #193 draft, aguarda checkpoint final do Yan + merge)
+Última atualização: 2026-07-27 · v5.3.0 (DRE Gerencial Onda 2 — estrutura viva + tabela mensal híbrida + visão Consolidado ano-a-ano + editor auditado; implementada, PR #193 draft, aguarda checkpoint final do Yan + merge)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -12,8 +12,10 @@
 - Versão em produção (main): `5.2.1` (#192 mergeado)
 - Versão em execução (worktree/branch ativa): `feat/v5-3-0-dre-onda2` (**PR #193 draft**). DRE por
   Fluxo de Caixa completa: tabela mensal híbrida sobre a ESTRUTURA VIVA (`/financeiro/dre`, ano
-  navegável) + editor auditado (`/financeiro/dre/estrutura`) + diário/undo GENERALIZADO.
-  **Gates verdes (tsc 0 / lint / 476 testes / build).**
+  navegável) + **visão Consolidado ano-a-ano** (YTD × YTD, Δ%, previsto, vencidos, anos seguintes —
+  sem migration, deriva de uma 5ª chamada paralela ao `ano-1`) + editor auditado
+  (`/financeiro/dre/estrutura`) + diário/undo GENERALIZADO.
+  **Gates verdes (tsc 0 / lint / 479 testes / build).** 6 rodadas de design com o Yan.
 - **Migrations 0204–0208 (v5.3.0) APLICADAS em produção** (25/07, regime aditivo autônomo,
   backup-gate verde; seed reconciliou fail-closed: 29 blocos / 133 maps / 2 excluídas). RPCs
   verificadas EXECUTANDO via REST/service_role; smoke do Gerencial pós-generalização verde.
@@ -37,7 +39,11 @@
   salvar, desfazer pelo Histórico; (3) conferir a Composição colapsada intacta; (4) smoke do undo
   do Gerencial na UI (não regrediu — coberto por teste/REST, falta o olho); (5) conceder a área
   `financeiro/dre` às roles no editor de acessos; (6) decisão adiada: vencidos em aberto no Total
-  do ano (o dado já viaja por linha). Out-briefing:
+  do ano (o dado já viaja por linha); (7) **convenção do Δ% do Consolidado** — usa denominador em
+  MÓDULO, então prejuízo→lucro lê como +118,2% (melhora) e não −118,2%; trocar = uma linha;
+  (8) opcional, precisa de TTY: `UPDATE app.rbac_areas SET rotulo = 'Demonstrativo de Resultado'
+  WHERE area = 'financeiro/dre';` (o editor de roles lê o rótulo do banco, ainda "DRE" — cosmético;
+  o teste de paridade só compara chaves). Out-briefing:
   `docs/briefings/WT_Finance_Out_Briefing_v5-3-0_DRE_Onda2.md`.
 - **Faturamento roda em MODO TESTE** — o flip de produção (Asaas produção + `EMAIL_MODO=real`)
   é decisão do Yan, fora do código. A dupla trava do modo real está construída, não acionada.
