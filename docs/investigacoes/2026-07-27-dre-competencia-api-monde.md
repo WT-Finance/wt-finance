@@ -1,8 +1,14 @@
 # Investigação — DRE por Competência via API do Monde
 
-**VEREDITO: PARCIAL — e mais forte do que a régua sugere: as 12 linhas do bloco da venda têm campo correspondente na API (nenhuma "sem candidata"); 5 reproduzem AO CENTAVO no mês de prova assentado; as demais têm o VALOR exposto, faltando a regra fina de data/reconhecimento — agravadas pela deriva entre o export congelado (o gabarito, foto de ~18/jul) e a API viva.**
+**VEREDITO: PARCIAL — as 12 linhas do bloco da venda têm campo correspondente na API (nenhuma "sem candidata"); 5 reproduzem AO CENTAVO no mês de prova assentado; as demais têm o VALOR exposto, faltando a regra fina de data/reconhecimento.**
 
 Data: 2026-07-27 · somente leitura · antecede o briefing da DRE Gerencial (Onda 2, v5.3.0)
+
+> **⚠️ ERRATA (delta de 2026-07-28, ver `2026-07-27-dre-competencia-api-monde-delta.md`):** a explicação
+> original dos resíduos de abr–jul (§5.1, "DEFASAGEM export ~18/jul × API viva") foi **REFUTADA** — o export
+> tem emissões até 27/07 e a DRE bate 0,00 contra os lançamentos nos 9 grupos de despesa de julho; o corte
+> T≈18/07 achado pela grade coincide com o `synced_at` do espelho intermediário, não com a data do export.
+> As passagens afetadas estão marcadas com **[ERRATA]** e a causa dos deltas de junho é objeto do delta (H3).
 
 ---
 
@@ -10,9 +16,9 @@ Data: 2026-07-27 · somente leitura · antecede o briefing da DRE Gerencial (Ond
 
 1. **Dá:** Comissão, Over, Desconto, Taxa DU e Taxa CC DU reproduzem **ao centavo** (delta 0,00) em março; Taxa RAV/CC RAV erram por um único par de ±513,71; Reembolso Cliente fecha **ao centavo em julho** e a 0,05–3,6% nos demais meses, com o mecanismo inteiro identificado (refunds por `issue_date`; o resíduo é vendas de origem ≤ 2024, fora do universo puxado).
 2. **Dá com ressalva:** Taxa de Serviço é composta (`totals.agency_fee` + taxa avulsa de `others`) com resíduo de 1–3%/mês; Operação própria tem o valor exposto (`operations[].totals.amount`; fev e jul exatos) mas o reconhecimento segue o **pagamento**, regra não fechada; Reembolso Fornecedor tem os valores expostos (itens `Reembolso` do financeiro do fornecedor) mas o eixo real (data de criação do documento) **não é exposto** — o proxy mês-da-venda erra até ±170k/mês.
-3. **O que explica os resíduos dos meses recentes:** o gabarito é um export de ~18/07/2026 e a API é viva — a mesma DEFASAGEM já provada na investigação da divergência de receita. Nos meses assentados (jan–mar) o casamento é exato; abr–jul carregam re-edições posteriores ao export (−368k só em Desconto).
+3. **[ERRATA — explicação refutada, ver delta]** ~~Os resíduos dos meses recentes seriam DEFASAGEM entre export de ~18/07 e API viva.~~ O export é de ≥27/07 (971 emissões entre 19–31/jul presentes; despesa de julho bate 0,00) — a janela de deriva é de horas, não de nove dias. A causa dos deltas de abr–jul é investigada no delta (hipótese H3, reconhecimento diferido).
 4. **H2 confirmada:** a venda embute seu financeiro com o tipo de documento (`information`: "Fatura Fornecedor", "Pagamento Avulso", "Reembolso Fornecedor", "Sinal"…) e — chave de ouro — `financial.bills[]` traz o **nome da categoria** do lançamento avulso vinculado (`description: "Reembolso Fornecedor - C"`), com o `due_date` reproduzindo o mês da DRE ao centavo nos casos encontrados.
-5. **O que fazer:** o caminho "duas fontes" (despesa pelos lançamentos + receita pela venda) é viável; a DRE viva refletirá o **hoje** da API (não a foto), então a paridade deve ser aferida contra export FRESCO do Monde — mesma técnica da virada v5.1.4. Duas exigências estruturais: re-sync do histórico do espelho (o ramo `financial`/`payments` só existe em vendas re-sincronizadas recentemente) e universo completo de vendas (refunds moram na venda de ORIGEM, anos atrás).
+5. **O que fazer:** o caminho "duas fontes" (despesa pelos lançamentos + receita pela venda) é viável; a paridade com o Demonstrativo do Monde deve ser aferida contra export fresco — mesma técnica da virada v5.1.4. Duas exigências estruturais: re-sync do histórico do espelho (o ramo `financial`/`payments` só existe em vendas re-sincronizadas recentemente) e universo completo de vendas (refunds moram na venda de ORIGEM, anos atrás).
 
 ---
 
@@ -110,7 +116,7 @@ Recorte: itens `≠deleted`, mês da venda (`sale_date`), universo completo da A
 ⁴ Mesmo valor com sinais opostos nas duas linhas: um único item com RAV integralmente consumido pela taxa de cartão (neutro na receita) classificado diferente pela DRE.
 ⁵ Refunds por `issue_date` no universo completo puxado (2025-01→2026-07). Em **julho/2026 o delta é 0,00** — quando o universo cobre as vendas de origem, a linha fecha ao centavo. Ver §5.4.
 
-### Junho (mês vivo — deriva export × API)
+### Junho (mês vivo — deltas SEM causa identificada nesta investigação; ver delta/H3)
 
 | Linha | Alvo | Obtido | Delta | Delta % |
 |---|---:|---:|---:|---:|
@@ -129,7 +135,7 @@ Recorte: itens `≠deleted`, mês da venda (`sale_date`), universo completo da A
 
 ### 5.1 Por que os meses recentes divergem — e por que isso NÃO é campo faltando
 
-O gabarito é uma **foto**: a busca em grade por uma data de corte T que minimize os deltas converge para **T ≈ 2026-07-18/19** (mínimo global; salto abrupto em 20/07). Nos meses assentados o casamento é exato; nos vivos, o excedente (+58k Comissão jun; −368k Desconto abr–jul; +9k Over jun) é **re-edição posterior ao export** — o mesmo mecanismo DEFASAGEM provado na investigação da divergência de receita (delta mensal de até ±848k entre export e API, P3). Ou seja: **uma DRE viva pela API reproduziria o Monde de HOJE**; ela não reproduz uma foto velha — e não deve.
+**[ERRATA — esta seção foi REFUTADA pelo delta de 2026-07-28; mantida para registro.]** A explicação original era: o gabarito seria uma **foto** de ~18/07 (a busca em grade por um corte T convergiu para 2026-07-18/19) e os excedentes dos meses vivos seriam re-edição posterior ao export. **Está errado em três pontos:** (1) o export tem 971 emissões entre 19–31/jul e liquidações até 27/07 — é de ≥27/07; (2) a DRE bate 0,00 contra os lançamentos nos 9 grupos de despesa de julho, incluindo os −388.993,84 dos lançamentos tardios — se fosse foto de 18/jul, faltariam; (3) o T≈18/07 coincide com o **`synced_at` do espelho intermediário** (visível no anexo: `2026-07-18T01:10:36`) — a grade encontrou a data de sincronização da fonte, não a do export. A citação "±848k, P3" também era indevida: aquele número é o delta entre bloco bruto e bloco decomposto **dentro do mesmo export**, não export × API. A causa real dos deltas de junho é objeto do delta (H3 — reconhecimento diferido).
 
 Confirmação lateral: a janela ago–dez/2026 tem **0 vendas** na API, e o gabarito mostra ~zeros em ago–dez — consistente com emissão ≤ hoje.
 
@@ -172,7 +178,7 @@ Rodado nos DOIS universos: as somas acima usam o universo COMPLETO (sem excluir 
    - 18.237,55 · `due_date` 2026-04 → **abril, ao centavo** ✓
    - 15.428,23 · `due_date` 2026-05 → **maio, ao centavo** ✓
    - (+3 bills de 2025, due 2025, fora do gabarito 2026)
-   **A aritmética fecha exata:** os localizados somam 358.584,75, e os não-localizados (fev 35.375,78 + resíduo de março 141.505,87) somam exatamente os 535.466,40 do alvo — suas vendas de origem são ≤ 2024, fora do universo puxado. O critério (bill com categoria explícita, reconhecido no `due_date`) está **provado**: todo documento encontrado caiu no mês certo com o valor certo.
+   **A evidência que sustenta o critério** *(corrigido no delta — a formulação original "localizados + não-localizados = alvo" era tautológica)*: **todo documento encontrado caiu no mês certo com o valor certo** — 18.237,55 em abril e 15.428,23 em maio AO CENTAVO, e os três bills de março no mês certo. Os documentos não-localizados (fev e resíduo de mar, 176.881,65) têm vendas de origem ≤ 2024, fora do universo puxado — hipótese de cobertura, não prova.
 4. O par observado em bills — `+18.237,55 "Reembolso Fornecedor - C"` / `−18.237,55 "Pagamento ao Fornecedor - Operação propria"` — mostra o financeiro avulso da operação própria transitando DENTRO da venda, coerente com a supressão dos grupos `Entrada de clientes`/`Pagamento ao Fornecedor` na DRE (a receita já reconhecida pela venda).
 
 ---
@@ -202,7 +208,7 @@ O veredito PARCIAL cai no caminho do meio: **duas fontes com gap declarado** —
 - 8 linhas sólidas (5 exatas + RAV/CC RAV/Reembolso Cliente com resíduos pequenos e explicados);
 - 4 linhas com valor exposto e regra fina aberta (Taxa de Serviço ~1–3%; Operação própria/Reembolso Fornecedor/Reemb. Fornecedor-desc — reconhecimento/eixo);
 - ganho que a DRE do Monde não dá: **drill-down até a venda** em toda linha do bloco;
-- ressalva honesta: paridade com o Demonstrativo do Monde só é aferível contra export **fresco** (a foto envelhece em dias — §5.1), e "bater ao centavo com o Monde" nas 4 linhas finas não é prometível hoje. A alternativa de exibi-las com a régua do Janus (definição própria e documentada sobre os mesmos campos) é decisão de produto do Yan.
+- ressalva honesta: "bater ao centavo com o Monde" nas 4 linhas finas não é prometível hoje, e os deltas dos meses vivos ainda precisam de causa (ver delta/H3). A alternativa de exibi-las com a régua do Janus (definição própria e documentada sobre os mesmos campos) é decisão de produto do Yan.
 
 Custos estruturais do caminho: fato próprio sobre o `raw` (a mv atual é active-only/sem-Welcome — §5.2), backfill do histórico (§9.4) e universo completo de vendas para refunds (§5.4).
 
