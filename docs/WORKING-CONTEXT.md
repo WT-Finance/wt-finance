@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-27 · v5.3.0 (DRE Gerencial Onda 2 — estrutura viva + tabela mensal híbrida + visão Consolidado ano-a-ano + editor auditado; implementada, PR #193 draft, aguarda checkpoint final do Yan + merge)
+Última atualização: 2026-07-27 (16h50) · v5.3.0 (DRE Gerencial Onda 2 — estrutura viva + tabela mensal híbrida + visão Consolidado ano-a-ano + editor auditado; implementada, PR #193 draft, aguarda checkpoint final do Yan + merge)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
@@ -12,10 +12,13 @@
 - Versão em produção (main): `5.2.1` (#192 mergeado)
 - Versão em execução (worktree/branch ativa): `feat/v5-3-0-dre-onda2` (**PR #193 draft**). DRE por
   Fluxo de Caixa completa: tabela mensal híbrida sobre a ESTRUTURA VIVA (`/financeiro/dre`, ano
-  navegável) + **visão Consolidado ano-a-ano** (YTD × YTD, Δ%, previsto, vencidos, anos seguintes —
-  sem migration, deriva de uma 5ª chamada paralela ao `ano-1`) + editor auditado
-  (`/financeiro/dre/estrutura`) + diário/undo GENERALIZADO.
-  **Gates verdes (tsc 0 / lint / 479 testes / build).** 6 rodadas de design com o Yan.
+  navegável) + **visão Consolidado ano-a-ano com seleção MÚLTIPLA de anos** (ano cheio, YTD × YTD,
+  Δ%, previsto, vencidos, anos seguintes — sem migration, todos os anos vêm na mesma leva) +
+  **colunas de total FIXAS à direita** + editor auditado (`/financeiro/dre/estrutura`, com
+  cabeçalho e badge de Administração próprios) + diário/undo GENERALIZADO.
+  **Gates verdes (tsc 0 / lint / 479 testes / build).** **10 rodadas de design com o Yan.**
+  Bug de cálculo achado pelo Yan na rodada 8 e corrigido: a janela do YTD vinha do ano EXIBIDO, o
+  que tornava "YTD" idêntico ao ano cheio em ano fechado — agora ancora em `hojeSP()`.
 - **Migrations 0204–0208 (v5.3.0) APLICADAS em produção** (25/07, regime aditivo autônomo,
   backup-gate verde; seed reconciliou fail-closed: 29 blocos / 133 maps / 2 excluídas). RPCs
   verificadas EXECUTANDO via REST/service_role; smoke do Gerencial pós-generalização verde.
@@ -40,10 +43,10 @@
   do Gerencial na UI (não regrediu — coberto por teste/REST, falta o olho); (5) conceder a área
   `financeiro/dre` às roles no editor de acessos; (6) decisão adiada: vencidos em aberto no Total
   do ano (o dado já viaja por linha); (7) **convenção do Δ% do Consolidado** — usa denominador em
-  MÓDULO, então prejuízo→lucro lê como +118,2% (melhora) e não −118,2%; trocar = uma linha;
-  (8) opcional, precisa de TTY: `UPDATE app.rbac_areas SET rotulo = 'Demonstrativo de Resultado'
-  WHERE area = 'financeiro/dre';` (o editor de roles lê o rótulo do banco, ainda "DRE" — cosmético;
-  o teste de paridade só compara chaves). Out-briefing:
+  MÓDULO, então prejuízo→lucro lê como +118,2% (melhora) e não −118,2%; trocar = uma linha.
+  *(A pendência de TTY do rótulo em `app.rbac_areas` foi RESOLVIDA em código: o rótulo exibido no
+  editor de roles passou a vir do catálogo local; o banco segue sendo a fonte da autorização.)*
+  Out-briefing:
   `docs/briefings/WT_Finance_Out_Briefing_v5-3-0_DRE_Onda2.md`.
 - **Faturamento roda em MODO TESTE** — o flip de produção (Asaas produção + `EMAIL_MODO=real`)
   é decisão do Yan, fora do código. A dupla trava do modo real está construída, não acionada.
@@ -57,9 +60,12 @@
 
 ## Filas ativas (próximos passos já decididos)
 
-- **v5.3.x refino da DRE (pós-merge, com o Yan):** vencidos no Total do ano; satélites do modelo
-  (comparativo anual, YTD/Δ%, colunas 2027/2028, linhas-chave, exportação); drag-and-drop no editor;
-  guarda de saída para navegação por link; divisão ver/editar da permissão se precisar.
+- **v5.3.x refino da DRE (pós-merge, com o Yan):** vencidos no Total do ano; **linhas-chave e
+  exportação** (os demais satélites do modelo — comparativo anual, YTD/Δ%, colunas 2027/2028 —
+  foram ENTREGUES nas rodadas 6–10); drag-and-drop no editor; guarda de saída para navegação por
+  link; divisão ver/editar da permissão se precisar. Achado registrado, não implementado (é
+  produto): na visão Consolidado o CONJUNTO DE LINHAS vem do ano da URL — os valores é que vêm por
+  ano marcado —, então marcar só 2024 mostra a estrutura de 2026 com os números de 2024.
 - **Renumeração das 0950–0954 (v5.4.0/PR #191)** + `migration repair` — no checklist de merge da
   v5.4.0; até lá, toda aditiva usa `--fora-de-ordem` + cópias untracked.
 - **Monde — Scope B (APOSENTAR o upload manual de Vendas):** viável (item-level já no espelho);

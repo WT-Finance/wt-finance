@@ -192,6 +192,57 @@ mudava os números sem o usuário pedir nada).
   os anos de comparação já têm — ali o ano cheio ≠ YTD (jan..dez × jan..jul) e escondê-la perderia
   informação real; o que some é só a **duplicata** do ano corrente, que era o motivo do pedido.
 
+**Rodadas 9–10 (fechamento do refino).**
+- **Colunas de TOTAL fixas à direita** (e 2027/2028 quando abertas), espelhando a coluna Conta à
+  esquerda: larguras viraram constantes (`W_TOTAL`/`W_ANO_SEG`) e o `right` de cada coluna é
+  cumulativo a partir delas — uma fonte de verdade só. No Consolidado só existe no modo
+  "Realizado + Previsto"; no "Realizado" a coluna nem é montada, então não sobra sticky residual.
+  Duas armadilhas do sticky, ambas silenciosas: (1) em `border-separate` o fundo tem de estar na
+  CÉLULA, e translúcido deixa o conteúdo rolante aparecer por baixo — os dois únicos fundos com
+  alfa (`cat` em previsto e em vencido) viraram `color-mix` sobre `--band`, mesmo composite sem
+  canal alfa; (2) `relative` e `sticky` escrevem a MESMA propriedade e o vencedor é decidido pela
+  ordem no CSS gerado, não pela ordem das classes — o `relative` da `th` de total saiu (sticky
+  também é "positioned", então a seta `absolute` segue ancorada nela). Escala de z documentada no
+  topo do arquivo: corpo normal < corpo fixo (10) < thead (20) < th fixa (30).
+- **Efeito colateral do sticky, corrigido:** com 2027/2028 pinadas, o "salto" ao abri-las perdeu o
+  sentido (já aparecem no clique) e o `scrollIntoView` sobre elemento pinado **não consegue** cumprir
+  o alinhamento pedido — parava num ponto arbitrário do meio da tabela (medido: 567 de 1724), lendo
+  como solavanco sem causa. O salto dos anos seguintes foi removido junto com a ref que só ele usava;
+  o do previsto permanece, porque aquelas colunas continuam rolando.
+- **Rótulos de grupo fixos DENTRO do próprio grupo:** "Realizado"/"Previsto" permanecem visíveis
+  enquanto qualquer coluna do grupo estiver em vista. O `sticky` vai no **conteúdo**, nunca na `th`
+  — a `th` **é** o grupo (abrange todas as suas colunas), então prendê-la não teria sentido; e por
+  ser o bloco que contém o rótulo, ela também o **delimita de graça**: o rótulo nunca invade o grupo
+  vizinho e some junto com o seu, que é exatamente o comportamento pedido. O `right` é a largura das
+  colunas fixas + folga, para estacionar à esquerda delas. Verificado nos extremos: no fim do scroll
+  o "Realizado" some com seu grupo e o "Previsto" para em 1032 = 1216 (borda) − 170 (total) − 14
+  (folga); no Consolidado/Realizado, sem coluna fixa, para em 1202 = 1216 − 14.
+- **VENCIDOS ganha natureza própria:** sai do grupo "Previsto" e ocupa uma faixa entre Realizado e
+  Previsto, com divisória dos dois lados e **escala vermelha** (mesmo mecanismo do âmbar, `--danger`
+  no lugar de `--warning`). O rótulo usa `--negative` e não `--danger` porque sobre a banda do
+  cabeçalho o `--danger` dá 3,6:1 (reprova) e o `--negative` dá 4,3:1 — o mesmo patamar do
+  `--warning-deep` que ele substitui. Vencido não é projeção nem realizado: é prazo estourado.
+- **Editor da estrutura com identidade própria:** fora o `TopSection`; entram H1 "Estrutura do
+  Demonstrativo de Resultado", subtítulo e o badge **"Administração"** (marcação e tokens copiados
+  do `admin/layout.tsx`, que a rota não herda por não estar sob `/admin`); "Voltar" em âmbar de
+  gestão; card titulado "Editor de Estrutura"; painel vira "Histórico de alterações". O **corpo do
+  editor perdeu valores, badges e o chip da chave do bloco** — é tela de reordenar/reclassificar;
+  os números ficam nos modais de mover/excluir, onde são o efeito que justifica a ação. A linha de
+  contexto no topo saiu e, com ela, a última referência ao ano dos totais → a prop `anoTotais` foi
+  retirada da cadeia inteira em vez de ficar órfã.
+- **Rótulo de área passa a vir do CÓDIGO** (`/admin/acessos`): as duas fontes são espelhos, mas o
+  teste de paridade compara só as CHAVES — renomear uma área no código deixava o editor de roles
+  preso ao nome antigo indefinidamente. O banco segue sendo a fonte da AUTORIZAÇÃO (é
+  `app.rbac_areas` que `exigir_acesso` lê); o rótulo é cosmético. Área que exista no banco e não no
+  código mantém o texto do banco, para o drift no sentido oposto continuar visível.
+  **⚠️ Isso FECHA a pendência de TTY** registrada mais abaixo — nenhum `UPDATE` é mais necessário.
+- **Sidebar:** o rótulo do sub-item quebrava em duas linhas **só no estado ativo** — o ativo troca o
+  peso para `font-semibold`, que alarga o texto o bastante para estourar a largura, e o sub-item não
+  tinha o `truncate` que o item de 1º nível já tinha. Bug de quem só olha o estado inativo.
+- **"Expandir tudo"/"Recolher tudo" — três posições até acertar:** rodapé (afastava a ação do que ela
+  controla) → faixa própria acima da tabela (custava uma 3ª linha de toolbar inteira para dois botões
+  de texto) → **linha das pills, à direita** (`ml-auto`). Ficam perto da tabela e sem custo de altura.
+
 **Fora do escopo da DRE, pedido na mesma sessão:** máscara de moeda no campo Valor da **nova linha**
 da Base de Dados do Fluxo de Caixa Gerencial — era o único campo de dinheiro da tela ainda em
 `type="number"` cru (digitar não formatava; "1.234,56" era rejeitado pelo browser em silêncio).
@@ -199,7 +250,7 @@ Passou a usar o **mesmo `mascaraMoeda`** que a edição inline daquela mesma col
 não máscara nova. Efeito colateral bom: antes, limpar o campo dava `Number('') === 0` e a guarda
 `valor_final == null` não pegava — dava para salvar um lançamento de zero sem querer.
 
-### Pendência pequena para o Yan (precisa de TTY)
+### ~~Pendência pequena para o Yan (precisa de TTY)~~ — RESOLVIDA na rodada 9 (ver acima: o rótulo passou a vir do código; o `UPDATE` abaixo ficou desnecessário)
 O rótulo da área mudou para "Demonstrativo de Resultado" no app (sidebar + `AREA_INFO`),
 mas o **editor de roles lê o rótulo do BANCO** (`app.rbac_areas.rotulo`, com o local só
 como fallback) — lá ainda está "DRE". Alinhar exige um `UPDATE` em dado pré-existente, que
