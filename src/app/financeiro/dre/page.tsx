@@ -110,12 +110,18 @@ export default async function DrePage({
   const dre = dreAnos.get(ano) ?? null
 
   // ── JANELA DO YTD ────────────────────────────────────────────────────────────
-  // Quantos meses entram no "YTD" de TODOS os anos comparados. Vem do ano EXIBIDO:
-  // se ele é o corrente, é o mês corrente (jan..jul); se é um ano fechado, são os 12.
-  // Fixar a janela num número só é o que torna a comparação honesta — "mesmo período"
-  // significa a MESMA fatia do calendário em cada ano (YTD 25 × YTD 26), nunca o ano
-  // cheio de um contra a fatia do outro.
-  const mesJanela = dre?.mes_corrente ?? 12
+  // Quantos meses entram no "YTD" de TODOS os anos comparados. Ancorado em HOJE
+  // (mês corrente no fuso de SP), NUNCA no ano exibido: "year to date" é, por
+  // definição, jan..mês-corrente do calendário — não muda porque o usuário está
+  // olhando um ano fechado. Fixar a janela num número só é o que torna a comparação
+  // honesta: "mesmo período" = a MESMA fatia do calendário em cada ano.
+  //
+  // ⚠️ Custou caro: antes isto era `dre?.mes_corrente ?? 12`, o mês do ano EXIBIDO.
+  // Com `?ano=2025` (ano fechado, sem mês corrente) a janela virava 12 e o YTD de
+  // TODO ano passava a ser o ano inteiro — a coluna "YTD 25" ficava idêntica à coluna
+  // "2025" e o "YTD 26" somava dezembro de um ano que ainda não terminou. Números
+  // plausíveis, silenciosamente errados; nenhum gate pega isso.
+  const mesJanela = parseInt(hojeSP().slice(5, 7), 10)
 
   /** Indexa um payload por linha: `b:<chave>` (blocos/totalizadores) e `c:<categoria_id>`
    *  (categorias e bandeja) — o MESMO par de chaves que a tabela usa para casar as linhas
