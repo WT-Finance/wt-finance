@@ -51,6 +51,11 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       {
         tipo: 'melhoria',
         texto:
+          'Na DRE dá para escolher se o "Total do ano" considera apenas o que já foi realizado ou o realizado somado ao previsto — e, ao lado do total, abrir os dois anos seguintes para ver o que já está lançado à frente (2027 e 2028). Os valores seguem o formato contábil de sempre: R$ discreto à esquerda, centavos, e gastos entre parênteses.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
           'Os números da DRE saem da mesma base de lançamentos do Fluxo de Caixa (eixo da movimentação bancária) e foram conferidos, mês fechado a mês fechado, contra o dashboard que a controladoria usava — as linhas de resultado batem ao centavo, descontadas apenas re-edições feitas no próprio Monde depois da data de referência.',
       },
     ],
