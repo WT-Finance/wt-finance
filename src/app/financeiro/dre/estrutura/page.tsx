@@ -81,7 +81,7 @@ export default async function DreEstruturaPage() {
       </div>
 
       {estrutura ? (
-        <EstruturaShell estrutura={estrutura} totaisPorCategoria={totaisPorCategoria} anoTotais={ano} />
+        <EstruturaShell estrutura={estrutura} totaisPorCategoria={totaisPorCategoria} />
       ) : (
         <p className="rounded-lg border border-dashed border-wt-border px-4 py-6 text-center text-sm text-text-subtle">
           Não foi possível carregar a estrutura da DRE. Recarregue a página.

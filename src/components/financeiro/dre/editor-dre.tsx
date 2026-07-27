@@ -530,12 +530,11 @@ function MoverModal({
 interface Props {
   estrutura: DreEstrutura
   totaisPorCategoria: Record<number, number>
-  anoTotais: number
   /** Notifica o pai da contagem de pendências (guarda do desfazer no histórico — v5.3.0). */
   onPendenciasChange?: (n: number) => void
 }
 
-export default function EditorDre({ estrutura, totaisPorCategoria, anoTotais, onPendenciasChange }: Props) {
+export default function EditorDre({ estrutura, totaisPorCategoria, onPendenciasChange }: Props) {
   const router = useRouter()
 
   const [blocos, setBlocos]       = useState<BlocoItem[]>(() => derivarBlocos(estrutura, totaisPorCategoria))
@@ -692,14 +691,12 @@ export default function EditorDre({ estrutura, totaisPorCategoria, anoTotais, on
     <div className="rounded-xl bg-surface p-5 shadow-sm">
       {erro && <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />}
 
-      {/* "Valores de referência: <ano>" não cabia mais (o corpo não mostra valores): o ano
-          agora qualifica os totais que aparecem SÓ nos modais de mover/excluir. */}
-      <p className="text-2xs text-text-subtle">
-        Estrutura global e auditada — toda alteração fica no histórico e é reversível. Os efeitos
-        exibidos ao mover ou excluir usam os valores de {anoTotais}.
-      </p>
-
-      <div className="mt-3 space-y-3">
+      {/* Sem linha de contexto no topo: o subtítulo da página já diz para que serve a tela,
+          e o painel "Histórico de alterações" logo abaixo é a prova viva de que tudo é
+          auditado e reversível — dizer isso em prosa era redundante. Com ela saiu a última
+          referência ao ano dos totais, e por isso a prop `anoTotais` foi retirada da cadeia
+          (o ano segue sendo usado só no servidor, para buscar os totais dos modais). */}
+      <div className="space-y-3">
         {blocos.map(item =>
           item.formula === null ? (
             <CardBloco

@@ -39,11 +39,10 @@ const CAMPOS_DIFF_ESTRUTURA: CampoDiff[] = [
 ]
 
 export default function EstruturaShell({
-  estrutura, totaisPorCategoria, anoTotais,
+  estrutura, totaisPorCategoria,
 }: {
   estrutura: DreEstrutura
   totaisPorCategoria: Record<number, number>
-  anoTotais: number
 }) {
   const router = useRouter()
   const [recarregarKey, setRecarregarKey] = useState(0)
@@ -73,7 +72,6 @@ export default function EstruturaShell({
       <EditorDre
         estrutura={estrutura}
         totaisPorCategoria={totaisPorCategoria}
-        anoTotais={anoTotais}
         onPendenciasChange={registrarPendencias}
       />
       <HistoricoAlteracoes
