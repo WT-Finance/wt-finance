@@ -80,14 +80,39 @@ export default async function DrePage({
   // de tipagem frouxa genérico do módulo (não específico de DRE apesar do nome),
   // reaproveitado aqui para as duas RPCs de Composição também, unificando o tipo
   // de retorno (`RpcLike`) sem o cast ad-hoc local que existia antes.
+  // Os DOIS anos seguintes entram na mesma leva: a coluna "Total do ano" abre, por um
+  // toggle, o previsto de ano+1/ano+2 (o modelo da controladoria mostra 2027/2028 ao
+  // lado do total). É a MESMA RPC com outro `p_ano` — nenhuma migration nova; as 5
+  // chamadas correm em paralelo, então o custo em wall-clock é o da mais lenta.
+  const anosSeguintesNums = [ano + 1, ano + 2]
+
   const empty: RpcLike = { data: null, error: null }
-  const [dreRes, decomposicaoRes, decomposicaoCategoriaRes] = await Promise.allSettled([
+  const [dreRes, seg1Res, seg2Res, decomposicaoRes, decomposicaoCategoriaRes] = await Promise.allSettled([
     rpcDre(db, 'get_dre_mensal',          { p_ano: ano }),
+    rpcDre(db, 'get_dre_mensal',          { p_ano: anosSeguintesNums[0] }),
+    rpcDre(db, 'get_dre_mensal',          { p_ano: anosSeguintesNums[1] }),
     rpcDre(db, 'get_decomposicao_grupo',     { p_from: from, p_to: to }),
     rpcDre(db, 'get_decomposicao_categoria', { p_from: from, p_to: to }),
   ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : empty)))
 
   const dre          = parseRpc(dreMensalSchema, dreRes, 'get_dre_mensal')
+
+  // Totais por linha de cada ano seguinte, indexados por `b:<chave>` (blocos) e
+  // `c:<categoria_id>` (categorias) — o mesmo par de chaves que a tabela usa para casar
+  // as linhas. Ano que falhar sai da lista (fail-safe: a coluna simplesmente não aparece).
+  const anosSeguintes = [seg1Res, seg2Res]
+    .map((res, i) => {
+      const p = parseRpc(dreMensalSchema, res, `get_dre_mensal(${anosSeguintesNums[i]})`)
+      if (!p) return null
+      const totais: Record<string, number> = {}
+      for (const l of p.linhas) {
+        if (l.t === 'cat') { if (l.categoria_id != null) totais[`c:${l.categoria_id}`] = l.total }
+        else if (l.chave) { totais[`b:${l.chave}`] = l.total }
+      }
+      for (const b of p.bandeja) totais[`c:${b.categoria_id}`] = b.total
+      return { ano: anosSeguintesNums[i], totais }
+    })
+    .filter((x): x is { ano: number; totais: Record<string, number> } => x !== null)
   const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
   const categorias   =
     unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
@@ -105,6 +130,7 @@ export default async function DrePage({
           dados={dre}
           ano={ano}
           anosDisponiveis={anosDisponiveis}
+          anosSeguintes={anosSeguintes}
           slotAcoes={
             <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
               <SquarePen size={13} />

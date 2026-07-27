@@ -74,6 +74,27 @@ Comportamento seguro por construção.
 
 ---
 
+### Rodadas de refino visual pós-implementação (checkpoint aberto do Yan)
+**Rodada 4:** formato contábil com centavos (gastos seguem entre parênteses) + densidade
+menor; gutter das barras; cinza do cabeçalho preenchendo o box; CONTA/TOTAL DO ANO
+alinhados com os meses (as `th` `rowSpan={2}` centralizam por padrão — `align-bottom` +
+`pb` casa a base com a dos meses).
+**Rodada 5:** R$ discreto no padrão contábil do DS (layout do `<ValorContabil>`, com os
+parênteses da DRE); busca e "esconder zerados" REMOVIDOS (com todo o código que só existia
+para eles); "Editar estrutura" para o rodapé; data-base fora; título do card; setas de
+expansão à direita; **colunas dos ANOS SEGUINTES** e **modo do Total do ano**
+(realizado × realizado+previsto); barras que não se tocam.
+- **Anos seguintes SEM migration:** a própria `get_dre_mensal(p_ano)` já devolve o ano
+  futuro inteiro (`relacao='futuro'`); a página busca ano+1/ano+2 **em paralelo** com a
+  principal e passa só os totais por linha. Custo medido em produção (aquecido): 216–481ms
+  de wall-clock para as 3 chamadas — as duas extras não movem o tempo percebido (a de 2026
+  sozinha leva ~460ms). Ano que falhar some da lista (a coluna não aparece).
+- **Barras que se cruzam viraram PADRÃO do DS** (não remendo local): `scrollbar-math` ganhou
+  folga assimétrica (`folgaFim`, default = `folga` → eixo único inalterado) e o
+  `<ScrollAutoHide>` encurta cada trilho pela espessura do outro (`THUMB_CRUZ`) quando
+  `eixo="both"` — 3 casos de teste novos; documentado em `docs/design-system.md`
+  §Barras de rolagem. Toda tabela de dois eixos herda de graça.
+
 ## Auditoria de PARIDADE (motor × dashboard da controladoria)
 
 Oráculo congelado: fixture do objeto `D` (base 15/07/2026), mantida em
