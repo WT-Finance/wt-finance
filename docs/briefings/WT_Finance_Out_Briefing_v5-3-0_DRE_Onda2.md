@@ -165,6 +165,33 @@ na sidebar.
   mas a seleção múltipla o tornou mais visível. Resolver exigiria a página passar também a estrutura
   do ano de referência.
 
+**Rodada 8 (última) — inclui um BUG REAL de cálculo pego pelo Yan.** A janela do YTD vinha do
+**ano exibido** (`dre.mes_corrente ?? 12`): com `?ano=2025` (ano fechado, sem mês corrente) ela
+virava 12 e o YTD de TODO ano passava a ser o ano inteiro — a coluna "YTD 25" ficava **idêntica**
+à coluna "2025" e o "YTD 26" somava dezembro de um ano que ainda não terminou. Números plausíveis,
+silenciosamente errados; **nenhum gate pega isso** (não é erro de tipo, de lint nem de contrato —
+é uma definição errada). "Year to date" é, por definição, jan..mês-corrente do **calendário**, e
+não muda porque o usuário está olhando um ano fechado: a âncora passou a ser `hojeSP()`. Conferido
+com `?ano=2025`: YTD 25 = 16.237.808,53 contra o ano cheio 28.628.518,76, e o Δ% ficou **estável
+independentemente do ano exibido** (antes, navegar para 2025 na Mensal e voltar ao Consolidado
+mudava os números sem o usuário pedir nada).
+- **Refinos junto:** "Expandir tudo"/"Recolher tudo" descem para o **rodapé** junto do "Editar
+  estrutura", com ícones · pills de modo passam a existir **também no Consolidado**, com efeito
+  real, e o rótulo vira **"Realizado + Previsto"** (P maiúsculo) nas duas visões · o grupo do
+  cabeçalho do Consolidado diz só **"REALIZADO"** · no Consolidado, modo "Realizado" esconde
+  PREV/VENCIDOS/TOTAL/anos-seguintes (*"o total do ano realizado já é o YTD"* — o Yan) e o modo
+  "Realizado + Previsto" chama a coluna de **"TOTAL PREVISTO"** · **VENCIDOS ganha escala VERMELHA
+  própria** (mesmo mecanismo do âmbar, trocando `--warning` por `--danger`; o rótulo usa
+  `--negative`, que dá 4,3:1 sobre a banda enquanto o `--danger` daria 3,6:1 e reprovaria) — o
+  âmbar do previsto fica intacto, porque vencido **não é projeção, é prazo estourado** · o previsto
+  **recolhido** mostra só o previsto do mês corrente (`JUL·P`), não mais a soma até dezembro · na
+  Mensal o total vira **"TOTAL PREVISTO"** no modo "Realizado + Previsto".
+- **Exceções deliberadas, onde o literal seria falso:** em ano **FECHADO** não existe projeção
+  alguma, então o total continua "TOTAL DO ANO"/"TOTAL «ano»" e nunca "previsto". E no Consolidado
+  + modo Realizado com **referência fechada**, a referência ganha a MESMA coluna de ano cheio que
+  os anos de comparação já têm — ali o ano cheio ≠ YTD (jan..dez × jan..jul) e escondê-la perderia
+  informação real; o que some é só a **duplicata** do ano corrente, que era o motivo do pedido.
+
 **Fora do escopo da DRE, pedido na mesma sessão:** máscara de moeda no campo Valor da **nova linha**
 da Base de Dados do Fluxo de Caixa Gerencial — era o único campo de dinheiro da tela ainda em
 `type="number"` cru (digitar não formatava; "1.234,56" era rejeitado pelo browser em silêncio).
