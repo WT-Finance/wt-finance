@@ -245,6 +245,17 @@ o `<ScrollAutoHide>` (ambos os eixos) e para a cópia da sidebar (que desde a v5
 `thumbGeom` compartilhado — fim da conta duplicada). (Origem: checkpoint v5.2.0 — o thumb da
 sidebar colava no topo/rodapé.)
 
+**⚠️ `behavior: 'smooth'` pode ser NO-OP SILENCIOSO (v5.3.0):** quando o scroll suave está
+desligado no navegador (flag `Smooth Scrolling` do Chrome desativada, alguns modos de automação
+e de acessibilidade), `scrollIntoView({behavior:'smooth'})` / `scrollTo({behavior:'smooth'})`
+**não rolam nada** — não caem para instantâneo, simplesmente não acontecem, sem erro no console.
+Uma navegação programática que dependa disso (ex.: "saltar até a coluna recém-expandida") some
+para esses usuários sem sinal nenhum — mesma classe do `-[--token]`: degradação só visível a olho.
+Regra: todo scroll programático **suave** guarda a posição antes e, se ~150ms depois nada se moveu,
+refaz em `behavior:'auto'`. Molde: `useScrollAoAbrir` em `tabela-dre.tsx`. (`prefers-reduced-motion`
+continua sendo checado ANTES — aí vai direto em `'auto'`.) Provado ao vivo na v5.3.0: `scrollLeft = n`
+funcionava e `scrollTo({behavior:'smooth'})` era no-op page-wide, inclusive no `<main>`.
+
 Migração (regra de escoteiro + varredura v5.0.0): trocar `<div className="overflow-* …">` por
 `<ScrollAutoHide …>`; remover `overflow-*`/`flex-1`/`min-h-0`/`h-full`, manter padding/max-h/min-w
 em `className`, mover `space-y-*` para `contentClassName`. Migrados na varredura: modais

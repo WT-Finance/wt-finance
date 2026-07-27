@@ -46,7 +46,7 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   'financeiro/acervo/gestao': { rotulo: 'Acervo de Documentos (gestão)', grupo: 'Financeiro', ordem: 34 },
   // DRE (v5.2.0, checkpoint): área própria da aba /financeiro/dre (migration 0197) —
   // gate apertado no seed (só admins); o admin concede aos demais pelo editor de roles.
-  'financeiro/dre':           { rotulo: 'DRE',                           grupo: 'Financeiro', ordem: 35 },
+  'financeiro/dre':           { rotulo: 'Demonstrativo de Resultado',    grupo: 'Financeiro', ordem: 35 },
   // Metas em DOIS níveis (v5.0.0): a CHAVE 'metas' (nome histórico) = GESTÃO/Cadastro (definir/
   // editar metas, inclui a visão + o botão "Modo de Comparação", v5.1.9); 'metas/acompanhamento'
   // = VER o Acompanhamento (liderança). A página de Acompanhamento faz OR das duas; o Cadastro e

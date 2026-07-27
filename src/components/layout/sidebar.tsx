@@ -66,7 +66,7 @@ const FINANCEIRO_SUBS: NavSubItem[] = [
   { href: '/financeiro/acervo',                label: 'Acervo de Documentos', icon: Library, area: 'financeiro/acervo', areasAny: ['financeiro/acervo', 'financeiro/acervo/gestao'] },
   { href: '/financeiro/fluxo-caixa',           label: 'Fluxo de Caixa',       icon: BarChart3,  area: 'financeiro/fluxo-caixa' },
   { href: '/financeiro/fluxo-caixa/gerencial', label: 'Gerencial',            icon: Table2,     area: 'financeiro/gerencial'   },
-  { href: '/financeiro/dre',                   label: 'DRE',                  icon: FileSpreadsheet, area: 'financeiro/dre' },
+  { href: '/financeiro/dre',                   label: 'Demonstrativo de Resultado', icon: FileSpreadsheet, area: 'financeiro/dre' },
   { href: '/financeiro/calculadora-rateio',    label: 'Calculadora de Rateio', icon: Calculator, area: 'financeiro/gerencial'  },
   { href: '/financeiro/faturamento-corp',      label: 'Faturamento Corporativo', icon: Receipt,  area: 'financeiro/faturamento-corp' },
 ]
@@ -354,7 +354,10 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
                 style={active ? { color: 'var(--brand)' } : undefined}
                 className={active ? '' : 'text-zinc-400'}
               />
-              {label}
+              {/* `truncate` + `min-w-0`: o rótulo mais longo da sidebar ("Demonstrativo de
+                  Resultado", v5.3.0) fica em UMA linha — encurta com reticências em vez de
+                  quebrar e desalinhar a altura fixa (h-10) do item. */}
+              <span className="min-w-0 truncate" title={label}>{label}</span>
               {emConstrucao && <TriangleAlert size={14} className="ml-auto shrink-0 text-warning" aria-label="Em construção" />}
               {href === '/solicitacoes' && <BadgePendencias promise={usuario.pendenciasPromise} />}
             </Link>

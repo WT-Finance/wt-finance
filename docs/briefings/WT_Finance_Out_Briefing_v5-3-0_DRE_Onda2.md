@@ -95,6 +95,57 @@ expansão à direita; **colunas dos ANOS SEGUINTES** e **modo do Total do ano**
   `eixo="both"` — 3 casos de teste novos; documentado em `docs/design-system.md`
   §Barras de rolagem. Toda tabela de dois eixos herda de graça.
 
+**Rodada 6:** seta do Total do ano alinhada à do Previsto; coluna do Total em **âmbar**
+quando o modo é "Realizado + previsto" (diferencia os dois modos à primeira vista); a
+visão **salta** para as colunas recém-expandidas (`scrollIntoView` com `block:'nearest'` —
+sem ele o scroll VERTICAL da página saltaria junto —, respeitando `prefers-reduced-motion`,
+e com **rede contra o no-op silencioso do `behavior:'smooth'`**, ver abaixo); coluna do
+previsto do mês corrente só existe no
+modo "Realizado + previsto"; sidebar passa a dizer **"Demonstrativo de Resultado"**; e a
+visão **CONSOLIDADO** (ano-a-ano: ano anterior cheio, YTD × YTD, Δ%, previsto, vencidos,
+total e os anos seguintes) ao lado da "Mensal".
+- **`behavior:'smooth'` é NO-OP SILENCIOSO quando o navegador desliga o scroll suave**
+  (flag do Chrome, automação, alguns modos de acessibilidade): não rola e não cai para
+  instantâneo — não há erro, a coluna revelada só não aparece. Pego na conferência visual
+  desta rodada, ao vivo: `scrollTo({behavior:'smooth'})` era no-op *page-wide* (inclusive no
+  `<main>`) enquanto `scrollLeft = n` funcionava. `useScrollAoAbrir` passou a guardar a
+  posição antes e, se ~150ms depois nada se moveu, refazer em `'auto'`. Registrado como
+  padrão no DS §Barras de rolagem — vale para qualquer scroll programático futuro. É a mesma
+  classe do `-[--token]`: degradação sem erro de build/tsc/lint, só visível a olho.
+- **Consolidado SEM migration:** tudo deriva do que já existe — a página busca também
+  `ano-1` (5ª chamada paralela) e monta, por linha, o ano cheio + o YTD na MESMA janela do
+  ano exibido; o resto (YTD atual, previsto = total − YTD, `venc`, total, anos seguintes)
+  sai do payload principal no cliente. **Invariantes provados** (é o que vale — os números
+  em si andam a cada sincronização do Monde e a cada edição da estrutura): **TOTAL = YTD +
+  PREV fecha ao centavo**, e o **YTD do ano exibido é o MESMO número do modo "Realizado" do
+  Total do ano** (consistência cruzada entre as duas features). Conferido contra produção
+  via REST/service_role em 27/07 ~13h20, para o Resultado do Exercício (`REX`):
+  YTD25 −793.628,79 × YTD26 **144.102,08** (Δ% +118,2%), previsto −2.623.539,83, vencidos
+  −600.661,61, total −2.479.437,75 → 144.102,08 − 2.623.539,83 = −2.479.437,75 ✔.
+  *(Uma versão anterior deste documento trazia um snapshot mais antigo destes mesmos campos —
+  colhido antes de o Yan classificar a categoria órfã hoje às 09:44, o que reparenteou uma
+  categoria e mexeu nos totais a jusante. Os invariantes acima seguiram valendo nos dois
+  instantes; é por isso que eles, e não os valores, são o critério.)* Custo: 239ms de
+  wall-clock para as 4 chamadas da DRE (aquecido).
+- **⚠️ Convenção do Δ% — confirmar no checkpoint (é decisão de produto).** A variação usa
+  **denominador em módulo**: `(atual − base) / |base|`. Consequência: sair de um PREJUÍZO de
+  793.628,79 para um LUCRO de 144.102,08 aparece como **+118,2%** (melhora = positivo). Com o
+  denominador COM sinal, a mesma linha apareceria como −118,2%. O módulo é o que faz o sinal
+  ler como "melhorou/piorou" em vez de acompanhar a aritmética crua — e mantém coerência nas
+  linhas de despesa (despesa que cresce fica negativa). Se a planilha da controladoria usar a
+  outra convenção, é troca de uma linha (`fmtDeltaPct`).
+
+### Pendência pequena para o Yan (precisa de TTY)
+O rótulo da área mudou para "Demonstrativo de Resultado" no app (sidebar + `AREA_INFO`),
+mas o **editor de roles lê o rótulo do BANCO** (`app.rbac_areas.rotulo`, com o local só
+como fallback) — lá ainda está "DRE". Alinhar exige um `UPDATE` em dado pré-existente, que
+o classificador do db-gate marca como **destrutiva** (aborta sem TTY, por construção). O
+teste de paridade compara só as CHAVES de área, então nada quebra — é cosmético no editor
+de roles. SQL para rodar num terminal quando quiser:
+```sql
+UPDATE app.rbac_areas SET rotulo = 'Demonstrativo de Resultado' WHERE area = 'financeiro/dre';
+```
+
 ## Auditoria de PARIDADE (motor × dashboard da controladoria)
 
 Oráculo congelado: fixture do objeto `D` (base 15/07/2026), mantida em

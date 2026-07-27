@@ -87,8 +87,9 @@ export default async function DrePage({
   const anosSeguintesNums = [ano + 1, ano + 2]
 
   const empty: RpcLike = { data: null, error: null }
-  const [dreRes, seg1Res, seg2Res, decomposicaoRes, decomposicaoCategoriaRes] = await Promise.allSettled([
+  const [dreRes, antRes, seg1Res, seg2Res, decomposicaoRes, decomposicaoCategoriaRes] = await Promise.allSettled([
     rpcDre(db, 'get_dre_mensal',          { p_ano: ano }),
+    rpcDre(db, 'get_dre_mensal',          { p_ano: ano - 1 }),   // base do Consolidado (ano cheio + YTD)
     rpcDre(db, 'get_dre_mensal',          { p_ano: anosSeguintesNums[0] }),
     rpcDre(db, 'get_dre_mensal',          { p_ano: anosSeguintesNums[1] }),
     rpcDre(db, 'get_decomposicao_grupo',     { p_from: from, p_to: to }),
@@ -113,6 +114,33 @@ export default async function DrePage({
       return { ano: anosSeguintesNums[i], totais }
     })
     .filter((x): x is { ano: number; totais: Record<string, number> } => x !== null)
+
+  // ── Base do CONSOLIDADO (visão ano-a-ano) ───────────────────────────────────
+  // O ano anterior entra com DOIS números por linha: o ano CHEIO e o YTD na MESMA
+  // janela do ano exibido (jan..mês corrente) — é o que torna a comparação honesta
+  // (YTD 25 × YTD 26 compara períodos iguais; o ano cheio é referência). O resto do
+  // consolidado (YTD atual, previsto, vencidos, total, anos seguintes) sai do payload
+  // principal, no cliente. Ano exibido FECHADO/FUTURO não tem `mes_corrente`: aí o YTD
+  // do anterior é o ano inteiro (janela = ano cheio), o que mantém a coluna coerente.
+  const anteriorParsed = parseRpc(dreMensalSchema, antRes, `get_dre_mensal(${ano - 1})`)
+  const mesJanela = dre?.mes_corrente ?? 12
+  const consolidado = anteriorParsed
+    ? {
+        anoAnterior: ano - 1,
+        porLinha: (() => {
+          const m: Record<string, { ano: number; ytd: number }> = {}
+          const add = (k: string, meses: number[], total: number) => {
+            m[k] = { ano: total, ytd: meses.slice(0, mesJanela).reduce((a, v) => a + v, 0) }
+          }
+          for (const l of anteriorParsed.linhas) {
+            if (l.t === 'cat') { if (l.categoria_id != null) add(`c:${l.categoria_id}`, l.meses, l.total) }
+            else if (l.chave) add(`b:${l.chave}`, l.meses, l.total)
+          }
+          for (const b of anteriorParsed.bandeja) add(`c:${b.categoria_id}`, b.meses, b.total)
+          return m
+        })(),
+      }
+    : null
   const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
   const categorias   =
     unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
@@ -131,6 +159,7 @@ export default async function DrePage({
           ano={ano}
           anosDisponiveis={anosDisponiveis}
           anosSeguintes={anosSeguintes}
+          consolidado={consolidado}
           slotAcoes={
             <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
               <SquarePen size={13} />
