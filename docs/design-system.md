@@ -60,6 +60,14 @@ Classes Tailwind: `bg-brand`, `text-brand`, `border-brand`, `bg-brand-soft`, `bg
 
 Classes Tailwind: `text-success`, `bg-success-bg`, `text-warning`, `bg-warning-bg`, `text-danger`, `bg-danger-bg`
 
+⚠️ **`--warning` não serve como TINTA em corpo pequeno** — #D9A23F sobre branco dá **2,29:1**
+(reprova AA). Para texto âmbar use **`--warning-deep`** (#8A6413, classe `text-warning-deep`):
+5,37:1 sobre branco, 4,70:1 sobre `--warning-bg`, 4,77:1 sobre `--surface-soft`. Segue a convenção
+`*-deep` de `--positive-deep`/`--negative-deep`. O `--warning` continua sendo o certo para **fundo,
+borda e ícone**. Não recorra a `--gestao-fg` para isso: o DS separa a família de gestão de propósito
+(gestão é "ação administrativa" e não acompanha mudanças do warning). (v5.3.0, nasceu nas colunas de
+PREVISTO da DRE.)
+
 ---
 
 ## Tipografia
@@ -237,6 +245,17 @@ o `<ScrollAutoHide>` (ambos os eixos) e para a cópia da sidebar (que desde a v5
 `thumbGeom` compartilhado — fim da conta duplicada). (Origem: checkpoint v5.2.0 — o thumb da
 sidebar colava no topo/rodapé.)
 
+**⚠️ `behavior: 'smooth'` pode ser NO-OP SILENCIOSO (v5.3.0):** quando o scroll suave está
+desligado no navegador (flag `Smooth Scrolling` do Chrome desativada, alguns modos de automação
+e de acessibilidade), `scrollIntoView({behavior:'smooth'})` / `scrollTo({behavior:'smooth'})`
+**não rolam nada** — não caem para instantâneo, simplesmente não acontecem, sem erro no console.
+Uma navegação programática que dependa disso (ex.: "saltar até a coluna recém-expandida") some
+para esses usuários sem sinal nenhum — mesma classe do `-[--token]`: degradação só visível a olho.
+Regra: todo scroll programático **suave** guarda a posição antes e, se ~150ms depois nada se moveu,
+refaz em `behavior:'auto'`. Molde: `useScrollAoAbrir` em `tabela-dre.tsx`. (`prefers-reduced-motion`
+continua sendo checado ANTES — aí vai direto em `'auto'`.) Provado ao vivo na v5.3.0: `scrollLeft = n`
+funcionava e `scrollTo({behavior:'smooth'})` era no-op page-wide, inclusive no `<main>`.
+
 Migração (regra de escoteiro + varredura v5.0.0): trocar `<div className="overflow-* …">` por
 `<ScrollAutoHide …>`; remover `overflow-*`/`flex-1`/`min-h-0`/`h-full`, manter padding/max-h/min-w
 em `className`, mover `space-y-*` para `contentClassName`. Migrados na varredura: modais
@@ -270,6 +289,20 @@ frágil (offset chumbado). O **padding do viewport é assimétrico de propósito
 **goteira à direita** para o thumb vertical (`right-1 w-1.5`, 4–10px da borda) não ficar em cima do
 card, e `pt-2` dá **respiro no topo** para o `box-shadow` de realce do hover (`.card-clicavel-neutra`)
 do PRIMEIRO card não ser cortado pelo `overflow` do viewport. Painel novo desse tipo nasce assim.
+
+### Dois eixos: as barras NÃO se tocam no canto (v5.3.0 — padrão)
+
+Quando `eixo="both"`, o thumb vertical desceria até o canto inferior direito e ENCOSTARIA
+no horizontal (que vem da esquerda), formando um "L" colado. O `<ScrollAutoHide>` resolve
+isso sozinho: cada trilho **encurta no FIM** pela espessura do outro (`THUMB_CRUZ`, 12px)
+— folga assimétrica em `scrollbar-math` (`thumbGeom`/`scrollAoArrastar` recebem
+`folgaFim`, default = `folga`, então o eixo único não muda). O arraste usa a MESMA folga,
+senão a proporção thumb↔conteúdo descola. Coberto por teste (`scrollbar-math.test.ts`).
+
+Tabela densa com os dois eixos **não precisa de nada**: é o comportamento padrão do
+componente. O que ela deve dar é o **gutter de conteúdo** (`pr`/`pb` no `className`, que
+vai no viewport) para o thumb flutuar sobre espaço vazio em vez de cobrir a última
+coluna/linha — ver a DRE (`tabela-dre.tsx`).
 
 ## Cabeçalho de tabela ORDENÁVEL (v5.2.0 — padrão)
 
@@ -405,3 +438,38 @@ generalizável). Componente `historico-alteracoes.tsx`.
 - **Realtime é fail-safe e por broadcast** (não polling, não `postgres_changes`): o hook
   `useRealtimeGerencial` assina o canal privado, ignora as próprias mudanças (por `usuario_id`) e
   degrada em silêncio se o Realtime cair (a página nunca quebra). ADR-0155 §3.
+
+## Tabela hierárquica da DRE + bandas neutras (v5.3.0, ADR-0156)
+
+A DRE por Fluxo de Caixa (`/financeiro/dre`, `tabela-dre.tsx`) fixa o padrão de
+**demonstrativo hierárquico denso** da plataforma:
+
+- **Bandas neutras de agrupamento**: tokens `--band` (#E8E6E1, cabeçalho de bloco) e
+  `--band-soft` (#F3F2EE, sub-bloco) — cinza NEUTRO-QUENTE alinhado à plataforma
+  (deliberadamente nem o zinc frio, nem o `--border` tan; primeiro passo da tokenização
+  do cinza, follow-up v4.26). **Linhas de resultado em banda ESCURA** `--action-primary`
+  com rótulo `--action-primary-fg` e valores nos tons `-soft` (`--positive-soft`/
+  `--negative-soft`, 6,5:1 — os tons base reprovam AA sobre as bandas).
+- **Cor por SINAL nos valores** (verde receita / vermelho gasto), parênteses contábeis
+  com largura reservada (`<span class="invisible">)</span>` nos positivos/zeros), zero
+  como travessão `--text-subtle`.
+- **Previsto = escala ÂMBAR por nível** (tempo no FUNDO, sinal na TINTA): cada banda tem
+  o par âmbar via `color-mix` de tokens (cat → `warning-bg/50`; claro → 60% de warning-bg
+  sobre `--band`; soft → 60% sobre `--band-soft`; escuro → 22% de `--warning` sobre
+  `--action-primary` — mais que isso derruba os `-soft` abaixo de AA). Colunas de
+  previsto RECOLHÍVEIS numa coluna-soma (toggle acessível no cabeçalho do grupo).
+- **Chevron de expansão sempre à DIREITA** da célula de rótulo; a célula inteira é o
+  botão (padrão acordeão). Célula sticky SEMPRE com fundo opaco da banda da linha.
+- **Cabeçalho sticky de 2 linhas**: as células `rowSpan={2}` existem só na 1ª `<tr>` —
+  régua de base e sombra-ao-rolar vão DIRETAMENTE nelas (nunca por seletor de "última
+  linha do thead"); ver a nota em CLAUDE.md §Cabeçalho de tabela.
+- **Respiro dos thumbs**: gutter interno `pb-3.5` no viewport + `pb-1.5` no wrapper do
+  `<ScrollAutoHide>` — embaixo, o thumb flutua sobre o gutter em vez de cobrir a última
+  linha. À DIREITA não há gutter (decisão do Yan: a faixa cinza vertical poluía); a barra
+  vertical passa em overlay sobre a borda da última coluna, sem encostar na horizontal —
+  quem garante isso é o `THUMB_CRUZ` do componente (ver §Barras de rolagem).
+- **Bandeja "Não classificadas"** ao fim (âmbar, rótulo na célula sticky): órfãs do
+  de-para sempre visíveis — nada some em silêncio.
+
+O editor da estrutura (`/financeiro/dre/estrutura`, `editor-dre.tsx`) segue o padrão de
+edição em lote do Cadastro de Metas + o painel de histórico prop-izado (ADR-0155/0156).

@@ -35,6 +35,37 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.3.0',
+    data: '2026-07-27T16:50', // autoria real (último commit da versão); reconciliar ao horário do merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'O Demonstrativo de Resultado chegou à plataforma, na aba Financeiro. É o mesmo demonstrativo que a controladoria mantinha em ferramenta separada — a estrutura oficial completa (entradas de clientes, repasse, receita, custos, despesas por área e as linhas de resultado até o Resultado do Exercício), mês a mês, com o ano navegável. O mês corrente aparece dividido em duas colunas: o que já se realizou até hoje e o que ainda está previsto para o restante do mês; os meses futuros mostram o previsto por vencimento, em tom âmbar, e o que venceu sem ser pago aparece à parte, em vermelho. Valores em verde são receitas e em vermelho gastos. A coluna de total do ano fica sempre à vista, presa à direita, enquanto os meses rolam.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A estrutura desse demonstrativo agora é viva e editável pela própria plataforma (botão "Editar estrutura"): dá para reordenar categorias dentro de um bloco, mover uma categoria de um bloco para outro (vendo o efeito nos subtotais antes de confirmar), e excluir ou reincluir categorias que não devem compor o resultado (como transferências internas entre contas). Categorias novas que surgirem no Monde nunca somem: aparecem automaticamente numa bandeja "Não classificadas" até alguém as posicionar. Toda alteração fica registrada num histórico com autor e data, e pode ser desfeita — o mesmo mecanismo de segurança que estreou na Base de Dados do Gerencial.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Duas maneiras de ler o mesmo demonstrativo. Em "Mensal", os doze meses do ano escolhido. Em "Consolidado", a comparação ano a ano: marque quantos anos quiser e cada um entra com o ano fechado, o acumulado até o mês atual e a variação percentual para o ano seguinte — sempre no mesmo recorte de calendário nos dois lados, para a comparação ser honesta. Em ambas dá para escolher se o total considera apenas o realizado ou o realizado somado ao previsto, e abrir os dois anos seguintes para ver o que já está lançado à frente. Os valores seguem o formato contábil de sempre: R$ discreto à esquerda, centavos, e gastos entre parênteses.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os números do Demonstrativo saem da mesma base de lançamentos do Fluxo de Caixa (eixo da movimentação bancária) e foram conferidos, mês fechado a mês fechado, contra o dashboard que a controladoria usava — as linhas de resultado batem ao centavo, descontadas apenas re-edições feitas no próprio Monde depois da data de referência.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'Na comparação entre anos, o acumulado do ano ("YTD") passou a ser sempre contado de janeiro até o mês atual do calendário. Antes, ao consultar um ano já encerrado, esse acumulado era calculado sobre os doze meses e acabava idêntico ao total do ano — o que tornava a comparação entre períodos sem sentido, ainda que os números parecessem plausíveis.',
+      },
+    ],
+  },
+  {
     versao: '5.2.1',
     data: '2026-07-24T13:34',
     itens: [

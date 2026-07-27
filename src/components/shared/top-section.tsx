@@ -13,18 +13,22 @@ import { useId, useState, type ReactNode } from 'react'
 // fechar, como a haste de uma cortina. Padrão de toda barra horizontal recolhível.
 //
 // Substitui o `<details open>` nativo (abria/fechava sem animação). Comportamento
-// preservado: nasce ABERTO a cada carregamento (estado só em memória, sem persistência);
-// o conteúdo permanece montado quando fechado (como no <details>). Cores via tokens da
-// aba (`--brand*`, resolvidos por [data-theme]); `motion-reduce` desliga a transição.
+// preservado: nasce ABERTO a cada carregamento por padrão (estado só em memória, sem
+// persistência) — seções secundárias podem nascer RECOLHIDAS via `defaultAberto={false}`
+// (primeiro uso: a Composição dos Lançamentos sob a DRE, v5.3.0). O conteúdo permanece
+// montado quando fechado (como no <details>). Cores via tokens da aba (`--brand*`,
+// resolvidos por [data-theme]); `motion-reduce` desliga a transição.
 
 interface Props {
   titulo: string
   subtitulo?: string
+  /** Estado inicial da cortina (só o inicial — sem persistência). Default: aberto. */
+  defaultAberto?: boolean
   children: ReactNode
 }
 
-export default function TopSection({ titulo, subtitulo, children }: Props) {
-  const [aberto, setAberto] = useState(true)
+export default function TopSection({ titulo, subtitulo, defaultAberto = true, children }: Props) {
+  const [aberto, setAberto] = useState(defaultAberto)
   const idConteudo = useId()
 
   return (

@@ -5,58 +5,124 @@ import { ChevronRight, Undo2, Loader2, AlertTriangle } from 'lucide-react'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { fmtDataHoraSP, numBRL2, fmtDate } from '@/lib/fmt'
+import type { HistoricoLote, HistoricoEntrada } from '@/lib/dre/schemas'
 import {
   historicoLotes, historicoLoteDetalhe, desfazerLote, desfazerLinha,
-  type HistoricoLote, type HistoricoEntrada,
 } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 
-// Painel "Histórico de alterações" da Base de Dados (v5.2.1/M3). Colapsável; lista as AÇÕES
-// agrupadas por lote (quem/quando/N linhas/operação), expande para o antes→depois por linha, e
-// oferece Desfazer por lote e por linha. Fricção proporcional: reversão EM MASSA (>1 linha) pede
-// confirmação forte (ConfirmModal); unitária é direta. As permissões (própria × terceiro/massa)
-// são impostas no banco (0200) — aqui o erro amigável (conflito/negação) é só exibido.
+// Painel "Histórico de alterações" (v5.2.1/M3, Gerencial). Colapsável; lista as AÇÕES
+// agrupadas por lote (quem/quando/N linhas/operação), expande para o antes→depois por linha,
+// e oferece Desfazer por lote e por linha. Fricção proporcional: reversão EM MASSA (>1 linha)
+// pede confirmação forte (ConfirmModal); unitária é direta. As permissões (própria × terceiro/
+// massa) são impostas no banco — aqui o erro amigável (conflito/negação) é só exibido.
+//
+// GENERALIZAÇÃO (v5.3.0/M2-front): `fetchers`/`camposDiff`/`titulo` são OPCIONAIS — omitidos,
+// o painel se comporta EXATAMENTE como antes (Gerencial, via os defaults abaixo). A estrutura
+// viva da DRE (v5.3.0/M5) é o segundo consumidor: injeta os fetchers das próprias actions
+// (mesmo contrato de RPC/diário — 0206) e os campos do seu diff. Os TIPOS `HistoricoLote`/
+// `HistoricoEntrada` vêm de `@/lib/dre/schemas` (shape idêntico ao das RPCs do Gerencial —
+// mesma tabela `financeiro.diario_alteracoes`), fonte única para os dois consumidores.
+
+export interface CampoDiff {
+  campo: string
+  rotulo: string
+  /** Formata o valor bruto do campo para exibição no diff. Omitido = String(v) ou '—' se vazio. */
+  fmt?: (v: unknown) => string
+}
+
+export interface HistoricoFetchers {
+  lotes:         (limit: number, offset: number) => Promise<HistoricoLote[] | null>
+  lote:          (loteId: string) => Promise<HistoricoEntrada[] | null>
+  desfazerLote:  (loteId: string) => Promise<{ ok: boolean; erro?: string }>
+  desfazerLinha: (id: number) => Promise<{ ok: boolean; erro?: string }>
+}
+
+export interface HistoricoAlteracoesProps {
+  recarregarKey: number
+  onDesfeito: () => void
+  /** Fonte de dados. Default = as server actions do Gerencial (comportamento pré-v5.3.0). */
+  fetchers?: HistoricoFetchers
+  /** Campos comparados no diff de uma entrada 'U'. Default = os campos do lançamento manual. */
+  camposDiff?: CampoDiff[]
+  /** Rótulo do cabeçalho colapsável. Default = 'Histórico de alterações'. */
+  titulo?: string
+  /** Guarda ANTES de qualquer desfazer (lote ou linha): resolva `false` para cancelar sem
+   *  erro. Uso (v5.3.0): a página da estrutura da DRE avisa quando o EDITOR ao lado tem
+   *  pendências não salvas — o refresh pós-undo as descartaria em silêncio. Default: passa. */
+  antesDeDesfazer?: () => Promise<boolean>
+}
+
+const ANTES_PASSA = () => Promise.resolve(true) // default módulo-level: identidade estável
 
 const OP_LABEL: Record<string, string> = { I: 'inclusão', U: 'edição', D: 'exclusão' }
 
-function rotuloOperacoes(ops: ('I' | 'U' | 'D')[], isUndo: boolean): string {
+function rotuloOperacoes(ops: string[], isUndo: boolean): string {
   if (isUndo) return 'Reversão'
   if (ops.length === 1) return OP_LABEL[ops[0]][0].toUpperCase() + OP_LABEL[ops[0]].slice(1)
   return 'Alterações' // lote misto (ex.: importação: inclui + remove + atualiza)
 }
 
+/** Resumo de UMA linha do lote: tenta os campos comuns aos dois consumidores atuais
+ *  (Gerencial: pessoa+valor_final; estrutura da DRE: rotulo/nome) — cai no id se nenhum existe. */
 function resumoLinha(e: HistoricoEntrada): string {
   const d = (e.dados_depois ?? e.dados_antes) as Record<string, unknown> | null
   if (!d) return `linha ${e.registro_id}`
-  const pessoa = String(d.pessoa ?? '—')
+  const principal = String(d.pessoa ?? d.rotulo ?? d.nome ?? `#${e.registro_id}`)
   const valor = d.valor_final != null ? `R$ ${numBRL2(Number(d.valor_final))}` : ''
-  return `${pessoa}${valor ? ` · ${valor}` : ''}`
+  return `${principal}${valor ? ` · ${valor}` : ''}`
 }
 
-const CAMPOS_DIFF: { k: string; rot: string }[] = [
-  { k: 'tipo', rot: 'Tipo' }, { k: 'pessoa', rot: 'Pessoa' }, { k: 'valor_final', rot: 'Valor' },
-  { k: 'descricao', rot: 'Descrição' }, { k: 'conta_previsao', rot: 'Conta' },
-  { k: 'vencimento', rot: 'Vencimento' }, { k: 'destacado', rot: 'Destaque' },
-]
-
-/** Formata um campo do lançamento para o diff, na convenção do DS: valor→"R$ 1.234,56",
- *  vencimento→"dd/mm/aaaa", destaque→"Sim"/"Não"; demais como texto. */
-function fmtCampo(k: string, v: unknown): string {
-  if (v == null || v === '') return '—'
-  if (k === 'valor_final') return `R$ ${numBRL2(Number(v))}`
-  if (k === 'vencimento') return fmtDate(String(v))
-  if (k === 'destacado') return (v === true || v === 'true') ? 'Sim' : 'Não'
-  return String(v)
+function fmtValorDiff(v: unknown, fmt?: (v: unknown) => string): string {
+  if (fmt) return fmt(v)
+  return v == null || v === '' ? '—' : String(v)
 }
 
-function diffCampos(e: HistoricoEntrada): { rot: string; de: string; para: string }[] {
+function diffCampos(e: HistoricoEntrada, campos: CampoDiff[]): { rot: string; de: string; para: string }[] {
   if (e.operacao !== 'U' || !e.dados_antes || !e.dados_depois) return []
   const a = e.dados_antes, b = e.dados_depois
-  return CAMPOS_DIFF
-    .filter(({ k }) => String(a[k] ?? '') !== String(b[k] ?? ''))
-    .map(({ k, rot }) => ({ rot, de: fmtCampo(k, a[k]), para: fmtCampo(k, b[k]) }))
+  return campos
+    .filter(({ campo }) => String(a[campo] ?? '') !== String(b[campo] ?? ''))
+    .map(({ campo, rotulo, fmt }) => ({ rot: rotulo, de: fmtValorDiff(a[campo], fmt), para: fmtValorDiff(b[campo], fmt) }))
 }
 
-function LoteDetalhe({ lote, onDesfeito }: { lote: string; onDesfeito: () => void }) {
+/** Campos do diff PADRÃO (Gerencial) — inclusão/edição/exclusão de lançamento manual. */
+const CAMPOS_DIFF_GERENCIAL: CampoDiff[] = [
+  { campo: 'tipo', rotulo: 'Tipo' },
+  { campo: 'pessoa', rotulo: 'Pessoa' },
+  { campo: 'valor_final', rotulo: 'Valor', fmt: v => (v == null || v === '' ? '—' : `R$ ${numBRL2(Number(v))}`) },
+  { campo: 'descricao', rotulo: 'Descrição' },
+  { campo: 'conta_previsao', rotulo: 'Conta' },
+  { campo: 'vencimento', rotulo: 'Vencimento', fmt: v => (v == null || v === '' ? '—' : fmtDate(String(v))) },
+  { campo: 'destacado', rotulo: 'Destaque', fmt: v => ((v === true || v === 'true') ? 'Sim' : 'Não') },
+]
+
+/** Fetchers PADRÃO (Gerencial) — embrulham as server actions atuais no contrato genérico. */
+const FETCHERS_GERENCIAL: HistoricoFetchers = {
+  lotes: async (limit, offset) => {
+    const res = await historicoLotes(limit, offset)
+    return res.success ? res.lotes : null
+  },
+  lote: async (loteId) => {
+    const res = await historicoLoteDetalhe(loteId)
+    return res.success ? res.entradas : null
+  },
+  desfazerLote: async (loteId) => {
+    const res = await desfazerLote(loteId)
+    return res.success ? { ok: true } : { ok: false, erro: res.error }
+  },
+  desfazerLinha: async (id) => {
+    const res = await desfazerLinha(id)
+    return res.success ? { ok: true } : { ok: false, erro: res.error }
+  },
+}
+
+function LoteDetalhe({ lote, fetchers, camposDiff, onDesfeito, antesDeDesfazer }: {
+  lote: string
+  fetchers: HistoricoFetchers
+  camposDiff: CampoDiff[]
+  onDesfeito: () => void
+  antesDeDesfazer: () => Promise<boolean>
+}) {
   const [entradas, setEntradas] = useState<HistoricoEntrada[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [desfazendo, startDesfazer] = useTransition()
@@ -64,21 +130,22 @@ function LoteDetalhe({ lote, onDesfeito }: { lote: string; onDesfeito: () => voi
 
   useEffect(() => {
     let ativo = true
-    void historicoLoteDetalhe(lote).then(res => {
+    void fetchers.lote(lote).then(res => {
       if (!ativo) return
-      if (res.success) setEntradas(res.entradas)
-      else setErro(res.error)
+      if (res) setEntradas(res)
+      else setErro('Não foi possível carregar o detalhe deste lote.')
     })
     return () => { ativo = false }
-  }, [lote])
+  }, [lote, fetchers])
 
   const desfazerUma = (id: number) => {
     if (confirmDel !== id) { setConfirmDel(id); return }
     setConfirmDel(null)
     startDesfazer(async () => {
-      const res = await desfazerLinha(id)
-      if (res.success) onDesfeito()
-      else setErro(res.error)
+      if (!(await antesDeDesfazer())) return   // guarda externa (pendências do editor) — cancela sem erro
+      const res = await fetchers.desfazerLinha(id)
+      if (res.ok) onDesfeito()
+      else setErro(res.erro ?? 'Erro ao desfazer.')
     })
   }
 
@@ -88,12 +155,12 @@ function LoteDetalhe({ lote, onDesfeito }: { lote: string; onDesfeito: () => voi
   return (
     <div className="bg-zinc-50/60 border-t border-zinc-100">
       {entradas.map(e => {
-        const diffs = diffCampos(e)
+        const diffs = diffCampos(e, camposDiff)
         return (
           <div key={e.id} className="flex items-start justify-between gap-3 px-3 py-2 border-b border-zinc-100 last:border-0">
             <div className="min-w-0">
               <p className="text-2xs text-zinc-600">
-                <span className="font-medium">{OP_LABEL[e.operacao]}</span> · {resumoLinha(e)}
+                <span className="font-medium">{OP_LABEL[e.operacao] ?? e.operacao}</span> · {resumoLinha(e)}
               </p>
               {diffs.length > 0 && (
                 <ul className="mt-0.5 space-y-0.5">
@@ -121,10 +188,13 @@ function LoteDetalhe({ lote, onDesfeito }: { lote: string; onDesfeito: () => voi
   )
 }
 
-export default function HistoricoAlteracoes({ recarregarKey, onDesfeito }: {
-  recarregarKey: number
-  onDesfeito: () => void
-}) {
+export default function HistoricoAlteracoes({
+  recarregarKey, onDesfeito,
+  fetchers = FETCHERS_GERENCIAL,
+  camposDiff = CAMPOS_DIFF_GERENCIAL,
+  titulo = 'Histórico de alterações',
+  antesDeDesfazer = ANTES_PASSA,
+}: HistoricoAlteracoesProps) {
   const [aberto, setAberto] = useState(false)
   const [lotes, setLotes] = useState<HistoricoLote[] | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -136,20 +206,21 @@ export default function HistoricoAlteracoes({ recarregarKey, onDesfeito }: {
   useEffect(() => {
     if (!aberto) return
     let ativo = true
-    void historicoLotes(50, 0).then(res => {
+    void fetchers.lotes(50, 0).then(res => {
       if (!ativo) return
-      if (res.success) { setLotes(res.lotes); setErro(null) }
-      else setErro(res.error)
+      if (res) { setLotes(res); setErro(null) }
+      else setErro('Não foi possível carregar o histórico.')
     })
     return () => { ativo = false }
-  }, [aberto, recarregarKey])
+  }, [aberto, recarregarKey, fetchers])
 
   const desfazer = (lote: HistoricoLote) => {
     startDesfazer(async () => {
-      const res = await desfazerLote(lote.lote_id)
+      if (!(await antesDeDesfazer())) { setConfirmMassa(null); return }  // guarda externa — cancela sem erro
+      const res = await fetchers.desfazerLote(lote.lote_id)
       setConfirmMassa(null)
-      if (res.success) onDesfeito()
-      else setErro(res.error)
+      if (res.ok) onDesfeito()
+      else setErro(res.erro ?? 'Erro ao desfazer.')
     })
   }
 
@@ -165,7 +236,7 @@ export default function HistoricoAlteracoes({ recarregarKey, onDesfeito }: {
           title={aberto ? 'Recolher' : 'Expandir'}
           className="flex items-center gap-1.5 -ml-1 px-1 py-0.5 rounded foco-neutro">
           <ChevronRight size={14} className={`text-[var(--text-muted)] transition-transform ${aberto ? 'rotate-90' : ''}`} />
-          <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Histórico de alterações</span>
+          <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">{titulo}</span>
         </button>
       </div>
 
@@ -204,7 +275,7 @@ export default function HistoricoAlteracoes({ recarregarKey, onDesfeito }: {
                         {desfazendo ? <Loader2 size={12} className="animate-spin" /> : <Undo2 size={12} />} Desfazer
                       </button>
                     </div>
-                    {aberto2 && <LoteDetalhe lote={l.lote_id} onDesfeito={onDesfeito} />}
+                    {aberto2 && <LoteDetalhe lote={l.lote_id} fetchers={fetchers} camposDiff={camposDiff} onDesfeito={onDesfeito} antesDeDesfazer={antesDeDesfazer} />}
                   </div>
                 )
               })}

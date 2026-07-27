@@ -76,12 +76,15 @@
   /* Bordas */
   --color-wt-border:        var(--border);
   --color-wt-border-strong: var(--border-strong);
+  --color-band:      var(--band);
+  --color-band-soft: var(--band-soft);
 
   /* Feedback */
   --color-success:    var(--success);
   --color-success-bg: var(--success-bg);
-  --color-warning:    var(--warning);
-  --color-warning-bg: var(--warning-bg);
+  --color-warning:      var(--warning);
+  --color-warning-bg:   var(--warning-bg);
+  --color-warning-deep: var(--warning-deep);
   --color-danger:     var(--danger);
   --color-danger-bg:  var(--danger-bg);
 
