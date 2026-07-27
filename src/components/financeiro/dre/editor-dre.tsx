@@ -413,12 +413,12 @@ function ExcluidasCard({ itens, onReincluir }: { itens: ExcluidaEditor[]; onRein
   if (itens.length === 0) return null
   return (
     <div className="rounded-lg border border-wt-border bg-surface-soft">
+      {/* Só o título: o texto explicativo que havia aqui descrevia o CONTEÚDO ATUAL do card
+          (transferências internas de caixa) como se fosse a definição dele — mas o card é
+          genérico, guarda o que o usuário excluir. Legenda que envelhece com o dado é pior
+          que legenda nenhuma; o "Reincluir" de cada linha já diz que é reversível. */}
       <div className="border-b border-wt-border px-4 py-3">
         <p className="text-sm font-medium text-text-primary">Excluídas da DRE</p>
-        <p className="text-2xs text-text-muted">
-          transferências internas de caixa (valores reais, netam a zero) — fora da DRE por não serem
-          resultado; seguem visíveis e reversíveis
-        </p>
       </div>
       <div>
         {itens.map(item => (
