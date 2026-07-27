@@ -231,7 +231,7 @@ function CelulaValor({ valor, tipo, previsto, corte, totalAno = false, peso, bg,
   const bordaCorte = corte ? 'border-l-2 border-l-wt-border-strong' : ''
   const bordaTotal = totalAno ? `border-l border-l-wt-border-strong ${peso === '' ? 'font-medium' : ''}` : ''
   return (
-    <td className={`h-8 px-[9px] text-right tabular-nums whitespace-nowrap ${fundo} ${borda} ${bordaCorte} ${bordaTotal} ${peso} ${cor}`}>
+    <td className={`h-9 px-3.5 text-right tabular-nums whitespace-nowrap ${fundo} ${borda} ${bordaCorte} ${bordaTotal} ${peso} ${cor}`}>
       {fmtContabil(valor)}
       {!negativo && <span className="invisible">)</span>}
     </td>
@@ -263,7 +263,7 @@ function CelulaConta({ rotulo, rotuloClasse, indent, borda, bg, bgHover, estrela
     </span>
   )
   return (
-    <td className={`sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pr-2 ${bg} ${bgHover} ${indent} ${borda}`}>
+    <td className={`sticky left-0 z-10 h-9 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pr-2 ${bg} ${bgHover} ${indent} ${borda}`}>
       {expansivel && onToggle ? (
         <button
           type="button"
@@ -357,7 +357,7 @@ function CelulaValorBandeja({ valor, corte, totalAno = false }: { valor: number;
   const bordaCorte = corte ? 'border-l-2 border-l-wt-border-strong' : ''
   const bordaTotal = totalAno ? 'border-l border-l-wt-border-strong font-medium' : ''
   return (
-    <td className={`h-8 px-[9px] text-right tabular-nums whitespace-nowrap bg-warning-bg group-hover:bg-neutral-soft ${cor} ${bordaCorte} ${bordaTotal}`}>
+    <td className={`h-9 px-3.5 text-right tabular-nums whitespace-nowrap bg-warning-bg group-hover:bg-neutral-soft ${cor} ${bordaCorte} ${bordaTotal}`}>
       {fmtContabil(valor)}
       {!negativo && <span className="invisible">)</span>}
     </td>
@@ -386,7 +386,7 @@ function LinhaBandejaTr({ linha, relacao, mesCorrente, idxPrevisto, corteIdx, co
           passarem por baixo do rótulo no scroll horizontal. O hover usa --neutral-soft,
           o âmbar um passo mais saturado do DS. */}
       <td
-        className="sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong border-l-[3px] border-l-warning bg-warning-bg pl-[26px] pr-3 group-hover:bg-neutral-soft"
+        className="sticky left-0 z-10 h-9 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong border-l-[3px] border-l-warning bg-warning-bg pl-[26px] pr-3 group-hover:bg-neutral-soft"
         title={`Grupo no Monde: ${linha.grupo_monde}`}
       >
         <span className="truncate text-[13px] text-text-secondary">{linha.rotulo}</span>
@@ -495,7 +495,9 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
       : MESES
 
   const totalColunas = 1 + mesesVisiveis.length + 1 // Conta + meses (visíveis) + Total do ano
-  const minW = colapsar ? 'min-w-[1180px]' : 'min-w-[1480px]'
+  // Centavos (formato contábil, rodada 4) alargam cada coluna — a min-w acompanha para
+  // as células não espremerem os milhares.
+  const minW = colapsar ? 'min-w-[1420px]' : 'min-w-[1860px]'
 
   const nota =
     relacao === 'corrente' ? `base ${hojeFmt}` :
@@ -587,19 +589,28 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
 
       {/* ── Box da tabela — borda própria dentro do card, cantos clipam o cabeçalho sticky ── */}
       <div
-        className={`overflow-hidden rounded-lg border border-wt-border transition-opacity ${isPending ? 'opacity-60' : ''}`}
+        className={`overflow-hidden rounded-lg border border-wt-border bg-band transition-opacity ${isPending ? 'opacity-60' : ''}`}
         aria-busy={isPending}
       >
-        {/* Box maior (80vh) + gutter interno `pr/pb` nos LIMITES do scroll: nos extremos,
-            o thumb do ScrollAutoHide flutua sobre o gutter vazio em vez de cobrir a
-            última coluna/linha — o mesmo respiro que a sidebar tem via padding do nav. */}
-        <ScrollAutoHide eixo="both" className="max-h-[80vh] pr-1.5 pb-1.5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        {/* Box de 80vh + gutter interno `pr/pb-3.5` (14px) nos LIMITES do scroll: nos
+            extremos, o thumb do ScrollAutoHide (absolute right-1/bottom-1, 6px) flutua
+            sobre o gutter em vez de encostar na última coluna/linha — mesmo respiro que a
+            sidebar obtém via padding do nav.
+            `bg-band` no VIEWPORT: o cinza do cabeçalho preenche o gutter e qualquer sobra
+            abaixo da última linha (ex.: tudo recolhido em tela alta) — a tabela termina
+            numa moldura contínua, não num vazio branco. As células têm fundo próprio, então
+            só o espaço realmente vazio aparece em cinza. */}
+        {/* Gutter EXTERNO (pr/pb-1.5): o thumb do ScrollAutoHide é `absolute right-1/
+            bottom-1` (4px) do PRÓPRIO wrapper — encolher o wrapper afasta a barra da borda
+            do box sem tocar no componente compartilhado (que é padrão da plataforma). */}
+        <div className="pr-1.5 pb-1.5">
+          <ScrollAutoHide eixo="both" className="max-h-[80vh] pr-3.5 pb-3.5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
           <table className={`w-full ${minW} border-separate border-spacing-0 text-[13px]`}>
             <thead className="sticky top-0 z-20 [&_th]:bg-band">
               <tr>
                 <th
                   rowSpan={2}
-                  className={`sticky left-0 z-30 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pl-3 pr-3 text-left text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
+                  className={`sticky left-0 z-30 w-[330px] min-w-[330px] max-w-[330px] border-r border-r-wt-border-strong pl-3 pr-3 align-bottom pb-[7px] text-left text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
                 >
                   Conta
                 </th>
@@ -610,14 +621,14 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
                         (movimentação × vencimento, corte na data-base) fica no `title`. */}
                     <th
                       title="Realizado por data de movimentação"
-                      className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
+                      className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
                       colSpan={mesCorrente}
                     >
                       Realizado
                     </th>
                     <th
                       title={`Previsto por vencimento — corte na data-base ${hojeCurta}`}
-                      className="whitespace-nowrap border-l-2 border-l-wt-border-strong px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
+                      className="whitespace-nowrap border-l-2 border-l-wt-border-strong px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
                       colSpan={colapsar ? 1 : 13 - mesCorrente /* 12 meses + 1 col. extra do híbrido = 13 sempre */}
                     >
                       <span className="flex w-full items-center justify-end gap-1.5">
@@ -637,7 +648,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
                 ) : relacao === 'fechado' ? (
                   <th
                     title="Ano fechado — tudo realizado (por data de movimentação)"
-                    className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
+                    className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
                     colSpan={12}
                   >
                     Realizado
@@ -645,7 +656,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
                 ) : (
                   <th
                     title="Previsto por vencimento"
-                    className="whitespace-nowrap px-[9px] py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
+                    className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
                     colSpan={12}
                   >
                     Previsto
@@ -654,7 +665,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
 
                 <th
                   rowSpan={2}
-                  className={`w-[140px] min-w-[140px] border-l border-l-wt-border-strong px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
+                  className={`w-[170px] min-w-[170px] border-l border-l-wt-border-strong px-3.5 align-bottom pb-[7px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
                 >
                   Total do ano
                 </th>
@@ -664,7 +675,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
                   <th
                     key={m}
                     className={[
-                      'h-[25px] px-[9px] text-right text-[10px] font-semibold uppercase tracking-[0.09em]',
+                      'h-[25px] px-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em]',
                       i >= idxPrevisto ? 'text-warning-deep' : 'text-text-secondary',
                       corteIdx !== null && i === corteIdx ? 'border-l-2 border-l-wt-border-strong' : '',
                       bordaBaseHeader,
@@ -722,10 +733,10 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
               {bandeja.length > 0 && (
                 <>
                   <tr>
-                    <td className="sticky left-0 z-10 h-8 w-[330px] min-w-[330px] max-w-[330px] border-t-[1.5px] border-t-warning border-l-[3px] border-l-warning bg-warning-bg pl-3 pr-3 whitespace-nowrap">
+                    <td className="sticky left-0 z-10 h-9 w-[330px] min-w-[330px] max-w-[330px] border-t-[1.5px] border-t-warning border-l-[3px] border-l-warning bg-warning-bg pl-3 pr-3 whitespace-nowrap">
                       <span className="text-[11.5px] font-semibold text-warning-deep">Não classificadas ({bandeja.length})</span>
                     </td>
-                    <td className="border-t-[1.5px] border-t-warning bg-warning-bg px-[9px] text-[10.5px] text-warning-deep" colSpan={totalColunas - 1}>
+                    <td className="border-t-[1.5px] border-t-warning bg-warning-bg px-3.5 text-[10.5px] text-warning-deep" colSpan={totalColunas - 1}>
                       categorias do Monde sem bloco na estrutura — nada some em silêncio
                     </td>
                   </tr>
@@ -744,7 +755,8 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, slotAcoes }: Ta
               )}
             </tbody>
           </table>
-        </ScrollAutoHide>
+          </ScrollAutoHide>
+        </div>
       </div>
 
       {/* ── Rodapé enxuto: UMA linha de legenda; a contagem só aparece quando um FILTRO
