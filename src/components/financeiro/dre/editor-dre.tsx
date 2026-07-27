@@ -689,6 +689,10 @@ export default function EditorDre({ estrutura, totaisPorCategoria, onPendenciasC
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
+      {/* Título do card no MESMO padrão do card da tabela da DRE (h2 como primeiro filho):
+          nomeia o card agora que ele divide a página com o "Histórico de alterações". */}
+      <h2 className="mb-4 text-[15px] font-semibold text-text-primary">Editor de Estrutura</h2>
+
       {erro && <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />}
 
       {/* Sem linha de contexto no topo: o subtítulo da página já diz para que serve a tela,
