@@ -18,7 +18,7 @@
 // A sidebar mantém a implementação própria embutida (mesma mecânica; migração incremental).
 
 import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode, type UIEvent } from 'react'
-import { thumbGeom, scrollAoArrastar, THUMB_FOLGA } from '@/lib/ui/scrollbar-math'
+import { thumbGeom, scrollAoArrastar, THUMB_FOLGA, THUMB_CRUZ } from '@/lib/ui/scrollbar-math'
 
 type Eixo = 'y' | 'x' | 'both'
 
@@ -55,19 +55,24 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
   const measure = useCallback(() => {
     const el = viewRef.current
     if (!el) return
+    // Quando os DOIS eixos rolam, cada trilho encurta no FIM pela espessura do outro
+    // (THUMB_CRUZ): sem isso os dois thumbs se encontram no canto inferior direito e
+    // formam um "L" colado. (v5.3.0, DS §Barras de rolagem.)
+    const fimY = temY && temX ? THUMB_FOLGA + THUMB_CRUZ : THUMB_FOLGA
+    const fimX = fimY
     const ty = thumbYRef.current
     if (ty) {
-      const g = thumbGeom(el.scrollHeight, el.clientHeight, el.scrollTop, THUMB_FOLGA)
+      const g = thumbGeom(el.scrollHeight, el.clientHeight, el.scrollTop, THUMB_FOLGA, fimY)
       if (!g.visivel) ty.style.display = 'none'
       else { ty.style.display = 'block'; ty.style.height = `${g.tamanho}px`; ty.style.transform = `translateY(${g.pos}px)` }
     }
     const tx = thumbXRef.current
     if (tx) {
-      const g = thumbGeom(el.scrollWidth, el.clientWidth, el.scrollLeft, THUMB_FOLGA)
+      const g = thumbGeom(el.scrollWidth, el.clientWidth, el.scrollLeft, THUMB_FOLGA, fimX)
       if (!g.visivel) tx.style.display = 'none'
       else { tx.style.display = 'block'; tx.style.width = `${g.tamanho}px`; tx.style.transform = `translateX(${g.pos}px)` }
     }
-  }, [])
+  }, [temX, temY])
 
   const reveal = useCallback(() => {
     const y = thumbYRef.current, x = thumbXRef.current
@@ -111,6 +116,7 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
     th.style.cursor = 'grabbing'
     reveal()
 
+    const folgaFim    = temY && temX ? THUMB_FOLGA + THUMB_CRUZ : THUMB_FOLGA  // idem measure()
     const inicio      = axis === 'y' ? e.clientY : e.clientX
     const scrollBase  = axis === 'y' ? el.scrollTop : el.scrollLeft
     const scrollSize  = axis === 'y' ? el.scrollHeight : el.scrollWidth
@@ -118,7 +124,7 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
 
     const mover = (ev: PointerEvent) => {
       const delta = (axis === 'y' ? ev.clientY : ev.clientX) - inicio
-      const novo = scrollAoArrastar(delta, scrollBase, scrollSize, clientSize, THUMB_FOLGA)
+      const novo = scrollAoArrastar(delta, scrollBase, scrollSize, clientSize, THUMB_FOLGA, folgaFim)
       if (axis === 'y') el.scrollTop = novo
       else el.scrollLeft = novo
     }
@@ -134,7 +140,7 @@ export default function ScrollAutoHide({ className = '', children, eixo = 'y', o
     th.addEventListener('pointermove', mover)
     th.addEventListener('pointerup', soltar)
     th.addEventListener('pointercancel', soltar)
-  }, [reveal])
+  }, [reveal, temX, temY])
 
   const thumbBg = 'color-mix(in srgb, var(--text-muted) 55%, transparent)'
 

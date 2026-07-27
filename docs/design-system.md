@@ -279,6 +279,20 @@ frágil (offset chumbado). O **padding do viewport é assimétrico de propósito
 card, e `pt-2` dá **respiro no topo** para o `box-shadow` de realce do hover (`.card-clicavel-neutra`)
 do PRIMEIRO card não ser cortado pelo `overflow` do viewport. Painel novo desse tipo nasce assim.
 
+### Dois eixos: as barras NÃO se tocam no canto (v5.3.0 — padrão)
+
+Quando `eixo="both"`, o thumb vertical desceria até o canto inferior direito e ENCOSTARIA
+no horizontal (que vem da esquerda), formando um "L" colado. O `<ScrollAutoHide>` resolve
+isso sozinho: cada trilho **encurta no FIM** pela espessura do outro (`THUMB_CRUZ`, 12px)
+— folga assimétrica em `scrollbar-math` (`thumbGeom`/`scrollAoArrastar` recebem
+`folgaFim`, default = `folga`, então o eixo único não muda). O arraste usa a MESMA folga,
+senão a proporção thumb↔conteúdo descola. Coberto por teste (`scrollbar-math.test.ts`).
+
+Tabela densa com os dois eixos **não precisa de nada**: é o comportamento padrão do
+componente. O que ela deve dar é o **gutter de conteúdo** (`pr`/`pb` no `className`, que
+vai no viewport) para o thumb flutuar sobre espaço vazio em vez de cobrir a última
+coluna/linha — ver a DRE (`tabela-dre.tsx`).
+
 ## Cabeçalho de tabela ORDENÁVEL (v5.2.0 — padrão)
 
 Coluna ordenável usa o idioma da **Lista de Operações** (o exemplo vivo mais antigo):
@@ -438,9 +452,11 @@ A DRE por Fluxo de Caixa (`/financeiro/dre`, `tabela-dre.tsx`) fixa o padrão de
 - **Cabeçalho sticky de 2 linhas**: as células `rowSpan={2}` existem só na 1ª `<tr>` —
   régua de base e sombra-ao-rolar vão DIRETAMENTE nelas (nunca por seletor de "última
   linha do thead"); ver a nota em CLAUDE.md §Cabeçalho de tabela.
-- **Respiro dos thumbs nos limites**: gutter interno `pr/pb-1.5` no viewport do
-  `<ScrollAutoHide>` — nos extremos o thumb flutua sobre o gutter, não sobre a última
-  coluna/linha (o mesmo respiro que a sidebar obtém via padding do nav).
+- **Respiro dos thumbs**: gutter interno `pb-3.5` no viewport + `pb-1.5` no wrapper do
+  `<ScrollAutoHide>` — embaixo, o thumb flutua sobre o gutter em vez de cobrir a última
+  linha. À DIREITA não há gutter (decisão do Yan: a faixa cinza vertical poluía); a barra
+  vertical passa em overlay sobre a borda da última coluna, sem encostar na horizontal —
+  quem garante isso é o `THUMB_CRUZ` do componente (ver §Barras de rolagem).
 - **Bandeja "Não classificadas"** ao fim (âmbar, rótulo na célula sticky): órfãs do
   de-para sempre visíveis — nada some em silêncio.
 
