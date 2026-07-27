@@ -81,7 +81,7 @@ export default function EstruturaShell({
         onDesfeito={() => router.refresh()}
         fetchers={FETCHERS_ESTRUTURA}
         camposDiff={CAMPOS_DIFF_ESTRUTURA}
-        titulo="Histórico da estrutura"
+        titulo="Histórico de alterações"
         antesDeDesfazer={antesDeDesfazer}
       />
       {confirmaDescarte && (

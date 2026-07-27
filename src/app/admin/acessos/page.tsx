@@ -63,8 +63,21 @@ export default async function AcessosPage() {
 
   // Fallback: catálogo espelho local (paridade testada por contrato) mantém o
   // formulário de roles utilizável se a RPC de áreas falhar.
+  //
+  // Quem manda na EXIBIÇÃO (rótulo/grupo/ordem) é o catálogo LOCAL, não o banco: as duas
+  // fontes são espelhos, mas o teste de paridade compara só as CHAVES — renomear uma área
+  // no código deixava o editor de roles exibindo o nome ANTIGO indefinidamente, e alinhar
+  // exigia um `UPDATE` (destrutivo pelo classificador, só com humano num terminal). O
+  // banco segue sendo a fonte da AUTORIZAÇÃO (é `app.rbac_areas` que `exigir_acesso` lê);
+  // o rótulo é cosmético. Área que exista no banco e não no código mantém o texto do banco
+  // (drift no sentido oposto continua visível, em vez de sumir da tela).
+  // (Custou caro: 'financeiro/dre' virou "Demonstrativo de Resultado" na v5.3.0 e o editor
+  // de roles seguia dizendo "DRE".)
   const areas: AreaCatalogo[] = areasRpc.length > 0
-    ? areasRpc
+    ? areasRpc.map(a => {
+        const local = (AREA_INFO as Record<string, { rotulo: string; grupo: string; ordem: number }>)[a.area]
+        return local ? { ...a, ...local } : a
+      })
     : AREAS.map(a => ({ area: a, ...AREA_INFO[a] }))
 
   const STATUS_OK = new Set(['pendente', 'aprovada', 'rejeitada'])

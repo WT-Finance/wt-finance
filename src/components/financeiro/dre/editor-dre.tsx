@@ -11,6 +11,11 @@
 // setState (react-hooks v7): o re-sync pós-`router.refresh()` é "ajustado durante a
 // renderização".
 //
+// CORPO SEM VALORES (refino pós-checkpoint): o editor é de REORDENAR/RECLASSIFICAR — os
+// números vivem na DRE. Os totais (`totaisPorCategoria`) continuam sendo carregados, mas
+// SÓ alimentam os MODAIS de confirmação (mover/classificar/reincluir e excluir), onde
+// mostram o efeito da mudança nos subtotais — a informação que justifica a ação.
+//
 // Chaves DETERMINÍSTICAS por `categoria_id` (estável — nomes podem colidir/mudar; o id não).
 //
 // `dre_estrutura_salvar` NÃO grava `nota_estrela` (só bloco_chave/ordem/excluida) — a estrela
@@ -26,12 +31,11 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronUp, ChevronDown, FolderInput, EyeOff, Undo2, Lock, Loader2, Check } from 'lucide-react'
 import Button from '@/components/ui/button'
-import Badge from '@/components/ui/badge'
 import ModalCentral from '@/components/shared/modal-central'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
-import { fmtContabil, fmtContabilBRL } from './fmt-contabil'
+import { fmtContabilBRL } from './fmt-contabil'
 import { salvarEstrutura } from '@/app/financeiro/dre/estrutura/actions'
 import type { DreEstrutura, SalvarMapItem } from '@/lib/dre/schemas'
 
@@ -78,12 +82,9 @@ type ModalMoverEstado =
   | { modo: 'reincluir'; categoriaId: number }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cor por SINAL (verde = positivo, vermelho = negativo, neutro = zero).
+// Derivação do estado local. Os totais alimentam SÓ os modais (corpo sem valores) —
+// por isso não há mais helper de cor por sinal aqui.
 // ─────────────────────────────────────────────────────────────────────────────
-
-function corValor(v: number): string {
-  return v < 0 ? 'text-negative' : v > 0 ? 'text-positive' : 'text-text-subtle'
-}
 
 function subtotalCats(cats: CatEditor[]): number {
   return cats.reduce((s, c) => s + c.total, 0)
@@ -274,11 +275,10 @@ function FaixaAncora({ item, rotulosPorChave }: { item: BlocoItem; rotulosPorCha
 }
 
 function LinhaCategoria({
-  rotulo, estrela, total, index, count, onSubir, onDescer, onMover, onExcluir,
+  rotulo, estrela, index, count, onSubir, onDescer, onMover, onExcluir,
 }: {
   rotulo: string
   estrela: boolean
-  total: number
   index: number
   count: number
   onSubir: () => void
@@ -296,7 +296,6 @@ function LinhaCategoria({
           </sup>
         )}
       </p>
-      <p className={`shrink-0 text-xs tabular-nums ${corValor(total)}`}>{fmtContabil(total)}</p>
       <div className="flex shrink-0 items-center gap-0.5">
         <Button
           variant="icone"
@@ -347,10 +346,6 @@ function CardBloco({
   onMoverCat: (categoriaId: number) => void
   onExcluirCat: (categoriaId: number) => void
 }) {
-  const subtotal = subtotalCats(bloco.cats)
-  // -deep (não a base): sobre a banda cinza (--band-soft) os tons base de sinal
-  // reprovam AA (contraste medido 3,88–4,31:1); os -deep sobem a 7–10:1.
-  const corSubtotal = subtotal < 0 ? 'text-negative-deep' : subtotal > 0 ? 'text-positive-deep' : 'text-text-muted'
   return (
     <div className="overflow-hidden rounded-lg border border-wt-border bg-surface">
       <div className="flex items-center gap-2 border-b border-wt-border bg-band-soft px-4 py-3">
@@ -359,9 +354,6 @@ function CardBloco({
         <span className="text-2xs text-text-subtle">
           {bloco.cats.length} categoria{bloco.cats.length === 1 ? '' : 's'}
         </span>
-        <span className={`ml-auto shrink-0 text-sm font-medium tabular-nums ${corSubtotal}`}>
-          {fmtContabilBRL(subtotal)}
-        </span>
       </div>
       <div>
         {bloco.cats.map((cat, index) => (
@@ -369,7 +361,6 @@ function CardBloco({
             key={cat.categoriaId}
             rotulo={cat.rotulo}
             estrela={cat.estrela}
-            total={cat.total}
             index={index}
             count={bloco.cats.length}
             onSubir={() => onSubirCat(index)}
@@ -387,8 +378,11 @@ function BandejaCard({ itens, onClassificar }: { itens: BandejaItem[]; onClassif
   if (itens.length === 0) return null
   return (
     <div className="rounded-lg border border-l-[3px] border-warning border-l-warning bg-warning-bg">
+      {/* O rótulo "Não classificadas" era um <Badge variant="warning"> — virou título simples
+          (mesma forma do card Excluídas) no refino "editor limpo": o card já é âmbar inteiro,
+          a badge só duplicava o sinal. O texto permanece. */}
       <div className="flex flex-wrap items-center gap-2 border-b border-warning/40 px-4 py-3">
-        <Badge variant="warning">Não classificadas</Badge>
+        <p className="text-sm font-medium text-text-primary">Não classificadas</p>
         <span className="text-2xs text-warning-deep">
           {itens.length} categoria{itens.length === 1 ? '' : 's'}
         </span>
@@ -403,7 +397,6 @@ function BandejaCard({ itens, onClassificar }: { itens: BandejaItem[]; onClassif
               <p className="truncate text-[13px] text-text-primary">{cat.nome}</p>
               <p className="text-2xs text-warning-deep">Sem bloco mapeado — aguardando classificação</p>
             </div>
-            <p className={`shrink-0 text-xs tabular-nums ${corValor(cat.total)}`}>{fmtContabil(cat.total)}</p>
             <button type="button" onClick={() => onClassificar(cat.categoriaId)} className={`${PILL} ${PILL_NEUTRO} shrink-0`}>
               Classificar…
             </button>
@@ -429,7 +422,6 @@ function ExcluidasCard({ itens, onReincluir }: { itens: ExcluidaEditor[]; onRein
         {itens.map(item => (
           <div key={item.categoriaId} className="flex items-center gap-2 border-b border-wt-border px-4 py-2 last:border-b-0">
             <p className="min-w-0 flex-1 truncate text-[13px] text-text-secondary">{item.rotulo}</p>
-            <p className={`shrink-0 text-xs tabular-nums ${corValor(item.total)}`}>{fmtContabil(item.total)}</p>
             <button
               type="button"
               onClick={() => onReincluir(item.categoriaId)}
@@ -698,8 +690,11 @@ export default function EditorDre({ estrutura, totaisPorCategoria, anoTotais, on
     <div className="rounded-xl bg-surface p-5 shadow-sm">
       {erro && <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />}
 
+      {/* "Valores de referência: <ano>" não cabia mais (o corpo não mostra valores): o ano
+          agora qualifica os totais que aparecem SÓ nos modais de mover/excluir. */}
       <p className="text-2xs text-text-subtle">
-        Estrutura global e auditada — toda alteração fica no histórico e é reversível. Valores de referência: {anoTotais}.
+        Estrutura global e auditada — toda alteração fica no histórico e é reversível. Os efeitos
+        exibidos ao mover ou excluir usam os valores de {anoTotais}.
       </p>
 
       <div className="mt-3 space-y-3">

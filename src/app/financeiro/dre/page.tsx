@@ -180,8 +180,7 @@ export default async function DrePage({
   return (
     <div>
       <TopSection
-        titulo="DRE por Fluxo de Caixa"
-        subtitulo="estrutura oficial da controladoria · mês corrente híbrido (realizado + previsto)"
+        titulo="Regime de Caixa"
       >
         <TabelaDre
           dados={dre}
