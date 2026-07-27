@@ -14,6 +14,7 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import { type Conta } from './tipos'
 import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
+import { mascaraMoeda } from '@/lib/fmt'
 import { toNum } from '@/lib/carga/coercao'
 import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 
@@ -146,6 +147,10 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
   const [importOpen, setImportOpen]     = useState(false)
   const [criando, setCriando]           = useState(false)
   const [novosValores, setNovosValores] = useState<Partial<Lancamento>>({})
+  // Texto FORMATADO do campo Valor da nova linha (a máscara de moeda precisa de um estado
+  // de string; o número extraído dela vive em `novosValores.valor_final`). Os dois são
+  // limpos juntos — ver `limparNovaLinha`.
+  const [novoValorDisplay, setNovoValorDisplay] = useState('')
   const [isPending, startCreate]        = useTransition()
   const [, startRefresh]                = useTransition()
   // v4.21.0 (M5) — seleção/exclusão em massa.
@@ -259,6 +264,15 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
     })
   }
 
+  /** Fecha o formulário de nova linha zerando os DOIS estados que o alimentam — o número
+   *  (`novosValores`) e o texto formatado do campo Valor. Esquecer o segundo deixaria o
+   *  valor antigo visível ao reabrir o "Adicionar", sem número por trás. */
+  const limparNovaLinha = () => {
+    setCriando(false)
+    setNovosValores({})
+    setNovoValorDisplay('')
+  }
+
   const handleSalvarNovo = () => {
     const { tipo, pessoa, valor_final, vencimento } = novosValores
     if (!tipo || !pessoa || valor_final == null || !vencimento) return
@@ -273,8 +287,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
       })
       if (res.success) {
         setItens(prev => [res.lancamento as unknown as Lancamento, ...prev])
-        setCriando(false)
-        setNovosValores({})
+        limparNovaLinha()
       }
     })
   }
@@ -422,9 +435,20 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
                     className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5" />
                 </td>
                 <td className="py-1 px-2">
-                  <input type="number" step="0.01" placeholder="0,00" value={novosValores.valor_final ?? ''}
-                    onChange={e => setNovosValores(p => ({ ...p, valor_final: Number(e.target.value) }))}
-                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 text-right" />
+                  {/* Máscara de moeda ao vivo — MESMO `mascaraMoeda` que a edição inline
+                      desta coluna já usa em `lancamento-row.tsx` (dígitos como centavos,
+                      `-` em qualquer posição = negativo). Era o único campo de dinheiro
+                      da tela ainda em `type="number"` cru: digitar aqui não formatava e
+                      quem digitasse "1.234,56" via o browser rejeitar a vírgula em
+                      silêncio. O display mora num estado de STRING próprio porque
+                      `novosValores` é `Partial<Lancamento>` e `valor_final` é `number`. */}
+                  <input type="text" inputMode="numeric" placeholder="R$ 0,00" value={novoValorDisplay}
+                    onChange={e => {
+                      const { display, valor } = mascaraMoeda(e.target.value)
+                      setNovoValorDisplay(display)
+                      setNovosValores(p => ({ ...p, valor_final: valor ?? undefined }))
+                    }}
+                    className="w-full text-xs border border-zinc-200 rounded px-1 py-0.5 text-right tabular-nums" />
                 </td>
                 <td className="py-1 px-2">
                   <input type="text" placeholder="Descrição" value={novosValores.descricao ?? ''}
@@ -453,7 +477,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
                       className="text-3xs px-1.5 py-0.5 rounded text-white disabled:opacity-50" style={{ background: 'var(--brand)' }}>
                       Salvar
                     </button>
-                    <button onClick={() => { setCriando(false); setNovosValores({}) }}
+                    <button onClick={limparNovaLinha}
                       className="text-3xs px-1.5 py-0.5 rounded border border-zinc-200 text-zinc-400">✕</button>
                   </div>
                 </td>
