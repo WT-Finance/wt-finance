@@ -411,6 +411,33 @@ function classeFixa(fixa: Fixa | null | undefined, camada: 'corpo' | 'cabecalho'
   return camada === 'corpo' ? 'sticky z-10' : 'sticky z-30'
 }
 
+/** Folga entre o rótulo de grupo pinado e a primeira coluna fixa à direita — sem ela o
+ *  texto encostaria na divisória do total. */
+const FOLGA_ROTULO_GRUPO = 14
+
+/** Rótulo de um grupo do cabeçalho ("Realizado", "Previsto") que PERMANECE visível
+ *  enquanto qualquer coluna do grupo estiver em vista.
+ *
+ *  O `sticky` vai no CONTEÚDO, nunca na `th`: a `th` **é** o grupo (abrange todas as
+ *  colunas dele), então prendê-la não teria sentido — quem precisa parar de rolar é o
+ *  texto dentro dela. E como a `th` é o bloco que contém o rótulo, ela também o
+ *  DELIMITA de graça: o rótulo nunca invade o grupo vizinho e some junto com o seu,
+ *  que é exatamente o comportamento pedido ("dentro dos seus respectivos grupos
+ *  delimitados pelas linhas divisórias").
+ *
+ *  `right = largura das colunas fixas + folga` estaciona o rótulo à ESQUERDA delas, em
+ *  vez de deixá-lo deslizar por baixo da coluna de total (que é sticky e pinta acima). */
+function RotuloGrupo({ larguraFixas, children }: { larguraFixas: number; children: ReactNode }) {
+  return (
+    <span
+      className="sticky inline-flex items-center gap-1.5"
+      style={{ right: larguraFixas + FOLGA_ROTULO_GRUPO }}
+    >
+      {children}
+    </span>
+  )
+}
+
 /** Escala de fundo de uma célula de valor — resolvida por NÍVEL de linha nos mapas
  *  `BG_PREVISTO` (âmbar) e `BG_VENCIDO` (vermelho) mais abaixo; 'normal' usa o fundo da
  *  própria linha. Um tri-estado, e não dois booleanos: 'previsto' e 'vencido' são
@@ -1399,6 +1426,10 @@ function TabelaConsolidada({
   // a soma das larguras.
   const fixas = fixasDaLinha(nAnosSeg)
   const fixaGrupoAnos: Fixa = { right: 0, largura: nAnosSeg * W_ANO_SEG }
+  // Quanto o grupo de colunas fixas ocupa à direita — onde os rótulos de grupo param
+  // (ver `RotuloGrupo`). No modo 'realizado' não há coluna de total nem anos seguintes,
+  // então é 0 e os rótulos podem ir até a borda.
+  const larguraFixas = (nTotalCols > 0 ? W_TOTAL : 0) + nAnosSeg * W_ANO_SEG
 
   const th1 = 'whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em]'
   // `whitespace-nowrap` também na 2ª linha: a `th` tem altura FIXA (h-[25px]), então um
@@ -1420,7 +1451,7 @@ function TabelaConsolidada({
             title={`Comparação na MESMA janela dos dois lados (${janelaTexto}) — um grupo de colunas por ano marcado`}
             className={`${th1} text-text-secondary`}
           >
-            Realizado
+            <RotuloGrupo larguraFixas={larguraFixas}>Realizado</RotuloGrupo>
           </th>
           {/* Faixa de VENCIDOS — sem rótulo de propósito (rodada 5/Refino 2): o nome da
               coluna já está na 2ª linha, em vermelho; o que a 1ª linha precisa dizer é
@@ -1439,7 +1470,7 @@ function TabelaConsolidada({
               title="Do ano de referência: o que ainda falta acontecer até dezembro (projeção) — o vencido em aberto está na coluna ao lado, fora deste grupo"
               className={`${th1} border-l-2 border-l-wt-border-strong text-warning-deep`}
             >
-              Previsto
+              <RotuloGrupo larguraFixas={larguraFixas}>Previsto</RotuloGrupo>
             </th>
           )}
           {/* Faixa do TOTAL — sem texto (rodada 5/Refino 3), só a seta de anos seguintes,
@@ -1895,6 +1926,9 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   // aqui para as `th` do cabeçalho. A faixa de grupo dos anos seguintes é uma célula só,
   // presa em `right: 0` e medindo a soma das larguras.
   const fixasMensal = fixasDaLinha(anosSegVisiveisMensal.length)
+  // Largura ocupada pelas colunas fixas à direita — onde os rótulos de grupo param
+  // (ver `RotuloGrupo`). Na Mensal a coluna de total existe sempre.
+  const larguraFixasMensal = W_TOTAL + anosSegVisiveisMensal.length * W_ANO_SEG
   const fixaGrupoAnosMensal: Fixa = { right: 0, largura: anosSegVisiveisMensal.length * W_ANO_SEG }
 
   // Rótulo e `title` da coluna de total, por modo (rodada 4/Refino 7). "Total previsto"
@@ -2094,7 +2128,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                       className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
                       colSpan={mesCorrente}
                     >
-                      Realizado
+                      <RotuloGrupo larguraFixas={larguraFixasMensal}>Realizado</RotuloGrupo>
                     </th>
                     {temColunaPrevisto && (
                       <th
@@ -2103,7 +2137,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                         className="whitespace-nowrap border-l-2 border-l-wt-border-strong px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
                         colSpan={modoPrevisto === 'colapsado' ? 1 : 13 - mesCorrente /* 12 meses + a coluna extra do mês híbrido (·PREV) */}
                       >
-                        <span className="flex w-full items-center justify-end gap-1.5">
+                        <RotuloGrupo larguraFixas={larguraFixasMensal}>
                           <span>Previsto</span>
                           <button
                             type="button"
@@ -2114,7 +2148,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                           >
                             {previstoAberto ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
                           </button>
-                        </span>
+                        </RotuloGrupo>
                       </th>
                     )}
                   </>
@@ -2124,7 +2158,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                     className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
                     colSpan={12}
                   >
-                    Realizado
+                    <RotuloGrupo larguraFixas={larguraFixasMensal}>Realizado</RotuloGrupo>
                   </th>
                 ) : temColunaPrevisto ? (
                   <th
@@ -2132,7 +2166,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                     className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
                     colSpan={12}
                   >
-                    Previsto
+                    <RotuloGrupo larguraFixas={larguraFixasMensal}>Previsto</RotuloGrupo>
                   </th>
                 ) : null /* 'futuro' no modo 'realizado': nada aconteceu ainda, então não
                             sobra coluna mensal alguma — e um colSpan={0} teria significado
