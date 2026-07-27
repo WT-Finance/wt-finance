@@ -135,6 +135,43 @@ total e os anos seguintes) ao lado da "Mensal".
   linhas de despesa (despesa que cresce fica negativa). Se a planilha da controladoria usar a
   outra convenção, é troca de uma linha (`fmtDeltaPct`).
 
+**Rodada 7 (última):** as pills de ano do **Consolidado** viraram **seleção múltipla** (caixas
+cumulativas, não navegação): cada ano marcado acrescenta `[ano cheio | YTD | Δ% para o próximo
+selecionado]`, e o MAIOR marcado é a referência — só ele ganha `PREV`/`VENCIDOS`/anos seguintes, e
+**só quando é de fato o ano corrente** (num ano fechado `total − ytd` é realizado de ago..dez, não
+previsão; rotulá-lo "previsto" seria mentira). Mínimo de um marcado; a última pill não desmarca e
+diz por quê. Tudo client-side — a página passou a buscar todos os anos da janela navegável na mesma
+leva. Com os três: `2024 | YTD 24 | Δ% 24·25 | 2025 | YTD 25 | Δ% 25·26 | YTD 26 | PREV 26 |
+VENCIDOS | TOTAL 2026 | 2027 | 2028` (conferido ao vivo; Δ% 24·25 = +84,0% para −4.953.303,89 →
+−793.628,79). Mais: seta dos anos seguintes na mesma **âmbar** da do previsto; toolbar em **duas
+linhas à esquerda** (visão em cima; anos + modo embaixo) sem os rótulos "Visão:"/"Total do ano:",
+com `title` em cada pill; o **salto animado também ao FECHAR** (previsto → volta ao início do ano;
+anos seguintes → vai ao fim, onde o Total do ano passa a terminar a tabela); o modo **"Realizado"
+agora esconde TODO o previsto** — meses futuros e anos seguintes junto com os dois toggles, não só
+a coluna do mês corrente; e "Demonstrativo de Resultado" entre Acervo de Documentos e Fluxo de Caixa
+na sidebar.
+- **Armadilha de runtime que o `tsc` NÃO pega:** `rpcDre` devolve o *thenable* do Supabase (um
+  builder com `.then`), **não** uma Promise — encadear `.catch()` nele estoura
+  `rpcDre(...).catch is not a function` em runtime, sem erro de compilação. O tratamento de falha
+  vai no `status` de cada item do `Promise.allSettled`. **Pego no smoke visual** (a página quebrou
+  inteira), não nos gates — mais uma para a lista de degradações que só o olho pega.
+- **Ao FECHAR um grupo de colunas, a coluna-alvo já saiu do DOM** (`ref.current === null` quando o
+  efeito roda), então não dá para achar o container rolável a partir dela. O hook de scroll passou a
+  usar uma **âncora na própria `<table>`**, que sobrevive às duas transições.
+- **Achado registrado, não implementado (é produto):** na visão Consolidado o *conjunto de linhas*
+  continua vindo do ano da URL — os valores é que vêm por chave de cada ano marcado. Marcar só 2024
+  mostra a **estrutura de 2026** com os valores de 2024 (conta que só existia em 2024 não aparece;
+  conta de 2026 ausente em 2024 aparece com travessão). É o comportamento de sempre do comparativo,
+  mas a seleção múltipla o tornou mais visível. Resolver exigiria a página passar também a estrutura
+  do ano de referência.
+
+**Fora do escopo da DRE, pedido na mesma sessão:** máscara de moeda no campo Valor da **nova linha**
+da Base de Dados do Fluxo de Caixa Gerencial — era o único campo de dinheiro da tela ainda em
+`type="number"` cru (digitar não formatava; "1.234,56" era rejeitado pelo browser em silêncio).
+Passou a usar o **mesmo `mascaraMoeda`** que a edição inline daquela mesma coluna já usava; reuso,
+não máscara nova. Efeito colateral bom: antes, limpar o campo dava `Number('') === 0` e a guarda
+`valor_final == null` não pegava — dava para salvar um lançamento de zero sem querer.
+
 ### Pendência pequena para o Yan (precisa de TTY)
 O rótulo da área mudou para "Demonstrativo de Resultado" no app (sidebar + `AREA_INFO`),
 mas o **editor de roles lê o rótulo do BANCO** (`app.rbac_areas.rotulo`, com o local só
