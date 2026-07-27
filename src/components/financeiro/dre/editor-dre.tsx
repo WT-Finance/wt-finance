@@ -349,8 +349,10 @@ function CardBloco({
   return (
     <div className="overflow-hidden rounded-lg border border-wt-border bg-surface">
       <div className="flex items-center gap-2 border-b border-wt-border bg-band-soft px-4 py-3">
+        {/* Sem o chip da CHAVE do bloco (ENT_H, PAG_H…): é identificador técnico, ruído
+            para quem só reordena. A chave segue sendo a âncora das fórmulas no modelo —
+            só não se exibe aqui. */}
         <p className="text-sm font-medium text-text-primary">{bloco.rotulo}</p>
-        <span className="rounded bg-surface-strong px-1.5 py-0.5 font-mono text-2xs text-text-muted">{bloco.chave}</span>
         <span className="text-2xs text-text-subtle">
           {bloco.cats.length} categoria{bloco.cats.length === 1 ? '' : 's'}
         </span>
