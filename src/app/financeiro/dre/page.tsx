@@ -8,7 +8,7 @@ import { parseRpc } from '@/lib/schemas-rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { hojeSP } from '@/lib/fmt'
 import { rpcDre } from '@/lib/dre/rpc-dre'
-import { dreMensalSchema } from '@/lib/dre/schemas'
+import { dreMensalSchema, type DreMensal, type DreLinha, type DreBandeja } from '@/lib/dre/schemas'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import ComposicaoPeriodo from '@/components/financeiro/composicao-lancamentos'
 import TopSection from '@/components/shared/top-section'
@@ -76,71 +76,94 @@ export default async function DrePage({
 
   const db = await getServerClient()
 
-  // As 3 chamadas em UM `Promise.allSettled` (não serializar) — `rpcDre` é o helper
+  // TODAS as chamadas em UM `Promise.allSettled` (não serializar) — `rpcDre` é o helper
   // de tipagem frouxa genérico do módulo (não específico de DRE apesar do nome),
   // reaproveitado aqui para as duas RPCs de Composição também, unificando o tipo
   // de retorno (`RpcLike`) sem o cast ad-hoc local que existia antes.
-  // Os DOIS anos seguintes entram na mesma leva: a coluna "Total do ano" abre, por um
-  // toggle, o previsto de ano+1/ano+2 (o modelo da controladoria mostra 2027/2028 ao
-  // lado do total). É a MESMA RPC com outro `p_ano` — nenhuma migration nova; as 5
-  // chamadas correm em paralelo, então o custo em wall-clock é o da mais lenta.
+  //
+  // Anos buscados = os da JANELA NAVEGÁVEL (`anosDisponiveis`, que a visão Consolidado
+  // usa como caixas de seleção — qualquer combinação pode ser pedida sem ida ao servidor)
+  // ∪ os DOIS anos seguintes (a coluna "Total do ano" da Mensal abre, por um toggle, o
+  // previsto de ano+1/ano+2, como no modelo da controladoria). É sempre a MESMA RPC com
+  // outro `p_ano` — nenhuma migration nova, e como tudo corre em paralelo o custo em
+  // wall-clock é o da chamada mais lenta (medido: ~240ms aquecido para o conjunto).
   const anosSeguintesNums = [ano + 1, ano + 2]
+  const anosDre = [...new Set([...anosDisponiveis, ...anosSeguintesNums])]
 
+  // ⚠️ Tudo num `Promise.allSettled` ÚNICO, e o tratamento de falha é o `status` de cada
+  // item — NUNCA `.catch()` na chamada. O que `rpcDre` devolve é o *thenable* do Supabase
+  // (um builder com `.then`), não uma Promise: `.catch` não existe nele e estoura
+  // "rpcDre(...).catch is not a function" em RUNTIME, sem o `tsc` reclamar.
   const empty: RpcLike = { data: null, error: null }
-  const [dreRes, antRes, seg1Res, seg2Res, decomposicaoRes, decomposicaoCategoriaRes] = await Promise.allSettled([
-    rpcDre(db, 'get_dre_mensal',          { p_ano: ano }),
-    rpcDre(db, 'get_dre_mensal',          { p_ano: ano - 1 }),   // base do Consolidado (ano cheio + YTD)
-    rpcDre(db, 'get_dre_mensal',          { p_ano: anosSeguintesNums[0] }),
-    rpcDre(db, 'get_dre_mensal',          { p_ano: anosSeguintesNums[1] }),
+  const resultados = await Promise.allSettled([
+    ...anosDre.map(a => rpcDre(db, 'get_dre_mensal', { p_ano: a })),
     rpcDre(db, 'get_decomposicao_grupo',     { p_from: from, p_to: to }),
     rpcDre(db, 'get_decomposicao_categoria', { p_from: from, p_to: to }),
-  ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : empty)))
+  ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty)))
 
-  const dre          = parseRpc(dreMensalSchema, dreRes, 'get_dre_mensal')
+  const dreAnos = new Map(
+    anosDre.map((a, i) => [a, parseRpc(dreMensalSchema, resultados[i], `get_dre_mensal(${a})`)]),
+  )
+  const decomposicaoRes          = resultados[anosDre.length]
+  const decomposicaoCategoriaRes = resultados[anosDre.length + 1]
 
-  // Totais por linha de cada ano seguinte, indexados por `b:<chave>` (blocos) e
-  // `c:<categoria_id>` (categorias) — o mesmo par de chaves que a tabela usa para casar
-  // as linhas. Ano que falhar sai da lista (fail-safe: a coluna simplesmente não aparece).
-  const anosSeguintes = [seg1Res, seg2Res]
-    .map((res, i) => {
-      const p = parseRpc(dreMensalSchema, res, `get_dre_mensal(${anosSeguintesNums[i]})`)
-      if (!p) return null
-      const totais: Record<string, number> = {}
-      for (const l of p.linhas) {
-        if (l.t === 'cat') { if (l.categoria_id != null) totais[`c:${l.categoria_id}`] = l.total }
-        else if (l.chave) { totais[`b:${l.chave}`] = l.total }
-      }
-      for (const b of p.bandeja) totais[`c:${b.categoria_id}`] = b.total
-      return { ano: anosSeguintesNums[i], totais }
+  const dre = dreAnos.get(ano) ?? null
+
+  // ── JANELA DO YTD ────────────────────────────────────────────────────────────
+  // Quantos meses entram no "YTD" de TODOS os anos comparados. Vem do ano EXIBIDO:
+  // se ele é o corrente, é o mês corrente (jan..jul); se é um ano fechado, são os 12.
+  // Fixar a janela num número só é o que torna a comparação honesta — "mesmo período"
+  // significa a MESMA fatia do calendário em cada ano (YTD 25 × YTD 26), nunca o ano
+  // cheio de um contra a fatia do outro.
+  const mesJanela = dre?.mes_corrente ?? 12
+
+  /** Indexa um payload por linha: `b:<chave>` (blocos/totalizadores) e `c:<categoria_id>`
+   *  (categorias e bandeja) — o MESMO par de chaves que a tabela usa para casar as linhas
+   *  entre anos (a estrutura pode ter mudado de um ano para o outro; casar por chave, e
+   *  não por posição, é o que impede a coluna de escorregar de linha). */
+  function indexar<T>(p: DreMensal, valor: (l: DreLinha | DreBandeja) => T): Record<string, T> {
+    const m: Record<string, T> = {}
+    for (const l of p.linhas) {
+      if (l.t === 'cat') { if (l.categoria_id != null) m[`c:${l.categoria_id}`] = valor(l) }
+      else if (l.chave) { m[`b:${l.chave}`] = valor(l) }
+    }
+    for (const b of p.bandeja) m[`c:${b.categoria_id}`] = valor(b)
+    return m
+  }
+
+  // Totais por linha de cada ano seguinte (visão Mensal, toggle do "Total do ano").
+  // Ano que falhar sai da lista — fail-safe: a coluna simplesmente não aparece.
+  const anosSeguintes = anosSeguintesNums
+    .map(a => {
+      const p = dreAnos.get(a)
+      return p ? { ano: a, totais: indexar(p, l => l.total) } : null
     })
     .filter((x): x is { ano: number; totais: Record<string, number> } => x !== null)
 
-  // ── Base do CONSOLIDADO (visão ano-a-ano) ───────────────────────────────────
-  // O ano anterior entra com DOIS números por linha: o ano CHEIO e o YTD na MESMA
-  // janela do ano exibido (jan..mês corrente) — é o que torna a comparação honesta
-  // (YTD 25 × YTD 26 compara períodos iguais; o ano cheio é referência). O resto do
-  // consolidado (YTD atual, previsto, vencidos, total, anos seguintes) sai do payload
-  // principal, no cliente. Ano exibido FECHADO/FUTURO não tem `mes_corrente`: aí o YTD
-  // do anterior é o ano inteiro (janela = ano cheio), o que mantém a coluna coerente.
-  const anteriorParsed = parseRpc(dreMensalSchema, antRes, `get_dre_mensal(${ano - 1})`)
-  const mesJanela = dre?.mes_corrente ?? 12
-  const consolidado = anteriorParsed
-    ? {
-        anoAnterior: ano - 1,
-        porLinha: (() => {
-          const m: Record<string, { ano: number; ytd: number }> = {}
-          const add = (k: string, meses: number[], total: number) => {
-            m[k] = { ano: total, ytd: meses.slice(0, mesJanela).reduce((a, v) => a + v, 0) }
-          }
-          for (const l of anteriorParsed.linhas) {
-            if (l.t === 'cat') { if (l.categoria_id != null) add(`c:${l.categoria_id}`, l.meses, l.total) }
-            else if (l.chave) add(`b:${l.chave}`, l.meses, l.total)
-          }
-          for (const b of anteriorParsed.bandeja) add(`c:${b.categoria_id}`, b.meses, b.total)
-          return m
-        })(),
+  // ── Base do CONSOLIDADO (visão ano-a-ano, seleção MÚLTIPLA de anos) ──────────
+  // Um registro por ano da janela navegável, com os três números que a visão precisa
+  // por linha: o ano CHEIO (`total`), o YTD na janela acima e os vencidos em aberto
+  // (`venc`). Tudo já resolvido aqui para que marcar/desmarcar um ano na tela seja
+  // puramente client-side — nenhuma ida ao servidor ao mudar a seleção.
+  const consolidadoAnos = anosDisponiveis
+    .map(a => {
+      const p = dreAnos.get(a)
+      if (!p) return null
+      return {
+        ano: a,
+        // `corrente` decide quem pode exibir previsto/vencidos: num ano FECHADO,
+        // `total − ytd` é realizado de ago..dez, não previsão — rotulá-lo de "previsto"
+        // seria mentira. Só o ano corrente tem previsto em aberto.
+        corrente: p.relacao === 'corrente',
+        porLinha: indexar(p, l => ({
+          total: l.total,
+          ytd:   l.meses.slice(0, mesJanela).reduce((s, v) => s + v, 0),
+          venc:  l.venc,
+        })),
       }
-    : null
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+
   const decomposicao = unwrapRpc<DecomposicaoGrupo[]>(decomposicaoRes, 'get_decomposicao_grupo') ?? []
   const categorias   =
     unwrapRpc<DecomposicaoCategoria[]>(decomposicaoCategoriaRes, 'get_decomposicao_categoria') ?? []
@@ -159,7 +182,8 @@ export default async function DrePage({
           ano={ano}
           anosDisponiveis={anosDisponiveis}
           anosSeguintes={anosSeguintes}
-          consolidado={consolidado}
+          consolidadoAnos={consolidadoAnos}
+          mesJanela={mesJanela}
           slotAcoes={
             <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
               <SquarePen size={13} />

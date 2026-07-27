@@ -1,12 +1,13 @@
 'use client'
 
-// ── Tabela hierárquica da DRE por Fluxo de Caixa (v5.3.0 · M4 + refino visual + Onda 2/rodada 2) ──
+// ── Tabela hierárquica da DRE por Fluxo de Caixa (v5.3.0 · M4 + refino visual + Onda 2/rodada 3) ──
 // Tabela DE PRODUÇÃO, data-driven por props — lê a estrutura viva + o fato real via
-// `get_dre_mensal` (a página busca a RPC e injeta `dados`/`ano`/`anosDisponiveis`/
-// `anosSeguintes`/`consolidado`). Sucede o mockup de fixture da M0 (tabela-dre-mockup.tsx +
-// mockup-dados.ts, agora removidos deste caminho); o VISUAL/INTERAÇÃO gateados pelo
-// Yan na M0 são preservados onde não listados abaixo — a FONTE dos dados, as colunas
-// dinâmicas por ano e os refinos desta rodada (ver bullets abaixo) mudaram.
+// `get_dre_mensal` (a página busca a RPC de CADA ano da janela e injeta `dados`/`ano`/
+// `anosDisponiveis`/`anosSeguintes`/`consolidadoAnos`/`mesJanela`). Sucede o mockup de
+// fixture da M0 (tabela-dre-mockup.tsx + mockup-dados.ts, agora removidos deste
+// caminho); o VISUAL/INTERAÇÃO gateados pelo Yan na M0 são preservados onde não
+// listados abaixo — a FONTE dos dados, as colunas dinâmicas por ano e os refinos das
+// rodadas seguintes (ver bullets abaixo) mudaram.
 //
 // Estrutura do payload (ver @/lib/dre/schemas): `linhas` vem FLAT na ordem do
 // demonstrativo — blocos (`t:'blocoH'|'sub'|'tot'`, com `chave`) seguidos das suas
@@ -21,79 +22,90 @@
 // cor por sinal e MESMO R$ contábil; só o CONJUNTO DE COLUNAS muda:
 //  · 'mensal' — a tabela mês a mês descrita abaixo (Realizado/Previsto por mês, Total
 //    do ano, anos seguintes).
-//  · 'consolidado' — ano a ano: "«anoAnterior» (ano)" / "YTD «aa»" (do ano anterior,
-//    MESMA janela jan..mês-corrente do ano exibido) / "YTD «aa»" (do ano exibido,
-//    realizado) / "Δ% aavaa" / "PREV «aa»" (= total − YTD) / "VENCIDOS" /
-//    "TOTAL «AAAA»" + anos seguintes (SEMPRE visíveis, sem toggle — ver
-//    `TabelaConsolidada`/`LinhaConsolidadoTr` mais abaixo). Vem de `consolidado`
-//    (prop da página — `null` quando a RPC do ano anterior falhou; a pill fica
-//    `disabled` e a visão fica inalcançável PELA UI, mas o componente TAMBÉM trata
-//    defensivamente: `visaoEfetiva` — nunca `visao` cru — cai para 'mensal' sozinho
-//    se `consolidado` for `null`, mesmo que o usuário já estivesse na visão
-//    Consolidado antes de trocar de ano). O toggle de `totalModo` CONTINUA ativo
-//    nesta visão: não muda o VALOR de nenhuma coluna (todas são fórmulas fixas — ver
-//    a tabela de colunas na delegação), só a COR (âmbar/normal) da célula
-//    "TOTAL «AAAA»", pelo MESMO racional do Refino 10 abaixo. Os toggles de
-//    Previsto/anos-seguintes da visão Mensal não existem aqui — colunas fixas.
+//  · 'consolidado' — ano a ano, com SELEÇÃO MÚLTIPLA de anos (rodada 3): na visão
+//    Consolidado as pills de ano deixam de navegar e viram CAIXAS DE SELEÇÃO
+//    (`role="checkbox"`), cada ano marcado acrescentando o seu grupo de colunas.
+//    Estado de UI puro (`anosSelecionados`), 100% client-side: TODOS os anos da janela
+//    navegável já vieram no MESMO payload (`consolidadoAnos`, prop da página), então
+//    marcar/desmarcar NUNCA vai ao servidor — nada de `router.push` nesta visão.
+//    Default = os DOIS anos mais recentes disponíveis (reproduz o comparativo
+//    anterior); mínimo de 1 (desmarcar o último é no-op, a pill fica `aria-disabled`).
+//    ANO DE REFERÊNCIA = o MAIOR marcado; é ele que ganha o bloco de detalhe à direita.
+//    Sendo y1<…<yn os marcados, as colunas saem nesta ordem: para cada yi (i<n)
+//    "«yi»" (ano cheio) / "YTD «aa»" / "Δ% «aa»·«aa+1»"; depois "YTD «yn»" e, SÓ se yn
+//    for o ano CORRENTE, "PREV «yn»" (= total − YTD) e "VENCIDOS"; então "TOTAL «yn»"
+//    e, ainda só se yn é corrente, as colunas de anos seguintes atrás do MESMO toggle
+//    «»» da visão Mensal. Num ano FECHADO não há previsto: `total − ytd` ali é
+//    realizado de ago..dez, não projeção — rotulá-lo "PREV" seria mentira (por isso o
+//    flag `corrente` por ano vem do payload, não é inferido na UI). `totalModo` NÃO
+//    participa desta visão (as pills ficam ocultas): a cor âmbar do "TOTAL «yn»"
+//    depende de o ano de referência ser o corrente (aí o total contém projeção), não
+//    de um toggle escondido. `consolidadoAnos` vazio (todas as RPCs falharam) = pill
+//    `disabled` + `visaoEfetiva` cai para 'mensal' sozinho.
 //
 // TRÊS RELAÇÕES (`dados.relacao`) — as colunas mudam de forma:
 //  · 'corrente' — mês corrente HÍBRIDO: meses 1..mes_corrente são REALIZADO (o do mês
 //    corrente rotulado "«Mês»·R" SÓ quando o modo 'tudo' está ativo — Refino 12), +
 //    1 coluna extra "«Mês»·P" (= `prev_corrente`, fundo âmbar, corte à esquerda, essa
-//    coluna também só existe no modo 'tudo' — Refino 12), + meses
-//    mes_corrente+1..12 PREVISTO. 13 colunas no modo 'tudo', 12 no modo 'realizado'.
-//    O previsto (da coluna ·P — ou do 1º mês futuro, sem ela — até Dez) é RECOLHÍVEL
-//    (toggle no cabeçalho, soma numa única coluna) — só nesta relação.
-//  · 'fechado' — ano fechado: 12 colunas, tudo REALIZADO, sem corte/âmbar.
-//  · 'futuro'  — ano ainda não iniciado: 12 colunas, tudo PREVISTO (âmbar), sem corte.
-// `idxPrevisto`/`corteIdx` concentram essa diferença por ÍNDICE de coluna — o índice
-// NÃO muda entre os modos 'tudo'/'realizado' (só o CONTEÚDO do array de valores muda,
-// ver `construirValores`) — o resto (CelulaValor, cabeçalho da 2ª linha) é um ÚNICO
-// trecho genérico para as 3 relações.
+//    coluna também só existe no modo 'tudo'), + meses mes_corrente+1..12 PREVISTO.
+//    13 colunas no modo 'tudo'; no modo 'realizado' só os mes_corrente meses já
+//    realizados (Refino 5). O previsto (da coluna ·P até Dez) é RECOLHÍVEL no modo
+//    'tudo' (toggle no cabeçalho, soma numa única coluna) — só nesta relação.
+//  · 'fechado' — ano fechado: 12 colunas, tudo REALIZADO, sem corte/âmbar (os dois
+//    modos de "Total do ano" mostram exatamente as mesmas colunas).
+//  · 'futuro'  — ano ainda não iniciado: 12 colunas, tudo PREVISTO (âmbar), sem corte
+//    (no modo 'realizado' não sobra coluna mensal alguma — nada aconteceu ainda).
+// `idxPrevisto`/`corteIdx`/`modoPrevisto` concentram essa diferença por ÍNDICE de
+// coluna — o índice do corte NÃO muda entre os modos (só o RECORTE do array de valores
+// muda, ver `construirValores`/`colunasVisiveis`) — o resto (CelulaValor, cabeçalho da
+// 2ª linha) é um ÚNICO trecho genérico para as 3 relações.
 //
-// "TOTAL DO ANO" TEM MODO (`totalModo`, pills na toolbar, default 'tudo'):
+// "TOTAL DO ANO" TEM MODO (`totalModo`, pills na toolbar, default 'tudo') — na visão
+// Mensal ele governa a TABELA INTEIRA, não só a coluna do total:
 //  · 'tudo' — o `total` do PAYLOAD (Σ meses + prev_corrente, como a RPC entrega —
 //    comportamento original). A célula ganha fundo ÂMBAR (Refino 10 — reaproveita o
 //    MESMO mapa `BG_PREVISTO` das colunas de previsto): reforça visualmente que esse
 //    número INCLUI projeção, não só o que já aconteceu. Vale para blocos/categorias
 //    E bandeja (a bandeja já era sempre âmbar de base — nada muda nela aqui).
-//  · 'realizado' — recomputa (`totalDoAno`) só com o que já aconteceu — em
-//    'corrente' EXCLUI `prev_corrente` e os meses futuros — E remove a COLUNA
-//    "«Mês»·P" inteira do mês corrente (cabeçalho, células E bandeja — Refino 12,
-//    item 6 do Yan): sem a coluna extra, o mês corrente mostra só o que de fato
-//    entrou/saiu até a data-base (o próprio `meses[mesCorrente-1]`), sem a projeção
-//    do resto do mês. As colunas dos meses FUTUROS continuam (têm o próprio toggle
-//    de recolher). Fundo da célula Total do ano volta ao normal da linha.
-// NÃO afeta as colunas de anos seguintes (são previsto puro, ver abaixo) nem os
-// VALORES da visão Consolidado (fórmulas fixas, ver acima — só a cor da célula
-// "TOTAL «AAAA»" reage a `totalModo` lá também).
+//  · 'realizado' — a visão mostra SÓ MESES REALIZADOS (jan..mês corrente) + Total do
+//    ano (rodada 3, Refino 5 do Yan): some a coluna "«Mês»·P" do mês corrente, somem
+//    os meses FUTUROS (âmbar), some o grupo "Previsto" do cabeçalho com o seu toggle
+//    ««», e somem as colunas de ANOS SEGUINTES com o toggle «»». O total é recomputado
+//    (`totalDoAno`) só com o que já aconteceu, e a célula volta ao fundo normal da
+//    linha. Antes desta rodada o modo escondia apenas a coluna ·P — o previsto dos
+//    meses futuros continuava à vista, o que contradizia o rótulo do próprio modo.
+//    Em ano 'fechado' os dois modos coincidem (tudo é realizado, nada some).
+// Na visão Consolidado o modo NÃO existe (pills ocultas): lá realizado (YTD),
+// previsto (PREV) e soma (TOTAL) já são COLUNAS separadas — ver acima.
 //
 // COLUNAS DE ANOS SEGUINTES (`anosSeguintes`, prop da página — 0 a 2 itens, ano+1/
 // ano+2; item que a RPC não conseguiu buscar é simplesmente omitido pela página): na
 // visão Mensal, um toggle no cabeçalho "Total do ano" (`anosAbertos`, default false —
-// a seta agora ALINHADA com a do toggle de Previsto, Refino 9: a `th` ganha
-// `relative`, o botão vira `absolute right-3.5 top-0 h-[27px]` — a faixa exata da 1ª
-// linha —, o texto "Total do ano" continua embaixo, `align-bottom`, como sempre)
-// abre uma coluna por item, DEPOIS do Total do ano, com o fundo/cor de PREVISTO do
-// tipo da linha (são projeção pura, nunca realizado). A chave que casa linha↔total
-// (`chaveLinha`, ex-`chaveAnoSeguinte` — generalizada nesta rodada porque a visão
-// Consolidado usa a MESMA convenção para casar com `consolidado.porLinha`) é:
-// `b:<chave>` (bloco/sub/tot) ou `c:<categoria_id>` (categoria/bandeja). O toggle só
-// aparece quando `anosSeguintes.length > 0`. Na visão Consolidado essas colunas
-// SEMPRE aparecem, sem toggle (ver acima).
+// a seta ALINHADA com a do toggle de Previsto, Refino 9: a `th` ganha `relative`, o
+// botão vira `absolute right-3.5 top-0 h-[27px]` — a faixa exata da 1ª linha —, o
+// texto "Total do ano" continua embaixo, `align-bottom`, como sempre; a seta é ÂMBAR
+// como a do Previsto — rodada 3/Refino 1: as duas revelam projeção, então falam a
+// mesma língua de cor) abre uma coluna por item, DEPOIS do Total do ano, com o
+// fundo/cor de PREVISTO do tipo da linha (são projeção pura, nunca realizado). A chave
+// que casa linha↔total (`chaveLinha`, ex-`chaveAnoSeguinte` — generalizada porque a
+// visão Consolidado usa a MESMA convenção para casar com `consolidadoAnos[].porLinha`)
+// é: `b:<chave>` (bloco/sub/tot) ou `c:<categoria_id>` (categoria/bandeja). O toggle
+// só aparece quando há item a mostrar — no modo 'realizado' da Mensal não há (ver
+// acima), e na Consolidado só quando o ano de referência é o corrente.
 //
-// SCROLL ATÉ AS COLUNAS RECÉM-ABERTAS (Refino 11): ao abrir o Previsto
-// (`previstoAberto` false→true) ou os anos seguintes (`anosAbertos` false→true), a
-// tabela rola horizontalmente até a 1ª coluna revelada (hook `useScrollAoAbrir`,
-// `scrollIntoView({ inline: 'start', block: 'nearest' })` — `block: 'nearest'` é
+// SCROLL AO ABRIR **E AO FECHAR** (Refino 11, ampliado na rodada 3): as duas
+// transições de `previstoAberto`/`anosAbertos` rolam a tabela na horizontal (hook
+// `useScrollAoAlternar`). ABRINDO, vai até a 1ª coluna revelada
+// (`scrollIntoView({ inline:'start', block:'nearest' })` — `block:'nearest'` é
 // OBRIGATÓRIO, senão o scroll VERTICAL da página salta junto arrastado pelo
-// horizontal). Só dispara na transição REAL false→true: o hook compara contra o
-// valor ANTERIOR guardado numa ref (não um flag "primeira renderização"), o que o
-// deixa robusto ao duplo-invoke de efeitos do StrictMode em dev (que rodaria o
-// efeito 2x já no mount) — sem essa robustez, `previstoAberto` nascendo `true` por
-// padrão causaria um scroll indesejado ao carregar a página. Respeita
-// `prefers-reduced-motion`. Efeito de DOM puro (nunca `setState` dentro do efeito) —
-// permitido pelo ruleset do React Compiler.
+// horizontal). FECHANDO, o destino é por grupo: Previsto → INÍCIO (recolher o previsto
+// é "quero ver o ano desde janeiro"); anos seguintes → FIM (o "Total do ano" volta a
+// ser a última coluna e é onde o olho estava). Só dispara em transição REAL: o hook
+// compara contra o valor ANTERIOR guardado numa ref (não um flag "primeira
+// renderização"), o que o deixa robusto ao duplo-invoke de efeitos do StrictMode em
+// dev — sem isso, `previstoAberto` nascendo `true` causaria um scroll no mount.
+// Respeita `prefers-reduced-motion`. Efeito de DOM puro (nunca `setState` dentro do
+// efeito) — permitido pelo ruleset do React Compiler.
 //
 // FAIL-SAFE: `dados === null` (RPC falhou ou o shape divergiu — `parseRpc` já logou
 // no servidor) renderiza o card e a toolbar de ANO — que CONTINUA funcional, trocar
@@ -111,12 +123,20 @@
 // rótulo específico na 2ª) — por isso a régua/sombra nelas vem do MESMO
 // `bordaBaseHeader` aplicado à 2ª linha, sem tratamento especial.
 //
-// ANO por URL: as pills vivem aqui e navegam via `router.push` (preserva os demais
-// params da URL, ex.: o período da Composição), com `startTransition` — o indicador
-// de carregamento é a opacidade sutil na CAIXA da tabela (`isPending`), não nas
-// pills (padrão v4.39). `visao` (Mensal/Consolidado) é estado de UI puro (NÃO vai
-// pra URL) — trocar de visão não recarrega nada: os dois conjuntos de colunas vêm
-// do MESMO lote de props que a página já buscou.
+// ANO por URL **só na visão Mensal**: ali as pills navegam via `router.push`
+// (preserva os demais params da URL, ex.: o período da Composição), com
+// `startTransition` — o indicador de carregamento é a opacidade sutil na CAIXA da
+// tabela (`isPending`), não nas pills (padrão v4.39). Na visão Consolidado as MESMAS
+// pills viram caixas de seleção múltipla e NÃO navegam (ver acima). `visao` é estado
+// de UI puro (NÃO vai pra URL) — trocar de visão não recarrega nada: os dois
+// conjuntos de colunas vêm do MESMO lote de props que a página já buscou.
+//
+// TOOLBAR EM DUAS LINHAS, tudo à esquerda (rodada 3/Refino 2): em cima as pills de
+// VISÃO (Mensal|Consolidado) — com "Expandir tudo"/"Recolher tudo" à direita, na mesma
+// faixa —, embaixo as pills de ANO, um divisor fino e as pills de "Total do ano"
+// (Realizado|Realizado + previsto, só na Mensal). Os rótulos textuais "Visão:" e
+// "Total do ano:" SAÍRAM; para a acessibilidade não piorar com o enxuga, CADA pill
+// carrega um `title` dizendo o que faz.
 
 import { useEffect, useRef, useState, useTransition, type ReactNode, type RefObject } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
@@ -164,16 +184,23 @@ function construirValores(
   return meses
 }
 
-/** Soma as colunas a partir de `idxPrevisto` numa ÚNICA coluna agregada quando
- *  `colapsar` é true (só 'corrente' com o previsto recolhido); nos demais casos
- *  devolve os valores como estão. O índice do corte não muda entre os dois estados —
- *  a coluna agregada ocupa o MESMO índice — então `previsto`/`corte` (calculados por
- *  índice em `LinhaDreTr`/`LinhaBandejaTr`) não precisam de ramo extra. Guarda
- *  `idxPrevisto >= valores.length`: quando o mês corrente é Dezembro E a coluna ·P
- *  foi removida (Refino 12), não sobra NENHUM mês futuro para colapsar — sem essa
- *  guarda, `soma([])` (=0) criaria uma coluna fantasma a mais. */
-function colunasVisiveis(valores: number[], colapsar: boolean, idxPrevisto: number): number[] {
-  if (!colapsar || idxPrevisto >= valores.length) return valores
+/** Como as colunas de PREVISTO da visão Mensal aparecem:
+ *  · 'aberto'    — uma coluna por mês (comportamento padrão);
+ *  · 'colapsado' — tudo a partir de `idxPrevisto` somado numa ÚNICA coluna (toggle ««»);
+ *  · 'oculto'    — nenhuma coluna de previsto (modo 'realizado', rodada 3/Refino 5). */
+type ModoPrevisto = 'aberto' | 'colapsado' | 'oculto'
+
+/** Recorta/soma as colunas conforme o `ModoPrevisto`. Em 'colapsado' o índice do corte
+ *  não muda — a coluna agregada ocupa o MESMO índice — então `previsto`/`corte`
+ *  (calculados por índice em `LinhaDreTr`/`LinhaBandejaTr`) não precisam de ramo extra.
+ *  Em 'oculto' corta fora tudo a partir de `idxPrevisto`: em 'fechado' o índice é
+ *  +Infinity (nada é cortado — ano fechado é 100% realizado), em 'futuro' é 0 (não
+ *  sobra coluna nenhuma: nada aconteceu ainda). Guarda `idxPrevisto >= valores.length`
+ *  em 'colapsado': quando não sobra NENHUM mês futuro, `soma([])` (=0) criaria uma
+ *  coluna fantasma a mais. */
+function colunasVisiveis(valores: number[], modo: ModoPrevisto, idxPrevisto: number): number[] {
+  if (modo === 'oculto') return valores.slice(0, idxPrevisto)
+  if (modo === 'aberto' || idxPrevisto >= valores.length) return valores
   return [...valores.slice(0, idxPrevisto), soma(valores.slice(idxPrevisto))]
 }
 
@@ -189,14 +216,14 @@ function labelsCorrente(mesCorrente: number, incluirPrevCorrente: boolean): stri
   return [...MESES.slice(0, mesCorrente - 1), `${atual}·R`, `${atual}·P`, ...MESES.slice(mesCorrente)]
 }
 
-/** Mesmo colapso de `colunasVisiveis`, para os RÓTULOS (2ª linha do cabeçalho). O
- *  rótulo da coluna agregada reaproveita o do PRIMEIRO índice previsto
- *  (`labels[idxPrevisto]`) — "«Mês»·P" quando a coluna ·P existe (totalModo 'tudo'),
- *  "«1º mês futuro»" quando ela foi removida (totalModo 'realizado', Refino 12) —
- *  sem precisar saber qual dos dois casos é: o rótulo de origem já carrega a
- *  diferença. Mesma guarda de `idxPrevisto >= labels.length` de `colunasVisiveis`. */
-function rotulosVisiveis(labels: string[], colapsar: boolean, idxPrevisto: number): string[] {
-  if (!colapsar || idxPrevisto >= labels.length) return labels
+/** Mesmo recorte de `colunasVisiveis`, para os RÓTULOS (2ª linha do cabeçalho) — os
+ *  dois PRECISAM andar juntos, senão rótulo e valor escorregam de coluna. O rótulo da
+ *  coluna agregada ('colapsado') reaproveita o do PRIMEIRO índice previsto
+ *  (`labels[idxPrevisto]`) — "«Mês»·P" quando a coluna ·P existe — sem precisar saber
+ *  qual caso é: o rótulo de origem já carrega a diferença. */
+function rotulosVisiveis(labels: string[], modo: ModoPrevisto, idxPrevisto: number): string[] {
+  if (modo === 'oculto') return labels.slice(0, idxPrevisto)
+  if (modo === 'aberto' || idxPrevisto >= labels.length) return labels
   return [...labels.slice(0, idxPrevisto), `${labels[idxPrevisto]}–Dez`]
 }
 
@@ -208,29 +235,98 @@ interface AnoSeguinteDados {
   totais: Record<string, number>
 }
 
-/** Um par (ano cheio, YTD na mesma janela do ano exibido) do ANO ANTERIOR, por linha
- *  — ver `TabelaDreProps.consolidado`. */
-interface ConsolidadoLinha {
+/** Os três números que a visão Consolidado precisa de UMA linha em UM ano — já
+ *  resolvidos pela página (o `ytd` sai da MESMA janela `mesJanela` em todos os anos,
+ *  que é o que torna a comparação honesta). */
+interface RegistroAnoLinha {
+  total: number
+  ytd:   number
+  venc:  number
+}
+
+/** Um ano da visão Consolidado — um item por ano da janela navegável que a página
+ *  conseguiu carregar (ano cuja RPC falhou simplesmente não vem, e a pill dele fica
+ *  desabilitada). `porLinha` é indexado pela MESMA chave que `chaveLinha` deriva de
+ *  cada linha (idêntica convenção de `anosSeguintes[].totais`) — casar por CHAVE, e
+ *  não por posição, é o que impede a coluna de escorregar de linha quando a estrutura
+ *  muda de um ano para o outro. */
+interface ConsolidadoAno {
   ano: number
-  ytd: number
+  /** true = ano CORRENTE (tem previsto em aberto). Vem do payload, NUNCA é inferido
+   *  aqui: num ano fechado `total − ytd` é realizado de ago..dez, não projeção. */
+  corrente: boolean
+  porLinha: Record<string, RegistroAnoLinha>
 }
 
-/** Base da visão Consolidado (Refino 13) — prop injetada pela página. `porLinha` é
- *  indexado pela MESMA chave que `chaveLinha` deriva de cada linha (idêntica
- *  convenção de `anosSeguintes[].totais`). `null` (prop) = o ano anterior não pôde
- *  ser buscado — a visão fica inalcançável (pill desabilitada) e o componente cai
- *  para 'mensal' sozinho (`visaoEfetiva`). */
-interface ConsolidadoDados {
-  anoAnterior: number
-  porLinha: Record<string, ConsolidadoLinha>
+/** Campo de `RegistroAnoLinha` que uma coluna exibe. 'prev' é derivado
+ *  (`total − ytd`) e só é oferecido quando o ano é o CORRENTE — ver `ConsolidadoAno`. */
+type CampoAno = 'total' | 'ytd' | 'venc' | 'prev'
+
+/** Em qual grupo da 1ª linha do cabeçalho a coluna cai (ver `TabelaConsolidada`). */
+type GrupoCons = 'comp' | 'prev' | 'total'
+
+/** Descritor de UMA coluna da visão Consolidado. O conjunto de colunas é DINÂMICO (um
+ *  grupo por ano marcado), então cabeçalho e células são gerados do MESMO array —
+ *  rótulo e valor não têm como divergir por edição de um lado só. */
+type ColunaCons =
+  | {
+      k: 'valor'
+      id: string
+      rotulo: string
+      /** De qual ano marcado o valor sai. */
+      ano: number
+      campo: CampoAno
+      /** Fundo âmbar (zona de projeção/pendência). */
+      previsto: boolean
+      /** Régua grossa de 2px — fronteira realizado → previsto. */
+      corte: boolean
+      /** Régua fina + peso do "Total". */
+      totalAno: boolean
+      grupo: GrupoCons
+      classe: string
+      titulo: string
+    }
+  | {
+      k: 'delta'
+      id: string
+      rotulo: string
+      /** Δ% do YTD de `de` para o YTD de `para`. */
+      de: number
+      para: number
+      grupo: GrupoCons
+      classe: string
+      titulo: string
+    }
+
+/** Valor de uma coluna para uma linha. `undefined` no mapa = a linha NÃO EXISTE naquele
+ *  ano (a estrutura mudou entre os anos) → devolve `null` = AUSÊNCIA, que a célula
+ *  mostra como travessão. Nunca 0: zero é informação (não houve movimento), ausência é
+ *  outra coisa (a conta nem existia) — inventar 0 aqui produziria um Δ% falso. */
+function valorCons(reg: RegistroAnoLinha | undefined, campo: CampoAno): number | null {
+  if (reg === undefined) return null
+  if (campo === 'prev') return reg.total - reg.ytd
+  return reg[campo]
 }
 
-/** Chave de casamento com `anosSeguintes[].totais` E `consolidado.porLinha` — MESMA
- *  convenção que a página usa para montar os dois mapas (ver page.tsx): bloco/sub/
- *  totalizador → `b:<chave>`; categoria → `c:<categoria_id>`. `null` quando a linha
- *  não tem identificador (não deveria acontecer na prática — fail-safe: a coluna
- *  mostra 0). Generalizada nesta rodada (ex-`chaveAnoSeguinte`) porque agora serve
- *  a DOIS consumidores, não só as colunas de ano seguinte. */
+/** Δ% (em pontos percentuais) do YTD de A para o de B. `null` → travessão quando falta
+ *  um dos lados (ausência) ou quando o denominador é ZERO: variação sobre zero é
+ *  indefinida, nunca Infinity/NaN na tela. O teste de zero usa o MESMO epsilon do zero
+ *  contábil (`fmtContabil`, 0,005) — uma célula que se EXIBE como travessão não pode
+ *  gerar um "+9.999.900,0%" a partir de resíduo de ponto flutuante.
+ *  Denominador em MÓDULO (decisão firmada): sair de prejuízo para lucro tem de ler como
+ *  MELHORA (+118,2%), não como piora. */
+function deltaYtd(a: number | null, b: number | null): number | null {
+  if (a === null || b === null) return null
+  if (Math.abs(a) < 0.005) return null
+  return ((b - a) / Math.abs(a)) * 100
+}
+
+/** Chave de casamento com `anosSeguintes[].totais` E `consolidadoAnos[].porLinha` —
+ *  MESMA convenção que a página usa para montar os dois mapas (ver page.tsx): bloco/
+ *  sub/totalizador → `b:<chave>`; categoria → `c:<categoria_id>`. `null` quando a
+ *  linha não tem identificador (não deveria acontecer na prática — fail-safe: a coluna
+ *  cai em AUSÊNCIA, travessão). Generalizada (ex-`chaveAnoSeguinte`) porque serve a
+ *  DOIS consumidores, não só as colunas de ano seguinte. */
 function chaveLinha(l: DreLinha): string | null {
   if (l.t === 'cat') return l.categoria_id != null ? `c:${l.categoria_id}` : null
   return l.chave != null ? `b:${l.chave}` : null
@@ -245,8 +341,9 @@ function chaveLinha(l: DreLinha): string | null {
  *  0 (nada aconteceu ainda). Vale para blocos/categorias E bandeja (mesma forma). As
  *  colunas de ANOS SEGUINTES (Refino 7) NÃO passam por aqui — são previsto por
  *  natureza (projeção pura, a mesma base independente do modo escolhido nesta
- *  coluna). A visão Consolidado (Refino 13) reaproveita esta função FORÇANDO
- *  `totalModo:'realizado'` para o YTD do ano exibido — ver `LinhaConsolidadoTr`. */
+ *  coluna). A visão Consolidado TAMBÉM não passa por aqui: lá o YTD de CADA ano
+ *  marcado vem pronto do payload (`porLinha[k].ytd`, todos na mesma janela) — inclusive
+ *  o do ano de referência, que pode nem ser o ano cujas `linhas` estão em tela. */
 function totalDoAno(
   meses: number[],
   total: number,
@@ -327,7 +424,10 @@ function estiloLinha(t: TipoLinha): EstiloLinha {
 // ── Módulo: componentes de célula (fora do render — nunca remontam a cada render) ──
 
 interface CelulaValorProps {
-  valor: number
+  /** `null` = AUSÊNCIA (a linha não existe naquele ano) — travessão neutro, como o
+   *  zero. Distinguir os dois no MODELO importa mesmo rendendo o mesmo pixel: é o que
+   *  impede um Δ% calculado sobre um zero inventado. */
+  valor: number | null
   tipo: TipoLinha
   previsto: boolean
   corte: boolean
@@ -372,8 +472,8 @@ const BG_PREVISTO: Record<TipoLinha, string> = {
  *  `BG_PREVISTO` logo acima.
  *  (Nada de escrever `BG_PREV_` + asterisco + barra aqui: a sequência fecharia ESTE
  *  comentário no meio — a mesma armadilha que mordeu o CSS na v4.26.) */
-function corPorSinal(tipo: TipoLinha, valor: number): string {
-  const zero = Math.abs(valor) < 0.005
+function corPorSinal(tipo: TipoLinha, valor: number | null): string {
+  const zero = valor === null || Math.abs(valor) < 0.005
   if (zero) return 'text-text-subtle'
   const negativo = valor < 0
   const escuro = tipo === 'tot'
@@ -391,9 +491,9 @@ function corPorSinal(tipo: TipoLinha, valor: number): string {
  *  travessão puro alinhado à direita, SEM "R$" (um prefixo em ~2 mil células vazias seria
  *  só ruído). A cor (sinal/neutro) fica no <td> pai, herdada — só o "R$" força o tom
  *  neutro sempre, qualquer que seja o sinal do valor. */
-function ConteudoContabil({ valor }: { valor: number }) {
-  const zero = Math.abs(valor) < 0.005
-  if (zero) return <span className="block text-right">{fmtContabil(valor)}</span>
+function ConteudoContabil({ valor }: { valor: number | null }) {
+  const zero = valor === null || Math.abs(valor) < 0.005
+  if (zero) return <span className="block text-right">{fmtContabil(0)}</span>
   const negativo = valor < 0
   return (
     <span className="flex justify-between gap-2">
@@ -419,7 +519,8 @@ function CelulaValor({ valor, tipo, previsto, corte, totalAno = false, peso, bg,
 }
 
 interface CelulaAnoSeguinteProps {
-  valor: number
+  /** `null` = ausência (ver `CelulaValorProps.valor`). */
+  valor: number | null
   tipo: TipoLinha
   peso: string
   borda: string
@@ -548,7 +649,7 @@ interface LinhaDreTrProps {
   mesCorrente: number | null
   idxPrevisto: number
   corteIdx: number | null
-  colapsar: boolean
+  modoPrevisto: ModoPrevisto
   expansivel: boolean
   aberto: boolean
   onToggle?: () => void
@@ -557,22 +658,22 @@ interface LinhaDreTrProps {
   anosAbertos: boolean
 }
 
-/** Uma linha completa da tabela (blocoH/sub/cat/tot): Conta + meses (ou a versão recolhida
- *  do previsto) + Total do ano (por `totalModo`, Refino 8 — com fundo âmbar quando
- *  'tudo', Refino 10) + colunas de anos seguintes (Refino 7, quando `anosAbertos`). Em
- *  modo 'tudo', o Total do ano é sempre o `total` do PAYLOAD (a RPC já soma Σ meses +
- *  prev_corrente) — nunca recomputado aqui; em modo 'realizado', `totalDoAno` refaz a
- *  soma só com o que já aconteceu. O recolhimento (`colapsar`) é só de EXIBIÇÃO das
- *  colunas mensais; `incluirPrevCorrente` (derivado de `totalModo`, Refino 12) decide se
- *  a coluna "«Mês»·P" existe. */
+/** Uma linha completa da tabela (blocoH/sub/cat/tot): Conta + meses (ou a versão
+ *  recolhida/oculta do previsto) + Total do ano (por `totalModo`, Refino 8 — com fundo
+ *  âmbar quando 'tudo', Refino 10) + colunas de anos seguintes (Refino 7, quando
+ *  `anosAbertos`). Em modo 'tudo', o Total do ano é sempre o `total` do PAYLOAD (a RPC
+ *  já soma Σ meses + prev_corrente) — nunca recomputado aqui; em modo 'realizado',
+ *  `totalDoAno` refaz a soma só com o que já aconteceu. `modoPrevisto` é só de EXIBIÇÃO
+ *  das colunas mensais; `incluirPrevCorrente` (derivado de `totalModo`) decide se a
+ *  coluna "«Mês»·P" existe. */
 function LinhaDreTr({
-  linha, relacao, mesCorrente, idxPrevisto, corteIdx, colapsar, expansivel, aberto, onToggle,
+  linha, relacao, mesCorrente, idxPrevisto, corteIdx, modoPrevisto, expansivel, aberto, onToggle,
   totalModo, anosSeguintes, anosAbertos,
 }: LinhaDreTrProps) {
   const estilo = estiloLinha(linha.t)
   const incluirPrevCorrente = totalModo === 'tudo'
   const valoresBase = construirValores(linha.meses, linha.prev_corrente, relacao, mesCorrente, incluirPrevCorrente)
-  const valores = colunasVisiveis(valoresBase, colapsar, idxPrevisto)
+  const valores = colunasVisiveis(valoresBase, modoPrevisto, idxPrevisto)
   const chaveAno = chaveLinha(linha)
   return (
     <tr className="group">
@@ -615,7 +716,7 @@ function LinhaDreTr({
       {anosAbertos && anosSeguintes.map((a, idx) => (
         <CelulaAnoSeguinte
           key={`ano-${a.ano}`}
-          valor={chaveAno != null ? (a.totais[chaveAno] ?? 0) : 0}
+          valor={chaveAno != null ? (a.totais[chaveAno] ?? null) : null}
           tipo={linha.t}
           peso={estilo.peso}
           borda={estilo.borda}
@@ -634,8 +735,8 @@ function LinhaDreTr({
  *  coluna de "ano seguinte" (Refino 7) — ou a 1ª coluna após o TOTAL, na visão
  *  Consolidado — do Total do ano/TOTAL «AAAA»: mesmo tom de `totalAno`, sem o
  *  `font-medium`. */
-function CelulaValorBandeja({ valor, corte, totalAno = false, divisor = false }: { valor: number; corte: boolean; totalAno?: boolean; divisor?: boolean }) {
-  const zero = Math.abs(valor) < 0.005
+function CelulaValorBandeja({ valor, corte, totalAno = false, divisor = false }: { valor: number | null; corte: boolean; totalAno?: boolean; divisor?: boolean }) {
+  const zero = valor === null || Math.abs(valor) < 0.005
   const cor = zero ? 'text-text-subtle' : 'text-text-secondary'
   const bordaCorte = corte ? 'border-l-2 border-l-wt-border-strong' : ''
   const bordaTotal = totalAno ? 'border-l border-l-wt-border-strong font-medium' : ''
@@ -666,7 +767,7 @@ interface LinhaBandejaTrProps {
   mesCorrente: number | null
   idxPrevisto: number
   corteIdx: number | null
-  colapsar: boolean
+  modoPrevisto: ModoPrevisto
   totalModo: TotalModo
   anosSeguintes: AnoSeguinteDados[]
   anosAbertos: boolean
@@ -679,11 +780,11 @@ interface LinhaBandejaTrProps {
  *  outra linha. O `title` aponta a origem real no Monde (o dado É real desde a M4 —
  *  nada de "valores ilustrativos"). */
 function LinhaBandejaTr({
-  linha, relacao, mesCorrente, idxPrevisto, corteIdx, colapsar, totalModo, anosSeguintes, anosAbertos,
+  linha, relacao, mesCorrente, idxPrevisto, corteIdx, modoPrevisto, totalModo, anosSeguintes, anosAbertos,
 }: LinhaBandejaTrProps) {
   const incluirPrevCorrente = totalModo === 'tudo'
   const valoresBase = construirValores(linha.meses, linha.prev_corrente, relacao, mesCorrente, incluirPrevCorrente)
-  const valores = colunasVisiveis(valoresBase, colapsar, idxPrevisto)
+  const valores = colunasVisiveis(valoresBase, modoPrevisto, idxPrevisto)
   const chaveAno = `c:${linha.categoria_id}`
   return (
     <tr className="group">
@@ -707,7 +808,7 @@ function LinhaBandejaTr({
       {anosAbertos && anosSeguintes.map((a, idx) => (
         <CelulaValorBandeja
           key={`ano-${a.ano}`}
-          valor={a.totais[chaveAno] ?? 0}
+          valor={a.totais[chaveAno] ?? null}
           corte={false}
           divisor={idx === 0}
         />
@@ -716,39 +817,32 @@ function LinhaBandejaTr({
   )
 }
 
+/** Mapa ano → linhas daquele ano (`porLinha` de `ConsolidadoAno`), montado uma vez no
+ *  componente-raiz e repassado às linhas. */
+type PorAnoCons = Map<number, Record<string, RegistroAnoLinha>>
+
 interface LinhaConsolidadoTrProps {
   linha: DreLinha
-  relacao: Relacao
-  mesCorrente: number | null
-  totalModo: TotalModo
-  consolidado: ConsolidadoDados
+  colunas: ColunaCons[]
+  porAno: PorAnoCons
   anosSeguintes: AnoSeguinteDados[]
   expansivel: boolean
   aberto: boolean
   onToggle?: () => void
 }
 
-/** Uma linha completa da visão CONSOLIDADO (Refino 13) — MESMA Conta/hierarquia/
- *  expandir-recolher de `LinhaDreTr`, colunas ano a ano em vez de mês a mês:
- *  "«anoAnterior» (ano)" / YTD do ano anterior / YTD do ano exibido (SEMPRE
- *  'realizado' — reaproveita `totalDoAno`, independente do `totalModo` escolhido na
- *  toolbar) / Δ% entre os dois YTD / PREV (= total − YTD, ou seja, o que falta
- *  projetar) / VENCIDOS (`linha.venc`, direto do payload) / TOTAL «AAAA»
- *  (`linha.total` cru — a única célula que reage a `totalModo`, só na COR, Refino 10)
- *  / anos seguintes (sempre abertos, sem toggle). PREV e VENCIDOS são âmbar (zona de
- *  projeção/pendência); as 3 primeiras colunas (ano anterior, os 2 YTD) e o Δ% usam o
- *  fundo normal da linha (comparam REALIZADOS, não projeção). */
-function LinhaConsolidadoTr({
-  linha, relacao, mesCorrente, totalModo, consolidado, anosSeguintes, expansivel, aberto, onToggle,
-}: LinhaConsolidadoTrProps) {
+/** Uma linha completa da visão CONSOLIDADO — MESMA Conta/hierarquia/expandir-recolher
+ *  de `LinhaDreTr`, colunas ano a ano em vez de mês a mês. As colunas NÃO são fixas:
+ *  vêm do array `colunas` (um grupo por ano marcado, ver `montarColunasCons`), e cada
+ *  célula lê o seu valor do ANO da própria coluna — nunca de `linha.meses`/`linha.total`
+ *  (que são do ano exibido na URL, que pode não ser nenhum dos marcados). O que a linha
+ *  empresta do payload em tela é só a IDENTIDADE (rótulo, tipo, chave, estrela).
+ *  PREV/VENCIDOS são âmbar (zona de projeção/pendência); comparação, YTDs e Δ% usam o
+ *  fundo normal (comparam REALIZADOS). */
+function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel, aberto, onToggle }: LinhaConsolidadoTrProps) {
   const estilo = estiloLinha(linha.t)
   const chave = chaveLinha(linha)
-  const anterior = chave != null ? consolidado.porLinha[chave] : undefined
-  const anoAnteriorTotal = anterior?.ano ?? 0
-  const ytdAnterior = anterior?.ytd ?? 0
-  const ytdAtual = totalDoAno(linha.meses, linha.total, 'realizado', relacao, mesCorrente)
-  const prev = linha.total - ytdAtual
-  const deltaPct = ytdAnterior === 0 ? null : ((ytdAtual - ytdAnterior) / Math.abs(ytdAnterior)) * 100
+  const reg = (a: number) => (chave === null ? undefined : porAno.get(a)?.[chave])
   const cel = { tipo: linha.t, peso: estilo.peso, bg: estilo.bg, bgHover: estilo.bgHover, borda: estilo.borda }
 
   return (
@@ -765,17 +859,26 @@ function LinhaConsolidadoTr({
         aberto={aberto}
         onToggle={onToggle}
       />
-      <CelulaValor {...cel} valor={anoAnteriorTotal} previsto={false} corte={false} />
-      <CelulaValor {...cel} valor={ytdAnterior} previsto={false} corte={false} />
-      <CelulaValor {...cel} valor={ytdAtual} previsto={false} corte={false} />
-      <CelulaDeltaPct {...cel} pct={deltaPct} />
-      <CelulaValor {...cel} valor={prev} previsto corte />
-      <CelulaValor {...cel} valor={linha.venc} previsto corte={false} />
-      <CelulaValor {...cel} valor={linha.total} previsto={totalModo === 'tudo'} corte={false} totalAno />
+      {colunas.map(c => c.k === 'delta' ? (
+        <CelulaDeltaPct
+          key={c.id}
+          {...cel}
+          pct={deltaYtd(valorCons(reg(c.de), 'ytd'), valorCons(reg(c.para), 'ytd'))}
+        />
+      ) : (
+        <CelulaValor
+          key={c.id}
+          {...cel}
+          valor={valorCons(reg(c.ano), c.campo)}
+          previsto={c.previsto}
+          corte={c.corte}
+          totalAno={c.totalAno}
+        />
+      ))}
       {anosSeguintes.map((a, idx) => (
         <CelulaAnoSeguinte
           key={`cons-ano-${a.ano}`}
-          valor={chave != null ? (a.totais[chave] ?? 0) : 0}
+          valor={chave !== null ? (a.totais[chave] ?? null) : null}
           tipo={linha.t}
           peso={estilo.peso}
           borda={estilo.borda}
@@ -788,22 +891,16 @@ function LinhaConsolidadoTr({
 
 interface LinhaConsolidadoBandejaTrProps {
   linha: DreBandeja
-  relacao: Relacao
-  mesCorrente: number | null
-  consolidado: ConsolidadoDados
+  colunas: ColunaCons[]
+  porAno: PorAnoCons
   anosSeguintes: AnoSeguinteDados[]
 }
 
-/** Linha de bandeja da visão Consolidado — mesmo esquema de `LinhaBandejaTr` (sempre
- *  âmbar, sem cor por sinal), colunas ano a ano. */
-function LinhaConsolidadoBandejaTr({ linha, relacao, mesCorrente, consolidado, anosSeguintes }: LinhaConsolidadoBandejaTrProps) {
+/** Linha de bandeja da visão Consolidado — mesmas colunas de `LinhaConsolidadoTr`, com
+ *  o tratamento de bandeja (sempre âmbar, sem cor por sinal). */
+function LinhaConsolidadoBandejaTr({ linha, colunas, porAno, anosSeguintes }: LinhaConsolidadoBandejaTrProps) {
   const chave = `c:${linha.categoria_id}`
-  const anterior = consolidado.porLinha[chave]
-  const anoAnteriorTotal = anterior?.ano ?? 0
-  const ytdAnterior = anterior?.ytd ?? 0
-  const ytdAtual = totalDoAno(linha.meses, linha.total, 'realizado', relacao, mesCorrente)
-  const prev = linha.total - ytdAtual
-  const deltaPct = ytdAnterior === 0 ? null : ((ytdAtual - ytdAnterior) / Math.abs(ytdAnterior)) * 100
+  const reg = (a: number) => porAno.get(a)?.[chave]
 
   return (
     <tr className="group">
@@ -813,37 +910,85 @@ function LinhaConsolidadoBandejaTr({ linha, relacao, mesCorrente, consolidado, a
       >
         <span className="truncate text-[13px] text-text-secondary">{linha.rotulo}</span>
       </td>
-      <CelulaValorBandeja valor={anoAnteriorTotal} corte={false} />
-      <CelulaValorBandeja valor={ytdAnterior} corte={false} />
-      <CelulaValorBandeja valor={ytdAtual} corte={false} />
-      <CelulaDeltaPctBandeja pct={deltaPct} />
-      <CelulaValorBandeja valor={prev} corte />
-      <CelulaValorBandeja valor={linha.venc} corte={false} />
-      <CelulaValorBandeja valor={linha.total} corte={false} totalAno />
+      {colunas.map(c => c.k === 'delta' ? (
+        <CelulaDeltaPctBandeja key={c.id} pct={deltaYtd(valorCons(reg(c.de), 'ytd'), valorCons(reg(c.para), 'ytd'))} />
+      ) : (
+        <CelulaValorBandeja
+          key={c.id}
+          valor={valorCons(reg(c.ano), c.campo)}
+          corte={c.corte}
+          totalAno={c.totalAno}
+        />
+      ))}
       {anosSeguintes.map((a, idx) => (
-        <CelulaValorBandeja key={`cons-ano-${a.ano}`} valor={a.totais[chave] ?? 0} corte={false} divisor={idx === 0} />
+        <CelulaValorBandeja key={`cons-ano-${a.ano}`} valor={a.totais[chave] ?? null} corte={false} divisor={idx === 0} />
       ))}
     </tr>
   )
 }
 
+interface AnoPillsProps {
+  anosDisponiveis: number[]
+  /** 'unico' = navegação exclusiva por URL (visão Mensal e fail-safe) · 'multi' =
+   *  caixas de seleção CUMULATIVAS (visão Consolidado, rodada 3/Refino 4). */
+  modo: 'unico' | 'multi'
+  /** Ano ativo no modo 'unico'. */
+  ano: number
+  /** Anos marcados no modo 'multi' (a seleção EFETIVA, já filtrada pelo chamador). */
+  selecionados?: Set<number>
+  /** Anos sem base consolidada (a RPC daquele ano falhou) — pill `disabled` no 'multi'. */
+  semBase?: Set<number>
+  /** Navegar (modo 'unico') ou alternar a marcação (modo 'multi') — a regra de "nunca
+   *  vazio" vive no chamador, fonte única; a pill só a REPORTA via `aria-disabled`. */
+  onSelect: (a: number) => void
+}
+
 /** Só as pills — o container/flex fica no chamador, que varia entre a toolbar normal
- *  (aninhado num cluster maior, com o toggle de "Total do ano" ao lado) e o fail-safe
- *  (o único controle da toolbar reduzida). */
-function AnoPills({ ano, anosDisponiveis, onSelect }: { ano: number; anosDisponiveis: number[]; onSelect: (a: number) => void }) {
+ *  (2ª linha, ao lado do toggle de "Total do ano") e o fail-safe (o único controle da
+ *  toolbar reduzida). Duas semânticas na MESMA pill, por visão: na Mensal é navegação
+ *  (um ano por vez, `aria-pressed`); na Consolidado é caixa de seleção (`role="checkbox"`
+ *  + `aria-checked`), em que cada marcado acrescenta um grupo de colunas. Como os
+ *  rótulos textuais saíram da toolbar (Refino 2), o `title` de cada pill é que carrega
+ *  a explicação — inclusive a de por que a última marcada não desmarca. */
+function AnoPills({ anosDisponiveis, modo, ano, selecionados, semBase, onSelect }: AnoPillsProps) {
+  const multi = modo === 'multi'
   return (
     <>
-      {anosDisponiveis.map(a => (
-        <button
-          key={a}
-          type="button"
-          onClick={() => onSelect(a)}
-          className={['foco-neutro', PILL_FILTRO, ano === a ? '' : PILL_FILTRO_INATIVO].join(' ')}
-          style={ano === a ? PILL_FILTRO_ATIVO_STYLE : undefined}
-        >
-          {a}
-        </button>
-      ))}
+      {anosDisponiveis.map(a => {
+        const ativo = multi ? (selecionados?.has(a) ?? false) : ano === a
+        const indisponivel = multi && (semBase?.has(a) ?? false)
+        const ultimoMarcado = multi && ativo && (selecionados?.size ?? 0) <= 1
+        const titulo = indisponivel
+          ? `${a} não pôde ser carregado — recarregue a página para tentar de novo`
+          : multi
+            ? ultimoMarcado
+              ? `${a} — mantenha ao menos um ano marcado`
+              : ativo
+                ? `Desmarcar ${a} da comparação`
+                : `Marcar ${a} — a seleção é cumulativa (um grupo de colunas por ano)`
+            : `Ver o ano ${a}`
+        return (
+          <button
+            key={a}
+            type="button"
+            onClick={() => onSelect(a)}
+            disabled={indisponivel}
+            title={titulo}
+            role={multi ? 'checkbox' : undefined}
+            aria-checked={multi ? ativo : undefined}
+            aria-pressed={multi ? undefined : ativo}
+            aria-disabled={ultimoMarcado || undefined}
+            className={[
+              'foco-neutro', PILL_FILTRO,
+              ativo ? '' : PILL_FILTRO_INATIVO,
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+            ].join(' ')}
+            style={ativo ? PILL_FILTRO_ATIVO_STYLE : undefined}
+          >
+            {a}
+          </button>
+        )
+      })}
     </>
   )
 }
@@ -853,15 +998,88 @@ function anoCurto(a: number): string {
   return String(a).slice(-2)
 }
 
+/** Monta as colunas da visão Consolidado a partir dos anos MARCADOS (ascendente, ao
+ *  menos 1 — vazio devolve vazio). Sendo y1<…<yn:
+ *   · para cada yi com i<n (anos de COMPARAÇÃO): "«yi»" (ano cheio) · "YTD «aa»" ·
+ *     "Δ% «aa»·«aa+1»" (variação do YTD de yi para o do PRÓXIMO marcado — encadeada,
+ *     não todos contra o de referência: é assim que se lê a evolução ano a ano);
+ *   · para yn (REFERÊNCIA): "YTD «aa»", e só se ele for o ano CORRENTE "PREV «aa»"
+ *     (= total − YTD) e "VENCIDOS"; depois "TOTAL «yn»".
+ *  Num ano fechado, `total − ytd` seria realizado de ago..dez — por isso PREV/VENCIDOS
+ *  não existem ali, e o TOTAL fica com o fundo NORMAL (nada de âmbar de projeção). */
+function montarColunasCons(sel: ConsolidadoAno[], janelaTexto: string): ColunaCons[] {
+  if (sel.length === 0) return []
+  const ref = sel[sel.length - 1]
+  const cols: ColunaCons[] = []
+
+  sel.slice(0, -1).forEach((c, i) => {
+    const prox = sel[i + 1]
+    cols.push({
+      k: 'valor', id: `ano-${c.ano}`, rotulo: String(c.ano), ano: c.ano, campo: 'total',
+      previsto: false, corte: false, totalAno: false, grupo: 'comp', classe: 'text-text-secondary',
+      titulo: `${c.ano} — ano inteiro`,
+    })
+    cols.push({
+      k: 'valor', id: `ytd-${c.ano}`, rotulo: `YTD ${anoCurto(c.ano)}`, ano: c.ano, campo: 'ytd',
+      previsto: false, corte: false, totalAno: false, grupo: 'comp', classe: 'text-text-secondary',
+      titulo: `${c.ano} na MESMA janela dos demais anos (${janelaTexto})`,
+    })
+    cols.push({
+      k: 'delta', id: `delta-${c.ano}-${prox.ano}`, rotulo: `Δ% ${anoCurto(c.ano)}·${anoCurto(prox.ano)}`,
+      de: c.ano, para: prox.ano, grupo: 'comp', classe: 'text-text-secondary',
+      titulo: `Variação do YTD de ${c.ano} para ${prox.ano} (mesma janela: ${janelaTexto})`,
+    })
+  })
+
+  cols.push({
+    k: 'valor', id: `ytd-${ref.ano}`, rotulo: `YTD ${anoCurto(ref.ano)}`, ano: ref.ano, campo: 'ytd',
+    previsto: false, corte: false, totalAno: false, grupo: 'comp', classe: 'text-text-secondary',
+    titulo: `${ref.ano} na MESMA janela dos demais anos (${janelaTexto})`,
+  })
+
+  if (ref.corrente) {
+    cols.push({
+      k: 'valor', id: `prev-${ref.ano}`, rotulo: `PREV ${anoCurto(ref.ano)}`, ano: ref.ano, campo: 'prev',
+      previsto: true, corte: true, totalAno: false, grupo: 'prev', classe: 'text-warning-deep',
+      titulo: `Previsto de ${ref.ano} — total do ano menos o já realizado (YTD)`,
+    })
+    cols.push({
+      k: 'valor', id: `venc-${ref.ano}`, rotulo: 'VENCIDOS', ano: ref.ano, campo: 'venc',
+      previsto: true, corte: false, totalAno: false, grupo: 'prev', classe: 'text-warning-deep',
+      titulo: 'Vencido em aberto, ainda não liquidado',
+    })
+  }
+
+  cols.push({
+    k: 'valor', id: `total-${ref.ano}`, rotulo: `TOTAL ${ref.ano}`, ano: ref.ano, campo: 'total',
+    // Âmbar só quando o total CONTÉM projeção (ano corrente). Antes desta rodada a cor
+    // seguia o `totalModo` da toolbar — que nesta visão fica OCULTO, ou seja, um controle
+    // invisível pintando a célula; o ano de referência é o critério honesto.
+    previsto: ref.corrente, corte: false, totalAno: true, grupo: 'total', classe: 'text-text-secondary',
+    titulo: ref.corrente
+      ? `${ref.ano} inteiro — realizado (${janelaTexto}) + previsto do que falta`
+      : `${ref.ano} inteiro — tudo realizado (ano fechado)`,
+  })
+
+  return cols
+}
+
 interface TabelaConsolidadaProps {
   linhas: DreLinha[]
   bandeja: DreBandeja[]
-  relacao: Relacao
-  mesCorrente: number | null
-  totalModo: TotalModo
-  consolidado: ConsolidadoDados
+  /** Colunas já montadas por `montarColunasCons` (cabeçalho e células saem daqui). */
+  colunas: ColunaCons[]
+  porAno: PorAnoCons
+  /** Anos marcados, ascendente — só para o rótulo do grupo de comparação. */
+  anosSel: number[]
+  /** "jan a jul" — a janela do YTD, para os `title` do cabeçalho. */
+  janelaTexto: string
+  /** Já filtrados pelo chamador: vazio quando o ano de referência não é o corrente. */
   anosSeguintes: AnoSeguinteDados[]
-  ano: number
+  anosAbertos: boolean
+  onToggleAnos: () => void
+  refAnoSeguinte: RefObject<HTMLTableCellElement | null>
+  refTabela: RefObject<HTMLTableElement | null>
   abertos: Set<string>
   expansiveis: Set<string>
   toggleAberto: (chave: string) => void
@@ -869,63 +1087,95 @@ interface TabelaConsolidadaProps {
   minWidth: number
 }
 
-/** Tabela completa da visão CONSOLIDADO (Refino 13) — mesma <table> que a Mensal
- *  substitui por inteiro (não é uma variação de props da mesma table: o conjunto de
- *  colunas é outro). Cabeçalho de 2 linhas: 1ª linha agrupa "«anoAnterior» × «ano» ·
- *  realizado e previsto" sobre as 5 primeiras colunas (ano anterior, os 2 YTD, Δ%,
- *  PREV) e "Total" sobre o resto (VENCIDOS, TOTAL «AAAA», anos seguintes); 2ª linha
- *  tem os rótulos de cada coluna. Sem toggles de Previsto/anos-seguintes (fixos,
- *  sempre visíveis) — só a Conta é expansível, igual à visão Mensal. */
+/** Tabela completa da visão CONSOLIDADO — mesma <table> que a Mensal substitui por
+ *  inteiro (não é uma variação de props da mesma table: o conjunto de colunas é outro).
+ *  Cabeçalho de 2 linhas, TRÊS grupos na 1ª — os mesmos três da visão Mensal, para as
+ *  duas falarem a mesma língua: comparação/realizado ("2024 × 2025 × 2026 · realizado",
+ *  sobre os anos marcados + o YTD do de referência), "Previsto" (PREV + VENCIDOS, só
+ *  quando a referência é o ano corrente) e "Total" (TOTAL + anos seguintes, com o
+ *  toggle «»» à direita). A 2ª linha traz o rótulo de cada coluna, vindo do MESMO
+ *  descritor que rende a célula. Só a Conta é expansível, igual à visão Mensal.
+ *  ⚠️ Ver a ARMADILHA do cabeçalho de 2 linhas no topo do arquivo: aqui a única `th`
+ *  com `rowSpan` é a Conta (`ThConta`), que recebe `bordaBaseHeader` DIRETAMENTE. */
 function TabelaConsolidada({
-  linhas, bandeja, relacao, mesCorrente, totalModo, consolidado, anosSeguintes, ano,
-  abertos, expansiveis, toggleAberto, bordaBaseHeader, minWidth,
+  linhas, bandeja, colunas, porAno, anosSel, janelaTexto, anosSeguintes, anosAbertos, onToggleAnos,
+  refAnoSeguinte, refTabela, abertos, expansiveis, toggleAberto, bordaBaseHeader, minWidth,
 }: TabelaConsolidadaProps) {
-  const totalColunas = 1 + 5 + 2 + anosSeguintes.length // Conta + grupo-comparação + (Vencidos+Total) + anos seguintes
+  const anosSegVisiveis = anosAbertos ? anosSeguintes : []
+  const nComp  = colunas.filter(c => c.grupo === 'comp').length
+  const nPrev  = colunas.filter(c => c.grupo === 'prev').length
+  const nTotal = colunas.filter(c => c.grupo === 'total').length + anosSegVisiveis.length
+  const totalColunas = 1 + colunas.length + anosSegVisiveis.length // Conta + colunas + anos seguintes
+
+  const th1 = 'whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em]'
   const th2 = (extra: string) =>
     `h-[25px] px-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] ${extra} ${bordaBaseHeader}`
-  const tituloTotal = totalModo === 'tudo'
-    ? 'Modo ativo: Realizado + previsto — soma do ano inteiro (meses fechados + a projeção dos meses restantes)'
-    : 'Modo ativo: Realizado — soma só do que já aconteceu (exclui o previsto do mês corrente e os meses futuros)'
+
+  // Rótulo do grupo de comparação. A janela navegável tem 3 anos, então o join sempre
+  // cabe; se ela crescer, encurta para "menor × … × maior" (rótulo comprido demais só
+  // empurraria a largura mínima da tabela sem informar mais). Um ano só marcado = não
+  // há comparação, o grupo é simplesmente "Realizado" (como na Mensal).
+  const rotuloComp = anosSel.length <= 1
+    ? 'Realizado'
+    : `${anosSel.length > 3 ? `${anosSel[0]} × … × ${anosSel[anosSel.length - 1]}` : anosSel.join(' × ')} · realizado`
 
   return (
-    <table className="w-full border-separate border-spacing-0 text-[13px]" style={{ minWidth }}>
+    <table ref={refTabela} className="w-full border-separate border-spacing-0 text-[13px]" style={{ minWidth }}>
       <thead className="sticky top-0 z-20 [&_th]:bg-band">
         <tr>
           <ThConta bordaBaseHeader={bordaBaseHeader} />
           <th
-            colSpan={5}
-            title={`Comparativo ${consolidado.anoAnterior} × ${ano} — mesma janela (YTD) dos dois lados`}
-            className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
+            colSpan={nComp}
+            title={`Comparação na MESMA janela dos dois lados (${janelaTexto}) — um grupo de colunas por ano marcado`}
+            className={`${th1} text-text-secondary`}
           >
-            {consolidado.anoAnterior} × {ano} · realizado e previsto
+            {rotuloComp}
           </th>
-          <th
-            colSpan={2 + anosSeguintes.length}
-            className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary"
-          >
-            Total
+          {nPrev > 0 && (
+            <th
+              colSpan={nPrev}
+              title="Do ano de referência: o que falta projetar e o que já venceu sem liquidar"
+              className={`${th1} border-l-2 border-l-wt-border-strong text-warning-deep`}
+            >
+              Previsto
+            </th>
+          )}
+          <th colSpan={nTotal} className={`${th1} border-l border-l-wt-border-strong text-text-secondary`}>
+            <span className="flex w-full items-center justify-end gap-1.5">
+              <span>Total</span>
+              {anosSeguintes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onToggleAnos}
+                  aria-expanded={anosAbertos}
+                  aria-label="Expandir/Recolher anos seguintes"
+                  className="foco-neutro inline-flex shrink-0 items-center justify-center rounded p-0.5 text-warning-deep transition-colors hover:bg-warning-bg"
+                >
+                  {anosAbertos ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
+                </button>
+              )}
+            </span>
           </th>
         </tr>
         <tr>
-          <th className={th2('text-text-secondary')}>{consolidado.anoAnterior} (ano)</th>
-          <th className={th2('text-text-secondary')}>YTD {anoCurto(consolidado.anoAnterior)}</th>
-          <th className={th2('text-text-secondary')}>YTD {anoCurto(ano)}</th>
-          <th className={th2('text-text-secondary')}>Δ% {anoCurto(ano)}v{anoCurto(consolidado.anoAnterior)}</th>
-          <th
-            title="Previsto do ano exibido — total do ano menos o já realizado (YTD)"
-            className={th2('border-l-2 border-l-wt-border-strong text-warning-deep')}
-          >
-            PREV {anoCurto(ano)}
-          </th>
-          <th title="Vencido em aberto, ainda não liquidado" className={th2('text-warning-deep')}>
-            VENCIDOS
-          </th>
-          <th title={tituloTotal} className={th2('border-l border-l-wt-border-strong text-text-secondary')}>
-            TOTAL {ano}
-          </th>
-          {anosSeguintes.map((a, idx) => (
+          {colunas.map(c => (
+            <th
+              key={c.id}
+              title={c.titulo}
+              className={th2([
+                c.classe,
+                c.k === 'valor' && c.corte ? 'border-l-2 border-l-wt-border-strong' : '',
+                c.k === 'valor' && c.totalAno ? 'border-l border-l-wt-border-strong' : '',
+              ].filter(Boolean).join(' '))}
+            >
+              {c.rotulo}
+            </th>
+          ))}
+          {anosSegVisiveis.map((a, idx) => (
             <th
               key={`cons-ano-th-${a.ano}`}
+              ref={idx === 0 ? refAnoSeguinte : undefined}
+              title={`Previsto de ${a.ano} — projeção pura (nada realizado ainda)`}
               className={th2(`text-warning-deep ${idx === 0 ? 'border-l border-l-wt-border-strong' : ''}`)}
             >
               {String(a.ano)}
@@ -942,11 +1192,9 @@ function TabelaConsolidada({
               <LinhaConsolidadoTr
                 key={`cons-cat-${l.categoria_id ?? l.rotulo}-${i}`}
                 linha={l}
-                relacao={relacao}
-                mesCorrente={mesCorrente}
-                totalModo={totalModo}
-                consolidado={consolidado}
-                anosSeguintes={anosSeguintes}
+                colunas={colunas}
+                porAno={porAno}
+                anosSeguintes={anosSegVisiveis}
                 expansivel={false}
                 aberto={false}
               />
@@ -959,11 +1207,9 @@ function TabelaConsolidada({
             <LinhaConsolidadoTr
               key={`cons-${l.t}-${chave ?? l.rotulo}-${i}`}
               linha={l}
-              relacao={relacao}
-              mesCorrente={mesCorrente}
-              totalModo={totalModo}
-              consolidado={consolidado}
-              anosSeguintes={anosSeguintes}
+              colunas={colunas}
+              porAno={porAno}
+              anosSeguintes={anosSegVisiveis}
               expansivel={expansivel}
               aberto={aberto}
               onToggle={expansivel && chave != null ? () => toggleAberto(chave) : undefined}
@@ -985,10 +1231,9 @@ function TabelaConsolidada({
               <LinhaConsolidadoBandejaTr
                 key={`cons-bandeja-${b.categoria_id}-${i}`}
                 linha={b}
-                relacao={relacao}
-                mesCorrente={mesCorrente}
-                consolidado={consolidado}
-                anosSeguintes={anosSeguintes}
+                colunas={colunas}
+                porAno={porAno}
+                anosSeguintes={anosSegVisiveis}
               />
             ))}
           </>
@@ -998,13 +1243,35 @@ function TabelaConsolidada({
   )
 }
 
-/** Ao abrir uma coluna recolhível (transição REAL false→true), rola a tabela
- *  horizontalmente até ela ficar visível (Refino 11). Compara `aberto` contra o valor
- *  ANTERIOR guardado numa ref (não um flag "já montou") — por isso é robusto ao
- *  duplo-invoke de efeitos do StrictMode em dev: a 2ª invocação do MESMO mount vê a ref
- *  já atualizada pela 1ª e não repete o scroll; e não dispara indevidamente quando o
- *  estado nasce `true` (caso do `previstoAberto`, default aberto). `block: 'nearest'` é
- *  OBRIGATÓRIO — sem ele, o scroll vertical da página salta junto com o horizontal.
+/** Sobe do elemento até o container rolável na HORIZONTAL (o viewport do
+ *  <ScrollAutoHide>). A partir do ELEMENTO passado, não de um seletor global: a tabela
+ *  Mensal e a Consolidada vivem no mesmo viewport, mas só uma está montada por vez. */
+function containerHorizontal(el: HTMLElement | null): HTMLElement | null {
+  let c: HTMLElement | null = el?.parentElement ?? null
+  while (c && !(c.scrollWidth > c.clientWidth && /auto|scroll/.test(getComputedStyle(c).overflowX))) {
+    c = c.parentElement
+  }
+  return c
+}
+
+/** Destino do scroll ao FECHAR um grupo de colunas (rodada 3/Refino 3). */
+type DestinoAoFechar = 'inicio' | 'fim'
+
+/** Rola a tabela na horizontal nas DUAS transições de um grupo recolhível (Refino 11,
+ *  ampliado na rodada 3):
+ *   · ABRINDO  — `scrollIntoView` na 1ª coluna revelada (`refAlvo`), `inline:'start'`.
+ *     `block:'nearest'` é OBRIGATÓRIO — sem ele, o scroll VERTICAL da página salta
+ *     junto com o horizontal.
+ *   · FECHANDO — vai para o `destinoAoFechar`: 'inicio' (previsto recolhido = "quero
+ *     ver o ano desde janeiro") ou 'fim' (anos seguintes recolhidos = o "Total do ano"
+ *     volta a ser a última coluna, e é lá que o olho estava). Aqui NÃO dá para usar
+ *     `refAlvo`: a coluna que ele apontava acabou de sair do DOM (a ref já é `null`) —
+ *     por isso o container é achado a partir de `refAncora`, um elemento que sobrevive
+ *     às duas transições (a própria <table>).
+ *  Compara `aberto` contra o valor ANTERIOR guardado numa ref (não um flag "já montou")
+ *  — por isso é robusto ao duplo-invoke de efeitos do StrictMode em dev: a 2ª invocação
+ *  do MESMO mount vê a ref já atualizada pela 1ª e não repete o scroll; e não dispara no
+ *  mount quando o estado nasce `true` (caso do `previstoAberto`, default aberto).
  *  Respeita `prefers-reduced-motion`.
  *
  *  ⚠️ REDE CONTRA O NO-OP SILENCIOSO DO `behavior: 'smooth'`: quando o scroll suave está
@@ -1014,42 +1281,54 @@ function TabelaConsolidada({
  *  campo de visão e o refino parece não existir. Por isso guardamos a posição do container
  *  antes e, se ~150ms depois nada se moveu, refazemos o scroll em `'auto'`. (Provado ao vivo
  *  na v5.3.0: `scrollTo({behavior:'smooth'})` era no-op page-wide, `scrollLeft = n` funcionava.)
+ *  Vale para os DOIS sentidos — daí o fechamento também ter o seu fallback imperativo.
  *
  *  Efeito de DOM puro (nunca `setState` dentro do efeito) — permitido pelo ruleset do
  *  React Compiler. */
-function useScrollAoAbrir(aberto: boolean, ref: RefObject<HTMLTableCellElement | null>): void {
+function useScrollAoAlternar(
+  aberto: boolean,
+  refAlvo: RefObject<HTMLTableCellElement | null>,
+  refAncora: RefObject<HTMLTableElement | null>,
+  destinoAoFechar: DestinoAoFechar,
+): void {
   const anteriorRef = useRef(aberto)
   useEffect(() => {
-    const jaEstavaAberto = anteriorRef.current
+    const antesAberto = anteriorRef.current
     anteriorRef.current = aberto
-    if (!aberto || jaEstavaAberto) return
-    const alvo = ref.current
-    if (!alvo) return
+    if (antesAberto === aberto) return // mount / re-render sem transição real
 
-    const opcoes: ScrollIntoViewOptions = { inline: 'start', block: 'nearest' }
+    const container = containerHorizontal(refAncora.current)
+    if (!container) return // tabela cabe na tela: não há o que rolar
+    const antes = container.scrollLeft
     const reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (aberto) {
+      const alvo = refAlvo.current
+      if (!alvo) return
+      const opcoes: ScrollIntoViewOptions = { inline: 'start', block: 'nearest' }
+      if (reduzido) {
+        alvo.scrollIntoView({ ...opcoes, behavior: 'auto' })
+        return
+      }
+      alvo.scrollIntoView({ ...opcoes, behavior: 'smooth' })
+      const t = window.setTimeout(() => {
+        if (container.scrollLeft === antes) alvo.scrollIntoView({ ...opcoes, behavior: 'auto' })
+      }, 150)
+      return () => window.clearTimeout(t)
+    }
+
+    const destino = destinoAoFechar === 'inicio' ? 0 : Math.max(0, container.scrollWidth - container.clientWidth)
+    if (Math.abs(antes - destino) < 1) return // já está lá
     if (reduzido) {
-      alvo.scrollIntoView({ ...opcoes, behavior: 'auto' })
+      container.scrollLeft = destino
       return
     }
-
-    // Container rolável na horizontal (o viewport do <ScrollAutoHide>) — só para
-    // MEDIR se o scroll suave pegou; não é ele que rolamos.
-    let container: HTMLElement | null = alvo.parentElement
-    while (container && !(container.scrollWidth > container.clientWidth &&
-                          /auto|scroll/.test(getComputedStyle(container).overflowX))) {
-      container = container.parentElement
-    }
-
-    const antes = container?.scrollLeft
-    alvo.scrollIntoView({ ...opcoes, behavior: 'smooth' })
-    if (!container || antes === undefined) return
-
+    container.scrollTo({ left: destino, behavior: 'smooth' })
     const t = window.setTimeout(() => {
-      if (container.scrollLeft === antes) alvo.scrollIntoView({ ...opcoes, behavior: 'auto' })
+      if (container.scrollLeft === antes) container.scrollLeft = destino
     }, 150)
     return () => window.clearTimeout(t)
-  }, [aberto, ref])
+  }, [aberto, refAlvo, refAncora, destinoAoFechar])
 }
 
 interface TabelaDreProps {
@@ -1066,16 +1345,21 @@ interface TabelaDreProps {
    *  (a página omite o ano que a RPC não conseguiu buscar); vazio = o toggle de "anos
    *  seguintes" no cabeçalho simplesmente não aparece (Refino 7). */
   anosSeguintes: AnoSeguinteDados[]
-  /** Base da visão Consolidado (Refino 13) — `null` quando a RPC do ano anterior
-   *  falhou (a pill "Consolidado" fica desabilitada; ver bullet "DUAS VISÕES" no
-   *  topo do arquivo). */
-  consolidado: ConsolidadoDados | null
+  /** Base da visão Consolidado — UM item por ano da janela navegável que a página
+   *  conseguiu carregar, em ordem ASCENDENTE (ano cuja RPC falhou simplesmente não vem:
+   *  a pill dele fica desabilitada). Lista vazia = a pill "Consolidado" fica
+   *  `disabled`; ver bullet "DUAS VISÕES" no topo do arquivo. */
+  consolidadoAnos: ConsolidadoAno[]
+  /** Quantos meses entram no YTD de TODOS os anos comparados (mês corrente do ano
+   *  exibido, ou 12 se ele é fechado) — a página já aplicou essa janela ao montar os
+   *  `ytd`; aqui ela só descreve a comparação nos `title` do cabeçalho. */
+  mesJanela: number
   /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada no
    *  RODAPÉ do card, à direita (Refino 4). */
   slotAcoes?: ReactNode
 }
 
-export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, consolidado, slotAcoes }: TabelaDreProps) {
+export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, slotAcoes }: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -1087,20 +1371,38 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   const [totalModo, setTotalModo] = useState<TotalModo>('tudo')
   const [anosAbertos, setAnosAbertos] = useState(false)
   const [visao, setVisao] = useState<Visao>('mensal')
+  // Seleção múltipla da visão Consolidado — os DOIS anos mais recentes disponíveis por
+  // padrão (reproduz o comparativo "ano anterior × ano exibido" que existia antes).
+  // Initializer de `useState` (nunca um efeito de mount — ruleset do React Compiler).
+  const [anosSelecionados, setAnosSelecionados] = useState<Set<number>>(
+    () => new Set(consolidadoAnos.slice(-2).map(c => c.ano)),
+  )
 
-  // Refino 11 — refs das 1ª colunas de cada grupo recolhível (Mensal). Hooks SEMPRE
-  // chamados (mesmo quando a visão/relação atual não os usa) — regra dos hooks.
+  // Refino 11 — refs das 1ª colunas de cada grupo recolhível + a ÂNCORA (a <table>, que
+  // sobrevive a abrir/fechar e serve para achar o container rolável mesmo quando a
+  // coluna-alvo acabou de sair do DOM). Hooks SEMPRE chamados (mesmo quando a
+  // visão/relação atual não os usa) — regra dos hooks. A âncora é a MESMA ref nas duas
+  // tabelas: só uma está montada por vez.
   const refPrevisto = useRef<HTMLTableCellElement | null>(null)
   const refAnoSeguinte = useRef<HTMLTableCellElement | null>(null)
-  useScrollAoAbrir(previstoAberto, refPrevisto)
-  useScrollAoAbrir(anosAbertos, refAnoSeguinte)
+  const refTabela = useRef<HTMLTableElement | null>(null)
+  useScrollAoAlternar(previstoAberto, refPrevisto, refTabela, 'inicio')
+  useScrollAoAlternar(anosAbertos, refAnoSeguinte, refTabela, 'fim')
 
-  // Se o ano anterior não pôde ser buscado (`consolidado === null`), a visão
-  // Consolidado nunca é alcançável — a pill fica `disabled` — mas trata-se também
-  // defensivamente aqui: se `visao` ainda estiver 'consolidado' de uma seleção de ano
-  // anterior (onde `consolidado` existia) e o novo ano não tiver comparativo, cai
-  // para 'mensal' sozinho, sem exigir um clique do usuário.
-  const visaoEfetiva: Visao = visao === 'consolidado' && consolidado === null ? 'mensal' : visao
+  // Se NENHUM ano pôde ser carregado, a visão Consolidado não tem o que mostrar — a
+  // pill fica `disabled` —, mas trata-se também defensivamente aqui: se `visao` ainda
+  // estiver 'consolidado' e a base sumir numa troca de ano, cai para 'mensal' sozinho,
+  // sem exigir um clique do usuário.
+  const visaoEfetiva: Visao = visao === 'consolidado' && consolidadoAnos.length === 0 ? 'mensal' : visao
+
+  // Seleção EFETIVA: o estado filtrado contra o que a página conseguiu carregar (um ano
+  // marcado pode sumir de `consolidadoAnos` numa navegação em que a RPC dele falhou) e
+  // NUNCA vazia — cai para o ano mais recente disponível. É derivação de RENDER: nada de
+  // `setState` num efeito para "consertar" o estado (ruleset do React Compiler).
+  const marcados = consolidadoAnos.filter(c => anosSelecionados.has(c.ano))
+  const anosCons = marcados.length > 0 ? marcados : consolidadoAnos.slice(-1)
+  const anosConsSet = new Set(anosCons.map(c => c.ano))
+  const anosSemBase = new Set(anosDisponiveis.filter(a => !consolidadoAnos.some(c => c.ano === a)))
 
   function trocarAno(a: number) {
     if (a === ano) return
@@ -1109,6 +1411,19 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
     // scroll:false — trocar o ano não deve rolar a página ao topo (mesmo racional
     // do PeriodoFilterPillsUrl da Composição, na mesma página).
     startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
+  }
+
+  /** Marca/desmarca um ano na visão Consolidado — puramente client-side (todos os anos
+   *  já vieram no payload; NUNCA `router.push` aqui). Desmarcar o ÚLTIMO marcado é
+   *  no-op: sem nenhum ano a tabela não teria coluna alguma. Parte da seleção EFETIVA
+   *  (não do estado cru), o que de quebra normaliza anos fantasma que tenham deixado de
+   *  ser carregáveis. */
+  function alternarAnoCons(a: number) {
+    if (anosConsSet.has(a) && anosConsSet.size <= 1) return
+    const s = new Set(anosConsSet)
+    if (s.has(a)) s.delete(a)
+    else s.add(a)
+    setAnosSelecionados(s)
   }
 
   const bordaBaseHeader = [
@@ -1121,7 +1436,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
       <div className="rounded-xl bg-surface p-5 shadow-sm">
         <h2 className="mb-4 text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <AnoPills ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
+          <AnoPills modo="unico" ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
         </div>
         <div className={`rounded-lg border border-wt-border p-6 text-center ${isPending ? 'opacity-60' : ''}`}>
           <p className="text-sm text-text-muted">Não foi possível carregar a DRE — tente recarregar.</p>
@@ -1144,46 +1459,60 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
     relacao === 'futuro'   ? 0 :
     Number.POSITIVE_INFINITY // 'fechado'
 
-  const corteIdx: number | null = relacao === 'corrente' && mesCorrente != null ? mesCorrente : null
-  const colapsar = relacao === 'corrente' && !previstoAberto
+  // Refino 5 (rodada 3) — o modo 'realizado' esconde TODO o previsto da visão Mensal:
+  // a coluna ·P do mês corrente, os meses futuros, o grupo "Previsto" do cabeçalho com
+  // o seu toggle, e as colunas de anos seguintes com o toggle delas.
+  const soRealizado = totalModo === 'realizado'
+  const incluirPrevCorrente = !soRealizado
+  // 'fechado' fica de FORA do 'oculto': ali não existe previsto algum para esconder
+  // (`idxPrevisto` = +Infinity), os dois modos mostram exatamente as mesmas 12 colunas —
+  // e manter 'aberto' evita que a largura mínima da tabela pule sem que coluna nenhuma
+  // tenha mudado. Em 'futuro' o 'oculto' vale e corta tudo (nada aconteceu ainda).
+  const modoPrevisto: ModoPrevisto =
+    soRealizado && relacao !== 'fechado'      ? 'oculto' :
+    relacao === 'corrente' && !previstoAberto ? 'colapsado' :
+    'aberto'
 
-  // Refino 12/item 6 — no modo 'realizado', a coluna "«Mês»·P" do mês corrente some
-  // (cabeçalho, células e bandeja); no 'tudo' ela existe como sempre existiu.
-  const incluirPrevCorrente = totalModo === 'tudo'
-  // Só há coluna de Previsto no cabeçalho quando sobra ao menos 1 mês futuro OU a
-  // coluna ·P existe — em 'realizado' com mesCorrente=Dez (nada mais a projetar), o
-  // grupo "Previsto" inteiro desaparece do cabeçalho (ver uso abaixo).
-  const temColunaPrevisto = incluirPrevCorrente || (mesCorrente != null && mesCorrente < 12)
+  // Sem coluna de previsto não há fronteira realizado→previsto para marcar.
+  const corteIdx: number | null =
+    modoPrevisto !== 'oculto' && relacao === 'corrente' && mesCorrente != null ? mesCorrente : null
 
-  const mesesVisiveis: string[] =
-    relacao === 'corrente' && mesCorrente != null
-      ? rotulosVisiveis(labelsCorrente(mesCorrente, incluirPrevCorrente), colapsar, idxPrevisto)
-      : MESES
+  // Grupo "Previsto" no cabeçalho: existe sempre que o modo NÃO é 'realizado' (no
+  // 'tudo' + 'corrente' a coluna ·P existe por construção, mesmo em dezembro). Em
+  // 'realizado' nunca existe — é justamente o ponto do modo.
+  const temColunaPrevisto = !soRealizado
 
-  const totalColunas = 1 + mesesVisiveis.length + 1 + (anosAbertos ? anosSeguintes.length : 0)
+  const mesesVisiveis: string[] = rotulosVisiveis(
+    relacao === 'corrente' && mesCorrente != null ? labelsCorrente(mesCorrente, incluirPrevCorrente) : MESES,
+    modoPrevisto,
+    idxPrevisto,
+  )
+
+  // Anos seguintes são projeção pura: somem junto com o resto do previsto no modo
+  // 'realizado' (o estado `anosAbertos` é preservado — voltar ao modo 'tudo' devolve as
+  // colunas como estavam).
+  const anosSegMensal = soRealizado ? [] : anosSeguintes
+
+  const totalColunas = 1 + mesesVisiveis.length + 1 + (anosAbertos ? anosSegMensal.length : 0)
   // Conta + meses (visíveis) + Total do ano + anos seguintes (quando abertos, Refino 7)
 
-  // Centavos (formato contábil, 2 casas) alargam cada coluna mensal — a base (1420/1860)
-  // é a mesma de antes do refino. Cada coluna de "ano seguinte" ABERTA (Refino 7) soma
-  // ~150px: a largura passa a depender de `anosAbertos`, então uma classe `min-w-[...]`
-  // fixa não serve mais — `style` com um NÚMERO é mais honesto que uma classe por
-  // combinação possível. Quando a coluna ·P some (Refino 12, 'realizado' + 'corrente'
-  // COM o previsto expandido), há 1 coluna a menos que o caso 'tudo' — desconta
-  // ~1 coluna (105px, a mesma largura média usada para calibrar 1860); RECOLHIDO
-  // (`colapsar`) os dois modos convergem para a MESMA contagem de colunas (o previsto
-  // inteiro vira 1 coluna agregada em ambos), então 1420 não muda com o modo.
-  const semColunaPrevCorrente = relacao === 'corrente' && mesCorrente != null && !incluirPrevCorrente
-  const minWTotal =
-    (colapsar ? 1420 : (semColunaPrevCorrente ? 1755 : 1860)) +
-    (anosAbertos ? anosSeguintes.length * 150 : 0)
-
-  // Visão Consolidado (Refino 13) — menos colunas que a Mensal (7 fixas + Conta, sem
-  // os toggles); cada ano seguinte soma o mesmo ~150px de sempre.
-  const minWTotalConsolidado = 1250 + anosSeguintes.length * 150
+  // Centavos (formato contábil, 2 casas) alargam cada coluna mensal — as bases 1420
+  // ('colapsado') e 1860 ('aberto') são as calibradas nas rodadas anteriores e ficam
+  // INTOCADAS. Cada coluna de "ano seguinte" ABERTA (Refino 7) soma ~150px: a largura
+  // depende do estado, então uma classe `min-w-[...]` fixa não serve — `style` com um
+  // NÚMERO é mais honesto que uma classe por combinação possível. No modo 'oculto'
+  // (Refino 5) a contagem de colunas varia com o mês corrente, então a largura sai da
+  // contagem REAL (~109px por coluna, exatamente a média implícita no 1860: (1860−330)/14),
+  // não de uma constante nova: menos colunas = a tabela cabe sem barra horizontal.
+  const minWBase =
+    modoPrevisto === 'oculto'    ? 330 + (mesesVisiveis.length + 1) * 109 :
+    modoPrevisto === 'colapsado' ? 1420 :
+    1860
+  const minWTotal = minWBase + (anosAbertos ? anosSegMensal.length * 150 : 0)
 
   const tituloTotalAno = totalModo === 'tudo'
     ? 'Modo ativo: Realizado + previsto — soma do ano inteiro (meses fechados + a projeção dos meses restantes)'
-    : 'Modo ativo: Realizado — soma só do que já aconteceu (exclui o previsto do mês corrente e os meses futuros)'
+    : 'Modo ativo: Realizado — só o que já aconteceu; a visão esconde as colunas de previsto e de anos seguintes'
 
   const toggleAberto = (k: string) => setAbertos(prev => {
     const s = new Set(prev)
@@ -1199,22 +1528,45 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   const expandirTudo = () => setAbertos(new Set(expansiveis))
   const recolherTudo = () => setAbertos(new Set())
 
+  // ── Visão Consolidado: colunas derivadas da seleção ─────────────────────────
+  // Janela do YTD em texto ("jan a jul") para os `title` do cabeçalho — clampada, para
+  // um `mesJanela` fora de 1..12 nunca virar "jan a undefined" na tela.
+  const janelaTexto = `jan a ${MESES[Math.min(Math.max(mesJanela, 1), 12) - 1].toLowerCase()}`
+  // Ano de REFERÊNCIA = o maior marcado (nome sem "Ref" para não se confundir com uma
+  // ref do React).
+  const anoReferencia = anosCons.length > 0 ? anosCons[anosCons.length - 1] : null
+  const colunasCons = montarColunasCons(anosCons, janelaTexto)
+  const porAnoCons: PorAnoCons = new Map(consolidadoAnos.map(c => [c.ano, c.porLinha]))
+  // Anos seguintes aqui só quando a REFERÊNCIA é o ano corrente (num ano fechado não há
+  // projeção a mostrar) e só os que vêm DEPOIS dela: `anosSeguintes` é derivado do ano
+  // da URL (ano+1/ano+2), que pode não ser o de referência quando a seleção múltipla
+  // mira outro ano — sem esse filtro a tabela repetiria como "ano seguinte" um ano já
+  // marcado na comparação.
+  const anosSegCons = anoReferencia !== null && anoReferencia.corrente
+    ? anosSeguintes.filter(a => a.ano > anoReferencia.ano)
+    : []
+  // ~145px por coluna de valor (o formato contábil com centavos é o que manda) + os
+  // 330px fixos da coluna Conta.
+  const minWTotalConsolidado =
+    330 + (colunasCons.length + (anosAbertos ? anosSegCons.length : 0)) * 145
+
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
       <h2 className="mb-4 text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
 
-      {/* ── Toolbar ── */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <AnoPills ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-text-muted">Visão:</span>
+      {/* ── Toolbar em DUAS linhas, tudo à esquerda (rodada 3/Refino 2) ──
+          Linha de cima: pills de VISÃO (+ Expandir/Recolher tudo à direita).
+          Linha de baixo: pills de ANO · divisor · pills de "Total do ano".
+          Os rótulos "Visão:" e "Total do ano:" saíram — cada pill carrega o `title`
+          que explica o que ela faz, para a acessibilidade não piorar com o enxuga. */}
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => setVisao('mensal')}
+              title="Visão mês a mês do ano selecionado"
+              aria-pressed={visaoEfetiva === 'mensal'}
               className={['foco-neutro', PILL_FILTRO, visaoEfetiva === 'mensal' ? '' : PILL_FILTRO_INATIVO].join(' ')}
               style={visaoEfetiva === 'mensal' ? PILL_FILTRO_ATIVO_STYLE : undefined}
             >
@@ -1223,8 +1575,11 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
             <button
               type="button"
               onClick={() => setVisao('consolidado')}
-              disabled={consolidado === null}
-              title={consolidado === null ? 'Comparativo indisponível — não foi possível carregar o ano anterior' : undefined}
+              disabled={consolidadoAnos.length === 0}
+              aria-pressed={visaoEfetiva === 'consolidado'}
+              title={consolidadoAnos.length === 0
+                ? 'Comparativo indisponível — nenhum ano pôde ser carregado'
+                : 'Visão ano a ano — marque quantos anos quiser nas pills abaixo'}
               className={[
                 'foco-neutro', PILL_FILTRO,
                 visaoEfetiva === 'consolidado' ? '' : PILL_FILTRO_INATIVO,
@@ -1235,33 +1590,54 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
               Consolidado
             </button>
           </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={expandirTudo}>Expandir tudo</Button>
+            <Button variant="ghost" size="sm" onClick={recolherTudo}>Recolher tudo</Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* MESMAS pills, duas semânticas: navegação na Mensal, caixas de seleção
+              cumulativas na Consolidado (ver `AnoPills`). */}
+          <AnoPills
+            modo={visaoEfetiva === 'consolidado' ? 'multi' : 'unico'}
+            ano={ano}
+            anosDisponiveis={anosDisponiveis}
+            selecionados={anosConsSet}
+            semBase={anosSemBase}
+            onSelect={visaoEfetiva === 'consolidado' ? alternarAnoCons : trocarAno}
+          />
           {/* "Total do ano" só existe na visão Mensal: no Consolidado o realizado (YTD), o
               previsto (PREV) e a soma (TOTAL) já são COLUNAS separadas, então o modo não teria
               o que alternar — deixar as pills à mostra ali seria um controle inerte. O estado
-              `totalModo` é preservado (não resetado) para a volta à Mensal. */}
+              `totalModo` é preservado (não resetado) para a volta à Mensal. Sem as pills, o
+              divisor também não aparece. */}
           {visaoEfetiva === 'mensal' && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-text-muted">Total do ano:</span>
-            <button
-              type="button"
-              onClick={() => setTotalModo('realizado')}
-              className={['foco-neutro', PILL_FILTRO, totalModo === 'realizado' ? '' : PILL_FILTRO_INATIVO].join(' ')}
-              style={totalModo === 'realizado' ? PILL_FILTRO_ATIVO_STYLE : undefined}
-            >
-              Realizado
-            </button>
-            <button
-              type="button"
-              onClick={() => setTotalModo('tudo')}
-              className={['foco-neutro', PILL_FILTRO, totalModo === 'tudo' ? '' : PILL_FILTRO_INATIVO].join(' ')}
-              style={totalModo === 'tudo' ? PILL_FILTRO_ATIVO_STYLE : undefined}
-            >
-              Realizado + previsto
-            </button>
-          </div>
+            <>
+              <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
+              <button
+                type="button"
+                onClick={() => setTotalModo('realizado')}
+                title="Total do ano só com o realizado — esconde as colunas de previsto e de anos seguintes"
+                aria-pressed={totalModo === 'realizado'}
+                className={['foco-neutro', PILL_FILTRO, totalModo === 'realizado' ? '' : PILL_FILTRO_INATIVO].join(' ')}
+                style={totalModo === 'realizado' ? PILL_FILTRO_ATIVO_STYLE : undefined}
+              >
+                Realizado
+              </button>
+              <button
+                type="button"
+                onClick={() => setTotalModo('tudo')}
+                title="Total do ano com realizado + previsto — mostra as colunas de previsto e de anos seguintes"
+                aria-pressed={totalModo === 'tudo'}
+                className={['foco-neutro', PILL_FILTRO, totalModo === 'tudo' ? '' : PILL_FILTRO_INATIVO].join(' ')}
+                style={totalModo === 'tudo' ? PILL_FILTRO_ATIVO_STYLE : undefined}
+              >
+                Realizado + previsto
+              </button>
+            </>
           )}
-          <Button variant="ghost" size="sm" onClick={expandirTudo}>Expandir tudo</Button>
-          <Button variant="ghost" size="sm" onClick={recolherTudo}>Recolher tudo</Button>
         </div>
       </div>
 
@@ -1285,16 +1661,19 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
             sem tocar no componente compartilhado (que é padrão da plataforma). */}
         <div className="pb-1.5">
           <ScrollAutoHide eixo="both" className="max-h-[80vh] pb-3.5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
-          {visaoEfetiva === 'consolidado' && consolidado ? (
+          {visaoEfetiva === 'consolidado' && anoReferencia ? (
             <TabelaConsolidada
               linhas={linhas}
               bandeja={bandeja}
-              relacao={relacao}
-              mesCorrente={mesCorrente}
-              totalModo={totalModo}
-              consolidado={consolidado}
-              anosSeguintes={anosSeguintes}
-              ano={ano}
+              colunas={colunasCons}
+              porAno={porAnoCons}
+              anosSel={anosCons.map(c => c.ano)}
+              janelaTexto={janelaTexto}
+              anosSeguintes={anosSegCons}
+              anosAbertos={anosAbertos}
+              onToggleAnos={() => setAnosAbertos(v => !v)}
+              refAnoSeguinte={refAnoSeguinte}
+              refTabela={refTabela}
               abertos={abertos}
               expansiveis={expansiveis}
               toggleAberto={toggleAberto}
@@ -1303,6 +1682,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
             />
           ) : (
           <table
+            ref={refTabela}
             className="w-full border-separate border-spacing-0 text-[13px]"
             style={{ minWidth: minWTotal }}
           >
@@ -1326,7 +1706,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                         ref={refPrevisto}
                         title={`Previsto por vencimento — corte na data-base ${hojeCurta}`}
                         className="whitespace-nowrap border-l-2 border-l-wt-border-strong px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
-                        colSpan={colapsar ? 1 : (incluirPrevCorrente ? 13 - mesCorrente : 12 - mesCorrente) /* 12 meses (+1 col. extra do híbrido, só no modo 'tudo') */}
+                        colSpan={modoPrevisto === 'colapsado' ? 1 : 13 - mesCorrente /* 12 meses + a coluna extra do mês híbrido (·P) */}
                       >
                         <span className="flex w-full items-center justify-end gap-1.5">
                           <span>Previsto</span>
@@ -1351,7 +1731,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                   >
                     Realizado
                   </th>
-                ) : (
+                ) : temColunaPrevisto ? (
                   <th
                     title="Previsto por vencimento"
                     className="whitespace-nowrap px-3.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep"
@@ -1359,7 +1739,10 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                   >
                     Previsto
                   </th>
-                )}
+                ) : null /* 'futuro' no modo 'realizado': nada aconteceu ainda, então não
+                            sobra coluna mensal alguma — e um colSpan={0} teria significado
+                            especial em HTML ("até o fim do grupo"), nunca "zero colunas".
+                            (Inalcançável pela URL: o ano é clampado ao corrente.) */}
 
                 {/* Refino 9 — a seta de anos seguintes agora é ABSOLUTA, ancorada na
                     faixa exata da 1ª linha (`h-[27px]`, mesma altura da "Previsto"
@@ -1370,13 +1753,16 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                   className={`relative w-[170px] min-w-[170px] border-l border-l-wt-border-strong px-3.5 align-bottom pb-[7px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader}`}
                   title={tituloTotalAno}
                 >
-                  {anosSeguintes.length > 0 && (
+                  {anosSegMensal.length > 0 && (
+                    /* Refino 1 (rodada 3) — MESMA cor do toggle do Previsto
+                       (`text-warning-deep` + `hover:bg-warning-bg`): as duas setas
+                       revelam projeção, então falam a mesma língua de cor. */
                     <button
                       type="button"
                       onClick={() => setAnosAbertos(v => !v)}
                       aria-expanded={anosAbertos}
                       aria-label="Expandir/Recolher anos seguintes"
-                      className="foco-neutro absolute right-3.5 top-0 flex h-[27px] items-center justify-center rounded p-0.5 text-text-secondary transition-colors hover:bg-zinc-100 hover:text-text-primary"
+                      className="foco-neutro absolute right-3.5 top-0 flex h-[27px] items-center justify-center rounded p-0.5 text-warning-deep transition-colors hover:bg-warning-bg"
                     >
                       {anosAbertos ? <ChevronsLeft size={13} /> : <ChevronsRight size={13} />}
                     </button>
@@ -1384,8 +1770,8 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                   Total do ano
                 </th>
 
-                {anosAbertos && anosSeguintes.length > 0 && (
-                  <th colSpan={anosSeguintes.length} aria-hidden="true" className="border-l border-l-wt-border-strong" />
+                {anosAbertos && anosSegMensal.length > 0 && (
+                  <th colSpan={anosSegMensal.length} aria-hidden="true" className="border-l border-l-wt-border-strong" />
                 )}
               </tr>
               <tr>
@@ -1402,7 +1788,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                     {m}
                   </th>
                 ))}
-                {anosAbertos && anosSeguintes.map((a, idx) => (
+                {anosAbertos && anosSegMensal.map((a, idx) => (
                   <th
                     key={`ano-th-${a.ano}`}
                     ref={idx === 0 ? refAnoSeguinte : undefined}
@@ -1430,11 +1816,11 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                       mesCorrente={mesCorrente}
                       idxPrevisto={idxPrevisto}
                       corteIdx={corteIdx}
-                      colapsar={colapsar}
+                      modoPrevisto={modoPrevisto}
                       expansivel={false}
                       aberto={false}
                       totalModo={totalModo}
-                      anosSeguintes={anosSeguintes}
+                      anosSeguintes={anosSegMensal}
                       anosAbertos={anosAbertos}
                     />
                   )
@@ -1451,12 +1837,12 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                     mesCorrente={mesCorrente}
                     idxPrevisto={idxPrevisto}
                     corteIdx={corteIdx}
-                    colapsar={colapsar}
+                    modoPrevisto={modoPrevisto}
                     expansivel={expansivel}
                     aberto={aberto}
                     onToggle={onToggle}
                     totalModo={totalModo}
-                    anosSeguintes={anosSeguintes}
+                    anosSeguintes={anosSegMensal}
                     anosAbertos={anosAbertos}
                   />
                 )
@@ -1484,9 +1870,9 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                       mesCorrente={mesCorrente}
                       idxPrevisto={idxPrevisto}
                       corteIdx={corteIdx}
-                      colapsar={colapsar}
+                      modoPrevisto={modoPrevisto}
                       totalModo={totalModo}
-                      anosSeguintes={anosSeguintes}
+                      anosSeguintes={anosSegMensal}
                       anosAbertos={anosAbertos}
                     />
                   ))}
