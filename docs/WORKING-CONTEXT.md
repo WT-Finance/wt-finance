@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-28 (17h) · v5.3.2 (Reformulação do Harness — implementada, gates verdes, PR draft)
+Última atualização: 2026-07-28 (18h30) · v5.3.2 MERGEADA (#197, 16h26) — Reformulação do Harness em produção; worktree e branch limpas
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,16 +9,16 @@
 
 ## Verdade atual
 
-- Versão em produção (main): **`5.3.1`** (#195 mergeado 28/07 às 14h33).
-- Versão em execução: **`feat/v5-3-2-reformulacao-harness`** (PR draft) — **reformulação do
-  harness** (ADR-0157, sem migrations, nada muda nas telas): CLAUDE.md **518 → 162 linhas**
-  (core) + **9 skills internas** + **3 rituais** (`/nova-versao`, `/fechamento-versao`,
-  `/pos-merge`) + agentes com "Skills a ler" + **`verificador-visual`** novo (MCP Playwright em
+- Versão em produção (main): **`5.3.2`** (#197 mergeado 28/07 às 16h26) — **o HARNESS NOVO REGE
+  a partir de agora** (ADR-0157, sem migrations, nada muda nas telas): CLAUDE.md **518 → 162
+  linhas** (core) + **9 skills internas** + **3 rituais** (`/nova-versao`, `/fechamento-versao`,
+  `/pos-merge`) + agentes com "Skills a ler" + **`verificador-visual`** (MCP Playwright em
   `.mcp.json`) + 2 skills externas vendoradas + permissões da terceira camada APLICADAS pelo Yan
   no settings global. Provas: inventário sem órfãos (`docs/harness/inventario-claude-md.md`),
   sonda de disparo (`docs/harness/sonda-disparo.md`), baseline −45,6% na porção do projeto.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-3-2_Reformulacao_Harness.md` (a seção
-  "o que muda para a próxima sessão" é leitura obrigatória da 1ª sessão nativa).
+  "o que muda para a próxima sessão" é leitura obrigatória da 1ª sessão nativa). Nenhuma branch
+  de versão ativa — worktree e branch da v5.3.2 já limpas (`/pos-merge` executado).
 - A v5.3.1 fechou a adaptação do modelo da controladoria na DRE: Resumo Executivo (ancorado no
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
@@ -32,9 +32,10 @@
 
 ## Bloqueios vigentes
 
-- **v5.3.2: merge do PR** (draft; merge é do Yan). Depois: `/pos-merge` + na 1ª sessão CLI nova
-  **validar o hot-reload do settings** (lint e `db:migrate -- --aditiva` devem passar SEM
-  consulta ao classificador; se não passarem, suspeito registrado: issue #18846 do Claude Code).
+- **Validação do allow em sessão CLI interativa** (residual da v5.3.2): confirmar que `npm run
+  lint` e `db:migrate -- --aditiva` passam SEM consulta ao classificador na primeira sessão
+  interativa do Yan (validação headless já exercitada no pós-merge; se não valer no interativo,
+  suspeito registrado: issue #18846 do Claude Code).
 - **[ALTO, achado do verificador-visual na estreia] Fontes Avenir quebradas em telas
   não-autenticadas:** o `proxy.ts` intercepta `/fonts/avenir/*.otf` (307 → HTML do login) e a
   tipografia cai para fonte de sistema no `/login` (e provavelmente `/solicitar-acesso`,
