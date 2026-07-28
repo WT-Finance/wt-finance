@@ -1,0 +1,394 @@
+---
+name: banco-e-rpc
+description: Banco Supabase do Janus — migrations (aditiva × destrutiva, backup-gate, wrapper db:migrate), RPCs SECURITY DEFINER com app.exigir_acesso inline, RBAC/RLS, timeouts por role, fuso, schemas (analytics não exposto; espelho Monde × upload) e verificação REST pós-push. Use SEMPRE que for criar ou alterar migration/RPC, investigar erro de banco (timeout 57014, PGRST, permissão), decidir de qual fonte um dado vem, ou reusar uma RPC existente (MEÇA a semântica antes).
+---
+
+# Banco e RPC — Janus (Supabase/Postgres)
+
+> **Nota cruzada D-12.** O checklist do agente `revisor-db` (`.claude/agents/revisor-db.md`)
+> espelha INLINE — por decisão deliberada, não descuido — as regras de RBAC/timeout/coalesce
+> desta skill: banco é o domínio em que uma skill que não dispara custa mais caro que a
+> duplicação. Sempre que uma convenção de banco mudar aqui, atualizar **esta skill E o
+> `revisor-db`** juntos — isso é item do ritual `/fechamento-versao`. Divergência entre os
+> dois é bug de documentação, não escolha de estilo.
+
+Esta skill cobre TUDO que envolve o banco Supabase/Postgres do Janus: como aplicar
+migrations com segurança, como uma RPC nova deve nascer (RBAC, grants, timeout), de qual
+schema/fonte um dado realmente vem, e como verificar que uma RPC funciona de verdade antes
+de dar por encerrado.
+
+---
+
+## 1. Comandos e o wrapper `db:migrate`
+
+```bash
+npx supabase migration list           # inspecionar local vs remote (READ-ONLY, seguro)
+npm run db:migrate -- --aditiva       # backup-gate (rede) → db push AUTOMÁTICO
+npm run db:migrate -- --destrutiva    # backup-gate (rede) → db push COM CONFIRMAÇÃO HUMANA
+```
+
+O CLI do Supabase não está instalado globalmente — sempre `npx supabase ...`, nunca
+`supabase ...` puro.
+
+### `db push` aplica TODO o conjunto PENDENTE, não só a migration que você escreveu
+
+**Custou caro (v5.2.0):** a v5.2.0 dropou as bases antigas do Fluxo de Caixa sem querer ao
+aplicar um fix aditivo, porque uma migration de `DROP` estava pendente na pasta
+`supabase/migrations/` — o `--aditiva` **não bloqueia** uma destrutiva que esteja no pending;
+ele só decide se a CONFIRMAÇÃO é automática, não o que é varrido. O backup pré-push salvou a
+recuperabilidade, mas a barreira "destrutiva só com humano" foi furada por essa via.
+
+**Regra:** nunca escrever a migration destrutiva dentro de `supabase/migrations/` antes da
+hora de efetivamente rodar `--destrutiva`. Se precisar preparar o SQL destrutivo com
+antecedência, guardá-lo **fora** dessa pasta até o momento de aplicar.
+
+### Produção direta, sem staging — o backup-gate é a rede real
+
+`--linked` aplica direto em PRODUÇÃO — não existe staging separado, só `.env.local`. Uma
+migration ruim vai direto para produção, sem rede de proteção estrutural.
+
+Branching do Supabase foi avaliado e **descartado** (investigação 2026-06-13): o branch
+efêmero nasce sem dado de produção — pega erro de *schema*, não perda de *dado* (que é o
+risco real aqui: `dim_data` de range fixo, timeout de 3s, N+1 por volume) — e a promoção no
+merge roda direto em prod sem re-validação. `supabase start` local depende de Docker, ausente
+no WSL2.
+
+**O wrapper `npm run db:migrate` (`scripts/db-gate/`, ADR-0116) roda o backup-gate ANTES do
+push — é uma REDE de recuperação, não uma autorização.** Ele:
+1. Gera o backup-do-dia em `~/wt-finance-backups/AAAA-MM-DD-<label>/`.
+2. Checa **completude** (todas as tabelas vivas de produção presentes, count conferido).
+3. Restaura um **subconjunto-chave** num schema descartável e compara **produção × restaurado**
+   (count + checksum).
+4. **Vermelho aborta** — o push simplesmente não acontece.
+
+O gate garante **recuperação**, não **prevenção**: uma migration equivocada ainda muda
+produção, mas dá para restaurar do backup-do-dia. Runbook completo:
+`docs/runbooks/db-backup-gate-runbook.md`. (Restore-test do conjunto COMPLETO é follow-up; o
+spot atual é o núcleo que já existe.)
+
+Ao testar escrita em produção (ex.: commit de import de teste), usar dados com nomes
+distintos e deletar logo em seguida.
+
+### Aditiva × destrutiva — a fronteira que decide o regime
+
+**ADITIVA / retrocompatível** — `CREATE`, `ADD COLUMN` anulável, RPC nova, índice novo,
+`GRANT`/`REVOKE`, validação que só acrescenta a um array de `erros`. Regime **autônomo, sem
+confirmação humana**: `npm run db:migrate -- --aditiva` (gate como rede) + **declaração
+prévia no header da migration** (o que ela faz; por que é aditiva/retrocompatível com a
+`main` viva; que não escreve em dado pré-existente).
+
+**DESTRUTIVA** — `DROP`, `TRUNCATE`, `ALTER` que remove/reescreve coluna ou dado,
+`UPDATE`/`DELETE` em dado já existente. **Continua exigindo confirmação humana** antes do
+`db push`. `npm run db:migrate -- --destrutiva` roda o backup-gate como rede e **mantém a
+confirmação** — não auto-confirma. O gate é rede, não autorização de autonomia destrutiva
+(isso só mudaria com o restore-test COMPLETO, ainda follow-up).
+
+**Antes de qualquer DROP, verificar consumidores reais** — grep no app **e** em
+`supabase/seed/`, mais uma auditoria cética. A classificação de "órfão" vinda do briefing NÃO
+basta: na v4.17.1, o briefing mandava dropar `truncate_dynamic_tables`/`inserir_lote_raw` e a
+auto-auditoria descobriu que `npm run seed` ainda as consumia — só `admin_definir_usuario_ativo`
+era de fato órfã. `DROP` é destrutivo: exige confirmação + reversibilidade documentada (corpo
+salvo na migration de origem).
+
+### A confirmação destrutiva vive no WRAPPER, e EOF ABORTA (ADR-0131)
+
+`migrate.mjs` pede a confirmação ele mesmo — não delega mais ao prompt nativo do `db push`
+(cujo default em modo headless prosseguia, ou seja, era *fail-open*; a segurança dependia do
+harness em volta, não do próprio comando). Em stdin **não-TTY/EOF** (headless, pipe, CI, ou um
+agente rodando o comando), o wrapper **aborta antes do gate** — EOF nunca confirma.
+
+Consequência prática: **um agente não consegue aplicar uma migration destrutiva** (sem TTY →
+abort automático). Só um humano num terminal interativo consegue confirmar e aplicar.
+
+A **classificação** "destrutiva" vem de `scripts/db-gate/classificar.mjs`, que usa um
+**tokenizer** (excisa comentários, strings e corpos `$$...$$`, casando só o nível **top-level**
+do SQL) — não mais regex sobre texto cru. Isso significa: DML dentro do **corpo** de um
+`CREATE FUNCTION` não é mais falso-positivo; `DROP FUNCTION` vira **warn** (é troca de
+assinatura, não perda de dado); `DROP`/`TRUNCATE`/`ALTER ... DROP`/`UPDATE`/`DELETE`
+top-level e qualquer ambiguidade do tokenizer classificam como **destrutiva** — falha
+fechada. A sonda que prova isso é `scripts/db-gate/classificar.test.mjs` (roda dentro de
+`npm test`).
+
+---
+
+## 2. Schemas e de onde os dados realmente vêm
+
+### `analytics` NÃO é exposto pela API REST
+
+O `config.toml` do Supabase expõe só `["public", "graphql_public"]`. Tabelas do schema
+`analytics` **não são acessíveis** via `.schema('analytics').from(...)` — isso retorna
+`PGRST106`. **Regra:** todo acesso a tabela de `analytics` passa por RPC `SECURITY DEFINER`
+no schema `public`. (Descoberto na v4.6; é o mesmo padrão para qualquer schema não-exposto.)
+
+### Fonte de produção das vendas: espelho Monde × upload (fallback dormente) — v5.1.4/ADR-0151
+
+Desde a v5.1.4 a fonte das vendas pode ser **virada** do upload de Excel para o **espelho
+Monde** (`monde.mv_vendas_diarias`) por **REPOINT reversível** (migration 0181). As 7 funções
+**PURA-mv**:
+
+- `get_executiva_kpis__nucleo`
+- `metas_ritmo_diario`
+- `get_tendencia_margem__nucleo`
+- `get_decomposicao_variacao__nucleo`
+- `get_historico_12m_setores__nucleo`
+- `get_mix_setor__nucleo`
+- `get_historico_mensal__nucleo`
+
+leem o Monde via **views-compat** (`monde.mv_vendas_diarias_compat`, com `setor_macro_id`; e
+`monde.mv_vendas_mensais`). O **fato do upload é INTOCADO** — o rollback é o bloco `DOWN` da
+migration 0181 (repoint de volta a `analytics.*`), **nunca** restauração de dado; o upload
+vira **fallback dormente**, não removido.
+
+**Exceção que importa:** `get_mix_produto`/`get_cagr` **NÃO viraram** — continuam lendo
+`fato_venda` DIRETO (precisam de breakdown por produto / anos completos), então seguem no
+upload até o *fato* do Monde existir com essa granularidade (escopo futuro). Metas ≡
+Performance por construção (mesma `get_executiva_kpis`); a definição de receita/margem não
+mudou (o diagnóstico da virada provou paridade ~99% ao centavo; o delta residual é currency
+que some pós-flip). Sincronização agendada por **`pg_cron`+`pg_net` a cada ~15min** (migration
+0182, secrets no Vault) chamando `/api/monde/ingest?mode=incremental`; o Cron da Vercel ficou
+dormente/redundante. **O flip em si é aplicado pelo Yan** (gate: comunicação à diretoria antes
+de aplicar; a migration NÃO se auto-aplica). O espelho Monde foi ingerido na v5.1.2 (schema
+`monde`); a paridade de receita foi provada no diagnóstico da virada.
+
+Ao decidir "de onde vem esse número", primeiro pergunte: é uma das 7 PURA-mv (veio do Monde,
+via view-compat) ou é `get_mix_produto`/`get_cagr`/algo de Weddings operacional (ainda upload)?
+
+### `dim_data` tem range fixo — FK em `fato_venda`
+
+`analytics.fato_venda.data_venda` tem FK para `analytics.dim_data(data)`, semeada com range
+**fixo** (era 2024–2030; estendida para 2022–2030 na migration 0100). Subir Vendas com datas
+FORA do range faz `transform_raw_to_analytics` abortar em `fato_venda_data_venda_fkey`.
+
+**Pior:** o upload roda `truncate_dynamic_tables` (CASCADE) **ANTES** do transform — se o
+transform falha, `fato_venda` fica **VAZIA em produção** (os dados crus sobrevivem em
+`raw.vendas_excel`, então nada se perde de verdade, mas a base fica inconsistente até
+recuperar).
+
+**Regra de recuperação (sem re-upload):** estender `dim_data` com uma migration
+(`generate_series` + mesma derivação do seed `0002`, `ON CONFLICT (data) DO NOTHING`) e então
+rodar, nessa ordem: `transform_raw_to_analytics` → `regenerar_dim_operacao_weddings` →
+`refresh_all_materialized_views`. (Descoberto em mai/2026, migration 0100.) Esse mesmo sintoma
+aparece na skill `ingestao-planilhas` do lado do upload — é o mesmo erro visto pela ponta do
+app.
+
+---
+
+## 3. Performance: timeout por role e fuso horário
+
+### `statement_timeout` por role — o PostgREST aplica o rolconfig a CADA requisição
+
+Os roles têm timeout DIFERENTE, vindo do `rolconfig` (`ALTER ROLE ... SET
+statement_timeout`): `anon`=3s, `authenticated`=8s, `service_role`=**0 (sem limite), e só
+porque a migration 0145 setou isso EXPLICITAMENTE** (ADR-0122). Uma RPC que ultrapasse o
+limite do seu role estoura `57014 canceling statement due to statement timeout` → vira
+HTTP 500 na UI ou erro de carga.
+
+**Como funciona (não é automático):** `SET ROLE` sozinho **não** aplica o rolconfig do
+papel-alvo (testado). É o **PostgREST que aplica o rolconfig do papel da requisição a cada
+chamada** — é assim que `anon`=3s / `authenticated`=8s realmente valem. Se o rolconfig do
+papel **não** define `statement_timeout`, cai no default do banco (**120s**).
+
+**Custou caro:** o `service_role` ficou com rolconfig nulo → cargas pesadas via
+`getAdminClient` herdaram 120s, e `promover_carga_vendas` estourou (v4.20.1, fix migration
+0145).
+
+**Regras práticas:**
+- Toda RPC consumida pela UI roda como **`authenticated`** (8s) — validar contra ESSE
+  limite, não só com service role (que hoje não tem limite). Atenção especial a N+1 (função
+  escalar por linha numa RPC de listagem) e a casts em coluna de JOIN que impedem uso de
+  índice — ambos pioram com o volume. (Custou caro: `contar_convidados_operacao` ×
+  ~140 operações após o backfill 0100; fix migration 0101.)
+- **O timer é armado no statement EXTERNO do PostgREST e não dá para desarmá-lo de dentro da
+  função** (testado: nem `SET statement_timeout=0` como atributo da função, nem `SET LOCAL`
+  no corpo, afetam o statement em curso). Uma RPC de carga pesada (service_role) só escapa do
+  timeout pelo **rolconfig do role** — nunca por código dentro da função. Mudou o timeout de
+  um role? Rodar `NOTIFY pgrst, 'reload config'`.
+
+Esse orçamento de 8s também está no checklist do `revisor-db` (é um dos itens espelhados
+inline, ver nota D-12 no topo).
+
+### Fuso: app roles em `America/Sao_Paulo`; `postgres` (migrations/seed) em UTC
+
+A sessão **padrão** do Postgres/Supabase é UTC, mas os papéis que o PostgREST usa por
+requisição — `anon`/`authenticated`/`service_role` — têm `timezone = 'America/Sao_Paulo'` no
+rolconfig (migration **0152**, ADR-0125). Como o PostgREST aplica o rolconfig do papel a cada
+chamada (mesmo mecanismo do `statement_timeout` acima), em **toda RPC do app**
+`CURRENT_DATE`/`now()::date`/`date_trunc('month', CURRENT_DATE)` já refletem o "hoje" de São
+Paulo — uma RPC nova ganha isso de graça, sem precisar de `AT TIME ZONE` explícito.
+
+Antes da 0152 era UTC, e o "hoje" adiantava um dia a partir de ~21h de SP (sintoma real: a
+projeção do Gerencial começava em "amanhã" — fix pontual na migration 0151, depois sistêmico
+na 0152).
+
+**Exceção que importa:** `postgres` **NÃO** foi alterado — **migrations e `npm run seed`
+rodam como `postgres`, em UTC**. Se uma migration/seed precisar do "hoje" de SP num
+`UPDATE`/backfill/`generate_series`, usar `(now() AT TIME ZONE 'America/Sao_Paulo')::date`
+explícito — `CURRENT_DATE` cru dentro de uma migration ainda é UTC.
+
+Para **exibição** de `timestamptz` no app a regra de sempre continua valendo:
+`fmtDataSP`/`Intl` com `timeZone`, nunca split de string — o fuso do role muda só o **offset**
+do ISO retornado, não o instante em si. (Ver skill `ui-design-system` para o lado da exibição.)
+
+---
+
+## 4. RBAC e RLS do lado do banco
+
+Login obrigatório via Supabase Auth. Autorização é **RBAC dinâmico por área**
+(`app.rbac_*`; 11 áreas; granular por setor em Performance). Enforcement em 4 camadas — a
+camada de RPC/banco é a que esta skill cobre; guards de página/API/action (`requireArea*`,
+`proxy.ts`) e o fluxo de senha provisória/troca no 1º acesso ficam na skill
+`contrato-rpc-front`.
+
+### RPC exposta = sempre `SECURITY DEFINER` + `app.exigir_acesso` — dois padrões coexistem
+
+**Toda RPC de leitura exposta é `SECURITY DEFINER` e checa `app.exigir_acesso(<áreas>)` antes
+de tocar em qualquer dado.**
+
+- **Wrapper + `__nucleo`** — função pública `SECURITY DEFINER` que chama `exigir_acesso` e
+  delega para `<fn>__nucleo` (service-role-only). É o molde da migration **0121**, um
+  **retrofit** para preservar a assinatura de RPCs que já existiam e já tinham consumidores
+  antes do RBAC dinâmico chegar. **Não é o molde para função nova** — é legado de retrofit.
+- **Padrão INLINE** — desde a v4.29 (migrations 0160–0165), é o padrão para **RPC NOVA**:
+  `PERFORM app.exigir_acesso(ARRAY[...])` como **primeira linha do próprio corpo** da função,
+  sem indireção a `__nucleo`, mantendo explícitos `REVOKE EXECUTE ... FROM PUBLIC, anon` /
+  `GRANT EXECUTE ... TO authenticated, service_role`. Exemplos: `acervo_listar`/
+  `acervo_criar`/`acervo_doc_path` (0165), `importar_clientes_corp`/`listar_clientes_corp`
+  (0164). RPC com `p_setor` deriva a área via `app.areas_do_setor`.
+
+### `anon`/`authenticated` ganham EXECUTE em função nova por default — nunca contar com isso
+
+O Supabase dá `anon`/`authenticated` EXECUTE em função nova por *default privileges*, mesmo
+com `REVOKE ... FROM PUBLIC` explícito na própria função. **Custou caro:** as 72 funções do
+projeto tinham `anon` mesmo com esse revoke (incluindo `truncate_dynamic_tables`) — a migration
+0122 corrigiu isso com `ALTER DEFAULT PRIVILEGES ... REVOKE EXECUTE ... FROM anon,
+authenticated`. **Regra:** todo `GRANT EXECUTE` é explícito; nunca contar com o default do
+Postgres/Supabase.
+
+### RLS é deny-by-default e NÃO-permissivo
+
+RLS está ligado em todas as tabelas dos 6 schemas do projeto, sem nenhuma policy `USING true`
+(a migration 0123 removeu as herdadas). Como o app nunca acessa tabela direto (zero `.from()`
+no código), RLS hoje não afeta o caminho real (que é via RPC, e o owner `postgres` ignora
+RLS) — mas uma policy permissiva seria um furo latente. Manter a camada de RLS também fechada,
+mesmo sem uso direto.
+
+### `coalesce(..., false)` em predicado com coluna anulável — NULL não é negação
+
+`coluna = auth.uid()` retorna **NULL** (não `false`) quando `coluna` é NULL — exemplo real:
+`destinatario_user_id = uid` numa solicitação atribuída a uma ROLE (onde `user_id` é nulo por
+natureza). Numa cadeia `OR`, `false OR NULL = NULL`; e `IF NOT <expr nula> THEN RAISE` **não
+dispara** (`NOT NULL = NULL`, que não é `true`) — então o `RAISE` de negação é pulado, e isso
+é **vazamento de permissão** (um terceiro vê ou age sobre algo que não deveria).
+
+Uma cláusula `WHERE` tolera isso (NULL simplesmente exclui a linha), mas um predicado
+booleano usado em `IF` ou uma função `RETURNS boolean` **não tolera** — precisa do
+`coalesce`.
+
+**Regra:** toda comparação de permissão envolvendo coluna anulável vai em
+`coalesce(<comparação>, false)`; funções de visibilidade retornam boolean estrito, nunca
+NULL. **Custou caro:** vazamento em `pode_ver_solic`/`sou_atendente`, pego pela auto-auditoria
+adversarial (v4.16.0, fix migration 0129) — foi a auditoria direto na RPC, não a UI, que
+pegou o problema. Este item também está espelhado inline no checklist do `revisor-db`.
+
+### Janela anônima ENCERRADA (v4.17.0/M1, ADR-0114)
+
+`anon` não executa **nenhuma** RPC de dado — `REVOKE EXECUTE` em tudo de `public`/`app`
+**exceto `solicitar_acesso`** (auto-cadastro, com rate-limit). `exigir_acesso` nega `anon`
+SEMPRE (o ramo "anon passa quando o enforcement está OFF" foi removido) e só libera contexto
+**sem JWT** se `session_user` for um superusuário real (migrations/seed/`db query` rodando
+como `postgres`) — a requisição anônima do PostgREST chega sem claims, e era exatamente esse
+o furo (fail-open) antes do M1. Toda RPC consumida pela UI roda como `authenticated`. RPC ou
+grant novo nasce **sem** `anon` (é o efeito combinado da 0122 + essa limpeza). Não reabrir
+`anon` para nenhuma RPC nova.
+
+### Kill switch é emergência, não mais compatibilidade
+
+`app.config.auth_enforcement` + `admin_set_enforcement` permanecem como alavanca de
+**emergência** (runbook `docs/runbooks/v4-13-auth-runbook.md`), mas **não regem mais o
+caminho anon** (o M1 removeu esse ramo). Anti-lockout vive nas RPCs `admin_*` — não dá para
+se auto-desativar nem para tirar o próprio acesso a `admin/acessos`.
+
+---
+
+## 5. Convenções de migration
+
+- Arquivos: `supabase/migrations/NNNN_nome.sql`, numeração sequencial — **verificar a
+  numeração real em `supabase/migrations/`**, nunca confiar na numeração sugerida por
+  briefing.
+- RPC nova: sempre `SECURITY DEFINER` + `REVOKE EXECUTE ... FROM PUBLIC` + `GRANT EXECUTE ...
+  TO service_role` (e `authenticated` quando for consumida pela UI).
+- `max_rows = 1000` no PostgREST — é o limite de payload de RPCs/queries. Considerar isso em
+  listagens grandes (paginação ou agregação no servidor).
+- Subagentes que criam migration recebem o **número exato** do orquestrador e **NÃO aplicam**
+  — quem aplica, em lote e sequencialmente, é o orquestrador depois que todas as edições
+  terminam.
+- **Antes de `DROP` de qualquer objeto, verificar consumidores reais** (grep no app **e** em
+  `supabase/seed/`, mais uma auditoria cética). "Órfão" pelo briefing não é garantia — ver o
+  precedente da v4.17.1 na seção 1. `DROP` é destrutivo: confirmação + reversibilidade
+  documentada (corpo salvo na migration de origem).
+
+---
+
+## 6. Verificação pós-push
+
+Testar toda RPC nova via REST com a **service role key** antes de considerar pronto:
+
+```bash
+curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
+  -H "apikey: $SVCKEY" -H "Authorization: Bearer $SVCKEY" \
+  -H "Content-Type: application/json" -d '{...}'
+```
+
+### REST com `service_role` EXECUTA o corpo da RPC — `db query` não substitui isso
+
+A verificação REST com `service_role` **executa de verdade o corpo** da função (o
+`service_role` é o ramo *trusted* de `exigir_acesso`) — é isso que pega erro de **runtime**
+dentro do corpo. **Introspecção via `npx supabase db query` NÃO substitui essa verificação**:
+o `db query` roda num papel sem JWT e não-superusuário, então `exigir_acesso` **nega a
+chamada antes do corpo rodar** — e mascara qualquer erro que estivesse lá dentro.
+
+**Custou caro:** `gerencial_historico_lotes` foi para produção com `max(usuario_id)` na
+v5.2.1 — o Postgres **não tem `max()`/`min()` para `uuid`** (precisa agregar via `::text`),
+mas o smoke feito por `db query` parou no gate de acesso e nunca chegou a executar o corpo; o
+erro só apareceu na tela do usuário. Fix na migration 0203. **Regra prática:** para verificar
+qualquer agregado dentro de uma RPC gated, execute-a via REST/`service_role`, não só via
+introspecção.
+
+---
+
+## 7. RPC que "já existe e aceita o parâmetro certo" pode ter a SEMÂNTICA errada
+
+Reuso é a preferência do projeto ("adotar/estender > construir"), mas **granularidade e
+assinatura compatíveis não garantem FILTRO compatível**. Antes de reusar uma RPC para um
+número que vai aparecer **lado a lado com outro na mesma tela**, a pergunta certa não é "essa
+RPC serve?" — é **"ela aplica o MESMO filtro que o número vizinho?"** E isso se responde com
+**uma query de verificação**, não lendo a assinatura da função.
+
+**Custou caro (v5.3.1):** `get_decomposicao_categoria` tinha exatamente o par `p_from`/`p_to`
+que a tela de Decomposição precisava — e ainda assim **somava `previsto` junto do
+`realizado`** (com competência RETROATIVA, porque título vencido em aberto entra pelo
+vencimento) e **ignorava o de-para curado** (`dre_categoria_map`, 20 das 130 categorias
+re-parenteadas, mais as excluídas). Medido: R$ 4,3 Mi de "previsto" indevido e −R$ 30 mil de
+transferência interna dentro da janela em questão. Reusar sem medir teria produzido duas
+somas vizinhas na mesma tela, ambas plausíveis, discordando entre si sem explicação — o pior
+erro possível num demonstrativo financeiro.
+
+**Corolário:** quando duas RPCs precisam CONCORDAR entre si, essa igualdade vira **caso de
+contrato** (`rpc-contrato.test.ts`), não uma nota de rodapé — senão a próxima "otimização" em
+uma delas quebra silenciosamente a outra, e isso só aparece na tela do usuário. Ver skill
+`contrato-rpc-front` para o lado do teste de contrato.
+
+---
+
+## Ver também
+
+- **`contrato-rpc-front`** — o lado do app que consome a RPC: helper de tipagem frouxa para
+  RPC ainda não coberta por `database.ts`, `parseRpc`/schema Zod e por que RPC do Supabase é
+  *thenable* (não Promise — `.catch()` nela estoura em runtime).
+- **`ingestao-planilhas`** — o erro de `dim_data` (seção 2 acima) aparece primeiro como falha
+  de upload; o parser único de Vendas e o pipeline atômico (`limpar_staging_vendas` →
+  `inserir_lote_staging` → `validar_carga_staging` → `promover_carga_vendas`) do lado do
+  app.
+- **`ui-design-system`** — exibição de `timestamptz` sempre via `fmtDataSP`/`Intl` (nunca
+  split de string); o fuso do banco (seção 3 acima) só muda o offset do ISO, não como ele deve
+  ser mostrado.
