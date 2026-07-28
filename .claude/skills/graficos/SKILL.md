@@ -1,6 +1,6 @@
 ---
 name: graficos
-description: Gráficos do Janus (Recharts) — sempre pelos primitivos de @/components/charts (tema central, eixos, ChartLegend, CustomTooltip, fmtAxisBRL/fmtAxisPct/fmtAxisMes), paleta canônica por contexto semântico (série principal --brand, margem --brand-deep, cash-flow --positive/--negative, subsetor e cross-setor por token), sólido = real e tracejado = projeção. Use ao criar ou alterar gráfico, série, eixo, tooltip, legenda ou cor de gráfico.
+description: Gráficos do Janus (Recharts) — criar OU alterar QUALQUER gráfico do dashboard: adicionar/mudar série, linha de projeção tracejada, legenda, tooltip, eixo (fmtAxisBRL/fmtAxisPct/fmtAxisMes) e cor de série pela paleta canônica por contexto semântico (série principal --brand, margem --brand-deep, cash-flow --positive/--negative, subsetor e cross-setor por token; sólido = real, tracejado = referência/projeção). Sempre pelos primitivos de @/components/charts — nunca Recharts cru. Use para qualquer trabalho em gráfico: visualização nova, série nova, projeção, legenda, eixo, tooltip ou cor de gráfico.
 ---
 
 # Gráficos (Janus)

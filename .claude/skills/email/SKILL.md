@@ -1,6 +1,6 @@
 ---
 name: email
-description: E-mail no Janus — camada única src/lib/email/ (fallback-safe, retorna boolean e nunca lança), layout compatível com Outlook (tabelas + inline, botão em célula, imagem CID com bytes no bundle), fronteira de marca (interno = Janus; cliente externo = 100% Welcome, nunca Janus) e o padrão MODO TESTE fail-closed para ação externa irreversível (ADR-0140). Use ao criar ou alterar qualquer e-mail, template, envio, ou integração externa irreversível — e leia docs/email-layout-guide.md antes de layout novo.
+description: E-mail no Janus — criar ou alterar QUALQUER e-mail, template ou notificação (fatura, convite, alerta): camada única src/lib/email/ (fallback-safe, retorna boolean e nunca lança), layout compatível com Outlook (tabelas + inline, botão em célula, imagem CID com bytes no bundle), fronteira de marca (interno = Janus; cliente externo = 100% Welcome, nunca Janus) e o padrão MODO TESTE fail-closed para ação externa irreversível (ADR-0140). Use ANTES de escrever template de e-mail, envio via SMTP/nodemailer, notificação por e-mail ou integração externa irreversível — e leia docs/email-layout-guide.md antes de layout novo.
 ---
 
 # E-mail no Janus

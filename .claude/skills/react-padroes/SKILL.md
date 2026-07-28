@@ -1,6 +1,6 @@
 ---
 name: react-padroes
-description: Padrões React/Next 16 do Janus — regras do eslint react-hooks v7 (React Compiler) e os padrões canônicos que as satisfazem SEM mudar comportamento (loading derivado de chave, initializer no useState, componente içado ao módulo, acumulador imutável), rotas pesadas com loading.tsx/skeleton (ADR-0144), startTransition em filtro que navega e promise+Suspense para dado não-crítico. Use ao criar rota ou segmento novo, corrigir erro de lint de hooks, ou escrever efeito, fetch com loading ou estado derivado.
+description: Padrões React/Next 16 do Janus — erros e avisos do lint eslint-plugin-react-hooks v7 / React Compiler (set-state-in-effect, static-components, immutability, exhaustive-deps) e os padrões canônicos que os corrigem SEM mudar comportamento (loading derivado de chave, initializer no useState, componente içado ao módulo, acumulador imutável); useEffect com fetch/setLoading; rotas pesadas com loading.tsx/skeleton (ADR-0144); startTransition em filtro que navega; promise+Suspense+use() para dado não-crítico. Use ao corrigir qualquer erro de lint de hooks, escrever useEffect/fetch com loading/estado derivado, ou criar rota/segmento novo.
 ---
 
 # Padrões React/Next 16 do Janus
