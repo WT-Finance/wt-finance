@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-28 (18h30) · v5.3.2 MERGEADA (#197, 16h26) — Reformulação do Harness em produção; worktree e branch limpas
+Última atualização: 2026-07-28 (17h05) · v5.3.3 FECHADA — PR draft aberto, aguardando merge humano (produção segue 5.3.2)
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,6 +9,13 @@
 
 ## Verdade atual
 
+- **v5.3.3 fechada e aguardando merge** (branch `feat/v5-3-3-fontes-avenir`): patch de Rota C que
+  isentou `fonts/` no matcher do `src/proxy.ts` — as telas SEM sessão voltaram a renderizar Avenir
+  (o proxy respondia `307`/HTML do login no lugar do `.otf` e o browser caía em fonte de sistema).
+  **Telas afetadas eram 3: `/login`, `/solicitar-acesso`, `/auth/confirm`** — `/trocar-senha`
+  exige sessão e nunca esteve no escopo (o registro da v5.3.2 supunha que estava). Guard mecânico
+  novo em `src/proxy.test.ts` (32 casos) fixa as duas bordas do matcher. Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-3-3_Fontes_Avenir.md`.
 - Versão em produção (main): **`5.3.2`** (#197 mergeado 28/07 às 16h26) — **o HARNESS NOVO REGE
   a partir de agora** (ADR-0157, sem migrations, nada muda nas telas): CLAUDE.md **518 → 162
   linhas** (core) + **9 skills internas** + **3 rituais** (`/nova-versao`, `/fechamento-versao`,
@@ -36,11 +43,12 @@
   lint` e `db:migrate -- --aditiva` passam SEM consulta ao classificador na primeira sessão
   interativa do Yan (validação headless já exercitada no pós-merge; se não valer no interativo,
   suspeito registrado: issue #18846 do Claude Code).
-- **[ALTO, achado do verificador-visual na estreia] Fontes Avenir quebradas em telas
-  não-autenticadas:** o `proxy.ts` intercepta `/fonts/avenir/*.otf` (307 → HTML do login) e a
-  tipografia cai para fonte de sistema no `/login` (e provavelmente `/solicitar-acesso`,
-  `/trocar-senha`). Correção provável: isentar `/fonts/*` no matcher. Fora do escopo da v5.3.2
-  — candidata a patch próprio.
+- **Licença da Avenir LT Std × exposição pública dos `.otf` (BAIXO, achado do revisor na v5.3.3):**
+  com a isenção do matcher, os 5 `.otf` passaram a ser baixáveis por visitante anônimo — antes só
+  com sessão, e por acidente. Não é falha de autenticação (fonte usada em página pública é sempre
+  alcançável pelo browser); é **conferir os termos da licença comercial** (ADR-0039). Se o Welcome
+  Group quiser limitar, o caminho é subsetting/`woff2` com `Access-Control`/referrer, não voltar a
+  quebrar a fonte no login. **Decisão do Yan.**
 - **Conceder a área `financeiro/dre` às roles** no editor de acessos (herdado da v5.3.0). Sem
   isso a aba do Demonstrativo existe mas só admin a enxerga.
 - **Conferir o Resumo Executivo contra a planilha da controladoria** (do Yan; contra a tabela já
@@ -60,8 +68,11 @@
 
 ## Filas ativas (próximos passos já decididos)
 
-- **Piloto do harness novo (prova 3):** a primeira versão de produto subsequente roda nativa no
-  harness da v5.3.2 (abrir com `/nova-versao`); rollback trivial = revert do CLAUDE.md/skills.
+- **Piloto do harness novo (prova 3):** a v5.3.3 já rodou **nativa** (`/nova-versao` +
+  `/fechamento-versao`) e o harness se sustentou de ponta a ponta na Rota C — o ritual ganhou a
+  rota explícita (patch sem briefing, sem plan mode, passo das cópias 0950–0954 condicionado a
+  tocar banco). Falta a prova numa versão **de produto** (Rota A, com briefing e várias missões);
+  rollback trivial segue sendo revert do CLAUDE.md/skills.
 - **Ambiente (recomendações da v5.3.2, ação do Yan):** desativar o plugin **superpowers
   duplicado** (projeto v5.1.0; o global 6.2.0 fica) — ele induz disparo-em-bloco das skills;
   limpar allows amplos/efêmeros do `.claude/settings.local.json` (`Bash(npx supabase *)`,
@@ -99,7 +110,14 @@
 - **Hooks ATIVOS** (protecao-config 6 alvos incl. settings global / gate-stop /
   contexto-sessao) — detalhes no core §Salvaguardas.
 - **Versão que toca UI:** despachar `verificador-visual` após gates e revisores (`next dev` é
-  do orquestrador; tela autenticada exige credencial de teste na delegação).
+  do orquestrador; tela autenticada exige credencial de teste na delegação). ⚠️ **O MCP Playwright
+  não sobe em sessão de background/headless** (v5.3.3): o agente volta com **NÃO VERIFICADO** por
+  falta das ferramentas `browser_*` — comportamento correto dele, não fabricar é o certo. Saída
+  usada e provada na v5.3.3: o orquestrador roda um script headless com o **Chromium que o próprio
+  MCP já instalou** (`~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome` + `playwright-core`
+  do cache do npx), medindo status/`content-type` de rede, console, `document.fonts.check()`,
+  largura comparada com o fallback, anel de foco por Tab e screenshot. Fora do repo, sem tocar
+  `node_modules`. Em sessão interativa, preferir o agente.
 - **Protocolo de revisão:** `revisor` (sempre) e `revisor-db` (se migration/RPC) ANTES dos
   gates. Na v5.3.1 cada um pegou um ALTO real; na v5.3.2 o verificador-visual pegou o ALTO das
   fontes Avenir na estreia.

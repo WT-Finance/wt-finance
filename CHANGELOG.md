@@ -6,6 +6,36 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.3.3] — 2026-07-28
+
+PATCH · **Fontes Avenir nas telas não-autenticadas** (Rota C — correção do achado ALTO registrado
+no out-briefing da v5.3.2 §4). Sem migrations. Nenhuma rota de página ou API muda de comportamento.
+
+- **Causa-raiz:** o `matcher` do `src/proxy.ts` (camada 1 do enforcement, ADR-0109) não isentava
+  `/fonts/`. Um `/fonts/avenir/*.otf` pedido por tela SEM sessão recebia `307` com o HTML do login;
+  o browser abortava o decode (`OTS parsing error`) e a tipografia caía para fonte de sistema.
+  Telas COM sessão nunca foram afetadas — o proxy só redireciona quando não há usuário.
+- **Correção:** `fonts/` entrou no negative lookahead do matcher **por prefixo de diretório** (a
+  mesma forma do `logos/` que já existia) e deliberadamente **não** por extensão `.otf` — isenção
+  por extensão foi o que furou a camada 1 na auto-auditoria S11 (rota dinâmica `/api/.../[id]` com
+  id terminado em `.png` escapava do proxy).
+- **Escopo real das telas afetadas — corrige o registro da v5.3.2:** são `/login`,
+  `/solicitar-acesso` e `/auth/confirm`. **Não** `/trocar-senha`, que exige sessão
+  (`src/app/trocar-senha/page.tsx:19-20`) e portanto nunca esteve no escopo do bug.
+- **Guard mecânico novo** (`src/proxy.test.ts`, 32 casos): fixa as duas bordas do matcher — as
+  fontes reais de `public/fonts/avenir` isentas (nome cru e percent-encoded, lidas do disco) e as
+  superfícies reais sempre passando pelo proxy, incluindo as armadilhas `/api/uploads/abc.png`
+  (lição S11), `/api/algo/fonts/x.otf`, `/fonts` sem barra final e `/FONTS/`. Verificado que o
+  teste REPROVA com o matcher antigo.
+- **Medições do fechamento:** as 5 `.otf` passaram de `307` para `200 font/otf`, byte a byte
+  idênticas aos arquivos de `public/` (magic OpenType `OTTO`); nas três telas
+  `document.fonts.check('1em "Avenir LT Std"') = true`, largura de referência 726,86px em Avenir
+  contra 796,44px do fallback Arial, e **0** `OTS parsing error` no console; páginas protegidas
+  seguem `307 → /login` com `next=` preservado, APIs seguem `401 AUTH_NECESSARIA`, e travessia
+  (`..`, `%2e%2e`) sob o prefixo isento continua barrada.
+
+---
+
 ## [5.3.2] — 2026-07-28
 
 PATCH · **Reformulação do harness** (ADR-0157). Sem migrations; nada muda nas telas — muda como o

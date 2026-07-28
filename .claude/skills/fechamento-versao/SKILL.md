@@ -26,6 +26,12 @@ npm run build && npx tsc --noEmit && npm run lint && npm test
 
 Todos limpos/verdes; lint sem warnings NOVOS. Smoke das áreas afetadas.
 
+⚠️ **Se o `next dev` rodou nesta worktree** (conferência visual do passo 3), o `next build` seguinte
+deixa `.next/dev/types/*` para trás e o `npx tsc --noEmit` acusa erro **em arquivo gerado**
+(`routes.d.ts`, `validator.ts` — o `**/*.ts` do tsconfig os varre). Não é o código e **não se toca
+no tsconfig para calar**: `rm -rf .next` e rodar a sequência de novo. Ordem que evita o retrabalho:
+gates → revisores → visual (com dev) → `rm -rf .next` + gates de novo se algo mudou depois. (v5.3.3.)
+
 ## 3. Conferência visual (se a versão tocou UI)
 
 O orquestrador sobe `npm run dev` (serializado — subagente NUNCA sobe servidor), despacha o
