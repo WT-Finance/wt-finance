@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.3.2',
+    data: '2026-07-28T15:58', // horário real de autoria — reconciliar ao tempo do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'Melhorias internas de engenharia: reorganização da bancada de trabalho que constrói e revisa a plataforma. Nada muda nas telas — o efeito esperado é entregas futuras mais rápidas e com menos idas e vindas, e uma etapa nova de conferência visual automática das telas antes de cada entrega chegar à diretoria.',
+      },
+    ],
+  },
+  {
     versao: '5.3.1',
     data: '2026-07-28T14:33', // horário REAL do merge (a3b524a, 17:33:42Z −03) — reconciliado
     itens: [

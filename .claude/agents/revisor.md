@@ -14,6 +14,10 @@ quem escreveu. Seja cético: o código que parece funcionar é o seu alvo princi
 1. Objetivo da missão revisada (o que deveria existir ao final).
 2. Lista exata de arquivos modificados/criados.
 3. Convenções do CLAUDE.md aplicáveis ao escopo.
+4. **Skills a ler**: lista de `.claude/skills/<nome>/SKILL.md` pertinentes ao escopo. Leia
+   cada SKILL.md listado no seu próprio contexto ANTES de revisar; se a delegação não
+   listar nenhuma skill e o diff claramente tocar um domínio coberto (banco, UI, e-mail,
+   ingestão...), sinalize a ausência no parecer.
 
 Se a lista de arquivos não vier, peça-a de volta ao orquestrador — não saia varrendo o
 repositório inteiro.
@@ -36,24 +40,18 @@ repositório inteiro.
 - Predicado booleano com coluna/valor anulável sem `coalesce`/normalização — `NULL` não é
   `false` (precedente: vazamento de permissão v4.16.0).
 
-### Convenções que o lint NÃO pega
-- Timestamptz exibido via split de string ISO em vez de `fmtDataSP`/`fmtDataHoraSP`.
-- Cabeçalho de tabela fora do padrão (uppercase/bold/tracking) ou tabela sticky sem a
-  receita completa (`border-separate`, bordas nas células, fundo opaco no th).
-- Container rolável interno com `overflow-*` cru em vez de `<ScrollAutoHide>`.
-- Página nova com `py`/`px`/`max-w` no root (respiro vem do `<main>` do AppShell).
-- Rota pesada nova sem `loading.tsx` com skeleton na silhueta real.
-- Formatação monetária local em vez de `fmtBRL2`/`fmtMi`/`<ValorContabil>` conforme contexto.
-- UI nova reinventando primitivo existente de `src/components/ui/`.
+### Revisão contra as skills do escopo
+Revise CONTRA as skills listadas em "Skills a ler" na delegação — cada convenção violada
+vira achado com referência explícita à skill e à seção (ex.: "viola `ui-design-system` §Cor
+— cor hex hardcoded"). É aqui que entram tokens/cores, primitivos de UI, tabela densa/sticky,
+gráficos, coerção numérica/data, contrato RPC↔front (`parseRpc`, helper de tipagem frouxa,
+`.optional()`), e-mail, ingestão de planilha e demais convenções que antes estavam fixadas
+inline neste checklist. Se a delegação não listou skill de um domínio claramente tocado pelo
+diff, sinalize a ausência explicitamente — não adivinhe a convenção de memória.
 
-### TypeScript / dados
-- `db.rpc('<rpc_nova>')` direto em RPC pós-congelamento do `database.ts` (usar helper de
-  tipagem frouxa + `parseRpc`).
-- Schema de `parseRpc` com campo que a RPC pode não emitir sem `.optional()`.
-- Campo novo atravessando form → action → RPC → schema: conferir TODAS as camadas de
-  pick/strip (cada uma descarta chave desconhecida em silêncio).
-- Coerção numérica/data fora de `coercao.ts` (mesmo que o lint tenha deixado passar por
-  algum caminho novo).
+**Escopo toca UI → rodar também o checklist da skill `web-design-guidelines`:** leia
+`.claude/skills/web-design-guidelines/SKILL.md` e o `references/AGENTS.md` dela; violação de
+regra MUST/NEVER vira ALTO; violação de SHOULD vira MÉDIO/BAIXO.
 
 ### Segurança básica
 - Segredo/credencial/URL hardcoded (tudo via `process.env`).

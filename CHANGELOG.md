@@ -6,6 +6,54 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.3.2] — 2026-07-28
+
+PATCH · **Reformulação do harness** (ADR-0157). Sem migrations; nada muda nas telas — muda como o
+projeto se constrói. Primeiro briefing no formato novo (`.md` único commitado; par docx+prompt extinto).
+
+- **F1 — Permissões (terceira camada):** handoff formal do bloco `allow`/`deny` para o
+  `~/.claude/settings.json` do usuário (aplicado pelo Yan) — allow estreito para a suíte de gates,
+  git/gh e as 2 invocações de `db:migrate -- --aditiva`; `deny` para `npx supabase db push` cru
+  (protege o backup-gate). Sintaxe validada contra a doc oficial (`cmd *` = prefixo com fronteira
+  de palavra; deny vence allow em qualquer escopo; allow explícito dispensa o classificador do
+  modo auto — o mecanismo que faltou no incidente da v5.3.1). Protocolo D5 (harness barrou passo
+  autorizado: não contornar → completar → deixar pronto → sinalizar → declarar não-verificado)
+  agora é doutrina no core. `.gitignore`: `.claude/settings.local.json`, correção do token colado
+  `.agentsskills/` (linha 51) e ruído untracked (`agent/`, `brag-output/`, symlinks de skills de
+  vídeo, `.playwright-mcp/`).
+- **F2 — CLAUDE.md core + skills:** o CLAUDE.md foi reescrito de **518 → 162 linhas** (8 seções;
+  teto 180), e o conhecimento situacional migrou para **9 skills internas** em `.claude/skills/`
+  (banco-e-rpc, contrato-rpc-front, ui-design-system, tabela-densa, graficos, react-padroes,
+  email, ingestao-planilhas e orquestracao — a Carta do Orquestrador). Migração provada por
+  **inventário sem órfãos** (`docs/harness/inventario-claude-md.md`): 100% das 518 linhas com
+  destino explícito; 1 única deleção deliberada (o `/compact` estratégico → substituído por
+  `/clear` + re-ancoragem em disco, D-05); precedentes "custou caro" preservados. Startup medido:
+  porção do projeto **59,7k → 32,5k tokens** (−45,6%).
+- **F3 — Rituais invocáveis:** `/nova-versao` (worktree + ambiente + cópias 0950–0954 marcadas +
+  briefing no 1º commit + carta + plan mode; `disable-model-invocation`), `/fechamento-versao`
+  (o DoD integral como procedimento, incluindo o item D-12 "convenção de banco mudou → skill E
+  revisor-db") e `/pos-merge` (pull ff-only, remoção segura, reconciliação da data do changelog).
+  Testados ponta a ponta em ambiente descartável.
+- **F4 — Agentes:** os 4 agentes ganham o campo **"Skills a ler"** na delegação (o agente lê no
+  próprio contexto; nunca conteúdo colado); `implementador` perdeu o canon duplicado ("Contexto
+  técnico") e ganhou rastreabilidade no retorno; `revisor` agora revisa CONTRA as skills do escopo
+  e roda o checklist `web-design-guidelines` quando toca UI; `revisor-db` mantém checklist inline
+  (D-12, deliberado). **Novo agente `verificador-visual`** (Sonnet; Read + MCP Playwright;
+  read-only; não sobe servidor): conferência visual pós-gates — no teste de estreia contra o
+  `/login` em dev já devolveu um **achado ALTO real** (fontes Avenir intercetadas pelo proxy de
+  auth com 307 → fallback silencioso de tipografia em telas não-autenticadas; registrado como
+  pendência, fora do escopo).
+- **F5 — Skills externas + MCP:** `web-artifacts-builder` (anthropics/skills@b29e7cf) e
+  `web-design-guidelines` (vercel-labs/web-interface-guidelines@4e799d4, com regra de precedência:
+  o DS do Janus vence em tokens/cores/primitivos) vendoradas; `skill-creator` e `frontend-design`
+  já ativas como plugins oficiais. **MCP Playwright** em `.mcp.json` (escopo de projeto):
+  `@playwright/mcp` chromium headless validado no WSL2 (handshake JSON-RPC, 24 tools, navegação e
+  screenshot reais contra `next dev`).
+- **F6 — Verificação:** sonda de disparo das skills (`docs/harness/sonda-disparo.md`) e baseline
+  de tokens registrados no out-briefing.
+
+---
+
 ## [5.3.1] — 2026-07-28
 
 PATCH · **DRE: Resumo Executivo + a Decomposição dos Lançamentos passa a seguir a estrutura oficial.** Fecha a adaptação do modelo da controladoria. Migration **aditiva 0209** (`get_decomposicao_bloco`); sem ADR novo — o raciocínio da troca de fonte foi registrado como **emenda ao ADR-0156**.
