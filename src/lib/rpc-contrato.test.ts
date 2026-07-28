@@ -18,7 +18,7 @@ import {
 } from './fluxo/rpc-fluxo'
 import {
   dreMensalSchema, dreEstruturaSchema, salvarEstruturaResultSchema, historicoLotesSchema,
-  historicoEntradasSchema,
+  historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
@@ -606,5 +606,87 @@ describe.skipIf(!ON)('contrato RPC — DRE undo/detalhe (execução inofensiva)'
   it('dre_estrutura_desfazer_lote/linha: id inexistente → erro amigável, nada muda', async () => {
     await expect(rpc('dre_estrutura_desfazer_lote', { p_lote: 1 })).rejects.toThrow(/inexistente/)
     await expect(rpc('dre_estrutura_desfazer_linha', { p_diario_id: 1 })).rejects.toThrow(/inexistente/)
+  })
+})
+
+// ── Decomposição por BLOCO (v5.3.1 · 0209) ────────────────────────────────────
+// A RECONCILIAÇÃO é o invariante desta versão, e aqui ela deixa de ser anedota: o
+// segundo caso PROVA, contra produção, que o net por bloco da decomposição bate ao
+// centavo com a coluna do mês correspondente de `get_dre_mensal`. Foi essa igualdade
+// que justificou a RPC nova em vez de reusar `get_decomposicao_categoria` (que soma
+// `previsto` junto e ignora o de-para curado) — se um dia alguém "otimizar" uma das
+// duas funções e a igualdade cair, é aqui que estoura, não na tela do usuário.
+
+/** Mês ANTERIOR ao de hoje em SP, como janela [1º dia, último dia]. É sempre um mês
+ *  FECHADO, onde as colunas de `get_dre_mensal` são realizado PURO (o previsto do mês
+ *  corrente viaja em `prev_corrente`, fora de `meses[]`) — condição da igualdade. */
+function janelaMesAnterior(): { ano: number; mes: number; de: string; ate: string } {
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+  const [y, m] = hoje.split('-').map(Number)
+  const mes = m === 1 ? 12 : m - 1
+  const ano = m === 1 ? y - 1 : y
+  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate()
+  const mm = String(mes).padStart(2, '0')
+  return { ano, mes, de: `${ano}-${mm}-01`, ate: `${ano}-${mm}-${String(ultimo).padStart(2, '0')}` }
+}
+
+describe.skipIf(!ON)('contrato RPC — DRE v5.3.1 (decomposição por bloco)', () => {
+  it('get_decomposicao_bloco: shape do payload + toda categoria classificada aponta p/ bloco presente', async () => {
+    const { de, ate } = janelaMesAnterior()
+    const d = await rpc('get_decomposicao_bloco', { p_from: de, p_to: ate })
+    const p = decomposicaoBlocoSchema.safeParse(d)
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    if (!p.success) return
+    expect(p.data.de).toBe(de)
+    expect(p.data.ate).toBe(ate)
+    const chaves = new Set(p.data.blocos.map(b => b.chave))
+    for (const c of p.data.categorias) {
+      if (c.bloco_chave !== null) expect(chaves.has(c.bloco_chave)).toBe(true)
+    }
+  })
+
+  it('get_decomposicao_bloco: RECONCILIA ao centavo com a coluna do mês em get_dre_mensal', async () => {
+    const { ano, mes, de, ate } = janelaMesAnterior()
+    const [dec, dre] = await Promise.all([
+      rpc('get_decomposicao_bloco', { p_from: de, p_to: ate }),
+      rpc('get_dre_mensal', { p_ano: ano }),
+    ])
+    const pd = decomposicaoBlocoSchema.safeParse(dec)
+    const pm = dreMensalSchema.safeParse(dre)
+    expect(pd.success && pm.success).toBe(true)
+    if (!pd.success || !pm.success) return
+    // Só os blocos ANALÍTICOS (os que recebem categoria) vêm na decomposição; os de
+    // fórmula não, e é isso que impede dupla contagem. Comparação por CHAVE.
+    expect(pd.data.blocos.length).toBeGreaterThan(0)
+    for (const b of pd.data.blocos) {
+      const linha = pm.data.linhas.find(l => l.chave === b.chave)
+      expect(linha, `bloco ${b.chave} sem linha em get_dre_mensal`).toBeTruthy()
+      if (!linha) continue
+      expect(
+        Math.abs(linha.meses[mes - 1] - b.valor),
+        `bloco ${b.chave}: tabela ${linha.meses[mes - 1]} × decomposição ${b.valor}`,
+      ).toBeLessThan(0.01)
+    }
+  })
+
+  it('get_decomposicao_bloco: nada some — Σ categorias classificadas == Σ blocos; excluídas FORA', async () => {
+    const { de, ate } = janelaMesAnterior()
+    const [dec, est] = await Promise.all([
+      rpc('get_decomposicao_bloco', { p_from: de, p_to: ate }),
+      rpc('dre_estrutura', {}),
+    ])
+    const pd = decomposicaoBlocoSchema.parse(dec)
+    const pe = dreEstruturaSchema.parse(est)
+
+    // Conservação: o payload não perde valor entre os dois níveis de agregação. (O
+    // filtro de épsilon do CARD é decisão de exibição — o dado aqui é íntegro.)
+    const somaCats   = pd.categorias.filter(c => c.bloco_chave !== null).reduce((s, c) => s + c.valor, 0)
+    const somaBlocos = pd.blocos.reduce((s, b) => s + b.valor, 0)
+    expect(Math.abs(somaCats - somaBlocos)).toBeLessThan(0.01)
+
+    // Excluídas da DRE (transferência interna) NÃO podem aparecer na decomposição —
+    // senão as barras deixariam de fechar com a tabela.
+    const excluidas = new Set(pe.maps.filter(m => m.excluida).map(m => m.categoria_id))
+    for (const c of pd.categorias) expect(excluidas.has(c.categoria_id)).toBe(false)
   })
 })
