@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.3.3',
+    data: '2026-07-28T17:04', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'As telas de entrada da plataforma (login, solicitação de acesso e confirmação de link) voltaram a usar a tipografia oficial do Welcome Group. Elas estavam sendo exibidas com uma fonte genérica do computador do usuário, o que quebrava a identidade visual justamente na primeira tela que qualquer pessoa vê. As telas internas nunca foram afetadas.',
+      },
+    ],
+  },
+  {
     versao: '5.3.2',
     data: '2026-07-28T16:26', // horário REAL do merge (8a456f3, 19:26:29Z −03) — reconciliado no /pos-merge
     itens: [
