@@ -1,36 +1,57 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { fmtBRL, fmtMi } from '@/lib/fmt'
+// Decomposição dos Lançamentos (v5.3.1) — barras horizontais agrupadas por BLOCO
+// da ESTRUTURA VIVA da DRE, não pelo grupo nativo do Monde. Por quê: 20 das 130
+// categorias são RE-PARENTEADAS pelo de-para curado (a categoria nasce num grupo
+// do Monde e é mapeada a um bloco diferente na estrutura) — agrupar pelo grupo
+// nativo NÃO fecharia com os subtotais da tabela da DRE logo acima, no mesmo
+// card. Agrupar por `bloco_chave` é o que garante a reconciliação ao centavo.
+//
+// Os valores são REALIZADO no intervalo das pills (sem previsto) — por isso
+// reconciliam ao centavo com as colunas MENSAIS da tabela (que também separam
+// realizado de previsto), nunca com uma coluna que misture os dois.
+//
+// Regra de sinal (a mesma reconciliação, agora em nível de categoria): o bloco já
+// tem o net SIGNADO (+ entrada / − saída); o LADO (Entradas | Saídas) é derivado
+// do sinal do bloco. A CONTRIBUIÇÃO de uma categoria ao seu lado é
+// `saida ? -cat.valor : cat.valor` — uma categoria com o MESMO sinal do bloco
+// contribui positivo; um ESTORNO (categoria com sinal OPOSTO ao do bloco — existe
+// de verdade, ~9 casos medidos em RH/RHB/ESTR) contribui NEGATIVO. Por
+// construção, Σ contrib das categorias do bloco === Math.abs(valor do bloco), o
+// que mantém a drill reconciliando com a barra. O estorno aparece ENTRE
+// PARÊNTESES (fmtContabil) — sinaliza "reduz o total" sem inventar um lado novo.
 
-// ── Tipos ───────────────────────────────────────────────────────────────────
+import { useMemo, useState, type ReactNode } from 'react'
+import { fmtBRL } from '@/lib/fmt'
+import { fmtContabil, fmtContabilBRL } from './dre/fmt-contabil'
+import { fluxoColors } from '@/components/charts'
+import { rotuloBloco } from '@/lib/dre/rotulo-bloco'
+import type { DecBloco, DecCategoria } from '@/lib/dre/schemas'
 
-interface DecomposicaoGrupo {
-  grupo_categoria: string
-  sinal: 'entrada' | 'saida'
-  valor_total: number // magnitude positiva (RPC retorna ABS)
-}
-
-interface DecomposicaoCategoria {
-  categoria: string
-  grupo_categoria: string
-  sinal: 'entrada' | 'saida'
-  valor_total: number // magnitude positiva
-}
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  entradas: DecomposicaoGrupo[] // sinal === 'entrada', ordenado por valor_total desc
-  saidas: DecomposicaoGrupo[] // sinal === 'saida', ordenado por valor_total desc
-  categorias: DecomposicaoCategoria[] // todas as categorias (todos os grupos), p/ drill-down
+  /** Blocos com movimento no período, em ordem do demonstrativo. `valor` é o net SIGNADO. */
+  blocos: DecBloco[]
+  /** Categorias com movimento. `bloco_chave === null` ⇒ NÃO CLASSIFICADA (sem de-para). */
+  categorias: DecCategoria[]
+  /** As pills de período (client component com router), injetadas pela página. */
+  slotPills?: ReactNode
+  /** true = a RPC do período FALHOU — estado DISTINTO de "período sem lançamentos".
+   *  Anunciar "sem lançamentos" quando a chamada quebrou seria dado errado parecendo
+   *  certo (a classe de defeito que os gates não pegam). Em qualquer dos dois casos as
+   *  pills continuam visíveis: sem elas o usuário ficaria preso no período que falhou. */
+  erro?: boolean
 }
+
+type Lado = 'entrada' | 'saida'
 
 // ── Paletas dessaturadas (design system) ────────────────────────────────────
 // Entradas: viés verde sage. Saídas: viés terracota/quente. "Outros" sempre o
 // último tom (mais neutro/claro) de cada paleta.
 
 // Endpoints da paleta = tokens via var() (fonte única; mudar o token propaga aqui).
-// Os tons INTERMEDIÁRIOS (sem token correspondente) seguem hex — degradê do donut.
+// Os tons INTERMEDIÁRIOS (sem token correspondente) seguem hex — degradê das barras.
 const PALETA_ENTRADAS = [
   'var(--positive)',
   '#7E9658',
@@ -46,184 +67,193 @@ const PALETA_SAIDAS = [
   'var(--negative-deep)',
   '#9C7A6A',
   '#BFA292',
-  'var(--negative-soft)', // reservada p/ "Outros"
+  'var(--negative-soft)', // 7º tom: hoje INALCANÇÁVEL (MAX_FATIAS=6 ⇒ índices 0..5) —
+                          // "Outros" tem cor própria (COR_OUTROS). Fica como folga se
+                          // MAX_FATIAS subir; NÃO é "a cor de Outros", como dizia antes.
 ]
 
+// Nota: `PALETA_ENTRADAS` tem 5 tons e `MAX_FATIAS` é 6, então um 6º bloco de Entradas
+// repetiria a cor do 1º (`i % length`). Na estrutura real o lado das Entradas tem ~4
+// blocos analíticos (ENT_H, RV, RFIN, RNOP), então o caso não acontece hoje; se um dia
+// acontecer, o efeito é só colisão de cor entre duas barras distantes na lista.
+
 const COR_OUTROS = '#B8B2A8' // neutro morno
+const COR_NAO_CLASSIFICADAS = 'var(--warning)'
 
-const MAX_FATIAS = 6 // top N grupos; demais (ou < LIMITE_PCT) viram "Outros"
-const LIMITE_PCT = 2 // grupos abaixo de 2% do total são dobrados em "Outros"
+const MAX_FATIAS = 6 // top N blocos; demais (ou < LIMITE_PCT) viram "Outros"
+const LIMITE_PCT = 2 // blocos abaixo de 2% do total do lado são dobrados em "Outros"
 
-// ── Estruturas internas do donut ─────────────────────────────────────────────
+// ── Estruturas internas ──────────────────────────────────────────────────────
 
-interface Fatia {
-  key: string // grupo_categoria, ou '__outros__'
+type TipoItem = 'bloco' | 'outros' | 'nao_classificadas'
+
+interface ItemBarra {
+  key: string // chave do bloco; '__outros__'; '__nc__'
   label: string
-  valor: number
-  pct: number
+  valor: number // magnitude (>= 0) — o lado e a cor já comunicam o sinal
   cor: string
-  ehOutros: boolean
-  gruposAgregados?: string[] // só p/ a fatia "Outros": os grupos que entraram
+  tipo: TipoItem
+  blocosAgregados?: string[] // só p/ tipo 'outros': as chaves dos blocos que entraram
+}
+
+interface ItemDrill {
+  key: string
+  label: string
+  valor: number // pode ser NEGATIVO (estorno) — fmtContabil sinaliza com parênteses
 }
 
 /**
- * Constrói as fatias do donut a partir dos grupos ordenados desc.
- * Mantém os top MAX_FATIAS com pct >= LIMITE_PCT; o restante vira "Outros".
+ * Monta os itens (barras) de um lado a partir dos blocos + a bandeja de "Não
+ * classificadas" (categorias sem bloco, mesmo sinal do lado). Mantém os top
+ * MAX_FATIAS blocos com pct >= LIMITE_PCT (rankeados por magnitude, não pela
+ * ordem do demonstrativo recebida); o restante vira "Outros". A bandeja de não
+ * classificadas fica FORA do top-N — sempre visível, sempre por último.
  */
-function montarFatias(grupos: DecomposicaoGrupo[], paleta: string[]): {
-  fatias: Fatia[]
-  total: number
-} {
-  const total = grupos.reduce((s, g) => s + g.valor_total, 0)
-  if (total <= 0) return { fatias: [], total: 0 }
+function montarItensLado(
+  blocos: DecBloco[],
+  categorias: DecCategoria[],
+  lado: Lado,
+  paleta: string[],
+): { itens: ItemBarra[]; totalLado: number } {
+  // O épsilon descarta bloco cujo NET é ~zero — ele não tem lado (nem entrada nem saída)
+  // nem comprimento de barra. Não é omissão silenciosa: a tabela da DRE logo acima mostra
+  // essa mesma linha com travessão, e o payload da RPC continua íntegro (o teste de
+  // contrato prova Σ categorias == Σ blocos). Acontece quando categorias grandes do mesmo
+  // bloco se cancelam quase por completo no período.
+  const filtrados = blocos.filter(b => (lado === 'entrada' ? b.valor > 0.005 : b.valor < -0.005))
+  const totalBlocos = filtrados.reduce((s, b) => s + Math.abs(b.valor), 0)
 
-  const principais: DecomposicaoGrupo[] = []
-  const agregados: DecomposicaoGrupo[] = []
+  const ordenados = [...filtrados].sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
 
-  for (const g of grupos) {
-    const pct = (g.valor_total / total) * 100
+  const principais: DecBloco[] = []
+  const agregados: DecBloco[] = []
+  for (const b of ordenados) {
+    const pct = totalBlocos > 0 ? (Math.abs(b.valor) / totalBlocos) * 100 : 0
     if (principais.length < MAX_FATIAS && pct >= LIMITE_PCT) {
-      principais.push(g)
+      principais.push(b)
     } else {
-      agregados.push(g)
+      agregados.push(b)
     }
   }
 
-  const fatias: Fatia[] = principais.map((g, i) => ({
-    key: g.grupo_categoria,
-    label: g.grupo_categoria || '(sem grupo)',
-    valor: g.valor_total,
-    pct: (g.valor_total / total) * 100,
+  const itens: ItemBarra[] = principais.map((b, i): ItemBarra => ({
+    key: b.chave,
+    label: rotuloBloco(b.rotulo),
+    valor: Math.abs(b.valor),
     cor: paleta[i % paleta.length],
-    ehOutros: false,
+    tipo: 'bloco',
   }))
 
   if (agregados.length > 0) {
-    const valorOutros = agregados.reduce((s, g) => s + g.valor_total, 0)
-    fatias.push({
+    const valorOutros = agregados.reduce((s, b) => s + Math.abs(b.valor), 0)
+    itens.push({
       key: '__outros__',
-      label: `Outros (${agregados.length} ${agregados.length === 1 ? 'grupo' : 'grupos'})`,
+      label: `Outros (${agregados.length} ${agregados.length === 1 ? 'bloco' : 'blocos'})`,
       valor: valorOutros,
-      pct: (valorOutros / total) * 100,
       cor: COR_OUTROS,
-      ehOutros: true,
-      gruposAgregados: agregados.map(g => g.grupo_categoria),
+      tipo: 'outros',
+      blocosAgregados: agregados.map(b => b.chave),
     })
   }
 
-  return { fatias, total }
-}
-
-// ── Item de drill-down (categorias de um grupo / grupos de "Outros") ──────────
-
-interface ItemLista {
-  nome: string
-  valor: number
-}
-
-// ── Donut (panorama) ─────────────────────────────────────────────────────────
-// Maior que o legado; sem legenda lateral (a tabela abaixo cumpre esse papel).
-// Continua clicável e sincroniza a seleção com a tabela do mesmo lado.
-
-function Donut({
-  titulo,
-  fatias,
-  total,
-  sinal,
-  selecionado,
-  onSelecionar,
-}: {
-  titulo: string
-  fatias: Fatia[]
-  total: number
-  sinal: 'entrada' | 'saida'
-  selecionado: string | null
-  onSelecionar: (key: string) => void
-}) {
-  const corTitulo = sinal === 'entrada' ? 'var(--positive)' : 'var(--negative)'
-
-  if (!fatias.length) {
-    return (
-      <div className="flex flex-col items-center">
-        <p className="text-xs mb-3 font-medium" style={{ color: corTitulo }}>{titulo}</p>
-        <p className="text-xs text-zinc-400">Sem dados</p>
-      </div>
-    )
+  let totalLado = totalBlocos
+  const naoClassificadas = categorias.filter(
+    c => c.bloco_chave === null && (lado === 'entrada' ? c.valor > 0.005 : c.valor < -0.005),
+  )
+  if (naoClassificadas.length > 0) {
+    const valorNc = naoClassificadas.reduce((s, c) => s + Math.abs(c.valor), 0)
+    itens.push({
+      key: '__nc__',
+      label: `Não classificadas (${naoClassificadas.length})`,
+      valor: valorNc,
+      cor: COR_NAO_CLASSIFICADAS,
+      tipo: 'nao_classificadas',
+    })
+    totalLado += valorNc
   }
 
+  return { itens, totalLado }
+}
+
+/** Conteúdo do drill de um item selecionado (categorias do bloco, blocos agregados
+ *  de "Outros", ou categorias não classificadas), ordenado por |valor| desc. */
+function montarDrill(
+  item: ItemBarra,
+  blocos: DecBloco[],
+  categorias: DecCategoria[],
+  lado: Lado,
+): { titulo: string; itens: ItemDrill[]; maior: number } {
+  let itens: ItemDrill[]
+  let titulo: string
+
+  if (item.tipo === 'outros') {
+    titulo = 'Outros blocos'
+    itens = (item.blocosAgregados ?? []).map(chave => {
+      const b = blocos.find(x => x.chave === chave)
+      return { key: chave, label: b ? rotuloBloco(b.rotulo) : chave, valor: b ? Math.abs(b.valor) : 0 }
+    })
+  } else if (item.tipo === 'nao_classificadas') {
+    titulo = item.label
+    itens = categorias
+      .filter(c => c.bloco_chave === null && (lado === 'entrada' ? c.valor > 0.005 : c.valor < -0.005))
+      .map(c => ({ key: String(c.categoria_id), label: c.rotulo, valor: lado === 'saida' ? -c.valor : c.valor }))
+  } else {
+    titulo = item.label
+    itens = categorias
+      .filter(c => c.bloco_chave === item.key)
+      .map(c => ({ key: String(c.categoria_id), label: c.rotulo, valor: lado === 'saida' ? -c.valor : c.valor }))
+  }
+
+  itens = [...itens].sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor))
+  const maior = itens.reduce((m, i) => Math.max(m, Math.abs(i.valor)), 0)
+  return { titulo, itens, maior }
+}
+
+// ── Ícone de voltar (chevron) ─────────────────────────────────────────────────
+
+function IconeVoltar() {
   return (
-    <div className="flex flex-col items-center">
-      <p className="text-xs mb-3 font-medium" style={{ color: corTitulo }}>{titulo}</p>
-      <div className="relative" style={{ width: 184, height: 184 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={fatias}
-              dataKey="valor"
-              nameKey="label"
-              cx="50%"
-              cy="50%"
-              innerRadius={62}
-              outerRadius={90}
-              paddingAngle={1.5}
-              stroke="none"
-              isAnimationActive={false}
-              onClick={(d) => {
-                const k = (d as unknown as { key?: string } | undefined)?.key
-                if (k) onSelecionar(k)
-              }}
-              className="cursor-pointer outline-none focus:outline-none"
-            >
-              {fatias.map(f => (
-                <Cell
-                  key={f.key}
-                  fill={f.cor}
-                  fillOpacity={!selecionado || selecionado === f.key ? 1 : 0.35}
-                  className="cursor-pointer outline-none focus:outline-none"
-                />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xs text-zinc-400 leading-tight">{titulo}</span>
-          <span className="text-base font-bold text-zinc-800 tabular-nums leading-tight">{fmtMi(total)}</span>
-        </div>
-      </div>
-    </div>
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
   )
 }
 
-// ── Tabela de decomposição (detalhe) ──────────────────────────────────────────
-// Grupo · % · Valor + linha de Total. Clicar num grupo abre o drill (categorias
-// do grupo, ou os grupos agregados de "Outros"). Sincroniza com o donut.
+// ── Um lado (Entradas OU Saídas): barras + Total + drill ──────────────────────
 
-function TabelaDecomposicao({
+function LadoDecomposicao({
   titulo,
-  fatias,
-  total,
-  sinal,
-  selecionado,
-  onSelecionar,
-  itensDrill,
-  totalDrill,
-  corDrill,
-  onVoltar,
+  lado,
+  blocos,
+  categorias,
+  paleta,
 }: {
   titulo: string
-  fatias: Fatia[]
-  total: number
-  sinal: 'entrada' | 'saida'
-  selecionado: string | null
-  onSelecionar: (key: string) => void
-  itensDrill: ItemLista[] | null
-  totalDrill: number
-  corDrill: string
-  onVoltar: () => void
+  lado: Lado
+  blocos: DecBloco[]
+  categorias: DecCategoria[]
+  paleta: string[]
 }) {
-  const corTitulo = sinal === 'entrada' ? 'var(--positive)' : 'var(--negative)'
+  const [selecionado, setSelecionado] = useState<string | null>(null)
 
-  if (!fatias.length) {
+  const { itens, totalLado } = useMemo(
+    () => montarItensLado(blocos, categorias, lado, paleta),
+    [blocos, categorias, lado, paleta],
+  )
+
+  const maiorDoLado = useMemo(() => itens.reduce((m, it) => Math.max(m, it.valor), 0), [itens])
+
+  const itemSel = selecionado ? itens.find(it => it.key === selecionado) ?? null : null
+
+  const drill = useMemo(
+    () => (itemSel ? montarDrill(itemSel, blocos, categorias, lado) : null),
+    [itemSel, blocos, categorias, lado],
+  )
+
+  const corTitulo = lado === 'entrada' ? fluxoColors.entrada : fluxoColors.saida
+  const toggle = (key: string) => setSelecionado(s => (s === key ? null : key))
+
+  if (itens.length === 0) {
     return (
       <div>
         <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
@@ -232,98 +262,96 @@ function TabelaDecomposicao({
     )
   }
 
-  const fatiaSel = selecionado ? fatias.find(f => f.key === selecionado) ?? null : null
-
   return (
     <div>
       <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
 
-      <table className="table-fixed w-full">
-        <thead>
-          <tr className="text-3xs font-medium text-zinc-400">
-            <th className="text-left font-semibold pb-1.5">Grupo</th>
-            <th className="text-right font-semibold pb-1.5 w-14">%</th>
-            <th className="text-right font-semibold pb-1.5 w-24">Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-          {fatias.map(f => {
-            const ativo = selecionado === f.key
-            return (
-              <tr
-                key={f.key}
-                onClick={() => onSelecionar(f.key)}
-                className={`cursor-pointer border-b border-zinc-50 transition-colors ${
-                  ativo ? 'bg-zinc-100' : 'hover:bg-zinc-50'
-                }`}
-              >
-                <td className="py-1.5 pr-2 min-w-0">
-                  <span className="flex items-center gap-1.5">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
-                      style={{ background: f.cor, opacity: !selecionado || ativo ? 1 : 0.4 }}
-                    />
-                    <span className="text-2xs text-zinc-700 truncate">{f.label}</span>
+      <div className="space-y-2.5">
+        {itens.map(it => {
+          const ativo = selecionado === it.key
+          const naoClassif = it.tipo === 'nao_classificadas'
+          const pctBarra = maiorDoLado > 0 ? (it.valor / maiorDoLado) * 100 : 0
+          const pctTotal = totalLado > 0 ? (it.valor / totalLado) * 100 : 0
+          return (
+            <button
+              key={it.key}
+              type="button"
+              onClick={() => toggle(it.key)}
+              className={`w-full text-left rounded-md px-1.5 py-1 -mx-1.5 transition-colors ${
+                ativo ? 'bg-zinc-100' : 'hover:bg-zinc-50'
+              }`}
+            >
+              <div className="flex items-baseline justify-between gap-2 mb-1">
+                <span className={`text-2xs truncate min-w-0 ${naoClassif ? 'text-warning-deep' : 'text-zinc-700'}`}>
+                  {it.label}
+                </span>
+                <span className="flex items-baseline gap-1.5 shrink-0">
+                  <span className="text-3xs text-zinc-400 tabular-nums">{pctTotal.toFixed(1)}%</span>
+                  <span
+                    className="text-2xs font-medium tabular-nums text-zinc-800"
+                    title={fmtContabilBRL(it.valor)}
+                  >
+                    {fmtBRL(it.valor)}
                   </span>
-                </td>
-                <td className="py-1.5 text-right text-3xs text-zinc-400 tabular-nums align-middle">
-                  {f.pct.toFixed(1)}%
-                </td>
-                <td className="py-1.5 text-right text-2xs font-medium text-zinc-800 tabular-nums align-middle">
-                  {fmtMi(f.valor)}
-                </td>
-              </tr>
-            )
-          })}
-          {/* Total */}
-          <tr>
-            <td className="pt-2 text-2xs font-semibold" style={{ color: corTitulo }}>Total</td>
-            <td className="pt-2 text-right text-3xs text-zinc-400 tabular-nums">100%</td>
-            <td className="pt-2 text-right text-2xs font-semibold tabular-nums" style={{ color: corTitulo }}>
-              {fmtMi(total)}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${pctBarra}%`, background: it.cor, opacity: !selecionado || ativo ? 1 : 0.4 }}
+                />
+              </div>
+            </button>
+          )
+        })}
+      </div>
 
-      {/* Drill-down do grupo/“Outros” selecionado */}
-      {fatiaSel && itensDrill && (
+      {/* Total do lado (inclui as não classificadas) */}
+      <div className="flex items-baseline justify-between gap-2 mt-3 pt-2 border-t border-zinc-100">
+        <span className="text-2xs font-semibold" style={{ color: corTitulo }}>Total</span>
+        <span
+          className="text-2xs font-semibold tabular-nums"
+          style={{ color: corTitulo }}
+          title={fmtContabilBRL(totalLado)}
+        >
+          {fmtBRL(totalLado)}
+        </span>
+      </div>
+
+      {/* Drill-down do item selecionado */}
+      {itemSel && drill && (
         <div className="mt-3 border-t border-zinc-100 pt-2.5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-2xs font-medium text-zinc-700 truncate pr-2">
-              {fatiaSel.ehOutros ? 'Outros grupos' : fatiaSel.label}
-            </p>
+            <p className="text-2xs font-medium text-zinc-700 truncate pr-2">{drill.titulo}</p>
             <button
-              onClick={onVoltar}
+              type="button"
+              onClick={() => setSelecionado(null)}
               className="shrink-0 inline-flex items-center gap-1 text-2xs text-zinc-400 hover:text-zinc-600 transition-colors"
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
+              <IconeVoltar />
               voltar
             </button>
           </div>
-          {itensDrill.length === 0 ? (
+          {drill.itens.length === 0 ? (
             <p className="text-2xs text-zinc-400">Sem itens no período.</p>
           ) : (
             <div className="space-y-2">
-              {itensDrill.map(it => {
-                const pct = totalDrill > 0 ? (it.valor / totalDrill) * 100 : 0
+              {drill.itens.map(d => {
+                const larguraBarra = drill.maior > 0 ? (Math.abs(d.valor) / drill.maior) * 100 : 0
                 return (
-                  <div key={it.nome}>
+                  <div key={d.key}>
                     <div className="flex justify-between items-baseline mb-0.5">
                       <span className="text-2xs text-zinc-600 truncate pr-2 min-w-0">
-                        {it.nome || '(sem categoria)'}
+                        {d.label || '(sem categoria)'}
                       </span>
-                      <div className="flex items-baseline gap-1.5 shrink-0">
-                        <span className="text-3xs text-zinc-400 tabular-nums">{pct.toFixed(1)}%</span>
-                        <span className="text-2xs font-medium text-zinc-800 tabular-nums">{fmtBRL(it.valor)}</span>
-                      </div>
+                      <span className="text-2xs font-medium text-zinc-800 tabular-nums shrink-0">
+                        {fmtContabil(d.valor)}
+                      </span>
                     </div>
                     <div className="h-[3px] rounded-full bg-zinc-100 overflow-hidden">
                       <div
                         className="h-full rounded-full"
-                        style={{ width: `${pct.toFixed(1)}%`, background: corDrill, opacity: 0.55 }}
+                        style={{ width: `${larguraBarra}%`, background: itemSel.cor, opacity: 0.55 }}
                       />
                     </div>
                   </div>
@@ -337,131 +365,45 @@ function TabelaDecomposicao({
   )
 }
 
-// ── Um lado (entradas OU saídas): donut + tabela compartilham seleção ─────────
-// Custom hook (`use...`) para satisfazer as regras de hooks: o donut (em cima) e a
-// tabela (embaixo) ficam em grids distintos no layout, mas precisam compartilhar a
-// mesma seleção/drill — então a seleção vive aqui e devolvemos os dois nós prontos.
-
-function useLado({
-  titulo,
-  grupos,
-  paleta,
-  categorias,
-  sinal,
-}: {
-  titulo: string
-  grupos: DecomposicaoGrupo[]
-  paleta: string[]
-  categorias: DecomposicaoCategoria[]
-  sinal: 'entrada' | 'saida'
-}): {
-  donut: React.ReactNode
-  tabela: React.ReactNode
-} {
-  const [selecionado, setSelecionado] = useState<string | null>(null)
-
-  const { fatias, total } = useMemo(() => montarFatias(grupos, paleta), [grupos, paleta])
-
-  // Mapa grupo -> categorias (filtradas pelo sinal correto), ordenadas desc
-  const categoriasPorGrupo = useMemo(() => {
-    const m = new Map<string, ItemLista[]>()
-    for (const c of categorias) {
-      if (c.sinal !== sinal) continue
-      const arr = m.get(c.grupo_categoria) ?? []
-      arr.push({ nome: c.categoria, valor: c.valor_total })
-      m.set(c.grupo_categoria, arr)
-    }
-    for (const arr of m.values()) arr.sort((a, b) => b.valor - a.valor)
-    return m
-  }, [categorias, sinal])
-
-  const toggle = (key: string) => setSelecionado(s => (s === key ? null : key))
-
-  const fatiaSel = selecionado ? fatias.find(f => f.key === selecionado) ?? null : null
-
-  // Conteúdo do drill-down
-  let itensDrill: ItemLista[] | null = null
-  let totalDrill = 0
-  let corDrill = COR_OUTROS
-  if (fatiaSel) {
-    corDrill = fatiaSel.cor
-    totalDrill = fatiaSel.valor
-    if (fatiaSel.ehOutros) {
-      itensDrill = (fatiaSel.gruposAgregados ?? []).map(g => {
-        const grupo = grupos.find(x => x.grupo_categoria === g)
-        return { nome: g || '(sem grupo)', valor: grupo?.valor_total ?? 0 }
-      })
-    } else {
-      itensDrill = categoriasPorGrupo.get(fatiaSel.key) ?? []
-    }
-  }
-
-  return {
-    donut: (
-      <Donut
-        titulo={titulo}
-        fatias={fatias}
-        total={total}
-        sinal={sinal}
-        selecionado={selecionado}
-        onSelecionar={toggle}
-      />
-    ),
-    tabela: (
-      <TabelaDecomposicao
-        titulo={titulo}
-        fatias={fatias}
-        total={total}
-        sinal={sinal}
-        selecionado={selecionado}
-        onSelecionar={toggle}
-        itensDrill={itensDrill}
-        totalDrill={totalDrill}
-        corDrill={corDrill}
-        onVoltar={() => setSelecionado(null)}
-      />
-    ),
-  }
-}
-
 // ── Componente principal ──────────────────────────────────────────────────────
-// EM CIMA: dois donuts (panorama) lado a lado. ABAIXO: tabela de decomposição em
-// duas colunas (Entradas | Saídas). Donut e tabela do mesmo lado compartilham a
-// seleção/drill — redundância proposital (panorama + detalhe).
+// Card autocontido: cabeçalho interno (título + pills) e os dois lados
+// (Entradas | Saídas) lado a lado, cada um com suas próprias barras + Total +
+// drill. Sem subtítulo (decisão explícita do Yan).
 
-export default function ComposicaoPeriodo({ entradas, saidas, categorias }: Props) {
-  const ladoEntradas = useLado({
-    titulo: 'Entradas',
-    grupos: entradas,
-    paleta: PALETA_ENTRADAS,
-    categorias,
-    sinal: 'entrada',
-  })
-  const ladoSaidas = useLado({
-    titulo: 'Saídas',
-    grupos: saidas,
-    paleta: PALETA_SAIDAS,
-    categorias,
-    sinal: 'saida',
-  })
-
-  if (!entradas.length && !saidas.length) {
-    return <p className="text-xs text-zinc-400">Sem dados</p>
-  }
+export default function DecomposicaoLancamentos({ blocos, categorias, slotPills, erro }: Props) {
+  const semDados = blocos.length === 0 && categorias.length === 0
 
   return (
-    <div className="space-y-6">
-      {/* Donuts (panorama) — lado a lado, maiores */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 justify-items-center">
-        {ladoEntradas.donut}
-        {ladoSaidas.donut}
+    <div className="rounded-xl bg-surface p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
+        <h2 className="text-[15px] font-semibold text-text-primary">Decomposição dos Lançamentos</h2>
+        {slotPills}
       </div>
 
-      {/* Tabela de decomposição (detalhe) — duas colunas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 border-t border-zinc-100 pt-5">
-        {ladoEntradas.tabela}
-        {ladoSaidas.tabela}
-      </div>
+      {erro ? (
+        <p className="text-xs text-warning-deep">
+          Não foi possível carregar a decomposição deste período — tente outro período.
+        </p>
+      ) : semDados ? (
+        <p className="text-xs text-zinc-400">Sem lançamentos realizados no período.</p>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+          <LadoDecomposicao
+            titulo="Entradas"
+            lado="entrada"
+            blocos={blocos}
+            categorias={categorias}
+            paleta={PALETA_ENTRADAS}
+          />
+          <LadoDecomposicao
+            titulo="Saídas"
+            lado="saida"
+            blocos={blocos}
+            categorias={categorias}
+            paleta={PALETA_SAIDAS}
+          />
+        </div>
+      )}
     </div>
   )
 }

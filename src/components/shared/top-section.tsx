@@ -15,7 +15,8 @@ import { useId, useState, type ReactNode } from 'react'
 // Substitui o `<details open>` nativo (abria/fechava sem animação). Comportamento
 // preservado: nasce ABERTO a cada carregamento por padrão (estado só em memória, sem
 // persistência) — seções secundárias podem nascer RECOLHIDAS via `defaultAberto={false}`
-// (primeiro uso: a Composição dos Lançamentos sob a DRE, v5.3.0). O conteúdo permanece
+// (estreou na Composição dos Lançamentos sob a DRE, v5.3.0; aquela seção foi aposentada
+// na v5.3.1, então o exemplo é histórico, não um call-site vivo). O conteúdo permanece
 // montado quando fechado (como no <details>). Cores via tokens da aba (`--brand*`,
 // resolvidos por [data-theme]); `motion-reduce` desliga a transição.
 
