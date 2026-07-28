@@ -218,7 +218,14 @@ import Button from '@/components/ui/button'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { fmtContabil } from './fmt-contabil'
-import type { DreMensal, DreLinha, DreBandeja } from '@/lib/dre/schemas'
+import type {
+  DreMensal,
+  DreLinha,
+  DreBandeja,
+  RegistroAnoLinha,
+  ConsolidadoAno,
+} from '@/lib/dre/schemas'
+import ResumoExecutivo from './resumo-executivo'
 
 type Relacao   = DreMensal['relacao']
 type TipoLinha = DreLinha['t']
@@ -322,28 +329,14 @@ interface AnoSeguinteDados {
   totais: Record<string, number>
 }
 
-/** Os três números que a visão Consolidado precisa de UMA linha em UM ano — já
- *  resolvidos pela página (o `ytd` sai da MESMA janela `mesJanela` em todos os anos,
- *  que é o que torna a comparação honesta). */
-interface RegistroAnoLinha {
-  total: number
-  ytd:   number
-  venc:  number
-}
-
-/** Um ano da visão Consolidado — um item por ano da janela navegável que a página
- *  conseguiu carregar (ano cuja RPC falhou simplesmente não vem, e a pill dele fica
- *  desabilitada). `porLinha` é indexado pela MESMA chave que `chaveLinha` deriva de
- *  cada linha (idêntica convenção de `anosSeguintes[].totais`) — casar por CHAVE, e
- *  não por posição, é o que impede a coluna de escorregar de linha quando a estrutura
- *  muda de um ano para o outro. */
-interface ConsolidadoAno {
-  ano: number
-  /** true = ano CORRENTE (tem previsto em aberto). Vem do payload, NUNCA é inferido
-   *  aqui: num ano fechado `total − ytd` é realizado de ago..dez, não projeção. */
-  corrente: boolean
-  porLinha: Record<string, RegistroAnoLinha>
-}
+/** `RegistroAnoLinha` (total/ytd/venc de UMA linha em UM ano) e `ConsolidadoAno`
+ *  MUDARAM para `@/lib/dre/schemas` na v5.3.1 (ver o import no topo): a partir dela há
+ *  DOIS consumidores do mesmo payload — a visão Consolidado daqui e o `ResumoExecutivo`
+ *  abaixo da tabela. Tipo duplicado estruturalmente entre componentes é exatamente como
+ *  nasce o drift silencioso; a definição vive num lugar só. `porLinha` continua indexado
+ *  pela MESMA chave que `chaveLinha` deriva de cada linha (`b:<chave>` / `c:<id>`) —
+ *  casar por CHAVE, e não por posição, é o que impede a coluna de escorregar de linha
+ *  quando a estrutura muda de um ano para o outro. */
 
 /** Campo de `RegistroAnoLinha` que uma coluna exibe. 'prev' é derivado
  *  (`total − ytd`) e só é oferecido quando o ano é o CORRENTE — ver `ConsolidadoAno`. */
@@ -1735,6 +1728,11 @@ interface TabelaDreProps {
   /** Ano resolvido pela página (clampado à janela [corrente-2, corrente]) — fonte
    *  única para destacar a pill ativa (não lê `dados.ano`, que pode ser `null`). */
   ano: number
+  /** Ano corrente no fuso de São Paulo (`hojeSP()` na página) — a ÂNCORA do
+   *  `ResumoExecutivo`, que de propósito NÃO acompanha a pill de ano: com `?ano=2025` o
+   *  Resumo segue mostrando 2024|2025|YTD 25|YTD 26. Distinto de `ano` acima (o
+   *  NAVEGADO, que reger a tabela). Não derive um do outro. */
+  anoCorrente: number
   anosDisponiveis: number[]
   /** Totais dos anos seguintes (ano+1/ano+2) por linha, indexados por `b:<chave>`
    *  (blocos/totalizadores) e `c:<categoria_id>` (categorias e bandeja) — MESMA
@@ -1747,9 +1745,11 @@ interface TabelaDreProps {
    *  a pill dele fica desabilitada). Lista vazia = a pill "Consolidado" fica
    *  `disabled`; ver bullet "DUAS VISÕES" no topo do arquivo. */
   consolidadoAnos: ConsolidadoAno[]
-  /** Quantos meses entram no YTD de TODOS os anos comparados (mês corrente do ano
-   *  exibido, ou 12 se ele é fechado) — a página já aplicou essa janela ao montar os
-   *  `ytd`; aqui ela só descreve a comparação nos `title` do cabeçalho. */
+  /** Quantos meses entram no YTD de TODOS os anos comparados = mês corrente de HOJE no
+   *  fuso de SP, SEMPRE — nunca o mês do ano exibido, e nunca 12 num ano fechado (era
+   *  isso que tornava o "YTD" idêntico ao ano cheio; ver a JANELA DO YTD na página). A
+   *  página já aplicou a janela ao montar os `ytd`; aqui ela só descreve a comparação
+   *  nos `title` do cabeçalho. */
   mesJanela: number
   /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada no
    *  RODAPÉ do card, à direita (`RodapeAcoes`; rodada 3/Refino 4). O "Expandir
@@ -1758,7 +1758,7 @@ interface TabelaDreProps {
   slotAcoes?: ReactNode
 }
 
-export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, slotAcoes }: TabelaDreProps) {
+export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, slotAcoes }: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -1845,6 +1845,13 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
         <div className={`rounded-lg border border-wt-border p-6 text-center ${isPending ? 'opacity-60' : ''}`}>
           <p className="text-sm text-text-muted">Não foi possível carregar a DRE — tente recarregar.</p>
         </div>
+        {/* O Resumo aparece TAMBÉM aqui: ele não depende de `dados` (o ano NAVEGADO), e sim
+            de `consolidadoAnos` — uma chamada por ano, independentes no mesmo
+            `Promise.allSettled`. Como o ano navegado é sempre um dos três anos-âncora,
+            basta a chamada DELE falhar para cairmos neste ramo com os outros dois anos
+            intactos; omitir o Resumo aqui o derrubaria por uma falha que não é dele. Ele
+            se auto-oculta se nenhum ano-âncora tiver carregado. */}
+        <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
         {/* Sem tabela não há hierarquia para expandir/recolher (o `AcoesHierarquia` nem
             é montado aqui) — sobra a ação da página, quando houver. */}
         <RodapeAcoes slotAcoes={slotAcoes} />
@@ -2331,6 +2338,13 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
           </ScrollAutoHide>
         </div>
       </div>
+
+      {/* Resumo Executivo (v5.3.1) — DENTRO deste card, abaixo da tabela, nas DUAS
+          visões (o card externo é compartilhado). Ancorado no ANO CORRENTE, então NÃO
+          reage à pill de ano nem à troca de visão: é o retrato de agora. Fonte = o
+          MESMO `consolidadoAnos` que alimenta a visão Consolidado — sem segundo caminho
+          de cálculo. Ele se auto-oculta (retorna null) se nenhum ano-âncora carregou. */}
+      <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
 
       {/* Rodapé — só a ação da página, ex.: "Editar estrutura" (rodada 3/Refino 4).
           "Expandir/Recolher tudo" subiu para cima da tabela (rodada 5/Refino 5). Sem
