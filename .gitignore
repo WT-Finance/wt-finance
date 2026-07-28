@@ -48,6 +48,26 @@ supabase/seed/data/*
 !supabase/seed/data/.gitkeep
 # Proteção contra vazamento de instalação de plugins de agentes
 :USERPROFILE*
-.agentsskills/
+.agents/
 .codexsuperpowers/
 .superpowers/
+/agent/
+/brag-output/
+
+# Config local do Claude Code (por máquina, nunca versionada)
+.claude/settings.local.json
+
+# Skills de vídeo instaladas por tooling externo (symlinks para .agents/skills — sem trailing
+# slash de propósito: são symlinks, e `dir/` não casa symlink; skills do projeto ficam versionadas)
+.claude/skills/hyperframes*
+.claude/skills/embedded-captions
+.claude/skills/faceless-explainer
+.claude/skills/general-video
+.claude/skills/graphic-overlays
+.claude/skills/motion-graphics
+.claude/skills/music-to-video
+.claude/skills/pr-to-video
+.claude/skills/product-launch-video
+.claude/skills/remotion-to-hyperframes
+.claude/skills/slideshow
+.claude/skills/website-to-video
