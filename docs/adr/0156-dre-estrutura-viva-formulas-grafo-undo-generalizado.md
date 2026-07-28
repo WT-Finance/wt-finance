@@ -82,3 +82,69 @@ regeneração do fato aponta para o nome novo) — a DRE a mostra zerada até o 
   out-briefing), a mesma classe do relatório de divergência de receita.
 - Follow-ups: vencidos no Total do ano (refino com o Yan); divisão ver/editar da permissão
   se precisar; drag-and-drop no editor; guarda de saída para navegação por link.
+
+---
+
+## Emenda (v5.3.1) — a Decomposição dos Lançamentos passa a agrupar por BLOCO CURADO, não pelo grupo nativo do Monde
+
+*Registrada como emenda por ser refinamento da mesma decisão de estrutura viva (não gera ADR
+próprio). O raciocínio fica aqui porque a alternativa "reusar a RPC que já existia" é
+sedutora e voltaria a ser proposta.*
+
+**Contexto.** O card da Composição (v5.2.0) decompunha o período pelo `grupo_categoria`
+NATIVO do Monde, via `get_decomposicao_grupo`/`get_decomposicao_categoria` (0188/0197). A
+v5.3.1 o move para dentro da seção "Regime de Caixa", logo abaixo da tabela da DRE, no mesmo
+recorte visual. Isso muda o requisito: dois números lado a lado na MESMA seção têm de fechar.
+
+**Por que o grupo nativo não serve.** O de-para da DRE é **curado**: 20 das 130 categorias
+são re-parenteadas em relação ao grupo do Monde, e 2 são explicitamente excluídas
+(transferência interna). Agrupar pelo grupo nativo produziria barras que **não fecham** com
+os subtotais da tabela imediatamente acima — a pior forma de erro num demonstrativo: dois
+números vizinhos, ambos plausíveis, discordando sem explicação.
+
+**Por que não bastou reusar a RPC existente (a preferência era zero migration).** Medido em
+produção, `get_decomposicao_categoria` tem dois desalinhamentos além do agrupamento:
+
+1. **Não filtra `tipo`** — soma `realizado` + `previsto`. E `previsto` tem
+   `data_competencia` RETROATIVA quando o título está vencido em aberto (0187: competência =
+   vencimento, sem piso de data). Na janela 2026-01-01..2026-07-31: **699 linhas de previsto,
+   R$ 4.327.007,77 em valor absoluto**, misturadas ao realizado. (`NOT pos_corte` não ajuda:
+   `pos_corte` é o corte de HORIZONTE — competência > 31/12/2028 —, não o discriminador
+   realizado × previsto.)
+2. **Ignora `excluida`** — as 2 categorias de transferência interna somam net −R$ 30.000,00
+   na mesma janela, ou seja **não se anulam sozinhas**.
+
+Isso quebraria dois invariantes firmados: "a Decomposição é sempre REALIZADO" e "reconcilia
+com a tabela". Daí a aditiva **0209** (`get_decomposicao_bloco`), que aplica exatamente o
+mesmo filtro (`tipo='realizado'`) e o mesmo de-para (`dre_categoria_map WHERE NOT excluida`)
+de `get_dre_mensal`, num intervalo de datas livre.
+
+**Alternativa também descartada:** derivar a Decomposição de `get_dre_mensal` (zero migration,
+já vem na leva da página). Ela devolve **baldes mensais** — atende as 5 pills alinhadas a mês,
+mas torna "Personalizado ao dia" impossível (não há como recortar sub-mês de um balde) e
+exigiria costurar meses de dois anos na virada. Degradar o Personalizado em silêncio é a
+classe de defeito que este projeto pune.
+
+**Reconciliação (provada, não afirmada).** As colunas mensais de `get_dre_mensal` são
+`Σ valor FILTER (tipo='realizado')` por mês de competência — o previsto do mês corrente viaja
+em `prev_corrente` e os vencidos em `venc`, ambos FORA de `meses[]`. Logo o net por bloco da
+0209 fecha ao centavo com a soma das colunas correspondentes em toda janela alinhada a mês.
+Conferido em produção (jan..jul/2026, os 18 blocos analíticos): **delta 0,00 em todos**. A
+igualdade deixou de ser anedota — virou caso vivo em `rpc-contrato.test.ts`, que a checa
+contra o mês fechado anterior. Se alguém "otimizar" uma das duas funções e a igualdade cair,
+estoura no teste, não na tela.
+
+**Sinal.** `dre_bloco` **não tem** coluna de sinal: entrada × saída é derivado do dado
+(`valor >= 0`), como nas RPCs de decomposição desde a v5.2.0. Por isso a 0209 devolve o net
+**SIGNADO** (não ABS): é o que permite derivar o LADO do próprio número e é o que reconcilia.
+No nível de categoria isso obriga a noção de **contribuição** (`saida ⇒ −valor`), para que
+Σ das categorias seja exatamente a magnitude do bloco mesmo quando uma categoria tem sinal
+OPOSTO ao do bloco — **estorno, que existe de verdade** (9 casos medidos em RH/RHB/ESTR na
+janela de teste). O estorno é exibido entre parênteses, sinalizando "reduz o total" sem
+inventar um terceiro lado.
+
+**Consequência colateral (registrada):** `get_decomposicao_grupo`/`get_decomposicao_categoria`
+ficam **órfãs** — o card desta página era o único consumidor vivo (a `/executiva` consome
+`get_decomposicao_variacao`, outra função). Nenhuma foi removida nesta versão; DROP futuro
+exige a verificação de consumidores reais de sempre (app **e** `supabase/seed/`), que é
+exatamente onde a v4.17.1 se enganou.

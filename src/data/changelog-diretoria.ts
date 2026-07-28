@@ -35,6 +35,27 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.3.1',
+    data: '2026-07-28T11:58', // autoria real (fechamento da versão); reconciliar ao horário do merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'O Demonstrativo de Resultado ganhou um Resumo Executivo, logo abaixo da tabela. São as seis linhas que se olha primeiro — Saldo Repasse, Receita Bruta, Receita Operacional Líquida, Lucro Bruto, Lucro Operacional e Resultado do Exercício — comparadas em seis colunas: os dois últimos anos fechados, a variação entre eles, o acumulado do ano anterior até este mês, o acumulado deste ano até este mês, e a variação entre os dois acumulados. As variações vêm em reais, para se ver o tamanho do movimento. Uma observação importante para não parecer erro: o Resumo é sempre o retrato de HOJE. Ele não muda quando se navega para outro ano na tabela acima — a comparação continua sendo a dos anos mais recentes, de propósito.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A Decomposição dos Lançamentos (as barras de Entradas e Saídas do período) passou a seguir a estrutura oficial do demonstrativo, e não mais o agrupamento que vem do sistema de origem. Na prática: as barras agora FECHAM com os subtotais da tabela logo acima, no mesmo período. Antes isso não acontecia por dois motivos — cerca de vinte categorias estão posicionadas na nossa estrutura de forma diferente de como chegam do sistema de origem, e a decomposição vinha somando ao realizado alguns títulos ainda em aberto vencidos em meses anteriores. Agora ela considera apenas o que efetivamente se movimentou, e as transferências internas entre contas ficam de fora dos dois lados. Clicar numa barra continua abrindo o detalhe por categoria.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A Decomposição também mudou de lugar e de formato: saiu da seção separada e recolhida em que vivia e passou a ficar junto do demonstrativo, na mesma seção "Regime de Caixa", com os valores em barras horizontais em vez dos gráficos de rosca. O filtro de período agora fica dentro do próprio quadro (começando em "Este ano"), e é independente do ano escolhido na tabela — dá para ler o demonstrativo de um ano e, ao lado, decompor os últimos três meses. Categorias que ainda não foram posicionadas na estrutura continuam aparecendo à parte, sinalizadas, para nada passar em branco.',
+      },
+    ],
+  },
+  {
     versao: '5.3.0',
     data: '2026-07-27T16:50', // autoria real (último commit da versão); reconciliar ao horário do merge
     itens: [
