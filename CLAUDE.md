@@ -46,7 +46,8 @@ sem pedido, a confirmação do usuário acontece ao final de todas as missões.
 - **Rota A (produto):** decisão de produto aberta ou tela nova/alterada → planejado no Chat →
   briefing `.md` em `docs/briefings/` → `/nova-versao <vX-Y>` (worktree + briefing no 1º commit +
   carta de orquestração + plan mode para validar briefing×repo).
-- **Rota B (técnica):** sem decisão de produto → plan mode direto na sessão.
+- **Rota B (técnica):** sem decisão de produto → plan mode direto na sessão; o plano aprovado
+  vira **spec commitada no repo** (rastro em disco também na rota técnica).
 - **Rota C (patch trivial):** direto, com gates.
 
 **Implementação:** pesquisar antes de codar (adotar/estender > construir — reinventar o que já
@@ -128,6 +129,7 @@ sequencia; arquivo-ímã (tokens/globals/config) tem dono único. A Carta comple
 - **`gate-stop` (Stop — BLOQUEIA)** — varre `console.log` e o shorthand inválido `-[--token]`
   em `.ts/.tsx` de `src/` a cada resposta.
 - **`contexto-sessao` (SessionStart)** — injeta `docs/WORKING-CONTEXT.md` na sessão nova.
+  Se o hook estiver ausente/desligado, ler `docs/WORKING-CONTEXT.md` manualmente no início.
 
 **Terceira camada — permissões do harness (classificador):** além das regras do projeto e dos
 hooks existe o classificador do modo auto do Claude Code, regido pelo `~/.claude/settings.json`
