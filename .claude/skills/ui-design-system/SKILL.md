@@ -265,6 +265,8 @@ assunto da skill `react-padroes`; aqui só a parte visual do skeleton.
   semântico (série principal, cash-flow, YoY, subsetor/setor), formatadores de eixo.
 - `react-padroes` — `loading.tsx`/skeleton completo, `Suspense`/`use()`,
   `startTransition`, os padrões do `eslint-plugin-react-hooks` v7.
-- `frontend-design` (skill externa) — direção estética para tela **nova** do zero; o
+- `frontend-design` (PLUGIN externo, **não versionado neste repo** — vem instalado como plugin
+  oficial na máquina do operador; se não aparecer na listagem da sessão, siga sem ela) —
+  direção estética para tela **nova** do zero; o
   Design System do Janus documentado aqui **sempre vence** em caso de conflito (tokens,
   primitivos e convenções deste projeto não são negociáveis por uma diretriz genérica).

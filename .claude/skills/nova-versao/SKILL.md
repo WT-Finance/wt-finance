@@ -55,9 +55,13 @@ As migrations 0950–0954 estão aplicadas no banco remoto mas só existem na br
 ```bash
 for f in 0950_api_externa_fundacoes_tipos 0951_api_chaves 0952_api_validacao_compartilhada \
          0953_api_outbox 0954_seed_tipo_abatimento; do
-  git show origin/feat/v5-4-0-api-externa:supabase/migrations/$f.sql > supabase/migrations/$f.sql
+  git show origin/feat/v5-4-0-api-externa:supabase/migrations/$f.sql > supabase/migrations/$f.sql \
+    || { rm -f supabase/migrations/$f.sql; echo "ERRO: $f não encontrada na branch de origem — PARAR e reportar (não deixar .sql vazio)"; break; }
 done
 ```
+
+⚠️ O `|| { rm ...; break; }` é obrigatório: `git show` que falha com a redireção deixaria um
+`.sql` VAZIO na pasta — e o wrapper de migration varreria o arquivo vazio em silêncio.
 
 Regras: aditiva nova roda com `npm run db:migrate -- --aditiva --fora-de-ordem`; as cópias são
 **removidas antes do merge** (`rm supabase/migrations/095[0-4]_*.sql`) — nunca entram em commit.
