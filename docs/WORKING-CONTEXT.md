@@ -19,8 +19,9 @@
   (2) **Decomposição dos Lançamentos** — o card da Composição adaptado a **barras horizontais
   agrupadas por BLOCO da estrutura viva** (não pelo grupo nativo do Monde), pills de período dentro
   do card, movido para a TopSection "Regime de Caixa" (a TopSection própria foi **aposentada**).
-- **Gates: tsc 0 / lint limpo / 500 testes** (489 pré-existentes + 11 novos do helper) — **exceto
-  os 3 casos novos de contrato**, que falham só por falta da migration (`PGRST202`).
+- **Gates: tsc 0 / lint limpo / build limpo / 493 testes — 490 passam.** Os 3 que falham são os
+  casos novos de contrato da RPC, pendentes da migration (`PGRST202`); passam quando ela subir.
+  (493 = 479 da v5.3.0 + 11 novos do helper de rótulo + 3 novos de contrato.)
 - ⚠️ **MIGRATION 0209 NÃO APLICADA:** `npm run db:migrate` foi **bloqueado pelo classificador de
   permissões do harness**. Não foi contornado (`db push` cru ou `db query` puraria o backup-gate /
   criaria drift no histórico). **As cópias untracked 0950–0954 já estão POSICIONADAS** na worktree

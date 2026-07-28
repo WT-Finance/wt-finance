@@ -135,9 +135,9 @@ Isso violaria dois invariantes da versão ("sempre REALIZADO" e "reconcilia com 
 | `npx tsc --noEmit` | ✅ **0 erros** |
 | `npm run lint` (arquivos tocados) | ✅ **limpo** |
 | `npm run build` | ✅ **limpo** |
-| `npm test` | ⚠️ **489 passam + 11 novos passam; 3 novos falham só por falta da migration** (`PGRST202`) |
+| `npm test` | ⚠️ **493 testes: 490 passam, 3 falham** — os 3 são os casos novos de contrato, pendentes da migration (`PGRST202`) |
 
-- Os 11 testes novos de `rotulo-bloco.test.ts` passam.
+- Contagem: 479 pré-existentes (v5.3.0) + **11 novos** de `rotulo-bloco.test.ts` (passam) + **3 novos** de contrato = 493.
 - Os 3 casos novos de `rpc-contrato.test.ts` falham **exclusivamente** porque `get_decomposicao_bloco` ainda não existe em produção. Passam assim que a 0209 subir.
 - `src/lib/monde/virada-paridade.test.ts` falhou uma vez na suíte completa com `EAUTHQUERY ... secret check timed out` e **passa isolado** — flake de conexão sob carga paralela, sem relação com esta versão.
 
