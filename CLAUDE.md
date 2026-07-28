@@ -200,6 +200,21 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
   -H "apikey: $SVCKEY" -H "Authorization: Bearer $SVCKEY" \
   -H "Content-Type: application/json" -d '{...}'
 ```
+### RPC que "já existe e aceita o parâmetro certo" pode ter a SEMÂNTICA errada — MEÇA antes de reusar
+Reuso é a preferência do projeto ("adotar/estender > construir"), mas **granularidade e assinatura
+compatíveis não garantem FILTRO compatível**. Antes de reusar uma RPC para um número que vai ficar
+**lado a lado com outro na mesma tela**, a pergunta não é "a RPC serve?" e sim "ela aplica o MESMO
+filtro que o número vizinho?" — e isso se responde com **uma query**, não lendo a assinatura.
+(Custou caro na v5.3.1: `get_decomposicao_categoria` tinha exatamente o par `p_from`/`p_to` que a
+Decomposição precisava, e ainda assim **somava `previsto` junto do `realizado`** — com competência
+RETROATIVA, porque título vencido em aberto entra pelo vencimento — e **ignorava o de-para curado**
+(`dre_categoria_map`, 20/130 categorias re-parenteadas + as excluídas). Medido: R$ 4,3 Mi de previsto
+e −R$ 30 mil de transferência interna na janela em questão. Reusar teria produzido duas somas
+vizinhas, ambas plausíveis, discordando sem explicação — o pior erro num demonstrativo.)
+Corolário: quando duas RPCs precisam CONCORDAR, a igualdade vira **caso de contrato**
+(`rpc-contrato.test.ts`), não nota de rodapé — senão a próxima "otimização" numa delas quebra a
+outra e isso só aparece na tela do usuário.
+
 **A verificação REST com `service_role` EXECUTA o corpo da RPC** (o `service_role` é o ramo *trusted* de `exigir_acesso`) — é o que pega erro de RUNTIME no corpo. **Introspecção via `npx supabase db query` NÃO substitui isso**: o `db query` roda num papel sem JWT e não-superusuário, então `exigir_acesso` **nega ANTES do corpo** e mascara qualquer erro lá dentro. (Custou caro: `gerencial_historico_lotes` foi a produção com `max(usuario_id)` na v5.2.1 — o Postgres **não tem `max()`/`min()` para `uuid`** (agregue via `::text`), mas o smoke por `db query` parou no gate de acesso e não executou o corpo; só quebrou na tela do usuário. Fix 0203. Para agregado de RPC gated, execute-a via REST/service_role, não só introspecção.)
 
 ---

@@ -52,6 +52,65 @@ export type DreMensal  = z.infer<typeof dreMensalSchema>
 export type DreLinha   = z.infer<typeof dreLinhaSchema>
 export type DreBandeja = z.infer<typeof dreBandejaSchema>
 
+// ── Comparação ano-a-ano (visão Consolidado E Resumo Executivo) ───────────────
+// Vivem aqui, e não no componente da tabela, porque a v5.3.1 passou a ter DOIS
+// consumidores do mesmo payload (a visão Consolidado e o Resumo Executivo). Tipo
+// estruturalmente duplicado entre componentes é a receita do drift silencioso.
+
+/** Os três números que uma comparação precisa de UMA linha em UM ano — já resolvidos
+ *  pela página (o `ytd` sai da MESMA janela `mesJanela` em todos os anos, que é o que
+ *  torna a comparação honesta). */
+export interface RegistroAnoLinha {
+  total: number
+  ytd:   number
+  venc:  number
+}
+
+/** Um ano da comparação — um item por ano da janela navegável que a página conseguiu
+ *  carregar (ano cuja RPC falhou simplesmente não vem). `porLinha` é indexado por
+ *  `b:<chave>` (blocos) / `c:<categoria_id>` (categorias) — casar por CHAVE, e não por
+ *  posição, é o que impede a coluna de escorregar de linha quando a estrutura muda de
+ *  um ano para o outro. */
+export interface ConsolidadoAno {
+  ano: number
+  /** true = ano CORRENTE (tem previsto em aberto). Vem do payload, NUNCA é inferido:
+   *  num ano fechado `total − ytd` é realizado de ago..dez, não projeção. */
+  corrente: boolean
+  porLinha: Record<string, RegistroAnoLinha>
+}
+
+// ── Decomposição por BLOCO da estrutura viva (0209 · v5.3.1) ───────────────────
+// `valor` é o net SIGNADO (+ entrada / − saída), não ABS: é o que reconcilia com as
+// colunas da tabela e o que deixa o LADO (Entradas | Saídas) ser derivado do dado.
+// `bloco_chave: null` numa categoria = NÃO CLASSIFICADA (sem linha no de-para).
+
+export const decBlocoSchema = z.object({
+  chave:  z.string(),
+  rotulo: z.string(),
+  ordem:  z.number(),
+  valor:  z.number(),
+  n:      z.number(),
+}).passthrough()
+
+export const decCategoriaSchema = z.object({
+  categoria_id: z.number(),
+  bloco_chave:  z.string().nullable(),
+  rotulo:       z.string(),
+  valor:        z.number(),
+  n:            z.number(),
+}).passthrough()
+
+export const decomposicaoBlocoSchema = z.object({
+  de:         z.string(),                                        // date → 'AAAA-MM-DD'
+  ate:        z.string(),
+  blocos:     z.array(decBlocoSchema),
+  categorias: z.array(decCategoriaSchema),
+}).passthrough()
+
+export type DecBloco          = z.infer<typeof decBlocoSchema>
+export type DecCategoria      = z.infer<typeof decCategoriaSchema>
+export type DecomposicaoBloco = z.infer<typeof decomposicaoBlocoSchema>
+
 // ── Estrutura viva (editor) ───────────────────────────────────────────────────
 
 export const estruturaBlocoSchema = z.object({
