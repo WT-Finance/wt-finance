@@ -14,8 +14,18 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
 1. Lista das migrations novas (`supabase/migrations/NNNN_*.sql`) e RPCs criadas/alteradas.
 2. Objetivo de cada migration (o que o briefing pediu).
 3. Classificação declarada no header de cada uma (aditiva/destrutiva).
+4. **Skills a ler**: lista de `.claude/skills/<nome>/SKILL.md` pertinentes ao escopo
+   (tipicamente `banco-e-rpc`; `contrato-rpc-front` se houver call-site novo consumindo a
+   RPC). Leia cada SKILL.md listado no seu próprio contexto ANTES de revisar; se a delegação
+   não listar nenhuma skill, sinalize a ausência no parecer — o checklist abaixo já cobre
+   `banco-e-rpc` INLINE (ver nota), mas skills de outros domínios do escopo não estão
+   fixadas aqui.
 
 ## Checklist Janus (verificar TODOS os itens aplicáveis)
+
+> Este checklist espelha as regras da skill `banco-e-rpc` INLINE, por decisão D-12 (banco é
+> onde uma skill que não dispara custa mais). Convenção de banco mudou? Atualizar a skill
+> `banco-e-rpc` E este arquivo juntos — é item do ritual `/fechamento-versao`.
 
 ### Classificação e reversibilidade
 - O header declara corretamente o que a migration faz e se é aditiva/retrocompatível?
