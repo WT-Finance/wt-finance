@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-28 (17h05) · v5.3.3 FECHADA — PR draft aberto, aguardando merge humano (produção segue 5.3.2)
+Última atualização: 2026-07-28 (17h25) · v5.3.3 MERGEADA (#199, 17h18) — Avenir de volta nas telas públicas; worktree e branch limpas
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,23 +9,26 @@
 
 ## Verdade atual
 
-- **v5.3.3 fechada e aguardando merge** (branch `feat/v5-3-3-fontes-avenir`): patch de Rota C que
-  isentou `fonts/` no matcher do `src/proxy.ts` — as telas SEM sessão voltaram a renderizar Avenir
-  (o proxy respondia `307`/HTML do login no lugar do `.otf` e o browser caía em fonte de sistema).
-  **Telas afetadas eram 3: `/login`, `/solicitar-acesso`, `/auth/confirm`** — `/trocar-senha`
-  exige sessão e nunca esteve no escopo (o registro da v5.3.2 supunha que estava). Guard mecânico
-  novo em `src/proxy.test.ts` (32 casos) fixa as duas bordas do matcher. Out-briefing:
-  `docs/briefings/WT_Finance_Out_Briefing_v5-3-3_Fontes_Avenir.md`.
-- Versão em produção (main): **`5.3.2`** (#197 mergeado 28/07 às 16h26) — **o HARNESS NOVO REGE
-  a partir de agora** (ADR-0157, sem migrations, nada muda nas telas): CLAUDE.md **518 → 162
+- Versão em produção (main): **`5.3.3`** (#199 mergeado 28/07 às 17h18) — patch de Rota C que
+  isentou `fonts/` no matcher do `src/proxy.ts` (por PREFIXO de diretório, nunca por extensão — a
+  lição S11): as telas SEM sessão voltaram a renderizar Avenir, onde o proxy respondia `307`/HTML
+  do login no lugar do `.otf` e o browser caía em fonte de sistema. **As telas afetadas eram 3:
+  `/login`, `/solicitar-acesso`, `/auth/confirm`** — `/trocar-senha` exige sessão e nunca esteve no
+  escopo (o registro da v5.3.2 supunha que estava). Guard mecânico novo em `src/proxy.test.ts`
+  (32 casos) fixa as duas bordas do matcher; 525 testes. Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-3-3_Fontes_Avenir.md`. Worktree e branch já limpas
+  (`/pos-merge` executado).
+- **O HARNESS NOVO REGE desde a v5.3.2** (#197 mergeado 28/07 às 16h26) — a v5.3.3 foi o primeiro
+  patch nativo dele e o ritual ganhou a rota C (ADR-0157, sem migrations, nada muda nas telas): CLAUDE.md **518 → 162
   linhas** (core) + **9 skills internas** + **3 rituais** (`/nova-versao`, `/fechamento-versao`,
   `/pos-merge`) + agentes com "Skills a ler" + **`verificador-visual`** (MCP Playwright em
   `.mcp.json`) + 2 skills externas vendoradas + permissões da terceira camada APLICADAS pelo Yan
   no settings global. Provas: inventário sem órfãos (`docs/harness/inventario-claude-md.md`),
   sonda de disparo (`docs/harness/sonda-disparo.md`), baseline −45,6% na porção do projeto.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-3-2_Reformulacao_Harness.md` (a seção
-  "o que muda para a próxima sessão" é leitura obrigatória da 1ª sessão nativa). Nenhuma branch
-  de versão ativa — worktree e branch da v5.3.2 já limpas (`/pos-merge` executado).
+  "o que muda para a próxima sessão" é leitura obrigatória da 1ª sessão nativa). Nenhuma versão em
+  curso: as worktrees da v5.3.2 e da v5.3.3 já foram limpas; a única branch de versão viva é a da
+  **v5.4.0** (PR #191 draft, parada aguardando decisões do Yan).
 - A v5.3.1 fechou a adaptação do modelo da controladoria na DRE: Resumo Executivo (ancorado no
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
