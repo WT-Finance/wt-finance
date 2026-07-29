@@ -12,11 +12,21 @@ import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
   solicitacaoSchema, campoDefSchema, movimentacoesSchema,
 } from './solicitacoes/schemas'
+import {
+  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
+  coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
+} from './fluxo/rpc-fluxo'
+import {
+  dreMensalSchema, dreEstruturaSchema, salvarEstruturaResultSchema, historicoLotesSchema,
+  historicoEntradasSchema, decomposicaoBlocoSchema,
+} from './dre/schemas'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
 // negócio. skipIf sem credenciais → o gate `npm test` passa offline; com .env.local
-// carregado (vitest.setup.ts), roda de verdade. Só LEITURA — nunca escreve.
+// carregado (vitest.setup.ts), roda de verdade. Só LEITURA — com UMA exceção
+// deliberada: o caso de dre_estrutura_salvar envia um lote VAZIO (no-op, gravadas=0)
+// para exercitar a trava otimista; nenhum dado muda.
 
 // A URL do .env pode vir como host puro OU já com /rest/v1 (e/ou trailing slash).
 // Normalizamos para o host e remontamos o endpoint REST — evita /rest/v1//rest/v1.
@@ -449,5 +459,234 @@ describe.skipIf(!ON)('contrato RPC — Faturamento v4.37.0 (Emissão consome o C
     const cads = await rpc('buscar_cliente_corporativo', { p_nomes: [] }) as unknown as unknown[]
     expect(Array.isArray(cads)).toBe(true)
     expect(cads).toHaveLength(0)
+  })
+})
+
+describe.skipIf(!ON)('contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1)', () => {
+  // As 4 RPCs novas do eixo movimentação. Gated (exigir_acesso) — a service role passa
+  // (mesmo caminho das demais RPCs gated aqui). Schemas em @/lib/fluxo/rpc-fluxo.
+  it('get_repasse_mensal(ano): [{mes,ent,sal,pct?,pct_ant?}] — repasse BRUTO', async () => {
+    const d = await rpc('get_repasse_mensal', { p_ano: 2026 })
+    expect(repasseMensalSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_horizonte(): [{l,liq,e,s,n}]', async () => {
+    const d = await rpc('get_fluxo_horizonte', {})
+    expect(horizonteSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_runway_semanal(): {saldo_operacional, semanas[13]}', async () => {
+    const d = await rpc('get_fluxo_runway_semanal', {})
+    const p = runwaySemanalSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) expect(p.data.semanas.length).toBe(13)
+  })
+  it('get_fluxo_ranking(): {pioraram[], melhoraram[]}', async () => {
+    const d = await rpc('get_fluxo_ranking', { p_limite: 7 })
+    expect(rankingCaixaSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_saldo_caixa(): [{conta,saldo,ordem,data_saldo?,reserva,atualizado_em}] (tabela própria)', async () => {
+    const d = await rpc('get_saldo_caixa', {})
+    expect(saldoCaixaSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_horizonte() v2: 12 meses rolantes + 2 anos consolidados', async () => {
+    const d = await rpc('get_fluxo_horizonte', {}) as { meses?: unknown[]; anos?: unknown[] }
+    expect(d.meses?.length).toBe(12)
+    expect(d.anos?.length).toBe(2)
+  })
+  it('get_fluxo_cobertura(): {recebiveis, saidas_mensais[≤12 fechados, ASC]}', async () => {
+    const d = await rpc('get_fluxo_cobertura', {})
+    const p = coberturaSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) {
+      expect(p.data.saidas_mensais.length).toBeLessThanOrEqual(12)
+      const meses = p.data.saidas_mensais.map(m => m.mes)
+      expect([...meses].sort()).toEqual(meses) // ordem ASC determinística
+    }
+  })
+  it('get_saldo_repasse(from,to): { sal } — repasse bruto do período', async () => {
+    const d = await rpc('get_saldo_repasse', { p_from: '2026-01-01', p_to: '2026-12-31' })
+    expect(saldoRepasseSchema.safeParse(d).success).toBe(true)
+  })
+  it('get_fluxo_previsto_diario(): {vencido_r/p, dias[d≥hoje, ASC]}', async () => {
+    const d = await rpc('get_fluxo_previsto_diario', {})
+    const p = previstoDiarioSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (p.success) {
+      const ds = p.data.dias.map(x => x.d)
+      expect([...ds].sort()).toEqual(ds) // ordem ASC determinística (o cliente soma com break)
+      const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+      if (ds.length) expect(ds[0] >= hoje).toBe(true) // vencidos ficam no balde, não na série
+    }
+  })
+})
+
+// ── DRE por Fluxo de Caixa (v5.3.0 · Onda 2 — migrations 0204–0208) ─────────────
+// A estrutura é VIVA (editável): os casos validam INVARIANTES estruturais e o shape,
+// nunca o conteúdo exato do seed (que o editor pode legitimamente mudar).
+describe.skipIf(!ON)('contrato RPC — DRE (v5.3.0)', () => {
+  it('get_dre_mensal: shape + fórmula do grafo viva (REPASSE = ENT_H + PAG_H ao centavo)', async () => {
+    const anoSP = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 4))
+    const d = await rpc('get_dre_mensal', { p_ano: anoSP })
+    const p = dreMensalSchema.safeParse(d)
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    if (!p.success) return
+    const linhas = p.data.linhas
+    expect(p.data.relacao).toBe('corrente')
+    expect(p.data.mes_corrente).not.toBeNull()
+    // blocos e categorias presentes; toda cat aponta p/ bloco existente
+    const chaves = new Set(linhas.filter(l => l.t !== 'cat' && l.chave).map(l => l.chave as string))
+    expect(chaves.size).toBeGreaterThanOrEqual(20)
+    for (const c of linhas.filter(l => l.t === 'cat')) expect(chaves.has(c.g as string)).toBe(true)
+    // fórmula ancorada por chave, checada VIVA: REPASSE = ENT_H + PAG_H, mês a mês
+    const by = (k: string) => linhas.find(l => l.chave === k)
+    const ent = by('ENT_H'); const pag = by('PAG_H'); const rep = by('REPASSE')
+    expect(ent && pag && rep).toBeTruthy()
+    if (ent && pag && rep) {
+      for (let i = 0; i < 12; i++) {
+        expect(Math.abs(ent.meses[i] + pag.meses[i] - rep.meses[i])).toBeLessThan(0.01)
+      }
+      const pe = (ent.prev_corrente ?? 0) + (pag.prev_corrente ?? 0)
+      expect(Math.abs(pe - (rep.prev_corrente ?? 0))).toBeLessThan(0.01)
+    }
+  })
+
+  it('get_dre_mensal (ano fechado): tudo realizado, sem coluna híbrida', async () => {
+    const anoSP = Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date()).slice(0, 4))
+    const d = await rpc('get_dre_mensal', { p_ano: anoSP - 1 })
+    const p = dreMensalSchema.safeParse(d)
+    expect(p.success).toBe(true)
+    if (!p.success) return
+    expect(p.data.relacao).toBe('fechado')
+    expect(p.data.mes_corrente).toBeNull()
+    for (const l of p.data.linhas.slice(0, 5)) expect(l.prev_corrente ?? null).toBeNull()
+  })
+
+  it('dre_estrutura: shape + invariantes (XOR excluída/bloco; fórmulas referenciam chaves reais)', async () => {
+    const d = await rpc('dre_estrutura', {})
+    const p = dreEstruturaSchema.safeParse(d)
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    if (!p.success) return
+    expect(p.data.token).not.toBeNull()
+    const chaves = new Set(p.data.blocos.map(b => b.chave))
+    for (const b of p.data.blocos) for (const ins of b.formula ?? []) expect(chaves.has(ins)).toBe(true)
+    for (const m of p.data.maps) {
+      expect(m.excluida ? m.bloco_chave === null : m.bloco_chave !== null).toBe(true)
+      if (m.bloco_chave) expect(chaves.has(m.bloco_chave)).toBe(true)
+    }
+    // bandeja e maps são disjuntos (nada some em silêncio, nada duplica)
+    const mapeadas = new Set(p.data.maps.map(m => m.categoria_id))
+    for (const b of p.data.bandeja) expect(mapeadas.has(b.categoria_id)).toBe(false)
+  })
+
+  it('dre_estrutura_salvar: lote vazio é no-op; token errado → DRE_CONFLITO (nada muda)', async () => {
+    const est = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const ok = salvarEstruturaResultSchema.parse(
+      await rpc('dre_estrutura_salvar', { p_maps: [], p_token: est.token }),
+    )
+    expect(ok.ok).toBe(true)
+    expect(ok.gravadas).toBe(0)
+    await expect(
+      rpc('dre_estrutura_salvar', { p_maps: [], p_token: '1970-01-01T00:00:00Z' }),
+    ).rejects.toThrow(/DRE_CONFLITO/)
+  })
+
+  it('dre_estrutura_historico_lotes: shape (lista pode ser vazia)', async () => {
+    const d = await rpc('dre_estrutura_historico_lotes', { p_limit: 5, p_offset: 0 })
+    expect(historicoLotesSchema.safeParse(d).success).toBe(true)
+  })
+})
+
+// As 3 RPCs de undo/detalhe da estrutura, EXECUTADAS (não introspecção — lição 0203):
+// ids inexistentes exercitam o corpo até o guard, com efeito zero em produção.
+describe.skipIf(!ON)('contrato RPC — DRE undo/detalhe (execução inofensiva)', () => {
+  it('dre_estrutura_historico_lote: id inexistente → lista vazia (corpo executa)', async () => {
+    const d = await rpc('dre_estrutura_historico_lote', { p_lote: 1 })
+    expect(historicoEntradasSchema.safeParse(d).success).toBe(true)
+    expect(Array.isArray(d) ? d.length : -1).toBe(0)
+  })
+  it('dre_estrutura_desfazer_lote/linha: id inexistente → erro amigável, nada muda', async () => {
+    await expect(rpc('dre_estrutura_desfazer_lote', { p_lote: 1 })).rejects.toThrow(/inexistente/)
+    await expect(rpc('dre_estrutura_desfazer_linha', { p_diario_id: 1 })).rejects.toThrow(/inexistente/)
+  })
+})
+
+// ── Decomposição por BLOCO (v5.3.1 · 0209) ────────────────────────────────────
+// A RECONCILIAÇÃO é o invariante desta versão, e aqui ela deixa de ser anedota: o
+// segundo caso PROVA, contra produção, que o net por bloco da decomposição bate ao
+// centavo com a coluna do mês correspondente de `get_dre_mensal`. Foi essa igualdade
+// que justificou a RPC nova em vez de reusar `get_decomposicao_categoria` (que soma
+// `previsto` junto e ignora o de-para curado) — se um dia alguém "otimizar" uma das
+// duas funções e a igualdade cair, é aqui que estoura, não na tela do usuário.
+
+/** Mês ANTERIOR ao de hoje em SP, como janela [1º dia, último dia]. É sempre um mês
+ *  FECHADO, onde as colunas de `get_dre_mensal` são realizado PURO (o previsto do mês
+ *  corrente viaja em `prev_corrente`, fora de `meses[]`) — condição da igualdade. */
+function janelaMesAnterior(): { ano: number; mes: number; de: string; ate: string } {
+  const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
+  const [y, m] = hoje.split('-').map(Number)
+  const mes = m === 1 ? 12 : m - 1
+  const ano = m === 1 ? y - 1 : y
+  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate()
+  const mm = String(mes).padStart(2, '0')
+  return { ano, mes, de: `${ano}-${mm}-01`, ate: `${ano}-${mm}-${String(ultimo).padStart(2, '0')}` }
+}
+
+describe.skipIf(!ON)('contrato RPC — DRE v5.3.1 (decomposição por bloco)', () => {
+  it('get_decomposicao_bloco: shape do payload + toda categoria classificada aponta p/ bloco presente', async () => {
+    const { de, ate } = janelaMesAnterior()
+    const d = await rpc('get_decomposicao_bloco', { p_from: de, p_to: ate })
+    const p = decomposicaoBlocoSchema.safeParse(d)
+    expect(p.success, p.success ? '' : JSON.stringify(p.error.issues.slice(0, 3))).toBe(true)
+    if (!p.success) return
+    expect(p.data.de).toBe(de)
+    expect(p.data.ate).toBe(ate)
+    const chaves = new Set(p.data.blocos.map(b => b.chave))
+    for (const c of p.data.categorias) {
+      if (c.bloco_chave !== null) expect(chaves.has(c.bloco_chave)).toBe(true)
+    }
+  })
+
+  it('get_decomposicao_bloco: RECONCILIA ao centavo com a coluna do mês em get_dre_mensal', async () => {
+    const { ano, mes, de, ate } = janelaMesAnterior()
+    const [dec, dre] = await Promise.all([
+      rpc('get_decomposicao_bloco', { p_from: de, p_to: ate }),
+      rpc('get_dre_mensal', { p_ano: ano }),
+    ])
+    const pd = decomposicaoBlocoSchema.safeParse(dec)
+    const pm = dreMensalSchema.safeParse(dre)
+    expect(pd.success && pm.success).toBe(true)
+    if (!pd.success || !pm.success) return
+    // Só os blocos ANALÍTICOS (os que recebem categoria) vêm na decomposição; os de
+    // fórmula não, e é isso que impede dupla contagem. Comparação por CHAVE.
+    expect(pd.data.blocos.length).toBeGreaterThan(0)
+    for (const b of pd.data.blocos) {
+      const linha = pm.data.linhas.find(l => l.chave === b.chave)
+      expect(linha, `bloco ${b.chave} sem linha em get_dre_mensal`).toBeTruthy()
+      if (!linha) continue
+      expect(
+        Math.abs(linha.meses[mes - 1] - b.valor),
+        `bloco ${b.chave}: tabela ${linha.meses[mes - 1]} × decomposição ${b.valor}`,
+      ).toBeLessThan(0.01)
+    }
+  })
+
+  it('get_decomposicao_bloco: nada some — Σ categorias classificadas == Σ blocos; excluídas FORA', async () => {
+    const { de, ate } = janelaMesAnterior()
+    const [dec, est] = await Promise.all([
+      rpc('get_decomposicao_bloco', { p_from: de, p_to: ate }),
+      rpc('dre_estrutura', {}),
+    ])
+    const pd = decomposicaoBlocoSchema.parse(dec)
+    const pe = dreEstruturaSchema.parse(est)
+
+    // Conservação: o payload não perde valor entre os dois níveis de agregação. (O
+    // filtro de épsilon do CARD é decisão de exibição — o dado aqui é íntegro.)
+    const somaCats   = pd.categorias.filter(c => c.bloco_chave !== null).reduce((s, c) => s + c.valor, 0)
+    const somaBlocos = pd.blocos.reduce((s, b) => s + b.valor, 0)
+    expect(Math.abs(somaCats - somaBlocos)).toBeLessThan(0.01)
+
+    // Excluídas da DRE (transferência interna) NÃO podem aparecer na decomposição —
+    // senão as barras deixariam de fechar com a tabela.
+    const excluidas = new Set(pe.maps.filter(m => m.excluida).map(m => m.categoria_id))
+    for (const c of pd.categorias) expect(excluidas.has(c.categoria_id)).toBe(false)
   })
 })

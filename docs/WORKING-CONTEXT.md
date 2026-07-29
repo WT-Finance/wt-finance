@@ -1,68 +1,140 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-21 · v5.4.0 (API Externa de Solicitações — PR #191 AGUARDANDO a v5.3.0)
+Última atualização: 2026-07-28 · v5.4.0 (API Externa de Solicitações) — checklist de merge EXECUTADO (renumeração 0210–0214/ADRs 0158–0161 + migration repair); PR #191 PRONTO para o merge do Yan
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
-> explorar o repositório (o hook `contexto-sessao` o injeta automaticamente).
-> Atualizado como parte do out-briefing de TODA versão/patch (DoD). Manter curto:
-> o que mudou de verdade, não histórico — histórico é o CHANGELOG.
+> explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
+> faltar, ler manualmente). Atualizado como parte do out-briefing de TODA versão/patch (DoD).
+> Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
 
-- Versão em produção (main): `5.1.11` (alerta de sync atrasada; #189 mergeado)
-- Versões em execução (PARALELAS): `feat/v5-2-0-fluxo-caixa-onda1` (arco Fluxo de Caixa, v5.2.0/v5.3.0 — worktree do Yan) e `feat/v5-4-0-api-externa` (**PR #191 pronto e AGUARDANDO — merge SÓ após a v5.3.0**; checklist de merge no out-briefing v5.4.0: rebase → renumerar migrations 0950–0954/ADRs 0950–0953 → `migration repair` → proxy.ts).
-- Última migration **aplicada**: `0954` (v5.4.0, faixa PROVISÓRIA 0950–0954 — aditivas, backup-gate verde; 0185–0195 são da v5.2.0/v5.3.0, também aplicadas). Cron do Monde OK; cron `api-outbox-processar` agendado (404 inofensivo até o deploy do merge — nota no out-briefing v5.4.0).
-- Último ADR registrado: `0153` (+ 0950–0953 PROVISÓRIOS da v5.4.0, renumerar no merge)
+- Versão em produção (main): **`5.3.3`** (#199 mergeado 28/07 às 17h18) — patch de Rota C que
+  isentou `fonts/` no matcher do `src/proxy.ts` (por PREFIXO de diretório, nunca por extensão — a
+  lição S11): as telas SEM sessão voltaram a renderizar Avenir, onde o proxy respondia `307`/HTML
+  do login no lugar do `.otf` e o browser caía em fonte de sistema. **As telas afetadas eram 3:
+  `/login`, `/solicitar-acesso`, `/auth/confirm`** — `/trocar-senha` exige sessão e nunca esteve no
+  escopo (o registro da v5.3.2 supunha que estava). Guard mecânico novo em `src/proxy.test.ts`
+  (32 casos) fixa as duas bordas do matcher; 525 testes. Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-3-3_Fontes_Avenir.md`. Worktree e branch já limpas
+  (`/pos-merge` executado).
+- **O HARNESS NOVO REGE desde a v5.3.2** (#197 mergeado 28/07 às 16h26) — a v5.3.3 foi o primeiro
+  patch nativo dele e o ritual ganhou a rota C (ADR-0157, sem migrations, nada muda nas telas): CLAUDE.md **518 → 162
+  linhas** (core) + **9 skills internas** + **3 rituais** (`/nova-versao`, `/fechamento-versao`,
+  `/pos-merge`) + agentes com "Skills a ler" + **`verificador-visual`** (MCP Playwright em
+  `.mcp.json`) + 2 skills externas vendoradas + permissões da terceira camada APLICADAS pelo Yan
+  no settings global. Provas: inventário sem órfãos (`docs/harness/inventario-claude-md.md`),
+  sonda de disparo (`docs/harness/sonda-disparo.md`), baseline −45,6% na porção do projeto.
+  Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-3-2_Reformulacao_Harness.md` (a seção
+  "o que muda para a próxima sessão" é leitura obrigatória da 1ª sessão nativa). Nenhuma versão em
+  curso: as worktrees da v5.3.2 e da v5.3.3 já foram limpas; a única branch de versão viva é a da
+  **v5.4.0** (PR #191 — checklist de merge executado, PRONTO para o merge do Yan).
+- A v5.3.1 fechou a adaptação do modelo da controladoria na DRE: Resumo Executivo (ancorado no
+  ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
+  estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
+  testes verdes.
+- Último ADR registrado: **`0161`** (v5.4.0: 0158 categoria de confiança da API externa ·
+  0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
+- Última migration: **`0214`** (v5.4.0 renumerada 0210–0214 e realinhada no histórico via
+  `migration repair` — as cópias untracked 0950–0954 morreram; o passo 4 do `/nova-versao` não é
+  mais necessário). **Próxima migration livre: `0215`.** Aditiva nova volta ao `--aditiva` normal.
+- **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro — pendência de
+  billing do Yan, herdada da v5.2.0.
 
 ## Bloqueios vigentes
 
-- **Faturamento roda em MODO TESTE** — o flip de produção (Asaas produção + `EMAIL_MODO=real`)
-  é decisão do Yan, fora do código. A dupla trava do modo real está construída, não acionada.
-- **Virada Monde APLICADA (v5.1.4):** as 7 funções PURA-mv (Metas/Performance/Executiva/drawers) leem o
-  espelho Monde (`monde.mv_vendas_diarias_compat`); cron `*/15` **ATIVO (200, ingerindo)**; paridade ao vivo conferida ao
-  centavo (2026-06 e 2026-07). O **upload de Excel virou fallback dormente** — MAS **ainda é a única
-  fonte** de: `get_mix_produto`/`get_cagr` (Performance: mix por produto / CAGR), `get_pipeline_weddings`/
-  `get_prejuizos`/`get_sumario_subsetor`/`get_weddings_historico_subsetor` (Weddings: subsetor/produto/
-  operação-própria). (O rótulo "Última atualização" foi repontado ao Monde na v5.1.5 — não depende mais do upload.)
-  **NÃO parar o upload** enquanto essas funções lerem `fato_venda` (o Scope B resolve — ver abaixo).
-- **`SMTP_*` na Vercel** — sem eles, as notificações por e-mail degradam em silêncio (0 enviados).
-- **% Rec no Cadastro de Metas** — alvos de %Rec nascem vazios; enquanto o Yan não os digita,
-  os cards de Metas mostram "—" no "% da meta".
-- Favicon/símbolo Janus adiado (reprovado no gate de legibilidade 16/32px) — confirmar com o usuário.
+- **Validação do allow em sessão CLI interativa** (residual da v5.3.2): confirmar que `npm run
+  lint` e `db:migrate -- --aditiva` passam SEM consulta ao classificador na primeira sessão
+  interativa do Yan (validação headless já exercitada no pós-merge; se não valer no interativo,
+  suspeito registrado: issue #18846 do Claude Code).
+- **Licença da Avenir LT Std × exposição pública dos `.otf` (BAIXO, achado do revisor na v5.3.3):**
+  com a isenção do matcher, os 5 `.otf` passaram a ser baixáveis por visitante anônimo — antes só
+  com sessão, e por acidente. Não é falha de autenticação (fonte usada em página pública é sempre
+  alcançável pelo browser); é **conferir os termos da licença comercial** (ADR-0039). Se o Welcome
+  Group quiser limitar, o caminho é subsetting/`woff2` com `Access-Control`/referrer, não voltar a
+  quebrar a fonte no login. **Decisão do Yan.**
+- **Conceder a área `financeiro/dre` às roles** no editor de acessos (herdado da v5.3.0). Sem
+  isso a aba do Demonstrativo existe mas só admin a enxerga.
+- **Conferir o Resumo Executivo contra a planilha da controladoria** (do Yan; contra a tabela já
+  está provado).
+- **Decisões de produto abertas na DRE:** centavos na barra; posição do "Editar estrutura";
+  3 blocos do seed em CAIXA ALTA (ajuste é no editor da estrutura, não em código); vencidos em
+  aberto no Total do ano; convenção do Δ% do Consolidado (denominador em módulo).
+- **Órfão de documentação:** commit `b869bb9` (relatório delta DRE×Monde + errata) vive só em
+  `origin/docs/investigacao-dre-competencia-monde` e na worktree `investigacao-dre-monde`.
+  Decidir: PR próprio ou descarte. **Não remover essa worktree antes de decidir.**
+- **Faturamento roda em MODO TESTE** — flip de produção é decisão do Yan (dupla trava construída).
+- **Virada Monde APLICADA (v5.1.4):** 7 funções PURA-mv no espelho; upload ainda é a única fonte
+  de `get_mix_produto`/`get_cagr` e das telas de Weddings. **NÃO parar o upload** (Scope B resolve).
+- **`SMTP_*` na Vercel** — sem eles, notificações por e-mail degradam em silêncio.
+- **% Rec no Cadastro de Metas** — alvos nascem vazios; cards mostram "—" até o Yan digitar.
+- Favicon/símbolo Janus adiado (reprovado no gate de legibilidade 16/32px).
 
 ## Filas ativas (próximos passos já decididos)
 
-- **Monde — Scope B (APOSENTAR o upload manual de Vendas):** confirmado **VIÁVEL** na análise da
-  v5.1.5 — o dado item-level **já está ingerido no espelho** (`monde.venda_item`: produto/product_kind/
-  fornecedor/passageiros; `monde.venda`: setor_micro/operação-própria; cobertura **2023→2026**), toda a
-  granularidade que hoje só o upload fornece. Falta **construir o fato/mv item-level** a partir dele e
-  repontar as **6 funções** que ainda leem `analytics.fato_venda` DIRETO — `get_mix_produto`, `get_cagr`
-  (Performance: mix por produto / CAGR) + `get_pipeline_weddings`, `get_prejuizos`, `get_sumario_subsetor`,
-  `get_weddings_historico_subsetor` (Weddings: subsetor). Feito isso, o upload de Vendas **pode ser
-  desligado de vez**. Até lá, ele segue necessário para essas telas.
-- **Saúde da sincronização Monde:** a v5.1.11 cobriu a falha DURA com sinal PASSIVO (rótulo vermelho >45min). Follow-ups possíveis: (2) **alerta ATIVO por e-mail** (não depender de olhar a tela; reusa `src/lib/email`); (3) detectar a falha **SILENCIOSA** (API 200 sem vendas — o marcador avança e engana; cruzar `ultima_sync`/`max_data`, calibrar contra janelas quietas).
-- restore-test COMPLETO do backup-gate (follow-up ADR-0116; hoje só o spot-check roda).
-- `CRON_SECRET` do handler `/api/monde/ingest` em comparação **constant-time** (`crypto.timingSafeEqual`) — hardening pré-existente da v5.1.2 (baixo risco; HTTPS/Vault protegem). Achado BAIXO do revisor v5.1.7.
-- Caso de contrato para `solicitar_acesso_admin` em `rpc-contrato.test.ts` (0177 já em produção).
-- Caso de contrato para `monde_ingest_status` (agora com `ultima_sincronizacao`) em `rpc-contrato.test.ts` — a RPC não tem schema/teste (só cast manual em `carregar-acompanhamento`); débito da v5.1.5, **re-registrado** na v5.1.8 (achado do revisor).
-- Tokenização do `zinc` (follow-up do lint de cor, v4.26).
-- Consolidação das 3 pills de período (dívida opcional, patch dedicado).
-- Metas por Vendedor — próxima capacidade planejada (escopo a confirmar com o usuário).
+- **Piloto do harness novo (prova 3):** a v5.3.3 já rodou **nativa** (`/nova-versao` +
+  `/fechamento-versao`) e o harness se sustentou de ponta a ponta na Rota C — o ritual ganhou a
+  rota explícita (patch sem briefing, sem plan mode, passo das cópias 0950–0954 condicionado a
+  tocar banco). Falta a prova numa versão **de produto** (Rota A, com briefing e várias missões);
+  rollback trivial segue sendo revert do CLAUDE.md/skills.
+- **Ambiente (recomendações da v5.3.2, ação do Yan):** desativar o plugin **superpowers
+  duplicado** (projeto v5.1.0; o global 6.2.0 fica) — ele induz disparo-em-bloco das skills;
+  limpar allows amplos/efêmeros do `.claude/settings.local.json` (`Bash(npx supabase *)`,
+  `Bash(node *)`, PIDs).
+- **v5.4.0 (PR #191): checklist de merge EXECUTADO** (renumeração `0210–0214`/ADRs `0158–0161` +
+  `migration repair` + proxy.ts conferido + gates). Falta só o merge do Yan. Pós-merge: configurar
+  roles do tipo "Abatimento de créditos" + criar a chave TARS na tela (segredo exibido 1×) e
+  entregar `docs/api-externa-solicitacoes.md` ao Vitor; decidir o tipo homônimo (id 9).
+- **Fuso das pills de período (candidato REAL):** `resolverPeriodoCompleto` (`src/lib/periodo.ts`)
+  não ancora em `hojeSP()` — runtime em UTC vira "Este mês/ano" antes da hora (~21h SP).
+  Transversal (Fluxo de Caixa e DRE).
+- **Limpeza de RPC órfã:** `get_decomposicao_grupo`/`get_decomposicao_categoria` sem consumidor
+  vivo desde a v5.3.1. DROP exige verificação de consumidores reais (app E `supabase/seed/`).
+- **v5.3.x refino da DRE:** drag-and-drop no editor; guarda de saída; divisão ver/editar da
+  permissão; mover `historico-alteracoes` para `shared/`; Consolidado — conjunto de linhas vem
+  do ano da URL (produto).
+- **Monde — Scope B (aposentar o upload):** fato/mv item-level + repontar as 6 funções restantes.
+- **Saúde da sincronização Monde:** detectar falha SILENCIOSA (200 sem vendas).
+- restore-test COMPLETO do backup-gate (follow-up ADR-0116) · `CRON_SECRET` constant-time (BAIXO).
+- Casos de contrato pendentes: `solicitar_acesso_admin`, `monde_ingest_status`.
+- Tokenização do `zinc` + hex intermediários das paletas da Decomposição (vão em `style={{}}`).
+- Consolidação das 3 pills de período (`PeriodoFilterPillsUrl` → `PILL_FILTRO`).
+- Metas por Vendedor — próxima capacidade planejada (escopo a confirmar).
+- Dependabot: 19 vulnerabilidades no default branch (10 high) — triagem pendente.
 
 ## Cuidados desta fase (o que uma sessão nova precisa saber AGORA)
 
-- **Hooks do harness ATIVOS (instalados na v5.1.3).** Editar config de gate (`eslint.config.*`,
-  `tsconfig*.json`, `.prettierrc*`, `eslint-rules/`, `.claude/`) é bloqueado — exige checkpoint com o
-  usuário + reexecução com `WT_PERMITIR_CONFIG=1`. O `gate-stop` bloqueia a resposta se sobrar
-  `console.log` ou shorthand `-[--token]` em `.ts/.tsx` de `src/`. Escape geral: `WT_DESLIGAR_HOOKS=1`.
-- **`.claude/settings.json` versionado tem só a chave `hooks`** — o `model` do orquestrador **NÃO é
-  predefinido** (decisão do Yan, v5.1.5): escolhe-se por sessão, Opus recomendado. O CLAUDE.md foi
-  corrigido (§Modelos por camada — antes dizia "Opus fixado ali", o que nunca foi verdade).
-- **Protocolo de revisão de contexto separado:** despachar `revisor` (sempre) e `revisor-db`
-  (se houver migration/RPC) ANTES dos gates e da auto-auditoria — read-only, não conflitam.
-- `monde.*` **é a fonte viva** das telas executivas/Metas desde o flip (v5.1.4); o rótulo "Última atualização" também (v5.1.5). Mas mix-por-produto, CAGR e as telas de **Weddings** (subsetor/pipeline/prejuízos) ainda vêm do **upload** — não assumir que tudo já é Monde.
+- **O harness novo REGE a partir do merge da v5.3.2:** CLAUDE.md é core (162 linhas); o
+  situacional está nas **skills** (`.claude/skills/` — ler a do domínio ANTES de implementar);
+  procedimentos são **rituais** (`/nova-versao`, `/fechamento-versao`, `/pos-merge`). Delegação
+  a subagente leva o campo **"Skills a ler"**. Gates escalonados: tsc+lint por missão;
+  build+test por fase/fechamento. Fronteira de fase = estado em disco + `/clear`.
+- **Terceira camada CONFIGURADA:** o settings global do Yan agora tem `allow` estreito (gates,
+  git/gh, 2 invocações aditivas do db:migrate, `mcp__playwright`) e `deny` do `db push` cru.
+  Bloqueio inesperado → **protocolo D5** (5 passos, no core). A validação a quente está pendente
+  da 1ª sessão CLI (ver Bloqueios).
+- **Hooks ATIVOS** (protecao-config 6 alvos incl. settings global / gate-stop /
+  contexto-sessao) — detalhes no core §Salvaguardas.
+- **Versão que toca UI:** despachar `verificador-visual` após gates e revisores (`next dev` é
+  do orquestrador; tela autenticada exige credencial de teste na delegação). ⚠️ **O MCP Playwright
+  não sobe em sessão de background/headless** (v5.3.3): o agente volta com **NÃO VERIFICADO** por
+  falta das ferramentas `browser_*` — comportamento correto dele, não fabricar é o certo. Saída
+  usada e provada na v5.3.3: o orquestrador roda um script headless com o **Chromium que o próprio
+  MCP já instalou** (`~/.cache/ms-playwright/chromium-*/chrome-linux64/chrome` + `playwright-core`
+  do cache do npx), medindo status/`content-type` de rede, console, `document.fonts.check()`,
+  largura comparada com o fallback, anel de foco por Tab e screenshot. Fora do repo, sem tocar
+  `node_modules`. Em sessão interativa, preferir o agente.
+- **Protocolo de revisão:** `revisor` (sempre) e `revisor-db` (se migration/RPC) ANTES dos
+  gates. Na v5.3.1 cada um pegou um ALTO real; na v5.3.2 o verificador-visual pegou o ALTO das
+  fontes Avenir na estreia.
+- **RPC que já existe pode ter a SEMÂNTICA errada — MEÇA antes de reusar** (skill banco-e-rpc);
+  dois números lado a lado na mesma tela = caso de contrato.
+- **A DRE tem DOIS recortes independentes na mesma seção** (o `?ano=` da tabela e as pills da
+  Decomposição) — é de propósito. **Estrutura da DRE é DADO** (`dre_bloco`/`dre_categoria_map`;
+  Receita Bruta é `RB_H`/`tipo:'blocoH'`, não `'tot'`). **Diário/undo é genérico** (molde
+  `dre_estrutura_*`, 0206).
+- `monde.*` é a fonte viva das telas executivas/Metas; Weddings/mix/CAGR ainda vêm do upload.
 
 ---
 Regra de manutenção: item resolvido SAI (não é log). Aprendizado permanente NÃO fica
-aqui — vai para o CLAUDE.md pelo critério das três condições (permanente, transversal,
-custou caro).
+aqui — vai para o CLAUDE.md/skills pela régua de 5 destinos (core §Manutenção).

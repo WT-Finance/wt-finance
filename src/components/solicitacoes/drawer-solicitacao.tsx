@@ -33,7 +33,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   const [rejeitando, setRejeitando] = useState(false)
   const [cancelando, setCancelando] = useState(false)
   const [justificativa, setJustificativa] = useState('')
-  // v5.4.0/M4 (ADR-0953): mini-form de referência externa — só aparece quando o
+  // v5.4.0/M4 (ADR-0161): mini-form de referência externa — só aparece quando o
   // TIPO exige (sol.exige_referencia_conclusao); sem o flag, Concluir permanece
   // um clique único (comportamento IDÊNTICO ao anterior).
   const [concluindoReferencia, setConcluindoReferencia] = useState(false)

@@ -27,7 +27,7 @@ function comoResultadoCancelamento(data: unknown): ResultadoCancelamento | null 
 }
 
 /**
- * Notificação best-effort — v5.4.0/M4 (ADR-0953) FIX da limitação conhecida do M3b:
+ * Notificação best-effort — v5.4.0/M4 (ADR-0161) FIX da limitação conhecida do M3b:
  * usa `getEmailsEnvolvidosSvc` (RPC `solic_emails_envolvidos_svc`, service_role-only,
  * sem os guards de sessão que a rota HTTP não tem como satisfazer — ver ../route.ts).
  */
@@ -83,7 +83,7 @@ export async function POST(
   }
   await notificarCancelamento(resultado.id)
 
-  // v5.4.0/M4 (ADR-0953): entrega INLINE best-effort, AGUARDADA antes do return
+  // v5.4.0/M4 (ADR-0161): entrega INLINE best-effort, AGUARDADA antes do return
   // (serverless mata trabalho pós-resposta — lição v4.25). Nunca lança; o cron
   // (~5min) cobre o que não sair daqui.
   try { await processarOutboxUmaVez(5, 5_000, 15_000) } catch { /* a varredura do cron cobre */ }

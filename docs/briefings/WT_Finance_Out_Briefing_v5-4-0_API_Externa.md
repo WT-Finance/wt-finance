@@ -1,18 +1,19 @@
 # Out-briefing — v5.4.0 · API Externa de Solicitações
 
-**Tipo:** MINOR · **PR #191 (AGUARDANDO — merge SOMENTE após a v5.3.0)** · base main @ v5.1.11 ·
-migrations **0950–0954 PROVISÓRIAS (aplicadas)** · ADRs **0950–0953 PROVISÓRIOS** ·
-briefing `Janus_Briefing_v5-4-0_API_Externa_Solicitacoes.pdf`.
+**Tipo:** MINOR · **PR #191 PRONTO (checklist de merge executado em 2026-07-28, pós-v5.3.3)** ·
+base main @ v5.1.11, reconciliada com main @ v5.3.3 no merge · migrations **0210–0214**
+(nasceram provisórias 0950–0954, APLICADAS; renumeradas + `migration repair`) · ADRs **0158–0161**
+(nasceram 0950–0953) · briefing `Janus_Briefing_v5-4-0_API_Externa_Solicitacoes.pdf`.
 
 ## Missões (todas entregues)
 
 | M | Entrega | Migration |
 |---|---|---|
-| M1 | Fundações no cadastro de tipos: slug estável, **chave estável por campo** (sobrevive ao apaga-e-recria), flags `exposto_via_api`/`exige_referencia_conclusao`, roles permitidas; editor com os controles; retrofit via RPC service-only (8 tipos/53 campos preenchidos) | 0950 |
-| M2 | `app.api_chave` (hash sha256; callback URL+segredo de saída; whitelist; robô; revogação irreversível) + `api_chamada_log` + 8 RPCs + tela `/admin/chaves-api` (Group neutro, gated `solicitacoes`; segredo exibido UMA vez; criação provisiona o robô no Auth com `ativo=false`) | 0951 |
-| M3 | **Validação compartilhada** `app.solic_validar_e_snapshotar` (extraída verbatim, incl. regra de data v4.19) consumida pela RPC humana E pela irmã `criar_solicitacao_externa` (idempotência única por chave + corrida tratada; destinatário do disparo sem fallback, ecoado) + `cancelar_solicitacao_externa` + `solic_tipos_api` + rotas `/api/externo/*` (auth por chave, erros estruturados, 64KB, log) + proxy por prefixo | 0952 |
-| M4 | **Outbox at-least-once**: enfileira os 4 eventos NA transação da movimentação (só origem externa); processador com claim `SKIP LOCKED` + backoff exponencial (teto 8 → esgotado) via pg_cron */5 + entrega inline (aguardada) nas rotas externas; `solic_concluir(p_referencia)` obrigatória quando o tipo exige (persiste e viaja no callback); drawer/board pedem o campo; `solic_emails_envolvidos_svc` corrige o fan-out da porta externa | 0953 |
-| M5 | Seed do tipo **"Abatimento de créditos"** (9 campos com chaves explícitas; `exige_referencia_conclusao=true`; **roles vazias = inerte até o Yan configurar**) + **documento de contrato** `docs/api-externa-solicitacoes.md` (substitui o handoff como fonte) | 0954 |
+| M1 | Fundações no cadastro de tipos: slug estável, **chave estável por campo** (sobrevive ao apaga-e-recria), flags `exposto_via_api`/`exige_referencia_conclusao`, roles permitidas; editor com os controles; retrofit via RPC service-only (8 tipos/53 campos preenchidos) | 0210 |
+| M2 | `app.api_chave` (hash sha256; callback URL+segredo de saída; whitelist; robô; revogação irreversível) + `api_chamada_log` + 8 RPCs + tela `/admin/chaves-api` (Group neutro, gated `solicitacoes`; segredo exibido UMA vez; criação provisiona o robô no Auth com `ativo=false`) | 0211 |
+| M3 | **Validação compartilhada** `app.solic_validar_e_snapshotar` (extraída verbatim, incl. regra de data v4.19) consumida pela RPC humana E pela irmã `criar_solicitacao_externa` (idempotência única por chave + corrida tratada; destinatário do disparo sem fallback, ecoado) + `cancelar_solicitacao_externa` + `solic_tipos_api` + rotas `/api/externo/*` (auth por chave, erros estruturados, 64KB, log) + proxy por prefixo | 0212 |
+| M4 | **Outbox at-least-once**: enfileira os 4 eventos NA transação da movimentação (só origem externa); processador com claim `SKIP LOCKED` + backoff exponencial (teto 8 → esgotado) via pg_cron */5 + entrega inline (aguardada) nas rotas externas; `solic_concluir(p_referencia)` obrigatória quando o tipo exige (persiste e viaja no callback); drawer/board pedem o campo; `solic_emails_envolvidos_svc` corrige o fan-out da porta externa | 0213 |
+| M5 | Seed do tipo **"Abatimento de créditos"** (9 campos com chaves explícitas; `exige_referencia_conclusao=true`; **roles vazias = inerte até o Yan configurar**) + **documento de contrato** `docs/api-externa-solicitacoes.md` (substitui o handoff como fonte) | 0214 |
 | M6 | Versão 5.4.0, CHANGELOG, CHANGELOG_DIRETORIA, ADRs provisórios, este out-briefing, checklist de merge | — |
 
 ## Validação
@@ -58,16 +59,16 @@ briefing `Janus_Briefing_v5-4-0_API_Externa_Solicitacoes.pdf`.
     ok; fuso preservado. O MÉDIO (falta de sonda automatizada de negação anon/authenticated nas
     9 RPCs service-only) foi **endereçado**: sonda `it.each` adicionada à suíte de contrato
     (33/33 ao vivo). BAIXOs já rastreados no checklist de merge (renumeração/repair; tipo
-    homônimo; DOWN da 0953 referencia a 0952; idempotência não revalida payload — mitigada
+    homônimo; DOWN da 0213 referencia a 0212; idempotência não revalida payload — mitigada
     pela recomendação do contrato).
 
 ## Decisões técnicas registradas
 
 1. **Retrofit via RPC** (`api_retrofit_contratos`, service-only) e não UPDATE na migration: o
    classificador do db-gate marca UPDATE top-level como destrutivo (fail-closed correto); isto é
-   dado novo em coluna nova — o gate foi respeitado, não burlado (ADR-0951).
+   dado novo em coluna nova — o gate foi respeitado, não burlado (ADR-0159).
 2. **Robô no Auth** (`auth.admin.createUser` + `rbac_usuarios.ativo=false`): exigência de FK; com
-   `ativo=false` o `exigir_acesso` nega qualquer sessão dele — não opera a plataforma (ADR-0950).
+   `ativo=false` o `exigir_acesso` nega qualquer sessão dele — não opera a plataforma (ADR-0158).
 3. **Resistência a timing por hash-then-lookup** (sha256 índice) — o timing não se relaciona ao
    segredo; `compararHashConstante` disponível para comparações diretas futuras.
 4. **Entrega inline apenas nas rotas externas** (aguardada, timeout 5s — nunca fire-and-forget,
@@ -91,25 +92,24 @@ briefing `Janus_Briefing_v5-4-0_API_Externa_Solicitacoes.pdf`.
 4. Follow-ups v2 registrados nos ADRs: HMAC de callbacks, rate limiting, anexos via API,
    “em nome de”, rotação assistida de segredo, painel de métricas.
 
-## ⚠️ CHECKLIST DE MERGE (executar SÓ quando a v5.3.0 fechar — nesta ordem)
+## ✅ CHECKLIST DE MERGE — EXECUTADO em 2026-07-28 (pós-v5.3.3)
 
-1. [ ] v5.3.0 mergeada na main (o arco Fluxo de Caixa fechou).
-2. [ ] `git fetch` + rebase/merge de `main` em `feat/v5-4-0-api-externa`; resolver
-   versão/CHANGELOG/diretoria (mesmo rito dos PRs paralelos anteriores).
-3. [ ] **Renumerar migrations 0950–0954** para os próximos números reais após os da v5.3.0
-   (renomear arquivos preservando a ordem relativa) e **realinhar o histórico remoto**:
-   `supabase migration repair --status reverted 0950 0951 0952 0953 0954` +
-   `supabase migration repair --status applied <novos números>` (o conteúdo JÁ está aplicado —
-   o repair só realinha o registro; NÃO reaplicar).
-4. [ ] **Renumerar ADRs 0950–0953** para os próximos números reais (`ls docs/adr/`) e atualizar
-   referências cruzadas (CHANGELOG, out-briefing, comentários nas migrations renomeadas).
-5. [ ] Conferir `src/proxy.ts` pós-rebase (a v5.2.0/v5.3.0 pode ter tocado `API_AUTH_PROPRIA` —
-   único arquivo compartilhado esperado).
-6. [ ] Remover da worktree os arquivos untracked `supabase/migrations/0185–0195` (cópias da
-   v5.2.0 usadas só para o CLI ver o histórico; pós-merge os arquivos reais vêm da main).
-7. [ ] Gates completos pós-rebase (tsc/lint/test/build) + suíte de contrato ao vivo de novo.
-8. [ ] Marcar o PR ready; merge do Yan; pós-merge: o cron da outbox para de dar 404 (a rota
-   entra em produção no deploy) e drena qualquer pendência no primeiro tick.
+1. [x] v5.3.0 mergeada na main (o arco fechou em v5.3.3, main @ dbf049c).
+2. [x] merge de `main` (v5.3.3) em `feat/v5-4-0-api-externa` (sem force-push); resolvidos
+   os 4 conflitos (package.json→5.4.0; CHANGELOG/diretoria intercalados 5.4.0›5.3.3›…;
+   WORKING-CONTEXT reescrito). proxy.ts e areas.ts auto-mergearam.
+3. [x] Migrations renumeradas **0950–0954 → 0210–0214** (git mv, ordem relativa preservada) e
+   histórico remoto realinhado: `migration repair --status reverted 0950…0954` +
+   `--status applied 0210…0214` (conteúdo já aplicado; nada foi reaplicado).
+4. [x] ADRs renumerados **0950–0953 → 0158–0161** (próximos reais após o 0157 do harness);
+   referências cruzadas atualizadas em migrations, CHANGELOG, out-briefing e comentários do código.
+5. [x] `src/proxy.ts` conferido pós-merge: a v5.3.3 mexeu no MATCHER (isenção de `fonts/`) e o
+   auto-merge preservou ambos — `API_AUTH_PROPRIA`+prefixos intactos (guard mecânico
+   `src/proxy.test.ts` da v5.3.3 cobre as bordas).
+6. [x] Untracked 0185–0195 removidos ANTES do merge (os arquivos reais vieram da main).
+7. [x] Gates completos pós-merge + suíte de contrato ao vivo (ver seção Validação/adendo).
+8. [x] PR marcado ready — **merge do Yan é o próximo passo**; no deploy, o cron da outbox para
+   de dar 404 e drena qualquer pendência no primeiro tick.
 
 **Nota até o merge:** o job pg_cron `api-outbox-processar` (já agendado) chama a rota em produção,
 que só existirá após o deploy do merge → 404 a cada 5 min em `net._http_response` (inofensivo:

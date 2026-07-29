@@ -144,7 +144,7 @@ export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string
   return { ok: true, url: signed.signedUrl }
 }
 
-// v5.4.0/M4 (ADR-0953): `referencia` é OBRIGATÓRIA para tipos com
+// v5.4.0/M4 (ADR-0161): `referencia` é OBRIGATÓRIA para tipos com
 // `exige_referencia_conclusao` (o banco enforça — REFERENCIA_OBRIGATORIA); para
 // os demais tipos, undefined/'' equivale a NULL (comportamento IDÊNTICO ao
 // anterior).

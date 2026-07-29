@@ -11,7 +11,7 @@ import type { ResultadoAcao, ResultadoCriarChave, LogChamada } from '@/component
 
 // v5.4.0/M2 — server actions de Chaves de API. Guard de superfície
 // (requireAreaAction('solicitacoes')) + RPC com o cliente DE SESSÃO — o banco
-// revalida a área do CHAMADOR (exigir_acesso, 0951); o guard da UI é
+// revalida a área do CHAMADOR (exigir_acesso, 0211); o guard da UI é
 // conveniência, o do banco é o backstop (mesmo padrão de admin/acessos).
 // O cliente ADMIN (service role) é usado só para o Auth (criar/remover o
 // usuário-robô), nunca para as RPCs api_*.

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Check } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
 import { numBRL2 } from '@/lib/fmt'
 import type { ImportDiff, ImportResumo, LinhaResumo } from '@/lib/gerencial/import-types'
@@ -322,7 +322,10 @@ export default function ImportDrawer({ open, onClose }: Props) {
 
       {etapa === 'sucesso' && resumo && (
         <div className="text-center space-y-4 py-4">
-          <div className="text-4xl">✅</div>
+          {/* Ícone minimalista alinhado ao DS (token de sucesso), no lugar do emoji ✅. */}
+          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-success-bg">
+            <Check size={22} strokeWidth={2.25} className="text-success" />
+          </div>
           <p className="font-semibold text-[var(--text-primary)]">Importação concluída</p>
           <p className="text-sm text-[var(--text-muted)]">
             {resumo.adicionados} adicionados · {resumo.removidos} removidos · {resumo.atualizados} atualizados

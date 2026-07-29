@@ -4,7 +4,7 @@ import type { ChaveApi, LogChamada } from '@/components/admin/chaves-api/tipos'
 
 // Leituras do módulo de Chaves de API (v5.4.0/M2), consumidas pela page RSC e
 // pelas server actions. Cliente de SESSÃO (authenticated) — o banco valida a
-// área 'solicitacoes' do chamador via exigir_acesso (0951).
+// área 'solicitacoes' do chamador via exigir_acesso (0211).
 //
 // As RPCs api_chave_listar/api_log_listar são NOVAS: não estão em
 // src/types/database.ts (congelado desde ~v4.29) — helper de tipagem FROUXA

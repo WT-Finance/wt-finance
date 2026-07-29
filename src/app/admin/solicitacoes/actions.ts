@@ -34,7 +34,7 @@ export async function salvarTipo(input: {
       data_permite_passado:   c.tipo_campo === 'data' ? (c.data_permite_passado ?? true) : true,
       data_aviso_dias_futuro: c.tipo_campo === 'data' ? (c.data_aviso_dias_futuro ?? null) : null,
       data_aviso_direcao:     c.tipo_campo === 'data' ? (c.data_aviso_direcao ?? 'acima') : 'acima',
-      // Chave ESTÁVEL (v5.4.0/M1, migration 0950): campo PREEXISTENTE reenvia a
+      // Chave ESTÁVEL (v5.4.0/M1, migration 0210): campo PREEXISTENTE reenvia a
       // própria chave (o editor a exibe read-only) — sobrevive ao apaga-e-recria.
       // Campo NOVO viaja sem chave (null); o servidor gera a partir do rótulo.
       chave: c.chave ?? null,

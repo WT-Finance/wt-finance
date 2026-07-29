@@ -1,499 +1,162 @@
-# CLAUDE.md — Janus
+# CLAUDE.md — Janus (core)
 
-Janus (ex-WT Finance), plataforma financeira interna do Welcome Group. Este arquivo
-define como se trabalha neste projeto. Vale para toda sessão. Conteúdo específico de cada versão vem no
-briefing (`/docs/briefings/*.pdf`) e no prompt da versão, não aqui.
-
----
-
-## Manutenção deste arquivo (documento vivo)
-
-Este arquivo evolui com o projeto. Ao gerar o out-briefing de cada versão (passo 6 do
-workflow), avaliar: **esta versão revelou algum aprendizado permanente que deveria ser
-documentado aqui?**
-
-Critério para entrar (os três precisam ser verdade):
-- **Permanente** — vale para sempre, não só para esta versão (config, convenção, padrão arquitetural).
-- **Transversal** — afeta features futuras, não um componente isolado.
-- **Custou caro** — foi um bug difícil, uma investigação longa, ou um erro que se repetiria.
-
-Teste rápido: *"a próxima versão erraria isso de novo se não estivesse documentado?"*
-Se sim, entra (em "Convenções" ou "Banco de dados"). Se não, fica no out-briefing da versão.
-
-Exemplos que entraram: schema `analytics` não exposto (v4.6); upload → API Route (v4.7).
-
-**Manter denso, não só crescer:** adicionar é também podar. Convenção que deixou de
-valer deve ser corrigida ou removida, não acumulada. Alterações no arquivo passam pelo
-PR — o usuário revisa antes do merge.
-
----
+Janus (ex-WT Finance), plataforma financeira interna do Welcome Group. Este arquivo é o **core**
+do harness: o que TODA sessão precisa saber. O conhecimento situacional vive nas **skills do
+projeto** (`.claude/skills/` — o harness as lista no startup; a descrição de cada uma diz quando
+usá-la) e os procedimentos recorrentes nos **rituais invocáveis** (`/nova-versao`,
+`/fechamento-versao`, `/pos-merge`). **Regra de ouro: antes de implementar numa área, LER a
+skill do domínio** (banco-e-rpc, contrato-rpc-front, ui-design-system, tabela-densa, graficos,
+react-padroes, email, ingestao-planilhas, orquestracao).
 
 ## Stack
 
 Next.js 16 · React 19 · TypeScript estrito · Tailwind 4 · shadcn/ui · Recharts ·
 Supabase (Postgres + PostgREST) · Vercel. Repositório: `WT-Finance/wt-finance`.
 
----
-
 ## Comandos essenciais
 
 ```bash
-npm run dev               # servidor local (next dev)
-npm run build             # build de produção (next build) — gate de fechamento
-npm run lint              # eslint — gate de fechamento
-npx tsc --noEmit          # typecheck (NÃO existe script dedicado; rodar assim) — gate
-npm test                  # vitest (unit + contrato RPC) — gate de fechamento (v4.12)
-npm run seed              # popular banco (tsx supabase/seed/seed.ts)
+npm run dev / build / lint / test / seed
+npx tsc --noEmit                      # typecheck — NÃO existe "npm run typecheck"
+npm run db:migrate -- --aditiva [--fora-de-ordem]   # backup-gate rede → push (autônomo sob allow)
+npm run db:migrate -- --destrutiva    # backup-gate rede → push COM CONFIRMAÇÃO HUMANA (TTY)
+npx supabase migration list           # local vs remote (read-only, seguro)
 ```
 
-Não existe script de typecheck no `package.json`. Sempre usar `npx tsc --noEmit`
-diretamente. Não inventar `npm run typecheck`.
-
----
-
-## Banco de dados (Supabase)
-
-### Comandos
-```bash
-npx supabase migration list           # inspecionar local vs remote (READ-ONLY, seguro)
-npm run db:migrate -- --aditiva       # aplica migration aditiva (backup-gate rede → db push auto)
-npm run db:migrate -- --destrutiva    # backup-gate rede → db push COM CONFIRMAÇÃO HUMANA (não auto)
-# o wrapper db:migrate roda a REDE (backup + manifest-check + restore-test spot) antes do push (ADR-0116)
-```
-
-O CLI não está instalado globalmente — sempre `npx supabase ...`, nunca `supabase ...`.
-
-### ⚠️ Produção direta, sem staging
-`--linked` aplica no banco de PRODUÇÃO (não há ambiente de staging separado; só
-existe `.env.local`). Uma migration ruim vai direto para produção, sem rede de proteção.
-Branching do Supabase foi avaliado e **descartado** (investigação 2026-06-13): o branch
-efêmero nasce sem dado de produção — pega erro de schema, **não** perda de dado (que é o
-nosso risco real: `dim_data` range fixo, timeout 3s, N+1 por volume), e a promoção no merge
-roda direto em prod sem re-validação. `supabase start` local depende de Docker, ausente no
-WSL2. A rede que cobre o risco que dói é o **backup-gate** (ver abaixo).
-
-**O wrapper `npm run db:migrate` (`scripts/db-gate/`, ADR-0116) roda o backup-gate ANTES do push —
-uma REDE de recuperação, não autorização.** Gera o backup-do-dia em `~/wt-finance-backups/AAAA-MM-DD-<label>/`,
-checa **completude** (todas as tabelas vivas de produção presentes, count conferido) e restaura um
-**subconjunto-chave** num schema descartável comparando **produção × restaurado** (count + checksum);
-**vermelho aborta** (push não acontece). O gate garante **recuperação**, não prevenção — uma migration
-equivocada ainda muda produção, mas dá para restaurar do backup-do-dia. Runbook:
-`docs/runbooks/db-backup-gate-runbook.md`. (Restore-test do conjunto COMPLETO é follow-up; o spot é o núcleo.)
-
-**Migration ADITIVA / retrocompatível** (CREATE, ADD COLUMN anulável, RPC nova, índice, GRANT/REVOKE,
-validação que só acrescenta a `erros`) — **regime autônomo, SEM confirmação:** `npm run db:migrate -- --aditiva`
-(gate como rede) + **declaração prévia no header** (o que faz; aditiva/retrocompatível com a `main` viva;
-não escreve em dados pré-existentes).
-
-**Migration DESTRUTIVA** (`DROP`, `TRUNCATE`, `ALTER` que remove/reescreve coluna ou dado,
-`UPDATE`/`DELETE` em dado existente) — **continua exigindo CONFIRMAÇÃO HUMANA antes do `db push`.**
-O `npm run db:migrate -- --destrutiva` roda o backup-gate como rede e então **mantém a confirmação**
-(não auto-confirma). O gate é rede, **não** autoriza autonomia destrutiva — isso só mudaria com o
-restore-test COMPLETO (follow-up). Continua valendo: **verificar consumidores reais** antes de remover
-qualquer objeto — "órfão" pelo briefing pode ter uso vivo não-óbvio (ex.: a v4.17.1 ia dropar
-`truncate_dynamic_tables`/`inserir_lote_raw` e a auto-auditoria achou o `npm run seed` consumindo-as;
-só `admin_definir_usuario_ativo` era órfã).
-**A confirmação destrutiva vive no WRAPPER e o EOF ABORTA (v4.27.1, ADR-0131):** `migrate.mjs` pede a
-confirmação ele mesmo e, em stdin **não-TTY/EOF** (headless/pipe/CI/agente), **aborta antes do gate** —
-EOF nunca confirma (antes delegava ao prompt do `db push`, cujo default headless prosseguia = fail-open;
-a segurança dependia do harness). Por isso o **agente não consegue** aplicar destrutiva (sem TTY → aborta);
-só um humano num terminal aplica. A **classificação** "destrutiva" vem de `scripts/db-gate/classificar.mjs`
-(TOKENIZER que excisa comentários/strings/corpos `$$…$$` e casa só **top-level**), não mais regex sobre
-texto cru: DML no **corpo** de `CREATE FUNCTION` não é mais falso-positivo; `DROP FUNCTION` = **warn**
-(troca de assinatura); `DROP/TRUNCATE/ALTER…DROP`/`UPDATE`/`DELETE` top-level e ambiguidade do tokenizer
-= **destrutiva** (falha fechada). Sonda: `scripts/db-gate/classificar.test.mjs` (em `npm test`).
-
-Ao testar escrita em produção (ex.: commit de import), usar dados com nomes distintos
-e deletar logo em seguida.
-
-### Schema `analytics` NÃO é exposto pela API
-O `config.toml` expõe apenas `["public", "graphql_public"]`. Tabelas em `analytics`
-**não são acessíveis** via `.schema('analytics').from(...)` (retorna PGRST106).
-
-**Regra:** todo acesso a tabelas de `analytics` é via RPCs `SECURITY DEFINER` no schema
-`public`. Mesmo padrão do resto do codebase. (Descoberto na v4.6.)
-
-### Fonte de produção das vendas: espelho Monde × upload (fallback) — v5.1.4/ADR-0151
-A partir da v5.1.4, a fonte das vendas pode ser **virada** do upload de Excel para o **espelho
-Monde** (`monde.mv_vendas_diarias`) por **REPOINT reversível** (migration 0181): as 7 funções
-**PURA-mv** (`get_executiva_kpis__nucleo`, `metas_ritmo_diario`, `get_tendencia_margem__nucleo`,
-`get_decomposicao_variacao__nucleo`, `get_historico_12m_setores__nucleo`, `get_mix_setor__nucleo`,
-`get_historico_mensal__nucleo`) leem o Monde via **views-compat** (`monde.mv_vendas_diarias_compat`
-com `setor_macro_id`; `monde.mv_vendas_mensais`). O **fato do upload é INTOCADO** → rollback = o
-bloco DOWN da 0181 (repoint de volta a `analytics.*`), **nunca restauração de dado**; o upload é
-**FALLBACK DORMENTE**. **`get_mix_produto`/`get_cagr` NÃO viram** — leem o `fato_venda` DIRETO
-(breakdown por produto / anos completos), então seguem no upload até o *fato* do Monde existir
-(escopo futuro). Metas ≡ Performance por construção (mesma `get_executiva_kpis`); definição de
-receita/margem inalterada (o diagnóstico provou paridade ~99% ao centavo; delta = currency que some
-pós-flip). Agendamento da sincronização: **Supabase `pg_cron`+`pg_net` ~15min** (0182, secrets no
-Vault) → `/api/monde/ingest?mode=incremental`; o Cron da Vercel fica dormente/redundante. **O flip
-é aplicado pelo Yan** (gate: comunicação à diretoria antes; migration NÃO auto-aplicada). Espelho
-Monde ingerido na v5.1.2 (schema `monde`); paridade de receita provada no diagnóstico da virada.
-
-### `dim_data` tem range fixo — FK em `fato_venda`
-`analytics.fato_venda.data_venda` tem FK para `analytics.dim_data(data)`, semeada com
-range FIXO (era 2024-2030; estendida para 2022-2030 na migration 0100). Subir Vendas
-com datas FORA do range faz `transform_raw_to_analytics` abortar em
-`fato_venda_data_venda_fkey`. Pior: o upload roda `truncate_dynamic_tables` (CASCADE)
-ANTES do transform — se o transform falha, `fato_venda` fica VAZIA em produção (os
-dados crus sobrevivem em `raw.vendas_excel`).
-
-**Regra:** ao surgir esse erro, estender `dim_data` (migration com `generate_series` +
-mesma derivação do seed `0002`, `ON CONFLICT (data) DO NOTHING`) e recuperar SEM
-re-upload via RPCs `transform_raw_to_analytics` → `regenerar_dim_operacao_weddings` →
-`refresh_all_materialized_views`. (Descoberto em mai/2026, migration 0100.)
-
-### statement_timeout por role — o PostgREST aplica o rolconfig do papel a CADA requisição
-Os roles têm timeout DIFERENTE, vindo do `rolconfig` (`ALTER ROLE … SET statement_timeout`):
-`anon`=3s, `authenticated`=8s, `service_role`=**0 (sem limite), mas só porque a migration 0145
-setou isso EXPLICITAMENTE** (ADR-0122). Uma RPC que passe do limite estoura
-`57014 canceling statement due to statement timeout` → HTTP 500/erro de carga.
-
-**Como funciona (não é automático):** `SET ROLE` sozinho **não** aplica o rolconfig do papel-alvo
-(testado). É o **PostgREST que aplica o rolconfig do papel da requisição a cada chamada** — é assim
-que `anon`=3s/`authenticated`=8s valem. Se o rolconfig do papel **não** define `statement_timeout`,
-cai no **default do banco (120s)**. (Custou caro: o `service_role` ficou com rolconfig nulo → cargas
-pesadas via `getAdminClient` herdaram 120s e `promover_carga_vendas` estourou — v4.20.1, fix 0145.)
-
-**Regras:**
-- Toda RPC consumida pela UI (roda como **`authenticated`**, 8s) precisa caber nesse limite — não
-  validar só com service role. Atenção a N+1 em RPC de listagem (função escalar por linha) e a casts
-  em coluna de JOIN que impedem índice — pioram com o volume. (Custou caro: `contar_convidados_operacao`
-  × ~140 ops após o backfill 0100; fix 0101.)
-- **O timer é armado no statement EXTERNO do PostgREST e NÃO dá para desarmá-lo de dentro da função**
-  (testado: atributo `SET statement_timeout=0` na função e `SET LOCAL` no corpo não afetam o statement
-  em curso). Uma RPC de carga pesada (service_role) só escapa do timeout pelo **rolconfig do role** — não
-  por código da função. Mudou o timeout de um role? `NOTIFY pgrst, 'reload config'`.
-
-### Fuso: app roles em America/Sao_Paulo; `postgres` (migrations/seed) segue UTC
-A sessão **padrão** do Postgres (Supabase) é **UTC**, mas os papéis que o PostgREST usa por requisição — `anon`/`authenticated`/`service_role` — têm `timezone = 'America/Sao_Paulo'` no rolconfig (migration **0152**, ADR-0125). O PostgREST aplica o rolconfig do papel a CADA chamada (mesmo mecanismo do `statement_timeout`), então em **toda RPC do app** `CURRENT_DATE`/`now()::date`/`date_trunc('month', CURRENT_DATE)` já refletem o **"hoje" de São Paulo** — RPC nova ganha isso de graça, **sem** precisar de `AT TIME ZONE` explícito. (Antes da 0152 era UTC e o "hoje" adiantava um dia a partir das ~21h de SP; sintoma: a projeção do Gerencial começava em "amanhã" — fix pontual 0151, depois sistêmico 0152.)
-**Exceção que importa:** `postgres` **NÃO** foi alterado — **migrations e `npm run seed` rodam como `postgres` em UTC**. Se uma MIGRATION/seed precisar do "hoje" de SP num `UPDATE`/backfill/`generate_series`, use `(now() AT TIME ZONE 'America/Sao_Paulo')::date` explícito; `CURRENT_DATE` cru dentro de migration ainda é UTC. Para **exibição** de `timestamptz` no app a regra é a de sempre: `fmtDataSP`/`Intl`+`timeZone`, nunca split — o fuso do role muda só o **offset** do ISO, não o instante.
-
-### Auth e RBAC (v4.13/v4.14) — enforcement em 4 camadas
-Login obrigatório (Supabase Auth). **Método primário = e-mail + SENHA** (v4.14, ADR-0110); o magic link (`/auth/confirm` em 2 passos) virou **recuperação/anti-lockout**, fora da tela de login. Autorização **RBAC dinâmico por área** (`app.rbac_*`; 11 áreas; em Performance, granular por setor). ADRs 0106-0110.
-
-- **Senha (v4.14):** admin cria usuário com **senha provisória exibida na tela** (não por e-mail — sem dependência de SMTP); flag `app.rbac_usuarios.precisa_trocar_senha` força a troca no 1º acesso. **Portão forte:** com a flag ligada, `requireArea` manda para `/trocar-senha` (página), 403 (API) ou lança (action) — antes de qualquer dado. Reset = admin gera nova provisória. Auto-cadastro = `/solicitar-acesso` (RPC `solicitar_acesso`, anon, 1 pendente/e-mail, nada criado até aprovar) + aba Solicitações. `senhaProvisoria()` ≥16 chars; mínimo de senha 8 (config). NUNCA persistir senha em claro.
-
-- **Sessão flui ao banco:** `getServerClient()` é **assíncrono** e por-request (`@supabase/ssr` + cookies) — sempre `await`. As RPCs do app correm como `authenticated` (timeout **8s**, não os 3s do anon). `getAdminClient()` (service role) só server-side para cargas e `auth.admin` (convites). `proxy.ts` (convenção Next 16, **não** `middleware.ts`) exige sessão fora de `/login` e `/auth/*`.
-- **Guards em toda superfície:** página → `requireArea(area)`; route handler → `requireAreaApi` (retorna `Response` 401/403); server action → `requireAreaAction`. Mapa único em `src/lib/auth/areas.ts`, **espelhado** em `app.rbac_areas` (paridade testada em `rpc-contrato.test.ts`). Rota nova **nasce protegida** (proxy + guard do banco); não esquecer o guard explícito.
-- **Toda RPC de leitura exposta é `SECURITY DEFINER` e checa `app.exigir_acesso(<áreas>)` antes de tocar dado.** Dois padrões coexistem: o **wrapper+`__nucleo`** (função pública `SECURITY DEFINER` que chama `exigir_acesso` e delega a `<fn>__nucleo`, service-role-only) é o molde da migration **0121** — um **retrofit** para preservar a assinatura de RPCs que já existiam e já tinham consumidores antes do RBAC dinâmico chegar. **RPC NOVA usa o padrão INLINE** (desde a v4.29, migrations 0160–0165): `PERFORM app.exigir_acesso(ARRAY[...])` como **primeira linha do próprio corpo** da função, sem indireção a `__nucleo`, mantendo `REVOKE EXECUTE ... FROM PUBLIC, anon` / `GRANT EXECUTE ... TO authenticated, service_role` explícitos — ex.: `acervo_listar`/`acervo_criar`/`acervo_doc_path` (0165), `importar_clientes_corp`/`listar_clientes_corp` (0164). Não recriar o wrapper+`__nucleo` para função nova; é legado de retrofit, não o molde a seguir. RPC com `p_setor` deriva a área via `app.areas_do_setor`.
-- **`anon`/`authenticated` por default têm EXECUTE em função nova** (default privileges do Supabase) — **custou caro:** as 72 funções tinham `anon` mesmo com `REVOKE ... FROM PUBLIC` (incl. `truncate_dynamic_tables`). A 0122 corrigiu com `ALTER DEFAULT PRIVILEGES ... REVOKE EXECUTE ... FROM anon, authenticated`. Todo `GRANT EXECUTE` é **explícito**; nunca contar com o default.
-- **RLS é deny-by-default e NÃO-permissivo:** RLS ligado em todas as tabelas dos 6 schemas, sem policy `USING true` (a 0123 removeu as herdadas). O app nunca acessa tabela direto (zero `.from()`), então RLS não afeta o caminho via RPC (owner `postgres` ignora RLS) — mas a policy permissiva é furo latente; manter a camada de RLS também fechada.
-- **Predicado de permissão com coluna ANULÁVEL precisa de `coalesce(..., false)` — NULL não é negação.** `coluna = auth.uid()` retorna **NULL** (não `false`) quando a coluna é NULL — ex.: `destinatario_user_id = uid` numa solicitação atribuída a uma ROLE (user_id nulo). Numa cadeia OR, `false OR NULL = NULL`; e `IF NOT <expr nula> THEN RAISE` **NÃO dispara** (NOT NULL = NULL ≠ true) → o RAISE de negação é pulado → **vazamento de permissão** (terceiro vê/age). Cláusula `WHERE` tolera (NULL exclui a linha), mas predicado booleano em `IF`/função `RETURNS boolean` **não**. Regra: toda comparação de permissão com coluna anulável vai em `coalesce(<cmp>, false)`; funções de visibilidade retornam boolean estrito. (Custou caro: vazamento em `pode_ver_solic`/`sou_atendente` pego pela auto-auditoria adversarial — v4.16.0, fix migration 0129. Foi a auditoria de RPC direta, não a UI, que pegou.)
-- **Janela anônima ENCERRADA (v4.17.0/M1, ADR-0114):** `anon` não executa nenhuma RPC de dado — `REVOKE EXECUTE` em tudo de `public`/`app` **exceto `solicitar_acesso`** (auto-cadastro, com rate-limit). `exigir_acesso` nega anon SEMPRE (ramo "anon passa quando OFF" removido) e só libera contexto **sem JWT** se `session_user` for superusuário real (migrations/seed/`db query` como `postgres`) — a requisição anônima do PostgREST chega sem claims, e era esse o furo (fail-open). Toda RPC consumida pela UI roda como **authenticated**. RPC/grant novo: nasce sem `anon` (default privileges da 0122 + esta limpeza). Não reabrir anon.
-- **Kill switch = emergência (não mais compatibilidade):** `app.config.auth_enforcement` + `admin_set_enforcement` permanecem como alavanca de emergência (runbook `docs/runbooks/v4-13-auth-runbook.md`), mas **não regem mais o caminho anon** (M1 removeu o ramo). Anti-lockout vive nas RPCs `admin_*` (não dá para se auto-desativar nem tirar o próprio `admin/acessos`).
-- **Confirmação de magic link é em DOIS passos (`/auth/confirm`):** o GET só renderiza o botão; o `verifyOtp`/`exchangeCodeForSession` roda no **POST** do clique. Magic link é **uso único** — confirmar no GET deixa bots de pré-visualização de link (WhatsApp/e-mail/antivírus/prefetch) **consumirem o token** antes do humano, derrubando o convite com "link inválido". Nunca consumir token de auth num GET. Convite por e-mail depende de **SMTP próprio** (o nativo do Supabase limita a 2/h). O gerador de "Link de acesso" sob demanda (`gerarLinkAcesso`) foi **removido na v4.17.1** — o modelo v4.14 é por **senha provisória** (admin cria/reseta e exibe na tela); o magic link `/auth/confirm` permanece só como anti-lockout. (Custou caro: diretoria sem acesso na ativação da v4.13; fix v4.13.1.)
-
-### Convenções de migration
-- Arquivos: `supabase/migrations/NNNN_nome.sql`, numeração sequencial.
-- RPCs: sempre `SECURITY DEFINER` + `REVOKE EXECUTE ... FROM PUBLIC` + `GRANT EXECUTE ... TO service_role`.
-- `max_rows = 1000` no PostgREST — limite de payload de RPCs/queries. Considerar em listagens grandes.
-- Subagentes que criam migration recebem o número exato e NÃO aplicam — o orquestrador aplica todas em lote, sequencialmente, depois.
-- **Antes de `DROP` de qualquer objeto, verificar consumidores reais** (grep no app **e** em `supabase/seed/`, mais auditoria cética). Classificação de "órfão" vinda do briefing não basta — ela errou na v4.17.1 (`truncate_dynamic_tables`/`inserir_lote_raw` pareciam soltas mas o `npm run seed` as usa; ficaram, marcadas seed-only). DROP é destrutivo: confirmação + reversibilidade documentada (corpo na migration de origem).
-
-### Verificação pós-push
-Testar as RPCs novas via REST com a service role key antes de considerar pronto:
-```bash
-curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
-  -H "apikey: $SVCKEY" -H "Authorization: Bearer $SVCKEY" \
-  -H "Content-Type: application/json" -d '{...}'
-```
-
----
+O CLI do Supabase não é global — sempre `npx supabase ...`.
 
 ## Regime de trabalho (default: autônomo)
 
-O **regime autônomo é o padrão** deste projeto (validado v4.13–v4.17). Dentro do escopo do
-briefing/prompt da versão, trabalha-se com **autonomia técnica total**: decisões técnicas
-(modelo de dados, organização de código, caminho de implementação) são do Claude Code;
-migrations aplicam-se **sem confirmação** sob as âncoras abaixo; não se pergunta o operacional.
-O que muda de versão para versão é a **fronteira de produto**, que o prompt define.
+Dentro do escopo do briefing da versão: **autonomia técnica total** (modelo de dados, organização
+de código, caminho de implementação); não se pergunta o operacional. Três invariantes que nenhum
+prompt afrouxa:
 
-Três coisas são invariantes e **não** dependem do prompt afrouxar:
-- **Auto-auditoria adversarial antes de declarar concluído.** É o que pega o "dado errado
-  parecendo certo" — incluindo erros do próprio briefing (ex.: a v4.17.1 descobriu que RPCs
-  que o briefing mandava dropar tinham consumidor vivo no `seed`; a auto-auditoria da v4.16.0
-  pegou o vazamento de permissão da 0129). Verificar a realidade contra o prompt; divergiu, **parar**.
-- **Merge humano é a única fronteira de entrada em produção.** O Code nunca mergeia nem deploya.
-- **Decisão de produto é do usuário.** Na dúvida se algo é técnico ou de produto, **é produto**:
+- **Auto-auditoria adversarial antes de declarar concluído** — verificar a realidade contra o
+  prompt, inclusive contra erros do próprio briefing; divergiu, **parar**.
+- **Merge humano é a única fronteira de entrada em produção.** Nunca mergear, nunca deployar.
+- **Decisão de produto é do usuário.** Na dúvida se é técnico ou produto, **é produto**:
   registrar/perguntar, não decidir.
 
-**Checkpoints** (parar no meio e aguardar) são a exceção, pedidos explicitamente pelo prompt —
-ver Workflow §4. Sem pedido de checkpoint, a confirmação acontece ao fim de todas as missões.
-
----
+**Checkpoints** (parar no meio e aguardar) são exceção, pedidos explicitamente pelo briefing;
+sem pedido, a confirmação do usuário acontece ao final de todas as missões.
 
 ## Workflow de versão
 
-### 1. Recebimento
-- Ler `docs/WORKING-CONTEXT.md` — a verdade atual do projeto (versão, bloqueios, filas) —
-  antes de explorar o repositório. O hook `contexto-sessao` injeta o conteúdo no início da
-  sessão; se ausente, ler manualmente.
-- Ler o briefing em `/docs/briefings/<versão>.pdf` + o prompt `.md` da versão.
-- **Confirmar entendimento do escopo antes de implementar.** Se houver ambiguidade real, perguntar; senão, prosseguir.
+**Rotas de entrada** (na dúvida entre A e B, é A):
+- **Rota A (produto):** decisão de produto aberta ou tela nova/alterada → planejado no Chat →
+  briefing `.md` em `docs/briefings/` → `/nova-versao <vX-Y>` (worktree + briefing no 1º commit +
+  carta de orquestração + plan mode para validar briefing×repo).
+- **Rota B (técnica):** sem decisão de produto → plan mode direto na sessão; o plano aprovado
+  vira **spec commitada no repo** (rastro em disco também na rota técnica).
+- **Rota C (patch trivial):** direto, com gates.
 
-### 2. Implementação
-- Seguir a estrutura de fases do prompt.
-- **Pesquisar antes de codar:** antes de criar utilitário/helper/abstração nova, verificar se
-  já existe no repositório (grep) e se há biblioteca consolidada que resolva 80%+ do problema.
-  Adotar/estender > construir. (Reinventar o que já existe é a causa-raiz histórica de
-  divergência — precedentes: `coercao.ts`, primitivos de `ui/`, parsers de Vendas.)
-- **Compactação estratégica:** em versões multi-fase, executar `/compact` na fronteira entre
-  fases (fim da exploração → implementação; fim de um milestone), nunca no meio de uma missão.
-  Preserva o plano e descarta o ruído de exploração.
-- **Identificar oportunidades de paralelização proativamente**, garantindo não-conflito (ver "Subagentes e paralelização" abaixo).
-- Commits Conventional Commits em pt-BR, **um por missão**, com `git add <arquivos específicos>` — nunca `git add -A` cego.
-- Rodar `build` + `tsc` + `lint` ao final de cada missão, não só no fim de tudo.
-- **Reportar o progresso pelo chat** (sem criar arquivo de relatório).
+**Implementação:** pesquisar antes de codar (adotar/estender > construir — reinventar o que já
+existe é a causa-raiz histórica de divergência); ler as skills do domínio ANTES de editar;
+um commit por missão com `git add` de arquivos específicos (nunca `-A`); reportar progresso pelo
+chat (sem arquivo de relatório).
 
-### 3. Revisão e validação (gate)
-- **Antes dos gates, despachar a revisão de contexto separado:** `revisor` (sempre) e
-  `revisor-db` (se a versão contém migration/RPC), em paralelo — são read-only, não conflitam.
-  Achados **CRÍTICO/ALTO** voltam ao implementador para correção antes dos gates; MÉDIO/BAIXO
-  são endereçados ou registrados no out-briefing com justificativa. (Ver "Protocolo de revisão".)
-- `npm run build` limpo, `npx tsc --noEmit` zero erros, `npm run lint` sem warnings novos, `npm test` verde.
-- Smoke tests das áreas afetadas.
+**Gates ESCALONADOS:** `npx tsc --noEmit` + `npm run lint` ao fim de **cada missão**;
+`npm run build` + `npm test` na **fronteira de fase** e no **fechamento**; smoke das áreas
+afetadas no fechamento. Quem roda gate é a sessão principal, serializado.
 
-### 4. Confirmação
-- Por padrão, a confirmação do usuário acontece **ao final de todas as missões** (autonomia total durante a execução).
-- Se o prompt pedir **checkpoint** explícito numa missão, parar nela e aguardar confirmação antes de prosseguir.
+**Fronteira de fase:** atualizar o estado em disco (plano da versão/WORKING-CONTEXT) e `/clear`.
+Não usar `/compact` estratégico (perde detalhe de forma não-determinística; disco não).
 
-### 5. Correções
-- Aplicar correções apontadas pelo usuário; aguardar nova confirmação pós-correção quando relevante.
+**Revisão:** `revisor` (sempre) e `revisor-db` (se migration/RPC) antes dos gates de fechamento;
+`verificador-visual` (se UI) após os gates. CRÍTICO/ALTO corrigem antes de fechar; MÉDIO/BAIXO
+endereçam ou registram no out-briefing.
 
-### 6. Out-briefing
-- **Out-briefing é parte do DoD, não pós-entrega:** nenhuma versão/patch fecha sem ele. (Custou caro: a v4.14.1 fechou sem out-briefing e exigiu backfill depois — v4.14.3.)
-- Gerar out-briefing `.md` no formato consolidado: missões implementadas, migrations, ADRs, pendências, arquivos modificados — incluindo a seção **Parecer da revisão** (achados do `revisor`/`revisor-db` e como foram endereçados).
-- **Atualizar `docs/WORKING-CONTEXT.md`** (versão, bloqueios, filas ativas, data) — é o que a próxima sessão lê antes de explorar.
-- **Verificar que todos os arquivos estão corretamente sincronizados.**
-- **Avaliar se a versão revelou aprendizado permanente para este CLAUDE.md** (ver "Manutenção deste arquivo" no topo).
-- **Entrada no `CHANGELOG_DIRETORIA`** (`src/data/changelog-diretoria.ts`): a cada versão/patch, adicionar **uma entrada no topo**, em **linguagem de negócio** — descrever o **efeito/implicação**, NUNCA o mecanismo (a diretoria não sabe o que é RPC/migration/componente). Com a **data/hora REAL do merge** (de `git log --merges`, fuso −03) e o(s) **tipo(s)** (novidade/correção/melhoria). **A `data` NUNCA é uma hora redonda chutada** — a entrada nasce **antes** do merge, então registre o **horário real de autoria** (`date`/`git`) e, idealmente, **reconcilie ao tempo do merge** quando ele acontecer (a v4.11.0–v4.22.2 saíram com horas aproximadas/redondas e foram corrigidas em massa na v4.22.3). **TODAS as entregas entram** (granular, sem buracos); patches puramente técnicos ganham descrição genérica honesta (ex.: "Ajustes visuais e de formatação"). É o histórico que a diretoria lê pelo modal de versão. O detalhe técnico fica no out-briefing e no `CHANGELOG.md`. (v4.11)
-- **Limpar as worktrees** (ver abaixo).
+**Fechamento:** `/fechamento-versao` (DoD integral: gates, revisores, out-briefing,
+CHANGELOG.md + CHANGELOG_DIRETORIA, version bump, ADRs com numeração real, WORKING-CONTEXT, PR).
+**Pós-merge:** `/pos-merge` (pull na raiz + limpeza da worktree).
 
-### 7. PR
-- Abrir PR (`gh pr create`) com sumário apontando para o out-briefing.
-- **NUNCA fazer merge. NUNCA fazer deploy.** O merge é do usuário; o deploy do Vercel é automático no merge.
+## Banco de dados — essência
 
----
+- **Produção DIRETA, sem staging.** O wrapper `npm run db:migrate` roda o backup-gate antes do
+  push — é **rede de recuperação, não autorização** (runbook `docs/runbooks/db-backup-gate-runbook.md`).
+- **ADITIVA** (CREATE, ADD COLUMN anulável, RPC nova, índice, GRANT/REVOKE): autônoma sob gate +
+  **declaração prévia no header** — e só se materializa com o `allow` do settings (ver "terceira
+  camada" abaixo).
+- **DESTRUTIVA** (DROP, TRUNCATE, ALTER que remove/reescreve, UPDATE/DELETE em dado existente):
+  **SEMPRE confirmação humana em TTY**. O wrapper aborta em stdin não-TTY/EOF (ADR-0131) — o
+  agente **não consegue** aplicar destrutiva, por construção. Não tentar.
+- **`db push` empurra TODO o conjunto pendente:** NUNCA escrever migration destrutiva na pasta
+  `supabase/migrations/` antes da hora de aplicá-la (custou caro: v5.2.0 dropou bases por arrasto).
+- **RPC nova:** `SECURITY DEFINER` + `app.exigir_acesso` inline + REVOKE/GRANT explícitos.
+  Verificação pós-push **via REST com service_role** — `db query` NÃO executa o corpo.
+- Detalhes, precedentes e mapa de fontes de dados: **skill `banco-e-rpc`** (ler antes de
+  qualquer migration/RPC).
 
-## Subagentes e paralelização (regra de ouro)
+## Subagentes — resumo
 
-### Modelos por camada
-- **Sessão principal (orquestrador): Opus recomendado, NÃO predefinido.** O modelo do orquestrador
-  **não é fixado** em `.claude/settings.json` (o arquivo versionado tem só a chave `hooks`) — escolhe-se
-  por sessão; Opus é o recomendado, não um default cravado. Interpreta o briefing, planeja, delega,
-  serializa operações com estado e **revisa criticamente** o que os subagentes retornam antes de integrar.
-- **Subagentes: Sonnet** — fixado no frontmatter de cada agente em `.claude/agents/`.
-- A sessão principal **não faz exploração extensa nem edição em massa diretamente** — isso é
-  trabalho dos subagentes; o ruído (leituras, buscas, tentativas) morre no contexto deles.
+A sessão principal (**Fable 5 recomendado**, não cravado no settings versionado) orquestra:
+pensa, julga, delega e **serializa git/build/banco/servidor**. Subagentes (**Sonnet**, frontmatter)
+executam sob delegação autocontida com campo **"Skills a ler"** (caminhos de SKILL.md — o
+subagente lê no próprio contexto; nunca colar conteúdo). Subagentes são **editores puros**:
+nunca rodam git, banco, build ou servidor. Arquivos disjuntos rodam em paralelo; mesmo arquivo
+sequencia; arquivo-ímã (tokens/globals/config) tem dono único. A Carta completa é a
+**skill `orquestracao`** (o `/nova-versao` a carrega).
 
-### Agentes nomeados (`.claude/agents/`)
-- **`explorador`** (read-only: Read/Glob/Grep) — levantamento de contexto antes de implementar:
-  mapear arquivos e fluxos reais, localizar padrões, verificar numeração real de ADR/migration.
-  Retorna achados condensados; sinaliza riscos (RLS permissivo, caminho não-atômico) mesmo fora
-  do escopo perguntado.
-- **`implementador`** (editor: Read/Write/Edit/Glob/Grep) — escrita de código em blocos bem
-  especificados. **Editor puro**: não roda gates; edita e reporta. Migration nova recebe o
-  número exato do orquestrador e **não é aplicada** pelo subagente (regra já vigente em
-  "Convenções de migration").
-- **`revisor`** (read-only: Read/Glob/Grep) — **revisão de contexto SEPARADO** após a
-  implementação, antes dos gates e da auto-auditoria do orquestrador. Recebe a lista exata de
-  arquivos modificados + objetivo da missão + convenções aplicáveis; devolve parecer por
-  severidade (CRÍTICO/ALTO/MÉDIO/BAIXO) com `arquivo:linha` e recomendação. Não edita, não
-  roda nada. **Complementa, não substitui, a auto-auditoria adversarial:** o revisor não
-  carrega o viés de ancoragem de quem planejou/dirigiu a implementação.
-- **`revisor-db`** (read-only: Read/Glob/Grep) — revisão especializada de migrations e RPCs
-  **antes da aplicação** (e antes de qualquer checkpoint humano de banco). Checklist próprio:
-  RBAC inline, REVOKE/GRANT explícitos, `coalesce` em predicado anulável, orçamento de 8s,
-  índices, fuso em migration, consumidores reais antes de DROP. Acionado sempre que a versão
-  contém migration/RPC — o parecer dele chega ao usuário JUNTO com a migration no checkpoint
-  destrutivo.
-
-### Protocolo de delegação
-Subagentes **não veem o histórico da sessão** — cada delegação é autocontida e inclui:
-1. **Objetivo** — o que deve existir ao final, em uma frase.
-2. **Contexto** — arquivos/áreas envolvidos e achados relevantes do explorador (repassados).
-3. **Padrões** — convenções aplicáveis deste arquivo (tokens, primitivos de UI, coerção etc.).
-4. **Critério verificável de conclusão** — como saber que terminou. Como o subagente não roda
-   gates, o critério é de **estado dos arquivos** (o quê existe/mudou); `build`/`tsc`/`lint`/
-   `test` rodam depois, serializados pelo orquestrador.
-
-Dúvida de produto ou de arquitetura num subagente **retorna à sessão principal** — que decide
-(se técnico) ou pergunta ao usuário (se produto; na dúvida, é produto).
-
-### Protocolo de revisão
-Ao fim das missões de implementação de uma fase (ou da versão, se curta), o orquestrador
-despacha o **`revisor`** (sempre) e o **`revisor-db`** (se houve migration/RPC) — em paralelo.
-A delegação é autocontida como qualquer outra e inclui: (1) objetivo da missão revisada,
-(2) lista exata de arquivos/migrations modificados, (3) convenções deste arquivo aplicáveis
-ao escopo. Achados **CRÍTICO/ALTO → correção pelo implementador antes dos gates**; a correção
-volta ao revisor apenas se estrutural. MÉDIO/BAIXO → endereçar ou registrar no out-briefing
-com justificativa. Revisores nunca editam nem rodam comandos; achado de revisor também não
-expande escopo — vira correção (se dentro do escopo da versão) ou registro (se fora).
-
-### Regras de paralelização
-A paralelização acontece por **subagentes editando arquivos disjuntos dentro de uma
-única worktree da versão**. Não é uma worktree por missão.
-
-**Regra crítica de segurança — subagentes são editores puros:**
-> Subagentes SÓ editam arquivos. NUNCA rodam `git commit`, `supabase db push`,
-> `next build` nem servidor. Isso causaria race no índice git, no banco e em portas.
-
-Toda operação com estado compartilhado (git, banco, build, servidor) é **serializada
-pelo orquestrador**, depois que os subagentes terminam de editar.
-
-- Missões que tocam o **mesmo arquivo** são sequenciadas (ex.: M1→M2 no mesmo componente).
-- Missões em **arquivos diferentes** rodam em paralelo.
-
----
-
-## Worktrees
-
-Uma worktree **por versão**, isolando-a do `main`. Convenção: `.worktrees/<branch-com-hífen>`
-(`feat/v4-8` → `.worktrees/feat-v4-8`). `.worktrees/` está no `.gitignore`.
-
-### Criar (início da versão)
-```bash
-git worktree add .worktrees/feat-vX-Y -b feat/vX-Y
-# a worktree nasce "crua" — montar o ambiente com symlinks + cópia do link supabase:
-ln -s <raiz>/node_modules .worktrees/feat-vX-Y/node_modules
-ln -s <raiz>/.env.local   .worktrees/feat-vX-Y/.env.local
-mkdir -p .worktrees/feat-vX-Y/supabase/.temp && cp <raiz>/supabase/.temp/* .worktrees/feat-vX-Y/supabase/.temp/
-```
-Sem os symlinks e o `.temp/`, faltam `node_modules`, `.env.local` e o link do Supabase — nada funciona.
-
-### Consolidar (fim da implementação)
-Tudo numa branch só → não há merge entre worktrees.
-```bash
-npx tsc --noEmit && npx next build      # valida o conjunto
-# aplicar via `npm run db:migrate` (backup-gate rede; destrutiva MANTÉM confirmação humana — ADR-0116)
-git add <arquivos da missão>            # commits específicos, um por missão
-git commit -m "feat(vX-Y-mN): ..."
-git push origin feat/vX-Y
-```
-
-### Limpar (APÓS o PR mergear no main)
-Sempre a partir da raiz do `main`, **nunca de dentro da worktree**:
-```bash
-cd <raiz do main>
-git worktree remove .worktrees/feat-vX-Y --force
-git worktree prune
-```
-Nunca remover worktree com trabalho não-merjado.
-
----
-
-## Hooks do harness (`.claude/`)
-
-Três hooks determinísticos complementam as regras deste arquivo — **enforcement mecânico,
-não lembrete** (convenção sozinha não segura; mesmo racional do lint `wt/*`, v4.26/v4.27):
-
-- **`protecao-config` (PreToolUse — BLOQUEIA):** edição em `eslint.config.*`, `tsconfig*.json`,
-  `.prettierrc*` e nas regras `wt/*` é bloqueada. Gate incômodo se resolve corrigindo o
-  código, nunca afrouxando a config. Alteração legítima de config = **checkpoint com o
-  usuário** e reexecução com `WT_PERMITIR_CONFIG=1` no ambiente.
-- **`gate-stop` (Stop — BLOQUEIA):** ao fim de cada resposta com `.ts/.tsx` modificados em
-  `src/`, varre `console.log` residual e o shorthand Tailwind inválido `-[--token]` (a classe
-  de bug silencioso das 81 ocorrências, v4.16.1). Achou → a resposta não fecha até corrigir.
-  `build`/`tsc`/`lint`/`test` continuam sendo os gates serializados de fim de missão (rodar
-  `tsc` a cada resposta seria lento demais); o hook cobre o que é barato varrer sempre.
-- **`contexto-sessao` (SessionStart — informativo):** injeta `docs/WORKING-CONTEXT.md` no
-  contexto da sessão nova.
-
-Hooks vivem em `.claude/hooks/*.mjs`, registrados em `.claude/settings.json`. Escape geral
-de emergência: `WT_DESLIGAR_HOOKS=1` (todos os hooks saem limpos) — uso excepcional,
-registrado no out-briefing.
-
----
-
-## ADRs
-
-Decisões arquiteturais geram um ADR em `docs/adr/NNNN-titulo.md`.
-
-**Antes de criar um ADR novo, verificar a numeração real existente:**
-```bash
-ls docs/adr/        # continuar a partir do MAIOR número real, não do número que o briefing sugere
-```
-A numeração dos briefings pode divergir da numeração real do projeto. A fonte da
-verdade é `docs/adr/`. Evitar colisão de número.
-
----
-
-## Convenções de código (permanentes)
-
-- **Design System Welcome:** usar tokens CSS, nunca hex hardcoded. Fonte Avenir LT Std.
-- **Cores semânticas fixas:** `#1A1814` (preto/H1), `#BD965C` (dourado/H2/destaque), `#4B4F54` (cinza-azulado/H3), `#75777B` (cinza texto). Tokens de subsetor e de gráfico em `src/styles/tokens.css`.
-- **Card:** padrão `shadow-sm` (não border destacado).
-- **Token CSS em classe Tailwind = `[var(--token)]`, NUNCA `[--token]`.** O Tailwind v4 removeu o shorthand v3 `text-[--brand]`/`bg-[--token]`: ele compila para `color:--brand` (CSS **inválido**) e a cor do token é **silenciosamente descartada** — sem erro de build/tsc/lint, degradação só visível a olho. Use sempre a forma com `var()`: `text-[var(--brand)]`, `bg-[var(--action-soft)]` (ou a utilitária canônica `text-text-muted` quando o token tem mapeamento `@theme`). Ao copiar exemplo de Tailwind v3, converter. (Custou caro: 81 ocorrências quebradas app-wide — raiz de incoerência visual; fix v4.16.1, registrado v4.16.2.)
-- **Cor é SEMPRE token; cor crua/hex em classe QUEBRA o lint (`wt/no-cor-hardcoded`, v4.26/ADR-0129).** Classe Tailwind de cor crua (`emerald|amber|red|green|blue|yellow-\d`) e hex em classe (`text-[#fff]`) são **erro de lint** — use o token do DS (`text-success`/`bg-danger-bg`/`text-warning`/`bg-action-*`/`text-gestao`…). **`zinc` é permitido** (cinza de UI neutro, não tokenizado ainda — follow-up); **`src/lib/email/**` é isento** (hex inline obrigatório no Outlook). O `@theme` (`globals.css`) expõe os tokens como utilitárias (`text-success`, `bg-positive`, `text-gestao`, `bg-action-soft`, `border-setor-lazer`, micro-texto `text-2xs`/`text-3xs`…) — prefira a utilitária; `[var(--token)]` quando não houver mapeamento. `src/styles/tokens.test.ts` protege o outro lado (falha se um token-âncora sumir de `tokens.css`, ou se `--text-primary` deixar de ser `#2D2A26`, ou se o `--primary` azul voltar). **Cor de setor cross-setor = fonte única `--setor-*`** (via `SETOR_COLORS` de `@/lib/config`), nunca hex local nem o `cor_hex` do DB. Convenção sozinha não segurava (emerald/âmbar voltavam); o lint é o que segura. (v4.26.)
-- **UI nova usa os PRIMITIVOS de `src/components/ui/`, não reinventa o seu.** A causa-raiz da divergência era cada tela montar o próprio botão/campo. Canônicos (v4.26): `Button` (variantes sólido/contorno/ghost/ícone/ícone-borda/livre), `Input`/`Select`/`Textarea` (`field.tsx`, envolvem `CAMPO`/`CAMPO_COMPACTO` de `@/lib/ui/campos`), `Badge` (success/danger/warning/brand/gestao/neutro/count), `Tabs`, `Tooltip` — além de `Card`/`Checkbox`. Pills de plataforma/filtro = consts de `@/components/shared/botoes` (`PILL*`/`PILL_FILTRO*`); badge de status = `statusBadge` em `@/lib/solicitacoes/format.ts`. Foco neutro via `.foco-neutro`. (Migração dos call-sites legados é incremental/byte-equivalente quando tocados — one-offs heterogêneos ficam até serem encostados.) (v4.26.)
-- **Respiro de página vem do `<main>` do AppShell — FONTE ÚNICA (vertical `py-8` + horizontal `px-8`).** O container raiz da página **NÃO define `py` NEM `px`/`max-w`/`mx-auto`** — usa a **largura TOTAL** restante do `<main>`, que já provê o respiro topo/base **e** o gap conteúdo↔sidebar (v5.1.1: o `px-8` do `<main>` virou fonte única do respiro horizontal; **afinar o gap lateral = mudar só o `px` do `<main>`**, não 26 páginas). Antes da v5.1.1 cada página tinha `px-4`/`px-6` próprio (respiro horizontal por tela) e capava em `max-w-7xl`/`max-w-5xl mx-auto` (sobrava espaço lateral vazio, visto em Solicitações); antes da v4.16.1 cada tela inventava o `py`. **Exceção:** página que preenche a altura usa `<div className="h-full flex flex-col">` no root (ex.: Acervo, Solicitações). Tela nova nasce com o root `<div>` **puro** (nem `px`, nem `py`, nem `max-w`). (DS §12, v4.16.1; largura total + respiro horizontal único v5.1.1.)
-- **O `<main>` do AppShell é o ÚNICO scroll container e tem `scrollbar-gutter: stable`.** A goteira da barra de rolagem vertical fica reservada SEMPRE, então o conteúdo centralizado (`mx-auto`) NÃO desloca lateralmente quando a barra some/aparece — ao recolher/expandir uma seção (`TopSection`/`<details>`) ou trocar para uma página mais curta. Sem isso, "recolher" tira ~15px de largura e o conteúdo (incl. a barra da seção) salta para a direita. NÃO criar outro scroll container de página (com `overflow-auto` próprio) que reintroduza o salto; o respiro/scroll vivem no `<main>`. (Custou caro: salto ao recolher seção em Gerencial/Weddings — v4.23.2.)
-- **TODO container rolável INTERNO (lista/painel/tabela dentro da página, vertical OU horizontal) usa `<ScrollAutoHide>` (`@/components/shared/scroll-auto-hide`) (v4.40.0; ARRASTÁVEL + horizontal + varredura plataforma-wide em v5.0.0/DS §Barras de rolagem):** a barra flutua em overlay (nativa escondida por `.scrollbar-none`, thumb que aparece ao rolar/hover e some sozinho ~1,2s) e, por ser overlay, NÃO desloca o conteúdo (dispensa `scrollbar-gutter`). O thumb é **arrastável** (pointer capture — v5.0.0 fechou o furo "só rola com a roda do mouse"); matemática pura em `@/lib/ui/scrollbar-math` (testada). Props: `className` no **viewport** (padding/`max-h`/`min-w`; NUNCA `overflow-*`/`flex-1`/`min-h-0`/`h-full`), `eixo` (`'y'`|`'x'`|`'both'`), `onScroll` (repasse p/ a sombra do header sticky, §7) e `contentClassName` (SÓ `space-y-*`/`gap` — vão no wrapper de conteúdo, não no viewport). Container novo nasce com `<ScrollAutoHide>`; ao encostar num `overflow-*` cru remanescente, migre. NÃO vale para o `<main>` do AppShell (scroll do documento, mantém nativa + `scrollbar-gutter: stable`) nem para o scroll HORIZONTAL do board Kanban de Solicitações (barra nativa de propósito; as COLUNAS dele rolam com `<ScrollAutoHide>` — padrão "painel em colunas", v5.1.1/DS §Barras de rolagem). A **sidebar** tem cópia própria embutida (mesma mecânica; também arrastável).
-- **Rota pesada NASCE com `loading.tsx` (skeleton) — a plataforma não pode "parecer travada" ao navegar (v4.39.0).** RSC sem `loading.tsx` = tela congelada até TODO o trabalho do servidor terminar (nenhum byte antes). Todo segmento pesado (dashboard/tabela densa) tem `loading.tsx` com skeleton na **silhueta real** da página, do módulo `@/components/shared/skeletons`. Receita (DS §skeleton): **silhueta aproximada** (header+filtros+cards/tabela), **sem CLS** (alturas fixas), **tom neutro** (`zinc`+`animate-pulse`, nunca token de marca), **sidebar FORA** (o `loading.tsx` só substitui o `<main>`), e o skeleton no **mesmo container** (`max-w`/`px`) da página (senão salta na troca). Um `loading.tsx` num segmento cobre as subrotas (ex.: `/performance` cobre trips/corporativo/weddings). Filtro que navega (`router.push`) usa `startTransition`+`isPending` visível (o clique nunca "morre"), sem mudar a URL/semântica. Dado NÃO-crítico (badge de pendências) sai do caminho bloqueante do layout — promise transmitida + `Suspense`+`use()`, `.catch(()=>null)` (falha inofensiva), nunca `await` que segure o 1º byte. (ADR-0144.)
-- **Versionamento X.Y.Z** (ADR-0084): MAJOR quebra premissa de domínio; MINOR capacidade/reformulação; PATCH correção/polimento. Sidebar mostra X.Y.Z. CHANGELOG.md formato Keep-a-Changelog.
-- **Upload/parse de arquivo → API Route, não Server Action.** Libs como `@e965/xlsx` falham no SSR/RSC; API Route (`runtime = 'nodejs'`) isola do contexto React Server Components. (Descoberto no PEND-001/v4.7.)
-- **Envio de e-mail → camada única `src/lib/email/` (server-only), SEMPRE fallback-safe.** `enviarSenhaProvisoria()` (e futuros) usa `nodemailer`, timeout curto (~10s) e **retorna `boolean`, NUNCA lança** — e-mail é camada **ADICIONAL**: falha/ausência de SMTP não pode quebrar o fluxo que chama (há fallback — ex.: senha provisória exibida na tela). Credenciais **E o remetente** (`SMTP_*`) vêm 100% de `process.env` (`.env.local`/Vercel) — **nunca hardcoded, nunca valores no `.env.example`** (só as chaves); `SMTP_FROM` default = `SMTP_USER` (Office 365). `getConfigSmtp()` é fallback-safe (faltando env → `null`, sem lançar). Reutilizável: e-mail novo = novo template/chamada, **não** nova lib. As `SMTP_*` precisam estar TAMBÉM no ambiente da Vercel (runbook). **Imagem em e-mail → CID com os BYTES no bundle** (base64 numa const, anexada como attachment MIME e referenciada por `cid:`), **nunca `path` de `public/`** (não é legível por `fs` em runtime serverless na Vercel) **nem data-URI no `<img>`** (Outlook não renderiza). A URL própria do app em e-mail vem de `getAppBaseUrl()` (`APP_BASE_URL` → `VERCEL_PROJECT_PRODUCTION_URL` → omite), nunca chumbada. **Layout de e-mail em TABELAS + inline** (o Outlook/Word ignora `margin:auto` e `background` em `<a>`): centralizar por `align`, **botão em célula de tabela** (`bgcolor`+link, não `<a>` estilizado), responsivo por cartão fluido (`width:100%`/`max-width`) + `<style>` media query; **logo transparente rasterizado do SVG** (PNG com fundo baked-in vira caixa preta no Outlook — `hasAlpha:false`). **Para criar um NOVO layout/e-mail, seguir `docs/email-layout-guide.md`** (a camada, os padrões Outlook, a receita e a verificação obrigatória no cliente-alvo). **Fronteira de MARCA (v4.40.0, ADR-0145): e-mail INTERNO (usuário da plataforma) = identidade Janus com lockup duplo `[JANUS] | [WELCOME GROUP]` (`APP_NOME_INTERNO`); e-mail de CLIENTE externo (ex.: fatura) = 100% Welcome, NUNCA 'Janus' (`APP_NOME` congelado)** — errar a marca num e-mail novo expõe o nome interno ao cliente. (v4.24.0, ADR-0127; logo/link v4.24.1; layout-tabelas v4.24.2; guia v4.24.2; marca v4.40.0.)
-- **Ação externa IRREVERSÍVEL sem sandbox (e-mail que SAI de verdade) → MODO TESTE com override no PONTO ÚNICO da camada.** Diferente do Asaas (tem sandbox), e-mail enviado não volta e o destinatário é dado sensível (fatura do cliente errado = vazamento). O "sandbox do e-mail" é `emailAmbiente()` (env, fail-safe: só `EMAIL_MODO='real'` vira real; qualquer outro = teste) + override: em teste TODOS os destinatários viram `EMAIL_TESTE_DESTINO`, **substituído DENTRO da camada** (`enviarFaturaEmail`), nunca no caller — impossível um caminho novo esquecer. **Fail-closed:** sem `EMAIL_TESTE_DESTINO`, recusa (nunca vaza). O modo real é **recusado no servidor** (a action checa `emailAmbiente()`), como a confirmação `EMITIR` do Asaas. **Idempotência POR MODO** (tabela append-only SEM UNIQUE; `_existentes(refs, modo)`): enviado em teste ≠ enviado em real (senão a virada de produção pularia o que foi testado). **Anexo que falha no download = o envio FALHA com motivo**, nunca e-mail incompleto silencioso. Padrão para qualquer integração irreversível futura. (v4.35.0/Fase 4a, ADR-0140.)
-- **Parse de planilha grande NO CLIENTE → Web Worker, nunca na main thread.** O upload das 4 bases (`/admin/uploads`) parseia client-side; `XLSX.read`+`sheet_to_json`+`parseXxxRows` (~45k linhas) são **síncronos e pesados** — na main thread **travam a página** ("não está respondendo") e congelam o spinner. Rodar no worker (`src/lib/carga/parse.worker.ts`, que reaproveita os 4 parsers isomórficos; chamado via `parseArquivoEmWorker` com **fallback** p/ a main thread se o worker não carregar). `new Worker(new URL('./x.worker.ts', import.meta.url), { type: 'module' })` bunda certo no Next 16/Turbopack. (Custou caro: travada reportada no upload de Vendas — v4.20.2.)
-- **Parser de Excel lê o valor `Date` NATIVO da célula, não a string formatada.** Usar `XLSX.read(..., { cellDates: true })` + `sheet_to_json(..., { raw: true })` para datas; `{ raw: false }` reformata para a string de exibição da célula (formato americano `mm-dd-yy` na origem), e adivinhar DD/MM vs MM/DD inverte dia↔mês quando ambos ≤ 12. O `Date` nativo é inequívoco. Heurística de string só como fallback para células que cheguem genuinamente como texto. (Custou caro: inversão dia/mês na importação Gerencial, mascarada porque dias > 12 acertavam por acaso — ADR-0099, v4.9.)
-- **Coerção de célula (número/data/string) vem de UM módulo só, e o LINT segura isso:** `@/lib/carga/coercao.ts` (`toNum`/`toIsoDate`/`toStr`). NUNCA reescrever um `toNum` local — o ingênuo `Number(String(v).replace(',','.'))` devolve NaN→null para BR com milhar (`8.840,00`, `1.234,56`) = **perda silenciosa** (mesma classe do bug de saldo v4.23.1). O `toNum` canônico desambigua ponto milhar (3 díg) × decimal US (≤2 díg), trata `R$`/espaços e **negativo entre parênteses** (`(1.000)`→−1000, convenção contábil — v4.27, vale platform-wide; só altera entradas `(x)`, que antes davam null); `toIsoDate` lê `Date` nativo sem tz-shift + `DD/MM/YYYY` sem inverter + rejeita serial-0 do Excel. `fmtValor` de Solicitações também consome ele. **Reimplementar coerção fora de `coercao.ts` QUEBRA o lint (`wt/no-coercao-reimpl`, AST, v4.27/ADR-0130):** `parseFloat`; `.replace` de separador na **direção número** (alimenta `Number`/`parseFloat` OU em função `:number` — o guard ISENTA o sanitizador de `<input>` e o `toFixed().replace`, que vão na direção string); e definir função/const com **nome de coerção** (`/^(to|para|parse).*(num|valor|money|reais|float|decimal)/i`, exceto `*BRL*`/`*format*`). Isento via `files:` em `coercao.ts`/`**/*.test.ts`/`src/lib/email/**`. A saída é **estender** o `toNum` (preservando os casos atuais — `coercao.test.ts` passa sem alteração — e provando por **oráculo congelado** o acordo com o que existia), **nunca** um 2º parser. **Em Vendas, `valor_total`/`receitas` viajam como STRING numérica** (`const n = toNum(v); n===null?null:String(n)`) porque o staging casta `::numeric`. Testes de tabela + sonda do lint em `coercao.test.ts` / `coercao-lint.sonda.test.ts`. (v4.17.0/Balde 2; v4.27/ADR-0130.)
-- **Ingestão de Vendas tem UM parser só** (`@/lib/carga/vendas-parser.ts`, isomórfico, sem `'use client'`). Hoje há **um caminho vivo**: a UI (`/admin/uploads`, via Server Actions). Paridade de colunas (incl. `operacao_propria`) é garantida pelo parser único **e** pelo SQL (staging 0118). Não recriar parser por caminho: dois parsers divergentes regrediram silenciosamente a v4.9.x (a via servidor não populava `operacao_propria`). **F2 FECHADO (v4.15.0, ADR-0111):** o caminho real usa o **pipeline atômico** (`limpar_staging_vendas` → `inserir_lote_staging` → `validar_carga_staging` → `promover_carga_vendas`, 0116/0118) — `getAdminClient` (service role), sem timeout de 3s. Uma carga com erro não esvazia mais a base (swap numa transação; ROLLBACK preserva). **Fase 2 CONCLUÍDA (v4.17.1):** a rota servidor vestigial `upload-vendas` e a lib `carga/vendas.ts` (`carregarVendas`) foram **removidas** (código morto desde a v4.15.0). As RPCs do caminho destrutivo antigo `truncate_dynamic_tables`/`inserir_lote_raw` **permanecem no banco SÓ para o `npm run seed`** — fora de qualquer request vivo (exposição de anon já fechada na v4.17.0/M1); a recovery trio (`transform_raw_to_analytics`/`regenerar_dim_operacao_weddings`/`refresh_all_materialized_views`) segue intacta.
-- **`src/types/database.ts` (tipos gerados do Supabase) NÃO cobre RPC criada depois da última geração — chamar `db.rpc('<rpc_nova>')` direto QUEBRA o `tsc`** (o nome não está na união de funções conhecidas). Não regerar/editar o `database.ts` a cada RPC (ele está congelado desde ~v4.29): o padrão do projeto é um **helper de tipagem frouxa** que casta uma vez e devolve `{data:unknown,error}`, validado por `parseRpc`/schema no call-site — ex.: `rpcSessao`/`rpc` locais (acervo/solicitações/faturamento) ou o compartilhado `@/lib/metas/rpc-metas`. RPC antiga (já no `database.ts`, ex.: `get_executiva_kpis`) continua via `db.rpc` tipado normal. (Custou caro: `db.rpc('metas_listar')` estourou o tsc na v5.0.0 — o M1 passou porque só o teste a chamava via `fetch`; o erro só apareceu quando a página passou a chamá-la.)
-- **Schema de `parseRpc` reflete o retorno REAL da RPC, não o tipo TS** (que pode mentir). Um campo que a RPC às vezes não emite tem de ser `.optional()` (não só `.nullable()` — `.nullable()` reprova `undefined`); senão `parseRpc` devolve `null` → a rota dá **HTTP 500** / a tela degrada. Ao criar/alterar um schema de `parseRpc`, adicionar o caso em `rpc-contrato.test.ts` (roda `safeParse` contra a RPC viva) — é o que pega esse drift; o `tsc`/build NÃO pega (validação é em runtime). (Custou caro: 500 na Lista de Operações por `passageiros_raw` exigido mas nunca emitido — v4.12.1, fix pós-M2.)
-- **Config/regra nova por campo/entidade atravessa VÁRIAS camadas de mapeamento — verificar ponta-a-ponta.** Quando um atributo novo viaja form → server action → RPC `INSERT` → RPC `SELECT` → schema Zod, **cada camada que faz pick/strip de campos descarta chaves desconhecidas em silêncio** (o map de `handleSubmit`, o map da action, o `jsonb_build_object`/`INSERT` da RPC, e o objeto Zod **sem `.passthrough()`** que estripa antes da UI ler). Esquecer **uma** = a feature some **sem erro de build/tsc/lint** (degradação só em runtime). Regra: ao adicionar um campo de config, listar as camadas e conferir cada uma; o teste que pega é o de contrato (`rpc-contrato.test.ts`, `safeParse`/sobrevivência da chave), não o `tsc`. (Custou caro/atenção: regra de data por campo em Solicitações — 5 camadas + o `SELECT` do loop de `criar_solicitacao` — v4.19.0, ADR-0118.)
-- **Casas decimais por contexto.** Valor monetário em **operação individual** (Lista de Operações, drawer de operação) → 2 casas via `fmtBRL2`/`numBRL2` (helpers centrais de `@/lib/fmt`). Agregados e **eixos de gráfico** → abreviado (`fmtMi`/`fmtAxisBRL`, "R$ 1,8 Mi"). Nunca formatação local. (ADR-0100, v4.9.)
-- **Formato contábil em tabela financeira densa → `<ValorContabil>`** (`@/components/shared/valor-contabil`, ADR-0124/v4.22): "R$" ancorado à **esquerda** da célula (`--text-subtle`) e número **à direita** com centavos (`numBRL2`), `flex justify-between` + `tabular-nums` (dígitos alinhados entre as linhas). A cor opcional (`className`) pinta **só o número**. Usar nas tabelas do Fluxo de Caixa Gerencial (projeção agregada e base); não remontar esse flex à mão. (Distinto do `fmtBRL2` inline de operação individual.)
-- **Cabeçalho de tabela = padrão único, sem caixa alta e sem negrito.** Todo `<thead>` da plataforma usa caixa **normal** (NUNCA `uppercase`/`tracking-wide`), peso `font-medium` (nunca `font-semibold`/`font-bold`), `text-xs`/`text-2xs` e cor terciária (`text-zinc-400`/`--text-muted`) — como a **Lista de Operações**; em cards-tabela, a forma canônica é `CARD_TABELA_TH`. Tabela longa que precisa de **scroll interno com cabeçalho fixo** — receita completa (tudo junto, senão VAZA): a tabela vai em **`border-separate border-spacing-0`** (em `border-collapse`, o default, fundo e borda **não acompanham o sticky** de forma confiável e as linhas de dados vazam pelo cabeçalho ao rolar); container `overflow-auto max-h-[...]`; `thead` `sticky top-0 z-20 [&_th]:bg-zinc-50` (fundo opaco nas **células**, tom distinto do corpo); **toda borda horizontal vai nas células, nunca no `<tr>`** (borda de `<tr>` NÃO renderiza em `border-separate`) — divisórias do cabeçalho via `[&_tr:first-child_th]:border-b ...zinc-100` + `[&_tr:last-child_th]:border-b ...zinc-200` no `thead`, e nas linhas do corpo `[&>td]:border-b [&>td]:border-zinc-50` na `<tr>`. **Sombra sob o cabeçalho só quando rolado**: estado `rolado` setado no `onScroll` do container → `[&_tr:last-child_th]:shadow-[...]` condicional. **Sem `min-w` na tabela**: colunas pequenas em px, colunas de texto **sem width** (em `table-fixed` dividem o restante e truncam) → sem barra de rolagem horizontal. **Cantos superiores do cabeçalho** arredondados p/ acompanhar o Card: `[&_tr:first-child_th:first-child]:rounded-tl-lg` + `…th:last-child]:rounded-tr-lg` (só as células de canto da 1ª linha; senão o header cinza fica pontudo dentro do Card arredondado). A tabela vive dentro de um `Card` (fundo branco, não o fundo cru da página); como toda página usa **largura total** (v5.1.1), a tabela densa já dispõe de todo o espaço lateral (ex.: o Faturamento Corporativo, nas DUAS abas — Emissão e Cadastro — largura única, sem salto ao alternar). Não há lint pegando isso — é convenção; ver DS §7 e os exemplos vivos em `cadastro-clientes.tsx`/`base-dados-tab.tsx`. (v4.33.2 introduziu; v4.34.1 corrigiu o vazamento — collapse→separate + bordas por célula + Card — e refinou: zinc-50, sombra-ao-rolar, fim do min-w.) **Exceção `min-w` (v5.1.9):** quando a tabela densa tem **≥3 colunas de TEXTO LIVRE** que, sem width, colapsam a ponto de os **cabeçalhos se sobreporem** em telas menores (ex.: Cadastro de Clientes — Contato/Destinatários/Observações), é aceitável dar `min-w-[…]` à `<table>` + `<ScrollAutoHide eixo="both">` (rola na horizontal abaixo do limite; acima, preenche o container sem scroll). O "sem min-w" segue valendo quando o truncamento das colunas de texto basta (o caso comum).
-- **Timestamptz (UTC do banco) → exibir SEMPRE no fuso de São Paulo via `Intl`+`timeZone`, NUNCA split de string.** Os timestamps do Postgres (`last_sign_in_at`, `decidido_em`, `criado_em`…) chegam em UTC; formatá-los por `iso.split('T')`/`slice(0,10)` mostra a **hora UTC** e **erra o dia perto da meia-noite** (ex.: 02:30Z é 23:30 do dia anterior em SP). Usar `fmtDataSP`/`fmtDataHoraSP` (`@/lib/fmt`, `Intl.DateTimeFormat` + `timeZone:'America/Sao_Paulo'`, cacheados). O split SÓ vale para **datetime LOCAL ingênuo** (sem fuso — ex.: as datas do `CHANGELOG_DIRETORIA`); `fmtDataHora` detecta o marcador de fuso e faz a coisa certa nos dois casos. `data_limite` é `date` puro (sem fuso) — comparar/exibir como string. (Custou caro: `fmtDataHora` de split mostrava UTC — v4.18/M2; o padrão Intl já existia em `solicitacoes/format.ts`.)
-- **Gráficos → primitivos de `@/components/charts`.** Tema central, eixos/grade/linha-do-zero, `ChartLegend`, `CustomTooltip` e formatadores de eixo (`fmtAxisBRL`/`fmtAxisPct`/`fmtAxisMes`) — não reconfigurar Recharts à mão. Convenção: sólido = real/efetivo, tracejado = referência/projeção; eixo temporal sempre contínuo. Migração dos legados é incremental (quando tocados). (ADR-0095, v4.8.)
-- **Paleta de cores canônica — cor por CONTEXTO semântico, sempre via token, nunca hex literal** (ADR-0103, v4.10): série principal única = `--brand` (herda a aba via `[data-theme]`); ênfase = `--brand-deep`; multi-série YoY = cor distingue métrica (`--brand`/`--text-secondary`) e traço distingue período; **margem** = `--brand-deep`; **cash-flow** (entrada/saída/result.) = `--positive`/`--negative` via `fluxoColors` no drawer de operação e no Financeiro — **exceção:** os cards de cash-flow da visão principal de Weddings (Fluxo de Caixa Mensal, Acumulado de Recebimentos e Pagamentos) usam a identidade Welcome turquesa/mostarda (`--chart-fluxo-entrada/saida`), por decisão de id visual; composição por subsetor = `--subsetor-*` (fallback `--brand`, via `subsetorColor` de `@/lib/config`); breakdown cross-setor = `--setor-*`/`SETOR_COLORS`. **Duas cores por setor (não confundir):** DESTAQUE `--brand` (cor da aba, dentro da aba do setor) vs IDENTIDADE `--setor-*` (só em gráficos cross-setor). Atenção: `--brand` de Trips é #0091B3 — não hardcodar esse hex para série principal em telas de Trips que tenham cash-flow (evitar colisão). **Telas de plataforma (não-setoriais) = neutro Group, nunca `var(--brand)`** (ADR-0103 ext. v4.14.1): auth (`/login`, `/trocar-senha`, `/solicitar-acesso`, `/auth/*`), `/sem-acesso` e `/admin/*` usam tokens neutros DEDICADOS (`--action-primary` #3F4144 botão/realce, `--action-primary-fg`, `--focus-ring`, utilitária `.foco-neutro`), independentes de `[data-theme]` — porque o `:root` tem `--brand: #BD965C` (Weddings) como default e `var(--brand)` daria flash dourado pré-hidratação. Tela de plataforma nova nasce com esses tokens; nunca `#BD965C` nem `var(--brand)`. O wordmark WT FINANCE é dinâmico (cor da aba no setor, `--text-muted` no resto). **Pill "ativa/primária" de plataforma = bege suave** `--action-soft`/`--action-soft-border`/`--action-soft-fg` (espelham o ativo do tema group; mesmo visual das pills de período do Financeiro) — NÃO o `--action-primary` escuro, que é para CTA sólido (ex.: botão Entrar do login). **Foco neutro só em `:focus-visible`** (`.foco-neutro`): o anel sai no teclado, mas clicar com mouse num botão/pill/aba NÃO deixa "sombreado" (inputs de texto ainda mostram o anel ao clicar, pois o browser os trata como focus-visible). (v4.14.2)
-- **Card KPI clicável → afordância no hover na cor da aba.** Borda + sombra + o CTA "Ver mais" mudam para `var(--brand)` (cor da aba, resolvida por `[data-theme]`). Utilitária `.card-clicavel`/`.card-clicavel-cta` em `globals.css`; abas futuras herdam pela var (sem regra por setor). (v4.8.1.)
-- **`eslint-plugin-react-hooks` v7 (ruleset do React Compiler) está LIGADO em `error`** (via `eslint-config-next`). O lint **NÃO vê "comporta-se igual"** — toda correção destas regras precisa de conferência funcional (no preview), não só gate verde. Padrões canônicos para satisfazê-las **sem mudar comportamento**: **fetch com loading** → nada de `setLoading(true)` síncrono no efeito; derive `loading` de uma chave "última carregada" (`loadedKey !== <chave atual>`), setando dado+chave no `.then` (durante o refetch mostra os dados anteriores, idêntico); **init de mount** (`useEffect(() => setX(f()), [])`) → **initializer** `useState(() => f())`; **componente definido no render** (`const Inner = …`) → **hastear para o MÓDULO** e passar o que ele fechava por prop (senão remonta a subárvore a cada render — `static-components`); **callback async reusada chamada no efeito** → `useEffect(() => { void (async () => { await cb() })() }, [cb])` (o `cb()` direto dispara `set-state-in-effect`); **acumulador** (`let acc; map(… acc += …)`) → sem reassignar `let` capturado (prefix-sum/`reduce` — `immutability`). (v4.27.2 zerou os 12 achados pré-existentes do bump do plugin; idênticos ao `main`.)
-- **Responsividade (telas menores e maiores).** O layout precisa funcionar em larguras pequenas e grandes — validar nos dois extremos, não só no monitor do dev. Padrões que custaram caro (v4.8.x):
-  - **Cards num grid de altura igual:** o card deve ser `flex flex-col h-full` e o rodapé (ex.: Receita/Margem) usar `mt-auto`, para as linhas alinharem entre cards mesmo quando o valor principal quebra em 2 linhas em telas estreitas. Não confiar em altura implícita.
-  - **Tabelas em container estreito:** preferir `table-fixed w-full` + `truncate` nas colunas flexíveis (evita barra de rolagem horizontal). Em cards compactos, reduzir colunas (o detalhe completo fica no drawer); evitar `whitespace-nowrap` em texto largo.
-  - **Eixo Y de gráfico:** usar `ChartYAxisBRL`/`fmtAxisBRL` (rótulo compacto "R$ 1,8 Mi", 1 casa) — formato longo quebra linha em larguras menores.
-  - **Sticky dentro do `ListDrawer`** (scroll body `px-6 py-5`): para grudar pills/cabeçalho ao topo sem fresta, usar `sticky -top-5 -mx-6 -mt-5 px-6 pt-5` (o `-top-5/-mt-5` cancelam o `py-5` do scroll body). (Recorrente — não reinventar.)
-
----
-
-## Definition of Done
-
-Uma versão está pronta quando:
-- [ ] `npm run build` limpo
-- [ ] `npx tsc --noEmit` zero erros
-- [ ] `npm run lint` sem warnings novos
-- [ ] `npm test` verde (unit dos helpers + contrato das RPCs críticas) — ADR-0105
-- [ ] Parecer do `revisor` (e do `revisor-db`, se houve migration/RPC) emitido; CRÍTICO/ALTO endereçados
-- [ ] Smoke tests das áreas afetadas passando
-- [ ] Migrations aplicadas via `npm run db:migrate` (backup-gate rede verde; **destrutiva com confirmação humana**) e RPCs verificadas via REST
-- [ ] ADRs novos registrados (numeração real verificada)
-- [ ] `CHANGELOG.md` com entrada da versão
-- [ ] Entrada da versão no `CHANGELOG_DIRETORIA` (`src/data/changelog-diretoria.ts`), em linguagem de negócio
-- [ ] `package.json` e `src/lib/version.ts` com a versão nova
-- [ ] Out-briefing `.md` gerado (com a seção Parecer da revisão)
-- [ ] `docs/WORKING-CONTEXT.md` atualizado (versão, bloqueios, filas, data)
-- [ ] CLAUDE.md avaliado (aprendizado permanente adicionado, se houver)
-- [ ] Worktree limpa (após merge)
-- [ ] PR aberto (merge e deploy ficam com o usuário)
-
----
-
-## Salvaguardas (o que NÃO fazer)
+## Salvaguardas e camadas de proteção
 
 **Barreiras duras (nunca, independentemente do prompt):**
-- **Não fazer merge** de PR. **Não fazer deploy** (Vercel é automático no merge). Merge humano é a única fronteira.
-- **Não aplicar migration DESTRUTIVA sem confirmação humana** — o `npm run db:migrate` roda o backup-gate como **rede** (backup + manifest-check + restore-test spot), mas a confirmação **permanece**; o gate NÃO autoriza autonomia destrutiva (isso seria follow-up do modo completo). Aditiva roda em autonomia sob gate-rede + declaração prévia. Verificar consumidores reais antes de remover objeto. (ADR-0116.)
-- **Não pular a auto-auditoria adversarial** antes de declarar concluído — é o que pega o "dado errado parecendo certo", inclusive erros do briefing.
-- **Subagentes não rodam git/build/banco/servidor** — só editam arquivos (race no índice git, banco e portas).
-- **Não decidir produto.** Item de fronteira de produto para e pergunta; na dúvida, é produto.
+- **Não fazer merge de PR. Não fazer deploy** (Vercel é automático no merge).
+- **Não aplicar migration DESTRUTIVA sem confirmação humana** — o gate é rede, não autorização.
+- **Não pular a auto-auditoria adversarial** antes de declarar concluído.
+- **Subagentes não rodam git/build/banco/servidor** — só editam arquivos.
+- **Não decidir produto.** Fronteira de produto para e pergunta.
+- **Ação externa irreversível** (e-mail real, cobrança) só em MODO TESTE fail-closed — a virada
+  para o modo real é decisão humana (skill `email`).
 
 **Disciplina (regra do projeto):**
-- **Não editar config de gate para silenciar erro** (`eslint.config.*`, `tsconfig*.json`, `.prettierrc*`, regras `wt/*`) — corrigir o código. Alteração legítima de config exige checkpoint com o usuário (o hook `protecao-config` bloqueia; `WT_PERMITIR_CONFIG=1` só após o checkpoint).
-- **Não expandir escopo** além do briefing da versão — achado novo vira registro no out-briefing, não implementação no meio.
-- **Verificar consumidores reais antes de remover** qualquer objeto (RPC/rota/lib) — "órfão" pelo briefing pode ter uso vivo (precedente: `seed` na v4.17.1).
-- **Não remover worktree** com trabalho não-merjado.
-- **Não usar `git add -A` cego** — adicionar arquivos específicos por missão.
-- **Não confiar na numeração de ADR/migration do briefing** — verificar `docs/adr/` e `supabase/migrations/` reais.
-- **Não adicionar escopo a um PR/versão já mergeado.** Addendum pedido depois do merge do PR de origem vira **patch novo** (branch, PR e número de versão próprios), nunca commit tardio no escopo já fechado. (Precedente: v4.14.2 — ajustes pedidos "para fechar a 4.14.1" já mergeada foram para PR/versão próprios.)
+- Não editar config de gate para silenciar erro — corrigir o código (alteração legítima =
+  checkpoint com o usuário).
+- Não expandir escopo além do briefing — achado novo vira registro no out-briefing.
+- **Verificar consumidores reais antes de remover** qualquer objeto (grep no app E em
+  `supabase/seed/`) — "órfão" pelo briefing já teve uso vivo (v4.17.1).
+- Não remover worktree com trabalho não-merjado. Não usar `git add -A` cego.
+- Não confiar na numeração de ADR/migration do briefing — verificar `docs/adr/` e
+  `supabase/migrations/` reais.
+- Addendum a PR/versão já mergeado vira **patch novo**, nunca commit tardio.
+
+**Hooks do harness (enforcement mecânico, `.claude/hooks/` + `.claude/settings.json`):**
+- **`protecao-config` (PreToolUse — BLOQUEIA)** — 6 alvos: `eslint.config.*`, `tsconfig*.json`,
+  `.prettierrc*`, `eslint-rules/`, **`.claude/hooks/`** (os hooks não se desarmam) e
+  **`settings.json`** (qualquer caminho `.claude/settings.json` — **inclusive o global do
+  usuário**; proteção deliberada). O escape `WT_PERMITIR_CONFIG=1` é variável de ambiente da
+  sessão que **o agente não alcança por design**: o protocolo é propor o diff + comando prontos
+  e o humano aplicar. Escape geral de emergência: `WT_DESLIGAR_HOOKS=1` (registrado no out-briefing).
+- **`gate-stop` (Stop — BLOQUEIA)** — varre `console.log` e o shorthand inválido `-[--token]`
+  em `.ts/.tsx` de `src/` a cada resposta.
+- **`contexto-sessao` (SessionStart)** — injeta `docs/WORKING-CONTEXT.md` na sessão nova.
+  Se o hook estiver ausente/desligado, ler `docs/WORKING-CONTEXT.md` manualmente no início.
+
+**Terceira camada — permissões do harness (classificador):** além das regras do projeto e dos
+hooks existe o classificador do modo auto do Claude Code, regido pelo `~/.claude/settings.json`
+do usuário. Regra de `allow` **explícita e estreita** dispensa o classificador; sem regra, um
+comando que escreve pode ser **negado seco** (sem prompt). A autonomia ADITIVA de banco depende
+das regras de `allow` aplicadas pelo usuário (handoff humano; o `deny` de `npx supabase db push`
+cru protege o backup-gate). Mudança nessas regras é sempre ato humano.
+
+**Protocolo D5 — o harness barrou um passo que as regras do projeto autorizam:**
+1. **NÃO contornar** — o caminho alternativo geralmente fura uma rede (ex.: `db push` cru pula
+   o backup-gate; `db query` cria drift no histórico).
+2. **Completar tudo** o que não depende do passo barrado.
+3. **Deixar o ambiente pronto** para o humano executar (comando exato, pré-condições posicionadas).
+4. **Sinalizar** no PR, no out-briefing e no WORKING-CONTEXT.
+5. **Declarar o que ficou não-verificado** por causa do bloqueio.
+
+## Manutenção deste arquivo e do harness
+
+Aprendizado novo passa pela **régua de 5 destinos**, nesta ordem de preferência:
+1. **Enforcement mecânico** (lint `wt/*`, hook, regra de permissão) — o que dá para segurar por
+   máquina não vira prosa;
+2. **Deletar** — se o enforcement já cobre integralmente;
+3. **Core (este arquivo)** — só o que TODA sessão precisa (critérios: permanente + transversal +
+   custou caro), teto de **180 linhas**;
+4. **Skill de domínio** — conhecimento situacional de uma área;
+5. **Ritual** — procedimento recorrente.
+
+Adicionar é também podar. Convenção de **banco** mudou → atualizar a skill `banco-e-rpc` **e** o
+checklist inline do `revisor-db` (decisão D-12; item do `/fechamento-versao`). Toda alteração
+neste arquivo e nas skills passa pelo PR — o usuário revisa antes do merge.

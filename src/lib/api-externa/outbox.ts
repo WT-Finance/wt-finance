@@ -1,7 +1,7 @@
 import 'server-only'
 import { chamarRpcExterna } from './http'
 
-// v5.4.0/M4 (ADR-0953) — miolo da ENTREGA do outbox de callbacks: reivindica um
+// v5.4.0/M4 (ADR-0161) — miolo da ENTREGA do outbox de callbacks: reivindica um
 // lote pendente (`api_outbox_reivindicar`), tenta o POST em `callback_url` com o
 // header `x-callback-secret`, e registra o resultado (`api_outbox_resultado`) —
 // sucesso = 2xx; qualquer outra coisa (exceção incluída) agenda RETRY (backoff

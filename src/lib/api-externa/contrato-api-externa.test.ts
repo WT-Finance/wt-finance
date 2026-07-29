@@ -9,18 +9,18 @@ const hashSegredo = (s: string): string => createHash('sha256').update(s, 'utf8'
 
 // v5.4.0/M3b+M4 — CONTRATO das RPCs de runtime da API externa de Solicitações
 // (criar_solicitacao_externa / cancelar_solicitacao_externa / solic_tipos_api,
-// migration 0952) + PARIDADE de validação com a UI (a mesma
+// migration 0212) + PARIDADE de validação com a UI (a mesma
 // app.solic_validar_e_snapshotar valida as duas portas — mudar uma regra muda as
 // duas de uma vez) + preservação de CHAVE ESTÁVEL de campo na edição de tipo
-// (admin_solic_salvar_tipo, migration 0950) + outbox de callbacks at-least-once
+// (admin_solic_salvar_tipo, migration 0210) + outbox de callbacks at-least-once
 // (api_outbox_enfileirar/reivindicar/resultado, referência externa obrigatória
-// na conclusão via solic_concluir, migration 0953/ADR-0953).
+// na conclusão via solic_concluir, migration 0213/ADR-0161).
 //
 // Casos via RPC REST (service key — padrão rpc-contrato.test.ts); fixtures
 // (roles/tipo/campos/chave de teste) montadas e limpas via `pg` direto
 // (SUPABASE_DB_URL — padrão virada-paridade.test.ts), pois não há RPC de escrita
 // alcançável sem sessão para essas tabelas de configuração. Skip TOTAL offline
-// (sem env) OU se as migrations 0952/0953 ainda não tiverem sido aplicadas no
+// (sem env) OU se as migrations 0212/0213 ainda não tiverem sido aplicadas no
 // remoto — sondado via pg_proc (uma chamada REST com corpo vazio daria 404 tanto
 // para "função não existe" quanto para "função existe mas não bate overload", o
 // que seria um falso-negativo; consultar o catálogo é inequívoco).
@@ -39,8 +39,8 @@ async function sondarRpcPronta(): Promise<boolean> {
   const c = new pg.Client({ connectionString: DB })
   try {
     await c.connect()
-    // Exige 0952 (criar_solicitacao_externa) E 0953 (api_outbox_reivindicar) —
-    // este arquivo tem casos das DUAS migrations; um remoto com só a 0952 deve
+    // Exige 0212 (criar_solicitacao_externa) E 0213 (api_outbox_reivindicar) —
+    // este arquivo tem casos das DUAS migrations; um remoto com só a 0212 deve
     // SKIPAR o arquivo todo, não falhar nos casos novos de outbox.
     const r = await c.query(
       `SELECT count(*)::int n FROM pg_proc WHERE proname IN ('criar_solicitacao_externa', 'api_outbox_reivindicar')`,
@@ -55,7 +55,7 @@ async function sondarRpcPronta(): Promise<boolean> {
 
 // Top-level await: suportado pelo vite-node do Vitest (módulos ESM) — necessário
 // para que `describe.skipIf` já saiba, de forma SÍNCRONA, se as migrations
-// 0952/0953 (aplicadas em paralelo por outras missões) já estão no remoto.
+// 0212/0213 (aplicadas em paralelo por outras missões) já estão no remoto.
 const RPC_PRONTA = await sondarRpcPronta()
 
 interface RespostaRpc { ok: boolean; status: number; data: unknown; erro: string | null }
@@ -83,14 +83,14 @@ function prefixo(erro: string | null): string {
   return (idx === -1 ? m : m.slice(0, idx)).trim()
 }
 
-describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações (v5.4.0/M3b+M4, migrations 0952/0953)', () => {
+describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações (v5.4.0/M3b+M4, migrations 0212/0213)', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let client: any
   let roleId = 0
   let roleForaId = 0
   let tipoId = 0
   let tipoForaWhitelistId = 0
-  let tipoComReferenciaId = 0   // v5.4.0/M4 (ADR-0953): exige_referencia_conclusao=true
+  let tipoComReferenciaId = 0   // v5.4.0/M4 (ADR-0161): exige_referencia_conclusao=true
   let chaveId = 0
   let solicitacaoId = 0
   let solicitacaoRefId = 0      // solicitação do tipo acima (fixture do teste de conclusão)
@@ -165,7 +165,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
        RETURNING id::int AS id`, [hashSegredo(SEGREDO_TESTE), tipoId, roboUserId])
     chaveId = c.rows[0].id
 
-    // Tipo que EXIGE referência externa na conclusão (ADR-0953) — fixture dos testes
+    // Tipo que EXIGE referência externa na conclusão (ADR-0161) — fixture dos testes
     // de solic_concluir abaixo. Sem campos: p_campos:{} basta p/ criar via API.
     const t3 = await client.query(
       `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api, exige_referencia_conclusao, api_roles_permitidas)
@@ -181,7 +181,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
 
   afterAll(async () => {
     if (!client) return
-    // v5.4.0/M4 (ADR-0953): outbox ANTES do api_chave (FK chave_id) e ANTES da
+    // v5.4.0/M4 (ADR-0161): outbox ANTES do api_chave (FK chave_id) e ANTES da
     // solicitacao_tipo (via a solicitacao, removida na linha seguinte).
     await client.query(`DELETE FROM app.api_outbox WHERE chave_id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao WHERE origem_chave_id = $1`, [chaveId]).catch(() => {})
@@ -408,7 +408,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(porRotulo['Observação Nova']).not.toBe('')
   })
 
-  // ── (7) outbox de callbacks — at-least-once (ADR-0953, v5.4.0/M4) ────────────
+  // ── (7) outbox de callbacks — at-least-once (ADR-0161, v5.4.0/M4) ────────────
   it('outbox: a criação externa (testada em (1)) enfileirou exatamente 1 item solicitacao.criada — o retry idempotente (testado em (3)) não duplicou', async () => {
     const r = await client.query(
       `SELECT count(*)::int n FROM app.api_outbox WHERE solicitacao_id = $1 AND evento = 'solicitacao.criada'`,
@@ -486,7 +486,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
   })
 
   // NOTA (risco de teste, não de produto): esta suíte roda contra o banco REAL (não
-  // há staging — ver CLAUDE.md), e a migration 0953 agenda o pg_cron
+  // há staging — ver CLAUDE.md), e a migration 0213 agenda o pg_cron
   // 'api-outbox-processar' a cada 5min. Em tese, se o tick do cron cair EXATAMENTE
   // entre o INSERT abaixo e a chamada a api_outbox_reivindicar, o cron poderia
   // reivindicar este item antes do teste (o callback_url .invalid falharia,
@@ -526,10 +526,10 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
 })
 
 // Sempre roda (mesmo offline) — deixa visível, no relatório do `npm test`, que a
-// suíte acima depende de env (.env.local) + das migrations 0952/0953 já aplicadas
+// suíte acima depende de env (.env.local) + das migrations 0212/0213 já aplicadas
 // no remoto.
 describe('gate — API externa de Solicitações: suíte de contrato é pulada, não falha, sem env/migration', () => {
-  it('sem SUPABASE_URL/SERVICE_ROLE_KEY/SUPABASE_DB_URL ou sem as migrations 0952/0953: skipIf, não erro', () => {
+  it('sem SUPABASE_URL/SERVICE_ROLE_KEY/SUPABASE_DB_URL ou sem as migrations 0212/0213: skipIf, não erro', () => {
     expect(true).toBe(true)
   })
 })

@@ -68,11 +68,11 @@ function comoResultadoCriacao(data: unknown): ResultadoCriacao | null {
  * Notifica os envolvidos por e-mail (mesmo padrão de src/app/solicitacoes/actions.ts).
  * BEST-EFFORT: jamais afeta a resposta ao integrador.
  *
- * v5.4.0/M4 (ADR-0953): FIX da limitação conhecida do M3b — `solic_emails_envolvidos`
+ * v5.4.0/M4 (ADR-0161): FIX da limitação conhecida do M3b — `solic_emails_envolvidos`
  * exige `app.pode_ver_solic()`/`exigir_acesso()` (área 'solicitacoes' OU uid_jwt()
  * batendo solicitante/destinatário), e esta rota NÃO tem sessão de usuário (chave de
  * API, não JWT Supabase) — a RPC gated sempre negava aqui. `getEmailsEnvolvidosSvc`
- * chama a variante `solic_emails_envolvidos_svc` (migration 0953, service_role-only,
+ * chama a variante `solic_emails_envolvidos_svc` (migration 0213, service_role-only,
  * sem os guards de sessão), corrigindo o fan-out.
  */
 async function notificarCriacao(id: number): Promise<void> {
@@ -139,7 +139,7 @@ export async function POST(req: Request): Promise<Response> {
     await notificarCriacao(resultado.id)
   }
 
-  // v5.4.0/M4 (ADR-0953): tentativa de entrega INLINE, best-effort (latência boa no
+  // v5.4.0/M4 (ADR-0161): tentativa de entrega INLINE, best-effort (latência boa no
   // caminho feliz) — AGUARDADA antes do return (serverless mata trabalho pós-resposta,
   // lição v4.25). Timeout curto (5s) e nunca lança: o item permanece 'pendente' e o
   // cron (~5min) tenta de novo se isto falhar/exceder o tempo.

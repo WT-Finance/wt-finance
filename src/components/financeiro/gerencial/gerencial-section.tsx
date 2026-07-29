@@ -10,13 +10,15 @@ interface Props {
   saldos: Conta[]
   projecao: DiaProjecao[]
   lancamentos: Lancamento[]
+  /** v5.2.1 (M4): usuário atual — repassado à Base de Dados p/ o realtime ignorar as próprias mudanças. */
+  usuarioId?: string | null
 }
 
 const PILL_BASE   = 'px-3 py-1 rounded-full text-xs font-medium border transition-colors'
 const PILL_INACT  = 'border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
 const PILL_ACTIVE = { background: 'var(--brand-soft)', borderColor: 'var(--brand)', color: 'var(--brand-deep)' }
 
-export default function GerencialSection({ saldos, projecao, lancamentos }: Props) {
+export default function GerencialSection({ saldos, projecao, lancamentos, usuarioId = null }: Props) {
   const [tab, setTab] = useState<'agregada' | 'base'>('agregada')
 
   return (
@@ -44,7 +46,7 @@ export default function GerencialSection({ saldos, projecao, lancamentos }: Prop
         <VisualizacaoAgregadaTab saldos={saldos} projecao={projecao} />
       </div>
       <div className={tab === 'base' ? '' : 'hidden'}>
-        <BaseDadosTab lancamentos={lancamentos} saldos={saldos} />
+        <BaseDadosTab lancamentos={lancamentos} saldos={saldos} usuarioId={usuarioId} />
       </div>
     </div>
   )

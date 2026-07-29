@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { thumbGeom, scrollAoArrastar, THUMB_MIN } from './scrollbar-math'
+import { thumbGeom, scrollAoArrastar, THUMB_MIN, THUMB_CRUZ } from './scrollbar-math'
 
 describe('thumbGeom — geometria do thumb por eixo', () => {
   it('conteúdo cabe (scroll ≤ client) → invisível', () => {
@@ -52,5 +52,39 @@ describe('scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max]
     const noFim = scrollAoArrastar(150, 0, 600, 300) // livre = 150 → scroll no máximo
     expect(noFim).toBe(300)
     expect(scrollAoArrastar(-150, noFim, 600, 300)).toBe(0) // volta ao topo
+  })
+
+  it('folga (respiro nas pontas, v5.2.0): thumb começa em folga e termina em client − folga', () => {
+    const inicio = thumbGeom(600, 300, 0, 8)
+    expect(inicio.pos).toBe(8) // não encosta no topo
+    const fim = thumbGeom(600, 300, 300, 8) // scroll no máximo (600 − 300)
+    expect(fim.pos + fim.tamanho).toBe(300 - 8) // não encosta no rodapé
+    // arraste consistente com a mesma folga: percorrer o trilho útil inteiro chega ao máximo
+    const livre = (300 - 2 * 8) - fim.tamanho
+    expect(scrollAoArrastar(livre, 0, 600, 300, 8)).toBe(300)
+  })
+})
+
+describe('folga assimétrica no fim do trilho (THUMB_CRUZ — barras que se cruzam)', () => {
+  it('folgaFim default = folga (comportamento anterior preservado)', () => {
+    expect(thumbGeom(600, 300, 150, 8)).toEqual(thumbGeom(600, 300, 150, 8, 8))
+  })
+
+  it('folgaFim maior ENCURTA o trilho e o thumb nunca alcança o canto', () => {
+    const simetrico = thumbGeom(600, 300, 300, 8)          // rolado até o fim (maxScroll = 300)
+    const comCruz   = thumbGeom(600, 300, 300, 8, 8 + THUMB_CRUZ)
+    const fimSim    = simetrico.pos + simetrico.tamanho
+    const fimCruz   = comCruz.pos + comCruz.tamanho
+    expect(fimCruz).toBeLessThan(fimSim)
+    // sobra ao menos a reserva do cruzamento até a borda do container
+    expect(300 - fimCruz).toBeGreaterThanOrEqual(THUMB_CRUZ)
+  })
+
+  it('o arraste usa o MESMO trilho encurtado (proporção não descola)', () => {
+    const folgaFim = 8 + THUMB_CRUZ
+    const fim = scrollAoArrastar(9999, 0, 600, 300, 8, folgaFim)
+    expect(fim).toBe(300)                                   // satura no maxScroll, sem estourar
+    const meio = scrollAoArrastar(0, 150, 600, 300, 8, folgaFim)
+    expect(meio).toBe(150)                                  // delta zero não move
   })
 })

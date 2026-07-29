@@ -30,7 +30,7 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
   // v4.18/M6 — filtro de STATUS (substitui os antigos filtros de visão). O usuário SEMPRE
   // vê mim + minha permissão; "Ver todas" (gestão, escopo=todas) fica na linha das abas.
   const [filtro, setFiltro] = useState<FiltroStatus>('abertas')
-  // v5.4.0/M4 (ADR-0953): quando a solicitação exige referência externa, o clique
+  // v5.4.0/M4 (ADR-0161): quando a solicitação exige referência externa, o clique
   // rápido do card abre este mini-form em vez de concluir direto (comportamento
   // IDÊNTICO ao anterior para as demais solicitações).
   const [pedindoReferencia, setPedindoReferencia] = useState<Solicitacao | null>(null)

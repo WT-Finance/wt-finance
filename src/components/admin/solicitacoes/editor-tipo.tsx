@@ -32,7 +32,7 @@ const ROTULO_TIPO: Record<TipoCampo, string> = {
 }
 
 // Prévia CLIENTE do slug — só para exibição enquanto o tipo ainda não foi salvo
-// (o servidor é a fonte de verdade: app.slugificar, migration 0950). Não precisa
+// (o servidor é a fonte de verdade: app.slugificar, migration 0210). Não precisa
 // ser byte-a-byte idêntico ao servidor; é só a expectativa visual do admin.
 // Faixa Unicode das marcas diacríticas combinantes (U+0300-U+036F) pós-normalize('NFD')
 // — o range padrão para remover acentuação. Escapes \\u (não o glifo cru) por segurança de encoding.

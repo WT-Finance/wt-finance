@@ -93,7 +93,16 @@ export const config = {
   // /api/.../[id] com id terminado em .png escapava do proxy — achado da
   // auto-auditoria S11). Páginas e APIs com ponto no nome agora SEMPRE passam pelo
   // proxy. Ícones de metadata do Next ficam na raiz e são listados por nome.
+  //
+  // v5.3.3: `fonts/` entrou por PREFIXO DE DIRETÓRIO (a mesma forma de `logos/`) e não por
+  // extensão `.otf` — a lição S11 acima segue valendo. Sem a isenção, `/fonts/avenir/*.otf`
+  // levava 307 → HTML do login nas telas SEM sessão, o browser abortava o decode
+  // (`OTS parsing error`) e a tipografia caía para fonte de sistema (achado ALTO do
+  // verificador-visual na v5.3.2). Não abre bypass: sob `logos/` e `fonts/` não existe rota
+  // de página nem de API — é só arquivo estático de `public/`, público por natureza, sem
+  // guard de camada 2 porque não há o que autorizar. Toda superfície real continua na
+  // camada 1; criar rota sob um desses prefixos exigiria revisar esta lista.
   matcher: [
-    '/((?!_next/|favicon\\.ico|icon\\.svg|icon\\.png|icon0\\.png|icon1\\.png|apple-icon\\.png|logos/).*)',
+    '/((?!_next/|favicon\\.ico|icon\\.svg|icon\\.png|icon0\\.png|icon1\\.png|apple-icon\\.png|logos/|fonts/).*)',
   ],
 }

@@ -50,7 +50,9 @@ export default function PeriodoFilterPillsUrl({ defaultPreset = 'este-ano' }: Pr
       params.delete('from')
       params.delete('to')
     }
-    startTransition(() => router.push(`${pathname}?${params.toString()}`))
+    // scroll:false — trocar o período NÃO rola a página ao topo (o default do App Router
+    // rola; custou o "pulo" reportado no checkpoint ao clicar numa pill no meio da página).
+    startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
   }, [router, pathname, searchParams])
 
   // Persist to localStorage when URL params change

@@ -3,6 +3,7 @@ import { HardHat } from 'lucide-react'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import PreviewButton from './preview-button'
+import PreviewSessionGuard from './preview-session-guard'
 
 export default function EmConstrucao({
   children,
@@ -11,7 +12,10 @@ export default function EmConstrucao({
   children: ReactNode
   preview: boolean
 }) {
-  if (preview) return <>{children}</>
+  // Preview válido só DENTRO da sessão que o acionou — o guard derruba um `?preview=1`
+  // herdado de outra sessão (URL restaurada/bookmark) e o aviso volta (v5.2.0).
+  if (preview) return <><PreviewSessionGuard />{children}</>
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-3 text-center px-4">

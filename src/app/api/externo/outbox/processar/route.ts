@@ -1,6 +1,6 @@
-// API Route do processador da outbox de callbacks (v5.4.0/M4, ADR-0953).
+// API Route do processador da outbox de callbacks (v5.4.0/M4, ADR-0161).
 //
-// Chamada pelo pg_cron a cada 5 minutos (migration 0953, `net.http_post`),
+// Chamada pelo pg_cron a cada 5 minutos (migration 0213, `net.http_post`),
 // autenticada por `Authorization: Bearer $CRON_SECRET` — MESMO molde de
 // src/app/api/monde/ingest/route.ts, mas SEM a 2ª porta de sessão daquela rota:
 // esta é um serviço interno puro (nenhum humano aciona pelo navegador), então a

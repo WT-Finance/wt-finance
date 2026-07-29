@@ -111,9 +111,14 @@ export default function NavGroup({ label, Icon, href, subs, pathname, pode, open
                   size={14}
                   strokeWidth={1.8}
                   style={subActive ? { color: 'var(--brand)' } : undefined}
-                  className={subActive ? '' : 'text-zinc-400'}
+                  className={subActive ? 'shrink-0' : 'shrink-0 text-zinc-400'}
                 />
-                {sub.label}
+                {/* `truncate` + `min-w-0`: o rótulo fica em UMA linha, encurtando com
+                    reticências em vez de quebrar. Sem isso, o item ATIVO quebrava e o
+                    inativo não — o estado ativo troca o peso para `font-semibold`, que
+                    alarga o texto o bastante para estourar a largura da sidebar. Bug de
+                    quem só olha o estado inativo. (Mesmo tratamento do item de 1º nível.) */}
+                <span className="min-w-0 truncate" title={sub.label}>{sub.label}</span>
                 {sub.emConstrucao && <TriangleAlert size={13} className="ml-auto shrink-0 text-warning" aria-label="Em construção" />}
               </Link>
             )

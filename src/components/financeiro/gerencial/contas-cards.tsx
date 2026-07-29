@@ -3,17 +3,22 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Settings, ChevronRight } from 'lucide-react'
-import { updateConta } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
+import { hojeSP } from '@/lib/fmt'
+import { updateSaldo } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { NumCell } from './contas-manager'
 import { PAPEL_LABEL, type Conta } from './tipos'
 
 // v4.22 (M1) — grade de cards de saldo das contas, SEMPRE visível (a gestão — limite, papel,
 // consolidado, CRUD — vive no drawer "Gerenciar contas"). O card edita SÓ o saldo inicial,
-// inline, reaproveitando o NumCell do painel e o mesmo caminho otimista (map local + updateConta
+// inline, reaproveitando o NumCell do painel e o mesmo caminho otimista (map local + updateSaldo
 // + router.refresh para a projeção recalcular). Selos (read-only) no RODAPÉ do card, à esquerda,
 // papel PRIMEIRO: "Principal" = âmbar de gestão (mesmo trio dos botões de Solicitações, --gestao*);
 // "Rendimento" = verde do DS (--success-bg/--success/--positive-deep); "Consolidado" = neutro zinc.
 // Cor sempre por token (id visual da plataforma), nunca hex literal.
+//
+// v5.2.1 — o campo de DATA do saldo (staleness "há N dias"/"hoje") foi REMOVIDO dos cards a pedido:
+// o card mostra só o saldo. A coluna `data_saldo` continua no banco (o `updateSaldo` grava
+// data_saldo = HOJE por padrão), apenas não é mais exibida/editada aqui.
 
 export default function ContasCards({ contas, onContasChange, onGerir }: {
   contas: Conta[]
@@ -25,12 +30,12 @@ export default function ContasCards({ contas, onContasChange, onGerir }: {
   // v4.23.2 (item 1): box recolhível com chevron, igual à barra TopSection. Padrão = aberto.
   const [aberto, setAberto] = useState(true)
 
-  // Edição otimista APENAS do saldo (não mexe em papel/limite/consolidado, logo sem
-  // tratamento de exclusividade de papel — diferente do aplicarLocal do painel).
+  // Edição otimista do saldo. Sem data explícita: a action assume HOJE (SP) — refletido aqui
+  // otimisticamente para o rótulo de staleness não "atrasar" até o router.refresh() completar.
   const editarSaldo = async (conta: string, saldo: number) => {
     setErro(null)
-    onContasChange(contas.map(c => (c.conta === conta ? { ...c, saldo } : c)))
-    const res = await updateConta(conta, { saldo })
+    onContasChange(contas.map(c => (c.conta === conta ? { ...c, saldo, data_saldo: hojeSP() } : c)))
+    const res = await updateSaldo(conta, saldo)
     if (!res.success) { setErro(res.error); router.refresh(); return }
     router.refresh()
   }

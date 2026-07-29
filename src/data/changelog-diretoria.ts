@@ -46,6 +46,122 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     ],
   },
   {
+    versao: '5.3.3',
+    data: '2026-07-28T17:18', // horário REAL do merge (e3677a5, 20:18:02Z −03) — reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'As telas de entrada da plataforma (login, solicitação de acesso e confirmação de link) voltaram a usar a tipografia oficial do Welcome Group. Elas estavam sendo exibidas com uma fonte genérica do computador do usuário, o que quebrava a identidade visual justamente na primeira tela que qualquer pessoa vê. As telas internas nunca foram afetadas.',
+      },
+    ],
+  },
+  {
+    versao: '5.3.2',
+    data: '2026-07-28T16:26', // horário REAL do merge (8a456f3, 19:26:29Z −03) — reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'Melhorias internas de engenharia: reorganização da bancada de trabalho que constrói e revisa a plataforma. Nada muda nas telas — o efeito esperado é entregas futuras mais rápidas e com menos idas e vindas, e uma etapa nova de conferência visual automática das telas antes de cada entrega chegar à diretoria.',
+      },
+    ],
+  },
+  {
+    versao: '5.3.1',
+    data: '2026-07-28T14:33', // horário REAL do merge (a3b524a, 17:33:42Z −03) — reconciliado
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'O Demonstrativo de Resultado ganhou um Resumo Executivo, logo abaixo da tabela. São as seis linhas que se olha primeiro — Saldo Repasse, Receita Bruta, Receita Operacional Líquida, Lucro Bruto, Lucro Operacional e Resultado do Exercício — comparadas em seis colunas: os dois últimos anos fechados, a variação entre eles, o acumulado do ano anterior até este mês, o acumulado deste ano até este mês, e a variação entre os dois acumulados. As variações vêm em reais, para se ver o tamanho do movimento. Uma observação importante para não parecer erro: o Resumo é sempre o retrato de HOJE. Ele não muda quando se navega para outro ano na tabela acima — a comparação continua sendo a dos anos mais recentes, de propósito.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A Decomposição dos Lançamentos (as barras de Entradas e Saídas do período) passou a seguir a estrutura oficial do demonstrativo, e não mais o agrupamento que vem do sistema de origem. Na prática: as barras agora FECHAM com os subtotais da tabela logo acima, no mesmo período. Antes isso não acontecia por dois motivos — cerca de vinte categorias estão posicionadas na nossa estrutura de forma diferente de como chegam do sistema de origem, e a decomposição vinha somando ao realizado alguns títulos ainda em aberto vencidos em meses anteriores. Agora ela considera apenas o que efetivamente se movimentou, e as transferências internas entre contas ficam de fora dos dois lados. Clicar numa barra continua abrindo o detalhe por categoria.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A Decomposição também mudou de lugar e de formato: saiu da seção separada e recolhida em que vivia e passou a ficar junto do demonstrativo, na mesma seção "Regime de Caixa", com os valores em barras horizontais em vez dos gráficos de rosca. O filtro de período agora fica dentro do próprio quadro (começando em "Este ano"), e é independente do ano escolhido na tabela — dá para ler o demonstrativo de um ano e, ao lado, decompor os últimos três meses. Categorias que ainda não foram posicionadas na estrutura continuam aparecendo à parte, sinalizadas, para nada passar em branco.',
+      },
+    ],
+  },
+  {
+    versao: '5.3.0',
+    data: '2026-07-27T16:50', // autoria real (último commit da versão); reconciliar ao horário do merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'O Demonstrativo de Resultado chegou à plataforma, na aba Financeiro. É o mesmo demonstrativo que a controladoria mantinha em ferramenta separada — a estrutura oficial completa (entradas de clientes, repasse, receita, custos, despesas por área e as linhas de resultado até o Resultado do Exercício), mês a mês, com o ano navegável. O mês corrente aparece dividido em duas colunas: o que já se realizou até hoje e o que ainda está previsto para o restante do mês; os meses futuros mostram o previsto por vencimento, em tom âmbar, e o que venceu sem ser pago aparece à parte, em vermelho. Valores em verde são receitas e em vermelho gastos. A coluna de total do ano fica sempre à vista, presa à direita, enquanto os meses rolam.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A estrutura desse demonstrativo agora é viva e editável pela própria plataforma (botão "Editar estrutura"): dá para reordenar categorias dentro de um bloco, mover uma categoria de um bloco para outro (vendo o efeito nos subtotais antes de confirmar), e excluir ou reincluir categorias que não devem compor o resultado (como transferências internas entre contas). Categorias novas que surgirem no Monde nunca somem: aparecem automaticamente numa bandeja "Não classificadas" até alguém as posicionar. Toda alteração fica registrada num histórico com autor e data, e pode ser desfeita — o mesmo mecanismo de segurança que estreou na Base de Dados do Gerencial.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Duas maneiras de ler o mesmo demonstrativo. Em "Mensal", os doze meses do ano escolhido. Em "Consolidado", a comparação ano a ano: marque quantos anos quiser e cada um entra com o ano fechado, o acumulado até o mês atual e a variação percentual para o ano seguinte — sempre no mesmo recorte de calendário nos dois lados, para a comparação ser honesta. Em ambas dá para escolher se o total considera apenas o realizado ou o realizado somado ao previsto, e abrir os dois anos seguintes para ver o que já está lançado à frente. Os valores seguem o formato contábil de sempre: R$ discreto à esquerda, centavos, e gastos entre parênteses.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os números do Demonstrativo saem da mesma base de lançamentos do Fluxo de Caixa (eixo da movimentação bancária) e foram conferidos, mês fechado a mês fechado, contra o dashboard que a controladoria usava — as linhas de resultado batem ao centavo, descontadas apenas re-edições feitas no próprio Monde depois da data de referência.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'Na comparação entre anos, o acumulado do ano ("YTD") passou a ser sempre contado de janeiro até o mês atual do calendário. Antes, ao consultar um ano já encerrado, esse acumulado era calculado sobre os doze meses e acabava idêntico ao total do ano — o que tornava a comparação entre períodos sem sentido, ainda que os números parecessem plausíveis.',
+      },
+    ],
+  },
+  {
+    versao: '5.2.1',
+    data: '2026-07-24T13:34',
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'As edições da Base de Dados do Fluxo de Caixa Gerencial agora têm histórico e desfazer. Toda alteração (criar, editar ou excluir uma linha) fica registrada — quem fez, quando e quantas linhas — num painel "Histórico de alterações" logo abaixo da base. Dá para reverter uma ação inteira ou uma linha específica em um clique. Isso responde ao episódio em que a base foi apagada por engano sem volta: agora uma exclusão em massa pode ser revertida pelo histórico. Reverter suas próprias edições unitárias é livre; reverter a ação de outra pessoa ou uma reversão em massa exige perfil de administrador.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Trabalho simultâneo ficou seguro. Quando outra pessoa altera a base, você vê um aviso discreto ("Fulano alterou N linhas") e a lista se atualiza sozinha em segundos. E se duas pessoas editarem a mesma linha ao mesmo tempo, ao salvar o sistema avisa que a linha mudou e recarrega — nunca sobrescreve em silêncio o trabalho do outro.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Ao digitar valores de saldo (nos cartões de conta do Gerencial e na janela "Editar saldos" do Fluxo de Caixa), o campo agora formata o dinheiro em tempo real no padrão brasileiro (R$, milhar com ponto, vírgula nos centavos), inclusive ao colar. E o rótulo "sem data" saiu: quando um saldo não tem data de referência, o campo fica neutro e discreto, em vez de sinalizar alerta.',
+      },
+    ],
+  },
+  {
+    versao: '5.2.0',
+    data: '2026-07-17T14:48',
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Fluxo de Caixa reformulado (1ª onda do modelo da controladoria). O "realizado" passa a ser medido pela data em que o dinheiro DE FATO entrou ou saiu da conta (antes era pela data de baixa) — os valores da visão geral mudam de definição, é esperado, não é erro. A página foi reorganizada em duas partes: "Projetado" (saldo de caixa por conta, o que há a receber e a pagar nos próximos dias, calendário, projeção de liquidez das próximas 13 semanas e o horizonte de compromissos já lançados) e "Realizado" (entradas, saídas, resultado, margem do repasse e um ranking do que mais melhorou ou piorou o caixa no ano). A conferência contra o painel da controladoria bate ao centavo nos meses fechados.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O saldo de cada conta agora guarda a data a que se refere e mostra há quanto tempo não é atualizado, para dar confiança na leitura de caixa. A tela de importação recebe as duas novas bases do fluxo de caixa; a área "Gerencial" saiu da página de Fluxo de Caixa (deixou de aparecer duplicada) e continua no seu próprio menu.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O Projetado ganhou um "Runway de Caixa": em quantos meses os recebíveis já lançados cobrem a saída média mensal, com faixa de confiança e um cenário considerando a antecipação de recebíveis. O horizonte de "a receber / a pagar / necessidade de caixa" virou ajustável (por dias, meses ou tudo o que está lançado). Criada também a nova aba "DRE", que começa com a composição dos lançamentos por categoria e será a base do demonstrativo por fluxo de caixa nas próximas ondas.',
+      },
+    ],
+  },
+  {
     versao: '5.1.11',
     data: '2026-07-15T21:16',
     itens: [

@@ -1,5 +1,5 @@
 // Tipos compartilhados da UI de Chaves de API (v5.4.0/M2). Os shapes espelham
-// o retorno jsonb das RPCs api_* (0951) — narrowing defensivo feito em
+// o retorno jsonb das RPCs api_* (0211) — narrowing defensivo feito em
 // @/lib/api-externa/rpc (mesmo padrão de admin/acessos/tipos.ts).
 
 /** Um tipo de solicitação, na forma reduzida usada pela whitelist. */

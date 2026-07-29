@@ -25,7 +25,7 @@ export const campoDefSchema = z.object({
   data_aviso_dias_futuro: z.number().int().nullable().optional(),
   // Direção do aviso (v4.37.1): 'acima' = a mais de X dias (default, retrocompat); 'abaixo' = a menos de X dias.
   data_aviso_direcao:     z.enum(['acima', 'abaixo']).optional(),
-  // Chave ESTÁVEL do campo (v5.4.0/M1, migration 0950) — sobrevive ao apaga-e-recria
+  // Chave ESTÁVEL do campo (v5.4.0/M1, migration 0210) — sobrevive ao apaga-e-recria
   // do editor (admin_solic_salvar_tipo faz DELETE+INSERT a cada save). .optional():
   // a RPC pode ainda não emitir durante o deploy (janela do retrofit); campo NOVO
   // (ainda não salvo) também não tem chave.
@@ -74,9 +74,9 @@ export const solicitacaoSchema = z.object({
   sou_solicitante:    z.boolean().optional(),
   sou_atendente:      z.boolean().optional(),
   anexos:             z.array(anexoSchema),
-  // v5.4.0/M4 (ADR-0953): flag do TIPO (exige referência externa p/ concluir) +
+  // v5.4.0/M4 (ADR-0161): flag do TIPO (exige referência externa p/ concluir) +
   // a referência já gravada. .optional(): a RPC pode ainda não emitir durante o
-  // deploy (janela do rollout da migration 0953 — lição v4.12.1).
+  // deploy (janela do rollout da migration 0213 — lição v4.12.1).
   exige_referencia_conclusao: z.boolean().optional(),
   referencia_conclusao:       z.string().nullable().optional(),
 }).passthrough()
@@ -108,7 +108,7 @@ export const tipoAdminSchema = z.object({
   n_campos:       z.number(),
   n_solicitacoes: z.number(),
   campos:         z.array(campoDefSchema),
-  // Fundações da API externa (v5.4.0/M1, migration 0950). .optional()/.nullable():
+  // Fundações da API externa (v5.4.0/M1, migration 0210). .optional()/.nullable():
   // a RPC pode ainda não emitir estas chaves durante o deploy (lição v4.12.1 —
   // parseRpc reprova undefined em campo só .nullable(); aqui não há .nullable()
   // sozinho para nenhum destes, todos toleram ausência).

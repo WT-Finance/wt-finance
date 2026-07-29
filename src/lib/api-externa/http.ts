@@ -176,8 +176,8 @@ function comoEmailsEnvolvidos(x: unknown): EmailsEnvolvidosSvc | null {
 }
 
 /**
- * Envolvidos de uma solicitação (v5.4.0/M4, ADR-0953) via a variante SERVICE-ROLE
- * de `solic_emails_envolvidos` (migration 0953: `solic_emails_envolvidos_svc`) —
+ * Envolvidos de uma solicitação (v5.4.0/M4, ADR-0161) via a variante SERVICE-ROLE
+ * de `solic_emails_envolvidos` (migration 0213: `solic_emails_envolvidos_svc`) —
  * esta porta (rotas `/api/externo/*`) NÃO tem sessão de usuário (chave de API,
  * não JWT Supabase); a RPC gated por `exigir_acesso`/`pode_ver_solic` sempre
  * negaria aqui (limitação conhecida do M3b, agora corrigida). `null` em erro de
