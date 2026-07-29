@@ -47,3 +47,16 @@ puro do e-mail (v4.25) não basta: precisa de **persistência e retry**.
 - MVP assina com segredo compartilhado em header (HMAC de corpo fica registrado como v2 — ADR-0158).
 - O segredo de saída fica em claro em `app.api_chave.callback_segredo` (necessário para enviar);
   aceito no MVP: tabela RLS-fechada, schema não exposto, acesso só por RPC service-only.
+
+## Emenda (2026-07-28)
+
+O trecho do item 5 sobre `referencia?` no payload de `solicitacao.concluida` foi **REMOVIDO** por
+decisão de produto do Yan, pós-implementação: o conceito "conclusão exige referência externa"
+(que alimentava essa chave do payload — ver ADR-0159) foi EXTIRPADO. `solic_concluir` voltou à
+assinatura de 1 parâmetro na migration **0215** (aditiva; `DROP` da versão de 2 parâmetros da
+0213 é troca de assinatura, não perda de dado) e o payload de `solicitacao.concluida` deixou de
+carregar a chave `referencia`. A mecânica da outbox em si (tabela, enfileiramento na mesma
+transação, entrega inline+cron, backoff exponencial, idempotência do lado do assinante) é
+**inalterada** — só o conteúdo do payload de UM evento específico mudou. A coluna
+`app.solicitacao.referencia_conclusao` fica **órfã e inerte** até um patch destrutivo separado,
+pós-merge (skill `banco-e-rpc`), fazer o `DROP COLUMN`.

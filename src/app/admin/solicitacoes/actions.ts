@@ -13,15 +13,16 @@ async function rpcSessao(fn: string, args: Record<string, unknown>) {
   return (sb.rpc as unknown as BoundRpc).bind(sb)(fn, args)
 }
 
+// v5.4.0/Round2 (2026-07-28): o editor voltou a ser SÓ nome+campos — esta
+// action não manda mais `p_config` (a RPC usa o DEFAULT NULL dela, que
+// preserva exposto_via_api/api_roles_permitidas vigentes). A configuração de
+// API do tipo é salva à parte, na página /admin/chaves-api, via
+// `salvarConfigApiTipo` (@/app/admin/chaves-api/actions) → RPC
+// admin_solic_tipo_api_config (migration 0215).
 export async function salvarTipo(input: {
   id: number | null
   nome: string
   campos: CampoDef[]
-  // Fundações da API externa (v5.4.0/M1) — viajam em p_config; a RPC ignora slug
-  // (nunca muda na edição) e gera/persiste as demais conforme o payload.
-  exposto_via_api: boolean
-  exige_referencia_conclusao: boolean
-  api_roles_permitidas: number[]
 }): Promise<{ ok: true; id: number } | { ok: false; erro: string }> {
   await requireAreaAction('solicitacoes')
   const { data, error } = await rpcSessao('admin_solic_salvar_tipo', {
@@ -39,11 +40,6 @@ export async function salvarTipo(input: {
       // Campo NOVO viaja sem chave (null); o servidor gera a partir do rótulo.
       chave: c.chave ?? null,
     })),
-    p_config: {
-      exposto_via_api: input.exposto_via_api,
-      exige_referencia_conclusao: input.exige_referencia_conclusao,
-      api_roles_permitidas: input.api_roles_permitidas,
-    },
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
   revalidatePath('/admin/solicitacoes')
@@ -74,7 +70,6 @@ function traduzir(msg: string): string {
     TIPO_INEXISTENTE: 'Tipo não encontrado.',
     PERMISSAO_NEGADA: 'Você não tem permissão para administrar tipos.',
     CHAVE_INVALIDA: 'Chave de campo inválida.',
-    ROLE_INVALIDA: 'Uma das permissões selecionadas para a API externa é inválida.',
   }
   return m[msg.split(':')[0]?.trim()] ?? msg.replace(/^[A-Z_]+:\s*/, '')
 }

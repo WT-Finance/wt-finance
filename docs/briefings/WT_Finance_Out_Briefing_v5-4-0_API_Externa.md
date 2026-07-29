@@ -117,3 +117,52 @@ a outbox só recebe itens de solicitações EXTERNAS, que só nascem pelas rotas
 produção até o merge; zero dado afetado).
 
 ## Arquivos (39 no diff; ver PR #191)
+
+---
+
+## Round 2 (2026-07-28) — decisões do Yan pós-checklist de merge
+
+**Decisão 1 — EXTIRPAR "conclusão exige referência externa"** (era decisão do briefing §1;
+revertida pelo Yan: o Janus é dono do formato e a conciliação origem↔lançamento é
+responsabilidade da plataforma de origem — registrado como emenda nos ADRs 0159/0161 e como
+nota no contrato do integrador, seção 6):
+- Migration **0215 (ADITIVA, aplicada)**: `solic_concluir` volta a 1 parâmetro; `solic_json`/
+  `admin_solic_listar_tipos`/`solic_tipos_api`/`admin_solic_salvar_tipo` param de emitir/aceitar
+  o conceito; callback `solicitacao.concluida` sem campo `referencia`.
+- UI: drawer/board concluem em 1 clique (regressão zero vs pré-v5.4.0).
+- **PATCH DESTRUTIVO PÓS-MERGE (o Yan aplica em TTY):** dropar as 2 colunas órfãs. SQL pronto
+  (guardado FORA de `supabase/migrations/` até a hora — regra da skill banco-e-rpc):
+  ```sql
+  -- v5.4.x — limpeza pós-extirpação (round 2 da v5.4.0). DESTRUTIVA (DROP COLUMN).
+  ALTER TABLE app.solicitacao_tipo DROP COLUMN IF EXISTS exige_referencia_conclusao;
+  ALTER TABLE app.solicitacao      DROP COLUMN IF EXISTS referencia_conclusao;
+  ```
+  Pré-condição já satisfeita pela 0215: nenhuma função lê/escreve essas colunas.
+
+**Decisão 2 — Página única "API externa"** (`/admin/chaves-api`): seção nova **Tipos expostos**
+(toggle "Exposto via API" + **"Equipes que podem receber via API"** — corrige o rótulo enganoso
+"Permissões que podem criar via API"; a semântica é DESTINO do disparo, ADR-0160 — salvando via
+RPC dedicada `admin_solic_tipo_api_config`, que não re-grava o formulário) + seção de chaves +
+log. Editor de tipos voltou a ser só formulário (nome + campos; chave estável por campo fica).
+Pill de gestão renomeada para "API externa".
+
+**Validação do round:** tsc 0 · eslint 0 · **vitest 557/557** (suíte de contrato ao vivo
+pós-0215; caso de referência removido, caso de conclusão adaptado) · build limpo ·
+**Pareceres do round:** `revisor-db` — **0215 APROVADA** (0 crítico/alto; MÉDIO do DOWN
+não-autocontido registrado como divergência de convenção — os corpos vivem na 0210/0212/0213;
+BAIXO do comentário da rota tipos CORRIGIDO). `revisor` — **APROVADO C/ RESSALVAS** (ALTO:
+tipo arquivado sinalizado só por cor na tabela nova — CORRIGIDO com sufixo textual
+"(arquivado)" + truncate efetivo com `block min-w-0`; BAIXOs corrigidos/registrados).
+`verificador-visual` automatizado falhou por infra (MCP Playwright não acopla em background —
+recorrência da v5.3.3); a verificação visual foi feita pelo orquestrador no Chrome do Yan
+(sessão dele, modo leitura): página "API externa" ✓ (título, slugs visíveis, modal com rótulo
+correto), editor só-formulário ✓, pill renomeada ✓.
+
+**Achado GRAVE pego pela verificação visual (e resolução):** o tipo do contrato (seed 0214,
+id 13) havia sido EXCLUÍDO da produção pela tela de tipos — na tela de produção (sem slug
+visível) os dois homônimos eram indistinguíveis, e só o novo (0 solicitações) era excluível;
+o Yan confirmou ter excluído achando ser o antigo. O slug canônico ficou livre e o seed
+(idempotente) foi RE-EXECUTADO (novo id 39, exposto, 9 campos, exige_referencia=false
+conforme o round 2). O tipo humano antigo (id 9, `abatimento_de_creditos_2`, 1 solicitação)
+segue ativo — arquivá-lo/renomeá-lo é 1 clique do Yan. A tela nova mostra o slug exatamente
+para eliminar essa ambiguidade daqui em diante.

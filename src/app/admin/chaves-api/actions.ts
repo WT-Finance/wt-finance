@@ -31,6 +31,8 @@ const ERROS_BANCO: ReadonlyArray<readonly [string, string]> = [
   ['EMAIL_EM_USO',           'Já existe um usuário com este e-mail — tente outro nome de plataforma.'],
   ['SEGREDO_OBRIGATORIO',    'Falha ao gerar o segredo — tente novamente.'],
   ['TIPO_INVALIDO',          'Um dos tipos selecionados na whitelist não existe mais. Recarregue a página.'],
+  ['TIPO_INEXISTENTE',       'Tipo de solicitação não encontrado. Recarregue a página.'],
+  ['ROLE_INVALIDA',          'Uma das equipes selecionadas não existe mais. Recarregue a página.'],
   ['NAO_ENCONTRADA',         'Chave não encontrada.'],
   ['JA_REVOGADA',            'Esta chave já está revogada.'],
   ['CHAVE_REVOGADA',         'Uma chave revogada não pode ser editada — crie uma chave nova.'],
@@ -159,4 +161,24 @@ export async function gerarSegredoCallbackAction(): Promise<string> {
 export async function listarLogChaveApi(chaveId: number): Promise<LogChamada[] | null> {
   await requireAreaAction('solicitacoes')
   return listarLogApi(chaveId)
+}
+
+/**
+ * v5.4.0/Round2 (2026-07-28) — salva a configuração de API de UM TIPO
+ * (exposto_via_api/api_roles_permitidas), na seção "Tipos expostos" desta
+ * página. Substitui o que antes vivia dentro do editor de tipos
+ * (admin_solic_salvar_tipo/p_config) — esta RPC NUNCA toca nome/campos/slug.
+ */
+export async function salvarConfigApiTipo(input: {
+  tipoId: number
+  exposto: boolean
+  roles:   number[]
+}): Promise<ResultadoAcao> {
+  await requireAreaAction('solicitacoes')
+  const { error } = await rpcSessao('admin_solic_tipo_api_config', {
+    p_tipo_id: input.tipoId, p_exposto: input.exposto, p_roles: input.roles,
+  })
+  if (error) return { ok: false, erro: traduzir(error.message) }
+  revalidatePath('/admin/chaves-api')
+  return { ok: true }
 }

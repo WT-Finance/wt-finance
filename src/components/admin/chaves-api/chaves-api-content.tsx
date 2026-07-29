@@ -4,7 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Ban, Pencil, Plus, ScrollText } from 'lucide-react'
+import type { Destinatarios, TipoAdmin } from '@/lib/solicitacoes/schemas'
 import type { ChaveApi, TipoDisponivel } from './tipos'
+import { TiposExpostos } from './tipos-expostos'
 import { ModalCriarChave } from './modal-criar-chave'
 import { ModalEditarChave } from './modal-editar-chave'
 import { ModalRevogarChave } from './modal-revogar-chave'
@@ -16,11 +18,13 @@ import Button from '@/components/ui/button'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 
-// v5.4.0/M2 — conteúdo client de /admin/chaves-api: header de navegação (volta
-// a /admin/solicitacoes — esta rota não está na sidebar, mesmo padrão de
-// /admin/solicitacoes), tabela de chaves e orquestração dos 4 modais
-// (criar / editar / revogar / log). Dados vêm prontos da page (RSC); após cada
-// mutação, os modais chamam router.refresh() antes de fechar.
+// v5.4.0/M2 (+ Round2, 2026-07-28) — conteúdo client de /admin/chaves-api ("API
+// externa"): header de navegação (volta a /admin/solicitacoes — esta rota não
+// está na sidebar, mesmo padrão de /admin/solicitacoes), a seção "Tipos
+// expostos" (exposição/equipes de destino por tipo — TiposExpostos, movida
+// para cá do antigo editor de tipos), a tabela de chaves e a orquestração dos
+// 4 modais (criar / editar / revogar / log). Dados vêm prontos da page (RSC);
+// após cada mutação, os modais/seção chamam router.refresh() antes de fechar.
 
 type ModalState =
   | { modo: 'criar' }
@@ -40,21 +44,25 @@ function BadgeStatusChave({ chave }: { chave: ChaveApi }) {
 export function ChavesApiContent({
   chaves,
   tipos,
+  tiposAdmin,
+  roles,
   erroCarga,
 }: {
-  chaves:    ChaveApi[]
-  tipos:     TipoDisponivel[]
-  erroCarga: string | null
+  chaves:     ChaveApi[]
+  tipos:      TipoDisponivel[]
+  tiposAdmin: TipoAdmin[]
+  roles:      Destinatarios['roles']
+  erroCarga:  string | null
 }) {
   const router = useRouter()
   const [modal, setModal] = useState<ModalState>(null)
   const [msg, setMsg] = useState<Msg | null>(null)
 
-  /** ModalEditarChave/ModalRevogarChave chamam isto em sucesso: fecham o modal,
-   *  mostram a mensagem e recarregam a lista (RSC via router.refresh()). O
-   *  ModalCriarChave é diferente — refresca sozinho e só fecha ao clique
-   *  explícito em "Fechar" (depois de revelar o segredo), sem mensagem extra
-   *  aqui (o próprio modal já confirma o sucesso inline). */
+  /** ModalEditarChave/ModalRevogarChave/TiposExpostos chamam isto em sucesso:
+   *  fecham o modal, mostram a mensagem e recarregam a lista (RSC via
+   *  router.refresh()). O ModalCriarChave é diferente — refresca sozinho e só
+   *  fecha ao clique explícito em "Fechar" (depois de revelar o segredo), sem
+   *  mensagem extra aqui (o próprio modal já confirma o sucesso inline). */
   function fecharComSucesso(texto: string) {
     setModal(null)
     setMsg({ tipo: 'sucesso', texto })
@@ -81,6 +89,8 @@ export function ChavesApiContent({
 
       {erroCarga && <FaixaMensagem tipo="erro" texto={erroCarga} />}
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
+
+      <TiposExpostos tipos={tiposAdmin} roles={roles} onMudou={fecharComSucesso} />
 
       <CardTabela titulo="Chaves de API">
         <table className="table-fixed w-full text-sm">

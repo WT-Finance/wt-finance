@@ -1,7 +1,7 @@
 // API externa de Solicitações (v5.4.0/M3b) — GET /api/externo/tipos
 //
 // Lista os tipos de solicitação que a chave de API (header x-api-key) pode abrir:
-// slug, nome, se exige referência de conclusão, destinos permitidos (roles) e a
+// slug, nome, destinos permitidos (roles) e a
 // definição de campos (chave estável, rótulo, tipo, obrigatoriedade, opções). Sem
 // vocabulário de integrador específico e sem anexos — a integração descobre o
 // contrato inteiro por esta rota antes de montar o POST de criação.

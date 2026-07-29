@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Loader2, Plus, X } from 'lucide-react'
 import { salvarTipo } from '@/app/admin/solicitacoes/actions'
-import { TIPOS_CAMPO, type CampoDef, type Destinatarios, type TipoAdmin, type TipoCampo } from '@/lib/solicitacoes/schemas'
+import { TIPOS_CAMPO, type CampoDef, type TipoAdmin, type TipoCampo } from '@/lib/solicitacoes/schemas'
 import ModalCentral from '@/components/shared/modal-central'
 import Checkbox from '@/components/ui/checkbox'
 import Badge from '@/components/ui/badge'
@@ -16,10 +16,12 @@ import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/compone
 // sub-editor de opções para 'seleção'). Validação leve no client; o servidor
 // revalida. Tema neutro Group (tokens neutros, .foco-neutro, pills de @/.../botoes).
 //
-// v5.4.0/M1 — seção "API externa" (fundações do contrato): slug estável do tipo
-// (read-only; prévia enquanto não salvo), toggles exposto_via_api/exige_referencia_
-// conclusao, seletor de roles permitidas, e a chave estável por campo (exibida,
-// read-only). Tudo genérico — nenhum vocabulário de integrador específico.
+// v5.4.0/Round2 (2026-07-28) — este editor voltou a ser SÓ FORMULÁRIO
+// (nome+campos): a seção "API externa" (slug/exposto/roles) que vivia aqui foi
+// MOVIDA para a página /admin/chaves-api ("API externa" → "Tipos expostos"),
+// via a RPC dedicada admin_solic_tipo_api_config (migration 0215) — salvar o
+// formulário não sobrescreve mais a configuração de API do tipo. A CHAVE
+// ESTÁVEL por campo (exibida, read-only) é atributo do CAMPO, e permanece aqui.
 
 const ROTULO_TIPO: Record<TipoCampo, string> = {
   texto_curto: 'Texto curto',
@@ -29,18 +31,6 @@ const ROTULO_TIPO: Record<TipoCampo, string> = {
   data:        'Data',
   selecao:     'Seleção',
   anexo:       'Anexo',
-}
-
-// Prévia CLIENTE do slug — só para exibição enquanto o tipo ainda não foi salvo
-// (o servidor é a fonte de verdade: app.slugificar, migration 0210). Não precisa
-// ser byte-a-byte idêntico ao servidor; é só a expectativa visual do admin.
-// Faixa Unicode das marcas diacríticas combinantes (U+0300-U+036F) pós-normalize('NFD')
-// — o range padrão para remover acentuação. Escapes \\u (não o glifo cru) por segurança de encoding.
-const MARCAS_DIACRITICAS_NFD = new RegExp('[\\u0300-\\u036f]', 'g')
-function previewSlug(nome: string): string {
-  const semAcento = nome.normalize('NFD').replace(MARCAS_DIACRITICAS_NFD, '')
-  const slug = semAcento.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
-  return slug || 'tipo'
 }
 
 // Linha do construtor com chave estável (key independente do índice, que muda ao reordenar).
@@ -61,13 +51,11 @@ function comoLinhas(campos: CampoDef[]): Linha[] {
 export function EditorTipo({
   modo,
   tipo,
-  roles,
   onFechar,
   onSalvo,
 }: {
   modo:     'criar' | 'editar'
   tipo?:    TipoAdmin
-  roles:    Destinatarios['roles']
   onFechar: () => void
   onSalvo:  (msg: string) => void
 }) {
@@ -75,16 +63,6 @@ export function EditorTipo({
   const [linhas, setLinhas] = useState<Linha[]>(() => comoLinhas(tipo?.campos ?? []))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-
-  // Fundações da API externa (v5.4.0/M1) — slug é gerado/preservado pelo servidor
-  // (nunca editável aqui); as demais viajam em p_config no submit.
-  const [expostoViaApi, setExpostoViaApi] = useState(tipo?.exposto_via_api ?? false)
-  const [exigeReferencia, setExigeReferencia] = useState(tipo?.exige_referencia_conclusao ?? false)
-  const [rolesPermitidas, setRolesPermitidas] = useState<number[]>(() => (tipo?.api_roles_permitidas ?? []).map(r => r.id))
-
-  function toggleRolePermitida(id: number) {
-    setRolesPermitidas(prev => (prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]))
-  }
 
   function adicionarCampo() {
     setLinhas(prev => [
@@ -201,9 +179,6 @@ export function EditorTipo({
       id: modo === 'editar' ? tipo!.id : null,
       nome: nome.trim(),
       campos,
-      exposto_via_api: expostoViaApi,
-      exige_referencia_conclusao: exigeReferencia,
-      api_roles_permitidas: rolesPermitidas,
     })
     setSalvando(false)
     if (!res.ok) {
@@ -235,74 +210,6 @@ export function EditorTipo({
             onChange={e => setNome(e.target.value)}
             placeholder="Ex.: Solicitação de pagamento"
           />
-        </div>
-
-        {/* API externa (v5.4.0/M1) — fundações do contrato: slug estável, flags e
-            permissões que poderão criar solicitações deste tipo externamente. */}
-        <div className="rounded-lg border border-zinc-200 p-3 space-y-3">
-          <p className="text-xs font-medium text-zinc-600">API externa</p>
-
-          <div>
-            <label htmlFor="tipo-slug" className="block text-2xs text-zinc-500 mb-1">
-              Identificador (slug)
-            </label>
-            <Input
-              id="tipo-slug"
-              type="text"
-              readOnly
-              disabled
-              value={modo === 'editar' ? (tipo?.slug ?? '—') : (nome.trim() ? previewSlug(nome) : '')}
-              placeholder="gerado a partir do nome ao salvar"
-              className="bg-zinc-50 font-mono text-zinc-500"
-              aria-label="Identificador estável do tipo (gerado pelo servidor)"
-            />
-            <p className="mt-1 text-2xs text-zinc-400">
-              Identificador estável do contrato — gerado a partir do nome e nunca muda depois de criado.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-zinc-700">
-            <Checkbox
-              id="tipo-exposto-api"
-              checked={expostoViaApi}
-              onChange={setExpostoViaApi}
-              aria-label="Exposto via API"
-            />
-            <label htmlFor="tipo-exposto-api" className="cursor-pointer">Exposto via API</label>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-zinc-700">
-            <Checkbox
-              id="tipo-exige-referencia"
-              checked={exigeReferencia}
-              onChange={setExigeReferencia}
-              aria-label="Conclusão exige referência externa"
-            />
-            <label htmlFor="tipo-exige-referencia" className="cursor-pointer">Conclusão exige referência externa</label>
-          </div>
-
-          {roles.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">
-                Permissões que podem criar via API
-              </p>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
-                {roles.map(role => (
-                  <div key={role.id} className="flex items-center gap-2 text-sm text-zinc-700">
-                    <Checkbox
-                      id={`tipo-api-role-${role.id}`}
-                      checked={rolesPermitidas.includes(role.id)}
-                      onChange={() => toggleRolePermitida(role.id)}
-                      aria-label={role.nome}
-                    />
-                    <label htmlFor={`tipo-api-role-${role.id}`} className="cursor-pointer truncate">
-                      {role.nome}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <div>

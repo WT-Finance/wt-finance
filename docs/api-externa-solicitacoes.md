@@ -40,7 +40,6 @@ Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um:
     {
       "slug": "abatimento_de_creditos",
       "nome": "Abatimento de créditos",
-      "exige_referencia_conclusao": true,
       "destinos": [ { "id": 4, "nome": "Financeiro" } ],
       "campos": [
         { "chave": "valor",     "rotulo": "Valor",     "tipo_campo": "moeda",   "obrigatorio": true,  "opcoes": null, "data_permite_passado": true },
@@ -123,7 +122,7 @@ O Janus envia `POST` à **URL de callback** cadastrada na sua chave, com o heade
 | Evento | Quando | Campos extras |
 |---|---|---|
 | `solicitacao.criada` | criação via API confirmada | — |
-| `solicitacao.concluida` | equipe concluiu | `referencia` (obrigatória quando o tipo exige — ex.: nº do lançamento no Monde) |
+| `solicitacao.concluida` | equipe concluiu | — |
 | `solicitacao.rejeitada` | equipe rejeitou | `justificativa` |
 | `solicitacao.cancelada` | cancelada (pela origem ou no Janus) | — |
 
@@ -133,8 +132,13 @@ Payload:
 { "evento": "solicitacao.concluida", "solicitacao_id": 123,
   "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
   "status": "concluida", "destinatario": { "id": 4, "nome": "Financeiro" },
-  "referencia": "MONDE-88123", "ocorrido_em": "2026-07-25T14:03:00-03:00" }
+  "ocorrido_em": "2026-07-25T14:03:00-03:00" }
 ```
+
+> O Janus não pede nem devolve uma referência do SEU lado na conclusão — a
+> conciliação entre a solicitação e o lançamento correspondente (ex.: no seu
+> ERP/CRM) é responsabilidade da sua plataforma. Use `solicitacao_id` (ou o seu
+> próprio `referencia_origem`, ecoado em todo callback) para casar os dois lados.
 
 - **Entrega at-least-once:** responda `2xx` rápido (só enfileire do seu lado). Você **pode
   receber o mesmo evento mais de uma vez** — deduplique por `evento + solicitacao_id`.

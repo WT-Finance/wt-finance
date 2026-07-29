@@ -74,11 +74,6 @@ export const solicitacaoSchema = z.object({
   sou_solicitante:    z.boolean().optional(),
   sou_atendente:      z.boolean().optional(),
   anexos:             z.array(anexoSchema),
-  // v5.4.0/M4 (ADR-0161): flag do TIPO (exige referência externa p/ concluir) +
-  // a referência já gravada. .optional(): a RPC pode ainda não emitir durante o
-  // deploy (janela do rollout da migration 0213 — lição v4.12.1).
-  exige_referencia_conclusao: z.boolean().optional(),
-  referencia_conclusao:       z.string().nullable().optional(),
 }).passthrough()
 export type Solicitacao = z.infer<typeof solicitacaoSchema>
 
@@ -111,10 +106,11 @@ export const tipoAdminSchema = z.object({
   // Fundações da API externa (v5.4.0/M1, migration 0210). .optional()/.nullable():
   // a RPC pode ainda não emitir estas chaves durante o deploy (lição v4.12.1 —
   // parseRpc reprova undefined em campo só .nullable(); aqui não há .nullable()
-  // sozinho para nenhum destes, todos toleram ausência).
+  // sozinho para nenhum destes, todos toleram ausência). exige_referencia_conclusao
+  // foi REMOVIDA do contrato na migration 0215 (decisão do Yan, 2026-07-28 — ver
+  // Emenda no ADR-0159): a coluna no banco fica órfã, mas o app não a lê mais.
   slug:                       z.string().nullable().optional(),
   exposto_via_api:            z.boolean().optional(),
-  exige_referencia_conclusao: z.boolean().optional(),
   api_roles_permitidas:       z.array(apiRolePermitidaSchema).optional(),
 })
 export const tiposAdminSchema = z.array(tipoAdminSchema)
