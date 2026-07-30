@@ -13,7 +13,7 @@ import { templateSenhaProvisoria, templateNotificacaoSolicitacao } from './templ
 import { getConfigSmtp, getAppBaseUrl, _resetConfigSmtpCache } from './config'
 import {
   enviarSenhaProvisoria, enviarNotificacaoSolicitacao, enviarNotificacaoAcessoSolicitado,
-  MAX_CONEXOES_SMTP, _setEsperaRetryMs,
+  MAX_CONEXOES_SMTP, MAX_TENTATIVAS, _setEsperaRetryMs, _setOrcamentoMs,
 } from './index'
 
 const CHAVES_SMTP = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'] as const
@@ -298,7 +298,8 @@ describe('fan-out SMTP — concorrência limitada + retry (v5.3.4)', () => {
   beforeEach(() => {
     sendMailMock.mockReset()
     _resetConfigSmtpCache(); limparEnvSmtp()
-    _setEsperaRetryMs(0)   // sem espera real entre tentativas (suíte rápida e determinística)
+    _setEsperaRetryMs(0)     // sem espera real entre tentativas (suíte rápida e determinística)
+    _setOrcamentoMs(15_000)  // orçamento padrão restaurado a cada caso
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
@@ -360,13 +361,73 @@ describe('fan-out SMTP — concorrência limitada + retry (v5.3.4)', () => {
     expect(sendMailMock).toHaveBeenCalledTimes(1)
   })
 
-  it('transitório que persiste: desiste após o teto de tentativas (não trava o chamador)', async () => {
+  it('transitório que persiste: desiste em EXATAMENTE MAX_TENTATIVAS (não trava o chamador)', async () => {
     configCompleta()
     sendMailMock.mockRejectedValue(erroSmtp('432 4.3.2 limit', { responseCode: 432 }))
     const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com'], ...args })
     expect(r).toEqual({ enviados: 0, total: 1 })
-    expect(sendMailMock.mock.calls.length).toBeGreaterThan(1)
-    expect(sendMailMock.mock.calls.length).toBeLessThanOrEqual(4)
+    expect(sendMailMock).toHaveBeenCalledTimes(MAX_TENTATIVAS)
+  })
+
+  it.each(['ECONNREFUSED', 'EHOSTUNREACH', 'ENOTFOUND'])(
+    '%s (falha ANTES de enviar bytes — retry sem risco de duplicata) é retentado',
+    async code => {
+      configCompleta()
+      sendMailMock.mockRejectedValueOnce(erroSmtp('rede', { code })).mockResolvedValue({ messageId: 'ok' })
+      const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com'], ...args })
+      expect(r.enviados).toBe(1)
+      expect(sendMailMock).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  // O chamador é uma Server Action: o usuário espera a movimentação. Sem teto de tempo, o
+  // pior caso (SMTP pendurado) passaria de 90s e o usuário veria erro numa movimentação já
+  // persistida. O orçamento é gate de ENTRADA — nunca abandona envio em voo.
+  it('orçamento INTACTO (caso normal): o gate não estorva — todos saem', async () => {
+    configCompleta()
+    sendMailMock.mockImplementation(async () => {
+      await new Promise(r => setTimeout(r, 20))
+      return { messageId: 'ok' }
+    })
+    const r = await enviarNotificacaoSolicitacao({ paras: muitos, ...args })
+    expect(r).toEqual({ enviados: 6, total: 6 })
+  })
+
+  it('orçamento ESTOURADO: para de COMEÇAR envios novos e devolve parcial (não trava a action)', async () => {
+    configCompleta()
+    _setOrcamentoMs(30)   // orçamento minúsculo: estoura depois dos primeiros envios
+    sendMailMock.mockImplementation(async () => {
+      await new Promise(r => setTimeout(r, 25))
+      return { messageId: 'ok' }
+    })
+    const r = await enviarNotificacaoSolicitacao({ paras: muitos, ...args })
+    // O gate REALMENTE cortou: menos envios do que destinatários, sem lançar, com o total certo.
+    expect(r.total).toBe(6)
+    expect(r.enviados).toBeLessThan(6)
+    expect(r.enviados).toBeGreaterThan(0)          // o que começou dentro do prazo saiu
+    expect(sendMailMock.mock.calls.length).toBe(r.enviados)   // nada foi tentado após o prazo
+  })
+
+  it('orçamento ESTOURADO não afeta o retorno de contrato (nunca lança)', async () => {
+    configCompleta()
+    _setOrcamentoMs(0)   // já nasce estourado
+    sendMailMock.mockResolvedValue({ messageId: 'ok' })
+    const r = await enviarNotificacaoSolicitacao({ paras: muitos, ...args })
+    expect(r).toEqual({ enviados: 0, total: 6 })
+    expect(sendMailMock).not.toHaveBeenCalled()
+  })
+
+  it('todo envio COMEÇADO é aguardado até o fim (nunca abandonado no meio)', async () => {
+    configCompleta()
+    let iniciados = 0, terminados = 0
+    sendMailMock.mockImplementation(async () => {
+      iniciados++
+      await new Promise(r => setTimeout(r, 10))
+      terminados++
+      return { messageId: 'ok' }
+    })
+    await enviarNotificacaoSolicitacao({ paras: muitos, ...args })
+    expect(terminados).toBe(iniciados)   // nenhum sendMail ficou órfão
   })
 
   it('falha de um destinatário não impede os seguintes (best-effort preservado)', async () => {

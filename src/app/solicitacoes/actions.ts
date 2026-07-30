@@ -47,7 +47,8 @@ async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail
     }
     // 'criada' usa o criado_em; concluir/rejeitar/cancelar usam o decidido_em (quando agiu).
     const quando = movimentacao === 'criada' ? ctx.criado_em_fmt : ctx.decidido_em_fmt
-    const r = await enviarNotificacaoSolicitacao({
+    // Falha parcial é logada pela CAMADA (o rótulo lá inclui "Tipo #id") — não repetir aqui.
+    await enviarNotificacaoSolicitacao({
       paras:           ctx.envolvidos_emails,
       movimentacao,
       titulo:          `${ctx.tipo_nome ?? 'Solicitação'} #${id}`,
@@ -56,9 +57,6 @@ async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail
       quando,
       justificativa,
     })
-    if (r.enviados < r.total) {
-      console.error(`[solicitacoes] notificação #${id} (${movimentacao}): ${r.enviados}/${r.total} destinatários notificados.`)
-    }
   } catch (err) {
     // E-mail é camada ADICIONAL: jamais quebra a movimentação — mas nunca em silêncio.
     console.error(`[solicitacoes] notificação #${id} (${movimentacao}) falhou:`, err)

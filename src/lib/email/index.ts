@@ -70,23 +70,49 @@ export function anexoLogoJanus() {
 /** Teto de conexões SMTP simultâneas. 2 < 3 (limite do Office 365) = folga deliberada. */
 export const MAX_CONEXOES_SMTP = 2
 /** Tentativas por destinatário (1 original + 2 retries) para falha TRANSITÓRIA. */
-const MAX_TENTATIVAS = 3
+export const MAX_TENTATIVAS = 3
+
+/**
+ * ORÇAMENTO DE TEMPO TOTAL do fan-out (15s). O chamador é uma Server Action e o usuário está
+ * ESPERANDO a movimentação — sem teto, o pior caso (SMTP pendurado: 3 tentativas × 10s de
+ * socketTimeout + backoff, por destinatário, 2 a 2) passaria de 90s e o usuário veria erro
+ * numa movimentação que JÁ foi persistida. O orçamento é gate de ENTRADA: nunca abandona um
+ * envio em voo (abandonar é o modo de falha da v4.25.1 — a função serverless congela no meio),
+ * só deixa de COMEÇAR trabalho novo depois do prazo. Pior caso = 15s + um sendMail em voo
+ * (~10s). Caso realista: o 432 volta rápido e o fan-out todo leva poucos segundos.
+ */
+let _orcamentoMs = 15_000
 
 let _esperaRetryMs = 1_000
 /** Espera entre tentativas — sobrescrevível SÓ em teste (mantém a suíte rápida). */
 export function _setEsperaRetryMs(ms: number): void { _esperaRetryMs = ms }
+/** Orçamento total do fan-out — sobrescrevível SÓ em teste (para exercitar o gate). */
+export function _setOrcamentoMs(ms: number): void { _orcamentoMs = ms }
 
 /**
  * Falha SMTP que vale retentar: 4xx é transitório por definição (concorrência, rate limit,
- * indisponibilidade momentânea) e erro de socket/conexão sem código de resposta também.
+ * indisponibilidade momentânea) e erro de rede/socket sem código de resposta também.
  * 5xx é PERMANENTE (caixa inexistente) e EAUTH nunca se retenta — insistir com credencial
  * errada arrisca bloquear a conta.
+ *
+ * TRADE-OFF CONSCIENTE (duplicata × perda): um erro de socket pode ocorrer DEPOIS de o
+ * servidor ter aceitado a mensagem (queda entre o `250 OK` do DATA e a leitura da resposta).
+ * O SMTP não tem chave de idempotência, então o retry pode gerar UMA CÓPIA A MAIS. Para
+ * notificação interna best-effort, receber duas vezes é preferível a não receber — que é
+ * exatamente o bug que este patch corrige. Se algum dia esta camada servir e-mail
+ * IRREVERSÍVEL de cliente (fatura), a decisão se inverte e precisa de idempotência própria
+ * (é o que `registrar_email` faz no faturamento).
  */
 function transitorio(err: unknown): boolean {
   const e = err as { responseCode?: number; code?: string } | null
   if (e?.code === 'EAUTH') return false
   if (typeof e?.responseCode === 'number') return e.responseCode >= 400 && e.responseCode < 500
-  return e?.code === 'ETIMEDOUT' || e?.code === 'ECONNECTION' || e?.code === 'ESOCKET' || e?.code === 'ECONNRESET'
+  // Sem responseCode = falha de rede/conexão. As de RESOLUÇÃO/ALCANCE (ECONNREFUSED,
+  // EHOSTUNREACH, ENOTFOUND) acontecem ANTES de qualquer byte de mensagem → retry sem
+  // nenhum risco de duplicata.
+  return e?.code === 'ETIMEDOUT'   || e?.code === 'ESOCKETTIMEDOUT' || e?.code === 'ECONNECTION'
+      || e?.code === 'ESOCKET'     || e?.code === 'ECONNRESET'      || e?.code === 'ECONNREFUSED'
+      || e?.code === 'EHOSTUNREACH' || e?.code === 'ENOTFOUND'      || e?.code === 'EDNS'
 }
 
 /** Resumo do erro para o log (código do SMTP na frente — é o que identifica a causa). */
@@ -98,24 +124,33 @@ function descreverErro(err: unknown): string {
 
 const esperar = (ms: number) => new Promise<void>(r => { setTimeout(r, ms) })
 
-/** Um destinatário, com retry de falha transitória. NUNCA lança — devolve se saiu. */
+/**
+ * Um destinatário, com retry de falha transitória DENTRO do orçamento (`fim` = instante-limite).
+ * NUNCA lança — devolve se saiu.
+ */
 async function enviarUm(
   transporter: { sendMail: (opts: Record<string, unknown>) => Promise<unknown> },
   opts: Record<string, unknown>,
   rotulo: string,
+  fim: number,
 ): Promise<boolean> {
   for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
     try {
       await transporter.sendMail(opts)
       return true
     } catch (err) {
-      const vaiRetentar = tentativa < MAX_TENTATIVAS && transitorio(err)
+      const espera = _esperaRetryMs * tentativa        // backoff linear (1s, 2s)
+      const temOrcamento = Date.now() + espera < fim
+      const vaiRetentar = tentativa < MAX_TENTATIVAS && transitorio(err) && temOrcamento
+      const motivo = vaiRetentar ? ' — retentando'
+        : !transitorio(err) ? ' — desistindo (permanente)'
+        : !temOrcamento ? ' — desistindo (orçamento de tempo esgotado)'
+        : ' — desistindo (teto de tentativas)'
       console.error(
-        `[email] ${rotulo} → ${opts.to}: tentativa ${tentativa}/${MAX_TENTATIVAS} falhou` +
-        `${vaiRetentar ? ' — retentando' : ' — desistindo'}: ${descreverErro(err)}`,
+        `[email] ${rotulo} → ${opts.to}: tentativa ${tentativa}/${MAX_TENTATIVAS} falhou${motivo}: ${descreverErro(err)}`,
       )
       if (!vaiRetentar) return false
-      await esperar(_esperaRetryMs * tentativa)   // backoff linear (1s, 2s)
+      await esperar(espera)
     }
   }
   return false
@@ -123,7 +158,7 @@ async function enviarUm(
 
 /**
  * Fan-out compartilhado pelas notificações: mesma mensagem para N destinatários, no máximo
- * MAX_CONEXOES_SMTP em voo, ordem de conclusão irrelevante. NUNCA lança.
+ * MAX_CONEXOES_SMTP em voo, dentro do orçamento de tempo. Ordem de conclusão irrelevante. NUNCA lança.
  */
 async function enviarFanOut(input: {
   cfg:     ConfigSmtp
@@ -136,14 +171,20 @@ async function enviarFanOut(input: {
 }): Promise<{ enviados: number; total: number }> {
   const { cfg, paras, assunto, html, text, anexos, rotulo } = input
   const transporter = criarTransporter(cfg)
+  const fim = Date.now() + _orcamentoMs
   let proxima = 0
   let enviados = 0
+  let naoTentados = 0
   const trabalhador = async (): Promise<void> => {
     for (let i = proxima++; i < paras.length; i = proxima++) {
+      // Gate de ENTRADA do orçamento: não COMEÇA envio novo depois do prazo (o que já está
+      // em voo é sempre concluído — abandonar promise em serverless é a falha da v4.25.1).
+      if (Date.now() >= fim) { naoTentados++; continue }
       const ok = await enviarUm(
         transporter,
         { from: cfg.from, to: paras[i], subject: assunto, html, text, attachments: anexos },
         rotulo,
+        fim,
       )
       if (ok) enviados++
     }
@@ -152,7 +193,10 @@ async function enviarFanOut(input: {
     Array.from({ length: Math.min(MAX_CONEXOES_SMTP, paras.length) }, trabalhador),
   )
   if (enviados < paras.length) {
-    console.error(`[email] ${rotulo}: ${enviados}/${paras.length} enviados (falhas best-effort).`)
+    console.error(
+      `[email] ${rotulo}: ${enviados}/${paras.length} enviados (falhas best-effort` +
+      `${naoTentados > 0 ? `; ${naoTentados} não tentado(s) — orçamento de ${_orcamentoMs}ms esgotado` : ''}).`,
+    )
   }
   return { enviados, total: paras.length }
 }
@@ -214,7 +258,9 @@ export async function enviarNotificacaoSolicitacao(input: {
     return await enviarFanOut({
       cfg, paras, assunto, html, text,
       anexos: [anexoLogo(), anexoLogoJanus()],
-      rotulo: 'notificação de solicitação',
+      // O título já traz "Tipo #id" — o log da camada fica auto-suficiente (o chamador não
+      // repete a linha de falha parcial).
+      rotulo: `notificação de solicitação [${input.titulo}]`,
     })
   } catch (err) {
     console.error('[email] notificação de solicitação falhou (best-effort, ignorado):', err)
