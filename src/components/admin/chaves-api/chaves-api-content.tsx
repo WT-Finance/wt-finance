@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Ban, Pencil, Plus, ScrollText } from 'lucide-react'
-import type { Destinatarios, TipoAdmin } from '@/lib/solicitacoes/schemas'
+import { ArrowLeft, Ban, BookOpen, Pencil, Plus, ScrollText } from 'lucide-react'
+import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import type { ChaveApi, TipoDisponivel } from './tipos'
 import { TiposExpostos } from './tipos-expostos'
 import { ModalCriarChave } from './modal-criar-chave'
@@ -18,13 +18,15 @@ import Button from '@/components/ui/button'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 
-// v5.4.0/M2 (+ Round2, 2026-07-28) — conteúdo client de /admin/chaves-api ("API
+// v5.4.0/M2 (+ Round2/Round3) — conteúdo client de /admin/chaves-api ("API
 // externa"): header de navegação (volta a /admin/solicitacoes — esta rota não
-// está na sidebar, mesmo padrão de /admin/solicitacoes), a seção "Tipos
-// expostos" (exposição/equipes de destino por tipo — TiposExpostos, movida
-// para cá do antigo editor de tipos), a tabela de chaves e a orquestração dos
-// 4 modais (criar / editar / revogar / log). Dados vêm prontos da page (RSC);
-// após cada mutação, os modais/seção chamam router.refresh() antes de fechar.
+// está na sidebar, mesmo padrão de /admin/solicitacoes; Round3 acrescenta a
+// pill "Documentação", que leva à página irmã /admin/chaves-api/documentacao),
+// a seção "Tipos expostos" (TiposExpostos — Round3: virou só um toggle de
+// exposição por linha, a lista de equipes de destino por tipo morreu), a
+// tabela de chaves e a orquestração dos 4 modais (criar / editar / revogar /
+// log). Dados vêm prontos da page (RSC); após cada mutação, os modais/seção
+// chamam router.refresh() antes de fechar.
 
 type ModalState =
   | { modo: 'criar' }
@@ -45,21 +47,19 @@ export function ChavesApiContent({
   chaves,
   tipos,
   tiposAdmin,
-  roles,
   erroCarga,
 }: {
   chaves:     ChaveApi[]
   tipos:      TipoDisponivel[]
   tiposAdmin: TipoAdmin[]
-  roles:      Destinatarios['roles']
   erroCarga:  string | null
 }) {
   const router = useRouter()
   const [modal, setModal] = useState<ModalState>(null)
   const [msg, setMsg] = useState<Msg | null>(null)
 
-  /** ModalEditarChave/ModalRevogarChave/TiposExpostos chamam isto em sucesso:
-   *  fecham o modal, mostram a mensagem e recarregam a lista (RSC via
+  /** ModalEditarChave/ModalRevogarChave chamam isto em sucesso: fecham o
+   *  modal, mostram a mensagem e recarregam a lista (RSC via
    *  router.refresh()). O ModalCriarChave é diferente — refresca sozinho e só
    *  fecha ao clique explícito em "Fechar" (depois de revelar o segredo), sem
    *  mensagem extra aqui (o próprio modal já confirma o sucesso inline). */
@@ -69,14 +69,29 @@ export function ChavesApiContent({
     router.refresh()
   }
 
+  /** TiposExpostos chama isto a cada toggle (sem modal) — sucesso E erro
+   *  passam pela MESMA FaixaMensagem compartilhada desta página; só sucesso
+   *  recarrega a lista (mesmo padrão de handleArquivar em tipos-content.tsx:
+   *  erro não muda dado nenhum, não há o que recarregar). */
+  function handleTipoMudou(resultado: Msg) {
+    setMsg(resultado)
+    if (resultado.tipo === 'sucesso') router.refresh()
+  }
+
   return (
     <>
-      {/* Ações da página: "Ver solicitações" (âmbar --gestao, volta ao módulo)
-          à esquerda; "Nova chave" à direita — mesmo padrão de tipos-content.tsx. */}
+      {/* Ações da página: "Ver solicitações" + "Documentação" (âmbar --gestao,
+          volta ao módulo / leva ao contrato) à esquerda; "Nova chave" à
+          direita — mesmo padrão de tipos-content.tsx. */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <Link href="/admin/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-          <ArrowLeft size={13} /> Ver solicitações
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
+            <ArrowLeft size={13} /> Ver solicitações
+          </Link>
+          <Link href="/admin/chaves-api/documentacao" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
+            <BookOpen size={13} /> Documentação
+          </Link>
+        </div>
         <button
           type="button"
           onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}
@@ -90,7 +105,7 @@ export function ChavesApiContent({
       {erroCarga && <FaixaMensagem tipo="erro" texto={erroCarga} />}
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
 
-      <TiposExpostos tipos={tiposAdmin} roles={roles} onMudou={fecharComSucesso} />
+      <TiposExpostos tipos={tiposAdmin} onMudou={handleTipoMudou} />
 
       <CardTabela titulo="Chaves de API">
         <table className="table-fixed w-full text-sm">

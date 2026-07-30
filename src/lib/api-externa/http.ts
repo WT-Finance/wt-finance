@@ -112,8 +112,10 @@ export async function lerBodyLimitado(req: Request, maxBytes = 65536): Promise<{
 // "tudo que não bateu em outra regra") para nunca devolver 422 por engano num erro
 // realmente desconhecido — esse cai no ramo 500/ERRO_INTERNO, que não vaza detalhe.
 const PREFIXOS_VALIDACAO_422 = new Set([
+  // DESTINATARIO_NAO_PERMITIDO saiu no round 3 (migration 0216): a lista branca de
+  // equipes por tipo foi revogada — qualquer equipe existente é destino válido.
   'IDEMPOTENCIA_OBRIGATORIA', 'TIPO_INVALIDO', 'DESTINATARIO_OBRIGATORIO',
-  'DESTINATARIO_INVALIDO', 'DESTINATARIO_NAO_PERMITIDO', 'DATA_LIMITE_OBRIGATORIA',
+  'DESTINATARIO_INVALIDO', 'DATA_LIMITE_OBRIGATORIA',
   'CAMPO_DESCONHECIDO', 'TIPO_EXIGE_ANEXO', 'CAMPO_OBRIGATORIO', 'VALOR_INVALIDO',
   'PAYLOAD_INVALIDO',
 ])

@@ -33,9 +33,6 @@ export const campoDefSchema = z.object({
 })
 export type CampoDef = z.infer<typeof campoDefSchema>
 
-// Role com acesso à criação externa (rótulo para exibição no editor de tipos).
-const apiRolePermitidaSchema = z.object({ id: z.number(), nome: z.string() })
-
 // Resposta gravada (snapshot imutável por solicitação).
 export const respostaSchema = z.object({
   campo_id:    z.number(),
@@ -109,9 +106,11 @@ export const tipoAdminSchema = z.object({
   // sozinho para nenhum destes, todos toleram ausência). exige_referencia_conclusao
   // foi REMOVIDA do contrato na migration 0215 (decisão do Yan, 2026-07-28 — ver
   // Emenda no ADR-0159): a coluna no banco fica órfã, mas o app não a lê mais.
+  // api_roles_permitidas foi REMOVIDA do contrato na migration 0216 (v5.4.0/
+  // Round3, 2026-07-29 — Emenda no ADR-0160): a lista de equipes de destino
+  // POR TIPO morreu; qualquer equipe cadastrada é destino válido no disparo.
   slug:                       z.string().nullable().optional(),
   exposto_via_api:            z.boolean().optional(),
-  api_roles_permitidas:       z.array(apiRolePermitidaSchema).optional(),
 })
 export const tiposAdminSchema = z.array(tipoAdminSchema)
 export type TipoAdmin = z.infer<typeof tipoAdminSchema>

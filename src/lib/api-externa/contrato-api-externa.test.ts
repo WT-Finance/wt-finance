@@ -22,6 +22,12 @@ const hashSegredo = (s: string): string => createHash('sha256').update(s, 'utf8'
 // payload.referencia foram REMOVIDOS; o caso de outbox de conclusão permanece,
 // adaptado à assinatura nova (ver "solic_concluir (pós-0215)" abaixo).
 //
+// Round3 (2026-07-29, decisão de produto do Yan): a lista branca de equipes POR TIPO
+// (`api_roles_permitidas`) foi REVOGADA (migration 0216) — o fluxo humano nunca
+// restringiu destino por tipo. `destinatario` segue OBRIGATÓRIO e validado (equipe tem
+// que existir), mas QUALQUER equipe é destino válido; o caso que esperava
+// DESTINATARIO_NAO_PERMITIDO virou o inverso (destino livre ACEITO).
+//
 // Casos via RPC REST (service key — padrão rpc-contrato.test.ts); fixtures
 // (roles/tipo/campos/chave de teste) montadas e limpas via `pg` direto
 // (SUPABASE_DB_URL — padrão virada-paridade.test.ts), pois não há RPC de escrita
@@ -131,9 +137,9 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     roleForaId = r2.rows[0].id
 
     const t1 = await client.query(
-      `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api, api_roles_permitidas)
-       VALUES ('ZZ Teste API v5.4.0', 'zz_teste_api_v540', true, ARRAY[$1]::bigint[])
-       RETURNING id::int AS id`, [roleId])
+      `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api)
+       VALUES ('ZZ Teste API v5.4.0', 'zz_teste_api_v540', true)
+       RETURNING id::int AS id`)
     tipoId = t1.rows[0].id
 
     await client.query(
@@ -151,9 +157,9 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
 
     // 2º tipo, EXPOSTO mas fora da whitelist da chave de teste (p/ TIPO_NAO_AUTORIZADO).
     const t2 = await client.query(
-      `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api, api_roles_permitidas)
-       VALUES ('ZZ Teste API v5.4.0 (fora da whitelist)', 'zz_teste_api_v540_fora', true, ARRAY[$1]::bigint[])
-       RETURNING id::int AS id`, [roleId])
+      `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api)
+       VALUES ('ZZ Teste API v5.4.0 (fora da whitelist)', 'zz_teste_api_v540_fora', true)
+       RETURNING id::int AS id`)
     tipoForaWhitelistId = t2.rows[0].id
 
     // Robô: reaproveita um user_id JÁ cadastrado ATIVO (nunca INSERT em auth.users via
@@ -246,14 +252,19 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(prefixo(r.erro)).toBe('VALOR_INVALIDO')
   })
 
-  it('destinatário (role) fora de api_roles_permitidas do tipo → DESTINATARIO_NAO_PERMITIDO', async () => {
+  // v5.4.0/round3 (0216 — decisão do Yan 29/07): a lista branca de equipes POR TIPO morreu
+  // (o fluxo humano nunca restringiu destino por tipo). O caso que antes esperava
+  // DESTINATARIO_NAO_PERMITIDO virou o INVERSO: QUALQUER equipe existente é destino válido.
+  it('destinatário (role) que existe mas não era da lista do tipo → ACEITO (destino livre, 0216)', async () => {
     const r = await chamarRpc('criar_solicitacao_externa', {
       p_chave_id: chaveId, p_tipo_slug: 'zz_teste_api_v540', p_destinatario: 'ZZ_TESTE_API_V540_FORA',
       p_titulo: null, p_campos: { assunto: 'x', valor: '10', data_evento: '2027-01-01', categoria: 'a' },
-      p_data_limite: '2027-01-01', p_chave_idempotencia: 'zz-v540-dest-nao-permitido', p_referencia_origem: null,
+      p_data_limite: '2027-01-01', p_chave_idempotencia: 'zz-v540-dest-livre', p_referencia_origem: null,
     })
-    expect(r.ok).toBe(false)
-    expect(prefixo(r.erro)).toBe('DESTINATARIO_NAO_PERMITIDO')
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const d = r.data as { ok: boolean; id: number; destinatario: { id: number; nome: string } }
+    expect(d.destinatario.nome).toBe('ZZ_TESTE_API_V540_FORA')  // destinatário resolvido é ecoado
+    // Limpeza: o afterAll apaga por origem_chave_id (cobre esta e a outbox dela).
   })
 
   it('destinatário (role) inexistente → DESTINATARIO_INVALIDO', async () => {
@@ -306,7 +317,13 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(d.idempotente).toBe(true)
     expect(d.status).toBe('aberta') // ainda não cancelada nesta altura do teste
 
-    const cnt = await client.query(`SELECT count(*)::int n FROM app.solicitacao WHERE origem_chave_id = $1`, [chaveId])
+    // Escopo pelo PAR (chave de API, chave_idempotencia) — é exatamente o que a
+    // idempotência promete. (Contar TODAS as solicitações da chave acoplaria este caso
+    // a qualquer outro que crie solicitação válida — ex.: o de destino livre, 0216.)
+    const cnt = await client.query(
+      `SELECT count(*)::int n FROM app.solicitacao WHERE origem_chave_id = $1 AND chave_idempotencia = $2`,
+      [chaveId, IDEM_FELIZ],
+    )
     expect(cnt.rows[0].n).toBe(1)
   })
 
@@ -381,7 +398,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
         `SELECT public.admin_solic_salvar_tipo($1, $2, $3::jsonb, $4::jsonb) AS r`,
         [
           tipoId, 'ZZ Teste API v5.4.0', JSON.stringify(camposPayload),
-          JSON.stringify({ exposto_via_api: true, api_roles_permitidas: [roleId] }),
+          JSON.stringify({ exposto_via_api: true }),
         ],
       )
       await client.query('COMMIT')

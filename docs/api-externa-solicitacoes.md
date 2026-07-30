@@ -6,6 +6,11 @@
 > como fonte da integração.** O Janus é o dono do formato; a plataforma de origem se adapta a
 > este contrato. A fonte viva do contrato é o endpoint de descoberta (`GET /tipos`) — este
 > documento o espelha; em caso de dúvida, o que a descoberta devolve é a verdade.
+>
+> **Versão viva na própria plataforma:** este contrato também é exibido dentro do Janus, em
+> **Solicitações → Gerenciar → API externa → Documentação** — a página reflete o cadastro real
+> dos tipos (sempre atualizada). Este arquivo é a cópia estável para compartilhar com o
+> integrador.
 
 ---
 
@@ -40,7 +45,7 @@ Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um:
     {
       "slug": "abatimento_de_creditos",
       "nome": "Abatimento de créditos",
-      "destinos": [ { "id": 4, "nome": "Financeiro" } ],
+      "destinos": [ { "id": 3, "nome": "Comercial" }, { "id": 4, "nome": "Financeiro" }, { "id": 7, "nome": "Operações" } ],
       "campos": [
         { "chave": "valor",     "rotulo": "Valor",     "tipo_campo": "moeda",   "obrigatorio": true,  "opcoes": null, "data_permite_passado": true },
         { "chave": "moeda",     "rotulo": "Moeda",     "tipo_campo": "selecao", "obrigatorio": true,  "opcoes": ["BRL","USD","EUR"], "data_permite_passado": true },
@@ -54,7 +59,9 @@ Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um:
 - **`slug`** identifica o tipo e **`chave`** identifica cada campo — ambos **estáveis**: o Janus
   garante que edições no cadastro (renomear rótulos, reordenar, adicionar campos) **não mudam**
   slugs/chaves existentes. Programe contra eles, nunca contra rótulos.
-- **`destinos`** são as equipes válidas para o campo `destinatario` (seção 4).
+- **`destinos`** lista **todas as equipes do Janus** — são os valores válidos para o campo
+  `destinatario` (seção 4). Qualquer equipe cadastrada no Janus pode receber solicitações via
+  API, desde que o disparo a nomeie corretamente; não há lista restrita por tipo.
 - `tipo_campo` ∈ `texto_curto · texto_longo · numero · moeda · data · selecao`.
   Campo `data` com `data_permite_passado: false` recusa datas anteriores a hoje (fuso
   São Paulo). Campos de anexo não são expostos via API nesta versão.
@@ -93,10 +100,10 @@ Regras:
 
 - **`destinatario` é obrigatório e é sempre uma equipe** (role) — pelo **nome exato**
   (case-insensitive) ou pelo **`id`** numérico devolvido em `destinos` (o id é estável; o nome
-  pode ser renomeado no Janus — prefira o id). Equipe inexistente ou fora da lista do tipo →
-  **erro estruturado, nunca fallback**. O destinatário **resolvido é ecoado** na resposta e nos
-  callbacks — exiba-o ("aberto para a equipe X") e detecte erro de fila no primeiro disparo.
-  Errou a fila? **Cancele e recrie** (não existe reatribuição via API).
+  pode ser renomeado no Janus — prefira o id). Equipe inexistente → **erro estruturado, nunca
+  fallback**. O destinatário **resolvido é ecoado** na resposta e nos callbacks — exiba-o
+  ("aberto para a equipe X") e detecte erro de fila no primeiro disparo. Errou a fila?
+  **Cancele e recrie** (não existe reatribuição via API).
 - **`data_limite`** (`AAAA-MM-DD`) é obrigatória — é o prazo da tarefa (ex.: o prazo de
   pagamento do abatimento).
 - **`campos`** é um objeto `{chave: valor}` com **valores string**. Números/moeda aceitam vírgula
@@ -166,7 +173,7 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 | `JSON_INVALIDO` / `PAYLOAD_INVALIDO` | 400/422 | Corpo não é JSON válido / shape errado |
 | `TIPO_INVALIDO` | 422 | Slug inexistente, arquivado ou não exposto |
 | `IDEMPOTENCIA_OBRIGATORIA` | 422 | Falta `chave_idempotencia` |
-| `DESTINATARIO_OBRIGATORIO` / `DESTINATARIO_INVALIDO` / `DESTINATARIO_NAO_PERMITIDO` | 422 | Sem destinatário / equipe inexistente / fora da lista do tipo |
+| `DESTINATARIO_OBRIGATORIO` / `DESTINATARIO_INVALIDO` | 422 | Sem destinatário / equipe inexistente |
 | `DATA_LIMITE_OBRIGATORIA` | 422 | Falta `data_limite` |
 | `CAMPO_DESCONHECIDO` | 422 | Chave de campo que o tipo não tem |
 | `CAMPO_OBRIGATORIO` / `VALOR_INVALIDO` | 422 | Validação de campo (mesmas regras da tela) |

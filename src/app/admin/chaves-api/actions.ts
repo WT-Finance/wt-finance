@@ -164,19 +164,17 @@ export async function listarLogChaveApi(chaveId: number): Promise<LogChamada[] |
 }
 
 /**
- * v5.4.0/Round2 (2026-07-28) — salva a configuração de API de UM TIPO
- * (exposto_via_api/api_roles_permitidas), na seção "Tipos expostos" desta
- * página. Substitui o que antes vivia dentro do editor de tipos
- * (admin_solic_salvar_tipo/p_config) — esta RPC NUNCA toca nome/campos/slug.
+ * v5.4.0/Round3 (2026-07-29) — salva a exposição via API de UM TIPO, na seção
+ * "Tipos expostos" desta página. Substitui o que antes vivia dentro do editor
+ * de tipos (admin_solic_salvar_tipo/p_config) — esta RPC NUNCA toca
+ * nome/campos/slug. DECISÃO DO YAN: a lista "Equipes que podem receber via
+ * API" morreu (qualquer equipe cadastrada pode ser destinatário) — a RPC
+ * volta à assinatura de 2 parâmetros (era 3, com p_roles, no Round2).
  */
-export async function salvarConfigApiTipo(input: {
-  tipoId: number
-  exposto: boolean
-  roles:   number[]
-}): Promise<ResultadoAcao> {
+export async function salvarConfigApiTipo(tipoId: number, exposto: boolean): Promise<ResultadoAcao> {
   await requireAreaAction('solicitacoes')
   const { error } = await rpcSessao('admin_solic_tipo_api_config', {
-    p_tipo_id: input.tipoId, p_exposto: input.exposto, p_roles: input.roles,
+    p_tipo_id: tipoId, p_exposto: exposto,
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
   revalidatePath('/admin/chaves-api')

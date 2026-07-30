@@ -166,3 +166,68 @@ o Yan confirmou ter excluído achando ser o antigo. O slug canônico ficou livre
 conforme o round 2). O tipo humano antigo (id 9, `abatimento_de_creditos_2`, 1 solicitação)
 segue ativo — arquivá-lo/renomeá-lo é 1 clique do Yan. A tela nova mostra o slug exatamente
 para eliminar essa ambiguidade daqui em diante.
+
+---
+
+## Round 3 (2026-07-29/30) — decisões do Yan
+
+**Decisão 3 — a lista branca de equipes POR TIPO (`api_roles_permitidas`) foi REVOGADA.**
+Razão do Yan, endossada: **o fluxo humano nunca restringiu destino por tipo** (na tela, qualquer
+tipo vai para qualquer equipe) — manter a API mais estrita que a própria UI é assimetria sem
+justificativa, sendo o Janus dono do formato. **Permanece o núcleo do ADR-0160:** `destinatario`
+é obrigatório no disparo e validado contra as equipes existentes (inexistente → erro
+estruturado, nunca fallback) e é ecoado no ack/callbacks. Migration **0216 (ADITIVA, aplicada)**:
+`criar_solicitacao_externa` sem a checagem por tipo (o erro `DESTINATARIO_NAO_PERMITIDO` deixa
+de existir — saiu também do mapeamento HTTP e do contrato); `solic_tipos_api.destinos` passa a
+listar **todas as equipes**; `admin_solic_tipo_api_config` vira `(p_tipo_id, p_exposto)`;
+`admin_solic_listar_tipos`/`admin_solic_salvar_tipo` param de emitir/aceitar o array. Emenda
+datada no ADR-0160. A coluna `api_roles_permitidas` fica **órfã** — junta-se às duas da 0215 no
+**mesmo patch destrutivo pós-merge** (SQL atualizado abaixo).
+
+**Decisão 4 — a configuração de um tipo é só ligar/desligar.** A tabela "Tipos expostos" perdeu
+a coluna de equipes e o modal: a coluna "Exposto" é um controle direto que salva na hora
+(Checkbox + spinner na linha + faixa de resultado). Arquivo do modal removido.
+
+**Decisão 5 — documentação DENTRO da plataforma** (`/admin/chaves-api/documentacao`, pill
+"Documentação"): o contrato inteiro renderizado no DS (não há renderizador de markdown no
+projeto — é página real, com sumário e âncoras) e, o mais importante, **a seção 3 é VIVA**: lê o
+cadastro real e mostra os tipos hoje expostos com slug e a tabela de campos (chave, rótulo, tipo,
+obrigatoriedade, opções) + as equipes válidas. A documentação não desatualiza em relação ao que a
+API de fato aceita. O `docs/api-externa-solicitacoes.md` continua como a cópia para o integrador,
+apontando para a página como versão viva.
+
+### Patch destrutivo pós-merge — SQL FINAL (as TRÊS colunas órfãs)
+
+```sql
+-- v5.4.x — limpeza pós-decisões dos rounds 2 e 3. DESTRUTIVA (DROP COLUMN).
+-- Pré-condição verificada: nenhuma função lê/escreve estas colunas após as 0215/0216.
+ALTER TABLE app.solicitacao_tipo DROP COLUMN IF EXISTS exige_referencia_conclusao;
+ALTER TABLE app.solicitacao_tipo DROP COLUMN IF EXISTS api_roles_permitidas;
+ALTER TABLE app.solicitacao      DROP COLUMN IF EXISTS referencia_conclusao;
+```
+
+### Validação do round 3
+`tsc` 0 · `eslint` 0 · **`vitest` 557/557** (o caso que exigia `DESTINATARIO_NAO_PERMITIDO` virou
+o inverso — destino livre ACEITO, com o destinatário resolvido ecoado; a asserção de idempotência
+foi reescopada para o par (chave, chave_idempotencia), que é o que ela de fato promete — antes
+contava todas as solicitações da chave e ficava acoplada a qualquer caso novo) · `build` limpo ·
+smoke pós-push via REST/`service_role` + `pg` com JWT simulado em transação revertida:
+`admin_solic_tipo_api_config` responde na assinatura nova de 2 parâmetros e alterna a exposição.
+
+### ⚠️ Estado do CADASTRO em produção (observado no smoke — decisão do Yan pendente)
+
+O tipo semeado pela 0214 (9 campos do handoff) foi **excluído novamente** pelo Yan, e ele
+**expôs via API o seu próprio tipo pré-existente**: `id 9`, slug **`abatimento_de_creditos_2`**,
+com **3 campos** — `venda_que_originou_o_credito`, `motivo_do_abatimento`,
+`venda_em_que_o_credito_sera_utilizado`. Como a descoberta e a página de documentação leem o
+cadastro real, o contrato que o TARS veria hoje é **esse**, e ele **não corresponde** aos
+requisitos do handoff do Vitor (valor, moeda, categoria, fornecedor, forma de pagamento…). Nada
+foi alterado no cadastro pelo Code — é decisão de produto:
+1. o TARS passa a mandar esses 3 campos (o contrato é o do tipo 9); **ou**
+2. o tipo 9 ganha os campos do handoff (aditivo, no editor — chaves existentes preservadas); **ou**
+3. um tipo dedicado à integração volta a existir e é o exposto (o antigo fica só para uso humano).
+A migration 0214 permanece no histórico (já aplicada); ela não é reexecutada e não recria nada.
+
+**Achado cosmético:** a chave gerada para um rótulo muito longo é truncada em 60 caracteres e
+pode cortar no meio da palavra (ex.: `..._nome_fantasia_ou_cn`). Funciona (é única e estável),
+mas se o rótulo virar contrato externo vale editar a chave. Registrado, sem ação.
