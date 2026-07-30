@@ -36,25 +36,33 @@
 
 ## 3. Descoberta — `GET /api/externo/tipos`
 
-Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um:
+Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um. **Chame este
+endpoint antes de montar o POST** — ele é a verdade do contrato; o exemplo abaixo é o estado
+real em 30/07/2026:
 
 ```json
 {
   "ok": true,
   "tipos": [
     {
-      "slug": "abatimento_de_creditos",
+      "slug": "abatimento_de_creditos_2",
       "nome": "Abatimento de créditos",
-      "destinos": [ { "id": 3, "nome": "Comercial" }, { "id": 4, "nome": "Financeiro" }, { "id": 7, "nome": "Operações" } ],
+      "destinos": [
+        { "id": 1, "nome": "Administrador" }, { "id": 2, "nome": "Diretoria" },
+        { "id": 3, "nome": "Financeiro" },    { "id": 4, "nome": "Geral" },
+        { "id": 5, "nome": "Gestor" },        { "id": 6, "nome": "Recursos Humanos" }
+      ],
       "campos": [
-        { "chave": "valor",     "rotulo": "Valor",     "tipo_campo": "moeda",   "obrigatorio": true,  "opcoes": null, "data_permite_passado": true },
-        { "chave": "moeda",     "rotulo": "Moeda",     "tipo_campo": "selecao", "obrigatorio": true,  "opcoes": ["BRL","USD","EUR"], "data_permite_passado": true },
-        { "chave": "categoria", "rotulo": "Categoria", "tipo_campo": "selecao", "obrigatorio": true,  "opcoes": ["fornecedor","reembolso","adiantamento","taxa","outro"], "data_permite_passado": true }
+        { "chave": "venda_que_originou_o_credito",          "rotulo": "Venda que originou o crédito",          "tipo_campo": "texto_curto", "obrigatorio": true, "opcoes": null, "data_permite_passado": true },
+        { "chave": "motivo_do_abatimento",                  "rotulo": "Motivo do abatimento",                  "tipo_campo": "texto_longo", "obrigatorio": true, "opcoes": null, "data_permite_passado": true },
+        { "chave": "venda_em_que_o_credito_sera_utilizado", "rotulo": "Venda em que o crédito será utilizado", "tipo_campo": "texto_curto", "obrigatorio": true, "opcoes": null, "data_permite_passado": true }
       ]
     }
   ]
 }
 ```
+
+> **Os `id` das equipes acima são ilustrativos** — use os que a SUA chamada devolver.
 
 - **`slug`** identifica o tipo e **`chave`** identifica cada campo — ambos **estáveis**: o Janus
   garante que edições no cadastro (renomear rótulos, reordenar, adicionar campos) **não mudam**
@@ -70,20 +78,15 @@ Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um:
 
 ```json
 {
-  "tipo": "abatimento_de_creditos",
+  "tipo": "abatimento_de_creditos_2",
   "chave_idempotencia": "pedido-b1e2c3d4",
-  "titulo": "DW | Ana & Bruno — decoração, sinal de 30%",
+  "titulo": "DW | Ana & Bruno — abatimento de crédito",
   "destinatario": "Financeiro",
-  "data_limite": "2026-07-25",
+  "data_limite": "2026-08-15",
   "campos": {
-    "valor": "1500,00",
-    "moeda": "BRL",
-    "categoria": "fornecedor",
-    "descricao": "Pagar decoração — sinal de 30%",
-    "fornecedor": "Flores & Cia",
-    "forma_pagamento": "PIX",
-    "urgencia": "normal",
-    "solicitante_origem": "Camila Seixas"
+    "venda_que_originou_o_credito": "72549",
+    "motivo_do_abatimento": "Crédito de hospedagem cancelada, a ser usado na nova reserva do casal.",
+    "venda_em_que_o_credito_sera_utilizado": "73104"
   },
   "referencia_origem": "b1e2c3d4-…"
 }
@@ -137,7 +140,7 @@ Payload:
 
 ```json
 { "evento": "solicitacao.concluida", "solicitacao_id": 123,
-  "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
+  "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos_2",
   "status": "concluida", "destinatario": { "id": 4, "nome": "Financeiro" },
   "ocorrido_em": "2026-07-25T14:03:00-03:00" }
 ```

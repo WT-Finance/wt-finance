@@ -222,11 +222,23 @@ com **3 campos** — `venda_que_originou_o_credito`, `motivo_do_abatimento`,
 `venda_em_que_o_credito_sera_utilizado`. Como a descoberta e a página de documentação leem o
 cadastro real, o contrato que o TARS veria hoje é **esse**, e ele **não corresponde** aos
 requisitos do handoff do Vitor (valor, moeda, categoria, fornecedor, forma de pagamento…). Nada
-foi alterado no cadastro pelo Code — é decisão de produto:
-1. o TARS passa a mandar esses 3 campos (o contrato é o do tipo 9); **ou**
-2. o tipo 9 ganha os campos do handoff (aditivo, no editor — chaves existentes preservadas); **ou**
-3. um tipo dedicado à integração volta a existir e é o exposto (o antigo fica só para uso humano).
-A migration 0214 permanece no histórico (já aplicada); ela não é reexecutada e não recria nada.
+foi alterado no cadastro pelo Code.
+
+**DECIDIDO pelo Yan (30/07): o contrato é o que está exposto** — o TARS se adapta e manda os 3
+campos do tipo 9 (`venda_que_originou_o_credito`, `motivo_do_abatimento`,
+`venda_em_que_o_credito_sera_utilizado`), com destinatário livre entre as equipes. O
+`docs/api-externa-solicitacoes.md` foi reescrito com ESSE contrato (exemplos de descoberta,
+criação e callback usando o slug `abatimento_de_creditos_2` e as 3 chaves reais); a página de
+documentação da plataforma já refletia o cadastro sozinha. **A migration 0214 (seed de 9 campos)
+fica como registro histórico** — já aplicada, não reexecuta, e o tipo que ela criou não existe
+mais; nenhuma ação necessária.
+
+**Cosmético em aberto (não bloqueia):** o slug do tipo exposto carrega o sufixo de dedup
+(`abatimento_de_creditos_2`), herdado do retrofit quando havia dois homônimos — o canônico
+`abatimento_de_creditos` está livre. O slug é imutável por invariante (ADR-0159) para proteger
+contratos externos; como NENHUM integrador está ligado ainda, uma correção única antes da
+primeira integração seria segura (migration aditiva de 1 linha). Decisão do Yan; sem ela, o
+contrato vive com o `_2`, que é apenas feio, não errado.
 
 **Achado cosmético:** a chave gerada para um rótulo muito longo é truncada em 60 caracteres e
 pode cortar no meio da palavra (ex.: `..._nome_fantasia_ou_cn`). Funciona (é única e estável),
