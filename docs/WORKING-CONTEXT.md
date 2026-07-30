@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-28 · v5.4.0 (API Externa de Solicitações) — checklist de merge EXECUTADO (renumeração 0210–0214/ADRs 0158–0161 + migration repair); PR #191 PRONTO para o merge do Yan
+Última atualização: 2026-07-30 · v5.4.0 (API Externa de Solicitações) — PR #191 reconciliado com a v5.3.4 e PRONTO para o merge do Yan
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,7 +9,25 @@
 
 ## Verdade atual
 
-- Versão em produção (main): **`5.3.3`** (#199 mergeado 28/07 às 17h18) — patch de Rota C que
+- Versão em produção (main): **`5.3.4`** (#201 mergeado 30/07 às 12h46) — bug relatado em produção: os e-mails de
+  notificação das Solicitações chegavam de forma **intermitente**. Causa-raiz **provada** por log de
+  produção (`3/5 enviados`): o fan-out fazia `Promise.allSettled` sobre TODOS os destinatários com
+  transporter **sem pool** = uma conexão SMTP por destinatário ao mesmo tempo, e o **Office 365
+  recusa acima de 3 simultâneas por mailbox** (`432 4.3.2`). Quem ficava sem e-mail variava a cada
+  disparo. Corrigido com `enviarFanOut` compartilhado (concorrência ≤ **`MAX_CONEXOES_SMTP` = 2**,
+  abaixo de 3 de propósito) + retry só de falha **transitória** (nunca 5xx nem `EAUTH`). O `catch {}`
+  **mudo** de `notificarMovimentacao` passou a logar — foi o silêncio que atrasou o diagnóstico.
+  Guard novo mede o **pico de envios simultâneos** e foi visto **reprovando** o código antigo.
+  Skill `email` corrigida (a orientação antiga, "`allSettled` em paralelo", **induzia ao bug**).
+  Sem migration, sem UI. 541 testes. Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-3-4_Email_Intermitente.md`. Worktree e branch já
+  limpas (`/pos-merge` executado).
+  **Pós-merge:** o Yan relatou que "parece estar funcionando" (30/07, pouco depois do merge) — o
+  sintoma cessou. A prova DURA segue valendo quando houver oportunidade: uma movimentação com role
+  de 5+ membros e o log mostrando `5/5` (ou nenhuma linha de falha). **Ainda aberto:** o limite de
+  **30 msgs/min** do Office 365 — role com 30+ membros ativos encosta nele, e a saída seria de
+  PRODUTO (um e-mail com todos em cópia em vez de N), decisão do Yan.
+- A v5.3.3 (#199 mergeado 28/07 às 17h18) foi o patch de Rota C que
   isentou `fonts/` no matcher do `src/proxy.ts` (por PREFIXO de diretório, nunca por extensão — a
   lição S11): as telas SEM sessão voltaram a renderizar Avenir, onde o proxy respondia `307`/HTML
   do login no lugar do `.otf` e o browser caía em fonte de sistema. **As telas afetadas eram 3:
@@ -35,9 +53,13 @@
   testes verdes.
 - Último ADR registrado: **`0161`** (v5.4.0: 0158 categoria de confiança da API externa ·
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
-- Última migration: **`0214`** (v5.4.0 renumerada 0210–0214 e realinhada no histórico via
-  `migration repair` — as cópias untracked 0950–0954 morreram; o passo 4 do `/nova-versao` não é
-  mais necessário). **Próxima migration livre: `0215`.** Aditiva nova volta ao `--aditiva` normal.
+- Última migration: **`0216`** (v5.4.0: 0210–0214 renumeradas + `migration repair`; 0215 e 0216 são
+  os dois rounds de decisões do Yan — extirpação da referência de conclusão e destino livre por
+  tipo). **Próxima migration livre: `0217`.** Aditiva nova volta ao `--aditiva` normal.
+- **v5.4.0 (PR #191) PRONTO:** reconciliado com o main da v5.3.4 (inclusive alinhando as rotas
+  externas ao "nunca em silêncio" do fan-out). Falta só o merge. **Pós-merge:** patch destrutivo
+  das 3 colunas órfãs (SQL no out-briefing, TTY do Yan) + criar a chave da integração na tela
+  "API externa" e entregar `docs/api-externa-solicitacoes.md` ao integrador.
 - **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro — pendência de
   billing do Yan, herdada da v5.2.0.
 
@@ -66,7 +88,10 @@
 - **Faturamento roda em MODO TESTE** — flip de produção é decisão do Yan (dupla trava construída).
 - **Virada Monde APLICADA (v5.1.4):** 7 funções PURA-mv no espelho; upload ainda é a única fonte
   de `get_mix_produto`/`get_cagr` e das telas de Weddings. **NÃO parar o upload** (Scope B resolve).
-- **`SMTP_*` na Vercel** — sem eles, notificações por e-mail degradam em silêncio.
+- ~~**`SMTP_*` na Vercel**~~ — **RESOLVIDO na prática (provado na v5.3.4):** o log de produção
+  `[email] notificação de solicitação: 3/5 enviados` só existe com SMTP configurado (sem as
+  variáveis, `getConfigSmtp()` devolve `null` e nada é tentado). Segue valendo o cuidado geral: a
+  camada de e-mail é fallback-safe e **degrada** — por isso o caller agora loga (v5.3.4).
 - **% Rec no Cadastro de Metas** — alvos nascem vazios; cards mostram "—" até o Yan digitar.
 - Favicon/símbolo Janus adiado (reprovado no gate de legibilidade 16/32px).
 

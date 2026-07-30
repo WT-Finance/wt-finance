@@ -34,7 +34,14 @@ function comoResultadoCancelamento(data: unknown): ResultadoCancelamento | null 
 async function notificarCancelamento(id: number): Promise<void> {
   try {
     const ctx = await getEmailsEnvolvidosSvc(id)
-    if (!ctx || ctx.envolvidos_emails.length === 0) return
+    if (!ctx) {
+      console.error(`[api-externa] notificação #${id} (cancelada): sem contexto de envolvidos (RPC falhou) — e-mail não enviado.`)
+      return
+    }
+    if (ctx.envolvidos_emails.length === 0) {
+      console.error(`[api-externa] notificação #${id} (cancelada): nenhum envolvido com e-mail — nada enviado.`)
+      return
+    }
     await enviarNotificacaoSolicitacao({
       paras:           ctx.envolvidos_emails,
       movimentacao:    'cancelada',
@@ -43,7 +50,12 @@ async function notificarCancelamento(id: number): Promise<void> {
       autorRotulo:     ctx.autor_rotulo ?? '—',
       quando:          ctx.decidido_em_fmt,
     })
-  } catch { /* e-mail é camada ADICIONAL: jamais quebra a resposta ao integrador */ }
+  } catch (err) {
+    // E-mail é camada ADICIONAL: jamais quebra a resposta ao integrador — mas nunca
+    // em silêncio (lição da v5.3.4: o `catch {}` mudo atrasou o diagnóstico do
+    // fan-out intermitente).
+    console.error(`[api-externa] notificação #${id} (cancelada) falhou:`, err)
+  }
 }
 
 export async function POST(

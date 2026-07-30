@@ -46,6 +46,17 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     ],
   },
   {
+    versao: '5.3.4',
+    data: '2026-07-30T12:46', // horário REAL do merge (75798bd, 15:46:16Z −03) — reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Os avisos por e-mail das Solicitações voltaram a chegar a todos os envolvidos. Quando uma solicitação era criada, concluída, rejeitada ou cancelada, parte das pessoas simplesmente não recebia o aviso — e quem ficava de fora mudava a cada vez, porque o servidor de e-mail da Microsoft recusa disparos em excesso feitos no mesmo instante. Agora os avisos saem em ritmo controlado, com nova tentativa automática quando o servidor recusa por sobrecarga momentânea. Nenhuma solicitação chegou a se perder: o aviso por e-mail é uma camada extra, e a solicitação sempre ficou registrada e visível na plataforma.',
+      },
+    ],
+  },
+  {
     versao: '5.3.3',
     data: '2026-07-28T17:18', // horário REAL do merge (e3677a5, 20:18:02Z −03) — reconciliado no /pos-merge
     itens: [
