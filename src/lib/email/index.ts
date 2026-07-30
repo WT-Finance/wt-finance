@@ -52,6 +52,111 @@ export function anexoLogoJanus() {
   }
 }
 
+// ── v5.3.4 — Fan-out com CONCORRÊNCIA LIMITADA + retry de falha transitória ───
+//
+// POR QUE: o SMTP AUTH do Office 365 aceita no MÁXIMO 3 conexões simultâneas por mailbox
+// (a 4ª leva `432 4.3.2 STOREDRV.ClientSubmit; sender thread limit exceeded`) e 30
+// mensagens/min. O fan-out original disparava `Promise.allSettled` sobre TODOS os
+// destinatários com um transporter sem pool — uma conexão por destinatário AO MESMO TEMPO.
+// Com 4+ envolvidos, parte dos e-mails era recusada e QUEM ficava sem variava a cada
+// disparo: a intermitência relatada em produção (log real: "3/5 enviados" — exatamente o
+// teto de 3 conexões). O lote de faturas já era serializado com intervalo
+// (revisar-envio-modal.tsx); o fan-out das notificações era a exceção.
+//
+// A semântica BEST-EFFORT não muda (a falha de um destinatário não derruba os outros nem o
+// chamador) — muda só o RITMO: no máximo MAX_CONEXOES_SMTP em voo, deixando folga na cota
+// da mailbox para os envios de outras requisições (senha provisória, fatura).
+
+/** Teto de conexões SMTP simultâneas. 2 < 3 (limite do Office 365) = folga deliberada. */
+export const MAX_CONEXOES_SMTP = 2
+/** Tentativas por destinatário (1 original + 2 retries) para falha TRANSITÓRIA. */
+const MAX_TENTATIVAS = 3
+
+let _esperaRetryMs = 1_000
+/** Espera entre tentativas — sobrescrevível SÓ em teste (mantém a suíte rápida). */
+export function _setEsperaRetryMs(ms: number): void { _esperaRetryMs = ms }
+
+/**
+ * Falha SMTP que vale retentar: 4xx é transitório por definição (concorrência, rate limit,
+ * indisponibilidade momentânea) e erro de socket/conexão sem código de resposta também.
+ * 5xx é PERMANENTE (caixa inexistente) e EAUTH nunca se retenta — insistir com credencial
+ * errada arrisca bloquear a conta.
+ */
+function transitorio(err: unknown): boolean {
+  const e = err as { responseCode?: number; code?: string } | null
+  if (e?.code === 'EAUTH') return false
+  if (typeof e?.responseCode === 'number') return e.responseCode >= 400 && e.responseCode < 500
+  return e?.code === 'ETIMEDOUT' || e?.code === 'ECONNECTION' || e?.code === 'ESOCKET' || e?.code === 'ECONNRESET'
+}
+
+/** Resumo do erro para o log (código do SMTP na frente — é o que identifica a causa). */
+function descreverErro(err: unknown): string {
+  const e = err as { responseCode?: number; code?: string; message?: string } | null
+  const cod = [e?.responseCode, e?.code].filter(Boolean).join('/')
+  return `${cod ? `[${cod}] ` : ''}${e?.message ?? String(err)}`
+}
+
+const esperar = (ms: number) => new Promise<void>(r => { setTimeout(r, ms) })
+
+/** Um destinatário, com retry de falha transitória. NUNCA lança — devolve se saiu. */
+async function enviarUm(
+  transporter: { sendMail: (opts: Record<string, unknown>) => Promise<unknown> },
+  opts: Record<string, unknown>,
+  rotulo: string,
+): Promise<boolean> {
+  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+    try {
+      await transporter.sendMail(opts)
+      return true
+    } catch (err) {
+      const vaiRetentar = tentativa < MAX_TENTATIVAS && transitorio(err)
+      console.error(
+        `[email] ${rotulo} → ${opts.to}: tentativa ${tentativa}/${MAX_TENTATIVAS} falhou` +
+        `${vaiRetentar ? ' — retentando' : ' — desistindo'}: ${descreverErro(err)}`,
+      )
+      if (!vaiRetentar) return false
+      await esperar(_esperaRetryMs * tentativa)   // backoff linear (1s, 2s)
+    }
+  }
+  return false
+}
+
+/**
+ * Fan-out compartilhado pelas notificações: mesma mensagem para N destinatários, no máximo
+ * MAX_CONEXOES_SMTP em voo, ordem de conclusão irrelevante. NUNCA lança.
+ */
+async function enviarFanOut(input: {
+  cfg:     ConfigSmtp
+  paras:   string[]
+  assunto: string
+  html:    string
+  text:    string
+  anexos:  ReturnType<typeof anexoLogo>[]
+  rotulo:  string
+}): Promise<{ enviados: number; total: number }> {
+  const { cfg, paras, assunto, html, text, anexos, rotulo } = input
+  const transporter = criarTransporter(cfg)
+  let proxima = 0
+  let enviados = 0
+  const trabalhador = async (): Promise<void> => {
+    for (let i = proxima++; i < paras.length; i = proxima++) {
+      const ok = await enviarUm(
+        transporter,
+        { from: cfg.from, to: paras[i], subject: assunto, html, text, attachments: anexos },
+        rotulo,
+      )
+      if (ok) enviados++
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(MAX_CONEXOES_SMTP, paras.length) }, trabalhador),
+  )
+  if (enviados < paras.length) {
+    console.error(`[email] ${rotulo}: ${enviados}/${paras.length} enviados (falhas best-effort).`)
+  }
+  return { enviados, total: paras.length }
+}
+
 /** Senha provisória (criação/reset) — 1 destinatário. Retorna boolean, NUNCA lança. */
 export async function enviarSenhaProvisoria(input: {
   para:  string
@@ -78,7 +183,8 @@ export async function enviarSenhaProvisoria(input: {
 /**
  * v4.25.0 — Notificação de movimentação de Solicitação. Mesmo e-mail para TODOS os
  * envolvidos (autor + destinatário/membros da role). FAN-OUT BEST-EFFORT: um envio por
- * destinatário em paralelo; a falha de um NÃO derruba os outros nem o chamador. NUNCA
+ * destinatário, no máximo MAX_CONEXOES_SMTP em voo (v5.3.4 — o Office 365 recusa acima de
+ * 3 conexões simultâneas); a falha de um NÃO derruba os outros nem o chamador. NUNCA
  * lança (sem config → 0 enviados). Link → caixa /solicitacoes (getAppBaseUrl), sem deep-link.
  */
 export async function enviarNotificacaoSolicitacao(input: {
@@ -105,16 +211,11 @@ export async function enviarNotificacaoSolicitacao(input: {
       justificativa:   input.justificativa,
       link:            base ? `${base}/solicitacoes` : null,
     })
-    const transporter = criarTransporter(cfg)
-    const anexos = [anexoLogo(), anexoLogoJanus()]
-    const r = await Promise.allSettled(paras.map(para =>
-      transporter.sendMail({ from: cfg.from, to: para, subject: assunto, html, text, attachments: anexos }),
-    ))
-    const enviados = r.filter(x => x.status === 'fulfilled').length
-    if (enviados < paras.length) {
-      console.error(`[email] notificação de solicitação: ${enviados}/${paras.length} enviados (falhas best-effort).`)
-    }
-    return { enviados, total: paras.length }
+    return await enviarFanOut({
+      cfg, paras, assunto, html, text,
+      anexos: [anexoLogo(), anexoLogoJanus()],
+      rotulo: 'notificação de solicitação',
+    })
   } catch (err) {
     console.error('[email] notificação de solicitação falhou (best-effort, ignorado):', err)
     return { enviados: 0, total: paras.length }
@@ -123,8 +224,9 @@ export async function enviarNotificacaoSolicitacao(input: {
 
 /**
  * v5.0.1 — Notificação de NOVA SOLICITAÇÃO DE ACESSO para os administradores de Usuários &
- * Acessos. Mesmo e-mail para todos (fan-out best-effort, um envio por destinatário em paralelo;
- * a falha de um não derruba os outros nem o chamador). NUNCA lança (sem config → 0 enviados).
+ * Acessos. Mesmo e-mail para todos (fan-out best-effort com concorrência limitada a
+ * MAX_CONEXOES_SMTP; a falha de um não derruba os outros nem o chamador). NUNCA lança
+ * (sem config → 0 enviados).
  * Link → /admin/acessos (getAppBaseUrl). `quando` já vem formatado pelo chamador.
  */
 export async function enviarNotificacaoAcessoSolicitado(input: {
@@ -144,16 +246,11 @@ export async function enviarNotificacaoAcessoSolicitado(input: {
       quando:           input.quando,
       link:             base ? `${base}/admin/acessos` : null,
     })
-    const transporter = criarTransporter(cfg)
-    const anexos = [anexoLogo(), anexoLogoJanus()]
-    const r = await Promise.allSettled(paras.map(para =>
-      transporter.sendMail({ from: cfg.from, to: para, subject: assunto, html, text, attachments: anexos }),
-    ))
-    const enviados = r.filter(x => x.status === 'fulfilled').length
-    if (enviados < paras.length) {
-      console.error(`[email] notificação de acesso: ${enviados}/${paras.length} enviados (falhas best-effort).`)
-    }
-    return { enviados, total: paras.length }
+    return await enviarFanOut({
+      cfg, paras, assunto, html, text,
+      anexos: [anexoLogo(), anexoLogoJanus()],
+      rotulo: 'notificação de acesso',
+    })
   } catch (err) {
     console.error('[email] notificação de acesso falhou (best-effort, ignorado):', err)
     return { enviados: 0, total: paras.length }

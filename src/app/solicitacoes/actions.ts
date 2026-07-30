@@ -29,16 +29,25 @@ async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ d
 /**
  * v4.25.0 — Notifica por e-mail os ENVOLVIDOS (autor + destinatário/membros da role)
  * após uma movimentação. FALLBACK-SAFE: NUNCA lança nem bloqueia a movimentação — RPC
- * de fan-out ou SMTP indisponível/erro são silenciosamente ignorados (o e-mail é camada
+ * de fan-out ou SMTP indisponível/erro NÃO derrubam a movimentação (o e-mail é camada
  * ADICIONAL). Chamada SÓ APÓS a movimentação já ter sido persistida (RPC sem erro).
+ * v5.3.4: a falha é LOGADA (o catch era mudo — uma falha aqui ficava invisível, inclusive
+ * a da RPC de destinatários; foi o que atrasou o diagnóstico do e-mail intermitente).
  */
 async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail, justificativa?: string | null): Promise<void> {
   try {
     const ctx = await getEmailsEnvolvidos(id)
-    if (!ctx || ctx.envolvidos_emails.length === 0) return
+    if (!ctx) {
+      console.error(`[solicitacoes] notificação #${id} (${movimentacao}): sem contexto de envolvidos (RPC falhou ou sem acesso) — e-mail não enviado.`)
+      return
+    }
+    if (ctx.envolvidos_emails.length === 0) {
+      console.error(`[solicitacoes] notificação #${id} (${movimentacao}): nenhum envolvido com e-mail — nada enviado.`)
+      return
+    }
     // 'criada' usa o criado_em; concluir/rejeitar/cancelar usam o decidido_em (quando agiu).
     const quando = movimentacao === 'criada' ? ctx.criado_em_fmt : ctx.decidido_em_fmt
-    await enviarNotificacaoSolicitacao({
+    const r = await enviarNotificacaoSolicitacao({
       paras:           ctx.envolvidos_emails,
       movimentacao,
       titulo:          `${ctx.tipo_nome ?? 'Solicitação'} #${id}`,
@@ -47,7 +56,13 @@ async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail
       quando,
       justificativa,
     })
-  } catch { /* e-mail é camada ADICIONAL: jamais quebra a movimentação */ }
+    if (r.enviados < r.total) {
+      console.error(`[solicitacoes] notificação #${id} (${movimentacao}): ${r.enviados}/${r.total} destinatários notificados.`)
+    }
+  } catch (err) {
+    // E-mail é camada ADICIONAL: jamais quebra a movimentação — mas nunca em silêncio.
+    console.error(`[solicitacoes] notificação #${id} (${movimentacao}) falhou:`, err)
+  }
 }
 
 /** v4.20.0 — detalhe de uma solicitação p/ a página de auditoria de Movimentações (gestão-only):

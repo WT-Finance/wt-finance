@@ -11,7 +11,10 @@ vi.mock('nodemailer', () => ({
 
 import { templateSenhaProvisoria, templateNotificacaoSolicitacao } from './template'
 import { getConfigSmtp, getAppBaseUrl, _resetConfigSmtpCache } from './config'
-import { enviarSenhaProvisoria, enviarNotificacaoSolicitacao } from './index'
+import {
+  enviarSenhaProvisoria, enviarNotificacaoSolicitacao, enviarNotificacaoAcessoSolicitado,
+  MAX_CONEXOES_SMTP, _setEsperaRetryMs,
+} from './index'
 
 const CHAVES_SMTP = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'] as const
 function limparEnvSmtp() { CHAVES_SMTP.forEach(k => { delete process.env[k] }) }
@@ -263,5 +266,116 @@ describe('enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança', (
     const r = await enviarNotificacaoSolicitacao({ paras: [], ...args })
     expect(r).toEqual({ enviados: 0, total: 0 })
     expect(sendMailMock).not.toHaveBeenCalled()
+  })
+})
+
+// ── v5.3.4 — GUARD do limite de conexões do Office 365 ────────────────────────
+// Bug real em produção: o fan-out abria uma conexão SMTP por destinatário DE UMA VEZ e o
+// Office 365 recusa acima de 3 simultâneas por mailbox (432 4.3.2) — log de produção
+// "3/5 enviados", exatamente o teto. Quem ficava sem e-mail variava a cada disparo.
+describe('fan-out SMTP — concorrência limitada + retry (v5.3.4)', () => {
+  const args = { movimentacao: 'criada' as const, titulo: 'T #1', atribuidoRotulo: 'Financeiro', autorRotulo: 'Yan Vieira' }
+  const muitos = ['a@x.com', 'b@x.com', 'c@x.com', 'd@x.com', 'e@x.com', 'f@x.com']
+
+  /** Erro no formato do nodemailer (o `responseCode` é o que distingue transitório de permanente). */
+  function erroSmtp(msg: string, extra: Record<string, unknown>) {
+    return Object.assign(new Error(msg), extra)
+  }
+
+  /** sendMail que mede o PICO de envios simultâneos em voo. */
+  function mockMedindoConcorrencia() {
+    const medida = { emVoo: 0, pico: 0 }
+    sendMailMock.mockImplementation(async () => {
+      medida.emVoo++
+      medida.pico = Math.max(medida.pico, medida.emVoo)
+      await new Promise(r => setTimeout(r, 5))
+      medida.emVoo--
+      return { messageId: 'ok' }
+    })
+    return medida
+  }
+
+  beforeEach(() => {
+    sendMailMock.mockReset()
+    _resetConfigSmtpCache(); limparEnvSmtp()
+    _setEsperaRetryMs(0)   // sem espera real entre tentativas (suíte rápida e determinística)
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  it('o teto de conexões fica ABAIXO do limite de 3 do Office 365 (com folga)', () => {
+    expect(MAX_CONEXOES_SMTP).toBeLessThan(3)
+    expect(MAX_CONEXOES_SMTP).toBeGreaterThanOrEqual(1)
+  })
+
+  it('6 destinatários → nunca mais de MAX_CONEXOES_SMTP em voo, e TODOS recebem', async () => {
+    configCompleta()
+    const medida = mockMedindoConcorrencia()
+    const r = await enviarNotificacaoSolicitacao({ paras: muitos, ...args })
+    expect(r).toEqual({ enviados: 6, total: 6 })
+    expect(medida.pico).toBeLessThanOrEqual(MAX_CONEXOES_SMTP)
+  })
+
+  it('mesmo teto vale para a notificação de acesso solicitado', async () => {
+    configCompleta()
+    const medida = mockMedindoConcorrencia()
+    const r = await enviarNotificacaoAcessoSolicitado({ paras: muitos, emailSolicitante: 'novo@x.com' })
+    expect(r).toEqual({ enviados: 6, total: 6 })
+    expect(medida.pico).toBeLessThanOrEqual(MAX_CONEXOES_SMTP)
+  })
+
+  it('432 4.3.2 (transitório) é RETENTADO e o destinatário acaba recebendo', async () => {
+    configCompleta()
+    sendMailMock
+      .mockRejectedValueOnce(erroSmtp('432 4.3.2 STOREDRV.ClientSubmit; sender thread limit exceeded', { responseCode: 432 }))
+      .mockResolvedValue({ messageId: 'ok' })
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com'], ...args })
+    expect(r).toEqual({ enviados: 1, total: 1 })
+    expect(sendMailMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('timeout de socket (sem responseCode) também é retentado', async () => {
+    configCompleta()
+    sendMailMock
+      .mockRejectedValueOnce(erroSmtp('Connection timeout', { code: 'ETIMEDOUT' }))
+      .mockResolvedValue({ messageId: 'ok' })
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com'], ...args })
+    expect(r.enviados).toBe(1)
+    expect(sendMailMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('erro PERMANENTE (550 caixa inexistente) NÃO é retentado', async () => {
+    configCompleta()
+    sendMailMock.mockRejectedValue(erroSmtp('550 5.1.1 User unknown', { responseCode: 550 }))
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com'], ...args })
+    expect(r).toEqual({ enviados: 0, total: 1 })
+    expect(sendMailMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('EAUTH NÃO é retentado (insistir com credencial errada arrisca bloquear a conta)', async () => {
+    configCompleta()
+    sendMailMock.mockRejectedValue(erroSmtp('Invalid login', { code: 'EAUTH', responseCode: 535 }))
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com'], ...args })
+    expect(r).toEqual({ enviados: 0, total: 1 })
+    expect(sendMailMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('transitório que persiste: desiste após o teto de tentativas (não trava o chamador)', async () => {
+    configCompleta()
+    sendMailMock.mockRejectedValue(erroSmtp('432 4.3.2 limit', { responseCode: 432 }))
+    const r = await enviarNotificacaoSolicitacao({ paras: ['a@x.com'], ...args })
+    expect(r).toEqual({ enviados: 0, total: 1 })
+    expect(sendMailMock.mock.calls.length).toBeGreaterThan(1)
+    expect(sendMailMock.mock.calls.length).toBeLessThanOrEqual(4)
+  })
+
+  it('falha de um destinatário não impede os seguintes (best-effort preservado)', async () => {
+    configCompleta()
+    sendMailMock.mockImplementation(async (opts: { to: string }) => {
+      if (opts.to === 'c@x.com') throw erroSmtp('550 5.1.1 User unknown', { responseCode: 550 })
+      return { messageId: 'ok' }
+    })
+    const r = await enviarNotificacaoSolicitacao({ paras: muitos, ...args })
+    expect(r).toEqual({ enviados: 5, total: 6 })
   })
 })
