@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-28 (17h25) · v5.3.3 MERGEADA (#199, 17h18) — Avenir de volta nas telas públicas; worktree e branch limpas
+Última atualização: 2026-07-30 (12h30) · v5.3.4 EM PR (Rota C) — e-mail intermitente das Solicitações: causa-raiz provada (teto de 3 conexões SMTP do Office 365) e corrigida
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,6 +9,20 @@
 
 ## Verdade atual
 
+- **v5.3.4 EM PR (Rota C, aguardando merge do Yan)** — bug relatado em produção: os e-mails de
+  notificação das Solicitações chegavam de forma **intermitente**. Causa-raiz **provada** por log de
+  produção (`3/5 enviados`): o fan-out fazia `Promise.allSettled` sobre TODOS os destinatários com
+  transporter **sem pool** = uma conexão SMTP por destinatário ao mesmo tempo, e o **Office 365
+  recusa acima de 3 simultâneas por mailbox** (`432 4.3.2`). Quem ficava sem e-mail variava a cada
+  disparo. Corrigido com `enviarFanOut` compartilhado (concorrência ≤ **`MAX_CONEXOES_SMTP` = 2**,
+  abaixo de 3 de propósito) + retry só de falha **transitória** (nunca 5xx nem `EAUTH`). O `catch {}`
+  **mudo** de `notificarMovimentacao` passou a logar — foi o silêncio que atrasou o diagnóstico.
+  Guard novo mede o **pico de envios simultâneos** e foi visto **reprovando** o código antigo.
+  Skill `email` corrigida (a orientação antiga, "`allSettled` em paralelo", **induzia ao bug**).
+  Sem migration, sem UI. 534 testes. Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-3-4_Email_Intermitente.md`.
+  **Pós-merge:** confirmar em produção uma movimentação com role de 5+ membros (log deve mostrar
+  `5/5` ou nenhuma linha de falha).
 - Versão em produção (main): **`5.3.3`** (#199 mergeado 28/07 às 17h18) — patch de Rota C que
   isentou `fonts/` no matcher do `src/proxy.ts` (por PREFIXO de diretório, nunca por extensão — a
   lição S11): as telas SEM sessão voltaram a renderizar Avenir, onde o proxy respondia `307`/HTML
@@ -65,7 +79,10 @@
 - **Faturamento roda em MODO TESTE** — flip de produção é decisão do Yan (dupla trava construída).
 - **Virada Monde APLICADA (v5.1.4):** 7 funções PURA-mv no espelho; upload ainda é a única fonte
   de `get_mix_produto`/`get_cagr` e das telas de Weddings. **NÃO parar o upload** (Scope B resolve).
-- **`SMTP_*` na Vercel** — sem eles, notificações por e-mail degradam em silêncio.
+- ~~**`SMTP_*` na Vercel**~~ — **RESOLVIDO na prática (provado na v5.3.4):** o log de produção
+  `[email] notificação de solicitação: 3/5 enviados` só existe com SMTP configurado (sem as
+  variáveis, `getConfigSmtp()` devolve `null` e nada é tentado). Segue valendo o cuidado geral: a
+  camada de e-mail é fallback-safe e **degrada** — por isso o caller agora loga (v5.3.4).
 - **% Rec no Cadastro de Metas** — alvos nascem vazios; cards mostram "—" até o Yan digitar.
 - Favicon/símbolo Janus adiado (reprovado no gate de legibilidade 16/32px).
 

@@ -6,6 +6,54 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.3.4] — 2026-07-30
+
+PATCH · **E-mail intermitente nas notificações de Solicitações** (Rota C — bug relatado em
+produção). Sem migrations. Nenhuma rota de página ou API muda de comportamento.
+
+- **Sintoma relatado:** os envolvidos numa solicitação recebiam a notificação "às vezes sim, às
+  vezes não" — e quem ficava sem variava a cada disparo.
+- **Causa-raiz:** o fan-out de `enviarNotificacaoSolicitacao` (`src/lib/email/index.ts`) fazia
+  `Promise.allSettled` sobre **todos** os destinatários com um transporter nodemailer **sem pool** —
+  uma conexão SMTP por destinatário **ao mesmo tempo**. O SMTP AUTH do Office 365 aceita no máximo
+  **3 conexões simultâneas por mailbox** (a 4ª recebe `432 4.3.2 STOREDRV.ClientSubmit; sender
+  thread limit exceeded`) e 30 mensagens/min. Com 4+ envolvidos, o excedente era recusado; como é
+  uma corrida de conexões, o conjunto de perdedores mudava a cada envio. **Evidência:** log de
+  produção `[email] notificação de solicitação: 3/5 enviados (falhas best-effort)` — exatamente o
+  teto de 3.
+- **Correção:** fan-out compartilhado `enviarFanOut` com **concorrência limitada**
+  (`MAX_CONEXOES_SMTP = 2`, deliberadamente abaixo de 3 para deixar folga na cota da mailbox aos
+  envios de outras requisições — senha provisória e fatura) + **retry com backoff linear** para
+  falha **transitória** (4xx do SMTP e erros de rede: `ETIMEDOUT`, `ESOCKETTIMEDOUT`,
+  `ECONNECTION`, `ESOCKET`, `ECONNRESET`, `ECONNREFUSED`, `EHOSTUNREACH`, `ENOTFOUND`, `EDNS`).
+  Erro **permanente** (5xx, caixa inexistente) e `EAUTH` **não** são retentados — insistir com
+  credencial errada arrisca bloquear a conta. A semântica **best-effort** e a invariante
+  **fallback-safe** (nunca lança) não mudam; muda só o ritmo.
+- **Orçamento de tempo total de 15s no fan-out** (achado ALTO da revisão): o chamador é uma Server
+  Action e o usuário espera a movimentação — sem teto, um SMTP pendurado levaria a action a ~99s
+  com 5 destinatários e o usuário veria erro numa movimentação **já persistida**. O orçamento é
+  gate de **entrada**: nunca abandona envio em voo (abandonar é a falha da v4.25.1 — a função
+  serverless congela no meio), só deixa de **começar** trabalho novo depois do prazo.
+- **Trade-off duplicata × perda documentado no ponto de uso:** o SMTP não tem chave de
+  idempotência, então um erro de socket após o `250 OK` pode gerar uma cópia a mais. Para
+  notificação interna best-effort, receber duas vezes é preferível a não receber. A decisão se
+  **inverte** para e-mail irreversível de cliente (lá vale a idempotência do `registrar_email`).
+- **`enviarNotificacaoAcessoSolicitado` corrigida junto:** os dois fan-outs duplicavam o mesmo
+  bloco e tinham o mesmo defeito; agora compartilham o helper (a camada de transporte não se
+  duplica — skill `email`).
+- **Falha deixou de ser invisível:** o `catch {}` de `notificarMovimentacao`
+  (`src/app/solicitacoes/actions.ts`) era **mudo** — engolia inclusive falha da RPC de
+  destinatários. Passa a logar as três situações distinguíveis (RPC sem contexto, zero envolvidos,
+  envio parcial), e o log de falha por destinatário traz o código SMTP na frente. Foi o silêncio
+  que atrasou o diagnóstico.
+- **Guard mecânico novo** (`src/lib/email/email.test.ts`, 16 casos): mede o **pico de envios
+  simultâneos em voo** (falha se passar de `MAX_CONEXOES_SMTP`), fixa a classificação
+  transitório × permanente (432 retenta; 550 e `EAUTH` não), o teto de tentativas e a preservação
+  do best-effort. Verificado que o guard **reprova** com o fan-out paralelo antigo
+  (`expected 6 to be less than or equal to 2`).
+- **Precedente no repo:** o envio em lote de faturas já era serializado com intervalo entre
+  disparos (`revisar-envio-modal.tsx`) — o fan-out das notificações era a exceção, não a regra.
+
 ## [5.3.3] — 2026-07-28
 
 PATCH · **Fontes Avenir nas telas não-autenticadas** (Rota C — correção do achado ALTO registrado
