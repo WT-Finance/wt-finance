@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-30 (12h30) · v5.3.4 EM PR (Rota C) — e-mail intermitente das Solicitações: causa-raiz provada (teto de 3 conexões SMTP do Office 365) e corrigida
+Última atualização: 2026-07-30 (12h50) · v5.3.4 MERGEADA (#201, 12h46) — e-mail das Solicitações consistente; worktree e branch limpas
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,7 +9,7 @@
 
 ## Verdade atual
 
-- **v5.3.4 EM PR (Rota C, aguardando merge do Yan)** — bug relatado em produção: os e-mails de
+- Versão em produção (main): **`5.3.4`** (#201 mergeado 30/07 às 12h46) — bug relatado em produção: os e-mails de
   notificação das Solicitações chegavam de forma **intermitente**. Causa-raiz **provada** por log de
   produção (`3/5 enviados`): o fan-out fazia `Promise.allSettled` sobre TODOS os destinatários com
   transporter **sem pool** = uma conexão SMTP por destinatário ao mesmo tempo, e o **Office 365
@@ -19,11 +19,15 @@
   **mudo** de `notificarMovimentacao` passou a logar — foi o silêncio que atrasou o diagnóstico.
   Guard novo mede o **pico de envios simultâneos** e foi visto **reprovando** o código antigo.
   Skill `email` corrigida (a orientação antiga, "`allSettled` em paralelo", **induzia ao bug**).
-  Sem migration, sem UI. 534 testes. Out-briefing:
-  `docs/briefings/WT_Finance_Out_Briefing_v5-3-4_Email_Intermitente.md`.
-  **Pós-merge:** confirmar em produção uma movimentação com role de 5+ membros (log deve mostrar
-  `5/5` ou nenhuma linha de falha).
-- Versão em produção (main): **`5.3.3`** (#199 mergeado 28/07 às 17h18) — patch de Rota C que
+  Sem migration, sem UI. 541 testes. Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-3-4_Email_Intermitente.md`. Worktree e branch já
+  limpas (`/pos-merge` executado).
+  **Pós-merge:** o Yan relatou que "parece estar funcionando" (30/07, pouco depois do merge) — o
+  sintoma cessou. A prova DURA segue valendo quando houver oportunidade: uma movimentação com role
+  de 5+ membros e o log mostrando `5/5` (ou nenhuma linha de falha). **Ainda aberto:** o limite de
+  **30 msgs/min** do Office 365 — role com 30+ membros ativos encosta nele, e a saída seria de
+  PRODUTO (um e-mail com todos em cópia em vez de N), decisão do Yan.
+- A v5.3.3 (#199 mergeado 28/07 às 17h18) foi o patch de Rota C que
   isentou `fonts/` no matcher do `src/proxy.ts` (por PREFIXO de diretório, nunca por extensão — a
   lição S11): as telas SEM sessão voltaram a renderizar Avenir, onde o proxy respondia `307`/HTML
   do login no lugar do `.otf` e o browser caía em fonte de sistema. **As telas afetadas eram 3:
