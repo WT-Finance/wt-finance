@@ -34,9 +34,30 @@ export async function enviarSenhaProvisoria(input): Promise<boolean> {
 ```
 
 Envio para múltiplos destinatários (fan-out, ex.: notificação de solicitação) é **best
-effort**: `Promise.allSettled` em paralelo, a falha de um destinatário não derruba os outros
-nem o chamador (ver `enviarNotificacaoSolicitacao`/`enviarNotificacaoAcessoSolicitado` em
-`index.ts`).
+effort**: a falha de um destinatário não derruba os outros nem o chamador (ver
+`enviarNotificacaoSolicitacao`/`enviarNotificacaoAcessoSolicitado` em `index.ts`) — mas
+**best effort não é "todos de uma vez"**.
+
+**NUNCA `Promise.all`/`allSettled` cru sobre os destinatários** (custou caro: v5.3.4). O
+transporter não tem `pool`, então cada `sendMail` abre a **sua própria** conexão SMTP — e o
+SMTP AUTH do Office 365 recusa acima de **3 conexões simultâneas por mailbox**
+(`432 4.3.2 ... sender thread limit exceeded`), além do teto de 30 mensagens/min. Com 4+
+destinatários, parte dos e-mails era recusada e **quem ficava sem variava a cada disparo** —
+intermitência quase impossível de diagnosticar sem olhar o log. Fan-out novo passa pelo
+`enviarFanOut` de `index.ts`, que já resolve isso:
+
+- **concorrência limitada** a `MAX_CONEXOES_SMTP` (2 — abaixo de 3 **de propósito**: a mailbox
+  é a mesma da senha provisória e da fatura, que podem enviar na mesma janela);
+- **retry com backoff** só para falha **transitória** (4xx do SMTP, `ETIMEDOUT`/`ESOCKET`/
+  `ECONNECTION`/`ECONNRESET`). **Não** retentar 5xx (permanente, caixa inexistente) nem
+  `EAUTH` — insistir com credencial errada arrisca **bloquear a conta**.
+
+Envio em **lote** disparado da UI (ex.: faturas) segue a mesma lógica pelo lado do cliente:
+serializado, com intervalo entre disparos (`revisar-envio-modal.tsx`), nunca em paralelo.
+
+E o caller **loga**: "e-mail não derruba o fluxo" nunca significa "e-mail falha em silêncio".
+`catch {}` vazio em caminho de produção é cegueira deliberada — foi o que atrasou o
+diagnóstico da v5.3.4. Logar o resultado parcial (`X/Y enviados`) e o **código SMTP** do erro.
 
 **Chamar o envio numa Server Action/Route Handler serverless é sempre `await`, nunca
 fire-and-forget.** Disparar a promise sem esperar (`enviarX(...)` sem `await`) arrisca a
