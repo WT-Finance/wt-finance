@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-31 (10h55) · v5.3.5 EM PR (Rota C) — solicitação pública de acesso não gravava a pendência há 18 dias (`this` destacado do cliente Supabase)
+Última atualização: 2026-07-31 (11h05) · v5.3.5 MERGEADA (#203, 10h56) — solicitação de acesso volta a gravar a pendência; worktree e branch limpas
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,7 +9,7 @@
 
 ## Verdade atual
 
-- **v5.3.5 EM PR (Rota C, aguardando merge)** — o fluxo público de solicitação de acesso
+- Versão em produção (main): **`5.3.5`** (#203 mergeado 31/07 às 10h56) — o fluxo público de solicitação de acesso
   (`/solicitar-acesso`, linkado do login) **não gravava a pendência desde 13/07 14h13** e o usuário
   via tela de sucesso. **NÃO era banco:** o commit `8863a69` trocou
   `(supabase.rpc as ...)(...)` por `const rpc = supabase.rpc` + `rpc(...)` — **parênteses em torno de
@@ -24,12 +24,14 @@
   de `rpc` como método de PROTÓTIPO (um `vi.fn()` solto passaria com o bug) — 7 de 8 casos reprovam
   o código antigo. 549 testes. Out-briefing:
   `docs/briefings/WT_Finance_Out_Briefing_v5-3-5_Solicitar_Acesso.md`.
-  **Pós-merge:** submeter pedido real e ver a pendência aparecer. **Pedidos dos 18 dias são
-  IRRECUPERÁVEIS — quem tentou precisa pedir de novo.**
+  Worktree e branch já limpas (`/pos-merge` executado). **PENDENTE:** submeter um pedido real e ver
+  a pendência aparecer em Usuários & Acessos (prova de ponta a ponta — não verificável do dev).
+  **Pedidos de 13/07 a 31/07 são IRRECUPERÁVEIS: nada foi gravado, quem tentou precisa pedir de
+  novo — vale avisar quem estava esperando.**
   **D5:** a regra de lint que pegaria esta classe de bug está BLOQUEADA pelo `protecao-config`
   (`eslint.config.*`); diff pronto no §7 do out-briefing para o Yan aplicar.
 
-- Versão em produção (main): **`5.3.4`** (#201 mergeado 30/07 às 12h46) — e-mail das Solicitações; — bug relatado em produção: os e-mails de
+- A v5.3.4 (#201 mergeado 30/07 às 12h46) corrigiu o e-mail intermitente das Solicitações: os e-mails de
   notificação das Solicitações chegavam de forma **intermitente**. Causa-raiz **provada** por log de
   produção (`3/5 enviados`): o fan-out fazia `Promise.allSettled` sobre TODOS os destinatários com
   transporter **sem pool** = uma conexão SMTP por destinatário ao mesmo tempo, e o **Office 365
