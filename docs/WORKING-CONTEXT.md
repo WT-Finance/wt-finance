@@ -14,7 +14,8 @@
   via tela de sucesso. **NÃO era banco:** o commit `8863a69` trocou
   `(supabase.rpc as ...)(...)` por `const rpc = supabase.rpc` + `rpc(...)` — **parênteses em torno de
   acesso a membro preservam o `this`; a ATRIBUIÇÃO destaca.** `SupabaseClient.rpc` é método de
-  protótipo que faz `return this.rest.rpc(...)` → `TypeError: ... (reading 'rest')`, engolido pelo
+  protótipo (corpo de `class` = sempre strict) que faz `return this.rest.rpc(...)` →
+  `TypeError: ... (reading 'rest')`, engolido pelo
   `catch` anti-enumeração (ADR-0110). O fallback legado usava a MESMA referência quebrada.
   Provado por 5 evidências: log da Vercel (18 POSTs, 100% falhando), fonte do supabase-js, o padrão
   de TODOS os outros call-sites (`.bind`/`.call`), a base (8 pedidos, zero pendentes, mais recente

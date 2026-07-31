@@ -39,10 +39,11 @@ export async function solicitarAcesso(formData: FormData): Promise<void> {
     const supabase = getAdminClient()
     // v5.3.5 — `.bind(supabase)` NÃO é decorativo: `SupabaseClient.rpc` é método de
     // PROTÓTIPO e faz `return this.rest.rpc(...)`. Atribuir o método a uma variável
-    // (`const rpc = supabase.rpc`) o DESTACA do cliente; em módulo ESM (strict) o `this`
-    // vira `undefined` e a chamada estoura `TypeError: Cannot read properties of
-    // undefined (reading 'rest')` — engolido pelo catch anti-enumeração abaixo, ou seja,
-    // pedido PERDIDO com tela de sucesso. Foi exatamente o bug de 13/07 a 31/07.
+    // (`const rpc = supabase.rpc`) o DESTACA do cliente, e aí o `this` vira `undefined` —
+    // porque `rpc` é definido dentro de um `class`, e corpo de classe é SEMPRE strict
+    // (não depende de quem chama). A chamada estoura `TypeError: Cannot read properties
+    // of undefined (reading 'rest')`, engolido pelo catch anti-enumeração abaixo: pedido
+    // PERDIDO com tela de sucesso. Foi exatamente o bug de 13/07 a 31/07.
     // (`(supabase.rpc)(...)` entre parênteses preserva o `this`; a atribuição, não.)
     const rpc = (supabase.rpc as unknown as AdminRpc).bind(supabase)
     const { data, error } = await rpc('solicitar_acesso_admin', {
@@ -50,17 +51,21 @@ export async function solicitarAcesso(formData: FormData): Promise<void> {
       p_nome: nome || null,
     })
     if (error) {
-      // FALLBACK: a RPC nova (migration 0177) pode ainda não estar aplicada em produção
-      // (janela deploy-antes-da-migration). Garante o INSERT pelo caminho legado
-      // solicitar_acesso — o pedido NUNCA se perde; só não sai a notificação (segue no
-      // próximo pedido, após a 0177). service_role tem EXECUTE em solicitar_acesso.
-      console.error('[solicitar-acesso] solicitar_acesso_admin falhou — tentando o legado:', error.message)
+      // FALLBACK: `solicitar_acesso_admin` pode falhar por QUALQUER motivo — permissão
+      // revogada por engano, drift de assinatura, regressão futura na própria função
+      // (v5.3.5 provou que essa classe de falha acontece). O caminho legado
+      // `solicitar_acesso` garante o INSERT: o pedido não se perde; só não sai a
+      // notificação aos admins. service_role tem EXECUTE nas duas.
+      // (A motivação ORIGINAL era a janela "deploy antes da migration 0177" — essa janela
+      // fechou na v5.0.1, mas o fallback segue valendo pelos motivos acima.)
+      console.error('[solicitar-acesso] solicitar_acesso_admin falhou — tentando o legado:', { email, erro: error.message })
       const { error: erroLegado } = await rpc('solicitar_acesso', { p_email: email, p_nome: nome || null })
       // Antes o erro do fallback era DESCARTADO: se os dois caminhos falhassem, o pedido
       // sumia sem uma linha de log. A tela segue dizendo sucesso (anti-enumeração), mas o
-      // operador precisa saber.
+      // operador precisa saber — e precisa saber DE QUEM, para o follow-up manual.
       if (erroLegado) {
-        console.error('[solicitar-acesso] FALLBACK legado TAMBÉM falhou — PEDIDO PERDIDO:', erroLegado.message)
+        console.error('[solicitar-acesso] FALLBACK legado TAMBÉM falhou — PEDIDO PERDIDO:',
+          { email, nome: nome || '(sem nome)', erro: erroLegado.message })
       }
     } else {
       const res = data as { inserida?: boolean; emails?: string[] } | null

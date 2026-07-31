@@ -18,8 +18,9 @@ produção). Sem migrations. Nenhuma rota de página ou API muda de comportament
   `await (supabase.rpc as unknown as AdminRpc)('solicitar_acesso_admin', ...)` por
   `const rpc = supabase.rpc as unknown as AdminRpc` + `await rpc(...)`. **Parênteses em torno de um
   acesso a membro preservam o `this`; atribuir o método a uma variável o DESTACA.**
-  `SupabaseClient.rpc` é método de **protótipo** e faz `return this.rest.rpc(...)` — destacado, em
-  módulo ESM (strict) o `this` é `undefined` e a chamada estoura
+  `SupabaseClient.rpc` é método de **protótipo** e faz `return this.rest.rpc(...)` — destacado, o
+  `this` é `undefined` (porque `rpc` vive num corpo de `class`, que é **sempre** strict, e não por
+  causa do módulo chamador) e a chamada estoura
   `TypeError: Cannot read properties of undefined (reading 'rest')`. O `catch` anti-enumeração
   (ADR-0110) engolia o erro e a tela seguia dizendo sucesso. O fallback legado usava a **mesma**
   referência quebrada, então os dois caminhos morriam juntos.

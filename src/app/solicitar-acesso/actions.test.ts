@@ -113,13 +113,17 @@ describe('solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5)', 
     expect(destino).toBe('/solicitar-acesso?enviado=1')
   })
 
-  it('os DOIS caminhos falhando → loga PEDIDO PERDIDO (nunca mais em silêncio)', async () => {
+  it('os DOIS caminhos falhando → loga PEDIDO PERDIDO **com o e-mail** (para o follow-up)', async () => {
     const erro = vi.spyOn(console, 'error').mockImplementation(() => {})
     cliente.responder('solicitar_acesso_admin', { data: null, error: { message: 'boom' } })
     cliente.responder('solicitar_acesso', { data: null, error: { message: 'boom legado' } })
-    const destino = await submeter({ email: 'novo@x.com' })
-    const linhas = erro.mock.calls.map(c => String(c[0])).join('\n')
+    const destino = await submeter({ email: 'perdido@x.com', nome: 'Quem Sumiu' })
+    const linhas = erro.mock.calls.map(c => c.map(x => JSON.stringify(x)).join(' ')).join('\n')
     expect(linhas).toContain('PEDIDO PERDIDO')
+    // Sem O E-MAIL no log, o operador sabe que perdeu um pedido mas não DE QUEM — o log
+    // perde o propósito (achado MÉDIO da revisão da v5.3.5).
+    expect(linhas).toContain('perdido@x.com')
+    expect(linhas).toContain('Quem Sumiu')
     // Anti-enumeração preservada: a tela NÃO revela a falha.
     expect(destino).toBe('/solicitar-acesso?enviado=1')
   })

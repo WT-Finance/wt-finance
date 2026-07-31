@@ -32,7 +32,9 @@ await rpc('solicitar_acesso_admin', { ... })        // this === undefined
 
 A distinção é sutil e é o coração do bug: **parênteses em torno de um acesso a membro preservam a
 referência-base** (`(obj.m)(x)` ≡ `obj.m(x)`, `this` = `obj`); **atribuir o método a uma variável a
-destrói** (`const m = obj.m; m(x)` → `this` = `undefined` em módulo ESM, que é strict por padrão).
+destrói** (`const m = obj.m; m(x)` → `this` = `undefined`). A strictness que decide é a do
+**método chamado**, não a do chamador: `rpc` vive num corpo de `class`, e corpo de classe é
+**sempre** strict — por isso o `this` é `undefined` em vez de cair no `globalThis`.
 
 `SupabaseClient.rpc` é método de **protótipo** cujo corpo é literalmente
 `return this.rest.rpc(fn, args, options)`. Sem `this`, estoura
@@ -107,7 +109,7 @@ nunca chega ao banco — passar ali é o correto).
 | --- | --- |
 | `npx tsc --noEmit` | limpo |
 | `npx eslint` (arquivos alterados) | limpo |
-| `npm test` | **549 passed**, 0 falhas |
+| `npm test` | **549 passed**, 0 falhas (re-executado após as correções da revisão) |
 | `npm run build` | compilado com sucesso |
 
 **Não verificado:** o fluxo real em produção pós-deploy. A prova de ponta a ponta é submeter um
@@ -117,11 +119,35 @@ pedido na tela e ver a pendência aparecer em Usuários & Acessos (§6.1).
 
 ## 5. Parecer da revisão
 
-`revisor` despachado com foco adversarial em: completude da varredura (outros métodos destacados —
-`.storage`, `.from`, `.auth`, `.functions`), honestidade do guard (o dublê é real ou teatro?),
-preservação da anti-enumeração, utilidade atual do fallback legado e efeitos colaterais do `.bind`.
+`revisor` despachado com foco adversarial. **Veredito: APROVADO COM RESSALVAS** — **zero CRÍTICO,
+zero ALTO**, 1 MÉDIO e 2 BAIXO. Todos endereçados antes do fechamento.
 
-*(Parecer consolidado na descrição do PR.)*
+### Contraprova pedida explicitamente (e entregue)
+
+Pedi ao revisor que **não** aceitasse minha varredura e procurasse outro método destacado sem `this`
+— não só `.rpc`, mas `.storage`, `.from`, `.auth`, `.functions`. Resultado: **nenhum outro caso**.
+`rpc-metas`/`rpc-dre`/`rpc-fluxo` usam `.call(db, …)`; `carga/metas.ts` e
+`metas/ultima-sincronizacao.ts` usam `.bind`/`.call`; `auth/sessao.ts`, `trocar-senha/actions.ts` e
+as duas rotas de API chamam **inline** entre parênteses (a forma que preserva o `this`);
+`admin/uploads` (10 ocorrências), `acervo`, `solicitacoes` e `carga/lancamentos` já usavam `.bind`.
+O `.storage.from(...)` é sempre encadeado direto, nunca destacado. **`solicitar-acesso` era a única
+exceção do repositório** — o que confirma regressão pontual, não padrão sistêmico.
+
+### Achados
+
+| Sev. | Achado | Situação |
+| --- | --- | --- |
+| MÉDIO | Os dois logs novos traziam só `error.message`, **sem o e-mail do solicitante** — o objetivo declarado era "o operador precisa saber", mas sem saber **de quem** não há follow-up possível (avisar a pessoa, inserir à mão). | **CORRIGIDO.** As duas linhas passam a levar `{ email, nome, erro }`. E o guard agora **exige** o e-mail e o nome no log do `PEDIDO PERDIDO` — sem isso o teste reprova. |
+| BAIXO | O comentário do fallback estava **factualmente datado**: justificava-se pela janela "deploy antes da migration 0177", que fechou na v5.0.1. O fallback **não** é código morto (protege contra permissão revogada, drift, regressão futura na função — a classe de bug que este patch corrige), mas a redação ancorava num cenário extinto. | **CORRIGIDO.** Justificativa generalizada, com a motivação original preservada como nota histórica. |
+| BAIXO | Meu comentário atribuía o `this === undefined` a "módulo ESM (strict)". **A strictness que decide é a do método CHAMADO, não a do chamador:** `rpc` vive num corpo de `class`, que é sempre strict — por isso `undefined` em vez de `globalThis`. Sintoma e correção certos; a causalidade, imprecisa. | **CORRIGIDO nos 4 lugares** onde eu havia escrito a versão imprecisa: código, skill `contrato-rpc-front`, CHANGELOG e este out-briefing. |
+
+### Avaliação independente do guard
+
+O revisor traçou os 8 casos contra o código antigo e confirmou: os 7 que tocam `rpc(...)` estouram
+na linha `this.rest` **antes** do `push`, reprovando as asserções; e um `vi.fn()` solto passaria com
+ou sem `.bind`, o que deixaria o teste cego. Também confirmou que `class` é sempre strict
+independente do target de transpilação (`ES2017` preserva `class` nativa). Veredito dele:
+**guard honesto, não teatro.**
 
 `revisor-db` **não se aplica** (sem migration/RPC — o banco estava correto o tempo todo).
 `verificador-visual` **não se aplica** (nenhuma UI mudou).
@@ -141,10 +167,12 @@ preservação da anti-enumeração, utilidade atual do fallback legado e efeitos
    `eslint-rules/` por construção — e o escape é variável de ambiente que o agente não alcança. O
    diff está pronto no §7 para você aplicar. Enquanto isso, o guard do teste cobre este call-site
    (mas só este).
-4. **Fallback legado — avaliar remoção (não removi):** a 0177 está aplicada há muito tempo; o
-   `solicitar_acesso` legado só existe para a janela "deploy antes da migration", que já passou.
-   Hoje ele adiciona um caminho que quase nunca roda. Não toquei — remover objeto vivo exige
-   verificar consumidores (regra do CLAUDE.md, lição v4.17.1) e é decisão sua.
+4. **Fallback legado — MANTER (revisto na revisão).** Minha leitura inicial era que ele só existia
+   para a janela "deploy antes da migration 0177" e portanto teria virado quase-morto. O revisor
+   apontou o contrário, e concordo: ele protege contra permissão revogada por engano, drift de
+   assinatura e **regressão futura na própria `solicitar_acesso_admin`** — exatamente a classe de
+   falha que esta versão corrige. O que estava errado era a **justificativa escrita no código**, que
+   ancorava num cenário extinto; a redação foi generalizada e o fallback fica.
 
 ---
 
@@ -192,7 +220,9 @@ WT_PERMITIR_CONFIG=1 npx eslint eslint.config.mjs src/app/solicitar-acesso/actio
 - [x] Correção no padrão que o repo já usa (não inventa mecanismo novo)
 - [x] Guard mecânico novo, **visto reprovando** o código antigo (7 de 8)
 - [x] Gates: `tsc`, `lint`, `test` (549), `build`
-- [x] `revisor` despachado; `revisor-db` e `verificador-visual` não se aplicam
+- [x] `revisor` despachado — **zero CRÍTICO/ALTO**; 1 MÉDIO + 2 BAIXO **corrigidos** (§5), com
+      contraprova de que não há outro ponto quebrado no repo; `revisor-db` e `verificador-visual`
+      não se aplicam
 - [x] CHANGELOG técnico + diretoria (com o aviso de que pedidos perdidos não voltam) + bump
 - [x] WORKING-CONTEXT atualizado
 - [x] Enforcement bloqueado pelo harness **declarado** (D5) com o diff pronto (§7)

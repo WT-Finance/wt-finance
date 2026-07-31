@@ -55,8 +55,10 @@ await rpc('minha_rpc', {})            // TypeError: Cannot read properties of un
 ```
 
 A sutileza que engana: **parênteses em torno de um acesso a membro PRESERVAM a referência**
-(`(db.rpc as Fn)(fn, args)` funciona, `this` = `db`), mas **guardar em variável DESTRÓI**
-(módulo ESM é strict → `this` = `undefined`). As duas formas parecem iguais no diff.
+(`(db.rpc as Fn)(fn, args)` funciona, `this` = `db`), mas **guardar em variável DESTRÓI**.
+Destacado, o `this` é `undefined` porque `rpc` é definido dentro de um `class` e **corpo de
+classe é sempre strict** — não depende de quem chama nem do sistema de módulos. As duas
+formas parecem iguais no diff.
 
 Formas seguras — use uma delas, sempre:
 ```ts
