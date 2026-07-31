@@ -21,6 +21,7 @@ export const AREAS = [
   'admin/acessos',
   'solicitacoes/basico',
   'solicitacoes',
+  'solicitacoes/documentacao',
 ] as const
 
 export type Area = (typeof AREAS)[number]
@@ -65,6 +66,10 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // 'Solicitações' (migration 0144) p/ os dois níveis aparecerem juntos no editor de roles.
   'solicitacoes/basico':     { rotulo: 'Solicitações',              grupo: 'Solicitações',  ordem: 53 },
   'solicitacoes':            { rotulo: 'Solicitações (gestão)',     grupo: 'Solicitações',  ordem: 54 },
+  // Documentação da API externa (v5.4.0/Round4, pedido do Yan 30/07): área PRÓPRIA
+  // (antes a página vivia gated pela gestão 'solicitacoes'). Rótulo/grupo/ordem aqui
+  // são FALLBACK — a migration paralela insere a mesma linha em app.rbac_areas.
+  'solicitacoes/documentacao': { rotulo: 'Solicitações (documentação)', grupo: 'Solicitações', ordem: 55 },
 }
 
 /**
@@ -109,6 +114,12 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']
   if (p.startsWith('/admin/solicitacoes'))      return ['solicitacoes']
+  // Documentação da API externa (v5.4.0/Round4, pedido do Yan 30/07): área PRÓPRIA
+  // 'solicitacoes/documentacao' OU a gestão 'solicitacoes' (quem administra
+  // continua entrando, sem precisar da área nova). Esta regra casa ANTES da
+  // genérica '/admin/chaves-api' logo abaixo — senão a genérica (mais curta)
+  // casaria primeiro e a página nunca veria a área específica.
+  if (p.startsWith('/admin/chaves-api/documentacao')) return ['solicitacoes/documentacao', 'solicitacoes']
   // Chaves de API para a API externa de Solicitações (v5.4.0/M2): mesma área de
   // GESTÃO 'solicitacoes' — quem administra tipos/movimentações também administra
   // as credenciais de integração. Rota fora da sidebar (só por link, como

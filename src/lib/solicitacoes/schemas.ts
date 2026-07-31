@@ -71,6 +71,11 @@ export const solicitacaoSchema = z.object({
   sou_solicitante:    z.boolean().optional(),
   sou_atendente:      z.boolean().optional(),
   anexos:             z.array(anexoSchema),
+  // Proveniência (v5.4.0/Round4, migration paralela): { plataforma } quando a
+  // solicitação foi aberta via API externa; null quando aberta por uma pessoa
+  // na tela. .optional() (não só .nullable()): a RPC antiga pode ainda não
+  // emitir esta chave durante o rollout (lição v4.12.1/ADR-0118).
+  origem: z.object({ plataforma: z.string() }).nullable().optional(),
 }).passthrough()
 export type Solicitacao = z.infer<typeof solicitacaoSchema>
 

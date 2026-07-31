@@ -8,14 +8,17 @@ import { DocumentacaoContent } from '@/components/admin/chaves-api/documentacao-
 // solicitacoes.md; a seção 3 ("Tipos expostos agora") é VIVA — lê o cadastro
 // real de tipos expostos (admin_solic_listar_tipos, filtrado por
 // exposto_via_api e não-arquivado — mesmo filtro de public.solic_tipos_api)
-// e a lista de equipes válidas (solic_destinatarios). Mesmo guard de área
-// ('solicitacoes') e prefixo de rota (/admin/chaves-api/*) da página irmã —
-// areas.ts não precisa de entrada nova.
+// e a lista de equipes válidas (solic_destinatarios).
+// v5.4.0/Round4 (2026-07-30, pedido do Yan): área PRÓPRIA
+// 'solicitacoes/documentacao' — quem só tem essa permissão entra sem ver a
+// gestão; quem tem a gestão 'solicitacoes' continua entrando (semântica OU).
+// O prefixo de rota (/admin/chaves-api/documentacao) já casa ANTES do genérico
+// '/admin/chaves-api' em areas.ts (areasDaRota) — aqui é só o guard local.
 
 export const dynamic = 'force-dynamic'
 
 export default async function DocumentacaoApiPage() {
-  await requireArea('solicitacoes')
+  await requireArea(['solicitacoes/documentacao', 'solicitacoes'])
 
   const [tiposRes, destinatarios] = await Promise.all([
     getTiposAdmin(),

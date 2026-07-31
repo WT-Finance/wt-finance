@@ -22,8 +22,11 @@
   intermediários — se a sua plataforma tem um conceito próprio de aprovação, ele vive do seu
   lado; para o Janus a solicitação está aberta até alguém concluí-la, rejeitá-la ou cancelá-la.
 - Cada plataforma integradora recebe uma **chave de API** com uma **lista de tipos autorizados**.
-  As solicitações criadas pela chave aparecem no Janus como abertas pela **integração** (ex.:
-  "Integração TARS") — proveniência clara para quem atende.
+- **Toda solicitação tem um solicitante humano**: o `solicitante_email` do disparo (seção 4) precisa
+  ser de alguém já cadastrado e ativo no Janus, e é essa pessoa que fica como solicitante — ela
+  acompanha o pedido em "Minhas solicitações", recebe os e-mails e pode cancelá-lo pela tela. A
+  procedência não se perde: para quem atende, o pedido aparece com o selo **"via integração X"**
+  (ex.: "via integração TARS") ao lado do solicitante.
 - Toda mudança de estado gera um **callback** HTTP para a sua URL cadastrada (seção 6).
 
 ## 2. Autenticação
@@ -64,6 +67,11 @@ real em 30/07/2026:
 
 > **Os `id` das equipes acima são ilustrativos** — use os que a SUA chamada devolver.
 
+> **Nota sobre slugs:** os exemplos deste documento valem após a limpeza de histórico da
+> v5.4.0 — o tipo hoje exposto tem slug `abatimento_de_creditos` (sem sufixo numérico). A
+> página **Documentação da API** dentro da própria plataforma sempre mostra os slugs e campos
+> **vivos** do cadastro no banco — em caso de dúvida, ela é a fonte.
+
 - **`slug`** identifica o tipo e **`chave`** identifica cada campo — ambos **estáveis**: o Janus
   garante que edições no cadastro (renomear rótulos, reordenar, adicionar campos) **não mudam**
   slugs/chaves existentes. Programe contra eles, nunca contra rótulos.
@@ -80,6 +88,7 @@ real em 30/07/2026:
 {
   "tipo": "abatimento_de_creditos_2",
   "chave_idempotencia": "pedido-b1e2c3d4",
+  "solicitante_email": "camila@welcometrips.com.br",
   "titulo": "DW | Ana & Bruno — abatimento de crédito",
   "destinatario": "Financeiro",
   "data_limite": "2026-08-15",
@@ -96,11 +105,21 @@ Resposta (`201` na criação; `200` quando idempotente — seção 5):
 
 ```json
 { "ok": true, "id": 123, "status": "aberta",
-  "destinatario": { "id": 4, "nome": "Financeiro" }, "idempotente": false }
+  "destinatario": { "id": 4, "nome": "Financeiro" },
+  "solicitante": { "email": "camila@welcometrips.com.br", "nome": "Camila Souza" },
+  "idempotente": false }
 ```
 
 Regras:
 
+- **`solicitante_email` é obrigatório** e precisa ser o e-mail de uma pessoa **já cadastrada e
+  ativa** no Janus (comparação sem diferenciar maiúsculas/minúsculas e sem espaços nas pontas).
+  Essa pessoa vira a **solicitante de verdade** do pedido: ela vê a solicitação em "Minhas
+  solicitações", recebe os e-mails de movimentação (criada, concluída, rejeitada, cancelada) e
+  pode cancelá-la pela própria tela do Janus. A procedência não se perde — a tela mostra um selo
+  `via integração <PLATAFORMA>` ao lado do solicitante. E-mail sem cadastro ativo →
+  `SOLICITANTE_INVALIDO`; ausente → `SOLICITANTE_OBRIGATORIO` (422 nos dois casos) — não há
+  fallback: **cadastre a pessoa no Janus antes de disparar pela API.**
 - **`destinatario` é obrigatório e é sempre uma equipe** (role) — pelo **nome exato**
   (case-insensitive) ou pelo **`id`** numérico devolvido em `destinos` (o id é estável; o nome
   pode ser renomeado no Janus — prefira o id). Equipe inexistente → **erro estruturado, nunca
@@ -177,6 +196,7 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 | `TIPO_INVALIDO` | 422 | Slug inexistente, arquivado ou não exposto |
 | `IDEMPOTENCIA_OBRIGATORIA` | 422 | Falta `chave_idempotencia` |
 | `DESTINATARIO_OBRIGATORIO` / `DESTINATARIO_INVALIDO` | 422 | Sem destinatário / equipe inexistente |
+| `SOLICITANTE_OBRIGATORIO` / `SOLICITANTE_INVALIDO` | 422 | Sem `solicitante_email` / e-mail sem cadastro ativo no Janus |
 | `DATA_LIMITE_OBRIGATORIA` | 422 | Falta `data_limite` |
 | `CAMPO_DESCONHECIDO` | 422 | Chave de campo que o tipo não tem |
 | `CAMPO_OBRIGATORIO` / `VALOR_INVALIDO` | 422 | Validação de campo (mesmas regras da tela) |
@@ -185,8 +205,10 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 
 ## 9. Fora desta versão (não peça, ainda)
 
-Anexos via API · criação "em nome de" um usuário humano · estados/eventos de aprovação ·
-assinatura HMAC de callbacks (hoje: segredo em header) · reatribuição de destinatário.
+Anexos via API · estados/eventos de aprovação · assinatura HMAC de callbacks (hoje: segredo em
+header) · reatribuição de destinatário · **criar em nome de quem ainda não tem cadastro no Janus**
+(o `solicitante_email` precisa existir e estar ativo; cadastrar a pessoa antes é pré-condição
+deliberada da integração).
 
 ---
 

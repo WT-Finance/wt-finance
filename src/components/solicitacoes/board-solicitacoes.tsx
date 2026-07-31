@@ -5,6 +5,7 @@ import { Loader2, AlertTriangle } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
+import Badge from '@/components/ui/badge'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
@@ -137,6 +138,14 @@ function Card({ s, onAbrir, concluindo, onConcluir }: {
             <p className="text-sm font-medium text-zinc-900 truncate">{s.solicitante_email}</p>
             <span className="shrink-0 text-2xs font-medium tabular-nums text-zinc-400">#{s.id}</span>
           </div>
+          {/* Selo de proveniência (v5.4.0/Round4): só quando origem não é null/ausente
+              (solicitação aberta via API externa) — comportamento idêntico ao atual quando
+              não há origem. */}
+          {s.origem && (
+            <div className="mt-0.5">
+              <Badge variant="neutro">via integração {s.origem.plataforma}</Badge>
+            </div>
+          )}
           <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
           <div className="mt-1.5 flex items-center justify-between gap-2">
             {aberta ? (

@@ -233,7 +233,7 @@ documentação da plataforma já refletia o cadastro sozinha. **A migration 0214
 fica como registro histórico** — já aplicada, não reexecuta, e o tipo que ela criou não existe
 mais; nenhuma ação necessária.
 
-**Cosmético em aberto (não bloqueia):** o slug do tipo exposto carrega o sufixo de dedup
+**Cosmético — RESOLVIDO no Round 4 (ver abaixo):** o slug do tipo exposto carrega o sufixo de dedup
 (`abatimento_de_creditos_2`), herdado do retrofit quando havia dois homônimos — o canônico
 `abatimento_de_creditos` está livre. O slug é imutável por invariante (ADR-0159) para proteger
 contratos externos; como NENHUM integrador está ligado ainda, uma correção única antes da
@@ -243,3 +243,126 @@ contrato vive com o `_2`, que é apenas feio, não errado.
 **Achado cosmético:** a chave gerada para um rótulo muito longo é truncada em 60 caracteres e
 pode cortar no meio da palavra (ex.: `..._nome_fantasia_ou_cn`). Funciona (é única e estável),
 mas se o rótulo virar contrato externo vale editar a chave. Registrado, sem ação.
+
+---
+
+## Round 4 (2026-07-30/31) — decisões do Yan, com a plataforma já aberta ao público interno
+
+Cinco pedidos, todos entregues. O contexto muda a natureza deles: a plataforma deixou de ser
+ambiente de construção e passou a ter público interno real, então "começar limpo" e "quem pediu
+tem de conseguir acompanhar" deixaram de ser cosméticos.
+
+### 1+2. Limpeza do histórico e correção dos sufixos `_2` — patch **0218** (DESTRUTIVO, mãos do Yan)
+
+Pedido: *"para começarmos com o histórico limpo quero que você apague todo o histórico de
+solicitações com os devidos cuidados, após isso apague os 2 tipos que hoje estão arquivados, eram
+apenas teste"* e *"após a limpeza do histórico o caminho fica livre para corrigirmos os sufixos dos
+slugs"*.
+
+**Censo conferido na base real (31/07) antes de escrever uma linha:** 26 solicitações · 21 anexos
+(metadado) + **20 binários** no bucket `solicitacoes-anexos` (3,2 MB; nenhum arquivo sem metadado,
+1 metadado sem arquivo) · 8 registros em `api_chamada_log` · 0 na outbox · 0 chaves de API · 9
+tipos (7 ativos, 2 arquivados). O bucket `acervo-documentos` (8 arquivos, outro módulo) **não é
+alvo** e é conferido antes/depois.
+
+**O patch está em `supabase/patches/0218_limpeza_historico_e_slugs.sql` — deliberadamente FORA de
+`supabase/migrations/`.** Motivo: `db push` empurra todo o conjunto pendente, e a 0217 desta mesma
+versão é aditiva e **precisou ser aplicada agora** (a paridade RBAC banco↔app é teste de contrato:
+sem a área nova no banco, `npm test` reprova). Se a 0218 estivesse na pasta, teria ido junto, sem
+confirmação humana — foi assim que a v5.2.0 dropou bases. Confirmado que o classificador do
+db-gate marca o arquivo como **destrutiva** (`top-level destrutivo: DELETE FROM app.api_outbox`);
+os DELETEs estão em nível superior de propósito, porque dentro de `DO $$ ... $$` o tokenizador não
+os veria e o arquivo passaria por aditivo.
+
+**Como aplicar (2 comandos, na sua mão, nesta ordem):**
+
+```bash
+node scripts/limpeza-anexos-solicitacoes.mjs --confirmar   # 20 binários do Storage
+git mv supabase/patches/0218_limpeza_historico_e_slugs.sql supabase/migrations/ \
+  && npm run db:migrate -- --destrutiva
+```
+
+O script de Storage é par obrigatório do SQL: apagar `storage.objects` por SQL removeria o
+**registro** e deixaria os **bytes** órfãos no bucket. Ele cruza cada arquivo com
+`app.solicitacao_anexo`, **preserva** (fail-closed) o que não souber identificar, roda em dry-run
+sem `--confirmar`, e confere a contagem do bucket do Acervo antes e depois. Se rodar DEPOIS do SQL
+(metadado já apagado), use `--incluir-orfaos` — que exige `app.solicitacao_anexo` vazia como prova.
+
+**Ordem interna do SQL** (FK e semântica): outbox → `api_chamada_log` → anexo (metadado) →
+solicitação → campos + os 2 tipos arquivados → renomeação dos slugs. Guardas com `RAISE EXCEPTION`
+**antes** (o mundo ainda é o do censo? existe alguma chave de API? o slug-destino está livre?) e
+**depois** (histórico zerado? 7 tipos? nenhum sufixo `_2`? o tipo exposto ficou com o slug
+canônico?) — qualquer uma desfaz o arquivo inteiro, porque o push aplica cada migration em
+transação.
+
+**Slugs corrigidos:** `abatimento_de_creditos_2` → `abatimento_de_creditos` e `contas_a_pagar_2` →
+`contas_a_pagar`. Isso abre **exceção única e datada** à imutabilidade do slug (ADR-0159, emenda):
+o slug é o identificador que o integrador manda no payload, e renomear com integração ligada
+quebraria o contrato dele em silêncio. Só é seguro porque **`app.api_chave` está vazia** — a guarda
+aborta se houver qualquer chave. **Consequência de ordem: aplique o patch ANTES de criar a chave do
+TARS.** Se a chave for criada primeiro, a guarda barra (corretamente) e o slug fica com `_2`.
+
+### 3. Documentação da API com permissão própria, na tela inicial do módulo — migration **0217** + UI
+
+Área RBAC nova **`solicitacoes/documentacao`** ("Solicitações (documentação)", grupo Solicitações,
+ordem 55), inserida no catálogo pela 0217 e espelhada em `src/lib/auth/areas.ts`. O guard da página
+virou `requireArea(['solicitacoes/documentacao', 'solicitacoes'])` — semântica OU: quem tem gestão
+continua entrando. No mapeamento rota→áreas, a regra específica de
+`/admin/chaves-api/documentacao` precisou vir **antes** da genérica `/admin/chaves-api` (o
+`startsWith` casa a primeira; teste novo cobre exatamente essa ordem). O botão **saiu** da tela de
+administração e foi para a **tela inicial de Solicitações**, em condicional separada da de gestão —
+quem só integra não precisa de acesso de gestão. **Nenhum role recebe a área automaticamente:** o
+Yan concede pelo editor de permissões.
+
+### 4. Ordem na tela "API externa"
+**Chaves de API** subiu para cima de **"Tipos Expostos"** (E maiúsculo, como pedido); o skeleton do
+`loading.tsx` foi invertido junto, senão a silhueta desmentiria a tela real por um instante.
+
+### 5. Solicitante amarrado a uma pessoa real — migration **0217** (decisão de produto)
+
+Pedido: *"não seria melhor se a solicitação vinda da API necessitasse de um e-mail que já esteja
+cadastrado na plataforma para amarramos a um usuário, forçando que para que seja possível disparar
+solicitação pela API antes o usuário tenha que ter cadastro na plataforma?"* — e, entre as
+variantes, o Yan escolheu **amarrar de verdade: a pessoa é a solicitante**.
+
+`POST /api/externo/solicitacoes` ganhou `solicitante_email` **obrigatório**. A RPC resolve contra
+`app.rbac_usuarios` (`lower(btrim(...))`, exigindo `ativo`) e grava esse `user_id` em
+`solicitacao.solicitante_id` — **não mais o robô da chave**. Sem e-mail → `SOLICITANTE_OBRIGATORIO`;
+sem cadastro ativo → `SOLICITANTE_INVALIDO` (422, sem fallback). O ack ecoa
+`solicitante {email, nome}` — o e-mail **como está cadastrado**, não a normalização do payload — e
+no reenvio idempotente ecoa o solicitante da solicitação que já existia.
+
+**O ganho não é burocrático:** com o robô como autor, a solicitação não tinha dono humano — não
+aparecia em "Minhas solicitações" de ninguém, o e-mail de movimentação ia para um endereço que
+ninguém lê e **ninguém conseguia cancelá-la pela tela** (`solic_cancelar` exige
+`solicitante_id = uid_jwt()`). Com a amarração, os três comportamentos passam a valer **sem que
+nenhuma RPC de UI mude**. A fronteira de confiança não afrouxa: a chave continua sendo a
+autorização, e agora há uma **segunda** exigência de identidade.
+
+**Proveniência migrou de "autor" para marcador + selo:** `app.solic_json` passou a emitir
+`origem: { plataforma } | null`, e a UI mostra **"via integração X"** no drawer, no board e em
+"Minhas solicitações". Sem o selo, um pedido vindo do CRM ficaria indistinguível de um aberto na
+tela pela própria pessoa. Emenda no **ADR-0158** (supera o item 3, "autor = usuário-robô").
+
+### Validação do round 4
+
+`npx tsc --noEmit` 0 · `npm run lint` 0 · **0217 aplicada** com backup-gate VERDE (52 tabelas,
+restore-test spot ✓ em 3 tabelas) · suítes de contrato **ao vivo** 144/144 —
+`contrato-api-externa` (37) rodou de fato (o gate `pronargs=9` só libera com a 0217 aplicada) e
+inclui **4 casos novos**: `SOLICITANTE_OBRIGATORIO`, `SOLICITANTE_INVALIDO`, e-mail com
+caixa/espaços divergentes, e o caso que **prova** que `solicitante_id` vem do e-mail e não do robô
+(usa um SEGUNDO usuário ativo — com o mesmo uid nas duas pontas, como estava, a asserção era
+tautológica) · paridade RBAC banco↔app verde com a área nova.
+
+### Pendências do round 4 (mãos do Yan)
+
+1. **Rodar o script de Storage + aplicar o patch 0218 em TTY** (comandos acima), **antes** de criar
+   a chave do TARS — a guarda de slug depende disso.
+2. **Conceder a área "Solicitações (documentação)"** aos roles que devem ver a documentação (a área
+   nasce sem nenhum grant).
+3. **Avisar o Vitor da mudança de contrato:** `solicitante_email` é campo novo e obrigatório, e a
+   pessoa precisa ter cadastro ativo no Janus antes do primeiro disparo. O
+   `docs/api-externa-solicitacoes.md` e a página de documentação da plataforma já estão
+   atualizados.
+4. O patch das **3 colunas órfãs** (rounds 2 e 3) continua pendente e independente — se preferir
+   uma única passada destrutiva, o SQL dele pode ser anexado ao fim do 0218 antes de aplicar.

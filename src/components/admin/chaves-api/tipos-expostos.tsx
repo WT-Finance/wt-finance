@@ -7,7 +7,7 @@ import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import Checkbox from '@/components/ui/checkbox'
 
-// v5.4.0/Round3 (2026-07-29) — seção "Tipos expostos" de /admin/chaves-api
+// v5.4.0/Round3 (2026-07-29) — seção "Tipos Expostos" de /admin/chaves-api
 // ("API externa"): lista TODOS os tipos de solicitação com um toggle DIRETO
 // de exposição via API. DECISÃO DO YAN: a lista "Equipes que podem receber
 // via API" morreu — qualquer equipe cadastrada pode ser destinatário de
@@ -17,6 +17,9 @@ import Checkbox from '@/components/ui/checkbox'
 // (exposto_via_api), salvo imediatamente ao alternar o Checkbox da linha
 // (mesmo espírito do toggle "arquivado" de tipos-content.tsx, mas sem modal
 // intermediário: aqui não há mais nada a escolher além de ligar/desligar).
+// v5.4.0/Round4 (2026-07-30, pedido do Yan) — título com E maiúsculo ("Tipos
+// Expostos") e a seção passou a vir DEPOIS de "Chaves de API" na página (ver
+// chaves-api-content.tsx); a margem inferior (mb-5) migrou para lá.
 
 type ResultadoMsg = { tipo: 'sucesso' | 'erro'; texto: string }
 
@@ -50,7 +53,7 @@ export function TiposExpostos({
   }
 
   return (
-    <CardTabela titulo="Tipos expostos" className="mb-5">
+    <CardTabela titulo="Tipos Expostos">
       <table className="w-full table-fixed text-sm">
         <colgroup>
           <col />

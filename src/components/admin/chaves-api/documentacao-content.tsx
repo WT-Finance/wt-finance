@@ -74,6 +74,7 @@ const JSON_TIPOS_EXEMPLO = `{
 const JSON_CRIAR_PAYLOAD = `{
   "tipo": "abatimento_de_creditos",
   "chave_idempotencia": "pedido-b1e2c3d4",
+  "solicitante_email": "camila@welcometrips.com.br",
   "titulo": "DW | Ana & Bruno — decoração, sinal de 30%",
   "destinatario": "Financeiro",
   "data_limite": "2026-07-25",
@@ -85,7 +86,9 @@ const JSON_CRIAR_PAYLOAD = `{
 }`
 
 const JSON_CRIAR_RESPOSTA = `{ "ok": true, "id": 123, "status": "aberta",
-  "destinatario": { "id": 4, "nome": "Financeiro" }, "idempotente": false }`
+  "destinatario": { "id": 4, "nome": "Financeiro" },
+  "solicitante": { "email": "camila@welcometrips.com.br", "nome": "Camila Souza" },
+  "idempotente": false }`
 
 const JSON_CALLBACK_PAYLOAD = `{ "evento": "solicitacao.concluida", "solicitacao_id": 123,
   "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
@@ -102,6 +105,7 @@ const ERROS: ReadonlyArray<readonly [string, string, string]> = [
   ['TIPO_INVALIDO', '422', 'Slug inexistente, arquivado ou não exposto'],
   ['IDEMPOTENCIA_OBRIGATORIA', '422', 'Falta chave_idempotencia'],
   ['DESTINATARIO_OBRIGATORIO / DESTINATARIO_INVALIDO', '422', 'Sem destinatário / equipe inexistente'],
+  ['SOLICITANTE_OBRIGATORIO / SOLICITANTE_INVALIDO', '422', 'Sem solicitante_email / e-mail sem cadastro ativo no Janus'],
   ['DATA_LIMITE_OBRIGATORIA', '422', 'Falta data_limite'],
   ['CAMPO_DESCONHECIDO', '422', 'Chave de campo que o tipo não tem'],
   ['CAMPO_OBRIGATORIO / VALOR_INVALIDO', '422', 'Validação de campo (mesmas regras da tela)'],
@@ -161,9 +165,16 @@ export function DocumentacaoContent({
           </p>
           <p>
             Cada plataforma integradora recebe uma <strong>chave de API</strong> com uma <strong>lista de
-            tipos autorizados</strong> (a whitelist da chave). As solicitações criadas por uma chave aparecem
-            no Janus como abertas pela <strong>integração</strong> (ex.: &ldquo;Integração TARS&rdquo;) —
-            proveniência clara para quem atende.
+            tipos autorizados</strong> (a whitelist da chave).
+          </p>
+          <p>
+            <strong>Toda solicitação tem um solicitante humano:</strong> o{' '}
+            <code className="font-mono text-xs">solicitante_email</code> do disparo (seção 4) precisa ser de
+            alguém já cadastrado e ativo no Janus, e é essa pessoa que fica como solicitante — ela acompanha
+            o pedido em &ldquo;Minhas solicitações&rdquo;, recebe os e-mails e pode cancelá-lo pela tela. A
+            procedência não se perde: para quem atende, o pedido aparece com o selo{' '}
+            <strong>&ldquo;via integração X&rdquo;</strong> (ex.: &ldquo;via integração TARS&rdquo;) ao lado
+            do solicitante.
           </p>
           <p>Toda mudança de estado gera um <strong>callback</strong> HTTP para a URL cadastrada na chave (seção 6).</p>
         </Secao>
@@ -290,6 +301,18 @@ export function DocumentacaoContent({
           <Pre>{JSON_CRIAR_RESPOSTA}</Pre>
           <p className="font-medium text-zinc-800">Regras:</p>
           <ul className="list-disc space-y-1.5 pl-5">
+            <li>
+              <code className="font-mono text-xs">solicitante_email</code> é <strong>obrigatório</strong> e
+              precisa ser o e-mail de uma pessoa <strong>já cadastrada e ativa</strong> no Janus (comparação
+              sem diferenciar maiúsculas/minúsculas e sem espaços nas pontas). Essa pessoa vira a{' '}
+              <strong>solicitante de verdade</strong> do pedido: ela vê a solicitação em &ldquo;Minhas
+              solicitações&rdquo;, recebe os e-mails de movimentação (criada, concluída, rejeitada,
+              cancelada) e pode cancelá-la pela própria tela do Janus. A procedência não se perde — a tela
+              mostra um selo &ldquo;via integração &lt;PLATAFORMA&gt;&rdquo; ao lado do solicitante. E-mail
+              sem cadastro ativo → <code className="font-mono text-xs">SOLICITANTE_INVALIDO</code>; ausente
+              → <code className="font-mono text-xs">SOLICITANTE_OBRIGATORIO</code> (422 nos dois casos) —
+              não há fallback: cadastre a pessoa no Janus antes de disparar pela API.
+            </li>
             <li>
               <code className="font-mono text-xs">destinatario</code> é <strong>obrigatório</strong> e é
               sempre uma equipe (role) — pelo <strong>nome exato</strong> (case-insensitive) ou pelo{' '}
@@ -429,8 +452,11 @@ export function DocumentacaoContent({
 
         <Secao id="fora" titulo="9. Fora desta versão (não peça, ainda)">
           <p>
-            Anexos via API · criação &ldquo;em nome de&rdquo; um usuário humano · estados/eventos de aprovação
-            · assinatura HMAC de callbacks (hoje: segredo em header) · reatribuição de destinatário.
+            Anexos via API · estados/eventos de aprovação · assinatura HMAC de callbacks (hoje: segredo em
+            header) · reatribuição de destinatário ·{' '}
+            <strong>criar em nome de quem ainda não tem cadastro no Janus</strong> (o{' '}
+            <code className="font-mono text-xs">solicitante_email</code> precisa existir e estar ativo;
+            cadastrar a pessoa antes é pré-condição deliberada da integração).
           </p>
         </Secao>
       </div>

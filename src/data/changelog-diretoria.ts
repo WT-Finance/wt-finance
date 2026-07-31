@@ -43,6 +43,21 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
         texto:
           'As Solicitações agora podem ser abertas por outros sistemas da empresa, com segurança e rastreabilidade: cada sistema recebe uma credencial própria, só abre os tipos autorizados, e a equipe responsável recebe e trata normalmente pela plataforma — o sistema de origem é avisado automaticamente quando a solicitação é concluída, rejeitada ou cancelada. Primeira integração: os pedidos de uso do dinheiro do casal, disparados do CRM pelas consultoras de Weddings, chegam direto como solicitações para o Financeiro.',
       },
+      {
+        tipo: 'novidade',
+        texto:
+          'Um pedido aberto por outro sistema fica no nome de quem realmente pediu: o disparo só é aceito com o e-mail de alguém já cadastrado na plataforma, e essa pessoa passa a ver o pedido em "Minhas solicitações", recebe os avisos por e-mail e pode cancelá-lo pela própria tela — com um selo indicando que ele chegou por integração. Consequência prática: para disparar pelo outro sistema, a pessoa precisa ter cadastro ativo aqui.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A documentação da integração passou a ficar dentro da plataforma, com acesso próprio: o botão está na tela inicial de Solicitações e a lista de tipos e campos é gerada do cadastro real, então ela nunca fica desatualizada em relação ao que a integração aceita. Quem só precisa integrar não precisa mais de acesso de gestão das Solicitações.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Com a abertura da plataforma para toda a empresa, o histórico de teste das Solicitações foi apagado para começar limpo — pedidos, anexos e registros das provas de integração. Os dois tipos de solicitação que existiam apenas para teste também saíram; os tipos em uso, as pessoas, as equipes e os documentos do Acervo não foram tocados.',
+      },
     ],
   },
   {

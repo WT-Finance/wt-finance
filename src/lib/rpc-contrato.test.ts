@@ -203,6 +203,17 @@ describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-
     delete semStatus.status
     expect(solicitacaoSchema.safeParse(semStatus).success).toBe(false) // se passasse, o schema seria frouxo demais
   })
+  // v5.4.0/Round4 — `origem` (proveniência da solicitação): { plataforma } quando
+  // aberta via API externa, null quando aberta na tela, e AUSENTE (RPC antiga
+  // durante o rollout) — as três formas precisam validar (lição v4.12.1/ADR-0118:
+  // .optional(), não só .nullable()).
+  it('origem: aceita ausente (RPC antiga), null (aberta na tela) e objeto (via API)', () => {
+    expect(solicitacaoSchema.safeParse(SOLIC_JSON_FIXTURE).success).toBe(true) // sem a chave
+    expect(solicitacaoSchema.safeParse({ ...SOLIC_JSON_FIXTURE, origem: null }).success).toBe(true)
+    const r = solicitacaoSchema.safeParse({ ...SOLIC_JSON_FIXTURE, origem: { plataforma: 'TARS' } })
+    expect(r.success, r.success ? '' : `drift de origem: ${JSON.stringify(r.error!.issues.slice(0, 8))}`).toBe(true)
+    if (r.success) expect(r.data.origem).toEqual({ plataforma: 'TARS' })
+  })
 })
 
 // v4.34.0: o acervo em produção está VAZIO — o caso de acervo_listar em CONTRATOS_PARSE_RPC

@@ -18,15 +18,17 @@ import Button from '@/components/ui/button'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 
-// v5.4.0/M2 (+ Round2/Round3) — conteúdo client de /admin/chaves-api ("API
-// externa"): header de navegação (volta a /admin/solicitacoes — esta rota não
-// está na sidebar, mesmo padrão de /admin/solicitacoes; Round3 acrescenta a
-// pill "Documentação", que leva à página irmã /admin/chaves-api/documentacao),
-// a seção "Tipos expostos" (TiposExpostos — Round3: virou só um toggle de
-// exposição por linha, a lista de equipes de destino por tipo morreu), a
-// tabela de chaves e a orquestração dos 4 modais (criar / editar / revogar /
-// log). Dados vêm prontos da page (RSC); após cada mutação, os modais/seção
-// chamam router.refresh() antes de fechar.
+// v5.4.0/M2 (+ Round2/Round3/Round4) — conteúdo client de /admin/chaves-api
+// ("API externa"): header de navegação (volta a /admin/solicitacoes — esta
+// rota não está na sidebar, mesmo padrão de /admin/solicitacoes; Round3
+// acrescenta a pill "Documentação", que leva à página irmã
+// /admin/chaves-api/documentacao), a tabela "Chaves de API", a seção "Tipos
+// Expostos" (TiposExpostos — Round3: virou só um toggle de exposição por
+// linha, a lista de equipes de destino por tipo morreu) e a orquestração dos
+// 4 modais (criar / editar / revogar / log). Round4 (pedido do Yan 30/07):
+// "Chaves de API" passou a vir ANTES de "Tipos Expostos" (antes era o
+// inverso). Dados vêm prontos da page (RSC); após cada mutação, os modais/
+// seção chamam router.refresh() antes de fechar.
 
 type ModalState =
   | { modo: 'criar' }
@@ -105,9 +107,7 @@ export function ChavesApiContent({
       {erroCarga && <FaixaMensagem tipo="erro" texto={erroCarga} />}
       {msg && <FaixaMensagem tipo={msg.tipo} texto={msg.texto} onFechar={() => setMsg(null)} />}
 
-      <TiposExpostos tipos={tiposAdmin} onMudou={handleTipoMudou} />
-
-      <CardTabela titulo="Chaves de API">
+      <CardTabela titulo="Chaves de API" className="mb-5">
         <table className="table-fixed w-full text-sm">
           <colgroup>
             <col className="w-[20%]" />
@@ -211,6 +211,8 @@ export function ChavesApiContent({
           </tbody>
         </table>
       </CardTabela>
+
+      <TiposExpostos tipos={tiposAdmin} onMudou={handleTipoMudou} />
 
       {modal?.modo === 'criar' && (
         <ModalCriarChave tipos={tipos} onFechar={() => setModal(null)} />

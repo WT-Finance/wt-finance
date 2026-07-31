@@ -17,6 +17,8 @@ export default async function SolicitacoesPage({ searchParams }: { searchParams:
   const view: 'minhas' | 'caixa' = sp.view === 'minhas' ? 'minhas' : 'caixa'
   const escopoReq = (['mim_e_role', 'so_mim', 'todas'].includes(sp.escopo ?? '') ? sp.escopo : 'mim_e_role') as Escopo
   const podeGestao = sessao.permissoes.includes('solicitacoes')
+  // Documentação da API (v5.4.0/Round4): área própria OU a gestão (que já inclui tudo).
+  const podeVerDocApi = podeGestao || sessao.permissoes.includes('solicitacoes/documentacao')
   const escopo: Escopo = escopoReq === 'todas' && !podeGestao ? 'mim_e_role' : escopoReq
 
   // Paralelo: apenas a lista da view atual (evita buscar as duas) + pendências + metadados.
@@ -36,7 +38,7 @@ export default async function SolicitacoesPage({ searchParams }: { searchParams:
   return (
     <SolicitacoesContent
       view={view} escopo={escopo}
-      lista={lista ?? []} pendentes={pendentes ?? 0} podeGestao={podeGestao}
+      lista={lista ?? []} pendentes={pendentes ?? 0} podeGestao={podeGestao} podeVerDocApi={podeVerDocApi}
       tipos={tipos ?? []} destinatarios={destinatarios ?? { usuarios: [], roles: [] }}
       erroCarga={erroCarga}
     />

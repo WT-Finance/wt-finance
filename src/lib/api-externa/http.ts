@@ -118,6 +118,10 @@ const PREFIXOS_VALIDACAO_422 = new Set([
   'DESTINATARIO_INVALIDO', 'DATA_LIMITE_OBRIGATORIA',
   'CAMPO_DESCONHECIDO', 'TIPO_EXIGE_ANEXO', 'CAMPO_OBRIGATORIO', 'VALOR_INVALIDO',
   'PAYLOAD_INVALIDO',
+  // v5.4.0/Round4 (migration 0217): o solicitante amarrado a um usuário
+  // cadastrado ativo virou validação de negócio — mesmo tratamento 422 do
+  // destinatário.
+  'SOLICITANTE_OBRIGATORIO', 'SOLICITANTE_INVALIDO',
 ])
 
 /**

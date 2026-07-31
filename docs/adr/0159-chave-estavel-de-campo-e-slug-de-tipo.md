@@ -57,3 +57,33 @@ COLUMN` (skill `banco-e-rpc`: migration destrutiva não fica pré-escrita na pas
 aplicar). Slug estável de tipo, chave estável de campo, retrofit por RPC, `exposto_via_api` e
 `api_roles_permitidas` (itens 1-3 e o restante do item 4) **permanecem intocados** — só a flag de
 referência morreu.
+
+## Emenda (2026-07-31) — exceção ÚNICA e datada à imutabilidade do slug
+
+A invariante do item 1 ("slug **imutável** após a criação") **permanece**. Registro aqui uma
+exceção única, exercida uma vez, com as condições que a tornaram segura — para que ela não seja
+tomada como precedente aberto.
+
+**O que aconteceu.** `app.slugificar` desempata slug repetido acrescentando sufixo numérico. Dois
+tipos nasceram com sufixo por colidirem com tipos que **não deviam mais existir**:
+`abatimento_de_creditos_2` (o `abatimento_de_creditos` original era duplicata de teste, excluída
+pelo Yan no round 2) e `contas_a_pagar_2` (o `contas_a_pagar` homônimo estava **arquivado** — e
+arquivado continua ocupando o slug, porque a UNIQUE não distingue arquivado de ativo). O slug
+canônico só ficou livre **depois** da limpeza de histórico do round 4.
+
+**Decisão.** O patch destrutivo **0218** renomeia os dois para a forma canônica, **na mesma
+transação e depois** das exclusões, com guardas que ABORTAM se o mundo tiver mudado.
+
+**Por que foi seguro — e a regra que fica.** O slug é o identificador que o integrador manda no
+payload: renomear com um integrador ligado quebraria o contrato dele **em silêncio** (o Janus
+responderia `TIPO_INVALIDO` a um payload que ontem funcionava). A exceção só se sustentou porque
+**nenhuma chave de API existia ainda** (`app.api_chave` vazia) — o patch tem guarda explícita
+para isso e aborta se houver qualquer chave emitida. **Regra durável: renomear slug só antes da
+primeira chave existir; depois disso, nunca.** Se o slug precisar mudar com integrador ativo, o
+caminho é outro — tipo novo com o slug desejado, exposição dos dois em paralelo e migração
+combinada com a origem.
+
+**Lição de origem** (esta é a parte que evita o problema em vez de remediar): o sufixo `_2` não foi
+acidente do slugificador, foi **sintoma** de tipo duplicado/arquivado ocupando o nome. Ao criar um
+tipo que vai ser exposto via API, conferir se o slug saiu limpo **antes** de emitir a chave —
+depois, o custo é contratual.

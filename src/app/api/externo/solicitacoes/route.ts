@@ -35,6 +35,12 @@ const bodySchema = z.object({
   campos:             z.record(z.string(), valorCampo).optional(),
   data_limite:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'data_limite deve estar no formato AAAA-MM-DD'),
   referencia_origem:  z.string().optional(),
+  // v5.4.0/Round4 (decisão do Yan, 2026-07-30): quem pediu no sistema de
+  // origem precisa ter cadastro ATIVO no Janus — vira o SOLICITANTE de
+  // verdade (aparece em "Minhas solicitações", recebe os e-mails de
+  // movimentação, cancela pela tela). A RPC valida o cadastro/ativo; aqui só
+  // o formato de e-mail.
+  solicitante_email: z.string().min(1, 'solicitante_email é obrigatório').email('solicitante_email deve ser um e-mail válido'),
 })
 
 interface ResultadoCriacao {
@@ -42,6 +48,7 @@ interface ResultadoCriacao {
   id:          number
   status:      string
   destinatario: { id: number; nome: string }
+  solicitante:  { email: string; nome: string | null }
   idempotente: boolean
 }
 
@@ -55,12 +62,16 @@ function comoResultadoCriacao(data: unknown): ResultadoCriacao | null {
   if (!data || typeof data !== 'object') return null
   const d = data as Record<string, unknown>
   const dest = d.destinatario as Record<string, unknown> | undefined
+  const solic = d.solicitante as Record<string, unknown> | undefined
   if (typeof d.id !== 'number' || d.id <= 0) return null
   if (typeof d.status !== 'string' || typeof d.idempotente !== 'boolean') return null
   if (!dest || typeof dest.id !== 'number' || typeof dest.nome !== 'string') return null
+  if (!solic || typeof solic.email !== 'string' || (solic.nome !== null && typeof solic.nome !== 'string')) return null
   return {
     ok: true, id: d.id, status: d.status,
-    destinatario: { id: dest.id, nome: dest.nome }, idempotente: d.idempotente,
+    destinatario: { id: dest.id, nome: dest.nome },
+    solicitante: { email: solic.email, nome: solic.nome as string | null },
+    idempotente: d.idempotente,
   }
 }
 
@@ -118,7 +129,18 @@ export async function POST(req: Request): Promise<Response> {
 
   const parsed = bodySchema.safeParse(lido.body)
   if (!parsed.success) {
-    const detalhe = parsed.error.issues[0]?.message ?? 'payload inválido'
+    // O NOME do campo entra na mensagem: quando um obrigatório vem AUSENTE, o Zod
+    // reporta o erro de tipo ("expected string, received undefined") e a mensagem
+    // customizada do `.min(1, …)` nem dispara — sem o caminho, o integrador recebe
+    // "expected string, received undefined" e não sabe QUAL campo faltou (achado da
+    // prova HTTP do round 4). Vale para todos os obrigatórios, não só o novo.
+    // Só no `invalid_type` — nos demais a mensagem customizada já nomeia o campo, e
+    // prefixar produziria "solicitante_email: solicitante_email deve ser…".
+    const issue = parsed.error.issues[0]
+    const nomeia = issue?.code === 'invalid_type' && issue.path.length > 0
+    const detalhe = issue
+      ? `${nomeia ? `${issue.path.join('.')}: ` : ''}${issue.message}`
+      : 'payload inválido'
     const resposta = respostaErro('PAYLOAD_INVALIDO', detalhe, 422)
     await registrarChamada(chave.id, ROTA, 422, detalhe)
     return resposta
@@ -134,6 +156,7 @@ export async function POST(req: Request): Promise<Response> {
     p_data_limite:        p.data_limite,
     p_chave_idempotencia: p.chave_idempotencia,
     p_referencia_origem:  p.referencia_origem ?? null,
+    p_solicitante_email:  p.solicitante_email,
   })
 
   if (error) {
@@ -160,7 +183,8 @@ export async function POST(req: Request): Promise<Response> {
   const http = resultado.idempotente ? 200 : 201
   const resposta = Response.json({
     ok: true, id: resultado.id, status: resultado.status,
-    destinatario: resultado.destinatario, idempotente: resultado.idempotente,
+    destinatario: resultado.destinatario, solicitante: resultado.solicitante,
+    idempotente: resultado.idempotente,
   }, { status: http })
   await registrarChamada(chave.id, ROTA, http)
   return resposta

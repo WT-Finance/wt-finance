@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-30 · v5.4.0 (API Externa de Solicitações) — PR #191 reconciliado com a v5.3.4 e PRONTO para o merge do Yan
+Última atualização: 2026-07-31 · v5.4.0 (API Externa de Solicitações) — PR #191 no **round 4** (histórico limpo, slugs, permissão da documentação, solicitante amarrado); aguardando o patch destrutivo em TTY do Yan e o merge
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -53,13 +53,31 @@
   testes verdes.
 - Último ADR registrado: **`0161`** (v5.4.0: 0158 categoria de confiança da API externa ·
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
-- Última migration: **`0216`** (v5.4.0: 0210–0214 renumeradas + `migration repair`; 0215 e 0216 são
-  os dois rounds de decisões do Yan — extirpação da referência de conclusão e destino livre por
-  tipo). **Próxima migration livre: `0217`.** Aditiva nova volta ao `--aditiva` normal.
-- **v5.4.0 (PR #191) PRONTO:** reconciliado com o main da v5.3.4 (inclusive alinhando as rotas
-  externas ao "nunca em silêncio" do fan-out). Falta só o merge. **Pós-merge:** patch destrutivo
-  das 3 colunas órfãs (SQL no out-briefing, TTY do Yan) + criar a chave da integração na tela
-  "API externa" e entregar `docs/api-externa-solicitacoes.md` ao integrador.
+  Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
+  deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
+- Última migration APLICADA: **`0217`** (v5.4.0/Round4, aditiva: área RBAC
+  `solicitacoes/documentacao` + `criar_solicitacao_externa` com `p_solicitante_email` obrigatório +
+  `solic_json` com a chave `origem`). Antes dela: 0210–0214 renumeradas + `migration repair`, e
+  0215/0216 (rounds 2 e 3). **Próxima migration livre: `0219`.**
+- ⚠️ **`supabase/patches/0218_limpeza_historico_e_slugs.sql` existe e está PENDENTE** — patch
+  DESTRUTIVO (apaga todo o histórico de Solicitações, os 2 tipos arquivados e corrige os sufixos
+  `_2` dos slugs). Está FORA de `supabase/migrations/` de propósito: `db push` empurra o conjunto
+  pendente inteiro, e um arquivo destrutivo parado na pasta é arrastado pelo primeiro push aditivo
+  (foi assim que a v5.2.0 dropou bases). Aplicação = 2 comandos na mão do Yan, na ordem do
+  out-briefing (script de Storage → `git mv` + `--destrutiva`), e **antes de criar a chave do
+  TARS** (a guarda do patch aborta se já existir chave: renomear slug com integrador ligado
+  quebraria o contrato dele em silêncio).
+- **v5.4.0 (PR #191) — round 4 entregue:** com a plataforma aberta ao público interno, o Yan pediu
+  (1) histórico de Solicitações apagado + os 2 tipos arquivados de teste, (2) sufixos `_2` dos
+  slugs corrigidos, (3) documentação da API com **permissão própria** e botão na tela inicial do
+  módulo, (4) Chaves de API acima de "Tipos Expostos", (5) **solicitante amarrado**: o disparo
+  exige `solicitante_email` de pessoa cadastrada e ATIVA, e essa pessoa vira a solicitante (vê em
+  "Minhas solicitações", recebe e-mails, cancela pela tela); a procedência virou o selo "via
+  integração X" (`solic_json.origem`). (1) e (2) são o patch 0218 acima; (3)-(5) já estão no ar via
+  0217. **Pendências do Yan:** aplicar o 0218 em TTY · conceder a área "Solicitações
+  (documentação)" (nasce sem grant) · criar a chave da integração (segredo 1×) e entregar
+  `docs/api-externa-solicitacoes.md` ao Vitor **avisando do campo novo obrigatório** · patch das 3
+  colunas órfãs (SQL no out-briefing; pode ir anexado ao 0218 numa passada só) · merge.
 - **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro — pendência de
   billing do Yan, herdada da v5.2.0.
 
@@ -107,9 +125,10 @@
   limpar allows amplos/efêmeros do `.claude/settings.local.json` (`Bash(npx supabase *)`,
   `Bash(node *)`, PIDs).
 - **v5.4.0 (PR #191): checklist de merge EXECUTADO** (renumeração `0210–0214`/ADRs `0158–0161` +
-  `migration repair` + proxy.ts conferido + gates). Falta só o merge do Yan. Pós-merge: configurar
-  roles do tipo "Abatimento de créditos" + criar a chave TARS na tela (segredo exibido 1×) e
-  entregar `docs/api-externa-solicitacoes.md` ao Vitor; decidir o tipo homônimo (id 9).
+  `migration repair` + proxy.ts conferido + gates), seguido de **4 rounds de decisões do Yan** —
+  ver a seção do round 4 no out-briefing para a lista exata de pendências dele. A whitelist de
+  equipes por tipo e a referência de conclusão foram EXTIRPADAS (rounds 2 e 3); o round 4 amarrou o
+  solicitante a uma pessoa real e limpou o histórico.
 - **Fuso das pills de período (candidato REAL):** `resolverPeriodoCompleto` (`src/lib/periodo.ts`)
   não ancora em `hojeSP()` — runtime em UTC vira "Este mês/ano" antes da hora (~21h SP).
   Transversal (Fluxo de Caixa e DRE).
