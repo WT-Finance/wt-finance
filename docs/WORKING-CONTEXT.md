@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-31 (fim do dia) · produção na **v5.3.5** (#203 mergeada às 10h56 — solicitação de acesso volta a gravar a pendência) · v5.4.0 (API Externa) no **round 4** no PR #191, aguardando o patch destrutivo em TTY do Yan e o merge
+Última atualização: 2026-07-31 (pós-merge) · produção na **v5.4.0** (API Externa de Solicitações — #191 mergeada às 17h14). Nenhuma versão em curso.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,9 +9,29 @@
 
 ## Verdade atual
 
-- Versão em produção (main): **`5.3.5`** (#203 mergeado 31/07 às 10h56) — o fluxo público de solicitação de acesso
-  (`/solicitar-acesso`, linkado do login) **não gravava a pendência desde 13/07 14h13** e o usuário
-  via tela de sucesso. **NÃO era banco:** o commit `8863a69` trocou
+- Versão em produção (main): **`5.4.0`** (#191 mergeado 31/07 às 17h14) — **API Externa do módulo de
+  Solicitações**. Plataformas internas criam, consultam e cancelam solicitações por **chave de API**.
+  O contrato é **PULL-ONLY**: o Janus não faz nenhuma chamada de saída — quem quer saber o desfecho
+  consulta (`GET /api/externo/solicitacoes/{id}` ou `?referencia_origem=`). O disparo exige
+  **`solicitante_email`** de pessoa cadastrada e ATIVA, que vira a solicitante de verdade (vê em
+  "Minhas solicitações", recebe e-mails, cancela pela tela) — a procedência aparece no selo "via
+  integração X". **Superfície de restrição mínima:** a chave existe e está ativa, e o tipo está
+  `exposto_via_api` — não há lista de equipes por tipo nem de tipos por chave. Seis rounds de
+  decisões do Yan pós-implementação extirparam, nesta ordem: referência de conclusão (R2), equipes
+  por tipo (R3), robô como autor (R4), callbacks de saída (R5) e whitelist de tipos por chave (R6).
+  Migrations 0210–0225 aplicadas. Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-4-0_API_Externa.md` (as seções de round 2 a 6 são a
+  história das decisões).
+  **PENDENTE do Yan:** (1) aplicar `supabase/patches/PENDENTE-remover-coluna-whitelist.sql` em TTY —
+  numerar na hora (`git mv` para o próximo livre, hoje `0226`, + `npm run db:migrate -- --destrutiva`);
+  (2) criar a chave da integração na tela `/admin/api-externa` (o segredo é exibido UMA vez) e
+  entregar `docs/api-externa-solicitacoes.md` ao Vitor, avisando dos dois pontos que mudaram o
+  contrato: `solicitante_email` obrigatório e pull-only; (3) conferência VISUAL de
+  `/admin/api-externa` — não consegui fazer (o dev server cai no login e o agente não digita
+  credenciais) e a leva mudou bastante a tela.
+- A v5.3.5 (#203 mergeado 31/07 às 10h56) corrigiu o fluxo público de solicitação de acesso: o
+  `/solicitar-acesso` (linkado do login) **não gravava a pendência desde 13/07 14h13** e o usuário
+  via tela de sucesso mesmo assim. **NÃO era banco:** o commit `8863a69` trocou
   `(supabase.rpc as ...)(...)` por `const rpc = supabase.rpc` + `rpc(...)` — **parênteses em torno de
   acesso a membro preservam o `this`; a ATRIBUIÇÃO destaca.** `SupabaseClient.rpc` é método de
   protótipo (corpo de `class` = sempre strict) que faz `return this.rest.rpc(...)` →
@@ -67,8 +87,7 @@
   sonda de disparo (`docs/harness/sonda-disparo.md`), baseline −45,6% na porção do projeto.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-3-2_Reformulacao_Harness.md` (a seção
   "o que muda para a próxima sessão" é leitura obrigatória da 1ª sessão nativa). Nenhuma versão em
-  curso: as worktrees da v5.3.2 e da v5.3.3 já foram limpas; a única branch de versão viva é a da
-  **v5.4.0** (PR #191 — checklist de merge executado, PRONTO para o merge do Yan).
+  curso: todas as worktrees de versão foram limpas (a da v5.4.0 saiu no `/pos-merge` de 31/07).
 - A v5.3.1 fechou a adaptação do modelo da controladoria na DRE: Resumo Executivo (ancorado no
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
