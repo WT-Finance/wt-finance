@@ -124,9 +124,10 @@ export function ModalCriarChave({
             />
             <p className="mt-1 text-2xs text-zinc-400">
               Endereço do integrador que o Janus CHAMA a cada movimentação (criada, concluída,
-              rejeitada, cancelada) das solicitações desta chave. É assim que o outro sistema
-              descobre o desfecho — <strong>não existe endpoint de consulta</strong>. Em branco, a
-              integração cria pedidos e nunca fica sabendo o que aconteceu com eles.
+              rejeitada, cancelada) das solicitações desta chave — ele fica sabendo{' '}
+              <strong>na hora</strong>, sem perguntar. É opcional: existe também a consulta
+              (<code className="font-mono">GET /api/externo/solicitacoes/&#123;id&#125;</code>), então
+              em branco a integração continua conseguindo saber o desfecho — só precisa perguntar.
             </p>
           </div>
 

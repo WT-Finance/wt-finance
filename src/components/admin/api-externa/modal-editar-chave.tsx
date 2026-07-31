@@ -85,9 +85,11 @@ export function ModalEditarChave({
             placeholder="https://integrador.exemplo.com/webhook"
           />
           <p className="mt-1 text-2xs text-zinc-400">
-            Endereço que o Janus CHAMA a cada movimentação das solicitações desta chave — é como o
-            outro sistema descobre o desfecho (<strong>não há endpoint de consulta</strong>). Apagar
-            a URL faz os avisos pendentes serem descartados.
+            Endereço que o Janus CHAMA a cada movimentação das solicitações desta chave — o integrador
+            fica sabendo <strong>na hora</strong>, sem perguntar. É opcional: sem ele, o desfecho
+            continua disponível pela consulta
+            (<code className="font-mono">GET /api/externo/solicitacoes/&#123;id&#125;</code>). Apagar a
+            URL descarta os avisos que ainda estavam na fila.
           </p>
         </div>
 
