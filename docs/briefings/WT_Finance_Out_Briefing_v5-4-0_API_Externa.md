@@ -478,3 +478,50 @@ revogada, e o par movimentação→consulta refletindo `cancelada` com `decidido
 e-mail disparado) e zero resíduo: 200 no item, 200 na coleção, 200 com lista vazia, 422 sem
 parâmetro, 404 em id inexistente. Documentado nas DUAS cópias (contrato `.md` e página da
 plataforma), com renumeração das seções seguintes.
+
+---
+
+## Round 5 (2026-07-31) — remoção dos callbacks: o Janus não faz chamadas de saída
+
+**Como surgiu:** ao ler a explicação dos campos de callback na tela de chaves, o Yan perguntou *"não
+seria mais fácil para o nosso lado criarmos um endpoint de consulta?"* (virou a 0221) e, na sequência,
+*"se os callbacks forem desnecessários com o endpoint de consulta vamos removê-los, nós somos donos do
+formato, não devemos precisar mandar nada de volta, os outros sistemas que devem nos consultar"*.
+Pediu **calma** antes de eu executar — parei as duas frentes que já haviam sido despachadas (nada foi
+escrito), expliquei o trade-off, e ele confirmou: *"vamos seguir com a remoção"*.
+
+**O argumento que decidiu.** A máquina de push era a única peça que obrigava o OUTRO lado a construir
+e proteger infraestrutura, e a única que nos obrigava a manter fila, cron de 5 min, backoff e um
+segredo por chave. Com a consulta existindo, ela adiantava em minutos uma informação já disponível —
+ao custo de um modo de falha próprio (`esgotado` = evento perdido). **O preço da remoção, dito antes
+de executar:** a pontualidade passa a ser inteiramente responsabilidade da plataforma de origem;
+enquanto ela não consultar, ninguém do lado dela sabe, e do nosso lado nada parece errado.
+
+**Migration 0222 (aditiva, aplicada) — 9 funções.** Cinco pararam de enfileirar
+(`criar_solicitacao_externa`, `cancelar_solicitacao_externa` e as TRÊS do fluxo humano:
+`solic_concluir`, `solic_rejeitar`, `solic_cancelar`); quatro perderam os campos de callback
+(`api_chave_listar`, `api_chave_resolver`, e `api_chave_registrar`/`api_chave_atualizar`, que trocaram
+de assinatura — 6→4 e 4→2 params, `DROP`+`CREATE`, WARN no classificador).
+
+**Método que vale registrar:** os corpos NÃO foram copiados à mão das migrations antigas. Extraí o
+corpo VIVO de produção com `pg_get_functiondef`, removi só as linhas do enfileiramento (e os
+comentários que só falavam dele) por script, **conferi o diff linha a linha** (mostrou exatamente 1
+`PERFORM` + 1 comentário por função, e nada mais), varri os fragmentos de comentário que ficaram
+órfãos, e validei o arquivo inteiro aplicando-o numa transação REVERTIDA antes de aplicar de verdade.
+Para uma função de 180 linhas, isso é uma garantia que transcrição manual não dá.
+
+**Patch destrutivo — `supabase/patches/PENDENTE-remover-outbox-e-colunas-orfas.sql`, SEM NÚMERO.** É a
+lição de hoje aplicada: numerar na hora de aplicar (`git mv` para o próximo livre real), porque
+reservar número para destrutiva que vai depois de uma aditiva foi exatamente o que fez o `db push`
+recusar mais cedo. Ele remove a fila (0 linhas), as 3 RPCs, o cron, as 2 colunas de callback **e
+aproveita para levar as 3 colunas órfãs dos rounds 2 e 3** (pendência antiga; se preferir separar,
+apagar a Parte 2 do arquivo). Guarda 1 ABORTA se a 0222 não estiver aplicada — sem ela, dropar o
+enfileirador deixaria as três RPCs humanas chamando função inexistente e a tela quebraria na primeira
+conclusão. Também aborta se a fila tiver item pendente ou se existir chave emitida.
+
+**Verificação:** tsc 0 · lint 0 · build limpo · **591/591** (saíram os 6 casos de fila; o de conclusão
+foi reescrito e agora confere o par que substitui o callback — movimentação HUMANA na tela, leitura
+pela CONSULTA) · suíte de contrato ao vivo rodou (38 casos) · conferido no banco que **nenhuma função
+enfileira** e que a única que ainda lê colunas de callback é a própria RPC da fila, que o patch
+remove. A microcópia dos modais, que eu havia escrito de manhã dizendo "não existe endpoint de
+consulta", foi corrigida antes (commit próprio) — erro meu de texto que envelheceu no mesmo dia.

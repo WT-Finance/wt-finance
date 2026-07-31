@@ -6,8 +6,8 @@
 // Idempotente por (chave, chave_idempotencia): reenviar o mesmo par devolve o MESMO
 // id (idempotente:true, HTTP 200) em vez de duplicar (HTTP 201 na 1ª vez).
 export const runtime = 'nodejs'
-// Orçamento explícito (revisor v5.4.0): e-mail best-effort (~10s) + entrega inline da
-// outbox (até 15s de budget) cabem com folga — a resposta nunca é abortada pela plataforma.
+// Orçamento explícito (revisor v5.4.0): sobra só o e-mail best-effort (~10s) — a
+// entrega inline de callback saiu no Round5 (o Janus não chama mais ninguém).
 export const maxDuration = 60
 
 import { z } from 'zod'
@@ -15,7 +15,6 @@ import {
   autenticarChamada, lerBodyLimitado, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
   getEmailsEnvolvidosSvc,
 } from '@/lib/api-externa/http'
-import { processarOutboxUmaVez } from '@/lib/api-externa/outbox'
 import { comoListaConsulta } from '@/lib/api-externa/consulta'
 import { enviarNotificacaoSolicitacao } from '@/lib/email'
 
@@ -231,12 +230,6 @@ export async function POST(req: Request): Promise<Response> {
   if (!resultado.idempotente) {
     await notificarCriacao(resultado.id)
   }
-
-  // v5.4.0/M4 (ADR-0161): tentativa de entrega INLINE, best-effort (latência boa no
-  // caminho feliz) — AGUARDADA antes do return (serverless mata trabalho pós-resposta,
-  // lição v4.25). Timeout curto (5s) e nunca lança: o item permanece 'pendente' e o
-  // cron (~5min) tenta de novo se isto falhar/exceder o tempo.
-  try { await processarOutboxUmaVez(5, 5_000, 15_000) } catch { /* a varredura do cron cobre */ }
 
   const http = resultado.idempotente ? 200 : 201
   const resposta = Response.json({

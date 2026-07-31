@@ -110,18 +110,16 @@ export function ChavesApiContent({
       <CardTabela titulo="Chaves de API" className="mb-5">
         <table className="table-fixed w-full text-sm">
           <colgroup>
-            <col className="w-[20%]" />
-            <col className="w-[22%]" />
+            <col className="w-[25%]" />
+            <col className="w-[30%]" />
+            <col className="w-[12%]" />
+            <col className="w-[15%]" />
             <col className="w-[18%]" />
-            <col className="w-[10%]" />
-            <col className="w-[13%]" />
-            <col className="w-[17%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-zinc-100 text-left">
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Plataforma</th>
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Whitelist</th>
-              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Callback</th>
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Status</th>
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Última chamada</th>
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Ações</th>
@@ -149,16 +147,6 @@ export function ChavesApiContent({
                   )}
                 </td>
                 <td className="px-3 py-2.5">
-                  {chave.callback_url ? (
-                    <p className="text-xs text-zinc-600 truncate" title={chave.callback_url}>{chave.callback_url}</p>
-                  ) : (
-                    <p className="text-xs text-zinc-400">Sem callback</p>
-                  )}
-                  {chave.tem_callback_segredo && (
-                    <p className="text-3xs text-zinc-400">Segredo de saída configurado</p>
-                  )}
-                </td>
-                <td className="px-3 py-2.5">
                   <BadgeStatusChave chave={chave} />
                   {!chave.ativo && chave.revogado_em && (
                     <p className="mt-1 text-3xs text-zinc-400">em {fmtDataHoraSP(chave.revogado_em)}</p>
@@ -175,7 +163,7 @@ export function ChavesApiContent({
                       variant="icone-borda" tone="neutro"
                       onClick={() => setModal({ modo: 'editar', chave })}
                       disabled={!chave.ativo}
-                      title={chave.ativo ? 'Editar callback/whitelist' : 'Chave revogada — não pode ser editada'}
+                      title={chave.ativo ? 'Editar whitelist' : 'Chave revogada — não pode ser editada'}
                       aria-label={`Editar chave de ${chave.plataforma}`}
                     >
                       <Pencil size={14} />
@@ -203,7 +191,7 @@ export function ChavesApiContent({
             ))}
             {chaves.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-10 text-center text-sm text-zinc-400">
+                <td colSpan={5} className="px-3 py-10 text-center text-sm text-zinc-400">
                   Nenhuma chave de API registrada ainda. Use «Nova chave» para começar.
                 </td>
               </tr>

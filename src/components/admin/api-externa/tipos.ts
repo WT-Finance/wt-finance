@@ -22,16 +22,14 @@ export interface RoboChave {
 }
 
 export interface ChaveApi {
-  id:                   number
-  plataforma:           string
-  callback_url:         string | null
-  tem_callback_segredo: boolean
-  whitelist_tipos:      TipoWhitelist[]
-  robo:                 RoboChave
-  ativo:                boolean
-  criado_em:            string   // timestamptz — exibir via fmtDataHoraSP
-  revogado_em:          string | null
-  ultima_chamada_em:    string | null
+  id:                number
+  plataforma:        string
+  whitelist_tipos:   TipoWhitelist[]
+  robo:              RoboChave
+  ativo:             boolean
+  criado_em:         string   // timestamptz — exibir via fmtDataHoraSP
+  revogado_em:       string | null
+  ultima_chamada_em: string | null
 }
 
 export interface LogChamada {

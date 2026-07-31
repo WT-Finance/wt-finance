@@ -1,10 +1,9 @@
 // API externa de Solicitações (v5.4.0/Round4) — GET /api/externo/solicitacoes/{id}
 //
-// Consulta o estado de UMA solicitação criada por ESTA chave. Existe porque, sem
-// consulta, o integrador dependia inteiramente do callback: se ele não hospedasse
-// um webhook (ou se o dele ficasse fora do ar além das 8 tentativas da outbox),
-// nunca ficaria sabendo o desfecho — não havia caminho de recuperação. Com esta
-// rota o contrato é autossuficiente: criar → consultar → cancelar.
+// Consulta o estado de UMA solicitação criada por ESTA chave. É a ÚNICA forma de o
+// integrador saber o desfecho: o Janus não faz chamadas de saída (o webhook foi
+// removido no Round5 — decisão do Yan: somos donos do formato, quem quer saber
+// pergunta). Contrato completo e autossuficiente: criar → consultar → cancelar.
 export const runtime = 'nodejs'
 
 import {

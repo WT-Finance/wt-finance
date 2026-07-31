@@ -23,8 +23,6 @@ export interface ChaveResolvida {
   plataforma: string
   whitelist_tipos: number[]
   robo_user_id: string
-  callback_url: string | null
-  callback_segredo: string | null
 }
 
 function comoChaveResolvida(x: unknown): ChaveResolvida | null {
@@ -36,8 +34,6 @@ function comoChaveResolvida(x: unknown): ChaveResolvida | null {
     plataforma:       typeof o.plataforma === 'string' ? o.plataforma : '',
     whitelist_tipos:  Array.isArray(o.whitelist_tipos) ? o.whitelist_tipos.filter((v): v is number => typeof v === 'number') : [],
     robo_user_id:     typeof o.robo_user_id === 'string' ? o.robo_user_id : '',
-    callback_url:     typeof o.callback_url === 'string' ? o.callback_url : null,
-    callback_segredo: typeof o.callback_segredo === 'string' ? o.callback_segredo : null,
   }
 }
 

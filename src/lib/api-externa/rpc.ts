@@ -38,8 +38,6 @@ function comoChave(x: Record<string, unknown>): ChaveApi | null {
   return {
     id:                   x.id,
     plataforma:           typeof x.plataforma === 'string' ? x.plataforma : '',
-    callback_url:         typeof x.callback_url === 'string' ? x.callback_url : null,
-    tem_callback_segredo: x.tem_callback_segredo === true,
     whitelist_tipos:      comoTipos(x.whitelist_tipos),
     robo: {
       user_id: typeof robo.user_id === 'string' ? robo.user_id : '',

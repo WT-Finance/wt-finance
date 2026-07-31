@@ -4,14 +4,14 @@
 // pertence à chave — não é um cancelamento genérico por id). SEM estado "aprovada":
 // só a transição para 'cancelada', mesma máquina de estados existente.
 export const runtime = 'nodejs'
-// Orçamento explícito (revisor v5.4.0): e-mail best-effort + entrega inline cabem com folga.
+// Orçamento explícito (revisor v5.4.0): sobra só o e-mail best-effort — a entrega
+// inline de callback saiu no Round5 (o Janus não chama mais ninguém).
 export const maxDuration = 60
 
 import {
   autenticarChamada, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
   getEmailsEnvolvidosSvc,
 } from '@/lib/api-externa/http'
-import { processarOutboxUmaVez } from '@/lib/api-externa/outbox'
 import { enviarNotificacaoSolicitacao } from '@/lib/email'
 
 const ROTA = '/api/externo/solicitacoes/[id]/cancelar'
@@ -94,11 +94,6 @@ export async function POST(
     return respostaErro('ERRO_INTERNO', 'Falha inesperada. Tente novamente com backoff.', 500)
   }
   await notificarCancelamento(resultado.id)
-
-  // v5.4.0/M4 (ADR-0161): entrega INLINE best-effort, AGUARDADA antes do return
-  // (serverless mata trabalho pós-resposta — lição v4.25). Nunca lança; o cron
-  // (~5min) cobre o que não sair daqui.
-  try { await processarOutboxUmaVez(5, 5_000, 15_000) } catch { /* a varredura do cron cobre */ }
 
   const resposta = Response.json({ ok: true, id: resultado.id, status: resultado.status }, { status: 200 })
   await registrarChamada(chave.id, ROTA, 200)

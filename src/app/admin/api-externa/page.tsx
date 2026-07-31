@@ -9,8 +9,9 @@ import type { TipoDisponivel } from '@/components/admin/api-externa/tipos'
 // (Round3: só o toggle exposto_via_api — a lista de equipes de destino por
 // tipo morreu, decisão do Yan; qualquer equipe cadastrada é destino válido)
 // + "Chaves de API" (uma chave por plataforma integradora: segredo em hash,
-// callback opcional, whitelist de tipos, usuário-robô vinculado) + log de
-// chamadas por chave. A busca de equipes (getDestinatarios) SAIU desta page —
+// whitelist de tipos, usuário-robô vinculado — Round5: o callback de saída
+// saiu do produto, a integração passou a CONSULTAR) + log de chamadas por
+// chave. A busca de equipes (getDestinatarios) SAIU desta page —
 // só existia para a extinta seção de destinos por tipo; a página irmã
 // /admin/api-externa/documentacao é quem agora precisa dela (seção viva).
 //

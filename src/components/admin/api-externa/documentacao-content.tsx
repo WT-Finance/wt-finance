@@ -25,10 +25,9 @@ const SECOES = [
   { id: 'criar',           label: '4. Criar — POST /api/externo/solicitacoes' },
   { id: 'consultar',    label: '5. Consultar' },
   { id: 'idempotencia', label: '6. Idempotência e retry' },
-  { id: 'callbacks',    label: '7. Callbacks' },
-  { id: 'cancelar',     label: '8. Cancelar' },
-  { id: 'erros',        label: '9. Erros' },
-  { id: 'fora',         label: '10. Fora desta versão' },
+  { id: 'cancelar',     label: '7. Cancelar' },
+  { id: 'erros',        label: '8. Erros' },
+  { id: 'fora',         label: '9. Fora desta versão' },
 ] as const
 
 function Pre({ children }: { children: string }) {
@@ -118,11 +117,6 @@ const JSON_CONSULTAR_POR_REFERENCIA = `{ "ok": true,
     }
   ] }`
 
-const JSON_CALLBACK_PAYLOAD = `{ "evento": "solicitacao.concluida", "solicitacao_id": 123,
-  "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
-  "status": "concluida", "destinatario": { "id": 4, "nome": "Financeiro" },
-  "ocorrido_em": "2026-07-25T14:03:00-03:00" }`
-
 const ERROS: ReadonlyArray<readonly [string, string, string]> = [
   ['AUTH_AUSENTE / AUTH_INVALIDA / CHAVE_INVALIDA', '401', 'Sem chave, chave errada ou revogada'],
   ['TIPO_NAO_AUTORIZADO', '403', 'Tipo existe mas não está na whitelist da sua chave'],
@@ -140,13 +134,6 @@ const ERROS: ReadonlyArray<readonly [string, string, string]> = [
   ['TIPO_EXIGE_ANEXO', '422', 'Tipo tem anexo obrigatório (indisponível via API nesta versão)'],
   ['CONSULTA_INVALIDA', '422', 'Consulta por referencia_origem sem o parâmetro na query'],
   ['ERRO_INTERNO', '500', 'Falha inesperada (tente novamente com backoff)'],
-]
-
-const CALLBACKS: ReadonlyArray<readonly [string, string, string]> = [
-  ['solicitacao.criada',    'criação via API confirmada',           '—'],
-  ['solicitacao.concluida', 'equipe concluiu',                      '—'],
-  ['solicitacao.rejeitada', 'equipe rejeitou',                      'justificativa'],
-  ['solicitacao.cancelada', 'cancelada (pela origem ou no Janus)',  '—'],
 ]
 
 export function DocumentacaoContent({
@@ -207,9 +194,8 @@ export function DocumentacaoContent({
             do solicitante.
           </p>
           <p>
-            Toda mudança de estado gera um <strong>callback</strong> HTTP para a URL cadastrada na chave (seção
-            7). Além do callback, também é possível <strong>consultar</strong> o estado a qualquer momento
-            (seção 5).
+            O Janus <strong>não notifica ninguém</strong> quando o estado muda — não existe callback nem
+            qualquer chamada de saída. Quem quiser saber o desfecho <strong>consulta</strong> (seção 5).
           </p>
         </Secao>
 
@@ -363,7 +349,7 @@ export function DocumentacaoContent({
               sempre uma equipe (role) — pelo <strong>nome exato</strong> (case-insensitive) ou pelo{' '}
               <strong>id</strong> numérico devolvido em <code className="font-mono text-xs">destinos</code>{' '}
               (o id é estável; o nome pode ser renomeado no Janus — prefira o id). Equipe inexistente → erro
-              estruturado, nunca fallback. O destinatário resolvido é ecoado na resposta e nos callbacks —
+              estruturado, nunca fallback. O destinatário resolvido é ecoado na resposta e na consulta —
               exiba-o (&ldquo;aberto para a equipe X&rdquo;) e detecte erro de fila no primeiro disparo. Errou
               a fila? Cancele e recrie — não existe reatribuição via API.
             </li>
@@ -381,26 +367,25 @@ export function DocumentacaoContent({
             <li>
               <code className="font-mono text-xs">titulo</code> (recomendado): o texto curto que identifica a
               solicitação nas listas do Janus. <code className="font-mono text-xs">referencia_origem</code>: o
-              id do registro no sistema de origem; volta em todos os callbacks.
+              id do registro no sistema de origem; volta na consulta (seção 5).
             </li>
           </ul>
         </Secao>
 
         <Secao id="consultar" titulo="5. Consultar">
           <p>
-            Sem consulta, o integrador dependia inteiramente do callback (seção 7): se não hospedasse um
-            webhook, ou se o dele ficasse fora do ar além das 8 tentativas da fila (o evento vira{' '}
-            <code className="font-mono text-xs">esgotado</code> e se perde), nunca saberia o desfecho — não
-            havia caminho de recuperação. Com estes dois endpoints o contrato passa a ser autossuficiente:{' '}
-            <strong>criar → consultar → cancelar</strong>, tudo por chamada sua; o callback continua existindo,
-            mas vira a otimização de tempo real, não pré-requisito.
+            Estes dois endpoints tornam o contrato autossuficiente: <strong>criar → consultar → cancelar</strong>,
+            tudo por chamada sua. <strong>O Janus não faz chamadas de saída</strong> — não há webhook, não há
+            segredo de saída, não há nada seu a expor na sua rede. Quem quiser saber o desfecho, consulta.
           </p>
           <p>
-            <strong>Quando usar cada coisa:</strong> o callback avisa na hora, mas exige hospedar e proteger um
-            endpoint seu; a consulta é feita quando quiser, sem construir nada, ao custo de só saber quando
-            perguntar. <strong>Recomendação: combine os dois</strong> — callback para reagir em tempo real e
-            consulta como rede de segurança (reconciliar o que o callback não entregou; a fila desiste depois
-            de 8 tentativas). Quem não quiser manter webhook nenhum consegue operar 100% só por consulta.
+            Na prática, você consulta os pedidos que <strong>você mesmo abriu</strong> e que ainda estão{' '}
+            <code className="font-mono text-xs">aberta</code>: o id de cada um vem na resposta da criação
+            (seção 4), e você também pode buscar pelo seu próprio{' '}
+            <code className="font-mono text-xs">referencia_origem</code> (5.2), sem precisar guardar o nosso
+            id. A cadência é escolha sua — consulte quando quiser, quantas vezes quiser.{' '}
+            <strong>Enquanto você não consultar, ninguém do seu lado fica sabendo do desfecho</strong> — a
+            pontualidade é responsabilidade da sua plataforma, não do Janus.
           </p>
           <p className="text-xs text-zinc-500">
             Nenhuma das duas rotas abaixo devolve os <strong>valores dos campos</strong> (
@@ -469,77 +454,20 @@ export function DocumentacaoContent({
           </ul>
         </Secao>
 
-        <Secao id="callbacks" titulo="7. Callbacks (mudanças de estado → sua URL)">
-          <p>
-            O Janus envia POST à URL de callback cadastrada na chave, com o header{' '}
-            <code className="font-mono text-xs">x-callback-secret: &lt;segredo de saída&gt;</code> (valide-o).
-            Quatro eventos:
-          </p>
-          <div className="overflow-x-auto rounded-lg border border-zinc-200">
-            <table className="w-full table-fixed text-sm">
-              <colgroup>
-                <col className="w-52" />
-                <col />
-                <col className="w-32" />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-zinc-100">
-                  <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Evento</th>
-                  <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Quando</th>
-                  <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Campos extras</th>
-                </tr>
-              </thead>
-              <tbody>
-                {CALLBACKS.map(([evento, quando, extra]) => (
-                  <tr key={evento} className="border-b border-zinc-50 last:border-0">
-                    <td className="px-3 py-2 font-mono text-xs text-zinc-600">{evento}</td>
-                    <td className="px-3 py-2 text-zinc-700">{quando}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-zinc-500">{extra}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p>Payload:</p>
-          <Pre>{JSON_CALLBACK_PAYLOAD}</Pre>
-          <p className="text-xs text-zinc-500">
-            O Janus não pede nem devolve uma referência do seu lado na conclusão — a conciliação entre a
-            solicitação e o lançamento correspondente (ex.: no seu ERP/CRM) é responsabilidade da sua
-            plataforma. Use <code className="font-mono text-xs">solicitacao_id</code> (ou o seu próprio{' '}
-            <code className="font-mono text-xs">referencia_origem</code>, ecoado em todo callback) para casar
-            os dois lados.
-          </p>
-          <ul className="list-disc space-y-1.5 pl-5">
-            <li>
-              <strong>Entrega at-least-once:</strong> responda 2xx rápido (só enfileire do seu lado). Você
-              pode receber o mesmo evento mais de uma vez — deduplique por evento + solicitacao_id.
-            </li>
-            <li>
-              Sem 2xx, o Janus retenta com backoff exponencial (2, 4, 8… minutos, teto 4 h) até 8 tentativas;
-              depois marca como esgotado (visível no log da chave, no admin do Janus).
-            </li>
-            <li>Não há callback de &ldquo;aprovado&rdquo; — não existe esse estado (seção 1).</li>
-            <li>
-              <strong>O webhook deixou de ser a única forma de saber o desfecho</strong> — sem um hospedado, ou
-              se ele ficar fora do ar além das 8 tentativas acima, ainda dá para perguntar diretamente ao Janus
-              (seção 5, Consultar).
-            </li>
-          </ul>
-        </Secao>
-
-        <Secao id="cancelar" titulo="8. Cancelar — POST /api/externo/solicitacoes/{id}/cancelar">
+        <Secao id="cancelar" titulo="7. Cancelar — POST /api/externo/solicitacoes/{id}/cancelar">
           <ul className="list-disc space-y-1.5 pl-5">
             <li>Só cancela solicitações criadas pela sua chave e ainda abertas.</li>
             <li>
               Já concluída/rejeitada/cancelada → 409 com{' '}
               <code className="font-mono text-xs">CONFLITO_ESTADO: &lt;status atual&gt;</code> — o conflito é
-              reportado, não aplicado (o estado do Janus não muda; sincronize o seu lado pelo callback).
+              reportado, não aplicado (o estado do Janus não muda; consulte para confirmar o estado atual —
+              seção 5).
             </li>
           </ul>
         </Secao>
 
         <div id="erros" className="scroll-mt-8">
-          <CardTabela titulo="9. Erros">
+          <CardTabela titulo="8. Erros">
             <p className="mb-2 text-xs text-zinc-500">
               Formato de todo erro: <code className="font-mono text-xs">{'{ ok: false, erro: { codigo, mensagem } }'}</code>
             </p>
@@ -569,10 +497,10 @@ export function DocumentacaoContent({
           </CardTabela>
         </div>
 
-        <Secao id="fora" titulo="10. Fora desta versão (não peça, ainda)">
+        <Secao id="fora" titulo="9. Fora desta versão (não peça, ainda)">
           <p>
-            Anexos via API · estados/eventos de aprovação · assinatura HMAC de callbacks (hoje: segredo em
-            header) · reatribuição de destinatário ·{' '}
+            Anexos via API · estados/eventos de aprovação · notificação ativa (webhook): o Janus não faz
+            chamadas de saída — o desfecho é consultado (seção 5) · reatribuição de destinatário ·{' '}
             <strong>criar em nome de quem ainda não tem cadastro no Janus</strong> (o{' '}
             <code className="font-mono text-xs">solicitante_email</code> precisa existir e estar ativo;
             cadastrar a pessoa antes é pré-condição deliberada da integração).

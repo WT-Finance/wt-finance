@@ -77,7 +77,11 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0221`** (v5.4.0/Round4: `consultar_solicitacoes_externas` +
+- Última migration APLICADA: **`0222`** (v5.4.0/Round5: os CALLBACKS foram removidos — 9 funções
+  pararam de usar a fila e os campos de callback; o Janus não faz mais chamadas de saída, o
+  integrador CONSULTA. ADR-0161 **superado por inteiro**. O `DROP` dos objetos inertes é o patch
+  `supabase/patches/PENDENTE-remover-outbox-e-colunas-orfas.sql`, SEM número de propósito: numerar
+  na hora de aplicar). Antes dela a **`0221`** (v5.4.0/Round4: `consultar_solicitacoes_externas` +
   `GET /api/externo/solicitacoes/{id}` e `?referencia_origem=` — o contrato virou autossuficiente
   (criar → consultar → cancelar) e o callback deixou de ser pré-requisito; a desistência da outbox
   após 8 tentativas deixou de ser perda de informação. Emenda no ADR-0161). Antes dela a **`0219`** (v5.4.0/Round4: `solic_tipos_documentacao`, RPC-irmã
@@ -85,7 +89,7 @@
   na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
   **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
   `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
-  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0222`** — a `0220` é o
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0223`** — a `0220` é o
   patch destrutivo pendente descrito abaixo (e não existe 0218: o arquivo nasceu com esse número e
   foi renumerado).
 - ✅ **Limpeza de histórico APLICADA (31/07, mão do Yan): `0220` no ar.** Histórico zerado e
@@ -119,7 +123,16 @@
   **Pendências do Yan:** criar a chave da integração (segredo exibido 1×) e entregar
   `docs/api-externa-solicitacoes.md` ao Vitor **avisando dos dois campos novos: `solicitante_email`
   obrigatório e as rotas de consulta** · patch das 3 colunas órfãs (SQL neste out-briefing) ·
-  **merge**. A área "Solicitações (documentação)" já foi concedida (2 roles).
+  **merge** · aplicar o patch `PENDENTE-remover-outbox-e-colunas-orfas.sql` em TTY (`git mv` para o
+  próximo número livre + `--destrutiva`; ele leva a fila, o cron, as colunas de callback E as 3
+  colunas órfãs dos rounds 2/3 numa passada só). A área "Solicitações (documentação)" já foi
+  concedida (2 roles).
+- **O contrato da API é PULL-ONLY desde o Round 5 (31/07):** criar → consultar → cancelar. O Janus
+  não notifica ninguém; o integrador descobre o desfecho consultando
+  (`GET /api/externo/solicitacoes/{id}` ou `?referencia_origem=`). **Consequência a comunicar ao
+  Vitor:** a pontualidade é responsabilidade do TARS — enquanto ele não consultar, ninguém do lado
+  dele sabe. Se algum integrador futuro precisar de reação em segundos, o caminho é reintroduzir push
+  para ele, não presumir que a consulta cobre.
 - **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro — pendência de
   billing do Yan, herdada da v5.2.0.
 

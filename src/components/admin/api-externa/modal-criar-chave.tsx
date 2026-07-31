@@ -2,15 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, Copy, Loader2, Wand2 } from 'lucide-react'
-import { criarChaveApi, gerarSegredoCallbackAction } from '@/app/admin/api-externa/actions'
+import { AlertTriangle, Check, Copy, Loader2 } from 'lucide-react'
+import { criarChaveApi } from '@/app/admin/api-externa/actions'
 import type { TipoDisponivel } from './tipos'
 import { WhitelistTipos } from './whitelist-tipos'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'
 import { Input } from '@/components/ui/field'
 
-// v5.4.0/M2 — modal de criar chave de API: plataforma + callback (opcional) +
+// v5.4.0/M2 (Round5: callback removido — a integração passou a CONSULTAR,
+// nunca mais é avisada por push) — modal de criar chave de API: plataforma +
 // whitelist de tipos. Em sucesso, mostra o SEGREDO em claro UMA VEZ (mesmo
 // padrão da senha provisória — modal-convidar.tsx, admin/acessos): depois de
 // fechar este modal, o segredo não é recuperável (só revogar e criar outra chave).
@@ -29,10 +30,7 @@ export function ModalCriarChave({
 }) {
   const router = useRouter()
   const [plataforma, setPlataforma] = useState('')
-  const [callbackUrl, setCallbackUrl] = useState('')
-  const [callbackSegredo, setCallbackSegredo] = useState('')
   const [whitelist, setWhitelist] = useState<number[]>([])
-  const [gerandoSegredo, setGerandoSegredo] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<Sucesso | null>(null)
@@ -40,15 +38,6 @@ export function ModalCriarChave({
 
   function toggleTipo(id: number) {
     setWhitelist(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
-  }
-
-  async function handleGerarSegredo() {
-    setGerandoSegredo(true)
-    try {
-      setCallbackSegredo(await gerarSegredoCallbackAction())
-    } finally {
-      setGerandoSegredo(false)
-    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -59,12 +48,7 @@ export function ModalCriarChave({
       return
     }
     setEnviando(true)
-    const res = await criarChaveApi({
-      plataforma,
-      callbackUrl,
-      callbackSegredo: callbackSegredo.trim() || null,
-      whitelist,
-    })
+    const res = await criarChaveApi({ plataforma, whitelist })
     setEnviando(false)
     if (!res.ok) {
       setErro(res.erro)
@@ -110,52 +94,6 @@ export function ModalCriarChave({
               criadas por esta chave. Cria também um usuário-robô técnico, que nunca loga na
               plataforma e <strong>não é autor de nada</strong>: o solicitante de cada pedido é a
               pessoa cujo e-mail vem no disparo, e ela precisa ter cadastro ativo aqui.
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="chave-callback-url" className="block text-xs font-medium text-zinc-600 mb-1">
-              Callback — URL <span className="text-zinc-400 font-normal">(opcional)</span>
-            </label>
-            <Input
-              id="chave-callback-url" type="url" value={callbackUrl}
-              onChange={e => setCallbackUrl(e.target.value)}
-              placeholder="https://integrador.exemplo.com/webhook"
-            />
-            <p className="mt-1 text-2xs text-zinc-400">
-              Endereço do integrador que o Janus CHAMA a cada movimentação (criada, concluída,
-              rejeitada, cancelada) das solicitações desta chave — ele fica sabendo{' '}
-              <strong>na hora</strong>, sem perguntar. É opcional: existe também a consulta
-              (<code className="font-mono">GET /api/externo/solicitacoes/&#123;id&#125;</code>), então
-              em branco a integração continua conseguindo saber o desfecho — só precisa perguntar.
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="chave-callback-segredo" className="block text-xs font-medium text-zinc-600 mb-1">
-              Callback — segredo de saída <span className="text-zinc-400 font-normal">(opcional)</span>
-            </label>
-            <div className="flex gap-2">
-              <Input
-                id="chave-callback-segredo" type="text" value={callbackSegredo}
-                onChange={e => setCallbackSegredo(e.target.value)}
-                placeholder="Enviado pelo Janus a cada callback, para o integrador validar"
-                className="font-mono text-xs"
-              />
-              <button
-                type="button" onClick={handleGerarSegredo} disabled={gerandoSegredo}
-                className={`shrink-0 ${PILL} ${PILL_NEUTRO}`}
-              >
-                {gerandoSegredo ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
-                Gerar
-              </button>
-            </div>
-            <p className="mt-1 text-2xs text-zinc-400">
-              Senha que o Janus ENVIA em cada callback, no header{' '}
-              <code className="font-mono">x-callback-secret</code>, para o integrador conferir que a
-              chamada veio daqui. É o contrário da chave de API (aquela ele envia para nós). Combine
-              o valor com quem recebe; sem ele, qualquer um que descubra a URL pode simular uma
-              movimentação no sistema dele.
             </p>
           </div>
 

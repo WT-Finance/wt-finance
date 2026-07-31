@@ -99,3 +99,41 @@ um humano, que não tem origem — responde 404, sem distinguir "não existe" de
 - Fora de escopo por decisão explícita: a consulta **não** devolve os valores dos campos preenchidos
   (o integrador acabou de enviá-los) e **não** existe listagem "tudo o que esta chave criou" — isso
   seria outra funcionalidade (paginação, ordenação, volume) e não foi pedida.
+
+## SUPERADO (2026-07-31) — os callbacks foram REMOVIDOS; o Janus não faz chamadas de saída
+
+Este ADR está **superado por inteiro** — não emendado. Decisão do Yan, no mesmo dia da emenda
+acima: *"se os callbacks forem desnecessários com o endpoint de consulta vamos removê-los, nós
+somos donos do formato, não devemos precisar mandar nada de volta, os outros sistemas que devem nos
+consultar"*, confirmada depois de eu expor o trade-off: *"vamos seguir com a remoção"*.
+
+**O raciocínio que muda a conclusão.** A emenda anterior tratava a consulta como REDE para o
+callback. Olhando de novo, a ordem se inverte: o push era a única peça que obrigava o **outro lado**
+a construir e proteger infraestrutura (endereço público, validação de segredo, tolerância a evento
+repetido), e a única que nos obrigava a manter fila, cron de 5 minutos, backoff e um segredo por
+chave. Com a consulta existindo, essa máquina inteira servia apenas para adiantar em minutos uma
+informação que já estava disponível — ao custo de um modo de falha próprio (`esgotado`) e de uma
+superfície de rede de saída.
+
+**O que foi removido** (migration **0222**, aditiva, + patch destrutivo separado, TTY do Yan):
+`app.api_outbox` (0 linhas), `app.api_outbox_enfileirar`, `public.api_outbox_reivindicar`,
+`public.api_outbox_resultado`, o cron `api-outbox-processar`, as colunas
+`app.api_chave.callback_url`/`callback_segredo`, a rota `/api/externo/outbox/processar`,
+`src/lib/api-externa/outbox.ts`, a entrega inline nas rotas de escrita, os dois campos nos modais de
+chave e a seção de Callbacks das duas cópias da documentação. Cinco funções pararam de enfileirar —
+três delas do fluxo HUMANO (`solic_concluir`, `solic_rejeitar`, `solic_cancelar`), onde a única
+mudança foi deixar de chamar o enfileirador.
+
+**O que fica valendo do ADR original:** nada da mecânica de entrega. O que sobrevive é o princípio
+que a motivou — *movimentação não pode quebrar por causa de integração* — e ele fica satisfeito de
+forma mais simples: não há entrega nenhuma acoplada à movimentação.
+
+**O preço, registrado para não ser descoberto depois:** a pontualidade passa a ser inteiramente
+responsabilidade da plataforma de origem. Enquanto ela não consultar, ninguém do lado dela sabe — e
+do nosso lado nada parece errado, porque não está. Se um integrador futuro precisar de reação em
+segundos, o caminho é reintroduzir push para ele, não presumir que a consulta cobre esse caso.
+
+**Ordem obrigatória na aplicação:** a 0222 (funções param de usar a fila) ANTES do patch destrutivo
+(drop). O patch tem guarda que aborta se a 0222 não estiver aplicada — sem ela, dropar o
+enfileirador deixaria as três RPCs humanas chamando função inexistente e a tela de Solicitações
+quebraria na primeira conclusão.

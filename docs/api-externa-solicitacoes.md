@@ -27,8 +27,8 @@
   acompanha o pedido em "Minhas solicitações", recebe os e-mails e pode cancelá-lo pela tela. A
   procedência não se perde: para quem atende, o pedido aparece com o selo **"via integração X"**
   (ex.: "via integração TARS") ao lado do solicitante.
-- Toda mudança de estado gera um **callback** HTTP para a sua URL cadastrada (seção 7). Além
-  do callback, você também pode **consultar** o estado a qualquer momento (seção 5).
+- O Janus **não notifica ninguém** quando o estado muda — não existe callback nem qualquer
+  chamada de saída. Quem quiser saber o desfecho **consulta** (seção 5).
 
 ## 2. Autenticação
 
@@ -124,7 +124,7 @@ Regras:
 - **`destinatario` é obrigatório e é sempre uma equipe** (role) — pelo **nome exato**
   (case-insensitive) ou pelo **`id`** numérico devolvido em `destinos` (o id é estável; o nome
   pode ser renomeado no Janus — prefira o id). Equipe inexistente → **erro estruturado, nunca
-  fallback**. O destinatário **resolvido é ecoado** na resposta e nos callbacks — exiba-o
+  fallback**. O destinatário **resolvido é ecoado** na resposta e na consulta — exiba-o
   ("aberto para a equipe X") e detecte erro de fila no primeiro disparo. Errou a fila?
   **Cancele e recrie** (não existe reatribuição via API).
 - **`data_limite`** (`AAAA-MM-DD`) é obrigatória — é o prazo da tarefa (ex.: o prazo de
@@ -135,23 +135,20 @@ Regras:
   o que a tela recusa, a API recusa.
 - **`titulo`** (recomendado): o texto curto que identifica a solicitação nas listas do Janus —
   inclua o contexto (ex.: o casamento). `referencia_origem`: o id do registro no SEU sistema;
-  volta em todos os callbacks.
+  volta na consulta (seção 5).
 
 ## 5. Consultar
 
-Sem consulta, o integrador dependia inteiramente do callback (seção 7): se ele não hospedasse
-um webhook, ou se o dele ficasse fora do ar além das 8 tentativas da fila (o evento vira
-`esgotado` e se perde), nunca saberia o desfecho — não havia caminho de recuperação. Com estes
-dois endpoints o contrato passa a ser autossuficiente: **criar → consultar → cancelar**, tudo
-por chamada sua; o callback continua existindo, mas vira a otimização de tempo real, não
-pré-requisito.
+Estes dois endpoints tornam o contrato autossuficiente: **criar → consultar → cancelar**, tudo
+por chamada sua. **O Janus não faz chamadas de saída** — não há webhook, não há segredo de
+saída, não há nada seu a expor na sua rede. Quem quiser saber o desfecho, consulta.
 
-**Quando usar cada coisa:** o callback avisa você na hora, mas exige hospedar e proteger um
-endpoint seu; a consulta você faz quando quiser, sem construir nada, ao custo de só saber
-quando perguntar. **Recomendação: combine os dois** — callback para reagir em tempo real e
-consulta como rede de segurança (reconcilie o que o callback não entregou; a fila desiste
-depois de 8 tentativas — seção 7). Quem não quiser manter webhook nenhum consegue operar 100%
-só por consulta.
+Na prática, você consulta os pedidos que **você mesmo abriu** e que ainda estão `aberta`: o
+`id` de cada um vem na resposta da criação (seção 4), e você também pode buscar pelo seu
+próprio `referencia_origem` (5.2), sem precisar guardar o nosso `id`. A cadência é escolha sua —
+consulte quando quiser, quantas vezes quiser. **Enquanto você não consultar, ninguém do seu
+lado fica sabendo do desfecho** — a pontualidade é responsabilidade da sua plataforma, não do
+Janus.
 
 Nenhuma das duas rotas abaixo devolve os **valores dos campos** (`campos`) preenchidos na
 criação — você acabou de enviá-los, então eles não voltam na consulta.
@@ -222,48 +219,14 @@ guardar o nosso `id`.
 - Reenviar com a mesma `chave_idempotencia` **não duplica**: devolve `200` com o **mesmo `id`**
   e `"idempotente": true` (e não reenvia e-mails). Retry com backoff é seguro e bem-vindo.
 
-## 7. Callbacks (mudanças de estado → sua URL)
-
-O Janus envia `POST` à **URL de callback** cadastrada na sua chave, com o header
-**`x-callback-secret: <segredo de saída>`** (valide-o!). Quatro eventos:
-
-| Evento | Quando | Campos extras |
-|---|---|---|
-| `solicitacao.criada` | criação via API confirmada | — |
-| `solicitacao.concluida` | equipe concluiu | — |
-| `solicitacao.rejeitada` | equipe rejeitou | `justificativa` |
-| `solicitacao.cancelada` | cancelada (pela origem ou no Janus) | — |
-
-Payload:
-
-```json
-{ "evento": "solicitacao.concluida", "solicitacao_id": 123,
-  "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
-  "status": "concluida", "destinatario": { "id": 4, "nome": "Financeiro" },
-  "ocorrido_em": "2026-07-25T14:03:00-03:00" }
-```
-
-> O Janus não pede nem devolve uma referência do SEU lado na conclusão — a
-> conciliação entre a solicitação e o lançamento correspondente (ex.: no seu
-> ERP/CRM) é responsabilidade da sua plataforma. Use `solicitacao_id` (ou o seu
-> próprio `referencia_origem`, ecoado em todo callback) para casar os dois lados.
-
-- **Entrega at-least-once:** responda `2xx` rápido (só enfileire do seu lado). Você **pode
-  receber o mesmo evento mais de uma vez** — deduplique por `evento + solicitacao_id`.
-- Sem `2xx`, o Janus retenta com backoff exponencial (2, 4, 8… minutos, teto 4 h) até 8
-  tentativas; depois marca como esgotado (visível no log da chave, no admin do Janus).
-- Não há callback de "aprovado" — não existe esse estado (seção 1).
-- **O webhook deixou de ser a única forma de saber o desfecho** — se você não hospedar um, ou se
-  ele ficar fora do ar além das 8 tentativas acima, ainda dá para saber o estado perguntando
-  diretamente ao Janus (seção 5, Consultar).
-
-## 8. Cancelar — `POST /api/externo/solicitacoes/{id}/cancelar`
+## 7. Cancelar — `POST /api/externo/solicitacoes/{id}/cancelar`
 
 - Só cancela solicitações **criadas pela sua chave** e **ainda abertas**.
 - Já concluída/rejeitada/cancelada → `409` com `CONFLITO_ESTADO: <status atual>` — o conflito é
-  **reportado, não aplicado** (o estado do Janus não muda; sincronize o seu lado pelo callback).
+  **reportado, não aplicado** (o estado do Janus não muda; consulte para confirmar o estado
+  atual — seção 5).
 
-## 9. Erros
+## 8. Erros
 
 Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..." } }`.
 
@@ -286,12 +249,12 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 | `CONSULTA_INVALIDA` | 422 | Consulta por `referencia_origem` sem o parâmetro na query |
 | `ERRO_INTERNO` | 500 | Falha inesperada (tente novamente com backoff) |
 
-## 10. Fora desta versão (não peça, ainda)
+## 9. Fora desta versão (não peça, ainda)
 
-Anexos via API · estados/eventos de aprovação · assinatura HMAC de callbacks (hoje: segredo em
-header) · reatribuição de destinatário · **criar em nome de quem ainda não tem cadastro no Janus**
-(o `solicitante_email` precisa existir e estar ativo; cadastrar a pessoa antes é pré-condição
-deliberada da integração).
+Anexos via API · estados/eventos de aprovação · notificação ativa (webhook): o Janus não faz
+chamadas de saída — o desfecho é consultado (seção 5) · reatribuição de destinatário ·
+**criar em nome de quem ainda não tem cadastro no Janus** (o `solicitante_email` precisa existir
+e estar ativo; cadastrar a pessoa antes é pré-condição deliberada da integração).
 
 ---
 

@@ -12,15 +12,15 @@ const hashSegredo = (s: string): string => createHash('sha256').update(s, 'utf8'
 // / solic_tipos_api, migration 0212) + PARIDADE de validação com a UI (a mesma
 // app.solic_validar_e_snapshotar valida as duas portas — mudar uma regra muda as
 // duas de uma vez) + preservação de CHAVE ESTÁVEL de campo na edição de tipo
-// (admin_solic_salvar_tipo, migration 0210) + outbox de callbacks at-least-once
-// (api_outbox_enfileirar/reivindicar/resultado, migration 0213/ADR-0161).
+// (admin_solic_salvar_tipo, migration 0210) + CONSULTA (0221). Round5 (0222): os
+// callbacks de saída foram REMOVIDOS — o Janus não chama ninguém; o integrador
+// consulta. Os casos de outbox saíram junto.
 //
 // Round2 (2026-07-28, decisão de produto do Yan): o conceito "conclusão exige
 // referência externa" foi EXTIRPADO (migration 0215) — solic_concluir voltou à
-// assinatura de 1 parâmetro e o payload do callback `solicitacao.concluida` NÃO
-// carrega mais a chave `referencia`. Os casos que testavam REFERENCIA_OBRIGATORIA/
-// payload.referencia foram REMOVIDOS; o caso de outbox de conclusão permanece,
-// adaptado à assinatura nova (ver "solic_concluir (pós-0215)" abaixo).
+// assinatura de 1 parâmetro. Os casos que testavam REFERENCIA_OBRIGATORIA foram
+// REMOVIDOS; o de conclusão permanece, hoje conferindo o estado e a CONSULTA
+// (ver "solic_concluir (1 parâmetro)" abaixo).
 //
 // Round3 (2026-07-29, decisão de produto do Yan): a lista branca de equipes POR TIPO
 // (`api_roles_permitidas`) foi REVOGADA (migration 0216) — o fluxo humano nunca
@@ -62,7 +62,7 @@ async function sondarRpcPronta(): Promise<boolean> {
   const c = new pg.Client({ connectionString: DB })
   try {
     await c.connect()
-    // Exige 0212 (criar_solicitacao_externa) E 0213 (api_outbox_reivindicar) E
+    // Exige 0212 (criar_solicitacao_externa) E 0213 (solic_emails_envolvidos_svc) E
     // 0215 (solic_concluir com 1 ÚNICO parâmetro — pronargs=1 só é verdade
     // depois que a 0215 dropou a versão de 2 parâmetros da 0213) E 0217
     // (criar_solicitacao_externa com 9 parâmetros — pronargs=9 só é verdade
@@ -73,7 +73,7 @@ async function sondarRpcPronta(): Promise<boolean> {
     // inexistente, PGRST202).
     const r = await c.query(
       `SELECT
-         (SELECT count(*)::int FROM pg_proc WHERE proname IN ('criar_solicitacao_externa', 'api_outbox_reivindicar')) AS base,
+         (SELECT count(*)::int FROM pg_proc WHERE proname IN ('criar_solicitacao_externa', 'solic_emails_envolvidos_svc')) AS base,
          (SELECT count(*)::int FROM pg_proc WHERE proname = 'solic_concluir' AND pronargs = 1) AS pos215,
          (SELECT count(*)::int FROM pg_proc WHERE proname = 'criar_solicitacao_externa' AND pronargs = 9) AS pos217,
          (SELECT count(*)::int FROM pg_proc WHERE proname = 'consultar_solicitacoes_externas') AS pos221`,
@@ -127,7 +127,6 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
   let chaveId = 0
   let solicitacaoId = 0
   let solicitacaoConcluirId = 0 // fixture do teste de solic_concluir (pós-0215) abaixo
-  let outboxClaimTestId = 0     // item cru inserido p/ testar api_outbox_reivindicar/resultado
   let roboUserId = ''           // uid do robô (solicitante das solicitações externas) — reusado p/ simular JWT
   let solicitanteEmail = ''     // e-mail do MESMO usuário ativo acima — vira p_solicitante_email (0217/Round4)
   let outroSolicitanteId = ''    // 2º usuário ativo, DIFERENTE do robô…
@@ -206,23 +205,17 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     outroSolicitanteId = (u2.rows[0]?.user_id as string) ?? ''
     outroSolicitanteEmail = (u2.rows[0]?.email as string) ?? ''
 
-    // callback_url/callback_segredo preenchidos (v5.4.0/M4): sem eles, todo item da
-    // outbox desta chave seria marcado 'esgotado' na hora por api_outbox_reivindicar
-    // (chave sem callback nunca é entregável). Domínio .invalid (RFC 2606, nunca
-    // resolve) — os testes abaixo não fazem HTTP de verdade, só exercitam o mecanismo
-    // de claim/backoff no banco.
+    // Round5 (0222): a chave não tem mais campos de callback — o Janus não faz
+    // chamadas de saída.
     const c = await client.query(
-      `INSERT INTO app.api_chave (plataforma, segredo_hash, whitelist_tipos, robo_user_id, callback_url, callback_segredo)
-       VALUES ('ZZ_TESTE_API_V540', $1, ARRAY[$2]::bigint[], $3, 'https://example.invalid/zz-callback-teste', 'zz-callback-segredo-teste')
+      `INSERT INTO app.api_chave (plataforma, segredo_hash, whitelist_tipos, robo_user_id)
+       VALUES ('ZZ_TESTE_API_V540', $1, ARRAY[$2]::bigint[], $3)
        RETURNING id::int AS id`, [hashSegredo(SEGREDO_TESTE), tipoId, roboUserId])
     chaveId = c.rows[0].id
   })
 
   afterAll(async () => {
     if (!client) return
-    // v5.4.0/M4 (ADR-0161): outbox ANTES do api_chave (FK chave_id) e ANTES da
-    // solicitacao_tipo (via a solicitacao, removida na linha seguinte).
-    await client.query(`DELETE FROM app.api_outbox WHERE chave_id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao WHERE origem_chave_id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.api_chamada_log WHERE chave_id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.api_chave WHERE id = $1`, [chaveId]).catch(() => {})
@@ -352,7 +345,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(r.ok, r.erro ?? '').toBe(true)
     const d = r.data as { ok: boolean; id: number; destinatario: { id: number; nome: string } }
     expect(d.destinatario.nome).toBe('ZZ_TESTE_API_V540_FORA')  // destinatário resolvido é ecoado
-    // Limpeza: o afterAll apaga por origem_chave_id (cobre esta e a outbox dela).
+    // Limpeza: o afterAll apaga por origem_chave_id.
   })
 
   it('destinatário (role) inexistente → DESTINATARIO_INVALIDO', async () => {
@@ -559,8 +552,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
   })
 
   // O par que fecha o ciclo: depois de uma movimentação, a CONSULTA reflete o novo
-  // estado. É isto que permite ao integrador reconciliar sem depender do callback
-  // (a fila desiste após 8 tentativas; a consulta não tem prazo de validade).
+  // estado. É por aqui que o integrador descobre o desfecho — o Janus não avisa.
   it('após o cancelamento, a consulta devolve status cancelada e decidido_em', async () => {
     const r = await chamarRpc('consultar_solicitacoes_externas', {
       p_chave_id: chaveId, p_solicitacao_id: solicitacaoId, p_referencia_origem: null,
@@ -655,23 +647,6 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(porRotulo['Observação Nova']).not.toBe('')
   })
 
-  // ── (7) outbox de callbacks — at-least-once (ADR-0161, v5.4.0/M4) ────────────
-  it('outbox: a criação externa (testada em (1)) enfileirou exatamente 1 item solicitacao.criada — o retry idempotente (testado em (3)) não duplicou', async () => {
-    const r = await client.query(
-      `SELECT count(*)::int n FROM app.api_outbox WHERE solicitacao_id = $1 AND evento = 'solicitacao.criada'`,
-      [solicitacaoId],
-    )
-    expect(r.rows[0].n).toBe(1)
-  })
-
-  it('outbox: o cancelamento externo (testado em (4)) enfileirou solicitacao.cancelada', async () => {
-    const r = await client.query(
-      `SELECT count(*)::int n FROM app.api_outbox WHERE solicitacao_id = $1 AND evento = 'solicitacao.cancelada'`,
-      [solicitacaoId],
-    )
-    expect(r.rows[0].n).toBe(1)
-  })
-
   it('cria a solicitação-fixture (p/ o teste de solic_concluir pós-0215 abaixo)', async () => {
     const r = await chamarRpc('criar_solicitacao_externa', {
       p_chave_id:           chaveId,
@@ -712,61 +687,25 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     }
   }
 
-  // Round2 (migration 0215): solic_concluir voltou à assinatura de 1 parâmetro
-  // e o payload do callback NÃO carrega mais a chave 'referencia' — o conceito
-  // "conclusão exige referência externa" foi EXTIRPADO (decisão do Yan).
-  it('solic_concluir (pós-0215, 1 parâmetro): conclui e enfileira solicitacao.concluida SEM a chave referencia no payload', async () => {
+  // Round2 (0215): solic_concluir voltou à assinatura de 1 parâmetro. Round5 (0222):
+  // deixou de enfileirar callback — a única coisa que a conclusão faz agora é mover o
+  // estado, e é isso que este caso guarda. Quem quer saber do desfecho CONSULTA.
+  it('solic_concluir (1 parâmetro): conclui a solicitação de origem externa', async () => {
     await comoRobo(() => client.query(`SELECT public.solic_concluir($1::bigint)`, [solicitacaoConcluirId]))
 
-    const sol = await client.query(`SELECT status FROM app.solicitacao WHERE id = $1`, [solicitacaoConcluirId])
+    const sol = await client.query(`SELECT status, decidido_em FROM app.solicitacao WHERE id = $1`, [solicitacaoConcluirId])
     expect(sol.rows[0].status).toBe('concluida')
+    expect(sol.rows[0].decidido_em).not.toBeNull()
 
-    const outbox = await client.query(
-      `SELECT payload FROM app.api_outbox WHERE solicitacao_id = $1 AND evento = 'solicitacao.concluida'`,
-      [solicitacaoConcluirId],
-    )
-    expect(outbox.rows.length).toBe(1)
-    expect(outbox.rows[0].payload).not.toHaveProperty('referencia')
-  })
-
-  // NOTA (risco de teste, não de produto): esta suíte roda contra o banco REAL (não
-  // há staging — ver CLAUDE.md), e a migration 0213 agenda o pg_cron
-  // 'api-outbox-processar' a cada 5min. Em tese, se o tick do cron cair EXATAMENTE
-  // entre o INSERT abaixo e a chamada a api_outbox_reivindicar, o cron poderia
-  // reivindicar este item antes do teste (o callback_url .invalid falharia,
-  // reagendando com proximo_retry futuro, e o teste não o encontraria mais
-  // 'pendente'). Extremamente improvável na janela de execução do `npm test`; não
-  // mitigado aqui (exigiria mockar o agendador, fora do escopo desta suíte).
-  it('api_outbox_reivindicar: devolve o item pendente e incrementa tentativas', async () => {
-    const insert = await client.query(
-      `INSERT INTO app.api_outbox (chave_id, evento, solicitacao_id, payload)
-       VALUES ($1, 'zz.teste.reivindicar', $2, '{"x":1}'::jsonb) RETURNING id::int AS id`,
-      [chaveId, solicitacaoId],
-    )
-    outboxClaimTestId = insert.rows[0].id
-
-    const r = await chamarRpc('api_outbox_reivindicar', { p_limite: 100 })
+    // E a consulta externa reflete a conclusão feita pela TELA — o par que substitui
+    // o callback: movimentação humana aqui, leitura pela API lá.
+    const r = await chamarRpc('consultar_solicitacoes_externas', {
+      p_chave_id: chaveId, p_solicitacao_id: solicitacaoConcluirId, p_referencia_origem: null,
+    })
     expect(r.ok, r.erro ?? '').toBe(true)
-    const itens = r.data as Array<{ outbox_id: number; evento: string; tentativas: number; callback_url: string; callback_segredo: string | null }>
-    const achado = itens.find(i => i.outbox_id === outboxClaimTestId)
-    expect(achado).toBeTruthy()
-    expect(achado!.evento).toBe('zz.teste.reivindicar')
-    expect(achado!.tentativas).toBe(1)
-    expect(achado!.callback_url).toBe('https://example.invalid/zz-callback-teste')
+    expect((r.data as Array<{ status: string }>)[0].status).toBe('concluida')
   })
 
-  it('api_outbox_resultado(false): reagenda com proximo_retry FUTURO (backoff exponencial)', async () => {
-    const antes = await client.query(`SELECT status FROM app.api_outbox WHERE id = $1`, [outboxClaimTestId])
-    expect(antes.rows[0].status).toBe('pendente')
-
-    const r = await chamarRpc('api_outbox_resultado', { p_id: outboxClaimTestId, p_sucesso: false, p_erro: 'HTTP 500 (teste)' })
-    expect(r.ok, r.erro ?? '').toBe(true)
-
-    const depois = await client.query(`SELECT status, proximo_retry, ultimo_erro FROM app.api_outbox WHERE id = $1`, [outboxClaimTestId])
-    expect(depois.rows[0].status).toBe('pendente')
-    expect(new Date(depois.rows[0].proximo_retry).getTime()).toBeGreaterThan(Date.now())
-    expect(depois.rows[0].ultimo_erro).toBe('HTTP 500 (teste)')
-  })
 })
 
 // Sempre roda (mesmo offline) — deixa visível, no relatório do `npm test`, que a
@@ -786,8 +725,8 @@ const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 const RPCS_SERVICE_ONLY = [
   'api_chave_resolver', 'api_chamada_registrar', 'criar_solicitacao_externa',
-  'cancelar_solicitacao_externa', 'solic_tipos_api', 'api_outbox_reivindicar',
-  'api_outbox_resultado', 'solic_emails_envolvidos_svc', 'api_retrofit_contratos',
+  'cancelar_solicitacao_externa', 'solic_tipos_api',
+  'solic_emails_envolvidos_svc', 'api_retrofit_contratos',
 ] as const
 
 describe.skipIf(!ON || !RPC_PRONTA || !ANON)('negação — RPCs service-only da API externa recusam anon', () => {

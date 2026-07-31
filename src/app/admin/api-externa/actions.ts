@@ -68,10 +68,8 @@ function senhaRoboAleatoria(): string {
 }
 
 export async function criarChaveApi(input: {
-  plataforma:      string
-  callbackUrl:     string
-  callbackSegredo: string | null
-  whitelist:       number[]
+  plataforma: string
+  whitelist:  number[]
 }): Promise<ResultadoCriarChave> {
   await requireAreaAction('solicitacoes')
   const plataforma = input.plataforma.trim()
@@ -106,12 +104,10 @@ export async function criarChaveApi(input: {
   //    devolvido UMA VEZ para a UI mostrar (nunca mais recuperável depois disso).
   const segredo = gerarSegredo()
   const { error: erroChave } = await rpcSessao('api_chave_registrar', {
-    p_plataforma:       plataforma,
-    p_segredo_hash:     hashSegredo(segredo),
-    p_callback_url:     input.callbackUrl.trim() || null,
-    p_callback_segredo: input.callbackSegredo,
-    p_whitelist:        input.whitelist,
-    p_robo_user_id:     userId,
+    p_plataforma:   plataforma,
+    p_segredo_hash: hashSegredo(segredo),
+    p_whitelist:    input.whitelist,
+    p_robo_user_id: userId,
   })
   if (erroChave) {
     // Best-effort: se a chave falhar DEPOIS do robô criado, remove o robô órfão
@@ -133,28 +129,17 @@ export async function revogarChaveApi(id: number): Promise<ResultadoAcao> {
 }
 
 export async function atualizarChaveApi(input: {
-  id:              number
-  callbackUrl:     string
-  callbackSegredo: string | null
-  whitelist:       number[]
+  id:        number
+  whitelist: number[]
 }): Promise<ResultadoAcao> {
   await requireAreaAction('solicitacoes')
   const { error } = await rpcSessao('api_chave_atualizar', {
-    p_id:               input.id,
-    p_callback_url:     input.callbackUrl.trim() || null,
-    p_callback_segredo: input.callbackSegredo,
-    p_whitelist:        input.whitelist,
+    p_id:        input.id,
+    p_whitelist: input.whitelist,
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
   revalidatePath('/admin/api-externa')
   return { ok: true }
-}
-
-/** Gera um segredo novo para o campo "Callback — segredo de saída" do formulário
- *  (o botão "Gerar" do modal chama esta action — o gerador vive server-only). */
-export async function gerarSegredoCallbackAction(): Promise<string> {
-  await requireAreaAction('solicitacoes')
-  return gerarSegredo()
 }
 
 /** Últimas chamadas de uma chave (modal "Ver log"). null = falha ao carregar. */
