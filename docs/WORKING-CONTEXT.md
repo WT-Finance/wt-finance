@@ -77,7 +77,10 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0222`** (v5.4.0/Round5: os CALLBACKS foram removidos — 9 funções
+- Última migration APLICADA: **`0223`** (o patch DESTRUTIVO do Round5, aplicado pelo Yan em 31/07:
+  dropou a fila `app.api_outbox`, as 3 RPCs dela, o cron `api-outbox-processar`, as colunas
+  `callback_url`/`callback_segredo` da chave E as 3 colunas órfãs dos rounds 2/3 — conferido depois:
+  tudo em 0, `api_chamada_log` e o cron do Monde intactos). Antes dela a **`0222`** (v5.4.0/Round5: os CALLBACKS foram removidos — 9 funções
   pararam de usar a fila e os campos de callback; o Janus não faz mais chamadas de saída, o
   integrador CONSULTA. ADR-0161 **superado por inteiro**. O `DROP` dos objetos inertes é o patch
   `supabase/patches/PENDENTE-remover-outbox-e-colunas-orfas.sql`, SEM número de propósito: numerar
@@ -89,7 +92,7 @@
   na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
   **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
   `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
-  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0223`** — a `0220` é o
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0224`** — a `0220` é o
   patch destrutivo pendente descrito abaixo (e não existe 0218: o arquivo nasceu com esse número e
   foi renumerado).
 - ✅ **Limpeza de histórico APLICADA (31/07, mão do Yan): `0220` no ar.** Histórico zerado e
@@ -123,10 +126,10 @@
   **Pendências do Yan:** criar a chave da integração (segredo exibido 1×) e entregar
   `docs/api-externa-solicitacoes.md` ao Vitor **avisando dos dois campos novos: `solicitante_email`
   obrigatório e as rotas de consulta** · patch das 3 colunas órfãs (SQL neste out-briefing) ·
-  **merge** · aplicar o patch `PENDENTE-remover-outbox-e-colunas-orfas.sql` em TTY (`git mv` para o
-  próximo número livre + `--destrutiva`; ele leva a fila, o cron, as colunas de callback E as 3
-  colunas órfãs dos rounds 2/3 numa passada só). A área "Solicitações (documentação)" já foi
-  concedida (2 roles).
+  **merge**. Já FEITO pelo Yan: a limpeza de histórico (0220), o patch de remoção do outbox +
+  colunas órfãs (0223) e a concessão da área "Solicitações (documentação)" (2 roles). **Não há mais
+  pendência de banco nesta versão** — o que falta é criar a chave, entregar o contrato ao Vitor e
+  mergear.
 - **O contrato da API é PULL-ONLY desde o Round 5 (31/07):** criar → consultar → cancelar. O Janus
   não notifica ninguém; o integrador descobre o desfecho consultando
   (`GET /api/externo/solicitacoes/{id}` ou `?referencia_origem=`). **Consequência a comunicar ao
