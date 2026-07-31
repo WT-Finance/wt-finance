@@ -203,6 +203,17 @@ describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-
     delete semStatus.status
     expect(solicitacaoSchema.safeParse(semStatus).success).toBe(false) // se passasse, o schema seria frouxo demais
   })
+  // v5.4.0/Round4 — `origem` (proveniência da solicitação): { plataforma } quando
+  // aberta via API externa, null quando aberta na tela, e AUSENTE (RPC antiga
+  // durante o rollout) — as três formas precisam validar (lição v4.12.1/ADR-0118:
+  // .optional(), não só .nullable()).
+  it('origem: aceita ausente (RPC antiga), null (aberta na tela) e objeto (via API)', () => {
+    expect(solicitacaoSchema.safeParse(SOLIC_JSON_FIXTURE).success).toBe(true) // sem a chave
+    expect(solicitacaoSchema.safeParse({ ...SOLIC_JSON_FIXTURE, origem: null }).success).toBe(true)
+    const r = solicitacaoSchema.safeParse({ ...SOLIC_JSON_FIXTURE, origem: { plataforma: 'TARS' } })
+    expect(r.success, r.success ? '' : `drift de origem: ${JSON.stringify(r.error!.issues.slice(0, 8))}`).toBe(true)
+    if (r.success) expect(r.data.origem).toEqual({ plataforma: 'TARS' })
+  })
 })
 
 // v4.34.0: o acervo em produção está VAZIO — o caso de acervo_listar em CONTRATOS_PARSE_RPC
@@ -397,10 +408,29 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
   // v4.16.0 Solicitações: todas as RPCs (abertura, leitura, transição, admin) exigem
   // sessão — anon negado em tudo (§2.2/§2.3 valem no banco).
   it('Solicitações: anon negado em todas as RPCs', async () => {
+    // solic_tipos_documentacao (v5.4.0/Round4, 0219): gate mais LARGO que a irmã de
+    // admin (aceita 'solicitacoes/documentacao' além da gestão) — mas larga só entre
+    // áreas, nunca para anon. Entra nesta sonda justamente porque afrouxar gate é o
+    // tipo de mudança que precisa de guarda mecânica.
     for (const fn of ['solic_minhas', 'solic_caixa', 'solic_tipos_abertura', 'solic_destinatarios',
-                      'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos', 'solic_movimentacoes']) {
+                      'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos',
+                      'solic_tipos_documentacao', 'solic_movimentacoes']) {
       const status = await rpcAnonStatus(fn, {})
       expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
+    }
+  })
+
+  // v5.4.0/Round4 (0219): a irmã enxuta que alimenta a página de Documentação da API
+  // devolve a MESMA forma de admin_solic_listar_tipos (o front reaproveita o schema),
+  // mas SÓ tipos expostos e não arquivados — é isso que a torna de menor privilégio.
+  it('solic_tipos_documentacao: mesma forma da de admin, só tipos expostos e não arquivados', async () => {
+    const { tiposAdminSchema } = await import('./solicitacoes/schemas')
+    const d = await rpc('solic_tipos_documentacao', {})
+    const parsed = tiposAdminSchema.safeParse(d)
+    expect(parsed.success, JSON.stringify(parsed.error?.issues?.[0] ?? {})).toBe(true)
+    for (const t of parsed.data ?? []) {
+      expect(t.exposto_via_api).toBe(true)
+      expect(t.arquivado).toBe(false)
     }
   })
 

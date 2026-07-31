@@ -6,6 +6,7 @@ import { salvarTipo } from '@/app/admin/solicitacoes/actions'
 import { TIPOS_CAMPO, type CampoDef, type TipoAdmin, type TipoCampo } from '@/lib/solicitacoes/schemas'
 import ModalCentral from '@/components/shared/modal-central'
 import Checkbox from '@/components/ui/checkbox'
+import Badge from '@/components/ui/badge'
 import { Input, Select } from '@/components/ui/field'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
@@ -14,6 +15,13 @@ import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/compone
 // tipo + construtor de campos (rótulo, tipo, obrigatório, reordenar ↑/↓, remover;
 // sub-editor de opções para 'seleção'). Validação leve no client; o servidor
 // revalida. Tema neutro Group (tokens neutros, .foco-neutro, pills de @/.../botoes).
+//
+// v5.4.0/Round2 (2026-07-28) — este editor voltou a ser SÓ FORMULÁRIO
+// (nome+campos): a seção "API externa" (slug/exposto/roles) que vivia aqui foi
+// MOVIDA para a página /admin/api-externa ("API externa" → "Tipos expostos"),
+// via a RPC dedicada admin_solic_tipo_api_config (migration 0215) — salvar o
+// formulário não sobrescreve mais a configuração de API do tipo. A CHAVE
+// ESTÁVEL por campo (exibida, read-only) é atributo do CAMPO, e permanece aqui.
 
 const ROTULO_TIPO: Record<TipoCampo, string> = {
   texto_curto: 'Texto curto',
@@ -59,6 +67,7 @@ export function EditorTipo({
   function adicionarCampo() {
     setLinhas(prev => [
       ...prev,
+      // Sem `chave`: campo NOVO — o servidor gera a partir do rótulo ao salvar.
       { _key: novaChave(), rotulo: '', tipo_campo: 'texto_curto', obrigatorio: false, opcoes: null,
         data_permite_passado: true, data_aviso_dias_futuro: null, data_aviso_direcao: 'acima' },
     ])
@@ -158,11 +167,19 @@ export function EditorTipo({
       data_permite_passado:   l.tipo_campo === 'data' ? (l.data_permite_passado ?? true) : true,
       data_aviso_dias_futuro: l.tipo_campo === 'data' ? (l.data_aviso_dias_futuro ?? null) : null,
       data_aviso_direcao:     l.tipo_campo === 'data' ? (l.data_aviso_direcao ?? 'acima') : 'acima',
+      // Chave ESTÁVEL (v5.4.0/M1): campo PREEXISTENTE reenvia a própria chave
+      // (read-only na UI) — sobrevive ao apaga-e-recria; campo NOVO viaja sem
+      // chave (undefined→null) e o servidor gera a partir do rótulo ao salvar.
+      chave: l.chave ?? null,
       ordem: i,
     }))
 
     setSalvando(true)
-    const res = await salvarTipo({ id: modo === 'editar' ? tipo!.id : null, nome: nome.trim(), campos })
+    const res = await salvarTipo({
+      id: modo === 'editar' ? tipo!.id : null,
+      nome: nome.trim(),
+      campos,
+    })
     setSalvando(false)
     if (!res.ok) {
       setErro(res.erro)
@@ -242,6 +259,19 @@ export function EditorTipo({
                             Obrigatório
                           </label>
                         </div>
+                      </div>
+
+                      {/* Chave ESTÁVEL do campo (v5.4.0/M1) — read-only; sobrevive ao
+                          apaga-e-recria do editor. Campo novo ainda não tem uma. */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-2xs text-zinc-400">Chave</span>
+                        {linha.chave ? (
+                          <Badge variant="neutro" className="font-mono normal-case tracking-normal">
+                            {linha.chave}
+                          </Badge>
+                        ) : (
+                          <span className="text-2xs italic text-zinc-400">gerada do rótulo ao salvar</span>
+                        )}
                       </div>
 
                       {linha.tipo_campo === 'selecao' && (

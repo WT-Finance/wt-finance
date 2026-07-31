@@ -5,12 +5,18 @@ import { TiposContent } from '@/components/admin/solicitacoes/tipos-content'
 // v4.16.0 (spec §2.4 C) — Admin de Tipos de Solicitação. Rota de plataforma
 // (grupo Administração), tema neutro Group. Busca server-side (RPC de sessão;
 // o banco valida a área 'solicitacoes' do chamador) e delega ao client.
+//
+// v5.4.0/Round2 (2026-07-28) — o editor voltou a ser SÓ nome+campos: a
+// configuração de API do tipo (exposto_via_api/api_roles_permitidas) foi
+// movida para /admin/api-externa ("API externa" → "Tipos expostos"), então esta
+// página não precisa mais buscar os roles (solic_destinatarios) — só o editor
+// os consumia.
 
 export const dynamic = 'force-dynamic'
 
 export default async function TiposSolicitacaoPage() {
   await requireArea('solicitacoes')
-  const tipos = (await getTiposAdmin()) ?? []
+  const tipos = await getTiposAdmin()
 
   return (
     <div>
@@ -21,7 +27,7 @@ export default async function TiposSolicitacaoPage() {
         </p>
       </div>
 
-      <TiposContent tipos={tipos} />
+      <TiposContent tipos={tipos ?? []} />
     </div>
   )
 }

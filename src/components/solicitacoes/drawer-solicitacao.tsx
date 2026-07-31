@@ -7,6 +7,7 @@ import ListDrawer from '@/components/shared/list-drawer'
 import ModalCentral from '@/components/shared/modal-central'
 import ConfirmModal from '@/components/shared/confirm-modal'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import Badge from '@/components/ui/badge'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { CAMPO } from '@/lib/ui/campos'
 import { fmtDataHoraSP } from '@/lib/fmt'
@@ -113,7 +114,16 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
       <div className="mb-5 rounded-lg border border-zinc-100 bg-zinc-50/70 px-3.5 py-3">
         <dl className="grid grid-cols-1 gap-x-4 gap-y-2.5 sm:grid-cols-2">
           <Meta rotulo="Destinatário" valor={`${sol.destinatario.rotulo ?? '—'}${sol.destinatario.tipo === 'role' ? ' (permissão)' : ''}`} />
-          <Meta rotulo="Solicitante" valor={sol.solicitante_email ?? '—'} />
+          {/* Solicitante + selo de proveniência (v5.4.0/Round4): "via integração <plataforma>"
+              quando a solicitação veio da API externa; nada quando origem é null/ausente
+              (aberta na tela). */}
+          <div className="min-w-0">
+            <dt className="text-2xs font-medium uppercase tracking-wide text-zinc-400">Solicitante</dt>
+            <dd className="mt-0.5 flex items-center gap-1.5">
+              <span className="truncate text-sm text-zinc-800" title={sol.solicitante_email ?? undefined}>{sol.solicitante_email ?? '—'}</span>
+              {sol.origem && <Badge variant="neutro" className="shrink-0">via integração {sol.origem.plataforma}</Badge>}
+            </dd>
+          </div>
           <Meta rotulo="Aberta em" valor={fmtDataHoraSP(sol.criado_em)} />
         </dl>
         {sol.descricao && (
@@ -169,7 +179,15 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
 
       {(podeConcluir || podeRejeitar || podeCancelar) && (
         <div className="sticky -bottom-5 -mx-6 -mb-5 px-6 py-3 bg-white border-t border-zinc-100 flex flex-wrap gap-2">
-          {podeConcluir && <button type="button" disabled={ocupado} onClick={() => run(() => concluirSolicitacao(sol.id))} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>{ocupado ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Concluir</button>}
+          {podeConcluir && (
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => run(() => concluirSolicitacao(sol.id))}
+              className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}
+            >
+              {ocupado ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Concluir
+            </button>
+          )}
           {podeRejeitar && <button type="button" disabled={ocupado} onClick={() => setRejeitando(true)} className={`${PILL} ${PILL_PERIGO}`}><Ban size={13} /> Rejeitar</button>}
           {podeCancelar && <button type="button" disabled={ocupado} onClick={() => setCancelando(true)} className={`${PILL} ${PILL_NEUTRO}`}><X size={13} /> Cancelar</button>}
         </div>

@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-31 (11h05) · v5.3.5 MERGEADA (#203, 10h56) — solicitação de acesso volta a gravar a pendência; worktree e branch limpas
+Última atualização: 2026-07-31 (fim do dia) · produção na **v5.3.5** (#203 mergeada às 10h56 — solicitação de acesso volta a gravar a pendência) · v5.4.0 (API Externa) no **round 4** no PR #191, aguardando o patch destrutivo em TTY do Yan e o merge
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -68,15 +68,87 @@
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-3-2_Reformulacao_Harness.md` (a seção
   "o que muda para a próxima sessão" é leitura obrigatória da 1ª sessão nativa). Nenhuma versão em
   curso: as worktrees da v5.3.2 e da v5.3.3 já foram limpas; a única branch de versão viva é a da
-  **v5.4.0** (PR #191 draft, parada aguardando decisões do Yan).
+  **v5.4.0** (PR #191 — checklist de merge executado, PRONTO para o merge do Yan).
 - A v5.3.1 fechou a adaptação do modelo da controladoria na DRE: Resumo Executivo (ancorado no
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
   testes verdes.
-- Último ADR registrado: **`0157`** (reformulação do harness). Próximo livre: 0158.
-- ⚠️ **Aditiva nova ainda precisa de `--aditiva --fora-de-ordem`** + cópias untracked das
-  0950–0954 (o `/nova-versao` já as posiciona; removidas antes do merge). **Próxima migration
-  livre: `0210`.**
+- Último ADR registrado: **`0161`** (v5.4.0: 0158 categoria de confiança da API externa ·
+  0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
+  Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
+  deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
+- Última migration APLICADA: **`0225`** (só comentário: conserta um fragmento pendurado em
+  `solic_concluir`, achado do revisor-db — zero mudança executável). Antes dela a **`0224`** (v5.4.0/Round6: a WHITELIST de tipos por chave foi removida —
+  toda chave alcança todo tipo exposto; `TIPO_NAO_AUTORIZADO` deixou de existir; `api_chave_atualizar`
+  DROPADA porque a whitelist era o único campo editável de uma chave. De carona, os 3 comentários
+  desatualizados dentro de funções foram consertados. Emenda no ADR-0158, item 2 revogado). Antes dela
+  a **`0223`** (o patch DESTRUTIVO do Round5, aplicado pelo Yan em 31/07:
+  dropou a fila `app.api_outbox`, as 3 RPCs dela, o cron `api-outbox-processar`, as colunas
+  `callback_url`/`callback_segredo` da chave E as 3 colunas órfãs dos rounds 2/3 — conferido depois:
+  tudo em 0, `api_chamada_log` e o cron do Monde intactos). Antes dela a **`0222`** (v5.4.0/Round5: os CALLBACKS foram removidos — 9 funções
+  pararam de usar a fila e os campos de callback; o Janus não faz mais chamadas de saída, o
+  integrador CONSULTA. ADR-0161 **superado por inteiro**. O `DROP` dos objetos inertes é o patch
+  `supabase/patches/PENDENTE-remover-outbox-e-colunas-orfas.sql`, SEM número de propósito: numerar
+  na hora de aplicar). Antes dela a **`0221`** (v5.4.0/Round4: `consultar_solicitacoes_externas` +
+  `GET /api/externo/solicitacoes/{id}` e `?referencia_origem=` — o contrato virou autossuficiente
+  (criar → consultar → cancelar) e o callback deixou de ser pré-requisito; a desistência da outbox
+  após 8 tentativas deixou de ser perda de informação. Emenda no ADR-0161). Antes dela a **`0219`** (v5.4.0/Round4: `solic_tipos_documentacao`, RPC-irmã
+  enxuta que a permissão NOVA alcança — correção do CRÍTICO da revisão; a de admin seguia gated só
+  na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
+  **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
+  `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0226`.** Não existe 0218:
+  o arquivo da limpeza nasceu com esse número e foi renumerado para 0220 (que o Yan já aplicou) —
+  ver a armadilha registrada abaixo.
+- ✅ **Limpeza de histórico APLICADA (31/07, mão do Yan): `0220` no ar.** Histórico zerado e
+  verificado por mim depois: `solicitacao`/`solicitacao_anexo`/`api_chamada_log`/`api_outbox` em 0,
+  os 2 tipos arquivados de teste excluídos (7 ativos, 42 campos, zero campo órfão), slugs canônicos
+  (`abatimento_de_creditos`, `contas_a_pagar` — nenhum `_2`, nenhuma duplicata), bucket
+  `solicitacoes-anexos` vazio com **zero órfão nos dois sentidos** e `acervo-documentos` intacto (8).
+  A cópia dos 20 binários (3,3 MB, assinaturas conferidas) está em
+  `~/wt-finance-backups/2026-07-31-anexos-solicitacoes` e é a ÚNICA (o backup-gate não cobre
+  Storage) — decidir guardar ou descartar. **As sequências não reiniciaram:** a próxima solicitação
+  será #107, o que é o comportamento seguro (id nunca se repete em relação ao que já circulou por
+  e-mail); reiniciar é uma linha, mas é decisão de produto.
+  **Percalço com lição:** o arquivo nasceu `0218` em `supabase/patches/` e o `db push` RECUSOU
+  ("Found local migration files to be inserted before the last migration on remote database") porque
+  a `0219` foi aplicada antes — renumerado para `0220`. **Não reservar número de destrutiva que será
+  aplicada depois de uma aditiva da mesma leva.** E, entre o script de Storage e o SQL, a base ficou
+  num **estado misto visível ao usuário** (anexo listado sem binário): rodar os dois na mesma janela.
+- **Rota renomeada (31/07): `/admin/chaves-api` → `/admin/api-externa`** (a pasta de componentes
+  acompanhou). A documentação da API é alcançada pela **tela inicial do módulo** (pill "Documentação
+  API", área própria `solicitacoes/documentacao`) — a pill de voltar saiu da página, que existe por
+  conta própria.
+- **v5.4.0 (PR #191) — round 4 entregue:** com a plataforma aberta ao público interno, o Yan pediu
+  (1) histórico de Solicitações apagado + os 2 tipos arquivados de teste, (2) sufixos `_2` dos
+  slugs corrigidos, (3) documentação da API com **permissão própria** e botão na tela inicial do
+  módulo, (4) Chaves de API acima de "Tipos Expostos", (5) **solicitante amarrado**: o disparo
+  exige `solicitante_email` de pessoa cadastrada e ATIVA, e essa pessoa vira a solicitante (vê em
+  "Minhas solicitações", recebe e-mails, cancela pela tela); a procedência virou o selo "via
+  integração X" (`solic_json.origem`). Tudo isso está no ar (0217 + 0219),
+  e (1)/(2) foram aplicadas pelo Yan em 31/07 (0220). O round ganhou ainda o **endpoint de consulta**
+  (0221) e a correção da microcópia da chave, que ainda dizia que o robô era o autor.
+  **Pendências do Yan:** criar a chave da integração (segredo exibido 1×) e entregar
+  `docs/api-externa-solicitacoes.md` ao Vitor **avisando dos dois campos novos: `solicitante_email`
+  obrigatório e as rotas de consulta** · patch das 3 colunas órfãs (SQL neste out-briefing) ·
+  **merge**. Já FEITO pelo Yan: a limpeza de histórico (0220), o patch de remoção do outbox +
+  colunas órfãs (0223) e a concessão da área "Solicitações (documentação)" (2 roles). **Não há mais
+  pendência de banco nesta versão** — o que falta é criar a chave, entregar o contrato ao Vitor e
+  mergear.
+- ⚠️ **Patch destrutivo PENDENTE: `supabase/patches/PENDENTE-remover-coluna-whitelist.sql`** — dropa
+  só `app.api_chave.whitelist_tipos`, hoje inerte. **Sem número de propósito** (numerar na hora:
+  `git mv` para o próximo livre + `npm run db:migrate -- --destrutiva`, no terminal do Yan). Guarda
+  aborta se a 0224 não estiver aplicada.
+- **A superfície de restrição da API é MÍNIMA desde o Round 6:** a chave existe e está ativa, e o tipo
+  está `exposto_via_api`. Nada de lista de equipes por tipo (caiu no Round 3), nada de lista de tipos
+  por chave (Round 6). Uma chave tem dois estados na vida: criada e revogada — não há "editar chave",
+  e a tela de criação pede um campo só ("Referência"; a coluna do banco continua `plataforma`).
+- **O contrato da API é PULL-ONLY desde o Round 5 (31/07):** criar → consultar → cancelar. O Janus
+  não notifica ninguém; o integrador descobre o desfecho consultando
+  (`GET /api/externo/solicitacoes/{id}` ou `?referencia_origem=`). **Consequência a comunicar ao
+  Vitor:** a pontualidade é responsabilidade do TARS — enquanto ele não consultar, ninguém do lado
+  dele sabe. Se algum integrador futuro precisar de reação em segundos, o caminho é reintroduzir push
+  para ele, não presumir que a consulta cobre.
 - **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro — pendência de
   billing do Yan, herdada da v5.2.0.
 
@@ -123,8 +195,11 @@
   duplicado** (projeto v5.1.0; o global 6.2.0 fica) — ele induz disparo-em-bloco das skills;
   limpar allows amplos/efêmeros do `.claude/settings.local.json` (`Bash(npx supabase *)`,
   `Bash(node *)`, PIDs).
-- **v5.4.0 (PR #191) DESTRAVADA** — no merge dela: renumerar `0950–0954` → **`0210–0214`** +
-  `migration repair`; aí o passo 4 do `/nova-versao` (cópias) morre (bloco já marcado).
+- **v5.4.0 (PR #191): checklist de merge EXECUTADO** (renumeração `0210–0214`/ADRs `0158–0161` +
+  `migration repair` + proxy.ts conferido + gates), seguido de **4 rounds de decisões do Yan** —
+  ver a seção do round 4 no out-briefing para a lista exata de pendências dele. A whitelist de
+  equipes por tipo e a referência de conclusão foram EXTIRPADAS (rounds 2 e 3); o round 4 amarrou o
+  solicitante a uma pessoa real e limpou o histórico.
 - **Fuso das pills de período (candidato REAL):** `resolverPeriodoCompleto` (`src/lib/periodo.ts`)
   não ancora em `hojeSP()` — runtime em UTC vira "Este mês/ano" antes da hora (~21h SP).
   Transversal (Fluxo de Caixa e DRE).

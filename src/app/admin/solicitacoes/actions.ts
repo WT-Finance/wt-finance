@@ -13,7 +13,17 @@ async function rpcSessao(fn: string, args: Record<string, unknown>) {
   return (sb.rpc as unknown as BoundRpc).bind(sb)(fn, args)
 }
 
-export async function salvarTipo(input: { id: number | null; nome: string; campos: CampoDef[] }): Promise<{ ok: true; id: number } | { ok: false; erro: string }> {
+// v5.4.0/Round2 (2026-07-28): o editor voltou a ser SÓ nome+campos — esta
+// action não manda mais `p_config` (a RPC usa o DEFAULT NULL dela, que
+// preserva exposto_via_api/api_roles_permitidas vigentes). A configuração de
+// API do tipo é salva à parte, na página /admin/api-externa, via
+// `salvarConfigApiTipo` (@/app/admin/api-externa/actions) → RPC
+// admin_solic_tipo_api_config (migration 0215).
+export async function salvarTipo(input: {
+  id: number | null
+  nome: string
+  campos: CampoDef[]
+}): Promise<{ ok: true; id: number } | { ok: false; erro: string }> {
   await requireAreaAction('solicitacoes')
   const { data, error } = await rpcSessao('admin_solic_salvar_tipo', {
     p_id: input.id, p_nome: input.nome,
@@ -25,6 +35,10 @@ export async function salvarTipo(input: { id: number | null; nome: string; campo
       data_permite_passado:   c.tipo_campo === 'data' ? (c.data_permite_passado ?? true) : true,
       data_aviso_dias_futuro: c.tipo_campo === 'data' ? (c.data_aviso_dias_futuro ?? null) : null,
       data_aviso_direcao:     c.tipo_campo === 'data' ? (c.data_aviso_direcao ?? 'acima') : 'acima',
+      // Chave ESTÁVEL (v5.4.0/M1, migration 0210): campo PREEXISTENTE reenvia a
+      // própria chave (o editor a exibe read-only) — sobrevive ao apaga-e-recria.
+      // Campo NOVO viaja sem chave (null); o servidor gera a partir do rótulo.
+      chave: c.chave ?? null,
     })),
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
@@ -55,6 +69,7 @@ function traduzir(msg: string): string {
     TIPO_EM_USO: 'Este tipo tem solicitações vinculadas — arquive-o em vez de excluir.',
     TIPO_INEXISTENTE: 'Tipo não encontrado.',
     PERMISSAO_NEGADA: 'Você não tem permissão para administrar tipos.',
+    CHAVE_INVALIDA: 'Chave de campo inválida.',
   }
   return m[msg.split(':')[0]?.trim()] ?? msg.replace(/^[A-Z_]+:\s*/, '')
 }
