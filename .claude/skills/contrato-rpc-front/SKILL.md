@@ -43,6 +43,36 @@ congelamento.
 o teste chamava a RPC via `fetch`; o erro só apareceu quando a página passou a chamá-la
 diretamente. Ao adicionar uma RPC nova, teste a CHAMADA real da UI, não só o schema.)
 
+### O `this` do cliente é OBRIGATÓRIO — `.call(db, …)` / `.bind(db)` não é enfeite
+
+Repare no `call.call(db, fn, args)` acima: **o `this` é passado de propósito.**
+`SupabaseClient.rpc` é método de **protótipo** e o corpo é `return this.rest.rpc(...)`. Sem
+o `this` do cliente, a chamada estoura em runtime:
+
+```ts
+const rpc = db.rpc as unknown as Fn   // ⛔ a ATRIBUIÇÃO destaca o método do cliente
+await rpc('minha_rpc', {})            // TypeError: Cannot read properties of undefined (reading 'rest')
+```
+
+A sutileza que engana: **parênteses em torno de um acesso a membro PRESERVAM a referência**
+(`(db.rpc as Fn)(fn, args)` funciona, `this` = `db`), mas **guardar em variável DESTRÓI**.
+Destacado, o `this` é `undefined` porque `rpc` é definido dentro de um `class` e **corpo de
+classe é sempre strict** — não depende de quem chama nem do sistema de módulos. As duas
+formas parecem iguais no diff.
+
+Formas seguras — use uma delas, sempre:
+```ts
+const rpc = (db.rpc as unknown as Fn).bind(db)   // ✅
+return (db.rpc as unknown as Fn).call(db, fn, args)  // ✅
+```
+
+**Custou caro (v5.3.5): 18 dias de solicitações de acesso perdidas em produção.** Um
+refactor que só criou uma variável para reusar a referência nos dois caminhos derrubou o
+fluxo inteiro, e o `catch` anti-enumeração da action engoliu o `TypeError` — a tela dizia
+"pedido enviado" e nada era gravado. Quando um caminho tem `catch` que não pode falar com
+o usuário, o teste é a **única** rede: ao testar RPC, o dublê do cliente precisa ser objeto
+com `rpc` no **protótipo tocando `this`** — um `vi.fn()` solto passa com o bug presente.
+
 ## 2. O retorno de `.rpc()` é *thenable*, não `Promise` — cuidado com `.catch()`
 
 O builder do `supabase-js` implementa `.then` (por isso `await` e `Promise.all`/
