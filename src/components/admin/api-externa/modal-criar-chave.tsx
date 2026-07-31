@@ -105,8 +105,11 @@ export function ModalCriarChave({
               placeholder="Ex.: Monde, ClickUp, App do fornecedor…"
             />
             <p className="mt-1 text-2xs text-zinc-400">
-              Nome livre — identifica quem está integrando. Cria um usuário-robô próprio
-              (não loga na plataforma; só é o autor das solicitações que a integração criar).
+              Nome livre — identifica quem está integrando e é o que aparece no selo{' '}
+              <span className="whitespace-nowrap">&ldquo;via integração X&rdquo;</span> nas solicitações
+              criadas por esta chave. Cria também um usuário-robô técnico, que nunca loga na
+              plataforma e <strong>não é autor de nada</strong>: o solicitante de cada pedido é a
+              pessoa cujo e-mail vem no disparo, e ela precisa ter cadastro ativo aqui.
             </p>
           </div>
 
@@ -119,6 +122,12 @@ export function ModalCriarChave({
               onChange={e => setCallbackUrl(e.target.value)}
               placeholder="https://integrador.exemplo.com/webhook"
             />
+            <p className="mt-1 text-2xs text-zinc-400">
+              Endereço do integrador que o Janus CHAMA a cada movimentação (criada, concluída,
+              rejeitada, cancelada) das solicitações desta chave. É assim que o outro sistema
+              descobre o desfecho — <strong>não existe endpoint de consulta</strong>. Em branco, a
+              integração cria pedidos e nunca fica sabendo o que aconteceu com eles.
+            </p>
           </div>
 
           <div>
@@ -140,6 +149,13 @@ export function ModalCriarChave({
                 Gerar
               </button>
             </div>
+            <p className="mt-1 text-2xs text-zinc-400">
+              Senha que o Janus ENVIA em cada callback, no header{' '}
+              <code className="font-mono">x-callback-secret</code>, para o integrador conferir que a
+              chamada veio daqui. É o contrário da chave de API (aquela ele envia para nós). Combine
+              o valor com quem recebe; sem ele, qualquer um que descubra a URL pode simular uma
+              movimentação no sistema dele.
+            </p>
           </div>
 
           <div>

@@ -84,6 +84,11 @@ export function ModalEditarChave({
             onChange={e => setCallbackUrl(e.target.value)}
             placeholder="https://integrador.exemplo.com/webhook"
           />
+          <p className="mt-1 text-2xs text-zinc-400">
+            Endereço que o Janus CHAMA a cada movimentação das solicitações desta chave — é como o
+            outro sistema descobre o desfecho (<strong>não há endpoint de consulta</strong>). Apagar
+            a URL faz os avisos pendentes serem descartados.
+          </p>
         </div>
 
         <div>
@@ -106,8 +111,11 @@ export function ModalEditarChave({
             </button>
           </div>
           <p className="mt-1 text-2xs text-zinc-400">
-            Por segurança, o valor atual nunca é exibido de novo. Deixe em branco para MANTÊ-LO; gere ou
-            digite um novo para SUBSTITUÍ-LO.
+            Senha que o Janus ENVIA em cada callback, no header{' '}
+            <code className="font-mono">x-callback-secret</code>, para o integrador conferir que a
+            chamada veio daqui (o contrário da chave de API, que ele envia para nós). Por segurança, o
+            valor atual nunca é exibido de novo: deixe em branco para MANTÊ-LO; gere ou digite um novo
+            para SUBSTITUÍ-LO — e avise quem recebe, senão os callbacks passam a ser recusados do lado dele.
           </p>
         </div>
 
