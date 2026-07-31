@@ -610,3 +610,35 @@ depois — se a suíte falhasse no meio, deixaria um usuário de verdade numa ro
 `afterAll` depois apaga. Julguei o risco maior que o ganho **numa suíte que roda contra produção**, e
 preferi registrar do que criar um teste capaz de sujar cadastro real. Cobertura hoje: `concluir` e
 `cancelar` no automatizado, `rejeitar` na prova manual acima.
+
+### Revisão dos rounds 5 e 6 — `revisor` + `revisor-db`
+
+**`revisor-db`: 0 CRÍTICO / 0 ALTO — "o banco está seguro para o merge".** Comparou **byte a byte** as
+três RPCs do fluxo humano (`solic_concluir`/`solic_rejeitar`/`solic_cancelar`) contra as versões
+anteriores (0215 e 0213) e confirmou que a ÚNICA diferença é a remoção do `PERFORM
+api_outbox_enfileirar` — gate de acesso, `pode_ver_solic`, checagem de atendente/solicitante,
+`JUSTIFICATIVA_OBRIGATORIA` e a transição `aberta→terminal` com `decidido_por`/`decidido_em` intactos.
+Confirmou também que nenhuma migration entre 0130 e 0224 redefine `pode_ver_solic`/`sou_atendente`;
+que `criar_solicitacao_externa` preserva a cadeia inteira nas DUAS reescritas, sem variável órfã; que
+não sobrou overload zumbi de `api_chave_registrar`/`api_chave_atualizar` (e que `DROP FUNCTION` leva o
+ACL junto, então não há grant pendurado); e que o `PERFORM 1 … IF NOT FOUND` preserva a semântica do
+`SELECT … INTO` na validação de chave ativa.
+
+**`revisor` (código): 0 CRÍTICO, 1 ALTO, 2 BAIXO.** O ALTO é o mais instrutivo desta versão:
+
+| Sev | Achado | Desfecho |
+|---|---|---|
+| ALTO | O **subtítulo da página de documentação** ainda prometia "callbacks" — texto que o próprio Yan me ditou de manhã, antes de decidir removê-los à tarde. A página inteira nega o recurso três parágrafos abaixo, e o público dessa frase é exatamente o integrador (a página tem permissão própria justamente para ele). | **CORRIGIDO** — "callbacks" → "consulta". Mexi num texto ditado pelo Yan e avisei: uma promessa falsa numa página entregue a outro time é pior que respeitar a redação original. |
+| BAIXO | Não existia caso de teste para **`TIPO_INVALIDO`** — e depois do Round 6 `exposto_via_api` é o **único** controle que a API tem. | **CORRIGIDO** — 2 casos novos: criar com tipo NÃO exposto → `TIPO_INVALIDO`, e a descoberta não lista esse tipo. Sem isso, desligar a exposição de um tipo poderia parar de funcionar sem ninguém ver (o slug e os campos continuam existindo — só o interruptor muda). |
+| BAIXO | `ROLE_INVALIDA` morto no mapa de erros da action. | Já removido no commit do Round 6 (o revisor leu o comentário que ficou explicando o histórico). |
+| BAIXO (db) | **Fragmento de comentário PENDURADO** em `solic_concluir`: `-- conclusão foi EXTIRPADO (ver Emenda no ADR-0161).`, sem sujeito — resto da remoção cirúrgica da 0222. | **CORRIGIDO** — migration **0225**, só o comentário (zero linha executável diferente). |
+| BAIXO (db) | `consultar_solicitacoes_externas` faltava na sonda de negação anon. | **CORRIGIDO** — entrou na lista. O REVOKE/GRANT estava certo; era lacuna de cobertura, e numa RPC de leitura é justamente o tipo de furo que ninguém nota. |
+| BAIXO (db) | Guarda (a) do patch 0223 inferia a aplicação da 0222 por proxy indireto em vez de checar o catálogo diretamente para as colunas de callback. | **Registrado como método** para o próximo patch: guarda deve consultar o catálogo do que ela vai apagar, não um proxy. Já aplicado, sem consequência. |
+
+**Limite de método que vale registrar.** O fragmento pendurado escapou da minha varredura porque eu
+varri por **referência desatualizada** (ADR provisório, callback, outbox, whitelist) e aquela linha
+cita o ADR-**0161**, que é o número certo — o defeito é gramatical, não factual. Tentei automatizar a
+detecção dessa segunda classe (comentário que começa como continuação e cuja linha anterior não é
+comentário): **34 candidatos, 33 falsos positivos**, porque comentário começando em minúscula é estilo
+normal deste repo. **Essa classe não é detectável por padrão — foi leitura humana que pegou.** Fica
+como argumento concreto a favor de rodar o revisor mesmo quando os gates estão verdes.

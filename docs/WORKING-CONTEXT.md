@@ -77,7 +77,8 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0224`** (v5.4.0/Round6: a WHITELIST de tipos por chave foi removida —
+- Última migration APLICADA: **`0225`** (só comentário: conserta um fragmento pendurado em
+  `solic_concluir`, achado do revisor-db — zero mudança executável). Antes dela a **`0224`** (v5.4.0/Round6: a WHITELIST de tipos por chave foi removida —
   toda chave alcança todo tipo exposto; `TIPO_NAO_AUTORIZADO` deixou de existir; `api_chave_atualizar`
   DROPADA porque a whitelist era o único campo editável de uma chave. De carona, os 3 comentários
   desatualizados dentro de funções foram consertados. Emenda no ADR-0158, item 2 revogado). Antes dela
@@ -96,7 +97,7 @@
   na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
   **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
   `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
-  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0225`.** Não existe 0218:
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0226`.** Não existe 0218:
   o arquivo da limpeza nasceu com esse número e foi renumerado para 0220 (que o Yan já aplicou) —
   ver a armadilha registrada abaixo.
 - ✅ **Limpeza de histórico APLICADA (31/07, mão do Yan): `0220` no ar.** Histórico zerado e

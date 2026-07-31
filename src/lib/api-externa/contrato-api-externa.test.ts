@@ -124,6 +124,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
   let roleForaId = 0
   let tipoId = 0
   let tipoSemListaId = 0     // 2º tipo exposto (Round6: toda chave alcança todo exposto)
+  let tipoNaoExpostoId = 0   // tipo NÃO exposto — o único controle que resta na API
   let chaveId = 0
   let solicitacaoId = 0
   let solicitacaoConcluirId = 0 // fixture do teste de solic_concluir (pós-0215) abaixo
@@ -182,6 +183,15 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
        RETURNING id::int AS id`)
     tipoSemListaId = t2.rows[0].id
 
+    // 3º tipo, NÃO exposto via API. Depois do Round6 `exposto_via_api` é a ÚNICA
+    // restrição que a API tem — e não havia teste nenhum guardando-a (achado do
+    // revisor). Este é o interruptor que o admin usa na tela "API externa".
+    const t3 = await client.query(
+      `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api)
+       VALUES ('ZZ Teste API v5.4.0 (nao exposto)', 'zz_teste_api_v540_nao_exposto', false)
+       RETURNING id::int AS id`)
+    tipoNaoExpostoId = t3.rows[0].id
+
     // Robô: reaproveita um user_id JÁ cadastrado ATIVO (nunca INSERT em auth.users via
     // pg). ATIVO é exigido a mais nesta versão (v5.4.0/M4): além de FK para
     // robo_user_id, este mesmo uid é reusado para SIMULAR o JWT de um usuário real ao
@@ -224,6 +234,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao_campo WHERE tipo_id = $1`, [tipoSemListaId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoSemListaId]).catch(() => {})
+    await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoNaoExpostoId]).catch(() => {})
     await client.query(`DELETE FROM app.rbac_roles WHERE id = $1`, [roleId]).catch(() => {})
     await client.query(`DELETE FROM app.rbac_roles WHERE id = $1`, [roleForaId]).catch(() => {})
     await client.end().catch(() => {})
@@ -385,6 +396,29 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     })
     expect(r.ok, r.erro ?? '').toBe(true)
     expect((r.data as { status: string }).status).toBe('aberta')
+  })
+
+  // O par do caso acima e, depois do Round6, o ÚNICO controle que a API tem: um tipo
+  // NÃO exposto é recusado, por mais válido que o resto do payload seja. Sem este
+  // caso, desligar a exposição de um tipo poderia parar de funcionar sem ninguém ver
+  // (o mesmo slug/campos continuam existindo — só o interruptor muda).
+  it('tipo NÃO exposto via API → TIPO_INVALIDO (o único controle que resta)', async () => {
+    const r = await chamarRpc('criar_solicitacao_externa', {
+      p_chave_id: chaveId, p_tipo_slug: 'zz_teste_api_v540_nao_exposto',
+      p_destinatario: 'ZZ_TESTE_API_V540', p_titulo: null, p_campos: {},
+      p_data_limite: '2027-01-01', p_chave_idempotencia: 'zz-v540-tipo-nao-exposto',
+      p_referencia_origem: null, p_solicitante_email: solicitanteEmail,
+    })
+    expect(r.ok).toBe(false)
+    expect(prefixo(r.erro)).toBe('TIPO_INVALIDO')
+  })
+
+  // E a DESCOBERTA concorda com a criação: o tipo não exposto não aparece na lista.
+  it('solic_tipos_api: tipo NÃO exposto não aparece na descoberta', async () => {
+    const r = await chamarRpc('solic_tipos_api', { p_chave_id: chaveId })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const tipos = r.data as Array<{ slug: string }>
+    expect(tipos.some(t => t.slug === 'zz_teste_api_v540_nao_exposto')).toBe(false)
   })
 
   it('sem data_limite → DATA_LIMITE_OBRIGATORIA', async () => {
@@ -765,6 +799,11 @@ const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const RPCS_SERVICE_ONLY = [
   'api_chave_resolver', 'api_chamada_registrar', 'criar_solicitacao_externa',
   'cancelar_solicitacao_externa', 'solic_tipos_api',
+  // consultar_solicitacoes_externas (0221) faltava aqui — achado BAIXO do revisor-db.
+  // O REVOKE/GRANT da migration está correto; era lacuna de COBERTURA, e numa RPC de
+  // leitura o custo de não guardar é justamente o que ninguém nota: um default
+  // privilege reintroduzido abriria consulta de solicitação a anon sem barulho.
+  'consultar_solicitacoes_externas',
   'solic_emails_envolvidos_svc', 'api_retrofit_contratos',
 ] as const
 
