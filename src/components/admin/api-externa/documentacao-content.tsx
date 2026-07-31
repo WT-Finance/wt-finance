@@ -23,11 +23,12 @@ const SECOES = [
   { id: 'descoberta',      label: '3. Descoberta — GET /api/externo/tipos' },
   { id: 'descoberta-viva', label: '↳ Tipos expostos agora (ao vivo)' },
   { id: 'criar',           label: '4. Criar — POST /api/externo/solicitacoes' },
-  { id: 'idempotencia', label: '5. Idempotência e retry' },
-  { id: 'callbacks',    label: '6. Callbacks' },
-  { id: 'cancelar',     label: '7. Cancelar' },
-  { id: 'erros',        label: '8. Erros' },
-  { id: 'fora',         label: '9. Fora desta versão' },
+  { id: 'consultar',    label: '5. Consultar' },
+  { id: 'idempotencia', label: '6. Idempotência e retry' },
+  { id: 'callbacks',    label: '7. Callbacks' },
+  { id: 'cancelar',     label: '8. Cancelar' },
+  { id: 'erros',        label: '9. Erros' },
+  { id: 'fora',         label: '10. Fora desta versão' },
 ] as const
 
 function Pre({ children }: { children: string }) {
@@ -88,6 +89,35 @@ const JSON_CRIAR_RESPOSTA = `{ "ok": true, "id": 123, "status": "aberta",
   "solicitante": { "email": "camila@welcometrips.com.br", "nome": "Camila Souza" },
   "idempotente": false }`
 
+const JSON_CONSULTAR_POR_ID = `{ "ok": true,
+  "solicitacao": {
+    "id": 123,
+    "status": "concluida",
+    "tipo": "abatimento_de_creditos",
+    "titulo": "DW | Ana & Bruno — abatimento de crédito",
+    "destinatario": { "id": 3, "nome": "Financeiro" },
+    "solicitante": { "email": "camila@welcometrips.com.br", "nome": "Camila Souza" },
+    "data_limite": "2026-08-15",
+    "criado_em": "2026-07-31T14:03:00-03:00",
+    "decidido_em": "2026-08-02T09:12:00-03:00",
+    "justificativa": null,
+    "referencia_origem": "b1e2c3d4-…",
+    "chave_idempotencia": "pedido-b1e2c3d4"
+  } }`
+
+const JSON_CONSULTAR_POR_REFERENCIA = `{ "ok": true,
+  "solicitacoes": [
+    {
+      "id": 123, "status": "concluida", "tipo": "abatimento_de_creditos",
+      "titulo": "DW | Ana & Bruno — abatimento de crédito",
+      "destinatario": { "id": 3, "nome": "Financeiro" },
+      "solicitante": { "email": "camila@welcometrips.com.br", "nome": "Camila Souza" },
+      "data_limite": "2026-08-15", "criado_em": "2026-07-31T14:03:00-03:00",
+      "decidido_em": "2026-08-02T09:12:00-03:00", "justificativa": null,
+      "referencia_origem": "b1e2c3d4-…", "chave_idempotencia": "pedido-b1e2c3d4"
+    }
+  ] }`
+
 const JSON_CALLBACK_PAYLOAD = `{ "evento": "solicitacao.concluida", "solicitacao_id": 123,
   "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
   "status": "concluida", "destinatario": { "id": 4, "nome": "Financeiro" },
@@ -96,7 +126,7 @@ const JSON_CALLBACK_PAYLOAD = `{ "evento": "solicitacao.concluida", "solicitacao
 const ERROS: ReadonlyArray<readonly [string, string, string]> = [
   ['AUTH_AUSENTE / AUTH_INVALIDA / CHAVE_INVALIDA', '401', 'Sem chave, chave errada ou revogada'],
   ['TIPO_NAO_AUTORIZADO', '403', 'Tipo existe mas não está na whitelist da sua chave'],
-  ['NAO_ENCONTRADA', '404', 'Solicitação inexistente ou de outra chave'],
+  ['NAO_ENCONTRADA', '404', 'Solicitação inexistente, de outra chave, ou aberta na tela por um humano — vale para a consulta e para o cancelamento'],
   ['CONFLITO_ESTADO', '409', 'Cancelamento de solicitação não-aberta'],
   ['PAYLOAD_EXCEDE_LIMITE', '413', 'Corpo acima de 64 KB'],
   ['JSON_INVALIDO / PAYLOAD_INVALIDO', '400/422', 'Corpo não é JSON válido / shape errado'],
@@ -108,6 +138,7 @@ const ERROS: ReadonlyArray<readonly [string, string, string]> = [
   ['CAMPO_DESCONHECIDO', '422', 'Chave de campo que o tipo não tem'],
   ['CAMPO_OBRIGATORIO / VALOR_INVALIDO', '422', 'Validação de campo (mesmas regras da tela)'],
   ['TIPO_EXIGE_ANEXO', '422', 'Tipo tem anexo obrigatório (indisponível via API nesta versão)'],
+  ['CONSULTA_INVALIDA', '422', 'Consulta por referencia_origem sem o parâmetro na query'],
   ['ERRO_INTERNO', '500', 'Falha inesperada (tente novamente com backoff)'],
 ]
 
@@ -175,7 +206,11 @@ export function DocumentacaoContent({
             <strong>&ldquo;via integração X&rdquo;</strong> (ex.: &ldquo;via integração TARS&rdquo;) ao lado
             do solicitante.
           </p>
-          <p>Toda mudança de estado gera um <strong>callback</strong> HTTP para a URL cadastrada na chave (seção 6).</p>
+          <p>
+            Toda mudança de estado gera um <strong>callback</strong> HTTP para a URL cadastrada na chave (seção
+            7). Além do callback, também é possível <strong>consultar</strong> o estado a qualquer momento
+            (seção 5).
+          </p>
         </Secao>
 
         <Secao id="autenticacao" titulo="2. Autenticação">
@@ -307,7 +342,7 @@ export function DocumentacaoContent({
 
         <Secao id="criar" titulo="4. Criar — POST /api/externo/solicitacoes">
           <Pre>{JSON_CRIAR_PAYLOAD}</Pre>
-          <p>Resposta (201 na criação; 200 quando idempotente — seção 5):</p>
+          <p>Resposta (201 na criação; 200 quando idempotente — seção 6):</p>
           <Pre>{JSON_CRIAR_RESPOSTA}</Pre>
           <p className="font-medium text-zinc-800">Regras:</p>
           <ul className="list-disc space-y-1.5 pl-5">
@@ -351,7 +386,76 @@ export function DocumentacaoContent({
           </ul>
         </Secao>
 
-        <Secao id="idempotencia" titulo="5. Idempotência e retry">
+        <Secao id="consultar" titulo="5. Consultar">
+          <p>
+            Sem consulta, o integrador dependia inteiramente do callback (seção 7): se não hospedasse um
+            webhook, ou se o dele ficasse fora do ar além das 8 tentativas da fila (o evento vira{' '}
+            <code className="font-mono text-xs">esgotado</code> e se perde), nunca saberia o desfecho — não
+            havia caminho de recuperação. Com estes dois endpoints o contrato passa a ser autossuficiente:{' '}
+            <strong>criar → consultar → cancelar</strong>, tudo por chamada sua; o callback continua existindo,
+            mas vira a otimização de tempo real, não pré-requisito.
+          </p>
+          <p>
+            <strong>Quando usar cada coisa:</strong> o callback avisa na hora, mas exige hospedar e proteger um
+            endpoint seu; a consulta é feita quando quiser, sem construir nada, ao custo de só saber quando
+            perguntar. <strong>Recomendação: combine os dois</strong> — callback para reagir em tempo real e
+            consulta como rede de segurança (reconciliar o que o callback não entregou; a fila desiste depois
+            de 8 tentativas). Quem não quiser manter webhook nenhum consegue operar 100% só por consulta.
+          </p>
+          <p className="text-xs text-zinc-500">
+            Nenhuma das duas rotas abaixo devolve os <strong>valores dos campos</strong> (
+            <code className="font-mono text-xs">campos</code>) preenchidos na criação — você acabou de
+            enviá-los, então eles não voltam na consulta.
+          </p>
+
+          <p className="font-medium text-zinc-800">5.1 — GET /api/externo/solicitacoes/{'{id}'}</p>
+          <p>
+            Consulta <strong>uma</strong> solicitação criada por <strong>esta chave</strong>. Header{' '}
+            <code className="font-mono text-xs">x-api-key</code> como nas demais chamadas.
+          </p>
+          <Pre>{JSON_CONSULTAR_POR_ID}</Pre>
+          <ul className="list-disc space-y-1.5 pl-5">
+            <li>
+              <code className="font-mono text-xs">status</code> ∈ aberta · concluida · rejeitada · cancelada.{' '}
+              <code className="font-mono text-xs">decidido_em</code> e{' '}
+              <code className="font-mono text-xs">justificativa</code> ficam nulos enquanto a solicitação está
+              aberta; <code className="font-mono text-xs">justificativa</code> só vem preenchida em rejeição.
+            </li>
+            <li>
+              <strong>404 NAO_ENCONTRADA</strong> quando o id não existe, quando pertence a{' '}
+              <strong>outra chave</strong>, ou quando é uma solicitação aberta na tela por um humano (essas não
+              têm origem de integração). Os três casos respondem <strong>igual, de propósito</strong> — a
+              resposta não pode servir de oráculo para descobrir se um id alheio existe.
+            </li>
+          </ul>
+
+          <p className="font-medium text-zinc-800">
+            5.2 — GET /api/externo/solicitacoes?referencia_origem=&lt;sua-referência&gt;
+          </p>
+          <p>
+            Busca pelo id <strong>do seu lado</strong> (o que você mandou na criação — seção 4), para não
+            precisar guardar o nosso id.
+          </p>
+          <Pre>{JSON_CONSULTAR_POR_REFERENCIA}</Pre>
+          <ul className="list-disc space-y-1.5 pl-5">
+            <li>
+              Devolve <strong>coleção</strong>, mesmo com um único resultado —{' '}
+              <code className="font-mono text-xs">referencia_origem</code> <strong>não é única</strong> no
+              Janus (só o par chave + <code className="font-mono text-xs">chave_idempotencia</code> é): a mesma
+              referência pode ter sido reusada em pedidos diferentes, e devolver &ldquo;o primeiro&rdquo;
+              faria conciliar contra o pedido errado.
+            </li>
+            <li>
+              <strong>Sem resultado é 200 com</strong>{' '}
+              <code className="font-mono text-xs">{'"solicitacoes": []'}</code>, não 404 — é busca sem retorno,
+              não recurso inexistente.
+            </li>
+            <li>Sem o parâmetro → <strong>422 CONSULTA_INVALIDA</strong>.</li>
+            <li>Só enxerga solicitações <strong>desta chave</strong>.</li>
+          </ul>
+        </Secao>
+
+        <Secao id="idempotencia" titulo="6. Idempotência e retry">
           <ul className="list-disc space-y-1.5 pl-5">
             <li>
               <code className="font-mono text-xs">chave_idempotencia</code> é obrigatória e única por chave de
@@ -365,7 +469,7 @@ export function DocumentacaoContent({
           </ul>
         </Secao>
 
-        <Secao id="callbacks" titulo="6. Callbacks (mudanças de estado → sua URL)">
+        <Secao id="callbacks" titulo="7. Callbacks (mudanças de estado → sua URL)">
           <p>
             O Janus envia POST à URL de callback cadastrada na chave, com o header{' '}
             <code className="font-mono text-xs">x-callback-secret: &lt;segredo de saída&gt;</code> (valide-o).
@@ -415,10 +519,15 @@ export function DocumentacaoContent({
               depois marca como esgotado (visível no log da chave, no admin do Janus).
             </li>
             <li>Não há callback de &ldquo;aprovado&rdquo; — não existe esse estado (seção 1).</li>
+            <li>
+              <strong>O webhook deixou de ser a única forma de saber o desfecho</strong> — sem um hospedado, ou
+              se ele ficar fora do ar além das 8 tentativas acima, ainda dá para perguntar diretamente ao Janus
+              (seção 5, Consultar).
+            </li>
           </ul>
         </Secao>
 
-        <Secao id="cancelar" titulo="7. Cancelar — POST /api/externo/solicitacoes/{id}/cancelar">
+        <Secao id="cancelar" titulo="8. Cancelar — POST /api/externo/solicitacoes/{id}/cancelar">
           <ul className="list-disc space-y-1.5 pl-5">
             <li>Só cancela solicitações criadas pela sua chave e ainda abertas.</li>
             <li>
@@ -430,7 +539,7 @@ export function DocumentacaoContent({
         </Secao>
 
         <div id="erros" className="scroll-mt-8">
-          <CardTabela titulo="8. Erros">
+          <CardTabela titulo="9. Erros">
             <p className="mb-2 text-xs text-zinc-500">
               Formato de todo erro: <code className="font-mono text-xs">{'{ ok: false, erro: { codigo, mensagem } }'}</code>
             </p>
@@ -460,7 +569,7 @@ export function DocumentacaoContent({
           </CardTabela>
         </div>
 
-        <Secao id="fora" titulo="9. Fora desta versão (não peça, ainda)">
+        <Secao id="fora" titulo="10. Fora desta versão (não peça, ainda)">
           <p>
             Anexos via API · estados/eventos de aprovação · assinatura HMAC de callbacks (hoje: segredo em
             header) · reatribuição de destinatário ·{' '}

@@ -438,3 +438,43 @@ integração X"** não é observável hoje em tela nenhuma: nenhuma solicitaçã
   assinaturas conferidas), mas o **SQL não** — então as 21 linhas de `app.solicitacao_anexo` apontam
   para binário inexistente e o download de anexo dessas 26 solicitações falha. **O `0220` é a metade
   que fecha esse estado**; rodar `npm run db:migrate -- --destrutiva` no terminal do Yan.
+
+### Endpoint de CONSULTA (31/07) — migration 0221
+
+**Pergunta do Yan:** *"não seria mais fácil para o nosso lado criarmos um endpoint de consulta no
+Janus?"*. Resposta: sim, e por um motivo mais forte que conveniência — era **falha de desenho**.
+
+Sem leitura, a integração tinha dependência dura do OUTRO lado: se o integrador não construísse e
+hospedasse um receptor de webhook, criava pedidos e nunca sabia o desfecho — risco de lançamento
+fora do nosso controle. E a outbox **desiste após 8 tentativas** (`esgotado`): endpoint dele fora do
+ar por algumas horas perdia o evento **para sempre**, sem caminho de reconciliação.
+
+**O que entrou:** `public.consultar_solicitacoes_externas(p_chave_id, p_solicitacao_id,
+p_referencia_origem)` (leitura pura, STABLE, service_role-only) + `GET /api/externo/solicitacoes/{id}`
++ `GET /api/externo/solicitacoes?referencia_origem=…`. Índice parcial novo
+`idx_solicitacao_ref_origem` para a busca pela referência do integrador.
+
+**Decisões de desenho que valem registro:**
+- **Escopo no WHERE, não em checagem posterior:** `origem_chave_id = p_chave_id` faz parte da
+  consulta. Solicitação de outra chave — ou aberta na TELA por um humano, que tem origem NULL —
+  responde 404, e os três casos respondem **igual de propósito**: 404 não distingue "não existe" de
+  "não é seu", senão a rota vira oráculo de ids alheios.
+- **Busca por `referencia_origem` devolve COLEÇÃO** mesmo com um resultado, porque essa referência
+  **não é única** no Janus (só o par chave + `chave_idempotencia` é). Devolver "o primeiro" faria o
+  integrador conciliar contra o pedido errado. Sem resultado = `200` com lista vazia (busca sem
+  retorno), não 404.
+- **Uma RPC, duas rotas:** a RPC devolve sempre array; quem impõe "exatamente uma" é a rota de item.
+  Evita duas funções quase iguais.
+- **Narrowing próprio** (`src/lib/api-externa/consulta.ts`): item sem `status` reprovaria em silêncio
+  como "ainda não decidida" e o integrador esperaria para sempre → drift vira 500 explícito.
+- **Fora de escopo, deliberado:** não devolve os valores dos campos (`respostas` — ele acabou de
+  enviá-los) e não existe listagem "tudo o que esta chave criou" (seria outra funcionalidade:
+  paginação, ordenação, volume).
+
+**Verificação:** 0221 aplicada com backup-gate verde · suíte de contrato ao vivo **44 casos** (7
+novos: consulta por id, por referência, escopo negando solicitação sem origem, sem critério, chave
+revogada, e o par movimentação→consulta refletindo `cancelada` com `decidido_em`) · **prova HTTP** de
+5 cenários contra o dev server com chave e solicitação efêmeras inseridas direto no banco (nenhum
+e-mail disparado) e zero resíduo: 200 no item, 200 na coleção, 200 com lista vazia, 422 sem
+parâmetro, 404 em id inexistente. Documentado nas DUAS cópias (contrato `.md` e página da
+plataforma), com renumeração das seções seguintes.

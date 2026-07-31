@@ -77,24 +77,32 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0219`** (v5.4.0/Round4: `solic_tipos_documentacao`, RPC-irmã
+- Última migration APLICADA: **`0221`** (v5.4.0/Round4: `consultar_solicitacoes_externas` +
+  `GET /api/externo/solicitacoes/{id}` e `?referencia_origem=` — o contrato virou autossuficiente
+  (criar → consultar → cancelar) e o callback deixou de ser pré-requisito; a desistência da outbox
+  após 8 tentativas deixou de ser perda de informação. Emenda no ADR-0161). Antes dela a **`0219`** (v5.4.0/Round4: `solic_tipos_documentacao`, RPC-irmã
   enxuta que a permissão NOVA alcança — correção do CRÍTICO da revisão; a de admin seguia gated só
   na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
   **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
   `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
-  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0221`** — a `0220` é o
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0222`** — a `0220` é o
   patch destrutivo pendente descrito abaixo (e não existe 0218: o arquivo nasceu com esse número e
   foi renumerado).
-- ⚠️ **`supabase/migrations/0220_limpeza_historico_e_slugs.sql` PENDENTE e o estado está MISTO.** O
-  script de Storage já rodou (bucket `solicitacoes-anexos` em **0 arquivos**; cópia íntegra de 20
-  arquivos/3,3 MB em `~/wt-finance-backups/2026-07-31-anexos-solicitacoes`, assinaturas conferidas),
-  mas o SQL **não** — então as 21 linhas de `app.solicitacao_anexo` apontam para binário que não
-  existe e o download de anexo das 26 solicitações falha em produção. **Fechar com um comando no
-  terminal do Yan: `npm run db:migrate -- --destrutiva`** (exige TTY, ADR-0131). O arquivo nasceu
-  0218 em `supabase/patches/`; virou **0220** e entrou em `migrations/` porque a 0219 foi aplicada
-  antes e o `db push` recusa migration fora de ordem (pediria `--include-all`). **Lição: não reservar
-  número de destrutiva que será aplicada depois de uma aditiva da mesma leva.** Enquanto ela está na
-  pasta, ninguém roda `--aditiva` (o conjunto pendente iria junto).
+- ✅ **Limpeza de histórico APLICADA (31/07, mão do Yan): `0220` no ar.** Histórico zerado e
+  verificado por mim depois: `solicitacao`/`solicitacao_anexo`/`api_chamada_log`/`api_outbox` em 0,
+  os 2 tipos arquivados de teste excluídos (7 ativos, 42 campos, zero campo órfão), slugs canônicos
+  (`abatimento_de_creditos`, `contas_a_pagar` — nenhum `_2`, nenhuma duplicata), bucket
+  `solicitacoes-anexos` vazio com **zero órfão nos dois sentidos** e `acervo-documentos` intacto (8).
+  A cópia dos 20 binários (3,3 MB, assinaturas conferidas) está em
+  `~/wt-finance-backups/2026-07-31-anexos-solicitacoes` e é a ÚNICA (o backup-gate não cobre
+  Storage) — decidir guardar ou descartar. **As sequências não reiniciaram:** a próxima solicitação
+  será #107, o que é o comportamento seguro (id nunca se repete em relação ao que já circulou por
+  e-mail); reiniciar é uma linha, mas é decisão de produto.
+  **Percalço com lição:** o arquivo nasceu `0218` em `supabase/patches/` e o `db push` RECUSOU
+  ("Found local migration files to be inserted before the last migration on remote database") porque
+  a `0219` foi aplicada antes — renumerado para `0220`. **Não reservar número de destrutiva que será
+  aplicada depois de uma aditiva da mesma leva.** E, entre o script de Storage e o SQL, a base ficou
+  num **estado misto visível ao usuário** (anexo listado sem binário): rodar os dois na mesma janela.
 - **Rota renomeada (31/07): `/admin/chaves-api` → `/admin/api-externa`** (a pasta de componentes
   acompanhou). A documentação da API é alcançada pela **tela inicial do módulo** (pill "Documentação
   API", área própria `solicitacoes/documentacao`) — a pill de voltar saiu da página, que existe por
@@ -105,11 +113,13 @@
   módulo, (4) Chaves de API acima de "Tipos Expostos", (5) **solicitante amarrado**: o disparo
   exige `solicitante_email` de pessoa cadastrada e ATIVA, e essa pessoa vira a solicitante (vê em
   "Minhas solicitações", recebe e-mails, cancela pela tela); a procedência virou o selo "via
-  integração X" (`solic_json.origem`). (1) e (2) são o patch 0220 acima; (3)-(5) já estão no ar via
-  0217. **Pendências do Yan:** aplicar o 0220 em TTY · conceder a área "Solicitações
-  (documentação)" (nasce sem grant) · criar a chave da integração (segredo 1×) e entregar
-  `docs/api-externa-solicitacoes.md` ao Vitor **avisando do campo novo obrigatório** · patch das 3
-  colunas órfãs (SQL no out-briefing; pode ir anexado ao 0220 numa passada só) · merge.
+  integração X" (`solic_json.origem`). Tudo isso está no ar (0217 + 0219),
+  e (1)/(2) foram aplicadas pelo Yan em 31/07 (0220). O round ganhou ainda o **endpoint de consulta**
+  (0221) e a correção da microcópia da chave, que ainda dizia que o robô era o autor.
+  **Pendências do Yan:** criar a chave da integração (segredo exibido 1×) e entregar
+  `docs/api-externa-solicitacoes.md` ao Vitor **avisando dos dois campos novos: `solicitante_email`
+  obrigatório e as rotas de consulta** · patch das 3 colunas órfãs (SQL neste out-briefing) ·
+  **merge**. A área "Solicitações (documentação)" já foi concedida (2 roles).
 - **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro — pendência de
   billing do Yan, herdada da v5.2.0.
 

@@ -27,7 +27,8 @@
   acompanha o pedido em "Minhas solicitações", recebe os e-mails e pode cancelá-lo pela tela. A
   procedência não se perde: para quem atende, o pedido aparece com o selo **"via integração X"**
   (ex.: "via integração TARS") ao lado do solicitante.
-- Toda mudança de estado gera um **callback** HTTP para a sua URL cadastrada (seção 6).
+- Toda mudança de estado gera um **callback** HTTP para a sua URL cadastrada (seção 7). Além
+  do callback, você também pode **consultar** o estado a qualquer momento (seção 5).
 
 ## 2. Autenticação
 
@@ -101,7 +102,7 @@ real em 30/07/2026:
 }
 ```
 
-Resposta (`201` na criação; `200` quando idempotente — seção 5):
+Resposta (`201` na criação; `200` quando idempotente — seção 6):
 
 ```json
 { "ok": true, "id": 123, "status": "aberta",
@@ -136,14 +137,92 @@ Regras:
   inclua o contexto (ex.: o casamento). `referencia_origem`: o id do registro no SEU sistema;
   volta em todos os callbacks.
 
-## 5. Idempotência e retry
+## 5. Consultar
+
+Sem consulta, o integrador dependia inteiramente do callback (seção 7): se ele não hospedasse
+um webhook, ou se o dele ficasse fora do ar além das 8 tentativas da fila (o evento vira
+`esgotado` e se perde), nunca saberia o desfecho — não havia caminho de recuperação. Com estes
+dois endpoints o contrato passa a ser autossuficiente: **criar → consultar → cancelar**, tudo
+por chamada sua; o callback continua existindo, mas vira a otimização de tempo real, não
+pré-requisito.
+
+**Quando usar cada coisa:** o callback avisa você na hora, mas exige hospedar e proteger um
+endpoint seu; a consulta você faz quando quiser, sem construir nada, ao custo de só saber
+quando perguntar. **Recomendação: combine os dois** — callback para reagir em tempo real e
+consulta como rede de segurança (reconcilie o que o callback não entregou; a fila desiste
+depois de 8 tentativas — seção 7). Quem não quiser manter webhook nenhum consegue operar 100%
+só por consulta.
+
+Nenhuma das duas rotas abaixo devolve os **valores dos campos** (`campos`) preenchidos na
+criação — você acabou de enviá-los, então eles não voltam na consulta.
+
+### 5.1 — `GET /api/externo/solicitacoes/{id}`
+
+Consulta **uma** solicitação criada por **esta chave**. Header `x-api-key` como nas demais
+chamadas.
+
+```json
+{ "ok": true,
+  "solicitacao": {
+    "id": 123,
+    "status": "concluida",
+    "tipo": "abatimento_de_creditos",
+    "titulo": "DW | Ana & Bruno — abatimento de crédito",
+    "destinatario": { "id": 3, "nome": "Financeiro" },
+    "solicitante": { "email": "camila@welcometrips.com.br", "nome": "Camila Souza" },
+    "data_limite": "2026-08-15",
+    "criado_em": "2026-07-31T14:03:00-03:00",
+    "decidido_em": "2026-08-02T09:12:00-03:00",
+    "justificativa": null,
+    "referencia_origem": "b1e2c3d4-…",
+    "chave_idempotencia": "pedido-b1e2c3d4"
+  } }
+```
+
+- `status` ∈ `aberta · concluida · rejeitada · cancelada`. `decidido_em` e `justificativa`
+  ficam `null` enquanto a solicitação está aberta; `justificativa` só vem preenchida em
+  rejeição.
+- **`404 NAO_ENCONTRADA`** quando o id não existe, quando pertence a **outra chave**, ou quando é
+  uma solicitação aberta na tela por um humano (essas não têm origem de integração). Os três
+  casos respondem **igual, de propósito** — a resposta não pode servir de oráculo para descobrir
+  se um id alheio existe.
+
+### 5.2 — `GET /api/externo/solicitacoes?referencia_origem=<sua-referência>`
+
+Busca pelo id **do seu lado** (o que você mandou na criação — seção 4), para você não precisar
+guardar o nosso `id`.
+
+```json
+{ "ok": true,
+  "solicitacoes": [
+    {
+      "id": 123, "status": "concluida", "tipo": "abatimento_de_creditos",
+      "titulo": "DW | Ana & Bruno — abatimento de crédito",
+      "destinatario": { "id": 3, "nome": "Financeiro" },
+      "solicitante": { "email": "camila@welcometrips.com.br", "nome": "Camila Souza" },
+      "data_limite": "2026-08-15", "criado_em": "2026-07-31T14:03:00-03:00",
+      "decidido_em": "2026-08-02T09:12:00-03:00", "justificativa": null,
+      "referencia_origem": "b1e2c3d4-…", "chave_idempotencia": "pedido-b1e2c3d4"
+    }
+  ] }
+```
+
+- Devolve **coleção**, mesmo com um único resultado — `referencia_origem` **não é única** no
+  Janus (só o par chave + `chave_idempotencia` é): você pode ter reusado a mesma referência em
+  pedidos diferentes, e devolver "o primeiro" faria você conciliar contra o pedido errado.
+- **Sem resultado é `200` com `"solicitacoes": []`**, não `404` — é busca sem retorno, não
+  recurso inexistente.
+- Sem o parâmetro → **`422 CONSULTA_INVALIDA`**.
+- Só enxerga solicitações **desta chave**.
+
+## 6. Idempotência e retry
 
 - `chave_idempotencia` é **obrigatória** e única por chave de API. Recomendação: use o id do
   registro de origem (ex.: `pedido_id`).
 - Reenviar com a mesma `chave_idempotencia` **não duplica**: devolve `200` com o **mesmo `id`**
   e `"idempotente": true` (e não reenvia e-mails). Retry com backoff é seguro e bem-vindo.
 
-## 6. Callbacks (mudanças de estado → sua URL)
+## 7. Callbacks (mudanças de estado → sua URL)
 
 O Janus envia `POST` à **URL de callback** cadastrada na sua chave, com o header
 **`x-callback-secret: <segredo de saída>`** (valide-o!). Quatro eventos:
@@ -174,14 +253,17 @@ Payload:
 - Sem `2xx`, o Janus retenta com backoff exponencial (2, 4, 8… minutos, teto 4 h) até 8
   tentativas; depois marca como esgotado (visível no log da chave, no admin do Janus).
 - Não há callback de "aprovado" — não existe esse estado (seção 1).
+- **O webhook deixou de ser a única forma de saber o desfecho** — se você não hospedar um, ou se
+  ele ficar fora do ar além das 8 tentativas acima, ainda dá para saber o estado perguntando
+  diretamente ao Janus (seção 5, Consultar).
 
-## 7. Cancelar — `POST /api/externo/solicitacoes/{id}/cancelar`
+## 8. Cancelar — `POST /api/externo/solicitacoes/{id}/cancelar`
 
 - Só cancela solicitações **criadas pela sua chave** e **ainda abertas**.
 - Já concluída/rejeitada/cancelada → `409` com `CONFLITO_ESTADO: <status atual>` — o conflito é
   **reportado, não aplicado** (o estado do Janus não muda; sincronize o seu lado pelo callback).
 
-## 8. Erros
+## 9. Erros
 
 Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..." } }`.
 
@@ -189,7 +271,7 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 |---|---|---|
 | `AUTH_AUSENTE` / `AUTH_INVALIDA` / `CHAVE_INVALIDA` | 401 | Sem chave, chave errada ou revogada |
 | `TIPO_NAO_AUTORIZADO` | 403 | Tipo existe mas não está na whitelist da sua chave |
-| `NAO_ENCONTRADA` | 404 | Solicitação inexistente **ou de outra chave** |
+| `NAO_ENCONTRADA` | 404 | Solicitação inexistente, de outra chave, ou aberta na tela por um humano — vale para a consulta (seção 5) e para o cancelamento |
 | `CONFLITO_ESTADO` | 409 | Cancelamento de solicitação não-aberta |
 | `PAYLOAD_EXCEDE_LIMITE` | 413 | Corpo acima de 64 KB |
 | `JSON_INVALIDO` / `PAYLOAD_INVALIDO` | 400/422 | Corpo não é JSON válido / shape errado |
@@ -201,9 +283,10 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 | `CAMPO_DESCONHECIDO` | 422 | Chave de campo que o tipo não tem |
 | `CAMPO_OBRIGATORIO` / `VALOR_INVALIDO` | 422 | Validação de campo (mesmas regras da tela) |
 | `TIPO_EXIGE_ANEXO` | 422 | Tipo tem anexo obrigatório (indisponível via API nesta versão) |
+| `CONSULTA_INVALIDA` | 422 | Consulta por `referencia_origem` sem o parâmetro na query |
 | `ERRO_INTERNO` | 500 | Falha inesperada (tente novamente com backoff) |
 
-## 9. Fora desta versão (não peça, ainda)
+## 10. Fora desta versão (não peça, ainda)
 
 Anexos via API · estados/eventos de aprovação · assinatura HMAC de callbacks (hoje: segredo em
 header) · reatribuição de destinatário · **criar em nome de quem ainda não tem cadastro no Janus**

@@ -60,3 +60,42 @@ transação, entrega inline+cron, backoff exponencial, idempotência do lado do 
 **inalterada** — só o conteúdo do payload de UM evento específico mudou. A coluna
 `app.solicitacao.referencia_conclusao` fica **órfã e inerte** até um patch destrutivo separado,
 pós-merge (skill `banco-e-rpc`), fazer o `DROP COLUMN`.
+
+## Emenda (2026-07-31) — o callback deixou de ser a ÚNICA forma de saber o desfecho
+
+Decisão do Yan, ao ler a explicação dos campos de callback na tela de chaves: *"não seria mais
+fácil para o nosso lado criarmos um endpoint de consulta no Janus?"*. Sim — e a razão é mais forte
+que conveniência.
+
+**O que estava errado no desenho.** A outbox entrega at-least-once com retry e backoff, e **desiste
+após 8 tentativas** (`esgotado`). Isso é correto para uma fila, mas era terminal para a informação:
+sem nenhuma rota de leitura, um endpoint do integrador fora do ar por algumas horas fazia o evento
+se perder **para sempre**, sem caminho de reconciliação. E, antes disso, havia uma dependência dura
+pior: se o integrador não construísse e hospedasse um receptor de webhook, ele criava pedidos no
+Janus e **nunca** ficava sabendo o que aconteceu com eles — um risco de lançamento que não estava
+nas nossas mãos.
+
+**O que muda (migration 0221, aditiva):** `public.consultar_solicitacoes_externas(p_chave_id,
+p_solicitacao_id, p_referencia_origem)` — leitura pura, escopada à chave — e duas rotas:
+`GET /api/externo/solicitacoes/{id}` (item) e `GET /api/externo/solicitacoes?referencia_origem=…`
+(coleção, buscando pelo id do próprio integrador). O escopo é o MESMO do cancelamento
+(`origem_chave_id = p_chave_id` dentro do WHERE): solicitação de outra chave — ou aberta na tela por
+um humano, que não tem origem — responde 404, sem distinguir "não existe" de "não é seu".
+
+**Consequências:**
+
+- O contrato ficou **autossuficiente**: criar → consultar → cancelar, tudo por chamada do
+  integrador. O callback continua e continua sendo o melhor caminho para reagir na hora, mas
+  **deixou de ser pré-requisito** — quem não quiser hospedar webhook opera 100% por consulta.
+- A desistência da fila (`esgotado`) deixou de ser perda de informação: virou perda de
+  *pontualidade*. O estado real está sempre disponível para consulta, sem prazo de validade.
+- A recomendação ao integrador passa a ser a COMBINAÇÃO: callback para reagir na hora, consulta como
+  rede de reconciliação. Está escrita no contrato (`docs/api-externa-solicitacoes.md`) e na página
+  de documentação dentro da plataforma.
+- `referencia_origem` **não é única** no Janus (só o par chave + `chave_idempotencia` é), então a
+  busca por ela devolve **coleção** mesmo com um resultado — devolver "o primeiro" faria o
+  integrador conciliar contra o pedido errado. Sem resultado é `200` com lista vazia (busca sem
+  retorno), não 404 (recurso inexistente).
+- Fora de escopo por decisão explícita: a consulta **não** devolve os valores dos campos preenchidos
+  (o integrador acabou de enviá-los) e **não** existe listagem "tudo o que esta chave criou" — isso
+  seria outra funcionalidade (paginação, ordenação, volume) e não foi pedida.

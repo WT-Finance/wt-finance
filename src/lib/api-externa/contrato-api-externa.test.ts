@@ -75,9 +75,11 @@ async function sondarRpcPronta(): Promise<boolean> {
       `SELECT
          (SELECT count(*)::int FROM pg_proc WHERE proname IN ('criar_solicitacao_externa', 'api_outbox_reivindicar')) AS base,
          (SELECT count(*)::int FROM pg_proc WHERE proname = 'solic_concluir' AND pronargs = 1) AS pos215,
-         (SELECT count(*)::int FROM pg_proc WHERE proname = 'criar_solicitacao_externa' AND pronargs = 9) AS pos217`,
+         (SELECT count(*)::int FROM pg_proc WHERE proname = 'criar_solicitacao_externa' AND pronargs = 9) AS pos217,
+         (SELECT count(*)::int FROM pg_proc WHERE proname = 'consultar_solicitacoes_externas') AS pos221`,
     )
-    return (r.rows[0]?.base ?? 0) >= 2 && (r.rows[0]?.pos215 ?? 0) >= 1 && (r.rows[0]?.pos217 ?? 0) >= 1
+    return (r.rows[0]?.base ?? 0) >= 2 && (r.rows[0]?.pos215 ?? 0) >= 1
+        && (r.rows[0]?.pos217 ?? 0) >= 1 && (r.rows[0]?.pos221 ?? 0) >= 1
   } catch {
     return false
   } finally {
@@ -460,6 +462,93 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(linha.rows[0].solicitante_id).toBe(roboUserId)
   })
 
+  // ── (3b) CONSULTA (v5.4.0/Round4, migration 0221) ────────────────────────────
+  // O contrato passou a ser autossuficiente: criar → consultar → cancelar. Antes,
+  // sem webhook do lado do integrador, não havia como saber o desfecho.
+  it('consultar por id devolve a solicitação desta chave com o estado atual', async () => {
+    const r = await chamarRpc('consultar_solicitacoes_externas', {
+      p_chave_id: chaveId, p_solicitacao_id: solicitacaoId, p_referencia_origem: null,
+    })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const lista = r.data as Array<Record<string, unknown>>
+    expect(Array.isArray(lista)).toBe(true)
+    expect(lista).toHaveLength(1)
+    const s = lista[0]
+    expect(s.id).toBe(solicitacaoId)
+    expect(s.status).toBe('aberta')
+    expect(s.tipo).toBe('zz_teste_api_v540')
+    expect(s.decidido_em).toBeNull()          // ainda aberta
+    expect(s.justificativa).toBeNull()
+    expect((s.destinatario as { nome: string }).nome).toBe('ZZ_TESTE_API_V540')
+    expect((s.solicitante as { email: string }).email).toBe(solicitanteEmail)
+  })
+
+  it('consultar por referencia_origem (o id DO INTEGRADOR) devolve coleção', async () => {
+    const REF = 'zz-ref-consulta-v540'
+    const criada = await chamarRpc('criar_solicitacao_externa', {
+      p_chave_id: chaveId, ...corpoFeliz,
+      p_chave_idempotencia: 'zz-idem-consulta-ref',
+      p_referencia_origem: REF,
+      p_solicitante_email: solicitanteEmail,
+    })
+    expect(criada.ok, criada.erro ?? '').toBe(true)
+    const novaId = (criada.data as { id: number }).id
+
+    const r = await chamarRpc('consultar_solicitacoes_externas', {
+      p_chave_id: chaveId, p_solicitacao_id: null, p_referencia_origem: REF,
+    })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const lista = r.data as Array<Record<string, unknown>>
+    expect(lista.map(x => x.id)).toContain(novaId)
+    for (const s of lista) expect(s.referencia_origem).toBe(REF)
+  })
+
+  it('consulta NÃO enxerga solicitação sem origem de integração (a aberta na tela)', async () => {
+    // A cláusula de escopo é `origem_chave_id = p_chave_id` DENTRO do WHERE — não
+    // uma checagem posterior. Este caso prova que um pedido humano (origem NULL)
+    // fica invisível para qualquer chave, mesmo consultando o id exato.
+    const ins = await client.query(
+      `INSERT INTO app.solicitacao (tipo_id, solicitante_id, destinatario_role_id, data_limite, respostas, status)
+       VALUES ($1, $2, $3, '2027-01-01', '[]'::jsonb, 'aberta') RETURNING id::int AS id`,
+      [tipoId, roboUserId, roleId],
+    )
+    const idInterna = ins.rows[0].id as number
+    try {
+      const r = await chamarRpc('consultar_solicitacoes_externas', {
+        p_chave_id: chaveId, p_solicitacao_id: idInterna, p_referencia_origem: null,
+      })
+      expect(r.ok, r.erro ?? '').toBe(true)
+      expect(r.data).toEqual([])   // a rota traduz vazio em 404
+    } finally {
+      // Limpeza LOCAL: o afterAll apaga por origem_chave_id e não pegaria esta linha.
+      await client.query(`DELETE FROM app.solicitacao WHERE id = $1`, [idInterna]).catch(() => {})
+    }
+  })
+
+  it('consulta sem critério nenhum → CONSULTA_INVALIDA', async () => {
+    const r = await chamarRpc('consultar_solicitacoes_externas', {
+      p_chave_id: chaveId, p_solicitacao_id: null, p_referencia_origem: null,
+    })
+    expect(r.ok).toBe(false)
+    expect(prefixo(r.erro)).toBe('CONSULTA_INVALIDA')
+  })
+
+  it('consulta com chave revogada → CHAVE_INVALIDA', async () => {
+    // A revogação precisa estar COMMITADA para a chamada REST (outra conexão) a
+    // enxergar — daí o update direto; o `finally` devolve a chave ativa para os
+    // casos seguintes.
+    try {
+      await client.query(`UPDATE app.api_chave SET ativo = false WHERE id = $1`, [chaveId])
+      const r = await chamarRpc('consultar_solicitacoes_externas', {
+        p_chave_id: chaveId, p_solicitacao_id: solicitacaoId, p_referencia_origem: null,
+      })
+      expect(r.ok).toBe(false)
+      expect(prefixo(r.erro)).toBe('CHAVE_INVALIDA')
+    } finally {
+      await client.query(`UPDATE app.api_chave SET ativo = true WHERE id = $1`, [chaveId])
+    }
+  })
+
   // ── (4) cancelamento ─────────────────────────────────────────────────────────
   it('cancelar_solicitacao_externa: cancela a solicitação criada por esta chave', async () => {
     const r = await chamarRpc('cancelar_solicitacao_externa', { p_chave_id: chaveId, p_solicitacao_id: solicitacaoId })
@@ -467,6 +556,19 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     const d = r.data as { id: number; status: string }
     expect(d.id).toBe(solicitacaoId)
     expect(d.status).toBe('cancelada')
+  })
+
+  // O par que fecha o ciclo: depois de uma movimentação, a CONSULTA reflete o novo
+  // estado. É isto que permite ao integrador reconciliar sem depender do callback
+  // (a fila desiste após 8 tentativas; a consulta não tem prazo de validade).
+  it('após o cancelamento, a consulta devolve status cancelada e decidido_em', async () => {
+    const r = await chamarRpc('consultar_solicitacoes_externas', {
+      p_chave_id: chaveId, p_solicitacao_id: solicitacaoId, p_referencia_origem: null,
+    })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const s = (r.data as Array<Record<string, unknown>>)[0]
+    expect(s.status).toBe('cancelada')
+    expect(s.decidido_em).not.toBeNull()
   })
 
   it('cancelar de novo (já cancelada) → CONFLITO_ESTADO', async () => {

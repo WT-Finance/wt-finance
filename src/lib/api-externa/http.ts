@@ -122,6 +122,10 @@ const PREFIXOS_VALIDACAO_422 = new Set([
   // cadastrado ativo virou validação de negócio — mesmo tratamento 422 do
   // destinatário.
   'SOLICITANTE_OBRIGATORIO', 'SOLICITANTE_INVALIDO',
+  // v5.4.0/Round4 (migration 0221): consulta sem critério (nem id, nem
+  // referencia_origem) — a rota já barra antes, mas a RPC também guarda, e o
+  // mapeamento tem de existir para o erro não virar 500 genérico.
+  'CONSULTA_INVALIDA',
 ])
 
 /**

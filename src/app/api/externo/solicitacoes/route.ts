@@ -16,6 +16,7 @@ import {
   getEmailsEnvolvidosSvc,
 } from '@/lib/api-externa/http'
 import { processarOutboxUmaVez } from '@/lib/api-externa/outbox'
+import { comoListaConsulta } from '@/lib/api-externa/consulta'
 import { enviarNotificacaoSolicitacao } from '@/lib/email'
 
 const ROTA = '/api/externo/solicitacoes'
@@ -121,6 +122,53 @@ async function notificarCriacao(id: number): Promise<void> {
     // fan-out intermitente).
     console.error(`[api-externa] notificação #${id} (criada) falhou:`, err)
   }
+}
+
+/**
+ * GET /api/externo/solicitacoes?referencia_origem=… — busca pelo id DO INTEGRADOR
+ * (v5.4.0/Round4). Devolve COLEÇÃO, não item: `referencia_origem` não é única no
+ * Janus (só o par chave+chave_idempotencia é), então a mesma referência pode ter
+ * sido usada em pedidos diferentes — esconder isso atrás de "o primeiro" faria o
+ * integrador conciliar contra a solicitação errada. Sem resultado é 200 com lista
+ * vazia: é uma busca sem retorno, não um recurso inexistente.
+ */
+export async function GET(req: Request): Promise<Response> {
+  const auth = await autenticarChamada(req)
+  if (!auth.ok) {
+    await registrarChamada(null, ROTA, auth.resposta.status, 'auth_negada')
+    return auth.resposta
+  }
+  const { chave } = auth
+
+  const ref = new URL(req.url).searchParams.get('referencia_origem')?.trim() ?? ''
+  if (ref === '') {
+    const detalhe = 'informe referencia_origem na query (ou consulte por id em /api/externo/solicitacoes/{id})'
+    const resposta = respostaErro('CONSULTA_INVALIDA', detalhe, 422)
+    await registrarChamada(chave.id, ROTA, 422, detalhe)
+    return resposta
+  }
+
+  const { data, error } = await chamarRpcExterna('consultar_solicitacoes_externas', {
+    p_chave_id: chave.id,
+    p_solicitacao_id: null,
+    p_referencia_origem: ref,
+  })
+
+  if (error) {
+    const resposta = traduzirErroRpc(error.message)
+    await registrarChamada(chave.id, ROTA, resposta.status, error.message)
+    return resposta
+  }
+
+  const solicitacoes = comoListaConsulta(data)
+  if (!solicitacoes) {
+    await registrarChamada(chave.id, ROTA, 500, 'shape inesperado no retorno de consultar_solicitacoes_externas')
+    return respostaErro('ERRO_INTERNO', 'Falha inesperada. Tente novamente com backoff.', 500)
+  }
+
+  const resposta = Response.json({ ok: true, solicitacoes }, { status: 200 })
+  await registrarChamada(chave.id, ROTA, 200)
+  return resposta
 }
 
 export async function POST(req: Request): Promise<Response> {
