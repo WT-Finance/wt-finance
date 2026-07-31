@@ -579,3 +579,34 @@ correções — o bullet de Conceitos que falava de "lista de tipos autorizados"
 ("os tipos que a SUA chave pode abrir" → todos os expostos) e a linha `TIPO_NAO_AUTORIZADO` da tabela
 de erros. O resto foi conferido item a item contra o produto de hoje (numeração das seções,
 referências cruzadas, `TIPO_INVALIDO`, ausência de callback/robô-autor) e estava correto.
+
+### Prova das três RPCs humanas reescritas (rounds 5 e 6)
+
+Os rounds 5 e 6 reescreveram `solic_concluir`, `solic_rejeitar` e `solic_cancelar` — as três do fluxo
+que **toda a empresa** usa na tela — só para deixarem de enfileirar callback. A mudança é pequena
+(remoção de um `PERFORM`), mas o raio de dano de um erro ali é a tela de Solicitações inteira, e a
+suíte só cobria `solic_concluir`. Então exercitei as três contra o banco real, com JWT simulado em
+transação **revertida** (role efêmera, a pessoa virando membro da equipe destinatária para ser
+atendente, três solicitações-fixture):
+
+| RPC | Resultado |
+|---|---|
+| `solic_concluir` | `concluida`, `decidido_por` e `decidido_em` preenchidos |
+| `solic_rejeitar` | `rejeitada`, justificativa gravada |
+| `solic_cancelar` | `cancelada`, autoria e data preenchidas |
+| `solic_rejeitar` com justificativa em branco | **recusado** (`JUSTIFICATIVA_OBRIGATORIA`) — a regra sobreviveu |
+
+Depois do `ROLLBACK`: 0 roles ZZ, a role do usuário de teste voltou à original, 0 solicitações na
+base. Nenhum resíduo.
+
+**Guarda PERMANENTE nova:** acrescentei à suíte de contrato o caso **`solic_cancelar` pela TELA** —
+que é a promessa do Round 4 (a pessoa amarrada como solicitante consegue cancelar; com o robô como
+autor era impossível) e **não tinha teste nenhum**. Ele confere `status=cancelada`, que
+`decidido_por` é a PESSOA, e que o integrador vê o cancelamento pela consulta. 39 casos na suíte.
+
+**Lacuna que fica registrada:** `solic_rejeitar` continua sem guarda permanente. Um teste dela exigiria
+tornar um usuário real membro de uma equipe efêmera (é a única forma de ser atendente) e restaurar
+depois — se a suíte falhasse no meio, deixaria um usuário de verdade numa role de teste que o
+`afterAll` depois apaga. Julguei o risco maior que o ganho **numa suíte que roda contra produção**, e
+preferi registrar do que criar um teste capaz de sujar cadastro real. Cobertura hoje: `concluir` e
+`cancelar` no automatizado, `rejeitar` na prova manual acima.

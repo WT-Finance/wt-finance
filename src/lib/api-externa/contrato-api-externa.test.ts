@@ -713,6 +713,38 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect((r.data as Array<{ status: string }>)[0].status).toBe('concluida')
   })
 
+  // A PROMESSA do Round4 que não tinha guarda nenhuma: a pessoa cujo e-mail veio no
+  // disparo é a solicitante de verdade e por isso **cancela pela TELA** (solic_cancelar
+  // exige `solicitante_id = uid_jwt()`). Antes, com o robô como autor, isto era
+  // impossível — e nada no repo provava que passou a ser possível. Os rounds 5 e 6
+  // reescreveram `solic_cancelar` (para deixar de enfileirar callback), o que torna a
+  // guarda mais necessária ainda: se uma reescrita futura mexer na regra de permissão,
+  // este caso reprova.
+  it('solic_cancelar pela TELA: quem foi amarrado como solicitante consegue cancelar', async () => {
+    const criada = await chamarRpc('criar_solicitacao_externa', {
+      p_chave_id: chaveId, ...corpoFeliz,
+      p_chave_idempotencia: 'zz-idem-cancelar-pela-tela',
+      p_solicitante_email: solicitanteEmail,
+    })
+    expect(criada.ok, criada.erro ?? '').toBe(true)
+    const id = (criada.data as { id: number }).id
+
+    await comoRobo(() => client.query(`SELECT public.solic_cancelar($1::bigint)`, [id]))
+
+    const sol = await client.query(
+      `SELECT status, decidido_por, decidido_em FROM app.solicitacao WHERE id = $1`, [id])
+    expect(sol.rows[0].status).toBe('cancelada')
+    expect(sol.rows[0].decidido_por).toBe(roboUserId)   // quem cancelou foi a PESSOA
+    expect(sol.rows[0].decidido_em).not.toBeNull()
+
+    // E o integrador vê o cancelamento consultando — sem ninguém avisá-lo.
+    const r = await chamarRpc('consultar_solicitacoes_externas', {
+      p_chave_id: chaveId, p_solicitacao_id: id, p_referencia_origem: null,
+    })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    expect((r.data as Array<{ status: string }>)[0].status).toBe('cancelada')
+  })
+
 })
 
 // Sempre roda (mesmo offline) — deixa visível, no relatório do `npm test`, que a
