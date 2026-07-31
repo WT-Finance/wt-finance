@@ -35,6 +35,17 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.3.5',
+    data: '2026-07-31T10:45', // horário de AUTORIA — reconciliar ao merge real no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'O pedido de acesso feito pela tela de login voltou a chegar para aprovação. Desde 13 de julho, quem solicitava acesso recebia a mensagem de confirmação na tela, mas o pedido não era registrado em lugar nenhum — nenhuma solicitação aparecia em Usuários & Acessos para aprovar. Foram 18 dias em que qualquer pedido novo foi perdido em silêncio. Quem tentou nesse período precisa solicitar novamente: não é possível recuperar pedidos que nunca foram gravados. A partir de agora, uma falha nesse caminho fica registrada para diagnóstico em vez de passar despercebida.',
+      },
+    ],
+  },
+  {
     versao: '5.3.4',
     data: '2026-07-30T12:46', // horário REAL do merge (75798bd, 15:46:16Z −03) — reconciliado no /pos-merge
     itens: [
