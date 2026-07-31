@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Ban, BookOpen, Pencil, Plus, ScrollText } from 'lucide-react'
+import { ArrowLeft, Ban, Pencil, Plus, ScrollText } from 'lucide-react'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import type { ChaveApi, TipoDisponivel } from './tipos'
 import { TiposExpostos } from './tipos-expostos'
@@ -82,16 +82,16 @@ export function ChavesApiContent({
 
   return (
     <>
-      {/* Ações da página: "Ver solicitações" + "Documentação" (âmbar --gestao,
-          volta ao módulo / leva ao contrato) à esquerda; "Nova chave" à
-          direita — mesmo padrão de tipos-content.tsx. */}
+      {/* Ações da página: "Ver solicitações" (âmbar --gestao, volta ao módulo) à
+          esquerda; "Nova chave" à direita — mesmo padrão de tipos-content.tsx.
+          v5.4.0/Round4 (pedido do Yan, 31/07): a pill "Documentação" SAIU daqui —
+          o acesso à documentação é pela tela inicial do módulo de Solicitações, que
+          é onde ela tem permissão própria. Ter os dois caminhos deixava a permissão
+          nova parecendo acessório de uma tela de gestão. */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/admin/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
             <ArrowLeft size={13} /> Ver solicitações
-          </Link>
-          <Link href="/admin/chaves-api/documentacao" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-            <BookOpen size={13} /> Documentação
           </Link>
         </div>
         <button

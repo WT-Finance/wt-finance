@@ -111,7 +111,7 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
               do bloco `podeGestao` acima (quem só tem a documentação também vê). */}
           {podeVerDocApi && (
             <Link href="/admin/chaves-api/documentacao" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-              <BookOpen size={13} /> Documentação da API
+              <BookOpen size={13} /> Documentação API
             </Link>
           )}
         </div>

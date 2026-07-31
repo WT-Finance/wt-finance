@@ -49,7 +49,7 @@ export default async function DocumentacaoApiPage() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Documentação da API externa</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
-          Contrato do integrador — autenticação, descoberta, criação, callbacks e erros
+          Contrato do integrador (autenticação, descoberta, criação, callbacks e erros)
         </p>
       </div>
 

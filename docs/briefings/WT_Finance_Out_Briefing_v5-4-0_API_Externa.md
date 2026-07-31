@@ -310,9 +310,10 @@ ordem 55), inserida no catálogo pela 0217 e espelhada em `src/lib/auth/areas.ts
 virou `requireArea(['solicitacoes/documentacao', 'solicitacoes'])` — semântica OU: quem tem gestão
 continua entrando. No mapeamento rota→áreas, a regra específica de
 `/admin/chaves-api/documentacao` precisou vir **antes** da genérica `/admin/chaves-api` (o
-`startsWith` casa a primeira; teste novo cobre exatamente essa ordem). O botão passou a existir na **tela inicial de
-Solicitações**, em condicional separada da de gestão (o atalho na tela de administração continua
-lá — é a página irmã, e ninguém pediu para removê-lo) —
+`startsWith` casa a primeira; teste novo cobre exatamente essa ordem). O botão passou a viver **só na tela inicial de
+Solicitações**, em condicional separada da de gestão — a pill que existia na tela de administração
+foi REMOVIDA a pedido do Yan (31/07): dois caminhos deixavam a permissão própria parecendo
+acessório de uma tela de gestão —
 quem só integra não precisa de acesso de gestão. **Nenhum role recebe a área automaticamente:** o
 Yan concede pelo editor de permissões.
 
