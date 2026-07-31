@@ -6,6 +6,45 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.3.5] — 2026-07-31
+
+PATCH · **Fluxo público de solicitação de acesso não criava a pendência** (Rota C — bug relatado em
+produção). Sem migrations. Nenhuma rota de página ou API muda de comportamento.
+
+- **Sintoma relatado:** quem pedia acesso pela tela de login recebia a confirmação "pedido enviado",
+  mas nenhuma solicitação aparecia para aprovação em Usuários & Acessos.
+- **Causa-raiz — `this` perdido, não banco:** o commit `8863a69` (13/07, 14h13) refatorou a action
+  para reusar a referência da RPC no fallback e, ao fazer isso, trocou
+  `await (supabase.rpc as unknown as AdminRpc)('solicitar_acesso_admin', ...)` por
+  `const rpc = supabase.rpc as unknown as AdminRpc` + `await rpc(...)`. **Parênteses em torno de um
+  acesso a membro preservam o `this`; atribuir o método a uma variável o DESTACA.**
+  `SupabaseClient.rpc` é método de **protótipo** e faz `return this.rest.rpc(...)` — destacado, em
+  módulo ESM (strict) o `this` é `undefined` e a chamada estoura
+  `TypeError: Cannot read properties of undefined (reading 'rest')`. O `catch` anti-enumeração
+  (ADR-0110) engolia o erro e a tela seguia dizendo sucesso. O fallback legado usava a **mesma**
+  referência quebrada, então os dois caminhos morriam juntos.
+- **Evidências (5, independentes):** (1) log de runtime da Vercel com o `TypeError` exato em **100%**
+  dos `POST /solicitar-acesso` — 18 tentativas só na janela de retenção; (2) a fonte do
+  `@supabase/supabase-js` instalado (`rpc(fn, …) { return this.rest.rpc(…) }`), que explica o nome
+  da propriedade no erro; (3) **todos** os outros call-sites de RPC do repo bindam o `this`
+  (`.bind(sb)` em 6 arquivos, `.call(db, …)` em `rpc-dre`/`rpc-fluxo`/`rpc-metas`) — este era o
+  único fora do padrão; (4) a base: 8 pedidos, todos `aprovada`, **zero pendentes**, `criado_em`
+  mais recente **13/07 11h26** — nada criado após a regressão; (5) o diff datado do commit.
+- **Correção:** `const rpc = (supabase.rpc as unknown as AdminRpc).bind(supabase)` — o mesmo padrão
+  já usado em `src/app/admin/uploads/actions.ts`. Uma linha.
+- **Segundo buraco silencioso fechado:** o erro do fallback legado era **descartado**
+  (`await rpc('solicitar_acesso', …)` sem checar `error`). Se os dois caminhos falhassem, o pedido
+  sumia sem **uma linha** de log. Agora cada caminho loga, e a falha dupla grita
+  `PEDIDO PERDIDO`. A resposta ao usuário continua sempre de sucesso (anti-enumeração intocada).
+- **Guard mecânico novo** (`src/app/solicitar-acesso/actions.test.ts`, 8 casos — primeiro teste de
+  Server Action do repo): o dublê do cliente é uma **classe** cujo `rpc` é método de protótipo que
+  toca `this.rest`, replicando a armadilha — um `vi.fn()` solto passaria com o bug e seria teatro.
+  Cobre o caminho feliz, normalização do e-mail, notificação só em pedido novo, fallback legado,
+  falha dupla, e-mail inválido e falha do SMTP. Verificado que **7 dos 8 reprovam** com o código
+  antigo (o 8º é o de e-mail inválido, que nunca toca o banco).
+- **Impacto:** 18 dias (13/07 14h13 → 31/07) de pedidos de acesso perdidos silenciosamente.
+  Quem tentou nesse período **precisa pedir de novo** — não há como recuperar o que não foi gravado.
+
 ## [5.3.4] — 2026-07-30
 
 PATCH · **E-mail intermitente nas notificações de Solicitações** (Rota C — bug relatado em
