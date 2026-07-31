@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-31 · produção na **v5.3.5** (#203 mergeada às 10h56 — solicitação de acesso volta a gravar a pendência) · v5.4.0 (API Externa) no **round 4** no PR #191, aguardando o patch destrutivo em TTY do Yan e o merge
+Última atualização: 2026-07-31 (fim do dia) · produção na **v5.3.5** (#203 mergeada às 10h56 — solicitação de acesso volta a gravar a pendência) · v5.4.0 (API Externa) no **round 4** no PR #191, aguardando o patch destrutivo em TTY do Yan e o merge
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -82,30 +82,34 @@
   na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
   **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
   `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
-  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0220`** — a 0218 está
-  RESERVADA pelo patch destrutivo abaixo.
-- ⚠️ **`supabase/patches/0218_limpeza_historico_e_slugs.sql` existe e está PENDENTE** — patch
-  DESTRUTIVO (apaga todo o histórico de Solicitações, os 2 tipos arquivados e corrige os sufixos
-  `_2` dos slugs). Está FORA de `supabase/migrations/` de propósito: `db push` empurra o conjunto
-  pendente inteiro, e um arquivo destrutivo parado na pasta é arrastado pelo primeiro push aditivo
-  (foi assim que a v5.2.0 dropou bases). Aplicação = 2 comandos na mão do Yan, na ordem do
-  out-briefing (script de Storage → `git mv` + `--destrutiva`), e **antes de criar a chave do
-  TARS** (a guarda do patch aborta se já existir chave: renomear slug com integrador ligado
-  quebraria o contrato dele em silêncio). O script de Storage **exige TTY** (aborta em sessão de
-  agente/CI) e **baixa cópia local obrigatória antes de apagar** — o backup-gate NÃO cobre binário
-  de Storage (exporta só tabelas dos schemas do produto). A cópia dos 20 arquivos (3,3 MB) já está
-  feita em `~/wt-finance-backups/2026-07-31-anexos-solicitacoes`.
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0221`** — a `0220` é o
+  patch destrutivo pendente descrito abaixo (e não existe 0218: o arquivo nasceu com esse número e
+  foi renumerado).
+- ⚠️ **`supabase/migrations/0220_limpeza_historico_e_slugs.sql` PENDENTE e o estado está MISTO.** O
+  script de Storage já rodou (bucket `solicitacoes-anexos` em **0 arquivos**; cópia íntegra de 20
+  arquivos/3,3 MB em `~/wt-finance-backups/2026-07-31-anexos-solicitacoes`, assinaturas conferidas),
+  mas o SQL **não** — então as 21 linhas de `app.solicitacao_anexo` apontam para binário que não
+  existe e o download de anexo das 26 solicitações falha em produção. **Fechar com um comando no
+  terminal do Yan: `npm run db:migrate -- --destrutiva`** (exige TTY, ADR-0131). O arquivo nasceu
+  0218 em `supabase/patches/`; virou **0220** e entrou em `migrations/` porque a 0219 foi aplicada
+  antes e o `db push` recusa migration fora de ordem (pediria `--include-all`). **Lição: não reservar
+  número de destrutiva que será aplicada depois de uma aditiva da mesma leva.** Enquanto ela está na
+  pasta, ninguém roda `--aditiva` (o conjunto pendente iria junto).
+- **Rota renomeada (31/07): `/admin/chaves-api` → `/admin/api-externa`** (a pasta de componentes
+  acompanhou). A documentação da API é alcançada pela **tela inicial do módulo** (pill "Documentação
+  API", área própria `solicitacoes/documentacao`) — a pill de voltar saiu da página, que existe por
+  conta própria.
 - **v5.4.0 (PR #191) — round 4 entregue:** com a plataforma aberta ao público interno, o Yan pediu
   (1) histórico de Solicitações apagado + os 2 tipos arquivados de teste, (2) sufixos `_2` dos
   slugs corrigidos, (3) documentação da API com **permissão própria** e botão na tela inicial do
   módulo, (4) Chaves de API acima de "Tipos Expostos", (5) **solicitante amarrado**: o disparo
   exige `solicitante_email` de pessoa cadastrada e ATIVA, e essa pessoa vira a solicitante (vê em
   "Minhas solicitações", recebe e-mails, cancela pela tela); a procedência virou o selo "via
-  integração X" (`solic_json.origem`). (1) e (2) são o patch 0218 acima; (3)-(5) já estão no ar via
-  0217. **Pendências do Yan:** aplicar o 0218 em TTY · conceder a área "Solicitações
+  integração X" (`solic_json.origem`). (1) e (2) são o patch 0220 acima; (3)-(5) já estão no ar via
+  0217. **Pendências do Yan:** aplicar o 0220 em TTY · conceder a área "Solicitações
   (documentação)" (nasce sem grant) · criar a chave da integração (segredo 1×) e entregar
   `docs/api-externa-solicitacoes.md` ao Vitor **avisando do campo novo obrigatório** · patch das 3
-  colunas órfãs (SQL no out-briefing; pode ir anexado ao 0218 numa passada só) · merge.
+  colunas órfãs (SQL no out-briefing; pode ir anexado ao 0220 numa passada só) · merge.
 - **Vercel (infra, standing):** deploy de repo privado de org exige plano Pro — pendência de
   billing do Yan, herdada da v5.2.0.
 

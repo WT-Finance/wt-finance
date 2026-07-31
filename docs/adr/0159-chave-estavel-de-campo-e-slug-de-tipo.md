@@ -71,7 +71,7 @@ pelo Yan no round 2) e `contas_a_pagar_2` (o `contas_a_pagar` homônimo estava *
 arquivado continua ocupando o slug, porque a UNIQUE não distingue arquivado de ativo). O slug
 canônico só ficou livre **depois** da limpeza de histórico do round 4.
 
-**Decisão.** O patch destrutivo **0218** renomeia os dois para a forma canônica, **na mesma
+**Decisão.** O patch destrutivo **0220** renomeia os dois para a forma canônica, **na mesma
 transação e depois** das exclusões, com guardas que ABORTAM se o mundo tiver mudado.
 
 **Por que foi seguro — e a regra que fica.** O slug é o identificador que o integrador manda no

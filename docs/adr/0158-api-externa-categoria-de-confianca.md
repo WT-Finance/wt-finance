@@ -81,4 +81,4 @@ O usuário-robô **continua existindo** e com a mesma configuração (`ativo=fal
 só muda o papel: é o **titular da chave** (FK `api_chave.robo_user_id`), não mais o autor das
 solicitações. Solicitações criadas via API **antes** desta migration seguiriam com o robô como
 solicitante (histórico intocado — a 0217 não faz backfill); na prática, todas foram apagadas pela
-limpeza de histórico do mesmo round (patch **0218**).
+limpeza de histórico do mesmo round (patch **0220**).

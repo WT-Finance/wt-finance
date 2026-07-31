@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { Loader2, Wand2 } from 'lucide-react'
-import { atualizarChaveApi, gerarSegredoCallbackAction } from '@/app/admin/chaves-api/actions'
+import { atualizarChaveApi, gerarSegredoCallbackAction } from '@/app/admin/api-externa/actions'
 import type { ChaveApi, TipoDisponivel } from './tipos'
 import { WhitelistTipos } from './whitelist-tipos'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'

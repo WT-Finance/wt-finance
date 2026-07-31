@@ -1,6 +1,6 @@
 import 'server-only'
 import { getServerClient } from '@/lib/supabase/server'
-import type { ChaveApi, LogChamada } from '@/components/admin/chaves-api/tipos'
+import type { ChaveApi, LogChamada } from '@/components/admin/api-externa/tipos'
 
 // Leituras do módulo de Chaves de API (v5.4.0/M2), consumidas pela page RSC e
 // pelas server actions. Cliente de SESSÃO (authenticated) — o banco valida a
@@ -53,7 +53,7 @@ function comoChave(x: Record<string, unknown>): ChaveApi | null {
   }
 }
 
-/** Lista as chaves de API (tela /admin/chaves-api). null = a RPC falhou. */
+/** Lista as chaves de API (tela /admin/api-externa). null = a RPC falhou. */
 export async function listarChavesApi(): Promise<ChaveApi[] | null> {
   const { data, error } = await call('api_chave_listar')
   if (error) { console.error('[api_chave_listar]', error.message); return null }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { revogarChaveApi } from '@/app/admin/chaves-api/actions'
+import { revogarChaveApi } from '@/app/admin/api-externa/actions'
 import type { ChaveApi } from './tipos'
 import { PILL, PILL_NEUTRO, PILL_PERIGO } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'

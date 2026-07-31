@@ -8,7 +8,7 @@ import { TiposContent } from '@/components/admin/solicitacoes/tipos-content'
 //
 // v5.4.0/Round2 (2026-07-28) — o editor voltou a ser SÓ nome+campos: a
 // configuração de API do tipo (exposto_via_api/api_roles_permitidas) foi
-// movida para /admin/chaves-api ("API externa" → "Tipos expostos"), então esta
+// movida para /admin/api-externa ("API externa" → "Tipos expostos"), então esta
 // página não precisa mais buscar os roles (solic_destinatarios) — só o editor
 // os consumia.
 

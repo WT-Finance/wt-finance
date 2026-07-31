@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { salvarConfigApiTipo } from '@/app/admin/chaves-api/actions'
+import { salvarConfigApiTipo } from '@/app/admin/api-externa/actions'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import Checkbox from '@/components/ui/checkbox'
 
-// v5.4.0/Round3 (2026-07-29) — seção "Tipos Expostos" de /admin/chaves-api
+// v5.4.0/Round3 (2026-07-29) — seção "Tipos Expostos" de /admin/api-externa
 // ("API externa"): lista TODOS os tipos de solicitação com um toggle DIRETO
 // de exposição via API. DECISÃO DO YAN: a lista "Equipes que podem receber
 // via API" morreu — qualquer equipe cadastrada pode ser destinatário de

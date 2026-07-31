@@ -16,8 +16,8 @@ async function rpcSessao(fn: string, args: Record<string, unknown>) {
 // v5.4.0/Round2 (2026-07-28): o editor voltou a ser SÓ nome+campos — esta
 // action não manda mais `p_config` (a RPC usa o DEFAULT NULL dela, que
 // preserva exposto_via_api/api_roles_permitidas vigentes). A configuração de
-// API do tipo é salva à parte, na página /admin/chaves-api, via
-// `salvarConfigApiTipo` (@/app/admin/chaves-api/actions) → RPC
+// API do tipo é salva à parte, na página /admin/api-externa, via
+// `salvarConfigApiTipo` (@/app/admin/api-externa/actions) → RPC
 // admin_solic_tipo_api_config (migration 0215).
 export async function salvarTipo(input: {
   id: number | null

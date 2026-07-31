@@ -90,7 +90,7 @@ REVOKE ALL ON app.api_chamada_log FROM PUBLIC, anon, authenticated;
 
 -- ── 2. RPCs de ADMINISTRAÇÃO (gated por 'solicitacoes' — gestão) ──────────────
 
--- Lista as chaves para a tela /admin/chaves-api. NUNCA emite segredo_hash nem
+-- Lista as chaves para a tela /admin/api-externa. NUNCA emite segredo_hash nem
 -- callback_segredo — só o booleano tem_callback_segredo (a UI mostra "definido"
 -- vs "não definido", nunca o valor).
 CREATE OR REPLACE FUNCTION public.api_chave_listar()

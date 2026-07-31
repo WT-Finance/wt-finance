@@ -18,11 +18,11 @@ import Button from '@/components/ui/button'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 
-// v5.4.0/M2 (+ Round2/Round3/Round4) — conteúdo client de /admin/chaves-api
+// v5.4.0/M2 (+ Round2/Round3/Round4) — conteúdo client de /admin/api-externa
 // ("API externa"): header de navegação (volta a /admin/solicitacoes — esta
 // rota não está na sidebar, mesmo padrão de /admin/solicitacoes; Round3
 // acrescenta a pill "Documentação", que leva à página irmã
-// /admin/chaves-api/documentacao), a tabela "Chaves de API", a seção "Tipos
+// /admin/api-externa/documentacao), a tabela "Chaves de API", a seção "Tipos
 // Expostos" (TiposExpostos — Round3: virou só um toggle de exposição por
 // linha, a lista de equipes de destino por tipo morreu) e a orquestração dos
 // 4 modais (criar / editar / revogar / log). Round4 (pedido do Yan 30/07):

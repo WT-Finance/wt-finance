@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { listarLogChaveApi } from '@/app/admin/chaves-api/actions'
+import { listarLogChaveApi } from '@/app/admin/api-externa/actions'
 import type { ChaveApi, LogChamada } from './tipos'
 import ModalCentral from '@/components/shared/modal-central'
 import Badge from '@/components/ui/badge'

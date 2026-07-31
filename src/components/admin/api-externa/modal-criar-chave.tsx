@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, Copy, Loader2, Wand2 } from 'lucide-react'
-import { criarChaveApi, gerarSegredoCallbackAction } from '@/app/admin/chaves-api/actions'
+import { criarChaveApi, gerarSegredoCallbackAction } from '@/app/admin/api-externa/actions'
 import type { TipoDisponivel } from './tipos'
 import { WhitelistTipos } from './whitelist-tipos'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'

@@ -1,20 +1,18 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import type { TipoAdmin, Destinatarios } from '@/lib/solicitacoes/schemas'
 import { Card } from '@/components/ui/card'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import Badge from '@/components/ui/badge'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
-import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 
 // v5.4.0/Round3 (2026-07-29) — conteúdo (RSC puro, sem interatividade) de
-// /admin/chaves-api/documentacao: espelha docs/api-externa-solicitacoes.md
+// /admin/api-externa/documentacao: espelha docs/api-externa-solicitacoes.md
 // DENTRO da plataforma (pedido do Yan — "deveria haver também uma forma de
 // acessar a documentação pela própria plataforma"). Prosa/exemplos são texto
 // estável do contrato; a seção 3 tem uma parte VIVA (tipos expostos + campos +
 // equipes válidas), lida do cadastro real a cada carregamento da página — o
-// mesmo dado que a page.tsx irmã (/admin/chaves-api) já consome.
+// mesmo dado que a page.tsx irmã (/admin/api-externa) já consome.
 //
 // Não existe renderizador de markdown no projeto — a página é montada com
 // primitivos reais do DS (Card, CardTabela, Badge), nunca dangerouslySetInnerHTML.
@@ -129,24 +127,15 @@ export function DocumentacaoContent({
   tiposExpostos: TipoAdmin[]
   equipes:       Destinatarios['roles']
   erroCarga:     string | null
-  // v5.4.0/Round4: quem tem SÓ 'solicitacoes/documentacao' não alcança
-  // /admin/chaves-api (ela exige a gestão). Oferecer o link a essa pessoa seria um
-  // beco sem saída — clique → /sem-acesso (achado BAIXO da revisão do round 4).
-  // Volta para o módulo, que é de onde essa pessoa chegou aqui.
+  // v5.4.0/Round4: quem tem SÓ 'solicitacoes/documentacao' não alcança a tela de
+  // administração (ela exige a gestão), então nenhum texto daqui manda essa pessoa
+  // para lá — seria um beco sem saída (clique → /sem-acesso). Único uso restante do
+  // flag: a redação do aviso "nenhum tipo exposto". A pill de VOLTA foi removida a
+  // pedido do Yan (31/07): esta página existe por conta própria.
   podeGestao:    boolean
 }) {
   return (
     <>
-      <div className="mb-5">
-        <Link
-          href={podeGestao ? '/admin/chaves-api' : '/solicitacoes'}
-          className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`}
-          style={PILL_GESTAO_STYLE}
-        >
-          <ArrowLeft size={13} /> {podeGestao ? 'API externa' : 'Solicitações'}
-        </Link>
-      </div>
-
       {erroCarga && <FaixaMensagem tipo="erro" texto={erroCarga} />}
 
       <Card className="mb-6">
@@ -240,7 +229,7 @@ export function DocumentacaoContent({
               {podeGestao ? (
                 <>
                   Nenhum tipo exposto — ligue a exposição de um tipo na tela{' '}
-                  <Link href="/admin/chaves-api" className="font-medium underline">API externa</Link> para que ele
+                  <Link href="/admin/api-externa" className="font-medium underline">API externa</Link> para que ele
                   apareça aqui e na descoberta.
                 </>
               ) : (

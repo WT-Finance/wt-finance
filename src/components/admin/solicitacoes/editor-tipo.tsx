@@ -18,7 +18,7 @@ import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/compone
 //
 // v5.4.0/Round2 (2026-07-28) — este editor voltou a ser SÓ FORMULÁRIO
 // (nome+campos): a seção "API externa" (slug/exposto/roles) que vivia aqui foi
-// MOVIDA para a página /admin/chaves-api ("API externa" → "Tipos expostos"),
+// MOVIDA para a página /admin/api-externa ("API externa" → "Tipos expostos"),
 // via a RPC dedicada admin_solic_tipo_api_config (migration 0215) — salvar o
 // formulário não sobrescreve mais a configuração de API do tipo. A CHAVE
 // ESTÁVEL por campo (exibida, read-only) é atributo do CAMPO, e permanece aqui.

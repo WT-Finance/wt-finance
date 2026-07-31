@@ -84,7 +84,7 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
           <Link href="/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
             <ArrowLeft size={13} /> Ver solicitações
           </Link>
-          <Link href="/admin/chaves-api" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
+          <Link href="/admin/api-externa" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
             <KeyRound size={13} /> API externa
           </Link>
         </div>

@@ -10,7 +10,7 @@ base main @ v5.1.11, reconciliada com main @ v5.3.3 no merge · migrations **021
 | M | Entrega | Migration |
 |---|---|---|
 | M1 | Fundações no cadastro de tipos: slug estável, **chave estável por campo** (sobrevive ao apaga-e-recria), flags `exposto_via_api`/`exige_referencia_conclusao`, roles permitidas; editor com os controles; retrofit via RPC service-only (8 tipos/53 campos preenchidos) | 0210 |
-| M2 | `app.api_chave` (hash sha256; callback URL+segredo de saída; whitelist; robô; revogação irreversível) + `api_chamada_log` + 8 RPCs + tela `/admin/chaves-api` (Group neutro, gated `solicitacoes`; segredo exibido UMA vez; criação provisiona o robô no Auth com `ativo=false`) | 0211 |
+| M2 | `app.api_chave` (hash sha256; callback URL+segredo de saída; whitelist; robô; revogação irreversível) + `api_chamada_log` + 8 RPCs + tela `/admin/api-externa` (Group neutro, gated `solicitacoes`; segredo exibido UMA vez; criação provisiona o robô no Auth com `ativo=false`) | 0211 |
 | M3 | **Validação compartilhada** `app.solic_validar_e_snapshotar` (extraída verbatim, incl. regra de data v4.19) consumida pela RPC humana E pela irmã `criar_solicitacao_externa` (idempotência única por chave + corrida tratada; destinatário do disparo sem fallback, ecoado) + `cancelar_solicitacao_externa` + `solic_tipos_api` + rotas `/api/externo/*` (auth por chave, erros estruturados, 64KB, log) + proxy por prefixo | 0212 |
 | M4 | **Outbox at-least-once**: enfileira os 4 eventos NA transação da movimentação (só origem externa); processador com claim `SKIP LOCKED` + backoff exponencial (teto 8 → esgotado) via pg_cron */5 + entrega inline (aguardada) nas rotas externas; `solic_concluir(p_referencia)` obrigatória quando o tipo exige (persiste e viaja no callback); drawer/board pedem o campo; `solic_emails_envolvidos_svc` corrige o fan-out da porta externa | 0213 |
 | M5 | Seed do tipo **"Abatimento de créditos"** (9 campos com chaves explícitas; `exige_referencia_conclusao=true`; **roles vazias = inerte até o Yan configurar**) + **documento de contrato** `docs/api-externa-solicitacoes.md` (substitui o handoff como fonte) | 0214 |
@@ -85,7 +85,7 @@ base main @ v5.1.11, reconciliada com main @ v5.3.3 no merge · migrations **021
    Ficam DOIS tipos com o mesmo nome no editor — decidir: arquivar/renomear o antigo, ou migrar o
    uso humano para o novo. NADA foi alterado no antigo (preservação por padrão).
 2. **Configurar as roles permitidas** do tipo do contrato (hoje vazio = integração inerte,
-   fail-safe) e **criar a chave TARS** na tela `/admin/chaves-api` (o segredo aparece UMA vez —
+   fail-safe) e **criar a chave TARS** na tela `/admin/api-externa` (o segredo aparece UMA vez —
    repassar ao Vitor junto com `docs/api-externa-solicitacoes.md`).
 3. **E-mail “chega à role”:** o fan-out da porta externa usa a mesma camada v4.25 (best-effort,
    depende de `SMTP_*` na Vercel — pendência antiga).
@@ -139,7 +139,7 @@ nota no contrato do integrador, seção 6):
   ```
   Pré-condição já satisfeita pela 0215: nenhuma função lê/escreve essas colunas.
 
-**Decisão 2 — Página única "API externa"** (`/admin/chaves-api`): seção nova **Tipos expostos**
+**Decisão 2 — Página única "API externa"** (`/admin/api-externa`): seção nova **Tipos expostos**
 (toggle "Exposto via API" + **"Equipes que podem receber via API"** — corrige o rótulo enganoso
 "Permissões que podem criar via API"; a semântica é DESTINO do disparo, ADR-0160 — salvando via
 RPC dedicada `admin_solic_tipo_api_config`, que não re-grava o formulário) + seção de chaves +
@@ -188,7 +188,7 @@ datada no ADR-0160. A coluna `api_roles_permitidas` fica **órfã** — junta-se
 a coluna de equipes e o modal: a coluna "Exposto" é um controle direto que salva na hora
 (Checkbox + spinner na linha + faixa de resultado). Arquivo do modal removido.
 
-**Decisão 5 — documentação DENTRO da plataforma** (`/admin/chaves-api/documentacao`, pill
+**Decisão 5 — documentação DENTRO da plataforma** (`/admin/api-externa/documentacao`, pill
 "Documentação"): o contrato inteiro renderizado no DS (não há renderizador de markdown no
 projeto — é página real, com sumário e âncoras) e, o mais importante, **a seção 3 é VIVA**: lê o
 cadastro real e mostra os tipos hoje expostos com slug e a tabela de campos (chave, rótulo, tipo,
@@ -252,7 +252,7 @@ Cinco pedidos, todos entregues. O contexto muda a natureza deles: a plataforma d
 ambiente de construção e passou a ter público interno real, então "começar limpo" e "quem pediu
 tem de conseguir acompanhar" deixaram de ser cosméticos.
 
-### 1+2. Limpeza do histórico e correção dos sufixos `_2` — patch **0218** (DESTRUTIVO, mãos do Yan)
+### 1+2. Limpeza do histórico e correção dos sufixos `_2` — patch **0220** (DESTRUTIVO, mãos do Yan)
 
 Pedido: *"para começarmos com o histórico limpo quero que você apague todo o histórico de
 solicitações com os devidos cuidados, após isso apague os 2 tipos que hoje estão arquivados, eram
@@ -266,10 +266,10 @@ verificações — zero tráfego de integrador, nenhuma chave emitida) · 0 na o
 tipos (7 ativos, 2 arquivados). O bucket `acervo-documentos` (8 arquivos, outro módulo) **não é
 alvo** e é conferido antes/depois.
 
-**O patch está em `supabase/patches/0218_limpeza_historico_e_slugs.sql` — deliberadamente FORA de
+**O patch está em `supabase/patches/0220_limpeza_historico_e_slugs.sql` — deliberadamente FORA de
 `supabase/migrations/`.** Motivo: `db push` empurra todo o conjunto pendente, e a 0217 desta mesma
 versão é aditiva e **precisou ser aplicada agora** (a paridade RBAC banco↔app é teste de contrato:
-sem a área nova no banco, `npm test` reprova). Se a 0218 estivesse na pasta, teria ido junto, sem
+sem a área nova no banco, `npm test` reprova). Se a 0220 estivesse na pasta, teria ido junto, sem
 confirmação humana — foi assim que a v5.2.0 dropou bases. Confirmado que o classificador do
 db-gate marca o arquivo como **destrutiva** (`top-level destrutivo: DELETE FROM app.api_outbox`);
 os DELETEs estão em nível superior de propósito, porque dentro de `DO $$ ... $$` o tokenizador não
@@ -279,7 +279,7 @@ os veria e o arquivo passaria por aditivo.
 
 ```bash
 node scripts/limpeza-anexos-solicitacoes.mjs --confirmar   # 20 binários do Storage
-git mv supabase/patches/0218_limpeza_historico_e_slugs.sql supabase/migrations/ \
+git mv supabase/patches/0220_limpeza_historico_e_slugs.sql supabase/migrations/ \
   && npm run db:migrate -- --destrutiva
 ```
 
@@ -309,7 +309,7 @@ TARS.** Se a chave for criada primeiro, a guarda barra (corretamente) e o slug f
 ordem 55), inserida no catálogo pela 0217 e espelhada em `src/lib/auth/areas.ts`. O guard da página
 virou `requireArea(['solicitacoes/documentacao', 'solicitacoes'])` — semântica OU: quem tem gestão
 continua entrando. No mapeamento rota→áreas, a regra específica de
-`/admin/chaves-api/documentacao` precisou vir **antes** da genérica `/admin/chaves-api` (o
+`/admin/api-externa/documentacao` precisou vir **antes** da genérica `/admin/api-externa` (o
 `startsWith` casa a primeira; teste novo cobre exatamente essa ordem). O botão passou a viver **só na tela inicial de
 Solicitações**, em condicional separada da de gestão — a pill que existia na tela de administração
 foi REMOVIDA a pedido do Yan (31/07): dois caminhos deixavam a permissão própria parecendo
@@ -359,7 +359,7 @@ tautológica) · paridade RBAC banco↔app verde com a área nova.
 
 ### Pendências do round 4 (mãos do Yan)
 
-1. **Rodar o script de Storage + aplicar o patch 0218 em TTY** (comandos acima), **antes** de criar
+1. **Rodar o script de Storage + aplicar o patch 0220 em TTY** (comandos acima), **antes** de criar
    a chave do TARS — a guarda de slug depende disso.
 2. **Conceder a área "Solicitações (documentação)"** aos roles que devem ver a documentação (a área
    nasce sem nenhum grant).
@@ -368,7 +368,7 @@ tautológica) · paridade RBAC banco↔app verde com a área nova.
    `docs/api-externa-solicitacoes.md` e a página de documentação da plataforma já estão
    atualizados.
 4. O patch das **3 colunas órfãs** (rounds 2 e 3) continua pendente e independente — se preferir
-   uma única passada destrutiva, o SQL dele pode ser anexado ao fim do 0218 antes de aplicar.
+   uma única passada destrutiva, o SQL dele pode ser anexado ao fim do 0220 antes de aplicar.
 
 ### Revisão do round 4 — `revisor` + `revisor-db` (achados e desfecho)
 
@@ -388,7 +388,7 @@ MÉDIO registrado com receita (abaixo).
 | ALTO | O script de Storage apagava produção com base só num argumento (`--confirmar`): uma sessão de agente ou um CI poderia rodá-lo, e o header do patch dá o comando pronto para colar. | **CORRIGIDO** — gate de TTY igual ao do `db:migrate --destrutiva` (`confirmaDestrutivaEOF` reaproveitada): stdin não-TTY **ABORTA**, e num terminal exige digitar "aplicar". **Provado**: rodei `--confirmar` nesta sessão (não-TTY) e o script abortou sem apagar nada. |
 | MÉDIO | A guarda do patch só emitia `NOTICE` das contagens: uma solicitação criada por um colega entre a redação e a execução seria apagada em silêncio. | **CORRIGIDO** — hard stop `IF v_sol > 26` com instrução explícita (conferir o que apareceu; se ainda quiser apagar tudo, ajustar o número — ato consciente de uma linha). |
 | MÉDIO | O caso de idempotência reenviava com o MESMO e-mail, então não provava "ecoa o solicitante GRAVADO" (um bug que re-resolvesse o e-mail do retry passaria). | **CORRIGIDO** — caso novo reenvia com e-mail de OUTRA pessoa e exige que o ack e o dono da linha sigam sendo os da criação. |
-| BAIXO | Links internos da página de documentação levavam a `/admin/chaves-api` (exige gestão) — beco sem saída para o público-alvo da permissão nova. | **CORRIGIDO** — com só a permissão nova, o link de volta aponta para `/solicitacoes` e o aviso "nenhum tipo exposto" virou "peça a quem administra" em vez de mandar a pessoa para uma tela que ela não abre. |
+| BAIXO | Links internos da página de documentação levavam a `/admin/api-externa` (exige gestão) — beco sem saída para o público-alvo da permissão nova. | **CORRIGIDO** — com só a permissão nova, o link de volta aponta para `/solicitacoes` e o aviso "nenhum tipo exposto" virou "peça a quem administra" em vez de mandar a pessoa para uma tela que ela não abre. |
 | BAIXO | Guarda de colisão de slug só existia para `abatimento_de_creditos`, não para `contas_a_pagar`. | **CORRIGIDO** — guarda simétrica (troca erro cru de constraint por mensagem que explica). |
 | BAIXO | Censo dizia 21 metadados e 20 arquivos sem reconciliar o número. | **CORRIGIDO** — o header explica: 1 metadado já estava órfão, drift anterior a esta versão. |
 | MÉDIO (0217, revisor-db) | Ack idempotente podia trazer `solicitante.email = null` (cadastro da pessoa removido de `rbac_usuarios` depois) e o narrowing estrito da rota transformava isso em **500**. | **CORRIGIDO na rota** — `email` passa a ser `string \| null` no ack idempotente (a chave continua obrigatória: ausência ainda é drift → 500). Na criação segue sempre string. |
@@ -410,6 +410,31 @@ best-effort.
 **Verificação visual do round 4: NÃO FEITA.** O `next dev` local caiu no login (sem sessão) e o
 agente não digita credenciais. As mudanças visuais são de layout/rótulo/condicional
 (pill nova, ordem das seções, título "Tipos Expostos", selo). Vale um olhar seu em
-`/solicitacoes` (pill "Documentação da API") e `/admin/chaves-api` (ordem + título). O **selo "via
+`/solicitacoes` (pill "Documentação da API") e `/admin/api-externa` (ordem + título). O **selo "via
 integração X"** não é observável hoje em tela nenhuma: nenhuma solicitação tem `origem_chave_id`
 (as de teste foram todas limpas) — ele aparece no primeiro disparo real do TARS.
+
+### Ajustes de 31/07 (pós-revisão, pedidos do Yan)
+
+- **Rota renomeada:** `/admin/chaves-api` → **`/admin/api-externa`**. O nome antigo descrevia UMA das
+  tabelas; a página, depois dos rounds 2–4, é a tela da integração (tipos expostos + chaves + log).
+  A pasta `src/components/admin/chaves-api/` foi renomeada junto (`api-externa/`), porque no repo ela
+  espelha a rota — deixar as duas divergindo é o tipo de detalhe que confunde meses depois. O arquivo
+  `chaves-api-content.tsx` manteve o nome: ele é o conteúdo da tabela "Chaves de API", que continua
+  se chamando assim. Regras de rota→área em `areas.ts` e os casos de `areas.test.ts` acompanharam
+  (inclusive a ordem específico-antes-de-genérico).
+- **A página de documentação perdeu a pill de voltar:** ela existe por conta própria e é alcançada
+  pela tela inicial do módulo. `ArrowLeft` e os tokens de PILL ficaram órfãos no arquivo e saíram.
+- **Rótulos:** pill virou **"Documentação API"**; subtítulo virou "Contrato do integrador
+  (autenticação, descoberta, criação, callbacks e erros)". O caminho de navegação citado no
+  `docs/api-externa-solicitacoes.md` foi corrigido para **Solicitações → Documentação API**.
+- **Renumeração da destrutiva: 0218 → `0220`.** Erro meu de ordem: reservei o 0218 para a limpeza e
+  depois apliquei a **0219** (correção do CRÍTICO), deixando o 0218 ABAIXO do topo remoto — o
+  `db push` recusa fora de ordem e pede `--include-all`. Renumerar põe o arquivo em ordem e dispensa
+  a flag. **Lição durável: não reservar número de migration destrutiva que será aplicada depois de
+  uma aditiva da mesma leva — numere na hora de aplicar.**
+- **Estado no fim do dia:** o script de Storage **rodou** (bucket `solicitacoes-anexos` em 0
+  arquivos, cópia íntegra de 20 arquivos/3,3 MB em `~/wt-finance-backups/2026-07-31-anexos-solicitacoes`,
+  assinaturas conferidas), mas o **SQL não** — então as 21 linhas de `app.solicitacao_anexo` apontam
+  para binário inexistente e o download de anexo dessas 26 solicitações falha. **O `0220` é a metade
+  que fecha esse estado**; rodar `npm run db:migrate -- --destrutiva` no terminal do Yan.

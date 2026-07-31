@@ -3,7 +3,7 @@
 //
 // Apaga os BINÁRIOS dos anexos de Solicitações no bucket privado
 // `solicitacoes-anexos`, par do patch destrutivo
-// `supabase/patches/0218_limpeza_historico_e_slugs.sql` (que apaga o METADADO).
+// `supabase/migrations/0220_limpeza_historico_e_slugs.sql` (que apaga o METADADO).
 //
 // Por que fora do SQL: apagar `storage.objects` por SQL remove o REGISTRO e deixa
 // os bytes órfãos no bucket (o Storage do Supabase não é um simples índice de
@@ -23,10 +23,10 @@
 // `--sem-backup` desliga a cópia (não recomendado; existe só para reexecução depois de
 // uma cópia já feita).
 //
-// ORDEM RECOMENDADA: rodar ESTE script ANTES do patch 0218. Ele cruza cada arquivo
+// ORDEM RECOMENDADA: rodar ESTE script ANTES do patch 0220. Ele cruza cada arquivo
 // do bucket com `app.solicitacao_anexo` e só apaga o que tem metadado
 // correspondente — arquivo desconhecido é REPORTADO e PRESERVADO (fail-closed).
-// Se o patch 0218 já tiver rodado (metadado apagado), todo arquivo fica "órfão":
+// Se o patch 0220 já tiver rodado (metadado apagado), todo arquivo fica "órfão":
 // nesse caso use `--incluir-orfaos`, que exige `app.solicitacao_anexo` VAZIA como
 // prova de que o histórico realmente saiu.
 //
@@ -113,9 +113,9 @@ if (orfaos.length > 0) {
   if (!INCLUIR_ORFAOS) {
     console.log(`\nPRESERVADOS (fail-closed): ${orfaos.length} arquivo(s) sem metadado. Nenhum registro em app.solicitacao_anexo aponta para eles — este script não apaga o que não sabe identificar.`)
     for (const o of orfaos) console.log(`   ~ ${o.path}`)
-    console.log('   Para incluí-los (só faz sentido se o patch 0218 já apagou o metadado): --incluir-orfaos')
+    console.log('   Para incluí-los (só faz sentido se o patch 0220 já apagou o metadado): --incluir-orfaos')
   } else if (anexosRestantes > 0) {
-    console.error(`\nABORTADO: --incluir-orfaos exige app.solicitacao_anexo VAZIA (prova de que o histórico saiu), mas há ${anexosRestantes} linha(s). Rode o patch 0218 primeiro, ou tire a flag.`)
+    console.error(`\nABORTADO: --incluir-orfaos exige app.solicitacao_anexo VAZIA (prova de que o histórico saiu), mas há ${anexosRestantes} linha(s). Rode o patch 0220 primeiro, ou tire a flag.`)
     await db.end(); process.exit(1)
   } else {
     alvo = objetos.map(o => o.path)
@@ -141,7 +141,7 @@ if (!CONFIRMAR && !SOMENTE_COPIA) {
 // ── 2a. GATE DE TTY — mesma barreira do backup-gate para ação destrutiva ──────
 // `--confirmar` é só um argumento: sozinho, ele deixaria uma sessão de agente (ou
 // um CI) apagar 20 arquivos de produção sem ninguém no teclado, e as instruções do
-// patch 0218 dão o comando pronto para copiar. O CLAUDE.md trata ação externa
+// patch 0220 dão o comando pronto para copiar. O CLAUDE.md trata ação externa
 // irreversível como fail-closed POR CONSTRUÇÃO, não por prosa — então aqui vale a
 // mesma regra do `db:migrate --destrutiva` (ADR-0131): stdin não-TTY ABORTA, e num
 // TTY é preciso digitar a confirmação. Achado ALTO da revisão do round 4.

@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 0218 — chore(v5.4.0/Round4): APAGA todo o histórico de Solicitações e corrige
+-- 0220 — chore(v5.4.0/Round4): APAGA todo o histórico de Solicitações e corrige
 -- os sufixos `_2` dos slugs — decisão do Yan (2026-07-30/31): "abri a plataforma
 -- para o público interno da empresa, para começarmos com o histórico limpo quero
 -- que você apague todo o histórico de solicitações com os devidos cuidados, após
@@ -12,31 +12,36 @@
 -- construção). Não existe DOWN: o dado apagado só volta pelo backup que o próprio
 -- gate tira antes do push.
 --
--- ███ POR QUE ESTE ARQUIVO ESTÁ EM `supabase/patches/` E NÃO EM `migrations/` ███
--- `supabase db push` empurra TODO o conjunto pendente: um arquivo destrutivo
--- parado em `supabase/migrations/` pode ser arrastado por um push aditivo alheio
--- (foi assim que a v5.2.0 dropou bases). A 0217 desta mesma versão é ADITIVA e
--- precisou ser aplicada agora — se esta 0218 estivesse na pasta, teria ido junto,
--- sem confirmação humana. Fora da pasta, o CLI nem a enxerga.
+-- ███ ESTADO EM 31/07 (LEIA ANTES DE RODAR) ███
+-- A metade do STORAGE JÁ FOI FEITA: os 20 binários do bucket `solicitacoes-anexos`
+-- foram apagados pelo script (bucket em 0 arquivos), com cópia íntegra em
+-- `~/wt-finance-backups/2026-07-31-anexos-solicitacoes` (20 arquivos, 3,3 MB,
+-- assinaturas conferidas). **Falta só este SQL** — e enquanto ele não roda, as 21
+-- linhas de `app.solicitacao_anexo` apontam para binário que não existe mais: quem
+-- abrir uma dessas solicitações vê o anexo listado e o download falha. Ou seja, este
+-- arquivo agora é a metade que FECHA um estado inconsistente, não o começo da
+-- operação. Rodar quanto antes.
 --
--- COMO APLICAR (2 comandos, NO SEU TERMINAL — o script exige TTY e aborta em
--- sessão de agente/CI; as 0217/0219 aditivas já estão aplicadas, então a ordem fica
--- correta):
+-- ███ POR QUE ESTE ARQUIVO SE CHAMA 0220 E NÃO 0218 ███
+-- Ele nasceu como 0218, reservado antes da 0219. Erro meu: a 0219 (aditiva, correção
+-- do CRÍTICO da revisão) foi aplicada em produção ANTES, e aí o 0218 virou um número
+-- ABAIXO do topo remoto — `supabase db push` recusa migration fora de ordem
+-- ("Found local migration files to be inserted before the last migration on remote
+-- database", pedindo `--include-all`). Renumerar para 0220 põe o arquivo em ordem e
+-- dispensa a flag: nada de `--fora-de-ordem`, nada de drift no histórico. Lição:
+-- **não reservar número para destrutiva que vai ser aplicada depois de uma aditiva
+-- da mesma leva** — numere no momento de aplicar.
 --
---   node scripts/limpeza-anexos-solicitacoes.mjs --confirmar   # 20 arquivos do Storage
---   git mv supabase/patches/0218_limpeza_historico_e_slugs.sql supabase/migrations/ \
---     && npm run db:migrate -- --destrutiva
+-- ███ POR QUE ELE VIVEU EM `supabase/patches/` ATÉ AGORA ███
+-- `supabase db push` empurra TODO o conjunto pendente: um arquivo destrutivo parado
+-- em `supabase/migrations/` pode ser arrastado por um push aditivo alheio (foi assim
+-- que a v5.2.0 dropou bases). As aditivas 0217/0219 desta versão precisavam ir ao ar,
+-- então este ficou fora da pasta até a hora. **Agora ele já está na pasta** (o `git
+-- mv` foi feito) e é o único pendente — enquanto isso, ninguém roda `--aditiva`.
 --
--- A CÓPIA DOS BINÁRIOS JÁ ESTÁ FEITA: rodei `--somente-copia` em 31/07 e os 20
--- arquivos (3,3 MB) estão em `~/wt-finance-backups/2026-07-31-anexos-solicitacoes`,
--- conferidos por tamanho. O script refaz a cópia sozinho antes de apagar (é
--- obrigatório por padrão) — a existente é rede redundante, e existe porque o
--- backup-gate do `db:migrate` NÃO cobre binário de Storage: ele exporta tabelas dos
--- schemas do produto, e `storage` não está na lista. Sem essa cópia, esta seria a
--- única operação da versão sem volta.
+-- COMO APLICAR (um comando, NO SEU TERMINAL — o wrapper exige TTY):
 --
--- O `git mv` faz parte do procedimento (o arquivo passa a viver no histórico de
--- migrations, alinhando o registro) — commitar o movimento depois de aplicar.
+--   npm run db:migrate -- --destrutiva
 --
 -- DECLARAÇÃO PRÉVIA (regime destrutivo / confirmação humana obrigatória):
 --   • O QUE APAGA (censo de 2026-07-31, conferido na base real):
@@ -82,11 +87,11 @@
 --     ABORTAM a migration se esse mundo tiver mudado. Ver Emenda no ADR-0159.
 --   • ORDEM OBRIGATÓRIA (FK e semântica):
 --       outbox → chamada_log → anexo(metadado) → solicitacao → campos+tipos → slugs
---   • STORAGE (fora do SQL, ANTES desta migration): os 20 arquivos (3,2 MB) do
---     bucket privado `solicitacoes-anexos` são apagados por
---     `scripts/limpeza-anexos-solicitacoes.mjs` (Storage API + service_role).
---     Apagar `storage.objects` por SQL removeria o registro e DEIXARIA os bytes
---     órfãos no bucket — por isso o binário não sai daqui.
+--   • STORAGE — JÁ FEITO em 31/07 (ver "ESTADO" no topo): os 20 arquivos (3,2 MB)
+--     do bucket `solicitacoes-anexos` saíram por
+--     `scripts/limpeza-anexos-solicitacoes.mjs` (Storage API + service_role), com
+--     cópia local conferida. Apagar `storage.objects` por SQL removeria o registro
+--     e DEIXARIA os bytes órfãos no bucket — por isso o binário nunca sai daqui.
 --   • GATE: as guardas usam RAISE EXCEPTION; o `db push` aplica cada arquivo em
 --     transação, então qualquer guarda que dispare desfaz TUDO deste arquivo.
 --   • DELETEs em NÍVEL SUPERIOR de propósito: dentro de `DO $$ ... $$` o
@@ -141,7 +146,7 @@ BEGIN
   SELECT count(*) INTO v_anexo  FROM app.solicitacao_anexo;
   SELECT count(*) INTO v_log    FROM app.api_chamada_log;
   SELECT count(*) INTO v_outbox FROM app.api_outbox;
-  RAISE NOTICE '[0218] ANTES → solicitacao=% anexo(metadado)=% api_chamada_log=% api_outbox=% (censo de 31/07: 26 / 21 / 9 / 0)',
+  RAISE NOTICE '[0220] ANTES → solicitacao=% anexo(metadado)=% api_chamada_log=% api_outbox=% (censo de 31/07: 26 / 21 / 9 / 0)',
     v_sol, v_anexo, v_log, v_outbox;
 
   -- HARD STOP se o histórico CRESCEU desde o censo (achado MÉDIO da revisão do round
@@ -231,7 +236,7 @@ BEGIN
     RAISE EXCEPTION 'ABORTADO: depois do rename os slugs canônicos `abatimento_de_creditos` e `contas_a_pagar` deveriam existir.';
   END IF;
 
-  RAISE NOTICE '[0218] DEPOIS → histórico ZERADO; tipos de teste removidos; slugs canônicos no lugar. Storage: rodar scripts/limpeza-anexos-solicitacoes.mjs (20 arquivos) se ainda não foi.';
+  RAISE NOTICE '[0220] DEPOIS → histórico ZERADO; tipos de teste removidos; slugs canônicos no lugar. Storage: rodar scripts/limpeza-anexos-solicitacoes.mjs (20 arquivos) se ainda não foi.';
 END $$;
 
 NOTIFY pgrst, 'reload schema';

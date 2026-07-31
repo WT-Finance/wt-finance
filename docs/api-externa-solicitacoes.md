@@ -8,7 +8,7 @@
 > documento o espelha; em caso de dúvida, o que a descoberta devolve é a verdade.
 >
 > **Versão viva na própria plataforma:** este contrato também é exibido dentro do Janus, em
-> **Solicitações → Gerenciar → API externa → Documentação** — a página reflete o cadastro real
+> **Solicitações → Documentação API** (botão na tela inicial do módulo) — a página reflete o cadastro real
 > dos tipos (sempre atualizada). Este arquivo é a cópia estável para compartilhar com o
 > integrador.
 

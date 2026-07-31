@@ -1,8 +1,8 @@
 import { requireArea } from '@/lib/auth/sessao'
 import { listarChavesApi } from '@/lib/api-externa/rpc'
 import { getTiposAdmin } from '@/lib/solicitacoes/rpc'
-import { ChavesApiContent } from '@/components/admin/chaves-api/chaves-api-content'
-import type { TipoDisponivel } from '@/components/admin/chaves-api/tipos'
+import { ChavesApiContent } from '@/components/admin/api-externa/chaves-api-content'
+import type { TipoDisponivel } from '@/components/admin/api-externa/tipos'
 
 // v5.4.0/M2 (+ Round2/Round3) — "API externa": duas seções reunidas numa
 // página só (área RBAC 'solicitacoes'), tema neutro Group. "Tipos expostos"
@@ -12,7 +12,7 @@ import type { TipoDisponivel } from '@/components/admin/chaves-api/tipos'
 // callback opcional, whitelist de tipos, usuário-robô vinculado) + log de
 // chamadas por chave. A busca de equipes (getDestinatarios) SAIU desta page —
 // só existia para a extinta seção de destinos por tipo; a página irmã
-// /admin/chaves-api/documentacao é quem agora precisa dela (seção viva).
+// /admin/api-externa/documentacao é quem agora precisa dela (seção viva).
 //
 // NAVEGAÇÃO: esta rota não está na sidebar (mesmo padrão de /admin/solicitacoes,
 // que também só é alcançada por link a partir de /solicitacoes — v4.16.0). O

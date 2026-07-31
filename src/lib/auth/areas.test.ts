@@ -42,8 +42,8 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     ['/admin/acessos',                      ['admin/acessos']],
     ['/admin/solicitacoes',                 ['solicitacoes']],
     ['/admin/solicitacoes/movimentacoes',   ['solicitacoes']],
-    ['/admin/chaves-api',                   ['solicitacoes']],
-    ['/admin/chaves-api/documentacao',      ['solicitacoes/documentacao', 'solicitacoes']],
+    ['/admin/api-externa',                   ['solicitacoes']],
+    ['/admin/api-externa/documentacao',      ['solicitacoes/documentacao', 'solicitacoes']],
     ['/admin',                              ['admin/acessos']],
     ['/solicitacoes',                       ['solicitacoes/basico', 'solicitacoes']],
   ]
@@ -53,9 +53,9 @@ describe('areasDaRota — toda rota de página tem dono', () => {
   it('o mais específico vence o prefixo genérico', () => {
     expect(areasDaRota('/performance/weddings/qualquer')).toEqual(['performance/weddings'])
     expect(areasDaRota('/financeiro/fluxo-caixa/gerencial/x')).toEqual(['financeiro/gerencial'])
-    // v5.4.0/Round4: /admin/chaves-api/documentacao (mais específico) não pode ser
-    // engolido pelo genérico /admin/chaves-api.
-    expect(areasDaRota('/admin/chaves-api/documentacao')).toEqual(['solicitacoes/documentacao', 'solicitacoes'])
+    // v5.4.0/Round4: /admin/api-externa/documentacao (mais específico) não pode ser
+    // engolido pelo genérico /admin/api-externa.
+    expect(areasDaRota('/admin/api-externa/documentacao')).toEqual(['solicitacoes/documentacao', 'solicitacoes'])
   })
 })
 

@@ -267,7 +267,7 @@ GRANT  EXECUTE ON FUNCTION public.solic_tipos_api(bigint) TO service_role;
 -- padrão de solic_concluir/admin_solic_salvar_tipo nas migrations anteriores
 -- desta feature). O classificador do db-gate marca este DROP como WARN
 -- (troca de assinatura), não destrutivo — nenhum dado é removido. A página
--- "Tipos expostos" (/admin/chaves-api) passa a chamar só com (p_tipo_id,
+-- "Tipos expostos" (/admin/api-externa) passa a chamar só com (p_tipo_id,
 -- p_exposto) — a lista de roles do tipo deixa de existir como conceito.
 DROP FUNCTION IF EXISTS public.admin_solic_tipo_api_config(bigint, boolean, bigint[]);
 

@@ -117,14 +117,14 @@ export function areasDaRota(pathname: string): Area[] | null {
   // Documentação da API externa (v5.4.0/Round4, pedido do Yan 30/07): área PRÓPRIA
   // 'solicitacoes/documentacao' OU a gestão 'solicitacoes' (quem administra
   // continua entrando, sem precisar da área nova). Esta regra casa ANTES da
-  // genérica '/admin/chaves-api' logo abaixo — senão a genérica (mais curta)
+  // genérica '/admin/api-externa' logo abaixo — senão a genérica (mais curta)
   // casaria primeiro e a página nunca veria a área específica.
-  if (p.startsWith('/admin/chaves-api/documentacao')) return ['solicitacoes/documentacao', 'solicitacoes']
+  if (p.startsWith('/admin/api-externa/documentacao')) return ['solicitacoes/documentacao', 'solicitacoes']
   // Chaves de API para a API externa de Solicitações (v5.4.0/M2): mesma área de
   // GESTÃO 'solicitacoes' — quem administra tipos/movimentações também administra
   // as credenciais de integração. Rota fora da sidebar (só por link, como
   // /admin/solicitacoes); casa ANTES do genérico '/admin' abaixo.
-  if (p.startsWith('/admin/chaves-api'))        return ['solicitacoes']
+  if (p.startsWith('/admin/api-externa'))        return ['solicitacoes']
   if (p.startsWith('/admin'))                   return ['admin/acessos']
   // /solicitacoes (abertura/minhas/caixa): acesso BÁSICO ou GESTÃO (v4.20.0). A gestão
   // inclui o básico, então qualquer das duas libera a página; os botões/rotas de gestão

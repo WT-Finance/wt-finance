@@ -1,6 +1,6 @@
 import { requireArea } from '@/lib/auth/sessao'
 import { getDestinatarios, getTiposDocumentacao } from '@/lib/solicitacoes/rpc'
-import { DocumentacaoContent } from '@/components/admin/chaves-api/documentacao-content'
+import { DocumentacaoContent } from '@/components/admin/api-externa/documentacao-content'
 
 // v5.4.0/Round3 (2026-07-29) — "Documentação" da API externa DENTRO da
 // plataforma (pedido do Yan: "deveria haver também uma forma de acessar a
@@ -12,8 +12,8 @@ import { DocumentacaoContent } from '@/components/admin/chaves-api/documentacao-
 // v5.4.0/Round4 (2026-07-30, pedido do Yan): área PRÓPRIA
 // 'solicitacoes/documentacao' — quem só tem essa permissão entra sem ver a
 // gestão; quem tem a gestão 'solicitacoes' continua entrando (semântica OU).
-// O prefixo de rota (/admin/chaves-api/documentacao) já casa ANTES do genérico
-// '/admin/chaves-api' em areas.ts (areasDaRota) — aqui é só o guard local.
+// O prefixo de rota (/admin/api-externa/documentacao) já casa ANTES do genérico
+// '/admin/api-externa' em areas.ts (areasDaRota) — aqui é só o guard local.
 //
 // A FONTE dos tipos mudou na migration 0219 (achado CRÍTICO da revisão do round
 // 4): era `admin_solic_listar_tipos`, gated na área de GESTÃO — quem tinha SÓ a
@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic'
 export default async function DocumentacaoApiPage() {
   const sessao = await requireArea(['solicitacoes/documentacao', 'solicitacoes'])
   // Distingue quem entrou pela gestão de quem entrou pela permissão nova: os links
-  // internos para /admin/chaves-api só valem para o primeiro (ver DocumentacaoContent).
+  // internos para /admin/api-externa só valem para o primeiro (ver DocumentacaoContent).
   const podeGestao = sessao.permissoes.includes('solicitacoes')
 
   const [tiposRes, destinatarios] = await Promise.all([

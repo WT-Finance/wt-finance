@@ -32,7 +32,7 @@
 --     `solic_tipos_api` (CREATE OR REPLACE) idem, na descoberta externa; (6)
 --     RPC NOVA `admin_solic_tipo_api_config` — atualiza SÓ
 --     `exposto_via_api`/`api_roles_permitidas` de um tipo (é a RPC da nova
---     seção "Tipos expostos" de /admin/chaves-api; não toca nome/campos/slug).
+--     seção "Tipos expostos" de /admin/api-externa; não toca nome/campos/slug).
 --   • ADITIVA / RETROCOMPATÍVEL com a `main` viva: os únicos `DROP FUNCTION`
 --     são trocas de ASSINATURA (`solic_concluir`: 2 parâmetros → 1) — o
 --     classificador do db-gate marca isso como WARN, não destrutivo (nenhum
@@ -327,7 +327,7 @@ REVOKE EXECUTE ON FUNCTION public.solic_tipos_api(bigint) FROM PUBLIC, anon, aut
 GRANT  EXECUTE ON FUNCTION public.solic_tipos_api(bigint) TO service_role;
 
 -- ── 6) admin_solic_tipo_api_config — RPC NOVA: config de API de UM tipo ────────
--- A página "API externa" (/admin/chaves-api, seção "Tipos expostos") chama
+-- A página "API externa" (/admin/api-externa, seção "Tipos expostos") chama
 -- esta RPC para salvar exposto_via_api/api_roles_permitidas SEM re-gravar o
 -- formulário do tipo (nome/campos) — antes disso vivia dentro de
 -- admin_solic_salvar_tipo (p_config), que a partir desta migration só é

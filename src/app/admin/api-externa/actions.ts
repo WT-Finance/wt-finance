@@ -7,7 +7,7 @@ import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import { gerarSegredo, hashSegredo } from '@/lib/api-externa/segredo'
 import { listarLogApi } from '@/lib/api-externa/rpc'
-import type { ResultadoAcao, ResultadoCriarChave, LogChamada } from '@/components/admin/chaves-api/tipos'
+import type { ResultadoAcao, ResultadoCriarChave, LogChamada } from '@/components/admin/api-externa/tipos'
 
 // v5.4.0/M2 — server actions de Chaves de API. Guard de superfície
 // (requireAreaAction('solicitacoes')) + RPC com o cliente DE SESSÃO — o banco
@@ -120,7 +120,7 @@ export async function criarChaveApi(input: {
     return { ok: false, erro: traduzir(erroChave.message) }
   }
 
-  revalidatePath('/admin/chaves-api')
+  revalidatePath('/admin/api-externa')
   return { ok: true, segredo, plataforma }
 }
 
@@ -128,7 +128,7 @@ export async function revogarChaveApi(id: number): Promise<ResultadoAcao> {
   await requireAreaAction('solicitacoes')
   const { error } = await rpcSessao('api_chave_revogar', { p_id: id })
   if (error) return { ok: false, erro: traduzir(error.message) }
-  revalidatePath('/admin/chaves-api')
+  revalidatePath('/admin/api-externa')
   return { ok: true }
 }
 
@@ -146,7 +146,7 @@ export async function atualizarChaveApi(input: {
     p_whitelist:        input.whitelist,
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
-  revalidatePath('/admin/chaves-api')
+  revalidatePath('/admin/api-externa')
   return { ok: true }
 }
 
@@ -177,6 +177,6 @@ export async function salvarConfigApiTipo(tipoId: number, exposto: boolean): Pro
     p_tipo_id: tipoId, p_exposto: exposto,
   })
   if (error) return { ok: false, erro: traduzir(error.message) }
-  revalidatePath('/admin/chaves-api')
+  revalidatePath('/admin/api-externa')
   return { ok: true }
 }
