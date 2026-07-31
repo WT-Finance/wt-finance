@@ -48,7 +48,7 @@ real em 30/07/2026:
   "ok": true,
   "tipos": [
     {
-      "slug": "abatimento_de_creditos_2",
+      "slug": "abatimento_de_creditos",
       "nome": "Abatimento de créditos",
       "destinos": [
         { "id": 1, "nome": "Administrador" }, { "id": 2, "nome": "Diretoria" },
@@ -86,7 +86,7 @@ real em 30/07/2026:
 
 ```json
 {
-  "tipo": "abatimento_de_creditos_2",
+  "tipo": "abatimento_de_creditos",
   "chave_idempotencia": "pedido-b1e2c3d4",
   "solicitante_email": "camila@welcometrips.com.br",
   "titulo": "DW | Ana & Bruno — abatimento de crédito",
@@ -159,7 +159,7 @@ Payload:
 
 ```json
 { "evento": "solicitacao.concluida", "solicitacao_id": 123,
-  "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos_2",
+  "referencia_origem": "b1e2c3d4-…", "tipo": "abatimento_de_creditos",
   "status": "concluida", "destinatario": { "id": 4, "nome": "Financeiro" },
   "ocorrido_em": "2026-07-25T14:03:00-03:00" }
 ```

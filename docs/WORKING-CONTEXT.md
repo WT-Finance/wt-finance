@@ -55,10 +55,13 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0217`** (v5.4.0/Round4, aditiva: área RBAC
-  `solicitacoes/documentacao` + `criar_solicitacao_externa` com `p_solicitante_email` obrigatório +
-  `solic_json` com a chave `origem`). Antes dela: 0210–0214 renumeradas + `migration repair`, e
-  0215/0216 (rounds 2 e 3). **Próxima migration livre: `0219`.**
+- Última migration APLICADA: **`0219`** (v5.4.0/Round4: `solic_tipos_documentacao`, RPC-irmã
+  enxuta que a permissão NOVA alcança — correção do CRÍTICO da revisão; a de admin seguia gated só
+  na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
+  **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
+  `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0220`** — a 0218 está
+  RESERVADA pelo patch destrutivo abaixo.
 - ⚠️ **`supabase/patches/0218_limpeza_historico_e_slugs.sql` existe e está PENDENTE** — patch
   DESTRUTIVO (apaga todo o histórico de Solicitações, os 2 tipos arquivados e corrige os sufixos
   `_2` dos slugs). Está FORA de `supabase/migrations/` de propósito: `db push` empurra o conjunto
@@ -66,7 +69,10 @@
   (foi assim que a v5.2.0 dropou bases). Aplicação = 2 comandos na mão do Yan, na ordem do
   out-briefing (script de Storage → `git mv` + `--destrutiva`), e **antes de criar a chave do
   TARS** (a guarda do patch aborta se já existir chave: renomear slug com integrador ligado
-  quebraria o contrato dele em silêncio).
+  quebraria o contrato dele em silêncio). O script de Storage **exige TTY** (aborta em sessão de
+  agente/CI) e **baixa cópia local obrigatória antes de apagar** — o backup-gate NÃO cobre binário
+  de Storage (exporta só tabelas dos schemas do produto). A cópia dos 20 arquivos (3,3 MB) já está
+  feita em `~/wt-finance-backups/2026-07-31-anexos-solicitacoes`.
 - **v5.4.0 (PR #191) — round 4 entregue:** com a plataforma aberta ao público interno, o Yan pediu
   (1) histórico de Solicitações apagado + os 2 tipos arquivados de teste, (2) sufixos `_2` dos
   slugs corrigidos, (3) documentação da API com **permissão própria** e botão na tela inicial do

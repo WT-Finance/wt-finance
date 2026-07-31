@@ -440,6 +440,26 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(cnt.rows[0].n).toBe(1)
   })
 
+  // O caso acima reenvia com o MESMO e-mail, então não distingue "ecoa o solicitante
+  // GRAVADO" de "re-resolve o e-mail desta chamada" — e a 0217 promete o primeiro
+  // ("nunca o e-mail desta chamada, que pode nem bater, num reenvio tardio"). Aqui o
+  // reenvio manda o e-mail de OUTRA pessoa: o ack tem de continuar devolvendo o
+  // solicitante original, e a linha no banco não pode mudar de dono.
+  it('reenvio idempotente com e-mail DIFERENTE ecoa o solicitante ORIGINAL e não troca o dono', async () => {
+    expect(outroSolicitanteEmail, 'a base precisa de ≥2 usuários ativos com e-mail para este caso').not.toBe('')
+    const r = await chamarRpc('criar_solicitacao_externa', {
+      p_chave_id: chaveId, ...corpoFeliz, p_solicitante_email: outroSolicitanteEmail,
+    })
+    expect(r.ok, r.erro ?? '').toBe(true)
+    const d = r.data as { id: number; idempotente: boolean; solicitante: { email: string } }
+    expect(d.id).toBe(solicitacaoId)
+    expect(d.idempotente).toBe(true)
+    expect(d.solicitante.email).toBe(solicitanteEmail)        // o da criação…
+    expect(d.solicitante.email).not.toBe(outroSolicitanteEmail) // …não o do retry
+    const linha = await client.query(`SELECT solicitante_id FROM app.solicitacao WHERE id = $1`, [solicitacaoId])
+    expect(linha.rows[0].solicitante_id).toBe(roboUserId)
+  })
+
   // ── (4) cancelamento ─────────────────────────────────────────────────────────
   it('cancelar_solicitacao_externa: cancela a solicitação criada por esta chave', async () => {
     const r = await chamarRpc('cancelar_solicitacao_externa', { p_chave_id: chaveId, p_solicitacao_id: solicitacaoId })

@@ -261,7 +261,8 @@ slugs"*.
 
 **Censo conferido na base real (31/07) antes de escrever uma linha:** 26 solicitações · 21 anexos
 (metadado) + **20 binários** no bucket `solicitacoes-anexos` (3,2 MB; nenhum arquivo sem metadado,
-1 metadado sem arquivo) · 8 registros em `api_chamada_log` · 0 na outbox · 0 chaves de API · 9
+1 metadado sem arquivo) · 9 registros em `api_chamada_log` (TODOS `401 auth_negada` das minhas
+verificações — zero tráfego de integrador, nenhuma chave emitida) · 0 na outbox · 0 chaves de API · 9
 tipos (7 ativos, 2 arquivados). O bucket `acervo-documentos` (8 arquivos, outro módulo) **não é
 alvo** e é conferido antes/depois.
 
@@ -366,3 +367,47 @@ tautológica) · paridade RBAC banco↔app verde com a área nova.
    atualizados.
 4. O patch das **3 colunas órfãs** (rounds 2 e 3) continua pendente e independente — se preferir
    uma única passada destrutiva, o SQL dele pode ser anexado ao fim do 0218 antes de aplicar.
+
+### Revisão do round 4 — `revisor` + `revisor-db` (achados e desfecho)
+
+**`revisor-db`: 0 CRÍTICO / 0 ALTO.** Confirmou a preservação verbatim do corpo da 0216 na 0217
+(linha a linha), os grants service_role-only, a impossibilidade de `origem: {plataforma: null}` (FK
++ `NOT NULL`), a impossibilidade de resolver um robô como solicitante (`ativo=false` por
+construção), o escape correto do `LIKE '%\_2'`, e — o que mais importa — que nenhum Zod do projeto
+usa `.strict()`, então a chave nova `origem` **não quebra o front da v5.3.4 já em produção**.
+
+**`revisor` (código): 1 CRÍTICO + 2 ALTO + 2 MÉDIO + 3 BAIXO.** Todos endereçados, exceto um
+MÉDIO registrado com receita (abaixo).
+
+| Sev | Achado | Desfecho |
+|---|---|---|
+| CRÍTICO | A área nova não alcançava o DADO: a seção viva da página lia `admin_solic_listar_tipos`, gated na área de **gestão**. Quem tivesse SÓ `solicitacoes/documentacao` passava no guard da página e tomava `PERMISSAO_NEGADA` do banco — seção vazia com aviso de erro, justo para a pessoa que a permissão existe para atender. | **CORRIGIDO** — migration **0219**: RPC-irmã `solic_tipos_documentacao()` com gate nas DUAS áreas e devolvendo **só** tipos expostos/não-arquivados (menor privilégio: afrouxar o gate da de admin daria a quem só documenta a visão do cadastro inteiro, incluindo arquivados e contagens de tipos internos). O gate da de admin ficou intocado. **Provado** com JWT simulado em transação revertida: a irmã responde (1 tipo), a de admin continua negando, a role do usuário volta ao normal no ROLLBACK. |
+| ALTO | `docs/api-externa-solicitacoes.md` contraditório: a nota nova dizia que o slug é `abatimento_de_creditos`, mas os TRÊS exemplos JSON ainda usavam `abatimento_de_creditos_2` — quem copiasse o payload tomaria `TIPO_INVALIDO`. | **CORRIGIDO** — os três literais passaram ao slug canônico (a página da plataforma já usava). |
+| ALTO | O script de Storage apagava produção com base só num argumento (`--confirmar`): uma sessão de agente ou um CI poderia rodá-lo, e o header do patch dá o comando pronto para colar. | **CORRIGIDO** — gate de TTY igual ao do `db:migrate --destrutiva` (`confirmaDestrutivaEOF` reaproveitada): stdin não-TTY **ABORTA**, e num terminal exige digitar "aplicar". **Provado**: rodei `--confirmar` nesta sessão (não-TTY) e o script abortou sem apagar nada. |
+| MÉDIO | A guarda do patch só emitia `NOTICE` das contagens: uma solicitação criada por um colega entre a redação e a execução seria apagada em silêncio. | **CORRIGIDO** — hard stop `IF v_sol > 26` com instrução explícita (conferir o que apareceu; se ainda quiser apagar tudo, ajustar o número — ato consciente de uma linha). |
+| MÉDIO | O caso de idempotência reenviava com o MESMO e-mail, então não provava "ecoa o solicitante GRAVADO" (um bug que re-resolvesse o e-mail do retry passaria). | **CORRIGIDO** — caso novo reenvia com e-mail de OUTRA pessoa e exige que o ack e o dono da linha sigam sendo os da criação. |
+| BAIXO | Links internos da página de documentação levavam a `/admin/chaves-api` (exige gestão) — beco sem saída para o público-alvo da permissão nova. | **CORRIGIDO** — com só a permissão nova, o link de volta aponta para `/solicitacoes` e o aviso "nenhum tipo exposto" virou "peça a quem administra" em vez de mandar a pessoa para uma tela que ela não abre. |
+| BAIXO | Guarda de colisão de slug só existia para `abatimento_de_creditos`, não para `contas_a_pagar`. | **CORRIGIDO** — guarda simétrica (troca erro cru de constraint por mensagem que explica). |
+| BAIXO | Censo dizia 21 metadados e 20 arquivos sem reconciliar o número. | **CORRIGIDO** — o header explica: 1 metadado já estava órfão, drift anterior a esta versão. |
+| MÉDIO (0217, revisor-db) | Ack idempotente podia trazer `solicitante.email = null` (cadastro da pessoa removido de `rbac_usuarios` depois) e o narrowing estrito da rota transformava isso em **500**. | **CORRIGIDO na rota** — `email` passa a ser `string \| null` no ack idempotente (a chave continua obrigatória: ausência ainda é drift → 500). Na criação segue sempre string. |
+| MÉDIO (0217, revisor-db) | No ramo de corrida (`unique_violation`) o ack ecoa o `solicitante`/`destinatario` **desta** chamada, não os da linha vencedora. | **REGISTRADO, não corrigido.** Dispara só se o integrador reusar a MESMA chave de idempotência em chamadas concorrentes com payloads diferentes (bug do lado dele); o eco é do dado que ele mesmo mandou (não há vazamento) e a assimetria já existe para `destinatario` desde a 0212. **Receita:** no bloco `EXCEPTION WHEN unique_violation`, trocar o `SELECT s.id, s.status` por um `SELECT` com `LEFT JOIN app.rbac_usuarios` (igual ao ramo idempotente antecipado) e ecoar os valores da linha vencedora — `CREATE OR REPLACE` de assinatura idêntica, migration aditiva de um bloco. |
+
+**BAIXOS do banco registrados sem ação** (nenhum é falha ativa): sem índice funcional em
+`lower(email)` de `rbac_usuarios` (13 usuários ativos; RPC service_role sem timeout); a UNIQUE de
+`email` é case-sensitive, então "sem duplicata por caixa" é convenção dos caminhos de escrita e não
+restrição de banco (um índice único em `lower(email)` seria cinto-e-suspensório); `admin_definir_
+usuario_ativo` não distingue robôs (um admin poderia, deliberadamente, reativar um — não alcançável
+por integrador); e o subselect por linha de `origem` em `solic_json` (tabela minúscula, e o `CASE`
+nem executa em solicitação interna).
+
+**Fora do escopo, corrigido de graça:** `registrarChamada` (`src/lib/api-externa/http.ts`) tinha um
+`catch {}` **mudo** — o mesmo padrão que atrasou o diagnóstico da v5.3.4, num log de AUDITORIA,
+onde o silêncio é pior porque faz o log parecer completo. Passa a logar a falha, mantendo o
+best-effort.
+
+**Verificação visual do round 4: NÃO FEITA.** O `next dev` local caiu no login (sem sessão) e o
+agente não digita credenciais. As mudanças visuais são de layout/rótulo/condicional
+(pill nova, ordem das seções, título "Tipos Expostos", selo). Vale um olhar seu em
+`/solicitacoes` (pill "Documentação da API") e `/admin/chaves-api` (ordem + título). O **selo "via
+integração X"** não é observável hoje em tela nenhuma: nenhuma solicitação tem `origem_chave_id`
+(as de teste foram todas limpas) — ele aparece no primeiro disparo real do TARS.

@@ -48,7 +48,13 @@ interface ResultadoCriacao {
   id:          number
   status:      string
   destinatario: { id: number; nome: string }
-  solicitante:  { email: string; nome: string | null }
+  // email é `| null` por um caminho estreito e legítimo: no ACK IDEMPOTENTE a RPC lê o
+  // solicitante da linha JÁ gravada (`LEFT JOIN app.rbac_usuarios`), e se o cadastro
+  // dessa pessoa tiver sido removido da plataforma no meio o join não acha — o certo
+  // ali é devolver o ack com o e-mail nulo, não um 500 (achado MÉDIO do revisor-db do
+  // round 4). Na CRIAÇÃO é sempre string: a pessoa acabou de ser resolvida e
+  // `rbac_usuarios.email` é NOT NULL.
+  solicitante:  { email: string | null; nome: string | null }
   idempotente: boolean
 }
 
@@ -66,11 +72,15 @@ function comoResultadoCriacao(data: unknown): ResultadoCriacao | null {
   if (typeof d.id !== 'number' || d.id <= 0) return null
   if (typeof d.status !== 'string' || typeof d.idempotente !== 'boolean') return null
   if (!dest || typeof dest.id !== 'number' || typeof dest.nome !== 'string') return null
-  if (!solic || typeof solic.email !== 'string' || (solic.nome !== null && typeof solic.nome !== 'string')) return null
+  // A CHAVE tem de existir (drift → 500); os VALORES podem ser nulos no ack idempotente
+  // (ver comentário do tipo acima). `!solic` continua reprovando a ausência do objeto.
+  if (!solic) return null
+  if (solic.email !== null && typeof solic.email !== 'string') return null
+  if (solic.nome !== null && typeof solic.nome !== 'string') return null
   return {
     ok: true, id: d.id, status: d.status,
     destinatario: { id: dest.id, nome: dest.nome },
-    solicitante: { email: solic.email, nome: solic.nome as string | null },
+    solicitante: { email: solic.email as string | null, nome: solic.nome as string | null },
     idempotente: d.idempotente,
   }
 }

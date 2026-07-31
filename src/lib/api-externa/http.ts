@@ -203,11 +203,14 @@ export async function getEmailsEnvolvidosSvc(id: number): Promise<EmailsEnvolvid
  * auditada, só sem vínculo a uma chave real).
  */
 export async function registrarChamada(chaveId: number | null, rota: string, status: number, detalhe?: string): Promise<void> {
-  try {
-    await chamarRpcExterna('api_chamada_registrar', {
-      p_chave_id: chaveId, p_rota: rota, p_status: status, p_detalhe: detalhe ?? null,
-    })
-  } catch {
-    // auditoria é best-effort: nunca deve derrubar a resposta ao integrador.
+  const { error } = await chamarRpcExterna('api_chamada_registrar', {
+    p_chave_id: chaveId, p_rota: rota, p_status: status, p_detalhe: detalhe ?? null,
+  }).catch((err: unknown) => ({ data: null, error: { message: String(err) } }))
+  if (error) {
+    // Best-effort continua valendo (a resposta ao integrador NÃO depende disto), mas
+    // não em SILÊNCIO: este era um `catch {}` mudo — exatamente o padrão que atrasou
+    // o diagnóstico do e-mail intermitente da v5.3.4, e num log de AUDITORIA o
+    // silêncio é pior: perder a linha sem sinal nenhum faz o log parecer completo.
+    console.error(`[api-externa] auditoria não registrada (${rota}, status ${status}):`, error.message)
   }
 }

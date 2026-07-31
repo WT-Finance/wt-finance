@@ -19,12 +19,21 @@
 -- precisou ser aplicada agora — se esta 0218 estivesse na pasta, teria ido junto,
 -- sem confirmação humana. Fora da pasta, o CLI nem a enxerga.
 --
--- COMO APLICAR (2 comandos, no seu terminal, na worktree da v5.4.0 — a 0217
--- aditiva já está aplicada, então a ordem 0217→0218 fica correta):
+-- COMO APLICAR (2 comandos, NO SEU TERMINAL — o script exige TTY e aborta em
+-- sessão de agente/CI; as 0217/0219 aditivas já estão aplicadas, então a ordem fica
+-- correta):
 --
 --   node scripts/limpeza-anexos-solicitacoes.mjs --confirmar   # 20 arquivos do Storage
 --   git mv supabase/patches/0218_limpeza_historico_e_slugs.sql supabase/migrations/ \
 --     && npm run db:migrate -- --destrutiva
+--
+-- A CÓPIA DOS BINÁRIOS JÁ ESTÁ FEITA: rodei `--somente-copia` em 31/07 e os 20
+-- arquivos (3,3 MB) estão em `~/wt-finance-backups/2026-07-31-anexos-solicitacoes`,
+-- conferidos por tamanho. O script refaz a cópia sozinho antes de apagar (é
+-- obrigatório por padrão) — a existente é rede redundante, e existe porque o
+-- backup-gate do `db:migrate` NÃO cobre binário de Storage: ele exporta tabelas dos
+-- schemas do produto, e `storage` não está na lista. Sem essa cópia, esta seria a
+-- única operação da versão sem volta.
 --
 -- O `git mv` faz parte do procedimento (o arquivo passa a viver no histórico de
 -- migrations, alinhando o registro) — commitar o movimento depois de aplicar.
@@ -33,11 +42,18 @@
 --   • O QUE APAGA (censo de 2026-07-31, conferido na base real):
 --       - app.api_outbox         →  0 linhas (a tabela tem FK para solicitacao
 --                                   SEM cascade: precisa sair antes, mesmo vazia)
---       - app.api_chamada_log    →  8 linhas (chamadas dos meus próprios testes
---                                   de contrato — nenhuma chamada de integrador
---                                   real existe ainda; 0 chaves emitidas)
+--       - app.api_chamada_log    →  9 linhas — TODAS `401 auth_negada` com
+--                                   chave_id NULO, isto é, chamadas de fumaça das
+--                                   minhas próprias verificações (21/07, 30/07 e
+--                                   31/07). Não existe UMA chamada de integrador
+--                                   real: nenhuma chave foi emitida ainda. O log
+--                                   nasce limpo junto com o resto.
 --       - app.solicitacao_anexo  → 21 linhas de METADADO (o BINÁRIO no Storage é
---                                   apagado FORA daqui — ver "Storage" abaixo)
+--                                   apagado FORA daqui — ver "Storage" abaixo).
+--                                   São 21 metadados para 20 arquivos: 1 linha já
+--                                   estava órfã (aponta para binário que não existe),
+--                                   drift anterior a esta versão. Não é engano de
+--                                   contagem entre este header e o do script.
 --       - app.solicitacao        → 26 linhas (todas: 10 Contas a pagar + 8
 --                                   Lançamentos de Contas a Pagar (arquivado) +
 --                                   5 Abatimento de créditos + 1 Contas a pagar
@@ -111,12 +127,34 @@ BEGIN
     RAISE EXCEPTION 'ABORTADO: o slug `abatimento_de_creditos` já pertence a um tipo ATIVO — a renomeação colidiria.';
   END IF;
 
+  -- Nenhum tipo ATIVO pode ocupar `contas_a_pagar` (simétrico ao de cima). O índice
+  -- único abortaria de qualquer forma no UPDATE — a guarda existe para trocar um erro
+  -- cru de constraint por uma mensagem que explica o que houve.
+  IF EXISTS (
+    SELECT 1 FROM app.solicitacao_tipo
+     WHERE NOT arquivado AND slug = 'contas_a_pagar'
+  ) THEN
+    RAISE EXCEPTION 'ABORTADO: o slug `contas_a_pagar` já pertence a um tipo ATIVO — a renomeação colidiria.';
+  END IF;
+
   SELECT count(*) INTO v_sol    FROM app.solicitacao;
   SELECT count(*) INTO v_anexo  FROM app.solicitacao_anexo;
   SELECT count(*) INTO v_log    FROM app.api_chamada_log;
   SELECT count(*) INTO v_outbox FROM app.api_outbox;
-  RAISE NOTICE '[0218] ANTES → solicitacao=% anexo(metadado)=% api_chamada_log=% api_outbox=% (censo de 31/07: 26 / 21 / 8 / 0)',
+  RAISE NOTICE '[0218] ANTES → solicitacao=% anexo(metadado)=% api_chamada_log=% api_outbox=% (censo de 31/07: 26 / 21 / 9 / 0)',
     v_sol, v_anexo, v_log, v_outbox;
+
+  -- HARD STOP se o histórico CRESCEU desde o censo (achado MÉDIO da revisão do round
+  -- 4). O pedido "apague todo o histórico" foi feito sobre 26 linhas que eram, na
+  -- prática, uso de construção — mas a plataforma acabou de ser aberta ao público
+  -- interno: uma solicitação criada por um colega entre a redação deste patch e a
+  -- execução dele é dado REAL de trabalho de outra pessoa, e apagá-la por arrasto,
+  -- em silêncio, com base num NOTICE que ninguém leu, seria indefensável. Se a
+  -- intenção continuar sendo apagar TUDO, ajuste o número abaixo para a contagem
+  -- atual e reaplique — é um ato consciente, de uma linha.
+  IF v_sol > 26 THEN
+    RAISE EXCEPTION 'ABORTADO: o histórico CRESCEU desde o censo de 31/07 — há % solicitações (o censo viu 26). % linha(s) nova(s) foram criadas depois que este patch foi escrito, possivelmente por gente usando a plataforma de verdade. Confira o que apareceu (SELECT id, criado_em, tipo_id, solicitante_id FROM app.solicitacao ORDER BY id DESC LIMIT 20) e, se ainda quiser apagar TUDO, troque o 26 desta guarda pela contagem atual.', v_sol, v_sol - 26;
+  END IF;
 END $$;
 
 -- ── 1. Fila de callbacks (FK para solicitacao SEM cascade: sai primeiro) ──────

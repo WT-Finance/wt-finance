@@ -408,10 +408,29 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
   // v4.16.0 Solicitações: todas as RPCs (abertura, leitura, transição, admin) exigem
   // sessão — anon negado em tudo (§2.2/§2.3 valem no banco).
   it('Solicitações: anon negado em todas as RPCs', async () => {
+    // solic_tipos_documentacao (v5.4.0/Round4, 0219): gate mais LARGO que a irmã de
+    // admin (aceita 'solicitacoes/documentacao' além da gestão) — mas larga só entre
+    // áreas, nunca para anon. Entra nesta sonda justamente porque afrouxar gate é o
+    // tipo de mudança que precisa de guarda mecânica.
     for (const fn of ['solic_minhas', 'solic_caixa', 'solic_tipos_abertura', 'solic_destinatarios',
-                      'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos', 'solic_movimentacoes']) {
+                      'solic_concluir', 'criar_solicitacao', 'admin_solic_listar_tipos',
+                      'solic_tipos_documentacao', 'solic_movimentacoes']) {
       const status = await rpcAnonStatus(fn, {})
       expect(status, `${fn} deveria negar anon`).toBeGreaterThanOrEqual(400)
+    }
+  })
+
+  // v5.4.0/Round4 (0219): a irmã enxuta que alimenta a página de Documentação da API
+  // devolve a MESMA forma de admin_solic_listar_tipos (o front reaproveita o schema),
+  // mas SÓ tipos expostos e não arquivados — é isso que a torna de menor privilégio.
+  it('solic_tipos_documentacao: mesma forma da de admin, só tipos expostos e não arquivados', async () => {
+    const { tiposAdminSchema } = await import('./solicitacoes/schemas')
+    const d = await rpc('solic_tipos_documentacao', {})
+    const parsed = tiposAdminSchema.safeParse(d)
+    expect(parsed.success, JSON.stringify(parsed.error?.issues?.[0] ?? {})).toBe(true)
+    for (const t of parsed.data ?? []) {
+      expect(t.exposto_via_api).toBe(true)
+      expect(t.arquivado).toBe(false)
     }
   })
 

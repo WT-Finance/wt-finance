@@ -124,16 +124,26 @@ export function DocumentacaoContent({
   tiposExpostos,
   equipes,
   erroCarga,
+  podeGestao,
 }: {
   tiposExpostos: TipoAdmin[]
   equipes:       Destinatarios['roles']
   erroCarga:     string | null
+  // v5.4.0/Round4: quem tem SÓ 'solicitacoes/documentacao' não alcança
+  // /admin/chaves-api (ela exige a gestão). Oferecer o link a essa pessoa seria um
+  // beco sem saída — clique → /sem-acesso (achado BAIXO da revisão do round 4).
+  // Volta para o módulo, que é de onde essa pessoa chegou aqui.
+  podeGestao:    boolean
 }) {
   return (
     <>
       <div className="mb-5">
-        <Link href="/admin/chaves-api" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-          <ArrowLeft size={13} /> API externa
+        <Link
+          href={podeGestao ? '/admin/chaves-api' : '/solicitacoes'}
+          className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`}
+          style={PILL_GESTAO_STYLE}
+        >
+          <ArrowLeft size={13} /> {podeGestao ? 'API externa' : 'Solicitações'}
         </Link>
       </div>
 
@@ -219,14 +229,25 @@ export function DocumentacaoContent({
         <Secao id="descoberta-viva" titulo="Tipos expostos agora (ao vivo)">
           <p className="text-xs text-zinc-400">
             Esta seção não é um exemplo — ela lê o cadastro real de tipos e equipes do Janus AGORA, ao
-            carregar esta página. Ligue/desligue a exposição de um tipo na tela «API externa».
+            carregar esta página.{' '}
+            {podeGestao
+              ? 'Ligue/desligue a exposição de um tipo na tela «API externa».'
+              : 'Quem administra liga/desliga a exposição de um tipo na tela «API externa».'}
           </p>
 
           {tiposExpostos.length === 0 ? (
             <div role="status" className="rounded-lg border border-warning bg-warning-bg px-3 py-2.5 text-sm text-warning-deep">
-              Nenhum tipo exposto — ligue a exposição de um tipo na tela{' '}
-              <Link href="/admin/chaves-api" className="font-medium underline">API externa</Link> para que ele
-              apareça aqui e na descoberta.
+              {podeGestao ? (
+                <>
+                  Nenhum tipo exposto — ligue a exposição de um tipo na tela{' '}
+                  <Link href="/admin/chaves-api" className="font-medium underline">API externa</Link> para que ele
+                  apareça aqui e na descoberta.
+                </>
+              ) : (
+                // Sem gestão, mandar a pessoa para uma tela que ela não abre é pior que
+                // não mandar: a instrução vira o que ela pede a quem administra.
+                <>Nenhum tipo exposto ainda — peça a quem administra as Solicitações para ligar a exposição do tipo que você vai integrar.</>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
