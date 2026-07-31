@@ -119,7 +119,6 @@ const JSON_CONSULTAR_POR_REFERENCIA = `{ "ok": true,
 
 const ERROS: ReadonlyArray<readonly [string, string, string]> = [
   ['AUTH_AUSENTE / AUTH_INVALIDA / CHAVE_INVALIDA', '401', 'Sem chave, chave errada ou revogada'],
-  ['TIPO_NAO_AUTORIZADO', '403', 'Tipo existe mas não está na whitelist da sua chave'],
   ['NAO_ENCONTRADA', '404', 'Solicitação inexistente, de outra chave, ou aberta na tela por um humano — vale para a consulta e para o cancelamento'],
   ['CONFLITO_ESTADO', '409', 'Cancelamento de solicitação não-aberta'],
   ['PAYLOAD_EXCEDE_LIMITE', '413', 'Corpo acima de 64 KB'],
@@ -181,8 +180,10 @@ export function DocumentacaoContent({
             cancelá-la.
           </p>
           <p>
-            Cada plataforma integradora recebe uma <strong>chave de API</strong> com uma <strong>lista de
-            tipos autorizados</strong> (a whitelist da chave).
+            Cada plataforma integradora recebe uma <strong>chave de API</strong> — toda chave ativa alcança{' '}
+            <strong>todos os tipos expostos via API</strong>. Não existe mais lista de tipos por chave: o
+            único controle de acesso é o interruptor <strong>exposto/não-exposto</strong> de cada tipo,
+            ligado pelo administrador na tela <strong>API externa</strong>.
           </p>
           <p>
             <strong>Toda solicitação tem um solicitante humano:</strong> o{' '}
@@ -212,7 +213,10 @@ export function DocumentacaoContent({
         </Secao>
 
         <Secao id="descoberta" titulo="3. Descoberta — GET /api/externo/tipos">
-          <p>Devolve os tipos que a chave pode abrir, com o formulário de cada um:</p>
+          <p>
+            Devolve <strong>todos os tipos expostos via API</strong> — toda chave ativa vê a mesma lista
+            (não há mais restrição por chave), com o formulário de cada um:
+          </p>
           <Pre>{JSON_TIPOS_EXEMPLO}</Pre>
           <ul className="list-disc space-y-1.5 pl-5">
             <li>

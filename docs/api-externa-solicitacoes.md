@@ -21,7 +21,10 @@
   `concluida` | `rejeitada` | `cancelada`. **Não existe estado "aprovado"** nem estados
   intermediários — se a sua plataforma tem um conceito próprio de aprovação, ele vive do seu
   lado; para o Janus a solicitação está aberta até alguém concluí-la, rejeitá-la ou cancelá-la.
-- Cada plataforma integradora recebe uma **chave de API** com uma **lista de tipos autorizados**.
+- Cada plataforma integradora recebe uma **chave de API** — toda chave ativa alcança **todos os
+  tipos expostos via API**. Não existe mais lista de tipos por chave: o único controle de acesso
+  é o interruptor **exposto/não-exposto** de cada tipo, ligado pelo administrador na tela
+  **API externa** dentro do Janus.
 - **Toda solicitação tem um solicitante humano**: o `solicitante_email` do disparo (seção 4) precisa
   ser de alguém já cadastrado e ativo no Janus, e é essa pessoa que fica como solicitante — ela
   acompanha o pedido em "Minhas solicitações", recebe os e-mails e pode cancelá-lo pela tela. A
@@ -40,9 +43,9 @@
 
 ## 3. Descoberta — `GET /api/externo/tipos`
 
-Devolve os tipos que a **sua chave** pode abrir, com o formulário de cada um. **Chame este
-endpoint antes de montar o POST** — ele é a verdade do contrato; o exemplo abaixo é o estado
-real em 30/07/2026:
+Devolve **todos os tipos expostos via API** — toda chave ativa vê a mesma lista (não há mais
+restrição por chave), com o formulário de cada um. **Chame este endpoint antes de montar o
+POST** — ele é a verdade do contrato; o exemplo abaixo é o estado real em 31/07/2026:
 
 ```json
 {
@@ -233,7 +236,6 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 | Código | HTTP | Significado |
 |---|---|---|
 | `AUTH_AUSENTE` / `AUTH_INVALIDA` / `CHAVE_INVALIDA` | 401 | Sem chave, chave errada ou revogada |
-| `TIPO_NAO_AUTORIZADO` | 403 | Tipo existe mas não está na whitelist da sua chave |
 | `NAO_ENCONTRADA` | 404 | Solicitação inexistente, de outra chave, ou aberta na tela por um humano — vale para a consulta (seção 5) e para o cancelamento |
 | `CONFLITO_ESTADO` | 409 | Cancelamento de solicitação não-aberta |
 | `PAYLOAD_EXCEDE_LIMITE` | 413 | Corpo acima de 64 KB |

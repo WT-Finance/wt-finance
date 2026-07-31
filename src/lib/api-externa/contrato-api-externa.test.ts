@@ -123,7 +123,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
   let roleId = 0
   let roleForaId = 0
   let tipoId = 0
-  let tipoForaWhitelistId = 0
+  let tipoSemListaId = 0     // 2º tipo exposto (Round6: toda chave alcança todo exposto)
   let chaveId = 0
   let solicitacaoId = 0
   let solicitacaoConcluirId = 0 // fixture do teste de solic_concluir (pós-0215) abaixo
@@ -174,12 +174,13 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
       `INSERT INTO app.solicitacao_campo (tipo_id, ordem, rotulo, tipo_campo, obrigatorio, opcoes, chave)
        VALUES ($1, 4, 'Categoria', 'selecao', true, '["a","b"]'::jsonb, 'categoria')`, [tipoId])
 
-    // 2º tipo, EXPOSTO mas fora da whitelist da chave de teste (p/ TIPO_NAO_AUTORIZADO).
+    // 2º tipo EXPOSTO, que nenhuma lista autoriza explicitamente: prova que a chave
+    // alcança todo tipo exposto (Round6 — a whitelist por chave morreu).
     const t2 = await client.query(
       `INSERT INTO app.solicitacao_tipo (nome, slug, exposto_via_api)
-       VALUES ('ZZ Teste API v5.4.0 (fora da whitelist)', 'zz_teste_api_v540_fora', true)
+       VALUES ('ZZ Teste API v5.4.0 (2o exposto)', 'zz_teste_api_v540_fora', true)
        RETURNING id::int AS id`)
-    tipoForaWhitelistId = t2.rows[0].id
+    tipoSemListaId = t2.rows[0].id
 
     // Robô: reaproveita um user_id JÁ cadastrado ATIVO (nunca INSERT em auth.users via
     // pg). ATIVO é exigido a mais nesta versão (v5.4.0/M4): além de FK para
@@ -208,9 +209,9 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     // Round5 (0222): a chave não tem mais campos de callback — o Janus não faz
     // chamadas de saída.
     const c = await client.query(
-      `INSERT INTO app.api_chave (plataforma, segredo_hash, whitelist_tipos, robo_user_id)
-       VALUES ('ZZ_TESTE_API_V540', $1, ARRAY[$2]::bigint[], $3)
-       RETURNING id::int AS id`, [hashSegredo(SEGREDO_TESTE), tipoId, roboUserId])
+      `INSERT INTO app.api_chave (plataforma, segredo_hash, robo_user_id)
+       VALUES ('ZZ_TESTE_API_V540', $1, $2)
+       RETURNING id::int AS id`, [hashSegredo(SEGREDO_TESTE), roboUserId])
     chaveId = c.rows[0].id
   })
 
@@ -221,8 +222,8 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     await client.query(`DELETE FROM app.api_chave WHERE id = $1`, [chaveId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao_campo WHERE tipo_id = $1`, [tipoId]).catch(() => {})
     await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoId]).catch(() => {})
-    await client.query(`DELETE FROM app.solicitacao_campo WHERE tipo_id = $1`, [tipoForaWhitelistId]).catch(() => {})
-    await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoForaWhitelistId]).catch(() => {})
+    await client.query(`DELETE FROM app.solicitacao_campo WHERE tipo_id = $1`, [tipoSemListaId]).catch(() => {})
+    await client.query(`DELETE FROM app.solicitacao_tipo WHERE id = $1 AND slug LIKE 'zz_teste_api_v540%'`, [tipoSemListaId]).catch(() => {})
     await client.query(`DELETE FROM app.rbac_roles WHERE id = $1`, [roleId]).catch(() => {})
     await client.query(`DELETE FROM app.rbac_roles WHERE id = $1`, [roleForaId]).catch(() => {})
     await client.end().catch(() => {})
@@ -371,15 +372,19 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(prefixo(r.erro)).toBe('CAMPO_DESCONHECIDO')
   })
 
-  it('tipo fora da whitelist da chave → TIPO_NAO_AUTORIZADO', async () => {
+  // Round6 (0224): a whitelist de tipos POR CHAVE foi removida — toda chave alcança
+  // todo tipo EXPOSTO. Este caso era o inverso (esperava TIPO_NAO_AUTORIZADO, 403) e
+  // virou a prova de que a restrição morreu: um 2º tipo exposto, que nenhuma lista
+  // autoriza explicitamente, é ACEITO. `TIPO_NAO_AUTORIZADO` não existe mais.
+  it('2º tipo exposto (sem lista que o autorize) é ACEITO — whitelist por chave extinta', async () => {
     const r = await chamarRpc('criar_solicitacao_externa', {
       p_chave_id: chaveId, p_tipo_slug: 'zz_teste_api_v540_fora', p_destinatario: 'ZZ_TESTE_API_V540',
       p_titulo: null, p_campos: {}, p_data_limite: '2027-01-01',
-      p_chave_idempotencia: 'zz-v540-tipo-nao-autorizado', p_referencia_origem: null,
+      p_chave_idempotencia: 'zz-v540-tipo-sem-lista', p_referencia_origem: null,
       p_solicitante_email: solicitanteEmail,
     })
-    expect(r.ok).toBe(false)
-    expect(prefixo(r.erro)).toBe('TIPO_NAO_AUTORIZADO')
+    expect(r.ok, r.erro ?? '').toBe(true)
+    expect((r.data as { status: string }).status).toBe('aberta')
   })
 
   it('sem data_limite → DATA_LIMITE_OBRIGATORIA', async () => {
@@ -576,7 +581,7 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
   })
 
   // ── (5) descoberta de tipos ────────────────────────────────────────────────────
-  it('solic_tipos_api: devolve o tipo com slug/campos/chaves/destinos, sem campo anexo, só o whitelisted', async () => {
+  it('solic_tipos_api: devolve TODO tipo exposto com slug/campos/chaves/destinos, sem campo anexo', async () => {
     const r = await chamarRpc('solic_tipos_api', { p_chave_id: chaveId })
     expect(r.ok, r.erro ?? '').toBe(true)
     const tipos = r.data as Array<{
@@ -592,8 +597,10 @@ describe.skipIf(!ON || !RPC_PRONTA)('contrato — API externa de Solicitações 
     expect(alvo!.campos.map(c => c.chave).sort()).toEqual(['assunto', 'categoria', 'data_evento', 'valor'])
     expect(alvo!.campos.some(c => c.tipo_campo === 'anexo')).toBe(false)
 
-    // o 2º tipo (exposto, mas FORA da whitelist desta chave) não deve aparecer.
-    expect(tipos.some(t => t.slug === 'zz_teste_api_v540_fora')).toBe(false)
+    // Round6 (0224): o 2º tipo exposto APARECE — antes era filtrado pela whitelist da
+    // chave. É o par do caso de criação acima: descoberta e criação passaram a
+    // concordar com a única fonte de verdade, `exposto_via_api`.
+    expect(tipos.some(t => t.slug === 'zz_teste_api_v540_fora')).toBe(true)
   })
 
   // ── (6) editar tipo preserva chaves (contrato de API sobrevive ao apaga-e-recria) ─

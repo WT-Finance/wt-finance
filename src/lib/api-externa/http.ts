@@ -21,7 +21,6 @@ export async function chamarRpcExterna(fn: string, args: Record<string, unknown>
 export interface ChaveResolvida {
   id: number
   plataforma: string
-  whitelist_tipos: number[]
   robo_user_id: string
 }
 
@@ -32,7 +31,6 @@ function comoChaveResolvida(x: unknown): ChaveResolvida | null {
   return {
     id:               o.id,
     plataforma:       typeof o.plataforma === 'string' ? o.plataforma : '',
-    whitelist_tipos:  Array.isArray(o.whitelist_tipos) ? o.whitelist_tipos.filter((v): v is number => typeof v === 'number') : [],
     robo_user_id:     typeof o.robo_user_id === 'string' ? o.robo_user_id : '',
   }
 }
@@ -137,9 +135,6 @@ export function traduzirErroRpc(message: string): Response {
 
   if (prefixo.startsWith('AUTH_') || prefixo === 'CHAVE_INVALIDA') {
     return respostaErro(prefixo, detalhe || 'Autenticação inválida.', 401)
-  }
-  if (prefixo === 'TIPO_NAO_AUTORIZADO') {
-    return respostaErro(prefixo, detalhe || 'Tipo de solicitação não autorizado para esta chave.', 403)
   }
   if (prefixo === 'NAO_ENCONTRADA') {
     return respostaErro(prefixo, detalhe || 'Recurso não encontrado.', 404)

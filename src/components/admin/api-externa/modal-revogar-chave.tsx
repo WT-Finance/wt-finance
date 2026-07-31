@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/field'
 // exigindo digitar o nome exato da plataforma (mesmo rigor de ações destrutivas
 // sem window.confirm — padrão ModalCentral do projeto), não um simples "Confirmar".
 // onRevogado (não onFechar) dispara o router.refresh()+mensagem do PAI, mesmo
-// padrão de ModalEditarChave/ModalRole — o modal não decide como o pai reage.
+// padrão de ModalRole (admin/acessos) — o modal não decide como o pai reage.
 
 export function ModalRevogarChave({
   chave,

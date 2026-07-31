@@ -525,3 +525,57 @@ pela CONSULTA) · suíte de contrato ao vivo rodou (38 casos) · conferido no ba
 enfileira** e que a única que ainda lê colunas de callback é a própria RPC da fila, que o patch
 remove. A microcópia dos modais, que eu havia escrito de manhã dizendo "não existe endpoint de
 consulta", foi corrigida antes (commit próprio) — erro meu de texto que envelheceu no mesmo dia.
+
+---
+
+## Round 6 (2026-07-31) — whitelist de tipos por chave removida + "Referência" + comentários
+
+**Pedidos do Yan:** *"retirar a whitelist de tipos da chave de API, cada chave de API deve ter acesso
+a todos os tipos expostos, não precisamos de tanta complexidade de restrições"*; na tela de criação,
+*"Plataforma" vira "Referência"* e a tela *"só pede Referência, sem descrição ou subtítulo"*; e, no
+meio do trabalho, *"aproveite para consertar também os comentários desatualizados das funções"*.
+
+**Por que a whitelist tinha de cair (e é o mesmo erro do Round 3, um nível acima).** Havia duas
+listas brancas EM SÉRIE: o tipo precisava estar `exposto_via_api` **e** constar da whitelist da
+chave. Isso não é controle fino, é dois lugares para a mesma decisão — e o efeito prático era um
+`403 TIPO_NAO_AUTORIZADO` que o integrador não tinha como diagnosticar, para um tipo que a NOSSA
+tela mostrava como exposto. Sobra um controle, num lugar, visível: o interruptor de exposição do
+tipo. `TIPO_NAO_AUTORIZADO` deixa de existir no contrato.
+
+**A consequência que eu avisei antes de executar:** a whitelist era o **único campo editável** de uma
+chave. Sem ela, `api_chave_atualizar` não tinha o que atualizar → **RPC dropada**, modal "Editar
+chave" e botão removidos. Uma chave passa a ter dois estados na vida: criada e revogada. Não foi
+decisão de escopo minha; foi o que sobrou depois de tirar o campo.
+
+**Migration 0224 (aditiva, aplicada)** — 5 funções reescritas (`solic_tipos_api`,
+`criar_solicitacao_externa`, `api_chave_listar`, `api_chave_resolver`, `api_chave_registrar` 4→3
+params) + 1 dropada (`api_chave_atualizar`). Mesmo método da 0222: corpo VIVO do
+`pg_get_functiondef`, remoção cirúrgica, **diff conferido linha a linha** e validação aplicando numa
+transação REVERTIDA. Aproveitei para matar duas variáveis mortas em `criar_solicitacao_externa`
+(`v_chave_whitelist` e `v_chave_robo` — este último já não era usado desde o Round 4).
+
+**Comentários desatualizados (pedido no meio do caminho).** Varri **todas** as funções de `app` e
+`public` procurando comentário que citasse outbox, callback, whitelist, referência de conclusão,
+equipes por tipo ou **ADR em numeração provisória** (0950+, renumerada no merge). Eram 3 linhas — uma
+já consertada pela própria 0224. As outras duas entraram nela:
+- `consultar_solicitacoes_externas` citava "payload de callback, 0213" (não existe mais).
+- `solic_emails_envolvidos` dizia que *o autor-robô fica fora do fan-out porque o recibo da integração
+  são os callbacks (ADR-0953)* — **errado em três frentes ao mesmo tempo**: o autor virou uma PESSOA
+  ativa no Round 4 (e portanto ENTRA no fan-out), os callbacks morreram no Round 5, e ADR-0953 era a
+  numeração provisória do 0161. A lógica (`AND ativo`) não mudou; só a explicação, que agora é
+  verdadeira.
+
+**Patch destrutivo pendente:** `supabase/patches/PENDENTE-remover-coluna-whitelist.sql`, **sem número**
+(numerar na hora, `git mv` + `--destrutiva`). Dropa só `app.api_chave.whitelist_tipos`. Guarda aborta
+se a 0224 não estiver aplicada.
+
+**UI:** modal de criação com **um campo só** ("Referência", sem ajuda embaixo); modal de edição e o
+componente da whitelist **apagados**; coluna da whitelist e botão "Editar" fora da tabela; o rótulo
+visível "Plataforma" virou "Referência" (a coluna do banco continua `plataforma` — renomear coluna
+seria churn destrutivo sem ganho).
+
+**Documentação auditada** (o Yan pediu explicitamente para conferir se cobre o estado atual): 3
+correções — o bullet de Conceitos que falava de "lista de tipos autorizados", o texto da Descoberta
+("os tipos que a SUA chave pode abrir" → todos os expostos) e a linha `TIPO_NAO_AUTORIZADO` da tabela
+de erros. O resto foi conferido item a item contra o produto de hoje (numeração das seções,
+referências cruzadas, `TIPO_INVALIDO`, ausência de callback/robô-autor) e estava correto.

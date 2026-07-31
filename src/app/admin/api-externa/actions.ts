@@ -23,19 +23,21 @@ async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ d
   return (sb.rpc as unknown as BoundRpc).bind(sb)(fn, args)
 }
 
-/** Prefixos de erro do guard interno do banco (PREFIXO:detalhe) → mensagem legível. */
+/** Prefixos de erro do guard interno do banco (PREFIXO:detalhe) → mensagem legível.
+ *  v5.4.0/Round6: TIPO_INVALIDO (validava a whitelist em api_chave_registrar) e
+ *  CHAVE_REVOGADA (só existia por causa de api_chave_atualizar) saíram — nenhuma
+ *  RPC chamada por este arquivo emite esses prefixos mais (migration 0224).
+ *  ROLE_INVALIDA já estava órfão desde o Round3 (lista de equipes por tipo) —
+ *  fora do escopo desta limpeza, mantido como estava. */
 const ERROS_BANCO: ReadonlyArray<readonly [string, string]> = [
-  ['PLATAFORMA_OBRIGATORIA', 'Informe o nome da plataforma.'],
-  ['PLATAFORMA_EM_USO',      'Já existe uma chave registrada para esta plataforma.'],
+  ['PLATAFORMA_OBRIGATORIA', 'Informe a referência.'],
+  ['PLATAFORMA_EM_USO',      'Já existe uma chave registrada para esta referência.'],
   ['EMAIL_OBRIGATORIO',      'Não foi possível determinar o e-mail do usuário-robô.'],
-  ['EMAIL_EM_USO',           'Já existe um usuário com este e-mail — tente outro nome de plataforma.'],
+  ['EMAIL_EM_USO',           'Já existe um usuário com este e-mail — tente outra referência.'],
   ['SEGREDO_OBRIGATORIO',    'Falha ao gerar o segredo — tente novamente.'],
-  ['TIPO_INVALIDO',          'Um dos tipos selecionados na whitelist não existe mais. Recarregue a página.'],
   ['TIPO_INEXISTENTE',       'Tipo de solicitação não encontrado. Recarregue a página.'],
-  ['ROLE_INVALIDA',          'Uma das equipes selecionadas não existe mais. Recarregue a página.'],
   ['NAO_ENCONTRADA',         'Chave não encontrada.'],
   ['JA_REVOGADA',            'Esta chave já está revogada.'],
-  ['CHAVE_REVOGADA',         'Uma chave revogada não pode ser editada — crie uma chave nova.'],
   ['PERMISSAO_NEGADA',       'Você não tem permissão para gerenciar chaves de API.'],
   ['AUTH_NECESSARIA',        'Sessão necessária.'],
 ]
@@ -69,11 +71,10 @@ function senhaRoboAleatoria(): string {
 
 export async function criarChaveApi(input: {
   plataforma: string
-  whitelist:  number[]
 }): Promise<ResultadoCriarChave> {
   await requireAreaAction('solicitacoes')
   const plataforma = input.plataforma.trim()
-  if (!plataforma) return { ok: false, erro: 'Informe o nome da plataforma.' }
+  if (!plataforma) return { ok: false, erro: 'Informe a referência.' }
 
   const admin = getAdminClient()
   const email = `integracao-${slugPlataforma(plataforma)}@janus.internal`
@@ -106,7 +107,6 @@ export async function criarChaveApi(input: {
   const { error: erroChave } = await rpcSessao('api_chave_registrar', {
     p_plataforma:   plataforma,
     p_segredo_hash: hashSegredo(segredo),
-    p_whitelist:    input.whitelist,
     p_robo_user_id: userId,
   })
   if (erroChave) {
@@ -123,20 +123,6 @@ export async function criarChaveApi(input: {
 export async function revogarChaveApi(id: number): Promise<ResultadoAcao> {
   await requireAreaAction('solicitacoes')
   const { error } = await rpcSessao('api_chave_revogar', { p_id: id })
-  if (error) return { ok: false, erro: traduzir(error.message) }
-  revalidatePath('/admin/api-externa')
-  return { ok: true }
-}
-
-export async function atualizarChaveApi(input: {
-  id:        number
-  whitelist: number[]
-}): Promise<ResultadoAcao> {
-  await requireAreaAction('solicitacoes')
-  const { error } = await rpcSessao('api_chave_atualizar', {
-    p_id:        input.id,
-    p_whitelist: input.whitelist,
-  })
   if (error) return { ok: false, erro: traduzir(error.message) }
   revalidatePath('/admin/api-externa')
   return { ok: true }

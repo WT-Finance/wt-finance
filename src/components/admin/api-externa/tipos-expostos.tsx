@@ -81,7 +81,7 @@ export function TiposExpostos({
                 <tr key={tipo.id} className={`border-b border-zinc-50 last:border-0 ${salvando ? 'opacity-60' : ''}`}>
                   <td className="px-3 py-2.5">
                     {/* Sufixo textual "(arquivado)" (achado ALTO do revisor, round 2): status
-                        nunca só por cor — mesmo padrão de whitelist-tipos.tsx. `block min-w-0`
+                        nunca só por cor — mesmo padrão de tipos-content.tsx. `block min-w-0`
                         para o truncate efetivamente recortar (span inline não recorta). */}
                     <span className={`block min-w-0 truncate ${tipo.arquivado ? 'text-zinc-400' : 'text-zinc-800'}`}>
                       {tipo.nome}{tipo.arquivado ? ' (arquivado)' : ''}

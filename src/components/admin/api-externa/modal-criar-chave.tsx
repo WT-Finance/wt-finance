@@ -4,17 +4,18 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, Copy, Loader2 } from 'lucide-react'
 import { criarChaveApi } from '@/app/admin/api-externa/actions'
-import type { TipoDisponivel } from './tipos'
-import { WhitelistTipos } from './whitelist-tipos'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'
 import { Input } from '@/components/ui/field'
 
-// v5.4.0/M2 (Round5: callback removido — a integração passou a CONSULTAR,
-// nunca mais é avisada por push) — modal de criar chave de API: plataforma +
-// whitelist de tipos. Em sucesso, mostra o SEGREDO em claro UMA VEZ (mesmo
-// padrão da senha provisória — modal-convidar.tsx, admin/acessos): depois de
-// fechar este modal, o segredo não é recuperável (só revogar e criar outra chave).
+// v5.4.0/M2 (Round6, decisão do Yan 31/07: "retirar a whitelist de tipos da
+// chave de API, cada chave de API deve ter acesso a todos os tipos expostos,
+// não precisamos de tanta complexidade de restrições" — migration 0224) —
+// modal de criar chave de API: um único campo, "Referência" (era "Plataforma",
+// com whitelist de tipos e parágrafo de ajuda embaixo — os três saíram). Em
+// sucesso, mostra o SEGREDO em claro UMA VEZ (mesmo padrão da senha
+// provisória — modal-convidar.tsx, admin/acessos): depois de fechar este
+// modal, o segredo não é recuperável (só revogar e criar outra chave).
 
 interface Sucesso {
   plataforma: string
@@ -22,33 +23,26 @@ interface Sucesso {
 }
 
 export function ModalCriarChave({
-  tipos,
   onFechar,
 }: {
-  tipos:    TipoDisponivel[]
   onFechar: () => void
 }) {
   const router = useRouter()
   const [plataforma, setPlataforma] = useState('')
-  const [whitelist, setWhitelist] = useState<number[]>([])
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<Sucesso | null>(null)
   const [copiado, setCopiado] = useState(false)
 
-  function toggleTipo(id: number) {
-    setWhitelist(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
-  }
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setErro(null)
     if (!plataforma.trim()) {
-      setErro('Informe o nome da plataforma.')
+      setErro('Informe a referência.')
       return
     }
     setEnviando(true)
-    const res = await criarChaveApi({ plataforma, whitelist })
+    const res = await criarChaveApi({ plataforma })
     setEnviando(false)
     if (!res.ok) {
       setErro(res.erro)
@@ -80,29 +74,14 @@ export function ModalCriarChave({
       {!sucesso ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="chave-plataforma" className="block text-xs font-medium text-zinc-600 mb-1">
-              Plataforma <span className="text-danger" aria-hidden="true">*</span>
+            <label htmlFor="chave-referencia" className="block text-xs font-medium text-zinc-600 mb-1">
+              Referência <span className="text-danger" aria-hidden="true">*</span>
             </label>
             <Input
-              id="chave-plataforma" type="text" required autoFocus value={plataforma}
+              id="chave-referencia" type="text" required autoFocus value={plataforma}
               onChange={e => setPlataforma(e.target.value)}
               placeholder="Ex.: Monde, ClickUp, App do fornecedor…"
             />
-            <p className="mt-1 text-2xs text-zinc-400">
-              Nome livre — identifica quem está integrando e é o que aparece no selo{' '}
-              <span className="whitespace-nowrap">&ldquo;via integração X&rdquo;</span> nas solicitações
-              criadas por esta chave. Cria também um usuário-robô técnico, que nunca loga na
-              plataforma e <strong>não é autor de nada</strong>: o solicitante de cada pedido é a
-              pessoa cujo e-mail vem no disparo, e ela precisa ter cadastro ativo aqui.
-            </p>
-          </div>
-
-          <div>
-            <p className="text-xs font-medium text-zinc-600 mb-2">Whitelist de tipos de solicitação</p>
-            <WhitelistTipos tipos={tipos} selecionados={whitelist} onToggle={toggleTipo} />
-            <p className="mt-1 text-2xs text-zinc-400">
-              Nenhum tipo marcado = a chave não pode abrir/consultar solicitação alguma.
-            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-1">

@@ -77,7 +77,11 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0223`** (o patch DESTRUTIVO do Round5, aplicado pelo Yan em 31/07:
+- Última migration APLICADA: **`0224`** (v5.4.0/Round6: a WHITELIST de tipos por chave foi removida —
+  toda chave alcança todo tipo exposto; `TIPO_NAO_AUTORIZADO` deixou de existir; `api_chave_atualizar`
+  DROPADA porque a whitelist era o único campo editável de uma chave. De carona, os 3 comentários
+  desatualizados dentro de funções foram consertados. Emenda no ADR-0158, item 2 revogado). Antes dela
+  a **`0223`** (o patch DESTRUTIVO do Round5, aplicado pelo Yan em 31/07:
   dropou a fila `app.api_outbox`, as 3 RPCs dela, o cron `api-outbox-processar`, as colunas
   `callback_url`/`callback_segredo` da chave E as 3 colunas órfãs dos rounds 2/3 — conferido depois:
   tudo em 0, `api_chamada_log` e o cron do Monde intactos). Antes dela a **`0222`** (v5.4.0/Round5: os CALLBACKS foram removidos — 9 funções
@@ -92,9 +96,9 @@
   na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
   **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
   `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
-  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0224`** — a `0220` é o
-  patch destrutivo pendente descrito abaixo (e não existe 0218: o arquivo nasceu com esse número e
-  foi renumerado).
+  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0225`.** Não existe 0218:
+  o arquivo da limpeza nasceu com esse número e foi renumerado para 0220 (que o Yan já aplicou) —
+  ver a armadilha registrada abaixo.
 - ✅ **Limpeza de histórico APLICADA (31/07, mão do Yan): `0220` no ar.** Histórico zerado e
   verificado por mim depois: `solicitacao`/`solicitacao_anexo`/`api_chamada_log`/`api_outbox` em 0,
   os 2 tipos arquivados de teste excluídos (7 ativos, 42 campos, zero campo órfão), slugs canônicos
@@ -130,6 +134,14 @@
   colunas órfãs (0223) e a concessão da área "Solicitações (documentação)" (2 roles). **Não há mais
   pendência de banco nesta versão** — o que falta é criar a chave, entregar o contrato ao Vitor e
   mergear.
+- ⚠️ **Patch destrutivo PENDENTE: `supabase/patches/PENDENTE-remover-coluna-whitelist.sql`** — dropa
+  só `app.api_chave.whitelist_tipos`, hoje inerte. **Sem número de propósito** (numerar na hora:
+  `git mv` para o próximo livre + `npm run db:migrate -- --destrutiva`, no terminal do Yan). Guarda
+  aborta se a 0224 não estiver aplicada.
+- **A superfície de restrição da API é MÍNIMA desde o Round 6:** a chave existe e está ativa, e o tipo
+  está `exposto_via_api`. Nada de lista de equipes por tipo (caiu no Round 3), nada de lista de tipos
+  por chave (Round 6). Uma chave tem dois estados na vida: criada e revogada — não há "editar chave",
+  e a tela de criação pede um campo só ("Referência"; a coluna do banco continua `plataforma`).
 - **O contrato da API é PULL-ONLY desde o Round 5 (31/07):** criar → consultar → cancelar. O Janus
   não notifica ninguém; o integrador descobre o desfecho consultando
   (`GET /api/externo/solicitacoes/{id}` ou `?referencia_origem=`). **Consequência a comunicar ao

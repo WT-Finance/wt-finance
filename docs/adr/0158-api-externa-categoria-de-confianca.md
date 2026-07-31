@@ -82,3 +82,33 @@ só muda o papel: é o **titular da chave** (FK `api_chave.robo_user_id`), não 
 solicitações. Solicitações criadas via API **antes** desta migration seguiriam com o robô como
 solicitante (histórico intocado — a 0217 não faz backfill); na prática, todas foram apagadas pela
 limpeza de histórico do mesmo round (patch **0220**).
+
+## Emenda (2026-07-31) — a whitelist de tipos POR CHAVE foi removida
+
+O **item 2 da Decisão** ("Whitelist de tipos por chave") está **REVOGADO** por decisão do Yan:
+*"retirar a whitelist de tipos da chave de API, cada chave de API deve ter acesso a todos os tipos
+expostos, não precisamos de tanta complexidade de restrições"*.
+
+**É a mesma correção de assimetria do Round 3, um nível acima.** Lá caiu a lista de equipes por tipo
+(a API era mais estrita que a tela); aqui cai a lista de tipos por chave. Duas listas brancas em
+série — o tipo tem de estar `exposto_via_api` **e** constar da whitelist da chave — davam impressão
+de controle fino e produziam, na prática, um `403 TIPO_NAO_AUTORIZADO` difícil de diagnosticar do
+lado do integrador para um tipo que a nossa própria tela mostrava como exposto. O controle que
+**resta é um só, e visível numa tela**: `solicitacao_tipo.exposto_via_api`.
+
+**O que muda (migration 0224, aditiva):** `solic_tipos_api` continua exigindo chave válida e ativa
+(descoberta não é pública) mas devolve todos os tipos expostos; `criar_solicitacao_externa` perde a
+checagem — **`TIPO_NAO_AUTORIZADO` deixa de existir no contrato**, sobrando `TIPO_INVALIDO` (422)
+para slug inexistente, arquivado ou não exposto; `api_chave_listar`/`api_chave_resolver` param de
+emitir a lista; `api_chave_registrar` cai de 4 para 3 parâmetros.
+
+**Consequência que não era óbvia e vale registrar: `api_chave_atualizar` foi DROPADA, e o modal
+"Editar chave" saiu da tela.** A whitelist era o único campo editável de uma chave. Sem ela, uma
+chave passa a ter dois estados na vida — criada e revogada — e "editar" não significava nada. Não
+foi escolha de escopo: era o que sobrava depois de tirar o campo.
+
+**O que permanece do ADR original:** todo o resto. A chave continua sendo a autorização (item 1), com
+segredo só em hash exibido uma vez e revogação irreversível; idempotência obrigatória (item 4);
+marcador de origem + log de chamadas (item 5); erros estruturados (item 6); rotas em
+`API_AUTH_PROPRIA` (item 7). O item 3 já havia sido superado no Round 4 (o autor deixou de ser o
+robô). **A superfície de restrição por chave que sobra é: a chave existe e está ativa.**

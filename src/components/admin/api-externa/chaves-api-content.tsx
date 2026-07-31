@@ -3,12 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Ban, Pencil, Plus, ScrollText } from 'lucide-react'
+import { ArrowLeft, Ban, Plus, ScrollText } from 'lucide-react'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
-import type { ChaveApi, TipoDisponivel } from './tipos'
+import type { ChaveApi } from './tipos'
 import { TiposExpostos } from './tipos-expostos'
 import { ModalCriarChave } from './modal-criar-chave'
-import { ModalEditarChave } from './modal-editar-chave'
 import { ModalRevogarChave } from './modal-revogar-chave'
 import { ModalLogChave } from './modal-log-chave'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
@@ -18,21 +17,24 @@ import Button from '@/components/ui/button'
 import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 
-// v5.4.0/M2 (+ Round2/Round3/Round4) — conteúdo client de /admin/api-externa
-// ("API externa"): header de navegação (volta a /admin/solicitacoes — esta
-// rota não está na sidebar, mesmo padrão de /admin/solicitacoes; Round3
-// acrescenta a pill "Documentação", que leva à página irmã
-// /admin/api-externa/documentacao), a tabela "Chaves de API", a seção "Tipos
-// Expostos" (TiposExpostos — Round3: virou só um toggle de exposição por
-// linha, a lista de equipes de destino por tipo morreu) e a orquestração dos
-// 4 modais (criar / editar / revogar / log). Round4 (pedido do Yan 30/07):
-// "Chaves de API" passou a vir ANTES de "Tipos Expostos" (antes era o
-// inverso). Dados vêm prontos da page (RSC); após cada mutação, os modais/
-// seção chamam router.refresh() antes de fechar.
+// v5.4.0/M2 (+ Round2/Round3/Round4/Round6) — conteúdo client de
+// /admin/api-externa ("API externa"): header de navegação (volta a
+// /admin/solicitacoes — esta rota não está na sidebar, mesmo padrão de
+// /admin/solicitacoes; Round3 acrescenta a pill "Documentação", que leva à
+// página irmã /admin/api-externa/documentacao), a tabela "Chaves de API", a
+// seção "Tipos Expostos" (TiposExpostos — Round3: virou só um toggle de
+// exposição por linha, a lista de equipes de destino por tipo morreu) e a
+// orquestração dos 3 modais (criar / revogar / log). Round4 (pedido do Yan
+// 30/07): "Chaves de API" passou a vir ANTES de "Tipos Expostos" (antes era o
+// inverso). Round6 (decisão do Yan 31/07): a whitelist de tipos por chave
+// saiu — toda chave alcança todo tipo exposto (migration 0224); consequência:
+// uma chave só tem dois estados na vida (criada e revogada) — não existe mais
+// "editar" (o modal e o botão saíram, junto com a coluna da tabela). Dados vêm
+// prontos da page (RSC); após cada mutação, os modais/seção chamam
+// router.refresh() antes de fechar.
 
 type ModalState =
   | { modo: 'criar' }
-  | { modo: 'editar'; chave: ChaveApi }
   | { modo: 'revogar'; chave: ChaveApi }
   | { modo: 'log'; chave: ChaveApi }
   | null
@@ -47,12 +49,10 @@ function BadgeStatusChave({ chave }: { chave: ChaveApi }) {
 
 export function ChavesApiContent({
   chaves,
-  tipos,
   tiposAdmin,
   erroCarga,
 }: {
   chaves:     ChaveApi[]
-  tipos:      TipoDisponivel[]
   tiposAdmin: TipoAdmin[]
   erroCarga:  string | null
 }) {
@@ -60,11 +60,11 @@ export function ChavesApiContent({
   const [modal, setModal] = useState<ModalState>(null)
   const [msg, setMsg] = useState<Msg | null>(null)
 
-  /** ModalEditarChave/ModalRevogarChave chamam isto em sucesso: fecham o
-   *  modal, mostram a mensagem e recarregam a lista (RSC via
-   *  router.refresh()). O ModalCriarChave é diferente — refresca sozinho e só
-   *  fecha ao clique explícito em "Fechar" (depois de revelar o segredo), sem
-   *  mensagem extra aqui (o próprio modal já confirma o sucesso inline). */
+  /** ModalRevogarChave chama isto em sucesso: fecha o modal, mostra a
+   *  mensagem e recarrega a lista (RSC via router.refresh()). O
+   *  ModalCriarChave é diferente — refresca sozinho e só fecha ao clique
+   *  explícito em "Fechar" (depois de revelar o segredo), sem mensagem extra
+   *  aqui (o próprio modal já confirma o sucesso inline). */
   function fecharComSucesso(texto: string) {
     setModal(null)
     setMsg({ tipo: 'sucesso', texto })
@@ -110,16 +110,14 @@ export function ChavesApiContent({
       <CardTabela titulo="Chaves de API" className="mb-5">
         <table className="table-fixed w-full text-sm">
           <colgroup>
-            <col className="w-[25%]" />
-            <col className="w-[30%]" />
-            <col className="w-[12%]" />
+            <col className="w-[40%]" />
             <col className="w-[15%]" />
-            <col className="w-[18%]" />
+            <col className="w-[20%]" />
+            <col className="w-[25%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-zinc-100 text-left">
-              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Plataforma</th>
-              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Whitelist</th>
+              <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Referência</th>
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Status</th>
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Última chamada</th>
               <th scope="col" className={`${CARD_TABELA_TH} text-left`}>Ações</th>
@@ -136,17 +134,6 @@ export function ChavesApiContent({
                   <p className="text-3xs text-zinc-400 truncate">Criada em {fmtDataHoraSP(chave.criado_em)}</p>
                 </td>
                 <td className="px-3 py-2.5">
-                  {chave.whitelist_tipos.length === 0 ? (
-                    <span className="text-xs text-zinc-400">Nenhum tipo liberado</span>
-                  ) : (
-                    <div className="flex flex-wrap gap-1">
-                      {chave.whitelist_tipos.map(t => (
-                        <Badge key={t.id} variant="neutro">{t.nome}</Badge>
-                      ))}
-                    </div>
-                  )}
-                </td>
-                <td className="px-3 py-2.5">
                   <BadgeStatusChave chave={chave} />
                   {!chave.ativo && chave.revogado_em && (
                     <p className="mt-1 text-3xs text-zinc-400">em {fmtDataHoraSP(chave.revogado_em)}</p>
@@ -159,15 +146,6 @@ export function ChavesApiContent({
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="icone-borda" tone="neutro"
-                      onClick={() => setModal({ modo: 'editar', chave })}
-                      disabled={!chave.ativo}
-                      title={chave.ativo ? 'Editar whitelist' : 'Chave revogada — não pode ser editada'}
-                      aria-label={`Editar chave de ${chave.plataforma}`}
-                    >
-                      <Pencil size={14} />
-                    </Button>
                     <Button
                       variant="icone-borda" tone="neutro"
                       onClick={() => setModal({ modo: 'log', chave })}
@@ -191,7 +169,7 @@ export function ChavesApiContent({
             ))}
             {chaves.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-10 text-center text-sm text-zinc-400">
+                <td colSpan={4} className="px-3 py-10 text-center text-sm text-zinc-400">
                   Nenhuma chave de API registrada ainda. Use «Nova chave» para começar.
                 </td>
               </tr>
@@ -203,15 +181,7 @@ export function ChavesApiContent({
       <TiposExpostos tipos={tiposAdmin} onMudou={handleTipoMudou} />
 
       {modal?.modo === 'criar' && (
-        <ModalCriarChave tipos={tipos} onFechar={() => setModal(null)} />
-      )}
-      {modal?.modo === 'editar' && (
-        <ModalEditarChave
-          chave={modal.chave}
-          tipos={tipos}
-          onFechar={() => setModal(null)}
-          onSalvo={fecharComSucesso}
-        />
+        <ModalCriarChave onFechar={() => setModal(null)} />
       )}
       {modal?.modo === 'revogar' && (
         <ModalRevogarChave

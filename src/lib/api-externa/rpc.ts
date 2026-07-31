@@ -24,12 +24,6 @@ function comoObjArray(data: unknown): Record<string, unknown>[] {
   return data.filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x))
 }
 
-function comoTipos(data: unknown): { id: number; nome: string }[] {
-  return comoObjArray(data)
-    .map(x => ({ id: typeof x.id === 'number' ? x.id : 0, nome: typeof x.nome === 'string' ? x.nome : '' }))
-    .filter(t => t.id !== 0)
-}
-
 function comoChave(x: Record<string, unknown>): ChaveApi | null {
   if (typeof x.id !== 'number') return null
   const robo = (typeof x.robo === 'object' && x.robo !== null && !Array.isArray(x.robo))
@@ -38,7 +32,6 @@ function comoChave(x: Record<string, unknown>): ChaveApi | null {
   return {
     id:                   x.id,
     plataforma:           typeof x.plataforma === 'string' ? x.plataforma : '',
-    whitelist_tipos:      comoTipos(x.whitelist_tipos),
     robo: {
       user_id: typeof robo.user_id === 'string' ? robo.user_id : '',
       email:   typeof robo.email === 'string' ? robo.email : '',
