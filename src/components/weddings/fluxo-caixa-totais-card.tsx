@@ -1,18 +1,21 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { fmtBRL } from '@/lib/fmt'
 
 // Card de TOTAIS do Fluxo de Caixa de Weddings (v5.4.2/M2).
 //
 // Saiu do cabeçalho do gráfico mensal e ganhou card próprio, acima dos gráficos.
+// O FILTRO por operação vive dentro deste card (slot `filtro`), à direita: ele vale
+// para o card de totais E para o card dos gráficos, e ficar solto no fundo da página
+// não dizia a que pertencia.
 //
-// A semântica que o rótulo precisa deixar explícita: estes totais são o
-// COMPROMISSO TOTAL da operação filtrada — tudo que está em aberto ('A Receber
-// Futuro' / 'A Pagar Futuro') — e NÃO o recorte da janela do slider. Um
-// compromisso assumido não é um recorte de tempo. Isso não é uma escolha do
-// componente: a RPC calcula os dois totais SEM filtro de data (só por operação),
-// em `get_acumulado_weddings__nucleo` (migration 0141) — então eles não variam
-// quando a janela muda, por construção. O filtro de operação, sim, os afeta.
+// A semântica: estes totais são o COMPROMISSO TOTAL da operação filtrada — tudo que
+// está em aberto ('A Receber Futuro' / 'A Pagar Futuro') — e NÃO o recorte da janela
+// do slider. Isso não é escolha do componente: a RPC calcula os dois totais SEM
+// filtro de data (só por operação), em `get_acumulado_weddings__nucleo` (0141), e foi
+// medido idêntico em janelas diferentes. A frase que explicava isso na tela saiu a
+// pedido do Yan — a garantia continua no ADR-0162 e no out-briefing, não na interface.
 
 const COR_RECEBER = 'var(--chart-fluxo-entrada)'
 const COR_PAGAR   = 'var(--chart-fluxo-saida)'
@@ -34,29 +37,37 @@ function Total({ label, valor, cor }: { label: string; valor: number; cor: strin
 interface Props {
   totalAReceber?: number
   totalAPagar?:   number
-  /** Sufixo do escopo (operação filtrada), quando houver. */
-  operacaoLabel?: string
+  /** Filtro por operação, renderizado à direita dentro do card. */
+  filtro?: ReactNode
 }
 
-export default function FluxoCaixaTotaisCard({ totalAReceber, totalAPagar, operacaoLabel }: Props) {
-  if (totalAReceber == null && totalAPagar == null) return null
+export default function FluxoCaixaTotaisCard({ totalAReceber, totalAPagar, filtro }: Props) {
+  const semTotais = totalAReceber == null && totalAPagar == null
+  // Mesmo sem totais o card permanece, porque agora ele hospeda o filtro.
+  if (semTotais && !filtro) return null
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-      <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-3">
-        <div className="flex flex-wrap items-end gap-x-10 gap-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        {/* Valores à ESQUERDA, com régua vertical entre eles. */}
+        <div className="flex items-center gap-5 shrink-0">
           {totalAReceber != null && (
             <Total label="Total a receber" valor={totalAReceber} cor={COR_RECEBER} />
+          )}
+          {totalAReceber != null && totalAPagar != null && (
+            <span aria-hidden className="w-px self-stretch bg-zinc-200" />
           )}
           {totalAPagar != null && (
             <Total label="Total a pagar" valor={totalAPagar} cor={COR_PAGAR} />
           )}
         </div>
-        <p className="text-xs text-[var(--text-muted)] max-w-md">
-          Compromisso total em aberto
-          {operacaoLabel ? ` de ${operacaoLabel}` : ' das operações selecionadas'} —
-          {' '}<strong className="font-medium">não</strong> muda com a janela dos gráficos.
-        </p>
+
+        {filtro && (
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-sm text-[var(--text-muted)]">Filtrar por operação:</span>
+            {filtro}
+          </div>
+        )}
       </div>
     </div>
   )

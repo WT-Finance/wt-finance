@@ -81,9 +81,11 @@ interface SliderJanelaProps {
  * Slider de janela ancorado no "hoje": à esquerda quantos meses para trás, à
  * direita quantos para frente, passo de 1 mês.
  *
- * Segue o PADRÃO do slider de horizonte do Fluxo de Caixa (pedido do Yan) pelo
- * primitivo `SliderHorizonte`: rótulo "Horizonte de tempo:" acima, trilho NEUTRO,
- * régua de riscos com marcos semestrais e o valor em texto ao lado.
+ * Segue a GEOMETRIA do slider de horizonte do Fluxo de Caixa (pedido do Yan) pelo
+ * primitivo `SliderHorizonte`: régua de riscos com marcos semestrais e o valor em
+ * texto ao lado. Sem rótulo "Horizonte de tempo:" e com o trilho em DOURADO
+ * (`--brand`) — os dois ajustes pedidos depois de ver a tela; a direção já é dita
+ * pela posição relativa ao "HOJE", então os extremos dizem só "24 meses".
  *
  * São DOIS inputs em vez de um controle de duas alças: cada lado é independente e
  * assim teclado/leitor de tela funcionam de graça. O lado do passado é `espelhado`
@@ -93,15 +95,14 @@ interface SliderJanelaProps {
 function SliderJanela({ atras, frente, maxAtras, maxFrente, onAtras, onFrente }: SliderJanelaProps) {
   return (
     <div className="px-2 py-3 my-1 border-y border-zinc-100">
-      <p className="text-2xs font-medium text-zinc-400 mb-1.5">Horizonte de tempo:</p>
       <div className="flex items-start gap-3">
-        <span className="text-2xs text-zinc-500 tabular-nums w-[104px] shrink-0 text-right pt-0.5">
-          {plural(atras, 'mês atrás', 'meses atrás')}
+        <span className="text-2xs text-zinc-500 tabular-nums w-[72px] shrink-0 text-right pt-0.5">
+          {plural(atras, 'mês', 'meses')}
         </span>
         <SliderHorizonte
           className="flex-1 min-w-[120px]"
           valor={atras} max={maxAtras} onChange={onAtras}
-          maiores={MARCOS} espelhado
+          maiores={MARCOS} espelhado corTrilho="var(--brand)"
           ariaLabel="Meses para trás na janela dos gráficos"
           ariaValueText={plural(atras, 'mês atrás', 'meses atrás')}
         />
@@ -114,12 +115,12 @@ function SliderJanela({ atras, frente, maxAtras, maxFrente, onAtras, onFrente }:
         <SliderHorizonte
           className="flex-1 min-w-[120px]"
           valor={frente} max={maxFrente} onChange={onFrente}
-          maiores={MARCOS}
+          maiores={MARCOS} corTrilho="var(--brand)"
           ariaLabel="Meses para frente na janela dos gráficos"
           ariaValueText={plural(frente, 'mês à frente', 'meses à frente')}
         />
-        <span className="text-2xs text-zinc-500 tabular-nums w-[104px] shrink-0 pt-0.5">
-          {plural(frente, 'mês à frente', 'meses à frente')}
+        <span className="text-2xs text-zinc-500 tabular-nums w-[72px] shrink-0 pt-0.5">
+          {plural(frente, 'mês', 'meses')}
         </span>
       </div>
     </div>
@@ -132,9 +133,8 @@ interface Props {
 }
 
 export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
-  const [atras,     setAtras]     = useState(JANELA_PADRAO_ATRAS)
-  const [frente,    setFrente]    = useState(JANELA_PADRAO_FRENTE)
-  const [invertida, setInvertida] = useState(false)
+  const [atras,  setAtras]  = useState(JANELA_PADRAO_ATRAS)
+  const [frente, setFrente] = useState(JANELA_PADRAO_FRENTE)
 
   // O fallback `?? []` fica DENTRO do useMemo: como literal na dependência ele
   // criaria um array novo a cada render e o memo nunca seguraria — o slider
@@ -150,10 +150,11 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
   const atrasEfetivo  = idxHoje >= 0 ? idxHoje : Math.max(0, pontos.length - 1)
   const frenteEfetivo = idxHoje >= 0 ? pontos.length - 1 - idxHoje : 0
 
-  const dadosMensais = useMemo(
-    () => pontos.map(p => ({ ...p, saida_plot: invertida ? p.saida_mes : -p.saida_mes })),
-    [pontos, invertida],
-  )
+  // v5.4.2 (ajuste do Yan): as saídas vão SEMPRE para cima do eixo, lado a lado com
+  // as entradas — o botão "Inverter saídas" saiu. Consequência no eixo Y: a metade
+  // negativa agora só abriga a LINHA de resultado, então o eixo deixou de poder
+  // mostrar valor absoluto (`abs: false` abaixo). Com as saídas descendo, o sinal
+  // vinha da direção da barra; agora só o rótulo pode dizer que é negativo.
 
   if (!pontos.length) {
     return (
@@ -168,7 +169,7 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       {/* Cabeçalho — sem os totais: eles vivem no card próprio acima (M2). */}
-      <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="mb-4">
         <div className="flex items-baseline gap-2 flex-wrap">
           <h2 className="text-base font-semibold text-[var(--text-primary)]">
             Fluxo de Caixa{operacaoLabel ? ` — ${operacaoLabel}` : ''}
@@ -177,21 +178,15 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
             {rotuloJanela(atrasEfetivo, frenteEfetivo)}
           </span>
         </div>
-        <button
-          onClick={() => setInvertida(v => !v)}
-          className="text-xs text-zinc-500 border border-zinc-200 rounded px-2.5 py-1 hover:bg-zinc-50 active:bg-zinc-100 transition-colors shrink-0"
-        >
-          ⇅ Inverter saídas
-        </button>
       </div>
 
       {/* ── Gráfico 1: movimento do MÊS ─────────────────────────────────────── */}
-      <p className="text-xs text-[var(--text-subtle)] mb-1">Movimento do mês</p>
+      <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Movimento do mês</h3>
       <ResponsiveContainer width="100%" height={260}>
-        <ComposedChart data={dadosMensais} margin={chartMargins.default} barCategoryGap="25%" barGap={0}>
+        <ComposedChart data={pontos} margin={chartMargins.default} barCategoryGap="25%" barGap={0}>
           {ChartGrid()}
           {ChartXAxisMes('mes')}
-          {ChartYAxisBRL({ width: 80, abs: true })}
+          {ChartYAxisBRL({ width: 80, abs: false })}
           {ChartZeroLine()}
           <Tooltip
             content={props => (
@@ -199,26 +194,27 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
                 {...props}
                 formatter={(value, name) => {
                   const v = value as number
-                  if (name === 'entrada_mes')  return [fmtBRL(v), 'Entrada']
-                  if (name === 'saida_plot')   return [fmtBRL(Math.abs(v)), 'Saída']
+                  if (name === 'entrada_mes') return [fmtBRL(v), 'Entrada']
+                  if (name === 'saida_mes')   return [fmtBRL(v), 'Saída']
                   return [fmtBRL(v), 'Resultado']
                 }}
               />
             )}
           />
-          <Bar dataKey="entrada_mes" name="entrada_mes" radius={barRadius.top} maxBarSize={barSizes.column}>
-            {dadosMensais.map((p, i) => (
+          <Bar dataKey="entrada_mes" name="entrada_mes" radius={barRadius.top} maxBarSize={barSizes.column} isAnimationActive={false}>
+            {pontos.map((p, i) => (
               <Cell key={i} fill={COR_ENTRADA} fillOpacity={p.eh_futuro ? FUTURE_OPACITY : 1} />
             ))}
           </Bar>
-          <Bar dataKey="saida_plot" name="saida_plot" radius={barRadius.top} maxBarSize={barSizes.column}>
-            {dadosMensais.map((p, i) => (
+          <Bar dataKey="saida_mes" name="saida_mes" radius={barRadius.top} maxBarSize={barSizes.column} isAnimationActive={false}>
+            {pontos.map((p, i) => (
               <Cell key={i} fill={COR_SAIDA} fillOpacity={p.eh_futuro ? FUTURE_OPACITY : 1} />
             ))}
           </Bar>
           <Line
             type="monotone" dataKey="resultado_mes" name="resultado_mes"
             stroke={COR_RESULTADO} strokeWidth={2}
+            isAnimationActive={false}
             dot={props => {
               const { cx, cy, payload } = props as { cx: number; cy: number; payload: { resultado_mes: number } }
               if (payload.resultado_mes < 0) {
@@ -240,9 +236,10 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
       />
 
       {/* ── Gráfico 2: ACUMULADO (reiniciado na borda da janela) ────────────── */}
-      <p className="text-xs text-[var(--text-subtle)] mb-1">
-        Acumulado na janela <span className="text-[var(--text-muted)]">— reinicia na borda esquerda</span>
-      </p>
+      <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">
+        Acumulado na janela{' '}
+        <span className="text-[13px] font-normal text-[var(--text-muted)]">— reinicia na borda esquerda</span>
+      </h3>
       <ResponsiveContainer width="100%" height={240}>
         <ComposedChart data={pontos} margin={chartMargins.withRightLabel}>
           {ChartGrid()}
@@ -279,12 +276,12 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
               label={{ value: 'Hoje', position: 'insideTopLeft', fontSize: 10, fill: chartColors.axisTick }}
             />
           )}
-          <Bar dataKey="entrada_acum" name="entrada_acum" radius={barRadius.top}>
+          <Bar dataKey="entrada_acum" name="entrada_acum" radius={barRadius.top} isAnimationActive={false}>
             {pontos.map((p, i) => (
               <Cell key={i} fill={COR_ENTRADA} fillOpacity={p.eh_futuro ? FUTURE_OPACITY : 1} />
             ))}
           </Bar>
-          <Bar dataKey="saida_acum" name="saida_acum" radius={barRadius.top}>
+          <Bar dataKey="saida_acum" name="saida_acum" radius={barRadius.top} isAnimationActive={false}>
             {pontos.map((p, i) => (
               <Cell key={i} fill={COR_SAIDA} fillOpacity={p.eh_futuro ? FUTURE_OPACITY : 1} />
             ))}

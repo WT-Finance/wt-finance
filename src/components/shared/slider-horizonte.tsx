@@ -12,8 +12,10 @@
 // ui-design-system; registrado no out-briefing).
 //
 // Duas escolhas herdadas da referência que NÃO são estéticas:
-//   • `accentColor: var(--text-secondary)` — o trilho é NEUTRO, não `var(--brand)`.
-//     O slider é controle de leitura, não realce de marca.
+//   • O trilho é NEUTRO por DEFAULT (`--text-secondary`) — slider é controle de
+//     leitura, não realce de marca. Quem quiser a cor da aba passa `corTrilho`
+//     (Weddings usa `var(--brand)` por decisão do Yan); o default protege um
+//     call-site futuro de herdar dourado sem querer.
 //   • `posTick` compensa a MEIA-LARGURA do thumb (~7px): o centro do thumb nunca
 //     alcança as bordas do trilho, então um risco posicionado em `left: f%` puro
 //     fica progressivamente fora de fase com o valor. Sem a compensação a régua
@@ -41,12 +43,14 @@ interface Props {
   ariaLabel: string
   ariaValueText?: string
   className?: string
+  /** Cor do trilho/thumb. Default: neutro (`--text-secondary`). */
+  corTrilho?: string
 }
 
 export default function SliderHorizonte({
   valor, max, onChange, min = 0,
   passoMenor, maiores = [], espelhado = false,
-  ariaLabel, ariaValueText, className,
+  ariaLabel, ariaValueText, className, corTrilho = 'var(--text-secondary)',
 }: Props) {
   const menor = passoMenor ?? Math.max(1, Math.round((max - min) / 18))
   const qtd   = Math.floor((max - min) / menor)
@@ -60,7 +64,7 @@ export default function SliderHorizonte({
         value={Math.min(Math.max(valor, min), max)}
         onChange={e => onChange(Number(e.target.value))}
         className="w-full cursor-pointer"
-        style={{ accentColor: 'var(--text-secondary)' }}
+        style={{ accentColor: corTrilho }}
         aria-label={ariaLabel}
         aria-valuetext={ariaValueText}
       />

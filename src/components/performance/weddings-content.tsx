@@ -127,24 +127,23 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           filtro → totais → card único dos gráficos. */}
       <TopSection titulo="Fluxo de Caixa">
 
-        <div className="flex items-center justify-between mb-6">
-          <span className="text-sm text-[var(--text-muted)]">Filtrar por operação:</span>
-          <Suspense>
-            <DropdownOperacao
-              operacoes={operacoesList}
-              selecionadas={operacoes}
-            />
-          </Suspense>
-        </div>
-
         {/* Compromisso TOTAL em aberto — do escopo filtrado, não da janela do slider
             (a RPC calcula os dois totais sem recorte de data; medido idêntico em
-            janelas diferentes). */}
+            janelas diferentes). O filtro vive DENTRO deste card: vale para ele e
+            para o card dos gráficos, e solto no fundo da página não dizia a quê
+            pertencia. */}
         <div className="mb-6">
           <FluxoCaixaTotaisCard
             totalAReceber={acumulado?.total_a_receber}
             totalAPagar={acumulado?.total_a_pagar}
-            operacaoLabel={operacaoLabel}
+            filtro={
+              <Suspense>
+                <DropdownOperacao
+                  operacoes={operacoesList}
+                  selecionadas={operacoes}
+                />
+              </Suspense>
+            }
           />
         </div>
 
