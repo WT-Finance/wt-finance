@@ -285,6 +285,14 @@ O layout precisa funcionar em larguras pequenas e grandes. Padrões que já cust
 - **Cards num grid de altura igual:** o card é `flex flex-col h-full`; o rodapé (ex.:
   Receita/Margem) usa `mt-auto` — para as linhas alinharem entre cards mesmo quando o
   valor principal quebra em 2 linhas numa tela estreita. Não confie em altura implícita.
+- **Valores lado a lado num flex precisam de `shrink-0`:** item de flex encolhe **abaixo do
+  próprio conteúdo** por default (`flex-shrink: 1`), e aí um valor monetário de 8 dígitos
+  **invade o vizinho** — dois KPIs numa linha viram um borrão ilegível. `gap` não resolve:
+  o gap é respeitado e o conteúdo transborda. Em card de KPIs lado a lado, cada item leva
+  `shrink-0` (com `flex-wrap` no container, para empilhar em tela estreita em vez de
+  sobrepor). **Nenhum gate pega isso** — `tsc`, lint, build e a suíte inteira passam com a
+  sobreposição na tela; só a conferência visual encontra. (v5.4.2, card de totais de
+  Weddings.)
 - **Tabela em container estreito:** prefira `table-fixed w-full` + `truncate` nas colunas
   flexíveis (evita scroll horizontal indesejado). Em card compacto, reduza colunas — o
   detalhe completo fica no drawer; evite `whitespace-nowrap` em texto largo. (Tabela

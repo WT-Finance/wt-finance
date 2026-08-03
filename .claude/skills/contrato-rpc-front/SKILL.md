@@ -148,6 +148,37 @@ Regra prática: ao adicionar um campo, liste as camadas explicitamente e confira
 (Custou caro: regra de data por campo em Solicitações precisou de 5 camadas + o `SELECT`
 do loop de `criar_solicitacao` corrigido — v4.19.0, ADR-0118.)
 
+## 4b. Coluna DERIVADA no cliente que precisa ser ORDENÁVEL exige chave no SQL
+
+Uma coluna nova calculada a partir de campos que a RPC já devolve é, com razão, derivada
+no **cliente** — nenhum número existente muda e não há ida ao banco. Mas se a lista
+**pagina no servidor**, ordenar essa coluna **só no cliente reordena apenas a página
+visível** enquanto o cabeçalho anuncia ordenação global. Numa tabela de 144 registros
+paginada de 10 em 10, o usuário vê "o maior" e ele não é o maior de nada.
+
+Pior: a whitelist de `ORDER BY` das RPCs de listagem deste projeto tem a forma
+`CASE p_ordenar_por WHEN … ELSE '<coluna default>' END`. Um valor fora da whitelist
+**não dá erro** — cai no `ELSE` e ordena por outra coisa **em silêncio**.
+
+**Regra:** coluna derivada + paginação no servidor ⇒ a chave de ordenação vai para o SQL
+(migration aditiva; `CREATE OR REPLACE` basta quando a assinatura não muda), e o valor
+exibido continua derivado no cliente. As duas fórmulas têm de ser **a mesma expressão** —
+se divergirem, a lista ordena por um número diferente do que mostra, e **nenhum gate pega
+isso**. Vale reusar no SQL a expressão já existente da coluna-mãe (inclusive `ROUND` e
+ramos `ELSE 0`) em vez de reescrever a conta.
+
+A chave de ordenação **não precisa entrar no payload**: ficando só na CTE interna, fora do
+`jsonb_build_object`, o shape do retorno não muda e nenhum schema Zod é tocado. Ao
+adicionar o valor novo ao enum de `p_ordenar_por`, lembre que ele atravessa **UI →
+querystring → Zod da rota → parâmetro da RPC → CASE do SQL** (o problema de camadas da §4).
+
+Ao substituir o corpo de uma RPC de listagem para isso, **verifique via REST que TODAS as
+chaves de ordenação antigas continuam funcionando** — o `CREATE OR REPLACE` reescreve a
+função inteira, e um erro de transcrição quebraria uma ordenação que ninguém está olhando.
+
+(Custou uma migration não prevista na v5.4.2: a "Margem (a.a.)" da Lista de Operações de
+Weddings. O briefing supunha que bastaria computar no cliente.)
+
 ## 5. Duas RPCs vizinhas na mesma tela precisam CONCORDAR — vira caso de contrato
 
 Reuso de RPC é a preferência do projeto, mas **granularidade e assinatura compatíveis não

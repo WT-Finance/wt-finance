@@ -1,6 +1,6 @@
 ---
 name: nova-versao
-description: Ritual de abertura de versão do Janus — cria a worktree da versão a partir de origin/main, monta o ambiente (symlinks + supabase/.temp), posiciona as cópias provisórias 0950–0954 quando a versão toca banco, copia o briefing untracked para dentro da worktree e o commita (1º commit da versão), carrega a Carta do Orquestrador e entra em plan mode para validar o briefing contra o repo. Invocar manualmente como /nova-versao <vX-Y> no início de toda versão — Rota A, Rota B, e também Rota C (patch), que usa só os passos 1-3 e 6.1/6.3.
+description: Ritual de abertura de versão do Janus — cria a worktree da versão a partir de origin/main, monta o ambiente (symlinks + supabase/.temp), copia o briefing untracked para dentro da worktree e o commita (1º commit da versão), carrega a Carta do Orquestrador e entra em plan mode para validar o briefing contra o repo. Invocar manualmente como /nova-versao <vX-Y> no início de toda versão — Rota A, Rota B, e também Rota C (patch), que usa só os passos 1-3 e 5.1/5.3.
 disable-model-invocation: true
 ---
 
@@ -14,11 +14,10 @@ slug (`v5-4-1-nome-curto`). Sem argumento → perguntar antes de prosseguir.
 | Passo | Rota A (produto) | Rota B (técnica) | Rota C (patch) |
 |---|---|---|---|
 | 1-3 sincronizar / worktree / ambiente | sim | sim | **sim** |
-| 4 cópias 0950–0954 | só se tocar banco | só se tocar banco | só se tocar banco |
-| 5 briefing no 1º commit | sim | se houver briefing | **não existe** — o escopo é o prompt |
-| 6.1 WORKING-CONTEXT + 6.3 Carta | sim | sim | **sim** |
-| 6.2 ler o briefing | sim | se houver | não se aplica |
-| 6.4 plan mode | sim | sim (o plano vira spec commitada) | **não** — vai direto, com gates |
+| 4 briefing no 1º commit | sim | se houver briefing | **não existe** — o escopo é o prompt |
+| 5.1 WORKING-CONTEXT + 5.3 Carta | sim | sim | **sim** |
+| 5.2 ler o briefing | sim | se houver | não se aplica |
+| 5.4 plan mode | sim | sim (o plano vira spec commitada) | **não** — vai direto, com gates |
 
 Na **Rota C** o prompt do usuário É a especificação: não há `.md` em `docs/briefings/` para copiar
 nem briefing para validar contra o repo em plan mode, e parar para pedir aprovação de plano trava
@@ -62,32 +61,7 @@ mkdir -p "$WT/supabase/.temp" && cp "$RAIZ"/supabase/.temp/* "$WT/supabase/.temp
 
 Sem isso faltam dependências, env e o link do Supabase — gates e `npm test` não rodam.
 
-<!-- REMOVER na renumeração pós-v5.3: bloco das cópias 0950–0954 (v5.4.0/PR #191).
-     Quando a v5.4.0 mergear e as provisórias forem renumeradas (+ migration repair),
-     este passo 4 inteiro deixa de existir. -->
-## 4. Posicionar as cópias provisórias 0950–0954 — SÓ se a versão tocar banco
-
-As migrations 0950–0954 estão aplicadas no banco remoto mas só existem na branch da v5.4.0
-(PR #191). Sem as cópias, `npm run db:migrate` acusa drift. **Versão que não roda `db:migrate`
-pula este passo inteiro** — posicionar cópias que ninguém vai usar só cria untracked para esquecer
-de remover antes do merge (v5.3.3 pulou; nada faltou nos gates). Quando for tocar banco,
-posicioná-las como **untracked**:
-
-```bash
-for f in 0950_api_externa_fundacoes_tipos 0951_api_chaves 0952_api_validacao_compartilhada \
-         0953_api_outbox 0954_seed_tipo_abatimento; do
-  git show origin/feat/v5-4-0-api-externa:supabase/migrations/$f.sql > supabase/migrations/$f.sql \
-    || { rm -f supabase/migrations/$f.sql; echo "ERRO: $f não encontrada na branch de origem — PARAR e reportar (não deixar .sql vazio)"; break; }
-done
-```
-
-⚠️ O `|| { rm ...; break; }` é obrigatório: `git show` que falha com a redireção deixaria um
-`.sql` VAZIO na pasta — e o wrapper de migration varreria o arquivo vazio em silêncio.
-
-Regras: aditiva nova roda com `npm run db:migrate -- --aditiva --fora-de-ordem`; as cópias são
-**removidas antes do merge** (`rm supabase/migrations/095[0-4]_*.sql`) — nunca entram em commit.
-
-## 5. Briefing dentro da worktree (1º commit)
+## 4. Briefing dentro da worktree (1º commit)
 
 O briefing `docs/briefings/briefing-<versão>.md` costuma estar **untracked na raiz** — worktree
 não herda untracked. Copiar e commitar (é o que dá histórico ao briefing via PR, sem commit
@@ -101,7 +75,7 @@ git commit -m "docs(<vX-Y>): briefing da versão"
 
 Se o briefing não existir (Rota B/C sem briefing), pular este passo.
 
-## 6. Carregar contexto e validar
+## 5. Carregar contexto e validar
 
 1. Ler `docs/WORKING-CONTEXT.md` (o hook `contexto-sessao` já injeta; se ausente, ler manualmente).
 2. Ler o briefing da versão.
