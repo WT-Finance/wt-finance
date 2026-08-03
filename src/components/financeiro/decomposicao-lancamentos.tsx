@@ -22,11 +22,13 @@
 // PARÊNTESES (fmtContabil) — sinaliza "reduz o total" sem inventar um lado novo.
 
 import { useMemo, useState, type ReactNode } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { fmtBRL } from '@/lib/fmt'
 import { fmtContabil, fmtContabilBRL } from './dre/fmt-contabil'
 import { fluxoColors } from '@/components/charts'
 import { rotuloBloco } from '@/lib/dre/rotulo-bloco'
 import type { DecBloco, DecCategoria } from '@/lib/dre/schemas'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -46,38 +48,21 @@ interface Props {
 
 type Lado = 'entrada' | 'saida'
 
-// ── Paletas dessaturadas (design system) ────────────────────────────────────
-// Entradas: viés verde sage. Saídas: viés terracota/quente. "Outros" sempre o
-// último tom (mais neutro/claro) de cada paleta.
+// ── Cor plana por lado (v5.4.1) ──────────────────────────────────────────────
+// Toda barra de um lado usa UMA cor só — a mesma de `fluxoColors` já usada no título
+// do lado (`corTitulo`): `fluxoColors.entrada` para Entradas, `fluxoColors.saida` para
+// Saídas. A escala anterior (5/7 tons) não comunicava nada — saiu. DUAS EXCEÇÕES,
+// decisão explícita do usuário: COR_OUTROS (o agregado "Outros" mantém um tom
+// dessaturado, por ser composto de vários blocos pequenos) e COR_NAO_CLASSIFICADAS
+// (sinaliza falta de de-para, não é sobre magnitude).
 
-// Endpoints da paleta = tokens via var() (fonte única; mudar o token propaga aqui).
-// Os tons INTERMEDIÁRIOS (sem token correspondente) seguem hex — degradê das barras.
-const PALETA_ENTRADAS = [
-  'var(--positive)',
-  '#7E9658',
-  '#9FB37B',
-  'var(--positive-deep)',
-  'var(--positive-soft)',
-]
-
-const PALETA_SAIDAS = [
-  'var(--negative)',
-  '#B97058',
-  '#C98C6E',
-  'var(--negative-deep)',
-  '#9C7A6A',
-  '#BFA292',
-  'var(--negative-soft)', // 7º tom: hoje INALCANÇÁVEL (MAX_FATIAS=6 ⇒ índices 0..5) —
-                          // "Outros" tem cor própria (COR_OUTROS). Fica como folga se
-                          // MAX_FATIAS subir; NÃO é "a cor de Outros", como dizia antes.
-]
-
-// Nota: `PALETA_ENTRADAS` tem 5 tons e `MAX_FATIAS` é 6, então um 6º bloco de Entradas
-// repetiria a cor do 1º (`i % length`). Na estrutura real o lado das Entradas tem ~4
-// blocos analíticos (ENT_H, RV, RFIN, RNOP), então o caso não acontece hoje; se um dia
-// acontecer, o efeito é só colisão de cor entre duas barras distantes na lista.
-
-const COR_OUTROS = '#B8B2A8' // neutro morno
+// `--text-subtle` (#ACA39A, Pantone Warm Gray 5) é o cinza neutro-QUENTE canônico do DS,
+// da mesma família bege da plataforma. Era um hex cru (`#B8B2A8`) até a v5.4.1: o token
+// que servia já existia e não estava sendo usado, e o lint `wt/no-cor-hardcoded` não pega
+// o caso porque a cor entra por `style={{ background }}`, não como classe (achado MÉDIO do
+// revisor). A diferença de tom é imperceptível e a intenção — "Outros" dessaturado, por ser
+// agregado — fica preservada.
+const COR_OUTROS = 'var(--text-subtle)'
 const COR_NAO_CLASSIFICADAS = 'var(--warning)'
 
 const MAX_FATIAS = 6 // top N blocos; demais (ou < LIMITE_PCT) viram "Outros"
@@ -113,7 +98,6 @@ function montarItensLado(
   blocos: DecBloco[],
   categorias: DecCategoria[],
   lado: Lado,
-  paleta: string[],
 ): { itens: ItemBarra[]; totalLado: number } {
   // O épsilon descarta bloco cujo NET é ~zero — ele não tem lado (nem entrada nem saída)
   // nem comprimento de barra. Não é omissão silenciosa: a tabela da DRE logo acima mostra
@@ -136,11 +120,12 @@ function montarItensLado(
     }
   }
 
-  const itens: ItemBarra[] = principais.map((b, i): ItemBarra => ({
+  const corLado = lado === 'entrada' ? fluxoColors.entrada : fluxoColors.saida
+  const itens: ItemBarra[] = principais.map((b): ItemBarra => ({
     key: b.chave,
     label: rotuloBloco(b.rotulo),
     valor: Math.abs(b.valor),
-    cor: paleta[i % paleta.length],
+    cor: corLado,
     tipo: 'bloco',
   }))
 
@@ -209,16 +194,6 @@ function montarDrill(
   return { titulo, itens, maior }
 }
 
-// ── Ícone de voltar (chevron) ─────────────────────────────────────────────────
-
-function IconeVoltar() {
-  return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 18l-6-6 6-6" />
-    </svg>
-  )
-}
-
 // ── Um lado (Entradas OU Saídas): barras + Total + drill ──────────────────────
 
 function LadoDecomposicao({
@@ -226,28 +201,30 @@ function LadoDecomposicao({
   lado,
   blocos,
   categorias,
-  paleta,
 }: {
   titulo: string
   lado: Lado
   blocos: DecBloco[]
   categorias: DecCategoria[]
-  paleta: string[]
 }) {
   const [selecionado, setSelecionado] = useState<string | null>(null)
 
   const { itens, totalLado } = useMemo(
-    () => montarItensLado(blocos, categorias, lado, paleta),
-    [blocos, categorias, lado, paleta],
+    () => montarItensLado(blocos, categorias, lado),
+    [blocos, categorias, lado],
   )
 
   const maiorDoLado = useMemo(() => itens.reduce((m, it) => Math.max(m, it.valor), 0), [itens])
 
-  const itemSel = selecionado ? itens.find(it => it.key === selecionado) ?? null : null
-
-  const drill = useMemo(
-    () => (itemSel ? montarDrill(itemSel, blocos, categorias, lado) : null),
-    [itemSel, blocos, categorias, lado],
+  // Drill de CADA item, não só o do aberto. Motivo: a cortina anima a ALTURA, e o
+  // conteúdo precisa continuar montado enquanto ela FECHA — computando só o do item
+  // selecionado, ele desaparecia no mesmo render em que `ativo` vira false e a cortina
+  // colapsava uma caixa vazia (a abertura animava bonito, o fechamento piscava). É a
+  // mesma escolha do TopSection, que mantém o conteúdo montado no estado fechado.
+  // Custo: um filter+sort por barra (≤7 barras × ~130 categorias), memoizado.
+  const drills = useMemo(
+    () => new Map(itens.map(it => [it.key, montarDrill(it, blocos, categorias, lado)])),
+    [itens, blocos, categorias, lado],
   )
 
   const corTitulo = lado === 'entrada' ? fluxoColors.entrada : fluxoColors.saida
@@ -263,51 +240,128 @@ function LadoDecomposicao({
   }
 
   return (
-    <div>
-      <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
+    // Coluna de altura TRAVADA (v5.4.1) — os dois lados (Entradas/Saídas) recebem a
+    // MESMA `h-full max-h-[420px]` (o pai é `grid items-stretch`, então `h-full`
+    // preenche a linha do grid; o teto comum é o que faz os dois Totais caírem na
+    // MESMA linha horizontal, tenha o lado 3 barras ou 8). 420px cabe ~6-8 barras
+    // (rótulo+trilho, ~44px cada) sem rolar — só estoura com drill aberto num lado
+    // com muitas barras. Só a LISTA (ScrollAutoHide, flex-1 min-h-0) rola; o título
+    // e o Total são rodapé/topo FIXOS, fora da região rolável.
+    <div className="flex flex-col h-full max-h-[420px]">
+      <p className="text-xs mb-2 font-medium shrink-0" style={{ color: corTitulo }}>{titulo}</p>
 
-      <div className="space-y-2.5">
+      {/* `pr-3.5` = o gutter da DIREITA no limite do scroll, mesma convenção da tabela da
+          DRE: o thumb do ScrollAutoHide é `absolute right-1` (6px de trilho a 4px da
+          borda) e, sem folga, flutuaria POR CIMA dos valores alinhados à direita. Os 14px
+          daqui menos os 6px do `-mx-1.5` do botão da barra deixam ~8px livres. Vale para os
+          dois lados igualmente, então não desalinha nada. */}
+      <ScrollAutoHide contentClassName="space-y-2.5 pr-3.5">
         {itens.map(it => {
           const ativo = selecionado === it.key
+          const drill = drills.get(it.key)
           const naoClassif = it.tipo === 'nao_classificadas'
           const pctBarra = maiorDoLado > 0 ? (it.valor / maiorDoLado) * 100 : 0
           const pctTotal = totalLado > 0 ? (it.valor / totalLado) * 100 : 0
           return (
-            <button
-              key={it.key}
-              type="button"
-              onClick={() => toggle(it.key)}
-              className={`w-full text-left rounded-md px-1.5 py-1 -mx-1.5 transition-colors ${
-                ativo ? 'bg-zinc-100' : 'hover:bg-zinc-50'
-              }`}
-            >
-              <div className="flex items-baseline justify-between gap-2 mb-1">
-                <span className={`text-2xs truncate min-w-0 ${naoClassif ? 'text-warning-deep' : 'text-zinc-700'}`}>
-                  {it.label}
-                </span>
-                <span className="flex items-baseline gap-1.5 shrink-0">
-                  <span className="text-3xs text-zinc-400 tabular-nums">{pctTotal.toFixed(1)}%</span>
-                  <span
-                    className="text-2xs font-medium tabular-nums text-zinc-800"
-                    title={fmtContabilBRL(it.valor)}
-                  >
-                    {fmtBRL(it.valor)}
+            <div key={it.key}>
+              <button
+                type="button"
+                onClick={() => toggle(it.key)}
+                aria-expanded={ativo}
+                className={`w-full text-left rounded-md px-1.5 py-1 -mx-1.5 transition-colors ${
+                  ativo ? 'bg-zinc-100' : 'hover:bg-zinc-50'
+                }`}
+              >
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                  <span className="flex items-center gap-1 min-w-0">
+                    <ChevronRight
+                      size={13}
+                      className={`shrink-0 text-zinc-400 transition-transform ${ativo ? 'rotate-90' : ''}`}
+                    />
+                    <span className={`text-2xs truncate min-w-0 ${naoClassif ? 'text-warning-deep' : 'text-zinc-700'}`}>
+                      {it.label}
+                    </span>
                   </span>
-                </span>
+                  <span className="flex items-baseline gap-1.5 shrink-0">
+                    <span className="text-3xs text-zinc-400 tabular-nums">{pctTotal.toFixed(1)}%</span>
+                    <span
+                      className="text-2xs font-medium tabular-nums text-zinc-800"
+                      title={fmtContabilBRL(it.valor)}
+                    >
+                      {fmtBRL(it.valor)}
+                    </span>
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${pctBarra}%`, background: it.cor, opacity: !selecionado || ativo ? 1 : 0.4 }}
+                  />
+                </div>
+              </button>
+
+              {/* Cortina: o drill do item abre logo abaixo da própria barra. Mesma mecânica
+                  de `top-section.tsx` — anima `grid-template-rows` (a altura, não o conteúdo
+                  deslizando); `inert` no fechado remove o conteúdo do tab-order/leitor de
+                  tela sem desmontar (achado ALTO do revisor, v5.1.9). O conteúdo fica
+                  MONTADO nos dois estados: é o que faz o FECHAMENTO animar igual à abertura.
+                  ⚠️ Nada de `position:absolute` aqui dentro — o `overflow-hidden` do clip
+                  corta (risco MÉDIO registrado na v5.1.9). As dicas de valor abaixo são
+                  atributo `title` nativo, que não vive no DOM. */}
+              <div
+                inert={!ativo}
+                className="grid transition-[grid-template-rows] duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+                style={{ gridTemplateRows: ativo ? '1fr' : '0fr' }}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  {drill && (
+                    <div className="mt-2 pt-2 pl-1 border-t border-zinc-100">
+                      {/* Sem botão "voltar" (v5.4.1): a própria barra — que já tem o
+                          chevron e `aria-expanded` — fecha o drill ao ser clicada de
+                          novo; o botão redundante saiu do cabeçalho, que agora é só o
+                          título (`justify-between` de um filho só não faz sentido). */}
+                      <p className="text-2xs font-medium text-zinc-700 truncate mb-2">{drill.titulo}</p>
+                      {drill.itens.length === 0 ? (
+                        <p className="text-2xs text-zinc-400">Sem itens no período.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {drill.itens.map(d => {
+                            const larguraBarra = drill.maior > 0 ? (Math.abs(d.valor) / drill.maior) * 100 : 0
+                            return (
+                              <div key={d.key}>
+                                <div className="flex justify-between items-baseline mb-0.5">
+                                  <span className="text-2xs text-zinc-600 truncate pr-2 min-w-0">
+                                    {d.label || '(sem categoria)'}
+                                  </span>
+                                  <span className="text-2xs font-medium text-zinc-800 tabular-nums shrink-0">
+                                    {fmtContabil(d.valor)}
+                                  </span>
+                                </div>
+                                <div className="h-[3px] rounded-full bg-zinc-100 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{ width: `${larguraBarra}%`, background: it.cor, opacity: 0.55 }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${pctBarra}%`, background: it.cor, opacity: !selecionado || ativo ? 1 : 0.4 }}
-                />
-              </div>
-            </button>
+            </div>
           )
         })}
-      </div>
+      </ScrollAutoHide>
 
-      {/* Total do lado (inclui as não classificadas) */}
-      <div className="flex items-baseline justify-between gap-2 mt-3 pt-2 border-t border-zinc-100">
+      {/* Total do lado (inclui as não classificadas) — rodapé FIXO, fora da região
+          rolável: não se desloca nem com a expansão do drill nem com o tamanho da
+          lista (a `ScrollAutoHide` acima é que cresce/rola). `shrink-0` garante que
+          o flex-col nunca o encolha para abrir espaço para a lista. */}
+      <div className="shrink-0 flex items-baseline justify-between gap-2 mt-3 pt-2 border-t border-zinc-100">
         <span className="text-2xs font-semibold" style={{ color: corTitulo }}>Total</span>
         <span
           className="text-2xs font-semibold tabular-nums"
@@ -317,50 +371,6 @@ function LadoDecomposicao({
           {fmtBRL(totalLado)}
         </span>
       </div>
-
-      {/* Drill-down do item selecionado */}
-      {itemSel && drill && (
-        <div className="mt-3 border-t border-zinc-100 pt-2.5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-2xs font-medium text-zinc-700 truncate pr-2">{drill.titulo}</p>
-            <button
-              type="button"
-              onClick={() => setSelecionado(null)}
-              className="shrink-0 inline-flex items-center gap-1 text-2xs text-zinc-400 hover:text-zinc-600 transition-colors"
-            >
-              <IconeVoltar />
-              voltar
-            </button>
-          </div>
-          {drill.itens.length === 0 ? (
-            <p className="text-2xs text-zinc-400">Sem itens no período.</p>
-          ) : (
-            <div className="space-y-2">
-              {drill.itens.map(d => {
-                const larguraBarra = drill.maior > 0 ? (Math.abs(d.valor) / drill.maior) * 100 : 0
-                return (
-                  <div key={d.key}>
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="text-2xs text-zinc-600 truncate pr-2 min-w-0">
-                        {d.label || '(sem categoria)'}
-                      </span>
-                      <span className="text-2xs font-medium text-zinc-800 tabular-nums shrink-0">
-                        {fmtContabil(d.valor)}
-                      </span>
-                    </div>
-                    <div className="h-[3px] rounded-full bg-zinc-100 overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${larguraBarra}%`, background: itemSel.cor, opacity: 0.55 }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -375,8 +385,8 @@ export default function DecomposicaoLancamentos({ blocos, categorias, slotPills,
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
-        <h2 className="text-[15px] font-semibold text-text-primary">Decomposição dos Lançamentos</h2>
+      <div className="mb-8">
+        <h2 className="text-[15px] font-semibold text-text-primary mb-3">Decomposição dos Lançamentos</h2>
         {slotPills}
       </div>
 
@@ -387,20 +397,18 @@ export default function DecomposicaoLancamentos({ blocos, categorias, slotPills,
       ) : semDados ? (
         <p className="text-xs text-zinc-400">Sem lançamentos realizados no período.</p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 items-stretch">
           <LadoDecomposicao
             titulo="Entradas"
             lado="entrada"
             blocos={blocos}
             categorias={categorias}
-            paleta={PALETA_ENTRADAS}
           />
           <LadoDecomposicao
             titulo="Saídas"
             lado="saida"
             blocos={blocos}
             categorias={categorias}
-            paleta={PALETA_SAIDAS}
           />
         </div>
       )}

@@ -8,6 +8,7 @@ import { parseRpc } from '@/lib/schemas-rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { hojeSP } from '@/lib/fmt'
 import { rpcDre } from '@/lib/dre/rpc-dre'
+import { buscarUltimaCargaMovimentacao } from '@/lib/dre/ultima-carga-movimentacao'
 import {
   dreMensalSchema,
   decomposicaoBlocoSchema,
@@ -19,6 +20,7 @@ import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import DecomposicaoLancamentos from '@/components/financeiro/decomposicao-lancamentos'
 import TopSection from '@/components/shared/top-section'
 import TabelaDre from '@/components/financeiro/dre/tabela-dre'
+import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 
 // DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
@@ -89,11 +91,20 @@ export default async function DrePage({
   // item — NUNCA `.catch()` na chamada. O que `rpcDre` devolve é o *thenable* do Supabase
   // (um builder com `.then`), não uma Promise: `.catch` não existe nele e estoura
   // "rpcDre(...).catch is not a function" em RUNTIME, sem o `tsc` reclamar.
+  //
+  // O frescor da base (`buscarUltimaCargaMovimentacao`) corre no MESMO tempo de espera,
+  // mas FORA do `allSettled` acima: ele devolve `string | null`, não um `RpcLike`, e
+  // enfiá-lo naquele array quebraria a indexação posicional que casa `anosDre[i]` com
+  // `resultados[i]`. O `Promise.all` externo é seguro porque essa função é fail-safe por
+  // construção (try/catch → `null`): ela nunca rejeita, então não derruba as outras.
   const empty: RpcLike = { data: null, error: null }
-  const resultados = await Promise.allSettled([
-    ...anosDre.map(a => rpcDre(db, 'get_dre_mensal', { p_ano: a })),
-    rpcDre(db, 'get_decomposicao_bloco', { p_from: from, p_to: to }),
-  ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty)))
+  const [resultados, ultimaCargaMovimentacao] = await Promise.all([
+    Promise.allSettled([
+      ...anosDre.map(a => rpcDre(db, 'get_dre_mensal', { p_ano: a })),
+      rpcDre(db, 'get_decomposicao_bloco', { p_from: from, p_to: to }),
+    ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty))),
+    buscarUltimaCargaMovimentacao(),
+  ])
 
   const dreAnos = new Map(
     anosDre.map((a, i) => [a, parseRpc(dreMensalSchema, resultados[i], `get_dre_mensal(${a})`)]),
@@ -176,11 +187,11 @@ export default async function DrePage({
           <TabelaDre
             dados={dre}
             ano={ano}
-            anoCorrente={anoCorrente}
             anosDisponiveis={anosDisponiveis}
             anosSeguintes={anosSeguintes}
             consolidadoAnos={consolidadoAnos}
             mesJanela={mesJanela}
+            ultimaCargaMovimentacao={ultimaCargaMovimentacao}
             slotAcoes={
               <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
                 <SquarePen size={13} />
@@ -188,6 +199,13 @@ export default async function DrePage({
               </Link>
             }
           />
+
+          {/* Resumo Executivo — CARD PRÓPRIO desde a v5.4.1, irmão do card da DRE e não
+              mais um bloco dentro dele. Ele nunca dependeu de `dre` (o ano NAVEGADO), só
+              de `consolidadoAnos`; morando dentro da TabelaDre precisava ser repetido nos
+              dois ramos de render dela e sumia junto num ramo que não era dele.
+              A ÂNCORA é `anoCorrente`, de propósito distinta do `ano` da pill acima. */}
+          <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
 
           <DecomposicaoLancamentos
             blocos={dec?.blocos ?? []}

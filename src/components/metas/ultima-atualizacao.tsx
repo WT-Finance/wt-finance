@@ -16,7 +16,8 @@ import { sincronizacaoAtrasada } from '@/lib/metas/sync-atraso'
 // Começa NEUTRO no 1º render (o servidor não conhece o "agora" do cliente → sem mismatch de
 // hidratação) e reavalia no efeito.
 //
-// Usado em: Acompanhamento (/metas), Comparação (/metas/comparacao) e Modo TV (/metas/tv).
+// Usado em: Acompanhamento (/metas), Comparação (/metas/comparacao), Modo TV (/metas/tv)
+// e — com a vigília DESLIGADA — o card da DRE (v5.4.1, ver `vigiarAtraso`).
 
 interface Props {
   /** timestamptz da última sincronização (ISO). Nulo → não renderiza nada. */
@@ -30,6 +31,14 @@ interface Props {
   corNeutra?: string
   /** Tamanho do ícone (px). Default 13 (rótulos pequenos); TV usa ~18. */
   iconSize?: number
+  /** Vigiar o atraso da sincronização (default `true` — o comportamento das telas de Metas).
+   *  `false` = o rótulo é só a data, sempre neutra, sem timer.
+   *
+   *  O limite de 45min embutido em `sincronizacaoAtrasada` é a régua do CRON do Monde, que
+   *  avança a cada ~15min. Para uma fonte de cadência HUMANA — o upload de Lançamentos por
+   *  Movimentação, que a controladoria sobe de tempos em tempos — essa régua acusaria atraso
+   *  quase sempre, e um alerta que fica vermelho o tempo todo não é alerta, é ruído. */
+  vigiarAtraso?: boolean
 }
 
 export default function UltimaAtualizacao({
@@ -38,16 +47,17 @@ export default function UltimaAtualizacao({
   className = '',
   corNeutra = 'text-[var(--text-muted)]',
   iconSize = 13,
+  vigiarAtraso = true,
 }: Props) {
   const [atrasada, setAtrasada] = useState(false)
 
   useEffect(() => {
-    if (!iso) return
+    if (!iso || !vigiarAtraso) return
     const avaliar = () => setAtrasada(sincronizacaoAtrasada(iso, Date.now()))
     avaliar()
     const id = setInterval(avaliar, 30_000)
     return () => clearInterval(id)
-  }, [iso])
+  }, [iso, vigiarAtraso])
 
   if (!iso) return null
 

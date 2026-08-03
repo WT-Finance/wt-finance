@@ -35,6 +35,43 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.4.1',
+    data: '2026-08-03T13:25', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'O Resumo Executivo do Demonstrativo virou um quadro próprio e passou a ter a mesma leitura ' +
+          'da tabela: mesmo cabeçalho, valores em formato contábil e verde/vermelho conforme o sinal. ' +
+          'Antes os dois blocos mostravam os mesmos números com aparências diferentes, o que dava a ' +
+          'impressão de virem de fontes distintas. As colunas de variação agora dizem quais anos ' +
+          'comparam, no Resumo e na visão Consolidado.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A Decomposição dos Lançamentos ficou mais direta: ao clicar numa barra, a abertura acontece ' +
+          'logo abaixo dela — antes o detalhamento aparecia no rodapé do painel, longe do que havia sido ' +
+          'clicado. As cores das barras deixaram de variar por tamanho, que não significava nada, e o ' +
+          'total de Entradas e o de Saídas agora ficam lado a lado na mesma altura, fixos, com cada ' +
+          'lado rolando por conta própria quando tem muitas linhas.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O Demonstrativo passou a exibir, no alto do quadro, a data e a hora da última atualização da ' +
+          'base de lançamentos que o alimenta — dá para saber, sem perguntar a ninguém, se o que está na ' +
+          'tela já inclui o último envio da controladoria.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O botão "Editar estrutura" passou a ficar logo abaixo da tabela, junto do que ele altera, ' +
+          'em vez de no fim do quadro.',
+      },
+    ],
+  },
+  {
     versao: '5.4.0',
     data: '2026-07-31T17:14', // horário REAL do merge (6e481a0, 20:14:58Z −03) — reconciliado no /pos-merge
     itens: [

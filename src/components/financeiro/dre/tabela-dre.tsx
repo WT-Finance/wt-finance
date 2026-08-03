@@ -32,7 +32,7 @@
 //    anterior); mínimo de 1 (desmarcar o último é no-op, a pill fica `aria-disabled`).
 //    ANO DE REFERÊNCIA = o MAIOR marcado; é ele que ganha o bloco de detalhe à direita.
 //    Sendo y1<…<yn os marcados, as colunas saem nesta ordem: para cada yi (i<n)
-//    "«yi»" (ano cheio) / "YTD «aa»" / "Δ% «aa»·«aa+1»"; depois "YTD «yn»" e — SÓ no
+//    "«yi»" (ano cheio) / "YTD «aa»" / "Δ% YTD «aa»·«aa+1»"; depois "YTD «yn»" e — SÓ no
 //    modo 'tudo' (rodada 4/Refino 4) — "VENCIDOS" e "PREV «yn»" (= total − YTD) quando
 //    yn é o ano CORRENTE, a coluna de TOTAL e, ainda só se yn é corrente, as colunas de
 //    anos seguintes atrás do MESMO toggle «»» da visão Mensal. Num ano FECHADO não há
@@ -216,8 +216,9 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 import Button from '@/components/ui/button'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
-import { fmtContabil } from './fmt-contabil'
+import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
 import type {
   DreMensal,
   DreLinha,
@@ -225,10 +226,8 @@ import type {
   RegistroAnoLinha,
   ConsolidadoAno,
 } from '@/lib/dre/schemas'
-import ResumoExecutivo from './resumo-executivo'
 
 type Relacao   = DreMensal['relacao']
-type TipoLinha = DreLinha['t']
 /** Modo de exibição do "Total do ano" (Refino 8) — ver bullet no topo do arquivo. */
 type TotalModo = 'realizado' | 'tudo'
 /** Visão da tabela (Refino 13) — 'mensal' é o comportamento pré-existente; ver bullet
@@ -683,46 +682,15 @@ function fundoCelula(fundo: FundoCelula, tipo: TipoLinha, bg: string, bgHover: s
   return `${bg} ${bgHover}`
 }
 
-/** Cor do valor por SINAL — extraída de `CelulaValor` p/ ser reaproveitada por
- *  `CelulaAnoSeguinte` (mesma régua, valor sempre previsto) e por `CelulaDeltaPct`
- *  (mesma régua, aplicada ao Δ% da visão Consolidado). Zero é sempre neutro; do
- *  contrário, o tom muda por TIPO de linha (fundo claro × escuro) — ver os fundos
- *  `BG_PREVISTO` logo acima.
+/** `corPorSinal` e `ConteudoContabil` MORAM EM `./celula-contabil` desde a v5.4.1 — o
+ *  Resumo Executivo (mesmo card, mesmas linhas) passou a usar a MESMA gramática, e duas
+ *  cópias envelheceriam em ritmos diferentes. Comportamento idêntico ao que estava aqui;
+ *  só o arquivo mudou. `corPorSinal` é reaproveitada por `CelulaValor`, `CelulaAnoSeguinte`
+ *  (mesma régua, valor sempre previsto) e `CelulaDeltaPct` (a mesma régua aplicada ao Δ%
+ *  da visão Consolidado). O tom muda por TIPO de linha por causa do contraste sobre cada
+ *  fundo — ver os mapas `BG_PREVISTO`/`BG_VENCIDO` acima e a justificativa lá no módulo.
  *  (Nada de escrever `BG_PREV_` + asterisco + barra aqui: a sequência fecharia ESTE
  *  comentário no meio — a mesma armadilha que mordeu o CSS na v4.26.) */
-function corPorSinal(tipo: TipoLinha, valor: number | null): string {
-  const zero = valor === null || Math.abs(valor) < 0.005
-  if (zero) return 'text-text-subtle'
-  const negativo = valor < 0
-  const escuro = tipo === 'tot'
-  const bandaClara = tipo === 'blocoH' || tipo === 'sub'
-  if (negativo) return escuro ? 'text-negative-soft' : bandaClara ? 'text-negative-deep' : 'text-negative'
-  return escuro ? 'text-positive-soft' : bandaClara ? 'text-positive-deep' : 'text-positive'
-}
-
-/** Conteúdo em formato CONTÁBIL (Refino 1) — variante COM PARÊNTESES do padrão do DS
- *  (`@/components/shared/valor-contabil.tsx`, ADR-0124): "R$" mudo (`text-text-subtle`)
- *  ancorado à ESQUERDA, número tabular à DIREITA (`flex justify-between`). O componente
- *  `ValorContabil` do DS NÃO serve aqui: ele formata com `numBRL2` (sinal "−" simples),
- *  mas a DRE precisa do NEGATIVO ENTRE PARÊNTESES de `fmtContabil` (convenção contábil já
- *  em uso na tabela) — o que se replica é só o LAYOUT, não o componente. Zero vira
- *  travessão puro alinhado à direita, SEM "R$" (um prefixo em ~2 mil células vazias seria
- *  só ruído). A cor (sinal/neutro) fica no <td> pai, herdada — só o "R$" força o tom
- *  neutro sempre, qualquer que seja o sinal do valor. */
-function ConteudoContabil({ valor }: { valor: number | null }) {
-  const zero = valor === null || Math.abs(valor) < 0.005
-  if (zero) return <span className="block text-right">{fmtContabil(0)}</span>
-  const negativo = valor < 0
-  return (
-    <span className="flex justify-between gap-2">
-      <span className="text-text-subtle">R$</span>
-      <span>
-        {fmtContabil(valor)}
-        {!negativo && <span className="invisible">)</span>}
-      </span>
-    </span>
-  )
-}
 
 function CelulaValor({ valor, tipo, fundo, corte, totalAno = false, peso, bg, bgHover, borda, fixa }: CelulaValorProps) {
   const cor = corPorSinal(tipo, valor)
@@ -1264,7 +1232,7 @@ function anoCurto(a: number): string {
 /** Monta as colunas da visão Consolidado a partir dos anos MARCADOS (ascendente, ao
  *  menos 1 — vazio devolve vazio) e do MODO (rodada 4/Refino 4). Sendo y1<…<yn:
  *   · para cada yi com i<n (anos de COMPARAÇÃO): "«yi»" (ano cheio) · "YTD «aa»" ·
- *     "Δ% «aa»·«aa+1»" (variação do YTD de yi para o do PRÓXIMO marcado — encadeada,
+ *     "Δ% YTD «aa»·«aa+1»" (variação do YTD de yi para o do PRÓXIMO marcado — encadeada,
  *     não todos contra o de referência: é assim que se lê a evolução ano a ano);
  *   · para yn (REFERÊNCIA): "YTD «aa»" e, SÓ no modo 'tudo', "VENCIDOS" e "PREV «aa»"
  *     (= total − YTD) quando yn é o ano CORRENTE, mais a coluna de TOTAL. VENCIDOS vem
@@ -1299,7 +1267,10 @@ function montarColunasCons(sel: ConsolidadoAno[], janelaTexto: string, totalModo
       titulo: `${c.ano} na MESMA janela dos demais anos (${janelaTexto})`,
     })
     cols.push({
-      k: 'delta', id: `delta-${c.ano}-${prox.ano}`, rotulo: `Δ% ${anoCurto(c.ano)}·${anoCurto(prox.ano)}`,
+      // "Δ% YTD 25·26", não "Δ% 25·26" (v5.4.1): a variação é entre os YTDs, e sem a
+      // palavra o leitor supunha ano cheio contra ano cheio — o vizinho imediato à
+      // esquerda é justamente uma coluna de ano cheio.
+      k: 'delta', id: `delta-${c.ano}-${prox.ano}`, rotulo: `Δ% YTD ${anoCurto(c.ano)}·${anoCurto(prox.ano)}`,
       de: c.ano, para: prox.ano, grupo: 'comp', classe: 'text-text-secondary',
       titulo: `Variação do YTD de ${c.ano} para ${prox.ano} (mesma janela: ${janelaTexto})`,
     })
@@ -1712,10 +1683,31 @@ function AcoesHierarquia({ onExpandir, onRecolher }: { onExpandir: () => void; o
   )
 }
 
-/** Rodapé do card — só a ação injetada pela página ("Editar estrutura", rodada 3/Refino
- *  4). Sem `slotAcoes` não renderiza NADA: uma faixa vazia com `mt-3` deixaria um respiro
+/** Cabeçalho do card: título à esquerda, selo de frescor da base à direita (v5.4.1).
+ *
+ *  O selo é o `UltimaAtualizacao` de Metas com a vigília DESLIGADA — a fonte aqui é um
+ *  upload de cadência humana, não o cron do Monde, e a régua de 45min daquele componente
+ *  acusaria atraso quase sempre (ver `vigiarAtraso`). `iso` nulo ⇒ o próprio componente
+ *  retorna `null` e o selo some, sem "sem data" na tela.
+ *
+ *  `flex-wrap` + `justify-between`: em largura estreita o selo desce para a linha de
+ *  baixo do título, ainda ACIMA da toolbar — nunca chega perto do "Expandir/Recolher
+ *  tudo", que vive na segunda linha de pills. */
+function CabecalhoCard({ ultimaCarga }: { ultimaCarga?: string | null }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <h2 className="text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+      <UltimaAtualizacao iso={ultimaCarga ?? null} className="text-2xs" iconSize={12} vigiarAtraso={false} />
+    </div>
+  )
+}
+
+/** Faixa de ação da página ("Editar estrutura", rodada 3/Refino 4) — desde a v5.4.1 fica
+ *  ENTRE a tabela e o Resumo Executivo, não no rodapé do card: ela edita a estrutura da
+ *  TABELA, e no rodapé a distância até o que ela governa crescia junto com o Resumo.
+ *  Sem `slotAcoes` não renderiza NADA: uma faixa vazia com `mt-3` deixaria um respiro
  *  fantasma sob a tabela (é o caso de quem não tem permissão de editar a estrutura, e o
- *  do fail-safe sem slot). */
+ *  do fail-safe sem slot). O nome do componente é histórico. */
 function RodapeAcoes({ slotAcoes }: { slotAcoes?: ReactNode }) {
   if (!slotAcoes) return null
   return <div className="mt-3 flex flex-wrap items-center justify-end gap-3">{slotAcoes}</div>
@@ -1728,11 +1720,6 @@ interface TabelaDreProps {
   /** Ano resolvido pela página (clampado à janela [corrente-2, corrente]) — fonte
    *  única para destacar a pill ativa (não lê `dados.ano`, que pode ser `null`). */
   ano: number
-  /** Ano corrente no fuso de São Paulo (`hojeSP()` na página) — a ÂNCORA do
-   *  `ResumoExecutivo`, que de propósito NÃO acompanha a pill de ano: com `?ano=2025` o
-   *  Resumo segue mostrando 2024|2025|YTD 25|YTD 26. Distinto de `ano` acima (o
-   *  NAVEGADO, que reger a tabela). Não derive um do outro. */
-  anoCorrente: number
   anosDisponiveis: number[]
   /** Totais dos anos seguintes (ano+1/ano+2) por linha, indexados por `b:<chave>`
    *  (blocos/totalizadores) e `c:<categoria_id>` (categorias e bandeja) — MESMA
@@ -1751,14 +1738,19 @@ interface TabelaDreProps {
    *  página já aplicou a janela ao montar os `ytd`; aqui ela só descreve a comparação
    *  nos `title` do cabeçalho. */
   mesJanela: number
-  /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada no
-   *  RODAPÉ do card, à direita (`RodapeAcoes`; rodada 3/Refino 4). O "Expandir
-   *  tudo"/"Recolher tudo" NÃO fica ao lado dela: vive na linha das pills
-   *  (rodada 6, `AcoesHierarquia`). */
+  /** timestamptz (ISO) do último upload de Lançamentos por Movimentação — a base que
+   *  alimenta o demonstrativo (`financeiro.fato_fluxo`). Alimenta o selo no canto
+   *  superior direito do card. `null` (nunca carregada, ou a leitura falhou) ⇒ o selo
+   *  não aparece: exibir "sem data" seria pior que não exibir nada. */
+  ultimaCargaMovimentacao?: string | null
+  /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada à direita,
+   *  ENTRE a tabela e o Resumo Executivo (`RodapeAcoes`; posição da v5.4.1, antes era o
+   *  rodapé do card). O "Expandir tudo"/"Recolher tudo" NÃO fica ao lado dela: vive na
+   *  linha das pills (rodada 6, `AcoesHierarquia`). */
   slotAcoes?: ReactNode
 }
 
-export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, slotAcoes }: TabelaDreProps) {
+export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, ultimaCargaMovimentacao, slotAcoes }: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -1838,20 +1830,13 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
   if (dados === null) {
     return (
       <div className="rounded-xl bg-surface p-5 shadow-sm">
-        <h2 className="mb-4 text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+        <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <AnoPills modo="unico" ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
         </div>
         <div className={`rounded-lg border border-wt-border p-6 text-center ${isPending ? 'opacity-60' : ''}`}>
           <p className="text-sm text-text-muted">Não foi possível carregar a DRE — tente recarregar.</p>
         </div>
-        {/* O Resumo aparece TAMBÉM aqui: ele não depende de `dados` (o ano NAVEGADO), e sim
-            de `consolidadoAnos` — uma chamada por ano, independentes no mesmo
-            `Promise.allSettled`. Como o ano navegado é sempre um dos três anos-âncora,
-            basta a chamada DELE falhar para cairmos neste ramo com os outros dois anos
-            intactos; omitir o Resumo aqui o derrubaria por uma falha que não é dele. Ele
-            se auto-oculta se nenhum ano-âncora tiver carregado. */}
-        <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
         {/* Sem tabela não há hierarquia para expandir/recolher (o `AcoesHierarquia` nem
             é montado aqui) — sobra a ação da página, quando houver. */}
         <RodapeAcoes slotAcoes={slotAcoes} />
@@ -1994,7 +1979,7 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
-      <h2 className="mb-4 text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+      <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} />
 
       {/* ── Toolbar em DUAS linhas, tudo à esquerda (rodada 3/Refino 2) ──
           Linha de cima: pills de VISÃO. Linha de baixo: pills de ANO · divisor · pills
@@ -2339,16 +2324,12 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
         </div>
       </div>
 
-      {/* Resumo Executivo (v5.3.1) — DENTRO deste card, abaixo da tabela, nas DUAS
-          visões (o card externo é compartilhado). Ancorado no ANO CORRENTE, então NÃO
-          reage à pill de ano nem à troca de visão: é o retrato de agora. Fonte = o
-          MESMO `consolidadoAnos` que alimenta a visão Consolidado — sem segundo caminho
-          de cálculo. Ele se auto-oculta (retorna null) se nenhum ano-âncora carregou. */}
-      <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
-
-      {/* Rodapé — só a ação da página, ex.: "Editar estrutura" (rodada 3/Refino 4).
-          "Expandir/Recolher tudo" subiu para cima da tabela (rodada 5/Refino 5). Sem
-          `slotAcoes` este bloco não renderiza nada. Mesmo componente no fail-safe. */}
+      {/* Ação da página, ex.: "Editar estrutura" — fecha o card, logo abaixo da tabela que
+          ela edita. Sem `slotAcoes` não renderiza nada. Mesma ordem no fail-safe.
+          ⚠️ O Resumo Executivo NÃO vive mais aqui dentro: virou CARD PRÓPRIO, irmão deste,
+          montado pela página (v5.4.1). Ele nunca dependeu de `dados` — só de
+          `consolidadoAnos` —, então dentro deste componente ele precisava ser repetido nos
+          dois ramos de render e sumia junto num ramo que não era dele. */}
       <RodapeAcoes slotAcoes={slotAcoes} />
     </div>
   )

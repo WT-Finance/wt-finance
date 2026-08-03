@@ -55,6 +55,13 @@ tokenizado — follow-up futuro); `src/lib/email/**` é isento (o Outlook exige 
 não lê CSS var). Fora disso, se o token que você precisa não tem utilitária mapeada em
 `@theme` (`globals.css`), use `[var(--token)]` — nunca hex solto.
 
+⚠️ **O lint só enxerga CLASSE.** Cor que entra por `style={{ background: ... }}` — o caminho
+obrigatório de barra, série de gráfico e qualquer valor calculado — passa batido. A regra do DS
+vale igual ali, e quem garante é a revisão: **antes de escrever um hex em `style`, procure o
+token**. Caso vivo (v5.4.1): a cor de "Outros" da Decomposição era `#B8B2A8` havia duas versões,
+enquanto `--text-subtle` (`#ACA39A`, o cinza neutro-quente canônico) existia e servia. Em `style`,
+o token se escreve `'var(--token)'`.
+
 `src/styles/tokens.css` é a fonte da verdade dos valores; `src/styles/tokens.test.ts`
 protege o lado oposto (falha se um token-âncora sumir, se `--text-primary` deixar de ser
 `#2D2A26`, ou se o `--primary` azul voltar). Convenção sozinha não segurava — emerald e
@@ -85,6 +92,24 @@ utilitária `.foco-neutro`.
 Migração de call-site legado (tela antiga que ainda não usa o primitivo) é incremental —
 byte-equivalente quando a tela for tocada por outro motivo; não é preciso caçar e
 converter one-offs que ninguém está mexendo.
+
+### 2.1 — Cortina (qualquer coisa que expande/recolhe)
+
+A curva é uma só, aprovada em mockup pelo Yan (v5.1.9): **450ms
+`cubic-bezier(.32,.72,0,1)`**, animando `grid-template-rows` de `0fr` a `1fr`, com o filho
+em `min-h-0 overflow-hidden`. A referência viva é `shared/top-section.tsx`; copie a
+mecânica, não recrie a curva (`motion-reduce:transition-none` faz parte dela).
+
+Duas regras que não são óbvias e já custaram achado de revisor:
+
+- **O conteúdo fica MONTADO nos dois estados, com `inert` quando fechado.** `inert` é o que
+  o tira do tab-order e do leitor de tela (achado ALTO, v5.1.9). Desmontar por
+  `{aberto && ...}` parece equivalente e **não é**: no fechamento o conteúdo some no mesmo
+  render em que a altura começa a animar, e a cortina colapsa uma caixa vazia — abre bonito
+  e pisca ao fechar (v5.4.1, Decomposição). Se o conteúdo é caro, memoize; não desmonte.
+- **Nada de `position:absolute` dentro da cortina** — o `overflow-hidden` do clip corta
+  popover, tooltip do DS e menu (risco registrado na v5.1.9). Dica curta ali dentro é
+  atributo `title` nativo, que não vive no DOM.
 
 ---
 
@@ -144,6 +169,34 @@ ou horizontal — usa `<ScrollAutoHide>` (`@/components/shared/scroll-auto-hide`
 
 Container rolável novo nasce com `ScrollAutoHide`; ao encostar num `overflow-*` cru
 remanescente, migre.
+
+⚠️ **O thumb é overlay e NÃO reserva folga — o call-site é que reserva.** Ele é posicionado
+por `absolute` contra o **próprio wrapper** (`right-1` + `w-1.5` no vertical, `bottom-1` +
+`h-1.5` no horizontal), então, sem gutter, ele flutua **por cima** da última coluna ou da
+última linha. Bateu três vezes na v5.4.1 (eixo X do Resumo Executivo, eixo Y da
+Decomposição) antes de virar regra. A receita, copiada da tabela da DRE:
+
+- **Gutter interno** no `className` (que vai para o viewport): `pr-3.5` no eixo X,
+  `pb-3.5` no eixo Y — 14px sobre os quais o thumb flutua, dentro da área rolável.
+- **Gutter externo** — um wrapper `pb-1.5`/`pr-1.5` em volta do `ScrollAutoHide` — quando o
+  rolável encosta na borda de um box: encolhe o wrapper e afasta a barra da moldura **sem
+  tocar no componente compartilhado**.
+- Se houver `-mx-*`/`-mr-*` no conteúdo (hover que sangra), desconte: o gutter útil é o que
+  sobra depois da margem negativa.
+
+Em `flex flex-col`, o `ScrollAutoHide` já é a região flexível — a raiz dele traz
+`flex min-h-0 flex-1 flex-col`. Basta o irmão fixo (título/rodapé) ter `shrink-0`; não
+passe `flex-1`/`min-h-0` no `className`.
+
+### 4.1 — Rodapé que não pode rolar (total, resumo, ação)
+
+Total de painel, linha de resumo e barra de ação ficam **fora** da região rolável: pai
+`flex flex-col` com altura definida (`h-full max-h-[…]`), `ScrollAutoHide` no meio, rodapé
+irmão com `shrink-0`. Para dois painéis lado a lado terem os rodapés **na mesma linha
+horizontal**, os dois precisam do MESMO teto de altura e o grid precisa de `items-stretch`
+— o painel mais curto fica com espaço vazio antes do rodapé, e é isso que produz o
+alinhamento (não é sobra de layout). Caso vivo: os Totais de Entradas × Saídas na
+Decomposição dos Lançamentos (v5.4.1).
 
 ---
 
