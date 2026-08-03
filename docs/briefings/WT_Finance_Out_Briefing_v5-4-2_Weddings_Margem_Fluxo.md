@@ -1,6 +1,6 @@
 # Out-briefing v5.4.2 — Weddings: Margem anualizada + Fluxo de Caixa unificado
 
-**Tipo:** PATCH · **Migration:** 0228 (aditiva, aplicada e verificada) · **ADR:** 0162 ·
+**Tipo:** PATCH · **Migrations:** 0228 e 0229 (as duas aditivas, aplicadas e verificadas) · **ADR:** 0162 ·
 **Base:** `main` @ v5.4.1 (rebase feito) · **Branch:** `feat/v5-4-2-weddings-margem-fluxo` ·
 **Rota A** · Sessão B de duas em paralelo (a v5.4.1 mergeou primeiro, #207+#208)
 
@@ -125,6 +125,63 @@ nenhum schema Zod muda.
 - Nenhuma migration destrutiva pendente na pasta; nenhuma cópia 0950–0954 (foram
   renumeradas para 0210–0214 no merge da v5.4.0 — **o passo 4 do `/nova-versao` ficou
   obsoleto**, ver §7).
+
+---
+
+## 3b. Extensão ao Fluxo de Caixa do FINANCEIRO (pedido do Yan, antes do fechamento)
+
+Com o card de Weddings aprovado, o Yan pediu **o mesmo padrão de slider** no gráfico mensal
+do Fluxo de Caixa do Financeiro — **sem** gráfico de acumulado e **mantendo o título do card**.
+
+**Aqui a migration foi necessária de verdade, e é o contraste que vale registrar:**
+
+| | Weddings (acumulado) | Financeiro (mensal) |
+|---|---|---|
+| Janela na RPC | **parâmetro do chamador** (0141 clampa em 120/60) | **hardcoded no corpo** |
+| Precisou migration? | **não** (o briefing supunha que sim) | **sim** — 0229: 23+18 → 36+36 |
+| Fatiar exige rebase? | **sim**, + 1 mês de margem | **não** — cada linha é do próprio mês |
+| Helper | `lib/weddings/janela-fluxo` (25 testes) | `lib/fluxo/janela-mensal` (17 testes) |
+
+Os dois helpers ficaram **separados de propósito**: reusar o de Weddings obrigaria a série do
+Financeiro a fingir que tem acumulado e `eh_futuro`. Os problemas só se parecem de longe.
+
+**Migration 0229 (aditiva, aplicada):** `CREATE OR REPLACE` de
+`get_fluxo_caixa_mensal_v3__nucleo()` — função **sem parâmetros**, então REPLACE puro.
+A alegação forte é "**nenhum número existente muda**": cada mês é agregado do próprio mês,
+sem acumulado nem baseline, logo acrescentar meses nas bordas não toca mês algum que já vinha.
+
+⚠️ **Falha de método minha, declarada:** eu **não** salvei um baseline por mês ANTES do push,
+então não pude comparar antes/depois diretamente. Provei de outro jeito, que por acaso é mais
+forte: **cross-check contra `get_fluxo_caixa_kpis_b`**, que lê a MESMA view
+(`financeiro.vw_fluxo_caixa_kpis_b`) mas por **range explícito** — 4/4 campos batendo em todos
+os meses amostrados (bordas e centro). Se alargar tivesse mexido em algum agregado, os dois
+discordariam. **Lição para a próxima migration que muda volume de retorno: snapshot antes do
+push é de graça e evita depender de um cross-check existir.**
+
+Resultado medido: **73 meses (2023-08 → 2029-08)**, shape por linha inalterado, payload
+10,4 KB. **65 meses com movimento** (2023-08 → 2028-12); os **8 de 2029 vêm vazios** porque
+`fato_fluxo` corta o previsto em 2028 — é o dado, não defeito, mas o extremo do slider mostra
+meses chapados.
+
+**Decisões de apresentação:**
+- **Trilho NEUTRO**, não dourado: a tela já tem o slider "Horizonte de tempo" do Fluxo
+  Projetado, e dois sliders na mesma página com cores diferentes leriam como controles de
+  naturezas diferentes. O primitivo ganhou a prop `corTrilho` justamente para isso, com o
+  neutro como default.
+- **Paleta preservada** (`--positive`/`--negative`): o turquesa/mostarda é a exceção
+  deliberada de Weddings (ADR-0103), não o padrão.
+- **"Inverter saídas" removido** e saídas para cima, como em Weddings — com a **mesma
+  consequência tratada**: a metade negativa do eixo Y passou a abrigar só a linha de
+  resultado, então o eixo deixou de mostrar valor absoluto.
+- **O "hoje" vem do SERVIDOR** (`hojeSP()` na página), não do relógio do cliente: o slider
+  ancora sem risco de divergência na hidratação.
+
+**Achado de carona:** a página tinha uma cópia **local** de `hojeSP()` byte-idêntica à de
+`@/lib/fmt` (duplicação que o próprio `fmt.ts` registra como dívida conhecida). Como passei a
+precisar dela num segundo ponto do arquivo, consolidei no import canônico.
+
+**Já era verdade:** `MOSTRAR_ACUMULADO = false` naquela página desde a v5.2.0 — o card de
+acumulado já estava oculto, então "sem o gráfico de acumulado" não exigiu remover nada.
 
 ---
 
@@ -363,9 +420,14 @@ pegaria a classe inteira e dispensaria esta vigilância. Teria de nascer pelo pr
 `src/components/weddings/{fluxo-caixa-card.tsx,fluxo-caixa-totais-card.tsx}`;
 `src/components/shared/slider-horizonte.tsx`;
 `supabase/migrations/0228_operacoes_weddings_sort_margem_aa.sql`;
+`supabase/migrations/0229_fluxo_caixa_mensal_v3_janela_larga.sql`;
+`src/lib/fluxo/{janela-mensal.ts,janela-mensal.test.ts}`;
 `docs/briefings/briefing-v5-4-2-weddings-margem-fluxo.md`.
 
 **Modificados:** `src/components/weddings/lista-operacoes.tsx`;
+`src/components/ui/tooltip.tsx` (abre no foco); `src/components/financeiro/fluxo-mensal-chart.tsx`;
+`src/app/financeiro/fluxo-caixa/page.tsx`; `src/app/admin/design-system/page.tsx`;
+`src/lib/rpc-contrato.test.ts`; os 6 arquivos do `scroll: false`; 5 skills em `.claude/skills/`;
 `src/components/performance/weddings-content.tsx`;
 `src/app/api/dashboard/weddings/operacoes/route.ts`; `src/types/api.ts`;
 `CHANGELOG.md`; `src/data/changelog-diretoria.ts`; `package.json`;

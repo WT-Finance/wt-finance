@@ -113,6 +113,32 @@ O gráfico mensal antigo derivava o valor do mês pela diferença de acumulados 
 a história anterior à janela**. A margem de um mês reservada pelo rebase elimina isso:
 todo mês visível tem um mês anterior real de onde derivar.
 
+### O padrão foi estendido ao Fluxo de Caixa do Financeiro
+
+O mesmo slider entrou no gráfico mensal do Financeiro (`fluxo-mensal-chart`), **sem** o
+gráfico de acumulado e mantendo o título do card. A diferença que importa registrar:
+
+| | Weddings (acumulado) | Financeiro (mensal) |
+|---|---|---|
+| Janela na RPC | **parâmetro do chamador** (0141 clampa em 120/60) | **hardcoded no corpo** |
+| Precisou migration? | **não** | **sim** — a 0229 alarga 23+18 → 36+36 |
+| Fatiar exige rebase? | **sim** (acumulado) + 1 mês de margem | **não** — cada linha é do próprio mês |
+| Helper | `lib/weddings/janela-fluxo` | `lib/fluxo/janela-mensal` |
+
+Os dois helpers existem separados **de propósito**: reusar o de Weddings obrigaria a série
+do Financeiro a fingir que tem acumulado e `eh_futuro`. Os problemas só se parecem de longe.
+
+No Financeiro o trilho do slider fica **neutro** (o default do primitivo), não dourado: a
+tela já tem o slider de "Horizonte de tempo" do Fluxo Projetado, e dois sliders na mesma
+página com cores diferentes leriam como controles de naturezas diferentes. A paleta das
+séries continua `--positive`/`--negative` — o turquesa/mostarda é a exceção deliberada de
+Weddings (ADR-0103), não o padrão.
+
+Nos dois casos o botão **"Inverter saídas" saiu** e as saídas vão sempre para cima. A
+consequência é a mesma e foi tratada nos dois: com as barras subindo, a metade negativa do
+eixo Y passa a abrigar só a linha de resultado, então o eixo **deixa de poder mostrar valor
+absoluto** — antes o sinal vinha da direção da barra.
+
 ## Alternativas descartadas
 
 - **Anualização composta** — pressupõe reinvestimento que não existe no negócio e

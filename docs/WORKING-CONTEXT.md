@@ -9,8 +9,9 @@
 
 ## Verdade atual
 
-- **v5.4.2 FECHADA, aguardando merge (PR próprio)** — **Weddings: margem anualizada + Fluxo de
-  Caixa unificado.** Migration **0228** já APLICADA e verificada (aditiva); **ADR-0162**.
+- **v5.4.2 FECHADA, aguardando merge (PR #209 draft)** — **Weddings: margem anualizada + Fluxo
+  de Caixa unificado**, e o padrão do slider estendido ao **Fluxo de Caixa do Financeiro**.
+  Migrations **0228 e 0229** já APLICADAS e verificadas (as duas aditivas); **ADR-0162**.
   (1) Coluna **"Margem (a.a.)"** na Lista de Operações: anualização **LINEAR**
   (`margem × 12 / duração_meses`), nunca composta — 17,5% em 30,4 meses valem **6,9% a.a.**
   `Duração = data_evento − data_venda_contrato` em meses de **30,44 dias**, a MESMA régua nas três
@@ -22,21 +23,39 @@
   **fatia** — arrastar não refetcha. **Acumulado REINICIA na borda esquerda** e a referência de
   saídas é recalculada na janela (as duas coisas **juntas**, testado como igualdade). TopSection
   própria "Fluxo de Caixa": filtro no topo → card de totais → card dos gráficos.
+  (3) **O mesmo slider entrou no gráfico mensal do FINANCEIRO** (sem acumulado, título do card
+  mantido). Lá a migration **0229** foi necessária de verdade: a janela daquela RPC é
+  **hardcoded no corpo** (23+18 → 36+36), ao contrário da de Weddings. **Nenhum número muda**
+  (cada mês é agregado do próprio mês) — provado por cross-check contra
+  `get_fluxo_caixa_kpis_b`. Helper próprio (`lib/fluxo/janela-mensal`, 17 testes) porque
+  recortar aqui **não rebaseia** nada. Trilho NEUTRO (a tela já tem o slider do Projetado);
+  paleta `--positive`/`--negative` preservada.
+  (4) **Bug SISTÊMICO corrigido:** filtro que navega no lugar fazia a página **saltar ao topo**
+  (`router.push` sem `{ scroll: false }`) — 8 call-sites em Weddings, Financeiro, Metas e
+  Solicitações. O padrão já estava documentado na skill `react-padroes` e **perdia de 7 a 2**:
+  caso exemplar de que prosa não segura, candidato a regra de lint (D5).
   **Duráveis desta versão:** a janela do `get_acumulado_weddings` **sempre foi parâmetro do
   chamador** (0141 clampa em 120/60) — o briefing pedia migration para alargá-la e **não
   precisava**; em troca, coluna derivada **ordenável** numa lista paginada no SERVIDOR **exige**
   chave de ordenação em SQL, porque a whitelist termina em `ELSE 'd_data_evento'` (**fallback
   silencioso**); `total_saidas` da RPC **muda com a janela buscada**, então referência de gráfico
   fatiado tem de ser recalculada no cliente; **item de flex encolhe abaixo do próprio conteúdo** e
-  valor de 8 dígitos invade o vizinho (`shrink-0`) — passava por tsc/lint/build/644 testes.
+  valor de 8 dígitos invade o vizinho (`shrink-0`) — passava por tsc/lint/build/testes verdes;
+  **o `Tooltip` do DS abria só no HOVER** (agora abre no foco também) e `<span>` como gatilho
+  não entra no tab-order — dica de cabeçalho ficava invisível para teclado.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-2_Weddings_Margem_Fluxo.md`.
   **PENDENTE do Yan:** (1) **conferência visual da tela real** — não consegui (tela autenticada,
   MCP Playwright não sobe em background, `BYPASS_AUTH` é resíduo morto): conferir o balão do "?" da
   coluna nova e o card único dentro da TopSection; (2) **anomalia de DADO** exposta pela coluna
   nova — *"Darlene e Adnan - DDMMAA"* com `margem_liquida_pct` = **782%** (única acima de 100%;
   nome parece template inacabado), hoje no topo ao ordenar por "Margem (a.a.)"; (3) **mergear**.
-  ⚠️ **`revisor`/`revisor-db` NÃO rodaram** (sessão iniciada sem subagentes) — auto-auditoria
-  adversarial feita e registrada no lugar, no §6 do out-briefing.
+  **REVISÃO FEITA:** `revisor` **APROVADO COM RESSALVAS** (1 ALTO — a acessibilidade do "?" —
+  e 1 MÉDIO — a skill do DS ensinava o eixo TROCADO do gutter do `ScrollAutoHide` —, ambos
+  CORRIGIDOS; 3 BAIXO registrados) e `revisor-db` **APROVADA** nas duas migrations (0 CRÍTICO /
+  0 ALTO; o MÉDIO virou caso de contrato permanente da ordenação, **visto reprovando** com 97
+  quebras). Parecer integral no §6 do out-briefing. 666 testes.
+  **Pendência deliberada de a11y:** os outros 2 call-sites do "?" (`faturamento-corp`,
+  `posicao-projetado`) ainda usam `<span>` — uma linha em cada, a metade do primitivo já pronta.
 - Versão em produção (main): **`5.4.1`** (#207 mergeado 03/08 às 14h50) — **DRE: refino visual.**
   PATCH de apresentação: **nenhum número mudou**. Sem migration, sem ADR. (1) O **Resumo Executivo** passou a usar a gramática da tabela do
   mesmo card — cabeçalho 10px/caps, box, `ConteudoContabil` com "R$" esmaecido e negativo entre
@@ -159,11 +178,18 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox).
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0228`** (v5.4.2: chave de ordenação `d_margem_aa` em
+- Última migration APLICADA: **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
+  alargada de 23+18 para **36+36 meses** — ADITIVA, `CREATE OR REPLACE` de função SEM
+  parâmetros. Diferente da RPC de Weddings, a janela dela é **hardcoded no corpo**, então o
+  slider do Financeiro não teria o que fatiar sem isso. **Nenhum número muda:** cada mês é
+  agregado do próprio mês, sem acumulado — provado por cross-check contra
+  `get_fluxo_caixa_kpis_b`, que lê a mesma view por range explícito, 4/4 campos em todos os
+  meses amostrados). **Próxima migration livre: `0230`.**
+  Antes dela a **`0228`** (v5.4.2: chave de ordenação `d_margem_aa` em
   `get_operacoes_weddings__nucleo` — ADITIVA, `CREATE OR REPLACE` com assinatura idêntica e shape do
   retorno inalterado; a chave NÃO entra no payload. Verificada via REST: ordenação monotônica nas
   duas direções, `NULLS LAST` honrado e **as 13 chaves de ordenação × 2 direções seguem
-  funcionando** — 26 combinações, zero quebras). **Próxima migration livre: `0229`.**
+  funcionando** — 26 combinações, zero quebras).
   Antes dela a **`0227`** (limpeza da chave TARS revogada, aplicada pelo Yan em TTY e
   arquivada como migration). Antes dela a **`0226`** (DROP da coluna inerte
   `app.api_chave.whitelist_tipos` — a última pendência de banco da v5.4.0; `supabase/patches/`

@@ -53,6 +53,14 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       {
         tipo: 'melhoria',
         texto:
+          'O fluxo de caixa do Financeiro também ganhou a janela ajustável, no mesmo controle: ' +
+          'dá para escolher quantos meses olhar para trás e para frente (até 36 de cada lado) e o ' +
+          'gráfico mensal acompanha na hora. As saídas passaram a ser desenhadas para cima, ao lado ' +
+          'das entradas, o que facilita comparar mês a mês o que entra com o que sai.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
           'O fluxo de caixa de Weddings ganhou janela ajustável. Os dois gráficos que ficavam em ' +
           'quadros separados agora vivem num quadro único, com um controle de horizonte entre eles: ' +
           'arrastando, escolhe-se quantos meses olhar para trás e para frente (até 36 de cada lado) e ' +
