@@ -217,7 +217,7 @@ import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDown
 import Button from '@/components/ui/button'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
-import { fmtContabil } from './fmt-contabil'
+import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
 import type {
   DreMensal,
   DreLinha,
@@ -228,7 +228,6 @@ import type {
 import ResumoExecutivo from './resumo-executivo'
 
 type Relacao   = DreMensal['relacao']
-type TipoLinha = DreLinha['t']
 /** Modo de exibição do "Total do ano" (Refino 8) — ver bullet no topo do arquivo. */
 type TotalModo = 'realizado' | 'tudo'
 /** Visão da tabela (Refino 13) — 'mensal' é o comportamento pré-existente; ver bullet
@@ -683,46 +682,15 @@ function fundoCelula(fundo: FundoCelula, tipo: TipoLinha, bg: string, bgHover: s
   return `${bg} ${bgHover}`
 }
 
-/** Cor do valor por SINAL — extraída de `CelulaValor` p/ ser reaproveitada por
- *  `CelulaAnoSeguinte` (mesma régua, valor sempre previsto) e por `CelulaDeltaPct`
- *  (mesma régua, aplicada ao Δ% da visão Consolidado). Zero é sempre neutro; do
- *  contrário, o tom muda por TIPO de linha (fundo claro × escuro) — ver os fundos
- *  `BG_PREVISTO` logo acima.
+/** `corPorSinal` e `ConteudoContabil` MORAM EM `./celula-contabil` desde a v5.4.1 — o
+ *  Resumo Executivo (mesmo card, mesmas linhas) passou a usar a MESMA gramática, e duas
+ *  cópias envelheceriam em ritmos diferentes. Comportamento idêntico ao que estava aqui;
+ *  só o arquivo mudou. `corPorSinal` é reaproveitada por `CelulaValor`, `CelulaAnoSeguinte`
+ *  (mesma régua, valor sempre previsto) e `CelulaDeltaPct` (a mesma régua aplicada ao Δ%
+ *  da visão Consolidado). O tom muda por TIPO de linha por causa do contraste sobre cada
+ *  fundo — ver os mapas `BG_PREVISTO`/`BG_VENCIDO` acima e a justificativa lá no módulo.
  *  (Nada de escrever `BG_PREV_` + asterisco + barra aqui: a sequência fecharia ESTE
  *  comentário no meio — a mesma armadilha que mordeu o CSS na v4.26.) */
-function corPorSinal(tipo: TipoLinha, valor: number | null): string {
-  const zero = valor === null || Math.abs(valor) < 0.005
-  if (zero) return 'text-text-subtle'
-  const negativo = valor < 0
-  const escuro = tipo === 'tot'
-  const bandaClara = tipo === 'blocoH' || tipo === 'sub'
-  if (negativo) return escuro ? 'text-negative-soft' : bandaClara ? 'text-negative-deep' : 'text-negative'
-  return escuro ? 'text-positive-soft' : bandaClara ? 'text-positive-deep' : 'text-positive'
-}
-
-/** Conteúdo em formato CONTÁBIL (Refino 1) — variante COM PARÊNTESES do padrão do DS
- *  (`@/components/shared/valor-contabil.tsx`, ADR-0124): "R$" mudo (`text-text-subtle`)
- *  ancorado à ESQUERDA, número tabular à DIREITA (`flex justify-between`). O componente
- *  `ValorContabil` do DS NÃO serve aqui: ele formata com `numBRL2` (sinal "−" simples),
- *  mas a DRE precisa do NEGATIVO ENTRE PARÊNTESES de `fmtContabil` (convenção contábil já
- *  em uso na tabela) — o que se replica é só o LAYOUT, não o componente. Zero vira
- *  travessão puro alinhado à direita, SEM "R$" (um prefixo em ~2 mil células vazias seria
- *  só ruído). A cor (sinal/neutro) fica no <td> pai, herdada — só o "R$" força o tom
- *  neutro sempre, qualquer que seja o sinal do valor. */
-function ConteudoContabil({ valor }: { valor: number | null }) {
-  const zero = valor === null || Math.abs(valor) < 0.005
-  if (zero) return <span className="block text-right">{fmtContabil(0)}</span>
-  const negativo = valor < 0
-  return (
-    <span className="flex justify-between gap-2">
-      <span className="text-text-subtle">R$</span>
-      <span>
-        {fmtContabil(valor)}
-        {!negativo && <span className="invisible">)</span>}
-      </span>
-    </span>
-  )
-}
 
 function CelulaValor({ valor, tipo, fundo, corte, totalAno = false, peso, bg, bgHover, borda, fixa }: CelulaValorProps) {
   const cor = corPorSinal(tipo, valor)
