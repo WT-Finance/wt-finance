@@ -170,6 +170,34 @@ ou horizontal — usa `<ScrollAutoHide>` (`@/components/shared/scroll-auto-hide`
 Container rolável novo nasce com `ScrollAutoHide`; ao encostar num `overflow-*` cru
 remanescente, migre.
 
+⚠️ **O thumb é overlay e NÃO reserva folga — o call-site é que reserva.** Ele é posicionado
+por `absolute` contra o **próprio wrapper** (`right-1` + `w-1.5` no vertical, `bottom-1` +
+`h-1.5` no horizontal), então, sem gutter, ele flutua **por cima** da última coluna ou da
+última linha. Bateu três vezes na v5.4.1 (eixo X do Resumo Executivo, eixo Y da
+Decomposição) antes de virar regra. A receita, copiada da tabela da DRE:
+
+- **Gutter interno** no `className` (que vai para o viewport): `pr-3.5` no eixo X,
+  `pb-3.5` no eixo Y — 14px sobre os quais o thumb flutua, dentro da área rolável.
+- **Gutter externo** — um wrapper `pb-1.5`/`pr-1.5` em volta do `ScrollAutoHide` — quando o
+  rolável encosta na borda de um box: encolhe o wrapper e afasta a barra da moldura **sem
+  tocar no componente compartilhado**.
+- Se houver `-mx-*`/`-mr-*` no conteúdo (hover que sangra), desconte: o gutter útil é o que
+  sobra depois da margem negativa.
+
+Em `flex flex-col`, o `ScrollAutoHide` já é a região flexível — a raiz dele traz
+`flex min-h-0 flex-1 flex-col`. Basta o irmão fixo (título/rodapé) ter `shrink-0`; não
+passe `flex-1`/`min-h-0` no `className`.
+
+### 4.1 — Rodapé que não pode rolar (total, resumo, ação)
+
+Total de painel, linha de resumo e barra de ação ficam **fora** da região rolável: pai
+`flex flex-col` com altura definida (`h-full max-h-[…]`), `ScrollAutoHide` no meio, rodapé
+irmão com `shrink-0`. Para dois painéis lado a lado terem os rodapés **na mesma linha
+horizontal**, os dois precisam do MESMO teto de altura e o grid precisa de `items-stretch`
+— o painel mais curto fica com espaço vazio antes do rodapé, e é isso que produz o
+alinhamento (não é sobra de layout). Caso vivo: os Totais de Entradas × Saídas na
+Decomposição dos Lançamentos (v5.4.1).
+
 ---
 
 ## 5. Formatação de valores e datas

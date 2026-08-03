@@ -36,6 +36,14 @@ Sete ajustes pedidos após a primeira olhada, todos de apresentação e todos se
 | 6 | Decomposição: **"‹ voltar" removido**; **Total fixo e alinhado** entre os lados; **scroll por lado** | Cada lado virou coluna flex `h-full max-h-[420px]` com o grid em `items-stretch`; só a lista rola (`ScrollAutoHide`, que já se dimensiona por cadeia flex), título e Total ficam fora dela |
 | 7 | Mais respiro entre as pills e o conteúdo (`mb-5` → `mb-8`) | — |
 | 8 | **Números do Resumo maiores e em negrito** | `<table>` em `text-[13px]` + `font-semibold` nas células — a régua exata da tabela da DRE. Estavam em 11px e peso normal, mais discretos que os próprios rótulos |
+| 9 | **Respiro para a barra de rolagem horizontal** do Resumo | `pb-1.5` fora + `pb-3.5` no viewport, os dois gutters que a tabela da DRE já usa. O thumb é `absolute bottom-1`/`h-1.5` medido do próprio wrapper, e sem folga encostava na última linha |
+
+**Padrão que se repetiu três vezes nesta versão:** o `ScrollAutoHide` posiciona os thumbs por
+`absolute` contra o **próprio wrapper** (`right-1` no vertical, `bottom-1` no horizontal), então
+**todo call-site novo precisa reservar o gutter** — não há folga embutida no componente. Aconteceu
+no eixo X do Resumo, no eixo Y da Decomposição e já estava resolvido na tabela da DRE, que é de
+onde a receita (`pb-1.5` externo + `pb-3.5`/`pr-3.5` no viewport) foi copiada. Está registrado na
+skill `ui-design-system` junto com o resto do que a versão aprendeu.
 
 **Detalhe que a integração pegou:** o thumb do `ScrollAutoHide` é `absolute right-1` e, sem folga,
 flutuaria **por cima** dos valores alinhados à direita. Entrou o gutter `pr-3.5`, a mesma convenção
@@ -270,6 +278,12 @@ deps dos `useMemo`; ausência de `<button>` aninhado; `inert` no elemento certo;
    nenhum, e a M4 precisou dela. Junto foram as duas regras que não são óbvias: **conteúdo montado
    nos dois estados com `inert`** (desmontar faz o fechamento colapsar caixa vazia — o defeito
    desta versão) e **nada de `position:absolute` dentro do clip**.
+3. **§4 ganhou o gutter do `ScrollAutoHide`, e a §4.1 (nova) o rodapé fixo.** O thumb é overlay
+   posicionado contra o próprio wrapper e **não reserva folga** — quem reserva é o call-site. Isso
+   mordeu **três vezes** nesta versão antes de virar regra escrita, com a receita (gutter interno
+   no viewport + gutter externo no wrapper, descontando margens negativas) copiada da tabela da
+   DRE. A §4.1 registra o padrão do rodapé que não rola e o que faz dois painéis alinharem os
+   rodapés (mesmo teto + `items-stretch`).
 
 **Destino 1 — enforcement mecânico: proposta, NÃO aplicada (protocolo D5).** O caso ideal seria
 o lint alcançar `style={{ background: '#…' }}`. A regra vive em `eslint-rules/`, que o hook

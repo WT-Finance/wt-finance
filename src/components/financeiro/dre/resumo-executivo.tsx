@@ -185,7 +185,17 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
       </div>
       {/* Box idêntico ao da tabela — é o que faz as duas peças lerem como uma só. */}
       <div className="overflow-hidden rounded-lg border border-wt-border bg-band">
-        <ScrollAutoHide eixo="x">
+        {/* DOIS gutters no limite do scroll horizontal, a mesma receita da tabela da DRE.
+            O thumb do ScrollAutoHide é `absolute bottom-1` (4px) com `h-1.5` (6px), medido
+            do PRÓPRIO wrapper — sem folga ele encosta na última linha (foi o que aconteceu).
+            · `pb-1.5` FORA: encolhe o wrapper, afastando a barra da borda do box sem tocar
+              no componente compartilhado, que é padrão da plataforma.
+            · `pb-3.5` no viewport (o `className` do ScrollAutoHide vai para lá): 14px de
+              respiro DENTRO da área rolável, sobre os quais o thumb flutua.
+            Os dois gutters mostram o `bg-band` do box, então a tabela termina numa moldura
+            contínua — não num vazio branco. */}
+        <div className="pb-1.5">
+        <ScrollAutoHide eixo="x" className="pb-3.5">
           <table className="w-full border-separate border-spacing-0 text-[13px]">
             <thead>
               <tr>
@@ -226,6 +236,7 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
             </tbody>
           </table>
         </ScrollAutoHide>
+        </div>
       </div>
     </div>
   )
