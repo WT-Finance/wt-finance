@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ResponsiveContainer, ComposedChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Line, Legend,
 } from 'recharts'
 import { fmtMi } from '@/lib/fmt'
+import SliderHorizonte from '@/components/shared/slider-horizonte'
+import { fatiarJanelaMensal } from '@/lib/fluxo/janela-mensal'
 
 export interface FluxoMensalV3Row {
   mes:                string   // 'YYYY-MM'
@@ -110,6 +112,7 @@ function FluxoLegend() {
 // ── Data transform ────────────────────────────────────────────────────────────
 
 interface ChartPoint {
+  mes:                 string
   label:               string
   entrada_efetivada:   number
   entrada_prevista:    number
@@ -118,33 +121,68 @@ interface ChartPoint {
   resultado_mensal:    number
 }
 
-function toChartPoints(rows: FluxoMensalV3Row[], invertida: boolean): ChartPoint[] {
-  return [...rows]
-    .sort((a, b) => a.mes.localeCompare(b.mes))
-    .map(r => ({
-      label:               fmtMesLabel(r.mes),
-      entrada_efetivada:   r.entrada_efetivada,
-      entrada_prevista:    r.entrada_prevista,
-      saida_efetivada_val: invertida ? r.saida_efetivada : -r.saida_efetivada,
-      saida_prevista_val:  invertida ? r.saida_prevista  : -r.saida_prevista,
-      resultado_mensal:    r.resultado_mensal,
-    }))
+// v5.4.2: as saídas vão SEMPRE para cima do eixo, lado a lado com as entradas — o
+// botão "Inverter saídas" saiu, no mesmo padrão adotado no card de Weddings.
+// Consequência tratada no eixo Y: a metade negativa passou a abrigar só a LINHA de
+// resultado, então o eixo deixou de mostrar valor ABSOLUTO. Antes o sinal vinha da
+// direção da barra; agora só o rótulo pode dizer que é negativo, e um "R$ 4 Mi"
+// abaixo do zero seria leitura errada.
+function toChartPoints(rows: readonly FluxoMensalV3Row[]): ChartPoint[] {
+  return rows.map(r => ({
+    mes:                 r.mes,
+    label:               fmtMesLabel(r.mes),
+    entrada_efetivada:   r.entrada_efetivada,
+    entrada_prevista:    r.entrada_prevista,
+    saida_efetivada_val: r.saida_efetivada,
+    saida_prevista_val:  r.saida_prevista,
+    resultado_mensal:    r.resultado_mensal,
+  }))
 }
+
+const plural = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`
+
+/** Riscos MAIORES da régua do slider: um a cada 6 meses, como em Weddings. */
+const MARCOS = [6, 12, 18, 24, 30, 36] as const
+
+const JANELA_PADRAO_ATRAS  = 24
+const JANELA_PADRAO_FRENTE = 18
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
   rows: FluxoMensalV3Row[]
+  /** Mês corrente 'YYYY-MM' — vem do SERVIDOR (`hojeSP()`), para o slider ancorar
+   *  sem depender do relógio do cliente (e sem divergir na hidratação). */
+  mesHoje: string
 }
 
-export default function FluxoMensalChart({ rows }: Props) {
-  const [invertida, setInvertida] = useState(false)
-  const data = toChartPoints(rows, invertida)
+export default function FluxoMensalChart({ rows, mesHoje }: Props) {
+  const [atras,  setAtras]  = useState(JANELA_PADRAO_ATRAS)
+  const [frente, setFrente] = useState(JANELA_PADRAO_FRENTE)
 
-  // Ponta LIVRE sempre arredondada, dê a saída para cima (invertida) ou para baixo
-  // (padrão, valor negativo): `[2,2,0,0]` arredonda a ponta oposta ao eixo nos dois
-  // sentidos (o Recharts inverte o `ySign` na barra negativa). Antes o ramo `: [0,0,2,2]`
-  // arredondava o EIXO na saída que desce — errado. Ver chart-theme/barRadius.
+  // A RPC (0229) devolve a janela larga — 36 meses atrás + o mês atual + 36 à frente —
+  // UMA vez, e o slider fatia aqui: arrastar não refetcha. Diferente do acumulado de
+  // Weddings, aqui cada linha já é o valor do próprio mês, então recortar não rebaseia
+  // nada (ver o cabeçalho de @/lib/fluxo/janela-mensal).
+  const ordenadas = useMemo(
+    () => [...rows].sort((a, b) => a.mes.localeCompare(b.mes)),
+    [rows],
+  )
+  const janela = useMemo(
+    () => fatiarJanelaMensal(ordenadas, mesHoje, atras, frente),
+    [ordenadas, mesHoje, atras, frente],
+  )
+  const data = useMemo(() => toChartPoints(janela.pontos), [janela.pontos])
+
+  // Rótulo VERDADEIRO da janela: derivado do que foi de fato recortado, não do estado
+  // pedido (que `fatiarJanelaMensal` pode ter clampado numa série mais curta).
+  const idxHoje = janela.mesHoje ? data.findIndex(d => d.mes === janela.mesHoje) : -1
+  const atrasEfetivo  = idxHoje >= 0 ? idxHoje : Math.max(0, data.length - 1)
+  const frenteEfetivo = idxHoje >= 0 ? data.length - 1 - idxHoje : 0
+
+  // `[2,2,0,0]` arredonda a ponta LIVRE (a oposta à linha do zero) nos dois sentidos —
+  // o Recharts inverte o `ySign` na barra negativa. Mantido mesmo com as saídas subindo:
+  // é o raio padrão de qualquer coluna vertical (ver chart-theme/barRadius).
   const saidaRadius: [number, number, number, number] = [2, 2, 0, 0]
 
   if (!data.length) {
@@ -159,17 +197,13 @@ export default function FluxoMensalChart({ rows }: Props) {
 
   return (
     <div className="rounded-xl shadow-sm bg-white p-5 mb-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-baseline gap-2">
+      <div className="mb-4">
+        <div className="flex items-baseline gap-2 flex-wrap">
           <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Fluxo de Caixa Mensal</h3>
-          <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>24 meses passados + 18 futuros</span>
+          <span className="text-[13px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+            {plural(atrasEfetivo, 'mês passado', 'meses passados')} + {plural(frenteEfetivo, 'mês futuro', 'meses futuros')}
+          </span>
         </div>
-        <button
-          onClick={() => setInvertida(v => !v)}
-          className="text-xs text-zinc-500 border border-zinc-200 rounded px-2.5 py-1 hover:bg-zinc-50 active:bg-zinc-100 transition-colors shrink-0"
-        >
-          ⇅ Inverter saídas
-        </button>
       </div>
 
       <ResponsiveContainer width="100%" height={260}>
@@ -188,7 +222,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             interval={2}
           />
           <YAxis
-            tickFormatter={v => fmtMi(Math.abs(v as number))}
+            tickFormatter={v => fmtMi(v as number)}
             tick={{ fontSize: 11, fill: 'var(--chart-axis-tick)' }}
             axisLine={false}
             tickLine={false}
@@ -204,8 +238,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             fillOpacity={1}
             radius={[2, 2, 0, 0]}
             barSize={5}
-            animationDuration={400}
-            animationEasing="ease-in-out"
+            isAnimationActive={false}
           />
           <Bar
             dataKey="entrada_prevista"
@@ -214,8 +247,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             fillOpacity={0.45}
             radius={[2, 2, 0, 0]}
             barSize={5}
-            animationDuration={400}
-            animationEasing="ease-in-out"
+            isAnimationActive={false}
           />
           <Bar
             dataKey="saida_efetivada_val"
@@ -224,8 +256,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             fillOpacity={1}
             radius={saidaRadius}
             barSize={5}
-            animationDuration={400}
-            animationEasing="ease-in-out"
+            isAnimationActive={false}
           />
           <Bar
             dataKey="saida_prevista_val"
@@ -234,8 +265,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             fillOpacity={0.45}
             radius={saidaRadius}
             barSize={5}
-            animationDuration={400}
-            animationEasing="ease-in-out"
+            isAnimationActive={false}
           />
 
           <Line
@@ -246,8 +276,7 @@ export default function FluxoMensalChart({ rows }: Props) {
             dot={(props: DotProps) => <ResultadoDot key={`dot-${props.cx}-${props.cy}`} {...props} />}
             activeDot={{ r: 5 }}
             type="monotone"
-            animationDuration={400}
-            animationEasing="ease-in-out"
+            isAnimationActive={false}
           />
 
           {/* Legend hidden from Recharts — we render our own below */}
@@ -255,6 +284,41 @@ export default function FluxoMensalChart({ rows }: Props) {
         </ComposedChart>
       </ResponsiveContainer>
       <FluxoLegend />
+
+      {/* Slider de janela — mesmo primitivo e mesma régua do card de Weddings, com o
+          trilho NEUTRO (o default): esta tela já tem o slider de "Horizonte de tempo"
+          do Fluxo Projetado, e dois sliders na mesma página com cores diferentes
+          leriam como controles de naturezas diferentes. */}
+      <div className="px-2 py-4 mt-7 border-t border-zinc-100">
+        <div className="flex items-start gap-3">
+          <span className="text-2xs text-zinc-500 tabular-nums w-[72px] shrink-0 text-right pt-0.5">
+            {plural(atrasEfetivo, 'mês', 'meses')}
+          </span>
+          <SliderHorizonte
+            className="flex-1 min-w-[120px]"
+            valor={atras} max={janela.maxAtras} onChange={setAtras}
+            maiores={MARCOS} espelhado
+            ariaLabel="Meses para trás na janela do gráfico"
+            ariaValueText={plural(atrasEfetivo, 'mês atrás', 'meses atrás')}
+          />
+          <span
+            className="text-2xs font-semibold shrink-0 px-1.5 py-0.5 rounded mt-0.5"
+            style={{ background: 'var(--action-soft)', color: 'var(--action-soft-fg)' }}
+          >
+            HOJE
+          </span>
+          <SliderHorizonte
+            className="flex-1 min-w-[120px]"
+            valor={frente} max={janela.maxFrente} onChange={setFrente}
+            maiores={MARCOS}
+            ariaLabel="Meses para frente na janela do gráfico"
+            ariaValueText={plural(frenteEfetivo, 'mês à frente', 'meses à frente')}
+          />
+          <span className="text-2xs text-zinc-500 tabular-nums w-[72px] shrink-0 pt-0.5">
+            {plural(frenteEfetivo, 'mês', 'meses')}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
