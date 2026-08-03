@@ -68,6 +68,33 @@ por outro motivo.
    construção** com o acumulado de saídas do último mês visível (era assim antes também);
    antes da borda direita, funciona como benchmark prospectivo.
 
+### Rodadas de ajuste com a tela na mão (03/08, depois do merge da v5.4.1)
+
+O Yan rodou a aplicação e mandou prints — o mesmo laço "entregar, mandar print, ajustar"
+que funcionou na v5.4.1. Onze ajustes, em quatro mensagens:
+
+- **Títulos dos dois gráficos** de volta ao nível hierárquico de quando eram cards
+  separados, e encurtados para **"Mensal"** e **"Acumulado"**. ⚠️ Com isso a tela perdeu a
+  única menção ao reinício do acumulado na borda — a definição segue no ADR e no rótulo da
+  referência ("…na janela").
+- **Rótulo da janela** → "N meses passados + N meses futuros".
+- **Slider:** sem o rótulo "Horizonte de tempo:", extremos dizendo só "N meses", **trilho
+  dourado** e **28px de respiro** de cada lado (estava colado na legenda do gráfico de
+  cima). O dourado virou a prop `corTrilho` do primitivo, com o neutro como **default** —
+  hardcodar a cor da aba ali faria um call-site futuro do Financeiro herdá-la sem querer.
+- **Slider instantâneo:** `isAnimationActive={false}` nas 5 séries. O atraso era a animação
+  **default de 1500ms do Recharts** reanimando os dois gráficos a cada arrasto, não o
+  cálculo (fatiar 74 meses é trivial). Diagnóstico que vale guardar: quando um controle de
+  scrubbing parece lento num gráfico, suspeite da animação antes do dado.
+- **"Inverter saídas" removido**, saídas sempre para cima. **Consequência tratada:** com as
+  barras subindo, a metade negativa do eixo Y passou a abrigar só a linha de resultado,
+  então o eixo deixou de poder mostrar valor absoluto — antes o sinal vinha da direção da
+  barra, e um "R$ 1,5 Mi" abaixo do zero seria leitura errada.
+- **Card de totais:** filtro trazido para DENTRO dele; a frase explicativa saiu da tela; os
+  dois valores dividem em metades iguais o espaço não ocupado pelo filtro (régua no meio,
+  medida a 1px do centro), alinhados à **esquerda** de suas metades.
+- **Bug do salto ao topo** — ver a seção própria em §7.
+
 ---
 
 ## 3. Banco
@@ -127,8 +154,11 @@ digita credenciais. `BYPASS_AUTH=true` existe no `.env.local` mas **nenhum códi
 produção** e a **matemática portada fielmente** de `janela-fluxo.ts`, exercitado em
 Chromium headless (o Chromium que o próprio MCP instalou) em quatro larguras de janela
 (24+18, 6+6, extremo 36+36, degenerado 0+0): **zero erros de console**, limites 36/36,
-`accent-color` neutro conferido em `rgb(75,79,84)`, régua com os 6 marcos semestrais, e o
-invariante "referência == acumulado de saídas do último mês visível" válido em todas.
+régua com os 6 marcos semestrais, `accent-color` do trilho conferido em `rgb(189,150,92)`
+(o dourado de Weddings, depois do ajuste do Yan) e o invariante "referência == acumulado de
+saídas do último mês visível" válido em todas. Cada rodada de ajuste foi re-renderizada e
+medida no mesmo harness (posição da régua a 1px do centro da região livre, respiro do
+slider de 28px, ausência de sobreposição entre os KPIs).
 
 **Achado real dessa conferência:** os **dois totais se sobrepunham** — item de flex encolhe
 abaixo do próprio conteúdo por default (`flex-shrink: 1`) e o valor de 8 dígitos invadia o
