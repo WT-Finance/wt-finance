@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-03 · produção na **v5.4.0** · **v5.4.1 EM CURSO** (DRE: refino visual — PR draft, aguardando conferência visual e merge do Yan). Uma segunda frente, a **v5.4.2** (Weddings), roda em paralelo em outra sessão e mergeia DEPOIS desta.
+Última atualização: 2026-08-03 (pós-merge) · produção na **v5.4.1** (DRE: refino visual — #207 mergeada às 14h50). A **v5.4.2** (Weddings) segue em curso na sessão paralela e mergeia em seguida.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,8 +9,8 @@
 
 ## Verdade atual
 
-- **v5.4.1 EM CURSO (PR draft) — DRE: refino visual.** PATCH de apresentação: **nenhum número
-  muda**. Sem migration, sem ADR. (1) O **Resumo Executivo** passou a usar a gramática da tabela do
+- Versão em produção (main): **`5.4.1`** (#207 mergeado 03/08 às 14h50) — **DRE: refino visual.**
+  PATCH de apresentação: **nenhum número mudou**. Sem migration, sem ADR. (1) O **Resumo Executivo** passou a usar a gramática da tabela do
   mesmo card — cabeçalho 10px/caps, box, `ConteudoContabil` com "R$" esmaecido e negativo entre
   parênteses, linhas na cor de `blocoH` (`--band`, NÃO a banda escura dos totalizadores), rótulos em
   caixa alta com o prefixo contábil em coluna própria; o subtítulo virou o **"?"** ao lado do título.
@@ -36,12 +36,13 @@
   abre animado e pisca ao fechar; *(c)* `UltimaAtualizacao` ganhou `vigiarAtraso` (default `true`):
   a régua de 45min é do **cron do Monde** e não vale para fonte de cadência humana.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-1_DRE_Refino_Visual.md`.
-  ⚠️ **PENDENTE do Yan — a conferência visual NÃO foi feita** (§7 do out-briefing): sessão de
-  background, o MCP Playwright não sobe e `/financeiro/dre` responde `307 → /login` (exige sessão,
-  e não há credencial). O checkpoint do Yan é a primeira passada visual desta versão.
+  **Conferência visual: FEITA pelo Yan**, em 3 rodadas de screenshots antes do merge (a sessão não
+  conseguiu fazê-la — background, o MCP Playwright não sobe e `/financeiro/dre` responde
+  `307 → /login`). Ela produziu 9 ajustes, todos já no ar. Modelo que funcionou e vale repetir
+  enquanto a verificação visual autônoma não existir: **entregar, mandar print, ajustar**.
   ⚠️ **`BYPASS_AUTH=true` existe no `.env.local` mas NENHUM código em `src/` a lê** — resíduo morto,
   não libera nem protege nada. Não contar com ela para verificação.
-- Versão em produção (main): **`5.4.0`** (#191 mergeado 31/07 às 17h14) — **API Externa do módulo de
+- A v5.4.0 (#191 mergeado 31/07 às 17h14) entregou a **API Externa do módulo de
   Solicitações**. Plataformas internas criam, consultam e cancelam solicitações por **chave de API**.
   O contrato é **PULL-ONLY**: o Janus não faz nenhuma chamada de saída — quem quer saber o desfecho
   consulta (`GET /api/externo/solicitacoes/{id}` ou `?referencia_origem=`). O disparo exige
