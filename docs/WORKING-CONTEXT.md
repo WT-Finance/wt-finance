@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-07-31 (pós-merge) · produção na **v5.4.0** (API Externa de Solicitações — #191 mergeada às 17h14). Nenhuma versão em curso.
+Última atualização: 2026-08-03 · produção na **v5.4.0** · **v5.4.1 EM CURSO** (DRE: refino visual — PR draft, aguardando conferência visual e merge do Yan). Uma segunda frente, a **v5.4.2** (Weddings), roda em paralelo em outra sessão e mergeia DEPOIS desta.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,6 +9,30 @@
 
 ## Verdade atual
 
+- **v5.4.1 EM CURSO (PR draft) — DRE: refino visual.** PATCH de apresentação: **nenhum número
+  muda**. Sem migration, sem ADR. (1) O **Resumo Executivo** passou a usar a gramática da tabela do
+  mesmo card — cabeçalho 10px/caps, box, `ConteudoContabil` com "R$" esmaecido e negativo entre
+  parênteses, linhas na cor de `blocoH` (`--band`, NÃO a banda escura dos totalizadores), rótulos em
+  caixa alta com o prefixo contábil em coluna própria; o subtítulo virou o **"?"** ao lado do título.
+  (2) **"Editar estrutura"** subiu para entre a tabela e o Resumo, **nos dois ramos de render**.
+  (3) **Selo de última atualização** no alto do card, lendo `status_lancamentos_movimentacao` (0185)
+  pelo admin client server-side — **sem migration** e sem abrir GRANT a `authenticated`. (4) A
+  **Decomposição** ganhou pills abaixo do título, **cor plana** (as paletas de 5/7 tons saíram; só
+  "Outros" e "Não classificadas" mantêm cor própria) e **drill inline sob a própria barra**, com a
+  cortina do TopSection.
+  **Duráveis desta versão:** *(a)* `ConteudoContabil`/`corPorSinal` agora moram em
+  `dre/celula-contabil.tsx` — **nunca copiar cor de célula entre componentes deste card**: os tons
+  base dão 3,88–4,31:1 sobre as bandas claras e reprovam AA, e só `corPorSinal` sabe escolher os
+  `-deep`; *(b)* **conteúdo dentro de cortina `grid-template-rows` tem de ficar MONTADO nos dois
+  estados** (com `inert` no fechado) — desmontar no fechamento faz a cortina colapsar caixa vazia,
+  abre animado e pisca ao fechar; *(c)* `UltimaAtualizacao` ganhou `vigiarAtraso` (default `true`):
+  a régua de 45min é do **cron do Monde** e não vale para fonte de cadência humana.
+  Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-1_DRE_Refino_Visual.md`.
+  ⚠️ **PENDENTE do Yan — a conferência visual NÃO foi feita** (§7 do out-briefing): sessão de
+  background, o MCP Playwright não sobe e `/financeiro/dre` responde `307 → /login` (exige sessão,
+  e não há credencial). O checkpoint do Yan é a primeira passada visual desta versão.
+  ⚠️ **`BYPASS_AUTH=true` existe no `.env.local` mas NENHUM código em `src/` a lê** — resíduo morto,
+  não libera nem protege nada. Não contar com ela para verificação.
 - Versão em produção (main): **`5.4.0`** (#191 mergeado 31/07 às 17h14) — **API Externa do módulo de
   Solicitações**. Plataformas internas criam, consultam e cancelam solicitações por **chave de API**.
   O contrato é **PULL-ONLY**: o Janus não faz nenhuma chamada de saída — quem quer saber o desfecho
@@ -22,8 +46,8 @@
   Migrations 0210–0225 aplicadas. Out-briefing:
   `docs/briefings/WT_Finance_Out_Briefing_v5-4-0_API_Externa.md` (as seções de round 2 a 6 são a
   história das decisões).
-  **PENDENTE do Yan:** (1) aplicar `supabase/patches/PENDENTE-remover-coluna-whitelist.sql` em TTY —
-  numerar na hora (`git mv` para o próximo livre, hoje `0226`, + `npm run db:migrate -- --destrutiva`);
+  **PENDENTE do Yan:** (1) ~~patch destrutivo da coluna de whitelist~~ — **APLICADO** (arquivado como
+  migration `0226`; a limpeza da chave TARS virou a `0227`, e `supabase/patches/` não existe mais);
   (2) criar a chave da integração na tela `/admin/api-externa` (o segredo é exibido UMA vez) e
   entregar `docs/api-externa-solicitacoes.md` ao Vitor, avisando dos dois pontos que mudaram o
   contrato: `solicitante_email` obrigatório e pull-only; (3) conferência VISUAL de
@@ -96,7 +120,10 @@
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox). Próximo livre: 0162.
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0225`** (só comentário: conserta um fragmento pendurado em
+- Última migration APLICADA: **`0227`** (limpeza da chave TARS revogada, aplicada pelo Yan em TTY e
+  arquivada como migration). Antes dela a **`0226`** (DROP da coluna inerte
+  `app.api_chave.whitelist_tipos` — a última pendência de banco da v5.4.0; `supabase/patches/`
+  ficou vazia e não existe mais). **Próxima migration livre: `0228`.** Antes delas a **`0225`** (só comentário: conserta um fragmento pendurado em
   `solic_concluir`, achado do revisor-db — zero mudança executável). Antes dela a **`0224`** (v5.4.0/Round6: a WHITELIST de tipos por chave foi removida —
   toda chave alcança todo tipo exposto; `TIPO_NAO_AUTORIZADO` deixou de existir; `api_chave_atualizar`
   DROPADA porque a whitelist era o único campo editável de uma chave. De carona, os 3 comentários
@@ -116,7 +143,7 @@
   na gestão e a seção viva da página vinha vazia para quem tinha só a permissão nova). Antes dela a
   **0217** (mesmo round: área RBAC `solicitacoes/documentacao` + `criar_solicitacao_externa` com
   `p_solicitante_email` obrigatório + `solic_json` com a chave `origem`); 0210–0214 renumeradas +
-  `migration repair`; 0215/0216 (rounds 2 e 3). **Próxima migration livre: `0226`.** Não existe 0218:
+  `migration repair`; 0215/0216 (rounds 2 e 3). Não existe 0218:
   o arquivo da limpeza nasceu com esse número e foi renumerado para 0220 (que o Yan já aplicou) —
   ver a armadilha registrada abaixo.
 - ✅ **Limpeza de histórico APLICADA (31/07, mão do Yan): `0220` no ar.** Histórico zerado e
@@ -154,10 +181,6 @@
   colunas órfãs (0223) e a concessão da área "Solicitações (documentação)" (2 roles). **Não há mais
   pendência de banco nesta versão** — o que falta é criar a chave, entregar o contrato ao Vitor e
   mergear.
-- ⚠️ **Patch destrutivo PENDENTE: `supabase/patches/PENDENTE-remover-coluna-whitelist.sql`** — dropa
-  só `app.api_chave.whitelist_tipos`, hoje inerte. **Sem número de propósito** (numerar na hora:
-  `git mv` para o próximo livre + `npm run db:migrate -- --destrutiva`, no terminal do Yan). Guarda
-  aborta se a 0224 não estiver aplicada.
 - **A superfície de restrição da API é MÍNIMA desde o Round 6:** a chave existe e está ativa, e o tipo
   está `exposto_via_api`. Nada de lista de equipes por tipo (caiu no Round 3), nada de lista de tipos
   por chave (Round 6). Uma chave tem dois estados na vida: criada e revogada — não há "editar chave",
@@ -187,7 +210,7 @@
   isso a aba do Demonstrativo existe mas só admin a enxerga.
 - **Conferir o Resumo Executivo contra a planilha da controladoria** (do Yan; contra a tabela já
   está provado).
-- **Decisões de produto abertas na DRE:** centavos na barra; posição do "Editar estrutura";
+- **Decisões de produto abertas na DRE:** centavos na barra;
   3 blocos do seed em CAIXA ALTA (ajuste é no editor da estrutura, não em código); vencidos em
   aberto no Total do ano; convenção do Δ% do Consolidado (denominador em módulo).
 - **Órfão de documentação:** commit `b869bb9` (relatório delta DRE×Monde + errata) vive só em
@@ -231,7 +254,10 @@
 - **Saúde da sincronização Monde:** detectar falha SILENCIOSA (200 sem vendas).
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116) · `CRON_SECRET` constant-time (BAIXO).
 - Casos de contrato pendentes: `solicitar_acesso_admin`, `monde_ingest_status`.
-- Tokenização do `zinc` + hex intermediários das paletas da Decomposição (vão em `style={{}}`).
+- Tokenização do `zinc` (os hex das paletas da Decomposição saíram na v5.4.1 — o arquivo não tem
+  mais nenhum). **Proposta de lint parada em D5:** `wt/no-cor-hardcoded` só inspeciona CLASSE, então
+  hex em `style={{}}` passa batido; estender a regra exige mexer em `eslint-rules/`, que o
+  `protecao-config` bloqueia — diff proposto na §10 do out-briefing da v5.4.1.
 - Consolidação das 3 pills de período (`PeriodoFilterPillsUrl` → `PILL_FILTRO`).
 - Metas por Vendedor — próxima capacidade planejada (escopo a confirmar).
 - Dependabot: 19 vulnerabilidades no default branch (10 high) — triagem pendente.
