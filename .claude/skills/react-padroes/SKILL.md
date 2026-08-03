@@ -155,6 +155,25 @@ startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: 
 outro detalhe que já causou "salto" reportado. A URL/semântica do filtro não muda; só a
 percepção do clique.
 
+⚠️ **Esta receita estava escrita aqui e NÃO SEGUROU.** Na v5.4.2 o Yan reportou o salto ao
+topo no filtro de Weddings, e a varredura achou **7 call-sites** sem o `scroll: false`
+(`periodo-pills-url`, `periodo-filter-url`, `setor-filter`, `metas-periodo-pills`,
+`cadastro-grade`, `solicitacoes-content` ×2) — contra **2** que o seguiam. Ou seja: o padrão
+documentado perdeu de 7 a 2. Todos corrigidos na v5.4.2, mas a lição é sobre o MEIO, não
+sobre o conteúdo: isto é candidato a **enforcement mecânico** (régua dos 5 destinos,
+destino 1) — uma regra `wt/*` que exija `scroll: false` quando o destino do
+`router.push`/`replace` é o próprio `pathname`. Enquanto a regra não existir (depende do
+protocolo D5: `eslint.config.*` é alvo do hook `protecao-config`), **confira o grep antes
+de dar um filtro por pronto**:
+
+```bash
+grep -rn "router.push(\`\${pathname}" src/ | grep -v "scroll: false"
+```
+
+**Critério, para não errar o alvo:** `scroll: false` é para navegação que fica no **MESMO
+`pathname`** (filtro/recorte — a página é a mesma, só o conteúdo muda). Navegação **entre
+rotas** deve continuar rolando ao topo; é o comportamento certo para uma página nova.
+
 ### Dado NÃO-crítico sai do caminho bloqueante do layout
 
 Um badge de contagem/pendência que não é essencial ao primeiro render não deve ficar num

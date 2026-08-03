@@ -84,6 +84,30 @@ Canônicos: `Button` (variantes sólido/contorno/ghost/ícone/ícone-borda/livre
 `Tooltip`, `Card`, `Checkbox`. Antes de montar um botão ou campo do zero, procure aqui —
 a divergência visual histórica nasceu de cada tela montar o próprio.
 
+**Afordância "?" de ajuda** (rótulo/cabeçalho que precisa explicar uma definição): bolinha
+`h-3 w-3` com borda `zinc-300` e o "?" em `text-[8px]`, envolvida no primitivo `Tooltip`.
+Receita completa, com os dois detalhes que já custaram caro:
+
+```tsx
+<Tooltip conteudo={texto} className="z-30 w-64 !whitespace-normal font-normal leading-snug">
+  <span className="inline-flex h-3 w-3 items-center justify-center rounded-full border
+                   border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
+</Tooltip>
+```
+
+- **`!whitespace-normal` é obrigatório** (com o `!`): o `Tooltip` traz `whitespace-nowrap` na
+  base, e sem forçar o wrap um texto longo vira **uma linha invisível gigante** que
+  transborda e cria barra de rolagem horizontal (medido: 313px → 0px, v4.38.0).
+- **Perto da borda direita, ancore à direita** (`!left-auto right-0`): o balão é
+  `absolute left-0` e abriria para fora da tela na última coluna de uma tabela (v5.4.2).
+- Dentro de `<th>` clicável (tabela ordenável), o "?" precisa de
+  `onClick={e => e.stopPropagation()}` — ler a dica não deve reordenar a tabela.
+
+Call-sites vivos: `financeiro/faturamento-corp` (`CabecalhoAjuda`),
+`financeiro/posicao-projetado` (`KpiJanela`), `weddings/lista-operacoes` (`AjudaHeader`).
+São **três cópias da mesma receita** — candidata natural a primitivo compartilhado quando
+uma quarta aparecer.
+
 Pills de plataforma/filtro são consts de `@/components/shared/botoes`
 (`PILL*`/`PILL_FILTRO*`); badge de status de solicitação é `statusBadge` de
 `@/lib/solicitacoes/format.ts`. Foco neutro (sem o anel dourado/de marca) vem da
