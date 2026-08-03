@@ -11,7 +11,11 @@ const schema = z.object({
   subsetor:        z.enum(['COMERCIAL', 'CONVIDADOS', 'PRODUÇÃO', 'PLANEJAMENTO', 'NÃO_CLASSIFICADO', 'todos'])
                     .default('todos'),
   busca:           z.string().max(100).optional(),
-  ordenar_por:     z.enum(['data_evento', 'nome_casal', 'hotel', 'faturamento', 'receita', 'margem', 'custos', 'resultado', 'ml', 'duracao', 'tipo_contrato', 'convidados']).default('data_evento'),
+  // v5.4.2/M1: 'margem_aa' (margem anualizada) ordena pela chave d_margem_aa da
+  // migration 0228. A whitelist do SQL termina em `ELSE 'd_data_evento'` — um valor
+  // fora deste enum ordenaria por data do evento em silêncio, então as duas pontas
+  // (este enum e o CASE da RPC) precisam andar juntas.
+  ordenar_por:     z.enum(['data_evento', 'nome_casal', 'hotel', 'faturamento', 'receita', 'margem', 'custos', 'resultado', 'ml', 'margem_aa', 'duracao', 'tipo_contrato', 'convidados']).default('data_evento'),
   direcao:         z.enum(['asc', 'desc']).default('desc'),
   pagina:          z.coerce.number().int().min(1).default(1),
   por_pagina:      z.coerce.number().int().min(1).max(200).default(50),

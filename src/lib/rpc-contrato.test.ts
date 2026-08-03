@@ -20,6 +20,9 @@ import {
   dreMensalSchema, dreEstruturaSchema, salvarEstruturaResultSchema, historicoLotesSchema,
   historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
+import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
+import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
+import { hojeSP } from './fmt'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
@@ -93,6 +96,155 @@ describe.skipIf(!ON)('contrato RPC — shape + invariantes', () => {
   })
 })
 
+// v5.4.2 — CASO DE CONTRATO da Margem (a.a.): o número que a lista ORDENA (chave
+// `d_margem_aa`, calculada em SQL na migration 0228) e o número que ela EXIBE (derivado
+// no cliente por `margemAnualizada`) têm de ser a MESMA conta. Se divergirem, a coluna
+// ordena por um valor diferente do que mostra — e nada nos gates pega: o `tsc` não vê
+// SQL, o teste de shape não vê ordem, e a whitelist do ORDER BY cai num `ELSE` silencioso.
+// A verificação manual das 26 combinações (feita na entrega) não fica de pé sozinha;
+// este teste é a rede permanente. Achado MÉDIO do revisor-db, endereçado.
+describe.skipIf(!ON)('contrato RPC — Margem (a.a.): ordenação do SQL ≡ fórmula exibida', () => {
+  const aa = (o: Record<string, unknown>) => margemAnualizada(
+    o.margem_liquida_pct as number,
+    duracaoDias(o.data_venda_contrato as string | null, o.data_evento as string | null),
+  )
+
+  for (const direcao of ['desc', 'asc'] as const) {
+    it(`ordenar por margem_aa ${direcao} devolve a lista monotônica na fórmula do cliente`, async () => {
+      const r = await rpc('get_operacoes_weddings', {
+        p_status: 'todos', p_subsetor: 'todos',
+        p_ordenar_por: 'margem_aa', p_direcao: direcao, p_pagina: 1, p_por_pagina: 200,
+      })
+      const ops = (r.operacoes as Record<string, unknown>[]) ?? []
+      expect(ops.length).toBeGreaterThan(0)
+
+      const comValor = ops.map(aa).filter((v): v is number => v !== null)
+      expect(comValor.length).toBeGreaterThan(0)
+
+      for (let i = 1; i < comValor.length; i++) {
+        const ok = direcao === 'desc'
+          ? comValor[i] <= comValor[i - 1] + 1e-6
+          : comValor[i] >= comValor[i - 1] - 1e-6
+        expect(ok, `quebra de ordem em ${i}: ${comValor[i - 1]} → ${comValor[i]}`).toBe(true)
+      }
+    })
+  }
+
+  it('duração não anualizável cai por ÚLTIMO (NULLS LAST), nunca no meio', async () => {
+    const r = await rpc('get_operacoes_weddings', {
+      p_status: 'todos', p_subsetor: 'todos',
+      p_ordenar_por: 'margem_aa', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200,
+    })
+    const vals = ((r.operacoes as Record<string, unknown>[]) ?? []).map(aa)
+    // `reduce<number>` explícito: sem o parâmetro de tipo, o TS escolhe a sobrecarga
+    // em que o acumulador herda `number | null` do array e o `Math.max` abaixo reprova.
+    const ultimoComValor = vals.reduce<number>((acc, v, i) => (v !== null ? i : acc), -1)
+    const nulosAntes = vals.slice(0, Math.max(ultimoComValor, 0)).filter(v => v === null).length
+    expect(nulosAntes, 'travessão apareceu antes de uma operação com valor').toBe(0)
+  })
+
+  it('a paginação não repete nem pula linha ao ordenar pela coluna nova', async () => {
+    const params = (pagina: number) => ({
+      p_status: 'passado', p_subsetor: 'todos',
+      p_ordenar_por: 'margem_aa', p_direcao: 'desc', p_pagina: pagina, p_por_pagina: 10,
+    })
+    const [p1, p2] = await Promise.all([
+      rpc('get_operacoes_weddings', params(1)),
+      rpc('get_operacoes_weddings', params(2)),
+    ])
+    const ids = (r: Record<string, unknown>) =>
+      ((r.operacoes as Record<string, unknown>[]) ?? []).map(o => o.operacao as string)
+    const a = ids(p1), b = ids(p2)
+    expect(a.length).toBeGreaterThan(0)
+    expect(a.filter(x => b.includes(x)), 'operação repetida entre páginas').toEqual([])
+  })
+})
+
+// v5.4.2 — CASO DE CONTRATO da janela do Fluxo de Caixa Mensal do Financeiro.
+// Achado MÉDIO do revisor-db na 0229, e uma inconsistência minha: eu fiz exatamente
+// este guard para a 0228 (a chave de ordenação) e NÃO espelhei para a irmã na mesma
+// versão. O risco é concreto: a janela daquela RPC é HARDCODED no corpo, então um
+// futuro `CREATE OR REPLACE` que use a 0080 como base volta a série para 42 meses
+// **em silêncio** — `tsc`/`lint`/`build`/`test` passam todos, e o slider do cliente
+// simplesmente clampa para o que existir, aparecendo "curto" sem erro nenhum.
+//
+// O segundo `it` torna PERMANENTE o cross-check que na entrega foi ad hoc: as duas
+// RPCs leem a MESMA view (`financeiro.vw_fluxo_caixa_kpis_b`), uma pela janela do
+// corpo e outra por range explícito, então elas TÊM de concordar — é o que
+// `banco-e-rpc` §7 e `contrato-rpc-front` §5 chamam de caso de contrato em vez de
+// nota de rodapé.
+interface FluxoMensalLinha {
+  mes: string
+  entrada_efetivada: number
+  entrada_prevista: number
+  saida_efetivada: number
+  saida_prevista: number
+}
+
+describe.skipIf(!ON)('contrato RPC — janela do Fluxo de Caixa Mensal (Financeiro)', () => {
+  const serie = async () =>
+    (await rpc('get_fluxo_caixa_mensal_v3', {})) as unknown as FluxoMensalLinha[]
+
+  /** Último dia do mês 'YYYY-MM', para o range do kpis_b. */
+  const ultimoDia = (mes: string) => {
+    const [y, m] = mes.split('-').map(Number)
+    return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+  }
+
+  it(`a janela cobre ${LIMITE_MESES_FLUXO} meses para cada lado do mês corrente`, async () => {
+    const rows = await serie()
+    const mesHoje = hojeSP().slice(0, 7)
+    const idx = rows.findIndex(r => r.mes === mesHoje)
+
+    expect(idx, `mês corrente ${mesHoje} ausente na série devolvida`).toBeGreaterThanOrEqual(0)
+    // É ESTE par de asserções que a janela antiga (23 atrás / 18 à frente) REPROVA.
+    expect(idx, 'meses PASSADOS insuficientes para o slider').toBeGreaterThanOrEqual(LIMITE_MESES_FLUXO)
+    expect(rows.length - 1 - idx, 'meses FUTUROS insuficientes para o slider')
+      .toBeGreaterThanOrEqual(LIMITE_MESES_FLUXO)
+  })
+
+  it('a série é mensal, contínua e sem buraco (o eixo de tempo não pula mês)', async () => {
+    const rows = await serie()
+    for (let i = 1; i < rows.length; i++) {
+      const [ya, ma] = rows[i - 1].mes.split('-').map(Number)
+      const [yb, mb] = rows[i].mes.split('-').map(Number)
+      const distancia = (yb - ya) * 12 + (mb - ma)
+      expect(distancia, `salto entre ${rows[i - 1].mes} e ${rows[i].mes}`).toBe(1)
+    }
+  })
+
+  it('os 4 campos concordam com get_fluxo_caixa_kpis_b no mesmo mês (mesma view)', async () => {
+    const rows = await serie()
+    const comMovimento = rows.filter(
+      r => r.entrada_efetivada || r.entrada_prevista || r.saida_efetivada || r.saida_prevista,
+    )
+    expect(comMovimento.length).toBeGreaterThan(0)
+
+    // Amostra nas BORDAS do que tem dado + o mês corrente: é onde um erro de range apareceria.
+    const amostra = [
+      comMovimento[0].mes,
+      hojeSP().slice(0, 7),
+      comMovimento[comMovimento.length - 1].mes,
+    ]
+
+    for (const mes of amostra) {
+      const linha = rows.find(r => r.mes === mes)
+      expect(linha, `mês ${mes} ausente`).toBeDefined()
+      const k = await rpc('get_fluxo_caixa_kpis_b', { p_from: `${mes}-01`, p_to: ultimoDia(mes) })
+      const pares: Array<[string, number, number]> = [
+        ['entrada_efetivada', linha!.entrada_efetivada, k.entradas_realizadas as number],
+        ['saida_efetivada',   linha!.saida_efetivada,   k.saidas_realizadas   as number],
+        ['entrada_prevista',  linha!.entrada_prevista,  k.entradas_previstas  as number],
+        ['saida_prevista',    linha!.saida_prevista,    k.saidas_previstas    as number],
+      ]
+      for (const [campo, daSerie, doKpi] of pares) {
+        expect(Math.abs((daSerie ?? 0) - (doKpi ?? 0)), `${mes}.${campo}: ${daSerie} ≠ ${doKpi}`)
+          .toBeLessThan(0.01)
+      }
+    }
+  })
+})
+
 // F7 (v4.12.1): o schema Zod de cada RPC consumida por parseRpc PRECISA aceitar o
 // retorno REAL — senão parseRpc devolve null e a rota dá HTTP 500 / a tela degrada.
 // Foi exatamente o que escapou na Lista de Operações (get_operacoes_weddings): o
@@ -100,6 +252,11 @@ describe.skipIf(!ON)('contrato RPC — shape + invariantes', () => {
 // contra a RPC real e guarda contra essa classe de regressão em TODAS as 7 RPCs do M2.
 const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; schema: ZodType }> = [
   { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'data_evento', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
+  // v5.4.2: MESMA RPC com a chave de ordenação NOVA. Existe porque a whitelist do
+  // ORDER BY termina em `ELSE 'd_data_evento'` — um typo em `d_margem_aa` ou a perda
+  // do `WHEN` não dariam erro, só ordenariam por outra coisa em silêncio. Chamar a RPC
+  // viva com o valor pega coluna inexistente na hora (o EXECUTE estoura).
+  { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'margem_aa',   p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
   { fn: 'get_carteira_weddings',         params: { p_metric: 'casamentos' },                                              schema: carteiraWeddingsSchema },
   { fn: 'get_tendencia_margem',          params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },       schema: tendenciaMargemSchema },
   { fn: 'get_ranking_vendedores_range',  params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 100 }, schema: rankingVendedoresRangeSchema },

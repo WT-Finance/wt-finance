@@ -7,10 +7,11 @@ import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-nega
 import CarteiraMartrixCard from '@/components/weddings/carteira-matrix-card'
 import ProximosCasamentosCard from '@/components/weddings/proximos-casamentos-card'
 import OperacoesSection from '@/components/weddings/operacoes-section'
-import AcumuladoRecebPagChart from '@/components/weddings/acumulado-receb-pag-chart'
-import FluxoCaixaMensal from '@/components/weddings/fluxo-caixa-mensal'
+import FluxoCaixaCard from '@/components/weddings/fluxo-caixa-card'
+import FluxoCaixaTotaisCard from '@/components/weddings/fluxo-caixa-totais-card'
 import DropdownOperacao from '@/components/weddings/dropdown-operacao'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
+import { JANELA_LARGA_ATRAS, JANELA_LARGA_FRENTE } from '@/lib/weddings/janela-fluxo'
 import { getServerClient } from '@/lib/supabase/server'
 import { unwrapRpc } from '@/lib/rpc'
 import { parseRpc, carteiraWeddingsSchema } from '@/lib/schemas-rpc'
@@ -32,7 +33,8 @@ const MOSTRAR_VENDAS_DIAGNOSTICO = false
 
 export default async function WeddingsContent({ searchParams: sp }: Props) {
   // v4.19/M6: 'operacao' agora é LISTA. Normaliza string|string[]|undefined → string[].
-  // Conjunto vazio === "Todas as operações" (sem filtro). Só os 2 gráficos abaixo reagem.
+  // Conjunto vazio === "Todas as operações" (sem filtro). v5.4.2: quem reage é a
+  // TopSection "Fluxo de Caixa" inteira — o card de totais E o card dos gráficos.
   const operacoes = ([] as string[]).concat(sp.operacao ?? [])
   const db = await getServerClient()
 
@@ -44,7 +46,14 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
     getBenchmarks(db),
-    db.rpc('get_acumulado_weddings', { p_meses_passados: 24, p_meses_futuros: 18, p_operacoes: operacoes.length ? operacoes : null }),
+    // v5.4.2/M3: a janela LARGA, buscada uma vez — o slider fatia no cliente, sem
+    // refetch. Cabe folgada nos limites da própria RPC (120/60, migration 0141), por
+    // isso alargar não exigiu migration. Payload medido: 3,9 KB → 6,6 KB.
+    db.rpc('get_acumulado_weddings', {
+      p_meses_passados: JANELA_LARGA_ATRAS,
+      p_meses_futuros:  JANELA_LARGA_FRENTE,
+      p_operacoes:      operacoes.length ? operacoes : null,
+    }),
     db.rpc('get_vendas_em_aberto_weddings', { p_limite: 50, p_offset: 0 }),
     db.rpc('get_operacoes_lista_weddings'),
     // Vendas com Receita Negativa: exibe histórico completo (ADR-0053)
@@ -109,26 +118,36 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
       {/* ── VISÃO ANALÍTICA POR OPERAÇÃO ─────────────────────────── */}
       <TopSection titulo="Visão Analítica por Operação">
+        <OperacoesSection />
+      </TopSection>
 
+      {/* ── FLUXO DE CAIXA (v5.4.2/M2) ───────────────────────────── */}
+      {/* TopSection própria: o filtro por operação vale para os DOIS cards e por isso
+          vive no TOPO dela, não no cabeçalho de um gráfico. Ordem pedida no briefing:
+          filtro → totais → card único dos gráficos. */}
+      <TopSection titulo="Fluxo de Caixa">
+
+        {/* Compromisso TOTAL em aberto — do escopo filtrado, não da janela do slider
+            (a RPC calcula os dois totais sem recorte de data; medido idêntico em
+            janelas diferentes). O filtro vive DENTRO deste card: vale para ele e
+            para o card dos gráficos, e solto no fundo da página não dizia a quê
+            pertencia. */}
         <div className="mb-6">
-          <OperacoesSection />
+          <FluxoCaixaTotaisCard
+            totalAReceber={acumulado?.total_a_receber}
+            totalAPagar={acumulado?.total_a_pagar}
+            filtro={
+              <Suspense>
+                <DropdownOperacao
+                  operacoes={operacoesList}
+                  selecionadas={operacoes}
+                />
+              </Suspense>
+            }
+          />
         </div>
 
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-[var(--text-muted)]">Filtrar gráficos por operação:</span>
-          <Suspense>
-            <DropdownOperacao
-              operacoes={operacoesList}
-              selecionadas={operacoes}
-            />
-          </Suspense>
-        </div>
-
-        <FluxoCaixaMensal data={acumulado} operacaoLabel={operacaoLabel} />
-
-        <div className="mt-6">
-          <AcumuladoRecebPagChart data={acumulado} operacaoLabel={operacaoLabel} />
-        </div>
+        <FluxoCaixaCard data={acumulado} operacaoLabel={operacaoLabel} />
 
       </TopSection>
     </div>

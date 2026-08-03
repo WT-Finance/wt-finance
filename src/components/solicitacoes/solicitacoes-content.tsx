@@ -32,7 +32,9 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
 
   function setView(v: 'minhas' | 'caixa') {
     const p = new URLSearchParams(sp.toString()); p.set('view', v)
-    startTransition(() => router.push(`${pathname}?${p.toString()}`))
+    // `scroll: false`: filtro no LUGAR — o App Router rola ao topo em toda navegação
+    // por default, e aqui só o recorte muda, não a página (fix v5.4.2).
+    startTransition(() => router.push(`${pathname}?${p.toString()}`, { scroll: false }))
   }
 
   // Supervisão (só admin): "Ver todas" alterna o escopo para todas as solicitações do
@@ -40,7 +42,7 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
   const supervisao = escopo === 'todas'
   function setEscopo(e: Escopo) {
     const p = new URLSearchParams(sp.toString()); p.set('escopo', e); p.set('view', 'caixa')
-    startTransition(() => router.push(`${pathname}?${p.toString()}`))
+    startTransition(() => router.push(`${pathname}?${p.toString()}`, { scroll: false }))
   }
 
   return (

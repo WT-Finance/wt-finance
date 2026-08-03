@@ -503,6 +503,7 @@ export default async function DesignSystemPage() {
             { name: 'Tabs',                  path: 'src/components/ui/tabs.tsx',                        desc: 'Navegação por abas (pill + ARIA tablist; ativo bege de plataforma) — v4.26' },
             { name: 'Tooltip',               path: 'src/components/ui/tooltip.tsx',                     desc: 'Dica on-hover de UI (CSS puro, tom escuro zinc-800) — v4.26' },
             { name: 'FaixaMensagem',         path: 'src/components/shared/faixa-mensagem.tsx',          desc: 'Banner de mensagem sucesso/erro dispensável — movido p/ shared na v4.26' },
+            { name: 'SliderHorizonte',       path: 'src/components/shared/slider-horizonte.tsx',        desc: 'Slider de horizonte com régua de marcações (riscos menores + marcos rotulados). Trilho NEUTRO por default; `corTrilho` para a cor da aba. `posTick` compensa a meia-largura do thumb — sem isso a régua sai de fase com o valor nos extremos. Extraído do slider do Fluxo de Caixa — v5.4.2' },
           ].map(({ name, path, desc }) => (
             <div key={name} className="flex items-start gap-3 py-2 border-b border-zinc-100">
               <code className="text-xs font-medium text-[var(--brand)] w-44 shrink-0">{name}</code>

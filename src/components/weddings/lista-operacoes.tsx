@@ -5,6 +5,14 @@ import { Search, Download, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import type { ListaOperacoes, OperacaoItem } from '@/types/api'
 import { fmtDateLong, fmtMeses, numBRL2, parseLocalDate } from '@/lib/fmt'
 import { margemColor } from '@/lib/config'
+import {
+  DURACAO_CURTA_MESES,
+  duracaoDias,
+  duracaoMesesExibida,
+  margemAnualizada,
+  fmtPct1,
+} from '@/lib/weddings/margem-anualizada'
+import Tooltip from '@/components/ui/tooltip'
 import EmptyState from '@/components/shared/empty-state'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
@@ -27,23 +35,53 @@ interface PeriodoDatas {
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 
-// ── Duração helper ────────────────────────────────────────────────────────────
+// ── Duração e Margem a.a. ─────────────────────────────────────────────────────
+// A duração e a anualização vivem em @/lib/weddings/margem-anualizada (v5.4.2/M1):
+// a fórmula é a definição de uma MÉTRICA (ADR), então precisa ser testável — e o
+// vitest só coleta `src/**/*.test.ts`, nunca `.tsx`.
 
-function calcularDuracao(dataVenda: string | null, dataEvento: string | null): number | null {
-  if (!dataVenda || !dataEvento) return null
-  // Usa string split para evitar ambiguidade de timezone com new Date('YYYY-MM-DD')
-  const [yv, mv, dv] = dataVenda.split('-').map(Number)
-  const [ye, me, de] = dataEvento.split('-').map(Number)
-  const msVenda  = Date.UTC(yv, mv - 1, dv)
-  const msEvento = Date.UTC(ye, me - 1, de)
-  const dias = Math.round((msEvento - msVenda) / (1000 * 60 * 60 * 24))
-  return dias >= 0 ? dias : null
-}
+/** Texto único do tooltip da Margem (a.a.) — a definição que o ADR registra. */
+const TOOLTIP_MARGEM_AA =
+  'Margem × 12 ÷ Duração (meses) — anualização LINEAR, nunca composta. ' +
+  'Duração = dias entre a assinatura do contrato e a data do evento, convertidos a ' +
+  'meses de 30,44 dias. Lê-se "margem por ano de operação ocupada". ' +
+  `Atenção: em operações de menos de ${DURACAO_CURTA_MESES} meses a anualização é ` +
+  'frágil (3,9 meses a 32,5% ⇒ 100% a.a.); o valor é exibido cru, sem teto.'
 
-/** Duração em meses (1 casa) para export/ordenação. 30,44 d/mês. */
-function duracaoMeses(dataVenda: string | null, dataEvento: string | null): number | null {
-  const dias = calcularDuracao(dataVenda, dataEvento)
-  return dias != null ? Number((dias / 30.44).toFixed(1)) : null
+/**
+ * Afordância "?" de ajuda no cabeçalho — padrão da casa (mesmo desenho de
+ * `CabecalhoAjuda` em faturamento-corp e do KPI do Fluxo de Caixa).
+ *
+ * Dois detalhes que já custaram caro e não são estéticos:
+ *  • `!whitespace-normal` (important): o primitivo `Tooltip` traz
+ *    `whitespace-nowrap` na base — sem o `!`, texto longo não quebra e vira uma
+ *    linha gigante INVISÍVEL que transborda e cria barra de rolagem horizontal.
+ *  • `!left-auto right-0`: esta é a ÚLTIMA coluna da tabela; um balão ancorado à
+ *    esquerda abriria para fora da borda direita.
+ */
+function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
+  return (
+    <Tooltip
+      conteudo={texto}
+      className="z-30 w-64 !whitespace-normal !left-auto right-0 font-normal normal-case tracking-normal leading-snug text-left"
+    >
+      {/* `<button>`, não `<span>` (achado ALTO do revisor, v5.4.2): span não entra no
+          tab-order nem é nomeável por leitor de tela, então a dica — a ÚNICA explicação
+          de por que esta coluna pode discordar da "Margem" ao lado — ficava invisível
+          para quem navega por teclado. Com o botão focável + o `focus-within` do
+          primitivo `Tooltip`, o balão abre no Tab.
+          stopPropagation: o `<th>` inteiro ordena a tabela — ler a dica não deve
+          reordenar a lista. */}
+      <button
+        type="button"
+        onClick={e => e.stopPropagation()}
+        aria-label={`${rotulo}: ${texto}`}
+        className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400 cursor-help"
+      >
+        ?
+      </button>
+    </Tooltip>
+  )
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -51,7 +89,9 @@ function duracaoMeses(dataVenda: string | null, dataEvento: string | null): numb
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      {[140, 80, 64, 60, 56, 36, 72, 68, 52].map((w, i) => (
+      {/* v5.4.2/M1: 10 colunas — "Operação" e "Resultado Prev." cederam largura para a
+          "Margem (a.a.)" (a silhueta do skeleton acompanha a da tabela real). */}
+      {[120, 80, 64, 60, 56, 36, 72, 60, 52, 56].map((w, i) => (
         <td key={i} className="py-2.5 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: w }} />
         </td>
@@ -116,18 +156,25 @@ async function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string
   // resto do app; ver @/lib/carga/parse-vendas-produto.ts).
   const XLSX = await import('@e965/xlsx')
 
-  const dados = operacoes.map(op => ({
-    'Operação / Casal':      op.nome_casal ?? op.operacao,
-    'Hotel':                 op.hotel ?? '—',
-    'Data do Evento':        op.data_evento ? parseLocalDate(op.data_evento).toLocaleDateString('pt-BR') : '—',
-    'Duração (meses)':       duracaoMeses(op.data_venda_contrato, op.data_evento) ?? '—',
-    'Contrato':              op.tipo_contrato ?? '—',
-    'Conv.':                 op.convidados ?? 0,
-    'Faturamento (R$)':         op.faturamento ?? 0,
-    // v4.9/M6: Resultado Previsto = entradas_total − saidas_total (mesma fórmula do drawer).
-    'Resultado Previsto (R$)':  (op.entradas_total ?? 0) - (op.saidas_total ?? 0),
-    'Margem (%)':               op.margem_liquida_pct ?? 0,
-  }))
+  const dados = operacoes.map(op => {
+    const dias = duracaoDias(op.data_venda_contrato, op.data_evento)
+    const mAA  = margemAnualizada(op.margem_liquida_pct, dias)
+    return {
+      'Operação':              op.nome_casal ?? op.operacao,
+      'Hotel':                 op.hotel ?? '—',
+      'Data do Evento':        op.data_evento ? parseLocalDate(op.data_evento).toLocaleDateString('pt-BR') : '—',
+      'Duração (meses)':       duracaoMesesExibida(dias) ?? '—',
+      'Contrato':              op.tipo_contrato ?? '—',
+      'Conv.':                 op.convidados ?? 0,
+      'Faturamento (R$)':         op.faturamento ?? 0,
+      // v4.9/M6: Resultado Previsto = entradas_total − saidas_total (mesma fórmula do drawer).
+      'Resultado Previsto (R$)':  (op.entradas_total ?? 0) - (op.saidas_total ?? 0),
+      'Margem (%)':               op.margem_liquida_pct ?? 0,
+      // v5.4.2/M1: número CRU (não string formatada) — a planilha precisa poder somar,
+      // ordenar e refazer a conta. Duração não anualizável vira travessão, nunca 0.
+      'Margem a.a. (%)':          mAA != null ? Number(mAA.toFixed(1)) : '—',
+    }
+  })
 
   const ws = XLSX.utils.json_to_sheet(dados)
   const wb = XLSX.utils.book_new()
@@ -466,15 +513,21 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-100">
-              <SortTh field="nome_casal" {...sortThProps}>Operação / Casal</SortTh>
+              <SortTh field="nome_casal" {...sortThProps}>Operação</SortTh>
               <SortTh field="hotel" title="Hotel / fornecedor principal do casamento (Contrato=1)" {...sortThProps}>Hotel</SortTh>
               <SortTh field="data_evento" {...sortThProps}>Data do Evento</SortTh>
               <SortTh field="duracao" right title="Meses entre assinatura do contrato e data do casamento" {...sortThProps}>Duração</SortTh>
               <SortTh field="tipo_contrato" center title="Tipo de contrato (Tudo Incluído, Cardápio, etc.) — disponível após reimportação com nova coluna" {...sortThProps}>Contrato</SortTh>
               <SortTh field="convidados" center title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
-              <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Resultado Previsto</SortTh>
+              <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Resultado Prev.</SortTh>
               <SortTh field="ml" right title="Resultado Previsto ÷ Faturamento × 100" {...sortThProps}>Margem</SortTh>
+              <SortTh field="margem_aa" right {...sortThProps}>
+                <span className="inline-flex items-center gap-1">
+                  Margem (a.a.)
+                  <AjudaHeader texto={TOOLTIP_MARGEM_AA} rotulo="Margem (a.a.)" />
+                </span>
+              </SortTh>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
@@ -482,11 +535,11 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : erro ? (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-sm text-danger">{erro}</td>
+                <td colSpan={10} className="py-6 text-center text-sm text-danger">{erro}</td>
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={10}>
                   <EmptyState icon={Search} message="Nenhuma operação encontrada para os filtros selecionados" />
                 </td>
               </tr>
@@ -495,7 +548,10 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                 // v4.9/M6: Resultado Previsto = entradas_total − saidas_total (mesma fórmula do drawer).
                 const resultadoPrevisto = op.entradas_total - op.saidas_total
                 const rlNegativa = resultadoPrevisto < 0
-                const duracao = calcularDuracao(op.data_venda_contrato, op.data_evento)
+                const duracao = duracaoDias(op.data_venda_contrato, op.data_evento)
+                // v5.4.2/M1: derivada no cliente a partir de números que a lista já
+                // devolve — nenhum valor existente muda (invariante 2 do briefing).
+                const margemAA = margemAnualizada(op.margem_liquida_pct, duracao)
                 return (
                   <tr
                     key={op.operacao}
@@ -506,8 +562,13 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                       onSelectOperacao ? 'cursor-pointer' : '',
                     ].join(' ')}
                   >
-                    <td className="py-2.5 px-3">
-                      <p className="font-medium text-zinc-800 text-xs">
+                    {/* v5.4.2/M1: largura levemente reduzida (truncate + max-w) para abrir
+                        espaço à Margem a.a.; o nome completo fica no title. */}
+                    <td className="py-2.5 px-3 max-w-[150px]">
+                      <p
+                        className="font-medium text-zinc-800 text-xs truncate"
+                        title={op.nome_casal ?? op.operacao}
+                      >
                         {op.nome_casal ?? op.operacao}
                       </p>
                     </td>
@@ -550,7 +611,17 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                       </span>
                     </td>
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>
-                      {op.margem_liquida_pct.toFixed(1)}%
+                      {fmtPct1(op.margem_liquida_pct)}
+                    </td>
+                    {/* Margem (a.a.) — MESMA regra de cor da "Margem" (margemColor por
+                        faixa: alvo/atenção/abaixo), decisão do Yan. Consequência conhecida
+                        e aceita: a anualização vive em outra escala, então um ciclo curto
+                        pode ficar verde aqui com a Margem vermelha ao lado — é o que o "?"
+                        do cabeçalho explica. */}
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemAA != null ? margemColor(margemAA) : ''}`}>
+                      {margemAA != null
+                        ? fmtPct1(margemAA)
+                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                   </tr>
                 )

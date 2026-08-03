@@ -4,7 +4,7 @@ import { requireArea } from '@/lib/auth/sessao'
 import { unwrapRpc } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
-import { fmtMi } from '@/lib/fmt'
+import { fmtMi, hojeSP } from '@/lib/fmt'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import FluxoMensalChart, { type FluxoMensalV3Row } from '@/components/financeiro/fluxo-mensal-chart'
 import FluxoAcumuladoChart, { type FluxoAcumuladoRow } from '@/components/financeiro/fluxo-acumulado-chart'
@@ -56,11 +56,6 @@ const MOSTRAR_POSICAO_POR_CONTA = false
 // Fluxo Realizado — código MANTIDO por enquanto (voltar a flag se o card retornar); se
 // não voltar, remover na próxima auditoria de código morto.
 const MOSTRAR_ACUMULADO = false
-
-/** Ano de hoje em America/Sao_Paulo — alimenta get_repasse_mensal(p_ano). */
-function hojeSP(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
-}
 
 /** Célula de KPI do card principal do Realizado — divisórias verticais entre células
  *  (mesmo idioma do card de posição do Projetado). Sem subtítulos (checkpoint); ajuda
@@ -282,7 +277,10 @@ export default async function FluxoCaixaPage({
             </div>
 
             {/* Fluxo Mensal chart — card e título dentro do componente */}
-            <FluxoMensalChart rows={fluxoMensalRows} />
+            {/* `mesHoje` vem do SERVIDOR: o slider do gráfico ancora no mês corrente
+                de São Paulo sem depender do relógio do cliente (e sem risco de
+                divergência na hidratação). */}
+            <FluxoMensalChart rows={fluxoMensalRows} mesHoje={hojeSP().slice(0, 7)} />
 
             {/* Acumulado chart — oculto via flag (v5.2.0, checkpoint); código mantido */}
             {MOSTRAR_ACUMULADO && (

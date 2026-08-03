@@ -373,7 +373,9 @@ export interface AcumuladoWeddings {
   total_saidas: number
   meses:        AcumuladoMensalWeddingsItem[]
   // v4.9/M5: totais NÃO liquidados (status pendente), independentes de vencimento.
-  // Opcionais: a RPC get_acumulado_weddings ainda NÃO os emite (ver dependência de backend).
+  // A RPC OS EMITE desde a 0106 (o comentário anterior, "ainda NÃO os emite", ficou
+  // obsoleto e foi corrigido na v5.4.2 — medido via REST). Seguem `?` de propósito:
+  // são o contrato tolerante do parseRpc, e o card de totais degrada sem eles.
   total_a_receber?: number   // entradas não liquidadas ('A Receber Futuro')
   total_a_pagar?:   number   // saídas não liquidadas ('A Pagar Futuro')
 }

@@ -42,11 +42,17 @@ export default function DropdownOperacao({ operacoes, selecionadas }: Props) {
   const todasAtiva = total === 0
 
   // Escreve a lista 'operacao' na URL a partir de um novo conjunto. Vazio = Todas (sem filtro).
+  //
+  // `scroll: false` é OBRIGATÓRIO aqui (fix v5.4.2): o App Router rola para o TOPO em
+  // toda navegação por default, então cada operação marcada arrancava o usuário do
+  // filtro e o jogava no início da página — justamente durante uma interação de
+  // múltipla escolha, onde ele vai marcar várias em sequência. A URL muda para o
+  // filtro ser compartilhável/recarregável, não para reposicionar a leitura.
   const aplicar = (novas: string[]) => {
     const params = new URLSearchParams(searchParams.toString())
     params.delete('operacao')
     novas.forEach(op => params.append('operacao', op))
-    startTransition(() => router.push(`${pathname}?${params.toString()}`))
+    startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
   }
 
   // "Todas" é mutuamente exclusiva: marcá-la limpa o resto (conjunto vazio).
