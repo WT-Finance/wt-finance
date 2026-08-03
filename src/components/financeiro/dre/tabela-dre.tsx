@@ -1680,10 +1680,12 @@ function AcoesHierarquia({ onExpandir, onRecolher }: { onExpandir: () => void; o
   )
 }
 
-/** Rodapé do card — só a ação injetada pela página ("Editar estrutura", rodada 3/Refino
- *  4). Sem `slotAcoes` não renderiza NADA: uma faixa vazia com `mt-3` deixaria um respiro
+/** Faixa de ação da página ("Editar estrutura", rodada 3/Refino 4) — desde a v5.4.1 fica
+ *  ENTRE a tabela e o Resumo Executivo, não no rodapé do card: ela edita a estrutura da
+ *  TABELA, e no rodapé a distância até o que ela governa crescia junto com o Resumo.
+ *  Sem `slotAcoes` não renderiza NADA: uma faixa vazia com `mt-3` deixaria um respiro
  *  fantasma sob a tabela (é o caso de quem não tem permissão de editar a estrutura, e o
- *  do fail-safe sem slot). */
+ *  do fail-safe sem slot). O nome do componente é histórico. */
 function RodapeAcoes({ slotAcoes }: { slotAcoes?: ReactNode }) {
   if (!slotAcoes) return null
   return <div className="mt-3 flex flex-wrap items-center justify-end gap-3">{slotAcoes}</div>
@@ -1719,10 +1721,10 @@ interface TabelaDreProps {
    *  página já aplicou a janela ao montar os `ytd`; aqui ela só descreve a comparação
    *  nos `title` do cabeçalho. */
   mesJanela: number
-  /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada no
-   *  RODAPÉ do card, à direita (`RodapeAcoes`; rodada 3/Refino 4). O "Expandir
-   *  tudo"/"Recolher tudo" NÃO fica ao lado dela: vive na linha das pills
-   *  (rodada 6, `AcoesHierarquia`). */
+  /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada à direita,
+   *  ENTRE a tabela e o Resumo Executivo (`RodapeAcoes`; posição da v5.4.1, antes era o
+   *  rodapé do card). O "Expandir tudo"/"Recolher tudo" NÃO fica ao lado dela: vive na
+   *  linha das pills (rodada 6, `AcoesHierarquia`). */
   slotAcoes?: ReactNode
 }
 
@@ -1813,6 +1815,10 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
         <div className={`rounded-lg border border-wt-border p-6 text-center ${isPending ? 'opacity-60' : ''}`}>
           <p className="text-sm text-text-muted">Não foi possível carregar a DRE — tente recarregar.</p>
         </div>
+        {/* Sem tabela não há hierarquia para expandir/recolher (o `AcoesHierarquia` nem
+            é montado aqui) — sobra a ação da página, quando houver. Ordem igual à do ramo
+            normal desde a v5.4.1: a ação vem ANTES do Resumo. */}
+        <RodapeAcoes slotAcoes={slotAcoes} />
         {/* O Resumo aparece TAMBÉM aqui: ele não depende de `dados` (o ano NAVEGADO), e sim
             de `consolidadoAnos` — uma chamada por ano, independentes no mesmo
             `Promise.allSettled`. Como o ano navegado é sempre um dos três anos-âncora,
@@ -1820,9 +1826,6 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
             intactos; omitir o Resumo aqui o derrubaria por uma falha que não é dele. Ele
             se auto-oculta se nenhum ano-âncora tiver carregado. */}
         <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
-        {/* Sem tabela não há hierarquia para expandir/recolher (o `AcoesHierarquia` nem
-            é montado aqui) — sobra a ação da página, quando houver. */}
-        <RodapeAcoes slotAcoes={slotAcoes} />
       </div>
     )
   }
@@ -2307,17 +2310,18 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
         </div>
       </div>
 
+      {/* Ação da página, ex.: "Editar estrutura" — ENTRE a tabela e o Resumo desde a
+          v5.4.1 (antes fechava o card, abaixo do Resumo). A ação governa a estrutura da
+          TABELA, e a distância até ela crescia junto com o Resumo; aqui ela fica logo
+          sob o que edita. Sem `slotAcoes` não renderiza nada. Mesma ordem no fail-safe. */}
+      <RodapeAcoes slotAcoes={slotAcoes} />
+
       {/* Resumo Executivo (v5.3.1) — DENTRO deste card, abaixo da tabela, nas DUAS
           visões (o card externo é compartilhado). Ancorado no ANO CORRENTE, então NÃO
           reage à pill de ano nem à troca de visão: é o retrato de agora. Fonte = o
           MESMO `consolidadoAnos` que alimenta a visão Consolidado — sem segundo caminho
           de cálculo. Ele se auto-oculta (retorna null) se nenhum ano-âncora carregou. */}
       <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
-
-      {/* Rodapé — só a ação da página, ex.: "Editar estrutura" (rodada 3/Refino 4).
-          "Expandir/Recolher tudo" subiu para cima da tabela (rodada 5/Refino 5). Sem
-          `slotAcoes` este bloco não renderiza nada. Mesmo componente no fail-safe. */}
-      <RodapeAcoes slotAcoes={slotAcoes} />
     </div>
   )
 }
