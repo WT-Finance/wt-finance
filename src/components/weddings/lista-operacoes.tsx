@@ -10,9 +10,9 @@ import {
   duracaoDias,
   duracaoMesesExibida,
   margemAnualizada,
-  ehDuracaoCurta,
   fmtPct1,
 } from '@/lib/weddings/margem-anualizada'
+import Tooltip from '@/components/ui/tooltip'
 import EmptyState from '@/components/shared/empty-state'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
@@ -40,13 +40,43 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 // a fórmula é a definição de uma MÉTRICA (ADR), então precisa ser testável — e o
 // vitest só coleta `src/**/*.test.ts`, nunca `.tsx`.
 
-/** Texto único do tooltip da Margem a.a. — a definição que o ADR registra. */
+/** Texto único do tooltip da Margem (a.a.) — a definição que o ADR registra. */
 const TOOLTIP_MARGEM_AA =
-  'Margem a.a. = Margem × 12 ÷ Duração (meses) — anualização LINEAR, nunca composta. ' +
+  'Margem × 12 ÷ Duração (meses) — anualização LINEAR, nunca composta. ' +
   'Duração = dias entre a assinatura do contrato e a data do evento, convertidos a ' +
   'meses de 30,44 dias. Lê-se "margem por ano de operação ocupada". ' +
-  `* = duração menor que ${DURACAO_CURTA_MESES} meses: o valor é exibido cru, mas ` +
-  'anualizar ciclo curto é frágil.'
+  `Atenção: em operações de menos de ${DURACAO_CURTA_MESES} meses a anualização é ` +
+  'frágil (3,9 meses a 32,5% ⇒ 100% a.a.); o valor é exibido cru, sem teto.'
+
+/**
+ * Afordância "?" de ajuda no cabeçalho — padrão da casa (mesmo desenho de
+ * `CabecalhoAjuda` em faturamento-corp e do KPI do Fluxo de Caixa).
+ *
+ * Dois detalhes que já custaram caro e não são estéticos:
+ *  • `!whitespace-normal` (important): o primitivo `Tooltip` traz
+ *    `whitespace-nowrap` na base — sem o `!`, texto longo não quebra e vira uma
+ *    linha gigante INVISÍVEL que transborda e cria barra de rolagem horizontal.
+ *  • `!left-auto right-0`: esta é a ÚLTIMA coluna da tabela; um balão ancorado à
+ *    esquerda abriria para fora da borda direita.
+ */
+function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
+  return (
+    <Tooltip
+      conteudo={texto}
+      className="z-30 w-64 !whitespace-normal !left-auto right-0 font-normal normal-case tracking-normal leading-snug text-left"
+    >
+      {/* stopPropagation: o `<th>` inteiro ordena a tabela — clicar no "?" para ler
+          a dica não deve reordenar a lista. */}
+      <span
+        onClick={e => e.stopPropagation()}
+        aria-label={`${rotulo}: ${texto}`}
+        className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400 cursor-help"
+      >
+        ?
+      </span>
+    </Tooltip>
+  )
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -54,7 +84,7 @@ function SkeletonRow() {
   return (
     <tr className="animate-pulse">
       {/* v5.4.2/M1: 10 colunas — "Operação" e "Resultado Prev." cederam largura para a
-          "Margem a.a." (a silhueta do skeleton acompanha a da tabela real). */}
+          "Margem (a.a.)" (a silhueta do skeleton acompanha a da tabela real). */}
       {[120, 80, 64, 60, 56, 36, 72, 60, 52, 56].map((w, i) => (
         <td key={i} className="py-2.5 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: w }} />
@@ -486,7 +516,12 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
               <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Resultado Prev.</SortTh>
               <SortTh field="ml" right title="Resultado Previsto ÷ Faturamento × 100" {...sortThProps}>Margem</SortTh>
-              <SortTh field="margem_aa" right title={TOOLTIP_MARGEM_AA} {...sortThProps}>Margem a.a.</SortTh>
+              <SortTh field="margem_aa" right {...sortThProps}>
+                <span className="inline-flex items-center gap-1">
+                  Margem (a.a.)
+                  <AjudaHeader texto={TOOLTIP_MARGEM_AA} rotulo="Margem (a.a.)" />
+                </span>
+              </SortTh>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
@@ -510,8 +545,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                 const duracao = duracaoDias(op.data_venda_contrato, op.data_evento)
                 // v5.4.2/M1: derivada no cliente a partir de números que a lista já
                 // devolve — nenhum valor existente muda (invariante 2 do briefing).
-                const margemAA    = margemAnualizada(op.margem_liquida_pct, duracao)
-                const duracaoCurta = ehDuracaoCurta(duracao)
+                const margemAA = margemAnualizada(op.margem_liquida_pct, duracao)
                 return (
                   <tr
                     key={op.operacao}
@@ -573,26 +607,15 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>
                       {fmtPct1(op.margem_liquida_pct)}
                     </td>
-                    {/* Margem a.a. — cor por SINAL (o mesmo tratamento de "Resultado Prev."),
-                        deliberadamente NÃO o margemColor por faixa: os limiares (14%/12%) são
-                        calibrados para margem não-anualizada, e aplicá-los aqui pintaria de
-                        verde uma operação de 6 meses cuja própria Margem está vermelha ao lado. */}
-                    <td className="py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap">
-                      {margemAA != null ? (
-                        <span className={margemAA < 0 ? 'text-danger' : 'text-zinc-700'}>
-                          {fmtPct1(margemAA)}
-                          {duracaoCurta && (
-                            <span
-                              className="text-zinc-300 ml-0.5 cursor-help"
-                              title={`Duração menor que ${DURACAO_CURTA_MESES} meses — anualizar ciclo curto é frágil. O valor está cru, sem teto.`}
-                            >
-                              *
-                            </span>
-                          )}
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
-                      )}
+                    {/* Margem (a.a.) — MESMA regra de cor da "Margem" (margemColor por
+                        faixa: alvo/atenção/abaixo), decisão do Yan. Consequência conhecida
+                        e aceita: a anualização vive em outra escala, então um ciclo curto
+                        pode ficar verde aqui com a Margem vermelha ao lado — é o que o "?"
+                        do cabeçalho explica. */}
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemAA != null ? margemColor(margemAA) : ''}`}>
+                      {margemAA != null
+                        ? fmtPct1(margemAA)
+                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                   </tr>
                 )
