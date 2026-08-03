@@ -18,8 +18,11 @@ const COR_RECEBER = 'var(--chart-fluxo-entrada)'
 const COR_PAGAR   = 'var(--chart-fluxo-saida)'
 
 function Total({ label, valor, cor }: { label: string; valor: number; cor: string }) {
+  // `shrink-0`: item de flex encolhe abaixo do próprio conteúdo por default
+  // (`flex-shrink: 1`), e aí o valor de 8 dígitos INVADE o total vizinho. Pego na
+  // conferência visual do mockup — não aparece em tsc/lint/build.
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-0.5 shrink-0">
       <span className="text-xs text-[var(--text-muted)]">{label}</span>
       <span className="text-xl font-semibold tabular-nums" style={{ color: cor }}>
         {fmtBRL(valor)}
