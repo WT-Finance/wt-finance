@@ -48,18 +48,26 @@ export default function FluxoCaixaTotaisCard({ totalAReceber, totalAPagar, filtr
 
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        {/* Valores à ESQUERDA, com régua vertical entre eles. */}
-        <div className="flex items-center gap-5 shrink-0">
-          {totalAReceber != null && (
-            <Total label="Total a receber" valor={totalAReceber} cor={COR_RECEBER} />
-          )}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        {/* Os dois KPIs dividem o espaço do card NÃO ocupado pelo filtro, em duas
+            metades iguais (`flex-1` cada) — então a régua vertical cai exatamente no
+            MEIO desse espaço, e os valores ficam encostados nela, centralizados em
+            torno do meio em vez de amontoados na borda esquerda. O bloco do filtro é
+            `shrink-0`, então é a largura dele que define o espaço restante. */}
+        <div className="flex flex-1 items-center min-w-0">
+          <div className="flex flex-1 justify-end pr-6 min-w-0">
+            {totalAReceber != null && (
+              <Total label="Total a receber" valor={totalAReceber} cor={COR_RECEBER} />
+            )}
+          </div>
           {totalAReceber != null && totalAPagar != null && (
-            <span aria-hidden className="w-px self-stretch bg-zinc-200" />
+            <span aria-hidden className="w-px self-stretch bg-zinc-200 shrink-0" />
           )}
-          {totalAPagar != null && (
-            <Total label="Total a pagar" valor={totalAPagar} cor={COR_PAGAR} />
-          )}
+          <div className="flex flex-1 pl-6 min-w-0">
+            {totalAPagar != null && (
+              <Total label="Total a pagar" valor={totalAPagar} cor={COR_PAGAR} />
+            )}
+          </div>
         </div>
 
         {filtro && (
