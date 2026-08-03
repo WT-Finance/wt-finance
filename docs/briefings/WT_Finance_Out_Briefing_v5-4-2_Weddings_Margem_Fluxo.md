@@ -293,6 +293,45 @@ pediam.
 ordenando por outra chave, ele acusa **97 quebras** com `data_evento` (exatamente o fallback
 silencioso do `ELSE`) e 96 com `ml`. Só passa quando a ordenação é de fato por `margem_aa`.
 
+### MÉDIO (revisor-db, 2ª rodada — migration 0229) — **CORRIGIDO**
+
+A 0229 entrou DEPOIS da primeira rodada de revisão, então despachei o `revisor-db` de novo
+antes de fechar. Veredito: **APROVADA COM RESSALVAS** (0 CRÍTICO / 0 ALTO). Ele confirmou a
+transcrição byte-idêntica contra a 0080 (só os dois `INTERVAL` mudam), **tentou refutar** a
+alegação "nenhum número muda" e não conseguiu (`generate_series` de passo mensal nunca duplica
+um mês existente; a agregação é por `GROUP BY gs.mes`; a view-fonte não depende de range
+externo), e verificou que `pos_corte` é coluna estática — os 8 meses de 2029 vêm vazios pelo
+`LEFT JOIN`, com todos os 6 campos passando por `COALESCE(...,0)`, então nenhum `NULL` escapa.
+
+Os dois MÉDIO são o mesmo achado em duas metades, e a crítica é justa de um jeito que vale
+nomear: **eu construí o guard permanente para a 0228 e não espelhei para a irmã na mesma
+versão.** Apliquei um padrão a uma migration e não à gêmea.
+
+O risco era concreto: a janela da 0229 é **hardcoded no corpo**, então um futuro
+`CREATE OR REPLACE` que use a 0080 como base volta a série para 42 meses **em silêncio** —
+todos os gates passam e o slider do cliente só aparece "curto", porque
+`fatiarJanelaMensal` **clampa** para o que a série permitir, sem erro.
+
+Corrigido com três casos novos em `rpc-contrato.test.ts` (669 testes no total):
+1. **largura da janela** — a série tem de cobrir ≥ 36 meses antes e ≥ 36 depois do mês
+   corrente. É esta asserção que a janela antiga (23/18) reprova.
+2. **continuidade** — nenhum salto de mês no eixo de tempo.
+3. **cross-check permanente** contra `get_fluxo_caixa_kpis_b` nos 4 campos numéricos, em 3
+   meses amostrados (as duas bordas do que tem dado + o mês corrente). Era exatamente o que
+   `banco-e-rpc` §7 e `contrato-rpc-front` §5 pedem: quando duas RPCs precisam concordar, a
+   igualdade vira caso de contrato, não verificação pontual descrita em prosa.
+
+### BAIXO (revisor-db, 0229) — registrados
+
+- **`get_fluxo_caixa_mensal_v3` não tem schema Zod/`parseRpc`** — o call-site usa `unwrapRpc`
+  com cast para a interface TS, sem validação de shape em runtime. **Pré-existente** (anterior
+  à convenção Zod, v4.12.1) e explicitamente marcado como não-introduzido pela 0229. Os três
+  casos de contrato acima cobrem a parte que mais importa (largura, continuidade e os valores);
+  blindar com Zod é candidato a patch próprio.
+- **Comentário da 0080** ("24 meses… total 43") nunca bateu com o código (`-23 months`, 42
+  meses). O revisor concluiu **sem ação necessária**: a 0229 já documenta a divergência no
+  próprio header e substitui a função.
+
 ### BAIXO — dispostos, não corrigidos
 
 - **`ehDuracaoCurta` sem consumidor de UI** (revisor). Verdade, e é consequência de uma

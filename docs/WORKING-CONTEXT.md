@@ -53,7 +53,11 @@
   e 1 MÉDIO — a skill do DS ensinava o eixo TROCADO do gutter do `ScrollAutoHide` —, ambos
   CORRIGIDOS; 3 BAIXO registrados) e `revisor-db` **APROVADA** nas duas migrations (0 CRÍTICO /
   0 ALTO; o MÉDIO virou caso de contrato permanente da ordenação, **visto reprovando** com 97
-  quebras). Parecer integral no §6 do out-briefing. 666 testes.
+  quebras). A **0229 entrou depois da 1ª rodada**, então o `revisor-db` foi despachado de novo:
+  **APROVADA COM RESSALVAS** — ele tentou refutar o "nenhum número muda" e não conseguiu, e o
+  MÉDIO dele era justo (eu havia feito o guard permanente para a 0228 e **não espelhei para a
+  irmã**): a janela agora tem caso de contrato próprio (largura ≥36/≥36, continuidade e
+  cross-check com `get_fluxo_caixa_kpis_b`). Parecer integral no §6 do out-briefing. **669 testes.**
   **Pendência deliberada de a11y:** os outros 2 call-sites do "?" (`faturamento-corp`,
   `posicao-projetado`) ainda usam `<span>` — uma linha em cada, a metade do primitivo já pronta.
 - Versão em produção (main): **`5.4.1`** (#207 mergeado 03/08 às 14h50) — **DRE: refino visual.**

@@ -21,6 +21,8 @@ import {
   historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
+import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
+import { hojeSP } from './fmt'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
@@ -155,6 +157,91 @@ describe.skipIf(!ON)('contrato RPC — Margem (a.a.): ordenação do SQL ≡ fó
     const a = ids(p1), b = ids(p2)
     expect(a.length).toBeGreaterThan(0)
     expect(a.filter(x => b.includes(x)), 'operação repetida entre páginas').toEqual([])
+  })
+})
+
+// v5.4.2 — CASO DE CONTRATO da janela do Fluxo de Caixa Mensal do Financeiro.
+// Achado MÉDIO do revisor-db na 0229, e uma inconsistência minha: eu fiz exatamente
+// este guard para a 0228 (a chave de ordenação) e NÃO espelhei para a irmã na mesma
+// versão. O risco é concreto: a janela daquela RPC é HARDCODED no corpo, então um
+// futuro `CREATE OR REPLACE` que use a 0080 como base volta a série para 42 meses
+// **em silêncio** — `tsc`/`lint`/`build`/`test` passam todos, e o slider do cliente
+// simplesmente clampa para o que existir, aparecendo "curto" sem erro nenhum.
+//
+// O segundo `it` torna PERMANENTE o cross-check que na entrega foi ad hoc: as duas
+// RPCs leem a MESMA view (`financeiro.vw_fluxo_caixa_kpis_b`), uma pela janela do
+// corpo e outra por range explícito, então elas TÊM de concordar — é o que
+// `banco-e-rpc` §7 e `contrato-rpc-front` §5 chamam de caso de contrato em vez de
+// nota de rodapé.
+interface FluxoMensalLinha {
+  mes: string
+  entrada_efetivada: number
+  entrada_prevista: number
+  saida_efetivada: number
+  saida_prevista: number
+}
+
+describe.skipIf(!ON)('contrato RPC — janela do Fluxo de Caixa Mensal (Financeiro)', () => {
+  const serie = async () =>
+    (await rpc('get_fluxo_caixa_mensal_v3', {})) as unknown as FluxoMensalLinha[]
+
+  /** Último dia do mês 'YYYY-MM', para o range do kpis_b. */
+  const ultimoDia = (mes: string) => {
+    const [y, m] = mes.split('-').map(Number)
+    return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10)
+  }
+
+  it(`a janela cobre ${LIMITE_MESES_FLUXO} meses para cada lado do mês corrente`, async () => {
+    const rows = await serie()
+    const mesHoje = hojeSP().slice(0, 7)
+    const idx = rows.findIndex(r => r.mes === mesHoje)
+
+    expect(idx, `mês corrente ${mesHoje} ausente na série devolvida`).toBeGreaterThanOrEqual(0)
+    // É ESTE par de asserções que a janela antiga (23 atrás / 18 à frente) REPROVA.
+    expect(idx, 'meses PASSADOS insuficientes para o slider').toBeGreaterThanOrEqual(LIMITE_MESES_FLUXO)
+    expect(rows.length - 1 - idx, 'meses FUTUROS insuficientes para o slider')
+      .toBeGreaterThanOrEqual(LIMITE_MESES_FLUXO)
+  })
+
+  it('a série é mensal, contínua e sem buraco (o eixo de tempo não pula mês)', async () => {
+    const rows = await serie()
+    for (let i = 1; i < rows.length; i++) {
+      const [ya, ma] = rows[i - 1].mes.split('-').map(Number)
+      const [yb, mb] = rows[i].mes.split('-').map(Number)
+      const distancia = (yb - ya) * 12 + (mb - ma)
+      expect(distancia, `salto entre ${rows[i - 1].mes} e ${rows[i].mes}`).toBe(1)
+    }
+  })
+
+  it('os 4 campos concordam com get_fluxo_caixa_kpis_b no mesmo mês (mesma view)', async () => {
+    const rows = await serie()
+    const comMovimento = rows.filter(
+      r => r.entrada_efetivada || r.entrada_prevista || r.saida_efetivada || r.saida_prevista,
+    )
+    expect(comMovimento.length).toBeGreaterThan(0)
+
+    // Amostra nas BORDAS do que tem dado + o mês corrente: é onde um erro de range apareceria.
+    const amostra = [
+      comMovimento[0].mes,
+      hojeSP().slice(0, 7),
+      comMovimento[comMovimento.length - 1].mes,
+    ]
+
+    for (const mes of amostra) {
+      const linha = rows.find(r => r.mes === mes)
+      expect(linha, `mês ${mes} ausente`).toBeDefined()
+      const k = await rpc('get_fluxo_caixa_kpis_b', { p_from: `${mes}-01`, p_to: ultimoDia(mes) })
+      const pares: Array<[string, number, number]> = [
+        ['entrada_efetivada', linha!.entrada_efetivada, k.entradas_realizadas as number],
+        ['saida_efetivada',   linha!.saida_efetivada,   k.saidas_realizadas   as number],
+        ['entrada_prevista',  linha!.entrada_prevista,  k.entradas_previstas  as number],
+        ['saida_prevista',    linha!.saida_prevista,    k.saidas_previstas    as number],
+      ]
+      for (const [campo, daSerie, doKpi] of pares) {
+        expect(Math.abs((daSerie ?? 0) - (doKpi ?? 0)), `${mes}.${campo}: ${daSerie} ≠ ${doKpi}`)
+          .toBeLessThan(0.01)
+      }
+    }
   })
 })
 
