@@ -26,13 +26,24 @@
 // silenciosamente TODA a história anterior à janela.
 
 /**
- * A janela LARGA pedida à RPC, buscada uma vez. Fica folgada dentro dos limites
- * que a própria `get_acumulado_weddings` impõe (120 atrás / 60 à frente, migration
- * 0141) — é por isso que alargar a janela NÃO exigiu migration: ela sempre foi
- * parâmetro do chamador.
+ * Limite do slider em cada direção — decisão do Yan (v5.4.2): 36 meses para trás
+ * e 36 para frente.
  */
-export const JANELA_LARGA_ATRAS  = 48
-export const JANELA_LARGA_FRENTE = 36
+export const LIMITE_MESES = 36
+
+/**
+ * A janela LARGA pedida à RPC, buscada uma vez. Cabe folgada dentro dos limites que
+ * a própria `get_acumulado_weddings` impõe (120 atrás / 60 à frente, migration 0141)
+ * — é por isso que alargar a janela NÃO exigiu migration: ela sempre foi parâmetro
+ * do chamador.
+ *
+ * O lado do passado busca **um mês a mais** que o limite do slider: esse mês extra é
+ * a margem que `limitesJanela` reserva para rebasear o acumulado e derivar o valor
+ * mensal da primeira barra visível. Com isso os limites do slider caem exatamente em
+ * 36/36 sem precisar de clamp adicional.
+ */
+export const JANELA_LARGA_ATRAS  = LIMITE_MESES + 1
+export const JANELA_LARGA_FRENTE = LIMITE_MESES
 
 /** Um mês como a RPC devolve: acumulados desde o início da janela larga. */
 export interface MesAcumulado {

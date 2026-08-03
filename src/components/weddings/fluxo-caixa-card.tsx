@@ -5,6 +5,7 @@ import { ResponsiveContainer, ComposedChart, Bar, Line, Cell, Tooltip, Reference
 import type { AcumuladoWeddings } from '@/types/api'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import { fatiarJanela } from '@/lib/weddings/janela-fluxo'
+import SliderHorizonte from '@/components/shared/slider-horizonte'
 import {
   ChartGrid, ChartZeroLine, ChartXAxisMes, ChartYAxisBRL,
   ChartLegend, CustomTooltip,
@@ -19,9 +20,11 @@ import {
 // JANELA entre eles funcionando como eixo de tempo compartilhado: os dois
 // obedecem exatamente à mesma janela, sempre.
 //
-// O slider não refetcha nada — a RPC devolve uma janela larga (48 atrás + 36 à
+// O slider não refetcha nada — a RPC devolve a janela larga (37 atrás + 36 à
 // frente) uma vez e `fatiarJanela` recorta no cliente, então arrastar é
-// instantâneo. Todo acumulado REINICIA na borda esquerda da janela, e a
+// instantâneo. O limite de 36 meses em cada direção é decisão do Yan; o 37º mês
+// do passado é a margem técnica do rebase, não uma posição alcançável pelo
+// slider. Todo acumulado REINICIA na borda esquerda da janela, e a
 // referência de saídas é recalculada dentro dela (as duas coisas andam juntas:
 // com o acumulado reiniciando, uma referência absoluta sairia de escala e
 // achataria o gráfico). A matemática e seus 23 testes vivem em
@@ -62,6 +65,9 @@ function rotuloJanela(atras: number, frente: number): string {
   return `${plural(atras, 'mês atrás', 'meses atrás')} + ${frente} à frente`
 }
 
+/** Riscos MAIORES da régua: um a cada 6 meses (semestres), como na referência. */
+const MARCOS = [6, 12, 18, 24, 30, 36] as const
+
 interface SliderJanelaProps {
   atras: number
   frente: number
@@ -75,48 +81,47 @@ interface SliderJanelaProps {
  * Slider de janela ancorado no "hoje": à esquerda quantos meses para trás, à
  * direita quantos para frente, passo de 1 mês.
  *
- * São DOIS inputs em vez de um controle de duas alças: é o que o eixo pede
- * (cada lado é independente) e ganha teclado/leitor de tela de graça. O input da
- * esquerda usa `dir="rtl"` para que o zero fique junto do "hoje" e arrastar para
- * a esquerda estenda a janela para o passado — o gesto acompanha o eixo.
+ * Segue o PADRÃO do slider de horizonte do Fluxo de Caixa (pedido do Yan) pelo
+ * primitivo `SliderHorizonte`: rótulo "Horizonte de tempo:" acima, trilho NEUTRO,
+ * régua de riscos com marcos semestrais e o valor em texto ao lado.
+ *
+ * São DOIS inputs em vez de um controle de duas alças: cada lado é independente e
+ * assim teclado/leitor de tela funcionam de graça. O lado do passado é `espelhado`
+ * — zero junto do "hoje", arrastar para a esquerda estende a janela para trás, de
+ * modo que o gesto acompanhe o eixo do tempo.
  */
 function SliderJanela({ atras, frente, maxAtras, maxFrente, onAtras, onFrente }: SliderJanelaProps) {
-  const comum =
-    'w-full h-1.5 cursor-pointer appearance-none rounded-full bg-zinc-200 ' +
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand)]'
-
   return (
-    <div className="flex items-center gap-3 px-2 py-3 my-1 border-y border-zinc-100">
-      <span className="text-2xs text-[var(--text-muted)] tabular-nums w-14 text-right shrink-0">
-        −{atras}m
-      </span>
-      <input
-        type="range" dir="rtl"
-        min={0} max={maxAtras} step={1} value={Math.min(atras, maxAtras)}
-        onChange={e => onAtras(Number(e.target.value))}
-        className={comum}
-        style={{ accentColor: 'var(--brand)' }}
-        aria-label="Meses para trás na janela dos gráficos"
-        aria-valuetext={plural(atras, 'mês atrás', 'meses atrás')}
-      />
-      <span
-        className="text-2xs font-semibold shrink-0 px-1.5 py-0.5 rounded"
-        style={{ background: 'var(--brand-soft)', color: 'var(--brand-deep)' }}
-      >
-        HOJE
-      </span>
-      <input
-        type="range"
-        min={0} max={maxFrente} step={1} value={Math.min(frente, maxFrente)}
-        onChange={e => onFrente(Number(e.target.value))}
-        className={comum}
-        style={{ accentColor: 'var(--brand)' }}
-        aria-label="Meses para frente na janela dos gráficos"
-        aria-valuetext={plural(frente, 'mês à frente', 'meses à frente')}
-      />
-      <span className="text-2xs text-[var(--text-muted)] tabular-nums w-14 shrink-0">
-        +{frente}m
-      </span>
+    <div className="px-2 py-3 my-1 border-y border-zinc-100">
+      <p className="text-2xs font-medium text-zinc-400 mb-1.5">Horizonte de tempo:</p>
+      <div className="flex items-start gap-3">
+        <span className="text-2xs text-zinc-500 tabular-nums w-[104px] shrink-0 text-right pt-0.5">
+          {plural(atras, 'mês atrás', 'meses atrás')}
+        </span>
+        <SliderHorizonte
+          className="flex-1 min-w-[120px]"
+          valor={atras} max={maxAtras} onChange={onAtras}
+          maiores={MARCOS} espelhado
+          ariaLabel="Meses para trás na janela dos gráficos"
+          ariaValueText={plural(atras, 'mês atrás', 'meses atrás')}
+        />
+        <span
+          className="text-2xs font-semibold shrink-0 px-1.5 py-0.5 rounded mt-0.5"
+          style={{ background: 'var(--brand-soft)', color: 'var(--brand-deep)' }}
+        >
+          HOJE
+        </span>
+        <SliderHorizonte
+          className="flex-1 min-w-[120px]"
+          valor={frente} max={maxFrente} onChange={onFrente}
+          maiores={MARCOS}
+          ariaLabel="Meses para frente na janela dos gráficos"
+          ariaValueText={plural(frente, 'mês à frente', 'meses à frente')}
+        />
+        <span className="text-2xs text-zinc-500 tabular-nums w-[104px] shrink-0 pt-0.5">
+          {plural(frente, 'mês à frente', 'meses à frente')}
+        </span>
+      </div>
     </div>
   )
 }

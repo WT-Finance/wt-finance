@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   type MesAcumulado,
+  LIMITE_MESES,
+  JANELA_LARGA_ATRAS,
+  JANELA_LARGA_FRENTE,
   indiceHoje,
   limitesJanela,
   fatiarJanela,
@@ -48,6 +51,23 @@ describe('limitesJanela', () => {
   it('não devolve limite negativo em série degenerada', () => {
     expect(limitesJanela([]).maxAtras).toBe(0)
     expect(limitesJanela(serie(0, 0))).toEqual({ maxAtras: 0, maxFrente: 0 })
+  })
+
+  it('a janela larga produz EXATAMENTE o limite de 36 meses pedido pelo Yan', () => {
+    // Decisão de produto: 36 para trás e 36 para frente. O lado do passado busca
+    // um mês a mais só para servir de margem do rebase — ele NÃO é alcançável
+    // pelo slider. Se alguém mexer nas constantes, é aqui que quebra.
+    const s = serie(JANELA_LARGA_ATRAS, JANELA_LARGA_FRENTE)
+    expect(limitesJanela(s)).toEqual({ maxAtras: LIMITE_MESES, maxFrente: LIMITE_MESES })
+    expect(JANELA_LARGA_ATRAS).toBe(LIMITE_MESES + 1)
+  })
+
+  it('o extremo do slider ainda tem mês anterior para rebasear', () => {
+    const s = serie(JANELA_LARGA_ATRAS, JANELA_LARGA_FRENTE)
+    const j = fatiarJanela(s, LIMITE_MESES, LIMITE_MESES)
+    expect(j.pontos).toHaveLength(LIMITE_MESES * 2 + 1)
+    expect(j.pontos[0].entrada_acum).toBe(10)  // rebaseado, não 10 × (índice+1)
+    expect(j.pontos[0].entrada_mes).toBe(10)   // derivado do mês anterior real
   })
 })
 
