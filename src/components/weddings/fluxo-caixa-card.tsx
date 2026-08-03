@@ -60,9 +60,9 @@ const LEGENDA_ACUM: ChartLegendItem[] = [
 
 const plural = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`
 
-/** Rótulo da janela: "24 meses atrás + 18 à frente". */
+/** Rótulo da janela: "30 meses passados + 18 meses futuros". */
 function rotuloJanela(atras: number, frente: number): string {
-  return `${plural(atras, 'mês atrás', 'meses atrás')} + ${frente} à frente`
+  return `${plural(atras, 'mês passado', 'meses passados')} + ${plural(frente, 'mês futuro', 'meses futuros')}`
 }
 
 /** Riscos MAIORES da régua: um a cada 6 meses (semestres), como na referência. */
@@ -94,7 +94,7 @@ interface SliderJanelaProps {
  */
 function SliderJanela({ atras, frente, maxAtras, maxFrente, onAtras, onFrente }: SliderJanelaProps) {
   return (
-    <div className="px-2 py-3 my-1 border-y border-zinc-100">
+    <div className="px-2 py-4 my-7 border-y border-zinc-100">
       <div className="flex items-start gap-3">
         <span className="text-2xs text-zinc-500 tabular-nums w-[72px] shrink-0 text-right pt-0.5">
           {plural(atras, 'mês', 'meses')}
@@ -181,7 +181,7 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
       </div>
 
       {/* ── Gráfico 1: movimento do MÊS ─────────────────────────────────────── */}
-      <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Movimento do mês</h3>
+      <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Mensal</h3>
       <ResponsiveContainer width="100%" height={260}>
         <ComposedChart data={pontos} margin={chartMargins.default} barCategoryGap="25%" barGap={0}>
           {ChartGrid()}
@@ -236,10 +236,7 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
       />
 
       {/* ── Gráfico 2: ACUMULADO (reiniciado na borda da janela) ────────────── */}
-      <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">
-        Acumulado na janela{' '}
-        <span className="text-[13px] font-normal text-[var(--text-muted)]">— reinicia na borda esquerda</span>
-      </h3>
+      <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Acumulado</h3>
       <ResponsiveContainer width="100%" height={240}>
         <ComposedChart data={pontos} margin={chartMargins.withRightLabel}>
           {ChartGrid()}
