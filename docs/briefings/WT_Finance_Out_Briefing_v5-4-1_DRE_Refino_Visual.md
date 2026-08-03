@@ -22,6 +22,31 @@
 
 ---
 
+## 1b. Rodada de ajustes (03/08, depois de o Yan ver a tela)
+
+Sete ajustes pedidos após a primeira olhada, todos de apresentação e todos sem mexer em número:
+
+| # | Ajuste | Nota |
+|---|---|---|
+| 1 | `Δ% 25·26` → **`Δ% YTD 25·26`** na visão Consolidado | A variação sempre foi entre YTDs; a coluna vizinha à esquerda é um ano cheio, o que tornava a leitura errada a mais natural |
+| 2 | Resumo Executivo vira **card próprio** | Some uma duplicação: ele nunca dependeu de `dados`, só de `consolidadoAnos` — dentro da `TabelaDre` precisava ser renderizado nos dois ramos. A prop `anoCorrente` saiu da tabela (existia só para atravessá-la) |
+| 3 | `Δ 24→25` → `Δ 24·25` · `Δ YTD` → **`Δ YTD 25·26`** | Mesma convenção do Consolidado; "Δ YTD" sozinho não dizia quais anos comparava |
+| 4 | Linhas do Resumo: `--band` → **`--band-soft`** (subgrupos) | O box já é `--band`; com as linhas na mesma cor, cabeçalho e corpo viravam um bloco só |
+| 5 | **Cor por sinal em TODA célula** do Resumo | Reverte a neutralidade dos absolutos. Sobre banda clara exige os `-deep`: `corPorSinal('sub', …)` — os tons base reprovariam AA, a mesma armadilha da §"Risco de acessibilidade" |
+| 6 | Decomposição: **"‹ voltar" removido**; **Total fixo e alinhado** entre os lados; **scroll por lado** | Cada lado virou coluna flex `h-full max-h-[420px]` com o grid em `items-stretch`; só a lista rola (`ScrollAutoHide`, que já se dimensiona por cadeia flex), título e Total ficam fora dela |
+| 7 | Mais respiro entre as pills e o conteúdo (`mb-5` → `mb-8`) | — |
+
+**Detalhe que a integração pegou:** o thumb do `ScrollAutoHide` é `absolute right-1` e, sem folga,
+flutuaria **por cima** dos valores alinhados à direita. Entrou o gutter `pr-3.5`, a mesma convenção
+que a tabela da DRE já usa no limite do seu scroll.
+
+**Sobre o alinhamento dos Totais:** o teto comum de altura é o mecanismo. O lado com menos barras
+fica com espaço vazio antes do Total — isso é o que faz os dois caírem na mesma linha, e é
+esperado, não sobra de layout. O `420px` foi escolhido para caber ~6–8 barras sem rolar; **é o
+número mais arbitrário desta entrega** e o mais provável de o Yan querer ajustar depois de ver.
+
+---
+
 ## 2. Três divergências entre o briefing e o repo (achadas no plan mode)
 
 **(a) A M3 não precisava de migration.** O briefing previa "aditiva mínima se a RPC de status
@@ -152,17 +177,23 @@ O que *foi* possível provar sem browser: o `next dev` subiu limpo, o build de p
 log do dev não registrou nenhum erro de runtime.
 
 **Portanto, a conferência do checkpoint do Yan é a primeira e única passada visual desta versão.**
-Vale olhar, em ordem:
+Vale olhar, em ordem (atualizado após a rodada de ajustes da §1b):
 
-1. O card inteiro: **tabela → "Editar estrutura" → Resumo Executivo** (a nova ordem).
-2. O **Resumo lado a lado com a tabela** — se lê como a mesma família visual, e se os valores
-   batem com os da tabela para 2–3 linhas.
-3. O **selo** no canto superior direito, com "27 de julho de 2026, 12:51" (a menos que haja upload
-   novo).
-4. A **Decomposição com uma barra aberta**: os filhos aparecem sob a própria barra, o Total não se
-   move, e o fechamento anima igual à abertura (esse foi o defeito corrigido na integração).
-5. **Tela estreita:** o selo deve quebrar para baixo do título sem encostar na toolbar; nada colide.
-6. O **"?"** ao lado de "Resumo Executivo" mostrando a ressalva da ancoragem no ano corrente.
+1. A sequência de cards: **[DRE: tabela + "Editar estrutura"] → [Resumo Executivo] → [Decomposição]**.
+2. O **Resumo** — se lê como a mesma família visual da tabela; se as linhas em `--band-soft`
+   destacam o cabeçalho; se o verde/vermelho por sinal ficou legível sobre a banda clara; e se
+   2–3 valores batem com os da tabela.
+3. Os rótulos de variação: **`Δ 24·25`** e **`Δ YTD 25·26`** no Resumo, **`Δ% YTD 25·26`** na visão
+   Consolidado da tabela.
+4. O **selo** no canto superior direito do card da DRE, com "27 de julho de 2026, 12:51" (a menos
+   que haja upload novo).
+5. A **Decomposição**: os dois **Totais na mesma linha horizontal** com quantidades diferentes de
+   barras de cada lado; uma barra aberta mostrando os filhos logo abaixo dela, com o Total imóvel;
+   o **fechamento animando igual à abertura**; e o scroll próprio de cada lado quando um deles
+   estourar os 420px (⚠️ **esse número é o mais arbitrário da entrega** — se cortar cedo ou tarde
+   demais, é um `max-h-[…]` de uma linha).
+6. **Tela estreita:** o selo deve quebrar para baixo do título sem encostar na toolbar.
+7. O **"?"** ao lado de "Resumo Executivo" mostrando a ressalva da ancoragem no ano corrente.
 
 ---
 

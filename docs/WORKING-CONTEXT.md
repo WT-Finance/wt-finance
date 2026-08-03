@@ -20,6 +20,14 @@
   **Decomposição** ganhou pills abaixo do título, **cor plana** (as paletas de 5/7 tons saíram; só
   "Outros" e "Não classificadas" mantêm cor própria) e **drill inline sob a própria barra**, com a
   cortina do TopSection.
+  **Rodada de ajustes (03/08, o Yan viu a tela):** o Resumo virou **card próprio** (some a
+  duplicação nos dois ramos da `TabelaDre`, e a prop `anoCorrente` saiu dela); linhas do Resumo
+  passaram para `--band-soft` (subgrupos) e **toda** célula ganhou cor por sinal; rótulos de
+  variação alinhados à convenção do Consolidado (`Δ 24·25`, `Δ YTD 25·26`, e `Δ% 25·26` →
+  **`Δ% YTD 25·26`** na tabela); na Decomposição o "‹ voltar" saiu e os dois **Totais ficaram fixos
+  e alinhados na mesma linha**, com scroll próprio por lado (coluna flex `h-full max-h-[420px]` +
+  grid `items-stretch` + `ScrollAutoHide`). ⚠️ **O `420px` é o número mais arbitrário da entrega** —
+  candidato natural a ajuste depois da conferência visual.
   **Duráveis desta versão:** *(a)* `ConteudoContabil`/`corPorSinal` agora moram em
   `dre/celula-contabil.tsx` — **nunca copiar cor de célula entre componentes deste card**: os tons
   base dão 3,88–4,31:1 sobre as bandas claras e reprovam AA, e só `corPorSinal` sabe escolher os

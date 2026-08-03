@@ -41,17 +41,20 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       {
         tipo: 'melhoria',
         texto:
-          'O Resumo Executivo do Demonstrativo passou a ter a mesma leitura da tabela logo acima: ' +
-          'mesmo cabeçalho, mesmos valores em formato contábil e as contas destacadas na mesma ' +
-          'hierarquia. Antes os dois blocos mostravam os mesmos números com aparências diferentes, ' +
-          'o que dava a impressão de virem de fontes distintas.',
+          'O Resumo Executivo do Demonstrativo virou um quadro próprio e passou a ter a mesma leitura ' +
+          'da tabela: mesmo cabeçalho, valores em formato contábil e verde/vermelho conforme o sinal. ' +
+          'Antes os dois blocos mostravam os mesmos números com aparências diferentes, o que dava a ' +
+          'impressão de virem de fontes distintas. As colunas de variação agora dizem quais anos ' +
+          'comparam, no Resumo e na visão Consolidado.',
       },
       {
         tipo: 'melhoria',
         texto:
           'A Decomposição dos Lançamentos ficou mais direta: ao clicar numa barra, a abertura acontece ' +
           'logo abaixo dela — antes o detalhamento aparecia no rodapé do painel, longe do que havia sido ' +
-          'clicado. As cores das barras também deixaram de variar por tamanho, que não significava nada.',
+          'clicado. As cores das barras deixaram de variar por tamanho, que não significava nada, e o ' +
+          'total de Entradas e o de Saídas agora ficam lado a lado na mesma altura, fixos, com cada ' +
+          'lado rolando por conta própria quando tem muitas linhas.',
       },
       {
         tipo: 'novidade',
