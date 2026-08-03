@@ -191,6 +191,35 @@ depende de subagente), verificando a realidade contra as 7 invariantes do briefi
   junto com o "?", é trivial.
 - **Conferência visual da tela real** (ver §5).
 
+**Achado SISTÊMICO fora do escopo — filtro que navega rola a página para o topo:**
+
+O Yan reportou que marcar uma operação no filtro de Weddings fazia a página **saltar
+para o topo**. Causa: o App Router rola para o topo em **toda** navegação por default, e
+o `aplicar()` do `dropdown-operacao` fazia `router.push(url)` sem `{ scroll: false }`. Numa
+interação de múltipla escolha — o usuário marca várias operações em sequência — isso
+arranca a pessoa do controle a cada clique. **Corrigido** aqui (é o filtro que esta versão
+moveu de lugar).
+
+**Mas o defeito é do padrão, não deste componente.** Sete outros filtros que navegam
+no lugar têm exatamente o mesmo `startTransition(() => router.push(...))` sem
+`scroll: false`, e portanto o mesmo salto:
+
+| Arquivo | Linha |
+|---|---|
+| `src/components/shared/periodo-pills-url.tsx` | 55 |
+| `src/components/shared/periodo-filter-url.tsx` | 46 |
+| `src/components/shared/setor-filter.tsx` | 24 |
+| `src/components/metas/metas-periodo-pills.tsx` | 35 |
+| `src/components/metas/cadastro-grade.tsx` | 411 |
+| `src/components/solicitacoes/solicitacoes-content.tsx` | 35 e 43 |
+
+Cada um é **um argumento de uma linha**. Não foram tocados por disciplina de escopo
+(atravessam Financeiro, Metas e Solicitações). Vale como patch próprio — e é candidato
+natural a **enforcement mecânico**: uma regra `wt/*` que exija `scroll: false` em
+`router.push`/`router.replace` cujo destino é o **mesmo `pathname`** (navegação de filtro,
+não de rota) pegaria a classe inteira. A regra teria de nascer pelo protocolo D5, porque
+`eslint.config.*` é alvo do hook `protecao-config`.
+
 **Registros técnicos (não bloqueiam):**
 - **`/nova-versao` passo 4 está OBSOLETO:** as cópias 0950–0954 foram renumeradas para
   0210–0214 no merge da v5.4.0. O bloco tem um comentário `REMOVER na renumeração
