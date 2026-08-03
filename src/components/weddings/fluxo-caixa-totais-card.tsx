@@ -49,13 +49,15 @@ export default function FluxoCaixaTotaisCard({ totalAReceber, totalAPagar, filtr
   return (
     <div className="bg-white rounded-xl shadow-sm px-5 py-4">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        {/* Os dois KPIs dividem o espaço do card NÃO ocupado pelo filtro, em duas
-            metades iguais (`flex-1` cada) — então a régua vertical cai exatamente no
-            MEIO desse espaço, e os valores ficam encostados nela, centralizados em
-            torno do meio em vez de amontoados na borda esquerda. O bloco do filtro é
-            `shrink-0`, então é a largura dele que define o espaço restante. */}
+        {/* Os dois KPIs dividem o espaço do card NÃO ocupado pelo filtro em duas
+            metades iguais (`flex-1` cada), então a régua vertical cai exatamente no
+            MEIO desse espaço. O bloco do filtro é `shrink-0`, então é a largura dele
+            que define o espaço restante.
+            Dentro das metades, os dois valores alinham à ESQUERDA (decisão do Yan): o
+            "a receber" na borda do card e o "a pagar" logo após a régua — encostar o
+            primeiro na régua deixava a leitura começando no meio do card. */}
         <div className="flex flex-1 items-center min-w-0">
-          <div className="flex flex-1 justify-end pr-6 min-w-0">
+          <div className="flex flex-1 pr-6 min-w-0">
             {totalAReceber != null && (
               <Total label="Total a receber" valor={totalAReceber} cor={COR_RECEBER} />
             )}

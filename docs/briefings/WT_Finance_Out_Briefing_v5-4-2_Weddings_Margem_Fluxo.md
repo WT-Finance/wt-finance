@@ -200,25 +200,49 @@ interação de múltipla escolha — o usuário marca várias operações em seq
 arranca a pessoa do controle a cada clique. **Corrigido** aqui (é o filtro que esta versão
 moveu de lugar).
 
-**Mas o defeito é do padrão, não deste componente.** Sete outros filtros que navegam
-no lugar têm exatamente o mesmo `startTransition(() => router.push(...))` sem
-`scroll: false`, e portanto o mesmo salto:
+**O defeito era do padrão, e o Yan pediu para corrigir tudo ainda neste patch.** Sete
+outros filtros que navegam no lugar tinham o mesmo `router.push` sem `scroll: false` —
+**todos corrigidos aqui**:
 
 | Arquivo | Linha |
 |---|---|
-| `src/components/shared/periodo-pills-url.tsx` | 55 |
-| `src/components/shared/periodo-filter-url.tsx` | 46 |
-| `src/components/shared/setor-filter.tsx` | 24 |
-| `src/components/metas/metas-periodo-pills.tsx` | 35 |
-| `src/components/metas/cadastro-grade.tsx` | 411 |
-| `src/components/solicitacoes/solicitacoes-content.tsx` | 35 e 43 |
+| `src/components/shared/periodo-pills-url.tsx` | 57 |
+| `src/components/shared/periodo-filter-url.tsx` | 48 |
+| `src/components/shared/setor-filter.tsx` | 26 |
+| `src/components/metas/metas-periodo-pills.tsx` | 37 |
+| `src/components/metas/cadastro-grade.tsx` | 413 |
+| `src/components/solicitacoes/solicitacoes-content.tsx` | 37 e 45 |
 
-Cada um é **um argumento de uma linha**. Não foram tocados por disciplina de escopo
-(atravessam Financeiro, Metas e Solicitações). Vale como patch próprio — e é candidato
-natural a **enforcement mecânico**: uma regra `wt/*` que exija `scroll: false` em
-`router.push`/`router.replace` cujo destino é o **mesmo `pathname`** (navegação de filtro,
-não de rota) pegaria a classe inteira. A regra teria de nascer pelo protocolo D5, porque
-`eslint.config.*` é alvo do hook `protecao-config`.
+O padrão correto **já existia** em dois call-sites (`periodo-filter-pills-url.tsx` e
+`dre/tabela-dre.tsx`, este último da v5.4.1) — ou seja, não foi invenção desta versão:
+sete lugares simplesmente não o seguiam.
+
+**Critério aplicado (não foi busca-e-substitui cega):** só recebe `scroll: false` a
+navegação que permanece no **MESMO `pathname`** — filtro/recorte, em que a página é a
+mesma e só o conteúdo muda. Ficaram DE FORA, com motivo:
+
+- `executiva/mix-setor-chart.tsx:33` e `performance/mix-setor-table.tsx:79` — empurram
+  para `/performance?setor=…`. O primeiro é navegação **entre rotas** (de `/executiva`),
+  onde rolar ao topo é o certo. O segundo renderiza **dentro de** `/performance`, então é
+  mesmo-pathname — mas é um **drill-down** que re-escopa a página inteira para um setor,
+  e ali o topo é plausivelmente onde o usuário quer estar. Deixado como está de propósito;
+  se incomodar, é a mesma linha.
+- `shared/preview-session-guard.tsx:26` — `router.replace` no mesmo pathname, mas não é
+  filtro: é o guard que derruba `?preview=1` fora da sessão e faz a página trocar de
+  preview para o aviso "em construção". Conteúdo diferente ⇒ topo é defensável.
+
+**Armadilha que o `tsc` pegou** (e que uma substituição em massa teria escondido): a
+primeira tentativa de patch pôs o `{ scroll: false }` como **2º argumento do
+`startTransition`**, não do `router.push` — `startTransition(() => router.push(url), {…})`
+compila como erro de aridade (`Expected 1 arguments, but got 2`) porque o `))` que a
+substituição casou era a fronteira entre as duas chamadas aninhadas, não o fim do `push`.
+Cinco arquivos acusaram na hora. Lição: em `push` dentro de `startTransition`, o objeto de
+opções vai **dentro** do parêntese do `push`.
+
+Segue valendo como candidato a **enforcement mecânico**: uma regra `wt/*` que exija
+`scroll: false` quando o destino do `router.push`/`replace` é o próprio `pathname`
+pegaria a classe inteira e dispensaria esta vigilância. Teria de nascer pelo protocolo D5
+(`eslint.config.*` é alvo do hook `protecao-config`).
 
 **Registros técnicos (não bloqueiam):**
 - **`/nova-versao` passo 4 está OBSOLETO:** as cópias 0950–0954 foram renumeradas para

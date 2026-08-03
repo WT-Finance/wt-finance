@@ -408,7 +408,9 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
     }
     const params = new URLSearchParams()
     params.set('ano', String(novo))
-    startTransition(() => router.push(`${pathname}?${params.toString()}`))
+    // `scroll: false`: filtro no LUGAR — o App Router rola ao topo em toda navegação
+    // por default, e aqui só o recorte muda, não a página (fix v5.4.2).
+    startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
   }
 
   // Confirma UM campo de UMA célula localmente — só atualiza `valores`; a persistência

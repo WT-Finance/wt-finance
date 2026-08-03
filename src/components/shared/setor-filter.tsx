@@ -21,7 +21,9 @@ export default function SetorFilter() {
   const handleChange = useCallback((value: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.set('setor', value)
-    startTransition(() => router.push(`${pathname}?${params.toString()}`))
+    // `scroll: false`: filtro no LUGAR — o App Router rola ao topo em toda navegação
+    // por default, e aqui só o recorte muda, não a página (fix v5.4.2).
+    startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
   }, [router, pathname, searchParams])
 
   return (
