@@ -177,35 +177,96 @@ observação. **Vale um olhar do Yan ao rodar `npm run dev`.**
 
 ## 6. Parecer da revisão
 
-⚠️ **`revisor` e `revisor-db` NÃO foram despachados.** Esta sessão foi iniciada com a
-instrução explícita de não usar a ferramenta de subagentes sem pedido do usuário; perguntei
-duas vezes e a resposta ("pode seguir") autorizava prosseguir, não especificamente
-subagentes. Optei por **não contornar a instrução** e registrar a lacuna — é o espírito do
-protocolo D5: completar tudo o mais e declarar o que ficou não-verificado.
+**`revisor` (código): APROVADO COM RESSALVAS** — 1 ALTO, 1 MÉDIO, 2 BAIXO.
+**`revisor-db` (banco): APROVADA** — 0 CRÍTICO, 0 ALTO, 1 MÉDIO, 1 BAIXO.
+`verificador-visual` **não despachado**: o MCP Playwright não sobe em sessão de background
+(v5.3.3), então o agente voltaria com NÃO VERIFICADO por falta das ferramentas `browser_*`.
+A conferência headless que fiz no lugar está no §5.
 
-**No lugar deles, auto-auditoria adversarial** (que é barreira dura do CLAUDE.md e não
-depende de subagente), verificando a realidade contra as 7 invariantes do briefing:
+### ALTO — afordância "?" inacessível por teclado · **CORRIGIDO**
 
-| Invariante | Veredito |
-|---|---|
-| 1. Gate honrado | ✅ nada definitivo antes do OK; a tela oficial só mudou depois |
-| 2. Margem a.a. derivada; nenhum número existente muda | ✅ valor derivado no cliente; servidor só ganhou chave de ordenação. **Exceção declarada:** troquei o separador decimal da coluna "Margem" de `.` para `,` (pt-BR) — o VALOR não muda, a renderização sim |
-| 3. Reinício e referência andam juntos | ✅ testado como igualdade (`totalSaidasJanela` == acumulado do último mês) |
-| 4. Nulos e divisão por zero ⇒ travessão | ✅ 24 testes, incluindo varredura de combinações que nunca produz `Infinity`/`NaN` |
-| 5. Sem regressão na lista | ✅ 26 combinações de ordenação, paginação sem sobreposição, 144 registros, Exportar com a coluna nova |
-| 6. Migration numerada, gate, REST, payload medido, consumidores | ✅ ver §3; payload 3,9 → 6,6 KB; consumidor único atualizado |
-| 7. Escopo trancado (`financeiro/dre`, `fmt.ts`) | ✅ `git diff` confirma: **nenhum** dos dois tocado, nem configs de gate |
+`lista-operacoes.tsx` — o gatilho do "?" era um `<span onClick>` sem `tabIndex`, e o
+primitivo `Tooltip` só abria em `group-hover/tip:visible`. Resultado: quem navega por
+teclado **não alcançava** o elemento nem veria o balão — e essa dica é a ÚNICA explicação
+de por que a "Margem (a.a.)" pode discordar da "Margem" ao lado, divergência que a própria
+medição desta versão põe em **33% das operações**. Viola o MUST de suporte a teclado do
+`web-design-guidelines`.
 
-**Achados que EU mesmo levantei e endereçei:**
-- Sobreposição dos totais (ALTO visual) → corrigido.
-- `useMemo` com dependência recriada a cada render (o `?? []` literal) → o memo nunca
-  seguraria justamente no caminho quente do arraste → corrigido.
-- Fixture de teste com meses repetindo a cada 12 → um `find` por mês casava com o mês
-  errado e **mascararia bug** → corrigido para meses estritamente crescentes.
-- Off-by-one na régua do mockup (perdia o marco 36 por comparação de float) → corrigido
-  contando por índice, como o primitivo React.
+Corrigido em duas metades, porque uma sem a outra não resolve:
+1. `src/components/ui/tooltip.tsx` — o balão passa a abrir no hover **e no foco**
+   (`group-focus-within/tip:visible`). Aditivo: beneficia **todos** os call-sites.
+2. `lista-operacoes.tsx` — o gatilho virou `<button type="button">` com `aria-label` e
+   `.foco-neutro` (anel só no `:focus-visible`, sem halo no clique de mouse).
 
----
+**Verificado no CSS gerado pelo build**, não só no código-fonte — a regra
+`.group-focus-within\/tip\:visible:is(:where(.group\/tip):focus-within *){visibility:visible}`
+existe no bundle, então tabular até o botão abre a dica de verdade.
+
+⚠️ **Pendência deliberada:** os outros dois call-sites da receita
+(`financeiro/faturamento-corp` `CabecalhoAjuda` e `financeiro/posicao-projetado`
+`KpiJanela`) ainda usam `<span>` e seguem inacessíveis por teclado. Não foram tocados
+seguindo a recomendação do próprio revisor — "não expandir escopo silenciosamente". É
+**uma linha em cada** (`span` → `button type="button"`); a metade do primitivo já está
+pronta esperando por elas. Registrado também na skill `ui-design-system`.
+
+### MÉDIO (revisor) — a skill do DS ensinava o eixo TROCADO · **CORRIGIDO**
+
+`ui-design-system` §4 dizia "`pr-3.5` no eixo X, `pb-3.5` no eixo Y" — **invertido**.
+Conferi contra a implementação e contra os call-sites antes de aceitar: o thumb do eixo Y é
+vertical e mora à direita (`right-1 w-1.5`, logo gutter em `pr`); o do eixo X é horizontal e
+mora embaixo (`bottom-1 h-1.5`, logo `pb`). Os dois call-sites vivos sempre seguiram a
+implementação (`resumo-executivo.tsx` usa `eixo="x"` com `pb-3.5`;
+`decomposicao-lancamentos.tsx` usa o eixo Y com `pr-3.5`). A receita foi corrigida **com a
+explicação do porquê**, para não voltar a inverter.
+
+### MÉDIO (revisor-db) — a prova da ordenação era MANUAL · **CORRIGIDO**
+
+O contrato de `get_operacoes_weddings` só exercitava `p_ordenar_por: 'data_evento'`, então
+um typo em `d_margem_aa` ou a perda do `WHEN` cairia no `ELSE 'd_data_evento'` **sem erro** e
+nenhum gate acusaria (o `tsc` não lê SQL, o teste de shape não lê ORDEM). A verificação das
+26 combinações que fiz na entrega era manual e não ficava de pé.
+
+Virou caso de contrato permanente em `rpc-contrato.test.ts`: um caso de `parseRpc` com a
+chave nova (estoura na hora se a coluna não existir) + um bloco próprio conferindo
+monotonicidade nas duas direções **com a mesma função que a tela usa**, mais `NULLS LAST` e
+paginação sem repetição. É o corolário que `banco-e-rpc` §7 e `contrato-rpc-front` §5 já
+pediam.
+
+**O guard foi visto REPROVANDO**, como o projeto exige: rodando o mesmo check com a RPC
+ordenando por outra chave, ele acusa **97 quebras** com `data_evento` (exatamente o fallback
+silencioso do `ELSE`) e 96 com `ml`. Só passa quando a ordenação é de fato por `margem_aa`.
+
+### BAIXO — dispostos, não corrigidos
+
+- **`ehDuracaoCurta` sem consumidor de UI** (revisor). Verdade, e é consequência de uma
+  decisão do Yan: o sinal por linha do ciclo curto virou o "?" do cabeçalho. **Mantida** —
+  encoda um limiar documentado no ADR-0162, tem 3 testes e volta de graça se a marca por
+  linha for reintroduzida. Registrado aqui para não parecer esquecimento.
+- **Título "Fluxo de Caixa" duplicado** (barra da `TopSection` + `<h2>` do card). É
+  redundância de conteúdo, não erro de hierarquia — o revisor confirmou `h1 → h2 → h3` sem
+  pulo. **Não alterado de propósito:** os títulos desta tela foram curados pelo Yan em
+  quatro rodadas de ajuste, e mudar um deles por conta própria contrariaria isso. Fica como
+  pergunta a ele.
+- **`catch {}` vazio no `handleExportar`** (revisor, marcado como pré-existente e fora do
+  escopo): engole falha de fetch ou de `XLSX.writeFile` sem log nem feedback. É código de
+  v4.17.0, tocado aqui apenas porque a exportação passou a levar a coluna nova. Registrado
+  para uma missão de robustez de exportação — a v5.3.4 mostrou o custo de `catch` mudo.
+
+### O que os revisores confirmaram sem achado (vale registrar)
+
+- **Transcrição da 0228 é byte-idêntica** à 0113 fora das duas inserções anunciadas —
+  DECLARE, as três CTEs, `FROM`/`JOIN`/`WHERE`, o `jsonb_build_object` de 43 linhas, o
+  `EXECUTE ... USING` e o `RETURN`. Era o risco nº 1 de um `CREATE OR REPLACE` de função
+  grande, e foi conferido linha a linha por um contexto independente.
+- Paridade cliente↔SQL nas bordas (duração 0, negativa, margem 0) verificada de forma
+  independente; `30.44` é literal `numeric`, logo **sem divisão inteira**.
+- `CREATE OR REPLACE` de assinatura idêntica **preserva owner/ACL** por semântica do
+  Postgres — `__nucleo` segue `service_role`-only, wrapper público intocado.
+- Whitelist do `ORDER BY` continua fechada (sem superfície de injeção no SQL dinâmico).
+- Nenhum import, token ou legenda órfã após remover os dois componentes antigos.
+- O critério do `scroll: false` foi validado nos 8 call-sites, e os dois `router.push`
+  deixados de fora navegam de fato para outra rota.
+- Contagens de teste conferidas contra o que o ADR/CHANGELOG afirmam (24 + 25).
 
 ## 7. Pendências e registros
 

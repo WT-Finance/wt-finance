@@ -90,11 +90,18 @@ Receita completa, com os dois detalhes que já custaram caro:
 
 ```tsx
 <Tooltip conteudo={texto} className="z-30 w-64 !whitespace-normal font-normal leading-snug">
-  <span className="inline-flex h-3 w-3 items-center justify-center rounded-full border
-                   border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
+  <button type="button" aria-label={`${rotulo}: ${texto}`}
+          className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full
+                     border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</button>
 </Tooltip>
 ```
 
+- **O gatilho é `<button type="button">`, NUNCA `<span>`.** `span` não entra no tab-order
+  nem é nomeável por leitor de tela: a dica fica **invisível para quem navega por teclado**
+  — e num cabeçalho de coluna ela costuma ser a única explicação de uma definição de
+  métrica. O `Tooltip` abre no hover **e no foco** (`group-focus-within/tip:visible`) desde
+  a v5.4.2; sem um gatilho focável, essa metade não serve para nada. (Achado ALTO do
+  revisor na v5.4.2.)
 - **`!whitespace-normal` é obrigatório** (com o `!`): o `Tooltip` traz `whitespace-nowrap` na
   base, e sem forçar o wrap um texto longo vira **uma linha invisível gigante** que
   transborda e cria barra de rolagem horizontal (medido: 313px → 0px, v4.38.0).
@@ -103,10 +110,12 @@ Receita completa, com os dois detalhes que já custaram caro:
 - Dentro de `<th>` clicável (tabela ordenável), o "?" precisa de
   `onClick={e => e.stopPropagation()}` — ler a dica não deve reordenar a tabela.
 
-Call-sites vivos: `financeiro/faturamento-corp` (`CabecalhoAjuda`),
-`financeiro/posicao-projetado` (`KpiJanela`), `weddings/lista-operacoes` (`AjudaHeader`).
-São **três cópias da mesma receita** — candidata natural a primitivo compartilhado quando
-uma quarta aparecer.
+Call-sites vivos: `weddings/lista-operacoes` (`AjudaHeader`, já com `<button>`),
+`financeiro/faturamento-corp` (`CabecalhoAjuda`) e `financeiro/posicao-projetado`
+(`KpiJanela`) — **estes dois últimos ainda usam `<span>`** e portanto seguem inacessíveis
+por teclado (pendência registrada no out-briefing da v5.4.2; é uma linha em cada). São
+**três cópias da mesma receita** — candidata natural a primitivo compartilhado quando uma
+quarta aparecer.
 
 Pills de plataforma/filtro são consts de `@/components/shared/botoes`
 (`PILL*`/`PILL_FILTRO*`); badge de status de solicitação é `statusBadge` de
@@ -200,8 +209,13 @@ por `absolute` contra o **próprio wrapper** (`right-1` + `w-1.5` no vertical, `
 última linha. Bateu três vezes na v5.4.1 (eixo X do Resumo Executivo, eixo Y da
 Decomposição) antes de virar regra. A receita, copiada da tabela da DRE:
 
-- **Gutter interno** no `className` (que vai para o viewport): `pr-3.5` no eixo X,
-  `pb-3.5` no eixo Y — 14px sobre os quais o thumb flutua, dentro da área rolável.
+- **Gutter interno** no `className` (que vai para o viewport): `pb-3.5` no eixo **X**,
+  `pr-3.5` no eixo **Y** — 14px sobre os quais o thumb flutua, dentro da área rolável.
+  (O eixo dá o LADO onde o thumb encosta: no X ele é horizontal e mora embaixo
+  (`bottom-1 h-1.5`) ⇒ gutter em `pb`; no Y é vertical e mora à direita (`right-1 w-1.5`)
+  ⇒ gutter em `pr`. Os dois estavam **trocados** aqui até a v5.4.2 — achado do revisor;
+  os call-sites vivos sempre seguiram a implementação: `resumo-executivo.tsx` usa
+  `eixo="x"` com `pb-3.5`, e `decomposicao-lancamentos.tsx` usa o eixo Y com `pr-3.5`.)
 - **Gutter externo** — um wrapper `pb-1.5`/`pr-1.5` em volta do `ScrollAutoHide` — quando o
   rolável encosta na borda de um box: encolhe o wrapper e afasta a barra da moldura **sem
   tocar no componente compartilhado**.

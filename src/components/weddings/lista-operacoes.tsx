@@ -65,15 +65,21 @@ function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
       conteudo={texto}
       className="z-30 w-64 !whitespace-normal !left-auto right-0 font-normal normal-case tracking-normal leading-snug text-left"
     >
-      {/* stopPropagation: o `<th>` inteiro ordena a tabela — clicar no "?" para ler
-          a dica não deve reordenar a lista. */}
-      <span
+      {/* `<button>`, não `<span>` (achado ALTO do revisor, v5.4.2): span não entra no
+          tab-order nem é nomeável por leitor de tela, então a dica — a ÚNICA explicação
+          de por que esta coluna pode discordar da "Margem" ao lado — ficava invisível
+          para quem navega por teclado. Com o botão focável + o `focus-within` do
+          primitivo `Tooltip`, o balão abre no Tab.
+          stopPropagation: o `<th>` inteiro ordena a tabela — ler a dica não deve
+          reordenar a lista. */}
+      <button
+        type="button"
         onClick={e => e.stopPropagation()}
         aria-label={`${rotulo}: ${texto}`}
-        className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400 cursor-help"
+        className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400 cursor-help"
       >
         ?
-      </span>
+      </button>
     </Tooltip>
   )
 }
