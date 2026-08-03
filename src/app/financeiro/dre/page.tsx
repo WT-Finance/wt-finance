@@ -20,6 +20,7 @@ import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import DecomposicaoLancamentos from '@/components/financeiro/decomposicao-lancamentos'
 import TopSection from '@/components/shared/top-section'
 import TabelaDre from '@/components/financeiro/dre/tabela-dre'
+import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 
 // DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
@@ -186,7 +187,6 @@ export default async function DrePage({
           <TabelaDre
             dados={dre}
             ano={ano}
-            anoCorrente={anoCorrente}
             anosDisponiveis={anosDisponiveis}
             anosSeguintes={anosSeguintes}
             consolidadoAnos={consolidadoAnos}
@@ -199,6 +199,13 @@ export default async function DrePage({
               </Link>
             }
           />
+
+          {/* Resumo Executivo — CARD PRÓPRIO desde a v5.4.1, irmão do card da DRE e não
+              mais um bloco dentro dele. Ele nunca dependeu de `dre` (o ano NAVEGADO), só
+              de `consolidadoAnos`; morando dentro da TabelaDre precisava ser repetido nos
+              dois ramos de render dela e sumia junto num ramo que não era dele.
+              A ÂNCORA é `anoCorrente`, de propósito distinta do `ano` da pill acima. */}
+          <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
 
           <DecomposicaoLancamentos
             blocos={dec?.blocos ?? []}

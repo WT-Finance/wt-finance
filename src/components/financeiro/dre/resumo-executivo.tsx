@@ -1,18 +1,20 @@
 // ── Resumo Executivo da DRE (v5.3.1 · refino visual v5.4.1) ───────────────────
-// Bloco de APRESENTAÇÃO PURA: 6 linhas-chave × 6 colunas de comparação, entra
-// dentro do card da tabela existente. Não busca dado, não tem estado — tudo
-// chega por prop (mesmo payload que já alimenta os totalizadores da tabela e a
-// visão Consolidado, ver `@/lib/dre/schemas`).
+// Bloco de APRESENTAÇÃO PURA: 6 linhas-chave × 6 colunas de comparação, em CARD
+// PRÓPRIO logo abaixo do card da DRE (era um bloco interno dele até a v5.4.1).
+// Não busca dado, não tem estado — tudo chega por prop (mesmo payload que já
+// alimenta os totalizadores da tabela e a visão Consolidado, ver
+// `@/lib/dre/schemas`).
 //
 // 0. GRAMÁTICA VISUAL = A DA TABELA (v5.4.1). O Resumo é uma VISUALIZAÇÃO das
-//    linhas-chave da tabela logo acima, no MESMO card — quando os dois destoam,
-//    o leitor lê a diferença como divergência de DADO, não como escolha de
-//    estilo. Por isso o cabeçalho, o box, a altura de linha, o "R$" esmaecido, os
-//    parênteses do negativo e a régua de cor vêm de `./celula-contabil` e de
-//    `tabela-dre.tsx`, nunca de cópias locais. As linhas usam a cor dos grupos de
-//    categoria (`blocoH` = --band), NÃO a banda escura dos totalizadores: seis
-//    bandas escuras seguidas viravam parede e a banda perdia a função de
-//    contraste (decisão do Yan, v5.4.1).
+//    linhas-chave da tabela logo acima — quando os dois destoam, o leitor lê a
+//    diferença como divergência de DADO, não como escolha de estilo. Por isso o
+//    cabeçalho, o box, a altura de linha, o "R$" esmaecido, os parênteses do
+//    negativo e a régua de cor vêm de `./celula-contabil` e de `tabela-dre.tsx`,
+//    nunca de cópias locais — e os rótulos de variação seguem a convenção da visão
+//    Consolidado ("Δ YTD 25·26"). As linhas usam o cinza claro dos SUBGRUPOS
+//    (`sub` = --band-soft) sobre o box `--band`: é o que separa cabeçalho de corpo.
+//    Nunca a banda ESCURA dos totalizadores — seis bandas escuras seguidas viravam
+//    parede e a banda perdia a função de contraste (decisão do Yan, v5.4.1).
 //
 // 1. ANCORAGEM NO ANO CORRENTE, NÃO NO ANO NAVEGADO (decisão explícita do Yan).
 //    O componente recebe `anoCorrente` (resolvido pela página via `hojeSP()`) e
@@ -109,28 +111,23 @@ function ThResumo({ children, alinhamento }: { children: string; alinhamento: 'e
   )
 }
 
-/** Coluna de valor ABSOLUTO — deliberadamente NEUTRA. As 6 linhas são todas "quanto
- *  maior melhor", então pintar os absolutos por sinal só acrescentaria cor sem
- *  informação; o sinal importa na VARIAÇÃO, e é lá que a cor entra (`CelulaDelta`).
- *  O layout (R$ esmaecido à esquerda, número tabular à direita, negativo entre
- *  parênteses) é o mesmo `ConteudoContabil` da tabela. */
-function CelulaAbs({ valor }: { valor: number | null }) {
-  return (
-    <td className="h-9 border-b border-b-wt-border px-3.5 text-2xs tabular-nums whitespace-nowrap text-text-primary">
-      <ConteudoContabil valor={valor} />
-    </td>
-  )
-}
+/** Fundo das linhas = o cinza claro dos SUBGRUPOS da DRE (`--band-soft`), não o
+ *  `--band` dos grupos: o box já é `--band`, então as linhas em `--band-soft` é o que
+ *  destaca o cabeçalho do corpo em vez de deixar o bloco todo numa cor só. Vai em cada
+ *  `<td>`, nunca no `<tr>` — com `border-separate` o fundo de linha não é confiável
+ *  entre browsers (é a mesma razão pela qual a tabela pinta célula a célula). */
+const BG_LINHA = 'bg-band-soft'
+const CELULA = `h-9 ${BG_LINHA} border-b border-b-wt-border px-3.5 text-2xs tabular-nums whitespace-nowrap`
 
-/** Coluna de Δ — cor por sinal pela régua COMPARTILHADA, com o tipo `'blocoH'`: é a
- *  banda em que estas linhas estão pousadas, e sobre ela os tons base reprovam AA
- *  (3,88–4,31:1). `corPorSinal` devolve os `-deep` (7–10:1) justamente por isso.
- *  Zero e ausência ficam neutros — nada a celebrar nem a lamentar. */
-function CelulaDelta({ valor }: { valor: number | null }) {
+/** TODA célula de valor — absoluta ou Δ — é colorida por SINAL (verde/vermelho), pela
+ *  régua COMPARTILHADA com a tabela. O tipo passado é `'sub'`: é a banda clara em que
+ *  estas linhas estão pousadas, e sobre ela os tons base reprovam AA (3,88–4,31:1) —
+ *  `corPorSinal` devolve os `-deep` (7–10:1) justamente por isso. Zero e ausência ficam
+ *  neutros. O layout (R$ esmaecido à esquerda, número tabular à direita, negativo entre
+ *  parênteses) é o mesmo `ConteudoContabil` da tabela. */
+function CelulaValor({ valor }: { valor: number | null }) {
   return (
-    <td
-      className={`h-9 border-b border-b-wt-border px-3.5 text-2xs tabular-nums whitespace-nowrap ${corPorSinal('blocoH', valor)}`}
-    >
+    <td className={`${CELULA} ${corPorSinal('sub', valor)}`}>
       <ConteudoContabil valor={valor} />
     </td>
   )
@@ -149,25 +146,30 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
   // (a tabela acima continua funcionando sozinha).
   if (!regA2 && !regA1 && !regAc) return null
 
+  // Convenção de rótulo de variação IGUAL à da visão Consolidado da tabela ("Δ% YTD
+  // 25·26"): o separador é "·" e a coluna DIZ quais anos compara. "Δ YTD" sozinho não
+  // dizia, e "Δ 24→25" usava outro separador que o resto do card.
   const rotulosColuna = [
     `${a2}`,
     `${a1}`,
-    `Δ ${aa(a2)}→${aa(a1)}`,
+    `Δ ${aa(a2)}·${aa(a1)}`,
     `YTD ${aa(a1)}`,
     `YTD ${aa(ac)}`,
-    'Δ YTD',
+    `Δ YTD ${aa(a1)}·${aa(ac)}`,
   ] as const
 
   return (
-    <div className="mt-5 border-t border-wt-border pt-4">
-      {/* Título na MESMA hierarquia visual do título da DRE (`text-[15px] font-semibold`);
-          <h3> e não <h2> porque é uma subseção do card, cujo <h2> é "Demonstrativo de
-          Resultado por Fluxo de Caixa" — mesma aparência, ordem de headings correta.
+    <div className="rounded-xl bg-surface p-5 shadow-sm">
+      {/* CARD PRÓPRIO desde a v5.4.1 (era um bloco dentro do card da DRE) — mesma casca dos
+          outros cards da página (`rounded-xl bg-surface p-5 shadow-sm`) e `<h2>` na mesma
+          hierarquia do título da DRE. Sair de dentro da tabela também resolveu uma
+          duplicação: lá ele precisava ser renderizado nos DOIS ramos (normal e fail-safe),
+          porque nunca dependeu de `dados` — só de `consolidadoAnos`.
           O "?" é o idioma de ajuda já usado em posicao-projetado/repasse-mensal:
           `!whitespace-normal` é obrigatório (o balão nasce `whitespace-nowrap`, e sem o
           `!` quem decide é a ORDEM DO CSS GERADO, não a ordem das classes). */}
-      <div className="mb-3 flex items-center gap-1.5">
-        <h3 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h3>
+      <div className="mb-4 flex items-center gap-1.5">
+        <h2 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h2>
         <Tooltip conteudo={ANCORAGEM} className="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
           <span
             aria-label={ANCORAGEM}
@@ -202,18 +204,18 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
                 const ultima = i === LINHAS.length - 1
                 return (
                   <tr key={chave} className={ultima ? '[&>td]:border-b-0' : undefined}>
-                    <td className="h-9 border-b border-b-wt-border pl-3 pr-3">
+                    <td className={`h-9 ${BG_LINHA} border-b border-b-wt-border pl-3 pr-3`}>
                       <span className="flex items-baseline gap-1.5 truncate uppercase tracking-[0.05em] text-[11px] font-semibold text-text-primary">
                         <span className="text-text-subtle">{prefixo}</span>
                         {rotulo}
                       </span>
                     </td>
-                    <CelulaAbs valor={t2} />
-                    <CelulaAbs valor={t1} />
-                    <CelulaDelta valor={dTotal} />
-                    <CelulaAbs valor={ytd1} />
-                    <CelulaAbs valor={ytdAc} />
-                    <CelulaDelta valor={dYtd} />
+                    <CelulaValor valor={t2} />
+                    <CelulaValor valor={t1} />
+                    <CelulaValor valor={dTotal} />
+                    <CelulaValor valor={ytd1} />
+                    <CelulaValor valor={ytdAc} />
+                    <CelulaValor valor={dYtd} />
                   </tr>
                 )
               })}

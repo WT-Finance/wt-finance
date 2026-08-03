@@ -32,7 +32,7 @@
 //    anterior); mínimo de 1 (desmarcar o último é no-op, a pill fica `aria-disabled`).
 //    ANO DE REFERÊNCIA = o MAIOR marcado; é ele que ganha o bloco de detalhe à direita.
 //    Sendo y1<…<yn os marcados, as colunas saem nesta ordem: para cada yi (i<n)
-//    "«yi»" (ano cheio) / "YTD «aa»" / "Δ% «aa»·«aa+1»"; depois "YTD «yn»" e — SÓ no
+//    "«yi»" (ano cheio) / "YTD «aa»" / "Δ% YTD «aa»·«aa+1»"; depois "YTD «yn»" e — SÓ no
 //    modo 'tudo' (rodada 4/Refino 4) — "VENCIDOS" e "PREV «yn»" (= total − YTD) quando
 //    yn é o ano CORRENTE, a coluna de TOTAL e, ainda só se yn é corrente, as colunas de
 //    anos seguintes atrás do MESMO toggle «»» da visão Mensal. Num ano FECHADO não há
@@ -226,7 +226,6 @@ import type {
   RegistroAnoLinha,
   ConsolidadoAno,
 } from '@/lib/dre/schemas'
-import ResumoExecutivo from './resumo-executivo'
 
 type Relacao   = DreMensal['relacao']
 /** Modo de exibição do "Total do ano" (Refino 8) — ver bullet no topo do arquivo. */
@@ -1233,7 +1232,7 @@ function anoCurto(a: number): string {
 /** Monta as colunas da visão Consolidado a partir dos anos MARCADOS (ascendente, ao
  *  menos 1 — vazio devolve vazio) e do MODO (rodada 4/Refino 4). Sendo y1<…<yn:
  *   · para cada yi com i<n (anos de COMPARAÇÃO): "«yi»" (ano cheio) · "YTD «aa»" ·
- *     "Δ% «aa»·«aa+1»" (variação do YTD de yi para o do PRÓXIMO marcado — encadeada,
+ *     "Δ% YTD «aa»·«aa+1»" (variação do YTD de yi para o do PRÓXIMO marcado — encadeada,
  *     não todos contra o de referência: é assim que se lê a evolução ano a ano);
  *   · para yn (REFERÊNCIA): "YTD «aa»" e, SÓ no modo 'tudo', "VENCIDOS" e "PREV «aa»"
  *     (= total − YTD) quando yn é o ano CORRENTE, mais a coluna de TOTAL. VENCIDOS vem
@@ -1268,7 +1267,10 @@ function montarColunasCons(sel: ConsolidadoAno[], janelaTexto: string, totalModo
       titulo: `${c.ano} na MESMA janela dos demais anos (${janelaTexto})`,
     })
     cols.push({
-      k: 'delta', id: `delta-${c.ano}-${prox.ano}`, rotulo: `Δ% ${anoCurto(c.ano)}·${anoCurto(prox.ano)}`,
+      // "Δ% YTD 25·26", não "Δ% 25·26" (v5.4.1): a variação é entre os YTDs, e sem a
+      // palavra o leitor supunha ano cheio contra ano cheio — o vizinho imediato à
+      // esquerda é justamente uma coluna de ano cheio.
+      k: 'delta', id: `delta-${c.ano}-${prox.ano}`, rotulo: `Δ% YTD ${anoCurto(c.ano)}·${anoCurto(prox.ano)}`,
       de: c.ano, para: prox.ano, grupo: 'comp', classe: 'text-text-secondary',
       titulo: `Variação do YTD de ${c.ano} para ${prox.ano} (mesma janela: ${janelaTexto})`,
     })
@@ -1718,11 +1720,6 @@ interface TabelaDreProps {
   /** Ano resolvido pela página (clampado à janela [corrente-2, corrente]) — fonte
    *  única para destacar a pill ativa (não lê `dados.ano`, que pode ser `null`). */
   ano: number
-  /** Ano corrente no fuso de São Paulo (`hojeSP()` na página) — a ÂNCORA do
-   *  `ResumoExecutivo`, que de propósito NÃO acompanha a pill de ano: com `?ano=2025` o
-   *  Resumo segue mostrando 2024|2025|YTD 25|YTD 26. Distinto de `ano` acima (o
-   *  NAVEGADO, que reger a tabela). Não derive um do outro. */
-  anoCorrente: number
   anosDisponiveis: number[]
   /** Totais dos anos seguintes (ano+1/ano+2) por linha, indexados por `b:<chave>`
    *  (blocos/totalizadores) e `c:<categoria_id>` (categorias e bandeja) — MESMA
@@ -1753,7 +1750,7 @@ interface TabelaDreProps {
   slotAcoes?: ReactNode
 }
 
-export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, ultimaCargaMovimentacao, slotAcoes }: TabelaDreProps) {
+export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, ultimaCargaMovimentacao, slotAcoes }: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -1841,16 +1838,8 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
           <p className="text-sm text-text-muted">Não foi possível carregar a DRE — tente recarregar.</p>
         </div>
         {/* Sem tabela não há hierarquia para expandir/recolher (o `AcoesHierarquia` nem
-            é montado aqui) — sobra a ação da página, quando houver. Ordem igual à do ramo
-            normal desde a v5.4.1: a ação vem ANTES do Resumo. */}
+            é montado aqui) — sobra a ação da página, quando houver. */}
         <RodapeAcoes slotAcoes={slotAcoes} />
-        {/* O Resumo aparece TAMBÉM aqui: ele não depende de `dados` (o ano NAVEGADO), e sim
-            de `consolidadoAnos` — uma chamada por ano, independentes no mesmo
-            `Promise.allSettled`. Como o ano navegado é sempre um dos três anos-âncora,
-            basta a chamada DELE falhar para cairmos neste ramo com os outros dois anos
-            intactos; omitir o Resumo aqui o derrubaria por uma falha que não é dele. Ele
-            se auto-oculta se nenhum ano-âncora tiver carregado. */}
-        <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
       </div>
     )
   }
@@ -2335,18 +2324,13 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
         </div>
       </div>
 
-      {/* Ação da página, ex.: "Editar estrutura" — ENTRE a tabela e o Resumo desde a
-          v5.4.1 (antes fechava o card, abaixo do Resumo). A ação governa a estrutura da
-          TABELA, e a distância até ela crescia junto com o Resumo; aqui ela fica logo
-          sob o que edita. Sem `slotAcoes` não renderiza nada. Mesma ordem no fail-safe. */}
+      {/* Ação da página, ex.: "Editar estrutura" — fecha o card, logo abaixo da tabela que
+          ela edita. Sem `slotAcoes` não renderiza nada. Mesma ordem no fail-safe.
+          ⚠️ O Resumo Executivo NÃO vive mais aqui dentro: virou CARD PRÓPRIO, irmão deste,
+          montado pela página (v5.4.1). Ele nunca dependeu de `dados` — só de
+          `consolidadoAnos` —, então dentro deste componente ele precisava ser repetido nos
+          dois ramos de render e sumia junto num ramo que não era dele. */}
       <RodapeAcoes slotAcoes={slotAcoes} />
-
-      {/* Resumo Executivo (v5.3.1) — DENTRO deste card, abaixo da tabela, nas DUAS
-          visões (o card externo é compartilhado). Ancorado no ANO CORRENTE, então NÃO
-          reage à pill de ano nem à troca de visão: é o retrato de agora. Fonte = o
-          MESMO `consolidadoAnos` que alimenta a visão Consolidado — sem segundo caminho
-          de cálculo. Ele se auto-oculta (retorna null) se nenhum ano-âncora carregou. */}
-      <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
     </div>
   )
 }
