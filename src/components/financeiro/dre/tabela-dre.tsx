@@ -216,6 +216,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 import Button from '@/components/ui/button'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
 import type {
@@ -1680,6 +1681,25 @@ function AcoesHierarquia({ onExpandir, onRecolher }: { onExpandir: () => void; o
   )
 }
 
+/** Cabeçalho do card: título à esquerda, selo de frescor da base à direita (v5.4.1).
+ *
+ *  O selo é o `UltimaAtualizacao` de Metas com a vigília DESLIGADA — a fonte aqui é um
+ *  upload de cadência humana, não o cron do Monde, e a régua de 45min daquele componente
+ *  acusaria atraso quase sempre (ver `vigiarAtraso`). `iso` nulo ⇒ o próprio componente
+ *  retorna `null` e o selo some, sem "sem data" na tela.
+ *
+ *  `flex-wrap` + `justify-between`: em largura estreita o selo desce para a linha de
+ *  baixo do título, ainda ACIMA da toolbar — nunca chega perto do "Expandir/Recolher
+ *  tudo", que vive na segunda linha de pills. */
+function CabecalhoCard({ ultimaCarga }: { ultimaCarga?: string | null }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <h2 className="text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+      <UltimaAtualizacao iso={ultimaCarga ?? null} className="text-2xs" iconSize={12} vigiarAtraso={false} />
+    </div>
+  )
+}
+
 /** Faixa de ação da página ("Editar estrutura", rodada 3/Refino 4) — desde a v5.4.1 fica
  *  ENTRE a tabela e o Resumo Executivo, não no rodapé do card: ela edita a estrutura da
  *  TABELA, e no rodapé a distância até o que ela governa crescia junto com o Resumo.
@@ -1721,6 +1741,11 @@ interface TabelaDreProps {
    *  página já aplicou a janela ao montar os `ytd`; aqui ela só descreve a comparação
    *  nos `title` do cabeçalho. */
   mesJanela: number
+  /** timestamptz (ISO) do último upload de Lançamentos por Movimentação — a base que
+   *  alimenta o demonstrativo (`financeiro.fato_fluxo`). Alimenta o selo no canto
+   *  superior direito do card. `null` (nunca carregada, ou a leitura falhou) ⇒ o selo
+   *  não aparece: exibir "sem data" seria pior que não exibir nada. */
+  ultimaCargaMovimentacao?: string | null
   /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada à direita,
    *  ENTRE a tabela e o Resumo Executivo (`RodapeAcoes`; posição da v5.4.1, antes era o
    *  rodapé do card). O "Expandir tudo"/"Recolher tudo" NÃO fica ao lado dela: vive na
@@ -1728,7 +1753,7 @@ interface TabelaDreProps {
   slotAcoes?: ReactNode
 }
 
-export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, slotAcoes }: TabelaDreProps) {
+export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, ultimaCargaMovimentacao, slotAcoes }: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -1808,7 +1833,7 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
   if (dados === null) {
     return (
       <div className="rounded-xl bg-surface p-5 shadow-sm">
-        <h2 className="mb-4 text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+        <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <AnoPills modo="unico" ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
         </div>
@@ -1965,7 +1990,7 @@ export default function TabelaDre({ dados, ano, anoCorrente, anosDisponiveis, an
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
-      <h2 className="mb-4 text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+      <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} />
 
       {/* ── Toolbar em DUAS linhas, tudo à esquerda (rodada 3/Refino 2) ──
           Linha de cima: pills de VISÃO. Linha de baixo: pills de ANO · divisor · pills
