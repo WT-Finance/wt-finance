@@ -16,6 +16,32 @@ Na **raiz do main** (nunca de dentro da worktree que será removida):
 git pull --ff-only
 ```
 
+⚠️ **Este pull ABORTA por colisão de untracked em TODA versão da Rota A — é por construção,
+não acidente.** O `/nova-versao` copia o briefing que vive **untracked na raiz** para dentro da
+worktree e o commita; no merge, aquele mesmo caminho passa a ser **rastreado**, e o git se
+recusa a sobrescrever a cópia untracked da raiz:
+
+```
+error: Your local changes to the following files would be overwritten by merge:
+        docs/briefings/briefing-<versão>.md
+Please move or remove them before you merge.  Aborting
+```
+
+**Não é estado divergente** (que exigiria parar e perguntar) e **não se resolve com `reset`.**
+O procedimento seguro, nesta ordem:
+
+```bash
+# 1) confirmar que a cópia untracked é IDÊNTICA à que entrou no main
+git show origin/main:docs/briefings/briefing-<versão>.md | diff - docs/briefings/briefing-<versão>.md
+# 2) só se idêntica: mover para fora do repo (nunca deletar direto) e puxar
+mv docs/briefings/briefing-<versão>.md /tmp/briefing-<versão>.bak.md
+git pull --ff-only
+# 3) conferir que o arquivo rastreado tem o mesmo conteúdo; então o .bak é descartável
+```
+
+Se os arquivos **DIFEREM**, o usuário editou a cópia da raiz depois do 1º commit da versão:
+**PARAR e perguntar** — ali há conteúdo que não está no main. (Visto na v5.4.2.)
+
 ## 2. Verificar que a worktree não tem trabalho fora do main
 
 ```bash
