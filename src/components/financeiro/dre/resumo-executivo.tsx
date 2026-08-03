@@ -1,15 +1,26 @@
-// ── Resumo Executivo da DRE (v5.3.1) ──────────────────────────────────────────
+// ── Resumo Executivo da DRE (v5.3.1 · refino visual v5.4.1) ───────────────────
 // Bloco de APRESENTAÇÃO PURA: 6 linhas-chave × 6 colunas de comparação, entra
 // dentro do card da tabela existente. Não busca dado, não tem estado — tudo
 // chega por prop (mesmo payload que já alimenta os totalizadores da tabela e a
 // visão Consolidado, ver `@/lib/dre/schemas`).
+//
+// 0. GRAMÁTICA VISUAL = A DA TABELA (v5.4.1). O Resumo é uma VISUALIZAÇÃO das
+//    linhas-chave da tabela logo acima, no MESMO card — quando os dois destoam,
+//    o leitor lê a diferença como divergência de DADO, não como escolha de
+//    estilo. Por isso o cabeçalho, o box, a altura de linha, o "R$" esmaecido, os
+//    parênteses do negativo e a régua de cor vêm de `./celula-contabil` e de
+//    `tabela-dre.tsx`, nunca de cópias locais. As linhas usam a cor dos grupos de
+//    categoria (`blocoH` = --band), NÃO a banda escura dos totalizadores: seis
+//    bandas escuras seguidas viravam parede e a banda perdia a função de
+//    contraste (decisão do Yan, v5.4.1).
 //
 // 1. ANCORAGEM NO ANO CORRENTE, NÃO NO ANO NAVEGADO (decisão explícita do Yan).
 //    O componente recebe `anoCorrente` (resolvido pela página via `hojeSP()`) e
 //    ignora completamente qual ano está selecionado na pill da tabela acima:
 //    com `?ano=2025` na URL o Resumo continua mostrando 2024 | 2025 | YTD 25 |
 //    YTD 26 — é o retrato de AGORA, não da navegação. Isso é INTENCIONAL, não
-//    bug; por isso a legenda abaixo do título avisa o leitor explicitamente.
+//    bug; o aviso saiu do subtítulo e virou o "?" ao lado do título (v5.4.1),
+//    para o Resumo abrir na mesma hierarquia do título da DRE.
 //
 // 2. O YTD VEM PRONTO, NUNCA É RECALCULADO AQUI. `porLinha[k].ytd` já sai da
 //    janela `mesJanela` (ancorada em `hojeSP()` na página) — a MESMA em todos
@@ -28,7 +39,8 @@
 //    prefixo contábil inconsistente: "(=) SALDO REPASSE" × "= LUCRO BRUTO").
 
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
-import { fmtContabil } from './fmt-contabil'
+import Tooltip from '@/components/ui/tooltip'
+import { ConteudoContabil, corPorSinal } from './celula-contabil'
 import type { ConsolidadoAno } from '@/lib/dre/schemas'
 
 interface Props {
@@ -39,15 +51,24 @@ interface Props {
   consolidadoAnos: ConsolidadoAno[]
 }
 
+/** O aviso que ocupava o subtítulo até a v5.3.1. Vive no "?" ao lado do título desde a
+ *  v5.4.1 — o subtítulo custava uma linha inteira para uma ressalva que só interessa a
+ *  quem estranha o Resumo não seguir a pill de ano. */
+const ANCORAGEM =
+  'Retrato do ano corrente — este bloco não acompanha o ano selecionado nas pills acima.'
+
 /** As 6 linhas-chave, nesta ordem — casadas por CHAVE (`b:<chave>` em `porLinha`),
- *  nunca por nome nem por posição (a estrutura pode reordenar/renomear entre anos). */
-const LINHAS: ReadonlyArray<{ rotulo: string; chave: string }> = [
-  { rotulo: 'Saldo Repasse',           chave: 'REPASSE' },
-  { rotulo: 'Receita Bruta',           chave: 'RB_H' },
-  { rotulo: 'Receita Op. Líquida',     chave: 'ROL' },
-  { rotulo: 'Lucro Bruto',             chave: 'LB' },
-  { rotulo: 'Lucro Operacional',       chave: 'LOP' },
-  { rotulo: 'Resultado do Exercício',  chave: 'REX' },
+ *  nunca por nome nem por posição (a estrutura pode reordenar/renomear entre anos).
+ *  O `prefixo` contábil é separado do rótulo de propósito: é a coluna estreita que
+ *  alinha verticalmente os seis sinais, e deixa visível numa leitura que só a Receita
+ *  Bruta ENTRA no cálculo — as outras cinco são resultados. */
+const LINHAS: ReadonlyArray<{ prefixo: string; rotulo: string; chave: string }> = [
+  { prefixo: '(=)', rotulo: 'Saldo Repasse',          chave: 'REPASSE' },
+  { prefixo: '(+)', rotulo: 'Receita Bruta',          chave: 'RB_H' },
+  { prefixo: '(=)', rotulo: 'Receita Op. Líquida',    chave: 'ROL' },
+  { prefixo: '(=)', rotulo: 'Lucro Bruto',            chave: 'LB' },
+  { prefixo: '(=)', rotulo: 'Lucro Operacional',      chave: 'LOP' },
+  { prefixo: '(=)', rotulo: 'Resultado do Exercício', chave: 'REX' },
 ] as const
 
 function encontrarAno(consolidadoAnos: ConsolidadoAno[], ano: number): ConsolidadoAno | undefined {
@@ -74,37 +95,43 @@ function aa(ano: number): string {
   return String(ano).slice(2)
 }
 
-/** Cor por SINAL — só nas colunas de Δ (as 4 colunas de valor absoluto ficam
- *  neutras: as 6 linhas são todas "quanto maior melhor", então o sinal só é
- *  informativo na VARIAÇÃO). Zero/ausência ficam neutros também (nada a
- *  celebrar nem lamentar). */
-function corDelta(v: number | null): string {
-  if (v === null || Math.abs(v) < 0.005) return 'text-text-subtle'
-  return v > 0 ? 'text-positive' : 'text-negative'
-}
-
+/** Cabeçalho na régua EXATA da tabela (`tabela-dre.tsx`, `ThConta` e as th de mês):
+ *  10px, semibold, caixa alta, tracking 0.09em, `text-text-secondary`. */
 function ThResumo({ children, alinhamento }: { children: string; alinhamento: 'esquerda' | 'direita' }) {
   return (
     <th
-      className={`h-7 whitespace-nowrap bg-band px-3 text-2xs font-medium text-text-muted ${alinhamento === 'direita' ? 'text-right' : 'text-left'}`}
+      className={`whitespace-nowrap border-b border-b-wt-border px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${
+        alinhamento === 'direita' ? 'text-right' : 'text-left'
+      }`}
     >
       {children}
     </th>
   )
 }
 
+/** Coluna de valor ABSOLUTO — deliberadamente NEUTRA. As 6 linhas são todas "quanto
+ *  maior melhor", então pintar os absolutos por sinal só acrescentaria cor sem
+ *  informação; o sinal importa na VARIAÇÃO, e é lá que a cor entra (`CelulaDelta`).
+ *  O layout (R$ esmaecido à esquerda, número tabular à direita, negativo entre
+ *  parênteses) é o mesmo `ConteudoContabil` da tabela. */
 function CelulaAbs({ valor }: { valor: number | null }) {
   return (
-    <td className="h-8 px-3 text-right text-2xs tabular-nums whitespace-nowrap text-text-primary">
-      {fmtContabil(valor ?? 0)}
+    <td className="h-9 border-b border-b-wt-border px-3.5 text-2xs tabular-nums whitespace-nowrap text-text-primary">
+      <ConteudoContabil valor={valor} />
     </td>
   )
 }
 
+/** Coluna de Δ — cor por sinal pela régua COMPARTILHADA, com o tipo `'blocoH'`: é a
+ *  banda em que estas linhas estão pousadas, e sobre ela os tons base reprovam AA
+ *  (3,88–4,31:1). `corPorSinal` devolve os `-deep` (7–10:1) justamente por isso.
+ *  Zero e ausência ficam neutros — nada a celebrar nem a lamentar. */
 function CelulaDelta({ valor }: { valor: number | null }) {
   return (
-    <td className={`h-8 px-3 text-right text-2xs tabular-nums whitespace-nowrap ${corDelta(valor)}`}>
-      {fmtContabil(valor ?? 0)}
+    <td
+      className={`h-9 border-b border-b-wt-border px-3.5 text-2xs tabular-nums whitespace-nowrap ${corPorSinal('blocoH', valor)}`}
+    >
+      <ConteudoContabil valor={valor} />
     </td>
   )
 }
@@ -132,12 +159,26 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
   ] as const
 
   return (
-    <div className="mt-5 border-t border-zinc-100 pt-4">
-      <p className="text-[13px] font-semibold text-text-primary">Resumo Executivo</p>
-      <p className="mt-0.5 text-2xs text-text-subtle">
-        retrato do ano corrente — não acompanha o ano selecionado acima
-      </p>
-      <div className="mt-3">
+    <div className="mt-5 border-t border-wt-border pt-4">
+      {/* Título na MESMA hierarquia visual do título da DRE (`text-[15px] font-semibold`);
+          <h3> e não <h2> porque é uma subseção do card, cujo <h2> é "Demonstrativo de
+          Resultado por Fluxo de Caixa" — mesma aparência, ordem de headings correta.
+          O "?" é o idioma de ajuda já usado em posicao-projetado/repasse-mensal:
+          `!whitespace-normal` é obrigatório (o balão nasce `whitespace-nowrap`, e sem o
+          `!` quem decide é a ORDEM DO CSS GERADO, não a ordem das classes). */}
+      <div className="mb-3 flex items-center gap-1.5">
+        <h3 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h3>
+        <Tooltip conteudo={ANCORAGEM} className="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
+          <span
+            aria-label={ANCORAGEM}
+            className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
+          >
+            ?
+          </span>
+        </Tooltip>
+      </div>
+      {/* Box idêntico ao da tabela — é o que faz as duas peças lerem como uma só. */}
+      <div className="overflow-hidden rounded-lg border border-wt-border bg-band">
         <ScrollAutoHide eixo="x">
           <table className="w-full border-separate border-spacing-0">
             <thead>
@@ -149,16 +190,24 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
               </tr>
             </thead>
             <tbody>
-              {LINHAS.map(({ rotulo, chave }) => {
+              {LINHAS.map(({ prefixo, rotulo, chave }, i) => {
                 const t2   = valorLinha(regA2, chave, 'total')
                 const t1   = valorLinha(regA1, chave, 'total')
                 const ytd1 = valorLinha(regA1, chave, 'ytd')
                 const ytdAc = valorLinha(regAc, chave, 'ytd')
                 const dTotal = delta(t2, t1)
                 const dYtd   = delta(ytd1, ytdAc)
+                // A última linha dispensa a régua de baixo: a borda do box já está ali,
+                // e as duas juntas desenhariam uma linha dupla.
+                const ultima = i === LINHAS.length - 1
                 return (
-                  <tr key={chave} className="[&>td]:border-b [&>td]:border-zinc-50">
-                    <td className="h-8 truncate px-3 text-2xs font-medium text-text-primary">{rotulo}</td>
+                  <tr key={chave} className={ultima ? '[&>td]:border-b-0' : undefined}>
+                    <td className="h-9 border-b border-b-wt-border pl-3 pr-3">
+                      <span className="flex items-baseline gap-1.5 truncate uppercase tracking-[0.05em] text-[11px] font-semibold text-text-primary">
+                        <span className="text-text-subtle">{prefixo}</span>
+                        {rotulo}
+                      </span>
+                    </td>
                     <CelulaAbs valor={t2} />
                     <CelulaAbs valor={t1} />
                     <CelulaDelta valor={dTotal} />
