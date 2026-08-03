@@ -55,7 +55,13 @@ type Lado = 'entrada' | 'saida'
 // dessaturado, por ser composto de vários blocos pequenos) e COR_NAO_CLASSIFICADAS
 // (sinaliza falta de de-para, não é sobre magnitude).
 
-const COR_OUTROS = '#B8B2A8' // neutro morno
+// `--text-subtle` (#ACA39A, Pantone Warm Gray 5) é o cinza neutro-QUENTE canônico do DS,
+// da mesma família bege da plataforma. Era um hex cru (`#B8B2A8`) até a v5.4.1: o token
+// que servia já existia e não estava sendo usado, e o lint `wt/no-cor-hardcoded` não pega
+// o caso porque a cor entra por `style={{ background }}`, não como classe (achado MÉDIO do
+// revisor). A diferença de tom é imperceptível e a intenção — "Outros" dessaturado, por ser
+// agregado — fica preservada.
+const COR_OUTROS = 'var(--text-subtle)'
 const COR_NAO_CLASSIFICADAS = 'var(--warning)'
 
 const MAX_FATIAS = 6 // top N blocos; demais (ou < LIMITE_PCT) viram "Outros"
