@@ -35,6 +35,38 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.4.2',
+    data: '2026-08-03T15:10', // horário REAL de autoria — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A lista de operações de Weddings passou a mostrar a margem anualizada, ao lado da margem. ' +
+          'A margem sozinha comparava mal operações de durações diferentes: 17,5% em dois anos e meio ' +
+          'e 17,5% em um ano apareciam como iguais, quando a primeira ocupou duas vezes e meia mais ' +
+          'tempo de operação para entregar o mesmo. A coluna nova mostra a margem por ano de operação ' +
+          'ocupada — no exemplo, 6,9% ao ano — e é ordenável, o que permite ranquear as operações por ' +
+          'rentabilidade no tempo. Em contratos muito curtos o número fica naturalmente alto e deve ser ' +
+          'lido com cuidado; o "?" ao lado do título da coluna explica. A exportação para Excel já ' +
+          'inclui a coluna.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O fluxo de caixa de Weddings ganhou janela ajustável. Os dois gráficos que ficavam em ' +
+          'quadros separados agora vivem num quadro único, com um controle de horizonte entre eles: ' +
+          'arrastando, escolhe-se quantos meses olhar para trás e para frente (até 36 de cada lado) e ' +
+          'os dois gráficos acompanham juntos, na hora, sem recarregar a página. O acumulado passa a ' +
+          'começar do zero na borda escolhida, então o que se vê é o movimento daquele período e não a ' +
+          'soma de toda a história — e a linha de referência de saídas acompanha a mesma janela. ' +
+          '"Total a receber" e "Total a pagar" saíram do canto do gráfico para um quadro próprio, ' +
+          'porque são o compromisso total já assumido nas operações filtradas e não mudam com o ' +
+          'horizonte escolhido. O filtro por operação subiu para o topo da seção e vale para tudo ' +
+          'dentro dela.',
+      },
+    ],
+  },
+  {
     versao: '5.4.1',
     data: '2026-08-03T14:50', // horário REAL do merge (4801574, 17:50:48Z −03) — reconciliado no /pos-merge
     itens: [
