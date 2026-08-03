@@ -35,6 +35,7 @@ Sete ajustes pedidos após a primeira olhada, todos de apresentação e todos se
 | 5 | **Cor por sinal em TODA célula** do Resumo | Reverte a neutralidade dos absolutos. Sobre banda clara exige os `-deep`: `corPorSinal('sub', …)` — os tons base reprovariam AA, a mesma armadilha da §"Risco de acessibilidade" |
 | 6 | Decomposição: **"‹ voltar" removido**; **Total fixo e alinhado** entre os lados; **scroll por lado** | Cada lado virou coluna flex `h-full max-h-[420px]` com o grid em `items-stretch`; só a lista rola (`ScrollAutoHide`, que já se dimensiona por cadeia flex), título e Total ficam fora dela |
 | 7 | Mais respiro entre as pills e o conteúdo (`mb-5` → `mb-8`) | — |
+| 8 | **Números do Resumo maiores e em negrito** | `<table>` em `text-[13px]` + `font-semibold` nas células — a régua exata da tabela da DRE. Estavam em 11px e peso normal, mais discretos que os próprios rótulos |
 
 **Detalhe que a integração pegou:** o thumb do `ScrollAutoHide` é `absolute right-1` e, sem folga,
 flutuaria **por cima** dos valores alinhados à direita. Entrou o gutter `pr-3.5`, a mesma convenção

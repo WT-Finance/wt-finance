@@ -117,7 +117,11 @@ function ThResumo({ children, alinhamento }: { children: string; alinhamento: 'e
  *  `<td>`, nunca no `<tr>` — com `border-separate` o fundo de linha não é confiável
  *  entre browsers (é a mesma razão pela qual a tabela pinta célula a célula). */
 const BG_LINHA = 'bg-band-soft'
-const CELULA = `h-9 ${BG_LINHA} border-b border-b-wt-border px-3.5 text-2xs tabular-nums whitespace-nowrap`
+/** O TAMANHO não vem daqui: a `<table>` roda em `text-[13px]`, como a da DRE, e as células
+ *  de valor herdam. Só o cabeçalho (10px) e o rótulo da conta (11px) cravam o próprio.
+ *  `font-semibold` é o peso que a tabela dá aos valores das linhas de subgrupo — no Resumo
+ *  os números SÃO o conteúdo, então ganham o mesmo destaque (pedido do Yan, v5.4.1). */
+const CELULA = `h-9 ${BG_LINHA} border-b border-b-wt-border px-3.5 font-semibold tabular-nums whitespace-nowrap`
 
 /** TODA célula de valor — absoluta ou Δ — é colorida por SINAL (verde/vermelho), pela
  *  régua COMPARTILHADA com a tabela. O tipo passado é `'sub'`: é a banda clara em que
@@ -182,7 +186,7 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
       {/* Box idêntico ao da tabela — é o que faz as duas peças lerem como uma só. */}
       <div className="overflow-hidden rounded-lg border border-wt-border bg-band">
         <ScrollAutoHide eixo="x">
-          <table className="w-full border-separate border-spacing-0">
+          <table className="w-full border-separate border-spacing-0 text-[13px]">
             <thead>
               <tr>
                 <ThResumo alinhamento="esquerda">Conta</ThResumo>

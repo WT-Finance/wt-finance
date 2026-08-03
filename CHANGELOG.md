@@ -29,6 +29,7 @@ PATCH · **DRE: refino visual do Resumo Executivo e da Decomposição dos Lança
 - **Decomposição — o "‹ voltar" saiu:** desde que a expansão passou a ser inline sob a própria barra, a barra (que tem chevron e `aria-expanded`) já fecha o drill; o botão era um segundo caminho para a mesma ação.
 - **Decomposição — Total fixo e alinhado entre os dois lados, com scroll por lado.** Cada lado virou coluna flex de altura travada (`h-full max-h-[420px]`, grid com `items-stretch`): só a **lista** rola, via `ScrollAutoHide` (que já se dimensiona por cadeia flex e dá barra própria a cada lado); título e Total ficam fora da região rolável. O teto comum é o que põe os dois Totais na **mesma linha horizontal**, tenha o lado 3 barras ou 8 — o lado mais curto fica com espaço vazio antes do Total, e é assim que o alinhamento acontece. Gutter `pr-3.5` na lista pela mesma razão da tabela: o thumb é `absolute right-1` e sem folga flutuaria sobre os valores.
 - **Mais respiro entre as pills de filtro e o conteúdo** da Decomposição (`mb-5` → `mb-8`).
+- **Números do Resumo maiores e em negrito** — a `<table>` passou a rodar em `text-[13px]` e as células de valor ganharam `font-semibold`, que é exatamente a régua da tabela da DRE (13px na `<table>`, `font-semibold` nos valores de linha de subgrupo). Ficavam em 11px e peso normal, mais discretos que os próprios rótulos; num resumo executivo os números **são** o conteúdo. Cabeçalho (10px) e rótulo da conta (11px) cravam o próprio tamanho e não se moveram.
 
 ## [5.4.0] — 2026-07-31
 
