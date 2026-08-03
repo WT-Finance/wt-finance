@@ -22,12 +22,13 @@
 // PARÊNTESES (fmtContabil) — sinaliza "reduz o total" sem inventar um lado novo.
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { ChevronRight, ChevronLeft } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { fmtBRL } from '@/lib/fmt'
 import { fmtContabil, fmtContabilBRL } from './dre/fmt-contabil'
 import { fluxoColors } from '@/components/charts'
 import { rotuloBloco } from '@/lib/dre/rotulo-bloco'
 import type { DecBloco, DecCategoria } from '@/lib/dre/schemas'
+import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -239,10 +240,22 @@ function LadoDecomposicao({
   }
 
   return (
-    <div>
-      <p className="text-xs mb-2 font-medium" style={{ color: corTitulo }}>{titulo}</p>
+    // Coluna de altura TRAVADA (v5.4.1) — os dois lados (Entradas/Saídas) recebem a
+    // MESMA `h-full max-h-[420px]` (o pai é `grid items-stretch`, então `h-full`
+    // preenche a linha do grid; o teto comum é o que faz os dois Totais caírem na
+    // MESMA linha horizontal, tenha o lado 3 barras ou 8). 420px cabe ~6-8 barras
+    // (rótulo+trilho, ~44px cada) sem rolar — só estoura com drill aberto num lado
+    // com muitas barras. Só a LISTA (ScrollAutoHide, flex-1 min-h-0) rola; o título
+    // e o Total são rodapé/topo FIXOS, fora da região rolável.
+    <div className="flex flex-col h-full max-h-[420px]">
+      <p className="text-xs mb-2 font-medium shrink-0" style={{ color: corTitulo }}>{titulo}</p>
 
-      <div className="space-y-2.5">
+      {/* `pr-3.5` = o gutter da DIREITA no limite do scroll, mesma convenção da tabela da
+          DRE: o thumb do ScrollAutoHide é `absolute right-1` (6px de trilho a 4px da
+          borda) e, sem folga, flutuaria POR CIMA dos valores alinhados à direita. Os 14px
+          daqui menos os 6px do `-mx-1.5` do botão da barra deixam ~8px livres. Vale para os
+          dois lados igualmente, então não desalinha nada. */}
+      <ScrollAutoHide contentClassName="space-y-2.5 pr-3.5">
         {itens.map(it => {
           const ativo = selecionado === it.key
           const drill = drills.get(it.key)
@@ -303,17 +316,11 @@ function LadoDecomposicao({
                 <div className="min-h-0 overflow-hidden">
                   {drill && (
                     <div className="mt-2 pt-2 pl-1 border-t border-zinc-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-2xs font-medium text-zinc-700 truncate pr-2">{drill.titulo}</p>
-                        <button
-                          type="button"
-                          onClick={() => setSelecionado(null)}
-                          className="shrink-0 inline-flex items-center gap-1 text-2xs text-zinc-400 hover:text-zinc-600 transition-colors"
-                        >
-                          <ChevronLeft size={11} />
-                          voltar
-                        </button>
-                      </div>
+                      {/* Sem botão "voltar" (v5.4.1): a própria barra — que já tem o
+                          chevron e `aria-expanded` — fecha o drill ao ser clicada de
+                          novo; o botão redundante saiu do cabeçalho, que agora é só o
+                          título (`justify-between` de um filho só não faz sentido). */}
+                      <p className="text-2xs font-medium text-zinc-700 truncate mb-2">{drill.titulo}</p>
                       {drill.itens.length === 0 ? (
                         <p className="text-2xs text-zinc-400">Sem itens no período.</p>
                       ) : (
@@ -348,11 +355,13 @@ function LadoDecomposicao({
             </div>
           )
         })}
-      </div>
+      </ScrollAutoHide>
 
-      {/* Total do lado (inclui as não classificadas) — ÚLTIMO elemento do painel,
-          depois da lista de barras (não se desloca com a expansão inline). */}
-      <div className="flex items-baseline justify-between gap-2 mt-3 pt-2 border-t border-zinc-100">
+      {/* Total do lado (inclui as não classificadas) — rodapé FIXO, fora da região
+          rolável: não se desloca nem com a expansão do drill nem com o tamanho da
+          lista (a `ScrollAutoHide` acima é que cresce/rola). `shrink-0` garante que
+          o flex-col nunca o encolha para abrir espaço para a lista. */}
+      <div className="shrink-0 flex items-baseline justify-between gap-2 mt-3 pt-2 border-t border-zinc-100">
         <span className="text-2xs font-semibold" style={{ color: corTitulo }}>Total</span>
         <span
           className="text-2xs font-semibold tabular-nums"
@@ -376,7 +385,7 @@ export default function DecomposicaoLancamentos({ blocos, categorias, slotPills,
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
-      <div className="mb-5">
+      <div className="mb-8">
         <h2 className="text-[15px] font-semibold text-text-primary mb-3">Decomposição dos Lançamentos</h2>
         {slotPills}
       </div>
@@ -388,7 +397,7 @@ export default function DecomposicaoLancamentos({ blocos, categorias, slotPills,
       ) : semDados ? (
         <p className="text-xs text-zinc-400">Sem lançamentos realizados no período.</p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 items-stretch">
           <LadoDecomposicao
             titulo="Entradas"
             lado="entrada"
