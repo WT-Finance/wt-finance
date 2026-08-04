@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-04 · produção na **v5.4.2**; **v5.4.3 EM PR, aguardando merge** (patch: anexo com acento no nome + erro do modal de nova solicitação fora da vista).
+Última atualização: 2026-08-04 (pós-merge) · produção na **v5.4.3** (patch: anexo com acento no nome voltou a subir + erro do modal de nova solicitação foi para junto do botão — #211 mergeada às 13h08). Nenhuma versão em curso.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,8 +9,8 @@
 
 ## Verdade atual
 
-- **v5.4.3 — EM PR, ainda NÃO mergeada.** PATCH de dois defeitos relatados pelo Yan a partir de
-  um erro real em produção. **Sem migration, sem ADR.**
+- Versão em produção (main): **`5.4.3`** (#211 mergeado 04/08 às 13h08) — PATCH de dois defeitos
+  relatados pelo Yan a partir de um erro real em produção. **Sem migration, sem ADR.**
   (1) **Anexo com acento no nome não subia.** A chave do objeto no Storage era montada com o nome
   CRU (`tmp/<uuid>/${file.name}`) e o `isValidKey` do Supabase Storage usa `\w` **sem a flag `u`**
   — só `[A-Za-z0-9_]`. O `ã` de "Nota Fiscal - Bruna e João.pdf" era o **único** caractere ilegal
@@ -49,15 +49,17 @@
   total**; sem migração de dados. **13 testes** novos que replicam o `isValidKey` real.
   Gates: `tsc` limpo, lint limpo, **682 testes** (zero skip), build OK.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-3_Anexo_Acento_Erro_Modal.md`.
-  **PENDENTE do Yan:** (1) **mergear o PR**; (2) **conferência visual do modal** — não consegui
-  (mesma limitação de sempre: tela autenticada, `307 → /login`, MCP Playwright não sobe em
+  **PENDENTE do Yan:** (1) **conferência visual do modal EM PRODUÇÃO, agora que está no ar** — não
+  consegui (mesma limitação de sempre: tela autenticada, `307 → /login`, MCP Playwright não sobe em
   background): erro com o modal rolado ao topo **e** ao fim (o botão não deve se deslocar), o
   `border-t` novo do rodapé, um tipo com muitos campos dinâmicos, e anexar de fato um arquivo com
-  acento conferindo que o rótulo exibido **mantém** o acento; (3) **decidir se despacha `revisor`
-  e `verificador-visual`** — não foram despachados (as instruções da sessão proibiam subagente sem
-  pedido explícito, o que colide com o DoD; a auto-auditoria adversarial foi feita pelo
-  orquestrador, que é barreira dura). Sem migration/RPC, `revisor-db` não se aplica.
-- Versão em produção (main): **`5.4.2`** (#209 mergeado 03/08 às 17h22) — **Weddings: margem
+  acento conferindo que o rótulo exibido **mantém** o acento — este último é a **prova de ponta a
+  ponta do fix**, e o caminho mais direto é reabrir o pedido que falhou com o mesmo PDF do
+  "João"; (2) **decidir se despacha `revisor` e `verificador-visual`** — não foram despachados (as
+  instruções da sessão proibiam subagente sem pedido explícito, o que colide com o DoD; a
+  auto-auditoria adversarial foi feita pelo orquestrador, que é barreira dura). Sem migration/RPC,
+  `revisor-db` não se aplica.
+- A v5.4.2 (#209 mergeado 03/08 às 17h22) foi **Weddings: margem
   anualizada + Fluxo de Caixa unificado**, e o padrão do slider estendido ao **Fluxo de Caixa do
   Financeiro**.
   Migrations **0228 e 0229** já APLICADAS e verificadas (as duas aditivas); **ADR-0162**.
