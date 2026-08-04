@@ -451,7 +451,16 @@
 - **v5.3.x refino da DRE:** drag-and-drop no editor; guarda de saída; divisão ver/editar da
   permissão; mover `historico-alteracoes` para `shared/`; Consolidado — conjunto de linhas vem
   do ano da URL (produto).
-- **Monde — Scope B (aposentar o upload):** fato/mv item-level + repontar as 6 funções restantes.
+- **Monde — Scope B (aposentar o upload):** repontar as funções restantes. ⚠️ **Corrigido em
+  04/08:** `monde.venda_item` **JÁ EXISTE e está populada** (47.150 itens / 28.498 vendas,
+  02/01/2023 → 04/08/2026, com `produto`/`valor_total`/`receitas`/`status`; `monde.venda` tem
+  `setor_macro`). Não falta fato item-level. **Falta o DE-PARA de produto:** o espelho guarda
+  `produto = item.description` (texto livre) + `product_kind` (`'hotels'`), enquanto
+  `dim_produto_subsetor` tem 21 linhas com as CATEGORIAS do upload — e não há nenhum de-para
+  `product_kind` → subsetor no repo. Repontar sem ele joga TODO o faturamento de Weddings em
+  "Não Classificados". **Próximo passo, uma consulta:** quantos `product_kind`/`description`
+  distintos há em `monde.venda_item` para `setor_macro='Weddings'` (o schema `monde` não é
+  exposto no REST — precisa de acesso direto ou RPC de diagnóstico).
 - **Saúde da sincronização Monde:** detectar falha SILENCIOSA (200 sem vendas).
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116) · `CRON_SECRET` constant-time (BAIXO).
 - Casos de contrato pendentes: `solicitar_acesso_admin`, `monde_ingest_status`.

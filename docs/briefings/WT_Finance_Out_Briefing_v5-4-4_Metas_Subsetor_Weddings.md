@@ -105,6 +105,41 @@ parcela de defasagem vai a zero e o bloco para de aparecer sozinho, sem código 
 números de subsetor podem estar arbitrariamente velhos sem nenhuma indicação própria. Está dito no
 "?" do bloco novo; um selo de frescor do upload é candidato para outra versão.
 
+## 4c. Erro de FATO corrigido: o espelho do Monde JÁ tem granularidade de item
+
+O Yan perguntou por que os cards de subsetor são alimentados pelo upload e não pela API. Ao
+verificar em vez de responder de memória, descobri que **eu havia afirmado uma coisa falsa** no
+briefing e no ADR: que "o espelho do Monde ainda não tem granularidade de item". Vinha das notas
+antigas do Scope B e nunca foi conferida.
+
+**A realidade:** `monde.venda_item` existe desde a `0178` e está populada —
+**47.150 itens / 28.498 vendas, de 02/01/2023 a 04/08/2026** (`monde_ingest_status()`), com
+`produto`, `valor_total`, `receitas` e `status` (`active`/`canceled`, que a versão do upload nem
+tem); `monde.venda` tem `setor_macro` e `data_venda`. **Todo** insumo da RPC de subsetor existe no
+espelho.
+
+**O que realmente falta é o DE-PARA, e isso é curadoria, não código.** O espelho guarda
+`produto = item.description` — texto livre por item (`transform.ts:116`; o fixture mostra
+`description: 'Hotel Single'`) — e `product_kind` (`'hotels'`) numa coluna separada. O mapa
+`dim_produto_subsetor` tem **21 linhas com as CATEGORIAS do upload** ("Diárias de Hospedagem",
+"Contrato de Casamento"). Vocabulários diferentes, e **nenhum de-para `product_kind` → subsetor
+existe no repo** (grep: `product_kind` só aparece no DDL e no transform). Repontar sem construí-lo
+faria o LEFT JOIN falhar e **todo o faturamento de Weddings cair em "Não Classificados"** — o pior
+resultado possível, e silencioso do ponto de vista de build/teste.
+
+**Medição que decide o tamanho do trabalho, ainda não feita:** quantos `product_kind`/`description`
+distintos existem em `monde.venda_item` para `setor_macro = 'Weddings'`. É uma consulta só; o schema
+`monde` não é exposto no REST, então precisa de acesso direto ao banco ou de uma RPC de diagnóstico.
+**É o próximo passo do Scope B.**
+
+**A decisão da versão não muda** — e passa a ter um motivo mais forte que a frase errada: o núcleo
+é **compartilhado com a tela de Performance**. Repontá-lo muda os números de subsetor lá também, e
+mudança de DADO em tela existente é escopo do Scope B, com validação de quem conhece o negócio, não
+de um patch de Metas.
+
+Corrigido em três lugares (errata explícita, sem reescrever a história): ADR-0163 §Decisão 4,
+briefing de entrada §5 e a fila do Scope B no WORKING-CONTEXT.
+
 ## 5. Parecer da revisão
 
 ### `revisor-db` — APROVADAS (0 CRÍTICO / 0 ALTO), aplicar 0233 → 0234

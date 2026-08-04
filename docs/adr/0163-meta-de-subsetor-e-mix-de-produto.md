@@ -124,9 +124,34 @@ Isso não custa nada do que o card mostra, porque o **esperado é linear no temp
 compartilhada** com `calcularRitmo` para que os dois "% esperado" da mesma tela não possam
 divergir (caso de contrato compara as duas saídas campo a campo em 4 cenários).
 
-**Construir a série seria mexer no que o Scope B vai reescrever.** Subsetor é eixo de
-PRODUTO e por isso só existe no upload (`analytics.fato_venda_item`); o espelho do Monde
-ainda não tem granularidade de item. Regra desta versão: **nenhuma query nova de subsetor**.
+**Construir a série seria mexer no que o Scope B vai reescrever.** Regra desta versão:
+**nenhuma query nova de subsetor**.
+
+> **ERRATA (04/08, mesmo dia — pergunta do Yan).** A frase original desta seção dizia que o
+> espelho do Monde "ainda não tem granularidade de item". **Está errada.** `monde.venda_item`
+> existe desde a `0178` e está populada: **47.150 itens / 28.498 vendas, de 02/01/2023 a
+> 04/08/2026**, com `produto`, `valor_total`, `receitas` e `status`; `monde.venda` tem
+> `setor_macro` e `data_venda`. Tudo o que a RPC de subsetor consome existe no espelho.
+>
+> **O que realmente falta é o DE-PARA, não o dado.** O espelho guarda
+> `produto = item.description` (texto livre por item — o fixture do transform mostra
+> `description: 'Hotel Single'`) e `product_kind` (`'hotels'`) numa coluna separada, enquanto
+> `dim_produto_subsetor` tem **21 linhas com as CATEGORIAS do upload** ("Diárias de
+> Hospedagem", "Contrato de Casamento"). São vocabulários diferentes, e **não existe nenhum
+> de-para `product_kind` → subsetor no repo** (grep confirmou: `product_kind` só aparece no
+> DDL e no transform, nunca numa regra de classificação). Repontar sem construir esse de-para
+> faria o LEFT JOIN falhar e **todo o faturamento de Weddings cair em "Não Classificados"**.
+>
+> **Medição que decide o tamanho do trabalho e que ainda não foi feita:** quantos
+> `product_kind`/`description` distintos existem em `monde.venda_item` para
+> `setor_macro = 'Weddings'`. É uma consulta; o schema `monde` não é exposto no REST, então
+> ela precisa de acesso direto ao banco ou de uma RPC de diagnóstico. **Esse número é o
+> próximo passo do Scope B**, não desta versão.
+>
+> A conclusão desta decisão **não muda**: o subsetor continua vindo do upload nesta versão, e
+> por um motivo mais forte que o da frase errada — o núcleo é **compartilhado com a tela de
+> Performance**, então repontá-lo muda os números de subsetor lá também. Mudança de DADO em
+> tela existente é escopo do Scope B, com validação de quem conhece o negócio.
 A RPC de leitura de Metas é um wrapper de 6 linhas sobre o núcleo já existente, e a lista de
 produtos não classificados entrou como **chave nova no payload desse mesmo núcleo** — então
 o Scope B repointa **um** corpo e as duas telas (Performance e Metas) seguem juntas.

@@ -155,8 +155,11 @@ contrato próprio (§9.4).
 
 Corre em paralelo uma investigação para repontar ao Monde o que ainda vem do upload manual de
 vendas por produto (e a base de Pessoas). Subsetor é eixo de **produto** e por isso só existe no
-upload — o espelho do Monde ainda não tem granularidade de item, que é justamente o
-`fato/mv item-level` que o Scope B terá de construir.
+upload. ⚠️ **ERRATA (04/08):** a frase original dizia que o espelho "ainda não tem
+granularidade de item" — **errado**. `monde.venda_item` está populada (47.150 itens, até
+04/08/2026) e tem tudo o que a RPC consome. O que falta é o **de-para** do vocabulário de
+produto do Monde (`description`/`product_kind`) para as 21 categorias curadas do mapa. Ver a
+errata no ADR-0163.
 
 **Regra desta versão: não escrever nenhuma query nova de subsetor.** Consequências concretas:
 
