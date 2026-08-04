@@ -123,10 +123,15 @@ function pctReceitaAlvoPeriodo(metas: MetaMensal[], from: Date, to: Date): numbe
   return vtBase > 0 ? (recAlvo / vtBase) * 100 : null
 }
 
-export function calcularRitmo(input: RitmoInput): RitmoResultado {
-  const from = parseISO(input.from)
-  const to = parseISO(input.to)
-  const ultima = input.ultimaVenda ? parseISO(input.ultimaVenda) : null
+/**
+ * Janela do período: "hoje", se é parcial, e quanto do tempo já correu.
+ * FATORADA de propósito (v5.4.4): `calcularRitmo` (com série diária) e
+ * `calcularRitmoAgregado` (sem série) precisam da MESMA régua de tempo, senão o
+ * "% esperado" de um subsetor divergiria do "% esperado" do setor na mesma tela.
+ * Caso de contrato compara as duas saídas campo a campo.
+ */
+function janelaDoPeriodo(from: Date, to: Date, ultimaVenda: string | null) {
+  const ultima = ultimaVenda ? parseISO(ultimaVenda) : null
 
   // "hoje" = última venda, sem passar do fim do período (período passado → hoje = to).
   const hoje = ultima ? (isAfter(ultima, to) ? to : ultima) : to
@@ -136,6 +141,15 @@ export function calcularRitmo(input: RitmoInput): RitmoResultado {
   const diasPeriodo = differenceInCalendarDays(to, from) + 1
   const diasDecorridos = Math.min(Math.max(differenceInCalendarDays(hoje, from) + 1, 0), diasPeriodo)
   const pctDecorrido = diasPeriodo > 0 ? (diasDecorridos / diasPeriodo) * 100 : 0
+
+  return { hoje, parcial, diasPeriodo, pctDecorrido }
+}
+
+export function calcularRitmo(input: RitmoInput): RitmoResultado {
+  const from = parseISO(input.from)
+  const to = parseISO(input.to)
+
+  const { hoje, parcial, diasPeriodo, pctDecorrido } = janelaDoPeriodo(from, to, input.ultimaVenda)
 
   // metaPeriodo = soma das metas mensais tocadas, com bordas parciais pró-rata (trata
   // período arbitrário). O ESPERADO é LINEAR sobre o período: esperado = meta × fração
@@ -176,6 +190,60 @@ export function calcularRitmo(input: RitmoInput): RitmoResultado {
     status: classificarRitmo(ritmoPct),
     parcial,
     pontos,
+    pctDecorrido,
+    pctReceitaAlvo: pctReceitaAlvoPeriodo(input.metas, from, to),
+  }
+}
+
+// ── Ritmo AGREGADO (v5.4.4) ──────────────────────────────────────────────────
+// Mesmas contas, sem série diária. Existe porque o eixo de SUBSETOR de Weddings
+// não tem série diária em fonte nenhuma: `metas_ritmo_diario` foi repontada ao
+// Monde e a mv só tem `data_venda + setor_macro_id`, enquanto o subsetor (eixo de
+// PRODUTO) vive no upload e só sai agregado por período. Isso não impede nada do
+// que o card mostra: o ESPERADO é linear no tempo (`metaPeriodo × pctDecorrido`),
+// então só a "escadinha" do gráfico dependia da série — e o gráfico não recebe
+// subsetor. Toda a régua de tempo vem de `janelaDoPeriodo`, compartilhada com
+// `calcularRitmo`, para que os dois "% esperado" da mesma tela não possam divergir.
+//
+// AGNÓSTICO DE UNIDADE: `valorMeta`/`realizado` podem ser R$ ou CONTAGEM. O card de
+// COMERCIAL usa duas chamadas — uma em R$ (que compõe a soma de Weddings) e uma em
+// contratos (que governa o topo e a barra). `pctReceitaAlvo` não faz sentido na
+// chamada de contagem; o call-site ignora.
+
+/** Igual ao `RitmoResultado`, sem `pontos` — sem série diária não há série acumulada. */
+export type RitmoAgregado = Omit<RitmoResultado, 'pontos'>
+
+export interface RitmoAgregadoInput {
+  from: string
+  to: string
+  ultimaVenda: string | null
+  metas: MetaMensal[]
+  /** Realizado do período, JÁ agregado pela fonte (não há série para somar). */
+  realizado: number
+}
+
+export function calcularRitmoAgregado(input: RitmoAgregadoInput): RitmoAgregado {
+  const from = parseISO(input.from)
+  const to = parseISO(input.to)
+
+  const { hoje, parcial, pctDecorrido } = janelaDoPeriodo(from, to, input.ultimaVenda)
+
+  const metaPeriodo = metaAcumulada(input.metas, from, to)
+  const esperadoAteHoje = metaPeriodo * (pctDecorrido / 100)
+  const { realizado } = input
+
+  const pctMeta = metaPeriodo > 0 ? (realizado / metaPeriodo) * 100 : null
+  const ritmoPct = esperadoAteHoje > 0 ? (realizado / esperadoAteHoje) * 100 : null
+
+  return {
+    metaPeriodo,
+    realizado,
+    pctMeta,
+    hoje: format(hoje, 'yyyy-MM-dd'),
+    esperadoAteHoje,
+    ritmoPct,
+    status: classificarRitmo(ritmoPct),
+    parcial,
     pctDecorrido,
     pctReceitaAlvo: pctReceitaAlvoPeriodo(input.metas, from, to),
   }

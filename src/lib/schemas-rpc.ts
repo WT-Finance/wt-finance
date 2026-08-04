@@ -116,6 +116,66 @@ export const metasRitmoDiarioSchema = z.object({
   ultima_venda: z.string().nullable(),
 }).passthrough()
 
+// ── Metas por SUBSETOR de Weddings (v5.4.4) ──────────────────────────────────
+
+const metaSubsetorItem = z.object({
+  subsetor:       z.string(),
+  mes:            z.number(),
+  valor_meta:     z.number(),
+  /** Só COMERCIAL tem (constraint no banco); vem null nos outros quatro. */
+  meta_contratos: z.number().nullable(),
+  pct_receita:    z.number().nullable(),
+})
+
+/** metas_subsetor_listar(p_ano) → { ano, metas[], ultima_alteracao } */
+export const metasSubsetorListarSchema = z.object({
+  ano:   z.number(),
+  metas: z.array(metaSubsetorItem),
+  ultima_alteracao: z.object({
+    alterado_em:  z.string(),
+    alterado_por: z.string().nullable(),
+  }).nullable(),
+}).passthrough()
+
+const sumarioSubsetorItemSchema = z.object({
+  subsetor:        z.string(),
+  n_vendas:        z.number(),
+  n_contratos:     z.number(),
+  faturamento:     z.number(),
+  receita:         z.number(),
+  margem_pct:      z.number(),
+  pct_faturamento: z.number(),
+})
+
+const produtoNaoClassificadoItem = z.object({
+  produto:     z.string(),
+  faturamento: z.number(),
+  receita:     z.number(),
+})
+
+/**
+ * metas_sumario_subsetor(p_from,p_to) → o MESMO payload do núcleo compartilhado com
+ * `get_sumario_subsetor` da Performance (por isso o wrapper existe: o corpo é único, e
+ * quando a fonte de subsetor for repontada ao Monde há UM lugar a trocar).
+ *
+ * `produtos_nao_classificados` é `.optional()` de propósito: é chave que a v5.4.4
+ * acrescentou ao núcleo, e o `parseRpc` roda contra o banco de PRODUÇÃO — entre o deploy
+ * do front e a aplicação da migration a chave não existe, e um schema estrito devolveria
+ * `null` para o payload inteiro (a tela perderia os subsetores, não só a faixa).
+ * `subsetores`/`total` não precisam disso: o núcleo já os entrega com COALESCE.
+ */
+export const metasSumarioSubsetorSchema = z.object({
+  periodo:    z.object({ inicio: z.string(), fim: z.string() }).passthrough(),
+  subsetores: z.array(sumarioSubsetorItemSchema),
+  total: z.object({
+    n_vendas:    z.number(),
+    faturamento: z.number(),
+    receita:     z.number(),
+    margem_pct:  z.number(),
+  }).passthrough(),
+  produtos_nao_classificados: z.array(produtoNaoClassificadoItem).optional(),
+}).passthrough()
+
 // ── get_tendencia_margem → TendenciaMargem ───────────────────────────────────
 
 const tendenciaMargemPonto = z.object({

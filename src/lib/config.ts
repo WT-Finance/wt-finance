@@ -69,6 +69,22 @@ export const SUBSETOR_ORDER: readonly string[] = [
   'CONVIDADOS - Extras',
 ]
 
+/**
+ * Balde dos produtos de Weddings que estão FORA do mapa `analytics.dim_produto_subsetor`
+ * — a RPC o devolve como 6º item de `subsetores`, com este rótulo literal, e ele NÃO
+ * pertence a `SUBSETOR_ORDER` (não se cadastra meta para "não classificado").
+ *
+ * O mapa é uma lista curada de 21 produtos e o namespace de produto do Monde é ABERTO
+ * (há produtos batizados por grupo, tipo "G - WelConnect - Colômbia AGO2026"), então o
+ * balde é estrutural: não-nulo em 26 dos últimos 48 meses. Quem soma os 5 subsetores e
+ * compara com o total do setor precisa contar com ele.
+ *
+ * O literal ainda aparece cru em call-sites anteriores à v5.4.4 (sumario-subsetor,
+ * margem-drawer, kpi-principal-drawer, route de operações) — migração incremental,
+ * quando cada tela for tocada por outro motivo.
+ */
+export const SUBSETOR_NAO_CLASSIFICADO = 'NÃO_CLASSIFICADO'
+
 /** Cor por subsetor (token CSS). Chaves batem com `subsetor`/`subsetor_detalhado`. */
 export const SUBSETOR_COLORS: Record<string, string> = {
   COMERCIAL:                  'var(--subsetor-comercial)',

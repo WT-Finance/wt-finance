@@ -224,10 +224,19 @@ export interface SumarioSubsetorItem {
   pct_faturamento: number
 }
 
+/** Produto de Weddings que está FORA do mapa `analytics.dim_produto_subsetor` (v5.4.4). */
+export interface ProdutoNaoClassificado {
+  produto:     string
+  faturamento: number
+  receita:     number
+}
+
 export interface SumarioSubsetor {
   periodo:    { inicio: string; fim: string }
   subsetores: SumarioSubsetorItem[]
   total:      { n_vendas: number; faturamento: number; receita: number; margem_pct: number }
+  /** v5.4.4: detalhe do balde `NÃO_CLASSIFICADO`. Opcional — a chave nasceu na 0231. */
+  produtos_nao_classificados?: ProdutoNaoClassificado[]
 }
 
 export type OperacaoFlag = 'margem_negativa' | 'ncg_alto' | 'outlier'
