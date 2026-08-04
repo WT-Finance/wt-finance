@@ -4,16 +4,33 @@ import Link from 'next/link'
 import { Monitor, GitCompare } from 'lucide-react'
 import MetasPeriodoPills from '@/components/metas/metas-periodo-pills'
 import MetaCard from '@/components/metas/meta-card'
+import SubsetorCard from '@/components/metas/subsetor-card'
+import NaoClassificados from '@/components/metas/nao-classificados'
 import RitmoChart from '@/components/metas/ritmo-chart'
 import TopSection from '@/components/shared/top-section'
+import { useCortina, Cortina, BotaoCortina } from '@/components/shared/cortina'
 import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import type { AcompanhamentoData } from '@/components/metas/tipos'
 
 // Página montada do Acompanhamento de Metas (v5.0.0): título/subtítulo fixos e, abaixo
 // de uma barra recolhível "Visão geral" (TopSection), as pills de período, a nota de
-// última atualização, o card Group (grande) + 3 cards setoriais e o gráfico "Ritmo do
-// período". Puramente de apresentação — todo o dado já chega calculado em `data`.
+// última atualização, o card Group (grande), Trips|Corporativo em duas colunas, a
+// faixa full-width de Weddings (com chevron para os 5 subsetores + "Não Classificados",
+// v5.4.4) e o gráfico "Ritmo do período". Puramente de apresentação — todo o dado já
+// chega calculado em `data`.
+
+// Texto do "?" da expansão de subsetores — native `title` (não o <Tooltip> do DS: ele é
+// `position:absolute` e seria decapitado pelo `overflow-hidden` da cortina, regra da
+// skill ui-design-system §2.1 / header de shared/cortina.tsx).
+const AJUDA_SUBSETORES = [
+  'Subsetor é agrupamento de PRODUTO — a meta cadastrada aqui é de mix de produto.',
+  'O realizado dos subsetores vem do upload manual; o do setor Weddings vem do Monde. ' +
+    'As duas fontes não fecham fora do mês corrente (medido em 2026: 0,0% de diferença ' +
+    'em agosto, 19,1% em julho, 5,1% no ano).',
+  'Em Comercial, a meta de CONTRATOS mede 1 produto ("Contrato de Casamento"); a meta em ' +
+    'R$ do mesmo subsetor cobre 3 produtos.',
+].join('\n\n')
 
 interface Props {
   data: AcompanhamentoData
@@ -23,6 +40,13 @@ interface Props {
 
 export default function AcompanhamentoContent({ data, podeComparar }: Props) {
   const [group, ...setoresResto] = data.setores
+  const weddings = setoresResto.find(s => s.key === 'Weddings')
+  const setoresPrincipais = setoresResto.filter(s => s.key !== 'Weddings')
+
+  // Cortina dos subsetores de Weddings — estado LOCAL, nasce FECHADA, sem URL/persistência
+  // (igual ao TopSection e ao drill da DRE). Chamada incondicional (regra dos hooks); só
+  // é oferecida (chevron/expansão) quando `data.subsetores` existe.
+  const cortinaSubsetores = useCortina(false)
 
   return (
     <div>
@@ -71,11 +95,59 @@ export default function AcompanhamentoContent({ data, podeComparar }: Props) {
           </div>
         )}
 
-        <div className="mb-4 grid gap-4 md:grid-cols-3">
-          {setoresResto.map(setor => (
+        <div className="mb-4 grid gap-4 md:grid-cols-2">
+          {setoresPrincipais.map(setor => (
             <MetaCard key={setor.key} painel={setor} tamanho="setor" />
           ))}
         </div>
+
+        {weddings && (
+          <div className="mb-4">
+            <MetaCard
+              painel={weddings}
+              tamanho="setor"
+              acaoCabecalho={data.subsetores && (
+                <BotaoCortina
+                  aberta={cortinaSubsetores.aberta}
+                  onAlternar={cortinaSubsetores.alternar}
+                  controla={cortinaSubsetores.idConteudo}
+                  rotulo={cortinaSubsetores.aberta ? 'Recolher subsetores de Weddings' : 'Ver subsetores de Weddings'}
+                  tamanho={16}
+                />
+              )}
+            />
+
+            {data.subsetores && (
+              <Cortina aberta={cortinaSubsetores.aberta} id={cortinaSubsetores.idConteudo} folgaSombra className="pt-4">
+                <div className="mb-3 flex items-center gap-1.5">
+                  <h3 className="text-[13px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                    Subsetores
+                  </h3>
+                  <button
+                    type="button"
+                    title={AJUDA_SUBSETORES}
+                    aria-label={`Subsetores: ${AJUDA_SUBSETORES}`}
+                    className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
+                  >
+                    ?
+                  </button>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                  {data.subsetores.map(sub => (
+                    <SubsetorCard key={sub.key} subsetor={sub} />
+                  ))}
+                </div>
+
+                {data.naoClassificado && (
+                  <div className="mt-3">
+                    <NaoClassificados data={data.naoClassificado} />
+                  </div>
+                )}
+              </Cortina>
+            )}
+          </div>
+        )}
 
         <RitmoChart setores={data.setores} />
       </TopSection>
