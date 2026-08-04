@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 0230 — feat(v5.4.4): Metas por Subsetor de Weddings — tabelas + RPCs
+-- 0233 — feat(v5.4.4): Metas por Subsetor de Weddings — tabelas + RPCs
 --
 -- DECLARAÇÃO PRÉVIA (regime aditivo / autônomo):
 --   • O QUE FAZ:
@@ -19,7 +19,7 @@
 --         'metas/acompanhamento' (leitura) e 'metas' (edição) — nenhuma área nova.
 --   • ADITIVA / RETROCOMPATÍVEL: só CREATE TABLE e CREATE FUNCTION. Nenhuma
 --     tabela, coluna, RPC ou linha pré-existente é alterada ou removida. A
---     numeração 0230 foi conferida contra supabase/migrations/ real antes de
+--     numeração 0233 foi conferida contra supabase/migrations/ real antes de
 --     escrever este arquivo (nenhum 023x pré-existia).
 --   • RLS: app.meta_subsetor e app.meta_subsetor_historico entram com
 --     ENABLE ROW LEVEL SECURITY e SEM policy permissiva — espelha exatamente o

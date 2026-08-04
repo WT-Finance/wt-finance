@@ -63,7 +63,7 @@ export interface PainelSubsetor {
 export interface NaoClassificado {
   faturamento: number
   receita: number
-  /** Detalhe produto a produto. Vazio se a chave da 0231 ainda não existir no banco. */
+  /** Detalhe produto a produto. Vazio se a chave da 0234 ainda não existir no banco. */
   produtos: ProdutoNaoClassificado[]
 }
 

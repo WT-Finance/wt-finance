@@ -114,7 +114,7 @@ const EMPTY_CEL: CelulaValorSub = { valorMeta: null, metaContratos: null, pctRec
  * Linhas (subsetor×mês) que diferem do baseline E são persistáveis. A unidade é a
  * LINHA: se qualquer um dos 3 campos mudou, os TRÊS vão com o valor corrente — omitir
  * um deles apagaria o valor gravado, porque o `ON CONFLICT DO UPDATE` da RPC não usa
- * COALESCE (contrato documentado no header da seção 4 da migration 0230). Persistável
+ * COALESCE (contrato documentado no header da seção 4 da migration 0233). Persistável
  * exige Faturamento != null (a RPC recusa `valor_meta` nulo); linha com só % ou só
  * contratos alterados fica "suja" na tela mas não é enviada — mesmo critério do irmão.
  *

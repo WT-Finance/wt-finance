@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 0231 — feat(v5.4.4): produtos NÃO_CLASSIFICADOS no sumário de subsetor +
+-- 0234 — feat(v5.4.4): produtos NÃO_CLASSIFICADOS no sumário de subsetor +
 -- wrapper de leitura para Metas + trava de metas_upsert contra Weddings
 --
 -- DECLARAÇÃO PRÉVIA (regime aditivo / autônomo):
@@ -32,7 +32,7 @@
 --          ao da 0175, com UMA trava nova dentro do loop, antes das demais
 --          validações: setor_macro_id de Weddings não pode receber meta pela
 --          grade de Setor, porque agora é DERIVADO das metas de subsetor
---          (0230). O id de Weddings é resolvido por NOME (não cravado em 2)
+--          (0233). O id de Weddings é resolvido por NOME (não cravado em 2)
 --          para não depender de uma numeração fixa — conferido em
 --          supabase/migrations/0002_dimensions.sql que o INSERT
 --          (nome, display_nome, cor_hex, ordem) insere 'Lazer', 'Weddings',
@@ -216,7 +216,7 @@ GRANT  EXECUTE ON FUNCTION public.metas_sumario_subsetor(date, date) TO authenti
 
 -- ── 3. metas_upsert — trava contra gravar Weddings pela grade de Setor ──────
 -- Corpo idêntico ao da 0175 + a trava nova abaixo. A meta de Weddings
--- (setor macro) agora é DERIVADA das metas de subsetor (0230) — não pode mais
+-- (setor macro) agora é DERIVADA das metas de subsetor (0233) — não pode mais
 -- ser digitada diretamente na grade de Setor.
 CREATE OR REPLACE FUNCTION public.metas_upsert(p_metas jsonb)
 RETURNS jsonb

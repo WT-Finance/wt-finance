@@ -7,8 +7,27 @@
 **Numeração conferida no repo real (não no enunciado), 2026-08-04:** a v5.4.3 (PR #211 — anexo
 com acento + erro do modal) **foi mergeada** durante o planejamento desta versão; a worktree
 nasceu de `977c97a`, com `package.json` em `5.4.3`. Este patch é a **v5.4.4**.
-Última migration aplicada: `0229` → **próxima livre: 0230**.
 Último ADR: `0162` → **próximo livre: 0163**.
+
+⚠️ **Migrations renumeradas de 0230/0231 para `0233`/`0234` — colisão entre sessões
+paralelas.** Ao conferir o conjunto pendente antes de aplicar (`npx supabase migration list`),
+apareceu `{"local":"","remote":"0232"}`: uma migration **aplicada em produção que não existe
+neste repo**. É a `0232_monde_reconciliacao_e_tripwire.sql` da branch
+`fix/v5-4-5-reconciliacao-espelho` — uma **v5.4.5 em curso em paralelo** (reconciliação do
+espelho Monde), que aplicou banco **antes de mergear**. Como nada desta versão havia sido
+aplicado, renumerar foi de graça e mantém ordem aplicada == ordem numérica, evitando estado
+fora de ordem no histórico (remédio idêntico ao percalço `0218`→`0220` da v5.4.0).
+
+**Conferido que a 0232 não colide com nada desta versão:** ela cria/altera só
+`monde_vendas_ausentes`, `monde_ingest_claim`, `monde_ingest_release` e `monde_ingest_status`;
+não toca Metas, `get_sumario_subsetor__nucleo` nem `dim_produto_subsetor`. O único ponto de
+contato é `monde_ingest_status`, que a tela de Metas lê para "Última atualização" — e a 0232
+só **acrescenta** chaves ao jsonb (`ultima_sincronizacao` e `ultima_sync` seguem lá), enquanto
+`ultima-sincronizacao.ts` lê por cast solto. Zero impacto nas duas direções.
+
+**Pendência de contabilidade para o Yan (não decidida aqui):** quando esta versão mergear,
+`main` terá `0233`/`0234` com um **buraco no 0232** até a branch da v5.4.5 mergear. A ordem de
+merge das duas é decisão dele.
 
 ---
 
@@ -157,7 +176,7 @@ resíduo é declarado na tela até então.
 
 ## 6. Modelo de dados
 
-### 6.1 `app.meta_subsetor` (migration 0230, ADITIVA)
+### 6.1 `app.meta_subsetor` (migration 0233, ADITIVA)
 
 ```sql
 CREATE TABLE app.meta_subsetor (
@@ -290,7 +309,7 @@ regime do mês (soma × meta antiga da rampa, §4.1).
 
 | # | Missão | Depende de | Arquivos |
 |---|---|---|---|
-| M1 | Banco: `0230` (tabela + histórico + 2 RPCs) e `0231` (wrapper de Metas + chave nova no núcleo + trava do `metas_upsert`) | — | `supabase/migrations/` |
+| M1 | Banco: `0233` (tabela + histórico + 2 RPCs) e `0234` (wrapper de Metas + chave nova no núcleo + trava do `metas_upsert`) | — | `supabase/migrations/` |
 | M2 | Lib: `calcularRitmoAgregado`, rampa e derivação de Weddings/Group, contrato Zod das RPCs novas | M1 | `src/lib/metas/*`, `src/lib/schemas-rpc.ts` |
 | M3 | Extração dos primitivos compartilhados do Cadastro (arquivo-ímã, dono único) | — | novos em `src/components/metas/` |
 | M4 | Cadastro: quadro de subsetores + Weddings travado | M1, M2, M3 | `cadastro-grade.tsx`, `cadastro/page.tsx`, `actions.ts` |
@@ -303,7 +322,7 @@ de fase e no fechamento.
 
 ## 9. Guards mecânicos e casos de contrato
 
-1. **Lista canônica em dois lugares** — teste lê a migration `0230` e compara os 5 literais do CHECK
+1. **Lista canônica em dois lugares** — teste lê a migration `0233` e compara os 5 literais do CHECK
    com `SUBSETOR_ORDER` de `src/lib/config.ts`. Igualdade por máquina, não por prosa.
 2. **Weddings derivada == soma dos 5 em R$**, para o mesmo (ano, mês) — o par de números vizinhos
    que a tela mostra.

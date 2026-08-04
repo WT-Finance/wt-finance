@@ -22,12 +22,12 @@ const sub = (
 ): MetaSubsetorRow => ({ subsetor, ano: 2026, mes, valorMeta, metaContratos, pctReceita })
 
 describe('lista canônica de subsetores — SQL × TS', () => {
-  // O CHECK da 0230 e SUBSETOR_ORDER têm de ser IGUAIS byte a byte, inclusive
+  // O CHECK da 0233 e SUBSETOR_ORDER têm de ser IGUAIS byte a byte, inclusive
   // acentos ('PRODUÇÃO') e o separador do par CONVIDADOS (' - ', com espaços).
   // Divergir um acento não quebra build nem tsc: a gravação passa a falhar no
   // banco, em produção, para um subsetor só. Este teste é o único guard mecânico.
   const sql = readFileSync(
-    new URL('../../../supabase/migrations/0230_metas_subsetor.sql', import.meta.url),
+    new URL('../../../supabase/migrations/0233_metas_subsetor.sql', import.meta.url),
     'utf8',
   )
 

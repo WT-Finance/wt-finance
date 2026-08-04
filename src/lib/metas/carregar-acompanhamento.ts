@@ -205,7 +205,7 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
 
   // O balde fora do mapa. Só existe se houver movimento: há mês com faturamento 0 e receita
   // não-nula (jan/2024: 0,00 / 118,80), então a condição olha os DOIS campos. `produtos` vem
-  // vazio se a chave da 0231 ainda não estiver no banco — a faixa mostra o total e diz que o
+  // vazio se a chave da 0234 ainda não estiver no banco — a faixa mostra o total e diz que o
   // detalhe não está disponível, em vez de desaparecer.
   const itemNC = itensSumario.find(s => s.subsetor === SUBSETOR_NAO_CLASSIFICADO)
   const naoClassificado: NaoClassificado | null =

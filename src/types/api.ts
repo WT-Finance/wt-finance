@@ -235,7 +235,7 @@ export interface SumarioSubsetor {
   periodo:    { inicio: string; fim: string }
   subsetores: SumarioSubsetorItem[]
   total:      { n_vendas: number; faturamento: number; receita: number; margem_pct: number }
-  /** v5.4.4: detalhe do balde `NÃO_CLASSIFICADO`. Opcional — a chave nasceu na 0231. */
+  /** v5.4.4: detalhe do balde `NÃO_CLASSIFICADO`. Opcional — a chave nasceu na 0234. */
   produtos_nao_classificados?: ProdutoNaoClassificado[]
 }
 

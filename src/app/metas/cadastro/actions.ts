@@ -12,9 +12,9 @@ import { revalidatePath } from 'next/cache'
 // pendências marcadas em caso de erro (nada se perde). fonte='real' na RPC.
 //
 // v5.4.4 — `salvarMetasSubsetor` é a IRMÃ desta action para o quadro de subsetores de
-// Weddings (metas_subsetor_upsert, migration 0230). `traduzirErro` é COMPARTILHADO
+// Weddings (metas_subsetor_upsert, migration 0233). `traduzirErro` é COMPARTILHADO
 // pelas duas (os códigos de erro do banco não colidem entre as duas RPCs — ver os
-// `RAISE EXCEPTION` de 0175/0230).
+// `RAISE EXCEPTION` de 0175/0233).
 
 export interface MetaCelula {
   setorMacroId: number

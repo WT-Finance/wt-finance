@@ -47,7 +47,7 @@ tela. A **manutenção** do mapa (hoje sem tela nem processo; última carga por 
 
 `app.meta_setor` continua sendo a tabela do setor macro, mas a linha de **Weddings** deixa
 de ser entrada direta: a grade de Setor a mostra travada e `metas_upsert` **recusa**
-`setor_macro_id` de Weddings (`METAS_WEDDINGS_DERIVADO`, `0231`).
+`setor_macro_id` de Weddings (`METAS_WEDDINGS_DERIVADO`, `0234`).
 
 **Regra, determinística por mês:**
 
