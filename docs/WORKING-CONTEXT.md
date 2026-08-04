@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-04 · produção na **v5.4.3** · **v5.4.4 FECHADA, aguardando merge** (Onda 0: o espelho do Monde perdia venda lançada com atraso) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 já aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-04 (pós-merge) · produção na **v5.4.4** (#217 mergeado às 16h31 — Onda 0: o espelho do Monde perdia venda lançada com atraso; **agendamento da reconciliação na `0236`, aplicado**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 já aplicadas, código na branch, **não mergear**).
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,7 +9,7 @@
 
 ## Verdade atual
 
-- **v5.4.4 — FECHADA, aguardando merge.** Branch `fix/v5-4-4-reconciliacao-espelho`.
+- Versão em produção (main): **`5.4.4`** (#217 mergeado 04/08 às 16h31).
   **O espelho do Monde perdia venda lançada com atraso, e Metas/Performance subestimavam
   faturamento.** A API filtra a listagem por DATA DA VENDA e a janela do incremental (`hoje−2d`)
   anda para frente sobre um eixo que a origem escreve para trás ⇒ venda registrada com atraso
@@ -38,11 +38,20 @@
   `LegacyDbPushMissingLocalError` e só destravou trazendo os arquivos (PR #215). **Quem aplica
   migration antes do merge assume essa dívida** — o certo é avisar as sessões paralelas na hora,
   ou mergear o arquivo primeiro.
-  **⚠️ PENDENTE DO YAN, e sem isso não há varredura diária:** aplicar a **`0236`** (as 3 entradas
-  de `cron.schedule`) **DEPOIS do merge** — SQL e comando prontos no §8.1 do out-briefing. Ela
-  **não está** em `supabase/migrations/` de propósito (`db push` empurra todo o pendente).
-  (Era "0233" no plano original; 0233/0234/0235 foram tomadas pela versão em stand-by.)
-  Também pendente: conferência visual do cartão novo em `/admin/uploads` (hoje deve estar
+  ✅ **`0236` APLICADA no pós-merge (04/08).** As 3 entradas (`monde-reconciliacao-1/2/3`,
+  06:05/06:20/06:35 UTC = 03:05/03:20/03:35 SP) estão `active` em `cron.job`, chamando
+  `mode=reconciliacao` com `timeout_milliseconds` 320000; o `*/15` do incremental ficou intocado
+  (timeout 120000). Ordem respeitada: **primeiro provei o deploy em produção** (`mode=auditoria`
+  → 200 com o shape novo; `mode=reconciliacao` → 200, idempotente, tripwire apurado), **depois**
+  agendei — agendar antes é o CRÍTICO que o revisor-db barrou. A URL que o cron monta foi conferida
+  literal contra a que eu chamei à mão. **1º ciclo real: 06:05 UTC de 05/08** — conferir
+  `cron.job_run_details`.
+  ⚠️ **A 1ª tentativa de aplicar a `0236` FALHOU** por erro meu: citei a expressão de cron do
+  incremental dentro de um comentário `/* */`, e a sequência que fecha bloco encerrou o comentário
+  no meio — o resto virou SQL (`syntax error at or near "15"`). **Rollback foi limpo** (a transação
+  do `db push` desfez tudo: nenhum job criado, nada no histórico). Regra: **nunca citar expressão
+  de cron dentro de comentário de bloco** — o DOWN da 0236 usa `--` por isso.
+  Ainda pendente do Yan: conferência visual do cartão novo em `/admin/uploads` (hoje deve estar
   **vermelho**, e está certo — ver abaixo) e decidir sobre as vendas "sobrando".
   **Achado registrado e NÃO corrigido:** **5 vendas em jul/2026 e 5 em jun/2026 continuam no
   espelho tendo deixado de ser espelháveis** (perderam o último item ativo depois de ingeridas; o
@@ -80,7 +89,7 @@
   57% e a curadoria real são ~22 descrições), o post-mortem do incidente (**migration aditiva no
   schema pode ser incompatível com o front NO AR**), a divergência de fonte que variou de 0,00 para
   40% no mesmo dia, e as 6 decisões de produto já tomadas.
-- Versão em produção (main): **`5.4.3`** (#211 mergeado 04/08 às 13h08) — PATCH de dois defeitos
+- A v5.4.3 (#211 mergeado 04/08 às 13h08) foi um PATCH de dois defeitos
   relatados pelo Yan a partir de um erro real em produção. **Sem migration, sem ADR.**
   (1) **Anexo com acento no nome não subia.** A chave do objeto no Storage era montada com o nome
   CRU (`tmp/<uuid>/${file.name}`) e o `isValidKey` do Supabase Storage usa `\w` **sem a flag `u`**
@@ -315,18 +324,19 @@
   inertes) e **`0232`** (v5.4.4 desta entrega: detector `monde_vendas_ausentes`, lock
   `monde_ingest_claim`/`release(p_dono)` e `monde_ingest_status` estendido — ADITIVA, verificada
   por **21 checagens via REST/service_role** executando o corpo. **NÃO agenda nada**: o
-  `cron.schedule` é a **`0236`**, pendente de pós-merge).
+  `cron.schedule` é a **`0236`**, aplicada no pós-merge).
   ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
   e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
   sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
-  **Próxima livre para versão nova: `0237`** (a `0236` é desta entrega, pendente).
+  **Última migration APLICADA de todas: `0236`** (agendamento da reconciliação, pós-merge da
+  v5.4.4). **Próxima livre: `0237`.**
   Antes dela a **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
   alargada de 23+18 para **36+36 meses** — ADITIVA, `CREATE OR REPLACE` de função SEM
   parâmetros. Diferente da RPC de Weddings, a janela dela é **hardcoded no corpo**, então o
   slider do Financeiro não teria o que fatiar sem isso. **Nenhum número muda:** cada mês é
   agregado do próprio mês, sem acumulado — provado por cross-check contra
   `get_fluxo_caixa_kpis_b`, que lê a mesma view por range explícito, 4/4 campos em todos os
-  meses amostrados). **Próxima migration livre: `0236`** — as `0233`–`0235` estão aplicadas;
+  meses amostrados). **Próxima migration livre: `0237`** — as `0233`–`0236` estão aplicadas;
   ver a nota no topo de §Verdade atual. E a **`0232`** está aplicada mas seu arquivo vive na
   branch da reconciliação do espelho Monde, ainda não mergeada.
   Antes dela a **`0228`** (v5.4.2: chave de ordenação `d_margem_aa` em
