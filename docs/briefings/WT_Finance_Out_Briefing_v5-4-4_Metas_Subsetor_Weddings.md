@@ -73,6 +73,38 @@ com receita **−37.339,05** vinda de um único produto (`G - WelConnect - Colô
    `<Card>` irmão dos outros cinco, abaixo deles, com a lista dentro da cortina e **sem** "% da
    meta"/barra, porque não se cadastra meta para "não classificado".
 
+## 4b. Conferência visual do Yan (1ª rodada) — a divergência de fonte não podia ficar só no "?"
+
+O Yan abriu a expansão e perguntou onde estava o card de "Não Classificados". **Ele estava
+correto em não aparecer:** em agosto/2026 não há nenhum produto fora do mapa
+(`produtos_nao_classificados` volta `[]` e o balde não existe no período).
+
+Mas o print expôs o que o tooltip não estava segurando:
+
+```
+Weddings (Monde)        R$ 80.696,38
+5 subsetores (upload)   R$ 48.144,44
+não classificados       R$      0,00
+diferença               R$ 32.551,94   ← 40% do número, sem nada na tela explicando
+```
+
+**A mesma medição, no mesmo dia, deu 0,00 pela manhã.** Entraram vendas no Monde que o upload
+ainda não tinha. Ou seja: a divergência de fonte do §3.1 **não é estável nem pequena**, e eu a
+havia deixado apenas na ajuda "?" do cabeçalho — insuficiente. Quem olha vê cinco cards somando
+48,1 k embaixo de um card de 80,7 k e conclui, com razão, que a tela está errada.
+
+**Acrescentado:** o bloco **"Como isto soma"** ao pé da expansão, nomeando as parcelas —
+`soma dos subsetores + não classificados + defasagem entre as fontes = Weddings`. Ele **só
+aparece quando há diferença material** (≥ R$ 1): quando as fontes concordam, a ausência do bloco
+já significa "os cards somam o setor". A conta vive em `decomporFaturamentoWeddings`
+(`metas-derivadas.ts`), com caso de contrato sobre os números REAIS dos dois momentos do dia 04/08
+— uma reconciliação que não reconcilia seria pior que nenhuma. Quando o Scope B concluir, a
+parcela de defasagem vai a zero e o bloco para de aparecer sozinho, sem código a remover.
+
+**Também exposto:** o selo "Última atualização" do topo é do **Monde**, não do upload — então os
+números de subsetor podem estar arbitrariamente velhos sem nenhuma indicação própria. Está dito no
+"?" do bloco novo; um selo de frescor do upload é candidato para outra versão.
+
 ## 5. Parecer da revisão
 
 ### `revisor-db` — APROVADAS (0 CRÍTICO / 0 ALTO), aplicar 0233 → 0234

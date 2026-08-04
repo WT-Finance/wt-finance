@@ -6,6 +6,7 @@ import MetasPeriodoPills from '@/components/metas/metas-periodo-pills'
 import MetaCard from '@/components/metas/meta-card'
 import SubsetorCard from '@/components/metas/subsetor-card'
 import NaoClassificados from '@/components/metas/nao-classificados'
+import ReconciliacaoSubsetores from '@/components/metas/reconciliacao-subsetores'
 import RitmoChart from '@/components/metas/ritmo-chart'
 import TopSection from '@/components/shared/top-section'
 import { useCortina, Cortina, BotaoCortina } from '@/components/shared/cortina'
@@ -144,6 +145,14 @@ export default function AcompanhamentoContent({ data, podeComparar }: Props) {
                     <NaoClassificados data={data.naoClassificado} />
                   </div>
                 )}
+
+                {/* Fecha a conta: só aparece quando os cards NÃO somam o card do setor
+                    (upload defasado em relação ao Monde). Ver o header do componente. */}
+                <ReconciliacaoSubsetores
+                  faturamentoSetor={weddings.faturamento}
+                  subsetores={data.subsetores}
+                  naoClassificado={data.naoClassificado}
+                />
               </Cortina>
             )}
           </div>

@@ -138,3 +138,40 @@ export function aplicarRampaWeddings(
 export function mesDerivado(mesesDerivados: Set<string>, ano: number, mes: number): boolean {
   return mesesDerivados.has(chaveMes(ano, mes))
 }
+
+// ── Reconciliação do REALIZADO de Weddings (v5.4.4) ──────────────────────────
+// Nada a ver com meta: é o faturamento. O card do setor vem do MONDE
+// (`get_executiva_kpis`) e os subsetores vêm do UPLOAD (`fato_venda_item`), porque
+// subsetor é eixo de PRODUTO. Enquanto as duas fontes não forem a mesma (Scope B), a
+// soma dos cards não fecha com o card do setor — e a diferença NÃO é estável: medida
+// em 04/08 pela manhã era 0,00 no mês corrente e, à tarde, 40%.
+//
+// Esta função é a decomposição que a tela mostra. Existe separada do componente para
+// ter caso de contrato: uma reconciliação que não reconcilia é pior que nenhuma.
+
+export interface DecomposicaoWeddings {
+  /** Soma dos 5 subsetores (upload). */
+  soma5: number
+  /** Balde fora do mapa (upload). */
+  naoClassificado: number
+  /** O que o Monde tem e o upload ainda não (ou vice-versa, se negativo). */
+  defasagem: number
+}
+
+/**
+ * Decompõe o faturamento do setor nas parcelas que a expansão mostra. Por construção,
+ * `soma5 + naoClassificado + defasagem === faturamentoSetor` — é isso que o caso de
+ * contrato fixa.
+ */
+export function decomporFaturamentoWeddings(
+  faturamentoSetor: number,
+  faturamentosSubsetores: readonly number[],
+  naoClassificado: number,
+): DecomposicaoWeddings {
+  const soma5 = faturamentosSubsetores.reduce((s, v) => s + v, 0)
+  return {
+    soma5,
+    naoClassificado,
+    defasagem: faturamentoSetor - (soma5 + naoClassificado),
+  }
+}

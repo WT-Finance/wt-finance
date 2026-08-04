@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { SUBSETOR_ORDER } from '@/lib/config'
 import {
-  somarPorMes, aplicarRampaWeddings, mesDerivado, SETOR_WEDDINGS,
+  somarPorMes, aplicarRampaWeddings, mesDerivado, decomporFaturamentoWeddings, SETOR_WEDDINGS,
   type MetaSetorRow, type MetaSubsetorRow,
 } from './metas-derivadas'
 
@@ -181,5 +181,46 @@ describe('Group == Trips + Weddings(derivada) + Corporativo', () => {
     expect(group[0].valorMeta).toBe(1_730_750.02 + 1_000_000 + 1_268_695.00)
     // E explicitamente NÃO a soma com a linha crua:
     expect(group[0].valorMeta).not.toBe(1_730_750.02 + 2_048_746.41 + 1_268_695.00)
+  })
+})
+
+describe('decomporFaturamentoWeddings — a reconciliação tem de reconciliar', () => {
+  // A expansão mostra "soma dos subsetores + não classificados + defasagem = Weddings".
+  // Se as parcelas não somarem o total, a linha que existe para explicar o buraco passa a
+  // ser mais um número errado na tela.
+  const cent = (v: number) => Math.round(v * 100)
+
+  it('as parcelas somam o total do setor — caso REAL de 04/08 à tarde', () => {
+    // Monde 80.696,38 · upload 48.144,44 (Hospedagens 40.748,00 + Extras 7.396,44) · nada
+    // não classificado. A defasagem é 40% do número: foi o print do Yan que a expôs.
+    const d = decomporFaturamentoWeddings(80_696.38, [0, 0, 0, 40_748.00, 7_396.44], 0)
+    expect(cent(d.soma5)).toBe(cent(48_144.44))
+    expect(d.naoClassificado).toBe(0)
+    expect(cent(d.defasagem)).toBe(cent(32_551.94))
+    expect(cent(d.soma5 + d.naoClassificado + d.defasagem)).toBe(cent(80_696.38))
+  })
+
+  it('inclui o balde não classificado na conta — caso REAL do ano 2026', () => {
+    const d = decomporFaturamentoWeddings(
+      10_915_158.83,
+      [181_745.13, 1_672_399.14, 2_267_448.82, 5_576_642.48, 665_503.58],
+      72_717.41,
+    )
+    expect(cent(d.soma5)).toBe(cent(10_363_739.15))
+    expect(cent(d.naoClassificado)).toBe(cent(72_717.41))
+    expect(cent(d.soma5 + d.naoClassificado + d.defasagem)).toBe(cent(10_915_158.83))
+  })
+
+  it('defasagem ZERO quando as fontes concordam (agosto pela manhã)', () => {
+    const d = decomporFaturamentoWeddings(48_144.44, [0, 0, 0, 40_748.00, 7_396.44], 0)
+    expect(cent(d.defasagem)).toBe(0)
+  })
+
+  it('defasagem NEGATIVA quando o upload está à frente do Monde', () => {
+    // Possível na direção contrária (upload recarregado antes do pull do Monde). A conta
+    // continua fechando; a tela nomeia o sinal.
+    const d = decomporFaturamentoWeddings(100, [80, 40], 0)
+    expect(d.defasagem).toBe(-20)
+    expect(d.soma5 + d.naoClassificado + d.defasagem).toBe(100)
   })
 })
