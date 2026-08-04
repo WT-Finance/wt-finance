@@ -35,6 +35,32 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.4.3',
+    data: '2026-08-04T12:56', // horário de AUTORIA — reconciliar ao horário real do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Anexar arquivo na abertura de uma solicitação voltava a falhar quando o nome do arquivo ' +
+          'tinha acento — "Nota Fiscal - Bruna e João.pdf", por exemplo. O comportamento confundia ' +
+          'porque dependia só do nome: a mesma pessoa anexava dois arquivos sem acento com sucesso e ' +
+          'falhava no terceiro, o que parecia instabilidade do sistema mas não era. Nomes com "ç", ' +
+          '"#", "%" e com o travessão que o Word coloca no lugar do hífen tinham o mesmo problema. ' +
+          'Corrigido para todos: o arquivo sobe com qualquer nome, e o nome que aparece na tela e no ' +
+          'download continua sendo o original, com acento e tudo. Nenhum anexo já enviado foi afetado.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'No modal de nova solicitação, a mensagem de erro (por exemplo, um campo obrigatório em ' +
+          'branco) aparecia no alto da janela, longe do botão "Enviar solicitação", que fica no pé. ' +
+          'Quem clicava no botão não via o aviso e tinha a impressão de que o sistema havia travado. ' +
+          'Agora o aviso aparece logo acima do botão, e o botão passou a ficar sempre visível no pé do ' +
+          'modal, sem precisar rolar para encontrá-lo.',
+      },
+    ],
+  },
+  {
     versao: '5.4.2',
     data: '2026-08-03T17:22', // horário REAL do merge (9c8ae33, 17:22:13 −03) — reconciliado no /pos-merge
     itens: [

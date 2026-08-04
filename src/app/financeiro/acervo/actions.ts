@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
+import { sanitizarNomeArquivo } from '@/lib/storage/nome-arquivo'
 import { acervoDocSchema, acervoListaSchema, type AcervoDocumento } from '@/lib/schemas-rpc'
 
 // Acervo de Documentos (v4.34.0, migration 0165). Leitura liberada por QUALQUER uma
@@ -18,10 +19,6 @@ import { acervoDocSchema, acervoListaSchema, type AcervoDocumento } from '@/lib/
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 const BUCKET = 'acervo-documentos'
 const MAX_BYTES = 25 * 1024 * 1024 // 25 MiB — mesmo limite do bucket (migration 0165)
-
-// Faixa Unicode dos diacríticos combinantes (U+0300–U+036F), construída via
-// String.fromCharCode para nunca depender de caracteres literais no código-fonte.
-const DIACRITICOS = new RegExp(`[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`, 'g')
 
 async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> {
   const sb = await getServerClient()
@@ -41,21 +38,11 @@ function traduzir(msg: string): string {
   return m[prefixo] ?? msg.replace(/^[A-Z_]+:\s*/, '')
 }
 
-/**
- * Sanitiza o nome do arquivo para um path seguro no Storage: remove acentos
- * (via NFD + faixa Unicode dos diacríticos combinantes U+0300–U+036F), troca
- * qualquer caractere fora de [a-zA-Z0-9._-] por '_' e limita o comprimento.
- * Diferente de Solicitações (bucket restrito a poucos MIME, usa o nome cru) — aqui
- * o bucket aceita QUALQUER tipo de arquivo, então endurecemos o nome do OBJETO no
- * Storage (o nome ORIGINAL é preservado à parte, como metadado `nome_arquivo`).
- */
-function sanitizarNomeArquivo(nome: string): string {
-  const limpo = nome
-    .normalize('NFD').replace(DIACRITICOS, '')
-    .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .slice(0, 100)
-  return limpo || 'arquivo'
-}
+// v5.4.3 — `sanitizarNomeArquivo` saiu daqui para `@/lib/storage/nome-arquivo` (mesmo
+// comportamento). O docstring antigo dizia que Solicitações usava o nome cru porque o
+// bucket restringe MIME; a premissa era errada — restrição de MIME não tem relação com
+// validade de chave, e o nome cru quebrava o upload lá com `400 InvalidKey` em qualquer
+// nome acentuado. Agora as duas pontas compartilham a mesma sanitização.
 
 /** Lista a biblioteca (metadados; nunca storage_path/criado_por). */
 export async function listarDocumentos(): Promise<{ ok: true; documentos: AcervoDocumento[] } | { ok: false; erro: string }> {
