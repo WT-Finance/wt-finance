@@ -38,6 +38,11 @@ jul/2026 no espelho: **713 → 751**. Auditoria: **62 → 24 ausentes** (os 24 r
 ## 3. O que foi construído
 
 1. **Incremental `hoje−2d` → `hoje−7d`** (o atraso mediano é 4). Caso comum, barato.
+   **Custo do ciclo medido** (auto-auditoria da M2, exigida pelo briefing): janela
+   `2026-07-28..2026-08-04`, **185 vendas em 1 página, 35 s** — **12% do `maxDuration` de 300 s** e
+   **4% do intervalo de 15 min** do cron. Folga larga; a janela de 2 dias custava ~1/3 disso e as
+   duas cabem sem aperto. O run ainda recuperou 2 vendas registradas depois da reconciliação — o
+   mecanismo funcionando em condição normal, não de teste.
 2. **`mode=reconciliacao`** — um mês por invocação, ciclando os 3 últimos por cursor, 3 disparos/dia. **Auto-curativo:** não depende de acertar o tamanho de janela nenhuma. Resumível (o cursor só avança em caso de sucesso).
 3. **`mode=auditoria&from&to`** — só leitura, o detector: lista a API e responde quais vendas faltam. Teste de aceitação da versão. Compara contra a **API**, nunca contra o upload.
 4. **Lock de ingestão** (`monde_ingest_claim`/`release`) em todo modo que toca a staging.
