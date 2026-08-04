@@ -7,6 +7,7 @@ import {
   mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema, buscarPessoasSchema,
   acervoListaSchema, acervoDocSchema,
   metasListarSchema, metasRitmoDiarioSchema,
+  metasSubsetorListarSchema, metasSumarioSubsetorSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -297,6 +298,8 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // (retorna cedo); o SHAPE é validado contra a RPC viva (108 metas de seed + série real).
   { fn: 'metas_listar',                  params: { p_ano: 2026 },                                                      schema: metasListarSchema },
   { fn: 'metas_ritmo_diario',            params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },    schema: metasRitmoDiarioSchema },
+  { fn: 'metas_subsetor_listar',         params: { p_ano: 2026 },                                                      schema: metasSubsetorListarSchema },
+  { fn: 'metas_sumario_subsetor',        params: { p_from: '2026-01-01', p_to: '2026-12-31' },                         schema: metasSumarioSubsetorSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -501,6 +504,108 @@ async function rpcAnonStatus(fn: string, body: Record<string, unknown>): Promise
 // o faturamento de get_executiva_kpis no mesmo range/setor (mesma mv_vendas_diarias,
 // mesmo JOIN/WHERE). Se divergir, "faturamento de X" em Metas ≠ em Performance — o que
 // o invariante proíbe. Cobre 'todos' + os 3 setores (nome interno; Lazer = display Trips).
+// ── Metas por SUBSETOR de Weddings (v5.4.4, migrations 0233/0234) ────────────
+describe.skipIf(!ON)('contrato Metas — subsetor: balde aberto por produto fecha com o agregado', () => {
+  // A tela mostra, DENTRO do mesmo card, o agregado do balde `NÃO_CLASSIFICADO` (na
+  // faixa fechada) e a lista de produtos que o compõe (na faixa aberta). São dois
+  // números vizinhos: se divergirem, a faixa passa a MENTIR justamente onde ela existe
+  // para explicar por que a soma dos 5 subsetores não fecha com o card de Weddings.
+  //
+  // A igualdade é estrutural (as duas consultas filtram as MESMAS linhas de
+  // fato_venda_item: `COALESCE(subsetor_detalhado,'NÃO_CLASSIFICADO')='NÃO_CLASSIFICADO'`
+  // no agregado e `subsetor_detalhado IS NULL` na lista), mas "estrutural" é uma leitura
+  // do SQL — este caso mede.
+  const PERIODOS = [
+    { rot: 'ano corrente',  p_from: '2026-01-01', p_to: '2026-12-31' },
+    { rot: 'mês com balde', p_from: '2026-07-01', p_to: '2026-07-31' },
+    { rot: 'mês sem balde', p_from: '2026-08-01', p_to: '2026-08-31' },
+  ]
+
+  it.each(PERIODOS)('$rot: Σ produtos_nao_classificados == item NÃO_CLASSIFICADO', async ({ p_from, p_to }) => {
+    const d = await rpc('metas_sumario_subsetor', { p_from, p_to })
+    const parsed = metasSumarioSubsetorSchema.parse(d)
+
+    const lista = parsed.produtos_nao_classificados ?? []
+    const balde = parsed.subsetores.find(s => s.subsetor === 'NÃO_CLASSIFICADO')
+
+    const cent = (v: number) => Math.round(v * 100)
+    const somaFat = lista.reduce((s, p) => s + p.faturamento, 0)
+    const somaRec = lista.reduce((s, p) => s + p.receita, 0)
+
+    if (!balde) {
+      // Sem balde no período, a lista tem de vir vazia — não "quase vazia".
+      expect(lista).toEqual([])
+      return
+    }
+    expect(cent(somaFat)).toBe(cent(balde.faturamento))
+    expect(cent(somaRec)).toBe(cent(balde.receita))
+    // O balde só existe se houver movimento, então a lista não pode estar vazia aqui.
+    expect(lista.length).toBeGreaterThan(0)
+  })
+
+  it('a lista vem ordenada por faturamento desc (a tela não reordena)', async () => {
+    const d = await rpc('metas_sumario_subsetor', { p_from: '2026-01-01', p_to: '2026-12-31' })
+    const lista = metasSumarioSubsetorSchema.parse(d).produtos_nao_classificados ?? []
+    const fats = lista.map(p => p.faturamento)
+    expect(fats).toEqual([...fats].sort((a, b) => b - a))
+  })
+
+  it('a irmã de Metas devolve o MESMO payload que a da Performance (núcleo único)', async () => {
+    // As duas são wrappers do mesmo `get_sumario_subsetor__nucleo`, com guards de área
+    // diferentes. Se um dia alguém duplicar o corpo em vez de delegar, este caso reprova —
+    // e é o que mantém a promessa de que o Scope B repointa UM lugar.
+    const params = { p_from: '2026-01-01', p_to: '2026-12-31' }
+    const [metas, perf] = await Promise.all([
+      rpc('metas_sumario_subsetor', params),
+      rpc('get_sumario_subsetor', params),
+    ])
+    expect(metas).toEqual(perf)
+  })
+})
+
+describe.skipIf(!ON)('contrato Metas — travas de escrita do eixo de subsetor', () => {
+  // Ano 2099 de propósito: se uma trava estiver quebrada, a linha escrita é inofensiva
+  // e visível, em vez de sujar um ano real.
+  const ANO = 2099
+  const item = (over: Record<string, unknown>) => ({
+    p_metas: [{ subsetor: 'PRODUÇÃO', ano: ANO, mes: 1, valor_meta: 1, meta_contratos: null, pct_receita: null, ...over }],
+  })
+
+  it('metas_upsert RECUSA a meta de Weddings (agora derivada dos subsetores)', async () => {
+    await expect(
+      rpc('metas_upsert', { p_metas: [{ setor_macro_id: 2, ano: ANO, mes: 1, valor_meta: 1, pct_receita: null }] }),
+    ).rejects.toThrow(/METAS_WEDDINGS_DERIVADO/)
+  })
+
+  it('meta_contratos só em COMERCIAL', async () => {
+    await expect(rpc('metas_subsetor_upsert', item({ meta_contratos: 5 })))
+      .rejects.toThrow(/METAS_CONTRATOS_SO_COMERCIAL/)
+  })
+
+  it('subsetor fora da lista canônica', async () => {
+    await expect(rpc('metas_subsetor_upsert', item({ subsetor: 'INVENTADO' })))
+      .rejects.toThrow(/METAS_SUBSETOR_INVALIDO/)
+  })
+
+  it('mes AUSENTE cai na mensagem legível, não no NOT NULL cru', async () => {
+    // Guard de NULL: `v_mes < 1 OR v_mes > 12` com NULL avalia NULL e o IF não dispara —
+    // sem o `IS NULL OR`, o erro chegaria como violação de NOT NULL do Postgres, que o
+    // `traduzirErro` do front não sabe traduzir (achado do revisor-db).
+    await expect(rpc('metas_subsetor_upsert', { p_metas: [{ subsetor: 'PRODUÇÃO', ano: ANO, valor_meta: 1 }] }))
+      .rejects.toThrow(/METAS_MES_INVALIDO/)
+  })
+
+  it('pct_receita fora de 0..100 e valor negativo', async () => {
+    await expect(rpc('metas_subsetor_upsert', item({ pct_receita: 150 }))).rejects.toThrow(/METAS_PCT_INVALIDO/)
+    await expect(rpc('metas_subsetor_upsert', item({ valor_meta: -1 }))).rejects.toThrow(/METAS_VALOR_INVALIDO/)
+  })
+
+  it('nenhuma das recusas gravou nada (o ano de teste segue vazio)', async () => {
+    const d = await rpc('metas_subsetor_listar', { p_ano: ANO })
+    expect(metasSubsetorListarSchema.parse(d).metas).toEqual([])
+  })
+})
+
 describe.skipIf(!ON)('contrato Metas — paridade com a Performance (fonte única)', () => {
   const RANGE = { p_from: '2026-01-01', p_to: '2026-06-30' }
   it.each(['todos', 'Weddings', 'Lazer', 'Corporativo'])(
