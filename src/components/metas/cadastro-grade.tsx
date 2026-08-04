@@ -413,13 +413,24 @@ export default function CadastroGrade({
   const [aplicarSetor, setAplicarSetor] = useState<number | null>(null)
   const [aplicarTxt, setAplicarTxt] = useState('')
 
-  // Re-hidrata quando o servidor troca de dado (nova navegação de ano OU o
-  // `router.refresh()` pós-Salvar): valores E baseline convergem à verdade nova, o que
-  // zera dirty/pendências de graça. Padrão "ajustar durante a renderização" (mesmo
-  // usado em cadastro-clientes.tsx).
-  const [metasPrev, setMetasPrev] = useState(metas)
-  if (metas !== metasPrev) {
-    setMetasPrev(metas)
+  // Re-hidrata na navegação de ANO. Padrão "ajustar durante a renderização" (mesmo usado
+  // em cadastro-clientes.tsx).
+  //
+  // ⚠️ O gatilho é o `ano`, e NÃO a referência do array `metas` — isso mudou na v5.4.4 e
+  // é a correção de um achado CRÍTICO. A página passou a ter DOIS quadros com Salvar
+  // próprio, e as duas Server Actions chamam `revalidatePath` + `router.refresh()`. O
+  // refresh reexecuta o Server Component, que refaz as duas RPCs e entrega arrays NOVOS
+  // para os dois quadros — mesmo para aquele cujo conteúdo não mudou. Com o gatilho na
+  // referência, salvar um quadro re-hidratava o OUTRO e apagava, sem aviso nenhum, tudo o
+  // que estivesse digitado nele. E digitar nos dois antes de salvar é o caminho de uso
+  // CENTRAL desta tela (a coluna Weddings mostra a soma ao vivo do quadro de baixo).
+  //
+  // Contrapartida aceita: um refresh disparado por OUTRA pessoa não traz mais o dado novo
+  // para a grade aberta. É deliberado — sobrescrever edição não salva é pior que mostrar
+  // dado levemente velho, e esta tela não tem trava otimista.
+  const [anoPrev, setAnoPrev] = useState(ano)
+  if (ano !== anoPrev) {
+    setAnoPrev(ano)
     setValores(construirMapa(metas))
     setBaseline(construirMapa(metas))
     setErroGlobal(null)
@@ -552,6 +563,19 @@ export default function CadastroGrade({
     }
     setSalvando(false)
     if (res.ok) {
+      // Com o gatilho de re-hidratação no `ano` (ver acima), o refresh não zera mais as
+      // pendências — então quem zera é o Salvar, promovendo ao baseline SÓ as linhas que
+      // ele realmente enviou. Célula "suja" mas não persistável (% mudado sem
+      // Faturamento) NÃO entra: continua marcada, que é o comportamento correto — ela não
+      // foi gravada.
+      const enviadas = pendentes
+      setBaseline(prev => {
+        const novo = { ...prev }
+        for (const p of enviadas) {
+          novo[chave(p.setorMacroId, p.mes)] = { valorMeta: p.valorMeta, pctReceita: p.pctReceita }
+        }
+        return novo
+      })
       router.refresh()
     } else {
       setErroGlobal(res.erro)

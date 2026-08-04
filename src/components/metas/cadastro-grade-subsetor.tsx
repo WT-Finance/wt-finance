@@ -158,17 +158,18 @@ export default function CadastroGradeSubsetor({ ano, metas, ultimaAlteracao, val
   const router = useRouter()
 
   // Baseline = a verdade do servidor (para dirty/pendências) — LOCAL a este
-  // componente (diferente de `valores`, que é levantado ao pai). Re-hidrata quando
-  // `metas` muda (nova navegação de ano OU router.refresh() pós-Salvar).
+  // componente (diferente de `valores`, que é levantado ao pai). Re-hidrata na navegação
+  // de ANO; ver a nota do gatilho no `cadastro-grade.tsx` (achado CRÍTICO da v5.4.4: com o
+  // gatilho na referência do array, o Salvar de UM quadro apagava o outro).
   const [baseline, setBaseline] = useState<Record<string, CelulaValorSub>>(() => construirMapaSub(metas))
   const [erroGlobal, setErroGlobal] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
   const [aplicarSubsetor, setAplicarSubsetor] = useState<string | null>(null)
   const [aplicarTxt, setAplicarTxt] = useState('')
 
-  const [metasPrev, setMetasPrev] = useState(metas)
-  if (metas !== metasPrev) {
-    setMetasPrev(metas)
+  const [anoPrev, setAnoPrev] = useState(ano)
+  if (ano !== anoPrev) {
+    setAnoPrev(ano)
     setBaseline(construirMapaSub(metas))
     setErroGlobal(null)
     setAplicarSubsetor(null)
@@ -258,6 +259,19 @@ export default function CadastroGradeSubsetor({ ano, metas, ultimaAlteracao, val
     }
     setSalvando(false)
     if (res.ok) {
+      // Quem zera as pendências é o Salvar, não o refresh (ver a nota do gatilho de
+      // re-hidratação acima): promove ao baseline SÓ as linhas enviadas — as três colunas
+      // de cada uma, que é exatamente o que a RPC gravou.
+      const enviadas = pendentes
+      setBaseline(prev => {
+        const novo = { ...prev }
+        for (const p of enviadas) {
+          novo[chaveSub(p.subsetor, p.mes)] = {
+            valorMeta: p.valorMeta, metaContratos: p.metaContratos, pctReceita: p.pctReceita,
+          }
+        }
+        return novo
+      })
       router.refresh()
     } else {
       setErroGlobal(res.erro)

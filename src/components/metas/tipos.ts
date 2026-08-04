@@ -90,7 +90,4 @@ export interface AcompanhamentoData {
   /** Balde fora do mapa. `null` = não houve nada não classificado no período (o caso
    *  normal do mês corrente) → a faixa não é renderizada. */
   naoClassificado: NaoClassificado | null
-  /** Meses (chave `ano-mes`) cuja meta de Weddings veio da SOMA dos subsetores, e não da
-   *  linha antiga de `app.meta_setor`. Alimenta o rótulo de regime no Cadastro. */
-  mesesDerivados: string[]
 }

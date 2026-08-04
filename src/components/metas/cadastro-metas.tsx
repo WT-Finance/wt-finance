@@ -37,13 +37,17 @@ export default function CadastroMetas({
   // é o mapa que alimenta a derivação de Weddings no quadro de cima.
   const [valoresSub, setValoresSub] = useState<Record<string, CelulaValorSub>>(() => construirMapaSub(metasSubsetor))
 
-  // Re-hidrata quando o servidor troca de dado (nova navegação de ano OU o
-  // `router.refresh()` pós-Salvar de QUALQUER um dos dois quadros — os dois disparam
-  // revalidatePath('/metas/cadastro')). Mesmo padrão "ajustar durante a renderização"
-  // usado nos dois componentes filhos.
-  const [metasSubPrev, setMetasSubPrev] = useState(metasSubsetor)
-  if (metasSubsetor !== metasSubPrev) {
-    setMetasSubPrev(metasSubsetor)
+  // Re-hidrata na navegação de ANO. Mesmo padrão "ajustar durante a renderização" dos
+  // filhos — e, como neles, o gatilho é o `ano` e NÃO a referência de `metasSubsetor`.
+  //
+  // ⚠️ Era exatamente aqui que morava a metade mais grave do achado CRÍTICO: os dois
+  // quadros disparam `revalidatePath('/metas/cadastro')` + `router.refresh()` ao salvar, e
+  // o refresh entrega array novo para os DOIS. Com o gatilho na referência, salvar o
+  // quadro de SETOR resetava `valoresSub` — o estado do quadro de SUBSETOR, que vive aqui
+  // — e a digitação não salva de baixo desaparecia sem aviso.
+  const [anoPrev, setAnoPrev] = useState(ano)
+  if (ano !== anoPrev) {
+    setAnoPrev(ano)
     setValoresSub(construirMapaSub(metasSubsetor))
   }
 

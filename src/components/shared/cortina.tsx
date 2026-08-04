@@ -106,6 +106,11 @@ interface BotaoCortinaProps {
  * conteúdo próprio (valores, pills) que não deve virar área clicável. Quando o
  * cabeçalho INTEIRO é o gatilho, não use este componente — ponha `aria-expanded`
  * e `aria-controls` no próprio <button> do cabeçalho e só reaproveite a <Cortina>.
+ *
+ * O ícone tem o tamanho VISUAL de `tamanho` (13–16px), mas o botão carrega
+ * `min-h-6 min-w-6` (24px) para cumprir o alvo de toque mínimo da
+ * `web-design-guidelines` — só com o padding o chevron ficava em ~17–20px, e este é
+ * o gatilho mais usado da tela nova (achado ALTO do revisor na v5.4.4).
  */
 export function BotaoCortina({
   aberta, onAlternar, controla, rotulo, tamanho = 14, className,
@@ -117,7 +122,7 @@ export function BotaoCortina({
       aria-expanded={aberta}
       aria-controls={controla}
       aria-label={rotulo}
-      className={`foco-neutro shrink-0 cursor-pointer rounded-md p-0.5 text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] ${className ?? ''}`}
+      className={`foco-neutro inline-flex min-h-6 min-w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] ${className ?? ''}`}
     >
       <ChevronRight
         size={tamanho}

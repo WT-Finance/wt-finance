@@ -130,7 +130,9 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
   // `app.meta_setor`. Feito aqui, o Group (que soma as linhas sem olhar setor) enxerga o MESMO
   // valor que o card de Weddings — se a derivação morasse dentro de `metasDoSetor`, os dois
   // divergiriam por construção.
-  const { rows: metaRows, mesesDerivados } = aplicarRampaWeddings(metaRowsCruas, subRows)
+  // `mesesDerivados` não é consumido aqui: o rótulo de regime por mês é do CADASTRO, que
+  // deriva do próprio estado local (edição não salva incluída), não deste carregador.
+  const { rows: metaRows } = aplicarRampaWeddings(metaRowsCruas, subRows)
 
   // "hoje" do produto = última venda carregada (global). Sai do painel Group e é a MESMA régua
   // para setores e subsetores — é o que torna o "% esperado" comparável entre eles (o caso de
@@ -219,6 +221,6 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
 
   return {
     preset, periodoLabel: label, from, to, eParcial, ultimaVenda, ultimaAtualizacao,
-    setores, subsetores, naoClassificado, mesesDerivados: [...mesesDerivados],
+    setores, subsetores, naoClassificado,
   }
 }
