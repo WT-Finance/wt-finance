@@ -140,6 +140,16 @@ GRANT  EXECUTE ON FUNCTION public.metas_subsetor_listar(int) TO authenticated, s
 -- postgres) — lê o claim `sub` do JWT via current_setting('request.jwt.claims',
 -- true) e resolve nome/e-mail por join com app.rbac_usuarios. Copiado literal
 -- do irmão.
+--
+-- ⚠️ CONTRATO DO PAYLOAD — cada item é a LINHA COMPLETA de (subsetor, ano, mes),
+-- não um delta de célula. O `ON CONFLICT DO UPDATE` grava os três campos
+-- (valor_meta, meta_contratos, pct_receita) com o que veio no item, então um item
+-- que OMITA `meta_contratos` para COMERCIAL **apaga** a meta de contratos que
+-- estava lá — perda de dado por omissão, não por intenção. O Cadastro envia só as
+-- linhas que o usuário tocou (o gatilho da rampa depende disso), mas cada linha
+-- enviada tem de trazer os três campos com o valor CORRENTE, inclusive os que não
+-- mudaram. Não trocar isto por COALESCE(EXCLUDED.x, tabela.x): aí ficaria
+-- impossível LIMPAR um campo de volta para NULL.
 CREATE OR REPLACE FUNCTION public.metas_subsetor_upsert(p_metas jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -178,8 +188,13 @@ BEGIN
     v_contratos := nullif(item->>'meta_contratos', '')::int;
     v_pct       := nullif(item->>'pct_receita', '')::numeric;
 
-    IF v_subsetor NOT IN ('COMERCIAL', 'PLANEJAMENTO', 'PRODUÇÃO',
-                          'CONVIDADOS - Hospedagens', 'CONVIDADOS - Extras') THEN
+    -- `IS NULL OR` é obrigatório: `NULL NOT IN (...)` avalia para NULL, não TRUE,
+    -- então um item sem a chave `subsetor` ESCAPARIA desta validação e só quebraria
+    -- depois, no NOT NULL do INSERT, com erro de Postgres cru em vez da mensagem
+    -- legível que o front sabe traduzir.
+    IF v_subsetor IS NULL
+       OR v_subsetor NOT IN ('COMERCIAL', 'PLANEJAMENTO', 'PRODUÇÃO',
+                             'CONVIDADOS - Hospedagens', 'CONVIDADOS - Extras') THEN
       RAISE EXCEPTION 'METAS_SUBSETOR_INVALIDO: subsetor % inexistente', v_subsetor USING ERRCODE = '22023';
     END IF;
     IF v_mes < 1 OR v_mes > 12 THEN

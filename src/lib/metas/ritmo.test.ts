@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  calcularRitmo, classificarRitmo,
+  calcularRitmo, calcularRitmoAgregado, classificarRitmo,
   RITMO_META_ATINGIDA, RITMO_ATENCAO,
   type MetaMensal, type PontoDia,
 } from './ritmo'
@@ -198,5 +198,100 @@ describe('calcularRitmo', () => {
     expect(r.ritmoPct).toBeNull()
     expect(r.status).toBeNull()
     expect(r.pctMeta).toBeCloseTo(0, 6)
+  })
+})
+
+// ── CASO DE CONTRATO (v5.4.4) — agregado × diário ────────────────────────────
+// Na mesma tela, o card de um SETOR calcula o ritmo com série diária e o card de um
+// SUBSETOR sem ela (não existe série diária por subsetor em fonte nenhuma). Se as
+// duas réguas de tempo divergirem, dois cards vizinhos mostram "% esperado"
+// diferentes para o MESMO período — o erro que este projeto já pagou caro. Por isso
+// `janelaDoPeriodo` é fatorada e compartilhada; este teste é o que impede alguém de
+// "otimizar" uma das duas e desalinhá-las.
+describe('calcularRitmoAgregado × calcularRitmo — mesma régua de tempo', () => {
+  const CENARIOS: Array<{ nome: string; from: string; to: string; ultimaVenda: string | null; metas: MetaMensal[] }> = [
+    {
+      nome: 'mês em curso',
+      from: '2026-08-01', to: '2026-08-31', ultimaVenda: '2026-08-13',
+      metas: [{ ano: 2026, mes: 8, valorMeta: 3100, pctReceita: 14 }],
+    },
+    {
+      nome: 'período fechado no passado',
+      from: '2026-07-01', to: '2026-07-31', ultimaVenda: '2026-08-13',
+      metas: [{ ano: 2026, mes: 7, valorMeta: 3100, pctReceita: 12 }],
+    },
+    {
+      nome: 'trimestre com bordas parciais e alvo só em um mês',
+      from: '2026-02-15', to: '2026-04-20', ultimaVenda: '2026-03-31',
+      metas: [
+        { ano: 2026, mes: 2, valorMeta: 2800, pctReceita: null },
+        { ano: 2026, mes: 3, valorMeta: 3100, pctReceita: 20 },
+        { ano: 2026, mes: 4, valorMeta: 3000, pctReceita: null },
+      ],
+    },
+    {
+      nome: 'sem venda carregada (ultimaVenda null → hoje = to)',
+      from: '2026-05-01', to: '2026-05-31', ultimaVenda: null,
+      metas: [{ ano: 2026, mes: 5, valorMeta: 3100, pctReceita: 14 }],
+    },
+  ]
+
+  for (const c of CENARIOS) {
+    it(`bate campo a campo — ${c.nome}`, () => {
+      // A série é irrelevante para o que comparamos, mas o realizado tem de ser o
+      // MESMO nos dois caminhos, senão pctMeta/ritmoPct/status divergem por dado, não
+      // por régua. Série de 2 dias somando 500.
+      const serie: PontoDia[] = [
+        { data: c.from, valor: 200 },
+        { data: c.to, valor: 300 },
+      ]
+      const realizadoDaSerie = 500
+
+      const diario = calcularRitmo({ ...c, serie })
+      const agregado = calcularRitmoAgregado({ ...c, realizado: realizadoDaSerie })
+
+      expect(agregado.metaPeriodo).toBe(diario.metaPeriodo)
+      expect(agregado.pctDecorrido).toBe(diario.pctDecorrido)
+      expect(agregado.esperadoAteHoje).toBe(diario.esperadoAteHoje)
+      expect(agregado.pctReceitaAlvo).toBe(diario.pctReceitaAlvo)
+      expect(agregado.hoje).toBe(diario.hoje)
+      expect(agregado.parcial).toBe(diario.parcial)
+    })
+  }
+
+  it('com o mesmo realizado, os derivados também batem', () => {
+    const base = { from: '2026-08-01', to: '2026-08-31', ultimaVenda: '2026-08-13' }
+    const metas: MetaMensal[] = [{ ano: 2026, mes: 8, valorMeta: 3100, pctReceita: 14 }]
+    const diario = calcularRitmo({ ...base, metas, serie: [{ data: '2026-08-05', valor: 1000 }] })
+    const agregado = calcularRitmoAgregado({ ...base, metas, realizado: 1000 })
+
+    expect(agregado.realizado).toBe(diario.realizado)
+    expect(agregado.pctMeta).toBe(diario.pctMeta)
+    expect(agregado.ritmoPct).toBe(diario.ritmoPct)
+    expect(agregado.status).toBe(diario.status)
+  })
+
+  it('é AGNÓSTICO DE UNIDADE — serve para contagem de contratos', () => {
+    // COMERCIAL: meta de 140 contratos no ano, 34 realizados até 13/08. Nada aqui
+    // conhece "R$" — é a mesma função que governa a barra do card de contratos.
+    const metas: MetaMensal[] = Array.from({ length: 12 }, (_, i) => ({
+      ano: 2026, mes: i + 1, valorMeta: 10, pctReceita: null,
+    }))
+    const r = calcularRitmoAgregado({
+      from: '2026-01-01', to: '2026-12-31', ultimaVenda: '2026-08-13', metas, realizado: 34,
+    })
+    expect(r.metaPeriodo).toBe(120)
+    expect(r.realizado).toBe(34)
+    expect(r.pctMeta).toBeCloseTo((34 / 120) * 100, 6)
+    // Sem alvo de % Rec numa meta de contagem — o call-site ignora o campo.
+    expect(r.pctReceitaAlvo).toBeNull()
+  })
+
+  it('não expõe `pontos` (não há série para acumular)', () => {
+    const r = calcularRitmoAgregado({
+      from: '2026-08-01', to: '2026-08-31', ultimaVenda: null,
+      metas: [{ ano: 2026, mes: 8, valorMeta: 3100 }], realizado: 100,
+    })
+    expect('pontos' in r).toBe(false)
   })
 })

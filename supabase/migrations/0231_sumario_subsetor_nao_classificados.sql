@@ -246,6 +246,17 @@ BEGIN
   -- 0002_dimensions.sql: id=2 hoje (ver nota no header desta migration).
   SELECT id INTO v_weddings_id FROM analytics.dim_setor_macro WHERE nome = 'Weddings';
 
+  -- FAIL-CLOSED. Sem este guard, um `nome` que deixasse de ser exatamente 'Weddings'
+  -- deixaria v_weddings_id NULL; como `v_sid = NULL` avalia para NULL (nunca TRUE), a
+  -- trava abaixo passaria a NÃO disparar — em silêncio — e a meta de Weddings voltaria
+  -- a ser gravável pela grade de Setor, divergindo da soma dos subsetores sem que
+  -- ninguém percebesse. Preferimos falhar alto: silêncio empilhado é o que fez a
+  -- v5.3.5 perder 18 dias de pedidos.
+  IF v_weddings_id IS NULL THEN
+    RAISE EXCEPTION 'METAS_DIMENSAO_INCONSISTENTE: setor macro ''Weddings'' não encontrado em analytics.dim_setor_macro'
+      USING ERRCODE = '22023';
+  END IF;
+
   v_uid := nullif(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub', '')::uuid;
   IF v_uid IS NOT NULL THEN
     SELECT coalesce(u.nome, u.email) INTO v_quem FROM app.rbac_usuarios u WHERE u.user_id = v_uid;
