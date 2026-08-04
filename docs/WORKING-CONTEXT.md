@@ -14,7 +14,7 @@
   zero skipped). Out-briefing:
   `docs/briefings/WT_Finance_Out_Briefing_v5-4-4_Metas_Subsetor_Weddings.md`.
   (1) Em `/metas`, Weddings saiu da fileira de três e virou **faixa full-width com chevron**; a
-  expansão traz os **5 subsetores** + faixa aninhada **"Não Classificados"** com a lista de produtos
+  expansão traz os **5 subsetores** + **6º card "Não Classificados"** (recolhível) com a lista de produtos
   fora do mapa. (2) `/metas/cadastro` ganhou **segundo quadro** (Comercial com 3 colunas; Mês fixo +
   scroll horizontal) e a coluna Weddings virou **travada**, mostrando a soma **ao vivo**.
   **Definição de métrica (ADR-0163):** subsetor é agrupamento de **PRODUTO** (21 linhas curadas em

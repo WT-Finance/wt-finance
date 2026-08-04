@@ -12,8 +12,7 @@
 
 **`/metas`.** Trips e Corporativo em duas colunas; Weddings desceu para faixa full-width com
 chevron. A expansão traz os 5 cards de subsetor no padrão Metas (faturamento · "% da meta" ·
-"Meta:" · "% esperado" · barra · Receita · Margem vs alvo) e, abaixo deles, a faixa aninhada
-**"Não Classificados"** com a lista de produtos fora do mapa. COMERCIAL é variante: o ritmo de
+"Meta:" · "% esperado" · barra · Receita · Margem vs alvo) e, abaixo deles, o **6º card "Não Classificados"** — recolhível, com a lista de produtos fora do mapa. COMERCIAL é variante: o ritmo de
 **contratos** governa métrica grande, percentuais e barra; o faturamento dele desce para as
 linhas de baixo.
 
@@ -64,6 +63,15 @@ com receita **−37.339,05** vinda de um único produto (`G - WelConnect - Colô
 4. **Mutação de teste que não pegou.** A primeira tentativa de ver o guard da lista canônica
    reprovando não alterou o arquivo (quebra de linha no meio da string procurada) e o teste passou.
    Refeito até reprovar de verdade. **Guard que nunca falhou não é guard.**
+5. **Troquei o que o Yan pediu por um reuso.** Ele pediu, com essas palavras, um **"6º card** como
+   Não Classificados abaixo dos outros 5 e recolhível com chevron". Na delegação da missão de UI eu
+   instruí "adote o tratamento visual que já existe para este balde em `sumario-subsetor.tsx`:
+   **linha própria em tom de warning**" — e saiu uma faixa `bg-warning-bg`, não um card. O
+   subagente cumpriu a minha instrução; o desvio foi meu. **"Adotar > construir" vale para
+   MECANISMO, não para a forma que o usuário especificou:** reuso de visual não é licença para
+   trocar o substantivo do pedido. Ele cobrou depois do PR aberto e foi corrigido — agora é um
+   `<Card>` irmão dos outros cinco, abaixo deles, com a lista dentro da cortina e **sem** "% da
+   meta"/barra, porque não se cadastra meta para "não classificado".
 
 ## 5. Parecer da revisão
 
@@ -168,7 +176,7 @@ da 0232 posto ali **temporariamente** e removido em seguida — ele **não** ent
 1. **Conferência visual** — a mais importante desta versão, porque o layout de `/metas` mudou e o
    Cadastro ganhou um quadro. Olhar: a faixa de Weddings fechada e aberta; os 5 cards em telas
    estreitas (grid `sm:2 / lg:3 / xl:5`); o card de **Comercial** (métrica em contratos, faturamento
-   na linha de baixo); a faixa "Não Classificados" fechada e aberta; o quadro novo do Cadastro com
+   na linha de baixo); o 6º card "Não Classificados" fechado e aberto; o quadro novo do Cadastro com
    scroll horizontal e Mês fixo; e a célula travada de Weddings mudando **ao vivo** ao digitar
    embaixo. Modelo que funcionou na v5.4.1: **entregar → print → ajustar**.
 2. **Distribuir 2026** — enquanto um mês não tiver subsetor cadastrado, ele roda na rampa (meta
