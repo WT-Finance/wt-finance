@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-03 (pós-merge) · produção na **v5.4.2** (Weddings: margem anualizada + Fluxo de Caixa unificado, e o slider também no Fluxo de Caixa do Financeiro — #209 mergeada às 17h22). Nenhuma versão em curso.
+Última atualização: 2026-08-04 · produção na **v5.4.2**; **v5.4.3 EM PR, aguardando merge** (patch: anexo com acento no nome + erro do modal de nova solicitação fora da vista).
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,6 +9,54 @@
 
 ## Verdade atual
 
+- **v5.4.3 — EM PR, ainda NÃO mergeada.** PATCH de dois defeitos relatados pelo Yan a partir de
+  um erro real em produção. **Sem migration, sem ADR.**
+  (1) **Anexo com acento no nome não subia.** A chave do objeto no Storage era montada com o nome
+  CRU (`tmp/<uuid>/${file.name}`) e o `isValidKey` do Supabase Storage usa `\w` **sem a flag `u`**
+  — só `[A-Za-z0-9_]`. O `ã` de "Nota Fiscal - Bruna e João.pdf" era o **único** caractere ilegal
+  (espaço, `-` e `.` são aceitos) ⇒ `400 InvalidKey`, com a mensagem crua vazando para a tela.
+  **Determinístico POR NOME**, e é isso que fazia parecer intermitência: os dois anexos que o
+  usuário subiu antes eram ASCII puro. Falha igual em NFC e NFD (no macOS o combinante U+0303
+  também está fora do `\w`).
+  **A correção já existia no repo, no lugar errado:** o Acervo tinha `sanitizarNomeArquivo` desde
+  a v4.34.0 e o docstring **documentava a divergência** — *"Diferente de Solicitações … usa o nome
+  cru"* — sobre uma premissa **falsa** (restrição de MIME não tem relação com validade de chave).
+  Promovido a `lib/storage/nome-arquivo.ts` sem mudança de comportamento; as duas pontas
+  consomem. Custo zero ao usuário: `nome_arquivo` sempre guardou o nome original e é dele que a
+  UI tira o rótulo. O `move` para `sol/…` ficou seguro pela correção na origem.
+  (2) **Erro do modal de nova solicitação nascia fora da vista:** a faixa era o 1º elemento do
+  corpo rolável e o botão "Enviar solicitação" o último — quem clicava não via a mensagem e o
+  modal parecia travado. Barra de ação **e** faixa foram para o **`rodape` FIXO do
+  `ModalCentral`** (prop que já existia; `editor-dre` e `revisar-envio-modal` já a usavam) = DS
+  §4.1. **Mover só a faixa não resolveria:** o corpo rola, e inserir a faixa acima do botão num
+  container rolado até o fim **empurraria o botão para fora do viewport**. No rodapé fixo o painel
+  tem altura fixa e o corpo é `flex-1 min-h-0` ⇒ o rodapé crescer só **encolhe o corpo**, o botão
+  não se mexe. De carona, o botão passou a ficar **sempre visível**.
+  **Duráveis:** chave de Storage aceita **só ASCII** — nome vindo do usuário nunca vai cru para
+  chave (candidato a lint `wt/*` quando aparecer um 3º call-site de `.upload()`; hoje são 2, os
+  dois pelo helper); **`.env.local` é gitignored e NÃO vem no `git worktree add`** — o 1º
+  `npm run build` da worktree falha no prerender de `/_not-found` por env ausente (candidato a
+  passo do `/nova-versao`) — **e sem `.env.local` a suíte parece verde tendo pulado os 112 casos
+  de contrato contra o banco real**, que se auto-skipam sem credencial: 570+112-skip virou
+  **682 passando** depois de copiar o env, e o nº de testes é a única pista disso;
+  num modal `alturaFixa`, conteúdo que cresce no **rodapé** encolhe o
+  corpo em vez de deslocar o botão — é o que torna o rodapé fixo a resposta certa para
+  "mensagem perto do botão".
+  **Provado contra produção** (não só teste): chave com `ã` ⇒ `400 InvalidKey` com **exatamente**
+  a mensagem do print; a chave que o helper gera ⇒ `200`, e o `move` para `sol/…` ⇒ `200`.
+  Diagnósticos removidos, prefixos conferidos vazios. Medido em `app.solicitacao_anexo`:
+  **`nao_ascii = 0`** em 3 anexos ⇒ nenhuma chave acentuada jamais entrou, o bloqueio **sempre foi
+  total**; sem migração de dados. **13 testes** novos que replicam o `isValidKey` real.
+  Gates: `tsc` limpo, lint limpo, **682 testes** (zero skip), build OK.
+  Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-3_Anexo_Acento_Erro_Modal.md`.
+  **PENDENTE do Yan:** (1) **mergear o PR**; (2) **conferência visual do modal** — não consegui
+  (mesma limitação de sempre: tela autenticada, `307 → /login`, MCP Playwright não sobe em
+  background): erro com o modal rolado ao topo **e** ao fim (o botão não deve se deslocar), o
+  `border-t` novo do rodapé, um tipo com muitos campos dinâmicos, e anexar de fato um arquivo com
+  acento conferindo que o rótulo exibido **mantém** o acento; (3) **decidir se despacha `revisor`
+  e `verificador-visual`** — não foram despachados (as instruções da sessão proibiam subagente sem
+  pedido explícito, o que colide com o DoD; a auto-auditoria adversarial foi feita pelo
+  orquestrador, que é barreira dura). Sem migration/RPC, `revisor-db` não se aplica.
 - Versão em produção (main): **`5.4.2`** (#209 mergeado 03/08 às 17h22) — **Weddings: margem
   anualizada + Fluxo de Caixa unificado**, e o padrão do slider estendido ao **Fluxo de Caixa do
   Financeiro**.

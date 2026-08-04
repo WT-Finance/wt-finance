@@ -6,6 +6,26 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.4.3] — 2026-08-04
+
+PATCH · **Solicitações: anexo com acento no nome voltava a falhar, e o erro do modal aparecia fora da vista.** Sem migration, sem ADR.
+
+- **Anexo com acento no nome não subia.** A chave do objeto no Storage era montada com o nome CRU do arquivo (`tmp/<uuid>/${file.name}`), e o Supabase Storage valida a chave com um regex cujo `\w` — **sem a flag `u`** — é só `[A-Za-z0-9_]`. Qualquer acento devolvia `400 InvalidKey`, e a mensagem vazava crua para a tela: `Falha no upload: Invalid key: tmp/2bb4b2…`. O caso relatado foi **"Nota Fiscal - Bruna e João.pdf"**, onde o **`ã` era o único caractere ilegal** — espaço, `-` e `.` são todos aceitos pelo Storage.
+- **A falha é determinística POR NOME DE ARQUIVO, e é isso que a fazia parecer intermitente.** O mesmo usuário havia aberto duas solicitações com anexos semelhantes minutos antes: aqueles nomes eram ASCII puro. Nada tinha a ver com sessão, permissão, MIME ou tamanho — cada um desses tem mensagem própria (`Tipo não permitido: …`, `Arquivo acima de 10 MB.`), e colisão de nome é impossível pelo `randomUUID()`. Vale nos dois sistemas operacionais: no macOS o nome chega em **NFD** (`a` + U+0303) e o combinante também está fora do `\w`.
+- **A correção já existia no repo, no lugar errado.** O Acervo tinha `sanitizarNomeArquivo` desde a v4.34.0, e o docstring dele **documentava a divergência**: *"Diferente de Solicitações (bucket restrito a poucos MIME, usa o nome cru)"*. A premissa era falsa — **restrição de MIME não tem relação nenhuma com validade de chave**. O helper foi promovido a `lib/storage/nome-arquivo.ts` **sem mudança de comportamento** e agora serve às duas pontas; a cópia local do Acervo saiu.
+- **Custo zero para o usuário porque o nome original já era preservado à parte.** `nome_arquivo` (metadado) sempre recebeu `file.name` intacto e é dele que a UI tira o rótulo — sanitizar afeta só a chave interna. Efeito colateral único e cosmético: o nome com que o browser salva ao abrir a signed URL (resolvível com `?download=` se algum dia incomodar).
+- **Nenhuma migração de dados foi necessária, e isso foi medido, não suposto.** `app.solicitacao_anexo` tem 3 anexos, **`nao_ascii = 0`** — nenhuma chave acentuada jamais entrou na base, o que confirma que o bloqueio sempre foi total (nunca "às vezes funcionava"). Os 2 paths com caractere fora do conjunto sanitizado têm apenas **espaço**, que o Storage aceita; seguem sendo lidos verbatim.
+- **Provado ponta a ponta contra o Storage de produção**, não só por teste unitário: a chave com `ã` devolve `400 InvalidKey` com exatamente a mensagem do print; a chave que o helper gera (`Nota_Fiscal_-_Bruna_e_Joao.pdf`) sobe **200** e o **`move` para `sol/…`** — o 2º passo real da criação — também devolve **200**. Objetos de diagnóstico removidos e prefixos conferidos vazios.
+- **13 testes novos** em `lib/storage/nome-arquivo.test.ts`, ancorados no que importa: o teste **replica o `isValidKey` do storage-api** e afirma que qualquer entrada hostil (acento NFC e NFD, `ç`, `#`, `%`, travessão `–`, `[`, emoji, CJK, 300 chars, string vazia) produz uma chave que o Storage aceita. Sem isso o teste viraria asserção de string e deixaria de proteger contra a regressão real.
+- **Nomes que quebravam pela mesma armadilha** e agora passam: `Orçamento`, `Comissão`, `#`, `%` — e um traiçoeiro, o **travessão `–` (U+2013)** que o Word/Excel gera por autocorreção no lugar do hífen e é visualmente quase idêntico ao `-` permitido.
+
+### Corrigido — erro do modal de nova solicitação nascia fora do campo de visão
+
+- **A faixa de erro ficava no TOPO do corpo rolável enquanto "Enviar solicitação" ficava embaixo.** Quem clicava no botão não via a mensagem ("Informe a data-limite.", "Escolha um destinatário.") e o modal parecia simplesmente não responder. Erro de validação do cliente e erro devolvido pela RPC passam os dois pelo mesmo `setErro`, então os dois estavam afetados.
+- **A barra de ação e a faixa de erro passaram para o `rodape` FIXO do `ModalCentral`** — prop que já existia e que este modal não usava (o `editor-dre` e o `revisar-envio-modal` já a usam). É o padrão do DS §4.1: barra de ação fora da região rolável.
+- **Mover só a faixa para o fim do corpo não resolveria**, e essa foi a razão de mexer na barra de ação junto: o corpo **rola**, então erro e botão ainda poderiam estar os dois fora da vista, e inserir a faixa acima do botão num container rolado até o fim **empurraria o botão para fora do viewport**. No rodapé fixo o painel tem altura fixa (`alturaFixa`/`h-[85vh]`) e o corpo é `flex-1 min-h-0`: o rodapé crescer só **encolhe o corpo** — o botão não se mexe e o erro nasce colado nele. O `role="alert"` que a `FaixaMensagem` já traz cobre o anúncio por leitor de tela.
+- Ordem do DOM preservada (corpo antes do rodapé), então o foco inicial do `ModalCentral` continua caindo no Select "Tipo" e o tab-order não mudou.
+
 ## [5.4.2] — 2026-08-03
 
 PATCH · **Weddings: margem anualizada na Lista de Operações + Fluxo de Caixa unificado com janela ajustável.** Migration **0228** (aditiva), **ADR-0162**.
