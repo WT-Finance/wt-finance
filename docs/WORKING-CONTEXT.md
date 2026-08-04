@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-03 · produção na **v5.4.1** (DRE: refino visual — #207 mergeada às 14h50). A **v5.4.2** (Weddings: margem anualizada + fluxo de caixa unificado) está **FECHADA e aguardando merge** — rebase em cima da v5.4.1 já feito.
+Última atualização: 2026-08-03 (pós-merge) · produção na **v5.4.2** (Weddings: margem anualizada + Fluxo de Caixa unificado, e o slider também no Fluxo de Caixa do Financeiro — #209 mergeada às 17h22). Nenhuma versão em curso.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,8 +9,9 @@
 
 ## Verdade atual
 
-- **v5.4.2 FECHADA, aguardando merge (PR #209 draft)** — **Weddings: margem anualizada + Fluxo
-  de Caixa unificado**, e o padrão do slider estendido ao **Fluxo de Caixa do Financeiro**.
+- Versão em produção (main): **`5.4.2`** (#209 mergeado 03/08 às 17h22) — **Weddings: margem
+  anualizada + Fluxo de Caixa unificado**, e o padrão do slider estendido ao **Fluxo de Caixa do
+  Financeiro**.
   Migrations **0228 e 0229** já APLICADAS e verificadas (as duas aditivas); **ADR-0162**.
   (1) Coluna **"Margem (a.a.)"** na Lista de Operações: anualização **LINEAR**
   (`margem × 12 / duração_meses`), nunca composta — 17,5% em 30,4 meses valem **6,9% a.a.**
@@ -46,9 +47,12 @@
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-2_Weddings_Margem_Fluxo.md`.
   **PENDENTE do Yan:** (1) **conferência visual da tela real** — não consegui (tela autenticada,
   MCP Playwright não sobe em background, `BYPASS_AUTH` é resíduo morto): conferir o balão do "?" da
-  coluna nova e o card único dentro da TopSection; (2) **anomalia de DADO** exposta pela coluna
-  nova — *"Darlene e Adnan - DDMMAA"* com `margem_liquida_pct` = **782%** (única acima de 100%;
-  nome parece template inacabado), hoje no topo ao ordenar por "Margem (a.a.)"; (3) **mergear**.
+  coluna nova, o card único dentro da TopSection e o gráfico mensal do Financeiro com o slider;
+  (2) **anomalia de DADO** exposta pela coluna nova — *"Darlene e Adnan - DDMMAA"* com
+  `margem_liquida_pct` = **782%** (única acima de 100%; nome parece template inacabado), hoje no
+  topo ao ordenar por "Margem (a.a.)"; (3) **2 call-sites do "?" ainda inacessíveis por teclado**
+  (`faturamento-corp`, `posicao-projetado`) — `<span>` → `<button>`, uma linha em cada, com a
+  metade do primitivo já pronta.
   **REVISÃO FEITA:** `revisor` **APROVADO COM RESSALVAS** (1 ALTO — a acessibilidade do "?" —
   e 1 MÉDIO — a skill do DS ensinava o eixo TROCADO do gutter do `ScrollAutoHide` —, ambos
   CORRIGIDOS; 3 BAIXO registrados) e `revisor-db` **APROVADA** nas duas migrations (0 CRÍTICO /
@@ -60,7 +64,7 @@
   cross-check com `get_fluxo_caixa_kpis_b`). Parecer integral no §6 do out-briefing. **669 testes.**
   **Pendência deliberada de a11y:** os outros 2 call-sites do "?" (`faturamento-corp`,
   `posicao-projetado`) ainda usam `<span>` — uma linha em cada, a metade do primitivo já pronta.
-- Versão em produção (main): **`5.4.1`** (#207 mergeado 03/08 às 14h50) — **DRE: refino visual.**
+- A v5.4.1 (#207 mergeado 03/08 às 14h50) foi o **DRE: refino visual.**
   PATCH de apresentação: **nenhum número mudou**. Sem migration, sem ADR. (1) O **Resumo Executivo** passou a usar a gramática da tabela do
   mesmo card — cabeçalho 10px/caps, box, `ConteudoContabil` com "R$" esmaecido e negativo entre
   parênteses, linhas na cor de `blocoH` (`--band`, NÃO a banda escura dos totalizadores), rótulos em
