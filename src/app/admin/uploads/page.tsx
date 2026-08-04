@@ -18,7 +18,10 @@ import {
   getPessoasStatusAction,
   inserirLotePessoasAction,
   finalizarPessoasAction,
+  getMondeSincronizacaoStatusAction,
 } from './actions'
+import type { StatusSincronizacaoMonde } from './actions'
+import { fmtDataHoraSP } from '@/lib/fmt'
 import { ModalConfirmacaoUpload } from '@/components/admin/modal-confirmacao-upload'
 import { parseLancamentosFile, LANCAMENTOS_COLUNAS } from '@/lib/carga/parse-lancamentos'
 import { parseVendasProdutoFile } from '@/lib/carga/parse-vendas-produto'
@@ -118,6 +121,94 @@ function formatarData(iso: string | null): string {
 
 function formatarNum(n: number): string {
   return n.toLocaleString('pt-BR')
+}
+
+/**
+ * Sincronização Monde (v5.4.5) — cartão de LEITURA, sem upload.
+ *
+ * Não é uma base de planilha: o espelho vem da API do Monde a cada 15 min. O cartão existe
+ * porque o tripwire precisa de um lugar para ACENDER — o briefing pede alerta visível, não
+ * linha de log. Mostra o frescor das duas engrenagens (incremental e reconciliação) e, quando
+ * algum mês verificado diverge, o motivo exato.
+ */
+function CardSincronizacaoMonde({ status }: { status: StatusSincronizacaoMonde | null }) {
+  const tripwire = status?.tripwire ?? null
+  const aceso = tripwire?.acendeu === true
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-zinc-900">Sincronização Monde</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            Espelho das vendas vindo da API do Monde. Não é upload — sincroniza sozinho a cada 15 min,
+            e a reconciliação diária recupera venda lançada com atraso.
+          </p>
+        </div>
+        {status ? (
+          <span
+            className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-medium ${
+              aceso ? 'bg-danger-bg text-danger' : 'bg-success-bg text-success'
+            }`}
+          >
+            {aceso ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+            {aceso ? 'Divergência' : 'Conferido'}
+          </span>
+        ) : null}
+      </div>
+
+      {status === null ? (
+        <p className="mt-4 text-xs text-zinc-400">Status indisponível.</p>
+      ) : (
+        <>
+          <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
+            {/* shrink-0: valor longo encolhe abaixo do próprio conteúdo e invade o vizinho (DS §8). */}
+            <div className="shrink-0">
+              <p className="text-2xs uppercase tracking-wide text-zinc-400">Vendas no espelho</p>
+              <p className="text-sm font-semibold text-zinc-900 tabular-nums">{formatarNum(status.vendas)}</p>
+            </div>
+            <div className="shrink-0">
+              <p className="text-2xs uppercase tracking-wide text-zinc-400">Última sincronização</p>
+              <p className="text-sm text-zinc-700">{fmtDataHoraSP(status.ultima_sincronizacao)}</p>
+            </div>
+            <div className="shrink-0">
+              <p className="text-2xs uppercase tracking-wide text-zinc-400">Última reconciliação</p>
+              <p className="text-sm text-zinc-700">
+                {status.ultima_reconciliacao ? fmtDataHoraSP(status.ultima_reconciliacao) : 'Nunca'}
+                {status.reconciliacao_cursor ? (
+                  <span className="text-zinc-400"> · {status.reconciliacao_cursor}</span>
+                ) : null}
+              </p>
+            </div>
+          </div>
+
+          {aceso && tripwire ? (
+            <div className="mt-4 rounded-lg bg-danger-bg px-3 py-2.5">
+              <p className="text-xs font-medium text-danger">
+                O espelho diverge da API {tripwire.motivos.length === 1 ? 'em 1 mês' : `em ${tripwire.motivos.length} meses`}:
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {tripwire.motivos.map(m => (
+                  <li key={m} className="text-2xs text-danger tabular-nums">{m}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {tripwire ? (
+            <p className="mt-3 text-2xs text-zinc-400">
+              Conferido contra a API em {fmtDataHoraSP(tripwire.atualizado_em)}. Mês que a reconciliação
+              ainda não visitou aparece como não verificado e nunca acende.
+            </p>
+          ) : (
+            <p className="mt-3 text-2xs text-zinc-400">
+              Nenhuma conferência registrada ainda — a primeira reconciliação diária a produz.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
 }
 
 function CardUpload({
@@ -282,6 +373,9 @@ export default function AdminUploadsPage() {
     lancamentos_movimentacao: ESTADO_INICIAL, titulos_em_aberto: ESTADO_INICIAL, pessoas: ESTADO_INICIAL,
   })
   const [modal, setModal] = useState<BaseKey | null>(null)
+  // Sincronização Monde (v5.4.5): leitura, fora do Record de bases (não tem upload nem estado
+  // de carga). Fail-safe: erro vira `null` e o cartão diz "indisponível" — nunca derruba a tela.
+  const [statusMonde, setStatusMonde] = useState<StatusSincronizacaoMonde | null>(null)
 
   const linhasRef = useRef<LinhasRef>({
     vendas: [], lancamentos: [], lancamentos_movimentacao: [], titulos_em_aberto: [], pessoas: [],
@@ -292,13 +386,18 @@ export default function AdminUploadsPage() {
   }
 
   const carregarStatus = useCallback(async () => {
-    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes] = await Promise.allSettled([
+    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes, mondeRes] = await Promise.allSettled([
       getVendasStatusAction(),
       getLancamentosStatusAction(),
       getLancamentosMovimentacaoStatusAction(),
       getTitulosEmAbertoStatusAction(),
       getPessoasStatusAction(),
+      getMondeSincronizacaoStatusAction(),
     ])
+
+    setStatusMonde(
+      mondeRes.status === 'fulfilled' && !('error' in mondeRes.value) ? mondeRes.value : null,
+    )
 
     const toStatus = (
       r: PromiseSettledResult<{ total: number; ultima_atualizacao?: string | null } | { error: string }>,
@@ -496,6 +595,8 @@ export default function AdminUploadsPage() {
             onConfirmar={() => setModal(config.key)}
           />
         ))}
+        {/* Fecha a lista: as 5 de cima são planilha; esta base vem sozinha da API. */}
+        <CardSincronizacaoMonde status={statusMonde} />
       </div>
 
       {modal && modalConfig && estados[modal].estado === 'aguardando_confirmacao' && (
