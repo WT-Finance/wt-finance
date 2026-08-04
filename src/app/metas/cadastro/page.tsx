@@ -1,13 +1,18 @@
 import { requireArea } from '@/lib/auth/sessao'
 import { getServerClient } from '@/lib/supabase/server'
-import { parseRpc, metasListarSchema } from '@/lib/schemas-rpc'
+import { parseRpc, metasListarSchema, metasSubsetorListarSchema } from '@/lib/schemas-rpc'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
 import { SETOR_MARCA_COLORS } from '@/lib/config'
-import CadastroGrade from '@/components/metas/cadastro-grade'
+import CadastroMetas from '@/components/metas/cadastro-metas'
 
 // Cadastro de Metas (v5.0.0) — grade anual 12 meses × 3 setores × [Meta VT, % Rec],
 // com Group COMPUTADO (soma, read-only) e autosave por célula. Área forte 'metas'
 // (edição). Navegação por ano via ?ano=YYYY (server re-fetch). Tema group.
+//
+// v5.4.4 — busca TAMBÉM `metas_subsetor_listar` (mesmo `p_ano`) e passa os dois
+// conjuntos ao pai `CadastroMetas`, que liga o quadro por setor ao quadro novo por
+// subsetor de Weddings (a coluna Weddings do primeiro trava e passa a refletir o
+// segundo). Guard de área inalterado.
 
 interface SearchParams {
   ano?: string
@@ -27,16 +32,24 @@ export default async function CadastroMetasPage({ searchParams }: { searchParams
   const ano = Number(sp.ano) || new Date().getFullYear()
 
   const db = await getServerClient()
-  const res = await rpcMetas(db, 'metas_listar', { p_ano: ano })
-  const data = parseRpc(metasListarSchema, res, 'metas_listar')
+  // Duas RPCs independentes, mesmo `p_ano` — thenables (não `Promise` de verdade),
+  // mas `Promise.all` funciona normalmente sobre elas (ver skill contrato-rpc-front).
+  const [res, resSub] = await Promise.all([
+    rpcMetas(db, 'metas_listar', { p_ano: ano }),
+    rpcMetas(db, 'metas_subsetor_listar', { p_ano: ano }),
+  ])
+  const data    = parseRpc(metasListarSchema, res, 'metas_listar')
+  const dataSub = parseRpc(metasSubsetorListarSchema, resSub, 'metas_subsetor_listar')
 
   return (
     <div>
-      <CadastroGrade
+      <CadastroMetas
         ano={ano}
         setores={SETORES}
         metas={data?.metas ?? []}
         ultimaAlteracao={data?.ultima_alteracao ?? null}
+        metasSubsetor={dataSub?.metas ?? []}
+        ultimaAlteracaoSubsetor={dataSub?.ultima_alteracao ?? null}
       />
     </div>
   )

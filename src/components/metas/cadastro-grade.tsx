@@ -22,6 +22,21 @@
 // = lápis no hover (ponto âmbar substitui o lápis quando a célula está suja); colunas
 // Group com fundo próprio (read-only); linha Total no mesmo cinza do Group, em formato
 // contábil pleno (sem abreviação "Mi").
+//
+// v5.4.4 — a coluna Weddings TRAVOU: deixou de ser `CelulaEditavel` e passa a exibir,
+// via `CelulaGroup`, a meta DERIVADA da soma dos subsetores (prop `weddingsDerivado`,
+// calculada pelo pai `CadastroMetas` a partir do estado — ainda não salvo — do quadro
+// de baixo). Mês sem nenhum subsetor cadastrado não tem entrada no mapa: a célula cai
+// de volta no valor CRU vindo do banco (`valoresEfetivos`, que só troca as chaves de
+// Weddings, nunca as de Trips/Corporativo) e ganha um asterisco discreto (mesmo idioma
+// da nota da controladoria na DRE) explicando que aquele mês ainda está na rampa antiga
+// (ver `aplicarRampaWeddings` em `@/lib/metas/metas-derivadas`). O Group CONTINUA
+// computado, agora somando o Weddings JÁ DERIVADO — por isso todo cálculo de Group/tfoot
+// lê `valoresEfetivos`, nunca `valores` cru, para a coluna Weddings não divergir do
+// card homônimo do Acompanhamento enquanto o usuário ainda digita embaixo.
+// `NavegacaoAno`/`CabecalhoPctRec`/`CelulaEditavel`/`CelulaGroup`/`MESES`/`W_MOEDA`/
+// `W_PCT`/`W_INT`/`ANO_MIN`/`ANO_MAX` são exportados para o quadro novo
+// (`cadastro-grade-subsetor.tsx`) reusar — não duplicar.
 
 import { useState, useEffect, useRef, Fragment, useTransition } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -33,6 +48,7 @@ import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { Card } from '@/components/ui/card'
 import Button from '@/components/ui/button'
 import { salvarMetas, type MetaCelula } from '@/app/metas/cadastro/actions'
+import { SETOR_WEDDINGS } from '@/lib/metas/metas-derivadas'
 
 export interface MetaItem {
   setor_macro_id: number
@@ -55,24 +71,40 @@ interface Props {
   setores:          SetorCol[]
   metas:            MetaItem[]
   ultimaAlteracao:  { alterado_em: string; alterado_por: string | null } | null
+  /** Meta de Weddings por mês (chave `ano-mes`), somada AO VIVO a partir do estado —
+   *  ainda não salvo — do quadro de subsetores (v5.4.4; ver `CadastroMetas`). Mês
+   *  ausente do mapa = ainda sem subsetor cadastrado (regime antigo — a célula cai no
+   *  valor cru do banco). */
+  weddingsDerivado: Map<string, CelulaValor>
+  /** Pendências não salvas do OUTRO quadro (subsetores). Este componente é o dono do
+   *  seletor de ano da página, então as guardas de descarte precisam contar as duas. */
+  pendenciasExternas: number
 }
 
-const MESES = [
+export const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ]
 
 // Faixa coerente com o range de `dim_data` (2022–2030, ver CLAUDE.md).
-const ANO_MIN = 2022
-const ANO_MAX = 2030
+export const ANO_MIN = 2022
+export const ANO_MAX = 2030
 
 // Larguras dos blocos de valor (mantêm o "R$" colado no número e o alinhamento
 // vertical entre linhas; a folga da célula vira goteira ENTRE colunas).
-const W_MOEDA = 'w-[8.25rem]'
-const W_PCT   = 'w-[3.5rem]'
+export const W_MOEDA = 'w-[8.25rem]'
+export const W_PCT   = 'w-[3.5rem]'
+/** Bloco de INTEIRO (ex.: contagem de contratos) — mais estreito que % Rec, sem casas
+ *  decimais e sem "R$" (v5.4.4, quadro de subsetores). */
+export const W_INT   = 'w-[3rem]'
 
-type CelulaValor = { valorMeta: number | null; pctReceita: number | null }
+export type CelulaValor = { valorMeta: number | null; pctReceita: number | null }
 type TotalAno     = { valorMeta: number; pctReceita: number | null }
+
+/** Chave `ano-mes` — MESMA convenção de `mesesDerivados`/`chaveMes` (metas-derivadas.ts
+ *  e `AcompanhamentoData`), ainda que esta página só exiba UM ano por vez: reusar o
+ *  formato evita uma segunda convenção de chave para o mesmo conceito. */
+export const chaveAnoMes = (ano: number, mes: number): string => `${ano}-${mes}`
 
 const chave = (setorId: number, mes: number): string => `${setorId}-${mes}`
 
@@ -153,8 +185,10 @@ function totalGroupAno(valores: Record<string, CelulaValor>, setores: SetorCol[]
 }
 
 // ── Navegação por ano (?ano=) — controle segmentado; startTransition p/ o clique
-// não "morrer" (padrão v4.39). ──
-function NavegacaoAno({ ano, pending, onMudar }: { ano: number; pending: boolean; onMudar: (novo: number) => void }) {
+// não "morrer" (padrão v4.39). Exportado: o quadro de subsetores (v5.4.4) usa o
+// MESMO controle, com a mesma URL ?ano=, para os dois quadros ficarem sempre no
+// mesmo ano. ──
+export function NavegacaoAno({ ano, pending, onMudar }: { ano: number; pending: boolean; onMudar: (novo: number) => void }) {
   return (
     <div
       className={`inline-flex items-stretch overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm ${pending ? 'pointer-events-none opacity-60' : ''}`}
@@ -187,8 +221,9 @@ function NavegacaoAno({ ano, pending, onMudar }: { ano: number; pending: boolean
 
 // ── Ícone "Aplicar ao ano" no cabeçalho de cada coluna % Rec — popover de 1 campo
 // que seta o mesmo alvo nos 12 meses do setor de uma vez (atalho para a carga
-// inicial da meta: digitar 1x em vez de 12). Fecha ao aplicar/Esc/clique-fora. ──
-function CabecalhoPctRec({ aberto, valor, onAbrir, onFechar, onValorChange, onAplicar }: {
+// inicial da meta: digitar 1x em vez de 12). Fecha ao aplicar/Esc/clique-fora.
+// Exportado para o quadro de subsetores (v5.4.4) reusar por coluna % Rec. ──
+export function CabecalhoPctRec({ aberto, valor, onAbrir, onFechar, onValorChange, onAplicar }: {
   aberto:        boolean
   valor:         string
   onAbrir:       () => void
@@ -252,41 +287,54 @@ function CabecalhoPctRec({ aberto, valor, onAbrir, onFechar, onValorChange, onAp
   )
 }
 
-// ── Célula editável (Faturamento ou % Rec). Enter/blur CONFIRMA LOCALMENTE (só
-// atualiza o estado do pai via onConfirmar — nada é enviado ao servidor aqui); Esc
-// cancela a edição sem alterar o valor. Reverte sozinha entradas não-numéricas.
-// `dirty` (célula difere do baseline) pinta um ponto âmbar no lugar do lápis. ──
-function CelulaEditavel({ valor, tipo, dirty, onConfirmar }: {
+/** "12" — inteiro, sem casas decimais e sem "R$" (contagem, ex.: contratos). */
+function fmtInt(v: number): string {
+  return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })
+}
+
+function txtInicial(valor: number | null, tipo: 'moeda' | 'percentual' | 'inteiro'): string {
+  if (valor === null) return ''
+  if (tipo === 'inteiro') return String(Math.round(valor))
+  return valor.toFixed(2).replace('.', ',')
+}
+
+// ── Célula editável (Faturamento, % Rec ou um INTEIRO — contagem, v5.4.4). Enter/blur
+// CONFIRMA LOCALMENTE (só atualiza o estado do pai via onConfirmar — nada é enviado ao
+// servidor aqui); Esc cancela a edição sem alterar o valor. Reverte sozinha entradas
+// não-numéricas. `dirty` (célula difere do baseline) pinta um ponto âmbar no lugar do
+// lápis. Exportado para o quadro de subsetores (v5.4.4) reusar — não duplicar. ──
+export function CelulaEditavel({ valor, tipo, dirty, onConfirmar }: {
   valor:       number | null
-  tipo:        'moeda' | 'percentual'
+  tipo:        'moeda' | 'percentual' | 'inteiro'
   dirty:       boolean
   onConfirmar: (novo: number | null) => void
 }) {
   const [editando, setEditando] = useState(false)
-  const [txt, setTxt] = useState(() => (valor === null ? '' : valor.toFixed(2).replace('.', ',')))
+  const [txt, setTxt] = useState(() => txtInicial(valor, tipo))
 
   function abrir() {
-    setTxt(valor === null ? '' : valor.toFixed(2).replace('.', ','))
+    setTxt(txtInicial(valor, tipo))
     setEditando(true)
   }
 
   function confirmar() {
     const vazio = txt.trim() === ''
-    const num = vazio ? null : toNum(txt)
+    const bruto = vazio ? null : toNum(txt)
+    const num = bruto === null ? null : (tipo === 'inteiro' ? Math.round(bruto) : bruto)
     setEditando(false)
     if (!vazio && num === null) return // entrada não-numérica: descarta, mantém o valor anterior
     if (num === valor) return
     onConfirmar(num)
   }
 
-  const wBloco = tipo === 'moeda' ? W_MOEDA : W_PCT
+  const wBloco = tipo === 'moeda' ? W_MOEDA : tipo === 'percentual' ? W_PCT : W_INT
 
   if (editando) {
     return (
       <span className="flex w-full justify-end px-1">
         <input
           autoFocus
-          inputMode="decimal"
+          inputMode={tipo === 'inteiro' ? 'numeric' : 'decimal'}
           value={txt}
           onChange={e => setTxt(e.target.value)}
           onBlur={confirmar}
@@ -294,8 +342,8 @@ function CelulaEditavel({ valor, tipo, dirty, onConfirmar }: {
             if (e.key === 'Enter') confirmar()
             if (e.key === 'Escape') setEditando(false)
           }}
-          placeholder={tipo === 'moeda' ? '0,00' : '0,0'}
-          aria-label={tipo === 'moeda' ? 'Faturamento (R$)' : 'Alvo de % Rec'}
+          placeholder={tipo === 'moeda' ? '0,00' : tipo === 'percentual' ? '0,0' : '0'}
+          aria-label={tipo === 'moeda' ? 'Faturamento (R$)' : tipo === 'percentual' ? 'Alvo de % Rec' : 'Meta de contratos'}
           className={`${wBloco} rounded-md border border-[var(--action-soft-border)] bg-white px-1.5 py-1 text-right text-[13px] tabular-nums shadow-sm outline-none`}
         />
       </span>
@@ -320,30 +368,39 @@ function CelulaEditavel({ valor, tipo, dirty, onConfirmar }: {
           ? <span className="block text-right text-zinc-300">—</span>
           : tipo === 'moeda'
             ? <ValorContabil valor={valor} />
-            : <span className="block text-right tabular-nums text-[var(--text-primary)]">{fmtPct(valor)}</span>}
+            : tipo === 'percentual'
+              ? <span className="block text-right tabular-nums text-[var(--text-primary)]">{fmtPct(valor)}</span>
+              : <span className="block text-right tabular-nums text-[var(--text-primary)]">{fmtInt(valor)}</span>}
       </span>
     </button>
   )
 }
 
-/** Bloco read-only do Group (mesmas larguras das células editáveis, sem affordance). */
-function CelulaGroup({ valor, tipo, forte }: { valor: number | null; tipo: 'moeda' | 'percentual'; forte?: boolean }) {
-  const wBloco = tipo === 'moeda' ? W_MOEDA : W_PCT
+/** Bloco read-only do Group (mesmas larguras das células editáveis, sem affordance).
+ *  Exportado: é também o molde da célula TRAVADA de Weddings (v5.4.4) e das colunas
+ *  Total do quadro de subsetores. */
+export function CelulaGroup({ valor, tipo, forte }: { valor: number | null; tipo: 'moeda' | 'percentual' | 'inteiro'; forte?: boolean }) {
+  const wBloco = tipo === 'moeda' ? W_MOEDA : tipo === 'percentual' ? W_PCT : W_INT
   return (
     <span className={`ml-auto block ${wBloco} ${forte ? 'font-semibold text-zinc-800' : 'font-medium text-zinc-700'}`}>
       {valor === null
         ? <span className="block text-right text-zinc-300">—</span>
         : tipo === 'moeda'
           ? <ValorContabil valor={valor} />
-          : <span className="block text-right tabular-nums">{fmtPct(valor)}</span>}
+          : tipo === 'percentual'
+            ? <span className="block text-right tabular-nums">{fmtPct(valor)}</span>
+            : <span className="block text-right tabular-nums">{fmtInt(valor)}</span>}
     </span>
   )
 }
 
-export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: Props) {
+export default function CadastroGrade({
+  ano, setores, metas, ultimaAlteracao, weddingsDerivado, pendenciasExternas,
+}: Props) {
   const router   = useRouter()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
+  const weddingsId = setores.find(s => s.nome === SETOR_WEDDINGS)?.id ?? null
 
   // `valores` = edição corrente (o que a grade mostra); `baseline` = a verdade do
   // servidor (o que já está gravado). Dirty/pendência sempre compara os dois.
@@ -369,11 +426,36 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
     setAplicarSetor(null)
   }
 
+  // Valores "efetivos": iguais a `valores`, exceto na coluna Weddings — ali a célula
+  // mensal é substituída pela meta DERIVADA (soma dos subsetores, prop
+  // `weddingsDerivado`) quando o mês já tem subsetor cadastrado, e mantém o valor cru
+  // (o mesmo de `valores`, nunca editado) quando ainda não tem (v5.4.4). É o ÚNICO
+  // mapa usado por todo cálculo de Group/tfoot — assim a coluna Weddings, o Group
+  // mensal e o Group anual nunca leem um número diferente do que a célula travada
+  // mostra ao usuário.
+  // Montado como ACUMULADOR IMUTÁVEL (spread de overrides), não por mutação de uma
+  // cópia: `valores` vem de `useState` e o React Compiler trata o derivado como
+  // imutável — escrever nele reprova em `react-hooks/immutability`. Padrão da skill
+  // `react-padroes`.
+  const overridesWeddings: Record<string, CelulaValor> =
+    weddingsId == null
+      ? {}
+      : Object.fromEntries(
+          MESES
+            .map((_, i) => i + 1)
+            .map(mes => [chave(weddingsId, mes), weddingsDerivado.get(chaveAnoMes(ano, mes))] as const)
+            .filter((par): par is readonly [string, CelulaValor] => par[1] != null),
+        )
+  const valoresEfetivos: Record<string, CelulaValor> = { ...valores, ...overridesWeddings }
+
   // Pendências: linhas (setor×mês) que diferem do baseline E têm Faturamento != null
   // (persistáveis — a RPC exige valor_meta não-nulo). Uma linha só-com-%-mudado sem
   // Faturamento fica "suja" (ponto âmbar na célula) mas não conta nem é enviada.
+  // Weddings NUNCA entra aqui (v5.4.4): a coluna travou, a meta vem do quadro de
+  // subsetores (`salvarMetasSubsetor`), não mais de `salvarMetas`.
   const pendentes: MetaCelula[] = []
   for (const s of setores) {
+    if (s.id === weddingsId) continue
     for (let mes = 1; mes <= 12; mes++) {
       const k = chave(s.id, mes)
       const atual = valores[k]
@@ -387,23 +469,30 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
   }
   const pendCount = pendentes.length
 
+  // Este componente é o dono do SELETOR DE ANO da página (o `?ano=` vale para os dois
+  // quadros), então as guardas de "há alterações não salvas" têm de contar as pendências
+  // do quadro de subsetores também — que vivem no pai e chegam por `pendenciasExternas`.
+  // Sem somar, trocar o ano com o quadro de cima limpo descartaria em silêncio o que
+  // estivesse digitado embaixo (v5.4.4).
+  const pendTotal = pendCount + pendenciasExternas
+
   // Avisa ao fechar/recarregar a aba com pendências (a guarda de troca de ano usa
   // window.confirm; esta cobre a saída da página em si).
   useEffect(() => {
     function handler(e: BeforeUnloadEvent) {
-      if (pendCount > 0) {
+      if (pendTotal > 0) {
         e.preventDefault()
         e.returnValue = ''
       }
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [pendCount])
+  }, [pendTotal])
 
   function mudarAno(novo: number) {
     if (novo < ANO_MIN || novo > ANO_MAX) return
-    if (pendCount > 0) {
-      const ok = window.confirm(`Há ${pendCount} alteração(ões) não salva(s). Descartar e trocar de ano?`)
+    if (pendTotal > 0) {
+      const ok = window.confirm(`Há ${pendTotal} alteração(ões) não salva(s) nesta página. Descartar e trocar de ano?`)
       if (!ok) return
     }
     const params = new URLSearchParams()
@@ -469,7 +558,7 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
     }
   }
 
-  const totGroupAno = totalGroupAno(valores, setores)
+  const totGroupAno = totalGroupAno(valoresEfetivos, setores)
 
   // Separadores verticais entre grupos de setor; bloco Group com fundo próprio.
   const sepGrupo = 'border-l border-zinc-100'
@@ -524,14 +613,19 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
                   <Fragment key={s.id}>
                     <th className={`border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400 ${sepGrupo}`}>Faturamento</th>
                     <th className="border-b border-zinc-200 px-2 py-1.5 text-right text-2xs font-medium text-zinc-400">
-                      <CabecalhoPctRec
-                        aberto={aplicarSetor === s.id}
-                        valor={aplicarTxt}
-                        onAbrir={() => abrirAplicar(s.id)}
-                        onFechar={fecharAplicar}
-                        onValorChange={setAplicarTxt}
-                        onAplicar={() => aplicarAoAno(s.id)}
-                      />
+                      {s.id === weddingsId ? (
+                        // Travada (v5.4.4): sem popover "aplicar ao ano" — não há mais o que aplicar aqui.
+                        <span title="Meta de Weddings = soma das metas dos subsetores">% Rec</span>
+                      ) : (
+                        <CabecalhoPctRec
+                          aberto={aplicarSetor === s.id}
+                          valor={aplicarTxt}
+                          onAbrir={() => abrirAplicar(s.id)}
+                          onFechar={fecharAplicar}
+                          onValorChange={setAplicarTxt}
+                          onAplicar={() => aplicarAoAno(s.id)}
+                        />
+                      )}
                     </th>
                   </Fragment>
                 ))}
@@ -544,13 +638,43 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
             <tbody>
               {MESES.map((nomeMes, idx) => {
                 const mes = idx + 1
-                const group = computarGroupMes(valores, setores, mes)
+                const group = computarGroupMes(valoresEfetivos, setores, mes)
+                const derivadoEsteMes = weddingsDerivado.has(chaveAnoMes(ano, mes))
                 return (
                   <tr key={mes} className="transition-colors hover:bg-zinc-50/50 [&>td]:border-b [&>td]:border-zinc-50">
                     <td className="px-2 py-1 text-[13px] text-zinc-600">{nomeMes}</td>
                     {setores.map(s => {
                       const k = chave(s.id, mes)
-                      const cel = valores[k] ?? { valorMeta: null, pctReceita: null }
+                      const cel = valoresEfetivos[k] ?? { valorMeta: null, pctReceita: null }
+
+                      // Weddings TRAVOU (v5.4.4): read-only, mostra o valor DERIVADO (ou o cru,
+                      // fora da rampa). O asterisco só aparece fora da rampa — sinaliza que
+                      // aquele mês ainda não tem subsetor cadastrado (regime antigo, com fim
+                      // à vista: ver `aplicarRampaWeddings`).
+                      if (s.id === weddingsId) {
+                        return (
+                          <Fragment key={s.id}>
+                            <td className={`px-2 py-0.5 ${sepGrupo}`}>
+                              <span className="flex items-center justify-end gap-1">
+                                {!derivadoEsteMes && (
+                                  <span
+                                    aria-hidden
+                                    title="Este mês ainda usa a meta antiga de Weddings, cadastrada direto — cadastre os subsetores abaixo para distribuí-la."
+                                    className="text-[11px] font-semibold text-warning-deep"
+                                  >
+                                    *
+                                  </span>
+                                )}
+                                <CelulaGroup valor={cel.valorMeta} tipo="moeda" />
+                              </span>
+                            </td>
+                            <td className="px-2 py-0.5">
+                              <CelulaGroup valor={cel.pctReceita} tipo="percentual" />
+                            </td>
+                          </Fragment>
+                        )
+                      }
+
                       const base = baseline[k]
                       return (
                         <Fragment key={s.id}>
@@ -587,7 +711,7 @@ export default function CadastroGrade({ ano, setores, metas, ultimaAlteracao }: 
               <tr className="bg-zinc-50/70 [&>td]:border-t [&>td]:border-zinc-200">
                 <td className="px-2 py-2.5 text-[13px] font-semibold text-zinc-700">Total</td>
                 {setores.map(s => {
-                  const tot = totalSetorAno(valores, s.id)
+                  const tot = totalSetorAno(valoresEfetivos, s.id)
                   return (
                     <Fragment key={s.id}>
                       <td className={`px-2 py-2.5 ${sepGrupo}`}>
