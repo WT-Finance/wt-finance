@@ -6,25 +6,6 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [5.4.4] — 2026-08-04
-
-MINOR · **Metas ganham o eixo de SUBSETOR de Weddings.** Migrations `0233` e `0234` (aditivas, aplicadas e verificadas por REST); **ADR-0163**.
-
-- **Em `/metas`, Weddings saiu da fileira de três** e virou faixa full-width com chevron. Expandindo, aparecem os **5 subsetores** (Comercial, Planejamento, Produção, Convidados–Hospedagens, Convidados–Extras) no padrão Metas — faturamento, "% da meta", "Meta:", "% esperado", barra, Receita e Margem vs alvo — mais o **6º card "Não Classificados"**, recolhível, com a lista de produtos fora do mapa.
-- **Subsetor é agrupamento de PRODUTO, não de equipe**, e a meta contra ele é **meta de MIX DE PRODUTO** (ADR-0163, Decisão 1). O balde vem de `analytics.dim_produto_subsetor` — 21 linhas curadas — e é o MESMO que a Performance usa.
-- **A meta de Weddings virou DERIVADA:** soma das metas de subsetor. A coluna dela no Cadastro está travada e `metas_upsert` **recusa** gravá-la (`METAS_WEDDINGS_DERIVADO`). Uma **rampa por mês** preserva os R$ 23,8 Mi já cadastrados para 2026: mês sem subsetor mantém a meta antiga; ao ser preenchido, a soma assume. Sem a rampa o card do **Group** também perderia esse valor, porque é a soma dos três setores.
-- **COMERCIAL tem DUAS metas:** contratos (governa a barra do card) e faturamento (compõe a soma de Weddings). Sem a segunda, o realizado de Weddings contaria 5 subsetores contra uma meta de 4, e o "% da meta" ficaria estruturalmente otimista. As duas medem universos diferentes — a de contratos cobre **um** produto, a de R$ cobre **três** — e o "?" da expansão diz isso.
-- **`/metas/cadastro` ganhou um segundo quadro** (Comercial com 3 colunas, os outros 4 com 2, mais Total), com a coluna Mês fixa e scroll horizontal. O envio é por **LINHA**, não por célula: um item que omitisse `meta_contratos` apagaria o valor gravado, porque o `ON CONFLICT` não usa `COALESCE`. Linha não tocada **não** é enviada — "existe linha no mês" é o gatilho da rampa.
-- **O 6º balde existia e a Performance o descartava em silêncio.** `NÃO_CLASSIFICADO` soma R$ 72.717,41 em 2026 (receita **−37.339,05**, toda de um produto só) e é não-nulo em **26 dos últimos 48 meses**. Quatro produtos hoje: `G - WelConnect - Colômbia AGO2026`, `G - WelConnect - Mendoza MAR2026`, `Bloqueio Hospedagem`, `Vistos`. O mapa é lista fechada contra namespace de produto **aberto** (há produtos batizados por grupo), então o vazamento é estrutural — daí o 6º card ser obrigatório, não decorativo.
-- **Alinhado ao Scope B: nenhuma query nova de subsetor.** A RPC de leitura de Metas é wrapper de 6 linhas sobre o núcleo já existente, e a lista de não classificados entrou como **chave nova no payload desse mesmo núcleo** — o Scope B repointa **um** corpo e as duas telas seguem juntas. Caso de contrato prova que os dois wrappers devolvem payload idêntico.
-- **Sem série diária por subsetor** (a fonte não tem): `calcularRitmoAgregado` faz as mesmas contas sem série, com `janelaDoPeriodo` **fatorada e compartilhada** com `calcularRitmo` para que os dois "% esperado" da tela não possam divergir. Subsetores não entram no gráfico "Ritmo do período".
-- **Primitivo novo `shared/cortina.tsx`** — a mecânica de cortina já estava em `top-section` e copiada inline no drill da DRE; esta seria a 3ª e 4ª cópia. Documenta que barra dentro de cortina vai sem tooltip: o balão da `MetaProgressBar` é `absolute bottom-full` e o clip o decapitaria.
-- **`pecas-meta.tsx`** — as três leituras do card (`% da meta`, `% esperado`, Margem) e os formatadores saíram do `meta-card` para um módulo único com prop de escala. Na escala `normal` as classes produzidas são idênticas às anteriores (conferido pelo revisor contra o checkout raiz).
-- **Divergência de fonte declarada, não maquiada:** o card do setor vem do Monde e os subsetores do upload. Medido em 2026: **0,00** no mês corrente, **19,1%** em julho, **5,1%** no ano. Está no "?" da expansão; o Scope B a elimina.
-- **723 testes** (46 arquivos, zero skipped), incluindo a igualdade mecânica entre o `CHECK` da migration e `SUBSETOR_ORDER`, a rampa nos dois ramos, `Group == Trips + Weddings(derivada) + Corporativo` com asserção de que **não** é a soma da linha crua, e a invariante da lista de não classificados **ao centavo** em 3 períodos contra o banco real.
-
----
-
 ## [5.4.3] — 2026-08-04
 
 PATCH · **Solicitações: anexo com acento no nome voltava a falhar, e o erro do modal aparecia fora da vista.** Sem migration, sem ADR.

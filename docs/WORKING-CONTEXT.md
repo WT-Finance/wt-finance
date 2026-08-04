@@ -9,7 +9,8 @@
 
 ## Verdade atual
 
-- **v5.4.4 — EM PR, ainda NÃO mergeada. Metas ganham o eixo de SUBSETOR de Weddings.**
+- **⛔ EM STAND-BY (04/08), NÃO mergear — e o número v5.4.4 foi reatribuído à reconciliação do
+  espelho Monde. Metas por SUBSETOR de Weddings.**
   Migrations **0233/0234 APLICADAS e verificadas por REST**; **ADR-0163**. 723 testes (46 arquivos,
   zero skipped). Out-briefing:
   `docs/briefings/WT_Finance_Out_Briefing_v5-4-4_Metas_Subsetor_Weddings.md`.

@@ -1,5 +1,24 @@
 # Out-briefing v5.4.4 — Metas por subsetor de Weddings
 
+> ## ⛔ EM STAND-BY (decisão do Yan, 04/08) — NÃO MERGEAR
+>
+> O eixo de subsetor continua **dependendo do upload manual de vendas**, e a medição do §4d
+> mostrou que repontar ao Monde exige um de-para de produto que ainda não existe. O Yan optou
+> por parar aqui até decidir o que fazer, e a numeração **v5.4.4 foi reatribuída** à versão de
+> reconciliação do espelho Monde (`fix/v5-4-5-reconciliacao-espelho`), que merge primeiro.
+>
+> **Consequências já tratadas:**
+> - O `package.json` e os dois CHANGELOGs foram **revertidos nesta branch** para não colidir com
+>   a versão que assume o número. O número desta será redefinido se/quando ela for retomada.
+> - As migrations **0233/0234 estão APLICADAS em produção** e não são revertidas — ficam inertes
+>   (tabelas vazias, RPCs sem call-site publicado). Os arquivos delas vão ao `main` por um **PR
+>   separado, só de migrations**, senão o próximo `db push` de qualquer branch quebra com
+>   `LegacyDbPushMissingLocalError`.
+> - A **`0235`** desfez a trava de Weddings do `metas_upsert`, que estava **quebrando o Cadastro
+>   de Metas em produção** — ver o commit `263dd5b` e o header da própria migration.
+> - **`ADR-0163` está reservado por esta branch.** A versão que merge antes precisa usar outro
+>   número, ou este é reatribuído aqui na retomada.
+
 - **Branch:** `feat/v5-4-4-metas-subsetor-weddings` · **base:** `977c97a` (v5.4.3 mergeada)
 - **Briefing de entrada:** `docs/briefings/briefing-v5-4-4-metas-subsetor-weddings.md`
 - **ADR:** `docs/adr/0163-meta-de-subsetor-e-mix-de-produto.md`
