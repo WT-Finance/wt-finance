@@ -35,6 +35,48 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.4.4',
+    data: '2026-08-04T15:00', // horário de AUTORIA — reconciliar ao horário real do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Metas passa a acompanhar Weddings por dentro. O card de Weddings agora abre e mostra ' +
+          'Comercial, Planejamento, Produção e as duas frentes de Convidados (Hospedagens e Extras), ' +
+          'cada uma com sua meta, o quanto já foi realizado e o quanto era esperado até hoje.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O Cadastro de Metas ganhou um quadro para distribuir a meta de Weddings entre essas cinco ' +
+          'frentes. A meta do setor deixa de ser digitada direto: ela passa a ser a SOMA do que você ' +
+          'distribuir. Enquanto um mês não for distribuído, vale a meta que já estava lá — nada muda ' +
+          'na tela até você preencher.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Comercial é cobrado em CONTRATOS, e não em faturamento: a barra dele mede o número de ' +
+          'contratos de casamento vendidos contra a meta de contratos do período.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Apareceu um ponto cego que existia e ninguém via: R$ 72,7 mil de vendas de Weddings em 2026 ' +
+          'estão em produtos que não pertencem a nenhuma das cinco frentes — um deles com resultado ' +
+          'negativo de R$ 37,3 mil. Antes esses valores entravam no total do setor mas ficavam fora dos ' +
+          'cinco quadros, sem explicação. Agora existe uma linha "Não Classificados" que lista produto ' +
+          'por produto, para o financeiro tratar a origem.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Quem tem acesso apenas ao Acompanhamento de Metas passa a ver o número de contratos de ' +
+          'Weddings, que antes aparecia como traço para essas pessoas.',
+      },
+    ],
+  },
+  {
     versao: '5.4.3',
     data: '2026-08-04T12:56', // horário de AUTORIA — reconciliar ao horário real do merge no /pos-merge
     itens: [

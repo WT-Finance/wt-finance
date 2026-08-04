@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-04 · produção na **v5.4.2**; **v5.4.3 EM PR, aguardando merge** (patch: anexo com acento no nome + erro do modal de nova solicitação fora da vista).
+Última atualização: 2026-08-04 15h · produção na **v5.4.3** (mergeada); **v5.4.4 EM PR, aguardando merge** (Metas: eixo de subsetor de Weddings — migrations **0233/0234 JÁ APLICADAS**). ⚠️ Há uma **v5.4.5 em curso em paralelo** (`fix/v5-4-5-reconciliacao-espelho`) que já aplicou a **0232** em produção sem mergear — ver §Cuidados.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,7 +9,49 @@
 
 ## Verdade atual
 
-- **v5.4.3 — EM PR, ainda NÃO mergeada.** PATCH de dois defeitos relatados pelo Yan a partir de
+- **v5.4.4 — EM PR, ainda NÃO mergeada. Metas ganham o eixo de SUBSETOR de Weddings.**
+  Migrations **0233/0234 APLICADAS e verificadas por REST**; **ADR-0163**. 723 testes (46 arquivos,
+  zero skipped). Out-briefing:
+  `docs/briefings/WT_Finance_Out_Briefing_v5-4-4_Metas_Subsetor_Weddings.md`.
+  (1) Em `/metas`, Weddings saiu da fileira de três e virou **faixa full-width com chevron**; a
+  expansão traz os **5 subsetores** + faixa aninhada **"Não Classificados"** com a lista de produtos
+  fora do mapa. (2) `/metas/cadastro` ganhou **segundo quadro** (Comercial com 3 colunas; Mês fixo +
+  scroll horizontal) e a coluna Weddings virou **travada**, mostrando a soma **ao vivo**.
+  **Definição de métrica (ADR-0163):** subsetor é agrupamento de **PRODUTO** (21 linhas curadas em
+  `dim_produto_subsetor`), então meta de subsetor é **meta de MIX DE PRODUTO, não de equipe** — se
+  algum dia se quiser cobrar TIME, o eixo de produto não serve.
+  **Weddings é DERIVADA** (soma dos subsetores) e `metas_upsert` a **recusa**
+  (`METAS_WEDDINGS_DERIVADO`). **Rampa por mês:** mês sem subsetor mantém a meta antiga — existe
+  porque havia R$ 23,8 Mi cadastrados para 2026 e o **Group é a soma dos três setores**, então
+  travar sem rampa derrubaria o card de cabeçalho. **Gatilho é "existe linha", não "soma > 0"**, e
+  isso acopla o Cadastro: ele grava só linhas TOCADAS (gravar zeros zeraria Weddings e Group).
+  **COMERCIAL tem DUAS metas:** contratos governa a barra, R$ compõe a soma — sem a segunda, o
+  realizado contaria 5 subsetores contra meta de 4. As duas medem universos diferentes (contratos =
+  **um** produto; R$ = **três**).
+  **Duráveis desta versão:** *(a)* **onde** a derivação mora importa mais que como — dentro de
+  `metasDoSetor` o ramo `'todos'` (Group) somaria a linha CRUA enquanto o card mostrava a soma, dois
+  números discordando por construção; a rampa age **uma vez** sobre as linhas, antes dos painéis;
+  *(b)* **tooltip/`absolute` dentro de cortina é decapitado** pelo `overflow-hidden` — barra vai com
+  `mostrarTooltip={false}` e a informação vira texto (e `financeiro/collapsible-section.tsx` usa o
+  padrão ERRADO, desmonta no fechado: **não copiar**); *(c)* **duas telas com Salvar próprio na
+  mesma página não podem re-hidratar por REFERÊNCIA de array** — `router.refresh()` entrega array
+  novo aos dois e salvar um apagava a digitação não salva do outro (CRÍTICO do revisor); o gatilho é
+  o `ano` e quem zera pendência é o Salvar; *(d)* `ON CONFLICT DO UPDATE` sem `COALESCE` significa
+  que **item de upsert é LINHA COMPLETA** — omitir um campo apaga o valor gravado; *(e)* `NULL` em
+  comparação nunca é TRUE: `v_sid = NULL` e `v_mes < 1` com NULL **não disparam** validação, e o
+  erro só aparece como violação crua de NOT NULL.
+  **PENDENTE do Yan:** (1) **conferência visual** — a mais importante desta versão (§8 do
+  out-briefing lista o que olhar); (2) **distribuir 2026** nos subsetores para sair da rampa;
+  (3) **ordem de merge com a v5.4.5** (buraco no 0232 até ela entrar); (4) as duas viagens
+  **WelConnect** estão em Weddings no nível de SETOR, uma com receita −R$ 37,3 mil — decisão dele.
+  **REVISÃO:** `revisor-db` **APROVOU** as duas migrations (0 CRÍTICO / 0 ALTO; conferiu por conta
+  própria que o corpo vivo do núcleo era o da 0099 e que o REPLACE não reverte produção); os 3 MÉDIO
+  foram endereçados. `revisor` pediu **CORREÇÕES**: 1 CRÍTICO (o de *(c)*), 1 ALTO (alvo de toque do
+  chevron, ~17px → 24px) e 1 BAIXO (campo morto no contrato) — **todos corrigidos**.
+  `verificador-visual` **NÃO EXECUTADO** (background; MCP Playwright não sobe e `/metas` responde
+  307 → `/login`).
+
+- **v5.4.3 — MERGEADA (PR #211).** PATCH de dois defeitos relatados pelo Yan a partir de
   um erro real em produção. **Sem migration, sem ADR.**
   (1) **Anexo com acento no nome não subia.** A chave do objeto no Storage era montada com o nome
   CRU (`tmp/<uuid>/${file.name}`) e o `isValidKey` do Supabase Storage usa `\w` **sem a flag `u`**
@@ -228,19 +270,36 @@
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
   testes verdes.
-- Último ADR registrado: **`0162`** (v5.4.2: Margem a.a. LINEAR como definição de métrica +
+- Último ADR registrado: **`0163`** (v5.4.4: meta de subsetor é MIX DE PRODUTO · Weddings derivada
+  da soma + rampa por mês · Comercial com duas metas em unidades diferentes · ritmo agregado sem
+  série diária). **Próximo livre: 0164.**
+  Antes dele o **`0162`** (v5.4.2: Margem a.a. LINEAR como definição de métrica +
   janela larga fatiada no cliente + reinício do acumulado na borda). **Próximo livre: 0163.**
   Antes dele o `0161` (v5.4.0: 0158 categoria de confiança da API externa ·
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox).
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
+- Última migration APLICADA: **`0234`** (v5.4.4: `produtos_nao_classificados` no payload do núcleo
+  `get_sumario_subsetor__nucleo` + wrapper `metas_sumario_subsetor` com guard das áreas de Metas +
+  trava de `metas_upsert` contra Weddings. ADITIVA — verificada por REST: invariante da lista ==
+  agregado do balde **ao centavo** em 3 períodos, os 5 números por subsetor **inalterados**, e as 5
+  travas recusando). Antes dela a **`0233`** (v5.4.4: `app.meta_subsetor` + histórico +
+  `metas_subsetor_listar`/`metas_subsetor_upsert`, moldadas na 0175). **Próxima migration livre:
+  `0235`.**
+  ⚠️ **A `0232` está APLICADA em produção mas o arquivo dela NÃO está no main** — vem da branch
+  `fix/v5-4-5-reconciliacao-espelho` (v5.4.5 em curso, reconciliação do espelho Monde), que aplicou
+  antes de mergear. Por isso as migrations da v5.4.4 foram renumeradas de 0230/0231 para 0233/0234.
+  **NÃO rodar `migration repair --status reverted 0232`** (o CLI sugere isso no erro): marcaria como
+  revertida uma migration aplicada e corromperia o estado da v5.4.5. Se o `db push` recusar por
+  "Remote migration versions not found in local", a saída é ter o arquivo real da 0232 na pasta
+  (temporariamente, sem commitar) — o push a ignora, porque já está aplicada.
+  Antes delas a **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
   alargada de 23+18 para **36+36 meses** — ADITIVA, `CREATE OR REPLACE` de função SEM
   parâmetros. Diferente da RPC de Weddings, a janela dela é **hardcoded no corpo**, então o
   slider do Financeiro não teria o que fatiar sem isso. **Nenhum número muda:** cada mês é
   agregado do próprio mês, sem acumulado — provado por cross-check contra
   `get_fluxo_caixa_kpis_b`, que lê a mesma view por range explícito, 4/4 campos em todos os
-  meses amostrados). **Próxima migration livre: `0230`.**
+  meses amostrados).
   Antes dela a **`0228`** (v5.4.2: chave de ordenação `d_margem_aa` em
   `get_operacoes_weddings__nucleo` — ADITIVA, `CREATE OR REPLACE` com assinatura idêntica e shape do
   retorno inalterado; a chave NÃO entra no payload. Verificada via REST: ordenação monotônica nas
@@ -354,6 +413,13 @@
 
 ## Filas ativas (próximos passos já decididos)
 
+- **Manutenção do mapa produto→subsetor** (nova, v5.4.4): produto novo entra em Weddings, sai dos
+  subsetores e ninguém é avisado — e com meta por subsetor isso agora parece não-cumprimento.
+  Caminho provável: tela de admin ou alerta de balde crescendo.
+- **Distribuir as metas de Weddings de 2026 pelos subsetores** para encerrar a rampa; quando os 12
+  meses estiverem distribuídos, o ramo de fallback de `aplicarRampaWeddings` (e o teste dele) pode
+  sair.
+
 - **PODAR o passo 4 do `/nova-versao` — a condição se cumpriu.** O bloco das cópias
   provisórias `0950–0954` traz o comentário `REMOVER na renumeração pós-v5.3`: elas foram
   renumeradas para `0210–0214` no merge da v5.4.0, e a v5.4.2 confirmou que a pasta
@@ -398,6 +464,19 @@
 - Dependabot: 19 vulnerabilidades no default branch (10 high) — triagem pendente.
 
 ## Cuidados desta fase (o que uma sessão nova precisa saber AGORA)
+
+- ⚠️ **DUAS versões correm em paralelo (04/08).** Esta (v5.4.4, Metas/subsetor) e a **v5.4.5**
+  (`fix/v5-4-5-reconciliacao-espelho`, reconciliação do espelho Monde). A v5.4.5 **já aplicou a
+  0232 em produção sem mergear**, o que fez o `db push` desta recusar com *"Remote migration
+  versions not found in local"*. Antes de aplicar QUALQUER migration, rodar
+  `npx supabase migration list` e olhar o conjunto pendente — e **nunca** aceitar a sugestão
+  `migration repair --status reverted` que o CLI imprime nesse erro. Detalhe no §7 do out-briefing
+  da v5.4.4.
+- **A v5.4.4 mexe em `dim_produto_subsetor` só como LEITURA**, mas amarrou meta a ele: **produto
+  novo no Monde cai em `NÃO_CLASSIFICADO`, sai dos 5 subsetores e agora passa a parecer
+  não-cumprimento de meta**. O mapa é lista curada de 21 linhas, sem tela nem processo de
+  manutenção (última carga por migration, 2024). Se a v5.4.5/Scope B tocar produto, isto é
+  território comum.
 
 - **O harness novo REGE a partir do merge da v5.3.2:** CLAUDE.md é core (162 linhas); o
   situacional está nas **skills** (`.claude/skills/` — ler a do domínio ANTES de implementar);
