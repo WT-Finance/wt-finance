@@ -149,6 +149,13 @@ async function handle(req: NextRequest): Promise<Response> {
         mode,
         api: { total: janela.total, paginas: janela.paginas, sem_sale_id: janela.sem_sale_id },
         diff,
+        // ⚠️ `diff.ausentes` NÃO é a contagem do defeito: a listagem não diz quais vendas a
+        // transformação excluiria por regra (Welcome / sem setor / sem item ativo — 29 das 775
+        // de jul/2026), e essas aparecem aqui como "ausentes" sendo ausência CORRETA. Saber
+        // isso exige o detalhe de cada venda, que só a reconciliação baixa — é ela que produz a
+        // contagem exata, no `tripwire` de `monde_ingest_status`. Este modo responde "QUAIS
+        // números faltam", para investigar; o tripwire responde "quantas faltam de verdade".
+        nota: 'ausentes inclui vendas que a transformação excluiria por regra; a contagem exata do defeito está no tripwire (monde_ingest_status)',
         log,
       })
     }
