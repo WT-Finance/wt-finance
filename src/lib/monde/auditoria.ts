@@ -1,5 +1,4 @@
 import { fetchSalesPage } from './client'
-import { rangeDoMes } from './reconciliacao'
 
 // Auditoria do espelho Monde (v5.4.5) — a camada de I/O do detector e do tripwire.
 //
@@ -66,21 +65,10 @@ export async function listarJanelaDaApi(opts: {
   return { numeros, sem_sale_id: semSaleId, total: Number.isFinite(total) ? total : numeros.length, paginas }
 }
 
-/**
- * Contagem de vendas por mês do lado da API, para o tripwire. Uma chamada por mês com
- * `page_size=1` lendo SÓ o `total` — verificado ao vivo em 04/08/2026: a API devolve `total`
- * corretamente com `page_size=1` (775 em jul/2026), então 12 meses custam 12 chamadas mínimas.
- */
-export async function contarVendasPorMesNaApi(
-  meses: string[],
-  onLog?: (msg: string) => void,
-): Promise<Record<string, number>> {
-  const out: Record<string, number> = {}
-  for (const mes of meses) {
-    const { from, to } = rangeDoMes(mes)
-    const resp = await fetchSalesPage({ from, to, page: 1, pageSize: 1 })
-    out[mes] = resp.total ?? 0
-  }
-  onLog?.(`tripwire: ${meses.length} mês(es) contados na API`)
-  return out
-}
+// NOTA (v5.4.5): houve aqui um `contarVendasPorMesNaApi` que fazia 12 chamadas `page_size=1`
+// lendo só o `total`, para o tripwire da M4. Foi REMOVIDO: medido em 04/08/2026, comparar o
+// `total` da API contra a contagem do espelho acende todo mês para sempre, porque a API conta
+// vendas que a transformação exclui por regra (jul/2026: 8 Welcome + 12 sem setor + 9 sem item
+// ativo, de 775). O tripwire passou a ser subproduto da reconciliação, que já tem o detalhe de
+// cada venda e portanto a contagem EXATA de espelháveis — zero chamada extra. Ver
+// `reconciliacao.ts` (§TRIPWIRE) e o ADR-0164.

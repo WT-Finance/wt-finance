@@ -5,7 +5,9 @@ import {
   mesesRecentes,
   rangeDoMes,
   proximoMesReconciliacao,
-  montarTripwire,
+  avaliarMes,
+  mesProblematico,
+  mesclarTripwire,
 } from './reconciliacao'
 
 // Âncora: "hoje" fixo (não usa Date.now → determinístico), como em sync-atraso.test.ts.
@@ -88,41 +90,107 @@ describe('proximoMesReconciliacao', () => {
   })
 })
 
-describe('montarTripwire', () => {
+describe('avaliarMes', () => {
   const AGORA = '2026-08-04T12:00:00.000Z'
+  // Números REAIS de jul/2026, medidos em 04/08 contra a API depois da 1ª reconciliação.
+  const julho = {
+    mes: '2026-07',
+    apiTotal: 775,
+    lidas: 775,
+    espelhaveis: 746,
+    excluidas: { welcome: 8, sem_setor: 12, sem_item_ativo: 9 },
+    erros: 0,
+    espelho: 751,
+    verificadoEmISO: AGORA,
+  }
 
-  it('não acende quando todos os meses batem', () => {
-    const t = montarTripwire(['2026-07', '2026-06'], { '2026-07': 775, '2026-06': 700 }, { '2026-07': 775, '2026-06': 700 }, AGORA)
+  it('a conta fecha: lidas = espelháveis + excluídas + erros', () => {
+    const m = avaliarMes(julho)
+    expect(746 + 8 + 12 + 9 + 0).toBe(775)
+    expect(m.conta_fecha).toBe(true)
+    expect(m.sem_sale_id).toBe(0)
+  })
+
+  it('NÃO trata exclusão por regra como divergência — é o erro que o briefing tinha', () => {
+    const m = avaliarMes({ ...julho, espelho: 746 })
+    expect(m.sobrando).toBe(0)
+    expect(mesProblematico(m)).toBe(false) // 29 excluídas e mesmo assim silencioso
+  })
+
+  it('mede as vendas que sobraram no espelho (deixaram de ser espelháveis)', () => {
+    const m = avaliarMes(julho) // espelho 751 × espelháveis 746
+    expect(m.sobrando).toBe(5)
+    expect(mesProblematico(m)).toBe(true)
+  })
+
+  it('conta as vendas que a API lista sem sale_id — a ingestão não as alcança', () => {
+    const m = avaliarMes({ ...julho, lidas: 770, espelhaveis: 741 })
+    expect(m.sem_sale_id).toBe(5)
+    expect(mesProblematico(m)).toBe(true)
+  })
+
+  it('erro de venda acende mesmo com todo o resto certo', () => {
+    const m = avaliarMes({ ...julho, espelhaveis: 744, erros: 2, espelho: 744 })
+    expect(m.erros).toBe(2)
+    expect(m.conta_fecha).toBe(true)
+    expect(mesProblematico(m)).toBe(true)
+  })
+
+  it('conta que não fecha acende (venda lida sumiu sem explicação)', () => {
+    const m = avaliarMes({ ...julho, espelhaveis: 700, espelho: 700 })
+    expect(m.conta_fecha).toBe(false)
+    expect(mesProblematico(m)).toBe(true)
+  })
+})
+
+describe('mesclarTripwire', () => {
+  const AGORA = '2026-08-04T12:00:00.000Z'
+  const visiveis = mesesRecentes(HOJE, 12)
+  const okDe = (mes: string) => avaliarMes({
+    mes, apiTotal: 100, lidas: 100, espelhaveis: 90,
+    excluidas: { welcome: 4, sem_setor: 3, sem_item_ativo: 3 }, erros: 0, espelho: 90,
+    verificadoEmISO: AGORA,
+  })
+
+  it('mês nunca reconciliado é NÃO VERIFICADO, nunca divergente', () => {
+    const t = mesclarTripwire(null, okDe('2026-08'), visiveis, AGORA)
     expect(t.acendeu).toBe(false)
-    expect(t.divergentes).toEqual([])
-    expect(t.meses.every((l) => l.delta === 0)).toBe(true)
+    expect(t.meses['2026-08']).toMatchObject({ mes: '2026-08', sobrando: 0 })
+    expect(t.meses['2026-01']).toEqual({ nao_verificado: true })
+    expect(Object.keys(t.meses)).toHaveLength(12)
   })
 
-  it('acende com delta NEGATIVO — o espelho perdendo venda, que é o defeito da v5.4.5', () => {
-    const t = montarTripwire(['2026-07'], { '2026-07': 775 }, { '2026-07': 737 }, AGORA)
+  it('acumula mês a mês: a 2ª invocação não apaga a apuração da 1ª', () => {
+    const t1 = mesclarTripwire(null, okDe('2026-08'), visiveis, AGORA)
+    const t2 = mesclarTripwire(t1, okDe('2026-07'), visiveis, AGORA)
+    expect(t2.meses['2026-08']).toMatchObject({ mes: '2026-08' })
+    expect(t2.meses['2026-07']).toMatchObject({ mes: '2026-07' })
+  })
+
+  it('acende com o motivo legível quando um mês verificado tem problema', () => {
+    const ruim = avaliarMes({
+      mes: '2026-07', apiTotal: 775, lidas: 775, espelhaveis: 746,
+      excluidas: { welcome: 8, sem_setor: 12, sem_item_ativo: 9 }, erros: 0, espelho: 751,
+      verificadoEmISO: AGORA,
+    })
+    const t = mesclarTripwire(null, ruim, visiveis, AGORA)
     expect(t.acendeu).toBe(true)
-    expect(t.divergentes).toEqual(['2026-07'])
-    expect(t.meses[0]).toEqual({ mes: '2026-07', api: 775, espelho: 737, delta: -38 })
+    expect(t.motivos).toEqual(['2026-07: 5 sobrando'])
   })
 
-  it('acende TAMBÉM com delta positivo — espelho maior que a API é anomalia, não folga', () => {
-    const t = montarTripwire(['2026-05'], { '2026-05': 600 }, { '2026-05': 603 }, AGORA)
-    expect(t.acendeu).toBe(true)
-    expect(t.meses[0].delta).toBe(3)
+  it('mês que saiu da janela de 12 é descartado (painel, não histórico)', () => {
+    const antigo = mesclarTripwire(null, okDe('2025-09'), visiveis, AGORA)
+    expect(antigo.meses['2025-09']).toMatchObject({ mes: '2025-09' })
+    const depois = mesclarTripwire(antigo, null, mesesRecentes('2026-09-04', 12), AGORA)
+    expect(depois.meses['2025-09']).toBeUndefined()
+    expect(Object.keys(depois.meses)).toHaveLength(12)
   })
 
-  it('mês ausente de um lado conta ZERO e a linha aparece (ausência é dado)', () => {
-    const t = montarTripwire(['2026-07', '2026-06'], { '2026-07': 10 }, {}, AGORA)
-    expect(t.meses).toHaveLength(2)
-    expect(t.meses[0]).toEqual({ mes: '2026-07', api: 10, espelho: 0, delta: -10 })
-    expect(t.meses[1]).toEqual({ mes: '2026-06', api: 0, espelho: 0, delta: 0 })
-    expect(t.divergentes).toEqual(['2026-07'])
-  })
-
-  it('preserva a ordem dos meses recebida e carimba a verificação', () => {
-    const meses = mesesRecentes(HOJE, 3)
-    const t = montarTripwire(meses, {}, {}, AGORA)
-    expect(t.meses.map((l) => l.mes)).toEqual(meses)
-    expect(t.verificado_em).toBe(AGORA)
+  it('sem apuração nova só recarimba e reavalia o que já havia', () => {
+    const t1 = mesclarTripwire(null, okDe('2026-08'), visiveis, AGORA)
+    const t2 = mesclarTripwire(t1, null, visiveis, '2026-08-05T00:00:00.000Z')
+    expect(t2.atualizado_em).toBe('2026-08-05T00:00:00.000Z')
+    expect(t2.meses['2026-08']).toMatchObject({ mes: '2026-08' })
+    expect(t2.acendeu).toBe(false)
   })
 })

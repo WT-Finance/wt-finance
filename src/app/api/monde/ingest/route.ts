@@ -42,9 +42,11 @@ import {
   mesesRecentes,
   rangeDoMes,
   proximoMesReconciliacao,
-  montarTripwire,
+  avaliarMes,
+  mesclarTripwire,
+  type Tripwire,
 } from '@/lib/monde/reconciliacao'
-import { listarJanelaDaApi, contarVendasPorMesNaApi } from '@/lib/monde/auditoria'
+import { listarJanelaDaApi } from '@/lib/monde/auditoria'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>
@@ -195,30 +197,44 @@ async function handle(req: NextRequest): Promise<Response> {
           p_chave: 'ultima_reconciliacao', p_valor: new Date().toISOString(),
         })
 
-        // Tripwire ao FECHAR o ciclo (mês mais antigo da janela): 12 chamadas/dia, como o
-        // briefing pede. NÃO é caminho crítico — falha aqui não invalida a reconciliação.
+        // ── TRIPWIRE: subproduto exato desta reconciliação, sem chamada extra à API ────────
+        // A reconciliação já baixou o detalhe de cada venda do mês, então ela sabe quantas eram
+        // espelháveis e quantas excluiu, por motivo. É isso que torna a comparação exata —
+        // contagem crua contra o `total` da API acenderia todo mês (a API conta o que a
+        // transformação exclui por regra). Atualiza SÓ o mês reconciliado agora; os demais
+        // ficam como estavam, e os nunca reconciliados como `nao_verificado`.
+        // Não é caminho crítico: falha aqui não invalida a reconciliação.
         let tripwire: unknown = null
-        if (fechaCiclo) {
-          try {
-            const meses = mesesRecentes(hoje, MESES_TRIPWIRE)
-            const api = await contarVendasPorMesNaApi(meses, onLog)
-            const espelho: Record<string, number> = {}
-            for (const m of meses) {
-              const r = rangeDoMes(m)
-              // Reuso do detector como CONTADOR do espelho no mês: array vazio ⇒ 0 ausentes, e o
-              // campo `espelho` é exatamente a contagem de que o tripwire precisa.
-              const d = (await rpc('monde_vendas_ausentes', {
-                p_numeros: [], p_from: r.from, p_to: r.to,
-              })) as { espelho?: number } | null
-              espelho[m] = d?.espelho ?? 0
-            }
-            const t = montarTripwire(meses, api, espelho, new Date().toISOString())
-            await rpc('monde_ingest_control_set', { p_chave: 'tripwire', p_valor: JSON.stringify(t) })
-            onLog(`tripwire: ${t.acendeu ? `ACENDEU em ${t.divergentes.join(',')}` : 'todos os meses batem'}`)
-            tripwire = t
-          } catch (e) {
-            onLog(`aviso: tripwire falhou (a reconciliação segue válida) — ${(e as Error).message}`)
-          }
+        try {
+          const contagem = (await rpc('monde_vendas_ausentes', {
+            p_numeros: [], p_from: from, p_to: to,
+          })) as { espelho?: number } | null
+
+          const apurado = avaliarMes({
+            mes,
+            apiTotal: resultado.total_janela,
+            lidas: resultado.lidas,
+            espelhaveis: resultado.espelhaveis,
+            excluidas: resultado.excluidas,
+            erros: resultado.erros,
+            espelho: contagem?.espelho ?? 0,
+            verificadoEmISO: new Date().toISOString(),
+          })
+
+          const { data: anteriorRaw } = await db.rpc('monde_ingest_control_get', { p_chave: 'tripwire' })
+          let anterior: Tripwire | null = null
+          try { anterior = anteriorRaw ? (JSON.parse(String(anteriorRaw)) as Tripwire) : null } catch { anterior = null }
+
+          const t = mesclarTripwire(anterior, apurado, mesesRecentes(hoje, MESES_TRIPWIRE), new Date().toISOString())
+          await rpc('monde_ingest_control_set', { p_chave: 'tripwire', p_valor: JSON.stringify(t) })
+          onLog(
+            `tripwire ${mes}: api=${apurado.api} lidas=${apurado.lidas} espelhaveis=${apurado.espelhaveis} ` +
+            `espelho=${apurado.espelho} sobrando=${apurado.sobrando} erros=${apurado.erros} ` +
+            `conta_fecha=${apurado.conta_fecha} · geral ${t.acendeu ? `ACESO (${t.motivos.join('; ')})` : 'apagado'}`,
+          )
+          tripwire = t
+        } catch (e) {
+          onLog(`aviso: tripwire falhou (a reconciliação segue válida) — ${(e as Error).message}`)
         }
         return { resultado, tripwire }
       })
