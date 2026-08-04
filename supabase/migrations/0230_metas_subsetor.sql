@@ -197,7 +197,13 @@ BEGIN
                              'CONVIDADOS - Hospedagens', 'CONVIDADOS - Extras') THEN
       RAISE EXCEPTION 'METAS_SUBSETOR_INVALIDO: subsetor % inexistente', v_subsetor USING ERRCODE = '22023';
     END IF;
-    IF v_mes < 1 OR v_mes > 12 THEN
+    -- Mesmo motivo do guard de `v_subsetor` acima: com v_mes/v_ano NULL, as
+    -- comparações avaliam NULL (nunca TRUE) e o item escaparia da validação, quebrando
+    -- só depois no NOT NULL do INSERT, com erro cru do Postgres que o front não traduz.
+    IF v_ano IS NULL THEN
+      RAISE EXCEPTION 'METAS_ANO_INVALIDO: ano ausente no item' USING ERRCODE = '22023';
+    END IF;
+    IF v_mes IS NULL OR v_mes < 1 OR v_mes > 12 THEN
       RAISE EXCEPTION 'METAS_MES_INVALIDO: %', v_mes USING ERRCODE = '22023';
     END IF;
     IF v_valor IS NULL OR v_valor < 0 THEN

@@ -278,7 +278,16 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM analytics.dim_setor_macro WHERE id = v_sid) THEN
       RAISE EXCEPTION 'METAS_SETOR_INVALIDO: setor % inexistente', v_sid USING ERRCODE = '22023';
     END IF;
-    IF v_mes < 1 OR v_mes > 12 THEN
+    -- Guard de NULL acrescentado aqui junto com a trava (achado MÉDIO do revisor-db):
+    -- a lacuna vem do molde da 0175 e seria PRESERVADA por este CREATE OR REPLACE se
+    -- não fosse endereçada agora. `v_mes < 1 OR v_mes > 12` com v_mes NULL avalia NULL,
+    -- o IF não dispara e o erro só surge como violação crua de NOT NULL. Como esta
+    -- função já está sendo reescrita, corrigir custa zero — e as duas irmãs
+    -- (metas_upsert e metas_subsetor_upsert) ficam com a MESMA régua de validação.
+    IF v_ano IS NULL THEN
+      RAISE EXCEPTION 'METAS_ANO_INVALIDO: ano ausente no item' USING ERRCODE = '22023';
+    END IF;
+    IF v_mes IS NULL OR v_mes < 1 OR v_mes > 12 THEN
       RAISE EXCEPTION 'METAS_MES_INVALIDO: %', v_mes USING ERRCODE = '22023';
     END IF;
     IF v_valor IS NULL OR v_valor < 0 THEN
