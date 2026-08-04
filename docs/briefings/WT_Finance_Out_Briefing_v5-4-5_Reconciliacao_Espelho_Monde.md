@@ -91,8 +91,37 @@ Ago apagado com 3 exclusões por regra é a prova de que o alarme agora distingu
   - **ALTO:** `monde_ingest_release()` deletava o lock incondicionalmente; um `finally` que não checasse o retorno do `claim()` liberaria o lock de um processo vivo. Virou `release(p_dono)` com compare-and-delete.
   - **MÉDIO** endereçados: invariante do TTL documentado no corpo (`TTL > 2× maxDuration`); `timeout_milliseconds` da 0233 com folga (320s, não 300s exatos).
   - **BAIXO** registrado: depois desta versão, `backfill`/`window` manual não reseta mais o relógio do alarme de 45 min de `/metas` — leitura correta, mas confunde durante incidente.
-- **`revisor`** — _[preencher quando o parecer voltar]_
-- **`verificador-visual`** — pendente (cartão novo); ciente de que o MCP Playwright não sobe em background.
+- **`revisor` — APROVADO COM RESSALVAS** (0 CRÍTICO · 1 ALTO · 1 MÉDIO · 2 BAIXO).
+  - **ALTO — CORRIGIDO.** `catch` silencioso ao reidratar o tripwire anterior (`route.ts`): se o
+    JSON guardado estivesse corrompido, `anterior` virava `null` **sem log**, e
+    `mesclarTripwire(null, …)` jogava fora a apuração dos outros 11 meses do painel — todos de
+    volta a `nao_verificado`, sem rastro. O revisor chamou de irônico e tem razão: **um silêncio
+    dentro do mecanismo que esta versão existe para acabar com silêncios**. Agora loga.
+  - **MÉDIO — CORRIGIDO (e fecha pendência antiga).** Faltava caso de contrato para o schema
+    novo. Adicionados dois em `rpc-contrato.test.ts`: `monde_ingest_status` (as 11 chaves +
+    o invariante **acende ⟺ há motivo**, que é o que separa alarme de ruído) e
+    `monde_vendas_ausentes` (detecta o que falta, não acusa o que existe, e o array vazio como
+    contador puro). Isso **fecha a pendência de contrato de `monde_ingest_status`**, aberta no
+    WORKING-CONTEXT desde a v5.1.8. **85 casos de contrato** passando contra o banco real.
+  - **BAIXO — CORRIGIDO.** `itens_ativos` era buscado e nunca renderizado. Saiu do payload
+    (dado morto é smell); comentário registra onde reentra se o cartão crescer.
+  - **BAIXO — registrado, mantido.** Duplicação da paginação entre `auditoria.ts` e
+    `ingest.ts`: deliberada e documentada no cabeçalho do módulo (auditar e ingerir querem
+    coisas diferentes — a auditoria quer os `sale_number` **sem** `sale_id`, que a ingestão pula).
+    Aceitável num hotfix; **candidato a unificar numa versão não urgente.**
+  - **Fora do escopo, registrado para quem tocar a tela:** `formatarData()` em
+    `admin/uploads/page.tsx:117` — usada pelos **5 cards de upload pré-existentes** — chama
+    `toLocaleString('pt-BR')` **sem** `timeZone: 'America/Sao_Paulo'`, o bug que o DS §5.2
+    documenta (hora errada perto da meia-noite em runtime não-SP). Não foi introduzido nem
+    tocado por esta versão; o cartão novo usa `fmtDataHoraSP` corretamente. Mesmo caso dos
+    ícones decorativos sem `aria-hidden` nos cards antigos.
+  - Verificado **sem achado**: correção do lock (o "pulado" retorna antes do `try`; o `finally`
+    nunca mascara o erro do corpo; `crypto.randomUUID()` já em uso noutra rota), resumibilidade
+    do cursor, assinaturas RPC↔TS nos 4 call-sites, o cartão contra o DS e acessibilidade (selo
+    por **cor + ícone + texto**, não color-only), guards de área em **todos** os modos, e
+    nenhuma contradição entre os comentários longos e o comportamento real.
+- **`verificador-visual`** — **NÃO EXECUTADO.** Sessão de background: o MCP Playwright não sobe
+  (limitação registrada desde a v5.3.3) e a tela exige sessão. Fica como pendência sua — §8.2.
 
 ## 7. Gates
 
@@ -100,7 +129,7 @@ Ago apagado com 3 exclusões por regra é a prova de que o alarme agora distingu
 |---|---|
 | `npx tsc --noEmit` | limpo |
 | `npm run lint` | limpo |
-| `npm test` | **707 testes, 45 arquivos, ZERO skip** (era 682; +25 do módulo novo) |
+| `npm test` | **709 testes, 45 arquivos, ZERO skip** (era 682; +25 do módulo puro e +2 casos de contrato) |
 | `npm run build` | OK |
 | classificador do db-gate na 0232 | `aditiva`, zero motivos |
 | backup-gate | **VERDE** — restore-test em 3 tabelas, count+checksum idênticos |

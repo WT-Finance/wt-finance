@@ -429,7 +429,6 @@ export type TripwireMes =
 
 export interface StatusSincronizacaoMonde {
   vendas: number
-  itens_ativos: number
   ultima_sincronizacao: string | null
   ultima_reconciliacao: string | null
   reconciliacao_cursor: string | null
@@ -451,9 +450,11 @@ export async function getMondeSincronizacaoStatusAction(): Promise<
     const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('monde_ingest_status')
     if (error) return { error: error.message }
     const s = (data ?? {}) as Partial<StatusSincronizacaoMonde>
+    // Só o que o cartão renderiza — dado buscado e não mostrado é smell (achado BAIXO do
+    // revisor). A RPC devolve mais (`itens`, `itens_ativos`, `min_data`, `max_data`,
+    // `ultima_sync`, `ingest_em_curso`); se o cartão passar a mostrar, é aqui que entram.
     return {
       vendas:               s.vendas ?? 0,
-      itens_ativos:         s.itens_ativos ?? 0,
       ultima_sincronizacao: s.ultima_sincronizacao ?? null,
       ultima_reconciliacao: s.ultima_reconciliacao ?? null,
       reconciliacao_cursor: s.reconciliacao_cursor ?? null,

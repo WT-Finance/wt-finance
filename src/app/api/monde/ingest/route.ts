@@ -230,7 +230,15 @@ async function handle(req: NextRequest): Promise<Response> {
 
           const { data: anteriorRaw } = await db.rpc('monde_ingest_control_get', { p_chave: 'tripwire' })
           let anterior: Tripwire | null = null
-          try { anterior = anteriorRaw ? (JSON.parse(String(anteriorRaw)) as Tripwire) : null } catch { anterior = null }
+          try {
+            anterior = anteriorRaw ? (JSON.parse(String(anteriorRaw)) as Tripwire) : null
+          } catch (e) {
+            // NUNCA silencioso: cair aqui joga fora a apuração acumulada dos outros 11 meses do
+            // painel (todos voltam a `nao_verificado`), e sem log ninguém saberia por quê. Um
+            // silêncio dentro do mecanismo feito para acabar com silêncios seria a pior espécie.
+            anterior = null
+            onLog(`aviso: tripwire anterior corrompido — histórico do painel reiniciado — ${(e as Error).message}`)
+          }
 
           const t = mesclarTripwire(anterior, apurado, mesesRecentes(hoje, MESES_TRIPWIRE), new Date().toISOString())
           await rpc('monde_ingest_control_set', { p_chave: 'tripwire', p_valor: JSON.stringify(t) })
