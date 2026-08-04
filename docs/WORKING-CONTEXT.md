@@ -28,6 +28,12 @@
   produção**, inclusive Trips e Corporativo quando havia célula de Weddings suja. A `0235` removeu
   a trava; verificado por REST sem escrever nada.
   ⚠️ **`ADR-0163` está RESERVADO** pela branch em stand-by — não reutilizar o número.
+  📄 **Consolidado dos achados (LER antes de retomar ou de tocar o Scope B):**
+  `docs/investigacoes/2026-08-04-metas-subsetor-e-de-para-monde.md` — o de-para Monde→subsetor
+  medido (7 `product_kind`; repontar hoje casaria só **46%** do faturamento; 4 regras de kind cobrem
+  57% e a curadoria real são ~22 descrições), o post-mortem do incidente (**migration aditiva no
+  schema pode ser incompatível com o front NO AR**), a divergência de fonte que variou de 0,00 para
+  40% no mesmo dia, e as 6 decisões de produto já tomadas.
 
 
 - Versão em produção (main): **`5.4.3`** (#211 mergeado 04/08 às 13h08) — PATCH de dois defeitos
@@ -410,7 +416,9 @@
 - **v5.3.x refino da DRE:** drag-and-drop no editor; guarda de saída; divisão ver/editar da
   permissão; mover `historico-alteracoes` para `shared/`; Consolidado — conjunto de linhas vem
   do ano da URL (produto).
-- **Monde — Scope B (aposentar o upload):** fato/mv item-level + repontar as 6 funções restantes.
+- **Monde — Scope B (aposentar o upload):** ⚠️ o de-para de produto está MEDIDO em
+  `docs/investigacoes/2026-08-04-metas-subsetor-e-de-para-monde.md` §4 — ler antes de estimar.
+  Resumo do que já se sabe: fato/mv item-level + repontar as 6 funções restantes.
 - **Saúde da sincronização Monde:** detectar falha SILENCIOSA (200 sem vendas).
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116) · `CRON_SECRET` constant-time (BAIXO).
 - Casos de contrato pendentes: `solicitar_acesso_admin`, `monde_ingest_status`.
