@@ -6,7 +6,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [5.4.5] — 2026-08-04
+## [5.4.4] — 2026-08-04
 
 PATCH · **O espelho do Monde perdia venda lançada com atraso — Metas e Performance subestimavam faturamento.** Migration `0232` (aditiva, aplicada) · `0233` pendente de pós-merge · **ADR-0164**.
 
@@ -44,8 +44,10 @@ PATCH · **O espelho do Monde perdia venda lançada com atraso — Metas e Perfo
 ### Notas de aplicação
 
 - **`0232` já aplicada** (backup-gate verde; restore-test em 3 tabelas com count+checksum idênticos). 21 verificações via REST/service_role, executando o corpo das RPCs — inclusive a prova de que um dono não solta o lock de outro.
-- **`0233` (as 3 entradas de `cron.schedule` da reconciliação) NÃO está em `supabase/migrations/`** e só pode ser aplicada **depois do merge**: o cron chama a URL de produção, do Vault. Agendar antes faria os jobs responderem 200 e ficarem **verdes** sem reconciliar nada — fabricando a falha silenciosa que esta versão existe para caçar. SQL e comando prontos no out-briefing.
-- Migration numerada **0232** (e não 0230) porque a v5.4.4, em curso em paralelo, já reivindicou 0230/0231 e o ADR-0163.
+- **`0236` (as 3 entradas de `cron.schedule` da reconciliação) NÃO está em `supabase/migrations/`** e só pode ser aplicada **depois do merge**: o cron chama a URL de produção, do Vault. Agendar antes faria os jobs responderem 200 e ficarem **verdes** sem reconciliar nada — fabricando a falha silenciosa que esta versão existe para caçar. SQL e comando prontos no out-briefing.
+- **Numeração torta, e de propósito.** Esta versão nasceu **5.4.5** (a v5.4.4 *Metas por subsetor* estava em curso em paralelo e havia reservado 0230/0231 + ADR-0163). Aquela versão então entrou em **stand-by**, liberou o número **5.4.4** e renumerou as migrations dela para **0233/0234/0235** — já aplicadas. Resultado: versão **5.4.4**, **ADR-0164** (o 0163 segue reservado, com arquivo na branch parada), migration aplicada **0232** (não renumerada — já estava no histórico do banco) e agendamento na **0236**. **`0230`/`0231` nunca existiram.**
+- ⚠️ O arquivo da `0232` diz "v5.4.5" no header e cita a "0233": as duas referências ficaram velhas e **não foram corrigidas**, porque `supabase_migrations.schema_migrations` guarda os `statements` de cada migration aplicada e editar o arquivo o faria divergir do histórico.
+- **Dívida registrada:** a `0232` foi aplicada de uma branch não mergeada e, por isso, o `db push` da sessão paralela quebrou com `LegacyDbPushMissingLocalError` até ela trazer os arquivos para o `main` (PR #215). **Aplicar migration antes do merge trava toda outra branch.**
 
 ## [5.4.3] — 2026-08-04
 

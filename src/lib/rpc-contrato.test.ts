@@ -877,13 +877,13 @@ describe.skipIf(!ON)('contrato RPC — DRE v5.3.1 (decomposição por bloco)', (
     for (const c of pd.categorias) expect(excluidas.has(c.categoria_id)).toBe(false)
   })
 
-  // ── Sincronização Monde (v5.4.5, migration 0232) ───────────────────────────────────────
+  // ── Sincronização Monde (v5.4.4, migration 0232) ───────────────────────────────────────
   // `monde_ingest_status` alimenta o rótulo "Última atualização" de /metas E o cartão de
   // monitoramento de admin/uploads; `monde_vendas_ausentes` é o detector do furo que a versão
   // conserta — o invariante mais crítico dela, e até aqui sem rede automatizada.
   // (Fecha também a pendência de contrato de `monde_ingest_status`, aberta desde a v5.1.8.)
 
-  it('monde_ingest_status: shape do painel de sincronização, com as chaves da v5.4.5', async () => {
+  it('monde_ingest_status: shape do painel de sincronização, com as chaves da v5.4.4', async () => {
     const d = await rpc('monde_ingest_status', {}) as Record<string, unknown>
 
     for (const k of ['vendas', 'itens', 'itens_ativos', 'min_data', 'max_data', 'ultima_sync',
@@ -904,7 +904,7 @@ describe.skipIf(!ON)('contrato RPC — DRE v5.3.1 (decomposição por bloco)', (
       expect(Array.isArray(t.motivos)).toBe(true)
       expect(typeof t.meses).toBe('object')
       // Invariante do alarme: acende SE E SOMENTE SE há motivo. Alarme sem motivo (ou motivo
-      // sem alarme) é exatamente o que tornaria o painel ruído — é o bug que a v5.4.5 evitou.
+      // sem alarme) é exatamente o que tornaria o painel ruído — é o bug que a v5.4.4 evitou.
       expect(t.acendeu).toBe((t.motivos as unknown[]).length > 0)
     }
   })

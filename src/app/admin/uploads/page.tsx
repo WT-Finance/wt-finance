@@ -124,7 +124,7 @@ function formatarNum(n: number): string {
 }
 
 /**
- * Sincronização Monde (v5.4.5) — cartão de LEITURA, sem upload.
+ * Sincronização Monde (v5.4.4) — cartão de LEITURA, sem upload.
  *
  * Não é uma base de planilha: o espelho vem da API do Monde a cada 15 min. O cartão existe
  * porque o tripwire precisa de um lugar para ACENDER — o briefing pede alerta visível, não
@@ -373,7 +373,7 @@ export default function AdminUploadsPage() {
     lancamentos_movimentacao: ESTADO_INICIAL, titulos_em_aberto: ESTADO_INICIAL, pessoas: ESTADO_INICIAL,
   })
   const [modal, setModal] = useState<BaseKey | null>(null)
-  // Sincronização Monde (v5.4.5): leitura, fora do Record de bases (não tem upload nem estado
+  // Sincronização Monde (v5.4.4): leitura, fora do Record de bases (não tem upload nem estado
   // de carga). Fail-safe: erro vira `null` e o cartão diz "indisponível" — nunca derruba a tela.
   const [statusMonde, setStatusMonde] = useState<StatusSincronizacaoMonde | null>(null)
 

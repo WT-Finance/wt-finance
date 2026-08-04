@@ -1,6 +1,6 @@
-# Out-Briefing v5.4.5 — Onda 0: fechar o furo do espelho do Monde
+# Out-Briefing v5.4.4 — Onda 0: fechar o furo do espelho do Monde
 
-**Tipo:** PATCH (correção de defeito em produção) · **Migration:** `0232` aditiva **APLICADA** + `0233` **pendente de pós-merge** · **ADR:** `0164` · **Branch:** `fix/v5-4-5-reconciliacao-espelho` · **Base:** `main @ ec14750` (v5.4.3) · **Rota A**
+**Tipo:** PATCH (correção de defeito em produção) · **Migration:** `0232` aditiva **APLICADA** + `0236` **pendente de pós-merge** · **ADR:** `0164` · **Branch:** `fix/v5-4-4-reconciliacao-espelho` · **Base:** `main @ bf5d71c` (v5.4.3 + as migrations da versão em stand-by) · **Rota A**
 
 ---
 
@@ -81,20 +81,50 @@ Ago apagado com 3 exclusões por regra é a prova de que o alarme agora distingu
 
 | # | Briefing | Realidade | O que foi feito |
 |---|---|---|---|
-| 1 | v5.4.3, base v5.4.2, branch `fix/v5-4-3-…` | v5.4.3 já em produção; v5.4.4 em paralelo | **v5.4.5** sobre `main @ ec14750`. Briefing preservado íntegro no commit `54c0baa` |
-| 2 | ADR e migration "numerados na hora" | v5.4.4 já reivindicou **0230/0231** e **ADR-0163** | **0232 · ADR-0164**; quem aplicar em segundo usa `--fora-de-ordem` |
+| 1 | v5.4.3, base v5.4.2, branch `fix/v5-4-3-…` | v5.4.3 em produção; a versão paralela entrou em STAND-BY e liberou o número 5.4.4 | **v5.4.4** sobre `main @ bf5d71c`. Briefing preservado íntegro no commit `54c0baa` |
+| 2 | ADR e migration "numerados na hora" | a versão paralela reivindicou 0230/0231 e **ADR-0163** | ver §5.1 — a numeração mudou duas vezes durante a versão |
 | 3 | "lock **ou** horário fora do slot" | horário não basta (§4.1) | lock obrigatório |
 | 4 | tripwire "discreto" em `admin/uploads` | não havia cartão do Monde lá | superfície nova, read-only |
 | 5 | — | `ultima_sincronizacao` mascararia incremental morto | estreitada |
 | 6 | 12 chamadas `page_size=1` | funciona, mas a comparação não (§4.2) | tripwire virou subproduto |
 | 7 | secrets no Vault | confirmado na 0182 | reusados |
 
+### 5.1 A numeração mudou duas vezes, e o registro fica torto de propósito
+
+Esta versão nasceu **5.4.5** porque a v5.4.4 (*Metas por subsetor*) estava em curso em paralelo e
+tinha reservado 0230/0231 e o ADR-0163. Depois: aquela versão entrou em **stand-by**, **liberou o
+número 5.4.4** e — ao colidir comigo na numeração — **renumerou as migrations dela para
+0233/0234/0235**, que já estão aplicadas em produção (PR #215).
+
+Estado final:
+
+| item | número | por quê |
+|---|---|---|
+| versão | **5.4.4** | a versão em stand-by liberou o número |
+| ADR | **0164** | **0163 segue RESERVADO** — a branch em stand-by tem o arquivo `0163-meta-de-subsetor-e-mix-de-produto.md`, e o consolidado no `main` manda usar 0164+ |
+| migration aplicada | **0232** | **não renumerada:** já estava aplicada |
+| migration do agendamento | **0236** | 0233/0234/0235 foram tomadas; 0230/0231 nunca existiram |
+
+⚠️ **O arquivo da `0232` diz "v5.4.5" no header e cita a "0233" no bloco 4.** As duas referências
+ficaram velhas e **não foram corrigidas de propósito**: `supabase_migrations.schema_migrations`
+guarda os `statements` de cada migration aplicada (14 para a 0232, conferido por consulta), então
+editar o arquivo o faria divergir do próprio histórico do banco. Migration aplicada é registro, não
+rascunho.
+
+### 5.2 Uma dívida que esta versão criou (e a próxima não deve repetir)
+
+A `0232` foi aplicada a partir desta branch, **antes do merge**. Como o arquivo não estava no
+`main`, o `db push` da sessão paralela quebrou com **`LegacyDbPushMissingLocalError`** e só
+destravou quando ela trouxe os arquivos para o `main`. **Aplicar migration antes do merge trava
+toda outra branch** — quem faz isso avisa as sessões paralelas na hora, ou mergeia o arquivo
+primeiro. Foi o que motivou o PR #215.
+
 ## 6. Parecer da revisão
 
 - **`revisor-db` — CORREÇÕES NECESSÁRIAS, corrigidas antes de aplicar.**
-  - **CRÍTICO:** a 0232 agendava 3 crons para `mode=reconciliacao` que a rota ainda não implementava. Aplicada assim, os jobs rodariam, cairiam no ramo `incremental` default, responderiam **200** e apareceriam **verdes** em `cron.job_run_details` — justo o que o checkpoint manda conferir — sem reconciliar nada. Era **erro de ordem no plano**, não da migration. O agendamento saiu para a `0233`, pós-merge.
+  - **CRÍTICO:** a 0232 agendava 3 crons para `mode=reconciliacao` que a rota ainda não implementava. Aplicada assim, os jobs rodariam, cairiam no ramo `incremental` default, responderiam **200** e apareceriam **verdes** em `cron.job_run_details` — justo o que o checkpoint manda conferir — sem reconciliar nada. Era **erro de ordem no plano**, não da migration. O agendamento saiu para a `0236`, pós-merge.
   - **ALTO:** `monde_ingest_release()` deletava o lock incondicionalmente; um `finally` que não checasse o retorno do `claim()` liberaria o lock de um processo vivo. Virou `release(p_dono)` com compare-and-delete.
-  - **MÉDIO** endereçados: invariante do TTL documentado no corpo (`TTL > 2× maxDuration`); `timeout_milliseconds` da 0233 com folga (320s, não 300s exatos).
+  - **MÉDIO** endereçados: invariante do TTL documentado no corpo (`TTL > 2× maxDuration`); `timeout_milliseconds` da 0236 com folga (320s, não 300s exatos).
   - **BAIXO** registrado: depois desta versão, `backfill`/`window` manual não reseta mais o relógio do alarme de 45 min de `/metas` — leitura correta, mas confunde durante incidente.
 - **`revisor` — APROVADO COM RESSALVAS** (0 CRÍTICO · 1 ALTO · 1 MÉDIO · 2 BAIXO).
   - **ALTO — CORRIGIDO.** `catch` silencioso ao reidratar o tripwire anterior (`route.ts`): se o
@@ -144,12 +174,12 @@ Ago apagado com 3 exclusões por regra é a prova de que o alarme agora distingu
 
 ## 8. PENDÊNCIAS SUAS
 
-### 8.1 Aplicar a `0233` DEPOIS do merge (obrigatório — sem ela não há varredura diária)
+### 8.1 Aplicar a `0236` DEPOIS do merge (obrigatório — sem ela não há varredura diária)
 
-A reconciliação **existe mas não está agendada**. O cron chama a URL de produção (do Vault), então só faz sentido depois que o `route.ts` estiver no ar. Depois do merge, criar `supabase/migrations/0233_monde_reconciliacao_agendamento.sql` com o SQL abaixo e rodar `npm run db:migrate -- --aditiva` (acrescente `--fora-de-ordem` se a v5.4.4 tiver aplicado 0230/0231 antes):
+A reconciliação **existe mas não está agendada**. O cron chama a URL de produção (do Vault), então só faz sentido depois que o `route.ts` estiver no ar. Depois do merge, criar `supabase/migrations/0236_monde_reconciliacao_agendamento.sql` com o SQL abaixo e rodar `npm run db:migrate -- --aditiva` (a `0236` é a maior pendente, então NÃO precisa de `--fora-de-ordem`):
 
 ```sql
--- 0233 — feat(v5.4.5): agendamento diário da reconciliação do espelho Monde.
+-- 0236 — feat(v5.4.4): agendamento diário da reconciliação do espelho Monde.
 -- ADITIVA. Só pode ser aplicada com o route.ts de `mode=reconciliacao` JÁ EM PRODUÇÃO.
 -- Horário em UTC: 06:05/06:20/06:35 = 03:05/03:20/03:35 em São Paulo (fora de pico).
 -- Minutos fora dos do incremental (*/15 dispara em :00/:15/:30/:45); o lock cobre o resto.
@@ -192,9 +222,18 @@ NOTIFY pgrst, 'reload schema';
 
 ### 8.3 Decidir sobre as vendas "sobrando" (§4.3)
 
-### 8.4 Coordenação com a v5.4.4
+### 8.4 Coordenação com a versão em stand-by — RESOLVIDA
 
-`CHANGELOG.md`, `src/data/changelog-diretoria.ts` e `package.json` **vão conflitar** — as duas versões escrevem no topo dos mesmos arquivos. Quem mergear em segundo resolve. Se a v5.4.4 mergear primeiro, o bump dela vai a 5.4.4 e este PR precisa rebasear o `package.json` para 5.4.5.
+Não há mais conflito a resolver. O `main` já foi trazido para esta branch (`bf5d71c`): os arquivos
+das migrations `0233`–`0235` e o consolidado da investigação entraram, e o único conflito real
+(`docs/WORKING-CONTEXT.md`) foi resolvido **mantendo os dois blocos** — o desta versão e o da
+versão em stand-by.
+
+O `main` **não** tem bump nem entrada de changelog da versão parada (ela reverteu os dela ao entrar
+em stand-by), então `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` **não conflitam**.
+
+⚠️ Se a versão em stand-by for retomada algum dia, ela precisa: bump para **5.4.5+**, ADR **0163**
+(que segue reservado, com o arquivo na branch dela) e migration **0237+**.
 
 ### 8.5 A hora do CHANGELOG_DIRETORIA
 

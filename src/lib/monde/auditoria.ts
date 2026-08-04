@@ -1,6 +1,6 @@
 import { fetchSalesPage } from './client'
 
-// Auditoria do espelho Monde (v5.4.5) — a camada de I/O do detector e do tripwire.
+// Auditoria do espelho Monde (v5.4.4) — a camada de I/O do detector e do tripwire.
 //
 // Fica separada de `ingest.ts` DE PROPÓSITO: auditar e ingerir têm necessidades diferentes
 // (a auditoria quer TODOS os `sale_number` da API, inclusive os que a ingestão nem consegue
@@ -65,7 +65,7 @@ export async function listarJanelaDaApi(opts: {
   return { numeros, sem_sale_id: semSaleId, total: Number.isFinite(total) ? total : numeros.length, paginas }
 }
 
-// NOTA (v5.4.5): houve aqui um `contarVendasPorMesNaApi` que fazia 12 chamadas `page_size=1`
+// NOTA (v5.4.4): houve aqui um `contarVendasPorMesNaApi` que fazia 12 chamadas `page_size=1`
 // lendo só o `total`, para o tripwire da M4. Foi REMOVIDO: medido em 04/08/2026, comparar o
 // `total` da API contra a contagem do espelho acende todo mês para sempre, porque a API conta
 // vendas que a transformação exclui por regra (jul/2026: 8 Welcome + 12 sem setor + 9 sem item

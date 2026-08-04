@@ -1,4 +1,4 @@
-// API Route de ingestão do Monde (v5.1.2/M5; alcance corrigido na v5.4.5). runtime nodejs,
+// API Route de ingestão do Monde (v5.1.2/M5; alcance corrigido na v5.4.4). runtime nodejs,
 // server-only. Aciona `ingestWindow` (lista→detalhe→transform→staging→promover→refresh) com um
 // client SERVICE-ROLE (as RPCs monde_ingest_* são service_role-only). Idempotente por raw_hash.
 //
@@ -9,15 +9,15 @@
 //
 // Modos (?mode=):
 //   • incremental (default) — janela = hoje−7d..hoje. É o que o cron de 15min chama.
-//   • reconciliacao (v5.4.5) — UM mês por invocação, ciclando os 3 últimos meses por cursor.
+//   • reconciliacao (v5.4.4) — UM mês por invocação, ciclando os 3 últimos meses por cursor.
 //     A rede AUTO-CURATIVA desta versão. Fecha o ciclo populando o tripwire.
-//   • auditoria&from&to (v5.4.5) — SÓ LEITURA: lista a API e pergunta ao banco quais vendas
+//   • auditoria&from&to (v5.4.4) — SÓ LEITURA: lista a API e pergunta ao banco quais vendas
 //     faltam. É o detector do furo e o teste de aceitação da versão.
 //   • window&from=YYYY-MM-DD&to=YYYY-MM-DD[&max=N] — janela explícita (demonstração/checkpoint).
 //   • backfill[&from=YYYY-MM-DD] — resumível por cursor de MÊS: processa o próximo mês após o
 //     cursor e avança; re-invocar até `done:true`. UPSERT torna o reprocesso seguro.
 //
-// ── POR QUE A v5.4.5 EXISTE ────────────────────────────────────────────────────────────────
+// ── POR QUE A v5.4.4 EXISTE ────────────────────────────────────────────────────────────────
 // A API do Monde filtra a listagem por DATA DA VENDA. A janela antiga do incremental era
 // `hoje−2d..hoje`, então venda REGISTRADA COM ATRASO e data retroativa nunca caía nela — e o
 // incremental nunca voltava àquele dia. Medido em 04/08/2026 contra a API, venda a venda: 42
@@ -51,7 +51,7 @@ import { listarJanelaDaApi } from '@/lib/monde/auditoria'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>
 
-/** Dias que o incremental cobre. Era 2 até a v5.4.5; o atraso MEDIANO de registro é 4. */
+/** Dias que o incremental cobre. Era 2 até a v5.4.4; o atraso MEDIANO de registro é 4. */
 const DIAS_INCREMENTAL = 7
 
 /**
@@ -136,7 +136,7 @@ async function handle(req: NextRequest): Promise<Response> {
   try {
     // ── auditoria (SÓ LEITURA — sem lock, não toca staging) ────────────────────────────────
     // O detector: compara a API contra o espelho e diz exatamente quais vendas faltam. Teste de
-    // aceitação da v5.4.5 e invariante permanente (zero ausentes no range coberto). A referência
+    // aceitação da v5.4.4 e invariante permanente (zero ausentes no range coberto). A referência
     // é a API, NUNCA o upload — que vai ficar dormente e esfriar (decisão do Yan no briefing).
     if (mode === 'auditoria') {
       const from = sp.get('from'); const to = sp.get('to')
@@ -183,7 +183,7 @@ async function handle(req: NextRequest): Promise<Response> {
       return NextResponse.json({ mode, mes: alvoYm, done: proxMes(alvoYm) > fimYm, resultado, log })
     }
 
-    // ── reconciliacao (v5.4.5) ─────────────────────────────────────────────────────────────
+    // ── reconciliacao (v5.4.4) ─────────────────────────────────────────────────────────────
     // UM mês por invocação, ciclando os 3 últimos meses pelo cursor. Um mês cabe folgado no
     // maxDuration=300 (jul/2026 tem ~775 vendas na API), e três disparos diários fecham a
     // janela. Resumível: se falhar, o cursor NÃO avança e a próxima invocação retoma o mesmo mês.

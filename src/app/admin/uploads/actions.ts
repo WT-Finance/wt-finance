@@ -405,7 +405,7 @@ async function regenerarFluxoCaixa(
 }
 
 // ---------------------------------------------------------------------------
-// Sincronização Monde (v5.4.5) — LEITURA. Não é uma base de upload: o espelho vem da API,
+// Sincronização Monde (v5.4.4) — LEITURA. Não é uma base de upload: o espelho vem da API,
 // e este bloco existe para o tripwire ter onde ACENDER. Divergência tem de ser alerta
 // visível, não linha de log perdida no console da Vercel.
 // ---------------------------------------------------------------------------

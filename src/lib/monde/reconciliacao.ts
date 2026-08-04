@@ -1,4 +1,4 @@
-// Reconciliação do espelho Monde (v5.4.5). Lógica PURA — sem I/O, sem React, sem server —
+// Reconciliação do espelho Monde (v5.4.4). Lógica PURA — sem I/O, sem React, sem server —
 // no molde de `src/lib/metas/sync-atraso.ts`: recebe o "hoje" como parâmetro em vez de ler o
 // relógio, então é testável e não carrega surpresa de fuso.
 //
@@ -98,7 +98,7 @@ export interface MesVerificado {
   /**
    * `espelho − espelhaveis`. Vendas que continuam no espelho tendo deixado de ser espelháveis
    * (perderam o último item ativo depois de ingeridas) — o UPSERT nunca remove. Achado da
-   * v5.4.5; nesta versão é MEDIDO e reportado, não corrigido (remover linha é escrita
+   * v5.4.4; nesta versão é MEDIDO e reportado, não corrigido (remover linha é escrita
    * destrutiva e muda faturamento exibido — decisão do Yan).
    */
   sobrando: number

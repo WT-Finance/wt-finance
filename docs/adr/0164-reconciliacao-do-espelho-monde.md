@@ -2,7 +2,7 @@
 
 - **Status:** aceito
 - **Data:** 2026-08-04
-- **Versão:** v5.4.5 (Onda 0 — fechar o furo do espelho do Monde)
+- **Versão:** v5.4.4 (Onda 0 — fechar o furo do espelho do Monde)
 - **Contexto:** ingestão do Monde (`/api/monde/ingest`, `monde.*`) — emenda ao **ADR-0149**
   (ingestão) e ao **ADR-0151** (a virada, que fez o espelho virar fonte de produção)
 
@@ -108,7 +108,7 @@ backfill manual durante um incidente: o rótulo segue vermelho mesmo com dado fr
 ## Decisão 5 — O agendamento não entra na mesma migration que o código ainda não suporta
 
 A `0232` (detector, lock, status) é **inerte**: nada em `src/` a chama até o deploy. O
-`cron.schedule` da reconciliação ficou de fora dela, na **`0233`**, aplicável **só depois** do
+`cron.schedule` da reconciliação ficou de fora dela, na **`0236`**, aplicável **só depois** do
 `route.ts` estar em produção — o cron chama a URL de produção, do Vault.
 
 Agendar antes faria os 3 jobs baterem em `mode=reconciliacao`, cair no ramo `incremental`
@@ -117,9 +117,21 @@ checkpoint manda conferir — sem reconciliar nada. Seria fabricar a falha silen
 versão existe para caçar. (Achado CRÍTICO do `revisor-db`; era erro de **ordem no plano**, não da
 migration.)
 
-Corolário operacional: **a `0233` não é escrita em `supabase/migrations/` antes da hora** — o
+Corolário operacional: **a `0236` não é escrita em `supabase/migrations/` antes da hora** — o
 `db push` empurra todo o conjunto pendente e ela entraria de arrasto (a armadilha que custou a
 v5.2.0).
+
+**Nota de numeração.** O corpo da `0232` fala em "0233" porque era o número livre quando ela foi
+escrita. A versão paralela (*Metas por subsetor*, hoje em stand-by) tomou 0233/0234/0235 antes, e
+o agendamento passou a ser a **0236**. A `0232` **não foi editada**: o banco guarda os
+`statements` de cada migration aplicada, então corrigir o comentário a faria divergir do próprio
+histórico. Migration aplicada é registro.
+
+**Dívida que esta versão criou, e que vale registrar contra a próxima.** A `0232` foi aplicada a
+partir de uma branch não mergeada. Como o arquivo não estava no `main`, o `db push` da sessão
+paralela quebrou com `LegacyDbPushMissingLocalError`, e só destravou quando ela trouxe os arquivos
+para o `main` (PR #215). **Aplicar migration antes do merge trava toda outra branch** — quem faz
+isso avisa as sessões paralelas na hora, ou mergeia o arquivo primeiro.
 
 ## O que NÃO foi decidido aqui
 
