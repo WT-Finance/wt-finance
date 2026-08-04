@@ -140,6 +140,55 @@ de um patch de Metas.
 Corrigido em três lugares (errata explícita, sem reescrever a história): ADR-0163 §Decisão 4,
 briefing de entrada §5 e a fila do Scope B no WORKING-CONTEXT.
 
+## 4d. A medição do de-para, feita (insumo do Scope B, não desta versão)
+
+O §4c dizia que faltava contar os `product_kind`. Contado, via `SELECT` read-only pelo
+`SUPABASE_DB_URL` (o cliente `pg` já está no `node_modules`; nenhuma dependência nova, nenhuma
+migration). Weddings, **itens ativos**, todo o histórico do espelho:
+
+| `product_kind` | itens | descrições | faturamento |
+|---|---|---|---|
+| `hotels` | 4.454 | 154 | 29.639.574,09 |
+| `others` | 2.137 | 17 | 23.925.263,37 |
+| `airline_tickets` | 490 | 1 | 2.672.213,19 |
+| `operations` | 74 | 6 | 156.468,35 |
+| `travel_packages` | 24 | 10 | 113.775,34 |
+| `insurances` | 496 | 1 | 96.390,66 |
+| `car_rentals` | 12 | 1 | 21.825,87 |
+
+**São 7 `product_kind` e 190 descrições** — 7.687 itens, R$ 56.625.510,87.
+
+**Repontar hoje, com o mapa atual, casaria só 46% do faturamento** (3.072 de 7.687 itens;
+R$ 26,06 Mi de R$ 56,63 Mi). Ou seja: 54% cairia em "Não Classificados". Isso confirma com número
+o risco descrito no §4c.
+
+**O de-para não é sobre as 190 descrições — é sobre 7 kinds + ~22 descrições.** As 154 descrições
+de `hotels` são nomes de hotel; elas se resolvem por **KIND**, não por descrição:
+
+- `hotels` → CONVIDADOS – Hospedagens · `airline_tickets`, `insurances`, `car_rentals` →
+  CONVIDADOS – Extras. **Quatro regras cobrem R$ 32,4 Mi (57%).**
+- A curadoria de verdade está em `others`/`operations`/`travel_packages`: **33 descrições**, das
+  quais **11 já casam** com o mapa atual (Extras Casamento → PRODUÇÃO, Pacote de Casamento →
+  PLANEJAMENTO, Contrato de casamento → COMERCIAL, Receptivo, Transporte Rodoviario, Taxa de
+  Serviço, Cerimonial, Ingressos, Passes de Trem, Bagagens ou assentos) e **~22 precisam de
+  decisão** — as maiores: `Bloqueio Hospedagem` (469.040,30), `Evento` (100.295,25),
+  `Catamarã Privativo` (61.940,19), `Atualização de Contrato de Casamento` (54.864,00) e os quatro
+  `G - WelConnect - *` (~155 k).
+
+**Dois quase-acertos que vazariam em silêncio** e que valem regra de normalização, não linha nova:
+
+- `Atualização de Contrato de Casamento` (Monde) × **`Atualização de Contrato`** (mapa);
+- `Contrato de casamento - venda online` (Monde) × **`Contrato de casamento`** (mapa).
+
+**Higiene de dado observada:** existe descrição com **espaço à esquerda** (` Dominican Snack`) — o
+join já usa `TRIM`, então não quebra, mas indica entrada livre no Monde. E `operations` contém
+produto por evento (`W - Joana e Daniel - 22FEV25`), o que confirma que o namespace é **aberto por
+construção**: qualquer de-para por descrição precisa de uma regra de fallback por `product_kind`,
+nunca só de uma lista.
+
+**Nada disso entra na v5.4.4** — é insumo para o Scope B/v5.4.5, e a decisão de classificação de
+cada uma das ~22 é de negócio.
+
 ## 5. Parecer da revisão
 
 ### `revisor-db` — APROVADAS (0 CRÍTICO / 0 ALTO), aplicar 0233 → 0234
