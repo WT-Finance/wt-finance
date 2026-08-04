@@ -235,7 +235,18 @@ em stand-by), então `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` *
 ⚠️ Se a versão em stand-by for retomada algum dia, ela precisa: bump para **5.4.5+**, ADR **0163**
 (que segue reservado, com o arquivo na branch dela) e migration **0237+**.
 
-### 8.5 A hora do CHANGELOG_DIRETORIA
+### 8.5 Para o `/pos-merge`: o diretório da worktree tem o nome antigo
+
+A branch foi renomeada para `fix/v5-4-4-reconciliacao-espelho`, mas o **diretório** da worktree
+continua `.claude/worktrees/fix+v5-4-5-reconciliacao-espelho` (renomeá-lo derrubaria a sessão em
+curso). `git worktree list` mostra o par certo, então a remoção funciona normal — é só não estranhar
+o descasamento.
+
+⚠️ **O PR #214 foi FECHADO pelo GitHub** quando a branch foi renomeada (a API de rename não
+retargeta PR, e `reopenPullRequest` falha depois). O PR vivo é o **#217**, com o mesmo conteúdo;
+o #214 tem um comentário apontando para ele.
+
+### 8.6 A hora do CHANGELOG_DIRETORIA
 
 A entrada nasceu com **14:58** (hora de autoria). Reconciliar ao horário real do merge no `/pos-merge`.
 
