@@ -571,10 +571,21 @@ describe.skipIf(!ON)('contrato Metas — travas de escrita do eixo de subsetor',
     p_metas: [{ subsetor: 'PRODUÇÃO', ano: ANO, mes: 1, valor_meta: 1, meta_contratos: null, pct_receita: null, ...over }],
   })
 
-  it('metas_upsert RECUSA a meta de Weddings (agora derivada dos subsetores)', async () => {
+  it('metas_upsert ACEITA Weddings — a trava saiu na 0235, e tem de continuar fora', async () => {
+    // INVERTIDO de propósito (04/08). A 0234 fez `metas_upsert` recusar Weddings, o que faz
+    // sentido COM o front desta versão (coluna travada, nunca enviada). Mas as migrations
+    // foram aplicadas antes do merge, e o front VIGENTE é o da v5.4.3, que monta o lote
+    // iterando todos os setores — inclusive Weddings. Como o RAISE aborta a transação, uma
+    // célula suja de Weddings impedia salvar Trips e Corporativo junto. A v5.4.4 entrou em
+    // stand-by, então a trava saiu (0235) e este caso passa a proteger a REMOÇÃO.
+    //
+    // Truque para não gravar nada: manda mês inválido. Se a trava estivesse ativa, o erro
+    // seria METAS_WEDDINGS_DERIVADO (ela vinha ANTES das outras validações); com ela fora, o
+    // fluxo segue e o erro é o do mês. Provar por qual erro vem é o que permite testar sem
+    // escrever em `app.meta_setor`.
     await expect(
-      rpc('metas_upsert', { p_metas: [{ setor_macro_id: 2, ano: ANO, mes: 1, valor_meta: 1, pct_receita: null }] }),
-    ).rejects.toThrow(/METAS_WEDDINGS_DERIVADO/)
+      rpc('metas_upsert', { p_metas: [{ setor_macro_id: 2, ano: ANO, mes: 99, valor_meta: 1, pct_receita: null }] }),
+    ).rejects.toThrow(/METAS_MES_INVALIDO/)
   })
 
   it('meta_contratos só em COMERCIAL', async () => {
