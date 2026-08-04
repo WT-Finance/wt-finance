@@ -4,12 +4,14 @@
 -- DECLARAÇÃO (CLAUDE.md): ADITIVA / retrocompatível com a `main` viva.
 --   • CREATE de funções NOVAS (monde_vendas_ausentes, monde_ingest_claim, monde_ingest_release)
 --     + CREATE OR REPLACE de monde_ingest_status (só ACRESCENTA chaves ao jsonb; nenhum campo
---     existente sai) + cron.schedule de 3 entradas NOVAS + REVOKE/GRANT + NOTIFY.
+--     existente sai) + REVOKE/GRANT + NOTIFY. **Nenhum agendamento** — ver seção 4.
 --   • NÃO altera schema/tabela/coluna/dado pré-existente. As escritas (INSERT/DELETE em
 --     monde.ingest_control) vivem DENTRO de corpos de função — não há DML top-level, e a
 --     tabela é a de CONTROLE da ingestão (chave/valor), nunca dado de venda.
 --   • NÃO toca monde.venda / monde.venda_item / a transformação. O furo desta versão é de
 --     ALCANCE, não de interpretação (invariante 1 do briefing).
+--   • **INERTE ao ser aplicada:** nada no `src/` chama estas 3 funções ainda. É de propósito —
+--     o agendamento (que as tornaria vivas) só entra depois do deploy do código. Ver seção 4.
 --
 -- POR QUÊ (v5.4.5): o modo `incremental` pede à API a janela `hoje−2d..hoje` e a API filtra por
 -- DATA DA VENDA. Venda registrada com atraso e data retroativa nunca cai na janela, e o
@@ -78,6 +80,13 @@ GRANT  EXECUTE ON FUNCTION public.monde_vendas_ausentes(text[], date, date) TO s
 --
 -- TTL: lock preso por processo morto (timeout da Vercel, deploy no meio) expira sozinho — sem
 -- ele, uma falha deixaria a ingestão parada para sempre, o que é pior que a race.
+--
+-- ⚠️ INVARIANTE DO TTL (registrado a pedido do revisor-db): não há heartbeat nem fencing token,
+-- então o default de 900s só é seguro porque a rota tem `maxDuration = 300` — margem de 3×.
+-- **O TTL tem de ficar > 2× o maxDuration da rota.** Se uma mudança futura fizer uma invocação
+-- cobrir mais de um mês por chamada (hoje é 1 mês/chamada, dentro do orçamento), ou se o
+-- maxDuration subir, este número sobe junto — senão um processo genuinamente vivo tem o lock
+-- expirado debaixo dele e a race reabre.
 CREATE OR REPLACE FUNCTION public.monde_ingest_claim(
   p_ttl_segundos int  DEFAULT 900,
   p_dono         text DEFAULT 'ingest'
@@ -112,19 +121,38 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.monde_ingest_claim(int, text) FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.monde_ingest_claim(int, text) TO service_role;
 
--- Libera o lock. Idempotente (liberar sem ter é no-op) — o chamador chama no `finally`.
-CREATE OR REPLACE FUNCTION public.monde_ingest_release()
-RETURNS void
+-- Libera o lock — COMPARE-AND-DELETE por dono (achado ALTO do revisor-db).
+--
+-- Um `release` incondicional (`DELETE ... WHERE chave = 'ingest_em_curso'` e nada mais) é
+-- perigoso justamente no caminho fácil de escrever: um `finally` que chame `release()` SEM ter
+-- checado o retorno de `claim()` libera o lock de um processo VIVO e não-expirado, reabrindo a
+-- race do TRUNCATE compartilhado na hora — sem nem a margem do TTL. O advisory lock do `claim`
+-- não cobre isto: ele serializa a decisão de tomar, não a de soltar.
+--
+-- Por isso o dono é obrigatório e comparado. `p_dono` é um token por EXECUÇÃO (a rota gera um
+-- `crypto.randomUUID()` por invocação), não o nome do modo — dois ciclos do mesmo modo têm
+-- tokens diferentes e não podem se soltar mutuamente.
+--
+-- Retorna `true` se soltou de fato. `false` significa "o lock não era meu (ou já expirou)" e é
+-- informação útil para o log — nunca um erro.
+CREATE OR REPLACE FUNCTION public.monde_ingest_release(p_dono text)
+RETURNS boolean
 LANGUAGE plpgsql
 VOLATILE SECURITY DEFINER
 SET search_path = ''
 AS $$
+DECLARE
+  v_removidos int;
 BEGIN
-  DELETE FROM monde.ingest_control WHERE chave = 'ingest_em_curso';
+  DELETE FROM monde.ingest_control
+  WHERE chave = 'ingest_em_curso'
+    AND valor = p_dono;
+  GET DIAGNOSTICS v_removidos = ROW_COUNT;
+  RETURN v_removidos > 0;
 END;
 $$;
-REVOKE EXECUTE ON FUNCTION public.monde_ingest_release() FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.monde_ingest_release() TO service_role;
+REVOKE EXECUTE ON FUNCTION public.monde_ingest_release(text) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.monde_ingest_release(text) TO service_role;
 
 -- ===========================================================================
 -- 3. STATUS — tripwire, última reconciliação, e o conserto de uma máscara futura
@@ -181,88 +209,41 @@ REVOKE EXECUTE ON FUNCTION public.monde_ingest_status() FROM PUBLIC, anon, authe
 GRANT  EXECUTE ON FUNCTION public.monde_ingest_status() TO service_role;
 
 -- ===========================================================================
--- 4. AGENDAMENTO da reconciliação (pg_cron + pg_net, secrets do Vault já existentes)
+-- 4. AGENDAMENTO — DELIBERADAMENTE FORA DESTA MIGRATION
 -- ===========================================================================
--- 3 entradas, uma por mês da janela de reconciliação: cada invocação processa UM mês (cabe
--- folgado no maxDuration=300 da rota) e avança o cursor, então três disparos fecham os 3 meses.
--- Resumível por construção: se um falhar, o cursor não avança e o próximo retoma o mesmo mês.
+-- O rascunho desta migration agendava aqui os 3 `cron.schedule` da reconciliação, apontando
+-- para `POST /api/monde/ingest?mode=reconciliacao`. O revisor-db barrou, com razão:
 --
--- HORÁRIO: o pg_cron do Supabase agenda em UTC. 06:05/06:20/06:35 UTC = 03:05/03:20/03:35 em
--- São Paulo — fora de pico. Os MINUTOS (:05/:20/:35) não coincidem com o `*/15` do incremental
--- (:00/:15/:30/:45); o lock da seção 2 cobre a sobreposição residual.
-SELECT cron.unschedule('monde-reconciliacao-1')
-  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'monde-reconciliacao-1');
-SELECT cron.unschedule('monde-reconciliacao-2')
-  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'monde-reconciliacao-2');
-SELECT cron.unschedule('monde-reconciliacao-3')
-  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'monde-reconciliacao-3');
-
-SELECT cron.schedule(
-  'monde-reconciliacao-1',
-  '5 6 * * *',
-  $cron$
-    SELECT net.http_post(
-      url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'monde_app_url')
-             || '/api/monde/ingest?mode=reconciliacao',
-      headers := jsonb_build_object(
-        'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'monde_cron_secret'),
-        'Content-Type', 'application/json'
-      ),
-      body := '{}'::jsonb,
-      timeout_milliseconds := 300000
-    );
-  $cron$
-);
-
-SELECT cron.schedule(
-  'monde-reconciliacao-2',
-  '20 6 * * *',
-  $cron$
-    SELECT net.http_post(
-      url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'monde_app_url')
-             || '/api/monde/ingest?mode=reconciliacao',
-      headers := jsonb_build_object(
-        'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'monde_cron_secret'),
-        'Content-Type', 'application/json'
-      ),
-      body := '{}'::jsonb,
-      timeout_milliseconds := 300000
-    );
-  $cron$
-);
-
-SELECT cron.schedule(
-  'monde-reconciliacao-3',
-  '35 6 * * *',
-  $cron$
-    SELECT net.http_post(
-      url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'monde_app_url')
-             || '/api/monde/ingest?mode=reconciliacao',
-      headers := jsonb_build_object(
-        'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'monde_cron_secret'),
-        'Content-Type', 'application/json'
-      ),
-      body := '{}'::jsonb,
-      timeout_milliseconds := 300000
-    );
-  $cron$
-);
+--   a rota (`src/app/api/monde/ingest/route.ts`) trata `mode` em `'window'` e `'backfill'`, e
+--   QUALQUER outro valor — inclusive `'reconciliacao'` — cai no ramo `incremental` default.
+--   Agendar antes do deploy do código faria os 3 jobs rodarem, responderem 200 e aparecerem
+--   VERDES em `cron.job_run_details` (justo o que o checkpoint do Yan manda conferir) sem
+--   reconciliar nada: `reconciliacao_cursor`, `ultima_reconciliacao` e `tripwire` ficariam
+--   nulos para sempre e o furo de 42 vendas / R$ 392.070,01 não fecharia. Seria FABRICAR a
+--   falha silenciosa que esta versão existe para caçar. Agravante: 3 disparos extras por dia
+--   com a proteção da seção 2 ainda desligada (a rota também não chama claim/release ainda)
+--   aumentam a chance da race de TRUNCATE que a seção 2 existe para fechar.
+--
+-- As seções 1-3 são seguras isoladas porque são INERTES: nada as chama até o deploy. O
+-- agendamento vive na migration `0233`, que só pode ser aplicada DEPOIS que o `route.ts` com
+-- `mode=reconciliacao` estiver EM PRODUÇÃO (o cron chama a URL de produção, do Vault) — ou
+-- seja, depois do merge. Por isso a `0233` não é escrita nesta pasta antes da hora: `db push`
+-- empurra TODO o conjunto pendente, e ela entraria de arrasto nesta aplicação (a armadilha que
+-- custou a v5.2.0).
 
 NOTIFY pgrst, 'reload schema';
 
 /* ===========================================================================
    DOWN (reversão explícita) — aplicar como migration NOVA para reverter.
-   Remove o agendamento e as 3 funções novas, e restaura monde_ingest_status como a 0183 a
-   deixou (incluindo o `ultima_sincronizacao` com os dois marcadores). Nenhum dado de venda foi
-   tocado por esta migration, então isto basta.
+   Remove as 3 funções novas e restaura monde_ingest_status como a 0183 a deixou (incluindo o
+   `ultima_sincronizacao` com os dois marcadores). Nenhum dado de venda foi tocado por esta
+   migration, então isto basta. (O agendamento não está aqui — ele é da 0233; reverter esta
+   migration sem reverter a 0233 deixaria crons chamando um modo cujas funções não existem
+   mais, então **reverta a 0233 primeiro**.)
    ---------------------------------------------------------------------------
-SELECT cron.unschedule('monde-reconciliacao-1');
-SELECT cron.unschedule('monde-reconciliacao-2');
-SELECT cron.unschedule('monde-reconciliacao-3');
-
 DROP FUNCTION IF EXISTS public.monde_vendas_ausentes(text[], date, date);
 DROP FUNCTION IF EXISTS public.monde_ingest_claim(int, text);
-DROP FUNCTION IF EXISTS public.monde_ingest_release();
+DROP FUNCTION IF EXISTS public.monde_ingest_release(text);
 
 CREATE OR REPLACE FUNCTION public.monde_ingest_status()
 RETURNS jsonb
