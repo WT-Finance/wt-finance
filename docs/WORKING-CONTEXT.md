@@ -9,6 +9,27 @@
 
 ## Verdade atual
 
+- ⚠️ **BANCO À FRENTE DO CÓDIGO: migrations `0233`–`0235` estão APLICADAS em produção e este PR
+  só traz os ARQUIVOS delas.** Vieram da versão *Metas por subsetor de Weddings*, que entrou em
+  **STAND-BY** (o eixo de subsetor segue dependendo do upload manual; repontar ao Monde exige um
+  de-para de produto que ainda não existe). O código da feature está na branch
+  `feat/v5-4-4-metas-subsetor-weddings` (**não mergear**), com out-briefing completo.
+  **Sem estes arquivos aqui, o próximo `db push` de QUALQUER branch quebra** com
+  `LegacyDbPushMissingLocalError` — foi exatamente o que aconteceu com a `0232`, que estava
+  aplicada e só existia numa branch não mergeada.
+  **O que está no banco, inerte:** `app.meta_subsetor` e `app.meta_subsetor_historico` (vazias);
+  `metas_subsetor_listar`, `metas_subsetor_upsert` e `metas_sumario_subsetor` (sem call-site
+  publicado); e a chave `produtos_nao_classificados` no payload de
+  `get_sumario_subsetor__nucleo` (aditiva — os 3 consumidores da Performance fazem cast solto e
+  ignoram chave desconhecida).
+  **A `0235` é conserto de INCIDENTE, não parte da feature:** a `0234` fez `metas_upsert` recusar
+  Weddings, o que só faz sentido com o front da feature. Com o front vigente — que envia TODOS os
+  setores e cujo lote inteiro morre no `RAISE` — o **Cadastro de Metas parou de salvar em
+  produção**, inclusive Trips e Corporativo quando havia célula de Weddings suja. A `0235` removeu
+  a trava; verificado por REST sem escrever nada.
+  ⚠️ **`ADR-0163` está RESERVADO** pela branch em stand-by — não reutilizar o número.
+
+
 - Versão em produção (main): **`5.4.3`** (#211 mergeado 04/08 às 13h08) — PATCH de dois defeitos
   relatados pelo Yan a partir de um erro real em produção. **Sem migration, sem ADR.**
   (1) **Anexo com acento no nome não subia.** A chave do objeto no Storage era montada com o nome
@@ -242,7 +263,9 @@
   slider do Financeiro não teria o que fatiar sem isso. **Nenhum número muda:** cada mês é
   agregado do próprio mês, sem acumulado — provado por cross-check contra
   `get_fluxo_caixa_kpis_b`, que lê a mesma view por range explícito, 4/4 campos em todos os
-  meses amostrados). **Próxima migration livre: `0230`.**
+  meses amostrados). **Próxima migration livre: `0236`** — as `0233`–`0235` estão aplicadas;
+  ver a nota no topo de §Verdade atual. E a **`0232`** está aplicada mas seu arquivo vive na
+  branch da reconciliação do espelho Monde, ainda não mergeada.
   Antes dela a **`0228`** (v5.4.2: chave de ordenação `d_margem_aa` em
   `get_operacoes_weddings__nucleo` — ADITIVA, `CREATE OR REPLACE` com assinatura idêntica e shape do
   retorno inalterado; a chave NÃO entra no payload. Verificada via REST: ordenação monotônica nas
