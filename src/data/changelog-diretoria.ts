@@ -35,6 +35,33 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.4.5',
+    data: '2026-08-04T14:58', // hora de AUTORIA — reconciliar ao horário real do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'A sincronização com o Monde deixava de fora vendas lançadas no sistema com atraso. Quando ' +
+          'uma venda era cadastrada dias depois da data em que aconteceu, ela não entrava mais na ' +
+          'plataforma — e não entrava nunca mais. O efeito era faturamento a MENOS em Metas e em ' +
+          'Performance, sem nenhum sinal de erro. Foram encontradas 42 vendas nessa situação, R$ 392 ' +
+          'mil de faturamento, quase todas de julho; o atraso típico de lançamento é de 4 dias e o ' +
+          'maior encontrado foi de 32. Todas já foram recuperadas, e a sincronização passou a fazer ' +
+          'uma varredura diária dos últimos três meses para que isso não volte a acontecer. ' +
+          'ATENÇÃO: alguns totais recentes SOBEM com a correção — é o número ficando certo, não uma ' +
+          'venda nova. Julho de 2026 é o mês mais afetado.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A tela de Atualização de Dados ganhou um quadro "Sincronização Monde", que mostra quando ' +
+          'foi a última sincronização, quando foi a última varredura e se algum mês está divergindo ' +
+          'do que o Monde tem. Antes não havia onde conferir se a integração estava saudável — a ' +
+          'falha acima só apareceu porque foi procurada de propósito.',
+      },
+    ],
+  },
+  {
     versao: '5.4.3',
     data: '2026-08-04T13:08', // horário REAL do merge (977c97a, 13:08:15 −03) — reconciliado no /pos-merge
     itens: [
