@@ -85,9 +85,35 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
 
   // alturaFixa (v5.1.1): o modal não "pula" de tamanho quando o Tipo troca os campos
   // dinâmicos — o corpo rola por dentro (ScrollAutoHide do ModalCentral).
+  //
+  // v5.4.3 — a barra de ação e a mensagem de erro vivem no `rodape` FIXO do ModalCentral,
+  // não no corpo rolável. Antes, o erro de validação ("Informe a data-limite") aparecia no
+  // TOPO do corpo enquanto o botão "Enviar solicitação" ficava lá embaixo: quem clicava não
+  // via a mensagem e o modal parecia não responder. Botar só a faixa no fim do corpo não
+  // resolveria — o corpo rola, então erro e botão ainda poderiam estar fora da vista, e
+  // inserir a faixa acima do botão empurraria o botão para fora do viewport rolável. No
+  // rodapé fixo (DS §4.1: barra de ação fora da região rolável) o painel tem altura fixa,
+  // então o rodapé crescer só ENCOLHE o corpo — o botão não se mexe e o erro nasce colado
+  // nele. `role="alert"` da FaixaMensagem cobre o anúncio por leitor de tela.
   return (
-    <ModalCentral titulo="Nova solicitação" subtitulo="Abra um pedido para um usuário ou para um grupo de usuários" alturaFixa onClose={onFechar}>
-      {erro && <div className="mb-3"><FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} /></div>}
+    <ModalCentral
+      titulo="Nova solicitação"
+      subtitulo="Abra um pedido para um usuário ou para um grupo de usuários"
+      alturaFixa
+      onClose={onFechar}
+      rodape={
+        <>
+          {erro && <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />}
+          <div className="flex items-center justify-end gap-2">
+            <button type="button" onClick={onFechar} className={`${PILL} ${PILL_NEUTRO}`}>Cancelar</button>
+            {/* desabilitado enquanto há upload em voo (subindo); erro de anexo é tratado via FaixaMensagem no clique */}
+            <button type="button" onClick={enviar} disabled={enviando || subindo} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
+              {(enviando || subindo) && <Loader2 size={13} className="animate-spin" />} Enviar solicitação
+            </button>
+          </div>
+        </>
+      }
+    >
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -146,14 +172,6 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
               anexos={anexosUI} onAnexoSelect={onAnexoSelect} onAnexoRemove={onAnexoRemove} />
           </div>
         )}
-
-        <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onFechar} className={`${PILL} ${PILL_NEUTRO}`}>Cancelar</button>
-          {/* desabilitado enquanto há upload em voo (subindo); erro de anexo é tratado via FaixaMensagem no clique */}
-          <button type="button" onClick={enviar} disabled={enviando || subindo} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
-            {(enviando || subindo) && <Loader2 size={13} className="animate-spin" />} Enviar solicitação
-          </button>
-        </div>
       </div>
     </ModalCentral>
   )
