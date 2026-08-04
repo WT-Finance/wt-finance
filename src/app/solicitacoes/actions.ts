@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
+import { sanitizarNomeArquivo } from '@/lib/storage/nome-arquivo'
 import { getDetalhe, getEmailsEnvolvidos } from '@/lib/solicitacoes/rpc'
 import { enviarNotificacaoSolicitacao, type MovimentacaoEmail } from '@/lib/email'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
@@ -136,7 +137,12 @@ export async function uploadAnexo(formData: FormData): Promise<{ ok: true; anexo
   if (!MIME_OK.has(file.type)) return { ok: false, erro: `Tipo não permitido: ${file.type || 'desconhecido'}. Aceitos: PDF, imagem, planilha.` }
   if (file.size > MAX_BYTES) return { ok: false, erro: 'Arquivo acima de 10 MB.' }
 
-  const path = `tmp/${randomUUID()}/${file.name}`
+  // v5.4.3 — a chave do objeto usa o nome SANITIZADO. O Storage valida a chave com um
+  // regex cujo `\w` é ASCII puro, então um acento no nome ("Nota Fiscal - Bruna e
+  // João.pdf") derrubava o upload com `400 InvalidKey` — determinístico por nome, o que
+  // fazia parecer intermitência (dois anexos sem acento subiam, o terceiro não). O nome
+  // ORIGINAL continua indo em `nome_arquivo`, que é o que a UI exibe.
+  const path = `tmp/${randomUUID()}/${sanitizarNomeArquivo(file.name)}`
   const buffer = Buffer.from(await file.arrayBuffer())
   const { error } = await getAdminClient().storage.from(BUCKET).upload(path, buffer, { contentType: file.type, upsert: false })
   if (error) return { ok: false, erro: `Falha no upload: ${error.message}` }
