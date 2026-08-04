@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-04 (pós-merge) · produção na **v5.4.3** (patch: anexo com acento no nome voltou a subir + erro do modal de nova solicitação foi para junto do botão — #211 mergeada às 13h08). Nenhuma versão em curso.
+Última atualização: 2026-08-04 · produção na **v5.4.3** · **v5.4.4 FECHADA, aguardando merge** (Onda 0: o espelho do Monde perdia venda lançada com atraso) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 já aplicadas, código na branch, **não mergear**).
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,8 +9,54 @@
 
 ## Verdade atual
 
-- ⚠️ **BANCO À FRENTE DO CÓDIGO: migrations `0233`–`0235` estão APLICADAS em produção e este PR
-  só traz os ARQUIVOS delas.** Vieram da versão *Metas por subsetor de Weddings*, que entrou em
+- **v5.4.4 — FECHADA, aguardando merge.** Branch `fix/v5-4-4-reconciliacao-espelho`.
+  **O espelho do Monde perdia venda lançada com atraso, e Metas/Performance subestimavam
+  faturamento.** A API filtra a listagem por DATA DA VENDA e a janela do incremental (`hoje−2d`)
+  anda para frente sobre um eixo que a origem escreve para trás ⇒ venda registrada com atraso
+  **nunca** entrava, e nunca mais entraria. Medido contra a API: **42 vendas, R$ 392.070,01**;
+  37 de 38 registradas >2 dias após a data da venda, atraso mediano 4, **máximo 32**.
+  Corrigido com **janela curta + varredura diária** (incremental `hoje−7d` + `mode=reconciliacao`,
+  1 mês/invocação ciclando 3 meses por cursor) — **auto-curativa**, não depende de acertar
+  tamanho de janela. **Recuperadas no run de verificação: 38 vendas de jul/2026
+  (R$ 383.600,25) + 1 de jun**; espelho de julho 713→751. Idempotência provada (2ª passada: 0
+  inseridas de 775). **ADR-0164**; migration **0232 APLICADA**.
+  **Duráveis desta versão:** *(a)* `monde_ingest_limpar_staging` dá TRUNCATE em staging
+  **COMPARTILHADA** no início de toda janela — duas ingestões sobrepostas apagam as linhas uma da
+  outra (perda silenciosa). Race **pré-existente**; agora há lock durável em `monde.ingest_control`
+  com TTL e **release que compara o dono** (release incondicional deixaria um `finally` distraído
+  soltar lock de processo vivo). Advisory lock não serve: a janela atravessa várias chamadas HTTP
+  sobre conexões pooladas. **TTL tem de ficar > 2× o `maxDuration` da rota.** *(b)* **Tripwire por
+  contagem crua contra a API é impossível** — a API conta o que a transformação exclui por regra
+  (jul/2026: 8 Welcome + 12 sem setor + 9 sem item ativo, de 775), então acende todo mês para
+  sempre. Virou subproduto da reconciliação, que já tem o detalhe e portanto a contagem exata.
+  *(c)* `ultima_sincronizacao` agora é **só do incremental** — `ultimo_promover` avançava com a
+  reconciliação e mascararia por ~45 min um incremental morto. *(d)* **Migration que agenda cron
+  para um modo que o código ainda não tem responde 200 e fica VERDE** em `cron.job_run_details`
+  sem fazer nada — agendamento só depois do deploy.
+  *(e)* **APLICAR MIGRATION DE BRANCH NÃO MERGEADA TRAVA O `db push` DE TODA OUTRA BRANCH.** A
+  `0232` foi aplicada daqui e ficou aplicada-sem-arquivo-no-main; a sessão paralela bateu em
+  `LegacyDbPushMissingLocalError` e só destravou trazendo os arquivos (PR #215). **Quem aplica
+  migration antes do merge assume essa dívida** — o certo é avisar as sessões paralelas na hora,
+  ou mergear o arquivo primeiro.
+  **⚠️ PENDENTE DO YAN, e sem isso não há varredura diária:** aplicar a **`0236`** (as 3 entradas
+  de `cron.schedule`) **DEPOIS do merge** — SQL e comando prontos no §8.1 do out-briefing. Ela
+  **não está** em `supabase/migrations/` de propósito (`db push` empurra todo o pendente).
+  (Era "0233" no plano original; 0233/0234/0235 foram tomadas pela versão em stand-by.)
+  Também pendente: conferência visual do cartão novo em `/admin/uploads` (hoje deve estar
+  **vermelho**, e está certo — ver abaixo) e decidir sobre as vendas "sobrando".
+  **Achado registrado e NÃO corrigido:** **5 vendas em jul/2026 e 5 em jun/2026 continuam no
+  espelho tendo deixado de ser espelháveis** (perderam o último item ativo depois de ingeridas; o
+  UPSERT nunca remove). É o que mantém o tripwire aceso. Remover é destrutivo e faria faturamento
+  de mês fechado CAIR — decisão do Yan.
+  ⚠️ **O header da `0232` diz "v5.4.5" e cita a "0233" — as duas referências estão velhas de
+  propósito.** Esta versão nasceu como 5.4.5 e foi renumerada para **5.4.4** DEPOIS de a migration
+  ser aplicada; o agendamento virou **0236**. O arquivo **não foi editado**: o banco guarda os
+  `statements` em `supabase_migrations.schema_migrations` (14 para a 0232, conferido), então mexer
+  no arquivo o faria divergir do histórico. Migration aplicada é registro, não rascunho.
+  Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-4_Reconciliacao_Espelho_Monde.md`.
+- ⚠️ **BANCO À FRENTE DO CÓDIGO: migrations `0233`–`0235` estão APLICADAS em produção e o main
+  só tem os ARQUIVOS delas** (trazidos pelo PR #215). Vieram da versão *Metas por subsetor de
+  Weddings*, que entrou em
   **STAND-BY** (o eixo de subsetor segue dependendo do upload manual; repontar ao Monde exige um
   de-para de produto que ainda não existe). O código da feature está na branch
   `feat/v5-4-4-metas-subsetor-weddings` (**não mergear**), com out-briefing completo.
@@ -34,8 +80,6 @@
   57% e a curadoria real são ~22 descrições), o post-mortem do incidente (**migration aditiva no
   schema pode ser incompatível com o front NO AR**), a divergência de fonte que variou de 0,00 para
   40% no mesmo dia, e as 6 decisões de produto já tomadas.
-
-
 - Versão em produção (main): **`5.4.3`** (#211 mergeado 04/08 às 13h08) — PATCH de dois defeitos
   relatados pelo Yan a partir de um erro real em produção. **Sem migration, sem ADR.**
   (1) **Anexo com acento no nome não subia.** A chave do objeto no Storage era montada com o nome
@@ -257,13 +301,26 @@
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
   testes verdes.
-- Último ADR registrado: **`0162`** (v5.4.2: Margem a.a. LINEAR como definição de métrica +
-  janela larga fatiada no cliente + reinício do acumulado na borda). **Próximo livre: 0163.**
+- Último ADR registrado: **`0164`** (v5.4.4: reconciliação do espelho Monde — janela curta +
+  varredura diária, lock durável, tripwire por apuração exata; emenda a 0149/0151).
+  ⚠️ **O `0163` está reservado pela v5.4.4** (em curso em paralelo). **Próximo livre: 0165.**
+  Antes deles o **`0162`** (v5.4.2: Margem a.a. LINEAR como definição de métrica +
+  janela larga fatiada no cliente + reinício do acumulado na borda).
   Antes dele o `0161` (v5.4.0: 0158 categoria de confiança da API externa ·
   0159 chave estável de campo · 0160 destinatário sem fallback · 0161 outbox).
   Os rounds 2–4 entraram como **emendas datadas** nesses ADRs, não como ADRs novos (0158: o autor
   deixou de ser o robô; 0159: exceção única à imutabilidade do slug).
-- Última migration APLICADA: **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
+- Última migration APLICADA: **`0235`** (versão em stand-by — conserto do incidente do
+  `metas_upsert`; ver o bloco dela acima). Antes dela **`0233`/`0234`** (mesma versão, objetos
+  inertes) e **`0232`** (v5.4.4 desta entrega: detector `monde_vendas_ausentes`, lock
+  `monde_ingest_claim`/`release(p_dono)` e `monde_ingest_status` estendido — ADITIVA, verificada
+  por **21 checagens via REST/service_role** executando o corpo. **NÃO agenda nada**: o
+  `cron.schedule` é a **`0236`**, pendente de pós-merge).
+  ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
+  e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
+  sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
+  **Próxima livre para versão nova: `0237`** (a `0236` é desta entrega, pendente).
+  Antes dela a **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
   alargada de 23+18 para **36+36 meses** — ADITIVA, `CREATE OR REPLACE` de função SEM
   parâmetros. Diferente da RPC de Weddings, a janela dela é **hardcoded no corpo**, então o
   slider do Financeiro não teria o que fatiar sem isso. **Nenhum número muda:** cada mês é
@@ -416,10 +473,27 @@
 - **v5.3.x refino da DRE:** drag-and-drop no editor; guarda de saída; divisão ver/editar da
   permissão; mover `historico-alteracoes` para `shared/`; Consolidado — conjunto de linhas vem
   do ano da URL (produto).
-- **Monde — Scope B (aposentar o upload):** ⚠️ o de-para de produto está MEDIDO em
-  `docs/investigacoes/2026-08-04-metas-subsetor-e-de-para-monde.md` §4 — ler antes de estimar.
-  Resumo do que já se sabe: fato/mv item-level + repontar as 6 funções restantes.
-- **Saúde da sincronização Monde:** detectar falha SILENCIOSA (200 sem vendas).
+- **Monde — Scope B (aposentar o upload):** **DOIS relatórios, complementares — ler os dois.**
+  *(a)* `docs/investigacoes/2026-08-04-scope-b-item-level-e-pessoas.md`: item-level **é**
+  repontável (a premissa do "subconjunto do Excel" foi REFUTADA — a regra é `status='active'`,
+  espelho ≡ raw-ativo em 28.450/28.450 vendas ao centavo). **Duas exceções:** `get_prejuizos` não
+  tem paridade (a receita por item do espelho é ALOCAÇÃO do `total_revenue`, então perda dentro de
+  venda lucrativa some) e `get_pipeline_weddings` precisa de um de-para `operation_id → nome` que a
+  API só cobre em 17%. **Pessoas NÃO troca de fonte:** `people` expõe 5 dos 17 campos e **nenhum**
+  de endereço/fiscal. **Desbloqueio: pedido ao provedor de RECEITA POR PRODUTO.**
+  *(b)* `docs/investigacoes/2026-08-04-metas-subsetor-e-de-para-monde.md` §4: o **de-para de
+  produto MEDIDO** — repontar hoje casaria só **46%** do faturamento de Weddings; 4 regras de kind
+  cobrem 57% e a curadoria real são ~22 descrições. **Ler antes de estimar.**
+  ⚠️ **Os dois números parecem discordar e não discordam — medem coisas diferentes.** O "46%/57%"
+  de (b) é cobertura por **`product_kind` SOZINHO**, e por kind só dá para resolver os 5 tipos que
+  mapeiam 1:1; em Weddings, `others` concentra R$ 23,9 Mi (~42%) e o kind não diz qual categoria é.
+  O `CASE` de (a) usa **kind + a descrição** (`btrim(produto)`), e para `others`/`operations` a
+  descrição **já é** a categoria do Excel — casado item a item em 9.419 pares. Ou seja: por kind
+  não fecha (b está certo); por kind+descrição fecha (a está certo). Quem for repontar precisa das
+  duas pernas.
+- ~~**Saúde da sincronização Monde:** detectar falha SILENCIOSA (200 sem vendas)~~ — **coberto em
+  parte pela v5.4.4:** o tripwire mensal (apuração exata por mês reconciliado) pega espelho
+  divergindo da API. **Continua descoberto:** mês fora da janela de 3 meses da reconciliação.
 - restore-test COMPLETO do backup-gate (follow-up ADR-0116) · `CRON_SECRET` constant-time (BAIXO).
 - Casos de contrato pendentes: `solicitar_acesso_admin`, `monde_ingest_status`.
 - Tokenização do `zinc` (os hex das paletas da Decomposição saíram na v5.4.1 — o arquivo não tem

@@ -876,4 +876,58 @@ describe.skipIf(!ON)('contrato RPC — DRE v5.3.1 (decomposição por bloco)', (
     const excluidas = new Set(pe.maps.filter(m => m.excluida).map(m => m.categoria_id))
     for (const c of pd.categorias) expect(excluidas.has(c.categoria_id)).toBe(false)
   })
+
+  // ── Sincronização Monde (v5.4.4, migration 0232) ───────────────────────────────────────
+  // `monde_ingest_status` alimenta o rótulo "Última atualização" de /metas E o cartão de
+  // monitoramento de admin/uploads; `monde_vendas_ausentes` é o detector do furo que a versão
+  // conserta — o invariante mais crítico dela, e até aqui sem rede automatizada.
+  // (Fecha também a pendência de contrato de `monde_ingest_status`, aberta desde a v5.1.8.)
+
+  it('monde_ingest_status: shape do painel de sincronização, com as chaves da v5.4.4', async () => {
+    const d = await rpc('monde_ingest_status', {}) as Record<string, unknown>
+
+    for (const k of ['vendas', 'itens', 'itens_ativos', 'min_data', 'max_data', 'ultima_sync',
+                     'ultima_sincronizacao', 'ultima_reconciliacao', 'reconciliacao_cursor',
+                     'ingest_em_curso', 'tripwire']) {
+      expect(d, `chave ${k} sumiu do status`).toHaveProperty(k)
+    }
+    expect(typeof d.vendas).toBe('number')
+    expect(d.vendas as number).toBeGreaterThan(0)
+
+    // O selo de atraso de /metas (sync-atraso.ts) depende deste campo existir e ser datável.
+    expect(d.ultima_sincronizacao == null || !Number.isNaN(Date.parse(String(d.ultima_sincronizacao)))).toBe(true)
+
+    // Tripwire: null antes da 1ª reconciliação; depois, um objeto com a forma que o cartão lê.
+    if (d.tripwire !== null) {
+      const t = d.tripwire as { acendeu?: unknown; motivos?: unknown; meses?: unknown }
+      expect(typeof t.acendeu).toBe('boolean')
+      expect(Array.isArray(t.motivos)).toBe(true)
+      expect(typeof t.meses).toBe('object')
+      // Invariante do alarme: acende SE E SOMENTE SE há motivo. Alarme sem motivo (ou motivo
+      // sem alarme) é exatamente o que tornaria o painel ruído — é o bug que a v5.4.4 evitou.
+      expect(t.acendeu).toBe((t.motivos as unknown[]).length > 0)
+    }
+  })
+
+  it('monde_vendas_ausentes: detecta o que falta e NÃO acusa o que existe', async () => {
+    // Janela sem importância: a ausência é checada por venda_numero, que é único global.
+    const d = await rpc('monde_vendas_ausentes', {
+      p_numeros: ['63165', 'NAO-EXISTE-XYZ-v545'], p_from: '2025-06-01', p_to: '2025-06-30',
+    }) as { api?: number; espelho?: number; ausentes_total?: number; ausentes?: string[] }
+
+    expect(d.api).toBe(2)
+    expect(typeof d.espelho).toBe('number')
+    expect(d.espelho as number).toBeGreaterThan(0)
+    expect(d.ausentes_total).toBe(1)
+    expect(d.ausentes).toEqual(['NAO-EXISTE-XYZ-v545'])
+
+    // Array vazio é o uso do tripwire (contador puro do espelho no mês): não pode explodir
+    // nem inventar ausência.
+    const vazio = await rpc('monde_vendas_ausentes', {
+      p_numeros: [], p_from: '2026-07-01', p_to: '2026-07-31',
+    }) as { api?: number; espelho?: number; ausentes_total?: number }
+    expect(vazio.api).toBe(0)
+    expect(vazio.ausentes_total).toBe(0)
+    expect(vazio.espelho as number).toBeGreaterThan(0)
+  })
 })

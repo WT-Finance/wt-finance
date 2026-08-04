@@ -6,6 +6,49 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.4.4] — 2026-08-04
+
+PATCH · **O espelho do Monde perdia venda lançada com atraso — Metas e Performance subestimavam faturamento.** Migration `0232` (aditiva, aplicada) · `0233` pendente de pós-merge · **ADR-0164**.
+
+### Corrigido — venda registrada com atraso nunca entrava no espelho
+
+- **A API do Monde filtra a listagem por DATA DA VENDA, e a janela do incremental anda para frente.** O modo `incremental` de `/api/monde/ingest` — o que o `pg_cron` chama a cada 15 min desde a v5.1.4 — pedia `hoje−2d..hoje`. Venda **registrada com atraso** com data retroativa entra na API depois que a janela já passou por aquele dia, e **o incremental nunca volta lá**. Não era janela pequena demais: era uma janela que anda para frente sobre um eixo que a origem escreve para trás.
+- **Medido contra a API, venda a venda, antes de qualquer correção:** **42 vendas fora do espelho, R$ 392.070,01 de faturamento** e R$ 47.806,35 de receita (2025-07-30 → 2026-07-31), **38 delas em jul/2026**. Nenhuma excluída legitimamente — todas com setor válido e item ativo, nenhuma do setor Welcome. **37 de 38** foram registradas mais de 2 dias após a data da venda: atraso mediano **4 dias**, **máximo 32** (venda 73422, data 03/07, registrada 03/08).
+- **Isso era subestimação de faturamento em produção**, não risco teórico: o espelho é a fonte de `get_executiva_kpis`, `metas_ritmo_diario`, `get_tendencia_margem`, `get_decomposicao_variacao`, `get_historico_12m_setores`, `get_mix_setor` e `get_historico_mensal` desde a virada da v5.1.4. Quem evidenciava o furo era a comparação contra o upload — que vai ficar dormente e esfriar.
+- **A correção não foi alargar a janela.** 32 dias é o atraso *observado*, não um teto garantido, e puxar 35 dias 96×/dia é caro para cobrir cauda. Ficou **janela curta e barata + varredura larga diária**: o incremental passou a `hoje−7d` (o atraso mediano é 4) e entrou o **`mode=reconciliacao`**, que reprocessa **um mês inteiro por invocação**, ciclando os 3 últimos meses por cursor, 3 disparos/dia. A propriedade que importa é que a reconciliação é **auto-curativa** — não depende de acertar o tamanho de janela nenhuma.
+- **Resultado medido no run de verificação:** jul/2026 foi de **713 para 751 vendas** no espelho (**+38**, R$ 383.600,25 de faturamento e R$ 45.126,31 de receita), mais 1 venda em jun/2026. **Idempotência provada:** a 2ª passada sobre o mesmo mês inseriu **0** de 775 lidas.
+
+### Corrigido — race de perda silenciosa na staging compartilhada (pré-existente)
+
+- **`monde_ingest_limpar_staging` dá `TRUNCATE` em tabelas de staging COMPARTILHADAS no início de toda janela.** Duas ingestões sobrepostas fazem uma apagar as linhas da outra em pleno vôo, e as vendas lidas da API nunca são promovidas. A race **já existia** (um ciclo que passe de 15 min se sobrepõe ao tick seguinte); a reconciliação diária a tornaria rotina.
+- **Lock durável** (`monde_ingest_claim`/`monde_ingest_release`, linha em `monde.ingest_control` com TTL) em todo modo que toca a staging. `pg_advisory_lock` não serve: a janela atravessa várias chamadas HTTP sobre conexões pooladas. O **release compara o dono** — sem isso, um `finally` que não cheque o retorno do `claim()` libera o lock de um processo vivo. Token por execução.
+- No incremental, lock ocupado responde **200 com `pulado: 'lock'`** e **não** grava o marcador de sincronização: pular não é sincronizar.
+
+### Adicionado — detector e tripwire, sempre contra a API
+
+- **`mode=auditoria&from&to`** (só leitura): lista a API e responde quais vendas faltam no espelho. É o teste de aceitação da versão. A referência é a **API**, nunca o upload — um monitor ancorado no upload morre junto com ele.
+- **Tripwire mensal** exposto em `monde_ingest_status` e num cartão read-only **"Sincronização Monde"** em `admin/uploads` (superfície nova: as 5 bases de lá são todas de planilha).
+- ⚠️ **A especificação original do tripwire não fechava, e isso foi medido.** Comparar contagem do espelho × `total` da API acende **todo mês, para sempre**: a API conta vendas que a transformação exclui por regra — em jul/2026, **8 Welcome + 12 sem setor + 9 sem item ativo, de 775**. Rodado uma vez, acendeu nos 12 meses. Alarme sempre aceso não é alarme. O tripwire virou **subproduto da reconciliação**, que já baixa o detalhe de cada venda e portanto sabe a contagem exata de espelháveis — **zero chamada extra à API**. Grava por mês `api · lidas · sem_sale_id · espelhaveis · excluidas{por motivo} · erros · espelho · sobrando · conta_fecha`, e o alarme é `erros>0 || sobrando>0 || sem_sale_id>0 || !conta_fecha`. **Mês que a reconciliação ainda não visitou aparece como não verificado e nunca acende.**
+- `conta_fecha` é a checagem de integridade `lidas == espelháveis + Σexcluídas + erros` — é ela que dá sentido ao resto. Verdadeira nos 3 meses medidos.
+
+### Alterado — `ultima_sincronizacao` passa a ser só do incremental
+
+- `monde_ingest_promover` grava `ultimo_promover` sempre que promove algo, e a `0183` incluía essa chave no selo. Com a reconciliação diária, o selo passaria a avançar por conta dela e **mascararia por ~45 min um incremental morto** — justo o alarme de `sync-atraso.ts`. Estreitado para `ultimo_incremental`. **O rótulo de `/metas` não muda de valor — muda de garantia.** A reconciliação ganhou campo próprio (`ultima_reconciliacao`).
+- Efeito colateral honesto: `backfill`/`window` manual não reseta mais o relógio do alarme. É a leitura correta (o alarme mede a saúde do cron automático), mas confunde quem olhar `/metas` logo após um backfill manual durante incidente.
+
+### Registrado, não corrigido
+
+- **5 vendas em jul/2026 e 5 em jun/2026 continuam no espelho tendo deixado de ser espelháveis** — perderam o último item ativo depois de ingeridas, e o UPSERT nunca remove. Achado desta versão, medido no campo `sobrando` do tripwire (é o que o mantém aceso hoje). **Remover é escrita destrutiva em dado e faria faturamento de mês fechado cair** — decisão do Yan, fora deste hotfix.
+- **Vendas que a API lista sem `sale_id`**: a ingestão não as alcança (precisa do id para o detalhe). Zero nos meses medidos; o campo existe para o dia em que não for.
+
+### Notas de aplicação
+
+- **`0232` já aplicada** (backup-gate verde; restore-test em 3 tabelas com count+checksum idênticos). 21 verificações via REST/service_role, executando o corpo das RPCs — inclusive a prova de que um dono não solta o lock de outro.
+- **`0236` (as 3 entradas de `cron.schedule` da reconciliação) NÃO está em `supabase/migrations/`** e só pode ser aplicada **depois do merge**: o cron chama a URL de produção, do Vault. Agendar antes faria os jobs responderem 200 e ficarem **verdes** sem reconciliar nada — fabricando a falha silenciosa que esta versão existe para caçar. SQL e comando prontos no out-briefing.
+- **Numeração torta, e de propósito.** Esta versão nasceu **5.4.5** (a v5.4.4 *Metas por subsetor* estava em curso em paralelo e havia reservado 0230/0231 + ADR-0163). Aquela versão então entrou em **stand-by**, liberou o número **5.4.4** e renumerou as migrations dela para **0233/0234/0235** — já aplicadas. Resultado: versão **5.4.4**, **ADR-0164** (o 0163 segue reservado, com arquivo na branch parada), migration aplicada **0232** (não renumerada — já estava no histórico do banco) e agendamento na **0236**. **`0230`/`0231` nunca existiram.**
+- ⚠️ O arquivo da `0232` diz "v5.4.5" no header e cita a "0233": as duas referências ficaram velhas e **não foram corrigidas**, porque `supabase_migrations.schema_migrations` guarda os `statements` de cada migration aplicada e editar o arquivo o faria divergir do histórico.
+- **Dívida registrada:** a `0232` foi aplicada de uma branch não mergeada e, por isso, o `db push` da sessão paralela quebrou com `LegacyDbPushMissingLocalError` até ela trazer os arquivos para o `main` (PR #215). **Aplicar migration antes do merge trava toda outra branch.**
+
 ## [5.4.3] — 2026-08-04
 
 PATCH · **Solicitações: anexo com acento no nome voltava a falhar, e o erro do modal aparecia fora da vista.** Sem migration, sem ADR.

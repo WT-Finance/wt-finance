@@ -403,3 +403,64 @@ async function regenerarFluxoCaixa(
     return { error: err instanceof Error ? err.message : String(err) }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sincronização Monde (v5.4.4) — LEITURA. Não é uma base de upload: o espelho vem da API,
+// e este bloco existe para o tripwire ter onde ACENDER. Divergência tem de ser alerta
+// visível, não linha de log perdida no console da Vercel.
+// ---------------------------------------------------------------------------
+
+/** Um mês apurado pela reconciliação (ou `nao_verificado` se ela ainda não passou por ele). */
+export type TripwireMes =
+  | { nao_verificado: true }
+  | {
+      mes: string
+      api: number
+      lidas: number
+      sem_sale_id: number
+      espelhaveis: number
+      excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
+      erros: number
+      espelho: number
+      sobrando: number
+      conta_fecha: boolean
+      verificado_em: string
+    }
+
+export interface StatusSincronizacaoMonde {
+  vendas: number
+  ultima_sincronizacao: string | null
+  ultima_reconciliacao: string | null
+  reconciliacao_cursor: string | null
+  tripwire: {
+    atualizado_em: string
+    acendeu: boolean
+    motivos: string[]
+    meses: Record<string, TripwireMes>
+  } | null
+}
+
+export async function getMondeSincronizacaoStatusAction(): Promise<
+  StatusSincronizacaoMonde | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    // `.bind(supabase)`: destacar o método perde o `this` e quebra em runtime (lição v5.3.5).
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('monde_ingest_status')
+    if (error) return { error: error.message }
+    const s = (data ?? {}) as Partial<StatusSincronizacaoMonde>
+    // Só o que o cartão renderiza — dado buscado e não mostrado é smell (achado BAIXO do
+    // revisor). A RPC devolve mais (`itens`, `itens_ativos`, `min_data`, `max_data`,
+    // `ultima_sync`, `ingest_em_curso`); se o cartão passar a mostrar, é aqui que entram.
+    return {
+      vendas:               s.vendas ?? 0,
+      ultima_sincronizacao: s.ultima_sincronizacao ?? null,
+      ultima_reconciliacao: s.ultima_reconciliacao ?? null,
+      reconciliacao_cursor: s.reconciliacao_cursor ?? null,
+      tripwire:             s.tripwire ?? null,
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
