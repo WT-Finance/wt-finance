@@ -35,6 +35,34 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.4.5',
+    data: '2026-08-05T20:22', // hora de AUTORIA — reconciliar ao horário real do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Venda cancelada no Monde continuava contando nos totais da plataforma. Quando todos os ' +
+          'produtos de uma venda eram cancelados depois de ela já ter sido sincronizada, a ' +
+          'plataforma nunca ficava sabendo — o valor antigo permanecia somando, indefinidamente. ' +
+          'Foram encontradas 24 vendas nessa situação em 8 dos últimos 12 meses. Todas já foram ' +
+          'corrigidas, e a sincronização passou a acompanhar cancelamentos automaticamente. ' +
+          'ATENÇÃO: alguns totais MUDARAM. Julho de 2026 é o mais afetado — a receita do mês cai ' +
+          'cerca de R$ 296 mil, quase toda de uma única venda que havia sido cancelada e continuava ' +
+          'contando. Mas não é só para baixo: em dezembro de 2025 e fevereiro de 2026 a receita ' +
+          'SOBE (a venda cancelada de lá tinha valor negativo). Em todos os casos o número passou a ' +
+          'refletir o que o Monde tem hoje.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A venda cancelada não é apagada da plataforma: ela fica guardada, marcada como cancelada, ' +
+          'e apenas deixa de somar. Assim continua sendo possível auditar o que aconteceu. O quadro ' +
+          '"Sincronização Monde", na tela de Atualização de Dados, passou a mostrar quantas vendas ' +
+          'efetivamente contam e quantas estão preservadas nessa condição.',
+      },
+    ],
+  },
+  {
     versao: '5.4.4',
     data: '2026-08-04T16:31', // horário REAL do merge (d97bf50, 16:31 −03) — reconciliado no /pos-merge
     itens: [

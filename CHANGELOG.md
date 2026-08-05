@@ -6,6 +6,42 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.4.5] — 2026-08-05
+
+PATCH · **O espelho do Monde retinha venda que a origem já não reconhecia — e isso inflava faturamento e receita.** Migration `0237` (aditiva, aplicada) · **ADR-0165**.
+
+### Corrigido — venda cancelada na origem continuava somando
+
+- **O filtro de negócio estava na ESCRITA, e o schema queria ele na leitura.** `transformSale` filtrava `status === 'active'` **antes de gravar** e descartava a venda inteira quando não sobrava item ativo. Como o UPSERT só escreve sobre o universo que pediu, venda que **saía** desse universo ficava **invisível para a escrita**: não podia ser atualizada nem removida, e a linha velha sobrevivia **congelada** com os valores de antes do cancelamento.
+- **A prova de que o desenho pretendido era outro:** `monde.venda_item` **tem** coluna `status`/`canceled_at` e a `mv_vendas_diarias` **já filtrava** `WHERE i.status='active'` desde a 0179 — mas a tabela tinha **47.182 itens, todos ativos**. O filtro era **código morto** havia 6 versões.
+- **Medido em 05/08 contra a API, venda a venda, nos 12 meses:** **24 vendas retidas, R$ 896.718,90 de faturamento e R$ 282.422,05 de receita**, em 8 dos 12 meses. jul/2026 era o pior: **25,19% da receita do mês**, quase tudo numa venda só (a `73083` valia R$ 293.721,82 no espelho e −R$ 687,96 na API, com o único produto cancelado em 24/07). Baseline em `docs/investigacoes/2026-08-05-v5-4-5-baseline-vendas-retidas.md`.
+- **E crescia sozinho:** entre 04 e 05/08, julho foi de 5 para 6 vendas retidas e junho idem. Não era passivo estático.
+- **A correção:** o espelho passa a gravar **todos** os produtos com o `status` real, e a mv (que já filtra) ignora a venda 100%-cancelada **sozinha**. O filtro morto virou o mecanismo vivo. A falha deixa de ser possível, em vez de detectável.
+
+### Resultado — aplicado e verificado nos 12 meses
+
+| | faturamento | receita |
+|---|---|---|
+| **total 12 meses** | **−R$ 864.917,26** | **−R$ 267.370,33** |
+| jul/2026 | −R$ 450.349,65 | **−R$ 295.801,06** |
+| jun/2026 | −R$ 304.883,69 | −R$ 10.939,18 |
+| **dez/2025** | −R$ 40.000,00 | **+R$ 44.877,47** |
+
+- ⚠️ **NÃO é "tudo cai".** Em **dez/2025** e **fev/2026** a receita **SOBE** — a venda retida lá tinha receita negativa. A correção **acerta** o número; não o reduz por definição.
+- As 24 vendas tinham `raw_hash` divergente ⇒ o UPSERT as regravou **sozinho**. **Nenhum DML**, nenhuma linha apagada.
+- **Tripwire APAGADO** nos meses reconciliados; `sem_item_ativo` foi a **zero** — a exclusão que criava o furo deixou de existir.
+
+### Alterado — o cartão distingue o que está espelhado do que conta
+
+- Como a venda cancelada **permanece** no espelho (para auditoria), os contadores crus do `monde_ingest_status` passariam a incluir o que a mv ignora. A **`0237`** acrescenta `vendas_que_contam` e `itens_cancelados`; o cartão de `admin/uploads` mostra **"Vendas que contam"** e, só quando há diferença, a linha "+N canceladas no espelho". Hoje: **193 vendas e 529 itens** preservados como cancelados — informação honesta, não defeito.
+
+### Notas técnicas
+
+- **A materialized view NÃO foi tocada, e isso foi decisão de risco.** O desenho original do briefing pedia alterá-la; validando contra o repo, mv **não aceita `CREATE OR REPLACE`** — exigiria `DROP`+`CREATE`, classificado **destrutivo**, e o `CASCADE` derrubaria a `mv_vendas_diarias_compat` de que **Metas e Performance dependem**. O filtro que já existia resolveu.
+- **Não-regressão provada contra dado REAL:** rodando o `transformSale` antigo e o novo sobre o mesmo input de julho — **776 vendas idênticas, 0 mudam**. A versão não altera cálculo nenhum; o efeito é permitir que o UPSERT sobrescreva a linha velha.
+- **Resíduo declarado:** venda que **mude** para Welcome/sem-setor depois de espelhada ainda ficaria retida (zero casos medidos; tratá-la exigiria a mudança destrutiva acima). Coberta pelo tripwire.
+- **O detector tem de ser o tripwire.** Uma métrica tentadora — `vendas − vendas_que_contam` — está **invertida**: dá zero justamente quando o defeito existe, porque a venda retida tem itens *ativos* no espelho. Um teste sobre ela passaria com o defeito presente e reprovaria depois da correção. O caso de contrato usa o tripwire, por mês verificado.
+
 ## [5.4.4] — 2026-08-04
 
 PATCH · **O espelho do Monde perdia venda lançada com atraso — Metas e Performance subestimavam faturamento.** Migration `0232` (aditiva, aplicada) · `0233` pendente de pós-merge · **ADR-0164**.
