@@ -96,10 +96,19 @@ export interface MesVerificado {
   /** `count(*)` do espelho no range do mês, depois da reconciliação. */
   espelho: number
   /**
-   * `espelho − espelhaveis`. Vendas que continuam no espelho tendo deixado de ser espelháveis
-   * (perderam o último item ativo depois de ingeridas) — o UPSERT nunca remove. Achado da
-   * v5.4.4; nesta versão é MEDIDO e reportado, não corrigido (remover linha é escrita
-   * destrutiva e muda faturamento exibido — decisão do Yan).
+   * `espelho − espelhaveis`. Vendas que continuam no espelho tendo deixado de ser espelháveis —
+   * o UPSERT nunca remove.
+   *
+   * ⚠️ v5.4.5 — A CAUSA MUDOU, e ler isto errado leva a diagnóstico errado. Até a v5.4.4 a causa
+   * era "perdeu o último item ativo": o `transformSale` descartava essa venda e a linha velha
+   * ficava congelada (24 vendas, R$ 896.718,90). Isso **não acontece mais** — agora ela é
+   * espelhada com os itens cancelados e a mv a ignora sozinha, então `sobrando` volta a 0 assim
+   * que a reconciliação passa pelo mês.
+   *
+   * O que ainda PODE acender este campo é o resíduo declarado no topo de `transform.ts`: venda
+   * que muda para **Welcome** ou **sem setor** depois de espelhada (exclusão de escopo, que
+   * segue sendo aplicada na escrita). Zero casos medidos até hoje. Se acender, é lá que se
+   * procura — não em item cancelado.
    */
   sobrando: number
   /**

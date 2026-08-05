@@ -17,9 +17,11 @@ import type { SaleDetail, Product } from './schemas'
 // produtos cancelados na origem) ficava invisível para a escrita — não podia ser atualizada
 // nem removida, e a linha velha sobrevivia CONGELADA com os valores de antes.
 //
-// Medido em 04-05/08/2026: 10 vendas nessa condição, inflando jul/2026 em 5,95% de
-// faturamento e **25,0% de receita** (a venda 73083 sozinha valia R$ 293.721,82 no espelho e
-// −R$ 687,96 na API). E crescia: julho foi de 5 para 6 sobrando em 24h.
+// Medido em 05/08/2026 contra a API, venda a venda, nos 12 meses — **24 vendas nessa condição,
+// R$ 896.718,90 de faturamento e R$ 282.422,05 de receita** (baseline completo em
+// `docs/investigacoes/2026-08-05-v5-4-5-baseline-vendas-retidas.md`). jul/2026 é o pior:
+// **25,19% da receita do mês**, quase toda numa venda só (a 73083 valia R$ 293.721,82 no
+// espelho e −R$ 687,96 na API). E crescia: julho foi de 5 para 6 em 24h.
 //
 // Agora gravamos TODOS os produtos, com o `status` real. Quem decide o que soma é a
 // `monde.mv_vendas_diarias`, que **já filtra** `WHERE i.status = 'active'` desde a 0179 — um
