@@ -164,8 +164,19 @@ function CardSincronizacaoMonde({ status }: { status: StatusSincronizacaoMonde |
           <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
             {/* shrink-0: valor longo encolhe abaixo do próprio conteúdo e invade o vizinho (DS §8). */}
             <div className="shrink-0">
-              <p className="text-2xs uppercase tracking-wide text-zinc-400">Vendas no espelho</p>
-              <p className="text-sm font-semibold text-zinc-900 tabular-nums">{formatarNum(status.vendas)}</p>
+              <p className="text-2xs uppercase tracking-wide text-zinc-400">Vendas que contam</p>
+              <p className="text-sm font-semibold text-zinc-900 tabular-nums">
+                {formatarNum(status.vendas_que_contam)}
+              </p>
+              {/* v5.4.5: só aparece quando há diferença — venda cujos produtos a origem cancelou
+                  segue espelhada (auditável) e deixa de somar. Sem venda cancelada, a linha some
+                  e o cartão fica como era. */}
+              {status.vendas > status.vendas_que_contam ? (
+                <p className="text-2xs text-zinc-400 tabular-nums">
+                  +{formatarNum(status.vendas - status.vendas_que_contam)} cancelada
+                  {status.vendas - status.vendas_que_contam > 1 ? 's' : ''} no espelho
+                </p>
+              ) : null}
             </div>
             <div className="shrink-0">
               <p className="text-2xs uppercase tracking-wide text-zinc-400">Última sincronização</p>
