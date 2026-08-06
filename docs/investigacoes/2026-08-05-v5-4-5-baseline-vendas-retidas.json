@@ -1,0 +1,326 @@
+{
+ "linhas": {
+  "2026-08": {
+   "espelho": 64,
+   "api": 66,
+   "sobrando": 0,
+   "fat": 278258.04000000004,
+   "rec": 40150.31,
+   "sFat": 0,
+   "sRec": 0
+  },
+  "2026-07": {
+   "espelho": 752,
+   "api": 776,
+   "sobrando": 6,
+   "fat": 7273249.610000002,
+   "rec": 1174922.8200000003,
+   "sFat": 455170.09,
+   "sRec": 295988.60000000003
+  },
+  "2026-06": {
+   "espelho": 637,
+   "api": 670,
+   "sobrando": 6,
+   "fat": 6842692.13,
+   "rec": 936762.9500000005,
+   "sFat": 307831.65,
+   "sRec": 10953.68
+  },
+  "2026-05": {
+   "espelho": 637,
+   "api": 664,
+   "sobrando": 2,
+   "fat": 4322483.200000002,
+   "rec": 670952.0199999997,
+   "sFat": 1552.97,
+   "sRec": 110.82
+  },
+  "2026-04": {
+   "espelho": 731,
+   "api": 764,
+   "sobrando": 1,
+   "fat": 5447379.83,
+   "rec": 702085.9599999996,
+   "sFat": 15198.17,
+   "sRec": 4309.9
+  },
+  "2026-03": {
+   "espelho": 874,
+   "api": 916,
+   "sobrando": 6,
+   "fat": 8201033.060000006,
+   "rec": 1069954.7999999996,
+   "sFat": 62971.08000000001,
+   "sRec": 8313.03
+  },
+  "2026-02": {
+   "espelho": 641,
+   "api": 675,
+   "sobrando": 1,
+   "fat": 5646862.030000001,
+   "rec": 848301.0699999995,
+   "sFat": 8316,
+   "sRec": 1737.42
+  },
+  "2026-01": {
+   "espelho": 574,
+   "api": 608,
+   "sobrando": 0,
+   "fat": 3212678.429999999,
+   "rec": 408627.0599999998,
+   "sFat": 0,
+   "sRec": 0
+  },
+  "2025-12": {
+   "espelho": 550,
+   "api": 589,
+   "sobrando": 1,
+   "fat": 4480903.179999999,
+   "rec": 525556.1599999998,
+   "sFat": 40000,
+   "sRec": -40000
+  },
+  "2025-11": {
+   "espelho": 713,
+   "api": 750,
+   "sobrando": 1,
+   "fat": 4138787.7400000044,
+   "rec": 566821.8899999999,
+   "sFat": 5678.94,
+   "sRec": 1008.6
+  },
+  "2025-10": {
+   "espelho": 798,
+   "api": 843,
+   "sobrando": 0,
+   "fat": 5029239.630000003,
+   "rec": 702464.4300000009,
+   "sFat": 0,
+   "sRec": 0
+  },
+  "2025-09": {
+   "espelho": 851,
+   "api": 888,
+   "sobrando": 0,
+   "fat": 5696609.259999996,
+   "rec": 805988.6100000007,
+   "sFat": 0,
+   "sRec": 0
+  }
+ },
+ "sobrando": {
+  "2026-08": [],
+  "2026-07": [
+   {
+    "venda_numero": "72934",
+    "raw_hash": "730111c8",
+    "fat": "990.26",
+    "rec": "0.00",
+    "causa": "sem_item_ativo",
+    "hash_api": "333df043"
+   },
+   {
+    "venda_numero": "72987",
+    "raw_hash": "4731ea01",
+    "fat": "1907.88",
+    "rec": "953.94",
+    "causa": "sem_item_ativo",
+    "hash_api": "aa3c8c68"
+   },
+   {
+    "venda_numero": "73083",
+    "raw_hash": "b6282583",
+    "fat": "331980.20",
+    "rec": "293721.82",
+    "causa": "sem_item_ativo",
+    "hash_api": "7b89c440"
+   },
+   {
+    "venda_numero": "73159",
+    "raw_hash": "68393161",
+    "fat": "22932.48",
+    "rec": "1312.84",
+    "causa": "sem_item_ativo",
+    "hash_api": "3991fa5b"
+   },
+   {
+    "venda_numero": "73219",
+    "raw_hash": "38512b9f",
+    "fat": "27567.27",
+    "rec": "0.00",
+    "causa": "sem_item_ativo",
+    "hash_api": "6e5d6b63"
+   },
+   {
+    "venda_numero": "73290",
+    "raw_hash": "40247724",
+    "fat": "69792.00",
+    "rec": "0.00",
+    "causa": "sem_item_ativo",
+    "hash_api": "1eb92c2"
+   }
+  ],
+  "2026-06": [
+   {
+    "venda_numero": "71972",
+    "raw_hash": "db7024d1",
+    "fat": "10959.84",
+    "rec": "2858.02",
+    "causa": "sem_item_ativo",
+    "hash_api": "7ab1504a"
+   },
+   {
+    "venda_numero": "72092",
+    "raw_hash": "61407cc3",
+    "fat": "43635.26",
+    "rec": "3713.16",
+    "causa": "sem_item_ativo",
+    "hash_api": "68bbac70"
+   },
+   {
+    "venda_numero": "72380",
+    "raw_hash": "a42a14f2",
+    "fat": "114.54",
+    "rec": "114.54",
+    "causa": "sem_item_ativo",
+    "hash_api": "6dde833"
+   },
+   {
+    "venda_numero": "72936",
+    "raw_hash": "daaada43",
+    "fat": "228119.01",
+    "rec": "0.00",
+    "causa": "sem_item_ativo",
+    "hash_api": "7565c467"
+   },
+   {
+    "venda_numero": "72477",
+    "raw_hash": "3b408fe9",
+    "fat": "4900.00",
+    "rec": "-0.04",
+    "causa": "sem_item_ativo",
+    "hash_api": "4b2e509e"
+   },
+   {
+    "venda_numero": "72598",
+    "raw_hash": "eb93f242",
+    "fat": "20103.00",
+    "rec": "4268.00",
+    "causa": "sem_item_ativo",
+    "hash_api": "ee7bd18"
+   }
+  ],
+  "2026-05": [
+   {
+    "venda_numero": "71771",
+    "raw_hash": "b17863b6",
+    "fat": "1052.97",
+    "rec": "110.82",
+    "causa": "sem_item_ativo",
+    "hash_api": "245f299f"
+   },
+   {
+    "venda_numero": "71933",
+    "raw_hash": "9e795c9f",
+    "fat": "500.00",
+    "rec": "0.00",
+    "causa": "sem_item_ativo",
+    "hash_api": "ccdc94bf"
+   }
+  ],
+  "2026-04": [
+   {
+    "venda_numero": "70548",
+    "raw_hash": "4bb784df",
+    "fat": "15198.17",
+    "rec": "4309.90",
+    "causa": "sem_item_ativo",
+    "hash_api": "3c7bab7e"
+   }
+  ],
+  "2026-03": [
+   {
+    "venda_numero": "70066",
+    "raw_hash": "3baa83a",
+    "fat": "2035.00",
+    "rec": "362.66",
+    "causa": "sem_item_ativo",
+    "hash_api": "ce31a51e"
+   },
+   {
+    "venda_numero": "70161",
+    "raw_hash": "ba0cb376",
+    "fat": "9479.94",
+    "rec": "1827.28",
+    "causa": "sem_item_ativo",
+    "hash_api": "81667f1"
+   },
+   {
+    "venda_numero": "70199",
+    "raw_hash": "76713505",
+    "fat": "35508.80",
+    "rec": "3883.96",
+    "causa": "sem_item_ativo",
+    "hash_api": "6a902d41"
+   },
+   {
+    "venda_numero": "70304",
+    "raw_hash": "34b954c9",
+    "fat": "9392.33",
+    "rec": "1810.45",
+    "causa": "sem_item_ativo",
+    "hash_api": "a68d6ae6"
+   },
+   {
+    "venda_numero": "70374",
+    "raw_hash": "90c5466",
+    "fat": "5907.01",
+    "rec": "236.81",
+    "causa": "sem_item_ativo",
+    "hash_api": "5439f0c9"
+   },
+   {
+    "venda_numero": "70461",
+    "raw_hash": "d04fd6e",
+    "fat": "648.00",
+    "rec": "191.87",
+    "causa": "sem_item_ativo",
+    "hash_api": "519b5ce"
+   }
+  ],
+  "2026-02": [
+   {
+    "venda_numero": "68965",
+    "raw_hash": "3d73ad59",
+    "fat": "8316.00",
+    "rec": "1737.42",
+    "causa": "sem_item_ativo",
+    "hash_api": "1b6ed920"
+   }
+  ],
+  "2026-01": [],
+  "2025-12": [
+   {
+    "venda_numero": "68157",
+    "raw_hash": "ed3d0a5f",
+    "fat": "40000.00",
+    "rec": "-40000.00",
+    "causa": "sem_item_ativo",
+    "hash_api": "437bcbc"
+   }
+  ],
+  "2025-11": [
+   {
+    "venda_numero": "67627",
+    "raw_hash": "fb8c7df5",
+    "fat": "5678.94",
+    "rec": "1008.60",
+    "causa": "sem_item_ativo",
+    "hash_api": "58d5af6c"
+   }
+  ],
+  "2025-10": [],
+  "2025-09": []
+ }
+}

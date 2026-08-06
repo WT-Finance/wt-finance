@@ -930,4 +930,53 @@ describe.skipIf(!ON)('contrato RPC — DRE v5.3.1 (decomposição por bloco)', (
     expect(vazio.ausentes_total).toBe(0)
     expect(vazio.espelho as number).toBeGreaterThan(0)
   })
+
+  // ── v5.4.5 — O ESPELHO NÃO RETÉM VENDA QUE A ORIGEM NÃO RECONHECE ──────────────────────
+  //
+  // O invariante permanente desta versão. Até a v5.4.4 o `transformSale` descartava a venda
+  // cujos produtos foram TODOS cancelados na origem, e como o UPSERT só escreve sobre o
+  // universo que pediu, a linha velha ficava congelada — invisível para a escrita, para
+  // sempre. Medido em 05/08/2026 nos 12 meses: **24 vendas, R$ 896.718,90 de faturamento e
+  // R$ 282.422,05 de receita**, com jul/2026 inflado em 25,19% de receita (número canônico da
+  // versão; baseline em `docs/investigacoes/2026-08-05-v5-4-5-baseline-vendas-retidas.md`).
+  //
+  // ⚠️ O DETECTOR TEM DE SER O TRIPWIRE, e isto não é detalhe. A primeira versão deste teste
+  // afirmava `vendas − vendas_que_contam === 0` lendo só o banco — e estava INVERTIDA: a venda
+  // retida tem itens ATIVOS no espelho (os valores velhos), então ela "conta" e o delta dá zero
+  // JUSTAMENTE quando o defeito existe. Só depois de regravada é que ela fica com itens
+  // `canceled` e o delta sobe. Aquele teste passaria hoje e reprovaria depois da correção.
+  // O passivo só é visível comparando com a API — que é o que a reconciliação faz e grava no
+  // tripwire como `sobrando`.
+  //
+  // (`vendas − vendas_que_contam` continua sendo informação boa para o CARTÃO: depois da
+  // correção ele mostra quantas vendas canceladas estão preservadas para auditoria. Só não
+  // serve como alarme.)
+  it('v5.4.5: nenhum mês verificado tem venda retida (tripwire.sobrando === 0)', async () => {
+    const d = await rpc('monde_ingest_status', {}) as {
+      vendas?: number
+      vendas_que_contam?: number
+      tripwire?: { meses?: Record<string, { mes?: string; sobrando?: number }> } | null
+    }
+
+    // A 0237 é que expõe `vendas_que_contam` — o cartão depende dela.
+    expect(d, 'a migration 0237 não está aplicada').toHaveProperty('vendas_que_contam')
+    expect(typeof d.vendas_que_contam).toBe('number')
+    // Sanidade: quem conta nunca pode ser mais que o total espelhado.
+    expect(d.vendas_que_contam as number).toBeLessThanOrEqual(d.vendas as number)
+
+    const meses = d.tripwire?.meses ?? {}
+    const verificados = Object.entries(meses).filter(([, m]) => m && !('nao_verificado' in m))
+    // Sem nenhum mês verificado não há o que afirmar (tripwire ainda não rodou) — não invento
+    // aprovação nem reprovo por ausência de dado.
+    if (verificados.length === 0) return
+
+    const retidos = verificados
+      .filter(([, m]) => (m.sobrando ?? 0) > 0)
+      .map(([mes, m]) => `${mes}: ${m.sobrando}`)
+
+    expect(retidos,
+      `mês(es) com venda retida no espelho — a origem já não as reconhece e elas seguem somando: ` +
+      retidos.join(' · '),
+    ).toEqual([])
+  })
 })

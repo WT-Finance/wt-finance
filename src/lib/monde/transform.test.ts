@@ -37,9 +37,23 @@ describe('transformSale — exclusões', () => {
     const r = transformSale(sale({ custom_fields: [{ name: 'Setor', value: 'Foo' }] }))
     expect(r).toEqual({ excluida: 'sem_setor' })
   })
-  it('exclui venda sem NENHUM item ativo (todos cancelados)', () => {
-    const r = transformSale(sale({ products: [product({ status: 'canceled', canceled_at: '2026-06-09T00:00:00Z' })] }))
-    expect(r).toEqual({ excluida: 'sem_item_ativo' })
+  // v5.4.5 — INVERSÃO DELIBERADA. Até a v5.4.4 este caso devolvia `{excluida:'sem_item_ativo'}`,
+  // e era isso que criava o furo: a venda saía do universo de escrita e a linha antiga ficava
+  // CONGELADA no espelho (medido: 10 vendas, +25% na receita de jul/2026). Agora ela é espelhada
+  // com os itens cancelados e a mv — que já filtra `status='active'` — a ignora sozinha.
+  it('ESPELHA venda sem nenhum item ativo (não exclui mais) e ela soma ZERO', () => {
+    const r = transformSale(sale({
+      total_revenue: 5000, // a API pode reportar receita mesmo com tudo cancelado (venda 73083)
+      products: [product({ status: 'canceled', canceled_at: '2026-06-09T00:00:00Z', total_amount: 900 })],
+    }))
+    if (!('venda' in r)) throw new Error('não deve mais excluir por sem_item_ativo')
+    expect(r.venda.itens).toHaveLength(1)
+    expect(r.venda.itens[0].status).toBe('canceled')
+    expect(r.venda.itens[0].canceled_at).toBe('2026-06-09T00:00:00Z')
+    // O que faz a venda sumir dos totais: o item existe, mas nada é alocado nele.
+    expect(r.venda.itens[0].receitas).toBe(0)
+    // O `total_revenue` da venda NÃO é distribuído quando não há ativo — não vaza para o cancelado.
+    expect(r.venda.itens.reduce((s, i) => s + i.receitas, 0)).toBe(0)
   })
 })
 
@@ -111,15 +125,42 @@ describe('transformSale — mapeamento e síntese', () => {
     expect(r.venda.operacao_propria).toBe(false)
   })
 
-  it('só os itens ATIVOS entram (cancelado é descartado do espelho)', () => {
+  // v5.4.5 — o cancelado passa a ser GRAVADO (antes era descartado aqui). Quem filtra é a mv.
+  it('grava o item cancelado junto do ativo, e o rateio de receita NÃO vaza para ele', () => {
     const r = transformSale(sale({
+      total_revenue: 300,
       products: [
-        product({ description: 'Ativo', status: 'active' }),
-        product({ description: 'Cancelado', status: 'canceled', canceled_at: '2026-06-09T00:00:00Z' }),
+        product({ description: 'Ativo', status: 'active', total_amount: 1000 }),
+        product({ description: 'Cancelado', status: 'canceled', canceled_at: '2026-06-09T00:00:00Z', total_amount: 4000 }),
       ],
     }))
     if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.itens).toHaveLength(1)
-    expect(r.venda.itens[0].produto).toBe('Ativo')
+    expect(r.venda.itens).toHaveLength(2)
+
+    const ativo = r.venda.itens.find(i => i.produto === 'Ativo')!
+    const cancelado = r.venda.itens.find(i => i.produto === 'Cancelado')!
+    expect(cancelado.status).toBe('canceled')
+    expect(cancelado.receitas).toBe(0)
+    // O denominador do rateio é a soma dos ATIVOS: o ativo leva os 300 inteiros, apesar de o
+    // cancelado ter 4× o valor dele. Se o cancelado entrasse na conta, o ativo levaria 60.
+    expect(ativo.receitas).toBe(300)
+    // Invariante que não pode quebrar: soma dos ATIVOS = total_revenue, ao centavo.
+    const somaAtivos = r.venda.itens.filter(i => i.status === 'active').reduce((s, i) => s + i.receitas, 0)
+    expect(somaAtivos).toBe(300)
+  })
+
+  // Guarda de não-regressão: para venda SEM cancelado, nada pode ter mudado na v5.4.5.
+  it('venda só com ativos: o rateio continua idêntico ao de antes (resto no último)', () => {
+    const r = transformSale(sale({
+      total_revenue: 100,
+      products: [
+        product({ description: 'A', status: 'active', total_amount: 1 }),
+        product({ description: 'B', status: 'active', total_amount: 1 }),
+        product({ description: 'C', status: 'active', total_amount: 1 }),
+      ],
+    }))
+    if (!('venda' in r)) throw new Error('esperava venda')
+    expect(r.venda.itens.map(i => i.receitas)).toEqual([33.33, 33.33, 33.34]) // resto ao último
+    expect(r.venda.itens.reduce((s, i) => s + i.receitas, 0)).toBe(100)
   })
 })

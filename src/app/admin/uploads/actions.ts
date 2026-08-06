@@ -428,7 +428,17 @@ export type TripwireMes =
     }
 
 export interface StatusSincronizacaoMonde {
+  /** Tudo o que está espelhado, inclusive venda cujos produtos a origem cancelou. */
   vendas: number
+  /**
+   * v5.4.5 — o universo que a mv soma (venda com ao menos um item ativo). Diverge de `vendas`
+   * quando a origem cancela todos os produtos: a venda continua espelhada, para auditoria, e
+   * deixa de contar. Antes desta versão ela era descartada na escrita e a linha velha ficava
+   * congelada — era o defeito (+25% na receita de jul/2026).
+   */
+  vendas_que_contam: number
+  /** v5.4.5 — passa a ser > 0; era 0 fixo porque o cancelado nunca era gravado. */
+  itens_cancelados: number
   ultima_sincronizacao: string | null
   ultima_reconciliacao: string | null
   reconciliacao_cursor: string | null
@@ -453,8 +463,12 @@ export async function getMondeSincronizacaoStatusAction(): Promise<
     // Só o que o cartão renderiza — dado buscado e não mostrado é smell (achado BAIXO do
     // revisor). A RPC devolve mais (`itens`, `itens_ativos`, `min_data`, `max_data`,
     // `ultima_sync`, `ingest_em_curso`); se o cartão passar a mostrar, é aqui que entram.
+    // `vendas_que_contam` cai para `vendas` se a 0237 ainda não estiver aplicada — assim o
+    // cartão não mostra zero durante a janela entre o deploy e a migration.
     return {
       vendas:               s.vendas ?? 0,
+      vendas_que_contam:    s.vendas_que_contam ?? s.vendas ?? 0,
+      itens_cancelados:     s.itens_cancelados ?? 0,
       ultima_sincronizacao: s.ultima_sincronizacao ?? null,
       ultima_reconciliacao: s.ultima_reconciliacao ?? null,
       reconciliacao_cursor: s.reconciliacao_cursor ?? null,

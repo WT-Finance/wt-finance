@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-04 (pós-merge) · produção na **v5.4.4** (#217 mergeado às 16h31 — Onda 0: o espelho do Monde perdia venda lançada com atraso; **agendamento da reconciliação na `0236`, aplicado**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 já aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-05 · produção na **v5.4.4** · **v5.4.5 FECHADA, aguardando merge** (o espelho passa a espelhar: filtro de negócio sai da escrita e vai para a leitura — **`0237` aplicada e os 12 meses já reprocessados**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,6 +9,38 @@
 
 ## Verdade atual
 
+- **v5.4.5 — FECHADA, aguardando merge.** Branch `fix/v5-4-5-espelho-fiel`. **O espelho retinha
+  venda que a origem já não reconhecia.** O `transformSale` filtrava `status='active'` **na
+  escrita** e descartava a venda sem item ativo; como o UPSERT só escreve sobre o universo que
+  pediu, ela ficava **invisível para a escrita** e a linha velha sobrevivia congelada. Medido nos
+  12 meses: **24 vendas, R$ 896.718,90 de faturamento, R$ 282.422,05 de receita**; jul/2026 com
+  **25,19% da receita** inflada. **`0237` APLICADA e os 12 meses REPROCESSADOS** (autorizado pelo
+  Yan): faturamento **−R$ 864.917,26**, receita **−R$ 267.370,33**. **ADR-0165**; 711 testes.
+  **Duráveis desta versão:**
+  *(a)* **O filtro de negócio mora na LEITURA.** A mv já filtrava `status='active'` desde a 0179 e
+  era **código morto** havia 6 versões (47.182 itens, todos ativos). Gravar o cancelado bastou —
+  a venda 100%-cancelada contribui zero **sozinha**. A falha deixou de ser possível, em vez de
+  detectável.
+  *(b)* **MATERIALIZED VIEW NÃO ACEITA `CREATE OR REPLACE`.** Alterar a `mv_vendas_diarias` exige
+  `DROP`+`CREATE` ⇒ classificador diz **destrutiva** ⇒ agente não aplica; e `mv_vendas_diarias_compat`
+  **depende** dela (`pg_depend`), então o `CASCADE` derruba a fonte de Metas e Performance. Foi o
+  que evitou seguir o desenho literal do briefing.
+  *(c)* **`vendas − vendas_que_contam` é métrica INVERTIDA para detectar venda retida** — dá zero
+  justamente quando o defeito existe (a retida tem itens *ativos* velhos). Um teste sobre ela
+  passa com o defeito e reprova depois da correção. **O detector é o tripwire**, por mês verificado.
+  *(d)* **Reprocessar um mês em dev ESCREVE em produção** (mesmo banco): "provar sem aplicar" exige
+  dry-run rodando as duas versões do código sobre o mesmo input — foi assim que se provou
+  **776 vendas idênticas, 0 mudam** (a versão não altera cálculo nenhum).
+  *(e)* **Não é "tudo cai":** dez/2025 e fev/2026 tiveram receita **subindo** (a venda retida lá
+  tinha receita negativa). Correção acerta o número, não o reduz por definição.
+  **Estado do espelho:** 193 vendas e 529 itens preservados como **cancelados** — ficam para
+  auditoria e não somam. O cartão de `admin/uploads` mostra "Vendas que contam" + "+N canceladas".
+  **PENDENTE do Yan:** conferência visual do cartão · **comunicar à diretoria** (julho cai ~R$ 296
+  mil de receita; dez/2025 e fev/2026 sobem — e a v5.4.4 tinha feito julho **subir**) · mergear ·
+  **enviar a pauta ao provedor do Monde** (§8 do briefing de entrada, ainda não enviada).
+  **Resíduo declarado:** venda que **mude** para Welcome/sem-setor depois de espelhada ainda
+  ficaria retida (zero casos medidos) — tratá-la exigiria a mudança destrutiva de *(b)*.
+  Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-5_Espelho_Fiel.md`.
 - Versão em produção (main): **`5.4.4`** (#217 mergeado 04/08 às 16h31).
   **O espelho do Monde perdia venda lançada com atraso, e Metas/Performance subestimavam
   faturamento.** A API filtra a listagem por DATA DA VENDA e a janela do incremental (`hoje−2d`)
@@ -310,9 +342,12 @@
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
   testes verdes.
-- Último ADR registrado: **`0164`** (v5.4.4: reconciliação do espelho Monde — janela curta +
+- Último ADR registrado: **`0165`** (v5.4.5: o espelho espelha — filtro de negócio na leitura;
+  mv não aceita `CREATE OR REPLACE`; o detector é o tripwire, não contagem do banco; emenda a
+  0149/0164). Antes dele o **`0164`** (v5.4.4: reconciliação do espelho Monde — janela curta +
   varredura diária, lock durável, tripwire por apuração exata; emenda a 0149/0151).
-  ⚠️ **O `0163` está reservado pela v5.4.4** (em curso em paralelo). **Próximo livre: 0165.**
+  ⚠️ **O `0163` segue reservado** pela versão em stand-by, que tem o arquivo dele na branch.
+  **Próximo livre: 0166.**
   Antes deles o **`0162`** (v5.4.2: Margem a.a. LINEAR como definição de métrica +
   janela larga fatiada no cliente + reinício do acumulado na borda).
   Antes dele o `0161` (v5.4.0: 0158 categoria de confiança da API externa ·
@@ -328,8 +363,11 @@
   ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
   e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
   sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
-  **Última migration APLICADA de todas: `0236`** (agendamento da reconciliação, pós-merge da
-  v5.4.4). **Próxima livre: `0237`.**
+  **Última migration APLICADA de todas: `0237`** (v5.4.5: `monde_ingest_status` separa
+  `vendas_que_contam` de `vendas` e expõe `itens_cancelados` — ADITIVA, `CREATE OR REPLACE` de
+  função, verificada executando via REST. Necessária porque a venda cancelada passou a
+  PERMANECER no espelho e os contadores crus inflariam o cartão). Antes dela a **`0236`**
+  (agendamento da reconciliação, pós-merge da v5.4.4). **Próxima livre: `0238`.**
   Antes dela a **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
   alargada de 23+18 para **36+36 meses** — ADITIVA, `CREATE OR REPLACE` de função SEM
   parâmetros. Diferente da RPC de Weddings, a janela dela é **hardcoded no corpo**, então o
