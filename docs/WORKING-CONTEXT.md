@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-05 · produção na **v5.4.4** · **v5.4.5 FECHADA, aguardando merge** (o espelho passa a espelhar: filtro de negócio sai da escrita e vai para a leitura — **`0237` aplicada e os 12 meses já reprocessados**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-05 (pós-merge) · produção na **v5.4.5** (#220 mergeado às 21h09 — o espelho passa a espelhar: filtro de negócio sai da escrita e vai para a leitura; **`0237` aplicada e os 12 meses reprocessados**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,7 +9,7 @@
 
 ## Verdade atual
 
-- **v5.4.5 — FECHADA, aguardando merge.** Branch `fix/v5-4-5-espelho-fiel`. **O espelho retinha
+- Versão em produção (main): **`5.4.5`** (#220 mergeado 05/08 às 21h09). **O espelho retinha
   venda que a origem já não reconhecia.** O `transformSale` filtrava `status='active'` **na
   escrita** e descartava a venda sem item ativo; como o UPSERT só escreve sobre o universo que
   pediu, ela ficava **invisível para a escrita** e a linha velha sobrevivia congelada. Medido nos
@@ -36,12 +36,18 @@
   **Estado do espelho:** 193 vendas e 529 itens preservados como **cancelados** — ficam para
   auditoria e não somam. O cartão de `admin/uploads` mostra "Vendas que contam" + "+N canceladas".
   **PENDENTE do Yan:** conferência visual do cartão · **comunicar à diretoria** (julho cai ~R$ 296
-  mil de receita; dez/2025 e fev/2026 sobem — e a v5.4.4 tinha feito julho **subir**) · mergear ·
-  **enviar a pauta ao provedor do Monde** (§8 do briefing de entrada, ainda não enviada).
+  mil de receita; dez/2025 e fev/2026 sobem — e a v5.4.4 tinha feito julho **subir**; a mensagem é
+  *"os números ficaram certos"*, não *"caíram"*) ·
+  **enviar a pauta ao provedor do Monde** (§8 de `docs/briefings/briefing-v5-4-5-espelho-fiel.md`,
+  ainda não enviada — 7 pedidos com o número medido de cada um; o 8.1, filtro por data de
+  ALTERAÇÃO, dispensaria a varredura diária inteira).
   **Resíduo declarado:** venda que **mude** para Welcome/sem-setor depois de espelhada ainda
   ficaria retida (zero casos medidos) — tratá-la exigiria a mudança destrutiva de *(b)*.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-4-5_Espelho_Fiel.md`.
-- Versão em produção (main): **`5.4.4`** (#217 mergeado 04/08 às 16h31).
+- A v5.4.4 (#217 mergeado 04/08 às 16h31) foi a **irmã desta**, e atacou o MESMO mecanismo pelo
+  lado oposto: lá o espelho **perdia** venda (subnotificava, 42 vendas / R$ 392.070,01); aqui ele
+  **retinha** venda morta (supernotificava). Juntas fecham a assimetria — a sincronização passou a
+  buscar o que faltava **e** largar o que morreu.
   **O espelho do Monde perdia venda lançada com atraso, e Metas/Performance subestimavam
   faturamento.** A API filtra a listagem por DATA DA VENDA e a janela do incremental (`hoje−2d`)
   anda para frente sobre um eixo que a origem escreve para trás ⇒ venda registrada com atraso
