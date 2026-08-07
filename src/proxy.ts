@@ -20,7 +20,14 @@ const PUBLIC_PATHS = new Set(['/login', '/solicitar-acesso'])
 // (que re-valida a sessão — o proxy apenas duplicava essa checagem). (v5.1.7/ADR-0153 — bug latente
 // desde a v5.1.2: a rota nasceu com bypass de cron no handler mas não fora isentada do proxy, então o
 // cron nunca autenticava.)
-const API_AUTH_PROPRIA = new Set(['/api/monde/ingest'])
+// v5.5.0/M2 — `/api/cdi/ingest` entra pelo MESMO motivo e com o mesmo molde: é
+// chamada pelo pg_cron com Bearer do CRON_SECRET e sem cookie. Esquecer esta linha
+// não quebra nada em teste (o disparo manual tem sessão) e faz o agendamento
+// mensal falhar calado em produção — exatamente o bug de 2 anos atrás.
+// Exportado para o guard mecânico de `proxy.test.ts`: como o efeito de esquecer uma
+// entrada aqui só aparece em produção e só no request do cron, `tsc`/`lint`/`build`
+// passam verdes com o bug dentro.
+export const API_AUTH_PROPRIA = new Set(['/api/monde/ingest', '/api/cdi/ingest'])
 
 // v5.4.0/M3b — API externa de Solicitações: `/api/externo/*` autentica por CHAVE DE
 // API (header x-api-key, validada no handler via api_chave_resolver), não por sessão
