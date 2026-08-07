@@ -143,8 +143,20 @@ function BlocoFloat({ f, taxaVigenteMes }: {
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 pt-2 border-t border-teorico-soft">
         <FloatLinha label="Saldo médio do float" valor={fmtBRL2(f.saldo_medio ?? 0)} />
         <FloatLinha label="Meses com saldo positivo" valor={`${f.meses_positivos} de ${f.meses_total}`} />
-        <FloatLinha label="Rendimento teórico" valor={fmtBRL2(f.rendimento_positivo ?? 0)} cor="text-teorico" />
-        <FloatLinha label="Custo teórico" valor={fmtBRL2(f.custo_negativo ?? 0)} cor="text-danger" />
+        {/* Cor só quando o valor EXISTE de verdade: pintar R$ 0,00 de dourado ou de
+            vermelho afirma que houve rendimento ou perda onde não houve nenhum dos
+            dois — e "custo teórico" em vermelho no zero é a leitura mais errada
+            possível para uma operação que nunca ficou devedora. */}
+        <FloatLinha
+          label="Rendimento teórico"
+          valor={fmtBRL2(f.rendimento_positivo ?? 0)}
+          cor={(f.rendimento_positivo ?? 0) > 0 ? 'text-teorico' : undefined}
+        />
+        <FloatLinha
+          label="Custo teórico"
+          valor={fmtBRL2(f.custo_negativo ?? 0)}
+          cor={(f.custo_negativo ?? 0) < 0 ? 'text-danger' : undefined}
+        />
       </div>
 
       {/* Nota teórica — obrigatória nos TRÊS pontos de UI (invariante 2). */}

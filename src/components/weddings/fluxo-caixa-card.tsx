@@ -349,17 +349,27 @@ export default function FluxoCaixaCard({ data, operacaoLabel, taxasCdi }: Props)
               {ChartYAxisBRL({ width: 80, abs: false })}
               {ChartZeroLine()}
               <Tooltip
-                content={props => (
-                  <CustomTooltip
-                    {...props}
-                    formatter={(value, name) => {
-                      const v = value as number
-                      if (name === 'saldo_real')    return [fmtBRL(v), 'Saldo real']
-                      if (name === 'saldo_virtual') return [fmtBRL(v), 'Conta virtual (CDI)']
-                      return [fmtBRL(v), 'Rendimento acumulado']
-                    }}
-                  />
-                )}
+                content={props => {
+                  // A faixa é retirada do payload ANTES de formatar. O `dataKey`
+                  // dela devolve um PAR [real, virtual] para pintar o intervalo, e
+                  // qualquer formatador que receba esse array imprime "R$ NaN".
+                  // `tooltipType="none"` na Area NÃO basta nesta versão do Recharts
+                  // — testado na tela. O valor honesto do gap vem da linha
+                  // invisível `rendimento_acum`, logo abaixo.
+                  const payload = (props.payload ?? []).filter(e => e.name !== 'faixa_float')
+                  return (
+                    <CustomTooltip
+                      {...props}
+                      payload={payload}
+                      formatter={(value, name) => {
+                        const v = value as number
+                        if (name === 'saldo_real')    return [fmtBRL(v), 'Saldo real']
+                        if (name === 'saldo_virtual') return [fmtBRL(v), 'Conta virtual (CDI)']
+                        return [fmtBRL(v), 'Rendimento acumulado']
+                      }}
+                    />
+                  )
+                }}
               />
               {mesHoje && (
                 <ReferenceLine
@@ -375,12 +385,28 @@ export default function FluxoCaixaCard({ data, operacaoLabel, taxasCdi }: Props)
                   (operação devedora), sem precisar de ramo. */}
               <Area
                 dataKey={(d: PontoFloat) => [d.saldo_real, d.saldo_virtual]}
-                name="rendimento_acum"
+                name="faixa_float"
                 stroke="none"
                 fill={COR_TEORICO}
                 fillOpacity={0.18}
                 isAnimationActive={false}
                 activeDot={false}
+                // `tooltipType="none"` é obrigatório, não decoração: o `dataKey`
+                // desta Area devolve um PAR [real, virtual] para pintar a faixa, e
+                // o formatador do tooltip recebia esse array e imprimia "R$ NaN".
+                // Passou por tsc, lint, build e 744 testes — só apareceu ao passar
+                // o mouse sobre o gráfico de verdade.
+                tooltipType="none"
+              />
+              {/* O rendimento acumulado ENTRA no tooltip (o briefing pede os dois
+                  saldos + o rendimento do mês), mas não desenha traço nenhum: a
+                  informação já está na faixa. Linha invisível é o jeito de a série
+                  existir para o tooltip sem poluir o desenho. */}
+              <Line
+                type="monotone" dataKey="rendimento_acum" name="rendimento_acum"
+                stroke="transparent" strokeWidth={0}
+                dot={false} activeDot={false} isAnimationActive={false}
+                legendType="none"
               />
               {/* Sólido = real; tracejado = teórico/projeção (convenção da skill). */}
               <Line
