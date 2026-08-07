@@ -380,6 +380,83 @@ uma delas quebra silenciosamente a outra, e isso só aparece na tela do usuário
 
 ---
 
+---
+
+## 8. Série de dado EXTERNO: o período corrente costuma vir PARCIAL
+
+Toda série pública de indicador (CDI/SGS do BACEN, e provavelmente qualquer outra) publica o
+**período corrente acumulado até hoje**, não fechado. Ingerir isso sem pensar grava um valor que
+não é comparável com os anteriores.
+
+**Custou uma migration corretiva (v5.5.0):** o SGS devolveu ago/2026 = **0,21%** — o acumulado de
+sete dias corridos, quando o mês fechado vale ~1,15%. O estrago **não ficou no mês corrente**: a
+regra de projeção da métrica repetia a **última taxa conhecida** sobre todos os meses futuros,
+então o parcial virou a taxa de *todo o futuro* e o indicador projetado inteiro saiu **cinco vezes
+menor** — plausível o bastante para ninguém desconfiar olhando a tela.
+
+**Regras:**
+- **Descartar o período ainda aberto na ingestão**, e decidir o "hoje" pelo fuso de **São Paulo**,
+  não pelo do runtime: em UTC, entre 21h e a meia-noite do último dia do mês, um mês ainda ABERTO
+  é lido como fechado (o erro apareceria uma vez por mês, por poucas horas — indetectável).
+- **Filtrar TAMBÉM na leitura.** Só a escrita não basta: o dado ruim já gravado só sairia com
+  `DELETE` (destrutivo, humano em TTY). Com o filtro na leitura ele fica inerte e se autocorrige
+  quando o período fechar. É a mesma lição da v5.4.5 — **filtro de negócio mora na leitura**.
+- **Guardar fração decimal, nunca percentual** (`0.0122`, não `1.22`): um `/100` espalhado pelo
+  código é a próxima divergência.
+- **Guard de faixa não substitui a constante certa.** A série 4392 é o MESMO CDI, anualizado; um
+  teto de plausibilidade pega a troca nos níveis de taxa de hoje, mas não pegaria com CDI anual a
+  4% a.a. Quem garante a série é a constante documentada.
+
+## 9. `WITH RECURSIVE` não é inlineada — e isso decide onde ela pode ser usada
+
+O planner do Postgres **nunca** inlineia uma CTE recursiva. Consequência prática: uma view
+recursiva joinada dentro de uma RPC de listagem **não recebe pushdown de filtro** — ela é
+calculada por inteiro em TODA chamada, mesmo quando o `WHERE` externo restringe a uma linha.
+
+Injetar uma numa RPC **já viva em produção** é, portanto, decisão de latência, não de estilo — e
+não há como medi-la antes do push, porque não existe staging (§1) nem Postgres local.
+
+**O padrão que resolve isso sem staging (v5.5.0):** **sequenciar a aplicação**.
+1. Aplicar primeiro só o que é **superfície 100% nova** (tabela, view, RPCs novas). Risco zero:
+   nenhuma tela consome ainda.
+2. **Medir contra produção** via REST/service_role, cronometrando a RPC que percorre a estrutura
+   nova, e confrontar com o teto do role (§3).
+3. Só então aplicar o `CREATE OR REPLACE` que liga aquilo no caminho vivo — com o número livre
+   **daquele momento** e o rollback engatilhado.
+
+O arquivo do passo 3 espera **fora de `supabase/migrations/`** (em `supabase/patches/`, sem
+número): o `db push` empurra todo o conjunto pendente da pasta, então deixá-lo lá aplicaria os
+dois juntos e anularia o sequenciamento — o mesmo mecanismo da regra de destrutiva em §1.
+
+**Medido na v5.5.0:** a view recursiva sozinha custou 1836 ms frio / 418 ms quente (239
+operações); a RPC da Lista foi de 2304 → **2660 ms frio** com ela dentro, contra um teto de
+8000 ms. Ou seja: a soma ingênua dos dois superestimava (o planner compartilha trabalho), e a
+medição evitou tanto o incidente quanto uma otimização desnecessária.
+
+**Materializar é a saída óbvia e tem um custo escondido:** `MATERIALIZED VIEW` **não aceita**
+`CREATE OR REPLACE` (v5.4.5), então toda alteração futura da definição vira `DROP`+`CREATE` —
+destrutiva, com humano em TTY. Para métrica recém-nascida isso congela a evolução. Se a
+materialização for mesmo necessária, manter a **definição** numa view comum e a materializada
+como `SELECT * FROM` ela preserva a alterabilidade por REPLACE.
+
+## 10. HTTP a partir do banco: `pg_net` é ASSÍNCRONO
+
+O projeto tem `pg_cron` e `pg_net` habilitados, e **nenhuma extensão HTTP síncrona**. `pg_net`
+**enfileira** a requisição e a resposta cai em `net._http_response` depois — uma função plpgsql
+**não consegue** buscar e parsear no mesmo corpo.
+
+Então "o banco busca o dado externo e grava, sem passar pelo app" **não é executável aqui**, por
+mais que soe mais limpo. O padrão que roda em produção desde a `0182` é
+**`pg_cron` → `net.http_post` → rota interna do Next**, com a rota autenticando por
+`CRON_SECRET` e precisando estar isenta no `src/proxy.ts` (senão o request do cron morre em 401
+antes do handler — ADR-0153).
+
+E o agendamento **só entra depois do deploy da rota**: `cron.schedule` apontando para rota
+inexistente responde 200, e o job aparece **VERDE** em `cron.job_run_details` sem ter feito nada
+(v5.4.4).
+
+---
+
 ## Ver também
 
 - **`contrato-rpc-front`** — o lado do app que consome a RPC: helper de tipagem frouxa para

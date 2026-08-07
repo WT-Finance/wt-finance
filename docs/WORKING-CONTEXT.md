@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-05 (pós-merge) · produção na **v5.4.5** (#220 mergeado às 21h09 — o espelho passa a espelhar: filtro de negócio sai da escrita e vai para a leitura; **`0237` aplicada e os 12 meses reprocessados**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
+Última atualização: 2026-08-07 · produção na **v5.4.5**; a **v5.5.0 está FECHADA e aguardando merge** (PR draft — Weddings ganha o *Rendimento potencial do float*; **migrations `0238`–`0242` já APLICADAS em produção**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -9,6 +9,59 @@
 
 ## Verdade atual
 
+- **v5.5.0 FECHADA, aguardando merge — Weddings: Rendimento potencial do float.** Mede quanto o
+  caixa recebido antecipadamente de cada operação renderia a **100% do CDI**, em regime
+  **composto** (`saldo_virtual(t) = saldo_virtual(t−1) × (1 + i_t) + fluxo_t`; indicador =
+  virtual − real), **simétrico** (saldo negativo gera custo teórico, sem ramo especial) e
+  **projetado** (efetivados por liquidação, previstos por vencimento — a régua da 0141).
+  Taxa alimentada sozinha da **API SGS do BACEN, série 4391**. Três pontos de UI: coluna
+  "Rend. Float" na Lista, bloco no drawer, gráfico de duas curvas no card de Fluxo de Caixa.
+  **ADR-0166**; migrations **`0238`–`0243` APLICADAS**; **753 testes**.
+  **Duráveis desta versão:**
+  *(a)* **Série de taxa pública publica o MÊS CORRENTE PARCIAL — e o carry-forward espalha isso
+  pelo futuro inteiro.** O SGS devolveu ago/2026 = 0,21% (acumulado de 7 dias). Como a projeção
+  repete a última taxa conhecida sobre todos os meses à frente, o rendimento projetado saía
+  **cinco vezes menor**, e plausível. Corrigido nas DUAS pontas: a ingestão não grava mês aberto
+  (lendo o mês pelo fuso de **SP** — em UTC, na última noite do mês, um mês aberto viraria
+  fechado) e a **leitura** não aceita mês aberto (`0240`). Só a escrita não bastava: a linha
+  parcial já estava gravada e apagá-la seria destrutivo.
+  *(b)* **`WITH RECURSIVE` NUNCA é inlineada pelo planner** ⇒ sem pushdown de filtro: uma view
+  recursiva injetada numa RPC viva recomputa por inteiro a cada chamada, mesmo com filtro
+  estreito. Achado ALTO do `revisor-db`.
+  *(c)* **Sequenciar a aplicação resolve o "não dá para medir antes do push"** sem staging:
+  aplicar primeiro o que é superfície 100% nova (risco zero), MEDIR contra produção, e só então
+  ligar no caminho vivo. Medido: a Lista foi de 2304 → **2660 ms frio** (teto do role = 8000),
+  então materializar **não** era necessário — e materializar teria custado caro, porque
+  MATERIALIZED VIEW não aceita `CREATE OR REPLACE` e congelaria a métrica atrás de uma destrutiva.
+  *(d)* **`pg_net` é ASSÍNCRONO e não há extensão HTTP síncrona no projeto** ⇒ "o banco busca e
+  grava no mesmo corpo" não é executável aqui; vale `pg_cron` → `net.http_post` → rota interna.
+  *(e)* **Arredondar as partes e o total independentemente** faz a soma não fechar por 1 centavo
+  onde os três aparecem juntos na tela (`0242`).
+  *(f)* **`Area` de faixa no Recharts** (`dataKey` devolvendo um par) entra no tooltip como ARRAY
+  e imprime `R$ NaN`; **`tooltipType="none"` não basta** — é preciso filtrar o payload.
+  *(g)* **Chave de ordenação da Lista atravessa QUATRO camadas** — cabeçalho → querystring →
+  **enum Zod da rota** → `CASE` do SQL — e as pontas falham de formas OPOSTAS: faltar no SQL
+  ordena por outra coisa em SILÊNCIO; faltar no enum devolve **400 e derruba a tela**. `rend_float`
+  entrou em três e não no enum; passou por tsc/lint/build/744 testes porque a verificação foi por
+  **REST direto contra a RPC**, que pula justamente essa camada. CRÍTICO do `revisor`. Agora há
+  guard mecânico (`src/lib/weddings/ordenacao-operacoes.test.ts`) que lê o `CASE` da migration e
+  compara com o enum nas **duas** direções — **visto reprovando** o defeito.
+  *(h)* **`GREATEST`/`LEAST` do Postgres IGNORAM NULL** (`GREATEST(NULL,0)` = `0`), e `SUM` também.
+  As duas coisas juntas transformavam "não sei" em "zero": com a tabela de taxas vazia o indicador
+  saía `0.00` em vez de NULL, e a coluna exibiria **"R$ 0,00" para o portfólio inteiro**. ALTO do
+  `revisor`; corrigido na `0243` com `CASE` explícito — **não confiar em propagação de NULL** num
+  agregado.
+  *(i)* ✅ **A conferência visual autônoma FUNCIONA pelo MCP do Chrome** (`claude-in-chrome`),
+  onde o Playwright não sobe em background. Estreia nesta versão, e **pegou 2 defeitos** que
+  tsc/lint/build/744 testes deixaram passar (o NaN do tooltip e "Custo teórico R$ 0,00" em
+  vermelho). **Limite duro:** o agente NÃO faz login — a sessão tem de já existir no Chrome.
+  **PENDENTE do Yan:** mergear · **aplicar `supabase/patches/PENDENTE-agendamento-cdi.sql` DEPOIS
+  do deploy** (agendar antes responde 200 e fica verde sem fazer nada — v5.4.4); sem ele a taxa
+  não se atualiza sozinha · validar a premissa da taxa futura · conferir 3 taxas contra o site do
+  BACEN.
+  **Resíduo declarado:** a linha de ago/2026 com a taxa PARCIAL segue gravada em `dim_taxa_cdi`,
+  **inerte** pelo filtro da 0240; é substituída pelo valor fechado na 1ª ingestão de setembro.
+  Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-5-0_Rendimento_Float.md`.
 - Versão em produção (main): **`5.4.5`** (#220 mergeado 05/08 às 21h09). **O espelho retinha
   venda que a origem já não reconhecia.** O `transformSale` filtrava `status='active'` **na
   escrita** e descartava a venda sem item ativo; como o UPSERT só escreve sobre o universo que
@@ -348,12 +401,14 @@
   ANO CORRENTE — não acompanha a pill de ano, é intencional) + Decomposição por BLOCO da
   estrutura viva (pills próprias dentro do card). Migration 0209 aplicada e verificada; 493
   testes verdes.
-- Último ADR registrado: **`0165`** (v5.4.5: o espelho espelha — filtro de negócio na leitura;
+- Último ADR registrado: **`0166`** (v5.5.0: Rendimento potencial do float — conta virtual
+  composta, simétrica e projetada; 100% do CDI da série 4391 do SGS; mês corrente e futuros com a
+  última taxa FECHADA; ingestão sem modo de backfill e auto-curativa; teórico nunca se mistura com
+  contábil). **Próximo livre: `0167`.** ⚠️ O `0163` segue reservado pela versão em stand-by.
+  Antes dele o **`0165`** (v5.4.5: o espelho espelha — filtro de negócio na leitura;
   mv não aceita `CREATE OR REPLACE`; o detector é o tripwire, não contagem do banco; emenda a
   0149/0164). Antes dele o **`0164`** (v5.4.4: reconciliação do espelho Monde — janela curta +
   varredura diária, lock durável, tripwire por apuração exata; emenda a 0149/0151).
-  ⚠️ **O `0163` segue reservado** pela versão em stand-by, que tem o arquivo dele na branch.
-  **Próximo livre: 0166.**
   Antes deles o **`0162`** (v5.4.2: Margem a.a. LINEAR como definição de métrica +
   janela larga fatiada no cliente + reinício do acumulado na borda).
   Antes dele o `0161` (v5.4.0: 0158 categoria de confiança da API externa ·
@@ -369,18 +424,24 @@
   ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
   e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
   sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
-  **Última migration APLICADA de todas: `0237`** (v5.4.5: `monde_ingest_status` separa
+  **Última migration APLICADA de todas: `0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
+  NULL, não zero; `GREATEST`/`LEAST`/`SUM` ignoram NULL e transformavam "não sei" em "zero").
+  Antes dela a **`0242`** (o total do float passou a ser a soma exata das partes) e a **`0241`** (coluna `rend_float` na Lista, aplicada só DEPOIS de
+  a latência ser medida), a **`0240`** (a leitura ignora mês de CDI ainda aberto), a **`0239`**
+  (`cdi_ingest_upsert`) e a **`0238`** (`dim_taxa_cdi` + a view da conta virtual + as 2 RPCs).
+  **Próxima livre: `0243`.**
+  Antes delas a **`0237`** (v5.4.5: `monde_ingest_status` separa
   `vendas_que_contam` de `vendas` e expõe `itens_cancelados` — ADITIVA, `CREATE OR REPLACE` de
   função, verificada executando via REST. Necessária porque a venda cancelada passou a
   PERMANECER no espelho e os contadores crus inflariam o cartão). Antes dela a **`0236`**
-  (agendamento da reconciliação, pós-merge da v5.4.4). **Próxima livre: `0238`.**
+  (agendamento da reconciliação, pós-merge da v5.4.4). (a numeração corrente está no bloco da v5.5.0 acima).
   Antes dela a **`0229`** (v5.4.2: janela do `get_fluxo_caixa_mensal_v3__nucleo`
   alargada de 23+18 para **36+36 meses** — ADITIVA, `CREATE OR REPLACE` de função SEM
   parâmetros. Diferente da RPC de Weddings, a janela dela é **hardcoded no corpo**, então o
   slider do Financeiro não teria o que fatiar sem isso. **Nenhum número muda:** cada mês é
   agregado do próprio mês, sem acumulado — provado por cross-check contra
   `get_fluxo_caixa_kpis_b`, que lê a mesma view por range explícito, 4/4 campos em todos os
-  meses amostrados). **Próxima migration livre: `0237`** — as `0233`–`0236` estão aplicadas;
+  meses amostrados). (numeração histórica) — as `0233`–`0236` estão aplicadas;
   ver a nota no topo de §Verdade atual. E a **`0232`** está aplicada mas seu arquivo vive na
   branch da reconciliação do espelho Monde, ainda não mergeada.
   Antes dela a **`0228`** (v5.4.2: chave de ordenação `d_margem_aa` em
@@ -496,11 +557,10 @@
 
 ## Filas ativas (próximos passos já decididos)
 
-- **PODAR o passo 4 do `/nova-versao` — a condição se cumpriu.** O bloco das cópias
-  provisórias `0950–0954` traz o comentário `REMOVER na renumeração pós-v5.3`: elas foram
-  renumeradas para `0210–0214` no merge da v5.4.0, e a v5.4.2 confirmou que a pasta
-  `supabase/migrations/` não tem nenhuma `095*`. O passo inteiro é letra morta e hoje só
-  gasta contexto de toda sessão que abre versão.
+- ~~**PODAR o passo 4 do `/nova-versao`**~~ — **FEITO**: o `/nova-versao` já não menciona as
+  cópias `0950–0954`, e a v5.5.0 confirmou que a pasta `supabase/migrations/` não tem nenhuma
+  `095*`. ⚠️ **O `/fechamento-versao` AINDA cita a remoção delas** (§4, "enquanto a renumeração
+  pós-v5.3 não sai") — é o último resíduo, e é letra morta pelo mesmo motivo. Podar lá também.
 - **`financeiro/posicao-projetado.tsx` pode migrar** para o primitivo
   `components/shared/slider-horizonte.tsx` (extraído na v5.4.2 com a geometria dele —
   trilho neutro, régua de riscos, `posTick` compensando a meia-largura do thumb). Hoje há
@@ -580,6 +640,15 @@
   do cache do npx), medindo status/`content-type` de rede, console, `document.fonts.check()`,
   largura comparada com o fallback, anel de foco por Tab e screenshot. Fora do repo, sem tocar
   `node_modules`. Em sessão interativa, preferir o agente.
+  ✅ **CAMINHO NOVO E PROVADO (v5.5.0): o MCP do Chrome (`claude-in-chrome`) FUNCIONA em
+  background e alcança tela AUTENTICADA.** O orquestrador sobe o `next dev`, abre
+  `localhost:3000` no Chrome real do usuário e navega, tira screenshot, faz zoom, arrasta slider
+  e passa o mouse para abrir tooltip. Estreou na v5.5.0 e **pegou 2 defeitos** que
+  tsc/lint/build/744 testes deixaram passar — um deles só aparece no hover (tooltip imprimindo
+  `R$ NaN`). **Limite duro: o agente NÃO faz login** — clicar "Entrar" com a senha preenchida
+  pelo gerenciador seria autenticar como o usuário, e isso é barreira dura; a sessão tem de já
+  existir no Chrome. Isto **substitui** o `verificador-visual` em background, que seguiria
+  voltando NÃO VERIFICADO; declarar a troca no out-briefing.
 - **Protocolo de revisão:** `revisor` (sempre) e `revisor-db` (se migration/RPC) ANTES dos
   gates. Na v5.3.1 cada um pegou um ALTO real; na v5.3.2 o verificador-visual pegou o ALTO das
   fontes Avenir na estreia.

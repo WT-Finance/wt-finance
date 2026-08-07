@@ -6,6 +6,33 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.5.0] — 2026-08-07
+
+MINOR · **Weddings passa a medir o valor financeiro do próprio modelo de recebimento.** Migrations `0238`–`0243` (aditivas, aplicadas) · **ADR-0166**.
+
+### Adicionado — Rendimento potencial do float
+
+- **A métrica.** Quanto o caixa recebido antecipadamente de cada operação renderia se aplicado a **100% do CDI**, em regime **composto**, mês a mês: `saldo_virtual(t) = saldo_virtual(t−1) × (1 + i_t) + fluxo_t`, e o indicador é `saldo_virtual_final − saldo_real_final`. **Simétrico por construção** — saldo negativo rende negativamente, o custo teórico de ter de captar; sai da fórmula, sem ramo especial.
+- **PROJETADO**, na mesma base do Resultado Previsto: efetivados pela liquidação, previstos pelo vencimento (`COALESCE(liquidacao_dt, vencimento_dt)` — a mesma régua da `0141`).
+- **Três pontos de UI:** coluna **"Rend. Float"** na Lista de Operações (ordenável no servidor, no Exportar), bloco no **drawer** da operação (saldo médio, meses positivos, rendimento e custo teóricos, total) e **gráfico** de duas curvas dentro do card de Fluxo de Caixa. Sem KPI agregado nesta versão — a visão de portfólio emerge do gráfico com o filtro "Todas".
+- **Taxa alimentada sozinha**, da API SGS do BACEN (série **4391**, CDI acumulado no mês), com agendamento mensal por `pg_cron`. A rotina **não tem modo de backfill**: a janela é sempre a série inteira, então a carga inicial e o tique mensal são a mesma chamada — e a rotina fica **auto-curativa**, um mês que falhe é preenchido no seguinte.
+
+### Corrigido — dois defeitos achados na própria versão, medindo contra produção
+
+- **O SGS publica o mês CORRENTE parcial, e isso contaminava TODO o futuro.** Em 07/08 a série devolveu ago/2026 = **0,21%** (o acumulado de 7 dias corridos). Como a regra de projeção repete a última taxa conhecida sobre os meses à frente, o rendimento projetado inteiro passou a ser calculado a 0,21% a.m. em vez de ~1,15% — **cinco vezes menor, e plausível o bastante para não levantar suspeita na tela**. Corrigido nas duas pontas (`0240`): a ingestão não grava mês aberto, e a **leitura não aceita** mês aberto. Só a escrita não bastaria — a linha parcial já estava gravada, e removê-la seria destrutivo; inerte pelo filtro, ela se autocorrige quando setembro fechar.
+- **O total do float não fechava com a soma das partes por 1 centavo** (`0242`). As três colunas eram arredondadas em separado, e o bloco do drawer mostra as três lado a lado — o usuário soma com os olhos.
+
+### Notas técnicas
+
+- **`WITH RECURSIVE` não é inlineada pelo planner**, então a view do float recomputa por inteiro a cada chamada da RPC da Lista, sem pushdown de filtro. A aplicação foi **sequenciada** por causa disso: objetos novos primeiro (superfície 100% nova, risco zero), **medição contra produção**, e só então o join na RPC viva. Medido em 239 operações: a Lista foi de **2304 → 2660 ms frio** (teto do role `authenticated` = 8000 ms) — materializar não foi necessário.
+- **Materializar foi descartado com motivo:** `MATERIALIZED VIEW` não aceita `CREATE OR REPLACE`, então toda alteração futura da métrica viraria `DROP`+`CREATE` destrutivo.
+- **`pg_net` é assíncrono e não há extensão HTTP síncrona no projeto**, então a preferência do briefing (o banco buscar e gravar no mesmo corpo) não é executável — vale o padrão já provado: `pg_cron` → `net.http_post` → rota interna.
+- Token novo **`--teorico`** (5,4:1 sobre branco). `--setor-weddings` dá 3,72:1 e reprova AA.
+- **A revisão bloqueou o fechamento duas vezes, com razão.** (1) `'rend_float'` faltava no **enum Zod da API Route** — a chave entrou no `CASE` do SQL e no cabeçalho clicável, mas não na camada de validação, então clicar para ordenar pela própria coluna da versão devolvia **400** e a Lista virava uma linha de erro. Escapou porque a ordenação foi verificada via REST direto contra a RPC, que pula essa camada. Virou **guard mecânico** que compara o enum com o `CASE` da migration nas duas direções, visto reprovando o defeito. (2) Com a tabela de taxas **vazia**, o indicador saía `0.00` em vez de `NULL`: **`GREATEST`/`LEAST` ignoram NULL** (`GREATEST(NULL,0)` = `0`) e `SUM` também — juntos transformavam "não sei" em "zero", e a coluna exibiria "R$ 0,00" para o portfólio inteiro (`0243`).
+- **753 testes.** O agendamento do cron ficou **fora** de `supabase/migrations/` de propósito: agendar antes do deploy responde 200 e fica verde sem fazer nada.
+
+---
+
 ## [5.4.5] — 2026-08-05
 
 PATCH · **O espelho do Monde retinha venda que a origem já não reconhecia — e isso inflava faturamento e receita.** Migration `0237` (aditiva, aplicada) · **ADR-0165**.
