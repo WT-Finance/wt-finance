@@ -1,10 +1,29 @@
 -- ---------------------------------------------------------------------------
--- PENDENTE — feat(v5.5.0/M3): coluna `rend_float` na Lista de Operações.
+-- 0241 — feat(v5.5.0/M3): coluna `rend_float` na Lista de Operações.
 --
--- ⚠️ SEM NÚMERO E FORA DE `supabase/migrations/` DE PROPÓSITO. O `db push` empurra
--- TODO o conjunto pendente da pasta, então este arquivo só entra lá no momento de
--- aplicá-lo — e recebe o número livre de então (a 0238 não reserva o seguinte).
--- Mesmo padrão que a v5.4.0 usou em `supabase/patches/`.
+-- ADITIVA / retrocompatível: `CREATE OR REPLACE` com assinatura IDÊNTICA (mesmos 9
+-- parâmetros, mesmos tipos), sem DROP/TRUNCATE/escrita. As duas chaves novas no
+-- payload (`rend_float` por linha, `taxa_vigente_mes` no envelope) são absorvidas
+-- pelo `.passthrough()` de `operacaoItem` e pelo `parseRpc` tolerante — nenhum
+-- consumidor atual enxerga diferença. Chamada com o `p_ordenar_por` antigo devolve
+-- exatamente o que devolvia antes.
+--
+-- ESTE ARQUIVO ESPEROU FORA DA PASTA DE MIGRATIONS até a medição existir. Ele
+-- nasceu como `supabase/patches/PENDENTE-lista-operacoes-rend-float.sql` porque o
+-- `db push` empurra TODO o conjunto pendente, e o ponto era aplicar a 0238 primeiro,
+-- MEDIR, e só então ligar o float nesta RPC — que é caminho vivo em produção.
+--
+-- O QUE A MEDIÇÃO DISSE (07/08/2026, REST/service_role, produção, 239 operações):
+--   • a view sozinha: 1836 ms frio, 418 ms quente;
+--   • esta RPC ANTES do float: 2304 ms frio, 293 ms quente;
+--   • teto do role `authenticated`: 8000 ms.
+-- A soma dos piores casos fica em ~4,1 s — dentro do teto, com folga menor do que
+-- eu gostaria. Por isso a aplicação vem acompanhada de nova medição imediata, e o
+-- rollback (reaplicar o corpo da 0228) fica engatilhado. Se o combinado passar de
+-- 5 s frio ou 1,5 s quente, o caminho já escolhido é materializar a view mantendo a
+-- DEFINIÇÃO na view comum e a MATERIALIZED como `SELECT * FROM` ela — assim a
+-- métrica segue alterável por REPLACE, sem o DROP+CREATE destrutivo que uma
+-- MATERIALIZED VIEW crua imporia a cada ajuste (v5.4.5).
 --
 -- POR QUE ELE EXISTE: a Lista de Operações pagina no SERVIDOR e a whitelist de
 -- ORDER BY termina em `ELSE 'd_data_evento'` — fallback SILENCIOSO (a armadilha
@@ -21,22 +40,12 @@
 -- linha), e sem Postgres local não há como medir antes do push. Achado ALTO do
 -- `revisor-db` na v5.5.0.
 --
--- PRÉ-CONDIÇÃO PARA APLICAR (não pular): medir, via REST/service_role contra
--- produção, o tempo de `get_rendimento_float` sem filtro (percorre a view inteira)
--- e confrontar com o teto de 8s do role `authenticated`, lembrando que a RPC da
--- Lista já paga `contar_convidados_operacao` por linha no mesmo `base`. A medição
--- decide a FORMA final:
---   • folga confortável  ⇒ aplicar como está (join direto);
---   • folga apertada     ⇒ escopar a recursão às operações que sobrevivem ao WHERE
---                          (view vira função com `p_operacoes text[]`);
---   • estouro            ⇒ materializar, aceitando que MATERIALIZED VIEW não aceita
---                          `CREATE OR REPLACE` (v5.4.5) e que toda alteração futura
---                          da métrica vira DROP+CREATE destrutivo, com humano no TTY.
 -- ROLLBACK: reaplicar o corpo de `get_operacoes_weddings__nucleo` da 0228.
 --
--- ⚠️ FALTA AINDA (M3): `taxa_vigente_mes` não viaja no payload desta RPC — o
--- tooltip de staleness da coluna precisa dele. Acrescentar aqui antes de aplicar,
--- ou a M3 fará uma segunda chamada só para isso. (BAIXO do `revisor-db`.)
+-- Verificação pós-push: via REST/service_role — latência frio/quente comparada com
+-- o baseline acima; ordenar por `rend_float` asc/desc e conferir que os extremos
+-- mudam de verdade (a whitelist tem fallback SILENCIOSO, então ordenação ignorada
+-- não dá erro); as 13 chaves de ordenação anteriores seguindo funcionais.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_operacoes_weddings__nucleo(p_status text DEFAULT 'todos'::text, p_periodo_inicio date DEFAULT NULL::date, p_periodo_fim date DEFAULT NULL::date, p_subsetor text DEFAULT 'todos'::text, p_busca text DEFAULT NULL::text, p_ordenar_por text DEFAULT 'data_evento'::text, p_direcao text DEFAULT 'desc'::text, p_pagina integer DEFAULT 1, p_por_pagina integer DEFAULT 50)
  RETURNS jsonb
@@ -167,6 +176,14 @@ BEGIN
       'total',      (SELECT COUNT(*) FROM base),
       'pagina',     $6,
       'por_pagina', $8,
+      -- v5.5.0: último mês FECHADO do CDI. Viaja no envelope, não por linha (é o
+      -- mesmo para todas), e é o que o tooltip da coluna mostra como "taxa de
+      -- referência de MMM/AA" quando a série está atrasada. Sem ele a M3 faria uma
+      -- segunda chamada só para descobrir isto.
+      'taxa_vigente_mes', (
+        SELECT to_char(MAX(mes), 'YYYY-MM-DD') FROM analytics.dim_taxa_cdi
+        WHERE mes < date_trunc('month', CURRENT_DATE)::date
+      ),
       'operacoes',  COALESCE(
         (SELECT jsonb_agg(row_data ORDER BY ord)
          FROM (

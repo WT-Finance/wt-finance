@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { converterSerieSgs, urlSerieSgs } from './serie-sgs'
+import { converterSerieSgs, urlSerieSgs, apenasMesesFechados, mesCorrenteSpIso } from './serie-sgs'
 import { API_AUTH_PROPRIA } from '@/proxy'
 
 // A conversão da série do SGS é o ponto onde um erro entra CALADO na base: as duas
@@ -87,6 +87,41 @@ describe('urlSerieSgs — janela é sempre a série inteira', () => {
     const a = urlSerieSgs(new Date(Date.UTC(2026, 7, 7)))
     const b = urlSerieSgs(new Date(Date.UTC(2027, 0, 3)))
     expect(a.split('dataFinal=')[0]).toBe(b.split('dataFinal=')[0])
+  })
+})
+
+describe('apenasMesesFechados — o mês corrente vem PARCIAL da origem', () => {
+  // Achado real de 07/08/2026: o SGS devolveu ago/2026 = 0,21%, que é o acumulado
+  // de 7 dias corridos. O estrago não fica no mês corrente — como a taxa dele vira
+  // a "última conhecida", o carry-forward projeta 0,21% sobre TODO o futuro e o
+  // rendimento projetado inteiro sai cinco vezes menor, parecendo plausível.
+  const serie = [
+    { mes: '2026-06-01', taxa: 0.0112 },
+    { mes: '2026-07-01', taxa: 0.0122 },
+    { mes: '2026-08-01', taxa: 0.0021 }, // parcial
+  ]
+
+  it('descarta o mês corrente e preserva os fechados', () => {
+    const r = apenasMesesFechados(serie, new Date('2026-08-07T12:00:00Z'))
+    expect(r.map((t) => t.mes)).toEqual(['2026-06-01', '2026-07-01'])
+  })
+
+  it('no 1º dia do mês, o mês anterior JÁ fechou e entra', () => {
+    const r = apenasMesesFechados(serie, new Date('2026-08-01T12:00:00Z'))
+    expect(r.map((t) => t.mes)).toEqual(['2026-06-01', '2026-07-01'])
+  })
+
+  it('vira o mês pelo fuso de SÃO PAULO, não pelo do runtime', () => {
+    // 01/08 00:30 UTC = 31/07 21:30 em SP: julho ainda NÃO fechou. Lido em UTC, o
+    // mês corrente seria agosto e julho entraria PARCIAL — o mesmo defeito, só que
+    // uma vez por mês e por poucas horas, que é o que o tornaria indetectável.
+    const r = apenasMesesFechados(serie, new Date('2026-08-01T00:30:00Z'))
+    expect(r.map((t) => t.mes)).toEqual(['2026-06-01'])
+    expect(mesCorrenteSpIso(new Date('2026-08-01T00:30:00Z'))).toBe('2026-07-01')
+  })
+
+  it('mês corrente em SP quando o UTC já virou o ano', () => {
+    expect(mesCorrenteSpIso(new Date('2027-01-01T01:00:00Z'))).toBe('2026-12-01')
   })
 })
 

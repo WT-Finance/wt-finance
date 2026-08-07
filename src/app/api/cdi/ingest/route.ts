@@ -31,7 +31,12 @@ export const maxDuration = 60
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAreaApi } from '@/lib/auth/sessao'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { converterSerieSgs, urlSerieSgs, SERIE_SGS_CDI_MENSAL } from '@/lib/cdi/serie-sgs'
+import {
+  converterSerieSgs,
+  apenasMesesFechados,
+  urlSerieSgs,
+  SERIE_SGS_CDI_MENSAL,
+} from '@/lib/cdi/serie-sgs'
 
 /** Assinatura frouxa de `rpc` para função fora do `database.ts` congelado. */
 type RpcFrouxa = (
@@ -60,9 +65,12 @@ async function handle(req: NextRequest): Promise<Response> {
       throw new Error(`SGS respondeu ${resp.status} ${resp.statusText}`)
     }
 
-    const taxas = converterSerieSgs(await resp.json())
+    // O SGS publica o mês CORRENTE parcial (acumulado até hoje). Gravá-lo faria o
+    // carry-forward projetar essa fração sobre todo o futuro — ver
+    // `apenasMesesFechados`. Só entram meses fechados.
+    const taxas = apenasMesesFechados(converterSerieSgs(await resp.json()), new Date())
     if (taxas.length === 0) {
-      throw new Error('SGS devolveu lista vazia')
+      throw new Error('SGS não devolveu nenhum mês FECHADO')
     }
 
     const admin = getAdminClient()

@@ -101,6 +101,44 @@ export function converterSerieSgs(bruto: unknown): TaxaMes[] {
   })
 }
 
+/**
+ * 1º dia do mês corrente em SÃO PAULO, ISO.
+ *
+ * Tem de ser o fuso de SP, não o do runtime: em produção o runtime é UTC, e entre
+ * 21h e a meia-noite do último dia do mês o UTC já virou o mês seguinte enquanto SP
+ * ainda está no anterior. Ler o mês pelo runtime nessa janela trataria um mês ainda
+ * ABERTO como fechado, que é justamente o erro que esta função existe para impedir.
+ */
+export function mesCorrenteSpIso(agora: Date): string {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(agora)
+  const ano = partes.find((p) => p.type === 'year')?.value
+  const mes = partes.find((p) => p.type === 'month')?.value
+  return `${ano}-${mes}-01`
+}
+
+/**
+ * Descarta o mês corrente, que o SGS publica PARCIAL.
+ *
+ * ⚠️ Medido em 07/08/2026: a série devolveu ago/2026 = 0,21% — o acumulado de 7 dias
+ * corridos, não o mês. Gravar isso é duplamente ruim. Primeiro porque o mês corrente
+ * passa a render um quinto do devido. E principalmente porque o carry-forward projeta
+ * a ÚLTIMA taxa conhecida sobre todo o futuro: com o parcial gravado, TODOS os meses
+ * à frente herdavam 0,21% em vez de ~1,15%, e o rendimento projetado inteiro saía
+ * dividido por cinco — parecendo perfeitamente plausível na tela.
+ *
+ * Descartando aqui, o mês corrente e os futuros caem no carry-forward da última
+ * taxa FECHADA, que é literalmente a premissa que o briefing fixou. De carona, o
+ * número para de mudar todo dia dentro do mesmo mês.
+ */
+export function apenasMesesFechados(taxas: TaxaMes[], agora: Date): TaxaMes[] {
+  const corrente = mesCorrenteSpIso(agora)
+  return taxas.filter((t) => t.mes < corrente) // ISO ordena lexicograficamente
+}
+
 /** URL da série inteira, de `INICIO_SERIE` até `hoje`. */
 export function urlSerieSgs(hoje: Date): string {
   const inicio = paraDataBr(new Date(Date.UTC(INICIO_SERIE.ano, INICIO_SERIE.mes - 1, INICIO_SERIE.dia)))
