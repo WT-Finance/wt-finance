@@ -33,10 +33,22 @@ export async function GET(
   // destacá-lo numa variável perde o `this` e estoura em runtime (v5.3.5).
   const chamarRpc = (client.rpc as unknown as RpcFrouxa).bind(client)
 
-  const [detalhe, float] = await Promise.all([
+  // `allSettled`, não `all`: a 2ª chamada é declaradamente best-effort, e com
+  // `Promise.all` uma REJEIÇÃO dela (rede, timeout — não o `{ error }` que o
+  // supabase-js normalmente devolve) derrubaria o drawer inteiro, contradizendo o
+  // próprio desenho de degradação logo abaixo. Achado BAIXO do `revisor`.
+  const [detalheR, floatR] = await Promise.allSettled([
     client.rpc('get_operacao_weddings', { p_operacao: operacao }),
     chamarRpc('get_rendimento_float', { p_operacao: operacao }),
   ])
+
+  if (detalheR.status === 'rejected') {
+    return Response.json({ error: String(detalheR.reason) }, { status: 500 })
+  }
+  const detalhe = detalheR.value
+  const float = floatR.status === 'fulfilled'
+    ? floatR.value
+    : { data: null, error: { message: String(floatR.reason) } }
 
   if (detalhe.error) return Response.json({ error: detalhe.error.message }, { status: 500 })
 

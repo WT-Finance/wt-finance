@@ -85,8 +85,12 @@ function avisoStaleness(taxaVigenteMes: string | null | undefined): string {
  *  • `!whitespace-normal` (important): o primitivo `Tooltip` traz
  *    `whitespace-nowrap` na base — sem o `!`, texto longo não quebra e vira uma
  *    linha gigante INVISÍVEL que transborda e cria barra de rolagem horizontal.
- *  • `!left-auto right-0`: esta é a ÚLTIMA coluna da tabela; um balão ancorado à
- *    esquerda abriria para fora da borda direita.
+ *  • `!left-auto right-0`: âncora à DIREITA. Nasceu porque "Margem (a.a.)" é a
+ *    última coluna e um balão ancorado à esquerda abriria para fora da borda
+ *    direita. ⚠️ v5.5.0: há um segundo call-site, "Rend. Float", que é a 9ª de 11
+ *    colunas — para ele a âncora à direita não é necessária, mas também não
+ *    atrapalha (o balão abre para dentro da tabela). Registrado para que ninguém
+ *    "corrija" a âncora pensando num call-site só e quebre o outro em silêncio.
  */
 function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
   return (

@@ -8,7 +8,7 @@
 //   • Disparo manual → sessão com área `admin/uploads`.
 // ⚠️ A rota precisa estar em `API_AUTH_PROPRIA` no `src/proxy.ts`, senão o proxy
 //    exige sessão e o cron nunca autentica — a rota do Monde nasceu com esse bug e
-//    ficou assim até a v5.1.7. Há guard mecânico em `route.test.ts`.
+//    ficou assim até a v5.1.7. Guard mecânico em `src/lib/cdi/serie-sgs.test.ts`.
 //
 // ── POR QUE NÃO EXISTE "MODO BACKFILL" ────────────────────────────────────────
 // A janela é SEMPRE a série inteira, de ago/2024 até hoje — ~24 linhas, uma

@@ -11,7 +11,8 @@
 -- provou é: deploy → chamar a rota À MÃO e ver o resumo → só então agendar.
 --
 -- ORDEM COMPLETA DE ATIVAÇÃO:
---   1. migrations 0238 e 0239 aplicadas;
+--   1. migrations **0238–0243** aplicadas (este texto citava só "0238 e 0239" porque
+--      foi escrito antes de as corretivas 0240/0242/0243 existirem);
 --   2. deploy do código (a rota existe em produção);
 --   3. disparo manual: POST /api/cdi/ingest com o Bearer do CRON_SECRET — é ele
 --      que faz o BACKFILL de ago/2024 até o último mês fechado, porque a rota não
@@ -46,7 +47,10 @@ SELECT cron.schedule(
         'Content-Type', 'application/json'
       ),
       body := '{}'::jsonb,
-      timeout_milliseconds := 60000
+      -- 75s, não 60s: o `maxDuration` da rota é 60, e igualar os dois números deixa
+      -- zero folga para cold start + fetch do SGS. Sem margem, o job estouraria por
+      -- corrida em vez de por falha real. (Achado BAIXO do `revisor-db`.)
+      timeout_milliseconds := 75000
     );
   $cron$
 );

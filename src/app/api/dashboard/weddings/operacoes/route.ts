@@ -3,6 +3,10 @@ import { z } from 'zod'
 import { getServerClient } from '@/lib/supabase/server'
 import { requireAreaApi } from '@/lib/auth/sessao'
 import { parseRpc, operacoesWeddingsSchema } from '@/lib/schemas-rpc'
+import {
+  CHAVES_ORDENACAO_OPERACOES,
+  CHAVE_ORDENACAO_PADRAO,
+} from '@/lib/weddings/ordenacao-operacoes'
 
 const schema = z.object({
   status:          z.enum(['passado', 'futuro', 'sem_data', 'todos']).default('todos'),
@@ -11,11 +15,12 @@ const schema = z.object({
   subsetor:        z.enum(['COMERCIAL', 'CONVIDADOS', 'PRODUÇÃO', 'PLANEJAMENTO', 'NÃO_CLASSIFICADO', 'todos'])
                     .default('todos'),
   busca:           z.string().max(100).optional(),
-  // v5.4.2/M1: 'margem_aa' (margem anualizada) ordena pela chave d_margem_aa da
-  // migration 0228. A whitelist do SQL termina em `ELSE 'd_data_evento'` — um valor
-  // fora deste enum ordenaria por data do evento em silêncio, então as duas pontas
-  // (este enum e o CASE da RPC) precisam andar juntas.
-  ordenar_por:     z.enum(['data_evento', 'nome_casal', 'hotel', 'faturamento', 'receita', 'margem', 'custos', 'resultado', 'ml', 'margem_aa', 'duracao', 'tipo_contrato', 'convidados']).default('data_evento'),
+  // A lista vive em `@/lib/weddings/ordenacao-operacoes` para poder ser testada: um
+  // guard mecânico lê o `CASE` de whitelist do SQL e compara com ela nas duas
+  // direções. Ver o cabeçalho daquele arquivo — faltar chave aqui derruba a tela com
+  // 400, faltar no SQL ordena por outra coisa em SILÊNCIO, e nenhum dos dois aparece
+  // em tsc/lint/build. (v5.5.0, achado CRÍTICO do `revisor`.)
+  ordenar_por:     z.enum(CHAVES_ORDENACAO_OPERACOES).default(CHAVE_ORDENACAO_PADRAO),
   direcao:         z.enum(['asc', 'desc']).default('desc'),
   pagina:          z.coerce.number().int().min(1).default(1),
   por_pagina:      z.coerce.number().int().min(1).max(200).default(50),
