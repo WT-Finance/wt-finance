@@ -14,8 +14,9 @@ import SumarioSubsetorCard from '@/components/weddings/sumario-subsetor'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import type {
   DrilldownOperacao, VisaoFinanceira, SumarioSubsetor, AcumuladoMensalItem,
+  RendimentoFloatOperacao,
 } from '@/types/api'
-import { fmtBRL2, fmtDateLong, fmtAxisMes, fmtMeses } from '@/lib/fmt'
+import { fmtBRL2, fmtDateLong, fmtAxisMes, fmtMeses, parseLocalDate } from '@/lib/fmt'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,69 @@ function FluxoRow({ label, total, sub1Label, sub1, sub2Label, sub2, isEntrada }:
           <span className="text-xs tabular-nums text-zinc-600">{fmtBRL2(sub2)}</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Rendimento potencial do float (v5.5.0) ────────────────────────────────────
+
+/** Uma linha rótulo/valor da abertura do float. */
+function FloatLinha({ label, valor, cor }: { label: string; valor: string; cor?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-xs text-zinc-500 leading-tight">{label}</span>
+      <span className={`text-xs font-medium tabular-nums whitespace-nowrap ${cor ?? 'text-zinc-700'}`}>
+        {valor}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Bloco do Rendimento potencial do float, dentro da seção Fluxo de Caixa.
+ *
+ * Box PRÓPRIO, com moldura e fundo dourados, logo abaixo do box contábil — nunca
+ * dentro dele. É a invariante 1 do briefing feita de geometria em vez de intenção:
+ * teórico e contábil ficam lado a lado, e nenhuma célula soma um no outro.
+ *
+ * `rendimento = rendimento_positivo + custo_negativo` por construção, então as três
+ * linhas não são medidas independentes que possam discordar entre si.
+ */
+function BlocoFloat({ f, taxaVigenteMes }: {
+  f: RendimentoFloatOperacao
+  taxaVigenteMes?: string | null
+}) {
+  // Sem indicador não há bloco. Zero seria uma afirmação ("não rendeu nada") que
+  // é falsa tanto para operação sem lançamento quanto para série de CDI ausente.
+  if (f.rendimento == null) return null
+
+  const positivo = f.rendimento >= 0
+  const referencia = taxaVigenteMes
+    ? ` · taxa de referência de ${parseLocalDate(taxaVigenteMes).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })}`
+    : ''
+
+  return (
+    <div className="mt-2 rounded-lg border border-teorico-soft bg-teorico-soft/50 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold text-zinc-700 leading-tight">
+          Rendimento potencial do float
+        </span>
+        <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ${positivo ? 'text-teorico' : 'text-danger'}`}>
+          {fmtBRL2(f.rendimento)}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 pt-2 border-t border-teorico-soft">
+        <FloatLinha label="Saldo médio do float" valor={fmtBRL2(f.saldo_medio ?? 0)} />
+        <FloatLinha label="Meses com saldo positivo" valor={`${f.meses_positivos} de ${f.meses_total}`} />
+        <FloatLinha label="Rendimento teórico" valor={fmtBRL2(f.rendimento_positivo ?? 0)} cor="text-teorico" />
+        <FloatLinha label="Custo teórico" valor={fmtBRL2(f.custo_negativo ?? 0)} cor="text-danger" />
+      </div>
+
+      {/* Nota teórica — obrigatória nos TRÊS pontos de UI (invariante 2). */}
+      <p className="mt-2 text-[10px] leading-snug text-zinc-400">
+        Rendimento teórico a 100% do CDI · não representa aplicação real{referencia}
+      </p>
     </div>
   )
 }
@@ -445,6 +509,10 @@ export default function DrilldownDrawer({ operacao, onClose }: Props) {
                     </span>
                   </div>
                 </div>
+                {/* v5.5.0 — o float mora FORA do box contábil acima, de propósito. */}
+                {data.rendimento_float && (
+                  <BlocoFloat f={data.rendimento_float} taxaVigenteMes={data.taxa_vigente_mes} />
+                )}
               </div>
 
               {/* ── 3. Composição por Subsetor ───────────────────────── */}

@@ -330,6 +330,37 @@ export interface DrilldownOperacao {
   visao_financeira:        VisaoFinanceira
   decomposicao_subsetor:   DecomposicaoSubsetorItem[]
   acumulado_mensal:        AcumuladoMensalItem[]
+  /**
+   * v5.5.0 — bloco do Rendimento potencial do float. `null` quando a operação não
+   * tem lançamento OU quando a série do CDI não tem nenhum mês fechado: nos dois
+   * casos o bloco não é exibido, em vez de mostrar zeros que seriam falsos.
+   */
+  rendimento_float?:       RendimentoFloatOperacao | null
+  /** v5.5.0 — último mês FECHADO do CDI (ISO), para a nota de referência. */
+  taxa_vigente_mes?:       string | null
+}
+
+/**
+ * Abertura do Rendimento potencial do float de UMA operação.
+ *
+ * `rendimento = rendimento_positivo + custo_negativo` por construção: como a
+ * diferença entre o saldo virtual e o real acumula exatamente os termos de juro, o
+ * total já É a soma das duas parcelas — não são três medidas independentes que
+ * precisam ser reconciliadas.
+ */
+export interface RendimentoFloatOperacao {
+  /** Indicador: saldo virtual final − saldo real final, em R$. */
+  rendimento:          number | null
+  /** Soma só dos meses em que o saldo rendeu (saldo positivo). */
+  rendimento_positivo: number | null
+  /** Soma só dos meses de custo teórico (saldo negativo). Já vem negativo. */
+  custo_negativo:      number | null
+  /** Média do saldo REAL (contábil) ao longo dos meses da operação. */
+  saldo_medio:         number | null
+  meses_positivos:     number
+  meses_total:         number
+  mes_inicio:          string | null
+  mes_fim:             string | null
 }
 
 export interface PipelineMesItem {
