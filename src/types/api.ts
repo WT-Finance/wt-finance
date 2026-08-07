@@ -252,6 +252,18 @@ export interface OperacaoItem {
   tipo_contrato:         string | null
   passageiros_raw:       string | null
   convidados:            number | null
+  /**
+   * v5.5.0 — Rendimento potencial do float, em R$. Valor TEÓRICO (100% do CDI):
+   * nunca soma com resultado, margem ou faturamento.
+   *
+   * `null` quando a operação não tem nenhum lançamento, ou quando não há taxa
+   * fechada na série — travessão na tela, nunca zero. Zero é uma afirmação
+   * ("rendeu nada") que seria falsa nos dois casos.
+   *
+   * Opcional no tipo porque só existe depois da migration 0241: a RPC antiga não
+   * o emitia, e o `parseRpc` é tolerante.
+   */
+  rend_float?:           number | null
 }
 
 export interface ListaOperacoes {
@@ -259,6 +271,12 @@ export interface ListaOperacoes {
   pagina:     number
   por_pagina: number
   operacoes:  OperacaoItem[]
+  /**
+   * v5.5.0 — 1º dia do último mês FECHADO da série do CDI (ISO). Viaja no envelope
+   * porque é o mesmo para todas as linhas; é o que o tooltip da coluna mostra como
+   * "taxa de referência de MMM/AA" quando a ingestão está atrasada.
+   */
+  taxa_vigente_mes?: string | null
 }
 
 export interface VisaoFinanceira {

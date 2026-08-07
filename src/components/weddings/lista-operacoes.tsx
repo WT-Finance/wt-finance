@@ -48,6 +48,35 @@ const TOOLTIP_MARGEM_AA =
   `Atenção: em operações de menos de ${DURACAO_CURTA_MESES} meses a anualização é ` +
   'frágil (3,9 meses a 32,5% ⇒ 100% a.a.); o valor é exibido cru, sem teto.'
 
+// ── Rendimento potencial do float (v5.5.0) ────────────────────────────────────
+
+/** Texto do tooltip da coluna — a definição, mais a nota teórica obrigatória. */
+const TOOLTIP_REND_FLOAT =
+  'Quanto o caixa recebido antecipadamente desta operação renderia se aplicado a 100% ' +
+  'do CDI, em regime composto, mês a mês, do primeiro ao último lançamento. Saldo ' +
+  'negativo rende negativamente — é o custo teórico de precisar captar. ' +
+  'Rendimento teórico a 100% do CDI · não representa aplicação real.'
+
+/**
+ * Meses de atraso da série do CDI acima dos quais vale avisar.
+ *
+ * 1 mês é o estado NORMAL, não atraso: o CDI de um mês só existe depois de o mês
+ * fechar, então em agosto a última taxa é sempre a de julho. Avisar aí seria alarme
+ * permanente — e alarme que acende sempre é alarme que ninguém lê (v5.4.4).
+ */
+const STALENESS_MESES = 2
+
+/** Aviso a acrescentar ao tooltip quando a ingestão do CDI está atrasada. */
+function avisoStaleness(taxaVigenteMes: string | null | undefined): string {
+  if (!taxaVigenteMes) return ''
+  const ref = parseLocalDate(taxaVigenteMes)
+  const hoje = new Date()
+  const atraso = (hoje.getFullYear() - ref.getFullYear()) * 12 + (hoje.getMonth() - ref.getMonth())
+  if (atraso <= STALENESS_MESES) return ''
+  const mesAno = ref.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+  return ` ⚠️ Taxa de referência de ${mesAno} — a série do CDI não é atualizada desde então.`
+}
+
 /**
  * Afordância "?" de ajuda no cabeçalho — padrão da casa (mesmo desenho de
  * `CabecalhoAjuda` em faturamento-corp e do KPI do Fluxo de Caixa).
@@ -89,9 +118,10 @@ function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      {/* v5.4.2/M1: 10 colunas — "Operação" e "Resultado Prev." cederam largura para a
-          "Margem (a.a.)" (a silhueta do skeleton acompanha a da tabela real). */}
-      {[120, 80, 64, 60, 56, 36, 72, 60, 52, 56].map((w, i) => (
+      {/* v5.5.0: 11 colunas — entrou "Rend. Float" entre "Resultado Prev." e "Margem".
+          A silhueta do skeleton acompanha a da tabela real; se as duas divergirem, a
+          tela "pula" ao terminar de carregar. */}
+      {[120, 80, 64, 60, 56, 36, 72, 60, 64, 52, 56].map((w, i) => (
         <td key={i} className="py-2.5 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: w }} />
         </td>
@@ -169,6 +199,10 @@ async function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string
       'Faturamento (R$)':         op.faturamento ?? 0,
       // v4.9/M6: Resultado Previsto = entradas_total − saidas_total (mesma fórmula do drawer).
       'Resultado Previsto (R$)':  (op.entradas_total ?? 0) - (op.saidas_total ?? 0),
+      // v5.5.0: TEÓRICO — fica ao lado, nunca somado a resultado/margem/faturamento
+      // (invariante 1 do briefing). O cabeçalho diz "teórico" para que a coluna não
+      // vire receita ao ser colada em outra planilha.
+      'Rend. Float teórico (R$)': op.rend_float ?? '—',
       'Margem (%)':               op.margem_liquida_pct ?? 0,
       // v5.4.2/M1: número CRU (não string formatada) — a planilha precisa poder somar,
       // ordenar e refazer a conta. Duração não anualizável vira travessão, nunca 0.
@@ -521,6 +555,19 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <SortTh field="convidados" center title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
               <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Resultado Prev.</SortTh>
+              {/* v5.5.0 — valor TEÓRICO, entre o resultado e a margem mas nunca
+                  fundido com eles (invariante 1). A ordenação é do SERVIDOR: a
+                  whitelist da RPC ganhou `rend_float` na 0241, porque a lista pagina
+                  no servidor e a whitelist tem fallback SILENCIOSO. */}
+              <SortTh field="rend_float" right {...sortThProps}>
+                <span className="inline-flex items-center gap-1">
+                  Rend. Float
+                  <AjudaHeader
+                    texto={TOOLTIP_REND_FLOAT + avisoStaleness(data?.taxa_vigente_mes)}
+                    rotulo="Rend. Float"
+                  />
+                </span>
+              </SortTh>
               <SortTh field="ml" right title="Resultado Previsto ÷ Faturamento × 100" {...sortThProps}>Margem</SortTh>
               <SortTh field="margem_aa" right {...sortThProps}>
                 <span className="inline-flex items-center gap-1">
@@ -535,11 +582,11 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : erro ? (
               <tr>
-                <td colSpan={10} className="py-6 text-center text-sm text-danger">{erro}</td>
+                <td colSpan={11} className="py-6 text-center text-sm text-danger">{erro}</td>
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={11}>
                   <EmptyState icon={Search} message="Nenhuma operação encontrada para os filtros selecionados" />
                 </td>
               </tr>
@@ -609,6 +656,22 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                         <span className="text-zinc-400">R$</span>
                         <span className={rlNegativa ? 'text-danger' : 'text-zinc-700'}>{numBRL2(resultadoPrevisto)}</span>
                       </span>
+                    </td>
+                    {/* Rend. Float — DOURADO quando positivo, danger quando negativo.
+                        Nunca verde: verde/vermelho já significam resultado REAL nesta
+                        mesma linha, e pintar o teórico de verde faria a tela afirmar
+                        que a empresa ganhou aquilo. Nulo vira travessão, nunca zero. */}
+                    <td className="py-2.5 px-3 text-xs font-medium whitespace-nowrap">
+                      {op.rend_float == null ? (
+                        <span className="flex justify-end tabular-nums" style={{ color: 'var(--text-muted)' }}>—</span>
+                      ) : (
+                        <span className="flex justify-between gap-2 tabular-nums">
+                          <span className="text-zinc-400">R$</span>
+                          <span className={op.rend_float < 0 ? 'text-danger' : 'text-teorico'}>
+                            {numBRL2(op.rend_float)}
+                          </span>
+                        </span>
+                      )}
                     </td>
                     <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>
                       {fmtPct1(op.margem_liquida_pct)}
