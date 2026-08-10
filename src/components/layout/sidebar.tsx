@@ -4,12 +4,12 @@ import { useState, useRef, useEffect, useCallback, use, Suspense, type PointerEv
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert, FileSpreadsheet } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { X, ChevronLeft, LogOut, TriangleAlert } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
 import Badge from '@/components/ui/badge'
-import NavGroup, { type NavSubItem } from '@/components/layout/nav-group'
+import NavGroup from '@/components/layout/nav-group'
+import { NAV_GROUPS, itemAtivo, itensVisiveis } from '@/components/layout/nav-model'
 import { thumbGeom, scrollAoArrastar, THUMB_FOLGA } from '@/lib/ui/scrollbar-math'
 
 /** Dados do usuário logado, repassados pelo AppShell para identidade + filtro de navegação. */
@@ -40,84 +40,6 @@ function ContagemPendencias({ promise }: { promise: Promise<number | null> }) {
   if (!n || n <= 0) return null
   return <Badge variant="count" className="ml-auto">{n}</Badge>
 }
-
-interface NavItem {
-  href: string
-  label: string
-  Icon: LucideIcon
-  /** Área que libera o item; null = grupo (visível se algum subitem for permitido). */
-  area: Area | null
-  /** Sempre visível para qualquer autenticado (não gated por área). v4.16.0. */
-  sempre?: boolean
-  /** Visível se o usuário tiver QUALQUER uma destas áreas (OR). v4.20.0. */
-  areasAny?: Area[]
-  /** Rota atrás do gate "em construção" (preview) → ícone triangular de alerta à direita. v5.1.9. */
-  emConstrucao?: boolean
-}
-
-const PERFORMANCE_SUBS: NavSubItem[] = [
-  { href: '/performance',             label: 'Geral',       icon: Building,  area: 'performance', emConstrucao: true },
-  { href: '/performance/trips',       label: 'Trips',       icon: Plane,     area: 'performance/trips'       },
-  { href: '/performance/weddings',    label: 'Weddings',    icon: Sparkles,  area: 'performance/weddings'    },
-  { href: '/performance/corporativo', label: 'Corporativo', icon: Briefcase, area: 'performance/corporativo' },
-]
-
-const FINANCEIRO_SUBS: NavSubItem[] = [
-  { href: '/financeiro/acervo',                label: 'Acervo de Documentos', icon: Library, area: 'financeiro/acervo', areasAny: ['financeiro/acervo', 'financeiro/acervo/gestao'] },
-  { href: '/financeiro/dre',                   label: 'Demonstrativo de Resultado', icon: FileSpreadsheet, area: 'financeiro/dre' },
-  { href: '/financeiro/fluxo-caixa',           label: 'Fluxo de Caixa',       icon: BarChart3,  area: 'financeiro/fluxo-caixa' },
-  { href: '/financeiro/fluxo-caixa/gerencial', label: 'Gerencial',            icon: Table2,     area: 'financeiro/gerencial'   },
-  { href: '/financeiro/calculadora-rateio',    label: 'Calculadora de Rateio', icon: Calculator, area: 'financeiro/gerencial'  },
-  { href: '/financeiro/faturamento-corp',      label: 'Faturamento Corporativo', icon: Receipt,  area: 'financeiro/faturamento-corp' },
-]
-
-// Metas em DOIS níveis (v5.0.0), mesmo padrão de solicitacoes/acervo: 'metas' (edição,
-// libera as duas subabas) e 'metas/acompanhamento' (só leitura, libera só a 1ª).
-const METAS_SUBS: NavSubItem[] = [
-  { href: '/metas',          label: 'Acompanhamento', icon: LineChart,     area: 'metas/acompanhamento', areasAny: ['metas/acompanhamento', 'metas'] },
-  { href: '/metas/cadastro', label: 'Cadastro',       icon: ClipboardList, area: 'metas' },
-]
-
-// Gestão de Pessoas (v5.6.0) — seção NOVA da sidebar; o Inventário de Ativos é seu 1º módulo.
-// Área própria desde a migration 0247 (na M0 ficou sob 'admin/design-system', porque declarar
-// a área nova sem a migration quebraria o teste de paridade banco↔app).
-// `emConstrucao` (triângulo de alerta) fica enquanto a tela roda sobre fixture — sai na M3,
-// quando ela passa a ler as RPCs `patrimonio_*`.
-const GESTAO_PESSOAS_SUBS: NavSubItem[] = [
-  { href: '/gestao-pessoas/inventario', label: 'Inventário de Ativos', icon: Boxes, area: 'gestao-pessoas/inventario', emConstrucao: true },
-]
-
-/** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
- *  saber "isto é um grupo" (o resto do render/filtro é genérico via NavGroup). */
-const NAV_GROUPS: Record<string, NavSubItem[]> = {
-  '/performance':    PERFORMANCE_SUBS,
-  '/financeiro':     FINANCEIRO_SUBS,
-  '/metas':          METAS_SUBS,
-  '/gestao-pessoas': GESTAO_PESSOAS_SUBS,
-}
-
-// Ordem da sidebar (v5.6.0): Executiva › Performance › Metas › Financeiro › Solicitações
-// › Gestão de Pessoas › Upload de Arquivos › Usuários e Acessos › Design System.
-// (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
-// Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo.)
-const NAV_ITEMS: NavItem[] = [
-  { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva', emConstrucao: true },
-  { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
-  { href: '/metas',          label: 'Metas',              Icon: Target,          area: null            },
-  { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
-  { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
-  // Seção nova (v5.6.0), entre os módulos de operação e o bloco administrativo.
-  // Ícone `IdCard` (crachá), NÃO `Users`/`UsersRound`: o `Users` já é "Usuários e Acessos" e as
-  // variantes redondas são quase indistinguíveis dele no tamanho 16px da sidebar (ajuste pedido
-  // pelo Yan na aprovação da M0). O crachá também separa os conceitos: pessoa da empresa aqui,
-  // conta da plataforma lá.
-  { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: IdCard,          area: null            },
-  { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
-  { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
-  // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
-  // "Gerenciar solicitações" dentro de Solicitações (só admin). Rota /admin/solicitacoes intacta.
-  { href: '/admin/design-system',  label: 'Design System',      Icon: Palette,       area: 'admin/design-system'  },
-]
 
 interface SidebarContentProps {
   pathname:    string
@@ -206,16 +128,10 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
   const toggleGroup = (href: string) => setOpenGroups(prev => ({ ...prev, [href]: !prev[href] }))
 
   // ── RBAC: navegação filtrada pelas permissões do usuário ──
+  // O QUE aparece vive em `nav-model.ts` (puro, varrido por nav-model.test.ts); aqui fica
+  // só o COMO aparece.
   const pode = (area: Area) => usuario.permissoes.includes(area)
-  const subVisivel = (s: NavSubItem) => (s.areasAny ? s.areasAny.some(pode) : pode(s.area))
-
-  const navItems = NAV_ITEMS.filter(item => {
-    if (item.sempre) return true
-    if (item.areasAny) return item.areasAny.some(pode)
-    const grupo = NAV_GROUPS[item.href]
-    if (grupo) return grupo.some(subVisivel)
-    return item.area !== null && pode(item.area)
-  })
+  const navItems = itensVisiveis(usuario.permissoes)
 
   // ── Barra de rolagem FLUTUANTE em overlay (v4.16.2) ──
   // A nativa é escondida (`.scrollbar-none` → largura 0 → NÃO desloca o conteúdo);
@@ -348,7 +264,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
             )
           }
 
-          const active = pathname === href || pathname.startsWith(`${href}/`)
+          const active = itemAtivo(href, pathname)
           return (
             <Link
               key={href}
