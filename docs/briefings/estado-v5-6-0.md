@@ -1,25 +1,33 @@
 # Estado da v5.6.0 — Gestão de Pessoas: Inventário de Ativos
 
-Arquivo de reancoragem entre fases (fronteira de fase = estado em disco + `/clear`).
+> ✅ **VERSÃO FECHADA (10/08/2026).** Este arquivo era a reancoragem entre fases e está
+> **encerrado**: a verdade final da versão vive no out-briefing
+> `WT_Finance_Out_Briefing_v5-6-0_Inventario_Ativos.md` (missões, pareceres dos revisores,
+> pendências do Yan e o roteamento do aprendizado). O que segue abaixo é histórico das
+> fronteiras de fase, mantido porque registra as decisões do checkpoint e a receita
+> reexecutável de verificação do banco.
+
 Briefing: `docs/briefings/briefing-v5-6-0-inventario-patrimonio.md`.
 Referência funcional (untracked, na raiz): `docs/referencias/patrimonio_welcome_group.html`.
 
-## Onde estamos
+## Onde chegamos
 
-**M0 aprovada e M1 CONCLUÍDA (banco no ar).** Próxima: **M2** (abas/a11y + varredura de
-não-regressão da navegação) e **M3** (ligar a tela nas RPCs).
+**Todas as seis missões concluídas.** M3 e M4 viraram no mesmo commit: a transição fixture→RPC é
+atômica (com a lista lendo o banco, o modal de movimentação não teria mais estado local em que
+escrever) e o briefing já as punha na mesma fronteira de fase.
 
 | Missão | Estado |
 |---|---|
 | M0 mockups no DS (gate) | ✅ aprovada (`10bce7e` + ajustes do Yan em `645b859`) |
 | M1 banco | ✅ **0247 e 0248 APLICADAS**; área RBAC no ar; 60/60 na verificação REST |
-| M2 seção + rota + permissão | 🟡 parcial — a **permissão** já virou junto da M1 (`62abb38`); falta o molde de abas/a11y e a varredura de não-regressão |
-| M3 ativos: lista/ficha/cadastro | pendente — a tela ainda roda sobre `fixture.ts` |
-| M4 movimentação + razão | pendente |
-| M5 visão geral + export | pendente |
-| M6 fechamento | pendente |
+| M2 seção + rota + permissão | ✅ `7d2fd42` — varredura de navegação virou teste (`nav-model.test.ts`, 56 casos) |
+| M3 ativos: lista/ficha/cadastro | ✅ `ea10c85` |
+| M4 movimentação + razão | ✅ `ea10c85` — 71/71 na bateria REST ponta a ponta |
+| M5 visão geral + export | ✅ `a675659` |
+| M6 fechamento | ✅ ADR-0167, CHANGELOGs, out-briefing, PR |
 
-Gates da fronteira pós-M1: `tsc` limpo · lint limpo · **779 testes** · `build` OK.
+Gates finais: `build` OK · `tsc` limpo · lint sem warnings · **879 testes** (eram 779 na
+fronteira pós-M1). Revisores: **0 CRÍTICO, 0 ALTO** nos dois pareceres.
 
 ## Decisões do Yan (10/08) — as duas que bloqueavam a M1
 

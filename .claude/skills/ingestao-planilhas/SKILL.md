@@ -161,6 +161,39 @@ no banco, e a planilha trouxe uma data fora dele. O procedimento de correção (
 `dim_data`, recuperar sem re-upload) é detalhado na skill `banco-e-rpc`; aqui basta saber
 reconhecer o sintoma: erro de FK ligado a data, não a formato de célula.
 
+---
+
+## 7. O caminho de VOLTA: exportar CSV que abre certo no Excel pt-BR
+
+O espelho da ingestão. "Abre no Excel" e "abre **certo** no Excel pt-BR" são coisas diferentes, e
+a diferença são quatro detalhes — nenhum deles aparece em gate nenhum, só na planilha de quem
+recebeu o arquivo. Receita canônica em `src/lib/patrimonio/csv.ts` (v5.6.0):
+
+1. **BOM UTF-8** (`'﻿'`) no início. Sem ele o Excel do Windows lê como ANSI e "Informática"
+   chega "InformÃ¡tica".
+2. **Separador `;`**, não vírgula — é o separador de listas do Excel pt-BR.
+3. **Decimal com VÍRGULA** (`v.toFixed(2).replace('.', ',')`). Com ponto, o Excel pt-BR entra o
+   valor como **texto** (ou pior: `4321.99` virando `432199`).
+4. **CRLF** (`\r\n`) no fim da linha.
+
+E duas regras de conteúdo:
+
+- **Célula de TEXTO que começa com `=`, `+`, `@` ou tab é FÓRMULA para o Excel.** Descrição e
+  observação são digitadas pelo usuário: `=cmd|...` num CSV é execução remota clássica. Prefixar
+  com apóstrofo desarma sem mudar o que se lê na célula. **Não aplicar a número** — o `-` de um
+  negativo legítimo passa pela célula numérica.
+- **Valor ausente sai VAZIO, nunca `0`.** "Não sei quanto custou" e "custou zero" são fatos
+  diferentes, e a diferença tem de sobreviver à planilha (o mesmo cuidado que a coerção de
+  entrada tem com célula vazia, na seção 4).
+
+Escapar com aspas quando a célula contém `;`, `"` ou quebra de linha (aspas internas dobradas) —
+uma descrição com ponto e vírgula, sem isso, **parte a linha numa coluna extra** e desalinha a
+planilha inteira. O teste que pega isso compara a **contagem de campos** do cabeçalho com a da
+linha, não o texto.
+
+Manter o gerador **puro** (sem DOM) e isolar o download (`Blob` + `<a download>` + `revokeObjectURL`)
+numa função separada: é o que permite testar o arquivo caractere a caractere em ambiente `node`.
+
 ## Ver também
 
 - **`banco-e-rpc`** — RPCs do pipeline de carga (assinatura, RBAC, orçamento de tempo),

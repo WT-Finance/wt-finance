@@ -54,6 +54,12 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
 - Listagem respeita `max_rows = 1000` do PostgREST ou pagina.
 
 ### Schema e dados
+- **`CHECK` que usa `CASE` sobre enum FECHA em `ELSE false`?** `CASE` sem `ELSE` devolve NULL
+  para um valor não previsto, e **CHECK que avalia NULL é considerado SATISFEITO** pelo
+  Postgres: acrescentar um valor ao enum sem escrever o ramo passaria a aceitar qualquer
+  combinação de campos — fail-**OPEN** num lugar que parece defesa. (v5.6.0, `mov_destino_por_tipo`.)
+- Contrato de CHECK/enum espelhado no TS (mapa que decide o que a UI mostra) tem **teste de
+  paridade** lendo o SQL, não só comentário "as duas pontas mudam juntas"?
 - Tipos: `bigint` p/ ID, `text`, `timestamptz` (nunca `timestamp`), `numeric` p/ dinheiro.
 - FK nova tem índice. Coluna usada em policy/WHERE frequente tem índice.
 - Migration/seed roda como `postgres` em **UTC** — "hoje de SP" dentro de migration exige

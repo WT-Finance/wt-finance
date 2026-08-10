@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-10 (pós-merge) · produção na **v5.5.1** (#224 mergeado às 12h17 — ajustes de apresentação do float + a *Margem Teórica (a.a.)*; a v5.5.0 entrou às 10h49 pelo #222). **Migrations `0238`–`0246` aplicadas**, incluindo o agendamento mensal do CDI, já ATIVO · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
+Última atualização: 2026-08-10 (fechamento da v5.6.0) · produção na **v5.5.1** (#224, 12h17) · **v5.6.0 — Inventário de Ativos — FECHADA e aguardando merge** (PR aberto; migrations `0247`/`0248` **já aplicadas** em 10/08, base vazia de propósito) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -11,6 +11,44 @@
 
 ## Verdade atual
 
+- **v5.6.0 — Gestão de Pessoas: Inventário de Ativos. FECHADA, aguardando merge.**
+  Seção NOVA de sidebar (a primeira de 1º nível desde a v4.x) + módulo novo. Cadastro de
+  equipamentos com ficha patrimonial e **razão append-only** de movimentações. Migrations
+  **`0247`/`0248` APLICADAS** em 10/08; **ADR-0167**; **879 testes**; `revisor` e `revisor-db`
+  com **0 CRÍTICO e 0 ALTO**.
+  ⚠️ **A base está VAZIA de propósito** (0 ativos / 0 movimentações / 0 detentores; seed com 6
+  categorias e 7 áreas) e a sequência foi reiniciada: **o primeiro ativo real será o WG-0001**.
+  A área `gestao-pessoas/inventario` foi concedida no seed **só a quem já tinha `admin/acessos`** —
+  o resto sai pelo editor de roles.
+  **Duráveis desta versão:**
+  *(a)* **`CHECK` com `CASE` sobre enum sem `ELSE false` é FAIL-OPEN.** `CASE` sem `ELSE` devolve
+  NULL para valor não previsto, e **CHECK que avalia NULL é considerado SATISFEITO** — acrescentar
+  um valor ao enum sem o ramo faria a constraint aceitar qualquer combinação. Foi para a skill
+  `banco-e-rpc` **e** para o checklist do `revisor-db` (nota D-12).
+  *(b)* **Contrato duplicado entre SQL e TS não se protege com comentário.** "As duas pontas mudam
+  JUNTAS" estava escrito nos dois arquivos e nada reprovava. Virou `paridade-sql.test.ts`, que lê o
+  SQL aplicado. ⚠️ Ele aponta para a migration **por nome**: alteração futura do CHECK vem em
+  migration nova e o teste seguiria aprovando espelho obsoleto — o aviso está no topo dele.
+  *(c)* **Checklist de regressão de navegação em prosa envelhece.** O modelo de navegação saiu de
+  dentro do `sidebar.tsx` para `nav-model.ts` (puro) e a varredura virou `nav-model.test.ts`, que
+  lê o inventário de rotas **do disco**: rota órfã da sidebar, href para rota inexistente, colisão
+  de prefixo, e a paridade **"quem VÊ o item ALCANÇA a rota"**.
+  *(d)* **Modal de formulário reusado precisa de `key` que MUDE** (contador de gerações) — o
+  `useState` com initializer só roda na montagem, e a peça seguinte nascia com o código da anterior.
+  *(e)* **Guard de resposta atrasada compara com o último PEDIDO, não com o estado atual** — a
+  versão "intuitiva" (comparar com o detalhe já carregado) está **invertida** e descarta a resposta
+  certa. As duas foram pegas na auto-auditoria, antes do commit; foram para `react-padroes`.
+  *(f)* **Export para Excel pt-BR** = BOM UTF-8 + `;` + decimal com vírgula + CRLF, mais guarda de
+  fórmula (`=`/`+`/`@` em célula de texto) e "valor ausente ≠ 0". Foi para `ingestao-planilhas`
+  (o caminho de volta da mesma skill).
+  *(g)* **RPC de listagem com teto de linhas não serve para o que precisa ser completo** — o
+  histórico de um ativo vem de `detalhe_ativo` (e ganha leitura numa transação só, de graça); a
+  aba do razão AVISA quando bate o teto, em vez de truncar calada.
+  Out-briefing: `WT_Finance_Out_Briefing_v5-6-0_Inventario_Ativos.md`.
+  **Pendente Yan:** mergear · cadastrar 3–5 ativos reais e movimentar · testar a retroativa ·
+  conferir os dois CSVs no Excel · liberar a área para quem precisa · **print das quatro telas**
+  (a conferência visual autenticada ficou NÃO VERIFICADA — sem MCP Playwright nesta sessão e o
+  Chrome do Windows não alcança o `localhost` do WSL2; o guard da rota FOI verificado por `curl`).
 - **v5.5.1 (#224, mergeada 10/08 às 12h17) — ajustes de apresentação + "Margem Teórica (a.a.)".**
   Migration **`0246`** aplicada. Três pedidos do Yan depois de ver a v5.5.0 no ar: o gráfico virou
   **"Rendimento Potencial do Caixa Livre"** (sem o total "na janela", sem subtítulo, linha do saldo
