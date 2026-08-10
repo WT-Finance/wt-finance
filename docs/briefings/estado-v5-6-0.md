@@ -6,66 +6,62 @@ Referência funcional (untracked, na raiz): `docs/referencias/patrimonio_welcome
 
 ## Onde estamos
 
-**M0 CONCLUÍDA E APROVADA pelo Yan em 10/08.** Próxima: **M1 (banco)** — mas ver "Bloqueios".
+**M0 aprovada e M1 CONCLUÍDA (banco no ar).** Próxima: **M2** (abas/a11y + varredura de
+não-regressão da navegação) e **M3** (ligar a tela nas RPCs).
 
 | Missão | Estado |
 |---|---|
-| M0 mockups no DS (gate) | ✅ aprovada (`10bce7e` + ajustes em `645b859`) |
-| M1 banco | ⏸ bloqueada — ver abaixo |
-| M2 seção + rota + permissão | pendente |
-| M3 ativos: lista/ficha/cadastro | pendente |
+| M0 mockups no DS (gate) | ✅ aprovada (`10bce7e` + ajustes do Yan em `645b859`) |
+| M1 banco | ✅ **0247 e 0248 APLICADAS**; área RBAC no ar; 60/60 na verificação REST |
+| M2 seção + rota + permissão | 🟡 parcial — a **permissão** já virou junto da M1 (`62abb38`); falta o molde de abas/a11y e a varredura de não-regressão |
+| M3 ativos: lista/ficha/cadastro | pendente — a tela ainda roda sobre `fixture.ts` |
 | M4 movimentação + razão | pendente |
 | M5 visão geral + export | pendente |
 | M6 fechamento | pendente |
 
-Gates da fronteira pós-M0: `tsc` limpo · lint limpo · **754 testes** · `build` OK.
+Gates da fronteira pós-M1: `tsc` limpo · lint limpo · **779 testes** · `build` OK.
 
-## Bloqueios (decisão do Yan)
+## Decisões do Yan (10/08) — as duas que bloqueavam a M1
 
-1. **Seed de áreas e categorias** — checkpoint previsto no briefing. Proposta no fixture:
-   áreas = Diretoria, Financeiro, Comercial, Operações, Marketing, Tecnologia, Gestão de
-   Pessoas; categorias = as 6 do briefing (Informática, Mobiliário, Eletrônicos, Telefonia,
-   Veículos, Outros). **Vira `INSERT` na migration da M1 — confirmar antes.**
-2. **Um ativo pode NASCER em estoque?** O briefing crava que status é função só do tipo, e por
-   isso `cadastro → em uso` (área + detentor obrigatórios): quem quiser cadastrar direto no
-   estoque precisa cadastrar e depois fazer `devolucao_estoque`. Se a resposta for "sim, pode
-   nascer em estoque", muda o CHECK por tipo da M1 — decidir **antes** de escrever a migration.
+1. **Seed confirmado:** categorias = Informática, Mobiliário, Eletrônicos, Telefonia,
+   Veículos, Outros; áreas = Diretoria, Financeiro, Comercial, Operações, Marketing,
+   Tecnologia, Gestão de Pessoas. Já semeados pela 0247.
+2. **Um ativo PODE nascer em estoque.** Isso quebra "status = função só do tipo": o
+   `cadastro` passou a ter dois desfechos. Resolvido derivando do MESMO registro —
+   cadastro COM detentor → em uso; SEM detentor → em estoque. Um tipo novo
+   (`cadastro_estoque`) duplicaria a abertura no enum e no CHECK sem ganhar nada.
 
-## Numeração real (o WORKING-CONTEXT do main está velho)
+## Estado do banco
 
-- **Próxima migration livre: `0247`.** O main vai até `0245`; a **`0246` é da 5.5.1**, que
-  ainda não mergeou.
-- **Próximo ADR livre: `0167`** (`0163` segue reservado pela versão em stand-by; a 5.5.1 só
-  emenda o `0166`).
+- **`0247` (estrutura) e `0248` (RPCs) APLICADAS** em 10/08, backup-gate VERDE
+  (restore-test 3/3, checksum batendo). Backup:
+  `~/wt-finance-backups/2026-08-10-pre-migration-164041`.
+- **Próxima migration livre: `0249`.** Próximo ADR livre: **`0167`** (`0163` segue reservado
+  pela versão em stand-by).
+- Base **vazia de propósito**: 0 ativos / 0 movimentações / 0 detentores. Os dados da
+  verificação foram removidos e a sequência do código reiniciada, para o primeiro ativo real
+  ser o **WG-0001**. Seed intacto (6 categorias, 7 áreas).
+- **Parecer do `revisor-db`:** APROVADA COM RESSALVAS nas duas — 0 CRÍTICO, 0 ALTO, 3 MÉDIO,
+  4 BAIXO. Como nada havia sido aplicado, os MÉDIOs e 2 BAIXOs foram corrigidos **na origem**
+  (`23fd18f`), não como emenda. Registrados e não corrigidos: FKs sem índice dedicado
+  (nenhuma é filtrada nas RPCs) e ordenação lexicográfica do código (só afeta override manual
+  com número de dígitos diferente).
 
-## Convivência com a 5.5.1 (em implementação em paralelo)
+## Dívida QUITADA: as 4 pontas da área
 
-Zero sobreposição de código de feature (ela é Weddings). O atrito é só em arquivos
-compartilhados:
+A área `gestao-pessoas/inventario` existe em `app.rbac_areas` **e** no catálogo do código.
+`AREAS`/`AREA_INFO`, `areasDaRota`, o `requireArea` da page e o gate do subitem de sidebar
+viraram todos em `62abb38`. O caso plantado em `areas.test.ts` cumpriu o papel: reprovou
+exatamente quando devia.
 
-- `package.json`, `CHANGELOG.md`, `src/data/changelog-diretoria.ts` → **tocar SÓ na M6**,
-  depois que a 5.5.1 mergear, com `git merge origin/main` antes.
-- `src/lib/schemas-rpc.ts`, `src/types/api.ts`, `src/lib/rpc-contrato.test.ts` → acrescentar em
-  bloco novo no fim, nunca reorganizar o que existe.
-- ⚠️ Aplicar migration de branch não mergeada trava o `db push` de toda outra branch
-  (`LegacyDbPushMissingLocalError`, v5.4.4). **Avisar a sessão da 5.5.1 ao aplicar a `0247`.**
+Sobra só o `emConstrucao: true` no subitem — sai na M3, quando a tela deixar o fixture.
 
-## A dívida que a M2 tem de quitar (não esquecer)
+## Convivência com a 5.5.1 — RESOLVIDA
 
-A área definitiva `gestao-pessoas/inventario` **não existe ainda**. O teste de contrato
-(`rpc-contrato.test.ts:523`) exige paridade exata entre `AREAS` e `app.rbac_areas`, então
-declará-la em código sem a migration quebra o `npm test` — e a M0 não podia aplicar migration.
-
-Hoje **três pontas** apontam para a área existente `admin/design-system`:
-
-1. `src/app/gestao-pessoas/inventario/page.tsx` → `requireArea('admin/design-system')`
-2. `src/components/layout/sidebar.tsx` → `GESTAO_PESSOAS_SUBS[0].area` (+ `emConstrucao: true`)
-3. `src/lib/auth/areas.ts` → `areasDaRota('/gestao-pessoas')`
-
-A M2 vira as três **no mesmo commit** da migration que insere a área em `app.rbac_areas`, e
-acrescenta a entrada em `AREAS`/`AREA_INFO`. O caso `['/gestao-pessoas/inventario',
-['admin/design-system']]` em `src/lib/auth/areas.test.ts` **reprova** quando isso acontecer —
-é o lembrete mecânico de que nenhuma ponta pode ficar para trás.
+A 5.5.1 foi mergeada (#224) e o pós-merge dela também (#225). `origin/main` foi trazido para
+dentro da branch: a `0246` chegou junto e local↔remoto voltou a bater (sem isso o `db push`
+morreria em `LegacyDbPushMissingLocalError`, a armadilha da v5.4.4). Versão base agora é
+**5.5.1** — o bump para 5.6.0 segue sendo assunto da M6.
 
 ## Decisões da M0 que valem para as próximas missões
 
@@ -86,6 +82,30 @@ acrescenta a entrada em `AREAS`/`AREA_INFO`. O caso `['/gestao-pessoas/inventari
   o aviso amarelo de pré-visualização em `inventario-content.tsx` sai junto.
 - **Ainda desabilitados, com `title` apontando a missão:** "Novo ativo", "Editar ficha" e
   "Duplicar ativo" (M3); "Exportar CSV" nas duas abas (M5).
+
+## Como verificar o banco de novo (a bateria é reexecutável)
+
+A verificação pós-push é **REST + service_role** — o único caminho que executa o corpo da
+função. `npx supabase db query` roda num papel sem JWT e não-superusuário, então
+`exigir_acesso` nega **antes** do corpo e mascara qualquer erro de runtime que estivesse lá
+dentro (foi assim que a v5.2.1 mandou `max(uuid)` para produção).
+
+A bateria de 60 checagens vive fora do repo (`$CLAUDE_JOB_DIR/tmp/verificar-patrimonio.mjs`).
+Ela cria dados marcados com o prefixo `ZZTESTE-M1` e **precisa da limpeza logo depois**:
+
+```sql
+DELETE FROM patrimonio.movimentacao WHERE ativo_id IN (SELECT id FROM patrimonio.ativo WHERE descricao LIKE 'ZZTESTE-M1%');
+DELETE FROM patrimonio.ativo     WHERE descricao LIKE 'ZZTESTE-M1%';
+DELETE FROM patrimonio.detentor  WHERE nome      LIKE 'ZZTESTE-M1%';
+ALTER SEQUENCE patrimonio.ativo_codigo_seq RESTART WITH 1;
+```
+
+⚠️ `npx supabase db query` cai no banco LOCAL por padrão (e falha por falta de Docker no
+WSL2): **é preciso `--linked`** para alcançar produção.
+
+Quando a M3 ligar a tela nas RPCs, os casos desta bateria que exprimem CONTRATO (paridade
+SQL↔TS do status derivado, a recusa de localização em `atualizar_ativo`, a retroativa que não
+mexe no estado atual) devem migrar para `src/lib/rpc-contrato.test.ts`, que roda no `npm test`.
 
 ## Limite conhecido de verificação visual
 
