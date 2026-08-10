@@ -4,18 +4,7 @@ import Link from 'next/link'
 import { ChevronRight, TriangleAlert } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
-
-export interface NavSubItem {
-  href: string
-  label: string
-  icon: LucideIcon
-  /** Área de permissão que libera o subitem. */
-  area: Area
-  /** Visível se o usuário tiver QUALQUER uma destas áreas (OR). v4.34.0. */
-  areasAny?: Area[]
-  /** Rota atrás do gate "em construção" (preview) → ícone triangular de alerta à direita. v5.1.9. */
-  emConstrucao?: boolean
-}
+import { hrefAtivoDoGrupo, type NavSubItem } from '@/components/layout/nav-model'
 
 interface NavGroupProps {
   label: string
@@ -49,9 +38,8 @@ export default function NavGroup({ label, Icon, href, subs, pathname, pode, open
   const visible = subs.filter(s => (s.areasAny ? s.areasAny.some(pode) : pode(s.area)))
   if (visible.length === 0) return null
 
-  const activeHref = visible
-    .filter(s => pathname === s.href || pathname.startsWith(s.href + '/'))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null
+  // Regra do prefixo mais específico — compartilhada com a varredura de navegação (nav-model).
+  const activeHref = hrefAtivoDoGrupo(visible, pathname)
 
   const visibleSubs = open
     ? visible

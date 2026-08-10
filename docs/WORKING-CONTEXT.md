@@ -1,19 +1,20 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-10 (pós-merge) · produção na **v5.5.2** (#227 mergeado às 14h29 — correção do bug de ingestão ×1000 na DRE e no Fluxo de Caixa; sem migration). Antes dela a v5.5.1 (#224, 12h17) e a v5.5.0 (#222, 10h49) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-10 (fechamento da v5.6.0) · produção na **v5.5.2** (#227 mergeado às 14h29 — correção do bug de ingestão ×1000 na DRE e no Fluxo de Caixa; sem migration). Antes dela a v5.5.1 (#224, 12h17) e a v5.5.0 (#222, 10h49) · **v5.6.0 — Inventário de Ativos — FECHADA e aguardando merge** (PR #229; migrations `0247`/`0248` **já aplicadas** em 10/08, base vazia de propósito) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
 o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
 aparecem como prejuízo e são lucro) até a reingestão. O upload é full-swap, então resolve sem
-migration destrutiva. Detalhe no 1º item de "Verdade atual".
+migration destrutiva. Detalhe no 2º item de "Verdade atual".
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0248`; a próxima livre é a `0249`.**
-As `0247` (`patrimonio_estrutura`) e `0248` (`patrimonio_rpcs`) são da **v5.6.0**, que está em
-curso: **aplicadas em produção com o código ainda NÃO mergeado**. Conferido em
-`supabase_migrations.schema_migrations`, não no texto — este cabeçalho dizia "próxima livre:
-`0247`" e já estava obsoleto. Consequência viva disso: o teste de paridade de áreas RBAC
-(`rpc-contrato.test.ts`) **falha em qualquer branch** enquanto a v5.6.0 não mergear, porque
-`gestao-pessoas/inventario` existe em `app.rbac_areas` e ainda não no código.
+As `0247` (`patrimonio_estrutura`) e `0248` (`patrimonio_rpcs`) são da **v5.6.0**: foram
+**aplicadas em produção com o código ainda não mergeado**, e é o PR #229 que fecha essa janela.
+Conferido em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já esteve
+obsoleto dizendo "próxima livre: `0247`". ✅ A consequência viva disso — o teste de paridade de
+áreas RBAC (`rpc-contrato.test.ts`) falhando em qualquer branch porque
+`gestao-pessoas/inventario` existia em `app.rbac_areas` e não no código — **está resolvida na
+branch da v5.6.0**, que declara a área nas duas pontas (879/879 testes).
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -24,6 +25,44 @@ curso: **aplicadas em produção com o código ainda NÃO mergeado**. Conferido 
 
 ## Verdade atual
 
+- **v5.6.0 — Gestão de Pessoas: Inventário de Ativos. FECHADA, aguardando merge.**
+  Seção NOVA de sidebar (a primeira de 1º nível desde a v4.x) + módulo novo. Cadastro de
+  equipamentos com ficha patrimonial e **razão append-only** de movimentações. Migrations
+  **`0247`/`0248` APLICADAS** em 10/08; **ADR-0167**; **879 testes**; `revisor` e `revisor-db`
+  com **0 CRÍTICO e 0 ALTO**.
+  ⚠️ **A base está VAZIA de propósito** (0 ativos / 0 movimentações / 0 detentores; seed com 6
+  categorias e 7 áreas) e a sequência foi reiniciada: **o primeiro ativo real será o WG-0001**.
+  A área `gestao-pessoas/inventario` foi concedida no seed **só a quem já tinha `admin/acessos`** —
+  o resto sai pelo editor de roles.
+  **Duráveis desta versão:**
+  *(a)* **`CHECK` com `CASE` sobre enum sem `ELSE false` é FAIL-OPEN.** `CASE` sem `ELSE` devolve
+  NULL para valor não previsto, e **CHECK que avalia NULL é considerado SATISFEITO** — acrescentar
+  um valor ao enum sem o ramo faria a constraint aceitar qualquer combinação. Foi para a skill
+  `banco-e-rpc` **e** para o checklist do `revisor-db` (nota D-12).
+  *(b)* **Contrato duplicado entre SQL e TS não se protege com comentário.** "As duas pontas mudam
+  JUNTAS" estava escrito nos dois arquivos e nada reprovava. Virou `paridade-sql.test.ts`, que lê o
+  SQL aplicado. ⚠️ Ele aponta para a migration **por nome**: alteração futura do CHECK vem em
+  migration nova e o teste seguiria aprovando espelho obsoleto — o aviso está no topo dele.
+  *(c)* **Checklist de regressão de navegação em prosa envelhece.** O modelo de navegação saiu de
+  dentro do `sidebar.tsx` para `nav-model.ts` (puro) e a varredura virou `nav-model.test.ts`, que
+  lê o inventário de rotas **do disco**: rota órfã da sidebar, href para rota inexistente, colisão
+  de prefixo, e a paridade **"quem VÊ o item ALCANÇA a rota"**.
+  *(d)* **Modal de formulário reusado precisa de `key` que MUDE** (contador de gerações) — o
+  `useState` com initializer só roda na montagem, e a peça seguinte nascia com o código da anterior.
+  *(e)* **Guard de resposta atrasada compara com o último PEDIDO, não com o estado atual** — a
+  versão "intuitiva" (comparar com o detalhe já carregado) está **invertida** e descarta a resposta
+  certa. As duas foram pegas na auto-auditoria, antes do commit; foram para `react-padroes`.
+  *(f)* **Export para Excel pt-BR** = BOM UTF-8 + `;` + decimal com vírgula + CRLF, mais guarda de
+  fórmula (`=`/`+`/`@` em célula de texto) e "valor ausente ≠ 0". Foi para `ingestao-planilhas`
+  (o caminho de volta da mesma skill).
+  *(g)* **RPC de listagem com teto de linhas não serve para o que precisa ser completo** — o
+  histórico de um ativo vem de `detalhe_ativo` (e ganha leitura numa transação só, de graça); a
+  aba do razão AVISA quando bate o teto, em vez de truncar calada.
+  Out-briefing: `WT_Finance_Out_Briefing_v5-6-0_Inventario_Ativos.md`.
+  **Pendente Yan:** mergear · cadastrar 3–5 ativos reais e movimentar · testar a retroativa ·
+  conferir os dois CSVs no Excel · liberar a área para quem precisa · **print das quatro telas**
+  (a conferência visual autenticada ficou NÃO VERIFICADA — sem MCP Playwright nesta sessão e o
+  Chrome do Windows não alcança o `localhost` do WSL2; o guard da rota FOI verificado por `curl`).
 - 🔴 **v5.5.2 (#227, mergeada 10/08 às 14h29) — a DRE e o Fluxo estavam ERRADOS por um bug de
   ingestão, e a correção do CÓDIGO não conserta o DADO (re-upload PENDENTE).** Os parsers
   `parse-lancamentos-movimentacao.ts` e `parse-titulos-em-aberto.ts` liam a planilha com
@@ -79,7 +118,6 @@ curso: **aplicadas em produção com o código ainda NÃO mergeado**. Conferido 
   65 linhas de outlier médio e as 1.073 indeterminadas · levar ao provedor os 75 grupos de
   linhas idênticas no export e os 5 títulos vencendo em 2049 · decidir sobre o upload morto.
   Investigação: `docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md`.
-
 - **v5.5.1 (#224, mergeada 10/08 às 12h17) — ajustes de apresentação + "Margem Teórica (a.a.)".**
   Migration **`0246`** aplicada. Três pedidos do Yan depois de ver a v5.5.0 no ar: o gráfico virou
   **"Rendimento Potencial do Caixa Livre"** (sem o total "na janela", sem subtítulo, linha do saldo

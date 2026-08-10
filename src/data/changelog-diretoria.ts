@@ -35,6 +35,51 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.6.0',
+    data: '2026-08-10T15:40', // horário REAL de autoria (−03) — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A empresa passou a ter registro de quem está com cada equipamento. Entrou no menu uma ' +
+          'seção nova, "Gestão de Pessoas", com o Inventário de Ativos: cada máquina, móvel ou ' +
+          'aparelho tem uma ficha (categoria, número de série, fornecedor, data e valor de compra, ' +
+          'nota fiscal, estado de conservação) e um histórico completo de movimentações — onde ' +
+          'esteve, com quem, desde quando e por quê.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O histórico não se apaga nem se corrige por cima: cada mudança de mão é um registro ' +
+          'novo (transferência, devolução ao estoque, envio e retorno de manutenção, empréstimo, ' +
+          'baixa). Se uma baixa foi registrada por engano, ela se desfaz por uma reativação — que ' +
+          'também fica no histórico. Nada desaparece do rastro.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'É possível lançar uma movimentação com data anterior à última, para quando alguém só ' +
+          'informar depois: o inventário se reorganiza sozinho e continua mostrando corretamente ' +
+          'quem está com o item hoje.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A visão geral mostra quantos equipamentos existem e em que situação estão (em uso, em ' +
+          'estoque, em manutenção, emprestados, baixados), a distribuição por categoria e por ' +
+          'departamento, e o custo histórico de aquisição dos equipamentos ativos. Esse valor é ' +
+          'só a soma do que foi pago na compra: não há depreciação e ele não entra na DRE nem no ' +
+          'Fluxo de Caixa. Equipamento sem valor informado fica de fora da soma, não conta como zero.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'As duas listas — equipamentos e movimentações — exportam para Excel, com os filtros ' +
+          'que estiverem aplicados na tela.',
+      },
+    ],
+  },
+  {
     versao: '5.5.2',
     data: '2026-08-10T14:29', // horário REAL do merge (8e30f25, 14:29 −03) — reconciliado no /pos-merge
     itens: [

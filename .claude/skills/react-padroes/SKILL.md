@@ -194,6 +194,59 @@ function BadgePendencias({ promise }: { promise: Promise<number | null> }) {
 }
 ```
 
+## 3. Tela de dado + escrita: três armadilhas que nenhum gate pega
+
+O padrão da casa para uma tela com escrita é **dado pronto do RSC + server action +
+`router.refresh()`** (`tipos-content.tsx`, `chaves-api-content.tsx`, `inventario-content.tsx`).
+Sem cópia local do dado do servidor: com uma segunda fonte no cliente, ela envelhece e a tela
+passa a discordar de si mesma. As três armadilhas abaixo apareceram juntas na v5.6.0 e as três
+compilam, passam no lint e no build.
+
+### a. Modal de formulário reusado entre itens precisa de `key` que MUDE
+
+`useState` com initializer só roda **na montagem**. Um modal reaproveitado (editar item A →
+editar item B; ou "salvar e cadastrar outro") mantém o estado do anterior: a próxima peça nasce
+com o código e a série da última. Renderizar condicionalmente **não** basta se a árvore não
+muda de identidade.
+
+```tsx
+// Contador de gerações na key → remonta de verdade a cada abertura.
+const [geracao, setGeracao] = useState(0)
+<FormModal key={modo === 'editar' ? `editar-${item.id}` : `criar-${geracao}`} … />
+```
+
+Não usar um campo do próprio dado como `key` (`criar-${descricao}`): dois itens iguais em
+sequência não remontariam.
+
+### b. Guard de resposta atrasada compara com o último PEDIDO, não com o estado atual
+
+Abrir o detalhe de A e, antes de a resposta chegar, abrir o de B faz duas leituras correrem.
+Sem desempate, a resposta atrasada de A sobrescreve a de B — o drawer de B mostra o histórico
+de A. O guard tem de saber **o que foi pedido por último**, o que é `useRef` (não estado: não
+pinta tela e não pode disparar re-render):
+
+```tsx
+const pedido = useRef<number | null>(null)
+async function buscar(alvo: number) {
+  pedido.current = alvo
+  const res = await carregarDetalhe(alvo)
+  if (pedido.current !== alvo) return        // um pedido mais novo assumiu
+  setDetalhe(res.detalhe)
+}
+```
+
+⚠️ Comparar com o **detalhe já carregado** (`if (atual.id !== alvo) return atual`) parece
+equivalente e está **invertido**: descarta justamente a resposta certa, porque no momento em
+que B responde o estado ainda guarda A. Foi o bug pego na auto-auditoria da v5.6.0.
+
+### c. Lista com teto de linhas: a tela AVISA, não trunca calada
+
+RPC de listagem com `LIMIT`/`p_limite` devolve "as N mais recentes". Derivar dela algo que
+precisa ser **completo** (o histórico de um item, um total) trunca em silêncio quando o volume
+cresce, e nada acusa. Duas saídas, ambas usadas na v5.6.0: para o que precisa ser completo,
+chamar a RPC específica (`detalhe_ativo`, que também dá leitura numa transação só); para a
+lista em si, sinalizar na UI quando o teto foi batido.
+
 ## Ver também
 
 - **`ui-design-system`** — a receita visual completa do skeleton (tokens de cor neutra,

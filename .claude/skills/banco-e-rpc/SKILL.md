@@ -327,6 +327,38 @@ se auto-desativar nem para tirar o próprio acesso a `admin/acessos`.
   precedente da v4.17.1 na seção 1. `DROP` é destrutivo: confirmação + reversibilidade
   documentada (corpo salvo na migration de origem).
 
+### `CHECK` com `CASE` sobre enum: sem `ELSE false` é FAIL-OPEN
+
+Um CHECK que valida "quais campos cada tipo exige" é natural escrever como `CASE tipo WHEN
+'a' THEN <predicado> WHEN 'b' THEN … END`. **Sempre fechar em `ELSE false`.**
+
+`CASE` sem `ELSE` devolve **NULL** para um valor que nenhum ramo cobre — e **CHECK que avalia
+NULL é considerado SATISFEITO** pelo Postgres (a semântica é "rejeita só quando é
+comprovadamente falso"). O resultado: acrescentar um valor ao enum sem escrever o ramo
+correspondente faz a constraint **aceitar qualquer combinação** de campos para aquele valor.
+A defesa que parecia estar ali some sem erro nenhum.
+
+```sql
+CONSTRAINT mov_destino_por_tipo CHECK (
+  CASE tipo
+    WHEN 'transferencia' THEN area_destino_id IS NOT NULL AND detentor_destino_id IS NOT NULL
+    ...
+    ELSE false      -- ⬅ tipo novo sem ramo TRAVA o INSERT, em vez de passar batido
+  END
+)
+```
+
+O par que realmente protege é **enum fechado + um ramo por valor + `ELSE false`**. E se o mesmo
+contrato viver espelhado no TS (um mapa que decide quais campos o formulário mostra), a paridade
+precisa de **teste** lendo o SQL aplicado — comentário "as duas pontas mudam JUNTAS" não reprova
+nada. Precedente: v5.6.0, `paridade-sql.test.ts` compara enums, exigência por tipo e mapa de
+status derivado contra as migrations `0247`/`0248`.
+
+⚠️ Esse teste lê a migration **por nome de arquivo**. Como migration aplicada é registro
+imutável, uma alteração futura do objeto vem numa migration NOVA — e o teste continuaria
+aprovando um espelho obsoleto até alguém apontar os caminhos para ela. Deixar o aviso no
+próprio teste.
+
 ---
 
 ## 6. Verificação pós-push

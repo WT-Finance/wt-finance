@@ -6,6 +6,44 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.6.0] — 2026-08-10
+
+MINOR · **Gestão de Pessoas: Inventário de Ativos** — seção nova de sidebar e módulo novo. Migrations `0247`/`0248` (aditivas, aplicadas) · **ADR-0167**.
+
+### Adicionado — o inventário
+
+- **Seção nova na sidebar, "Gestão de Pessoas"** (ícone crachá), com o sub-item **Inventário de Ativos**. Rota `/gestao-pessoas/inventario`, área de permissão própria `gestao-pessoas/inventario` — **única de página**: quem edita a página cadastra e movimenta.
+- **Cadastro de máquinas e equipamentos** com ficha patrimonial documental: código (sequência `WG-0001` server-side, com override manual), categoria, descrição, nº de série, fornecedor, data e valor de aquisição, nota fiscal, estado de conservação, observações.
+- **Razão append-only de movimentações**, com oito tipos (cadastro, transferência, devolução ao estoque, envio e retorno de manutenção, empréstimo, baixa, reativação) e campos condicionais por tipo.
+- **Três abas**: Visão geral (contagens, custo histórico de aquisição, barras por categoria e por área, últimas movimentações), Ativos (tabela densa com busca e filtros) e Movimentações (o razão inteiro).
+- **Ficha em drawer** com timeline do histórico, origem→destino e marcador de registro retroativo.
+- **"Duplicar ativo"** e **"Salvar e cadastrar outro"** (retêm categoria, área, pessoa, fornecedor e valor; código, série e nota ficam em branco) — o parque inteiro será digitado numa sentada.
+- **Export CSV** das duas abas, no dialeto do Excel pt-BR (BOM UTF-8, separador `;`, decimal com vírgula, CRLF), exportando as linhas exibidas com os filtros atuais.
+
+### Decidido — o modelo (ADR-0167)
+
+- **Localização e status são DERIVADOS da última movimentação**, nunca colunas em `patrimonio.ativo`. Uma coluna espelho divergiria da cadeia na primeira movimentação retroativa — que é requisito, não exceção.
+- **A origem não é armazenada:** é o destino da anterior na cadeia, montada na leitura. Gravada como snapshot, uma retroativa a faria mentir.
+- **`atualizar_ativo` RECUSA localização** (`LOCALIZACAO_IMUTAVEL`); no formulário de edição os campos de área e detentor **não são renderizados**. É "movimentação ≠ correção de cadastro" virando código.
+- **Um ativo pode nascer em estoque** (decisão do Yan no checkpoint): cadastro **com** detentor → em uso; **sem** detentor → em estoque, derivado do mesmo registro. O `cadastro` é o único tipo que ramifica.
+- **"Custo histórico de aquisição"**, nunca "valor imobilizado": sem depreciação, e nenhum número desta tela entra em DRE ou Fluxo de Caixa. **Ativo sem valor não vira zero** — fica fora do somatório e sai com célula vazia no CSV.
+- **Detentor é tabela** (agregação "o que a Maria tem?"), **local e terceiro são texto livre** com datalist — assimetria deliberada. Detentor **sem vínculo** com usuário da plataforma.
+- **Área = departamento administrativo**, NÃO os setores Trips/Weddings/Corporativo.
+
+### Adicionado — redes que passam a reprovar sozinhas
+
+- **Varredura de navegação mecânica** (`nav-model.test.ts`, 56 casos). A invariante da seção nova pedia "checklist de regressão em cada rota"; o modelo de navegação saiu de dentro do `sidebar.tsx` para um módulo puro (`nav-model.ts`) e a varredura virou teste: lê o inventário de rotas **do disco** e reprova rota protegida órfã da sidebar, href apontando para rota inexistente, colisão de prefixo entre seções, e divergência entre **quem vê o item e quem alcança a rota**.
+- **Paridade SQL↔TS** (`paridade-sql.test.ts`, 18 casos). O contrato "tipo → destino/status" existe no banco (CHECK + função) e no cliente (que decide quais campos o modal mostra). Antes, "as duas pontas mudam JUNTAS" era comentário. Agora o teste lê o SQL aplicado e compara enums, exigência de cada campo nos 8 tipos e o mapa de status.
+- **Contrato do resumo × lista** (`rpc-contrato.test.ts`): a faixa de contagens e a tabela aparecem na mesma tela e derivam o estado por caminhos SQL diferentes; a igualdade virou caso de contrato, inclusive "as cinco situações fecham o total".
+
+### Verificado
+
+- **71 checagens ponta a ponta via REST + `service_role`** (o único caminho que executa o corpo da RPC): nomes de parâmetro de toda server action, schemas Zod contra retorno **populado**, os 8 tipos em sequência com o status conferido a cada passo, retroativa entrando no meio da cadeia sem mexer no estado atual, travas de baixa/reativação, CHECK por tipo, e `resumo` batendo com a lista ao centavo. Dados de teste removidos; base de volta a 0/0/0 com a sequência reiniciada.
+- **879 testes** · build, `tsc` e lint limpos · `revisor` e `revisor-db` com **0 CRÍTICO e 0 ALTO**.
+- ✅ **Resolve a falha de gate declarada na v5.5.2**: o caso "catálogo de áreas: banco ↔ app idênticos" do `rpc-contrato.test.ts` falhava em `main` porque `gestao-pessoas/inventario` já existia em `app.rbac_areas` (migration `0247`) e ainda não no código. Esta versão declara a área nas duas pontas — os 879 testes passam.
+
+---
+
 ## [5.5.2] — 2026-08-10
 
 PATCH · **Correção de um bug de ingestão que multiplicava por 1000 todo valor com 3 casas decimais** — distorcia a DRE e o Fluxo de Caixa a ponto de **inverter o sinal do resultado de 2024 e de 2025**. Sem migration · sem ADR (a regra durável foi para a skill `ingestao-planilhas` e para uma sonda mecânica).

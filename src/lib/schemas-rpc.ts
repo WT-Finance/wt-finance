@@ -317,3 +317,98 @@ export type AcervoDocumento = z.infer<typeof acervoDocSchema>
 
 /** acervo_listar → array de documentos, ordenado por título. */
 export const acervoListaSchema = z.array(acervoDocSchema)
+
+// ── Inventário de Ativos (v5.6.0, migration 0248) ────────────────────────────
+// Os schemas ESPELHAM o `jsonb_build_object` de cada RPC, não o tipo TS (o TS pode prometer
+// campo que a função não emite). Raiz com `.passthrough()` pela regra da casa: coluna extra
+// vinda do banco não deve falsear um drift que não existe.
+//
+// `data_movimentacao` e `data_aquisicao` são `date` puro no banco → chegam como 'YYYY-MM-DD'
+// (exibir com `fmtDate`, NUNCA com `fmtDataSP`, que aplicaria fuso a um dia sem hora).
+// `criado_em` é `timestamptz` → `fmtDataHoraSP`.
+
+const ativoFichaCampos = {
+  id:                 z.number(),
+  codigo:             z.string(),
+  categoria_id:       z.number(),
+  categoria_nome:     z.string(),
+  descricao:          z.string(),
+  numero_serie:       z.string().nullable(),
+  fornecedor:         z.string().nullable(),
+  data_aquisicao:     z.string().nullable(),
+  valor_aquisicao:    z.number().nullable(),
+  nota_fiscal:        z.string().nullable(),
+  estado_conservacao: z.enum(['novo', 'bom', 'regular', 'ruim']).nullable(),
+  obs:                z.string().nullable(),
+}
+
+const statusAtivo = z.enum(['em_uso', 'em_estoque', 'em_manutencao', 'emprestado', 'baixado'])
+
+/** patrimonio_listar_ativos → linhas com o estado DERIVADO da última movimentação. */
+export const patrimonioAtivosSchema = z.array(z.object({
+  ...ativoFichaCampos,
+  status:                 statusAtivo,
+  area_atual_nome:        z.string().nullable(),
+  detentor_atual_nome:    z.string().nullable(),
+  local_atual_texto:      z.string().nullable(),
+  ultima_movimentacao_em: z.string().nullable(),
+}).passthrough())
+
+/** Uma linha do razão, como `detalhe_ativo`/`listar_movimentacoes` a emitem.
+ *  `ativo_codigo`/`ativo_descricao` só vêm do razão global — daí `.optional()`, não
+ *  `.nullable()`: a chave AUSENTE reprovaria um schema apenas nullable. */
+export const patrimonioMovimentacaoSchema = z.object({
+  id:                    z.number(),
+  ativo_id:              z.number(),
+  ativo_codigo:          z.string().optional(),
+  ativo_descricao:       z.string().optional(),
+  tipo: z.enum([
+    'cadastro', 'transferencia', 'devolucao_estoque', 'envio_manutencao',
+    'retorno_manutencao', 'emprestimo', 'baixa', 'reativacao',
+  ]),
+  data_movimentacao:     z.string(),
+  area_destino_id:       z.number().nullable(),
+  area_destino_nome:     z.string().nullable(),
+  detentor_destino_id:   z.number().nullable(),
+  detentor_destino_nome: z.string().nullable(),
+  destino_texto:         z.string().nullable(),
+  motivo_baixa:          z.enum(['venda', 'descarte', 'perda', 'doacao', 'sinistro']).nullable(),
+  obs:                   z.string().nullable(),
+  registrado_por_rotulo: z.string(),
+  criado_em:             z.string(),
+}).passthrough()
+
+/** patrimonio_listar_movimentacoes → razão completo (mais recente primeiro). */
+export const patrimonioMovimentacoesSchema = z.array(patrimonioMovimentacaoSchema)
+
+/** patrimonio_detalhe_ativo → ficha + histórico, lidos numa única transação (invariante 10). */
+export const patrimonioDetalheSchema = z.object({
+  ficha:     z.object(ativoFichaCampos).passthrough(),
+  historico: z.array(patrimonioMovimentacaoSchema),
+}).passthrough()
+
+/** patrimonio_catalogos → o que os formulários precisam para montar seus combos. */
+export const patrimonioCatalogosSchema = z.object({
+  categorias: z.array(z.object({ id: z.number(), nome: z.string() })),
+  areas:      z.array(z.object({ id: z.number(), nome: z.string() })),
+  detentores: z.array(z.object({ id: z.number(), nome: z.string(), ativo: z.boolean() })),
+  locais:     z.array(z.string()),
+}).passthrough()
+
+/** patrimonio_resumo → agregados da Visão geral.
+ *  ⚠️ `custo_historico_aquisicao` é CUSTO HISTÓRICO de aquisição dos não-baixados — não é
+ *  "valor imobilizado", não tem depreciação e não entra em DRE nem em Fluxo de Caixa
+ *  (invariante 9). `sem_valor` conta os não-baixados sem valor informado, que ficam FORA
+ *  do somatório em vez de virarem zero. */
+export const patrimonioResumoSchema = z.object({
+  cadastrados:   z.number(),
+  em_uso:        z.number(),
+  em_estoque:    z.number(),
+  em_manutencao: z.number(),
+  emprestados:   z.number(),
+  baixados:      z.number(),
+  custo_historico_aquisicao: z.number(),
+  sem_valor:     z.number(),
+  por_categoria: z.array(z.object({ nome: z.string(), n: z.number() })),
+  por_area:      z.array(z.object({ nome: z.string(), n: z.number() })),
+}).passthrough()

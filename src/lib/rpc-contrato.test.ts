@@ -7,6 +7,8 @@ import {
   mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema, buscarPessoasSchema,
   acervoListaSchema, acervoDocSchema,
   metasListarSchema, metasRitmoDiarioSchema,
+  patrimonioAtivosSchema, patrimonioCatalogosSchema, patrimonioMovimentacoesSchema,
+  patrimonioResumoSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -444,6 +446,73 @@ describe('contrato — campoDefSchema preserva a regra de data (fontanaria layer
 // usam describe.skipIf(!ON), então sem .env.local o CI ficava VERDE sem rodar a parte de
 // segurança. Este teste SEMPRE roda: com REQUIRE_CONTRACT=1 (CI), FALHA se as credenciais
 // faltarem (os blocos online seriam pulados quando deveriam rodar). Local, sem a flag, passa.
+// ── Inventário de Ativos (v5.6.0, migrations 0247/0248) ──────────────────────
+// SÓ LEITURA. As RPCs de escrita são exercitadas fora do `npm test`, por bateria própria com
+// limpeza (criar ativo aqui deixaria lixo em produção e mexeria na sequência do código WG-XXXX).
+//
+// Os dois casos que importam:
+//   1. os SCHEMAS ZOD do app validam o retorno real — o `tsc` não vê shape de runtime;
+//   2. `resumo` e `listar_ativos` CONCORDAM. Os dois aparecem na MESMA tela (faixa de
+//      contagens acima, tabela abaixo) e derivam o estado por caminhos SQL diferentes. Se
+//      divergirem, a tela discorda de si mesma e ninguém sabe qual número está certo — é a
+//      lição da v5.3.1, virada caso de contrato em vez de nota de rodapé.
+//
+// Funciona com a base VAZIA (compara 0 com 0, e prova o shape) e passa a valer de verdade no
+// minuto em que o primeiro ativo real for cadastrado.
+describe.skipIf(!ON)('contrato RPC — Inventário de Ativos (leitura)', () => {
+  it('patrimonio_catalogos: shape valida e o seed dos catálogos está no ar', async () => {
+    const d = await rpc('patrimonio_catalogos', {})
+    const cat = patrimonioCatalogosSchema.parse(d)
+    // Seed da 0247, confirmado pelo Yan no checkpoint: 6 categorias e 7 áreas.
+    expect(cat.categorias.length).toBe(6)
+    expect(cat.areas.length).toBe(7)
+    expect(cat.categorias.map(c => c.nome)).toContain('Informática')
+  })
+
+  it('patrimonio_listar_ativos e patrimonio_listar_movimentacoes: shape valida', async () => {
+    patrimonioAtivosSchema.parse(await rpc('patrimonio_listar_ativos', {}))
+    patrimonioMovimentacoesSchema.parse(await rpc('patrimonio_listar_movimentacoes', { p_limite: 50 }))
+  })
+
+  it('patrimonio_resumo CONCORDA com a agregação de patrimonio_listar_ativos', async () => {
+    const resumo = patrimonioResumoSchema.parse(await rpc('patrimonio_resumo', {}))
+    const lista = patrimonioAtivosSchema.parse(await rpc('patrimonio_listar_ativos', {}))
+    const conta = (s: string) => lista.filter(l => l.status === s).length
+
+    expect(resumo.cadastrados).toBe(lista.length)
+    expect(resumo.em_uso).toBe(conta('em_uso'))
+    expect(resumo.em_estoque).toBe(conta('em_estoque'))
+    expect(resumo.em_manutencao).toBe(conta('em_manutencao'))
+    expect(resumo.emprestados).toBe(conta('emprestado'))
+    expect(resumo.baixados).toBe(conta('baixado'))
+    // As cinco situações têm de FECHAR o total — foi por isso que "Emprestados" entrou na
+    // faixa de contagens (o briefing não a listava e a soma não batia).
+    const soma = resumo.em_uso + resumo.em_estoque + resumo.em_manutencao
+      + resumo.emprestados + resumo.baixados
+    expect(soma).toBe(resumo.cadastrados)
+
+    // Custo histórico: soma dos NÃO-BAIXADOS, e ativo sem valor fica FORA em vez de virar 0.
+    const vivos = lista.filter(l => l.status !== 'baixado')
+    const custo = vivos.reduce((s, l) => s + (l.valor_aquisicao ?? 0), 0)
+    expect(Math.abs(resumo.custo_historico_aquisicao - custo)).toBeLessThan(0.005)
+    expect(resumo.sem_valor).toBe(vivos.filter(l => l.valor_aquisicao == null).length)
+
+    // As barras da Visão geral também contam só os vivos.
+    expect(resumo.por_categoria.reduce((s, c) => s + c.n, 0)).toBe(vivos.length)
+    expect(resumo.por_area.reduce((s, a) => s + a.n, 0)).toBe(vivos.length)
+  })
+
+  it('p_status filtra pelo estado DERIVADO, não por coluna', async () => {
+    // Não existe coluna `status` em patrimonio.ativo (invariante 1): o filtro roda sobre a
+    // derivação. Se alguém criasse a coluna espelho, este caso continuaria passando — o que
+    // pega a coluna espelho é o revisor-db; aqui provamos que o filtro e a lista concordam.
+    const todos = patrimonioAtivosSchema.parse(await rpc('patrimonio_listar_ativos', {}))
+    const soUso = patrimonioAtivosSchema.parse(await rpc('patrimonio_listar_ativos', { p_status: 'em_uso' }))
+    expect(soUso.every(l => l.status === 'em_uso')).toBe(true)
+    expect(soUso.length).toBe(todos.filter(l => l.status === 'em_uso').length)
+  })
+})
+
 describe('gate de contrato — online obrigatório quando exigido (M10)', () => {
   it('REQUIRE_CONTRACT=1 exige credenciais (online não pode ser pulado)', () => {
     const exigido = process.env.REQUIRE_CONTRACT === '1'
