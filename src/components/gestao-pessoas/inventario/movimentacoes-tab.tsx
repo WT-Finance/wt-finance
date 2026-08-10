@@ -6,11 +6,13 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import EmptyState from '@/components/shared/empty-state'
 import { Input, Select } from '@/components/ui/field'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
-import { fmtDate } from '@/lib/fmt'
+import { fmtDate, hojeSP } from '@/lib/fmt'
+import { nomeArquivo } from '@/lib/patrimonio/csv'
 import { TipoBadge } from './status-badge'
 import {
   ROTULO_TIPO, ehRetroativa, ordenarCronologico, rotuloDestino, rotuloOrigem,
 } from './derivar'
+import { baixarCsv, csvDeMovimentacoes } from './exportar'
 import type { AtivoLista, Movimentacao, TipoMovimentacao } from './tipos'
 
 // Aba "Movimentações": o razão inteiro, do mais recente para o mais antigo. A ORIGEM de cada
@@ -35,13 +37,9 @@ interface Props {
   /** A RPC bateu o teto de linhas — a aba AVISA em vez de truncar em silêncio. */
   noTeto?: boolean
   onAbrirFicha: (id: number) => void
-  /** Ausente = a ação ainda não existe (M5) → o botão aparece DESABILITADO, não morto. */
-  onExportar?: () => void
 }
 
-export default function MovimentacoesTab({
-  ativos, movimentacoes, noTeto, onAbrirFicha, onExportar,
-}: Props) {
+export default function MovimentacoesTab({ ativos, movimentacoes, noTeto, onAbrirFicha }: Props) {
   const [busca, setBusca]   = useState('')
   const [fTipo, setFTipo]   = useState('')
   const [rolado, setRolado] = useState(false)
@@ -98,9 +96,18 @@ export default function MovimentacoesTab({
         <div className="ml-auto">
           <button
             type="button"
-            onClick={onExportar}
-            disabled={!onExportar}
-            title={onExportar ? undefined : 'Export entra na missão M5'}
+            onClick={() => baixarCsv(
+              nomeArquivo('inventario-movimentacoes', hojeSP()),
+              csvDeMovimentacoes(filtradas.map(({ mov, origem }) => ({
+                mov,
+                origem,
+                retroativa: ehRetroativa(mov),
+                codigo: codigoDe(mov, porId),
+                descricao: descricaoDe(mov, porId),
+              }))),
+            )}
+            disabled={filtradas.length === 0}
+            title="Exporta as linhas exibidas (com os filtros atuais) para abrir no Excel"
             className={`${PILL} ${PILL_NEUTRO}`}
           >
             <Download size={13} /> Exportar CSV

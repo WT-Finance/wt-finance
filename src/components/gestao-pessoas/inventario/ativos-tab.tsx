@@ -7,9 +7,11 @@ import EmptyState from '@/components/shared/empty-state'
 import { ValorContabil } from '@/components/shared/valor-contabil'
 import { Input, Select } from '@/components/ui/field'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
-import { fmtDate } from '@/lib/fmt'
+import { fmtDate, hojeSP } from '@/lib/fmt'
+import { nomeArquivo } from '@/lib/patrimonio/csv'
 import { StatusBadge } from './status-badge'
 import { ROTULO_STATUS } from './derivar'
+import { baixarCsv, csvDeAtivos } from './exportar'
 import type { AreaPatrimonio, AtivoLista, CategoriaPatrimonio, StatusAtivo } from './tipos'
 
 // Aba "Ativos": tabela densa com busca livre, filtros e status DERIVADO. Receita de tabela
@@ -24,12 +26,10 @@ interface Props {
   categorias: CategoriaPatrimonio[]
   areas: AreaPatrimonio[]
   onAbrirFicha: (id: number) => void
-  /** Ausente = a ação ainda não existe (M0) → o botão aparece DESABILITADO, não morto. */
-  onNovoAtivo?: () => void
-  onExportar?: () => void
+  onNovoAtivo: () => void
 }
 
-export default function AtivosTab({ ativos, categorias, areas, onAbrirFicha, onNovoAtivo, onExportar }: Props) {
+export default function AtivosTab({ ativos, categorias, areas, onAbrirFicha, onNovoAtivo }: Props) {
   const [busca, setBusca]         = useState('')
   const [fCategoria, setFCategoria] = useState('')
   const [fArea, setFArea]         = useState('')
@@ -79,9 +79,9 @@ export default function AtivosTab({ ativos, categorias, areas, onAbrirFicha, onN
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
-            onClick={onExportar}
-            disabled={!onExportar}
-            title={onExportar ? undefined : 'Export entra na missão M5'}
+            onClick={() => baixarCsv(nomeArquivo('inventario-ativos', hojeSP()), csvDeAtivos(filtrados))}
+            disabled={filtrados.length === 0}
+            title="Exporta as linhas exibidas (com os filtros atuais) para abrir no Excel"
             className={`${PILL} ${PILL_NEUTRO}`}
           >
             <Download size={13} /> Exportar CSV
@@ -89,8 +89,6 @@ export default function AtivosTab({ ativos, categorias, areas, onAbrirFicha, onN
           <button
             type="button"
             onClick={onNovoAtivo}
-            disabled={!onNovoAtivo}
-            title={onNovoAtivo ? undefined : 'Formulário de cadastro entra na missão M3'}
             className={`${PILL} ${PILL_PRIMARIA}`}
             style={PILL_PRIMARIA_STYLE}
           >
