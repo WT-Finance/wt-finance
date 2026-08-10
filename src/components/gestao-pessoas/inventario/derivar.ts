@@ -36,12 +36,15 @@ export const ROTULO_MOTIVO_BAIXA: Record<MotivoBaixa, string> = {
 }
 
 /**
- * Status é função APENAS do tipo da última movimentação (briefing §Tipos de movimentação).
- * Oito tipos colapsam em cinco status — de propósito: nada além do tipo entra na conta, então
- * o status nunca pode divergir do razão.
+ * Status sai da ÚLTIMA movimentação — do tipo dela e, só no `cadastro`, de ter ou não detentor.
+ *
+ * O briefing dizia "status derivado do tipo"; o Yan decidiu (10/08) que **um ativo pode nascer
+ * direto no estoque**, e aí o `cadastro` tem dois desfechos. A alternativa seria um tipo novo
+ * (`cadastro_estoque`), que duplicaria a abertura no enum e no CHECK sem ganhar nada. O que
+ * importa da invariante 1 continua de pé: o estado vem do RAZÃO, lido do mesmo registro que
+ * já está lá — nenhuma coluna espelho, nenhum campo a mais para divergir.
  */
-const STATUS_POR_TIPO: Record<TipoMovimentacao, StatusAtivo> = {
-  cadastro:           'em_uso',
+const STATUS_POR_TIPO: Record<Exclude<TipoMovimentacao, 'cadastro'>, StatusAtivo> = {
   transferencia:      'em_uso',
   retorno_manutencao: 'em_uso',
   reativacao:         'em_uso',
@@ -58,8 +61,9 @@ const STATUS_POR_TIPO: Record<TipoMovimentacao, StatusAtivo> = {
  */
 export type CampoDestino = 'area' | 'detentor' | 'texto' | 'motivo_baixa'
 export const DESTINO_POR_TIPO: Record<TipoMovimentacao, Partial<Record<CampoDestino, 'obrigatorio' | 'opcional'>>> = {
-  // Abertura: o ativo nasce numa área, com um detentor (invariante 5).
-  cadastro:           { area: 'obrigatorio', detentor: 'obrigatorio' },
+  // Abertura (invariante 5): o ativo nasce numa ÁREA; o detentor é OPCIONAL e é ele que decide
+  // se o ativo nasce em uso ou em estoque (decisão do Yan, 10/08).
+  cadastro:           { area: 'obrigatorio', detentor: 'opcional' },
   transferencia:      { area: 'obrigatorio', detentor: 'obrigatorio' },
   // Volta ao estoque: fica SEM detentor — a lista mostra travessão, não erro.
   devolucao_estoque:  { area: 'obrigatorio' },
@@ -77,7 +81,16 @@ export const TIPOS_MOVIMENTACAO: TipoMovimentacao[] = [
   'emprestimo', 'baixa', 'reativacao',
 ]
 
-export const statusDoTipo = (tipo: TipoMovimentacao): StatusAtivo => STATUS_POR_TIPO[tipo]
+/**
+ * Status produzido por UMA movimentação. Só o `cadastro` ramifica (ver `STATUS_POR_TIPO`);
+ * é a mesma conta que a RPC `listar_ativos` fará em SQL — manter as duas em espelho.
+ */
+export function statusDaMovimentacao(m: Pick<Movimentacao, 'tipo' | 'detentor_destino_id' | 'detentor_destino_nome'>): StatusAtivo {
+  if (m.tipo === 'cadastro') {
+    return (m.detentor_destino_id != null || m.detentor_destino_nome != null) ? 'em_uso' : 'em_estoque'
+  }
+  return STATUS_POR_TIPO[m.tipo]
+}
 
 /**
  * Ordenação canônica do razão: `(data_movimentacao, criado_em)` ASC — a mesma dos três lugares
@@ -120,7 +133,7 @@ export function derivarLinha(ficha: AtivoFicha, movs: Movimentacao[]): AtivoList
   }
   return {
     ...ficha,
-    status: statusDoTipo(ultima.tipo),
+    status: statusDaMovimentacao(ultima),
     area_atual_nome: ultima.area_destino_nome,
     detentor_atual_nome: ultima.detentor_destino_nome,
     local_atual_texto: ultima.destino_texto,
@@ -138,6 +151,11 @@ export function rotuloDestino(m: Movimentacao): string {
   if (m.detentor_destino_nome) partes.push(m.detentor_destino_nome)
   if (m.destino_texto) partes.push(m.destino_texto)
   if (partes.length === 0) return m.tipo === 'devolucao_estoque' ? 'Estoque' : '—'
+  // Sem detentor, "Tecnologia" sozinho não diz que o item está PARADO. Os dois casos em que
+  // isso acontece (devolução, e cadastro que nasce no estoque) ganham o sufixo explícito.
+  if (!m.detentor_destino_nome && statusDaMovimentacao(m) === 'em_estoque') {
+    return `${partes.join(' / ')} · estoque`
+  }
   return partes.join(' / ')
 }
 

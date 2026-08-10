@@ -60,6 +60,7 @@ export const FICHAS: AtivoFicha[] = [
   { id: 12, codigo: 'WG-0012', categoria_id: 5, categoria_nome: 'Veículos',    descricao: 'Fiat Fiorino 1.4 Furgão',     numero_serie: 'PLACA GHT-2C41', fornecedor: 'Fiat Itavema',    data_aquisicao: '2023-04-03', valor_aquisicao: 89900.00, nota_fiscal: 'NF 100233', estado_conservacao: 'regular', obs: null },
   { id: 13, codigo: 'WG-0013', categoria_id: 1, categoria_nome: 'Informática', descricao: 'Notebook Lenovo ThinkPad E14', numero_serie: 'LT-E14-2207', fornecedor: 'Lenovo Brasil',     data_aquisicao: '2022-06-21', valor_aquisicao: 5890.00,  nota_fiscal: 'NF 331900', estado_conservacao: 'ruim',    obs: null },
   { id: 14, codigo: 'WG-0014', categoria_id: 6, categoria_nome: 'Outros',      descricao: 'Cafeteira Nespresso Gemini',  numero_serie: 'NG-4410',     fornecedor: 'Nespresso',          data_aquisicao: '2025-02-14', valor_aquisicao: 2890.00,  nota_fiscal: 'NF 887400', estado_conservacao: 'bom',     obs: null },
+  { id: 15, codigo: 'WG-0015', categoria_id: 1, categoria_nome: 'Informática', descricao: 'Notebook Dell Latitude 5450', numero_serie: 'DL5450-1902', fornecedor: 'Dell Brasil',        data_aquisicao: '2026-08-04', valor_aquisicao: 7990.00,  nota_fiscal: 'NF 129877', estado_conservacao: 'novo',    obs: 'Reposição de estoque' },
 ]
 
 // Atalhos para o razão ficar legível.
@@ -134,6 +135,10 @@ const RAZAO: Mov[] = [
 
   // WG-0014 — copa
   { id: 25, ativo: 14, tipo: 'cadastro',           data: '2025-02-14', area: 7, detentor: 5, criado: '2025-02-14T12:00:00Z' },
+
+  // WG-0015 — NASCE EM ESTOQUE: cadastro com área e SEM detentor (decisão do Yan, 10/08).
+  // É o caso que prova que a abertura tem dois desfechos; a lista deve mostrar travessão.
+  { id: 26, ativo: 15, tipo: 'cadastro',           data: '2026-08-04', area: 6, obs: 'Comprado como reposição, sem destinatário definido', criado: '2026-08-04T14:30:00Z' },
 ]
 
 export const MOVIMENTACOES: Movimentacao[] = RAZAO.map(m => ({
