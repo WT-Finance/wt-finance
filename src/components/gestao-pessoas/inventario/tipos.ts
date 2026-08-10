@@ -51,6 +51,10 @@ export interface Detentor {
 export interface Movimentacao {
   id: number
   ativo_id: number
+  /** Só o razão GLOBAL (`listar_movimentacoes`) traz o ativo junto — o histórico de uma ficha
+   *  não repete o que o cabeçalho do drawer já diz. Por isso opcional, nunca `| null`. */
+  ativo_codigo?: string
+  ativo_descricao?: string
   tipo: TipoMovimentacao
   /** `date` puro (sem fuso) — exibir com `fmtDate`, nunca com `fmtDataSP`. */
   data_movimentacao: string
@@ -98,4 +102,32 @@ export interface AtivoLista extends AtivoFicha {
 export interface AtivoDetalhe {
   ficha: AtivoFicha
   historico: Movimentacao[]
+}
+
+/** O que os formulários precisam para montar seus combos (`patrimonio_catalogos`). */
+export interface CatalogosInventario {
+  categorias: CategoriaPatrimonio[]
+  areas: AreaPatrimonio[]
+  detentores: Detentor[]
+  /** Locais/terceiros já usados em texto livre — viram sugestão de datalist. */
+  locais: string[]
+}
+
+/**
+ * Agregados da Visão geral (`patrimonio_resumo`).
+ * ⚠️ `custo_historico_aquisicao` é o custo histórico de aquisição dos NÃO-BAIXADOS
+ * (invariante 9): sem depreciação, sem relação com a contabilidade. `sem_valor` são os
+ * não-baixados sem valor informado — ficam FORA do somatório em vez de virarem zero.
+ */
+export interface ResumoInventario {
+  cadastrados: number
+  em_uso: number
+  em_estoque: number
+  em_manutencao: number
+  emprestados: number
+  baixados: number
+  custo_historico_aquisicao: number
+  sem_valor: number
+  por_categoria: { nome: string; n: number }[]
+  por_area: { nome: string; n: number }[]
 }

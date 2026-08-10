@@ -6,8 +6,10 @@ import Button from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/field'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { fmtDate, hojeSP } from '@/lib/fmt'
+import { registrarMovimentacao } from '@/app/gestao-pessoas/inventario/actions'
 import {
-  DESTINO_POR_TIPO, ROTULO_MOTIVO_BAIXA, ROTULO_TIPO, rotuloDestino, tiposPermitidos,
+  DESTINO_POR_TIPO, ROTULO_MOTIVO_BAIXA, ROTULO_STATUS, ROTULO_TIPO, rotuloDestino,
+  tiposPermitidos,
 } from './derivar'
 import type {
   AreaPatrimonio, AtivoLista, Detentor, MotivoBaixa, Movimentacao, TipoMovimentacao,
@@ -21,17 +23,6 @@ import type {
 
 const MOTIVOS: MotivoBaixa[] = ['venda', 'descarte', 'perda', 'doacao', 'sinistro']
 
-/** Payload de uma movimentação nova — o que a RPC `registrar_movimentacao` receberá na M4. */
-export interface NovaMovimentacao {
-  tipo: TipoMovimentacao
-  data_movimentacao: string
-  area_destino_nome: string | null
-  detentor_destino_nome: string | null
-  destino_texto: string | null
-  motivo_baixa: MotivoBaixa | null
-  obs: string | null
-}
-
 interface Props {
   ativo: AtivoLista
   /** Último destino conhecido — exibido como ORIGEM (derivada, nunca gravada). */
@@ -40,23 +31,25 @@ interface Props {
   detentores: Detentor[]
   locaisSugeridos: string[]
   onFechar: () => void
-  onRegistrar: (dados: NovaMovimentacao) => void
+  /** Registrada com sucesso: a página recarrega o razão e o estado derivado sai de lá. */
+  onRegistrada: (mensagem: string) => void
 }
 
 export default function MovimentacaoModal({
-  ativo, ultimaMovimentacao, areas, detentores, locaisSugeridos, onFechar, onRegistrar,
+  ativo, ultimaMovimentacao, areas, detentores, locaisSugeridos, onFechar, onRegistrada,
 }: Props) {
   const permitidos = tiposPermitidos(ativo.status)
   const [tipo, setTipo] = useState<TipoMovimentacao>(permitidos[0])
   // O modal só monta por interação do usuário (nunca no SSR), então `hojeSP()` no
   // initializer não corre risco de divergência de hidratação.
   const [data, setData] = useState(() => hojeSP())
-  const [area, setArea] = useState('')
+  const [areaId, setAreaId] = useState('')
   const [detentor, setDetentor] = useState('')
   const [texto, setTexto] = useState('')
   const [motivo, setMotivo] = useState<MotivoBaixa>('venda')
   const [obs, setObs] = useState('')
   const [erro, setErro] = useState<string | null>(null)
+  const [salvando, setSalvando] = useState(false)
 
   const idDetentores = useId()
   const idLocais     = useId()
@@ -69,11 +62,11 @@ export default function MovimentacaoModal({
     [detentores],
   )
 
-  // Pessoa digitada que ainda não existe = cadastro inline (a RPC `upsert_detentor` cuida na M4).
+  // Pessoa digitada que ainda não existe = cadastro inline (`upsert_detentor`, no servidor).
   const detentorNovo = detentor.trim() !== '' && !nomesDetentores.includes(detentor.trim())
 
-  function submeter() {
-    if (exige.area === 'obrigatorio' && area.trim() === '') {
+  async function submeter() {
+    if (exige.area === 'obrigatorio' && areaId === '') {
       setErro('Escolha a área de destino.'); return
     }
     if (exige.detentor === 'obrigatorio' && detentor.trim() === '') {
@@ -83,24 +76,38 @@ export default function MovimentacaoModal({
       setErro(tipo === 'envio_manutencao' ? 'Informe a assistência ou o fornecedor.' : 'Informe o destino.'); return
     }
     if (data.trim() === '') { setErro('Informe a data da movimentação.'); return }
+
     setErro(null)
-    onRegistrar({
+    setSalvando(true)
+    const nome = detentor.trim()
+    const existente = detentores.find(d => d.nome === nome)
+    // Campo que o tipo NÃO admite vai nulo — a mesma tabela `DESTINO_POR_TIPO` que decide o
+    // que aparece decide o que é enviado. O CHECK por tipo do banco é a barreira final.
+    const res = await registrarMovimentacao({
+      ativo_id:              ativo.id,
       tipo,
-      data_movimentacao: data,
-      area_destino_nome:     exige.area     ? (area.trim()     || null) : null,
-      detentor_destino_nome: exige.detentor ? (detentor.trim() || null) : null,
-      destino_texto:         exige.texto    ? (texto.trim()    || null) : null,
+      data_movimentacao:     data,
+      area_destino_id:       exige.area     && areaId !== '' ? Number(areaId) : null,
+      detentor_destino_id:   exige.detentor ? (existente?.id ?? null) : null,
+      detentor_destino_nome: exige.detentor && !existente ? (nome || null) : null,
+      destino_texto:         exige.texto    ? (texto.trim() || null) : null,
       motivo_baixa:          exige.motivo_baixa ? motivo : null,
       obs: obs.trim() || null,
     })
+    setSalvando(false)
+
+    if (!res.ok) { setErro(res.erro); return }
+    onRegistrada(`${ROTULO_TIPO[tipo]} registrada — ${ativo.codigo} está ${ROTULO_STATUS[res.status].toLowerCase()}.`)
   }
 
   const rodape = (
     <div>
       {erro && <FaixaMensagem tipo="erro" texto={erro} onFechar={() => setErro(null)} />}
       <div className="flex justify-end gap-2">
-        <Button variant="contorno" size="sm" onClick={onFechar}>Cancelar</Button>
-        <Button variant="solido" size="sm" onClick={submeter}>Registrar movimentação</Button>
+        <Button variant="contorno" size="sm" onClick={onFechar} disabled={salvando}>Cancelar</Button>
+        <Button variant="solido" size="sm" onClick={submeter} disabled={salvando}>
+          {salvando ? 'Registrando…' : 'Registrar movimentação'}
+        </Button>
       </div>
     </div>
   )
@@ -153,9 +160,9 @@ export default function MovimentacaoModal({
             <span className="text-xs font-semibold text-zinc-600">
               Área de destino {exige.area === 'obrigatorio' && '*'}
             </span>
-            <Select value={area} onChange={e => setArea(e.target.value)}>
+            <Select value={areaId} onChange={e => setAreaId(e.target.value)}>
               <option value="">Selecione…</option>
-              {areas.map(a => <option key={a.id} value={a.nome}>{a.nome}</option>)}
+              {areas.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
             </Select>
             <span className="text-2xs text-[var(--text-subtle)]">Departamento administrativo.</span>
           </label>

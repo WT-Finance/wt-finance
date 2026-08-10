@@ -7,7 +7,7 @@ import EmptyState from '@/components/shared/empty-state'
 import { fmtBRL2, fmtDate } from '@/lib/fmt'
 import { TipoBadge } from './status-badge'
 import { ordenarCronologico, rotuloDestino, rotuloOrigem } from './derivar'
-import type { AtivoLista, Movimentacao, StatusAtivo } from './tipos'
+import type { AtivoLista, Movimentacao, ResumoInventario } from './tipos'
 
 // Aba "Visão geral": contagens, distribuição por categoria e por área, e as últimas
 // movimentações. Tela de plataforma ⇒ tokens neutros; barras em --action-soft-border
@@ -77,34 +77,22 @@ function PainelBarras({ titulo, dados }: { titulo: string; dados: { nome: string
   )
 }
 
-function contar(ativos: AtivoLista[], status: StatusAtivo): number {
-  return ativos.filter(a => a.status === status).length
-}
-
-function agrupar(ativos: AtivoLista[], chave: (a: AtivoLista) => string | null): { nome: string; n: number }[] {
-  const mapa = new Map<string, number>()
-  for (const a of ativos) {
-    const k = chave(a) ?? 'Sem área'
-    mapa.set(k, (mapa.get(k) ?? 0) + 1)
-  }
-  return [...mapa.entries()].map(([nome, n]) => ({ nome, n })).sort((x, y) => y.n - x.n)
-}
-
 interface Props {
+  /** Agregados vindos de `patrimonio_resumo` — a MESMA derivação de estado que a lista usa.
+   *  `null` = a leitura falhou; a faixa de contagens omite em vez de mostrar zeros falsos
+   *  (invariante 14: seção degrada, página viva). */
+  resumo: ResumoInventario | null
   ativos: AtivoLista[]
   movimentacoes: Movimentacao[]
   onAbrirFicha: (id: number) => void
 }
 
-export default function VisaoGeralTab({ ativos, movimentacoes, onAbrirFicha }: Props) {
-  const naoBaixados = useMemo(() => ativos.filter(a => a.status !== 'baixado'), [ativos])
-
-  const custoHistorico = useMemo(
-    // Ativo sem valor NÃO vira zero no somatório: entra como ausente e o total ignora.
-    () => naoBaixados.reduce((s, a) => s + (a.valor_aquisicao ?? 0), 0),
-    [naoBaixados],
-  )
-  const semValor = naoBaixados.filter(a => a.valor_aquisicao == null).length
+export default function VisaoGeralTab({ resumo, ativos, movimentacoes, onAbrirFicha }: Props) {
+  // Os números vêm do BANCO, não de uma segunda conta no cliente. Contar aqui a partir da
+  // lista daria dois totais para a mesma coisa na mesma tela — e o dia em que discordassem
+  // (filtro novo na RPC, teto de linhas) ninguém saberia qual dos dois está certo.
+  // A igualdade `resumo` × agregação de `listar_ativos` é caso de contrato (rpc-contrato.test).
+  const naoBaixados = resumo ? resumo.cadastrados - resumo.baixados : 0
 
   // Últimas movimentações: a origem de cada uma é derivada da cadeia DO SEU ATIVO.
   const recentes = useMemo(() => {
@@ -125,20 +113,22 @@ export default function VisaoGeralTab({ ativos, movimentacoes, onAbrirFicha }: P
       .slice(0, 8)
   }, [movimentacoes])
 
-  const codigoDe = (id: number) => ativos.find(a => a.id === id)?.codigo ?? '—'
-  const descricaoDe = (id: number) => ativos.find(a => a.id === id)?.descricao ?? ''
+  const codigoDe = (m: Movimentacao) => m.ativo_codigo ?? ativos.find(a => a.id === m.ativo_id)?.codigo ?? '—'
+  const descricaoDe = (m: Movimentacao) => m.ativo_descricao ?? ativos.find(a => a.id === m.ativo_id)?.descricao ?? ''
 
   return (
     <div className="space-y-5">
       {/* 6 contagens: as CINCO situações somam o total — sem "emprestados" a soma não fecharia. */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-        <Tile rotulo="Ativos cadastrados" valor={String(ativos.length)} />
-        <Tile rotulo="Em uso"             valor={String(contar(ativos, 'em_uso'))} />
-        <Tile rotulo="Em estoque"         valor={String(contar(ativos, 'em_estoque'))} />
-        <Tile rotulo="Em manutenção"      valor={String(contar(ativos, 'em_manutencao'))} />
-        <Tile rotulo="Emprestados"        valor={String(contar(ativos, 'emprestado'))} />
-        <Tile rotulo="Baixados"           valor={String(contar(ativos, 'baixado'))} />
-      </div>
+      {resumo && (
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+          <Tile rotulo="Ativos cadastrados" valor={String(resumo.cadastrados)} />
+          <Tile rotulo="Em uso"             valor={String(resumo.em_uso)} />
+          <Tile rotulo="Em estoque"         valor={String(resumo.em_estoque)} />
+          <Tile rotulo="Em manutenção"      valor={String(resumo.em_manutencao)} />
+          <Tile rotulo="Emprestados"        valor={String(resumo.emprestados)} />
+          <Tile rotulo="Baixados"           valor={String(resumo.baixados)} />
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="rounded-xl bg-white shadow-sm px-5 py-4">
@@ -149,11 +139,14 @@ export default function VisaoGeralTab({ ativos, movimentacoes, onAbrirFicha }: P
             <Ajuda rotulo="Custo histórico de aquisição" texto={AJUDA_CUSTO} />
           </div>
           <p className="mt-2 text-2xl font-extrabold tabular-nums leading-none text-zinc-800">
-            {fmtBRL2(custoHistorico)}
+            {resumo ? fmtBRL2(resumo.custo_historico_aquisicao) : '—'}
           </p>
           <p className="mt-1.5 text-2xs text-[var(--text-subtle)]">
-            {naoBaixados.length} ativos não baixados
-            {semValor > 0 && ` · ${semValor} sem valor informado (fora do total)`}
+            {resumo
+              ? `${naoBaixados} ativos não baixados${
+                  resumo.sem_valor > 0 ? ` · ${resumo.sem_valor} sem valor informado (fora do total)` : ''
+                }`
+              : 'Não foi possível carregar os agregados.'}
           </p>
         </div>
         <div className="rounded-xl bg-white shadow-sm px-5 py-4 flex flex-col justify-center">
@@ -164,9 +157,10 @@ export default function VisaoGeralTab({ ativos, movimentacoes, onAbrirFicha }: P
         </div>
       </div>
 
+      {/* Barras dos NÃO-BAIXADOS, agrupadas no SQL (o resumo já devolve ordenado por volume). */}
       <div className="grid gap-3 md:grid-cols-2">
-        <PainelBarras titulo="Ativos por categoria" dados={agrupar(naoBaixados, a => a.categoria_nome)} />
-        <PainelBarras titulo="Ativos por área"      dados={agrupar(naoBaixados, a => a.area_atual_nome)} />
+        <PainelBarras titulo="Ativos por categoria" dados={resumo?.por_categoria ?? []} />
+        <PainelBarras titulo="Ativos por área"      dados={resumo?.por_area ?? []} />
       </div>
 
       <div className="rounded-xl bg-white shadow-sm">
@@ -188,10 +182,10 @@ export default function VisaoGeralTab({ ativos, movimentacoes, onAbrirFicha }: P
                     {fmtDate(mov.data_movimentacao)}
                   </td>
                   <td className="py-2.5 px-3 w-[96px] text-xs font-medium tabular-nums text-zinc-600">
-                    {codigoDe(mov.ativo_id)}
+                    {codigoDe(mov)}
                   </td>
-                  <td className="py-2.5 px-3 truncate text-zinc-700" title={descricaoDe(mov.ativo_id)}>
-                    {descricaoDe(mov.ativo_id)}
+                  <td className="py-2.5 px-3 truncate text-zinc-700" title={descricaoDe(mov)}>
+                    {descricaoDe(mov)}
                   </td>
                   <td className="py-2.5 px-3 w-[184px]"><TipoBadge tipo={mov.tipo} /></td>
                   <td className="py-2.5 pl-3 pr-5 truncate text-zinc-600">

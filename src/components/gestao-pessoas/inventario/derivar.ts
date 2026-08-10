@@ -6,6 +6,7 @@
 
 import type {
   AtivoLista, Movimentacao, StatusAtivo, TipoMovimentacao, AtivoFicha, MotivoBaixa,
+  EstadoConservacao,
 } from './tipos'
 
 export const ROTULO_TIPO: Record<TipoMovimentacao, string> = {
@@ -27,6 +28,11 @@ export const ROTULO_STATUS: Record<StatusAtivo, string> = {
   baixado:       'Baixado',
 }
 
+/** Rótulos do enum de conservação — ficha (leitura) e formulário (escrita) leem daqui. */
+export const ROTULO_ESTADO_CONSERVACAO: Record<EstadoConservacao, string> = {
+  novo: 'Novo', bom: 'Bom', regular: 'Regular', ruim: 'Ruim',
+}
+
 export const ROTULO_MOTIVO_BAIXA: Record<MotivoBaixa, string> = {
   venda:    'Venda',
   descarte: 'Descarte',
@@ -44,7 +50,7 @@ export const ROTULO_MOTIVO_BAIXA: Record<MotivoBaixa, string> = {
  * importa da invariante 1 continua de pé: o estado vem do RAZÃO, lido do mesmo registro que
  * já está lá — nenhuma coluna espelho, nenhum campo a mais para divergir.
  */
-const STATUS_POR_TIPO: Record<Exclude<TipoMovimentacao, 'cadastro'>, StatusAtivo> = {
+export const STATUS_POR_TIPO: Record<Exclude<TipoMovimentacao, 'cadastro'>, StatusAtivo> = {
   transferencia:      'em_uso',
   retorno_manutencao: 'em_uso',
   reativacao:         'em_uso',
@@ -115,8 +121,13 @@ export function ultimaMovimentacao(movs: Movimentacao[]): Movimentacao | null {
 
 /**
  * Ficha + razão → linha da lista com estado derivado.
- * É o equivalente em TS do `DISTINCT ON (ativo_id) … ORDER BY data_movimentacao DESC, criado_em DESC`
- * que a RPC `listar_ativos` fará na M1.
+ *
+ * É o equivalente em TS do `DISTINCT ON (ativo_id) … ORDER BY data_movimentacao DESC,
+ * criado_em DESC` da RPC `listar_ativos`. Desde a M3 a TELA não chama esta função — o estado
+ * derivado vem sempre do banco, para não haver duas contas para o mesmo status. Ela permanece
+ * como a ESPECIFICAÇÃO EXECUTÁVEL dessa derivação: é sobre ela que `derivar.test.ts` prova o
+ * comportamento da retroativa, da devolução sem detentor e da reativação, e é o par em TS que
+ * `paridade-sql.test.ts` compara com o SQL aplicado. Apagá-la apagaria o guard.
  */
 export function derivarLinha(ficha: AtivoFicha, movs: Movimentacao[]): AtivoLista {
   const ultima = ultimaMovimentacao(movs)

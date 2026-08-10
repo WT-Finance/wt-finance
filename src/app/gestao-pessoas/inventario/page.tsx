@@ -1,4 +1,5 @@
 import { requireArea } from '@/lib/auth/sessao'
+import { carregarInventario } from '@/lib/patrimonio/carregar'
 import InventarioContent from '@/components/gestao-pessoas/inventario/inventario-content'
 
 // Gestão de Pessoas · Inventário de Ativos (v5.6.0).
@@ -8,11 +9,22 @@ import InventarioContent from '@/components/gestao-pessoas/inventario/inventario
 // `app.rbac_areas`, quebraria o teste de paridade banco↔app (`rpc-contrato.test.ts`) — e a
 // M0 não podia aplicar migration. As duas pontas viraram juntas na M1.
 //
-// ⚠️ A tela ainda roda sobre `fixture.ts` (mockup aprovado na M0). As RPCs
-// `patrimonio_*` já estão no ar; quem as liga é a M3.
+// Desde a M3 a tela lê as RPCs `patrimonio_*` (o fixture morreu). Dado pronto vem daqui, do
+// RSC; cada escrita é server action + `router.refresh()` — o padrão da casa (tipos-content,
+// chaves-api-content).
 export const dynamic = 'force-dynamic'
 
 export default async function InventarioPage() {
   await requireArea('gestao-pessoas/inventario')
-  return <InventarioContent />
+  const dados = await carregarInventario()
+
+  return (
+    <InventarioContent
+      ativos={dados.ativos}
+      movimentacoes={dados.movimentacoes}
+      catalogos={dados.catalogos}
+      resumo={dados.resumo}
+      erroDeLeitura={dados.erro}
+    />
+  )
 }

@@ -22,13 +22,26 @@ const TODOS_TIPOS: TipoMovimentacao[] = [
   'retorno_manutencao', 'emprestimo', 'baixa', 'reativacao',
 ]
 
+// O razão já vem com o ativo embutido (`ativo_codigo`/`ativo_descricao`); o mapa da lista é
+// só fallback. Assim uma linha continua legível mesmo que o ativo dela não esteja na lista
+// carregada — o que acontece quando o razão passa do teto de linhas da consulta.
+type MapaAtivos = Map<number, AtivoLista>
+const codigoDe    = (m: Movimentacao, mapa: MapaAtivos) => m.ativo_codigo    ?? mapa.get(m.ativo_id)?.codigo    ?? '—'
+const descricaoDe = (m: Movimentacao, mapa: MapaAtivos) => m.ativo_descricao ?? mapa.get(m.ativo_id)?.descricao ?? '—'
+
 interface Props {
   ativos: AtivoLista[]
   movimentacoes: Movimentacao[]
+  /** A RPC bateu o teto de linhas — a aba AVISA em vez de truncar em silêncio. */
+  noTeto?: boolean
   onAbrirFicha: (id: number) => void
+  /** Ausente = a ação ainda não existe (M5) → o botão aparece DESABILITADO, não morto. */
+  onExportar?: () => void
 }
 
-export default function MovimentacoesTab({ ativos, movimentacoes, onAbrirFicha }: Props) {
+export default function MovimentacoesTab({
+  ativos, movimentacoes, noTeto, onAbrirFicha, onExportar,
+}: Props) {
   const [busca, setBusca]   = useState('')
   const [fTipo, setFTipo]   = useState('')
   const [rolado, setRolado] = useState(false)
@@ -56,9 +69,8 @@ export default function MovimentacoesTab({ ativos, movimentacoes, onAbrirFicha }
     return linhas.filter(({ mov, origem }) => {
       if (fTipo && mov.tipo !== fTipo) return false
       if (!q) return true
-      const ativo = porId.get(mov.ativo_id)
       return [
-        ativo?.codigo, ativo?.descricao, ROTULO_TIPO[mov.tipo], origem,
+        codigoDe(mov, porId), descricaoDe(mov, porId), ROTULO_TIPO[mov.tipo], origem,
         rotuloDestino(mov), mov.obs, mov.registrado_por_rotulo,
       ].filter(Boolean).join(' ').toLowerCase().includes(q)
     })
@@ -84,7 +96,13 @@ export default function MovimentacoesTab({ ativos, movimentacoes, onAbrirFicha }
           {TODOS_TIPOS.map(t => <option key={t} value={t}>{ROTULO_TIPO[t]}</option>)}
         </Select>
         <div className="ml-auto">
-          <button type="button" className={`${PILL} ${PILL_NEUTRO}`}>
+          <button
+            type="button"
+            onClick={onExportar}
+            disabled={!onExportar}
+            title={onExportar ? undefined : 'Export entra na missão M5'}
+            className={`${PILL} ${PILL_NEUTRO}`}
+          >
             <Download size={13} /> Exportar CSV
           </button>
         </div>
@@ -114,7 +132,7 @@ export default function MovimentacoesTab({ ativos, movimentacoes, onAbrirFicha }
               </thead>
               <tbody>
                 {filtradas.map(({ mov, origem }) => {
-                  const ativo = porId.get(mov.ativo_id)
+                  const descricao = descricaoDe(mov, porId)
                   return (
                     <tr
                       key={mov.id}
@@ -135,10 +153,10 @@ export default function MovimentacoesTab({ ativos, movimentacoes, onAbrirFicha }
                         )}
                       </td>
                       <td className="py-2.5 px-3 text-xs font-medium tabular-nums text-zinc-600">
-                        {ativo?.codigo ?? '—'}
+                        {codigoDe(mov, porId)}
                       </td>
-                      <td className="py-2.5 px-3 truncate text-zinc-700" title={ativo?.descricao ?? ''}>
-                        {ativo?.descricao ?? '—'}
+                      <td className="py-2.5 px-3 truncate text-zinc-700" title={descricao}>
+                        {descricao}
                       </td>
                       <td className="py-2.5 px-3"><TipoBadge tipo={mov.tipo} /></td>
                       <td className="py-2.5 px-3 min-w-0">
@@ -163,6 +181,7 @@ export default function MovimentacoesTab({ ativos, movimentacoes, onAbrirFicha }
       <p className="mt-2.5 text-2xs text-[var(--text-subtle)]">
         {filtradas.length} de {linhas.length} movimentações · o razão é append-only: nada aqui se
         edita ou se apaga
+        {noTeto && ' · exibindo as mais recentes (o razão passou do teto de linhas da consulta)'}
       </p>
     </div>
   )

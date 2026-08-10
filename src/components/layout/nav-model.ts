@@ -72,10 +72,9 @@ const METAS_SUBS: NavSubItem[] = [
 // Gestão de Pessoas (v5.6.0) — seção NOVA da sidebar; o Inventário de Ativos é seu 1º módulo.
 // Área própria desde a migration 0247 (na M0 ficou sob 'admin/design-system', porque declarar
 // a área nova sem a migration quebraria o teste de paridade banco↔app).
-// `emConstrucao` (triângulo de alerta) fica enquanto a tela roda sobre fixture — sai na M3,
-// quando ela passa a ler as RPCs `patrimonio_*`.
+// O `emConstrucao` saiu na M3: a tela deixou o fixture e passou a ler as RPCs `patrimonio_*`.
 const GESTAO_PESSOAS_SUBS: NavSubItem[] = [
-  { href: '/gestao-pessoas/inventario', label: 'Inventário de Ativos', icon: Boxes, area: 'gestao-pessoas/inventario', emConstrucao: true },
+  { href: '/gestao-pessoas/inventario', label: 'Inventário de Ativos', icon: Boxes, area: 'gestao-pessoas/inventario' },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
