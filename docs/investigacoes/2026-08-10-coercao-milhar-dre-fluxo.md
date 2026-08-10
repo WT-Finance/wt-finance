@@ -225,6 +225,50 @@ reprovando o defeito): cobertura pelo caminho do **arquivo** (`parseXxxFile`, n�
 foi por testar só a matriz que 753 provas passaram por cima do bug) e **sonda mecânica** que
 reprova `raw: false` em qualquer parser de `src/lib/carga/` e `src/lib/rateio/`.
 
-**Fica de fora, registrado como follow-up:** o alarme de ingestão que compara a soma do arquivo
-(valores nativos) com a soma gravada na base. O delta que denunciou este bug (−40.892,07) teria
-acendido na carga.
+### O que o `revisor` achou depois — e que mudou o escopo de novo
+
+O `revisor` foi despachado a pedido do Yan antes do merge e voltou com **1 CRÍTICO e 1 ALTO**,
+ambos verificados por medição e corrigidos na mesma v5.5.2.
+
+**CRÍTICO — o ramo CSV é uma SEGUNDA porta, e maior.** A errata acima já corrigia o ramo CSV
+*nos dois parsers sob reparo*, mas eu não varri o resto do código pela mesma opção. O
+`XLSX.read(texto, { type: 'string', raw: false })` estava em **oito** parsers, e ali o SheetJS
+roda um heurístico **americano** que não atinge só valores de 3 casas: destrói **todo** valor BR
+com vírgula decimal. Medido: `"40,93"` → **4093** · `"0,05"` → **5** · `"-26,39"` → **−2639** ·
+`"-1.234,56"` → **−1,23456**. Três dos oito são bases financeiras que aceitam `.csv` pela UI —
+**Vendas** (a base de receita), **Rateio** e **Faturamento Corp**. Todos passaram a `raw: true`.
+
+*Nuance medida que o parecer não tinha:* num CSV de **coluna única** a vírgula de `"40,93"` é
+lida como **delimitador de campo** e o valor vira `40` — efeito diferente, mesma perda. A
+corrupção por heurístico se isola com valor entre aspas ou com `;` como separador; ambos
+medidos.
+
+**ALTO — leitura dupla não é imunidade.** O fechamento citava `gerencial/parser.ts` como já
+protegido por fazer leitura dupla desde a v4.9. Falso conforto: o valor nativo alimentava **só
+`Vencimento`**; `Valor Final` seguia pela string de exibição, com o mesmo risco de ×1000.
+Corrigido com o padrão que já existia ali (nativo quando numérico, string como fallback). O
+Gerencial **não** aceita `.csv`, então nunca esteve exposto ao estrago maior.
+
+**A própria sonda estava cega.** A 1ª versão casava uma janela de 300 caracteres até o primeiro
+`)` (frágil, apontado pelo parecer) e — pior — não casava `sheet_to_json<unknown[]>(...)`, por
+causa do **parâmetro de tipo**. Ou seja: não vigiava justamente os arquivos que devia. Refeita
+com extração por parênteses balanceados, duas regras (`sheet_to_json` e o ramo CSV do
+`XLSX.read`) e quatro diretórios.
+
+**Lição de método:** a auto-auditoria adversarial achou o ramo CSV *dentro do escopo que eu
+estava mexendo*; o `revisor`, com contexto limpo, achou **o mesmo defeito fora dele**. Corrigir
+onde se está olhando não é o mesmo que varrer a classe — e a diferença aqui era a base de
+receita.
+
+### Follow-up declarado (não endereçado nesta versão)
+
+- **Alarme de ingestão** comparando a soma do arquivo (valores nativos) com a soma gravada na
+  base. O delta que denunciou este bug (−40.892,07) teria acendido na carga.
+- **`accept=".csv"`** segue oferecido na UI para bases cujo export real é `.xlsx`. Se o CSV não
+  é usado, tirá-lo do `accept` elimina a ambiguidade irredutível de vez.
+- Migrar a sonda de teste para **regra ESLint AST** (o projeto tem o precedente de
+  `wt/no-coercao-reimpl`).
+- `parse-contas-pagar-receber.ts` parece **órfão** (sem importador) — confirmar consumidores
+  antes de qualquer remoção, pela regra da v4.17.1.
+- ADR-0099 tem "valor" no título mas decide só sobre datas; esta versão é a metade que faltava.
+  Cabe emenda datada.

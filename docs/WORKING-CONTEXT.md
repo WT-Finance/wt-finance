@@ -22,15 +22,30 @@ duas planilhas depois do merge**). Histórico abaixo a partir da v5.5.0 (#222 me
   decimais** (que nascem de divisão de título: `377,23 ÷ 2 = 188,615`).
   **33 linhas confirmadas / R$ 7,52 Mi**, quase todas cobranças mensais recorrentes em
   conta-cartão. **INVERTE o sinal do resultado: 2024 −6.286.322,67 → +82.814,81 ·
-  2025 −967.461,35 → +338.901,94.** Sem migration, sem ADR. **762 testes.**
+  2025 −967.461,35 → +338.901,94.** Sem migration, sem ADR. **762 de 763 testes** — a única
+  falha é a paridade de áreas RBAC, **alheia a este patch**: `gestao-pessoas/inventario` já
+  está em `app.rbac_areas` na produção compartilhada (migration da v5.6.0) e ainda não está no
+  código; `origin/main` falha igual, e o patch não toca `src/lib/auth/areas.ts`.
+  `revisor` despachado a pedido do Yan: **1 CRÍTICO + 1 ALTO, ambos verificados e corrigidos**
+  nesta mesma versão (itens *a* e *a2* abaixo).
   ⚠️ **AÇÃO DO YAN, indispensável: re-subir os DOIS arquivos em `/admin/uploads` depois do
   merge.** O patch corrige a PRÓXIMA carga; a base viva segue inflada até lá. O upload é
   full-swap, então a reingestão resolve tudo sem migration destrutiva — e é a única forma de
   fechar o número exato (o arquivo de 04/08 não está em disco; o levantamento é um **piso**).
   **Duráveis desta versão:**
-  *(a)* **Só os DOIS parsers do Fluxo/DRE pediam `raw: false` explícito.** Todos os outros
-  omitem a opção e o default do SheetJS (`raw: true`) já os protegia — **o modo seguro é não
-  escrever a opção**. Há sonda mecânica varrendo `src/lib/carga/` e `src/lib/rateio/`.
+  *(a)* **Há DUAS portas para o mesmo estrago, e a segunda é maior.** No `sheet_to_json`, só
+  os dois parsers do Fluxo/DRE pediam `raw: false` (os outros omitem, e o default já protege).
+  Mas no **`XLSX.read` do ramo CSV** o `raw: false` estava em **oito** parsers — e ali o
+  SheetJS aplica heurístico **americano** que destrói TODO valor BR com vírgula decimal, não
+  só os de 3 casas: `"40,93"`→**4093**, `"0,05"`→**5**, `"-26,39"`→**−2639**. Três eram bases
+  financeiras que aceitam `.csv` pela UI: **Vendas, Rateio e Faturamento Corp**. Todos os ramos
+  CSV passaram a `raw: true`. **Achado do `revisor`, verificado por medição.**
+  *(a2)* **Leitura dupla não é imunidade — vale só para a coluna que a usa.** O
+  `gerencial/parser.ts` fazia leitura dupla desde a v4.9 e por isso foi tratado como seguro,
+  mas o nativo alimentava **só `Vencimento`**; `Valor Final` tinha o mesmo risco. Corrigido.
+  *(a3)* **A 1ª sonda estava cega para os arquivos que devia vigiar** — usava janela de 300
+  chars e não casava `sheet_to_json<unknown[]>(...)` (parâmetro de tipo). Refeita com
+  parênteses balanceados, duas regras e 4 diretórios.
   *(b)* **Teste de parser que monta a matriz na mão NÃO cobre erro de extração.** A suíte
   tinha cobertura farta, mas toda chamando `parseXxxRows(matriz)` — 753 provas passaram por
   cima do bug. Guard de ingestão tem de montar um arquivo real e entrar por `parseXxxFile()`.
