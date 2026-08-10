@@ -1,8 +1,19 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-10 · produção na **v5.5.1** (#224 mergeado às 12h17 — ajustes de apresentação do float + a *Margem Teórica (a.a.)*; a v5.5.0 entrou às 10h49 pelo #222). **Migrations `0238`–`0246` aplicadas**, incluindo o agendamento mensal do CDI, já ATIVO · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-10 (pós-merge) · produção na **v5.5.2** (#227 mergeado às 14h29 — correção do bug de ingestão ×1000 na DRE e no Fluxo de Caixa; sem migration). Antes dela a v5.5.1 (#224, 12h17) e a v5.5.0 (#222, 10h49) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-🔴 **v5.5.2 FECHADA, aguardando merge** — correção do bug de ingestão ×1000 (1º item de "Verdade atual"). **Exige re-upload das duas planilhas depois do merge**; o patch corrige a próxima carga, não o dado já gravado.
+🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
+o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
+aparecem como prejuízo e são lucro) até a reingestão. O upload é full-swap, então resolve sem
+migration destrutiva. Detalhe no 1º item de "Verdade atual".
+
+⚠️ **Numeração de migration: a última APLICADA é a `0248`; a próxima livre é a `0249`.**
+As `0247` (`patrimonio_estrutura`) e `0248` (`patrimonio_rpcs`) são da **v5.6.0**, que está em
+curso: **aplicadas em produção com o código ainda NÃO mergeado**. Conferido em
+`supabase_migrations.schema_migrations`, não no texto — este cabeçalho dizia "próxima livre:
+`0247`" e já estava obsoleto. Consequência viva disso: o teste de paridade de áreas RBAC
+(`rpc-contrato.test.ts`) **falha em qualquer branch** enquanto a v5.6.0 não mergear, porque
+`gestao-pessoas/inventario` existe em `app.rbac_areas` e ainda não no código.
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -13,8 +24,8 @@
 
 ## Verdade atual
 
-- 🔴 **v5.5.2 FECHADA, aguardando merge — a DRE e o Fluxo estavam ERRADOS por um bug de
-  ingestão, e a correção do CÓDIGO não conserta o DADO.** Os parsers
+- 🔴 **v5.5.2 (#227, mergeada 10/08 às 14h29) — a DRE e o Fluxo estavam ERRADOS por um bug de
+  ingestão, e a correção do CÓDIGO não conserta o DADO (re-upload PENDENTE).** Os parsers
   `parse-lancamentos-movimentacao.ts` e `parse-titulos-em-aberto.ts` liam a planilha com
   `sheet_to_json({ raw: false })`, o que **descarta o valor nativo da célula**: a célula
   numérica `-40.933` (R$ 40,93) virava a string `"-40.933"`, casava o padrão de **milhar BR**
@@ -524,12 +535,15 @@
   ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
   e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
   sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
-  **Última migration APLICADA de todas: `0246`** (v5.5.1 — chave de ordenação `margem_teorica_aa` + `margem_teorica_pct` no payload da Lista). Antes dela a **`0245`** (faixa de plausibilidade ±5% a.m. como CHECK ADITIVO, ao lado do frouxo de ±100%). Antes dela a **`0244`** (agendamento mensal do CDI — `cdi-ingest-mensal`, dia 3 às 06:00 SP, ATIVO). Antes delas a **`0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
+  **Última migration APLICADA de todas: `0248`** (v5.6.0 — `patrimonio_rpcs`; a versão está EM
+  CURSO, então esta e a `0247` `patrimonio_estrutura` estão **aplicadas com o código ainda não
+  mergeado**). Antes delas a **`0246`** (v5.5.1 — chave de ordenação `margem_teorica_aa` + `margem_teorica_pct` no payload da Lista). Antes dela a **`0245`** (faixa de plausibilidade ±5% a.m. como CHECK ADITIVO, ao lado do frouxo de ±100%). Antes dela a **`0244`** (agendamento mensal do CDI — `cdi-ingest-mensal`, dia 3 às 06:00 SP, ATIVO). Antes delas a **`0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
   NULL, não zero; `GREATEST`/`LEAST`/`SUM` ignoram NULL e transformavam "não sei" em "zero").
   Antes dela a **`0242`** (o total do float passou a ser a soma exata das partes) e a **`0241`** (coluna `rend_float` na Lista, aplicada só DEPOIS de
   a latência ser medida), a **`0240`** (a leitura ignora mês de CDI ainda aberto), a **`0239`**
   (`cdi_ingest_upsert`) e a **`0238`** (`dim_taxa_cdi` + a view da conta virtual + as 2 RPCs).
-  **Próxima livre: `0247`.**
+  **Próxima livre: `0249`** (conferido em `supabase_migrations.schema_migrations`, não no texto —
+  este campo dizia `0247` e já estava obsoleto quando a v5.6.0 aplicou a 0247 e a 0248).
   Antes delas a **`0237`** (v5.4.5: `monde_ingest_status` separa
   `vendas_que_contam` de `vendas` e expõe `itens_cancelados` — ADITIVA, `CREATE OR REPLACE` de
   função, verificada executando via REST. Necessária porque a venda cancelada passou a
