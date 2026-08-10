@@ -1,6 +1,8 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-07 (pós-merge) · produção na **v5.5.0** (#222 mergeado — Weddings ganha o *Rendimento potencial do float*; **migrations `0238`–`0245` aplicadas**, incluindo o agendamento mensal do CDI, já ATIVO) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
+Última atualização: 2026-08-10 · produção na **v5.5.1** · **v5.5.2 fechada aguardando merge**
+(correção do bug de ingestão ×1000 — ver o 1º item de "Verdade atual"; **exige re-upload das
+duas planilhas depois do merge**). Histórico abaixo a partir da v5.5.0 (#222 mergeado — Weddings ganha o *Rendimento potencial do float*; **migrations `0238`–`0245` aplicadas**, incluindo o agendamento mensal do CDI, já ATIVO) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -10,6 +12,47 @@
 > Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
+
+- 🔴 **v5.5.2 FECHADA, aguardando merge — a DRE e o Fluxo estavam ERRADOS por um bug de
+  ingestão, e a correção do CÓDIGO não conserta o DADO.** Os parsers
+  `parse-lancamentos-movimentacao.ts` e `parse-titulos-em-aberto.ts` liam a planilha com
+  `sheet_to_json({ raw: false })`, o que **descarta o valor nativo da célula**: a célula
+  numérica `-40.933` (R$ 40,93) virava a string `"-40.933"`, casava o padrão de **milhar BR**
+  do `toNum` e era gravada como **−40933**. **×1000 em todo valor com exatamente 3 casas
+  decimais** (que nascem de divisão de título: `377,23 ÷ 2 = 188,615`).
+  **33 linhas confirmadas / R$ 7,52 Mi**, quase todas cobranças mensais recorrentes em
+  conta-cartão. **INVERTE o sinal do resultado: 2024 −6.286.322,67 → +82.814,81 ·
+  2025 −967.461,35 → +338.901,94.** Sem migration, sem ADR. **762 testes.**
+  ⚠️ **AÇÃO DO YAN, indispensável: re-subir os DOIS arquivos em `/admin/uploads` depois do
+  merge.** O patch corrige a PRÓXIMA carga; a base viva segue inflada até lá. O upload é
+  full-swap, então a reingestão resolve tudo sem migration destrutiva — e é a única forma de
+  fechar o número exato (o arquivo de 04/08 não está em disco; o levantamento é um **piso**).
+  **Duráveis desta versão:**
+  *(a)* **Só os DOIS parsers do Fluxo/DRE pediam `raw: false` explícito.** Todos os outros
+  omitem a opção e o default do SheetJS (`raw: true`) já os protegia — **o modo seguro é não
+  escrever a opção**. Há sonda mecânica varrendo `src/lib/carga/` e `src/lib/rateio/`.
+  *(b)* **Teste de parser que monta a matriz na mão NÃO cobre erro de extração.** A suíte
+  tinha cobertura farta, mas toda chamando `parseXxxRows(matriz)` — 753 provas passaram por
+  cima do bug. Guard de ingestão tem de montar um arquivo real e entrar por `parseXxxFile()`.
+  *(c)* **CSV falha no sentido INVERSO:** sem tipo nativo, `read(csv, { raw: false })` faz o
+  SheetJS aplicar convenção **americana** e `"-1.234,56"` vira −1,23456 (÷1000). No ramo CSV
+  o certo é `raw: true`, para a string sobreviver à regra BR do `toNum`.
+  *(d)* **Auditoria de paridade pode CARIMBAR o bug como fato-fonte.** A v5.3.0 mediu
+  Δ −40.892,07 e escreveu "Endomarketing re-lançado no Monde"; reprocessar o arquivo com o
+  parser real devolve **−40.892,07 ao centavo**. Divergência contra oráculo só vira "dado
+  re-editado na origem" depois de **reprocessar a fonte**, nunca por plausibilidade.
+  *(e)* **O `toNum` está CERTO e não foi tocado** — para uma string, `"1.234"` é ambíguo de
+  propósito e `coercao.test.ts` consagra a leitura BR. O erro era o parser **destruir a
+  informação que já tinha** antes de perguntar.
+  *(f)* **O motor da DRE foi auditado e está limpo** (4 invariantes estruturais), não há
+  dupla contagem realizado × previsto, e a suspeita de dupla contagem por conta-cartão foi
+  **REFUTADA** — a Abordagem B da 0188 se sustenta.
+  **Também registrado:** a base "por categoria" está **morta desde a 0192**, mas o cartão de
+  upload dela continua exposto chamando RPCs cuja tabela não existe mais (quebra em runtime).
+  **Pendente Yan:** re-upload · comunicar à diretoria que 2024/2025 eram lucro · revisar as
+  65 linhas de outlier médio e as 1.073 indeterminadas · levar ao provedor os 75 grupos de
+  linhas idênticas no export e os 5 títulos vencendo em 2049 · decidir sobre o upload morto.
+  Investigação: `docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md`.
 
 - **v5.5.0 FECHADA, aguardando merge — Weddings: Rendimento potencial do float.** Mede quanto o
   caixa recebido antecipadamente de cada operação renderia a **100% do CDI**, em regime

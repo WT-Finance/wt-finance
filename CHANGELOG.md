@@ -6,6 +6,43 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.5.2] — 2026-08-10
+
+PATCH · **Correção de um bug de ingestão que multiplicava por 1000 todo valor com 3 casas decimais** — distorcia a DRE e o Fluxo de Caixa a ponto de **inverter o sinal do resultado de 2024 e de 2025**. Sem migration · sem ADR (a regra durável foi para a skill `ingestao-planilhas` e para uma sonda mecânica).
+
+### Corrigido — o valor da célula volta a ser o valor da célula
+
+- `parse-lancamentos-movimentacao.ts` e `parse-titulos-em-aberto.ts` liam a planilha com **`sheet_to_json({ raw: false })`**, o que **descarta o valor nativo da célula** e entrega a string de exibição. A célula numérica `-40.933` (R$ 40,93, ponto decimal) chegava ao `toNum` como `"-40.933"`, casava o padrão de **milhar BR** `^-?\d{1,3}(\.\d{3})+$` e virava **−40933**.
+- Passaram a `raw: true` — o valor nativo, que o `toNum` devolve por passthrough. **O `toNum` NÃO foi tocado:** para uma *string*, `"1.234"` é ambíguo de propósito e `coercao.test.ts` consagra a leitura BR. O defeito era o parser **destruir a informação que já tinha** antes de perguntar.
+- **Ramo CSV corrigido junto, por outro motivo:** com `XLSX.read(..., { raw: false })` o SheetJS interpretava o texto com convenção **americana** antes de qualquer coerção nossa, e `"-1.234,56"` chegava como **−1,23456** (÷1000, medido). Com `raw: true` a string sobrevive e a regra BR do `toNum` se aplica.
+- **Só estes dois parsers eram afetados.** Os demais (`parse-pessoas`, `parse-vendas-produto`, `parse-contas-pagar-receber`, `parse-lancamentos`, `lancamentos`, `rateio/parse-fatura`) **omitem** a opção, e o default do SheetJS já é `raw: true`. O `gerencial/parser.ts` já fazia leitura dupla de propósito.
+
+### O gatilho, e por que passou despercebido
+
+- Dispara com **exatamente 3 casas decimais** e 1–3 dígitos na parte inteira. Com 4 casas (`-30.4322`) ou 4+ dígitos inteiros (`1234.567`) o padrão não casa e o valor sempre passou correto — por isso o defeito é **esparso e plausível**, nunca um erro visível em massa.
+- Três casas nascem de **divisão de título** no Monde (parcelamento, rateio, câmbio): `377,23 ÷ 2 = 188,615`.
+- **A suíte tinha cobertura farta dos parsers e não pegou:** toda ela chama `parseXxxRows(matriz)`, que recebe a matriz **já extraída**. O defeito morava na extração. O guard novo precisou montar um `.xlsx` de verdade e passar por `parseXxxFile()`.
+
+### Verificação
+
+- **59.139 linhas reais reparseadas** (os dois exports do Monde), campo a campo, antes × depois: **exatamente 1 campo mudou** — o `valor` da linha corrompida (−40933 → −40,933). Datas, textos e todo o resto **byte-idênticos**; a base "em aberto" inteiramente inalterada.
+- Soma da base de movimentação: 394.492,15 → **435.384,22**, delta **+40.892,07** — ao centavo o mesmo valor que a auditoria de paridade da v5.3.0 havia atribuído a *"Endomarketing re-lançado no Monde"*. **Não era re-lançamento na origem: era este bug.**
+- Guard **visto reprovando** o defeito (as 7 provas falham com `raw: false` reintroduzido).
+- Gates: `tsc` · `lint` · **762 testes** (0 skipped — o `.env.local` no worktree faz os testes de contrato rodarem de verdade) · `build`.
+
+### Adicionado — guards
+
+- `src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts`: 7 provas pelo caminho do **arquivo** (`parseXxxFile`), varrendo a faixa inteira do gatilho, o caminho de texto/CSV e a **limitação conhecida** (em CSV puro `-40.933` é irredutivelmente ambíguo — fixada em teste para ser explícita, não surpresa).
+- **Sonda mecânica** que varre `src/lib/carga/` e `src/lib/rateio/` e reprova qualquer `sheet_to_json` com `raw: false`, nomeando o arquivo infrator. O modo seguro é o default do SheetJS; escrever a opção é que era o erro.
+
+### ⚠️ A correção NÃO conserta os dados já em produção
+
+O patch corrige a **próxima** ingestão. A base viva segue com os valores inflados até o **re-upload** dos dois arquivos em `/admin/uploads` — o upload é full-swap (`truncar` → `inserir_lote` → `regenerar_fluxo_caixa`), então a reingestão resolve tudo **sem migration destrutiva**. É também a única forma de fechar o número exato: o arquivo carregado em 04/08 (116.713 linhas, 2023–2027) não está em disco, e o levantamento da investigação é um **piso**, não um total.
+
+Detalhe completo: `docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md`.
+
+---
+
 ## [5.5.1] — 2026-08-08
 
 PATCH · **Ajustes de apresentação do float, pedidos pelo Yan depois de ver a v5.5.0 no ar** + uma métrica nova. Migration `0246` (aditiva, aplicada) · **emenda ao ADR-0166**.
