@@ -34,7 +34,7 @@ const COLUNAS_OBRIGATORIAS = ['Operacao', 'Valor', 'Tipo']
 function parseCsvBuffer(buffer: Buffer): LancamentoRaw[] {
   // Decodifica como UTF-8 antes de passar ao SheetJS — sem isso, CSV UTF-8 é
   // interpretado como Latin-1, corrompendo acentos ("Saída" → "SaÃ­da")
-  const workbook = XLSX.read(buffer.toString('utf-8'), { type: 'string', cellDates: true, raw: false })
+  const workbook = XLSX.read(buffer.toString('utf-8'), { type: 'string', cellDates: true, raw: true })
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null })
 

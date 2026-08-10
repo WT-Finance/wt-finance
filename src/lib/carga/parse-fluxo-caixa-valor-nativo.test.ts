@@ -148,28 +148,78 @@ describe('CSV: texto puro segue a regra BR do toNum (v5.5.2)', () => {
   })
 })
 
-// SONDA MECÂNICA — a correção acima vale para os DOIS parsers do Fluxo/DRE, mas o defeito
-// é de classe: qualquer parser que peça `raw: false` ao `sheet_to_json` volta a trocar o
-// valor nativo pela string de exibição. O default do SheetJS já é `raw: true`, então o modo
-// seguro é o modo de não escrever nada — e foi justamente o `raw: false` EXPLÍCITO que
-// distinguiu os dois parsers quebrados dos demais (que sempre omitiram a opção).
-// Esta sonda varre o diretório e reprova a reintrodução, em vez de confiar em revisão.
-describe('sonda: nenhum parser de carga pede `raw: false` ao sheet_to_json', () => {
-  it('varre src/lib/carga/ e src/lib/rateio/', () => {
-    const dirs = [join(process.cwd(), 'src/lib/carga'), join(process.cwd(), 'src/lib/rateio')]
-    const infratores: string[] = []
-
-    for (const dir of dirs) {
-      for (const nome of readdirSync(dir)) {
-        if (!nome.endsWith('.ts') || nome.endsWith('.test.ts')) continue
-        const src = readFileSync(join(dir, nome), 'utf8')
-        // Casa `sheet_to_json(... raw: false ...)` mesmo com quebras de linha entre os args.
-        for (const m of src.matchAll(/sheet_to_json[\s\S]{0,300}?\)/g)) {
-          if (/raw\s*:\s*false/.test(m[0])) infratores.push(nome)
-        }
-      }
+// ─────────────────────────────────────────────────────────────────────────────
+// SONDA MECÂNICA — o defeito é de CLASSE, não destes dois arquivos. Duas formas:
+//
+//  (1) `sheet_to_json({ raw: false })` — troca o valor nativo pela string de exibição.
+//      O default do SheetJS já é `raw: true`: o modo seguro é NÃO escrever a opção.
+//
+//  (2) `XLSX.read(texto, { type: 'string', raw: false })` — o ramo CSV. Pior que (1):
+//      o SheetJS roda um heurístico AMERICANO sobre o texto e destrói TODO valor BR com
+//      vírgula decimal, não só os de 3 casas. Medido: "40,93"→4093, "0,05"→5,
+//      "-26,39"→-2639, "-1.234,56"→-1,23456. Estava vivo em três bases financeiras que
+//      aceitam .csv (Vendas, Rateio, Faturamento) — achado do `revisor` na v5.5.2.
+//
+// Extração por PARÊNTESES BALANCEADOS, não por janela de N caracteres: a versão anterior
+// casava até o primeiro `)` e um argumento com parêntese aninhado a cegaria (achado do
+// `revisor`). Varre recursivamente todos os diretórios que fazem ingestão.
+// ─────────────────────────────────────────────────────────────────────────────
+function arquivosDeIngestao(): { caminho: string; nome: string }[] {
+  const raizes = ['src/lib/carga', 'src/lib/rateio', 'src/lib/faturamento', 'src/lib/gerencial']
+  const achados: { caminho: string; nome: string }[] = []
+  const desce = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const caminho = join(dir, e.name)
+      if (e.isDirectory()) { desce(caminho); continue }
+      if (!/\.tsx?$/.test(e.name) || /\.test\.tsx?$/.test(e.name)) continue
+      achados.push({ caminho, nome: e.name })
     }
+  }
+  for (const r of raizes) desce(join(process.cwd(), r))
+  return achados
+}
 
+/**
+ * Devolve o texto dos argumentos de cada chamada `nome(...)`, com parênteses balanceados.
+ * O `(?:<[^(]*>)?` aceita PARÂMETRO DE TIPO entre o nome e o parêntese — sem ele a sonda
+ * ficava cega para `sheet_to_json<unknown[]>(...)`, que é justamente a forma usada nos
+ * arquivos que ela precisa vigiar. (Pego pela própria sonda ao ser escrita.)
+ */
+function chamadas(src: string, nome: string): string[] {
+  const out: string[] = []
+  const re = new RegExp(`\\b${nome}\\s*(?:<[^(]*>)?\\s*\\(`, 'g')
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    let prof = 1
+    let i = m.index + m[0].length
+    for (; i < src.length && prof > 0; i++) {
+      if (src[i] === '(') prof++
+      else if (src[i] === ')') prof--
+    }
+    out.push(src.slice(m.index + m[0].length, i - 1))
+  }
+  return out
+}
+
+describe('sonda: nenhum parser de ingestão troca o valor nativo pela string de exibição', () => {
+  it('(1) nenhum `sheet_to_json` pede `raw: false`', () => {
+    const infratores = arquivosDeIngestao().flatMap(({ caminho, nome }) =>
+      chamadas(readFileSync(caminho, 'utf8'), 'sheet_to_json')
+        .filter(args => /raw\s*:\s*false/.test(args))
+        .map(() => nome),
+    )
+    // `gerencial/parser.ts` é a ÚNICA exceção legítima e ela é declarada: a leitura
+    // `raw:false` ali serve às colunas de TEXTO (tipo/pessoa/descrição/conta), e as duas
+    // colunas sensíveis — Vencimento e Valor — são casadas por índice contra a leitura
+    // `raw:true` paralela. Ver o comentário no próprio arquivo.
+    expect(infratores).toEqual(['parser.ts'])
+  })
+
+  it('(2) nenhum ramo CSV pede `raw: false` ao XLSX.read', () => {
+    const infratores = arquivosDeIngestao().flatMap(({ caminho, nome }) =>
+      chamadas(readFileSync(caminho, 'utf8'), 'XLSX.read')
+        .filter(args => /type\s*:\s*'string'/.test(args) && /raw\s*:\s*false/.test(args))
+        .map(() => nome),
+    )
     expect(infratores).toEqual([])
   })
 })
