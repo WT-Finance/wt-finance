@@ -264,6 +264,22 @@ export interface OperacaoItem {
    * o emitia, e o `parseRpc` é tolerante.
    */
   rend_float?:           number | null
+  /**
+   * v5.5.1 — margem TEÓRICA em %: `(resultado_caixa + rend_float) ÷ faturamento`.
+   *
+   * ⚠️ Diferente de `margem_liquida_pct`, este número **soma um componente
+   * não-contábil**. É mudança de produto deliberada (emenda ao ADR-0166, cuja
+   * Decisão 5 proibia a soma) — a coluna se chama "Margem Teórica (a.a.)" e o
+   * tooltip diz de onde vem.
+   *
+   * Já vem ARREDONDADO a 1 casa pelo SQL, de propósito: o cliente só anualiza. Se
+   * ele arredondasse, `Math.round` (meio-para-cima) discordaria do `ROUND` do
+   * Postgres (meio-para-longe-de-zero) nos valores negativos, e a coluna exibiria um
+   * número diferente do que o ORDER BY usa.
+   *
+   * `null` quando não há float conhecido — travessão, nunca zero.
+   */
+  margem_teorica_pct?:   number | null
 }
 
 export interface ListaOperacoes {
