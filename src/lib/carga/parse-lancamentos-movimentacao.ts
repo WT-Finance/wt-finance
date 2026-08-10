@@ -167,14 +167,26 @@ export async function parseLancamentosMovimentacaoFile(
     let workbook: ReturnType<typeof XLSX.read>
     if (ext === 'csv') {
       const text = await file.text()
-      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: false })
+      // CSV não tem tipo nativo — só texto. Com `raw: false` o SheetJS interpreta a célula
+      // com convenção AMERICANA antes de qualquer coerção nossa, e "-1.234,56" chegava como
+      // -1,23456 (medido). Com `raw: true` a string sobrevive intacta e a regra BR do toNum
+      // se aplica, que é o contrato documentado para entrada textual (v5.5.2).
+      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: true })
     } else {
       const buffer = await file.arrayBuffer()
       workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: false })
     }
 
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
-    const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: false })
+    // raw: TRUE — devolve o valor NATIVO da célula (number/Date), não a string de
+    // exibição. Ver a regra §3 da skill `ingestao-planilhas`, que já valia para datas
+    // e vale igualmente para dinheiro: o Excel já resolveu a ambiguidade internamente;
+    // reformatar para texto a reintroduz. Com `raw: false`, a célula numérica -40.933
+    // (R$ 40,93, ponto decimal) chegava ao toNum como a string "-40.933", que casa o
+    // padrão de MILHAR BR `^-?\d{1,3}(\.\d{3})+$` e vira -40933 — ×1000 silencioso em
+    // todo valor com exatamente 3 casas decimais (v5.5.2; investigação de 2026-08-10).
+    // O toNum continua canônico e INTOCADO: com número nativo ele faz passthrough.
+    const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: true })
     if (aoa.length === 0) return { error: 'Arquivo vazio ou sem dados.' }
 
     const resultado = parseLancamentosMovimentacaoRows(aoa, file.name)
