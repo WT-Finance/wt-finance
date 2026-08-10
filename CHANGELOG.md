@@ -40,6 +40,64 @@ MINOR · **Gestão de Pessoas: Inventário de Ativos** — seção nova de sideb
 
 - **71 checagens ponta a ponta via REST + `service_role`** (o único caminho que executa o corpo da RPC): nomes de parâmetro de toda server action, schemas Zod contra retorno **populado**, os 8 tipos em sequência com o status conferido a cada passo, retroativa entrando no meio da cadeia sem mexer no estado atual, travas de baixa/reativação, CHECK por tipo, e `resumo` batendo com a lista ao centavo. Dados de teste removidos; base de volta a 0/0/0 com a sequência reiniciada.
 - **879 testes** · build, `tsc` e lint limpos · `revisor` e `revisor-db` com **0 CRÍTICO e 0 ALTO**.
+- ✅ **Resolve a falha de gate declarada na v5.5.2**: o caso "catálogo de áreas: banco ↔ app idênticos" do `rpc-contrato.test.ts` falhava em `main` porque `gestao-pessoas/inventario` já existia em `app.rbac_areas` (migration `0247`) e ainda não no código. Esta versão declara a área nas duas pontas — os 879 testes passam.
+
+---
+
+## [5.5.2] — 2026-08-10
+
+PATCH · **Correção de um bug de ingestão que multiplicava por 1000 todo valor com 3 casas decimais** — distorcia a DRE e o Fluxo de Caixa a ponto de **inverter o sinal do resultado de 2024 e de 2025**. Sem migration · sem ADR (a regra durável foi para a skill `ingestao-planilhas` e para uma sonda mecânica).
+
+### Corrigido — o valor da célula volta a ser o valor da célula
+
+- `parse-lancamentos-movimentacao.ts` e `parse-titulos-em-aberto.ts` liam a planilha com **`sheet_to_json({ raw: false })`**, o que **descarta o valor nativo da célula** e entrega a string de exibição. A célula numérica `-40.933` (R$ 40,93, ponto decimal) chegava ao `toNum` como `"-40.933"`, casava o padrão de **milhar BR** `^-?\d{1,3}(\.\d{3})+$` e virava **−40933**.
+- Passaram a `raw: true` — o valor nativo, que o `toNum` devolve por passthrough. **O `toNum` NÃO foi tocado:** para uma *string*, `"1.234"` é ambíguo de propósito e `coercao.test.ts` consagra a leitura BR. O defeito era o parser **destruir a informação que já tinha** antes de perguntar.
+### Corrigido — o ramo CSV, que era PIOR (achado do `revisor`)
+
+- Com `XLSX.read(texto, { type: 'string', raw: false })` o SheetJS roda um heurístico **americano** sobre o texto **antes** de qualquer coerção nossa. Isso não afeta só valores de 3 casas: destrói **todo** valor BR com vírgula decimal. Medido: `"40,93"` → **4093** · `"0,05"` → **5** · `"-26,39"` → **−2639** · `"-1.234,56"` → **−1,23456**.
+- Estava **vivo em oito parsers**, três deles em bases financeiras que aceitam `.csv` pela UI: **Vendas** (`parse-vendas-produto`, a base de receita), **Rateio** (`rateio/parse-fatura`) e **Faturamento Corp** (`faturamento/parse-faturamento`) — mais `parse-pessoas`, `faturamento/parse-clientes-corp`, `parse-contas-pagar-receber`, `parse-lancamentos` e `lancamentos`.
+- **Todos os ramos CSV passaram a `raw: true`.** Para CSV isso é correto sempre: preservar o texto e deixar `toNum`/`toIsoDate` aplicarem a regra BR — inclusive para datas, onde a leitura americana do SheetJS é a armadilha da ADR-0099.
+- **Errata:** a primeira redação deste patch dizia "só estes dois parsers eram afetados". Isso valia para a opção do `sheet_to_json` — e **não** para a do `XLSX.read` no ramo CSV, que é outra porta para o mesmo estrago. Corrigido aqui.
+
+### Corrigido — `gerencial/parser.ts`: a leitura dupla protegia data, não dinheiro
+
+- O parser do Gerencial faz leitura dupla desde a v4.9 (`raw:false` para exibição + `raw:true` paralela), mas usava a versão nativa **só para `Vencimento`**. `Valor Final` seguia pela string de exibição e tinha o mesmo risco de ×1000.
+- Passou a usar o número nativo quando a célula é numérica, com fallback para a string (célula de texto tipo `"R$ 8.840,00"` continua pela regra BR). Estritamente melhor: nenhum caso piora.
+- O Gerencial **não** aceita `.csv` (`accept=".xlsx,.xls"`), então nunca esteve exposto ao estrago maior acima.
+
+### O gatilho, e por que passou despercebido
+
+- Dispara com **exatamente 3 casas decimais** e 1–3 dígitos na parte inteira. Com 4 casas (`-30.4322`) ou 4+ dígitos inteiros (`1234.567`) o padrão não casa e o valor sempre passou correto — por isso o defeito é **esparso e plausível**, nunca um erro visível em massa.
+- Três casas nascem de **divisão de título** no Monde (parcelamento, rateio, câmbio): `377,23 ÷ 2 = 188,615`.
+- **A suíte tinha cobertura farta dos parsers e não pegou:** toda ela chama `parseXxxRows(matriz)`, que recebe a matriz **já extraída**. O defeito morava na extração. O guard novo precisou montar um `.xlsx` de verdade e passar por `parseXxxFile()`.
+
+### Verificação
+
+- **59.139 linhas reais reparseadas** (os dois exports do Monde), campo a campo, antes × depois: **exatamente 1 campo mudou** — o `valor` da linha corrompida (−40933 → −40,933). Datas, textos e todo o resto **byte-idênticos**; a base "em aberto" inteiramente inalterada.
+- Soma da base de movimentação: 394.492,15 → **435.384,22**, delta **+40.892,07** — ao centavo o mesmo valor que a auditoria de paridade da v5.3.0 havia atribuído a *"Endomarketing re-lançado no Monde"*. **Não era re-lançamento na origem: era este bug.**
+- Guard **visto reprovando** o defeito (as provas falham com `raw: false` reintroduzido).
+- Gates: `tsc` · `lint` · `build` · **762 de 763 testes** — a única falha é a paridade de áreas RBAC, alheia a este patch (ver abaixo). O `.env.local` foi copiado para o worktree, então os testes de contrato contra o banco rodam de verdade (0 skipped).
+
+### Adicionado — guards
+
+- `src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts`: 7 provas pelo caminho do **arquivo** (`parseXxxFile`), varrendo a faixa inteira do gatilho, o caminho de texto/CSV e a **limitação conhecida** (em CSV puro `-40.933` é irredutivelmente ambíguo — fixada em teste para ser explícita, não surpresa).
+- **Sonda mecânica** de duas regras, varrendo recursivamente `src/lib/carga/`, `src/lib/rateio/`, `src/lib/faturamento/` e `src/lib/gerencial/`: (1) nenhum `sheet_to_json` com `raw: false` — exceção única e declarada no `gerencial/parser.ts`, cuja leitura `raw:false` serve às colunas de texto e cujas duas colunas sensíveis vêm da leitura nativa; (2) nenhum ramo CSV com `raw: false` no `XLSX.read`.
+- A extração é por **parênteses balanceados**, não por janela de N caracteres, e aceita **parâmetro de tipo** entre o nome e o parêntese. As duas coisas importam: a 1ª versão da sonda usava uma janela de 300 chars (frágil, apontado pelo `revisor`) e não casava `sheet_to_json<unknown[]>(...)` — ou seja, estava **cega justamente para os arquivos que devia vigiar**. Pego ao escrevê-la.
+
+### Parecer da revisão
+
+- `revisor` (despachado a pedido do Yan): **1 CRÍTICO, 1 ALTO, 3 MÉDIO, 3 BAIXO**. O CRÍTICO (ramo CSV vivo em outros parsers) e o ALTO (`gerencial` protegia só data) foram **verificados por medição e corrigidos nesta versão** — as duas seções acima. Dos MÉDIO, a fragilidade da sonda foi corrigida; a restrição do `accept=".csv"` na UI e o alarme de ingestão ficam como follow-up declarado. Os BAIXO (resíduo inerte de `raw:false` no ramo binário, emenda ao ADR-0099) estão registrados, não endereçados.
+- `revisor-db` e `verificador-visual` **não se aplicam**: sem migration/RPC e sem mudança de UI.
+
+### Gate com falha declarada, alheia a este patch
+
+- `src/lib/rpc-contrato.test.ts` › "catálogo de áreas: banco ↔ app idênticos" **falha**, porque a área `gestao-pessoas/inventario` já existe em `app.rbac_areas` na produção compartilhada (migration da **v5.6.0**, em curso em outra branch) e ainda não existe no código. **Falha idêntica em `origin/main`** — verificado: este patch não toca `src/lib/auth/areas.ts`, e o commit-base também não tem a área. Some quando a v5.6.0 mergear. Os outros **762** testes passam.
+
+### ⚠️ A correção NÃO conserta os dados já em produção
+
+O patch corrige a **próxima** ingestão. A base viva segue com os valores inflados até o **re-upload** dos dois arquivos em `/admin/uploads` — o upload é full-swap (`truncar` → `inserir_lote` → `regenerar_fluxo_caixa`), então a reingestão resolve tudo **sem migration destrutiva**. É também a única forma de fechar o número exato: o arquivo carregado em 04/08 (116.713 linhas, 2023–2027) não está em disco, e o levantamento da investigação é um **piso**, não um total.
+
+Detalhe completo: `docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md`.
 
 ---
 

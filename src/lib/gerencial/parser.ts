@@ -158,7 +158,13 @@ export function parseGerencialExcel(buffer: ArrayBuffer): ParseResult {
     const linha     = idx + 2
     const pessoa    = String(row[colPessoa!] ?? '').trim()
     const tipoRaw   = row[colTipo!]
-    const valorRaw  = row[colValor!]
+    // Valor também vem da leitura raw:true quando a célula é NUMÉRICA — mesma razão do
+    // Vencimento logo abaixo, e a metade que faltava (a leitura dupla existia desde a v4.9
+    // mas protegia só datas). Com a string de exibição, uma célula de 3 casas decimais vira
+    // "188,615", casa o ramo de milhar BR do toNum e sai ×1000 — foi o que corrompeu a DRE
+    // na v5.5.2. Célula de texto ("R$ 8.840,00") cai no fallback e segue pela regra BR.
+    const valorNativo = rowsRaw[idx]?.[colValor!]
+    const valorRaw  = typeof valorNativo === 'number' ? valorNativo : row[colValor!]
     // Vencimento vem da leitura raw:true (Date nativo, sem ambiguidade de locale),
     // casado por índice. Fallback para a versão string (raw:false) caso a célula
     // não tenha valor nativo de data (ex.: data digitada como texto puro) — nesse

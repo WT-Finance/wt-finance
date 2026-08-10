@@ -1,6 +1,20 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-10 (fechamento da v5.6.0) · produção na **v5.5.1** (#224, 12h17) · **v5.6.0 — Inventário de Ativos — FECHADA e aguardando merge** (PR aberto; migrations `0247`/`0248` **já aplicadas** em 10/08, base vazia de propósito) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-10 (fechamento da v5.6.0) · produção na **v5.5.2** (#227 mergeado às 14h29 — correção do bug de ingestão ×1000 na DRE e no Fluxo de Caixa; sem migration). Antes dela a v5.5.1 (#224, 12h17) e a v5.5.0 (#222, 10h49) · **v5.6.0 — Inventário de Ativos — FECHADA e aguardando merge** (PR #229; migrations `0247`/`0248` **já aplicadas** em 10/08, base vazia de propósito) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+
+🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
+o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
+aparecem como prejuízo e são lucro) até a reingestão. O upload é full-swap, então resolve sem
+migration destrutiva. Detalhe no 2º item de "Verdade atual".
+
+⚠️ **Numeração de migration: a última APLICADA é a `0248`; a próxima livre é a `0249`.**
+As `0247` (`patrimonio_estrutura`) e `0248` (`patrimonio_rpcs`) são da **v5.6.0**: foram
+**aplicadas em produção com o código ainda não mergeado**, e é o PR #229 que fecha essa janela.
+Conferido em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já esteve
+obsoleto dizendo "próxima livre: `0247`". ✅ A consequência viva disso — o teste de paridade de
+áreas RBAC (`rpc-contrato.test.ts`) falhando em qualquer branch porque
+`gestao-pessoas/inventario` existia em `app.rbac_areas` e não no código — **está resolvida na
+branch da v5.6.0**, que declara a área nas duas pontas (879/879 testes).
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -49,6 +63,61 @@
   conferir os dois CSVs no Excel · liberar a área para quem precisa · **print das quatro telas**
   (a conferência visual autenticada ficou NÃO VERIFICADA — sem MCP Playwright nesta sessão e o
   Chrome do Windows não alcança o `localhost` do WSL2; o guard da rota FOI verificado por `curl`).
+- 🔴 **v5.5.2 (#227, mergeada 10/08 às 14h29) — a DRE e o Fluxo estavam ERRADOS por um bug de
+  ingestão, e a correção do CÓDIGO não conserta o DADO (re-upload PENDENTE).** Os parsers
+  `parse-lancamentos-movimentacao.ts` e `parse-titulos-em-aberto.ts` liam a planilha com
+  `sheet_to_json({ raw: false })`, o que **descarta o valor nativo da célula**: a célula
+  numérica `-40.933` (R$ 40,93) virava a string `"-40.933"`, casava o padrão de **milhar BR**
+  do `toNum` e era gravada como **−40933**. **×1000 em todo valor com exatamente 3 casas
+  decimais** (que nascem de divisão de título: `377,23 ÷ 2 = 188,615`).
+  **33 linhas confirmadas / R$ 7,52 Mi**, quase todas cobranças mensais recorrentes em
+  conta-cartão. **INVERTE o sinal do resultado: 2024 −6.286.322,67 → +82.814,81 ·
+  2025 −967.461,35 → +338.901,94.** Sem migration, sem ADR. **762 de 763 testes** — a única
+  falha é a paridade de áreas RBAC, **alheia a este patch**: `gestao-pessoas/inventario` já
+  está em `app.rbac_areas` na produção compartilhada (migration da v5.6.0) e ainda não está no
+  código; `origin/main` falha igual, e o patch não toca `src/lib/auth/areas.ts`.
+  `revisor` despachado a pedido do Yan: **1 CRÍTICO + 1 ALTO, ambos verificados e corrigidos**
+  nesta mesma versão (itens *a* e *a2* abaixo).
+  ⚠️ **AÇÃO DO YAN, indispensável: re-subir os DOIS arquivos em `/admin/uploads` depois do
+  merge.** O patch corrige a PRÓXIMA carga; a base viva segue inflada até lá. O upload é
+  full-swap, então a reingestão resolve tudo sem migration destrutiva — e é a única forma de
+  fechar o número exato (o arquivo de 04/08 não está em disco; o levantamento é um **piso**).
+  **Duráveis desta versão:**
+  *(a)* **Há DUAS portas para o mesmo estrago, e a segunda é maior.** No `sheet_to_json`, só
+  os dois parsers do Fluxo/DRE pediam `raw: false` (os outros omitem, e o default já protege).
+  Mas no **`XLSX.read` do ramo CSV** o `raw: false` estava em **oito** parsers — e ali o
+  SheetJS aplica heurístico **americano** que destrói TODO valor BR com vírgula decimal, não
+  só os de 3 casas: `"40,93"`→**4093**, `"0,05"`→**5**, `"-26,39"`→**−2639**. Três eram bases
+  financeiras que aceitam `.csv` pela UI: **Vendas, Rateio e Faturamento Corp**. Todos os ramos
+  CSV passaram a `raw: true`. **Achado do `revisor`, verificado por medição.**
+  *(a2)* **Leitura dupla não é imunidade — vale só para a coluna que a usa.** O
+  `gerencial/parser.ts` fazia leitura dupla desde a v4.9 e por isso foi tratado como seguro,
+  mas o nativo alimentava **só `Vencimento`**; `Valor Final` tinha o mesmo risco. Corrigido.
+  *(a3)* **A 1ª sonda estava cega para os arquivos que devia vigiar** — usava janela de 300
+  chars e não casava `sheet_to_json<unknown[]>(...)` (parâmetro de tipo). Refeita com
+  parênteses balanceados, duas regras e 4 diretórios.
+  *(b)* **Teste de parser que monta a matriz na mão NÃO cobre erro de extração.** A suíte
+  tinha cobertura farta, mas toda chamando `parseXxxRows(matriz)` — 753 provas passaram por
+  cima do bug. Guard de ingestão tem de montar um arquivo real e entrar por `parseXxxFile()`.
+  *(c)* **CSV falha no sentido INVERSO:** sem tipo nativo, `read(csv, { raw: false })` faz o
+  SheetJS aplicar convenção **americana** e `"-1.234,56"` vira −1,23456 (÷1000). No ramo CSV
+  o certo é `raw: true`, para a string sobreviver à regra BR do `toNum`.
+  *(d)* **Auditoria de paridade pode CARIMBAR o bug como fato-fonte.** A v5.3.0 mediu
+  Δ −40.892,07 e escreveu "Endomarketing re-lançado no Monde"; reprocessar o arquivo com o
+  parser real devolve **−40.892,07 ao centavo**. Divergência contra oráculo só vira "dado
+  re-editado na origem" depois de **reprocessar a fonte**, nunca por plausibilidade.
+  *(e)* **O `toNum` está CERTO e não foi tocado** — para uma string, `"1.234"` é ambíguo de
+  propósito e `coercao.test.ts` consagra a leitura BR. O erro era o parser **destruir a
+  informação que já tinha** antes de perguntar.
+  *(f)* **O motor da DRE foi auditado e está limpo** (4 invariantes estruturais), não há
+  dupla contagem realizado × previsto, e a suspeita de dupla contagem por conta-cartão foi
+  **REFUTADA** — a Abordagem B da 0188 se sustenta.
+  **Também registrado:** a base "por categoria" está **morta desde a 0192**, mas o cartão de
+  upload dela continua exposto chamando RPCs cuja tabela não existe mais (quebra em runtime).
+  **Pendente Yan:** re-upload · comunicar à diretoria que 2024/2025 eram lucro · revisar as
+  65 linhas de outlier médio e as 1.073 indeterminadas · levar ao provedor os 75 grupos de
+  linhas idênticas no export e os 5 títulos vencendo em 2049 · decidir sobre o upload morto.
+  Investigação: `docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md`.
 - **v5.5.1 (#224, mergeada 10/08 às 12h17) — ajustes de apresentação + "Margem Teórica (a.a.)".**
   Migration **`0246`** aplicada. Três pedidos do Yan depois de ver a v5.5.0 no ar: o gráfico virou
   **"Rendimento Potencial do Caixa Livre"** (sem o total "na janela", sem subtítulo, linha do saldo
@@ -504,12 +573,15 @@
   ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
   e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
   sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
-  **Última migration APLICADA de todas: `0246`** (v5.5.1 — chave de ordenação `margem_teorica_aa` + `margem_teorica_pct` no payload da Lista). Antes dela a **`0245`** (faixa de plausibilidade ±5% a.m. como CHECK ADITIVO, ao lado do frouxo de ±100%). Antes dela a **`0244`** (agendamento mensal do CDI — `cdi-ingest-mensal`, dia 3 às 06:00 SP, ATIVO). Antes delas a **`0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
+  **Última migration APLICADA de todas: `0248`** (v5.6.0 — `patrimonio_rpcs`; a versão está EM
+  CURSO, então esta e a `0247` `patrimonio_estrutura` estão **aplicadas com o código ainda não
+  mergeado**). Antes delas a **`0246`** (v5.5.1 — chave de ordenação `margem_teorica_aa` + `margem_teorica_pct` no payload da Lista). Antes dela a **`0245`** (faixa de plausibilidade ±5% a.m. como CHECK ADITIVO, ao lado do frouxo de ±100%). Antes dela a **`0244`** (agendamento mensal do CDI — `cdi-ingest-mensal`, dia 3 às 06:00 SP, ATIVO). Antes delas a **`0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
   NULL, não zero; `GREATEST`/`LEAST`/`SUM` ignoram NULL e transformavam "não sei" em "zero").
   Antes dela a **`0242`** (o total do float passou a ser a soma exata das partes) e a **`0241`** (coluna `rend_float` na Lista, aplicada só DEPOIS de
   a latência ser medida), a **`0240`** (a leitura ignora mês de CDI ainda aberto), a **`0239`**
   (`cdi_ingest_upsert`) e a **`0238`** (`dim_taxa_cdi` + a view da conta virtual + as 2 RPCs).
-  **Próxima livre: `0247`.**
+  **Próxima livre: `0249`** (conferido em `supabase_migrations.schema_migrations`, não no texto —
+  este campo dizia `0247` e já estava obsoleto quando a v5.6.0 aplicou a 0247 e a 0248).
   Antes delas a **`0237`** (v5.4.5: `monde_ingest_status` separa
   `vendas_que_contam` de `vendas` e expõe `itens_cancelados` — ADITIVA, `CREATE OR REPLACE` de
   função, verificada executando via REST. Necessária porque a venda cancelada passou a

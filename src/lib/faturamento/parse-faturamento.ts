@@ -49,7 +49,9 @@ export async function parseFaturamentoFile(
     let workbook: ReturnType<typeof XLSX.read>
     if (ext === 'csv') {
       const text = await file.text()
-      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: false })
+      // raw: TRUE no ramo CSV — com `false` o heurístico americano do SheetJS destrói todo
+      // valor BR com vírgula decimal ("40,93"→4093) antes do toNum ver a string. v5.5.2.
+      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: true })
     } else {
       const buffer = await file.arrayBuffer()
       workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: false })

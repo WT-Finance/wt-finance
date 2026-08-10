@@ -80,6 +80,36 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     ],
   },
   {
+    versao: '5.5.2',
+    data: '2026-08-10T14:29', // horário REAL do merge (8e30f25, 14:29 −03) — reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Corrigida uma falha na leitura das planilhas do Monde que multiplicava por mil ' +
+          'certos lançamentos — sempre aqueles cujo valor tinha três casas decimais, o que ' +
+          'acontece quando um título é dividido em parcelas. Eram poucas linhas, mas de valor ' +
+          'alto e repetidas mês a mês (cobranças recorrentes no cartão), então distorciam a DRE ' +
+          'e o Fluxo de Caixa de forma silenciosa: um gasto de R$ 659,53 aparecia como ' +
+          'R$ 659.532,00.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'O efeito era grande o bastante para inverter o sinal do resultado: 2024 e 2025 ' +
+          'apareciam como PREJUÍZO e, corrigidos, são LUCRO. O Endomarketing de 2025, que ' +
+          'motivou a investigação, cai de R$ 924,7 mil para R$ 171,0 mil.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os números da tela só passam a refletir a correção depois que as duas planilhas ' +
+          'forem carregadas de novo em Administração › Uploads — a correção vale para a ' +
+          'próxima carga, não reescreve o que já está gravado.',
+      },
+    ],
+  },
+  {
     versao: '5.5.1',
     data: '2026-08-10T12:17', // horário REAL do merge (e12b03d, 12:17 −03) — reconciliado no /pos-merge
     itens: [
