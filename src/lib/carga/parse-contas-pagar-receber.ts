@@ -84,7 +84,7 @@ export async function parseContasPagarReceberFile(
     let workbook: ReturnType<typeof XLSX.read>
     if (ext === 'csv') {
       const text = await file.text()
-      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: false })
+      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: true })
     } else {
       const buffer = await file.arrayBuffer()
       workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: false })

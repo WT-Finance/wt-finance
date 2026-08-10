@@ -164,14 +164,22 @@ export async function parseTitulosEmAbertoFile(
     let workbook: ReturnType<typeof XLSX.read>
     if (ext === 'csv') {
       const text = await file.text()
-      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: false })
+      // CSV é só texto: com `raw: false` o SheetJS aplica convenção americana e "-1.234,56"
+      // vira -1,23456. `raw: true` preserva a string para a regra BR do toNum (v5.5.2) —
+      // mesma correção da irmã `parse-lancamentos-movimentacao.ts`.
+      workbook = XLSX.read(text, { type: 'string', cellDates: true, raw: true })
     } else {
       const buffer = await file.arrayBuffer()
       workbook = XLSX.read(buffer, { type: 'array', cellDates: true, raw: false })
     }
 
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
-    const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: false })
+    // raw: TRUE — valor NATIVO da célula (number/Date), nunca a string de exibição.
+    // Mesma razão da irmã `parse-lancamentos-movimentacao.ts`: reformatar para texto
+    // reintroduz a ambiguidade ponto-decimal × ponto-milhar que o Excel já resolveu, e
+    // o toNum então lê "-40.933" (R$ 40,93) como -40933. Ver skill `ingestao-planilhas`
+    // §3 e a investigação de 2026-08-10 (v5.5.2).
+    const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: null, raw: true })
     if (aoa.length === 0) return { error: 'Arquivo vazio ou sem dados.' }
 
     const resultado = parseTitulosEmAbertoRows(aoa, file.name)

@@ -48,9 +48,9 @@ travada foi reportada por usuário real no upload de Vendas (v4.20.2) antes de v
 regra — o parse funcionava perfeitamente em dev com arquivos pequenos e só quebrou com
 volume de produção.
 
-## 3. Datas de planilha: ler o `Date` nativo da célula, nunca a string formatada
+## 3. Célula de planilha: ler o valor NATIVO — vale para data E para dinheiro
 
-Ao ler datas de uma célula Excel, use:
+Ao ler qualquer célula tipada de um Excel, use:
 
 ```ts
 XLSX.read(buffer, { cellDates: true });
@@ -72,6 +72,57 @@ fallback para células que cheguem genuinamente como texto (não como data forma
 Custou caro: a importação da base Gerencial inverteu dia/mês (ADR-0099, v4.9) e o bug
 ficou mascarado por semanas porque a maioria dos dias no mês é > 12 e acertava por
 coincidência — só uma auditoria de dados achou a inconsistência.
+
+### O mesmo vale para DINHEIRO — e custou mais caro ainda (v5.5.2)
+
+A regra acima nasceu para datas, mas o argumento é idêntico para número: reformatar para
+texto **reintroduz uma ambiguidade que o Excel já tinha resolvido**. A célula numérica
+`-40.933` (R$ 40,93, ponto decimal) vira a string `"-40.933"`, que casa o padrão de milhar
+BR do `toNum` (`^-?\d{1,3}(\.\d{3})+$`) e é lida como **−40933** — ×1000 silencioso.
+
+O gatilho é **exatamente 3 casas decimais** com 1–3 dígitos inteiros; com 4 casas
+(`-30.4322`) ou 4+ dígitos inteiros (`1234.567`) o padrão não casa e o valor sempre passou.
+Por isso o defeito é esparso e plausível, nunca visível em massa. Três casas nascem de
+**divisão de título** (parcelamento, rateio, câmbio): `377,23 ÷ 2 = 188,615`.
+
+Os dois parsers do Fluxo/DRE pediam `raw: false` **explicitamente** ao `sheet_to_json` e
+ficaram anos assim; os demais omitem a opção e o default do SheetJS (`raw: true`) já os
+protegia. **O modo seguro é não escrever a opção.**
+
+### CSV é uma SEGUNDA porta para o mesmo estrago, e maior
+
+`XLSX.read(texto, { type: 'string', raw: false })` faz o SheetJS rodar um heurístico
+**americano** sobre o texto **antes** de qualquer coerção nossa. Isso não atinge só valores de
+3 casas — destrói **todo** valor BR com vírgula decimal: `"40,93"` → **4093**, `"0,05"` → **5**,
+`"-26,39"` → **−2639**, `"-1.234,56"` → **−1,23456**.
+
+**No ramo CSV use sempre `read(..., { raw: true })`**, para a string sobreviver e a regra BR do
+`toNum` valer — inclusive para datas, onde a leitura americana do SheetJS é justamente a
+armadilha da ADR-0099. Estava vivo em **oito** parsers na v5.5.2, três em bases financeiras que
+aceitam `.csv` pela UI (Vendas, Rateio, Faturamento Corp).
+
+Ali a ambiguidade de `"-40.933"` é irredutível: sem tipo, não há o que consultar.
+
+**A sonda mecânica** (`parse-fluxo-caixa-valor-nativo.test.ts`) vigia as duas portas em
+`src/lib/carga/`, `src/lib/rateio/`, `src/lib/faturamento/` e `src/lib/gerencial/`. Ela extrai
+os argumentos por **parênteses balanceados** e aceita parâmetro de tipo — a 1ª versão usava
+janela de caracteres e não casava `sheet_to_json<unknown[]>(...)`, ficando cega justamente para
+os arquivos que devia vigiar.
+
+**Leitura dupla não é imunidade — vale só para a coluna que a usa.** O `gerencial/parser.ts`
+fazia leitura dupla desde a v4.9 e por isso foi tratado como seguro; mas a versão nativa
+alimentava **só `Vencimento`**, e `Valor Final` seguia pela string de exibição, com o mesmo
+risco. Corrigido na v5.5.2. Ao citar leitura dupla como proteção, diga **de qual coluna**.
+
+**Um teste de parser que monta a matriz na mão NÃO cobre isto.** O defeito mora na
+extração (a opção do `sheet_to_json`), então toda prova que chama `parseXxxRows(matriz)`
+passa por cima dele — foi o que aconteceu com 753 testes verdes. Guard de ingestão precisa
+montar um arquivo de verdade e entrar por `parseXxxFile()`.
+
+Custou caríssimo: distorceu a DRE e o Fluxo a ponto de **inverter o sinal do resultado de
+2024 e de 2025**, e a auditoria de paridade da v5.3.0 chegou a carimbar o delta como
+"re-lançamento retroativo no Monde". Investigação completa em
+`docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md`.
 
 ## 4. Coerção de célula: UM módulo só, e o lint segura isso
 
