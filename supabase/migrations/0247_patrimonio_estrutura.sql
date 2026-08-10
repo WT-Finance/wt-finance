@@ -23,8 +23,12 @@
 --     cadastra e movimenta, sem dois níveis. Gate inicial APERTADO: só os roles que já
 --     têm 'admin/acessos' recebem a área nova (mesmo padrão da 0161/0165); o admin
 --     libera os demais pelo editor de roles.
---   • Reversão (manual, destrutiva): DROP SCHEMA patrimonio CASCADE, remover a linha de
---     app.rbac_role_permissoes/app.rbac_areas e as 4 entradas de diário por trigger.
+--   • Reversão (manual, destrutiva): DROP SCHEMA patrimonio CASCADE (leva junto os 2 triggers
+--     do diário, que vivem nas tabelas deste schema), DELETE das N linhas de
+--     app.rbac_role_permissoes com area='gestao-pessoas/inventario' (uma por role que tinha
+--     'admin/acessos' no momento da aplicação) e DELETE da linha de app.rbac_areas. As
+--     entradas JÁ GRAVADAS em financeiro.diario_alteracoes permanecem — o diário é
+--     append-only e imutável por construção.
 -- ---------------------------------------------------------------------------
 
 CREATE SCHEMA IF NOT EXISTS patrimonio;

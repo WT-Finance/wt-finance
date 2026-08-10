@@ -12,7 +12,10 @@
 --   • ORÇAMENTO DE TEMPO: as RPCs rodam como `authenticated` (teto de 8s, ADR-0122). O
 --     volume aqui é o parque de equipamentos de uma empresa (centenas de linhas, não
 --     milhões) e não há função escalar por linha em JOIN — sem risco de N+1.
---   • Reversão (manual, destrutiva): DROP das 10 funções públicas e da auxiliar.
+--   • Reversão (manual, destrutiva): DROP das 10 funções públicas de `public.patrimonio_*`,
+--     da VIEW `patrimonio.v_estado_atual` e das 3 auxiliares internas
+--     (`patrimonio.status_derivado`, `como_estado_conservacao`, `como_motivo_baixa`).
+--     A view depende de `status_derivado` — derrubar a view ANTES da função.
 -- ---------------------------------------------------------------------------
 
 -- ── 0. Status derivado — UMA definição, espelhada em derivar.ts ─────────────────
@@ -40,6 +43,49 @@ AS $$
   END
 $$;
 REVOKE EXECUTE ON FUNCTION patrimonio.status_derivado(patrimonio.tipo_movimentacao, integer) FROM PUBLIC, anon, authenticated;
+
+-- ── 0.1 Casts de enum que falam português ───────────────────────────────────────
+-- Sem isto, um valor fora do enum estoura como erro cru do Postgres ("invalid input value
+-- for enum ...") em vez de mensagem de domínio. O padrão já existia para `p_tipo`; estas
+-- duas funções o estendem aos outros dois enums, sem duplicar a lista de valores
+-- (`enum_range` lê o próprio tipo, então acrescentar um valor não deixa a validação para trás).
+CREATE OR REPLACE FUNCTION patrimonio.como_estado_conservacao(p text)
+RETURNS patrimonio.estado_conservacao
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = ''
+AS $$
+DECLARE v text := nullif(btrim(coalesce(p, '')), '');
+BEGIN
+  IF v IS NULL THEN RETURN NULL; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM unnest(enum_range(NULL::patrimonio.estado_conservacao)) e WHERE e::text = v
+  ) THEN
+    RAISE EXCEPTION 'ESTADO_INVALIDO: "%" não é um estado de conservação', v USING ERRCODE = '22023';
+  END IF;
+  RETURN v::patrimonio.estado_conservacao;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION patrimonio.como_estado_conservacao(text) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION patrimonio.como_motivo_baixa(p text)
+RETURNS patrimonio.motivo_baixa
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = ''
+AS $$
+DECLARE v text := nullif(btrim(coalesce(p, '')), '');
+BEGIN
+  IF v IS NULL THEN RETURN NULL; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM unnest(enum_range(NULL::patrimonio.motivo_baixa)) e WHERE e::text = v
+  ) THEN
+    RAISE EXCEPTION 'MOTIVO_INVALIDO: "%" não é um motivo de baixa', v USING ERRCODE = '22023';
+  END IF;
+  RETURN v::patrimonio.motivo_baixa;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION patrimonio.como_motivo_baixa(text) FROM PUBLIC, anon, authenticated;
 
 -- View interna do estado atual: DISTINCT ON é a tradução exata de "a última movimentação
 -- manda". `id DESC` é o terceiro critério de desempate — sem ele, duas linhas com a mesma
@@ -401,7 +447,7 @@ BEGIN
     nullif(btrim(coalesce(p_fornecedor, '')), ''),
     p_data_aquisicao, p_valor_aquisicao,
     nullif(btrim(coalesce(p_nota_fiscal, '')), ''),
-    nullif(btrim(coalesce(p_estado_conservacao, '')), '')::patrimonio.estado_conservacao,
+    patrimonio.como_estado_conservacao(p_estado_conservacao),
     nullif(btrim(coalesce(p_obs, '')), ''),
     v_uid
   ) RETURNING * INTO v_ativo;
@@ -486,7 +532,7 @@ BEGIN
     data_aquisicao     = p_data_aquisicao,
     valor_aquisicao    = p_valor_aquisicao,
     nota_fiscal        = nullif(btrim(coalesce(p_nota_fiscal, '')), ''),
-    estado_conservacao = nullif(btrim(coalesce(p_estado_conservacao, '')), '')::patrimonio.estado_conservacao,
+    estado_conservacao = patrimonio.como_estado_conservacao(p_estado_conservacao),
     obs                = nullif(btrim(coalesce(p_obs, '')), ''),
     atualizado_em      = now(),
     atualizado_por     = auth.uid()
@@ -522,12 +568,13 @@ VOLATILE SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_uid      uuid := auth.uid();
-  v_nome_uid text;
-  v_tipo     patrimonio.tipo_movimentacao;
-  v_status   text;
-  v_data     date := coalesce(p_data_movimentacao, CURRENT_DATE);
-  v_id       bigint;
+  v_uid        uuid := auth.uid();
+  v_nome_uid   text;
+  v_tipo       patrimonio.tipo_movimentacao;
+  v_status     text;
+  v_data       date := coalesce(p_data_movimentacao, CURRENT_DATE);
+  v_id         bigint;
+  v_constraint text;
 BEGIN
   PERFORM app.exigir_acesso(ARRAY['gestao-pessoas/inventario']);
 
@@ -548,11 +595,20 @@ BEGIN
 
   SELECT e.status INTO v_status FROM patrimonio.v_estado_atual e WHERE e.ativo_id = p_ativo_id;
 
-  IF v_status = 'baixado' AND v_tipo <> 'reativacao' THEN
+  -- `coalesce` nas DUAS pontas, por simetria: hoje a invariante 5 garante que todo ativo tem
+  -- estado, mas se ela for furada um dia, "sem estado" tem de BLOQUEAR, não passar batido.
+  IF coalesce(v_status, '') = 'baixado' AND v_tipo <> 'reativacao' THEN
     RAISE EXCEPTION 'ATIVO_BAIXADO: ativo baixado só aceita reativação' USING ERRCODE = '22023';
   END IF;
   IF coalesce(v_status, '') <> 'baixado' AND v_tipo = 'reativacao' THEN
     RAISE EXCEPTION 'ATIVO_NAO_BAIXADO: reativação só faz sentido depois de uma baixa' USING ERRCODE = '22023';
+  END IF;
+
+  -- Data validada AQUI (e não só pelo CHECK da tabela) para o erro dizer o que é: um ano
+  -- digitado errado é plausível justamente porque a retroativa é liberada de propósito.
+  IF v_data < DATE '2000-01-01' THEN
+    RAISE EXCEPTION 'DATA_INVALIDA: % está fora do intervalo aceito — confira o ano', v_data
+      USING ERRCODE = '22023';
   END IF;
 
   SELECT u.nome INTO v_nome_uid FROM app.rbac_usuarios u WHERE u.user_id = v_uid;
@@ -563,7 +619,7 @@ BEGIN
   ) VALUES (
     p_ativo_id, v_tipo, v_data, p_area_destino_id, p_detentor_destino_id,
     nullif(btrim(coalesce(p_destino_texto, '')), ''),
-    nullif(btrim(coalesce(p_motivo_baixa, '')), '')::patrimonio.motivo_baixa,
+    patrimonio.como_motivo_baixa(p_motivo_baixa),
     nullif(btrim(coalesce(p_obs, '')), ''),
     v_uid, v_nome_uid
   ) RETURNING id INTO v_id;
@@ -574,9 +630,16 @@ BEGIN
   );
 EXCEPTION
   -- O CHECK por tipo é a verdade; traduzimos a violação para uma mensagem que diz o que falta.
+  -- ⚠️ SÓ a dele: a tabela tem MAIS de um CHECK, e capturar `check_violation` em bloco fazia
+  -- um ano digitado errado (1999) responder "os campos de destino não batem com o tipo" —
+  -- mensagem falsa. Qualquer outro constraint segue cru, com a própria mensagem.
   WHEN check_violation THEN
-    RAISE EXCEPTION 'DESTINO_INCOERENTE: os campos de destino não batem com o tipo "%"', p_tipo
-      USING ERRCODE = '22023';
+    GET STACKED DIAGNOSTICS v_constraint = CONSTRAINT_NAME;
+    IF v_constraint = 'mov_destino_por_tipo' THEN
+      RAISE EXCEPTION 'DESTINO_INCOERENTE: os campos de destino não batem com o tipo "%"', p_tipo
+        USING ERRCODE = '22023';
+    END IF;
+    RAISE;
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION public.patrimonio_registrar_movimentacao(integer, text, date, smallint, integer, text, text, text) FROM PUBLIC, anon;
