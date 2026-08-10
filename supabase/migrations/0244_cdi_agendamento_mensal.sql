@@ -1,25 +1,31 @@
 -- ---------------------------------------------------------------------------
--- PENDENTE — feat(v5.5.0/M2): agendamento mensal da ingestão do CDI.
+-- 0244 — feat(v5.5.0/M2): agendamento mensal da ingestão do CDI.
 --
--- ⚠️ SEM NÚMERO E FORA DE `supabase/migrations/` DE PROPÓSITO — recebe o número
--- livre no momento de aplicar.
+-- ADITIVA. Declaração prévia (regime do CLAUDE.md): só `cron.unschedule` (guardado
+-- por EXISTS, idempotente) + `cron.schedule`, ambos via SELECT. Não cria, altera nem
+-- remove objeto de dado; não escreve em nenhuma tabela do app.
 --
--- ⚠️ APLICAR SÓ DEPOIS DO DEPLOY DA ROTA `/api/cdi/ingest` EM PRODUÇÃO.
+-- ⚠️ ESTE ARQUIVO ESPEROU FORA DE `supabase/migrations/` até o deploy existir.
 -- Agendar antes NÃO dá erro: o pg_net dispara, a rota inexistente responde 404, o
 -- job aparece VERDE em `cron.job_run_details` e ninguém descobre que a ingestão
--- nunca rodou. É a armadilha que a v5.4.4 documentou, e a ordem correta que ela
--- provou é: deploy → chamar a rota À MÃO e ver o resumo → só então agendar.
+-- nunca rodou. É a armadilha que a v5.4.4 documentou.
 --
--- ORDEM COMPLETA DE ATIVAÇÃO:
---   1. migrations **0238–0243** aplicadas (este texto citava só "0238 e 0239" porque
---      foi escrito antes de as corretivas 0240/0242/0243 existirem);
---   2. deploy do código (a rota existe em produção);
---   3. disparo manual: POST /api/cdi/ingest com o Bearer do CRON_SECRET — é ele
---      que faz o BACKFILL de ago/2024 até o último mês fechado, porque a rota não
---      tem modo separado: a janela é sempre a série inteira;
---   4. conferir 3 taxas contra o site do BACEN e a idempotência (2ª chamada com
---      `novas: 0, alteradas: 0`);
---   5. aplicar este arquivo.
+-- ORDEM DE ATIVAÇÃO — CUMPRIDA, nesta ordem, em 07/08/2026:
+--   1. ✅ migrations 0238–0243 aplicadas e verificadas;
+--   2. ✅ PR #222 mergeado (`291ce6c`) e deploy no ar — `/api/cdi/ingest` responde
+--        401 sem credencial (a rota existe e está protegida), não 404;
+--   3. ✅ disparo MANUAL em produção com o Bearer do CRON_SECRET: HTTP 200,
+--        `recebidas: 24`, `mes_max: 2026-07-01` — o último mês FECHADO, provando que
+--        o descarte do mês parcial está vivo em produção;
+--   4. ✅ idempotência provada na 2ª chamada (`novas: 0, alteradas: 0`, total
+--        intacto) e a série RECONCILIADA mês a mês contra a API do BACEN:
+--        **24 meses conferidos, 0 divergências**. (Na conferência, ago/2026 estava
+--        em 0,26% no BACEN — o parcial, que havia crescido de 0,21% no mesmo dia — e
+--        o Janus usando 1,22%, a taxa fechada de julho. É a prova viva de por que o
+--        mês aberto não pode ser gravado.)
+--   5. ⬅️ este arquivo.
+--
+-- ROLLBACK: `SELECT cron.unschedule('cdi-ingest-mensal');` (ver DOWN no rodapé).
 --
 -- SECRETS: reusa `monde_app_url` e `monde_cron_secret`, já no Vault desde a 0182.
 -- Os nomes citam o Monde por origem histórica, mas os VALORES são genéricos (URL de

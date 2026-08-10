@@ -41,7 +41,7 @@ leituras anônimas — era o necessário para a main antiga continuar funcionand
 merge. Após o merge, ativar na ordem:
 
 1. **Confirmar que a produção nova está no ar** (login funciona, telas carregam):
-   abrir https://wt-finance.vercel.app → deve redirecionar a `/login`.
+   abrir https://wt-janus.vercel.app → deve redirecionar a `/login`.
 2. **Ligar o enforcement** (fecha o acesso anônimo no banco). NÃO há toggle na UI —
    é via SQL (Supabase Dashboard → SQL Editor, ou `npx supabase db query --linked`):
    ```sql
@@ -115,7 +115,7 @@ on conflict do nothing;
 
 1. Link de acesso manual, sem e-mail (Dashboard → Authentication → Users → ⋯ →
    "Send magic link" — ou via API admin `generateLink`), e entregar o link
-   `https://wt-finance.vercel.app/auth/confirm?token_hash=<hashed_token>&type=magiclink`.
+   `https://wt-janus.vercel.app/auth/confirm?token_hash=<hashed_token>&type=magiclink`.
 2. Persistindo: desligar o enforcement (2.1) **e** — caso extremo — fazer revert do
    merge na Vercel (Deployments → deployment anterior → "Promote to Production"),
    que volta a app sem login enquanto o banco segue compatível (flag OFF).

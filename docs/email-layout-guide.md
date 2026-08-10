@@ -80,7 +80,7 @@ O Outlook desktop usa o **motor do Word** — ignora muito CSS moderno. O que cu
 - **Unit (vitest):** `vi.mock('server-only', () => ({}))` é obrigatório (o import `'server-only'` quebra no Node do vitest). `vi.mock('nodemailer')` com um `sendMail` controlável para exercitar sucesso/erro.
 - **Prévia visual (cliente moderno):** gere o html do template **real** via `tsx`, troque o `cid:` por um data-URI do logo e publique como Artifact:
   ```ts
-  const { html } = templateSenhaProvisoria({ nome:'Yan', senha:'X', tipo:'reset', linkAcesso:'https://wt-finance.vercel.app' })
+  const { html } = templateSenhaProvisoria({ nome:'Yan', senha:'X', tipo:'reset', linkAcesso:'https://wt-janus.vercel.app' })
   const preview = html.replace('cid:welcome-logo', 'data:image/png;base64,'+b64)  // só p/ preview
   ```
 - **⚠️ Verificação OBRIGATÓRIA no Outlook real.** O preview de navegador **NÃO** pega o que o Outlook quebra (`margin:auto`, `background` em `<a>`, `border-radius`, alpha de PNG). **Mudança visual de e-mail só é "pronta" depois de conferida no cliente-alvo** (Outlook é o da empresa). Isso custou um patch inteiro (v4.24.2): a v4.24.1 shipou com o botão-virou-texto e o logo-caixa-preta porque só foi visto no Outlook **depois** do merge.
