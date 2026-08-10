@@ -1,4 +1,4 @@
-// Inventário de ativos (v5.6.0) — modelo de domínio.
+// Inventário de Ativos (v5.6.0) — modelo de domínio.
 //
 // REGRA CENTRAL (briefing §Invariantes 1 e 2): o razão de movimentações é a fonte da verdade.
 // Localização, detentor e status do ativo são DERIVADOS da última movimentação — nunca colunas

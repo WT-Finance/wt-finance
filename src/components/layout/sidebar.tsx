@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, use, Suspense, type PointerEv
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, UsersRound, Boxes, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert, FileSpreadsheet } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert, FileSpreadsheet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -78,14 +78,14 @@ const METAS_SUBS: NavSubItem[] = [
   { href: '/metas/cadastro', label: 'Cadastro',       icon: ClipboardList, area: 'metas' },
 ]
 
-// Gestão de Pessoas (v5.6.0) — seção NOVA da sidebar; o Inventário de ativos é seu 1º módulo.
+// Gestão de Pessoas (v5.6.0) — seção NOVA da sidebar; o Inventário de Ativos é seu 1º módulo.
 // ⚠️ M0: gated pela área EXISTENTE 'admin/design-system' porque a área definitiva
 // ('gestao-pessoas/inventario') só pode nascer junto da migration que a insere em
 // app.rbac_areas — o teste de contrato exige paridade banco↔app e a M0 não aplica migration.
 // M2: trocar por 'gestao-pessoas/inventario' aqui E no requireArea da page, no mesmo commit
 // da migration. `emConstrucao` marca o item enquanto ele é pré-visualização.
 const GESTAO_PESSOAS_SUBS: NavSubItem[] = [
-  { href: '/gestao-pessoas/inventario', label: 'Inventário de ativos', icon: Boxes, area: 'admin/design-system', emConstrucao: true },
+  { href: '/gestao-pessoas/inventario', label: 'Inventário de Ativos', icon: Boxes, area: 'admin/design-system', emConstrucao: true },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
@@ -108,7 +108,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
   // Seção nova (v5.6.0), entre os módulos de operação e o bloco administrativo.
-  { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: UsersRound,      area: null            },
+  // Ícone `IdCard` (crachá), NÃO `Users`/`UsersRound`: o `Users` já é "Usuários e Acessos" e as
+  // variantes redondas são quase indistinguíveis dele no tamanho 16px da sidebar (ajuste pedido
+  // pelo Yan na aprovação da M0). O crachá também separa os conceitos: pessoa da empresa aqui,
+  // conta da plataforma lá.
+  { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: IdCard,          area: null            },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar

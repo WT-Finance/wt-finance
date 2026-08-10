@@ -1,4 +1,4 @@
-// Inventário de ativos (v5.6.0) — dados de MOCKUP da M0.
+// Inventário de Ativos (v5.6.0) — dados de MOCKUP da M0.
 //
 // Existe só para a M0 (gate de aprovação visual): a M3/M4 trocam esta fonte pelas RPCs sem
 // mudar o shape, porque `AtivoFicha`/`Movimentacao` já são o contrato da M1. O razão abaixo

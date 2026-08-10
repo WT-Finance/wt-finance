@@ -110,7 +110,7 @@ export function areasDaRota(pathname: string): Area[] | null {
   // o Acompanhamento (/metas e /metas/acompanhamento) libera com qualquer uma das duas.
   if (p.startsWith('/metas/cadastro'))          return ['metas']
   if (p.startsWith('/metas'))                   return ['metas/acompanhamento', 'metas']
-  // Gestão de Pessoas · Inventário de ativos (v5.6.0). ⚠️ M0: apontado para a área EXISTENTE
+  // Gestão de Pessoas · Inventário de Ativos (v5.6.0). ⚠️ M0: apontado para a área EXISTENTE
   // do Design System — a área definitiva 'gestao-pessoas/inventario' só pode ser declarada
   // junto da migration que a insere em app.rbac_areas (o teste de contrato exige paridade
   // banco↔app, e a M0 não aplica migration). M2 troca as três pontas no mesmo commit:

@@ -1,7 +1,7 @@
 import { requireArea } from '@/lib/auth/sessao'
 import InventarioContent from '@/components/gestao-pessoas/inventario/inventario-content'
 
-// Gestão de Pessoas · Inventário de ativos (v5.6.0).
+// Gestão de Pessoas · Inventário de Ativos (v5.6.0).
 //
 // ⚠️ M0 — GATE DE APROVAÇÃO VISUAL. A rota é real e a sidebar já mostra a seção nova, mas a
 // área de permissão definitiva ('gestao-pessoas/inventario') AINDA NÃO EXISTE: criá-la em

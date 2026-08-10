@@ -1,4 +1,4 @@
-// Inventário de ativos (v5.6.0) — derivação de estado a partir do razão.
+// Inventário de Ativos (v5.6.0) — derivação de estado a partir do razão.
 //
 // Estas funções são PURAS e são a fonte única do contrato "tipo → destino / status" na UI.
 // O banco repete o mesmo contrato como CHECK por tipo (M1); o teste de contrato da M1 compara

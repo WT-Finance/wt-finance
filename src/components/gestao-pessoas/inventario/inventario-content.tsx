@@ -13,7 +13,7 @@ import {
 } from './fixture'
 import type { Detentor, Movimentacao } from './tipos'
 
-// Inventário de ativos — casca da tela. As três abas ficam SEMPRE montadas, alternando por
+// Inventário de Ativos — casca da tela. As três abas ficam SEMPRE montadas, alternando por
 // `hidden` (molde de `gerencial-section.tsx`): busca e filtros de cada aba sobrevivem à troca.
 // Acessibilidade no molde de `acessos-content.tsx` (role=tablist / tab / tabpanel).
 //
@@ -78,7 +78,7 @@ export default function InventarioContent() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Inventário de ativos</h1>
+        <h1 className="text-xl font-semibold text-zinc-900">Inventário de Ativos</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
           Máquinas e equipamentos do Welcome Group: onde cada item está, com quem, desde quando e por quê
         </p>
