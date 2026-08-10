@@ -58,6 +58,23 @@ const TOOLTIP_REND_FLOAT =
   'Rendimento teórico a 100% do CDI · não representa aplicação real.'
 
 /**
+ * Tooltip da "Margem Teórica (a.a.)" (v5.5.1).
+ *
+ * O texto PRECISA dizer que o número soma um componente não-contábil: é isso que o
+ * separa da "Margem (a.a.)" ao lado, e a v5.5.0 tinha como invariante justamente NÃO
+ * fazer essa soma. A mudança é deliberada (emenda ao ADR-0166), e quem lê a tela
+ * precisa saber o que está lendo — senão vê duas margens diferentes para a mesma
+ * operação e conclui que uma delas está errada.
+ */
+const TOOLTIP_MARGEM_TEORICA =
+  'Margem anualizada considerando o Resultado Previsto MAIS o rendimento potencial do ' +
+  'caixa livre: (Resultado + Rend. Teórico) ÷ Faturamento, anualizado pela mesma régua ' +
+  'LINEAR da "Margem (a.a.)". Embute um componente TEÓRICO — rendimento a 100% do CDI, ' +
+  'que não representa aplicação real —, então NÃO substitui a "Margem (a.a.)" ao lado: ' +
+  'a diferença entre as duas é exatamente o peso do float na operação. ' +
+  'Travessão quando não há float conhecido.'
+
+/**
  * Meses de atraso da série do CDI acima dos quais vale avisar.
  *
  * 1 mês é o estado NORMAL, não atraso: o CDI de um mês só existe depois de o mês
@@ -85,12 +102,11 @@ function avisoStaleness(taxaVigenteMes: string | null | undefined): string {
  *  • `!whitespace-normal` (important): o primitivo `Tooltip` traz
  *    `whitespace-nowrap` na base — sem o `!`, texto longo não quebra e vira uma
  *    linha gigante INVISÍVEL que transborda e cria barra de rolagem horizontal.
- *  • `!left-auto right-0`: âncora à DIREITA. Nasceu porque "Margem (a.a.)" é a
- *    última coluna e um balão ancorado à esquerda abriria para fora da borda
- *    direita. ⚠️ v5.5.0: há um segundo call-site, "Rend. Float", que é a 9ª de 11
- *    colunas — para ele a âncora à direita não é necessária, mas também não
- *    atrapalha (o balão abre para dentro da tabela). Registrado para que ninguém
- *    "corrija" a âncora pensando num call-site só e quebre o outro em silêncio.
+ *  • `!left-auto right-0`: âncora à DIREITA. São TRÊS call-sites — "Margem (a.a.)",
+ *    "Rend. Teórico" e "Margem Teórica (a.a.)", esta última a ÚLTIMA coluna da
+ *    tabela. A âncora à direita é obrigatória para a última (à esquerda o balão
+ *    abriria para fora da borda) e inofensiva para as do meio, onde ele abre para
+ *    dentro. Não "corrigir" pensando num call-site só — quebra os outros em silêncio.
  */
 function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
   return (
@@ -122,10 +138,10 @@ function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      {/* v5.5.0: 11 colunas — entrou "Rend. Float" entre "Resultado Prev." e "Margem".
-          A silhueta do skeleton acompanha a da tabela real; se as duas divergirem, a
-          tela "pula" ao terminar de carregar. */}
-      {[120, 80, 64, 60, 56, 36, 72, 60, 64, 52, 56].map((w, i) => (
+      {/* v5.5.1: 12 colunas — o bloco teórico ("Rend. Teórico" + "Margem Teórica")
+          foi para o FIM, depois das contábeis. A silhueta do skeleton acompanha a da
+          tabela real; se as duas divergirem, a tela "pula" ao terminar de carregar. */}
+      {[120, 80, 64, 60, 56, 36, 72, 60, 52, 56, 64, 60].map((w, i) => (
         <td key={i} className="py-2.5 px-3">
           <div className="h-3 rounded bg-zinc-100" style={{ width: w }} />
         </td>
@@ -193,6 +209,9 @@ async function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string
   const dados = operacoes.map(op => {
     const dias = duracaoDias(op.data_venda_contrato, op.data_evento)
     const mAA  = margemAnualizada(op.margem_liquida_pct, dias)
+    const mTeoricaAA = op.margem_teorica_pct == null
+      ? null
+      : margemAnualizada(op.margem_teorica_pct, dias)
     return {
       'Operação':              op.nome_casal ?? op.operacao,
       'Hotel':                 op.hotel ?? '—',
@@ -203,14 +222,15 @@ async function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string
       'Faturamento (R$)':         op.faturamento ?? 0,
       // v4.9/M6: Resultado Previsto = entradas_total − saidas_total (mesma fórmula do drawer).
       'Resultado Previsto (R$)':  (op.entradas_total ?? 0) - (op.saidas_total ?? 0),
-      // v5.5.0: TEÓRICO — fica ao lado, nunca somado a resultado/margem/faturamento
-      // (invariante 1 do briefing). O cabeçalho diz "teórico" para que a coluna não
-      // vire receita ao ser colada em outra planilha.
-      'Rend. Float teórico (R$)': op.rend_float ?? '—',
       'Margem (%)':               op.margem_liquida_pct ?? 0,
       // v5.4.2/M1: número CRU (não string formatada) — a planilha precisa poder somar,
       // ordenar e refazer a conta. Duração não anualizável vira travessão, nunca 0.
       'Margem a.a. (%)':          mAA != null ? Number(mAA.toFixed(1)) : '—',
+      // v5.5.1: as duas colunas TEÓRICAS no fim, na mesma ordem da tela. Os rótulos
+      // carregam "Teórico"/"Teórica" de propósito — fora do Janus a planilha perde o
+      // tooltip, e o nome é a única coisa que impede a coluna de virar receita.
+      'Rend. Teórico (R$)':       op.rend_float ?? '—',
+      'Margem Teórica a.a. (%)':  mTeoricaAA != null ? Number(mTeoricaAA.toFixed(1)) : '—',
     }
   })
 
@@ -559,24 +579,39 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               <SortTh field="convidados" center title="Número de convidados únicos nas Diárias de Hospedagem" {...sortThProps}>Conv.</SortTh>
               <SortTh field="faturamento" right title="Soma do valor total das vendas desta operação" {...sortThProps}>Faturamento</SortTh>
               <SortTh field="resultado" right title="Entradas − Saídas (resultado de caixa da operação)" {...sortThProps}>Resultado Prev.</SortTh>
-              {/* v5.5.0 — valor TEÓRICO, entre o resultado e a margem mas nunca
-                  fundido com eles (invariante 1). A ordenação é do SERVIDOR: a
-                  whitelist da RPC ganhou `rend_float` na 0241, porque a lista pagina
-                  no servidor e a whitelist tem fallback SILENCIOSO. */}
-              <SortTh field="rend_float" right {...sortThProps}>
-                <span className="inline-flex items-center gap-1">
-                  Rend. Float
-                  <AjudaHeader
-                    texto={TOOLTIP_REND_FLOAT + avisoStaleness(data?.taxa_vigente_mes)}
-                    rotulo="Rend. Float"
-                  />
-                </span>
-              </SortTh>
               <SortTh field="ml" right title="Resultado Previsto ÷ Faturamento × 100" {...sortThProps}>Margem</SortTh>
               <SortTh field="margem_aa" right {...sortThProps}>
                 <span className="inline-flex items-center gap-1">
                   Margem (a.a.)
                   <AjudaHeader texto={TOOLTIP_MARGEM_AA} rotulo="Margem (a.a.)" />
+                </span>
+              </SortTh>
+              {/* v5.5.1 (pedido do Yan): as duas colunas TEÓRICAS foram para o fim da
+                  tabela, depois das contábeis — as três margens passam a ser lidas em
+                  sequência e o bloco teórico não corta mais a leitura contábil pelo
+                  meio. Ordenação pelo SERVIDOR nas duas (chaves `rend_float` da 0241 e
+                  `margem_teorica_aa` da 0246): a lista pagina no servidor e a whitelist
+                  tem fallback SILENCIOSO.
+                  ⚠️ Com 12 colunas a tabela TRANSBORDA na horizontal, e isso é
+                  ACEITO (decisão do Yan): as duas colunas teóricas ficam atrás da
+                  rolagem do `ScrollAutoHide`. A alternativa era encurtar rótulos e
+                  formatos que valem mais legíveis do que a ausência da barra. */}
+              <SortTh field="rend_float" right {...sortThProps}>
+                <span className="inline-flex items-center gap-1">
+                  Rend. Teórico
+                  <AjudaHeader
+                    texto={TOOLTIP_REND_FLOAT + avisoStaleness(data?.taxa_vigente_mes)}
+                    rotulo="Rend. Teórico"
+                  />
+                </span>
+              </SortTh>
+              <SortTh field="margem_teorica_aa" right {...sortThProps}>
+                <span className="inline-flex items-center gap-1">
+                  Margem Teórica (a.a.)
+                  <AjudaHeader
+                    texto={TOOLTIP_MARGEM_TEORICA + avisoStaleness(data?.taxa_vigente_mes)}
+                    rotulo="Margem Teórica (a.a.)"
+                  />
                 </span>
               </SortTh>
             </tr>
@@ -586,11 +621,11 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
             ) : erro ? (
               <tr>
-                <td colSpan={11} className="py-6 text-center text-sm text-danger">{erro}</td>
+                <td colSpan={12} className="py-6 text-center text-sm text-danger">{erro}</td>
               </tr>
             ) : !data?.operacoes?.length ? (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={12}>
                   <EmptyState icon={Search} message="Nenhuma operação encontrada para os filtros selecionados" />
                 </td>
               </tr>
@@ -603,6 +638,12 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                 // v5.4.2/M1: derivada no cliente a partir de números que a lista já
                 // devolve — nenhum valor existente muda (invariante 2 do briefing).
                 const margemAA = margemAnualizada(op.margem_liquida_pct, duracao)
+                // v5.5.1: MESMO helper e MESMA duração da linha acima — só muda o
+                // percentual de entrada, que já vem arredondado do SQL (a 0246
+                // explica por que o arredondamento não pode acontecer aqui).
+                const margemTeoricaAA = op.margem_teorica_pct == null
+                  ? null
+                  : margemAnualizada(op.margem_teorica_pct, duracao)
                 return (
                   <tr
                     key={op.operacao}
@@ -613,8 +654,12 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                       onSelectOperacao ? 'cursor-pointer' : '',
                     ].join(' ')}
                   >
-                    {/* v5.4.2/M1: largura levemente reduzida (truncate + max-w) para abrir
-                        espaço à Margem a.a.; o nome completo fica no title. */}
+                    {/* v5.4.2/M1: largura reduzida (truncate + max-w) para abrir espaço às
+                        colunas da direita; o nome completo fica no title.
+                        v5.5.1: MANTIDA em 150px. Cheguei a cortar para 124 tentando fazer
+                        as 12 colunas caberem sem rolagem, mas a decisão foi ACEITAR a
+                        rolagem — e aí truncar o nome do casal mais cedo seria custo sem
+                        contrapartida. */}
                     <td className="py-2.5 px-3 max-w-[150px]">
                       <p
                         className="font-medium text-zinc-800 text-xs truncate"
@@ -661,7 +706,21 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                         <span className={rlNegativa ? 'text-danger' : 'text-zinc-700'}>{numBRL2(resultadoPrevisto)}</span>
                       </span>
                     </td>
-                    {/* Rend. Float — DOURADO quando positivo, danger quando negativo.
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>
+                      {fmtPct1(op.margem_liquida_pct)}
+                    </td>
+                    {/* Margem (a.a.) — MESMA regra de cor da "Margem" (margemColor por
+                        faixa: alvo/atenção/abaixo), decisão do Yan. Consequência conhecida
+                        e aceita: a anualização vive em outra escala, então um ciclo curto
+                        pode ficar verde aqui com a Margem vermelha ao lado — é o que o "?"
+                        do cabeçalho explica. */}
+                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemAA != null ? margemColor(margemAA) : ''}`}>
+                      {margemAA != null
+                        ? fmtPct1(margemAA)
+                        : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                    </td>
+                    {/* ── Bloco TEÓRICO (v5.5.1): depois das contábeis, nunca no meio ── */}
+                    {/* Rend. Teórico — DOURADO quando positivo, danger quando negativo.
                         Nunca verde: verde/vermelho já significam resultado REAL nesta
                         mesma linha, e pintar o teórico de verde faria a tela afirmar
                         que a empresa ganhou aquilo. Nulo vira travessão, nunca zero. */}
@@ -677,17 +736,18 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                         </span>
                       )}
                     </td>
-                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemColor(op.margem_liquida_pct)}`}>
-                      {fmtPct1(op.margem_liquida_pct)}
-                    </td>
-                    {/* Margem (a.a.) — MESMA regra de cor da "Margem" (margemColor por
-                        faixa: alvo/atenção/abaixo), decisão do Yan. Consequência conhecida
-                        e aceita: a anualização vive em outra escala, então um ciclo curto
-                        pode ficar verde aqui com a Margem vermelha ao lado — é o que o "?"
-                        do cabeçalho explica. */}
-                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemAA != null ? margemColor(margemAA) : ''}`}>
-                      {margemAA != null
-                        ? fmtPct1(margemAA)
+                    {/* Margem Teórica (a.a.) — DOURADO/danger, não a faixa de margem
+                        (decisão do Yan, v5.5.1). O par com "Rend. Teórico" ao lado é o
+                        que manda: as duas são o mesmo tipo de número (teórico), e a cor
+                        agora diz isso. Colorir esta pela faixa de alvo faria uma margem
+                        TEÓRICA aparecer verde ao lado de uma margem contábil vermelha —
+                        a leitura "no fim das contas estamos bem" que a versão inteira
+                        existe para não induzir. */}
+                    <td className="py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap">
+                      {margemTeoricaAA != null
+                        ? <span className={margemTeoricaAA < 0 ? 'text-danger' : 'text-teorico'}>
+                            {fmtPct1(margemTeoricaAA)}
+                          </span>
                         : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                   </tr>

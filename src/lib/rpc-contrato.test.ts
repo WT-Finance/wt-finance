@@ -262,6 +262,8 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // `weddings/ordenacao-operacoes.test.ts` — foi a camada do ENUM que quebrou nesta
   // versão. Aqui a chave bate na RPC VIVA, que é a outra ponta.
   { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'rend_float',  p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
+  // v5.5.1: idem para a "Margem Teórica (a.a.)" (chave da 0246).
+  { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'margem_teorica_aa', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
   { fn: 'get_carteira_weddings',         params: { p_metric: 'casamentos' },                                              schema: carteiraWeddingsSchema },
   { fn: 'get_tendencia_margem',          params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },       schema: tendenciaMargemSchema },
   { fn: 'get_ranking_vendedores_range',  params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 100 }, schema: rankingVendedoresRangeSchema },
@@ -1035,6 +1037,32 @@ describe.skipIf(!ON)('contrato RPC — Rendimento potencial do float', () => {
     expect(Number(b.rendimento_positivo) + Number(b.custo_negativo))
       .toBeCloseTo(Number(b.rendimento), 2)
     expect(b.meses_positivos as number).toBeLessThanOrEqual(b.meses_total as number)
+  })
+
+  it('v5.5.1: a margem TEÓRICA se move na direção do float, e nunca é igual por acidente', async () => {
+    // A definição é `(resultado + rend_float) / faturamento`, então o SINAL do float
+    // decide para que lado ela sai da margem contábil. Se um dia alguém trocar o
+    // numerador (ou somar o float duas vezes), este invariante quebra — e ele é
+    // barato, ao contrário de recomputar a fórmula inteira aqui.
+    const lista = await rpc('get_operacoes_weddings', {
+      p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'data_evento',
+      p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200,
+    })
+    const linhas = (lista.operacoes as Array<{
+      nome_casal: string | null; rend_float: number | null
+      margem_liquida_pct: number; margem_teorica_pct: number | null
+    }>).filter(o => o.margem_teorica_pct != null && o.rend_float != null)
+    if (linhas.length === 0) return
+
+    const incoerentes = linhas.filter(o => {
+      const delta = Number(o.margem_teorica_pct) - Number(o.margem_liquida_pct)
+      // tolerância de 0,1 = a casa em que os dois percentuais são arredondados.
+      if (Number(o.rend_float) > 0) return delta < -0.1
+      if (Number(o.rend_float) < 0) return delta > 0.1
+      return false
+    })
+    expect(incoerentes.map(o => o.nome_casal),
+      'margem teórica andou na direção CONTRÁRIA ao sinal do float').toEqual([])
   })
 
   it('ordenar por rend_float é REAL, não o fallback silencioso', async () => {

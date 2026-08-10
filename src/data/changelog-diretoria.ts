@@ -35,8 +35,34 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.5.1',
+    data: '2026-08-10T12:17', // horário REAL do merge (e12b03d, 12:17 −03) — reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A Lista de Operações de Weddings ganhou a "Margem Teórica (a.a.)": a margem anualizada ' +
+          'somando ao resultado o rendimento que o caixa recebido antecipadamente teria se ' +
+          'aplicado. Lida ao lado da margem contábil, a diferença entre as duas mostra quanto o ' +
+          'nosso modelo de recebimento pesa no retorno de cada casamento.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Ajustes de leitura pedidos depois de a versão anterior entrar no ar: o gráfico passou a ' +
+          'se chamar "Rendimento Potencial do Caixa Livre" e ficou mais limpo, e as duas colunas ' +
+          'teóricas foram para o fim da tabela — assim as margens contábeis ficam juntas e o que é ' +
+          'teórico fica claramente separado, no fim da linha.',
+      },
+    ],
+  },
+  {
     versao: '5.5.0',
-    data: '2026-08-07T13:42', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    // horário REAL do merge (291ce6c, 10:49 −03) — reconciliado no /pos-merge.
+    // ⚠️ A versão foi ESCRITA em 07/08 e só entrou em produção em 10/08: este campo é
+    // controle de PRODUÇÃO, não de autoria, então vale a data em que a diretoria
+    // efetivamente passou a ver o indicador na tela.
+    data: '2026-08-10T10:49',
     itens: [
       {
         tipo: 'novidade',
