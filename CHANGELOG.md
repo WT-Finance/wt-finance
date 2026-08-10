@@ -6,7 +6,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [5.5.1] — 2026-08-08
+## [5.5.1] — 2026-08-10
 
 PATCH · **Ajustes de apresentação do float, pedidos pelo Yan depois de ver a v5.5.0 no ar** + uma métrica nova. Migration `0246` (aditiva, aplicada) · **emenda ao ADR-0166**.
 
@@ -29,7 +29,7 @@ PATCH · **Ajustes de apresentação do float, pedidos pelo Yan depois de ver a 
 
 ---
 
-## [5.5.0] — 2026-08-07
+## [5.5.0] — 2026-08-10
 
 MINOR · **Weddings passa a medir o valor financeiro do próprio modelo de recebimento.** Migrations `0238`–`0243` (aditivas, aplicadas) · **ADR-0166**.
 
