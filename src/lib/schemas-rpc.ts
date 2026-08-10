@@ -205,6 +205,12 @@ const operacaoItem = z.object({
   // Lista de Operações retornava HTTP 500. (v4.12.1, fix pós-M2.)
   passageiros_raw:     z.string().nullable().optional(),
   convidados:          z.number().nullable(),
+  // v5.5.0 — Rendimento potencial do float (R$). `.optional()` pelo mesmo motivo do
+  // `passageiros_raw` acima: o campo só existe a partir da migration 0241, e um
+  // ambiente que ainda não a tenha aplicado devolveria a chave AUSENTE — que
+  // `.nullable()` sozinho rejeita, derrubando a Lista inteira com 500 em vez de
+  // apenas não mostrar a coluna.
+  rend_float:          z.number().nullable().optional(),
 }).passthrough()
 
 /** get_operacoes_weddings → { total, pagina, por_pagina, operacoes[] } (ListaOperacoes) */
@@ -213,6 +219,8 @@ export const operacoesWeddingsSchema = z.object({
   pagina:     z.number(),
   por_pagina: z.number(),
   operacoes:  z.array(operacaoItem),
+  // v5.5.0 — último mês FECHADO do CDI, para o sinal de staleness no tooltip.
+  taxa_vigente_mes: z.string().nullable().optional(),
 }).passthrough()
 
 // ── get_carteira_weddings → CarteiraWeddings ─────────────────────────────────

@@ -257,6 +257,11 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // do `WHEN` não dariam erro, só ordenariam por outra coisa em silêncio. Chamar a RPC
   // viva com o valor pega coluna inexistente na hora (o EXECUTE estoura).
   { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'margem_aa',   p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
+  // v5.5.0: idem para 'rend_float'. O contrato completo da chave (enum da rota ×
+  // `CASE` do SQL) tem guard próprio, sem banco, em
+  // `weddings/ordenacao-operacoes.test.ts` — foi a camada do ENUM que quebrou nesta
+  // versão. Aqui a chave bate na RPC VIVA, que é a outra ponta.
+  { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'rend_float',  p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
   { fn: 'get_carteira_weddings',         params: { p_metric: 'casamentos' },                                              schema: carteiraWeddingsSchema },
   { fn: 'get_tendencia_margem',          params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },       schema: tendenciaMargemSchema },
   { fn: 'get_ranking_vendedores_range',  params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 100 }, schema: rankingVendedoresRangeSchema },
@@ -978,5 +983,79 @@ describe.skipIf(!ON)('contrato RPC — DRE v5.3.1 (decomposição por bloco)', (
       `mês(es) com venda retida no espelho — a origem já não as reconhece e elas seguem somando: ` +
       retidos.join(' · '),
     ).toEqual([])
+  })
+})
+
+// ── Rendimento potencial do float (v5.5.0 · 0238–0243) ───────────────────────
+// A regra "qual taxa vale para o mês M" e a conta composta existem em QUATRO
+// implementações: `taxa_por_mes` (view), `get_taxas_cdi`, `get_rendimento_float` e —
+// no cliente, para o gráfico — `curvasFloat`. Estão idênticas hoje, e "idêntico hoje"
+// sem rede é exatamente como a próxima otimização quebra a tela em silêncio
+// (skill `banco-e-rpc` §7). Achado ALTO do `revisor-db` no fechamento desta versão.
+// Este bloco amarra as pontas que passam pelo BANCO; a do cliente é fixada por
+// fixture numérica em `weddings/float-virtual.test.ts`.
+describe.skipIf(!ON)('contrato RPC — Rendimento potencial do float', () => {
+  it('taxa_vigente_mes é a MESMA nas três RPCs, e é um mês FECHADO', async () => {
+    const [taxas, float, lista] = await Promise.all([
+      rpc('get_taxas_cdi', { p_meses_passados: 37, p_meses_futuros: 36 }),
+      rpc('get_rendimento_float', {}),
+      rpc('get_operacoes_weddings', {
+        p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'rend_float',
+        p_direcao: 'desc', p_pagina: 1, p_por_pagina: 50,
+      }),
+    ])
+
+    const vigente = taxas.taxa_vigente_mes as string | null
+    expect(vigente, 'a série do CDI não tem nenhum mês fechado — a ingestão nunca rodou').toBeTruthy()
+    expect(float.taxa_vigente_mes).toBe(vigente)
+    expect(lista.taxa_vigente_mes).toBe(vigente)
+
+    // FECHADO = estritamente anterior ao 1º dia do mês corrente. Se o mês corrente
+    // voltar a entrar, o rendimento projetado inteiro passa a ser calculado sobre um
+    // acumulado PARCIAL — o defeito que a 0240 consertou, e que era invisível na tela.
+    const mesCorrente = `${hojeSP().slice(0, 7)}-01`
+    expect(vigente! < mesCorrente,
+      `taxa vigente ${vigente} não é mês fechado (corrente = ${mesCorrente})`).toBe(true)
+  })
+
+  it('a coluna da Lista é o MESMO número que o bloco do drawer', async () => {
+    const lista = await rpc('get_operacoes_weddings', {
+      p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'rend_float',
+      p_direcao: 'desc', p_pagina: 1, p_por_pagina: 10,
+    })
+    const linhas = (lista.operacoes as Array<{ operacao: string; rend_float: number | null }>)
+      .filter(o => o.rend_float !== null)
+    if (linhas.length === 0) return // sem dado, nada a afirmar
+
+    const drawer = await rpc('get_rendimento_float', { p_operacao: linhas[0].operacao })
+    const b = (drawer.operacoes as Array<Record<string, number | null>>)[0]
+
+    expect(Number(b.rendimento)).toBe(Number(linhas[0].rend_float))
+    // A abertura fecha o total por CONSTRUÇÃO (0242) — não é reconciliação.
+    expect(Number(b.rendimento_positivo) + Number(b.custo_negativo))
+      .toBeCloseTo(Number(b.rendimento), 2)
+    expect(b.meses_positivos as number).toBeLessThanOrEqual(b.meses_total as number)
+  })
+
+  it('ordenar por rend_float é REAL, não o fallback silencioso', async () => {
+    const [desc, bogus, padrao] = await Promise.all([
+      rpc('get_operacoes_weddings', { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'rend_float', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 20 }),
+      rpc('get_operacoes_weddings', { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'chave_que_nao_existe', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 20 }),
+      rpc('get_operacoes_weddings', { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'data_evento', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 20 }),
+    ])
+
+    const vals = (desc.operacoes as Array<{ rend_float: number | null }>)
+      .map(o => o.rend_float).filter((v): v is number => v !== null)
+    for (let i = 1; i < vals.length; i++) {
+      expect(Number(vals[i - 1]), 'ordenação por rend_float não é monotônica')
+        .toBeGreaterThanOrEqual(Number(vals[i]))
+    }
+
+    // E a prova de que a asserção acima vale algo: chave inexistente CAI no fallback,
+    // sem erro — é por isso que "não deu erro" nunca significou "ordenou certo".
+    const ordem = (r: Record<string, unknown>) =>
+      (r.operacoes as Array<{ operacao: string }>).map(o => o.operacao).join('|')
+    expect(ordem(bogus)).toBe(ordem(padrao))
+    expect(ordem(desc)).not.toBe(ordem(padrao))
   })
 })

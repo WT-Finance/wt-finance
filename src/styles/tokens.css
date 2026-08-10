@@ -77,6 +77,19 @@
   --neutral:        #C99E5E;  /* dourado pálido derivado do brand */
   --neutral-soft:   #F5E6CC;  /* amarelo claro para células próximas de zero */
 
+  /* DOURADO TEÓRICO (v5.5.0) — valor que NÃO é contábil.
+     Nasceu com o "Rendimento potencial do float" de Weddings: dinheiro que a
+     operação renderia a 100% do CDI, e que jamais se soma a resultado, margem ou
+     faturamento. Precisa de cor PRÓPRIA justamente por isso — --positive/--negative
+     significam resultado REAL, e pintar o teórico de verde faria a tela afirmar
+     que a empresa ganhou aquilo.
+     ⚠️ NÃO usar --setor-weddings (#BA7517) para texto: dá 3,72:1 sobre branco e
+     reprova AA. Este tom é a variante legível do mesmo dourado — 5,4:1 sobre
+     branco, medido. É o mesmo valor de --warning-deep hoje, e ainda assim é token
+     SEPARADO: se um dia "atenção" virar laranja, o float não pode ir junto. */
+  --teorico:        #8A6413;  /* dourado escuro legível — texto de valor teórico */
+  --teorico-soft:   #FBF1E1;  /* dourado claro — preenchimento entre as curvas */
+
   /* Brand padrão: NEUTRO do Grupo (Pantone Cool Gray 9) — v4.40.0/ADR-0145. O default
      dourado (#BD965C) era um resquício de quando Weddings era a única aba; o dourado é SÓ
      de Weddings (ADR-0103) e vive no override [data-theme="weddings"] abaixo. O repouso da

@@ -1,15 +1,17 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ResponsiveContainer, ComposedChart, Bar, Line, Cell, Tooltip, ReferenceLine } from 'recharts'
+import { ResponsiveContainer, ComposedChart, Area, Bar, Line, Cell, Tooltip, ReferenceLine } from 'recharts'
 import type { AcumuladoWeddings } from '@/types/api'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import { fatiarJanela } from '@/lib/weddings/janela-fluxo'
+import { curvasFloat, rendimentoDaJanela, type PontoFloat } from '@/lib/weddings/float-virtual'
 import SliderHorizonte from '@/components/shared/slider-horizonte'
 import {
   ChartGrid, ChartZeroLine, ChartXAxisMes, ChartYAxisBRL,
   ChartLegend, CustomTooltip,
   chartColors, chartSeries, chartMargins, fluxoColors, barRadius, barSizes, FUTURE_OPACITY,
+  strokeWidths, dashArrays,
   type ChartLegendItem,
 } from '@/components/charts'
 
@@ -56,6 +58,14 @@ const LEGENDA_ACUM: ChartLegendItem[] = [
   { label: 'Saídas acum. (efetivado)',   color: COR_SAIDA,   type: 'rect' },
   { label: 'Saídas acum. (projetado)',   color: COR_SAIDA,   type: 'rect', opacity: FUTURE_OPACITY },
   { label: 'Total previsto de saídas na janela', color: fluxoColors.resultadoNegativo, type: 'line', dashed: true },
+]
+
+// v5.5.0: sólido = real, tracejado = teórico — a convenção da skill `graficos`.
+const COR_TEORICO = 'var(--teorico)'
+const LEGENDA_FLOAT: ChartLegendItem[] = [
+  { label: 'Saldo real (caixa da operação)',    color: chartSeries.neutral, type: 'line' },
+  { label: 'Conta virtual a 100% do CDI',       color: COR_TEORICO, type: 'line', dashed: true },
+  { label: 'Rendimento acumulado na janela',    color: COR_TEORICO, type: 'rect', opacity: 0.18 },
 ]
 
 const plural = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`
@@ -130,9 +140,22 @@ function SliderJanela({ atras, frente, maxAtras, maxFrente, onAtras, onFrente }:
 interface Props {
   data: AcumuladoWeddings | null
   operacaoLabel?: string
+  /**
+   * v5.5.0 — série mensal do CDI (fração decimal), da `get_taxas_cdi`.
+   * Ausente ou vazia ⇒ o gráfico do float simplesmente não aparece.
+   *
+   * As TAXAS viajam, não a curva pronta: juro é composto, então a curva depende de
+   * onde a série começou, e o slider rebaseia a borda a cada arrasto. Recortar uma
+   * curva pronta daria o desenho errado em toda posição menos a default.
+   *
+   * É um ARRAY, não um Map: o valor atravessa a fronteira Server → Client, e array
+   * de objetos simples é o formato que não depende de como o serializador do RSC
+   * trata estruturas ricas. O Map é montado aqui.
+   */
+  taxasCdi?: { mes: string; taxa: number | null }[]
 }
 
-export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
+export default function FluxoCaixaCard({ data, operacaoLabel, taxasCdi }: Props) {
   const [atras,  setAtras]  = useState(JANELA_PADRAO_ATRAS)
   const [frente, setFrente] = useState(JANELA_PADRAO_FRENTE)
 
@@ -142,6 +165,16 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
   const janela = useMemo(() => fatiarJanela(data?.meses ?? [], atras, frente), [data, atras, frente])
 
   const { pontos, totalSaidasJanela, mesHoje, maxAtras, maxFrente } = janela
+
+  // v5.5.0: as duas curvas do float são RECOMPUTADAS a cada janela, a partir do
+  // fluxo mensal que `fatiarJanela` já derivou — não há refetch ao arrastar o
+  // slider (invariante 7). O memo depende de `pontos`, que já é memoizado.
+  const taxaPorMes = useMemo(
+    () => new Map((taxasCdi ?? []).map(t => [t.mes, t.taxa])),
+    [taxasCdi],
+  )
+  const curvas = useMemo(() => curvasFloat(pontos, taxaPorMes), [pontos, taxaPorMes])
+  const rendimentoJanela = rendimentoDaJanela(curvas)
 
   // Rótulo VERDADEIRO da janela: derivado do que foi efetivamente recortado, não
   // do estado pedido (que `fatiarJanela` pode ter clampado se a série encurtar
@@ -286,6 +319,112 @@ export default function FluxoCaixaCard({ data, operacaoLabel }: Props) {
         </ComposedChart>
       </ResponsiveContainer>
       <ChartLegend items={LEGENDA_ACUM} align="start" className="ml-18" />
+
+      {/* ── Gráfico 3: RENDIMENTO POTENCIAL DO FLOAT (v5.5.0/M5) ────────────── */}
+      {curvas.length > 0 && (
+        <>
+          <div className="flex items-baseline gap-2 flex-wrap mt-6 mb-2">
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">
+              Rendimento potencial do float
+            </h3>
+            <span className="text-[13px] tabular-nums text-teorico">
+              {fmtBRL(rendimentoJanela)} na janela
+            </span>
+          </div>
+          {/* Nota teórica — obrigatória nos três pontos de UI (invariante 2). O
+              "gerado na janela" NÃO é redundância: as duas curvas são semeadas na
+              borda esquerda (invariante 7), então este número mede o rendimento de
+              DENTRO da janela e é MENOR que a coluna "Rend. Float" da Lista, que
+              mede a vida inteira da operação. Sem dizer isto, os dois números
+              discordam na cara do usuário sem explicação. */}
+          <p className="text-[11px] leading-snug text-[var(--text-muted)] mb-2">
+            Saldo real × conta virtual remunerada a 100% do CDI, ambas partindo do saldo da borda
+            esquerda — o valor acima é o rendimento gerado <strong>dentro da janela</strong>, não o
+            da operação inteira. Rendimento teórico · não representa aplicação real.
+          </p>
+          <ResponsiveContainer width="100%" height={240}>
+            <ComposedChart data={curvas} margin={chartMargins.withRightLabel}>
+              {ChartGrid()}
+              {ChartXAxisMes('mes')}
+              {ChartYAxisBRL({ width: 80, abs: false })}
+              {ChartZeroLine()}
+              <Tooltip
+                content={props => {
+                  // A faixa é retirada do payload ANTES de formatar. O `dataKey`
+                  // dela devolve um PAR [real, virtual] para pintar o intervalo, e
+                  // qualquer formatador que receba esse array imprime "R$ NaN".
+                  // `tooltipType="none"` na Area NÃO basta nesta versão do Recharts
+                  // — testado na tela. O valor honesto do gap vem da linha
+                  // invisível `rendimento_acum`, logo abaixo.
+                  const payload = (props.payload ?? []).filter(e => e.name !== 'faixa_float')
+                  return (
+                    <CustomTooltip
+                      {...props}
+                      payload={payload}
+                      formatter={(value, name) => {
+                        const v = value as number
+                        if (name === 'saldo_real')    return [fmtBRL(v), 'Saldo real']
+                        if (name === 'saldo_virtual') return [fmtBRL(v), 'Conta virtual (CDI)']
+                        return [fmtBRL(v), 'Rendimento acumulado']
+                      }}
+                    />
+                  )
+                }}
+              />
+              {mesHoje && (
+                <ReferenceLine
+                  x={mesHoje}
+                  stroke={chartSeries.neutral}
+                  strokeDasharray="4 3"
+                  label={{ value: 'Hoje', position: 'insideTopLeft', fontSize: 10, fill: chartColors.axisTick }}
+                />
+              )}
+              {/* O preenchimento é uma Area de FAIXA (`dataKey` devolvendo [min, max]):
+                  é o que pinta o espaço ENTRE as duas curvas em vez de pintar até o
+                  eixo. Ele inverte sozinho quando o saldo virtual fica abaixo do real
+                  (operação devedora), sem precisar de ramo. */}
+              <Area
+                dataKey={(d: PontoFloat) => [d.saldo_real, d.saldo_virtual]}
+                name="faixa_float"
+                stroke="none"
+                fill={COR_TEORICO}
+                fillOpacity={0.18}
+                isAnimationActive={false}
+                activeDot={false}
+                // `tooltipType="none"` é obrigatório, não decoração: o `dataKey`
+                // desta Area devolve um PAR [real, virtual] para pintar a faixa, e
+                // o formatador do tooltip recebia esse array e imprimia "R$ NaN".
+                // Passou por tsc, lint, build e 744 testes — só apareceu ao passar
+                // o mouse sobre o gráfico de verdade.
+                tooltipType="none"
+              />
+              {/* O rendimento acumulado ENTRA no tooltip (o briefing pede os dois
+                  saldos + o rendimento do mês), mas não desenha traço nenhum: a
+                  informação já está na faixa. Linha invisível é o jeito de a série
+                  existir para o tooltip sem poluir o desenho. */}
+              <Line
+                type="monotone" dataKey="rendimento_acum" name="rendimento_acum"
+                stroke="transparent" strokeWidth={0}
+                dot={false} activeDot={false} isAnimationActive={false}
+                legendType="none"
+              />
+              {/* Sólido = real; tracejado = teórico/projeção (convenção da skill). */}
+              <Line
+                type="monotone" dataKey="saldo_real" name="saldo_real"
+                stroke={chartSeries.neutral} strokeWidth={strokeWidths.line}
+                dot={false} activeDot={{ r: 3 }} isAnimationActive={false}
+              />
+              <Line
+                type="monotone" dataKey="saldo_virtual" name="saldo_virtual"
+                stroke={COR_TEORICO} strokeWidth={strokeWidths.lineDashed}
+                strokeDasharray={dashArrays.reference}
+                dot={false} activeDot={{ r: 3 }} isAnimationActive={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <ChartLegend items={LEGENDA_FLOAT} align="start" className="ml-18" />
+        </>
+      )}
     </div>
   )
 }

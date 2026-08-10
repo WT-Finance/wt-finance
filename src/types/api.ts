@@ -252,6 +252,18 @@ export interface OperacaoItem {
   tipo_contrato:         string | null
   passageiros_raw:       string | null
   convidados:            number | null
+  /**
+   * v5.5.0 — Rendimento potencial do float, em R$. Valor TEÓRICO (100% do CDI):
+   * nunca soma com resultado, margem ou faturamento.
+   *
+   * `null` quando a operação não tem nenhum lançamento, ou quando não há taxa
+   * fechada na série — travessão na tela, nunca zero. Zero é uma afirmação
+   * ("rendeu nada") que seria falsa nos dois casos.
+   *
+   * Opcional no tipo porque só existe depois da migration 0241: a RPC antiga não
+   * o emitia, e o `parseRpc` é tolerante.
+   */
+  rend_float?:           number | null
 }
 
 export interface ListaOperacoes {
@@ -259,6 +271,12 @@ export interface ListaOperacoes {
   pagina:     number
   por_pagina: number
   operacoes:  OperacaoItem[]
+  /**
+   * v5.5.0 — 1º dia do último mês FECHADO da série do CDI (ISO). Viaja no envelope
+   * porque é o mesmo para todas as linhas; é o que o tooltip da coluna mostra como
+   * "taxa de referência de MMM/AA" quando a ingestão está atrasada.
+   */
+  taxa_vigente_mes?: string | null
 }
 
 export interface VisaoFinanceira {
@@ -312,6 +330,37 @@ export interface DrilldownOperacao {
   visao_financeira:        VisaoFinanceira
   decomposicao_subsetor:   DecomposicaoSubsetorItem[]
   acumulado_mensal:        AcumuladoMensalItem[]
+  /**
+   * v5.5.0 — bloco do Rendimento potencial do float. `null` quando a operação não
+   * tem lançamento OU quando a série do CDI não tem nenhum mês fechado: nos dois
+   * casos o bloco não é exibido, em vez de mostrar zeros que seriam falsos.
+   */
+  rendimento_float?:       RendimentoFloatOperacao | null
+  /** v5.5.0 — último mês FECHADO do CDI (ISO), para a nota de referência. */
+  taxa_vigente_mes?:       string | null
+}
+
+/**
+ * Abertura do Rendimento potencial do float de UMA operação.
+ *
+ * `rendimento = rendimento_positivo + custo_negativo` por construção: como a
+ * diferença entre o saldo virtual e o real acumula exatamente os termos de juro, o
+ * total já É a soma das duas parcelas — não são três medidas independentes que
+ * precisam ser reconciliadas.
+ */
+export interface RendimentoFloatOperacao {
+  /** Indicador: saldo virtual final − saldo real final, em R$. */
+  rendimento:          number | null
+  /** Soma só dos meses em que o saldo rendeu (saldo positivo). */
+  rendimento_positivo: number | null
+  /** Soma só dos meses de custo teórico (saldo negativo). Já vem negativo. */
+  custo_negativo:      number | null
+  /** Média do saldo REAL (contábil) ao longo dos meses da operação. */
+  saldo_medio:         number | null
+  meses_positivos:     number
+  meses_total:         number
+  mes_inicio:          string | null
+  mes_fim:             string | null
 }
 
 export interface PipelineMesItem {

@@ -102,6 +102,10 @@
   --color-negative-deep: var(--negative-deep);
   --color-neutral:       var(--neutral);
   --color-neutral-soft:  var(--neutral-soft);
+  /* Dourado teórico (v5.5.0) — habilita `text-teorico` / `bg-teorico-soft`, para
+     que valor teórico nunca precise de hex solto nem de `[var(--teorico)]`. */
+  --color-teorico:       var(--teorico);
+  --color-teorico-soft:  var(--teorico-soft);
 
   /* Plataforma neutra (Group) — ADR-0103 */
   --color-action-primary:     var(--action-primary);

@@ -35,6 +35,35 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.5.0',
+    data: '2026-08-07T13:42', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Weddings passou a medir quanto o caixa recebido antecipadamente renderia se aplicado — ' +
+          'o valor financeiro do nosso modelo de recebimento, que até agora não aparecia em lugar ' +
+          'nenhum. O número usa a taxa CDI atualizada automaticamente do Banco Central, sem ninguém ' +
+          'precisar alimentar planilha.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O indicador aparece em três lugares: uma coluna na Lista de Operações (dá para ordenar e ' +
+          'sai no Exportar), um bloco no detalhe de cada operação e um gráfico no Fluxo de Caixa ' +
+          'comparando o caixa real com o que ele renderia. Operação que ficou no vermelho durante o ' +
+          'caminho aparece com custo, não com ganho — a conta funciona nos dois sentidos.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'É um valor TEÓRICO e a tela diz isso em todos os pontos: ele nunca é somado a resultado, ' +
+          'margem ou faturamento, e usa cor própria justamente para não ser confundido com dinheiro ' +
+          'que entrou. Serve para dimensionar o valor do float, não para lançar em lugar nenhum.',
+      },
+    ],
+  },
+  {
     versao: '5.4.5',
     data: '2026-08-05T21:09', // horário REAL do merge (206d2d8, 21:09 −03) — reconciliado no /pos-merge
     itens: [

@@ -25,6 +25,12 @@ interface Props {
   searchParams: { operacao?: string | string[] }
 }
 
+/** Assinatura frouxa para RPC fora do `database.ts` congelado. */
+type RpcFrouxa = (
+  fn: string,
+  args?: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string } | null }>
+
 // OCULTADO v4.8.2 — cards de diagnóstico (Vendas em Aberto / Receita Negativa)
 // mantidos no código para possível retorno; basta alternar a flag para true.
 // MANTIDA (F12, v4.12): DESTRAVA = decisão da gestão de Weddings de reexpor o
@@ -40,7 +46,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
   const [
     cartCasRes,
-    proximosRes, benchmarks, acumuladoRes,
+    proximosRes, benchmarks, acumuladoRes, taxasRes,
     vendasAbertoRes, operacoesRes, prejRes,
   ] = await Promise.all([
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
@@ -54,6 +60,14 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
       p_meses_futuros:  JANELA_LARGA_FRENTE,
       p_operacoes:      operacoes.length ? operacoes : null,
     }),
+    // v5.5.0/M5: série do CDI na MESMA janela larga do acumulado, para as duas
+    // curvas do float coincidirem mês a mês com os demais gráficos. Tipagem frouxa
+    // porque `get_taxas_cdi` é RPC nova, fora do `database.ts` congelado — e o
+    // `.bind(db)` porque `rpc` é método de protótipo (v5.3.5).
+    (db.rpc as unknown as RpcFrouxa).bind(db)('get_taxas_cdi', {
+      p_meses_passados: JANELA_LARGA_ATRAS,
+      p_meses_futuros:  JANELA_LARGA_FRENTE,
+    }),
     db.rpc('get_vendas_em_aberto_weddings', { p_limite: 50, p_offset: 0 }),
     db.rpc('get_operacoes_lista_weddings'),
     // Vendas com Receita Negativa: exibe histórico completo (ADR-0053)
@@ -66,6 +80,12 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const vendasAberto  = unwrapRpc<VendasEmAberto>(vendasAbertoRes, 'get_vendas_em_aberto_weddings')
   const operacoesList = unwrapRpc<OperacoesLista>(operacoesRes, 'get_operacoes_lista_weddings') ?? [] as OperacoesLista
   const prejuizos     = unwrapRpc<VendasReceitaNegativa>(prejRes, 'get_vendas_prejuizo_weddings')
+  // DEGRADA em silêncio: se a ingestão do CDI nunca rodou, a RPC falha alto (é o
+  // certo para ELA, invariante 9) — mas a aba inteira de Weddings não pode cair por
+  // causa disso. Sem taxas, o gráfico do float apenas não é desenhado.
+  const taxasCdi = (!taxasRes.error && taxasRes.data
+    ? (taxasRes.data as { meses?: { mes: string; taxa: number | null }[] }).meses
+    : undefined) ?? undefined
 
   // v4.19/M6: rótulo dos 2 gráficos — nome único quando 1 op, "N operações" quando >1,
   // undefined quando 0 (Todas → sem sufixo no título).
@@ -147,7 +167,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
           />
         </div>
 
-        <FluxoCaixaCard data={acumulado} operacaoLabel={operacaoLabel} />
+        <FluxoCaixaCard data={acumulado} operacaoLabel={operacaoLabel} taxasCdi={taxasCdi} />
 
       </TopSection>
     </div>
