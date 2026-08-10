@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DESTINO_POR_TIPO, TIPOS_MOVIMENTACAO, derivarLinha, ehRetroativa, ordenarCronologico,
-  rotuloDestino, rotuloOrigem, statusDaMovimentacao, tiposPermitidos, ultimaMovimentacao,
+  DESTINO_POR_TIPO, TIPOS_MOVIMENTACAO, derivarLinha, ehRetroativa, mesmoNome,
+  ordenarCronologico, rotuloDestino, rotuloOrigem, statusDaMovimentacao, tiposPermitidos,
+  ultimaMovimentacao,
 } from './derivar'
 import type { AtivoFicha, Movimentacao, TipoMovimentacao } from './tipos'
 
@@ -162,6 +163,22 @@ describe('marcador de registro retroativo', () => {
   it('o dia é o de SÃO PAULO, não o UTC', () => {
     // 01:30Z de 05/05 é 22:30 de 04/05 em SP ⇒ o fato de 04/05 foi registrado NO MESMO dia.
     expect(ehRetroativa(mov({ tipo: 'transferencia', data_movimentacao: '2026-05-04', criado_em: '2026-05-05T01:30:00Z' }))).toBe(false)
+  })
+})
+
+describe('mesmoNome — espelho de app.norm_nome', () => {
+  // O `upsert_detentor` é idempotente por nome NORMALIZADO. Se a UI comparasse por igualdade
+  // crua, anunciaria "será cadastrada como pessoa nova" para quem já existe (o banco
+  // reaproveitaria a linha e o aviso ficaria mentindo).
+  it('ignora caixa, espaço nas pontas e espaço repetido no meio', () => {
+    expect(mesmoNome('Ana Beatriz', 'ana beatriz')).toBe(true)
+    expect(mesmoNome('  Ana Beatriz  ', 'Ana Beatriz')).toBe(true)
+    expect(mesmoNome('Ana   Beatriz', 'Ana Beatriz')).toBe(true)
+    expect(mesmoNome('Ana\tBeatriz', 'Ana Beatriz')).toBe(true)
+  })
+  it('não confunde pessoas diferentes', () => {
+    expect(mesmoNome('Ana Beatriz', 'Ana Beatrice')).toBe(false)
+    expect(mesmoNome('Ana', 'Ana Beatriz')).toBe(false)
   })
 })
 

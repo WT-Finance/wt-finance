@@ -8,7 +8,7 @@ import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { fmtDate, hojeSP } from '@/lib/fmt'
 import { registrarMovimentacao } from '@/app/gestao-pessoas/inventario/actions'
 import {
-  DESTINO_POR_TIPO, ROTULO_MOTIVO_BAIXA, ROTULO_STATUS, ROTULO_TIPO, rotuloDestino,
+  DESTINO_POR_TIPO, ROTULO_MOTIVO_BAIXA, ROTULO_STATUS, ROTULO_TIPO, mesmoNome, rotuloDestino,
   tiposPermitidos,
 } from './derivar'
 import type {
@@ -63,7 +63,9 @@ export default function MovimentacaoModal({
   )
 
   // Pessoa digitada que ainda não existe = cadastro inline (`upsert_detentor`, no servidor).
-  const detentorNovo = detentor.trim() !== '' && !nomesDetentores.includes(detentor.trim())
+  // Comparação NORMALIZADA, como o UNIQUE do banco: o upsert reaproveita "ana  beatriz" como a
+  // Ana Beatriz existente, então a UI não pode anunciar cadastro novo.
+  const detentorNovo = detentor.trim() !== '' && !nomesDetentores.some(n => mesmoNome(n, detentor))
 
   async function submeter() {
     if (exige.area === 'obrigatorio' && areaId === '') {
@@ -80,7 +82,7 @@ export default function MovimentacaoModal({
     setErro(null)
     setSalvando(true)
     const nome = detentor.trim()
-    const existente = detentores.find(d => d.nome === nome)
+    const existente = detentores.find(d => mesmoNome(d.nome, nome))
     // Campo que o tipo NÃO admite vai nulo — a mesma tabela `DESTINO_POR_TIPO` que decide o
     // que aparece decide o que é enviado. O CHECK por tipo do banco é a barreira final.
     const res = await registrarMovimentacao({

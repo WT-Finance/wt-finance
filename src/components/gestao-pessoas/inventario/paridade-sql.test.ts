@@ -23,6 +23,12 @@ import type { StatusAtivo, TipoMovimentacao } from './tipos'
 // projeto): o arquivo em disco é a verdade do que está no banco. A alternativa — chamar
 // `patrimonio.status_derivado` via REST — não existe: a função é REVOKEd e vive fora de
 // `public`, exatamente como se quer.
+//
+// ⚠️ MANUTENÇÃO: justamente porque migration aplicada não se edita, uma mudança futura no CHECK
+// `mov_destino_por_tipo` ou em `patrimonio.status_derivado` virá numa migration NOVA, de número
+// maior. Este teste continuaria lendo 0247/0248 e aprovando um espelho já obsoleto. Ao alterar
+// qualquer um dos dois objetos, APONTE `ESTRUTURA`/`RPCS` abaixo para a migration nova — é a
+// única parte desta rede que não se atualiza sozinha. (Ressalva do revisor-db.)
 // ─────────────────────────────────────────────────────────────────────────────────────
 
 const MIGRATIONS = resolve(__dirname, '../../../../supabase/migrations')
@@ -80,7 +86,11 @@ function ramosDoCheck(): Map<string, string> {
   expect(fim, 'CASE do CHECK sem END — a análise pararia no lugar errado').toBeGreaterThan(0)
   const corpo = bloco.slice(0, fim)
   const ramos = new Map<string, string>()
-  const partes = [...corpo.matchAll(/WHEN\s+'([a-z_]+)'\s+THEN([\s\S]*?)(?=WHEN\s+'|$)/g)]
+  // O lookahead fecha em `WHEN '` OU em `ELSE` — sem o segundo, o predicado do ÚLTIMO ramo
+  // (hoje `baixa`) engoliria o `ELSE false` que vem depois dele. Hoje isso seria inofensivo
+  // (o texto não casa com nenhum dos padrões de coluna), mas passa a mentir no dia em que o
+  // CASE for reordenado ou algo entrar entre o último `WHEN` e o `END`. (Ressalva do revisor-db.)
+  const partes = [...corpo.matchAll(/WHEN\s+'([a-z_]+)'\s+THEN([\s\S]*?)(?=WHEN\s+'|\bELSE\b|$)/g)]
   for (const p of partes) ramos.set(p[1], p[2])
   return ramos
 }
@@ -110,6 +120,13 @@ describe('CHECK mov_destino_por_tipo × DESTINO_POR_TIPO', () => {
     const doSql = Object.fromEntries(COLUNAS.map(c => [c.campo, exigenciaSql(predicado, c)]))
     const doTs  = Object.fromEntries(COLUNAS.map(c => [c.campo, exigenciaTs(tipo, c.campo)]))
     expect(doSql).toEqual(doTs)
+  })
+
+  it('o predicado do ÚLTIMO ramo não engole o ELSE que vem depois dele', () => {
+    // Guard da própria extração: sem o `ELSE` no lookahead, o ramo final capturaria "ELSE false".
+    for (const [tipo, predicado] of ramos) {
+      expect(predicado, `ramo '${tipo}' capturou texto de fora`).not.toMatch(/\bELSE\b/)
+    }
   })
 
   it('o CASE do CHECK fecha em ELSE false — tipo sem ramo REPROVA, não passa batido', () => {

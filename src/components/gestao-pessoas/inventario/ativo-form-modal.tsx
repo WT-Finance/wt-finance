@@ -7,7 +7,7 @@ import { Input, Select, Textarea } from '@/components/ui/field'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { mascaraMoeda, numBRL2 } from '@/lib/fmt'
 import { criarAtivo, atualizarAtivo, type FichaEntrada } from '@/app/gestao-pessoas/inventario/actions'
-import { ROTULO_ESTADO_CONSERVACAO } from './derivar'
+import { ROTULO_ESTADO_CONSERVACAO, mesmoNome } from './derivar'
 import type {
   AtivoLista, CatalogosInventario, EstadoConservacao,
 } from './tipos'
@@ -102,7 +102,9 @@ export default function AtivoFormModal({ estado, catalogos, onFechar, onSalvo }:
     () => catalogos.detentores.filter(d => d.ativo).map(d => d.nome),
     [catalogos.detentores],
   )
-  const detentorNovo = detentor.trim() !== '' && !nomesDetentores.includes(detentor.trim())
+  // Comparação NORMALIZADA (como o UNIQUE do banco): "ana  beatriz" não é pessoa nova se a Ana
+  // Beatriz já existe — o upsert reaproveita, e o aviso na tela tem de dizer a mesma coisa.
+  const detentorNovo = detentor.trim() !== '' && !nomesDetentores.some(n => mesmoNome(n, detentor))
 
   function valoresAtuais(): ValoresRetidos {
     return {
@@ -135,7 +137,7 @@ export default function AtivoFormModal({ estado, catalogos, onFechar, onSalvo }:
     setErro(null)
     setSalvando(true)
     const nome = detentor.trim()
-    const existente = catalogos.detentores.find(d => d.nome === nome)
+    const existente = catalogos.detentores.find(d => mesmoNome(d.nome, nome))
     const res = editando
       ? await atualizarAtivo(estado.ativo.id, ficha())
       : await criarAtivo(ficha(), {

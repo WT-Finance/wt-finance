@@ -194,6 +194,20 @@ export function ehRetroativa(m: Movimentacao): boolean {
   return m.data_movimentacao < FMT_DIA_SP.format(criadoEm)
 }
 
+/**
+ * Espelho em TS de `app.norm_nome` (lower + trim + colapso de espaços) — a mesma normalização
+ * dos índices UNIQUE do banco.
+ *
+ * Existe porque `upsert_detentor` é idempotente por nome NORMALIZADO: digitar "ana  BEATRIZ"
+ * devolve a Ana já cadastrada. Comparando por igualdade crua, a UI anunciaria "será cadastrada
+ * como pessoa nova" para alguém que já existe — aviso falso, ainda que nenhuma duplicata seja
+ * criada. (Achado BAIXO do revisor.)
+ */
+export function mesmoNome(a: string, b: string): boolean {
+  const norm = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase()
+  return norm(a) === norm(b)
+}
+
 /** Ativo baixado bloqueia novas movimentações — exceto a `reativacao`, que é o caminho de volta. */
 export function tiposPermitidos(status: StatusAtivo): TipoMovimentacao[] {
   if (status === 'baixado') return ['reativacao']

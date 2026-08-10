@@ -79,6 +79,10 @@ async function resolverDetentor(
 /**
  * Erro da RPC → frase para o usuário. Os prefixos são o contrato combinado com a 0248; o
  * `else` genérico existe porque mensagem crua de Postgres na tela não ajuda ninguém.
+ *
+ * O caminho genérico é LOGADO no servidor (`console.error`) de propósito: sem isso, um erro que
+ * ninguém previu — CHECK novo, código esgotado, corrida de permissão — viraria "tente novamente"
+ * na tela e NADA no log, e o diagnóstico ficaria sem ponto de partida. (Achado do revisor-db.)
  */
 function traduzirErro(msg: string): string {
   if (msg.includes('CODIGO_DUPLICADO'))       return 'Já existe um ativo com esse código.'
@@ -103,8 +107,18 @@ function traduzirErro(msg: string): string {
   if (msg.includes('MOTIVO_INVALIDO'))        return 'Motivo de baixa inválido.'
   if (msg.includes('MOVIMENTACAO_NAO_ENCONTRADA'))
     return 'Esta movimentação não existe mais. Recarregue a página.'
+  // CHECKs de coluna da 0247 — alcançáveis pela UI: a máscara de moeda aceita "-" e o campo de
+  // data aceita qualquer ano digitado.
+  if (msg.includes('valor_aquisicao'))        return 'O valor de aquisição não pode ser negativo.'
+  if (msg.includes('data_aquisicao'))         return 'Data de aquisição fora do intervalo aceito — confira o ano.'
+  // Sequência de código esgotada (10 mil tentativas) e usuário desativado no meio da operação.
+  if (msg.includes('CODIGO_ESGOTADO'))
+    return 'Não foi possível gerar um código novo. Avise o time — a sequência precisa de atenção.'
+  if (msg.includes('USUARIO_INATIVO'))        return 'Seu acesso foi desativado. Recarregue a página.'
   if (msg.includes('PERMISSAO_NEGADA') || msg.includes('AUTH'))
     return 'Sem permissão para editar o inventário.'
+
+  console.error(`[patrimonio] erro não mapeado: ${msg}`)
   return 'Não foi possível salvar. Tente novamente.'
 }
 

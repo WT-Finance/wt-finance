@@ -17,7 +17,9 @@ import type {
 //
 // FAIL-SAFE (invariante 14): RPC que falha degrada para vazio e a página continua viva; o
 // flag `erro` é o que permite a UI dizer "não foi possível carregar" em vez de fingir base
-// vazia — a distinção que o `unwrapRpc` do projeto existe para preservar.
+// vazia. É a mesma distinção falha × vazio-legítimo que `unwrapRpcComErro` (`@/lib/rpc`)
+// formaliza para RPC única — aqui ela é agregada sobre as quatro leituras, e a validação de
+// shape fica com o `parseRpc` (que já degrada para `null` em erro E em drift).
 
 export interface DadosInventario {
   ativos: AtivoLista[]
