@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-10 (fechamento da v5.6.0) · produção na **v5.5.2** (#227 mergeado às 14h29 — correção do bug de ingestão ×1000 na DRE e no Fluxo de Caixa; sem migration). Antes dela a v5.5.1 (#224, 12h17) e a v5.5.0 (#222, 10h49) · **v5.6.0 — Inventário de Ativos — FECHADA e aguardando merge** (PR #229; migrations `0247`/`0248` **já aplicadas** em 10/08, base vazia de propósito) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-10 (pós-merge) · produção na **v5.6.0** (#229 mergeado às 15h59 — Gestão de Pessoas: Inventário de Ativos, a 1ª seção nova de 1º nível da sidebar desde a v4.x; migrations `0247`/`0248`). Antes dela a v5.5.2 (#227, 14h29), a v5.5.1 (#224, 12h17) e a v5.5.0 (#222, 10h49) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
 
 🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
 o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
@@ -8,13 +8,10 @@ aparecem como prejuízo e são lucro) até a reingestão. O upload é full-swap,
 migration destrutiva. Detalhe no 2º item de "Verdade atual".
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0248`; a próxima livre é a `0249`.**
-As `0247` (`patrimonio_estrutura`) e `0248` (`patrimonio_rpcs`) são da **v5.6.0**: foram
-**aplicadas em produção com o código ainda não mergeado**, e é o PR #229 que fecha essa janela.
-Conferido em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já esteve
-obsoleto dizendo "próxima livre: `0247`". ✅ A consequência viva disso — o teste de paridade de
-áreas RBAC (`rpc-contrato.test.ts`) falhando em qualquer branch porque
-`gestao-pessoas/inventario` existia em `app.rbac_areas` e não no código — **está resolvida na
-branch da v5.6.0**, que declara a área nas duas pontas (879/879 testes).
+Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
+esteve obsoleto dizendo "próxima livre: `0247`". ✅ A janela em que a `0247`/`0248` estiveram
+aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do teste de paridade de
+áreas RBAC que aparecia em qualquer branch.
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -25,11 +22,12 @@ branch da v5.6.0**, que declara a área nas duas pontas (879/879 testes).
 
 ## Verdade atual
 
-- **v5.6.0 — Gestão de Pessoas: Inventário de Ativos. FECHADA, aguardando merge.**
+- **v5.6.0 (#229, mergeada 10/08 às 15h59) — Gestão de Pessoas: Inventário de Ativos.**
   Seção NOVA de sidebar (a primeira de 1º nível desde a v4.x) + módulo novo. Cadastro de
   equipamentos com ficha patrimonial e **razão append-only** de movimentações. Migrations
-  **`0247`/`0248` APLICADAS** em 10/08; **ADR-0167**; **879 testes**; `revisor` e `revisor-db`
-  com **0 CRÍTICO e 0 ALTO**.
+  **`0247`/`0248` APLICADAS** em 10/08; **ADR-0167**; **887 testes**; `revisor` e `revisor-db`
+  com **0 CRÍTICO e 0 ALTO**; **71/71** na bateria REST ponta a ponta (o script vive fora do
+  repo e é reexecutável; a limpeza é parte dele).
   ⚠️ **A base está VAZIA de propósito** (0 ativos / 0 movimentações / 0 detentores; seed com 6
   categorias e 7 áreas) e a sequência foi reiniciada: **o primeiro ativo real será o WG-0001**.
   A área `gestao-pessoas/inventario` foi concedida no seed **só a quem já tinha `admin/acessos`** —
@@ -59,10 +57,16 @@ branch da v5.6.0**, que declara a área nas duas pontas (879/879 testes).
   histórico de um ativo vem de `detalhe_ativo` (e ganha leitura numa transação só, de graça); a
   aba do razão AVISA quando bate o teto, em vez de truncar calada.
   Out-briefing: `WT_Finance_Out_Briefing_v5-6-0_Inventario_Ativos.md`.
-  **Pendente Yan:** mergear · cadastrar 3–5 ativos reais e movimentar · testar a retroativa ·
-  conferir os dois CSVs no Excel · liberar a área para quem precisa · **print das quatro telas**
-  (a conferência visual autenticada ficou NÃO VERIFICADA — sem MCP Playwright nesta sessão e o
-  Chrome do Windows não alcança o `localhost` do WSL2; o guard da rota FOI verificado por `curl`).
+  🔴 **Pendente Yan (a versão está no ar, mas ainda não foi exercitada com dado real):**
+  cadastrar 3–5 ativos e movimentar cada um · lançar uma movimentação com data anterior à última
+  e confirmar que o detentor atual e as origens da timeline recalculam sozinhos · conferir os dois
+  CSVs no Excel · **liberar a área `gestao-pessoas/inventario`** para quem precisa (o seed só
+  concedeu a quem já tinha `admin/acessos`) · **print das quatro telas**.
+  ⚠️ **Conferência visual autenticada: NÃO VERIFICADA.** Sem MCP Playwright na sessão de
+  fechamento, e o Chrome roda no Windows sem alcançar o `localhost` do WSL2 (nem há sessão do
+  Janus nele). Verificado por `curl`: a rota nova redireciona para `/login` com o `next` correto,
+  igual às existentes, e nenhuma rota existente regrediu no proxy. Modelo que funciona segue
+  **entregar → print → ajustar** (v5.4.1).
 - 🔴 **v5.5.2 (#227, mergeada 10/08 às 14h29) — a DRE e o Fluxo estavam ERRADOS por um bug de
   ingestão, e a correção do CÓDIGO não conserta o DADO (re-upload PENDENTE).** Os parsers
   `parse-lancamentos-movimentacao.ts` e `parse-titulos-em-aberto.ts` liam a planilha com
