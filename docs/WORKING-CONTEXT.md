@@ -1,8 +1,8 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-10 · produção na **v5.5.1** · **v5.5.2 fechada aguardando merge**
-(correção do bug de ingestão ×1000 — ver o 1º item de "Verdade atual"; **exige re-upload das
-duas planilhas depois do merge**). Histórico abaixo a partir da v5.5.0 (#222 mergeado — Weddings ganha o *Rendimento potencial do float*; **migrations `0238`–`0245` aplicadas**, incluindo o agendamento mensal do CDI, já ATIVO) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
+Última atualização: 2026-08-10 · produção na **v5.5.1** (#224 mergeado às 12h17 — ajustes de apresentação do float + a *Margem Teórica (a.a.)*; a v5.5.0 entrou às 10h49 pelo #222). **Migrations `0238`–`0246` aplicadas**, incluindo o agendamento mensal do CDI, já ATIVO · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+
+🔴 **v5.5.2 FECHADA, aguardando merge** — correção do bug de ingestão ×1000 (1º item de "Verdade atual"). **Exige re-upload das duas planilhas depois do merge**; o patch corrige a próxima carga, não o dado já gravado.
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -69,7 +69,33 @@ duas planilhas depois do merge**). Histórico abaixo a partir da v5.5.0 (#222 me
   linhas idênticas no export e os 5 títulos vencendo em 2049 · decidir sobre o upload morto.
   Investigação: `docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md`.
 
-- **v5.5.0 FECHADA, aguardando merge — Weddings: Rendimento potencial do float.** Mede quanto o
+- **v5.5.1 (#224, mergeada 10/08 às 12h17) — ajustes de apresentação + "Margem Teórica (a.a.)".**
+  Migration **`0246`** aplicada. Três pedidos do Yan depois de ver a v5.5.0 no ar: o gráfico virou
+  **"Rendimento Potencial do Caixa Livre"** (sem o total "na janela", sem subtítulo, linha do saldo
+  real em PRETO, igual à do "Resultado mensal"); "Rend. Float" virou **"Rend. Teórico"** e as duas
+  colunas teóricas foram para o FIM da tabela; e entrou a **"Margem Teórica (a.a.)"** =
+  `(resultado + rend_float) ÷ faturamento`, anualizada pela régua LINEAR da Margem (a.a.).
+  **Duráveis:**
+  *(a)* ⚠️ **A coluna nova CONTRARIA a Decisão 5 do ADR-0166** (que proibia somar float a
+  resultado/margem/faturamento). Registrada como **EMENDA DATADA** no ADR, não como exceção
+  silenciosa: a proibição segue como regra geral e passa a existir **uma exceção NOMEADA** —
+  rótulo "Teórica", tooltip declarando o componente não-contábil, colunas contábeis intactas ao
+  lado. O que continua proibido é embutir float num número que se APRESENTE como contábil.
+  *(b)* **Percentual que o cliente também poderia derivar deve ser arredondado UMA VEZ, no SQL.**
+  `ROUND()` do Postgres é meio-para-longe-de-zero e `Math.round` do JS é meio-para-cima: nos
+  NEGATIVOS os dois discordam na 1ª casa, e a coluna exibiria número diferente do que o `ORDER BY`
+  usa. Por isso `margem_teorica_pct` viaja pronto no payload, e o cliente só anualiza.
+  *(c)* **A Lista TRANSBORDA na horizontal com 12 colunas — e isso é ACEITO** (decisão do Yan).
+  Medido: faltavam 62px. A alternativa foi construída e FUNCIONAVA (data curta `20/07/26` com o
+  rótulo virando "Data" + os três "?" fundidos num tooltip único ⇒ transbordamento ZERO), e foi
+  descartada depois de vista na tela: **legibilidade venceu a ausência da barra**. Fica valendo
+  `ScrollAutoHide` com as duas teóricas atrás da rolagem.
+  *(d)* **Quando o valor de uma coluna encurta, quem passa a mandar na largura é o RÓTULO.**
+  Com `20/07/26` na célula, "Data do Evento" seguia custando 124px de cabeçalho para ~60px de
+  conteúdo — encurtar o valor sem encurtar o título não devolvia largura nenhuma.
+  Out-briefing: o da v5.5.0 (`WT_Finance_Out_Briefing_v5-5-0_Rendimento_Float.md`) segue válido;
+  esta versão é patch e vive no CHANGELOG + na emenda do ADR-0166.
+- **v5.5.0 (#222, mergeada 10/08 às 10h49) — Weddings: Rendimento potencial do float.** Mede quanto o
   caixa recebido antecipadamente de cada operação renderia a **100% do CDI**, em regime
   **composto** (`saldo_virtual(t) = saldo_virtual(t−1) × (1 + i_t) + fluxo_t`; indicador =
   virtual − real), **simétrico** (saldo negativo gera custo teórico, sem ramo especial) e
@@ -498,12 +524,12 @@ duas planilhas depois do merge**). Histórico abaixo a partir da v5.5.0 (#222 me
   ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
   e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
   sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
-  **Última migration APLICADA de todas: `0245`** (faixa de plausibilidade ±5% a.m. como CHECK ADITIVO, ao lado do frouxo de ±100%). Antes dela a **`0244`** (agendamento mensal do CDI — `cdi-ingest-mensal`, dia 3 às 06:00 SP, ATIVO). Antes delas a **`0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
+  **Última migration APLICADA de todas: `0246`** (v5.5.1 — chave de ordenação `margem_teorica_aa` + `margem_teorica_pct` no payload da Lista). Antes dela a **`0245`** (faixa de plausibilidade ±5% a.m. como CHECK ADITIVO, ao lado do frouxo de ±100%). Antes dela a **`0244`** (agendamento mensal do CDI — `cdi-ingest-mensal`, dia 3 às 06:00 SP, ATIVO). Antes delas a **`0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
   NULL, não zero; `GREATEST`/`LEAST`/`SUM` ignoram NULL e transformavam "não sei" em "zero").
   Antes dela a **`0242`** (o total do float passou a ser a soma exata das partes) e a **`0241`** (coluna `rend_float` na Lista, aplicada só DEPOIS de
   a latência ser medida), a **`0240`** (a leitura ignora mês de CDI ainda aberto), a **`0239`**
   (`cdi_ingest_upsert`) e a **`0238`** (`dim_taxa_cdi` + a view da conta virtual + as 2 RPCs).
-  **Próxima livre: `0246`.**
+  **Próxima livre: `0247`.**
   Antes delas a **`0237`** (v5.4.5: `monde_ingest_status` separa
   `vendas_que_contam` de `vendas` e expõe `itens_cancelados` — ADITIVA, `CREATE OR REPLACE` de
   função, verificada executando via REST. Necessária porque a venda cancelada passou a

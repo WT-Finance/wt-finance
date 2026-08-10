@@ -66,7 +66,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '5.5.1',
-    data: '2026-08-10T11:39', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    data: '2026-08-10T12:17', // horário REAL do merge (e12b03d, 12:17 −03) — reconciliado no /pos-merge
     itens: [
       {
         tipo: 'novidade',
@@ -88,7 +88,11 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '5.5.0',
-    data: '2026-08-07T13:42', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    // horário REAL do merge (291ce6c, 10:49 −03) — reconciliado no /pos-merge.
+    // ⚠️ A versão foi ESCRITA em 07/08 e só entrou em produção em 10/08: este campo é
+    // controle de PRODUÇÃO, não de autoria, então vale a data em que a diretoria
+    // efetivamente passou a ver o indicador na tela.
+    data: '2026-08-10T10:49',
     itens: [
       {
         tipo: 'novidade',
