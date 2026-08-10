@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback, use, Suspense, type PointerEv
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert, FileSpreadsheet } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, Target, Upload, X, ChevronLeft, Building, Plane, Sparkles, Briefcase, Wallet, BarChart3, Table2, Calculator, Receipt, Library, Users, UsersRound, Boxes, Palette, Inbox, LogOut, LineChart, ClipboardList, TriangleAlert, FileSpreadsheet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
 import VersionHistory from '@/components/layout/version-history'
@@ -78,23 +78,37 @@ const METAS_SUBS: NavSubItem[] = [
   { href: '/metas/cadastro', label: 'Cadastro',       icon: ClipboardList, area: 'metas' },
 ]
 
+// Gestão de Pessoas (v5.6.0) — seção NOVA da sidebar; o Inventário de ativos é seu 1º módulo.
+// ⚠️ M0: gated pela área EXISTENTE 'admin/design-system' porque a área definitiva
+// ('gestao-pessoas/inventario') só pode nascer junto da migration que a insere em
+// app.rbac_areas — o teste de contrato exige paridade banco↔app e a M0 não aplica migration.
+// M2: trocar por 'gestao-pessoas/inventario' aqui E no requireArea da page, no mesmo commit
+// da migration. `emConstrucao` marca o item enquanto ele é pré-visualização.
+const GESTAO_PESSOAS_SUBS: NavSubItem[] = [
+  { href: '/gestao-pessoas/inventario', label: 'Inventário de ativos', icon: Boxes, area: 'admin/design-system', emConstrucao: true },
+]
+
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
  *  saber "isto é um grupo" (o resto do render/filtro é genérico via NavGroup). */
 const NAV_GROUPS: Record<string, NavSubItem[]> = {
-  '/performance': PERFORMANCE_SUBS,
-  '/financeiro':  FINANCEIRO_SUBS,
-  '/metas':       METAS_SUBS,
+  '/performance':    PERFORMANCE_SUBS,
+  '/financeiro':     FINANCEIRO_SUBS,
+  '/metas':          METAS_SUBS,
+  '/gestao-pessoas': GESTAO_PESSOAS_SUBS,
 }
 
-// Ordem da sidebar (v5.1.9): Executiva › Performance › Metas › Financeiro › Solicitações
-// › Upload de Arquivos › Usuários e Acessos › Design System. Metas subiu p/ cima de
-// Financeiro; Solicitações subiu p/ cima de Upload de Arquivos.
+// Ordem da sidebar (v5.6.0): Executiva › Performance › Metas › Financeiro › Solicitações
+// › Gestão de Pessoas › Upload de Arquivos › Usuários e Acessos › Design System.
+// (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
+// Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo.)
 const NAV_ITEMS: NavItem[] = [
   { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva', emConstrucao: true },
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: null            },
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
+  // Seção nova (v5.6.0), entre os módulos de operação e o bloco administrativo.
+  { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: UsersRound,      area: null            },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar

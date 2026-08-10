@@ -46,6 +46,11 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     ['/admin/api-externa/documentacao',      ['solicitacoes/documentacao', 'solicitacoes']],
     ['/admin',                              ['admin/acessos']],
     ['/solicitacoes',                       ['solicitacoes/basico', 'solicitacoes']],
+    // v5.6.0/M0 — a seção nova de Gestão de Pessoas ainda pende da área definitiva
+    // 'gestao-pessoas/inventario' (nasce na M2, junto da migration). Enquanto isso o gate é
+    // a área do Design System; quando a M2 fizer o flip, ESTE caso reprova e é o lembrete
+    // de que as outras pontas (AREAS/AREA_INFO, requireArea, sidebar) têm de virar juntas.
+    ['/gestao-pessoas/inventario',          ['admin/design-system']],
   ]
   it.each(casos)('%s → %j', (rota, esperado) => {
     expect(areasDaRota(rota)).toEqual(esperado)
