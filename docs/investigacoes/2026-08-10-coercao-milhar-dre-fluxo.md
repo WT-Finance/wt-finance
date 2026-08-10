@@ -165,6 +165,12 @@ Para delimitar o problema, o resto do caminho foi auditado e passou:
   caso do Endomarketing, a correção só do ×1000 já reconstrói o oráculo com as 4 linhas
   presentes, o que sugere que essas repetições podem ser **legítimas** (alocações separadas do
   Monde). **Questão para o provedor**, não defeito confirmado.
+- **A base "por categoria" está MORTA — e o upload dela continua exposto.** `raw.lancamentos`,
+  `financeiro.fato_lancamentos` e `regenerar_financeiro_lancamentos` foram dropados na **0192**
+  (v5.2.0). Nenhum número da DRE ou do Fluxo vem dela — as duas bases vivas são movimentação e
+  em aberto. Mas as RPCs `truncar_lancamentos` / `inserir_lote_lancamentos` **ainda existem** e
+  `src/app/admin/uploads/actions.ts:32-36` ainda as chama: subir esse arquivo hoje quebra em
+  runtime (a tabela-alvo não existe). Vale remover o cartão de upload ou as RPCs órfãs.
 - **5 títulos com vencimento em 2049** em `raw.titulos_em_aberto` (−901,58) — data implausível.
 - `raw.titulos_em_aberto` vai até 2031; o corte `pos_corte` (>2028) exclui ~R$ 16,8 Mi das séries
   mensais. Comportamento por design (0187 §3.4).
