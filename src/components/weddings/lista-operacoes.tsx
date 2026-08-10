@@ -102,12 +102,11 @@ function avisoStaleness(taxaVigenteMes: string | null | undefined): string {
  *  • `!whitespace-normal` (important): o primitivo `Tooltip` traz
  *    `whitespace-nowrap` na base — sem o `!`, texto longo não quebra e vira uma
  *    linha gigante INVISÍVEL que transborda e cria barra de rolagem horizontal.
- *  • `!left-auto right-0`: âncora à DIREITA, porque um balão ancorado à esquerda
- *    abriria para fora da borda direita da tabela. ⚠️ São TRÊS call-sites desde a
- *    v5.5.1 — "Margem (a.a.)", "Rend. Teórico" e "Margem Teórica (a.a.)", esta
- *    última a ÚLTIMA coluna. A âncora à direita é obrigatória para a última e
- *    inofensiva para as do meio (o balão abre para dentro). Registrado para que
- *    ninguém "corrija" pensando num call-site só e quebre os outros em silêncio.
+ *  • `!left-auto right-0`: âncora à DIREITA. São TRÊS call-sites — "Margem (a.a.)",
+ *    "Rend. Teórico" e "Margem Teórica (a.a.)", esta última a ÚLTIMA coluna da
+ *    tabela. A âncora à direita é obrigatória para a última (à esquerda o balão
+ *    abriria para fora da borda) e inofensiva para as do meio, onde ele abre para
+ *    dentro. Não "corrigir" pensando num call-site só — quebra os outros em silêncio.
  */
 function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
   return (
@@ -588,11 +587,15 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                 </span>
               </SortTh>
               {/* v5.5.1 (pedido do Yan): as duas colunas TEÓRICAS foram para o fim da
-                  tabela, depois das contábeis. Fica melhor assim — as três colunas de
-                  margem passam a ser lidas em sequência, e o bloco teórico não corta
-                  mais a leitura contábil pelo meio. Ordenação pelo SERVIDOR nas duas
-                  (chaves `rend_float` da 0241 e `margem_teorica_aa` da 0246): a lista
-                  pagina no servidor e a whitelist tem fallback SILENCIOSO. */}
+                  tabela, depois das contábeis — as três margens passam a ser lidas em
+                  sequência e o bloco teórico não corta mais a leitura contábil pelo
+                  meio. Ordenação pelo SERVIDOR nas duas (chaves `rend_float` da 0241 e
+                  `margem_teorica_aa` da 0246): a lista pagina no servidor e a whitelist
+                  tem fallback SILENCIOSO.
+                  ⚠️ Com 12 colunas a tabela TRANSBORDA na horizontal, e isso é
+                  ACEITO (decisão do Yan): as duas colunas teóricas ficam atrás da
+                  rolagem do `ScrollAutoHide`. A alternativa era encurtar rótulos e
+                  formatos que valem mais legíveis do que a ausência da barra. */}
               <SortTh field="rend_float" right {...sortThProps}>
                 <span className="inline-flex items-center gap-1">
                   Rend. Teórico
@@ -653,10 +656,11 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                   >
                     {/* v5.4.2/M1: largura reduzida (truncate + max-w) para abrir espaço às
                         colunas da direita; o nome completo fica no title.
-                        v5.5.1: reduzida de novo (150→124) porque a 12ª coluna passou a
-                        transbordar na horizontal — o DS trata barra horizontal em tabela
-                        densa como indesejada. Ainda cabem ~2 nomes próprios. */}
-                    <td className="py-2.5 px-3 max-w-[124px]">
+                        v5.5.1: MANTIDA em 150px. Cheguei a cortar para 124 tentando fazer
+                        as 12 colunas caberem sem rolagem, mas a decisão foi ACEITAR a
+                        rolagem — e aí truncar o nome do casal mais cedo seria custo sem
+                        contrapartida. */}
+                    <td className="py-2.5 px-3 max-w-[150px]">
                       <p
                         className="font-medium text-zinc-800 text-xs truncate"
                         title={op.nome_casal ?? op.operacao}
@@ -664,7 +668,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                         {op.nome_casal ?? op.operacao}
                       </p>
                     </td>
-                    <td className="py-2.5 px-3 text-xs text-zinc-500 truncate max-w-[84px] whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-xs text-zinc-500 truncate max-w-[100px] whitespace-nowrap">
                       {op.hotel ?? <span className="text-zinc-300">—</span>}
                     </td>
                     <td className="py-2.5 px-3 text-xs text-zinc-600 whitespace-nowrap">
@@ -732,14 +736,18 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
                         </span>
                       )}
                     </td>
-                    {/* Margem Teórica (a.a.) — MESMA paleta de faixa das outras duas
-                        margens, de propósito: as três medem a mesma grandeza contra os
-                        mesmos alvos, e colorir esta por outra regra faria parecer que é
-                        outro tipo de número. O que a distingue é o NOME e o "?" — que
-                        dizem que ela embute o rendimento teórico. */}
-                    <td className={`py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap ${margemTeoricaAA != null ? margemColor(margemTeoricaAA) : ''}`}>
+                    {/* Margem Teórica (a.a.) — DOURADO/danger, não a faixa de margem
+                        (decisão do Yan, v5.5.1). O par com "Rend. Teórico" ao lado é o
+                        que manda: as duas são o mesmo tipo de número (teórico), e a cor
+                        agora diz isso. Colorir esta pela faixa de alvo faria uma margem
+                        TEÓRICA aparecer verde ao lado de uma margem contábil vermelha —
+                        a leitura "no fim das contas estamos bem" que a versão inteira
+                        existe para não induzir. */}
+                    <td className="py-2.5 px-3 text-right tabular-nums text-xs font-medium whitespace-nowrap">
                       {margemTeoricaAA != null
-                        ? fmtPct1(margemTeoricaAA)
+                        ? <span className={margemTeoricaAA < 0 ? 'text-danger' : 'text-teorico'}>
+                            {fmtPct1(margemTeoricaAA)}
+                          </span>
                         : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                   </tr>

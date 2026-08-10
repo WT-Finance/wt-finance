@@ -22,9 +22,10 @@ PATCH · **Ajustes de apresentação do float, pedidos pelo Yan depois de ver a 
 - ⚠️ **Isto contraria a Decisão 5 do ADR-0166** ("nenhuma célula soma o float a resultado, margem ou faturamento") e é **mudança de produto deliberada**, registrada como emenda datada ao ADR — não como exceção silenciosa. O que sobrevive da invariante: a palavra "Teórica" no nome e o tooltip dizem que o número embute um componente não-contábil, e as colunas contábeis seguem intactas ao lado para comparação.
 - O percentual **viaja pronto no payload** em vez de ser derivado no cliente: `ROUND()` do Postgres é meio-para-longe-de-zero e `Math.round` do JS é meio-para-cima, e nos valores negativos — que esta métrica produz de verdade — os dois discordam na 1ª casa. Arredondando uma vez só, no SQL, a coluna exibe exatamente o número que o `ORDER BY` usa.
 
-### Nota conhecida
+### Decidido — a tabela rola na horizontal, e está tudo bem
 
-- **A tabela passou a transbordar na horizontal com a 12ª coluna.** As duas colunas de texto (Operação e Hotel) foram estreitadas para recuperar espaço, mas ainda falta largura para "Margem Teórica (a.a.)" caber sem rolagem em 1568px. O `ScrollAutoHide` já trata a rolagem; a alternativa (encurtar o formato da Data do Evento, que hoje ocupa ~140px com "20 de julho de 2026") **aguarda decisão** — mexe numa coluna que este patch não pediu para tocar.
+- **Com 12 colunas a Lista transborda**, e isso foi **aceito**: as duas colunas teóricas ficam atrás da rolagem do `ScrollAutoHide`, que já existia. Medido: faltavam 62px.
+- As alternativas foram construídas e **descartadas pelo Yan** depois de vistas na tela: encurtar a data para `20/07/26` (com o rótulo virando "Data") e fundir os três "?" num tooltip único zeravam o transbordamento — a tabela passava a caber exatamente —, mas ao custo de uma data menos legível e de perder a dica ancorada em cada coluna. **Legibilidade venceu a ausência da barra.** As colunas de texto voltaram às larguras originais (Operação 150px, Hotel 100px) pelo mesmo motivo: sem a meta de caber, truncar o nome do casal mais cedo seria custo sem contrapartida.
 
 ---
 
