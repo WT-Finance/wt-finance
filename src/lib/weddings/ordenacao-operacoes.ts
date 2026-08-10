@@ -42,6 +42,7 @@ export const CHAVES_ORDENACAO_OPERACOES = [
   'ml',
   'margem_aa',
   'rend_float',
+  'margem_teorica_aa',
   'duracao',
   'tipo_contrato',
   'convidados',

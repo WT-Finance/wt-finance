@@ -6,6 +6,29 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.5.1] — 2026-08-08
+
+PATCH · **Ajustes de apresentação do float, pedidos pelo Yan depois de ver a v5.5.0 no ar** + uma métrica nova. Migration `0246` (aditiva, aplicada) · **emenda ao ADR-0166**.
+
+### Alterado — gráfico e nomes
+
+- O gráfico do card de Fluxo de Caixa passou a se chamar **"Rendimento Potencial do Caixa Livre"**; saíram o total "R$ X na janela" ao lado do título e o subtítulo explicativo.
+- A **linha do saldo real ficou PRETA**, a mesma cor da linha "Resultado mensal" do gráfico Mensal logo acima — os dois são a leitura do caixa real, e cores diferentes para a mesma natureza de número dentro do mesmo card faziam parecerem coisas distintas.
+- Na Lista de Operações, **"Rend. Float" virou "Rend. Teórico"**, e as duas colunas teóricas foram para o **fim** da tabela, depois das contábeis — as três margens passam a ser lidas em sequência.
+
+### Adicionado — "Margem Teórica (a.a.)"
+
+- Margem anualizada considerando **o Resultado Previsto mais o rendimento potencial do caixa livre**: `(resultado + rend_float) ÷ faturamento`, anualizada pela mesma régua LINEAR da "Margem (a.a.)". Ordenável no servidor (chave `margem_teorica_aa`, migration `0246`) e incluída no Exportar.
+- ⚠️ **Isto contraria a Decisão 5 do ADR-0166** ("nenhuma célula soma o float a resultado, margem ou faturamento") e é **mudança de produto deliberada**, registrada como emenda datada ao ADR — não como exceção silenciosa. O que sobrevive da invariante: a palavra "Teórica" no nome e o tooltip dizem que o número embute um componente não-contábil, e as colunas contábeis seguem intactas ao lado para comparação.
+- O percentual **viaja pronto no payload** em vez de ser derivado no cliente: `ROUND()` do Postgres é meio-para-longe-de-zero e `Math.round` do JS é meio-para-cima, e nos valores negativos — que esta métrica produz de verdade — os dois discordam na 1ª casa. Arredondando uma vez só, no SQL, a coluna exibe exatamente o número que o `ORDER BY` usa.
+
+### Decidido — a tabela rola na horizontal, e está tudo bem
+
+- **Com 12 colunas a Lista transborda**, e isso foi **aceito**: as duas colunas teóricas ficam atrás da rolagem do `ScrollAutoHide`, que já existia. Medido: faltavam 62px.
+- As alternativas foram construídas e **descartadas pelo Yan** depois de vistas na tela: encurtar a data para `20/07/26` (com o rótulo virando "Data") e fundir os três "?" num tooltip único zeravam o transbordamento — a tabela passava a caber exatamente —, mas ao custo de uma data menos legível e de perder a dica ancorada em cada coluna. **Legibilidade venceu a ausência da barra.** As colunas de texto voltaram às larguras originais (Operação 150px, Hotel 100px) pelo mesmo motivo: sem a meta de caber, truncar o nome do casal mais cedo seria custo sem contrapartida.
+
+---
+
 ## [5.5.0] — 2026-08-07
 
 MINOR · **Weddings passa a medir o valor financeiro do próprio modelo de recebimento.** Migrations `0238`–`0243` (aditivas, aplicadas) · **ADR-0166**.

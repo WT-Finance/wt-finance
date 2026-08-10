@@ -5,7 +5,7 @@ import { ResponsiveContainer, ComposedChart, Area, Bar, Line, Cell, Tooltip, Ref
 import type { AcumuladoWeddings } from '@/types/api'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import { fatiarJanela } from '@/lib/weddings/janela-fluxo'
-import { curvasFloat, rendimentoDaJanela, type PontoFloat } from '@/lib/weddings/float-virtual'
+import { curvasFloat, type PontoFloat } from '@/lib/weddings/float-virtual'
 import SliderHorizonte from '@/components/shared/slider-horizonte'
 import {
   ChartGrid, ChartZeroLine, ChartXAxisMes, ChartYAxisBRL,
@@ -63,7 +63,7 @@ const LEGENDA_ACUM: ChartLegendItem[] = [
 // v5.5.0: sólido = real, tracejado = teórico — a convenção da skill `graficos`.
 const COR_TEORICO = 'var(--teorico)'
 const LEGENDA_FLOAT: ChartLegendItem[] = [
-  { label: 'Saldo real (caixa da operação)',    color: chartSeries.neutral, type: 'line' },
+  { label: 'Saldo real (caixa da operação)',    color: COR_RESULTADO, type: 'line' },
   { label: 'Conta virtual a 100% do CDI',       color: COR_TEORICO, type: 'line', dashed: true },
   { label: 'Rendimento acumulado na janela',    color: COR_TEORICO, type: 'rect', opacity: 0.18 },
 ]
@@ -173,8 +173,11 @@ export default function FluxoCaixaCard({ data, operacaoLabel, taxasCdi }: Props)
     () => new Map((taxasCdi ?? []).map(t => [t.mes, t.taxa])),
     [taxasCdi],
   )
+  // v5.5.1: `rendimentoDaJanela` deixou de ser chamado aqui — o total "na janela"
+  // saiu do cabeçalho a pedido do Yan. O helper e seus testes seguem em
+  // `lib/weddings/float-virtual`: a conta continua correta e volta a ser útil se o
+  // número for reintroduzido; apagá-lo seria perder a definição junto com a exibição.
   const curvas = useMemo(() => curvasFloat(pontos, taxaPorMes), [pontos, taxaPorMes])
-  const rendimentoJanela = rendimentoDaJanela(curvas)
 
   // Rótulo VERDADEIRO da janela: derivado do que foi efetivamente recortado, não
   // do estado pedido (que `fatiarJanela` pode ter clampado se a série encurtar
@@ -320,28 +323,20 @@ export default function FluxoCaixaCard({ data, operacaoLabel, taxasCdi }: Props)
       </ResponsiveContainer>
       <ChartLegend items={LEGENDA_ACUM} align="start" className="ml-18" />
 
-      {/* ── Gráfico 3: RENDIMENTO POTENCIAL DO FLOAT (v5.5.0/M5) ────────────── */}
+      {/* ── Gráfico 3: RENDIMENTO POTENCIAL DO CAIXA LIVRE (v5.5.0/M5) ───────── */}
+      {/* v5.5.1 (pedido do Yan): saíram o total "na janela" e o subtítulo; o título
+          deixou de falar em "float". ⚠️ O subtítulo carregava a NOTA TEÓRICA e a
+          ressalva de que o gap mede o rendimento gerado DENTRO da janela — e não a
+          vida inteira da operação, que é o que a coluna da Lista mede. As duas
+          informações deixaram de existir aqui: a nota teórica segue na coluna e no
+          drawer, e a distinção janela × vida inteira passou a depender do nome
+          diferente entre gráfico ("Caixa Livre") e coluna ("Rend. Teórico").
+          Decisão de produto registrada como emenda ao ADR-0166. */}
       {curvas.length > 0 && (
         <>
-          <div className="flex items-baseline gap-2 flex-wrap mt-6 mb-2">
-            <h3 className="text-base font-semibold text-[var(--text-primary)]">
-              Rendimento potencial do float
-            </h3>
-            <span className="text-[13px] tabular-nums text-teorico">
-              {fmtBRL(rendimentoJanela)} na janela
-            </span>
-          </div>
-          {/* Nota teórica — obrigatória nos três pontos de UI (invariante 2). O
-              "gerado na janela" NÃO é redundância: as duas curvas são semeadas na
-              borda esquerda (invariante 7), então este número mede o rendimento de
-              DENTRO da janela e é MENOR que a coluna "Rend. Float" da Lista, que
-              mede a vida inteira da operação. Sem dizer isto, os dois números
-              discordam na cara do usuário sem explicação. */}
-          <p className="text-[11px] leading-snug text-[var(--text-muted)] mb-2">
-            Saldo real × conta virtual remunerada a 100% do CDI, ambas partindo do saldo da borda
-            esquerda — o valor acima é o rendimento gerado <strong>dentro da janela</strong>, não o
-            da operação inteira. Rendimento teórico · não representa aplicação real.
-          </p>
+          <h3 className="text-base font-semibold text-[var(--text-primary)] mt-6 mb-2">
+            Rendimento Potencial do Caixa Livre
+          </h3>
           <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={curvas} margin={chartMargins.withRightLabel}>
               {ChartGrid()}
@@ -409,9 +404,13 @@ export default function FluxoCaixaCard({ data, operacaoLabel, taxasCdi }: Props)
                 legendType="none"
               />
               {/* Sólido = real; tracejado = teórico/projeção (convenção da skill). */}
+              {/* v5.5.1: preto, a MESMA cor da linha "Resultado mensal" do gráfico
+                  Mensal (pedido do Yan) — os dois são a leitura do caixa REAL, e
+                  usar cores diferentes para a mesma natureza de número dentro do
+                  mesmo card fazia parecerem coisas distintas. */}
               <Line
                 type="monotone" dataKey="saldo_real" name="saldo_real"
-                stroke={chartSeries.neutral} strokeWidth={strokeWidths.line}
+                stroke={COR_RESULTADO} strokeWidth={strokeWidths.line}
                 dot={false} activeDot={{ r: 3 }} isAnimationActive={false}
               />
               <Line

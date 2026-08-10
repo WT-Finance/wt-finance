@@ -211,6 +211,9 @@ const operacaoItem = z.object({
   // `.nullable()` sozinho rejeita, derrubando a Lista inteira com 500 em vez de
   // apenas não mostrar a coluna.
   rend_float:          z.number().nullable().optional(),
+  // v5.5.1 — margem teórica (%), já arredondada a 1 casa pelo SQL. `.optional()`
+  // pelo mesmo motivo dos vizinhos: só existe a partir da migration 0246.
+  margem_teorica_pct:  z.number().nullable().optional(),
 }).passthrough()
 
 /** get_operacoes_weddings → { total, pagina, por_pagina, operacoes[] } (ListaOperacoes) */

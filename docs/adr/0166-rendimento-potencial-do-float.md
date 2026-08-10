@@ -148,6 +148,34 @@ fluxo mensal que `fatiarJanela` já derivava. Arrastar o slider segue sem refetc
   proteção completa** (com CDI anual em ~4% a.a., como em 2020, o valor anualizado passaria pelo
   teto) — o que garante a série certa é a constante, não o guard.
 
+## Emenda — 2026-08-10 (v5.5.1): a Decisão 5 admite UMA exceção nomeada
+
+Depois de ver a v5.5.0 no ar, o Yan pediu uma coluna **"Margem Teórica (a.a.)"**: a margem
+anualizada considerando o Resultado Previsto **mais** o rendimento potencial do caixa livre.
+
+Isso **contraria a Decisão 5** acima, que proibia somar o float a resultado, margem ou
+faturamento. A proibição continua valendo como regra geral — o que muda é que passa a existir
+**uma exceção, e ela é nomeada**: uma coluna cujo próprio rótulo diz "Teórica", com tooltip
+declarando que embute rendimento a 100% do CDI que não representa aplicação real, exibida **ao
+lado** das colunas contábeis intactas, para que a diferença entre as duas seja legível.
+
+O que continua proibido, e é o núcleo da decisão original: somar o float dentro de um número que
+se apresente como contábil. "Margem", "Margem (a.a.)", "Resultado Prev." e "Faturamento" seguem
+sem nenhum componente teórico.
+
+**Detalhe de implementação que vale registrar:** o percentual é arredondado **uma única vez, no
+SQL**, e viaja pronto no payload. Derivá-lo no cliente exigiria arredondar lá, e `Math.round`
+(meio-para-cima) discorda do `ROUND` do Postgres (meio-para-longe-de-zero) nos valores negativos —
+que esta métrica produz de verdade. A coluna passaria a exibir um número diferente do que o
+`ORDER BY` usa.
+
+Na mesma versão, e sem efeito sobre a definição da métrica: o gráfico passou a se chamar
+**"Rendimento Potencial do Caixa Livre"**, perdeu o total "na janela" e o subtítulo, e a linha do
+saldo real ficou preta. ⚠️ **O subtítulo removido carregava a nota teórica do gráfico** — a
+Decisão 5 pedia a nota nos três pontos de UI, e agora ela vive só na coluna e no drawer. A
+distinção "janela × vida inteira" passou a depender dos nomes diferentes entre o gráfico e a
+coluna.
+
 ## Consequências
 
 - Weddings passa a ter um número para o valor financeiro do próprio modelo de recebimento.
