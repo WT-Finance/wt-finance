@@ -1,6 +1,8 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-07 · produção na **v5.4.5**; a **v5.5.0 está FECHADA e aguardando merge** (PR draft — Weddings ganha o *Rendimento potencial do float*; **migrations `0238`–`0242` já APLICADAS em produção**) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-07 (pós-merge) · produção na **v5.5.0** (#222 mergeado — Weddings ganha o *Rendimento potencial do float*; **migrations `0238`–`0245` aplicadas**, incluindo o agendamento mensal do CDI, já ATIVO) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
+
+⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
 > Verdade atual do projeto em UMA página. Toda sessão nova lê este arquivo antes de
 > explorar o repositório (o hook `contexto-sessao` o injeta automaticamente; se o hook
@@ -55,10 +57,24 @@
   onde o Playwright não sobe em background. Estreia nesta versão, e **pegou 2 defeitos** que
   tsc/lint/build/744 testes deixaram passar (o NaN do tooltip e "Custo teórico R$ 0,00" em
   vermelho). **Limite duro:** o agente NÃO faz login — a sessão tem de já existir no Chrome.
-  **PENDENTE do Yan:** mergear · **aplicar `supabase/patches/PENDENTE-agendamento-cdi.sql` DEPOIS
-  do deploy** (agendar antes responde 200 e fica verde sem fazer nada — v5.4.4); sem ele a taxa
-  não se atualiza sozinha · validar a premissa da taxa futura · conferir 3 taxas contra o site do
-  BACEN.
+  ✅ **PÓS-MERGE CONCLUÍDO (07/08).** `0244` (agendamento) e `0245` (faixa de plausibilidade)
+  aplicadas. O job **`cdi-ingest-mensal` está ATIVO** em `cron.job`, `0 9 3 * *` (dia 3, 06:00 SP).
+  Ordem respeitada: merge → deploy no ar → **disparo manual em produção** (HTTP 200,
+  `mes_max: 2026-07-01`, o mês FECHADO) → idempotência (2ª chamada `novas: 0, alteradas: 0`) →
+  só então agendar. **A série foi RECONCILIADA mês a mês contra a API do BACEN: 24 meses
+  conferidos, 0 divergências.**
+  ⚠️ **A verificação por pouco não valeu nada:** o 1º disparo foi contra `wt-finance.vercel.app`
+  (a URL que os docs citavam), e o Vault aponta para **`wt-janus.vercel.app`**. O alias antigo
+  responde 200, então o teste "passava" sem provar nada sobre o host que o cron chama. Só a
+  comparação explícita `vault.monde_app_url = <host testado>` pegou — e ela deu **false**.
+  Refeito contra o host certo: 200. **Sempre conferir a URL que o cron MONTA, não a que você acha
+  que é** (a v5.4.4 já mandava fazer isso; aqui a regra pagou pela segunda vez).
+  **A `0245` é hardening ADITIVO no lugar do `DROP CONSTRAINT` que o `revisor-db` propôs:** uma
+  restrição NOVA de ±5% a.m. convive com a frouxa de ±100%, e o INSERT satisfaz as duas ⇒ mesmo
+  limite efetivo, sem destrutiva e sem humano em TTY.
+  **PENDENTE do Yan:** validar a premissa da taxa futura · **em 03/09 conferir
+  `cron.job_run_details`** (1º ciclo real) e que a linha de ago/26 foi substituída pelo valor
+  fechado · decidir sobre o fundo do bloco no drawer (estética).
   **Resíduo declarado:** a linha de ago/2026 com a taxa PARCIAL segue gravada em `dim_taxa_cdi`,
   **inerte** pelo filtro da 0240; é substituída pelo valor fechado na 1ª ingestão de setembro.
   Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-5-0_Rendimento_Float.md`.
@@ -424,12 +440,12 @@
   ⚠️ **`0230` e `0231` NÃO EXISTEM e nunca existirão** — foram reservadas pela versão em stand-by
   e ela mesma as renumerou para 0233/0234 quando duas sessões colidiram. Buraco permanente na
   sequência, como já há em 0024/0025, 0044–0051, 0089 e 0218.
-  **Última migration APLICADA de todas: `0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
+  **Última migration APLICADA de todas: `0245`** (faixa de plausibilidade ±5% a.m. como CHECK ADITIVO, ao lado do frouxo de ±100%). Antes dela a **`0244`** (agendamento mensal do CDI — `cdi-ingest-mensal`, dia 3 às 06:00 SP, ATIVO). Antes delas a **`0243`** (v5.5.0 — sem nenhuma taxa fechada o indicador é
   NULL, não zero; `GREATEST`/`LEAST`/`SUM` ignoram NULL e transformavam "não sei" em "zero").
   Antes dela a **`0242`** (o total do float passou a ser a soma exata das partes) e a **`0241`** (coluna `rend_float` na Lista, aplicada só DEPOIS de
   a latência ser medida), a **`0240`** (a leitura ignora mês de CDI ainda aberto), a **`0239`**
   (`cdi_ingest_upsert`) e a **`0238`** (`dim_taxa_cdi` + a view da conta virtual + as 2 RPCs).
-  **Próxima livre: `0243`.**
+  **Próxima livre: `0246`.**
   Antes delas a **`0237`** (v5.4.5: `monde_ingest_status` separa
   `vendas_que_contam` de `vendas` e expõe `itens_cancelados` — ADITIVA, `CREATE OR REPLACE` de
   função, verificada executando via REST. Necessária porque a venda cancelada passou a
