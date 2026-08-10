@@ -3,18 +3,16 @@ import InventarioContent from '@/components/gestao-pessoas/inventario/inventario
 
 // Gestão de Pessoas · Inventário de Ativos (v5.6.0).
 //
-// ⚠️ M0 — GATE DE APROVAÇÃO VISUAL. A rota é real e a sidebar já mostra a seção nova, mas a
-// área de permissão definitiva ('gestao-pessoas/inventario') AINDA NÃO EXISTE: criá-la em
-// `src/lib/auth/areas.ts` sem a migration correspondente quebraria o teste de contrato de
-// paridade banco↔app (`rpc-contrato.test.ts`), e a M0 não pode aplicar migration.
-// Enquanto isso, o gate é a área EXISTENTE de Design System — quem revisa o mockup é quem
-// já tem acesso ao catálogo visual.
-// M2: trocar por `requireArea('gestao-pessoas/inventario')`, junto com a migration que
-// insere a área em `app.rbac_areas` e a entrada no catálogo local (as duas pontas no mesmo
-// passo). O mesmo flip acontece no gate do item de sidebar em `layout/sidebar.tsx`.
+// Área própria desde a migration 0247. Na M0 esta rota ficou provisoriamente sob
+// 'admin/design-system': declarar a área nova só no código, sem a migration que a insere em
+// `app.rbac_areas`, quebraria o teste de paridade banco↔app (`rpc-contrato.test.ts`) — e a
+// M0 não podia aplicar migration. As duas pontas viraram juntas na M1.
+//
+// ⚠️ A tela ainda roda sobre `fixture.ts` (mockup aprovado na M0). As RPCs
+// `patrimonio_*` já estão no ar; quem as liga é a M3.
 export const dynamic = 'force-dynamic'
 
 export default async function InventarioPage() {
-  await requireArea('admin/design-system')
+  await requireArea('gestao-pessoas/inventario')
   return <InventarioContent />
 }

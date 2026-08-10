@@ -79,13 +79,12 @@ const METAS_SUBS: NavSubItem[] = [
 ]
 
 // Gestão de Pessoas (v5.6.0) — seção NOVA da sidebar; o Inventário de Ativos é seu 1º módulo.
-// ⚠️ M0: gated pela área EXISTENTE 'admin/design-system' porque a área definitiva
-// ('gestao-pessoas/inventario') só pode nascer junto da migration que a insere em
-// app.rbac_areas — o teste de contrato exige paridade banco↔app e a M0 não aplica migration.
-// M2: trocar por 'gestao-pessoas/inventario' aqui E no requireArea da page, no mesmo commit
-// da migration. `emConstrucao` marca o item enquanto ele é pré-visualização.
+// Área própria desde a migration 0247 (na M0 ficou sob 'admin/design-system', porque declarar
+// a área nova sem a migration quebraria o teste de paridade banco↔app).
+// `emConstrucao` (triângulo de alerta) fica enquanto a tela roda sobre fixture — sai na M3,
+// quando ela passa a ler as RPCs `patrimonio_*`.
 const GESTAO_PESSOAS_SUBS: NavSubItem[] = [
-  { href: '/gestao-pessoas/inventario', label: 'Inventário de Ativos', icon: Boxes, area: 'admin/design-system', emConstrucao: true },
+  { href: '/gestao-pessoas/inventario', label: 'Inventário de Ativos', icon: Boxes, area: 'gestao-pessoas/inventario', emConstrucao: true },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa

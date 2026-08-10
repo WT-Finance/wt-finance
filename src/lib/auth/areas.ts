@@ -22,6 +22,7 @@ export const AREAS = [
   'solicitacoes/basico',
   'solicitacoes',
   'solicitacoes/documentacao',
+  'gestao-pessoas/inventario',
 ] as const
 
 export type Area = (typeof AREAS)[number]
@@ -70,6 +71,11 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // (antes a página vivia gated pela gestão 'solicitacoes'). Rótulo/grupo/ordem aqui
   // são FALLBACK — a migration paralela insere a mesma linha em app.rbac_areas.
   'solicitacoes/documentacao': { rotulo: 'Solicitações (documentação)', grupo: 'Solicitações', ordem: 55 },
+  // Gestão de Pessoas · Inventário de Ativos (v5.6.0/M1, migration 0247). Permissão ÚNICA
+  // de página: quem edita a página cadastra e movimenta — sem dois níveis, ao contrário de
+  // Acervo/Metas/Solicitações. Grupo próprio no editor de roles. Gate inicial APERTADO no
+  // seed (só quem já tinha 'admin/acessos'); o admin libera os demais pelo editor.
+  'gestao-pessoas/inventario': { rotulo: 'Inventário de Ativos', grupo: 'Gestão de Pessoas', ordem: 60 },
 }
 
 /**
@@ -110,12 +116,10 @@ export function areasDaRota(pathname: string): Area[] | null {
   // o Acompanhamento (/metas e /metas/acompanhamento) libera com qualquer uma das duas.
   if (p.startsWith('/metas/cadastro'))          return ['metas']
   if (p.startsWith('/metas'))                   return ['metas/acompanhamento', 'metas']
-  // Gestão de Pessoas · Inventário de Ativos (v5.6.0). ⚠️ M0: apontado para a área EXISTENTE
-  // do Design System — a área definitiva 'gestao-pessoas/inventario' só pode ser declarada
-  // junto da migration que a insere em app.rbac_areas (o teste de contrato exige paridade
-  // banco↔app, e a M0 não aplica migration). M2 troca as três pontas no mesmo commit:
-  // aqui, no AREAS/AREA_INFO e no requireArea da page.
-  if (p.startsWith('/gestao-pessoas'))          return ['admin/design-system']
+  // Gestão de Pessoas · Inventário de Ativos (v5.6.0). Área própria desde a migration 0247;
+  // na M0 esta rota ficou provisoriamente sob 'admin/design-system' porque declarar a área
+  // sem a migration quebraria o teste de paridade banco↔app.
+  if (p.startsWith('/gestao-pessoas'))          return ['gestao-pessoas/inventario']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']
