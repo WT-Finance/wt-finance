@@ -128,6 +128,22 @@ arredondado preenchido na cor do setor ("Meta Setembro", formato da referência 
 Gates re-rodados: build ✅ · tsc ✅ · lint ✅ · **909/910** (mesma falha única: tripwire
 v5.4.5, dado vivo).
 
+## 6c. Segunda rodada de ajustes (11/08, decisões finais do Yan)
+
+Duas mudanças de PRODUTO sobre a rodada anterior, aplicadas e provadas ao vivo:
+1. **"Personalizado" é seleção ÚNICA** (não aditiva): o mês escolhido vira o **mês em foco**, e o
+   **YoY continua automático** em volta dele (mês + 2 anos anteriores) — o card "Ano sobre Ano"
+   nunca fica com barra solitária. O popover perdeu contador/teto/"Limpar"; clicar um mês
+   substitui o anterior; chip mostra o mês escolhido ("mar/26"). `MAX_MESES_COMPARATIVO` saiu do
+   contrato (não há mais multi-seleção).
+2. **O anel mostra a meta do PRÓPRIO mês em foco** (não mais o mês seguinte) e **coincide com o
+   "Previsto" das colunas por construção** (mesmo campo; igualdade travada em teste unitário).
+   Selo "Meta Março" etc.
+Provado ao vivo: Mai→Mar substitui (single-select), Aplicar → "Meta de Março" + YoY mar/24·25·26
++ anel R$ 8,76 Mi ≡ Previsto R$ 8,76 Mi. Gates re-rodados: build ✅ · tsc ✅ · lint ✅ ·
+**908/909** (mesma falha única: tripwire v5.4.5, dado vivo). CHANGELOGs atualizados à semântica
+final. Nota da 6b superada no que conflitar com esta.
+
 ## 7. Aprendizado (régua de 5 destinos)
 
 - **Skill `graficos`:** rótulo de valor sobre coluna estreita — `LabelList` quebra na largura da

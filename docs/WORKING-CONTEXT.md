@@ -23,11 +23,12 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 ## Verdade atual
 
 - **v5.6.1 (FECHADA 11/08, aguardando merge) — Metas: seção "Comparativo".** Segunda TopSection
-  em `/metas`: pills de setor (cor de marca, padrão do ritmo), presets **Este mês / Último mês**
-  com YoY automático (mês em foco + 2 anos anteriores) e **Personalizado** com seleção ADITIVA
-  de meses (grade 2024→hoje, teto 12; 1ª multi-seleção de meses do app). Três visuais: colunas
-  Previsto×Realizado do foco, barras horizontais do realizado por mês, e **anel `AnelKpi`**
-  (primitivo novo, SVG puro) com a meta do mês seguinte. **Sem migration, sem ADR.** Dados
+  em `/metas`: pills de setor (cor de marca, padrão do ritmo) e **YoY sempre automático** (mês
+  em foco + 2 anos anteriores) — presets **Este mês / Último mês**, e **Personalizado** que
+  escolhe UM mês qualquer (grade 2024→hoje) para ser o foco. Três visuais: colunas
+  Previsto×Realizado do foco, barras "Ano sobre Ano" do realizado, e **anel `AnelKpi`**
+  (primitivo novo, SVG puro) com a meta do PRÓPRIO mês em foco (≡ Previsto das colunas, por
+  construção; selo arredondado na cor do setor). **Sem migration, sem ADR.** Dados
   client-side (metas_listar por ano + get_executiva_kpis por mês) — **paridade com os MetaCards
   por construção**, provada por contrato REST (4/4 setores ao centavo) e ao vivo. Gates verdes;
   **908/909 testes**; revisor 2 ALTO corrigidos (catch mudo; dialog sem foco).

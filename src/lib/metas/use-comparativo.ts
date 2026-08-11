@@ -7,7 +7,7 @@ import { rpcMetas } from '@/lib/metas/rpc-metas'
 import { parseRpc, executivaKpisSchema, metasListarSchema } from '@/lib/schemas-rpc'
 import { metasDoSetor, type MetaRow } from '@/lib/metas/paineis'
 import {
-  resolverMeses, mesSeguinte, janelaDoMes, montarComparativo, chaveMes,
+  resolverMeses, janelaDoMes, montarComparativo, chaveMes,
   type PresetComparativo, type MesRef, type ComparativoData,
 } from '@/lib/metas/comparativo'
 
@@ -57,10 +57,9 @@ export function useComparativo(
     async function carregar() {
       const db = getBrowserClient()
 
-      // "foco" = mês mais recente da seleção (resolverMeses garante ordem ASC e não-vazia).
-      const foco = mesesPedido[mesesPedido.length - 1]
-      const anoDoAnel = mesSeguinte(foco).ano
-      const anos = [...new Set([...mesesPedido.map(m => m.ano), anoDoAnel])]
+      // O anel agora é a meta do PRÓPRIO mês em foco (ajuste 11/08) — os anos das
+      // metas são exatamente os anos dos meses da comparação.
+      const anos = [...new Set(mesesPedido.map(m => m.ano))]
 
       const [metasResArr, kpisResArr] = await Promise.all([
         Promise.all(anos.map(a => rpcMetas(db, 'metas_listar', { p_ano: a }))),

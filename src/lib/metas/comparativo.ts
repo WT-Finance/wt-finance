@@ -1,16 +1,16 @@
 // Módulo PURO de composição de meses do Comparativo de Metas (v5.6.1) — sem I/O,
-// sem React, 100% testável. Resolve QUAIS meses entram na seleção (presets de
-// "mês em foco + N anos anteriores", ou uma lista livre do usuário) e MONTA o
-// payload de exibição (rótulo, previsto, realizado, parcial) a partir de metas e
-// realizado que o chamador (server-only) já carregou — este módulo não busca
-// dado nenhum, só compõe o que chega.
+// sem React, 100% testável. Resolve QUAIS meses entram na comparação (o mês em
+// foco vem do preset ou da escolha única do "Personalizado"; o YoY é SEMPRE
+// automático: foco + ANOS_YOY anos anteriores) e MONTA o payload de exibição
+// (rótulo, previsto, realizado, parcial) a partir de metas e realizado que o
+// chamador já carregou — este módulo não busca dado nenhum, só compõe o que chega.
 //
 // Convenções (espelham ritmo.ts):
 //  • "hoje" é SEMPRE parâmetro ISO 'yyyy-MM-dd' — nunca Date.now() aqui dentro.
 //  • ordem cronológica ASC — alimenta as barras do gráfico da esquerda p/ direita.
 //  • "foco" = o mês mais recente da seleção (alimenta as colunas/KPIs).
-//  • "anel" = a meta do mês SEGUINTE ao foco (o "próximo desafio"); null se ainda
-//    não cadastrada.
+//  • "anel" = a meta do PRÓPRIO mês em foco — coincide com o "Previsto" das
+//    colunas por construção (ajuste do Yan, 11/08); null se não cadastrada.
 //  • "parcial" usa a mesma convenção de carregar-acompanhamento.ts: a janela do
 //    mês ainda contém "hoje" (to >= hoje) → mês em curso, não fechado.
 
@@ -18,13 +18,10 @@ import { format, endOfMonth } from 'date-fns'
 import { fmtAxisMes } from '@/lib/fmt'
 import type { MetaMensal } from './ritmo'
 
-/** Teto da seleção aditiva (a UI já impede >12; o clamp aqui é cinto de segurança). */
-export const MAX_MESES_COMPARATIVO = 12
-
 /** Piso da grade de seleção (decisão de produto; o dado existe desde 2023). */
 export const ANO_MINIMO_COMPARATIVO = 2024
 
-/** Presets de comparação: mês em foco + N anos anteriores (mesmo mês, YoY). */
+/** Comparação: mês em foco + N anos anteriores (mesmo mês, YoY — sempre). */
 export const ANOS_YOY = 2
 
 export type PresetComparativo = 'este-mes' | 'ultimo-mes' | 'personalizado'
@@ -52,7 +49,7 @@ export interface ComparativoData {
   meses: ItemMesComparativo[]
   /** o mais recente — alimenta as colunas. */
   foco: ItemMesComparativo
-  /** meta do mês SEGUINTE ao foco; null sem meta cadastrada. */
+  /** meta do PRÓPRIO mês em foco (≡ foco.previsto); null sem meta cadastrada. */
   anel: { mes: MesRef; rotulo: string; meta: number } | null
 }
 
@@ -97,15 +94,23 @@ export function rotuloMes(m: MesRef, parcial = false): string {
   return parcial ? `${base} (parcial)` : base
 }
 
+/** Expansão YoY: o mês-base + o mesmo mês nos ANOS_YOY anos anteriores, ASC. */
+function expandirYoY(base: MesRef): MesRef[] {
+  const meses: MesRef[] = []
+  for (let i = ANOS_YOY; i >= 0; i--) meses.push({ ano: base.ano - i, mes: base.mes })
+  return meses
+}
+
 /**
- * Resolve a lista de meses de um preset, sempre em ordem ASC.
+ * Resolve a lista de meses da comparação — o YoY é SEMPRE automático (ajuste do
+ * Yan, 11/08: o "Personalizado" escolhe UM mês, que vira o mês em foco; a
+ * comparação Ano sobre Ano continua valendo para ele).
  *
- * - 'este-mes': mês de `hoje` + o mesmo mês nos ANOS_YOY anos anteriores (YoY).
- * - 'ultimo-mes': mês ANTERIOR ao de `hoje` (virada jan→dez do ano−1) + ANOS_YOY
- *   anos anteriores desse mesmo mês.
- * - 'personalizado': `personalizados` deduplicado (por chaveMes) e ordenado ASC,
- *   com clamp defensivo aos MAX_MESES_COMPARATIVO mais recentes. Lista vazia (ou
- *   ausente) cai no comportamento de 'este-mes' — nunca retorna vazio.
+ * - 'este-mes': mês de `hoje` como base.
+ * - 'ultimo-mes': mês ANTERIOR ao de `hoje` (virada jan→dez do ano−1) como base.
+ * - 'personalizado': o mês escolhido como base (defensivo: se chegar mais de um,
+ *   vale o mais recente). Lista vazia (ou ausente) cai em 'este-mes' — nunca
+ *   retorna vazio.
  */
 export function resolverMeses(
   preset: PresetComparativo,
@@ -115,18 +120,12 @@ export function resolverMeses(
   if (preset === 'personalizado') {
     const lista = personalizados ?? []
     if (lista.length === 0) return resolverMeses('este-mes', hoje)
-    const porChave = new Map<string, MesRef>()
-    for (const m of lista) porChave.set(chaveMes(m), m)
-    const ordenado = [...porChave.values()].sort((a, b) => chaveMes(a).localeCompare(chaveMes(b)))
-    return ordenado.slice(-MAX_MESES_COMPARATIVO)
+    const ordenado = [...lista].sort((a, b) => chaveMes(a).localeCompare(chaveMes(b)))
+    return expandirYoY(ordenado[ordenado.length - 1])
   }
 
   const hojeMes: MesRef = { ano: Number(hoje.slice(0, 4)), mes: Number(hoje.slice(5, 7)) }
-  const base = preset === 'este-mes' ? hojeMes : mesAnterior(hojeMes)
-
-  const meses: MesRef[] = []
-  for (let i = ANOS_YOY; i >= 0; i--) meses.push({ ano: base.ano - i, mes: base.mes })
-  return meses
+  return expandirYoY(preset === 'este-mes' ? hojeMes : mesAnterior(hojeMes))
 }
 
 /**
@@ -160,10 +159,12 @@ export function montarComparativo(input: {
     }
   })
 
+  // Anel = meta do PRÓPRIO mês em foco — por construção coincide com o "Previsto"
+  // das colunas (ajuste do Yan, 11/08; antes era a meta do mês seguinte).
   const foco = itens[itens.length - 1]
-  const mesAnel = mesSeguinte(foco.mes)
-  const metaAnel = metaPorChave.get(chaveMes(mesAnel))
-  const anel = metaAnel ? { mes: mesAnel, rotulo: rotuloMes(mesAnel), meta: metaAnel.valorMeta } : null
+  const anel = foco.previsto != null
+    ? { mes: foco.mes, rotulo: rotuloMes(foco.mes), meta: foco.previsto }
+    : null
 
   return { meses: itens, foco, anel }
 }

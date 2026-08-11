@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   chaveMes, janelaDoMes, mesSeguinte, rotuloMes, resolverMeses, montarComparativo,
-  MAX_MESES_COMPARATIVO, ANOS_YOY,
+  ANOS_YOY,
   type MesRef,
 } from './comparativo'
 import type { MetaMensal } from './ritmo'
@@ -68,32 +68,26 @@ describe('resolverMeses', () => {
     ])
   })
 
-  it("'personalizado' — dedup por chaveMes + sort ASC (entrada fora de ordem e duplicada)", () => {
-    const personalizados: MesRef[] = [
-      { ano: 2026, mes: 8 },
-      { ano: 2026, mes: 3 },
-      { ano: 2026, mes: 8 }, // duplicata
-    ]
-    const meses = resolverMeses('personalizado', HOJE, personalizados)
+  it("'personalizado' — o mês escolhido vira o foco e o YoY expande igual aos presets", () => {
+    const meses = resolverMeses('personalizado', HOJE, [{ ano: 2026, mes: 5 }])
     expect(meses).toEqual([
-      { ano: 2026, mes: 3 },
-      { ano: 2026, mes: 8 },
+      { ano: 2024, mes: 5 },
+      { ano: 2025, mes: 5 },
+      { ano: 2026, mes: 5 },
     ])
   })
 
-  it("'personalizado' — clamp aos MAX_MESES_COMPARATIVO MAIS RECENTES quando >12", () => {
-    expect(MAX_MESES_COMPARATIVO).toBe(12)
-    // 13 meses únicos, jan/25..jan/26 — fora de ordem de propósito.
-    const personalizados: MesRef[] = Array.from({ length: 13 }, (_, i) => {
-      const mes = ((i) % 12) + 1
-      const ano = 2025 + Math.floor((i) / 12)
-      return { ano, mes }
-    }).reverse()
+  it("'personalizado' — defensivo: se chegar mais de um mês, vale o MAIS RECENTE", () => {
+    const personalizados: MesRef[] = [
+      { ano: 2026, mes: 8 },
+      { ano: 2026, mes: 3 },
+    ]
     const meses = resolverMeses('personalizado', HOJE, personalizados)
-    expect(meses).toHaveLength(12)
-    // os 12 mais recentes: fev/2025..jan/2026 (exclui jan/2025, o mais antigo).
-    expect(meses[0]).toEqual({ ano: 2025, mes: 2 })
-    expect(meses[meses.length - 1]).toEqual({ ano: 2026, mes: 1 })
+    expect(meses).toEqual([
+      { ano: 2024, mes: 8 },
+      { ano: 2025, mes: 8 },
+      { ano: 2026, mes: 8 },
+    ])
   })
 
   it("'personalizado' com lista vazia (ou ausente) cai no comportamento de 'este-mes'", () => {
@@ -132,45 +126,37 @@ describe('montarComparativo', () => {
     expect(r.foco.mes).toEqual({ ano: 2026, mes: 8 })
   })
 
-  it('anel = null quando o mês SEGUINTE ao foco não tem meta cadastrada', () => {
-    const meses = resolverMeses('este-mes', HOJE)
-    const metas: MetaMensal[] = [{ ano: 2024, mes: 8, valorMeta: 1000 }]
+  it('anel = null quando o mês EM FOCO não tem meta cadastrada', () => {
+    const meses = resolverMeses('este-mes', HOJE) // foco = 2026-08
+    const metas: MetaMensal[] = [{ ano: 2024, mes: 8, valorMeta: 1000 }] // só o ano antigo
     const realizadoPorMes = new Map<string, number | null>()
 
     const r = montarComparativo({ meses, hoje: HOJE, metas, realizadoPorMes })
     expect(r.anel).toBeNull()
   })
 
-  it('anel = rótulo/meta do mês seguinte ao foco quando cadastrada', () => {
+  it('anel = meta do PRÓPRIO mês em foco e COINCIDE com o previsto das colunas', () => {
     const meses = resolverMeses('este-mes', HOJE) // foco = 2026-08
-    const metas: MetaMensal[] = [{ ano: 2026, mes: 9, valorMeta: 1300 }]
+    const metas: MetaMensal[] = [{ ano: 2026, mes: 8, valorMeta: 1300 }]
     const realizadoPorMes = new Map<string, number | null>()
 
     const r = montarComparativo({ meses, hoje: HOJE, metas, realizadoPorMes })
-    expect(r.anel).toEqual({ mes: { ano: 2026, mes: 9 }, rotulo: 'set/26', meta: 1300 })
+    expect(r.anel).toEqual({ mes: { ano: 2026, mes: 8 }, rotulo: 'ago/26', meta: 1300 })
+    expect(r.anel?.meta).toBe(r.foco.previsto) // ajuste do Yan, 11/08
   })
 
-  it('anel na virada dez → jan do ano seguinte', () => {
-    const meses: MesRef[] = [{ ano: 2026, mes: 12 }]
-    const metas: MetaMensal[] = [{ ano: 2027, mes: 1, valorMeta: 900 }]
-    const realizadoPorMes = new Map<string, number | null>()
-
-    const r = montarComparativo({ meses, hoje: '2026-12-11', metas, realizadoPorMes })
-    expect(r.foco.mes).toEqual({ ano: 2026, mes: 12 })
-    expect(r.anel).toEqual({ mes: { ano: 2027, mes: 1 }, rotulo: 'jan/27', meta: 900 })
-  })
-
-  it('personalizado com UM único mês é seleção válida (ajuste 11/08)', () => {
+  it('personalizado com mês único: foco no escolhido, YoY em volta (ajuste 11/08)', () => {
     const meses = resolverMeses('personalizado', HOJE, [{ ano: 2026, mes: 5 }])
-    expect(meses).toEqual([{ ano: 2026, mes: 5 }])
     const r = montarComparativo({
       meses, hoje: HOJE,
       metas: [{ ano: 2026, mes: 5, valorMeta: 500 }],
       realizadoPorMes: new Map([['2026-05', 400]]),
     })
-    expect(r.meses).toHaveLength(1)
+    expect(r.meses).toHaveLength(3) // mai/24, mai/25, mai/26
+    expect(r.foco.mes).toEqual({ ano: 2026, mes: 5 })
     expect(r.foco.previsto).toBe(500)
     expect(r.foco.realizado).toBe(400)
+    expect(r.anel?.meta).toBe(500)
   })
 
   it('realizado null (falha/negação fail-safe) é preservado, não some com o ?? 0', () => {

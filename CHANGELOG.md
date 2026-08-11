@@ -13,9 +13,9 @@ PATCH · **Metas: seção "Comparativo"** — meta × realizado entre meses e an
 ### Adicionado
 
 - **TopSection "Comparativo"** em `/metas`, abaixo da Visão geral: pills de setor (Group/Trips/Weddings/Corporativo, pill ativa sólida na cor de marca — mesmo padrão do gráfico de ritmo) e presets de período **Este mês / Último mês / Personalizado**.
-- **YoY automático:** "Este mês"/"Último mês" comparam o mês em foco com o mesmo mês dos dois anos anteriores (barras horizontais só do realizado, fiel à referência).
-- **Personalizado — seleção ADITIVA de meses**: popover com grade por ano (2024 → hoje), meses não-contíguos, teto 12, meses futuros desabilitados; primeira multi-seleção de meses do app. Rolagem interna não fecha o popover; foco gerido (move ao abrir, Tab preso, devolve ao gatilho).
-- **Três visuais:** colunas **Previsto × Realizado** do mês em foco (previsto em tom neutro de referência, realizado na cor de marca; mês parcial sinalizado no rótulo); **barras horizontais** do realizado por mês selecionado; **anel `AnelKpi`** (primitivo novo em `@/components/charts`, SVG puro sem Recharts) com a meta do mês seguinte ao foco. Mês sem meta cadastrada omite previsto/anel (nunca placeholder).
+- **YoY automático em todos os modos:** o mês em foco é comparado com o mesmo mês dos dois anos anteriores ("Ano sobre Ano", barras só do realizado, fiel à referência).
+- **Personalizado — escolha do mês em foco**: popover com grade por ano (2024 → hoje), seleção ÚNICA, meses futuros desabilitados; o mês escolhido vira o foco e o YoY continua automático em volta dele. Rolagem interna não fecha o popover; foco gerido (move ao abrir, Tab preso, devolve ao gatilho).
+- **Três visuais:** colunas **Previsto × Realizado** do mês em foco (previsto em tom neutro de referência, realizado na cor de marca; mês parcial sinalizado no rótulo); **barras horizontais** do realizado por mês da comparação; **anel `AnelKpi`** (primitivo novo em `@/components/charts`, SVG puro sem Recharts) com a meta do PRÓPRIO mês em foco — coincide com o "Previsto" das colunas por construção. Mês sem meta cadastrada omite previsto/anel (nunca placeholder).
 - **Caso de contrato de paridade** em `rpc-contrato.test.ts`: a composição do Comparativo reproduz os números dos MetaCards ao centavo, nos 4 painéis, contra as RPCs vivas (jul/26).
 
 ### Interno

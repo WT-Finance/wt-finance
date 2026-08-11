@@ -43,14 +43,13 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
         texto:
           'A página de Metas ganhou a seção "Comparativo": escolha o setor e compare a meta e o ' +
           'faturamento do mês atual (ou do mês passado) com o mesmo mês dos dois anos anteriores — ' +
-          'ou monte a própria comparação, marcando até 12 meses de qualquer ano desde 2024.',
+          'ou escolha qualquer mês desde 2024 para ser o mês em análise.',
       },
       {
         tipo: 'novidade',
         texto:
-          'Um destaque ao lado dos gráficos mostra a meta do mês seguinte ao mês em análise — o ' +
-          'próximo alvo, sempre à vista. Os números são os mesmos dos cartões de acompanhamento, ' +
-          'sem divergência.',
+          'Um destaque ao lado dos gráficos realça a meta do mês em análise — o mesmo número dos ' +
+          'cartões de acompanhamento, sem divergência.',
       },
     ],
   },

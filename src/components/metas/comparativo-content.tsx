@@ -10,7 +10,7 @@ import { AnelKpi } from '@/components/charts'
 import { fmtMi } from '@/lib/fmt'
 import { PAINEIS } from '@/lib/metas/paineis'
 import { useComparativo } from '@/lib/metas/use-comparativo'
-import { chaveMes, nomeMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
+import { chaveMes, nomeMes, rotuloMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
 import ComparativoColunas from './comparativo-colunas'
 import ComparativoBarras, { alturaMinimaBarras } from './comparativo-barras'
 import SeletorMeses from './seletor-meses'
@@ -101,7 +101,7 @@ export default function ComparativoContent() {
               onClick={abrirSeletor}
               className={`${PILL_FILTRO_SM} ${PILL_FILTRO_INATIVO}`}
             >
-              {personalizados.length} {personalizados.length === 1 ? 'mês' : 'meses'}
+              {rotuloMes(personalizados[0])}
             </button>
           )}
         </div>
