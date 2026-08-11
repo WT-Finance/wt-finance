@@ -8,6 +8,7 @@ import RitmoChart from '@/components/metas/ritmo-chart'
 import TopSection from '@/components/shared/top-section'
 import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
+import ComparativoContent from '@/components/metas/comparativo-content'
 import type { AcompanhamentoData } from '@/components/metas/tipos'
 
 // Página montada do Acompanhamento de Metas (v5.0.0): título/subtítulo fixos e, abaixo
@@ -79,6 +80,8 @@ export default function AcompanhamentoContent({ data, podeComparar }: Props) {
 
         <RitmoChart setores={data.setores} />
       </TopSection>
+
+      <ComparativoContent />
     </div>
   )
 }
