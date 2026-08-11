@@ -3,7 +3,7 @@
 import { ResponsiveContainer, BarChart, Bar, Cell, LabelList, Tooltip } from 'recharts'
 import {
   ChartGrid, ChartXAxisCategoria, ChartYAxisBRL, CustomTooltip,
-  chartSeries, barRadius, barSizes,
+  chartSeries, barRadius,
 } from '@/components/charts'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
 import type { ItemMesComparativo } from '@/lib/metas/comparativo'
@@ -22,6 +22,10 @@ interface Props {
 
 /** Altura fixa do gráfico (delegação M3). */
 const ALTURA = 260
+
+/** Largura das colunas — `barSizes.column` (14) é para série temporal densa; aqui são
+ *  só DUAS categorias num card largo, então a coluna é bem mais grossa (pedido 11/08). */
+const LARGURA_COLUNA = 64
 
 interface Ponto {
   categoria: 'Previsto' | 'Realizado'
@@ -57,7 +61,7 @@ export default function ComparativoColunas({ item, cor }: Props) {
           )}
           cursor={{ fill: 'rgba(0,0,0,0.04)' }}
         />
-        <Bar dataKey="valor" radius={barRadius.top} barSize={barSizes.column} isAnimationActive={false}>
+        <Bar dataKey="valor" radius={barRadius.top} barSize={LARGURA_COLUNA} isAnimationActive={false}>
           {dados.map((d, i) => <Cell key={i} fill={d.cor} />)}
           {/* content CUSTOM (não formatter): o LabelList padrão QUEBRA o texto na
               largura da barra — numa coluna estreita "R$ 2,65 Mi" vira três linhas

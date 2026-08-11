@@ -143,9 +143,8 @@ export default function ComparativoContent() {
             }`}
           >
             <Card className="flex flex-col">
-              <CardTitle
-                titulo={`Meta de ${nomeMes(data.foco.mes)}${data.foco.parcial ? ' (parcial)' : ''}`}
-              />
+              {/* Sem sufixo "(parcial)" no mês vigente — pedido do Yan (11/08). */}
+              <CardTitle titulo={`Meta de ${nomeMes(data.foco.mes)}`} />
               <ComparativoColunas item={data.foco} cor={cor} />
             </Card>
 
