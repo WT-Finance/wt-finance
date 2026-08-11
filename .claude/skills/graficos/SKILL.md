@@ -78,6 +78,12 @@ paleta neutra própria, independente de `[data-theme]`; isso é assunto de
   gráfico. (O caso de **valor de operação individual**, com 2 casas via `fmtBRL2`/
   `numBRL2`, não é responsabilidade deste gráfico — vive em `tabela-densa`/
   `ui-design-system`, porque ali o valor está numa célula, não num eixo.)
+- **Rótulo de valor sobre COLUNA estreita** → `LabelList` com `formatter` **quebra o texto
+  na largura da barra**: "R$ 2,65 Mi" numa coluna de ~30px vira três linhas empilhadas e
+  corta no teto do gráfico — e só aparece na tela (tsc/lint/testes não veem). Usar
+  `content` custom que desenha UM `<text>` centrado acima da barra (caso vivo:
+  `comparativo-colunas.tsx`, v5.6.1). Em barra horizontal (`position="right"`) o problema
+  não existe.
 
 ## Ver também
 

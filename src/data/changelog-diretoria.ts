@@ -35,6 +35,26 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.6.1',
+    data: '2026-08-11T13:58', // hora real de autoria — reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A página de Metas ganhou a seção "Comparativo": escolha o setor e compare a meta e o ' +
+          'faturamento do mês atual (ou do mês passado) com o mesmo mês dos dois anos anteriores — ' +
+          'ou monte a própria comparação, marcando até 12 meses de qualquer ano desde 2024.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Um destaque ao lado dos gráficos mostra a meta do mês seguinte ao mês em análise — o ' +
+          'próximo alvo, sempre à vista. Os números são os mesmos dos cartões de acompanhamento, ' +
+          'sem divergência.',
+      },
+    ],
+  },
+  {
     versao: '5.6.0',
     data: '2026-08-10T15:59', // horário REAL do merge (22418b1, PR #229, 15h59 −03) — reconciliado no /pos-merge
     itens: [
