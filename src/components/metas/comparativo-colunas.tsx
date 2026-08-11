@@ -59,11 +59,27 @@ export default function ComparativoColunas({ item, cor }: Props) {
         />
         <Bar dataKey="valor" radius={barRadius.top} barSize={barSizes.column} isAnimationActive={false}>
           {dados.map((d, i) => <Cell key={i} fill={d.cor} />)}
+          {/* content CUSTOM (não formatter): o LabelList padrão QUEBRA o texto na
+              largura da barra — numa coluna estreita "R$ 2,65 Mi" vira três linhas
+              empilhadas e corta no teto do gráfico (visto na verificação visual). */}
           <LabelList
             dataKey="valor"
-            position="top"
-            formatter={(v: unknown) => fmtMi(Number(v))}
-            style={{ fontSize: 12, fontWeight: 600, fill: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
+            content={(p) => {
+              const { x, y, width, value } = p as {
+                x?: number | string; y?: number | string; width?: number | string; value?: number | string
+              }
+              if (value == null || x == null || y == null || width == null) return <g />
+              return (
+                <text
+                  x={Number(x) + Number(width) / 2}
+                  y={Number(y) - 8}
+                  textAnchor="middle"
+                  style={{ fontSize: 12, fontWeight: 600, fill: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {fmtMi(Number(value))}
+                </text>
+              )
+            }}
           />
         </Bar>
       </BarChart>

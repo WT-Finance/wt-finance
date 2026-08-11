@@ -40,7 +40,7 @@ const PERIODOS: { id: PresetComparativo; label: string }[] = [
 /** Largura/altura aproximadas do popover, só para o clamp no viewport (molde de
  *  FiltroVencimento em base-dados-tab.tsx) — não precisa ser pixel-perfect. */
 const POPOVER_W = 360
-const POPOVER_H = 420
+const POPOVER_H = 440 // header + lista (max-h 300) + rodapé — manter em sincronia com seletor-meses
 const POPOVER_MARGEM = 8
 
 export default function ComparativoContent() {

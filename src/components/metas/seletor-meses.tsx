@@ -56,15 +56,21 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
   for (let a = anoAtual; a >= ANO_MINIMO_COMPARATIVO; a--) anos.push(a)
 
   // Esc fecha sem aplicar; scroll/resize fecham (a `pos` calculada no clique ficaria
-  // desalinhada) — molde de FiltroVencimento.
+  // desalinhada) — molde de FiltroVencimento, com uma correção: rolagem INTERNA ao
+  // painel (a lista de anos rola) não pode fechar — o listener em capture no window
+  // pega scroll de qualquer descendente, então filtramos pela origem do evento.
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) { if (e.key === 'Escape') onFechar() }
+    function aoRolar(e: Event) {
+      if (painelRef.current && e.target instanceof Node && painelRef.current.contains(e.target)) return
+      onFechar()
+    }
     document.addEventListener('keydown', aoTeclar)
-    window.addEventListener('scroll', onFechar, true)
+    window.addEventListener('scroll', aoRolar, true)
     window.addEventListener('resize', onFechar)
     return () => {
       document.removeEventListener('keydown', aoTeclar)
-      window.removeEventListener('scroll', onFechar, true)
+      window.removeEventListener('scroll', aoRolar, true)
       window.removeEventListener('resize', onFechar)
     }
   }, [onFechar])
@@ -121,7 +127,9 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
           </span>
         </div>
 
-        <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
+        {/* max-h contida: header+lista+rodapé têm de caber na estimativa POPOVER_H do
+            clamp do chamador — 360px estourava o viewport e escondia o "Aplicar". */}
+        <div className="max-h-[300px] space-y-3 overflow-y-auto pr-1">
           {anos.map(ano => (
             <div key={ano}>
               <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
