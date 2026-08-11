@@ -144,6 +144,17 @@ Provado ao vivo: Mai→Mar substitui (single-select), Aplicar → "Meta de Març
 **908/909** (mesma falha única: tripwire v5.4.5, dado vivo). CHANGELOGs atualizados à semântica
 final. Nota da 6b superada no que conflitar com esta.
 
+## 6d. Ajustes extra-escopo pedidos pelo Yan no PR (11/08)
+
+Dois pedidos expressos fora do Comparativo, atendidos nesta mesma branch:
+1. **Sidebar: "Gestão de Pessoas" subiu para logo abaixo de "Financeiro"** (antes ficava entre
+   Solicitações e o bloco administrativo). O guard `nav-model.test.ts` consagra a ordem — o caso
+   foi atualizado à ordem v5.6.1 (mudança de produto, não silenciamento).
+2. **Weddings / Lista de Operações: coluna "Margem Teórica (a.a.)" → "Margem Poten. (a.a.)"**
+   (cabeçalho, aria-rotulo do "?" e header do CSV). O tooltip segue declarando o componente
+   teórico/não-contábil — o cerne da emenda do ADR-0166 permanece; a chave de ordenação
+   `margem_teorica_aa` (SQL/enum) não muda.
+
 ## 7. Aprendizado (régua de 5 destinos)
 
 - **Skill `graficos`:** rótulo de valor sobre coluna estreita — `LabelList` quebra na largura da

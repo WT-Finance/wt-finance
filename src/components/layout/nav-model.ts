@@ -86,22 +86,23 @@ export const NAV_GROUPS: Record<string, NavSubItem[]> = {
   '/gestao-pessoas': GESTAO_PESSOAS_SUBS,
 }
 
-// Ordem da sidebar (v5.6.0): Executiva › Performance › Metas › Financeiro › Solicitações
-// › Gestão de Pessoas › Upload de Arquivos › Usuários e Acessos › Design System.
+// Ordem da sidebar (v5.6.1): Executiva › Performance › Metas › Financeiro › Gestão de
+// Pessoas › Solicitações › Upload de Arquivos › Usuários e Acessos › Design System.
 // (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
-// Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo.)
+// Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo;
+// v5.6.1: subiu para logo abaixo de Financeiro, pedido do Yan.)
 export const NAV_ITEMS: NavItem[] = [
   { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva', emConstrucao: true },
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
   { href: '/metas',          label: 'Metas',              Icon: Target,          area: null            },
   { href: '/financeiro',     label: 'Financeiro',         Icon: Wallet,          area: null            },
-  { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
-  // Seção nova (v5.6.0), entre os módulos de operação e o bloco administrativo.
+  // Seção da v5.6.0, desde a v5.6.1 logo abaixo de Financeiro.
   // Ícone `IdCard` (crachá), NÃO `Users`/`UsersRound`: o `Users` já é "Usuários e Acessos" e as
   // variantes redondas são quase indistinguíveis dele no tamanho 16px da sidebar (ajuste pedido
   // pelo Yan na aprovação da M0). O crachá também separa os conceitos: pessoa da empresa aqui,
   // conta da plataforma lá.
   { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: IdCard,          area: null            },
+  { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
