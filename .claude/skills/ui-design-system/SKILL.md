@@ -142,7 +142,11 @@ Duas regras que não são óbvias e já custaram achado de revisor:
   e pisca ao fechar (v5.4.1, Decomposição). Se o conteúdo é caro, memoize; não desmonte.
 - **Nada de `position:absolute` dentro da cortina** — o `overflow-hidden` do clip corta
   popover, tooltip do DS e menu (risco registrado na v5.1.9). Dica curta ali dentro é
-  atributo `title` nativo, que não vive no DOM.
+  atributo `title` nativo, que não vive no DOM. Popover que precise nascer aqui usa
+  **portal+clamp** (molde `FiltroVencimento`/`SeletorMeses`), e se ele "fecha ao rolar"
+  via listener de scroll em **capture** no window, o handler tem de **filtrar a origem do
+  evento**: capture pega o scroll de QUALQUER descendente, e uma lista rolável DENTRO do
+  popover o fecharia ao rolar (mordeu na v5.6.1).
 
 ---
 

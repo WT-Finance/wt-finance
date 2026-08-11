@@ -4,9 +4,9 @@ import { buscarUltimaSincronizacaoMonde } from '@/lib/metas/ultima-sincronizacao
 import { parseRpc, executivaKpisSchema, metasListarSchema, metasRitmoDiarioSchema } from '@/lib/schemas-rpc'
 import { format } from 'date-fns'
 import { resolverPeriodoMetas, type PresetMetas } from '@/lib/metas/periodo-metas'
-import { calcularRitmo, type MetaMensal, type PontoDia } from '@/lib/metas/ritmo'
+import { calcularRitmo, type PontoDia } from '@/lib/metas/ritmo'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
-import { SETOR_MARCA_COLORS } from '@/lib/config'
+import { PAINEIS, metasDoSetor, type MetaRow } from '@/lib/metas/paineis'
 import type { AcompanhamentoData, PainelSetor } from '@/components/metas/tipos'
 import type { SumarioSubsetorItem } from '@/types/api'
 
@@ -16,50 +16,9 @@ import type { SumarioSubsetorItem } from '@/types/api'
 // (get_executiva_kpis ×4 + metas_listar + calcularRitmo; Group = soma computada) →
 // os números batem por construção nas duas telas. NÃO há terceiro caminho de dados.
 // O GUARD de área fica em cada PÁGINA (esta função só busca dado).
-
-// Ordem e identidade dos painéis. Group = barra neutra; setores usam a cor de
-// identidade cross-setor (SETOR_MARCA_COLORS). Chave = nome interno do banco.
-const PAINEIS: { key: string; display: string; cor: string }[] = [
-  { key: 'todos',       display: 'Group',       cor: 'var(--text-muted)' },
-  { key: 'Lazer',       display: 'Trips',       cor: SETOR_MARCA_COLORS.Lazer },
-  { key: 'Weddings',    display: 'Weddings',    cor: SETOR_MARCA_COLORS.Weddings },
-  { key: 'Corporativo', display: 'Corporativo', cor: SETOR_MARCA_COLORS.Corporativo },
-]
-
-interface MetaRow {
-  ano: number
-  setor_nome: string
-  mes: number
-  valor_meta: number
-  pct_receita: number | null
-}
-
-/** Metas mensais de um setor (Group = soma por mês; pct ponderado por VT). */
-function metasDoSetor(rows: MetaRow[], key: string): MetaMensal[] {
-  if (key !== 'todos') {
-    return rows
-      .filter(r => r.setor_nome === key)
-      .map(r => ({ ano: r.ano, mes: r.mes, valorMeta: r.valor_meta, pctReceita: r.pct_receita }))
-  }
-  // Group: soma VT por (ano,mes); pct = média ponderada por VT (só meses/setores com alvo).
-  const porMes = new Map<string, { ano: number; mes: number; vt: number; vtComPct: number; recAlvo: number }>()
-  for (const r of rows) {
-    const k = `${r.ano}-${r.mes}`
-    const acc = porMes.get(k) ?? { ano: r.ano, mes: r.mes, vt: 0, vtComPct: 0, recAlvo: 0 }
-    acc.vt += r.valor_meta
-    if (r.pct_receita != null) {
-      acc.vtComPct += r.valor_meta
-      acc.recAlvo += r.valor_meta * (r.pct_receita / 100)
-    }
-    porMes.set(k, acc)
-  }
-  return [...porMes.values()].map(a => ({
-    ano: a.ano,
-    mes: a.mes,
-    valorMeta: a.vt,
-    pctReceita: a.vtComPct > 0 ? (a.recAlvo / a.vtComPct) * 100 : null,
-  }))
-}
+//
+// PAINEIS/MetaRow/metasDoSetor vivem em './paineis' (client-safe) — este arquivo é
+// `server-only`; a seção Comparativo (v5.6.1) os reusa sem duplicar (§1 do patch).
 
 /** Monta o dado completo do Acompanhamento para um preset de período. Reusado por
  *  /metas e /metas/tv — mesma orquestração, mesmos números. */

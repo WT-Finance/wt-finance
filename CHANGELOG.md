@@ -6,6 +6,24 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.6.1] — 2026-08-11
+
+PATCH · **Metas: seção "Comparativo"** — meta × realizado entre meses e anos na página de Acompanhamento. Sem migration · sem ADR.
+
+### Adicionado
+
+- **TopSection "Comparativo"** em `/metas`, abaixo da Visão geral: pills de setor (Group/Trips/Weddings/Corporativo, pill ativa sólida na cor de marca — mesmo padrão do gráfico de ritmo) e presets de período **Este mês / Último mês / Personalizado**.
+- **YoY automático em todos os modos:** o mês em foco é comparado com o mesmo mês dos dois anos anteriores ("Ano sobre Ano", barras só do realizado, fiel à referência).
+- **Personalizado — escolha do mês em foco**: popover com grade por ano (2024 → hoje), seleção ÚNICA, meses futuros desabilitados; o mês escolhido vira o foco e o YoY continua automático em volta dele. Rolagem interna não fecha o popover; foco gerido (move ao abrir, Tab preso, devolve ao gatilho).
+- **Três visuais:** colunas **Previsto × Realizado** do mês em foco (previsto em tom neutro de referência, realizado na cor de marca; mês parcial sinalizado no rótulo); **barras horizontais** do realizado por mês da comparação; **anel `AnelKpi`** (primitivo novo em `@/components/charts`, SVG puro sem Recharts) com a meta do PRÓPRIO mês em foco — coincide com o "Previsto" das colunas por construção. Mês sem meta cadastrada omite previsto/anel (nunca placeholder).
+- **Caso de contrato de paridade** em `rpc-contrato.test.ts`: a composição do Comparativo reproduz os números dos MetaCards ao centavo, nos 4 painéis, contra as RPCs vivas (jul/26).
+
+### Interno
+
+- Dados client-side sob demanda (`metas_listar` por ano + `get_executiva_kpis` por mês selecionado, em paralelo): trocar setor/período **não recarrega a página**; loading derivado de chave com guard de resposta atrasada (compara com o último pedido); dados anteriores ficam visíveis com opacidade durante o refetch.
+- `PAINEIS`/`MetaRow`/`metasDoSetor` extraídos de `carregar-acompanhamento.ts` para o módulo client-safe `src/lib/metas/paineis.ts` (verbatim, zero mudança de comportamento); `rpc-metas.ts` aceita o browser client (type-only).
+- Módulo puro `src/lib/metas/comparativo.ts` (molde do `ritmo.ts`): resolução de meses por preset, dedup/clamp do personalizado, montagem do payload — 18 testes.
+
 ## [5.6.0] — 2026-08-10
 
 MINOR · **Gestão de Pessoas: Inventário de Ativos** — seção nova de sidebar e módulo novo. Migrations `0247`/`0248` (aditivas, aplicadas) · **ADR-0167**.

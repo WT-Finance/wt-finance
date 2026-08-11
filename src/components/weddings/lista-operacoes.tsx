@@ -58,7 +58,8 @@ const TOOLTIP_REND_FLOAT =
   'Rendimento teórico a 100% do CDI · não representa aplicação real.'
 
 /**
- * Tooltip da "Margem Teórica (a.a.)" (v5.5.1).
+ * Tooltip da "Margem Poten. (a.a.)" (v5.5.1; renomeada de "Margem Teórica" na
+ * v5.6.1 a pedido do Yan — o campo/chave de ordenação segue `margem_teorica_aa`).
  *
  * O texto PRECISA dizer que o número soma um componente não-contábil: é isso que o
  * separa da "Margem (a.a.)" ao lado, e a v5.5.0 tinha como invariante justamente NÃO
@@ -230,7 +231,7 @@ async function exportarParaExcel(operacoes: OperacaoItem[], periodoLabel: string
       // carregam "Teórico"/"Teórica" de propósito — fora do Janus a planilha perde o
       // tooltip, e o nome é a única coisa que impede a coluna de virar receita.
       'Rend. Teórico (R$)':       op.rend_float ?? '—',
-      'Margem Teórica a.a. (%)':  mTeoricaAA != null ? Number(mTeoricaAA.toFixed(1)) : '—',
+      'Margem Poten. a.a. (%)':   mTeoricaAA != null ? Number(mTeoricaAA.toFixed(1)) : '—',
     }
   })
 
@@ -607,10 +608,10 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
               </SortTh>
               <SortTh field="margem_teorica_aa" right {...sortThProps}>
                 <span className="inline-flex items-center gap-1">
-                  Margem Teórica (a.a.)
+                  Margem Poten. (a.a.)
                   <AjudaHeader
                     texto={TOOLTIP_MARGEM_TEORICA + avisoStaleness(data?.taxa_vigente_mes)}
-                    rotulo="Margem Teórica (a.a.)"
+                    rotulo="Margem Poten. (a.a.)"
                   />
                 </span>
               </SortTh>

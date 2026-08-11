@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-10 (pós-merge) · produção na **v5.6.0** (#229 mergeado às 15h59 — Gestão de Pessoas: Inventário de Ativos, a 1ª seção nova de 1º nível da sidebar desde a v4.x; migrations `0247`/`0248`). Antes dela a v5.5.2 (#227, 14h29), a v5.5.1 (#224, 12h17) e a v5.5.0 (#222, 10h49) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
+Última atualização: 2026-08-11 (fechamento v5.6.1) · produção na **v5.6.0** (#229 mergeado 10/08 às 15h59) · **v5.6.1 FECHADA aguardando merge** (Comparativo na página de Metas — PR draft na branch `feat/v5-6-1-comparativo-metas`, sem migration) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
 
 🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
 o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
@@ -22,6 +22,30 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 
 ## Verdade atual
 
+- **v5.6.1 (FECHADA 11/08, aguardando merge) — Metas: seção "Comparativo".** Segunda TopSection
+  em `/metas`: pills de setor (cor de marca, padrão do ritmo) e **YoY sempre automático** (mês
+  em foco + 2 anos anteriores) — presets **Este mês / Último mês**, e **Personalizado** que
+  escolhe UM mês qualquer (grade 2024→hoje) para ser o foco. Três visuais: colunas
+  Previsto×Realizado do foco, barras "Ano sobre Ano" do realizado, e **anel `AnelKpi`**
+  (primitivo novo, SVG puro) com a meta do PRÓPRIO mês em foco (≡ Previsto das colunas, por
+  construção; selo arredondado na cor do setor). **Sem migration, sem ADR.** Dados
+  client-side (metas_listar por ano + get_executiva_kpis por mês) — **paridade com os MetaCards
+  por construção**, provada por contrato REST (4/4 setores ao centavo) e ao vivo. Gates verdes;
+  **908/909 testes**; revisor 2 ALTO corrigidos (catch mudo; dialog sem foco).
+  ✅ **Verificação visual AO VIVO via Claude in Chrome** (2ª vez que o método funciona; sessão
+  do Janus já existia no Chrome do Yan) — pegou e corrigiu 3 defeitos invisíveis aos gates:
+  `LabelList` quebrando rótulo na largura da coluna, scroll interno fechando o popover
+  (listener em capture sem filtrar origem), rodapé "Aplicar" fora do viewport. Screenshots
+  enviados no chat.
+  🔴 **O tripwire da v5.4.5 DISPAROU para 2026-08 (1 venda retida no espelho)** — é a única
+  falha da suíte, pré-existente ao patch (dado vivo). Reforça a pauta ao provedor (§8 do
+  briefing da v5.4.5) e a decisão pendente sobre vendas "sobrando" (v5.4.4).
+  **Registrado (não corrigido, fora de escopo):** RBAC assimétrico herdado — `get_executiva_kpis`
+  não aceita `metas/acompanhamento`; quem só tem a área de Metas já via "—" nos MetaCards e verá
+  igual no Comparativo (degradação fail-safe).
+  Out-briefing: `WT_Finance_Out_Briefing_v5-6-1_Comparativo_Metas.md`.
+  **Pendente Yan:** mergear o PR · conferência visual final no ar (o popover em telas menores) ·
+  decidir a comunicação do tripwire de agosto.
 - **v5.6.0 (#229, mergeada 10/08 às 15h59) — Gestão de Pessoas: Inventário de Ativos.**
   Seção NOVA de sidebar (a primeira de 1º nível desde a v4.x) + módulo novo. Cadastro de
   equipamentos com ficha patrimonial e **razão append-only** de movimentações. Migrations

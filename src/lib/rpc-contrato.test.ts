@@ -590,6 +590,48 @@ describe.skipIf(!ON)('contrato Metas — paridade com a Performance (fonte únic
   )
 })
 
+// v5.6.1 — COMPARATIVO: a composição da seção (metas_listar + get_executiva_kpis via
+// montarComparativo) tem de reproduzir os números dos MetaCards para um mês-calendário
+// inteiro: previsto ≡ metaPeriodo do ritmo (a pró-rata degenera no valor cheio em mês
+// completo) e realizado ≡ faturamento da MESMA get_executiva_kpis. Divergiu ⇒ o
+// Comparativo mente na própria página de Metas.
+describe.skipIf(!ON)('contrato Metas — paridade do Comparativo com os MetaCards (v5.6.1)', () => {
+  const MES = { ano: 2026, mes: 7 } // jul/26: mês fechado, usado na referência do briefing
+  it.each(['todos', 'Weddings', 'Lazer', 'Corporativo'])(
+    'comparativo[%s]: previsto ≡ metaPeriodo e realizado ≡ faturamento dos KPIs',
+    async (setor) => {
+      const { montarComparativo, chaveMes, janelaDoMes } = await import('./metas/comparativo')
+      const { metasDoSetor } = await import('./metas/paineis')
+      const { calcularRitmo } = await import('./metas/ritmo')
+
+      const { from, to } = janelaDoMes(MES)
+      const listar = await rpc('metas_listar', { p_ano: MES.ano }) as {
+        ano: number
+        metas: Array<{ setor_nome: string; mes: number; valor_meta: number; pct_receita: number | null }>
+      }
+      const kpis = await rpc('get_executiva_kpis', { p_from: from, p_to: to, p_setor: setor }) as {
+        faturamento: { valor: number }
+      }
+
+      const metas = metasDoSetor(
+        listar.metas.map(m => ({
+          ano: listar.ano, setor_nome: m.setor_nome, mes: m.mes,
+          valor_meta: Number(m.valor_meta), pct_receita: m.pct_receita,
+        })),
+        setor,
+      )
+      const realizadoPorMes = new Map([[chaveMes(MES), Number(kpis.faturamento.valor)]])
+      const { foco } = montarComparativo({ meses: [MES], hoje: '2026-08-11', metas, realizadoPorMes })
+
+      // Previsto ≡ meta do MESMO mês nos MetaCards (sem meta cadastrada, ambos zeram).
+      const ritmo = calcularRitmo({ from, to, ultimaVenda: to, metas, serie: [] })
+      expect(foco.previsto ?? 0).toBeCloseTo(ritmo.metaPeriodo, 2)
+      // Realizado ≡ faturamento da mesma RPC que alimenta os MetaCards.
+      expect(Number(foco.realizado)).toBeCloseTo(Number(kpis.faturamento.valor), 2)
+    },
+  )
+})
+
 describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)', () => {
   it('catálogo de áreas: banco (app.rbac_areas) ↔ app (AREAS) idênticos', async () => {
     const { AREAS } = await import('./auth/areas')
