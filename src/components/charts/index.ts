@@ -38,3 +38,6 @@ export {
 } from './chart-theme'
 
 export { fillMonths, listMonths } from './fill-months'
+
+// Anel de destaque (círculo de contorno + valor centrado) — sem série de dados.
+export { AnelKpi } from './anel-kpi'
