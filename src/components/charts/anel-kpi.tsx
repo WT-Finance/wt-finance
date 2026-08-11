@@ -32,7 +32,7 @@ export function AnelKpi({ valor, rotulo, cor, tamanho = 168 }: Props) {
 
   return (
     <div
-      className="flex flex-col items-center gap-2"
+      className="flex flex-col items-center gap-4"
       role="img"
       aria-label={`${rotulo}: ${valor}`}
     >
@@ -49,7 +49,14 @@ export function AnelKpi({ valor, rotulo, cor, tamanho = 168 }: Props) {
           </span>
         </div>
       </div>
-      <span className="text-xs font-medium text-text-muted">{rotulo}</span>
+      {/* Selo do rótulo: caixa preenchida como a referência do Yan, porém arredondada e
+          na cor recebida (ajuste 11/08). Texto branco — as cores de marca têm contraste. */}
+      <span
+        className="rounded-full px-4 py-1.5 text-sm font-semibold text-white"
+        style={{ background: cor }}
+      >
+        {rotulo}
+      </span>
     </div>
   )
 }

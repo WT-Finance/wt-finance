@@ -37,12 +37,17 @@ import {
  * Grade horizontal tracejada sutil ('3 4'), SEM linhas verticais.
  * Factory — chame `{ChartGrid()}` dentro do chart.
  */
-export function ChartGrid(): ReactElement {
+export function ChartGrid(opts?: { eixo?: 'horizontal' | 'vertical' }): ReactElement {
+  // 'horizontal' (default) = linhas horizontais, para coluna/linha com valor no Y.
+  // 'vertical' = linhas verticais nos ticks do X, para barra HORIZONTAL (valor no X) —
+  // ali as linhas horizontais só separariam categorias, sem função de leitura (v5.6.1).
+  const vertical = opts?.eixo === 'vertical'
   return (
     <CartesianGrid
       strokeDasharray={dashArrays.grid}
       stroke={chartColors.grid}
-      vertical={false}
+      vertical={vertical}
+      horizontal={!vertical}
     />
   )
 }

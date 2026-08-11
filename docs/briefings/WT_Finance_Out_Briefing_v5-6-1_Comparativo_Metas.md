@@ -112,6 +112,22 @@ ladrilhado/timeout — **não é bug da página** (DOM conferido são por JS); e
   cross-setor" — a skill `graficos` distingue marca × cross-setor; o comentário é impreciso mas
   foi mantido pela regra de extração verbatim.
 
+## 6b. Rodada de ajustes pós-print (11/08 tarde, Yan viu a tela)
+
+Oito ajustes pedidos por print, todos aplicados e re-verificados ao vivo (Edge desta vez —
+a sessão do Janus existia nos dois browsers): subtítulo da TopSection removido · pills de
+período ABAIXO das de setor · seleção de UM único mês no Personalizado confirmada válida
+(teste unitário novo; provada no browser: "Meta de Maio" + barra única + selo "Meta Junho") ·
+títulos dos cards: "Meta de <Mês>" (extenso, capitalizado, sem ano; sufixo "(parcial)"
+mantido), "Ano sobre Ano", e o nome do setor no card do anel · barras ocupando o card inteiro
+(altura 100%, eixo Y justo de 52px com rótulo curto — o "(parcial)" sai do eixo e fica no
+título das colunas) · grade VERTICAL pontilhada nos ticks do eixo X (opção aditiva
+`ChartGrid({eixo:'vertical'})` no primitivo) · anel centralizado com o rótulo em SELO
+arredondado preenchido na cor do setor ("Meta Setembro", formato da referência do Yan) ·
+`anel` do contrato ganhou `mes: MesRef` (aditivo; 2 testes atualizados, 19 no módulo).
+Gates re-rodados: build ✅ · tsc ✅ · lint ✅ · **909/910** (mesma falha única: tripwire
+v5.4.5, dado vivo).
+
 ## 7. Aprendizado (régua de 5 destinos)
 
 - **Skill `graficos`:** rótulo de valor sobre coluna estreita — `LabelList` quebra na largura da

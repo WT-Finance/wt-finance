@@ -53,7 +53,17 @@ export interface ComparativoData {
   /** o mais recente — alimenta as colunas. */
   foco: ItemMesComparativo
   /** meta do mês SEGUINTE ao foco; null sem meta cadastrada. */
-  anel: { rotulo: string; meta: number } | null
+  anel: { mes: MesRef; rotulo: string; meta: number } | null
+}
+
+const NOMES_MES_EXTENSO = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+] as const
+
+/** Nome do mês por extenso, capitalizado e SEM ano ("Maio") — títulos de card (ajuste 11/08). */
+export function nomeMes(m: MesRef): string {
+  return NOMES_MES_EXTENSO[m.mes - 1]
 }
 
 /** Chave estável 'yyyy-MM' (zero-padded) — usada para dedup/lookup/ordenação. */
@@ -153,7 +163,7 @@ export function montarComparativo(input: {
   const foco = itens[itens.length - 1]
   const mesAnel = mesSeguinte(foco.mes)
   const metaAnel = metaPorChave.get(chaveMes(mesAnel))
-  const anel = metaAnel ? { rotulo: rotuloMes(mesAnel), meta: metaAnel.valorMeta } : null
+  const anel = metaAnel ? { mes: mesAnel, rotulo: rotuloMes(mesAnel), meta: metaAnel.valorMeta } : null
 
   return { meses: itens, foco, anel }
 }

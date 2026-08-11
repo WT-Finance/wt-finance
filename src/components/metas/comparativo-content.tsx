@@ -10,9 +10,9 @@ import { AnelKpi } from '@/components/charts'
 import { fmtMi } from '@/lib/fmt'
 import { PAINEIS } from '@/lib/metas/paineis'
 import { useComparativo } from '@/lib/metas/use-comparativo'
-import { chaveMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
+import { chaveMes, nomeMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
 import ComparativoColunas from './comparativo-colunas'
-import ComparativoBarras from './comparativo-barras'
+import ComparativoBarras, { alturaMinimaBarras } from './comparativo-barras'
 import SeletorMeses from './seletor-meses'
 
 // Seção "Comparativo" do Acompanhamento de Metas (v5.6.1) — meta × realizado entre
@@ -77,8 +77,9 @@ export default function ComparativoContent() {
   const semDados = data != null && data.meses.every(m => m.realizado === null)
 
   return (
-    <TopSection titulo="Comparativo" subtitulo="Meta × realizado entre meses e anos">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+    <TopSection titulo="Comparativo">
+      {/* Pills de período ABAIXO das de setor (ajuste 11/08 — pedido explícito). */}
+      <div className="mb-4 space-y-2">
         <Tabs
           items={PAINEIS.map(p => ({ id: p.key, label: p.display }))}
           ativo={painelAtivo.key}
@@ -149,19 +150,27 @@ export default function ComparativoContent() {
               carregando ? 'opacity-60' : ''
             }`}
           >
-            <Card>
-              <CardTitle titulo={`Meta de ${data.foco.rotulo}`} />
+            <Card className="flex flex-col">
+              <CardTitle
+                titulo={`Meta de ${nomeMes(data.foco.mes)}${data.foco.parcial ? ' (parcial)' : ''}`}
+              />
               <ComparativoColunas item={data.foco} cor={cor} />
             </Card>
 
-            <Card>
-              <CardTitle titulo="Realizado por mês" />
-              <ComparativoBarras meses={data.meses} cor={cor} />
+            <Card className="flex flex-col">
+              <CardTitle titulo="Ano sobre Ano" />
+              {/* O gráfico PREENCHE o card até o limite de baixo (ajuste 11/08). */}
+              <div className="min-h-0 flex-1" style={{ minHeight: alturaMinimaBarras(data.meses.length) }}>
+                <ComparativoBarras meses={data.meses} cor={cor} />
+              </div>
             </Card>
 
             {data.anel && (
-              <Card>
-                <AnelKpi valor={fmtMi(data.anel.meta)} rotulo={`Meta ${data.anel.rotulo}`} cor={cor} />
+              <Card className="flex flex-col">
+                <CardTitle titulo={painelAtivo.display} />
+                <div className="flex flex-1 items-center justify-center pb-4">
+                  <AnelKpi valor={fmtMi(data.anel.meta)} rotulo={`Meta ${nomeMes(data.anel.mes)}`} cor={cor} />
+                </div>
               </Card>
             )}
           </div>

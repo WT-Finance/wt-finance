@@ -147,7 +147,7 @@ describe('montarComparativo', () => {
     const realizadoPorMes = new Map<string, number | null>()
 
     const r = montarComparativo({ meses, hoje: HOJE, metas, realizadoPorMes })
-    expect(r.anel).toEqual({ rotulo: 'set/26', meta: 1300 })
+    expect(r.anel).toEqual({ mes: { ano: 2026, mes: 9 }, rotulo: 'set/26', meta: 1300 })
   })
 
   it('anel na virada dez → jan do ano seguinte', () => {
@@ -157,7 +157,20 @@ describe('montarComparativo', () => {
 
     const r = montarComparativo({ meses, hoje: '2026-12-11', metas, realizadoPorMes })
     expect(r.foco.mes).toEqual({ ano: 2026, mes: 12 })
-    expect(r.anel).toEqual({ rotulo: 'jan/27', meta: 900 })
+    expect(r.anel).toEqual({ mes: { ano: 2027, mes: 1 }, rotulo: 'jan/27', meta: 900 })
+  })
+
+  it('personalizado com UM único mês é seleção válida (ajuste 11/08)', () => {
+    const meses = resolverMeses('personalizado', HOJE, [{ ano: 2026, mes: 5 }])
+    expect(meses).toEqual([{ ano: 2026, mes: 5 }])
+    const r = montarComparativo({
+      meses, hoje: HOJE,
+      metas: [{ ano: 2026, mes: 5, valorMeta: 500 }],
+      realizadoPorMes: new Map([['2026-05', 400]]),
+    })
+    expect(r.meses).toHaveLength(1)
+    expect(r.foco.previsto).toBe(500)
+    expect(r.foco.realizado).toBe(400)
   })
 
   it('realizado null (falha/negação fail-safe) é preservado, não some com o ?? 0', () => {
