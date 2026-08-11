@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-11 (fechamento v5.6.1) · produção na **v5.6.0** (#229 mergeado 10/08 às 15h59) · **v5.6.1 FECHADA aguardando merge** (Comparativo na página de Metas — PR draft na branch `feat/v5-6-1-comparativo-metas`, sem migration) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
+Última atualização: 2026-08-11 (pós-merge v5.6.1) · produção na **v5.6.1** (#231 mergeado 11/08 às 17h25 — Comparativo na página de Metas, sem migration). Antes dela a v5.6.0 (#229, 10/08 15h59) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
 
 🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
 o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
@@ -22,7 +22,7 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 
 ## Verdade atual
 
-- **v5.6.1 (FECHADA 11/08, aguardando merge) — Metas: seção "Comparativo".** Segunda TopSection
+- **v5.6.1 (#231, mergeada 11/08 às 17h25) — Metas: seção "Comparativo".** Segunda TopSection
   em `/metas`: pills de setor (cor de marca, padrão do ritmo) e **YoY sempre automático** (mês
   em foco + 2 anos anteriores) — presets **Este mês / Último mês**, e **Personalizado** que
   escolhe UM mês qualquer (grade 2024→hoje) para ser o foco. Três visuais: colunas
@@ -44,8 +44,11 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
   não aceita `metas/acompanhamento`; quem só tem a área de Metas já via "—" nos MetaCards e verá
   igual no Comparativo (degradação fail-safe).
   Out-briefing: `WT_Finance_Out_Briefing_v5-6-1_Comparativo_Metas.md`.
-  **Pendente Yan:** mergear o PR · conferência visual final no ar (o popover em telas menores) ·
-  decidir a comunicação do tripwire de agosto.
+  Conferência visual: feita pelo Yan por prints ANTES do merge (3 rodadas de ajustes: layout,
+  seleção única no Personalizado, anel ≡ Previsto, grid 1.5/1.5/1) + ao vivo pela sessão.
+  De carona no PR (pedidos expressos): sidebar com **Gestão de Pessoas abaixo de Financeiro**
+  e a coluna de Weddings renomeada para **"Margem Poten. (a.a.)"**.
+  **Pendente Yan:** decidir a comunicação do tripwire de agosto (venda retida no espelho).
 - **v5.6.0 (#229, mergeada 10/08 às 15h59) — Gestão de Pessoas: Inventário de Ativos.**
   Seção NOVA de sidebar (a primeira de 1º nível desde a v4.x) + módulo novo. Cadastro de
   equipamentos com ficha patrimonial e **razão append-only** de movimentações. Migrations
