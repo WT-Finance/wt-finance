@@ -5,12 +5,11 @@ import Tabs from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import TopSection from '@/components/shared/top-section'
 import { SkeletonGrafico } from '@/components/shared/skeletons'
-import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO } from '@/components/shared/botoes'
 import { AnelKpi } from '@/components/charts'
 import { fmtMi } from '@/lib/fmt'
 import { PAINEIS } from '@/lib/metas/paineis'
 import { useComparativo } from '@/lib/metas/use-comparativo'
-import { chaveMes, nomeMes, rotuloMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
+import { chaveMes, nomeMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
 import ComparativoColunas from './comparativo-colunas'
 import ComparativoBarras, { alturaMinimaBarras } from './comparativo-barras'
 import SeletorMeses from './seletor-meses'
@@ -95,15 +94,8 @@ export default function ComparativoContent() {
             onChange={onChangePeriodo}
             ariaLabel="Selecionar período do comparativo"
           />
-          {preset === 'personalizado' && personalizados.length > 0 && (
-            <button
-              type="button"
-              onClick={abrirSeletor}
-              className={`${PILL_FILTRO_SM} ${PILL_FILTRO_INATIVO}`}
-            >
-              {rotuloMes(personalizados[0])}
-            </button>
-          )}
+          {/* Sem chip do mês escolhido (ajuste 11/08): reabrir o popover é clicar de
+              novo na própria pill "Personalizado" (o Tabs dispara onChange na ativa). */}
         </div>
 
         <SeletorMeses
@@ -130,7 +122,7 @@ export default function ComparativoContent() {
       <div aria-busy={carregando}>
         {!data ? (
           carregando ? (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr_1fr]" aria-hidden="true">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1.5fr_1fr]" aria-hidden="true">
               <SkeletonGrafico altura="h-64" />
               <SkeletonGrafico altura="h-64" />
               <SkeletonGrafico altura="h-40" />
@@ -146,7 +138,7 @@ export default function ComparativoContent() {
           </p>
         ) : (
           <div
-            className={`grid grid-cols-1 gap-4 transition-opacity lg:grid-cols-[1fr_2fr_1fr] ${
+            className={`grid grid-cols-1 gap-4 transition-opacity lg:grid-cols-[1.5fr_1.5fr_1fr] ${
               carregando ? 'opacity-60' : ''
             }`}
           >
