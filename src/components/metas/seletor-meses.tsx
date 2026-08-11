@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Button from '@/components/ui/button'
 import { MAX_MESES_COMPARATIVO, ANO_MINIMO_COMPARATIVO, chaveMes, type MesRef } from '@/lib/metas/comparativo'
@@ -47,6 +47,7 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
   pos: { top: number; left: number }
 }) {
   const [escolhidos, setEscolhidos] = useState<MesRef[]>(() => selecionados)
+  const painelRef = useRef<HTMLDivElement>(null)
 
   const hoje = new Date()
   const anoAtual = hoje.getFullYear()
@@ -68,6 +69,27 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
     }
   }, [onFechar])
 
+  // Gestão de foco do dialog (APG): move o foco para o painel ao abrir e DEVOLVE ao
+  // gatilho (elemento focado antes) ao fechar — cada abertura é uma montagem nova,
+  // então mount/cleanup cobrem o ciclo inteiro.
+  useEffect(() => {
+    const anterior = document.activeElement as HTMLElement | null
+    painelRef.current?.focus()
+    return () => anterior?.focus()
+  }, [])
+
+  // Prende o Tab dentro do painel (aria-modal exige): cicla entre o primeiro e o
+  // último focável habilitado.
+  function prenderTab(e: React.KeyboardEvent) {
+    if (e.key !== 'Tab') return
+    const focaveis = painelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled)')
+    if (!focaveis || focaveis.length === 0) return
+    const primeiro = focaveis[0]
+    const ultimo = focaveis[focaveis.length - 1]
+    if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus() }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus() }
+  }
+
   function toggle(m: MesRef) {
     const chave = chaveMes(m)
     const jaEscolhido = escolhidos.some(e => chaveMes(e) === chave)
@@ -83,10 +105,13 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
           borbulha para aqui — sem precisar de stopPropagation (molde de FiltroVencimento). */}
       <div className="fixed inset-0 z-40" onMouseDown={onFechar} />
       <div
+        ref={painelRef}
+        tabIndex={-1}
+        onKeyDown={prenderTab}
         role="dialog"
         aria-modal="true"
         aria-label="Selecionar meses para comparação"
-        className="fixed z-50 w-[360px] rounded-xl border border-zinc-200 bg-white p-4 shadow-lg font-sans"
+        className="foco-neutro fixed z-50 w-[360px] rounded-xl border border-zinc-200 bg-white p-4 shadow-lg font-sans"
         style={{ top: pos.top, left: pos.left }}
       >
         <div className="mb-3 flex items-center justify-between">

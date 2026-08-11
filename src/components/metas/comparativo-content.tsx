@@ -10,7 +10,7 @@ import { AnelKpi } from '@/components/charts'
 import { fmtMi } from '@/lib/fmt'
 import { PAINEIS } from '@/lib/metas/paineis'
 import { useComparativo } from '@/lib/metas/use-comparativo'
-import type { PresetComparativo, MesRef } from '@/lib/metas/comparativo'
+import { chaveMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
 import ComparativoColunas from './comparativo-colunas'
 import ComparativoBarras from './comparativo-barras'
 import SeletorMeses from './seletor-meses'
@@ -109,24 +109,46 @@ export default function ComparativoContent() {
           aberto={popoverAberto}
           pos={popoverPos}
           selecionados={personalizados}
-          onAplicar={meses => { setPersonalizados(meses); setPopoverAberto(false) }}
+          onAplicar={meses => {
+            setPopoverAberto(false)
+            // Reaplicar a MESMA seleção mantém a referência — evita refetch redundante
+            // (a dep `personalizados` do hook mudaria só de identidade, não de valor).
+            setPersonalizados(prev =>
+              prev.length === meses.length && prev.map(chaveMes).join() === meses.map(chaveMes).join()
+                ? prev
+                : meses,
+            )
+          }}
           onFechar={() => setPopoverAberto(false)}
         />
       </div>
 
+      {/* Durante um REFETCH os dados anteriores ficam visíveis com opacidade reduzida
+          (react-padroes §1a — evita o flicker de skeleton a cada pill e o CLS da altura
+          dinâmica das barras); skeleton só no PRIMEIRO carregamento (sem dado algum). */}
       <div aria-busy={carregando}>
-        {carregando ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr_1fr]" aria-hidden="true">
-            <SkeletonGrafico altura="h-64" />
-            <SkeletonGrafico altura="h-64" />
-            <SkeletonGrafico altura="h-40" />
-          </div>
-        ) : !data || semDados ? (
+        {!data ? (
+          carregando ? (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr_1fr]" aria-hidden="true">
+              <SkeletonGrafico altura="h-64" />
+              <SkeletonGrafico altura="h-64" />
+              <SkeletonGrafico altura="h-40" />
+            </div>
+          ) : (
+            <p className="rounded-xl bg-white px-5 py-8 text-center text-sm shadow-sm text-[var(--text-muted)]">
+              Sem dados para a seleção.
+            </p>
+          )
+        ) : semDados && !carregando ? (
           <p className="rounded-xl bg-white px-5 py-8 text-center text-sm shadow-sm text-[var(--text-muted)]">
             Sem dados para a seleção.
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr_1fr]">
+          <div
+            className={`grid grid-cols-1 gap-4 transition-opacity lg:grid-cols-[1fr_2fr_1fr] ${
+              carregando ? 'opacity-60' : ''
+            }`}
+          >
             <Card>
               <CardTitle titulo={`Meta de ${data.foco.rotulo}`} />
               <ComparativoColunas item={data.foco} cor={cor} />

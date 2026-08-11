@@ -97,7 +97,10 @@ export function useComparativo(
       setEstado({ chave: chavePedido, data })
     }
 
-    void carregar().catch(() => {
+    void carregar().catch((e: unknown) => {
+      // NUNCA silencioso: erro real (rede/runtime) é distinto de "mês sem vendas" —
+      // silêncio equivalente custou 18 dias na v5.3.5 (achado ALTO do revisor).
+      console.error('[Comparativo] falha ao carregar', e)
       if (pedidoRef.current !== chavePedido) return
       setEstado({ chave: chavePedido, data: null })
     })
