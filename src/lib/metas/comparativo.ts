@@ -21,6 +21,10 @@ import type { MetaMensal } from './ritmo'
 /** Piso da grade de seleção (decisão de produto; o dado existe desde 2023). */
 export const ANO_MINIMO_COMPARATIVO = 2024
 
+/** Meta mensal de contratos de casamento ("Meta de Assessorias", Weddings) —
+ *  TRAVADA em 14 por decisão do Yan (v5.6.2, "por ora"); trocar é editar esta linha. */
+export const META_ASSESSORIAS_MENSAL = 14
+
 /** Comparação: mês em foco + N anos anteriores (mesmo mês, YoY — sempre). */
 export const ANOS_YOY = 2
 

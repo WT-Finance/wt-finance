@@ -632,6 +632,21 @@ describe.skipIf(!ON)('contrato Metas — paridade do Comparativo com os MetaCard
   )
 })
 
+// v5.6.2 — "Meta de Assessorias": get_contratos_casamento_mes (0249) conta contratos de
+// casamento no espelho Monde por DESCRIÇÃO ('contrato de casamento%', itens ativos, só
+// Weddings). Invariantes baratas e estáveis contra dado vivo: shape inteiro ≥ 0 e
+// monotonicidade janela-mês ⊆ janela-ano (não se fixa valor absoluto: cancelamento
+// retroativo existe — v5.4.5).
+describe.skipIf(!ON)('contrato RPC — get_contratos_casamento_mes (v5.6.2)', () => {
+  it('shape {n_contratos:int ≥ 0} e mês ⊆ ano', async () => {
+    const mes = await rpc('get_contratos_casamento_mes', { p_from: '2025-07-01', p_to: '2025-07-31' }) as { n_contratos: number }
+    const ano = await rpc('get_contratos_casamento_mes', { p_from: '2025-01-01', p_to: '2025-12-31' }) as { n_contratos: number }
+    expect(Number.isInteger(mes.n_contratos)).toBe(true)
+    expect(mes.n_contratos).toBeGreaterThanOrEqual(0)
+    expect(ano.n_contratos).toBeGreaterThanOrEqual(mes.n_contratos)
+  })
+})
+
 describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)', () => {
   it('catálogo de áreas: banco (app.rbac_areas) ↔ app (AREAS) idênticos', async () => {
     const { AREAS } = await import('./auth/areas')

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { getBrowserClient } from '@/lib/supabase/client'
 import { rpcMetas } from '@/lib/metas/rpc-metas'
-import { parseRpc, executivaKpisSchema, metasListarSchema } from '@/lib/schemas-rpc'
+import { parseRpc, executivaKpisSchema, metasListarSchema, contratosCasamentoMesSchema } from '@/lib/schemas-rpc'
 import { metasDoSetor, type MetaRow } from '@/lib/metas/paineis'
 import {
   resolverMeses, janelaDoMes, montarComparativo, chaveMes,
@@ -29,6 +29,9 @@ import {
 interface ResultadoComparativo {
   data: ComparativoData | null
   carregando: boolean
+  /** Contratos de casamento vendidos no MÊS EM FOCO (só Weddings; fonte: espelho
+   *  Monde via get_contratos_casamento_mes/0249). null = não se aplica ou fail-safe. */
+  assessorias: number | null
 }
 
 export function useComparativo(
@@ -40,9 +43,10 @@ export function useComparativo(
   const meses = resolverMeses(preset, hoje, personalizados)
   const chaveAtual = `${setorKey}|${preset}|${meses.map(chaveMes).join(',')}`
 
-  const [estado, setEstado] = useState<{ chave: string; data: ComparativoData | null }>({
+  const [estado, setEstado] = useState<{ chave: string; data: ComparativoData | null; assessorias: number | null }>({
     chave: '',
     data: null,
+    assessorias: null,
   })
   const pedidoRef = useRef<string | null>(null)
 
@@ -61,12 +65,19 @@ export function useComparativo(
       // metas são exatamente os anos dos meses da comparação.
       const anos = [...new Set(mesesPedido.map(m => m.ano))]
 
-      const [metasResArr, kpisResArr] = await Promise.all([
+      // "Meta de Assessorias" (v5.6.2): só para Weddings, contratos do MÊS EM FOCO.
+      const foco = mesesPedido[mesesPedido.length - 1]
+      const janelaFoco = janelaDoMes(foco)
+
+      const [metasResArr, kpisResArr, assessoriasRes] = await Promise.all([
         Promise.all(anos.map(a => rpcMetas(db, 'metas_listar', { p_ano: a }))),
         Promise.all(mesesPedido.map(m => {
           const { from, to } = janelaDoMes(m)
           return db.rpc('get_executiva_kpis', { p_from: from, p_to: to, p_setor: setorKey })
         })),
+        setorKey === 'Weddings'
+          ? rpcMetas(db, 'get_contratos_casamento_mes', { p_from: janelaFoco.from, p_to: janelaFoco.to })
+          : Promise.resolve(null),
       ])
 
       if (pedidoRef.current !== chavePedido) return // um pedido mais novo assumiu
@@ -93,7 +104,11 @@ export function useComparativo(
       const metas = metasDoSetor(metaRows, setorKey)
       const data = montarComparativo({ meses: mesesPedido, hoje, metas, realizadoPorMes })
 
-      setEstado({ chave: chavePedido, data })
+      const assessorias = assessoriasRes
+        ? parseRpc(contratosCasamentoMesSchema, assessoriasRes, `get_contratos_casamento_mes ${chaveMes(foco)}`)?.n_contratos ?? null
+        : null
+
+      setEstado({ chave: chavePedido, data, assessorias })
     }
 
     void carregar().catch((e: unknown) => {
@@ -101,9 +116,9 @@ export function useComparativo(
       // silêncio equivalente custou 18 dias na v5.3.5 (achado ALTO do revisor).
       console.error('[Comparativo] falha ao carregar', e)
       if (pedidoRef.current !== chavePedido) return
-      setEstado({ chave: chavePedido, data: null })
+      setEstado({ chave: chavePedido, data: null, assessorias: null })
     })
   }, [setorKey, preset, personalizados, hoje])
 
-  return { data: estado.data, carregando: estado.chave !== chaveAtual }
+  return { data: estado.data, carregando: estado.chave !== chaveAtual, assessorias: estado.assessorias }
 }
