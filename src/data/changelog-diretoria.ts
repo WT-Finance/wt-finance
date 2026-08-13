@@ -35,6 +35,20 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.6.2',
+    data: '2026-08-13T12:46', // hora real de autoria — reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'No Comparativo da página de Metas, ao selecionar Weddings, um novo indicador mostra o ' +
+          'progresso da "Meta de Assessorias": quantos contratos de casamento foram vendidos no ' +
+          'mês em análise contra a meta mensal de 14. O número vem direto do Monde, atualizado ' +
+          'a cada 15 minutos.',
+      },
+    ],
+  },
+  {
     versao: '5.6.1',
     data: '2026-08-11T17:25', // horário REAL do merge (f8f929d, PR #231, 17h25 −03) — reconciliado no /pos-merge
     itens: [

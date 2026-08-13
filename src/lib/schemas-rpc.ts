@@ -104,6 +104,11 @@ export const metasListarSchema = z.object({
   }).nullable(),
 }).passthrough()
 
+/** get_contratos_casamento_mes (0249, v5.6.2) — contagem para a "Meta de Assessorias". */
+export const contratosCasamentoMesSchema = z.object({
+  n_contratos: z.number(),
+}).passthrough()
+
 const ritmoDiaItem = z.object({
   data:        z.string(),
   valor_total: z.number(),

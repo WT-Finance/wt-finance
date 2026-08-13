@@ -9,7 +9,7 @@ import { AnelKpi } from '@/components/charts'
 import { fmtMi } from '@/lib/fmt'
 import { PAINEIS } from '@/lib/metas/paineis'
 import { useComparativo } from '@/lib/metas/use-comparativo'
-import { chaveMes, nomeMes, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
+import { chaveMes, nomeMes, META_ASSESSORIAS_MENSAL, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
 import ComparativoColunas from './comparativo-colunas'
 import ComparativoBarras, { alturaMinimaBarras } from './comparativo-barras'
 import SeletorMeses from './seletor-meses'
@@ -27,6 +27,33 @@ function CardTitle({ titulo }: { titulo: string }) {
     <h3 className="mb-4 text-base font-semibold leading-snug text-[var(--text-primary)]">
       {titulo}
     </h3>
+  )
+}
+
+/** Barra "Meta de Assessorias" (v5.6.2, só Weddings): contratos de casamento vendidos
+ *  no mês em foco × meta fixa. Barra própria mínima — o MetaProgressBar do DS é acoplado
+ *  à semântica do ritmo (esperado/decorrido), que não existe numa contagem simples. */
+function BarraAssessorias({ realizado, meta, cor }: { realizado: number; meta: number; cor: string }) {
+  const pct = Math.min(100, (realizado / meta) * 100)
+  return (
+    <div className="w-full px-3">
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <span className="text-xs font-semibold text-[var(--text-muted)]">Meta de Assessorias</span>
+        <span className="text-xs font-bold tabular-nums text-[var(--text-primary)]">
+          {realizado.toLocaleString('pt-BR')} de {meta}
+        </span>
+      </div>
+      <div
+        className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-100"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={meta}
+        aria-valuenow={Math.min(realizado, meta)}
+        aria-label={`Meta de Assessorias: ${realizado} de ${meta} contratos`}
+      >
+        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: cor }} />
+      </div>
+    </div>
   )
 }
 
@@ -53,7 +80,7 @@ export default function ComparativoContent() {
   const painelAtivo = PAINEIS.find(p => p.key === setorKey) ?? PAINEIS[0]
   const cor = painelAtivo.cor
 
-  const { data, carregando } = useComparativo(setorKey, preset, personalizados)
+  const { data, carregando, assessorias } = useComparativo(setorKey, preset, personalizados)
 
   function abrirSeletor() {
     const r = periodoRowRef.current?.getBoundingClientRect()
@@ -159,8 +186,18 @@ export default function ComparativoContent() {
             {data.anel && (
               <Card className="flex flex-col">
                 <CardTitle titulo={painelAtivo.display} />
-                <div className="flex flex-1 items-center justify-center pb-4">
-                  <AnelKpi valor={fmtMi(data.anel.meta)} rotulo={`Meta ${nomeMes(data.anel.mes)}`} cor={cor} />
+                {/* Weddings: anel um pouco menor para caber a "Meta de Assessorias"
+                    embaixo SEM crescer o card (v5.6.2). */}
+                <div className="flex flex-1 flex-col items-center justify-center gap-5 pb-2">
+                  <AnelKpi
+                    valor={fmtMi(data.anel.meta)}
+                    rotulo={`Meta ${nomeMes(data.anel.mes)}`}
+                    cor={cor}
+                    tamanho={setorKey === 'Weddings' ? 132 : 168}
+                  />
+                  {setorKey === 'Weddings' && assessorias != null && (
+                    <BarraAssessorias realizado={assessorias} meta={META_ASSESSORIAS_MENSAL} cor={cor} />
+                  )}
                 </div>
               </Card>
             )}

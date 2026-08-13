@@ -214,7 +214,15 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
       {/* Cards de subsetor */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {SUBSETOR_ORDER.map(key => {
-          const s            = subsetores.find(x => x.subsetor === key)
+          const s = subsetores.find(x => x.subsetor === key)
+          // Sem venda no período ≠ sem dado (v5.6.2, pedido do Yan): quando o sumário
+          // RESPONDEU e o subsetor só não aparece no payload, o card mantém o formato
+          // com valores ZERADOS (o YoY ainda computa — ex.: −100% contra o ano passado).
+          // O traço "—" fica reservado à falha real da RPC (sumario null): zero falso
+          // em cima de erro esconderia o problema (null ≠ 0).
+          const dataCard = s ?? (sumario
+            ? { subsetor: key, n_vendas: 0, n_contratos: 0, faturamento: 0, receita: 0, margem_pct: 0, pct_faturamento: 0 }
+            : null)
           const yoyItem      = subsetoresYoy.find(x => x.subsetor === key)
           const isConvidados = key.startsWith('CONVIDADOS - ')
           const title    = isConvidados ? 'Convidados' : (SUBSETOR_LABELS[key] ?? key)
@@ -225,7 +233,7 @@ export default function WeddingsKpisSection({ benchmarks: _benchmarks }: Props) 
               key={key}
               title={title}
               subtitle={subtitle}
-              data={s ?? null}
+              data={dataCard}
               color={color}
               modo={key === 'COMERCIAL' ? 'contratos' : 'faturamento'}
               yoyFaturamento={yoyItem?.faturamento   ?? null}

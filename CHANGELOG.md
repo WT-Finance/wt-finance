@@ -6,6 +6,17 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.6.2] — 2026-08-13
+
+PATCH · **Metas: "Meta de Assessorias" no Comparativo (Weddings)**. Migration `0249` (aditiva, aplicada) · sem ADR.
+
+### Adicionado
+
+- Com **Weddings** selecionado no Comparativo, o card do anel encolhe o anel (168→132px) e ganha embaixo a **barra de progresso "Meta de Assessorias"**: contratos de casamento vendidos no **mês em foco** contra a meta mensal **fixa em 14** (`META_ASSESSORIAS_MENSAL` — trocar é editar 1 linha).
+- **Fonte = espelho da API Monde** (RPC nova `get_contratos_casamento_mes`, migration `0249`): conta por descrição (`TRIM ILIKE 'contrato de casamento%'`, itens ativos, só Weddings; inclui a variante "- venda online", exclui "Atualização de Contrato de Casamento" — decisão de produto). Regra validada contra o dado vivo (2025 = 87 contratos, idêntico à medição direta; 1 item = 1 venda).
+- Fail-safe: falha/negação da RPC **omite a barra** (nunca "0 de 14" falso — zero só quando a contagem respondeu zero). Nos demais setores nada muda.
+- Contrato: schema no bloco F7 (`safeParse` contra a RPC viva) + invariantes próprias (shape inteiro ≥ 0; mês ⊆ ano).
+
 ## [5.6.1] — 2026-08-11
 
 PATCH · **Metas: seção "Comparativo"** — meta × realizado entre meses e anos na página de Acompanhamento. Sem migration · sem ADR.

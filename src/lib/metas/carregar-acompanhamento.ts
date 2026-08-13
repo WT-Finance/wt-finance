@@ -43,10 +43,13 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
     db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
   ])
 
+  // Sem venda ≠ sem dado (v5.6.2, pedido do Yan): quando a RPC RESPONDEU e o subsetor
+  // COMERCIAL só não veio no payload (período sem contrato), o card mostra 0 — o "—"
+  // fica reservado à falha/negação real (null ≠ 0).
   const contratosWeddings: number | null = sumRes.error
     ? null
     : (((sumRes.data as { subsetores?: SumarioSubsetorItem[] } | null)?.subsetores ?? [])
-        .find(s => s.subsetor === 'COMERCIAL')?.n_contratos ?? null)
+        .find(s => s.subsetor === 'COMERCIAL')?.n_contratos ?? 0)
 
   // "Última atualização" = frescor do espelho Monde = última SINCRONIZAÇÃO (não o último dado
   // mudado). Helper compartilhado com /metas/comparacao (v5.1.9); fail-safe → null (o topo omite).
