@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-13 (fechamento v5.6.2) · produção na **v5.6.1** (#231, 11/08 17h25) · **v5.6.2 FECHADA aguardando merge** (Meta de Assessorias no Comparativo/Weddings — migration `0249` APLICADA; branch `feat/v5-6-2-meta-assessorias`) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
+Última atualização: 2026-08-13 (pós-merge v5.6.2) · produção na **v5.6.2** (#233 mergeado 13/08 às 13h43 — Meta de Assessorias no Comparativo/Weddings + zero-states; migration `0249`). Antes dela a v5.6.1 (#231, 11/08 17h25) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0249`; a próxima livre é a `0250`.**
 
@@ -24,7 +24,7 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 
 ## Verdade atual
 
-- **v5.6.2 (FECHADA 13/08, aguardando merge) — "Meta de Assessorias" no Comparativo (Weddings).**
+- **v5.6.2 (#233, mergeada 13/08 às 13h43) — "Meta de Assessorias" no Comparativo (Weddings) + zero-states.**
   Com Weddings selecionado, o card do anel encolhe (168→132px) e ganha a barra de progresso
   "Meta de Assessorias": contratos de casamento do MÊS EM FOCO × meta fixa **14**
   (`META_ASSESSORIAS_MENSAL`, 1 linha para trocar). Fonte = **espelho da API Monde** via RPC nova
@@ -37,7 +37,10 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
   (Edge): "4 de 14" dourada em Último mês; Group sem barra e anel 168.
   ⚠️ Regra por DESCRIÇÃO em texto livre: variante nova de nome no Monde vazaria em silêncio
   (aceito; documentado na 0249). Out-briefing: `WT_Finance_Out_Briefing_v5-6-2_Meta_Assessorias.md`.
-  **Pendente Yan:** mergear o PR (+ /pos-merge) · decidir o tripwire de agosto (v5.4.5).
+  **Extra no mesmo PR (pedido do Yan):** "sem venda" em Weddings mostra ZERO real — subsetores
+  da Performance no formato normal zerado (YoY real, ex. ↓100%) e "Contratos 0" no MetaCard;
+  "—" reservado à falha da RPC (null ≠ 0).
+  **Pendente Yan:** decidir o tripwire de agosto (v5.4.5).
 - **v5.6.1 (#231, mergeada 11/08 às 17h25) — Metas: seção "Comparativo".** Segunda TopSection
   em `/metas`: pills de setor (cor de marca, padrão do ritmo) e **YoY sempre automático** (mês
   em foco + 2 anos anteriores) — presets **Este mês / Último mês**, e **Personalizado** que
