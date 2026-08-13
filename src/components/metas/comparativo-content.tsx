@@ -51,7 +51,7 @@ function BarraAssessorias({ realizado, meta, cor }: { realizado: number; meta: n
         aria-valuenow={Math.min(realizado, meta)}
         aria-label={`Meta de Assessorias: ${realizado} de ${meta} contratos`}
       >
-        <div className="h-full rounded-full transition-[width]" style={{ width: `${pct}%`, background: cor }} />
+        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: cor }} />
       </div>
     </div>
   )

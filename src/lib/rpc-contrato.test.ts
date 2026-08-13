@@ -6,7 +6,7 @@ import {
   vendasEmAbertoSchema, cargaValidacaoSchema, cargaPromocaoSchema,
   mixProdutoSchema, minhasPermissoesSchema, cruzarVendasSetorSchema, buscarPessoasSchema,
   acervoListaSchema, acervoDocSchema,
-  metasListarSchema, metasRitmoDiarioSchema,
+  metasListarSchema, metasRitmoDiarioSchema, contratosCasamentoMesSchema,
   patrimonioAtivosSchema, patrimonioCatalogosSchema, patrimonioMovimentacoesSchema,
   patrimonioResumoSchema,
 } from './schemas-rpc'
@@ -306,6 +306,9 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // (retorna cedo); o SHAPE é validado contra a RPC viva (108 metas de seed + série real).
   { fn: 'metas_listar',                  params: { p_ano: 2026 },                                                      schema: metasListarSchema },
   { fn: 'metas_ritmo_diario',            params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings' },    schema: metasRitmoDiarioSchema },
+  // v5.6.2: contagem da "Meta de Assessorias" (0249) — o schema de 1 campo é validado
+  // contra a RPC viva; as invariantes de negócio têm describe próprio mais abaixo.
+  { fn: 'get_contratos_casamento_mes',   params: { p_from: '2025-07-01', p_to: '2025-07-31' },                         schema: contratosCasamentoMesSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {

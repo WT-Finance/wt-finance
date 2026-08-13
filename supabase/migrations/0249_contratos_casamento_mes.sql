@@ -33,6 +33,7 @@
 CREATE OR REPLACE FUNCTION public.get_contratos_casamento_mes(p_from date, p_to date)
  RETURNS jsonb
  LANGUAGE plpgsql
+ STABLE
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
