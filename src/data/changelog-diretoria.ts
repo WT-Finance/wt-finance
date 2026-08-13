@@ -35,6 +35,20 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.6.3',
+    data: '2026-08-13T14:35', // hora real de autoria — reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correção',
+        texto:
+          'Venda que muda de classificação no Monde depois de importada (por exemplo, corrigida ' +
+          'para emissão interna) deixava um resíduo que inflava o faturamento do mês. A ' +
+          'sincronização diária agora detecta e remove esses resíduos sozinha, com registro de ' +
+          'auditoria — os números dos painéis passam a refletir sempre a classificação vigente.',
+      },
+    ],
+  },
+  {
     versao: '5.6.2',
     data: '2026-08-13T13:43', // horário REAL do merge (6dc9567, PR #233, 13h43 −03) — reconciliado no /pos-merge
     itens: [

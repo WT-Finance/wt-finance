@@ -1,8 +1,8 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-13 (pós-merge v5.6.2) · produção na **v5.6.2** (#233 mergeado 13/08 às 13h43 — Meta de Assessorias no Comparativo/Weddings + zero-states; migration `0249`). Antes dela a v5.6.1 (#231, 11/08 17h25) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
+Última atualização: 2026-08-13 (fechamento v5.6.3) · produção na **v5.6.2** (#233, 13/08 13h43) · **v5.6.3 FECHADA aguardando merge** (espelho auto-curativo p/ venda retida — migration `0250` APLICADA; branch `feat/v5-6-3-espelho-autocurativo`). Antes a v5.6.1 (#231, 11/08 17h25) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
 
-⚠️ **Numeração de migration: a última APLICADA é a `0249`; a próxima livre é a `0250`.**
+⚠️ **Numeração de migration: a última APLICADA é a `0250`; a próxima livre é a `0251`.**
 
 🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
 o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
@@ -24,6 +24,22 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 
 ## Verdade atual
 
+- **v5.6.3 (FECHADA 13/08, aguardando merge) — espelho Monde AUTO-CURATIVO para venda retida.**
+  A reconciliação diária agora REMOVE do espelho (com auditoria) a venda que deixou de ser
+  espelhável — reclassificada p/ Welcome/sem-setor na origem, ou sumida da listagem. Caso
+  motivador: **venda 73580** (ago/26, R$ 7.372,92, Corporativo→Welcome) — cura na 1ª rodada
+  pós-deploy; o tripwire volta a `sobrando: 0` e a suíte a 918/918 (hoje 917/918, vermelho
+  esperado até o merge). **`0250` APLICADA** (RPC `monde_ingest_remover_vendas`, uuid[]).
+  **Fail-closed em cintos duplos:** app (`podeCurar`: rodada vazia · erros · sem sale_id ·
+  PARIDADE contagem×ids · conta não fecha) e SQL (conjunto vazio · janela do mês · sale_id
+  NULL fora · TETO 20/rodada). REST provou os cintos ao vivo (263 candidatas bloqueadas pelo
+  teto, nada removido). **Revisões pegaram 3 CRÍTICOs antes da aplicação** (uuid[]×text[] que
+  nasceria morto e mudo; cura contra rodada vazia apagando o próprio alarme; paridade ids).
+  ⚠️ Achado PRÉ-EXISTENTE registrado: `monde_ingest_promover` sobrescreve `sale_id` com NULL
+  se o detalhe vier sem id E o raw_hash mudar — hardening futuro.
+  Out-briefing: `WT_Finance_Out_Briefing_v5-6-3_Espelho_Autocurativo.md`.
+  **Pendente Yan:** mergear o PR · conferir de manhã o `monde_ingest_status` (sobrando 0,
+  removidas 1, ultima_remocao = 73580) · pauta ao provedor (§8 v5.4.5) segue COMPLEMENTAR.
 - **v5.6.2 (#233, mergeada 13/08 às 13h43) — "Meta de Assessorias" no Comparativo (Weddings) + zero-states.**
   Com Weddings selecionado, o card do anel encolhe (168→132px) e ganha a barra de progresso
   "Meta de Assessorias": contratos de casamento do MÊS EM FOCO × meta fixa **14**
