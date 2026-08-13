@@ -34,6 +34,9 @@ export interface IngestResult {
   lidas: number
   excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
   espelhaveis: number
+  /** sale_ids das vendas que a rodada provou espelháveis (v5.6.3) — insumo da CURA:
+   *  a reconciliação remove do espelho o que ficou fora deste conjunto. */
+  espelhaveis_ids: string[]
   erros: number
   promover: PromoverResult | null
 }
@@ -116,6 +119,7 @@ export async function ingestWindow(db: MondeDb, opts: IngestOpts): Promise<Inges
     lidas: lista.length,
     excluidas,
     espelhaveis: vendas.length,
+    espelhaveis_ids: vendas.map(v => v.sale_id).filter((id): id is string => id != null),
     erros,
     promover,
   }

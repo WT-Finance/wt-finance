@@ -39,9 +39,11 @@ import { ingestWindow, type MondeDb } from '@/lib/monde/ingest'
 import {
   MESES_RECONCILIACAO,
   MESES_TRIPWIRE,
+  TETO_REMOCOES_RECONCILIACAO,
   mesesRecentes,
   rangeDoMes,
   proximoMesReconciliacao,
+  podeCurar,
   avaliarMes,
   mesclarTripwire,
   type Tripwire,
@@ -204,6 +206,46 @@ async function handle(req: NextRequest): Promise<Response> {
           p_chave: 'ultima_reconciliacao', p_valor: new Date().toISOString(),
         })
 
+        // ── CURA (v5.6.3): remove do espelho o que deixou de ser espelhável ────────────────
+        // Venda reclassificada p/ Welcome/sem-setor (ou sumida da listagem) fica congelada
+        // somando — a exclusão de escopo é aplicada na escrita e o upsert nunca mais a toca.
+        // Guardas fail-closed em `podeCurar` (apuração íntegra) + TETO dentro da própria RPC
+        // (0250). Não é caminho crítico: falha aqui não invalida a reconciliação — o tripwire
+        // logo abaixo segue acusando o `sobrando` e a próxima rodada tenta de novo.
+        let removidas = 0
+        try {
+          const cura = podeCurar({
+            apiTotal: resultado.total_janela,
+            lidas: resultado.lidas,
+            espelhaveis: resultado.espelhaveis,
+            excluidas: resultado.excluidas,
+            erros: resultado.erros,
+          })
+          if (!cura.ok) {
+            onLog(`cura pulada (apuração não íntegra): ${cura.bloqueio}`)
+          } else {
+            const r = (await rpc('monde_ingest_remover_vendas', {
+              p_espelhaveis_ids: resultado.espelhaveis_ids,
+              p_from: from,
+              p_to: to,
+              p_teto: TETO_REMOCOES_RECONCILIACAO,
+            })) as { removidas: number; bloqueado: boolean; candidatas: number; vendas: unknown }
+            if (r.bloqueado) {
+              onLog(`cura BLOQUEADA pelo teto: ${r.candidatas} candidatas > ${TETO_REMOCOES_RECONCILIACAO} — nada removido (listagem truncada?)`)
+            } else if (r.removidas > 0) {
+              removidas = r.removidas
+              onLog(`cura: ${r.removidas} venda(s) retida(s) removida(s) do espelho — ${JSON.stringify(r.vendas)}`)
+              await rpc('monde_ingest_control_set', {
+                p_chave: 'ultima_remocao',
+                p_valor: JSON.stringify({ em: new Date().toISOString(), mes, removidas: r.removidas, vendas: r.vendas }),
+              })
+              await rpc('monde_refresh_mv')
+            }
+          }
+        } catch (e) {
+          onLog(`aviso: cura falhou (a reconciliação segue válida) — ${(e as Error).message}`)
+        }
+
         // ── TRIPWIRE: subproduto exato desta reconciliação, sem chamada extra à API ────────
         // A reconciliação já baixou o detalhe de cada venda do mês, então ela sabe quantas eram
         // espelháveis e quantas excluiu, por motivo. É isso que torna a comparação exata —
@@ -224,7 +266,8 @@ async function handle(req: NextRequest): Promise<Response> {
             espelhaveis: resultado.espelhaveis,
             excluidas: resultado.excluidas,
             erros: resultado.erros,
-            espelho: contagem?.espelho ?? 0,
+            espelho: contagem?.espelho ?? 0, // contado APÓS a cura — sobrando reflete o estado curado
+            removidas,
             verificadoEmISO: new Date().toISOString(),
           })
 
@@ -244,8 +287,8 @@ async function handle(req: NextRequest): Promise<Response> {
           await rpc('monde_ingest_control_set', { p_chave: 'tripwire', p_valor: JSON.stringify(t) })
           onLog(
             `tripwire ${mes}: api=${apurado.api} lidas=${apurado.lidas} espelhaveis=${apurado.espelhaveis} ` +
-            `espelho=${apurado.espelho} sobrando=${apurado.sobrando} erros=${apurado.erros} ` +
-            `conta_fecha=${apurado.conta_fecha} · geral ${t.acendeu ? `ACESO (${t.motivos.join('; ')})` : 'apagado'}`,
+            `espelho=${apurado.espelho} sobrando=${apurado.sobrando} removidas=${apurado.removidas ?? 0} ` +
+            `erros=${apurado.erros} conta_fecha=${apurado.conta_fecha} · geral ${t.acendeu ? `ACESO (${t.motivos.join('; ')})` : 'apagado'}`,
           )
           tripwire = t
         } catch (e) {
