@@ -1,6 +1,8 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-11 (pós-merge v5.6.1) · produção na **v5.6.1** (#231 mergeado 11/08 às 17h25 — Comparativo na página de Metas, sem migration). Antes dela a v5.6.0 (#229, 10/08 15h59) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma versão em curso.
+Última atualização: 2026-08-13 (fechamento v5.6.2) · produção na **v5.6.1** (#231, 11/08 17h25) · **v5.6.2 FECHADA aguardando merge** (Meta de Assessorias no Comparativo/Weddings — migration `0249` APLICADA; branch `feat/v5-6-2-meta-assessorias`) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
+
+⚠️ **Numeração de migration: a última APLICADA é a `0249`; a próxima livre é a `0250`.**
 
 🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
 o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
@@ -22,6 +24,20 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 
 ## Verdade atual
 
+- **v5.6.2 (FECHADA 13/08, aguardando merge) — "Meta de Assessorias" no Comparativo (Weddings).**
+  Com Weddings selecionado, o card do anel encolhe (168→132px) e ganha a barra de progresso
+  "Meta de Assessorias": contratos de casamento do MÊS EM FOCO × meta fixa **14**
+  (`META_ASSESSORIAS_MENSAL`, 1 linha para trocar). Fonte = **espelho da API Monde** via RPC nova
+  `get_contratos_casamento_mes` (**`0249` APLICADA** 13/08, gate verde; INLINE/STABLE; conta por
+  descrição `TRIM ILIKE 'contrato de casamento%'`, itens ativos — "Atualização de Contrato" NÃO
+  conta, decisão do Yan). **Verificado via REST executando o corpo:** 2025 = 87 (idêntico à
+  medição direta de 11/08), jul/26 = 4, ago/26 = 0. Fail-safe: falha ⇒ barra OMITIDA (zero real
+  exibe "0 de 14"). revisor-db APROVADA (0 C/A); revisor aprovado com ressalvas (MÉDIO do F7
+  corrigido). Gates verdes; **910/911** (única falha: tripwire v5.4.5, dado vivo). Visual AO VIVO
+  (Edge): "4 de 14" dourada em Último mês; Group sem barra e anel 168.
+  ⚠️ Regra por DESCRIÇÃO em texto livre: variante nova de nome no Monde vazaria em silêncio
+  (aceito; documentado na 0249). Out-briefing: `WT_Finance_Out_Briefing_v5-6-2_Meta_Assessorias.md`.
+  **Pendente Yan:** mergear o PR (+ /pos-merge) · decidir o tripwire de agosto (v5.4.5).
 - **v5.6.1 (#231, mergeada 11/08 às 17h25) — Metas: seção "Comparativo".** Segunda TopSection
   em `/metas`: pills de setor (cor de marca, padrão do ritmo) e **YoY sempre automático** (mês
   em foco + 2 anos anteriores) — presets **Este mês / Último mês**, e **Personalizado** que
