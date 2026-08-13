@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-13 (fechamento v5.6.3) · produção na **v5.6.2** (#233, 13/08 13h43) · **v5.6.3 FECHADA aguardando merge** (espelho auto-curativo p/ venda retida — migration `0250` APLICADA; branch `feat/v5-6-3-espelho-autocurativo`). Antes a v5.6.1 (#231, 11/08 17h25) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
+Última atualização: 2026-08-13 (pós-merge v5.6.3) · produção na **v5.6.3** (#235 mergeado 13/08 às 15h07 — espelho auto-curativo; migration `0250`). ✅ **CURA PROVADA em produção no mesmo dia**: ciclo de reconciliação disparado manualmente removeu a venda 73580 (auditada em `ultima_remocao`) — **tripwire APAGADO** (`sobrando: 0` nos 3 meses, `removidas: 1` em ago) e suíte de volta a 100%. Antes a v5.6.2 (#233, 13h43) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0250`; a próxima livre é a `0251`.**
 
@@ -24,7 +24,7 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 
 ## Verdade atual
 
-- **v5.6.3 (FECHADA 13/08, aguardando merge) — espelho Monde AUTO-CURATIVO para venda retida.**
+- **v5.6.3 (#235, mergeada 13/08 às 15h07) — espelho Monde AUTO-CURATIVO para venda retida.**
   A reconciliação diária agora REMOVE do espelho (com auditoria) a venda que deixou de ser
   espelhável — reclassificada p/ Welcome/sem-setor na origem, ou sumida da listagem. Caso
   motivador: **venda 73580** (ago/26, R$ 7.372,92, Corporativo→Welcome) — cura na 1ª rodada
@@ -38,8 +38,12 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
   ⚠️ Achado PRÉ-EXISTENTE registrado: `monde_ingest_promover` sobrescreve `sale_id` com NULL
   se o detalhe vier sem id E o raw_hash mudar — hardening futuro.
   Out-briefing: `WT_Finance_Out_Briefing_v5-6-3_Espelho_Autocurativo.md`.
-  **Pendente Yan:** mergear o PR · conferir de manhã o `monde_ingest_status` (sobrando 0,
-  removidas 1, ultima_remocao = 73580) · pauta ao provedor (§8 v5.4.5) segue COMPLEMENTAR.
+  ✅ **VERIFICAÇÃO PÓS-MERGE FEITA (13/08, mesmo dia):** ciclo de reconciliação disparado
+  manualmente em produção (3 rodadas: jul→jun→ago) — `cura: 1 venda retida removida (73580,
+  Corporativo, R$ 7.372,92)`; tripwire `2026-08: espelho=264 = espelháveis · sobrando=0 ·
+  removidas=1 · geral APAGADO`; teste do tripwire da suíte voltou a passar (100%).
+  **Pendente Yan:** pauta ao provedor (§8 v5.4.5) segue COMPLEMENTAR (filtro por data de
+  alteração mataria a classe na fonte).
 - **v5.6.2 (#233, mergeada 13/08 às 13h43) — "Meta de Assessorias" no Comparativo (Weddings) + zero-states.**
   Com Weddings selecionado, o card do anel encolhe (168→132px) e ganha a barra de progresso
   "Meta de Assessorias": contratos de casamento do MÊS EM FOCO × meta fixa **14**
