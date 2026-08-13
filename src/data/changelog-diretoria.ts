@@ -39,7 +39,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
     data: '2026-08-13T14:35', // hora real de autoria — reconciliar ao horário do merge no /pos-merge
     itens: [
       {
-        tipo: 'correção',
+        tipo: 'correcao',
         texto:
           'Venda que muda de classificação no Monde depois de importada (por exemplo, corrigida ' +
           'para emissão interna) deixava um resíduo que inflava o faturamento do mês. A ' +
