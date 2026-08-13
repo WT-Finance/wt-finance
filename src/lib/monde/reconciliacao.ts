@@ -81,22 +81,45 @@ export const TETO_REMOCOES_RECONCILIACAO = 20
 
 export type DecisaoCura = { ok: true } | { ok: false; bloqueio: string }
 
+/** A conta da rodada fecha? (fórmula ÚNICA — `podeCurar` autoriza e `avaliarMes` reporta
+ *  com o MESMO critério; duplicá-la quebraria a paridade em silêncio — MÉDIO do revisor.) */
+export function contaFecha(e: {
+  lidas: number
+  espelhaveis: number
+  excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
+  erros: number
+}): boolean {
+  const somaExcluidas = e.excluidas.welcome + e.excluidas.sem_setor + e.excluidas.sem_item_ativo
+  return e.lidas === e.espelhaveis + somaExcluidas + e.erros
+}
+
 /**
  * A rodada provou o suficiente para CURAR o mês? Todas as condições são sobre a integridade
  * da apuração — qualquer furo significa que "fora do conjunto espelhável" pode ser venda
  * legítima que a rodada só não conseguiu ler:
+ *  - `apiTotal === 0`: rodada vazia não prova NADA — uma resposta vazia porém consistente da
+ *    API (rate-limit mudo, glitch de paginação) autorizaria apagar o mês inteiro, e a
+ *    recontagem pós-cura apagaria o próprio alarme (CRÍTICO do revisor);
  *  - `erros > 0`: venda que falhou no detalhe/transform NÃO está nas espelháveis — removê-la
  *    seria apagar venda boa por causa de um soluço de rede;
  *  - `api − lidas > 0` (sem sale_id): a listagem tem vendas que a ingestão não alcança;
+ *  - `espelhaveisIds ≠ espelhaveis`: venda espelhável cujo DETALHE veio sem sale_id conta na
+ *    contagem mas sai do conjunto de ids — a linha antiga dela (com sale_id real) viraria
+ *    candidata a remoção (CRÍTICO do revisor); paridade contagem×ids é obrigatória;
  *  - conta que não fecha: alguma venda lida sumiu sem explicação.
  */
 export function podeCurar(e: {
   apiTotal: number
   lidas: number
   espelhaveis: number
+  /** Tamanho do conjunto de sale_ids provados espelháveis (`espelhaveis_ids.length`). */
+  espelhaveisIds: number
   excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
   erros: number
 }): DecisaoCura {
+  if (e.apiTotal === 0) {
+    return { ok: false, bloqueio: 'rodada vazia (API devolveu 0 vendas) — não prova ausência de nada' }
+  }
   if (e.erros > 0) {
     return { ok: false, bloqueio: `${e.erros} erro(s) de detalhe/transform na rodada` }
   }
@@ -104,8 +127,13 @@ export function podeCurar(e: {
   if (semSaleId > 0) {
     return { ok: false, bloqueio: `${semSaleId} venda(s) sem sale_id na listagem` }
   }
-  const somaExcluidas = e.excluidas.welcome + e.excluidas.sem_setor + e.excluidas.sem_item_ativo
-  if (e.lidas !== e.espelhaveis + somaExcluidas + e.erros) {
+  if (e.espelhaveisIds !== e.espelhaveis) {
+    return {
+      ok: false,
+      bloqueio: `paridade quebrada: ${e.espelhaveis} espelháveis × ${e.espelhaveisIds} sale_ids (detalhe sem sale_id?)`,
+    }
+  }
+  if (!contaFecha(e)) {
     return { ok: false, bloqueio: 'conta não fecha (lidas ≠ espelháveis + excluídas + erros)' }
   }
   return { ok: true }
@@ -204,7 +232,6 @@ export function avaliarMes(entrada: {
   verificadoEmISO: string
 }): MesVerificado {
   const { mes, apiTotal, lidas, espelhaveis, excluidas, erros, espelho, removidas = 0, verificadoEmISO } = entrada
-  const somaExcluidas = excluidas.welcome + excluidas.sem_setor + excluidas.sem_item_ativo
   return {
     mes,
     api: apiTotal,
@@ -215,7 +242,7 @@ export function avaliarMes(entrada: {
     erros,
     espelho,
     sobrando: Math.max(0, espelho - espelhaveis),
-    conta_fecha: lidas === espelhaveis + somaExcluidas + erros,
+    conta_fecha: contaFecha({ lidas, espelhaveis, excluidas, erros }),
     removidas,
     verificado_em: verificadoEmISO,
   }

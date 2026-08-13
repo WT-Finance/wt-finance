@@ -218,6 +218,7 @@ async function handle(req: NextRequest): Promise<Response> {
             apiTotal: resultado.total_janela,
             lidas: resultado.lidas,
             espelhaveis: resultado.espelhaveis,
+            espelhaveisIds: resultado.espelhaveis_ids.length,
             excluidas: resultado.excluidas,
             erros: resultado.erros,
           })

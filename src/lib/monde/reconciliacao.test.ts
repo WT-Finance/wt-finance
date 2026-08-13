@@ -162,6 +162,7 @@ describe('podeCurar (v5.6.3)', () => {
     apiTotal: 253,
     lidas: 253,
     espelhaveis: 245,
+    espelhaveisIds: 245,
     excluidas: { welcome: 6, sem_setor: 2, sem_item_ativo: 0 },
     erros: 0,
   }
@@ -170,20 +171,37 @@ describe('podeCurar (v5.6.3)', () => {
     expect(podeCurar(rodadaIntegra)).toEqual({ ok: true })
   })
 
+  it('rodada VAZIA bloqueia — API com 0 vendas não prova ausência de nada (CRÍTICO do revisor: ' +
+     'num mês novo, curar contra o vazio apagaria o mês inteiro e a recontagem apagaria o alarme)', () => {
+    const d = podeCurar({
+      apiTotal: 0, lidas: 0, espelhaveis: 0, espelhaveisIds: 0,
+      excluidas: { welcome: 0, sem_setor: 0, sem_item_ativo: 0 }, erros: 0,
+    })
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.bloqueio).toContain('rodada vazia')
+  })
+
   it('erro de detalhe/transform BLOQUEIA — a venda que falhou seria apagada como retida', () => {
-    const d = podeCurar({ ...rodadaIntegra, espelhaveis: 244, erros: 1 })
+    const d = podeCurar({ ...rodadaIntegra, espelhaveis: 244, espelhaveisIds: 244, erros: 1 })
     expect(d.ok).toBe(false)
     if (!d.ok) expect(d.bloqueio).toContain('erro')
   })
 
   it('venda sem sale_id na listagem BLOQUEIA — a ingestão não alcança o que não tem id', () => {
-    const d = podeCurar({ ...rodadaIntegra, lidas: 250, espelhaveis: 242 })
+    const d = podeCurar({ ...rodadaIntegra, lidas: 250, espelhaveis: 242, espelhaveisIds: 242 })
     expect(d.ok).toBe(false)
     if (!d.ok) expect(d.bloqueio).toContain('sem sale_id')
   })
 
+  it('PARIDADE contagem×ids bloqueia — detalhe sem sale_id tira a venda do conjunto e a linha ' +
+     'antiga dela viraria candidata (CRÍTICO do revisor)', () => {
+    const d = podeCurar({ ...rodadaIntegra, espelhaveisIds: 244 })
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.bloqueio).toContain('paridade')
+  })
+
   it('conta que não fecha BLOQUEIA — venda lida sumiu sem explicação', () => {
-    const d = podeCurar({ ...rodadaIntegra, espelhaveis: 240 })
+    const d = podeCurar({ ...rodadaIntegra, espelhaveis: 240, espelhaveisIds: 240 })
     expect(d.ok).toBe(false)
     if (!d.ok) expect(d.bloqueio).toContain('conta não fecha')
   })
