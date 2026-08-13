@@ -6,6 +6,25 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.6.3] — 2026-08-13
+
+PATCH · **Espelho Monde auto-curativo para venda retida** (rota 2 do tripwire da v5.4.5). Migration `0250` (aditiva, aplicada) · sem ADR.
+
+### Corrigido
+
+- **Venda espelhada que deixa de ser espelhável não fica mais congelada somando.** Caso medido: venda 73580 (ago/26, R$ 7.372,92) reclassificada de Corporativo para "Welcome" na origem DEPOIS de espelhada — a exclusão de escopo é aplicada na escrita e o upsert nunca mais a tocava. A reconciliação diária agora **cura o mês**: remove do espelho, com auditoria, o que ficou fora do conjunto que a rodada provou espelhável (`monde_ingest_remover_vendas`, migration `0250`). A 73580 se cura na primeira rodada pós-deploy e o tripwire volta a `sobrando: 0`.
+
+### Segurança da cura (fail-closed, cintos duplos app+SQL)
+
+- A cura só roda com a apuração ÍNTEGRA (`podeCurar`): rodada vazia da API bloqueia (curar contra o vazio apagaria um mês novo inteiro — e a recontagem apagaria o próprio alarme); erro de detalhe/transform bloqueia; venda sem `sale_id` na listagem bloqueia; **paridade contagem×ids** bloqueia (detalhe sem `sale_id` tiraria a venda do conjunto e a linha antiga viraria candidata); conta que não fecha bloqueia.
+- Na própria RPC: conjunto provado vazio nunca autoriza; só a janela do mês; `sale_id` nulo nunca é candidata; **teto de 20 remoções por rodada** (listagem truncada viraria remoção em massa) — acima do teto, nada é removido e o tripwire acusa.
+- Toda remoção é auditada: detalhe (número/setor/valor) no log da rodada e em `ingest_control.ultima_remocao`; campo `removidas` na apuração do tripwire.
+
+### Interno
+
+- `IngestResult.espelhaveis_ids` (helper `idsEspelhaveis` testado); fórmula `conta_fecha` unificada (`contaFecha`) entre a guarda da cura e o tripwire; 16 testes novos no módulo monde.
+- Revisão: 3 CRÍTICOs pegos e corrigidos ANTES da aplicação (`uuid[]`×`text[]` na assinatura — a RPC compilaria e falharia em toda chamada real, engolida pelo try/catch; cura contra rodada vazia; paridade ids). Verificação REST pós-push provou os dois cintos ao vivo sem remover nada (263 candidatas de ago/26 bloqueadas pelo teto).
+
 ## [5.6.2] — 2026-08-13
 
 PATCH · **Metas: "Meta de Assessorias" no Comparativo (Weddings)**. Migration `0249` (aditiva, aplicada) · sem ADR.

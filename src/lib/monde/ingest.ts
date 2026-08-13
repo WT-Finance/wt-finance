@@ -34,8 +34,19 @@ export interface IngestResult {
   lidas: number
   excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
   espelhaveis: number
+  /** sale_ids das vendas que a rodada provou espelháveis (v5.6.3) — insumo da CURA:
+   *  a reconciliação remove do espelho o que ficou fora deste conjunto. */
+  espelhaveis_ids: string[]
   erros: number
   promover: PromoverResult | null
+}
+
+/** sale_ids das vendas espelháveis — insumo da CURA (v5.6.3). Filtra sale_id nulo; a
+ *  PARIDADE contagem×ids é guarda de `podeCurar`: detalhe sem sale_id bloqueia a cura
+ *  (a venda contaria em `espelhaveis` mas sairia daqui, e a linha antiga dela viraria
+ *  candidata a remoção — CRÍTICO do revisor). */
+export function idsEspelhaveis(vendas: ReadonlyArray<Pick<VendaEspelho, 'sale_id'>>): string[] {
+  return vendas.map(v => v.sale_id).filter((id): id is string => id != null)
 }
 
 async function rpc(db: MondeDb, fn: string, args?: Record<string, unknown>): Promise<unknown> {
@@ -116,6 +127,7 @@ export async function ingestWindow(db: MondeDb, opts: IngestOpts): Promise<Inges
     lidas: lista.length,
     excluidas,
     espelhaveis: vendas.length,
+    espelhaveis_ids: idsEspelhaveis(vendas),
     erros,
     promover,
   }

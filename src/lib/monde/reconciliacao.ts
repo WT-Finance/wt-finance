@@ -65,6 +65,80 @@ export function proximoMesReconciliacao(cursor: string | null | undefined, janel
   return janela[(i + 1) % janela.length]
 }
 
+// ── CURA (v5.6.3) ───────────────────────────────────────────────────────────────────────────
+//
+// A rota 2 do tripwire: venda espelhada que deixa de ser espelhável (reclassificada para
+// Welcome/sem-setor na origem, ou sumida da listagem) fica congelada somando — a exclusão de
+// escopo é aplicada NA ESCRITA e o upsert nunca mais a toca (caso medido: venda 73580, ago/26,
+// Corporativo→Welcome, R$ 7.372,92). A reconciliação passa a REMOVER essas linhas
+// (`monde_ingest_remover_vendas`, 0250) — mas SÓ quando a apuração da rodada é íntegra:
+// remover com base numa rodada furada apagaria venda legítima. Daí as guardas fail-closed
+// abaixo; o TETO por rodada é imposto também dentro da RPC (cinto duplo — listagem truncada
+// da API faria o mês inteiro parecer retido).
+
+/** Máximo de remoções por rodada de cura. Esperado: 0–2; um mês tem ~250–800 vendas. */
+export const TETO_REMOCOES_RECONCILIACAO = 20
+
+export type DecisaoCura = { ok: true } | { ok: false; bloqueio: string }
+
+/** A conta da rodada fecha? (fórmula ÚNICA — `podeCurar` autoriza e `avaliarMes` reporta
+ *  com o MESMO critério; duplicá-la quebraria a paridade em silêncio — MÉDIO do revisor.) */
+export function contaFecha(e: {
+  lidas: number
+  espelhaveis: number
+  excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
+  erros: number
+}): boolean {
+  const somaExcluidas = e.excluidas.welcome + e.excluidas.sem_setor + e.excluidas.sem_item_ativo
+  return e.lidas === e.espelhaveis + somaExcluidas + e.erros
+}
+
+/**
+ * A rodada provou o suficiente para CURAR o mês? Todas as condições são sobre a integridade
+ * da apuração — qualquer furo significa que "fora do conjunto espelhável" pode ser venda
+ * legítima que a rodada só não conseguiu ler:
+ *  - `apiTotal === 0`: rodada vazia não prova NADA — uma resposta vazia porém consistente da
+ *    API (rate-limit mudo, glitch de paginação) autorizaria apagar o mês inteiro, e a
+ *    recontagem pós-cura apagaria o próprio alarme (CRÍTICO do revisor);
+ *  - `erros > 0`: venda que falhou no detalhe/transform NÃO está nas espelháveis — removê-la
+ *    seria apagar venda boa por causa de um soluço de rede;
+ *  - `api − lidas > 0` (sem sale_id): a listagem tem vendas que a ingestão não alcança;
+ *  - `espelhaveisIds ≠ espelhaveis`: venda espelhável cujo DETALHE veio sem sale_id conta na
+ *    contagem mas sai do conjunto de ids — a linha antiga dela (com sale_id real) viraria
+ *    candidata a remoção (CRÍTICO do revisor); paridade contagem×ids é obrigatória;
+ *  - conta que não fecha: alguma venda lida sumiu sem explicação.
+ */
+export function podeCurar(e: {
+  apiTotal: number
+  lidas: number
+  espelhaveis: number
+  /** Tamanho do conjunto de sale_ids provados espelháveis (`espelhaveis_ids.length`). */
+  espelhaveisIds: number
+  excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
+  erros: number
+}): DecisaoCura {
+  if (e.apiTotal === 0) {
+    return { ok: false, bloqueio: 'rodada vazia (API devolveu 0 vendas) — não prova ausência de nada' }
+  }
+  if (e.erros > 0) {
+    return { ok: false, bloqueio: `${e.erros} erro(s) de detalhe/transform na rodada` }
+  }
+  const semSaleId = Math.max(0, e.apiTotal - e.lidas)
+  if (semSaleId > 0) {
+    return { ok: false, bloqueio: `${semSaleId} venda(s) sem sale_id na listagem` }
+  }
+  if (e.espelhaveisIds !== e.espelhaveis) {
+    return {
+      ok: false,
+      bloqueio: `paridade quebrada: ${e.espelhaveis} espelháveis × ${e.espelhaveisIds} sale_ids (detalhe sem sale_id?)`,
+    }
+  }
+  if (!contaFecha(e)) {
+    return { ok: false, bloqueio: 'conta não fecha (lidas ≠ espelháveis + excluídas + erros)' }
+  }
+  return { ok: true }
+}
+
 // ── TRIPWIRE ────────────────────────────────────────────────────────────────────────────────
 //
 // ⚠️ POR QUE NÃO É CONTAGEM CRUA. O briefing pedia "contagem mensal do espelho × `total` da API".
@@ -116,6 +190,8 @@ export interface MesVerificado {
    * explicação — é a checagem de integridade que dá sentido ao alarme.
    */
   conta_fecha: boolean
+  /** Vendas removidas pela CURA nesta rodada (v5.6.3). Ausente/0 em meses antigos. */
+  removidas?: number
   verificado_em: string
 }
 
@@ -151,10 +227,11 @@ export function avaliarMes(entrada: {
   excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
   erros: number
   espelho: number
+  /** Vendas removidas pela cura ANTES desta contagem de espelho (v5.6.3). */
+  removidas?: number
   verificadoEmISO: string
 }): MesVerificado {
-  const { mes, apiTotal, lidas, espelhaveis, excluidas, erros, espelho, verificadoEmISO } = entrada
-  const somaExcluidas = excluidas.welcome + excluidas.sem_setor + excluidas.sem_item_ativo
+  const { mes, apiTotal, lidas, espelhaveis, excluidas, erros, espelho, removidas = 0, verificadoEmISO } = entrada
   return {
     mes,
     api: apiTotal,
@@ -165,7 +242,8 @@ export function avaliarMes(entrada: {
     erros,
     espelho,
     sobrando: Math.max(0, espelho - espelhaveis),
-    conta_fecha: lidas === espelhaveis + somaExcluidas + erros,
+    conta_fecha: contaFecha({ lidas, espelhaveis, excluidas, erros }),
+    removidas,
     verificado_em: verificadoEmISO,
   }
 }

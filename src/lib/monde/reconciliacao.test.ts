@@ -5,6 +5,7 @@ import {
   mesesRecentes,
   rangeDoMes,
   proximoMesReconciliacao,
+  podeCurar,
   avaliarMes,
   mesProblematico,
   mesclarTripwire,
@@ -140,6 +141,69 @@ describe('avaliarMes', () => {
     const m = avaliarMes({ ...julho, espelhaveis: 700, espelho: 700 })
     expect(m.conta_fecha).toBe(false)
     expect(mesProblematico(m)).toBe(true)
+  })
+
+  it('`removidas` viaja na apuração (v5.6.3) e NÃO é problema — é a cura registrada', () => {
+    const m = avaliarMes({ ...julho, espelho: 746, removidas: 1 })
+    expect(m.removidas).toBe(1)
+    expect(m.sobrando).toBe(0)
+    expect(mesProblematico(m)).toBe(false)
+  })
+})
+
+// ── podeCurar (v5.6.3) — as guardas que autorizam a remoção de venda retida ────────────────
+//
+// A cura remove do espelho o que ficou FORA do conjunto espelhável da rodada. Isso só é
+// seguro se a rodada leu TUDO: venda que falhou no detalhe também fica "fora do conjunto" e
+// seria apagada indevidamente. Cada guarda abaixo bloqueia a cura inteira (fail-closed); o
+// TETO por rodada é imposto DENTRO da RPC 0250 (cinto duplo, fora do alcance deste módulo).
+describe('podeCurar (v5.6.3)', () => {
+  const rodadaIntegra = {
+    apiTotal: 253,
+    lidas: 253,
+    espelhaveis: 245,
+    espelhaveisIds: 245,
+    excluidas: { welcome: 6, sem_setor: 2, sem_item_ativo: 0 },
+    erros: 0,
+  }
+
+  it('rodada íntegra autoriza a cura (números reais de ago/26, dia da venda 73580)', () => {
+    expect(podeCurar(rodadaIntegra)).toEqual({ ok: true })
+  })
+
+  it('rodada VAZIA bloqueia — API com 0 vendas não prova ausência de nada (CRÍTICO do revisor: ' +
+     'num mês novo, curar contra o vazio apagaria o mês inteiro e a recontagem apagaria o alarme)', () => {
+    const d = podeCurar({
+      apiTotal: 0, lidas: 0, espelhaveis: 0, espelhaveisIds: 0,
+      excluidas: { welcome: 0, sem_setor: 0, sem_item_ativo: 0 }, erros: 0,
+    })
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.bloqueio).toContain('rodada vazia')
+  })
+
+  it('erro de detalhe/transform BLOQUEIA — a venda que falhou seria apagada como retida', () => {
+    const d = podeCurar({ ...rodadaIntegra, espelhaveis: 244, espelhaveisIds: 244, erros: 1 })
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.bloqueio).toContain('erro')
+  })
+
+  it('venda sem sale_id na listagem BLOQUEIA — a ingestão não alcança o que não tem id', () => {
+    const d = podeCurar({ ...rodadaIntegra, lidas: 250, espelhaveis: 242, espelhaveisIds: 242 })
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.bloqueio).toContain('sem sale_id')
+  })
+
+  it('PARIDADE contagem×ids bloqueia — detalhe sem sale_id tira a venda do conjunto e a linha ' +
+     'antiga dela viraria candidata (CRÍTICO do revisor)', () => {
+    const d = podeCurar({ ...rodadaIntegra, espelhaveisIds: 244 })
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.bloqueio).toContain('paridade')
+  })
+
+  it('conta que não fecha BLOQUEIA — venda lida sumiu sem explicação', () => {
+    const d = podeCurar({ ...rodadaIntegra, espelhaveis: 240, espelhaveisIds: 240 })
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.bloqueio).toContain('conta não fecha')
   })
 })
 
