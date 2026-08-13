@@ -50,6 +50,18 @@ Weddings + Último mês: anel 132 + barra **"4 de 14"** dourada (screenshot no c
 com a REST de jul/26. Group: barra ausente do DOM, anel 168. Zero real (ago/26 = 0) exibe
 "0 de 14" honesto.
 
+## 4b. Ajuste extra (13/08, pedido do Yan no PR): "sem venda" mostra ZERO, não vazio
+
+Dois pontos de Weddings onde ausência de venda aparecia como vazio/travessão:
+1. **Performance/Weddings — cards de subsetor:** subsetor sem venda no período agora mantém o
+   FORMATO com valores zerados ("0 contratos"/"R$ 0", Receita R$ 0, Margem 0,0%) e o **YoY
+   continua real** (ex.: ↓100% contra o ano anterior). O "—" ficou reservado à falha real da
+   RPC (`sumario` null) — zero falso em cima de erro esconderia o problema (null ≠ 0).
+2. **Metas/Visão geral — "Contratos" do card Weddings:** RPC respondida sem o subsetor
+   COMERCIAL ⇒ **0** (antes "—"); erro/negação segue "—".
+Verificado ao vivo (Edge): Este mês → COMERCIAL "0 contratos" ↓100.0% e PRODUÇÃO "R$ 0" na
+Performance; "Contratos 0" no MetaCard. Screenshots no chat.
+
 ## 5. Registros
 
 - Regra por DESCRIÇÃO em namespace de texto livre: variante nova de nome no Monde vazaria em
