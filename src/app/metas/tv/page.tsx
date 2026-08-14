@@ -1,6 +1,8 @@
 import { requireArea } from '@/lib/auth/sessao'
 import { carregarAcompanhamento } from '@/lib/metas/carregar-acompanhamento'
 import TvTela from '@/components/metas/tv/tv-tela'
+import MetasAutoRefresh from '@/components/metas/metas-auto-refresh'
+import type { AcompanhamentoData } from '@/components/metas/tipos'
 
 // Modo TV (v5.1.0) — pele de exibição de /metas em TELA CHEIA (sem AppShell: o chrome é
 // curto-circuitado por pathname no AppShell — ADR-0148). FONTE ÚNICA: a MESMA
@@ -26,9 +28,31 @@ const ORDEM_TV = ['mensal', 'trimestral', 'anual'] as const
 export default async function MetasTvPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   await requireArea(['metas/acompanhamento', 'metas'])
   const sp = await searchParams
-  const indiceInicial = ORDEM_TV.findIndex(preset => preset === sp.periodo)
 
-  const [mensal, trimestral, anual] = await Promise.all(ORDEM_TV.map(preset => carregarAcompanhamento(preset)))
+  // Resiliência de parede (achado MÉDIO do revisor, v5.6.4): a tela roda sem humano por
+  // perto para recarregar — um throw em QUALQUER um dos 3 recortes (são ~30 RPCs
+  // concorrentes no total) não pode derrubar a página inteira. Cada recorte degrada
+  // sozinho (slide omitido); com TODOS fora, a tela mínima abaixo segue com o
+  // auto-refresh de 60s e se auto-cura na primeira rodada boa.
+  const resultados = await Promise.all(ORDEM_TV.map(preset =>
+    carregarAcompanhamento(preset).catch((e: unknown) => {
+      console.error(`[metas/tv] falha ao carregar o recorte '${preset}'`, e)
+      return null
+    }),
+  ))
+  const slides = resultados.filter((d): d is AcompanhamentoData => d != null)
 
-  return <TvTela slides={[mensal, trimestral, anual]} indiceInicial={indiceInicial >= 0 ? indiceInicial : 0} />
+  if (slides.length === 0) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[var(--surface-soft)]">
+        <MetasAutoRefresh intervaloMs={60_000} />
+        <p className="text-2xl text-[var(--text-muted)]">
+          Sem dados no momento — nova tentativa automática em instantes.
+        </p>
+      </div>
+    )
+  }
+
+  const indiceInicial = slides.findIndex(d => d.preset === sp.periodo)
+  return <TvTela slides={slides} indiceInicial={indiceInicial >= 0 ? indiceInicial : 0} />
 }

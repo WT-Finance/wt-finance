@@ -33,7 +33,9 @@ import type { AcompanhamentoData } from '@/components/metas/tipos'
 const INTERVALO_CARROSSEL_MS = 12_000
 
 interface Props {
-  /** [mensal, trimestral, anual] — nesta ordem (índice = posição no carrossel). */
+  /** Recortes disponíveis, na ordem mensal→trimestral→anual (índice = posição no
+   *  carrossel). Pode vir com MENOS de 3: recorte que falhou no RSC é omitido
+   *  (resiliência de parede — page.tsx). Nunca vazio (page.tsx trata esse caso). */
   slides: AcompanhamentoData[]
   /** Slide em que o carrossel COMEÇA (herdado do preset que a /metas estava exibindo, via
    *  `?periodo=`); a rotação automática segue normalmente dali. Default 0 (mensal). */

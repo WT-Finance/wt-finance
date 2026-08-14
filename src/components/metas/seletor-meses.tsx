@@ -200,7 +200,7 @@ function SeletorMesesPopover({ selecionado, onAplicar, onFechar, pos }: {
 
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-zinc-100 pt-3">
           {/* aria-live: leitor de tela acompanha o range em construção sem sair da grade. */}
-          <p aria-live="polite" className={`truncate text-2xs ${estouraTeto ? 'text-danger' : 'text-[var(--text-muted)]'}`}>
+          <p aria-live="polite" className={`min-w-0 truncate text-2xs ${estouraTeto ? 'text-danger' : 'text-[var(--text-muted)]'}`}>
             {estouraTeto
               ? `Máximo de ${TETO_MESES_PERSONALIZADO} meses`
               : periodoAtual

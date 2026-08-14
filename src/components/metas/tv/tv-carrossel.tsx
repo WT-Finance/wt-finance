@@ -12,7 +12,8 @@ import type { AcompanhamentoData } from '@/components/metas/tipos'
 // `motion-reduce:transition-none` desliga a animação para quem pediu menos movimento.
 
 interface Props {
-  /** [mensal, trimestral, anual] — nesta ordem (índice = posição no track). */
+  /** Recortes disponíveis (mensal→trimestral→anual; recorte que falhou é omitido
+   *  pelo RSC) — índice = posição no track. */
   slides: AcompanhamentoData[]
   indiceAtivo: number
 }
