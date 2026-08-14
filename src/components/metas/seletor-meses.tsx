@@ -3,13 +3,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Button from '@/components/ui/button'
-import { ANO_MINIMO_COMPARATIVO, chaveMes, type MesRef } from '@/lib/metas/comparativo'
+import {
+  ANO_MINIMO_COMPARATIVO, TETO_MESES_PERSONALIZADO,
+  chaveMes, normalizarPeriodo, qtdMesesPeriodo, rotuloPeriodo,
+  type MesRef, type PeriodoRef,
+} from '@/lib/metas/comparativo'
 
-// Popover de seleção de mês do Comparativo de Metas (v5.6.1) — seleção ÚNICA
-// (ajuste do Yan, 11/08): o "Personalizado" escolhe o MÊS EM FOCO da comparação;
-// o Ano sobre Ano continua automático em volta dele. O estado CONFIRMADO (prop
-// `selecionados`, do pai) só muda no "Aplicar"; Esc/click-fora/scroll/resize
-// fecham SEM aplicar.
+// Popover de seleção de período do Comparativo de Metas (v5.6.1; range contíguo na
+// v5.6.4): o primeiro clique marca o mês INICIAL, o segundo o FINAL (ordem dos
+// cliques indiferente — normaliza; clicar de novo com o range completo recomeça a
+// seleção). Dois cliques no mesmo mês = período de 1 mês (o comportamento antigo).
+// O Ano sobre Ano continua automático em volta do período (ajuste do Yan, 11/08).
+// O estado CONFIRMADO (prop `selecionado`, do pai) só muda no "Aplicar";
+// Esc/click-fora/scroll/resize fecham SEM aplicar.
 //
 // A posição (`pos`) é calculada pelo CHAMADOR no clique que abre — mesma mecânica de
 // FiltroVencimento em financeiro/gerencial/base-dados-tab.tsx (getBoundingClientRect +
@@ -24,27 +30,35 @@ import { ANO_MINIMO_COMPARATIVO, chaveMes, type MesRef } from '@/lib/metas/compa
 
 const NOMES_MES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 
+/** Índice absoluto do mês na linha do tempo — aritmética local de intervalo. */
+function idx(m: MesRef): number {
+  return m.ano * 12 + (m.mes - 1)
+}
+
 interface Props {
-  selecionados: MesRef[]
-  onAplicar: (meses: MesRef[]) => void
+  selecionado: PeriodoRef | null
+  onAplicar: (periodo: PeriodoRef) => void
   aberto: boolean
   onFechar: () => void
   /** Calculado pelo chamador (getBoundingClientRect + clamp) no clique que abre. */
   pos: { top: number; left: number } | null
 }
 
-export default function SeletorMeses({ selecionados, onAplicar, aberto, onFechar, pos }: Props) {
+export default function SeletorMeses({ selecionado, onAplicar, aberto, onFechar, pos }: Props) {
   if (!aberto || !pos) return null
-  return <SeletorMesesPopover selecionados={selecionados} onAplicar={onAplicar} onFechar={onFechar} pos={pos} />
+  return <SeletorMesesPopover selecionado={selecionado} onAplicar={onAplicar} onFechar={onFechar} pos={pos} />
 }
 
-function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
-  selecionados: MesRef[]
-  onAplicar: (meses: MesRef[]) => void
+function SeletorMesesPopover({ selecionado, onAplicar, onFechar, pos }: {
+  selecionado: PeriodoRef | null
+  onAplicar: (periodo: PeriodoRef) => void
   onFechar: () => void
   pos: { top: number; left: number }
 }) {
-  const [escolhido, setEscolhido] = useState<MesRef | null>(() => selecionados[0] ?? null)
+  const [selecao, setSelecao] = useState<{ inicio: MesRef | null; fim: MesRef | null }>(() => ({
+    inicio: selecionado?.inicio ?? null,
+    fim: selecionado?.fim ?? null,
+  }))
   const painelRef = useRef<HTMLDivElement>(null)
 
   const hoje = new Date()
@@ -94,6 +108,21 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
     else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus() }
   }
 
+  function aoClicarMes(m: MesRef) {
+    setSelecao(prev => {
+      // Sem início, ou range já completo → recomeça com o clicado como novo início.
+      if (!prev.inicio || prev.fim) return { inicio: m, fim: null }
+      // Segundo clique fecha o range — a ordem dos cliques é indiferente.
+      const p = normalizarPeriodo(prev.inicio, m)
+      return { inicio: p.inicio, fim: p.fim }
+    })
+  }
+
+  const periodoAtual: PeriodoRef | null = selecao.inicio
+    ? normalizarPeriodo(selecao.inicio, selecao.fim ?? selecao.inicio)
+    : null
+  const estouraTeto = periodoAtual != null && qtdMesesPeriodo(periodoAtual) > TETO_MESES_PERSONALIZADO
+
   return createPortal(
     <>
       {/* Backdrop full-screen (irmão do popover, não ancestral) — clique fora fecha sem
@@ -106,11 +135,14 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
         onKeyDown={prenderTab}
         role="dialog"
         aria-modal="true"
-        aria-label="Selecionar o mês da comparação"
+        aria-label="Selecionar o período da comparação"
         className="foco-neutro fixed z-50 w-[360px] rounded-xl border border-zinc-200 bg-white p-4 shadow-lg font-sans"
         style={{ top: pos.top, left: pos.left }}
       >
-        <p className="mb-3 text-xs font-semibold text-[var(--text-muted)]">Selecione o mês</p>
+        <p className="text-xs font-semibold text-[var(--text-muted)]">Selecione o período</p>
+        <p className="mb-3 mt-0.5 text-2xs text-[var(--text-subtle)]">
+          Clique no mês inicial e depois no final; um clique a mais recomeça.
+        </p>
 
         {/* max-h contida: header+lista+rodapé têm de caber na estimativa POPOVER_H do
             clamp do chamador — 360px estourava o viewport e escondia o "Aplicar". */}
@@ -125,23 +157,35 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
                   const mes = i + 1
                   const m: MesRef = { ano, mes }
                   const chave = chaveMes(m)
-                  const selecionado = escolhido != null && chaveMes(escolhido) === chave
+                  const ponta =
+                    (selecao.inicio != null && chaveMes(selecao.inicio) === chave) ||
+                    (selecao.fim != null && chaveMes(selecao.fim) === chave)
+                  const noIntervalo = !ponta
+                    && selecao.inicio != null && selecao.fim != null
+                    && idx(m) > idx(selecao.inicio) && idx(m) < idx(selecao.fim)
                   const futuro = ano === anoAtual && mes > mesAtual
                   return (
                     <button
                       key={chave}
                       type="button"
-                      aria-pressed={selecionado}
+                      aria-pressed={ponta}
                       disabled={futuro}
-                      onClick={() => setEscolhido(m)}
+                      onClick={() => aoClicarMes(m)}
                       className={[
-                        'foco-neutro rounded-md border px-1 py-1.5 text-2xs font-medium transition-colors',
+                        'foco-neutro rounded-md border px-1 py-1.5 text-2xs transition-colors',
                         'disabled:cursor-not-allowed disabled:opacity-40',
-                        selecionado ? '' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50',
+                        ponta ? 'font-semibold' : 'font-medium',
+                        ponta || noIntervalo ? '' : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50',
                       ].join(' ')}
-                      style={selecionado ? {
+                      style={ponta ? {
                         background:  'var(--action-soft)',
                         borderColor: 'var(--action-soft-border)',
+                        color:       'var(--action-soft-fg)',
+                      } : noIntervalo ? {
+                        // Miolo do range: mesmo fundo suave das pontas, sem a borda —
+                        // as pontas continuam legíveis como início/fim.
+                        background:  'var(--action-soft)',
+                        borderColor: 'transparent',
                         color:       'var(--action-soft-fg)',
                       } : undefined}
                     >
@@ -154,12 +198,20 @@ function SeletorMesesPopover({ selecionados, onAplicar, onFechar, pos }: {
           ))}
         </div>
 
-        <div className="mt-3 flex items-center justify-end border-t border-zinc-100 pt-3">
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-zinc-100 pt-3">
+          {/* aria-live: leitor de tela acompanha o range em construção sem sair da grade. */}
+          <p aria-live="polite" className={`min-w-0 truncate text-2xs ${estouraTeto ? 'text-danger' : 'text-[var(--text-muted)]'}`}>
+            {estouraTeto
+              ? `Máximo de ${TETO_MESES_PERSONALIZADO} meses`
+              : periodoAtual
+                ? rotuloPeriodo(periodoAtual)
+                : 'Nenhum mês selecionado'}
+          </p>
           <Button
             variant="solido"
             size="sm"
-            disabled={escolhido == null}
-            onClick={() => { if (escolhido) onAplicar([escolhido]) }}
+            disabled={periodoAtual == null || estouraTeto}
+            onClick={() => { if (periodoAtual && !estouraTeto) onAplicar(periodoAtual) }}
           >
             Aplicar
           </Button>

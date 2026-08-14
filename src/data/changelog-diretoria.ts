@@ -35,6 +35,26 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.6.4',
+    data: '2026-08-14T14:48', // horário real de autoria — reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'O telão de metas (modo de exibição) agora alterna sozinho entre a meta do mês, a do ' +
+          'trimestre e a do ano, em rotação contínua — a parede do comercial mostra os três ' +
+          'horizontes sem ninguém precisar tocar na tela.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'No comparativo de metas, o período personalizado deixou de ser limitado a um único mês: ' +
+          'agora dá para escolher um intervalo de meses seguidos (por exemplo, janeiro a abril) e ' +
+          'comparar o mesmo intervalo com os dois anos anteriores.',
+      },
+    ],
+  },
+  {
     versao: '5.6.3',
     data: '2026-08-13T15:07', // horário REAL do merge (f0e0676, PR #235, 15h07 −03) — reconciliado no /pos-merge
     itens: [

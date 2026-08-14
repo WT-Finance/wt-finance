@@ -6,6 +6,20 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.6.4] — 2026-08-14
+
+PATCH · **Metas: período contíguo no Personalizado + carrossel mês/trimestre/ano no Modo TV**. Sem migration · sem ADR.
+
+### Adicionado
+
+- **Comparativo — "Personalizado" agora seleciona um PERÍODO contíguo de meses** (ex.: jan até abr): o primeiro clique marca o início, o segundo o final (ordem indiferente; um clique a mais recomeça; dois cliques no mesmo mês = mês único, o comportamento anterior). Range pode cruzar a virada de ano; teto de 12 meses. O **YoY continua automático**, deslocando o MESMO range para os anos anteriores ("jan–abr/26" × "jan–abr/25" × "jan–abr/24"); colunas Previsto × Realizado e anel mostram o agregado do período; a "Meta de Assessorias" (Weddings) fica proporcional (14 × nº de meses).
+- **Modo TV com carrossel mês → trimestre → ano:** o telão passa a rotacionar os três recortes a cada 12s com animação de carrossel (slides sempre montados com `inert` — sem piscar; curva canônica do DS; `motion-reduce` respeitado; dots de posição). `?periodo=` do link "Modo TV" vira o slide inicial. Legenda ajustada: *"A seta indica o valor esperado para hoje, considerando o período já decorrido."*
+
+### Interno
+
+- Módulo `comparativo` generalizado de mês para período (`PeriodoRef`; presets degeneram em período de 1 mês — paridade v5.6.1 preservada e coberta pelo caso de contrato). Dados por **janela composta** (1 `get_executiva_kpis` por período/ano, não N por mês). Contrato novo: janela composta ≡ soma das janelas mensais (aditividade do faturamento).
+- TV: os 3 recortes carregados em paralelo no RSC pela MESMA `carregarAcompanhamento` da `/metas` (fonte única — os números de cada slide batem com a página no preset correspondente).
+
 ## [5.6.3] — 2026-08-13
 
 PATCH · **Espelho Monde auto-curativo para venda retida** (rota 2 do tripwire da v5.4.5). Migration `0250` (aditiva, aplicada) · sem ADR.

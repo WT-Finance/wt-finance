@@ -1,19 +1,16 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-13 (pós-merge v5.6.3) · produção na **v5.6.3** (#235 mergeado 13/08 às 15h07 — espelho auto-curativo; migration `0250`). ✅ **CURA PROVADA em produção no mesmo dia**: ciclo de reconciliação disparado manualmente removeu a venda 73580 (auditada em `ultima_remocao`) — **tripwire APAGADO** (`sobrando: 0` nos 3 meses, `removidas: 1` em ago) e suíte de volta a 100%. Antes a v5.6.2 (#233, 13h43) · *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**). Nenhuma outra versão em curso.
+Última atualização: 2026-08-14 (fechamento v5.6.4) · produção na **v5.6.3** (#235 mergeado 13/08 às 15h07 — espelho auto-curativo; migration `0250`). **Em curso: v5.6.4 aguardando merge** (Metas: período contíguo no Personalizado + carrossel mês/trimestre/ano no Modo TV; sem migration — ver "Verdade atual"). ✅ Cura da v5.6.3 PROVADA em produção no mesmo dia (venda 73580 removida; tripwire APAGADO). *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0250`; a próxima livre é a `0251`.**
+Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
+esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
+removida no fechamento da v5.6.4).
 
 🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
 o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
 aparecem como prejuízo e são lucro) até a reingestão. O upload é full-swap, então resolve sem
 migration destrutiva. Detalhe no 2º item de "Verdade atual".
-
-⚠️ **Numeração de migration: a última APLICADA é a `0248`; a próxima livre é a `0249`.**
-Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
-esteve obsoleto dizendo "próxima livre: `0247`". ✅ A janela em que a `0247`/`0248` estiveram
-aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do teste de paridade de
-áreas RBAC que aparecia em qualquer branch.
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -23,6 +20,21 @@ aplicadas **com o código não mergeado** fechou no #229, e com ela a falha do t
 > Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
+
+- **v5.6.4 (branch `feat/v5-6-4-metas-periodo-e-carrossel`, AGUARDANDO MERGE) — Metas:
+  período contíguo no Personalizado + carrossel no Modo TV.** Sem migration/ADR. O
+  "Personalizado" do Comparativo aceita range contíguo de meses (2 cliques início→fim, teto
+  12, YoY automático desloca o range; dados por janela composta — contrato novo prova
+  aditividade composta≡soma das mensais); o TV rotaciona mês→trimestre→ano a cada 12s
+  (slides montados com `inert`, curva canônica; recorte que falha degrada sozinho — parede
+  auto-cura no refresh de 60s); legenda: "A seta indica o valor esperado para hoje,
+  considerando o período já decorrido.". Revisor: 0 CRÍTICO/0 ALTO (2 MÉDIOs corrigidos).
+  Suíte **932/932** — de carona: `server-only` DECLARADO no package.json (era import sem
+  dependência; o vitest quebrou quando a transitiva sumiu do node_modules da raiz) e
+  `vi.mock('server-only')` no `ingest.test.ts` (nasceu sem, v5.6.3 — os 3 testes do monde
+  não rodavam). **Visual NÃO VERIFICADA** (background sem Playwright — modelo: Yan confere
+  e manda print). Out-briefing: `WT_Finance_Out_Briefing_v5-6-4_Periodo_e_Carrossel.md`.
+  **Pendente Yan:** conferência visual (/metas Personalizado + /metas/tv em 16:9) + merge.
 
 - **v5.6.3 (#235, mergeada 13/08 às 15h07) — espelho Monde AUTO-CURATIVO para venda retida.**
   A reconciliação diária agora REMOVE do espelho (com auditoria) a venda que deixou de ser
