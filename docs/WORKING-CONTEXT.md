@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-14 (fechamento v5.6.4) · produção na **v5.6.3** (#235 mergeado 13/08 às 15h07 — espelho auto-curativo; migration `0250`). **Em curso: v5.6.4 aguardando merge** (Metas: período contíguo no Personalizado + carrossel mês/trimestre/ano no Modo TV; sem migration — ver "Verdade atual"). ✅ Cura da v5.6.3 PROVADA em produção no mesmo dia (venda 73580 removida; tripwire APAGADO). *Metas por subsetor de Weddings* em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-14 (pós-merge v5.6.4) · produção na **v5.6.4** (#237 mergeado 14/08 às 15h18 — Metas: período contíguo no Personalizado + carrossel mês/trimestre/ano no Modo TV; **sem migration**). Antes a v5.6.3 (#235, 13/08 15h07 — espelho auto-curativo, `0250`), com a cura PROVADA em produção no mesmo dia. **Nenhuma versão em curso.** *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0250`; a próxima livre é a `0251`.**
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
@@ -21,7 +21,7 @@ migration destrutiva. Detalhe no 2º item de "Verdade atual".
 
 ## Verdade atual
 
-- **v5.6.4 (branch `feat/v5-6-4-metas-periodo-e-carrossel`, AGUARDANDO MERGE) — Metas:
+- **v5.6.4 (#237, mergeada 14/08 às 15h18) — Metas:
   período contíguo no Personalizado + carrossel no Modo TV.** Sem migration/ADR. O
   "Personalizado" do Comparativo aceita range contíguo de meses (2 cliques início→fim, teto
   12, YoY automático desloca o range; dados por janela composta — contrato novo prova
@@ -32,9 +32,14 @@ migration destrutiva. Detalhe no 2º item de "Verdade atual".
   Suíte **932/932** — de carona: `server-only` DECLARADO no package.json (era import sem
   dependência; o vitest quebrou quando a transitiva sumiu do node_modules da raiz) e
   `vi.mock('server-only')` no `ingest.test.ts` (nasceu sem, v5.6.3 — os 3 testes do monde
-  não rodavam). **Visual NÃO VERIFICADA** (background sem Playwright — modelo: Yan confere
-  e manda print). Out-briefing: `WT_Finance_Out_Briefing_v5-6-4_Periodo_e_Carrossel.md`.
-  **Pendente Yan:** conferência visual (/metas Personalizado + /metas/tv em 16:9) + merge.
+  não rodavam). **Visual NÃO VERIFICADA na entrega** (background sem Playwright — modelo:
+  Yan confere no ar e manda print). Out-briefing:
+  `WT_Finance_Out_Briefing_v5-6-4_Periodo_e_Carrossel.md`.
+  **Pendente Yan:** conferência visual EM PRODUÇÃO (/metas → Comparativo → Personalizado com
+  um range de vários meses; /metas/tv numa tela 16:9 — a rotação leva 36s para dar a volta
+  nos 3 recortes). Ponto aberto para o olho do Yan: o rótulo do recorte ativo do TV vive no
+  cabeçalho ("Metas · {período}"); se ficar discreto demais na parede, colar ao slide é
+  ajuste localizado.
 
 - **v5.6.3 (#235, mergeada 13/08 às 15h07) — espelho Monde AUTO-CURATIVO para venda retida.**
   A reconciliação diária agora REMOVE do espelho (com auditoria) a venda que deixou de ser
