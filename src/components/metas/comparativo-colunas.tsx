@@ -6,9 +6,10 @@ import {
   chartSeries, barRadius,
 } from '@/components/charts'
 import { fmtBRL, fmtMi } from '@/lib/fmt'
-import type { ItemMesComparativo } from '@/lib/metas/comparativo'
+import type { ItemPeriodoComparativo } from '@/lib/metas/comparativo'
 
-// Colunas "Previsto × Realizado" do mês em foco do Comparativo de Metas (v5.6.1).
+// Colunas "Previsto × Realizado" do período em foco do Comparativo de Metas (v5.6.1;
+// o período pode ser um range contíguo de meses desde a v5.6.4 — o agregado chega pronto).
 // Previsto = papel de REFERÊNCIA (tom neutro do DS, `chartSeries.neutral` — o mesmo
 // token usado para a barra "neutra" do Horizonte Previsto/Financeiro, e para a linha
 // "Esperado" do Ritmo do período aqui em Metas); Realizado = série real, sólida, na
@@ -16,7 +17,7 @@ import type { ItemMesComparativo } from '@/lib/metas/comparativo'
 // null) é OMITIDA — nunca renderizada como barra zero, que mentiria visualmente.
 
 interface Props {
-  item: ItemMesComparativo
+  item: ItemPeriodoComparativo
   cor: string
 }
 

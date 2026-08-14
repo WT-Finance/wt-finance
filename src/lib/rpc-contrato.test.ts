@@ -603,7 +603,7 @@ describe.skipIf(!ON)('contrato Metas — paridade do Comparativo com os MetaCard
   it.each(['todos', 'Weddings', 'Lazer', 'Corporativo'])(
     'comparativo[%s]: previsto ≡ metaPeriodo e realizado ≡ faturamento dos KPIs',
     async (setor) => {
-      const { montarComparativo, chaveMes, janelaDoMes } = await import('./metas/comparativo')
+      const { montarComparativo, periodoDeMes, chavePeriodo, janelaDoMes } = await import('./metas/comparativo')
       const { metasDoSetor } = await import('./metas/paineis')
       const { calcularRitmo } = await import('./metas/ritmo')
 
@@ -623,8 +623,9 @@ describe.skipIf(!ON)('contrato Metas — paridade do Comparativo com os MetaCard
         })),
         setor,
       )
-      const realizadoPorMes = new Map([[chaveMes(MES), Number(kpis.faturamento.valor)]])
-      const { foco } = montarComparativo({ meses: [MES], hoje: '2026-08-11', metas, realizadoPorMes })
+      const P = periodoDeMes(MES) // a unidade virou período na v5.6.4; mês único é o caso N=1
+      const realizadoPorPeriodo = new Map([[chavePeriodo(P), Number(kpis.faturamento.valor)]])
+      const { foco } = montarComparativo({ periodos: [P], hoje: '2026-08-11', metas, realizadoPorPeriodo })
 
       // Previsto ≡ meta do MESMO mês nos MetaCards (sem meta cadastrada, ambos zeram).
       const ritmo = calcularRitmo({ from, to, ultimaVenda: to, metas, serie: [] })
@@ -633,6 +634,33 @@ describe.skipIf(!ON)('contrato Metas — paridade do Comparativo com os MetaCard
       expect(Number(foco.realizado)).toBeCloseTo(Number(kpis.faturamento.valor), 2)
     },
   )
+})
+
+// v5.6.4 — RANGE do Comparativo: o "Personalizado" agora manda UMA janela composta
+// (jan–abr) para get_executiva_kpis em vez de N janelas mensais. O contrato que
+// sustenta isso é a ADITIVIDADE do faturamento sobre janelas adjacentes: a janela
+// composta tem de bater com a soma das mensais — senão o range mostraria um número
+// que não é a soma dos meses que os MetaCards mostram.
+describe.skipIf(!ON)('contrato Metas — janela composta ≡ soma das janelas mensais (v5.6.4)', () => {
+  it('get_executiva_kpis(jan–abr/26) ≈ Σ get_executiva_kpis(mês a mês)', async () => {
+    const { janelaDoPeriodo, janelaDoMes, mesesDoPeriodo } = await import('./metas/comparativo')
+    const P = { inicio: { ano: 2026, mes: 1 }, fim: { ano: 2026, mes: 4 } } // fechado (hoje é ago/26)
+
+    const { from, to } = janelaDoPeriodo(P)
+    const composto = await rpc('get_executiva_kpis', { p_from: from, p_to: to, p_setor: 'todos' }) as {
+      faturamento: { valor: number }
+    }
+    const mensais = await Promise.all(mesesDoPeriodo(P).map(async m => {
+      const j = janelaDoMes(m)
+      const k = await rpc('get_executiva_kpis', { p_from: j.from, p_to: j.to, p_setor: 'todos' }) as {
+        faturamento: { valor: number }
+      }
+      return Number(k.faturamento.valor)
+    }))
+
+    const soma = mensais.reduce((s, v) => s + v, 0)
+    expect(Number(composto.faturamento.valor)).toBeCloseTo(soma, 2)
+  })
 })
 
 // v5.6.2 — "Meta de Assessorias": get_contratos_casamento_mes (0249) conta contratos de

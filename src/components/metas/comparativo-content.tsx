@@ -9,14 +9,17 @@ import { AnelKpi } from '@/components/charts'
 import { fmtMi } from '@/lib/fmt'
 import { PAINEIS } from '@/lib/metas/paineis'
 import { useComparativo } from '@/lib/metas/use-comparativo'
-import { chaveMes, nomeMes, META_ASSESSORIAS_MENSAL, type PresetComparativo, type MesRef } from '@/lib/metas/comparativo'
+import {
+  chavePeriodo, tituloPeriodo, qtdMesesPeriodo, META_ASSESSORIAS_MENSAL,
+  type PresetComparativo, type PeriodoRef,
+} from '@/lib/metas/comparativo'
 import ComparativoColunas from './comparativo-colunas'
 import ComparativoBarras, { alturaMinimaBarras } from './comparativo-barras'
 import SeletorMeses from './seletor-meses'
 
 // Seção "Comparativo" do Acompanhamento de Metas (v5.6.1) — meta × realizado entre
-// meses e anos: pills de setor (cor do painel, molde de ritmo-chart.tsx) + pills de
-// período (presets + grade aditiva de meses via popover). O dado busca CLIENT-SIDE
+// períodos e anos: pills de setor (cor do painel, molde de ritmo-chart.tsx) + pills de
+// período (presets + range contíguo de meses via popover, v5.6.4). O dado busca CLIENT-SIDE
 // (useComparativo) — a troca de recorte não dá round-trip no RSC da página; a Visão
 // geral acima continua vindo pronta do servidor.
 
@@ -72,7 +75,7 @@ const POPOVER_MARGEM = 8
 export default function ComparativoContent() {
   const [setorKey, setSetorKey]             = useState('todos')
   const [preset, setPreset]                 = useState<PresetComparativo>('este-mes')
-  const [personalizados, setPersonalizados] = useState<MesRef[]>([])
+  const [personalizado, setPersonalizado]   = useState<PeriodoRef | null>(null)
   const [popoverAberto, setPopoverAberto]   = useState(false)
   const [popoverPos, setPopoverPos]         = useState<{ top: number; left: number } | null>(null)
   const periodoRowRef = useRef<HTMLDivElement>(null)
@@ -80,7 +83,7 @@ export default function ComparativoContent() {
   const painelAtivo = PAINEIS.find(p => p.key === setorKey) ?? PAINEIS[0]
   const cor = painelAtivo.cor
 
-  const { data, carregando, assessorias } = useComparativo(setorKey, preset, personalizados)
+  const { data, carregando, assessorias } = useComparativo(setorKey, preset, personalizado)
 
   function abrirSeletor() {
     const r = periodoRowRef.current?.getBoundingClientRect()
@@ -100,7 +103,7 @@ export default function ComparativoContent() {
     if (novoPreset === 'personalizado') abrirSeletor()
   }
 
-  const semDados = data != null && data.meses.every(m => m.realizado === null)
+  const semDados = data != null && data.periodos.every(p => p.realizado === null)
 
   return (
     <TopSection titulo="Comparativo">
@@ -128,15 +131,13 @@ export default function ComparativoContent() {
         <SeletorMeses
           aberto={popoverAberto}
           pos={popoverPos}
-          selecionados={personalizados}
-          onAplicar={meses => {
+          selecionado={personalizado}
+          onAplicar={periodo => {
             setPopoverAberto(false)
             // Reaplicar a MESMA seleção mantém a referência — evita refetch redundante
-            // (a dep `personalizados` do hook mudaria só de identidade, não de valor).
-            setPersonalizados(prev =>
-              prev.length === meses.length && prev.map(chaveMes).join() === meses.map(chaveMes).join()
-                ? prev
-                : meses,
+            // (a dep `personalizado` do hook mudaria só de identidade, não de valor).
+            setPersonalizado(prev =>
+              prev != null && chavePeriodo(prev) === chavePeriodo(periodo) ? prev : periodo,
             )
           }}
           onFechar={() => setPopoverAberto(false)}
@@ -170,16 +171,16 @@ export default function ComparativoContent() {
             }`}
           >
             <Card className="flex flex-col">
-              {/* Sem sufixo "(parcial)" no mês vigente — pedido do Yan (11/08). */}
-              <CardTitle titulo={`Meta de ${nomeMes(data.foco.mes)}`} />
+              {/* Sem sufixo "(parcial)" no período vigente — pedido do Yan (11/08). */}
+              <CardTitle titulo={`Meta de ${tituloPeriodo(data.foco.periodo)}`} />
               <ComparativoColunas item={data.foco} cor={cor} />
             </Card>
 
             <Card className="flex flex-col">
               <CardTitle titulo="Ano sobre Ano" />
               {/* O gráfico PREENCHE o card até o limite de baixo (ajuste 11/08). */}
-              <div className="min-h-0 flex-1" style={{ minHeight: alturaMinimaBarras(data.meses.length) }}>
-                <ComparativoBarras meses={data.meses} cor={cor} />
+              <div className="min-h-0 flex-1" style={{ minHeight: alturaMinimaBarras(data.periodos.length) }}>
+                <ComparativoBarras periodos={data.periodos} cor={cor} />
               </div>
             </Card>
 
@@ -191,12 +192,18 @@ export default function ComparativoContent() {
                 <div className="flex flex-1 flex-col items-center justify-center gap-5 pb-2">
                   <AnelKpi
                     valor={fmtMi(data.anel.meta)}
-                    rotulo={`Meta ${nomeMes(data.anel.mes)}`}
+                    rotulo={`Meta ${tituloPeriodo(data.anel.periodo)}`}
                     cor={cor}
                     tamanho={setorKey === 'Weddings' ? 132 : 168}
                   />
+                  {/* Meta de assessorias é MENSAL (14, v5.6.2) — num período de N meses
+                      a barra compara contra 14 × N (v5.6.4). */}
                   {setorKey === 'Weddings' && assessorias != null && (
-                    <BarraAssessorias realizado={assessorias} meta={META_ASSESSORIAS_MENSAL} cor={cor} />
+                    <BarraAssessorias
+                      realizado={assessorias}
+                      meta={META_ASSESSORIAS_MENSAL * qtdMesesPeriodo(data.foco.periodo)}
+                      cor={cor}
+                    />
                   )}
                 </div>
               </Card>
