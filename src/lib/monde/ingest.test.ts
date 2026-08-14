@@ -1,4 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+
+// ingest.ts importa ./client (que é `import 'server-only'`): fora do bundle Next o
+// marker lança por design — mock vazio, mesmo padrão dos testes de email/asaas.
+// (Pego no fechamento da v5.6.4: o arquivo nasceu sem o mock na v5.6.3 e a suíte
+// só quebrou quando o pacote `server-only` passou a resolver de verdade.)
+vi.mock('server-only', () => ({}))
+
 import { idsEspelhaveis } from './ingest'
 
 // O conjunto de sale_ids espelháveis é o insumo direto do DELETE da cura (v5.6.3) —
