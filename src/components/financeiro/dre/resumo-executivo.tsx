@@ -223,8 +223,8 @@ export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Pr
       {/* O "?" é o idioma de ajuda já usado em posicao-projetado/repasse-mensal:
           `!whitespace-normal` é obrigatório (o balão nasce `whitespace-nowrap`, e sem o
           `!` quem decide é a ORDEM DO CSS GERADO, não a ordem das classes). */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex items-center gap-1.5">
+      <div className="mb-4">
+        <div className="mb-3 flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h2>
           <Tooltip conteudo={AJUDA} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
             <span
@@ -235,11 +235,13 @@ export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Pr
             </span>
           </Tooltip>
         </div>
-        {/* Pills à DIREITA do título, na mesma faixa: elas governam este card só, e uma
-            faixa própria custaria um degrau de altura para três botões. O componente é o
-            MESMO da toolbar da tabela (`AnoPills`, modo 'multi') — duas cópias de pill
-            divergiriam em cor, foco e `aria` no primeiro ajuste. */}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        {/* Pills ABAIXO do título e à esquerda (v5.7.0, conferência do Yan) — a MESMA
+            anatomia do card da tabela: título, depois a faixa de controles. Encostadas à
+            direita do título elas ficavam longe da tabela que governam e desalinhadas das
+            pills do card de baixo, que é onde o olho já aprendeu a procurá-las.
+            O componente é o MESMO da toolbar da tabela (`AnoPills`, modo 'multi') — duas
+            cópias de pill divergiriam em cor, foco e `aria` no primeiro ajuste. */}
+        <div className="flex flex-wrap items-center gap-2">
           <AnoPills
             anosDisponiveis={anosDisponiveis}
             modo="multi"
