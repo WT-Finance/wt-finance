@@ -211,7 +211,7 @@
 //     <ScrollAutoHide> (z-30 no wrapper `isolate`) continua acima de tudo, e a
 //     sombra-ao-rolar (`bordaBaseHeader`) segue nas mesmas células de sempre.
 
-import { useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { Fragment, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp, Maximize, Minimize } from 'lucide-react'
 import Button from '@/components/ui/button'
@@ -410,15 +410,22 @@ interface Fixa {
 function fixasDaLinha(
   nAnosVisiveis: number,
   comAv = false,
-): { total: Fixa; av: Fixa | null; anos: Fixa[] } {
-  const direitaDosAnos = nAnosVisiveis * W_ANO_SEG
+): { total: Fixa; av: Fixa | null; anos: Array<{ valor: Fixa; av: Fixa | null }> } {
+  // Com AV, cada ano seguinte deixa de ser UMA coluna e passa a ser um PAR
+  // (valor + AV) — é o `bloco`. Toda a aritmética de `right` conta blocos, não colunas:
+  // é o que impede a AV nova de empurrar o total para cima da vizinha.
+  const larguraAv = comAv ? W_AV : 0
+  const bloco = W_ANO_SEG + larguraAv
   return {
-    total: { right: direitaDosAnos + (comAv ? W_AV : 0), largura: W_TOTAL },
-    av: comAv ? { right: direitaDosAnos, largura: W_AV } : null,
-    anos: Array.from({ length: nAnosVisiveis }, (_, i) => ({
-      right: (nAnosVisiveis - 1 - i) * W_ANO_SEG,
-      largura: W_ANO_SEG,
-    })),
+    total: { right: nAnosVisiveis * bloco + larguraAv, largura: W_TOTAL },
+    av: comAv ? { right: nAnosVisiveis * bloco, largura: W_AV } : null,
+    anos: Array.from({ length: nAnosVisiveis }, (_, i) => {
+      const direita = (nAnosVisiveis - 1 - i) * bloco
+      return {
+        valor: { right: direita + larguraAv, largura: W_ANO_SEG },
+        av: comAv ? { right: direita, largura: W_AV } : null,
+      }
+    }),
   }
 }
 
@@ -923,23 +930,50 @@ interface CelulaAvProps {
    *  informação diferente de "é zero". */
   pct: number | null
   tipo: TipoLinha
+  /** Escala de fundo — a MESMA da coluna de valor que a AV qualifica. Ver a nota sobre
+   *  o âmbar em `CelulaAv`. */
+  fundo: FundoCelula
   bg: string
   bgHover: string
   borda: string
   fixa?: Fixa | null
 }
 
-/** Célula da Análise Vertical — deliberadamente SUBORDINADA ao valor que ela qualifica:
- *  fonte menor, tom neutro, sem peso. A AV comenta o número ao lado; se ela disputasse
- *  a mesma ênfase (cor por sinal, mesmo corpo de fonte), o par valor+AV viraria duas
- *  colunas de igual peso e o olho perderia qual é o dado e qual é a leitura.
- *  Negativo entre parênteses NEUTROS, nunca vermelhos (decisão do briefing): a
- *  convenção contábil da tabela, sem o alarme — uma AV negativa só repete o sinal que
- *  a célula vizinha já mostrou. */
-function CelulaAv({ pct, tipo, bg, bgHover, borda, fixa }: CelulaAvProps) {
+/** Célula da Análise Vertical — SUBORDINADA ao valor que ela qualifica: fonte menor e
+ *  tom neutro (nunca a régua verde/vermelha). A AV comenta o número ao lado; se ela
+ *  disputasse a mesma ênfase, o par valor+AV viraria duas colunas de igual peso e o olho
+ *  perderia qual é o dado e qual é a leitura.
+ *  Negativo entre parênteses NEUTROS, nunca vermelhos (decisão do briefing): a convenção
+ *  contábil da tabela, sem o alarme — uma AV negativa só repete o sinal que a célula
+ *  vizinha já mostrou.
+ *
+ *  Três ajustes pedidos pelo Yan na conferência:
+ *  · **Fundo igual ao da coluna de valor** (`fundo`). A AV começou com o fundo normal da
+ *    linha mesmo ao lado de um total âmbar, no raciocínio de que "âmbar = projeção" e uma
+ *    razão não é projeção. Na tela isso quebrava o par: a coluna de total inteira em
+ *    âmbar e a AV dela em cinza liam como duas colunas de naturezas diferentes. O âmbar
+ *    marca o RECORTE (este número inclui previsto), e a AV é do mesmo recorte.
+ *  · **Negrito nas linhas de RESULTADO** (`tot`).
+ *  · **Cor por SINAL nas linhas de resultado**, pela MESMA régua `corPorSinal` das células
+ *    de valor — o que REVERTE o "negativo em parênteses neutros, nunca vermelhos" do
+ *    briefing, e é reversão consciente do próprio autor da regra. O raciocínio original
+ *    (a AV só repete um sinal que a célula vizinha já mostrou) vale nas linhas de
+ *    categoria, onde a AV é contexto; nas linhas de RESULTADO ela é o número que se lê —
+ *    margem operacional, margem líquida —, e ali apagá-la escondia justamente o que
+ *    interessa. Subordinada não quer dizer apagada.
+ *    Nas demais linhas o tom segue neutro (`tomAv`) e sem peso: se TODA a coluna ganhasse
+ *    a régua de cor, o par valor+AV viraria duas colunas de igual ênfase e o olho perderia
+ *    qual é o dado e qual é a leitura. */
+function CelulaAv({ pct, tipo, fundo, bg, bgHover, borda, fixa }: CelulaAvProps) {
+  const fundoCls = fundoCelula(fundo, tipo, bg, bgHover)
+  const ehResultado = tipo === 'tot'
+  // `corPorSinal` já é ciente da banda: sobre a faixa escura dos totalizadores devolve os
+  // tons `-soft` (6,5:1), não os base, que ali reprovariam AA.
+  const cor = ehResultado ? corPorSinal(tipo, pct) : tomAv(tipo)
+  const enfase = ehResultado ? 'font-semibold' : ''
   return (
     <td
-      className={`h-9 px-3 text-right text-[11px] tabular-nums whitespace-nowrap ${bg} ${bgHover} ${borda} ${tomAv(tipo)} ${classeFixa(fixa, 'corpo')}`}
+      className={`h-9 px-3 text-right text-[11px] tabular-nums whitespace-nowrap ${fundoCls} ${borda} ${enfase} ${cor} ${classeFixa(fixa, 'corpo')}`}
       style={estiloFixa(fixa)}
     >
       {fmtAv(pct)}
@@ -1030,27 +1064,44 @@ function LinhaDreTr({
         borda={estilo.borda}
         fixa={fixas.total}
       />
-      {/* AV colada ao total que ela qualifica. Fundo NORMAL da linha mesmo quando o
-          total está âmbar: o âmbar avisa "inclui projeção", e a AV é uma razão entre
-          dois números do mesmo recorte — herdar o âmbar diria que ela é projeção. */}
+      {/* AV colada ao total que ela qualifica, no MESMO fundo dele: o âmbar marca o
+          recorte ("este número inclui previsto"), e a AV é do mesmo recorte. */}
       <CelulaAv
         pct={avPercentual(totalExibido, baseAvMensal)}
         tipo={linha.t}
+        fundo={totalModo === 'tudo' ? 'previsto' : 'normal'}
         bg={estilo.bg}
         bgHover={estilo.bgHover}
         borda={estilo.borda}
         fixa={fixas.av}
       />
+      {/* Cada ano seguinte é um PAR valor+AV (v5.7.0, conferência do Yan): eles são
+          projeção pura, e projeção sem a composição dela é meio número — a mesma razão
+          pela qual o total ganhou AV. A base é a ROL DAQUELE ano, nunca a do ano exibido:
+          comparar 2027 contra a receita de 2026 daria um percentual sem significado. */}
       {anosVisiveis.map((a, idx) => (
-        <CelulaAnoSeguinte
-          key={`ano-${a.ano}`}
-          valor={chaveAno != null ? (a.totais[chaveAno] ?? null) : null}
-          tipo={linha.t}
-          peso={estilo.peso}
-          borda={estilo.borda}
-          primeira={idx === 0}
-          fixa={fixas.anos[idx]}
-        />
+        <Fragment key={`ano-${a.ano}`}>
+          <CelulaAnoSeguinte
+            valor={chaveAno != null ? (a.totais[chaveAno] ?? null) : null}
+            tipo={linha.t}
+            peso={estilo.peso}
+            borda={estilo.borda}
+            primeira={idx === 0}
+            fixa={fixas.anos[idx].valor}
+          />
+          <CelulaAv
+            pct={avPercentual(
+              chaveAno != null ? (a.totais[chaveAno] ?? null) : null,
+              baseAv(a.totais[`b:${CHAVE_BASE_AV}`] ?? null),
+            )}
+            tipo={linha.t}
+            fundo="previsto"
+            bg={estilo.bg}
+            bgHover={estilo.bgHover}
+            borda={estilo.borda}
+            fixa={fixas.anos[idx].av}
+          />
+        </Fragment>
       ))}
     </tr>
   )
@@ -1159,13 +1210,15 @@ function LinhaBandejaTr({
       />
       <CelulaAvBandeja fixa={fixas.av} />
       {anosVisiveis.map((a, idx) => (
-        <CelulaValorBandeja
-          key={`ano-${a.ano}`}
-          valor={a.totais[chaveAno] ?? null}
-          corte={false}
-          divisor={idx === 0}
-          fixa={fixas.anos[idx]}
-        />
+        <Fragment key={`ano-${a.ano}`}>
+          <CelulaValorBandeja
+            valor={a.totais[chaveAno] ?? null}
+            corte={false}
+            divisor={idx === 0}
+            fixa={fixas.anos[idx].valor}
+          />
+          <CelulaAvBandeja fixa={fixas.anos[idx].av} />
+        </Fragment>
       ))}
     </tr>
   )
@@ -1241,6 +1294,10 @@ function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel,
               key={c.id}
               pct={avPercentual(valorCons(reg(c.ano), c.campo), baseAvDoAno(c.ano, c.campo))}
               tipo={linha.t}
+              // Sempre 'normal': aqui a AV só acompanha coluna de NÍVEL (ano cheio e YTD),
+              // que são recortes realizados. Se um dia ela passar a acompanhar PREV ou
+              // TOTAL, o fundo tem de vir do descritor da coluna, como na Mensal.
+              fundo="normal"
               bg={estilo.bg}
               bgHover={estilo.bgHover}
               borda={estilo.borda}
@@ -1267,7 +1324,7 @@ function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel,
           peso={estilo.peso}
           borda={estilo.borda}
           primeira={idx === 0}
-          fixa={fixas.anos[idx]}
+          fixa={fixas.anos[idx].valor}
         />
       ))}
     </tr>
@@ -1322,7 +1379,7 @@ function LinhaConsolidadoBandejaTr({ linha, colunas, porAno, anosSeguintes }: Li
           valor={a.totais[chave] ?? null}
           corte={false}
           divisor={idx === 0}
-          fixa={fixas.anos[idx]}
+          fixa={fixas.anos[idx].valor}
         />
       ))}
     </tr>
@@ -1352,7 +1409,7 @@ interface AnoPillsProps {
  *  + `aria-checked`), em que cada marcado acrescenta um grupo de colunas. Como os
  *  rótulos textuais saíram da toolbar (Refino 2), o `title` de cada pill é que carrega
  *  a explicação — inclusive a de por que a última marcada não desmarca. */
-function AnoPills({ anosDisponiveis, modo, ano, selecionados, semBase, onSelect }: AnoPillsProps) {
+export function AnoPills({ anosDisponiveis, modo, ano, selecionados, semBase, onSelect }: AnoPillsProps) {
   const multi = modo === 'multi'
   return (
     <>
@@ -1686,9 +1743,9 @@ function TabelaConsolidada({
               className={th2([
                 'text-warning-deep',
                 idx === 0 ? 'border-l border-l-wt-border-strong' : '',
-                classeFixa(fixas.anos[idx], 'cabecalho'),
+                classeFixa(fixas.anos[idx].valor, 'cabecalho'),
               ].filter(Boolean).join(' '))}
-              style={estiloFixa(fixas.anos[idx])}
+              style={estiloFixa(fixas.anos[idx].valor)}
             >
               {String(a.ano)}
             </th>
@@ -1872,21 +1929,20 @@ function AcoesHierarquia({
         <ChevronsDownUp size={13} />
         Recolher tudo
       </Button>
-      {/* Tela cheia (v5.7.0) — SÓ ÍCONE, ao contrário das duas vizinhas: elas nomeiam
-          uma ação sobre o CONTEÚDO (o que expandir), esta muda o CONTINENTE, e o par de
-          cantos é o idioma universal disso. `aria-label` carrega o nome para quem não vê
-          o ícone, e `aria-pressed` diz o estado — um botão que alterna precisa dizer em
-          qual dos dois está. */}
+      {/* Tela cheia (v5.7.0) — ícone + texto, na mesma régua das duas vizinhas: numa
+          faixa de ações onde as outras se nomeiam, o ícone sozinho ficava adivinhação
+          (pedido do Yan). `aria-pressed` diz o estado — um botão que alterna precisa
+          dizer em qual dos dois está, e o texto já muda com ele. */}
       <Button
         variant="ghost"
         size="sm"
         onClick={onAlternarTelaCheia}
         className={GHOST_ICONE}
         aria-pressed={telaCheia}
-        aria-label={telaCheia ? 'Sair da tela cheia' : 'Exibir a DRE em tela cheia'}
-        title={telaCheia ? 'Sair da tela cheia (Esc)' : 'Exibir a DRE em tela cheia'}
+        title={telaCheia ? 'Voltar ao tamanho normal (ou tecle Esc)' : 'Ocupar a tela inteira com o demonstrativo'}
       >
         {telaCheia ? <Minimize size={13} /> : <Maximize size={13} />}
+        {telaCheia ? 'Sair da tela cheia' : 'Ver em tela cheia'}
       </Button>
     </div>
   )
@@ -2158,8 +2214,10 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   // pela contagem de colunas, pela largura mínima e pelas posições fixas do cabeçalho.
   const anosSegVisiveisMensal = anosAbertos ? anosSegMensal : []
 
-  const totalColunas = 1 + mesesVisiveis.length + 1 + 1 + anosSegVisiveisMensal.length
-  // Conta + meses (visíveis) + Total do ano + AV (v5.7.0) + anos seguintes (Refino 7)
+  // Conta + meses (visíveis) + Total do ano + AV do total + (ano seguinte + AV dele) × n.
+  // Cada ano seguinte conta DOIS desde a v5.7.0 — é o que mantém o `colSpan` da faixa da
+  // bandeja cobrindo a tabela inteira.
+  const totalColunas = 1 + mesesVisiveis.length + 1 + 1 + anosSegVisiveisMensal.length * 2
 
   // Centavos (formato contábil, 2 casas) alargam cada coluna mensal — as bases 1420
   // ('colapsado') e 1860 ('aberto') são as calibradas nas rodadas anteriores e ficam
@@ -2175,17 +2233,19 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
     modoPrevisto === 'oculto'    ? 330 + (mesesVisiveis.length + 1) * 109 :
     modoPrevisto === 'colapsado' ? 1420 :
     1860
-  // `+ W_AV`: a coluna de AV é fixa como o total, então entra na largura mínima pela
-  // MESMA constante que alimenta o `right` do sticky — nunca por uma estimativa.
-  const minWTotal = minWBase + W_AV + anosSegVisiveisMensal.length * W_ANO_SEG
+  // As colunas de AV são fixas como o total, então entram na largura mínima pelas MESMAS
+  // constantes que alimentam o `right` do sticky — nunca por uma estimativa. Cada ano
+  // seguinte vale um BLOCO (o valor + a AV dele).
+  const BLOCO_ANO_SEG = W_ANO_SEG + W_AV
+  const minWTotal = minWBase + W_AV + anosSegVisiveisMensal.length * BLOCO_ANO_SEG
   // As mesmas posições que as células do corpo usam (`fixasDaLinha` em `LinhaDreTr`),
   // aqui para as `th` do cabeçalho. A faixa de grupo dos anos seguintes é uma célula só,
   // presa em `right: 0` e medindo a soma das larguras.
   const fixasMensal = fixasDaLinha(anosSegVisiveisMensal.length, true)
   // Largura ocupada pelas colunas fixas à direita — onde os rótulos de grupo param
   // (ver `RotuloGrupo`). Na Mensal as colunas de total e de AV existem sempre.
-  const larguraFixasMensal = W_TOTAL + W_AV + anosSegVisiveisMensal.length * W_ANO_SEG
-  const fixaGrupoAnosMensal: Fixa = { right: 0, largura: anosSegVisiveisMensal.length * W_ANO_SEG }
+  const larguraFixasMensal = W_TOTAL + W_AV + anosSegVisiveisMensal.length * BLOCO_ANO_SEG
+  const fixaGrupoAnosMensal: Fixa = { right: 0, largura: anosSegVisiveisMensal.length * BLOCO_ANO_SEG }
 
   // ── Base da Análise Vertical (v5.7.0) ────────────────────────────────────────
   // A ROL passa pelo MESMÍSSIMO `totalDoAno` das outras linhas. É o ponto em que a AV
@@ -2530,7 +2590,8 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
 
                 {anosSegVisiveisMensal.length > 0 && (
                   <th
-                    colSpan={anosSegVisiveisMensal.length}
+                    /* ×2: cada ano seguinte é um PAR valor+AV desde a v5.7.0. */
+                    colSpan={anosSegVisiveisMensal.length * 2}
                     aria-hidden="true"
                     className={`border-l border-l-wt-border-strong ${classeFixa(fixaGrupoAnosMensal, 'cabecalho')}`}
                     style={estiloFixa(fixaGrupoAnosMensal)}
@@ -2552,18 +2613,33 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                   </th>
                 ))}
                 {anosSegVisiveisMensal.map((a, idx) => (
-                  <th
-                    key={`ano-th-${a.ano}`}
-                          className={[
-                      'h-[25px] px-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep',
-                      idx === 0 ? 'border-l border-l-wt-border-strong' : '',
-                      bordaBaseHeader,
-                      classeFixa(fixasMensal.anos[idx], 'cabecalho'),
-                    ].join(' ')}
-                    style={estiloFixa(fixasMensal.anos[idx])}
-                  >
-                    {String(a.ano)}
-                  </th>
+                  <Fragment key={`ano-th-${a.ano}`}>
+                    <th
+                      className={[
+                        'h-[25px] px-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep',
+                        idx === 0 ? 'border-l border-l-wt-border-strong' : '',
+                        bordaBaseHeader,
+                        classeFixa(fixasMensal.anos[idx].valor, 'cabecalho'),
+                      ].join(' ')}
+                      style={estiloFixa(fixasMensal.anos[idx].valor)}
+                    >
+                      {String(a.ano)}
+                    </th>
+                    {/* AV do ano seguinte — âmbar como o valor ao lado (é projeção pura),
+                        e SEM `border-l`: fica colada ao ano que qualifica, como a AV do
+                        total. A régua grossa separa um ANO do outro, não o par interno. */}
+                    <th
+                      title={`${TITULO_AV} — ${a.ano} inteiro (projeção)`}
+                      className={[
+                        'h-[25px] px-3 text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-warning-deep',
+                        bordaBaseHeader,
+                        classeFixa(fixasMensal.anos[idx].av, 'cabecalho'),
+                      ].join(' ')}
+                      style={estiloFixa(fixasMensal.anos[idx].av)}
+                    >
+                      AV
+                    </th>
+                  </Fragment>
                 ))}
               </tr>
             </thead>

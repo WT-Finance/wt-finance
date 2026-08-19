@@ -207,8 +207,10 @@ export default async function DrePage({
               mais um bloco dentro dele. Ele nunca dependeu de `dre` (o ano NAVEGADO), só
               de `consolidadoAnos`; morando dentro da TabelaDre precisava ser repetido nos
               dois ramos de render dela e sumia junto num ramo que não era dele.
-              A ÂNCORA é `anoCorrente`, de propósito distinta do `ano` da pill abaixo. */}
-          <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
+              Desde a v5.7.0 ele tem PILLS PRÓPRIAS de ano (seleção aditiva) — a ancoragem
+              fixa em `anoCorrente` saiu, e a seleção segue independente da pill da tabela
+              abaixo, de propósito. */}
+          <ResumoExecutivo anosDisponiveis={anosDisponiveis} consolidadoAnos={consolidadoAnos} />
 
           <TabelaDre
             dados={dre}
