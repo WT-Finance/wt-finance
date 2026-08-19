@@ -220,7 +220,7 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
-import { avPercentual, baseAv, fmtAv, linhaBaseAv } from '@/lib/dre/av'
+import { avPercentual, baseAv, fmtAv, linhaBaseAv, CHAVE_BASE_AV } from '@/lib/dre/av'
 import type {
   DreMensal,
   DreLinha,
@@ -486,6 +486,23 @@ type ColunaCons =
       /** Δ% do YTD de `de` para o YTD de `para`. */
       de: number
       para: number
+      grupo: GrupoCons
+      classe: string
+      titulo: string
+    }
+  | {
+      /** Análise Vertical (v5.7.0) — % da linha sobre a ROL do MESMO ano e do MESMO
+       *  campo. Não é uma variante de 'valor' porque não tem fundo, corte nem
+       *  totalAno: é uma coluna subordinada, e representá-la como 'valor' obrigaria a
+       *  carregar quatro campos que nunca se aplicam. */
+      k: 'av'
+      id: string
+      rotulo: string
+      /** Ano cuja composição a coluna descreve. */
+      ano: number
+      /** Numerador E denominador saem deste mesmo campo — é o que mantém a AV
+       *  falando do mesmo recorte que a coluna de valor à esquerda. */
+      campo: CampoAno
       grupo: GrupoCons
       classe: string
       titulo: string
@@ -1161,6 +1178,11 @@ function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel,
   const reg = (a: number) => (chave === null ? undefined : porAno.get(a)?.[chave])
   const cel = { tipo: linha.t, peso: estilo.peso, bg: estilo.bg, bgHover: estilo.bgHover, borda: estilo.borda }
   const fixas = fixasDaLinha(anosSeguintes.length)
+  // Base da AV, por ANO e por CAMPO: a ROL daquele ano no MESMO recorte da coluna que a
+  // AV qualifica. Sai do mesmo `porAno` das demais células — a linha da ROL é buscada
+  // pela CHAVE, nunca pelo rótulo (que mudou na própria v5.7.0).
+  const baseAvDoAno = (a: number, campo: CampoAno) =>
+    baseAv(valorCons(porAno.get(a)?.[`b:${CHAVE_BASE_AV}`], campo))
 
   return (
     <tr className="group">
@@ -1176,23 +1198,40 @@ function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel,
         aberto={aberto}
         onToggle={onToggle}
       />
-      {colunas.map(c => c.k === 'delta' ? (
-        <CelulaDeltaPct
-          key={c.id}
-          {...cel}
-          pct={deltaYtd(valorCons(reg(c.de), 'ytd'), valorCons(reg(c.para), 'ytd'))}
-        />
-      ) : (
-        <CelulaValor
-          key={c.id}
-          {...cel}
-          valor={valorCons(reg(c.ano), c.campo)}
-          fundo={c.fundo}
-          corte={c.corte}
-          totalAno={c.totalAno}
-          fixa={c.totalAno ? fixas.total : null}
-        />
-      ))}
+      {colunas.map(c => {
+        if (c.k === 'delta') {
+          return (
+            <CelulaDeltaPct
+              key={c.id}
+              {...cel}
+              pct={deltaYtd(valorCons(reg(c.de), 'ytd'), valorCons(reg(c.para), 'ytd'))}
+            />
+          )
+        }
+        if (c.k === 'av') {
+          return (
+            <CelulaAv
+              key={c.id}
+              pct={avPercentual(valorCons(reg(c.ano), c.campo), baseAvDoAno(c.ano, c.campo))}
+              tipo={linha.t}
+              bg={estilo.bg}
+              bgHover={estilo.bgHover}
+              borda={estilo.borda}
+            />
+          )
+        }
+        return (
+          <CelulaValor
+            key={c.id}
+            {...cel}
+            valor={valorCons(reg(c.ano), c.campo)}
+            fundo={c.fundo}
+            corte={c.corte}
+            totalAno={c.totalAno}
+            fixa={c.totalAno ? fixas.total : null}
+          />
+        )
+      })}
       {anosSeguintes.map((a, idx) => (
         <CelulaAnoSeguinte
           key={`cons-ano-${a.ano}`}
@@ -1234,17 +1273,22 @@ function LinhaConsolidadoBandejaTr({ linha, colunas, porAno, anosSeguintes }: Li
       >
         <span className="truncate text-[13px] text-text-secondary">{linha.rotulo}</span>
       </td>
-      {colunas.map(c => c.k === 'delta' ? (
-        <CelulaDeltaPctBandeja key={c.id} pct={deltaYtd(valorCons(reg(c.de), 'ytd'), valorCons(reg(c.para), 'ytd'))} />
-      ) : (
-        <CelulaValorBandeja
-          key={c.id}
-          valor={valorCons(reg(c.ano), c.campo)}
-          corte={c.corte}
-          totalAno={c.totalAno}
-          fixa={c.totalAno ? fixas.total : null}
-        />
-      ))}
+      {colunas.map(c => {
+        if (c.k === 'delta') {
+          return <CelulaDeltaPctBandeja key={c.id} pct={deltaYtd(valorCons(reg(c.de), 'ytd'), valorCons(reg(c.para), 'ytd'))} />
+        }
+        // AV da bandeja: travessão sempre — a órfã não compõe a ROL (ver `CelulaAvBandeja`).
+        if (c.k === 'av') return <CelulaAvBandeja key={c.id} />
+        return (
+          <CelulaValorBandeja
+            key={c.id}
+            valor={valorCons(reg(c.ano), c.campo)}
+            corte={c.corte}
+            totalAno={c.totalAno}
+            fixa={c.totalAno ? fixas.total : null}
+          />
+        )
+      })}
       {anosSeguintes.map((a, idx) => (
         <CelulaValorBandeja
           key={`cons-ano-${a.ano}`}
@@ -1354,6 +1398,17 @@ function montarColunasCons(sel: ConsolidadoAno[], janelaTexto: string, totalModo
   const ref = sel[sel.length - 1]
   const cols: ColunaCons[] = []
 
+  /** UMA coluna de AV por ano marcado (decisão do Yan na abertura da v5.7.0), colada à
+   *  coluna de NÍVEL daquele ano: o ano cheio nos anos de comparação, o YTD no ano de
+   *  referência. É a leitura literal de "AV à direita de cada ano" e a menor densidade
+   *  possível — com 3 anos marcados no modo 'tudo' a tabela já passa de 12 colunas, e a
+   *  válvula para alargar (AV em toda coluna de valor) é só acrescentar chamadas aqui. */
+  const colunaAv = (ano: number, campo: CampoAno, recorte: string): ColunaCons => ({
+    k: 'av', id: `av-${campo}-${ano}`, rotulo: 'AV', ano, campo, grupo: 'comp',
+    classe: 'text-text-subtle',
+    titulo: `${TITULO_AV} — ${recorte}`,
+  })
+
   sel.slice(0, -1).forEach((c, i) => {
     const prox = sel[i + 1]
     cols.push({
@@ -1361,6 +1416,7 @@ function montarColunasCons(sel: ConsolidadoAno[], janelaTexto: string, totalModo
       fundo: 'normal', corte: false, totalAno: false, grupo: 'comp', classe: 'text-text-secondary',
       titulo: `${c.ano} — ano inteiro`,
     })
+    cols.push(colunaAv(c.ano, 'total', `${c.ano} inteiro`))
     cols.push({
       k: 'valor', id: `ytd-${c.ano}`, rotulo: `YTD ${anoCurto(c.ano)}`, ano: c.ano, campo: 'ytd',
       fundo: 'normal', corte: false, totalAno: false, grupo: 'comp', classe: 'text-text-secondary',
@@ -1392,6 +1448,9 @@ function montarColunasCons(sel: ConsolidadoAno[], janelaTexto: string, totalModo
     fundo: 'normal', corte: false, totalAno: false, grupo: 'comp', classe: 'text-text-secondary',
     titulo: `${ref.ano} na MESMA janela dos demais anos (${janelaTexto})`,
   })
+  // No ano de REFERÊNCIA a coluna de nível é o YTD — é ela que compara com os demais
+  // anos na mesma janela, e num ano corrente é o único recorte 100% realizado.
+  cols.push(colunaAv(ref.ano, 'ytd', `${ref.ano} em ${janelaTexto}`))
 
   if (totalModo === 'realizado') return cols
 
@@ -2110,9 +2169,13 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   // pela largura DECLARADA delas, não pelos 145 genéricos — é a mesma constante do
   // `right` do sticky, então a largura mínima nunca fica menor que a soma real.
   const nTotalCons = colunasCons.filter(c => c.k === 'valor' && c.totalAno).length
+  // A AV é ESTREITA — contá-la nos 145 genéricos reservaria largura que ela não usa e
+  // acenderia a barra horizontal antes da hora. Entra pela própria constante.
+  const nAvCons = colunasCons.filter(c => c.k === 'av').length
   const minWTotalConsolidado =
     330
-    + (colunasCons.length - nTotalCons) * 145
+    + (colunasCons.length - nTotalCons - nAvCons) * 145
+    + nAvCons * W_AV
     + nTotalCons * W_TOTAL
     + (anosAbertos ? anosSegCons.length : 0) * W_ANO_SEG
 
