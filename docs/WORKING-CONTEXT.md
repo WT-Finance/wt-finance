@@ -1,18 +1,18 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-19 (fechamento da v5.7.0) · produção na **v5.6.4** (#237 mergeado 14/08 às 15h18). **Versão EM CURSO: v5.7.0** — DRE: Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical (**PR #239**, aguardando merge). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-19 (pós-merge v5.7.0) · produção na **v5.7.0** (#239 mergeado 19/08 às 17h45 — DRE: Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; migrations `0251` destrutiva + `0252` aditiva, **ADR-0168**). Antes a v5.6.4 (#237, 14/08 15h18 — Metas: período contíguo + carrossel no TV). **Nenhuma versão em curso.** *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0252`; a próxima livre é a `0253`.**
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
 esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
 removida no fechamento da v5.6.4).
 
-🔶 **A ESTRUTURA DA DRE MUDOU EM PRODUÇÃO ANTES DO MERGE (19/08, `0251`).** A estrutura é DADO
-lido a cada consulta: no instante da aplicação, a DRE que a diretoria abre já passou a mostrar
-o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos
-padronizados) — em TODOS os anos, inclusive os fechados. As colunas de AV, essas só aparecem
-com o merge. **A comunicação de mudança de critério à liderança ainda não foi feita** (quadro
-de-para por ano no out-briefing da v5.7.0 e no ADR-0168).
+🔴 **PENDENTE: comunicar a MUDANÇA DE CRITÉRIO da DRE à liderança.** Desde 19/08 a DRE mostra
+o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha) em **TODOS os
+anos, inclusive os fechados** — a estrutura é DADO lido a cada consulta, não reprocessamento.
+O Resultado do Exercício não mudou um centavo, mas o **Lucro Operacional subiu** em todos os
+anos (2025: de R$ 692.722,91 para R$ 792.065,47). Relatório impresso antes dessa data mostra o
+critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefing da v5.7.0.
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -23,7 +23,7 @@ de-para por ano no out-briefing da v5.7.0 e no ADR-0168).
 
 ## Verdade atual
 
-- **v5.7.0 (PR #239, EM CURSO) — DRE: Resultado Financeiro unificado, Imobilizado abaixo da
+- **v5.7.0 (#239, mergeada 19/08 às 17h45) — DRE: Resultado Financeiro unificado, Imobilizado abaixo da
   linha, rótulos padronizados e Análise Vertical.** Migrations **`0251` (destrutiva, aplicada
   em TTY pelo Yan em 19/08) e `0252` (aditiva, aplicada)** · **ADR-0168** · **986 testes**.
   O **oracle fechou**: comparando um retrato tirado imediatamente antes da aplicação com outro
@@ -50,9 +50,10 @@ de-para por ano no out-briefing da v5.7.0 e no ADR-0168).
   que o briefing dizia 18 overrides e são 12; *(c)* a estrutura viva **já divergia do seed 0205**
   (134 maps, bandeja 0) — migration de estrutura se escreve contra o VIVO; *(d)* coluna fixa
   nova entra na **aritmética** de `fixasDaLinha`, não só no JSX.
-  **Pendente Yan:** conferência visual (não foi possível na sessão: rota 307→/login, sem sessão
-  autenticada, e o projeto não tem jsdom/testing-library) · **comunicar a mudança de critério à
-  liderança** (quadro de-para por ano no ADR-0168 e no out-briefing) · mergear o #239.
+  **Pendente Yan:** conferência visual EM PRODUÇÃO (não foi possível na sessão: rota 307→/login,
+  sem sessão autenticada, e o projeto não tem jsdom/testing-library — pontos: folga da coluna AV
+  contra o thumb, largura dela com o `%`, tela cheia, Resumo com 3 anos marcados) ·
+  **comunicar a mudança de critério à liderança** (ver o 🔴 no topo).
 
 - **v5.6.4 (#237, mergeada 14/08 às 15h18) — Metas:
   período contíguo no Personalizado + carrossel no Modo TV.** Sem migration/ADR. O
