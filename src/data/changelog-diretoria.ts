@@ -35,6 +35,58 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.7.0',
+    data: '2026-08-19T17:15', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'MUDANÇA DE CRITÉRIO no Demonstrativo de Resultado, decidida com a controladoria. ' +
+          'Duas coisas saíram do lugar: (1) as receitas financeiras passaram a ser lidas ' +
+          'JUNTO das despesas financeiras, numa linha só, "Resultado Financeiro" — antes ' +
+          'era preciso somar duas linhas de cabeça para saber quanto o financeiro custou ' +
+          'líquido; (2) os gastos com IMOBILIZADO (máquinas, móveis, reforma) saíram das ' +
+          'despesas operacionais e passaram para o grupo de investimentos. Comprar uma mesa ' +
+          'deixou de piorar a margem operacional do mês do mesmo jeito que pagar aluguel — ' +
+          'são decisões de natureza diferente. ' +
+          'IMPORTANTE: o RESULTADO DO EXERCÍCIO não mudou um centavo em nenhum ano — o ' +
+          'imobilizado apenas trocou de lugar dentro da mesma conta. O que muda é o LUCRO ' +
+          'OPERACIONAL, que sobe exatamente o valor do imobilizado do período (2024: de ' +
+          'R$ 1.345.435,68 para R$ 1.366.348,32; 2025: de R$ 692.722,91 para R$ 792.065,47). ' +
+          'A mudança vale para TODOS os anos exibidos, inclusive os já encerrados — então ' +
+          'relatórios impressos antes desta data mostram o critério antigo.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O Demonstrativo passou a mostrar a ANÁLISE VERTICAL: ao lado de cada valor, ' +
+          'quanto aquela linha representa da Receita Operacional Líquida do mesmo período. ' +
+          'É o que permite comparar anos de tamanhos diferentes — em 2025 o Lucro ' +
+          'Operacional foi 7,9% da receita líquida contra 16,2% em 2024, uma leitura que os ' +
+          'valores absolutos sozinhos não entregam.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A página do Demonstrativo foi reorganizada para a leitura ir do resumo ao ' +
+          'detalhe: o Resumo Executivo subiu para o topo (antes era preciso rolar a tabela ' +
+          'inteira para chegar ao resumo dela) e agora tem seleção de anos própria; o card ' +
+          '"Maiores variações" veio da página de Fluxo de Caixa e ficou logo abaixo do ' +
+          'demonstrativo, que é onde ele responde "o que explica a variação"; e o ' +
+          'demonstrativo ganhou um botão para ser exibido em tela cheia.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'Os nomes das linhas do Demonstrativo foram padronizados: os grupos e os ' +
+          'resultados passaram a indicar sempre o seu papel na conta — (+), (-), (+/-) ou ' +
+          '(=) — e as categorias deixaram de trazer esse sinal no nome. O sinal de uma ' +
+          'categoria é o do valor do período, e trazê-lo no nome dava informação errada nos ' +
+          'meses em que o valor virava (um reembolso que num mês entra em vez de sair).',
+      },
+    ],
+  },
+  {
     versao: '5.6.4',
     data: '2026-08-14T15:18', // horário REAL do merge (869193e, PR #237, 15h18 −03) — reconciliado no /pos-merge
     itens: [

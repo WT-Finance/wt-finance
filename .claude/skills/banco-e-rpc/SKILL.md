@@ -359,6 +359,51 @@ imutável, uma alteração futura do objeto vem numa migration NOVA — e o test
 aprovando um espelho obsoleto até alguém apontar os caminhos para ela. Deixar o aviso no
 próprio teste.
 
+### Migration que muda ESTRUTURA/DADO: prove o invariante ANTES de escrever o SQL
+
+Quando a migration reorganiza dado existente (mover bloco de lugar, fundir agrupadores,
+recategorizar), o que autoriza a aplicação é um **invariante**: "tal número não pode mudar".
+Três coisas, nesta ordem, e nenhuma delas escreve em produção:
+
+1. **Prove em FORMA FECHADA.** Se a transformação é aritmética, escreva a álgebra. Na v5.7.0:
+   `RAIR' = (LL − IMOB) + INV + IMOB = RAIR` ⇒ `ΔREX = 0` — o imobilizado muda de lugar
+   *dentro da mesma soma*, e a soma é indiferente à ordem das parcelas.
+2. **MEÇA read-only** o estado atual (uma chamada REST por período) e confronte com a
+   previsão. Se a álgebra e a medição concordam, o ensaio acabou.
+3. **Só então escreva o SQL**, e deixe um script que capture antes/depois e **reprove** se o
+   invariante mover (modelo: `scripts/dre-oracle.mjs`).
+
+Isso **dispensa o ensaio em transação revertida** contra produção — que é o reflexo natural
+quando não há staging (§1), mas é escrita (ainda que desfeita) para obter uma garantia que
+uma leitura já dava. ⚠️ Se o invariante envolve o **período corrente**, ele é alvo móvel (o
+previsto amadurece todo dia): só um par antes/depois tirado **no ato da aplicação** prova algo.
+
+### Simule os regexes da migration contra o dado VIVO antes de entregá-la
+
+Migration que faz `UPDATE … WHERE coluna ~ 'regex'` ou `regexp_replace` acerta um conjunto
+que **ninguém contou**. Puxe o estado vivo por REST e rode o MESMO regex em script antes de
+entregar: quantas linhas casam, quais são, e como cada uma fica depois.
+
+**Custou caro na v5.7.0:** o briefing dizia "os **18** overrides `(-)` perdem o prefixo". São
+**12** — os outros 6 eram overrides de *capitalização*, que o próprio briefing mandava manter.
+A simulação pegou isso antes de o arquivo ir para o TTY; sem ela, a reconciliação fail-closed
+teria abortado a aplicação na frente do humano, ou pior, passado com o conjunto errado.
+Vale também para o caminho inverso: confirme que **nenhuma** linha fora do alvo casa.
+
+### `reverter_diario` pressupõe UM toque por linha por lote
+
+O undo em lote (`0206`, ADR-0156) compara, para cada entrada, o estado atual da linha com o
+`dados_depois` dela, processando `ORDER BY id` ASC. Isso assume que cada linha foi tocada
+**uma vez** no lote — verdade no fluxo normal do editor (um upsert por `categoria_id`), e
+**falso numa migration** que atualiza a mesma linha em passos separados (ex.: a fórmula num
+passo, o rótulo em outro). Aí a entrada mais antiga guarda um estado INTERMEDIÁRIO, a
+comparação falha e a transação inteira aborta **sem reverter nada**.
+
+Consequência prática: **não prometa "reversível pelo painel" no header de uma migration de
+estrutura** sem antes conferir se ela toca alguma linha mais de uma vez. O dado continua
+recuperável entrada por entrada (DESC de `id`) ou por migration corretiva — mas não pelo
+clique único. (Achado ALTO do `revisor-db` na v5.7.0.)
+
 ---
 
 ## 6. Verificação pós-push

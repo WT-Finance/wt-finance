@@ -6,6 +6,36 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.7.0] — 2026-08-19
+
+MINOR · **DRE: Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical**. Migrations `0251` (destrutiva, aplicada em TTY) e `0252` (aditiva) · **ADR-0168**.
+
+### Alterado
+
+- **Mudança de CRITÉRIO no demonstrativo (decisão da controladoria, ADR-0168).** (a) As receitas financeiras (`RFIN`) foram absorvidas pelas despesas financeiras, que viram **"(+/-) Resultado Financeiro"** e passam a ser lidas líquidas — o bloco `RFIN` deixou de existir; (b) o **Imobilizado** saiu das despesas operacionais e passou a compor o grupo de investimentos, como subgrupo próprio (`INV_H` agora é "(+/-) INVESTIMENTOS, IMOBILIZADO E EMPRÉSTIMOS"). **O Resultado do Exercício não muda um centavo** — o imobilizado troca de lugar dentro da mesma soma. Medido antes×depois em produção: `ΔRAIR = ΔREX = 0,00` em 2024, 2025 e 2026; o Lucro Operacional sobe exatamente o valor do imobilizado (20.912,64 / 99.342,56 / 236.572,23). **Retroativo a todos os anos exibidos** — a estrutura é dado lido a cada consulta, não reprocessamento.
+- **Rótulos padronizados.** Cabeçalho, subgrupo e totalizador carregam operador `(+)`/`(-)`/`(+/-)`/`(=)`; **categoria-folha nunca carrega** (o sinal da folha é do valor, não do rótulo — e o rótulo mente quando o valor do período vem com o sinal contrário). Os 5 `=` soltos entraram na fôrma, o `(+ / -)` do `ONOP_H` foi normalizado, 14 subgrupos ganharam operador e **12** overrides de categoria perderam o prefixo (o briefing dizia 18 — os outros 6 são de capitalização e ficam).
+- **Ordem dos cards da página** (`/financeiro/dre`): Resumo Executivo → Demonstrativo → Maiores variações → Decomposição. O Resumo subiu para o topo (antes obrigava a rolar o demonstrativo inteiro para chegar ao resumo dele).
+- **"Maiores variações" migrou** da página de Fluxo de Caixa para a DRE: compara categorias no YTD contra o mesmo período do ano anterior, que é leitura de demonstrativo e não de liquidez.
+
+### Adicionado
+
+- **Análise Vertical (AV)** — % de cada linha sobre a **ROL do mesmo período**, sinal algébrico preservado. Uma coluna ao lado do "Total do ano" na visão Mensal (e uma por ano seguinte, quando abertos), e uma por ano marcado na Consolidado. Módulo puro `src/lib/dre/av.ts` derivado do payload existente — **zero RPC, zero mudança de contrato**. Guardas: base ≤ 0/ausente ⇒ coluna inteira em travessão; bandeja sempre travessão; `NaN`/`∞` impossíveis por construção. Nas linhas de resultado a AV vem em negrito e colorida por sinal; nas demais, neutra e sem peso.
+- **Botão "Ver em tela cheia"** na barra de ações da DRE (Fullscreen API sobre o card inteiro, para a toolbar acompanhar).
+- **Pills de ano no Resumo Executivo**, com seleção aditiva e independente da pill da tabela. Sai a ancoragem fixa no ano corrente. Colunas em dois grupos, cada um com o seu Δ em reais: ano cheio dos anos **fechados** (no corrente o total incluiria previsto) e YTD de todos os marcados.
+- **`scripts/dre-oracle.mjs`** — captura o retrato de antes/depois por REST e **reprova** se RAIR ou REX moverem um centavo. Existe porque o ano corrente é alvo móvel: só um par tirado no ato prova alguma coisa nele.
+
+### Corrigido
+
+- **`rotuloBloco()` não reconhecia o prefixo duplo.** A regex aceitava UM caractere de sinal entre parênteses, então nem `(+/-)` nem o `(+ / -)` que estava gravado no `ONOP_H` eram removidos — o prefixo vazava inteiro para os rótulos da Decomposição. Defeito pré-existente e silencioso que a padronização tornaria visível em três linhas, incluindo o Resultado Financeiro.
+- **`get_fluxo_ranking` aceitava só as áreas do Fluxo de Caixa e da Executiva** (`0252`). Com o card migrado para a DRE, quem tivesse apenas `financeiro/dre` receberia negação e o fail-safe anunciaria "sem movimentações para ranquear" — sem ACESSO lido como sem DADO.
+
+### Interno
+
+- **Guardas mecânicas permanentes** em `rpc-contrato.test.ts`, lendo o estado VIVO da estrutura: as duas direções da regra de rótulo, a camada firme da v5.7.0, e o **grafo de fórmulas** (fórmula só pode consumir fórmula anterior — violar isso não dá erro, o insumo entra como ZERO em silêncio). As cinco primeiras nasceram VERMELHAS de propósito e viraram verdes na aplicação da `0251` — guarda que nunca foi vista falhando não prova nada.
+- A coluna de AV entra na aritmética das colunas presas à direita (`fixasDaLinha`): cada ano seguinte deixou de ser uma coluna e virou um bloco valor+AV. Largura declarada é a fonte única do `right` cumulativo — coluna fixa fora dessa conta senta por cima da vizinha sem que gate nenhum acuse.
+- `AnoPills` exportado e reusado pelo Resumo Executivo (duas cópias de pill divergiriam em cor, foco e `aria` no primeiro ajuste).
+- **986 testes** (baseline da v5.6.4: 932).
+
 ## [5.6.4] — 2026-08-14
 
 PATCH · **Metas: período contíguo no Personalizado + carrossel mês/trimestre/ano no Modo TV**. Sem migration · sem ADR.

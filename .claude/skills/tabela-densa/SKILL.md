@@ -113,6 +113,29 @@ Clientes — Contato/Destinatários/Observações), é aceitável:
 - Envolver em `<ScrollAutoHide eixo="both">` (rola na horizontal abaixo do limite; acima
   do limite, preenche o container sem scroll — ver `ui-design-system` para o componente).
 
+### Colunas presas à DIREITA: a largura é a fonte única do `right` cumulativo (v5.4.x, v5.7.0)
+
+Quando um grupo de colunas fica `sticky` na borda direita, cada uma encosta num `right`
+calculado pela **soma das larguras das que estão à sua direita**. Duas regras que isso impõe:
+
+- **A largura DECLARADA e o `right` saem da MESMA constante.** Uma coluna nova que seja
+  renderizada mas não entre nessa aritmética senta **por cima da vizinha, em silêncio** —
+  nenhum gate mede sobreposição de `position: sticky`, e no screenshot parece só "apertado".
+  Quando uma coluna vira um PAR (valor + um percentual colado, por exemplo), a conta passa a
+  contar **blocos**, não colunas. Confira sempre `right + largura` de cada coluna caindo
+  exatamente no `right` da vizinha — é aritmética de dois números e pega o erro na hora.
+- **Dimensione pelo PIOR caso, não pelo típico**, e trave-o num teste do formatador. Sem
+  `maxWidth` (e não se deve pôr: cortar dígito é dado errado na tela), a coluna que não cabe
+  **cresce** — e aí o `right` das vizinhas, que foi calculado com a largura declarada,
+  desalinha tudo.
+
+**O thumb do `<ScrollAutoHide>` divide a borda com a última coluna.** Ele é overlay
+(`absolute right-1 w-1.5` do wrapper) e não desloca conteúdo: com uma coluna larga na ponta
+ele pousa no padding e ninguém nota; com uma coluna **estreita**, cai em cima dos dígitos.
+A folga tem de vir de **fora do container que rola** (encolher o wrapper) e do **padding da
+própria célula** — nunca de `padding-right` no viewport, que deslocaria o ponto em que as
+colunas `sticky` grudam e faria o conteúdo aparecer no vão à direita delas durante o scroll.
+
 ## Tabelas em container estreito (cards compactos)
 
 Fora do caso de tabela longa/sticky, tabela dentro de um card estreito segue outra

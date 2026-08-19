@@ -71,6 +71,21 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
 - Numeração do arquivo é sequencial em relação ao **maior número real** em
   `supabase/migrations/` (não o número que o briefing sugere).
 
+### Migration que mexe em DADO/ESTRUTURA existente (v5.7.0)
+- O **invariante** que autoriza a migration ("tal número não pode mudar") está provado em
+  forma fechada E medido read-only ANTES do SQL? Há script que capture antes/depois e
+  **reprove** se ele mover? Se o invariante envolve o período CORRENTE, o "antes" precisa
+  ser tirado no ato da aplicação (alvo móvel).
+- `UPDATE … WHERE ~ 'regex'` / `regexp_replace`: o conjunto atingido foi **simulado contra o
+  dado VIVO** antes de entregar — quantas linhas casam, quais, e como ficam? E o inverso
+  (nenhuma linha fora do alvo casa)? *(O briefing da v5.7.0 dizia 18 e eram 12.)*
+- A migration toca **a mesma linha mais de uma vez** (ex.: fórmula num passo, rótulo em
+  outro)? Se sim, o **undo em lote do diário está QUEBRADO** para ela — `reverter_diario`
+  pressupõe um toque por linha por lote e aborta sem reverter nada. Então o header **não pode
+  prometer "reversível pelo painel"**. (ALTO na v5.7.0.)
+- A reconciliação fail-closed confere **CONTEÚDO** (fórmulas, arrays, chaves), não só
+  contagens? Contagem certa com conteúdo errado passa calada.
+
 ### Contrato com o app
 - RPC nova: o call-site usa helper de tipagem frouxa + `parseRpc` (não `db.rpc` tipado —
   `database.ts` está congelado)?

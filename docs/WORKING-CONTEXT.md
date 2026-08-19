@@ -1,16 +1,18 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-14 (pós-merge v5.6.4) · produção na **v5.6.4** (#237 mergeado 14/08 às 15h18 — Metas: período contíguo no Personalizado + carrossel mês/trimestre/ano no Modo TV; **sem migration**). Antes a v5.6.3 (#235, 13/08 15h07 — espelho auto-curativo, `0250`), com a cura PROVADA em produção no mesmo dia. **Nenhuma versão em curso.** *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-19 (fechamento da v5.7.0) · produção na **v5.6.4** (#237 mergeado 14/08 às 15h18). **Versão EM CURSO: v5.7.0** — DRE: Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical (**PR #239**, aguardando merge). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-⚠️ **Numeração de migration: a última APLICADA é a `0250`; a próxima livre é a `0251`.**
+⚠️ **Numeração de migration: a última APLICADA é a `0252`; a próxima livre é a `0253`.**
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
 esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
 removida no fechamento da v5.6.4).
 
-🔴 **PENDENTE E INDISPENSÁVEL: re-subir as DUAS planilhas em `/admin/uploads`.** A v5.5.2 corrigiu
-o código, **não o dado já gravado** — a base viva segue com os valores inflados (2024 e 2025
-aparecem como prejuízo e são lucro) até a reingestão. O upload é full-swap, então resolve sem
-migration destrutiva. Detalhe no 2º item de "Verdade atual".
+🔶 **A ESTRUTURA DA DRE MUDOU EM PRODUÇÃO ANTES DO MERGE (19/08, `0251`).** A estrutura é DADO
+lido a cada consulta: no instante da aplicação, a DRE que a diretoria abre já passou a mostrar
+o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos
+padronizados) — em TODOS os anos, inclusive os fechados. As colunas de AV, essas só aparecem
+com o merge. **A comunicação de mudança de critério à liderança ainda não foi feita** (quadro
+de-para por ano no out-briefing da v5.7.0 e no ADR-0168).
 
 ⚠️ **A URL de produção é `https://wt-janus.vercel.app`** — é o que está no Vault (`monde_app_url`) e o que todo cron chama. `wt-finance.vercel.app` é alias antigo do pré-rebranding; ele ainda responde, e por isso é armadilha: uma verificação feita contra ele passa e não prova nada sobre o que o cron faz. Dois docs citavam o antigo e foram corrigidos no pós-merge da v5.5.0.
 
@@ -20,6 +22,37 @@ migration destrutiva. Detalhe no 2º item de "Verdade atual".
 > Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
+
+- **v5.7.0 (PR #239, EM CURSO) — DRE: Resultado Financeiro unificado, Imobilizado abaixo da
+  linha, rótulos padronizados e Análise Vertical.** Migrations **`0251` (destrutiva, aplicada
+  em TTY pelo Yan em 19/08) e `0252` (aditiva, aplicada)** · **ADR-0168** · **986 testes**.
+  O **oracle fechou**: comparando um retrato tirado imediatamente antes da aplicação com outro
+  depois (`scripts/dre-oracle.mjs`), **ΔRAIR = ΔREX = 0,00 nos 3 anos**; LOP e LL sobem
+  exatamente −IMOB (20.912,64 / 99.342,56 / 236.572,23). As 5 guardas que nascem vermelhas por
+  desenho viraram verdes na aplicação.
+  Revisão: `revisor` **1 ALTO corrigido** (o gatilho "?" novo era `<span>` e não `<button>` —
+  fora do tab-order; é a reintrodução do achado ALTO da v5.4.2, agora com a receita da skill
+  aplicada nos dois call-sites). `revisor-db` **1 ALTO + 1 MÉDIO + 1 BAIXO**, todos endereçados
+  ou registrados (abaixo).
+  ⚠️ **O "desfazer em lote" do painel da estrutura NÃO reverte a `0251`** (achado ALTO do
+  `revisor-db`; o header da própria migration afirma o contrário e está errado).
+  `reverter_diario` (`0206`) pressupõe **no máximo um toque por linha por lote**, e a `0251`
+  toca 5 blocos DUAS vezes na mesma transação (fórmula/ordem e depois rótulo) — a reversão
+  processa `ORDER BY id` ASC, encontra um estado intermediário que não bate com o atual e
+  **aborta sem reverter nada**. O dado é recuperável entrada por entrada
+  (`dre_estrutura_desfazer_linha`, DESC de `id`) ou por migration corretiva. **Débito técnico
+  registrado:** corrigir `reverter_diario` para processar em DESC e comparar contra o estado
+  seguinte da própria cadeia — isso tornaria o undo em lote robusto a múltiplos toques por
+  linha, e vale para QUALQUER migration que mexa em estrutura, não só esta.
+  **Duráveis:** *(a)* o oracle de uma mudança de estrutura pode ser provado em **forma fechada**
+  e **medido read-only** ANTES de escrever SQL — dispensa o ensaio em transação revertida contra
+  produção; *(b)* **simular os regexes da migration contra o dado VIVO antes de entregar** pegou
+  que o briefing dizia 18 overrides e são 12; *(c)* a estrutura viva **já divergia do seed 0205**
+  (134 maps, bandeja 0) — migration de estrutura se escreve contra o VIVO; *(d)* coluna fixa
+  nova entra na **aritmética** de `fixasDaLinha`, não só no JSX.
+  **Pendente Yan:** conferência visual (não foi possível na sessão: rota 307→/login, sem sessão
+  autenticada, e o projeto não tem jsdom/testing-library) · **comunicar a mudança de critério à
+  liderança** (quadro de-para por ano no ADR-0168 e no out-briefing) · mergear o #239.
 
 - **v5.6.4 (#237, mergeada 14/08 às 15h18) — Metas:
   período contíguo no Personalizado + carrossel no Modo TV.** Sem migration/ADR. O
@@ -165,10 +198,9 @@ migration destrutiva. Detalhe no 2º item de "Verdade atual".
   código; `origin/main` falha igual, e o patch não toca `src/lib/auth/areas.ts`.
   `revisor` despachado a pedido do Yan: **1 CRÍTICO + 1 ALTO, ambos verificados e corrigidos**
   nesta mesma versão (itens *a* e *a2* abaixo).
-  ⚠️ **AÇÃO DO YAN, indispensável: re-subir os DOIS arquivos em `/admin/uploads` depois do
-  merge.** O patch corrige a PRÓXIMA carga; a base viva segue inflada até lá. O upload é
-  full-swap, então a reingestão resolve tudo sem migration destrutiva — e é a única forma de
-  fechar o número exato (o arquivo de 04/08 não está em disco; o levantamento é um **piso**).
+  ✅ **RE-UPLOAD FEITO** (confirmado pelo Yan em 19/08). A base viva está reingerida e correta —
+  o oracle da v5.7.0 mediu 2025 fechando com **REX positivo de R$ 248.434,54**, não o prejuízo
+  inflado. O upload é full-swap, então a reingestão resolveu sem migration destrutiva.
   **Duráveis desta versão:**
   *(a)* **Há DUAS portas para o mesmo estrago, e a segunda é maior.** No `sheet_to_json`, só
   os dois parsers do Fluxo/DRE pediam `raw: false` (os outros omitem, e o default já protege).
