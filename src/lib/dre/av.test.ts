@@ -47,12 +47,12 @@ describe('avPercentual — percentual com sinal algébrico preservado', () => {
 
   it('LOP de 2025 sobre a ROL ≈ 6,9%', () => {
     expect(avPercentual(692_722.91, ROL_2025)).toBeCloseTo(6.90448, 4)
-    expect(fmtAv(avPercentual(692_722.91, ROL_2025))).toBe('6,9')
+    expect(fmtAv(avPercentual(692_722.91, ROL_2025))).toBe('6,9%')
   })
 
   it('LOP de 2025 DEPOIS da reestruturação ≈ 7,9% — o efeito do capex abaixo da linha', () => {
     // 692.722,91 + 99.342,56 (IMOB sai das despesas operacionais).
-    expect(fmtAv(avPercentual(792_065.47, ROL_2025))).toBe('7,9')
+    expect(fmtAv(avPercentual(792_065.47, ROL_2025))).toBe('7,9%')
   })
 
   it('despesa negativa devolve AV negativa — o sinal NÃO é normalizado', () => {
@@ -143,8 +143,8 @@ describe('aditividade — exata ANTES do arredondamento', () => {
       .toBeCloseTo(partes.reduce((s, v) => s + (avPercentual(v, b) as number), 0), 10)
 
     // Exibido, não fecha — e o teste crava isso em vez de esconder.
-    expect(partes.map(v => fmtAv(avPercentual(v, b)))).toEqual(['0,3', '0,3', '0,3'])
-    expect(fmtAv(avPercentual(total, b))).toBe('1,0')
+    expect(partes.map(v => fmtAv(avPercentual(v, b)))).toEqual(['0,3%', '0,3%', '0,3%'])
+    expect(fmtAv(avPercentual(total, b))).toBe('1,0%')
   })
 })
 
@@ -170,15 +170,15 @@ describe('linhaBaseAv — casa por CHAVE, nunca por rótulo ou posição', () =>
   })
 })
 
-describe('fmtAv — gramática contábil, sem % por célula', () => {
+describe('fmtAv — percentual em gramática contábil', () => {
   it.each<[number | null, string]>([
-    [6.905, '6,9'],
-    [0, '0,0'],
-    [100, '100,0'],
-    [-0.9902, '(1,0)'],
-    [-21.0, '(21,0)'],
-    [-0.04, '(0,0)'],
-    [1234.56, '1.234,6'],
+    [6.905, '6,9%'],
+    [0, '0,0%'],
+    [100, '100,0%'],
+    [-0.9902, '(1,0%)'],
+    [-21.0, '(21,0%)'],
+    [-0.04, '(0,0%)'],
+    [1234.56, '1.234,6%'],
     [null, '–'],
   ])('%s → %s', (pct, esperado) => {
     expect(fmtAv(pct)).toBe(esperado)
@@ -189,7 +189,12 @@ describe('fmtAv — gramática contábil, sem % por célula', () => {
     expect(fmtAv(-12.3)).not.toContain('−')
   })
 
-  it('não carrega o sufixo % (quem diz é o cabeçalho da coluna)', () => {
-    expect(fmtAv(6.9)).not.toContain('%')
+  // O pior caso de LARGURA da coluna: linha acima da ROL, negativa e na casa das
+  // centenas. É por ele que `W_AV` é dimensionado em `tabela-dre.tsx` — a coluna fixa
+  // NÃO pode crescer além da largura declarada, senão o `right` cumulativo das
+  // vizinhas desalinha em silêncio.
+  it('o pior caso cabe em 8 caracteres', () => {
+    expect(fmtAv(-281.5)).toBe('(281,5%)')
+    expect(fmtAv(-281.5)).toHaveLength(8)
   })
 })

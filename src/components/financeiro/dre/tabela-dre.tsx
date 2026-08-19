@@ -213,7 +213,7 @@
 
 import { useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
+import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp, Maximize, Minimize } from 'lucide-react'
 import Button from '@/components/ui/button'
 import Tooltip from '@/components/ui/tooltip'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
@@ -366,8 +366,22 @@ const W_ANO_SEG = 170
 /** Largura (px) da coluna de AV na visão Mensal (v5.7.0). Estreita de propósito — a AV é
  *  subordinada ao valor, não uma segunda coluna de número —, mas dimensionada pelo PIOR
  *  caso real e não pelo típico: linhas ACIMA da ROL passam de 100% (a Entrada de Clientes
- *  é bruta e a ROL é líquida), então "(1.234,6)" é o que precisa caber sem estourar. */
-const W_AV = 92
+ *  é bruta e a ROL é líquida), então o pior caso é "(281,5%)", 8 caracteres (cravado em
+ *  `av.test.ts`). Apertada de 92 para 82 na conferência do Yan: com o sufixo `%` o número
+ *  ocupa mais, mas ainda sobrava folga demais à esquerda dele.
+ *  ⚠️ Esta coluna é FIXA: se o conteúdo não couber, ela CRESCE (não há `maxWidth`) e o
+ *  `right` cumulativo das vizinhas desalinha em silêncio. Encolher aqui pede conferir o
+ *  pior caso, não o típico. */
+const W_AV = 82
+
+/** Folga (px) de padding-direito da coluna MAIS À DIREITA presa (v5.7.0). O thumb vertical
+ *  do `ScrollAutoHide` é overlay `absolute right-1 w-1.5` do wrapper — ele ocupa de 4px a
+ *  10px da borda e, até a v5.7.0, pousava sobre o padding largo da coluna de total sem
+ *  incomodar. Com a AV (estreita, `px-3`) na ponta, ele passou a cair EM CIMA dos dígitos.
+ *  A folga é da CÉLULA, não do viewport: `padding-right` no container que rola deslocaria
+ *  o ponto em que as colunas `sticky` grudam, e o conteúdo passaria a aparecer no vão à
+ *  direita delas durante o scroll. */
+const PR_ULTIMA_FIXA = 20
 
 /** Uma coluna presa à direita: onde ela encosta (`right`, px) e a largura DECLARADA.
  *  `null` em qualquer célula = coluna normal — é assim que o Consolidado no modo
@@ -411,7 +425,17 @@ function fixasDaLinha(
  *  do que CORTAR dígito, que é dado errado na tela. */
 function estiloFixa(fixa: Fixa | null | undefined): CSSProperties | undefined {
   if (!fixa) return undefined
-  return { right: fixa.right, width: fixa.largura, minWidth: fixa.largura }
+  return {
+    right: fixa.right,
+    width: fixa.largura,
+    minWidth: fixa.largura,
+    // A coluna encostada na borda (`right: 0`) é a única que divide espaço com o thumb
+    // vertical — ganha a folga (ver `PR_ULTIMA_FIXA`). Vai por `style`, e não por classe,
+    // de propósito: `px-3`/`px-3.5` também escrevem `padding-right`, e entre duas classes
+    // Tailwind quem vence é a ORDEM DO CSS GERADO, não a ordem no `className` — inline
+    // decide sem ambiguidade.
+    ...(fixa.right === 0 ? { paddingRight: PR_ULTIMA_FIXA } : null),
+  }
 }
 
 /** Classe de uma célula fixa, por CAMADA — a escala de z-index está documentada no topo
@@ -1827,7 +1851,14 @@ const GHOST_ICONE = 'inline-flex items-center gap-1.5'
  *  Sem margem própria: o espaçamento é o `gap` da linha das pills.
  *  Não renderiza no FAIL-SAFE — sem tabela na tela não há hierarquia para expandir, e
  *  botão inerte é pior que botão ausente. */
-function AcoesHierarquia({ onExpandir, onRecolher }: { onExpandir: () => void; onRecolher: () => void }) {
+function AcoesHierarquia({
+  onExpandir, onRecolher, telaCheia, onAlternarTelaCheia,
+}: {
+  onExpandir: () => void
+  onRecolher: () => void
+  telaCheia: boolean
+  onAlternarTelaCheia: () => void
+}) {
   return (
     <div className="ml-auto flex flex-wrap items-center gap-3">
       <Button variant="ghost" size="sm" onClick={onExpandir} className={GHOST_ICONE} title="Abrir todas as contas de todos os blocos">
@@ -1837,6 +1868,22 @@ function AcoesHierarquia({ onExpandir, onRecolher }: { onExpandir: () => void; o
       <Button variant="ghost" size="sm" onClick={onRecolher} className={GHOST_ICONE} title="Fechar todos os blocos — só a estrutura de resultado à vista">
         <ChevronsDownUp size={13} />
         Recolher tudo
+      </Button>
+      {/* Tela cheia (v5.7.0) — SÓ ÍCONE, ao contrário das duas vizinhas: elas nomeiam
+          uma ação sobre o CONTEÚDO (o que expandir), esta muda o CONTINENTE, e o par de
+          cantos é o idioma universal disso. `aria-label` carrega o nome para quem não vê
+          o ícone, e `aria-pressed` diz o estado — um botão que alterna precisa dizer em
+          qual dos dois está. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onAlternarTelaCheia}
+        className={GHOST_ICONE}
+        aria-pressed={telaCheia}
+        aria-label={telaCheia ? 'Sair da tela cheia' : 'Exibir a DRE em tela cheia'}
+        title={telaCheia ? 'Sair da tela cheia (Esc)' : 'Exibir a DRE em tela cheia'}
+      >
+        {telaCheia ? <Minimize size={13} /> : <Maximize size={13} />}
       </Button>
     </div>
   )
@@ -1962,6 +2009,33 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   const refPrevisto = useRef<HTMLTableCellElement | null>(null)
   const refTabela = useRef<HTMLTableElement | null>(null)
   useScrollAoAlternar(previstoAberto, refPrevisto, refTabela, 'inicio')
+
+  // ── Tela cheia (v5.7.0) ───────────────────────────────────────────────────────
+  // Fullscreen API sobre o CARD INTEIRO, não sobre a tabela: em tela cheia a toolbar
+  // precisa vir junto, senão o usuário perde ano, visão e modo justamente quando ganhou
+  // espaço para usá-los. O estado espelha o DOCUMENTO (evento `fullscreenchange`), não o
+  // clique — é o que mantém o ícone certo quando a saída vem do Esc ou do próprio
+  // browser, que é o caminho mais comum de sair.
+  const refCard = useRef<HTMLDivElement | null>(null)
+  const [telaCheia, setTelaCheia] = useState(false)
+
+  useEffect(() => {
+    // `setState` aqui vive no HANDLER do evento, nunca no corpo do efeito — o efeito só
+    // assina e desassina (ruleset do React Compiler: nada de set-state-in-effect).
+    const aoMudar = () => setTelaCheia(document.fullscreenElement === refCard.current)
+    document.addEventListener('fullscreenchange', aoMudar)
+    return () => document.removeEventListener('fullscreenchange', aoMudar)
+  }, [])
+
+  function alternarTelaCheia() {
+    const el = refCard.current
+    if (!el) return
+    // As duas promises são engolidas de propósito: o browser recusa fullscreen sem gesto
+    // do usuário ou por política de permissão, e isso não é erro da aplicação — a tela
+    // simplesmente segue como está. Sem o `catch` viraria unhandled rejection no console.
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+    else void el.requestFullscreen?.().catch(() => {})
+  }
   // ⚠️ Os ANOS SEGUINTES não rolam mais ao abrir/fechar — e é de propósito. O salto existia
   // para trazer ao campo de visão colunas que nasciam FORA dele; desde que 2027/2028 viraram
   // colunas FIXAS à direita (rodada 6/Refino 4) elas já aparecem pinadas no instante do
@@ -2180,7 +2254,19 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
     + (anosAbertos ? anosSegCons.length : 0) * W_ANO_SEG
 
   return (
-    <div className="rounded-xl bg-surface p-5 shadow-sm">
+    /* Em TELA CHEIA o card vira o documento inteiro: o `bg-surface` deixa de ser
+       decoração e passa a ser o fundo da tela (sem ele o browser pinta o `::backdrop`
+       preto por baixo de uma tabela de fundo transparente), a sombra e o arredondamento
+       perdem sentido contra a borda física, e o `overflow-auto` garante que a toolbar não
+       empurre a tabela para fora quando a janela é baixa. */
+    <div
+      ref={refCard}
+      className={
+        telaCheia
+          ? 'h-full w-full overflow-auto bg-surface p-5'
+          : 'rounded-xl bg-surface p-5 shadow-sm'
+      }
+    >
       <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} />
 
       {/* ── Toolbar em DUAS linhas, tudo à esquerda (rodada 3/Refino 2) ──
@@ -2262,7 +2348,12 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
               `ml-auto` (rodada 6): antes ocupavam uma 3ª faixa própria acima da tabela, o
               que criava um degrau de altura só para dois botões de texto. Aqui elas ficam
               na horizontal das pills e a toolbar volta a ter duas linhas. */}
-          <AcoesHierarquia onExpandir={expandirTudo} onRecolher={recolherTudo} />
+          <AcoesHierarquia
+            onExpandir={expandirTudo}
+            onRecolher={recolherTudo}
+            telaCheia={telaCheia}
+            onAlternarTelaCheia={alternarTelaCheia}
+          />
         </div>
       </div>
 
@@ -2281,11 +2372,25 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
             qualquer sobra abaixo da última linha (ex.: tudo recolhido em tela alta) — a
             tabela termina numa moldura contínua, não num vazio branco. As células têm
             fundo próprio, então só o espaço realmente vazio aparece em cinza. */}
-        {/* Gutter EXTERNO (pb-1.5): o thumb do ScrollAutoHide é `absolute bottom-1`
-            (4px) do PRÓPRIO wrapper — encolher o wrapper afasta a barra da borda do box
-            sem tocar no componente compartilhado (que é padrão da plataforma). */}
-        <div className="pb-1.5">
-          <ScrollAutoHide eixo="both" className="max-h-[80vh] pb-3.5" onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}>
+        {/* Gutter EXTERNO (pb-1.5 / pr-1.5): os thumbs do ScrollAutoHide são `absolute`
+            a 4px do PRÓPRIO wrapper — encolher o wrapper afasta as barras da borda do box
+            sem tocar no componente compartilhado (que é padrão da plataforma).
+            O `pr-1.5` VOLTOU na v5.7.0. O Refino 2 o tinha removido com um argumento que
+            valia para o thumb HORIZONTAL (overlay, não desloca conteúdo ⇒ a borda direita
+            do box podia encostar na última coluna). Só que o thumb VERTICAL divide a
+            mesma borda, e com a coluna de AV — estreita — na ponta ele passou a pousar
+            sobre os dígitos. Aqui os 6px afastam a barra; a folga que tira o número de
+            baixo dela é a da célula (`PR_ULTIMA_FIXA`). As duas juntas, e não uma só,
+            porque 6px sozinhos deixariam o thumb roçando o algarismo. */}
+        <div className="pb-1.5 pr-1.5">
+          {/* 80vh no card normal; em TELA CHEIA a tabela é o único conteúdo da tela, então
+              ela usa o que sobra da toolbar (~150px) em vez de deixar 20% de vazio — que
+              seria justamente desperdiçar o espaço que o botão foi buscar. */}
+          <ScrollAutoHide
+            eixo="both"
+            className={`${telaCheia ? 'max-h-[calc(100vh-150px)]' : 'max-h-[80vh]'} pb-3.5`}
+            onScroll={e => setRolado(e.currentTarget.scrollTop > 0)}
+          >
           {visaoEfetiva === 'consolidado' && anoReferencia ? (
             <TabelaConsolidada
               linhas={linhas}

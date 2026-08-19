@@ -88,16 +88,19 @@ const nfAv = new Intl.NumberFormat('pt-BR', {
 })
 
 /**
- * Formata a AV para a célula: **sem `%`** (o cabeçalho da coluna já diz "AV", e um
- * sufixo repetido em ~2 mil células é só ruído), 1 casa decimal, e negativo entre
- * PARÊNTESES — a mesma convenção contábil dos valores da tabela, para o olho não
- * precisar trocar de gramática ao atravessar a linha.
+ * Formata a AV para a célula: 1 casa decimal, sufixo `%` e negativo entre PARÊNTESES —
+ * a mesma convenção contábil dos valores da tabela, para o olho não precisar trocar de
+ * gramática ao atravessar a linha.
  *
- * `null` → travessão. Zero vira `0,0` (e não travessão): "esta linha não compõe a
+ * O `%` era omitido na primeira versão (o cabeçalho "AV" já diria), mas na tela o
+ * número solto ao lado de uma coluna de reais lê como mais um valor — o sufixo é o que
+ * o marca como percentual à primeira vista. Pedido do Yan na conferência.
+ *
+ * `null` → travessão. Zero vira `0,0%` (e não travessão): "esta linha não compõe a
  * receita" é uma informação, diferente de "não dá para calcular".
  */
 export function fmtAv(pct: number | null): string {
   if (pct == null) return '–'
-  const abs = nfAv.format(Math.abs(pct))
+  const abs = `${nfAv.format(Math.abs(pct))}%`
   return pct < 0 ? `(${abs})` : abs
 }
