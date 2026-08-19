@@ -220,6 +220,7 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
+import { avPercentual, baseAv, fmtAv, linhaBaseAv } from '@/lib/dre/av'
 import type {
   DreMensal,
   DreLinha,
@@ -362,6 +363,12 @@ const W_TOTAL = 170
  *  padding) já roçaria a borda. Igualada ao total, o grupo fixo também fica homogêneo. */
 const W_ANO_SEG = 170
 
+/** Largura (px) da coluna de AV na visão Mensal (v5.7.0). Estreita de propósito — a AV é
+ *  subordinada ao valor, não uma segunda coluna de número —, mas dimensionada pelo PIOR
+ *  caso real e não pelo típico: linhas ACIMA da ROL passam de 100% (a Entrada de Clientes
+ *  é bruta e a ROL é líquida), então "(1.234,6)" é o que precisa caber sem estourar. */
+const W_AV = 92
+
 /** Uma coluna presa à direita: onde ela encosta (`right`, px) e a largura DECLARADA.
  *  `null` em qualquer célula = coluna normal — é assim que o Consolidado no modo
  *  'realizado' não fica com `position: sticky` residual em lugar nenhum. */
@@ -375,10 +382,22 @@ interface Fixa {
  *  larguras das que estão à sua direita. A de TOTAL é sempre a mais à ESQUERDA do grupo,
  *  então nenhuma outra depende da largura dela (por isso ela é a única que pode crescer
  *  sem desalinhar ninguém — ver `estiloFixa`). Chamada por linha: é aritmética de dois
- *  números, e o alternativo (mais uma prop atravessando quatro componentes) erra mais. */
-function fixasDaLinha(nAnosVisiveis: number): { total: Fixa; anos: Fixa[] } {
+ *  números, e o alternativo (mais uma prop atravessando quatro componentes) erra mais.
+ *
+ *  `comAv` (v5.7.0) insere a coluna de Análise Vertical ENTRE o total e os anos seguintes.
+ *  Ela precisa entrar nesta aritmética, e não só ser renderizada: é aqui que a largura é a
+ *  FONTE ÚNICA do `right` cumulativo. Uma coluna fixa cuja largura não entra na conta senta
+ *  POR CIMA da vizinha — em silêncio, porque nenhum gate mede sobreposição de `position:
+ *  sticky`. Na visão Consolidado a AV não é fixa (vive na área que rola, colada ao ano),
+ *  então lá `comAv` é false e a aritmética antiga vale intocada. */
+function fixasDaLinha(
+  nAnosVisiveis: number,
+  comAv = false,
+): { total: Fixa; av: Fixa | null; anos: Fixa[] } {
+  const direitaDosAnos = nAnosVisiveis * W_ANO_SEG
   return {
-    total: { right: nAnosVisiveis * W_ANO_SEG, largura: W_TOTAL },
+    total: { right: direitaDosAnos + (comAv ? W_AV : 0), largura: W_TOTAL },
+    av: comAv ? { right: direitaDosAnos, largura: W_AV } : null,
     anos: Array.from({ length: nAnosVisiveis }, (_, i) => ({
       right: (nAnosVisiveis - 1 - i) * W_ANO_SEG,
       largura: W_ANO_SEG,
@@ -839,6 +858,51 @@ function CelulaDeltaPct({ pct, tipo, peso, bg, bgHover, borda }: CelulaDeltaPctP
   )
 }
 
+// ── Análise Vertical (v5.7.0) ─────────────────────────────────────────────────
+
+/** O que a coluna "AV" quer dizer. Vive no `title` das `th` (nas duas visões) porque o
+ *  cabeçalho já usa esse idioma para a coluna de total, e um balão posicionado seria
+ *  recortado pelo `overflow-x` do container que rola. */
+const TITULO_AV = 'AV — Análise Vertical: % sobre a Receita Operacional Líquida do mesmo período'
+
+/** Tom da AV. Ela é SEMPRE neutra — nunca a régua verde/vermelha de `corPorSinal` —,
+ *  mas "neutro" muda de tom com a banda em que a linha está pousada: o cinza claro
+ *  que serve nas bandas claras desaparece sobre a faixa escura dos totalizadores, e
+ *  é justamente nos totalizadores que a AV mais é lida. */
+function tomAv(tipo: TipoLinha): string {
+  return tipo === 'tot' ? 'text-action-primary-fg/70' : 'text-text-subtle'
+}
+
+interface CelulaAvProps {
+  /** `null` → travessão: ou a ROL do período não serve de base (≤ 0 / ausente), ou a
+   *  linha não tem valor calculável. Os dois casos são "não dá para calcular", que é
+   *  informação diferente de "é zero". */
+  pct: number | null
+  tipo: TipoLinha
+  bg: string
+  bgHover: string
+  borda: string
+  fixa?: Fixa | null
+}
+
+/** Célula da Análise Vertical — deliberadamente SUBORDINADA ao valor que ela qualifica:
+ *  fonte menor, tom neutro, sem peso. A AV comenta o número ao lado; se ela disputasse
+ *  a mesma ênfase (cor por sinal, mesmo corpo de fonte), o par valor+AV viraria duas
+ *  colunas de igual peso e o olho perderia qual é o dado e qual é a leitura.
+ *  Negativo entre parênteses NEUTROS, nunca vermelhos (decisão do briefing): a
+ *  convenção contábil da tabela, sem o alarme — uma AV negativa só repete o sinal que
+ *  a célula vizinha já mostrou. */
+function CelulaAv({ pct, tipo, bg, bgHover, borda, fixa }: CelulaAvProps) {
+  return (
+    <td
+      className={`h-9 px-3 text-right text-[11px] tabular-nums whitespace-nowrap ${bg} ${bgHover} ${borda} ${tomAv(tipo)} ${classeFixa(fixa, 'corpo')}`}
+      style={estiloFixa(fixa)}
+    >
+      {fmtAv(pct)}
+    </td>
+  )
+}
+
 interface LinhaDreTrProps {
   linha: DreLinha
   relacao: Relacao
@@ -852,6 +916,10 @@ interface LinhaDreTrProps {
   totalModo: TotalModo
   anosSeguintes: AnoSeguinteDados[]
   anosAbertos: boolean
+  /** Base da AV: a ROL **do mesmo recorte do Total do ano exibido**, já validada por
+   *  `baseAv` (`null` = coluna inteira em travessão). Ver a nota sobre bases em
+   *  `TabelaDre` — é o ponto em que a AV fica certa ou silenciosamente errada. */
+  baseAvMensal: number | null
 }
 
 /** Uma linha completa da tabela (blocoH/sub/cat/tot): Conta + meses (ou a versão
@@ -867,7 +935,7 @@ interface LinhaDreTrProps {
  *  como divergir de `right`. */
 function LinhaDreTr({
   linha, relacao, mesCorrente, idxPrevisto, corteIdx, modoPrevisto, expansivel, aberto, onToggle,
-  totalModo, anosSeguintes, anosAbertos,
+  totalModo, anosSeguintes, anosAbertos, baseAvMensal,
 }: LinhaDreTrProps) {
   const estilo = estiloLinha(linha.t)
   const incluirPrevCorrente = totalModo === 'tudo'
@@ -875,7 +943,10 @@ function LinhaDreTr({
   const valores = recortarPrevisto(valoresBase, modoPrevisto, idxPrevisto)
   const chaveAno = chaveLinha(linha)
   const anosVisiveis = anosAbertos ? anosSeguintes : []
-  const fixas = fixasDaLinha(anosVisiveis.length)
+  const fixas = fixasDaLinha(anosVisiveis.length, true)
+  // O MESMO número que a célula de total exibe — a AV comenta o que está na tela, não
+  // o que está no payload. Em modo 'realizado' os dois são recomputados juntos.
+  const totalExibido = totalDoAno(linha.meses, linha.total, totalModo, relacao, mesCorrente)
   return (
     <tr className="group">
       <CelulaConta
@@ -904,7 +975,7 @@ function LinhaDreTr({
         />
       ))}
       <CelulaValor
-        valor={totalDoAno(linha.meses, linha.total, totalModo, relacao, mesCorrente)}
+        valor={totalExibido}
         tipo={linha.t}
         fundo={totalModo === 'tudo' ? 'previsto' : 'normal'}
         corte={false}
@@ -914,6 +985,17 @@ function LinhaDreTr({
         bgHover={estilo.bgHover}
         borda={estilo.borda}
         fixa={fixas.total}
+      />
+      {/* AV colada ao total que ela qualifica. Fundo NORMAL da linha mesmo quando o
+          total está âmbar: o âmbar avisa "inclui projeção", e a AV é uma razão entre
+          dois números do mesmo recorte — herdar o âmbar diria que ela é projeção. */}
+      <CelulaAv
+        pct={avPercentual(totalExibido, baseAvMensal)}
+        tipo={linha.t}
+        bg={estilo.bg}
+        bgHover={estilo.bgHover}
+        borda={estilo.borda}
+        fixa={fixas.av}
       />
       {anosVisiveis.map((a, idx) => (
         <CelulaAnoSeguinte
@@ -968,6 +1050,22 @@ function CelulaDeltaPctBandeja({ pct }: { pct: number | null }) {
   )
 }
 
+/** AV da bandeja — SEMPRE travessão, por decisão e não por falta de conta (v5.7.0).
+ *  A categoria órfã está fora da estrutura: ela não compõe a ROL nem nenhum
+ *  totalizador, então dizer que ela é "0,4% da receita" a colocaria numa composição
+ *  de que ela não participa. O travessão é o que diz "esta linha ainda não foi
+ *  classificada" — que é exatamente o recado da bandeja. */
+function CelulaAvBandeja({ fixa }: { fixa?: Fixa | null }) {
+  return (
+    <td
+      className={`h-9 px-3 text-right text-[11px] tabular-nums whitespace-nowrap bg-warning-bg group-hover:bg-neutral-soft text-text-subtle ${classeFixa(fixa, 'corpo')}`}
+      style={estiloFixa(fixa)}
+    >
+      {fmtAv(null)}
+    </td>
+  )
+}
+
 interface LinhaBandejaTrProps {
   linha: DreBandeja
   relacao: Relacao
@@ -994,7 +1092,7 @@ function LinhaBandejaTr({
   const valores = recortarPrevisto(valoresBase, modoPrevisto, idxPrevisto)
   const chaveAno = `c:${linha.categoria_id}`
   const anosVisiveis = anosAbertos ? anosSeguintes : []
-  const fixas = fixasDaLinha(anosVisiveis.length)
+  const fixas = fixasDaLinha(anosVisiveis.length, true)
   return (
     <tr className="group">
       {/* fundo OPACO (não `/40`): célula sticky translúcida deixa os valores das colunas
@@ -1015,6 +1113,7 @@ function LinhaBandejaTr({
         totalAno
         fixa={fixas.total}
       />
+      <CelulaAvBandeja fixa={fixas.av} />
       {anosVisiveis.map((a, idx) => (
         <CelulaValorBandeja
           key={`ano-${a.ano}`}
@@ -1923,8 +2022,8 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   // pela contagem de colunas, pela largura mínima e pelas posições fixas do cabeçalho.
   const anosSegVisiveisMensal = anosAbertos ? anosSegMensal : []
 
-  const totalColunas = 1 + mesesVisiveis.length + 1 + anosSegVisiveisMensal.length
-  // Conta + meses (visíveis) + Total do ano + anos seguintes (quando abertos, Refino 7)
+  const totalColunas = 1 + mesesVisiveis.length + 1 + 1 + anosSegVisiveisMensal.length
+  // Conta + meses (visíveis) + Total do ano + AV (v5.7.0) + anos seguintes (Refino 7)
 
   // Centavos (formato contábil, 2 casas) alargam cada coluna mensal — as bases 1420
   // ('colapsado') e 1860 ('aberto') são as calibradas nas rodadas anteriores e ficam
@@ -1940,15 +2039,28 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
     modoPrevisto === 'oculto'    ? 330 + (mesesVisiveis.length + 1) * 109 :
     modoPrevisto === 'colapsado' ? 1420 :
     1860
-  const minWTotal = minWBase + anosSegVisiveisMensal.length * W_ANO_SEG
+  // `+ W_AV`: a coluna de AV é fixa como o total, então entra na largura mínima pela
+  // MESMA constante que alimenta o `right` do sticky — nunca por uma estimativa.
+  const minWTotal = minWBase + W_AV + anosSegVisiveisMensal.length * W_ANO_SEG
   // As mesmas posições que as células do corpo usam (`fixasDaLinha` em `LinhaDreTr`),
   // aqui para as `th` do cabeçalho. A faixa de grupo dos anos seguintes é uma célula só,
   // presa em `right: 0` e medindo a soma das larguras.
-  const fixasMensal = fixasDaLinha(anosSegVisiveisMensal.length)
+  const fixasMensal = fixasDaLinha(anosSegVisiveisMensal.length, true)
   // Largura ocupada pelas colunas fixas à direita — onde os rótulos de grupo param
-  // (ver `RotuloGrupo`). Na Mensal a coluna de total existe sempre.
-  const larguraFixasMensal = W_TOTAL + anosSegVisiveisMensal.length * W_ANO_SEG
+  // (ver `RotuloGrupo`). Na Mensal as colunas de total e de AV existem sempre.
+  const larguraFixasMensal = W_TOTAL + W_AV + anosSegVisiveisMensal.length * W_ANO_SEG
   const fixaGrupoAnosMensal: Fixa = { right: 0, largura: anosSegVisiveisMensal.length * W_ANO_SEG }
+
+  // ── Base da Análise Vertical (v5.7.0) ────────────────────────────────────────
+  // A ROL passa pelo MESMÍSSIMO `totalDoAno` das outras linhas. É o ponto em que a AV
+  // fica certa ou silenciosamente errada: no modo 'realizado' o numerador de cada
+  // linha é recomputado só com o que já aconteceu, e o denominador TEM de acompanhar.
+  // Numerador de um recorte com denominador de outro devolve um percentual plausível
+  // e errado — tipa, soma e não acusa em gate nenhum.
+  const linhaRol = linhaBaseAv(linhas)
+  const baseAvMensal = baseAv(
+    linhaRol ? totalDoAno(linhaRol.meses, linhaRol.total, totalModo, relacao, mesCorrente) : null,
+  )
 
   // Rótulo e `title` da coluna de total, por modo (rodada 4/Refino 7). "Total previsto"
   // avisa que o número INCLUI projeção — e explica a soma das colunas visíveis não bater
@@ -2230,6 +2342,21 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                   {rotuloTotalAno}
                 </th>
 
+                {/* AV (v5.7.0) — `rowSpan={2}` como a do total: é uma coluna só, sem grupo
+                    por cima. SEM `border-l`: ela fica colada ao total que qualifica, e uma
+                    régua no meio quebraria o par valor+AV que o olho lê junto.
+                    O `title` faz o papel do tooltip — e é o MESMO idioma que a coluna
+                    vizinha já usa (`tituloTotalAno`). Um balão custom aqui seria recortado
+                    pelo `overflow-x` do container que rola. */}
+                <th
+                  rowSpan={2}
+                  className={`px-3 align-bottom pb-[7px] text-right text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${bordaBaseHeader} ${classeFixa(fixasMensal.av, 'cabecalho')}`}
+                  style={estiloFixa(fixasMensal.av)}
+                  title={TITULO_AV}
+                >
+                  AV
+                </th>
+
                 {anosSegVisiveisMensal.length > 0 && (
                   <th
                     colSpan={anosSegVisiveisMensal.length}
@@ -2288,6 +2415,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                       totalModo={totalModo}
                       anosSeguintes={anosSegMensal}
                       anosAbertos={anosAbertos}
+                      baseAvMensal={baseAvMensal}
                     />
                   )
                 }
@@ -2310,6 +2438,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                     totalModo={totalModo}
                     anosSeguintes={anosSegMensal}
                     anosAbertos={anosAbertos}
+                    baseAvMensal={baseAvMensal}
                   />
                 )
               })}
