@@ -14,15 +14,14 @@ import CalendarioLiquidez from '@/components/financeiro/calendario-liquidez'
 import RunwaySemanal from '@/components/financeiro/runway-semanal'
 import HorizontePrevisto from '@/components/financeiro/horizonte-previsto'
 import RepasseMensal from '@/components/financeiro/repasse-mensal'
-import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import PosicaoProjetado from '@/components/financeiro/posicao-projetado'
 import UiTooltip from '@/components/ui/tooltip'
 import TempoVidaCaixa from '@/components/financeiro/tempo-vida-caixa'
 import {
-  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, rankingCaixaSchema, saldoCaixaSchema,
+  repasseMensalSchema, horizonteSchema, runwaySemanalSchema, saldoCaixaSchema,
   coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
   type RepasseMensalRow, type HorizonteData, type SaldoCaixaConta,
-  type RunwaySemanal as RunwaySemanalData, type RankingCaixa as RankingCaixaData,
+  type RunwaySemanal as RunwaySemanalData,
   type CoberturaData, type PrevistoDiario,
 } from '@/lib/fluxo/rpc-fluxo'
 
@@ -133,7 +132,6 @@ export default async function FluxoCaixaPage({
     repasseMensalRes,
     horizonteRes,
     runwaySemanalRes,
-    rankingRes,
     coberturaRes,
     saldoRepasseRes,
   ] = await Promise.allSettled([
@@ -146,7 +144,6 @@ export default async function FluxoCaixaPage({
     rpc('get_repasse_mensal',      { p_ano: anoAtual }),
     rpc('get_fluxo_horizonte'),
     rpc('get_fluxo_runway_semanal'),
-    rpc('get_fluxo_ranking'),
     rpc('get_fluxo_cobertura'),
     rpc('get_saldo_repasse', { p_from: from, p_to: to }),
   ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
@@ -181,8 +178,6 @@ export default async function FluxoCaixaPage({
     { mes_corrente: 0, ano_corrente: 0, meses: [], anos: [] }
   const runwaySemanal: RunwaySemanalData =
     parseRpc(runwaySemanalSchema, runwaySemanalRes, 'get_fluxo_runway_semanal') ?? { saldo_operacional: 0, semanas: [] }
-  const rankingCaixa: RankingCaixaData =
-    parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
   const cobertura: CoberturaData =
     parseRpc(coberturaSchema, coberturaRes, 'get_fluxo_cobertura') ?? { recebiveis: 0, saidas_mensais: [] }
 
@@ -290,10 +285,11 @@ export default async function FluxoCaixaPage({
               </div>
             )}
 
-            {/* Ranking de Caixa (v5.2.0/Onda 1) */}
-            <div className="mb-4">
-              <RankingCaixa data={rankingCaixa} />
-            </div>
+            {/* "Maiores variações" MUDOU para a aba DRE (/financeiro/dre) na v5.7.0, junto
+                com a Composição: ela compara categorias YTD × YTD do ano anterior, que é
+                leitura de DEMONSTRATIVO — na página do Fluxo ela concorria com o eixo de
+                liquidez (runway, horizonte, posição por conta), que é outra pergunta.
+                A RPC `get_fluxo_ranking` passou a aceitar também a área `financeiro/dre`. */}
 
             {/* Composição dos Lançamentos MUDOU para a aba DRE (/financeiro/dre) —
                 checkpoint v5.2.0: lá é a semente da DRE por Fluxo de Caixa (Onda 2). */}

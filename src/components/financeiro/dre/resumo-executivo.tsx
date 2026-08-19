@@ -1,69 +1,79 @@
-// ── Resumo Executivo da DRE (v5.3.1 · refino visual v5.4.1) ───────────────────
-// Bloco de APRESENTAÇÃO PURA: 6 linhas-chave × 6 colunas de comparação, em CARD
-// PRÓPRIO logo abaixo do card da DRE (era um bloco interno dele até a v5.4.1).
-// Não busca dado, não tem estado — tudo chega por prop (mesmo payload que já
-// alimenta os totalizadores da tabela e a visão Consolidado, ver
-// `@/lib/dre/schemas`).
+'use client'
+
+// ── Resumo Executivo da DRE (v5.3.1 · refino visual v5.4.1 · pills na v5.7.0) ──
+// 6 linhas-chave × N colunas de comparação, em CARD PRÓPRIO — desde a v5.7.0 o
+// PRIMEIRO card da página, acima da tabela (antes obrigava a rolar o demonstrativo
+// inteiro para chegar ao resumo dele).
 //
 // 0. GRAMÁTICA VISUAL = A DA TABELA (v5.4.1). O Resumo é uma VISUALIZAÇÃO das
-//    linhas-chave da tabela logo acima — quando os dois destoam, o leitor lê a
-//    diferença como divergência de DADO, não como escolha de estilo. Por isso o
-//    cabeçalho, o box, a altura de linha, o "R$" esmaecido, os parênteses do
-//    negativo e a régua de cor vêm de `./celula-contabil` e de `tabela-dre.tsx`,
-//    nunca de cópias locais — e os rótulos de variação seguem a convenção da visão
-//    Consolidado ("Δ YTD 25·26"). As linhas usam o cinza claro dos SUBGRUPOS
-//    (`sub` = --band-soft) sobre o box `--band`: é o que separa cabeçalho de corpo.
-//    Nunca a banda ESCURA dos totalizadores — seis bandas escuras seguidas viravam
-//    parede e a banda perdia a função de contraste (decisão do Yan, v5.4.1).
+//    linhas-chave da tabela — quando os dois destoam, o leitor lê a diferença como
+//    divergência de DADO, não como escolha de estilo. Por isso o cabeçalho, o box, a
+//    altura de linha, o "R$" esmaecido, os parênteses do negativo, a régua de cor e
+//    AGORA TAMBÉM AS PILLS DE ANO vêm de `./celula-contabil` e de `tabela-dre.tsx`,
+//    nunca de cópias locais. As linhas usam o cinza claro dos SUBGRUPOS (`sub` =
+//    --band-soft) sobre o box `--band`. Nunca a banda ESCURA dos totalizadores — seis
+//    bandas escuras seguidas viravam parede (decisão do Yan, v5.4.1).
 //
-// 1. ANCORAGEM NO ANO CORRENTE, NÃO NO ANO NAVEGADO (decisão explícita do Yan).
-//    O componente recebe `anoCorrente` (resolvido pela página via `hojeSP()`) e
-//    ignora completamente qual ano está selecionado na pill da tabela acima:
-//    com `?ano=2025` na URL o Resumo continua mostrando 2024 | 2025 | YTD 25 |
-//    YTD 26 — é o retrato de AGORA, não da navegação. Isso é INTENCIONAL, não
-//    bug; o aviso saiu do subtítulo e virou o "?" ao lado do título (v5.4.1),
-//    para o Resumo abrir na mesma hierarquia do título da DRE.
+// 1. SELEÇÃO PRÓPRIA DE ANOS (v5.7.0). Até aqui o Resumo era ancorado em
+//    `anoCorrente` e ignorava a navegação da tabela — um retrato fixo de "agora". O
+//    Yan pediu pills com seleção aditiva, então a ancoragem fixa deu lugar a uma
+//    seleção EXPLÍCITA, que continua INDEPENDENTE da pill de ano da tabela: são dois
+//    recortes de propósito distinto no mesmo lugar, como o `?ano=` da tabela e as
+//    pills da Decomposição já eram. O default é TODOS os anos carregados — assim o
+//    card nasce mostrando o que mostrava antes, e as pills só tiram ou repõem.
 //
-// 2. O YTD VEM PRONTO, NUNCA É RECALCULADO AQUI. `porLinha[k].ytd` já sai da
-//    janela `mesJanela` (ancorada em `hojeSP()` na página) — a MESMA em todos
-//    os anos, o que torna a comparação honesta. Recalcular o YTD localmente
-//    foi a origem de um bug caro: a janela vinha do ano EXIBIDO, e num ano
-//    fechado o "YTD" ficava idêntico ao ano cheio (nenhum gate pega esse erro,
-//    é definição, não tipo). Por isso este arquivo não usa `Date`/`new Date()`
-//    nem qualquer derivação de mês corrente.
+// 2. O YTD VEM PRONTO, NUNCA É RECALCULADO AQUI. `porLinha[k].ytd` já sai da janela
+//    `mesJanela` (ancorada em `hojeSP()` na página) — a MESMA em todos os anos, o que
+//    torna a comparação honesta. Recalcular o YTD localmente foi a origem de um bug
+//    caro: a janela vinha do ano EXIBIDO, e num ano fechado o "YTD" ficava idêntico ao
+//    ano cheio (nenhum gate pega esse erro, é definição, não tipo). Por isso este
+//    arquivo não usa `Date`/`new Date()` nem deriva mês corrente.
 //
-// 3. AS 6 CHAVES SÃO ESTÁTICAS (não descobertas do payload). O payload de
+// 3. ANO CHEIO SÓ DE ANO FECHADO. A coluna "«ano»" existe apenas para anos já
+//    encerrados: no ano corrente o `total` inclui PREVISTO, e um resumo executivo que
+//    mostrasse projeção sob um rótulo de ano seria projeção lida como fato. O ano
+//    corrente aparece só no YTD, que é 100% realizado. É o `corrente` do payload que
+//    decide — nunca uma inferência local.
+//
+// 4. AS 6 CHAVES SÃO ESTÁTICAS (não descobertas do payload). O payload de
 //    `get_dre_mensal` não carrega o campo `formula`, então não há como saber
-//    dinamicamente quais linhas são agregadoras; e a Receita Bruta é a linha
-//    `RB_H`, com `tipo:'blocoH'` — NÃO `'tot'` —, então filtrar por `t==='tot'`
-//    deixaria a Receita Bruta de fora. Os rótulos exibidos são cópia de
-//    produto do Yan (os rótulos gravados no banco vêm em CAIXA ALTA e com
-//    prefixo contábil inconsistente: "(=) SALDO REPASSE" × "= LUCRO BRUTO").
+//    dinamicamente quais linhas são agregadoras; e a Receita Bruta é a linha `RB_H`,
+//    com `tipo:'blocoH'` — NÃO `'tot'` —, então filtrar por `t==='tot'` deixaria a
+//    Receita Bruta de fora. Os rótulos exibidos são cópia de produto do Yan (os
+//    gravados no banco vêm em CAIXA ALTA e com prefixo contábil).
 
+import { useState } from 'react'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import Tooltip from '@/components/ui/tooltip'
 import { ConteudoContabil, corPorSinal } from './celula-contabil'
+import { AnoPills } from './tabela-dre'
 import type { ConsolidadoAno } from '@/lib/dre/schemas'
 
 interface Props {
-  /** Ano corrente no fuso de São Paulo, resolvido na página via hojeSP(). É a ÂNCORA. */
-  anoCorrente: number
-  /** Um item por ano da janela [corrente-2, corrente-1, corrente] que a página
-   *  conseguiu carregar. Ano cuja RPC falhou simplesmente não vem na lista. */
+  /** Janela navegável [corrente-2, corrente] — as pills que existem, mesmo as que a
+   *  RPC não conseguiu carregar (essas ficam `disabled`, e não invisíveis: sumir com a
+   *  pill esconderia que aquele ano existe). */
+  anosDisponiveis: number[]
+  /** Um item por ano da janela que a página conseguiu carregar, ASCENDENTE. Ano cuja
+   *  RPC falhou simplesmente não vem. */
   consolidadoAnos: ConsolidadoAno[]
 }
 
-/** O aviso que ocupava o subtítulo até a v5.3.1. Vive no "?" ao lado do título desde a
- *  v5.4.1 — o subtítulo custava uma linha inteira para uma ressalva que só interessa a
- *  quem estranha o Resumo não seguir a pill de ano. */
-const ANCORAGEM =
-  'Retrato do ano corrente — este bloco não acompanha o ano selecionado nas pills acima.'
+/** O aviso do "?" ao lado do título. Mudou na v5.7.0: antes explicava a ancoragem fixa
+ *  no ano corrente; agora o que precisa de aviso é a INDEPENDÊNCIA entre estas pills e
+ *  as da tabela — quem vê dois conjuntos de pills na mesma página supõe que um segue o
+ *  outro. */
+const AJUDA =
+  'Os anos escolhidos aqui valem só para este resumo — a seleção é independente das pills ' +
+  'da tabela abaixo. "YTD" compara todos os anos na mesma janela do calendário (jan até o ' +
+  'mês corrente); a coluna do ano cheio aparece apenas para anos já encerrados, porque no ' +
+  'ano corrente o total do ano incluiria previsto.'
 
 /** As 6 linhas-chave, nesta ordem — casadas por CHAVE (`b:<chave>` em `porLinha`),
- *  nunca por nome nem por posição (a estrutura pode reordenar/renomear entre anos).
- *  O `prefixo` contábil é separado do rótulo de propósito: é a coluna estreita que
- *  alinha verticalmente os seis sinais, e deixa visível numa leitura que só a Receita
- *  Bruta ENTRA no cálculo — as outras cinco são resultados. */
+ *  nunca por nome nem por posição (a estrutura pode reordenar/renomear entre anos — e
+ *  renomeou na própria v5.7.0). O `prefixo` contábil é separado do rótulo de propósito:
+ *  é a coluna estreita que alinha verticalmente os seis sinais, e deixa visível numa
+ *  leitura que só a Receita Bruta ENTRA no cálculo — as outras cinco são resultados. */
 const LINHAS: ReadonlyArray<{ prefixo: string; rotulo: string; chave: string }> = [
   { prefixo: '(=)', rotulo: 'Saldo Repasse',          chave: 'REPASSE' },
   { prefixo: '(+)', rotulo: 'Receita Bruta',          chave: 'RB_H' },
@@ -73,35 +83,68 @@ const LINHAS: ReadonlyArray<{ prefixo: string; rotulo: string; chave: string }> 
   { prefixo: '(=)', rotulo: 'Resultado do Exercício', chave: 'REX' },
 ] as const
 
-function encontrarAno(consolidadoAnos: ConsolidadoAno[], ano: number): ConsolidadoAno | undefined {
-  return consolidadoAnos.find(c => c.ano === ano)
-}
+/** Uma coluna do resumo. `campo` diz de onde o número sai; `delta` é a subtração de
+ *  duas colunas do MESMO campo (nunca de campos diferentes — ano cheio menos YTD não
+ *  significaria nada). */
+type Coluna =
+  | { k: 'valor'; id: string; rotulo: string; ano: number; campo: 'total' | 'ytd'; titulo: string }
+  | { k: 'delta'; id: string; rotulo: string; de: number; para: number; campo: 'total' | 'ytd'; titulo: string }
 
-/** `undefined` (ano ausente da lista, ou a chave não existe naquele ano) → `null`
- *  (AUSÊNCIA) — nunca 0, que inventaria um valor e contaminaria o Δ. */
-function valorLinha(ano: ConsolidadoAno | undefined, chave: string, campo: 'total' | 'ytd'): number | null {
-  const reg = ano?.porLinha[`b:${chave}`]
-  return reg ? reg[campo] : null
-}
-
-/** Δ em REAIS (subtração), nunca percentual — o Δ% já é entregue pela visão
- *  Consolidado. Falta qualquer operando → `null` (travessão), nunca 0 − X. */
-function delta(a: number | null, b: number | null): number | null {
-  if (a === null || b === null) return null
-  return b - a
-}
-
-/** Dois últimos dígitos do ano ("2025" → "25"), convenção já usada na visão
- *  Consolidado ("YTD «aa»"). */
+/** Dois últimos dígitos do ano ("2025" → "25"), convenção já usada na Consolidado. */
 function aa(ano: number): string {
   return String(ano).slice(2)
 }
 
+/**
+ * Colunas em DOIS grupos, cada um com o seu Δ no fim:
+ *  · ano cheio dos anos FECHADOS marcados (+ Δ entre os dois últimos, se houver dois);
+ *  · YTD de TODOS os anos marcados (+ Δ entre os dois últimos).
+ * O Δ é em REAIS, nunca percentual — o Δ% já é o que a visão Consolidado entrega, e
+ * repetir aqui tiraria do Resumo a única leitura que só ele dá.
+ */
+function montarColunas(sel: ConsolidadoAno[]): Coluna[] {
+  const cols: Coluna[] = []
+  const fechados = sel.filter(c => !c.corrente)
+
+  for (const c of fechados) {
+    cols.push({
+      k: 'valor', id: `ano-${c.ano}`, rotulo: String(c.ano), ano: c.ano, campo: 'total',
+      titulo: `${c.ano} — ano inteiro (encerrado)`,
+    })
+  }
+  if (fechados.length >= 2) {
+    const [p, u] = fechados.slice(-2)
+    cols.push({
+      k: 'delta', id: `d-ano-${p.ano}-${u.ano}`, rotulo: `Δ ${aa(p.ano)}·${aa(u.ano)}`,
+      de: p.ano, para: u.ano, campo: 'total',
+      titulo: `Variação em reais do ano cheio de ${p.ano} para ${u.ano}`,
+    })
+  }
+
+  for (const c of sel) {
+    cols.push({
+      k: 'valor', id: `ytd-${c.ano}`, rotulo: `YTD ${aa(c.ano)}`, ano: c.ano, campo: 'ytd',
+      titulo: `${c.ano} na MESMA janela dos demais anos (jan até o mês corrente)`,
+    })
+  }
+  if (sel.length >= 2) {
+    const [p, u] = sel.slice(-2)
+    cols.push({
+      k: 'delta', id: `d-ytd-${p.ano}-${u.ano}`, rotulo: `Δ YTD ${aa(p.ano)}·${aa(u.ano)}`,
+      de: p.ano, para: u.ano, campo: 'ytd',
+      titulo: `Variação em reais do YTD de ${p.ano} para ${u.ano} (mesma janela)`,
+    })
+  }
+
+  return cols
+}
+
 /** Cabeçalho na régua EXATA da tabela (`tabela-dre.tsx`, `ThConta` e as th de mês):
  *  10px, semibold, caixa alta, tracking 0.09em, `text-text-secondary`. */
-function ThResumo({ children, alinhamento }: { children: string; alinhamento: 'esquerda' | 'direita' }) {
+function ThResumo({ children, alinhamento, titulo }: { children: string; alinhamento: 'esquerda' | 'direita'; titulo?: string }) {
   return (
     <th
+      title={titulo}
       className={`whitespace-nowrap border-b border-b-wt-border px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-text-secondary ${
         alinhamento === 'direita' ? 'text-right' : 'text-left'
       }`}
@@ -137,51 +180,81 @@ function CelulaValor({ valor }: { valor: number | null }) {
   )
 }
 
-export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props) {
-  const a2 = anoCorrente - 2
-  const a1 = anoCorrente - 1
-  const ac = anoCorrente
+export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Props) {
+  // Default = TODOS os anos carregados (ver nota 1 no topo): o card nasce mostrando o
+  // que mostrava antes das pills. Initializer de `useState`, nunca um efeito de mount
+  // (ruleset do React Compiler).
+  const [selecionados, setSelecionados] = useState<Set<number>>(
+    () => new Set(consolidadoAnos.map(c => c.ano)),
+  )
 
-  const regA2 = encontrarAno(consolidadoAnos, a2)
-  const regA1 = encontrarAno(consolidadoAnos, a1)
-  const regAc = encontrarAno(consolidadoAnos, ac)
+  // Fail-safe: sem nenhum ano carregado o bloco não existe (a tabela abaixo continua
+  // funcionando sozinha).
+  if (consolidadoAnos.length === 0) return null
 
-  // Fail-safe: sem nenhum ano-âncora presente, o bloco simplesmente não existe
-  // (a tabela acima continua funcionando sozinha).
-  if (!regA2 && !regA1 && !regAc) return null
+  // Seleção EFETIVA — derivação de RENDER, nunca `setState` num efeito para "consertar"
+  // o estado: filtra contra o que a página conseguiu carregar e nunca fica vazia (cai
+  // para o ano mais recente). Mesma receita da visão Consolidado.
+  const marcados = consolidadoAnos.filter(c => selecionados.has(c.ano))
+  const sel = marcados.length > 0 ? marcados : consolidadoAnos.slice(-1)
+  const semBase = new Set(anosDisponiveis.filter(a => !consolidadoAnos.some(c => c.ano === a)))
+  const colunas = montarColunas(sel)
 
-  // Convenção de rótulo de variação IGUAL à da visão Consolidado da tabela ("Δ% YTD
-  // 25·26"): o separador é "·" e a coluna DIZ quais anos compara. "Δ YTD" sozinho não
-  // dizia, e "Δ 24→25" usava outro separador que o resto do card.
-  const rotulosColuna = [
-    `${a2}`,
-    `${a1}`,
-    `Δ ${aa(a2)}·${aa(a1)}`,
-    `YTD ${aa(a1)}`,
-    `YTD ${aa(ac)}`,
-    `Δ YTD ${aa(a1)}·${aa(ac)}`,
-  ] as const
+  function alternar(a: number) {
+    setSelecionados(prev => {
+      const s = new Set(prev)
+      // Nunca vazio: desmarcar o último marcado é no-op (a pill já anuncia isso pelo
+      // `aria-disabled`, e a regra vive AQUI, em fonte única).
+      if (s.has(a)) { if (s.size <= 1) return prev; s.delete(a) }
+      else s.add(a)
+      return s
+    })
+  }
+
+  /** `undefined` (ano ausente da lista, ou a chave não existe naquele ano) → `null`
+   *  (AUSÊNCIA) — nunca 0, que inventaria um valor e contaminaria o Δ. */
+  function valor(ano: number, chave: string, campo: 'total' | 'ytd'): number | null {
+    const reg = consolidadoAnos.find(c => c.ano === ano)?.porLinha[`b:${chave}`]
+    return reg ? reg[campo] : null
+  }
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
-      {/* CARD PRÓPRIO desde a v5.4.1 (era um bloco dentro do card da DRE) — mesma casca dos
-          outros cards da página (`rounded-xl bg-surface p-5 shadow-sm`) e `<h2>` na mesma
-          hierarquia do título da DRE. Sair de dentro da tabela também resolveu uma
-          duplicação: lá ele precisava ser renderizado nos DOIS ramos (normal e fail-safe),
-          porque nunca dependeu de `dados` — só de `consolidadoAnos`.
-          O "?" é o idioma de ajuda já usado em posicao-projetado/repasse-mensal:
+      {/* O "?" é o idioma de ajuda já usado em posicao-projetado/repasse-mensal:
           `!whitespace-normal` é obrigatório (o balão nasce `whitespace-nowrap`, e sem o
           `!` quem decide é a ORDEM DO CSS GERADO, não a ordem das classes). */}
-      <div className="mb-4 flex items-center gap-1.5">
-        <h2 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h2>
-        <Tooltip conteudo={ANCORAGEM} className="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-          <span
-            aria-label={ANCORAGEM}
-            className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
-          >
-            ?
-          </span>
-        </Tooltip>
+      <div className="mb-4">
+        <div className="mb-3 flex items-center gap-1.5">
+          <h2 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h2>
+          {/* `<button type="button">`, nunca `<span>` — receita da skill ui-design-system §2:
+              `span` fica fora do tab-order e o balão, que também abre no FOCO, se torna
+              inalcançável por teclado. (Achado ALTO do revisor na v5.4.2 e de novo na v5.7.0.) */}
+          <Tooltip conteudo={AJUDA} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
+            <button
+              type="button"
+              aria-label={`Resumo Executivo: ${AJUDA}`}
+              className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
+            >
+              ?
+            </button>
+          </Tooltip>
+        </div>
+        {/* Pills ABAIXO do título e à esquerda (v5.7.0, conferência do Yan) — a MESMA
+            anatomia do card da tabela: título, depois a faixa de controles. Encostadas à
+            direita do título elas ficavam longe da tabela que governam e desalinhadas das
+            pills do card de baixo, que é onde o olho já aprendeu a procurá-las.
+            O componente é o MESMO da toolbar da tabela (`AnoPills`, modo 'multi') — duas
+            cópias de pill divergiriam em cor, foco e `aria` no primeiro ajuste. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <AnoPills
+            anosDisponiveis={anosDisponiveis}
+            modo="multi"
+            ano={sel[sel.length - 1].ano}
+            selecionados={new Set(sel.map(c => c.ano))}
+            semBase={semBase}
+            onSelect={alternar}
+          />
+        </div>
       </div>
       {/* Box idêntico ao da tabela — é o que faz as duas peças lerem como uma só. */}
       <div className="overflow-hidden rounded-lg border border-wt-border bg-band">
@@ -200,19 +273,13 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
             <thead>
               <tr>
                 <ThResumo alinhamento="esquerda">Conta</ThResumo>
-                {rotulosColuna.map(rotulo => (
-                  <ThResumo key={rotulo} alinhamento="direita">{rotulo}</ThResumo>
+                {colunas.map(c => (
+                  <ThResumo key={c.id} alinhamento="direita" titulo={c.titulo}>{c.rotulo}</ThResumo>
                 ))}
               </tr>
             </thead>
             <tbody>
               {LINHAS.map(({ prefixo, rotulo, chave }, i) => {
-                const t2   = valorLinha(regA2, chave, 'total')
-                const t1   = valorLinha(regA1, chave, 'total')
-                const ytd1 = valorLinha(regA1, chave, 'ytd')
-                const ytdAc = valorLinha(regAc, chave, 'ytd')
-                const dTotal = delta(t2, t1)
-                const dYtd   = delta(ytd1, ytdAc)
                 // A última linha dispensa a régua de baixo: a borda do box já está ali,
                 // e as duas juntas desenhariam uma linha dupla.
                 const ultima = i === LINHAS.length - 1
@@ -224,12 +291,15 @@ export default function ResumoExecutivo({ anoCorrente, consolidadoAnos }: Props)
                         {rotulo}
                       </span>
                     </td>
-                    <CelulaValor valor={t2} />
-                    <CelulaValor valor={t1} />
-                    <CelulaValor valor={dTotal} />
-                    <CelulaValor valor={ytd1} />
-                    <CelulaValor valor={ytdAc} />
-                    <CelulaValor valor={dYtd} />
+                    {colunas.map(c => {
+                      if (c.k === 'valor') {
+                        return <CelulaValor key={c.id} valor={valor(c.ano, chave, c.campo)} />
+                      }
+                      const a = valor(c.de, chave, c.campo)
+                      const b = valor(c.para, chave, c.campo)
+                      // Falta qualquer operando → travessão, nunca 0 − X.
+                      return <CelulaValor key={c.id} valor={a === null || b === null ? null : b - a} />
+                    })}
                   </tr>
                 )
               })}

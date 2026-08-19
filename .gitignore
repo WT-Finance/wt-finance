@@ -74,3 +74,10 @@ supabase/seed/data/*
 .claude/skills/remotion-to-hyperframes
 .claude/skills/slideshow
 .claude/skills/website-to-video
+
+# Retratos do oracle da DRE (scripts/dre-oracle.mjs) — são DADO FINANCEIRO real da
+# empresa, gerados ao lado da aplicação de uma migration de estrutura. Ficam fora do
+# repo por padrão; o que precisa sobreviver vira quadro de-para no out-briefing/ADR.
+antes.json
+depois.json
+dre-oracle-*.json

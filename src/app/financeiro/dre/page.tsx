@@ -16,8 +16,10 @@ import {
   type DreLinha,
   type DreBandeja,
 } from '@/lib/dre/schemas'
+import { rankingCaixaSchema, type RankingCaixa as RankingCaixaData } from '@/lib/fluxo/rpc-fluxo'
 import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
 import DecomposicaoLancamentos from '@/components/financeiro/decomposicao-lancamentos'
+import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import TopSection from '@/components/shared/top-section'
 import TabelaDre from '@/components/financeiro/dre/tabela-dre'
 import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
@@ -102,6 +104,9 @@ export default async function DrePage({
     Promise.allSettled([
       ...anosDre.map(a => rpcDre(db, 'get_dre_mensal', { p_ano: a })),
       rpcDre(db, 'get_decomposicao_bloco', { p_from: from, p_to: to }),
+      // "Maiores variações" (v5.7.0) — veio do Fluxo de Caixa. Entra no MESMO estágio:
+      // é mais uma chamada em paralelo, então não custa wall-clock nenhum.
+      rpcDre(db, 'get_fluxo_ranking'),
     ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty))),
     buscarUltimaCargaMovimentacao(),
   ])
@@ -110,6 +115,7 @@ export default async function DrePage({
     anosDre.map((a, i) => [a, parseRpc(dreMensalSchema, resultados[i], `get_dre_mensal(${a})`)]),
   )
   const decomposicaoRes = resultados[anosDre.length]
+  const rankingRes      = resultados[anosDre.length + 1]
 
   const dre = dreAnos.get(ano) ?? null
 
@@ -180,10 +186,32 @@ export default async function DrePage({
   // falha seria dado errado parecendo certo. Em nenhum dos dois casos a página cai.
   const dec = parseRpc(decomposicaoBlocoSchema, decomposicaoRes, 'get_decomposicao_bloco')
 
+  // Maiores variações (v5.7.0): categorias que mais pioraram/melhoraram o caixa no YTD
+  // contra o mesmo período do ano anterior. Falha ⇒ objeto vazio, e o card diz "sem
+  // movimentações para ranquear" por conta própria — o mesmo desenho fail-safe que ele
+  // já tinha no Fluxo de Caixa.
+  const rankingCaixa: RankingCaixaData =
+    parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
+
   return (
     <div>
       <TopSection titulo="Regime de Caixa">
+        {/* ORDEM DOS CARDS (v5.7.0, decisão do Yan): Resumo Executivo → DRE → Maiores
+            variações → Decomposição. A leitura vai do agregado ao detalhe — as seis
+            linhas-chave primeiro, o demonstrativo inteiro depois, e só então as duas
+            decomposições (por categoria que variou, por bloco no período). Antes o Resumo
+            vinha DEPOIS da tabela, o que obrigava a rolar o demonstrativo inteiro para
+            chegar ao resumo dele. */}
         <div className="space-y-6">
+          {/* Resumo Executivo — CARD PRÓPRIO desde a v5.4.1, irmão do card da DRE e não
+              mais um bloco dentro dele. Ele nunca dependeu de `dre` (o ano NAVEGADO), só
+              de `consolidadoAnos`; morando dentro da TabelaDre precisava ser repetido nos
+              dois ramos de render dela e sumia junto num ramo que não era dele.
+              Desde a v5.7.0 ele tem PILLS PRÓPRIAS de ano (seleção aditiva) — a ancoragem
+              fixa em `anoCorrente` saiu, e a seleção segue independente da pill da tabela
+              abaixo, de propósito. */}
+          <ResumoExecutivo anosDisponiveis={anosDisponiveis} consolidadoAnos={consolidadoAnos} />
+
           <TabelaDre
             dados={dre}
             ano={ano}
@@ -200,12 +228,13 @@ export default async function DrePage({
             }
           />
 
-          {/* Resumo Executivo — CARD PRÓPRIO desde a v5.4.1, irmão do card da DRE e não
-              mais um bloco dentro dele. Ele nunca dependeu de `dre` (o ano NAVEGADO), só
-              de `consolidadoAnos`; morando dentro da TabelaDre precisava ser repetido nos
-              dois ramos de render dela e sumia junto num ramo que não era dele.
-              A ÂNCORA é `anoCorrente`, de propósito distinta do `ano` da pill acima. */}
-          <ResumoExecutivo anoCorrente={anoCorrente} consolidadoAnos={consolidadoAnos} />
+          {/* Maiores variações — veio do Fluxo de Caixa na v5.7.0. Compara categorias no
+              YTD contra o mesmo período do ano anterior: é leitura de DEMONSTRATIVO, e
+              aqui ela responde "o que explica a variação" logo depois da tabela que a
+              mostra. Recorte PRÓPRIO (YTD do ano corrente), independente do `?ano=` da
+              tabela e das pills da Decomposição — três recortes de propósito distinto na
+              mesma seção, como o `?ano=` e as pills já eram. */}
+          <RankingCaixa data={rankingCaixa} />
 
           <DecomposicaoLancamentos
             blocos={dec?.blocos ?? []}
