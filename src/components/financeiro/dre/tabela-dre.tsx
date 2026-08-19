@@ -215,6 +215,7 @@ import { useEffect, useRef, useState, useTransition, type CSSProperties, type Re
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 import Button from '@/components/ui/button'
+import Tooltip from '@/components/ui/tooltip'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
@@ -1693,10 +1694,36 @@ function AcoesHierarquia({ onExpandir, onRecolher }: { onExpandir: () => void; o
  *  `flex-wrap` + `justify-between`: em largura estreita o selo desce para a linha de
  *  baixo do título, ainda ACIMA da toolbar — nunca chega perto do "Expandir/Recolher
  *  tudo", que vive na segunda linha de pills. */
+/** A frase que o "?" do título carrega (v5.7.0). Existe porque a padronização dos
+ *  rótulos cria uma pergunta legítima na primeira leitura: por que "(-) Despesas
+ *  Administrativas" e não o sinal do número? Porque o prefixo descreve o PAPEL da
+ *  linha no demonstrativo — é fixo —, enquanto o sinal do valor é do período e pode
+ *  virar (um reembolso que num mês entra positivo). Sem a frase, a divergência entre
+ *  o prefixo e o número da célula parece erro de dado. */
+const PREFIXO_AJUDA =
+  'O prefixo (+), (−), (+/−) ou (=) indica o papel da linha na leitura do demonstrativo, ' +
+  'não o sinal do valor do período — esse aparece no próprio número, entre parênteses quando negativo. ' +
+  'Categorias não levam prefixo.'
+
 function CabecalhoCard({ ultimaCarga }: { ultimaCarga?: string | null }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-      <h2 className="text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+      {/* h2 + "?" viajam JUNTOS num flex próprio: sem isso o `justify-between` do pai
+          trataria o "?" como um terceiro item e o jogaria para o meio da faixa. */}
+      <div className="flex items-center gap-1.5">
+        <h2 className="text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+        {/* Mesmo idioma de ajuda do Resumo Executivo (e de posicao-projetado/repasse-mensal).
+            `!whitespace-normal` é obrigatório: o balão nasce `whitespace-nowrap` e, sem o `!`,
+            quem decide é a ORDEM DO CSS GERADO — não a ordem das classes. */}
+        <Tooltip conteudo={PREFIXO_AJUDA} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
+          <span
+            aria-label={PREFIXO_AJUDA}
+            className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
+          >
+            ?
+          </span>
+        </Tooltip>
+      </div>
       <UltimaAtualizacao iso={ultimaCarga ?? null} className="text-2xs" iconSize={12} vigiarAtraso={false} />
     </div>
   )

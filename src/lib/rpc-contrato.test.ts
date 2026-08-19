@@ -1244,3 +1244,129 @@ describe.skipIf(!ON)('contrato RPC — Rendimento potencial do float', () => {
     expect(ordem(desc)).not.toBe(ordem(padrao))
   })
 })
+
+// ── DRE · v5.7.0: guarda mecânica dos rótulos da estrutura viva ────────────────
+// A regra de UMA frase que a versão fixou: **cabeçalho, subgrupo e totalizador
+// carregam operador; categoria-folha NUNCA carrega**. O sinal de uma folha é do
+// VALOR (parênteses na célula), não do rótulo — repetido no texto ele vira ruído
+// que ainda por cima MENTE quando o valor daquele período sai com o sinal contrário
+// (um "(-) Reembolso GymPass" que num mês entra positivo).
+//
+// A guarda cobre as DUAS direções de propósito: só a primeira deixaria passar
+// exatamente o defeito que a versão veio corrigir — as 12 categorias que herdaram
+// "(-) …" do modelo da controladoria.
+//
+// ⚠️ Ela lê o estado VIVO, não o código: nasce VERMELHA e só fica verde quando a
+// migration de estrutura da v5.7.0 for aplicada em produção. É o "vista reprovando"
+// do briefing — guarda que nunca foi vista falhando não prova nada.
+const OPERADORES_DRE = ['(+)', '(-)', '(+/-)', '(=)'] as const
+/** A fôrma exata do prefixo de estrutura: um dos quatro operadores + UM espaço. */
+const PREFIXO_ESTRUTURA = /^\((\+|-|\+\/-|=)\) /
+/** Token de sinal no INÍCIO de um rótulo. Aceita também a forma com espaços
+ *  (`(+ / -)`), que esteve gravada até a normalização — a guarda tem de pegar o
+ *  histórico, não só a fôrma nova. A âncora protege hífen e barra no MEIO do texto
+ *  ("Movimentação de Caixa - C", "Agência de Marketing / Terceiros de Mkt"). */
+const COMECA_COM_SINAL = /^\s*(\(\s*[+\-−=](?:\s*\/\s*[+\-−=])?\s*\)|[+\-−=])(\s|$)/
+
+describe.skipIf(!ON)('contrato DRE — rótulos padronizados da estrutura viva (v5.7.0)', () => {
+  it('todo bloco, subgrupo e totalizador começa com um operador da fôrma', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const fora = e.blocos
+      .filter(b => !PREFIXO_ESTRUTURA.test(b.rotulo))
+      .map(b => `${b.chave} (${b.tipo}): ${b.rotulo}`)
+    expect(fora,
+      `rótulo de estrutura sem operador ${OPERADORES_DRE.join(' / ')} no início`).toEqual([])
+  })
+
+  it('nenhuma categoria-folha carrega operador no rótulo exibido', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    // `rotulo` já chega COALESCE(override, nome do Monde) — é exatamente o texto que
+    // a tela mostra, então é ele que a guarda tem de olhar (e não só o override).
+    const comOperador = e.maps
+      .filter(m => COMECA_COM_SINAL.test(m.rotulo))
+      .map(m => `${m.categoria_id}: ${m.rotulo}`)
+    expect(comOperador,
+      'categoria (folha) com operador no rótulo — o sinal da folha é do VALOR').toEqual([])
+  })
+})
+
+// ── DRE — o grafo de fórmulas e a armadilha do passe único ─────────────────────
+// `get_dre_mensal` (0207) materializa em UM passe todos os blocos que somam
+// categorias — a `ordem` deles é irrelevante para o cálculo. Só o passe das
+// FÓRMULAS roda `ORDER BY ordem`. Logo a restrição real não é "tudo em ordem": é
+// **fórmula só pode consumir fórmula ANTERIOR**. Violar isso não dá erro — o insumo
+// entra como ZERO, em silêncio, e o demonstrativo fecha com um número plausível e
+// errado. Por isso a guarda é permanente e não uma conferência de uma vez só:
+// a estrutura é DADO editável, então nada impede alguém de reintroduzir o defeito.
+describe.skipIf(!ON)('contrato DRE — grafo de fórmulas (a armadilha do passe único)', () => {
+  it('toda chave referenciada existe, e fórmula só consome fórmula anterior', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const ordemPorChave = new Map(e.blocos.map(b => [b.chave, b.ordem]))
+    const ehFormula = new Set(e.blocos.filter(b => b.formula != null).map(b => b.chave))
+
+    const inexistentes: string[] = []
+    const foraDeOrdem: string[] = []
+    for (const b of e.blocos) {
+      for (const insumo of b.formula ?? []) {
+        if (!ordemPorChave.has(insumo)) { inexistentes.push(`${b.chave} → ${insumo}`); continue }
+        // Só o insumo que TAMBÉM é fórmula depende da ordem; os que somam categorias
+        // já estão materializados quando o passe das fórmulas começa.
+        if (ehFormula.has(insumo) && (ordemPorChave.get(insumo) as number) >= b.ordem) {
+          foraDeOrdem.push(`${b.chave}(${b.ordem}) → ${insumo}(${ordemPorChave.get(insumo)})`)
+        }
+      }
+    }
+    expect(inexistentes, 'fórmula aponta para chave que não existe').toEqual([])
+    expect(foraDeOrdem,
+      'fórmula consome outra fórmula de ordem POSTERIOR — o insumo entraria como zero').toEqual([])
+  })
+})
+
+// ── DRE · v5.7.0: a camada firme (Resultado Financeiro + Imobilizado abaixo da linha) ──
+// Estes três casos são o retrato do que a migration de estrutura deixa em produção.
+// Também nascem VERMELHOS e viram verdes na aplicação. Ficam permanentes porque a
+// estrutura é editável pela interface: sem eles, desfazer a decisão da gerente por
+// engano no editor não acusaria em lugar nenhum.
+describe.skipIf(!ON)('contrato DRE — camada firme da v5.7.0', () => {
+  it('RFIN não existe mais e suas 3 categorias vivem no Resultado Financeiro', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    expect(e.blocos.map(b => b.chave), 'o bloco RFIN deveria ter sido removido').not.toContain('RFIN')
+    expect(e.maps.filter(m => m.bloco_chave === 'RFIN'), 'sobrou categoria apontando para RFIN').toEqual([])
+
+    const fin = e.blocos.find(b => b.chave === 'FIN')
+    expect(fin?.rotulo).toBe('(+/-) Resultado Financeiro')
+    expect(e.maps.filter(m => m.bloco_chave === 'FIN').length,
+      'FIN deveria ter as 8 próprias + as 3 que vieram do RFIN').toBe(11)
+  })
+
+  it('IMOB saiu das despesas operacionais e entrou no bloco de investimentos', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const f = (chave: string) => e.blocos.find(b => b.chave === chave)?.formula ?? []
+
+    expect(f('DESP_H'), 'IMOB/RFIN ainda somam nas DESPESAS').not.toContain('IMOB')
+    expect(f('DESP_H')).not.toContain('RFIN')
+    expect(f('LOP'), 'IMOB/RFIN ainda somam no Lucro Operacional').not.toContain('IMOB')
+    expect(f('LOP')).not.toContain('RFIN')
+    // As duas listas enumeram os mesmos subgrupos cada uma por conta própria
+    // (assimetria documentada) — então mudam JUNTAS ou o demonstrativo se contradiz.
+    expect(f('DESP_H')).toEqual(['ADM', 'COM', 'FIN', 'MKT', 'ESTR', 'RH', 'RHB'])
+    expect(f('LOP')).toEqual(['LB', 'ADM', 'COM', 'FIN', 'MKT', 'ESTR', 'RH', 'RHB'])
+
+    expect(f('INV_H')).toEqual(['INV', 'IMOB'])
+    expect(f('RAIR')).toEqual(['LL', 'INV', 'IMOB'])
+  })
+
+  it('IMOB renderiza SOB o cabeçalho que o agrega, não acima dele', async () => {
+    // A `ordem` não muda o CÁLCULO (IMOB soma categorias, materializa no passe 1),
+    // mas manda na RENDERIZAÇÃO: a 245 o subgrupo apareceria ACIMA do próprio
+    // cabeçalho. Tem de vir depois do INV_H e do INV.
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const ordem = (chave: string) => e.blocos.find(b => b.chave === chave)?.ordem ?? -1
+    expect(ordem('IMOB')).toBeGreaterThan(ordem('INV_H'))
+    expect(ordem('IMOB')).toBeGreaterThan(ordem('INV'))
+    expect(ordem('IMOB')).toBeLessThan(ordem('RAIR'))
+    // E o Resultado Financeiro fecha o bloco de DESPESAS, logo antes do LOP.
+    expect(ordem('FIN')).toBeGreaterThan(ordem('RHB'))
+    expect(ordem('FIN')).toBeLessThan(ordem('LOP'))
+  })
+})
