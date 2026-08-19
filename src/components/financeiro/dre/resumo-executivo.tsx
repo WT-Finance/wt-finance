@@ -226,13 +226,17 @@ export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Pr
       <div className="mb-4">
         <div className="mb-3 flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h2>
+          {/* `<button type="button">`, nunca `<span>` — receita da skill ui-design-system §2:
+              `span` fica fora do tab-order e o balão, que também abre no FOCO, se torna
+              inalcançável por teclado. (Achado ALTO do revisor na v5.4.2 e de novo na v5.7.0.) */}
           <Tooltip conteudo={AJUDA} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-            <span
-              aria-label={AJUDA}
-              className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
+            <button
+              type="button"
+              aria-label={`Resumo Executivo: ${AJUDA}`}
+              className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
             >
               ?
-            </span>
+            </button>
           </Tooltip>
         </div>
         {/* Pills ABAIXO do título e à esquerda (v5.7.0, conferência do Yan) — a MESMA
