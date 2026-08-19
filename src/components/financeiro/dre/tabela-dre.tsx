@@ -367,12 +367,15 @@ const W_ANO_SEG = 170
  *  subordinada ao valor, não uma segunda coluna de número —, mas dimensionada pelo PIOR
  *  caso real e não pelo típico: linhas ACIMA da ROL passam de 100% (a Entrada de Clientes
  *  é bruta e a ROL é líquida), então o pior caso é "(281,5%)", 8 caracteres (cravado em
- *  `av.test.ts`). Apertada de 92 para 82 na conferência do Yan: com o sufixo `%` o número
+ *  `av.test.ts`). Apertada de 92 para 86 na conferência do Yan: com o sufixo `%` o número
  *  ocupa mais, mas ainda sobrava folga demais à esquerda dele.
  *  ⚠️ Esta coluna é FIXA: se o conteúdo não couber, ela CRESCE (não há `maxWidth`) e o
  *  `right` cumulativo das vizinhas desalinha em silêncio. Encolher aqui pede conferir o
- *  pior caso, não o típico. */
-const W_AV = 82
+ *  pior caso, não o típico — e com margem, porque a conta é sobre MÉTRICA DE FONTE, que
+ *  varia com a fallback: na ponta (com `PR_ULTIMA_FIXA`) sobram 86−12−20 = 54px para os
+ *  ~45px de "(281,5%)" a 11px tabular. A 82px a folga caía para ~5px, fino demais para
+ *  uma estimativa que ninguém mediu no browser. */
+const W_AV = 86
 
 /** Folga (px) de padding-direito da coluna MAIS À DIREITA presa (v5.7.0). O thumb vertical
  *  do `ScrollAutoHide` é overlay `absolute right-1 w-1.5` do wrapper — ele ocupa de 4px a
