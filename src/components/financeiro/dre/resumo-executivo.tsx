@@ -37,10 +37,12 @@
 //
 // 4. AS 6 CHAVES SÃO ESTÁTICAS (não descobertas do payload). O payload de
 //    `get_dre_mensal` não carrega o campo `formula`, então não há como saber
-//    dinamicamente quais linhas são agregadoras; e a Receita Bruta é a linha `RB_H`,
-//    com `tipo:'blocoH'` — NÃO `'tot'` —, então filtrar por `t==='tot'` deixaria a
-//    Receita Bruta de fora. Os rótulos exibidos são cópia de produto do Yan (os
-//    gravados no banco vêm em CAIXA ALTA e com prefixo contábil).
+//    dinamicamente quais linhas são agregadoras. Derivar a lista de `t==='tot'` seria
+//    frágil por outro motivo: o TIPO de um bloco é DADO editável — a `RB_H` era
+//    `blocoH` até a v5.7.1 e virou `tot`. Uma lista estática de CHAVES sobrevive a
+//    essas mudanças; um filtro por tipo mudaria de conteúdo sozinho. Os rótulos
+//    exibidos são cópia de produto do Yan (os gravados no banco vêm em CAIXA ALTA e
+//    com prefixo contábil).
 
 import { useState } from 'react'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
@@ -72,11 +74,16 @@ const AJUDA =
 /** As 6 linhas-chave, nesta ordem — casadas por CHAVE (`b:<chave>` em `porLinha`),
  *  nunca por nome nem por posição (a estrutura pode reordenar/renomear entre anos — e
  *  renomeou na própria v5.7.0). O `prefixo` contábil é separado do rótulo de propósito:
- *  é a coluna estreita que alinha verticalmente os seis sinais, e deixa visível numa
- *  leitura que só a Receita Bruta ENTRA no cálculo — as outras cinco são resultados. */
+ *  é a coluna estreita que alinha verticalmente os seis sinais.
+ *
+ *  v5.7.1 — a Receita Bruta passou de `(+)` para `(=)`. Ela sempre foi um SUBTOTAL
+ *  (`REPASSE + RV`), mas estava tipada como cabeçalho de grupo e marcada aqui como
+ *  entrada; a v5.7.1 a promoveu a linha de RESULTADO na estrutura, e o prefixo segue o
+ *  papel. Consequência: as seis linhas são resultados, e a coluna de prefixo deixou de
+ *  distinguir entrada de resultado — ela agora só alinha os sinais verticalmente. */
 const LINHAS: ReadonlyArray<{ prefixo: string; rotulo: string; chave: string }> = [
   { prefixo: '(=)', rotulo: 'Saldo Repasse',          chave: 'REPASSE' },
-  { prefixo: '(+)', rotulo: 'Receita Bruta',          chave: 'RB_H' },
+  { prefixo: '(=)', rotulo: 'Receita Bruta',          chave: 'RB_H' },
   { prefixo: '(=)', rotulo: 'Receita Op. Líquida',    chave: 'ROL' },
   { prefixo: '(=)', rotulo: 'Lucro Bruto',            chave: 'LB' },
   { prefixo: '(=)', rotulo: 'Lucro Operacional',      chave: 'LOP' },

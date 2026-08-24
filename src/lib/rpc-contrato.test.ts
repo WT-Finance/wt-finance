@@ -1370,3 +1370,96 @@ describe.skipIf(!ON)('contrato DRE — camada firme da v5.7.0', () => {
     expect(ordem('FIN')).toBeLessThan(ordem('LOP'))
   })
 })
+
+// ── DRE · v5.7.1: a Receita Bruta é uma linha de RESULTADO ────────────────────
+// `RB_H` sempre foi um SUBTOTAL (fórmula `["REPASSE","RV"]`), mas estava tipada como
+// cabeçalho de grupo e desenhada ACIMA de uma das parcelas que ela soma. A v5.7.1 pôs a
+// Receita de Vendas antes dela e promoveu a Receita Bruta a `tot`.
+// Permanente, e não conferência de uma vez: `tipo` e `ordem` são DADO editável pela
+// interface — sem guarda, desfazer isso por engano no editor não acusaria em lugar nenhum.
+// Nasce VERMELHA e vira verde quando a migration destrutiva do patch for aplicada.
+describe.skipIf(!ON)('contrato DRE — Receita Bruta como linha de resultado (v5.7.1)', () => {
+  it('RB_H é "tot", abre com (=) e continua sendo REPASSE + RV', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const rb = e.blocos.find(b => b.chave === 'RB_H')
+    expect(rb, 'o bloco RB_H sumiu da estrutura').toBeDefined()
+    expect(rb?.tipo, 'RB_H deveria ser linha de resultado').toBe('tot')
+    // O prefixo diz o PAPEL da linha (regra da v5.7.0) — resultado abre com "(=)".
+    expect(rb?.rotulo.startsWith('(=) '), `rótulo inesperado: ${rb?.rotulo}`).toBe(true)
+    // O que JUSTIFICA ela ser resultado. Se a fórmula mudar, o tipo perde o fundamento.
+    expect(rb?.formula).toEqual(['REPASSE', 'RV'])
+  })
+
+  it('Receita de Vendas vem ANTES da Receita Bruta que a soma', async () => {
+    const e = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
+    const ordem = (chave: string) => e.blocos.find(b => b.chave === chave)?.ordem ?? -1
+    expect(ordem('RV')).toBeLessThan(ordem('RB_H'))
+    // E o par continua entre o Saldo Repasse e os Impostos.
+    expect(ordem('RV')).toBeGreaterThan(ordem('REPASSE'))
+    expect(ordem('RB_H')).toBeLessThan(ordem('IMP_H'))
+  })
+})
+
+// ── "Maiores variações" × Demonstrativo: os dois números têm de concordar (v5.7.1) ──
+// Os dois cards vivem na MESMA página, um debaixo do outro, e mostram a mesma categoria
+// com o mesmo rótulo de janela ("YTD"). Até a `0253` não concordavam: o card cortava o ano
+// ANTERIOR pelo dia-do-ano e o Demonstrativo usa meses inteiros — 638.959,48 de diferença
+// em "Pagamento ao Fornecedor" no dia da medição. É o caso clássico da skill
+// `contrato-rpc-front`: dois números vizinhos na mesma tela = caso de contrato.
+//
+// A comparação casa por NOME REAL do Monde, não pelo rótulo exibido: 6 categorias têm
+// override só de capitalização, e casar por rótulo daria falso negativo.
+describe.skipIf(!ON)('contrato DRE — Maiores variações reconcilia com o YTD do Demonstrativo', () => {
+  it('toda categoria do ranking bate ao centavo com o YTD da DRE nos dois anos', async () => {
+    const [est, rk, dreAnt, dreCur] = await Promise.all([
+      rpc('dre_estrutura', {}),
+      rpc('get_fluxo_ranking', { p_limite: 200 }),
+      rpc('get_dre_mensal', { p_ano: new Date().getUTCFullYear() - 1 }),
+      rpc('get_dre_mensal', { p_ano: new Date().getUTCFullYear() }),
+    ])
+    const e = dreEstruturaSchema.parse(est)
+    const ant = dreMensalSchema.parse(dreAnt)
+    const cur = dreMensalSchema.parse(dreCur)
+
+    // A janela é o mês corrente do payload — a MESMA fatia que a `0253` usa no SQL.
+    const mes = cur.mes_corrente
+    expect(mes, 'o ano corrente deveria trazer mes_corrente').not.toBeNull()
+
+    /** Rótulo EXIBIDO → YTD daquele ano (jan..mês corrente), por categoria-folha. */
+    const ytdPorRotulo = (d: typeof ant) => {
+      const m = new Map<string, number>()
+      for (const l of d.linhas) {
+        if (l.t === 'cat') m.set(l.rotulo, l.meses.slice(0, mes as number).reduce((s, v) => s + v, 0))
+      }
+      for (const b of d.bandeja) m.set(b.rotulo, b.meses.slice(0, mes as number).reduce((s, v) => s + v, 0))
+      return m
+    }
+    const yAnt = ytdPorRotulo(ant)
+    const yCur = ytdPorRotulo(cur)
+
+    const rotuloPorNome = new Map(e.maps.map(m => [m.nome, m.rotulo]))
+    // As transferências internas ficam FORA do demonstrativo por decisão do de-para — o
+    // ranking, que lê o fato direto, ainda as enxerga. Diferença conhecida e registrada
+    // (v5.7.1): não é divergência de número, é de escopo.
+    const excluidas = new Set(e.maps.filter(m => m.excluida).map(m => m.nome))
+
+    const itens = [
+      ...(rk.pioraram as Array<{ c: string; t25: number; t26: number }>),
+      ...(rk.melhoraram as Array<{ c: string; t25: number; t26: number }>),
+    ]
+    expect(itens.length, 'ranking veio vazio — sem o que reconciliar').toBeGreaterThan(0)
+
+    const divergentes: string[] = []
+    for (const it of itens) {
+      if (excluidas.has(it.c)) continue
+      const rot = rotuloPorNome.get(it.c) ?? it.c
+      const a = yAnt.get(rot)
+      const b = yCur.get(rot)
+      if (a === undefined || b === undefined) { divergentes.push(`${it.c}: sem linha na DRE`); continue }
+      if (Math.abs(it.t25 - a) >= 0.005) divergentes.push(`${it.c} (ano-1): ranking ${it.t25} × DRE ${a}`)
+      if (Math.abs(it.t26 - b) >= 0.005) divergentes.push(`${it.c} (ano): ranking ${it.t26} × DRE ${b}`)
+    }
+    expect(divergentes,
+      'Maiores variações e Demonstrativo discordam — as janelas voltaram a divergir').toEqual([])
+  })
+})

@@ -6,6 +6,28 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.7.1] — 2026-08-24
+
+PATCH · **DRE: "Maiores variações" reconcilia com o Demonstrativo, Receita Bruta vira linha de resultado e a Decomposição sai da página**. Migrations `0253` (aditiva, aplicada) e uma **destrutiva pendente de aplicação** em `supabase/patches/` · sem ADR.
+
+### Corrigido
+
+- **"Maiores variações" e o Demonstrativo mostravam números diferentes para a mesma categoria, lado a lado na mesma página.** O card cortava o ano ANTERIOR pelo mesmo **dia-do-ano**, enquanto o Demonstrativo (e o Resumo Executivo, e o Consolidado) usam YTD por **mês inteiro**. Medido em 24/08, "Pagamento ao Fornecedor": card −15.518.502,72 × DRE YTD 25 −16.157.462,20 — **638.959,48 de diferença**, que eram 25 a 31/08/2025. A `0253` alinha o card à janela do Demonstrativo. Provado: **as 126 categorias do ranking batem ao centavo com o YTD da DRE nos dois anos**, e o invariante virou caso de contrato permanente.
+  ⚖️ **O que se perde, dito em voz alta:** o corte por dia-do-ano comparava o mesmo número de dias decorridos, o que era mais rigoroso. Com a janela por mês, o mês corrente compara um mês parcial contra o mês inteiro do ano anterior — a mesma assimetria que o YTD do Demonstrativo já tinha. Dois números que se contradizem na mesma tela custam mais confiança do que um viés conhecido e **rotulado**.
+
+### Alterado
+
+- **Cabeçalhos do card viraram "YTD 2025" / "YTD 2026"** — a coluna nunca foi o ano cheio, e um "2025" ao lado de um demonstrativo que também tem uma coluna "2025" (essa sim do ano inteiro) convidava a comparar coisas diferentes.
+- **Receita de Vendas subiu para antes da Receita Bruta de Vendas**, e a **Receita Bruta virou linha de RESULTADO** (`tipo='tot'`, prefixo `(=)`). Ela sempre foi um subtotal (`Saldo Repasse + Receita de Vendas`), mas estava tipada como cabeçalho de grupo e desenhada **acima** de uma das parcelas que soma. Não muda um centavo — `tipo` e `ordem` não entram no cálculo. *(Migration destrutiva; aplicação em TTY.)*
+- **A Decomposição dos Lançamentos saiu da página do Demonstrativo**, por decisão de produto — mas **não foi apagada**: componente, schema e a RPC `get_decomposicao_bloco` (0209) seguem no lugar, como código morto proposital, e o caminho de volta está documentado no topo de `page.tsx`. O `?preset=&from=&to=` ficou órfão: a página hoje só lê `?ano=`.
+
+### Interno
+
+- Caso de contrato novo (`rpc-contrato.test.ts`): **toda categoria do ranking bate ao centavo com o YTD da DRE nos dois anos**, casando por NOME REAL do Monde (6 categorias têm override só de capitalização — casar por rótulo daria falso negativo) e ignorando as 2 excluídas do de-para.
+- Guarda permanente da estrutura nova (RB_H é `tot`, abre com `(=)`, continua sendo `REPASSE + RV`; RV antes de RB_H). Nasce vermelha até a destrutiva ser aplicada.
+- A destrutiva faz **um UPDATE por linha** — aplicação direta da lição da v5.7.0: `reverter_diario` pressupõe um toque por linha por lote, e a `0251` violou isso. Este lote É reversível pelo painel.
+- **989 testes** (v5.7.0: 986).
+
 ## [5.7.0] — 2026-08-19
 
 MINOR · **DRE: Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical**. Migrations `0251` (destrutiva, aplicada em TTY) e `0252` (aditiva) · **ADR-0168**.

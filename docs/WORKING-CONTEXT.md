@@ -1,8 +1,9 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-19 (pós-merge v5.7.0) · produção na **v5.7.0** (#239 mergeado 19/08 às 17h45 — DRE: Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; migrations `0251` destrutiva + `0252` aditiva, **ADR-0168**). Antes a v5.6.4 (#237, 14/08 15h18 — Metas: período contíguo + carrossel no TV). **Nenhuma versão em curso.** *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-24 (fechamento da v5.7.1) · produção na **v5.7.0** (#239 mergeado 19/08 às 17h45 — DRE: Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). **EM CURSO: v5.7.1** — "Maiores variações" reconcilia com o Demonstrativo, Receita Bruta vira linha de resultado, Decomposição sai da página (branch `fix/v5-7-1-ajustes-dre`; `0253` aplicada, **1 destrutiva pendente** em `supabase/patches/`). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-⚠️ **Numeração de migration: a última APLICADA é a `0252`; a próxima livre é a `0253`.**
+⚠️ **Numeração de migration: a última APLICADA é a `0253`; a próxima livre é a `0254`**
+(que é justamente o número da destrutiva pendente da v5.7.1).
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
 esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
 removida no fechamento da v5.6.4).
@@ -22,6 +23,25 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 > Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
+
+- **v5.7.1 (EM CURSO) — DRE: reconciliação do "Maiores variações", Receita Bruta como linha
+  de resultado, Decomposição fora da página.** Migration **`0253` aplicada** + **1 DESTRUTIVA
+  PENDENTE** em `supabase/patches/dre-receita-bruta-vira-resultado.sql` (→ `0254`, TTY).
+  Sem ADR. **989 testes** (987 verdes + 2 vermelhos por desenho, que viram verdes na
+  aplicação da destrutiva).
+  **O defeito corrigido:** o card e o Demonstrativo mostravam números diferentes para a mesma
+  categoria, lado a lado — o card cortava o ano ANTERIOR pelo dia-do-ano e o Demonstrativo usa
+  meses inteiros (medido: 638.959,48 em "Pagamento ao Fornecedor"). A `0253` alinha o card à
+  janela da DRE; **as 126 categorias do ranking passam a bater ao centavo nos dois anos**, e o
+  invariante virou caso de contrato permanente.
+  ⚖️ **Trade-off registrado:** perdeu-se o corte por dia-do-ano (mais rigoroso); no mês
+  corrente compara-se mês parcial × mês inteiro do ano anterior — a mesma assimetria que o YTD
+  da DRE já tinha, agora ROTULADA ("YTD 2025"/"YTD 2026"). Reverter é uma linha na `0253`.
+  📝 **Registrado, não corrigido:** o ranking inclui as 2 categorias que a DRE EXCLUI
+  ("Movimentação de Caixa - C/D", transferência interna) — ele lê `fato_fluxo` direto, sem o
+  de-para. Hoje não aparecem no top-7. Filtrar mudaria quais categorias o card mostra, o que é
+  decisão de produto.
+  **Pendente Yan:** aplicar a destrutiva em TTY · conferência visual.
 
 - **v5.7.0 (#239, mergeada 19/08 às 17h45) — DRE: Resultado Financeiro unificado, Imobilizado abaixo da
   linha, rótulos padronizados e Análise Vertical.** Migrations **`0251` (destrutiva, aplicada
