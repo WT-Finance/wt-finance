@@ -35,6 +35,38 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.7.1',
+    data: '2026-08-24T16:46', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'O card "Maiores variações" mostrava, para o ano anterior, um valor diferente do ' +
+          'que o Demonstrativo mostrava para a mesma categoria — os dois lado a lado na ' +
+          'mesma tela. O motivo: o card comparava o ano passado até o mesmo DIA do ano, e o ' +
+          'Demonstrativo compara até o fim do MÊS corrente. Em "Pagamento ao Fornecedor" a ' +
+          'diferença era de R$ 638.959,48. Os dois agora usam a mesma janela e batem ao ' +
+          'centavo em todas as categorias. As colunas passaram a se chamar "YTD 2025" e ' +
+          '"YTD 2026" para deixar explícito que são o acumulado do ano, não o ano inteiro.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'No Demonstrativo, a "Receita de Vendas" passou a aparecer ANTES da "Receita ' +
+          'Bruta de Vendas", e a Receita Bruta ganhou o destaque das linhas de resultado. ' +
+          'Ela é a soma do Saldo de Repasse com a Receita de Vendas — antes aparecia acima ' +
+          'de uma das duas parcelas que ela soma, o que atrapalhava a leitura de cima para ' +
+          'baixo. Nenhum valor muda.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O bloco "Decomposição dos Lançamentos" saiu da página do Demonstrativo. Ele pode ' +
+          'voltar a qualquer momento — nada foi descartado.',
+      },
+    ],
+  },
+  {
     versao: '5.7.0',
     data: '2026-08-19T17:45', // horário REAL do merge (d8c56a9, PR #239, 17h45 −03) — reconciliado no /pos-merge
     itens: [

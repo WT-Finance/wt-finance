@@ -1,24 +1,19 @@
-import { Suspense } from 'react'
 import Link from 'next/link'
 import { SquarePen } from 'lucide-react'
 import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
-import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { hojeSP } from '@/lib/fmt'
 import { rpcDre } from '@/lib/dre/rpc-dre'
 import { buscarUltimaCargaMovimentacao } from '@/lib/dre/ultima-carga-movimentacao'
 import {
   dreMensalSchema,
-  decomposicaoBlocoSchema,
   type DreMensal,
   type DreLinha,
   type DreBandeja,
 } from '@/lib/dre/schemas'
 import { rankingCaixaSchema, type RankingCaixa as RankingCaixaData } from '@/lib/fluxo/rpc-fluxo'
-import PeriodoFilterPillsUrl from '@/components/shared/periodo-filter-pills-url'
-import DecomposicaoLancamentos from '@/components/financeiro/decomposicao-lancamentos'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import TopSection from '@/components/shared/top-section'
 import TabelaDre from '@/components/financeiro/dre/tabela-dre'
@@ -33,22 +28,22 @@ import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 // estrutura viva vive em página própria (/financeiro/dre/estrutura), atrás do botão
 // "Editar estrutura" da toolbar.
 //
-// A Decomposição dos Lançamentos (semente da aba desde a v5.2.0, então "Composição")
-// DEIXOU de ter TopSection própria na v5.3.1: vive agora dentro de "Regime de Caixa",
-// logo abaixo da tabela, e passou a agrupar por BLOCO DA ESTRUTURA VIVA (não pelo grupo
-// nativo do Monde) via `get_decomposicao_bloco` (0209) — é o que a faz reconciliar ao
-// centavo com os subtotais da tabela acima. O `?preset=&from=&to=` das pills continua
-// INDEPENDENTE do `?ano=` da tabela: são dois recortes de propósito distinto no mesmo
-// card (o card é autocontido e traz as próprias pills).
+// ⚠️ A **Decomposição dos Lançamentos** SAIU desta página na v5.7.1 (decisão do Yan), mas
+// **não foi apagada** — é código morto proposital, para voltar sem reescrita se a decisão
+// mudar. O que sobreviveu intocado: o componente
+// `@/components/financeiro/decomposicao-lancamentos`, o `decomposicaoBlocoSchema` em
+// `@/lib/dre/schemas` e a RPC `get_decomposicao_bloco` (0209) no banco. Para reativar,
+// basta reinstalar aqui as quatro peças que saíram juntas: o import do componente, a
+// chamada `rpcDre(db, 'get_decomposicao_bloco', { p_from: from, p_to: to })` no
+// `Promise.allSettled`, o `parseRpc` do resultado e o JSX com o `slotPills` — este último
+// depende de `resolverPeriodoCompleto` e do `PeriodoFilterPillsUrl`, que também saíram dos
+// imports. O `?preset=&from=&to=` era dele e ficou órfão: a página hoje só lê `?ano=`.
 //
 // RBAC: área própria 'financeiro/dre' (0197) — cobre ver E editar a estrutura (decisão
 // firme; divisão ver/editar = futuro se precisar).
 
 interface SearchParams {
-  preset?: string
-  from?:   string
-  to?:     string
-  ano?:    string
+  ano?: string
 }
 
 function clamp(v: number, min: number, max: number): number {
@@ -63,7 +58,6 @@ export default async function DrePage({
   await requireArea('financeiro/dre')
 
   const sp = await searchParams
-  const { from, to } = resolverPeriodoCompleto({ ...sp, defaultPreset: 'este-ano' })
 
   // Ano corrente NO FUSO DE SÃO PAULO — nunca `new Date().getFullYear()` cru (o
   // runtime do servidor roda em UTC; perto da virada do ano isso adiantaria/
@@ -103,7 +97,6 @@ export default async function DrePage({
   const [resultados, ultimaCargaMovimentacao] = await Promise.all([
     Promise.allSettled([
       ...anosDre.map(a => rpcDre(db, 'get_dre_mensal', { p_ano: a })),
-      rpcDre(db, 'get_decomposicao_bloco', { p_from: from, p_to: to }),
       // "Maiores variações" (v5.7.0) — veio do Fluxo de Caixa. Entra no MESMO estágio:
       // é mais uma chamada em paralelo, então não custa wall-clock nenhum.
       rpcDre(db, 'get_fluxo_ranking'),
@@ -114,8 +107,11 @@ export default async function DrePage({
   const dreAnos = new Map(
     anosDre.map((a, i) => [a, parseRpc(dreMensalSchema, resultados[i], `get_dre_mensal(${a})`)]),
   )
-  const decomposicaoRes = resultados[anosDre.length]
-  const rankingRes      = resultados[anosDre.length + 1]
+  // ⚠️ Índice POSICIONAL: `resultados` espelha a ordem do `allSettled` acima. Quando a
+  // Decomposição saiu (v5.7.1), o ranking andou de `+1` para `+0` — tirar uma chamada do
+  // meio do array sem mexer aqui faria o ranking ler o payload de um ANO da DRE, que o
+  // `parseRpc` rejeitaria em silêncio e o card viraria "sem movimentações".
+  const rankingRes = resultados[anosDre.length]
 
   const dre = dreAnos.get(ano) ?? null
 
@@ -180,16 +176,11 @@ export default async function DrePage({
     })
     .filter((x): x is NonNullable<typeof x> => x !== null)
 
-  // Decomposição por BLOCO da estrutura viva no intervalo das pills (0209).
-  // `null` = a chamada FALHOU — estado DISTINTO de "período sem lançamentos"; o card
-  // anuncia cada caso com a sua própria mensagem, porque dizer "sem lançamentos" numa
-  // falha seria dado errado parecendo certo. Em nenhum dos dois casos a página cai.
-  const dec = parseRpc(decomposicaoBlocoSchema, decomposicaoRes, 'get_decomposicao_bloco')
-
-  // Maiores variações (v5.7.0): categorias que mais pioraram/melhoraram o caixa no YTD
-  // contra o mesmo período do ano anterior. Falha ⇒ objeto vazio, e o card diz "sem
-  // movimentações para ranquear" por conta própria — o mesmo desenho fail-safe que ele
-  // já tinha no Fluxo de Caixa.
+  // Maiores variações: categorias que mais pioraram/melhoraram o caixa no YTD contra a
+  // MESMA janela do ano anterior — jan até o mês corrente, a mesma do Demonstrativo desde
+  // a `0253` (antes o card cortava o ano anterior pelo dia-do-ano e os dois números não
+  // reconciliavam). Falha ⇒ objeto vazio, e o card diz "sem movimentações para ranquear"
+  // por conta própria — o mesmo desenho fail-safe que ele já tinha no Fluxo de Caixa.
   const rankingCaixa: RankingCaixaData =
     parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
 
@@ -229,23 +220,11 @@ export default async function DrePage({
           />
 
           {/* Maiores variações — veio do Fluxo de Caixa na v5.7.0. Compara categorias no
-              YTD contra o mesmo período do ano anterior: é leitura de DEMONSTRATIVO, e
-              aqui ela responde "o que explica a variação" logo depois da tabela que a
-              mostra. Recorte PRÓPRIO (YTD do ano corrente), independente do `?ano=` da
-              tabela e das pills da Decomposição — três recortes de propósito distinto na
-              mesma seção, como o `?ano=` e as pills já eram. */}
+              YTD contra a MESMA janela do ano anterior: é leitura de DEMONSTRATIVO, e aqui
+              ela responde "o que explica a variação" logo depois da tabela que a mostra.
+              Recorte PRÓPRIO (YTD do ano corrente), independente do `?ano=` da tabela —
+              e desde a `0253` os números reconciliam com a coluna "YTD" dela. */}
           <RankingCaixa data={rankingCaixa} />
-
-          <DecomposicaoLancamentos
-            blocos={dec?.blocos ?? []}
-            categorias={dec?.categorias ?? []}
-            erro={dec === null}
-            slotPills={
-              <Suspense>
-                <PeriodoFilterPillsUrl defaultPreset="este-ano" />
-              </Suspense>
-            }
-          />
         </div>
       </TopSection>
     </div>

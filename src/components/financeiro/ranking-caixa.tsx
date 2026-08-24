@@ -51,8 +51,8 @@ export default function RankingCaixa({ data }: Props) {
         <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Maiores variações</h3>
         <UiTooltip
           conteudo={temBase
-            ? `Acumulado do ano por categoria vs o mesmo período de ${anoAnterior}. Var. = ${anoAtual} − ${anoAnterior}; nome verde = receita, vermelho = gasto; negativo entre parênteses. Clique em Var. (R$) ou Var. (%) para ordenar.`
-            : `Acumulado de ${anoAtual} por categoria. A comparação com ${anoAnterior} (e a ordenação por variação) aparece quando o histórico do ano anterior estiver carregado.`}
+            ? `YTD = de janeiro até o mês corrente, a MESMA janela nos dois anos — é a coluna "YTD" do Demonstrativo acima, e os números batem. Var. = YTD ${anoAtual} − YTD ${anoAnterior}; nome verde = receita, vermelho = gasto; negativo entre parênteses. Clique em Var. (R$) ou Var. (%) para ordenar.`
+            : `Acumulado de ${anoAtual} por categoria, de janeiro até o mês corrente. A comparação com ${anoAnterior} (e a ordenação por variação) aparece quando o histórico do ano anterior estiver carregado.`}
           className="z-30 w-72 !whitespace-normal font-normal leading-snug"
         >
           <span aria-label="Como as maiores variações são calculadas" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
@@ -127,8 +127,12 @@ function TabelaVariacao({ titulo, corTitulo, itens, temBase, anoAtual, anoAnteri
           <thead>
             <tr className="text-2xs font-medium text-zinc-400">
               <th className="text-left pb-1.5 font-medium">Categoria</th>
-              {temBase && <th className="w-[96px] text-right pb-1.5 pl-2 font-medium whitespace-nowrap">{anoAnterior}</th>}
-              <th className={`${temBase ? 'w-[96px]' : 'w-[128px]'} text-right pb-1.5 pl-2 font-medium whitespace-nowrap`}>{anoAtual}</th>
+              {/* "YTD" no rótulo (v5.7.1): a coluna NUNCA foi o ano cheio, e um cabeçalho
+                  "2025" ao lado de um demonstrativo que também tem uma coluna "2025" — essa
+                  sim do ano inteiro — convidava a comparar dois números que não são a mesma
+                  coisa. O rótulo agora diz qual janela é. */}
+              {temBase && <th className="w-[96px] text-right pb-1.5 pl-2 font-medium whitespace-nowrap">YTD {anoAnterior}</th>}
+              <th className={`${temBase ? 'w-[96px]' : 'w-[128px]'} text-right pb-1.5 pl-2 font-medium whitespace-nowrap`}>YTD {anoAtual}</th>
               {temBase && <ThOrdenavel rotulo="Var. (R$)" ativo={col === 'd'} dir={dir} onClick={() => ordenar('d')} largura="w-[104px]" />}
               {temBase && <ThOrdenavel rotulo="Var. (%)" ativo={col === 'pct'} dir={dir} onClick={() => ordenar('pct')} largura="w-[76px]" />}
             </tr>
