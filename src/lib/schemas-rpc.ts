@@ -275,6 +275,27 @@ export const cargaPromocaoSchema = z.object({
 }).passthrough()
 export type CargaPromocao = z.infer<typeof cargaPromocaoSchema>
 
+/** status_demonstrativo_competencia (v5.8.0, migration 0255) → contagem, soma em
+ *  CENTAVOS INTEIROS, pares distintos e cobertura da base do regime de competência.
+ *
+ *  Este schema existe com mais rigor que os outros `status_*` de upload (que são lidos
+ *  por cast direto) por um motivo concreto: `soma_centavos` alimenta um GATE — o alarme
+ *  de ingestão confronta a soma do arquivo com a da base e BLOQUEIA a declaração de
+ *  sucesso do upload se divergirem. Um contrato que mudasse em silêncio aqui desarmaria
+ *  o alarme em vez de disparar. Com `parseRpc`, shape divergente vira `null` e o alarme
+ *  falha FECHADO. (Achado MÉDIO do `revisor` na v5.8.0.) */
+export const statusDemonstrativoCompetenciaSchema = z.object({
+  total:              z.number(),
+  soma_centavos:      z.number(),
+  pares:              z.number(),
+  cobertura_de:       z.string().nullable(),
+  cobertura_ate:      z.string().nullable(),
+  ultima_atualizacao: z.string().nullable(),
+}).passthrough()
+// Sem `export type` do z.infer aqui de propósito: o tipo que os consumidores usam é a
+// interface EXPLÍCITA de `src/app/admin/uploads/actions.ts`, sem o índice `unknown` que
+// o `.passthrough()` arrasta. Dois tipos com o mesmo nome só confundiriam.
+
 /** cruzar_vendas_setor (v4.28.0, migration 0159) → pares ENCONTRADOS venda→setor.
  *  Array (pode ser vazio). setor_macro é o valor REAL da base ('Lazer', não 'Trips'). */
 export const cruzarVendasSetorSchema = z.array(z.object({

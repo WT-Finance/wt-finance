@@ -27,12 +27,21 @@
 //    Linha VAZIA (toda célula nula/branca) continua sendo pulada: não há valor ali.
 //
 // 3. **A soma de conferência vive AQUI, em centavos inteiros** (`somaCentavos`), e é
-//    a mesma função que o card usa e que o teste prova. Somar 3,2 mil floats e
-//    comparar com o `sum(valor)` NUMERIC do Postgres divergiria por ponto flutuante;
-//    e duas implementações da mesma soma em lugares diferentes é a receita do drift
-//    silencioso que este projeto já pagou mais de uma vez.
+//    a mesma função que o card usa e que o teste prova. Duas implementações da mesma
+//    soma em lugares diferentes é a receita do drift silencioso que este projeto já
+//    pagou mais de uma vez.
+//    ⚠️ E o arredondamento sai de `toCentavos` (regra DECIMAL, igual à do Postgres),
+//    nunca de `Math.round(valor * 100)`: as duas discordam em todo meio-centavo
+//    negativo — e esta base é majoritariamente negativa (2.508 despesas × 736
+//    receitas no arquivo real). Achado ALTO do `revisor` na v5.8.0, medido e
+//    confirmado: o defeito estava LATENTE (o arquivo de 25/08 não tem nenhuma linha
+//    com mais de 2 casas), e teria aparecido como alarme falso reprovando um upload
+//    legítimo no dia em que o export trouxesse um valor de título dividido.
+//    Por isso o parser já emite `valor` ARREDONDADO a 2 casas: o que se envia passa a
+//    ser exatamente o que a coluna NUMERIC(18,2) vai guardar, sem arredondar de novo
+//    na fronteira.
 
-import { toNum, toIsoDate, toStr } from './coercao'
+import { toNum, toIsoDate, toStr, toCentavos } from './coercao'
 import { normalizeHeader } from './vendas-parser'
 import { validarColunasObrigatorias, mensagemColunasFaltando, type RequisitoColuna } from './colunas-obrigatorias'
 
@@ -85,10 +94,11 @@ const REQUISITOS: RequisitoColuna[] = COLUNAS_OBRIGATORIAS.map((campo) => {
 /** Colunas obrigatórias (rótulos amigáveis) — exibidas no card da UI. */
 export const DEMONSTRATIVO_COMPETENCIA_COLUNAS: string[] = REQUISITOS.map((r) => r.label)
 
-/** Soma em CENTAVOS inteiros — fonte única da conferência arquivo × base (decisão 3). */
+/** Soma em CENTAVOS inteiros — fonte única da conferência arquivo × base (decisão 3).
+ *  `valor` já vem arredondado a 2 casas pelo parser, então `toCentavos` aqui é exato. */
 export function somaCentavos(linhas: readonly DemonstrativoCompetenciaRaw[]): number {
   let c = 0
-  for (const l of linhas) c += Math.round(l.valor * 100)
+  for (const l of linhas) c += toCentavos(l.valor) ?? 0
   return c
 }
 
@@ -96,6 +106,16 @@ export function somaCentavos(linhas: readonly DemonstrativoCompetenciaRaw[]): nu
  *  como vazio; qualquer outro conteúdo torna a linha significativa. */
 function linhaVazia(row: readonly unknown[]): boolean {
   return row.every((c) => c === null || c === undefined || String(c).trim() === '')
+}
+
+/** Diferença em dias entre duas datas ISO `AAAA-MM-DD`. Lê os componentes em UTC (as
+ *  duas strings são calendário puro, sem hora), então não há deslocamento de fuso. */
+function diasEntre(isoA: string, isoB: string): number {
+  const ms = (s: string) => {
+    const [a, m, d] = s.split('-').map(Number)
+    return Date.UTC(a, m - 1, d)
+  }
+  return (ms(isoA) - ms(isoB)) / 86_400_000
 }
 
 /**
@@ -149,7 +169,9 @@ export function parseDemonstrativoCompetenciaRows(
         case 'mes':       mes       = toStr(v); break
         case 'ano':     { const n = toNum(v); ano    = n === null ? null : Math.round(n); break }
         case 'mes_num': { const n = toNum(v); mesNum = n === null ? null : Math.round(n); break }
-        case 'valor':     valor     = toNum(v); break
+        // `valor` chega já em 2 casas: os centavos são a grandeza, e arredondar aqui
+        // (pela regra do Postgres) faz o enviado ser idêntico ao gravado.
+        case 'valor':   { const c = toCentavos(v); valor = c === null ? null : c / 100; break }
         case 'competencia_arquivo': compArquivo = toIsoDate(v); break
       }
     }
@@ -158,14 +180,25 @@ export function parseDemonstrativoCompetenciaRows(
     // a linha que o usuário vê é `i + 1`.
     const nLinha = i + 1
     if (!grupo || !descricao) { problemas.push(`${nLinha} (Grupo/Descrição em branco)`); continue }
-    if (ano === null || ano < 1900) { problemas.push(`${nLinha} (Ano inválido)`); continue }
+    // `Tipo` é coluna obrigatória e é a classificação Receitas/Despesas da linha — vale
+    // a mesma regra das outras: em branco numa linha com conteúdo, para. (`Mês` fica de
+    // fora porque é só rótulo de apresentação.)
+    if (!tipo) { problemas.push(`${nLinha} (Tipo em branco)`); continue }
+    if (ano === null || ano < 1900 || ano > 2100) { problemas.push(`${nLinha} (Ano fora de 1900–2100)`); continue }
     if (mesNum === null || mesNum < 1 || mesNum > 12) { problemas.push(`${nLinha} (Mês Nº fora de 1–12)`); continue }
     if (valor === null) { problemas.push(`${nLinha} (Valor não numérico)`); continue }
 
     const competencia = `${ano}-${String(mesNum).padStart(2, '0')}-01`
     // Conferência cruzada (decisão 1): a coluna do arquivo, quando existe, tem de
     // concordar com Ano + Mês Nº. Divergir significa export inconsistente — para.
-    if (compArquivo !== null && compArquivo !== competencia) {
+    //
+    // A comparação tolera 1 DIA de diferença de propósito. A coluna chega como Date
+    // nativo com offset (`2026-02-01T03:00:00Z` no arquivo real) e `toIsoDate` lê os
+    // componentes LOCAIS do runtime (ADR-0099) — num fuso bem a oeste de UTC−3 o dia 1
+    // viraria o último dia do mês anterior e a guarda acusaria um export perfeito. O que
+    // ela precisa pegar é MÊS trocado, e isso são ≥ 27 dias de distância: a tolerância
+    // de 1 dia elimina a fragilidade de fuso sem custar nada do poder da guarda.
+    if (compArquivo !== null && Math.abs(diasEntre(compArquivo, competencia)) > 1) {
       problemas.push(`${nLinha} (Competência ${compArquivo} ≠ Ano+Mês ${competencia})`)
       continue
     }
@@ -189,6 +222,19 @@ export function parseDemonstrativoCompetenciaRows(
 export async function parseDemonstrativoCompetenciaFile(
   file: File,
 ): Promise<DemonstrativoCompetenciaRaw[] | { error: string }> {
+  // O `accept` do input só filtra o SELETOR de arquivo — arrastar-e-soltar passa por
+  // cima dele. E esta base depende do valor NATIVO da célula (número e Date), que o CSV
+  // não tem: um `.csv` aqui não falharia alto, leria torto. Então a extensão é checada.
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (ext !== 'xlsx') {
+    return {
+      error:
+        `Esta base aceita só .xlsx (recebido: .${ext ?? 'sem extensão'}). O arquivo precisa ser ` +
+        `a planilha do "Demonstrativo de Resultado" tratada — em .csv os valores e as datas ` +
+        `perdem o tipo nativo e seriam lidos de forma ambígua.`,
+    }
+  }
+
   try {
     const XLSX = await import('@e965/xlsx')
     const buffer = await file.arrayBuffer()

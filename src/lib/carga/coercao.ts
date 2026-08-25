@@ -73,6 +73,51 @@ export function toIsoDate(value: unknown): string | null {
   return null
 }
 
+/**
+ * Dinheiro em CENTAVOS INTEIROS, arredondado pela MESMA regra que o Postgres usa ao
+ * gravar numa coluna `NUMERIC(x,2)` — meio-para-LONGE-DE-ZERO sobre a representação
+ * DECIMAL do número. Devolve null quando o valor não é numérico.
+ *
+ * ── Por que não `Math.round(v * 100)` ───────────────────────────────────────
+ * Porque as duas pontas não veem o mesmo número. O que viaja no JSON é a
+ * representação decimal (`(1.005).toString() === '1.005'`), e o Postgres a lê com
+ * aritmética decimal exata: `'1.005'::numeric(18,2)` = `1.01`. Do lado JS,
+ * `1.005 * 100` avalia para `100.49999999999999` e `Math.round` devolve `100`.
+ *
+ * E há um segundo desacordo, este por REGRA e não por ponto flutuante: `Math.round`
+ * desempata para +∞ (`Math.round(-1.5) === -1`) e o Postgres desempata para longe de
+ * zero (`-1.5 → -2`). Ou seja, TODO meio-centavo NEGATIVO discorda — e base de
+ * despesa é majoritariamente negativa.
+ *
+ * Medido (v5.8.0), `Math.round(v*100)` × esta função: DIVERGEM em `1.005`, `-1.005`,
+ * `-0.125` e `-188.615`; concordam em `188.615`, `0.125` e `2.675`. Note que o acordo
+ * depende de qual lado do meio a representação binária caiu — ou seja, é imprevisível
+ * caso a caso. É por isso que a regra tem de sair da representação DECIMAL, não do float.
+ *
+ * Usar isto em vez de multiplicar por 100 é o que permite comparar contagem e soma de
+ * um arquivo contra a base ao CENTAVO, e confiar na igualdade.
+ */
+export function toCentavos(value: unknown): number | null {
+  const n = toNum(value)
+  if (n === null) return null
+
+  const s = n.toString()
+  // Notação exponencial (magnitude fora do razoável para dinheiro) — sem representação
+  // decimal simples para aplicar a regra; cai no caminho aproximado, explicitamente.
+  if (s.includes('e') || s.includes('E')) return Math.round(n * 100)
+
+  const m = /^(-?)(\d+)(?:\.(\d*))?$/.exec(s)
+  if (!m) return Math.round(n * 100)
+
+  const [, sinal, inteiro, fracao] = m
+  const frac = (fracao ?? '').padEnd(3, '0')
+  let centavos = Number(inteiro) * 100 + Number(frac.slice(0, 2))
+  // 3ª casa decimal ≥ 5 ⇒ sobe a MAGNITUDE (meio-para-longe-de-zero). Casas além da 3ª
+  // nunca mudam a decisão: 0,0049999… < 0,005 e 0,005000…1 > 0,005.
+  if (Number(frac[2]) >= 5) centavos += 1
+  return sinal === '-' ? -centavos : centavos
+}
+
 /** String aparada, ou null se vazia/ausente. */
 export function toStr(value: unknown): string | null {
   if (value === null || value === undefined) return null

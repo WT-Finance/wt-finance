@@ -3,7 +3,10 @@
 import { loadMetas } from '@/lib/carga/metas'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
-import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
+import {
+  parseRpc, cargaValidacaoSchema, cargaPromocaoSchema,
+  statusDemonstrativoCompetenciaSchema,
+} from '@/lib/schemas-rpc'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
@@ -418,7 +421,16 @@ async function regenerarFluxoCaixa(
 // atravessou 753 testes e só apareceu meses depois, na DRE.
 // ---------------------------------------------------------------------------
 
-/** Status da base de competência. `soma_centavos` é inteiro — ver o header da 0255. */
+/**
+ * Status da base de competência, no formato que a UI consome. `soma_centavos` é inteiro
+ * (ver o header da 0255).
+ *
+ * É uma interface EXPLÍCITA, e não o `z.infer` do schema, de propósito: o schema é
+ * `.passthrough()` (convenção do projeto — chave extra da RPC não pode falsear o parse),
+ * e `passthrough` traz um índice `[k: string]: unknown` que contamina o consumidor —
+ * `'error' in status` deixa de estreitar o union e `status.error` vira `unknown`.
+ * Tolerância na LEITURA, tipo limpo na FRONTEIRA.
+ */
 export interface StatusDemonstrativoCompetencia {
   total:              number
   soma_centavos:      number
@@ -428,19 +440,33 @@ export interface StatusDemonstrativoCompetencia {
   ultima_atualizacao: string | null
 }
 
+/**
+ * Lê o status pela RPC, validando o SHAPE com Zod.
+ *
+ * Diferente dos outros `status_*` de upload (cast direto), aqui o retorno alimenta um
+ * gate financeiro — então contrato divergente tem de FECHAR o alarme, não abri-lo.
+ * `parseRpc` devolve `null` tanto em erro quanto em shape inesperado, e os dois casos
+ * viram erro para o chamador: ninguém declara upload conferido sem ter conferido.
+ */
 async function lerStatusDemonstrativoCompetencia(): Promise<StatusDemonstrativoCompetencia | { error: string }> {
   const supabase = getAdminClient()
   const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-  const { data, error } = await bound('status_demonstrativo_competencia')
-  if (error) return { error: error.message }
-  const s = data as Partial<StatusDemonstrativoCompetencia> | null
+  const res = await bound('status_demonstrativo_competencia')
+  const status = parseRpc(
+    statusDemonstrativoCompetenciaSchema,
+    res,
+    'status_demonstrativo_competencia',
+  )
+  if (!status) {
+    return { error: 'não foi possível ler o status da base de competência (erro na RPC ou contrato divergente — ver log do servidor)' }
+  }
   return {
-    total:              s?.total ?? 0,
-    soma_centavos:      Number(s?.soma_centavos ?? 0),
-    pares:              s?.pares ?? 0,
-    cobertura_de:       s?.cobertura_de ?? null,
-    cobertura_ate:      s?.cobertura_ate ?? null,
-    ultima_atualizacao: s?.ultima_atualizacao ?? null,
+    total:              status.total,
+    soma_centavos:      status.soma_centavos,
+    pares:              status.pares,
+    cobertura_de:       status.cobertura_de,
+    cobertura_ate:      status.cobertura_ate,
+    ultima_atualizacao: status.ultima_atualizacao,
   }
 }
 

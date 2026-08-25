@@ -46,8 +46,11 @@ CREATE TABLE raw.demonstrativo_competencia (
   valor          NUMERIC(18,2) NOT NULL    -- sinal PRESERVADO (receita +, despesa −)
 );
 
--- ano/competencia servem o recorte anual da RPC de leitura; (grupo, descricao) é a
--- chave composta do de-para (três descrições existem sob dois pais — por isso composta).
+-- Cada índice tem um consumidor nomeado na RPC de leitura (0257), e não são a mesma
+-- dimensão por dois eixos: `ano` serve o `WHERE ano = p_ano` do recorte anual;
+-- `competencia` serve o min/max da COBERTURA (que varre a tabela inteira, sem filtro de
+-- ano, e é o que alimenta o cabeçalho da seção); `(grupo, descricao)` é a chave composta
+-- do join do de-para (três descrições existem sob dois pais — por isso composta).
 CREATE INDEX demonstrativo_comp_ano_idx   ON raw.demonstrativo_competencia (ano);
 CREATE INDEX demonstrativo_comp_comp_idx  ON raw.demonstrativo_competencia (competencia);
 CREATE INDEX demonstrativo_comp_par_idx   ON raw.demonstrativo_competencia (grupo, descricao);
@@ -103,11 +106,21 @@ $function$;
 -- SOMA gravadas, para o Server Action confrontar com o que o parser mediu no arquivo.
 --
 -- A soma sai em CENTAVOS INTEIROS (`soma_centavos`, BIGINT) e é a ÚNICA representação
--- devolvida: comparar dinheiro entre Postgres e JS por ponto flutuante é onde a v5.5.1
--- apanhou (ROUND do Postgres é meio-para-longe-de-zero, Math.round do JS é
--- meio-para-cima, e nos negativos discordam). Em centavos inteiros a igualdade é
--- exata nas duas pontas, e o cliente formata dividindo por 100 — uma representação,
--- zero deriva possível.
+-- devolvida: o cliente formata dividindo por 100. Isso evita que a comparação de
+-- igualdade trafegue como float pelo JSON, e dá UMA representação em vez de duas.
+--
+-- Precisão, dito com exatidão (achado BAIXO do revisor-db, v5.8.0): deste lado a conta
+-- já é exata — `valor` é NUMERIC(18,2), então `sum(valor) * 100` é inteiro em aritmética
+-- NUMERIC e o `round()` aqui é DEFENSIVO, não está desempatando nada. O ponto onde as
+-- duas pontas poderiam discordar é anterior: o cast de entrada
+-- `(x->>'valor')::NUMERIC(18,2)` arredonda o float JS pela regra do Postgres, enquanto
+-- `somaCentavos()` (parse-demonstrativo-competencia.ts) arredonda o MESMO float com
+-- `Math.round`. As regras só divergem num empate genuíno na 3ª casa — que não ocorre num
+-- valor de moeda com 2 decimais na origem. E se ocorresse, o efeito é FAIL-CLOSED: o
+-- alarme de ingestão acusa a divergência e o card não declara sucesso; ninguém passa a
+-- usar número torto em silêncio. (A lição da v5.5.1 — ROUND do Postgres é
+-- meio-para-longe-de-zero e Math.round do JS é meio-para-cima — é o motivo de NÃO haver
+-- aqui um percentual derivado nas duas pontas; ela não é o mecanismo desta soma.)
 --
 -- `cobertura_*` alimenta o cabeçalho da seção ("cobertura AAAA–AAAA (até mês X)") e
 -- `pares` é a contagem de chaves compostas distintas, que o de-para tem de cobrir.

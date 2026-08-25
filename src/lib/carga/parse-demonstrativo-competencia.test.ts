@@ -70,8 +70,28 @@ describe('parse-demonstrativo-competencia · leitura do arquivo', () => {
 
     expect(Array.isArray(res)).toBe(true)
     if (!Array.isArray(res)) return
-    expect(res[0].valor).toBeCloseTo(-40.933, 3)
+    // O que este guard trava é a leitura como MILHAR: -40.933 não pode virar -40933.
     expect(res[0].valor).not.toBe(-40933)
+    // E o valor sai em 2 casas, porque é isso que a coluna NUMERIC(18,2) vai guardar —
+    // o parser arredonda explicitamente (regra do Postgres) em vez de deixar a fronteira
+    // arredondar por conta própria e a conferência de soma discordar.
+    expect(res[0].valor).toBe(-40.93)
+  })
+
+  it('meio-centavo NEGATIVO arredonda como o Postgres, não como Math.round', async () => {
+    const res = await parseDemonstrativoCompetenciaFile(
+      arquivoXlsx([
+        HEADERS,
+        ['Despesas', 'Despesas Administrativas', 'Copa e Cozinha', 2025, 'março', 3, D('2025-03-01'), -1.005],
+      ]),
+    )
+
+    expect(Array.isArray(res)).toBe(true)
+    if (!Array.isArray(res)) return
+    // meio-para-longe-de-zero: -1,005 → -1,01. `Math.round(-1.005*100)` daria -100.
+    expect(res[0].valor).toBe(-1.01)
+    expect(somaCentavos(res)).toBe(-101)
+    expect(somaCentavos(res)).not.toBe(Math.round(-1.005 * 100))
   })
 
   it('funciona SEM a coluna Competência — os inteiros bastam', async () => {
@@ -140,6 +160,29 @@ describe('parse-demonstrativo-competencia · nada some em silêncio', () => {
     // a linha ruim é a 3ª da planilha (cabeçalho = 1)
     expect(res.error).toMatch(/\b3\b/)
     expect(res.error).toMatch(/Grupo\/Descrição/)
+  })
+
+  it('Tipo em branco derruba o parse (é coluna obrigatória, não decorativa)', () => {
+    const res = parseDemonstrativoCompetenciaRows([
+      HEADERS,
+      [null, 'Receita de Vendas', 'Comissão', 2024, 'julho', 7, null, 10],
+    ])
+
+    expect(Array.isArray(res)).toBe(false)
+    if (Array.isArray(res)) return
+    expect(res.error).toMatch(/Tipo/)
+  })
+
+  it('arquivo que não é .xlsx é recusado — arrastar-e-soltar burla o accept', async () => {
+    // O `accept` do input filtra só o seletor nativo. E o CSV não tem valor nativo de
+    // célula, do qual este parser depende: aceitar leria torto em vez de falhar.
+    const res = await parseDemonstrativoCompetenciaFile(
+      new File(['Tipo,Grupo\nReceitas,X'], 'demonstrativo.csv'),
+    )
+
+    expect(Array.isArray(res)).toBe(false)
+    if (Array.isArray(res)) return
+    expect(res.error).toMatch(/\.xlsx/)
   })
 
   it('Mês Nº fora de 1–12 derruba o parse', () => {

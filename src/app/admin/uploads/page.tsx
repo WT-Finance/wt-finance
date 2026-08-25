@@ -157,6 +157,12 @@ function formatarNum(n: number): string {
   return n.toLocaleString('pt-BR')
 }
 
+/** `AAAA-MM-DD` → `MM/AAAA`. Fatia a string de propósito: é data de calendário puro
+ *  (competência), e passar por `Date` traria deslocamento de fuso sem ganho nenhum. */
+function mesAno(iso: string): string {
+  return `${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+}
+
 /**
  * Sincronização Monde (v5.4.4) — cartão de LEITURA, sem upload.
  *
@@ -318,7 +324,7 @@ function CardUpload({
                 a nota em StatusCarga. */}
             {status.soma_centavos !== undefined && <> · Σ {fmtBRL2(status.soma_centavos / 100)}</>}
             {status.cobertura?.de && status.cobertura.ate && (
-              <> · cobertura {status.cobertura.de.slice(0, 7)} a {status.cobertura.ate.slice(0, 7)}</>
+              <> · cobertura {mesAno(status.cobertura.de)} a {mesAno(status.cobertura.ate)}</>
             )}
           </>
         ) : '—'}
