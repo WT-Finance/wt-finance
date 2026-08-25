@@ -41,7 +41,7 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 ## Verdade atual
 
 - 🔵 **v5.8.0 (EM PR, não mergeada) — DRE por Competência: segunda TopSection em `/financeiro/dre`.**
-  Migrations **`0255`/`0256`/`0257` (aditivas) APLICADAS** · **ADR-0170** · **1044 testes**.
+  Migrations **`0255`/`0256`/`0257` (aditivas) APLICADAS** · **ADR-0170** · **1054 testes**.
   A página passa a mostrar **DOIS resultados para o mesmo mês**: o Regime de Caixa que já
   existia e o **Regime de Competência** (fato gerador = data de **EMISSÃO**), que fica **ACIMA**
   dele — decisão do Yan na sessão, contra o "abaixo" do briefing. Fonte: base de upload nova

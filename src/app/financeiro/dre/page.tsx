@@ -10,12 +10,11 @@ import { buscarUltimaCargaMovimentacao } from '@/lib/dre/ultima-carga-movimentac
 import {
   dreMensalSchema,
   dreCompMensalSchema,
-  type DreMensal,
-  type DreCompMensal,
+  type DreMensalLike,
   type DreLinha,
-  type DreBandeja,
-  type DreCompBandeja,
+  type DreBandejaLinha,
 } from '@/lib/dre/schemas'
+import { chaveDeLinha, chaveDeBandeja } from '@/lib/dre/identidade'
 import { rankingCaixaSchema, type RankingCaixa as RankingCaixaData } from '@/lib/fluxo/rpc-fluxo'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import TopSection from '@/components/shared/top-section'
@@ -177,13 +176,23 @@ export default async function DrePage({
    *  (categorias e bandeja) — o MESMO par de chaves que a tabela usa para casar as linhas
    *  entre anos (a estrutura pode ter mudado de um ano para o outro; casar por chave, e
    *  não por posição, é o que impede a coluna de escorregar de linha). */
-  function indexar<T>(p: DreMensal, valor: (l: DreLinha | DreBandeja) => T): Record<string, T> {
+  //
+  // ⚠️ A convenção de chave NÃO mora aqui: vem de `@/lib/dre/identidade`, o MESMO módulo
+  // que a TABELA usa para CONSULTAR estes mapas. Enquanto eram duas implementações (uma
+  // aqui, outra lá), a igualdade dependia de ninguém mexer numa só — e divergir é
+  // silencioso: a coluna do Consolidado passa a ler o valor de outra linha. A função
+  // serve aos DOIS regimes, porque a identidade de cada espécie de folha está resolvida
+  // dentro dela. (Deduplicação feita na v5.8.0, achado MÉDIO do `revisor`.)
+  function indexar<T>(
+    p: DreMensalLike,
+    valor: (l: DreLinha | DreBandejaLinha) => T,
+  ): Record<string, T> {
     const m: Record<string, T> = {}
     for (const l of p.linhas) {
-      if (l.t === 'cat') { if (l.categoria_id != null) m[`c:${l.categoria_id}`] = valor(l) }
-      else if (l.chave) { m[`b:${l.chave}`] = valor(l) }
+      const k = chaveDeLinha(l)
+      if (k) m[k] = valor(l)
     }
-    for (const b of p.bandeja) m[`c:${b.categoria_id}`] = valor(b)
+    for (const b of p.bandeja) m[chaveDeBandeja(b)] = valor(b)
     return m
   }
 
@@ -228,25 +237,7 @@ export default async function DrePage({
   const rankingCaixa: RankingCaixaData =
     parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
 
-  // ── COMPETÊNCIA: mesma montagem do caixa, com a identidade de linha do regime ──
-  // A folha da competência não tem `categoria_id` (não existe categoria de banco numa
-  // linha que vem de um par de texto do arquivo) — a identidade é o `chave` que a RPC
-  // emite. Precisa casar com `chaveLinha`/`chaveBandeja` da tabela, senão a coluna do
-  // Consolidado escorrega de linha. Por isso um indexador próprio, e não um `if` dentro
-  // do outro: as duas convenções ficam legíveis lado a lado.
-  function indexarComp<T>(
-    p: DreCompMensal,
-    valor: (l: DreLinha | DreCompBandeja) => T,
-  ): Record<string, T> {
-    const m: Record<string, T> = {}
-    for (const l of p.linhas) {
-      if (l.t === 'cat') { if (l.chave) m[`c:${l.chave}`] = valor(l) }
-      else if (l.chave) { m[`b:${l.chave}`] = valor(l) }
-    }
-    for (const b of p.bandeja) m[`c:${b.chave}`] = valor(b)
-    return m
-  }
-
+  // ── COMPETÊNCIA: mesma montagem do caixa, pelo MESMO `indexar` ────────────────
   const consolidadoAnosComp = anosDisponiveis
     .map(a => {
       const p = dreCompAnos.get(a)
@@ -261,7 +252,7 @@ export default async function DrePage({
         // mentira (a base cobre jan–ago). PREV/VENCIDOS não voltam por isso: o modo está
         // travado em 'realizado', e `montarColunasCons` retorna antes de chegar neles.
         corrente: p.relacao === 'corrente',
-        porLinha: indexarComp(p, l => ({
+        porLinha: indexar(p, l => ({
           total: l.total,
           ytd:   l.meses.slice(0, mesJanela).reduce((s, v) => s + v, 0),
           venc:  l.venc,

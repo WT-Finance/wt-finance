@@ -1,6 +1,6 @@
 # Out-Briefing v5.8.0 — DRE por Competência
 
-**MINOR** · `0255`/`0256`/`0257` (todas ADITIVAS, aplicadas) · **ADR-0170** · **1044 testes**
+**MINOR** · `0255`/`0256`/`0257` (todas ADITIVAS, aplicadas) · **ADR-0170** · **1054 testes**
 Branch `feat/v5-8-0-dre-competencia` · base `420caac` (main na v5.7.2 + pós-merge #244)
 
 ---
@@ -162,6 +162,50 @@ parser (arrastar-e-soltar burla o `accept`); limite superior de `ano`; cobertura
 **BAIXO do `revisor-db` na 0255 (endereçado):** o header prometia uma garantia matemática que o
 desenho não entrega literalmente; reescrito nomeando o ponto real de risco e o fail-closed.
 
+### `revisor` — M2 + M3: **APROVADO COM RESSALVAS**
+
+**ALTO (corrigido).** A tese de "caixa idêntico por construção" tinha **uma exceção real, e ela
+estava escrita justamente no comentário que fazia a promessa**: o `CabecalhoCard` trocou
+`items-center` por `items-start` **incondicionalmente**, e esse cabeçalho serve aos DOIS
+regimes. O card do caixa, que não passa `subtitulo`, passaria a alinhar o selo
+`UltimaAtualizacao` (`text-2xs`, ícone 12px) ao topo do `h2` sem nada que justificasse —
+deslocamento vertical que nenhum gate pega. Corrigido tornando o alinhamento condicional ao
+próprio dado que motivou a mudança: `subtitulo ? 'items-start' : 'items-center'`.
+
+**MÉDIO (corrigido — por deduplicação, não por vigilância).** Não havia nada travando a
+paridade entre a convenção de identidade da TABELA (`chaveLinha`/`chaveBandeja`) e a da PÁGINA
+(`indexarComp`), que precisam ser idênticas: divergir não dá erro, faz a coluna do Consolidado
+exibir o valor de OUTRA linha. A resposta escolhida foi **eliminar as duas implementações** em
+vez de escrever um teste que as vigie: nasceu `src/lib/dre/identidade.ts`
+(`chaveDeLinha`/`chaveDeBandeja`, módulo puro), importado pelas duas pontas — e com isso os
+dois indexadores da página **colapsaram em um só**, que serve aos dois regimes. Mais 10 testes
+puros travam a convenção, incluindo a precedência de `categoria_id` sobre `chave` (cinto contra
+uma convergência futura dos modelos) e a não-colisão dos espaços de nome `b:`/`c:`.
+
+**BAIXO (corrigido):** a indentação do bloco `{!semPrevisto && (<>…</>)}` estava fora do padrão
+do arquivo. Semântica estava certa (o separador sai junto com as pills); reindentado.
+
+**Registrado, fora de escopo:** o `TopSection` usa `var(--brand*)` na cortina, e
+`/financeiro/dre` não é aba setorial — a rigor cabe a discussão "tela de plataforma × de setor"
+da skill `ui-design-system` §6. É componente pré-existente e a adoção nesta página é decisão de
+produto do briefing; fica como observação.
+
+**Resposta direta do revisor sobre regressão no caixa:** um risco real (o `CabecalhoCard`, já
+corrigido) e **nenhum** nos outros seis pontos auditados linha a linha — `totalModo` (nenhum
+outro trecho lê o estado cru), pills condicionais, `chaveLinha` e `chaveBandeja` (confirmado na
+`0207` que o caixa **sempre** emite `categoria_id` na bandeja e **nunca** emite `chave` em linha
+`cat`, então os fallbacks novos são inalcançáveis lá), `paramAno`, e os índices posicionais do
+`Promise.allSettled`.
+
+### Nota sobre a suíte: os casos de contrato dependem de REDE
+
+Numa das corridas do fechamento, 4 testes falharam com a suíte levando **193 s** (contra ~56 s
+no normal). Investigado: **intermitência de rede** nos casos de contrato, que batem no Supabase
+ao vivo por REST — não regressão. Confirmado com 4 corridas limpas seguidas
+(`rpc-contrato.test.ts` isolado 122/122 duas vezes; suíte completa 1054/1054 duas vezes).
+Característica pré-existente da suíte (o `describe.skipIf(!ON)` a desliga sem credencial), mas
+vale saber: **vermelho nesses casos pede uma segunda corrida antes de virar diagnóstico**.
+
 ### Conferência visual
 
 ⚠️ **NÃO VERIFICADA nesta sessão.** O `next dev` subiu e passou a ser alcançável pelo Edge
@@ -277,8 +321,8 @@ Descoberto no fechamento, conferindo o remoto: existe a branch
 
 ## 9. Gates
 
-`npx tsc --noEmit` 0 · `npm run lint` limpo · `npm run build` limpo · **`npm test` 1044/1044**
-(eram 998 na v5.7.2: +46). Migrations aplicadas via `npm run db:migrate -- --aditiva` com
+`npx tsc --noEmit` 0 · `npm run lint` limpo · `npm run build` limpo · **`npm test` 1054/1054**
+(eram 998 na v5.7.2: +56). Migrations aplicadas via `npm run db:migrate -- --aditiva` com
 backup-gate **VERDE** (54/54 tabelas, restore-test spot em 3 tabelas). RPC nova verificada
 **via REST com service_role**, executando o corpo. Nenhuma migration destrutiva pendente na
 pasta.

@@ -221,6 +221,10 @@ import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
 import { avPercentual, baseAv, fmtAv, linhaBaseAv, indiceBaseAv, CHAVE_BASE_AV } from '@/lib/dre/av'
+import {
+  chaveDeLinha as chaveLinha,
+  chaveDeBandeja as chaveBandeja,
+} from '@/lib/dre/identidade'
 import type {
   DreMensalLike,
   DreLinha,
@@ -565,32 +569,11 @@ function deltaYtd(a: number | null, b: number | null): number | null {
   return ((b - a) / Math.abs(a)) * 100
 }
 
-/** Chave de casamento com `anosSeguintes[].totais` E `consolidadoAnos[].porLinha` —
- *  MESMA convenção que a página usa para montar os dois mapas (ver page.tsx): bloco/
- *  sub/totalizador → `b:<chave>`; categoria → `c:<categoria_id>`. `null` quando a
- *  linha não tem identificador (não deveria acontecer na prática — fail-safe: a coluna
- *  cai em AUSÊNCIA, travessão). Generalizada (ex-`chaveAnoSeguinte`) porque serve a
- *  DOIS consumidores, não só as colunas de ano seguinte. */
-function chaveLinha(l: DreLinha): string | null {
-  // Folha: `categoria_id` no caixa (inteiro de `dim_categoria`); na competência não
-  // existe categoria de banco, e a identidade é o `chave` de texto que a RPC emite
-  // (`<sub_chave> · <rótulo>`) — estável entre anos, que é o que a visão Consolidado
-  // exige para casar linha com linha. O prefixo `c:` mantém os dois namespaces
-  // separados dos blocos. (v5.8.0)
-  if (l.t === 'cat') {
-    if (l.categoria_id != null) return `c:${l.categoria_id}`
-    return l.chave != null ? `c:${l.chave}` : null
-  }
-  return l.chave != null ? `b:${l.chave}` : null
-}
-
-/** A MESMA identidade para uma linha de BANDEJA (que não passa por `chaveLinha` porque
- *  não é `DreLinha`). Nunca devolve `null`: sem identificador nenhum, cai no rótulo — a
- *  bandeja precisa aparecer mesmo sem chave, é literalmente o que ela serve para dizer. */
-function chaveBandeja(b: DreBandejaLinha): string {
-  if (b.categoria_id != null) return `c:${b.categoria_id}`
-  return `c:${b.chave ?? b.rotulo}`
-}
+// A chave de casamento com `anosSeguintes[].totais` e `consolidadoAnos[].porLinha` vem de
+// `@/lib/dre/identidade` — o MESMO módulo que a página usa para MONTAR esses mapas. Era
+// uma função local aqui e outra lá; enquanto foram duas, a igualdade dependia de ninguém
+// mexer numa só, e divergir é silencioso (a coluna passa a ler outra linha). Achado MÉDIO
+// do `revisor` na v5.8.0, resolvido por deduplicação e não por teste de vigilância.
 
 /** "Total do ano" por MODO (Refino 8): 'tudo' é o `total` do PAYLOAD (Σ meses +
  *  `prev_corrente`, como a RPC já entrega — comportamento ORIGINAL, default).
@@ -2016,12 +1999,17 @@ function CabecalhoCard({
   subtitulo?: ReactNode
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+    <div className={`mb-4 flex flex-wrap ${subtitulo ? 'items-start' : 'items-center'} justify-between gap-x-4 gap-y-1`}>
       {/* h2 + "?" viajam JUNTOS num flex próprio: sem isso o `justify-between` do pai
           trataria o "?" como um terceiro item e o jogaria para o meio da faixa.
           O subtítulo (v5.8.0) desce dentro DESSE flex, para não virar um terceiro item
-          do `justify-between` e ir para o meio — e o pai passou a `items-start` para o
-          selo continuar alinhado ao topo quando existe subtítulo. */}
+          do `justify-between` e ir para o meio.
+          ⚠️ O alinhamento é CONDICIONAL ao subtítulo, e isso não é preciosismo: com
+          subtítulo a coluna da esquerda fica mais alta e `items-center` empurraria o selo
+          para o meio dela; SEM subtítulo, `items-start` desalinharia o selo (`text-2xs`,
+          ícone 12px) em relação ao `h2` — que é exatamente o card do regime de CAIXA.
+          Trocar isso incondicionalmente foi um achado ALTO do `revisor` na v5.8.0: a
+          missão prometia caixa idêntico "por construção" e esta linha era a exceção. */}
       <div>
       <div className="flex items-center gap-1.5">
         <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
@@ -2489,27 +2477,27 @@ export default function TabelaDre({
               sobraria um traço solto no fim da linha de pills. (v5.8.0) */}
           {!semPrevisto && (
             <>
-          <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
-          <button
-            type="button"
-            onClick={() => setTotalModo('realizado')}
-            title="Só o que já aconteceu — esconde as colunas de previsto, o total com projeção e os anos seguintes"
-            aria-pressed={totalModo === 'realizado'}
-            className={['foco-neutro', PILL_FILTRO, totalModo === 'realizado' ? '' : PILL_FILTRO_INATIVO].join(' ')}
-            style={totalModo === 'realizado' ? PILL_FILTRO_ATIVO_STYLE : undefined}
-          >
-            Realizado
-          </button>
-          <button
-            type="button"
-            onClick={() => setTotalModo('tudo')}
-            title="Realizado + a projeção do que falta — mostra as colunas de previsto, o total com projeção e os anos seguintes"
-            aria-pressed={totalModo === 'tudo'}
-            className={['foco-neutro', PILL_FILTRO, totalModo === 'tudo' ? '' : PILL_FILTRO_INATIVO].join(' ')}
-            style={totalModo === 'tudo' ? PILL_FILTRO_ATIVO_STYLE : undefined}
-          >
-            Realizado + Previsto
-          </button>
+              <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
+              <button
+                type="button"
+                onClick={() => setTotalModo('realizado')}
+                title="Só o que já aconteceu — esconde as colunas de previsto, o total com projeção e os anos seguintes"
+                aria-pressed={totalModo === 'realizado'}
+                className={['foco-neutro', PILL_FILTRO, totalModo === 'realizado' ? '' : PILL_FILTRO_INATIVO].join(' ')}
+                style={totalModo === 'realizado' ? PILL_FILTRO_ATIVO_STYLE : undefined}
+              >
+                Realizado
+              </button>
+              <button
+                type="button"
+                onClick={() => setTotalModo('tudo')}
+                title="Realizado + a projeção do que falta — mostra as colunas de previsto, o total com projeção e os anos seguintes"
+                aria-pressed={totalModo === 'tudo'}
+                className={['foco-neutro', PILL_FILTRO, totalModo === 'tudo' ? '' : PILL_FILTRO_INATIVO].join(' ')}
+                style={totalModo === 'tudo' ? PILL_FILTRO_ATIVO_STYLE : undefined}
+              >
+                Realizado + Previsto
+              </button>
             </>
           )}
 
