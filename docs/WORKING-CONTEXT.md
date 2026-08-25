@@ -2,10 +2,23 @@
 
 Última atualização: 2026-08-25 (pós-merge da v5.7.2) · produção na **v5.7.2** (#243 mergeado 25/08 às 14h10 — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial; **sem migration**). Antes a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-⚠️ **Numeração de migration: a última APLICADA é a `0254`; a próxima livre é a `0255`.**
+⚠️ **Numeração de migration: a última APLICADA é a `0254`.** Mas a próxima livre **não é a
+`0255`** — há DUAS versões em voo com migrations escritas e não aplicadas:
+**v5.8.0** (DRE competência) reservou `0255`, `0256` e `0257`; **v5.9.0** (Solicitações)
+reservou `0258` (aditiva) e `0259` (destrutiva, em `supabase/patches/`).
+🔴 **Conferir o número livre nas DUAS worktrees, e IMEDIATAMENTE antes de aplicar** — a v5.8.0
+avançou de `0255` para `0257` no curso da v5.9.0, e o CLI identifica a migration pelo PREFIXO
+numérico: número repetido entre branches faz a segunda a aplicar ser tratada como "já aplicada"
+e **pulada em silêncio**, sem erro (achado CRÍTICO do `revisor-db` na v5.9.0).
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
 esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
 removida no fechamento da v5.6.4).
+
+🔴 **v5.9.0 em PR, com banco NÃO APLICADO por decisão.** Ordem acordada com o Yan (25/08): a
+**v5.8.0 aplica primeiro** (`0255`-`0257`), a v5.9.0 depois — assim nenhuma precisa de
+`--fora-de-ordem`. A `0259` é **DESTRUTIVA e pré-requisito do MERGE**, não passo pós-merge: o
+front que a consome já está no branch e fica vivo no instante do deploy. Receita completa no
+out-briefing da v5.9.0, §5.
 
 🔴 **PENDENTE: comunicar a MUDANÇA DE CRITÉRIO da DRE à liderança.** Desde 19/08 a DRE mostra
 o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha) em **TODOS os

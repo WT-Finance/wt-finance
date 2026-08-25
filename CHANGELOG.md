@@ -6,6 +6,33 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.0] — 2026-08-25
+
+MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicitação**. Migrations `0258` (aditiva) e `0259` (destrutiva, aguardando TTY) · **ADR-0169**.
+
+### Adicionado
+
+- **Status "Aprovada" — etapa intermediária OPCIONAL entre Aberta e Concluída.** Autorizar e executar deixaram de ser o mesmo ato: num pedido de pagamento dá para aprovar hoje e concluir quando o pagamento sair. Aprovar **não é obrigatório** — concluir direto de Aberta continua valendo e nenhum fluxo existente ganhou um passo. Só o **atendente** aprova (aprovar o próprio pedido não é aprovação); de Aprovada saem concluir, rejeitar e cancelar. Não existe desfazer aprovação.
+- **Anexo depois da abertura**, enquanto a solicitação não estiver encerrada, pelo **solicitante e pelo destinatário** — é por aqui que o comprovante do pagamento efetuado chega a quem abriu o pedido. Solicitação encerrada segue imutável. O anexo entra num campo `anexo` daquele tipo (não há anexo livre): para o comprovante, o admin cadastra um campo não-obrigatório.
+- **Aba "Aprovadas"** na caixa de entrada (com contagem) e **coluna "Aprovadas"** em Minhas solicitações.
+- Seleção de **vários arquivos de uma vez** no anexo da criação (`multiple`).
+- Notificação por e-mail da aprovação, com cor própria (nem o verde de concluída, nem o dourado de criada).
+
+### Alterado
+
+- **O histórico de movimentações deixou de ser inteiramente derivado do status.** `solic_movimentacoes` sempre foi uma *projeção do estado atual* — derivava a ação de `CASE s.status …`. Isso funcionava porque toda solicitação tinha no máximo UMA transição depois da abertura. Com uma etapa intermediária, a aprovação **desapareceria do histórico** no instante em que a solicitação fosse concluída. Agora `aprovado_por`/`aprovado_em` são colunas próprias e a linha "Aprovação" deriva delas — sobrevive a qualquer desfecho. Uma solicitação aprovada e depois concluída mostra as **três** movimentações. (ADR-0169.)
+- **Uma solicitação Aprovada continua vencendo e continua contando como pendência** — a data-limite corre até o desfecho, não até a autorização.
+- **Contrato da API externa:** `status` deixou de ser lista fechada e pode vir `aprovada`. A documentação (nas duas cópias — a da plataforma e o `.md` do integrador) afirmava que "não existe estado aprovado nem estados intermediários"; foi corrigida, com aviso destacado de que integrações que ramificam nos quatro valores antigos passam a cair no ramo default. Cancelamento pela API passa a aceitar solicitação aprovada (aprovar autoriza, não encerra). **Sem endpoint para aprovar** — a aprovação acontece dentro do Janus.
+
+### Corrigido
+
+- A mensagem de erro de transição dizia "Esta solicitação não está mais aberta", o que passaria a mentir com dois estados válidos → "Esta solicitação já foi encerrada".
+- **`uploadAnexo` passou a validar posse e estado antes de escrever no Storage.** A versão inicial do anexo pós-criação aceitava um id de solicitação vindo do cliente e gravava com `service_role` antes de qualquer checagem — a validação só corria no passo seguinte, que um cliente malicioso não chamaria. Qualquer autenticado poderia acumular arquivos na pasta de qualquer solicitação, sem teto e sem coleta. (Achado ALTO do `revisor`.)
+- **O controle "Adicionar arquivo" era inacessível por teclado** — `<input type="file" hidden>` sai do tab-order e `<label>` não é focável, então só respondia a mouse. (Achado ALTO do `revisor`.)
+- **O e-mail de aprovação sairia sem data**, em silêncio: o contexto do e-mail só conhece `criado_em`/`decidido_em`, e aprovar não toca `decidido_em` de propósito. `solic_aprovar` passa a devolver o instante gravado. (Achado ALTO do `revisor`.)
+
+---
+
 ## [5.7.2] — 2026-08-25
 
 PATCH · **DRE: base da Análise Vertical vira a Receita Bruta e novos defaults; busca e ordenação em Solicitações; colunas ordenáveis no Gerencial**. Sem migration · sem ADR.

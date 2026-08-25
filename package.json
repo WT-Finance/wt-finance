@@ -1,6 +1,6 @@
 {
   "name": "wt-finance-temp",
-  "version": "5.7.2",
+  "version": "5.9.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

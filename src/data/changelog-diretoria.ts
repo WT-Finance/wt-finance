@@ -35,6 +35,40 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.9.0',
+    data: '2026-08-25T17:23', // autoria; reconciliar ao horário REAL do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'As solicitações ganharam a etapa "Aprovada", entre Aberta e Concluída. Ela serve ' +
+          'para o caso em que autorizar e executar acontecem em momentos diferentes: um ' +
+          'pagamento pode ser aprovado hoje e concluído quando de fato for pago. A etapa é ' +
+          'OPCIONAL — quem atende continua podendo concluir direto, e nenhum pedido passou a ' +
+          'exigir um passo a mais. Quem aprova é a mesma pessoa ou equipe que já recebia a ' +
+          'solicitação, e fica registrado quem aprovou e quando.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Agora é possível anexar arquivos a uma solicitação DEPOIS de ela ter sido aberta, ' +
+          'enquanto ela não estiver encerrada — e pelos dois lados. Na prática: quem efetuou ' +
+          'um pagamento pode anexar o comprovante, e quem abriu o pedido passa a ter acesso a ' +
+          'ele sem precisar pedir por fora. Antes só dava para anexar no momento da abertura. ' +
+          'Também ficou possível selecionar vários arquivos de uma vez.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A caixa de entrada de Solicitações ganhou uma aba própria de "Aprovadas", com a ' +
+          'contagem do que já foi autorizado e ainda aguarda execução — é a fila de trabalho ' +
+          'que a etapa nova torna visível. Uma solicitação aprovada continua aparecendo como ' +
+          'pendente e continua sinalizando atraso se passar da data-limite: o prazo corre até ' +
+          'o pedido ser de fato concluído, não até ele ser autorizado.',
+      },
+    ],
+  },
+  {
     versao: '5.7.2',
     data: '2026-08-25T14:10', // horário REAL do merge (a807c7d, PR #243, 14h10 −03) — reconciliado no /pos-merge
     itens: [
