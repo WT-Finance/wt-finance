@@ -6,6 +6,30 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.7.2] — 2026-08-25
+
+PATCH · **DRE: base da Análise Vertical vira a Receita Bruta e novos defaults; busca e ordenação em Solicitações; colunas ordenáveis no Gerencial**. Sem migration · sem ADR.
+
+### Alterado
+
+- **A Análise Vertical passou a ser calculada sobre a RECEITA BRUTA DE VENDAS**, não mais sobre a Receita Operacional Líquida. A ROL já é líquida de impostos e deduções — usá-la como denominador fazia toda linha acima dela passar de 100% e media "% da receita" contra um número que já tinha subtrações dentro. **As linhas ACIMA da Receita Bruta ficam travadas em travessão**: Entrada de Clientes, Pagamento ao Fornecedor, Saldo Repasse e Receita de Vendas (com as categorias delas) são as PARCELAS que formam a base, não parte dela — exibir "Entrada de Clientes = 285% da Receita Bruta" convidaria a uma leitura de composição que não existe. A base mostra 100,0%; a AV existe dela para baixo. Conferido no payload vivo: o corte cai na linha 13 de 160.
+- **Novos defaults na página do Demonstrativo:** o card da DRE abre em **Consolidado + Realizado** (era Mensal + Realizado+Previsto, a combinação mais densa que existe — 13 colunas de mês com projeção misturada), e o **Resumo Executivo** abre com os **dois anos mais recentes** (era todos os carregados, que abriam 7 colunas). Os dois cards passam a nascer falando do mesmo par de anos.
+- **Solicitações — ordenação por data de CRIAÇÃO, mais recentes no topo**, em todas as listas e nas duas visões (Caixa de entrada e Minhas solicitações), inclusive nas que antes não eram ordenadas (Concluídas, Canceladas).
+  ⚖️ **O que se perde:** as abertas eram ordenadas por data-limite ASC, o que punha a mais urgente no topo — era triagem. A urgência deixa de ordenar e passa a viver só na cor (o card já pinta o vencimento em vermelho quando vencida). Pedido explícito ("sempre ordenadas por data de criação").
+
+### Adicionado
+
+- **Campo de busca em Solicitações**, na faixa de pills das duas visões: filtra por **número** (`#1068` ou `1068`, inclusive parcial) **ou e-mail do solicitante**. Mensagem de vazio distingue "nenhum resultado para esta busca" de "não há solicitações" — dizer o segundo com um filtro ativo seria dado errado parecendo certo.
+- **Colunas ordenáveis na base de dados do Fluxo de Caixa Gerencial** — Tipo, Pessoa, Valor, Descrição, Conta, Vencimento e Originador. Gatilho é `<button>` dentro da `<th>` com `aria-sort`; clique alterna a direção; nulos sempre no fim, em qualquer direção; **sem clique, a ordem é exatamente a de antes** (não há ordenação default). A coluna Conta ordena pela MESMA `canonizarConta` que o filtro dela usa — senão ordenação e filtro discordariam.
+
+### Interno
+
+- `maisRecentePrimeiro` e `casaBuscaSolicitacao` moram em `src/lib/solicitacoes/format.ts`, não em cada componente de lista: as duas visões da mesma página precisam ordenar e buscar igual, e duas cópias divergiriam no primeiro ajuste.
+- **Regressão pega e coberta por teste:** a primeira versão do matcher extraía os dígitos de QUALQUER termo, então buscar `ana2024@x.com` trazia de brinde a solicitação `#2024`. A busca por número só acontece quando o termo inteiro é uma referência numérica (`^#?\d+$`).
+- `indiceBaseAv` no módulo de AV: a separação acima/abaixo da base é POSICIONAL de propósito — "acima da Receita Bruta" é uma afirmação sobre a ordem do demonstrativo, e o payload já vem em `ordem` ASC. Base ausente ⇒ ninguém tem AV.
+- Testes da AV deixaram de cravar valores vivos: a estrutura é dado editável e os números andam (entre a v5.7.0 e a v5.7.2 a Receita de Vendas de 2025 mudou 104.481,59 por re-parentagem no editor, com o REX intacto — qualquer categoria que troque de bloco dentro do que compõe o REX o deixa invariante). Quem confronta o vivo é o caso de contrato.
+- **998 testes** (v5.7.1: 989).
+
 ## [5.7.1] — 2026-08-24
 
 PATCH · **DRE: "Maiores variações" reconcilia com o Demonstrativo, Receita Bruta vira linha de resultado e a Decomposição sai da página**. Migrations `0253` (aditiva, aplicada) e uma **destrutiva pendente de aplicação** em `supabase/patches/` · sem ADR.

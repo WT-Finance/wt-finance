@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Plus, Upload, Trash2, AlertTriangle, CalendarRange, FilterX, X } from 'lucide-react'
+import { Plus, Upload, Trash2, AlertTriangle, CalendarRange, FilterX, X, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { createLancamento, deleteLancamentosBulk } from '@/app/financeiro/fluxo-caixa/gerencial/actions'
 import { LancamentoRow, type Lancamento } from './lancamento-row'
 import HistoricoAlteracoes from './historico-alteracoes'
@@ -110,6 +110,87 @@ function FiltroVencimento({ ini, fim, onChange }: {
   )
 }
 
+// v5.7.2 — ordenação por clique no cabeçalho da Base de Dados. Aplicada DEPOIS dos
+// filtros por coluna (nunca antes) e nunca muda o CONJUNTO de linhas exibidas, só a ordem
+// — `idsVisiveis`/seleção em massa continuam derivados de `filtrados`, não da ordem.
+type ColOrd = 'tipo' | 'pessoa' | 'valor' | 'descricao' | 'conta' | 'vencimento' | 'originador'
+type DirOrd = 'asc' | 'desc'
+
+// Direção padrão ao TROCAR de coluna: texto começa em asc (A→Z); número e data em desc
+// (maior valor / vencimento mais distante primeiro — leitura mais útil ao abrir a base).
+const DIR_PADRAO_COL: Record<ColOrd, DirOrd> = {
+  tipo: 'asc', pessoa: 'asc', valor: 'desc', descricao: 'asc', conta: 'asc', vencimento: 'desc', originador: 'asc',
+}
+
+function compararTexto(a: string, b: string): number {
+  return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+}
+
+/** Texto NULÁVEL — vazio/nulo sempre no FIM, em qualquer direção (convenção já usada em
+ *  `ranking-caixa.tsx` para colunas que podem faltar dado). */
+function compararTextoNulo(a: string | null, b: string | null, dir: DirOrd): number {
+  const va = a?.trim() || null
+  const vb = b?.trim() || null
+  if (va === null && vb === null) return 0
+  if (va === null) return 1
+  if (vb === null) return -1
+  return dir === 'asc' ? compararTexto(va, vb) : compararTexto(vb, va)
+}
+
+/** Comparador por coluna. `conta` usa a MESMA `canonizarConta` do filtro de Conta — senão
+ *  a ordenação discordaria de "por qual conta esta linha está agrupada no filtro"
+ *  (ex.: "Banco Itau" da planilha precisa ordenar junto de "Itaú", não separado). */
+function comparadorLancamentos(col: ColOrd, dir: DirOrd, contasReais: string[]) {
+  return (a: Lancamento, b: Lancamento): number => {
+    switch (col) {
+      case 'tipo':       return dir === 'asc' ? compararTexto(a.tipo, b.tipo) : compararTexto(b.tipo, a.tipo)
+      case 'pessoa':     return dir === 'asc' ? compararTexto(a.pessoa, b.pessoa) : compararTexto(b.pessoa, a.pessoa)
+      case 'valor':      return dir === 'asc' ? a.valor_final - b.valor_final : b.valor_final - a.valor_final
+      // vencimento é date puro 'AAAA-MM-DD' (sem fuso) — comparação lexicográfica de
+      // string ordena igual a uma comparação de data (mesmo raciocínio de `fmtVencBr`).
+      case 'vencimento': return dir === 'asc' ? a.vencimento.localeCompare(b.vencimento) : b.vencimento.localeCompare(a.vencimento)
+      case 'descricao':  return compararTextoNulo(a.descricao, b.descricao, dir)
+      case 'originador': return compararTextoNulo(a.originador_nome, b.originador_nome, dir)
+      case 'conta': {
+        const ca = canonizarConta(a.conta_previsao, contasReais)
+        const cb = canonizarConta(b.conta_previsao, contasReais)
+        return dir === 'asc' ? compararTexto(ca, cb) : compararTexto(cb, ca)
+      }
+    }
+  }
+}
+
+/** Cabeçalho ORDENÁVEL — idioma do DS (`ranking-caixa.tsx`/`lista-operacoes.tsx`): ativo =
+ *  ArrowUp/ArrowDown; ordenável inativo = ArrowUpDown esmaecido. O gatilho é um
+ *  `<button type="button">` DENTRO da `<th>` (focável, entra no tab-order) — a `<th>` em
+ *  si NUNCA leva `onClick` (skill `ui-design-system`, receita do "?" de ajuda). */
+function ThOrdenavel({ rotulo, col, colAtiva, dir, onOrdenar, className = '' }: {
+  rotulo:     string
+  col:        ColOrd
+  colAtiva:   ColOrd | null
+  dir:        DirOrd
+  onOrdenar:  (col: ColOrd) => void
+  className?: string
+}) {
+  const ativo = colAtiva === col
+  const ariaSort: 'ascending' | 'descending' | 'none' = ativo ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'
+  return (
+    <th aria-sort={ariaSort} className={`py-2 px-2 text-xs font-medium text-zinc-400 ${className}`}>
+      <button
+        type="button"
+        onClick={() => onOrdenar(col)}
+        aria-label={`Ordenar por ${rotulo}`}
+        className={`foco-neutro inline-flex items-center gap-0.5 hover:text-zinc-600 transition-colors ${ativo ? 'text-zinc-600' : ''}`}
+      >
+        {rotulo}
+        {ativo
+          ? (dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+          : <ArrowUpDown size={12} className="text-zinc-300" />}
+      </button>
+    </th>
+  )
+}
+
 interface Props {
   lancamentos: Lancamento[]
   /** Contas reais (gerencial_saldos) — alimentam o select de Conta e o filtro de Conta (M6). */
@@ -159,6 +240,14 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
   const [removendo, startRemover]       = useTransition()
   // Sombra sob o cabeçalho fixo só quando a lista está ROLADA (refino v4.34.1).
   const [rolado, setRolado] = useState(false)
+  // v5.7.2 — ordenação por clique no cabeçalho. Default SEM ordenação (colAtiva null):
+  // preserva exatamente a ordem que já vinha antes desta versão até o 1º clique.
+  const [colAtiva, setColAtiva] = useState<ColOrd | null>(null)
+  const [dirOrd, setDirOrd]     = useState<DirOrd>('asc')
+  const ordenarPor = (col: ColOrd) => {
+    if (col === colAtiva) setDirOrd(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setColAtiva(col); setDirOrd(DIR_PADRAO_COL[col]) }
+  }
 
   const primeiroInputRef = useRef<HTMLSelectElement>(null)
 
@@ -197,6 +286,14 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
       .filter(l => !fVencFim || l.vencimento <= fVencFim)
       .filter(l => !fOriginador || (l.originador_nome ?? '').toLowerCase().includes(fOriginador.toLowerCase()))
   }, [itens, tipoFiltro, origemFiltro, fPessoa, fValorMin, fDescricao, fConta, fVencIni, fVencFim, fOriginador, contasReais])
+
+  // Ordenação (v5.7.2) — aplicada DEPOIS dos filtros, sobre uma CÓPIA de `filtrados`.
+  // `filtrados` em si nunca é reordenado: `idsVisiveis`/seleção em massa abaixo continuam
+  // lendo o CONJUNTO original, então ordenar não pode alterar o que está selecionável.
+  const linhasExibidas = useMemo(() => {
+    if (!colAtiva) return filtrados
+    return [...filtrados].sort(comparadorLancamentos(colAtiva, dirOrd, contasReais))
+  }, [filtrados, colAtiva, dirOrd, contasReais])
 
   // Algum filtro ativo? (mostra o "Limpar filtros"). Não conta a seleção.
   const filtroAtivo = tipoFiltro !== 'todos' || origemFiltro !== 'todos'
@@ -358,13 +455,13 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
                 <input type="checkbox" checked={todosVisiveisSel} onChange={toggleTodosVisiveis}
                   className="accent-[var(--brand)] cursor-pointer" aria-label="Selecionar todos os visíveis" />
               </th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[92px]">Tipo</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[18%]">Pessoa</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 text-right w-[124px]">Valor</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400">Descrição</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400">Conta</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400 w-[100px]">Vencimento</th>
-              <th className="py-2 px-2 text-xs font-medium text-zinc-400">Originador</th>
+              <ThOrdenavel rotulo="Tipo" col="tipo" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="w-[92px]" />
+              <ThOrdenavel rotulo="Pessoa" col="pessoa" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="w-[18%]" />
+              <ThOrdenavel rotulo="Valor" col="valor" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="text-right w-[124px]" />
+              <ThOrdenavel rotulo="Descrição" col="descricao" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} />
+              <ThOrdenavel rotulo="Conta" col="conta" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} />
+              <ThOrdenavel rotulo="Vencimento" col="vencimento" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} className="w-[100px]" />
+              <ThOrdenavel rotulo="Originador" col="originador" colAtiva={colAtiva} dir={dirOrd} onOrdenar={ordenarPor} />
               <th className="py-2 px-2 w-[92px]"></th>
             </tr>
             {/* Filtros por coluna (v4.22 / M5) */}
@@ -484,7 +581,7 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
               </tr>
             )}
 
-            {filtrados.map(l => (
+            {linhasExibidas.map(l => (
               <LancamentoRow
                 key={l.id}
                 lancamento={l}

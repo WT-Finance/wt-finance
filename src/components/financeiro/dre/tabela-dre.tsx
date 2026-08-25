@@ -220,7 +220,7 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
-import { avPercentual, baseAv, fmtAv, linhaBaseAv, CHAVE_BASE_AV } from '@/lib/dre/av'
+import { avPercentual, baseAv, fmtAv, linhaBaseAv, indiceBaseAv, CHAVE_BASE_AV } from '@/lib/dre/av'
 import type {
   DreMensal,
   DreLinha,
@@ -914,7 +914,9 @@ function CelulaDeltaPct({ pct, tipo, peso, bg, bgHover, borda }: CelulaDeltaPctP
 /** O que a coluna "AV" quer dizer. Vive no `title` das `th` (nas duas visões) porque o
  *  cabeçalho já usa esse idioma para a coluna de total, e um balão posicionado seria
  *  recortado pelo `overflow-x` do container que rola. */
-const TITULO_AV = 'AV — Análise Vertical: % sobre a Receita Operacional Líquida do mesmo período'
+const TITULO_AV =
+  'AV — Análise Vertical: % sobre a Receita Bruta de Vendas do mesmo período. ' +
+  'As linhas ACIMA da Receita Bruta não têm AV: elas são as parcelas que a formam, não parte dela.'
 
 /** Tom da AV. Ela é SEMPRE neutra — nunca a régua verde/vermelha de `corPorSinal` —,
  *  mas "neutro" muda de tom com a banda em que a linha está pousada: o cinza claro
@@ -994,10 +996,13 @@ interface LinhaDreTrProps {
   totalModo: TotalModo
   anosSeguintes: AnoSeguinteDados[]
   anosAbertos: boolean
-  /** Base da AV: a ROL **do mesmo recorte do Total do ano exibido**, já validada por
-   *  `baseAv` (`null` = coluna inteira em travessão). Ver a nota sobre bases em
-   *  `TabelaDre` — é o ponto em que a AV fica certa ou silenciosamente errada. */
+  /** Base da AV: a Receita Bruta de Vendas **do mesmo recorte do Total do ano exibido**,
+   *  já validada por `baseAv` (`null` = coluna inteira em travessão). Ver a nota sobre
+   *  bases em `TabelaDre` — é o ponto em que a AV fica certa ou silenciosamente errada. */
   baseAvMensal: number | null
+  /** `false` nas linhas ACIMA da base (v5.7.2) — elas são as parcelas que formam a
+   *  Receita Bruta, não parte dela, e ficam travadas em travessão. */
+  avPermitida: boolean
 }
 
 /** Uma linha completa da tabela (blocoH/sub/cat/tot): Conta + meses (ou a versão
@@ -1013,8 +1018,12 @@ interface LinhaDreTrProps {
  *  como divergir de `right`. */
 function LinhaDreTr({
   linha, relacao, mesCorrente, idxPrevisto, corteIdx, modoPrevisto, expansivel, aberto, onToggle,
-  totalModo, anosSeguintes, anosAbertos, baseAvMensal,
+  totalModo, anosSeguintes, anosAbertos, baseAvMensal, avPermitida,
 }: LinhaDreTrProps) {
+  /** Um único ponto decide se esta linha tem AV — assim a coluna do total e as dos anos
+   *  seguintes nunca discordam entre si. */
+  const av = (valor: number | null, base: number | null) =>
+    avPermitida ? avPercentual(valor, base) : null
   const estilo = estiloLinha(linha.t)
   const incluirPrevCorrente = totalModo === 'tudo'
   const valoresBase = construirValores(linha.meses, linha.prev_corrente, relacao, mesCorrente, incluirPrevCorrente)
@@ -1067,7 +1076,7 @@ function LinhaDreTr({
       {/* AV colada ao total que ela qualifica, no MESMO fundo dele: o âmbar marca o
           recorte ("este número inclui previsto"), e a AV é do mesmo recorte. */}
       <CelulaAv
-        pct={avPercentual(totalExibido, baseAvMensal)}
+        pct={av(totalExibido, baseAvMensal)}
         tipo={linha.t}
         fundo={totalModo === 'tudo' ? 'previsto' : 'normal'}
         bg={estilo.bg}
@@ -1090,7 +1099,7 @@ function LinhaDreTr({
             fixa={fixas.anos[idx].valor}
           />
           <CelulaAv
-            pct={avPercentual(
+            pct={av(
               chaveAno != null ? (a.totais[chaveAno] ?? null) : null,
               baseAv(a.totais[`b:${CHAVE_BASE_AV}`] ?? null),
             )}
@@ -1236,6 +1245,8 @@ interface LinhaConsolidadoTrProps {
   expansivel: boolean
   aberto: boolean
   onToggle?: () => void
+  /** `false` nas linhas ACIMA da base da AV (v5.7.2) — travessão. */
+  avPermitida: boolean
 }
 
 /** Uma linha completa da visão CONSOLIDADO — MESMA Conta/hierarquia/expandir-recolher
@@ -1252,7 +1263,7 @@ interface LinhaConsolidadoTrProps {
  *  por isso que nada fica fixo nesse modo — não por um `if` de modo, mas porque a coluna
  *  simplesmente não é montada (`montarColunasCons`). `anosSeguintes` já chega filtrado
  *  pelo toggle. */
-function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel, aberto, onToggle }: LinhaConsolidadoTrProps) {
+function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel, aberto, onToggle, avPermitida }: LinhaConsolidadoTrProps) {
   const estilo = estiloLinha(linha.t)
   const chave = chaveLinha(linha)
   const reg = (a: number) => (chave === null ? undefined : porAno.get(a)?.[chave])
@@ -1292,7 +1303,7 @@ function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel,
           return (
             <CelulaAv
               key={c.id}
-              pct={avPercentual(valorCons(reg(c.ano), c.campo), baseAvDoAno(c.ano, c.campo))}
+              pct={avPermitida ? avPercentual(valorCons(reg(c.ano), c.campo), baseAvDoAno(c.ano, c.campo)) : null}
               tipo={linha.t}
               // Sempre 'normal': aqui a AV só acompanha coluna de NÍVEL (ano cheio e YTD),
               // que são recortes realizados. Se um dia ela passar a acompanhar PREV ou
@@ -1621,6 +1632,8 @@ function TabelaConsolidada({
   refTabela, abertos, expansiveis, toggleAberto, bordaBaseHeader, minWidth,
 }: TabelaConsolidadaProps) {
   const anosSegVisiveis = anosAbertos ? anosSeguintes : []
+  /** Onde a base da AV está no demonstrativo — tudo acima dela fica em travessão (v5.7.2). */
+  const idxBaseAv = indiceBaseAv(linhas)
   const nComp      = colunas.filter(c => c.grupo === 'comp').length
   const nVenc      = colunas.filter(c => c.grupo === 'venc').length
   const nPrev      = colunas.filter(c => c.grupo === 'prev').length
@@ -1755,6 +1768,10 @@ function TabelaConsolidada({
 
       <tbody>
         {linhas.map((l, i) => {
+          // AV só ABAIXO da base (v5.7.2): a comparação é de POSIÇÃO porque "acima da
+          // Receita Bruta" é uma afirmação sobre a ordem do demonstrativo, e `linhas` já
+          // vem em `ordem` ASC. `idxBaseAv < 0` (base ausente no payload) ⇒ ninguém tem AV.
+          const avPermitida = idxBaseAv >= 0 && i >= idxBaseAv
           if (l.t === 'cat') {
             if (l.g == null || !abertos.has(l.g)) return null
             return (
@@ -1766,6 +1783,7 @@ function TabelaConsolidada({
                 anosSeguintes={anosSegVisiveis}
                 expansivel={false}
                 aberto={false}
+                avPermitida={avPermitida}
               />
             )
           }
@@ -1779,6 +1797,7 @@ function TabelaConsolidada({
               colunas={colunas}
               porAno={porAno}
               anosSeguintes={anosSegVisiveis}
+              avPermitida={avPermitida}
               expansivel={expansivel}
               aberto={aberto}
               onToggle={expansivel && chave != null ? () => toggleAberto(chave) : undefined}
@@ -2055,9 +2074,17 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   const [abertos, setAbertos] = useState<Set<string>>(() => new Set())
   const [rolado, setRolado] = useState(false)
   const [previstoAberto, setPrevistoAberto] = useState(true)
-  const [totalModo, setTotalModo] = useState<TotalModo>('tudo')
+  // ── DEFAULTS DA TABELA (v5.7.2, decisão do Yan) ──────────────────────────────
+  // A tabela abre em **Consolidado + Realizado**, com os dois anos mais recentes. Até a
+  // v5.7.1 abria em Mensal + Realizado+Previsto, e essa combinação é a mais densa que
+  // existe: 13 colunas de mês com projeção misturada. Quem chega na página quer primeiro
+  // "como estamos contra o ano passado, no que já aconteceu" — e é exatamente isso que
+  // Consolidado + Realizado responde. Mensal e o previsto seguem a um clique.
+  const [totalModo, setTotalModo] = useState<TotalModo>('realizado')
   const [anosAbertos, setAnosAbertos] = useState(false)
-  const [visao, setVisao] = useState<Visao>('mensal')
+  // `visaoEfetiva` (abaixo) cai para 'mensal' sozinho se nenhum ano carregar — então o
+  // default 'consolidado' não é um risco de tela vazia.
+  const [visao, setVisao] = useState<Visao>('consolidado')
   // Seleção múltipla da visão Consolidado — os DOIS anos mais recentes disponíveis por
   // padrão (reproduz o comparativo "ano anterior × ano exibido" que existia antes).
   // Initializer de `useState` (nunca um efeito de mount — ruleset do React Compiler).
@@ -2258,10 +2285,12 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   // linha é recomputado só com o que já aconteceu, e o denominador TEM de acompanhar.
   // Numerador de um recorte com denominador de outro devolve um percentual plausível
   // e errado — tipa, soma e não acusa em gate nenhum.
-  const linhaRol = linhaBaseAv(linhas)
+  const linhaBase = linhaBaseAv(linhas)
   const baseAvMensal = baseAv(
-    linhaRol ? totalDoAno(linhaRol.meses, linhaRol.total, totalModo, relacao, mesCorrente) : null,
+    linhaBase ? totalDoAno(linhaBase.meses, linhaBase.total, totalModo, relacao, mesCorrente) : null,
   )
+  /** Onde a base está no demonstrativo — tudo ACIMA dela fica em travessão (v5.7.2). */
+  const idxBaseAv = indiceBaseAv(linhas)
 
   // Rótulo e `title` da coluna de total, por modo (rodada 4/Refino 7). "Total previsto"
   // avisa que o número INCLUI projeção — e explica a soma das colunas visíveis não bater
@@ -2651,6 +2680,8 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
 
             <tbody>
               {linhas.map((l, i) => {
+                // AV só ABAIXO da base (v5.7.2) — ver a nota em `indiceBaseAv`.
+                const avPermitida = idxBaseAv >= 0 && i >= idxBaseAv
                 if (l.t === 'cat') {
                   if (l.g == null || !abertos.has(l.g)) return null
                   return (
@@ -2668,6 +2699,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                       anosSeguintes={anosSegMensal}
                       anosAbertos={anosAbertos}
                       baseAvMensal={baseAvMensal}
+                      avPermitida={avPermitida}
                     />
                   )
                 }
@@ -2691,6 +2723,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                     anosSeguintes={anosSegMensal}
                     anosAbertos={anosAbertos}
                     baseAvMensal={baseAvMensal}
+                    avPermitida={avPermitida}
                   />
                 )
               })}

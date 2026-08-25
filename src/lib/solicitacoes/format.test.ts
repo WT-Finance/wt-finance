@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { fmtValor, vencida, fmtDataBR, hojeSP } from './format'
+import { fmtValor, vencida, fmtDataBR, hojeSP, casaBuscaSolicitacao, maisRecentePrimeiro } from './format'
+import type { Solicitacao } from './schemas'
 
 // Cobre a coerção/limite de Solicitações (v4.17.0 / Balde 2). fmtValor agora usa o
 // toNum canônico; vencida é date-only em fuso de São Paulo.
@@ -58,5 +59,68 @@ describe('vencida — date-only, fuso de São Paulo, cruzando o limite', () => {
     expect(vencida('2026-06-01', 'concluida')).toBe(false)
     expect(vencida('2026-06-01', 'cancelada')).toBe(false)
     expect(vencida('2026-06-01', 'rejeitada')).toBe(false)
+  })
+})
+
+// ── Busca e ordem das listas (v5.7.2) ─────────────────────────────────────────
+function sol(over: Partial<Solicitacao>): Solicitacao {
+  return { id: 1, solicitante_email: 'a@x.com', criado_em: '2026-08-01T10:00:00Z', ...over } as Solicitacao
+}
+
+describe('casaBuscaSolicitacao — por número OU e-mail do solicitante', () => {
+  const s = sol({ id: 1068, solicitante_email: 'kissia@welcometrips.com.br' })
+
+  it('termo vazio ou só espaços não filtra nada', () => {
+    expect(casaBuscaSolicitacao(s, '')).toBe(true)
+    expect(casaBuscaSolicitacao(s, '   ')).toBe(true)
+  })
+
+  it('acha pelo número, com e sem "#", inclusive parcial', () => {
+    expect(casaBuscaSolicitacao(s, '1068')).toBe(true)
+    expect(casaBuscaSolicitacao(s, '#1068')).toBe(true)
+    expect(casaBuscaSolicitacao(s, '106')).toBe(true)   // parcial
+    expect(casaBuscaSolicitacao(s, '068')).toBe(true)   // parcial no meio
+    expect(casaBuscaSolicitacao(s, '2222')).toBe(false)
+  })
+
+  it('acha pelo e-mail, sem diferenciar maiúsculas', () => {
+    expect(casaBuscaSolicitacao(s, 'kissia')).toBe(true)
+    expect(casaBuscaSolicitacao(s, 'KISSIA')).toBe(true)
+    expect(casaBuscaSolicitacao(s, 'welcometrips')).toBe(true)
+    expect(casaBuscaSolicitacao(s, 'outro@')).toBe(false)
+  })
+
+  // ⚠️ REGRESSÃO: a primeira versão extraía os dígitos de QUALQUER termo
+  // (`termo.replace(/\D+/g,'')`), então buscar um e-mail que contém números também casava
+  // por id — "ana2024@x.com" trazia de brinde a solicitação #2024. A busca por número só
+  // acontece quando o termo INTEIRO é uma referência numérica.
+  it('e-mail com dígitos NÃO vira busca por número', () => {
+    const outra = sol({ id: 2024, solicitante_email: 'zzz@x.com' })
+    expect(casaBuscaSolicitacao(outra, 'ana2024@x.com')).toBe(false)
+    expect(casaBuscaSolicitacao(outra, '2024')).toBe(true)      // aí sim
+  })
+
+  it('e-mail nulo não quebra', () => {
+    expect(casaBuscaSolicitacao(sol({ id: 7, solicitante_email: null }), 'qualquer')).toBe(false)
+    expect(casaBuscaSolicitacao(sol({ id: 7, solicitante_email: null }), '7')).toBe(true)
+  })
+})
+
+describe('maisRecentePrimeiro — data de CRIAÇÃO, decrescente', () => {
+  it('ordena do mais recente para o mais antigo', () => {
+    const lista = [
+      sol({ id: 1, criado_em: '2026-08-01T10:00:00Z' }),
+      sol({ id: 2, criado_em: '2026-08-24T09:00:00Z' }),
+      sol({ id: 3, criado_em: '2026-08-10T23:59:00Z' }),
+    ]
+    expect([...lista].sort(maisRecentePrimeiro).map(s => s.id)).toEqual([2, 3, 1])
+  })
+
+  it('desempata de forma estável quando o instante é idêntico', () => {
+    const lista = [
+      sol({ id: 1, criado_em: '2026-08-01T10:00:00Z' }),
+      sol({ id: 2, criado_em: '2026-08-01T10:00:00Z' }),
+    ]
+    expect([...lista].sort(maisRecentePrimeiro).map(s => s.id)).toEqual([1, 2])
   })
 })

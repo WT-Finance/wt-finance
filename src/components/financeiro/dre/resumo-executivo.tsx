@@ -18,9 +18,11 @@
 //    `anoCorrente` e ignorava a navegação da tabela — um retrato fixo de "agora". O
 //    Yan pediu pills com seleção aditiva, então a ancoragem fixa deu lugar a uma
 //    seleção EXPLÍCITA, que continua INDEPENDENTE da pill de ano da tabela: são dois
-//    recortes de propósito distinto no mesmo lugar, como o `?ano=` da tabela e as
-//    pills da Decomposição já eram. O default é TODOS os anos carregados — assim o
-//    card nasce mostrando o que mostrava antes, e as pills só tiram ou repõem.
+//    recortes de propósito distinto no mesmo lugar, como o `?ano=` da tabela já era.
+//    O default são os DOIS anos mais recentes (v5.7.2) — o mesmo da visão Consolidado
+//    da tabela, para os dois cards nascerem falando do mesmo par. (Na v5.7.1 nasciam
+//    todos os carregados; três anos abriam 7 colunas para uma leitura que é, na
+//    prática, ano fechado × ano corrente.)
 //
 // 2. O YTD VEM PRONTO, NUNCA É RECALCULADO AQUI. `porLinha[k].ytd` já sai da janela
 //    `mesJanela` (ancorada em `hojeSP()` na página) — a MESMA em todos os anos, o que
@@ -188,11 +190,13 @@ function CelulaValor({ valor }: { valor: number | null }) {
 }
 
 export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Props) {
-  // Default = TODOS os anos carregados (ver nota 1 no topo): o card nasce mostrando o
-  // que mostrava antes das pills. Initializer de `useState`, nunca um efeito de mount
-  // (ruleset do React Compiler).
+  // Default = os DOIS anos mais recentes (v5.7.2, decisão do Yan). Na v5.7.1 nasciam
+  // TODOS os carregados, para o card não perder informação ao ganhar as pills; na prática
+  // três anos abriam 7 colunas e a leitura útil é o ano fechado contra o corrente. Mesmo
+  // default da visão Consolidado da tabela — os dois cards nascem falando do mesmo par.
+  // Initializer de `useState`, nunca um efeito de mount (ruleset do React Compiler).
   const [selecionados, setSelecionados] = useState<Set<number>>(
-    () => new Set(consolidadoAnos.map(c => c.ano)),
+    () => new Set(consolidadoAnos.slice(-2).map(c => c.ano)),
   )
 
   // Fail-safe: sem nenhum ano carregado o bloco não existe (a tabela abaixo continua
