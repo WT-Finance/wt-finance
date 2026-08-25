@@ -15,6 +15,15 @@
 --     (o ACL é preservado pelo REPLACE);
 --   • NÃO escreve em dado pré-existente (nenhum UPDATE/DELETE de linha viva).
 --
+-- 🔴 ORDEM DE APLICAÇÃO ACORDADA COM O YAN (25/08/2026): a **v5.8.0 aplica PRIMEIRO**
+--    (0255-0257, DRE competência) e só então esta 0258 — assim ninguém precisa de
+--    `--fora-de-ordem` e o histórico fica sequencial.
+--    ⚠️ RECONFERIR O NÚMERO LIVRE IMEDIATAMENTE ANTES DE APLICAR: a v5.8.0 avançou de
+--    0255 para 0257 no curso desta própria versão. Se ela tiver chegado a 0258, esta
+--    migration precisa ser renumerada de novo ANTES do push — número repetido entre
+--    branches faz a segunda a aplicar ser tratada como "já aplicada" e **pulada em
+--    silêncio**, sem erro nenhum (achado CRÍTICO do revisor-db).
+--
 -- ⚠️ ESTA MIGRATION NÃO BASTA SOZINHA. O CHECK `solicitacao_status_check` vivo ainda não
 --    aceita 'aprovada', então `solic_aprovar` só passa a funcionar depois da migration
 --    DESTRUTIVA que relaxa os dois CHECKs (`supabase/patches/0259_*.sql`, aplicada por
