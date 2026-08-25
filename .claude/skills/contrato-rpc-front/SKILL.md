@@ -179,6 +179,39 @@ função inteira, e um erro de transcrição quebraria uma ordenação que ningu
 (Custou uma migration não prevista na v5.4.2: a "Margem (a.a.)" da Lista de Operações de
 Weddings. O briefing supunha que bastaria computar no cliente.)
 
+## 4c. VALOR NOVO num enum que atravessa banco→contrato→UI: o `tsc` NÃO te protege
+
+Acrescentar um valor a uma união de literais (`STATUS_SOLIC`, `TIPOS_CAMPO`…) parece a mudança
+mais segura possível — o TypeScript acusaria o que faltasse. **Não acusa.** Os pontos que
+decidem por esse valor quase sempre têm uma destas formas, e as três compilam limpas:
+
+| Forma | O que acontece com o valor novo |
+|---|---|
+| `switch (x) { … default: }` | cai no `default` — tratado como "o resto" |
+| `.filter(a ? ehX : s => !ehX(s))` | o **complemento** o engole silenciosamente |
+| `COLUNAS.filter(s => s.status === col.status)` | não casa com coluna nenhuma e **some da tela** |
+
+Só `Record<Enum, T>` (como `STATUS_LABEL`) reprova de verdade — e é justamente o que dá a
+falsa sensação de que o compilador está cobrindo o resto.
+
+**Custou caro (v5.9.0):** o status `aprovada` produziu **três** defeitos assim, todos com build
+verde: o board classificava a aprovada como *encerrada* (filtro pelo complemento de `'aberta'`);
+a coluna que faltava fazia a solicitação **sumir da tela do próprio solicitante** (filtro por
+igualdade); e um bloco condicionado a `status !== 'aberta'` renderizava *"Aprovada por — em
+[vazio]"*, lendo campos da decisão terminal que uma aprovada não tem.
+
+**Receita:**
+1. **Varrer à mão** todo ponto de decisão — `grep -rn "'<valor-antigo>'\|status ===\|status !=="`
+   — inclusive fora da pasta do módulo (mapas de rótulo, e-mail, doc da API).
+2. **Reescrever cada predicado explicitamente**, um por caso, em vez de um negar o outro.
+   Complemento é o que apodrece quando o conjunto cresce.
+3. **Exportar o predicado**, não repeti-lo (`emAndamento(status)`), para as telas pararem de
+   reinventar "ainda dá para agir".
+4. **Teste de paridade que LÊ o SQL** e confere o enum contra o `CHECK` aplicado — molde em
+   `src/lib/solicitacoes/ciclo-de-vida.test.ts` (e o precedente `paridade-sql.test.ts`, v5.6.0).
+5. Se o valor novo viaja para fora (API, e-mail), **um caso por variante**: o template que
+   trata dado ausente como string vazia falha em silêncio, e o gate passa verde.
+
 ## 5. Duas RPCs vizinhas na mesma tela precisam CONCORDAR — vira caso de contrato
 
 Reuso de RPC é a preferência do projeto, mas **granularidade e assinatura compatíveis não

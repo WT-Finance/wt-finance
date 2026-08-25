@@ -327,6 +327,48 @@ se auto-desativar nem para tirar o próprio acesso a `admin/acessos`.
   precedente da v4.17.1 na seção 1. `DROP` é destrutivo: confirmação + reversibilidade
   documentada (corpo salvo na migration de origem).
 
+### `CREATE OR REPLACE` se escreve a partir do CATÁLOGO VIVO, nunca da migration de origem
+
+A função que está no banco pode já ter divergido do arquivo que a criou — e o `REPLACE`
+sobrescreve o corpo inteiro, então tudo que existia a mais **some em silêncio**: sem erro de
+banco, sem erro de build, sem teste vermelho. O sintoma aparece na tela do usuário, como um
+campo que parou de vir.
+
+**Custou caro (v5.9.0):** `app.solic_json` foi criada na 0130, mas ganhou a chave `origem`
+(plataforma da API externa) na **0217**. Reescrevê-la a partir da 0130 — o arquivo "de origem",
+o que a intuição manda abrir — teria apagado o selo "aberta via integração" que o board exibe.
+
+```bash
+# a verdade é o catálogo, não o arquivo:
+npx supabase db query --linked "SELECT pg_get_functiondef(p.oid) FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='app' AND p.proname='solic_json'"
+```
+
+Introspecção read-only é exatamente o uso legítimo do `db query` (o que ele NÃO faz é executar
+o corpo de uma RPC gated — §6). O mesmo vale para a nota de **`DOWN`** do header: citar a
+migration errada como fonte de reversão é induzir a MESMA perda na volta. Liste a **última**
+definição de cada função, não a primeira — `grep -l "FUNCTION public.<nome>" supabase/migrations/`
+e pegue a de número mais alto.
+
+### Numeração de migration entre BRANCHES PARALELOS é ponto cego estrutural
+
+Conferir `supabase/migrations/` da sua worktree **não basta** quando há outra versão em voo.
+Cada árvore, isolada, parece sequencial e correta; a colisão só existe no conjunto — e o modo
+de falha é **silencioso**: o CLI identifica a migration pelo **prefixo numérico**, não pelo
+nome, então a segunda branch a aplicar tem o arquivo dela tratado como "já aplicado" e
+**pulado**, deixando a estrutura ausente em produção sem erro nenhum.
+
+```bash
+ls supabase/migrations/ | tail -3
+ls ../*/supabase/migrations/ | tail -3    # TODAS as worktrees irmãs
+```
+
+**Custou caro (v5.9.0):** a v5.8.0 tinha só a `0255` quando a v5.9.0 começou e avançou para
+`0256`/`0257` no meio da implementação — a colisão nasceu depois da checagem. Por isso a
+conferência é **imediatamente antes de aplicar**, não no planejamento: a outra branch se move.
+Quem aplicar por último renumera. (Achado CRÍTICO do `revisor-db`; candidato a enforcement no
+wrapper `db:migrate`, varrendo `.claude/worktrees/*/supabase/migrations/`.)
+
 ### `CHECK` com `CASE` sobre enum: sem `ELSE false` é FAIL-OPEN
 
 Um CHECK que valida "quais campos cada tipo exige" é natural escrever como `CASE tipo WHEN

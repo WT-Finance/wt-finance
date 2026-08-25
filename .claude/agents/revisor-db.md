@@ -34,6 +34,20 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
 - DROP de qualquer objeto: os **consumidores reais** foram verificados? Grep no app **e**
   em `supabase/seed/` (precedente v4.17.1: RPCs "órfãs" pelo briefing eram usadas pelo
   seed). Corpo do objeto dropado preservado na migration para reversibilidade?
+- **`CREATE OR REPLACE`: o corpo novo PERDE alguma chave/ramo que a versão VIVA emitia?**
+  O `REPLACE` sobrescreve tudo e o que some não gera erro — nem de banco, nem de build.
+  Comparar contra a **última** definição real (a de número mais alto:
+  `grep -l "FUNCTION <schema>.<nome>" supabase/migrations/`), NÃO contra a migration de
+  origem. Idem para a nota de `DOWN` do header: citar a fonte errada induz a mesma perda na
+  volta. (Precedente v5.9.0: `app.solic_json` nasceu na 0130 e ganhou a chave `origem` na
+  0217 — reverter/reescrever pela 0130 apagaria o selo "via integração".)
+- **Numeração colide com outra worktree?** Conferir `ls ../*/supabase/migrations/ | tail -3`
+  em TODAS as worktrees irmãs, não só na do escopo. O CLI casa pelo **prefixo numérico**:
+  número repetido entre branches faz a segunda a aplicar ser tratada como "já aplicada" e
+  **pulada em silêncio**. Cada árvore isolada parece correta — a colisão só existe no
+  conjunto, e a outra branch se move (precedente v5.9.0: a irmã avançou de 0255 para 0257
+  durante a implementação). Reportar como **CRÍTICO** e exigir reconferência imediatamente
+  antes da aplicação.
 
 ### Segurança / RBAC (padrão vigente)
 - RPC **nova** usa o padrão **INLINE**: `PERFORM app.exigir_acesso(ARRAY[...])` como
