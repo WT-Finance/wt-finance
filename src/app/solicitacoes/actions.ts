@@ -142,7 +142,13 @@ export async function uploadAnexo(formData: FormData): Promise<{ ok: true; anexo
   // João.pdf") derrubava o upload com `400 InvalidKey` — determinístico por nome, o que
   // fazia parecer intermitência (dois anexos sem acento subiam, o terceiro não). O nome
   // ORIGINAL continua indo em `nome_arquivo`, que é o que a UI exibe.
-  const path = `tmp/${randomUUID()}/${sanitizarNomeArquivo(file.name)}`
+  // v5.9.0 — na ABERTURA o id ainda não existe, então o objeto nasce em tmp/ e é promovido
+  // depois (M17). No anexo PÓS-criação o id já é conhecido: grava direto no destino final e
+  // dispensa a promoção. Um id forjado aqui não vaza nada — `solic_anexar` recusa quem não
+  // pode, esta action apaga o objeto, e o download só alcança anexo REGISTRADO (solic_anexo_path).
+  const solIdRaw = Number(formData.get('solicitacao_id'))
+  const solId = Number.isInteger(solIdRaw) && solIdRaw > 0 ? solIdRaw : null
+  const path = `${solId ? `sol/${solId}` : 'tmp'}/${randomUUID()}/${sanitizarNomeArquivo(file.name)}`
   const buffer = Buffer.from(await file.arrayBuffer())
   const { error } = await getAdminClient().storage.from(BUCKET).upload(path, buffer, { contentType: file.type, upsert: false })
   if (error) return { ok: false, erro: `Falha no upload: ${error.message}` }
@@ -161,6 +167,40 @@ export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string
   const { data: signed, error: sErr } = await getAdminClient().storage.from(BUCKET).createSignedUrl(path, 60)
   if (sErr || !signed) return { ok: false, erro: 'Não foi possível gerar o link do anexo.' }
   return { ok: true, url: signed.signedUrl }
+}
+
+/**
+ * v5.9.0 — APROVA (etapa intermediária opcional). Só o atendente; a RPC enforça.
+ * Não encerra nada: a solicitação segue viva, aguardando execução.
+ */
+export async function aprovarSolicitacao(id: number): Promise<{ ok: boolean; erro?: string }> {
+  await requireAreaAction(null)
+  const { error } = await rpcSessao('solic_aprovar', { p_id: id })
+  if (error) return { ok: false, erro: traduzir(error.message) }
+  await notificarMovimentacao(id, 'aprovada')
+  revalidatePath('/solicitacoes'); return { ok: true }
+}
+
+/**
+ * v5.9.0 — anexa arquivos a uma solicitação JÁ EXISTENTE e ainda em andamento.
+ * Os dois lados anexam (o solicitante complementa; o atendente devolve o comprovante do
+ * pagamento efetuado) — a RPC `solic_anexar` é quem enforça permissão, estado e campo.
+ *
+ * Diferente da criação, aqui o id da solicitação JÁ é conhecido no momento do upload —
+ * então o objeto vai direto para `sol/<id>/<uuid>/<arq>` e não existe a dança
+ * tmp/ → move → `solic_promover_anexos` (que, além do mais, é solicitante-only e não
+ * serviria ao atendente).
+ */
+export async function anexarEmSolicitacao(id: number, anexos: AnexoMeta[]): Promise<{ ok: boolean; erro?: string }> {
+  await requireAreaAction(null)
+  if (!anexos.length) return { ok: false, erro: 'Nenhum arquivo para anexar.' }
+  const { error } = await rpcSessao('solic_anexar', { p_id: id, p_anexos: anexos })
+  if (error) {
+    // Os binários já subiram; sem o metadado eles seriam órfãos invisíveis no bucket.
+    try { await getAdminClient().storage.from(BUCKET).remove(anexos.map(a => a.storage_path)) } catch { /* best-effort */ }
+    return { ok: false, erro: traduzir(error.message) }
+  }
+  revalidatePath('/solicitacoes'); return { ok: true }
 }
 
 export async function concluirSolicitacao(id: number): Promise<{ ok: boolean; erro?: string }> {
@@ -196,12 +236,29 @@ function traduzir(msg: string): string {
     DESTINATARIO_INVALIDO: 'Destinatário inválido ou inativo.',
     DATA_LIMITE_OBRIGATORIA: 'Informe a data-limite.',
     TIPO_INVALIDO: 'Tipo de solicitação indisponível.',
-    TRANSICAO_ILEGAL: 'Esta solicitação não está mais aberta.',
+    // v5.9.0: 'aberta' deixou de ser o único estado em que se pode agir — a mensagem
+    // antiga ("não está mais aberta") passaria a mentir para quem age numa aprovada.
+    TRANSICAO_ILEGAL: 'Esta solicitação já foi encerrada.',
     PERMISSAO_NEGADA: 'Você não tem permissão para esta ação.',
     JUSTIFICATIVA_OBRIGATORIA: 'A justificativa é obrigatória para rejeitar.',
     NAO_ENCONTRADA: 'Solicitação não encontrada.',
     AUTH_NECESSARIA: 'Sessão necessária.',
+    // v5.9.0 — anexo pós-criação (solic_anexar).
+    ANEXO_AUSENTE: 'Nenhum arquivo para anexar.',
+    ANEXO_INVALIDO: 'Arquivo inválido.',
+    CAMPO_ANEXO_OBRIGATORIO: 'Escolha em qual campo de anexo o arquivo entra.',
+    CAMPO_INVALIDO: 'Este tipo de solicitação não tem esse campo de anexo.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
-  return m[prefixo] ?? msg.replace(/^[A-Z_]+:\s*/, '')
+  if (m[prefixo]) return m[prefixo]
+
+  // Rede de segurança da v5.9.0: a etapa "Aprovada" depende de uma migration DESTRUTIVA
+  // (0259) que relaxa `solicitacao_status_check` e só um humano aplica, em TTY. Se este
+  // código chegar a produção antes dela, o primeiro "Aprovar" volta como violação de CHECK
+  // — e sem esta entrada o usuário veria o texto cru do Postgres. Não conserta a ordem
+  // errada; só troca um erro ininteligível por um acionável.
+  if (/violates check constraint|solicitacao_status_check/i.test(msg)) {
+    return 'Aprovação indisponível: a atualização de banco desta função ainda não foi aplicada. Avise o administrador.'
+  }
+  return msg.replace(/^[A-Z_]+:\s*/, '')
 }

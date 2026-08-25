@@ -6,8 +6,19 @@ import { z } from 'zod'
 
 export const TIPOS_CAMPO = ['texto_curto','texto_longo','numero','moeda','data','selecao','anexo'] as const
 export type TipoCampo = (typeof TIPOS_CAMPO)[number]
-export const STATUS_SOLIC = ['aberta','concluida','rejeitada','cancelada'] as const
+// 'aprovada' (v5.9.0) é etapa INTERMEDIÁRIA e OPCIONAL entre 'aberta' e 'concluida':
+// autorizar e executar podem ser momentos distintos (aprovo o pagamento hoje, pago
+// amanhã). Ninguém é obrigado a passar por ela — concluir direto de 'aberta' segue
+// valendo. Ordem do array = ordem do ciclo de vida, não alfabética.
+export const STATUS_SOLIC = ['aberta','aprovada','concluida','rejeitada','cancelada'] as const
 export type StatusSolic = (typeof STATUS_SOLIC)[number]
+
+/** Estados em que a solicitação ainda está viva: aceita transição e anexo novo. */
+export const STATUS_EM_ANDAMENTO: readonly StatusSolic[] = ['aberta','aprovada']
+/** Em andamento = ainda dá para agir. O complemento é ENCERRADA (imutável). */
+export function emAndamento(status: StatusSolic): boolean {
+  return STATUS_EM_ANDAMENTO.includes(status)
+}
 
 // Definição de campo (para o construtor do admin e o motor de render da abertura).
 export const campoDefSchema = z.object({
@@ -66,6 +77,13 @@ export const solicitacaoSchema = z.object({
   respostas:          z.array(respostaSchema),
   decidido_em:        z.string().nullable(),
   decidido_por_email: z.string().nullable(),
+  // Aprovação (v5.9.0, migration 0256) — INDEPENDENTE de decidido_*: uma solicitação
+  // concluída que passou por aprovação tem os dois pares preenchidos, com atores e
+  // instantes distintos. .optional() além de .nullable(): a RPC antiga não emite estas
+  // chaves durante a janela de rollout (lição v4.12.1/ADR-0118 — parseRpc reprova
+  // undefined em campo só .nullable(), e o parse reprovado vira HTTP 500 na tela).
+  aprovado_em:        z.string().nullable().optional(),
+  aprovado_por_email: z.string().nullable().optional(),
   justificativa:      z.string().nullable(),
   criado_em:          z.string(),
   sou_solicitante:    z.boolean().optional(),
@@ -122,15 +140,18 @@ export type TipoAdmin = z.infer<typeof tipoAdminSchema>
 
 // ── Movimentações (v4.19.1) — lista única de AUDITORIA, DERIVADA das colunas de
 // app.solicitacao via RPC solic_movimentacoes() (migration 0142). Gestão-only.
-// Cada item = abertura (solicitante/criado_em) OU decisão terminal (decidido_por/
-// decidido_em/status→ação). A RPC emite SEMPRE as 7 chaves (nenhuma .optional());
+// Cada item = abertura (solicitante/criado_em), APROVAÇÃO (aprovado_por/aprovado_em)
+// ou decisão terminal (decidido_por/decidido_em/status→ação). A linha de Aprovação
+// (v5.9.0) é derivada de `aprovado_em`, NÃO do status — é isso que a faz SOBREVIVER à
+// conclusão: uma solicitação aprovada e depois concluída mostra as três movimentações,
+// em vez de o presente apagar o passado. A RPC emite SEMPRE as 7 chaves (nenhuma .optional());
 // ator/tipo_nome/detalhe podem vir NULL → .nullable() (ator nulo se o usuário sumiu;
 // detalhe nulo na abertura e na decisão sem justificativa). acao é z.string() livre
 // (rótulo derivado) p/ não quebrar o parse se um rótulo novo surgir.
 export const movimentacaoSchema = z.object({
   solicitacao_id: z.number(),
   tipo_nome:      z.string().nullable(),
-  acao:           z.string(),                 // 'Abertura' | 'Conclusão' | 'Rejeição' | 'Cancelamento'
+  acao:           z.string(),                 // 'Abertura' | 'Aprovação' | 'Conclusão' | 'Rejeição' | 'Cancelamento'
   status_atual:   z.enum(STATUS_SOLIC),
   ator:           z.string().nullable(),      // nome (ou e-mail) de quem fez a ação
   em:             z.string(),                 // timestamptz (UTC) — exibir via fmtDataHoraSP
