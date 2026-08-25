@@ -18,29 +18,47 @@ import {
   getPessoasStatusAction,
   inserirLotePessoasAction,
   finalizarPessoasAction,
+  getDemonstrativoCompetenciaStatusAction,
+  inserirLoteDemonstrativoCompetenciaAction,
+  finalizarDemonstrativoCompetenciaAction,
   getMondeSincronizacaoStatusAction,
 } from './actions'
 import type { StatusSincronizacaoMonde } from './actions'
-import { fmtDataHoraSP } from '@/lib/fmt'
+import { fmtDataHoraSP, fmtBRL2 } from '@/lib/fmt'
 import { ModalConfirmacaoUpload } from '@/components/admin/modal-confirmacao-upload'
 import { parseLancamentosFile, LANCAMENTOS_COLUNAS } from '@/lib/carga/parse-lancamentos'
 import { parseVendasProdutoFile } from '@/lib/carga/parse-vendas-produto'
 import { parseLancamentosMovimentacaoFile, LANCAMENTOS_MOVIMENTACAO_COLUNAS } from '@/lib/carga/parse-lancamentos-movimentacao'
 import { parseTitulosEmAbertoFile, TITULOS_EM_ABERTO_COLUNAS } from '@/lib/carga/parse-titulos-em-aberto'
 import { parsePessoasFile, PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
+import {
+  parseDemonstrativoCompetenciaFile,
+  somaCentavos,
+  DEMONSTRATIVO_COMPETENCIA_COLUNAS,
+} from '@/lib/carga/parse-demonstrativo-competencia'
 import { parseArquivoEmWorker } from '@/lib/carga/parse-em-worker'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { LancamentoRaw } from '@/lib/carga/lancamentos'
 import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
 import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
+import type { DemonstrativoCompetenciaRaw } from '@/lib/carga/parse-demonstrativo-competencia'
 
-type BaseKey = 'vendas' | 'lancamentos' | 'lancamentos_movimentacao' | 'titulos_em_aberto' | 'pessoas'
+type BaseKey =
+  | 'vendas' | 'lancamentos' | 'lancamentos_movimentacao' | 'titulos_em_aberto' | 'pessoas'
+  | 'demonstrativo_competencia'
 type EstadoCard = 'idle' | 'validando' | 'aguardando_confirmacao' | 'carregando' | 'sucesso' | 'erro'
 
 interface StatusCarga {
   total: number
   ultima_atualizacao: string | null
+  /** Σ da base em centavos INTEIROS — só a competência a expõe hoje (v5.8.0). O card a
+   *  mostra porque essa base é conferida por SOMA, não só por contagem: o valor é a
+   *  grandeza da DRE, e contagem igual com soma diferente é exatamente o defeito que a
+   *  v5.5.2 deixou passar. `undefined` = base que não mede soma. */
+  soma_centavos?: number
+  /** Cobertura temporal da base (`AAAA-MM-DD`) — alimenta o cabeçalho da seção da DRE. */
+  cobertura?: { de: string | null; ate: string | null }
 }
 
 interface EstadoUpload {
@@ -68,7 +86,14 @@ interface BaseConfig {
   /** Colunas obrigatórias (rótulos) exibidas no card. DERIVADAS do parser (v4.29.0); o
    *  Vendas é tolerante (parser não exige nenhuma) → lista vazia, sem mudar o que aceita. */
   obrigatorias: string[]
+  /** Extensões aceitas no seletor. Omitido = `.xlsx,.csv` (o que todas as bases aceitavam
+   *  antes da v5.8.0 — o default preserva o comportamento existente). A base de
+   *  competência aceita só `.xlsx`: o export real é xlsx e o parser depende do valor
+   *  NATIVO da célula, que o CSV não tem. */
+  accept?:  string
 }
+
+const ACCEPT_PADRAO = '.xlsx,.csv'
 
 // Texto explicativo uniforme: cada base SUBSTITUI TODA a base; importar sempre completo.
 const BASES: BaseConfig[] = [
@@ -111,6 +136,15 @@ const BASES: BaseConfig[] = [
     batch: 500,
     unidade: 'pessoas',
     obrigatorias: PESSOAS_COLUNAS,
+  },
+  {
+    key: 'demonstrativo_competencia',
+    label: 'Demonstrativo de Resultado (Competência)',
+    descricao: 'Substitui toda a base do regime de COMPETÊNCIA (fato gerador: data de emissão) — o export "Demonstrativo de Resultado" do Monde já tratado. Importe sempre o arquivo completo.',
+    batch: 500,
+    unidade: 'linhas',
+    obrigatorias: DEMONSTRATIVO_COMPETENCIA_COLUNAS,
+    accept: '.xlsx',
   },
 ]
 
@@ -278,7 +312,15 @@ function CardUpload({
 
       <p className="text-xs text-zinc-400 mb-3">
         {status ? (
-          <>Última atualização: {formatarData(status.ultima_atualizacao)} · {formatarNum(status.total)} {config.unidade}</>
+          <>
+            Última atualização: {formatarData(status.ultima_atualizacao)} · {formatarNum(status.total)} {config.unidade}
+            {/* Soma e cobertura só existem na base conferida por soma (competência) — ver
+                a nota em StatusCarga. */}
+            {status.soma_centavos !== undefined && <> · Σ {fmtBRL2(status.soma_centavos / 100)}</>}
+            {status.cobertura?.de && status.cobertura.ate && (
+              <> · cobertura {status.cobertura.de.slice(0, 7)} a {status.cobertura.ate.slice(0, 7)}</>
+            )}
+          </>
         ) : '—'}
       </p>
 
@@ -301,14 +343,27 @@ function CardUpload({
         <input
           ref={inputRef}
           type="file"
-          accept=".xlsx,.csv"
+          accept={config.accept ?? ACCEPT_PADRAO}
           className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) onArquivoSelecionado(f); e.target.value = '' }}
         />
         {estado.estado === 'idle' && (
           <>
             <Upload size={16} className="mx-auto mb-1.5 text-zinc-400" />
-            <p className="text-xs text-zinc-500">Arraste ou clique para selecionar um arquivo <span className="font-medium">.xlsx</span> ou <span className="font-medium">.csv</span></p>
+            {/* O texto segue o `accept` da base — prometer .csv onde o parser exige o valor
+                nativo da célula convidaria a um upload que falha (ou pior, que lê torto). */}
+            <p className="text-xs text-zinc-500">
+              Arraste ou clique para selecionar um arquivo{' '}
+              {(config.accept ?? ACCEPT_PADRAO)
+                .split(',')
+                .map(e => e.trim())
+                .map((e, i, arr) => (
+                  <span key={e}>
+                    <span className="font-medium">{e}</span>
+                    {i < arr.length - 1 ? (i === arr.length - 2 ? ' ou ' : ', ') : ''}
+                  </span>
+                ))}
+            </p>
           </>
         )}
         {estado.estado === 'validando' && (
@@ -378,10 +433,12 @@ type LinhasRef = Record<BaseKey, unknown[]>
 export default function AdminUploadsPage() {
   const [status, setStatus] = useState<Record<BaseKey, StatusCarga | null>>({
     vendas: null, lancamentos: null, lancamentos_movimentacao: null, titulos_em_aberto: null, pessoas: null,
+    demonstrativo_competencia: null,
   })
   const [estados, setEstados] = useState<Record<BaseKey, EstadoUpload>>({
     vendas: ESTADO_INICIAL, lancamentos: ESTADO_INICIAL,
     lancamentos_movimentacao: ESTADO_INICIAL, titulos_em_aberto: ESTADO_INICIAL, pessoas: ESTADO_INICIAL,
+    demonstrativo_competencia: ESTADO_INICIAL,
   })
   const [modal, setModal] = useState<BaseKey | null>(null)
   // Sincronização Monde (v5.4.4): leitura, fora do Record de bases (não tem upload nem estado
@@ -390,6 +447,7 @@ export default function AdminUploadsPage() {
 
   const linhasRef = useRef<LinhasRef>({
     vendas: [], lancamentos: [], lancamentos_movimentacao: [], titulos_em_aberto: [], pessoas: [],
+    demonstrativo_competencia: [],
   })
 
   function setEstado(key: BaseKey, patch: Partial<EstadoUpload>) {
@@ -397,13 +455,17 @@ export default function AdminUploadsPage() {
   }
 
   const carregarStatus = useCallback(async () => {
-    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes, mondeRes] = await Promise.allSettled([
+    // ⚠️ Base nova entra no FIM da lista E no fim da desestruturação. Estes índices são
+    // POSICIONAIS: inserir no meio desloca em silêncio o resultado de todos os vizinhos
+    // (a armadilha que a v5.7.1 documentou na página da DRE).
+    const [vendasRes, lancRes, lancMovRes, titAbertoRes, pessoasRes, mondeRes, demoCompRes] = await Promise.allSettled([
       getVendasStatusAction(),
       getLancamentosStatusAction(),
       getLancamentosMovimentacaoStatusAction(),
       getTitulosEmAbertoStatusAction(),
       getPessoasStatusAction(),
       getMondeSincronizacaoStatusAction(),
+      getDemonstrativoCompetenciaStatusAction(),
     ])
 
     setStatusMonde(
@@ -417,12 +479,25 @@ export default function AdminUploadsPage() {
       return { total: r.value.total, ultima_atualizacao: r.value.ultima_atualizacao ?? null }
     }
 
+    // A competência carrega soma e cobertura além da contagem — mapeador próprio, para
+    // esses dois campos não serem descartados pelo `toStatus` genérico.
+    const statusCompetencia: StatusCarga | null =
+      demoCompRes.status === 'fulfilled' && !('error' in demoCompRes.value)
+        ? {
+            total:              demoCompRes.value.total,
+            ultima_atualizacao: demoCompRes.value.ultima_atualizacao,
+            soma_centavos:      demoCompRes.value.soma_centavos,
+            cobertura:          { de: demoCompRes.value.cobertura_de, ate: demoCompRes.value.cobertura_ate },
+          }
+        : null
+
     setStatus({
       vendas:                    toStatus(vendasRes),
       lancamentos:               toStatus(lancRes),
       lancamentos_movimentacao:  toStatus(lancMovRes),
       titulos_em_aberto:         toStatus(titAbertoRes),
       pessoas:                   toStatus(pessoasRes),
+      demonstrativo_competencia: statusCompetencia,
     })
   }, [])
 
@@ -464,6 +539,13 @@ export default function AdminUploadsPage() {
         const st = await getTitulosEmAbertoStatusAction()
         if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
         linhasRef.current.titulos_em_aberto = res
+        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
+      } else if (key === 'demonstrativo_competencia') {
+        const res = await parseArquivoEmWorker<DemonstrativoCompetenciaRaw>('demonstrativo_competencia', arquivo, parseDemonstrativoCompetenciaFile)
+        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+        const st = await getDemonstrativoCompetenciaStatusAction()
+        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
+        linhasRef.current.demonstrativo_competencia = res
         setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
       } else {
         const res = await parseArquivoEmWorker<PessoaRaw>('pessoas', arquivo, parsePessoasFile)
@@ -553,6 +635,30 @@ export default function AdminUploadsPage() {
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
         linhasRef.current.titulos_em_aberto = []
         setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
+
+      } else if (key === 'demonstrativo_competencia') {
+        const rows = linhasRef.current.demonstrativo_competencia as DemonstrativoCompetenciaRaw[]
+        // A soma de conferência é medida ANTES de enviar, sobre as linhas que o parser
+        // produziu — e pela MESMA função que o teste prova (`somaCentavos`). Medi-la depois,
+        // ou reimplementá-la aqui, seria conferir a base contra ela mesma.
+        const somaArquivo = somaCentavos(rows)
+        let inseridas = 0
+        setEstado(key, { progresso: { feito: 0, total: rows.length } })
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const res = await inserirLoteDemonstrativoCompetenciaAction(rows.slice(i, i + BATCH), i === 0, nome)
+          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+          inseridas += res.inseridas
+          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
+        }
+        const fin = await finalizarDemonstrativoCompetenciaAction(inseridas, somaArquivo)
+        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
+        linhasRef.current.demonstrativo_competencia = []
+        setEstado(key, {
+          estado: 'sucesso',
+          mensagem:
+            `${formatarNum(fin.status.total)} linhas · Σ ${fmtBRL2(fin.status.soma_centavos / 100)} ` +
+            `· ${formatarNum(fin.status.pares)} pares — conferido com o arquivo`,
+        })
 
       } else {
         // Pessoas — pipeline ATÔMICO (= Vendas): lotes na staging + swap em finalizar.
