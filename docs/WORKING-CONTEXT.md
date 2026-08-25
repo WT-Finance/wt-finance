@@ -1,8 +1,25 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-25 (pós-merge da v5.7.2) · produção na **v5.7.2** (#243 mergeado 25/08 às 14h10 — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial; **sem migration**). Antes a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-25 (fechamento da v5.8.0) · produção na **v5.7.2** (#243 mergeado 25/08 às 14h10 — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial; **sem migration**). Antes a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-⚠️ **Numeração de migration: a última APLICADA é a `0254`; a próxima livre é a `0255`.**
+🔵 **A v5.8.0 está em PR, aguardando merge — e o BANCO JÁ ESTÁ À FRENTE DO CÓDIGO EM PRODUÇÃO.**
+As migrations `0255`/`0256`/`0257` (aditivas) foram aplicadas, e a base de competência está
+carregada com o arquivo de 25/08 (3.244 linhas, Σ 568.937,62). Nada em produção lê esses objetos
+ainda — quem os consome é o código da branch. É o padrão do projeto (aditiva se aplica antes do
+merge), mas convém saber: um `db push` de outra branch agora NÃO arrasta nada, e a página da DRE
+em produção segue mostrando só o Regime de Caixa até o merge.
+
+⚠️ **DUAS VERSÕES EM VOO — conferir numeração no REMOTO, não só na worktree.** Além da v5.8.0,
+a branch `feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
+migrations **`0258`** (na pasta dela) e **`0259`** (destrutiva, corretamente ainda não escrita).
+O ADR da v5.8.0 nasceu 0169 e foi **renumerado para 0170** por isso. `ls docs/adr/` numa worktree
+devolve 0168 como máximo — a branch da outra versão não está mergeada, então a numeração REAL só
+aparece olhando `origin`. A v5.9.0 saiu do main na `0254` e **não contém** as `0255`–`0257`, que
+já estão aplicadas: um `migration list` rodado lá mostra três "remote-only" (não quebra o push
+dela; só a `0258` está pendente).
+
+⚠️ **Numeração de migration: a última APLICADA é a `0257`; a próxima livre é a `0260`**
+(a `0258`/`0259` estão reservadas pela v5.9.0). Conferir no BANCO e no REMOTO antes de aplicar.
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
 esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
 removida no fechamento da v5.6.4).
@@ -22,6 +39,51 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 > Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
+
+- 🔵 **v5.8.0 (EM PR, não mergeada) — DRE por Competência: segunda TopSection em `/financeiro/dre`.**
+  Migrations **`0255`/`0256`/`0257` (aditivas) APLICADAS** · **ADR-0170** · **1044 testes**.
+  A página passa a mostrar **DOIS resultados para o mesmo mês**: o Regime de Caixa que já
+  existia e o **Regime de Competência** (fato gerador = data de **EMISSÃO**), que fica **ACIMA**
+  dele — decisão do Yan na sessão, contra o "abaixo" do briefing. Fonte: base de upload nova
+  (`raw.demonstrativo_competencia`, o export "Demonstrativo de Resultado" do Monde tratado por
+  script R), árvore e de-para PRÓPRIOS (`financeiro.dre_comp_bloco`/`dre_comp_map`), leitura por
+  VIEW + `get_dre_competencia_mensal(ano)` no MESMO envelope de `get_dre_mensal`.
+  **Base carregada em produção:** 3.244 linhas · Σ 568.937,62 · 141 pares · cobertura
+  2024-01→2026-08.
+  **O oráculo é ESTRUTURAL, não numérico:** expandindo as fórmulas da árvore, `REX` tem
+  coeficiente +1 em cada uma das 15 folhas, e as 15 folhas são exatamente os destinos que o
+  de-para usa ⇒ `REX ≡ Σ(base do ano)` por CONSTRUÇÃO. Medido ao vivo nos 3 anos: REX =
+  208.743,77 / 439.628,52 / −79.434,67 e **REXG 2024 = 1.323.690,77**, idênticos ao modelo da
+  gerente. Bandeja 0; par inventado injetado e revertido prova que órfã aparece e o REX não se
+  move.
+  ⚖️ **Decisão de produto embutida:** a base da AV da seção nova é a **Receita Bruta (`RB_H`)**,
+  não a ROL que o briefing pedia — o briefing foi escrito sobre a v5.7.1 e a v5.7.2 trocou a
+  base horas antes. Dois denominadores na mesma página seriam dois números vizinhos que não
+  conversam.
+  **Duráveis:** *(a)* **prove o invariante em forma fechada a partir do ANEXO, antes do SQL** —
+  contar chaves num CSV transformou o oráculo de conferência numérica frágil (que quebraria a
+  cada re-upload) em identidade estrutural; *(b)* **não compare dinheiro entre JS e Postgres
+  multiplicando por 100** — `Math.round` desempata para +∞ e `NUMERIC` para longe de zero, então
+  em base majoritariamente negativa o desacordo é a REGRA (nasceu `toCentavos`); *(c)* **schema
+  compartilhado entre duas fontes é apagão à espera** quando o campo obrigatório é a identidade —
+  o item que falha derruba o parse do ENVELOPE, e no pior momento possível; *(d)* **migration com
+  seed grande se GERA, não se transcreve** (141 pares, um com vírgula dentro do campo — e o
+  gerador é onde as validações moram, incluindo aciclicidade); *(e)* **`accept` de input não
+  cobre arrastar-e-soltar**; *(f)* **`.passthrough()` do Zod arrasta índice `unknown` que quebra
+  o estreitamento por `'x' in obj`**; *(g)* **Next 16 em WSL2 precisa de `-H 0.0.0.0`** para o
+  browser do Windows alcançar — é a causa concreta do "o Chrome não alcança o localhost do
+  WSL2" registrado na v5.6.0.
+  ⚠️ **Conferência visual NÃO VERIFICADA:** o dev server ficou alcançável pelo Edge com o bind
+  em `0.0.0.0`, mas não havia sessão autenticada e **fazer login é barreira dura** (o gerenciador
+  de senhas pré-preenche o campo; clicar "Entrar" seria autenticar como o usuário). Modelo que
+  funciona segue **entregar → Yan confere no ar → ajustar** (v5.4.1).
+  Out-briefing: `WT_Finance_Out_Briefing_v5-8-0_DRE_Competencia.md`.
+  **Pendente Yan:** conferir o Demonstrativo por Competência contra o arquivo do Monde (Total
+  Geral por ano) · conferir as 3 linhas fundidas contra o modelo da gerente · alternar as pills
+  nos dois regimes e confirmar independência · conferir o cabeçalho de cobertura e que a seção de
+  caixa não mudou · **comunicar o peso de critério à liderança** (a página passa a mostrar dois
+  resultados para o mesmo mês; texto pronto no CHANGELOG_DIRETORIA) · confirmar com a gerente o
+  par `Reembolso Fornecedor - C` (RV) × `Reembolso Fornecedor` (REEMB) · mergear.
 
 - **v5.7.2 (#243, mergeada 25/08 às 14h10) — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações,
   ordenação no Gerencial.** **Sem migration, sem ADR.** Gates verdes, **998/998**.

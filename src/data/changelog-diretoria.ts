@@ -35,6 +35,53 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.8.0',
+    data: '2026-08-25T17:27', // horário REAL de autoria — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A página do Demonstrativo de Resultado passou a mostrar DOIS resultados para o ' +
+          'mesmo mês, um por critério, em duas seções: "Regime de Competência" (nova, no ' +
+          'topo) e "Regime de Caixa" (a que já existia, logo abaixo). Atenção ao ler: os ' +
+          'dois números são certos e vão ser diferentes, porque respondem a perguntas ' +
+          'diferentes. CAIXA é o que efetivamente andou na conta no mês — dinheiro que ' +
+          'entrou e saiu. COMPETÊNCIA é o que foi reconhecido pela EMISSÃO no mês, ' +
+          'independentemente de quando o dinheiro se move. Uma venda emitida em julho e ' +
+          'recebida em setembro aparece em julho na competência e em setembro no caixa.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A leitura por competência era mantida fora do sistema, numa planilha alimentada à ' +
+          'mão. Agora ela vive no Janus, com a mesma estrutura de linhas, a mesma navegação ' +
+          'por ano e a mesma coluna de Análise Vertical (% da Receita Bruta) da outra seção. ' +
+          'A base é atualizada por um arquivo próprio, e a seção mostra no cabeçalho quando ' +
+          'foi carregada e que período ela cobre — as duas seções podem estar em datas ' +
+          'diferentes, e é para isso que a informação está ali.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A última linha do demonstrativo por competência é o RESULTADO GERENCIAL: é o ' +
+          'Resultado do Exercício sem os reembolsos, porque reembolso é dinheiro que passa ' +
+          'pela empresa e volta, não resultado dela. A diferença entre os dois é grande e é ' +
+          'proposital — em 2024, R$ 208,7 mil de Resultado do Exercício contra R$ 1,32 ' +
+          'milhão de Resultado Gerencial.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A atualização das bases de dados ganhou uma conferência automática: ao importar o ' +
+          'arquivo do demonstrativo, o sistema compara a quantidade de linhas E a soma dos ' +
+          'valores do arquivo com o que foi efetivamente gravado, e recusa a importação se ' +
+          'os dois não fecharem ao centavo. Antes uma importação podia terminar "com ' +
+          'sucesso" tendo gravado um valor diferente do arquivo, e isso só apareceria ' +
+          'semanas depois, num relatório.',
+      },
+    ],
+  },
+  {
     versao: '5.7.2',
     data: '2026-08-25T14:10', // horário REAL do merge (a807c7d, PR #243, 14h10 −03) — reconciliado no /pos-merge
     itens: [

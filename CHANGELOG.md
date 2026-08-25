@@ -6,6 +6,44 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.8.0] — 2026-08-25
+
+MINOR · **DRE por Competência: segunda TopSection em `/financeiro/dre`, com base, árvore e leitura próprias**. Migrations `0255`/`0256`/`0257` (todas ADITIVAS) · **ADR-0170**.
+
+### Adicionado
+
+- **Nova TopSection "Regime de Competência" em `/financeiro/dre`, ACIMA do "Regime de Caixa".** Fato gerador: data de **emissão** (o de caixa é movimentação/vencimento). A mesma página passa a responder as duas perguntas — "quanto andou na conta" e "quanto foi reconhecido pela emissão". Mesma permissão da página (`financeiro/dre`).
+- **Base de upload nova:** cartão "Demonstrativo de Resultado (Competência)" em `/admin/uploads`, alimentado pelo export "Demonstrativo de Resultado" do Monde já tratado pelo script R (8 colunas tidy). Full-swap, `accept=".xlsx"` (o parser depende do valor NATIVO da célula, que o CSV não tem). Migration `0255`: `raw.demonstrativo_competencia` + `truncar_/inserir_lote_/status_demonstrativo_competencia`.
+- **ALARME DE INGESTÃO — peça que não existia em nenhum upload do repo.** O `finalizar` confronta **contagem e soma do ARQUIVO** (medidas pelo parser, no cliente) com **contagem e soma GRAVADAS** (medidas pelo banco). Divergência devolve erro e o card **não** declara sucesso. Comparação em **centavos inteiros** nas duas pontas. É a lição da v5.5.2 aplicada na fundação, não em retrofit: lá um ×1000 silencioso atravessou 753 testes e só apareceu meses depois, na DRE.
+- **Árvore e de-para PRÓPRIOS** (migration `0256`): `financeiro.dre_comp_bloco` (26 blocos) e `financeiro.dre_comp_map` (141 pares, chave COMPOSTA `(grupo, descrição)`), mais a view `financeiro.vw_dre_competencia`. As árvores divergem de verdade — competência não tem REPASSE nem IMOBILIZADO, e tem ONOP_H, LL, DL e REXG que o caixa não tem — e as chaves são de espécies diferentes (o caixa chaveia por `dim_categoria.id`, a competência pelo par de TEXTO do arquivo).
+- **`get_dre_competencia_mensal(ano)`** (migration `0257`), no MESMO envelope de `get_dre_mensal` — a tabela densa, as pills de ano, a Análise Vertical e o "Ver em tela cheia" servem aos dois regimes sem adaptação.
+- **`RESULTADO GERENCIAL (ex-Reembolsos)` = REX − REEMB**, como última linha da tabela em formato de totalizador (não é card nem destaque nesta versão). Reembolsos (Desconto, Reembolso Cliente, Reembolso Fornecedor) são subgrupo da Receita Bruta: passagem de dinheiro, não resultado.
+- **`toCentavos`** em `@/lib/carga/coercao` — dinheiro em centavos inteiros pela regra DECIMAL do Postgres (meio-para-longe-de-zero).
+
+### Alterado
+
+- **`TabelaDre` ficou parametrizada por REGIME**, por props ADITIVAS com default (`titulo`, `subtitulo`, `paramAno`, `semPrevisto`). O call-site do regime de caixa **não mudou uma linha**, então o render dele é idêntico por construção — e não por conferência. `semPrevisto` trava o modo em "Realizado" e esconde as pills; todo o resto (coluna ·PREV, VENCIDOS, anos seguintes) cai fora por consequência, porque a tabela já derivava tudo do modo.
+- **Cada regime navega o SEU parâmetro de URL** — `?ano=` (caixa) e `?anoComp=` (competência). Um parâmetro só faria a pill de um regime mover o outro.
+- `accept` do cartão de upload virou campo de configuração por base; o default preserva `.xlsx,.csv` das 5 bases existentes.
+
+### Corrigido
+
+- **O alarme de ingestão comparava centavos por dois métodos que discordam** (achado ALTO do `revisor`, medido e confirmado). `Math.round(v*100)` opera sobre o float JS; o banco recebe a representação DECIMAL no JSON e aplica `::NUMERIC(18,2)`, que arredonda meio-para-**longe-de-zero**. As duas regras divergem em **todo meio-centavo negativo** — e esta base é 2.508 despesas × 736 receitas. Estava **LATENTE** (o arquivo de 25/08 não tem nenhuma linha com mais de 2 casas, e a soma não muda: 568.937,62 antes e depois); teria virado alarme falso reprovando um upload legítimo no dia em que o export trouxesse um valor de título dividido.
+- **A bandeja da competência teria apagado a seção inteira em silêncio** (achado ALTO do `revisor-db`, corrigido antes de existir call-site). `dreBandejaSchema` exige `categoria_id`, que a competência não tem; `bandeja` é campo obrigatório do envelope, então um item sem ele derrubaria o `safeParse` do objeto RAIZ, `parseRpc` devolveria `null` e a seção desapareceria deixando só um `console.error` — no PRIMEIRO par não mapeado, ou seja, exatamente quando a bandeja precisava aparecer. Agora há `dreCompBandejaSchema` próprio, com `chave` textual como identidade.
+
+### Prova
+
+- **Oráculo em forma fechada, sem banco:** expandindo as fórmulas da árvore, `REX` tem coeficiente **+1 em cada uma das 15 folhas**, e as 15 folhas são exatamente os destinos que o de-para usa — logo `REX ≡ Σ(base do ano)` por CONSTRUÇÃO, não por coincidência numérica. No REXG o coeficiente de REEMB cancela para 0. 15 testes em `src/lib/dre/competencia-estrutura.test.ts`, que leem o SQL APLICADO (mão humana no seed gerado fica vermelha).
+- **Medido ao vivo (REST/service_role), 3 anos:** REX = 208.743,77 / 439.628,52 / −79.434,67 e **REXG 2024 = 1.323.690,77** — idênticos ao briefing e ao modelo da gerente. 164 linhas (138 folhas + 26 blocos), bandeja 0, reconciliação `base = linhas + bandeja + excluídas` fechando.
+- **Bandeja provada e revertida:** par inventado injetado na base aparece na bandeja, o REX **não se move** e `base − linhas = bandeja`. Base restaurada ao original.
+- A migration `0256` é **arquivo gerado** por `scripts/gera-seed-dre-competencia.mjs` a partir dos anexos CSV do briefing; o gerador valida referência de fórmula, **aciclicidade**, par não repetido e a regra de rótulos antes de emitir.
+
+### Fora desta versão (registrado)
+
+Cards de KPI e tabela de linhas-chave da competência; mix de receita; ponte competência↔caixa; orçado; editor da árvore/de-para de competência.
+
+---
+
 ## [5.7.2] — 2026-08-25
 
 PATCH · **DRE: base da Análise Vertical vira a Receita Bruta e novos defaults; busca e ordenação em Solicitações; colunas ordenáveis no Gerencial**. Sem migration · sem ADR.
