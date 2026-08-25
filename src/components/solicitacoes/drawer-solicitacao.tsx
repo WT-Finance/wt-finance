@@ -12,7 +12,7 @@ import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } fr
 import { CAMPO } from '@/lib/ui/campos'
 import { fmtDataHoraSP } from '@/lib/fmt'
 import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl,
-  aprovarSolicitacao, anexarEmSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
+  aprovarSolicitacao, anexarEmSolicitacao, uploadAnexo, descartarAnexos, type AnexoMeta } from '@/app/solicitacoes/actions'
 import { STATUS_LABEL, statusBadge, fmtDataBR, fmtValor, vencida } from '@/lib/solicitacoes/format'
 import { emAndamento } from '@/lib/solicitacoes/schemas'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
@@ -97,19 +97,26 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   async function anexarNoCampo(campoId: number, files: FileList) {
     if (anexando !== null) return
     setErro(null); setAnexando(campoId)
+    const metas: AnexoMeta[] = []
     try {
-      const metas: AnexoMeta[] = []
       for (const file of Array.from(files)) {
         const fd = new FormData()
         fd.set('file', file)
         fd.set('campo_id', String(campoId))
         fd.set('solicitacao_id', String(sol.id))   // grava direto em sol/<id>/… (sem promoção)
         const up = await uploadAnexo(fd)
-        if (!up.ok) { setErro(`${file.name}: ${up.erro}`); return }
+        if (!up.ok) {
+          setErro(`${file.name}: ${up.erro}`)
+          // Sem isto, o que JÁ subiu neste lote fica pendurado no bucket para sempre: a
+          // limpeza de `anexarEmSolicitacao` só corre se ela chegar a ser chamada, e um
+          // erro no meio do lote retorna antes disso. Achado MÉDIO do revisor.
+          await descartarAnexos(sol.id, metas.map(m => m.storage_path))
+          return
+        }
         metas.push(up.anexo)
       }
       const r = await anexarEmSolicitacao(sol.id, metas)
-      if (!r.ok) { setErro(r.erro ?? 'Falha ao anexar.'); return }
+      if (!r.ok) { setErro(r.erro ?? 'Falha ao anexar.'); return }  // esta action já limpa
       router.refresh()   // o drawer relê a solicitação e os arquivos novos aparecem
     } finally {
       setAnexando(null)
@@ -199,19 +206,31 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
                     pagamento efetuado chega a quem abriu o pedido. Disponível enquanto a
                     solicitação não estiver encerrada, para o solicitante e o atendente. */}
                 {podeAnexar && (
-                  <label className={`foco-neutro mt-1.5 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-2.5 py-2 text-xs text-zinc-500 hover:bg-zinc-50 ${anexando !== null ? 'pointer-events-none opacity-60' : ''}`}>
-                    {subindo
-                      ? <><Loader2 size={13} className="shrink-0 animate-spin" /> Enviando…</>
-                      : <><Paperclip size={13} className="shrink-0" /> Adicionar arquivo (PDF, imagem ou planilha, ≤10 MB)</>}
+                  <div className="mt-1.5">
+                    {/* Acessibilidade: o input NÃO pode ser `hidden` — `display:none` o tira do
+                        tab-order e o <label> não é focável por natureza, então o controle só
+                        responderia a mouse (achado ALTO do revisor). Com `sr-only` ele
+                        continua no tab-order e recebe foco; o `peer-focus-visible` desenha o
+                        anel na moldura visível, e o htmlFor garante que Enter/Espaço no
+                        input abram o seletor de arquivos. */}
                     <input
-                      type="file" multiple className="hidden" disabled={anexando !== null}
+                      id={`anexar-${sol.id}-${r.campo_id}`}
+                      type="file" multiple className="sr-only peer" disabled={anexando !== null}
                       accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
                       onChange={e => {
                         if (e.target.files?.length && r.campo_id != null) anexarNoCampo(r.campo_id, e.target.files)
                         e.target.value = ''   // permite reescolher o MESMO arquivo depois
                       }}
                     />
-                  </label>
+                    <label
+                      htmlFor={`anexar-${sol.id}-${r.campo_id}`}
+                      className={`flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-2.5 py-2 text-xs text-zinc-500 hover:bg-zinc-50 peer-focus-visible:border-[var(--text-secondary)] peer-focus-visible:shadow-[0_0_0_3px_var(--focus-ring)] ${anexando !== null ? 'pointer-events-none opacity-60' : ''}`}
+                    >
+                      {subindo
+                        ? <><Loader2 size={13} className="shrink-0 animate-spin" /> Enviando…</>
+                        : <><Paperclip size={13} className="shrink-0" /> Adicionar arquivo (PDF, imagem ou planilha, ≤&nbsp;10&nbsp;MB)</>}
+                    </label>
+                  </div>
                 )}
               </div>
             )

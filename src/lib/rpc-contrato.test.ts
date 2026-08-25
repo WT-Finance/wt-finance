@@ -383,6 +383,38 @@ describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-
     expect(r.success, r.success ? '' : `drift de origem: ${JSON.stringify(r.error!.issues.slice(0, 8))}`).toBe(true)
     if (r.success) expect(r.data.origem).toEqual({ plataforma: 'TARS' })
   })
+  // v5.9.0 — `aprovado_em`/`aprovado_por_email` (migration 0258). Mesmas três formas que
+  // `origem` precisou cobrir: AUSENTE (RPC antiga durante o rollout), null (nunca aprovada)
+  // e PREENCHIDO. O fixture acima só cobre a primeira, e implicitamente — sem o caso
+  // preenchido, o schema poderia estar errado e o teste passaria mesmo assim.
+  it('aprovado_em/por: aceita ausente (RPC antiga), null (nunca aprovada) e preenchido', () => {
+    expect(solicitacaoSchema.safeParse(SOLIC_JSON_FIXTURE).success).toBe(true) // sem as chaves
+    expect(solicitacaoSchema.safeParse({
+      ...SOLIC_JSON_FIXTURE, aprovado_em: null, aprovado_por_email: null,
+    }).success).toBe(true)
+    const r = solicitacaoSchema.safeParse({
+      ...SOLIC_JSON_FIXTURE,
+      aprovado_em: '2026-08-25T18:03:11.204512+00:00',
+      aprovado_por_email: 'carine@welcometrips.com.br',
+    })
+    expect(r.success, r.success ? '' : `drift da aprovação: ${JSON.stringify(r.error!.issues.slice(0, 8))}`).toBe(true)
+    if (r.success) expect(r.data.aprovado_por_email).toBe('carine@welcometrips.com.br')
+  })
+  // A aprovação NÃO é derivada do desfecho: uma solicitação concluída pode (e deve) carregar
+  // os dois pares — decidido_* E aprovado_* — com atores e instantes distintos. Se alguém
+  // "simplificar" o schema fundindo os dois, este caso reprova.
+  it('uma solicitação concluída aceita trilha de aprovação com ator distinto de quem concluiu', () => {
+    const r = solicitacaoSchema.safeParse({
+      ...SOLIC_JSON_FIXTURE,                                   // status 'concluida', decidido por carine
+      aprovado_em: '2026-06-12T20:30:00.000000+00:00',
+      aprovado_por_email: 'diretoria@welcometrips.com.br',
+    })
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.aprovado_por_email).not.toBe(r.data.decidido_por_email)
+      expect(r.data.status).toBe('concluida')
+    }
+  })
 })
 
 // v4.34.0: o acervo em produção está VAZIO — o caso de acervo_listar em CONTRATOS_PARSE_RPC

@@ -6,7 +6,9 @@ import { getServerClient } from '@/lib/supabase/server'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import { sanitizarNomeArquivo } from '@/lib/storage/nome-arquivo'
+import { fmtDataHoraSP } from '@/lib/fmt'
 import { getDetalhe, getEmailsEnvolvidos } from '@/lib/solicitacoes/rpc'
+import { emAndamento } from '@/lib/solicitacoes/schemas'
 import { enviarNotificacaoSolicitacao, type MovimentacaoEmail } from '@/lib/email'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
@@ -35,7 +37,16 @@ async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ d
  * v5.3.4: a falha é LOGADA (o catch era mudo — uma falha aqui ficava invisível, inclusive
  * a da RPC de destinatários; foi o que atrasou o diagnóstico do e-mail intermitente).
  */
-async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail, justificativa?: string | null): Promise<void> {
+async function notificarMovimentacao(
+  id: number,
+  movimentacao: MovimentacaoEmail,
+  justificativa?: string | null,
+  /** Instante já formatado (fuso SP) a usar em vez do derivado do contexto. Necessário
+   *  para 'aprovada': `solic_emails_envolvidos` só conhece `criado_em` e `decidido_em`, e
+   *  a aprovação não toca `decidido_em` de propósito — sem este override o e-mail sairia
+   *  sem data, em silêncio. */
+  quandoOverride?: string | null,
+): Promise<void> {
   try {
     const ctx = await getEmailsEnvolvidos(id)
     if (!ctx) {
@@ -46,8 +57,9 @@ async function notificarMovimentacao(id: number, movimentacao: MovimentacaoEmail
       console.error(`[solicitacoes] notificação #${id} (${movimentacao}): nenhum envolvido com e-mail — nada enviado.`)
       return
     }
-    // 'criada' usa o criado_em; concluir/rejeitar/cancelar usam o decidido_em (quando agiu).
-    const quando = movimentacao === 'criada' ? ctx.criado_em_fmt : ctx.decidido_em_fmt
+    // 'criada' usa o criado_em; concluir/rejeitar/cancelar usam o decidido_em (quando agiu);
+    // 'aprovada' não tem nenhum dos dois no contexto e chega pelo override do caller.
+    const quando = quandoOverride ?? (movimentacao === 'criada' ? ctx.criado_em_fmt : ctx.decidido_em_fmt)
     // Falha parcial é logada pela CAMADA (o rótulo lá inclui "Tipo #id") — não repetir aqui.
     await enviarNotificacaoSolicitacao({
       paras:           ctx.envolvidos_emails,
@@ -143,11 +155,27 @@ export async function uploadAnexo(formData: FormData): Promise<{ ok: true; anexo
   // fazia parecer intermitência (dois anexos sem acento subiam, o terceiro não). O nome
   // ORIGINAL continua indo em `nome_arquivo`, que é o que a UI exibe.
   // v5.9.0 — na ABERTURA o id ainda não existe, então o objeto nasce em tmp/ e é promovido
-  // depois (M17). No anexo PÓS-criação o id já é conhecido: grava direto no destino final e
-  // dispensa a promoção. Um id forjado aqui não vaza nada — `solic_anexar` recusa quem não
-  // pode, esta action apaga o objeto, e o download só alcança anexo REGISTRADO (solic_anexo_path).
+  // depois (M17). No anexo PÓS-criação o id já é conhecido e o objeto vai direto ao destino.
+  //
+  // ⚠️ O id vem do cliente, e a escrita usa `service_role` (que ignora RLS): sem checar aqui,
+  // qualquer autenticado poderia despejar arquivos de 10 MB dentro da pasta de QUALQUER
+  // solicitação, para sempre — a validação de `solic_anexar` só corre no passo SEGUINTE, que
+  // um cliente malicioso simplesmente não chamaria, e a limpeza mora justamente lá. Não seria
+  // vazamento (a leitura segue gated por `solic_anexo_path`), mas é poluição de storage sem
+  // teto e sem coleta. Então: valida ANTES de escrever um byte. Achado ALTO do revisor.
+  //
+  // A checagem repete a de `solic_anexar` de propósito — esta é conveniência (evitar upload
+  // inútil e fechar o vetor de escrita); a barreira que vale continua sendo a do banco.
   const solIdRaw = Number(formData.get('solicitacao_id'))
   const solId = Number.isInteger(solIdRaw) && solIdRaw > 0 ? solIdRaw : null
+  if (solId) {
+    const sol = await getDetalhe(solId)
+    if (!sol) return { ok: false, erro: 'Solicitação não encontrada.' }
+    if (!emAndamento(sol.status)) return { ok: false, erro: 'Esta solicitação já foi encerrada.' }
+    if (!(sol.sou_solicitante || sol.sou_atendente)) {
+      return { ok: false, erro: 'Você não tem permissão para anexar nesta solicitação.' }
+    }
+  }
   const path = `${solId ? `sol/${solId}` : 'tmp'}/${randomUUID()}/${sanitizarNomeArquivo(file.name)}`
   const buffer = Buffer.from(await file.arrayBuffer())
   const { error } = await getAdminClient().storage.from(BUCKET).upload(path, buffer, { contentType: file.type, upsert: false })
@@ -175,9 +203,12 @@ export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string
  */
 export async function aprovarSolicitacao(id: number): Promise<{ ok: boolean; erro?: string }> {
   await requireAreaAction(null)
-  const { error } = await rpcSessao('solic_aprovar', { p_id: id })
+  const { data, error } = await rpcSessao('solic_aprovar', { p_id: id })
   if (error) return { ok: false, erro: traduzir(error.message) }
-  await notificarMovimentacao(id, 'aprovada')
+  // A RPC devolve o `aprovado_em` que acabou de gravar — o contexto do e-mail não o tem
+  // (ele só conhece criado_em/decidido_em, e aprovar não mexe em decidido_em).
+  const aprovadoEm = (data as { aprovado_em?: string } | null)?.aprovado_em ?? null
+  await notificarMovimentacao(id, 'aprovada', null, aprovadoEm ? fmtDataHoraSP(aprovadoEm) : null)
   revalidatePath('/solicitacoes'); return { ok: true }
 }
 
@@ -191,6 +222,33 @@ export async function aprovarSolicitacao(id: number): Promise<{ ok: boolean; err
  * tmp/ → move → `solic_promover_anexos` (que, além do mais, é solicitante-only e não
  * serviria ao atendente).
  */
+/**
+ * v5.9.0 — remove do Storage anexos que subiram mas não chegaram a ser registrados (erro no
+ * meio de um lote). Best-effort: é limpeza, não caminho crítico.
+ *
+ * ⚠️ Esta é uma Server Action: os caminhos chegam do CLIENTE e a remoção usa `service_role`,
+ * que ignora RLS. Uma versão ingênua — "recebe paths, apaga" — seria uma primitiva de
+ * DELEÇÃO ARBITRÁRIA de anexo, pior do que o lixo de storage que ela resolve. Daí as duas
+ * amarras abaixo, que restringem o estrago ao que o próprio chamador acabou de subir:
+ *   1. o caller precisa poder agir NAQUELA solicitação (mesma regra do upload);
+ *   2. todo caminho precisa estar sob o prefixo `sol/<id>/` dela.
+ * Os caminhos carregam um UUID aleatório que nunca é exposto na leitura (`anexoSchema` não
+ * traz `storage_path`), então na prática só se alcança o que a própria sessão acabou de
+ * receber de `uploadAnexo`. (Achado da auto-auditoria, não do revisor.)
+ */
+export async function descartarAnexos(solicitacaoId: number, storagePaths: string[]): Promise<void> {
+  await requireAreaAction(null)
+  if (!Number.isInteger(solicitacaoId) || solicitacaoId <= 0 || !storagePaths.length) return
+
+  const sol = await getDetalhe(solicitacaoId)
+  if (!sol || !(sol.sou_solicitante || sol.sou_atendente)) return
+
+  const prefixo = `sol/${solicitacaoId}/`
+  const permitidos = storagePaths.filter(p => p.startsWith(prefixo) && !p.includes('..'))
+  if (!permitidos.length) return
+  try { await getAdminClient().storage.from(BUCKET).remove(permitidos) } catch { /* best-effort */ }
+}
+
 export async function anexarEmSolicitacao(id: number, anexos: AnexoMeta[]): Promise<{ ok: boolean; erro?: string }> {
   await requireAreaAction(null)
   if (!anexos.length) return { ok: false, erro: 'Nenhum arquivo para anexar.' }

@@ -163,8 +163,32 @@ describe('enviarSenhaProvisoria — NUNCA lança (boolean)', () => {
   })
 })
 
-describe('templateNotificacaoSolicitacao — 4 movimentações', () => {
+describe('templateNotificacaoSolicitacao — 5 movimentações', () => {
   const base = { titulo: 'Lançamentos #42', atribuidoRotulo: 'Carine Cardoso', autorRotulo: 'Yan Vieira' }
+
+  // v5.9.0 — 'aprovada'. Existia um vão aqui: nenhum caso exercitava a movimentação nova, e
+  // foi por isso que o gate passou verde com o e-mail de aprovação saindo SEM DATA (o
+  // contexto do e-mail só conhece criado_em/decidido_em, e aprovar não toca decidido_em de
+  // propósito). O template trata `quando` ausente como string vazia — silencioso por
+  // desenho —, então só um teste que EXIGE a data pega a regressão. Achado ALTO do revisor.
+  it('aprovada: assunto/text próprios e a DATA aparece (não pode sair vazia)', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'aprovada', ...base, quando: '25/08/2026 às 15:03' })
+    expect(t.assunto).toContain('aprovada')
+    expect(t.assunto).toContain('Lançamentos #42')
+    expect(t.text).toContain('foi aprovada')
+    expect(t.text).toContain('25/08/2026 às 15:03')
+    expect(t.html).toContain('25/08/2026 às 15:03')
+    // cor própria: não reusa o verde de concluída nem o dourado de criada
+    const corDe = (mov: 'aprovada' | 'concluida' | 'criada') =>
+      templateNotificacaoSolicitacao({ movimentacao: mov, ...base }).html.match(/#[0-9A-Fa-f]{6}/g)?.join(',')
+    expect(corDe('aprovada')).not.toBe(corDe('concluida'))
+    expect(corDe('aprovada')).not.toBe(corDe('criada'))
+  })
+
+  it('aprovada: SEM justificativa mesmo se passada (só rejeição a exibe)', () => {
+    const t = templateNotificacaoSolicitacao({ movimentacao: 'aprovada', ...base, justificativa: 'nao deveria aparecer' })
+    expect(t.html).not.toContain('nao deveria aparecer')
+  })
 
   it('criada: assunto/título no html e text + lockup duplo (2 CIDs) + "Janus"', () => {
     const t = templateNotificacaoSolicitacao({ movimentacao: 'criada', ...base })

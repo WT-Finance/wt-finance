@@ -128,7 +128,9 @@ REVOKE EXECUTE ON FUNCTION app.solic_json(app.solicitacao) FROM PUBLIC;
 -- Espelha a regra de `solic_rejeitar`, que já é atendente-only.
 CREATE OR REPLACE FUNCTION public.solic_aprovar(p_id bigint)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $function$
-DECLARE v_sol app.solicitacao;
+DECLARE
+  v_sol app.solicitacao;
+  v_em  timestamptz;
 BEGIN
   PERFORM app.exigir_acesso();
   SELECT * INTO v_sol FROM app.solicitacao WHERE id = p_id;
@@ -145,9 +147,14 @@ BEGIN
   -- Conclusão, com atores e instantes distintos.
   UPDATE app.solicitacao
      SET status = 'aprovada', aprovado_por = app.uid_jwt(), aprovado_em = now()
-   WHERE id = p_id;
+   WHERE id = p_id
+  RETURNING aprovado_em INTO v_em;
 
-  RETURN jsonb_build_object('ok', true);
+  -- Devolve o instante gravado: o e-mail de notificação precisa dele e NÃO pode buscá-lo
+  -- em `solic_emails_envolvidos`, que só conhece `decidido_em` — nulo aqui justamente
+  -- porque aprovar não é decidir. Sem isto o e-mail de aprovação sai sem data e sem erro
+  -- nenhum (o template trata `quando` ausente como string vazia). Achado ALTO do revisor.
+  RETURN jsonb_build_object('ok', true, 'aprovado_em', v_em);
 END; $function$;
 
 -- ── 4. solic_anexar — RPC NOVA (anexo depois da abertura, pelos dois lados) ───

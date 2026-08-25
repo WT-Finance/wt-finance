@@ -1,6 +1,6 @@
 # Janus — API Externa de Solicitações · Contrato do integrador
 
-> **Versão do contrato:** v5.4.0 · julho/2026
+> **Versão do contrato:** v5.9.0 · agosto/2026 (mudança de estados — ver aviso na seção 1)
 > **Público:** equipes de plataformas internas do Welcome Group que criam solicitações no Janus
 > (primeiro integrador: TARS/CRM). **Este documento substitui qualquer levantamento anterior
 > como fonte da integração.** O Janus é o dono do formato; a plataforma de origem se adapta a
@@ -16,11 +16,27 @@
 
 ## 1. Conceitos em 30 segundos
 
+> ### ⚠️ Mudança de contrato na v5.9.0 — leia antes de atualizar sua integração
+>
+> **Versões anteriores deste documento afirmavam que "não existe estado 'aprovado' nem estados
+> intermediários". Isso deixou de ser verdade.** Desde a v5.9.0 existe o estado
+> `aprovada`: a solicitação foi autorizada por quem a recebeu, mas ainda não foi executada
+> (o caso típico é um pagamento aprovado hoje e efetuado depois).
+>
+> **O que muda para você:** `status` pode vir `aprovada` em qualquer solicitação consultada.
+> **Trate `status` como valor aberto, não como lista fechada** — código que ramifica nos quatro
+> valores antigos sem caminho padrão passa a cair no ramo default. Para a maioria das
+> integrações a leitura útil é binária:
+> **encerrada** (`concluida` / `rejeitada` / `cancelada`) ou **em andamento** (o resto).
+>
+> **O que NÃO muda:** a aprovação acontece dentro do Janus — não há endpoint para aprovar, e
+> nenhum campo novo é exigido no disparo. O passo é **opcional**: quem atende pode concluir
+> direto de `aberta`, e nenhum fluxo existente passou a exigir uma etapa a mais. Uma
+> solicitação `aprovada` **continua cancelável** pela sua chave (seção 7).
+
 - Uma **solicitação** é uma tarefa aberta para uma **equipe** (role) do Janus, com campos
-  definidos pelo **tipo** (cadastro do Janus). Estados possíveis: `aberta` →
-  `concluida` | `rejeitada` | `cancelada`. **Não existe estado "aprovado"** nem estados
-  intermediários — se a sua plataforma tem um conceito próprio de aprovação, ele vive do seu
-  lado; para o Janus a solicitação está aberta até alguém concluí-la, rejeitá-la ou cancelá-la.
+  definidos pelo **tipo** (cadastro do Janus). Estados possíveis: `aberta` → `aprovada`
+  (opcional) → `concluida` | `rejeitada` | `cancelada`.
 - Cada plataforma integradora recebe uma **chave de API** — toda chave ativa alcança **todos os
   tipos expostos via API**. Não existe mais lista de tipos por chave: o único controle de acesso
   é o interruptor **exposto/não-exposto** de cada tipo, ligado pelo administrador na tela
@@ -119,7 +135,7 @@ Regras:
 - **`solicitante_email` é obrigatório** e precisa ser o e-mail de uma pessoa **já cadastrada e
   ativa** no Janus (comparação sem diferenciar maiúsculas/minúsculas e sem espaços nas pontas).
   Essa pessoa vira a **solicitante de verdade** do pedido: ela vê a solicitação em "Minhas
-  solicitações", recebe os e-mails de movimentação (criada, concluída, rejeitada, cancelada) e
+  solicitações", recebe os e-mails de movimentação (criada, aprovada, concluída, rejeitada, cancelada) e
   pode cancelá-la pela própria tela do Janus. A procedência não se perde — a tela mostra um selo
   `via integração <PLATAFORMA>` ao lado do solicitante. E-mail sem cadastro ativo →
   `SOLICITANTE_INVALIDO`; ausente → `SOLICITANTE_OBRIGATORIO` (422 nos dois casos) — não há
@@ -179,9 +195,10 @@ chamadas.
   } }
 ```
 
-- `status` ∈ `aberta · concluida · rejeitada · cancelada`. `decidido_em` e `justificativa`
-  ficam `null` enquanto a solicitação está aberta; `justificativa` só vem preenchida em
-  rejeição.
+- `status` ∈ `aberta · aprovada · concluida · rejeitada · cancelada` — **lista aberta**, ver o
+  aviso da seção 1. `decidido_em` e `justificativa` ficam `null` enquanto a solicitação **não
+  foi encerrada** — inclusive quando ela está `aprovada`, porque aprovar não é encerrar;
+  `justificativa` só vem preenchida em rejeição.
 - **`404 NAO_ENCONTRADA`** quando o id não existe, quando pertence a **outra chave**, ou quando é
   uma solicitação aberta na tela por um humano (essas não têm origem de integração). Os três
   casos respondem **igual, de propósito** — a resposta não pode servir de oráculo para descobrir
@@ -224,7 +241,9 @@ guardar o nosso `id`.
 
 ## 7. Cancelar — `POST /api/externo/solicitacoes/{id}/cancelar`
 
-- Só cancela solicitações **criadas pela sua chave** e **ainda abertas**.
+- Só cancela solicitações **criadas pela sua chave** e **ainda não encerradas** — desde a
+  v5.9.0 isso inclui as que estão `aprovada`: aprovar autoriza, não encerra, e quem pediu
+  continua podendo desistir.
 - Já concluída/rejeitada/cancelada → `409` com `CONFLITO_ESTADO: <status atual>` — o conflito é
   **reportado, não aplicado** (o estado do Janus não muda; consulte para confirmar o estado
   atual — seção 5).
@@ -237,7 +256,7 @@ Formato de todo erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..
 |---|---|---|
 | `AUTH_AUSENTE` / `AUTH_INVALIDA` / `CHAVE_INVALIDA` | 401 | Sem chave, chave errada ou revogada |
 | `NAO_ENCONTRADA` | 404 | Solicitação inexistente, de outra chave, ou aberta na tela por um humano — vale para a consulta (seção 5) e para o cancelamento |
-| `CONFLITO_ESTADO` | 409 | Cancelamento de solicitação não-aberta |
+| `CONFLITO_ESTADO` | 409 | Cancelamento de solicitação já encerrada (`aberta` e `aprovada` seguem canceláveis) |
 | `PAYLOAD_EXCEDE_LIMITE` | 413 | Corpo acima de 64 KB |
 | `JSON_INVALIDO` / `PAYLOAD_INVALIDO` | 400/422 | Corpo não é JSON válido / shape errado |
 | `TIPO_INVALIDO` | 422 | Slug inexistente, arquivado ou não exposto |
