@@ -88,7 +88,10 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
               <div>
                 <label className="foco-neutro flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-50">
                   <Paperclip size={14} /> Anexar arquivo (PDF, imagem ou planilha, ≤10 MB)
-                  <input type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
+                  {/* v5.9.0 — `multiple`: o estado já era uma LISTA por campo e
+                      `onAnexoSelect` já iterava o FileList, então dava para acumular
+                      vários clicando repetidas vezes; faltava poder selecionar de uma vez. */}
+                  <input type="file" multiple className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
                     onChange={e => { if (e.target.files?.length) { onAnexoSelect(id, e.target.files); e.target.value = '' } }} />
                 </label>
                 {(anexos[id] ?? []).map((a, i) => (

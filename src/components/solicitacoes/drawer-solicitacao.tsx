@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Download, Check, X, Ban, FileText, FileSpreadsheet, FileImage, File as FileIcon } from 'lucide-react'
+import { Loader2, Download, Check, X, Ban, ThumbsUp, Paperclip, FileText, FileSpreadsheet, FileImage, File as FileIcon } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
 import ModalCentral from '@/components/shared/modal-central'
 import ConfirmModal from '@/components/shared/confirm-modal'
@@ -11,8 +11,10 @@ import Badge from '@/components/ui/badge'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { CAMPO } from '@/lib/ui/campos'
 import { fmtDataHoraSP } from '@/lib/fmt'
-import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl } from '@/app/solicitacoes/actions'
+import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl,
+  aprovarSolicitacao, anexarEmSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import { STATUS_LABEL, statusBadge, fmtDataBR, fmtValor, vencida } from '@/lib/solicitacoes/format'
+import { emAndamento } from '@/lib/solicitacoes/schemas'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 const INPUT = `${CAMPO} resize-none`
@@ -36,11 +38,19 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   const [justificativa, setJustificativa] = useState('')
   // id do anexo sendo baixado no momento (impede duplo-clique e exibe spinner)
   const [baixando, setBaixando] = useState<number | null>(null)
+  // campo_id que está recebendo upload agora (trava a UI e exibe spinner) — v5.9.0
+  const [anexando, setAnexando] = useState<number | null>(null)
 
-  const aberta = sol.status === 'aberta'
-  const podeConcluir = aberta && (sol.sou_atendente || sol.sou_solicitante)
-  const podeRejeitar = aberta && sol.sou_atendente
-  const podeCancelar = aberta && sol.sou_solicitante
+  // v5.9.0 — o que libera AÇÃO é estar em andamento ('aberta' OU 'aprovada'); o que é
+  // exclusivo de 'aberta' é APROVAR (não se aprova duas vezes, e não há desaprovar).
+  const emAnd = emAndamento(sol.status)
+  const podeAprovar  = sol.status === 'aberta' && !!sol.sou_atendente
+  const podeConcluir = emAnd && (sol.sou_atendente || sol.sou_solicitante)
+  const podeRejeitar = emAnd && !!sol.sou_atendente
+  const podeCancelar = emAnd && !!sol.sou_solicitante
+  // Anexar depois da abertura: os dois lados, enquanto não encerrada (D5/D6). A RPC
+  // `solic_anexar` reenforça isto no banco — aqui é só afordância.
+  const podeAnexar = emAnd && (!!sol.sou_atendente || !!sol.sou_solicitante)
   const venc = vencida(sol.data_limite, sol.status)
 
   async function run(fn: () => Promise<{ ok: boolean; erro?: string }>) {
@@ -75,6 +85,34 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
       }
     } finally {
       setBaixando(null)
+    }
+  }
+
+  /**
+   * v5.9.0 — anexa arquivos a um campo de anexo DESTA solicitação, já existente.
+   * Sobe um por vez (o transporte não ganha nada em paralelo e o erro fica atribuível),
+   * junta os metadados e grava todos numa chamada só — assim ou entram todos, ou o
+   * usuário vê um erro único, em vez de um sucesso pela metade.
+   */
+  async function anexarNoCampo(campoId: number, files: FileList) {
+    if (anexando !== null) return
+    setErro(null); setAnexando(campoId)
+    try {
+      const metas: AnexoMeta[] = []
+      for (const file of Array.from(files)) {
+        const fd = new FormData()
+        fd.set('file', file)
+        fd.set('campo_id', String(campoId))
+        fd.set('solicitacao_id', String(sol.id))   // grava direto em sol/<id>/… (sem promoção)
+        const up = await uploadAnexo(fd)
+        if (!up.ok) { setErro(`${file.name}: ${up.erro}`); return }
+        metas.push(up.anexo)
+      }
+      const r = await anexarEmSolicitacao(sol.id, metas)
+      if (!r.ok) { setErro(r.erro ?? 'Falha ao anexar.'); return }
+      router.refresh()   // o drawer relê a solicitação e os arquivos novos aparecem
+    } finally {
+      setAnexando(null)
     }
   }
 
@@ -150,12 +188,31 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
           )}
           {camposAnexo.map(r => {
             const arquivos = sol.anexos.filter(a => a.campo_id === r.campo_id)
+            const subindo = anexando === r.campo_id
             return (
               <div key={r.campo_id} className="mt-3">
                 <dt className="mb-1.5 text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
                 {arquivos.length > 0
                   ? <div className="space-y-1.5">{arquivos.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
-                  : <span className="text-xs text-zinc-400">—</span>}
+                  : !podeAnexar && <span className="text-xs text-zinc-400">—</span>}
+                {/* v5.9.0 — anexar DEPOIS da abertura: é por aqui que o comprovante do
+                    pagamento efetuado chega a quem abriu o pedido. Disponível enquanto a
+                    solicitação não estiver encerrada, para o solicitante e o atendente. */}
+                {podeAnexar && (
+                  <label className={`foco-neutro mt-1.5 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-2.5 py-2 text-xs text-zinc-500 hover:bg-zinc-50 ${anexando !== null ? 'pointer-events-none opacity-60' : ''}`}>
+                    {subindo
+                      ? <><Loader2 size={13} className="shrink-0 animate-spin" /> Enviando…</>
+                      : <><Paperclip size={13} className="shrink-0" /> Adicionar arquivo (PDF, imagem ou planilha, ≤10 MB)</>}
+                    <input
+                      type="file" multiple className="hidden" disabled={anexando !== null}
+                      accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
+                      onChange={e => {
+                        if (e.target.files?.length && r.campo_id != null) anexarNoCampo(r.campo_id, e.target.files)
+                        e.target.value = ''   // permite reescolher o MESMO arquivo depois
+                      }}
+                    />
+                  </label>
+                )}
               </div>
             )
           })}
@@ -170,15 +227,40 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
         </div>
       )}
 
-      {sol.status !== 'aberta' && (
+      {/* Trilha da APROVAÇÃO (v5.9.0) — independente do desfecho: continua visível depois
+          de concluída/rejeitada/cancelada, porque `aprovado_em` não é derivado do status.
+          É o que impede o desfecho de apagar o registro de quem autorizou. */}
+      {sol.aprovado_em && (
+        <div className="border-t border-zinc-100 pt-3 mb-4 text-xs text-warning-deep">
+          <p>Aprovada por {sol.aprovado_por_email ?? '—'} em {fmtDataHoraSP(sol.aprovado_em)}.</p>
+        </div>
+      )}
+
+      {/* Encerramento: só quando de fato encerrou. Era `status !== 'aberta'`, o que com a
+          etapa nova exibiria "Aprovada por — em [vazio]" usando os campos da decisão
+          TERMINAL, que uma aprovada ainda não tem. */}
+      {!emAnd && (
         <div className="border-t border-zinc-100 pt-3 mb-4 text-xs text-zinc-500">
           <p>{STATUS_LABEL[sol.status]} por {sol.decidido_por_email ?? '—'} em {fmtDataHoraSP(sol.decidido_em)}.</p>
           {sol.justificativa && <p className="mt-1"><span className="font-medium">Justificativa:</span> {sol.justificativa}</p>}
         </div>
       )}
 
-      {(podeConcluir || podeRejeitar || podeCancelar) && (
+      {(podeAprovar || podeConcluir || podeRejeitar || podeCancelar) && (
         <div className="sticky -bottom-5 -mx-6 -mb-5 px-6 py-3 bg-white border-t border-zinc-100 flex flex-wrap gap-2">
+          {/* Aprovar vem ANTES de Concluir: é a ordem do ciclo de vida. Ambos ficam
+              disponíveis ao mesmo tempo numa solicitação aberta — aprovar é OPCIONAL,
+              quem quiser encerra direto. */}
+          {podeAprovar && (
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => run(() => aprovarSolicitacao(sol.id))}
+              className={`${PILL} ${PILL_NEUTRO}`}
+              title="Autoriza agora; a conclusão fica para quando for executada"
+            >
+              {ocupado ? <Loader2 size={13} className="animate-spin" /> : <ThumbsUp size={13} />} Aprovar
+            </button>
+          )}
           {podeConcluir && (
             <button
               type="button" disabled={ocupado}

@@ -8,6 +8,7 @@ import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/compone
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import Badge from '@/components/ui/badge'
 import { Input } from '@/components/ui/field'
+import { emAndamento } from '@/lib/solicitacoes/schemas'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 // v4.18/M7 — Minhas solicitações (visão do originador): COLUNAS POR STATUS (Abertas /
@@ -16,8 +17,12 @@ import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 // e quando (insumo do relatório futuro).
 
 type Filtro = 'ativas' | 'canceladas'
+// v5.9.0 — coluna "Aprovadas" entre Abertas e Concluídas. Sem ela, uma solicitação
+// aprovada não casaria com NENHUMA coluna e sumiria da vista do próprio solicitante
+// (as colunas filtram por igualdade de status, não por complemento).
 const COLUNAS = [
   { status: 'aberta'    as const, titulo: 'Abertas' },
+  { status: 'aprovada'  as const, titulo: 'Aprovadas' },
   { status: 'concluida' as const, titulo: 'Concluídas' },
   { status: 'rejeitada' as const, titulo: 'Rejeitadas' },
 ]
@@ -61,9 +66,13 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
       </div>
 
       {filtro === 'ativas' ? (
-        // sm:flex-1 + grid-rows minmax(0,1fr) → as 3 colunas preenchem a altura restante em
-        // ≥sm (cada coluna rola por dentro); no mobile empilham em altura natural. (v5.1.1)
-        <div className="grid gap-4 sm:grid-cols-3 sm:flex-1 sm:min-h-0 sm:grid-rows-[minmax(0,1fr)]">
+        // flex-1 + grid-rows minmax(0,1fr) → as colunas preenchem a altura restante
+        // (cada uma rola por dentro); no mobile empilham em altura natural. (v5.1.1)
+        // v5.9.0 — passaram de 3 para 4 colunas (entrou "Aprovadas"): em ≥sm vão a 2×2 e
+        // só em ≥lg abrem em 4, porque 4 colunas em ~640px espremem o resumo do card a
+        // ponto de ficar ilegível. O grid-rows de altura fixa acompanha o ≥lg — em 2×2 as
+        // duas fileiras precisam de altura natural, senão a segunda some.
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:flex-1 sm:min-h-0 lg:grid-rows-[minmax(0,1fr)]">
           {COLUNAS.map(col => {
             const itens = [...filtradas.filter(s => s.status === col.status)].sort(maisRecentePrimeiro)
             return (
@@ -125,10 +134,17 @@ function CardMinha({ s, onAbrir }: { s: Solicitacao; onAbrir: (s: Solicitacao) =
       <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
       <div className="mt-1.5 flex items-center justify-between gap-2">
         <span className="text-2xs text-zinc-400 truncate">{s.destinatario.rotulo}</span>
-        {s.status === 'aberta' && (
+        {emAndamento(s.status) && (
           <span className={`inline-flex items-center gap-1 text-2xs shrink-0 ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
         )}
       </div>
+      {/* Aprovadas (v5.9.0): QUEM autorizou e QUANDO. A data-limite continua visível
+          acima, porque aprovada ainda está pendente de execução — e ainda pode vencer. */}
+      {s.status === 'aprovada' && (
+        <p className="mt-1 text-2xs font-medium text-warning-deep">
+          Aprovada{s.aprovado_em ? ` em ${fmtDataHoraSP(s.aprovado_em)}` : ''}{s.aprovado_por_email ? ` por ${s.aprovado_por_email}` : ''}
+        </p>
+      )}
       {/* Concluídas: QUEM concluiu e QUANDO (fuso SP) — insumo do relatório futuro. */}
       {s.status === 'concluida' && (
         <p className="mt-1 text-2xs font-medium text-success">
