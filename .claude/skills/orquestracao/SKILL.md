@@ -50,6 +50,27 @@ Subagentes **não veem o histórico da sessão** — cada delegação é autocon
 Dúvida de produto ou de arquitetura num subagente **retorna ao orquestrador** — que decide
 (se técnico) ou pergunta ao usuário (se produto; na dúvida, é produto).
 
+### Delegue o CONTRATO, não a linha de código
+
+Escrever a implementação dentro da delegação parece ajudar e faz o oposto: o subagente cumpre
+**literalmente**, e um defeito da especificação vira defeito do código sem que ninguém o
+questione — o agente confia que a decisão já foi tomada.
+
+**Custou caro na v5.7.2.** A delegação da busca de Solicitações dizia *"compare como texto
+(`String(s.id).includes(termoSóDígitos)`)"*. O subagente implementou exatamente isso e relatou,
+com honestidade, o efeito colateral: extrair os dígitos de QUALQUER termo faz `ana2024@x.com`
+casar também com a solicitação `#2024`. A regra certa — só tentar o número quando o termo
+INTEIRO é uma referência numérica — nunca foi considerada, porque a delegação já tinha
+"resolvido" o como.
+
+O que a delegação deve fixar é o **contrato observável**: "buscar por número aceita `#1068` e
+`1068`, inclusive parcial; um termo que não seja só número não deve casar por número". O
+caminho é do subagente — e aí ele tem espaço para notar o que você não viu.
+
+Vale também na leitura do retorno: um subagente que relata "fiz X porque você mandou, e X tem
+este efeito" está te devolvendo um achado, não pedindo absolvição. **Corrija a especificação,
+não o agente.**
+
 ## Paralelização (regra de ouro)
 
 Paralelização = **subagentes editando arquivos disjuntos dentro da única worktree da versão**.

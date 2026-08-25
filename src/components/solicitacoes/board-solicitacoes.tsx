@@ -1,17 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, AlertTriangle } from 'lucide-react'
+import { Loader2, AlertTriangle, Search } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import Badge from '@/components/ui/badge'
+import { Input } from '@/components/ui/field'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
-import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
+import { fmtDataBR, resumo, vencida, maisRecentePrimeiro, casaBuscaSolicitacao } from '@/lib/solicitacoes/format'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 type Escopo = 'mim_e_role' | 'so_mim' | 'todas'
 type FiltroStatus = 'abertas' | 'concluidas'
+
+// v5.7.2 — a ordem e a busca das listas vivem em `@/lib/solicitacoes/format`
+// (`maisRecentePrimeiro`, `casaBuscaSolicitacao`): as DUAS visões desta página precisam
+// ordenar e buscar igual, e duas cópias divergiriam no primeiro ajuste.
 
 // Marcadores das ENCERRADAS na coluna "Concluídas" (v4.18/M6). O dado permanece com o
 // status real (cancelada ≠ concluida) — só a apresentação distingue.
@@ -29,6 +34,7 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
   // v4.18/M6 — filtro de STATUS (substitui os antigos filtros de visão). O usuário SEMPRE
   // vê mim + minha permissão; "Ver todas" (gestão, escopo=todas) fica na linha das abas.
   const [filtro, setFiltro] = useState<FiltroStatus>('abertas')
+  const [busca, setBusca] = useState('')
 
   const supervisao = escopo === 'todas'   // modo "Ver todas" (gestão) ativo
 
@@ -46,10 +52,15 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
 
   // Colunas por TIPO. NÃO exclui canceladas: elas entram em "Concluídas" (encerradas).
   const ehAberta = (s: Solicitacao) => s.status === 'aberta'
-  const filtrada = solicitacoes.filter(filtro === 'abertas' ? ehAberta : s => !ehAberta(s))
+  const temBusca = busca.trim() !== ''
+  const filtrada = solicitacoes
+    .filter(filtro === 'abertas' ? ehAberta : s => !ehAberta(s))
+    .filter(s => casaBuscaSolicitacao(s, busca))
   const tipos = Array.from(new Map(filtrada.map(s => [s.tipo_id, s.tipo_nome])).entries())
     .sort((a, b) => (a[1] ?? '').localeCompare(b[1] ?? ''))
-  const vazio = filtro === 'abertas' ? 'Nenhuma solicitação aberta na sua caixa de entrada.' : 'Nenhuma solicitação encerrada.'
+  const vazio = temBusca
+    ? 'Nenhuma solicitação encontrada para esta busca.'
+    : filtro === 'abertas' ? 'Nenhuma solicitação aberta na sua caixa de entrada.' : 'Nenhuma solicitação encerrada.'
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -62,8 +73,8 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
         </p>
       )}
 
-      {/* Filtro de STATUS: Abertas / Concluídas. */}
-      <div className="flex gap-2 mb-4">
+      {/* Filtro de STATUS: Abertas / Concluídas + busca (nº ou e-mail), empurrada à direita. */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         {(['abertas', 'concluidas'] as FiltroStatus[]).map(f => (
           <button key={f} type="button" onClick={() => setFiltro(f)}
             className={`${PILL} ${filtro === f ? PILL_PRIMARIA : PILL_NEUTRO}`}
@@ -71,6 +82,18 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
             {f === 'abertas' ? 'Abertas' : 'Concluídas'}
           </button>
         ))}
+        <div className="relative ml-auto">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Input
+            variant="compacto"
+            type="search"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Pesquisar…"
+            aria-label="Buscar solicitações por número ou e-mail do solicitante"
+            className="w-64 pl-8"
+          />
+        </div>
       </div>
 
       {tipos.length === 0 ? (
@@ -79,9 +102,7 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
         <div className="flex gap-4 overflow-x-auto pb-2 flex-1 min-h-0">
           {tipos.map(([tipoId, tipoNome]) => {
             const itens = filtrada.filter(s => s.tipo_id === tipoId)
-            const ordenados = filtro === 'abertas'
-              ? [...itens].sort((a, b) => a.data_limite.localeCompare(b.data_limite))
-              : itens
+            const ordenados = [...itens].sort(maisRecentePrimeiro)
             return (
               <div key={tipoId} className="w-72 shrink-0 flex flex-col min-h-0">
                 {/* Header da coluna FIXO (fora do scroll); os cards rolam por dentro com a

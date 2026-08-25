@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
-import { fmtDataBR, resumo, vencida } from '@/lib/solicitacoes/format'
+import { AlertTriangle, Search } from 'lucide-react'
+import { fmtDataBR, resumo, vencida, maisRecentePrimeiro, casaBuscaSolicitacao } from '@/lib/solicitacoes/format'
 import { fmtDataHoraSP } from '@/lib/fmt'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import Badge from '@/components/ui/badge'
+import { Input } from '@/components/ui/field'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 // v4.18/M7 — Minhas solicitações (visão do originador): COLUNAS POR STATUS (Abertas /
@@ -21,15 +22,23 @@ const COLUNAS = [
   { status: 'rejeitada' as const, titulo: 'Rejeitadas' },
 ]
 
+// v5.7.2 — a ordem e a busca das listas vivem em `@/lib/solicitacoes/format`
+// (`maisRecentePrimeiro`, `casaBuscaSolicitacao`): as DUAS visões desta página precisam
+// ordenar e buscar igual, e duas cópias divergiriam no primeiro ajuste.
+
 export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
   solicitacoes: Solicitacao[]; onAbrir: (s: Solicitacao) => void
 }) {
   const [filtro, setFiltro] = useState<Filtro>('ativas')
+  const [busca, setBusca] = useState('')
+  const temBusca = busca.trim() !== ''
   const canceladas = solicitacoes.filter(s => s.status === 'cancelada')
+  const filtradas = solicitacoes.filter(s => casaBuscaSolicitacao(s, busca))
+  const canceladasFiltradas = [...filtradas.filter(s => s.status === 'cancelada')].sort(maisRecentePrimeiro)
 
   return (
     <div className="h-full flex flex-col min-h-0">
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         {(['ativas', 'canceladas'] as Filtro[]).map(f => (
           <button key={f} type="button" onClick={() => setFiltro(f)}
             className={`${PILL} ${filtro === f ? PILL_PRIMARIA : PILL_NEUTRO}`}
@@ -37,6 +46,18 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
             {f === 'ativas' ? 'Ativas' : `Canceladas${canceladas.length ? ` (${canceladas.length})` : ''}`}
           </button>
         ))}
+        <div className="relative ml-auto">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Input
+            variant="compacto"
+            type="search"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Pesquisar…"
+            aria-label="Buscar solicitações por número ou e-mail do solicitante"
+            className="w-64 pl-8"
+          />
+        </div>
       </div>
 
       {filtro === 'ativas' ? (
@@ -44,8 +65,7 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
         // ≥sm (cada coluna rola por dentro); no mobile empilham em altura natural. (v5.1.1)
         <div className="grid gap-4 sm:grid-cols-3 sm:flex-1 sm:min-h-0 sm:grid-rows-[minmax(0,1fr)]">
           {COLUNAS.map(col => {
-            const itens = solicitacoes.filter(s => s.status === col.status)
-            if (col.status === 'aberta') itens.sort((a, b) => a.data_limite.localeCompare(b.data_limite))
+            const itens = [...filtradas.filter(s => s.status === col.status)].sort(maisRecentePrimeiro)
             return (
               <div key={col.status} className="flex flex-col min-h-0">
                 {/* Header da coluna FIXO (fora do scroll); os cards rolam por dentro com a
@@ -55,7 +75,11 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
                   <span className="text-xs text-zinc-400">{itens.length}</span>
                 </div>
                 <ScrollAutoHide className="pl-1 pr-4 pt-2 pb-2" contentClassName="space-y-2">
-                  {itens.length === 0 && <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-xs text-zinc-400">—</div>}
+                  {itens.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-zinc-200 px-3 py-6 text-center text-xs text-zinc-400">
+                      {temBusca ? 'Nenhum resultado' : '—'}
+                    </div>
+                  )}
                   {itens.map(s => <CardMinha key={s.id} s={s} onAbrir={onAbrir} />)}
                 </ScrollAutoHide>
               </div>
@@ -64,9 +88,11 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
         </div>
       ) : (
         <div className="space-y-2 max-w-xl">
-          {canceladas.length === 0
-            ? <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-10 text-center text-sm text-zinc-400">Você não cancelou nenhuma solicitação.</p>
-            : canceladas.map(s => <CardMinha key={s.id} s={s} onAbrir={onAbrir} />)}
+          {canceladasFiltradas.length === 0
+            ? <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-10 text-center text-sm text-zinc-400">
+                {temBusca ? 'Nenhuma solicitação cancelada encontrada para esta busca.' : 'Você não cancelou nenhuma solicitação.'}
+              </p>
+            : canceladasFiltradas.map(s => <CardMinha key={s.id} s={s} onAbrir={onAbrir} />)}
         </div>
       )}
     </div>

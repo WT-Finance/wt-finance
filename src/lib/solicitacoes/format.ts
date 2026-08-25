@@ -1,4 +1,4 @@
-import type { StatusSolic } from './schemas'
+import type { StatusSolic, Solicitacao } from './schemas'
 import type { z } from 'zod'
 import type { respostaSchema } from './schemas'
 import { toNum } from '@/lib/carga/coercao'
@@ -75,4 +75,44 @@ export function resumo(respostas: Resposta[], max = 3): string {
   const preenchidos = respostas.filter(r => r.tipo_campo !== 'anexo' && r.valor != null && r.valor !== '')
   if (preenchidos.length === 0) return '—'
   return preenchidos.slice(0, max).map(r => `${r.rotulo}: ${fmtValor(r)}`).join(' · ')
+}
+
+// ── Lista de solicitações: ordem e busca (v5.7.2) ─────────────────────────────
+// Moram AQUI, e não em cada componente de lista, porque as duas visões da mesma página
+// (Caixa de entrada e Minhas solicitações) precisam ordenar e buscar IGUAL. Duas cópias
+// de um comparador divergem no primeiro ajuste, e o usuário vê a mesma busca devolver
+// coisas diferentes conforme a aba.
+
+/** Ordem canônica das listas: data de CRIAÇÃO, mais recente primeiro.
+ *
+ *  ⚠️ O que se perde: até a v5.7.1 as abertas eram ordenadas por `data_limite` ASC, o que
+ *  punha a mais urgente no topo (triagem). Com `criado_em` DESC a urgência deixa de
+ *  ordenar e passa a viver só na cor — o card já pinta o vencimento em `text-danger`
+ *  quando vencida. Foi pedido explícito do Yan ("sempre ordenadas por data de criação"). */
+export const maisRecentePrimeiro = (a: Solicitacao, b: Solicitacao): number =>
+  b.criado_em.localeCompare(a.criado_em)
+
+/** Uma REFERÊNCIA NUMÉRICA: `#1068` ou `1068`. Nada além disso.
+ *
+ *  A âncora importa: sem ela, extrair os dígitos de um termo qualquer faria
+ *  "kissia2024@welcometrips.com.br" procurar também pela solicitação cujo id contém
+ *  "2024" — um resultado que o usuário não pediu aparecendo no meio da busca por e-mail. */
+const REF_NUMERICA = /^#?(\d+)$/
+
+/**
+ * A solicitação casa com o termo? Busca por **número** OU **e-mail do solicitante**.
+ *
+ * - Termo vazio/só espaços → casa tudo (sem filtro).
+ * - Termo que é uma referência numérica (`#1068` / `1068`) → casa por id, por SUBSTRING
+ *   (digitar `106` acha a 1068), e TAMBÉM tenta o e-mail: um e-mail pode ser todo
+ *   numérico antes do `@`, e negar essa busca seria uma surpresa.
+ * - Qualquer outro termo → casa só por e-mail, sem tentar adivinhar dígitos no meio.
+ */
+export function casaBuscaSolicitacao(s: Solicitacao, termoDigitado: string): boolean {
+  const termo = termoDigitado.trim()
+  if (!termo) return true
+  const email = (s.solicitante_email ?? '').toLowerCase()
+  if (email.includes(termo.toLowerCase())) return true
+  const ref = REF_NUMERICA.exec(termo)
+  return ref !== null && String(s.id).includes(ref[1])
 }

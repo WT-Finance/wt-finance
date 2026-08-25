@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-24 (pós-merge v5.7.1) · produção na **v5.7.1** (#241 mergeado 24/08 às 17h02 — DRE: "Maiores variações" reconcilia com o Demonstrativo, Receita Bruta vira linha de resultado, Decomposição sai da página; migrations `0253` aditiva + `0254` destrutiva). Antes a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). **Nenhuma versão em curso.** *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-25 (fechamento da v5.7.2) · produção na **v5.7.1** (#241 mergeado 24/08 às 17h02). **EM CURSO: v5.7.2** — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial (branch `fix/v5-7-2-ajustes`; **sem migration**). Antes a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0254`; a próxima livre é a `0255`.**
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
@@ -22,6 +22,25 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 > Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
+
+- **v5.7.2 (EM CURSO) — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações,
+  ordenação no Gerencial.** **Sem migration, sem ADR.** Gates verdes, **998/998**.
+  A **base da Análise Vertical saiu da ROL e virou a RECEITA BRUTA DE VENDAS**, e as linhas
+  ACIMA dela ficam em travessão — são as parcelas que formam a base, não parte dela (corte
+  conferido no vivo: índice 13 de 160). A DRE passou a abrir em **Consolidado + Realizado** e
+  o Resumo Executivo com **2 anos**. Solicitações ganharam **busca por nº ou e-mail** e
+  ordenação por **criação DESC** em todas as listas. O Gerencial ganhou **colunas ordenáveis**,
+  abrindo por **Vencimento, do mais recente ao mais antigo**.
+  ⚖️ **Trade-off registrado:** as solicitações abertas eram ordenadas por data-limite ASC (a
+  mais urgente no topo, triagem). A urgência deixa de ordenar e vive só na cor do vencimento.
+  **Duráveis:** *(a)* **delegar o CONTRATO, não a linha de código** — a delegação ditou
+  `String(id).includes(dígitos)` e o subagente cumpriu literalmente, propagando o defeito da
+  MINHA especificação (busca por e-mail com dígitos virava busca por número); corrigido, com
+  teste de regressão, e a lição foi para a skill `orquestracao`; *(b)* **teste de módulo puro
+  não crava número vivo** quando a fonte é dado editável — entre a v5.7.0 e hoje a Receita de
+  Vendas de 2025 mudou 104.481,59 por re-parentagem no editor, com o **REX intacto** (qualquer
+  categoria que troque de bloco dentro do que compõe o REX o deixa invariante).
+  **Pendente Yan:** conferência visual.
 
 - **v5.7.1 (#241, mergeada 24/08 às 17h02) — DRE: reconciliação do "Maiores variações",
   Receita Bruta como linha de resultado, Decomposição fora da página.** Migrations **`0253`

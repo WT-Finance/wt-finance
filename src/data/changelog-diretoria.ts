@@ -35,6 +35,48 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.7.2',
+    data: '2026-08-25T12:18', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'A Análise Vertical do Demonstrativo passou a ser calculada sobre a RECEITA ' +
+          'BRUTA DE VENDAS, e não mais sobre a Receita Operacional Líquida. A Receita ' +
+          'Líquida já é descontada de impostos e deduções, então usá-la como referência ' +
+          'fazia as linhas de cima passarem de 100% e comparava tudo contra um número que ' +
+          'já tinha subtrações dentro. Agora "% da receita" significa o que se espera. As ' +
+          'linhas ACIMA da Receita Bruta (Entrada de Clientes, Pagamento ao Fornecedor, ' +
+          'Saldo de Repasse e Receita de Vendas) deixam de mostrar percentual: elas são as ' +
+          'parcelas que formam a receita, não uma parte dela.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A página do Demonstrativo agora abre já no formato mais usado: a tabela em ' +
+          '"Consolidado" com o realizado dos dois últimos anos, e o Resumo Executivo ' +
+          'também com dois anos. Antes abria na visão mês a mês com a projeção misturada, ' +
+          'que é a leitura mais densa e raramente a primeira pergunta de quem entra.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A tela de Solicitações ganhou um campo de BUSCA: dá para procurar pelo número ' +
+          'da solicitação (com ou sem "#", e parcial) ou pelo e-mail de quem abriu. Além ' +
+          'disso, as solicitações agora aparecem sempre da mais recente para a mais ' +
+          'antiga, em todas as listas.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Na base de dados do Fluxo de Caixa Gerencial, as colunas passaram a ser ' +
+          'ordenáveis: um clique no título ordena, outro inverte. Vale para Tipo, Pessoa, ' +
+          'Valor, Descrição, Conta, Vencimento e Originador. A tabela já abre ordenada por ' +
+          'vencimento, do mais recente para o mais antigo.',
+      },
+    ],
+  },
+  {
     versao: '5.7.1',
     data: '2026-08-24T17:02', // horário REAL do merge (bfb3daf, PR #241, 17h02 −03) — reconciliado no /pos-merge
     itens: [
