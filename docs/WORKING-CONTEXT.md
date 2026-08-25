@@ -29,8 +29,8 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
   ACIMA dela ficam em travessão — são as parcelas que formam a base, não parte dela (corte
   conferido no vivo: índice 13 de 160). A DRE passou a abrir em **Consolidado + Realizado** e
   o Resumo Executivo com **2 anos**. Solicitações ganharam **busca por nº ou e-mail** e
-  ordenação por **criação DESC** em todas as listas. O Gerencial ganhou **colunas ordenáveis**
-  (sem ordenação default — a ordem sem clique é a de antes).
+  ordenação por **criação DESC** em todas as listas. O Gerencial ganhou **colunas ordenáveis**,
+  abrindo por **Vencimento, do mais recente ao mais antigo**.
   ⚖️ **Trade-off registrado:** as solicitações abertas eram ordenadas por data-limite ASC (a
   mais urgente no topo, triagem). A urgência deixa de ordenar e vive só na cor do vencimento.
   **Duráveis:** *(a)* **delegar o CONTRATO, não a linha de código** — a delegação ditou

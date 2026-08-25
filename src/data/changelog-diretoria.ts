@@ -71,7 +71,8 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
         texto:
           'Na base de dados do Fluxo de Caixa Gerencial, as colunas passaram a ser ' +
           'ordenáveis: um clique no título ordena, outro inverte. Vale para Tipo, Pessoa, ' +
-          'Valor, Descrição, Conta, Vencimento e Originador.',
+          'Valor, Descrição, Conta, Vencimento e Originador. A tabela já abre ordenada por ' +
+          'vencimento, do mais recente para o mais antigo.',
       },
     ],
   },

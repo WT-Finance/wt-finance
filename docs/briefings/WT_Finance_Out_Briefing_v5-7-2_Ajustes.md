@@ -52,8 +52,10 @@ data de criação"). Reverter é trocar um comparador.
 As 7 colunas de dados da base do Fluxo de Caixa Gerencial (Tipo, Pessoa, Valor, Descrição,
 Conta, Vencimento, Originador). Gatilho `<button>` dentro da `<th>` com `aria-sort` e
 `foco-neutro`; ícone de estado no idioma já vivo em `ranking-caixa.tsx`; nulos sempre no fim
-em qualquer direção; **sem clique, a ordem é exatamente a de antes** (não há ordenação
-default, de propósito — preserva o comportamento atual).
+em qualquer direção. **A tabela abre ordenada por Vencimento, do mais recente ao mais
+antigo** (ajuste do Yan na conferência — a primeira entrega nascia sem ordenação, preservando
+a ordem do servidor). O estado "sem ordenação" continua representável (`colAtiva: null`) e
+significa "ordem que veio do servidor"; hoje nada o produz, e é de propósito.
 
 Dois cuidados que valem registro: a coluna **Conta** ordena pela MESMA `canonizarConta` que o
 filtro dela usa (senão ordenação e filtro discordariam), e a ordenação vive num `useMemo`

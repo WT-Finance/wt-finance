@@ -240,10 +240,13 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
   const [removendo, startRemover]       = useTransition()
   // Sombra sob o cabeçalho fixo só quando a lista está ROLADA (refino v4.34.1).
   const [rolado, setRolado] = useState(false)
-  // v5.7.2 — ordenação por clique no cabeçalho. Default SEM ordenação (colAtiva null):
-  // preserva exatamente a ordem que já vinha antes desta versão até o 1º clique.
-  const [colAtiva, setColAtiva] = useState<ColOrd | null>(null)
-  const [dirOrd, setDirOrd]     = useState<DirOrd>('asc')
+  // v5.7.2 — ordenação por clique no cabeçalho. Default: **Vencimento, do mais recente ao
+  // mais antigo** (decisão do Yan). O tipo `ColOrd | null` fica: `null` continua sendo um
+  // estado alcançável e significa "ordem que veio do servidor" — a base é grande e um dia
+  // pode valer um "limpar ordenação". Hoje ninguém o produz, e é de propósito: a tabela
+  // nasce ordenada.
+  const [colAtiva, setColAtiva] = useState<ColOrd | null>('vencimento')
+  const [dirOrd, setDirOrd]     = useState<DirOrd>('desc')
   const ordenarPor = (col: ColOrd) => {
     if (col === colAtiva) setDirOrd(d => (d === 'asc' ? 'desc' : 'asc'))
     else { setColAtiva(col); setDirOrd(DIR_PADRAO_COL[col]) }

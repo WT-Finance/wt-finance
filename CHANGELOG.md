@@ -20,7 +20,7 @@ PATCH · **DRE: base da Análise Vertical vira a Receita Bruta e novos defaults;
 ### Adicionado
 
 - **Campo de busca em Solicitações**, na faixa de pills das duas visões: filtra por **número** (`#1068` ou `1068`, inclusive parcial) **ou e-mail do solicitante**. Mensagem de vazio distingue "nenhum resultado para esta busca" de "não há solicitações" — dizer o segundo com um filtro ativo seria dado errado parecendo certo.
-- **Colunas ordenáveis na base de dados do Fluxo de Caixa Gerencial** — Tipo, Pessoa, Valor, Descrição, Conta, Vencimento e Originador. Gatilho é `<button>` dentro da `<th>` com `aria-sort`; clique alterna a direção; nulos sempre no fim, em qualquer direção; **sem clique, a ordem é exatamente a de antes** (não há ordenação default). A coluna Conta ordena pela MESMA `canonizarConta` que o filtro dela usa — senão ordenação e filtro discordariam.
+- **Colunas ordenáveis na base de dados do Fluxo de Caixa Gerencial** — Tipo, Pessoa, Valor, Descrição, Conta, Vencimento e Originador. Gatilho é `<button>` dentro da `<th>` com `aria-sort`; clique alterna a direção; nulos sempre no fim, em qualquer direção. **A tabela abre ordenada por Vencimento, do mais recente ao mais antigo.** A coluna Conta ordena pela MESMA `canonizarConta` que o filtro dela usa — senão ordenação e filtro discordariam.
 
 ### Interno
 

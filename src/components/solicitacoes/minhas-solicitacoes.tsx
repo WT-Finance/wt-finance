@@ -53,7 +53,7 @@ export default function MinhasSolicitacoes({ solicitacoes, onAbrir }: {
             type="search"
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por nº (#) ou e-mail…"
+            placeholder="Pesquisar…"
             aria-label="Buscar solicitações por número ou e-mail do solicitante"
             className="w-64 pl-8"
           />
