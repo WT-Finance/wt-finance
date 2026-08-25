@@ -93,6 +93,25 @@ restaurada ao original em seguida (3.244 / 568.937,62 / 141 pares / bandeja 0).
 
 Carga em lotes de 500 pelas mesmas RPCs que o cartão usa: **contagem bate, soma bate**.
 
+### 4.6 A seção de caixa está intocada — medido, não afirmado
+
+`git diff origin/main -- src/app/financeiro/dre/page.tsx` remove, no arquivo inteiro,
+**exatamente 2 linhas**:
+
+```
+-import { hojeSP } from '@/lib/fmt'      (virou `hojeSP, fmtDataSP`)
+-    <div>                               (virou `<div className="space-y-6">`)
+```
+
+Tudo o mais é acréscimo. O `<TabelaDre>` do caixa, o `<ResumoExecutivo>` e o `<RankingCaixa>`
+não tiveram **um caractere** alterado — nem props, nem ordem, nem wrapper. O `space-y-6` no
+`<div>` externo não tinha efeito visual enquanto havia um filho só.
+
+Na `tabela-dre.tsx` a garantia é do mesmo tipo, por desenho: as 4 props novas são opcionais e
+o default reproduz o caixa, então o caminho dele é o de antes. O ponto que exigiu cuidado foi
+`totalModo`, que deixou de ser lido do estado direto (`totalModoEstado`) e passou por
+`semPrevisto ? 'realizado' : totalModoEstado` — com `semPrevisto=false` é a identidade.
+
 ## 5. Parecer da revisão
 
 ### `revisor-db` — `0255`: **APROVADA** · `0256`: **APROVADA** · `0257`: **APROVADA COM RESSALVAS**

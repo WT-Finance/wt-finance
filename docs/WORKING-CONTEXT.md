@@ -935,10 +935,10 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 
 ## Filas ativas (próximos passos já decididos)
 
-- ~~**PODAR o passo 4 do `/nova-versao`**~~ — **FEITO**: o `/nova-versao` já não menciona as
-  cópias `0950–0954`, e a v5.5.0 confirmou que a pasta `supabase/migrations/` não tem nenhuma
-  `095*`. ⚠️ **O `/fechamento-versao` AINDA cita a remoção delas** (§4, "enquanto a renumeração
-  pós-v5.3 não sai") — é o último resíduo, e é letra morta pelo mesmo motivo. Podar lá também.
+- ~~**PODAR as cópias `0950–0954` dos rituais**~~ — **FECHADO na v5.8.0**: o `/nova-versao` já
+  não as mencionava e o `/fechamento-versao` §4 deixou de mencionar (reconferido: a pasta
+  `supabase/migrations/` não tem nenhum `095*`). No lugar entrou o cuidado que a v5.8.0 pagou:
+  **conferir numeração de ADR/migration no REMOTO quando há versão paralela em voo.**
 - **`financeiro/posicao-projetado.tsx` pode migrar** para o primitivo
   `components/shared/slider-horizonte.tsx` (extraído na v5.4.2 com a geometria dele —
   trilho neutro, régua de riscos, `posTick` compensando a meia-largura do thumb). Hoje há
