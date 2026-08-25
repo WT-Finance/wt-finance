@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-25 (fechamento da v5.7.2) · produção na **v5.7.1** (#241 mergeado 24/08 às 17h02). **EM CURSO: v5.7.2** — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial (branch `fix/v5-7-2-ajustes`; **sem migration**). Antes a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-25 (pós-merge da v5.7.2) · produção na **v5.7.2** (#243 mergeado 25/08 às 14h10 — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial; **sem migration**). Antes a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0254`; a próxima livre é a `0255`.**
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
@@ -23,7 +23,7 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 
 ## Verdade atual
 
-- **v5.7.2 (EM CURSO) — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações,
+- **v5.7.2 (#243, mergeada 25/08 às 14h10) — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações,
   ordenação no Gerencial.** **Sem migration, sem ADR.** Gates verdes, **998/998**.
   A **base da Análise Vertical saiu da ROL e virou a RECEITA BRUTA DE VENDAS**, e as linhas
   ACIMA dela ficam em travessão — são as parcelas que formam a base, não parte dela (corte
@@ -40,7 +40,12 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
   não crava número vivo** quando a fonte é dado editável — entre a v5.7.0 e hoje a Receita de
   Vendas de 2025 mudou 104.481,59 por re-parentagem no editor, com o **REX intacto** (qualquer
   categoria que troque de bloco dentro do que compõe o REX o deixa invariante).
-  **Pendente Yan:** conferência visual.
+  **Pendente Yan:** conferência visual **EM PRODUÇÃO** — acumulada desde a v5.7.0 e agora
+  cobrindo as três versões juntas: coluna AV com as linhas acima da Receita Bruta em travessão,
+  a DRE abrindo em Consolidado + 2025/2026 + Realizado, o Resumo Executivo com 2 anos, a busca
+  de Solicitações nos dois extremos de largura, a ordenação do Gerencial, o botão de tela cheia,
+  a folga da última coluna contra o thumb da rolagem, os cabeçalhos "YTD 2025/2026" do
+  "Maiores variações" e a Receita Bruta de Vendas na banda de resultado.
 
 - **v5.7.1 (#241, mergeada 24/08 às 17h02) — DRE: reconciliação do "Maiores variações",
   Receita Bruta como linha de resultado, Decomposição fora da página.** Migrations **`0253`
@@ -59,9 +64,8 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
   ("Movimentação de Caixa - C/D", transferência interna) — ele lê `fato_fluxo` direto, sem o
   de-para. Hoje não aparecem no top-7. Filtrar mudaria quais categorias o card mostra, o que é
   decisão de produto.
-  **Pendente Yan:** conferência visual EM PRODUÇÃO da DRE (v5.7.0 + v5.7.1 juntas: coluna AV
-  e a folga dela contra o thumb, tela cheia, Resumo com 3 anos marcados, os cabeçalhos
-  "YTD 2025/2026" e a Receita Bruta na banda de resultado).
+  **Pendente Yan:** conferência visual EM PRODUÇÃO — **lista única no bloco da v5.7.2 acima**
+  (as três versões estão no ar juntas; manter duas listas as faz divergir).
 
 - **v5.7.0 (#239, mergeada 19/08 às 17h45) — DRE: Resultado Financeiro unificado, Imobilizado abaixo da
   linha, rótulos padronizados e Análise Vertical.** Migrations **`0251` (destrutiva, aplicada
