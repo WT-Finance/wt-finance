@@ -255,7 +255,15 @@ export async function anexarEmSolicitacao(id: number, anexos: AnexoMeta[]): Prom
   const { error } = await rpcSessao('solic_anexar', { p_id: id, p_anexos: anexos })
   if (error) {
     // Os binários já subiram; sem o metadado eles seriam órfãos invisíveis no bucket.
-    try { await getAdminClient().storage.from(BUCKET).remove(anexos.map(a => a.storage_path)) } catch { /* best-effort */ }
+    // O filtro de prefixo é defesa em profundidade: hoje `uploadAnexo` já impede o caller
+    // de obter um caminho fora da própria posse, então esta limpeza seria segura por
+    // TRANSITIVIDADE — e segurança que depende de um gate distante volta a ser vetor no dia
+    // em que alguém mexe naquele gate sem ter esta linha em mente. (Achado BAIXO do
+    // revisor-db, segundo passe.)
+    const doSol = anexos.map(a => a.storage_path).filter(p => p.startsWith(`sol/${id}/`) || p.startsWith('tmp/'))
+    if (doSol.length) {
+      try { await getAdminClient().storage.from(BUCKET).remove(doSol) } catch { /* best-effort */ }
+    }
     return { ok: false, erro: traduzir(error.message) }
   }
   revalidatePath('/solicitacoes'); return { ok: true }
