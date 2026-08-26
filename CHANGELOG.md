@@ -6,7 +6,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [5.8.0] — 2026-08-25
+## [5.8.0] — 2026-08-26
 
 MINOR · **DRE por Competência: segunda TopSection em `/financeiro/dre`, com base, árvore, leitura e EDITOR próprios**. Migrations `0255`/`0256`/`0257`/`0260` (todas ADITIVAS) · **ADR-0170** · **1056 testes**.
 
