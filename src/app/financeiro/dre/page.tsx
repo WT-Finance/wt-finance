@@ -4,7 +4,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
-import { hojeSP } from '@/lib/fmt'
+import { hojeSP, fmtDataSP } from '@/lib/fmt'
 import { rpcDre } from '@/lib/dre/rpc-dre'
 import { buscarUltimaCargaMovimentacao } from '@/lib/dre/ultima-carga-movimentacao'
 import {
@@ -15,6 +15,12 @@ import {
   type DreBandejaLinha,
 } from '@/lib/dre/schemas'
 import { chaveDeLinha, chaveDeBandeja } from '@/lib/dre/identidade'
+import { janelaYtdCompetencia, rotuloJanela } from '@/lib/dre/janela-competencia'
+import { montarLinhasChave } from '@/lib/dre/linhas-chave'
+import { montarDecomposicao } from '@/lib/dre/decomposicao-variacao'
+import { montarPonte } from '@/lib/dre/ponte-regimes'
+import LinhasChaveCompetencia from '@/components/financeiro/dre/linhas-chave-competencia'
+import CascataCard from '@/components/financeiro/dre/cascata-card'
 import { rankingCaixaSchema, type RankingCaixa as RankingCaixaData } from '@/lib/fluxo/rpc-fluxo'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import TopSection from '@/components/shared/top-section'
@@ -266,6 +272,52 @@ export default async function DrePage({
   // ano navegado — é ela que alimenta o selo de frescor no canto do card.
   const compQualquer = dreComp ?? consolidadoAnosComp.map(c => dreCompAnos.get(c.ano)).find(Boolean) ?? null
 
+  // ── COMPLEMENTOS DA COMPETÊNCIA (v5.8.1) ─────────────────────────────────────
+  // Três leituras derivadas dos payloads que já estão em mãos: linhas-chave (sumário),
+  // decomposição da variação (o que moveu o resultado de um ano para o outro) e a ponte
+  // entre regimes (por que os dois demonstrativos desta página mostram números
+  // diferentes). NENHUMA chamada nova — ver o aviso no `Promise.allSettled` acima: os
+  // índices daquele array são posicionais e acrescentar no meio já custou caro duas vezes.
+  //
+  // RECORTE PRÓPRIO, ancorado no ANO CORRENTE e independente da pill `?anoComp=` — a
+  // mesma decisão do card "Maiores variações" do caixa. A pill navega o DEMONSTRATIVO;
+  // estes três respondem "como estamos agora", e segui-la faria a ponte comparar o
+  // regime de competência de 2024 com o caixa de 2026.
+  const compCorrente  = dreCompAnos.get(anoCorrente) ?? null
+  const compAnterior  = dreCompAnos.get(anoCorrente - 1) ?? null
+  const caixaCorrente = dreAnos.get(anoCorrente) ?? null
+
+  // A janela dos TRÊS componentes: jan até o último mês que a base de competência
+  // cobre — e não até o mês do calendário (`mesJanela`, que a tabela densa usa). A base
+  // de competência é um upload periódico: cortar pelo calendário somaria meses ainda não
+  // carregados como se fossem zero, subestimando o YTD em silêncio. Cada card declara a
+  // janela no subtítulo, que é o que explica a divergência quando ela aparecer.
+  const mCob = compCorrente ? janelaYtdCompetencia(compCorrente) : 0
+  const janela = rotuloJanela(mCob)
+
+  // Fail-safe POR CARD (não por seção): cada um exige o seu e some sozinho. A ponte é a
+  // única que depende dos DOIS regimes.
+  const linhasChave = compCorrente && mCob > 0
+    ? montarLinhasChave(
+        [
+          ...(compAnterior ? [{ ano: anoCorrente - 1, payload: compAnterior, fechado: compAnterior.relacao === 'fechado' }] : []),
+          { ano: anoCorrente, payload: compCorrente, fechado: compCorrente.relacao === 'fechado' },
+        ],
+        mCob,
+      )
+    : null
+
+  const decomposicao = compCorrente && compAnterior && mCob > 0
+    ? montarDecomposicao(
+        compCorrente, compAnterior, mCob,
+        `Resultado ${anoCorrente - 1}`, `Resultado ${anoCorrente}`,
+      )
+    : null
+
+  const ponte = compCorrente && caixaCorrente && mCob > 0
+    ? montarPonte(compCorrente, caixaCorrente, mCob)
+    : null
+
   return (
     <div className="space-y-6">
       {/* ── Regime de COMPETÊNCIA — PRIMEIRO na página (decisão do Yan, v5.8.0) ──
@@ -274,6 +326,14 @@ export default async function DrePage({
           inteiro em qualquer cenário. */}
       {compQualquer && (
         <TopSection titulo="Regime de Competência">
+          <div className="space-y-6">
+          {/* ORDEM (v5.8.1, briefing): sumário → demonstrativo → as duas decomposições.
+              A MESMA ordem conceitual da seção de caixa logo abaixo — do agregado ao
+              detalhe. As linhas-chave vêm ACIMA da tabela para não obrigar a rolar o
+              demonstrativo inteiro até o resumo dele (a correção que o caixa recebeu na
+              v5.7.0). */}
+          {linhasChave && <LinhasChaveCompetencia linhas={linhasChave} janela={janela} />}
+
           <TabelaDre
             dados={dreComp}
             ano={anoComp}
@@ -293,6 +353,46 @@ export default async function DrePage({
               </Link>
             }
           />
+
+          {/* Lado a lado, empilhando no mobile. As duas cascatas respondem perguntas
+              vizinhas — "o que mudou desde o ano passado" e "por que o caixa mostra
+              outro número" — e vê-las juntas é o que faz uma explicar a outra. */}
+          {(decomposicao || ponte) && (
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+              {decomposicao && (
+                <CascataCard
+                  titulo="Decomposição da variação"
+                  subtitulo={`Resultado do exercício · YTD ${String(anoCorrente).slice(2)} × YTD ${String(anoCorrente - 1).slice(2)} · ${janela}`}
+                  ajuda={
+                    'Do resultado do ano anterior ao deste ano, um degrau por grupo de contas, ' +
+                    'na mesma janela de meses nos dois anos. Verde melhora o resultado, vermelho piora. ' +
+                    'Grupos que variaram menos de R$ 500 são somados em "Outros ajustes".'
+                  }
+                  cascata={decomposicao}
+                />
+              )}
+              {ponte && (
+                <CascataCard
+                  titulo="Ponte Competência ↔ Caixa"
+                  subtitulo={`Do resultado por emissão ao resultado por movimentação · YTD ${String(anoCorrente).slice(2)} · ${janela}`}
+                  ajuda={
+                    'Por que os dois demonstrativos desta página mostram números diferentes. ' +
+                    'Cada degrau é a diferença, naquele grupo de contas, entre o que foi movimentado ' +
+                    'no caixa e o que foi reconhecido por competência. O repasse só existe no caixa; ' +
+                    'os reembolsos, só na competência.'
+                  }
+                  cascata={ponte}
+                  // As duas bases têm safras INDEPENDENTES, e ver isso é a resposta curta
+                  // para metade das perguntas que este card vai gerar.
+                  rodape={
+                    `Competência carregada em ${fmtDataSP(compQualquer.carregado_em) || '—'}` +
+                    ` · caixa carregado em ${fmtDataSP(ultimaCargaMovimentacao) || '—'}`
+                  }
+                />
+              )}
+            </div>
+          )}
+          </div>
         </TopSection>
       )}
 

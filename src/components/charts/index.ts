@@ -41,3 +41,6 @@ export { fillMonths, listMonths } from './fill-months'
 
 // Anel de destaque (círculo de contorno + valor centrado) — sem série de dados.
 export { AnelKpi } from './anel-kpi'
+
+// Cascata (waterfall) — duas âncoras e os degraus entre elas (v5.8.1).
+export { default as GraficoCascata, alturaCascata } from './cascata'
