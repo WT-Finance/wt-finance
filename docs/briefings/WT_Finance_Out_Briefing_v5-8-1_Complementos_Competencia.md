@@ -273,3 +273,62 @@ enquanto os vizinhos estão em capitalização normal. É fiel ao dado: na árvo
 mexido porque **normalizar caixa no cliente é o caminho para mangular siglas** ("RH" viraria
 "Rh"), e o rótulo é dado editável — a correção limpa é no editor da estrutura, renomeando a
 linha. Fica registrado como escolha, não como esquecimento.
+
+---
+
+## 10. A regressão que o empilhamento causou (e como foi achada)
+
+Os ajustes do §9 fizeram as duas cascatas **sumirem**: card desenhado, título, subtítulo,
+box cinza no tamanho certo — e nenhum gráfico dentro. Sem erro no console, sem falha de gate.
+
+**Causa, medida e não deduzida.** O box usava `minHeight`, e o `ResponsiveContainer` do
+Recharts é um filho com `height: 100%`. Em CSS, um percentual de altura resolve contra a
+`height` do pai — **`min-height` não serve**. O pai ficava com a altura certa (por isso o box
+aparecia), o filho resolvia para `auto`, media 0, e o gráfico não desenhava.
+
+Isso estava **latente desde o começo**: enquanto os dois cards viviam num `grid`, o item
+recebia altura definida pelo `align-items: stretch` e o `height: 100%` resolvia por tabela.
+Empilhá-los com `space-y-6` os tornou blocos de altura automática, e o defeito apareceu.
+
+A causa foi confirmada numa página isolada com as três árvores lado a lado, medindo o filho
+com `getBoundingClientRect`:
+
+| Contexto | Altura do filho |
+|---|---|
+| bloco + `min-height` | **0px** ← a regressão |
+| grid + `min-height` | 200px ← funcionava por acidente |
+| bloco + `height` | 200px ← a correção |
+
+A altura da cascata é função do número de barras, então cravá-la não é número mágico — e
+deixa o card correto em qualquer contexto de layout em que for posto.
+
+**Efeito colateral do §9.3, corrigido junto.** Com `domain` explícito, o Recharts abandona o
+algoritmo de ticks "bonitos" e divide o intervalo cru: a escala simétrica rendia
+`-471 k · 79 k · 629 k` — marcas arbitrárias e, pior, **sem o zero entre elas**, que era
+exatamente o ponto de a escala ser simétrica. O passo passou a ser o menor valor redondo que
+cobre metade do extremo, com os ticks explícitos (`-2p · -p · 0 · p · 2p`). Na tela:
+`-1,0 Mi · -500 k · 0 · 500 k · 1,0 Mi` na decomposição e `-4,0 Mi · -2,0 Mi · 0 · 2,0 Mi ·
+4,0 Mi` na ponte.
+
+### Conferência ao vivo (finalmente possível)
+
+Com a sessão do Yan aberta no navegador, deu para conferir a tela de verdade:
+Resumo Executivo com pills, `Δ YTD 25·26` em reais e Resultado do Exercício YTD 26 =
+`(79.434,67)` — batendo com o oráculo; as duas cascatas empilhadas em largura cheia, com a
+linha do zero no tick central; a seção de caixa intacta.
+
+### Observação: a base mudou durante a sessão
+
+Entre o primeiro print e o último, `Resultado Financeiro` foi de 49,8k para 32,0k e
+`Investimentos/Empréstimos` de −147,5k para −129,6k. **A soma se conserva**, então é uma
+reclassificação de categoria entre blocos — alguém movendo uma linha no editor da estrutura,
+ou uma recarga de base. A ponte acompanhou sozinha, sem tocar em código: é exatamente o
+comportamento que a leitura da árvore VIVA (§2 do ADR) deveria dar, e os 5 casos de contrato
+seguiram passando, com a identidade fechando ao centavo sobre o dado novo.
+
+### Proposta adicional para a skill `graficos`
+
+> - **`ResponsiveContainer` exige `height` no pai, nunca `min-height`.** Percentual de altura
+>   resolve contra `height`; com `min-height` o filho mede 0 e o gráfico some sem erro — card
+>   desenhado, área vazia. Num `grid` o defeito fica LATENTE (o item ganha altura do
+>   `align-items: stretch`) e só aparece quando o card vira bloco. Caso vivo: v5.8.1.

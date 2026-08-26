@@ -7,9 +7,10 @@
 (o MESMO componente do regime de caixa, servindo aos dois), decomposição da variação YTD 26 × YTD 25 e a **ponte Competência ↔ Caixa** (16
 degraus, do resultado por emissão ao resultado por movimentação). Tudo derivado no cliente dos
 dois payloads que a página já buscava. **1118 testes** (de 1056), incluindo 5 casos de contrato
-que confrontam a BASE VIVA. ⚠️ **A conferência visual NÃO foi feita** — a tela exige sessão
-autenticada e a sessão do agente não insere credenciais; é o primeiro passo do merge (modelo
-v5.4.1: entregar → conferir no ar → ajustar).
+que confrontam a BASE VIVA. ✅ **Conferência visual FEITA** (2 rodadas, 26/08) — a 2ª pelo
+próprio agente via Claude in Chrome, usando a sessão já aberta do Yan. Achado que só a tela
+pega: **`ResponsiveContainer` exige `height` no pai, nunca `min-height`** (com `min-height` o
+filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu ao empilhar.
 
 ⚠️ **UMA VERSÃO EM VOO — conferir numeração no REMOTO, não só na worktree.** A branch
 `feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
