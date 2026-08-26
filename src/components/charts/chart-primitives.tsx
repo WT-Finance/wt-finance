@@ -26,6 +26,7 @@
 
 import type { ReactElement } from 'react'
 import { CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts'
+import type { AxisDomain } from 'recharts/types/util/types'
 import { fmtAxisBRL, fmtAxisPct, fmtAxisMes } from '@/lib/fmt'
 import {
   chartColors, dashArrays, strokeWidths, tickFontSize,
@@ -60,6 +61,25 @@ export function ChartZeroLine(): ReactElement {
   return (
     <ReferenceLine
       y={0}
+      stroke={chartColors.zeroLine}
+      strokeWidth={strokeWidths.zeroLine}
+    />
+  )
+}
+
+/**
+ * Linha do zero para gráficos de barra HORIZONTAL (`layout="vertical"`), onde o eixo de
+ * valor é o X — a irmã de `ChartZeroLine`, que ancora no Y.
+ *
+ * Existe porque `ChartZeroLine()` num layout vertical desenha a linha no eixo errado, em
+ * silêncio: o Recharts aceita o `y={0}` (ali o Y é o eixo de CATEGORIAS), e o resultado é
+ * uma régua atravessando a primeira categoria em vez do zero. Num gráfico cujas barras
+ * cruzam o zero, essa linha é o que dá a referência de sinal.
+ */
+export function ChartZeroLineX(): ReactElement {
+  return (
+    <ReferenceLine
+      x={0}
       stroke={chartColors.zeroLine}
       strokeWidth={strokeWidths.zeroLine}
     />
@@ -196,11 +216,25 @@ export function ChartYAxisCategoria(
   )
 }
 
-/** Eixo X numérico para barra HORIZONTAL (valor no X), monetário abreviado. */
-export function ChartXAxisBRL(): ReactElement {
+/**
+ * Eixo X numérico para barra HORIZONTAL (valor no X), monetário abreviado.
+ *
+ * ⚠️ `domain` é OPCIONAL e existe por um motivo concreto: o domínio default de um eixo
+ * numérico no Recharts é `[0, 'auto']` (`axisSelectors.js`), ou seja, ele **ancora em
+ * zero e corta valores negativos**. Para as barras que só crescem para a direita (o
+ * caso de todos os call-sites até a v5.8.1) isso é o comportamento desejado. Para uma
+ * CASCATA, cujas âncoras cruzam o zero na vida real, é um gráfico silenciosamente
+ * errado — barras negativas invisíveis, e nenhum gate vê. Quem precisa dos dois lados
+ * passa `['dataMin', 'dataMax']` (ou funções com folga).
+ *
+ * O default fica intocado de propósito: mudar o domínio de todos os gráficos existentes
+ * para resolver o caso de um seria trocar um defeito por outro.
+ */
+export function ChartXAxisBRL(opts?: { domain?: AxisDomain }): ReactElement {
   return (
     <XAxis
       type="number"
+      domain={opts?.domain}
       tickFormatter={(v) => fmtAxisBRL(Number(v))}
       tick={{ fontSize: tickFontSize.x, fill: chartColors.axisTick }}
       tickLine={false}

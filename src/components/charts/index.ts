@@ -15,6 +15,7 @@ export type { ChartLegendItem, ChartLegendMarker } from './chart-legend'
 export {
   ChartGrid,
   ChartZeroLine,
+  ChartZeroLineX,
   ChartReferenceLineY,
   ChartXAxisMes,
   ChartXAxisCategoria,

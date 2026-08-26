@@ -2,7 +2,7 @@
 
 import { ResponsiveContainer, BarChart, Bar, Cell, LabelList, Tooltip } from 'recharts'
 import {
-  ChartGrid, ChartXAxisBRL, ChartYAxisCategoria, CustomTooltip,
+  ChartGrid, ChartXAxisBRL, ChartYAxisCategoria, ChartZeroLineX, CustomTooltip,
   chartMargins, barRadius, barSizes, fluxoColors,
 } from '@/components/charts'
 import { fmtBRL2, fmtMi } from '@/lib/fmt'
@@ -106,7 +106,17 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart layout="vertical" data={dados} margin={chartMargins.horizontal}>
         {ChartGrid({ eixo: 'vertical' })}
-        {ChartXAxisBRL()}
+        {/* ⚠️ Domínio EXPLÍCITO dos dois lados. O default do Recharts para eixo numérico
+            é `[0, 'auto']`: ele ancoraria em zero e as barras negativas — a âncora de
+            competência e metade dos degraus — sumiriam. A folga de 8% é o espaço em que
+            o rótulo de valor (`LabelList position="right"`) cabe sem encostar na borda. */}
+        {ChartXAxisBRL({
+          domain: [
+            (min: number) => (min < 0 ? min * 1.08 : 0),
+            (max: number) => (max > 0 ? max * 1.08 : 0),
+          ],
+        })}
+        {ChartZeroLineX()}
         {ChartYAxisCategoria('rotulo', { width: larguraEixoY(dados.map(d => d.rotulo)) })}
         <Tooltip
           cursor={{ fill: 'rgba(0,0,0,0.04)' }}
