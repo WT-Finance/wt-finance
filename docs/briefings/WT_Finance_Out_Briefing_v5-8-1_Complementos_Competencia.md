@@ -12,11 +12,13 @@ dois payloads que a página já buscava (`get_dre_competencia_mensal` + `get_dre
 Nenhuma RPC nova, nenhuma tabela, nenhuma migration, nenhuma chamada acrescentada ao
 `Promise.allSettled` da página.
 
-| Componente | O que responde |
-|---|---|
-| **Resumo Executivo** (acima do demonstrativo) | "Como estamos, em oito linhas" — pills de ano, anos fechados, YTD e Δ em reais. É o MESMO componente do regime de caixa |
-| **Decomposição da variação** | "O que moveu o resultado contra o ano passado" — cascata por grupo, ordenada por magnitude |
-| **Ponte Competência ↔ Caixa** | **"Por que os dois números desta página são diferentes"** — 16 degraus, do resultado por emissão ao resultado por movimentação |
+| Componente | Onde vive | O que responde |
+|---|---|---|
+| **Resumo Executivo · Competência** | Visão Geral | "Como estamos, em oito linhas" — pills de ano, anos fechados, YTD e Δ em reais. É o MESMO componente do regime de caixa |
+| **Ponte Competência ↔ Caixa** | Visão Geral | **"Por que os dois números desta página são diferentes"** — 16 degraus, do resultado por emissão ao de movimentação |
+| **Decomposição da Variação do Resultado** | Regime de Competência | "O que moveu o resultado contra o ano passado" — cascata por grupo, ordenada por magnitude |
+
+*(A estrutura final da página está no §12 — os rótulos e endereços acima já são os dela.)*
 
 A ponte é o centro da versão: a v5.8.0 pôs dois regimes na mesma tela sem explicar a distância
 entre eles, e a pergunta que isso convida — *"qual dos dois está certo?"* — é a pergunta errada.

@@ -36,49 +36,58 @@ export interface ChangelogEntrada {
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
     versao: '5.8.1',
-    data: '2026-08-26T14:30', // ⚠️ hora de AUTORIA — reconciliar ao horário real do merge no /pos-merge
+    data: '2026-08-26T16:30', // ⚠️ hora de AUTORIA — reconciliar ao horário real do merge no /pos-merge
     itens: [
       {
         tipo: 'novidade',
         texto:
-          'A seção "Regime de Competência" ganhou o card que responde a pergunta que ela ' +
-          'mesma criou: POR QUE os dois resultados da página são diferentes. A "Ponte ' +
-          'Competência ↔ Caixa" parte do resultado por emissão e chega ao resultado por ' +
-          'movimentação mostrando, conta por conta, de onde vem cada pedaço da diferença — ' +
-          'o que já foi recebido mas ainda não foi emitido, o que foi incorrido mas ainda ' +
-          'não foi pago, o repasse (que só existe no caixa) e os reembolsos (que só existem ' +
-          'na competência). No acumulado de janeiro a agosto de 2026 são R$ 79,4 mil ' +
-          'NEGATIVOS por competência contra R$ 136,8 mil POSITIVOS no caixa: uma distância ' +
-          'de R$ 216,2 mil que agora tem nome e explicação, em vez de virar a pergunta ' +
-          '"qual dos dois está certo?" — que é a pergunta errada. Os dois estão certos.',
+          'A página do Demonstrativo de Resultado ganhou uma seção nova no topo, "Visão ' +
+          'Geral", com os dois resumos executivos lado a lado — um por competência, outro ' +
+          'por caixa — e, logo abaixo deles, a ponte que explica a distância entre os dois. ' +
+          'É a ordem em que a pergunta nasce: vê-se um resultado, vê-se o outro, e a ' +
+          'pergunta seguinte é por que eles são diferentes. Cada regime continua com a sua ' +
+          'seção completa abaixo, com o demonstrativo inteiro.',
       },
       {
         tipo: 'novidade',
         texto:
-          'Um card de "Decomposição da variação" mostra o que moveu o resultado deste ano ' +
-          'contra o mesmo período do ano passado, um degrau por grupo de contas, do que mais ' +
-          'pesou para o que menos pesou. Passando o mouse em cada degrau, aparece a conta ' +
-          'específica que puxou aquela variação.',
+          'A "Ponte Competência ↔ Caixa" responde a pergunta que a versão anterior criou ao ' +
+          'pôr os dois regimes na mesma tela: POR QUE os dois resultados são diferentes. Ela ' +
+          'parte do resultado por emissão e chega ao resultado por movimentação mostrando, ' +
+          'conta por conta, de onde vem cada pedaço da diferença — o que já foi recebido mas ' +
+          'ainda não foi emitido, o que foi incorrido mas ainda não foi pago, o repasse (que ' +
+          'só existe no caixa) e os reembolsos (que só existem na competência). No acumulado ' +
+          'de janeiro a agosto de 2026 são R$ 79,4 mil NEGATIVOS por competência contra ' +
+          'R$ 136,8 mil POSITIVOS no caixa: uma distância de R$ 216,2 mil que agora tem nome ' +
+          'e explicação, em vez de virar a pergunta "qual dos dois está certo?" — que é a ' +
+          'pergunta errada. Os dois estão certos.',
       },
       {
         tipo: 'novidade',
         texto:
-          'Acima do demonstrativo por competência entrou um Resumo Executivo com as oito ' +
-          'linhas principais (da Receita Bruta ao Resultado Gerencial) — o mesmo card que o ' +
-          'demonstrativo por fluxo de caixa já tinha, incluindo os botões de ano para ' +
-          'escolher o que comparar, os anos fechados, o acumulado de cada ano e a diferença ' +
-          'em reais entre eles. Antes era preciso percorrer o demonstrativo inteiro para ' +
-          'chegar a essa leitura.',
+          'O resumo executivo por competência traz as oito linhas principais, da Receita ' +
+          'Bruta ao Resultado Gerencial — o mesmo card que o demonstrativo por fluxo de ' +
+          'caixa já tinha, com os botões de ano para escolher o que comparar, os anos ' +
+          'fechados, o acumulado de cada ano e a diferença em reais entre eles. Antes era ' +
+          'preciso percorrer o demonstrativo inteiro para chegar a essa leitura.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Na seção do Regime de Competência, o card "Decomposição da Variação do Resultado" ' +
+          'mostra o que moveu o resultado deste ano contra o mesmo período do ano passado, ' +
+          'um degrau por grupo de contas, do que mais pesou para o que menos pesou. Passando ' +
+          'o mouse em cada degrau, aparece a conta específica que puxou aquela variação.',
       },
       {
         tipo: 'melhoria',
         texto:
-          'Os três cards novos cortam o acumulado do ano até o último mês que a base de ' +
-          'competência realmente cobre — e dizem isso no subtítulo. É uma diferença que ' +
-          'importa: como essa base é atualizada por um arquivo enviado periodicamente, ' +
-          'contar até o mês do calendário faria os meses ainda não enviados entrarem como ' +
-          'ZERO, e o acumulado apareceria menor do que é, sem nenhum aviso. Quando a base ' +
-          'estiver em dia, esses cards e a tabela mostram exatamente o mesmo período.',
+          'Os cards novos cortam o acumulado do ano até o último mês que a base de ' +
+          'competência realmente cobre. É uma diferença que importa: como essa base é ' +
+          'atualizada por um arquivo enviado periodicamente, contar até o mês do calendário ' +
+          'faria os meses ainda não enviados entrarem como ZERO, e o acumulado apareceria ' +
+          'menor do que é, sem nenhum aviso. Quando a base estiver em dia, esses cards e a ' +
+          'tabela mostram exatamente o mesmo período.',
       },
     ],
   },

@@ -2,13 +2,19 @@
 
 Última atualização: 2026-08-26 (fechamento da v5.8.1) · produção na **v5.8.0** (#246 mergeado 26/08 às 12h19 — DRE por Competência: segunda TopSection em `/financeiro/dre` com base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**). Antes a v5.7.2 (#243, 25/08 14h10 — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações, ordenação no Gerencial; sem migration), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-⚠️ **v5.8.1 FECHADA E AGUARDANDO MERGE** — branch `feat/v5-8-1-complementos-competencia`,
-**ADR-0171**, **ZERO migration**. Complementos da DRE por Competência: Resumo Executivo
-(o MESMO componente do regime de caixa, servindo aos dois), decomposição da variação YTD 26 × YTD 25 e a **ponte Competência ↔ Caixa** (16
-degraus, do resultado por emissão ao resultado por movimentação). Tudo derivado no cliente dos
-dois payloads que a página já buscava. **1125 testes** (de 1056), incluindo 5 casos de contrato
-que confrontam a BASE VIVA. ✅ **Conferência visual FEITA** (2 rodadas, 26/08) — a 2ª pelo
-próprio agente via Claude in Chrome, usando a sessão já aberta do Yan. Achado que só a tela
+⚠️ **v5.8.1 FECHADA E AGUARDANDO MERGE (PR #248)** — branch
+`feat/v5-8-1-complementos-competencia`, **ADR-0171**, **ZERO migration**, **1125 testes**
+(de 1056), incluindo 5 casos de contrato que confrontam a BASE VIVA.
+
+`/financeiro/dre` passou a ter **TRÊS TopSections**: **Visão Geral** (nova, no topo —
+Resumo Executivo · Competência, Resumo Executivo · Caixa e a **Ponte Competência ↔ Caixa**),
+**Regime de Competência** (demonstrativo + Decomposição da Variação do Resultado) e
+**Regime de Caixa** (inalterado). O critério: a ponte concilia DOIS regimes, então não
+pertence a nenhum; a decomposição decompõe UM. Tudo derivado no cliente dos dois payloads que
+a página já buscava — nenhuma chamada nova.
+
+✅ **Conferência visual FEITA** (4 rodadas, 26/08) — as últimas pelo próprio agente via Claude
+in Chrome, usando a sessão já aberta do Yan. Achado que só a tela
 pega: **`ResponsiveContainer` exige `height` no pai, nunca `min-height`** (com `min-height` o
 filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu ao empilhar.
 
