@@ -8,10 +8,14 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [5.8.0] — 2026-08-25
 
-MINOR · **DRE por Competência: segunda TopSection em `/financeiro/dre`, com base, árvore e leitura próprias**. Migrations `0255`/`0256`/`0257` (todas ADITIVAS) · **ADR-0170**.
+MINOR · **DRE por Competência: segunda TopSection em `/financeiro/dre`, com base, árvore, leitura e EDITOR próprios**. Migrations `0255`/`0256`/`0257`/`0260` (todas ADITIVAS) · **ADR-0170** · **1056 testes**.
 
 ### Adicionado
 
+- **Editor da estrutura do regime de competência** (`/financeiro/dre/estrutura-competencia`), atrás do botão "Editar estrutura" da TopSection nova — irmã do editor que já existia no regime de caixa, com o **mesmo** editor, o **mesmo** painel de histórico e o **mesmo** desfazer. Os títulos das duas páginas passaram a dizer de qual regime são: "Estrutura do Demonstrativo de Resultado **por Fluxo de Caixa**" e "**por Competência**". Migration `0260`: `financeiro.dre_comp_par` (o de-para EDITÁVEL, com destino anulável e o mesmo CHECK de estado do caixa) + 7 RPCs.
+  ⚠️ O briefing dizia "sem editor nesta versão; curadoria por migration" — pedido do Yan com o PR já aberto. A curadoria por migration segue sendo a origem do **seed**; daqui para frente a estrutura viva é editável, como já acontece no caixa.
+  ⚠️ **Por que uma tabela nova e não um `ALTER` na `dre_comp_map`:** o editor precisa do estado "sem destino", e a `dre_comp_map` nasceu com `sub_chave NOT NULL`. O caminho óbvio — `ALTER TABLE ... DROP NOT NULL` — seria classificado como **DESTRUTIVO** pelo backup-gate (o regex casa `ALTER TABLE … DROP`), exigindo TTY humano. O regex está certo em ser conservador; quem mudou foi o desenho. A `dre_comp_map` ficou órfã de leitura sem ser removida — dívida registrada.
+- **Provisionamento automático do de-para:** ao finalizar o upload **e** ao abrir o editor, todo par presente na base sem linha no de-para entra com destino em branco. É isso que faz "par novo cai na bandeja" valer também **dentro do editor**, e não só na leitura — o card do upload avisa quantos pares novos entraram.
 - **Nova TopSection "Regime de Competência" em `/financeiro/dre`, ACIMA do "Regime de Caixa".** Fato gerador: data de **emissão** (o de caixa é movimentação/vencimento). A mesma página passa a responder as duas perguntas — "quanto andou na conta" e "quanto foi reconhecido pela emissão". Mesma permissão da página (`financeiro/dre`).
 - **Base de upload nova:** cartão "Demonstrativo de Resultado (Competência)" em `/admin/uploads`, alimentado pelo export "Demonstrativo de Resultado" do Monde já tratado pelo script R (8 colunas tidy). Full-swap, `accept=".xlsx"` (o parser depende do valor NATIVO da célula, que o CSV não tem). Migration `0255`: `raw.demonstrativo_competencia` + `truncar_/inserir_lote_/status_demonstrativo_competencia`.
 - **ALARME DE INGESTÃO — peça que não existia em nenhum upload do repo.** O `finalizar` confronta **contagem e soma do ARQUIVO** (medidas pelo parser, no cliente) com **contagem e soma GRAVADAS** (medidas pelo banco). Divergência devolve erro e o card **não** declara sucesso. Comparação em **centavos inteiros** nas duas pontas. É a lição da v5.5.2 aplicada na fundação, não em retrofit: lá um ×1000 silencioso atravessou 753 testes e só apareceu meses depois, na DRE.
@@ -25,6 +29,7 @@ MINOR · **DRE por Competência: segunda TopSection em `/financeiro/dre`, com ba
 - **`TabelaDre` ficou parametrizada por REGIME**, por props ADITIVAS com default (`titulo`, `subtitulo`, `paramAno`, `semPrevisto`). O call-site do regime de caixa **não mudou uma linha**, então o render dele é idêntico por construção — e não por conferência. `semPrevisto` trava o modo em "Realizado" e esconde as pills; todo o resto (coluna ·PREV, VENCIDOS, anos seguintes) cai fora por consequência, porque a tabela já derivava tudo do modo.
 - **Cada regime navega o SEU parâmetro de URL** — `?ano=` (caixa) e `?anoComp=` (competência). Um parâmetro só faria a pill de um regime mover o outro.
 - `accept` do cartão de upload virou campo de configuração por base; o default preserva `.xlsx,.csv` das 5 bases existentes.
+- **A linha de contexto sob o título do card de competência SAIU** ("fato gerador: data de emissão · base carregada em … · cobertura …") — decisão do Yan. O selo de última atualização no canto superior direito fica: é o padrão da casa e o card do caixa tem igual. Efeito colateral bem-vindo: a prop `subtitulo` saiu junto (sem chamador, era código morto) e o `CabecalhoCard` voltou ao alinhamento original, o que **dissolve** o achado ALTO do `revisor` no M3.
 
 ### Corrigido
 

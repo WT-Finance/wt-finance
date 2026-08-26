@@ -103,11 +103,43 @@ nova é a primeira coisa da página, o que eleva a exigência do fail-safe — s
 **não renderiza**, porque bloco quebrado no topo é pior que a ausência dele. O regime de caixa
 segue inteiro em qualquer cenário.
 
-### 9. Sem editor e sem toggle Realizado/Previsto
+### 9. Sem toggle Realizado/Previsto
 
-A curadoria da árvore/de-para é por migration nesta versão (editor por regime é pendência
-registrada). E o regime tem **uma coluna por mês**: não existe projeção a mostrar, então as
-pills de modo não aparecem — oferecê-las abriria colunas de zero.
+O regime tem **uma coluna por mês**: não existe projeção a mostrar, então as pills de modo
+não aparecem — oferecê-las abriria colunas de zero.
+
+### 10. O editor da estrutura EXISTE (revisão desta decisão, ainda na v5.8.0)
+
+Esta decisão nasceu como "sem editor nesta versão; curadoria por migration, e editor por
+regime é pendência registrada". **O Yan pediu o editor com o PR já aberto**, replicando o que
+existe no Demonstrativo por Fluxo de Caixa. Está implementado (migration `0260`), e a
+curadoria por migration segue sendo a origem do **seed**: daqui para frente a estrutura viva é
+editável, exatamente como já acontece no caixa — onde a estrutura viva divergiu do seed `0205`
+e isso é o comportamento esperado, não um defeito.
+
+**O de-para editável é uma tabela NOVA (`financeiro.dre_comp_par`), não um `ALTER` na
+`dre_comp_map`.** O editor precisa de três estados por linha — classificada, na bandeja
+(sem destino) e excluída — e a `dre_comp_map` nasceu com `sub_chave NOT NULL`, porque para
+curadoria por migration todo par tem destino por definição. O caminho óbvio,
+`ALTER TABLE ... ALTER COLUMN sub_chave DROP NOT NULL`, foi **rejeitado**: o classificador do
+backup-gate casa `/ALTER\s+TABLE[\s\S]*DROP/` e trataria a migration como DESTRUTIVA, que
+exige confirmação humana em TTY (ADR-0131). O regex está certo em ser conservador — quem tinha
+de mudar era o desenho, não a rede. A `dre_comp_map` fica **órfã de leitura** sem ser removida
+(DROP também é destrutivo): dívida registrada, custo baixo (tabela pequena, ainda é a fonte do
+seed e o que o teste de paridade confere contra os anexos).
+
+Ganho lateral do desenho: como `dre_comp_par` é ao mesmo tempo o catálogo de pares e o
+de-para, a bandeja é `sub_chave IS NULL` — mais simples que no caixa, onde ela é um
+`NOT EXISTS` contra `dim_categoria`. E o salvar é sempre `UPDATE` por id, nunca upsert, o que
+fecha uma porta que o caixa deixa aberta: lá é possível inserir no de-para uma categoria que
+não existe no dado.
+
+**O editor provisiona ao abrir.** Um par que já está na base mas ainda não tem linha no
+de-para aparece corretamente na bandeja da LEITURA (o `LEFT JOIN` da view garante), mas
+ficaria invisível ao editor, que identifica cada linha por id. A alternativa — a RPC do editor
+tolerar o par sem linha — mostraria a órfã e não deixaria mexer nela, o que é pior. Então a
+página chama `provisionar_dre_comp_par()` (idempotente) antes de ler; de quebra, provisionando
+pela sessão, o diário atribui a inserção a quem abriu a tela em vez de gravar um lote anônimo.
 
 ## Consequências
 

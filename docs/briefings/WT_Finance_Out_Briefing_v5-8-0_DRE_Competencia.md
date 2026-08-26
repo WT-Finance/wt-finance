@@ -1,6 +1,6 @@
 # Out-Briefing v5.8.0 — DRE por Competência
 
-**MINOR** · `0255`/`0256`/`0257` (todas ADITIVAS, aplicadas) · **ADR-0170** · **1054 testes**
+**MINOR** · `0255`/`0256`/`0257`/`0260` (todas ADITIVAS, aplicadas) · **ADR-0170** · **1056 testes**
 Branch `feat/v5-8-0-dre-competencia` · base `420caac` (main na v5.7.2 + pós-merge #244)
 
 ---
@@ -17,6 +17,7 @@ a partir de uma base de upload própria, com árvore e de-para próprios.
 | **M2 — Árvore + de-para + leitura** | ✅ `0256`/`0257` aplicadas; view, expansão recursiva, RPC no envelope do caixa, 25 testes novos |
 | **M3 — TopSection** | ✅ tabela densa reusada por props aditivas; fail-safe; pills independentes |
 | **M4 — Fechamento** | ✅ este documento, ADR-0170, CHANGELOGs, bump, WORKING-CONTEXT, PR |
+| **M5 — Ajustes pedidos com o PR aberto** | ✅ `0260` aplicada; subtítulo do card removido, "Editar estrutura" replicado para a competência, títulos das duas páginas de edição |
 
 **A base real está carregada em produção:** 3.244 linhas · Σ 568.937,62 · 141 pares ·
 cobertura 2024-01 → 2026-08.
@@ -197,6 +198,44 @@ outro trecho lê o estado cru), pills condicionais, `chaveLinha` e `chaveBandeja
 `cat`, então os fallbacks novos são inalcançáveis lá), `paramAno`, e os índices posicionais do
 `Promise.allSettled`.
 
+### `revisor-db` — `0260` (M5): **APROVADA COM RESSALVAS** · 0 CRÍTICO · 0 ALTO
+
+**MÉDIO (corrigido — e o achado era bom):** a RPC do **editor** não tinha o fail-safe que a
+RPC de **leitura** tem. Um par presente na base mas ainda sem linha em `dre_comp_par`
+apareceria certo na bandeja da DRE (o `LEFT JOIN` da view garante) e ficaria **invisível ao
+editor**, que identifica cada linha por id. Resolvido **na origem** e não por leitura
+tolerante: a página **provisiona antes de ler** (`provisionar_dre_comp_par()`, idempotente), e
+essa RPC passou a aceitar `authenticated` com a área da DRE. Leitura tolerante mostraria a
+órfã e não deixaria mexer nela — pior que não mostrar. Ganho lateral: provisionando pela
+sessão, o diário atribui a inserção a quem abriu a tela, em vez de gravar um lote anônimo (que
+era o segundo MÉDIO do parecer).
+
+**MÉDIO (corrigido):** `GRANT`/`REVOKE` não redeclarados após o `CREATE OR REPLACE` da view e
+da RPC de leitura. O Postgres preserva as ACLs, mas a convenção da casa é redeclarar
+(precedente `0197`/`0206` — "nunca confiar no implícito"), porque um `DROP`+`CREATE` futuro
+reintroduziria o default privilege do Supabase em silêncio.
+
+**MÉDIO (corrigido):** faltavam casos de contrato para as RPCs novas do editor. Entraram 2,
+e um deles é **cruzado**: o EDITOR e o DEMONSTRATIVO têm de concordar sobre o que está
+classificado — são duas telas lendo a mesma curadoria por RPCs diferentes, exatamente a classe
+de coisa que a v5.7.1 transformou em regra ("dois números vizinhos = caso de contrato").
+
+**BAIXO (corrigido):** guard contra `categoria_id` duplicado no mesmo lote — que o molde do
+caixa (`0208`) **não tem**. Tocar a mesma linha duas vezes na mesma transação faria o
+`reverter_diario` abortar sem reverter nada (lição ALTO da v5.7.0). A UI não produz duplicata
+hoje, mas o invariante é do banco.
+**BAIXO (corrigido):** `provisionar_dre_comp_par` passou a ser lida com Zod, não cast.
+**BAIXO (registrado):** desclassificar de volta para a bandeja não é possível — espelha o
+caixa; ver a pendência registrada acima.
+
+**Verificação via REST depois de aplicar:** provisionamento idempotente (`novos=0`, 141 pares);
+editor com 26 blocos / 141 linhas / bandeja 0, nenhum destino que não seja folha, CHECK
+respeitado; trava otimista barra token errado e aceita lote vazio com `gravadas=0`; guard de
+duplicata barra; histórico **vazio** (o seed não poluiu, como a ordem seed→triggers pretendia).
+E o que mais importa: **os números da leitura são IDÊNTICOS aos de antes da `0260`** nos três
+anos, com oráculo e reconciliação fechando — a troca do modelo por baixo da leitura não mexeu
+em um centavo.
+
 ### Nota sobre a suíte: os casos de contrato dependem de REDE
 
 Numa das corridas do fechamento, 4 testes falharam com a suíte levando **193 s** (contra ~56 s
@@ -256,9 +295,19 @@ Descoberto no fechamento, conferindo o remoto: existe a branch
 
 ### Registradas, fora de escopo
 
-- **Editor da árvore/de-para de competência** — curadoria por migration nesta versão. ⚠️ Quando
-  ele existir, **tem de recusar ciclo na gravação**: o teto de profundidade da CTE recursiva é
-  rede contra laço infinito, não validação de corretude.
+- ~~**Editor da árvore/de-para de competência**~~ — **ENTREGUE nesta versão** (M5, migration
+  `0260`; pedido do Yan com o PR já aberto). ⚠️ Segue valendo o aviso: o editor mexe no
+  DE-PARA, não nas FÓRMULAS da árvore — o dia em que a árvore virar editável, a gravação **tem
+  de recusar ciclo**, porque o teto de profundidade da CTE recursiva é rede contra laço
+  infinito, não validação de corretude.
+- **Desclassificar uma linha de volta para a bandeja** não é possível — o `salvar` aceita
+  (bloco, não-excluída) ou (sem bloco, excluída), e rejeita (sem bloco, não-excluída). Isso
+  **espelha o caixa** (`0208`), e a instrução foi replicar o que existe lá. Diferença: aqui a
+  bandeja É uma linha real da tabela, então permitir seria trivial se o Yan quiser.
+- `financeiro.dre_comp_map` ficou **órfã de leitura** (a view e a RPC repontaram para
+  `dre_comp_par`) e **não foi removida** — `DROP` é destrutivo e exige TTY humano. Ela segue
+  sendo a fonte do seed inicial e o alvo do teste de paridade contra os anexos. Remover é um
+  item para uma destrutiva futura, sem pressa.
 - **Cobertura fora da janela de 3 anos** não é oferecida nas pills (mesma limitação que o caixa
   já tem; hoje a base começa exatamente em 2024).
 - Cards de KPI, linhas-chave, mix de receita, ponte competência↔caixa e orçado (§5 do briefing).
@@ -321,8 +370,8 @@ Descoberto no fechamento, conferindo o remoto: existe a branch
 
 ## 9. Gates
 
-`npx tsc --noEmit` 0 · `npm run lint` limpo · `npm run build` limpo · **`npm test` 1054/1054**
-(eram 998 na v5.7.2: +56). Migrations aplicadas via `npm run db:migrate -- --aditiva` com
+`npx tsc --noEmit` 0 · `npm run lint` limpo · `npm run build` limpo · **`npm test` 1056/1056**
+(eram 998 na v5.7.2: +58). Migrations aplicadas via `npm run db:migrate -- --aditiva` com
 backup-gate **VERDE** (54/54 tabelas, restore-test spot em 3 tabelas). RPC nova verificada
 **via REST com service_role**, executando o corpo. Nenhuma migration destrutiva pendente na
 pasta.

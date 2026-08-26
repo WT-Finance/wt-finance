@@ -70,6 +70,18 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
           'milhão de Resultado Gerencial.',
       },
       {
+        tipo: 'novidade',
+        texto:
+          'A estrutura do demonstrativo por competência agora é EDITÁVEL na própria tela, ' +
+          'pelo botão "Editar estrutura" — do mesmo jeito que já era no demonstrativo por ' +
+          'fluxo de caixa: arrastar uma linha para outro bloco, mudar a ordem, tirar uma ' +
+          'linha do demonstrativo, e um histórico que mostra quem alterou o quê e permite ' +
+          'desfazer. Antes essa organização só podia ser mudada por quem mexe no sistema. ' +
+          'E quando o arquivo importado traz uma linha nova que ninguém classificou ainda, ' +
+          'ela aparece como "Não classificadas" — visível no demonstrativo e disponível no ' +
+          'editor para ser colocada no lugar certo, sem nunca desaparecer da conta.',
+      },
+      {
         tipo: 'melhoria',
         texto:
           'A atualização das bases de dados ganhou uma conferência automática: ao importar o ' +

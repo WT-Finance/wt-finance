@@ -327,6 +327,33 @@ se auto-desativar nem para tirar o próprio acesso a `admin/acessos`.
   precedente da v4.17.1 na seção 1. `DROP` é destrutivo: confirmação + reversibilidade
   documentada (corpo salvo na migration de origem).
 
+### Relaxar uma coluna (`DROP NOT NULL`) conta como DESTRUTIVA — e o desenho é que muda (v5.8.0)
+
+O classificador do backup-gate (`scripts/db-gate/classificar.mjs`) casa
+`/\bALTER\s+TABLE\b[\s\S]*\bDROP\b/` — **sem distinguir `DROP COLUMN` de `DROP NOT NULL` ou
+`DROP CONSTRAINT`**. Qualquer um dos três torna a migration DESTRUTIVA, o que exige confirmação
+humana em TTY (ADR-0131) e o agente **não alcança por construção**.
+
+O regex está certo em ser conservador — quem tem de mudar é o desenho, não a rede. **Não
+contorne** (é protocolo D5: `db push` cru pula o backup-gate). O caminho autônomo é:
+
+1. **CREATE TABLE nova com a forma certa** (a coluna já anulável, os CHECKs certos);
+2. **seed por `INSERT ... SELECT`** a partir da antiga — `INSERT` é aditivo;
+3. **repontar a leitura** (`CREATE OR REPLACE VIEW`/`FUNCTION` — aditivos);
+4. deixar a antiga **órfã de leitura, sem remover** (`DROP` também é destrutivo) e **registrar
+   a dívida**.
+
+Custa uma tabela redundante até uma destrutiva futura, e é barato quando ela é pequena. Na
+v5.8.0 foi exatamente isso: `dre_comp_map` nasceu com `sub_chave NOT NULL` (curadoria por
+migration, onde todo par tem destino) e o editor precisava do estado "sem destino";
+`financeiro.dre_comp_par` nasceu anulável, a leitura repontou, e a antiga ficou como fonte do
+seed e alvo do teste de paridade contra os anexos do briefing.
+
+⚠️ Ao repontar por `CREATE OR REPLACE VIEW`, a lista de colunas (nomes, ORDEM e tipos) tem de
+ser idêntica, senão o `REPLACE` falha — e **redeclare** `REVOKE`/`GRANT` mesmo sabendo que o
+Postgres preserva as ACLs (precedente 0197/0206): o dia em que aquilo virar `DROP`+`CREATE`, o
+default privilege do Supabase abre `anon` em silêncio.
+
 ### `CHECK` com `CASE` sobre enum: sem `ELSE false` é FAIL-OPEN
 
 Um CHECK que valida "quais campos cada tipo exige" é natural escrever como `CASE tipo WHEN
