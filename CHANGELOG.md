@@ -6,6 +6,41 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.8.1] — 2026-08-26
+
+PATCH · **Complementos da DRE por Competência: linhas-chave, decomposição da variação e a ponte Competência ↔ Caixa**. **ZERO migration**, zero RPC nova, zero toque no banco · **ADR-0171** · **1133 testes** (de 1056).
+
+### Adicionado
+
+- **Ponte Competência ↔ Caixa** — a resposta à pergunta que a v5.8.0 criou ao pôr dois regimes na mesma página: *por que os dois números são diferentes*. Cascata de 16 degraus que sai do resultado por emissão e chega ao resultado por movimentação, um degrau por grupo de contas, com a diferença de capital de giro nomeada na âncora final. No YTD de 2026 (jan–ago): **−79.434,67** por competência → **+136.811,39** por caixa, **Δ 216.246,06**.
+  - **A identidade fecha por CONSTRUÇÃO, e isso é o ponto.** Nos dois regimes o Resultado do Exercício é a soma de todas as folhas da árvore (verificado em álgebra sobre `0205`+`0251`+`0254` e `0256`, e MEDIDO contra produção antes de escrever a primeira linha de módulo). Se cada folha entra em exatamente um degrau, `REX_comp + Σ degraus = REX_caixa` é consequência, não coincidência. Um residual que absorve a diferença faria qualquer pareamento "fechar" — por isso o teste que importa não é o da soma, é o da **totalidade**.
+  - **O lado caixa do anexo vinha descrito por conceito e foi resolvido no repo**, não presumido: `FIN ↔ FIN` (o `RFIN` do caixa foi dissolvido em `FIN` na v5.7.0), `INV ↔ INV + IMOB`, `DL ↔ DIST_LUCROS`, `REPASSE = ENT_H + PAG_H`.
+  - **Narrativa por degrau gerada por regra** `(natureza, sinal)` — "pago além do incorrido no período", "reconhecido ainda não recebido", "recebido > emitido: conversão de backlog" —, nunca texto fixo por linha: uma frase por combinação sobrevive a mudanças na árvore, dezesseis frases à mão envelhecem na primeira conta que muda de bloco.
+  - **Duas datas-base no rodapé** ("competência carregada em X · caixa carregado em Y"). As bases têm safras independentes, e ver isso é a resposta curta para metade das perguntas que o card vai gerar.
+- **Decomposição da variação · YTD 26 × YTD 25** — cascata do resultado do ano anterior ao deste ano, um degrau por grupo, ordenado por magnitude, com a categoria que puxou cada degrau nomeada no tooltip. O modelo da gerente chama de "desvio · previsto"; aqui é "variação", porque a plataforma **não tem base orçamentária** e "previsto" prometeria um orçado inexistente.
+- **Linhas-chave** — sumário executivo das oito linhas de manchete (`RB_H, ROL, LB, LOP, LL, RAIR, REX, REXG`) com anos fechados, o par de YTD, Δ% e duas colunas de Análise Vertical. Acima do demonstrativo, para não obrigar a rolar a tabela inteira até o resumo dela (a mesma correção que o caixa recebeu na v5.7.0). AV pela base da casa (`RB_H`), reusando `av.ts` — nunca um segundo denominador na mesma página.
+- **Primitivo de cascata** (`@/components/charts/cascata`), reutilizado pelos dois cards. Barras **horizontais**: são até 18 categorias com rótulos longos num grid de 2 colunas.
+- **5 casos de contrato NOVOS que confrontam a BASE VIVA** (`rpc-contrato.test.ts`): a ponte fecha ao centavo, a árvore está inteiramente pareada, Σ folhas ≡ REX nos dois regimes, as linhas-chave leem o mesmo número do demonstrativo e a decomposição fecha entre dois anos vivos. O de totalidade injeta uma folha órfã e prova que ela cai no residual **sem** quebrar a identidade.
+
+### Alterado
+
+- **A janela do YTD dos três componentes novos sai da COBERTURA da base de competência, não do calendário** — resolvendo uma contradição do próprio briefing (§1 mandava a cobertura, §6 exigia paridade com a tabela densa, que corta por `hojeSP()`). A base de competência é um **upload periódico**: cortar pelo calendário somaria meses ainda não carregados como se fossem zero, subestimando o YTD **em silêncio**, com um número que fecha e está errado para menos. Cada card **declara a janela no subtítulo**.
+  ⚠️ **Custo aceito conscientemente:** quando a base atrasar, o "YTD 26" dos cards mostrará menos meses que a coluna "YTD" da tabela logo acima. Hoje as duas coincidem (base cobre até 2026-08, estamos em ago/26). A **tabela densa não foi alterada** — mudá-la é escopo maior que um patch, e fica registrado como fronteira.
+- **Distribuição de Lucros ganhou degrau próprio na ponte** (decisão do Yan), em vez do residual que o anexo previa: ela pareia limpa nos dois lados e é grande — no residual, viraria ruído exatamente no item mais explicável.
+- `ChartXAxisBRL()` aceita `domain` **opcional**; o default fica intocado.
+
+### Corrigido
+
+- **O domínio do eixo cortava os valores negativos** (achado da auto-auditoria, antes de qualquer conferência visual). `ChartXAxisBRL()` não declarava `domain`, e o default do Recharts para eixo numérico é `[0, 'auto']` — ele ancora em zero. Todos os call-sites anteriores plotam só positivos, então ninguém tinha esbarrado nisso; as âncoras da ponte **cruzam o zero na vida real** e metade dos degraus é negativa. Sem domínio explícito, essas barras sumiriam — e nenhum gate vê.
+- **A linha do zero ficava no eixo errado em barra horizontal.** `ChartZeroLine()` fixa `y={0}`, correto para coluna vertical; em `layout="vertical"` o Y é o eixo de **categorias**, e o Recharts aceita o valor sem reclamar, desenhando uma régua atravessando a primeira categoria. Entra `ChartZeroLineX()`.
+
+### Prova
+
+- **Medição contra produção antes da implementação:** `Σ folhas ≡ REX` fecha ao centavo nos dois regimes e nos dois anos (2025 e 2026); a ponte fecha ao centavo com residual **0,00** — toda folha das duas árvores pareia.
+- Gates: `tsc`, `lint`, `build` e **1133 testes** (baseline 1056, +77). Zero mudança na seção de caixa e na tabela densa — as duas seguem intocadas por construção, não por conferência.
+
+---
+
 ## [5.8.0] — 2026-08-26
 
 MINOR · **DRE por Competência: segunda TopSection em `/financeiro/dre`, com base, árvore, leitura e EDITOR próprios**. Migrations `0255`/`0256`/`0257`/`0260` (todas ADITIVAS) · **ADR-0170** · **1056 testes**.

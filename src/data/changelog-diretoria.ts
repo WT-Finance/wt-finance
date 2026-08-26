@@ -35,6 +35,53 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.8.1',
+    data: '2026-08-26T14:30', // ⚠️ hora de AUTORIA — reconciliar ao horário real do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A seção "Regime de Competência" ganhou o card que responde a pergunta que ela ' +
+          'mesma criou: POR QUE os dois resultados da página são diferentes. A "Ponte ' +
+          'Competência ↔ Caixa" parte do resultado por emissão e chega ao resultado por ' +
+          'movimentação mostrando, conta por conta, de onde vem cada pedaço da diferença — ' +
+          'o que já foi recebido mas ainda não foi emitido, o que foi incorrido mas ainda ' +
+          'não foi pago, o repasse (que só existe no caixa) e os reembolsos (que só existem ' +
+          'na competência). No acumulado de janeiro a agosto de 2026 são R$ 79,4 mil ' +
+          'NEGATIVOS por competência contra R$ 136,8 mil POSITIVOS no caixa: uma distância ' +
+          'de R$ 216,2 mil que agora tem nome e explicação, em vez de virar a pergunta ' +
+          '"qual dos dois está certo?" — que é a pergunta errada. Os dois estão certos.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Um card de "Decomposição da variação" mostra o que moveu o resultado deste ano ' +
+          'contra o mesmo período do ano passado, um degrau por grupo de contas, do que mais ' +
+          'pesou para o que menos pesou. Passando o mouse em cada degrau, aparece a conta ' +
+          'específica que puxou aquela variação.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Acima do demonstrativo por competência entrou um resumo com as oito linhas ' +
+          'principais (da Receita Bruta ao Resultado Gerencial), com os anos fechados, o ' +
+          'acumulado deste ano contra o do ano passado, a variação percentual entre eles e ' +
+          'quanto cada linha representa da Receita Bruta. Antes era preciso percorrer o ' +
+          'demonstrativo inteiro para chegar a essa leitura.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os três cards novos cortam o acumulado do ano até o último mês que a base de ' +
+          'competência realmente cobre — e dizem isso no subtítulo. É uma diferença que ' +
+          'importa: como essa base é atualizada por um arquivo enviado periodicamente, ' +
+          'contar até o mês do calendário faria os meses ainda não enviados entrarem como ' +
+          'ZERO, e o acumulado apareceria menor do que é, sem nenhum aviso. Quando a base ' +
+          'estiver em dia, esses cards e a tabela mostram exatamente o mesmo período.',
+      },
+    ],
+  },
+  {
     versao: '5.8.0',
     data: '2026-08-26T12:19', // horário REAL do merge (30b71a4, PR #246, 26/08 12h19 −03) — reconciliado no /pos-merge
     itens: [
