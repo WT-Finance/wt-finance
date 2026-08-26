@@ -225,16 +225,23 @@ export function ChartYAxisCategoria(
  * caso de todos os call-sites até a v5.8.1) isso é o comportamento desejado. Para uma
  * CASCATA, cujas âncoras cruzam o zero na vida real, é um gráfico silenciosamente
  * errado — barras negativas invisíveis, e nenhum gate vê. Quem precisa dos dois lados
- * passa `['dataMin', 'dataMax']` (ou funções com folga).
+ * passa `['dataMin', 'dataMax']` (ou um par de números).
+ *
+ * ⚠️ `ticks` anda junto com `domain` mais vezes do que parece: com domínio EXPLÍCITO o
+ * Recharts deixa de aplicar o algoritmo de ticks "bonitos" e divide o intervalo cru,
+ * produzindo marcas como `-471 k · 79 k · 629 k` — e, num gráfico simétrico, **sem o zero
+ * entre elas**, que era o ponto de ser simétrico. Passar `ticks` explícitos é o que
+ * devolve a régua legível.
  *
  * O default fica intocado de propósito: mudar o domínio de todos os gráficos existentes
  * para resolver o caso de um seria trocar um defeito por outro.
  */
-export function ChartXAxisBRL(opts?: { domain?: AxisDomain }): ReactElement {
+export function ChartXAxisBRL(opts?: { domain?: AxisDomain; ticks?: number[] }): ReactElement {
   return (
     <XAxis
       type="number"
       domain={opts?.domain}
+      ticks={opts?.ticks}
       tickFormatter={(v) => fmtAxisBRL(Number(v))}
       tick={{ fontSize: tickFontSize.x, fill: chartColors.axisTick }}
       tickLine={false}

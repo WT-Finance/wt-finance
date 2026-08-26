@@ -60,9 +60,21 @@ export default function CascataCard({ titulo, subtitulo, ajuda, cascata, rodape 
         </p>
       )}
 
+      {/* ⚠️ ALTURA EXPLÍCITA, nunca `minHeight`. O `ResponsiveContainer` do Recharts é um
+          filho com `height: 100%`, e em CSS um percentual de altura resolve contra a
+          `height` do pai — **`min-height` não serve**. Com `min-height` o pai fica com a
+          altura certa (o box aparece), o filho resolve para `auto`, mede 0 e o gráfico
+          some sem erro nenhum: card desenhado, área cinza vazia.
+          Isto ficou LATENTE enquanto os dois cards viviam num `grid`: ali o item recebe
+          altura definida pelo `align-items: stretch`, e o `height: 100%` resolvia por
+          tabela. Empilhá-los com `space-y-6` os tornou blocos de altura automática e o
+          defeito apareceu. Medido em página isolada: bloco+min-height → filho 0px;
+          grid+min-height → 200px; bloco+height → 200px.
+          A altura é função do número de barras, então cravá-la aqui é honesto — não é um
+          número mágico, e não depende do contexto de layout em que o card for posto. */}
       <div
         className="overflow-hidden rounded-lg border border-wt-border bg-band p-2"
-        style={{ minHeight: alturaCascata(barras) }}
+        style={{ height: alturaCascata(barras) }}
       >
         <GraficoCascata cascata={cascata} />
       </div>

@@ -64,23 +64,44 @@ function larguraEixoY(rotulos: string[]): number {
   return Math.min(Math.ceil(48 + maior * 6.4), 280)
 }
 
-/** Domínio SIMÉTRICO em torno do zero: a linha do zero fica no centro do gráfico e as
- *  barras crescem para os dois lados a partir dela (pedido do Yan na conferência).
+/** Mantissas aceitas para o PASSO da régua, em ordem. Todas produzem um meio-passo
+ *  legível (300k, 750k…), que importa porque a régua tem exatamente dois passos por
+ *  lado do zero. */
+const MANTISSAS = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10] as const
+
+/** O menor passo "redondo" ≥ `v`. */
+function passoRedondo(v: number): number {
+  const base = Math.pow(10, Math.floor(Math.log10(v)))
+  for (const m of MANTISSAS) if (m * base >= v) return m * base
+  return 10 * base
+}
+
+/**
+ * Escala SIMÉTRICA em torno do zero: a linha do zero no centro do gráfico, com as barras
+ * crescendo para os dois lados a partir dela (pedido do Yan na conferência).
  *
- *  Precisa ser calculado aqui, com os dados em mãos, e não pelas funções de `domain` do
- *  Recharts: cada uma delas recebe só o SEU extremo (`dataMin` ou `dataMax`), então
- *  nenhuma consegue enxergar o outro lado para espelhá-lo.
+ * Precisa ser calculada aqui, com os dados em mãos, e NÃO pelas funções de `domain` do
+ * Recharts: cada uma delas recebe só o SEU extremo (`dataMin` ou `dataMax`), então
+ * nenhuma consegue enxergar o outro lado para espelhá-lo.
  *
- *  A folga de 8% é o espaço em que o rótulo de valor (`LabelList position="right"`) cabe
- *  sem encostar na borda. O `|| 1` cobre a cascata inteiramente zerada, que produziria o
- *  domínio degenerado `[0, 0]`. */
-function dominioSimetrico(dados: Ponto[]): [number, number] {
+ * ⚠️ E devolve os TICKS junto, porque com domínio explícito o Recharts abandona o
+ * algoritmo de marcas "bonitas" e divide o intervalo cru: a primeira versão desta escala
+ * rendeu `-471 k · 79 k · 629 k` — números arbitrários e, pior, **sem o zero entre eles**,
+ * que era exatamente o ponto de a escala ser simétrica. Fixando o passo num valor redondo
+ * a régua vira `-2p · -p · 0 · p · 2p`.
+ *
+ * O passo é o menor redondo que cobre metade do extremo, então a folga fica entre 0% e
+ * ~30% — espaço que o rótulo de valor (`LabelList position="right"`) usa para não encostar
+ * na borda. O `|| 1` cobre a cascata inteiramente zerada, que produziria `[0, 0]`.
+ */
+function escalaSimetrica(dados: Ponto[]): { dominio: [number, number]; ticks: number[] } {
   const extremo = dados.reduce(
     (m, d) => Math.max(m, Math.abs(d.faixa[0]), Math.abs(d.faixa[1])),
     0,
   ) || 1
-  const M = extremo * 1.08
-  return [-M, M]
+  const passo = passoRedondo(extremo / 2)
+  const M = passo * 2
+  return { dominio: [-M, M], ticks: [-M, -passo, 0, passo, M] }
 }
 
 function corDe(p: Ponto): string {
@@ -125,6 +146,7 @@ function pontos(c: Cascata): Ponto[] {
 
 export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
   const dados = pontos(cascata)
+  const escala = escalaSimetrica(dados)
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -135,7 +157,7 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
             a âncora de competência e metade dos degraus — sumiriam. Simétrico porque a
             linha do zero fica no centro do gráfico, com melhora à direita e piora à
             esquerda. */}
-        {ChartXAxisBRL({ domain: dominioSimetrico(dados) })}
+        {ChartXAxisBRL({ domain: escala.dominio, ticks: escala.ticks })}
         {ChartZeroLineX()}
         {ChartYAxisCategoria('rotulo', { width: larguraEixoY(dados.map(d => d.rotulo)) })}
         <Tooltip
