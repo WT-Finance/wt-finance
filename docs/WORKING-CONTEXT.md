@@ -1,10 +1,9 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-26 (fechamento da v5.8.1) · produção na **v5.8.0** (#246 mergeado 26/08 às 12h19 — DRE por Competência: segunda TopSection em `/financeiro/dre` com base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**). Antes a v5.7.2 (#243, 25/08 14h10 — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações, ordenação no Gerencial; sem migration), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-26 (pós-merge da v5.8.1) · produção na **v5.8.1** (#248 mergeado 26/08 às 16h43 — DRE: TopSection "Visão Geral" com os dois Resumos Executivos e a **Ponte Competência ↔ Caixa**, mais a Decomposição da Variação do Resultado; **ZERO migration**, **ADR-0171**, 1125 testes). Antes a v5.8.0 (#246, 26/08 12h19 — DRE por Competência: base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**), a v5.7.2 (#243, 25/08 14h10), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-⚠️ **v5.8.1 FECHADA E AGUARDANDO MERGE (PR #248)** — branch
-`feat/v5-8-1-complementos-competencia`, **ADR-0171**, **ZERO migration**, **1125 testes**
-(de 1056), incluindo 5 casos de contrato que confrontam a BASE VIVA.
+✅ **v5.8.1 EM PRODUÇÃO** — **ADR-0171**, **ZERO migration**, **1125 testes** (de 1056),
+incluindo 5 casos de contrato que confrontam a BASE VIVA a cada `npm test`.
 
 `/financeiro/dre` passou a ter **TRÊS TopSections**: **Visão Geral** (nova, no topo —
 Resumo Executivo · Competência, Resumo Executivo · Caixa e a **Ponte Competência ↔ Caixa**),
@@ -18,6 +17,18 @@ in Chrome, usando a sessão já aberta do Yan. Achado que só a tela
 pega: **`ResponsiveContainer` exige `height` no pai, nunca `min-height`** (com `min-height` o
 filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu ao empilhar.
 
+⚠️ **Três coisas ficaram abertas na v5.8.1** (detalhe no out-briefing dela):
+1. **O subagente `revisor` NÃO foi despachado** — restrição de harness da sessão que a
+   executou; seguiu-se o Protocolo D5 (auto-auditoria adversarial no lugar, não-verificado
+   declarado). Vale rodar `revisor` sobre `src/lib/dre/` e `src/components/charts/` quando der.
+2. **Decisão de produto pendente:** o subtítulo da "Decomposição da Variação do Resultado" diz
+   **"Δ%"**, mas os degraus daquela cascata estão em **REAIS**. `Δ YTD 25·26` seria fiel à
+   figura — é troca de uma string em `src/app/financeiro/dre/page.tsx`.
+3. **Observação de negócio, não defeito:** o degrau "Impostos e Deduções" da ponte é muito
+   grande (−419.366,50 na competência × −2.863.256,92 no caixa, YTD jan–ago/26). A ponte só
+   expõe o que as duas curadorias fazem — vale um olhar no de-para de impostos dos dois
+   regimes, que é DADO editável, não código.
+
 ⚠️ **UMA VERSÃO EM VOO — conferir numeração no REMOTO, não só na worktree.** A branch
 `feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
 migrations **`0258`** (já escrita na pasta dela) e **`0259`** (destrutiva, corretamente ainda não
@@ -27,8 +38,8 @@ saiu do main na `0254`, então **não contém** as `0255`–`0257`/`0260`, que j
 `migration list` rodado lá mostra quatro "remote-only" (não quebra o push dela; só a `0258` está
 pendente). ⚠️ **Ela precisa de um `git pull`/rebase no main antes de aplicar a `0259`.**
 
-⚠️ **Numeração de ADR: o `0171` está TOMADO pela v5.8.1 (fechada, não mergeada); a próxima
-livre é a `0172`.** O `0169` é da v5.9.0 (em voo) e o `0170` da v5.8.0. Conferir no `origin`,
+⚠️ **Numeração de ADR: o `0171` está no main (v5.8.1); a próxima livre é a `0172`** — mas o
+`0169` segue **reservado** pela v5.9.0 em voo, que ainda não mergeou. Conferir no `origin`,
 nunca só no `ls docs/adr/` da worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0260`; a próxima livre é a `0261`**
