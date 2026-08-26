@@ -79,7 +79,6 @@ export default async function DreEstruturaCompetenciaPage() {
         <h1 className="pr-40 text-xl font-semibold text-zinc-900">Estrutura do Demonstrativo de Resultado por Competência</h1>
         <p className="text-sm text-zinc-400 mt-0.5">
           Reordene as linhas e os blocos do demonstrativo por competência
-          {estrutura?.ano_totais ? ` · valores de ${estrutura.ano_totais}` : ''}
         </p>
       </div>
 

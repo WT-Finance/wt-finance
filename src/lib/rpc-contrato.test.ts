@@ -22,6 +22,11 @@ import {
   dreMensalSchema, dreCompMensalSchema, dreCompEstruturaSchema, dreEstruturaSchema, salvarEstruturaResultSchema,
   historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
+import { montarPonte } from './dre/ponte-regimes'
+import { montarDecomposicao } from './dre/decomposicao-variacao'
+import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
+import { janelaYtdCompetencia } from './dre/janela-competencia'
+import { folhasPorGrupo, totalFolhas } from './dre/folhas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
 import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
 import { hojeSP } from './fmt'
@@ -1640,5 +1645,97 @@ describe.skipIf(!ON)('contrato RPC — DRE por competência (v5.8.0)', () => {
       const x = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
       expect(x.relacao, `${ano} está em anos[] mas responde como vazio`).not.toBe('futuro')
     }
+  })
+})
+
+// ── v5.8.1 · Conciliação entre regimes ───────────────────────────────────────
+// A ponte é a única figura da plataforma que AFIRMA uma identidade entre duas bases
+// independentes (upload de competência × movimentação do caixa). Se ela não fechar,
+// não é um card com um número errado — é um card que desautoriza os dois
+// demonstrativos que ele concilia. Por isso o confronto é contra a BASE VIVA, e não só
+// contra fixture: os testes de módulo provam a álgebra, este prova que a árvore REAL
+// ainda cabe nela.
+//
+// O que quebra este bloco — e é exatamente o que ele existe para pegar: alguém cria um
+// bloco novo no editor da estrutura e o vocabulário da ponte não é atualizado. A
+// identidade CONTINUA fechando (o residual recolhe o que sobrou), mas o valor deixa de
+// ter nome, e um "Outros ajustes" gordo é um sintoma que ninguém procura.
+describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', () => {
+  it('a ponte Competência ↔ Caixa fecha AO CENTAVO contra a base viva', async () => {
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const comp = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
+    const caixa = dreMensalSchema.parse(await rpc('get_dre_mensal', { p_ano: anoSP }))
+
+    const m = janelaYtdCompetencia(comp)
+    expect(m, 'a base de competência não cobre mês nenhum do ano corrente').toBeGreaterThan(0)
+
+    const p = montarPonte(comp, caixa, m)
+    const soma = p.degraus.reduce((s, d) => s + d.delta, 0)
+
+    expect(p.inicial.valor + soma, 'REX_comp + Σ degraus ≠ REX_caixa').toBe(p.final.valor)
+    expect(p.fecha).toBe(true)
+  })
+
+  it('a árvore VIVA está inteiramente pareada — nenhuma folha fora do vocabulário', async () => {
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const comp = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
+    const caixa = dreMensalSchema.parse(await rpc('get_dre_mensal', { p_ano: anoSP }))
+
+    const p = montarPonte(comp, caixa, janelaYtdCompetencia(comp))
+
+    expect(p.naoPareadas.competencia,
+      'folha de COMPETÊNCIA sem balde na ponte — atualize PAREAMENTO_PONTE').toEqual([])
+    expect(p.naoPareadas.caixa,
+      'folha de CAIXA sem balde na ponte — atualize PAREAMENTO_PONTE').toEqual([])
+  })
+
+  it('Σ folhas ≡ REX do demonstrativo, nos DOIS regimes', async () => {
+    // A premissa de que toda a aritmética das cascatas depende. Provada em álgebra nos
+    // testes de módulo; aqui é medida contra a estrutura viva, que é editável.
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const comp = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
+    const caixa = dreMensalSchema.parse(await rpc('get_dre_mensal', { p_ano: anoSP }))
+    const m = janelaYtdCompetencia(comp)
+
+    for (const [nome, payload] of [['competência', comp], ['caixa', caixa]] as const) {
+      const rex = payload.linhas.find(l => l.t !== 'cat' && l.chave === 'REX')
+      expect(rex, `${nome}: sem linha REX`).toBeDefined()
+      const doDemonstrativo = rex!.meses.slice(0, m).reduce((s, v) => s + Math.round(v * 100), 0)
+      expect(totalFolhas(folhasPorGrupo(payload, m)),
+        `${nome}: Σ folhas ≠ REX do demonstrativo`).toBe(doDemonstrativo)
+    }
+  })
+
+  it('toda linha do Resumo Executivo existe na árvore VIVA do seu regime', async () => {
+    // O Resumo casa as linhas por `b:<chave>` contra o payload. Chave que suma da árvore
+    // — renomeada no editor da estrutura, ou removida — não quebra nada: a linha aparece
+    // VAZIA, em silêncio, num card de manchete que a diretoria lê. Este é o teste que
+    // pega isso, e cobre os DOIS regimes porque o componente agora serve aos dois.
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const comp = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
+    const caixa = dreMensalSchema.parse(await rpc('get_dre_mensal', { p_ano: anoSP }))
+
+    for (const [nome, payload, linhas] of [
+      ['competência', comp, LINHAS_COMPETENCIA],
+      ['caixa', caixa, LINHAS_CAIXA],
+    ] as const) {
+      const doPayload = new Set(payload.linhas.filter(l => l.t !== 'cat' && l.chave).map(l => l.chave))
+      for (const l of linhas) {
+        expect(doPayload.has(l.chave),
+          `${nome}: o Resumo pede a chave ${l.chave} ("${l.rotulo}"), que a árvore não tem`).toBe(true)
+      }
+    }
+  })
+
+  it('a decomposição da variação fecha ao centavo entre dois anos vivos', async () => {
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const atual = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
+    const anterior = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP - 1 }))
+
+    const c = montarDecomposicao(atual, anterior, janelaYtdCompetencia(atual), 'anterior', 'atual')
+    const soma = c.degraus.reduce((s, d) => s + d.delta, 0)
+
+    expect(c.inicial.valor + soma, 'REX anterior + Σ degraus ≠ REX atual').toBe(c.final.valor)
+    expect(c.fecha).toBe(true)
   })
 })

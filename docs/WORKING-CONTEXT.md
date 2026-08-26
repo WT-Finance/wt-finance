@@ -1,6 +1,22 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-26 (pós-merge da v5.8.0) · produção na **v5.8.0** (#246 mergeado 26/08 às 12h19 — DRE por Competência: segunda TopSection em `/financeiro/dre` com base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**). Antes a v5.7.2 (#243, 25/08 14h10 — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações, ordenação no Gerencial; sem migration), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-26 (fechamento da v5.8.1) · produção na **v5.8.0** (#246 mergeado 26/08 às 12h19 — DRE por Competência: segunda TopSection em `/financeiro/dre` com base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**). Antes a v5.7.2 (#243, 25/08 14h10 — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações, ordenação no Gerencial; sem migration), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+
+⚠️ **v5.8.1 FECHADA E AGUARDANDO MERGE (PR #248)** — branch
+`feat/v5-8-1-complementos-competencia`, **ADR-0171**, **ZERO migration**, **1125 testes**
+(de 1056), incluindo 5 casos de contrato que confrontam a BASE VIVA.
+
+`/financeiro/dre` passou a ter **TRÊS TopSections**: **Visão Geral** (nova, no topo —
+Resumo Executivo · Competência, Resumo Executivo · Caixa e a **Ponte Competência ↔ Caixa**),
+**Regime de Competência** (demonstrativo + Decomposição da Variação do Resultado) e
+**Regime de Caixa** (inalterado). O critério: a ponte concilia DOIS regimes, então não
+pertence a nenhum; a decomposição decompõe UM. Tudo derivado no cliente dos dois payloads que
+a página já buscava — nenhuma chamada nova.
+
+✅ **Conferência visual FEITA** (4 rodadas, 26/08) — as últimas pelo próprio agente via Claude
+in Chrome, usando a sessão já aberta do Yan. Achado que só a tela
+pega: **`ResponsiveContainer` exige `height` no pai, nunca `min-height`** (com `min-height` o
+filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu ao empilhar.
 
 ⚠️ **UMA VERSÃO EM VOO — conferir numeração no REMOTO, não só na worktree.** A branch
 `feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
@@ -10,6 +26,10 @@ worktree mostra só o que está mergeado, e a numeração REAL só aparece olhan
 saiu do main na `0254`, então **não contém** as `0255`–`0257`/`0260`, que já estão aplicadas — um
 `migration list` rodado lá mostra quatro "remote-only" (não quebra o push dela; só a `0258` está
 pendente). ⚠️ **Ela precisa de um `git pull`/rebase no main antes de aplicar a `0259`.**
+
+⚠️ **Numeração de ADR: o `0171` está TOMADO pela v5.8.1 (fechada, não mergeada); a próxima
+livre é a `0172`.** O `0169` é da v5.9.0 (em voo) e o `0170` da v5.8.0. Conferir no `origin`,
+nunca só no `ls docs/adr/` da worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0260`; a próxima livre é a `0261`**
 (a `0258`/`0259` seguem reservadas pela v5.9.0 — a `0258` já está escrita na branch dela, a

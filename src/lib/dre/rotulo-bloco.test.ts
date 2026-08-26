@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rotuloBloco } from './rotulo-bloco'
+import { rotuloBloco, semCaixaAlta } from './rotulo-bloco'
 
 describe('rotuloBloco — remove só o prefixo contábil, preserva o resto', () => {
   const casosReais: [string, string][] = [
@@ -78,5 +78,55 @@ describe('rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7
   // Só o prefixo sai: um `(+/-)` que apareça adiante no texto não é prefixo.
   it('remove APENAS o prefixo, nunca uma ocorrência posterior', () => {
     expect(rotuloBloco('(+/-) Resultado (+/-) Financeiro')).toBe('Resultado (+/-) Financeiro')
+  })
+})
+
+// ── semCaixaAlta (v5.8.1) ─────────────────────────────────────────────────────
+// A conversão só é segura porque preserva SIGLAS e só age em strings inteiramente
+// maiúsculas. Os dois riscos que os testes travam: mangular sigla ("RH" → "Rh") e
+// "corrigir" um rótulo que já estava certo.
+
+describe('semCaixaAlta — caixa alta vira capitalização de leitura', () => {
+  it('converte o caso que motivou a função', () => {
+    expect(semCaixaAlta('IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA'))
+      .toBe('Impostos e Deduções da Receita Bruta')
+  })
+
+  it('PRESERVA sigla — o risco real do title-case cego', () => {
+    expect(semCaixaAlta('DESPESAS OPERACIONAIS DE RH')).toBe('Despesas Operacionais de RH')
+    // "antes" é ADVÉRBIO, não preposição: fica capitalizado, como o title-case do resto
+    // da árvore ("Custo dos Serviços Prestados"). Só `do` e `e` descem.
+    expect(semCaixaAlta('RESULTADO ANTES DO IR E CSLL')).toBe('Resultado Antes do IR e CSLL')
+  })
+
+  it('preposição no MEIO fica minúscula; na PRIMEIRA posição, não', () => {
+    expect(semCaixaAlta('DESPESAS COM INVESTIMENTOS E EMPRÉSTIMOS'))
+      .toBe('Despesas com Investimentos e Empréstimos')
+    expect(semCaixaAlta('DA RECEITA')).toBe('Da Receita')
+  })
+
+  it('rótulo que JÁ tem minúscula passa intocado — a função não "corrige" o certo', () => {
+    for (const r of [
+      'Despesas Marketing',
+      'Custo dos Serviços Prestados',
+      'Agência de Marketing / Terceiros de Mkt',
+      'Distribuição de Lucros',
+    ]) {
+      expect(semCaixaAlta(r)).toBe(r)
+    }
+  })
+
+  it('é idempotente', () => {
+    const uma = semCaixaAlta('IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA')
+    expect(semCaixaAlta(uma)).toBe(uma)
+  })
+
+  it('não quebra em string vazia nem em texto sem letra', () => {
+    expect(semCaixaAlta('')).toBe('')
+    expect(semCaixaAlta('123 / 456')).toBe('123 / 456')
+  })
+
+  it('acento é rebaixado corretamente em pt-BR', () => {
+    expect(semCaixaAlta('DEDUÇÕES')).toBe('Deduções')
   })
 })

@@ -1,0 +1,16 @@
+rotulo,lado_competencia,lado_caixa,natureza,nota_fixa
+Receita de Vendas,RV,bloco de Receita Bruta do caixa (linhas de venda; SEM Entrada de clientes/Pagamento ao Fornecedor),receita,
+Reembolsos (só na competência),REEMB,—,especial,excluídos da visão caixa da DRE
+Repasse (só existe no caixa),—,REPASSE (Entrada de clientes − Pagamento ao Fornecedor),especial,float da intermediação: entrada de clientes − pagamento a fornecedor
+Impostos e Deduções,IMP_H,bloco correspondente,despesa,
+Custo dos Serviços,CUSTO,bloco correspondente,despesa,
+Desp. Administrativas,ADM,bloco correspondente,despesa,
+Desp. Comerciais,COM,bloco correspondente,despesa,
+Marketing,MKT,bloco correspondente,despesa,
+Estrutura,ESTR,bloco correspondente,despesa,
+RH,RH,bloco correspondente,despesa,
+RH Benefícios,RHB,bloco correspondente,despesa,
+Resultado Financeiro,FIN,FIN,despesa,
+Rec./Desp. Não Operacionais,RNOP + DNOP,blocos correspondentes,receita,
+Investimentos/Empréstimos,INV,INV_H incluindo IMOB,despesa,
+Outros ajustes,TODAS as folhas comp não atribuídas acima (inclui DL),TODAS as folhas caixa não atribuídas acima,especial,demais descasamentos e contas fora dos blocos comuns
