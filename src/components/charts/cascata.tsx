@@ -151,7 +151,11 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart layout="vertical" data={dados} margin={chartMargins.horizontal}>
-        {ChartGrid({ eixo: 'vertical' })}
+        {/* Campo das barras em BRANCO, com a grade HORIZONTAL passando por cada degrau
+            (conferência do Yan). O `fill` do CartesianGrid pinta só a área de plotagem,
+            então o cinza do box permanece nas margens e sob a coluna de categorias — é o
+            contraste que separa a régua dos rótulos. */}
+        {ChartGrid({ eixo: 'horizontal', fundo: 'var(--surface)' })}
         {/* ⚠️ Domínio EXPLÍCITO e SIMÉTRICO. Explícito porque o default do Recharts para
             eixo numérico é `[0, 'auto']`: ele ancoraria em zero e as barras negativas —
             a âncora de competência e metade dos degraus — sumiriam. Simétrico porque a
@@ -188,12 +192,24 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
           isAnimationActive={false}
         >
           {dados.map((d, i) => <Cell key={i} fill={corDe(d)} />)}
-          <LabelList
-            dataKey="valor"
-            position="right"
-            formatter={(v: unknown) => (v == null ? '' : fmtMi(Number(v)))}
-            style={{ fontSize: 11, fill: 'var(--chart-axis-tick)', fontVariantNumeric: 'tabular-nums' }}
-          />
+          {/* UM `LabelList` POR COR, e não um só com `content` custom (conferência do
+              Yan: o número acompanha a cor da barra).
+              O caminho do `content` obrigaria a recalcular a POSIÇÃO do rótulo — o
+              Recharts só entrega ao `content` o `viewBox`, e resolve a posição depois,
+              dentro do `<Text>`. Reimplementar isso jogaria fora o posicionamento que já
+              está certo (o rótulo cai do lado para onde a barra cresce, inclusive nas
+              que crescem para a esquerda). Filtrando por `dataKey`, cada lista pinta só
+              os seus: valor `null` faz o Recharts pular o rótulo, e o posicionamento
+              nativo fica intocado. */}
+          {[...new Set(dados.map(corDe))].map(cor => (
+            <LabelList
+              key={cor}
+              dataKey={(d: unknown) => (corDe(d as Ponto) === cor ? (d as Ponto).valor : null)}
+              position="right"
+              formatter={(v: unknown) => (v == null ? '' : fmtMi(Number(v)))}
+              style={{ fontSize: 11, fill: cor, fontVariantNumeric: 'tabular-nums' }}
+            />
+          ))}
         </Bar>
       </BarChart>
     </ResponsiveContainer>

@@ -71,9 +71,6 @@ interface Props {
   /** Sobrescreve o texto do "?". A competência precisa do seu porque a janela do YTD
    *  dela NÃO é a do calendário. */
   ajuda?: string
-  /** Linha de contexto sob o título, entre ele e as pills. Só a competência usa: é
-   *  onde ela declara a janela real do YTD. */
-  subtitulo?: string
 }
 
 /** O aviso do "?" ao lado do título. Mudou na v5.7.0: antes explicava a ancoragem fixa
@@ -204,7 +201,6 @@ export default function ResumoExecutivo({
   linhas: linhasProp,
   titulo = 'Resumo Executivo',
   ajuda: ajudaProp,
-  subtitulo,
 }: Props) {
   const linhas = linhasProp ?? LINHAS
   const ajuda = ajudaProp ?? AJUDA
@@ -254,7 +250,7 @@ export default function ResumoExecutivo({
           `!whitespace-normal` é obrigatório (o balão nasce `whitespace-nowrap`, e sem o
           `!` quem decide é a ORDEM DO CSS GERADO, não a ordem das classes). */}
       <div className="mb-4">
-        <div className={`flex items-center gap-1.5 ${subtitulo ? 'mb-1' : 'mb-3'}`}>
+        <div className="mb-3 flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
           {/* `<button type="button">`, nunca `<span>` — receita da skill ui-design-system §2:
               `span` fica fora do tab-order e o balão, que também abre no FOCO, se torna
@@ -269,9 +265,6 @@ export default function ResumoExecutivo({
             </button>
           </Tooltip>
         </div>
-        {/* Só a competência usa: é onde ela declara a janela REAL do YTD, que não é a do
-            calendário (ver `janela-competencia.ts`). Sem chamador, não ocupa espaço. */}
-        {subtitulo && <p className="mb-3 text-[11px] text-text-secondary">{subtitulo}</p>}
         {/* Pills ABAIXO do título e à esquerda (v5.7.0, conferência do Yan) — a MESMA
             anatomia do card da tabela: título, depois a faixa de controles. Encostadas à
             direita do título elas ficavam longe da tabela que governam e desalinhadas das

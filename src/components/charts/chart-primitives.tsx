@@ -38,10 +38,21 @@ import {
  * Grade horizontal tracejada sutil ('3 4'), SEM linhas verticais.
  * Factory — chame `{ChartGrid()}` dentro do chart.
  */
-export function ChartGrid(opts?: { eixo?: 'horizontal' | 'vertical' }): ReactElement {
+export function ChartGrid(opts?: {
+  eixo?: 'horizontal' | 'vertical'
+  /** Pinta a ÁREA DE PLOTAGEM (só ela — o eixo de categorias e as margens ficam de
+   *  fora). É o `Background` do `CartesianGrid`, que o Recharts desenha quando recebe
+   *  `fill`. Serve para destacar o campo das barras contra o box do card. */
+  fundo?: string
+}): ReactElement {
   // 'horizontal' (default) = linhas horizontais, para coluna/linha com valor no Y.
   // 'vertical' = linhas verticais nos ticks do X, para barra HORIZONTAL (valor no X) —
   // ali as linhas horizontais só separariam categorias, sem função de leitura (v5.6.1).
+  //
+  // ⚠️ Na CASCATA (v5.8.1) a escolha se inverteu, e por um motivo de leitura: ali cada
+  // categoria é um DEGRAU e as barras não começam todas no mesmo ponto, então a linha
+  // horizontal atravessando cada barra é o que liga o rótulo à barra dele ao longo de
+  // uma faixa larga. A régua de valor quem dá é a linha do zero (`ChartZeroLineX`).
   const vertical = opts?.eixo === 'vertical'
   return (
     <CartesianGrid
@@ -49,6 +60,7 @@ export function ChartGrid(opts?: { eixo?: 'horizontal' | 'vertical' }): ReactEle
       stroke={chartColors.grid}
       vertical={vertical}
       horizontal={!vertical}
+      fill={opts?.fundo}
     />
   )
 }

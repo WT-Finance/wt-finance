@@ -32,3 +32,62 @@ const PREFIXO_CONTABIL = /^(\(\s*[+\-−=](?:\s*\/\s*[+\-−=])?\s*\)|[+\-−=])
 export function rotuloBloco(rotulo: string): string {
   return rotulo.replace(PREFIXO_CONTABIL, '').trim()
 }
+
+// ── Caixa alta → capitalização de leitura (v5.8.1) ────────────────────────────
+// A árvore mistura duas convenções de caixa, porque `blocoH` (cabeçalho) é gravado em
+// CAIXA ALTA e `sub` (subgrupo) em capitalização normal. Numa TABELA isso não incomoda:
+// a caixa alta marca o cabeçalho, que é o papel dela. Numa CASCATA, onde blocoH e sub
+// viram degraus irmãos, uma linha gritando no meio de quinze normais é ruído — e foi o
+// que a conferência do Yan pegou ("IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA" entre
+// "Despesas Marketing" e "Custo dos Serviços Prestados").
+//
+// ⚠️ Por que não `toLowerCase()` + capitalizar tudo, e por que a função SÓ age em
+// strings inteiramente maiúsculas: title-case cego mangula sigla — "RH" viraria "Rh",
+// "CSLL" viraria "Csll". As duas listas abaixo são o que torna a conversão segura, e a
+// guarda de "só se for tudo maiúsculo" garante que um rótulo já capitalizado passe
+// intocado (idempotência).
+
+/** Preposições, artigos e conjunções que ficam em minúscula — exceto na 1ª posição. */
+const MINUSCULAS = new Set([
+  'a', 'ao', 'aos', 'as', 'à', 'às', 'com', 'da', 'das', 'de', 'do', 'dos', 'e',
+  'em', 'na', 'nas', 'no', 'nos', 'o', 'os', 'ou', 'para', 'por', 'sem', 'sob', 'sobre',
+])
+
+/** Siglas do domínio que permanecem em CAIXA ALTA. Lista explícita de propósito: uma
+ *  heurística por tamanho trataria "DA" (preposição) como sigla. */
+const SIGLAS = new Set([
+  'RH', 'RHB', 'IR', 'CSLL', 'DAS', 'ISS', 'RPA', 'DRE', 'AV', 'IRPJ',
+  'PIS', 'COFINS', 'ICMS', 'ISSQN', 'CNPJ', 'CPF', 'NF', 'NFS',
+])
+
+/** Uma string está "gritando" se tem letra maiúscula e nenhuma minúscula. */
+function todaMaiuscula(s: string): boolean {
+  return /\p{Lu}/u.test(s) && !/\p{Ll}/u.test(s)
+}
+
+/**
+ * Converte um rótulo em CAIXA ALTA para capitalização de leitura, preservando siglas.
+ * Rótulo que já tenha qualquer minúscula volta INTOCADO — a função nunca "corrige" o
+ * que já está capitalizado, o que a torna idempotente e segura de aplicar em lista mista.
+ *
+ *   "IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA" → "Impostos e Deduções da Receita Bruta"
+ *   "DESPESAS OPERACIONAIS DE RH"          → "Despesas Operacionais de RH"
+ *   "Despesas Marketing"                   → "Despesas Marketing"  (intocado)
+ */
+export function semCaixaAlta(rotulo: string): string {
+  if (!todaMaiuscula(rotulo)) return rotulo
+
+  return rotulo
+    .split(' ')
+    .map((palavra, i) => {
+      if (palavra === '') return palavra
+      if (SIGLAS.has(palavra)) return palavra
+
+      const min = palavra.toLocaleLowerCase('pt-BR')
+      // Preposição no meio da frase fica minúscula; na primeira posição, não.
+      if (i > 0 && MINUSCULAS.has(min)) return min
+
+      return min.charAt(0).toLocaleUpperCase('pt-BR') + min.slice(1)
+    })
+    .join(' ')
+}

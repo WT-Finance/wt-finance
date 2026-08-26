@@ -341,7 +341,9 @@ export default async function DrePage({
               anosDisponiveis={anosDisponiveis}
               consolidadoAnos={consolidadoResumoComp}
               linhas={LINHAS_COMPETENCIA}
-              subtitulo={`YTD de ${janela} — a janela coberta pela base de competência`}
+              /* A janela NÃO é declarada em subtítulo aqui (decisão do Yan): o card fica
+                 com a mesma anatomia do irmão no regime de caixa. A explicação continua
+                 no "?" — que é onde ela é procurada quando se procura. */
               ajuda={
                 'Os anos escolhidos aqui valem só para este resumo — a seleção é independente ' +
                 'das pills da tabela abaixo. "YTD" compara todos os anos na MESMA janela, que ' +

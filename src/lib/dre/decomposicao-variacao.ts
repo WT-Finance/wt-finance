@@ -22,7 +22,7 @@
 import type { DreMensalLike, DreLinha } from './schemas'
 import { toCentavos } from '@/lib/carga/coercao'
 import { chaveDeLinha } from './identidade'
-import { rotuloBloco } from './rotulo-bloco'
+import { rotuloBloco, semCaixaAlta } from './rotulo-bloco'
 import { folhasPorGrupo, totalFolhas } from './folhas'
 import { agruparPequenos, montarCascata, type Cascata, type Degrau } from './cascata'
 
@@ -34,13 +34,19 @@ const NARRATIVA_DISTRIBUICAO = 'decisão societária'
 
 /** Rótulos de exibição das folhas, colhidos das linhas de bloco do payload — nunca
  *  hardcoded (a estrutura é editável, e o rótulo é dado). O prefixo contábil sai pelo
- *  `rotuloBloco` canônico: numa cascata o sinal já vem da cor e da direção da barra. */
+ *  `rotuloBloco` canônico: numa cascata o sinal já vem da cor e da direção da barra.
+ *
+ *  E a CAIXA é normalizada por `semCaixaAlta`: a árvore grava `blocoH` em caixa alta e
+ *  `sub` em capitalização normal, o que na tabela distingue cabeçalho de subgrupo — mas
+ *  aqui os dois viram degraus IRMÃOS, e uma linha gritando entre quinze normais é ruído
+ *  (era o caso de "IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA"). A função preserva siglas e é
+ *  idempotente, então os rótulos já capitalizados passam intocados. */
 function rotulosDeFolha(...payloads: DreMensalLike[]): Map<string, string> {
   const out = new Map<string, string>()
   for (const p of payloads) {
     for (const l of p.linhas) {
       if (l.t === 'cat' || !l.chave) continue
-      if (!out.has(l.chave)) out.set(l.chave, rotuloBloco(l.rotulo))
+      if (!out.has(l.chave)) out.set(l.chave, semCaixaAlta(rotuloBloco(l.rotulo)))
     }
   }
   return out
