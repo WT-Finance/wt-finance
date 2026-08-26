@@ -5,30 +5,27 @@ import { GraficoCascata, alturaCascata } from '@/components/charts'
 import type { Cascata } from '@/lib/dre/cascata'
 
 // ── Card de cascata (v5.8.1) ──────────────────────────────────────────────────
-// O invólucro compartilhado pelos dois cards novos da seção de competência. Eles são a
-// MESMA figura com conteúdos diferentes (uma explica a variação entre dois anos, a
-// outra a diferença entre dois regimes), então o shell — título, ajuda, subtítulo com a
-// janela declarada, box, rodapé — mora num lugar só. Duas cópias divergiriam no
-// primeiro ajuste visual, que é a história de sempre.
+// O invólucro compartilhado pelas duas cascatas da página, que hoje vivem em seções
+// DIFERENTES: a "Decomposição da Variação do Resultado" no Regime de Competência (os
+// degraus dela são folhas daquela árvore) e a "Ponte Competência ↔ Caixa" na Visão
+// Geral (ela fala dos DOIS regimes, então não pertence a nenhum). São a mesma figura
+// com conteúdos diferentes, então o shell — título, ajuda, subtítulo, box — mora num
+// lugar só: duas cópias divergiriam no primeiro ajuste visual, que é a história de
+// sempre.
 //
 // A anatomia é a do `ResumoExecutivo`: `rounded-xl bg-surface p-5 shadow-sm`, título
-// 15px semibold com o "?" de ajuda ao lado, e o conteúdo dentro do box
-// `rounded-lg border border-wt-border bg-band`. É o que faz as peças da página lerem
-// como uma família.
+// 15px semibold com o "?" de ajuda ao lado, e o conteúdo dentro de um box com borda —
+// o que faz as peças da página lerem como uma família.
 
 interface Props {
   titulo: string
-  /** Declara a JANELA — não é decoração. É esta linha que explica ao leitor por que o
-   *  "YTD 26" daqui pode mostrar menos meses que a coluna YTD da tabela densa acima
-   *  (a base de competência é um upload periódico; a de caixa é contínua). */
+  /** Linha de contexto sob o título: o recorte que a cascata está mostrando. */
   subtitulo: string
   ajuda: string
   cascata: Cascata
-  /** Linha final do card — as datas-base, na ponte. */
-  rodape?: string
 }
 
-export default function CascataCard({ titulo, subtitulo, ajuda, cascata, rodape }: Props) {
+export default function CascataCard({ titulo, subtitulo, ajuda, cascata }: Props) {
   const barras = cascata.degraus.length + 2
 
   return (
@@ -83,8 +80,6 @@ export default function CascataCard({ titulo, subtitulo, ajuda, cascata, rodape 
       >
         <GraficoCascata cascata={cascata} />
       </div>
-
-      {rodape && <p className="mt-3 text-[11px] text-text-subtle">{rodape}</p>}
     </div>
   )
 }

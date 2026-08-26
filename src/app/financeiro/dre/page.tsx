@@ -4,7 +4,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
-import { hojeSP, fmtDataSP } from '@/lib/fmt'
+import { hojeSP } from '@/lib/fmt'
 import { rpcDre } from '@/lib/dre/rpc-dre'
 import { buscarUltimaCargaMovimentacao } from '@/lib/dre/ultima-carga-movimentacao'
 import {
@@ -324,118 +324,113 @@ export default async function DrePage({
 
   return (
     <div className="space-y-6">
-      {/* ── Regime de COMPETÊNCIA — PRIMEIRO na página (decisão do Yan, v5.8.0) ──
-          Só renderiza com dado: a seção é a primeira coisa que se vê, e um bloco
-          quebrado no topo é pior que a ausência dele. O regime de caixa abaixo segue
-          inteiro em qualquer cenário. */}
+      {/* ── VISÃO GERAL (v5.8.1, conferência do Yan) ────────────────────────────
+          A primeira seção da página deixa de ser um REGIME e passa a ser a leitura
+          consolidada: os dois resumos lado a lado na vertical e, logo abaixo, a ponte
+          que explica a distância entre eles. É a ordem em que a pergunta nasce — vê-se
+          um resultado, vê-se o outro, e a pergunta seguinte é "por que diferem?".
+          Cada regime segue com a sua TopSection abaixo, com o demonstrativo inteiro e a
+          decomposição que é específica dele. */}
+      {(consolidadoResumoComp.length > 0 || consolidadoAnos.length > 0 || ponte) && (
+        <TopSection titulo="Visão Geral">
+          <div className="space-y-6">
+            {consolidadoResumoComp.length > 0 && (
+              <ResumoExecutivo
+                titulo="Resumo Executivo · Competência"
+                anosDisponiveis={anosDisponiveis}
+                consolidadoAnos={consolidadoResumoComp}
+                linhas={LINHAS_COMPETENCIA}
+                /* A janela NÃO é declarada em subtítulo (decisão do Yan): o card fica com
+                   a mesma anatomia do irmão de caixa logo abaixo. A explicação continua
+                   no "?" — que é onde ela é procurada quando se procura. */
+                ajuda={
+                  'Os anos escolhidos aqui valem só para este resumo — a seleção é independente ' +
+                  'das pills dos demais cards. "YTD" compara todos os anos na MESMA janela, que ' +
+                  'aqui vai de janeiro até o último mês coberto pela base de competência (e não ' +
+                  'até o mês do calendário, como no regime de caixa): a base vem de um envio ' +
+                  'periódico, e contar meses ainda não enviados como zero encolheria o acumulado ' +
+                  'sem aviso. A coluna do ano cheio aparece só para anos já encerrados.'
+                }
+              />
+            )}
+
+            {/* Resumo Executivo — CARD PRÓPRIO desde a v5.4.1, irmão do card da DRE e não
+                mais um bloco dentro dele. Ele nunca dependeu de `dre` (o ano NAVEGADO), só
+                de `consolidadoAnos`; morando dentro da TabelaDre precisava ser repetido nos
+                dois ramos de render dela e sumia junto num ramo que não era dele.
+                Desde a v5.7.0 ele tem PILLS PRÓPRIAS de ano (seleção aditiva) — a ancoragem
+                fixa em `anoCorrente` saiu, e a seleção segue independente das pills dos
+                outros cards, de propósito. */}
+            <ResumoExecutivo
+              titulo="Resumo Executivo · Caixa"
+              anosDisponiveis={anosDisponiveis}
+              consolidadoAnos={consolidadoAnos}
+            />
+
+            {ponte && (
+              <CascataCard
+                titulo="Ponte Competência ↔ Caixa"
+                subtitulo={`YTD ${String(anoCorrente).slice(2)} · ${janela}`}
+                ajuda={
+                  'Por que os dois demonstrativos desta página mostram números diferentes. ' +
+                  'Cada degrau é a diferença, naquele grupo de contas, entre o que foi movimentado ' +
+                  'no caixa e o que foi reconhecido por competência. O repasse só existe no caixa; ' +
+                  'os reembolsos, só na competência.'
+                }
+                cascata={ponte}
+              />
+            )}
+          </div>
+        </TopSection>
+      )}
+
+      {/* ── Regime de COMPETÊNCIA ────────────────────────────────────────────────
+          Só renderiza com dado: um bloco quebrado é pior que a ausência dele, e o
+          regime de caixa abaixo segue inteiro em qualquer cenário. */}
       {compQualquer && (
         <TopSection titulo="Regime de Competência">
           <div className="space-y-6">
-          {/* ORDEM (v5.8.1, briefing): sumário → demonstrativo → as duas decomposições.
-              A MESMA ordem conceitual da seção de caixa logo abaixo — do agregado ao
-              detalhe. As linhas-chave vêm ACIMA da tabela para não obrigar a rolar o
-              demonstrativo inteiro até o resumo dele (a correção que o caixa recebeu na
-              v5.7.0). */}
-          {consolidadoResumoComp.length > 0 && (
-            <ResumoExecutivo
+            <TabelaDre
+              dados={dreComp}
+              ano={anoComp}
               anosDisponiveis={anosDisponiveis}
-              consolidadoAnos={consolidadoResumoComp}
-              linhas={LINHAS_COMPETENCIA}
-              /* A janela NÃO é declarada em subtítulo aqui (decisão do Yan): o card fica
-                 com a mesma anatomia do irmão no regime de caixa. A explicação continua
-                 no "?" — que é onde ela é procurada quando se procura. */
-              ajuda={
-                'Os anos escolhidos aqui valem só para este resumo — a seleção é independente ' +
-                'das pills da tabela abaixo. "YTD" compara todos os anos na MESMA janela, que ' +
-                'aqui vai de janeiro até o último mês coberto pela base de competência (e não ' +
-                'até o mês do calendário, como no regime de caixa): a base vem de um envio ' +
-                'periódico, e contar meses ainda não enviados como zero encolheria o acumulado ' +
-                'sem aviso. A coluna do ano cheio aparece só para anos já encerrados.'
+              /* Competência não tem anos seguintes: não há projeção a mostrar. */
+              anosSeguintes={[]}
+              consolidadoAnos={consolidadoAnosComp}
+              mesJanela={mesJanela}
+              ultimaCargaMovimentacao={compQualquer.carregado_em}
+              titulo="Demonstrativo de Resultado por Competência"
+              paramAno="anoComp"
+              semPrevisto
+              slotAcoes={
+                <Link href="/financeiro/dre/estrutura-competencia" className={`${PILL} ${PILL_NEUTRO}`}>
+                  <SquarePen size={13} />
+                  Editar estrutura
+                </Link>
               }
             />
-          )}
 
-          <TabelaDre
-            dados={dreComp}
-            ano={anoComp}
-            anosDisponiveis={anosDisponiveis}
-            /* Competência não tem anos seguintes: não há projeção a mostrar. */
-            anosSeguintes={[]}
-            consolidadoAnos={consolidadoAnosComp}
-            mesJanela={mesJanela}
-            ultimaCargaMovimentacao={compQualquer.carregado_em}
-            titulo="Demonstrativo de Resultado por Competência"
-            paramAno="anoComp"
-            semPrevisto
-            slotAcoes={
-              <Link href="/financeiro/dre/estrutura-competencia" className={`${PILL} ${PILL_NEUTRO}`}>
-                <SquarePen size={13} />
-                Editar estrutura
-              </Link>
-            }
-          />
-
-          {/* EMPILHADAS, cada uma na largura cheia da seção (conferência do Yan). Lado a
-              lado, num grid de 2 colunas, os rótulos longos das folhas quebravam em duas
-              linhas e colidiam com o rótulo de valor da barra vizinha — e são até 18
-              barras por cascata. Largura cheia devolve o espaço horizontal, que é
-              exatamente a dimensão que uma cascata deitada consome. */}
-          {(decomposicao || ponte) && (
-            <div className="space-y-6">
-              {decomposicao && (
-                <CascataCard
-                  titulo="Decomposição da variação"
-                  subtitulo={`Resultado do exercício · YTD ${String(anoCorrente).slice(2)} × YTD ${String(anoCorrente - 1).slice(2)} · ${janela}`}
-                  ajuda={
-                    'Do resultado do ano anterior ao deste ano, um degrau por grupo de contas, ' +
-                    'na mesma janela de meses nos dois anos. Verde melhora o resultado, vermelho piora. ' +
-                    'Grupos que variaram menos de R$ 500 são somados em "Outros ajustes".'
-                  }
-                  cascata={decomposicao}
-                />
-              )}
-              {ponte && (
-                <CascataCard
-                  titulo="Ponte Competência ↔ Caixa"
-                  subtitulo={`Do resultado por emissão ao resultado por movimentação · YTD ${String(anoCorrente).slice(2)} · ${janela}`}
-                  ajuda={
-                    'Por que os dois demonstrativos desta página mostram números diferentes. ' +
-                    'Cada degrau é a diferença, naquele grupo de contas, entre o que foi movimentado ' +
-                    'no caixa e o que foi reconhecido por competência. O repasse só existe no caixa; ' +
-                    'os reembolsos, só na competência.'
-                  }
-                  cascata={ponte}
-                  // As duas bases têm safras INDEPENDENTES, e ver isso é a resposta curta
-                  // para metade das perguntas que este card vai gerar.
-                  rodape={
-                    `Competência carregada em ${fmtDataSP(compQualquer.carregado_em) || '—'}` +
-                    ` · caixa carregado em ${fmtDataSP(ultimaCargaMovimentacao) || '—'}`
-                  }
-                />
-              )}
-            </div>
-          )}
+            {/* A decomposição fica NO REGIME que ela decompõe: os degraus dela são folhas
+                da árvore de competência, e o demonstrativo logo acima é onde se confere
+                cada uma. A ponte, que fala dos DOIS regimes, subiu para a Visão Geral. */}
+            {decomposicao && (
+              <CascataCard
+                titulo="Decomposição da Variação do Resultado"
+                subtitulo={`Δ% YTD ${String(anoCorrente - 1).slice(2)}·${String(anoCorrente).slice(2)}`}
+                ajuda={
+                  'Do resultado do ano anterior ao deste ano, um degrau por grupo de contas, ' +
+                  'na mesma janela de meses nos dois anos. Verde melhora o resultado, vermelho piora. ' +
+                  'Grupos que variaram menos de R$ 500 são somados em "Outros ajustes".'
+                }
+                cascata={decomposicao}
+              />
+            )}
           </div>
         </TopSection>
       )}
 
       <TopSection titulo="Regime de Caixa">
-        {/* ORDEM DOS CARDS (v5.7.0, decisão do Yan): Resumo Executivo → DRE → Maiores
-            variações → Decomposição. A leitura vai do agregado ao detalhe — as seis
-            linhas-chave primeiro, o demonstrativo inteiro depois, e só então as duas
-            decomposições (por categoria que variou, por bloco no período). Antes o Resumo
-            vinha DEPOIS da tabela, o que obrigava a rolar o demonstrativo inteiro para
-            chegar ao resumo dele. */}
         <div className="space-y-6">
-          {/* Resumo Executivo — CARD PRÓPRIO desde a v5.4.1, irmão do card da DRE e não
-              mais um bloco dentro dele. Ele nunca dependeu de `dre` (o ano NAVEGADO), só
-              de `consolidadoAnos`; morando dentro da TabelaDre precisava ser repetido nos
-              dois ramos de render dela e sumia junto num ramo que não era dele.
-              Desde a v5.7.0 ele tem PILLS PRÓPRIAS de ano (seleção aditiva) — a ancoragem
-              fixa em `anoCorrente` saiu, e a seleção segue independente da pill da tabela
-              abaixo, de propósito. */}
-          <ResumoExecutivo anosDisponiveis={anosDisponiveis} consolidadoAnos={consolidadoAnos} />
-
           <TabelaDre
             dados={dre}
             ano={ano}
