@@ -19,7 +19,7 @@ import {
   coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
 } from './fluxo/rpc-fluxo'
 import {
-  dreMensalSchema, dreCompMensalSchema, dreEstruturaSchema, salvarEstruturaResultSchema,
+  dreMensalSchema, dreCompMensalSchema, dreCompEstruturaSchema, dreEstruturaSchema, salvarEstruturaResultSchema,
   historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
@@ -1570,6 +1570,63 @@ describe.skipIf(!ON)('contrato RPC — DRE por competência (v5.8.0)', () => {
         expect(l.prev_corrente ?? null, `${ano}: ${l.rotulo} com previsto`).toBeNull()
         expect(l.venc, `${ano}: ${l.rotulo} com vencido`).toBe(0)
       }
+    }
+  })
+
+  it('dre_comp_estrutura: shape do editor + coerência com a árvore', async () => {
+    const e = dreCompEstruturaSchema.parse(await rpc('dre_comp_estrutura', {}))
+    expect(e.token).not.toBeNull()
+    expect(e.blocos.length).toBeGreaterThan(0)
+
+    // Todo destino usado por uma linha existe e é FOLHA (`formula` nula). Linha de fórmula
+    // não recebe par: receber faria o valor entrar duas vezes na expansão (0257).
+    const folhas = new Set(e.blocos.filter(b => b.formula === null).map(b => b.chave))
+    for (const m of e.maps) {
+      if (m.bloco_chave !== null) {
+        expect(folhas.has(m.bloco_chave), `destino ${m.bloco_chave} não é folha da árvore`).toBe(true)
+      }
+    }
+
+    // Identidade única e sem sobreposição entre classificadas/excluídas e bandeja.
+    const idsMaps = e.maps.map(m => m.categoria_id)
+    const idsBand = e.bandeja.map(b => b.categoria_id)
+    expect(new Set(idsMaps).size).toBe(idsMaps.length)
+    expect(new Set(idsBand).size).toBe(idsBand.length)
+    expect(idsMaps.filter(id => idsBand.includes(id))).toEqual([])
+
+    // `totais` só fala de linhas que existem.
+    const todos = new Set([...idsMaps, ...idsBand].map(String))
+    for (const id of Object.keys(e.totais)) expect(todos.has(id), `total órfão para a linha ${id}`).toBe(true)
+
+    // O CHECK do banco em forma observável: excluída nunca convive com bloco.
+    for (const m of e.maps) {
+      if (m.excluida) expect(m.bloco_chave, `linha ${m.categoria_id} excluída E num bloco`).toBeNull()
+    }
+  })
+
+  it('o EDITOR e o DEMONSTRATIVO concordam sobre o que está classificado', async () => {
+    // Dois números vizinhos na mesma tela pedem caso de contrato (lição da v5.7.1) — aqui
+    // são duas TELAS lendo a mesma curadoria por RPCs diferentes. Se divergirem, o editor
+    // mostra uma linha classificada que o demonstrativo não exibe (ou o contrário).
+    const e = dreCompEstruturaSchema.parse(await rpc('dre_comp_estrutura', {}))
+    const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: 2025 }))
+
+    const doEditor = new Set(
+      e.maps.filter(m => !m.excluida && m.bloco_chave !== null).map(m => `${m.bloco_chave}␟${m.rotulo}`),
+    )
+    const doDemonstrativo = new Set(
+      d.linhas.filter(l => l.t === 'cat').map(l => `${l.g}␟${l.rotulo}`),
+    )
+    expect([...doDemonstrativo].filter(k => !doEditor.has(k)),
+      'o demonstrativo exibe linha que o editor não tem como classificada').toEqual([])
+    expect([...doEditor].filter(k => !doDemonstrativo.has(k)),
+      'o editor tem linha classificada que o demonstrativo não exibe').toEqual([])
+
+    // E a bandeja também: mesma órfã dos dois lados.
+    const bandEditor = new Set(e.bandeja.map(b => b.nome))
+    const bandDemo = new Set(d.bandeja.map(b => `${b.grupo_monde} · ${b.rotulo}`))
+    for (const k of bandDemo) {
+      expect(bandEditor.has(k), `órfã "${k}" aparece no demonstrativo mas não na bandeja do editor`).toBe(true)
     }
   })
 

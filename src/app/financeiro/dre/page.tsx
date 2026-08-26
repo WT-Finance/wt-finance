@@ -4,7 +4,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { requireArea } from '@/lib/auth/sessao'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
-import { hojeSP, fmtDataSP } from '@/lib/fmt'
+import { hojeSP } from '@/lib/fmt'
 import { rpcDre } from '@/lib/dre/rpc-dre'
 import { buscarUltimaCargaMovimentacao } from '@/lib/dre/ultima-carga-movimentacao'
 import {
@@ -262,19 +262,9 @@ export default async function DrePage({
     .filter((x): x is NonNullable<typeof x> => x !== null)
 
   const dreComp = dreCompAnos.get(anoComp) ?? null
-  // Qualquer ano que tenha carregado serve para o cabeçalho: cobertura e data de carga
-  // descrevem a BASE inteira, não o ano navegado.
+  // Qualquer ano que tenha carregado serve: a data de carga descreve a BASE inteira, não o
+  // ano navegado — é ela que alimenta o selo de frescor no canto do card.
   const compQualquer = dreComp ?? consolidadoAnosComp.map(c => dreCompAnos.get(c.ano)).find(Boolean) ?? null
-  const mesAno = (iso: string) => `${iso.slice(5, 7)}/${iso.slice(0, 4)}`
-  const cabecalhoComp = compQualquer ? (
-    <>
-      fato gerador: data de emissão
-      {compQualquer.carregado_em ? <> · base carregada em {fmtDataSP(compQualquer.carregado_em)}</> : null}
-      {compQualquer.cobertura_de && compQualquer.cobertura_ate
-        ? <> · cobertura {mesAno(compQualquer.cobertura_de)} a {mesAno(compQualquer.cobertura_ate)}</>
-        : null}
-    </>
-  ) : null
 
   return (
     <div className="space-y-6">
@@ -294,9 +284,14 @@ export default async function DrePage({
             mesJanela={mesJanela}
             ultimaCargaMovimentacao={compQualquer.carregado_em}
             titulo="Demonstrativo de Resultado por Competência"
-            subtitulo={cabecalhoComp}
             paramAno="anoComp"
             semPrevisto
+            slotAcoes={
+              <Link href="/financeiro/dre/estrutura-competencia" className={`${PILL} ${PILL_NEUTRO}`}>
+                <SquarePen size={13} />
+                Editar estrutura
+              </Link>
+            }
           />
         </TopSection>
       )}

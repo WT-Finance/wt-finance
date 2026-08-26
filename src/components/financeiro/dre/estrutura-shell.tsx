@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, type ComponentProps } from 'react'
 import { useRouter } from 'next/navigation'
 import EditorDre from './editor-dre'
 import HistoricoAlteracoes, { type HistoricoFetchers, type CampoDiff } from '@/components/financeiro/gerencial/historico-alteracoes'
@@ -40,9 +40,18 @@ const CAMPOS_DIFF_ESTRUTURA: CampoDiff[] = [
 
 export default function EstruturaShell({
   estrutura, totaisPorCategoria,
+  fetchers = FETCHERS_ESTRUTURA,
+  salvarAction,
 }: {
   estrutura: DreEstrutura
   totaisPorCategoria: Record<number, number>
+  /** Fetchers do painel de histórico/desfazer. Default: os do regime de CAIXA.
+   *  A v5.8.0 replicou este shell para o regime de COMPETÊNCIA, que tem diário próprio
+   *  (as RPCs filtram por `tabela_alvo`) — o que varia entre os dois regimes entra por
+   *  estas duas props, e o call-site do caixa não mudou. */
+  fetchers?: HistoricoFetchers
+  /** Action de gravação do editor. Default (undefined): a do regime de caixa. */
+  salvarAction?: ComponentProps<typeof EditorDre>['salvarAction']
 }) {
   const router = useRouter()
   const [recarregarKey, setRecarregarKey] = useState(0)
@@ -73,11 +82,12 @@ export default function EstruturaShell({
         estrutura={estrutura}
         totaisPorCategoria={totaisPorCategoria}
         onPendenciasChange={registrarPendencias}
+        salvarAction={salvarAction}
       />
       <HistoricoAlteracoes
         recarregarKey={recarregarKey}
         onDesfeito={() => router.refresh()}
-        fetchers={FETCHERS_ESTRUTURA}
+        fetchers={fetchers}
         camposDiff={CAMPOS_DIFF_ESTRUTURA}
         titulo="Histórico de alterações"
         antesDeDesfazer={antesDeDesfazer}

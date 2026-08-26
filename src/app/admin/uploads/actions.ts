@@ -5,7 +5,7 @@ import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import {
   parseRpc, cargaValidacaoSchema, cargaPromocaoSchema,
-  statusDemonstrativoCompetenciaSchema,
+  statusDemonstrativoCompetenciaSchema, provisionarDreCompParSchema,
 } from '@/lib/schemas-rpc'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
@@ -516,7 +516,7 @@ export async function inserirLoteDemonstrativoCompetenciaAction(
 export async function finalizarDemonstrativoCompetenciaAction(
   totalEnviadas: number,
   somaCentavosArquivo: number,
-): Promise<{ sucesso: true; status: StatusDemonstrativoCompetencia } | { error: string }> {
+): Promise<{ sucesso: true; status: StatusDemonstrativoCompetencia; avisos: string[] } | { error: string }> {
   await requireAreaAction('admin/uploads')
   try {
     const status = await lerStatusDemonstrativoCompetencia()
@@ -539,7 +539,32 @@ export async function finalizarDemonstrativoCompetenciaAction(
       }
     }
 
-    return { sucesso: true, status }
+    // Provisiona no de-para editável (0260) uma linha para cada par NOVO do arquivo, com
+    // destino em branco — é isso que faz o par aparecer na BANDEJA do editor, e não só na
+    // bandeja da leitura. Roda DEPOIS do alarme: se a carga não fecha, não se mexe na
+    // curadoria. Falha aqui NÃO derruba o upload (a leitura já mostra o par não classificado
+    // pelo LEFT JOIN da view) — vira aviso, porque o dado carregado está correto.
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+    const prov = await bound('provisionar_dre_comp_par')
+    const avisos: string[] = []
+    if (prov.error) {
+      avisos.push(
+        'A base foi carregada e conferida, mas não foi possível atualizar o de-para editável ' +
+        `(${prov.error.message}). Pares novos aparecem como "Não classificadas" no ` +
+        'demonstrativo; abrir "Editar estrutura" provisiona de novo.',
+      )
+    } else {
+      const p = parseRpc(provisionarDreCompParSchema, prov, 'provisionar_dre_comp_par')
+      if (p && p.novos > 0) {
+        avisos.push(
+          `${p.novos} par(es) novo(s) do arquivo entraram como "Não classificadas" — ` +
+          'classifique-os em Editar estrutura para que entrem no demonstrativo.',
+        )
+      }
+    }
+
+    return { sucesso: true, status, avisos }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

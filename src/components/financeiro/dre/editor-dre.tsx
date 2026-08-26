@@ -532,9 +532,15 @@ interface Props {
   totaisPorCategoria: Record<number, number>
   /** Notifica o pai da contagem de pendências (guarda do desfazer no histórico — v5.3.0). */
   onPendenciasChange?: (n: number) => void
+  /** Action de gravação. Default: a do regime de CAIXA — o call-site dele não mudou.
+   *  A v5.8.0 replicou o editor para o regime de COMPETÊNCIA, que grava em outras tabelas
+   *  por outra RPC; o resto do editor é idêntico, então o que varia entra por aqui. */
+  salvarAction?: typeof salvarEstrutura
 }
 
-export default function EditorDre({ estrutura, totaisPorCategoria, onPendenciasChange }: Props) {
+export default function EditorDre({
+  estrutura, totaisPorCategoria, onPendenciasChange, salvarAction = salvarEstrutura,
+}: Props) {
   const router = useRouter()
 
   const [blocos, setBlocos]       = useState<BlocoItem[]>(() => derivarBlocos(estrutura, totaisPorCategoria))
@@ -670,7 +676,7 @@ export default function EditorDre({ estrutura, totaisPorCategoria, onPendenciasC
     setErro(null)
     let res: Awaited<ReturnType<typeof salvarEstrutura>>
     try {
-      res = await salvarEstrutura(pendentes, estrutura.token)
+      res = await salvarAction(pendentes, estrutura.token)
     } catch {
       res = { ok: false, erro: 'Falha ao salvar a estrutura. Tente novamente.' }
     }

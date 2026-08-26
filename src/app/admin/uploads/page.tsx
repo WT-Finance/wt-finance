@@ -659,11 +659,14 @@ export default function AdminUploadsPage() {
         const fin = await finalizarDemonstrativoCompetenciaAction(inseridas, somaArquivo)
         if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
         linhasRef.current.demonstrativo_competencia = []
+        // Aviso não-bloqueante (par novo entrou como "Não classificadas") anexado ao
+        // sucesso, no mesmo padrão do cartão de Vendas.
+        const avisoComp = fin.avisos.length ? ` ⚠ ${fin.avisos.join(' ')}` : ''
         setEstado(key, {
           estado: 'sucesso',
           mensagem:
             `${formatarNum(fin.status.total)} linhas · Σ ${fmtBRL2(fin.status.soma_centavos / 100)} ` +
-            `· ${formatarNum(fin.status.pares)} pares — conferido com o arquivo`,
+            `· ${formatarNum(fin.status.pares)} pares — conferido com o arquivo${avisoComp}`,
         })
 
       } else {

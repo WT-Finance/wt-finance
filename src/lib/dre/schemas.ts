@@ -225,6 +225,21 @@ export const dreEstruturaSchema = z.object({
   bandeja: z.array(estruturaBandejaSchema),
 }).passthrough()
 
+/** `dre_comp_estrutura(ano)` (0260) — o MESMO contrato do editor, mais os totais do ano.
+ *
+ *  Por que os totais viajam AQUI e não numa segunda chamada: no regime de caixa a página do
+ *  editor pede `get_dre_mensal` só para alimentar os efeitos dos modais, e casa os valores
+ *  por `categoria_id` (que aquele payload traz). O payload de competência não expõe o id da
+ *  linha do de-para — a identidade dele é textual —, então casar por fora exigiria refazer o
+ *  de-para no cliente. Um `Record<id, total>` calculado no banco é mais curto e não pode
+ *  divergir. `ano_totais` diz de QUE ano são os números (default: o último coberto pela base). */
+export const dreCompEstruturaSchema = dreEstruturaSchema.extend({
+  ano_totais: z.number().nullable(),
+  totais:     z.record(z.string(), z.number()),
+}).passthrough()
+
+export type DreCompEstrutura = z.infer<typeof dreCompEstruturaSchema>
+
 export type DreEstrutura        = z.infer<typeof dreEstruturaSchema>
 export type EstruturaBloco      = z.infer<typeof estruturaBlocoSchema>
 export type EstruturaMap        = z.infer<typeof estruturaMapSchema>

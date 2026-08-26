@@ -296,6 +296,16 @@ export const statusDemonstrativoCompetenciaSchema = z.object({
 // interface EXPLÍCITA de `src/app/admin/uploads/actions.ts`, sem o índice `unknown` que
 // o `.passthrough()` arrasta. Dois tipos com o mesmo nome só confundiriam.
 
+/** provisionar_dre_comp_par (v5.8.0, migration 0260) → quantos pares NOVOS do arquivo
+ *  entraram no de-para editável (com destino em branco), e como ficou o total/bandeja.
+ *  Validado com Zod, e não por cast, porque `novos` decide se o card avisa o usuário que
+ *  há linha nova para classificar — número que não chega é aviso que não aparece. */
+export const provisionarDreCompParSchema = z.object({
+  novos:   z.number(),
+  total:   z.number(),
+  bandeja: z.number(),
+}).passthrough()
+
 /** cruzar_vendas_setor (v4.28.0, migration 0159) → pares ENCONTRADOS venda→setor.
  *  Array (pode ser vazio). setor_macro é o valor REAL da base ('Lazer', não 'Trips'). */
 export const cruzarVendasSetorSchema = z.array(z.object({

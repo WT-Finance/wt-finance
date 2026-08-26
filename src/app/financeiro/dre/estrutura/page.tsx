@@ -69,8 +69,8 @@ export default async function DreEstruturaPage() {
       <div className="mb-6">
         {/* `pr-40` só no H1: este título é longo (bem mais que os das telas /admin) e o selo é
             `absolute` — sem a reserva, em janela estreita a primeira linha correria por baixo dele. */}
-        <h1 className="pr-40 text-xl font-semibold text-zinc-900">Estrutura do Demonstrativo de Resultado</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">Reordene categorias e blocos do demonstrativo de resultado</p>
+        <h1 className="pr-40 text-xl font-semibold text-zinc-900">Estrutura do Demonstrativo de Resultado por Fluxo de Caixa</h1>
+        <p className="text-sm text-zinc-400 mt-0.5">Reordene categorias e blocos do demonstrativo por fluxo de caixa</p>
       </div>
 
       <div className="mb-4">

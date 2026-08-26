@@ -1992,25 +1992,18 @@ const TITULO_PADRAO = 'Demonstrativo de Resultado por Fluxo de Caixa'
 function CabecalhoCard({
   ultimaCarga,
   titulo = TITULO_PADRAO,
-  subtitulo,
 }: {
   ultimaCarga?: string | null
   titulo?: string
-  subtitulo?: ReactNode
 }) {
   return (
-    <div className={`mb-4 flex flex-wrap ${subtitulo ? 'items-start' : 'items-center'} justify-between gap-x-4 gap-y-1`}>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
       {/* h2 + "?" viajam JUNTOS num flex próprio: sem isso o `justify-between` do pai
           trataria o "?" como um terceiro item e o jogaria para o meio da faixa.
-          O subtítulo (v5.8.0) desce dentro DESSE flex, para não virar um terceiro item
-          do `justify-between` e ir para o meio.
-          ⚠️ O alinhamento é CONDICIONAL ao subtítulo, e isso não é preciosismo: com
-          subtítulo a coluna da esquerda fica mais alta e `items-center` empurraria o selo
-          para o meio dela; SEM subtítulo, `items-start` desalinharia o selo (`text-2xs`,
-          ícone 12px) em relação ao `h2` — que é exatamente o card do regime de CAIXA.
-          Trocar isso incondicionalmente foi um achado ALTO do `revisor` na v5.8.0: a
-          missão prometia caixa idêntico "por construção" e esta linha era a exceção. */}
-      <div>
+          Só o TÍTULO é parametrizável (v5.8.0, um card por regime). O `items-center` do pai
+          fica: uma tentativa de subtítulo aqui trocou isso para `items-start` e desalinhou o
+          selo de frescor no card do CAIXA — achado ALTO do `revisor`; o subtítulo saiu por
+          decisão do Yan e o alinhamento voltou ao original. */}
       <div className="flex items-center gap-1.5">
         <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
         {/* Mesmo idioma de ajuda do Resumo Executivo (e de posicao-projetado/repasse-mensal).
@@ -2029,8 +2022,6 @@ function CabecalhoCard({
             ?
           </button>
         </Tooltip>
-      </div>
-      {subtitulo ? <p className="mt-0.5 text-2xs text-text-muted">{subtitulo}</p> : null}
       </div>
       <UltimaAtualizacao iso={ultimaCarga ?? null} className="text-2xs" iconSize={12} vigiarAtraso={false} />
     </div>
@@ -2092,9 +2083,6 @@ interface TabelaDreProps {
 
   /** Título do card. Default: o do regime de caixa. */
   titulo?: string
-  /** Linha de contexto sob o título (ex.: "fato gerador: data de emissão · cobertura
-   *  01/2024 a 08/2026"). Ausente ⇒ nada é renderizado, sem respiro fantasma. */
-  subtitulo?: ReactNode
   /** Nome do parâmetro de URL que a pill de ano escreve. Default `'ano'`.
    *  A página da DRE tem DUAS tabelas, uma por regime, e um parâmetro só faria a pill de
    *  uma mover a outra — cada regime navega no seu (`ano` e `anoComp`). */
@@ -2110,7 +2098,7 @@ interface TabelaDreProps {
 export default function TabelaDre({
   dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela,
   ultimaCargaMovimentacao, slotAcoes,
-  titulo, subtitulo, paramAno = 'ano', semPrevisto = false,
+  titulo, paramAno = 'ano', semPrevisto = false,
 }: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -2232,7 +2220,7 @@ export default function TabelaDre({
   if (dados === null) {
     return (
       <div className="rounded-xl bg-surface p-5 shadow-sm">
-        <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} subtitulo={subtitulo} />
+        <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <AnoPills modo="unico" ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
         </div>
@@ -2416,7 +2404,7 @@ export default function TabelaDre({
           : 'rounded-xl bg-surface p-5 shadow-sm'
       }
     >
-      <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} subtitulo={subtitulo} />
+      <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} />
 
       {/* ── Toolbar em DUAS linhas, tudo à esquerda (rodada 3/Refino 2) ──
           Linha de cima: pills de VISÃO. Linha de baixo: pills de ANO · divisor · pills
