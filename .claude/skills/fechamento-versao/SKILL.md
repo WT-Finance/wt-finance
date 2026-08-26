@@ -46,9 +46,12 @@ servidor ao final. Parecer entra no out-briefing.
   em TTY; bloqueio do harness → protocolo D5 do core, nunca contornar).
 - Verificar RPCs novas **via REST com service_role** (`db query` não executa o corpo).
 - Rodar os casos de contrato (`npx vitest run src/lib/rpc-contrato.test.ts`).
-- Enquanto a renumeração pós-v5.3 não sai: **remover as cópias 0950–0954** antes do merge
-  (`rm supabase/migrations/095[0-4]_*.sql`) e conferir que nenhuma entrou em commit.
 - Conferir que NENHUMA migration destrutiva ficou pendente na pasta `supabase/migrations/`.
+- ⚠️ **Numeração com versão PARALELA em voo:** `ls docs/adr/` e `ls supabase/migrations/` na
+  worktree mostram só o que está mergeado — uma branch irmã já pode ter reservado o número
+  seguinte e pushado. Conferir o REMOTO antes de fixar número de ADR/migration
+  (`git ls-tree -r --name-only origin/<branch> -- docs/adr/`). Custou uma renumeração de ADR
+  na v5.8.0, pega no fechamento; a v5.9.0 registrou o mesmo em migration.
 
 ## 5. Documentação da versão
 

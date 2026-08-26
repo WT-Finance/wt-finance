@@ -27,30 +27,110 @@ export const dreLinhaSchema = z.object({
   categoria_id:  z.number().optional(),
 }).passthrough()
 
-/** Linha da bandeja "Não classificadas" (órfã do de-para). */
-export const dreBandejaSchema = z.object({
-  categoria_id:  z.number(),
+// ── Bandeja "Não classificadas" (órfã do de-para) ────────────────────────────
+// Os dois regimes têm bandeja, e a IDENTIDADE de uma órfã é diferente em cada um: o
+// caixa chaveia por `dim_categoria.id` (inteiro do banco); a competência chaveia pelo
+// par de TEXTO (Grupo, Descrição) que vem no arquivo, porque é só isso que existe numa
+// linha que ninguém mapeou.
+//
+// ⚠️ Por que schemas SEPARADOS e não um só com `categoria_id` opcional: exigir
+// `categoria_id` da competência criaria um apagão silencioso no pior momento possível.
+// `bandeja` é campo OBRIGATÓRIO do envelope, então um item que falhe o parse derruba o
+// `safeParse` do objeto RAIZ, `parseRpc` devolve `null` e a seção inteira desaparece
+// deixando só um `console.error` — e isso aconteceria no PRIMEIRO export com um par não
+// mapeado, ou seja, exatamente quando a bandeja precisava aparecer. (Achado ALTO do
+// `revisor-db` na v5.8.0, corrigido antes de existir call-site.)
+// Afrouxar o schema do CAIXA seria a outra saída, e é pior: perderia a guarda que hoje
+// pega uma regressão que pare de emitir `categoria_id` lá.
+
+const bandejaComum = z.object({
   rotulo:        z.string(),
   grupo_monde:   z.string(),
   meses:         z.array(z.number()).length(12),
   prev_corrente: z.number().nullable().optional(),
   venc:          z.number(),
   total:         z.number(),
+})
+
+/** Bandeja do regime de CAIXA — identidade é `categoria_id` (segue obrigatória). */
+export const dreBandejaSchema = bandejaComum.extend({
+  categoria_id: z.number(),
+  chave:        z.string().optional(),
 }).passthrough()
 
-export const dreMensalSchema = z.object({
+/** Bandeja do regime de COMPETÊNCIA — identidade é `chave` (`grupo · descrição`). */
+export const dreCompBandejaSchema = bandejaComum.extend({
+  chave:        z.string(),
+  categoria_id: z.number().optional(),
+}).passthrough()
+
+/** O que a TABELA precisa de uma linha de bandeja, servindo aos DOIS regimes. Interface
+ *  explícita (sem o índice `unknown` que `.passthrough()` arrasta) e com as duas
+ *  identidades opcionais — quem renderiza usa `categoria_id ?? chave`. */
+export interface DreBandejaLinha {
+  categoria_id?:  number
+  chave?:         string
+  rotulo:         string
+  grupo_monde:    string
+  meses:          number[]
+  prev_corrente?: number | null
+  venc:           number
+  total:          number
+}
+
+const envelopeComum = z.object({
   ano:             z.number(),
   hoje:            z.string(),                                   // date → 'AAAA-MM-DD'
   relacao:         z.enum(['fechado', 'corrente', 'futuro']),
   mes_corrente:    z.number().nullable(),
   token_estrutura: z.string().nullable(),                        // timestamptz ISO (trava otimista)
   linhas:          z.array(dreLinhaSchema),
-  bandeja:         z.array(dreBandejaSchema),
+})
+
+export const dreMensalSchema = envelopeComum.extend({
+  bandeja: z.array(dreBandejaSchema),
 }).passthrough()
 
-export type DreMensal  = z.infer<typeof dreMensalSchema>
-export type DreLinha   = z.infer<typeof dreLinhaSchema>
-export type DreBandeja = z.infer<typeof dreBandejaSchema>
+/** `get_dre_competencia_mensal` (0257) — MESMO envelope do caixa, com a bandeja própria
+ *  e os extras do regime DECLARADOS. Declarar em vez de deixar passar pelo
+ *  `.passthrough()` é o que faz um contrato quebrado aparecer no parse em vez de virar
+ *  `undefined` silencioso três camadas depois. */
+export const dreCompMensalSchema = envelopeComum.extend({
+  bandeja:       z.array(dreCompBandejaSchema),
+  /** Anos que EXISTEM na base — a fonte das pills de ano deste regime (o caixa deriva
+   *  os anos de uma janela em torno de hoje; aqui quem manda é a cobertura do upload). */
+  anos:          z.array(z.number()),
+  cobertura_de:  z.string().nullable(),
+  cobertura_ate: z.string().nullable(),
+  carregado_em:  z.string().nullable(),
+  /** Completude do ano em centavos inteiros: base = linhas + bandeja + excluídas. */
+  reconciliacao: z.object({
+    base_centavos:      z.number(),
+    linhas_centavos:    z.number(),
+    bandeja_centavos:   z.number(),
+    excluidas_centavos: z.number(),
+    fecha:              z.boolean(),
+  }).passthrough(),
+}).passthrough()
+
+export type DreMensal      = z.infer<typeof dreMensalSchema>
+export type DreCompMensal  = z.infer<typeof dreCompMensalSchema>
+export type DreLinha       = z.infer<typeof dreLinhaSchema>
+export type DreBandeja     = z.infer<typeof dreBandejaSchema>
+export type DreCompBandeja = z.infer<typeof dreCompBandejaSchema>
+
+/** O que a TABELA densa precisa do envelope, servindo aos DOIS regimes. Interface
+ *  explícita para o componente não ficar amarrado ao `z.infer` de um regime só —
+ *  `DreMensal` e `DreCompMensal` são ambos atribuíveis a ela. */
+export interface DreMensalLike {
+  ano:             number
+  hoje:            string
+  relacao:         'fechado' | 'corrente' | 'futuro'
+  mes_corrente:    number | null
+  token_estrutura: string | null
+  linhas:          DreLinha[]
+  bandeja:         DreBandejaLinha[]
+}
 
 // ── Comparação ano-a-ano (visão Consolidado E Resumo Executivo) ───────────────
 // Vivem aqui, e não no componente da tabela, porque a v5.3.1 passou a ter DOIS
@@ -144,6 +224,21 @@ export const dreEstruturaSchema = z.object({
   maps:    z.array(estruturaMapSchema),
   bandeja: z.array(estruturaBandejaSchema),
 }).passthrough()
+
+/** `dre_comp_estrutura(ano)` (0260) — o MESMO contrato do editor, mais os totais do ano.
+ *
+ *  Por que os totais viajam AQUI e não numa segunda chamada: no regime de caixa a página do
+ *  editor pede `get_dre_mensal` só para alimentar os efeitos dos modais, e casa os valores
+ *  por `categoria_id` (que aquele payload traz). O payload de competência não expõe o id da
+ *  linha do de-para — a identidade dele é textual —, então casar por fora exigiria refazer o
+ *  de-para no cliente. Um `Record<id, total>` calculado no banco é mais curto e não pode
+ *  divergir. `ano_totais` diz de QUE ano são os números (default: o último coberto pela base). */
+export const dreCompEstruturaSchema = dreEstruturaSchema.extend({
+  ano_totais: z.number().nullable(),
+  totais:     z.record(z.string(), z.number()),
+}).passthrough()
+
+export type DreCompEstrutura = z.infer<typeof dreCompEstruturaSchema>
 
 export type DreEstrutura        = z.infer<typeof dreEstruturaSchema>
 export type EstruturaBloco      = z.infer<typeof estruturaBlocoSchema>

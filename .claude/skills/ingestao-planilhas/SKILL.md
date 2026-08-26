@@ -1,6 +1,6 @@
 ---
 name: ingestao-planilhas
-description: Ingestão de planilhas/Excel no Janus — upload via API Route (nunca Server Action), parse no cliente em Web Worker, leitura de datas pelo Date nativo da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, ou coerção de número/data vindos de arquivo ou input do usuário.
+description: Ingestão de planilhas/Excel no Janus — parse de ARQUIVO no servidor exige API Route (Server Action só quando apenas linhas já parseadas viajam, que é o caso das 5 bases vivas), parse pesado no cliente em Web Worker, leitura de datas e números pelo valor NATIVO da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate/toCentavos — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, coerção de número/data vindos de arquivo ou input do usuário, ou quando uma soma do cliente for comparada com uma soma do banco.
 ---
 
 # Ingestão de planilhas (Janus)
@@ -12,17 +12,29 @@ pipeline) formam uma cadeia — um erro em qualquer uma delas costuma parecer um
 "dado errado" em produção, não um erro de build, porque nada aqui é pego por `tsc`/lint
 sozinho (exceto a coerção, que tem lint dedicado — ver abaixo).
 
-## 1. Upload/parse de arquivo → API Route, nunca Server Action
+## 1. Parse de ARQUIVO no servidor → API Route, nunca Server Action
 
 Bibliotecas de parse de planilha (`@e965/xlsx`) falham quando rodam dentro do contexto
 de React Server Components — o runtime de Server Action não é Node puro o bastante para
-elas. A regra é: qualquer rota que receba e processe um arquivo de upload é uma **API
+elas. A regra é: qualquer rota que **receba e processe um arquivo** de upload é uma **API
 Route** (`export const runtime = 'nodejs'`), nunca uma Server Action.
 
 Isso isola o parse do contexto RSC e garante um runtime Node completo. Foi descoberto na
-v4.7 (PEND-001) quando uma Server Action de upload quebrava silenciosamente. Ao criar uma
-rota de upload nova, comece por uma API Route — não tente Server Action "para simplificar"
-e migrar depois se falhar.
+v4.7 (PEND-001) quando uma Server Action de upload quebrava silenciosamente.
+
+⚠️ **O gatilho da regra é o ARQUIVO chegar ao servidor — não a palavra "upload"** (precisão
+acrescentada na v5.8.0, onde a redação genérica anterior induziu o plano ao caminho errado).
+As **5 bases vivas de `/admin/uploads` usam Server Action**, e estão certas: o `File` nunca sai
+do navegador. O parse roda no cliente/Web Worker (§2) e só as **linhas já parseadas** viajam,
+em lotes, para uma Server Action que as repassa às RPCs. Sem `@e965/xlsx` no servidor, não há
+o problema que a regra existe para evitar.
+
+Escolha assim:
+
+| O que atravessa a rede | Caminho | Precedente |
+|---|---|---|
+| o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/gerencial/import/route.ts` |
+| arrays já parseados no cliente | **Server Action** em lotes | `src/app/admin/uploads/actions.ts` (5 bases) |
 
 ## 2. Parse pesado no cliente → Web Worker, nunca a main thread
 
@@ -167,6 +179,31 @@ prove que os casos atuais continuam corretos — `coercao.test.ts` precisa passa
 alteração (é o "oráculo congelado": a suíte que já existe é a prova de que a extensão não
 regrediu nada que já funcionava). Há também `coercao-lint.sonda.test.ts`, uma sonda que
 verifica que o próprio lint continua pegando os padrões proibidos.
+
+### `toCentavos` — quando o número vai ser COMPARADO com o banco (v5.8.0)
+
+`toNum` devolve o número; `toCentavos` devolve **dinheiro em centavos inteiros**, arredondado
+pela MESMA regra que o Postgres aplica ao gravar em `NUMERIC(x,2)`: meio-para-**longe-de-zero**
+sobre a representação DECIMAL.
+
+Use-o sempre que uma soma calculada no cliente for confrontada com uma soma calculada no banco
+(é o caso do alarme de ingestão da base de competência). **Nunca `Math.round(valor * 100)`
+para isso**, por duas razões independentes:
+
+1. **Float.** O que viaja no JSON é a representação decimal (`(1.005).toString() === '1.005'`) e
+   o Postgres a lê com aritmética exata (`'1.005'::numeric(18,2)` = `1.01`); em JS
+   `1.005 * 100` avalia para `100.49999999999999` e `Math.round` devolve `100`.
+2. **Regra de desempate.** `Math.round` desempata para **+∞** (`Math.round(-1.5) === -1`) e o
+   Postgres desempata para **longe de zero** (`-1.5 → -2`). Ou seja: **todo meio-centavo
+   negativo discorda** — e base de despesa é majoritariamente negativa.
+
+Medido na v5.8.0: as duas divergem em `1.005`, `-1.005`, `-0.125`, `-188.615` e concordam em
+`188.615`, `0.125`, `2.675` — o acordo depende de qual lado do meio a representação binária
+caiu, isto é, é **imprevisível caso a caso**.
+
+Consequência prática de projeto: se a coluna é `NUMERIC(x,2)`, o parser deve **emitir o valor
+já arredondado a 2 casas** (`toCentavos(v)/100`). Assim o que se envia é idêntico ao que se
+grava, e a fronteira não arredonda de novo por conta própria.
 
 **Caso especial em Vendas:** `valor_total` e `receitas` viajam como **string numérica**
 (`const n = toNum(v); n === null ? null : String(n)`), não como `number`, porque o

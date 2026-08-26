@@ -3,12 +3,16 @@
 import { loadMetas } from '@/lib/carga/metas'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
-import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
+import {
+  parseRpc, cargaValidacaoSchema, cargaPromocaoSchema,
+  statusDemonstrativoCompetenciaSchema, provisionarDreCompParSchema,
+} from '@/lib/schemas-rpc'
 import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
 import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
 import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
 import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
+import type { DemonstrativoCompetenciaRaw } from '@/lib/carga/parse-demonstrativo-competencia'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -399,6 +403,168 @@ async function regenerarFluxoCaixa(
       )
     }
     return { sucesso: true, total_linhas: totalInseridas, erros }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Demonstrativo de Resultado por COMPETÊNCIA (raw.demonstrativo_competencia) —
+// v5.8.0, M1. Full-swap simples: nada a regenerar depois, porque a leitura é uma VIEW
+// (financeiro.vw_dre_competencia) sobre a base × de-para. Não existe fato a
+// materializar, então não existe deriva possível entre base e leitura.
+//
+// O `finalizar` aqui NÃO é formalidade: é o ALARME DE INGESTÃO que o briefing pede como
+// invariante — confronta contagem e soma do ARQUIVO (medidas pelo parser, no cliente)
+// com contagem e soma GRAVADAS (medidas pelo banco). Divergência devolve erro e o card
+// não declara sucesso. É a lição da v5.5.2 aplicada na fundação: lá um ×1000 silencioso
+// atravessou 753 testes e só apareceu meses depois, na DRE.
+// ---------------------------------------------------------------------------
+
+/**
+ * Status da base de competência, no formato que a UI consome. `soma_centavos` é inteiro
+ * (ver o header da 0255).
+ *
+ * É uma interface EXPLÍCITA, e não o `z.infer` do schema, de propósito: o schema é
+ * `.passthrough()` (convenção do projeto — chave extra da RPC não pode falsear o parse),
+ * e `passthrough` traz um índice `[k: string]: unknown` que contamina o consumidor —
+ * `'error' in status` deixa de estreitar o union e `status.error` vira `unknown`.
+ * Tolerância na LEITURA, tipo limpo na FRONTEIRA.
+ */
+export interface StatusDemonstrativoCompetencia {
+  total:              number
+  soma_centavos:      number
+  pares:              number
+  cobertura_de:       string | null
+  cobertura_ate:      string | null
+  ultima_atualizacao: string | null
+}
+
+/**
+ * Lê o status pela RPC, validando o SHAPE com Zod.
+ *
+ * Diferente dos outros `status_*` de upload (cast direto), aqui o retorno alimenta um
+ * gate financeiro — então contrato divergente tem de FECHAR o alarme, não abri-lo.
+ * `parseRpc` devolve `null` tanto em erro quanto em shape inesperado, e os dois casos
+ * viram erro para o chamador: ninguém declara upload conferido sem ter conferido.
+ */
+async function lerStatusDemonstrativoCompetencia(): Promise<StatusDemonstrativoCompetencia | { error: string }> {
+  const supabase = getAdminClient()
+  const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+  const res = await bound('status_demonstrativo_competencia')
+  const status = parseRpc(
+    statusDemonstrativoCompetenciaSchema,
+    res,
+    'status_demonstrativo_competencia',
+  )
+  if (!status) {
+    return { error: 'não foi possível ler o status da base de competência (erro na RPC ou contrato divergente — ver log do servidor)' }
+  }
+  return {
+    total:              status.total,
+    soma_centavos:      status.soma_centavos,
+    pares:              status.pares,
+    cobertura_de:       status.cobertura_de,
+    cobertura_ate:      status.cobertura_ate,
+    ultima_atualizacao: status.ultima_atualizacao,
+  }
+}
+
+export async function getDemonstrativoCompetenciaStatusAction(): Promise<
+  StatusDemonstrativoCompetencia | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    return await lerStatusDemonstrativoCompetencia()
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export async function inserirLoteDemonstrativoCompetenciaAction(
+  lote: DemonstrativoCompetenciaRaw[],
+  isFirst: boolean,
+  arquivoOrigem: string,
+): Promise<{ inseridas: number } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+
+    if (isFirst) {
+      const { error } = await bound('truncar_demonstrativo_competencia')
+      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
+    }
+
+    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
+    const { error } = await bound('inserir_lote_demonstrativo_competencia', { p_linhas: rows })
+    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
+
+    return { inseridas: lote.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
+ * Alarme de ingestão: o que o arquivo tinha × o que a base gravou.
+ *
+ * `somaCentavosArquivo` vem de `somaCentavos()` (o parser), a mesma função que o teste
+ * prova — não há segunda implementação da soma. A comparação é entre INTEIROS nas duas
+ * pontas, então "bate" quer dizer bate ao centavo, não "bate aproximadamente".
+ */
+export async function finalizarDemonstrativoCompetenciaAction(
+  totalEnviadas: number,
+  somaCentavosArquivo: number,
+): Promise<{ sucesso: true; status: StatusDemonstrativoCompetencia; avisos: string[] } | { error: string }> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const status = await lerStatusDemonstrativoCompetencia()
+    if ('error' in status) return { error: `Erro ao conferir a carga: ${status.error}` }
+
+    const problemas: string[] = []
+    if (status.total !== totalEnviadas) {
+      problemas.push(`o arquivo tinha ${totalEnviadas} linha(s) e a base gravou ${status.total}`)
+    }
+    if (status.soma_centavos !== somaCentavosArquivo) {
+      const fmt = (c: number) =>
+        (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      problemas.push(`a soma do arquivo é ${fmt(somaCentavosArquivo)} e a da base é ${fmt(status.soma_centavos)}`)
+    }
+    if (problemas.length > 0) {
+      return {
+        error:
+          `A carga NÃO fecha com o arquivo: ${problemas.join(' e ')}. ` +
+          `A base ficou com o conteúdo enviado, mas confira o arquivo e recarregue antes de usar os números.`,
+      }
+    }
+
+    // Provisiona no de-para editável (0260) uma linha para cada par NOVO do arquivo, com
+    // destino em branco — é isso que faz o par aparecer na BANDEJA do editor, e não só na
+    // bandeja da leitura. Roda DEPOIS do alarme: se a carga não fecha, não se mexe na
+    // curadoria. Falha aqui NÃO derruba o upload (a leitura já mostra o par não classificado
+    // pelo LEFT JOIN da view) — vira aviso, porque o dado carregado está correto.
+    const supabase = getAdminClient()
+    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
+    const prov = await bound('provisionar_dre_comp_par')
+    const avisos: string[] = []
+    if (prov.error) {
+      avisos.push(
+        'A base foi carregada e conferida, mas não foi possível atualizar o de-para editável ' +
+        `(${prov.error.message}). Pares novos aparecem como "Não classificadas" no ` +
+        'demonstrativo; abrir "Editar estrutura" provisiona de novo.',
+      )
+    } else {
+      const p = parseRpc(provisionarDreCompParSchema, prov, 'provisionar_dre_comp_par')
+      if (p && p.novos > 0) {
+        avisos.push(
+          `${p.novos} par(es) novo(s) do arquivo entraram como "Não classificadas" — ` +
+          'classifique-os em Editar estrutura para que entrem no demonstrativo.',
+        )
+      }
+    }
+
+    return { sucesso: true, status, avisos }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

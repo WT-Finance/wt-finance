@@ -19,8 +19,8 @@ import {
   coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
 } from './fluxo/rpc-fluxo'
 import {
-  dreMensalSchema, dreEstruturaSchema, salvarEstruturaResultSchema, historicoLotesSchema,
-  historicoEntradasSchema, decomposicaoBlocoSchema,
+  dreMensalSchema, dreCompMensalSchema, dreCompEstruturaSchema, dreEstruturaSchema, salvarEstruturaResultSchema,
+  historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
 import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
@@ -1461,5 +1461,184 @@ describe.skipIf(!ON)('contrato DRE — Maiores variações reconcilia com o YTD 
     }
     expect(divergentes,
       'Maiores variações e Demonstrativo discordam — as janelas voltaram a divergir').toEqual([])
+  })
+})
+
+// ── v5.8.0 · DRE por COMPETÊNCIA (get_dre_competencia_mensal, 0257) ───────────
+// O oráculo NÃO crava número: a fonte é um upload que o Yan re-gera, e teste que crava
+// número de dado editável nasce falso-vermelho (lição da v5.7.2). O que se afirma aqui é
+// a IDENTIDADE — `REX ≡ Σ das linhas classificadas` e `base = linhas + bandeja +
+// excluídas` —, medida contra a própria base carregada. Se a estrutura estiver errada,
+// esses números divergem entre si e o teste cai, com qualquer safra de arquivo.
+// A álgebra da árvore (REX com coeficiente +1 em cada folha, REXG cancelando REEMB) é
+// provada sem banco em `src/lib/dre/competencia-estrutura.test.ts`.
+describe.skipIf(!ON)('contrato RPC — DRE por competência (v5.8.0)', () => {
+  const ANOS = [2024, 2025, 2026]
+  const cent = (v: number) => Math.round(v * 100)
+
+  it('shape do envelope bate com dreCompMensalSchema em todos os anos da base', async () => {
+    for (const ano of ANOS) {
+      const d = await rpc('get_dre_competencia_mensal', { p_ano: ano })
+      const parsed = dreCompMensalSchema.safeParse(d)
+      expect(parsed.success, `${ano}: ${parsed.success ? '' : parsed.error.message}`).toBe(true)
+    }
+  })
+
+  it('ORÁCULO: REX ≡ soma de todas as linhas classificadas do ano, ao centavo', async () => {
+    for (const ano of ANOS) {
+      const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      const rex = d.linhas.find(l => l.t !== 'cat' && l.chave === 'REX')
+      expect(rex, `${ano}: linha REX ausente`).toBeDefined()
+      expect(cent(rex!.total), `${ano}: REX × soma da base`).toBe(d.reconciliacao.linhas_centavos)
+    }
+  })
+
+  it('completude: base = linhas + bandeja + excluídas (nada some em silêncio)', async () => {
+    for (const ano of ANOS) {
+      const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      const r = d.reconciliacao
+      expect(r.base_centavos, `${ano}: reconciliação`).toBe(
+        r.linhas_centavos + r.bandeja_centavos + r.excluidas_centavos,
+      )
+      expect(r.fecha, `${ano}: a própria RPC declara que não fecha`).toBe(true)
+    }
+  })
+
+  it('REXG = REX − REEMB (o Resultado Gerencial é o REX sem os reembolsos)', async () => {
+    for (const ano of ANOS) {
+      const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      const bloco = (chave: string) => d.linhas.find(l => l.t !== 'cat' && l.chave === chave)
+      const rex = bloco('REX'), rexg = bloco('REXG'), reemb = bloco('REEMB')
+      expect([rex, rexg, reemb].every(Boolean), `${ano}: falta REX/REXG/REEMB`).toBe(true)
+      expect(cent(rexg!.total), `${ano}: REXG`).toBe(cent(rex!.total) - cent(reemb!.total))
+    }
+  })
+
+  it('toda linha traz 12 meses e o total é a soma deles', async () => {
+    for (const ano of ANOS) {
+      const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      for (const l of [...d.linhas, ...d.bandeja]) {
+        expect(l.meses).toHaveLength(12)
+        // ±1 centavo: cada mês é arredondado no banco, e a soma de 12 arredondamentos
+        // pode fechar com 1 centavo de diferença do total (não se maquia — v5.7.0).
+        const somaMeses = l.meses.reduce((a, x) => a + cent(x), 0)
+        expect(Math.abs(cent(l.total) - somaMeses), `${ano}: ${l.rotulo}`).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+
+  it('a FUSÃO não vaza: um destino (bloco, rótulo) aparece uma única vez', async () => {
+    for (const ano of ANOS) {
+      const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      const cats = d.linhas.filter(l => l.t === 'cat')
+      const destinos = new Set(cats.map(l => `${l.g}␟${l.rotulo}`))
+      expect(destinos.size, `${ano}: destino repetido — duas pernas de fusão viraram duas linhas`)
+        .toBe(cats.length)
+      expect(cats.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('a estrutura tem a MESMA forma em todos os anos (linha vem do de-para, não do dado)', async () => {
+    const formas: string[][] = []
+    for (const ano of ANOS) {
+      const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      formas.push(d.linhas.map(l => `${l.t}:${l.chave ?? ''}:${l.g ?? ''}:${l.rotulo}`))
+    }
+    // Ano sem valor numa linha mostra zero; não faz a linha desaparecer. É o que deixa a
+    // visão Consolidado casar linha com linha entre anos.
+    for (let i = 1; i < formas.length; i++) expect(formas[i]).toEqual(formas[0])
+  })
+
+  it('a base da Análise Vertical (RB_H) existe na árvore de competência', async () => {
+    // `src/lib/dre/av.ts` divide pela linha de chave `CHAVE_BASE_AV = 'RB_H'`. Sem essa
+    // chave a coluna AV da seção nova viraria travessão inteira, em silêncio.
+    const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: 2025 }))
+    expect(d.linhas.some(l => l.chave === 'RB_H')).toBe(true)
+  })
+
+  it('relacao e mes_corrente saem da COBERTURA da base, coerentes entre si', async () => {
+    for (const ano of ANOS) {
+      const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      if (d.relacao === 'corrente') {
+        expect(d.mes_corrente, `${ano}: corrente sem mês`).toBeGreaterThanOrEqual(1)
+        expect(d.mes_corrente!, `${ano}: corrente com mês 12 deveria ser fechado`).toBeLessThan(12)
+      } else {
+        expect(d.mes_corrente, `${ano}: ${d.relacao} deveria ter mes_corrente nulo`).toBeNull()
+      }
+      // competência não tem previsto: nenhuma linha traz projeção
+      for (const l of d.linhas) {
+        expect(l.prev_corrente ?? null, `${ano}: ${l.rotulo} com previsto`).toBeNull()
+        expect(l.venc, `${ano}: ${l.rotulo} com vencido`).toBe(0)
+      }
+    }
+  })
+
+  it('dre_comp_estrutura: shape do editor + coerência com a árvore', async () => {
+    const e = dreCompEstruturaSchema.parse(await rpc('dre_comp_estrutura', {}))
+    expect(e.token).not.toBeNull()
+    expect(e.blocos.length).toBeGreaterThan(0)
+
+    // Todo destino usado por uma linha existe e é FOLHA (`formula` nula). Linha de fórmula
+    // não recebe par: receber faria o valor entrar duas vezes na expansão (0257).
+    const folhas = new Set(e.blocos.filter(b => b.formula === null).map(b => b.chave))
+    for (const m of e.maps) {
+      if (m.bloco_chave !== null) {
+        expect(folhas.has(m.bloco_chave), `destino ${m.bloco_chave} não é folha da árvore`).toBe(true)
+      }
+    }
+
+    // Identidade única e sem sobreposição entre classificadas/excluídas e bandeja.
+    const idsMaps = e.maps.map(m => m.categoria_id)
+    const idsBand = e.bandeja.map(b => b.categoria_id)
+    expect(new Set(idsMaps).size).toBe(idsMaps.length)
+    expect(new Set(idsBand).size).toBe(idsBand.length)
+    expect(idsMaps.filter(id => idsBand.includes(id))).toEqual([])
+
+    // `totais` só fala de linhas que existem.
+    const todos = new Set([...idsMaps, ...idsBand].map(String))
+    for (const id of Object.keys(e.totais)) expect(todos.has(id), `total órfão para a linha ${id}`).toBe(true)
+
+    // O CHECK do banco em forma observável: excluída nunca convive com bloco.
+    for (const m of e.maps) {
+      if (m.excluida) expect(m.bloco_chave, `linha ${m.categoria_id} excluída E num bloco`).toBeNull()
+    }
+  })
+
+  it('o EDITOR e o DEMONSTRATIVO concordam sobre o que está classificado', async () => {
+    // Dois números vizinhos na mesma tela pedem caso de contrato (lição da v5.7.1) — aqui
+    // são duas TELAS lendo a mesma curadoria por RPCs diferentes. Se divergirem, o editor
+    // mostra uma linha classificada que o demonstrativo não exibe (ou o contrário).
+    const e = dreCompEstruturaSchema.parse(await rpc('dre_comp_estrutura', {}))
+    const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: 2025 }))
+
+    const doEditor = new Set(
+      e.maps.filter(m => !m.excluida && m.bloco_chave !== null).map(m => `${m.bloco_chave}␟${m.rotulo}`),
+    )
+    const doDemonstrativo = new Set(
+      d.linhas.filter(l => l.t === 'cat').map(l => `${l.g}␟${l.rotulo}`),
+    )
+    expect([...doDemonstrativo].filter(k => !doEditor.has(k)),
+      'o demonstrativo exibe linha que o editor não tem como classificada').toEqual([])
+    expect([...doEditor].filter(k => !doDemonstrativo.has(k)),
+      'o editor tem linha classificada que o demonstrativo não exibe').toEqual([])
+
+    // E a bandeja também: mesma órfã dos dois lados.
+    const bandEditor = new Set(e.bandeja.map(b => b.nome))
+    const bandDemo = new Set(d.bandeja.map(b => `${b.grupo_monde} · ${b.rotulo}`))
+    for (const k of bandDemo) {
+      expect(bandEditor.has(k), `órfã "${k}" aparece no demonstrativo mas não na bandeja do editor`).toBe(true)
+    }
+  })
+
+  it('os anos que a RPC anuncia são os anos que respondem', async () => {
+    const d = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: 2025 }))
+    expect(d.anos.length).toBeGreaterThan(0)
+    expect(d.cobertura_de).not.toBeNull()
+    expect(d.cobertura_ate).not.toBeNull()
+    // o recorte de um ano anunciado tem de trazer dado (base_centavos ≠ base vazia)
+    for (const ano of d.anos) {
+      const x = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: ano }))
+      expect(x.relacao, `${ano} está em anos[] mas responde como vazio`).not.toBe('futuro')
+    }
   })
 })

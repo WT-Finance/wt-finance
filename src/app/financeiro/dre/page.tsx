@@ -9,10 +9,12 @@ import { rpcDre } from '@/lib/dre/rpc-dre'
 import { buscarUltimaCargaMovimentacao } from '@/lib/dre/ultima-carga-movimentacao'
 import {
   dreMensalSchema,
-  type DreMensal,
+  dreCompMensalSchema,
+  type DreMensalLike,
   type DreLinha,
-  type DreBandeja,
+  type DreBandejaLinha,
 } from '@/lib/dre/schemas'
+import { chaveDeLinha, chaveDeBandeja } from '@/lib/dre/identidade'
 import { rankingCaixaSchema, type RankingCaixa as RankingCaixaData } from '@/lib/fluxo/rpc-fluxo'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import TopSection from '@/components/shared/top-section'
@@ -42,8 +44,22 @@ import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 // RBAC: área própria 'financeiro/dre' (0197) — cobre ver E editar a estrutura (decisão
 // firme; divisão ver/editar = futuro se precisar).
 
+// ── Regime de COMPETÊNCIA (v5.8.0) ───────────────────────────────────────────
+// A página passou a ter DUAS TopSections, e a de competência vem PRIMEIRO (decisão do
+// Yan): fato gerador = data de EMISSÃO, fonte = `raw.demonstrativo_competencia` (upload
+// próprio) lida por `get_dre_competencia_mensal` (0257), com árvore e de-para PRÓPRIOS
+// (`financeiro.dre_comp_bloco`/`dre_comp_map`). O motor de caixa não é tocado.
+//
+// Cada regime navega o SEU parâmetro de URL — `?ano=` (caixa) e `?anoComp=` (competência).
+// Um só faria a pill de um mover o outro.
+//
+// FAIL-SAFE: a seção nova só renderiza se a RPC do ano pedido respondeu. Ela é a primeira
+// coisa da página, então um bloco quebrado no topo seria pior que a ausência dela — e o
+// regime de caixa, que é a leitura consolidada da casa, segue inteiro de qualquer forma.
+
 interface SearchParams {
   ano?: string
+  anoComp?: string
 }
 
 function clamp(v: number, min: number, max: number): number {
@@ -66,6 +82,17 @@ export default async function DrePage({
   const anoPedido       = parseInt(sp.ano ?? '', 10) || anoCorrente
   const ano             = clamp(anoPedido, anoCorrente - 2, anoCorrente)
   const anosDisponiveis = [anoCorrente - 2, anoCorrente - 1, anoCorrente]
+
+  // Ano da seção de COMPETÊNCIA — parâmetro PRÓPRIO, mesma janela de 3 anos. A cobertura
+  // real da base vem no payload (`anos`), e a pill de um ano sem dado fica desabilitada
+  // pelo mesmo caminho que o caixa já usa (`consolidadoAnos` sem o ano ⇒ `semBase`).
+  // ⚠️ Registrado: cobertura FORA da janela de 3 anos não é oferecida — é a mesma
+  // limitação que o regime de caixa já tem, e hoje a base começa exatamente em 2024.
+  const anoComp = clamp(
+    parseInt(sp.anoComp ?? '', 10) || anoCorrente,
+    anoCorrente - 2,
+    anoCorrente,
+  )
 
   const db = await getServerClient()
 
@@ -100,6 +127,11 @@ export default async function DrePage({
       // "Maiores variações" (v5.7.0) — veio do Fluxo de Caixa. Entra no MESMO estágio:
       // é mais uma chamada em paralelo, então não custa wall-clock nenhum.
       rpcDre(db, 'get_fluxo_ranking'),
+      // ⚠️ COMPETÊNCIA ENTRA NO FIM, e nunca no meio (v5.8.0). Os índices deste array são
+      // POSICIONAIS: a v5.7.1 já pagou por isso — tirar uma chamada do meio fez o ranking
+      // ler o payload de um ANO da DRE, o `parseRpc` rejeitou em silêncio e o card virou
+      // "sem movimentações". Acrescentar no fim não desloca ninguém.
+      ...anosDisponiveis.map(a => rpcDre(db, 'get_dre_competencia_mensal', { p_ano: a })),
     ]).then(rs => rs.map(r => (r.status === 'fulfilled' ? r.value : empty))),
     buscarUltimaCargaMovimentacao(),
   ])
@@ -112,6 +144,17 @@ export default async function DrePage({
   // meio do array sem mexer aqui faria o ranking ler o payload de um ANO da DRE, que o
   // `parseRpc` rejeitaria em silêncio e o card viraria "sem movimentações".
   const rankingRes = resultados[anosDre.length]
+
+  // Competência: os `anosDisponiveis.length` últimos itens, na ordem em que foram pedidos.
+  // O deslocamento é `anosDre.length + 1` (os anos do caixa + o ranking) — declarado aqui
+  // uma vez, e não espalhado em índices literais.
+  const OFFSET_COMP = anosDre.length + 1
+  const dreCompAnos = new Map(
+    anosDisponiveis.map((a, i) => [
+      a,
+      parseRpc(dreCompMensalSchema, resultados[OFFSET_COMP + i], `get_dre_competencia_mensal(${a})`),
+    ]),
+  )
 
   const dre = dreAnos.get(ano) ?? null
 
@@ -133,13 +176,23 @@ export default async function DrePage({
    *  (categorias e bandeja) — o MESMO par de chaves que a tabela usa para casar as linhas
    *  entre anos (a estrutura pode ter mudado de um ano para o outro; casar por chave, e
    *  não por posição, é o que impede a coluna de escorregar de linha). */
-  function indexar<T>(p: DreMensal, valor: (l: DreLinha | DreBandeja) => T): Record<string, T> {
+  //
+  // ⚠️ A convenção de chave NÃO mora aqui: vem de `@/lib/dre/identidade`, o MESMO módulo
+  // que a TABELA usa para CONSULTAR estes mapas. Enquanto eram duas implementações (uma
+  // aqui, outra lá), a igualdade dependia de ninguém mexer numa só — e divergir é
+  // silencioso: a coluna do Consolidado passa a ler o valor de outra linha. A função
+  // serve aos DOIS regimes, porque a identidade de cada espécie de folha está resolvida
+  // dentro dela. (Deduplicação feita na v5.8.0, achado MÉDIO do `revisor`.)
+  function indexar<T>(
+    p: DreMensalLike,
+    valor: (l: DreLinha | DreBandejaLinha) => T,
+  ): Record<string, T> {
     const m: Record<string, T> = {}
     for (const l of p.linhas) {
-      if (l.t === 'cat') { if (l.categoria_id != null) m[`c:${l.categoria_id}`] = valor(l) }
-      else if (l.chave) { m[`b:${l.chave}`] = valor(l) }
+      const k = chaveDeLinha(l)
+      if (k) m[k] = valor(l)
     }
-    for (const b of p.bandeja) m[`c:${b.categoria_id}`] = valor(b)
+    for (const b of p.bandeja) m[chaveDeBandeja(b)] = valor(b)
     return m
   }
 
@@ -184,8 +237,65 @@ export default async function DrePage({
   const rankingCaixa: RankingCaixaData =
     parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
 
+  // ── COMPETÊNCIA: mesma montagem do caixa, pelo MESMO `indexar` ────────────────
+  const consolidadoAnosComp = anosDisponiveis
+    .map(a => {
+      const p = dreCompAnos.get(a)
+      if (!p) return null
+      return {
+        ano: a,
+        // No caixa, `corrente` quer dizer "ano com previsto em aberto". Na competência
+        // não existe previsto — mas o campo tem o MESMO efeito útil: ele é o que impede a
+        // visão Consolidado de mostrar uma coluna "ano inteiro" para um ano que não está
+        // inteiro. Aqui `relacao === 'corrente'` significa "ano ainda não coberto até
+        // dezembro pela base", e é exatamente quando rotular o total de "2026" seria
+        // mentira (a base cobre jan–ago). PREV/VENCIDOS não voltam por isso: o modo está
+        // travado em 'realizado', e `montarColunasCons` retorna antes de chegar neles.
+        corrente: p.relacao === 'corrente',
+        porLinha: indexar(p, l => ({
+          total: l.total,
+          ytd:   l.meses.slice(0, mesJanela).reduce((s, v) => s + v, 0),
+          venc:  l.venc,
+        })),
+      }
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+
+  const dreComp = dreCompAnos.get(anoComp) ?? null
+  // Qualquer ano que tenha carregado serve: a data de carga descreve a BASE inteira, não o
+  // ano navegado — é ela que alimenta o selo de frescor no canto do card.
+  const compQualquer = dreComp ?? consolidadoAnosComp.map(c => dreCompAnos.get(c.ano)).find(Boolean) ?? null
+
   return (
-    <div>
+    <div className="space-y-6">
+      {/* ── Regime de COMPETÊNCIA — PRIMEIRO na página (decisão do Yan, v5.8.0) ──
+          Só renderiza com dado: a seção é a primeira coisa que se vê, e um bloco
+          quebrado no topo é pior que a ausência dele. O regime de caixa abaixo segue
+          inteiro em qualquer cenário. */}
+      {compQualquer && (
+        <TopSection titulo="Regime de Competência">
+          <TabelaDre
+            dados={dreComp}
+            ano={anoComp}
+            anosDisponiveis={anosDisponiveis}
+            /* Competência não tem anos seguintes: não há projeção a mostrar. */
+            anosSeguintes={[]}
+            consolidadoAnos={consolidadoAnosComp}
+            mesJanela={mesJanela}
+            ultimaCargaMovimentacao={compQualquer.carregado_em}
+            titulo="Demonstrativo de Resultado por Competência"
+            paramAno="anoComp"
+            semPrevisto
+            slotAcoes={
+              <Link href="/financeiro/dre/estrutura-competencia" className={`${PILL} ${PILL_NEUTRO}`}>
+                <SquarePen size={13} />
+                Editar estrutura
+              </Link>
+            }
+          />
+        </TopSection>
+      )}
+
       <TopSection titulo="Regime de Caixa">
         {/* ORDEM DOS CARDS (v5.7.0, decisão do Yan): Resumo Executivo → DRE → Maiores
             variações → Decomposição. A leitura vai do agregado ao detalhe — as seis
