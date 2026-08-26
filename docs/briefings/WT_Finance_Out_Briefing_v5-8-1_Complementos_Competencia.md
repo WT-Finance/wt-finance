@@ -384,3 +384,42 @@ intocado. Nove testes cobrem os dois riscos, incluindo o caso misto.
 **Alternativa descartada:** renomear a linha no editor da estrutura. Resolveria na origem,
 mas é alteração de DADO de produção — decisão sua, não minha, e continua disponível se
 preferir que a tabela também mostre o rótulo capitalizado.
+
+---
+
+## 12. A reorganização da página (4ª conferência)
+
+A página passa a ter **três** TopSections, e a primeira deixa de ser um regime:
+
+| Seção | Cards |
+|---|---|
+| **Visão Geral** (nova) | Resumo Executivo · Competência · Resumo Executivo · Caixa · **Ponte Competência ↔ Caixa** |
+| **Regime de Competência** | Demonstrativo por Competência · **Decomposição da Variação do Resultado** |
+| **Regime de Caixa** | Demonstrativo por Fluxo de Caixa · Maiores variações |
+
+**Por que a ponte subiu.** Ela fala dos DOIS regimes — não pertence a nenhum deles. Estava na
+seção de competência por falta de lugar melhor, e a Visão Geral é esse lugar: a ordem dos três
+cards é a ordem em que a pergunta nasce (vê-se um resultado, vê-se o outro, e a pergunta
+seguinte é "por que diferem?").
+
+**Por que a decomposição ficou.** Os degraus dela são folhas da árvore de **competência**, e o
+demonstrativo logo acima é onde se confere cada uma. Ela decompõe um regime; a ponte concilia
+dois.
+
+Os dois Resumos ganharam sufixo (`· Competência` / `· Caixa`), que passou a ser necessário
+agora que dividem a mesma seção.
+
+### Removido por perder consumidor
+
+O **rodapé da ponte com as duas datas-base** saiu a pedido. A informação de carga não se
+perde: os selos "Última atualização em …" dos dois demonstrativos seguem no lugar. Saíram
+junto a prop `rodape` do `CascataCard` e o import `fmtDataSP` da página — sem chamador,
+seriam código morto.
+
+### ⚠️ Um ponto que fica registrado, não corrigido
+
+O subtítulo pedido para a decomposição diz **"Δ% YTD 25·26"**, mas os degraus daquela cascata
+estão em **reais** (`R$ -724,2 k`, `R$ 282,5 k`…), não em percentual. Se a intenção era só
+marcar a variação YTD 25 → 26, **"Δ YTD 25·26"** (sem o `%`) seria fiel ao que a figura
+mostra — e é exatamente o rótulo que a coluna do Resumo Executivo já usa. Ficou como pedido;
+a troca é de uma string em `src/app/financeiro/dre/page.tsx`.
