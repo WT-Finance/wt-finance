@@ -52,6 +52,7 @@ import Tooltip from '@/components/ui/tooltip'
 import { ConteudoContabil, corPorSinal } from './celula-contabil'
 import { AnoPills } from './tabela-dre'
 import type { ConsolidadoAno } from '@/lib/dre/schemas'
+import { LINHAS_CAIXA, type LinhaResumo } from '@/lib/dre/linhas-resumo'
 
 interface Props {
   /** Janela navegável [corrente-2, corrente] — as pills que existem, mesmo as que a
@@ -61,6 +62,18 @@ interface Props {
   /** Um item por ano da janela que a página conseguiu carregar, ASCENDENTE. Ano cuja
    *  RPC falhou simplesmente não vem. */
   consolidadoAnos: ConsolidadoAno[]
+  /** Linhas exibidas. Default: as 6 do regime de CAIXA (`LINHAS`). O regime de
+   *  competência passa as suas 8 — ver a nota "servindo aos dois regimes" abaixo. */
+  linhas?: ReadonlyArray<LinhaResumo>
+  /** Título do card. Default 'Resumo Executivo' nos dois regimes — o que distingue os
+   *  dois cards é a TopSection em que cada um mora, não o título. */
+  titulo?: string
+  /** Sobrescreve o texto do "?". A competência precisa do seu porque a janela do YTD
+   *  dela NÃO é a do calendário. */
+  ajuda?: string
+  /** Linha de contexto sob o título, entre ele e as pills. Só a competência usa: é
+   *  onde ela declara a janela real do YTD. */
+  subtitulo?: string
 }
 
 /** O aviso do "?" ao lado do título. Mudou na v5.7.0: antes explicava a ancoragem fixa
@@ -73,24 +86,20 @@ const AJUDA =
   'mês corrente); a coluna do ano cheio aparece apenas para anos já encerrados, porque no ' +
   'ano corrente o total do ano incluiria previsto.'
 
-/** As 6 linhas-chave, nesta ordem — casadas por CHAVE (`b:<chave>` em `porLinha`),
- *  nunca por nome nem por posição (a estrutura pode reordenar/renomear entre anos — e
- *  renomeou na própria v5.7.0). O `prefixo` contábil é separado do rótulo de propósito:
- *  é a coluna estreita que alinha verticalmente os seis sinais.
+/** ── SERVINDO AOS DOIS REGIMES (v5.8.1) ──────────────────────────────────────
+ *  As listas de linhas dos dois regimes vivem em `@/lib/dre/linhas-resumo` (módulo
+ *  PURO): o caso de contrato que confronta essas chaves contra a árvore VIVA precisa
+ *  importá-las, e este arquivo é `'use client'` — importá-lo num teste de node
+ *  arrastaria React e a árvore de UI junto.
  *
- *  v5.7.1 — a Receita Bruta passou de `(+)` para `(=)`. Ela sempre foi um SUBTOTAL
- *  (`REPASSE + RV`), mas estava tipada como cabeçalho de grupo e marcada aqui como
- *  entrada; a v5.7.1 a promoveu a linha de RESULTADO na estrutura, e o prefixo segue o
- *  papel. Consequência: as seis linhas são resultados, e a coluna de prefixo deixou de
- *  distinguir entrada de resultado — ela agora só alinha os sinais verticalmente. */
-const LINHAS: ReadonlyArray<{ prefixo: string; rotulo: string; chave: string }> = [
-  { prefixo: '(=)', rotulo: 'Saldo Repasse',          chave: 'REPASSE' },
-  { prefixo: '(=)', rotulo: 'Receita Bruta',          chave: 'RB_H' },
-  { prefixo: '(=)', rotulo: 'Receita Op. Líquida',    chave: 'ROL' },
-  { prefixo: '(=)', rotulo: 'Lucro Bruto',            chave: 'LB' },
-  { prefixo: '(=)', rotulo: 'Lucro Operacional',      chave: 'LOP' },
-  { prefixo: '(=)', rotulo: 'Resultado do Exercício', chave: 'REX' },
-] as const
+ *  Por que o componente é o MESMO para os dois regimes, e não um irmão: o desenho é
+ *  idêntico — pills de ano com seleção aditiva, anos cheios só de exercício encerrado,
+ *  YTD de todos os anos marcados e o Δ em REAIS entre os dois últimos de cada grupo.
+ *  Duas cópias divergiriam no primeiro ajuste visual, e é exatamente o que a `TabelaDre`
+ *  evitou na v5.8.0 ao ser parametrizada por props ADITIVAS: o call-site do caixa não
+ *  muda uma linha, então o render dele segue idêntico POR CONSTRUÇÃO, não por
+ *  conferência. */
+const LINHAS = LINHAS_CAIXA
 
 /** Uma coluna do resumo. `campo` diz de onde o número sai; `delta` é a subtração de
  *  duas colunas do MESMO campo (nunca de campos diferentes — ano cheio menos YTD não
@@ -189,7 +198,17 @@ function CelulaValor({ valor }: { valor: number | null }) {
   )
 }
 
-export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Props) {
+export default function ResumoExecutivo({
+  anosDisponiveis,
+  consolidadoAnos,
+  linhas: linhasProp,
+  titulo = 'Resumo Executivo',
+  ajuda: ajudaProp,
+  subtitulo,
+}: Props) {
+  const linhas = linhasProp ?? LINHAS
+  const ajuda = ajudaProp ?? AJUDA
+
   // Default = os DOIS anos mais recentes (v5.7.2, decisão do Yan). Na v5.7.1 nasciam
   // TODOS os carregados, para o card não perder informação ao ganhar as pills; na prática
   // três anos abriam 7 colunas e a leitura útil é o ano fechado contra o corrente. Mesmo
@@ -235,21 +254,24 @@ export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Pr
           `!whitespace-normal` é obrigatório (o balão nasce `whitespace-nowrap`, e sem o
           `!` quem decide é a ORDEM DO CSS GERADO, não a ordem das classes). */}
       <div className="mb-4">
-        <div className="mb-3 flex items-center gap-1.5">
-          <h2 className="text-[15px] font-semibold text-text-primary">Resumo Executivo</h2>
+        <div className={`flex items-center gap-1.5 ${subtitulo ? 'mb-1' : 'mb-3'}`}>
+          <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
           {/* `<button type="button">`, nunca `<span>` — receita da skill ui-design-system §2:
               `span` fica fora do tab-order e o balão, que também abre no FOCO, se torna
               inalcançável por teclado. (Achado ALTO do revisor na v5.4.2 e de novo na v5.7.0.) */}
-          <Tooltip conteudo={AJUDA} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
+          <Tooltip conteudo={ajuda} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
             <button
               type="button"
-              aria-label={`Resumo Executivo: ${AJUDA}`}
+              aria-label={`${titulo}: ${ajuda}`}
               className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
             >
               ?
             </button>
           </Tooltip>
         </div>
+        {/* Só a competência usa: é onde ela declara a janela REAL do YTD, que não é a do
+            calendário (ver `janela-competencia.ts`). Sem chamador, não ocupa espaço. */}
+        {subtitulo && <p className="mb-3 text-[11px] text-text-secondary">{subtitulo}</p>}
         {/* Pills ABAIXO do título e à esquerda (v5.7.0, conferência do Yan) — a MESMA
             anatomia do card da tabela: título, depois a faixa de controles. Encostadas à
             direita do título elas ficavam longe da tabela que governam e desalinhadas das
@@ -290,10 +312,10 @@ export default function ResumoExecutivo({ anosDisponiveis, consolidadoAnos }: Pr
               </tr>
             </thead>
             <tbody>
-              {LINHAS.map(({ prefixo, rotulo, chave }, i) => {
+              {linhas.map(({ prefixo, rotulo, chave }, i) => {
                 // A última linha dispensa a régua de baixo: a borda do box já está ali,
                 // e as duas juntas desenhariam uma linha dupla.
-                const ultima = i === LINHAS.length - 1
+                const ultima = i === linhas.length - 1
                 return (
                   <tr key={chave} className={ultima ? '[&>td]:border-b-0' : undefined}>
                     <td className={`h-9 ${BG_LINHA} border-b border-b-wt-border pl-3 pr-3`}>

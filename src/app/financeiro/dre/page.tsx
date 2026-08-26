@@ -16,16 +16,15 @@ import {
 } from '@/lib/dre/schemas'
 import { chaveDeLinha, chaveDeBandeja } from '@/lib/dre/identidade'
 import { janelaYtdCompetencia, rotuloJanela } from '@/lib/dre/janela-competencia'
-import { montarLinhasChave } from '@/lib/dre/linhas-chave'
 import { montarDecomposicao } from '@/lib/dre/decomposicao-variacao'
 import { montarPonte } from '@/lib/dre/ponte-regimes'
-import LinhasChaveCompetencia from '@/components/financeiro/dre/linhas-chave-competencia'
 import CascataCard from '@/components/financeiro/dre/cascata-card'
 import { rankingCaixaSchema, type RankingCaixa as RankingCaixaData } from '@/lib/fluxo/rpc-fluxo'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import TopSection from '@/components/shared/top-section'
 import TabelaDre from '@/components/financeiro/dre/tabela-dre'
 import ResumoExecutivo from '@/components/financeiro/dre/resumo-executivo'
+import { LINHAS_COMPETENCIA } from '@/lib/dre/linhas-resumo'
 import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 
 // DRE por Fluxo de Caixa (v5.3.0 · Onda 2) — a tabela hierárquica da controladoria
@@ -244,28 +243,38 @@ export default async function DrePage({
     parseRpc(rankingCaixaSchema, rankingRes, 'get_fluxo_ranking') ?? { pioraram: [], melhoraram: [] }
 
   // ── COMPETÊNCIA: mesma montagem do caixa, pelo MESMO `indexar` ────────────────
-  const consolidadoAnosComp = anosDisponiveis
-    .map(a => {
-      const p = dreCompAnos.get(a)
-      if (!p) return null
-      return {
-        ano: a,
-        // No caixa, `corrente` quer dizer "ano com previsto em aberto". Na competência
-        // não existe previsto — mas o campo tem o MESMO efeito útil: ele é o que impede a
-        // visão Consolidado de mostrar uma coluna "ano inteiro" para um ano que não está
-        // inteiro. Aqui `relacao === 'corrente'` significa "ano ainda não coberto até
-        // dezembro pela base", e é exatamente quando rotular o total de "2026" seria
-        // mentira (a base cobre jan–ago). PREV/VENCIDOS não voltam por isso: o modo está
-        // travado em 'realizado', e `montarColunasCons` retorna antes de chegar neles.
-        corrente: p.relacao === 'corrente',
-        porLinha: indexar(p, l => ({
-          total: l.total,
-          ytd:   l.meses.slice(0, mesJanela).reduce((s, v) => s + v, 0),
-          venc:  l.venc,
-        })),
-      }
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
+  //
+  // A janela do YTD é PARÂMETRO porque a competência precisa das duas: a tabela densa
+  // segue no calendário (`mesJanela`, como a v5.8.0 entregou) e o Resumo Executivo corta
+  // pela cobertura real da base (`mCob`, decisão da v5.8.1). Ver `janela-competencia.ts`
+  // para o porquê — e note que os dois consumidores partem do MESMO payload e do MESMO
+  // `indexar`, então a diferença entre eles é só a janela, nunca a fonte.
+  function consolidadoComp(janelaYtd: number) {
+    return anosDisponiveis
+      .map(a => {
+        const p = dreCompAnos.get(a)
+        if (!p) return null
+        return {
+          ano: a,
+          // No caixa, `corrente` quer dizer "ano com previsto em aberto". Na competência
+          // não existe previsto — mas o campo tem o MESMO efeito útil: ele é o que impede a
+          // visão Consolidado de mostrar uma coluna "ano inteiro" para um ano que não está
+          // inteiro. Aqui `relacao === 'corrente'` significa "ano ainda não coberto até
+          // dezembro pela base", e é exatamente quando rotular o total de "2026" seria
+          // mentira (a base cobre jan–ago). PREV/VENCIDOS não voltam por isso: o modo está
+          // travado em 'realizado', e `montarColunasCons` retorna antes de chegar neles.
+          corrente: p.relacao === 'corrente',
+          porLinha: indexar(p, l => ({
+            total: l.total,
+            ytd:   l.meses.slice(0, janelaYtd).reduce((s, v) => s + v, 0),
+            venc:  l.venc,
+          })),
+        }
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+  }
+
+  const consolidadoAnosComp = consolidadoComp(mesJanela)
 
   const dreComp = dreCompAnos.get(anoComp) ?? null
   // Qualquer ano que tenha carregado serve: a data de carga descreve a BASE inteira, não o
@@ -295,18 +304,13 @@ export default async function DrePage({
   const mCob = compCorrente ? janelaYtdCompetencia(compCorrente) : 0
   const janela = rotuloJanela(mCob)
 
+  // O Resumo Executivo da competência lê o MESMO consolidado da tabela densa, só que
+  // cortado pela cobertura. É o que garante que ele e o demonstrativo nunca discordem
+  // por CAMINHO — se discordarem, é a janela, e o subtítulo diz qual é.
+  const consolidadoResumoComp = mCob > 0 ? consolidadoComp(mCob) : []
+
   // Fail-safe POR CARD (não por seção): cada um exige o seu e some sozinho. A ponte é a
   // única que depende dos DOIS regimes.
-  const linhasChave = compCorrente && mCob > 0
-    ? montarLinhasChave(
-        [
-          ...(compAnterior ? [{ ano: anoCorrente - 1, payload: compAnterior, fechado: compAnterior.relacao === 'fechado' }] : []),
-          { ano: anoCorrente, payload: compCorrente, fechado: compCorrente.relacao === 'fechado' },
-        ],
-        mCob,
-      )
-    : null
-
   const decomposicao = compCorrente && compAnterior && mCob > 0
     ? montarDecomposicao(
         compCorrente, compAnterior, mCob,
@@ -332,7 +336,22 @@ export default async function DrePage({
               detalhe. As linhas-chave vêm ACIMA da tabela para não obrigar a rolar o
               demonstrativo inteiro até o resumo dele (a correção que o caixa recebeu na
               v5.7.0). */}
-          {linhasChave && <LinhasChaveCompetencia linhas={linhasChave} janela={janela} />}
+          {consolidadoResumoComp.length > 0 && (
+            <ResumoExecutivo
+              anosDisponiveis={anosDisponiveis}
+              consolidadoAnos={consolidadoResumoComp}
+              linhas={LINHAS_COMPETENCIA}
+              subtitulo={`YTD de ${janela} — a janela coberta pela base de competência`}
+              ajuda={
+                'Os anos escolhidos aqui valem só para este resumo — a seleção é independente ' +
+                'das pills da tabela abaixo. "YTD" compara todos os anos na MESMA janela, que ' +
+                'aqui vai de janeiro até o último mês coberto pela base de competência (e não ' +
+                'até o mês do calendário, como no regime de caixa): a base vem de um envio ' +
+                'periódico, e contar meses ainda não enviados como zero encolheria o acumulado ' +
+                'sem aviso. A coluna do ano cheio aparece só para anos já encerrados.'
+              }
+            />
+          )}
 
           <TabelaDre
             dados={dreComp}
@@ -354,11 +373,13 @@ export default async function DrePage({
             }
           />
 
-          {/* Lado a lado, empilhando no mobile. As duas cascatas respondem perguntas
-              vizinhas — "o que mudou desde o ano passado" e "por que o caixa mostra
-              outro número" — e vê-las juntas é o que faz uma explicar a outra. */}
+          {/* EMPILHADAS, cada uma na largura cheia da seção (conferência do Yan). Lado a
+              lado, num grid de 2 colunas, os rótulos longos das folhas quebravam em duas
+              linhas e colidiam com o rótulo de valor da barra vizinha — e são até 18
+              barras por cascata. Largura cheia devolve o espaço horizontal, que é
+              exatamente a dimensão que uma cascata deitada consome. */}
           {(decomposicao || ponte) && (
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div className="space-y-6">
               {decomposicao && (
                 <CascataCard
                   titulo="Decomposição da variação"

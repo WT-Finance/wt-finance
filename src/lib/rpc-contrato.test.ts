@@ -24,7 +24,7 @@ import {
 } from './dre/schemas'
 import { montarPonte } from './dre/ponte-regimes'
 import { montarDecomposicao } from './dre/decomposicao-variacao'
-import { montarLinhasChave } from './dre/linhas-chave'
+import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
 import { janelaYtdCompetencia } from './dre/janela-competencia'
 import { folhasPorGrupo, totalFolhas } from './dre/folhas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
@@ -1706,20 +1706,24 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     }
   })
 
-  it('as linhas-chave leem o mesmo número que o demonstrativo (sem re-agregação própria)', async () => {
+  it('toda linha do Resumo Executivo existe na árvore VIVA do seu regime', async () => {
+    // O Resumo casa as linhas por `b:<chave>` contra o payload. Chave que suma da árvore
+    // — renomeada no editor da estrutura, ou removida — não quebra nada: a linha aparece
+    // VAZIA, em silêncio, num card de manchete que a diretoria lê. Este é o teste que
+    // pega isso, e cobre os DOIS regimes porque o componente agora serve aos dois.
     const anoSP = Number(hojeSP().slice(0, 4))
     const comp = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
-    const m = janelaYtdCompetencia(comp)
+    const caixa = dreMensalSchema.parse(await rpc('get_dre_mensal', { p_ano: anoSP }))
 
-    const linhas = montarLinhasChave(
-      [{ ano: anoSP, payload: comp, fechado: comp.relacao === 'fechado' }], m,
-    )
-
-    for (const l of linhas) {
-      const doPayload = comp.linhas.find(x => x.t !== 'cat' && x.chave === l.chave)
-      if (!doPayload) continue
-      const esperado = doPayload.meses.slice(0, m).reduce((s, v) => s + Math.round(v * 100), 0)
-      expect(Math.round((l.ytd[0].valor ?? 0) * 100), `${l.chave} divergiu da tabela`).toBe(esperado)
+    for (const [nome, payload, linhas] of [
+      ['competência', comp, LINHAS_COMPETENCIA],
+      ['caixa', caixa, LINHAS_CAIXA],
+    ] as const) {
+      const doPayload = new Set(payload.linhas.filter(l => l.t !== 'cat' && l.chave).map(l => l.chave))
+      for (const l of linhas) {
+        expect(doPayload.has(l.chave),
+          `${nome}: o Resumo pede a chave ${l.chave} ("${l.rotulo}"), que a árvore não tem`).toBe(true)
+      }
     }
   })
 

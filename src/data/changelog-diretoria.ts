@@ -63,11 +63,12 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       {
         tipo: 'novidade',
         texto:
-          'Acima do demonstrativo por competência entrou um resumo com as oito linhas ' +
-          'principais (da Receita Bruta ao Resultado Gerencial), com os anos fechados, o ' +
-          'acumulado deste ano contra o do ano passado, a variação percentual entre eles e ' +
-          'quanto cada linha representa da Receita Bruta. Antes era preciso percorrer o ' +
-          'demonstrativo inteiro para chegar a essa leitura.',
+          'Acima do demonstrativo por competência entrou um Resumo Executivo com as oito ' +
+          'linhas principais (da Receita Bruta ao Resultado Gerencial) — o mesmo card que o ' +
+          'demonstrativo por fluxo de caixa já tinha, incluindo os botões de ano para ' +
+          'escolher o que comparar, os anos fechados, o acumulado de cada ano e a diferença ' +
+          'em reais entre eles. Antes era preciso percorrer o demonstrativo inteiro para ' +
+          'chegar a essa leitura.',
       },
       {
         tipo: 'melhoria',

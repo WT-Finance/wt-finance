@@ -1,7 +1,7 @@
 # Out-Briefing v5.8.1 — Complementos da DRE por Competência
 
 **PATCH** · branch `feat/v5-8-1-complementos-competencia` · **ADR-0171** · **ZERO migration** ·
-**1133 testes** (de 1056) · base: `origin/main` em `5f615a1` (pós-merge da v5.8.0, #247)
+**1118 testes** (de 1056) · base: `origin/main` em `5f615a1` (pós-merge da v5.8.0, #247)
 
 ---
 
@@ -14,7 +14,7 @@ Nenhuma RPC nova, nenhuma tabela, nenhuma migration, nenhuma chamada acrescentad
 
 | Componente | O que responde |
 |---|---|
-| **Linhas-chave** (acima do demonstrativo) | "Como estamos, em oito linhas" — anos fechados, par de YTD, Δ% e duas colunas de AV |
+| **Resumo Executivo** (acima do demonstrativo) | "Como estamos, em oito linhas" — pills de ano, anos fechados, YTD e Δ em reais. É o MESMO componente do regime de caixa |
 | **Decomposição da variação** | "O que moveu o resultado contra o ano passado" — cascata por grupo, ordenada por magnitude |
 | **Ponte Competência ↔ Caixa** | **"Por que os dois números desta página são diferentes"** — 16 degraus, do resultado por emissão ao resultado por movimentação |
 
@@ -35,7 +35,7 @@ O briefing foi validado contra o repo real antes de qualquer edição. Sete dive
    O as-built usa `mesJanela` = mês corrente de `hojeSP()`. O conceito existe com outro nome
    (`cobertura_ate`/`mes_corrente` do payload), e a derivação foi escrita nesta versão.
 2. **Contradição interna §1 × §6** (a mais séria): §1 mandava cortar o YTD pela cobertura da
-   base; §6 exigia que as linhas-chave fossem "idênticas às células da tabela densa" — e a
+   base; §6 exigia que o sumário fosse "idêntico às células da tabela densa" — e a
    tabela corta pelo calendário. **Decisão do Yan na abertura: vale a cobertura**, sem alterar
    a tabela densa. Ver §4.
 3. **Distribuição de Lucros:** o anexo a jogava no residual. **Decisão do Yan: degrau próprio**
@@ -137,7 +137,10 @@ novos), `src/components/charts/` (cascata + primitivos) e `src/components/financ
 
 ### Pendente antes/no merge
 
-- 🔴 **Conferência visual — NÃO FEITA.** A tela exige sessão autenticada, e a sessão do agente
+- ✅ **1ª rodada de conferência visual FEITA pelo Yan** (26/08, com o dev server local). Os
+  ajustes pedidos estão no §9 e já foram aplicados. **Falta a 2ª rodada**, confirmando os
+  ajustes — a sessão do agente segue sem poder conferir sozinha (ver abaixo).
+- 🔴 **Conferência visual pelo agente — NÃO FEITA.** A tela exige sessão autenticada, e a sessão do agente
   não insere credenciais (barreira dura, mesmo com senha salva no navegador). O dev server
   subiu e a página respondeu (redirecionou ao login corretamente). É o primeiro passo do merge,
   no modelo da v5.4.1: **entregar → Yan confere no ar → ajustar**.
@@ -149,7 +152,7 @@ novos), `src/components/charts/` (cascata + primitivos) e `src/components/financ
   **O que olhar, em ordem de risco:** (1) a cascata da ponte desenha as barras **negativas**
   (a âncora de competência está negativa hoje) e a linha do zero cai no lugar certo; (2) os
   rótulos do eixo Y não truncam demais no grid de 2 colunas; (3) o rótulo de valor à direita
-  de cada barra não encosta na borda; (4) as linhas-chave batem célula a célula com a tabela
+  de cada barra não encosta na borda; (4) o Resumo Executivo bate célula a célula com a tabela
   densa logo abaixo; (5) a seção de **caixa não mudou nada**.
 - ⚠️ **A hora do `changelog-diretoria.ts` é de AUTORIA** (`2026-08-26T14:30`), não do merge.
   O `/pos-merge` reconcilia ao horário real, como fez na v5.8.0.
@@ -203,3 +206,70 @@ acrescentar à seção "Eixos e formatação de valores":
 > - **Waterfall / cascata** → barra de FAIXA (`dataKey` apontando para `[início, fim]`), nunca o
 >   truque da barra transparente empilhada: o empilhamento manda negativo para o outro lado e a
 >   figura quebra assim que uma âncora cruza o zero.
+
+---
+
+## 9. Ajustes da 1ª conferência visual (26/08, pedidos do Yan)
+
+A conferência no ar produziu quatro ajustes, todos aplicados. Nenhum deles muda um número:
+são de leitura, e três só apareceram na tela.
+
+### 9.1 As "Linhas-chave" viraram o **Resumo Executivo**
+
+Pedido: mesmo card do regime de caixa — perde a AV, o `Δ% 26×25` vira `Δ YTD 25·26` (em
+REAIS) e ganha as pills de ano.
+
+Isso não é renomear um componente, é **descartar o meu e reusar o que já existia**. O
+`ResumoExecutivo` foi parametrizado por props **aditivas** (`linhas`, `titulo`, `ajuda`,
+`subtitulo`) na receita da `TabelaDre` da v5.8.0: o call-site do caixa não muda uma linha,
+então o render dele segue idêntico **por construção**.
+
+Removidos por perderem consumidor (verificado com grep no app e no `supabase/seed/` antes):
+`src/lib/dre/linhas-chave.ts`, o teste dele e
+`src/components/financeiro/dre/linhas-chave-competencia.tsx`. As listas de linhas dos dois
+regimes passaram para `src/lib/dre/linhas-resumo.ts` (módulo puro), para o caso de contrato
+poder importá-las sem arrastar React.
+
+**O caso de contrato mudou de alvo, e melhorou.** "As linhas-chave leem o mesmo número que o
+demonstrativo" perdeu sentido: o Resumo agora lê o MESMO `consolidadoAnos` que a tabela densa,
+montado pela MESMA função e pelo MESMO `indexar` — a garantia virou estrutural, que é melhor
+que um teste. No lugar entrou **"toda linha do Resumo Executivo existe na árvore VIVA do seu
+regime"**, cobrindo os DOIS regimes: uma chave renomeada no editor da estrutura deixaria a
+linha VAZIA, em silêncio, num card que a diretoria lê.
+
+⚠️ **A janela do YTD do Resumo continua sendo a da cobertura.** A página monta o consolidado
+de competência duas vezes — `consolidadoComp(mesJanela)` para a tabela densa e
+`consolidadoComp(mCob)` para o Resumo —, pela mesma função. A decisão do §4 fica de pé, e os
+dois nunca discordam por CAMINHO: se discordarem, é a janela, e o subtítulo diz qual é.
+
+### 9.2 As duas cascatas ficam EMPILHADAS, em largura cheia
+
+Eram um grid de 2 colunas. Com metade da largura, os rótulos longos das folhas ("Despesas
+Operacionais de RH Benefícios") quebravam em duas linhas e colidiam com o rótulo de valor da
+barra vizinha — visível no print. Largura cheia devolve o espaço horizontal, que é exatamente
+a dimensão que uma cascata deitada consome. O teto da largura do eixo de rótulos subiu de
+210px para 280px para aproveitar isso.
+
+### 9.3 Linha do zero no CENTRO (domínio simétrico)
+
+O domínio passou a ser `[-M, +M]`, com `M` = maior magnitude presente + 8% de folga: a linha do
+zero cai no centro do gráfico, melhora à direita e piora à esquerda.
+
+**Detalhe que custou uma tentativa:** isso não dá para fazer com as funções de `domain` do
+Recharts. Cada uma recebe só o SEU extremo (`dataMin` ou `dataMax`), então nenhuma enxerga o
+outro lado para espelhá-lo — o cálculo tem de acontecer no componente, com os dados em mãos.
+
+### 9.4 Barras sem arredondamento
+
+`radius={0}`. Numa cascata a barra é um **segmento entre dois pontos do eixo**, e a ponta
+redonda sugere um fim de valor que não existe: o degrau seguinte começa exatamente onde este
+termina.
+
+### Observação não pedida (não alterada)
+
+No print, o degrau `IMP_H` aparece como "IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA", em caixa alta,
+enquanto os vizinhos estão em capitalização normal. É fiel ao dado: na árvore de competência a
+`IMP_H` é `blocoH` (cabeçalho, gravado em caixa alta) e as demais folhas são `sub`. Não foi
+mexido porque **normalizar caixa no cliente é o caminho para mangular siglas** ("RH" viraria
+"Rh"), e o rótulo é dado editável — a correção limpa é no editor da estrutura, renomeando a
+linha. Fica registrado como escolha, não como esquecimento.

@@ -3,7 +3,7 @@
 import { ResponsiveContainer, BarChart, Bar, Cell, LabelList, Tooltip } from 'recharts'
 import {
   ChartGrid, ChartXAxisBRL, ChartYAxisCategoria, ChartZeroLineX, CustomTooltip,
-  chartMargins, barRadius, barSizes, fluxoColors,
+  chartMargins, barSizes, fluxoColors,
 } from '@/components/charts'
 import { fmtBRL2, fmtMi } from '@/lib/fmt'
 import type { Cascata } from '@/lib/dre/cascata'
@@ -53,10 +53,34 @@ export function alturaCascata(qtdBarras: number): number {
   return Math.max(260, qtdBarras * 26 + 48)
 }
 
-/** Largura do eixo de rótulos, justa para o maior nome presente. */
+/** Largura do eixo de rótulos, justa para o maior nome presente.
+ *
+ *  O teto é generoso (280px) porque os cards ocupam a LARGURA CHEIA da seção: rótulos
+ *  como "Despesas Operacionais de RH Benefícios" cabem numa linha só. Quando os dois
+ *  cards dividiam a largura em duas colunas, esses nomes quebravam em duas linhas e
+ *  colidiam com o rótulo de valor da barra vizinha. */
 function larguraEixoY(rotulos: string[]): number {
   const maior = rotulos.reduce((m, r) => Math.max(m, r.length), 0)
-  return Math.min(Math.ceil(48 + maior * 6.2), 210)
+  return Math.min(Math.ceil(48 + maior * 6.4), 280)
+}
+
+/** Domínio SIMÉTRICO em torno do zero: a linha do zero fica no centro do gráfico e as
+ *  barras crescem para os dois lados a partir dela (pedido do Yan na conferência).
+ *
+ *  Precisa ser calculado aqui, com os dados em mãos, e não pelas funções de `domain` do
+ *  Recharts: cada uma delas recebe só o SEU extremo (`dataMin` ou `dataMax`), então
+ *  nenhuma consegue enxergar o outro lado para espelhá-lo.
+ *
+ *  A folga de 8% é o espaço em que o rótulo de valor (`LabelList position="right"`) cabe
+ *  sem encostar na borda. O `|| 1` cobre a cascata inteiramente zerada, que produziria o
+ *  domínio degenerado `[0, 0]`. */
+function dominioSimetrico(dados: Ponto[]): [number, number] {
+  const extremo = dados.reduce(
+    (m, d) => Math.max(m, Math.abs(d.faixa[0]), Math.abs(d.faixa[1])),
+    0,
+  ) || 1
+  const M = extremo * 1.08
+  return [-M, M]
 }
 
 function corDe(p: Ponto): string {
@@ -106,16 +130,12 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart layout="vertical" data={dados} margin={chartMargins.horizontal}>
         {ChartGrid({ eixo: 'vertical' })}
-        {/* ⚠️ Domínio EXPLÍCITO dos dois lados. O default do Recharts para eixo numérico
-            é `[0, 'auto']`: ele ancoraria em zero e as barras negativas — a âncora de
-            competência e metade dos degraus — sumiriam. A folga de 8% é o espaço em que
-            o rótulo de valor (`LabelList position="right"`) cabe sem encostar na borda. */}
-        {ChartXAxisBRL({
-          domain: [
-            (min: number) => (min < 0 ? min * 1.08 : 0),
-            (max: number) => (max > 0 ? max * 1.08 : 0),
-          ],
-        })}
+        {/* ⚠️ Domínio EXPLÍCITO e SIMÉTRICO. Explícito porque o default do Recharts para
+            eixo numérico é `[0, 'auto']`: ele ancoraria em zero e as barras negativas —
+            a âncora de competência e metade dos degraus — sumiriam. Simétrico porque a
+            linha do zero fica no centro do gráfico, com melhora à direita e piora à
+            esquerda. */}
+        {ChartXAxisBRL({ domain: dominioSimetrico(dados) })}
         {ChartZeroLineX()}
         {ChartYAxisCategoria('rotulo', { width: larguraEixoY(dados.map(d => d.rotulo)) })}
         <Tooltip
@@ -136,9 +156,12 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
             )
           }}
         />
+        {/* Sem arredondamento (decisão do Yan na conferência): numa cascata a barra é um
+            SEGMENTO entre dois pontos do eixo, e a ponta redonda sugere um fim de valor
+            que não existe — o degrau seguinte começa exatamente onde este termina. */}
         <Bar
           dataKey="faixa"
-          radius={barRadius.right}
+          radius={0}
           maxBarSize={barSizes.horizontal}
           isAnimationActive={false}
         >

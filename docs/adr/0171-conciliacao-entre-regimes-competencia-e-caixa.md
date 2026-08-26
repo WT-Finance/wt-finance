@@ -25,7 +25,7 @@ decisão de arquitetura que o torna barato.
 
 ### 1. A conciliação é DERIVADA no cliente, nunca buscada
 
-Os três componentes da v5.8.1 (linhas-chave, decomposição da variação e ponte) saem
+Os três componentes da v5.8.1 (Resumo Executivo, decomposição da variação e ponte) saem
 inteiramente dos **dois payloads que a página já buscava**. Nenhuma RPC nova, nenhuma tabela,
 nenhuma migration.
 

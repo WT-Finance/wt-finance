@@ -3,10 +3,10 @@
 Última atualização: 2026-08-26 (fechamento da v5.8.1) · produção na **v5.8.0** (#246 mergeado 26/08 às 12h19 — DRE por Competência: segunda TopSection em `/financeiro/dre` com base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**). Antes a v5.7.2 (#243, 25/08 14h10 — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações, ordenação no Gerencial; sem migration), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ⚠️ **v5.8.1 FECHADA E AGUARDANDO MERGE** — branch `feat/v5-8-1-complementos-competencia`,
-**ADR-0171**, **ZERO migration**. Complementos da DRE por Competência: linhas-chave (sumário
-executivo), decomposição da variação YTD 26 × YTD 25 e a **ponte Competência ↔ Caixa** (16
+**ADR-0171**, **ZERO migration**. Complementos da DRE por Competência: Resumo Executivo
+(o MESMO componente do regime de caixa, servindo aos dois), decomposição da variação YTD 26 × YTD 25 e a **ponte Competência ↔ Caixa** (16
 degraus, do resultado por emissão ao resultado por movimentação). Tudo derivado no cliente dos
-dois payloads que a página já buscava. **1133 testes** (de 1056), incluindo 5 casos de contrato
+dois payloads que a página já buscava. **1118 testes** (de 1056), incluindo 5 casos de contrato
 que confrontam a BASE VIVA. ⚠️ **A conferência visual NÃO foi feita** — a tela exige sessão
 autenticada e a sessão do agente não insere credenciais; é o primeiro passo do merge (modelo
 v5.4.1: entregar → conferir no ar → ajustar).

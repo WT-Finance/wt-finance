@@ -8,7 +8,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [5.8.1] — 2026-08-26
 
-PATCH · **Complementos da DRE por Competência: linhas-chave, decomposição da variação e a ponte Competência ↔ Caixa**. **ZERO migration**, zero RPC nova, zero toque no banco · **ADR-0171** · **1133 testes** (de 1056).
+PATCH · **Complementos da DRE por Competência: Resumo Executivo, decomposição da variação e a ponte Competência ↔ Caixa**. **ZERO migration**, zero RPC nova, zero toque no banco · **ADR-0171** · **1118 testes** (de 1056).
 
 ### Adicionado
 
@@ -18,9 +18,11 @@ PATCH · **Complementos da DRE por Competência: linhas-chave, decomposição da
   - **Narrativa por degrau gerada por regra** `(natureza, sinal)` — "pago além do incorrido no período", "reconhecido ainda não recebido", "recebido > emitido: conversão de backlog" —, nunca texto fixo por linha: uma frase por combinação sobrevive a mudanças na árvore, dezesseis frases à mão envelhecem na primeira conta que muda de bloco.
   - **Duas datas-base no rodapé** ("competência carregada em X · caixa carregado em Y"). As bases têm safras independentes, e ver isso é a resposta curta para metade das perguntas que o card vai gerar.
 - **Decomposição da variação · YTD 26 × YTD 25** — cascata do resultado do ano anterior ao deste ano, um degrau por grupo, ordenado por magnitude, com a categoria que puxou cada degrau nomeada no tooltip. O modelo da gerente chama de "desvio · previsto"; aqui é "variação", porque a plataforma **não tem base orçamentária** e "previsto" prometeria um orçado inexistente.
-- **Linhas-chave** — sumário executivo das oito linhas de manchete (`RB_H, ROL, LB, LOP, LL, RAIR, REX, REXG`) com anos fechados, o par de YTD, Δ% e duas colunas de Análise Vertical. Acima do demonstrativo, para não obrigar a rolar a tabela inteira até o resumo dela (a mesma correção que o caixa recebeu na v5.7.0). AV pela base da casa (`RB_H`), reusando `av.ts` — nunca um segundo denominador na mesma página.
-- **Primitivo de cascata** (`@/components/charts/cascata`), reutilizado pelos dois cards. Barras **horizontais**: são até 18 categorias com rótulos longos num grid de 2 colunas.
-- **5 casos de contrato NOVOS que confrontam a BASE VIVA** (`rpc-contrato.test.ts`): a ponte fecha ao centavo, a árvore está inteiramente pareada, Σ folhas ≡ REX nos dois regimes, as linhas-chave leem o mesmo número do demonstrativo e a decomposição fecha entre dois anos vivos. O de totalidade injeta uma folha órfã e prova que ela cai no residual **sem** quebrar a identidade.
+- **Resumo Executivo no regime de competência** — o MESMO componente do regime de caixa, agora servindo aos dois. Oito linhas de manchete (`RB_H, ROL, LB, LOP, LL, RAIR, REX, REXG`), pills de ano com seleção aditiva, anos cheios só de exercício encerrado, YTD de todos os anos marcados e o **Δ em reais** entre os dois últimos de cada grupo. Acima do demonstrativo, para não obrigar a rolar a tabela inteira até o resumo dela (a mesma correção que o caixa recebeu na v5.7.0).
+  - Parametrizado por **props aditivas** (`linhas`, `titulo`, `ajuda`, `subtitulo`), na receita da `TabelaDre` da v5.8.0: **o call-site do caixa não muda uma linha**, então o render dele segue idêntico por construção, e não por conferência. As duas listas de linhas passaram para `@/lib/dre/linhas-resumo` (módulo puro), para o caso de contrato poder importá-las sem arrastar React.
+  - A janela do YTD deste card é a da **cobertura**, não a do calendário — a página monta o consolidado de competência duas vezes, pela MESMA função e pelo MESMO `indexar`, mudando só a janela. Resumo e demonstrativo nunca discordam por caminho; se discordarem, é a janela, e o subtítulo diz qual é.
+- **Primitivo de cascata** (`@/components/charts/cascata`), reutilizado pelos dois cards. Barras **horizontais**, **domínio simétrico** (a linha do zero no centro, melhora à direita e piora à esquerda) e sem arredondamento — numa cascata a barra é um segmento entre dois pontos do eixo, e a ponta redonda sugere um fim de valor que não existe. Os dois cards ficam **empilhados na largura cheia** da seção: lado a lado, num grid de 2 colunas, os rótulos longos das folhas quebravam em duas linhas e colidiam com o rótulo de valor da barra vizinha.
+- **5 casos de contrato NOVOS que confrontam a BASE VIVA** (`rpc-contrato.test.ts`): a ponte fecha ao centavo, a árvore está inteiramente pareada, Σ folhas ≡ REX nos dois regimes, toda linha do Resumo Executivo existe na árvore viva do seu regime (nos DOIS regimes) e a decomposição fecha entre dois anos vivos. O de totalidade injeta uma folha órfã e prova que ela cai no residual **sem** quebrar a identidade.
 
 ### Alterado
 
@@ -37,7 +39,7 @@ PATCH · **Complementos da DRE por Competência: linhas-chave, decomposição da
 ### Prova
 
 - **Medição contra produção antes da implementação:** `Σ folhas ≡ REX` fecha ao centavo nos dois regimes e nos dois anos (2025 e 2026); a ponte fecha ao centavo com residual **0,00** — toda folha das duas árvores pareia.
-- Gates: `tsc`, `lint`, `build` e **1133 testes** (baseline 1056, +77). Zero mudança na seção de caixa e na tabela densa — as duas seguem intocadas por construção, não por conferência.
+- Gates: `tsc`, `lint`, `build` e **1118 testes** (baseline 1056, +62). Zero mudança na seção de caixa e na tabela densa — as duas seguem intocadas por construção, não por conferência.
 
 ---
 
