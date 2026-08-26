@@ -8,7 +8,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [5.8.1] — 2026-08-26
 
-PATCH · **Complementos da DRE por Competência: Resumo Executivo, decomposição da variação e a ponte Competência ↔ Caixa**. **ZERO migration**, zero RPC nova, zero toque no banco · **ADR-0171** · **1118 testes** (de 1056).
+PATCH · **Complementos da DRE por Competência: Resumo Executivo, decomposição da variação e a ponte Competência ↔ Caixa**. **ZERO migration**, zero RPC nova, zero toque no banco · **ADR-0171** · **1125 testes** (de 1056).
 
 ### Adicionado
 
@@ -21,7 +21,8 @@ PATCH · **Complementos da DRE por Competência: Resumo Executivo, decomposiçã
 - **Resumo Executivo no regime de competência** — o MESMO componente do regime de caixa, agora servindo aos dois. Oito linhas de manchete (`RB_H, ROL, LB, LOP, LL, RAIR, REX, REXG`), pills de ano com seleção aditiva, anos cheios só de exercício encerrado, YTD de todos os anos marcados e o **Δ em reais** entre os dois últimos de cada grupo. Acima do demonstrativo, para não obrigar a rolar a tabela inteira até o resumo dela (a mesma correção que o caixa recebeu na v5.7.0).
   - Parametrizado por **props aditivas** (`linhas`, `titulo`, `ajuda`, `subtitulo`), na receita da `TabelaDre` da v5.8.0: **o call-site do caixa não muda uma linha**, então o render dele segue idêntico por construção, e não por conferência. As duas listas de linhas passaram para `@/lib/dre/linhas-resumo` (módulo puro), para o caso de contrato poder importá-las sem arrastar React.
   - A janela do YTD deste card é a da **cobertura**, não a do calendário — a página monta o consolidado de competência duas vezes, pela MESMA função e pelo MESMO `indexar`, mudando só a janela. Resumo e demonstrativo nunca discordam por caminho; se discordarem, é a janela, e o subtítulo diz qual é.
-- **Primitivo de cascata** (`@/components/charts/cascata`), reutilizado pelos dois cards. Barras **horizontais**, **domínio simétrico** (a linha do zero no centro, melhora à direita e piora à esquerda) e sem arredondamento — numa cascata a barra é um segmento entre dois pontos do eixo, e a ponta redonda sugere um fim de valor que não existe. Os dois cards ficam **empilhados na largura cheia** da seção: lado a lado, num grid de 2 colunas, os rótulos longos das folhas quebravam em duas linhas e colidiam com o rótulo de valor da barra vizinha.
+- **`semCaixaAlta`** em `@/lib/dre/rotulo-bloco` — converte rótulo gravado em CAIXA ALTA para capitalização de leitura, **preservando siglas** ("RH", "CSLL"). A árvore grava `blocoH` em caixa alta e `sub` em capitalização normal: na tabela isso distingue cabeçalho de subgrupo, mas na cascata os dois viram degraus irmãos e uma linha gritando entre quinze normais é ruído. Age só em strings inteiramente maiúsculas e é idempotente — title-case cego mangularia sigla, que era o motivo de o `rotuloBloco` original preservar a caixa.
+- **Primitivo de cascata** (`@/components/charts/cascata`), reutilizado pelos dois cards. Barras **horizontais**, **domínio simétrico com ticks redondos** (a linha do zero no centro e como marca do eixo, melhora à direita e piora à esquerda), campo das barras em **branco** com grade horizontal pontilhada por degrau, números coloridos pela cor da barra, e sem arredondamento — numa cascata a barra é um segmento entre dois pontos do eixo, e a ponta redonda sugere um fim de valor que não existe. Os dois cards ficam **empilhados na largura cheia** da seção: lado a lado, num grid de 2 colunas, os rótulos longos das folhas quebravam em duas linhas e colidiam com o rótulo de valor da barra vizinha.
 - **5 casos de contrato NOVOS que confrontam a BASE VIVA** (`rpc-contrato.test.ts`): a ponte fecha ao centavo, a árvore está inteiramente pareada, Σ folhas ≡ REX nos dois regimes, toda linha do Resumo Executivo existe na árvore viva do seu regime (nos DOIS regimes) e a decomposição fecha entre dois anos vivos. O de totalidade injeta uma folha órfã e prova que ela cai no residual **sem** quebrar a identidade.
 
 ### Alterado
@@ -39,7 +40,7 @@ PATCH · **Complementos da DRE por Competência: Resumo Executivo, decomposiçã
 ### Prova
 
 - **Medição contra produção antes da implementação:** `Σ folhas ≡ REX` fecha ao centavo nos dois regimes e nos dois anos (2025 e 2026); a ponte fecha ao centavo com residual **0,00** — toda folha das duas árvores pareia.
-- Gates: `tsc`, `lint`, `build` e **1118 testes** (baseline 1056, +62). Zero mudança na seção de caixa e na tabela densa — as duas seguem intocadas por construção, não por conferência.
+- Gates: `tsc`, `lint`, `build` e **1125 testes** (baseline 1056, +69). Zero mudança na seção de caixa e na tabela densa — as duas seguem intocadas por construção, não por conferência.
 
 ---
 

@@ -6,7 +6,7 @@
 **ADR-0171**, **ZERO migration**. Complementos da DRE por Competência: Resumo Executivo
 (o MESMO componente do regime de caixa, servindo aos dois), decomposição da variação YTD 26 × YTD 25 e a **ponte Competência ↔ Caixa** (16
 degraus, do resultado por emissão ao resultado por movimentação). Tudo derivado no cliente dos
-dois payloads que a página já buscava. **1118 testes** (de 1056), incluindo 5 casos de contrato
+dois payloads que a página já buscava. **1125 testes** (de 1056), incluindo 5 casos de contrato
 que confrontam a BASE VIVA. ✅ **Conferência visual FEITA** (2 rodadas, 26/08) — a 2ª pelo
 próprio agente via Claude in Chrome, usando a sessão já aberta do Yan. Achado que só a tela
 pega: **`ResponsiveContainer` exige `height` no pai, nunca `min-height`** (com `min-height` o

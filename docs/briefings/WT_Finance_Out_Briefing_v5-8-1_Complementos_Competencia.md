@@ -1,7 +1,7 @@
 # Out-Briefing v5.8.1 — Complementos da DRE por Competência
 
 **PATCH** · branch `feat/v5-8-1-complementos-competencia` · **ADR-0171** · **ZERO migration** ·
-**1118 testes** (de 1056) · base: `origin/main` em `5f615a1` (pós-merge da v5.8.0, #247)
+**1125 testes** (de 1056) · base: `origin/main` em `5f615a1` (pós-merge da v5.8.0, #247)
 
 ---
 
@@ -332,3 +332,55 @@ seguiram passando, com a identidade fechando ao centavo sobre o dado novo.
 >   resolve contra `height`; com `min-height` o filho mede 0 e o gráfico some sem erro — card
 >   desenhado, área vazia. Num `grid` o defeito fica LATENTE (o item ganha altura do
 >   `align-items: stretch`) e só aparece quando o card vira bloco. Caso vivo: v5.8.1.
+
+---
+
+## 11. Ajustes da 3ª conferência visual (26/08)
+
+Cinco pedidos, todos verificados na tela antes do commit. Nenhum muda um número.
+
+1. **Subtítulo do Resumo Executivo removido** ("YTD de jan–ago — a janela coberta pela base
+   de competência"). O card fica com a anatomia idêntica à do irmão no regime de caixa. A
+   explicação da janela **não se perdeu**: segue no "?", que é onde ela é procurada quando é
+   procurada. A prop `subtitulo` saiu junto do componente — sem chamador, era código morto.
+2. **" · valores de 2026" saiu** do subtítulo do editor da estrutura de competência. O campo
+   `ano_totais` **continua no schema**: ele vem da RPC e tirá-lo perderia a guarda de
+   contrato; o que saiu foi só o consumo visual.
+3. **Campo das barras em branco**, com grade **horizontal** pontilhada por degrau. O `fill` do
+   `CartesianGrid` pinta só a área de plotagem, então o cinza do box permanece nas margens e
+   sob a coluna de categorias — é o contraste que separa a régua dos rótulos. A grade virou
+   horizontal de propósito: numa cascata as barras não começam todas no mesmo ponto, e a linha
+   por categoria é o que liga o rótulo à barra dele ao longo de uma faixa larga.
+4. **Números coloridos pela cor da barra.**
+5. **"IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA" sem caixa alta** — o que o §9 tinha registrado
+   como escolha deliberada virou pedido, e foi resolvido de forma segura (abaixo).
+
+### 11.1 Colorir o rótulo sem quebrar o posicionamento
+
+Um `LabelList` **por cor**, filtrando por `dataKey` (valor `null` faz o Recharts pular o
+rótulo), em vez de um `content` custom.
+
+**Por quê.** O `content` recebe apenas o `viewBox`; o Recharts resolve a POSIÇÃO depois,
+dentro do `<Text>`. Reimplementá-la jogaria fora um posicionamento que já estava certo e é
+sutil — o rótulo cai do lado para onde a barra cresce, inclusive nas que crescem para a
+esquerda. Filtrar por cor mantém o cálculo nativo intocado.
+
+### 11.2 A caixa alta, resolvida sem mangular sigla
+
+Entra `semCaixaAlta` em `src/lib/dre/rotulo-bloco.ts` (o módulo canônico de rótulo de
+exibição), aplicada aos rótulos de degrau da decomposição.
+
+A árvore mistura duas convenções: `blocoH` é gravado em CAIXA ALTA e `sub` em capitalização
+normal. Numa **tabela** isso distingue cabeçalho de subgrupo, que é o papel da caixa alta.
+Numa **cascata**, onde os dois viram degraus irmãos, uma linha gritando entre quinze normais
+é ruído.
+
+⚠️ **A função não faz title-case cego** — isso mangularia sigla ("RH" → "Rh", "CSLL" →
+"Csll"), que era exatamente o motivo pelo qual o `rotuloBloco` original preservava a caixa.
+As três salvaguardas: age **só** em strings inteiramente maiúsculas; tem lista explícita de
+siglas do domínio e de preposições; e é **idempotente**, então rótulo já capitalizado passa
+intocado. Nove testes cobrem os dois riscos, incluindo o caso misto.
+
+**Alternativa descartada:** renomear a linha no editor da estrutura. Resolveria na origem,
+mas é alteração de DADO de produção — decisão sua, não minha, e continua disponível se
+preferir que a tabela também mostre o rótulo capitalizado.
