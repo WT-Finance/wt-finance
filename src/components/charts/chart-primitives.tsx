@@ -38,13 +38,7 @@ import {
  * Grade horizontal tracejada sutil ('3 4'), SEM linhas verticais.
  * Factory — chame `{ChartGrid()}` dentro do chart.
  */
-export function ChartGrid(opts?: {
-  eixo?: 'horizontal' | 'vertical'
-  /** Pinta a ÁREA DE PLOTAGEM (só ela — o eixo de categorias e as margens ficam de
-   *  fora). É o `Background` do `CartesianGrid`, que o Recharts desenha quando recebe
-   *  `fill`. Serve para destacar o campo das barras contra o box do card. */
-  fundo?: string
-}): ReactElement {
+export function ChartGrid(opts?: { eixo?: 'horizontal' | 'vertical' }): ReactElement {
   // 'horizontal' (default) = linhas horizontais, para coluna/linha com valor no Y.
   // 'vertical' = linhas verticais nos ticks do X, para barra HORIZONTAL (valor no X) —
   // ali as linhas horizontais só separariam categorias, sem função de leitura (v5.6.1).
@@ -60,7 +54,6 @@ export function ChartGrid(opts?: {
       stroke={chartColors.grid}
       vertical={vertical}
       horizontal={!vertical}
-      fill={opts?.fundo}
     />
   )
 }
@@ -214,13 +207,20 @@ export function ChartYAxisPct(
  */
 export function ChartYAxisCategoria(
   dataKey: string,
-  opts?: { width?: number },
+  /** `negrito` dá peso ao nome da categoria — usado quando o rótulo é a âncora de
+   *  leitura da linha inteira, e não uma legenda de apoio (caso da cascata: cada
+   *  categoria é um degrau, e é pelo nome que se acha a barra dele). */
+  opts?: { width?: number; negrito?: boolean },
 ): ReactElement {
   return (
     <YAxis
       type="category"
       dataKey={dataKey}
-      tick={{ fontSize: 12, fill: chartColors.axisTick }}
+      tick={{
+        fontSize: 12,
+        fill: opts?.negrito ? 'var(--text-primary)' : chartColors.axisTick,
+        fontWeight: opts?.negrito ? 600 : undefined,
+      }}
       tickLine={false}
       axisLine={false}
       width={opts?.width ?? 80}

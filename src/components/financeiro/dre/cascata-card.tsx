@@ -72,8 +72,13 @@ export default function CascataCard({ titulo, subtitulo, ajuda, cascata, rodape 
           grid+min-height → 200px; bloco+height → 200px.
           A altura é função do número de barras, então cravá-la aqui é honesto — não é um
           número mágico, e não depende do contexto de layout em que o card for posto. */}
+      {/* Box em BRANCO, e não no `bg-band` dos demais cards da página (conferência do
+          Yan). A banda cinza é a moldura certa para TABELA — ela separa as bandas de
+          linha e dá contraste às células. Num gráfico ela vira só uma segunda cor
+          competindo com as barras, que é onde o olho deveria estar. A borda fica: com
+          card e box na mesma cor, é ela que delimita a área do gráfico. */}
       <div
-        className="overflow-hidden rounded-lg border border-wt-border bg-band p-2"
+        className="overflow-hidden rounded-lg border border-wt-border bg-surface p-2"
         style={{ height: alturaCascata(barras) }}
       >
         <GraficoCascata cascata={cascata} />

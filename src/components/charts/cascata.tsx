@@ -151,11 +151,11 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart layout="vertical" data={dados} margin={chartMargins.horizontal}>
-        {/* Campo das barras em BRANCO, com a grade HORIZONTAL passando por cada degrau
-            (conferência do Yan). O `fill` do CartesianGrid pinta só a área de plotagem,
-            então o cinza do box permanece nas margens e sob a coluna de categorias — é o
-            contraste que separa a régua dos rótulos. */}
-        {ChartGrid({ eixo: 'horizontal', fundo: 'var(--surface)' })}
+        {/* Grade HORIZONTAL, uma linha por degrau: numa cascata as barras não começam
+            todas no mesmo ponto, e é essa linha que liga o rótulo à barra dele ao longo
+            de uma faixa larga. O fundo é branco pelo CARD (ver `cascata-card.tsx`), não
+            por um `fill` aqui — a área de plotagem e as margens ficam na mesma cor. */}
+        {ChartGrid({ eixo: 'horizontal' })}
         {/* ⚠️ Domínio EXPLÍCITO e SIMÉTRICO. Explícito porque o default do Recharts para
             eixo numérico é `[0, 'auto']`: ele ancoraria em zero e as barras negativas —
             a âncora de competência e metade dos degraus — sumiriam. Simétrico porque a
@@ -163,7 +163,10 @@ export default function GraficoCascata({ cascata }: { cascata: Cascata }) {
             esquerda. */}
         {ChartXAxisBRL({ domain: escala.dominio, ticks: escala.ticks })}
         {ChartZeroLineX()}
-        {ChartYAxisCategoria('rotulo', { width: larguraEixoY(dados.map(d => d.rotulo)) })}
+        {ChartYAxisCategoria('rotulo', {
+          width: larguraEixoY(dados.map(d => d.rotulo)),
+          negrito: true,
+        })}
         <Tooltip
           cursor={{ fill: 'rgba(0,0,0,0.04)' }}
           content={(p) => {
