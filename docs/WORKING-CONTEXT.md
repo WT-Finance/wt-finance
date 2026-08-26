@@ -1,22 +1,15 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-25 (fechamento da v5.8.0) · produção na **v5.7.2** (#243 mergeado 25/08 às 14h10 — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial; **sem migration**). Antes a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-26 (pós-merge da v5.8.0) · produção na **v5.8.0** (#246 mergeado 26/08 às 12h19 — DRE por Competência: segunda TopSection em `/financeiro/dre` com base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**). Antes a v5.7.2 (#243, 25/08 14h10 — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações, ordenação no Gerencial; sem migration), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-🔵 **A v5.8.0 está em PR, aguardando merge — e o BANCO JÁ ESTÁ À FRENTE DO CÓDIGO EM PRODUÇÃO.**
-As migrations `0255`/`0256`/`0257`/`0260` (aditivas) foram aplicadas, e a base de competência está
-carregada com o arquivo de 25/08 (3.244 linhas, Σ 568.937,62). Nada em produção lê esses objetos
-ainda — quem os consome é o código da branch. É o padrão do projeto (aditiva se aplica antes do
-merge), mas convém saber: um `db push` de outra branch agora NÃO arrasta nada, e a página da DRE
-em produção segue mostrando só o Regime de Caixa até o merge.
-
-⚠️ **DUAS VERSÕES EM VOO — conferir numeração no REMOTO, não só na worktree.** Além da v5.8.0,
-a branch `feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
-migrations **`0258`** (na pasta dela) e **`0259`** (destrutiva, corretamente ainda não escrita).
-O ADR da v5.8.0 nasceu 0169 e foi **renumerado para 0170** por isso. `ls docs/adr/` numa worktree
-devolve 0168 como máximo — a branch da outra versão não está mergeada, então a numeração REAL só
-aparece olhando `origin`. A v5.9.0 saiu do main na `0254` e **não contém** as `0255`–`0257`, que
-já estão aplicadas: um `migration list` rodado lá mostra três "remote-only" (não quebra o push
-dela; só a `0258` está pendente).
+⚠️ **UMA VERSÃO EM VOO — conferir numeração no REMOTO, não só na worktree.** A branch
+`feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
+migrations **`0258`** (já escrita na pasta dela) e **`0259`** (destrutiva, corretamente ainda não
+escrita). Foi por isso que o ADR da v5.8.0 nasceu 0169 e **virou 0170**: `ls docs/adr/` numa
+worktree mostra só o que está mergeado, e a numeração REAL só aparece olhando `origin`. A v5.9.0
+saiu do main na `0254`, então **não contém** as `0255`–`0257`/`0260`, que já estão aplicadas — um
+`migration list` rodado lá mostra quatro "remote-only" (não quebra o push dela; só a `0258` está
+pendente). ⚠️ **Ela precisa de um `git pull`/rebase no main antes de aplicar a `0259`.**
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0260`; a próxima livre é a `0261`**
 (a `0258`/`0259` seguem reservadas pela v5.9.0 — a `0258` já está escrita na branch dela, a
@@ -41,14 +34,20 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 
 ## Verdade atual
 
-- 🔵 **v5.8.0 (EM PR, não mergeada) — DRE por Competência: segunda TopSection em `/financeiro/dre`.**
+- **v5.8.0 (#246, mergeada 26/08 às 12h19) — DRE por Competência: segunda TopSection em `/financeiro/dre`.**
   Migrations **`0255`/`0256`/`0257`/`0260` (aditivas) APLICADAS** · **ADR-0170** · **1056 testes**.
   A página passa a mostrar **DOIS resultados para o mesmo mês**: o Regime de Caixa que já
   existia e o **Regime de Competência** (fato gerador = data de **EMISSÃO**), que fica **ACIMA**
   dele — decisão do Yan na sessão, contra o "abaixo" do briefing. Fonte: base de upload nova
   (`raw.demonstrativo_competencia`, o export "Demonstrativo de Resultado" do Monde tratado por
-  script R), árvore e de-para PRÓPRIOS (`financeiro.dre_comp_bloco`/`dre_comp_map`), leitura por
-  VIEW + `get_dre_competencia_mensal(ano)` no MESMO envelope de `get_dre_mensal`.
+  script R), árvore e de-para PRÓPRIOS (`financeiro.dre_comp_bloco` + `dre_comp_par`), leitura por
+  VIEW + `get_dre_competencia_mensal(ano)` no MESMO envelope de `get_dre_mensal`, e **editor da
+  estrutura próprio** (`/financeiro/dre/estrutura-competencia`, `0260`) — irmão do do caixa, com
+  o mesmo editor, histórico e desfazer.
+  ⚠️ **`financeiro.dre_comp_map` está ÓRFÃ de leitura** desde a `0260`: o de-para vivo é
+  `dre_comp_par` (que nasceu com `sub_chave` anulável, porque o editor precisa do estado "sem
+  destino"). Ela NÃO foi removida — `DROP` é destrutivo — e segue como fonte do seed inicial e
+  alvo do teste de paridade contra os anexos. **Dívida: removê-la numa destrutiva futura.**
   **Base carregada em produção:** 3.244 linhas · Σ 568.937,62 · 141 pares · cobertura
   2024-01→2026-08.
   **O oráculo é ESTRUTURAL, não numérico:** expandindo as fórmulas da árvore, `REX` tem
@@ -91,12 +90,17 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
   fez: `financeiro.dre_comp_par` nasceu com `sub_chave` anulável, e `dre_comp_map` ficou como
   fonte do seed e alvo do teste de paridade. Dívida: removê-la numa destrutiva futura.
   Out-briefing: `WT_Finance_Out_Briefing_v5-8-0_DRE_Competencia.md`.
-  **Pendente Yan:** conferir o Demonstrativo por Competência contra o arquivo do Monde (Total
-  Geral por ano) · conferir as 3 linhas fundidas contra o modelo da gerente · alternar as pills
-  nos dois regimes e confirmar independência · conferir o cabeçalho de cobertura e que a seção de
-  caixa não mudou · **comunicar o peso de critério à liderança** (a página passa a mostrar dois
-  resultados para o mesmo mês; texto pronto no CHANGELOG_DIRETORIA) · confirmar com a gerente o
-  par `Reembolso Fornecedor - C` (RV) × `Reembolso Fornecedor` (REEMB) · mergear.
+  **Pendente Yan (a versão está NO AR desde 26/08 12h19):** conferir o Demonstrativo por
+  Competência contra o arquivo do Monde (Total Geral por ano) · conferir as 3 linhas fundidas
+  contra o modelo da gerente · alternar as pills nos dois regimes e confirmar independência
+  (`?ano=` × `?anoComp=`) · conferir que a seção de caixa não mudou · **exercitar o editor novo**
+  (mover uma linha de bloco, salvar, ver o histórico e desfazer) · 🔴 **comunicar o peso de
+  critério à liderança** — a página passa a mostrar DOIS resultados para o mesmo mês, e o texto
+  em linguagem de negócio já está pronto no CHANGELOG_DIRETORIA · confirmar com a gerente o par
+  `Reembolso Fornecedor - C` (RV) × `Reembolso Fornecedor` (REEMB).
+  📝 **Decisão de produto em aberto:** desclassificar uma linha de volta para a bandeja NÃO é
+  possível (o salvar aceita "num bloco" ou "excluída", espelhando o caixa). Aqui seria trivial
+  permitir, porque a bandeja é uma linha real da tabela — decidir se vale.
 
 - **v5.7.2 (#243, mergeada 25/08 às 14h10) — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações,
   ordenação no Gerencial.** **Sem migration, sem ADR.** Gates verdes, **998/998**.
