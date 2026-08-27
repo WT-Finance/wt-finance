@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toNum, toIsoDate, toStr } from './coercao'
+import { toNum, toIsoDate, toStr, toCentavos } from './coercao'
 
 // Testes de tabela obrigatórios (v4.17.0 / Balde 2). Travam a regressão da v4.9.x:
 // o toNum ingênuo devolvia NaN→null para BR com milhar ("8.840,00", "1.234,56"),
@@ -135,5 +135,51 @@ describe('toNum estendido CONCORDA com o parseValorMonetario legado (não-regres
     for (const n of [1000, -50.5, 0, 8840.25]) {
       expect(toNum(n)).toBe(parseValorMonetarioLegado(n))
     }
+  })
+})
+
+// ── toCentavos (v5.8.0) ──────────────────────────────────────────────────────
+// Trava a regra DECIMAL de arredondamento de dinheiro — a mesma que o Postgres aplica
+// ao gravar em NUMERIC(x,2). Existe porque `Math.round(v * 100)` discorda dela, e o
+// desacordo é o que faria o alarme de ingestão da base de competência reprovar um
+// upload legítimo (achado ALTO do revisor na v5.8.0, medido e confirmado).
+describe('toCentavos — dinheiro em centavos pela regra do Postgres', () => {
+  it('valor de 2 casas é exato', () => {
+    expect(toCentavos(1903.32)).toBe(190332)
+    expect(toCentavos(-55.66)).toBe(-5566)
+    expect(toCentavos(0)).toBe(0)
+    expect(toCentavos(350000)).toBe(35000000)
+  })
+
+  it('meio-centavo sobe a MAGNITUDE (meio-para-longe-de-zero), como o Postgres', () => {
+    expect(toCentavos(1.005)).toBe(101)      // Math.round(1.005*100) daria 100
+    expect(toCentavos(-1.005)).toBe(-101)    // Math.round(-1.005*100) daria -100
+    expect(toCentavos(-0.125)).toBe(-13)     // Math.round(-0.125*100) daria -12
+    expect(toCentavos(-188.615)).toBe(-18862)
+  })
+
+  it('DIVERGE de Math.round(v*100) — é justamente o motivo desta função existir', () => {
+    for (const v of [1.005, -1.005, -0.125, -188.615]) {
+      expect(toCentavos(v), `${v} deveria divergir de Math.round`).not.toBe(Math.round(v * 100))
+    }
+    // Em outros valores o Math.round acerta por acidente da representação binária — o
+    // que torna o acordo imprevisível, e é o motivo de não se poder confiar nele.
+    for (const v of [188.615, 0.125, 2.675]) {
+      expect(toCentavos(v)).toBe(Math.round(v * 100))
+    }
+  })
+
+  it('casas além da 3ª nunca mudam a decisão', () => {
+    expect(toCentavos(1.0049999)).toBe(100)
+    expect(toCentavos(1.0050001)).toBe(101)
+    expect(toCentavos(1.00499)).toBe(100)
+  })
+
+  it('herda a leitura BR/US do toNum e devolve null no que não é número', () => {
+    expect(toCentavos('1.234,56')).toBe(123456)
+    expect(toCentavos('(1.000)')).toBe(-100000)
+    expect(toCentavos('')).toBeNull()
+    expect(toCentavos(null)).toBeNull()
+    expect(toCentavos('abc')).toBeNull()
   })
 })

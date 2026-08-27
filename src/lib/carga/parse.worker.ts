@@ -10,6 +10,7 @@ import { parseLancamentosFile } from './parse-lancamentos'
 import { parsePessoasFile } from './parse-pessoas'
 import { parseLancamentosMovimentacaoFile } from './parse-lancamentos-movimentacao'
 import { parseTitulosEmAbertoFile } from './parse-titulos-em-aberto'
+import { parseDemonstrativoCompetenciaFile } from './parse-demonstrativo-competencia'
 
 export type ParseKind =
   | 'vendas'
@@ -17,6 +18,7 @@ export type ParseKind =
   | 'pessoas'
   | 'lancamentos_movimentacao'
   | 'titulos_em_aberto'
+  | 'demonstrativo_competencia'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const PARSERS: Record<ParseKind, (f: File) => Promise<any>> = {
@@ -25,6 +27,7 @@ const PARSERS: Record<ParseKind, (f: File) => Promise<any>> = {
   pessoas: parsePessoasFile,
   lancamentos_movimentacao: parseLancamentosMovimentacaoFile,
   titulos_em_aberto: parseTitulosEmAbertoFile,
+  demonstrativo_competencia: parseDemonstrativoCompetenciaFile,
 }
 
 // `self` num worker é DedicatedWorkerGlobalScope; o tsconfig do projeto usa a lib DOM,

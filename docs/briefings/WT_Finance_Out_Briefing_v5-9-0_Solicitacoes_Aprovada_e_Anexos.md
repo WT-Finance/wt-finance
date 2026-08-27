@@ -1,7 +1,7 @@
 # Out-Briefing v5.9.0 — Solicitações: etapa "Aprovada" e anexos ao longo da vida
 
 **Branch:** `feat/v5-9-0-solicitacoes-aprovada-anexos` · **ADR-0169**
-**Migrations:** `0258` (aditiva) e `0259` (destrutiva) — **NENHUMA APLICADA** (ver §5)
+**Migrations:** `0261` (aditiva) e `0262` (destrutiva) — **NENHUMA APLICADA** (ver §5)
 **Gates:** `tsc` · `lint` · `build` · **1011 testes** (eram 998) — todos verdes
 **Rota A** (produto): briefing commitado no 1º commit; 11 decisões fechadas com o Yan em duas
 rodadas de perguntas antes de qualquer código.
@@ -74,19 +74,19 @@ com a lista real de fontes por função (0217 / 0225 / 0222 / 0142 / 0133).
 
 ## 3. Parecer da revisão
 
-### `revisor-db` — 0258 e 0259 APROVADAS COM RESSALVAS · **1 CRÍTICO · 2 ALTO · 3 MÉDIO · 2 BAIXO**
+### `revisor-db` — 0261 e 0262 APROVADAS COM RESSALVAS · **1 CRÍTICO · 2 ALTO · 3 MÉDIO · 2 BAIXO**
 
 - **CRÍTICO — colisão de numeração entre branches. CORRIGIDO.** A worktree `feat+v5-8-0-dre-competencia`
   reivindicava `0255`, `0256` **e** `0257`. Quando esta versão começou, ela tinha só a `0255` — avançou
   no meio do caminho. O CLI identifica a migration pelo **prefixo numérico**, não pelo nome: duas
   branches com o mesmo número fariam a segunda a aplicar ser tratada como "já aplicada" e **pulada em
   silêncio**, deixando a estrutura ausente em produção sem erro nenhum. Só visível olhando as duas
-  worktrees ao mesmo tempo. Renumerado para **0258/0259**, com o gate de reconferência escrito no
+  worktrees ao mesmo tempo. Renumerado para **0261/0262**, com o gate de reconferência escrito no
   cabeçalho dos dois arquivos.
-- **ALTO — a `0259` é pré-requisito do MERGE, não pós-merge. REGISTRADO E SINALIZADO.** O front já
+- **ALTO — a `0262` é pré-requisito do MERGE, não pós-merge. REGISTRADO E SINALIZADO.** O front já
   chama `solic_aprovar` e já renderiza o botão; o que o mantém inofensivo é o PR não estar mergeado
-  (a Vercel deploya no merge). Com a `0258` aplicada e a `0259` pendente, o primeiro clique estouraria
-  violação de CHECK. Escrito no cabeçalho da `0259`, no PR e aqui. Como rede adicional, `traduzir()`
+  (a Vercel deploya no merge). Com a `0261` aplicada e a `0262` pendente, o primeiro clique estouraria
+  violação de CHECK. Escrito no cabeçalho da `0262`, no PR e aqui. Como rede adicional, `traduzir()`
   passa a converter esse erro numa mensagem acionável — **rede não é ordem**.
 - **ALTO — nota de `DOWN` citava a fonte errada. CORRIGIDO** (§2.1).
 - **MÉDIO — sem teste de paridade SQL↔TS. CORRIGIDO:** `ciclo-de-vida.test.ts` (9 casos).
@@ -102,7 +102,7 @@ com a lista real de fontes por função (0217 / 0225 / 0222 / 0142 / 0133).
   é só-leitura). Reforça a necessidade da verificação REST/`service_role` pós-aplicação — **pendente**,
   porque o banco não foi aplicado.
 
-#### Segundo passe (delta das correções) — **`0258` e `0259` APROVADAS** · 0 bloqueante
+#### Segundo passe (delta das correções) — **`0261` e `0262` APROVADAS** · 0 bloqueante
 
 Como as correções tocaram a migration (assinatura de retorno de `solic_aprovar`) e a superfície de
 segurança, o delta voltou ao `revisor-db`. Ele confirmou o `RETURNING aprovado_em INTO` ponta a ponta
@@ -166,8 +166,8 @@ régua.
 
 | | |
 |---|---|
-| `0258` (aditiva) | escrita, revisada, **não aplicada** |
-| `0259` (destrutiva) | escrita, revisada, **não aplicada**, em `supabase/patches/` |
+| `0261` (aditiva) | escrita, revisada, **não aplicada** |
+| `0262` (destrutiva) | escrita, revisada, **não aplicada**, em `supabase/patches/` |
 
 **Ordem acordada:** a **v5.8.0 aplica primeiro** (`0255`-`0257`) e a v5.9.0 espera — assim nenhuma
 das duas precisa de `--fora-de-ordem` e o histórico fica sequencial.
@@ -183,13 +183,13 @@ ls ../feat+v5-8-0-dre-competencia/supabase/migrations/ | tail -3
 npm run db:migrate -- --aditiva
 
 # 3. destrutiva — TTY humano, PRÉ-REQUISITO DO MERGE
-mv supabase/patches/0259_solic_status_aprovada_checks.sql supabase/migrations/
+mv supabase/patches/0262_solic_status_aprovada_checks.sql supabase/migrations/
 npm run db:migrate -- --destrutiva
 
 # 4. verificar as RPCs novas via REST com service_role (db query NÃO executa o corpo)
 ```
 
-A `0259` **não pode** ficar em `supabase/migrations/` antes da hora: `db push` empurra todo o
+A `0262` **não pode** ficar em `supabase/migrations/` antes da hora: `db push` empurra todo o
 conjunto pendente e uma destrutiva parada lá é arrastada por qualquer push (v5.2.0).
 
 ---
@@ -197,9 +197,9 @@ conjunto pendente e uma destrutiva parada lá é arrastada por qualquer push (v5
 ## 6. Pendências e registros
 
 **Do Yan:**
-1. **Aplicar a `0258` e depois a `0259`** na ordem acima — a `0259` exige TTY e é pré-requisito do
+1. **Aplicar a `0261` e depois a `0262`** na ordem acima — a `0262` exige TTY e é pré-requisito do
    merge.
-2. **Conferência visual** — só faz sentido **depois** do banco aplicado: sem a `0259` o estado
+2. **Conferência visual** — só faz sentido **depois** do banco aplicado: sem a `0262` o estado
    `aprovada` não pode existir, e nenhuma tela tem o que mostrar. Modelo de sempre: entrega → print
    → ajuste.
 3. **Cadastrar um campo de anexo não-obrigatório** (ex.: "Comprovante de pagamento") nos tipos que
@@ -222,8 +222,8 @@ conjunto pendente e uma destrutiva parada lá é arrastada por qualquer push (v5
 
 ## 7. Arquivos
 
-**Banco:** `supabase/migrations/0258_solic_aprovada_e_anexo_pos_criacao.sql` ·
-`supabase/patches/0259_solic_status_aprovada_checks.sql` *(pasta nova)*
+**Banco:** `supabase/migrations/0261_solic_aprovada_e_anexo_pos_criacao.sql` ·
+`supabase/patches/0262_solic_status_aprovada_checks.sql` *(pasta nova)*
 
 **Contrato/lib:** `src/lib/solicitacoes/schemas.ts` · `format.ts` · `src/lib/email/template.ts` ·
 `src/app/solicitacoes/actions.ts`

@@ -26,6 +26,7 @@
 
 import type { ReactElement } from 'react'
 import { CartesianGrid, XAxis, YAxis, ReferenceLine } from 'recharts'
+import type { AxisDomain } from 'recharts/types/util/types'
 import { fmtAxisBRL, fmtAxisPct, fmtAxisMes } from '@/lib/fmt'
 import {
   chartColors, dashArrays, strokeWidths, tickFontSize,
@@ -41,6 +42,11 @@ export function ChartGrid(opts?: { eixo?: 'horizontal' | 'vertical' }): ReactEle
   // 'horizontal' (default) = linhas horizontais, para coluna/linha com valor no Y.
   // 'vertical' = linhas verticais nos ticks do X, para barra HORIZONTAL (valor no X) —
   // ali as linhas horizontais só separariam categorias, sem função de leitura (v5.6.1).
+  //
+  // ⚠️ Na CASCATA (v5.8.1) a escolha se inverteu, e por um motivo de leitura: ali cada
+  // categoria é um DEGRAU e as barras não começam todas no mesmo ponto, então a linha
+  // horizontal atravessando cada barra é o que liga o rótulo à barra dele ao longo de
+  // uma faixa larga. A régua de valor quem dá é a linha do zero (`ChartZeroLineX`).
   const vertical = opts?.eixo === 'vertical'
   return (
     <CartesianGrid
@@ -60,6 +66,25 @@ export function ChartZeroLine(): ReactElement {
   return (
     <ReferenceLine
       y={0}
+      stroke={chartColors.zeroLine}
+      strokeWidth={strokeWidths.zeroLine}
+    />
+  )
+}
+
+/**
+ * Linha do zero para gráficos de barra HORIZONTAL (`layout="vertical"`), onde o eixo de
+ * valor é o X — a irmã de `ChartZeroLine`, que ancora no Y.
+ *
+ * Existe porque `ChartZeroLine()` num layout vertical desenha a linha no eixo errado, em
+ * silêncio: o Recharts aceita o `y={0}` (ali o Y é o eixo de CATEGORIAS), e o resultado é
+ * uma régua atravessando a primeira categoria em vez do zero. Num gráfico cujas barras
+ * cruzam o zero, essa linha é o que dá a referência de sinal.
+ */
+export function ChartZeroLineX(): ReactElement {
+  return (
+    <ReferenceLine
+      x={0}
       stroke={chartColors.zeroLine}
       strokeWidth={strokeWidths.zeroLine}
     />
@@ -182,13 +207,20 @@ export function ChartYAxisPct(
  */
 export function ChartYAxisCategoria(
   dataKey: string,
-  opts?: { width?: number },
+  /** `negrito` dá peso ao nome da categoria — usado quando o rótulo é a âncora de
+   *  leitura da linha inteira, e não uma legenda de apoio (caso da cascata: cada
+   *  categoria é um degrau, e é pelo nome que se acha a barra dele). */
+  opts?: { width?: number; negrito?: boolean },
 ): ReactElement {
   return (
     <YAxis
       type="category"
       dataKey={dataKey}
-      tick={{ fontSize: 12, fill: chartColors.axisTick }}
+      tick={{
+        fontSize: 12,
+        fill: opts?.negrito ? 'var(--text-primary)' : chartColors.axisTick,
+        fontWeight: opts?.negrito ? 600 : undefined,
+      }}
       tickLine={false}
       axisLine={false}
       width={opts?.width ?? 80}
@@ -196,11 +228,32 @@ export function ChartYAxisCategoria(
   )
 }
 
-/** Eixo X numérico para barra HORIZONTAL (valor no X), monetário abreviado. */
-export function ChartXAxisBRL(): ReactElement {
+/**
+ * Eixo X numérico para barra HORIZONTAL (valor no X), monetário abreviado.
+ *
+ * ⚠️ `domain` é OPCIONAL e existe por um motivo concreto: o domínio default de um eixo
+ * numérico no Recharts é `[0, 'auto']` (`axisSelectors.js`), ou seja, ele **ancora em
+ * zero e corta valores negativos**. Para as barras que só crescem para a direita (o
+ * caso de todos os call-sites até a v5.8.1) isso é o comportamento desejado. Para uma
+ * CASCATA, cujas âncoras cruzam o zero na vida real, é um gráfico silenciosamente
+ * errado — barras negativas invisíveis, e nenhum gate vê. Quem precisa dos dois lados
+ * passa `['dataMin', 'dataMax']` (ou um par de números).
+ *
+ * ⚠️ `ticks` anda junto com `domain` mais vezes do que parece: com domínio EXPLÍCITO o
+ * Recharts deixa de aplicar o algoritmo de ticks "bonitos" e divide o intervalo cru,
+ * produzindo marcas como `-471 k · 79 k · 629 k` — e, num gráfico simétrico, **sem o zero
+ * entre elas**, que era o ponto de ser simétrico. Passar `ticks` explícitos é o que
+ * devolve a régua legível.
+ *
+ * O default fica intocado de propósito: mudar o domínio de todos os gráficos existentes
+ * para resolver o caso de um seria trocar um defeito por outro.
+ */
+export function ChartXAxisBRL(opts?: { domain?: AxisDomain; ticks?: number[] }): ReactElement {
   return (
     <XAxis
       type="number"
+      domain={opts?.domain}
+      ticks={opts?.ticks}
       tickFormatter={(v) => fmtAxisBRL(Number(v))}
       tick={{ fontSize: tickFontSize.x, fill: chartColors.axisTick }}
       tickLine={false}

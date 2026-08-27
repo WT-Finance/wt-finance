@@ -25,7 +25,7 @@ import { STATUS_LABEL, statusBadge, acaoBadge, vencida } from './format'
 // `SQL_CHECKS` para o arquivo novo. É a única parte desta rede que não se atualiza sozinha.
 // (Mesma ressalva do `paridade-sql.test.ts` do Inventário, v5.6.0.)
 //
-// A 0259 vive em `supabase/patches/` — e não em `supabase/migrations/` — porque é
+// A 0262 vive em `supabase/patches/` — e não em `supabase/migrations/` — porque é
 // DESTRUTIVA: `db push` empurra todo o conjunto pendente da pasta de migrations, e uma
 // destrutiva parada lá é arrastada por qualquer push (a v5.2.0 dropou bases assim). Ela é
 // movida para lá só no instante em que um humano a aplica, em TTY. Se este teste começar a
@@ -41,14 +41,14 @@ function sqlLimpo(caminho: string): string {
     .join('\n')
 }
 
-const SQL_CHECKS = sqlLimpo('supabase/patches/0259_solic_status_aprovada_checks.sql')
-const SQL_RPCS   = sqlLimpo('supabase/migrations/0258_solic_aprovada_e_anexo_pos_criacao.sql')
+const SQL_CHECKS = sqlLimpo('supabase/patches/0262_solic_status_aprovada_checks.sql')
+const SQL_RPCS   = sqlLimpo('supabase/migrations/0261_solic_aprovada_e_anexo_pos_criacao.sql')
 
 describe('paridade SQL ↔ TS do ciclo de vida', () => {
   it('STATUS_SOLIC tem exatamente os valores que o CHECK do banco aceita', () => {
     // Extrai o ARRAY[...] do CHECK de solicitacao_status_check.
     const bloco = SQL_CHECKS.match(/solicitacao_status_check\s+CHECK\s*\(([\s\S]*?)\n\);/)
-    expect(bloco, 'CHECK de status não encontrado na 0259').not.toBeNull()
+    expect(bloco, 'CHECK de status não encontrado na 0262').not.toBeNull()
     const doSql = Array.from(bloco![1].matchAll(/'([a-z_]+)'::text/g)).map(m => m[1]).sort()
     expect(doSql).toEqual([...STATUS_SOLIC].sort())
   })
@@ -57,17 +57,17 @@ describe('paridade SQL ↔ TS do ciclo de vida', () => {
     // solicitacao_terminal_decidido: status IN (...) OR (decidido_por/decidido_em NOT NULL).
     // O IN é, por definição, o conjunto dos estados NÃO-terminais.
     const bloco = SQL_CHECKS.match(/solicitacao_terminal_decidido\s+CHECK\s*\(([\s\S]*?)\n\);/)
-    expect(bloco, 'CHECK terminal não encontrado na 0259').not.toBeNull()
+    expect(bloco, 'CHECK terminal não encontrado na 0262').not.toBeNull()
     const naoTerminais = Array.from(bloco![1].matchAll(/'([a-z_]+)'/g)).map(m => m[1]).sort()
     expect(naoTerminais).toEqual([...STATUS_EM_ANDAMENTO].sort())
   })
 
-  it('toda transição da 0258 aceita as MESMAS origens que STATUS_EM_ANDAMENTO', () => {
+  it('toda transição da 0261 aceita as MESMAS origens que STATUS_EM_ANDAMENTO', () => {
     // Se uma RPC de transição esquecesse 'aprovada', a solicitação aprovada ficaria presa:
     // visível, com botão na tela, e recusada pelo banco.
     const travas = Array.from(SQL_RPCS.matchAll(/v_sol\.status NOT IN \(([^)]+)\)/g))
       .map(m => Array.from(m[1].matchAll(/'([a-z_]+)'/g)).map(x => x[1]).sort())
-    expect(travas.length, 'nenhuma trava NOT IN encontrada na 0258').toBeGreaterThanOrEqual(4)
+    expect(travas.length, 'nenhuma trava NOT IN encontrada na 0261').toBeGreaterThanOrEqual(4)
     for (const trava of travas) expect(trava).toEqual([...STATUS_EM_ANDAMENTO].sort())
   })
 

@@ -1,0 +1,27 @@
+ordem,tipo,chave,rotulo,formula
+10,blocoH,RB_H,(+) RECEITA BRUTA DE VENDAS,RV + REEMB
+20,sub,RV,(+) Receita de Vendas,
+30,sub,REEMB,(+/-) Reembolsos,
+40,blocoH,IMP_H,(-) IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA,
+50,tot,ROL,(=) RECEITA OPERACIONAL LÍQUIDA,RB_H + IMP_H
+60,sub,CUSTO,(-) Custo dos Serviços Prestados,
+70,tot,LB,(=) LUCRO BRUTO,ROL + CUSTO
+80,blocoH,DESP_H,(-) DESPESAS,ADM+COM+MKT+ESTR+RH+RHB+FIN
+90,sub,ADM,(-) Despesas Administrativas,
+100,sub,COM,(-) Despesas Comerciais,
+110,sub,MKT,(-) Despesas Marketing,
+120,sub,ESTR,(-) Despesas Operacionais de Estrutura,
+130,sub,RH,(-) Despesas Operacionais de RH,
+140,sub,RHB,(-) Despesas Operacionais de RH Benefícios,
+150,sub,FIN,(+/-) Resultado Financeiro,
+160,tot,LOP,(=) LUCRO / PREJUÍZO OPERACIONAL,LB + DESP_H
+170,blocoH,ONOP_H,(+/-) OUTRAS RECEITAS E DESPESAS NÃO OPERACIONAIS,RNOP + DNOP
+180,sub,RNOP,(+) Outras Receitas não Operacionais,
+190,sub,DNOP,(-) Outras Despesas não Operacionais,
+200,tot,LL,(=) LUCRO / PREJUÍZO LÍQUIDO,LOP + ONOP_H
+210,blocoH,INV_H,(-) DESPESAS COM INVESTIMENTOS E EMPRÉSTIMOS,INV
+220,sub,INV,(-) Despesas com Investimentos e Empréstimos,
+230,tot,RAIR,(=) RESULTADO ANTES DO IR E CSLL,LL + INV_H
+240,sub,DL,(-) Distribuição de Lucros,
+250,tot,REX,(=) RESULTADO DO EXERCÍCIO,RAIR + DL
+260,tot,REXG,(=) RESULTADO GERENCIAL (ex-Reembolsos),REX - REEMB

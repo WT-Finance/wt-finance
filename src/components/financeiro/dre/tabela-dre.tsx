@@ -221,15 +221,19 @@ import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
 import { avPercentual, baseAv, fmtAv, linhaBaseAv, indiceBaseAv, CHAVE_BASE_AV } from '@/lib/dre/av'
+import {
+  chaveDeLinha as chaveLinha,
+  chaveDeBandeja as chaveBandeja,
+} from '@/lib/dre/identidade'
 import type {
-  DreMensal,
+  DreMensalLike,
   DreLinha,
-  DreBandeja,
+  DreBandejaLinha,
   RegistroAnoLinha,
   ConsolidadoAno,
 } from '@/lib/dre/schemas'
 
-type Relacao   = DreMensal['relacao']
+type Relacao   = DreMensalLike['relacao']
 /** Modo de exibição do "Total do ano" (Refino 8) — ver bullet no topo do arquivo. */
 type TotalModo = 'realizado' | 'tudo'
 /** Visão da tabela (Refino 13) — 'mensal' é o comportamento pré-existente; ver bullet
@@ -565,16 +569,11 @@ function deltaYtd(a: number | null, b: number | null): number | null {
   return ((b - a) / Math.abs(a)) * 100
 }
 
-/** Chave de casamento com `anosSeguintes[].totais` E `consolidadoAnos[].porLinha` —
- *  MESMA convenção que a página usa para montar os dois mapas (ver page.tsx): bloco/
- *  sub/totalizador → `b:<chave>`; categoria → `c:<categoria_id>`. `null` quando a
- *  linha não tem identificador (não deveria acontecer na prática — fail-safe: a coluna
- *  cai em AUSÊNCIA, travessão). Generalizada (ex-`chaveAnoSeguinte`) porque serve a
- *  DOIS consumidores, não só as colunas de ano seguinte. */
-function chaveLinha(l: DreLinha): string | null {
-  if (l.t === 'cat') return l.categoria_id != null ? `c:${l.categoria_id}` : null
-  return l.chave != null ? `b:${l.chave}` : null
-}
+// A chave de casamento com `anosSeguintes[].totais` e `consolidadoAnos[].porLinha` vem de
+// `@/lib/dre/identidade` — o MESMO módulo que a página usa para MONTAR esses mapas. Era
+// uma função local aqui e outra lá; enquanto foram duas, a igualdade dependia de ninguém
+// mexer numa só, e divergir é silencioso (a coluna passa a ler outra linha). Achado MÉDIO
+// do `revisor` na v5.8.0, resolvido por deduplicação e não por teste de vigilância.
 
 /** "Total do ano" por MODO (Refino 8): 'tudo' é o `total` do PAYLOAD (Σ meses +
  *  `prev_corrente`, como a RPC já entrega — comportamento ORIGINAL, default).
@@ -1171,7 +1170,7 @@ function CelulaAvBandeja({ fixa }: { fixa?: Fixa | null }) {
 }
 
 interface LinhaBandejaTrProps {
-  linha: DreBandeja
+  linha: DreBandejaLinha
   relacao: Relacao
   mesCorrente: number | null
   idxPrevisto: number
@@ -1194,7 +1193,7 @@ function LinhaBandejaTr({
   const incluirPrevCorrente = totalModo === 'tudo'
   const valoresBase = construirValores(linha.meses, linha.prev_corrente, relacao, mesCorrente, incluirPrevCorrente)
   const valores = recortarPrevisto(valoresBase, modoPrevisto, idxPrevisto)
-  const chaveAno = `c:${linha.categoria_id}`
+  const chaveAno = chaveBandeja(linha)
   const anosVisiveis = anosAbertos ? anosSeguintes : []
   const fixas = fixasDaLinha(anosVisiveis.length, true)
   return (
@@ -1343,7 +1342,7 @@ function LinhaConsolidadoTr({ linha, colunas, porAno, anosSeguintes, expansivel,
 }
 
 interface LinhaConsolidadoBandejaTrProps {
-  linha: DreBandeja
+  linha: DreBandejaLinha
   colunas: ColunaCons[]
   porAno: PorAnoCons
   anosSeguintes: AnoSeguinteDados[]
@@ -1356,7 +1355,7 @@ interface LinhaConsolidadoBandejaTrProps {
  *  da estrutura), não a coluna; pintar UMA célula dela de vermelho misturaria os dois
  *  avisos. */
 function LinhaConsolidadoBandejaTr({ linha, colunas, porAno, anosSeguintes }: LinhaConsolidadoBandejaTrProps) {
-  const chave = `c:${linha.categoria_id}`
+  const chave = chaveBandeja(linha)
   const reg = (a: number) => porAno.get(a)?.[chave]
   const fixas = fixasDaLinha(anosSeguintes.length)
 
@@ -1589,7 +1588,7 @@ function montarColunasCons(sel: ConsolidadoAno[], janelaTexto: string, totalModo
 
 interface TabelaConsolidadaProps {
   linhas: DreLinha[]
-  bandeja: DreBandeja[]
+  bandeja: DreBandejaLinha[]
   /** Colunas já montadas por `montarColunasCons` (cabeçalho e células saem daqui). */
   colunas: ColunaCons[]
   porAno: PorAnoCons
@@ -1776,7 +1775,7 @@ function TabelaConsolidada({
             if (l.g == null || !abertos.has(l.g)) return null
             return (
               <LinhaConsolidadoTr
-                key={`cons-cat-${l.categoria_id ?? l.rotulo}-${i}`}
+                key={`cons-cat-${chaveLinha(l) ?? l.rotulo}-${i}`}
                 linha={l}
                 colunas={colunas}
                 porAno={porAno}
@@ -1817,7 +1816,7 @@ function TabelaConsolidada({
             </tr>
             {bandeja.map((b, i) => (
               <LinhaConsolidadoBandejaTr
-                key={`cons-bandeja-${b.categoria_id}-${i}`}
+                key={`cons-bandeja-${chaveBandeja(b)}-${i}`}
                 linha={b}
                 colunas={colunas}
                 porAno={porAno}
@@ -1988,13 +1987,25 @@ const PREFIXO_AJUDA =
   'não o sinal do valor do período — esse aparece no próprio número, entre parênteses quando negativo. ' +
   'Categorias não levam prefixo.'
 
-function CabecalhoCard({ ultimaCarga }: { ultimaCarga?: string | null }) {
+const TITULO_PADRAO = 'Demonstrativo de Resultado por Fluxo de Caixa'
+
+function CabecalhoCard({
+  ultimaCarga,
+  titulo = TITULO_PADRAO,
+}: {
+  ultimaCarga?: string | null
+  titulo?: string
+}) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
       {/* h2 + "?" viajam JUNTOS num flex próprio: sem isso o `justify-between` do pai
-          trataria o "?" como um terceiro item e o jogaria para o meio da faixa. */}
+          trataria o "?" como um terceiro item e o jogaria para o meio da faixa.
+          Só o TÍTULO é parametrizável (v5.8.0, um card por regime). O `items-center` do pai
+          fica: uma tentativa de subtítulo aqui trocou isso para `items-start` e desalinhou o
+          selo de frescor no card do CAIXA — achado ALTO do `revisor`; o subtítulo saiu por
+          decisão do Yan e o alinhamento voltou ao original. */}
       <div className="flex items-center gap-1.5">
-        <h2 className="text-[15px] font-semibold text-text-primary">Demonstrativo de Resultado por Fluxo de Caixa</h2>
+        <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
         {/* Mesmo idioma de ajuda do Resumo Executivo (e de posicao-projetado/repasse-mensal).
             `!whitespace-normal` é obrigatório: o balão nasce `whitespace-nowrap` e, sem o `!`,
             quem decide é a ORDEM DO CSS GERADO — não a ordem das classes. */}
@@ -2031,7 +2042,7 @@ function RodapeAcoes({ slotAcoes }: { slotAcoes?: ReactNode }) {
 interface TabelaDreProps {
   /** Payload de `get_dre_mensal` já validado pelo `parseRpc` — `null` quando a RPC
    *  falhou ou o shape divergiu (a página nunca quebra; ver FAIL-SAFE no topo). */
-  dados: DreMensal | null
+  dados: DreMensalLike | null
   /** Ano resolvido pela página (clampado à janela [corrente-2, corrente]) — fonte
    *  única para destacar a pill ativa (não lê `dados.ano`, que pode ser `null`). */
   ano: number
@@ -2063,9 +2074,32 @@ interface TabelaDreProps {
    *  rodapé do card). O "Expandir tudo"/"Recolher tudo" NÃO fica ao lado dela: vive na
    *  linha das pills (rodada 6, `AcoesHierarquia`). */
   slotAcoes?: ReactNode
+
+  // ── Parametrização por REGIME (v5.8.0) ──────────────────────────────────────
+  // Estas quatro props existem para a MESMA tabela servir ao regime de caixa e ao de
+  // competência. Todas são opcionais e o default reproduz exatamente o caixa — o
+  // call-site dele não mudou uma linha, então o render dele é idêntico por construção,
+  // e não por conferência.
+
+  /** Título do card. Default: o do regime de caixa. */
+  titulo?: string
+  /** Nome do parâmetro de URL que a pill de ano escreve. Default `'ano'`.
+   *  A página da DRE tem DUAS tabelas, uma por regime, e um parâmetro só faria a pill de
+   *  uma mover a outra — cada regime navega no seu (`ano` e `anoComp`). */
+  paramAno?: string
+  /** Regime SEM previsto (competência): trava o modo em 'Realizado' e ESCONDE as pills
+   *  de modo. O fato gerador é a emissão e a base traz o que foi reconhecido — não existe
+   *  projeção para mostrar, então oferecer o toggle seria oferecer colunas de zero.
+   *  Consequência automática (nada mais a fazer): sem coluna ·PREV, sem VENCIDOS, sem
+   *  anos seguintes, e num ano parcial a tabela mostra só os meses cobertos. */
+  semPrevisto?: boolean
 }
 
-export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela, ultimaCargaMovimentacao, slotAcoes }: TabelaDreProps) {
+export default function TabelaDre({
+  dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela,
+  ultimaCargaMovimentacao, slotAcoes,
+  titulo, paramAno = 'ano', semPrevisto = false,
+}: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -2080,7 +2114,11 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   // existe: 13 colunas de mês com projeção misturada. Quem chega na página quer primeiro
   // "como estamos contra o ano passado, no que já aconteceu" — e é exatamente isso que
   // Consolidado + Realizado responde. Mensal e o previsto seguem a um clique.
-  const [totalModo, setTotalModo] = useState<TotalModo>('realizado')
+  const [totalModoEstado, setTotalModo] = useState<TotalModo>('realizado')
+  // Regime sem previsto trava o modo em 'realizado'. O ESTADO continua existindo (não
+  // condicionar hook, e o caixa segue idêntico); o que muda é o valor EFETIVO que todo o
+  // resto do componente consome — daí este ser o único ponto de leitura.
+  const totalModo: TotalModo = semPrevisto ? 'realizado' : totalModoEstado
   const [anosAbertos, setAnosAbertos] = useState(false)
   // `visaoEfetiva` (abaixo) cai para 'mensal' sozinho se nenhum ano carregar — então o
   // default 'consolidado' não é um risco de tela vazia.
@@ -2153,7 +2191,9 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   function trocarAno(a: number) {
     if (a === ano) return
     const params = new URLSearchParams(searchParams.toString())
-    params.set('ano', String(a))
+    // `paramAno` e não 'ano' literal: com duas tabelas na mesma página, escrever a mesma
+    // chave faria a pill de um regime navegar o outro (v5.8.0).
+    params.set(paramAno, String(a))
     // scroll:false — trocar o ano não deve rolar a página ao topo (mesmo racional
     // do PeriodoFilterPillsUrl da Composição, na mesma página).
     startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
@@ -2180,7 +2220,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
   if (dados === null) {
     return (
       <div className="rounded-xl bg-surface p-5 shadow-sm">
-        <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} />
+        <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <AnoPills modo="unico" ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
         </div>
@@ -2364,7 +2404,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
           : 'rounded-xl bg-surface p-5 shadow-sm'
       }
     >
-      <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} />
+      <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} />
 
       {/* ── Toolbar em DUAS linhas, tudo à esquerda (rodada 3/Refino 2) ──
           Linha de cima: pills de VISÃO. Linha de baixo: pills de ANO · divisor · pills
@@ -2419,27 +2459,35 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
               na Mensal governa as colunas de previsto/anos seguintes e o total; na
               Consolidado, a existência de PREV/VENCIDOS/TOTAL/anos seguintes. Antes
               ficavam ocultas na Consolidado por serem inertes lá. */}
-          <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
-          <button
-            type="button"
-            onClick={() => setTotalModo('realizado')}
-            title="Só o que já aconteceu — esconde as colunas de previsto, o total com projeção e os anos seguintes"
-            aria-pressed={totalModo === 'realizado'}
-            className={['foco-neutro', PILL_FILTRO, totalModo === 'realizado' ? '' : PILL_FILTRO_INATIVO].join(' ')}
-            style={totalModo === 'realizado' ? PILL_FILTRO_ATIVO_STYLE : undefined}
-          >
-            Realizado
-          </button>
-          <button
-            type="button"
-            onClick={() => setTotalModo('tudo')}
-            title="Realizado + a projeção do que falta — mostra as colunas de previsto, o total com projeção e os anos seguintes"
-            aria-pressed={totalModo === 'tudo'}
-            className={['foco-neutro', PILL_FILTRO, totalModo === 'tudo' ? '' : PILL_FILTRO_INATIVO].join(' ')}
-            style={totalModo === 'tudo' ? PILL_FILTRO_ATIVO_STYLE : undefined}
-          >
-            Realizado + Previsto
-          </button>
+          {/* Regime SEM previsto (competência) não mostra estas pills: o toggle não teria
+              o que revelar — a base traz o reconhecido, não uma projeção — e oferecer
+              "Realizado + Previsto" abriria colunas de zero. O separador vai junto, senão
+              sobraria um traço solto no fim da linha de pills. (v5.8.0) */}
+          {!semPrevisto && (
+            <>
+              <span className="mx-1 h-4 w-px bg-wt-border-strong" aria-hidden />
+              <button
+                type="button"
+                onClick={() => setTotalModo('realizado')}
+                title="Só o que já aconteceu — esconde as colunas de previsto, o total com projeção e os anos seguintes"
+                aria-pressed={totalModo === 'realizado'}
+                className={['foco-neutro', PILL_FILTRO, totalModo === 'realizado' ? '' : PILL_FILTRO_INATIVO].join(' ')}
+                style={totalModo === 'realizado' ? PILL_FILTRO_ATIVO_STYLE : undefined}
+              >
+                Realizado
+              </button>
+              <button
+                type="button"
+                onClick={() => setTotalModo('tudo')}
+                title="Realizado + a projeção do que falta — mostra as colunas de previsto, o total com projeção e os anos seguintes"
+                aria-pressed={totalModo === 'tudo'}
+                className={['foco-neutro', PILL_FILTRO, totalModo === 'tudo' ? '' : PILL_FILTRO_INATIVO].join(' ')}
+                style={totalModo === 'tudo' ? PILL_FILTRO_ATIVO_STYLE : undefined}
+              >
+                Realizado + Previsto
+              </button>
+            </>
+          )}
 
           {/* Ações da hierarquia na MESMA linha das pills, empurradas à direita pelo
               `ml-auto` (rodada 6): antes ocupavam uma 3ª faixa própria acima da tabela, o
@@ -2744,7 +2792,7 @@ export default function TabelaDre({ dados, ano, anosDisponiveis, anosSeguintes, 
                   </tr>
                   {bandeja.map((b, i) => (
                     <LinhaBandejaTr
-                      key={`bandeja-${b.categoria_id}-${i}`}
+                      key={`bandeja-${chaveBandeja(b)}-${i}`}
                       linha={b}
                       relacao={relacao}
                       mesCorrente={mesCorrente}

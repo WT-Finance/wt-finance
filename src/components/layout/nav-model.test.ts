@@ -64,6 +64,7 @@ const FORA_DA_SIDEBAR: Record<string, string> = {
   '/admin/uploads/financeiro':          'sub-rota do Upload de Arquivos, alcançada de dentro da tela',
   '/financeiro':                        'página do grupo Financeiro; a sidebar leva direto às subabas',
   '/financeiro/dre/estrutura':          'v5.3.0: editor da estrutura, alcançado de dentro da DRE',
+  '/financeiro/dre/estrutura-competencia': 'v5.8.0: editor da estrutura do regime de competência, alcançado de dentro da DRE (irmã da de cima)',
   '/metas/comparacao':                  'v5.1.9: Modo de Comparação, aberto pelo botão do Acompanhamento',
   '/metas/tv':                          'v5.1.0: Modo TV (tela cheia), aberto por link do Acompanhamento',
 }

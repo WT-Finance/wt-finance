@@ -36,7 +36,7 @@ export interface ChangelogEntrada {
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
     versao: '5.9.0',
-    data: '2026-08-25T17:23', // autoria; reconciliar ao horário REAL do merge no /pos-merge
+    data: '2026-08-27T11:31', // autoria; reconciliar ao horário REAL do merge no /pos-merge
     itens: [
       {
         tipo: 'novidade',
@@ -65,6 +65,122 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
           'que a etapa nova torna visível. Uma solicitação aprovada continua aparecendo como ' +
           'pendente e continua sinalizando atraso se passar da data-limite: o prazo corre até ' +
           'o pedido ser de fato concluído, não até ele ser autorizado.',
+      },
+    ],
+  },
+  {
+    versao: '5.8.1',
+    data: '2026-08-26T16:43', // horário REAL do merge (bbcb29c, PR #248, 26/08 16h43 −03) — reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A página do Demonstrativo de Resultado ganhou uma seção nova no topo, "Visão ' +
+          'Geral", com os dois resumos executivos lado a lado — um por competência, outro ' +
+          'por caixa — e, logo abaixo deles, a ponte que explica a distância entre os dois. ' +
+          'É a ordem em que a pergunta nasce: vê-se um resultado, vê-se o outro, e a ' +
+          'pergunta seguinte é por que eles são diferentes. Cada regime continua com a sua ' +
+          'seção completa abaixo, com o demonstrativo inteiro.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A "Ponte Competência ↔ Caixa" responde a pergunta que a versão anterior criou ao ' +
+          'pôr os dois regimes na mesma tela: POR QUE os dois resultados são diferentes. Ela ' +
+          'parte do resultado por emissão e chega ao resultado por movimentação mostrando, ' +
+          'conta por conta, de onde vem cada pedaço da diferença — o que já foi recebido mas ' +
+          'ainda não foi emitido, o que foi incorrido mas ainda não foi pago, o repasse (que ' +
+          'só existe no caixa) e os reembolsos (que só existem na competência). No acumulado ' +
+          'de janeiro a agosto de 2026 são R$ 79,4 mil NEGATIVOS por competência contra ' +
+          'R$ 136,8 mil POSITIVOS no caixa: uma distância de R$ 216,2 mil que agora tem nome ' +
+          'e explicação, em vez de virar a pergunta "qual dos dois está certo?" — que é a ' +
+          'pergunta errada. Os dois estão certos.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O resumo executivo por competência traz as oito linhas principais, da Receita ' +
+          'Bruta ao Resultado Gerencial — o mesmo card que o demonstrativo por fluxo de ' +
+          'caixa já tinha, com os botões de ano para escolher o que comparar, os anos ' +
+          'fechados, o acumulado de cada ano e a diferença em reais entre eles. Antes era ' +
+          'preciso percorrer o demonstrativo inteiro para chegar a essa leitura.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Na seção do Regime de Competência, o card "Decomposição da Variação do Resultado" ' +
+          'mostra o que moveu o resultado deste ano contra o mesmo período do ano passado, ' +
+          'um degrau por grupo de contas, do que mais pesou para o que menos pesou. Passando ' +
+          'o mouse em cada degrau, aparece a conta específica que puxou aquela variação.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os cards novos cortam o acumulado do ano até o último mês que a base de ' +
+          'competência realmente cobre. É uma diferença que importa: como essa base é ' +
+          'atualizada por um arquivo enviado periodicamente, contar até o mês do calendário ' +
+          'faria os meses ainda não enviados entrarem como ZERO, e o acumulado apareceria ' +
+          'menor do que é, sem nenhum aviso. Quando a base estiver em dia, esses cards e a ' +
+          'tabela mostram exatamente o mesmo período.',
+      },
+    ],
+  },
+  {
+    versao: '5.8.0',
+    data: '2026-08-26T12:19', // horário REAL do merge (30b71a4, PR #246, 26/08 12h19 −03) — reconciliado no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A página do Demonstrativo de Resultado passou a mostrar DOIS resultados para o ' +
+          'mesmo mês, um por critério, em duas seções: "Regime de Competência" (nova, no ' +
+          'topo) e "Regime de Caixa" (a que já existia, logo abaixo). Atenção ao ler: os ' +
+          'dois números são certos e vão ser diferentes, porque respondem a perguntas ' +
+          'diferentes. CAIXA é o que efetivamente andou na conta no mês — dinheiro que ' +
+          'entrou e saiu. COMPETÊNCIA é o que foi reconhecido pela EMISSÃO no mês, ' +
+          'independentemente de quando o dinheiro se move. Uma venda emitida em julho e ' +
+          'recebida em setembro aparece em julho na competência e em setembro no caixa.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A leitura por competência era mantida fora do sistema, numa planilha alimentada à ' +
+          'mão. Agora ela vive no Janus, com a mesma estrutura de linhas, a mesma navegação ' +
+          'por ano e a mesma coluna de Análise Vertical (% da Receita Bruta) da outra seção. ' +
+          'A base é atualizada por um arquivo próprio, e a seção mostra no cabeçalho quando ' +
+          'foi carregada e que período ela cobre — as duas seções podem estar em datas ' +
+          'diferentes, e é para isso que a informação está ali.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A última linha do demonstrativo por competência é o RESULTADO GERENCIAL: é o ' +
+          'Resultado do Exercício sem os reembolsos, porque reembolso é dinheiro que passa ' +
+          'pela empresa e volta, não resultado dela. A diferença entre os dois é grande e é ' +
+          'proposital — em 2024, R$ 208,7 mil de Resultado do Exercício contra R$ 1,32 ' +
+          'milhão de Resultado Gerencial.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'A estrutura do demonstrativo por competência agora é EDITÁVEL na própria tela, ' +
+          'pelo botão "Editar estrutura" — do mesmo jeito que já era no demonstrativo por ' +
+          'fluxo de caixa: arrastar uma linha para outro bloco, mudar a ordem, tirar uma ' +
+          'linha do demonstrativo, e um histórico que mostra quem alterou o quê e permite ' +
+          'desfazer. Antes essa organização só podia ser mudada por quem mexe no sistema. ' +
+          'E quando o arquivo importado traz uma linha nova que ninguém classificou ainda, ' +
+          'ela aparece como "Não classificadas" — visível no demonstrativo e disponível no ' +
+          'editor para ser colocada no lugar certo, sem nunca desaparecer da conta.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A atualização das bases de dados ganhou uma conferência automática: ao importar o ' +
+          'arquivo do demonstrativo, o sistema compara a quantidade de linhas E a soma dos ' +
+          'valores do arquivo com o que foi efetivamente gravado, e recusa a importação se ' +
+          'os dois não fecharem ao centavo. Antes uma importação podia terminar "com ' +
+          'sucesso" tendo gravado um valor diferente do arquivo, e isso só apareceria ' +
+          'semanas depois, num relatório.',
       },
     ],
   },

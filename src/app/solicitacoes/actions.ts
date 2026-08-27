@@ -319,7 +319,7 @@ function traduzir(msg: string): string {
   if (m[prefixo]) return m[prefixo]
 
   // Rede de segurança da v5.9.0: a etapa "Aprovada" depende de uma migration DESTRUTIVA
-  // (0259) que relaxa `solicitacao_status_check` e só um humano aplica, em TTY. Se este
+  // (0262) que relaxa `solicitacao_status_check` e só um humano aplica, em TTY. Se este
   // código chegar a produção antes dela, o primeiro "Aprovar" volta como violação de CHECK
   // — e sem esta entrada o usuário veria o texto cru do Postgres. Não conserta a ordem
   // errada; só troca um erro ininteligível por um acionável.

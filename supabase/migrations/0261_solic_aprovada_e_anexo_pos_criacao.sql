@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- 0258 — feat(v5.9.0): Solicitações — etapa "Aprovada" e anexo ao longo da vida.
+-- 0261 — feat(v5.9.0): Solicitações — etapa "Aprovada" e anexo ao longo da vida.
 --
 -- DECLARAÇÃO (regime ADITIVO): esta migration é ADITIVA/retrocompatível com a main viva —
 --   • duas colunas NOVAS e ANULÁVEIS (`aprovado_por`, `aprovado_em`): nenhuma linha
@@ -15,18 +15,24 @@
 --     (o ACL é preservado pelo REPLACE);
 --   • NÃO escreve em dado pré-existente (nenhum UPDATE/DELETE de linha viva).
 --
--- 🔴 ORDEM DE APLICAÇÃO ACORDADA COM O YAN (25/08/2026): a **v5.8.0 aplica PRIMEIRO**
---    (0255-0257, DRE competência) e só então esta 0258 — assim ninguém precisa de
---    `--fora-de-ordem` e o histórico fica sequencial.
---    ⚠️ RECONFERIR O NÚMERO LIVRE IMEDIATAMENTE ANTES DE APLICAR: a v5.8.0 avançou de
---    0255 para 0257 no curso desta própria versão. Se ela tiver chegado a 0258, esta
---    migration precisa ser renumerada de novo ANTES do push — número repetido entre
---    branches faz a segunda a aplicar ser tratada como "já aplicada" e **pulada em
---    silêncio**, sem erro nenhum (achado CRÍTICO do revisor-db).
+-- 📌 NUMERAÇÃO — histórico desta migration (vale como precedente, ver §Aprendizado do
+--    out-briefing). Ela nasceu `0256`, virou `0258` e agora é `0261`:
+--      • `0256` colidia de frente com a v5.8.0 (DRE competência), em implementação
+--        PARALELA — achado CRÍTICO do `revisor-db`, invisível de dentro de uma worktree só;
+--      • `0258` era livre, mas a v5.8.0 mergeou usando `0255`-`0257` **e `0260`**, deixando
+--        a `0258` ATRÁS da última aplicada. Aplicá-la exigiria `--fora-de-ordem`, que é
+--        justamente o que a ordem acordada com o Yan (25/08: "a v5.8 aplica primeiro")
+--        existia para evitar;
+--      • `0261` é a próxima em ordem natural depois da `0260`. Nada havia sido aplicado,
+--        então renumerar saiu de graça.
+--    ⚠️ RECONFERIR O NÚMERO LIVRE IMEDIATAMENTE ANTES DE APLICAR — nas DUAS árvores
+--    (`ls supabase/migrations/ | tail -3` aqui e em cada `.claude/worktrees/*/`) e no banco
+--    (`npx supabase migration list`). O CLI casa pelo PREFIXO numérico: número repetido faz
+--    a segunda a aplicar ser tratada como "já aplicada" e **pulada em silêncio**, sem erro.
 --
 -- ⚠️ ESTA MIGRATION NÃO BASTA SOZINHA. O CHECK `solicitacao_status_check` vivo ainda não
 --    aceita 'aprovada', então `solic_aprovar` só passa a funcionar depois da migration
---    DESTRUTIVA que relaxa os dois CHECKs (`supabase/patches/0259_*.sql`, aplicada por
+--    DESTRUTIVA que relaxa os dois CHECKs (`supabase/patches/0262_*.sql`, aplicada por
 --    humano em TTY). A ordem é deliberada e segue a §9 da skill `banco-e-rpc`: primeiro
 --    a superfície NOVA (risco zero — ninguém consome), depois o passo que exige humano.
 --

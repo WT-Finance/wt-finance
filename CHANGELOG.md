@@ -6,9 +6,9 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [5.9.0] — 2026-08-25
+## [5.9.0] — 2026-08-27
 
-MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicitação**. Migrations `0258` (aditiva) e `0259` (destrutiva, aguardando TTY) · **ADR-0169**.
+MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicitação**. Migrations `0261` (aditiva) e `0262` (destrutiva, aguardando TTY) · **ADR-0169**.
 
 ### Adicionado
 
@@ -30,6 +30,85 @@ MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicit
 - **`uploadAnexo` passou a validar posse e estado antes de escrever no Storage.** A versão inicial do anexo pós-criação aceitava um id de solicitação vindo do cliente e gravava com `service_role` antes de qualquer checagem — a validação só corria no passo seguinte, que um cliente malicioso não chamaria. Qualquer autenticado poderia acumular arquivos na pasta de qualquer solicitação, sem teto e sem coleta. (Achado ALTO do `revisor`.)
 - **O controle "Adicionar arquivo" era inacessível por teclado** — `<input type="file" hidden>` sai do tab-order e `<label>` não é focável, então só respondia a mouse. (Achado ALTO do `revisor`.)
 - **O e-mail de aprovação sairia sem data**, em silêncio: o contexto do e-mail só conhece `criado_em`/`decidido_em`, e aprovar não toca `decidido_em` de propósito. `solic_aprovar` passa a devolver o instante gravado. (Achado ALTO do `revisor`.)
+## [5.8.1] — 2026-08-26
+
+PATCH · **Complementos da DRE por Competência: Resumo Executivo, decomposição da variação e a ponte Competência ↔ Caixa**. **ZERO migration**, zero RPC nova, zero toque no banco · **ADR-0171** · **1125 testes** (de 1056).
+
+### Adicionado
+
+- **Ponte Competência ↔ Caixa** — a resposta à pergunta que a v5.8.0 criou ao pôr dois regimes na mesma página: *por que os dois números são diferentes*. Cascata de 16 degraus que sai do resultado por emissão e chega ao resultado por movimentação, um degrau por grupo de contas, com a diferença de capital de giro nomeada na âncora final. No YTD de 2026 (jan–ago): **−79.434,67** por competência → **+136.811,39** por caixa, **Δ 216.246,06**.
+  - **A identidade fecha por CONSTRUÇÃO, e isso é o ponto.** Nos dois regimes o Resultado do Exercício é a soma de todas as folhas da árvore (verificado em álgebra sobre `0205`+`0251`+`0254` e `0256`, e MEDIDO contra produção antes de escrever a primeira linha de módulo). Se cada folha entra em exatamente um degrau, `REX_comp + Σ degraus = REX_caixa` é consequência, não coincidência. Um residual que absorve a diferença faria qualquer pareamento "fechar" — por isso o teste que importa não é o da soma, é o da **totalidade**.
+  - **O lado caixa do anexo vinha descrito por conceito e foi resolvido no repo**, não presumido: `FIN ↔ FIN` (o `RFIN` do caixa foi dissolvido em `FIN` na v5.7.0), `INV ↔ INV + IMOB`, `DL ↔ DIST_LUCROS`, `REPASSE = ENT_H + PAG_H`.
+  - **Narrativa por degrau gerada por regra** `(natureza, sinal)` — "pago além do incorrido no período", "reconhecido ainda não recebido", "recebido > emitido: conversão de backlog" —, nunca texto fixo por linha: uma frase por combinação sobrevive a mudanças na árvore, dezesseis frases à mão envelhecem na primeira conta que muda de bloco.
+- **Decomposição da Variação do Resultado** — cascata do resultado do ano anterior ao deste ano, um degrau por grupo, ordenado por magnitude, com a categoria que puxou cada degrau nomeada no tooltip. O modelo da gerente chama de "desvio · previsto"; aqui é "variação", porque a plataforma **não tem base orçamentária** e "previsto" prometeria um orçado inexistente.
+- **TopSection "Visão Geral"** — a página passa a ter TRÊS seções, e a primeira deixa de ser um regime: Resumo Executivo · Competência, Resumo Executivo · Caixa e a **Ponte Competência ↔ Caixa**. É a ordem em que a pergunta nasce — vê-se um resultado, vê-se o outro, e a pergunta seguinte é "por que diferem?". A ponte fala dos DOIS regimes, então não pertence a nenhum; a **Decomposição da Variação do Resultado** ficou no Regime de Competência, porque os degraus dela são folhas daquela árvore e o demonstrativo logo acima é onde se confere cada uma.
+- **Resumo Executivo no regime de competência** — o MESMO componente do regime de caixa, agora servindo aos dois. Oito linhas de manchete (`RB_H, ROL, LB, LOP, LL, RAIR, REX, REXG`), pills de ano com seleção aditiva, anos cheios só de exercício encerrado, YTD de todos os anos marcados e o **Δ em reais** entre os dois últimos de cada grupo. Vive na "Visão Geral", ao lado do irmão de caixa.
+  - Parametrizado por **props aditivas** (`linhas`, `titulo`, `ajuda`), na receita da `TabelaDre` da v5.8.0: **o call-site do caixa não muda uma linha**, então o render dele segue idêntico por construção, e não por conferência. As duas listas de linhas passaram para `@/lib/dre/linhas-resumo` (módulo puro), para o caso de contrato poder importá-las sem arrastar React.
+  - A janela do YTD deste card é a da **cobertura**, não a do calendário — a página monta o consolidado de competência duas vezes, pela MESMA função e pelo MESMO `indexar`, mudando só a janela. Resumo e demonstrativo nunca discordam por CAMINHO; se discordarem, é a janela, e o "?" do card explica qual é.
+- **`semCaixaAlta`** em `@/lib/dre/rotulo-bloco` — converte rótulo gravado em CAIXA ALTA para capitalização de leitura, **preservando siglas** ("RH", "CSLL"). A árvore grava `blocoH` em caixa alta e `sub` em capitalização normal: na tabela isso distingue cabeçalho de subgrupo, mas na cascata os dois viram degraus irmãos e uma linha gritando entre quinze normais é ruído. Age só em strings inteiramente maiúsculas e é idempotente — title-case cego mangularia sigla, que era o motivo de o `rotuloBloco` original preservar a caixa.
+- **Primitivo de cascata** (`@/components/charts/cascata`), reutilizado pelos dois cards. Barras **horizontais**, **domínio simétrico com ticks redondos** (a linha do zero no centro e como marca do eixo, melhora à direita e piora à esquerda), campo das barras em **branco** com grade horizontal pontilhada por degrau, números coloridos pela cor da barra, e sem arredondamento — numa cascata a barra é um segmento entre dois pontos do eixo, e a ponta redonda sugere um fim de valor que não existe. Os dois cards ficam **empilhados na largura cheia** da seção: lado a lado, num grid de 2 colunas, os rótulos longos das folhas quebravam em duas linhas e colidiam com o rótulo de valor da barra vizinha.
+- **5 casos de contrato NOVOS que confrontam a BASE VIVA** (`rpc-contrato.test.ts`): a ponte fecha ao centavo, a árvore está inteiramente pareada, Σ folhas ≡ REX nos dois regimes, toda linha do Resumo Executivo existe na árvore viva do seu regime (nos DOIS regimes) e a decomposição fecha entre dois anos vivos. O de totalidade injeta uma folha órfã e prova que ela cai no residual **sem** quebrar a identidade.
+
+### Alterado
+
+- **A janela do YTD dos três componentes novos sai da COBERTURA da base de competência, não do calendário** — resolvendo uma contradição do próprio briefing (§1 mandava a cobertura, §6 exigia paridade com a tabela densa, que corta por `hojeSP()`). A base de competência é um **upload periódico**: cortar pelo calendário somaria meses ainda não carregados como se fossem zero, subestimando o YTD **em silêncio**, com um número que fecha e está errado para menos. A ponte **declara a janela no subtítulo** (`YTD 26 · jan–ago`); no Resumo Executivo a explicação vive no "?", para o card manter a anatomia do irmão de caixa.
+  ⚠️ **Custo aceito conscientemente:** quando a base atrasar, o "YTD 26" dos cards mostrará menos meses que a coluna "YTD" da tabela logo acima. Hoje as duas coincidem (base cobre até 2026-08, estamos em ago/26). A **tabela densa não foi alterada** — mudá-la é escopo maior que um patch, e fica registrado como fronteira.
+- **Distribuição de Lucros ganhou degrau próprio na ponte** (decisão do Yan), em vez do residual que o anexo previa: ela pareia limpa nos dois lados e é grande — no residual, viraria ruído exatamente no item mais explicável.
+- `ChartXAxisBRL()` aceita `domain` e `ticks` **opcionais** e `ChartYAxisCategoria` aceita `negrito`; os defaults ficam intocados. `ticks` anda junto com `domain` mais vezes do que parece: com domínio explícito o Recharts abandona o algoritmo de marcas "bonitas" e divide o intervalo cru — numa escala simétrica, isso produzia uma régua **sem o zero**, que era o ponto de ser simétrica.
+
+### Corrigido
+
+- **O domínio do eixo cortava os valores negativos** (achado da auto-auditoria, antes de qualquer conferência visual). `ChartXAxisBRL()` não declarava `domain`, e o default do Recharts para eixo numérico é `[0, 'auto']` — ele ancora em zero. Todos os call-sites anteriores plotam só positivos, então ninguém tinha esbarrado nisso; as âncoras da ponte **cruzam o zero na vida real** e metade dos degraus é negativa. Sem domínio explícito, essas barras sumiriam — e nenhum gate vê.
+- **A linha do zero ficava no eixo errado em barra horizontal.** `ChartZeroLine()` fixa `y={0}`, correto para coluna vertical; em `layout="vertical"` o Y é o eixo de **categorias**, e o Recharts aceita o valor sem reclamar, desenhando uma régua atravessando a primeira categoria. Entra `ChartZeroLineX()`.
+
+### Prova
+
+- **Medição contra produção antes da implementação:** `Σ folhas ≡ REX` fecha ao centavo nos dois regimes e nos dois anos (2025 e 2026); a ponte fecha ao centavo com residual **0,00** — toda folha das duas árvores pareia.
+- Gates: `tsc`, `lint`, `build` e **1125 testes** (baseline 1056, +69).
+- **O que NÃO mudou:** o motor de caixa, as duas tabelas densas e o RENDER do Resumo Executivo de caixa — o componente ganhou props aditivas com default, então o call-site dele não mudou uma linha e o resultado é idêntico **por construção**. O que mudou nele foi o endereço (passou para a "Visão Geral") e o título (ganhou o sufixo `· Caixa`, necessário agora que divide a seção com o irmão de competência).
+
+---
+
+## [5.8.0] — 2026-08-26
+
+MINOR · **DRE por Competência: segunda TopSection em `/financeiro/dre`, com base, árvore, leitura e EDITOR próprios**. Migrations `0255`/`0256`/`0257`/`0260` (todas ADITIVAS) · **ADR-0170** · **1056 testes**.
+
+### Adicionado
+
+- **Editor da estrutura do regime de competência** (`/financeiro/dre/estrutura-competencia`), atrás do botão "Editar estrutura" da TopSection nova — irmã do editor que já existia no regime de caixa, com o **mesmo** editor, o **mesmo** painel de histórico e o **mesmo** desfazer. Os títulos das duas páginas passaram a dizer de qual regime são: "Estrutura do Demonstrativo de Resultado **por Fluxo de Caixa**" e "**por Competência**". Migration `0260`: `financeiro.dre_comp_par` (o de-para EDITÁVEL, com destino anulável e o mesmo CHECK de estado do caixa) + 7 RPCs.
+  ⚠️ O briefing dizia "sem editor nesta versão; curadoria por migration" — pedido do Yan com o PR já aberto. A curadoria por migration segue sendo a origem do **seed**; daqui para frente a estrutura viva é editável, como já acontece no caixa.
+  ⚠️ **Por que uma tabela nova e não um `ALTER` na `dre_comp_map`:** o editor precisa do estado "sem destino", e a `dre_comp_map` nasceu com `sub_chave NOT NULL`. O caminho óbvio — `ALTER TABLE ... DROP NOT NULL` — seria classificado como **DESTRUTIVO** pelo backup-gate (o regex casa `ALTER TABLE … DROP`), exigindo TTY humano. O regex está certo em ser conservador; quem mudou foi o desenho. A `dre_comp_map` ficou órfã de leitura sem ser removida — dívida registrada.
+- **Provisionamento automático do de-para:** ao finalizar o upload **e** ao abrir o editor, todo par presente na base sem linha no de-para entra com destino em branco. É isso que faz "par novo cai na bandeja" valer também **dentro do editor**, e não só na leitura — o card do upload avisa quantos pares novos entraram.
+- **Nova TopSection "Regime de Competência" em `/financeiro/dre`, ACIMA do "Regime de Caixa".** Fato gerador: data de **emissão** (o de caixa é movimentação/vencimento). A mesma página passa a responder as duas perguntas — "quanto andou na conta" e "quanto foi reconhecido pela emissão". Mesma permissão da página (`financeiro/dre`).
+- **Base de upload nova:** cartão "Demonstrativo de Resultado (Competência)" em `/admin/uploads`, alimentado pelo export "Demonstrativo de Resultado" do Monde já tratado pelo script R (8 colunas tidy). Full-swap, `accept=".xlsx"` (o parser depende do valor NATIVO da célula, que o CSV não tem). Migration `0255`: `raw.demonstrativo_competencia` + `truncar_/inserir_lote_/status_demonstrativo_competencia`.
+- **ALARME DE INGESTÃO — peça que não existia em nenhum upload do repo.** O `finalizar` confronta **contagem e soma do ARQUIVO** (medidas pelo parser, no cliente) com **contagem e soma GRAVADAS** (medidas pelo banco). Divergência devolve erro e o card **não** declara sucesso. Comparação em **centavos inteiros** nas duas pontas. É a lição da v5.5.2 aplicada na fundação, não em retrofit: lá um ×1000 silencioso atravessou 753 testes e só apareceu meses depois, na DRE.
+- **Árvore e de-para PRÓPRIOS** (migration `0256`): `financeiro.dre_comp_bloco` (26 blocos) e `financeiro.dre_comp_map` (141 pares, chave COMPOSTA `(grupo, descrição)`), mais a view `financeiro.vw_dre_competencia`. As árvores divergem de verdade — competência não tem REPASSE nem IMOBILIZADO, e tem ONOP_H, LL, DL e REXG que o caixa não tem — e as chaves são de espécies diferentes (o caixa chaveia por `dim_categoria.id`, a competência pelo par de TEXTO do arquivo).
+- **`get_dre_competencia_mensal(ano)`** (migration `0257`), no MESMO envelope de `get_dre_mensal` — a tabela densa, as pills de ano, a Análise Vertical e o "Ver em tela cheia" servem aos dois regimes sem adaptação.
+- **`RESULTADO GERENCIAL (ex-Reembolsos)` = REX − REEMB**, como última linha da tabela em formato de totalizador (não é card nem destaque nesta versão). Reembolsos (Desconto, Reembolso Cliente, Reembolso Fornecedor) são subgrupo da Receita Bruta: passagem de dinheiro, não resultado.
+- **`toCentavos`** em `@/lib/carga/coercao` — dinheiro em centavos inteiros pela regra DECIMAL do Postgres (meio-para-longe-de-zero).
+
+### Alterado
+
+- **`TabelaDre` ficou parametrizada por REGIME**, por props ADITIVAS com default (`titulo`, `subtitulo`, `paramAno`, `semPrevisto`). O call-site do regime de caixa **não mudou uma linha**, então o render dele é idêntico por construção — e não por conferência. `semPrevisto` trava o modo em "Realizado" e esconde as pills; todo o resto (coluna ·PREV, VENCIDOS, anos seguintes) cai fora por consequência, porque a tabela já derivava tudo do modo.
+- **Cada regime navega o SEU parâmetro de URL** — `?ano=` (caixa) e `?anoComp=` (competência). Um parâmetro só faria a pill de um regime mover o outro.
+- `accept` do cartão de upload virou campo de configuração por base; o default preserva `.xlsx,.csv` das 5 bases existentes.
+- **A linha de contexto sob o título do card de competência SAIU** ("fato gerador: data de emissão · base carregada em … · cobertura …") — decisão do Yan. O selo de última atualização no canto superior direito fica: é o padrão da casa e o card do caixa tem igual. Efeito colateral bem-vindo: a prop `subtitulo` saiu junto (sem chamador, era código morto) e o `CabecalhoCard` voltou ao alinhamento original, o que **dissolve** o achado ALTO do `revisor` no M3.
+
+### Corrigido
+
+- **O alarme de ingestão comparava centavos por dois métodos que discordam** (achado ALTO do `revisor`, medido e confirmado). `Math.round(v*100)` opera sobre o float JS; o banco recebe a representação DECIMAL no JSON e aplica `::NUMERIC(18,2)`, que arredonda meio-para-**longe-de-zero**. As duas regras divergem em **todo meio-centavo negativo** — e esta base é 2.508 despesas × 736 receitas. Estava **LATENTE** (o arquivo de 25/08 não tem nenhuma linha com mais de 2 casas, e a soma não muda: 568.937,62 antes e depois); teria virado alarme falso reprovando um upload legítimo no dia em que o export trouxesse um valor de título dividido.
+- **A bandeja da competência teria apagado a seção inteira em silêncio** (achado ALTO do `revisor-db`, corrigido antes de existir call-site). `dreBandejaSchema` exige `categoria_id`, que a competência não tem; `bandeja` é campo obrigatório do envelope, então um item sem ele derrubaria o `safeParse` do objeto RAIZ, `parseRpc` devolveria `null` e a seção desapareceria deixando só um `console.error` — no PRIMEIRO par não mapeado, ou seja, exatamente quando a bandeja precisava aparecer. Agora há `dreCompBandejaSchema` próprio, com `chave` textual como identidade.
+
+### Prova
+
+- **Oráculo em forma fechada, sem banco:** expandindo as fórmulas da árvore, `REX` tem coeficiente **+1 em cada uma das 15 folhas**, e as 15 folhas são exatamente os destinos que o de-para usa — logo `REX ≡ Σ(base do ano)` por CONSTRUÇÃO, não por coincidência numérica. No REXG o coeficiente de REEMB cancela para 0. 15 testes em `src/lib/dre/competencia-estrutura.test.ts`, que leem o SQL APLICADO (mão humana no seed gerado fica vermelha).
+- **Medido ao vivo (REST/service_role), 3 anos:** REX = 208.743,77 / 439.628,52 / −79.434,67 e **REXG 2024 = 1.323.690,77** — idênticos ao briefing e ao modelo da gerente. 164 linhas (138 folhas + 26 blocos), bandeja 0, reconciliação `base = linhas + bandeja + excluídas` fechando.
+- **Bandeja provada e revertida:** par inventado injetado na base aparece na bandeja, o REX **não se move** e `base − linhas = bandeja`. Base restaurada ao original.
+- A migration `0256` é **arquivo gerado** por `scripts/gera-seed-dre-competencia.mjs` a partir dos anexos CSV do briefing; o gerador valida referência de fórmula, **aciclicidade**, par não repetido e a regra de rótulos antes de emitir.
+
+### Fora desta versão (registrado)
+
+Cards de KPI e tabela de linhas-chave da competência; mix de receita; ponte competência↔caixa; orçado; editor da árvore/de-para de competência.
 
 ---
 

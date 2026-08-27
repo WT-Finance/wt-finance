@@ -368,6 +368,32 @@ ls ../*/supabase/migrations/ | tail -3    # TODAS as worktrees irmãs
 conferência é **imediatamente antes de aplicar**, não no planejamento: a outra branch se move.
 Quem aplicar por último renumera. (Achado CRÍTICO do `revisor-db`; candidato a enforcement no
 wrapper `db:migrate`, varrendo `.claude/worktrees/*/supabase/migrations/`.)
+### Relaxar uma coluna (`DROP NOT NULL`) conta como DESTRUTIVA — e o desenho é que muda (v5.8.0)
+
+O classificador do backup-gate (`scripts/db-gate/classificar.mjs`) casa
+`/\bALTER\s+TABLE\b[\s\S]*\bDROP\b/` — **sem distinguir `DROP COLUMN` de `DROP NOT NULL` ou
+`DROP CONSTRAINT`**. Qualquer um dos três torna a migration DESTRUTIVA, o que exige confirmação
+humana em TTY (ADR-0131) e o agente **não alcança por construção**.
+
+O regex está certo em ser conservador — quem tem de mudar é o desenho, não a rede. **Não
+contorne** (é protocolo D5: `db push` cru pula o backup-gate). O caminho autônomo é:
+
+1. **CREATE TABLE nova com a forma certa** (a coluna já anulável, os CHECKs certos);
+2. **seed por `INSERT ... SELECT`** a partir da antiga — `INSERT` é aditivo;
+3. **repontar a leitura** (`CREATE OR REPLACE VIEW`/`FUNCTION` — aditivos);
+4. deixar a antiga **órfã de leitura, sem remover** (`DROP` também é destrutivo) e **registrar
+   a dívida**.
+
+Custa uma tabela redundante até uma destrutiva futura, e é barato quando ela é pequena. Na
+v5.8.0 foi exatamente isso: `dre_comp_map` nasceu com `sub_chave NOT NULL` (curadoria por
+migration, onde todo par tem destino) e o editor precisava do estado "sem destino";
+`financeiro.dre_comp_par` nasceu anulável, a leitura repontou, e a antiga ficou como fonte do
+seed e alvo do teste de paridade contra os anexos do briefing.
+
+⚠️ Ao repontar por `CREATE OR REPLACE VIEW`, a lista de colunas (nomes, ORDEM e tipos) tem de
+ser idêntica, senão o `REPLACE` falha — e **redeclare** `REVOKE`/`GRANT` mesmo sabendo que o
+Postgres preserva as ACLs (precedente 0197/0206): o dia em que aquilo virar `DROP`+`CREATE`, o
+default privilege do Supabase abre `anon` em silêncio.
 
 ### `CHECK` com `CASE` sobre enum: sem `ELSE false` é FAIL-OPEN
 
@@ -557,6 +583,56 @@ medição evitou tanto o incidente quanto uma otimização desnecessária.
 destrutiva, com humano em TTY. Para métrica recém-nascida isso congela a evolução. Se a
 materialização for mesmo necessária, manter a **definição** numa view comum e a materializada
 como `SELECT * FROM` ela preserva a alterabilidade por REPLACE.
+
+### 9.1 Árvore de fórmulas: expanda em FOLHAS SIGNADAS (v5.8.0)
+
+Quando uma hierarquia guarda a fórmula de cada agregação como referência a outras chaves
+(`dre_bloco.formula`, `dre_comp_bloco.formula`), há uma armadilha de ordem: as fórmulas podem
+apontar para as **duas direções**. Um cabeçalho referencia os subgrupos que vêm **depois** dele
+(`RB_H@10 = RV@20 + REEMB@30`); um totalizador referencia chaves **anteriores**
+(`ROL@50 = RB_H@10 + IMP_H@40`). Não existe, portanto, um passe único por `ordem` que resolva
+tudo — e "resolver em 2 ou 3 passes conforme o tipo" é frágil, porque amarra o código à forma
+atual da árvore, que é DADO.
+
+**O padrão:** uma view que expande cada chave na sua combinação **signada de FOLHAS** (blocos com
+`formula IS NULL`, que somam as próprias categorias). Depois disso, o valor de qualquer bloco é
+uma combinação linear das folhas, e a expansão depende só da árvore — não do período.
+
+```sql
+WITH RECURSIVE termo(raiz, chave, sinal, profundidade) AS (
+  SELECT b.chave, b.chave, 1, 0 FROM <arvore> b
+  UNION ALL
+  SELECT t.raiz, f.ref, t.sinal * f.sinal, t.profundidade + 1
+  FROM termo t
+  JOIN <arvore> b ON b.chave = t.chave AND b.formula IS NOT NULL
+  CROSS JOIN LATERAL (
+    SELECT CASE WHEN e.v LIKE '-%' THEN substr(e.v,2) ELSE e.v END,
+           CASE WHEN e.v LIKE '-%' THEN -1 ELSE 1 END
+    FROM jsonb_array_elements_text(b.formula) AS e(v)
+  ) f(ref, sinal)
+  WHERE t.profundidade < 24            -- rede contra laço, NÃO validação
+)
+SELECT t.raiz, t.chave AS folha, sum(t.sinal)::int AS coeficiente
+FROM termo t JOIN <arvore> b ON b.chave = t.chave AND b.formula IS NULL
+GROUP BY 1, 2
+HAVING sum(t.sinal) <> 0;
+```
+
+Dois ganhos que valem o padrão:
+
+- **Subtração vira aritmética, não caso especial.** Um termo negativo de algo que já está somado
+  dentro do positivo (`REXG = REX − REEMB`, com REEMB dentro do REX) se encontra no mesmo grupo:
+  o coeficiente soma `+1 − 1 = 0` e o `HAVING` o descarta.
+- **O oráculo fica estrutural.** Se a soma total (`REX`) expande para coeficiente **+1 em cada
+  folha** e o conjunto de folhas é exatamente o conjunto de destinos do de-para, então
+  `total ≡ Σ(base)` **por construção** — e isso se prova lendo o CSV do seed, antes de escrever
+  SQL, em vez de por conferência numérica que quebra a cada re-upload.
+
+⚠️ **O teto de profundidade é rede contra laço infinito, não validação de corretude.** Um ciclo
+passa pelo `CREATE VIEW` sem erro e produz coeficientes **PARCIAIS em silêncio**. A aciclicidade
+se valida onde a árvore é ESCRITA — no gerador do seed (DFS com marcação) e, quando existir
+editor, na gravação. Ver também: a performance de CTE recursiva é o §9 acima; aqui o volume é a
+árvore (dezenas de linhas), não o dado.
 
 ## 10. HTTP a partir do banco: `pg_net` é ASSÍNCRONO
 

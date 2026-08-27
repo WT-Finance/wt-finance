@@ -1,24 +1,53 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-25 (pós-merge da v5.7.2) · produção na **v5.7.2** (#243 mergeado 25/08 às 14h10 — AV sobre a Receita Bruta, novos defaults da DRE, busca e ordenação em Solicitações, colunas ordenáveis no Gerencial; **sem migration**). Antes a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — Resultado Financeiro unificado, Imobilizado abaixo da linha, rótulos padronizados e Análise Vertical; **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-26 (pós-merge da v5.8.1) · produção na **v5.8.1** (#248 mergeado 26/08 às 16h43 — DRE: TopSection "Visão Geral" com os dois Resumos Executivos e a **Ponte Competência ↔ Caixa**, mais a Decomposição da Variação do Resultado; **ZERO migration**, **ADR-0171**, 1125 testes). Antes a v5.8.0 (#246, 26/08 12h19 — DRE por Competência: base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**), a v5.7.2 (#243, 25/08 14h10), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-⚠️ **Numeração de migration: a última APLICADA é a `0254`.** Mas a próxima livre **não é a
-`0255`** — há DUAS versões em voo com migrations escritas e não aplicadas:
-**v5.8.0** (DRE competência) reservou `0255`, `0256` e `0257`; **v5.9.0** (Solicitações)
-reservou `0258` (aditiva) e `0259` (destrutiva, em `supabase/patches/`).
-🔴 **Conferir o número livre nas DUAS worktrees, e IMEDIATAMENTE antes de aplicar** — a v5.8.0
-avançou de `0255` para `0257` no curso da v5.9.0, e o CLI identifica a migration pelo PREFIXO
-numérico: número repetido entre branches faz a segunda a aplicar ser tratada como "já aplicada"
-e **pulada em silêncio**, sem erro (achado CRÍTICO do `revisor-db` na v5.9.0).
+✅ **v5.8.1 EM PRODUÇÃO** — **ADR-0171**, **ZERO migration**, **1125 testes** (de 1056),
+incluindo 5 casos de contrato que confrontam a BASE VIVA a cada `npm test`.
+
+`/financeiro/dre` passou a ter **TRÊS TopSections**: **Visão Geral** (nova, no topo —
+Resumo Executivo · Competência, Resumo Executivo · Caixa e a **Ponte Competência ↔ Caixa**),
+**Regime de Competência** (demonstrativo + Decomposição da Variação do Resultado) e
+**Regime de Caixa** (inalterado). O critério: a ponte concilia DOIS regimes, então não
+pertence a nenhum; a decomposição decompõe UM. Tudo derivado no cliente dos dois payloads que
+a página já buscava — nenhuma chamada nova.
+
+✅ **Conferência visual FEITA** (4 rodadas, 26/08) — as últimas pelo próprio agente via Claude
+in Chrome, usando a sessão já aberta do Yan. Achado que só a tela
+pega: **`ResponsiveContainer` exige `height` no pai, nunca `min-height`** (com `min-height` o
+filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu ao empilhar.
+
+⚠️ **Três coisas ficaram abertas na v5.8.1** (detalhe no out-briefing dela):
+1. **O subagente `revisor` NÃO foi despachado** — restrição de harness da sessão que a
+   executou; seguiu-se o Protocolo D5 (auto-auditoria adversarial no lugar, não-verificado
+   declarado). Vale rodar `revisor` sobre `src/lib/dre/` e `src/components/charts/` quando der.
+2. **Decisão de produto pendente:** o subtítulo da "Decomposição da Variação do Resultado" diz
+   **"Δ%"**, mas os degraus daquela cascata estão em **REAIS**. `Δ YTD 25·26` seria fiel à
+   figura — é troca de uma string em `src/app/financeiro/dre/page.tsx`.
+3. **Observação de negócio, não defeito:** o degrau "Impostos e Deduções" da ponte é muito
+   grande (−419.366,50 na competência × −2.863.256,92 no caixa, YTD jan–ago/26). A ponte só
+   expõe o que as duas curadorias fazem — vale um olhar no de-para de impostos dos dois
+   regimes, que é DADO editável, não código.
+
+⚠️ **UMA VERSÃO EM VOO — conferir numeração no REMOTO, não só na worktree.** A branch
+`feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
+migrations **`0258`** (já escrita na pasta dela) e **`0259`** (destrutiva, corretamente ainda não
+escrita). Foi por isso que o ADR da v5.8.0 nasceu 0169 e **virou 0170**: `ls docs/adr/` numa
+worktree mostra só o que está mergeado, e a numeração REAL só aparece olhando `origin`. A v5.9.0
+saiu do main na `0254`, então **não contém** as `0255`–`0257`/`0260`, que já estão aplicadas — um
+`migration list` rodado lá mostra quatro "remote-only" (não quebra o push dela; só a `0258` está
+pendente). ⚠️ **Ela precisa de um `git pull`/rebase no main antes de aplicar a `0259`.**
+
+⚠️ **Numeração de ADR: o `0171` está no main (v5.8.1); a próxima livre é a `0172`** — mas o
+`0169` segue **reservado** pela v5.9.0 em voo, que ainda não mergeou. Conferir no `origin`,
+nunca só no `ls docs/adr/` da worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
+
+⚠️ **Numeração de migration: a última APLICADA é a `0260`; a próxima livre é a `0261`**
+(a `0258`/`0259` seguem reservadas pela v5.9.0 — a `0258` já está escrita na branch dela, a
+`0259` é destrutiva e corretamente ainda não existe). Conferir no BANCO e no REMOTO antes de aplicar.
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
 esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
 removida no fechamento da v5.6.4).
-
-🔴 **v5.9.0 em PR, com banco NÃO APLICADO por decisão.** Ordem acordada com o Yan (25/08): a
-**v5.8.0 aplica primeiro** (`0255`-`0257`), a v5.9.0 depois — assim nenhuma precisa de
-`--fora-de-ordem`. A `0259` é **DESTRUTIVA e pré-requisito do MERGE**, não passo pós-merge: o
-front que a consome já está no branch e fica vivo no instante do deploy. Receita completa no
-out-briefing da v5.9.0, §5.
 
 🔴 **PENDENTE: comunicar a MUDANÇA DE CRITÉRIO da DRE à liderança.** Desde 19/08 a DRE mostra
 o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha) em **TODOS os
@@ -35,6 +64,74 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 > Manter curto: o que mudou de verdade, não histórico — histórico é o CHANGELOG.
 
 ## Verdade atual
+
+- **v5.8.0 (#246, mergeada 26/08 às 12h19) — DRE por Competência: segunda TopSection em `/financeiro/dre`.**
+  Migrations **`0255`/`0256`/`0257`/`0260` (aditivas) APLICADAS** · **ADR-0170** · **1056 testes**.
+  A página passa a mostrar **DOIS resultados para o mesmo mês**: o Regime de Caixa que já
+  existia e o **Regime de Competência** (fato gerador = data de **EMISSÃO**), que fica **ACIMA**
+  dele — decisão do Yan na sessão, contra o "abaixo" do briefing. Fonte: base de upload nova
+  (`raw.demonstrativo_competencia`, o export "Demonstrativo de Resultado" do Monde tratado por
+  script R), árvore e de-para PRÓPRIOS (`financeiro.dre_comp_bloco` + `dre_comp_par`), leitura por
+  VIEW + `get_dre_competencia_mensal(ano)` no MESMO envelope de `get_dre_mensal`, e **editor da
+  estrutura próprio** (`/financeiro/dre/estrutura-competencia`, `0260`) — irmão do do caixa, com
+  o mesmo editor, histórico e desfazer.
+  ⚠️ **`financeiro.dre_comp_map` está ÓRFÃ de leitura** desde a `0260`: o de-para vivo é
+  `dre_comp_par` (que nasceu com `sub_chave` anulável, porque o editor precisa do estado "sem
+  destino"). Ela NÃO foi removida — `DROP` é destrutivo — e segue como fonte do seed inicial e
+  alvo do teste de paridade contra os anexos. **Dívida: removê-la numa destrutiva futura.**
+  **Base carregada em produção:** 3.244 linhas · Σ 568.937,62 · 141 pares · cobertura
+  2024-01→2026-08.
+  **O oráculo é ESTRUTURAL, não numérico:** expandindo as fórmulas da árvore, `REX` tem
+  coeficiente +1 em cada uma das 15 folhas, e as 15 folhas são exatamente os destinos que o
+  de-para usa ⇒ `REX ≡ Σ(base do ano)` por CONSTRUÇÃO. Medido ao vivo nos 3 anos: REX =
+  208.743,77 / 439.628,52 / −79.434,67 e **REXG 2024 = 1.323.690,77**, idênticos ao modelo da
+  gerente. Bandeja 0; par inventado injetado e revertido prova que órfã aparece e o REX não se
+  move.
+  ⚖️ **Decisão de produto embutida:** a base da AV da seção nova é a **Receita Bruta (`RB_H`)**,
+  não a ROL que o briefing pedia — o briefing foi escrito sobre a v5.7.1 e a v5.7.2 trocou a
+  base horas antes. Dois denominadores na mesma página seriam dois números vizinhos que não
+  conversam.
+  **Duráveis:** *(a)* **prove o invariante em forma fechada a partir do ANEXO, antes do SQL** —
+  contar chaves num CSV transformou o oráculo de conferência numérica frágil (que quebraria a
+  cada re-upload) em identidade estrutural; *(b)* **não compare dinheiro entre JS e Postgres
+  multiplicando por 100** — `Math.round` desempata para +∞ e `NUMERIC` para longe de zero, então
+  em base majoritariamente negativa o desacordo é a REGRA (nasceu `toCentavos`); *(c)* **schema
+  compartilhado entre duas fontes é apagão à espera** quando o campo obrigatório é a identidade —
+  o item que falha derruba o parse do ENVELOPE, e no pior momento possível; *(d)* **migration com
+  seed grande se GERA, não se transcreve** (141 pares, um com vírgula dentro do campo — e o
+  gerador é onde as validações moram, incluindo aciclicidade); *(e)* **`accept` de input não
+  cobre arrastar-e-soltar**; *(f)* **`.passthrough()` do Zod arrasta índice `unknown` que quebra
+  o estreitamento por `'x' in obj`**; *(g)* **Next 16 em WSL2 precisa de `-H 0.0.0.0`** para o
+  browser do Windows alcançar — é a causa concreta do "o Chrome não alcança o localhost do
+  WSL2" registrado na v5.6.0.
+  ⚠️ **Conferência visual NÃO VERIFICADA:** o dev server ficou alcançável pelo Edge com o bind
+  em `0.0.0.0`, mas não havia sessão autenticada e **fazer login é barreira dura** (o gerenciador
+  de senhas pré-preenche o campo; clicar "Entrar" seria autenticar como o usuário). Modelo que
+  funciona segue **entregar → Yan confere no ar → ajustar** (v5.4.1).
+  🔧 **M5 (ajustes com o PR já aberto, pedido do Yan):** o subtítulo do card de competência
+  SAIU (o selo de última atualização fica); o **"Editar estrutura" foi replicado** para a
+  competência (`/financeiro/dre/estrutura-competencia`, migration **`0260`** aplicada), e os
+  títulos das duas páginas de edição passaram a nomear o regime. O briefing dizia "sem editor
+  nesta versão" — revertido pelo Yan; a curadoria por migration segue sendo a origem do seed.
+  ⚠️ **Durável do M5:** `ALTER TABLE ... ALTER COLUMN ... DROP NOT NULL` é classificado como
+  **DESTRUTIVO** pelo backup-gate (o regex casa `ALTER TABLE … DROP`, sem distinguir DROP de
+  dado de DROP de constraint) — logo exige TTY humano e o agente não alcança. Quando o modelo
+  precisa relaxar uma coluna, o caminho autônomo é **tabela nova com a forma certa** e
+  repontar a leitura, deixando a antiga órfã (DROP também é destrutivo). Foi o que a `0260`
+  fez: `financeiro.dre_comp_par` nasceu com `sub_chave` anulável, e `dre_comp_map` ficou como
+  fonte do seed e alvo do teste de paridade. Dívida: removê-la numa destrutiva futura.
+  Out-briefing: `WT_Finance_Out_Briefing_v5-8-0_DRE_Competencia.md`.
+  **Pendente Yan (a versão está NO AR desde 26/08 12h19):** conferir o Demonstrativo por
+  Competência contra o arquivo do Monde (Total Geral por ano) · conferir as 3 linhas fundidas
+  contra o modelo da gerente · alternar as pills nos dois regimes e confirmar independência
+  (`?ano=` × `?anoComp=`) · conferir que a seção de caixa não mudou · **exercitar o editor novo**
+  (mover uma linha de bloco, salvar, ver o histórico e desfazer) · 🔴 **comunicar o peso de
+  critério à liderança** — a página passa a mostrar DOIS resultados para o mesmo mês, e o texto
+  em linguagem de negócio já está pronto no CHANGELOG_DIRETORIA · confirmar com a gerente o par
+  `Reembolso Fornecedor - C` (RV) × `Reembolso Fornecedor` (REEMB).
+  📝 **Decisão de produto em aberto:** desclassificar uma linha de volta para a bandeja NÃO é
+  possível (o salvar aceita "num bloco" ou "excluída", espelhando o caixa). Aqui seria trivial
+  permitir, porque a bandeja é uma linha real da tabela — decidir se vale.
 
 - **v5.7.2 (#243, mergeada 25/08 às 14h10) — AV sobre a Receita Bruta, defaults da DRE, busca em Solicitações,
   ordenação no Gerencial.** **Sem migration, sem ADR.** Gates verdes, **998/998**.
@@ -886,10 +983,10 @@ critério antigo. Quadro de-para por ano pronto no **ADR-0168** e no out-briefin
 
 ## Filas ativas (próximos passos já decididos)
 
-- ~~**PODAR o passo 4 do `/nova-versao`**~~ — **FEITO**: o `/nova-versao` já não menciona as
-  cópias `0950–0954`, e a v5.5.0 confirmou que a pasta `supabase/migrations/` não tem nenhuma
-  `095*`. ⚠️ **O `/fechamento-versao` AINDA cita a remoção delas** (§4, "enquanto a renumeração
-  pós-v5.3 não sai") — é o último resíduo, e é letra morta pelo mesmo motivo. Podar lá também.
+- ~~**PODAR as cópias `0950–0954` dos rituais**~~ — **FECHADO na v5.8.0**: o `/nova-versao` já
+  não as mencionava e o `/fechamento-versao` §4 deixou de mencionar (reconferido: a pasta
+  `supabase/migrations/` não tem nenhum `095*`). No lugar entrou o cuidado que a v5.8.0 pagou:
+  **conferir numeração de ADR/migration no REMOTO quando há versão paralela em voo.**
 - **`financeiro/posicao-projetado.tsx` pode migrar** para o primitivo
   `components/shared/slider-horizonte.tsx` (extraído na v5.4.2 com a geometria dele —
   trilho neutro, régua de riscos, `posTick` compensando a meia-largura do thumb). Hoje há

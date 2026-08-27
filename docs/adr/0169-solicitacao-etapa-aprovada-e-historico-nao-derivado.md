@@ -1,7 +1,7 @@
 # ADR-0169 — Solicitação: etapa "Aprovada" opcional, e por que o histórico deixou de ser derivado do status
 
 **Status:** aceito · **Data:** 2026-08-25 · **Versão:** v5.9.0
-**Migrations:** `0258` (aditiva) · `0259` (destrutiva, `supabase/patches/`)
+**Migrations:** `0261` (aditiva) · `0262` (destrutiva, `supabase/patches/`)
 
 ## Contexto
 
@@ -62,7 +62,7 @@ autoriza, não encerra).
   conta como pendência na caixa de quem atende.
 - **`aprovada` exige registro:** a constraint `solicitacao_aprovada_registrada` impede o estado
   sem `aprovado_por`/`aprovado_em` — aprovada anônima seria pior que não ter a etapa.
-- **A `0259` é destrutiva por convenção, não por efeito.** Ela só relaxa dois CHECKs (aceita um
+- **A `0262` é destrutiva por convenção, não por efeito.** Ela só relaxa dois CHECKs (aceita um
   superconjunto; nenhuma linha existente se torna inválida), mas passa por `DROP CONSTRAINT` — e
   a regra do projeto trata todo DROP como destrutivo. Consequência prática: **um humano em TTY é
   pré-requisito do MERGE**, não um passo pós-merge, porque o front que consome a etapa já está no
