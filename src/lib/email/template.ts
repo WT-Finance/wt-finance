@@ -163,14 +163,20 @@ export function templateSenhaProvisoria(input: {
 // Rejeição inclui a justificativa. Reusa TemplateSenha como shape de retorno. (scaffold
 // duplicado de propósito — ver docs/email-layout-guide.md §5.)
 
-export type MovimentacaoEmail = 'criada' | 'concluida' | 'rejeitada' | 'cancelada'
+export type MovimentacaoEmail = 'criada' | 'aprovada' | 'concluida' | 'rejeitada' | 'cancelada'
 const MOV_PT: Record<MovimentacaoEmail, string> = {
-  criada: 'criada', concluida: 'concluída', rejeitada: 'rejeitada', cancelada: 'cancelada',
+  criada: 'criada', aprovada: 'aprovada', concluida: 'concluída',
+  rejeitada: 'rejeitada', cancelada: 'cancelada',
 }
 // Cor do status (badge + faixa lateral) por movimentação — MESMA paleta das badges da
-// página Movimentações: criada=dourado, concluída=verde, rejeitada=vermelho, cancelada=cinza.
+// página Movimentações: criada=dourado, aprovada=âmbar, concluída=verde,
+// rejeitada=vermelho, cancelada=cinza. Hex literal (e-mail não enxerga var() de token).
+// 'aprovada' usa o --warning-DEEP (#8A6413), não o --warning puro (#D9A23F): este último
+// é vizinho demais do dourado de 'criada' (#BD965C) e as duas faixas ficariam quase
+// indistinguíveis na caixa de entrada — que é justamente onde a distinção importa.
 const MOV_COR: Record<MovimentacaoEmail, string> = {
-  criada: '#BD965C', concluida: '#5F7A3D', rejeitada: '#A35442', cancelada: '#75777B',
+  criada: '#BD965C', aprovada: '#8A6413', concluida: '#5F7A3D',
+  rejeitada: '#A35442', cancelada: '#75777B',
 }
 
 export function templateNotificacaoSolicitacao(input: {

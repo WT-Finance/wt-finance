@@ -22,7 +22,8 @@ import { detalheSolicitacao } from '@/app/solicitacoes/actions'
 // Rótulo da ação em PARTICÍPIO (a RPC emite o substantivo). Busca e ordenação usam o
 // particípio exibido, para "aberta"/"concluída" casarem com o que o usuário vê.
 const PARTICIPIO: Record<string, string> = {
-  Abertura: 'aberta', Conclusão: 'concluída', Rejeição: 'rejeitada', Cancelamento: 'cancelada',
+  Abertura: 'aberta', Aprovação: 'aprovada', Conclusão: 'concluída',
+  Rejeição: 'rejeitada', Cancelamento: 'cancelada',
 }
 const participio = (acao: string) => PARTICIPIO[acao] ?? acao.toLowerCase()
 

@@ -31,23 +31,30 @@ filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu
 
 ⚠️ **UMA VERSÃO EM VOO — conferir numeração no REMOTO, não só na worktree.** A branch
 `feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
-migrations **`0258`** (já escrita na pasta dela) e **`0259`** (destrutiva, corretamente ainda não
-escrita). Foi por isso que o ADR da v5.8.0 nasceu 0169 e **virou 0170**: `ls docs/adr/` numa
-worktree mostra só o que está mergeado, e a numeração REAL só aparece olhando `origin`. A v5.9.0
-saiu do main na `0254`, então **não contém** as `0255`–`0257`/`0260`, que já estão aplicadas — um
-`migration list` rodado lá mostra quatro "remote-only" (não quebra o push dela; só a `0258` está
-pendente). ⚠️ **Ela precisa de um `git pull`/rebase no main antes de aplicar a `0259`.**
+migrations **`0261`** (aditiva, escrita) e **`0262`** (destrutiva, escrita e guardada em
+**`supabase/patches/`** — pasta NOVA dessa versão, fora de `supabase/migrations/` de propósito:
+`db push` empurra todo o conjunto pendente da pasta de migrations, e destrutiva parada lá é
+arrastada por qualquer push, como na v5.2.0. Ela é movida para lá só no instante em que um
+humano a aplica).
+✅ **Já trouxe o main (v5.8.1) por merge em 27/08** — ela não está mais atrasada na `0254`.
+📌 **Ela renumerou duas vezes:** nasceu `0256`/`0257` (colidia de frente com a v5.8.0 — achado
+CRÍTICO do `revisor-db`, invisível de dentro de uma worktree só), virou `0258`/`0259`, e agora é
+`0261`/`0262` — porque a v5.8.0 respeitou a reserva mas usou `0260`, deixando a `0258` ATRÁS da
+última aplicada, o que exigiria `--fora-de-ordem`. Renumerar foi grátis porque nada tinha sido
+aplicado. Foi também por essa dança de numeração que o ADR da v5.8.0 nasceu 0169 e **virou
+0170**: `ls docs/adr/` numa worktree mostra só o que está mergeado.
 
 ⚠️ **Numeração de ADR: o `0171` está no main (v5.8.1); a próxima livre é a `0172`** — mas o
 `0169` segue **reservado** pela v5.9.0 em voo, que ainda não mergeou. Conferir no `origin`,
 nunca só no `ls docs/adr/` da worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
-⚠️ **Numeração de migration: a última APLICADA é a `0260`; a próxima livre é a `0261`**
-(a `0258`/`0259` seguem reservadas pela v5.9.0 — a `0258` já está escrita na branch dela, a
-`0259` é destrutiva e corretamente ainda não existe). Conferir no BANCO e no REMOTO antes de aplicar.
-Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
-esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
-removida no fechamento da v5.6.4).
+⚠️ **Numeração de migration: a última APLICADA é a `0263`; a próxima livre é a `0264`.**
+A v5.9.0 aplicou três: `0261` (aditiva), `0262` (destrutiva, em TTY pelo Yan) e `0263` (aditiva
+— anexo livre, que REVERTEU a decisão D7 no meio da versão; Emenda 1 do ADR-0169). O ciclo de
+vida da Solicitação com `'aprovada'` e o anexo livre estão **no banco**; o código aguarda o
+merge do PR #245. Conferir sempre em `supabase_migrations.schema_migrations` e em
+`supabase/migrations/`, não neste texto — este ponteiro já nasceu obsoleto uma vez nesta
+própria versão (achado BAIXO do `revisor-db`).
 
 🔴 **PENDENTE: comunicar a MUDANÇA DE CRITÉRIO da DRE à liderança.** Desde 19/08 a DRE mostra
 o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha) em **TODOS os

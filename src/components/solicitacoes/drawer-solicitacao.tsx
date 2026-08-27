@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Download, Check, X, Ban, FileText, FileSpreadsheet, FileImage, File as FileIcon } from 'lucide-react'
+import { Loader2, Download, Check, X, Ban, ThumbsUp, Paperclip, FileText, FileSpreadsheet, FileImage, File as FileIcon } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
 import ModalCentral from '@/components/shared/modal-central'
 import ConfirmModal from '@/components/shared/confirm-modal'
@@ -11,11 +11,64 @@ import Badge from '@/components/ui/badge'
 import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { CAMPO } from '@/lib/ui/campos'
 import { fmtDataHoraSP } from '@/lib/fmt'
-import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl } from '@/app/solicitacoes/actions'
+import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl,
+  aprovarSolicitacao, anexarEmSolicitacao, uploadAnexo, descartarAnexos, type AnexoMeta } from '@/app/solicitacoes/actions'
 import { STATUS_LABEL, statusBadge, fmtDataBR, fmtValor, vencida } from '@/lib/solicitacoes/format'
+import { emAndamento } from '@/lib/solicitacoes/schemas'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 const INPUT = `${CAMPO} resize-none`
+
+/** Alvo de um upload: um campo de anexo do tipo (id) ou o bloco LIVRE (anexo geral).
+ *  Sentinela em vez de -1 porque `campo_id` é um id de verdade, e -1 seria um id fingindo
+ *  não ser id — o tipo já diz que são duas coisas diferentes. */
+type AlvoAnexo = number | 'livre'
+
+/** Controle de "Adicionar arquivo". Um só componente para os DOIS lugares onde ele aparece
+ *  — nos campos de anexo do tipo e no bloco de anexo livre — porque duas cópias divergiriam
+ *  no primeiro ajuste (foi o que a v5.7.2 aprendeu com ordem e busca).
+ *
+ *  Vive no MÓDULO, não dentro do drawer: componente definido no corpo de outro dispara
+ *  `static-components` do React Compiler (lint em `error`) e, pior que o lint, remonta a
+ *  subárvore a cada render do pai. Num `<input type="file">` isso significa perder a
+ *  seleção em curso. O que ele fechava por closure vem por prop (skill `react-padroes` §1c).
+ *
+ *  Acessibilidade: o input NÃO pode ser `hidden` — `display:none` o tira do tab-order e o
+ *  <label> não é focável por natureza, então o controle só responderia a mouse (achado ALTO
+ *  do revisor). Com `sr-only` ele segue no tab-order e recebe foco; o `peer-focus-visible`
+ *  desenha o anel na moldura visível, e o `htmlFor` faz Enter/Espaço abrirem o seletor. */
+function ControleAnexar({ solId, alvo, anexando, onSelecionar }: {
+  solId: number
+  alvo: AlvoAnexo
+  /** O que está subindo agora no drawer inteiro (trava todos os controles), ou null. */
+  anexando: AlvoAnexo | null
+  onSelecionar: (alvo: AlvoAnexo, files: FileList) => void
+}) {
+  const id = `anexar-${solId}-${alvo}`
+  const subindo = anexando === alvo
+  const travado = anexando !== null
+  return (
+    <div className="mt-1.5">
+      <input
+        id={id}
+        type="file" multiple className="sr-only peer" disabled={travado}
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
+        onChange={e => {
+          if (e.target.files?.length) onSelecionar(alvo, e.target.files)
+          e.target.value = ''   // permite reescolher o MESMO arquivo depois
+        }}
+      />
+      <label
+        htmlFor={id}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-2.5 py-2 text-xs text-zinc-500 hover:bg-zinc-50 peer-focus-visible:border-[var(--text-secondary)] peer-focus-visible:shadow-[0_0_0_3px_var(--focus-ring)] ${travado ? 'pointer-events-none opacity-60' : ''}`}
+      >
+        {subindo
+          ? <><Loader2 size={13} className="shrink-0 animate-spin" /> Enviando…</>
+          : <><Paperclip size={13} className="shrink-0" /> Adicionar arquivo (PDF, imagem ou planilha, ≤&nbsp;10&nbsp;MB)</>}
+      </label>
+    </div>
+  )
+}
 
 // Ícone por tipo de arquivo (anexo): planilha, imagem, PDF/texto, ou genérico.
 function iconeArquivo(mime: string, nome: string) {
@@ -36,11 +89,20 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   const [justificativa, setJustificativa] = useState('')
   // id do anexo sendo baixado no momento (impede duplo-clique e exibe spinner)
   const [baixando, setBaixando] = useState<number | null>(null)
+  // O que está recebendo upload agora — trava TODOS os controles e exibe o spinner só no
+  // alvo em curso (v5.9.0). Ver `AlvoAnexo` no topo do módulo.
+  const [anexando, setAnexando] = useState<AlvoAnexo | null>(null)
 
-  const aberta = sol.status === 'aberta'
-  const podeConcluir = aberta && (sol.sou_atendente || sol.sou_solicitante)
-  const podeRejeitar = aberta && sol.sou_atendente
-  const podeCancelar = aberta && sol.sou_solicitante
+  // v5.9.0 — o que libera AÇÃO é estar em andamento ('aberta' OU 'aprovada'); o que é
+  // exclusivo de 'aberta' é APROVAR (não se aprova duas vezes, e não há desaprovar).
+  const emAnd = emAndamento(sol.status)
+  const podeAprovar  = sol.status === 'aberta' && !!sol.sou_atendente
+  const podeConcluir = emAnd && (sol.sou_atendente || sol.sou_solicitante)
+  const podeRejeitar = emAnd && !!sol.sou_atendente
+  const podeCancelar = emAnd && !!sol.sou_solicitante
+  // Anexar depois da abertura: os dois lados, enquanto não encerrada (D5/D6). A RPC
+  // `solic_anexar` reenforça isto no banco — aqui é só afordância.
+  const podeAnexar = emAnd && (!!sol.sou_atendente || !!sol.sou_solicitante)
   const venc = vencida(sol.data_limite, sol.status)
 
   async function run(fn: () => Promise<{ ok: boolean; erro?: string }>) {
@@ -75,6 +137,44 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
       }
     } finally {
       setBaixando(null)
+    }
+  }
+
+  /**
+   * v5.9.0 — anexa arquivos a um campo de anexo DESTA solicitação, já existente.
+   * Sobe um por vez (o transporte não ganha nada em paralelo e o erro fica atribuível),
+   * junta os metadados e grava todos numa chamada só — assim ou entram todos, ou o
+   * usuário vê um erro único, em vez de um sucesso pela metade.
+   */
+  async function anexarNoCampo(alvo: AlvoAnexo, files: FileList) {
+    if (anexando !== null) return
+    setErro(null); setAnexando(alvo)
+    // 'livre' → sem `campo_id` = anexo GERAL. A 0127 sempre previu `campo_id` nulo como
+    // "geral" e o drawer já os exibia; a 0263 reabriu a ESCRITA (a D7 original a fechara).
+    const campoId = alvo === 'livre' ? null : alvo
+    const metas: AnexoMeta[] = []
+    try {
+      for (const file of Array.from(files)) {
+        const fd = new FormData()
+        fd.set('file', file)
+        if (campoId !== null) fd.set('campo_id', String(campoId))
+        fd.set('solicitacao_id', String(sol.id))   // grava direto em sol/<id>/… (sem promoção)
+        const up = await uploadAnexo(fd)
+        if (!up.ok) {
+          setErro(`${file.name}: ${up.erro}`)
+          // Sem isto, o que JÁ subiu neste lote fica pendurado no bucket para sempre: a
+          // limpeza de `anexarEmSolicitacao` só corre se ela chegar a ser chamada, e um
+          // erro no meio do lote retorna antes disso. Achado MÉDIO do revisor.
+          await descartarAnexos(sol.id, metas.map(m => m.storage_path))
+          return
+        }
+        metas.push(up.anexo)
+      }
+      const r = await anexarEmSolicitacao(sol.id, metas)
+      if (!r.ok) { setErro(r.erro ?? 'Falha ao anexar.'); return }  // esta action já limpa
+      router.refresh()   // o drawer relê a solicitação e os arquivos novos aparecem
+    } finally {
+      setAnexando(null)
     }
   }
 
@@ -155,30 +255,67 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
                 <dt className="mb-1.5 text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
                 {arquivos.length > 0
                   ? <div className="space-y-1.5">{arquivos.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
-                  : <span className="text-xs text-zinc-400">—</span>}
+                  : !podeAnexar && <span className="text-xs text-zinc-400">—</span>}
+                {/* v5.9.0 — anexar DEPOIS da abertura: é por aqui que o comprovante do
+                    pagamento efetuado chega a quem abriu o pedido. Disponível enquanto a
+                    solicitação não estiver encerrada, para o solicitante e o atendente. */}
+                {podeAnexar && <ControleAnexar solId={sol.id} alvo={r.campo_id ?? 'livre'} anexando={anexando} onSelecionar={anexarNoCampo} />}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Anexos gerais (sem campo), se houver — bloco próprio */}
-      {anexosGerais.length > 0 && (
+      {/* Anexos LIVRES (sem campo) — bloco próprio.
+          v5.9.0/0263: passou a aparecer também VAZIO, quando quem olha pode anexar. Antes
+          era `anexosGerais.length > 0`, o que criava um impasse: o bloco só existia se já
+          houvesse anexo, e não havia como criar o primeiro. Este é o lugar onde o
+          comprovante de um pagamento entra quando o tipo não tem campo de anexo — o caso
+          que originou a versão e que a decisão D7 original deixava sem saída. */}
+      {(anexosGerais.length > 0 || podeAnexar) && (
         <div className="mb-5">
           <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Anexos</p>
-          <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
+          {anexosGerais.length > 0
+            ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
+            : <p className="text-xs text-zinc-400">Nenhum anexo além dos campos acima.</p>}
+          {podeAnexar && <ControleAnexar solId={sol.id} alvo="livre" anexando={anexando} onSelecionar={anexarNoCampo} />}
         </div>
       )}
 
-      {sol.status !== 'aberta' && (
+      {/* Trilha da APROVAÇÃO (v5.9.0) — independente do desfecho: continua visível depois
+          de concluída/rejeitada/cancelada, porque `aprovado_em` não é derivado do status.
+          É o que impede o desfecho de apagar o registro de quem autorizou. */}
+      {sol.aprovado_em && (
+        <div className="border-t border-zinc-100 pt-3 mb-4 text-xs text-warning-deep">
+          <p>Aprovada por {sol.aprovado_por_email ?? '—'} em {fmtDataHoraSP(sol.aprovado_em)}.</p>
+        </div>
+      )}
+
+      {/* Encerramento: só quando de fato encerrou. Era `status !== 'aberta'`, o que com a
+          etapa nova exibiria "Aprovada por — em [vazio]" usando os campos da decisão
+          TERMINAL, que uma aprovada ainda não tem. */}
+      {!emAnd && (
         <div className="border-t border-zinc-100 pt-3 mb-4 text-xs text-zinc-500">
           <p>{STATUS_LABEL[sol.status]} por {sol.decidido_por_email ?? '—'} em {fmtDataHoraSP(sol.decidido_em)}.</p>
           {sol.justificativa && <p className="mt-1"><span className="font-medium">Justificativa:</span> {sol.justificativa}</p>}
         </div>
       )}
 
-      {(podeConcluir || podeRejeitar || podeCancelar) && (
+      {(podeAprovar || podeConcluir || podeRejeitar || podeCancelar) && (
         <div className="sticky -bottom-5 -mx-6 -mb-5 px-6 py-3 bg-white border-t border-zinc-100 flex flex-wrap gap-2">
+          {/* Aprovar vem ANTES de Concluir: é a ordem do ciclo de vida. Ambos ficam
+              disponíveis ao mesmo tempo numa solicitação aberta — aprovar é OPCIONAL,
+              quem quiser encerra direto. */}
+          {podeAprovar && (
+            <button
+              type="button" disabled={ocupado}
+              onClick={() => run(() => aprovarSolicitacao(sol.id))}
+              className={`${PILL} ${PILL_NEUTRO}`}
+              title="Autoriza agora; a conclusão fica para quando for executada"
+            >
+              {ocupado ? <Loader2 size={13} className="animate-spin" /> : <ThumbsUp size={13} />} Aprovar
+            </button>
+          )}
           {podeConcluir && (
             <button
               type="button" disabled={ocupado}

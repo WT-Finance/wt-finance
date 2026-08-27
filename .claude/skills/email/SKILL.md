@@ -64,6 +64,24 @@ fire-and-forget.** Disparar a promise sem esperar (`enviarX(...)` sem `await`) a
 função serverless encerrar antes do envio terminar — o e-mail simplesmente não sai, sem
 erro visível em lugar nenhum. (Custou caro: e-mail em Solicitações — v4.25.0/.1.)
 
+### Variante NOVA num template parametrizado pede um teste que EXIJA o conteúdo
+
+Template daqui é parametrizado por mapas (`MOV_PT`, `MOV_COR`…). Acrescentar uma variante ao
+enum parece seguro porque `Record<Enum, T>` obriga a preencher os mapas — mas o **conteúdo
+dinâmico** (data, justificativa, link) não tem essa proteção: o template trata campo ausente
+como string vazia, **por desenho** (é o que faz o e-mail sobreviver sem `link` ou sem `quando`).
+Resultado: um e-mail incompleto sai bonito, sem log, sem erro, e o gate passa verde.
+
+**Custou caro (v5.9.0):** a movimentação `aprovada` saía **sem data**. O contexto do e-mail
+(`solic_emails_envolvidos`) só conhece `criado_em`/`decidido_em`, e a aprovação não toca
+`decidido_em` de propósito. Nenhum caso de teste exercitava a movimentação nova — por isso a
+suíte inteira passava com o defeito dentro.
+
+**Regra:** variante nova ganha caso próprio que **exige** o dado no corpo
+(`expect(t.text).toContain('25/08/2026 às 15:03')`), não só que o assunto mudou. E se a origem
+do dado não é a mesma das variantes antigas, resolva no **ato que gravou** (a RPC devolve o
+instante) em vez de esperar que o contexto genérico o tenha.
+
 ## 2. Config e remetente 100% de `process.env`
 
 `getConfigSmtp()` (`config.ts`) é fail-safe: falta qualquer variável essencial (`SMTP_HOST`,

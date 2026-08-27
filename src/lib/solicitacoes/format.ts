@@ -1,3 +1,4 @@
+import { emAndamento } from './schemas'
 import type { StatusSolic, Solicitacao } from './schemas'
 import type { z } from 'zod'
 import type { respostaSchema } from './schemas'
@@ -7,7 +8,8 @@ import { toNum } from '@/lib/carga/coercao'
 // plataforma (sem var(--brand)); feedback semântico via tokens --success/--danger.
 
 export const STATUS_LABEL: Record<StatusSolic, string> = {
-  aberta: 'Aberta', concluida: 'Concluída', rejeitada: 'Rejeitada', cancelada: 'Cancelada',
+  aberta: 'Aberta', aprovada: 'Aprovada', concluida: 'Concluída',
+  rejeitada: 'Rejeitada', cancelada: 'Cancelada',
 }
 
 export function statusBadge(status: StatusSolic): string {
@@ -15,6 +17,11 @@ export function statusBadge(status: StatusSolic): string {
     case 'concluida': return 'border-success bg-success-bg text-success'
     case 'rejeitada': return 'border-danger bg-danger-bg text-danger'
     case 'cancelada': return 'border-zinc-200 bg-zinc-100 text-zinc-400'
+    // 'aprovada' (v5.9.0) é ATENÇÃO/PENDENTE pelo DS — autorizada, mas ainda por
+    // executar. Não é --success (que significa encerrada) nem --gestao (reservado a
+    // AÇÃO ADMINISTRATIVA de admin). Tinta em --warning-deep porque o badge é corpo
+    // pequeno: --warning puro não passa AA como texto (2,0:1 sobre branco).
+    case 'aprovada':  return 'border-warning bg-warning-bg text-warning-deep'
     default:          return 'border-zinc-300 bg-zinc-100 text-zinc-600' // aberta (informativo)
   }
 }
@@ -28,6 +35,7 @@ export function statusBadge(status: StatusSolic): string {
 export function acaoBadge(acao: string): string {
   switch (acao) {
     case 'Abertura':     return 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]'
+    case 'Aprovação':    return 'border-warning bg-warning-bg text-warning-deep'
     case 'Conclusão':    return 'border-success bg-success-bg text-success'
     case 'Rejeição':     return 'border-danger bg-danger-bg text-danger'
     case 'Cancelamento': return 'border-zinc-200 bg-zinc-100 text-zinc-500'
@@ -43,9 +51,11 @@ export function hojeSP(): string {
   return FMT_SP.format(new Date())
 }
 
-/** Vencida = data-limite anterior a hoje (SP) e ainda aberta. */
+/** Vencida = data-limite anterior a hoje (SP) e a solicitação ainda em andamento.
+ *  v5.9.0: 'aprovada' também vence — uma aprovação parada há duas semanas continua
+ *  sendo atraso; o que encerra a contagem é o desfecho, não a autorização. */
 export function vencida(dataLimite: string, status: StatusSolic): boolean {
-  return status === 'aberta' && dataLimite < hojeSP()
+  return emAndamento(status) && dataLimite < hojeSP()
 }
 
 /** 'AAAA-MM-DD' ou timestamptz → 'DD/MM/AAAA' (sem deslocar o dia). */

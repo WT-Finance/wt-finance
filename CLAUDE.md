@@ -32,7 +32,10 @@ de código, caminho de implementação); não se pergunta o operacional. Três i
 prompt afrouxa:
 
 - **Auto-auditoria adversarial antes de declarar concluído** — verificar a realidade contra o
-  prompt, inclusive contra erros do próprio briefing; divergiu, **parar**.
+  prompt, inclusive contra erros do próprio briefing; divergiu, **parar**. Ela roda **depois**
+  das correções da revisão, não antes: corrigir um achado é escrever código novo, e código novo
+  pede a mesma desconfiança (v5.9.0 — a correção de um MÉDIO nasceu como Server Action de
+  deleção arbitrária, pior que o defeito que fechava).
 - **Merge humano é a única fronteira de entrada em produção.** Nunca mergear, nunca deployar.
 - **Decisão de produto é do usuário.** Na dúvida se é técnico ou produto, **é produto**:
   registrar/perguntar, não decidir.

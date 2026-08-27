@@ -120,7 +120,7 @@ const JSON_CONSULTAR_POR_REFERENCIA = `{ "ok": true,
 const ERROS: ReadonlyArray<readonly [string, string, string]> = [
   ['AUTH_AUSENTE / AUTH_INVALIDA / CHAVE_INVALIDA', '401', 'Sem chave, chave errada ou revogada'],
   ['NAO_ENCONTRADA', '404', 'Solicitação inexistente, de outra chave, ou aberta na tela por um humano — vale para a consulta e para o cancelamento'],
-  ['CONFLITO_ESTADO', '409', 'Cancelamento de solicitação não-aberta'],
+  ['CONFLITO_ESTADO', '409', 'Cancelamento de solicitação já encerrada (aberta e aprovada seguem canceláveis)'],
   ['PAYLOAD_EXCEDE_LIMITE', '413', 'Corpo acima de 64 KB'],
   ['JSON_INVALIDO / PAYLOAD_INVALIDO', '400/422', 'Corpo não é JSON válido / shape errado'],
   ['TIPO_INVALIDO', '422', 'Slug inexistente, arquivado ou não exposto'],
@@ -172,12 +172,30 @@ export function DocumentacaoContent({
             Uma <strong>solicitação</strong> é uma tarefa aberta para uma <strong>equipe</strong> (role) do
             Janus, com campos definidos pelo <strong>tipo</strong> (cadastro do Janus). Estados possíveis:
             <code className="mx-1 font-mono text-xs">aberta</code> →
+            <code className="mx-1 font-mono text-xs">aprovada</code> (opcional) →
             <code className="mx-1 font-mono text-xs">concluida</code> |
             <code className="mx-1 font-mono text-xs">rejeitada</code> |
-            <code className="mx-1 font-mono text-xs">cancelada</code>. Não existe estado &ldquo;aprovado&rdquo;
-            nem estados intermediários — se a plataforma integradora tem um conceito próprio de aprovação, ele
-            vive do lado dela; para o Janus a solicitação fica aberta até alguém concluí-la, rejeitá-la ou
-            cancelá-la.
+            <code className="mx-1 font-mono text-xs">cancelada</code>.
+          </p>
+          <p>
+            <strong>Mudança desde a v5.9.0:</strong> existe um estado intermediário{' '}
+            <code className="font-mono text-xs">aprovada</code> — a solicitação foi autorizada por quem a
+            recebeu, mas ainda não foi executada (o caso típico é um pagamento aprovado hoje e efetuado
+            depois). Ele é <strong>opcional</strong>: quem atende pode concluir direto de{' '}
+            <code className="font-mono text-xs">aberta</code>, e nenhum fluxo existente passou a exigir um
+            passo a mais. A aprovação acontece <strong>dentro do Janus</strong> — não há endpoint para
+            aprovar pela API.
+          </p>
+          <p className="rounded-lg border px-3 py-2"
+            style={{ background: 'var(--warning-bg)', borderColor: 'var(--warning)', color: 'var(--warning-deep)' }}>
+            <strong>Atenção para quem integra:</strong> trate{' '}
+            <code className="font-mono text-xs">status</code> como um valor <strong>aberto</strong>, não como
+            uma lista fechada. Código que ramifica nos quatro estados antigos e não tem caminho padrão passa a
+            cair no ramo default ao encontrar{' '}
+            <code className="font-mono text-xs">aprovada</code>. Para a maioria dos integradores a leitura útil
+            é binária: <em>encerrada</em> (
+            <code className="font-mono text-xs">concluida</code>/<code className="font-mono text-xs">rejeitada</code>/
+            <code className="font-mono text-xs">cancelada</code>) ou <em>em andamento</em> (o resto).
           </p>
           <p>
             Cada plataforma integradora recebe uma <strong>chave de API</strong> — toda chave ativa alcança{' '}
@@ -405,10 +423,13 @@ export function DocumentacaoContent({
           <Pre>{JSON_CONSULTAR_POR_ID}</Pre>
           <ul className="list-disc space-y-1.5 pl-5">
             <li>
-              <code className="font-mono text-xs">status</code> ∈ aberta · concluida · rejeitada · cancelada.{' '}
+              <code className="font-mono text-xs">status</code> ∈ aberta · aprovada · concluida · rejeitada ·
+              cancelada (lista <strong>aberta</strong> — ver o aviso na seção 1).{' '}
               <code className="font-mono text-xs">decidido_em</code> e{' '}
-              <code className="font-mono text-xs">justificativa</code> ficam nulos enquanto a solicitação está
-              aberta; <code className="font-mono text-xs">justificativa</code> só vem preenchida em rejeição.
+              <code className="font-mono text-xs">justificativa</code> ficam nulos enquanto a solicitação NÃO
+              foi encerrada — inclusive quando está <code className="font-mono text-xs">aprovada</code>, porque
+              aprovar não é encerrar; <code className="font-mono text-xs">justificativa</code> só vem preenchida
+              em rejeição.
             </li>
             <li>
               <strong>404 NAO_ENCONTRADA</strong> quando o id não existe, quando pertence a{' '}
@@ -460,7 +481,11 @@ export function DocumentacaoContent({
 
         <Secao id="cancelar" titulo="7. Cancelar — POST /api/externo/solicitacoes/{id}/cancelar">
           <ul className="list-disc space-y-1.5 pl-5">
-            <li>Só cancela solicitações criadas pela sua chave e ainda abertas.</li>
+            <li>
+              Só cancela solicitações criadas pela sua chave e <strong>ainda não encerradas</strong> — desde a
+              v5.9.0 isso inclui as que estão <code className="font-mono text-xs">aprovada</code>: aprovar
+              autoriza, não encerra, e quem pediu continua podendo desistir.
+            </li>
             <li>
               Já concluída/rejeitada/cancelada → 409 com{' '}
               <code className="font-mono text-xs">CONFLITO_ESTADO: &lt;status atual&gt;</code> — o conflito é

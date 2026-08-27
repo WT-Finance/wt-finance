@@ -9,10 +9,19 @@ import Badge from '@/components/ui/badge'
 import { Input } from '@/components/ui/field'
 import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida, maisRecentePrimeiro, casaBuscaSolicitacao } from '@/lib/solicitacoes/format'
+import { emAndamento } from '@/lib/solicitacoes/schemas'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 type Escopo = 'mim_e_role' | 'so_mim' | 'todas'
-type FiltroStatus = 'abertas' | 'concluidas'
+// v5.9.0 — três abas. O filtro antigo era binário ('abertas' e o COMPLEMENTO), o que
+// com um estado novo mandaria 'aprovada' direto para as encerradas, sem erro nenhum.
+// Cada aba passa a ter predicado PRÓPRIO e explícito — nada de negar o vizinho.
+type FiltroStatus = 'abertas' | 'aprovadas' | 'encerradas'
+const ABA: Record<FiltroStatus, { rotulo: string; casa: (s: Solicitacao) => boolean; vazio: string }> = {
+  abertas:    { rotulo: 'Abertas',    casa: s => s.status === 'aberta',   vazio: 'Nenhuma solicitação aberta na sua caixa de entrada.' },
+  aprovadas:  { rotulo: 'Aprovadas',  casa: s => s.status === 'aprovada', vazio: 'Nenhuma solicitação aprovada aguardando execução.' },
+  encerradas: { rotulo: 'Encerradas', casa: s => !emAndamento(s.status),  vazio: 'Nenhuma solicitação encerrada.' },
+}
 
 // v5.7.2 — a ordem e a busca das listas vivem em `@/lib/solicitacoes/format`
 // (`maisRecentePrimeiro`, `casaBuscaSolicitacao`): as DUAS visões desta página precisam
@@ -50,17 +59,17 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
     }
   }
 
-  // Colunas por TIPO. NÃO exclui canceladas: elas entram em "Concluídas" (encerradas).
-  const ehAberta = (s: Solicitacao) => s.status === 'aberta'
+  // Colunas por TIPO. "Encerradas" NÃO exclui canceladas — elas são um desfecho.
   const temBusca = busca.trim() !== ''
   const filtrada = solicitacoes
-    .filter(filtro === 'abertas' ? ehAberta : s => !ehAberta(s))
+    .filter(ABA[filtro].casa)
     .filter(s => casaBuscaSolicitacao(s, busca))
   const tipos = Array.from(new Map(filtrada.map(s => [s.tipo_id, s.tipo_nome])).entries())
     .sort((a, b) => (a[1] ?? '').localeCompare(b[1] ?? ''))
-  const vazio = temBusca
-    ? 'Nenhuma solicitação encontrada para esta busca.'
-    : filtro === 'abertas' ? 'Nenhuma solicitação aberta na sua caixa de entrada.' : 'Nenhuma solicitação encerrada.'
+  const vazio = temBusca ? 'Nenhuma solicitação encontrada para esta busca.' : ABA[filtro].vazio
+  // Contagem da aba Aprovadas: sinaliza trabalho autorizado à espera de execução, que é
+  // exatamente o que essa etapa existe para tornar visível.
+  const nAprovadas = solicitacoes.filter(ABA.aprovadas.casa).length
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -73,13 +82,13 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
         </p>
       )}
 
-      {/* Filtro de STATUS: Abertas / Concluídas + busca (nº ou e-mail), empurrada à direita. */}
+      {/* Filtro de STATUS: Abertas / Aprovadas / Encerradas + busca (nº ou e-mail). */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        {(['abertas', 'concluidas'] as FiltroStatus[]).map(f => (
+        {(['abertas', 'aprovadas', 'encerradas'] as FiltroStatus[]).map(f => (
           <button key={f} type="button" onClick={() => setFiltro(f)}
             className={`${PILL} ${filtro === f ? PILL_PRIMARIA : PILL_NEUTRO}`}
             style={filtro === f ? PILL_PRIMARIA_STYLE : undefined}>
-            {f === 'abertas' ? 'Abertas' : 'Concluídas'}
+            {ABA[f].rotulo}{f === 'aprovadas' && nAprovadas > 0 ? ` (${nAprovadas})` : ''}
           </button>
         ))}
         <div className="relative ml-auto">
@@ -130,7 +139,10 @@ function Card({ s, onAbrir, concluindo, onConcluir }: {
   s: Solicitacao; onAbrir: (s: Solicitacao) => void; concluindo: boolean
   onConcluir: (id: number, e: React.MouseEvent) => void
 }) {
-  const aberta = s.status === 'aberta'
+  // v5.9.0 — o que libera a ação rápida é estar EM ANDAMENTO, não estar 'aberta':
+  // `solic_concluir` aceita as duas origens, e uma aprovada é justamente a que está
+  // pronta para ser concluída (o pagamento foi feito).
+  const emAnd = emAndamento(s.status)
   const podeConcluir = s.sou_atendente || s.sou_solicitante
   const venc = vencida(s.data_limite, s.status)
   const enc = ENCERRADA_INFO[s.status]
@@ -143,7 +155,7 @@ function Card({ s, onAbrir, concluindo, onConcluir }: {
       className="card-clicavel-neutra foco-neutro cursor-pointer rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-sm"
     >
       <div className="flex items-start gap-2">
-        {aberta ? (
+        {emAnd ? (
           <button
             type="button" disabled={!podeConcluir || concluindo} aria-label="Concluir"
             onClick={e => { e.stopPropagation(); onConcluir(s.id, e) }}
@@ -169,7 +181,7 @@ function Card({ s, onAbrir, concluindo, onConcluir }: {
           )}
           <p className="text-xs text-zinc-500 line-clamp-2">{resumo(s.respostas)}</p>
           <div className="mt-1.5 flex items-center justify-between gap-2">
-            {aberta ? (
+            {emAnd ? (
               <span className={`inline-flex items-center gap-1 text-2xs ${venc ? 'font-medium text-danger' : 'text-zinc-400'}`}>{venc && <AlertTriangle size={11} />}{fmtDataBR(s.data_limite)}</span>
             ) : (
               <span className={`text-2xs font-medium ${enc?.cor ?? 'text-zinc-400'}`}>{enc?.rotulo ?? 'Encerrada'}</span>
