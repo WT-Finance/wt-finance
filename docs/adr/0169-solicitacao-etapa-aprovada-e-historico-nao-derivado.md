@@ -44,8 +44,9 @@ que pertencem à decisão terminal.
 
 **3. Anexo ao longo da vida, enquanto a solicitação não estiver encerrada.**
 Os dois lados anexam (o solicitante complementa; o atendente devolve o comprovante). Solicitação
-encerrada segue **imutável**. Não existe anexo livre: todo anexo pertence a um campo
-`tipo_campo='anexo'` daquele tipo — para o comprovante, o admin cria um campo não-obrigatório.
+encerrada segue **imutável**. ~~Não existe anexo livre: todo anexo pertence a um campo
+`tipo_campo='anexo'` daquele tipo — para o comprovante, o admin cria um campo
+não-obrigatório.~~ → **revertido; ver Emenda 1.**
 
 **4. A API externa só LÊ o estado novo.** Não há endpoint para aprovar; a aprovação acontece
 dentro do Janus. Uma solicitação `aprovada` continua cancelável pela chave que a criou (aprovar
@@ -82,6 +83,36 @@ autoriza, não encerra).
   segunda migration, e a fonte é o próprio ato.
 - **Esconder `aprovada` da API** (mapear para `aberta` na saída). Rejeitada: manteria o contrato
   antigo intacto ao custo de a API mentir sobre o estado real.
+
+## Emenda 1 (27/08/2026) — anexo LIVRE: a decisão D7 foi revertida
+
+**Migration `0263`** (aditiva). A versão nasceu com "não existe anexo livre; todo anexo pertence
+a um campo `tipo_campo='anexo'` daquele tipo". A consequência prática só ficou visível com a
+funcionalidade pronta: **num tipo que não tem campo de anexo configurado, quem responde não tem
+onde pôr o comprovante** — que é o caso de uso que originou a versão inteira. A decisão fazia o
+recurso depender de um passo de cadastro que ninguém tinha motivo para adivinhar, e a única
+pista de que ele faltava seria a ausência de um botão.
+
+**O que passa a valer:** `campo_id` nulo é legítimo e significa *anexo geral*. O drawer ganha um
+bloco "Anexos" que aparece mesmo vazio (para quem pode anexar) — antes ele era condicionado a
+`anexosGerais.length > 0`, o que criava um impasse: o bloco só existia se já houvesse anexo, e
+não havia como criar o primeiro.
+
+**O que NÃO mudou:** os campos de anexo configurados pelo admin continuam existindo e
+convivendo com o bloco livre — quem exige "Nota fiscal" na abertura segue exigindo. Anexo COM
+`campo_id` continua validado contra o tipo; solicitação encerrada continua imutável; só
+solicitante e atendente anexam. Afrouxar o nulo não afrouxou o resto.
+
+**Nota de arquitetura, que é o mais interessante aqui:** a estrutura **sempre permitiu**.
+`app.solicitacao_anexo.campo_id` é anulável desde a `0127`, cujo comentário diz literalmente
+`NULL = geral`, e o drawer já exibia esses anexos. A porta foi fechada pela validação que a
+`0261` acrescentou — a `0263` apenas a reabre. Não houve dado a migrar nem coluna a criar: a
+decisão de produto tinha andado *contra* uma capacidade que o modelo de dados já oferecia.
+Vale como lembrete de conferir o que a estrutura já permite antes de restringi-la por decisão.
+
+**Alcance decidido:** o bloco livre existe **só no detalhe** (pós-abertura). O formulário de
+abertura continua com os campos configurados; estender o livre para a criação mexeria na RPC de
+criação e no snapshot de respostas, sem demanda que o justifique agora.
 
 ## Ver também
 

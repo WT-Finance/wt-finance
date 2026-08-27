@@ -8,12 +8,13 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [5.9.0] — 2026-08-27
 
-MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicitação**. Migrations `0261` (aditiva) e `0262` (destrutiva, aguardando TTY) · **ADR-0169**.
+MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicitação**. Migrations `0261` (aditiva), `0262` (destrutiva) e `0263` (aditiva) · **ADR-0169**.
 
 ### Adicionado
 
 - **Status "Aprovada" — etapa intermediária OPCIONAL entre Aberta e Concluída.** Autorizar e executar deixaram de ser o mesmo ato: num pedido de pagamento dá para aprovar hoje e concluir quando o pagamento sair. Aprovar **não é obrigatório** — concluir direto de Aberta continua valendo e nenhum fluxo existente ganhou um passo. Só o **atendente** aprova (aprovar o próprio pedido não é aprovação); de Aprovada saem concluir, rejeitar e cancelar. Não existe desfazer aprovação.
-- **Anexo depois da abertura**, enquanto a solicitação não estiver encerrada, pelo **solicitante e pelo destinatário** — é por aqui que o comprovante do pagamento efetuado chega a quem abriu o pedido. Solicitação encerrada segue imutável. O anexo entra num campo `anexo` daquele tipo (não há anexo livre): para o comprovante, o admin cadastra um campo não-obrigatório.
+- **Anexo depois da abertura**, enquanto a solicitação não estiver encerrada, pelo **solicitante e pelo destinatário** — é por aqui que o comprovante do pagamento efetuado chega a quem abriu o pedido. Solicitação encerrada segue imutável.
+- **Bloco "Anexos" LIVRE no detalhe da solicitação** (`0263`), que aceita arquivo **sem depender de campo configurado**. A versão nasceu com a regra oposta ("todo anexo pertence a um campo do tipo"), e a consequência só apareceu com a coisa pronta: num tipo sem campo de anexo, quem responde não tinha onde pôr o comprovante — o caso que originou a versão. Os campos de anexo configurados pelo admin **continuam existindo e convivem** com o bloco livre. Emenda 1 do ADR-0169.
 - **Aba "Aprovadas"** na caixa de entrada (com contagem) e **coluna "Aprovadas"** em Minhas solicitações.
 - Seleção de **vários arquivos de uma vez** no anexo da criação (`multiple`).
 - Notificação por e-mail da aprovação, com cor própria (nem o verde de concluída, nem o dourado de criada).

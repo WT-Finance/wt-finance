@@ -1,8 +1,8 @@
 # Out-Briefing v5.9.0 — Solicitações: etapa "Aprovada" e anexos ao longo da vida
 
 **Branch:** `feat/v5-9-0-solicitacoes-aprovada-anexos` · **ADR-0169**
-**Migrations:** `0261` (aditiva) e `0262` (destrutiva) — **NENHUMA APLICADA** (ver §5)
-**Gates:** `tsc` · `lint` · `build` · **1011 testes** (eram 998) — todos verdes
+**Migrations:** `0261` (aditiva), `0262` (destrutiva) e `0263` (aditiva) — **TODAS APLICADAS** (ver §5)
+**Gates:** `tsc` · `lint` · `build` · **1139 testes** (1125 vinham da v5.8.1) — todos verdes
 **Rota A** (produto): briefing commitado no 1º commit; 11 decisões fechadas com o Yan em duas
 rodadas de perguntas antes de qualquer código.
 
@@ -28,9 +28,24 @@ aprovação**: o ciclo só anda para a frente, como sempre foi.
 ### 1.2 Anexo ao longo da vida
 
 Enquanto a solicitação não estiver encerrada, **os dois lados** anexam: o solicitante complementa,
-o atendente devolve o comprovante do pagamento efetuado. Encerrada segue **imutável**. Não há
-anexo livre (D7): todo anexo pertence a um campo `tipo_campo='anexo'` daquele tipo — para o
-comprovante, o admin cadastra um campo **não-obrigatório**.
+o atendente devolve o comprovante do pagamento efetuado. Encerrada segue **imutável**.
+
+**D7 foi REVERTIDA durante a própria versão (migration `0263`, Emenda 1 do ADR-0169).** A regra
+original — "todo anexo pertence a um campo `tipo_campo='anexo'` daquele tipo" — só mostrou a
+consequência com a funcionalidade pronta: **num tipo sem campo de anexo configurado, quem
+responde não tinha onde pôr o comprovante**, que é o caso que originou a versão inteira. O
+recurso ficava dependendo de um passo de cadastro que ninguém tinha motivo para adivinhar, e a
+única pista de que faltava seria a ausência de um botão.
+
+Agora existe um bloco **"Anexos" livre** no detalhe, que aparece **mesmo vazio** para quem pode
+anexar. Antes ele era condicionado a `anexosGerais.length > 0` — um impasse: o bloco só existia
+se já houvesse anexo, e não havia como criar o primeiro. Os campos configurados pelo admin
+**continuam e convivem** com ele. Escopo: só no detalhe; a abertura segue com os campos do tipo.
+
+**O detalhe que vale guardar:** a estrutura **sempre permitiu**. `campo_id` é anulável desde a
+`0127`, cujo comentário diz `NULL = geral`, e o drawer já exibia esses anexos — quem fechou a
+porta foi a validação que a `0261` acrescentou. A decisão de produto tinha andado *contra* uma
+capacidade que o modelo de dados já oferecia, e reverter não custou migração de dado nenhuma.
 
 No anexo pós-criação o id da solicitação já é conhecido, então o objeto vai direto a
 `sol/<id>/<uuid>/<arq>` e dispensa a dança `tmp/` → move → `solic_promover_anexos` (que, além
@@ -99,8 +114,8 @@ com a lista real de fontes por função (0217 / 0225 / 0222 / 0142 / 0133).
   zerado na 0220, RPC gestão-only). Candidato a índice parcial se o volume crescer.
 - **BAIXO — "corpos idênticos aos vivos" escondia os `coalesce` acrescentados. CORRIGIDO.**
 - **BAIXO — `solic_aprovar`/`solic_anexar` sem teste automatizado** (política do `rpc-contrato.test.ts`
-  é só-leitura). Reforça a necessidade da verificação REST/`service_role` pós-aplicação — **pendente**,
-  porque o banco não foi aplicado.
+  é só-leitura). Reforçava a necessidade da verificação REST/`service_role` pós-aplicação —
+  **FEITA**, ver §5.
 
 #### Segundo passe (delta das correções) — **`0261` e `0262` APROVADAS** · 0 bloqueante
 
@@ -144,6 +159,28 @@ as sete atribuições de fonte do `DOWN` contra o histórico real, e não encont
 
 ---
 
+### `revisor-db` — `0263` (anexo livre) **APROVADA** · 0 CRÍTICO · 0 ALTO · 0 MÉDIO · 1 BAIXO
+
+Revisão pós-aplicação (a migration é aditiva e já estava no ar). Ele comparou a `0263` linha a
+linha contra o corpo vivo da `0261` e confirmou que **só a validação do `campo_id` nulo mudou** —
+estado, permissão com o `coalesce` null-safe, exigência de `storage_path`/`nome_arquivo` e o
+`INSERT` estão idênticos. Confirmou também que a validação condicional não tem furo (um
+`campo_id` de outro tipo continua recusado) e que nenhum consumidor de `app.solicitacao_anexo`
+quebra com anexos gerais: `solic_anexo_path` decide visibilidade só por `solicitacao_id`,
+`app.solic_json` agrega sem `JOIN` em `solicitacao_campo`, e `anexoSchema` **já** tipava
+`campo_id` como `nullable().optional()` antes de a `0263` existir.
+
+- **BAIXO — ponteiro de numeração obsoleto no WORKING-CONTEXT. CORRIGIDO.** Ele dizia "próxima
+  livre é a `0263`" quando a `0263` já estava aplicada. Ironia útil: é o mesmo ponteiro que esta
+  versão vinha corrigindo desde o começo, obsoleto de novo — o que reforça que a fonte é o banco,
+  não o texto.
+
+**Um dado que o revisor trouxe e vale registrar:** `criar_solicitacao` (`0128`, nunca alterada
+nesse ponto) **sempre gravou `campo_id` com `nullif(...)` e nunca recusou nulo**. Ou seja, anexo
+geral podia existir desde o nascimento do módulo, em v4.16.0. A D7 não estava consolidando um
+comportamento existente — estava introduzindo uma restrição nova sobre uma capacidade que o
+sistema já tinha, e só na escrita pós-criação. Reverter foi remover a exceção, não abrir a porta.
+
 ## 4. Auto-auditoria: uma correção que quase virou um defeito pior
 
 Ao corrigir o MÉDIO do lote parcial, criei `descartarAnexos(anexos)` — uma Server Action exportada
@@ -168,6 +205,7 @@ régua.
 |---|---|
 | `0261` (aditiva) | ✅ **APLICADA em 27/08/2026**, backup-gate VERDE (58/58 tabelas; 3 restore-tests com checksum idêntico). O push levou **exatamente uma** migration. |
 | `0262` (destrutiva) | ✅ **APLICADA em 27/08/2026** pelo Yan, em TTY. Arquivo movido de `supabase/patches/` para `supabase/migrations/` (git registra como rename R100 — conteúdo idêntico, só o caminho). |
+| `0263` (aditiva) | ✅ **APLICADA em 27/08/2026** — anexo LIVRE, reverte a D7. Backup-gate VERDE. Conferido no corpo aplicado: a trava `CAMPO_ANEXO_OBRIGATORIO` sumiu, a validação de campo virou condicional, e o que não devia afrouxar segue firme (campo do tipo, encerrada imutável, permissão). |
 
 ### Constraints conferidas no banco após a `0262` (catálogo, não relato)
 
@@ -303,7 +341,19 @@ conjunto pendente e uma destrutiva parada lá é arrastada por qualquer push (v5
    Minha correção do lixo de storage nasceu como uma primitiva de deleção arbitrária (§4). → **core
    (CLAUDE.md)**, se couber no teto: a auto-auditoria adversarial roda **depois** das correções da
    revisão, não antes.
-6. **Um teste que não existe é um gate que mente.** O e-mail de aprovação saía sem data e a suíte
+6. **Confira o que a estrutura JÁ permite antes de restringi-la por decisão.** A D7 proibiu
+   anexo livre, e o modelo de dados oferecia exatamente isso desde a v4.16.0 (`campo_id`
+   anulável, comentado como `NULL = geral`, com `criar_solicitacao` nunca recusando nulo). A
+   restrição custou uma migration para pôr e outra para tirar, e no meio deixou o caso de uso
+   que originou a versão sem saída. → **skill `banco-e-rpc`**: antes de escrever validação que
+   ESTREITA o que uma coluna aceita, olhar se o schema já resolvia o problema.
+7. **Teste de paridade que lê arquivo precisa apontar para a ÚLTIMA definição do objeto.** A
+   `0263` redefiniu `solic_anexar`; o teste, que lia a `0261`, teria passado verde contra um
+   corpo morto. Era o risco anunciado no próprio aviso de manutenção do teste — e a primeira
+   vez que ele se materializou, na MESMA versão que o escreveu. → candidato a **enforcement**:
+   uma sonda que confira que cada caminho lido no teste é o de maior número que define aquele
+   objeto.
+8. **Um teste que não existe é um gate que mente.** O e-mail de aprovação saía sem data e a suíte
    passava verde, porque nenhum caso exercitava a movimentação nova. Já coberto pela disciplina de
    "todo schema novo ganha caso de contrato" — mas vale estender a **toda variante de enum que
    entra num template**. → **skill `email`**.

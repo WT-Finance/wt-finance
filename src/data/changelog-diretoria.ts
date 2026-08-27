@@ -55,7 +55,10 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
           'enquanto ela não estiver encerrada — e pelos dois lados. Na prática: quem efetuou ' +
           'um pagamento pode anexar o comprovante, e quem abriu o pedido passa a ter acesso a ' +
           'ele sem precisar pedir por fora. Antes só dava para anexar no momento da abertura. ' +
-          'Também ficou possível selecionar vários arquivos de uma vez.',
+          'O arquivo pode ir num bloco de "Anexos" livre, sem depender de o tipo de ' +
+          'solicitação ter um campo de anexo previsto no cadastro — então funciona em ' +
+          'qualquer tipo, sem preparação. Também ficou possível selecionar vários arquivos ' +
+          'de uma vez.',
       },
       {
         tipo: 'melhoria',
