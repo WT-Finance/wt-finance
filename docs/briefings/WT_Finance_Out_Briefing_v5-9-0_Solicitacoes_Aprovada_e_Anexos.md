@@ -169,24 +169,31 @@ régua.
 | `0261` (aditiva) | escrita, revisada, **não aplicada** |
 | `0262` (destrutiva) | escrita, revisada, **não aplicada**, em `supabase/patches/` |
 
-**Ordem acordada:** a **v5.8.0 aplica primeiro** (`0255`-`0257`) e a v5.9.0 espera — assim nenhuma
-das duas precisa de `--fora-de-ordem` e o histórico fica sequencial.
+**Ordem acordada em 25/08 — e como ela terminou.** A decisão foi "a v5.8 aplica primeiro, a
+v5.9 espera", para nenhuma das duas precisar de `--fora-de-ordem`. A v5.8.0 **respeitou a
+reserva** (pulou `0258`/`0259`), mas usou `0255`-`0257` **e `0260`** — o que deixou a `0258`
+**atrás** da última aplicada. Ou seja: cumprir a ordem passou a exigir exatamente a flag que a
+ordem existia para evitar.
 
-**Como aplicar, quando for a hora:**
+Como nada tinha sido aplicado, a saída foi renumerar: **`0258`/`0259` → `0261`/`0262`**, a
+próxima em ordem natural depois da `0260`. Terceiro número desta migration (`0256` → `0258` →
+`0261`), e é por isso que o histórico ficou escrito no cabeçalho dela.
+
+**Como aplicar (a worktree já trouxe o main por merge em 27/08):**
 
 ```bash
-# 1. RECONFERIR o número livre nas DUAS worktrees (a v5.8.0 já avançou uma vez)
+# 1. RECONFERIR o número livre — no BANCO e nas worktrees irmãs
+npx supabase migration list | tail -5          # última aplicada deve ser 0260
 ls supabase/migrations/ | tail -3
-ls ../feat+v5-8-0-dre-competencia/supabase/migrations/ | tail -3
 
-# 2. aditiva (autônoma sob backup-gate)
+# 2. aditiva (autônoma sob backup-gate) — sem --fora-de-ordem: 0261 vem depois de 0260
 npm run db:migrate -- --aditiva
 
-# 3. destrutiva — TTY humano, PRÉ-REQUISITO DO MERGE
+# 3. verificar as RPCs novas via REST com service_role (db query NÃO executa o corpo)
+
+# 4. destrutiva — TTY humano, PRÉ-REQUISITO DO MERGE
 mv supabase/patches/0262_solic_status_aprovada_checks.sql supabase/migrations/
 npm run db:migrate -- --destrutiva
-
-# 4. verificar as RPCs novas via REST com service_role (db query NÃO executa o corpo)
 ```
 
 A `0262` **não pode** ficar em `supabase/migrations/` antes da hora: `db push` empurra todo o
