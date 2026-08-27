@@ -19,6 +19,57 @@ import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 const INPUT = `${CAMPO} resize-none`
 
+/** Alvo de um upload: um campo de anexo do tipo (id) ou o bloco LIVRE (anexo geral).
+ *  Sentinela em vez de -1 porque `campo_id` é um id de verdade, e -1 seria um id fingindo
+ *  não ser id — o tipo já diz que são duas coisas diferentes. */
+type AlvoAnexo = number | 'livre'
+
+/** Controle de "Adicionar arquivo". Um só componente para os DOIS lugares onde ele aparece
+ *  — nos campos de anexo do tipo e no bloco de anexo livre — porque duas cópias divergiriam
+ *  no primeiro ajuste (foi o que a v5.7.2 aprendeu com ordem e busca).
+ *
+ *  Vive no MÓDULO, não dentro do drawer: componente definido no corpo de outro dispara
+ *  `static-components` do React Compiler (lint em `error`) e, pior que o lint, remonta a
+ *  subárvore a cada render do pai. Num `<input type="file">` isso significa perder a
+ *  seleção em curso. O que ele fechava por closure vem por prop (skill `react-padroes` §1c).
+ *
+ *  Acessibilidade: o input NÃO pode ser `hidden` — `display:none` o tira do tab-order e o
+ *  <label> não é focável por natureza, então o controle só responderia a mouse (achado ALTO
+ *  do revisor). Com `sr-only` ele segue no tab-order e recebe foco; o `peer-focus-visible`
+ *  desenha o anel na moldura visível, e o `htmlFor` faz Enter/Espaço abrirem o seletor. */
+function ControleAnexar({ solId, alvo, anexando, onSelecionar }: {
+  solId: number
+  alvo: AlvoAnexo
+  /** O que está subindo agora no drawer inteiro (trava todos os controles), ou null. */
+  anexando: AlvoAnexo | null
+  onSelecionar: (alvo: AlvoAnexo, files: FileList) => void
+}) {
+  const id = `anexar-${solId}-${alvo}`
+  const subindo = anexando === alvo
+  const travado = anexando !== null
+  return (
+    <div className="mt-1.5">
+      <input
+        id={id}
+        type="file" multiple className="sr-only peer" disabled={travado}
+        accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
+        onChange={e => {
+          if (e.target.files?.length) onSelecionar(alvo, e.target.files)
+          e.target.value = ''   // permite reescolher o MESMO arquivo depois
+        }}
+      />
+      <label
+        htmlFor={id}
+        className={`flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-2.5 py-2 text-xs text-zinc-500 hover:bg-zinc-50 peer-focus-visible:border-[var(--text-secondary)] peer-focus-visible:shadow-[0_0_0_3px_var(--focus-ring)] ${travado ? 'pointer-events-none opacity-60' : ''}`}
+      >
+        {subindo
+          ? <><Loader2 size={13} className="shrink-0 animate-spin" /> Enviando…</>
+          : <><Paperclip size={13} className="shrink-0" /> Adicionar arquivo (PDF, imagem ou planilha, ≤&nbsp;10&nbsp;MB)</>}
+      </label>
+    </div>
+  )
+}
+
 // Ícone por tipo de arquivo (anexo): planilha, imagem, PDF/texto, ou genérico.
 function iconeArquivo(mime: string, nome: string) {
   const m = (mime || '').toLowerCase()
@@ -38,8 +89,9 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   const [justificativa, setJustificativa] = useState('')
   // id do anexo sendo baixado no momento (impede duplo-clique e exibe spinner)
   const [baixando, setBaixando] = useState<number | null>(null)
-  // campo_id que está recebendo upload agora (trava a UI e exibe spinner) — v5.9.0
-  const [anexando, setAnexando] = useState<number | null>(null)
+  // O que está recebendo upload agora — trava TODOS os controles e exibe o spinner só no
+  // alvo em curso (v5.9.0). Ver `AlvoAnexo` no topo do módulo.
+  const [anexando, setAnexando] = useState<AlvoAnexo | null>(null)
 
   // v5.9.0 — o que libera AÇÃO é estar em andamento ('aberta' OU 'aprovada'); o que é
   // exclusivo de 'aberta' é APROVAR (não se aprova duas vezes, e não há desaprovar).
@@ -94,15 +146,18 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
    * junta os metadados e grava todos numa chamada só — assim ou entram todos, ou o
    * usuário vê um erro único, em vez de um sucesso pela metade.
    */
-  async function anexarNoCampo(campoId: number, files: FileList) {
+  async function anexarNoCampo(alvo: AlvoAnexo, files: FileList) {
     if (anexando !== null) return
-    setErro(null); setAnexando(campoId)
+    setErro(null); setAnexando(alvo)
+    // 'livre' → sem `campo_id` = anexo GERAL. A 0127 sempre previu `campo_id` nulo como
+    // "geral" e o drawer já os exibia; a 0263 reabriu a ESCRITA (a D7 original a fechara).
+    const campoId = alvo === 'livre' ? null : alvo
     const metas: AnexoMeta[] = []
     try {
       for (const file of Array.from(files)) {
         const fd = new FormData()
         fd.set('file', file)
-        fd.set('campo_id', String(campoId))
+        if (campoId !== null) fd.set('campo_id', String(campoId))
         fd.set('solicitacao_id', String(sol.id))   // grava direto em sol/<id>/… (sem promoção)
         const up = await uploadAnexo(fd)
         if (!up.ok) {
@@ -195,7 +250,6 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
           )}
           {camposAnexo.map(r => {
             const arquivos = sol.anexos.filter(a => a.campo_id === r.campo_id)
-            const subindo = anexando === r.campo_id
             return (
               <div key={r.campo_id} className="mt-3">
                 <dt className="mb-1.5 text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
@@ -205,44 +259,26 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
                 {/* v5.9.0 — anexar DEPOIS da abertura: é por aqui que o comprovante do
                     pagamento efetuado chega a quem abriu o pedido. Disponível enquanto a
                     solicitação não estiver encerrada, para o solicitante e o atendente. */}
-                {podeAnexar && (
-                  <div className="mt-1.5">
-                    {/* Acessibilidade: o input NÃO pode ser `hidden` — `display:none` o tira do
-                        tab-order e o <label> não é focável por natureza, então o controle só
-                        responderia a mouse (achado ALTO do revisor). Com `sr-only` ele
-                        continua no tab-order e recebe foco; o `peer-focus-visible` desenha o
-                        anel na moldura visível, e o htmlFor garante que Enter/Espaço no
-                        input abram o seletor de arquivos. */}
-                    <input
-                      id={`anexar-${sol.id}-${r.campo_id}`}
-                      type="file" multiple className="sr-only peer" disabled={anexando !== null}
-                      accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
-                      onChange={e => {
-                        if (e.target.files?.length && r.campo_id != null) anexarNoCampo(r.campo_id, e.target.files)
-                        e.target.value = ''   // permite reescolher o MESMO arquivo depois
-                      }}
-                    />
-                    <label
-                      htmlFor={`anexar-${sol.id}-${r.campo_id}`}
-                      className={`flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-2.5 py-2 text-xs text-zinc-500 hover:bg-zinc-50 peer-focus-visible:border-[var(--text-secondary)] peer-focus-visible:shadow-[0_0_0_3px_var(--focus-ring)] ${anexando !== null ? 'pointer-events-none opacity-60' : ''}`}
-                    >
-                      {subindo
-                        ? <><Loader2 size={13} className="shrink-0 animate-spin" /> Enviando…</>
-                        : <><Paperclip size={13} className="shrink-0" /> Adicionar arquivo (PDF, imagem ou planilha, ≤&nbsp;10&nbsp;MB)</>}
-                    </label>
-                  </div>
-                )}
+                {podeAnexar && <ControleAnexar solId={sol.id} alvo={r.campo_id ?? 'livre'} anexando={anexando} onSelecionar={anexarNoCampo} />}
               </div>
             )
           })}
         </div>
       )}
 
-      {/* Anexos gerais (sem campo), se houver — bloco próprio */}
-      {anexosGerais.length > 0 && (
+      {/* Anexos LIVRES (sem campo) — bloco próprio.
+          v5.9.0/0263: passou a aparecer também VAZIO, quando quem olha pode anexar. Antes
+          era `anexosGerais.length > 0`, o que criava um impasse: o bloco só existia se já
+          houvesse anexo, e não havia como criar o primeiro. Este é o lugar onde o
+          comprovante de um pagamento entra quando o tipo não tem campo de anexo — o caso
+          que originou a versão e que a decisão D7 original deixava sem saída. */}
+      {(anexosGerais.length > 0 || podeAnexar) && (
         <div className="mb-5">
           <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Anexos</p>
-          <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
+          {anexosGerais.length > 0
+            ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
+            : <p className="text-xs text-zinc-400">Nenhum anexo além dos campos acima.</p>}
+          {podeAnexar && <ControleAnexar solId={sol.id} alvo="livre" anexando={anexando} onSelecionar={anexarNoCampo} />}
         </div>
       )}
 

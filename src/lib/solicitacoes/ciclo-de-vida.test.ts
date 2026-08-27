@@ -59,6 +59,11 @@ const SQL_CHECKS = sqlLimpoEm(
   'supabase/migrations/0262_solic_status_aprovada_checks.sql',   // depois de aplicar
 )
 const SQL_RPCS   = sqlLimpo('supabase/migrations/0261_solic_aprovada_e_anexo_pos_criacao.sql')
+// ⚠️ `solic_anexar` foi REDEFINIDA pela 0263 (anexo livre — reverte a D7). Ler a 0261 para
+// ela testaria a versão MORTA e passaria verde contra um corpo que o banco não usa mais —
+// exatamente a armadilha anunciada no aviso de MANUTENÇÃO acima, e a primeira vez que ela
+// se materializou. Cada objeto se lê da ÚLTIMA migration que o define.
+const SQL_ANEXAR = sqlLimpo('supabase/migrations/0263_solic_anexo_livre.sql')
 
 describe('paridade SQL ↔ TS do ciclo de vida', () => {
   it('STATUS_SOLIC tem exatamente os valores que o CHECK do banco aceita', () => {
@@ -112,12 +117,24 @@ describe('paridade SQL ↔ TS do ciclo de vida', () => {
     expect(whereExterno![1]).not.toContain("status = 'aprovada'")
   })
 
-  it('solic_anexar recusa anexo sem campo e anexo em solicitação encerrada', () => {
-    const corpo = SQL_RPCS.match(/FUNCTION public\.solic_anexar[\s\S]*?\$function\$;/)
+  it('solic_anexar ACEITA anexo livre (campo_id nulo) — a D7 foi revertida na 0263', () => {
+    const corpo = SQL_ANEXAR.match(/FUNCTION public\.solic_anexar[\s\S]*?\$function\$;/)
     expect(corpo).not.toBeNull()
-    expect(corpo![0]).toMatch(/CAMPO_ANEXO_OBRIGATORIO/)       // campo_id NULL é recusado (D7)
-    expect(corpo![0]).toMatch(/tipo_campo = 'anexo'/)          // e o campo é DAQUELE tipo
-    expect(corpo![0]).toMatch(/status NOT IN \('aberta','aprovada'\)/)  // encerrada é imutável
+    // A trava que recusava campo_id nulo NÃO pode voltar: sem anexo livre, um tipo sem
+    // campo de anexo configurado fica sem lugar para o comprovante — o caso que originou
+    // a versão. Se alguém reintroduzir o RAISE, este teste reprova.
+    expect(corpo![0]).not.toMatch(/CAMPO_ANEXO_OBRIGATORIO/)
+    // e a validação do campo passa a ser CONDICIONAL: só quando o campo_id vem preenchido.
+    expect(corpo![0]).toMatch(/v_campo IS NOT NULL AND NOT EXISTS/)
+  })
+
+  it('solic_anexar mantém as travas que NÃO foram relaxadas', () => {
+    const corpo = SQL_ANEXAR.match(/FUNCTION public\.solic_anexar[\s\S]*?\$function\$;/)!
+    // afrouxar o campo_id nulo não pode ter afrouxado o resto junto:
+    expect(corpo[0]).toMatch(/tipo_campo = 'anexo'/)                  // campo informado é DAQUELE tipo
+    expect(corpo[0]).toMatch(/status NOT IN \('aberta','aprovada'\)/) // encerrada segue imutável
+    expect(corpo[0]).toMatch(/sou_atendente/)                         // só solicitante ou atendente
+    expect(corpo[0]).toMatch(/ANEXO_INVALIDO/)                        // path/nome continuam exigidos
   })
 })
 

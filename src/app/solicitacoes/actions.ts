@@ -312,7 +312,8 @@ function traduzir(msg: string): string {
     // v5.9.0 — anexo pós-criação (solic_anexar).
     ANEXO_AUSENTE: 'Nenhum arquivo para anexar.',
     ANEXO_INVALIDO: 'Arquivo inválido.',
-    CAMPO_ANEXO_OBRIGATORIO: 'Escolha em qual campo de anexo o arquivo entra.',
+    // CAMPO_ANEXO_OBRIGATORIO saiu com a 0263: anexo sem campo passou a ser legítimo
+    // (anexo livre). A RPC não emite mais esse prefixo.
     CAMPO_INVALIDO: 'Este tipo de solicitação não tem esse campo de anexo.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
