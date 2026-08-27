@@ -162,12 +162,26 @@ régua.
 
 ---
 
-## 5. Estado do banco — `0261` APLICADA · `0262` aguardando TTY
+## 5. Estado do banco — AS DUAS APLICADAS ✅
 
 | | |
 |---|---|
 | `0261` (aditiva) | ✅ **APLICADA em 27/08/2026**, backup-gate VERDE (58/58 tabelas; 3 restore-tests com checksum idêntico). O push levou **exatamente uma** migration. |
-| `0262` (destrutiva) | escrita, revisada, **não aplicada**, em `supabase/patches/` — **pré-requisito do MERGE** |
+| `0262` (destrutiva) | ✅ **APLICADA em 27/08/2026** pelo Yan, em TTY. Arquivo movido de `supabase/patches/` para `supabase/migrations/` (git registra como rename R100 — conteúdo idêntico, só o caminho). |
+
+### Constraints conferidas no banco após a `0262` (catálogo, não relato)
+
+| Constraint | Estado |
+|---|---|
+| `solicitacao_status_check` | aceita `aberta · aprovada · concluida · rejeitada · cancelada` — era a barreira que faltava |
+| `solicitacao_terminal_decidido` | dispensa `decidido_por`/`decidido_em` em `'aberta'` **e** `'aprovada'` — é o que deixa um estado intermediário existir sem mentir que foi decidido |
+| `solicitacao_aprovada_registrada` | exige `aprovado_por`/`aprovado_em` quando `'aprovada'` — não existe aprovação anônima |
+
+`migration list`: `0260`/`0261`/`0262` com local == remote, nada pendente.
+
+⚠️ **O ciclo de vida está no banco; o código aguarda o merge.** Enquanto o PR não mergear, a
+etapa existe no Postgres mas nenhuma tela a oferece — que é a ordem segura (o inverso é que
+seria o problema).
 
 ### Verificação pós-push (REST + `service_role` — `db query` não executa o corpo)
 
