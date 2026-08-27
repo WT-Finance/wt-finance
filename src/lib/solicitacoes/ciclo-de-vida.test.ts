@@ -28,8 +28,9 @@ import { STATUS_LABEL, statusBadge, acaoBadge, vencida } from './format'
 // A 0262 vive em `supabase/patches/` — e não em `supabase/migrations/` — porque é
 // DESTRUTIVA: `db push` empurra todo o conjunto pendente da pasta de migrations, e uma
 // destrutiva parada lá é arrastada por qualquer push (a v5.2.0 dropou bases assim). Ela é
-// movida para lá só no instante em que um humano a aplica, em TTY. Se este teste começar a
-// falhar por arquivo inexistente, é porque ela foi movida — atualize o caminho.
+// movida para `migrations/` só no instante em que um humano a aplica, em TTY — por isso
+// `sqlLimpoEm` aceita os DOIS caminhos, e este teste atravessa a aplicação sem ficar
+// vermelho por motivo burocrático.
 // ─────────────────────────────────────────────────────────────────────────────────────
 
 const RAIZ = resolve(__dirname, '../../..')
@@ -41,7 +42,22 @@ function sqlLimpo(caminho: string): string {
     .join('\n')
 }
 
-const SQL_CHECKS = sqlLimpo('supabase/patches/0262_solic_status_aprovada_checks.sql')
+/** Lê o primeiro caminho que existir. A 0262 MUDA DE PASTA no ciclo de vida dela: vive em
+ *  `supabase/patches/` enquanto espera (para não ser arrastada por um `db push`) e é movida
+ *  para `supabase/migrations/` no instante em que um humano a aplica. Um teste amarrado a um
+ *  só caminho ficaria vermelho exatamente no momento da aplicação — um gate falhando por
+ *  motivo burocrático, bem quando a atenção precisa estar no banco. */
+function sqlLimpoEm(...caminhos: string[]): string {
+  for (const c of caminhos) {
+    try { return sqlLimpo(c) } catch { /* tenta o próximo */ }
+  }
+  throw new Error(`0262 não encontrada em nenhum de: ${caminhos.join(', ')}`)
+}
+
+const SQL_CHECKS = sqlLimpoEm(
+  'supabase/patches/0262_solic_status_aprovada_checks.sql',      // antes de aplicar
+  'supabase/migrations/0262_solic_status_aprovada_checks.sql',   // depois de aplicar
+)
 const SQL_RPCS   = sqlLimpo('supabase/migrations/0261_solic_aprovada_e_anexo_pos_criacao.sql')
 
 describe('paridade SQL ↔ TS do ciclo de vida', () => {
