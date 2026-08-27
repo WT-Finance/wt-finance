@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-08-26 (pós-merge da v5.8.1) · produção na **v5.8.1** (#248 mergeado 26/08 às 16h43 — DRE: TopSection "Visão Geral" com os dois Resumos Executivos e a **Ponte Competência ↔ Caixa**, mais a Decomposição da Variação do Resultado; **ZERO migration**, **ADR-0171**, 1125 testes). Antes a v5.8.0 (#246, 26/08 12h19 — DRE por Competência: base, árvore, leitura e editor próprios; migrations `0255`–`0257` e `0260`, **ADR-0170**), a v5.7.2 (#243, 25/08 14h10), a v5.7.1 (#241, 24/08 17h02) e a v5.7.0 (#239, 19/08 17h45 — **ADR-0168**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-08-27 (pós-merge da v5.9.0) · produção na **v5.9.0** (#245 mergeado 27/08 às 13h54 — Solicitações: status **"Aprovada"** como etapa intermediária OPCIONAL, e **anexo ao longo da vida** da solicitação pelos dois lados, incluindo bloco LIVRE; migrations `0261`–`0263`, **ADR-0169**, 1139 testes). Antes a v5.8.1 (#248, 26/08 16h43 — DRE: TopSection "Visão Geral" e Ponte Competência ↔ Caixa, **ADR-0171**), a v5.8.0 (#246, 26/08 12h19 — DRE por Competência, `0255`–`0257`/`0260`, **ADR-0170**), a v5.7.2 (#243) e a v5.7.1 (#241). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ✅ **v5.8.1 EM PRODUÇÃO** — **ADR-0171**, **ZERO migration**, **1125 testes** (de 1056),
 incluindo 5 casos de contrato que confrontam a BASE VIVA a cada `npm test`.
@@ -29,24 +29,41 @@ filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu
    expõe o que as duas curadorias fazem — vale um olhar no de-para de impostos dos dois
    regimes, que é DADO editável, não código.
 
-⚠️ **UMA VERSÃO EM VOO — conferir numeração no REMOTO, não só na worktree.** A branch
-`feat/v5-9-0-solicitacoes-aprovada-anexos` (PR #245 draft) reservou o **ADR-0169** e as
-migrations **`0261`** (aditiva, escrita) e **`0262`** (destrutiva, escrita e guardada em
-**`supabase/patches/`** — pasta NOVA dessa versão, fora de `supabase/migrations/` de propósito:
-`db push` empurra todo o conjunto pendente da pasta de migrations, e destrutiva parada lá é
-arrastada por qualquer push, como na v5.2.0. Ela é movida para lá só no instante em que um
-humano a aplica).
-✅ **Já trouxe o main (v5.8.1) por merge em 27/08** — ela não está mais atrasada na `0254`.
-📌 **Ela renumerou duas vezes:** nasceu `0256`/`0257` (colidia de frente com a v5.8.0 — achado
-CRÍTICO do `revisor-db`, invisível de dentro de uma worktree só), virou `0258`/`0259`, e agora é
-`0261`/`0262` — porque a v5.8.0 respeitou a reserva mas usou `0260`, deixando a `0258` ATRÁS da
-última aplicada, o que exigiria `--fora-de-ordem`. Renumerar foi grátis porque nada tinha sido
-aplicado. Foi também por essa dança de numeração que o ADR da v5.8.0 nasceu 0169 e **virou
-0170**: `ls docs/adr/` numa worktree mostra só o que está mergeado.
+✅ **v5.9.0 EM PRODUÇÃO** — **ADR-0169**, migrations `0261` (aditiva), `0262` (destrutiva) e
+`0263` (aditiva), **1139 testes**. Solicitações ganharam a etapa **"Aprovada"** (intermediária e
+OPCIONAL — concluir direto de `aberta` continua valendo) e **anexo depois da abertura**, pelos
+dois lados, enquanto não encerrada.
 
-⚠️ **Numeração de ADR: o `0171` está no main (v5.8.1); a próxima livre é a `0172`** — mas o
-`0169` segue **reservado** pela v5.9.0 em voo, que ainda não mergeou. Conferir no `origin`,
-nunca só no `ls docs/adr/` da worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
+📌 **Duas coisas desta versão que valem como precedente:**
+1. **`solic_movimentacoes` nunca foi um log — é PROJEÇÃO do estado atual.** Funcionava porque
+   toda solicitação tinha no máximo UMA transição após a abertura. Uma etapa intermediária
+   quebra isso: sem colunas próprias, a aprovação sumiria do histórico ao ser concluída. Daí
+   `aprovado_por`/`aprovado_em` e um ramo próprio no UNION.
+2. **A migration mudou de número TRÊS vezes** (`0256`→`0258`→`0261`): colidiu com a v5.8.0 em
+   paralelo (achado CRÍTICO do `revisor-db`, invisível de dentro de uma worktree só), e depois
+   ficou ATRÁS da última aplicada porque a v5.8.0 respeitou a reserva mas seguiu para `0260`.
+   **Reservar número não basta** — conferir no BANCO e nas worktrees irmãs imediatamente antes
+   de aplicar, e preferir renumerar (grátis, enquanto nada foi aplicado) a `--fora-de-ordem`.
+
+⚠️ **A decisão D7 foi REVERTIDA dentro da própria versão** (migration `0263`, Emenda 1 do
+ADR-0169): existe **anexo LIVRE**, sem depender de campo configurado no tipo. A estrutura sempre
+permitiu (`campo_id` anulável desde a `0127`, comentada como `NULL = geral`); quem tinha fechado
+a porta foi a validação da `0261`. Lição: **conferir o que a estrutura já permite antes de
+restringi-la por decisão**.
+
+🔴 **PENDENTE (Yan): conferência visual da v5.9.0 em produção** — aprovar uma solicitação de
+verdade e anexar um arquivo pelo bloco livre são os testes ponta a ponta que só a tela faz
+(REST/`service_role` não serve: `app.uid_jwt()` é nulo ali e a constraint de registro recusaria,
+corretamente).
+
+📌 **Risco aceito, registrado:** o contrato da API externa mudou (`status` pode vir `aprovada`) e
+o parceiro (TARS/Vitor) **não foi avisado previamente** — decisão consciente. As duas cópias da
+doc foram corrigidas com aviso destacado. Se a integração dele ramificar nos quatro status
+antigos sem caminho padrão, `aprovada` cai no `default`.
+
+⚠️ **Numeração de ADR: o maior no main é o `0171` (v5.8.1); a próxima livre é a `0172`.**
+O `0169` deixou de ser reserva — mergeou com a v5.9.0. Conferir no `origin`, nunca só no
+`ls docs/adr/` de uma worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
 ⚠️ **Numeração de migration: a última APLICADA é a `0263`; a próxima livre é a `0264`.**
 A v5.9.0 aplicou três: `0261` (aditiva), `0262` (destrutiva, em TTY pelo Yan) e `0263` (aditiva
