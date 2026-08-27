@@ -162,12 +162,30 @@ régua.
 
 ---
 
-## 5. Estado do banco — NADA APLICADO (decisão do Yan)
+## 5. Estado do banco — `0261` APLICADA · `0262` aguardando TTY
 
 | | |
 |---|---|
-| `0261` (aditiva) | escrita, revisada, **não aplicada** |
-| `0262` (destrutiva) | escrita, revisada, **não aplicada**, em `supabase/patches/` |
+| `0261` (aditiva) | ✅ **APLICADA em 27/08/2026**, backup-gate VERDE (58/58 tabelas; 3 restore-tests com checksum idêntico). O push levou **exatamente uma** migration. |
+| `0262` (destrutiva) | escrita, revisada, **não aplicada**, em `supabase/patches/` — **pré-requisito do MERGE** |
+
+### Verificação pós-push (REST + `service_role` — `db query` não executa o corpo)
+
+| Verificação | Resultado |
+|---|---|
+| `solic_aprovar` / `solic_anexar` executáveis | ✓ corpo roda até o `RAISE` esperado (`NAO_ENCONTRADA` com id inexistente) — sem erro de runtime |
+| `solic_movimentacoes` | ✓ responde com o UNION de três ramos sobre dado real |
+| `solic_minhas_pendencias` | ✓ executa (0 para `service_role`, que não tem `uid`) |
+| colunas `aprovado_por`/`aprovado_em` | ✓ criadas |
+| `solicitacao_aprovada_registrada` | ✓ existe |
+| **`app.solic_json` preservou `origem`** | ✓ **sim** — o achado central desta versão, confirmado na estrutura viva |
+| `solic_json` expõe `aprovado_por_email` | ✓ |
+| grants das RPCs novas | `authenticated` · `postgres` · `service_role` — **sem `anon`** ✓ |
+| `solicitacao_status_check` aceita `'aprovada'`? | **ainda não** — é precisamente o que a `0262` faz |
+
+Ids inexistentes de propósito: exercitam o corpo até o primeiro `RAISE` sem escrever nada em
+produção. O teste ponta a ponta de `solic_aprovar` (o `UPDATE` e o `RETURNING`) só é possível
+**depois da `0262`** — hoje ele bateria na constraint, que é o comportamento correto.
 
 **Ordem acordada em 25/08 — e como ela terminou.** A decisão foi "a v5.8 aplica primeiro, a
 v5.9 espera", para nenhuma das duas precisar de `--fora-de-ordem`. A v5.8.0 **respeitou a

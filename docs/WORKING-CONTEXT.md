@@ -48,9 +48,12 @@ aplicado. Foi também por essa dança de numeração que o ADR da v5.8.0 nasceu 
 `0169` segue **reservado** pela v5.9.0 em voo, que ainda não mergeou. Conferir no `origin`,
 nunca só no `ls docs/adr/` da worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
-⚠️ **Numeração de migration: a última APLICADA é a `0260`. A `0261` e a `0262` estão
-RESERVADAS pela v5.9.0** (escritas, revisadas, ainda **não aplicadas**) — a próxima livre para
-uma versão nova é a **`0263`**. Conferir no BANCO e no REMOTO antes de aplicar.
+⚠️ **Numeração de migration: a última APLICADA é a `0261`** (v5.9.0, aditiva, aplicada em
+27/08 — colunas de aprovação + `solic_aprovar`/`solic_anexar` + 7 `CREATE OR REPLACE`).
+🔴 **A `0262` (destrutiva) está ESCRITA e NÃO aplicada**, em `supabase/patches/` — ela relaxa os
+dois CHECKs que barram o status `'aprovada'` e é **pré-requisito do MERGE do PR #245**, não um
+passo pós-merge: o front que a consome já está na branch e fica vivo no instante do deploy.
+A próxima livre para uma versão nova é a **`0263`**. Conferir no BANCO e no REMOTO antes de aplicar.
 Conferir sempre em `supabase_migrations.schema_migrations`, não no texto — este cabeçalho já
 esteve obsoleto mais de uma vez (e chegou a conviver com uma cópia desatualizada de si mesmo,
 removida no fechamento da v5.6.4).
