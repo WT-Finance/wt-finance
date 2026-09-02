@@ -70,17 +70,103 @@ function ControleAnexar({ solId, alvo, anexando, onSelecionar }: {
   )
 }
 
-// Ícone por tipo de arquivo (anexo): planilha, imagem, PDF/texto, ou genérico.
-function iconeArquivo(mime: string, nome: string) {
-  const m = (mime || '').toLowerCase()
-  const ext = (nome.split('.').pop() ?? '').toLowerCase()
-  if (m.includes('sheet') || m === 'text/csv' || ext === 'xlsx' || ext === 'csv') return FileSpreadsheet
-  if (m.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp'].includes(ext)) return FileImage
-  if (m === 'application/pdf' || ext === 'pdf') return FileText
-  return FileIcon
+/** Linha de um anexo: baixar (ocupa a linha) + excluir (v5.9.1).
+ *
+ *  Os dois são botões IRMÃOS dentro de um container, nunca aninhados: `<button>` dentro de
+ *  `<button>` é HTML inválido e faria o clique de excluir disparar o download junto.
+ *
+ *  Vive no MÓDULO, e isso é correção de BUG, não estilo. Definido no corpo do drawer, a
+ *  identidade da função era recriada a cada render — e o React remonta por TIPO, não por
+ *  `key`. Qualquer estado do drawer (digitar na justificativa de rejeição, por exemplo)
+ *  remontava TODAS as linhas de anexo. Pior: em `confirmarExclusao` os setStates são
+ *  agrupados num commit só, então o modal fechava e a linha remontava juntos — e o cleanup
+ *  de foco do `ModalCentral` (`anterior?.focus?.()`) tentava devolver o foco a um nó que
+ *  já havia sido substituído. `.focus()` em nó destacado é no-op: o foco caía no
+ *  `document.body`, quebrando a navegação por teclado no fluxo que esta versão criou.
+ *  (Achado ALTO do revisor; mesma classe que levou `ControleAnexar` ao módulo na v5.9.0.)
+ *
+ *  `bloqueioObrigatorio` chega preenchido quando este é o ÚLTIMO anexo de um campo
+ *  obrigatório (E4). O botão então fica inerte MAS FOCÁVEL: `aria-disabled` em vez do
+ *  `disabled` nativo, porque `disabled` tira do tab-order e quem navega por teclado passaria
+ *  direto, sem nunca saber que o controle existe nem por que está bloqueado. O motivo vai no
+ *  `aria-label` e num `aria-describedby` — `title` sozinho só serve a quem usa mouse.
+ *  Esconder também não serve: controle que desaparece sem explicação faz o usuário concluir
+ *  que a funcionalidade não existe (foi o que motivou a reversão da D7 na v5.9.0). */
+function BotaoAnexo({ a, bloqueioObrigatorio, baixando, excluindo, podeExcluir, onBaixar, onPedirExclusao }: {
+  a: Solicitacao['anexos'][number]
+  /** Motivo do bloqueio (E4), ou undefined quando a exclusão está liberada. */
+  bloqueioObrigatorio?: string
+  baixando: number | null
+  excluindo: number | null
+  podeExcluir: boolean
+  onBaixar: (id: number) => void
+  onPedirExclusao: (a: Solicitacao['anexos'][number]) => void
+}) {
+  const ocupado = excluindo !== null || baixando !== null
+  const bloqueado = !!bloqueioObrigatorio
+  const idMotivo = `anexo-${a.id}-motivo`
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button" disabled={ocupado} onClick={() => onBaixar(a.id)}
+        className="foco-neutro flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-left text-xs text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-60"
+      >
+        {baixando === a.id
+          ? <Loader2 size={15} className="shrink-0 animate-spin text-zinc-400" />
+          : iconeArquivo(a.mime, a.nome, 'shrink-0 text-zinc-400')}
+        <span className="min-w-0 flex-1 truncate">{a.nome}</span>
+        {baixando !== a.id && <Download size={13} className="shrink-0 text-zinc-400" />}
+      </button>
+      {podeExcluir && (
+        <>
+          <button
+            type="button"
+            aria-disabled={ocupado || bloqueado}
+            onClick={() => { if (!ocupado && !bloqueado) onPedirExclusao(a) }}
+            aria-label={bloqueado ? `Não é possível excluir ${a.nome}: ${bloqueioObrigatorio}` : `Excluir ${a.nome}`}
+            aria-describedby={bloqueado ? idMotivo : undefined}
+            title={bloqueioObrigatorio ?? 'Excluir arquivo'}
+            className={`foco-neutro shrink-0 rounded-lg border border-zinc-200 bg-white p-2 transition-colors ${
+              ocupado || bloqueado
+                ? 'cursor-not-allowed text-zinc-300'
+                : 'text-zinc-400 hover:border-danger hover:text-danger'
+            }`}
+          >
+            {excluindo === a.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+          </button>
+          {bloqueado && <span id={idMotivo} className="sr-only">{bloqueioObrigatorio}</span>}
+        </>
+      )}
+    </div>
+  )
 }
 
-export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; onClose: () => void }) {
+/** Ícone por tipo de arquivo (anexo): planilha, imagem, PDF/texto, ou genérico.
+ *  Devolve o ELEMENTO pronto, não o componente. Retornar o componente e atribuí-lo a uma
+ *  variável PascalCase (`const Icone = iconeArquivo(...)`) faz o React Compiler acusar
+ *  `static-components` — ele não distingue "selecionar um de quatro componentes existentes"
+ *  de "criar um componente no render". Semanticamente era um falso-positivo, mas a saída é
+ *  trivial e o lint fica honesto: aqui não há componente nenhum sendo criado. */
+function iconeArquivo(mime: string, nome: string, className: string) {
+  const m = (mime || '').toLowerCase()
+  const ext = (nome.split('.').pop() ?? '').toLowerCase()
+  if (m.includes('sheet') || m === 'text/csv' || ext === 'xlsx' || ext === 'csv') return <FileSpreadsheet size={15} className={className} />
+  if (m.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp'].includes(ext)) return <FileImage size={15} className={className} />
+  if (m === 'application/pdf' || ext === 'pdf') return <FileText size={15} className={className} />
+  return <FileIcon size={15} className={className} />
+}
+
+export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
+  sol: Solicitacao
+  onClose: () => void
+  /** v5.9.1 — chamado após uma mutação que NÃO fecha o drawer (anexar, excluir anexo).
+   *
+   *  Quem deriva `sol` da lista do RSC (a tela de Solicitações) não precisa passar: o
+   *  `router.refresh()` já devolve o objeto novo e o drawer re-renderiza sozinho. Este
+   *  gancho existe para quem carrega o detalhe por SERVER ACTION e não tem lista de onde
+   *  derivar — o caso de Movimentações, que buscaria eternamente o mesmo retrato. */
+  onAtualizar?: () => void
+}) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
@@ -177,7 +263,8 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
       }
       const r = await anexarEmSolicitacao(sol.id, metas)
       if (!r.ok) { setErro(r.erro ?? 'Falha ao anexar.'); return }  // esta action já limpa
-      router.refresh()   // o drawer relê a solicitação e os arquivos novos aparecem
+      router.refresh()   // a page RSC devolve a lista nova; quem deriva dela já se atualiza
+      onAtualizar?.()    // quem carrega por action rebusca (Movimentações)
     } finally {
       setAnexando(null)
     }
@@ -191,53 +278,11 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
     try {
       const r = await excluirAnexo(anexoId)
       if (!r.ok) { setErro(r.erro ?? 'Falha ao excluir o anexo.'); return }
-      router.refresh()   // o drawer relê a solicitação e o arquivo some da lista
+      router.refresh()   // a page RSC devolve a lista nova; quem deriva dela já se atualiza
+      onAtualizar?.()    // quem carrega por action rebusca (Movimentações)
     } finally {
       setExcluindo(null)
     }
-  }
-
-  /** Linha de um anexo: baixar (ocupa a linha) + excluir (v5.9.1).
-   *
-   *  Os dois são botões IRMÃOS dentro de um container, nunca aninhados: `<button>` dentro de
-   *  `<button>` é HTML inválido e faria o clique de excluir disparar o download junto. Por
-   *  isso o container perdeu o `foco-neutro` — cada botão tem o seu.
-   *
-   *  `bloqueioObrigatorio` chega preenchido quando este é o ÚLTIMO anexo de um campo
-   *  obrigatório (E4). Nesse caso o botão fica DESABILITADO com explicação, não escondido:
-   *  controle que some sem motivo faz o usuário concluir que a funcionalidade não existe —
-   *  foi exatamente o que motivou a reversão da D7 na v5.9.0. */
-  function BotaoAnexo({ a, bloqueioObrigatorio }: {
-    a: Solicitacao['anexos'][number]
-    bloqueioObrigatorio?: string
-  }) {
-    const Icone = baixando === a.id ? Loader2 : iconeArquivo(a.mime, a.nome)
-    const podeExcluir = !!a.sou_autor && emAnd
-    const travado = excluindo !== null || baixando !== null
-    return (
-      <div className="flex items-center gap-1">
-        <button
-          type="button" disabled={baixando !== null} onClick={() => baixarAnexo(a.id)}
-          className="foco-neutro flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-left text-xs text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-60"
-        >
-          <Icone size={15} className={`shrink-0 text-zinc-400 ${baixando === a.id ? 'animate-spin' : ''}`} />
-          <span className="min-w-0 flex-1 truncate">{a.nome}</span>
-          {baixando !== a.id && <Download size={13} className="shrink-0 text-zinc-400" />}
-        </button>
-        {podeExcluir && (
-          <button
-            type="button"
-            disabled={travado || !!bloqueioObrigatorio}
-            onClick={() => setConfirmandoExclusao(a)}
-            aria-label={`Excluir ${a.nome}`}
-            title={bloqueioObrigatorio ?? 'Excluir arquivo'}
-            className="foco-neutro shrink-0 rounded-lg border border-zinc-200 bg-white p-2 text-zinc-400 transition-colors hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-200 disabled:hover:text-zinc-400"
-          >
-            {excluindo === a.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-          </button>
-        )}
-      </div>
-    )
   }
 
   // Campos não-anexo (vão na grade de dois) e campos anexo (bloco próprio).
@@ -302,7 +347,9 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
                 <dt className="mb-1.5 text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
                 {arquivos.length > 0
                   ? <div className="space-y-1.5">{arquivos.map(a => (
-                      <BotaoAnexo key={a.id} a={a}
+                      <BotaoAnexo key={a.id} a={a} baixando={baixando} excluindo={excluindo}
+                        podeExcluir={!!a.sou_autor && emAnd}
+                        onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao}
                         /* E4 — último arquivo de campo obrigatório não sai sem substituto.
                            A trava que VALE é a da RPC; aqui o botão só explica por quê. */
                         bloqueioObrigatorio={r.obrigatorio && arquivos.length === 1
@@ -330,7 +377,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
         <div className="mb-5">
           <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Outros anexos</p>
           {anexosGerais.length > 0
-            ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
+            ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} baixando={baixando} excluindo={excluindo} podeExcluir={!!a.sou_autor && emAnd} onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao} />)}</div>
             : <p className="text-xs text-zinc-400">Nenhum anexo além dos campos acima.</p>}
           {podeAnexar && <ControleAnexar solId={sol.id} alvo="livre" anexando={anexando} onSelecionar={anexarNoCampo} />}
         </div>

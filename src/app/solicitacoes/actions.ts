@@ -285,12 +285,18 @@ export async function excluirAnexo(anexoId: number): Promise<{ ok: boolean; erro
 
   const path = (data as { storage_path?: string } | null)?.storage_path
   if (path) {
+    // ⚠️ O SDK do Storage NÃO LANÇA em falha de API — resolve com `{ data, error }`. Um
+    // `try/catch` sozinho aqui seria decorativo: a falha real (permissão, path já removido,
+    // hiccup do bucket) passaria como sucesso e o log prometido nunca sairia. É o padrão que
+    // `upload` e `createSignedUrl` já seguem neste arquivo. (Achado ALTO do revisor.)
+    // O try/catch fica só para exceção de REDE, que é a única que de fato lança.
     try {
-      await getAdminClient().storage.from(BUCKET).remove([path])
+      const { error: rmErr } = await getAdminClient().storage.from(BUCKET).remove([path])
+      if (rmErr) {
+        console.error(`[solicitacoes] anexo ${anexoId} removido do banco, mas o binário ficou no Storage:`, rmErr)
+      }
     } catch (err) {
-      // O metadado já saiu: a exclusão VALEU do ponto de vista do usuário. Logar e seguir —
-      // devolver erro aqui faria a tela dizer que falhou algo que de fato aconteceu.
-      console.error(`[solicitacoes] anexo ${anexoId} removido do banco, mas o binário ficou no Storage:`, err)
+      console.error(`[solicitacoes] anexo ${anexoId} removido do banco; falha de rede ao apagar o binário:`, err)
     }
   }
   revalidatePath('/solicitacoes'); return { ok: true }
