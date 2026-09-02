@@ -23,8 +23,9 @@ import {
   historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
 import { montarPonte } from './dre/ponte-regimes'
-import { montarDecomposicao } from './dre/decomposicao-variacao'
+import { montarAcumulacao } from './dre/decomposicao-variacao'
 import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
+import { montarProporcaoGrupos, GRUPOS_PROPORCAO } from './dre/proporcao-grupos'
 import { janelaYtdCompetencia } from './dre/janela-competencia'
 import { folhasPorGrupo, totalFolhas } from './dre/folhas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
@@ -1759,15 +1760,46 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     }
   })
 
-  it('a decomposição da variação fecha ao centavo entre dois anos vivos', async () => {
+  it('a acumulação desde o fechamento fecha ao centavo entre dois anos vivos', async () => {
     const anoSP = Number(hojeSP().slice(0, 4))
     const atual = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
     const anterior = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP - 1 }))
+    const m = janelaYtdCompetencia(atual)
 
-    const c = montarDecomposicao(atual, anterior, janelaYtdCompetencia(atual), 'anterior', 'atual')
-    const soma = c.degraus.reduce((s, d) => s + d.delta, 0)
+    const c = montarAcumulacao(atual, anterior, m, 'fechado', 'hoje')
+    const soma = c.degraus.reduce((s: number, d: { delta: number }) => s + d.delta, 0)
 
-    expect(c.inicial.valor + soma, 'REX anterior + Σ degraus ≠ REX atual').toBe(c.final.valor)
+    expect(c.inicial.valor + soma, 'REX fechado + Σ degraus ≠ acumulado').toBe(c.final.valor)
     expect(c.fecha).toBe(true)
+
+    // A âncora inicial é o exercício anterior INTEIRO — 12 meses, não a janela do corrente.
+    // Se voltasse a usar `m`, a cascata silenciosamente reverteria à leitura YTD×YTD que a
+    // v5.9.2 substituiu, e nenhum outro teste pegaria isso contra o dado real.
+    const rexAnterior = anterior.linhas.find(l => l.t !== 'cat' && l.chave === 'REX')
+    expect(rexAnterior, 'ano anterior sem linha REX').toBeDefined()
+    const cheio = rexAnterior!.meses.reduce((s, v) => s + Math.round(v * 100), 0)
+    expect(c.inicial.valor, 'a âncora não é o ano anterior FECHADO').toBe(cheio)
+    // e a soma dos degraus é a variação desde o fechamento
+    expect(soma).toBe(c.final.valor - c.inicial.valor)
+  })
+
+  it('os 7 grupos da grade de proporção existem na árvore VIVA de competência', async () => {
+    // Chave renomeada no editor da estrutura deixaria um mini-gráfico VAZIO, em silêncio —
+    // o mesmo risco que o teste das linhas do Resumo Executivo cobre.
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const comp = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
+
+    const folhasVivas = new Set(comp.linhas.filter(l => l.t === 'cat').map(l => l.g))
+    for (const k of GRUPOS_PROPORCAO) {
+      expect(folhasVivas.has(k), `a grade pede o grupo ${k}, que a árvore viva não tem`).toBe(true)
+    }
+
+    // E a série sai com AV calculável em TODOS os anos cobertos (base > 0 em cada um).
+    const series = montarProporcaoGrupos([
+      { ano: anoSP, payload: comp, meses: janelaYtdCompetencia(comp) },
+    ])
+    for (const s of series) {
+      expect(s.pontos[0].av, `${s.chave} sem AV — Receita Bruta ausente ou ≤ 0`).not.toBeNull()
+    }
   })
 })

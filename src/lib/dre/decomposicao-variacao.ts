@@ -1,20 +1,30 @@
-// ── Decomposição da variação (v5.8.1) — módulo PURO ───────────────────────────
-// Cascata âncora-a-âncora: **REX do YTD anterior → um degrau por folha → REX do YTD
-// atual**. Responde "o que moveu o resultado de um ano para o outro", na MESMA janela
-// de meses dos dois lados.
+// ── Do fechamento do ano anterior até aqui (v5.8.1 · reformulado na v5.9.2) ────
+// Cascata âncora-a-âncora: **resultado do ano anterior FECHADO → um degrau por folha →
+// resultado acumulado até hoje**. Responde "desde que fechamos o ano passado, o que
+// aconteceu?".
 //
-// ── O nome ──────────────────────────────────────────────────────────────────
-// O modelo da gerente chama isto de "Decomposição do desvio · previsto (= 2025 YTD)".
-// Aqui é "Decomposição da variação · YTD 26 × YTD 25": "desvio" e "previsto" sugerem um
-// ORÇAMENTO, e a plataforma não tem base orçamentária — o ano anterior não é uma
-// previsão, é história. O conteúdo é idêntico ao dela; o rótulo é que deixa de prometer
-// o que não existe. (Fronteira registrada: orçado de verdade segue fora.)
+// ── Por que ACUMULAÇÃO e não diferença (a mudança da v5.9.2) ─────────────────
+// Até a v5.8.1 esta cascata comparava YTD com YTD: cada degrau era `grupo_atual −
+// grupo_anterior`, na mesma janela de meses dos dois lados. O Yan pediu que a figura
+// passasse a partir do FECHAMENTO do ano anterior — e o caminho óbvio (trocar a âncora e
+// manter a subtração) foi MEDIDO contra a base viva antes de ser implementado:
+//
+//   · 8 dos 15 degraus INVERTEM DE SINAL, porque um lado tem 12 meses e o outro 8.
+//   · RH apareceria em barra VERDE com +814.691,75 — estando pior (38,9% da receita
+//     contra 35,4%). A barra é verde porque faltam quatro folhas de pagamento.
+//   · Receita de Vendas apareceria em VERMELHO com −3,52 Mi, em pleno crescimento.
+//
+// Uma cascata cujos degraus dizem o oposto da realidade em metade dos casos não é uma
+// leitura ruim, é uma leitura invertida. A saída mantém as âncoras que o Yan quer e troca
+// a OPERAÇÃO do degrau: cada barra passa a ser **o que aquele grupo fez no período**, sem
+// comparação nenhuma. Nada é distorcido pelo calendário, e a variação que o card existe
+// para mostrar é a SOMA dos degraus.
 //
 // ── Aditividade ─────────────────────────────────────────────────────────────
-// `REX_ytd_anterior + Σ degraus ≡ REX_ytd_atual`, ao centavo, porque o REX é a soma das
-// folhas nos dois anos (ver `folhas.ts`) e cada folha vira exatamente um degrau. Não há
-// pareamento entre árvores aqui — as duas pontas são o MESMO regime —, então o residual
-// só recolhe os degraus abaixo do piso de exibição.
+// `REX_fechado + Σ degraus ≡ acumulado`, ao centavo, porque o REX é a soma das folhas
+// (ver `folhas.ts`) e cada folha vira exatamente um degrau. A identidade é consequência
+// da partição, não de um residual que ajusta — o residual aqui só recolhe os degraus
+// abaixo do piso de exibição.
 //
 // ⚠️ A soma EXIBIDA pode divergir da soma dos degraus arredondados. Como na AV da
 // v5.7.0, isso não se maquia: o que o leitor confere é cada degrau contra a conta dele.
@@ -26,9 +36,9 @@ import { rotuloBloco, semCaixaAlta } from './rotulo-bloco'
 import { folhasPorGrupo, totalFolhas } from './folhas'
 import { agruparPequenos, montarCascata, type Cascata, type Degrau } from './cascata'
 
-/** A única folha com narrativa fixa: distribuição de lucros não tem "categoria que
- *  puxou", tem uma decisão. Explicá-la pelo maior lançamento seria descrever a
- *  mecânica e perder a causa. */
+/** A única folha com narrativa fixa: distribuição de lucros não tem "maior conta", tem
+ *  uma decisão. Explicá-la pelo maior lançamento seria descrever a mecânica e perder a
+ *  causa. */
 const CHAVE_DISTRIBUICAO = 'DL'
 const NARRATIVA_DISTRIBUICAO = 'decisão societária'
 
@@ -59,100 +69,92 @@ function ytdCentavos(l: DreLinha, ateMes: number): number {
   return s
 }
 
-interface CategoriaDelta { rotulo: string; delta: number }
+interface CategoriaValor { rotulo: string; valor: number }
 
-/** Δ por CATEGORIA dentro de cada folha — a matéria-prima da narrativa.
+/** Valor por CATEGORIA dentro de cada folha, no período — a matéria-prima da narrativa.
  *
- *  Casa as categorias entre os dois anos por `chaveDeLinha` (identidade estável), e não
- *  por rótulo nem por posição: uma categoria renomeada continua sendo a mesma conta, e
- *  uma categoria que só existe num dos anos entra com o outro lado valendo zero — que é
- *  exatamente o que ela é, uma conta que nasceu ou morreu no período. */
-function deltasPorCategoria(
-  atual: DreMensalLike,
-  anterior: DreMensalLike,
-  ateMes: number,
-): Map<string, CategoriaDelta[]> {
-  const acc = new Map<string, Map<string, CategoriaDelta>>()
+ *  Casa por `chaveDeLinha` (identidade estável), não por rótulo nem por posição: uma
+ *  categoria renomeada continua sendo a mesma conta. */
+function categoriasPorFolha(p: DreMensalLike, ateMes: number): Map<string, CategoriaValor[]> {
+  const acc = new Map<string, Map<string, CategoriaValor>>()
 
-  const acumular = (p: DreMensalLike, sinal: 1 | -1) => {
-    for (const l of p.linhas) {
-      if (l.t !== 'cat' || !l.g) continue
-      const id = chaveDeLinha(l)
-      if (!id) continue
+  for (const l of p.linhas) {
+    if (l.t !== 'cat' || !l.g) continue
+    const id = chaveDeLinha(l)
+    if (!id) continue
 
-      let doGrupo = acc.get(l.g)
-      if (!doGrupo) { doGrupo = new Map(); acc.set(l.g, doGrupo) }
+    let doGrupo = acc.get(l.g)
+    if (!doGrupo) { doGrupo = new Map(); acc.set(l.g, doGrupo) }
 
-      const atualCat = doGrupo.get(id) ?? { rotulo: l.rotulo, delta: 0 }
-      atualCat.delta += sinal * ytdCentavos(l, ateMes)
-      // O rótulo do ano ATUAL vence (é o nome vigente da conta); o do anterior só
-      // preenche quando a conta não existe mais.
-      if (sinal === 1) atualCat.rotulo = l.rotulo
-      doGrupo.set(id, atualCat)
-    }
+    const atual = doGrupo.get(id) ?? { rotulo: l.rotulo, valor: 0 }
+    atual.valor += ytdCentavos(l, ateMes)
+    atual.rotulo = l.rotulo
+    doGrupo.set(id, atual)
   }
 
-  acumular(anterior, -1)
-  acumular(atual, 1)
-
-  const out = new Map<string, CategoriaDelta[]>()
+  const out = new Map<string, CategoriaValor[]>()
   for (const [g, cats] of acc) out.set(g, [...cats.values()])
   return out
 }
 
 const nfBRL = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-/** "puxado por Comissão (−124.500,00)" — a categoria de maior |Δ| do grupo.
+/** "maior conta: Comissão (−124.500,00)" — a categoria de maior peso no grupo.
  *
- *  Vazio quando o grupo não tem categoria com movimento: nesse caso o degrau fala por
- *  si, e uma narrativa apontando uma conta de R$ 0,00 seria pior que silêncio. */
-export function narrativaVariacao(chaveFolha: string, cats: readonly CategoriaDelta[]): string {
+ *  Na v5.8.1 a frase era "puxado por X (Δ)", porque o degrau era uma VARIAÇÃO. Agora o
+ *  degrau é um VALOR do período, e "puxado por" prometeria uma comparação que não existe
+ *  mais — o rótulo acompanha a mudança de operação em vez de sobreviver a ela.
+ *
+ *  Vazio quando o grupo não tem categoria com movimento: nesse caso o degrau fala por si,
+ *  e apontar uma conta de R$ 0,00 seria pior que silêncio. */
+export function narrativaContribuicao(chaveFolha: string, cats: readonly CategoriaValor[]): string {
   if (chaveFolha === CHAVE_DISTRIBUICAO) return NARRATIVA_DISTRIBUICAO
 
-  let maior: CategoriaDelta | null = null
+  let maior: CategoriaValor | null = null
   for (const c of cats) {
-    if (c.delta === 0) continue
-    if (!maior || Math.abs(c.delta) > Math.abs(maior.delta)) maior = c
+    if (c.valor === 0) continue
+    if (!maior || Math.abs(c.valor) > Math.abs(maior.valor)) maior = c
   }
   if (!maior) return ''
 
-  const sinal = maior.delta < 0 ? '−' : '+'
-  return `puxado por ${maior.rotulo} (${sinal}${nfBRL.format(Math.abs(maior.delta) / 100)})`
+  const sinal = maior.valor < 0 ? '−' : '+'
+  return `maior conta: ${maior.rotulo} (${sinal}${nfBRL.format(Math.abs(maior.valor) / 100)})`
 }
 
 /**
- * Monta a cascata da variação entre dois anos do MESMO regime, na janela `jan..ateMes`.
+ * Monta a cascata do fechamento do ano anterior até o acumulado de hoje.
  *
- * Os degraus saem ordenados por |Δ| decrescente — numa leitura de "o que explica a
- * variação", o que pesou mais vem primeiro. O residual fica sempre por último.
+ * `anterior` entra INTEIRO (12 meses — é um exercício encerrado); de `atual` conta-se a
+ * janela `ateMes`, que é a cobertura real da base. Os degraus saem ordenados por |valor|
+ * decrescente: numa leitura de "o que aconteceu", o que pesou mais vem primeiro. O
+ * residual fica sempre por último.
  */
-export function montarDecomposicao(
+export function montarAcumulacao(
   atual: DreMensalLike,
   anterior: DreMensalLike,
   ateMes: number,
   rotuloInicial: string,
   rotuloFinal: string,
 ): Cascata {
-  const fAtual    = folhasPorGrupo(atual, ateMes)
-  const fAnterior = folhasPorGrupo(anterior, ateMes)
-  const rotulos   = rotulosDeFolha(atual, anterior)
-  const porCat    = deltasPorCategoria(atual, anterior, ateMes)
+  const fAtual = folhasPorGrupo(atual, ateMes)
+  const rotulos = rotulosDeFolha(atual, anterior)
+  const porCat = categoriasPorFolha(atual, ateMes)
 
-  // União das folhas dos dois anos: uma folha criada no ano atual (ou extinta no
-  // anterior) tem de aparecer, com o outro lado valendo zero.
-  const chaves = new Set<string>([...fAtual.keys(), ...fAnterior.keys()])
+  // A âncora inicial é o exercício ANTERIOR FECHADO — 12 meses, sempre. Usar `ateMes` aqui
+  // seria voltar à comparação YTD×YTD que esta versão substituiu.
+  const inicial = totalFolhas(folhasPorGrupo(anterior, 12))
 
-  const degraus: Degrau[] = [...chaves]
-    .map(k => ({
+  const degraus: Degrau[] = [...fAtual.entries()]
+    .map(([k, valor]) => ({
       rotulo:    rotulos.get(k) ?? k,
-      delta:     (fAtual.get(k) ?? 0) - (fAnterior.get(k) ?? 0),
-      narrativa: narrativaVariacao(k, porCat.get(k) ?? []),
+      delta:     valor,
+      narrativa: narrativaContribuicao(k, porCat.get(k) ?? []),
     }))
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
 
   return montarCascata(
-    { rotulo: rotuloInicial, valor: totalFolhas(fAnterior) },
+    { rotulo: rotuloInicial, valor: inicial },
     agruparPequenos(degraus, 0),
-    { rotulo: rotuloFinal,   valor: totalFolhas(fAtual) },
+    { rotulo: rotuloFinal,   valor: inicial + totalFolhas(fAtual) },
   )
 }

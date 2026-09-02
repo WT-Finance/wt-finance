@@ -217,7 +217,6 @@ import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDown
 import Button from '@/components/ui/button'
 import Tooltip from '@/components/ui/tooltip'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
-import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
 import { avPercentual, baseAv, fmtAv, linhaBaseAv, indiceBaseAv, CHAVE_BASE_AV } from '@/lib/dre/av'
@@ -1966,16 +1965,12 @@ function AcoesHierarquia({
   )
 }
 
-/** Cabeçalho do card: título à esquerda, selo de frescor da base à direita (v5.4.1).
+/** Cabeçalho do card: título à esquerda (v5.4.1).
  *
- *  O selo é o `UltimaAtualizacao` de Metas com a vigília DESLIGADA — a fonte aqui é um
- *  upload de cadência humana, não o cron do Monde, e a régua de 45min daquele componente
- *  acusaria atraso quase sempre (ver `vigiarAtraso`). `iso` nulo ⇒ o próprio componente
- *  retorna `null` e o selo some, sem "sem data" na tela.
- *
- *  `flex-wrap` + `justify-between`: em largura estreita o selo desce para a linha de
- *  baixo do título, ainda ACIMA da toolbar — nunca chega perto do "Expandir/Recolher
- *  tudo", que vive na segunda linha de pills. */
+ *  O selo de frescor da base morava à direita daqui até a v5.9.2, quando subiu para a
+ *  faixa única no topo da página — ver a nota em `CabecalhoCard`. O `justify-between`
+ *  ficou: ele não custa nada com um filho só, e volta a servir na hora em que algo for
+ *  posto de novo à direita. */
 /** A frase que o "?" do título carrega (v5.7.0). Existe porque a padronização dos
  *  rótulos cria uma pergunta legítima na primeira leitura: por que "(-) Despesas
  *  Administrativas" e não o sinal do número? Porque o prefixo descreve o PAPEL da
@@ -1989,11 +1984,14 @@ const PREFIXO_AJUDA =
 
 const TITULO_PADRAO = 'Demonstrativo de Resultado por Fluxo de Caixa'
 
+// ⚠️ O selo de frescor SAIU daqui na v5.9.2 (decisão do Yan): os dois cards de
+// demonstrativo vivem em TopSections diferentes, e quem queria saber a idade das duas
+// bases tinha de rolar a página para achar um selo em cada. Eles subiram para uma faixa
+// única no topo (`src/app/financeiro/dre/page.tsx`), onde as duas datas ficam lado a lado
+// e comparáveis — que é como elas são lidas: "a competência está mais velha que o caixa?".
 function CabecalhoCard({
-  ultimaCarga,
   titulo = TITULO_PADRAO,
 }: {
-  ultimaCarga?: string | null
   titulo?: string
 }) {
   return (
@@ -2023,7 +2021,6 @@ function CabecalhoCard({
           </button>
         </Tooltip>
       </div>
-      <UltimaAtualizacao iso={ultimaCarga ?? null} className="text-2xs" iconSize={12} vigiarAtraso={false} />
     </div>
   )
 }
@@ -2064,11 +2061,6 @@ interface TabelaDreProps {
    *  página já aplicou a janela ao montar os `ytd`; aqui ela só descreve a comparação
    *  nos `title` do cabeçalho. */
   mesJanela: number
-  /** timestamptz (ISO) do último upload de Lançamentos por Movimentação — a base que
-   *  alimenta o demonstrativo (`financeiro.fato_fluxo`). Alimenta o selo no canto
-   *  superior direito do card. `null` (nunca carregada, ou a leitura falhou) ⇒ o selo
-   *  não aparece: exibir "sem data" seria pior que não exibir nada. */
-  ultimaCargaMovimentacao?: string | null
   /** Ação injetada pela página (ex.: botão "Editar estrutura") — renderizada à direita,
    *  ENTRE a tabela e o Resumo Executivo (`RodapeAcoes`; posição da v5.4.1, antes era o
    *  rodapé do card). O "Expandir tudo"/"Recolher tudo" NÃO fica ao lado dela: vive na
@@ -2097,7 +2089,7 @@ interface TabelaDreProps {
 
 export default function TabelaDre({
   dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela,
-  ultimaCargaMovimentacao, slotAcoes,
+  slotAcoes,
   titulo, paramAno = 'ano', semPrevisto = false,
 }: TabelaDreProps) {
   const router = useRouter()
@@ -2220,7 +2212,7 @@ export default function TabelaDre({
   if (dados === null) {
     return (
       <div className="rounded-xl bg-surface p-5 shadow-sm">
-        <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} />
+        <CabecalhoCard titulo={titulo} />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <AnoPills modo="unico" ano={ano} anosDisponiveis={anosDisponiveis} onSelect={trocarAno} />
         </div>
@@ -2404,7 +2396,7 @@ export default function TabelaDre({
           : 'rounded-xl bg-surface p-5 shadow-sm'
       }
     >
-      <CabecalhoCard ultimaCarga={ultimaCargaMovimentacao} titulo={titulo} />
+      <CabecalhoCard titulo={titulo} />
 
       {/* ── Toolbar em DUAS linhas, tudo à esquerda (rodada 3/Refino 2) ──
           Linha de cima: pills de VISÃO. Linha de baixo: pills de ANO · divisor · pills

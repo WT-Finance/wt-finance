@@ -16,9 +16,12 @@ import {
 } from '@/lib/dre/schemas'
 import { chaveDeLinha, chaveDeBandeja } from '@/lib/dre/identidade'
 import { janelaYtdCompetencia, rotuloJanela } from '@/lib/dre/janela-competencia'
-import { montarDecomposicao } from '@/lib/dre/decomposicao-variacao'
+import { montarAcumulacao } from '@/lib/dre/decomposicao-variacao'
 import { montarPonte } from '@/lib/dre/ponte-regimes'
 import CascataCard from '@/components/financeiro/dre/cascata-card'
+import GradeProporcao from '@/components/financeiro/dre/grade-proporcao'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
+import { montarProporcaoGrupos } from '@/lib/dre/proporcao-grupos'
 import { rankingCaixaSchema, type RankingCaixa as RankingCaixaData } from '@/lib/fluxo/rpc-fluxo'
 import RankingCaixa from '@/components/financeiro/ranking-caixa'
 import TopSection from '@/components/shared/top-section'
@@ -311,12 +314,31 @@ export default async function DrePage({
 
   // Fail-safe POR CARD (não por seção): cada um exige o seu e some sozinho. A ponte é a
   // única que depende dos DOIS regimes.
-  const decomposicao = compCorrente && compAnterior && mCob > 0
-    ? montarDecomposicao(
+  // ⚠️ ACUMULAÇÃO, não diferença (v5.9.2). A âncora inicial é o exercício ANTERIOR
+  // FECHADO e cada degrau é o que o grupo fez no ano corrente — ver o porquê medido no
+  // cabeçalho de `decomposicao-variacao.ts`. `montarAcumulacao` usa 12 meses do anterior
+  // por conta própria; o `mCob` daqui vale só para o ano corrente.
+  const acumulacao = compCorrente && compAnterior && mCob > 0
+    ? montarAcumulacao(
         compCorrente, compAnterior, mCob,
-        `Resultado ${anoCorrente - 1}`, `Resultado ${anoCorrente}`,
+        `Resultado ${anoCorrente - 1} (fechado)`, `Onde estamos`,
       )
     : null
+
+  // Proporção de cada grupo sobre a Receita Bruta, ano a ano — os MESMOS payloads de
+  // competência que a página já tem. Ano fechado conta 12 meses; o corrente conta a
+  // janela da cobertura, e o módulo marca o ponto como parcial.
+  const seriesProporcao = mCob > 0
+    ? montarProporcaoGrupos(
+        anosDisponiveis
+          .map(a => {
+            const p = dreCompAnos.get(a)
+            if (!p) return null
+            return { ano: a, payload: p, meses: a === anoCorrente ? mCob : 12 }
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null),
+      )
+    : []
 
   const ponte = compCorrente && caixaCorrente && mCob > 0
     ? montarPonte(compCorrente, caixaCorrente, mCob)
@@ -324,6 +346,32 @@ export default async function DrePage({
 
   return (
     <div className="space-y-6">
+      {/* ── FRESCOR DAS DUAS BASES, no topo (v5.9.2) ────────────────────────────
+          Os dois selos moravam dentro dos respectivos cards de demonstrativo, em
+          TopSections diferentes: para comparar a idade das bases era preciso rolar a
+          página inteira. Lado a lado, a comparação é imediata — e ela é a pergunta real
+          ("a competência está mais velha que o caixa?"), porque as duas safras são
+          INDEPENDENTES e é isso que explica metade das divergências entre os regimes.
+          `UltimaAtualizacao` devolve `null` sozinho quando não há data, então cada selo
+          some por conta própria sem `&&` aqui. */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-2xs">
+        <UltimaAtualizacao
+          iso={compQualquer?.carregado_em ?? null}
+          prefixo="Competência · Última atualização em"
+          iconSize={12}
+          /* A régua de 45min do componente é a do CRON do Monde. Estas duas bases são de
+             cadência HUMANA (upload da controladoria), e ali o alerta ficaria vermelho
+             quase sempre — alerta permanente não é alerta, é ruído. */
+          vigiarAtraso={false}
+        />
+        <UltimaAtualizacao
+          iso={ultimaCargaMovimentacao}
+          prefixo="Caixa · Última atualização em"
+          iconSize={12}
+          vigiarAtraso={false}
+        />
+      </div>
+
       {/* ── VISÃO GERAL (v5.8.1, conferência do Yan) ────────────────────────────
           A primeira seção da página deixa de ser um REGIME e passa a ser a leitura
           consolidada: os dois resumos lado a lado na vertical e, logo abaixo, a ponte
@@ -331,7 +379,7 @@ export default async function DrePage({
           um resultado, vê-se o outro, e a pergunta seguinte é "por que diferem?".
           Cada regime segue com a sua TopSection abaixo, com o demonstrativo inteiro e a
           decomposição que é específica dele. */}
-      {(consolidadoResumoComp.length > 0 || consolidadoAnos.length > 0 || ponte) && (
+      {(consolidadoResumoComp.length > 0 || consolidadoAnos.length > 0 || ponte || seriesProporcao.length > 0) && (
         <TopSection titulo="Visão Geral">
           <div className="space-y-6">
             {consolidadoResumoComp.length > 0 && (
@@ -380,6 +428,17 @@ export default async function DrePage({
                 cascata={ponte}
               />
             )}
+
+            {/* Abaixo da ponte (decisão do Yan): os dois resumos dizem QUANTO, a ponte
+                diz por que os dois regimes divergem, e a grade diz como a estrutura de
+                custo se moveu ao longo dos anos. É a leitura que fecha a Visão Geral. */}
+            {seriesProporcao.length > 0 && (
+              <GradeProporcao
+                series={seriesProporcao}
+                janela={janela}
+                anoParcial={mCob < 12 ? anoCorrente : null}
+              />
+            )}
           </div>
         </TopSection>
       )}
@@ -398,7 +457,6 @@ export default async function DrePage({
               anosSeguintes={[]}
               consolidadoAnos={consolidadoAnosComp}
               mesJanela={mesJanela}
-              ultimaCargaMovimentacao={compQualquer.carregado_em}
               titulo="Demonstrativo de Resultado por Competência"
               paramAno="anoComp"
               semPrevisto
@@ -413,16 +471,21 @@ export default async function DrePage({
             {/* A decomposição fica NO REGIME que ela decompõe: os degraus dela são folhas
                 da árvore de competência, e o demonstrativo logo acima é onde se confere
                 cada uma. A ponte, que fala dos DOIS regimes, subiu para a Visão Geral. */}
-            {decomposicao && (
+            {/* O TÍTULO fica: a figura continua decompondo a variação do resultado — o que
+                mudou é DE ONDE ela parte. O subtítulo é que declara o recorte novo, e a
+                ajuda explica que cada barra é uma contribuição, não uma comparação. */}
+            {acumulacao && (
               <CascataCard
                 titulo="Decomposição da Variação do Resultado"
-                subtitulo={`Δ% YTD ${String(anoCorrente - 1).slice(2)}·${String(anoCorrente).slice(2)}`}
+                subtitulo={`Do fechamento de ${anoCorrente - 1} ao acumulado de hoje · ${anoCorrente} até ${janela.replace('jan–', '')}`}
                 ajuda={
-                  'Do resultado do ano anterior ao deste ano, um degrau por grupo de contas, ' +
-                  'na mesma janela de meses nos dois anos. Verde melhora o resultado, vermelho piora. ' +
-                  'Grupos que variaram menos de R$ 500 são somados em "Outros ajustes".'
+                  `Parte do resultado de ${anoCorrente - 1} já fechado e mostra o que cada grupo de ` +
+                  `contas fez em ${anoCorrente} até agora — cada barra é a CONTRIBUIÇÃO do grupo no ` +
+                  'período, não uma comparação com o ano passado. Verde somou ao resultado, vermelho ' +
+                  'subtraiu, e a soma das barras é a variação desde o fechamento. Grupos abaixo de ' +
+                  'R$ 500 entram em "Outros ajustes".'
                 }
-                cascata={decomposicao}
+                cascata={acumulacao}
               />
             )}
           </div>
@@ -438,7 +501,6 @@ export default async function DrePage({
             anosSeguintes={anosSeguintes}
             consolidadoAnos={consolidadoAnos}
             mesJanela={mesJanela}
-            ultimaCargaMovimentacao={ultimaCargaMovimentacao}
             slotAcoes={
               <Link href="/financeiro/dre/estrutura" className={`${PILL} ${PILL_NEUTRO}`}>
                 <SquarePen size={13} />
