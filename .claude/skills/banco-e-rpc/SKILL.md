@@ -327,6 +327,40 @@ se auto-desativar nem para tirar o próprio acesso a `admin/acessos`.
   precedente da v4.17.1 na seção 1. `DROP` é destrutivo: confirmação + reversibilidade
   documentada (corpo salvo na migration de origem).
 
+### Validar contra o TIPO: ler do SNAPSHOT, nunca da tabela viva
+
+Quando uma RPC precisa saber algo sobre a *definição* de um campo (é obrigatório? qual o
+tipo?), a fonte intuitiva é a tabela de definição — e ela é a **errada** se o módulo mantém
+snapshot. Definição viva muda; snapshot não. Ler da viva é **fail-open** sempre que a
+consulta não achar linha e o código tratar "não sei" como "não".
+
+**Custou caro (v5.9.1).** A regra "não esvaziar campo de anexo obrigatório" consultava
+`app.solicitacao_campo`. Só que `solicitacao_anexo.campo_id` é referência **lógica, sem FK**
+(0127), `admin_solic_salvar_tipo` faz `DELETE` + re-`INSERT` de **todos** os campos a cada
+edição do tipo, e o id é `IDENTITY` (nunca reusado) — então todo anexo de um tipo já editado
+tem `campo_id` órfão. `SELECT ... INTO v_obrig` não achava linha, `coalesce(v_obrig, false)`
+lia isso como "não é obrigatório", e a trava abria exatamente onde devia fechar.
+
+**Medido antes de corrigir: 9 dos 68 anexos com campo já estavam órfãos, e o snapshot de
+todos dizia `obrigatorio: true`** — os casos em que a regra falharia eram justamente os que
+ela existia para pegar.
+
+```sql
+-- ERRADO: fonte mutável; NOT FOUND vira "não é obrigatório"
+SELECT c.obrigatorio INTO v_obrig FROM app.solicitacao_campo c WHERE c.id = v_anexo.campo_id;
+IF coalesce(v_obrig, false) THEN ...
+
+-- CERTO: snapshot da instância (ADR-0112: imutável, sobrevive a editar/arquivar o tipo)
+SELECT (r->>'obrigatorio')::boolean INTO v_obrig
+  FROM jsonb_array_elements(v_sol.respostas) r
+ WHERE (r->>'campo_id')::bigint = v_anexo.campo_id AND r->>'tipo_campo' = 'anexo';
+IF v_obrig IS NULL OR v_obrig THEN ...   -- e FAIL-CLOSED sob ambiguidade
+```
+
+Bônus: o snapshot costuma ser a **mesma fonte que a UI usa** para renderizar, então tela e
+banco concordam por construção em vez de por coincidência. Antes de escrever a validação,
+pergunte: *isto se lê de algo que muda, ou do retrato que a instância guardou?*
+
 ### `CREATE OR REPLACE` se escreve a partir do CATÁLOGO VIVO, nunca da migration de origem
 
 A função que está no banco pode já ter divergido do arquivo que a criou — e o `REPLACE`
