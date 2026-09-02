@@ -35,6 +35,34 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.9.1',
+    data: '2026-09-02T16:01', // autoria; reconciliar ao horário REAL do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Agora é possível EXCLUIR um anexo de uma solicitação. Quem anexou o arquivo errado ' +
+          'pode removê-lo, enquanto a solicitação não estiver encerrada. Só quem anexou é que ' +
+          'exclui, e a remoção pede confirmação porque é definitiva — o arquivo sai de vez.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Quando o tipo de solicitação exige um anexo, o sistema não deixa mais o campo ficar ' +
+          'vazio: se aquele for o único arquivo, o botão de excluir aparece desabilitado, ' +
+          'avisando que é preciso anexar o substituto antes. Assim quem trocou o arquivo errado ' +
+          'resolve na ordem natural — anexa o certo, depois apaga o errado — sem que a ' +
+          'solicitação fique sem o documento obrigatório.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O bloco de anexos avulsos passou a se chamar "Outros anexos", para ficar claro que ' +
+          'ele complementa os campos de anexo previstos no tipo da solicitação, e não substitui.',
+      },
+    ],
+  },
+  {
     versao: '5.9.0',
     data: '2026-08-27T13:54', // horário REAL do merge (c498277, PR #245, 27/08 13h54 −03) — reconciliado no /pos-merge
     itens: [

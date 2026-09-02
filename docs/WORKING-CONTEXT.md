@@ -29,6 +29,20 @@ filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu
    expõe o que as duas curadorias fazem — vale um olhar no de-para de impostos dos dois
    regimes, que é DADO editável, não código.
 
+🔧 **v5.9.1 em PR (patch de ajuste da v5.9.0)** — **migration `0264` APLICADA**, Emenda 2 do
+ADR-0169. Solicitações ganham **excluir anexo** (só quem anexou; apaga metadado e binário;
+bloqueado no último arquivo de campo obrigatório) e o bloco de anexo livre passa a se chamar
+**"Outros anexos"**.
+
+⚠️ **Precedente que esta versão deixou — validar contra o TIPO se lê do SNAPSHOT, não da tabela
+viva.** A regra do campo obrigatório nasceu consultando `app.solicitacao_campo`, e isso era
+FAIL-OPEN: `solicitacao_anexo.campo_id` é referência lógica **sem FK** (0127), e
+`admin_solic_salvar_tipo` (0216) faz `DELETE` + re-`INSERT` de TODOS os campos a cada edição do
+tipo, com id `IDENTITY` que nunca se repete — então todo anexo de tipo já editado tem `campo_id`
+órfão. **Medido: 9 dos 68 anexos com campo já estavam assim, todos de campo `obrigatorio: true`.**
+A leitura passou para o **snapshot `respostas`** da solicitação (imutável por desenho, ADR-0112,
+e a mesma fonte que a UI usa). Achado ALTO do `revisor-db`.
+
 ✅ **v5.9.0 EM PRODUÇÃO** — **ADR-0169**, migrations `0261` (aditiva), `0262` (destrutiva) e
 `0263` (aditiva), **1139 testes**. Solicitações ganharam a etapa **"Aprovada"** (intermediária e
 OPCIONAL — concluir direto de `aberta` continua valendo) e **anexo depois da abertura**, pelos
@@ -65,13 +79,10 @@ antigos sem caminho padrão, `aprovada` cai no `default`.
 O `0169` deixou de ser reserva — mergeou com a v5.9.0. Conferir no `origin`, nunca só no
 `ls docs/adr/` de uma worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
-⚠️ **Numeração de migration: a última APLICADA é a `0263`; a próxima livre é a `0264`.**
-A v5.9.0 aplicou três: `0261` (aditiva), `0262` (destrutiva, em TTY pelo Yan) e `0263` (aditiva
-— anexo livre, que REVERTEU a decisão D7 no meio da versão; Emenda 1 do ADR-0169). O ciclo de
-vida da Solicitação com `'aprovada'` e o anexo livre estão **no banco**; o código aguarda o
-merge do PR #245. Conferir sempre em `supabase_migrations.schema_migrations` e em
-`supabase/migrations/`, não neste texto — este ponteiro já nasceu obsoleto uma vez nesta
-própria versão (achado BAIXO do `revisor-db`).
+⚠️ **Numeração de migration: a última APLICADA é a `0264`; a próxima livre é a `0265`.**
+A `0264` (v5.9.1, aditiva) criou `solic_anexo_excluir` e acrescentou `sou_autor` ao
+`app.solic_json`. Conferir sempre em `supabase_migrations.schema_migrations` E nas worktrees
+irmãs, não neste texto.
 
 🔴 **PENDENTE: comunicar a MUDANÇA DE CRITÉRIO da DRE à liderança.** Desde 19/08 a DRE mostra
 o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha) em **TODOS os

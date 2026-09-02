@@ -6,6 +6,27 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.1] — 2026-09-02
+
+PATCH · **Solicitações: excluir anexo, e o bloco livre vira "Outros anexos"**. Migration `0264` (aditiva) · **Emenda 2 do ADR-0169**.
+
+### Adicionado
+
+- **Excluir anexo.** Quem anexou o arquivo errado passa a poder removê-lo, enquanto a solicitação não estiver encerrada. **Só quem anexou** exclui — nem o atendente, nem a gestão —, com confirmação antes (a remoção é definitiva: sai o registro e o arquivo).
+- **`sou_autor` por anexo** no retorno de `solic_json`: é o que permite à tela oferecer o botão só a quem pode usá-lo. Afordância — a barreira real é a RPC.
+
+### Alterado
+
+- **O bloco de anexo livre passou a se chamar "Outros anexos".** Ele e os campos de anexo configurados no tipo continuam coexistindo; o rótulo deixa explícito que o livre é complementar, não uma alternativa. (O campo do tipo já aceitava vários arquivos desde a v5.9.0 — o que faltava era clareza, não capacidade.)
+- **Campo obrigatório não fica sem anexo.** Excluir o último arquivo de um campo obrigatório é bloqueado: o botão fica desabilitado explicando que é preciso anexar o substituto antes. O fluxo do arquivo trocado vira "anexa o certo → apaga o errado".
+- **Solicitação encerrada não aceita exclusão** — a imutabilidade que a v5.9.0 estabeleceu vale nos dois sentidos.
+
+### Corrigido
+
+- **A regra do campo obrigatório nasceu fail-open e foi corrigida antes de entrar.** Ela consultava `app.solicitacao_campo` para saber se o campo era obrigatório — mas `campo_id` é referência lógica sem FK e o editor de tipos (`admin_solic_salvar_tipo`) **apaga e recria todos os campos a cada edição**, com id `IDENTITY` que nunca se repete. Resultado: todo anexo de um tipo já editado tem `campo_id` órfão, a consulta não acha linha, e o `coalesce(…, false)` lia "não sei" como "não é obrigatório" — a trava abrindo exatamente onde deveria fechar. **Medido em produção: 9 dos 68 anexos com campo já estavam nesse estado, todos de campos obrigatórios.** A obrigatoriedade passou a ser lida do **snapshot `respostas`** da própria solicitação, que é imutável por desenho (ADR-0112) e é a mesma fonte que a tela usa. (Achado ALTO do `revisor-db`.)
+
+---
+
 ## [5.9.0] — 2026-08-27
 
 MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicitação**. Migrations `0261` (aditiva), `0262` (destrutiva) e `0263` (aditiva) · **ADR-0169**.
