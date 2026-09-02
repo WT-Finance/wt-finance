@@ -19,14 +19,9 @@ import type { Solicitacao } from '@/lib/solicitacoes/schemas'
 
 const INPUT = `${CAMPO} resize-none`
 
-/** Alvo de um upload: um campo de anexo do tipo (id) ou o bloco LIVRE (anexo geral).
- *  Sentinela em vez de -1 porque `campo_id` é um id de verdade, e -1 seria um id fingindo
- *  não ser id — o tipo já diz que são duas coisas diferentes. */
-type AlvoAnexo = number | 'livre'
-
-/** Controle de "Adicionar arquivo". Um só componente para os DOIS lugares onde ele aparece
- *  — nos campos de anexo do tipo e no bloco de anexo livre — porque duas cópias divergiriam
- *  no primeiro ajuste (foi o que a v5.7.2 aprendeu com ordem e busca).
+/** Controle de "Adicionar arquivo"
+ *  do bloco "Outros anexos" — o ÚNICO lugar de anexo pós-abertura desde a v5.9.1/0265,
+ *  quando o campo do tipo virou registro imutável da criação.
  *
  *  Vive no MÓDULO, não dentro do drawer: componente definido no corpo de outro dispara
  *  `static-components` do React Compiler (lint em `error`) e, pior que o lint, remonta a
@@ -37,16 +32,14 @@ type AlvoAnexo = number | 'livre'
  *  <label> não é focável por natureza, então o controle só responderia a mouse (achado ALTO
  *  do revisor). Com `sr-only` ele segue no tab-order e recebe foco; o `peer-focus-visible`
  *  desenha o anel na moldura visível, e o `htmlFor` faz Enter/Espaço abrirem o seletor. */
-function ControleAnexar({ solId, alvo, anexando, onSelecionar }: {
+function ControleAnexar({ solId, subindo, onSelecionar }: {
   solId: number
-  alvo: AlvoAnexo
-  /** O que está subindo agora no drawer inteiro (trava todos os controles), ou null. */
-  anexando: AlvoAnexo | null
-  onSelecionar: (alvo: AlvoAnexo, files: FileList) => void
+  /** Upload em curso — trava o controle e troca o rótulo pelo spinner. */
+  subindo: boolean
+  onSelecionar: (files: FileList) => void
 }) {
-  const id = `anexar-${solId}-${alvo}`
-  const subindo = anexando === alvo
-  const travado = anexando !== null
+  const id = `anexar-${solId}-livre`
+  const travado = subindo
   return (
     <div className="mt-1.5">
       <input
@@ -54,7 +47,7 @@ function ControleAnexar({ solId, alvo, anexando, onSelecionar }: {
         type="file" multiple className="sr-only peer" disabled={travado}
         accept=".pdf,.png,.jpg,.jpeg,.webp,.xlsx,.csv,application/pdf,image/*"
         onChange={e => {
-          if (e.target.files?.length) onSelecionar(alvo, e.target.files)
+          if (e.target.files?.length) onSelecionar(e.target.files)
           e.target.value = ''   // permite reescolher o MESMO arquivo depois
         }}
       />
@@ -85,17 +78,13 @@ function ControleAnexar({ solId, alvo, anexando, onSelecionar }: {
  *  `document.body`, quebrando a navegação por teclado no fluxo que esta versão criou.
  *  (Achado ALTO do revisor; mesma classe que levou `ControleAnexar` ao módulo na v5.9.0.)
  *
- *  `bloqueioObrigatorio` chega preenchido quando este é o ÚLTIMO anexo de um campo
- *  obrigatório (E4). O botão então fica inerte MAS FOCÁVEL: `aria-disabled` em vez do
- *  `disabled` nativo, porque `disabled` tira do tab-order e quem navega por teclado passaria
- *  direto, sem nunca saber que o controle existe nem por que está bloqueado. O motivo vai no
- *  `aria-label` e num `aria-describedby` — `title` sozinho só serve a quem usa mouse.
- *  Esconder também não serve: controle que desaparece sem explicação faz o usuário concluir
- *  que a funcionalidade não existe (foi o que motivou a reversão da D7 na v5.9.0). */
-function BotaoAnexo({ a, bloqueioObrigatorio, baixando, excluindo, podeExcluir, onBaixar, onPedirExclusao }: {
+ *  `podeExcluir` é false para anexo vindo da ABERTURA (v5.9.1/0265): aquele campo é registro
+ *  do que foi submetido e não se altera — só o bloco "Outros anexos" aceita exclusão. Aqui o
+ *  botão some mesmo, e isso é diferente de esconder um controle disponível: não há ação
+ *  possível a explicar. Quando ele aparece e está apenas OCUPADO (download/exclusão em
+ *  curso), usa `aria-disabled` em vez do `disabled` nativo, que removeria do tab-order. */
+function BotaoAnexo({ a, baixando, excluindo, podeExcluir, onBaixar, onPedirExclusao }: {
   a: Solicitacao['anexos'][number]
-  /** Motivo do bloqueio (E4), ou undefined quando a exclusão está liberada. */
-  bloqueioObrigatorio?: string
   baixando: number | null
   excluindo: number | null
   podeExcluir: boolean
@@ -103,8 +92,6 @@ function BotaoAnexo({ a, bloqueioObrigatorio, baixando, excluindo, podeExcluir, 
   onPedirExclusao: (a: Solicitacao['anexos'][number]) => void
 }) {
   const ocupado = excluindo !== null || baixando !== null
-  const bloqueado = !!bloqueioObrigatorio
-  const idMotivo = `anexo-${a.id}-motivo`
   return (
     <div className="flex items-center gap-1">
       <button
@@ -118,24 +105,18 @@ function BotaoAnexo({ a, bloqueioObrigatorio, baixando, excluindo, podeExcluir, 
         {baixando !== a.id && <Download size={13} className="shrink-0 text-zinc-400" />}
       </button>
       {podeExcluir && (
-        <>
-          <button
-            type="button"
-            aria-disabled={ocupado || bloqueado}
-            onClick={() => { if (!ocupado && !bloqueado) onPedirExclusao(a) }}
-            aria-label={bloqueado ? `Não é possível excluir ${a.nome}: ${bloqueioObrigatorio}` : `Excluir ${a.nome}`}
-            aria-describedby={bloqueado ? idMotivo : undefined}
-            title={bloqueioObrigatorio ?? 'Excluir arquivo'}
-            className={`foco-neutro shrink-0 rounded-lg border border-zinc-200 bg-white p-2 transition-colors ${
-              ocupado || bloqueado
-                ? 'cursor-not-allowed text-zinc-300'
-                : 'text-zinc-400 hover:border-danger hover:text-danger'
-            }`}
-          >
-            {excluindo === a.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-          </button>
-          {bloqueado && <span id={idMotivo} className="sr-only">{bloqueioObrigatorio}</span>}
-        </>
+        <button
+          type="button"
+          aria-disabled={ocupado}
+          onClick={() => { if (!ocupado) onPedirExclusao(a) }}
+          aria-label={`Excluir ${a.nome}`}
+          title="Excluir arquivo"
+          className={`foco-neutro shrink-0 rounded-lg border border-zinc-200 bg-white p-2 transition-colors ${
+            ocupado ? 'cursor-not-allowed text-zinc-300' : 'text-zinc-400 hover:border-danger hover:text-danger'
+          }`}
+        >
+          {excluindo === a.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+        </button>
       )}
     </div>
   )
@@ -175,9 +156,9 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
   const [justificativa, setJustificativa] = useState('')
   // id do anexo sendo baixado no momento (impede duplo-clique e exibe spinner)
   const [baixando, setBaixando] = useState<number | null>(null)
-  // O que está recebendo upload agora — trava TODOS os controles e exibe o spinner só no
-  // alvo em curso (v5.9.0). Ver `AlvoAnexo` no topo do módulo.
-  const [anexando, setAnexando] = useState<AlvoAnexo | null>(null)
+  // Upload de anexo livre em curso (v5.9.0; simplificado na v5.9.1, quando o campo do tipo
+  // deixou de aceitar arquivo novo e sobrou um único alvo possível).
+  const [anexando, setAnexando] = useState(false)
   // v5.9.1 — exclusão de anexo: o anexo aguardando confirmação, e o id em exclusão.
   // São dois estados porque o modal precisa do OBJETO (para mostrar o nome) e o spinner
   // precisa do id; derivar um do outro daria um modal aberto durante a exclusão.
@@ -237,18 +218,16 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
    * junta os metadados e grava todos numa chamada só — assim ou entram todos, ou o
    * usuário vê um erro único, em vez de um sucesso pela metade.
    */
-  async function anexarNoCampo(alvo: AlvoAnexo, files: FileList) {
-    if (anexando !== null) return
-    setErro(null); setAnexando(alvo)
-    // 'livre' → sem `campo_id` = anexo GERAL. A 0127 sempre previu `campo_id` nulo como
-    // "geral" e o drawer já os exibia; a 0263 reabriu a ESCRITA (a D7 original a fechara).
-    const campoId = alvo === 'livre' ? null : alvo
+  async function anexarLivre(files: FileList) {
+    if (anexando) return
+    setErro(null); setAnexando(true)
     const metas: AnexoMeta[] = []
     try {
       for (const file of Array.from(files)) {
         const fd = new FormData()
         fd.set('file', file)
-        if (campoId !== null) fd.set('campo_id', String(campoId))
+        // sem `campo_id`: anexo pós-abertura é sempre LIVRE (0265). A 0127 já previa
+        // `campo_id` nulo como "geral", e agora é o único caminho de escrita depois da criação.
         fd.set('solicitacao_id', String(sol.id))   // grava direto em sol/<id>/… (sem promoção)
         const up = await uploadAnexo(fd)
         if (!up.ok) {
@@ -266,7 +245,7 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
       router.refresh()   // a page RSC devolve a lista nova; quem deriva dela já se atualiza
       onAtualizar?.()    // quem carrega por action rebusca (Movimentações)
     } finally {
-      setAnexando(null)
+      setAnexando(false)
     }
   }
 
@@ -345,22 +324,17 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
             return (
               <div key={r.campo_id} className="mt-3">
                 <dt className="mb-1.5 text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
+                {/* v5.9.1/0265 — este campo é o REGISTRO do que veio na abertura: não recebe
+                    arquivo novo nem permite excluir. Tudo que chega depois vai para "Outros
+                    anexos", que é o único lugar de anexo pós-abertura. Ter dois lugares para
+                    anexar não deixava claro qual usar. A trava real está na RPC. */}
                 {arquivos.length > 0
                   ? <div className="space-y-1.5">{arquivos.map(a => (
                       <BotaoAnexo key={a.id} a={a} baixando={baixando} excluindo={excluindo}
-                        podeExcluir={!!a.sou_autor && emAnd}
-                        onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao}
-                        /* E4 — último arquivo de campo obrigatório não sai sem substituto.
-                           A trava que VALE é a da RPC; aqui o botão só explica por quê. */
-                        bloqueioObrigatorio={r.obrigatorio && arquivos.length === 1
-                          ? 'Campo obrigatório: anexe o substituto antes de excluir este arquivo'
-                          : undefined} />
+                        podeExcluir={false}
+                        onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao} />
                     ))}</div>
-                  : !podeAnexar && <span className="text-xs text-zinc-400">—</span>}
-                {/* v5.9.0 — anexar DEPOIS da abertura: é por aqui que o comprovante do
-                    pagamento efetuado chega a quem abriu o pedido. Disponível enquanto a
-                    solicitação não estiver encerrada, para o solicitante e o atendente. */}
-                {podeAnexar && <ControleAnexar solId={sol.id} alvo={r.campo_id ?? 'livre'} anexando={anexando} onSelecionar={anexarNoCampo} />}
+                  : <span className="text-xs text-zinc-400">—</span>}
               </div>
             )
           })}
@@ -379,7 +353,7 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
           {anexosGerais.length > 0
             ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} baixando={baixando} excluindo={excluindo} podeExcluir={!!a.sou_autor && emAnd} onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao} />)}</div>
             : <p className="text-xs text-zinc-400">Nenhum anexo além dos campos acima.</p>}
-          {podeAnexar && <ControleAnexar solId={sol.id} alvo="livre" anexando={anexando} onSelecionar={anexarNoCampo} />}
+          {podeAnexar && <ControleAnexar solId={sol.id} subindo={anexando} onSelecionar={anexarLivre} />}
         </div>
       )}
 

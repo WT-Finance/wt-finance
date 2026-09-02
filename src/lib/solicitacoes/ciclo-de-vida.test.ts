@@ -59,14 +59,13 @@ const SQL_CHECKS = sqlLimpoEm(
   'supabase/migrations/0262_solic_status_aprovada_checks.sql',   // depois de aplicar
 )
 const SQL_RPCS   = sqlLimpo('supabase/migrations/0261_solic_aprovada_e_anexo_pos_criacao.sql')
-// ⚠️ `solic_anexar` foi REDEFINIDA pela 0263 (anexo livre — reverte a D7). Ler a 0261 para
-// ela testaria a versão MORTA e passaria verde contra um corpo que o banco não usa mais —
-// exatamente a armadilha anunciada no aviso de MANUTENÇÃO acima, e a primeira vez que ela
-// se materializou. Cada objeto se lê da ÚLTIMA migration que o define.
-const SQL_ANEXAR = sqlLimpo('supabase/migrations/0263_solic_anexo_livre.sql')
-// v5.9.1 — `solic_anexo_excluir` e a versão de `solic_json` com `sou_autor` nascem na 0264.
-// Mesma regra de sempre: cada objeto se lê da ÚLTIMA migration que o define.
-const SQL_EXCLUIR = sqlLimpo('supabase/migrations/0264_solic_anexo_excluir.sql')
+// ⚠️ CADA OBJETO SE LÊ DA ÚLTIMA MIGRATION QUE O DEFINE — e neste módulo isso muda rápido:
+// `solic_anexar` nasceu na 0261, foi redefinida pela 0263 (anexo livre) e de novo pela 0265
+// (campo do tipo imutável); `solic_anexo_excluir` nasceu na 0264 e foi redefinida pela 0265.
+// Apontar para a migration errada testa CORPO MORTO e passa verde — foi o aviso de manutenção
+// no topo deste arquivo, e ele já se materializou uma vez na v5.9.1.
+const SQL_ANEXAR  = sqlLimpo('supabase/migrations/0265_solic_anexo_campo_imutavel.sql')
+const SQL_EXCLUIR = sqlLimpo('supabase/migrations/0265_solic_anexo_campo_imutavel.sql')
 
 describe('paridade SQL ↔ TS do ciclo de vida', () => {
   it('STATUS_SOLIC tem exatamente os valores que o CHECK do banco aceita', () => {
@@ -120,21 +119,19 @@ describe('paridade SQL ↔ TS do ciclo de vida', () => {
     expect(whereExterno![1]).not.toContain("status = 'aprovada'")
   })
 
-  it('solic_anexar ACEITA anexo livre (campo_id nulo) — a D7 foi revertida na 0263', () => {
+  it('solic_anexar aceita SOMENTE anexo livre — o campo do tipo é da abertura (0265)', () => {
     const corpo = SQL_ANEXAR.match(/FUNCTION public\.solic_anexar[\s\S]*?\$function\$;/)
     expect(corpo).not.toBeNull()
-    // A trava que recusava campo_id nulo NÃO pode voltar: sem anexo livre, um tipo sem
-    // campo de anexo configurado fica sem lugar para o comprovante — o caso que originou
-    // a versão. Se alguém reintroduzir o RAISE, este teste reprova.
+    // anexo pós-abertura com campo_id é recusado…
+    expect(corpo![0]).toMatch(/ANEXO_SO_LIVRE/)
+    // …e o INSERT grava NULL explicitamente, para não haver caminho que escape do RAISE
+    expect(corpo![0]).toMatch(/VALUES \(p_id, NULL,/)
+    // a trava anterior (recusar o NULO) não pode voltar: seria o oposto desta regra
     expect(corpo![0]).not.toMatch(/CAMPO_ANEXO_OBRIGATORIO/)
-    // e a validação do campo passa a ser CONDICIONAL: só quando o campo_id vem preenchido.
-    expect(corpo![0]).toMatch(/v_campo IS NOT NULL AND NOT EXISTS/)
   })
 
-  it('solic_anexar mantém as travas que NÃO foram relaxadas', () => {
+  it('solic_anexar mantém as travas que NÃO mudaram', () => {
     const corpo = SQL_ANEXAR.match(/FUNCTION public\.solic_anexar[\s\S]*?\$function\$;/)!
-    // afrouxar o campo_id nulo não pode ter afrouxado o resto junto:
-    expect(corpo[0]).toMatch(/tipo_campo = 'anexo'/)                  // campo informado é DAQUELE tipo
     expect(corpo[0]).toMatch(/status NOT IN \('aberta','aprovada'\)/) // encerrada segue imutável
     expect(corpo[0]).toMatch(/sou_atendente/)                         // só solicitante ou atendente
     expect(corpo[0]).toMatch(/ANEXO_INVALIDO/)                        // path/nome continuam exigidos
@@ -165,27 +162,15 @@ describe('exclusão de anexo (v5.9.1, migration 0264)', () => {
     expect(corpo()).toMatch(/TRANSICAO_ILEGAL/)
   })
 
-  it('bloqueia o ÚLTIMO anexo de campo obrigatório, e só nesse caso', () => {
+  it('anexo vindo da ABERTURA não se exclui (0265)', () => {
     const c = corpo()
-    expect(c).toMatch(/ANEXO_OBRIGATORIO_UNICO/)
-    // só se aplica a anexo COM campo: anexo livre não tem obrigatoriedade a preservar
+    // A regra E4 (bloquear só o ÚLTIMO de campo obrigatório) foi SUBSTITUÍDA por esta, que é
+    // anterior e mais simples: o campo inteiro é imutável, então não há invariante de
+    // obrigatoriedade a proteger durante exclusão. Se a E4 voltar sem que a imutabilidade
+    // saia, as duas se contradizem.
+    expect(c).toMatch(/ANEXO_DA_ABERTURA/)
     expect(c).toMatch(/v_anexo\.campo_id IS NOT NULL/)
-    // "último" = não sobra nenhum outro naquele campo depois deste
-    expect(c).toMatch(/a\.id <> p_anexo_id/)
-    expect(c).toMatch(/v_resto = 0/)
-  })
-
-  it('a obrigatoriedade vem do SNAPSHOT, não de solicitacao_campo (que o editor apaga)', () => {
-    const c = corpo()
-    // `solicitacao_anexo.campo_id` é referência lógica sem FK, e `admin_solic_salvar_tipo`
-    // faz DELETE + re-INSERT de todos os campos a cada edição do tipo — então consultar a
-    // tabela VIVA devolveria NOT FOUND para anexo de tipo já editado. Medido: 9 dos 68
-    // anexos com campo já estão nesse estado, todos de campo `obrigatorio: true`. Ler dali
-    // com `coalesce(..., false)` abriria a trava exatamente onde ela deve fechar.
-    expect(c).toMatch(/jsonb_array_elements\(v_sol\.respostas\)/)
-    expect(c).not.toMatch(/FROM app\.solicitacao_campo/)
-    // e sob ambiguidade (nem o snapshot conhece o campo), TRAVA — nunca libera
-    expect(c).toMatch(/v_obrig IS NULL OR v_obrig/)
+    expect(c).not.toMatch(/ANEXO_OBRIGATORIO_UNICO/)
   })
 
   it('o DELETE vem DEPOIS de todas as travas, e devolve o caminho do binário', () => {
@@ -193,7 +178,7 @@ describe('exclusão de anexo (v5.9.1, migration 0264)', () => {
     const posDelete = c.indexOf('DELETE FROM app.solicitacao_anexo')
     expect(posDelete).toBeGreaterThan(-1)
     // toda validação que pode recusar precisa estar ANTES do DELETE
-    for (const trava of ['NAO_ENCONTRADA', 'TRANSICAO_ILEGAL', 'PERMISSAO_NEGADA', 'ANEXO_OBRIGATORIO_UNICO']) {
+    for (const trava of ['NAO_ENCONTRADA', 'TRANSICAO_ILEGAL', 'PERMISSAO_NEGADA', 'ANEXO_DA_ABERTURA']) {
       expect(c.indexOf(trava), `${trava} deveria vir antes do DELETE`).toBeLessThan(posDelete)
     }
     // a action precisa do path para apagar o binário — e o DELETE já levou a linha
@@ -203,7 +188,8 @@ describe('exclusão de anexo (v5.9.1, migration 0264)', () => {
   it('solic_json passou a emitir sou_autor SEM perder chave alguma', () => {
     // O REPLACE sobrescreve o corpo inteiro: chave que some não gera erro de banco nem de
     // build, só quebra a tela. Foi o risco que quase se concretizou na v5.9.0 com `origem`.
-    const json = SQL_EXCLUIR.match(/FUNCTION app\.solic_json[\s\S]*?\$function\$;/)![0]
+    const json = sqlLimpo('supabase/migrations/0264_solic_anexo_excluir.sql')
+      .match(/FUNCTION app\.solic_json[\s\S]*?\$function\$;/)![0]
     for (const chave of [
       'id', 'tipo_id', 'tipo_nome', 'solicitante_email', 'destinatario', 'data_limite',
       'descricao', 'status', 'respostas', 'decidido_em', 'decidido_por_email',

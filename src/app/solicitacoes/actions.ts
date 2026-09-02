@@ -348,9 +348,10 @@ function traduzir(msg: string): string {
     // CAMPO_ANEXO_OBRIGATORIO saiu com a 0263: anexo sem campo passou a ser legítimo
     // (anexo livre). A RPC não emite mais esse prefixo.
     CAMPO_INVALIDO: 'Este tipo de solicitação não tem esse campo de anexo.',
-    // v5.9.1 — E4: campo obrigatório não pode ficar sem anexo. A mensagem diz o CAMINHO,
-    // não só a negativa — quem está corrigindo um upload precisa saber o que fazer.
-    ANEXO_OBRIGATORIO_UNICO: 'Este campo é obrigatório e este é o único arquivo. Anexe o substituto antes de excluir este.',
+    // v5.9.1/0265 — o campo de anexo do tipo guarda o que veio na abertura e não muda mais.
+    // Anexo pós-abertura vai para "Outros anexos"; exclusão só vale lá.
+    ANEXO_SO_LIVRE: 'Anexos enviados depois da abertura entram em "Outros anexos".',
+    ANEXO_DA_ABERTURA: 'Anexos enviados na abertura da solicitação não podem ser excluídos.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
   if (m[prefixo]) return m[prefixo]
