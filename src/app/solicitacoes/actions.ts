@@ -269,6 +269,33 @@ export async function anexarEmSolicitacao(id: number, anexos: AnexoMeta[]): Prom
   revalidatePath('/solicitacoes'); return { ok: true }
 }
 
+/**
+ * v5.9.1 — exclui um anexo. Só quem anexou (decisão E2); a RPC enforça, aqui é só o
+ * transporte. Bloqueado no último anexo de campo obrigatório (E4).
+ *
+ * ORDEM DELIBERADA: o metadado sai primeiro (na RPC) e o binário depois. Se o Storage
+ * falhar, sobra um arquivo órfão INVISÍVEL no bucket — chato, mas inofensivo. O inverso
+ * deixaria um anexo LISTADO na tela que não baixa, que é pior: o usuário vê algo que não
+ * existe mais e não entende por quê.
+ */
+export async function excluirAnexo(anexoId: number): Promise<{ ok: boolean; erro?: string }> {
+  await requireAreaAction(null)
+  const { data, error } = await rpcSessao('solic_anexo_excluir', { p_anexo_id: anexoId })
+  if (error) return { ok: false, erro: traduzir(error.message) }
+
+  const path = (data as { storage_path?: string } | null)?.storage_path
+  if (path) {
+    try {
+      await getAdminClient().storage.from(BUCKET).remove([path])
+    } catch (err) {
+      // O metadado já saiu: a exclusão VALEU do ponto de vista do usuário. Logar e seguir —
+      // devolver erro aqui faria a tela dizer que falhou algo que de fato aconteceu.
+      console.error(`[solicitacoes] anexo ${anexoId} removido do banco, mas o binário ficou no Storage:`, err)
+    }
+  }
+  revalidatePath('/solicitacoes'); return { ok: true }
+}
+
 export async function concluirSolicitacao(id: number): Promise<{ ok: boolean; erro?: string }> {
   await requireAreaAction(null)
   const { error } = await rpcSessao('solic_concluir', { p_id: id })
@@ -315,6 +342,9 @@ function traduzir(msg: string): string {
     // CAMPO_ANEXO_OBRIGATORIO saiu com a 0263: anexo sem campo passou a ser legítimo
     // (anexo livre). A RPC não emite mais esse prefixo.
     CAMPO_INVALIDO: 'Este tipo de solicitação não tem esse campo de anexo.',
+    // v5.9.1 — E4: campo obrigatório não pode ficar sem anexo. A mensagem diz o CAMINHO,
+    // não só a negativa — quem está corrigindo um upload precisa saber o que fazer.
+    ANEXO_OBRIGATORIO_UNICO: 'Este campo é obrigatório e este é o único arquivo. Anexe o substituto antes de excluir este.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
   if (m[prefixo]) return m[prefixo]

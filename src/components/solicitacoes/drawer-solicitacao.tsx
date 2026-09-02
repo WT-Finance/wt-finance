@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Download, Check, X, Ban, ThumbsUp, Paperclip, FileText, FileSpreadsheet, FileImage, File as FileIcon } from 'lucide-react'
+import { Loader2, Download, Check, X, Ban, ThumbsUp, Paperclip, Trash2, FileText, FileSpreadsheet, FileImage, File as FileIcon } from 'lucide-react'
 import ListDrawer from '@/components/shared/list-drawer'
 import ModalCentral from '@/components/shared/modal-central'
 import ConfirmModal from '@/components/shared/confirm-modal'
@@ -12,7 +12,7 @@ import { PILL, PILL_NEUTRO, PILL_PERIGO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } fr
 import { CAMPO } from '@/lib/ui/campos'
 import { fmtDataHoraSP } from '@/lib/fmt'
 import { concluirSolicitacao, rejeitarSolicitacao, cancelarSolicitacao, anexoUrl,
-  aprovarSolicitacao, anexarEmSolicitacao, uploadAnexo, descartarAnexos, type AnexoMeta } from '@/app/solicitacoes/actions'
+  aprovarSolicitacao, anexarEmSolicitacao, uploadAnexo, descartarAnexos, excluirAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import { STATUS_LABEL, statusBadge, fmtDataBR, fmtValor, vencida } from '@/lib/solicitacoes/format'
 import { emAndamento } from '@/lib/solicitacoes/schemas'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
@@ -92,6 +92,11 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
   // O que está recebendo upload agora — trava TODOS os controles e exibe o spinner só no
   // alvo em curso (v5.9.0). Ver `AlvoAnexo` no topo do módulo.
   const [anexando, setAnexando] = useState<AlvoAnexo | null>(null)
+  // v5.9.1 — exclusão de anexo: o anexo aguardando confirmação, e o id em exclusão.
+  // São dois estados porque o modal precisa do OBJETO (para mostrar o nome) e o spinner
+  // precisa do id; derivar um do outro daria um modal aberto durante a exclusão.
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState<Solicitacao['anexos'][number] | null>(null)
+  const [excluindo, setExcluindo] = useState<number | null>(null)
 
   // v5.9.0 — o que libera AÇÃO é estar em andamento ('aberta' OU 'aprovada'); o que é
   // exclusivo de 'aberta' é APROVAR (não se aprova duas vezes, e não há desaprovar).
@@ -178,18 +183,60 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
     }
   }
 
-  // Botão de download de um anexo (ícone por tipo de arquivo + nome).
-  function BotaoAnexo({ a }: { a: Solicitacao['anexos'][number] }) {
+  /** v5.9.1 — remove o anexo confirmado. A RPC reenforça autoria, estado e a regra do campo
+   *  obrigatório; o erro dela é o que a tela mostra (`traduzir` explica o caminho de saída
+   *  quando o bloqueio é o do campo obrigatório). */
+  async function confirmarExclusao(anexoId: number) {
+    setConfirmandoExclusao(null); setErro(null); setExcluindo(anexoId)
+    try {
+      const r = await excluirAnexo(anexoId)
+      if (!r.ok) { setErro(r.erro ?? 'Falha ao excluir o anexo.'); return }
+      router.refresh()   // o drawer relê a solicitação e o arquivo some da lista
+    } finally {
+      setExcluindo(null)
+    }
+  }
+
+  /** Linha de um anexo: baixar (ocupa a linha) + excluir (v5.9.1).
+   *
+   *  Os dois são botões IRMÃOS dentro de um container, nunca aninhados: `<button>` dentro de
+   *  `<button>` é HTML inválido e faria o clique de excluir disparar o download junto. Por
+   *  isso o container perdeu o `foco-neutro` — cada botão tem o seu.
+   *
+   *  `bloqueioObrigatorio` chega preenchido quando este é o ÚLTIMO anexo de um campo
+   *  obrigatório (E4). Nesse caso o botão fica DESABILITADO com explicação, não escondido:
+   *  controle que some sem motivo faz o usuário concluir que a funcionalidade não existe —
+   *  foi exatamente o que motivou a reversão da D7 na v5.9.0. */
+  function BotaoAnexo({ a, bloqueioObrigatorio }: {
+    a: Solicitacao['anexos'][number]
+    bloqueioObrigatorio?: string
+  }) {
     const Icone = baixando === a.id ? Loader2 : iconeArquivo(a.mime, a.nome)
+    const podeExcluir = !!a.sou_autor && emAnd
+    const travado = excluindo !== null || baixando !== null
     return (
-      <button
-        type="button" disabled={baixando !== null} onClick={() => baixarAnexo(a.id)}
-        className="foco-neutro flex w-full items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-left text-xs text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-60"
-      >
-        <Icone size={15} className={`shrink-0 text-zinc-400 ${baixando === a.id ? 'animate-spin' : ''}`} />
-        <span className="min-w-0 flex-1 truncate">{a.nome}</span>
-        {baixando !== a.id && <Download size={13} className="shrink-0 text-zinc-400" />}
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button" disabled={baixando !== null} onClick={() => baixarAnexo(a.id)}
+          className="foco-neutro flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-left text-xs text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-60"
+        >
+          <Icone size={15} className={`shrink-0 text-zinc-400 ${baixando === a.id ? 'animate-spin' : ''}`} />
+          <span className="min-w-0 flex-1 truncate">{a.nome}</span>
+          {baixando !== a.id && <Download size={13} className="shrink-0 text-zinc-400" />}
+        </button>
+        {podeExcluir && (
+          <button
+            type="button"
+            disabled={travado || !!bloqueioObrigatorio}
+            onClick={() => setConfirmandoExclusao(a)}
+            aria-label={`Excluir ${a.nome}`}
+            title={bloqueioObrigatorio ?? 'Excluir arquivo'}
+            className="foco-neutro shrink-0 rounded-lg border border-zinc-200 bg-white p-2 text-zinc-400 transition-colors hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-200 disabled:hover:text-zinc-400"
+          >
+            {excluindo === a.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+          </button>
+        )}
+      </div>
     )
   }
 
@@ -254,7 +301,14 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
               <div key={r.campo_id} className="mt-3">
                 <dt className="mb-1.5 text-2xs font-medium uppercase tracking-wide text-zinc-400">{r.rotulo}</dt>
                 {arquivos.length > 0
-                  ? <div className="space-y-1.5">{arquivos.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
+                  ? <div className="space-y-1.5">{arquivos.map(a => (
+                      <BotaoAnexo key={a.id} a={a}
+                        /* E4 — último arquivo de campo obrigatório não sai sem substituto.
+                           A trava que VALE é a da RPC; aqui o botão só explica por quê. */
+                        bloqueioObrigatorio={r.obrigatorio && arquivos.length === 1
+                          ? 'Campo obrigatório: anexe o substituto antes de excluir este arquivo'
+                          : undefined} />
+                    ))}</div>
                   : !podeAnexar && <span className="text-xs text-zinc-400">—</span>}
                 {/* v5.9.0 — anexar DEPOIS da abertura: é por aqui que o comprovante do
                     pagamento efetuado chega a quem abriu o pedido. Disponível enquanto a
@@ -274,7 +328,7 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
           que originou a versão e que a decisão D7 original deixava sem saída. */}
       {(anexosGerais.length > 0 || podeAnexar) && (
         <div className="mb-5">
-          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Anexos</p>
+          <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Outros anexos</p>
           {anexosGerais.length > 0
             ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} />)}</div>
             : <p className="text-xs text-zinc-400">Nenhum anexo além dos campos acima.</p>}
@@ -328,6 +382,20 @@ export default function DrawerSolicitacao({ sol, onClose }: { sol: Solicitacao; 
           {podeRejeitar && <button type="button" disabled={ocupado} onClick={() => setRejeitando(true)} className={`${PILL} ${PILL_PERIGO}`}><Ban size={13} /> Rejeitar</button>}
           {podeCancelar && <button type="button" disabled={ocupado} onClick={() => setCancelando(true)} className={`${PILL} ${PILL_NEUTRO}`}><X size={13} /> Cancelar</button>}
         </div>
+      )}
+
+      {/* v5.9.1 — exclusão de anexo é IRREVERSÍVEL (apaga metadado e binário), então passa
+          por confirmação, como o cancelamento. O nome do arquivo vai no texto: quem tem
+          três anexos parecidos precisa saber qual está prestes a sumir. */}
+      {confirmandoExclusao && (
+        <ConfirmModal
+          titulo="Excluir anexo"
+          mensagem={`Excluir "${confirmandoExclusao.nome}"? O arquivo é removido definitivamente e não há como recuperá-lo.`}
+          confirmarLabel="Excluir"
+          cancelarLabel="Voltar"
+          onConfirmar={() => confirmarExclusao(confirmandoExclusao.id)}
+          onFechar={() => setConfirmandoExclusao(null)}
+        />
       )}
 
       {cancelando && (

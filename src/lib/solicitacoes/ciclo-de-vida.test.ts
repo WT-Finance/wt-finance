@@ -64,6 +64,9 @@ const SQL_RPCS   = sqlLimpo('supabase/migrations/0261_solic_aprovada_e_anexo_pos
 // exatamente a armadilha anunciada no aviso de MANUTENÇÃO acima, e a primeira vez que ela
 // se materializou. Cada objeto se lê da ÚLTIMA migration que o define.
 const SQL_ANEXAR = sqlLimpo('supabase/migrations/0263_solic_anexo_livre.sql')
+// v5.9.1 — `solic_anexo_excluir` e a versão de `solic_json` com `sou_autor` nascem na 0264.
+// Mesma regra de sempre: cada objeto se lê da ÚLTIMA migration que o define.
+const SQL_EXCLUIR = sqlLimpo('supabase/migrations/0264_solic_anexo_excluir.sql')
 
 describe('paridade SQL ↔ TS do ciclo de vida', () => {
   it('STATUS_SOLIC tem exatamente os valores que o CHECK do banco aceita', () => {
@@ -135,6 +138,81 @@ describe('paridade SQL ↔ TS do ciclo de vida', () => {
     expect(corpo[0]).toMatch(/status NOT IN \('aberta','aprovada'\)/) // encerrada segue imutável
     expect(corpo[0]).toMatch(/sou_atendente/)                         // só solicitante ou atendente
     expect(corpo[0]).toMatch(/ANEXO_INVALIDO/)                        // path/nome continuam exigidos
+  })
+})
+
+describe('exclusão de anexo (v5.9.1, migration 0264)', () => {
+  const corpo = () => SQL_EXCLUIR.match(/FUNCTION public\.solic_anexo_excluir[\s\S]*?\$function\$;/)![0]
+
+  it('só quem anexou exclui — e o predicado é NULL-safe', () => {
+    // `criado_por` é ANULÁVEL. Sem o coalesce, `NULL = uid` devolve NULL, `NOT NULL` é NULL,
+    // e o RAISE não dispara: um anexo sem autor viraria excluível por qualquer um que
+    // enxergue a solicitação. É a classe exata do vazamento corrigido na 0129.
+    expect(corpo()).toMatch(/NOT coalesce\(v_anexo\.criado_por = app\.uid_jwt\(\), false\)/)
+    expect(corpo()).toMatch(/PERMISSAO_NEGADA/)
+  })
+
+  it('não revela a existência de anexo que o caller não pode ver', () => {
+    // "não existe" e "não pode ver" respondem a MESMA coisa. Duas mensagens distintas
+    // transformariam a RPC num oráculo de existência de anexo alheio.
+    const naoEncontrada = corpo().match(/NAO_ENCONTRADA/g) ?? []
+    expect(naoEncontrada.length).toBeGreaterThanOrEqual(2)
+    expect(corpo()).toMatch(/NOT FOUND OR NOT app\.pode_ver_solic/)
+  })
+
+  it('solicitação encerrada não aceita exclusão — imutabilidade vale nos dois sentidos', () => {
+    expect(corpo()).toMatch(/status NOT IN \('aberta','aprovada'\)/)
+    expect(corpo()).toMatch(/TRANSICAO_ILEGAL/)
+  })
+
+  it('bloqueia o ÚLTIMO anexo de campo obrigatório, e só nesse caso', () => {
+    const c = corpo()
+    expect(c).toMatch(/ANEXO_OBRIGATORIO_UNICO/)
+    // só se aplica a anexo COM campo: anexo livre não tem obrigatoriedade a preservar
+    expect(c).toMatch(/v_anexo\.campo_id IS NOT NULL/)
+    // "último" = não sobra nenhum outro naquele campo depois deste
+    expect(c).toMatch(/a\.id <> p_anexo_id/)
+    expect(c).toMatch(/v_resto = 0/)
+  })
+
+  it('a obrigatoriedade vem do SNAPSHOT, não de solicitacao_campo (que o editor apaga)', () => {
+    const c = corpo()
+    // `solicitacao_anexo.campo_id` é referência lógica sem FK, e `admin_solic_salvar_tipo`
+    // faz DELETE + re-INSERT de todos os campos a cada edição do tipo — então consultar a
+    // tabela VIVA devolveria NOT FOUND para anexo de tipo já editado. Medido: 9 dos 68
+    // anexos com campo já estão nesse estado, todos de campo `obrigatorio: true`. Ler dali
+    // com `coalesce(..., false)` abriria a trava exatamente onde ela deve fechar.
+    expect(c).toMatch(/jsonb_array_elements\(v_sol\.respostas\)/)
+    expect(c).not.toMatch(/FROM app\.solicitacao_campo/)
+    // e sob ambiguidade (nem o snapshot conhece o campo), TRAVA — nunca libera
+    expect(c).toMatch(/v_obrig IS NULL OR v_obrig/)
+  })
+
+  it('o DELETE vem DEPOIS de todas as travas, e devolve o caminho do binário', () => {
+    const c = corpo()
+    const posDelete = c.indexOf('DELETE FROM app.solicitacao_anexo')
+    expect(posDelete).toBeGreaterThan(-1)
+    // toda validação que pode recusar precisa estar ANTES do DELETE
+    for (const trava of ['NAO_ENCONTRADA', 'TRANSICAO_ILEGAL', 'PERMISSAO_NEGADA', 'ANEXO_OBRIGATORIO_UNICO']) {
+      expect(c.indexOf(trava), `${trava} deveria vir antes do DELETE`).toBeLessThan(posDelete)
+    }
+    // a action precisa do path para apagar o binário — e o DELETE já levou a linha
+    expect(c).toMatch(/RETURNING storage_path INTO v_path/)
+  })
+
+  it('solic_json passou a emitir sou_autor SEM perder chave alguma', () => {
+    // O REPLACE sobrescreve o corpo inteiro: chave que some não gera erro de banco nem de
+    // build, só quebra a tela. Foi o risco que quase se concretizou na v5.9.0 com `origem`.
+    const json = SQL_EXCLUIR.match(/FUNCTION app\.solic_json[\s\S]*?\$function\$;/)![0]
+    for (const chave of [
+      'id', 'tipo_id', 'tipo_nome', 'solicitante_email', 'destinatario', 'data_limite',
+      'descricao', 'status', 'respostas', 'decidido_em', 'decidido_por_email',
+      'aprovado_em', 'aprovado_por_email', 'justificativa', 'criado_em',
+      'sou_solicitante', 'sou_atendente', 'origem', 'anexos',
+    ]) {
+      expect(json, `solic_json perdeu a chave '${chave}'`).toContain(`'${chave}'`)
+    }
+    expect(json).toMatch(/'sou_autor', coalesce\(a\.criado_por = app\.uid_jwt\(\), false\)/)
   })
 })
 
