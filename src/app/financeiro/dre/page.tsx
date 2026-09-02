@@ -16,7 +16,7 @@ import {
 } from '@/lib/dre/schemas'
 import { chaveDeLinha, chaveDeBandeja } from '@/lib/dre/identidade'
 import { janelaYtdCompetencia, rotuloJanela } from '@/lib/dre/janela-competencia'
-import { montarAcumulacao } from '@/lib/dre/decomposicao-variacao'
+import { montarDecomposicao } from '@/lib/dre/decomposicao-variacao'
 import { montarPonte } from '@/lib/dre/ponte-regimes'
 import CascataCard from '@/components/financeiro/dre/cascata-card'
 import GradeProporcao from '@/components/financeiro/dre/grade-proporcao'
@@ -314,14 +314,15 @@ export default async function DrePage({
 
   // Fail-safe POR CARD (não por seção): cada um exige o seu e some sozinho. A ponte é a
   // única que depende dos DOIS regimes.
-  // ⚠️ ACUMULAÇÃO, não diferença (v5.9.2). A âncora inicial é o exercício ANTERIOR
-  // FECHADO e cada degrau é o que o grupo fez no ano corrente — ver o porquê medido no
-  // cabeçalho de `decomposicao-variacao.ts`. `montarAcumulacao` usa 12 meses do anterior
-  // por conta própria; o `mCob` daqui vale só para o ano corrente.
-  const acumulacao = compCorrente && compAnterior && mCob > 0
-    ? montarAcumulacao(
+  // ⚠️ YTD × YTD, e não "ano cheio × YTD" (avaliado e DESCARTADO na v5.9.2 — ver o
+  // out-briefing). Partir do fechamento do ano anterior exigia empilhar dois exercícios,
+  // e a âncora final virava a soma dos dois: um número de 20 meses que não é linha de
+  // demonstrativo nenhum. Aqui as DUAS âncoras são linhas da DRE, e cada degrau é uma
+  // variação real porque os dois lados têm a mesma quantidade de meses.
+  const decomposicao = compCorrente && compAnterior && mCob > 0
+    ? montarDecomposicao(
         compCorrente, compAnterior, mCob,
-        `Resultado ${anoCorrente - 1} (fechado)`, `Onde estamos`,
+        `Resultado ${anoCorrente - 1}`, `Resultado ${anoCorrente}`,
       )
     : null
 
@@ -471,21 +472,16 @@ export default async function DrePage({
             {/* A decomposição fica NO REGIME que ela decompõe: os degraus dela são folhas
                 da árvore de competência, e o demonstrativo logo acima é onde se confere
                 cada uma. A ponte, que fala dos DOIS regimes, subiu para a Visão Geral. */}
-            {/* O TÍTULO fica: a figura continua decompondo a variação do resultado — o que
-                mudou é DE ONDE ela parte. O subtítulo é que declara o recorte novo, e a
-                ajuda explica que cada barra é uma contribuição, não uma comparação. */}
-            {acumulacao && (
+            {decomposicao && (
               <CascataCard
                 titulo="Decomposição da Variação do Resultado"
-                subtitulo={`Do fechamento de ${anoCorrente - 1} ao acumulado de hoje · ${anoCorrente} até ${janela.replace('jan–', '')}`}
+                subtitulo={`Δ% YTD ${String(anoCorrente - 1).slice(2)}·${String(anoCorrente).slice(2)}`}
                 ajuda={
-                  `Parte do resultado de ${anoCorrente - 1} já fechado e mostra o que cada grupo de ` +
-                  `contas fez em ${anoCorrente} até agora — cada barra é a CONTRIBUIÇÃO do grupo no ` +
-                  'período, não uma comparação com o ano passado. Verde somou ao resultado, vermelho ' +
-                  'subtraiu, e a soma das barras é a variação desde o fechamento. Grupos abaixo de ' +
-                  'R$ 500 entram em "Outros ajustes".'
+                  'Do resultado do ano anterior ao deste ano, um degrau por grupo de contas, ' +
+                  'na mesma janela de meses nos dois anos. Verde melhora o resultado, vermelho piora. ' +
+                  'Grupos que variaram menos de R$ 500 são somados em "Outros ajustes".'
                 }
-                cascata={acumulacao}
+                cascata={decomposicao}
               />
             )}
           </div>

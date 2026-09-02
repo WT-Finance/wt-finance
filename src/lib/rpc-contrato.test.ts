@@ -23,7 +23,7 @@ import {
   historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
 import { montarPonte } from './dre/ponte-regimes'
-import { montarAcumulacao } from './dre/decomposicao-variacao'
+import { montarDecomposicao } from './dre/decomposicao-variacao'
 import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
 import { montarProporcaoGrupos, GRUPOS_PROPORCAO } from './dre/proporcao-grupos'
 import { janelaYtdCompetencia } from './dre/janela-competencia'
@@ -1760,27 +1760,29 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     }
   })
 
-  it('a acumulação desde o fechamento fecha ao centavo entre dois anos vivos', async () => {
+  it('a decomposição da variação fecha ao centavo entre dois anos vivos', async () => {
     const anoSP = Number(hojeSP().slice(0, 4))
     const atual = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
     const anterior = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP - 1 }))
     const m = janelaYtdCompetencia(atual)
 
-    const c = montarAcumulacao(atual, anterior, m, 'fechado', 'hoje')
+    const c = montarDecomposicao(atual, anterior, m, 'anterior', 'atual')
     const soma = c.degraus.reduce((s: number, d: { delta: number }) => s + d.delta, 0)
 
-    expect(c.inicial.valor + soma, 'REX fechado + Σ degraus ≠ acumulado').toBe(c.final.valor)
+    expect(c.inicial.valor + soma, 'REX anterior + Σ degraus ≠ REX atual').toBe(c.final.valor)
     expect(c.fecha).toBe(true)
 
-    // A âncora inicial é o exercício anterior INTEIRO — 12 meses, não a janela do corrente.
-    // Se voltasse a usar `m`, a cascata silenciosamente reverteria à leitura YTD×YTD que a
-    // v5.9.2 substituiu, e nenhum outro teste pegaria isso contra o dado real.
-    const rexAnterior = anterior.linhas.find(l => l.t !== 'cat' && l.chave === 'REX')
-    expect(rexAnterior, 'ano anterior sem linha REX').toBeDefined()
-    const cheio = rexAnterior!.meses.reduce((s, v) => s + Math.round(v * 100), 0)
-    expect(c.inicial.valor, 'a âncora não é o ano anterior FECHADO').toBe(cheio)
-    // e a soma dos degraus é a variação desde o fechamento
-    expect(soma).toBe(c.final.valor - c.inicial.valor)
+    // ⚠️ As DUAS âncoras usam a MESMA janela, e é isso que faz cada degrau significar o
+    // que aparenta. A v5.9.2 avaliou partir do ano anterior FECHADO (12 meses contra 8) e
+    // descartou: medido, aquilo invertia o sinal de 8 dos 15 degraus. Se alguém trocar a
+    // âncora inicial por 12 meses, este teste cai — que é o ponto.
+    for (const [nome, payload] of [['anterior', anterior], ['atual', atual]] as const) {
+      const rex = payload.linhas.find(l => l.t !== 'cat' && l.chave === 'REX')
+      expect(rex, `${nome} sem linha REX`).toBeDefined()
+      const naJanela = rex!.meses.slice(0, m).reduce((s, v) => s + Math.round(v * 100), 0)
+      const alvo = nome === 'anterior' ? c.inicial.valor : c.final.valor
+      expect(alvo, `a âncora ${nome} não usa a janela YTD`).toBe(naJanela)
+    }
   })
 
   it('os 7 grupos da grade de proporção existem na árvore VIVA de competência', async () => {

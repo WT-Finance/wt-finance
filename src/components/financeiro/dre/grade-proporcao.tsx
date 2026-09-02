@@ -31,9 +31,9 @@ const AJUDA =
   'Quanto cada grupo consumiu da Receita Bruta em cada ano, no regime de competência. ' +
   'Serve para ver se um grupo cresceu MAIS RÁPIDO que a receita: o valor absoluto sobe ' +
   'junto com o faturamento, mas a proporção só sobe se o grupo pesar mais. ' +
-  'Os percentuais são negativos porque são despesa, como na coluna AV do demonstrativo — ' +
-  'então a linha DESCENDO significa que o grupo passou a pesar mais. O ano corrente conta ' +
-  'só os meses já cobertos pela base.'
+  'Os percentuais são negativos porque são despesa, como na coluna AV do demonstrativo, mas ' +
+  'o eixo está invertido para a leitura ser direta: a linha SUBINDO significa que o grupo ' +
+  'passou a consumir mais receita. O ano corrente conta só os meses já cobertos pela base.'
 
 /** Altura de cada mini-gráfico. ⚠️ Vai como `height` no wrapper, NUNCA `min-height`: o
  *  `ResponsiveContainer` é um filho com `height: 100%`, e em CSS um percentual de altura
@@ -64,7 +64,12 @@ function MiniGrafico({ serie }: { serie: SerieProporcao }) {
                 TRÊS pontos esconderia justamente o do meio. Numa série de 3 anos, o ano
                 central é metade da tendência. */}
             {ChartXAxisCategoria('rotulo', { interval: 0 })}
-            {ChartYAxisPct({ casas: 1 })}
+            {/* ⚠️ EIXO INVERTIDO (conferência do Yan). Estas séries são sempre negativas
+                — são despesas sobre a receita —, e com o eixo normal um grupo que passa a
+                pesar MAIS desenha a curva DESCENDO, que é o contrário do que o olho lê.
+                Invertido, "pesa mais" volta a ser "mais alto", e o rótulo continua
+                dizendo −5,2%, como a coluna AV do demonstrativo. */}
+            {ChartYAxisPct({ casas: 1, invertido: true })}
             <Tooltip
               cursor={{ stroke: 'var(--chart-grid)' }}
               content={(p) => {
