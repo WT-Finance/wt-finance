@@ -60,6 +60,12 @@ export const anexoSchema = z.object({
   nome:    z.string(),
   mime:    z.string(),
   tamanho: z.number(),
+  // v5.9.1 (migration 0264) — o caller foi quem anexou este arquivo? Só ele pode excluir
+  // (decisão E2). É AFORDÂNCIA de UI, no mesmo espírito de sou_solicitante/sou_atendente: a
+  // barreira real vive em `solic_anexo_excluir`. .optional() porque a RPC antiga não emite a
+  // chave durante a janela de rollout (lição v4.12.1/ADR-0118 — campo só .nullable() reprova
+  // o parse quando vem undefined, e parse reprovado vira 500 na tela).
+  sou_autor: z.boolean().optional(),
 })
 
 const destinatarioSchema = z.object({ tipo: z.enum(['usuario','role']), rotulo: z.string().nullable() })

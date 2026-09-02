@@ -35,6 +35,30 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.9.1',
+    data: '2026-09-02T16:01', // autoria; reconciliar ao horário REAL do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Agora é possível EXCLUIR um anexo enviado DEPOIS da abertura (os de "Outros ' +
+          'anexos"). Quem anexou o arquivo errado pode removê-lo, enquanto a solicitação não ' +
+          'estiver encerrada. Só quem anexou é que exclui, e a remoção pede confirmação porque ' +
+          'é definitiva. Os arquivos enviados na criação da solicitação ficam preservados, ' +
+          'como registro do que foi submetido.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Passou a existir UM lugar só para anexar depois que a solicitação foi aberta: o ' +
+          'bloco "Outros anexos". O campo de anexo previsto no tipo passou a ser o registro do ' +
+          'que foi enviado na criação — ele mostra os arquivos, mas não recebe novos nem ' +
+          'permite excluir. Antes havia dois lugares para anexar e nada indicava qual usar. Na ' +
+          'criação da solicitação, o campo continua aceitando vários arquivos.',
+      },
+    ],
+  },
+  {
     versao: '5.9.0',
     data: '2026-08-27T13:54', // horário REAL do merge (c498277, PR #245, 27/08 13h54 −03) — reconciliado no /pos-merge
     itens: [

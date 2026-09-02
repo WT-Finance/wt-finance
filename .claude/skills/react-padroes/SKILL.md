@@ -75,6 +75,23 @@ function Inner({ algo }: { algo: string }) { return <div>{algo}</div> }
 function Pai() { return <Inner algo={algoDoPai} /> }
 ```
 
+⚠️ **O custo não é só performance — pode ser FOCO, e aí é acessibilidade.** O React remonta
+por **tipo** (a referência da função), não por `key`: com o componente definido no render,
+QUALQUER estado do pai remonta a subárvore, mesmo estado alheio a ela.
+
+**Custou caro (v5.9.1):** numa linha de anexo com botão de excluir, os `setState` de
+"fecha o modal" + "marca em exclusão" são agrupados num commit só. O modal fechava e a linha
+remontava **juntos** — e o cleanup de foco do `ModalCentral` (`return () => anterior?.focus?.()`)
+tentava devolver o foco ao botão original, que já havia sido **substituído**. `.focus()` em nó
+destacado é no-op: o foco caía no `document.body`. A navegação por teclado quebrava no fluxo
+recém-criado, sem erro nenhum no console.
+
+Ao içar, o lint pode acusar coisas que estavam escondidas: uma função que **retorna um
+componente** (`const Icone = escolherIcone(...)`) dispara `static-components` dentro de um
+componente de módulo. Semanticamente é falso-positivo — selecionar um de quatro componentes
+existentes não cria nada —, mas a saída limpa é a função devolver o **elemento** pronto
+(`return <FileText … />`), não o componente. Nunca silenciar a regra.
+
 ### d. Callback assíncrona reusada chamada no efeito → `void` + IIFE async
 
 Quando o efeito recebe uma função assíncrona por prop/closure e a chama direto
@@ -199,7 +216,28 @@ function BadgePendencias({ promise }: { promise: Promise<number | null> }) {
 O padrão da casa para uma tela com escrita é **dado pronto do RSC + server action +
 `router.refresh()`** (`tipos-content.tsx`, `chaves-api-content.tsx`, `inventario-content.tsx`).
 Sem cópia local do dado do servidor: com uma segunda fonte no cliente, ela envelhece e a tela
-passa a discordar de si mesma. As três armadilhas abaixo apareceram juntas na v5.6.0 e as três
+passa a discordar de si mesma.
+
+🔎 **O SINTOMA, para reconhecer sem precisar deduzir:** *a ação funciona, o banco muda, e a
+tela só reflete ao FECHAR E REABRIR o painel.* Se aparecer isso, procure um
+`useState<Objeto>` que recebeu o dado inteiro num clique — o `router.refresh()` está
+funcionando e atualizando a prop, mas alguém guardou uma cópia antes.
+
+```tsx
+// ERRADO: congela o retrato do clique; refresh atualiza `lista`, não `aberta`
+const [aberta, setAberta] = useState<Item | null>(null)
+<Lista itens={lista} onAbrir={setAberta} />
+
+// CERTO: guarda o ID e DERIVA da lista viva — o refresh resolve sozinho
+const [abertaId, setAbertaId] = useState<number | null>(null)
+const aberta = abertaId == null ? null : lista.find(i => i.id === abertaId) ?? null
+```
+
+**Custou caro (v5.9.1):** anexar/excluir não atualizava o drawer. A regra já estava escrita
+aqui e não me fez enxergar o caso — foi o sintoma que denunciou. ⚠️ E confira os OUTROS
+call-sites do mesmo componente antes de dar por resolvido: se algum recebe o objeto de uma
+*server action* em vez de uma lista (era o caso da página de Movimentações), não há de onde
+derivar e ele precisa de um gancho próprio para rebuscar. As três armadilhas abaixo apareceram juntas na v5.6.0 e as três
 compilam, passam no lint e no build.
 
 ### a. Modal de formulário reusado entre itens precisa de `key` que MUDE

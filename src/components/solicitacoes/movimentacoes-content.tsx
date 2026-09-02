@@ -185,7 +185,18 @@ export default function MovimentacoesContent({ movimentacoes, erroCarga }: {
         </ScrollAutoHide>
       </CardTabela>
 
-      {aberta && <DrawerSolicitacao sol={aberta} onClose={() => setAberta(null)} />}
+      {/* v5.9.1 — `onAtualizar` rebusca o detalhe depois de anexar/excluir. Aqui o `sol` vem
+          de uma SERVER ACTION, não de uma lista do RSC, então o `router.refresh()` do drawer
+          não tem como devolvê-lo atualizado: sem isto, o anexo recém-adicionado (ou o
+          recém-excluído) só apareceria ao fechar e reabrir. A guarda de resposta atrasada de
+          `abrir` continua valendo — é a mesma função. */}
+      {aberta && (
+        <DrawerSolicitacao
+          sol={aberta}
+          onClose={() => setAberta(null)}
+          onAtualizar={() => { void abrir(aberta.id) }}
+        />
+      )}
     </>
   )
 }

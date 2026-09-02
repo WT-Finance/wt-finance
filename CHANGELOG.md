@@ -6,6 +6,26 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.1] — 2026-09-02
+
+PATCH · **Solicitações: excluir anexo, e o campo de anexo do tipo vira registro da abertura**. Migrations `0264` e `0265` (aditivas) · **Emenda 2 do ADR-0169**.
+
+### Adicionado
+
+- **Excluir anexo.** Quem anexou o arquivo errado passa a poder removê-lo, enquanto a solicitação não estiver encerrada. **Só quem anexou** exclui — nem o atendente, nem a gestão —, com confirmação antes (a remoção é definitiva: sai o registro e o arquivo).
+- **`sou_autor` por anexo** no retorno de `solic_json`: é o que permite à tela oferecer o botão só a quem pode usá-lo. Afordância — a barreira real é a RPC.
+
+### Alterado
+
+- **Um único lugar para anexar depois da abertura.** O campo de anexo do tipo passou a ser o **registro do que foi enviado na criação**: não recebe arquivo novo nem permite exclusão. Tudo que chega depois vai para **"Outros anexos"**. Antes existiam dois lugares e nada dizia qual usar. A criação segue aceitando **vários arquivos por campo**, como já aceitava.
+- **Solicitação encerrada não aceita exclusão** — a imutabilidade que a v5.9.0 estabeleceu vale nos dois sentidos.
+
+### Corrigido
+
+- **A regra do campo obrigatório nasceu fail-open e foi corrigida antes de entrar.** Ela consultava `app.solicitacao_campo` para saber se o campo era obrigatório — mas `campo_id` é referência lógica sem FK e o editor de tipos (`admin_solic_salvar_tipo`) **apaga e recria todos os campos a cada edição**, com id `IDENTITY` que nunca se repete. Resultado: todo anexo de um tipo já editado tem `campo_id` órfão, a consulta não acha linha, e o `coalesce(…, false)` lia "não sei" como "não é obrigatório" — a trava abrindo exatamente onde deveria fechar. **Medido em produção: 9 dos 68 anexos com campo já estavam nesse estado, todos de campos obrigatórios.** A obrigatoriedade passou a ser lida do **snapshot `respostas`** da própria solicitação, que é imutável por desenho (ADR-0112) e é a mesma fonte que a tela usa. (Achado ALTO do `revisor-db`.)
+
+---
+
 ## [5.9.0] — 2026-08-27
 
 MINOR · **Solicitações: etapa "Aprovada" e anexos ao longo da vida da solicitação**. Migrations `0261` (aditiva), `0262` (destrutiva) e `0263` (aditiva) · **ADR-0169**.

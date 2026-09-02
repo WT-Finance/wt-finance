@@ -114,6 +114,74 @@ Vale como lembrete de conferir o que a estrutura já permite antes de restringi-
 abertura continua com os campos configurados; estender o livre para a criação mexeria na RPC de
 criação e no snapshot de respostas, sem demanda que o justifique agora.
 
+## Emenda 2 (02/09/2026, v5.9.1) — excluir anexo, e o rótulo "Outros anexos"
+
+**Migrations `0264` e `0265`** (aditivas). A v5.9.0 deixou anexar ao longo da vida da solicitação, mas não
+**desanexar**: quem subia o arquivo errado convivia com ele. Num módulo onde o anexo é
+comprovante de pagamento, isso não é cosmético.
+
+**O que passa a valer:**
+
+- **Só quem anexou exclui** (nem o atendente, nem a gestão). `solic_json` passa a emitir
+  `sou_autor` por anexo — afordância de UI; a barreira é `solic_anexo_excluir`.
+- **Apaga de vez**: metadado na RPC, binário do Storage na Server Action, nessa ordem. Falha no
+  Storage deixa um órfão invisível; a ordem inversa deixaria um anexo *listado que não baixa*.
+- **Bloqueia o último anexo de campo obrigatório.** O fluxo do arquivo trocado vira "anexa o
+  certo → apaga o errado". Na tela, o botão fica **desabilitado com explicação**, nunca oculto.
+- **Solicitação encerrada não aceita exclusão** — a imutabilidade da v5.9.0 vale nos dois sentidos.
+- O bloco de anexo livre passa a se chamar **"Outros anexos"**: os dois blocos coexistem, e o
+  rótulo diz que o livre é complementar, não alternativo. (O campo do tipo já aceitava vários
+  arquivos desde a v5.9.0 — faltava clareza, não capacidade.)
+
+### Ajuste na própria versão: o campo do tipo virou IMUTÁVEL (`0265`)
+
+Ao ver a tela em uso, ficou claro que renomear o bloco livre para "Outros anexos" não bastava:
+**continuavam existindo dois lugares para anexar**, e nada dizia qual usar. A decisão final foi
+mais forte que a de rótulo — **o campo de anexo do tipo passa a ser o registro do que veio na
+ABERTURA**: não recebe arquivo novo nem permite excluir. Tudo que chega depois vai para "Outros
+anexos", que é o único lugar de anexo pós-abertura.
+
+A criação segue intacta e continua aceitando **vários arquivos por campo** (o `multiple` existe
+desde a v5.9.0; `criar_solicitacao` insere direto na tabela, sem passar por `solic_anexar`).
+
+**A regra E4 desapareceu, e isso é consequência correta.** Ela protegia o invariante "campo
+obrigatório não fica vazio" durante exclusões — e sem exclusão no campo, não há o que proteger.
+A trava nova (`ANEXO_DA_ABERTURA`) é **anterior** a ela e mais simples. A lógica que lia a
+obrigatoriedade do snapshot saiu junto: não porque estivesse errada — ela corrigiu um fail-open
+real, com 9 de 68 anexos já órfãos —, mas porque o caso que ela cobria deixou de ser alcançável.
+**O aprendizado ficou na skill `banco-e-rpc`, onde serve à próxima validação; o código saiu,
+porque código sem caso de uso é peso morto.**
+
+Impacto em dado existente: nenhum. Medido antes de aplicar — dos 72 anexos vivos, 68 têm campo e
+**todos vieram da abertura** (zero anexados a um campo mais de 5 min depois da criação).
+
+### A obrigatoriedade se lê do SNAPSHOT, não de `solicitacao_campo`
+
+Este é o ponto que vale como precedente, e ele quase passou.
+
+A primeira versão da regra consultava `app.solicitacao_campo` para saber se o campo era
+obrigatório. Isso é **fail-open**, e não em teoria:
+
+- `solicitacao_anexo.campo_id` é referência **lógica**, sem FK (`0127`);
+- `admin_solic_salvar_tipo` (`0216`) faz `DELETE` + re-`INSERT` de **todos** os campos a cada
+  edição do tipo, e nada impede editar um tipo com solicitações abertas;
+- o id é `IDENTITY` e nunca é reusado — então todo `campo_id` já gravado vira órfão.
+
+Nesse estado a consulta não acha linha, e `coalesce(v_obrig, false)` lê "não sei" como "não é
+obrigatório": a trava abre exatamente onde deveria fechar. **Medido antes de corrigir: 9 dos 68
+anexos com campo já estavam órfãos, todos de campos cujo snapshot diz `obrigatorio: true`.**
+
+A correção não foi inverter o `coalesce` (que trataria o sintoma), e sim trocar de fonte: o
+**snapshot `respostas`** da própria solicitação, que o ADR-0112 criou justamente para ser
+*"imutável e legível mesmo após editar/arquivar o tipo"* — e que é a mesma fonte de onde a UI
+tira `obrigatorio`. Tela e banco passam a concordar por construção, não por coincidência. O
+fail-closed fica como rede para o caso de nem o snapshot conhecer o campo (estado em que o anexo
+sequer é renderizado).
+
+**Lição transversal:** ao validar contra uma característica do *tipo*, perguntar se aquilo é lido
+de uma fonte **mutável** ou do **snapshot** da instância. O módulo já resolveu esse problema uma
+vez — o snapshot existe por isso — e uma validação nova pode desfazer a garantia sem perceber.
+
 ## Ver também
 
 - Briefing e out-briefing da v5.9.0 em `docs/briefings/`.
