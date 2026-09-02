@@ -1,8 +1,8 @@
 # Out-Briefing v5.9.1 — Anexos: excluir o arquivo errado, e "Outros anexos"
 
 **Branch:** `feat/v5-9-1-anexos-excluir-e-rotulo` · **Emenda 2 do ADR-0169** (sem ADR novo)
-**Migration:** `0264` (aditiva) — **APLICADA** em 02/09/2026
-**Gates:** `tsc` · `lint` · `build` · **1147 testes** (1139 vinham da v5.9.0)
+**Migrations:** `0264` e `0265` (aditivas) — **APLICADAS** em 02/09/2026
+**Gates:** `tsc` · `lint` · `build` · **1146 testes** (1139 vinham da v5.9.0)
 **Rota A** (produto): 4 decisões fechadas no chat antes de qualquer código.
 
 ---
@@ -16,22 +16,43 @@ encerrada. **Só quem anexou** (E2) — nem o atendente, nem a gestão. **Apaga 
 metadado na RPC, binário do Storage na action, nessa ordem. Confirmação antes, com o nome do
 arquivo no texto, porque a remoção é definitiva.
 
-**E4 — campo obrigatório não fica vazio.** Excluir o último arquivo de um campo obrigatório é
-bloqueado, e o botão fica **inerte com explicação** em vez de sumir: controle que desaparece sem
-motivo faz o usuário concluir que a funcionalidade não existe — foi o que motivou a reversão da
-D7 na v5.9.0. O fluxo do arquivo trocado vira "anexa o certo → apaga o errado", que é a ordem
-natural de quem corrige um upload.
+**Só vale para anexo de "Outros anexos"** — o que veio na abertura é registro e não se apaga
+(§1.2). A decisão E4 original (bloquear só o último de campo obrigatório) foi substituída por
+essa trava, que é anterior e mais simples; ver §1.3.
 
-### 1.2 "Outros anexos" (E1)
+### 1.2 Um único lugar para anexar depois da abertura
 
-O bloco de anexo livre foi renomeado. Os dois blocos continuam coexistindo, e o rótulo diz que o
-livre é **complementar**, não alternativo.
+O bloco livre foi renomeado para **"Outros anexos"** (E1) — e, ao ver a tela em uso, ficou claro
+que o rótulo não bastava: **continuavam existindo dois lugares para anexar**, sem nada dizendo
+qual usar. A decisão final (Yan, 02/09) foi mais forte, e virou a migration `0265`:
 
-**O pedido original perguntava se dava para "fazer o campo de anexo do tipo permitir a inclusão
-de outros arquivos" — e isso já funcionava desde a v5.9.0**: o campo lista N arquivos e o botão
-de adicionar já estava lá. O que faltava era clareza de rótulo, não capacidade. Vale como
-lembrete de medir o que existe antes de construir (mesma família da lição da v5.9.0 sobre a
-estrutura já permitir anexo livre).
+> **O campo de anexo do tipo passa a ser o registro do que veio na ABERTURA.** Não recebe
+> arquivo novo, não permite excluir. Tudo que chega depois vai para "Outros anexos".
+
+A criação segue intacta e continua aceitando **vários arquivos por campo** — o `multiple` existe
+desde a v5.9.0, e `criar_solicitacao` insere direto na tabela, sem passar por `solic_anexar`.
+
+**Aqui vale registrar um erro de leitura meu.** O pedido original perguntava se dava para "fazer
+o campo do tipo permitir a inclusão de outros arquivos", e eu respondi que **já funcionava** —
+tecnicamente verdade, o campo listava N arquivos. Mas a pergunta real era sobre a **ambiguidade
+de ter dois lugares**, e minha resposta correta-porém-irrelevante levou a versão a tratar o
+problema só com um rótulo. Só o print da tela em uso mostrou o que faltava. *Responder à letra da
+pergunta não é o mesmo que responder ao problema.*
+
+### 1.3 A regra E4 desapareceu — e isso é consequência correta
+
+O bloqueio do "último anexo de campo obrigatório" protegia o invariante durante exclusões. Sem
+exclusão no campo, não há o que proteger: a trava nova (`ANEXO_DA_ABERTURA`) é **anterior** a ela
+e mais simples.
+
+A lógica que lia a obrigatoriedade do snapshot — construída nesta mesma versão para corrigir um
+fail-open real (§2) — **saiu do código**. Não por estar errada, mas porque o caso que ela cobria
+deixou de ser alcançável. **O aprendizado ficou na skill `banco-e-rpc`, onde serve à próxima
+validação; o código saiu, porque código sem caso de uso é peso morto.**
+
+**Impacto em dado existente: nenhum.** Medido antes de aplicar — dos 72 anexos vivos, 68 têm
+campo e **todos vieram da abertura** (zero anexados a um campo mais de 5 min depois da criação);
+4 são livres.
 
 ---
 

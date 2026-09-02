@@ -116,7 +116,7 @@ criação e no snapshot de respostas, sem demanda que o justifique agora.
 
 ## Emenda 2 (02/09/2026, v5.9.1) — excluir anexo, e o rótulo "Outros anexos"
 
-**Migration `0264`** (aditiva). A v5.9.0 deixou anexar ao longo da vida da solicitação, mas não
+**Migrations `0264` e `0265`** (aditivas). A v5.9.0 deixou anexar ao longo da vida da solicitação, mas não
 **desanexar**: quem subia o arquivo errado convivia com ele. Num módulo onde o anexo é
 comprovante de pagamento, isso não é cosmético.
 
@@ -132,6 +132,28 @@ comprovante de pagamento, isso não é cosmético.
 - O bloco de anexo livre passa a se chamar **"Outros anexos"**: os dois blocos coexistem, e o
   rótulo diz que o livre é complementar, não alternativo. (O campo do tipo já aceitava vários
   arquivos desde a v5.9.0 — faltava clareza, não capacidade.)
+
+### Ajuste na própria versão: o campo do tipo virou IMUTÁVEL (`0265`)
+
+Ao ver a tela em uso, ficou claro que renomear o bloco livre para "Outros anexos" não bastava:
+**continuavam existindo dois lugares para anexar**, e nada dizia qual usar. A decisão final foi
+mais forte que a de rótulo — **o campo de anexo do tipo passa a ser o registro do que veio na
+ABERTURA**: não recebe arquivo novo nem permite excluir. Tudo que chega depois vai para "Outros
+anexos", que é o único lugar de anexo pós-abertura.
+
+A criação segue intacta e continua aceitando **vários arquivos por campo** (o `multiple` existe
+desde a v5.9.0; `criar_solicitacao` insere direto na tabela, sem passar por `solic_anexar`).
+
+**A regra E4 desapareceu, e isso é consequência correta.** Ela protegia o invariante "campo
+obrigatório não fica vazio" durante exclusões — e sem exclusão no campo, não há o que proteger.
+A trava nova (`ANEXO_DA_ABERTURA`) é **anterior** a ela e mais simples. A lógica que lia a
+obrigatoriedade do snapshot saiu junto: não porque estivesse errada — ela corrigiu um fail-open
+real, com 9 de 68 anexos já órfãos —, mas porque o caso que ela cobria deixou de ser alcançável.
+**O aprendizado ficou na skill `banco-e-rpc`, onde serve à próxima validação; o código saiu,
+porque código sem caso de uso é peso morto.**
+
+Impacto em dado existente: nenhum. Medido antes de aplicar — dos 72 anexos vivos, 68 têm campo e
+**todos vieram da abertura** (zero anexados a um campo mais de 5 min depois da criação).
 
 ### A obrigatoriedade se lê do SNAPSHOT, não de `solicitacao_campo`
 

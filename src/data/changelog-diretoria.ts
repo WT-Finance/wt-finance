@@ -41,24 +41,20 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
       {
         tipo: 'novidade',
         texto:
-          'Agora é possível EXCLUIR um anexo de uma solicitação. Quem anexou o arquivo errado ' +
-          'pode removê-lo, enquanto a solicitação não estiver encerrada. Só quem anexou é que ' +
-          'exclui, e a remoção pede confirmação porque é definitiva — o arquivo sai de vez.',
+          'Agora é possível EXCLUIR um anexo enviado DEPOIS da abertura (os de "Outros ' +
+          'anexos"). Quem anexou o arquivo errado pode removê-lo, enquanto a solicitação não ' +
+          'estiver encerrada. Só quem anexou é que exclui, e a remoção pede confirmação porque ' +
+          'é definitiva. Os arquivos enviados na criação da solicitação ficam preservados, ' +
+          'como registro do que foi submetido.',
       },
       {
         tipo: 'melhoria',
         texto:
-          'Quando o tipo de solicitação exige um anexo, o sistema não deixa mais o campo ficar ' +
-          'vazio: se aquele for o único arquivo, o botão de excluir aparece desabilitado, ' +
-          'avisando que é preciso anexar o substituto antes. Assim quem trocou o arquivo errado ' +
-          'resolve na ordem natural — anexa o certo, depois apaga o errado — sem que a ' +
-          'solicitação fique sem o documento obrigatório.',
-      },
-      {
-        tipo: 'melhoria',
-        texto:
-          'O bloco de anexos avulsos passou a se chamar "Outros anexos", para ficar claro que ' +
-          'ele complementa os campos de anexo previstos no tipo da solicitação, e não substitui.',
+          'Passou a existir UM lugar só para anexar depois que a solicitação foi aberta: o ' +
+          'bloco "Outros anexos". O campo de anexo previsto no tipo passou a ser o registro do ' +
+          'que foi enviado na criação — ele mostra os arquivos, mas não recebe novos nem ' +
+          'permite excluir. Antes havia dois lugares para anexar e nada indicava qual usar. Na ' +
+          'criação da solicitação, o campo continua aceitando vários arquivos.',
       },
     ],
   },

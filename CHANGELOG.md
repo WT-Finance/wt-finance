@@ -8,7 +8,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ## [5.9.1] — 2026-09-02
 
-PATCH · **Solicitações: excluir anexo, e o bloco livre vira "Outros anexos"**. Migration `0264` (aditiva) · **Emenda 2 do ADR-0169**.
+PATCH · **Solicitações: excluir anexo, e o campo de anexo do tipo vira registro da abertura**. Migrations `0264` e `0265` (aditivas) · **Emenda 2 do ADR-0169**.
 
 ### Adicionado
 
@@ -17,8 +17,7 @@ PATCH · **Solicitações: excluir anexo, e o bloco livre vira "Outros anexos"**
 
 ### Alterado
 
-- **O bloco de anexo livre passou a se chamar "Outros anexos".** Ele e os campos de anexo configurados no tipo continuam coexistindo; o rótulo deixa explícito que o livre é complementar, não uma alternativa. (O campo do tipo já aceitava vários arquivos desde a v5.9.0 — o que faltava era clareza, não capacidade.)
-- **Campo obrigatório não fica sem anexo.** Excluir o último arquivo de um campo obrigatório é bloqueado: o botão fica desabilitado explicando que é preciso anexar o substituto antes. O fluxo do arquivo trocado vira "anexa o certo → apaga o errado".
+- **Um único lugar para anexar depois da abertura.** O campo de anexo do tipo passou a ser o **registro do que foi enviado na criação**: não recebe arquivo novo nem permite exclusão. Tudo que chega depois vai para **"Outros anexos"**. Antes existiam dois lugares e nada dizia qual usar. A criação segue aceitando **vários arquivos por campo**, como já aceitava.
 - **Solicitação encerrada não aceita exclusão** — a imutabilidade que a v5.9.0 estabeleceu vale nos dois sentidos.
 
 ### Corrigido
