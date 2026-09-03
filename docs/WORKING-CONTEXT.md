@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-03 (fechamento da v5.9.2) · produção na **v5.9.1** (#251 mergeado 02/09 — Solicitações: excluir anexo e campo do tipo como registro imutável da abertura; migrations `0264`/`0265`, Emenda 2 do ADR-0169). Antes a v5.9.0 (#245, 27/08 13h54 — Solicitações: status **"Aprovada"** como etapa intermediária OPCIONAL, e **anexo ao longo da vida** da solicitação pelos dois lados, incluindo bloco LIVRE; migrations `0261`–`0263`, **ADR-0169**, 1139 testes). Antes a v5.8.1 (#248, 26/08 16h43 — DRE: TopSection "Visão Geral" e Ponte Competência ↔ Caixa, **ADR-0171**), a v5.8.0 (#246, 26/08 12h19 — DRE por Competência, `0255`–`0257`/`0260`, **ADR-0170**), a v5.7.2 (#243) e a v5.7.1 (#241). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-09-03 (fechamento da v5.9.2) · produção na **v5.9.1** (#251 mergeado 02/09 às 17h13 — Solicitações: excluir anexo em "Outros anexos", e o campo de anexo do TIPO vira registro imutável da abertura; migrations `0264`/`0265`, Emenda 2 do **ADR-0169**, 1146 testes). Antes a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ✅ **v5.8.1 EM PRODUÇÃO** — **ADR-0171**, **ZERO migration**, **1125 testes** (de 1056),
 incluindo 5 casos de contrato que confrontam a BASE VIVA a cada `npm test`.
@@ -29,16 +29,20 @@ filho mede 0 e o gráfico some sem erro) — ficava latente no `grid` e apareceu
    expõe o que as duas curadorias fazem — vale um olhar no de-para de impostos dos dois
    regimes, que é DADO editável, não código.
 
-✅ **v5.9.1 EM PRODUÇÃO** (#251) — migrations `0264`/`0265` aplicadas, Emenda 2 do ADR-0169.
-Solicitações ganharam **excluir anexo** (só quem anexou; apaga metadado e binário; bloqueado no
-último arquivo de campo obrigatório), o bloco livre virou **"Outros anexos"** e o campo de anexo
-do TIPO passou a ser registro imutável da abertura.
+✅ **v5.9.1 EM PRODUÇÃO** — migrations `0264` e `0265` (aditivas), Emenda 2 do ADR-0169,
+**1146 testes**. Solicitações ganharam **excluir anexo** (só quem anexou, com confirmação) e,
+principalmente, o fim da ambiguidade de ter dois lugares para anexar:
 
-⚠️ **v5.9.2 FECHADA E AGUARDANDO MERGE** — branch `feat/v5-9-2-dre-proporcao-e-acumulacao`,
-**ZERO migration**, **sem ADR novo**, **1171 testes** (de 1146). `/financeiro/dre` ganhou a
-grade **"Proporção sobre a Receita Bruta"** (7 mini-gráficos com a AV de cada grupo ano a ano,
-na Visão Geral), **cabeçalho de página** e os **dois selos de frescor no topo**, lado a lado.
-Tudo derivado dos payloads que a página já buscava.
+> **O campo de anexo do TIPO é o registro do que veio na ABERTURA** — lista os arquivos, não
+> recebe novos, não permite excluir. Tudo que chega depois vai para **"Outros anexos"**, único
+> lugar de anexo pós-abertura. A CRIAÇÃO segue aceitando vários arquivos por campo.
+
+⚠️ **v5.9.2 FECHADA E AGUARDANDO MERGE (PR #253)** — branch
+`feat/v5-9-2-dre-proporcao-e-acumulacao`, **ZERO migration**, **sem ADR novo**, **1171 testes**
+(de 1146). `/financeiro/dre` ganhou a grade **"Proporção sobre a Receita Bruta"** (7
+mini-gráficos com a AV de cada grupo ano a ano, na Visão Geral), **cabeçalho de página** e os
+**dois selos de frescor no topo**, lado a lado. Tudo derivado dos payloads que a página já
+buscava. A skill `graficos` foi atualizada junto (93 → 136 linhas).
 
 ⚠️ **A decomposição NÃO passou a partir do fechamento do ano anterior** — foi pedida, avaliada
 em duas formas e REVERTIDA (out-briefing da v5.9.2, §4). O durável: **numa cascata a operação
@@ -46,14 +50,21 @@ do degrau é determinada pelas âncoras** — querer as duas pontas como linhas 
 degraus que expliquem a distância entre elas obriga os dois lados à mesma janela. A
 decomposição segue YTD × YTD, agora com um caso de contrato que prova isso contra o dado real.
 
-⚠️ **Precedente que esta versão deixou — validar contra o TIPO se lê do SNAPSHOT, não da tabela
-viva.** A regra do campo obrigatório nasceu consultando `app.solicitacao_campo`, e isso era
-FAIL-OPEN: `solicitacao_anexo.campo_id` é referência lógica **sem FK** (0127), e
-`admin_solic_salvar_tipo` (0216) faz `DELETE` + re-`INSERT` de TODOS os campos a cada edição do
-tipo, com id `IDENTITY` que nunca se repete — então todo anexo de tipo já editado tem `campo_id`
-órfão. **Medido: 9 dos 68 anexos com campo já estavam assim, todos de campo `obrigatorio: true`.**
-A leitura passou para o **snapshot `respostas`** da solicitação (imutável por desenho, ADR-0112,
-e a mesma fonte que a UI usa). Achado ALTO do `revisor-db`.
+⚠️ **Precedente — validar contra o TIPO se lê do SNAPSHOT, não da tabela viva.** A regra do campo
+obrigatório nasceu consultando `app.solicitacao_campo`, e isso era FAIL-OPEN:
+`solicitacao_anexo.campo_id` é referência lógica **sem FK** (0127), e `admin_solic_salvar_tipo`
+(0216) faz `DELETE` + re-`INSERT` de TODOS os campos a cada edição do tipo, com id `IDENTITY`
+que nunca se repete — então todo anexo de tipo já editado tem `campo_id` órfão. **Medido: 9 dos
+68 anexos com campo já estavam assim, todos de campo `obrigatorio: true`.** Achado ALTO do
+`revisor-db`.
+📌 **A lógica corrigida saiu do código na `0265`** (o campo virou imutável e o caso deixou de ser
+alcançável), mas o **precedente ficou na skill `banco-e-rpc`** — é lá que ele serve à próxima
+validação. Código sem caso de uso é peso morto; aprendizado não.
+
+🔴 **PENDENTE (Yan): conferência visual da v5.9.0 E da v5.9.1 em produção** — anexar em "Outros
+anexos" e ver a lista atualizar sem fechar o drawer; excluir um anexo de lá; confirmar que o
+campo do tipo não oferece adicionar nem excluir; aprovar uma solicitação de verdade. Vale um
+passe por **teclado** (o estado bloqueado passou de `disabled` para `aria-disabled`).
 
 ✅ **v5.9.0 EM PRODUÇÃO** — **ADR-0169**, migrations `0261` (aditiva), `0262` (destrutiva) e
 `0263` (aditiva), **1139 testes**. Solicitações ganharam a etapa **"Aprovada"** (intermediária e
@@ -91,10 +102,10 @@ antigos sem caminho padrão, `aprovada` cai no `default`.
 O `0169` deixou de ser reserva — mergeou com a v5.9.0. Conferir no `origin`, nunca só no
 `ls docs/adr/` de uma worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
-⚠️ **Numeração de migration: a última APLICADA é a `0264`; a próxima livre é a `0265`.**
-A `0264` (v5.9.1, aditiva) criou `solic_anexo_excluir` e acrescentou `sou_autor` ao
-`app.solic_json`. Conferir sempre em `supabase_migrations.schema_migrations` E nas worktrees
-irmãs, não neste texto.
+⚠️ **Numeração de migration: a última APLICADA é a `0265`; a próxima livre é a `0266`.**
+⚠️ **Há OUTRA versão em voo** (`feat/v5-9-2-dre-proporcao-e-acumulacao`) — conferir o número
+livre no BANCO **e nas worktrees irmãs** imediatamente antes de aplicar, nunca só aqui. A v5.9.0
+renumerou três vezes por não fazer isso (`0256`→`0258`→`0261`).
 
 🔴 **PENDENTE: comunicar a MUDANÇA DE CRITÉRIO da DRE à liderança.** Desde 19/08 a DRE mostra
 o critério novo (Resultado Financeiro unificado, Imobilizado abaixo da linha) em **TODOS os

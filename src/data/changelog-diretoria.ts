@@ -80,7 +80,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '5.9.1',
-    data: '2026-09-02T16:01', // autoria; reconciliar ao horário REAL do merge no /pos-merge
+    data: '2026-09-02T17:13', // horário REAL do merge (ed1de9c, PR #251, 02/09 17h13 −03) — reconciliado no /pos-merge
     itens: [
       {
         tipo: 'novidade',
