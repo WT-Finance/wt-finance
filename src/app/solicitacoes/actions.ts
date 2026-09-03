@@ -269,6 +269,39 @@ export async function anexarEmSolicitacao(id: number, anexos: AnexoMeta[]): Prom
   revalidatePath('/solicitacoes'); return { ok: true }
 }
 
+/**
+ * v5.9.1 — exclui um anexo. Só quem anexou (decisão E2); a RPC enforça, aqui é só o
+ * transporte. Bloqueado no último anexo de campo obrigatório (E4).
+ *
+ * ORDEM DELIBERADA: o metadado sai primeiro (na RPC) e o binário depois. Se o Storage
+ * falhar, sobra um arquivo órfão INVISÍVEL no bucket — chato, mas inofensivo. O inverso
+ * deixaria um anexo LISTADO na tela que não baixa, que é pior: o usuário vê algo que não
+ * existe mais e não entende por quê.
+ */
+export async function excluirAnexo(anexoId: number): Promise<{ ok: boolean; erro?: string }> {
+  await requireAreaAction(null)
+  const { data, error } = await rpcSessao('solic_anexo_excluir', { p_anexo_id: anexoId })
+  if (error) return { ok: false, erro: traduzir(error.message) }
+
+  const path = (data as { storage_path?: string } | null)?.storage_path
+  if (path) {
+    // ⚠️ O SDK do Storage NÃO LANÇA em falha de API — resolve com `{ data, error }`. Um
+    // `try/catch` sozinho aqui seria decorativo: a falha real (permissão, path já removido,
+    // hiccup do bucket) passaria como sucesso e o log prometido nunca sairia. É o padrão que
+    // `upload` e `createSignedUrl` já seguem neste arquivo. (Achado ALTO do revisor.)
+    // O try/catch fica só para exceção de REDE, que é a única que de fato lança.
+    try {
+      const { error: rmErr } = await getAdminClient().storage.from(BUCKET).remove([path])
+      if (rmErr) {
+        console.error(`[solicitacoes] anexo ${anexoId} removido do banco, mas o binário ficou no Storage:`, rmErr)
+      }
+    } catch (err) {
+      console.error(`[solicitacoes] anexo ${anexoId} removido do banco; falha de rede ao apagar o binário:`, err)
+    }
+  }
+  revalidatePath('/solicitacoes'); return { ok: true }
+}
+
 export async function concluirSolicitacao(id: number): Promise<{ ok: boolean; erro?: string }> {
   await requireAreaAction(null)
   const { error } = await rpcSessao('solic_concluir', { p_id: id })
@@ -315,6 +348,10 @@ function traduzir(msg: string): string {
     // CAMPO_ANEXO_OBRIGATORIO saiu com a 0263: anexo sem campo passou a ser legítimo
     // (anexo livre). A RPC não emite mais esse prefixo.
     CAMPO_INVALIDO: 'Este tipo de solicitação não tem esse campo de anexo.',
+    // v5.9.1/0265 — o campo de anexo do tipo guarda o que veio na abertura e não muda mais.
+    // Anexo pós-abertura vai para "Outros anexos"; exclusão só vale lá.
+    ANEXO_SO_LIVRE: 'Anexos enviados depois da abertura entram em "Outros anexos".',
+    ANEXO_DA_ABERTURA: 'Anexos enviados na abertura da solicitação não podem ser excluídos.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
   if (m[prefixo]) return m[prefixo]

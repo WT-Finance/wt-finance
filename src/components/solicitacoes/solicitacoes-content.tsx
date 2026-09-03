@@ -25,7 +25,17 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
   erroCarga: string | null
 }) {
   const router = useRouter(); const pathname = usePathname(); const sp = useSearchParams()
-  const [aberta, setAberta] = useState<Solicitacao | null>(null)
+  // v5.9.1 — guarda o ID e DERIVA da lista, em vez de guardar o objeto.
+  //
+  // Guardar o objeto congelava o retrato do clique: uma ação do drawer que não o fecha
+  // (anexar, excluir anexo) chamava `router.refresh()`, a page RSC devolvia `lista` nova…
+  // e o drawer seguia exibindo a cópia velha, sem o arquivo que acabara de entrar ou com o
+  // que acabara de sair. É a armadilha da skill `react-padroes` §3: cópia local do dado do
+  // servidor envelhece e a tela passa a discordar de si mesma.
+  //
+  // Derivando, o refresh resolve sozinho — sem round-trip extra e sem callback.
+  const [abertaId, setAbertaId] = useState<number | null>(null)
+  const aberta = abertaId == null ? null : lista.find(s => s.id === abertaId) ?? null
   const [novaAberta, setNovaAberta] = useState(false)
   // useTransition: fornece feedback de pending na navegação de visão (router.push é assíncrono)
   const [isPending, startTransition] = useTransition()
@@ -135,11 +145,11 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
         className={`flex-1 min-h-0 flex flex-col${isPending ? ' opacity-60 pointer-events-none transition-opacity' : ''}`}
       >
         {view === 'minhas'
-          ? <MinhasSolicitacoes solicitacoes={lista} onAbrir={setAberta} />
-          : <BoardSolicitacoes solicitacoes={lista} escopo={escopo} onAbrir={setAberta} />}
+          ? <MinhasSolicitacoes solicitacoes={lista} onAbrir={s => setAbertaId(s.id)} />
+          : <BoardSolicitacoes solicitacoes={lista} escopo={escopo} onAbrir={s => setAbertaId(s.id)} />}
       </div>
 
-      {aberta && <DrawerSolicitacao sol={aberta} onClose={() => setAberta(null)} />}
+      {aberta && <DrawerSolicitacao sol={aberta} onClose={() => setAbertaId(null)} />}
       {novaAberta && <ModalNovaSolicitacao tipos={tipos} destinatarios={destinatarios} onFechar={() => setNovaAberta(false)} />}
     </div>
   )

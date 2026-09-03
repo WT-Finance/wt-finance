@@ -389,6 +389,22 @@ describe('contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-
     expect(r.success, r.success ? '' : `drift de origem: ${JSON.stringify(r.error!.issues.slice(0, 8))}`).toBe(true)
     if (r.success) expect(r.data.origem).toEqual({ plataforma: 'TARS' })
   })
+  // v5.9.1 — `sou_autor` por anexo (migration 0264): é ele que decide se a UI oferece o
+  // botão de excluir. Três formas, como as demais chaves opcionais: ausente (RPC antiga
+  // durante o rollout), false (anexo de outra pessoa) e true (meu anexo).
+  it('sou_autor no anexo: aceita ausente (RPC antiga), false e true', () => {
+    expect(solicitacaoSchema.safeParse(SOLIC_JSON_FIXTURE).success).toBe(true) // fixture sem a chave
+    const comAutor = (v: boolean) => ({
+      ...SOLIC_JSON_FIXTURE,
+      anexos: SOLIC_JSON_FIXTURE.anexos.map(a => ({ ...a, sou_autor: v })),
+    })
+    for (const v of [false, true]) {
+      const r = solicitacaoSchema.safeParse(comAutor(v))
+      expect(r.success, r.success ? '' : `drift de sou_autor: ${JSON.stringify(r.error!.issues.slice(0, 5))}`).toBe(true)
+      if (r.success) expect(r.data.anexos[0].sou_autor).toBe(v)
+    }
+  })
+
   // v5.9.0 — `aprovado_em`/`aprovado_por_email` (migration 0258). Mesmas três formas que
   // `origem` precisou cobrir: AUSENTE (RPC antiga durante o rollout), null (nunca aprovada)
   // e PREENCHIDO. O fixture acima só cobre a primeira, e implicitamente — sem o caso

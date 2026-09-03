@@ -99,6 +99,31 @@ existentes: `Promise.allSettled` + checar `.status === 'fulfilled'` por item, n�
 `build`/`tsc`/`lint`/`test` não pegam esse tipo de erro porque é de runtime; só a
 conferência visual pegou.)
 
+## 2b. O SDK do Supabase NÃO LANÇA — `try/catch` em volta dele é decorativo
+
+`storage.remove()`, `.upload()`, `.createSignedUrl()` e as demais chamadas do cliente
+resolvem com `{ data, error }` em falha de API. **Não lançam.** Um `try/catch` em volta pega
+só exceção de rede — e se o `catch` é o único lugar que loga, a falha real (permissão, path
+inexistente, hiccup do bucket) passa como **sucesso silencioso**.
+
+```ts
+// ERRADO: promete log, nunca loga. Erro de API cai fora do catch.
+try { await getAdminClient().storage.from(B).remove([path]) }
+catch (err) { console.error('ficou órfão:', err) }
+
+// CERTO: checa o error do retorno; try/catch fica só para rede
+try {
+  const { error } = await getAdminClient().storage.from(B).remove([path])
+  if (error) console.error('ficou órfão:', error)
+} catch (err) { console.error('falha de rede:', err) }
+```
+
+**Custou caro (v5.9.1):** a exclusão de anexo apagava o metadado e depois o binário, com um
+`try/catch` cujo comentário dizia "logar e seguir". O log nunca sairia — e duas linhas acima,
+no mesmo arquivo, `upload` e `createSignedUrl` já faziam do jeito certo. Achado ALTO do
+`revisor`. Vale para qualquer SDK que devolva erro em vez de lançar: **o padrão do arquivo
+vizinho é a melhor pista.**
+
 ## 3. Validando o shape com `parseRpc` + Zod
 
 `parseRpc(schema, res, contexto)` (`src/lib/schemas-rpc.ts`) é o ponto único de validação:

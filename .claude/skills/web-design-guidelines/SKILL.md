@@ -28,6 +28,34 @@ targets, animação acessível (`prefers-reduced-motion`) e performance percebid
 daqui pedir mudança estrutural no DS (ex.: outro anel de foco), **não aplicar por conta** —
 registrar e perguntar (fronteira de produto/DS).
 
+## Armadilha recorrente: `disabled` nativo REMOVE do tab-order
+
+Decidir "não escondo o controle, explico por que está bloqueado" e implementar com `disabled`
+é contraditório: `disabled` tira o elemento do tab-order, então quem navega por teclado
+**passa direto** e nunca descobre que o controle existe — muito menos o motivo. E `title`,
+que é o reflexo natural para explicar, só é percebido no hover: serve a quem usa mouse.
+
+```tsx
+// ERRADO: a explicação existe e é inalcançável por teclado
+<button disabled={bloqueado} title={motivo} aria-label={`Excluir ${nome}`}>
+
+// CERTO: inerte MAS focável, com o motivo no nome acessível e descrito
+<button
+  aria-disabled={bloqueado}
+  onClick={() => { if (!bloqueado) agir() }}
+  aria-label={bloqueado ? `Não é possível excluir ${nome}: ${motivo}` : `Excluir ${nome}`}
+  aria-describedby={bloqueado ? idMotivo : undefined}
+>
+{bloqueado && <span id={idMotivo} className="sr-only">{motivo}</span>}
+```
+
+`aria-disabled` não bloqueia o clique por si — o handler precisa checar o estado. Em troca, o
+elemento continua na ordem de tabulação e anuncia o porquê. (Custou caro na v5.9.1: o botão
+de excluir anexo bloqueado por campo obrigatório; achado MÉDIO do `revisor`.)
+
+**Quando `disabled` nativo é o certo:** controle temporariamente inerte por operação em curso
+(salvando, enviando), em que não há motivo a comunicar além do próprio spinner visível.
+
 ## Referência
 
 - `references/AGENTS.md` — as regras completas (Interactions, Forms, Feedback, Navigation,

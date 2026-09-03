@@ -59,11 +59,13 @@ const SQL_CHECKS = sqlLimpoEm(
   'supabase/migrations/0262_solic_status_aprovada_checks.sql',   // depois de aplicar
 )
 const SQL_RPCS   = sqlLimpo('supabase/migrations/0261_solic_aprovada_e_anexo_pos_criacao.sql')
-// ⚠️ `solic_anexar` foi REDEFINIDA pela 0263 (anexo livre — reverte a D7). Ler a 0261 para
-// ela testaria a versão MORTA e passaria verde contra um corpo que o banco não usa mais —
-// exatamente a armadilha anunciada no aviso de MANUTENÇÃO acima, e a primeira vez que ela
-// se materializou. Cada objeto se lê da ÚLTIMA migration que o define.
-const SQL_ANEXAR = sqlLimpo('supabase/migrations/0263_solic_anexo_livre.sql')
+// ⚠️ CADA OBJETO SE LÊ DA ÚLTIMA MIGRATION QUE O DEFINE — e neste módulo isso muda rápido:
+// `solic_anexar` nasceu na 0261, foi redefinida pela 0263 (anexo livre) e de novo pela 0265
+// (campo do tipo imutável); `solic_anexo_excluir` nasceu na 0264 e foi redefinida pela 0265.
+// Apontar para a migration errada testa CORPO MORTO e passa verde — foi o aviso de manutenção
+// no topo deste arquivo, e ele já se materializou uma vez na v5.9.1.
+const SQL_ANEXAR  = sqlLimpo('supabase/migrations/0265_solic_anexo_campo_imutavel.sql')
+const SQL_EXCLUIR = sqlLimpo('supabase/migrations/0265_solic_anexo_campo_imutavel.sql')
 
 describe('paridade SQL ↔ TS do ciclo de vida', () => {
   it('STATUS_SOLIC tem exatamente os valores que o CHECK do banco aceita', () => {
@@ -117,24 +119,86 @@ describe('paridade SQL ↔ TS do ciclo de vida', () => {
     expect(whereExterno![1]).not.toContain("status = 'aprovada'")
   })
 
-  it('solic_anexar ACEITA anexo livre (campo_id nulo) — a D7 foi revertida na 0263', () => {
+  it('solic_anexar aceita SOMENTE anexo livre — o campo do tipo é da abertura (0265)', () => {
     const corpo = SQL_ANEXAR.match(/FUNCTION public\.solic_anexar[\s\S]*?\$function\$;/)
     expect(corpo).not.toBeNull()
-    // A trava que recusava campo_id nulo NÃO pode voltar: sem anexo livre, um tipo sem
-    // campo de anexo configurado fica sem lugar para o comprovante — o caso que originou
-    // a versão. Se alguém reintroduzir o RAISE, este teste reprova.
+    // anexo pós-abertura com campo_id é recusado…
+    expect(corpo![0]).toMatch(/ANEXO_SO_LIVRE/)
+    // …e o INSERT grava NULL explicitamente, para não haver caminho que escape do RAISE
+    expect(corpo![0]).toMatch(/VALUES \(p_id, NULL,/)
+    // a trava anterior (recusar o NULO) não pode voltar: seria o oposto desta regra
     expect(corpo![0]).not.toMatch(/CAMPO_ANEXO_OBRIGATORIO/)
-    // e a validação do campo passa a ser CONDICIONAL: só quando o campo_id vem preenchido.
-    expect(corpo![0]).toMatch(/v_campo IS NOT NULL AND NOT EXISTS/)
   })
 
-  it('solic_anexar mantém as travas que NÃO foram relaxadas', () => {
+  it('solic_anexar mantém as travas que NÃO mudaram', () => {
     const corpo = SQL_ANEXAR.match(/FUNCTION public\.solic_anexar[\s\S]*?\$function\$;/)!
-    // afrouxar o campo_id nulo não pode ter afrouxado o resto junto:
-    expect(corpo[0]).toMatch(/tipo_campo = 'anexo'/)                  // campo informado é DAQUELE tipo
     expect(corpo[0]).toMatch(/status NOT IN \('aberta','aprovada'\)/) // encerrada segue imutável
     expect(corpo[0]).toMatch(/sou_atendente/)                         // só solicitante ou atendente
     expect(corpo[0]).toMatch(/ANEXO_INVALIDO/)                        // path/nome continuam exigidos
+  })
+})
+
+describe('exclusão de anexo (v5.9.1, migration 0264)', () => {
+  const corpo = () => SQL_EXCLUIR.match(/FUNCTION public\.solic_anexo_excluir[\s\S]*?\$function\$;/)![0]
+
+  it('só quem anexou exclui — e o predicado é NULL-safe', () => {
+    // `criado_por` é ANULÁVEL. Sem o coalesce, `NULL = uid` devolve NULL, `NOT NULL` é NULL,
+    // e o RAISE não dispara: um anexo sem autor viraria excluível por qualquer um que
+    // enxergue a solicitação. É a classe exata do vazamento corrigido na 0129.
+    expect(corpo()).toMatch(/NOT coalesce\(v_anexo\.criado_por = app\.uid_jwt\(\), false\)/)
+    expect(corpo()).toMatch(/PERMISSAO_NEGADA/)
+  })
+
+  it('não revela a existência de anexo que o caller não pode ver', () => {
+    // "não existe" e "não pode ver" respondem a MESMA coisa. Duas mensagens distintas
+    // transformariam a RPC num oráculo de existência de anexo alheio.
+    const naoEncontrada = corpo().match(/NAO_ENCONTRADA/g) ?? []
+    expect(naoEncontrada.length).toBeGreaterThanOrEqual(2)
+    expect(corpo()).toMatch(/NOT FOUND OR NOT app\.pode_ver_solic/)
+  })
+
+  it('solicitação encerrada não aceita exclusão — imutabilidade vale nos dois sentidos', () => {
+    expect(corpo()).toMatch(/status NOT IN \('aberta','aprovada'\)/)
+    expect(corpo()).toMatch(/TRANSICAO_ILEGAL/)
+  })
+
+  it('anexo vindo da ABERTURA não se exclui (0265)', () => {
+    const c = corpo()
+    // A regra E4 (bloquear só o ÚLTIMO de campo obrigatório) foi SUBSTITUÍDA por esta, que é
+    // anterior e mais simples: o campo inteiro é imutável, então não há invariante de
+    // obrigatoriedade a proteger durante exclusão. Se a E4 voltar sem que a imutabilidade
+    // saia, as duas se contradizem.
+    expect(c).toMatch(/ANEXO_DA_ABERTURA/)
+    expect(c).toMatch(/v_anexo\.campo_id IS NOT NULL/)
+    expect(c).not.toMatch(/ANEXO_OBRIGATORIO_UNICO/)
+  })
+
+  it('o DELETE vem DEPOIS de todas as travas, e devolve o caminho do binário', () => {
+    const c = corpo()
+    const posDelete = c.indexOf('DELETE FROM app.solicitacao_anexo')
+    expect(posDelete).toBeGreaterThan(-1)
+    // toda validação que pode recusar precisa estar ANTES do DELETE
+    for (const trava of ['NAO_ENCONTRADA', 'TRANSICAO_ILEGAL', 'PERMISSAO_NEGADA', 'ANEXO_DA_ABERTURA']) {
+      expect(c.indexOf(trava), `${trava} deveria vir antes do DELETE`).toBeLessThan(posDelete)
+    }
+    // a action precisa do path para apagar o binário — e o DELETE já levou a linha
+    expect(c).toMatch(/RETURNING storage_path INTO v_path/)
+  })
+
+  it('solic_json passou a emitir sou_autor SEM perder chave alguma', () => {
+    // O REPLACE sobrescreve o corpo inteiro: chave que some não gera erro de banco nem de
+    // build, só quebra a tela. Foi o risco que quase se concretizou na v5.9.0 com `origem`.
+    const json = sqlLimpo('supabase/migrations/0264_solic_anexo_excluir.sql')
+      .match(/FUNCTION app\.solic_json[\s\S]*?\$function\$;/)![0]
+    for (const chave of [
+      'id', 'tipo_id', 'tipo_nome', 'solicitante_email', 'destinatario', 'data_limite',
+      'descricao', 'status', 'respostas', 'decidido_em', 'decidido_por_email',
+      'aprovado_em', 'aprovado_por_email', 'justificativa', 'criado_em',
+      'sou_solicitante', 'sou_atendente', 'origem', 'anexos',
+    ]) {
+      expect(json, `solic_json perdeu a chave '${chave}'`).toContain(`'${chave}'`)
+    }
+    expect(json).toMatch(/'sou_autor', coalesce\(a\.criado_por = app\.uid_jwt\(\), false\)/)
   })
 })
 
