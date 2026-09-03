@@ -33,13 +33,31 @@ const AJUDA =
   'junto com o faturamento, mas a proporção só sobe se o grupo pesar mais. ' +
   'Os percentuais são negativos porque são despesa, como na coluna AV do demonstrativo, mas ' +
   'o eixo está invertido para a leitura ser direta: a linha SUBINDO significa que o grupo ' +
-  'passou a consumir mais receita. O ano corrente conta só os meses já cobertos pela base.'
+  'passou a consumir mais receita. Os sete gráficos usam a MESMA escala (a mesma altura em ' +
+  'pontos percentuais), então as inclinações são comparáveis entre eles — um grupo estável ' +
+  'aparece quase reto de propósito, e o número ao lado do nome dá a variação exata. O ano ' +
+  'corrente conta só os meses já cobertos pela base.'
 
 /** Altura de cada mini-gráfico. ⚠️ Vai como `height` no wrapper, NUNCA `min-height`: o
  *  `ResponsiveContainer` é um filho com `height: 100%`, e em CSS um percentual de altura
  *  resolve contra a `height` do pai — com `min-height` o filho mede 0 e o gráfico some
  *  sem erro nenhum (medido na v5.8.1). */
 const ALTURA = 150
+
+/** Δ em pontos percentuais, sempre com sinal explícito — `+1,7 p.p.` / `−1,8 p.p.`.
+ *  O sinal é a informação principal aqui, então ele nunca fica implícito. */
+function fmtDeltaPp(v: number): string {
+  const s = v < 0 ? '−' : '+'
+  return `${s}${Math.abs(v).toFixed(1)} p.p.`
+}
+
+/** Cor por SIGNIFICADO, não por sinal aritmético: estas séries são despesas, então um Δ
+ *  positivo (menos negativo) quer dizer que o grupo passou a consumir MENOS receita — é
+ *  melhora. Zero fica neutro: "não mudou" não é boa nem má notícia. */
+function corDelta(v: number): string {
+  if (v === 0) return 'text-text-subtle'
+  return v > 0 ? 'text-positive-deep' : 'text-negative-deep'
+}
 
 function MiniGrafico({ serie }: { serie: SerieProporcao }) {
   // Ponto sem base válida não é plotado (o Recharts corta a linha em `null`), e nunca
@@ -53,9 +71,23 @@ function MiniGrafico({ serie }: { serie: SerieProporcao }) {
 
   return (
     <div className="rounded-lg border border-wt-border bg-surface p-3">
-      <p className="mb-1 truncate text-[11px] font-semibold text-text-primary" title={serie.rotulo}>
-        {serie.rotulo}
-      </p>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <p className="truncate text-[11px] font-semibold text-text-primary" title={serie.rotulo}>
+          {serie.rotulo}
+        </p>
+        {/* O Δ ANOTADO é o contrapeso da escala comum: com todos os eixos na mesma
+            altura, um grupo estável vira quase uma reta — o que é a verdade sobre ele,
+            mas esconde a magnitude exata. O número devolve a precisão sem depender do
+            olho. Sinal: positivo = passou a consumir MENOS receita (melhora). */}
+        {serie.deltaPp !== null && (
+          <span
+            className={`shrink-0 text-[10px] font-semibold tabular-nums ${corDelta(serie.deltaPp)}`}
+            title={`Variação de ${serie.pontos[0]?.ano} a ${serie.pontos.at(-1)?.ano}, em pontos percentuais da Receita Bruta`}
+          >
+            {fmtDeltaPp(serie.deltaPp)}
+          </span>
+        )}
+      </div>
       <div style={{ height: ALTURA }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={dados} margin={chartMargins.default}>
@@ -69,7 +101,17 @@ function MiniGrafico({ serie }: { serie: SerieProporcao }) {
                 pesar MAIS desenha a curva DESCENDO, que é o contrário do que o olho lê.
                 Invertido, "pesa mais" volta a ser "mais alto", e o rótulo continua
                 dizendo −5,2%, como a coluna AV do demonstrativo. */}
-            {ChartYAxisPct({ casas: 1, invertido: true })}
+            {ChartYAxisPct({
+              casas: 1,
+              invertido: true,
+              /* ⚠️ Domínio COMUM às sete séries (`proporcao-grupos.ts`). Sem ele cada
+                 gráfico esticava a própria série até preencher o card, e RH (10,2 p.p. de
+                 amplitude) desenhava a mesma inclinação que Comerciais (0,36 p.p.) — uma
+                 razão de 28× sumia da tela. `ticks` anda junto: com domínio explícito o
+                 Recharts divide o intervalo cru e produz marcas quebradas. */
+              domain: serie.dominio,
+              ticks: serie.ticks,
+            })}
             <Tooltip
               cursor={{ stroke: 'var(--chart-grid)' }}
               content={(p) => {

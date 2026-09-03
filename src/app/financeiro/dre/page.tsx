@@ -355,7 +355,7 @@ export default async function DrePage({
           INDEPENDENTES e é isso que explica metade das divergências entre os regimes.
           `UltimaAtualizacao` devolve `null` sozinho quando não há data, então cada selo
           some por conta própria sem `&&` aqui. */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-2xs">
+      <div className="flex flex-col items-end gap-y-0.5 text-2xs">
         <UltimaAtualizacao
           iso={compQualquer?.carregado_em ?? null}
           prefixo="Competência · Última atualização em"

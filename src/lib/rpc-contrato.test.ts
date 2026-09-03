@@ -1804,4 +1804,33 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
       expect(s.pontos[0].av, `${s.chave} sem AV — Receita Bruta ausente ou ≤ 0`).not.toBeNull()
     }
   })
+
+  it('as sete janelas da grade têm a MESMA altura contra a base viva', async () => {
+    // A invariante que o ajuste da escala existe para garantir. Com eixo auto-escalado,
+    // RH (10,2 p.p. de amplitude) e Desp. Comerciais (0,36 p.p.) desenhavam a mesma
+    // inclinação — uma razão de 28× sumia da tela. Aqui isso é medido contra o dado real,
+    // onde as amplitudes são as de verdade e não as de uma fixture escolhida.
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const anos = [anoSP - 2, anoSP - 1, anoSP]
+    const payloads = await Promise.all(
+      anos.map(a => rpc('get_dre_competencia_mensal', { p_ano: a }).then(r => dreCompMensalSchema.parse(r))),
+    )
+    const m = janelaYtdCompetencia(payloads[2])
+
+    const series = montarProporcaoGrupos(
+      anos.map((a, i) => ({ ano: a, payload: payloads[i], meses: a === anoSP ? m : 12 })),
+    )
+
+    const alturas = new Set(series.map(s => Number((s.dominio[1] - s.dominio[0]).toFixed(6))))
+    expect(alturas.size, `janelas de alturas diferentes: ${[...alturas].join(', ')}`).toBe(1)
+
+    // E cada série cabe inteira na sua janela — um ponto fora do eixo sumiria do gráfico.
+    for (const s of series) {
+      for (const p of s.pontos) {
+        if (p.av === null) continue
+        expect(p.av, `${s.chave} fora do eixo`).toBeGreaterThanOrEqual(s.dominio[0] - 1e-9)
+        expect(p.av, `${s.chave} fora do eixo`).toBeLessThanOrEqual(s.dominio[1] + 1e-9)
+      }
+    }
+  })
 })

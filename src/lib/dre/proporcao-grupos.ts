@@ -27,6 +27,7 @@ import type { DreMensalLike, DreLinha } from './schemas'
 import { avPercentual, baseAv, CHAVE_BASE_AV } from './av'
 import { folhasPorGrupo } from './folhas'
 import { rotuloBloco, semCaixaAlta } from './rotulo-bloco'
+import { passoRedondo } from '@/lib/escala-grafico'
 
 /**
  * Os grupos da grade, na ordem da árvore de competência.
@@ -58,6 +59,17 @@ export interface SerieProporcao {
   /** Rótulo VIVO do payload, sem prefixo contábil e sem caixa alta. */
   rotulo: string
   pontos: PontoProporcao[]
+  /** Janela do eixo Y — a MESMA amplitude em todas as séries, posicionada no nível desta.
+   *  É o que torna a inclinação comparável entre gráficos (ver `escalaComum`). */
+  dominio: [number, number]
+  /** Marcas do eixo, em múltiplos do passo. Andam junto com `dominio`: com domínio
+   *  explícito o Recharts abandona o algoritmo de marcas "bonitas" e divide o intervalo
+   *  cru (lição medida na v5.8.1). */
+  ticks: number[]
+  /** Variação em PONTOS PERCENTUAIS do primeiro ao último ponto com AV.
+   *  `null` quando não há dois pontos calculáveis. Positivo = o grupo passou a consumir
+   *  MENOS receita (melhorou). */
+  deltaPp: number | null
 }
 
 /** Um ano de entrada: o payload e quantos meses dele estão cobertos pela base. */
@@ -109,7 +121,7 @@ export function montarProporcaoGrupos(anos: readonly AnoProporcao[]): SeriePropo
     }
   }
 
-  return GRUPOS_PROPORCAO.map(chave => ({
+  const semEscala = GRUPOS_PROPORCAO.map(chave => ({
     chave,
     rotulo: rotulos.get(chave) ?? chave,
     pontos: anos.map(a => ({
@@ -122,4 +134,111 @@ export function montarProporcaoGrupos(anos: readonly AnoProporcao[]): SeriePropo
       mesesCobertos: a.meses,
     })),
   }))
+
+  // A escala é propriedade do CONJUNTO — por isso é calculada aqui, e não no componente.
+  const amplitude = amplitudeComum(semEscala.map(s => s.pontos))
+
+  return semEscala.map(s => ({
+    ...s,
+    ...janela(s.pontos, amplitude),
+    deltaPp: deltaEmPontos(s.pontos),
+  }))
+}
+
+// ── Escala COMPARÁVEL entre os sete gráficos (v5.9.2) ────────────────────────
+// O problema que isto resolve, medido contra a base viva: com o eixo auto-escalado, RH
+// (que varia 10,16 p.p.) e Despesas Comerciais (0,36 p.p.) desenhavam a MESMA inclinação,
+// porque cada gráfico esticava a própria série até preencher o card. Uma razão de 28×
+// desaparecia da tela, e a leitura visual dizia o oposto do dado.
+//
+// A saída é dar a todos a MESMA ALTURA EM PONTOS PERCENTUAIS, cada janela posicionada no
+// nível da própria série. Assim a inclinação vira comparável (mesmos p.p. por pixel) e o
+// eixo continua mostrando o nível real — RH em −42%, Comerciais em −16,5%.
+//
+// ⚠️ O custo, aceito: grupo que varia pouco fica quase reto. Isso é a VERDADE sobre ele,
+// e é justamente o que se queria enxergar — mas surpreende quem esperava uma curva, então
+// o card anota o Δ em p.p. ao lado do rótulo e o "?" avisa que a escala é comum.
+
+/** Quanto a série de fato varia, em p.p. `0` quando não há dois pontos calculáveis. */
+function amplitudeDe(pontos: readonly PontoProporcao[]): number {
+  const vs = pontos.map(p => p.av).filter((v): v is number => v !== null)
+  if (vs.length < 2) return 0
+  return Math.max(...vs) - Math.min(...vs)
+}
+
+/** Quantas divisões a régua tem. Quatro dá cinco marcas (as duas pontas e três no meio),
+ *  que é o que cabe legível na altura de um mini-gráfico. */
+const DIVISOES = 4
+
+/**
+ * A altura de eixo que serve a TODAS as séries.
+ *
+ * Deriva do PASSO, não da amplitude: escolhe-se o passo redondo que divide a maior
+ * amplitude em `DIVISOES`, e a janela é `passo × DIVISOES`. Fazer o contrário — arredondar
+ * a amplitude e depois dividir — produz passos quebrados (15 / 4 = 3,75) e marcas de eixo
+ * ilegíveis.
+ *
+ * A folga sai de graça do arredondamento: com a maior amplitude em 10,2 p.p., o passo vira
+ * 3 e a janela 12, então a maior série usa ~85% da altura e não encosta nas bordas.
+ *
+ * O piso de 1 p.p. cobre o caso degenerado (todas as séries constantes): sem ele a janela
+ * teria altura zero e o eixo colapsaria.
+ */
+function amplitudeComum(todas: readonly (readonly PontoProporcao[])[]): number {
+  const maior = Math.max(1, ...todas.map(amplitudeDe))
+  const passo = passoRedondo(maior / DIVISOES)
+  // O arredondamento do passo quase sempre cobre a amplitude; quando não cobrir (série
+  // que cai exatamente numa fronteira de mantissa), uma divisão a mais resolve.
+  return passo * DIVISOES >= maior ? passo * DIVISOES : passo * (DIVISOES + 1)
+}
+
+/**
+ * A janela desta série: `amplitude` de altura, centrada nos valores dela.
+ *
+ * ⚠️ O DOMÍNIO não é encaixado na grade do passo — só os TICKS são. A primeira versão
+ * alinhava as duas pontas a múltiplos do passo, e isso empurrava a janela para fora da
+ * série: com RH (−32,06 a −42,2), a base alinhada em −45 levava o topo a −33 e o ponto de
+ * 2024 saía do eixo, sumindo do gráfico. Manter o domínio exato e escolher os ticks DENTRO
+ * dele dá as duas coisas — altura idêntica em todas as séries e marcas redondas.
+ * (Quem pegou isso foi o caso de contrato contra a base VIVA; os dados sintéticos do teste
+ * de módulo não tinham a borda.)
+ *
+ * O topo nunca passa de 0: são despesas, e acima de zero não há série possível. Quando o
+ * limite morde, a janela desce inteira para preservar a altura.
+ */
+function janela(
+  pontos: readonly PontoProporcao[],
+  amplitude: number,
+): { dominio: [number, number]; ticks: number[] } {
+  const passo = amplitude / DIVISOES
+  const vs = pontos.map(p => p.av).filter((v): v is number => v !== null)
+
+  // Sem ponto nenhum, uma janela padrão logo abaixo de zero — o gráfico fica vazio, mas
+  // com um eixo coerente em vez de `[NaN, NaN]`.
+  const centro = vs.length > 0 ? (Math.max(...vs) + Math.min(...vs)) / 2 : -amplitude / 2
+
+  let topo = Math.min(0, centro + amplitude / 2)
+  let base = topo - amplitude
+
+  // Se o teto em zero empurrou a base acima do menor valor, desce a janela inteira: a
+  // ALTURA é a invariante que não pode ceder — é ela que torna as inclinações comparáveis.
+  if (vs.length > 0 && Math.min(...vs) < base) {
+    base = Math.min(...vs)
+    topo = Math.min(0, base + amplitude)
+  }
+
+  const ticks: number[] = []
+  for (let t = Math.ceil(base / passo) * passo; t <= topo + 1e-9; t += passo) {
+    ticks.push(Number(t.toFixed(6)))
+  }
+
+  return { dominio: [base, topo], ticks }
+}
+
+/** Variação do primeiro ao último ponto COM AV, em p.p. Positivo = passou a consumir
+ *  MENOS receita. `null` sem dois pontos calculáveis — nunca 0, que afirmaria estabilidade. */
+function deltaEmPontos(pontos: readonly PontoProporcao[]): number | null {
+  const vs = pontos.map(p => p.av).filter((v): v is number => v !== null)
+  if (vs.length < 2) return null
+  return vs[vs.length - 1] - vs[0]
 }

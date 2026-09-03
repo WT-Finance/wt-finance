@@ -199,7 +199,7 @@ export function ChartYAxisBRL(
  * rótulo continua `-5,2%`, como na coluna AV do demonstrativo — muda só a orientação.
  */
 export function ChartYAxisPct(
-  opts?: { width?: number; casas?: number; invertido?: boolean },
+  opts?: { width?: number; casas?: number; invertido?: boolean; domain?: AxisDomain; ticks?: number[] },
 ): ReactElement {
   return (
     <YAxis
@@ -208,7 +208,13 @@ export function ChartYAxisPct(
       tickLine={false}
       axisLine={false}
       width={opts?.width ?? 44}
-      domain={['auto', 'auto']}
+      /* O default `['auto','auto']` deixa CADA gráfico esticar a própria série até
+         preencher o card — ótimo para um gráfico sozinho, e enganoso numa GRADE: duas
+         séries com amplitudes 28× diferentes desenham a mesma inclinação. Quem monta
+         small multiples passa um domínio comum (e os `ticks` junto — ver o aviso em
+         `ChartXAxisBRL`). */
+      domain={opts?.domain ?? ['auto', 'auto']}
+      ticks={opts?.ticks}
       reversed={opts?.invertido}
     />
   )

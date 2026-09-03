@@ -146,3 +146,121 @@ describe('ano PARCIAL é sinalizado, não escondido', () => {
     expect(rh.pontos[1].av).toBeCloseTo(rh.pontos[0].av!, 6)
   })
 })
+
+// ── Escala COMPARÁVEL (v5.9.2) ────────────────────────────────────────────────
+// O ajuste inteiro existe porque, com eixo auto-escalado, RH (10,16 p.p. de amplitude) e
+// Despesas Comerciais (0,36 p.p.) desenhavam a MESMA inclinação — uma razão de 28× sumia
+// da tela. A invariante que garante a correção é uma só: TODAS as janelas têm a mesma
+// altura em pontos percentuais.
+
+describe('escala comum — a invariante do ajuste', () => {
+  /** Sete grupos com amplitudes deliberadamente MUITO diferentes. */
+  const cenario = () => montarProporcaoGrupos([
+    ano(2024, 12, 1000, { RH: -300, COM: -168, CUSTO: -36, ADM: -51, MKT: -62, ESTR: -35, RHB: -109 }),
+    ano(2025, 12, 1000, { RH: -354, COM: -168, CUSTO: -37, ADM: -37, MKT: -50, ESTR: -30, RHB: -66 }),
+    ano(2026, 12, 1000, { RH: -422, COM: -165, CUSTO: -54, ADM: -33, MKT: -70, ESTR: -43, RHB: -93 }),
+  ])
+
+  it('TODAS as séries têm janelas de MESMA altura', () => {
+    const alturas = cenario().map(s => Number((s.dominio[1] - s.dominio[0]).toFixed(6)))
+    expect(new Set(alturas).size, `alturas diferentes: ${alturas.join(', ')}`).toBe(1)
+  })
+
+  it('a janela cobre a série inteira — nenhum ponto fica fora do eixo', () => {
+    for (const s of cenario()) {
+      for (const p of s.pontos) {
+        if (p.av === null) continue
+        expect(p.av, `${s.chave} abaixo do eixo`).toBeGreaterThanOrEqual(s.dominio[0] - 1e-9)
+        expect(p.av, `${s.chave} acima do eixo`).toBeLessThanOrEqual(s.dominio[1] + 1e-9)
+      }
+    }
+  })
+
+  it('o topo NUNCA passa de zero — são despesas, e ali não há série possível', () => {
+    for (const s of cenario()) expect(s.dominio[1], s.chave).toBeLessThanOrEqual(0)
+  })
+
+  it('os ticks ficam DENTRO do domínio, igualmente espaçados', () => {
+    // Eles não vão de ponta a ponta de propósito: encaixar as PONTAS na grade do passo
+    // empurrava a janela para fora da série (ver a nota em `janela`). O domínio é exato;
+    // os ticks é que caem em múltiplos redondos dentro dele.
+    for (const s of cenario()) {
+      expect(s.ticks.length, s.chave).toBeGreaterThanOrEqual(2)
+      for (const t of s.ticks) {
+        expect(t, `${s.chave}: tick fora do domínio`).toBeGreaterThanOrEqual(s.dominio[0] - 1e-9)
+        expect(t, `${s.chave}: tick fora do domínio`).toBeLessThanOrEqual(s.dominio[1] + 1e-9)
+      }
+      const passos = s.ticks.slice(1).map((t, i) => Number((t - s.ticks[i]).toFixed(6)))
+      expect(new Set(passos).size, `${s.chave}: passos irregulares`).toBe(1)
+    }
+  })
+
+  it('a série cabe no eixo mesmo quando o encaixe dos ticks não é exato', () => {
+    // Regressão do caso REAL que só o contrato contra a base viva pegou: RH ia de −32,06%
+    // a −42,2% e, com as pontas alinhadas à grade, o ponto de cima saía do eixo — sumindo
+    // do gráfico sem erro nenhum.
+    const s = montarProporcaoGrupos([
+      ano(2024, 12, 1000, { RH: -3206 }),
+      ano(2025, 12, 1000, { RH: -3540 }),
+      ano(2026, 12, 1000, { RH: -4220 }),
+    ])
+    const rh = s.find(x => x.chave === 'RH')!
+    for (const p of rh.pontos) {
+      expect(p.av!, 'ponto fora do eixo').toBeGreaterThanOrEqual(rh.dominio[0] - 1e-9)
+      expect(p.av!, 'ponto fora do eixo').toBeLessThanOrEqual(rh.dominio[1] + 1e-9)
+    }
+  })
+
+  it('a série de MAIOR amplitude usa quase toda a janela, e a menor quase nada', () => {
+    // É a leitura visual que se quer: quem variou 28× mais ocupa muito mais altura.
+    const s = cenario()
+    const uso = (chave: string) => {
+      const x = s.find(y => y.chave === chave)!
+      const vs = x.pontos.map(p => p.av!).filter(v => v !== null)
+      return (Math.max(...vs) - Math.min(...vs)) / (x.dominio[1] - x.dominio[0])
+    }
+    expect(uso('RH')).toBeGreaterThan(0.5)
+    expect(uso('COM')).toBeLessThan(0.1)
+  })
+
+  it('série constante não colapsa o eixo', () => {
+    const s = montarProporcaoGrupos([
+      ano(2024, 12, 1000, { RH: -300 }),
+      ano(2025, 12, 1000, { RH: -300 }),
+    ])
+    for (const x of s) expect(x.dominio[1] - x.dominio[0]).toBeGreaterThan(0)
+  })
+})
+
+describe('deltaPp — a variação anotada no card', () => {
+  it('é último menos primeiro, em p.p.', () => {
+    const s = montarProporcaoGrupos([
+      ano(2024, 12, 1000, { RH: -300 }),   // -30%
+      ano(2025, 12, 1000, { RH: -354 }),   // -35,4%
+      ano(2026, 12, 1000, { RH: -422 }),   // -42,2%
+    ])
+    expect(s.find(x => x.chave === 'RH')!.deltaPp).toBeCloseTo(-12.2, 6)
+  })
+
+  it('positivo quando o grupo passou a consumir MENOS receita', () => {
+    const s = montarProporcaoGrupos([
+      ano(2024, 12, 1000, { ADM: -51 }),
+      ano(2025, 12, 1000, { ADM: -33 }),
+    ])
+    expect(s.find(x => x.chave === 'ADM')!.deltaPp).toBeCloseTo(1.8, 6)
+  })
+
+  it('null com menos de dois pontos calculáveis — nunca 0, que afirmaria estabilidade', () => {
+    const s = montarProporcaoGrupos([ano(2025, 12, 1000, { RH: -300 })])
+    expect(s.find(x => x.chave === 'RH')!.deltaPp).toBeNull()
+  })
+
+  it('ignora ano sem base ao calcular o Δ', () => {
+    const s = montarProporcaoGrupos([
+      ano(2024, 12, 1000, { RH: -300 }),
+      ano(2025, 12, 0, { RH: -400 }),     // sem base ⇒ ponto null
+      ano(2026, 12, 1000, { RH: -350 }),
+    ])
+    expect(s.find(x => x.chave === 'RH')!.deltaPp).toBeCloseTo(-5, 6)
+  })
+})
