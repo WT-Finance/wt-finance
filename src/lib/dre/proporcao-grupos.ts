@@ -66,10 +66,14 @@ export interface SerieProporcao {
    *  explícito o Recharts abandona o algoritmo de marcas "bonitas" e divide o intervalo
    *  cru (lição medida na v5.8.1). */
   ticks: number[]
-  /** Variação em PONTOS PERCENTUAIS do primeiro ao último ponto com AV.
-   *  `null` quando não há dois pontos calculáveis. Positivo = o grupo passou a consumir
-   *  MENOS receita (melhorou). */
+  /** Variação em PONTOS PERCENTUAIS do PRIMEIRO ao ÚLTIMO ponto com AV — a tendência do
+   *  período inteiro. `null` sem dois pontos calculáveis. Positivo = o grupo passou a
+   *  consumir MENOS receita (melhorou). */
   deltaPp: number | null
+  /** Variação do PENÚLTIMO ao ÚLTIMO ponto com AV — o movimento do último ano contra o
+   *  anterior. Andam juntos de propósito: uma tendência de três anos pode esconder uma
+   *  virada no último, e o contrário também (um salto recente some numa média longa). */
+  deltaYoY: number | null
 }
 
 /** Um ano de entrada: o payload e quantos meses dele estão cobertos pela base. */
@@ -141,7 +145,8 @@ export function montarProporcaoGrupos(anos: readonly AnoProporcao[]): SeriePropo
   return semEscala.map(s => ({
     ...s,
     ...janela(s.pontos, amplitude),
-    deltaPp: deltaEmPontos(s.pontos),
+    deltaPp: deltaEmPontos(s.pontos, 0),
+    deltaYoY: deltaEmPontos(s.pontos, -2),
   }))
 }
 
@@ -235,10 +240,21 @@ function janela(
   return { dominio: [base, topo], ticks }
 }
 
-/** Variação do primeiro ao último ponto COM AV, em p.p. Positivo = passou a consumir
- *  MENOS receita. `null` sem dois pontos calculáveis — nunca 0, que afirmaria estabilidade. */
-function deltaEmPontos(pontos: readonly PontoProporcao[]): number | null {
+/**
+ * Variação até o último ponto COM AV, em p.p. Positivo = passou a consumir MENOS receita.
+ *
+ * `de` escolhe a outra ponta: `0` é o primeiro ponto da série (tendência do período
+ * inteiro) e `-2` é o penúltimo (o ano contra o anterior). Índice negativo conta do fim,
+ * como `Array.at`.
+ *
+ * `null` sem dois pontos calculáveis — nunca 0, que afirmaria estabilidade onde só falta
+ * medida. Anos sem base saem da conta antes, então o Δ sempre liga dois pontos que
+ * existem no gráfico.
+ */
+function deltaEmPontos(pontos: readonly PontoProporcao[], de: number): number | null {
   const vs = pontos.map(p => p.av).filter((v): v is number => v !== null)
   if (vs.length < 2) return null
-  return vs[vs.length - 1] - vs[0]
+  const inicio = vs.at(de)
+  if (inicio === undefined) return null
+  return vs[vs.length - 1] - inicio
 }

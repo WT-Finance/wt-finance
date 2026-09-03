@@ -347,30 +347,43 @@ export default async function DrePage({
 
   return (
     <div className="space-y-6">
-      {/* ── FRESCOR DAS DUAS BASES, no topo (v5.9.2) ────────────────────────────
+      {/* ── CABEÇALHO DA PÁGINA (v5.9.2) ────────────────────────────────────────
+          Título e propósito à esquerda; o frescor das duas bases à direita, na mesma
+          linha.
+
           Os dois selos moravam dentro dos respectivos cards de demonstrativo, em
           TopSections diferentes: para comparar a idade das bases era preciso rolar a
-          página inteira. Lado a lado, a comparação é imediata — e ela é a pergunta real
+          página inteira. Juntos, a comparação é imediata — e ela é a pergunta real
           ("a competência está mais velha que o caixa?"), porque as duas safras são
           INDEPENDENTES e é isso que explica metade das divergências entre os regimes.
           `UltimaAtualizacao` devolve `null` sozinho quando não há data, então cada selo
           some por conta própria sem `&&` aqui. */}
-      <div className="flex flex-col items-end gap-y-0.5 text-2xs">
-        <UltimaAtualizacao
-          iso={compQualquer?.carregado_em ?? null}
-          prefixo="Competência · Última atualização em"
-          iconSize={12}
-          /* A régua de 45min do componente é a do CRON do Monde. Estas duas bases são de
-             cadência HUMANA (upload da controladoria), e ali o alerta ficaria vermelho
-             quase sempre — alerta permanente não é alerta, é ruído. */
-          vigiarAtraso={false}
-        />
-        <UltimaAtualizacao
-          iso={ultimaCargaMovimentacao}
-          prefixo="Caixa · Última atualização em"
-          iconSize={12}
-          vigiarAtraso={false}
-        />
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
+        <div>
+          <h1 className="text-xl font-semibold text-text-primary">Demonstrativos de Resultado</h1>
+          <p className="mt-0.5 text-sm text-text-secondary">
+            Painel de acompanhamento dos demonstrativos de resultado por regime de
+            competência e fluxo de caixa
+          </p>
+        </div>
+
+        <div className="flex flex-col items-end gap-y-0.5 text-2xs">
+          <UltimaAtualizacao
+            iso={compQualquer?.carregado_em ?? null}
+            prefixo="Competência · Última atualização em"
+            iconSize={12}
+            /* A régua de 45min do componente é a do CRON do Monde. Estas duas bases são
+               de cadência HUMANA (upload da controladoria), e ali o alerta ficaria
+               vermelho quase sempre — alerta permanente não é alerta, é ruído. */
+            vigiarAtraso={false}
+          />
+          <UltimaAtualizacao
+            iso={ultimaCargaMovimentacao}
+            prefixo="Caixa · Última atualização em"
+            iconSize={12}
+            vigiarAtraso={false}
+          />
+        </div>
       </div>
 
       {/* ── VISÃO GERAL (v5.8.1, conferência do Yan) ────────────────────────────
@@ -434,11 +447,7 @@ export default async function DrePage({
                 diz por que os dois regimes divergem, e a grade diz como a estrutura de
                 custo se moveu ao longo dos anos. É a leitura que fecha a Visão Geral. */}
             {seriesProporcao.length > 0 && (
-              <GradeProporcao
-                series={seriesProporcao}
-                janela={janela}
-                anoParcial={mCob < 12 ? anoCorrente : null}
-              />
+              <GradeProporcao series={seriesProporcao} />
             )}
           </div>
         </TopSection>

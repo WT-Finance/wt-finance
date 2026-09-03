@@ -53,15 +53,46 @@ function fmtDeltaPp(v: number): string {
 
 /** Cor por SIGNIFICADO, não por sinal aritmético: estas séries são despesas, então um Δ
  *  positivo (menos negativo) quer dizer que o grupo passou a consumir MENOS receita — é
- *  melhora. Zero fica neutro: "não mudou" não é boa nem má notícia. */
-function corDelta(v: number): string {
-  if (v === 0) return 'text-text-subtle'
-  return v > 0 ? 'text-positive-deep' : 'text-negative-deep'
+ *  melhora. Zero e ausência ficam neutros: "não mudou" não é boa nem má notícia.
+ *
+ *  ⚠️ `--success`/`--danger`, e não os `-deep` que o resto da DRE usa (conferência do
+ *  Yan, que apontou os cards de KPI como referência — ver `shared/kpi-coluna.tsx`, que
+ *  usa este mesmo par). Os `-deep` existem para contrastar sobre a BANDA CLARA da tabela,
+ *  onde os tons base reprovam AA; num número pequeno sobre o BRANCO do card, eles leem
+ *  como cinza e marrom em vez de verde e vermelho — e aqui a cor é metade da informação.
+ *
+ *  Sem SETA, ao contrário da referência: lá a métrica é receita, e ↑ quer dizer "subiu, é
+ *  bom". Aqui a série é despesa com sinal algébrico — um Δ positivo significa que a
+ *  proporção subiu (de −5,1% para −3,3%) E que a despesa passou a pesar MENOS. A seta
+ *  teria de escolher entre apontar a direção do número e a do significado, e qualquer
+ *  escolha contradiz a outra metade. O sinal `+`/`−` com a cor diz as duas coisas sem
+ *  ambiguidade. */
+function corDelta(v: number | null): string {
+  if (v === null || v === 0) return 'text-text-subtle'
+  return v > 0 ? 'text-success' : 'text-danger'
+}
+
+/** Um Δ rotulado. O rótulo vem em peso normal e cor esmaecida, o número em peso forte —
+ *  quem varre a grade lê os números; o rótulo é só para saber qual é qual na primeira vez. */
+function Delta({ rotulo, valor, titulo }: { rotulo: string; valor: number | null; titulo: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1 whitespace-nowrap" title={titulo}>
+      <span className="font-normal text-text-subtle">{rotulo}</span>
+      <span className={`font-semibold ${corDelta(valor)}`}>
+        {valor === null ? '—' : fmtDeltaPp(valor)}
+      </span>
+    </span>
+  )
 }
 
 function MiniGrafico({ serie }: { serie: SerieProporcao }) {
   // Ponto sem base válida não é plotado (o Recharts corta a linha em `null`), e nunca
   // vira zero — zero diria "não consumiu nada", que é outra afirmação.
+  const comAv = serie.pontos.filter(p => p.av !== null)
+  const primeiroAno = comAv[0]?.ano
+  const ultimoAno = comAv.at(-1)?.ano
+  const penultimoAno = comAv.at(-2)?.ano
+
   const dados = serie.pontos.map(p => ({
     rotulo: p.parcial ? `${p.ano}*` : String(p.ano),
     av: p.av,
@@ -75,18 +106,16 @@ function MiniGrafico({ serie }: { serie: SerieProporcao }) {
         <p className="truncate text-[11px] font-semibold text-text-primary" title={serie.rotulo}>
           {serie.rotulo}
         </p>
-        {/* O Δ ANOTADO é o contrapeso da escala comum: com todos os eixos na mesma
-            altura, um grupo estável vira quase uma reta — o que é a verdade sobre ele,
-            mas esconde a magnitude exata. O número devolve a precisão sem depender do
-            olho. Sinal: positivo = passou a consumir MENOS receita (melhora). */}
-        {serie.deltaPp !== null && (
-          <span
-            className={`shrink-0 text-[10px] font-semibold tabular-nums ${corDelta(serie.deltaPp)}`}
-            title={`Variação de ${serie.pontos[0]?.ano} a ${serie.pontos.at(-1)?.ano}, em pontos percentuais da Receita Bruta`}
-          >
-            {fmtDeltaPp(serie.deltaPp)}
-          </span>
-        )}
+        {/* Os DOIS Δ são o contrapeso da escala comum: com todos os eixos na mesma
+            altura, um grupo estável vira quase uma reta — verdade sobre ele, mas que
+            esconde a magnitude exata. Os números devolvem a precisão sem depender do olho.
+            E são dois porque contam coisas diferentes: uma tendência de três anos pode
+            esconder uma virada no último ano, e um salto recente some numa média longa.
+            Sinal: positivo = passou a consumir MENOS receita (melhora). */}
+        <span className="flex shrink-0 items-baseline gap-2.5 text-[11px] tabular-nums">
+          <Delta rotulo="Δ Total" valor={serie.deltaPp} titulo={`De ${primeiroAno} a ${ultimoAno}, em pontos percentuais da Receita Bruta`} />
+          <Delta rotulo="Δ YoY" valor={serie.deltaYoY} titulo={`De ${penultimoAno} a ${ultimoAno}, em pontos percentuais da Receita Bruta`} />
+        </span>
       </div>
       <div style={{ height: ALTURA }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -149,12 +178,9 @@ function MiniGrafico({ serie }: { serie: SerieProporcao }) {
 
 interface Props {
   series: SerieProporcao[]
-  /** Rótulo da janela do ano corrente, para o subtítulo (ex.: "jan–ago"). */
-  janela: string
-  anoParcial: number | null
 }
 
-export default function GradeProporcao({ series, janela, anoParcial }: Props) {
+export default function GradeProporcao({ series }: Props) {
   if (series.length === 0) return null
 
   // `CUSTO` é o primeiro da lista por construção (ver `GRUPOS_PROPORCAO`).
@@ -179,10 +205,7 @@ export default function GradeProporcao({ series, janela, anoParcial }: Props) {
             </button>
           </Tooltipzinho>
         </div>
-        <p className="text-[11px] text-text-secondary">
-          Competência · ano a ano
-          {anoParcial !== null && janela !== '' && ` · ${anoParcial}* = ${janela}`}
-        </p>
+        <p className="text-[11px] text-text-secondary">Por regime de competência</p>
       </div>
 
       <div className="space-y-3">
