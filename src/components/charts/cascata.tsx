@@ -7,6 +7,7 @@ import {
 } from '@/components/charts'
 import { fmtBRL2, fmtMi } from '@/lib/fmt'
 import type { Cascata } from '@/lib/dre/cascata'
+import { passoRedondo } from '@/lib/escala-grafico'
 
 // ── Cascata (waterfall) — primitivo de gráfico (v5.8.1) ───────────────────────
 // Duas âncoras e os degraus que levam de uma à outra. Serve os DOIS cards novos da
@@ -62,18 +63,6 @@ export function alturaCascata(qtdBarras: number): number {
 function larguraEixoY(rotulos: string[]): number {
   const maior = rotulos.reduce((m, r) => Math.max(m, r.length), 0)
   return Math.min(Math.ceil(48 + maior * 6.4), 280)
-}
-
-/** Mantissas aceitas para o PASSO da régua, em ordem. Todas produzem um meio-passo
- *  legível (300k, 750k…), que importa porque a régua tem exatamente dois passos por
- *  lado do zero. */
-const MANTISSAS = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10] as const
-
-/** O menor passo "redondo" ≥ `v`. */
-function passoRedondo(v: number): number {
-  const base = Math.pow(10, Math.floor(Math.log10(v)))
-  for (const m of MANTISSAS) if (m * base >= v) return m * base
-  return 10 * base
 }
 
 /**

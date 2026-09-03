@@ -6,6 +6,43 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.2] — 2026-09-03
+
+PATCH · **Demonstrativo de Resultado: grade de proporção sobre a Receita Bruta, cabeçalho da página e os selos de frescor no topo**. **ZERO migration**, zero RPC nova, sem ADR novo · **1171 testes** (de 1146).
+
+### Adicionado
+
+- **Grade "Proporção sobre a Receita Bruta"**, na Visão Geral, abaixo da ponte — sete mini-gráficos de linha com a Análise Vertical de cada grupo, ano a ano (`CUSTO` isolado acima; as seis despesas num 2×3). Responde o que nenhum card respondia: **se um grupo cresceu mais rápido que a receita**. O valor absoluto de RH sobe junto com o faturamento; a proporção mostra que ele saiu de **−32,1% para −42,2%** em dois anos.
+  - **Escala COMPARÁVEL entre os sete gráficos.** Com o eixo auto-escalado, cada um esticava a própria série até preencher o card — RH (10,16 p.p. de amplitude) e Despesas Comerciais (0,36 p.p.) desenhavam a MESMA inclinação, e uma razão de **28×** sumia da tela. Agora todas as janelas têm a mesma altura em pontos percentuais, posicionadas no nível de cada série: medido na base viva, RH usa 85% da altura e Comerciais 3%.
+  - **Eixo INVERTIDO** (a AV de despesa é negativa): a linha SUBINDO passa a significar "consome mais receita", sem que o rótulo precise mentir sobre o sinal — ele continua `−5,4%`, como a coluna AV do demonstrativo.
+  - **Δ Total e Δ YoY** anotados no canto de cada gráfico. São dois porque contam coisas diferentes: uma tendência de três anos pode esconder uma virada no último ano (RH Benefícios fecha `Δ Total +1,6 p.p.` com `Δ YoY −2,8 p.p.`). São também o contrapeso da escala comum — com todos os eixos na mesma altura, um grupo estável vira quase uma reta, e o número devolve a precisão sem depender do olho.
+  - **Eixo ANUAL, e não mensal**, contra medição: a proporção mensal vira serrote (abril/26 marca −26% no custo contra média de −4%, por um mês de receita fraca).
+- **Cabeçalho da página** — título "Demonstrativos de Resultado" e o propósito à esquerda; os **dois selos de frescor** à direita, na mesma linha. Eles moravam dentro dos respectivos cards de demonstrativo, em TopSections diferentes: comparar a idade das duas bases exigia rolar a página. Juntos, a comparação é imediata — e é a pergunta real, porque as safras são INDEPENDENTES e é isso que explica metade das divergências entre os regimes.
+- **`lib/escala-grafico.ts`** — `passoRedondo` saiu de dentro de `charts/cascata.tsx` e virou helper compartilhado, porque a grade precisou da mesma conta. Duplicar a tabela de mantissas é como duas réguas divergem no primeiro ajuste.
+- **2 casos de contrato NOVOS contra a BASE VIVA**: os sete grupos existem na árvore viva de competência, e as sete janelas têm a mesma altura com as amplitudes reais.
+
+### Alterado
+
+- `ChartYAxisPct` aceita `invertido`, `domain` e `ticks`; `ChartGrid` volta ao default (a prop `fundo`, criada e descartada na mesma versão, saiu). Todos os defaults ficam intocados.
+- **A skill `graficos` ganhou duas seções** — "Domínio e escala — as armadilhas que NÃO dão erro" e "Estrutura e forma" (93 → 136 linhas), com as 4 regras desta versão **e as 3 da v5.8.1** que tinham ficado só no out-briefing daquela: domínio default que corta negativos, `ChartZeroLineX` em barra horizontal, waterfall com barra de faixa e `ResponsiveContainer` que exige `height`. O fio que liga as sete, e que abre a seção: **nenhuma dá erro** — `tsc`, lint e teste passam e o gráfico desenha algo errado. A `description` do frontmatter foi ampliada junto, porque é ela que dispara a skill.
+- A cor do Δ usa `--success`/`--danger` — o mesmo par dos cards de KPI. Os `-deep` do resto da DRE existem para contrastar sobre a BANDA CLARA da tabela; num número pequeno sobre o BRANCO do card eles leem como cinza e marrom em vez de verde e vermelho.
+
+### Corrigido
+
+- **A janela do eixo empurrava pontos para FORA do gráfico.** A primeira versão da escala comum encaixava as duas pontas do domínio na grade do passo, e com RH (−32,06% a −42,2%) a base alinhada em −45 levava o topo a −33: o ponto de 2024 saía do eixo e **sumia da linha, sem erro nenhum**. O domínio passou a ser exato, com só os TICKS em múltiplos redondos. Quem pegou foi o caso de contrato contra a **base viva** — os dados sintéticos do teste de módulo não tinham essa borda; virou teste de regressão com os números reais.
+
+### Não entrou (avaliado e revertido)
+
+- **A decomposição partindo do fechamento do ano anterior.** O pedido era trocar a âncora para "2025 cheio × YTD 26"; medido contra a base viva, isso **inverte o sinal de 8 dos 15 degraus**, porque um lado tem 12 meses e o outro 9 — RH apareceria em barra verde com +814 mil estando pior, e a Receita de Vendas em vermelho com −3,52 Mi em pleno crescimento. A alternativa implementada (acumulação) fechava a cascata em R$ 360,2 k, a soma de dois exercícios: um acumulado de 20 meses que não existe em demonstrativo nenhum. **A decomposição segue YTD × YTD**, onde as duas âncoras são linhas da DRE.
+  O caso de contrato ganhou uma guarda no caminho: ele agora prova que as duas âncoras usam a MESMA janela. Se alguém trocar a inicial por 12 meses, o teste cai contra o dado real.
+
+### Prova
+
+- Gates: `tsc`, `lint`, `build` e **1171 testes** (baseline 1146 no main da v5.9.1, +25), com **9 casos de contrato contra a base viva** na área da DRE.
+- **O que NÃO mudou:** o motor de caixa, as duas tabelas densas e o RENDER dos dois Resumos Executivos. A `TabelaDre` perdeu a prop `ultimaCargaMovimentacao` (o selo subiu para a página) — nenhum outro consumidor existia.
+
+---
+
 ## [5.9.1] — 2026-09-02
 
 PATCH · **Solicitações: excluir anexo, e o campo de anexo do tipo vira registro da abertura**. Migrations `0264` e `0265` (aditivas) · **Emenda 2 do ADR-0169**.

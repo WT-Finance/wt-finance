@@ -1,6 +1,6 @@
 ---
 name: graficos
-description: Gráficos do Janus (Recharts) — criar OU alterar QUALQUER gráfico do dashboard: adicionar/mudar série, linha de projeção tracejada, legenda, tooltip, eixo (fmtAxisBRL/fmtAxisPct/fmtAxisMes) e cor de série pela paleta canônica por contexto semântico (série principal --brand, margem --brand-deep, cash-flow --positive/--negative, subsetor e cross-setor por token; sólido = real, tracejado = referência/projeção). Sempre pelos primitivos de @/components/charts — nunca Recharts cru. Use para qualquer trabalho em gráfico: visualização nova, série nova, projeção, legenda, eixo, tooltip ou cor de gráfico.
+description: Gráficos do Janus (Recharts) — criar OU alterar QUALQUER gráfico do dashboard: adicionar/mudar série, linha de projeção tracejada, legenda, tooltip, eixo (fmtAxisBRL/fmtAxisPct/fmtAxisMes) e cor de série pela paleta canônica por contexto semântico (série principal --brand, margem --brand-deep, cash-flow --positive/--negative, subsetor e cross-setor por token; sólido = real, tracejado = referência/projeção). Cobre também as armadilhas que NÃO dão erro e só aparecem na tela: domínio e escala de eixo (o default corta negativos e desliga os ticks bonitos), GRADE de gráficos/small multiples com escala comparável, altura do ResponsiveContainer e a forma do waterfall. Sempre pelos primitivos de @/components/charts — nunca Recharts cru. Use para qualquer trabalho em gráfico: visualização nova, série nova, projeção, legenda, eixo, domínio/escala, grade de mini-gráficos, tooltip ou cor de gráfico.
 ---
 
 # Gráficos (Janus)
@@ -84,6 +84,49 @@ paleta neutra própria, independente de `[data-theme]`; isso é assunto de
   `content` custom que desenha UM `<text>` centrado acima da barra (caso vivo:
   `comparativo-colunas.tsx`, v5.6.1). Em barra horizontal (`position="right"`) o problema
   não existe.
+
+## Domínio e escala — as armadilhas que NÃO dão erro
+
+Todas as regras desta seção têm a mesma assinatura: o gráfico desenha algo **errado sem
+lançar nada**. `tsc`, lint e teste passam; só a tela mostra. Cada uma custou pelo menos uma
+rodada de conferência visual.
+
+- **Série que cruza o ZERO** → o domínio default de um eixo numérico é `[0, 'auto']`
+  (`axisSelectors.js`): ele **ancora em zero e corta os negativos**. Gráfico com valores dos
+  dois lados exige `domain` explícito. E em barra HORIZONTAL (`layout="vertical"`) a linha do
+  zero é `ChartZeroLineX()` — `ChartZeroLine()` ancora no Y, que ali é o eixo de CATEGORIAS, e
+  desenha a régua atravessando a primeira categoria. (`charts/cascata.tsx`, v5.8.1.)
+- **`domain` explícito DESLIGA os ticks bonitos** → o Recharts passa a dividir o intervalo cru
+  e produz marcas como `-471 k · 79 k · 629 k` — numa escala simétrica, **sem o zero entre
+  elas**, que era o ponto de ser simétrica. Quem fixa `domain` fixa `ticks` junto.
+- **Derive a amplitude do PASSO redondo** (`lib/escala-grafico.ts`), nunca o contrário:
+  arredondar a amplitude e depois dividir dá passos quebrados (15 / 4 = 3,75). E encaixe na
+  grade **só os TICKS, nunca as pontas do domínio** — alinhar as pontas empurra a janela para
+  fora da série e faz pontos SUMIREM da linha. (v5.9.2: com RH indo de −32,06% a −42,2%, a base
+  alinhada em −45 levava o topo a −33 e o ponto de 2024 saía do eixo. Quem pegou foi o caso de
+  contrato contra a BASE VIVA — a fixture sintética não tinha a borda.)
+- **GRADE de gráficos (small multiples)** → eixo auto-escalado **mente sobre a inclinação**:
+  cada gráfico estica a própria série até preencher o card, e uma variação de 0,3 p.p. desenha
+  a mesma subida de uma de 10 p.p. Séries que serão comparadas entre si precisam de **domínio
+  de mesma AMPLITUDE**, posicionado no nível de cada uma — isso preserva o nível e torna a
+  inclinação comparável. O custo é que série estável fica quase reta (o que é a verdade sobre
+  ela): anote o Δ ao lado do título para devolver a precisão sem depender do olho.
+  (`dre/grade-proporcao.tsx`, v5.9.2 — a razão de 28× entre RH e Desp. Comerciais era invisível.)
+- **Série sempre NEGATIVA por natureza** (proporção de despesa sobre receita) → `ChartYAxisPct`
+  com `invertido`: o eixo vira e "pesa mais" volta a ser "mais alto", com o rótulo continuando
+  `−5,4%`. É diferente de plotar o módulo, que faria a mesma grandeza aparecer com dois sinais
+  em telas vizinhas.
+
+## Estrutura e forma
+
+- ⚠️ **`ResponsiveContainer` exige `height` no pai, NUNCA `min-height`.** Percentual de altura
+  resolve contra `height`; com `min-height` o filho mede **0** e o gráfico some sem erro — card
+  desenhado, área vazia. Num `grid` o defeito fica **LATENTE** (o item ganha altura do
+  `align-items: stretch`) e só aparece quando o card vira bloco. Medido: bloco+min-height → 0px;
+  grid+min-height → 200px; bloco+height → 200px. (v5.8.1.)
+- **Waterfall / cascata** → barra de FAIXA (`dataKey` apontando para `[início, fim]`, nativo no
+  Recharts), nunca o truque da barra transparente empilhada: o empilhamento manda negativo para
+  o outro lado e a figura quebra assim que uma âncora cruza o zero.
 
 ## Ver também
 

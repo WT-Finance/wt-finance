@@ -25,6 +25,7 @@ import {
 import { montarPonte } from './dre/ponte-regimes'
 import { montarDecomposicao } from './dre/decomposicao-variacao'
 import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
+import { montarProporcaoGrupos, GRUPOS_PROPORCAO } from './dre/proporcao-grupos'
 import { janelaYtdCompetencia } from './dre/janela-competencia'
 import { folhasPorGrupo, totalFolhas } from './dre/folhas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
@@ -1779,11 +1780,73 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     const anoSP = Number(hojeSP().slice(0, 4))
     const atual = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
     const anterior = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP - 1 }))
+    const m = janelaYtdCompetencia(atual)
 
-    const c = montarDecomposicao(atual, anterior, janelaYtdCompetencia(atual), 'anterior', 'atual')
-    const soma = c.degraus.reduce((s, d) => s + d.delta, 0)
+    const c = montarDecomposicao(atual, anterior, m, 'anterior', 'atual')
+    const soma = c.degraus.reduce((s: number, d: { delta: number }) => s + d.delta, 0)
 
     expect(c.inicial.valor + soma, 'REX anterior + Σ degraus ≠ REX atual').toBe(c.final.valor)
     expect(c.fecha).toBe(true)
+
+    // ⚠️ As DUAS âncoras usam a MESMA janela, e é isso que faz cada degrau significar o
+    // que aparenta. A v5.9.2 avaliou partir do ano anterior FECHADO (12 meses contra 8) e
+    // descartou: medido, aquilo invertia o sinal de 8 dos 15 degraus. Se alguém trocar a
+    // âncora inicial por 12 meses, este teste cai — que é o ponto.
+    for (const [nome, payload] of [['anterior', anterior], ['atual', atual]] as const) {
+      const rex = payload.linhas.find(l => l.t !== 'cat' && l.chave === 'REX')
+      expect(rex, `${nome} sem linha REX`).toBeDefined()
+      const naJanela = rex!.meses.slice(0, m).reduce((s, v) => s + Math.round(v * 100), 0)
+      const alvo = nome === 'anterior' ? c.inicial.valor : c.final.valor
+      expect(alvo, `a âncora ${nome} não usa a janela YTD`).toBe(naJanela)
+    }
+  })
+
+  it('os 7 grupos da grade de proporção existem na árvore VIVA de competência', async () => {
+    // Chave renomeada no editor da estrutura deixaria um mini-gráfico VAZIO, em silêncio —
+    // o mesmo risco que o teste das linhas do Resumo Executivo cobre.
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const comp = dreCompMensalSchema.parse(await rpc('get_dre_competencia_mensal', { p_ano: anoSP }))
+
+    const folhasVivas = new Set(comp.linhas.filter(l => l.t === 'cat').map(l => l.g))
+    for (const k of GRUPOS_PROPORCAO) {
+      expect(folhasVivas.has(k), `a grade pede o grupo ${k}, que a árvore viva não tem`).toBe(true)
+    }
+
+    // E a série sai com AV calculável em TODOS os anos cobertos (base > 0 em cada um).
+    const series = montarProporcaoGrupos([
+      { ano: anoSP, payload: comp, meses: janelaYtdCompetencia(comp) },
+    ])
+    for (const s of series) {
+      expect(s.pontos[0].av, `${s.chave} sem AV — Receita Bruta ausente ou ≤ 0`).not.toBeNull()
+    }
+  })
+
+  it('as sete janelas da grade têm a MESMA altura contra a base viva', async () => {
+    // A invariante que o ajuste da escala existe para garantir. Com eixo auto-escalado,
+    // RH (10,2 p.p. de amplitude) e Desp. Comerciais (0,36 p.p.) desenhavam a mesma
+    // inclinação — uma razão de 28× sumia da tela. Aqui isso é medido contra o dado real,
+    // onde as amplitudes são as de verdade e não as de uma fixture escolhida.
+    const anoSP = Number(hojeSP().slice(0, 4))
+    const anos = [anoSP - 2, anoSP - 1, anoSP]
+    const payloads = await Promise.all(
+      anos.map(a => rpc('get_dre_competencia_mensal', { p_ano: a }).then(r => dreCompMensalSchema.parse(r))),
+    )
+    const m = janelaYtdCompetencia(payloads[2])
+
+    const series = montarProporcaoGrupos(
+      anos.map((a, i) => ({ ano: a, payload: payloads[i], meses: a === anoSP ? m : 12 })),
+    )
+
+    const alturas = new Set(series.map(s => Number((s.dominio[1] - s.dominio[0]).toFixed(6))))
+    expect(alturas.size, `janelas de alturas diferentes: ${[...alturas].join(', ')}`).toBe(1)
+
+    // E cada série cabe inteira na sua janela — um ponto fora do eixo sumiria do gráfico.
+    for (const s of series) {
+      for (const p of s.pontos) {
+        if (p.av === null) continue
+        expect(p.av, `${s.chave} fora do eixo`).toBeGreaterThanOrEqual(s.dominio[0] - 1e-9)
+        expect(p.av, `${s.chave} fora do eixo`).toBeLessThanOrEqual(s.dominio[1] + 1e-9)
+      }
+    }
   })
 })

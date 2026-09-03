@@ -35,6 +35,50 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.9.2',
+    data: '2026-09-03T16:21', // autoria; reconciliar ao horário REAL do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A página do Demonstrativo de Resultado ganhou um painel novo, "Proporção sobre a ' +
+          'Receita Bruta": sete gráficos mostrando quanto cada grupo de custo e despesa ' +
+          'consumiu da receita em cada ano. É uma leitura que os números absolutos não dão. ' +
+          'O gasto com RH cresceu nos últimos anos, mas o faturamento também — o que só a ' +
+          'proporção revela é que ele cresceu MAIS RÁPIDO: saiu de 32,1% da receita em 2024 ' +
+          'para 42,2% em 2026. É a diferença entre "gastamos mais porque vendemos mais" e ' +
+          '"a estrutura está pesando mais sobre cada real vendido".',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Cada gráfico traz dois números no canto: a variação do período inteiro e a do ' +
+          'último ano contra o anterior. Os dois juntos porque contam coisas diferentes — ' +
+          'os benefícios de RH, por exemplo, melhoraram olhando de 2024 para cá, mas ' +
+          'pioraram no último ano. Uma leitura sozinha esconderia metade da história.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os sete gráficos usam a MESMA escala, então a inclinação das linhas pode ser ' +
+          'comparada entre eles: um grupo que se moveu muito tem uma curva visivelmente mais ' +
+          'inclinada que um grupo estável. Antes cada gráfico se ajustava sozinho ao próprio ' +
+          'tamanho, e uma variação de 0,3 ponto desenhava a mesma subida de uma de 10 pontos ' +
+          '— o desenho dizia o contrário do número.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A página ganhou título e uma linha explicando o que ela é. E as duas datas de ' +
+          '"última atualização" — a da base de competência e a do fluxo de caixa — subiram ' +
+          'para o topo, lado a lado. Antes cada uma ficava dentro do seu quadro, em pontos ' +
+          'distantes da página: para saber se uma base estava mais velha que a outra era ' +
+          'preciso rolar a tela inteira, e essa comparação explica boa parte das diferenças ' +
+          'entre os dois demonstrativos.',
+      },
+    ],
+  },
+  {
     versao: '5.9.1',
     data: '2026-09-02T17:13', // horário REAL do merge (ed1de9c, PR #251, 02/09 17h13 −03) — reconciliado no /pos-merge
     itens: [

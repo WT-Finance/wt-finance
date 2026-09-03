@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-02 (pós-merge da v5.9.1) · produção na **v5.9.1** (#251 mergeado 02/09 às 17h13 — Solicitações: excluir anexo em "Outros anexos", e o campo de anexo do TIPO vira registro imutável da abertura; migrations `0264`/`0265`, Emenda 2 do **ADR-0169**, 1146 testes). Antes a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-09-03 (fechamento da v5.9.2) · produção na **v5.9.1** (#251 mergeado 02/09 às 17h13 — Solicitações: excluir anexo em "Outros anexos", e o campo de anexo do TIPO vira registro imutável da abertura; migrations `0264`/`0265`, Emenda 2 do **ADR-0169**, 1146 testes). Antes a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ✅ **v5.8.1 EM PRODUÇÃO** — **ADR-0171**, **ZERO migration**, **1125 testes** (de 1056),
 incluindo 5 casos de contrato que confrontam a BASE VIVA a cada `npm test`.
@@ -36,6 +36,19 @@ principalmente, o fim da ambiguidade de ter dois lugares para anexar:
 > **O campo de anexo do TIPO é o registro do que veio na ABERTURA** — lista os arquivos, não
 > recebe novos, não permite excluir. Tudo que chega depois vai para **"Outros anexos"**, único
 > lugar de anexo pós-abertura. A CRIAÇÃO segue aceitando vários arquivos por campo.
+
+⚠️ **v5.9.2 FECHADA E AGUARDANDO MERGE (PR #253)** — branch
+`feat/v5-9-2-dre-proporcao-e-acumulacao`, **ZERO migration**, **sem ADR novo**, **1171 testes**
+(de 1146). `/financeiro/dre` ganhou a grade **"Proporção sobre a Receita Bruta"** (7
+mini-gráficos com a AV de cada grupo ano a ano, na Visão Geral), **cabeçalho de página** e os
+**dois selos de frescor no topo**, lado a lado. Tudo derivado dos payloads que a página já
+buscava. A skill `graficos` foi atualizada junto (93 → 136 linhas).
+
+⚠️ **A decomposição NÃO passou a partir do fechamento do ano anterior** — foi pedida, avaliada
+em duas formas e REVERTIDA (out-briefing da v5.9.2, §4). O durável: **numa cascata a operação
+do degrau é determinada pelas âncoras** — querer as duas pontas como linhas do demonstrativo E
+degraus que expliquem a distância entre elas obriga os dois lados à mesma janela. A
+decomposição segue YTD × YTD, agora com um caso de contrato que prova isso contra o dado real.
 
 ⚠️ **Precedente — validar contra o TIPO se lê do SNAPSHOT, não da tabela viva.** A regra do campo
 obrigatório nasceu consultando `app.solicitacao_campo`, e isso era FAIL-OPEN:

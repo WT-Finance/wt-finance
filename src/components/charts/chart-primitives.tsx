@@ -185,9 +185,21 @@ export function ChartYAxisBRL(
   )
 }
 
-/** Eixo Y percentual ('14%'), sem axisLine/tickLine. */
+/**
+ * Eixo Y percentual ('14%'), sem axisLine/tickLine.
+ *
+ * `invertido` vira o eixo de cabeça para baixo, mantendo os RÓTULOS como estão. Serve à
+ * série que é sempre NEGATIVA por natureza — a proporção de uma despesa sobre a receita,
+ * por exemplo: com o eixo normal, uma despesa que passa a pesar mais desenha uma curva
+ * DESCENDO, o oposto do que o olho lê. Invertendo o eixo, "mais despesa" volta a ser
+ * "mais alto" sem que o número precise mentir sobre o sinal.
+ *
+ * ⚠️ É diferente de plotar o módulo: ali o rótulo passaria a dizer `5,2%` para uma
+ * despesa, e a mesma grandeza apareceria com dois sinais em telas vizinhas. Aqui o
+ * rótulo continua `-5,2%`, como na coluna AV do demonstrativo — muda só a orientação.
+ */
 export function ChartYAxisPct(
-  opts?: { width?: number; casas?: number },
+  opts?: { width?: number; casas?: number; invertido?: boolean; domain?: AxisDomain; ticks?: number[] },
 ): ReactElement {
   return (
     <YAxis
@@ -196,7 +208,14 @@ export function ChartYAxisPct(
       tickLine={false}
       axisLine={false}
       width={opts?.width ?? 44}
-      domain={['auto', 'auto']}
+      /* O default `['auto','auto']` deixa CADA gráfico esticar a própria série até
+         preencher o card — ótimo para um gráfico sozinho, e enganoso numa GRADE: duas
+         séries com amplitudes 28× diferentes desenham a mesma inclinação. Quem monta
+         small multiples passa um domínio comum (e os `ticks` junto — ver o aviso em
+         `ChartXAxisBRL`). */
+      domain={opts?.domain ?? ['auto', 'auto']}
+      ticks={opts?.ticks}
+      reversed={opts?.invertido}
     />
   )
 }
