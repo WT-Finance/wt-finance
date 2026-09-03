@@ -44,8 +44,12 @@ const AJUDA =
  *  sem erro nenhum (medido na v5.8.1). */
 const ALTURA = 150
 
-/** Δ em pontos percentuais, sempre com sinal explícito — `+1,7 p.p.` / `−1,8 p.p.`.
- *  O sinal é a informação principal aqui, então ele nunca fica implícito. */
+/** Δ em pontos percentuais, sempre com sinal explícito — `+1.7 p.p.` / `−1.8 p.p.`.
+ *  O sinal é a informação principal aqui, então ele nunca fica implícito.
+ *
+ *  Ponto decimal, e não a vírgula do resto da página: decisão do Yan na conferência. Este
+ *  número é uma ANOTAÇÃO sobre o gráfico — não um valor contábil que alguém confere contra
+ *  o demonstrativo —, e ali o ponto não compete com a régua de leitura das tabelas. */
 function fmtDeltaPp(v: number): string {
   const s = v < 0 ? '−' : '+'
   return `${s}${Math.abs(v).toFixed(1)} p.p.`
