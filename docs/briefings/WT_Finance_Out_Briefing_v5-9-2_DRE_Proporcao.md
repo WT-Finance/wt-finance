@@ -138,22 +138,27 @@ e `src/components/charts/` quando der.
 
 | Aprendizado | Destino | Estado |
 |---|---|---|
-| Small multiples com eixo auto-escalado mentem sobre a inclinação | **Skill `graficos`** | proposto abaixo |
-| `domain` explícito exige `ticks` — e encaixar as PONTAS na grade expulsa pontos | **Skill `graficos`** | proposto abaixo |
+| Small multiples com eixo auto-escalado mentem sobre a inclinação | **Skill `graficos`** | **APLICADO** |
+| `domain` explícito exige `ticks` — e encaixar as PONTAS na grade expulsa pontos | **Skill `graficos`** | **APLICADO** |
+| Derivar a amplitude do PASSO redondo, nunca o contrário | **Skill `graficos`** | **APLICADO** |
+| Série sempre negativa → eixo `invertido`, não o módulo | **Skill `graficos`** | **APLICADO** |
 | Numa cascata, a operação do degrau é determinada pelas âncoras | **Out-briefing §4** | registrado |
 
-**Proposta para a skill `graficos`** (não aplicada — edição de skill passa pelo aval do Yan):
+A skill `graficos` ganhou duas seções novas (**"Domínio e escala — as armadilhas que NÃO dão
+erro"** e **"Estrutura e forma"**), de 93 para 136 linhas. Junto com as quatro acima entraram as
+**três da v5.8.1 que tinham ficado só no out-briefing daquela versão** e nunca chegaram à skill:
+o domínio default `[0, 'auto']` que corta negativos, a linha do zero no eixo errado em barra
+horizontal (`ChartZeroLineX`), o waterfall com barra de FAIXA e o `ResponsiveContainer` que
+exige `height` e não `min-height`.
 
-> - **GRADE de gráficos (small multiples)** → eixo auto-escalado MENTE sobre a inclinação:
->   cada gráfico estica a própria série até preencher o card, e uma variação de 0,3 p.p.
->   desenha a mesma subida de uma de 10 p.p. Séries que serão comparadas entre si precisam de
->   **domínio de mesma AMPLITUDE**, posicionado no nível de cada uma (preserva o nível e torna
->   a inclinação comparável). O custo é que série estável fica quase reta — anote o Δ ao lado
->   do título para devolver a precisão. Caso vivo: `dre/grade-proporcao.tsx` (v5.9.2).
-> - **Domínio fixo:** derive a amplitude do PASSO redondo (`lib/escala-grafico.ts`), não o
->   contrário — arredondar a amplitude e depois dividir dá passos quebrados. E encaixe só os
->   TICKS na grade, **nunca as pontas do domínio**: alinhar as pontas empurra a janela para
->   fora da série e faz pontos sumirem do gráfico sem erro (v5.9.2).
+**O fio que liga as sete e abre a seção:** nenhuma dá erro. `tsc`, lint e teste passam, e o
+gráfico simplesmente desenha algo errado — cada uma custou pelo menos uma rodada de conferência
+visual, e a do encaixe das pontas só apareceu no caso de contrato contra a base viva. Registrar
+isso como *classe* de defeito vale mais que as sete regras somadas: quem for mexer em eixo
+agora sabe que o gate verde não é evidência.
+
+A `description` do frontmatter também foi ampliada — ela é o gatilho da skill, e as regras novas
+cobrem casos ("grade de gráficos", "domínio e escala de eixo") que o texto antigo não citava.
 
 ---
 

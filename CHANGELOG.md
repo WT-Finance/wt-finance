@@ -24,6 +24,7 @@ PATCH · **Demonstrativo de Resultado: grade de proporção sobre a Receita Brut
 ### Alterado
 
 - `ChartYAxisPct` aceita `invertido`, `domain` e `ticks`; `ChartGrid` volta ao default (a prop `fundo`, criada e descartada na mesma versão, saiu). Todos os defaults ficam intocados.
+- **A skill `graficos` ganhou duas seções** — "Domínio e escala — as armadilhas que NÃO dão erro" e "Estrutura e forma" (93 → 136 linhas), com as 4 regras desta versão **e as 3 da v5.8.1** que tinham ficado só no out-briefing daquela: domínio default que corta negativos, `ChartZeroLineX` em barra horizontal, waterfall com barra de faixa e `ResponsiveContainer` que exige `height`. O fio que liga as sete, e que abre a seção: **nenhuma dá erro** — `tsc`, lint e teste passam e o gráfico desenha algo errado. A `description` do frontmatter foi ampliada junto, porque é ela que dispara a skill.
 - A cor do Δ usa `--success`/`--danger` — o mesmo par dos cards de KPI. Os `-deep` do resto da DRE existem para contrastar sobre a BANDA CLARA da tabela; num número pequeno sobre o BRANCO do card eles leem como cinza e marrom em vez de verde e vermelho.
 
 ### Corrigido
