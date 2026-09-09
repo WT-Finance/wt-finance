@@ -6,6 +6,31 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.3] — 2026-09-09
+
+PATCH · **Ajustes gerais: um token só para títulos e subtítulos, Resultado Financeiro na grade da DRE, badges de contagem em Solicitações e em Acessos, Gerencial abrindo do vencimento mais antigo**. Migration `0266` (aditiva, RPC de contagem) · sem ADR novo.
+
+### Adicionado
+
+- **"Resultado Financeiro" na grade "Proporção sobre a Receita Bruta"** (`/financeiro/dre`), ao lado de "Custo dos Serviços Prestados" na primeira linha — oito mini-gráficos na mesma escala. É o único grupo que pode ser POSITIVO (receita financeira maior que a despesa), e a janela do eixo deixou de pressupor série ≤ 0: série com algum ponto positivo tem o topo livre, e os ticks passaram a ancorar em zero para que a marca `0` apareça sempre que estiver dentro do domínio. O eixo segue INVERTIDO nos oito — numa grade de escala comparável, "para cima" tem de significar a mesma coisa em todos os cards. Medido na base viva: `FIN` = −4,63% (2024) → −5,49% (2025) → −2,68% (2026, parcial) da Receita Bruta; nenhum ano positivo hoje, mas a proteção fica.
+- **Badges de contagem nas pills "Abertas" e "Aprovadas"** de Solicitações — o mesmo círculo vermelho da "Caixa de entrada" (`Badge variant="count"`), no lugar do "(7)" textual que só a aba Aprovadas tinha. "Encerradas" segue sem. Os predicados por aba saíram do componente para `lib/solicitacoes/abas.ts` (`contarPorAba`, testado).
+- **Badge de solicitações de ACESSO pendentes**, na sidebar ("Usuários e Acessos") e na pill "Solicitações de acesso" de `/admin/acessos`. RPC nova `admin_acesso_solicitacoes_pendentes()` (**`0266`**, gated em `admin/acessos`): a sidebar precisa de um NÚMERO em toda rota, não da lista. A promise é criada no layout raiz **só para quem tem a área** (o gate da RPC nega, não devolve zero) e flui não-aguardada, como a de Solicitações. O mecanismo de badge da sidebar deixou de ser hardcoded no href `/solicitacoes` e virou um mapa `badgesPorHref`.
+- **Sonda `src/styles/cabecalho-pagina.test.ts`**: reprova `<h1>` com `zinc-` e subtítulo de página em `zinc-400`/`text-text-secondary`/`text-text-muted` ou com cor via `style`. É o enforcement da regra abaixo sem tocar no `eslint.config.mjs` (protegido).
+- Casos de contrato: a RPC `0266` entra na lista viva (inteiro ≥ 0) e é negada a `anon`; a grade passa a exigir os **8** grupos vivos com janelas de mesma altura.
+
+### Alterado
+
+- **Cor de título e subtítulo normalizada em toda a plataforma** (decisão do Yan: subtítulo em cinza claro). Título de página `text-text-primary`; subtítulo de página E de seção `text-text-subtle`. Antes coexistiam três dialetos: 16 cabeçalhos em `text-zinc-900`/`text-zinc-400` inline, a DRE (v5.9.2) em `text-text-secondary` — o mais escuro dos três, visível lado a lado nos prints — e as telas de auth com `style={{ color: 'var(--text-muted)' }}`, invisível ao lint. Subtítulos de seção (`TopSection`, `Card`, `CollapsibleSection`, `CascataCard`, grade da DRE, sumário de Weddings) foram para o mesmo token. Regra registrada em `docs/design-system.md` (seção "Cabeçalho de página"; `--text-secondary` entra na tabela de tokens, que o omitia), na skill `ui-design-system` (§3) e em `/admin/design-system`, que prescrevia "cor terciária" sem nomear token — a brecha por onde os três dialetos entraram.
+- **Fluxo de Caixa Gerencial abre por Vencimento do mais ANTIGO ao mais novo** (era o inverso desde a v5.7.2; decisão do Yan). Comparador e direções padrão saíram do componente para `lib/gerencial/ordenacao.ts` (testado). O toggle no cabeçalho não mudou: o primeiro clique na coluna ativa inverte.
+- `/admin/acessos`: falha ao listar as solicitações passa a compor `erroCarga` — antes era ignorada e virava "0 pendentes" em silêncio, o que agora divergiria do badge da sidebar (que vem de outra RPC).
+
+### Prova
+
+- Gates: `tsc`, `lint`, `build` e `npm test` (ver total no out-briefing). Contrato contra a base viva: os 8 grupos existem na árvore de competência com AV nos 3 anos e cabem nas janelas de mesma altura.
+- **Fora do escopo, registrado:** tokenizar as ~400 ocorrências de `zinc-*` fora dos cabeçalhos; estender o lint `wt/no-cor-hardcoded` a `zinc` (config protegida — diff no out-briefing); a "Caixa de entrada" conta abertas+aprovadas de mim+role pela RPC e não respeita o escopo selecionado (pré-existente).
+
+---
+
 ## [5.9.2] — 2026-09-03
 
 PATCH · **Demonstrativo de Resultado: grade de proporção sobre a Receita Bruta, cabeçalho da página e os selos de frescor no topo**. **ZERO migration**, zero RPC nova, sem ADR novo · **1171 testes** (de 1146).
