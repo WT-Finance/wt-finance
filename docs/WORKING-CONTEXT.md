@@ -1,8 +1,8 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-09 (fechamento da v5.9.3, PR aberto — aguarda merge) · produção na **v5.9.2** (#253, 03/09 17h09). **v5.9.3 em PR** (`feat/v5-9-3-ajustes-gerais`): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-09-09 (pós-merge da v5.9.3) · produção na **v5.9.3** (#255 mergeado 09/09 às 15h33): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
-✅ **v5.9.3 EM PR** (`feat/v5-9-3-ajustes-gerais`, 09/09) — cinco pedidos do Yan depois de ver a
+✅ **v5.9.3 EM PRODUÇÃO** (#255, 09/09 15h33) — cinco pedidos do Yan depois de ver a
 v5.9.2 no ar. **Migration `0266` (aditiva) APLICADA** em 09/09 com gate verde e verificada via REST
 (service_role devolve inteiro; anon 401). **Sem ADR novo.** **1185 testes** (de 1171).
 1. **Título/subtítulo com um token só em toda a plataforma**: título `text-text-primary`, subtítulo de
@@ -23,7 +23,7 @@ v5.9.2 no ar. **Migration `0266` (aditiva) APLICADA** em 09/09 com gate verde e 
 🔴 **Pendente (Yan): conferência visual em produção após o merge** — cabeçalhos das ~25 telas com o
 subtítulo mais claro; 1ª linha da grade com 2 gráficos; badges em Abertas/Aprovadas; badge de acessos
 (hoje há **0 pendentes** — precisa de um pedido em `/solicitar-acesso` para aparecer); Gerencial abrindo
-em 2024. Depois do merge: `/pos-merge` reconcilia a hora do CHANGELOG_DIRETORIA.
+em 2024.
 
 ✅ **v5.8.1 EM PRODUÇÃO** — **ADR-0171**, **ZERO migration**, **1125 testes** (de 1056),
 incluindo 5 casos de contrato que confrontam a BASE VIVA a cada `npm test`.
