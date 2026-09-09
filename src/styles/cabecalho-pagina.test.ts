@@ -36,39 +36,41 @@ type Violacao = { arquivo: string; linha: number; motivo: string }
 function varrer(caminhoAbsoluto: string): Violacao[] {
   const violacoes: Violacao[] = []
   const arquivo = relative(RAIZ_REPO, caminhoAbsoluto).replace(/\\/g, '/')
-  const linhas = readFileSync(caminhoAbsoluto, 'utf8').split('\n')
+  const texto = readFileSync(caminhoAbsoluto, 'utf8')
+  const linhaDe = (pos: number) => texto.slice(0, pos).split('\n').length
 
-  linhas.forEach((linha, idx) => {
-    const h1 = linha.match(/<h1\b[^>]*>/)
-    if (!h1) return
+  // Casa a TAG inteira (`[^>]*` atravessa quebras de linha), mesmo quebrada em várias linhas (Prettier quebra `className` longo)
+  // — a 1ª versão da sonda lia linha a linha e um `<h1` com atributos multilinha passava
+  // verde com `zinc-900` dentro (achado BAIXO do revisor, v5.9.3).
+  for (const h1 of texto.matchAll(/<h1\b[^>]*>/g)) {
     const tagH1 = h1[0]
+    const linhaH1 = linhaDe(h1.index)
 
     if (/zinc-/.test(tagH1)) {
-      violacoes.push({ arquivo, linha: idx + 1, motivo: '<h1> com classe zinc-* (esperado text-text-primary)' })
+      violacoes.push({ arquivo, linha: linhaH1, motivo: '<h1> com classe zinc-* (esperado text-text-primary)' })
     }
 
-    // Subtítulo de página: <p> em até 3 linhas depois do <h1>.
-    const janela = linhas.slice(idx + 1, idx + 4)
-    const idxP = janela.findIndex(l => /<p\b/.test(l))
-    if (idxP === -1) return
-    const linhaP = janela[idxP]
-    const tagP = (linhaP.match(/<p\b[^>]*>/) ?? [linhaP])[0]
+    // Subtítulo de página: o 1º <p> nas ~3 linhas seguintes ao fim da tag do <h1>.
+    const fimH1 = h1.index + tagH1.length
+    const fimH1Fechado = texto.indexOf('</h1>', fimH1)
+    const inicioJanela = fimH1Fechado === -1 ? fimH1 : fimH1Fechado + 5
+    const janela = texto.slice(inicioJanela).split('\n').slice(0, 4).join('\n')
+    const p = janela.match(/<p\b[^>]*>/)
+    if (!p || p.index === undefined) continue
+    const tagP = p[0]
+    const linhaP = linhaDe(inicioJanela + p.index)
 
     if (/zinc-400|text-text-secondary|text-text-muted/.test(tagP)) {
-      violacoes.push({
-        arquivo, linha: idx + 2 + idxP,
-        motivo: '<p> de subtítulo fora do padrão (esperado text-text-subtle)',
-      })
+      violacoes.push({ arquivo, linha: linhaP, motivo: '<p> de subtítulo fora do padrão (esperado text-text-subtle)' })
     }
 
-    const blocoCompleto = [linha, ...janela.slice(0, idxP + 1)].join('\n')
-    if (/style=\{\{\s*color/.test(blocoCompleto)) {
+    if (/style=\{\{\s*color/.test(tagH1) || /style=\{\{\s*color/.test(tagP)) {
       violacoes.push({
-        arquivo, linha: idx + 1,
+        arquivo, linha: linhaH1,
         motivo: 'cor de cabeçalho via style={{ color... }} — deve ser classe (o lint só enxerga classe)',
       })
     }
-  })
+  }
 
   return violacoes
 }
