@@ -76,8 +76,8 @@ export default async function DreEstruturaCompetenciaPage() {
       <div className="mb-6">
         {/* `pr-40` só no H1: título longo + selo `absolute` — sem a reserva, em janela
             estreita a primeira linha correria por baixo dele. */}
-        <h1 className="pr-40 text-xl font-semibold text-zinc-900">Estrutura do Demonstrativo de Resultado por Competência</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="pr-40 text-xl font-semibold text-text-primary">Estrutura do Demonstrativo de Resultado por Competência</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Reordene as linhas e os blocos do demonstrativo por competência
         </p>
       </div>

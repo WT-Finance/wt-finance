@@ -171,6 +171,12 @@ Antes da v5.1.1 cada página tinha `px-4`/`px-6` próprio e capava em `max-w-7xl
 Se o gap lateral da plataforma inteira precisar afinar, o ajuste é **um lugar só**: o
 `px` do `<main>` — nunca 20+ páginas.
 
+**Cabeçalho de página (v5.9.3/M1):** título `text-xl font-semibold text-text-primary`,
+subtítulo (o `<p>` logo abaixo) `text-text-subtle` — sempre classe, nunca `style`, nunca
+`zinc`/`text-text-secondary`/`text-text-muted`. A sonda `src/styles/cabecalho-pagina.test.ts`
+varre `src/app`/`src/components` e reprova qualquer par h1+p fora do padrão; ver
+"Cabeçalho de página" em `docs/design-system.md` para o snippet canônico.
+
 ---
 
 ## 4. Scroll — `<main>` é o único scroll do documento; rolável interno usa `ScrollAutoHide`

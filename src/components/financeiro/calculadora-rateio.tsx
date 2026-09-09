@@ -117,8 +117,8 @@ export default function CalculadoraRateio() {
     <div className="space-y-6">
       {/* Cabeçalho — sem ícone, padrão das demais páginas (ex.: Atualização de Dados) */}
       <div>
-        <h1 className="text-xl font-semibold text-zinc-900">Calculadora de Rateio</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-text-primary">Calculadora de Rateio</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Importe uma fatura para calcular o valor a ser rateado por setor
         </p>
       </div>

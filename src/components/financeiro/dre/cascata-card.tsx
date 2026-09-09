@@ -45,14 +45,14 @@ export default function CascataCard({ titulo, subtitulo, ajuda, cascata }: Props
             </button>
           </Tooltip>
         </div>
-        <p className="text-[11px] text-text-secondary">{subtitulo}</p>
+        <p className="text-[11px] text-text-subtle">{subtitulo}</p>
       </div>
 
       {/* A identidade fecha por construção (ver `folhas.ts`). Se um payload torto
           quebrar a premissa, o card DIZ isso em vez de desenhar uma cascata que não
           soma — um gráfico que mente é pior que um aviso. */}
       {!cascata.fecha && (
-        <p className="mb-3 rounded-md bg-band-soft px-3 py-2 text-[11px] text-text-secondary">
+        <p className="mb-3 rounded-md bg-band-soft px-3 py-2 text-[11px] text-text-subtle">
           Os degraus não fecham contra as âncoras nesta carga — a leitura abaixo é parcial.
         </p>
       )}

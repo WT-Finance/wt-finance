@@ -56,8 +56,8 @@ export default async function ComparacaoMondePage() {
           Monde (cron ~15min) sem reload, como o Acompanhamento (5min). */}
       <MetasAutoRefresh intervaloMs={300_000} />
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Comparação - Upload manual | API Monde</h1>
-        <p className="mt-0.5 max-w-2xl text-sm text-zinc-400">
+        <h1 className="text-xl font-semibold text-text-primary">Comparação - Upload manual | API Monde</h1>
+        <p className="mt-0.5 max-w-2xl text-sm text-text-subtle">
           Comparação visual (read-only) dos dados provenientes do mecanismo de upload manual frente
           aos dados provenientes da integração com a API do Monde.
         </p>

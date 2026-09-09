@@ -31,8 +31,8 @@ export default function AcompanhamentoContent({ data, podeComparar }: Props) {
       <MetasAutoRefresh intervaloMs={300_000} />
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Acompanhamento das Metas</h1>
-          <p className="mt-0.5 text-sm text-zinc-400">
+          <h1 className="text-xl font-semibold text-text-primary">Acompanhamento das Metas</h1>
+          <p className="mt-0.5 text-sm text-text-subtle">
             Acompanhe o progresso do faturamento e receita em relação às metas
           </p>
         </div>

@@ -10,13 +10,33 @@ Os tokens são declarados em `src/styles/tokens.css` e importados em `src/app/gl
 
 ### Texto
 
-| Token CSS      | Valor     | Uso                          |
-|---------------|-----------|------------------------------|
-| `--text-primary` | `#2D2A26` | Títulos, valores principais  |
-| `--text-muted`   | `#75777B` | Labels, subtítulos           |
-| `--text-subtle`  | `#ACA39A` | Metadados, placeholders      |
+| Token CSS         | Valor     | Uso                          |
+|-------------------|-----------|------------------------------|
+| `--text-primary`   | `#2D2A26` | Títulos, valores principais  |
+| `--text-secondary` | `#4B4F54` | Texto secundário / H3 — **não** é subtítulo (ver "Cabeçalho de página" abaixo) |
+| `--text-muted`     | `#75777B` | Labels                       |
+| `--text-subtle`    | `#ACA39A` | **Subtítulos de página e de seção**; metadados, placeholders |
 
-Classes Tailwind: `text-text-primary`, `text-text-muted`, `text-text-subtle`
+Classes Tailwind: `text-text-primary`, `text-text-secondary`, `text-text-muted`, `text-text-subtle`
+
+### Cabeçalho de página (v5.9.3/M1)
+
+Título e subtítulo de página, e subtítulo de seção/card, usam SEMPRE o mesmo par de
+tokens em toda a plataforma — via classe Tailwind, nunca `style`, nunca `zinc`:
+
+```tsx
+<div className="mb-6">
+  <h1 className="text-xl font-semibold text-text-primary">Título da Página</h1>
+  <p className="mt-0.5 text-sm text-text-subtle">Subtítulo — uma linha de contexto</p>
+</div>
+```
+
+Título de seção (`TopSection`) continua na cor de marca (`--brand-deep`, ver §7 da
+`ui-design-system`); título de card continua `--text-primary`. `--text-secondary` é
+texto de corpo/H3, nunca subtítulo. A sonda `src/styles/cabecalho-pagina.test.ts`
+varre `src/app/**/*.tsx` e `src/components/**/*.tsx` e reprova qualquer par h1+p de
+cabeçalho fora do padrão (classe `zinc-*`, `text-text-secondary`/`text-text-muted`
+no subtítulo, ou cor via `style` — o lint `wt/no-cor-hardcoded` só enxerga classe).
 
 ### Superfícies
 
@@ -75,16 +95,17 @@ PREVISTO da DRE.)
 Fonte oficial: **Avenir LT Std** (auto-hospedada em `public/fonts/avenir/`).
 Stack de fallback: `'Avenir LT Std', 'Avenir Next', 'Inter', Arial, sans-serif`
 
-| Uso               | Peso Avenir   | CSS weight | Tamanho   |
-|------------------|--------------|-----------|-----------|
-| Display (KPI)     | 85 Heavy     | 800       | 32–40px   |
-| Heading 1 (seção) | 85 Heavy     | 800       | 20–22px   |
-| Heading 2         | 65 Medium    | 600       | 18px      |
-| Title (card)      | 65 Medium    | 600       | 16px      |
-| Body strong       | 55 Roman     | 500       | 14–15px   |
-| Body              | 45 Book      | 400       | 14px      |
-| Numeric (tabelas) | 55 Roman     | 500       | 14px      |
-| Subtitle/Caption  | 45 Book      | 400       | 12–13px   |
+| Uso                    | Peso Avenir   | CSS weight | Tamanho   | Cor (token)          |
+|-----------------------|--------------|-----------|-----------|----------------------|
+| Display (KPI)          | 85 Heavy     | 800       | 32–40px   | `--text-primary`     |
+| Heading 1 (seção)      | 85 Heavy     | 800       | 20–22px   | `--brand-deep`       |
+| Título de página (h1)  | 65 Medium    | 600 (`font-semibold`) | 20px (`text-xl`) | `--text-primary` |
+| Heading 2              | 65 Medium    | 600       | 18px      | `--text-primary`     |
+| Title (card)           | 65 Medium    | 600       | 16px      | `--text-primary`     |
+| Body strong            | 55 Roman     | 500       | 14–15px   | `--text-primary`     |
+| Body                   | 45 Book      | 400       | 14px      | `--text-secondary`   |
+| Numeric (tabelas)      | 55 Roman     | 500       | 14px      | `--text-primary`     |
+| Subtítulo de página/seção | 45 Book   | 400       | 14px (`text-sm`) | `--text-subtle` |
 
 ---
 

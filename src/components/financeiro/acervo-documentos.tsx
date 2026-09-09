@@ -154,8 +154,8 @@ export default function AcervoDocumentos({ documentosIniciais, podeAdicionar, er
     // Coluna flex de altura cheia: título + busca FIXOS (shrink-0) e só a lista rola por dentro.
     <div className="flex flex-1 min-h-0 flex-col">
       <div className="mb-6 shrink-0">
-        <h1 className="text-xl font-semibold text-zinc-900">Acervo de Documentos</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-text-primary">Acervo de Documentos</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Biblioteca de documentos, modelos, manuais e referências
         </p>
       </div>

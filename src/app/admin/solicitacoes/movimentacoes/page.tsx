@@ -22,8 +22,8 @@ export default async function MovimentacoesPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Movimentações</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-text-primary">Movimentações</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Histórico de auditoria: o que cada usuário fez nas solicitações (abertura, conclusão, rejeição, cancelamento)
         </p>
       </div>

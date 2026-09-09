@@ -23,8 +23,8 @@ export default async function SolicitarAcessoPage({
         <div className="bg-white rounded-xl shadow-sm px-8 py-9">
           {enviado ? (
             <div className="text-center space-y-3">
-              <h1 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Solicitação registrada</h1>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              <h1 className="text-base font-semibold text-text-primary">Solicitação registrada</h1>
+              <p className="text-sm leading-relaxed text-text-subtle">
                 Se o e-mail informado estiver apto, o time Financeiro vai analisar e liberar seu acesso.
                 Você será avisado quando a conta estiver pronta.
               </p>
@@ -38,8 +38,8 @@ export default async function SolicitarAcessoPage({
             </div>
           ) : (
             <>
-              <h1 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Solicitar acesso</h1>
-              <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+              <h1 className="mb-1 text-base font-semibold text-text-primary">Solicitar acesso</h1>
+              <p className="mb-5 text-sm text-text-subtle">
                 Informe seu e-mail corporativo. O time Financeiro analisa e libera o acesso.
               </p>
 
