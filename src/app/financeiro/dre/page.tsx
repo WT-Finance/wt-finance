@@ -361,7 +361,7 @@ export default async function DrePage({
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div>
           <h1 className="text-xl font-semibold text-text-primary">Demonstrativos de Resultado</h1>
-          <p className="mt-0.5 text-sm text-text-secondary">
+          <p className="mt-0.5 text-sm text-text-subtle">
             Painel de acompanhamento dos demonstrativos de resultado por regime de
             competência e fluxo de caixa
           </p>

@@ -32,8 +32,8 @@ export default async function LoginPage({
         <AuthHeader className="flex flex-col items-center mb-7" />
 
         <div className="bg-white rounded-xl shadow-sm px-8 py-9">
-          <h1 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Entrar</h1>
-          <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>Acesse com seu e-mail corporativo e senha</p>
+          <h1 className="mb-1 text-base font-semibold text-text-primary">Entrar</h1>
+          <p className="mb-5 text-sm text-text-subtle">Acesse com seu e-mail corporativo e senha</p>
 
           {mensagemErro && (
             <p

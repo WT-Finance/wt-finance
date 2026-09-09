@@ -18,10 +18,10 @@ export default async function SemAcessoPage() {
         <AuthHeader className="flex flex-col items-center mb-7" />
 
         <div className="bg-white rounded-xl shadow-sm px-8 py-9 text-center">
-          <h1 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="mb-2 text-lg font-semibold text-text-primary">
             {sessao.ativo ? 'Sem acesso a esta área' : 'Conta sem acesso ativo'}
           </h1>
-          <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--text-muted)' }}>
+          <p className="mb-6 text-sm leading-relaxed text-text-subtle">
             {sessao.ativo
               ? 'Seu perfil não tem permissão para a área solicitada. Se você precisa deste acesso, fale com o time Financeiro.'
               : 'Sua conta foi autenticada, mas não tem um perfil de acesso ativo no Janus. Fale com o time Financeiro para liberar o acesso.'}

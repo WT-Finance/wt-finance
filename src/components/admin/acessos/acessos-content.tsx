@@ -8,6 +8,7 @@ import { AbaRoles } from './aba-roles'
 import { AbaSolicitacoes } from './aba-solicitacoes'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
+import Badge from '@/components/ui/badge'
 
 // v4.13/v4.14 — conteúdo client da página Usuários & Acessos: header, pills de aba
 // (Usuários / Roles / Solicitações) e delegação. Dados vêm prontos da page (RSC).
@@ -40,14 +41,14 @@ export function AcessosContent({
   const ABAS: { key: Aba; label: string }[] = [
     { key: 'usuarios',     label: 'Usuários' },
     { key: 'roles',        label: 'Permissões' },
-    { key: 'solicitacoes', label: pendentes > 0 ? `Solicitações de acesso (${pendentes})` : 'Solicitações de acesso' },
+    { key: 'solicitacoes', label: 'Solicitações de acesso' },
   ]
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Usuários e Acessos</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-text-primary">Usuários e Acessos</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Crie usuários, atribua permissões, modere solicitações e controle o que cada pessoa pode ver
         </p>
       </div>
@@ -75,6 +76,9 @@ export function AcessosContent({
                 style={ativa ? PILL_PRIMARIA_STYLE : undefined}
               >
                 {label}
+                {key === 'solicitacoes' && pendentes > 0 && (
+                  <Badge variant="count">{pendentes}</Badge>
+                )}
               </button>
             )
           })}

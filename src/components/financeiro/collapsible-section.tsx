@@ -33,7 +33,7 @@ export default function CollapsibleSection({
             {titulo}
           </h2>
           {subtitulo && (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-xs text-text-subtle">
               {subtitulo}
             </p>
           )}

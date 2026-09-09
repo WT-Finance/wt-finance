@@ -58,10 +58,7 @@ export default function TopSection({ titulo, subtitulo, defaultAberto = true, ch
           {titulo}
         </span>
         {subtitulo && (
-          <span
-            className="text-sm font-normal normal-case tracking-normal"
-            style={{ color: 'var(--text-muted)' }}
-          >
+          <span className="text-sm font-normal normal-case tracking-normal text-text-subtle">
             {subtitulo}
           </span>
         )}

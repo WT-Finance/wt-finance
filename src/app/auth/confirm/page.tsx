@@ -31,10 +31,10 @@ export default async function ConfirmarAcessoPage({
         <div className="bg-white rounded-xl shadow-sm px-8 py-9 text-center">
           {temToken ? (
             <>
-              <h1 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+              <h1 className="mb-1 text-base font-semibold text-text-primary">
                 Confirmar acesso
               </h1>
-              <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+              <p className="mb-6 text-sm text-text-subtle">
                 Clique no botão abaixo para entrar no Janus.
               </p>
               <form action={confirmarAcesso}>
@@ -53,10 +53,10 @@ export default async function ConfirmarAcessoPage({
             </>
           ) : (
             <>
-              <h1 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+              <h1 className="mb-1 text-base font-semibold text-text-primary">
                 Link incompleto
               </h1>
-              <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+              <p className="mb-6 text-sm text-text-subtle">
                 Este link de acesso está incompleto ou inválido. Peça um novo na tela de entrada.
               </p>
               <a

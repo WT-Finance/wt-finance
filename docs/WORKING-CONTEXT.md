@@ -1,6 +1,29 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-03 (pós-merge da v5.9.2) · produção na **v5.9.2** (#253 mergeado 03/09 às 17h09 — DRE: grade "Proporção sobre a Receita Bruta" na Visão Geral, cabeçalho de página e os selos de frescor no topo; **ZERO migration**, sem ADR novo, 1171 testes). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo em "Outros anexos" e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-09-09 (fechamento da v5.9.3, PR aberto — aguarda merge) · produção na **v5.9.2** (#253, 03/09 17h09). **v5.9.3 em PR** (`feat/v5-9-3-ajustes-gerais`): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+
+✅ **v5.9.3 EM PR** (`feat/v5-9-3-ajustes-gerais`, 09/09) — cinco pedidos do Yan depois de ver a
+v5.9.2 no ar. **Migration `0266` (aditiva) APLICADA** em 09/09 com gate verde e verificada via REST
+(service_role devolve inteiro; anon 401). **Sem ADR novo.** **1185 testes** (de 1171).
+1. **Título/subtítulo com um token só em toda a plataforma**: título `text-text-primary`, subtítulo de
+   página E de seção `text-text-subtle` (decisão do Yan: cinza claro). Havia três dialetos (16 telas em
+   `zinc` inline, a DRE em `text-text-secondary`, auth em `style`); a página `/admin/design-system`
+   prescrevia "cor terciária" sem nomear token — a brecha. Regra em `docs/design-system.md` (seção
+   "Cabeçalho de página"), na skill `ui-design-system` §3, e a sonda `src/styles/cabecalho-pagina.test.ts`
+   reprova regressão (o lint `wt/no-cor-hardcoded` NÃO vê `zinc` nem `style`; estender é decisão humana —
+   config protegida — e o diff está no out-briefing).
+2. **"Resultado Financeiro" (`FIN`) na grade de proporção**, ao lado de CUSTO — 8 gráficos. A janela
+   deixou de pressupor série ≤ 0 (FIN é (+/−)); ticks ancorados em zero; **eixo invertido mantido nos 8**
+   ("para cima" precisa significar o mesmo em toda a grade). Medido: FIN = −4,63% → −5,49% → −2,68%.
+3. **Badges** `Badge variant="count"` nas pills Abertas/Aprovadas (`lib/solicitacoes/abas.ts`) e para
+   **pedidos de ACESSO pendentes** na sidebar e na pill de `/admin/acessos` — RPC
+   `admin_acesso_solicitacoes_pendentes()` (0266), promise não-aguardada criada no layout raiz **só para
+   quem tem `admin/acessos`**; a sidebar generalizou o badge para o mapa `badgesPorHref`.
+4. **Gerencial abre por Vencimento ASC** (`lib/gerencial/ordenacao.ts`, testado).
+🔴 **Pendente (Yan): conferência visual em produção após o merge** — cabeçalhos das ~25 telas com o
+subtítulo mais claro; 1ª linha da grade com 2 gráficos; badges em Abertas/Aprovadas; badge de acessos
+(hoje há **0 pendentes** — precisa de um pedido em `/solicitar-acesso` para aparecer); Gerencial abrindo
+em 2024. Depois do merge: `/pos-merge` reconcilia a hora do CHANGELOG_DIRETORIA.
 
 ✅ **v5.8.1 EM PRODUÇÃO** — **ADR-0171**, **ZERO migration**, **1125 testes** (de 1056),
 incluindo 5 casos de contrato que confrontam a BASE VIVA a cada `npm test`.
@@ -104,12 +127,12 @@ o parceiro (TARS/Vitor) **não foi avisado previamente** — decisão consciente
 doc foram corrigidas com aviso destacado. Se a integração dele ramificar nos quatro status
 antigos sem caminho padrão, `aprovada` cai no `default`.
 
-⚠️ **Numeração de ADR: o maior no main é o `0171` (v5.8.1); a próxima livre é a `0172`.**
+⚠️ **Numeração de ADR: o maior no main é o `0171` (v5.8.1); a próxima livre é a `0172`** (a v5.9.2 e a v5.9.3 não tomaram nenhum).
 O `0169` deixou de ser reserva — mergeou com a v5.9.0. Conferir no `origin`, nunca só no
 `ls docs/adr/` de uma worktree — foi assim que o ADR da v5.8.0 nasceu 0169 e virou 0170.
 
-⚠️ **Numeração de migration: a última APLICADA é a `0265`; a próxima livre é a `0266`.**
-⚠️ **Há OUTRA versão em voo** (`feat/v5-9-2-dre-proporcao-e-acumulacao`) — conferir o número
+⚠️ **Numeração de migration: a última APLICADA é a `0266` (v5.9.3, 09/09); a próxima livre é a `0267`.**
+⚠️ **Conferir se há OUTRA versão em voo** antes de fixar número — conferir o número
 livre no BANCO **e nas worktrees irmãs** imediatamente antes de aplicar, nunca só aqui. A v5.9.0
 renumerou três vezes por não fazer isso (`0256`→`0258`→`0261`).
 

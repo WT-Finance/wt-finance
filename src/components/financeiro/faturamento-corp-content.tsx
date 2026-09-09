@@ -33,8 +33,8 @@ export default function FaturamentoCorpContent({ ambiente, configurado, clientes
           ambiente. As pills das abas ficam ABAIXO do título/subtítulo. */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Faturamento Corporativo</h1>
-          <p className="text-sm text-zinc-400 mt-0.5">
+          <h1 className="text-xl font-semibold text-text-primary">Faturamento Corporativo</h1>
+          <p className="mt-0.5 text-sm text-text-subtle">
             Emita boletos e notas fiscais, dispare e-mails e gerencie o cadastro dos clientes corporativos
           </p>
         </div>

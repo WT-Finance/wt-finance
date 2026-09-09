@@ -11,17 +11,10 @@ import { concluirSolicitacao } from '@/app/solicitacoes/actions'
 import { fmtDataBR, resumo, vencida, maisRecentePrimeiro, casaBuscaSolicitacao } from '@/lib/solicitacoes/format'
 import { emAndamento } from '@/lib/solicitacoes/schemas'
 import type { Solicitacao } from '@/lib/solicitacoes/schemas'
+import { ABAS, contarPorAba } from '@/lib/solicitacoes/abas'
+import type { FiltroStatus } from '@/lib/solicitacoes/abas'
 
 type Escopo = 'mim_e_role' | 'so_mim' | 'todas'
-// v5.9.0 — três abas. O filtro antigo era binário ('abertas' e o COMPLEMENTO), o que
-// com um estado novo mandaria 'aprovada' direto para as encerradas, sem erro nenhum.
-// Cada aba passa a ter predicado PRÓPRIO e explícito — nada de negar o vizinho.
-type FiltroStatus = 'abertas' | 'aprovadas' | 'encerradas'
-const ABA: Record<FiltroStatus, { rotulo: string; casa: (s: Solicitacao) => boolean; vazio: string }> = {
-  abertas:    { rotulo: 'Abertas',    casa: s => s.status === 'aberta',   vazio: 'Nenhuma solicitação aberta na sua caixa de entrada.' },
-  aprovadas:  { rotulo: 'Aprovadas',  casa: s => s.status === 'aprovada', vazio: 'Nenhuma solicitação aprovada aguardando execução.' },
-  encerradas: { rotulo: 'Encerradas', casa: s => !emAndamento(s.status),  vazio: 'Nenhuma solicitação encerrada.' },
-}
 
 // v5.7.2 — a ordem e a busca das listas vivem em `@/lib/solicitacoes/format`
 // (`maisRecentePrimeiro`, `casaBuscaSolicitacao`): as DUAS visões desta página precisam
@@ -62,14 +55,14 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
   // Colunas por TIPO. "Encerradas" NÃO exclui canceladas — elas são um desfecho.
   const temBusca = busca.trim() !== ''
   const filtrada = solicitacoes
-    .filter(ABA[filtro].casa)
+    .filter(s => ABAS[filtro].casa(s.status))
     .filter(s => casaBuscaSolicitacao(s, busca))
   const tipos = Array.from(new Map(filtrada.map(s => [s.tipo_id, s.tipo_nome])).entries())
     .sort((a, b) => (a[1] ?? '').localeCompare(b[1] ?? ''))
-  const vazio = temBusca ? 'Nenhuma solicitação encontrada para esta busca.' : ABA[filtro].vazio
-  // Contagem da aba Aprovadas: sinaliza trabalho autorizado à espera de execução, que é
-  // exatamente o que essa etapa existe para tornar visível.
-  const nAprovadas = solicitacoes.filter(ABA.aprovadas.casa).length
+  const vazio = temBusca ? 'Nenhuma solicitação encontrada para esta busca.' : ABAS[filtro].vazio
+  // Contagem por aba (v5.9.3): o mesmo círculo vermelho da Caixa de entrada, sobre a
+  // lista do escopo atual — ANTES do filtro de busca, igual ao "(N)" textual que substitui.
+  const contagens = contarPorAba(solicitacoes)
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -86,9 +79,11 @@ export default function BoardSolicitacoes({ solicitacoes, escopo, onAbrir }: {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {(['abertas', 'aprovadas', 'encerradas'] as FiltroStatus[]).map(f => (
           <button key={f} type="button" onClick={() => setFiltro(f)}
-            className={`${PILL} ${filtro === f ? PILL_PRIMARIA : PILL_NEUTRO}`}
+            className={`${PILL} flex items-center gap-1.5 ${filtro === f ? PILL_PRIMARIA : PILL_NEUTRO}`}
             style={filtro === f ? PILL_PRIMARIA_STYLE : undefined}>
-            {ABA[f].rotulo}{f === 'aprovadas' && nAprovadas > 0 ? ` (${nAprovadas})` : ''}
+            {ABAS[f].rotulo}
+            {/* "Encerradas" nunca exibe badge — só abertas/aprovadas sinalizam trabalho pendente (v5.9.3). */}
+            {f !== 'encerradas' && contagens[f] > 0 && <Badge variant="count">{contagens[f]}</Badge>}
           </button>
         ))}
         <div className="relative ml-auto">

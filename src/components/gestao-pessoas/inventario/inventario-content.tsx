@@ -101,8 +101,8 @@ export default function InventarioContent({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Inventário de Ativos</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-text-primary">Inventário de Ativos</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Máquinas e equipamentos do Welcome Group: onde cada item está, com quem, desde quando e por quê
         </p>
       </div>

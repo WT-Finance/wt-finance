@@ -14,6 +14,7 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { Card } from '@/components/ui/card'
 import { type Conta } from './tipos'
 import { ROTULO_OUTRAS, canonizarConta } from '@/lib/gerencial/normalizar-conta'
+import { type ColOrd, type DirOrd, DIR_PADRAO_COL, comparadorLancamentos } from '@/lib/gerencial/ordenacao'
 import { mascaraMoeda } from '@/lib/fmt'
 import { toNum } from '@/lib/carga/coercao'
 import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
@@ -113,52 +114,7 @@ function FiltroVencimento({ ini, fim, onChange }: {
 // v5.7.2 — ordenação por clique no cabeçalho da Base de Dados. Aplicada DEPOIS dos
 // filtros por coluna (nunca antes) e nunca muda o CONJUNTO de linhas exibidas, só a ordem
 // — `idsVisiveis`/seleção em massa continuam derivados de `filtrados`, não da ordem.
-type ColOrd = 'tipo' | 'pessoa' | 'valor' | 'descricao' | 'conta' | 'vencimento' | 'originador'
-type DirOrd = 'asc' | 'desc'
-
-// Direção padrão ao TROCAR de coluna: texto começa em asc (A→Z); número e data em desc
-// (maior valor / vencimento mais distante primeiro — leitura mais útil ao abrir a base).
-const DIR_PADRAO_COL: Record<ColOrd, DirOrd> = {
-  tipo: 'asc', pessoa: 'asc', valor: 'desc', descricao: 'asc', conta: 'asc', vencimento: 'desc', originador: 'asc',
-}
-
-function compararTexto(a: string, b: string): number {
-  return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
-}
-
-/** Texto NULÁVEL — vazio/nulo sempre no FIM, em qualquer direção (convenção já usada em
- *  `ranking-caixa.tsx` para colunas que podem faltar dado). */
-function compararTextoNulo(a: string | null, b: string | null, dir: DirOrd): number {
-  const va = a?.trim() || null
-  const vb = b?.trim() || null
-  if (va === null && vb === null) return 0
-  if (va === null) return 1
-  if (vb === null) return -1
-  return dir === 'asc' ? compararTexto(va, vb) : compararTexto(vb, va)
-}
-
-/** Comparador por coluna. `conta` usa a MESMA `canonizarConta` do filtro de Conta — senão
- *  a ordenação discordaria de "por qual conta esta linha está agrupada no filtro"
- *  (ex.: "Banco Itau" da planilha precisa ordenar junto de "Itaú", não separado). */
-function comparadorLancamentos(col: ColOrd, dir: DirOrd, contasReais: string[]) {
-  return (a: Lancamento, b: Lancamento): number => {
-    switch (col) {
-      case 'tipo':       return dir === 'asc' ? compararTexto(a.tipo, b.tipo) : compararTexto(b.tipo, a.tipo)
-      case 'pessoa':     return dir === 'asc' ? compararTexto(a.pessoa, b.pessoa) : compararTexto(b.pessoa, a.pessoa)
-      case 'valor':      return dir === 'asc' ? a.valor_final - b.valor_final : b.valor_final - a.valor_final
-      // vencimento é date puro 'AAAA-MM-DD' (sem fuso) — comparação lexicográfica de
-      // string ordena igual a uma comparação de data (mesmo raciocínio de `fmtVencBr`).
-      case 'vencimento': return dir === 'asc' ? a.vencimento.localeCompare(b.vencimento) : b.vencimento.localeCompare(a.vencimento)
-      case 'descricao':  return compararTextoNulo(a.descricao, b.descricao, dir)
-      case 'originador': return compararTextoNulo(a.originador_nome, b.originador_nome, dir)
-      case 'conta': {
-        const ca = canonizarConta(a.conta_previsao, contasReais)
-        const cb = canonizarConta(b.conta_previsao, contasReais)
-        return dir === 'asc' ? compararTexto(ca, cb) : compararTexto(cb, ca)
-      }
-    }
-  }
-}
+// Tipos/comparador/direção-padrão vivem em `@/lib/gerencial/ordenacao` (módulo puro testável).
 
 /** Cabeçalho ORDENÁVEL — idioma do DS (`ranking-caixa.tsx`/`lista-operacoes.tsx`): ativo =
  *  ArrowUp/ArrowDown; ordenável inativo = ArrowUpDown esmaecido. O gatilho é um
@@ -240,13 +196,13 @@ export default function BaseDadosTab({ lancamentos: inicial, saldos, usuarioId =
   const [removendo, startRemover]       = useTransition()
   // Sombra sob o cabeçalho fixo só quando a lista está ROLADA (refino v4.34.1).
   const [rolado, setRolado] = useState(false)
-  // v5.7.2 — ordenação por clique no cabeçalho. Default: **Vencimento, do mais recente ao
-  // mais antigo** (decisão do Yan). O tipo `ColOrd | null` fica: `null` continua sendo um
+  // v5.7.2 — ordenação por clique no cabeçalho. Default: **Vencimento, do mais antigo ao
+  // mais novo** (decisão do Yan, v5.9.3). O tipo `ColOrd | null` fica: `null` continua sendo um
   // estado alcançável e significa "ordem que veio do servidor" — a base é grande e um dia
   // pode valer um "limpar ordenação". Hoje ninguém o produz, e é de propósito: a tabela
   // nasce ordenada.
   const [colAtiva, setColAtiva] = useState<ColOrd | null>('vencimento')
-  const [dirOrd, setDirOrd]     = useState<DirOrd>('desc')
+  const [dirOrd, setDirOrd]     = useState<DirOrd>('asc')
   const ordenarPor = (col: ColOrd) => {
     if (col === colAtiva) setDirOrd(d => (d === 'asc' ? 'desc' : 'asc'))
     else { setColAtiva(col); setDirOrd(DIR_PADRAO_COL[col]) }

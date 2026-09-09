@@ -10,10 +10,10 @@ export default async function DesignSystemPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">
+        <h1 className="text-xl font-semibold text-text-primary">
           Design System
         </h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">
+        <p className="mt-0.5 text-sm text-text-subtle">
           Catálogo visual de tokens e componentes do Janus. Referência interna para desenvolvimento
         </p>
       </div>
@@ -115,7 +115,8 @@ export default async function DesignSystemPage() {
       <Section id="tipografia" title="4. Tipografia">
         <div className="space-y-5">
           {[
-            { label: 'H1 — Título de página',    cls: 'text-2xl font-semibold',                            code: 'text-2xl font-semibold' },
+            { label: 'H1 — Título de página',    cls: 'text-xl font-semibold text-text-primary',           code: 'text-xl font-semibold text-text-primary' },
+            { label: 'Subtítulo de página',      cls: 'text-sm text-text-subtle',                          code: 'text-sm text-text-subtle' },
             { label: 'H2 — Título de seção',     cls: 'text-xl font-semibold text-[var(--brand)]',         code: 'text-xl font-semibold text-[var(--brand)]' },
             { label: 'H3 — Título de card',      cls: 'text-base font-semibold',                           code: 'text-base font-semibold' },
             { label: 'Corpo — Padrão',           cls: 'text-sm',                                           code: 'text-sm' },
@@ -554,9 +555,10 @@ export default async function DesignSystemPage() {
           <p className="mt-2">{'// exceção: página que preenche a altura usa <div className="h-full flex flex-col"> (ex.: Acervo, Solicitações)'}</p>
         </div>
         <p className="text-xs text-[var(--text-muted)]">
-          Cabeçalho de página padrão: <code className="bg-zinc-100 px-1 rounded">h1 text-xl font-semibold</code> +
-          descrição <code className="bg-zinc-100 px-1 rounded">text-sm</code> em cor terciária, com{' '}
-          <code className="bg-zinc-100 px-1 rounded">mb-6</code> antes do conteúdo. Tela nova nasce assim.
+          Cabeçalho de página padrão: <code className="bg-zinc-100 px-1 rounded">h1 text-xl font-semibold text-text-primary</code> +
+          subtítulo <code className="bg-zinc-100 px-1 rounded">text-sm text-text-subtle</code>, com{' '}
+          <code className="bg-zinc-100 px-1 rounded">mb-6</code> antes do conteúdo. Tela nova nasce assim
+          (sonda: <code className="bg-zinc-100 px-1 rounded">src/styles/cabecalho-pagina.test.ts</code>).
         </p>
       </Section>
     </div>

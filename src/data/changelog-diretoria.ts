@@ -35,6 +35,43 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.9.3',
+    data: '2026-09-09T15:09', // horário de AUTORIA (−03) — reconciliar ao horário real do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'Títulos e subtítulos de todas as telas passaram a usar as mesmas cores: título ' +
+          'escuro, subtítulo em cinza claro. Algumas páginas tinham o subtítulo mais escuro ' +
+          'que outras, e a diferença aparecia ao navegar entre elas. O padrão ficou registrado ' +
+          'no guia visual da plataforma, para que tela nova já nasça assim.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'O painel "Proporção sobre a Receita Bruta", no Demonstrativo de Resultado, ganhou ' +
+          'o gráfico do Resultado Financeiro ao lado do Custo dos Serviços Prestados. Ele ' +
+          'mostra quanto juros, tarifas, taxas de cartão e rendimentos, somados, pesaram sobre ' +
+          'a receita em cada ano — hoje entre 2,7% e 5,5% —, na mesma escala dos outros sete.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Em Solicitações, os botões "Abertas" e "Aprovadas" passaram a mostrar o número de ' +
+          'itens no mesmo círculo vermelho da Caixa de entrada. Em Usuários e Acessos, o ' +
+          'mesmo círculo aparece na aba "Solicitações de acesso" e no menu lateral, com a ' +
+          'quantidade de pedidos de acesso aguardando decisão — quem aprova acessos vê a ' +
+          'pendência sem precisar abrir a página.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'O Fluxo de Caixa Gerencial passou a abrir com os vencimentos mais antigos no topo, ' +
+          'em vez dos mais distantes. Clicar no cabeçalho da coluna continua invertendo a ordem.',
+      },
+    ],
+  },
+  {
     versao: '5.9.2',
     data: '2026-09-03T17:09', // horário REAL do merge (52bcb75, PR #253, 03/09 17h09 −03) — reconciliado no /pos-merge
     itens: [

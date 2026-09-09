@@ -38,8 +38,8 @@ export default async function ChavesApiPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">API externa</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-text-primary">API externa</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Tipos expostos e chaves de API para plataformas externas abrirem e consultarem solicitações
         </p>
       </div>

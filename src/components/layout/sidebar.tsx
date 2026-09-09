@@ -18,10 +18,14 @@ export interface UsuarioSidebar {
   email: string | null
   role: string | null
   permissoes: string[]
-  /** Nº de solicitações abertas atribuídas a mim/minha role (badge). v4.16.0.
-   *  v4.39.0 (M3): PROMISE (não número) — resolvida fora do caminho bloqueante do layout e
-   *  consumida via Suspense + `use` no badge. `.catch(()=>null)` no layout → falha inofensiva. */
-  pendenciasPromise?: Promise<number | null>
+  /** Contagens de badge por item da sidebar (círculo vermelho, `Badge variant="count"`),
+   *  chaveadas pelo `href` do item. v4.16.0 nasceu hardcoded só para '/solicitacoes'
+   *  (nº de solicitações abertas atribuídas a mim/minha role); v5.9.3/M6 generalizou para
+   *  um mapa, ao ganhar o 2º badge ('/admin/acessos' — pendentes de aprovação).
+   *  Cada valor é uma PROMISE (não número) — resolvida fora do caminho bloqueante do
+   *  layout e consumida via Suspense + `use` no badge. `.catch(()=>null)` no layout →
+   *  falha inofensiva (o badge some, a página segue). */
+  badgesPorHref?: Partial<Record<string, Promise<number | null>>>
 }
 
 // Badge de pendências (v4.39.0/M3): consome a promise com `use` dentro de um Suspense (fallback
@@ -292,7 +296,7 @@ function SidebarContent({ pathname, usuario, onNav, onCollapse }: SidebarContent
                   quebrar e desalinhar a altura fixa (h-10) do item. */}
               <span className="min-w-0 truncate" title={label}>{label}</span>
               {emConstrucao && <TriangleAlert size={14} className="ml-auto shrink-0 text-warning" aria-label="Em construção" />}
-              {href === '/solicitacoes' && <BadgePendencias promise={usuario.pendenciasPromise} />}
+              <BadgePendencias promise={usuario.badgesPorHref?.[href]} />
             </Link>
           )
         })}

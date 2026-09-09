@@ -29,8 +29,13 @@ export default async function AcessosPage() {
     supabase.rpc('admin_listar_solicitacoes'),
   ])
 
+  // v5.9.3/M6: `solicitacoesRes.error` entrou na composição — antes era ignorado, e a lista
+  // vazia por falha virava silenciosamente "0 pendentes" tanto na pill quanto no filtro do
+  // client. Com o badge da sidebar vindo de uma RPC PRÓPRIA (0266), os dois números ficariam
+  // discordando sem aviso nenhum se a listagem falhasse e o count não.
   const erroCarga =
-    usuariosRes.error?.message ?? rolesRes.error?.message ?? areasRes.error?.message ?? null
+    usuariosRes.error?.message ?? rolesRes.error?.message ?? areasRes.error?.message
+    ?? solicitacoesRes.error?.message ?? null
 
   const usuarios: UsuarioAdmin[] = comoLista(usuariosRes.data).map(u => ({
     user_id:          typeof u.user_id === 'string' ? u.user_id : '',

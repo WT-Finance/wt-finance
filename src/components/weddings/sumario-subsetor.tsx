@@ -52,7 +52,7 @@ export default function SumarioSubsetorCard({ data, periodoLabel, semBox = false
             {periodoLabel && <span className="text-xs" style={{ color: 'var(--brand)' }}>{periodoLabel}</span>}
           </div>
           <div className="flex items-baseline gap-2 mb-4">
-            <p className="text-[13px] text-[var(--text-muted)]">Distribuição de faturamento por subsetor no período</p>
+            <p className="text-[13px] text-text-subtle">Distribuição de faturamento por subsetor no período</p>
             <span className="text-xs text-[var(--text-subtle)]">
               {data.total.n_vendas} vendas · {fmtMi(data.total.faturamento)}
             </span>

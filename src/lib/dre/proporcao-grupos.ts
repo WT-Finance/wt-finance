@@ -36,11 +36,13 @@ import { passoRedondo } from '@/lib/escala-grafico'
  * carrega `formula`, e o `tipo` de um bloco é dado editável. O que NÃO é estático são os
  * rótulos e os valores — esses saem do payload vivo.
  *
- * `CUSTO` vem primeiro e é exibido ISOLADO (decisão do Yan): ele é custo direto do serviço
- * prestado, de natureza diferente das seis linhas de despesa que o seguem.
+ * `CUSTO` e `FIN` vêm primeiro e são exibidos lado a lado, ISOLADOS das seis despesas
+ * (decisão do Yan): `CUSTO` é custo direto do serviço prestado, de natureza diferente das
+ * despesas. `FIN` (Resultado Financeiro) é diferente pelo SINAL: é a única linha do grupo
+ * que pode ser positiva — as outras seis são sempre despesa.
  */
 export const GRUPOS_PROPORCAO = [
-  'CUSTO', 'ADM', 'COM', 'MKT', 'ESTR', 'RH', 'RHB',
+  'CUSTO', 'FIN', 'ADM', 'COM', 'MKT', 'ESTR', 'RH', 'RHB',
 ] as const
 
 export interface PontoProporcao {
@@ -106,7 +108,7 @@ function ytdCentavos(l: DreLinha, ateMes: number): number {
  * reimplementada.
  */
 export function montarProporcaoGrupos(anos: readonly AnoProporcao[]): SerieProporcao[] {
-  // Base da AV por ano, calculada UMA vez: é o mesmo denominador para os sete grupos.
+  // Base da AV por ano, calculada UMA vez: é o mesmo denominador para os oito grupos.
   const basePorAno = new Map<number, number | null>()
   const folhasPorAno = new Map<number, Map<string, number>>()
 
@@ -150,7 +152,7 @@ export function montarProporcaoGrupos(anos: readonly AnoProporcao[]): SeriePropo
   }))
 }
 
-// ── Escala COMPARÁVEL entre os sete gráficos (v5.9.2) ────────────────────────
+// ── Escala COMPARÁVEL entre os oito gráficos (v5.9.2/v5.9.3) ─────────────────
 // O problema que isto resolve, medido contra a base viva: com o eixo auto-escalado, RH
 // (que varia 10,16 p.p.) e Despesas Comerciais (0,36 p.p.) desenhavam a MESMA inclinação,
 // porque cada gráfico esticava a própria série até preencher o card. Uma razão de 28×
@@ -208,8 +210,14 @@ function amplitudeComum(todas: readonly (readonly PontoProporcao[])[]): number {
  * (Quem pegou isso foi o caso de contrato contra a base VIVA; os dados sintéticos do teste
  * de módulo não tinham a borda.)
  *
- * O topo nunca passa de 0: são despesas, e acima de zero não há série possível. Quando o
- * limite morde, a janela desce inteira para preservar a altura.
+ * O topo nunca passa de 0 QUANDO a série é integralmente ≤ 0 (as seis despesas e `CUSTO`):
+ * ali acima de zero não há série possível, e quando o limite morde, a janela desce inteira
+ * para preservar a altura. `FIN` (Resultado Financeiro) quebra essa premissa — pode ser
+ * positivo em algum ano —, então uma série com QUALQUER ponto positivo usa janela LIVRE,
+ * centrada nos próprios valores sem o teto em zero. Como `amplitude` já é o maior alcance
+ * entre todos os grupos (`amplitudeComum`), a janela centrada sempre é larga o bastante
+ * para cobrir o alcance desta série sozinha — não precisa de um segundo ajuste de borda
+ * como no caso negativo.
  */
 function janela(
   pontos: readonly PontoProporcao[],
@@ -217,24 +225,32 @@ function janela(
 ): { dominio: [number, number]; ticks: number[] } {
   const passo = amplitude / DIVISOES
   const vs = pontos.map(p => p.av).filter((v): v is number => v !== null)
+  const podePositivo = vs.some(v => v > 0)
 
   // Sem ponto nenhum, uma janela padrão logo abaixo de zero — o gráfico fica vazio, mas
   // com um eixo coerente em vez de `[NaN, NaN]`.
   const centro = vs.length > 0 ? (Math.max(...vs) + Math.min(...vs)) / 2 : -amplitude / 2
 
-  let topo = Math.min(0, centro + amplitude / 2)
+  let topo = podePositivo ? centro + amplitude / 2 : Math.min(0, centro + amplitude / 2)
   let base = topo - amplitude
 
   // Se o teto em zero empurrou a base acima do menor valor, desce a janela inteira: a
   // ALTURA é a invariante que não pode ceder — é ela que torna as inclinações comparáveis.
-  if (vs.length > 0 && Math.min(...vs) < base) {
+  // (Só se aplica ao ramo despesa: no ramo livre a janela centrada já cobre tudo.)
+  if (!podePositivo && vs.length > 0 && Math.min(...vs) < base) {
     base = Math.min(...vs)
     topo = Math.min(0, base + amplitude)
   }
 
+  // Ticks em múltiplos do passo ANCORADOS EM ZERO (e não na base): isso garante que 0
+  // apareça como marca sempre que estiver dentro do domínio — relevante para `FIN`, cuja
+  // janela pode cruzar zero. No ramo despesa (topo sempre em 0 quando não desceu) o
+  // resultado é idêntico ao de antes, porque a base já cai num múltiplo do passo.
   const ticks: number[] = []
-  for (let t = Math.ceil(base / passo) * passo; t <= topo + 1e-9; t += passo) {
-    ticks.push(Number(t.toFixed(6)))
+  const kMin = Math.ceil(base / passo - 1e-9)
+  const kMax = Math.floor(topo / passo + 1e-9)
+  for (let k = kMin; k <= kMax; k++) {
+    ticks.push(Number((k * passo).toFixed(6)))
   }
 
   return { dominio: [base, topo], ticks }

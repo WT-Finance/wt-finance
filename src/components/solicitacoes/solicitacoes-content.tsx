@@ -58,8 +58,8 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
   return (
     <div className="h-full flex flex-col">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Solicitações</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">Abra pedidos ao financeiro e acompanhe os atribuídos a você</p>
+        <h1 className="text-xl font-semibold text-text-primary">Solicitações</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">Abra pedidos ao financeiro e acompanhe os atribuídos a você</p>
       </div>
 
       {/* Linha das abas (v4.18): Caixa de entrada PRIMEIRO, Minhas depois; os botões de

@@ -109,8 +109,8 @@ export default function KpiDetailDrawer({ metrica, rotulo, setor, onClose }: Pro
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
           <div>
-            <p className="text-lg font-semibold text-zinc-900">{rotulo} — Histórico</p>
-            <p className="text-sm text-zinc-400 mt-0.5">Setor: {setorLabel} · Últimos 24 meses</p>
+            <p className="text-lg font-semibold text-text-primary">{rotulo} — Histórico</p>
+            <p className="mt-0.5 text-sm text-text-subtle">Setor: {setorLabel} · Últimos 24 meses</p>
           </div>
           <button
             onClick={handleClose}

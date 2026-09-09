@@ -100,10 +100,10 @@ export default function ModalCentral({ titulo, tituloAcessorio, subtitulo, largu
         <div className="flex items-start justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <p className="text-lg font-semibold text-zinc-900">{titulo}</p>
+              <p className="text-lg font-semibold text-text-primary">{titulo}</p>
               {tituloAcessorio}
             </div>
-            {subtitulo && <p className="text-sm text-zinc-400 mt-0.5">{subtitulo}</p>}
+            {subtitulo && <p className="mt-0.5 text-sm text-text-subtle">{subtitulo}</p>}
           </div>
           <button
             onClick={handleClose}

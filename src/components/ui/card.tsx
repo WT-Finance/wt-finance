@@ -28,8 +28,8 @@ export function Card({ title, subtitle, children, className, featured, size = 'd
     >
       {(title || subtitle) && (
         <div className="mb-4">
-          {title    && <h2 className="text-base font-semibold text-[var(--text-primary)] leading-snug">{title}</h2>}
-          {subtitle && <p  className="text-[13px] text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
+          {title    && <h2 className="text-base font-semibold text-text-primary leading-snug">{title}</h2>}
+          {subtitle && <p  className="mt-0.5 text-[13px] text-text-subtle">{subtitle}</p>}
         </div>
       )}
       {children}

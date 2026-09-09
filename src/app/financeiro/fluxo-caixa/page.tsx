@@ -91,8 +91,8 @@ function NoDataMessage() {
 function CardTitle({ titulo, subtitulo }: { titulo: string; subtitulo?: string }) {
   return (
     <div className="flex items-baseline gap-2 mb-4">
-      <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{titulo}</h3>
-      {subtitulo && <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>{subtitulo}</span>}
+      <h3 className="text-base font-semibold text-text-primary">{titulo}</h3>
+      {subtitulo && <span className="text-[13px] text-text-subtle">{subtitulo}</span>}
     </div>
   )
 }

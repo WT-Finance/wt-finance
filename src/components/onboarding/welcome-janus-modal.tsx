@@ -53,10 +53,9 @@ export default function WelcomeJanusModal({ vistoPromise }: { vistoPromise: Prom
             caixa alta + tracking) no CINZA DA MARCA (--text-muted = #75777B, token de plataforma).
             O texto verbatim permanece "Welcome to Janus" no JSX (a caixa alta é CSS). A serifa
             Georgia saiu; a nota "Trajan = 1 linha" do ADR-0145 fica obsoleta para este título. */}
-        <h1
-          className="mt-7 text-xl font-[800] uppercase tracking-[2px]"
-          style={{ color: 'var(--text-muted)' }}
-        >
+        {/* Cor via CLASSE de token, não `style` (v5.9.3): a sonda `cabecalho-pagina.test.ts`
+            reprova cor inline em <h1> porque o lint só enxerga classe. O tom é o mesmo. */}
+        <h1 className="mt-7 text-xl font-[800] uppercase tracking-[2px] text-text-muted">
           Welcome to Janus
         </h1>
 

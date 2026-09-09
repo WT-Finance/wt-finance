@@ -21,8 +21,8 @@ export default async function TiposSolicitacaoPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-zinc-900">Tipos de solicitação</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">
+        <h1 className="text-xl font-semibold text-text-primary">Tipos de solicitação</h1>
+        <p className="mt-0.5 text-sm text-text-subtle">
           Defina os tipos de solicitação e os campos que cada um pede ao solicitante
         </p>
       </div>
