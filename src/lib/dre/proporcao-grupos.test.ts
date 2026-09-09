@@ -31,7 +31,7 @@ function payload(linhas: DreLinha[]): DreMensalLike {
   }
 }
 
-/** Um ano com Receita Bruta e os sete grupos, escaláveis. */
+/** Um ano com Receita Bruta e os oito grupos, escaláveis. */
 function ano(n: number, meses: number, rb: number, grupos: Partial<Record<string, number>>): AnoProporcao {
   return {
     ano: n,
@@ -43,11 +43,12 @@ function ano(n: number, meses: number, rb: number, grupos: Partial<Record<string
   }
 }
 
-describe('montarProporcaoGrupos — os sete grupos, na ordem da árvore', () => {
-  it('devolve as sete séries, com CUSTO primeiro (ele é exibido isolado)', () => {
+describe('montarProporcaoGrupos — os oito grupos, na ordem da árvore', () => {
+  it('devolve as oito séries, com CUSTO primeiro e FIN segundo (exibidos lado a lado)', () => {
     const s = montarProporcaoGrupos([ano(2025, 12, 1000, { CUSTO: -100 })])
     expect(s.map(x => x.chave)).toEqual([...GRUPOS_PROPORCAO])
     expect(s[0].chave).toBe('CUSTO')
+    expect(s[1].chave).toBe('FIN')
   })
 
   it('um ponto por ano, na ORDEM recebida — quem exibe não reordena', () => {
@@ -147,18 +148,20 @@ describe('ano PARCIAL é sinalizado, não escondido', () => {
   })
 })
 
-// ── Escala COMPARÁVEL (v5.9.2) ────────────────────────────────────────────────
+// ── Escala COMPARÁVEL (v5.9.2/v5.9.3) ─────────────────────────────────────────
 // O ajuste inteiro existe porque, com eixo auto-escalado, RH (10,16 p.p. de amplitude) e
 // Despesas Comerciais (0,36 p.p.) desenhavam a MESMA inclinação — uma razão de 28× sumia
 // da tela. A invariante que garante a correção é uma só: TODAS as janelas têm a mesma
-// altura em pontos percentuais.
+// altura em pontos percentuais. `FIN` (Resultado Financeiro) entrou na v5.9.3 e quebra a
+// premissa "toda série é ≤ 0" — ele pode ser positivo — por isso o cenário sempre inclui
+// um valor de FIN.
 
 describe('escala comum — a invariante do ajuste', () => {
-  /** Sete grupos com amplitudes deliberadamente MUITO diferentes. */
+  /** Oito grupos com amplitudes deliberadamente MUITO diferentes. */
   const cenario = () => montarProporcaoGrupos([
-    ano(2024, 12, 1000, { RH: -300, COM: -168, CUSTO: -36, ADM: -51, MKT: -62, ESTR: -35, RHB: -109 }),
-    ano(2025, 12, 1000, { RH: -354, COM: -168, CUSTO: -37, ADM: -37, MKT: -50, ESTR: -30, RHB: -66 }),
-    ano(2026, 12, 1000, { RH: -422, COM: -165, CUSTO: -54, ADM: -33, MKT: -70, ESTR: -43, RHB: -93 }),
+    ano(2024, 12, 1000, { RH: -300, COM: -168, CUSTO: -36, ADM: -51, MKT: -62, ESTR: -35, RHB: -109, FIN: -20 }),
+    ano(2025, 12, 1000, { RH: -354, COM: -168, CUSTO: -37, ADM: -37, MKT: -50, ESTR: -30, RHB: -66, FIN: -15 }),
+    ano(2026, 12, 1000, { RH: -422, COM: -165, CUSTO: -54, ADM: -33, MKT: -70, ESTR: -43, RHB: -93, FIN: -25 }),
   ])
 
   it('TODAS as séries têm janelas de MESMA altura', () => {
@@ -229,6 +232,32 @@ describe('escala comum — a invariante do ajuste', () => {
       ano(2025, 12, 1000, { RH: -300 }),
     ])
     for (const x of s) expect(x.dominio[1] - x.dominio[0]).toBeGreaterThan(0)
+  })
+
+  it('FIN positivo em algum ano: nenhum ponto fica fora do eixo, e a janela mantém a MESMA altura das demais', () => {
+    // Cenário real que a v5.9.2 não previa: Resultado Financeiro pode ser positivo (juros
+    // recebidos superando as despesas financeiras), quebrando a premissa "toda série é
+    // ≤ 0" que os outros sete grupos carregam.
+    const s = montarProporcaoGrupos([
+      ano(2024, 12, 1000, { RH: -300, FIN: -20 }),
+      ano(2025, 12, 1000, { RH: -354, FIN: 15 }),
+      ano(2026, 12, 1000, { RH: -422, FIN: -10 }),
+    ])
+    const fin = s.find(x => x.chave === 'FIN')!
+    const rh = s.find(x => x.chave === 'RH')!
+
+    for (const p of fin.pontos) {
+      expect(p.av!, 'FIN fora do eixo').toBeGreaterThanOrEqual(fin.dominio[0] - 1e-9)
+      expect(p.av!, 'FIN fora do eixo').toBeLessThanOrEqual(fin.dominio[1] + 1e-9)
+    }
+
+    const alturaFin = Number((fin.dominio[1] - fin.dominio[0]).toFixed(6))
+    const alturaRh = Number((rh.dominio[1] - rh.dominio[0]).toFixed(6))
+    expect(alturaFin).toBe(alturaRh)
+
+    // O topo de FIN, ao contrário das despesas, pode passar de zero — é o que a janela
+    // LIVRE permite.
+    expect(fin.dominio[1]).toBeGreaterThan(0)
   })
 })
 

@@ -9,34 +9,39 @@ import {
 import { fmtAv } from '@/lib/dre/av'
 import type { SerieProporcao } from '@/lib/dre/proporcao-grupos'
 
-// ── Grade de proporção sobre a Receita Bruta (v5.9.2) ─────────────────────────
-// Sete mini-gráficos de linha: quanto cada grupo consumiu da Receita Bruta, ano a ano.
+// ── Grade de proporção sobre a Receita Bruta (v5.9.2/v5.9.3) ──────────────────
+// Oito mini-gráficos de linha: quanto cada grupo consumiu da Receita Bruta, ano a ano.
 // A página mostrava valores e a AV de UM recorte; faltava a TENDÊNCIA da estrutura de
 // custo — que RH saiu de 32,1% para 38,9% da receita em dois anos não aparecia em lugar
 // nenhum, porque o valor absoluto dele cresceu junto com o faturamento.
 //
 // ── Layout ──────────────────────────────────────────────────────────────────
-// `CUSTO` ISOLADO na primeira linha, em largura cheia (decisão do Yan); as seis despesas
-// num grid 2×3 abaixo. O custo dos serviços é custo DIRETO do que se vendeu — natureza
-// diferente das despesas de estrutura que vêm depois, e a separação visual diz isso sem
-// precisar de texto.
+// `CUSTO` e `FIN` (Resultado Financeiro) lado a lado na primeira linha (decisão do Yan);
+// as seis despesas num grid 2×3 abaixo. O custo dos serviços é custo DIRETO do que se
+// vendeu — natureza diferente das despesas de estrutura que vêm depois — e o Resultado
+// Financeiro é diferente por outro motivo: é o único grupo que pode ser POSITIVO. A
+// separação visual diz isso sem precisar de texto.
 //
 // ── O sinal ─────────────────────────────────────────────────────────────────
 // A AV de despesa é NEGATIVA, como na coluna AV do demonstrativo. Consequência que vale
 // avisar no "?": a linha DESCE quando o grupo passa a consumir mais receita. Mostrar o
 // módulo deixaria a linha mais intuitiva, mas faria a mesma grandeza aparecer de dois
 // jeitos na mesma página — o defeito que a v5.7.2 corrigiu ao unificar a base da AV.
+// `FIN` foge à regra do sinal (pode ser positivo), mas o eixo segue INVERTIDO como nos outros
+// sete: "para cima" tem de significar a mesma coisa em toda a grade (consumiu mais receita).
 
 const AJUDA =
   'Quanto cada grupo consumiu da Receita Bruta em cada ano, no regime de competência. ' +
   'Serve para ver se um grupo cresceu MAIS RÁPIDO que a receita: o valor absoluto sobe ' +
   'junto com o faturamento, mas a proporção só sobe se o grupo pesar mais. ' +
-  'Os percentuais são negativos porque são despesa, como na coluna AV do demonstrativo, mas ' +
-  'o eixo está invertido para a leitura ser direta: a linha SUBINDO significa que o grupo ' +
-  'passou a consumir mais receita. Os sete gráficos usam a MESMA escala (a mesma altura em ' +
-  'pontos percentuais), então as inclinações são comparáveis entre eles — um grupo estável ' +
-  'aparece quase reto de propósito, e o número ao lado do nome dá a variação exata. O ano ' +
-  'corrente conta só os meses já cobertos pela base.'
+  'Os percentuais dos grupos de despesa são negativos, como na coluna AV do demonstrativo, ' +
+  'mas o eixo está invertido para a leitura ser direta: a linha SUBINDO significa que o grupo ' +
+  'passou a consumir mais receita. O Resultado Financeiro é o único que pode ser positivo ' +
+  '(receita financeira maior que a despesa) — o eixo dele segue a mesma direção, e um valor ' +
+  'positivo aparece abaixo da linha do zero. Os oito gráficos usam a ' +
+  'MESMA escala (a mesma altura em pontos percentuais), então as inclinações são ' +
+  'comparáveis entre eles — um grupo estável aparece quase reto de propósito, e o número ' +
+  'ao lado do nome dá a variação exata. O ano corrente conta só os meses já cobertos pela base.'
 
 /** Altura de cada mini-gráfico. ⚠️ Vai como `height` no wrapper, NUNCA `min-height`: o
  *  `ResponsiveContainer` é um filho com `height: 100%`, e em CSS um percentual de altura
@@ -55,9 +60,11 @@ function fmtDeltaPp(v: number): string {
   return `${s}${Math.abs(v).toFixed(1)} p.p.`
 }
 
-/** Cor por SIGNIFICADO, não por sinal aritmético: estas séries são despesas, então um Δ
+/** Cor por SIGNIFICADO, não por sinal aritmético: nas seis despesas e em `CUSTO`, um Δ
  *  positivo (menos negativo) quer dizer que o grupo passou a consumir MENOS receita — é
- *  melhora. Zero e ausência ficam neutros: "não mudou" não é boa nem má notícia.
+ *  melhora. Em `FIN`, positivo quer dizer que o resultado financeiro melhorou (mais
+ *  positivo ou menos negativo) — a mesma leitura de "positivo = melhora" vale sem exceção.
+ *  Zero e ausência ficam neutros: "não mudou" não é boa nem má notícia.
  *
  *  ⚠️ `--success`/`--danger`, e não os `-deep` que o resto da DRE usa (conferência do
  *  Yan, que apontou os cards de KPI como referência — ver `shared/kpi-coluna.tsx`, que
@@ -129,15 +136,18 @@ function MiniGrafico({ serie }: { serie: SerieProporcao }) {
                 TRÊS pontos esconderia justamente o do meio. Numa série de 3 anos, o ano
                 central é metade da tendência. */}
             {ChartXAxisCategoria('rotulo', { interval: 0 })}
-            {/* ⚠️ EIXO INVERTIDO (conferência do Yan). Estas séries são sempre negativas
-                — são despesas sobre a receita —, e com o eixo normal um grupo que passa a
-                pesar MAIS desenha a curva DESCENDO, que é o contrário do que o olho lê.
-                Invertido, "pesa mais" volta a ser "mais alto", e o rótulo continua
-                dizendo −5,2%, como a coluna AV do demonstrativo. */}
+            {/* ⚠️ EIXO INVERTIDO (conferência do Yan) nos OITO. As seis despesas e `CUSTO`
+                são sempre negativas sobre a receita, e com o eixo normal um grupo que passa
+                a pesar MAIS desenha a curva DESCENDO, que é o contrário do que o olho lê.
+                Invertido, "pesa mais" volta a ser "mais alto", e o rótulo continua dizendo
+                −5,2%, como a coluna AV do demonstrativo. `FIN` pode ser positivo, e MESMO
+                ASSIM é invertido: numa grade de escala comparável, "para cima" precisa
+                significar a mesma coisa em todos os cards (v5.9.3) — um FIN positivo fica
+                abaixo do zero, e a janela livre de `proporcao-grupos.ts` garante que caiba. */}
             {ChartYAxisPct({
               casas: 1,
               invertido: true,
-              /* ⚠️ Domínio COMUM às sete séries (`proporcao-grupos.ts`). Sem ele cada
+              /* ⚠️ Domínio COMUM aos oito grupos (`proporcao-grupos.ts`). Sem ele cada
                  gráfico esticava a própria série até preencher o card, e RH (10,2 p.p. de
                  amplitude) desenhava a mesma inclinação que Comerciais (0,36 p.p.) — uma
                  razão de 28× sumia da tela. `ticks` anda junto: com domínio explícito o
@@ -187,8 +197,11 @@ interface Props {
 export default function GradeProporcao({ series }: Props) {
   if (series.length === 0) return null
 
-  // `CUSTO` é o primeiro da lista por construção (ver `GRUPOS_PROPORCAO`).
-  const [custo, ...despesas] = series
+  // Por CHAVE, não por posição: mais robusto que desestruturar por índice se a ordem de
+  // `GRUPOS_PROPORCAO` mudar, e o significado de cada card fica explícito na leitura.
+  const custo = series.find(s => s.chave === 'CUSTO')
+  const fin = series.find(s => s.chave === 'FIN')
+  const despesas = series.filter(s => s.chave !== 'CUSTO' && s.chave !== 'FIN')
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
@@ -209,11 +222,14 @@ export default function GradeProporcao({ series }: Props) {
             </button>
           </Tooltipzinho>
         </div>
-        <p className="text-[11px] text-text-secondary">Por regime de competência</p>
+        <p className="text-[11px] text-text-subtle">Por regime de competência</p>
       </div>
 
       <div className="space-y-3">
-        <MiniGrafico serie={custo} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {custo && <MiniGrafico serie={custo} />}
+          {fin && <MiniGrafico serie={fin} />}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {despesas.map(s => <MiniGrafico key={s.chave} serie={s} />)}
         </div>
