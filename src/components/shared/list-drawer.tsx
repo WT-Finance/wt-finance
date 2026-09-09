@@ -72,8 +72,8 @@ export default function ListDrawer({ titulo, subtitulo, onClose, children }: Pro
       >
         <div className="flex items-start justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
           <div>
-            <p className="text-lg font-semibold text-zinc-900">{titulo}</p>
-            {subtitulo && <p className="text-sm text-zinc-400 mt-0.5">{subtitulo}</p>}
+            <p className="text-lg font-semibold text-text-primary">{titulo}</p>
+            {subtitulo && <p className="mt-0.5 text-sm text-text-subtle">{subtitulo}</p>}
           </div>
           <button
             onClick={handleClose}

@@ -104,7 +104,9 @@ alguém pedir acesso em `/solicitar-acesso`.
   5 telas de auth; subtítulos de seção em `shared/top-section.tsx`, `ui/card.tsx`,
   `financeiro/collapsible-section.tsx`, `fluxo-caixa/page.tsx`, `dre/cascata-card.tsx`,
   `weddings/sumario-subsetor.tsx`; `onboarding/welcome-janus-modal.tsx` (h1 de `style` para classe,
-  pego pela sonda robustecida); docs: `docs/design-system.md`,
+  pego pela sonda robustecida); **cabeçalhos de drawer/modal** (`shared/list-drawer.tsx`,
+  `shared/modal-central.tsx`, `shared/kpi-detail-drawer.tsx`, `weddings/margem-drawer.tsx` — pares
+  título/subtítulo em `<p>`, achados na auto-auditoria; a sonda só cobre `<h1>`); docs: `docs/design-system.md`,
   `.claude/skills/ui-design-system/SKILL.md`; sonda nova `src/styles/cabecalho-pagina.test.ts`.
 - **M2** — `src/lib/dre/proporcao-grupos.ts` (+test), `src/components/financeiro/dre/grade-proporcao.tsx`.
 - **M3** — `src/lib/solicitacoes/abas.ts` (+test, novo), `src/components/solicitacoes/board-solicitacoes.tsx`.

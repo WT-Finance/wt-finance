@@ -67,8 +67,8 @@ export default function MargemDrawer({ tendencia, sumario, margemOk, margemAlert
       >
         <div className="flex items-start justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
           <div>
-            <p className="text-lg font-semibold text-zinc-900">Margem % — Análise</p>
-            <p className="text-sm text-zinc-400 mt-0.5">Tendência mensal e composição por subsetor</p>
+            <p className="text-lg font-semibold text-text-primary">Margem % — Análise</p>
+            <p className="mt-0.5 text-sm text-text-subtle">Tendência mensal e composição por subsetor</p>
           </div>
           <button
             onClick={handleClose}
