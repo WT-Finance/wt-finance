@@ -7,6 +7,7 @@ import ThemeProvider from "@/components/layout/theme-provider";
 import WelcomeJanusModal from "@/components/onboarding/welcome-janus-modal";
 import { getSessao } from "@/lib/auth/sessao";
 import { getPendencias } from "@/lib/solicitacoes/rpc";
+import { getAcessosPendentes } from "@/lib/acessos/pendencias";
 import { getOnboardingVisto } from "@/lib/onboarding";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -38,6 +39,12 @@ export default async function RootLayout({
   // atrasava o 1º byte. `.catch(() => null)` torna a falha do badge inofensiva (badge some, app segue).
   const pendenciasPromise: Promise<number | null> = sessao.logado && !sessao.precisaTrocarSenha
     ? getPendencias().catch(() => null) : Promise.resolve(null);
+  // Badge de "Usuários e Acessos" (v5.9.3/M6): mesma técnica, mas gated no TS ANTES da
+  // RPC — `exigir_acesso(ARRAY['admin/acessos'])` LANÇARIA para quem não tem a área (a
+  // RPC nega, não devolve zero), então quem não tem a área não dispara consulta nenhuma.
+  const acessosPendentesPromise: Promise<number | null> =
+    sessao.logado && !sessao.precisaTrocarSenha && sessao.permissoes.includes('admin/acessos')
+      ? getAcessosPendentes().catch(() => null) : Promise.resolve(null);
   // Onboarding "Welcome to Janus" (v4.40.0): mesma técnica — promise NÃO-aguardada (fora do
   // caminho bloqueante), consumida via Suspense+use no modal. Falha → true (visto) → não exibe
   // (fail-safe: o onboarding jamais trava o app). O `.catch` é cinto duplo (a lib já é fail-safe).
@@ -59,7 +66,13 @@ export default async function RootLayout({
                 email: sessao.email,
                 role: sessao.role,
                 permissoes: sessao.permissoes,
-                pendenciasPromise,
+                // v5.9.3/M6: mecanismo generalizado — mapa href→promise de contagem, para
+                // qualquer item da sidebar poder ganhar um badge (antes só '/solicitacoes'
+                // era hardcoded no componente).
+                badgesPorHref: {
+                  '/solicitacoes': pendenciasPromise,
+                  '/admin/acessos': acessosPendentesPromise,
+                },
               }}
             >
               {children}

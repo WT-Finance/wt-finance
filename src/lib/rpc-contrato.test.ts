@@ -296,6 +296,9 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   { fn: 'get_mix_produto',               params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 10 }, schema: mixProdutoSchema },
   { fn: 'get_minhas_permissoes',         params: {},                                                                     schema: minhasPermissoesSchema },
   { fn: 'solic_minhas_pendencias',       params: {},                                                                     schema: z.number() },
+  // v5.9.3 (0266): badge de solicitações de ACESSO pendentes (sidebar + pill). Service role
+  // passa o gate 'admin/acessos'; valida que a RPC viva devolve um inteiro.
+  { fn: 'admin_acesso_solicitacoes_pendentes', params: {},                                                               schema: z.number().int().nonnegative() },
   // v4.28.0: cruzamento da Calculadora de Rateio. 2 nº reais + 1 inexistente — o
   // SHAPE (array de {venda_no, setor_macro}) é validado contra a RPC viva; o nº fake
   // não volta (prova a diferença → 'Não identificado' é inferido no cliente).
@@ -832,6 +835,13 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
   // v4.14: solicitação de acesso pública × admin de solicitações fechado.
   it('admin_listar_solicitacoes nega anon (sem JWT → erro)', async () => {
     const status = await rpcAnonStatus('admin_listar_solicitacoes', {})
+    expect(status).toBeGreaterThanOrEqual(400)
+  })
+
+  // v5.9.3 (0266): a contagem de pendências de acesso é gated em 'admin/acessos' — anon não
+  // pode nem saber QUANTOS pedidos existem.
+  it('admin_acesso_solicitacoes_pendentes nega anon (sem JWT → erro)', async () => {
+    const status = await rpcAnonStatus('admin_acesso_solicitacoes_pendentes', {})
     expect(status).toBeGreaterThanOrEqual(400)
   })
 
@@ -1801,7 +1811,7 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     }
   })
 
-  it('os 7 grupos da grade de proporção existem na árvore VIVA de competência', async () => {
+  it('os 8 grupos da grade de proporção existem na árvore VIVA de competência', async () => {
     // Chave renomeada no editor da estrutura deixaria um mini-gráfico VAZIO, em silêncio —
     // o mesmo risco que o teste das linhas do Resumo Executivo cobre.
     const anoSP = Number(hojeSP().slice(0, 4))
@@ -1821,7 +1831,7 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     }
   })
 
-  it('as sete janelas da grade têm a MESMA altura contra a base viva', async () => {
+  it('as oito janelas da grade têm a MESMA altura contra a base viva', async () => {
     // A invariante que o ajuste da escala existe para garantir. Com eixo auto-escalado,
     // RH (10,2 p.p. de amplitude) e Desp. Comerciais (0,36 p.p.) desenhavam a mesma
     // inclinação — uma razão de 28× sumia da tela. Aqui isso é medido contra o dado real,
@@ -1841,6 +1851,8 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     expect(alturas.size, `janelas de alturas diferentes: ${[...alturas].join(', ')}`).toBe(1)
 
     // E cada série cabe inteira na sua janela — um ponto fora do eixo sumiria do gráfico.
+    // v5.9.3: vale em especial para FIN (Resultado Financeiro), que é (+/−) e pode ter um ano
+    // POSITIVO — a janela clampada em zero das despesas o expulsaria em silêncio.
     for (const s of series) {
       for (const p of s.pontos) {
         if (p.av === null) continue
