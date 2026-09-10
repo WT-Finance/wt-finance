@@ -1,6 +1,18 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-10 (pós-merge da v5.9.6) · produção na **v5.9.6** (#261 mergeado 10/09 às 11h45): convenção de teste que ESCREVE no banco (skill §6 + checklist `revisor-db` + sonda allowlist; exceção `contrato-api-externa` CONFIRMADA pelo Yan; reavaliação de ambiente de teste espera o 4º arquivo); **1207 testes**. Antes a v5.9.5 (#259, 10/09 11h03):
+> ## ⛔ v5.10.0 EM VOO — Fase 1 concluída, **GATE 1 fechado → Fase 2** · 2026-09-10
+> Branch `chore/v5-10-0-limpeza-fechamento-v5` (worktree `.claude/worktrees/chore+v5-10-0-limpeza-fechamento-v5`),
+> base `main@885da65`, com `origin/main` (até a v5.9.7) já mergeado nela. Briefing
+> `docs/briefings/briefing-v5-10-0-limpeza-fechamento-v5.md`.
+> **Entregue (Fase 1):** `docs/auditoria-v5/relatorio.md` (consolidado, **145 achados**) + `D1…D10-*.md` +
+> `_insumos/` (knip, depcheck, audit, vitest, catálogo do banco, mapa RPC→chamadores) + rascunho
+> `docs/backlog-v6.md` (23 itens). **GATE 1 fechado 10/09:** triagem em `docs/auditoria-v5/relatorio-triado.md`
+> (a spec da Fase 2 — só `agir agora` é escopo; `backlog v6`/`descartar` não são tocados).
+> **Baseline preservável:** 1207 testes / 72 arquivos / 0 skip; `tsc`, `lint`, `build` limpos.
+> **Fase 2, ordem por risco:** código/arquivos → aditiva (0269) → deploy intermediário → destrutiva (0270, GATE 2, TTY) → docs.
+> **Já resolvido pelo main:** D6-003 (`next` 16.3.4, patch v5.9.7 #264). Frente única: nenhuma outra branch de feature enquanto esta corre.
+
+Última atualização: 2026-09-10 (merge da v5.9.7 na branch da v5.10.0; GATE 1 fechado) · produção na **v5.9.7** (#264 mergeado 10/09, patch de segurança do `next` 16.3.4); antes a **v5.9.6** (#261, 10/09 11h45): convenção de teste que ESCREVE no banco (skill §6 + checklist `revisor-db` + sonda allowlist; exceção `contrato-api-externa` CONFIRMADA pelo Yan; reavaliação de ambiente de teste espera o 4º arquivo); **1207 testes**. Antes a v5.9.5 (#259, 10/09 11h03):
 
 ✅ **v5.9.6 EM PRODUÇÃO** (#261, 10/09 11h45; Rota C; out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v5-9-6_Convencao_Teste_Escreve_Banco.md`) — **convenção de teste que

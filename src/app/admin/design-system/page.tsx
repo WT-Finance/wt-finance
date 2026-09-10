@@ -419,7 +419,6 @@ export default async function DesignSystemPage() {
           <p>{'{ChartXAxisMes("mes")} // eixo X temporal "jan/26"'}</p>
           <p>{'{ChartYAxisBRL()}      // eixo Y "R$ 1,8 Mi" (abs por padrão)'}</p>
           <p>{'{ChartYAxisPct()} / {ChartXAxisBRL()} / {ChartYAxisCategoria("name")}'}</p>
-          <p>{'{ChartReferenceLineY(meta, { color, label })} // referência tracejada'}</p>
           <p className="text-[var(--text-primary)] not-italic font-sans font-medium mt-2 mb-1">Componentes:</p>
           <p>{'<ChartLegend items={[{ label, color, type, opacity, dashed }]} />'}</p>
           <p>{'<CustomTooltip {...props} showColorDot formatter={...} labelFormatter={...} />'}</p>
@@ -493,7 +492,6 @@ export default async function DesignSystemPage() {
             { name: 'CustomTooltip',         path: 'src/components/charts/custom-tooltip.tsx',           desc: 'Tooltip padronizado para gráficos Recharts' },
             { name: 'SumarioSubsetorCard',   path: 'src/components/weddings/sumario-subsetor.tsx',       desc: 'Tabela de composição por subsetor com barras' },
             { name: 'TopSection',            path: 'src/components/shared/top-section.tsx',              desc: 'Barra recolhível com "linha-cortina" (450ms; barra fixa, conteúdo sai por baixo, linha desce à frente) — padrão de toda seção recolhível, v5.1.9' },
-            { name: 'SortTh',               path: 'src/components/financeiro/proximos-lancamentos-lateral.tsx', desc: 'Cabeçalho de coluna clicável com seta ▲▼ — padrão de Lista de Operações' },
             { name: 'AuthHeader',            path: 'src/components/auth/auth-header.tsx',                desc: 'Cabeçalho institucional (logo + wordmark) das telas de plataforma — v4.14.1' },
             { name: 'Checkbox',              path: 'src/components/ui/checkbox.tsx',                     desc: 'Checkbox do design system (substitui o nativo do browser) — v4.14.1' },
             { name: 'ModalCentral',          path: 'src/components/shared/modal-central.tsx',            desc: 'Modal central genérico (confirmações, ex.: excluir usuário)' },

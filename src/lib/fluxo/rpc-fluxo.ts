@@ -1,25 +1,18 @@
 import { z } from 'zod'
-import type { ServerClient } from '@/lib/supabase/server'
-import type { RpcLike } from '@/lib/rpc'
 
-// RPCs do Fluxo de Caixa v5.2.0/Onda 1 (M4) — não estão em src/types/database.ts (mesma
-// convenção de acervo/faturamento/solicitações/metas: helper de tipagem frouxa em vez de
-// regenerar/editar o database.ts congelado). O SHAPE do retorno é validado por parseRpc
-// (@/lib/schemas-rpc) no call-site, com os schemas Zod abaixo.
-export function rpcFluxo(
-  db: ServerClient,
-  fn: string,
-  args: Record<string, unknown> = {},
-): Promise<RpcLike> {
-  const call = db.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<RpcLike>
-  return call.call(db, fn, args)
-}
+// Schemas Zod das RPCs do Fluxo de Caixa (v5.2.0/Onda 1, M4). O SHAPE do retorno é
+// validado por parseRpc (@/lib/schemas-rpc) no call-site.
+//
+// v5.10.0: o helper `rpcFluxo` que morava aqui foi APAGADO — não tinha nenhum
+// chamador (nem neste arquivo). O comentário que ele carregava dizia que estas RPCs
+// "não estão em src/types/database.ts": deixou de ser verdade quando o arquivo passou
+// a ser GERADO (ADR-0173) — as oito estão lá, tipadas.
 
 // ── get_repasse_mensal(p_ano) → RepasseMensalRow[] ───────────────────────────
 // sal = repasse BRUTO (Entrada Clientes − Pagto Fornecedor). pct/pct_ant podem ser
 // null (mês sem base comparável ou sem entrada no denominador).
 
-export const repasseMensalRowSchema = z.object({
+const repasseMensalRowSchema = z.object({
   mes:     z.number(),
   ent:     z.number(),
   sal:     z.number(),
@@ -37,7 +30,7 @@ export type RepasseMensalRow = z.infer<typeof repasseMensalRowSchema>
 // cheio do ano corrente. `anos` = consolidados SEM dupla contagem: ano+1 traz só os meses
 // não exibidos nas colunas (resto=true, m ≥ mês-corrente); ano+2 cheio.
 
-export const horizonteMesSchema = z.object({
+const horizonteMesSchema = z.object({
   mes:     z.number(),
   ano:     z.number(),
   parcial: z.boolean(),
@@ -47,7 +40,7 @@ export const horizonteMesSchema = z.object({
   n:       z.number(),
 }).passthrough()
 
-export const horizonteAnoSchema = z.object({
+const horizonteAnoSchema = z.object({
   ano:   z.number(),
   resto: z.boolean(),
   liq:   z.number(),
@@ -63,15 +56,13 @@ export const horizonteSchema = z.object({
   anos:         z.array(horizonteAnoSchema),
 }).passthrough()
 
-export type HorizonteMes  = z.infer<typeof horizonteMesSchema>
-export type HorizonteAno  = z.infer<typeof horizonteAnoSchema>
 export type HorizonteData = z.infer<typeof horizonteSchema>
 
 // ── get_saldo_caixa() → SaldoCaixaConta[] (tabela própria financeiro.saldo_caixa) ──
 // Desconectado de analytics.gerencial_saldos (ajuste do checkpoint): o saldo do Fluxo
 // Projetado é preenchível no modal do drill (atualizar_saldo_caixa). Reserva separada.
 
-export const saldoCaixaContaSchema = z.object({
+const saldoCaixaContaSchema = z.object({
   conta:         z.string(),
   saldo:         z.number(),
   ordem:         z.number(),
@@ -87,7 +78,7 @@ export type SaldoCaixaConta = z.infer<typeof saldoCaixaContaSchema>
 // ── get_fluxo_runway_semanal() → RunwaySemanal ───────────────────────────────
 // 13 semanas; acc = saldo projetado acumulado (saldo_operacional + Σ liq até a semana).
 
-export const runwaySemanaSchema = z.object({
+const runwaySemanaSchema = z.object({
   ini: z.string(),
   fim: z.string(),
   rec: z.number(),
@@ -101,14 +92,13 @@ export const runwaySemanalSchema = z.object({
   semanas:           z.array(runwaySemanaSchema),
 }).passthrough()
 
-export type RunwaySemana  = z.infer<typeof runwaySemanaSchema>
 export type RunwaySemanal = z.infer<typeof runwaySemanalSchema>
 
 // ── get_fluxo_ranking(p_limite) → RankingCaixa ───────────────────────────────
 // YTD × YTD ano anterior por categoria. pct null quando t25 (ano anterior) = 0
 // (sem base comparável).
 
-export const rankingItemSchema = z.object({
+const rankingItemSchema = z.object({
   c:   z.string(),
   t25: z.number(),
   t26: z.number(),
@@ -157,4 +147,3 @@ export type PrevistoDiario = z.infer<typeof previstoDiarioSchema>
 
 export const saldoRepasseSchema = z.object({ sal: z.number() }).passthrough()
 
-export type SaldoRepasse = z.infer<typeof saldoRepasseSchema>

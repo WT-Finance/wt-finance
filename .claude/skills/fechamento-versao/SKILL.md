@@ -63,10 +63,19 @@ servidor ao final. Parecer entra no out-briefing.
    NUNCA hora redonda chutada; reconciliar ao horário real do merge no `/pos-merge`.
    TODA entrega entra; patch puramente técnico ganha descrição genérica honesta.
 4. **Version bump** — `package.json` (o `src/lib/version.ts` deriva dele).
-5. **Out-briefing** — `docs/briefings/WT_Finance_Out_Briefing_<versão>_<Nome>.md`: missões
+5. **`src/types/database.ts` — REGENERAR se a versão criou ou alterou RPC** (v5.10.0). O arquivo
+   é **GERADO**, não manuscrito: `npx supabase gen types typescript --linked > src/types/database.ts`,
+   e commitar **junto do bump**. Sem isso ele volta a envelhecer e a próxima RPC nasce fora do tipo
+   (era a origem dos `RpcFrouxa`/`as unknown as`: o arquivo manuscrito da M1 cobria ~55 de ~215 RPCs).
+   ⚠️ **O gerador NÃO modela nulidade de PARÂMETRO** — todo parâmetro de função Postgres aceita
+   `NULL`, mas o `gen types` emite o tipo base (com `?` quando há `DEFAULT`). Se o `tsc` acusar
+   `string | null` não atribuível a `string` num argumento de RPC, o defeito é do TIPO, não do
+   código: trate o nulo na fronteira (omitir a chave quando o parâmetro tem `DEFAULT NULL`;
+   sentinela só com equivalência provada no corpo da função) — **nunca com cast**.
+6. **Out-briefing** — `docs/briefings/WT_Finance_Out_Briefing_<versão>_<Nome>.md`: missões
    implementadas, migrations, ADRs, pendências, arquivos modificados, seção **Parecer da
    revisão** (achados e como foram endereçados). Out-briefing é parte do DoD, não pós-entrega.
-6. **WORKING-CONTEXT.md** — versão, bloqueios, filas ativas, data. Item resolvido SAI.
+7. **WORKING-CONTEXT.md** — versão, bloqueios, filas ativas, data. Item resolvido SAI.
 
 ## 6. Aprendizado permanente (régua de 5 destinos)
 

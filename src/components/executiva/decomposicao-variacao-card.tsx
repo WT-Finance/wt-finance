@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { DecomposicaoVariacao } from '@/types/api'
 import { fmtMi } from '@/lib/fmt'
-import { gerarTextoDecomposicao } from '@/lib/decomposicao-variacao'
+import { gerarTextoDecomposicao } from '@/lib/decomposicao-texto'
 
 function comNegrito(texto: string): ReactNode[] {
   return texto.split(/\*\*(.*?)\*\*/g).map((parte, i) =>

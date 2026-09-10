@@ -1,0 +1,57 @@
+{
+  "//": "ATO HUMANO 1 + 2 da v5.10.0 — conteúdo PROPOSTO para .claude/settings.json (versionado). NÃO está instalado: o arquivo é protegido pelo hook `protecao-config`, e o escape WT_PERMITIR_CONFIG=1 é variável de ambiente da sessão que o agente não alcança por desenho. Ver o README ao lado para o comando.",
+
+  "//permissions": "D10-001. Hoje NÃO existe nenhuma regra de allow/deny — nem aqui nem no ~/.claude/settings.json do usuário (que só tem defaultMode: auto). O CLAUDE.md descreve uma 'terceira camada' de permissões que na prática é prosa. O `deny` abaixo é o que importa: `npx supabase db push` cru passa POR FORA do wrapper npm run db:migrate e, com ele, por fora da classificação aditiva/destrutiva, do backup-gate e do restore-test — e empurra TODO o conjunto pendente, inclusive uma destrutiva estacionada. Hoje a única proteção contra isso é disciplina.",
+
+  "permissions": {
+    "deny": [
+      "Bash(npx supabase db push*)",
+      "Bash(supabase db push*)",
+      "Bash(*supabase* db push*)"
+    ],
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint*)",
+      "Bash(npm run build)",
+      "Bash(npm test*)",
+      "Bash(npx vitest run*)",
+      "Bash(npx supabase migration list*)",
+      "Bash(npx supabase db query*)",
+      "Bash(npx supabase gen types*)",
+      "Bash(npm run db:migrate -- --aditiva*)"
+    ]
+  },
+
+  "//hooks": "PreToolUse ganha o protecao-git-add (D8-022). O arquivo do hook está pronto em docs/auditoria-v5/atos-humanos/2-protecao-git-add.mjs e precisa ser copiado para .claude/hooks/ no mesmo ato.",
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/protecao-config.mjs" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/protecao-git-add.mjs" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/gate-stop.mjs" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/contexto-sessao.mjs" }
+        ]
+      }
+    ]
+  }
+}

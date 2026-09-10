@@ -49,8 +49,13 @@ export interface SolicitacaoAdmin {
 
 /** Criação de usuário (v4.14): devolve a senha provisória para exibir ao admin.
  *  v4.24.0 — emailEnviado: a senha também foi enviada por e-mail? (false = fallback). */
+/** `avisoParcial` (v5.10.0/D5-002): o usuário FOI criado, mas um passo posterior e
+ *  não-bloqueante falhou (marcar a solicitação como decidida, forçar a troca de
+ *  senha). Antes esses erros eram descartados em silêncio e a operação se
+ *  declarava um sucesso limpo — a solicitação ficava pendente para sempre e
+ *  ninguém era avisado. Campo opcional: quem não lê continua funcionando igual. */
 export type ResultadoCriarUsuario =
-  | { ok: true; email: string; senha: string; emailEnviado: boolean }
+  | { ok: true; email: string; senha: string; emailEnviado: boolean; avisoParcial?: string }
   | { ok: false; erro: string }
 
 /** Reset de senha: nova senha provisória para exibir ao admin.

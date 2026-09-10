@@ -1,0 +1,1 @@
+[0m[31mWARN: config section [inbucket] is deprecated. Please use [local_smtp] instead.[0m

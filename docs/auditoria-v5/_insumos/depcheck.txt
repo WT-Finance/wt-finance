@@ -1,0 +1,5 @@
+Unused devDependencies
+* @tailwindcss/postcss
+* tailwindcss
+Missing dependencies
+* @typescript-eslint/parser: ./src/lib/carga/coercao-lint.sonda.test.ts

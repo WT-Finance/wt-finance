@@ -327,6 +327,31 @@ se auto-desativar nem para tirar o próprio acesso a `admin/acessos`.
   precedente da v4.17.1 na seção 1. `DROP` é destrutivo: confirmação + reversibilidade
   documentada (corpo salvo na migration de origem).
 
+### A varredura de orfandade inclui `docs/runbooks/` e `docs/adr/` (v5.10.0)
+
+**Símbolo citado em procedimento de emergência NÃO é órfão.** A prova de orfandade tem de
+varrer `docs/runbooks/` e `docs/adr/`, não só código — e o **conteúdo** dos arquivos, não o
+nome deles.
+
+**Custou um achado ALTO no Bloco 1 da v5.10.0.** O `export` de `getPool`
+(`scripts/db-gate/lib.mjs`) foi removido como órfão: o knip não o via e o grep em
+`src`/`scripts`/`supabase`/`package.json`/`.claude`/`CLAUDE.md` voltou vazio. Só que o
+procedimento de **restore** do backup-gate tem, dentro de um code-fence,
+
+```js
+import { pgCopyIn, getPool, closePool } from './scripts/db-gate/lib.mjs'
+```
+
+e chama `getPool().query(...)` para resetar sequências depois de repopular uma tabela
+(`docs/runbooks/db-backup-gate-runbook.md:65,71`). Sem o `export`, esse `import` estoura com
+`SyntaxError` — e apareceria exatamente no pior momento: alguém recuperando o banco depois de
+uma destrutiva dar errado. O `revisor` pegou; o `export` voltou com comentário no próprio
+`lib.mjs` dizendo por que ele é público sem ter chamador em código.
+
+A generalização vale para qualquer objeto do banco: uma RPC ou view usada **só** por um
+runbook de recuperação, por um ADR como exemplo executável, ou por um passo manual de
+onboarding é **viva**. Ferramenta de análise estática não abre Markdown.
+
 ### Validar contra o TIPO: ler do SNAPSHOT, nunca da tabela viva
 
 Quando uma RPC precisa saber algo sobre a *definição* de um campo (é obrigatório? qual o

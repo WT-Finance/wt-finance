@@ -38,16 +38,25 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   const p = parsed.data
   const client = await getServerClient()
+  // v5.10.0 — os três filtros opcionais passam a ser OMITIDOS quando ausentes, em vez
+  // de enviados como `null` explícito. Equivalência PROVADA na assinatura da função:
+  //   get_operacoes_weddings(… p_periodo_inicio date DEFAULT NULL::date,
+  //                            p_periodo_fim    date DEFAULT NULL::date,
+  //                            p_busca          text DEFAULT NULL::text …)
+  // Os três têm DEFAULT NULL, então omitir a chave entrega exatamente o mesmo NULL ao
+  // corpo da função. O guard é `!= null` (não truthiness) de propósito: `busca` aceita
+  // string VAZIA pelo schema (`z.string().max(100)`), e `''` tem de continuar sendo
+  // enviado como `''`, como era com o `?? null`.
   const res = await client.rpc('get_operacoes_weddings', {
-    p_status:          p.status,
-    p_periodo_inicio:  p.periodo_inicio ?? null,
-    p_periodo_fim:     p.periodo_fim    ?? null,
-    p_subsetor:        p.subsetor,
-    p_busca:           p.busca          ?? null,
-    p_ordenar_por:     p.ordenar_por,
-    p_direcao:         p.direcao,
-    p_pagina:          p.pagina,
-    p_por_pagina:      p.por_pagina,
+    p_status:      p.status,
+    p_subsetor:    p.subsetor,
+    p_ordenar_por: p.ordenar_por,
+    p_direcao:     p.direcao,
+    p_pagina:      p.pagina,
+    p_por_pagina:  p.por_pagina,
+    ...(p.periodo_inicio != null ? { p_periodo_inicio: p.periodo_inicio } : {}),
+    ...(p.periodo_fim    != null ? { p_periodo_fim:    p.periodo_fim    } : {}),
+    ...(p.busca          != null ? { p_busca:          p.busca          } : {}),
   })
   // F7 (v4.12.1): valida shape; erro de RPC ou drift de contrato → null (logado em parseRpc).
   const operacoes = parseRpc(operacoesWeddingsSchema, res, 'get_operacoes_weddings')

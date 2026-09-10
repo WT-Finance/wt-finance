@@ -1,5 +1,9 @@
 {
-  "name": "wt-finance-temp",
+  "name": "janus",
+  "//engines": "v5.10.0/D10-006: piso declarado, não pin. Next 16 exige Node >= 20.9; a Vercel escolhe o LTS dela (24) e o .nvmrc alinha o local. Piso e não intervalo fechado, para não trocar o runtime de produção por efeito colateral desta limpeza.",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "version": "5.9.7",
   "private": true,
   "scripts": {
@@ -15,7 +19,7 @@
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
-    "@supabase/ssr": "^0.10.2",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.1",
     "@vercel/speed-insights": "^2.0.0",
     "date-fns": "^4.1.0",
@@ -34,9 +38,12 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript-eslint/parser": "8.59.1",
+    "depcheck": "^1.4.7",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "knip": "^6.35.1",
     "pg": "^8.21.0",
     "pg-copy-streams": "^7.0.0",
     "tailwindcss": "^4",

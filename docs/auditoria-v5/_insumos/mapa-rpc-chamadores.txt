@@ -1,0 +1,297 @@
+schema|nome|args|grants|src_arquivos|seed_arquivos|migrations_n|outras_funcoes_que_citam
+analytics|extrair_nome_casal|p_operacao text||||10|analytics.regenerar_dim_operacao_weddings
+analytics|fn_gerencial_lancamentos_atualizado|||||1|
+analytics|regenerar_dim_operacao_weddings|||src/app/admin/uploads/actions.ts src/types/database.ts src/lib/carga/lancamentos.ts||15|public.promover_carga_vendas
+analytics|situacao_por_data_evento|p_data_evento date||||5|public.get_operacao_weddings__nucleo
+app|areas_do_setor|p_setor text|service_role:EXECUTE|src/lib/sonda-teste-escreve-banco.test.ts src/lib/auth/areas.ts src/lib/auth/areas.test.ts src/lib/rpc-contrato.test.ts||4|public.get_decomposicao_variacao public.get_executiva_kpis public.get_historico_12m_setores public.get_historico_mensal public.get_mix_produto public.get_mix_setor public.get_prejuizos public.get_ranking_vendedores_range public.get_tendencia_margem public.get_vendas_em_aberto public.get_vendas_receita_negativa
+app|auth_enforcement_ativo||service_role:EXECUTE|||3|app.exigir_acesso
+app|current_user_role||service_role:EXECUTE|||1|app.is_financeiro
+app|current_user_setor_id||service_role:EXECUTE|||1|
+app|exigir_acesso|p_areas text[]|service_role:EXECUTE|src/app/layout.tsx src/app/admin/solicitacoes/movimentacoes/page.tsx src/app/admin/api-externa/actions.ts src/app/admin/acessos/page.tsx src/app/financeiro/fluxo-caixa/gerencial/actions.ts src/app/financeiro/fluxo-caixa/gerencial/page.tsx src/app/financeiro/fluxo-caixa/actions.ts src/app/financeiro/acervo/actions.ts src/app/financeiro/calculadora-rateio/actions.ts src/app/financeiro/dre/estrutura-competencia/actions.ts src/app/financeiro/dre/estrutura/actions.ts src/app/financeiro/faturamento-corp/cadastro-actions.ts src/app/api/gerencial/import/route.ts src/app/api/externo/solicitacoes/route.ts src/lib/solicitacoes/rpc.ts src/lib/api-externa/rpc.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts src/lib/rpc-contrato.test.ts||91|public.acervo_criar public.acervo_doc_path public.acervo_excluir public.acervo_listar public.admin_acesso_solicitacoes_pendentes public.admin_atribuir_role public.admin_atualizar_nome public.admin_atualizar_role public.admin_criar_role public.admin_decidir_solicitacao public.admin_excluir_role public.admin_listar_areas public.admin_listar_roles public.admin_listar_solicitacoes public.admin_listar_usuarios public.admin_marcar_trocar_senha public.admin_registrar_usuario public.admin_set_enforcement public.admin_solic_arquivar_tipo public.admin_solic_excluir_tipo public.admin_solic_listar_tipos public.admin_solic_salvar_tipo public.admin_solic_tipo_api_config public.apagar_clientes_corp public.api_chave_listar public.api_chave_registrar public.api_chave_revogar public.api_log_listar public.api_retrofit_contratos public.api_robo_registrar public.atualizar_cliente_corp public.atualizar_saldo_caixa public.atualizar_status_nota public.batch_gerencial_import public.buscar_cliente_corporativo public.buscar_docs_fatura public.buscar_pessoas public.create_gerencial_conta public.create_gerencial_lancamento public.criar_solicitacao public.cruzar_vendas_setor public.delete_gerencial_conta public.delete_gerencial_lancamento public.delete_gerencial_lancamento public.delete_gerencial_lancamentos_bulk public.delete_gerencial_lancamentos_bulk public.dre_comp_estrutura public.dre_comp_estrutura_desfazer_linha public.dre_comp_estrutura_desfazer_lote public.dre_comp_estrutura_historico_lote public.dre_comp_estrutura_historico_lotes public.dre_comp_estrutura_salvar public.dre_estrutura public.dre_estrutura_desfazer_linha public.dre_estrutura_desfazer_lote public.dre_estrutura_historico_lote public.dre_estrutura_historico_lotes public.dre_estrutura_salvar public.email_existentes public.excluir_cliente_corp public.fatura_emissao_existentes public.gerencial_desfazer_linha public.gerencial_desfazer_lote public.gerencial_historico_lote public.gerencial_historico_lotes public.get_acumulado_weddings public.get_acumulado_weddings public.get_cagr public.get_calendario_liquidez public.get_carteira_weddings public.get_contratos_casamento_mes public.get_dashboard_config public.get_decomposicao_bloco public.get_decomposicao_categoria public.get_decomposicao_grupo public.get_decomposicao_variacao public.get_dre_competencia_mensal public.get_dre_mensal public.get_executiva_kpis public.get_fluxo_caixa_acumulado_v1 public.get_fluxo_caixa_kpis_b public.get_fluxo_caixa_kpis_diario public.get_fluxo_caixa_mensal_v3 public.get_fluxo_cobertura public.get_fluxo_horizonte public.get_fluxo_previsto_diario public.get_fluxo_ranking public.get_fluxo_runway_semanal public.get_gerencial_lancamentos public.get_gerencial_lancamentos_planilha public.get_gerencial_projecao_diaria public.get_gerencial_saldos public.get_historico_12m_setores public.get_historico_mensal public.get_lancamentos_do_dia public.get_mix_produto public.get_mix_setor public.get_operacao_weddings public.get_operacoes_lista_weddings public.get_operacoes_weddings public.get_pipeline_weddings public.get_posicao_por_conta public.get_prejuizos public.get_proximos_casamentos public.get_proximos_lancamentos public.get_ranking_vendedores_range public.get_rendimento_float public.get_repasse_mensal public.get_saldo_caixa public.get_saldo_repasse public.get_setores_macro public.get_sumario_subsetor public.get_taxas_cdi public.get_tendencia_margem public.get_vendas_em_aberto public.get_vendas_em_aberto_weddings public.get_vendas_prejuizo_weddings public.get_vendas_receita_negativa public.get_weddings_historico_subsetor public.importar_clientes_corp public.inserir_cliente_corp public.listar_clientes_corp public.marcar_onboarding_visto public.metas_listar public.metas_ritmo_diario public.metas_subsetor_listar public.metas_subsetor_upsert public.metas_sumario_subsetor public.metas_upsert public.monde_comparacao_mensal public.nota_existentes public.onboarding_visto public.patrimonio_atualizar_ativo public.patrimonio_atualizar_obs_movimentacao public.patrimonio_catalogos public.patrimonio_criar_ativo public.patrimonio_detalhe_ativo public.patrimonio_listar_ativos public.patrimonio_listar_movimentacoes public.patrimonio_registrar_movimentacao public.patrimonio_resumo public.patrimonio_upsert_detentor public.provisionar_dre_comp_par public.rbac_verificar_guard public.registrar_email public.registrar_emissao public.registrar_nota public.reordenar_gerencial_contas public.resultado_boletos public.resultado_notas public.solic_anexar public.solic_anexo_excluir public.solic_anexo_path public.solic_aprovar public.solic_caixa public.solic_cancelar public.solic_concluir public.solic_destinatarios public.solic_detalhe public.solic_emails_envolvidos public.solic_minhas public.solic_minhas_pendencias public.solic_movimentacoes public.solic_promover_anexos public.solic_rejeitar public.solic_tipos_abertura public.solic_tipos_documentacao public.update_gerencial_conta public.update_gerencial_lancamento public.update_gerencial_lancamento public.update_gerencial_saldo public.update_gerencial_saldo
+app|get_config_numeric|p_chave text|service_role:EXECUTE|||4|
+app|is_financeiro||service_role:EXECUTE|||1|
+app|minha_role_id|||||4|app.pode_ver_solic app.sou_atendente public.solic_caixa public.solic_minhas_pendencias
+app|norm_nome|p text||src/components/gestao-pessoas/inventario/derivar.ts src/components/gestao-pessoas/inventario/derivar.test.ts||4|patrimonio.proximo_codigo public.acervo_listar public.atualizar_cliente_corp public.buscar_cliente_corporativo public.importar_clientes_corp public.inserir_cliente_corp public.listar_clientes_corp public.patrimonio_atualizar_ativo public.patrimonio_catalogos public.patrimonio_criar_ativo public.patrimonio_listar_ativos public.patrimonio_listar_movimentacoes public.patrimonio_upsert_detentor
+app|permissoes_de|p_user uuid|service_role:EXECUTE|||4|app.pode_assinar_area public.get_minhas_permissoes
+app|pode_assinar_area|p_area text|service_role:EXECUTE,authenticated:EXECUTE|||1|
+app|pode_ver_solic|p_sol app.solicitacao||src/app/solicitacoes/actions.ts src/app/api/externo/solicitacoes/route.ts src/lib/solicitacoes/schemas.ts src/lib/solicitacoes/rpc.ts src/lib/solicitacoes/ciclo-de-vida.test.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts||15|public.solic_anexar public.solic_anexo_excluir public.solic_anexo_path public.solic_aprovar public.solic_cancelar public.solic_concluir public.solic_detalhe public.solic_emails_envolvidos public.solic_rejeitar
+app|slugificar|p text||||4|public.admin_solic_salvar_tipo public.api_retrofit_contratos
+app|solic_json|p_sol app.solicitacao||src/lib/solicitacoes/schemas.ts src/lib/solicitacoes/ciclo-de-vida.test.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/rpc-contrato.test.ts||8|public.solic_caixa public.solic_detalhe public.solic_minhas
+app|solic_validar_e_snapshotar|p_tipo_id bigint, p_respostas jsonb, p_anexos jsonb|service_role:EXECUTE|src/lib/api-externa/contrato-api-externa.test.ts||6|public.criar_solicitacao public.criar_solicitacao_externa
+app|sou_atendente|p_sol app.solicitacao||src/app/solicitacoes/actions.ts src/components/solicitacoes/drawer-solicitacao.tsx src/components/solicitacoes/board-solicitacoes.tsx src/lib/solicitacoes/schemas.ts src/lib/solicitacoes/ciclo-de-vida.test.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/rpc-contrato.test.ts||12|app.solic_json public.solic_anexar public.solic_aprovar public.solic_concluir public.solic_rejeitar
+app|tem_area|p_area text||||2|app.pode_ver_solic public.solic_caixa
+app|uid_jwt|||src/app/api/externo/solicitacoes/route.ts src/lib/solicitacoes/ciclo-de-vida.test.ts src/lib/api-externa/contrato-api-externa.test.ts||22|app.minha_role_id app.pode_ver_solic app.solic_json app.sou_atendente app.tem_area public.admin_solic_salvar_tipo public.api_chave_registrar public.api_chave_revogar public.criar_solicitacao public.marcar_onboarding_visto public.onboarding_visto public.solic_anexar public.solic_anexo_excluir public.solic_aprovar public.solic_caixa public.solic_cancelar public.solic_concluir public.solic_minhas public.solic_minhas_pendencias public.solic_promover_anexos public.solic_rejeitar
+financeiro|fn_broadcast_gerencial|||||1|
+financeiro|fn_diario_alteracoes|||||6|financeiro.reverter_diario
+financeiro|fn_dre_touch_atualizado_em|||||2|
+financeiro|reverter_diario|p_diario_ids bigint[]||src/lib/dre/reverter-diario.test.ts||6|public.dre_comp_estrutura_desfazer_linha public.dre_comp_estrutura_desfazer_lote public.dre_comp_estrutura_salvar public.dre_estrutura_desfazer_linha public.dre_estrutura_desfazer_lote public.dre_estrutura_salvar public.gerencial_desfazer_linha public.gerencial_desfazer_lote
+patrimonio|como_estado_conservacao|p text||||1|public.patrimonio_atualizar_ativo public.patrimonio_criar_ativo
+patrimonio|como_motivo_baixa|p text||||1|public.patrimonio_registrar_movimentacao
+patrimonio|proximo_codigo|||||2|public.patrimonio_criar_ativo
+patrimonio|status_derivado|p_tipo patrimonio.tipo_movimentacao, p_detentor_destino_id integer||src/components/gestao-pessoas/inventario/paridade-sql.test.ts||1|public.patrimonio_registrar_movimentacao
+public|acervo_criar|p_titulo text, p_descricao text, p_nome_arquivo text, p_mime text, p_tamanho_bytes bigint, p_storage_path text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/acervo/actions.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||1|
+public|acervo_doc_path|p_doc_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/acervo/actions.ts src/lib/rpc-contrato.test.ts||1|
+public|acervo_excluir|p_doc_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/acervo/actions.ts src/lib/rpc-contrato.test.ts||1|
+public|acervo_listar||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/acervo/actions.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||1|
+public|admin_acesso_solicitacoes_pendentes||authenticated:EXECUTE,service_role:EXECUTE|src/lib/acessos/pendencias.ts src/lib/rpc-contrato.test.ts||1|
+public|admin_atribuir_role|p_user_id uuid, p_role_id bigint|service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/actions.ts src/types/database.ts||2|
+public|admin_atualizar_nome|p_user_id uuid, p_nome text|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/acessos/actions.ts src/components/admin/acessos/aba-usuarios.tsx src/types/database.ts||1|
+public|admin_atualizar_role|p_role_id bigint, p_nome text, p_descricao text, p_permissoes text[]|service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/actions.ts src/types/database.ts||2|
+public|admin_criar_role|p_nome text, p_descricao text, p_permissoes text[]|service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/actions.ts src/types/database.ts||2|
+public|admin_decidir_solicitacao|p_id bigint, p_aprovar boolean, p_obs text|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/acessos/actions.ts src/types/database.ts||1|
+public|admin_excluir_role|p_role_id bigint|service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/actions.ts src/types/database.ts||2|
+public|admin_listar_areas||service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/page.tsx src/types/database.ts src/lib/rpc-contrato.test.ts||6|
+public|admin_listar_roles||service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/page.tsx src/types/database.ts||2|
+public|admin_listar_solicitacoes||authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/acessos/page.tsx src/components/admin/acessos/tipos.ts src/types/database.ts src/lib/rpc-contrato.test.ts||3|
+public|admin_listar_usuarios||service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/page.tsx src/types/database.ts src/lib/rpc-contrato.test.ts||2|
+public|admin_marcar_trocar_senha|p_user_id uuid|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/acessos/actions.ts src/types/database.ts||1|
+public|admin_registrar_usuario|p_user_id uuid, p_email text, p_nome text, p_role_id bigint|service_role:EXECUTE,authenticated:EXECUTE|src/app/admin/acessos/actions.ts src/types/database.ts||2|
+public|admin_set_enforcement|p_ativo boolean|service_role:EXECUTE,authenticated:EXECUTE|||3|
+public|admin_solic_arquivar_tipo|p_id bigint, p_arquivar boolean|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/solicitacoes/actions.ts||1|
+public|admin_solic_excluir_tipo|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/solicitacoes/actions.ts||1|
+public|admin_solic_listar_tipos||authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/api-externa/documentacao/page.tsx src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||7|
+public|admin_solic_salvar_tipo|p_id bigint, p_nome text, p_campos jsonb, p_config jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/solicitacoes/actions.ts src/app/admin/api-externa/actions.ts src/lib/solicitacoes/schemas.ts src/lib/api-externa/contrato-api-externa.test.ts||8|
+public|admin_solic_tipo_api_config|p_tipo_id bigint, p_exposto boolean|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/solicitacoes/actions.ts src/app/admin/api-externa/actions.ts src/components/admin/solicitacoes/editor-tipo.tsx||2|
+public|apagar_clientes_corp|p_ids bigint[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/cadastro-actions.ts||1|
+public|api_chamada_registrar|p_chave_id bigint, p_rota text, p_status integer, p_detalhe text|service_role:EXECUTE|src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts||1|
+public|api_chave_listar||authenticated:EXECUTE,service_role:EXECUTE|src/lib/api-externa/rpc.ts||3|
+public|api_chave_registrar|p_plataforma text, p_segredo_hash text, p_robo_user_id uuid|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/api-externa/actions.ts||3|
+public|api_chave_resolver|p_segredo_hash text|service_role:EXECUTE|src/proxy.ts src/lib/api-externa/segredo.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts||3|
+public|api_chave_revogar|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/api-externa/actions.ts||1|
+public|api_log_listar|p_chave_id bigint, p_limit integer|authenticated:EXECUTE,service_role:EXECUTE|src/components/admin/api-externa/modal-log-chave.tsx src/lib/api-externa/rpc.ts||1|
+public|api_retrofit_contratos||service_role:EXECUTE|src/lib/api-externa/contrato-api-externa.test.ts||1|
+public|api_robo_registrar|p_user_id uuid, p_email text, p_nome text|authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/api-externa/actions.ts||1|
+public|atualizar_cliente_corp|p_id bigint, p_campo text, p_valor text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/cadastro-actions.ts||1|
+public|atualizar_saldo_caixa|p_conta text, p_saldo numeric, p_data_saldo date|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/actions.ts src/lib/fluxo/rpc-fluxo.ts||1|
+public|atualizar_status_nota|p_dados jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts||2|
+public|batch_gerencial_import|p_adicionar jsonb, p_remover_ids bigint[], p_atualizar jsonb, p_lote_id uuid, p_importado_em timestamp with time zone, p_originador_id uuid, p_originador_nome text|authenticated:EXECUTE,service_role:EXECUTE|src/app/api/gerencial/import/route.ts||4|
+public|buscar_cliente_corporativo|p_nomes text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts src/lib/rpc-contrato.test.ts||1|
+public|buscar_docs_fatura|p_refs text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts src/lib/rpc-contrato.test.ts||1|
+public|buscar_pessoas|p_nomes text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts src/lib/faturamento/parse-faturamento.ts src/lib/faturamento/classificar.ts src/lib/faturamento/tipos.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||3|
+public|cancelar_solicitacao_externa|p_chave_id bigint, p_solicitacao_id bigint|service_role:EXECUTE|src/app/api/externo/solicitacoes/[id]/cancelar/route.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts||4|
+public|cdi_ingest_upsert|p_taxas jsonb|service_role:EXECUTE|src/app/api/cdi/ingest/route.ts src/lib/cdi/serie-sgs.ts||1|
+public|consultar_solicitacoes_externas|p_chave_id bigint, p_solicitacao_id bigint, p_referencia_origem text|service_role:EXECUTE|src/app/api/externo/solicitacoes/route.ts src/app/api/externo/solicitacoes/[id]/route.ts src/lib/api-externa/consulta.ts src/lib/api-externa/contrato-api-externa.test.ts||2|
+public|contar_convidados_operacao|p_operacao text|service_role:EXECUTE|||15|public.get_operacao_weddings__nucleo public.get_operacoes_weddings__nucleo
+public|create_gerencial_conta|p_conta text, p_saldo numeric, p_limite numeric, p_consolidado boolean, p_papel text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||1|
+public|create_gerencial_lancamento|p_tipo text, p_pessoa text, p_valor_final numeric, p_vencimento date, p_origem text, p_descricao text, p_conta_previsao text, p_importado_em timestamp with time zone, p_lote_id uuid, p_originador_id uuid, p_originador_nome text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||5|
+public|criar_solicitacao|p_tipo_id bigint, p_destinatario_user_id uuid, p_destinatario_role_id bigint, p_data_limite date, p_descricao text, p_respostas jsonb, p_anexos jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/components/solicitacoes/campos-dinamicos.tsx src/lib/rpc-contrato.test.ts||12|public.criar_solicitacao_externa public.solic_anexar public.solic_promover_anexos
+public|criar_solicitacao_externa|p_chave_id bigint, p_tipo_slug text, p_destinatario text, p_titulo text, p_campos jsonb, p_data_limite date, p_chave_idempotencia text, p_referencia_origem text, p_solicitante_email text|service_role:EXECUTE|src/app/api/externo/solicitacoes/route.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts||6|public.criar_solicitacao
+public|cruzar_vendas_setor|p_vendas text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/calculadora-rateio/actions.ts src/lib/rateio/calcular.test.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||2|
+public|delete_gerencial_conta|p_conta text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||1|
+public|delete_gerencial_lancamento|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||3|
+public|delete_gerencial_lancamento|p_id bigint, p_esperado_atualizado_em timestamp with time zone|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||3|
+public|delete_gerencial_lancamentos_bulk|p_ids bigint[]|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||2|
+public|delete_gerencial_lancamentos_bulk|p_ids bigint[], p_esperados jsonb|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||2|
+public|dre_comp_estrutura|p_ano integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/page.tsx src/lib/dre/schemas.ts src/lib/rpc-contrato.test.ts||1|
+public|dre_comp_estrutura_desfazer_linha|p_diario_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/actions.ts||1|
+public|dre_comp_estrutura_desfazer_lote|p_lote bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/actions.ts||2|
+public|dre_comp_estrutura_historico_lote|p_lote bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/actions.ts||1|
+public|dre_comp_estrutura_historico_lotes|p_limit integer, p_offset integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/actions.ts||1|
+public|dre_comp_estrutura_salvar|p_maps jsonb, p_token timestamp with time zone|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/actions.ts src/lib/dre/reverter-diario.test.ts||2|public.dre_comp_estrutura_desfazer_linha public.dre_comp_estrutura_desfazer_lote
+public|dre_estrutura||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/page.tsx src/app/financeiro/dre/estrutura/page.tsx src/components/financeiro/dre/mockup-dados.ts src/components/financeiro/dre/editor-dre.tsx src/lib/rpc-contrato.test.ts||3|
+public|dre_estrutura_desfazer_linha|p_diario_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura/actions.ts src/lib/rpc-contrato.test.ts||1|
+public|dre_estrutura_desfazer_lote|p_lote bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura/actions.ts src/lib/rpc-contrato.test.ts||2|
+public|dre_estrutura_historico_lote|p_lote bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura/actions.ts src/lib/rpc-contrato.test.ts||1|
+public|dre_estrutura_historico_lotes|p_limit integer, p_offset integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura/actions.ts src/lib/rpc-contrato.test.ts||1|
+public|dre_estrutura_salvar|p_maps jsonb, p_token timestamp with time zone|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura/actions.ts src/app/financeiro/dre/estrutura/page.tsx src/components/financeiro/dre/editor-dre.tsx src/lib/dre/schemas.ts src/lib/dre/reverter-diario.test.ts src/lib/rpc-contrato.test.ts||4|public.dre_estrutura_desfazer_linha public.dre_estrutura_desfazer_lote
+public|email_existentes|p_refs text[], p_modo text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts src/components/financeiro/revisar-envio-modal.tsx src/lib/rpc-contrato.test.ts||1|
+public|excluir_cliente_corp|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/cadastro-actions.ts||1|
+public|fatura_emissao_existentes|p_refs text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts||1|
+public|gerencial_desfazer_linha|p_diario_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||2|
+public|gerencial_desfazer_lote|p_lote bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||4|
+public|gerencial_historico_lote|p_lote bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||1|
+public|gerencial_historico_lotes|p_limit integer, p_offset integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||2|
+public|get_acumulado_weddings|p_meses_passados integer, p_meses_futuros integer, p_operacoes text[]|authenticated:EXECUTE,service_role:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/weddings-content.tsx src/types/database.ts src/lib/weddings/janela-fluxo.ts||10|public.get_taxas_cdi
+public|get_acumulado_weddings|p_meses_passados integer, p_meses_futuros integer|authenticated:EXECUTE,service_role:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/weddings-content.tsx src/types/database.ts src/lib/weddings/janela-fluxo.ts||10|public.get_taxas_cdi
+public|get_acumulado_weddings__nucleo|p_meses_passados integer, p_meses_futuros integer|service_role:EXECUTE,service_role:EXECUTE|src/components/weddings/fluxo-caixa-totais-card.tsx||2|public.get_acumulado_weddings public.get_acumulado_weddings
+public|get_acumulado_weddings__nucleo|p_meses_passados integer, p_meses_futuros integer, p_operacoes text[]|service_role:EXECUTE,service_role:EXECUTE|src/components/weddings/fluxo-caixa-totais-card.tsx||2|public.get_acumulado_weddings public.get_acumulado_weddings
+public|get_cagr||service_role:EXECUTE,authenticated:EXECUTE|src/app/api/dashboard/performance/cagr/route.ts src/components/performance/performance-content.tsx src/types/database.ts||3|
+public|get_cagr__nucleo||service_role:EXECUTE|||2|public.get_cagr
+public|get_calendario_liquidez|p_mes_referencia date|service_role:EXECUTE,authenticated:EXECUTE|src/components/financeiro/calendario-liquidez.tsx src/types/database.ts||3|
+public|get_calendario_liquidez__nucleo|p_mes_referencia date|service_role:EXECUTE|||2|public.get_calendario_liquidez
+public|get_carteira_weddings|p_metric text|service_role:EXECUTE,authenticated:EXECUTE|src/app/api/dashboard/weddings/carteira/route.ts src/components/performance/weddings-content.tsx src/types/database.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts|supabase/seed/test-m4.ts|6|
+public|get_carteira_weddings__nucleo|p_metric text|service_role:EXECUTE|||1|public.get_carteira_weddings
+public|get_contratos_casamento_mes|p_from date, p_to date|authenticated:EXECUTE,service_role:EXECUTE|src/lib/rpc-contrato.test.ts src/lib/metas/use-comparativo.ts src/lib/schemas-rpc.ts||1|
+public|get_dashboard_config||service_role:EXECUTE,authenticated:EXECUTE|src/types/database.ts src/lib/config.ts||3|
+public|get_dashboard_config__nucleo||service_role:EXECUTE|||1|public.get_dashboard_config
+public|get_decomposicao_bloco|p_from text, p_to text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/page.tsx src/lib/rpc-contrato.test.ts||1|
+public|get_decomposicao_categoria|p_from text, p_to text, p_grupo text|service_role:EXECUTE,authenticated:EXECUTE|src/types/database.ts src/lib/rpc-contrato.test.ts||5|
+public|get_decomposicao_categoria__nucleo|p_from text, p_to text, p_grupo text|service_role:EXECUTE|||3|public.get_decomposicao_categoria
+public|get_decomposicao_grupo|p_from text, p_to text|service_role:EXECUTE,authenticated:EXECUTE|src/types/database.ts||6|
+public|get_decomposicao_grupo__nucleo|p_from text, p_to text|service_role:EXECUTE|||3|public.get_decomposicao_grupo
+public|get_decomposicao_variacao|p_from date, p_to date, p_ant_from date, p_ant_to date, p_setor text|service_role:EXECUTE,authenticated:EXECUTE|src/app/executiva/page.tsx src/types/database.ts||5|
+public|get_decomposicao_variacao__nucleo|p_from date, p_to date, p_ant_from date, p_ant_to date, p_setor text|service_role:EXECUTE|||2|public.get_decomposicao_variacao
+public|get_dre_competencia_mensal|p_ano integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/page.tsx src/lib/dre/schemas.ts src/lib/rpc-contrato.test.ts||2|
+public|get_dre_mensal|p_ano integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/dre/estrutura-competencia/page.tsx src/app/financeiro/dre/estrutura/page.tsx src/app/financeiro/dre/page.tsx src/components/financeiro/dre/mockup-dados.ts src/components/financeiro/dre/resumo-executivo.tsx src/components/financeiro/dre/tabela-dre.tsx src/lib/dre/schemas.ts src/lib/dre/linhas-resumo.ts src/lib/dre/av.ts src/lib/rpc-contrato.test.ts||8|
+public|get_executiva_kpis|p_from date, p_to date, p_setor text, p_ant_from date, p_ant_to date, p_yoy_from date, p_yoy_to date|service_role:EXECUTE,authenticated:EXECUTE|src/app/executiva/page.tsx src/app/performance/weddings/actions.ts src/app/metas/page.tsx src/app/api/dashboard/executiva/kpis/route.ts src/components/performance/kpi-principal-drawer.tsx src/components/performance/performance-content.tsx src/components/metas/metas-auto-refresh.tsx src/components/metas/tipos.ts src/types/database.ts src/lib/monde/virada-paridade.test.ts src/lib/rpc-contrato.test.ts src/lib/metas/carregar-acompanhamento.ts src/lib/metas/use-comparativo.ts src/lib/schemas-rpc.ts||11|
+public|get_executiva_kpis__nucleo|p_from date, p_to date, p_setor text, p_ant_from date, p_ant_to date, p_yoy_from date, p_yoy_to date|service_role:EXECUTE|src/lib/monde/virada-paridade.test.ts||3|public.get_executiva_kpis
+public|get_fluxo_caixa_acumulado_v1||service_role:EXECUTE,authenticated:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx||3|
+public|get_fluxo_caixa_acumulado_v1__nucleo||service_role:EXECUTE|||1|public.get_fluxo_caixa_acumulado_v1
+public|get_fluxo_caixa_kpis_b|p_from text, p_to text|service_role:EXECUTE,authenticated:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/lib/rpc-contrato.test.ts||4|
+public|get_fluxo_caixa_kpis_b__nucleo|p_from text, p_to text|service_role:EXECUTE|||1|public.get_fluxo_caixa_kpis_b
+public|get_fluxo_caixa_kpis_diario||service_role:EXECUTE,authenticated:EXECUTE|||4|
+public|get_fluxo_caixa_kpis_diario__nucleo||service_role:EXECUTE|||2|public.get_fluxo_caixa_kpis_diario
+public|get_fluxo_caixa_mensal_v3||service_role:EXECUTE,authenticated:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/lib/rpc-contrato.test.ts||5|
+public|get_fluxo_caixa_mensal_v3__nucleo||service_role:EXECUTE|src/lib/fluxo/janela-mensal.ts||2|public.get_fluxo_caixa_mensal_v3
+public|get_fluxo_cobertura||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||1|
+public|get_fluxo_horizonte||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||4|
+public|get_fluxo_previsto_diario||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/components/financeiro/posicao-projetado.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||1|
+public|get_fluxo_ranking|p_limite integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/app/financeiro/dre/page.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||3|
+public|get_fluxo_runway_semanal||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||3|
+public|get_gerencial_lancamentos|p_limit integer|service_role:EXECUTE,authenticated:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/page.tsx||7|
+public|get_gerencial_lancamentos__nucleo|p_limit integer|service_role:EXECUTE|||1|
+public|get_gerencial_lancamentos_planilha||service_role:EXECUTE,authenticated:EXECUTE|src/app/api/gerencial/import/route.ts||5|
+public|get_gerencial_lancamentos_planilha__nucleo||service_role:EXECUTE|||1|
+public|get_gerencial_projecao_diaria|p_dias integer|service_role:EXECUTE,authenticated:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/page.tsx||7|
+public|get_gerencial_projecao_diaria__nucleo|p_dias integer|service_role:EXECUTE|||1|
+public|get_gerencial_saldos||service_role:EXECUTE,authenticated:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/page.tsx src/app/api/gerencial/import/route.ts||5|
+public|get_gerencial_saldos__nucleo||service_role:EXECUTE|||2|
+public|get_historico_12m_setores|p_setor text|service_role:EXECUTE,authenticated:EXECUTE|src/app/executiva/page.tsx src/types/database.ts||4|
+public|get_historico_12m_setores__nucleo|p_setor text|service_role:EXECUTE|||2|public.get_historico_12m_setores
+public|get_historico_mensal|p_setor text|service_role:EXECUTE,authenticated:EXECUTE|src/app/api/dashboard/kpi-historico/route.ts src/types/database.ts||5|
+public|get_historico_mensal__nucleo|p_setor text|service_role:EXECUTE|||2|public.get_historico_mensal
+public|get_lancamentos_do_dia|p_data date|service_role:EXECUTE,authenticated:EXECUTE|src/components/financeiro/calendario-liquidez.tsx src/types/database.ts||3|
+public|get_lancamentos_do_dia__nucleo|p_data date|service_role:EXECUTE|||2|public.get_lancamentos_do_dia
+public|get_minhas_permissoes||service_role:EXECUTE,authenticated:EXECUTE|src/types/database.ts src/lib/auth/sessao.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||4|
+public|get_mix_produto|p_from date, p_to date, p_setor text, p_limite integer|service_role:EXECUTE,authenticated:EXECUTE|src/app/performance/weddings/actions.ts src/app/api/dashboard/performance/mix-produto/route.ts src/components/performance/performance-content.tsx src/types/database.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||4|
+public|get_mix_produto__nucleo|p_from date, p_to date, p_setor text, p_limite integer|service_role:EXECUTE|||2|public.get_mix_produto
+public|get_mix_setor|p_from date, p_to date, p_setor text|service_role:EXECUTE,authenticated:EXECUTE|src/app/executiva/page.tsx src/app/api/dashboard/performance/mix-setor/route.ts src/components/performance/performance-content.tsx src/types/database.ts||4|
+public|get_mix_setor__nucleo|p_from date, p_to date, p_setor text|service_role:EXECUTE|||2|public.get_mix_setor
+public|get_my_profile||service_role:EXECUTE|||0|
+public|get_operacao_weddings|p_operacao text|service_role:EXECUTE,authenticated:EXECUTE|src/app/api/dashboard/weddings/operacao/[id]/route.ts src/types/database.ts|supabase/seed/check-andressa.ts|8|
+public|get_operacao_weddings__nucleo|p_operacao text|service_role:EXECUTE|||1|public.get_operacao_weddings
+public|get_operacoes_lista_weddings||service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/weddings-content.tsx src/types/database.ts||4|
+public|get_operacoes_lista_weddings__nucleo||service_role:EXECUTE|||1|public.get_operacoes_lista_weddings
+public|get_operacoes_weddings|p_status text, p_periodo_inicio date, p_periodo_fim date, p_subsetor text, p_busca text, p_ordenar_por text, p_direcao text, p_pagina integer, p_por_pagina integer|service_role:EXECUTE,authenticated:EXECUTE|src/app/api/dashboard/weddings/operacoes/route.ts src/types/database.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts|supabase/seed/check-andressa.ts supabase/seed/test-operacoes.ts supabase/seed/validate-m1.ts|20|public.get_operacao_weddings__nucleo
+public|get_operacoes_weddings__nucleo|p_status text, p_periodo_inicio date, p_periodo_fim date, p_subsetor text, p_busca text, p_ordenar_por text, p_direcao text, p_pagina integer, p_por_pagina integer|service_role:EXECUTE|src/lib/weddings/ordenacao-operacoes.ts src/lib/weddings/ordenacao-operacoes.test.ts src/lib/weddings/margem-anualizada.ts||4|public.get_operacoes_weddings
+public|get_pipeline_weddings|p_horizonte_meses integer|service_role:EXECUTE,authenticated:EXECUTE|src/app/api/dashboard/weddings/pipeline/route.ts src/types/database.ts||3|
+public|get_pipeline_weddings__nucleo|p_horizonte_meses integer|service_role:EXECUTE|||1|public.get_pipeline_weddings
+public|get_posicao_por_conta||service_role:EXECUTE,authenticated:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/types/database.ts||3|
+public|get_posicao_por_conta__nucleo||service_role:EXECUTE|||1|public.get_posicao_por_conta
+public|get_prejuizos|p_from date, p_to date, p_setor text, p_summary boolean|service_role:EXECUTE,authenticated:EXECUTE|src/app/executiva/page.tsx src/app/api/dashboard/performance/prejuizos/route.ts src/components/performance/performance-content.tsx src/types/database.ts||4|
+public|get_prejuizos__nucleo|p_from date, p_to date, p_setor text, p_summary boolean|service_role:EXECUTE|||1|public.get_prejuizos
+public|get_proximos_casamentos|p_horizonte_meses integer|service_role:EXECUTE,authenticated:EXECUTE|src/app/api/dashboard/weddings/proximos/route.ts src/components/performance/weddings-content.tsx src/types/database.ts|supabase/seed/test-m4.ts|8|
+public|get_proximos_casamentos__nucleo|p_horizonte_meses integer|service_role:EXECUTE|||1|public.get_proximos_casamentos
+public|get_proximos_lancamentos|p_dias integer, p_tipo text|service_role:EXECUTE,authenticated:EXECUTE|src/components/financeiro/proximos-lancamentos-lateral.tsx src/types/database.ts||6|
+public|get_proximos_lancamentos__nucleo|p_dias integer, p_tipo text|service_role:EXECUTE|||2|public.get_proximos_lancamentos
+public|get_ranking_vendedores_range|p_from date, p_to date, p_setor text, p_limite integer|service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/performance-content.tsx src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||4|
+public|get_ranking_vendedores_range__nucleo|p_from date, p_to date, p_setor text, p_limite integer|service_role:EXECUTE|||1|public.get_ranking_vendedores_range
+public|get_rendimento_float|p_operacao text|authenticated:EXECUTE,service_role:EXECUTE|src/app/api/dashboard/weddings/operacao/[id]/route.ts src/lib/weddings/schemas-float.ts src/lib/weddings/schemas-float.test.ts src/lib/rpc-contrato.test.ts||3|
+public|get_repasse_mensal|p_ano integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||2|
+public|get_saldo_caixa||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/components/financeiro/posicao-projetado.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||1|
+public|get_saldo_repasse|p_from text, p_to text|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/page.tsx src/lib/fluxo/rpc-fluxo.ts src/lib/rpc-contrato.test.ts||1|
+public|get_setores_macro||service_role:EXECUTE,authenticated:EXECUTE|src/app/api/setores/route.ts src/types/database.ts||3|
+public|get_setores_macro__nucleo||service_role:EXECUTE|||1|public.get_setores_macro
+public|get_sumario_subsetor|p_from date, p_to date|service_role:EXECUTE,authenticated:EXECUTE|src/app/performance/weddings/actions.ts src/app/api/dashboard/weddings/sumario-subsetor/route.ts src/components/performance/kpi-principal-drawer.tsx src/components/metas/tipos.ts src/types/database.ts src/lib/metas/carregar-acompanhamento.ts||8|
+public|get_sumario_subsetor__nucleo|p_from date, p_to date|service_role:EXECUTE|||3|public.get_sumario_subsetor public.metas_sumario_subsetor
+public|get_taxas_cdi|p_meses_passados integer, p_meses_futuros integer|authenticated:EXECUTE,service_role:EXECUTE|src/components/weddings/fluxo-caixa-card.tsx src/components/performance/weddings-content.tsx src/lib/weddings/float-virtual.ts src/lib/weddings/schemas-float.ts src/lib/weddings/schemas-float.test.ts src/lib/rpc-contrato.test.ts||4|
+public|get_tendencia_margem|p_from date, p_to date, p_setor text|service_role:EXECUTE,authenticated:EXECUTE|src/app/performance/weddings/actions.ts src/app/api/dashboard/performance/tendencia-margem/route.ts src/components/performance/kpi-principal-drawer.tsx src/components/performance/performance-content.tsx src/types/database.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||5|
+public|get_tendencia_margem__nucleo|p_from date, p_to date, p_setor text|service_role:EXECUTE|||2|public.get_tendencia_margem
+public|get_upload_status||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/types/database.ts src/lib/carga/lancamentos.ts||2|
+public|get_vendas_em_aberto|p_setor text, p_limite integer, p_offset integer|service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/performance-content.tsx src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||5|
+public|get_vendas_em_aberto__nucleo|p_setor text, p_limite integer, p_offset integer|service_role:EXECUTE|||1|public.get_vendas_em_aberto
+public|get_vendas_em_aberto_weddings|p_limite integer, p_offset integer|service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/weddings-content.tsx src/types/database.ts||5|
+public|get_vendas_em_aberto_weddings__nucleo|p_limite integer, p_offset integer|service_role:EXECUTE|||1|public.get_vendas_em_aberto_weddings
+public|get_vendas_prejuizo_weddings|p_from date, p_to date|service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/weddings-content.tsx src/types/database.ts||4|
+public|get_vendas_prejuizo_weddings__nucleo|p_from date, p_to date|service_role:EXECUTE|||1|public.get_vendas_prejuizo_weddings
+public|get_vendas_receita_negativa|p_setor text, p_from date, p_to date|service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/performance-content.tsx src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||4|
+public|get_vendas_receita_negativa__nucleo|p_setor text, p_from date, p_to date|service_role:EXECUTE|||1|public.get_vendas_receita_negativa
+public|get_weddings_historico_subsetor|p_from date, p_to date|service_role:EXECUTE,authenticated:EXECUTE|src/components/performance/kpi-principal-drawer.tsx||3|
+public|get_weddings_historico_subsetor__nucleo|p_from date, p_to date|service_role:EXECUTE|||1|public.get_weddings_historico_subsetor
+public|importar_clientes_corp|p_linhas jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/cadastro-actions.ts||1|
+public|inserir_cliente_corp|p_dados jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/cadastro-actions.ts||1|
+public|inserir_lote_demonstrativo_competencia|p_linhas jsonb|service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|inserir_lote_lancamentos|p_linhas jsonb|service_role:EXECUTE|src/app/admin/uploads/actions.ts src/types/database.ts src/lib/carga/lancamentos.ts||3|
+public|inserir_lote_lancamentos_movimentacao|p_linhas jsonb|service_role:EXECUTE|src/app/admin/uploads/actions.ts|supabase/seed/seed-fluxo-caixa.ts|1|
+public|inserir_lote_raw|p_linhas jsonb|service_role:EXECUTE|src/types/database.ts src/lib/rpc-contrato.test.ts|supabase/seed/seed.ts supabase/seed/parse-excel.ts|9|
+public|inserir_lote_staging|p_linhas jsonb|service_role:EXECUTE|src/app/admin/uploads/actions.ts src/lib/carga/vendas-parser.ts src/lib/rpc-contrato.test.ts||3|
+public|inserir_lote_staging_pessoas|p_linhas jsonb|service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|inserir_lote_titulos_em_aberto|p_linhas jsonb|service_role:EXECUTE|src/app/admin/uploads/actions.ts|supabase/seed/seed-fluxo-caixa.ts|1|
+public|inserir_metas|p_metas jsonb|service_role:EXECUTE|src/types/database.ts src/lib/carga/metas.ts||2|
+public|limpar_staging_pessoas||service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|limpar_staging_vendas||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/lib/carga/vendas-parser.ts src/lib/rpc-contrato.test.ts||2|
+public|listar_clientes_corp||authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/page.tsx||1|
+public|marcar_onboarding_visto||authenticated:EXECUTE,service_role:EXECUTE|src/lib/onboarding.ts||1|
+public|marcar_senha_trocada||authenticated:EXECUTE,service_role:EXECUTE|src/app/trocar-senha/actions.ts src/types/database.ts||1|
+public|metas_listar|p_ano integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/metas/cadastro/page.tsx src/lib/rpc-contrato.test.ts src/lib/metas/carregar-acompanhamento.ts src/lib/metas/use-comparativo.ts src/lib/schemas-rpc.ts||4|
+public|metas_ritmo_diario|p_from date, p_to date, p_setor text|authenticated:EXECUTE,service_role:EXECUTE|src/lib/rpc-contrato.test.ts src/lib/metas/carregar-acompanhamento.ts src/lib/schemas-rpc.ts||3|
+public|metas_subsetor_listar|p_ano integer|authenticated:EXECUTE,service_role:EXECUTE|||2|
+public|metas_subsetor_upsert|p_metas jsonb|authenticated:EXECUTE,service_role:EXECUTE|||3|
+public|metas_sumario_subsetor|p_from date, p_to date|authenticated:EXECUTE,service_role:EXECUTE|||2|
+public|metas_upsert|p_metas jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/metas/cadastro/actions.ts src/components/metas/cadastro-grade.tsx||5|
+public|monde_comparacao_mensal|p_from date, p_to date|authenticated:EXECUTE,service_role:EXECUTE|src/app/metas/comparacao/page.tsx src/components/metas/comparacao-content.tsx||1|
+public|monde_ingest_claim|p_ttl_segundos integer, p_dono text|service_role:EXECUTE|src/app/api/monde/ingest/route.ts||2|
+public|monde_ingest_control_get|p_chave text|service_role:EXECUTE|src/app/api/monde/ingest/route.ts||1|
+public|monde_ingest_control_set|p_chave text, p_valor text|service_role:EXECUTE|src/app/api/monde/ingest/route.ts||1|
+public|monde_ingest_limpar_staging||service_role:EXECUTE|src/app/api/monde/ingest/route.ts src/lib/monde/ingest.ts||3|
+public|monde_ingest_lote|p_vendas jsonb|service_role:EXECUTE|src/lib/monde/ingest.ts src/lib/monde/transform.ts||1|
+public|monde_ingest_promover||service_role:EXECUTE|src/lib/monde/ingest.ts src/lib/rpc-contrato.test.ts||3|
+public|monde_ingest_release|p_dono text|service_role:EXECUTE|src/app/api/monde/ingest/route.ts||1|
+public|monde_ingest_remover_vendas|p_espelhaveis_ids uuid[], p_from date, p_to date, p_teto integer|service_role:EXECUTE|src/app/api/monde/ingest/route.ts src/lib/monde/reconciliacao.ts||1|
+public|monde_ingest_status||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/app/api/monde/ingest/route.ts src/components/metas/metas-auto-refresh.tsx src/components/metas/comparacao-content.tsx src/components/metas/tipos.ts src/lib/dre/ultima-carga-movimentacao.ts src/lib/rpc-contrato.test.ts src/lib/metas/sync-atraso.ts src/lib/metas/ultima-sincronizacao.ts||4|
+public|monde_refresh_mv||service_role:EXECUTE|src/app/api/monde/ingest/route.ts src/lib/monde/ingest.ts||1|
+public|monde_vendas_ausentes|p_numeros text[], p_from date, p_to date|service_role:EXECUTE|src/app/api/monde/ingest/route.ts src/lib/rpc-contrato.test.ts||1|
+public|nota_existentes|p_refs text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts||1|
+public|onboarding_visto||authenticated:EXECUTE,service_role:EXECUTE|src/lib/onboarding.ts||1|
+public|patrimonio_atualizar_ativo|p_id integer, p_descricao text, p_categoria_id smallint, p_codigo text, p_numero_serie text, p_fornecedor text, p_data_aquisicao date, p_valor_aquisicao numeric, p_nota_fiscal text, p_estado_conservacao text, p_obs text, p_area_destino_id smallint, p_detentor_destino_id integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/gestao-pessoas/inventario/actions.ts||1|
+public|patrimonio_atualizar_obs_movimentacao|p_id bigint, p_obs text|authenticated:EXECUTE,service_role:EXECUTE|src/app/gestao-pessoas/inventario/actions.ts||1|
+public|patrimonio_catalogos||authenticated:EXECUTE,service_role:EXECUTE|src/components/gestao-pessoas/inventario/tipos.ts src/lib/patrimonio/carregar.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||1|
+public|patrimonio_criar_ativo|p_descricao text, p_categoria_id smallint, p_area_destino_id smallint, p_detentor_destino_id integer, p_codigo text, p_numero_serie text, p_fornecedor text, p_data_aquisicao date, p_valor_aquisicao numeric, p_nota_fiscal text, p_estado_conservacao text, p_obs text, p_data_movimentacao date, p_obs_movimentacao text|authenticated:EXECUTE,service_role:EXECUTE|src/app/gestao-pessoas/inventario/actions.ts||1|
+public|patrimonio_detalhe_ativo|p_ativo_id integer|authenticated:EXECUTE,service_role:EXECUTE|src/app/gestao-pessoas/inventario/actions.ts src/lib/schemas-rpc.ts||1|
+public|patrimonio_listar_ativos|p_busca text, p_categoria_id smallint, p_area_id smallint, p_status text|authenticated:EXECUTE,service_role:EXECUTE|src/lib/patrimonio/carregar.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||1|
+public|patrimonio_listar_movimentacoes|p_tipo text, p_busca text, p_limite integer|authenticated:EXECUTE,service_role:EXECUTE|src/lib/patrimonio/carregar.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||1|
+public|patrimonio_registrar_movimentacao|p_ativo_id integer, p_tipo text, p_data_movimentacao date, p_area_destino_id smallint, p_detentor_destino_id integer, p_destino_texto text, p_motivo_baixa text, p_obs text|authenticated:EXECUTE,service_role:EXECUTE|src/app/gestao-pessoas/inventario/actions.ts||1|
+public|patrimonio_resumo||authenticated:EXECUTE,service_role:EXECUTE|src/components/gestao-pessoas/inventario/visao-geral-tab.tsx src/components/gestao-pessoas/inventario/tipos.ts src/lib/patrimonio/carregar.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||1|
+public|patrimonio_upsert_detentor|p_nome text|authenticated:EXECUTE,service_role:EXECUTE|src/app/gestao-pessoas/inventario/actions.ts||1|
+public|promover_carga_pessoas||service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|promover_carga_vendas||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||5|
+public|provisionar_dre_comp_par||authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/uploads/actions.ts src/app/financeiro/dre/estrutura-competencia/page.tsx src/lib/schemas-rpc.ts||1|
+public|rbac_verificar_guard|p_area text|service_role:EXECUTE,authenticated:EXECUTE|src/lib/rpc-contrato.test.ts||2|
+public|refresh_all_materialized_views||service_role:EXECUTE|src/types/database.ts|supabase/seed/seed.ts|5|public.promover_carga_vendas
+public|regenerar_dim_operacao_weddings||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/types/database.ts src/lib/carga/lancamentos.ts||15|public.promover_carga_vendas
+public|regenerar_fluxo_caixa||service_role:EXECUTE|src/app/admin/uploads/actions.ts|supabase/seed/seed-fluxo-caixa.ts|2|
+public|registrar_email|p_dados jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts src/lib/rpc-contrato.test.ts src/lib/email/index.ts||1|
+public|registrar_emissao|p_dados jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts||2|
+public|registrar_ingestao_log|p_fonte text, p_status text, p_registros integer, p_erro text|service_role:EXECUTE|src/types/database.ts|supabase/seed/seed.ts|1|
+public|registrar_nota|p_dados jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts||1|
+public|reordenar_gerencial_contas|p_contas text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts src/components/financeiro/gerencial/contas-manager.tsx||1|
+public|resultado_boletos|p_refs text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts||1|
+public|resultado_notas|p_refs text[]|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/faturamento-corp/actions.ts||1|
+public|solic_anexar|p_id bigint, p_anexos jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/components/solicitacoes/drawer-solicitacao.tsx src/lib/solicitacoes/ciclo-de-vida.test.ts||4|
+public|solic_anexo_excluir|p_anexo_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/lib/solicitacoes/schemas.ts src/lib/solicitacoes/ciclo-de-vida.test.ts||2|
+public|solic_anexo_path|p_anexo_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts||2|
+public|solic_aprovar|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/lib/solicitacoes/ciclo-de-vida.test.ts||2|
+public|solic_caixa|p_escopo text|authenticated:EXECUTE,service_role:EXECUTE|src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||5|
+public|solic_cancelar|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/lib/api-externa/contrato-api-externa.test.ts||6|
+public|solic_concluir|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/components/solicitacoes/board-solicitacoes.tsx src/lib/api-externa/contrato-api-externa.test.ts src/lib/rpc-contrato.test.ts||9|
+public|solic_destinatarios||authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/solicitacoes/page.tsx src/app/admin/api-externa/documentacao/page.tsx src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||1|
+public|solic_detalhe|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||8|public.solic_emails_envolvidos
+public|solic_emails_envolvidos|p_id bigint|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts src/app/api/externo/solicitacoes/route.ts src/lib/solicitacoes/schemas.ts src/lib/solicitacoes/rpc.ts src/lib/api-externa/http.ts||7|public.solic_aprovar
+public|solic_emails_envolvidos_svc|p_id bigint|service_role:EXECUTE|src/app/api/externo/solicitacoes/route.ts src/app/api/externo/solicitacoes/[id]/cancelar/route.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts||1|
+public|solic_minhas||authenticated:EXECUTE,service_role:EXECUTE|src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||5|
+public|solic_minhas_pendencias||authenticated:EXECUTE,service_role:EXECUTE|src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||4|
+public|solic_movimentacoes||authenticated:EXECUTE,service_role:EXECUTE|src/lib/solicitacoes/schemas.ts src/lib/solicitacoes/rpc.ts src/lib/solicitacoes/ciclo-de-vida.test.ts src/lib/rpc-contrato.test.ts||2|
+public|solic_promover_anexos|p_solicitacao_id bigint, p_de_para jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts||1|
+public|solic_rejeitar|p_id bigint, p_justificativa text|authenticated:EXECUTE,service_role:EXECUTE|src/app/solicitacoes/actions.ts||5|
+public|solic_tipos_abertura||authenticated:EXECUTE,service_role:EXECUTE|src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||4|
+public|solic_tipos_api|p_chave_id bigint|service_role:EXECUTE|src/app/admin/api-externa/documentacao/page.tsx src/app/api/externo/tipos/route.ts src/lib/api-externa/contrato-api-externa.test.ts src/lib/api-externa/http.ts||5|
+public|solic_tipos_documentacao||authenticated:EXECUTE,service_role:EXECUTE|src/app/admin/api-externa/documentacao/page.tsx src/lib/solicitacoes/rpc.ts src/lib/rpc-contrato.test.ts||1|
+public|solicitar_acesso|p_email text, p_nome text|authenticated:EXECUTE,anon:EXECUTE,service_role:EXECUTE|src/app/solicitar-acesso/actions.test.ts src/app/solicitar-acesso/actions.ts src/types/database.ts src/lib/rpc-contrato.test.ts||3|public.solicitar_acesso_admin
+public|solicitar_acesso_admin|p_email text, p_nome text|service_role:EXECUTE|src/app/solicitar-acesso/actions.test.ts src/app/solicitar-acesso/actions.ts||1|
+public|status_demonstrativo_competencia||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/lib/schemas-rpc.ts||1|
+public|status_lancamentos_movimentacao||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/lib/dre/ultima-carga-movimentacao.ts||1|
+public|status_pessoas||service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|status_titulos_em_aberto||service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|transform_raw_to_analytics||service_role:EXECUTE|src/types/database.ts|supabase/seed/seed.ts|9|public.promover_carga_vendas
+public|truncar_demonstrativo_competencia||service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|truncar_lancamentos||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/types/database.ts src/lib/carga/lancamentos.ts||3|
+public|truncar_lancamentos_movimentacao||service_role:EXECUTE|src/app/admin/uploads/actions.ts|supabase/seed/seed-fluxo-caixa.ts|1|
+public|truncar_titulos_em_aberto||service_role:EXECUTE|src/app/admin/uploads/actions.ts|supabase/seed/seed-fluxo-caixa.ts|1|
+public|truncate_dynamic_tables||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/types/database.ts src/lib/rpc-contrato.test.ts|supabase/seed/seed.ts|6|
+public|update_gerencial_conta|p_conta text, p_updates jsonb|authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||1|
+public|update_gerencial_lancamento|p_id bigint, p_updates jsonb|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||4|
+public|update_gerencial_lancamento|p_id bigint, p_updates jsonb, p_esperado_atualizado_em timestamp with time zone|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||4|
+public|update_gerencial_saldo|p_conta text, p_saldo numeric|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||3|
+public|update_gerencial_saldo|p_conta text, p_saldo numeric, p_data_saldo date|authenticated:EXECUTE,service_role:EXECUTE,authenticated:EXECUTE,service_role:EXECUTE|src/app/financeiro/fluxo-caixa/gerencial/actions.ts||3|
+public|validar_carga_pessoas||service_role:EXECUTE|src/app/admin/uploads/actions.ts||1|
+public|validar_carga_staging||service_role:EXECUTE|src/app/admin/uploads/actions.ts src/lib/rpc-contrato.test.ts src/lib/schemas-rpc.ts||4|

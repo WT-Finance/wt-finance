@@ -1,3 +1,10 @@
+// Texto em prosa da decomposição por setor (card da Executiva).
+//
+// v5.10.0/D7-010: chamava-se `decomposicao-variacao.ts` e colidia de nome com
+// `src/lib/dre/decomposicao-variacao.ts`, que é outra coisa (montarDecomposicao /
+// narrativaVariacao, da DRE). Dois arquivos homônimos em módulos não relacionados
+// enganam leitura e grep — o sufixo agora diz o que este faz: gera TEXTO.
+
 import { fmtMi } from '@/lib/fmt'
 
 export interface SetorDecomposicao {

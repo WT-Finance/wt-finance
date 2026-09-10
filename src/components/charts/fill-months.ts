@@ -15,8 +15,9 @@ function addMonths(ym: string, n: number): string {
   return `${ny}-${String(nm).padStart(2, '0')}`
 }
 
-/** Lista todos os 'yyyy-MM' de `from` a `to` (inclusivo), em ordem crescente. */
-export function listMonths(from: string, to: string): string[] {
+/** Lista todos os 'yyyy-MM' de `from` a `to` (inclusivo), em ordem crescente.
+ *  Interno: motor do `fillMonths` abaixo (sem consumidor externo — v5.10.0/D1-016). */
+function listMonths(from: string, to: string): string[] {
   if (from > to) return []
   const out: string[] = []
   let cur = from

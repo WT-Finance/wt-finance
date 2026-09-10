@@ -38,16 +38,13 @@ import { PILL, PILL_NEUTRO } from '@/components/shared/botoes'
 // estrutura viva vive em página própria (/financeiro/dre/estrutura), atrás do botão
 // "Editar estrutura" da toolbar.
 //
-// ⚠️ A **Decomposição dos Lançamentos** SAIU desta página na v5.7.1 (decisão do Yan), mas
-// **não foi apagada** — é código morto proposital, para voltar sem reescrita se a decisão
-// mudar. O que sobreviveu intocado: o componente
-// `@/components/financeiro/decomposicao-lancamentos`, o `decomposicaoBlocoSchema` em
-// `@/lib/dre/schemas` e a RPC `get_decomposicao_bloco` (0209) no banco. Para reativar,
-// basta reinstalar aqui as quatro peças que saíram juntas: o import do componente, a
-// chamada `rpcDre(db, 'get_decomposicao_bloco', { p_from: from, p_to: to })` no
-// `Promise.allSettled`, o `parseRpc` do resultado e o JSX com o `slotPills` — este último
-// depende de `resolverPeriodoCompleto` e do `PeriodoFilterPillsUrl`, que também saíram dos
-// imports. O `?preset=&from=&to=` era dele e ficou órfão: a página hoje só lê `?ano=`.
+// ⚠️ A **Decomposição dos Lançamentos** SAIU desta página na v5.7.1 (decisão do Yan). O
+// "caminho de volta" que se guardava aqui CADUCOU com a acumulação da v5.9.2, e o
+// componente `decomposicao-lancamentos.tsx` foi APAGADO na v5.10.0 (auditoria D1-007).
+// Ainda restam, e saem juntos na migration destrutiva da v5.10.0: o
+// `decomposicaoBlocoSchema` em `@/lib/dre/schemas` (com seus casos em
+// `rpc-contrato.test.ts`) e a RPC `get_decomposicao_bloco` (0209) no banco.
+// O `?preset=&from=&to=` era dele e ficou órfão: a página hoje só lê `?ano=`.
 //
 // RBAC: área própria 'financeiro/dre' (0197) — cobre ver E editar a estrutura (decisão
 // firme; divisão ver/editar = futuro se precisar).

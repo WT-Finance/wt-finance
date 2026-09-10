@@ -393,7 +393,7 @@ export const patrimonioAtivosSchema = z.array(z.object({
 /** Uma linha do razão, como `detalhe_ativo`/`listar_movimentacoes` a emitem.
  *  `ativo_codigo`/`ativo_descricao` só vêm do razão global — daí `.optional()`, não
  *  `.nullable()`: a chave AUSENTE reprovaria um schema apenas nullable. */
-export const patrimonioMovimentacaoSchema = z.object({
+const patrimonioMovimentacaoSchema = z.object({
   id:                    z.number(),
   ativo_id:              z.number(),
   ativo_codigo:          z.string().optional(),

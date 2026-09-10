@@ -13,12 +13,12 @@ import { z } from 'zod'
 // contexto — a tolerância aqui é por CAMPO, não pelo formato geral da resposta.
 
 /** Custom field genérico `{ name, value }` — usado na listagem e no detalhe. */
-export const zCustomField = z.object({
+const zCustomField = z.object({
   name: z.string(),
   value: z.string().nullable().optional(),
 }).passthrough()
 
-export const zSaleListItem = z.object({
+const zSaleListItem = z.object({
   sale_number: z.string().catch(''),
   sale_id: z.string().nullable().optional(),
   sale_date: z.string().catch(''),
@@ -42,14 +42,14 @@ export const zSalesListResponse = z.object({
   data: z.array(zSaleListItem).catch([]),
 }).passthrough()
 
-export const zPassenger = z.object({
+const zPassenger = z.object({
   person_name: z.string().nullable().optional(),
   amount: z.coerce.number().catch(0),
   agency_fee: z.coerce.number().catch(0),
   fees: z.coerce.number().catch(0),
 }).passthrough()
 
-export const zProduct = z.object({
+const zProduct = z.object({
   product_kind: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   supplier_name: z.string().nullable().optional(),
@@ -91,10 +91,5 @@ export const zSaleDetailResponse = z.object({
   data: zSaleDetail,
 }).passthrough()
 
-export type CustomField = z.infer<typeof zCustomField>
-export type Passenger = z.infer<typeof zPassenger>
 export type Product = z.infer<typeof zProduct>
-export type SaleListItem = z.infer<typeof zSaleListItem>
-export type SalesListResponse = z.infer<typeof zSalesListResponse>
 export type SaleDetail = z.infer<typeof zSaleDetail>
-export type SaleDetailResponse = z.infer<typeof zSaleDetailResponse>

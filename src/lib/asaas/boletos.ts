@@ -17,7 +17,7 @@ export interface BoletoAsaas {
   dueDate?:     string
 }
 
-export const NOTA_PADRAO = 'Após 5 dias em atraso o título será negativado.'
+const NOTA_PADRAO = 'Após 5 dias em atraso o título será negativado.'
 export const descricaoBoleto = (ref: string) => `Fatura ${ref} - ${NOTA_PADRAO}`
 
 /** Idempotência: cobrança já existente com este externalReference (ou null). */

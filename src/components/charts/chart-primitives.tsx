@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Primitivos de gráfico — WT Finance Design System (v4.8 / M4).
+ * Primitivos de gráfico — Janus Design System (v4.8 / M4).
  *
  * Encapsulam o "tom discreto" da plataforma (grade tracejada sutil, linha do
  * zero forte, eixos sem axisLine, ticks abreviados). Consumidos pelos gráficos
@@ -87,28 +87,6 @@ export function ChartZeroLineX(): ReactElement {
       x={0}
       stroke={chartColors.zeroLine}
       strokeWidth={strokeWidths.zeroLine}
-    />
-  )
-}
-
-/**
- * Linha de referência horizontal tracejada ('5 4') — ex.: meta de margem,
- * total previsto. SÓLIDO = real; TRACEJADO = referência (esta).
- */
-export function ChartReferenceLineY(
-  y: number,
-  opts?: { color?: string; label?: string },
-): ReactElement {
-  const color = opts?.color ?? chartColors.axisTick
-  return (
-    <ReferenceLine
-      y={y}
-      stroke={color}
-      strokeDasharray={dashArrays.reference}
-      strokeWidth={strokeWidths.lineDashed}
-      label={opts?.label
-        ? { value: opts.label, position: 'insideTopRight', fontSize: 10, fill: color }
-        : undefined}
     />
   )
 }

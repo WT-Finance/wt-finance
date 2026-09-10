@@ -85,6 +85,9 @@ export async function criarUsuario(input: {
     return { ok: false, erro: 'Selecione uma permissão válida.' }
   }
 
+  // Passos não-bloqueantes que falharem enchem este aviso (v5.10.0/D5-003).
+  let avisoParcial: string | undefined
+
   try {
     const admin = getAdminClient()
     const senha = senhaProvisoria()
@@ -104,13 +107,28 @@ export async function criarUsuario(input: {
 
     // 2) Vínculo RBAC (cliente de SESSÃO — banco valida o admin do chamador).
     const supabase = await getServerClient()
+    // v5.10.0 — `p_nome` passa a receber `''` em vez de `null` quando não há nome.
+    // Equivalência PROVADA no corpo da função (catálogo vivo):
+    //   INSERT … VALUES (…, nullif(trim(coalesce(p_nome, '')), ''), …)
+    // `NULL` e `''` atravessam o mesmo `coalesce`→`trim`→`nullif` e gravam NULL nos dois
+    // casos. A variável `nome` segue `string | null` para o resto da action (o e-mail de
+    // senha provisória distingue os dois) — a conversão é só nesta fronteira.
     const { error: erroRegistro } = await supabase.rpc('admin_registrar_usuario', {
-      p_user_id: userId, p_email: email, p_nome: nome, p_role_id: input.roleId,
+      p_user_id: userId, p_email: email, p_nome: nome ?? '', p_role_id: input.roleId,
     })
     if (erroRegistro) return { ok: false, erro: traduzirErro(erroRegistro.message) }
 
     // 3) Força a troca da senha no 1º acesso.
-    await supabase.rpc('admin_marcar_trocar_senha', { p_user_id: userId })
+    //    v5.10.0/D5-003: o retorno era descartado. O SDK do Supabase NÃO LANÇA —
+    //    devolve `{ error }` —, então uma falha aqui (negação de RBAC, timeout)
+    //    passava calada e o usuário nascia SEM a obrigação de trocar a senha
+    //    provisória, que já foi exibida na tela. Não bloqueia a criação (o usuário
+    //    existe e consegue entrar), mas tem de aparecer no log e no retorno.
+    const { error: erroTroca } = await supabase.rpc('admin_marcar_trocar_senha', { p_user_id: userId })
+    if (erroTroca) {
+      console.error('[criarUsuario] usuário criado, mas falhou ao marcar troca de senha:', erroTroca.message)
+      avisoParcial = 'Usuário criado, mas não foi possível exigir a troca da senha no 1º acesso.'
+    }
 
     // 4) E-mail é camada ADICIONAL (v4.24.0): a senha já está pronta e será exibida
     //    na tela. enviarSenhaProvisoria NÃO lança (retorna boolean) — o try/catch é
@@ -120,7 +138,7 @@ export async function criarUsuario(input: {
       emailEnviado = await enviarSenhaProvisoria({ para: email, nome, senha, tipo: 'criacao' })
     } catch { /* fallback: a senha aparece na tela */ }
 
-    return { ok: true, email, senha, emailEnviado }
+    return { ok: true, email, senha, emailEnviado, avisoParcial }
   } catch (err) {
     return { ok: false, erro: comoErro(err) }
   } finally {
@@ -195,16 +213,28 @@ export async function aprovarSolicitacao(input: {
   await requireAreaAction('admin/acessos')
   const r = await criarUsuario({ email: input.email, nome: input.nome, roleId: input.roleId })
   if (!r.ok) return r
+  // v5.10.0/D5-002: o `{ error }` da RPC era DESCARTADO. O SDK do Supabase não
+  // lança, então o try/catch só pegava exceção de transporte: uma negação de RBAC
+  // ou um timeout retornado no payload passava calado, a solicitação ficava
+  // PENDENTE para sempre e a tela declarava sucesso limpo. A irmã
+  // `rejeitarSolicitacao` (abaixo) sempre checou o `error` — aqui faltava.
+  // Não desfaz a criação do usuário (já existe e a senha está na tela): reporta.
+  let avisoParcial = r.avisoParcial
   try {
     const supabase = await getServerClient()
-    await supabase.rpc('admin_decidir_solicitacao', { p_id: input.id, p_aprovar: true })
+    const { error } = await supabase.rpc('admin_decidir_solicitacao', { p_id: input.id, p_aprovar: true })
+    if (error) {
+      console.error('[aprovarSolicitacao] usuário criado, mas falhou ao marcar a solicitação:', error.message)
+      avisoParcial = 'Usuário criado, mas a solicitação continua pendente — decida-a manualmente.'
+    }
   } catch (err) {
     console.error('[aprovarSolicitacao] usuário criado, mas falhou ao marcar a solicitação:', err)
+    avisoParcial = 'Usuário criado, mas a solicitação continua pendente — decida-a manualmente.'
   }
   // Revalida apenas no caminho de sucesso (usuário criado — mesmo que marcar a
   // solicitação tenha falhado, o dado relevante mudou e o re-render é correto aqui).
   revalidatePath('/admin/acessos')
-  return r
+  return { ...r, avisoParcial }
 }
 
 export async function rejeitarSolicitacao(id: number): Promise<ResultadoAcao> {

@@ -11,8 +11,8 @@
 //
 // Puro e isomórfico (sem React, sem server, sem I/O) → testável e seguro no client island.
 
-export const INTERVALO_SYNC_MIN = 15          // cadência do cron (0182)
-export const TICKS_ATE_ATRASO = 3             // nº de sincronizações perdidas até alertar
+const INTERVALO_SYNC_MIN = 15          // cadência do cron (0182)
+const TICKS_ATE_ATRASO = 3             // nº de sincronizações perdidas até alertar
 export const LIMITE_ATRASO_MS = INTERVALO_SYNC_MIN * TICKS_ATE_ATRASO * 60_000  // 45min
 
 /**

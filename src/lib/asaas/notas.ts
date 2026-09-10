@@ -36,8 +36,8 @@ export type ModoNota = 'normal' | 'avulsa'
 // ── Config fiscal FIXA da Welcome (do script; não inventar) ───────────────────
 export const NF_SERVICE_DESCRIPTION = 'Nota fiscal referente às despesas de viagem. Nota Fiscal emitida conforme Portaria 06/2008.'
 export const NF_MUNICIPAL_CODE = '9.02'
-export const NF_MUNICIPAL_NAME = 'Serviços diversos'
-export const NF_ISS_PADRAO = 5 // era --iss 5 no script; parametrizável
+const NF_MUNICIPAL_NAME = 'Serviços diversos'
+const NF_ISS_PADRAO = 5 // era --iss 5 no script; parametrizável
 
 /** externalReference da NF: normal usa a ref; avulsa recebe o sufixo -AVULSA (separa idempotência). */
 export function externalReferenceNota(faturaClienteNo: string, modo: ModoNota): string {

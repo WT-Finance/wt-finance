@@ -1,0 +1,176 @@
+Unused files (21)
+.claude/hooks/contexto-sessao.mjs                         
+.claude/hooks/gate-stop.mjs                               
+.claude/hooks/protecao-config.mjs                         
+scripts/db-gate/exportar.mjs                              
+scripts/dre-oracle.mjs                                    
+scripts/gera-seed-dre-competencia.mjs                     
+scripts/limpeza-anexos-solicitacoes.mjs                   
+src/components/financeiro/collapsible-section.tsx         
+src/components/financeiro/decomposicao-lancamentos.tsx    
+src/components/financeiro/dre/mockup-dados.ts             
+src/components/financeiro/proximos-lancamentos-lateral.tsx
+src/components/layout/header.tsx                          
+src/components/weddings/margem-drawer-trigger.tsx         
+src/components/weddings/margem-drawer.tsx                 
+supabase/seed/check-andressa.ts                           
+supabase/seed/diag.ts                                     
+supabase/seed/seed-fluxo-caixa.ts                         
+supabase/seed/test-m4.ts                                  
+supabase/seed/test-operacoes.ts                           
+supabase/seed/validate-0026.ts                            
+supabase/seed/validate-m1.ts                              
+Unlisted dependencies (1)
+@typescript-eslint/parser  src/lib/carga/coercao-lint.sonda.test.ts:2:22
+Unused exports (66)
+limparTopLevel                         function  scripts/db-gate/classificar.mjs:28:17               
+SCHEMAS                                          scripts/db-gate/lib.mjs:35:14                       
+getPool                                function  scripts/db-gate/lib.mjs:40:17                       
+qJson                                  function  scripts/db-gate/lib.mjs:79:23                       
+colunasNaoGeradas                      function  scripts/db-gate/lib.mjs:90:23                       
+pgCopyOut                              function  scripts/db-gate/lib.mjs:99:23                       
+atualizarObsMovimentacao               function  src/app/gestao-pessoas/inventario/actions.ts:276:23 
+ChartReferenceLineY                    function  src/components/charts/chart-primitives.tsx:98:17    
+listMonths                             function  src/components/charts/fill-months.ts:19:17          
+ChartReferenceLineY                              src/components/charts/index.ts:19:3                 
+listMonths                                       src/components/charts/index.ts:41:22                
+SumarioExecutivoSkeleton               function  src/components/executiva/sumario-executivo.tsx:27:17
+posTick                                function  src/components/shared/slider-horizonte.tsx:25:17    
+compararHashConstante                  function  src/lib/api-externa/segredo.ts:38:17                
+NOTA_PADRAO                                      src/lib/asaas/boletos.ts:20:14                      
+NF_MUNICIPAL_NAME                                src/lib/asaas/notas.ts:39:14                        
+NF_ISS_PADRAO                                    src/lib/asaas/notas.ts:40:14                        
+INICIO_SERIE                                     src/lib/cdi/serie-sgs.ts:20:14                      
+TETO_TAXA_MENSAL                                 src/lib/cdi/serie-sgs.ts:32:14                      
+paraDataBr                             function  src/lib/cdi/serie-sgs.ts:35:17                      
+paraIsoPrimeiroDia                     function  src/lib/cdi/serie-sgs.ts:47:17                      
+SUBSETOR_COLORS                                  src/lib/config.ts:73:14                             
+SUBSETOR_COLOR_FALLBACK                          src/lib/config.ts:91:14                             
+dreLinhaSchema                                   src/lib/dre/schemas.ts:13:14                        
+dreBandejaSchema                                 src/lib/dre/schemas.ts:56:14                        
+dreCompBandejaSchema                             src/lib/dre/schemas.ts:62:14                        
+decBlocoSchema                                   src/lib/dre/schemas.ts:167:14                       
+decCategoriaSchema                               src/lib/dre/schemas.ts:175:14                       
+estruturaBlocoSchema                             src/lib/dre/schemas.ts:196:14                       
+estruturaMapSchema                               src/lib/dre/schemas.ts:205:14                       
+estruturaBandejaSchema                           src/lib/dre/schemas.ts:215:14                       
+historicoLoteSchema                              src/lib/dre/schemas.ts:264:14                       
+historicoEntradaSchema                           src/lib/dre/schemas.ts:276:14                       
+emailValido                                      src/lib/email/fatura.ts:19:30                       
+anexoLogoJanus                         function  src/lib/email/index.ts:46:17                        
+CLIENTES_COLUNAS                                 src/lib/faturamento/parse-clientes-corp.ts:49:14    
+rpcFluxo                               function  src/lib/fluxo/rpc-fluxo.ts:9:17                     
+repasseMensalRowSchema                           src/lib/fluxo/rpc-fluxo.ts:22:14                    
+horizonteMesSchema                               src/lib/fluxo/rpc-fluxo.ts:40:14                    
+horizonteAnoSchema                               src/lib/fluxo/rpc-fluxo.ts:50:14                    
+saldoCaixaContaSchema                            src/lib/fluxo/rpc-fluxo.ts:74:14                    
+runwaySemanaSchema                               src/lib/fluxo/rpc-fluxo.ts:90:14                    
+rankingItemSchema                                src/lib/fluxo/rpc-fluxo.ts:111:14                   
+parseTipo                              function  src/lib/gerencial/parser.ts:24:17                   
+parseVencimento                        function  src/lib/gerencial/parser.ts:47:17                   
+nomeMes                                function  src/lib/metas/comparativo.ts:82:17                  
+INTERVALO_SYNC_MIN                               src/lib/metas/sync-atraso.ts:14:14                  
+TICKS_ATE_ATRASO                                 src/lib/metas/sync-atraso.ts:15:14                  
+mondeApiKey                            function  src/lib/monde/client.ts:22:17                       
+contaFecha                             function  src/lib/monde/reconciliacao.ts:86:17                
+zCustomField                                     src/lib/monde/schemas.ts:16:14                      
+zSaleListItem                                    src/lib/monde/schemas.ts:21:14                      
+zPassenger                                       src/lib/monde/schemas.ts:45:14                      
+zProduct                                         src/lib/monde/schemas.ts:52:14                      
+MICRO_MACRO                                      src/lib/monde/sectors.ts:14:14                      
+formatarPeriodo                        function  src/lib/periodo.ts:102:17                           
+resolverPeriodoFromParams              function  src/lib/periodo.ts:148:17                           
+calcularPeriodoAnteriorInteligente     function  src/lib/periodo.ts:173:17                           
+calcularYoYInteligente                 function  src/lib/periodo.ts:187:17                           
+SETORES_REAIS                                    src/lib/rateio/tipos.ts:11:14                       
+patrimonioMovimentacaoSchema                     src/lib/schemas-rpc.ts:396:14                       
+anexoSchema                         S            src/lib/solicitacoes/schemas.ts:57:14               
+tipoAberturaSchema                  S            src/lib/solicitacoes/schemas.ts:109:14              
+tipoAdminSchema                     S            src/lib/solicitacoes/schemas.ts:125:14              
+movimentacaoSchema                  S            src/lib/solicitacoes/schemas.ts:157:14              
+classificarVariacao                    function  src/lib/sumario-executivo.ts:37:17                  
+Unused exported types (82)
+TripwireMes                     type       src/app/admin/uploads/actions.ts:580:13               
+RoboChave                       interface  src/components/admin/api-externa/tipos.ts:10:18       
+ChartLegendMarker               type       src/components/charts/chart-legend.tsx:19:13          
+ChartLegendMarker               type       src/components/charts/index.ts:13:32                  
+FluxoMensalRow                  type       src/components/financeiro/fluxo-mensal-chart.tsx:22:13
+PapelConta                      type       src/components/financeiro/gerencial/tipos.ts:3:13     
+MetaItem                        interface  src/components/metas/cadastro-grade.tsx:37:18         
+SetorCol                        interface  src/components/metas/cadastro-grade.tsx:46:18         
+LinhaComparacao                 interface  src/components/metas/comparacao-content.tsx:21:18     
+ButtonVariant                   type       src/components/ui/button.tsx:14:13                    
+ButtonTone                      type       src/components/ui/button.tsx:22:13                    
+ButtonSize                      type       src/components/ui/button.tsx:23:13                    
+TabItem                         interface  src/components/ui/tabs.tsx:13:18                      
+ChangelogItem                   interface  src/data/changelog-diretoria.ts:23:18                 
+Natureza                        type       src/lib/dre/ponte-regimes.ts:54:13                    
+PontoProporcao                  interface  src/lib/dre/proporcao-grupos.ts:48:18                 
+DreMensal                       type       src/lib/dre/schemas.ts:116:13                         
+DreCompMensal                   type       src/lib/dre/schemas.ts:117:13                         
+DreBandeja                      type       src/lib/dre/schemas.ts:119:13                         
+DreCompBandeja                  type       src/lib/dre/schemas.ts:120:13                         
+DecBloco                        type       src/lib/dre/schemas.ts:190:13                         
+DecCategoria                    type       src/lib/dre/schemas.ts:191:13                         
+DecomposicaoBloco               type       src/lib/dre/schemas.ts:192:13                         
+DreCompEstrutura                type       src/lib/dre/schemas.ts:241:13                         
+EstruturaBloco                  type       src/lib/dre/schemas.ts:244:13                         
+EstruturaMap                    type       src/lib/dre/schemas.ts:245:13                         
+EstruturaBandeja                type       src/lib/dre/schemas.ts:246:13                         
+HorizonteMes                    type       src/lib/fluxo/rpc-fluxo.ts:66:13                      
+HorizonteAno                    type       src/lib/fluxo/rpc-fluxo.ts:67:13                      
+RunwaySemana                    type       src/lib/fluxo/rpc-fluxo.ts:104:13                     
+SaldoRepasse                    type       src/lib/fluxo/rpc-fluxo.ts:160:13                     
+PontoAcumulado                  interface  src/lib/metas/ritmo.ts:54:18                          
+PromoverResult                  interface  src/lib/monde/ingest.ts:26:18                         
+MesNaoVerificado                interface  src/lib/monde/reconciliacao.ts:198:18                 
+CustomField                     type       src/lib/monde/schemas.ts:94:13                        
+Passenger                       type       src/lib/monde/schemas.ts:95:13                        
+SaleListItem                    type       src/lib/monde/schemas.ts:97:13                        
+SalesListResponse               type       src/lib/monde/schemas.ts:98:13                        
+SaleDetailResponse              type       src/lib/monde/schemas.ts:100:13                       
+ItemEspelho                     interface  src/lib/monde/transform.ts:38:18                      
+CargaValidacao                  type       src/lib/schemas-rpc.ts:269:13                         
+CargaPromocao                   type       src/lib/schemas-rpc.ts:276:13                         
+BuscarPessoas                   type       src/lib/schemas-rpc.ts:339:13                         
+EmailsEnvolvidos             S  type       src/lib/solicitacoes/schemas.ts:181:13                
+KpisMes                         interface  src/types/api.ts:9:18                                 
+RitmoDiarioItem                 interface  src/types/api.ts:19:18                                
+RankingProdutoItem              interface  src/types/api.ts:46:18                                
+MixSetorItem                    interface  src/types/api.ts:80:18                                
+PrejuizoVendaItem               interface  src/types/api.ts:105:18                               
+TendenciaMargemPonto            interface  src/types/api.ts:120:18                               
+MixProdutoItem                  interface  src/types/api.ts:133:18                               
+MixProdutoOutros                interface  src/types/api.ts:141:18                               
+Historico12mItem                interface  src/types/api.ts:164:18                               
+Historico12m                    interface  src/types/api.ts:173:18                               
+Historico12mSetoresItem         interface  src/types/api.ts:177:18                               
+DecomposicaoSetor               interface  src/types/api.ts:195:18                               
+OperacaoFlag                    type       src/types/api.ts:233:13                               
+DecomposicaoSubsetorItem        interface  src/types/api.ts:317:18                               
+PipelineMesItem                 interface  src/types/api.ts:382:18                               
+CarteiraValores                 interface  src/types/api.ts:397:18                               
+CarteiraLinha                   interface  src/types/api.ts:401:18                               
+ProximoCasamento                interface  src/types/api.ts:413:18                               
+AcumuladoMensalWeddingsItem     interface  src/types/api.ts:430:18                               
+VendaEmAberto                   interface  src/types/api.ts:448:18                               
+VendaReceitaNegativaItem        interface  src/types/api.ts:461:18                               
+OperacaoListaItem               interface  src/types/api.ts:474:18                               
+WeddingsDrawerSerie             interface  src/types/api.ts:482:18                               
+WeddingsDrawerYoySerie          interface  src/types/api.ts:490:18                               
+WeddingsDrawerTotais            interface  src/types/api.ts:496:18                               
+WeddingsDrawerData              interface  src/types/api.ts:505:18                               
+GerencialLancamento             interface  src/types/api.ts:514:18                               
+GerencialSaldo                  interface  src/types/api.ts:529:18                               
+GerencialProjecaoDia            interface  src/types/api.ts:537:18                               
+SetorMacro                      type       src/types/database.ts:635:13                          
+SetorMacroNome                  type       src/types/database.ts:636:13                          
+FiltroSetorMacro                type       src/types/database.ts:637:13                          
+MetaSetor                       type       src/types/database.ts:639:13                          
+IngestaoLog                     type       src/types/database.ts:640:13                          
+VendasDiarias                   type       src/types/database.ts:642:13                          
+VendasMensais                   type       src/types/database.ts:643:13                          
+RankingVendedor                 type       src/types/database.ts:644:13                          
+RankingProduto                  type       src/types/database.ts:645:13                          
+Duplicate exports (1)
+LIMITE_MESES|JANELA_LARGA_FRENTE  src/lib/weddings/janela-fluxo.ts

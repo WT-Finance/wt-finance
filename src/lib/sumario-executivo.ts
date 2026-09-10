@@ -34,7 +34,7 @@ function fmtPct(v: number): string {
   return `${s}${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 }
 
-export function classificarVariacao(pct: number | null, tipo: string): string | null {
+function classificarVariacao(pct: number | null, tipo: string): string | null {
   if (pct == null) return null
   const abs = Math.abs(pct)
   if (abs < 3)         return `em linha com o período ${tipo} (${fmtPct(pct)})`

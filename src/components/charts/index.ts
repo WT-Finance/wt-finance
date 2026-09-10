@@ -1,5 +1,5 @@
 /**
- * Barrel dos primitivos de gráfico — WT Finance Design System (v4.8 / M4).
+ * Barrel dos primitivos de gráfico — Janus Design System (v4.8 / M4).
  *
  * Ponto de importação único para gráficos e drawers (M5/M6):
  *   import {
@@ -16,7 +16,6 @@ export {
   ChartGrid,
   ChartZeroLine,
   ChartZeroLineX,
-  ChartReferenceLineY,
   ChartXAxisMes,
   ChartXAxisCategoria,
   ChartXAxisBRL,
@@ -38,7 +37,7 @@ export {
   FUTURE_OPACITY,
 } from './chart-theme'
 
-export { fillMonths, listMonths } from './fill-months'
+export { fillMonths } from './fill-months'
 
 // Anel de destaque (círculo de contorno + valor centrado) — sem série de dados.
 export { AnelKpi } from './anel-kpi'

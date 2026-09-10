@@ -1,7 +1,7 @@
 import {
   startOfMonth, endOfMonth, subMonths, subYears,
   differenceInDays, addDays,
-  getYear, getMonth, getDate,
+  getYear,
   isAfter, format, parseISO,
 } from 'date-fns'
 
@@ -98,13 +98,6 @@ export function granularidadeSugerida(periodo: Periodo): Granularidade {
   return 'mensal'
 }
 
-/** Formata um Periodo como string legível em pt-BR. */
-export function formatarPeriodo(periodo: Periodo): string {
-  const fmt = (d: Date) =>
-    `${String(getDate(d)).padStart(2, '0')}/${String(getMonth(d) + 1).padStart(2, '0')}/${getYear(d)}`
-  return `${fmt(periodo.inicio)} – ${fmt(periodo.fim)}`
-}
-
 const isoDate = (d: Date) => format(d, 'yyyy-MM-dd')
 
 const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
@@ -142,35 +135,12 @@ export function formatarLabelPeriodo(
 }
 
 /**
- * Resolve search params de URL (preset, from, to) em { from, to } ISO strings.
- * Seguro para uso em Server Components — sem `'use client'`.
- */
-export function resolverPeriodoFromParams(params: {
-  preset?: string | null
-  from?: string | null
-  to?: string | null
-  defaultPreset?: PresetPeriodo
-}): { from: string; to: string } {
-  const preset = (params.preset as PresetPeriodo | null) ?? params.defaultPreset ?? 'este-mes'
-
-  if (preset === 'personalizado') {
-    // enquanto datas não estiverem preenchidas, usa este-mes como fallback
-    if (params.from && params.to) return { from: params.from, to: params.to }
-    const fallback = resolvePeriodo(params.defaultPreset ?? 'este-mes')
-    return { from: isoDate(fallback.inicio), to: isoDate(fallback.fim) }
-  }
-
-  const periodo = resolvePeriodo(preset)
-  return { from: isoDate(periodo.inicio), to: isoDate(periodo.fim) }
-}
-
-/**
  * Período anterior proporcional.
  * Se o período atual ainda está em curso (fim >= hoje), recua apenas
  * os dias já decorridos; se está encerrado, comporta-se como
  * calcularPeriodoAnterior (bloco completo de mesma duração).
  */
-export function calcularPeriodoAnteriorInteligente(periodo: Periodo, hoje: Date): Periodo {
+function calcularPeriodoAnteriorInteligente(periodo: Periodo, hoje: Date): Periodo {
   if (isAfter(hoje, periodo.fim)) return calcularPeriodoAnterior(periodo)
 
   const diasDecorridos = differenceInDays(hoje, periodo.inicio) + 1
@@ -184,7 +154,7 @@ export function calcularPeriodoAnteriorInteligente(periodo: Periodo, hoje: Date)
  * Período encerrado → mesmo bloco do ano anterior.
  * Período em curso → de (inicio − 1 ano) até (hoje − 1 ano).
  */
-export function calcularYoYInteligente(periodo: Periodo, hoje: Date): Periodo {
+function calcularYoYInteligente(periodo: Periodo, hoje: Date): Periodo {
   if (isAfter(hoje, periodo.fim)) return calcularPeriodoYoY(periodo)
 
   return {
@@ -205,9 +175,10 @@ export interface PeriodoCompleto {
 }
 
 /**
- * Versão completa de resolverPeriodoFromParams: devolve também os períodos
- * de comparação (anterior e YoY) calculados de forma proporcional quando
- * o período corrente está em aberto.
+ * Resolve search params de URL (preset, from, to) em `{ from, to }` ISO e devolve
+ * também os períodos de comparação (anterior e YoY), calculados de forma
+ * proporcional quando o período corrente está em aberto.
+ * Seguro para Server Components — sem `'use client'`.
  */
 export function resolverPeriodoCompleto(
   params: {

@@ -43,7 +43,7 @@ export function anexoLogo() {
  * para o cabeçalho de lockup duplo [JANUS] | [WELCOME GROUP]. O e-mail de FATURA (cliente,
  * `fatura.ts`) continua anexando SÓ `anexoLogo()` — fronteira intocável.
  */
-export function anexoLogoJanus() {
+function anexoLogoJanus() {
   return {
     filename:    'janus.png',
     content:     Buffer.from(LOGO_JANUS_PNG_BASE64, 'base64'),
