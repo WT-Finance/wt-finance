@@ -492,19 +492,38 @@ A simulação pegou isso antes de o arquivo ir para o TTY; sem ela, a reconcilia
 teria abortado a aplicação na frente do humano, ou pior, passado com o conjunto errado.
 Vale também para o caminho inverso: confirme que **nenhuma** linha fora do alvo casa.
 
-### `reverter_diario` pressupõe UM toque por linha por lote
+### Coluna VOLÁTIL numa checagem de conflito: compare sem ela
 
-O undo em lote (`0206`, ADR-0156) compara, para cada entrada, o estado atual da linha com o
-`dados_depois` dela, processando `ORDER BY id` ASC. Isso assume que cada linha foi tocada
-**uma vez** no lote — verdade no fluxo normal do editor (um upsert por `categoria_id`), e
-**falso numa migration** que atualiza a mesma linha em passos separados (ex.: a fórmula num
-passo, o rótulo em outro). Aí a entrada mais antiga guarda um estado INTERMEDIÁRIO, a
-comparação falha e a transação inteira aborta **sem reverter nada**.
+Checagem de conflito otimista do tipo "a linha ainda está como eu a deixei?" que compara a
+linha **inteira** contra um snapshot é frágil sempre que **a própria operação que você vai
+fazer altera uma coluna** — carimbo de tempo, token de trava, contador. A classe é "coluna
+volátil": ela avança por desenho (BEFORE trigger, `DEFAULT now()`), então dois passos
+consecutivos da mesma operação nunca se reconhecem, e o guard reprova o que não é conflito.
 
-Consequência prática: **não prometa "reversível pelo painel" no header de uma migration de
-estrutura** sem antes conferir se ela toca alguma linha mais de uma vez. O dado continua
-recuperável entrada por entrada (DESC de `id`) ou por migration corretiva — mas não pelo
-clique único. (Achado ALTO do `revisor-db` na v5.7.0.)
+**Custou na v5.7.0 e fechou na v5.9.5 (`0268`).** `reverter_diario` (`0206`) percorria o lote
+em `ORDER BY id` ASC e comparava `to_jsonb(linha)` inteiro com `dados_depois`. Um lote que
+tocava a mesma linha duas vezes (só migrations fazem isso — a `0251`, 43 toques para 38 linhas,
+era o único em toda a base) abortava sem reverter nada. Duas camadas, e a segunda só apareceu na
+**prova em transação revertida**: (a) ASC conferia primeiro a entrada antiga, cujo `dados_depois`
+é um estado intermediário → DESC resolve a ordem; (b) mesmo em DESC, o primeiro passo restaura o
+conteúdo mas o BEFORE trigger carimba `atualizado_em` novo, e o segundo passo acusava conflito.
+A correção compara `(v_atual - c_volateis) IS DISTINCT FROM (dados_depois - c_volateis)`, com
+`c_volateis CONSTANT text[] := ARRAY['atualizado_em']` — **constante única no corpo**, para que a
+lista de "o que ignorar" não exista implícita e repetida em três lugares.
+
+Regras que ficam:
+- Ao escrever um guard "linha ainda igual?", pergunte **o que a minha própria operação vai mudar
+  nessa linha** e tire isso da comparação — e só isso. O que a operação NÃO toca (aqui:
+  `atualizado_por` de `patrimonio.ativo`, conteúdo de negócio) fica dentro, senão o guard afrouxa.
+- **Veja o guard reprovar antes de corrigi-lo**, com o corpo atual, em transação revertida
+  (`pg`, `BEGIN … ROLLBACK`, um `SAVEPOINT` por cenário): guard que não foi visto vermelho não
+  vale; e foi essa prova que revelou a camada (b), invisível no raciocínio sobre a ordem.
+- Trocar a ordem de um loop que compara contra snapshot é mudança de **semântica**, não de
+  performance: enumere os chamadores que passam array (aqui 6 — DRE caixa/competência e
+  Gerencial, `desfazer_lote`/`_linha`) e prove que quem passa um id só é indiferente.
+- O teste permanente disso vive em `src/lib/dre/reverter-diario.test.ts` (escreve-e-reverte
+  contra produção a cada `npm test`; pulado sem `SUPABASE_DB_URL`). Reprovar a próxima
+  `CREATE OR REPLACE` escrita da migration de ORIGEM é o caso "catálogo vivo" dele.
 
 ---
 

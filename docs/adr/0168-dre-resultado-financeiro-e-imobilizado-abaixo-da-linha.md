@@ -152,9 +152,34 @@ papel e **medido read-only** (um `get_dre_mensal` por ano, via REST) antes de qu
 escrito. Ensaio que escreve em produção — ainda que revertido — é risco sem retorno quando a
 mesma garantia sai de uma leitura.
 
+## Emenda 1 (10/09/2026, v5.9.5) — o lote da `0251` deixou de ser irrevertível por limitação técnica; e NÃO deve ser revertido
+
+**Migration `0268`** (aditiva). O débito registrado acima foi pago: `financeiro.reverter_diario` passou
+a percorrer o lote em **`ORDER BY id DESC`** e a comparar a linha atual com o `dados_depois` **sem as
+colunas voláteis** (`atualizado_em`, que a própria reversão avança pelo BEFORE trigger / `DEFAULT now()`).
+DESC sozinho não bastava — era a segunda camada, invisível no papel, que a prova em transação revertida
+expôs: no segundo passo de qualquer cadeia a linha volta ao conteúdo certo **com carimbo novo**, e a
+comparação da linha inteira acusava conflito de novo. Medido em produção em 09/09/2026: o lote
+`132178` (esta migration, 43 toques para 38 linhas — `LOP`, `INV_H`, `RAIR`, `FIN`, `IMOB` tocados duas
+vezes) era o **único** em toda a base a violar a premissa; nenhum lote de origem humana tem duplicata.
+A guarda não afrouxou: alteração real de conteúdo por terceiro continua abortando, e um conflito real
+derruba a transação inteira.
+
+**Aviso:** a `0251` ficou *tecnicamente* revertível pelo clique único do painel — e **não deve ser
+revertida**. A estrutura com Resultado Financeiro unificado e Imobilizado abaixo da linha está viva,
+estável, alimenta a DRE por competência (ADR-0170) e foi comunicada à liderança desde 19/08/2026. Reverter
+seria uma decisão de produto nova, não a correção de um erro; se um dia for tomada, nasce como versão
+própria com briefing, não como "desfazer".
+
+A frase "Nunca pelo clique único" acima ficou como registro histórico do estado entre 19/08 e 10/09.
+O guard de payload duplicado da `0260` (competência), que se justificava como proteção do desfazer, foi
+**portado para o salvar do caixa** e re-justificado nos dois lugares como recusa de payload ambíguo — a
+mesma linha duas vezes no mesmo lote é cliente confuso, e o último toque venceria em silêncio.
+
 ## Ver também
 
 - ADR-0156 — estrutura viva da DRE (fórmulas por chave, grafo, undo generalizado)
+- `supabase/migrations/0268_reverter_diario_desc_e_guard_caixa.sql` — Emenda 1 (v5.9.5)
 - `supabase/migrations/0251_dre_reestruturacao_resultado_financeiro.sql` — o que foi aplicado,
   com a reconciliação fail-closed
 - `scripts/dre-oracle.mjs` — captura antes/depois e reprova se RAIR ou REX moverem
