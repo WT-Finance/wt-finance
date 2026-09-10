@@ -1,0 +1,5 @@
+
+> wt-finance-temp@5.9.6 lint
+> eslint
+
+exit=0

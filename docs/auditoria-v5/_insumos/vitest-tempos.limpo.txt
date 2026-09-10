@@ -1,0 +1,1441 @@
+
+ RUN  v3.2.6 /home/yan-wt/projects/wt-finance/.claude/worktrees/chore+v5-10-0-limpeza-fechamento-v5
+
+stdout | src/lib/rpc-contrato.test.ts
+◇ injected env (14) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — shape + invariantes > get_mix_produto: produtos[] tipados e soma dos % ≈ 100 2242ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — shape + invariantes > get_vendas_em_aberto: { total:number, vendas:[] } e vendas ≤ limite 1832ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — shape + invariantes > get_executiva_kpis: faturamento/receita/margem coerentes (margem ≈ receita/fat) 257ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Margem (a.a.): ordenação do SQL ≡ fórmula exibida > ordenar por margem_aa desc devolve a lista monotônica na fórmula do cliente 1254ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Margem (a.a.): ordenação do SQL ≡ fórmula exibida > ordenar por margem_aa asc devolve a lista monotônica na fórmula do cliente 424ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Margem (a.a.): ordenação do SQL ≡ fórmula exibida > duração não anualizável cai por ÚLTIMO (NULLS LAST), nunca no meio 390ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Margem (a.a.): ordenação do SQL ≡ fórmula exibida > a paginação não repete nem pula linha ao ordenar pela coluna nova 597ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — janela do Fluxo de Caixa Mensal (Financeiro) > a janela cobre 36 meses para cada lado do mês corrente 3171ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — janela do Fluxo de Caixa Mensal (Financeiro) > a série é mensal, contínua e sem buraco (o eixo de tempo não pula mês) 584ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — janela do Fluxo de Caixa Mensal (Financeiro) > os 4 campos concordam com get_fluxo_caixa_kpis_b no mesmo mês (mesma view) 1224ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_operacoes_weddings' ↔ schema Zod 358ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_operacoes_weddings' ↔ schema Zod 409ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_operacoes_weddings' ↔ schema Zod 351ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_operacoes_weddings' ↔ schema Zod 366ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_carteira_weddings' ↔ schema Zod 100ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_tendencia_margem' ↔ schema Zod 83ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_ranking_vendedores_range' ↔ schema Zod 91ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_vendas_receita_negativa' ↔ schema Zod 926ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_executiva_kpis' ↔ schema Zod 78ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_vendas_em_aberto' ↔ schema Zod 111ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'validar_carga_staging' ↔ schema Zod 91ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'solic_tipos_abertura' ↔ schema Zod 120ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'solic_destinatarios' ↔ schema Zod 98ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'admin_solic_listar_tipos' ↔ schema Zod 127ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'solic_minhas' ↔ schema Zod 101ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'solic_caixa' ↔ schema Zod 151ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'solic_movimentacoes' ↔ schema Zod 124ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_mix_produto' ↔ schema Zod 108ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_minhas_permissoes' ↔ schema Zod 74ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'solic_minhas_pendencias' ↔ schema Zod 92ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'admin_acesso_solicitacoes_pendentes' ↔ schema Zod 84ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'cruzar_vendas_setor' ↔ schema Zod 115ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'buscar_pessoas' ↔ schema Zod 95ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'acervo_listar' ↔ schema Zod 126ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'metas_listar' ↔ schema Zod 72ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'metas_ritmo_diario' ↔ schema Zod 88ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_contratos_casamento_mes' ↔ schema Zod 172ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_taxas_cdi' ↔ schema Zod 83ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > 'get_rendimento_float' ↔ schema Zod 272ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema parseRpc (F7) aceita o retorno REAL > acervo_listar: itens vivos (se houver) não vazam storage_path/criado_por 60ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129) > solicitacaoSchema aceita um item REAL de solic_json (não só []) 6ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129) > flags de papel são BOOLEAN, nunca null (coalesce da 0129) 1ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129) > o item-schema é estrito o suficiente p/ pegar drift (campo faltante reprova) 1ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129) > origem: aceita ausente (RPC antiga), null (aberta na tela) e objeto (via API) 1ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129) > sou_autor no anexo: aceita ausente (RPC antiga), false e true 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129) > aprovado_em/por: aceita ausente (RPC antiga), null (nunca aprovada) e preenchido 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de solic_json (M7: shape real + invariante NULL-safe 0129) > uma solicitação concluída aceita trilha de aprovação com ator distinto de quem concluiu 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de acervo_listar (fixture real: acervo vivo estava vazio) > acervoDocSchema aceita um item REAL de acervo_listar (não só []) 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — ITEM de acervo_listar (fixture real: acervo vivo estava vazio) > o shape emitido pela RPC não vaza storage_path/criado_por (whitelist de chaves) 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato — campoDefSchema preserva a regra de data (fontanaria layer 5) > campo data com permite_passado=false + aviso=30 + direcao=abaixo sobrevive ao parse 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato — campoDefSchema preserva a regra de data (fontanaria layer 5) > data_aviso_direcao inválida é rejeitada (enum acima/abaixo) 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato — campoDefSchema preserva a regra de data (fontanaria layer 5) > campo data sem aviso (null) e campo legado sem as chaves são aceitos (optional) 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Inventário de Ativos (leitura) > patrimonio_catalogos: shape valida e o seed dos catálogos está no ar 96ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Inventário de Ativos (leitura) > patrimonio_listar_ativos e patrimonio_listar_movimentacoes: shape valida 189ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Inventário de Ativos (leitura) > patrimonio_resumo CONCORDA com a agregação de patrimonio_listar_ativos 139ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Inventário de Ativos (leitura) > p_status filtra pelo estado DERIVADO, não por coluna 172ms
+ ✓ src/lib/rpc-contrato.test.ts > gate de contrato — online obrigatório quando exigido (M10) > REQUIRE_CONTRACT=1 exige credenciais (online não pode ser pulado) 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema de promover_carga_vendas (estrutural, RPC destrutiva) > cargaPromocaoSchema aceita o retorno do transform (counts + extras) 1ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema de promover_carga_vendas (estrutural, RPC destrutiva) > cargaValidacaoSchema aceita o retorno de staging vazia (sem range) 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — schema de promover_carga_vendas (estrutural, RPC destrutiva) > cargaValidacaoSchema aceita o retorno com reprova de setor (setor_fora) 0ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade com a Performance (fonte única) > metas_ritmo_diario[todos].Σserie = get_executiva_kpis.faturamento 133ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade com a Performance (fonte única) > metas_ritmo_diario[Weddings].Σserie = get_executiva_kpis.faturamento 120ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade com a Performance (fonte única) > metas_ritmo_diario[Lazer].Σserie = get_executiva_kpis.faturamento 139ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade com a Performance (fonte única) > metas_ritmo_diario[Corporativo].Σserie = get_executiva_kpis.faturamento 151ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade do Comparativo com os MetaCards (v5.6.1) > comparativo[todos]: previsto ≡ metaPeriodo e realizado ≡ faturamento dos KPIs 2407ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade do Comparativo com os MetaCards (v5.6.1) > comparativo[Weddings]: previsto ≡ metaPeriodo e realizado ≡ faturamento dos KPIs 142ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade do Comparativo com os MetaCards (v5.6.1) > comparativo[Lazer]: previsto ≡ metaPeriodo e realizado ≡ faturamento dos KPIs 140ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — paridade do Comparativo com os MetaCards (v5.6.1) > comparativo[Corporativo]: previsto ≡ metaPeriodo e realizado ≡ faturamento dos KPIs 147ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato Metas — janela composta ≡ soma das janelas mensais (v5.6.4) > get_executiva_kpis(jan–abr/26) ≈ Σ get_executiva_kpis(mês a mês) 287ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — get_contratos_casamento_mes (v5.6.2) > shape {n_contratos:int ≥ 0} e mês ⊆ ano 4870ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > catálogo de áreas: banco (app.rbac_areas) ↔ app (AREAS) idênticos 1063ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > get_minhas_permissoes: shape estável mesmo sem usuário (service role) 232ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > guard NEGA anon com enforcement simulado (rbac_verificar_guard → 403) 390ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > enforcement ATIVO: leitura anônima é negada (sem JWT → 42501) 106ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > mutações destrutivas INACESSÍVEIS a anon (revogação dura) 531ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > RPCs de administração exigem JWT (anon → erro) 206ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > Solicitações: anon negado em todas as RPCs 919ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > solic_tipos_documentacao: mesma forma da de admin, só tipos expostos e não arquivados 368ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > Acervo: anon negado em todas as RPCs 333ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > admin_listar_solicitacoes nega anon (sem JWT → erro) 74ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > admin_acesso_solicitacoes_pendentes nega anon (sem JWT → erro) 74ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RBAC — guards e revogações (v4.13) > solicitar_acesso é acessível por anon (e-mail inválido → 200 ok:false, sem inserir) 102ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Faturamento Fase 4a (envio de e-mail) > buscar_docs_fatura([]) e email_existentes([], teste): alcançáveis; array vazio 446ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Faturamento v4.37.0 (Emissão consome o Cadastro) > buscar_cliente_corporativo alcançável (grant intacto) e devolve array 214ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_repasse_mensal(ano): [{mes,ent,sal,pct?,pct_ant?}] — repasse BRUTO 2231ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_fluxo_horizonte(): [{l,liq,e,s,n}] 408ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_fluxo_runway_semanal(): {saldo_operacional, semanas[13]} 173ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_fluxo_ranking(): {pioraram[], melhoraram[]} 513ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_saldo_caixa(): [{conta,saldo,ordem,data_saldo?,reserva,atualizado_em}] (tabela própria) 72ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_fluxo_horizonte() v2: 12 meses rolantes + 2 anos consolidados 172ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_fluxo_cobertura(): {recebiveis, saidas_mensais[≤12 fechados, ASC]} 270ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_saldo_repasse(from,to): { sal } — repasse bruto do período 215ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Fluxo de Caixa v5.2.0 (Onda 1) > get_fluxo_previsto_diario(): {vencido_r/p, dias[d≥hoje, ASC]} 1024ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE (v5.3.0) > get_dre_mensal: shape + fórmula do grafo viva (REPASSE = ENT_H + PAG_H ao centavo) 811ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE (v5.3.0) > get_dre_mensal (ano fechado): tudo realizado, sem coluna híbrida 390ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE (v5.3.0) > dre_estrutura: shape + invariantes (XOR excluída/bloco; fórmulas referenciam chaves reais) 213ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE (v5.3.0) > dre_estrutura_salvar: lote vazio é no-op; token errado → DRE_CONFLITO (nada muda) 506ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE (v5.3.0) > dre_estrutura_historico_lotes: shape (lista pode ser vazia) 132ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE undo/detalhe (execução inofensiva) > dre_estrutura_historico_lote: id inexistente → lista vazia (corpo executa) 78ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE undo/detalhe (execução inofensiva) > dre_estrutura_desfazer_lote/linha: id inexistente → erro amigável, nada muda 253ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE v5.3.1 (decomposição por bloco) > get_decomposicao_bloco: shape do payload + toda categoria classificada aponta p/ bloco presente 206ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE v5.3.1 (decomposição por bloco) > get_decomposicao_bloco: RECONCILIA ao centavo com a coluna do mês em get_dre_mensal 413ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE v5.3.1 (decomposição por bloco) > get_decomposicao_bloco: nada some — Σ categorias classificadas == Σ blocos; excluídas FORA 196ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE v5.3.1 (decomposição por bloco) > monde_ingest_status: shape do painel de sincronização, com as chaves da v5.4.4 2370ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE v5.3.1 (decomposição por bloco) > monde_vendas_ausentes: detecta o que falta e NÃO acusa o que existe 230ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE v5.3.1 (decomposição por bloco) > v5.4.5: nenhum mês verificado tem venda retida (tripwire.sobrando === 0) 261ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Rendimento potencial do float > taxa_vigente_mes é a MESMA nas três RPCs, e é um mês FECHADO 1891ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Rendimento potencial do float > a coluna da Lista é o MESMO número que o bloco do drawer 720ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Rendimento potencial do float > v5.5.1: a margem TEÓRICA se move na direção do float, e nunca é igual por acidente 482ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — Rendimento potencial do float > ordenar por rend_float é REAL, não o fallback silencioso 667ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — rótulos padronizados da estrutura viva (v5.7.0) > todo bloco, subgrupo e totalizador começa com um operador da fôrma 97ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — rótulos padronizados da estrutura viva (v5.7.0) > nenhuma categoria-folha carrega operador no rótulo exibido 65ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — grafo de fórmulas (a armadilha do passe único) > toda chave referenciada existe, e fórmula só consome fórmula anterior 87ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — camada firme da v5.7.0 > RFIN não existe mais e suas 3 categorias vivem no Resultado Financeiro 58ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — camada firme da v5.7.0 > IMOB saiu das despesas operacionais e entrou no bloco de investimentos 70ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — camada firme da v5.7.0 > IMOB renderiza SOB o cabeçalho que o agrega, não acima dele 56ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — Receita Bruta como linha de resultado (v5.7.1) > RB_H é "tot", abre com (=) e continua sendo REPASSE + RV 74ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — Receita Bruta como linha de resultado (v5.7.1) > Receita de Vendas vem ANTES da Receita Bruta que a soma 75ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — Maiores variações reconcilia com o YTD do Demonstrativo > toda categoria do ranking bate ao centavo com o YTD da DRE nos dois anos 451ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > shape do envelope bate com dreCompMensalSchema em todos os anos da base 570ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > ORÁCULO: REX ≡ soma de todas as linhas classificadas do ano, ao centavo 398ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > completude: base = linhas + bandeja + excluídas (nada some em silêncio) 369ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > REXG = REX − REEMB (o Resultado Gerencial é o REX sem os reembolsos) 354ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > toda linha traz 12 meses e o total é a soma deles 395ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > a FUSÃO não vaza: um destino (bloco, rótulo) aparece uma única vez 373ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > a estrutura tem a MESMA forma em todos os anos (linha vem do de-para, não do dado) 359ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > a base da Análise Vertical (RB_H) existe na árvore de competência 133ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > relacao e mes_corrente saem da COBERTURA da base, coerentes entre si 364ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > dre_comp_estrutura: shape do editor + coerência com a árvore 91ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > o EDITOR e o DEMONSTRATIVO concordam sobre o que está classificado 207ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — DRE por competência (v5.8.0) > os anos que a RPC anuncia são os anos que respondem 557ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — conciliação entre regimes (v5.8.1) > a ponte Competência ↔ Caixa fecha AO CENTAVO contra a base viva 298ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — conciliação entre regimes (v5.8.1) > a árvore VIVA está inteiramente pareada — nenhuma folha fora do vocabulário 267ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — conciliação entre regimes (v5.8.1) > Σ folhas ≡ REX do demonstrativo, nos DOIS regimes 277ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — conciliação entre regimes (v5.8.1) > toda linha do Resumo Executivo existe na árvore VIVA do seu regime 297ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — conciliação entre regimes (v5.8.1) > a decomposição da variação fecha ao centavo entre dois anos vivos 260ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — conciliação entre regimes (v5.8.1) > os 8 grupos da grade de proporção existem na árvore VIVA de competência 131ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato DRE — conciliação entre regimes (v5.8.1) > as oito janelas da grade têm a MESMA altura contra a base viva 196ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — hardenings da v5.9.4 (0267) no catálogo vivo > monde_ingest_promover preserva sale_id existente quando o detalhe vem sem ele (COALESCE) 561ms
+ ✓ src/lib/rpc-contrato.test.ts > contrato RPC — hardenings da v5.9.4 (0267) no catálogo vivo > get_executiva_kpis aceita metas/acompanhamento no PERFORM — e o helper areas_do_setor não mudou 340ms
+stdout | src/lib/api-externa/contrato-api-externa.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > criar_solicitacao_externa: criação feliz devolve ok/id/status/destinatario/solicitante 288ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > criar_solicitacao_externa: grava solicitante_id = usuário do e-mail enviado 50ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > criar_solicitacao_externa: solicitante_id é o do E-MAIL, não o robô da chave 159ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > criar_solicitacao_externa: e-mail do solicitante é case-insensitive 129ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > campo obrigatório ausente → CAMPO_OBRIGATORIO 89ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > moeda inválida → VALOR_INVALIDO 188ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > data no passado em campo sem passado (regra v4.19) → VALOR_INVALIDO 85ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > opção de seleção fora da lista → VALOR_INVALIDO 75ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > destinatário (role) que existe mas não era da lista do tipo → ACEITO (destino livre, 0216) 67ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > destinatário (role) inexistente → DESTINATARIO_INVALIDO 78ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > chave de campo desconhecida (fora da definição do tipo) → CAMPO_DESCONHECIDO 76ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > 2º tipo exposto (sem lista que o autorize) é ACEITO — whitelist por chave extinta 58ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > tipo NÃO exposto via API → TIPO_INVALIDO (o único controle que resta) 59ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > solic_tipos_api: tipo NÃO exposto não aparece na descoberta 71ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > sem data_limite → DATA_LIMITE_OBRIGATORIA 68ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > sem p_solicitante_email → SOLICITANTE_OBRIGATORIO 51ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > p_solicitante_email sem cadastro ativo na plataforma → SOLICITANTE_INVALIDO 71ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > repetir a criação feliz com a MESMA chave_idempotencia devolve o MESMO id (idempotente:true), sem duplicar 107ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > reenvio idempotente com e-mail DIFERENTE ecoa o solicitante ORIGINAL e não troca o dono 110ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > consultar por id devolve a solicitação desta chave com o estado atual 78ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > consultar por referencia_origem (o id DO INTEGRADOR) devolve coleção 166ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > consulta NÃO enxerga solicitação sem origem de integração (a aberta na tela) 145ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > consulta sem critério nenhum → CONSULTA_INVALIDA 87ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > consulta com chave revogada → CHAVE_INVALIDA 156ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > cancelar_solicitacao_externa: cancela a solicitação criada por esta chave 70ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > após o cancelamento, a consulta devolve status cancelada e decidido_em 64ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > cancelar de novo (já cancelada) → CONFLITO_ESTADO 73ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > cancelar id inexistente (para esta chave) → NAO_ENCONTRADA 51ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > solic_tipos_api: devolve TODO tipo exposto com slug/campos/chaves/destinos, sem campo anexo 65ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > admin_solic_salvar_tipo (edição): preserva as chaves reenviadas e gera uma nova só para o campo novo 200ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > cria a solicitação-fixture (p/ o teste de solic_concluir pós-0215 abaixo) 64ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > solic_concluir (1 parâmetro): conclui a solicitação de origem externa 187ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > contrato — API externa de Solicitações (v5.4.0/M3b+M4 + Round2/Round4, migrations 0212/0213/0215/0217) > solic_cancelar pela TELA: quem foi amarrado como solicitante consegue cancelar 260ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > gate — API externa de Solicitações: suíte de contrato é pulada, não falha, sem env/migration > sem SUPABASE_URL/SERVICE_ROLE_KEY/SUPABASE_DB_URL ou sem as migrations 0212/0213/0215/0217: skipIf, não erro 0ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > api_chave_resolver: anon não executa (nunca 2xx) 79ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > api_chamada_registrar: anon não executa (nunca 2xx) 73ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > criar_solicitacao_externa: anon não executa (nunca 2xx) 83ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > cancelar_solicitacao_externa: anon não executa (nunca 2xx) 48ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > solic_tipos_api: anon não executa (nunca 2xx) 59ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > consultar_solicitacoes_externas: anon não executa (nunca 2xx) 53ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > solic_emails_envolvidos_svc: anon não executa (nunca 2xx) 62ms
+ ✓ src/lib/api-externa/contrato-api-externa.test.ts > negação — RPCs service-only da API externa recusam anon > api_retrofit_contratos: anon não executa (nunca 2xx) 59ms
+stdout | src/lib/dre/reverter-diario.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/lib/dre/reverter-diario.test.ts > reverter_diario (0268) — cadeias de toques na MESMA linha, em transação revertida > U→U: dois updates na mesma linha revertem ao estado original 616ms
+ ✓ src/lib/dre/reverter-diario.test.ts > reverter_diario (0268) — cadeias de toques na MESMA linha, em transação revertida > I→U: insert + update revertem até a linha deixar de existir 454ms
+ ✓ src/lib/dre/reverter-diario.test.ts > reverter_diario (0268) — cadeias de toques na MESMA linha, em transação revertida > U→D: update + delete revertem reinserindo a linha com o conteúdo original 538ms
+ ✓ src/lib/dre/reverter-diario.test.ts > reverter_diario (0268) — cadeias de toques na MESMA linha, em transação revertida > conflito REAL (terceiro alterou o conteúdo depois do lote) continua recusado 454ms
+ ✓ src/lib/dre/reverter-diario.test.ts > reverter_diario (0268) — cadeias de toques na MESMA linha, em transação revertida > atomicidade: lote com UMA linha em conflito real não reverte NENHUMA 800ms
+(node:71689) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ src/lib/dre/reverter-diario.test.ts > reverter_diario (0268) — cadeias de toques na MESMA linha, em transação revertida > caminho normal (um toque por linha, 3 linhas) segue revertendo — sem regressão 652ms
+ ✓ src/lib/dre/reverter-diario.test.ts > reverter_diario (0268) — cadeias de toques na MESMA linha, em transação revertida > catálogo vivo: DESC e a constante de colunas voláteis (reprova REPLACE escrito da 0206) 246ms
+ ✓ src/lib/dre/reverter-diario.test.ts > guard de payload duplicado — caixa (0268) e competência (0260), via REST > dre_estrutura_salvar recusa a mesma categoria duas vezes no lote, antes da trava 601ms
+ ✓ src/lib/dre/reverter-diario.test.ts > guard de payload duplicado — caixa (0268) e competência (0260), via REST > dre_comp_estrutura_salvar recusa a mesma linha duas vezes no lote, antes da trava 67ms
+stdout | src/lib/monde/virada-paridade.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/monde/virada-paridade.test.ts > v5.1.4 — paridade pós-virada (get_executiva_kpis lê o Monde) > após o repoint (em tx, rollback): get_executiva_kpis == monde.mv_vendas_diarias, Group + setores 759ms
+stdout | src/lib/email/email.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+stderr | src/lib/email/email.test.ts > getConfigSmtp — fallback-safe (config opcional) > sem variáveis → null (cai no fallback)
+[email] SMTP não configurado (faltam variáveis SMTP_*) — envio desabilitado; a senha provisória segue exibida na tela (fallback).
+
+stderr | src/lib/email/email.test.ts > getConfigSmtp — fallback-safe (config opcional) > faltando uma essencial (sem SMTP_PASS) → null
+[email] SMTP não configurado (faltam variáveis SMTP_*) — envio desabilitado; a senha provisória segue exibida na tela (fallback).
+
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > criação: assunto/intro próprios, senha presente em html e text, nome no html 3ms
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > reset: assunto distinto da criação 1ms
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > sem nome → saudação genérica "Olá" 0ms
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > escapa HTML do nome (anti-injeção) 0ms
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > embute o lockup duplo [Janus] | [Welcome Group] via CID, com alt text 1ms
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > textos internos usam "Janus" (não "WT Finance") 0ms
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > formato do assunto interno = "[Assunto] | Janus" (checkpoint v4.40.0) 1ms
+ ✓ src/lib/email/email.test.ts > templateSenhaProvisoria — criação × reset > botão "Acessar a plataforma" aparece só com linkAcesso (html e text) 1ms
+ ✓ src/lib/email/email.test.ts > getConfigSmtp — fallback-safe (config opcional) > sem variáveis → null (cai no fallback) 2ms
+ ✓ src/lib/email/email.test.ts > getConfigSmtp — fallback-safe (config opcional) > config completa → objeto; secure parseado; from default = user 3ms
+ ✓ src/lib/email/email.test.ts > getConfigSmtp — fallback-safe (config opcional) > faltando uma essencial (sem SMTP_PASS) → null 2ms
+ ✓ src/lib/email/email.test.ts > getAppBaseUrl — da config, nunca hardcoded > APP_BASE_URL definido → retorna sem barra final 1ms
+ ✓ src/lib/email/email.test.ts > getAppBaseUrl — da config, nunca hardcoded > sem APP_BASE_URL → cai em VERCEL_PROJECT_PRODUCTION_URL (prefixa https) 0ms
+ ✓ src/lib/email/email.test.ts > getAppBaseUrl — da config, nunca hardcoded > nenhuma env → null (botão omitido, e-mail segue válido) 0ms
+ ✓ src/lib/email/email.test.ts > enviarSenhaProvisoria — NUNCA lança (boolean) > SMTP não configurado → false, sem tentar enviar (fallback) 2ms
+ ✓ src/lib/email/email.test.ts > enviarSenhaProvisoria — NUNCA lança (boolean) > envio bem-sucedido → true 2ms
+ ✓ src/lib/email/email.test.ts > enviarSenhaProvisoria — NUNCA lança (boolean) > erro de envio → false (sem propagar exceção) 1ms
+ ✓ src/lib/email/email.test.ts > templateNotificacaoSolicitacao — 5 movimentações > aprovada: assunto/text próprios e a DATA aparece (não pode sair vazia) 1ms
+ ✓ src/lib/email/email.test.ts > templateNotificacaoSolicitacao — 5 movimentações > aprovada: SEM justificativa mesmo se passada (só rejeição a exibe) 0ms
+ ✓ src/lib/email/email.test.ts > templateNotificacaoSolicitacao — 5 movimentações > criada: assunto/título no html e text + lockup duplo (2 CIDs) + "Janus" 0ms
+ ✓ src/lib/email/email.test.ts > templateNotificacaoSolicitacao — 5 movimentações > concluída: SEM justificativa mesmo se passada 0ms
+ ✓ src/lib/email/email.test.ts > templateNotificacaoSolicitacao — 5 movimentações > rejeitada: justificativa em html e text 0ms
+ ✓ src/lib/email/email.test.ts > templateNotificacaoSolicitacao — 5 movimentações > cancelada: nomes (não e-mails) + data + badge cinza; sem "Olá" 0ms
+ ✓ src/lib/email/email.test.ts > templateNotificacaoSolicitacao — 5 movimentações > role: "Atribuída a {rótulo}" SEM "permissão"; badge dourado; botão; escapa título 0ms
+ ✓ src/lib/email/email.test.ts > enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança > SMTP não configurado → 0 enviados, sem tentar enviar 2ms
+ ✓ src/lib/email/email.test.ts > enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança > todos enviados → enviados = total 2ms
+ ✓ src/lib/email/email.test.ts > enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança > falha de UM destinatário não derruba os outros (best-effort) 1ms
+ ✓ src/lib/email/email.test.ts > enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança > dedupe + sanidade: ignora repetidos e entradas sem @ 1ms
+ ✓ src/lib/email/email.test.ts > enviarNotificacaoSolicitacao — fan-out best-effort, NUNCA lança > config presente mas paras vazio → 0/0, sem enviar 1ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > o teto de conexões fica ABAIXO do limite de 3 do Office 365 (com folga) 1ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > 6 destinatários → nunca mais de MAX_CONEXOES_SMTP em voo, e TODOS recebem 19ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > mesmo teto vale para a notificação de acesso solicitado 25ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > 432 4.3.2 (transitório) é RETENTADO e o destinatário acaba recebendo 2ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > timeout de socket (sem responseCode) também é retentado 6ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > erro PERMANENTE (550 caixa inexistente) NÃO é retentado 1ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > EAUTH NÃO é retentado (insistir com credencial errada arrisca bloquear a conta) 2ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > transitório que persiste: desiste em EXATAMENTE MAX_TENTATIVAS (não trava o chamador) 23ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > ECONNREFUSED (falha ANTES de enviar bytes — retry sem risco de duplicata) é retentado 4ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > EHOSTUNREACH (falha ANTES de enviar bytes — retry sem risco de duplicata) é retentado 8ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > ENOTFOUND (falha ANTES de enviar bytes — retry sem risco de duplicata) é retentado 5ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > orçamento INTACTO (caso normal): o gate não estorva — todos saem 65ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > orçamento ESTOURADO: para de COMEÇAR envios novos e devolve parcial (não trava a action) 53ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > orçamento ESTOURADO não afeta o retorno de contrato (nunca lança) 3ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > todo envio COMEÇADO é aguardado até o fim (nunca abandonado no meio) 37ms
+ ✓ src/lib/email/email.test.ts > fan-out SMTP — concorrência limitada + retry (v5.3.4) > falha de um destinatário não impede os seguintes (best-effort preservado) 2ms
+stdout | src/lib/carga/coercao-lint.sonda.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ override existing { override: true }
+
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > const n = parseInt(s, 10) 53ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > const n = Number(e.target.value) 7ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > const editStr = (v: number): string => v.toFixed(2).replace('.', ',') 9ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > const limpar = (v: string) => set(v.replace(/[^\d.,-]/g, '')) 6ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > function toValorBRL(n: number): string { return 'R$' + n } 6ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > function parseTipo(s: string) { return s } 3ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > const t = d.replace(':', 'h') 3ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > valid > const label = s.replace(',', '.') 4ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > invalid > const n = parseFloat(x) 9ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > invalid > const n = Number(s.replace(',', '.')) 9ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > invalid > const n = Number(s.replace(/\./g, '').replace(',', '.')) 8ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > invalid > function h(s: string): number { const t = s.replace(',', '.'); return Number(t) } 6ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > invalid > function toNumero(v: unknown) { return v } 5ms
+ ✓ src/lib/carga/coercao-lint.sonda.test.ts > wt/no-coercao-reimpl > invalid > const parseValor = (v: unknown) => v 2ms
+stdout | src/lib/carga/parse-demonstrativo-competencia.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · leitura do arquivo > lê as 8 colunas e deriva a competência do Ano + Mês Nº 38ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · leitura do arquivo > valor com 3 casas decimais NÃO é multiplicado por 1000 (guard v5.5.2) 14ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · leitura do arquivo > meio-centavo NEGATIVO arredonda como o Postgres, não como Math.round 7ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · leitura do arquivo > funciona SEM a coluna Competência — os inteiros bastam 7ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · leitura do arquivo > valor ZERO é linha válida (zero real ≠ ausência) 7ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · leitura do arquivo > cabeçalho sem acento e com variante casa por normalização 18ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > Competência do arquivo divergindo de Ano+Mês DERRUBA o parse (não grava torto) 23ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > linha com conteúdo mas sem Grupo/Descrição derruba o parse nomeando a linha 1ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > Tipo em branco derruba o parse (é coluna obrigatória, não decorativa) 1ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > arquivo que não é .xlsx é recusado — arrastar-e-soltar burla o accept 5ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > Mês Nº fora de 1–12 derruba o parse 6ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > linha totalmente vazia é pulada sem erro (não há valor a perder) 1ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > coluna obrigatória ausente é reprovada por nome 1ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > parse-demonstrativo-competencia · nada some em silêncio > expõe ao card exatamente as 6 colunas obrigatórias do briefing 0ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > somaCentavos · fonte única da conferência arquivo × base > soma em centavos inteiros, sem erro de ponto flutuante 1ms
+ ✓ src/lib/carga/parse-demonstrativo-competencia.test.ts > somaCentavos · fonte única da conferência arquivo × base > preserva o sinal e agrega valores grandes ao centavo 0ms
+stdout | src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > valor com 3 casas decimais NÃO pode ser multiplicado por 1000 (guard v5.5.2) > movimentação: célula numérica -40.933 chega como -40.933, não -40933 66ms
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > valor com 3 casas decimais NÃO pode ser multiplicado por 1000 (guard v5.5.2) > em aberto: célula numérica 188.615 chega como 188.615, não 188615 14ms
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > valor com 3 casas decimais NÃO pode ser multiplicado por 1000 (guard v5.5.2) > varre a faixa inteira do gatilho (1 a 3 dígitos inteiros × 3 decimais) 15ms
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > valor com 3 casas decimais NÃO pode ser multiplicado por 1000 (guard v5.5.2) > não regride o caminho de TEXTO: "-1.234,56" continua -1234,56 e a data não inverte 21ms
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > CSV: texto puro segue a regra BR do toNum (v5.5.2) > "-1.234,56" num CSV vira -1234,56, não -1,23456 6ms
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > CSV: texto puro segue a regra BR do toNum (v5.5.2) > LIMITAÇÃO CONHECIDA: em CSV, "-40.933" é indistinguível de milhar BR 2ms
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > sonda: nenhum parser de ingestão troca o valor nativo pela string de exibição > (1) nenhum `sheet_to_json` pede `raw: false` 4ms
+ ✓ src/lib/carga/parse-fluxo-caixa-valor-nativo.test.ts > sonda: nenhum parser de ingestão troca o valor nativo pela string de exibição > (2) nenhum ramo CSV pede `raw: false` ao XLSX.read 3ms
+stdout | src/lib/faturamento/parse-clientes-corp.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/faturamento/parse-clientes-corp.test.ts > parseClientesCorpFile — Fase 3 (v4.33.0) > ENVIAR PARA → destinatarios; IGNORA EMAIL 1-6; situação normalizada 28ms
+ ✓ src/lib/faturamento/parse-clientes-corp.test.ts > parseClientesCorpFile — Fase 3 (v4.33.0) > normaliza situação: Inativo → inativo; desconhecido → null 9ms
+ ✓ src/lib/faturamento/parse-clientes-corp.test.ts > parseClientesCorpFile — Fase 3 (v4.33.0) > sem coluna EMPRESA → erro claro 7ms
+ ✓ src/lib/faturamento/parse-clientes-corp.test.ts > parseClientesCorpFile — Fase 3 (v4.33.0) > linha sem EMPRESA é pulada (sem chave) 6ms
+stdout | src/lib/carga/parse-pessoas.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/carga/parse-pessoas.test.ts > parsePessoasFile — invariantes da Base de Pessoas (v4.29.0) > 17 colunas presentes (mesmo com células vazias) → importa; vazias viram null 28ms
+ ✓ src/lib/carga/parse-pessoas.test.ts > parsePessoasFile — invariantes da Base de Pessoas (v4.29.0) > falta UMA das 17 colunas → erro claro listando a faltante, NÃO importa 9ms
+ ✓ src/lib/carga/parse-pessoas.test.ts > parsePessoasFile — invariantes da Base de Pessoas (v4.29.0) > cabeçalho tolerante a acento (Razao Social sem acento) → ainda importa 7ms
+stdout | src/lib/periodo.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/periodo.test.ts > resolvePeriodo (hoje fixo = 2026-05-15) > este-mes → maio inteiro 10ms
+ ✓ src/lib/periodo.test.ts > resolvePeriodo (hoje fixo = 2026-05-15) > mes-passado → abril inteiro 1ms
+ ✓ src/lib/periodo.test.ts > resolvePeriodo (hoje fixo = 2026-05-15) > ultimos-3-meses → mar 1 a mai 31 1ms
+ ✓ src/lib/periodo.test.ts > resolvePeriodo (hoje fixo = 2026-05-15) > este-ano → jan 1 a mai 31 1ms
+ ✓ src/lib/periodo.test.ts > resolvePeriodo (hoje fixo = 2026-05-15) > personalizado exige inicio/fim 2ms
+ ✓ src/lib/periodo.test.ts > comparativos > calcularPeriodoAnterior: bloco anterior de mesma duração 1ms
+ ✓ src/lib/periodo.test.ts > comparativos > calcularPeriodoYoY: mesmo intervalo do ano anterior 1ms
+ ✓ src/lib/periodo.test.ts > comparativos > periodoEncerrado 1ms
+ ✓ src/lib/periodo.test.ts > resolverPeriodoCompleto (em curso, este-ano, hoje=2026-05-15) > from/to do ano corrente 0ms
+ ✓ src/lib/periodo.test.ts > resolverPeriodoCompleto (em curso, este-ano, hoje=2026-05-15) > eParcial true (período ainda em curso) 0ms
+ ✓ src/lib/periodo.test.ts > resolverPeriodoCompleto (em curso, este-ano, hoje=2026-05-15) > YoY proporcional até hoje−1ano 0ms
+ ✓ src/lib/periodo.test.ts > granularidade e rótulos > granularidadeSugerida por duração 1ms
+ ✓ src/lib/periodo.test.ts > granularidade e rótulos > formatarLabelPeriodo 1ms
+stdout | src/lib/dre/ponte-regimes.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/dre/ponte-regimes.test.ts > PAREAMENTO_PONTE — a partição > nenhuma folha aparece em DOIS baldes (a premissa da identidade) 3ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > PAREAMENTO_PONTE — a partição > cobre as folhas vivas das duas árvores (0205+0251+0254 e 0256) 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — aditividade ao centavo > âncora inicial + Σ degraus ≡ âncora final 19ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — aditividade ao centavo > vale em QUALQUER janela — inclusive a de um mês e a do ano inteiro 2ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — aditividade ao centavo > a BANDEJA não entra — ela não compõe o REX, e somá-la quebraria a identidade 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — TOTALIDADE (o teste que importa) > folha nova SEM par cai no residual e a identidade se mantém 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — TOTALIDADE (o teste que importa) > o residual acumula as DUAS origens — órfãs e degraus sub-piso — no mesmo balde 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — TOTALIDADE (o teste que importa) > sem órfã e sem degrau sub-piso, o residual não é desenhado (um "resto" de R$ 0 mente) 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — TOTALIDADE (o teste que importa) > o residual fica SEMPRE por último, mesmo sendo grande 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — agrupamento de degraus pequenos > degrau abaixo do piso vai ao residual SEM perder valor 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — agrupamento de degraus pequenos > degrau ACIMA do piso permanece nomeado 1ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > narrativaDegrau — gerada por (natureza, sinal), nunca fixa por linha > despesa: Δ<0 é pagamento adiantado; Δ>0 é incorrido a pagar 0ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > narrativaDegrau — gerada por (natureza, sinal), nunca fixa por linha > receita: Δ>0 é recebimento adiantado; Δ<0 é reconhecido a receber 0ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > narrativaDegrau — gerada por (natureza, sinal), nunca fixa por linha > RV positiva ganha o nome do fenômeno, não a frase genérica 0ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > narrativaDegrau — gerada por (natureza, sinal), nunca fixa por linha > linha especial usa a nota fixa — não há par a descasar 0ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > narrativaDegrau — gerada por (natureza, sinal), nunca fixa por linha > Δ zero não inventa descasamento 0ms
+ ✓ src/lib/dre/ponte-regimes.test.ts > montarPonte — a anotação do capital de giro > traz o sinal e o valor da diferença entre as âncoras 1ms
+stdout | src/lib/cdi/serie-sgs.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > converte percentual ao mês em fração decimal, ancorando no 1º dia 2ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > lê a data como dd/MM, não MM/dd (o mês NÃO pode virar dia) 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > aceita valor numérico além de string 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > devolve lista vazia para série vazia (quem decide o que fazer é o chamador) 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > falha alto em resposta que não é lista 1ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > falha alto em data ausente 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > falha alto em data em formato desconhecido 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > falha alto em data que não é o 1º do mês 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > falha alto em mês fora de faixa 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > falha alto em valor ausente 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > falha alto em valor não numérico 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > rejeita a série ANUALIZADA (4392) nos níveis de taxa de hoje 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > o teto NÃO é proteção completa contra a troca de série — e é bom saber disso 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > converterSerieSgs — contrato da série 4391 do SGS/BACEN > uma linha malformada reprova o LOTE inteiro, não é pulada 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > urlSerieSgs — janela é sempre a série inteira > vai de ago/2024 até a data de hoje, em dd/MM/yyyy 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > urlSerieSgs — janela é sempre a série inteira > não tem modo separado de backfill — a mesma URL serve carga inicial e tique mensal 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > apenasMesesFechados — o mês corrente vem PARCIAL da origem > descarta o mês corrente e preserva os fechados 19ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > apenasMesesFechados — o mês corrente vem PARCIAL da origem > no 1º dia do mês, o mês anterior JÁ fechou e entra 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > apenasMesesFechados — o mês corrente vem PARCIAL da origem > vira o mês pelo fuso de SÃO PAULO, não pelo do runtime 1ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > apenasMesesFechados — o mês corrente vem PARCIAL da origem > mês corrente em SP quando o UTC já virou o ano 0ms
+ ✓ src/lib/cdi/serie-sgs.test.ts > isenção do proxy para o cron do CDI > /api/cdi/ingest autentica no próprio handler 0ms
+stdout | src/components/ui/gatilho-ajuda.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/components/ui/gatilho-ajuda.test.ts > gatilho de ajuda — só pelo primitivo GatilhoAjuda (v5.9.4) > nenhum <span>?</span> de ajuda fora do primitivo 17ms
+ ✓ src/components/ui/gatilho-ajuda.test.ts > gatilho de ajuda — só pelo primitivo GatilhoAjuda (v5.9.4) > nenhum <button>?</button> de ajuda duplicando a receita fora do primitivo 13ms
+stdout | src/app/solicitar-acesso/actions.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ override existing { override: true }
+
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > chama solicitar_acesso_admin de verdade (com o `this` do cliente) e redireciona a sucesso 3ms
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > normaliza o e-mail (trim + minúsculas) e manda nome vazio como null 1ms
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > pedido NOVO com admins → notifica os administradores 20ms
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > reenvio/duplicata (inserida=false) → NÃO notifica ninguém 1ms
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > RPC nova indisponível → cai no legado solicitar_acesso (o pedido não se perde) 1ms
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > os DOIS caminhos falhando → loga PEDIDO PERDIDO **com o e-mail** (para o follow-up) 1ms
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > e-mail inválido → erro na tela e NADA é tentado no banco 1ms
+ ✓ src/app/solicitar-acesso/actions.test.ts > solicitarAcesso — o pedido CHEGA no banco (guard do bind, v5.3.5) > falha inesperada da camada de e-mail não derruba o pedido (best-effort) 1ms
+stdout | src/styles/cabecalho-pagina.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/styles/cabecalho-pagina.test.ts > cabeçalho de página — título e subtítulo usam token do DS (v5.9.3/M1) > nenhum <h1>/<p> de cabeçalho usa zinc-*, text-text-secondary ou text-text-muted, nem style inline 13ms
+stdout | src/lib/weddings/margem-anualizada.test.ts
+◇ injected env (14) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoDias > conta os dias entre a assinatura do contrato e o evento 2ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoDias > não depende do fuso do runtime (aritmética em UTC) 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoDias > devolve null quando falta uma das datas 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoDias > devolve null para duração negativa (evento antes do contrato = dado inconsistente) 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoDias > devolve null para data malformada em vez de NaN 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoMeses / duracaoMesesExibida > converte por 30,44 dias/mês 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoMeses / duracaoMesesExibida > a versão exibida arredonda para 1 casa 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > duracaoMeses / duracaoMesesExibida > propaga null 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > duração de exatamente 12 meses devolve a própria margem 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > dobra quando a operação ocupa metade do tempo 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > reduz quando a operação ocupa mais de um ano 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > NÃO é composta 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > preserva o sinal da margem negativa 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > margem zero anualiza para zero, não para null 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > exibe o ciclo curto CRU, sem cap (3,9 meses a 32,5% ⇒ 100% a.a.) 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > duração zero devolve null (não Infinity) 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > duração nula devolve null 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > margem ausente devolve null 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > entrada não-finita devolve null 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > margemAnualizada — anualização LINEAR > nenhuma combinação de fronteira produz Infinity ou NaN 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > ehDuracaoCurta > sinaliza abaixo de 6 meses 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > ehDuracaoCurta > não sinaliza no limiar nem acima 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > ehDuracaoCurta > não sinaliza o que não tem duração anualizável 0ms
+ ✓ src/lib/weddings/margem-anualizada.test.ts > fmtPct1 > formata em pt-BR com vírgula e 1 casa 17ms
+stdout | src/lib/dre/competencia-estrutura.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · paridade SQL × anexo > a árvore da migration é exatamente o anexo curado 2ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · paridade SQL × anexo > o de-para da migration é exatamente o anexo curado 2ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · paridade SQL × anexo > todo par do de-para aponta para uma chave que existe na árvore 3ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · paridade SQL × anexo > nenhum par (grupo, descrição) se repete — a chave é composta e única 0ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · regra de rótulos da v5.7.0 > toda AGREGAÇÃO carrega operador no rótulo 1ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · regra de rótulos da v5.7.0 > nenhuma FOLHA carrega operador no rótulo 3ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · as 3 fusões por nome > são exatamente estas 3 as descrições que existem sob dois pais 1ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · as 3 fusões por nome > as duas pernas de cada fusão caem no MESMO destino e na MESMA ordem 2ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · as 3 fusões por nome > 141 pares produzem 138 linhas exibidas — 3 fusões, nem uma a mais 0ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · o oráculo em forma fechada > toda chave resolve em folhas, sem ciclo 3ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · o oráculo em forma fechada > REX é a SOMA DE TUDO: coeficiente +1 em cada folha, e nenhuma folha de fora 1ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · o oráculo em forma fechada > todas as folhas da árvore são usadas pelo de-para (nenhum balde morto) 0ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · o oráculo em forma fechada > REXG = REX − REEMB: o coeficiente de REEMB CANCELA para zero 1ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · o oráculo em forma fechada > RB_H é Receita de Vendas + Reembolsos, e a AV se apoia nela 0ms
+ ✓ src/lib/dre/competencia-estrutura.test.ts > árvore de competência · o oráculo em forma fechada > a cadeia de totalizadores encaixa (ROL → LB → LOP → LL → RAIR → REX) 2ms
+stdout | src/lib/dre/proporcao-grupos.test.ts
+◇ injected env (14) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+ ✓ src/lib/dre/proporcao-grupos.test.ts > montarProporcaoGrupos — os oito grupos, na ordem da árvore > devolve as oito séries, com CUSTO primeiro e FIN segundo (exibidos lado a lado) 4ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > montarProporcaoGrupos — os oito grupos, na ordem da árvore > um ponto por ano, na ORDEM recebida — quem exibe não reordena 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > montarProporcaoGrupos — os oito grupos, na ordem da árvore > usa o rótulo VIVO do payload, sem prefixo e sem caixa alta 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > montarProporcaoGrupos — os oito grupos, na ordem da árvore > sem linha de bloco, cai na chave em vez de ficar vazio 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > a AV é sobre a Receita Bruta do PRÓPRIO ano > dois anos com tudo dobrado têm a MESMA proporção 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > a AV é sobre a Receita Bruta do PRÓPRIO ano > grupo que cresce MAIS que a receita piora a proporção 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > a AV é sobre a Receita Bruta do PRÓPRIO ano > preserva o SINAL algébrico da tabela — despesa dá AV negativa 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > bordas — ano sem base nunca vira zero > Receita Bruta AUSENTE → av null (o ponto não é plotado) 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > bordas — ano sem base nunca vira zero > Receita Bruta ZERO ou NEGATIVA → av null (a razão inverteria de sinal) 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > bordas — ano sem base nunca vira zero > grupo AUSENTE no payload vale 0% — a conta existe e não consumiu nada 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > ano PARCIAL é sinalizado, não escondido > marca `parcial` e diz quantos meses entraram 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > ano PARCIAL é sinalizado, não escondido > a janela corta NUMERADOR e DENOMINADOR juntos — a proporção não se distorce 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > TODAS as séries têm janelas de MESMA altura 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > a janela cobre a série inteira — nenhum ponto fica fora do eixo 2ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > o topo NUNCA passa de zero — são despesas, e ali não há série possível 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > os ticks ficam DENTRO do domínio, igualmente espaçados 2ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > a série cabe no eixo mesmo quando o encaixe dos ticks não é exato 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > a série de MAIOR amplitude usa quase toda a janela, e a menor quase nada 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > série constante não colapsa o eixo 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > escala comum — a invariante do ajuste > FIN positivo em algum ano: nenhum ponto fica fora do eixo, e a janela mantém a MESMA altura das demais 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > deltaPp — a variação anotada no card > é último menos primeiro, em p.p. 1ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > deltaPp — a variação anotada no card > positivo quando o grupo passou a consumir MENOS receita 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > deltaPp — a variação anotada no card > null com menos de dois pontos calculáveis — nunca 0, que afirmaria estabilidade 0ms
+ ✓ src/lib/dre/proporcao-grupos.test.ts > deltaPp — a variação anotada no card > ignora ano sem base ao calcular o Δ 0ms
+stdout | src/lib/metas/ritmo.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/metas/ritmo.test.ts > classificarRitmo — régua (constantes nomeadas) > limiares 9ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > mês parcial — hoje = última venda no meio do mês 33ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > YTD parcial (este-ano) — esperado linear até hoje 3ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > multi-mês FECHADO — hoje = to; esperado = meta do período 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > personalizado cortando meses nas DUAS bordas 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > hoje = última venda dentro de período multi-mês em curso 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > alvo de % Rec — média ponderada pela VT pró-rata dos meses COM alvo 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > alvo de % Rec — mês sem alvo é EXCLUÍDO (não distorce) 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > alvo de % Rec — nenhum mês com alvo → null 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > pctDecorrido — dias corridos até hoje / dias do período 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > esperado é LINEAR (meta × dias decorridos/dias período), não acúmulo mês-a-mês 1ms
+ ✓ src/lib/metas/ritmo.test.ts > calcularRitmo > período FUTURO (última venda antes do início) — nada esperado, ritmo indefinido 0ms
+stdout | src/lib/fmt.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/fmt.test.ts > fmt — moeda > fmtBRL: sem centavos, separador de milhar 5ms
+ ✓ src/lib/fmt.test.ts > fmt — moeda > fmtBRL2: 2 casas (operação individual) 1ms
+ ✓ src/lib/fmt.test.ts > fmt — moeda > numBRL2: contábil, sem símbolo, 2 casas 0ms
+ ✓ src/lib/fmt.test.ts > fmt — moeda > fmtMi: abreviação por faixa 1ms
+ ✓ src/lib/fmt.test.ts > fmt — moeda > fmtAxisBRL: tick curto (1 casa em Mi, arredondado em k) 1ms
+ ✓ src/lib/fmt.test.ts > fmt — números/percentual/duração > fmtAxisPct 0ms
+ ✓ src/lib/fmt.test.ts > fmt — números/percentual/duração > fmtMeses: dias corridos → meses (30,44 d/mês) 0ms
+ ✓ src/lib/fmt.test.ts > fmt — datas (parsing por split, sem fuso) > fmtAxisMes: yyyy-MM e yyyy-MM-dd 0ms
+ ✓ src/lib/fmt.test.ts > fmt — datas (parsing por split, sem fuso) > fmtDate / fmtDateCompact / fmtDateLong / fmtDateMid 1ms
+ ✓ src/lib/fmt.test.ts > fmt — datas (parsing por split, sem fuso) > fmtDataHora: ingênuo (CHANGELOG local) exibe como está; timestamptz UTC converte p/ SP 1ms
+ ✓ src/lib/fmt.test.ts > fmt — datas (parsing por split, sem fuso) > fmtDataSP/fmtDataHoraSP: timestamptz UTC no fuso de São Paulo, dia correto perto da meia-noite 0ms
+ ✓ src/lib/fmt.test.ts > fmt — datas (parsing por split, sem fuso) > parseLocalDate: parse LOCAL, sem deslocamento de fuso (F6) 0ms
+ ✓ src/lib/fmt.test.ts > fmt — máscara de moeda em tempo real (v5.2.1/M1) > interpreta os dígitos como CENTAVOS e formata pt-BR 1ms
+ ✓ src/lib/fmt.test.ts > fmt — máscara de moeda em tempo real (v5.2.1/M1) > vazio → valor null; descarta não-dígitos (colar) e é idempotente sobre o já-formatado 0ms
+ ✓ src/lib/fmt.test.ts > fmt — máscara de moeda em tempo real (v5.2.1/M1) > sinal negativo — saldos de conta podem ser negativos 0ms
+ ✓ src/lib/fmt.test.ts > fmt — máscara de moeda em tempo real (v5.2.1/M1) > guarda de precisão: dígitos além de 15 caem (NUMERIC(15,2), abaixo de MAX_SAFE_INTEGER) 0ms
+ ✓ src/lib/fmt.test.ts > fmt — staleness de saldo (v5.2.1/M1, fonte única) > sem data (null) → SEM staleness (decisão do Yan: "nulo = nada") 0ms
+ ✓ src/lib/fmt.test.ts > fmt — staleness de saldo (v5.2.1/M1, fonte única) > limiares: neutro ≤3 dias, atenção 4–7 (warning), alerta >7 (danger); futura/hoje neutros 0ms
+ ✓ src/lib/fmt.test.ts > fmt — diasDesde (v5.2.1/M1) > dias corridos entre a data e HOJE (São Paulo); null sem data 3ms
+stdout | src/lib/solicitacoes/format.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ override existing { override: true }
+
+ ✓ src/lib/solicitacoes/format.test.ts > fmtValor — moeda via toNum canônico > BR milhar+decimal e milhar puro 6ms
+ ✓ src/lib/solicitacoes/format.test.ts > fmtValor — moeda via toNum canônico > decimal US e fallback 1ms
+ ✓ src/lib/solicitacoes/format.test.ts > fmtValor — moeda via toNum canônico > data e texto 0ms
+ ✓ src/lib/solicitacoes/format.test.ts > fmtDataBR — sem deslocar o dia > ISO e timestamptz → DD/MM/AAAA 0ms
+ ✓ src/lib/solicitacoes/format.test.ts > vencida — date-only, fuso de São Paulo, cruzando o limite > hoje (SP) é a data local de SP, não a UTC 3ms
+ ✓ src/lib/solicitacoes/format.test.ts > vencida — date-only, fuso de São Paulo, cruzando o limite > limite cruza para vencido quando a data-limite < hoje (SP) 1ms
+ ✓ src/lib/solicitacoes/format.test.ts > vencida — date-only, fuso de São Paulo, cruzando o limite > só conta como vencida se ABERTA 1ms
+ ✓ src/lib/solicitacoes/format.test.ts > casaBuscaSolicitacao — por número OU e-mail do solicitante > termo vazio ou só espaços não filtra nada 0ms
+ ✓ src/lib/solicitacoes/format.test.ts > casaBuscaSolicitacao — por número OU e-mail do solicitante > acha pelo número, com e sem "#", inclusive parcial 1ms
+ ✓ src/lib/solicitacoes/format.test.ts > casaBuscaSolicitacao — por número OU e-mail do solicitante > acha pelo e-mail, sem diferenciar maiúsculas 0ms
+ ✓ src/lib/solicitacoes/format.test.ts > casaBuscaSolicitacao — por número OU e-mail do solicitante > e-mail com dígitos NÃO vira busca por número 0ms
+ ✓ src/lib/solicitacoes/format.test.ts > casaBuscaSolicitacao — por número OU e-mail do solicitante > e-mail nulo não quebra 0ms
+ ✓ src/lib/solicitacoes/format.test.ts > maisRecentePrimeiro — data de CRIAÇÃO, decrescente > ordena do mais recente para o mais antigo 2ms
+ ✓ src/lib/solicitacoes/format.test.ts > maisRecentePrimeiro — data de CRIAÇÃO, decrescente > desempata de forma estável quando o instante é idêntico 0ms
+stdout | src/lib/asaas/asaas.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/lib/asaas/asaas.test.ts > client — ambiente, config, helpers, erro estruturado > asaasAmbiente: sandbox por default/URL; producao caso contrário 2ms
+ ✓ src/lib/asaas/asaas.test.ts > client — ambiente, config, helpers, erro estruturado > sem ASAAS_API_KEY → erro estruturado, NÃO lança, e nem chama fetch 1ms
+ ✓ src/lib/asaas/asaas.test.ts > client — ambiente, config, helpers, erro estruturado > header access_token (não Authorization) é enviado 1ms
+ ✓ src/lib/asaas/asaas.test.ts > client — ambiente, config, helpers, erro estruturado > erro do Asaas {errors:[{description}]} → extrai a description 0ms
+ ✓ src/lib/asaas/asaas.test.ts > client — ambiente, config, helpers, erro estruturado > onlyDigits / emailValido 1ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer — fiel ao script legado > achado por cpfCnpj → usa, sem update (1 chamada) 1ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer — fiel ao script legado > achado por nome SEM cpfCnpj → PUT completa o documento (updated) 1ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer — fiel ao script legado > não existe → POST cria com name+cpfCnpj+email+endereço (province=bairro, postalCode só dígitos) 1ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer — fiel ao script legado > erro de rede/Asaas no meio → propaga estruturado (não lança) 1ms
+ ✓ src/lib/asaas/asaas.test.ts > boletos — idempotência + criação > findPaymentByExternalRef: existente → retorna; ausente → null 1ms
+ ✓ src/lib/asaas/asaas.test.ts > boletos — idempotência + criação > criarBoleto: payload BOLETO + fine/interest 2% + description padrão 1ms
+ ✓ src/lib/asaas/asaas.test.ts > boletos — idempotência + criação > asaasConfigurado reflete a presença da chave 0ms
+ ✓ src/lib/asaas/asaas.test.ts > notas (NFS-e) — idempotência -AVULSA, campos fixos, XOR customer/payment, assíncrono > externalReferenceNota: normal usa a ref; avulsa recebe -AVULSA (não colidem) 0ms
+ ✓ src/lib/asaas/asaas.test.ts > notas (NFS-e) — idempotência -AVULSA, campos fixos, XOR customer/payment, assíncrono > createInvoice NORMAL vinculado ao boleto: payment enviado, customer OMITIDO (XOR) + campos fiscais fixos + deductions=value 0ms
+ ✓ src/lib/asaas/asaas.test.ts > notas (NFS-e) — idempotência -AVULSA, campos fixos, XOR customer/payment, assíncrono > createInvoice AVULSA (sem payment): customer enviado, payment OMITIDO; ISS parametrizável 0ms
+ ✓ src/lib/asaas/asaas.test.ts > notas (NFS-e) — idempotência -AVULSA, campos fixos, XOR customer/payment, assíncrono > authorizeInvoice: POST /invoices/{id}/authorize 0ms
+ ✓ src/lib/asaas/asaas.test.ts > notas (NFS-e) — idempotência -AVULSA, campos fixos, XOR customer/payment, assíncrono > findInvoiceByExternalRef: existente → retorna; ausente → null 1ms
+ ✓ src/lib/asaas/asaas.test.ts > notas (NFS-e) — idempotência -AVULSA, campos fixos, XOR customer/payment, assíncrono > getInvoiceById: refresh traz status + pdf/number quando AUTHORIZED 1ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer estendido (NF) — completa endereço de cadastro existente > achado por cpfCnpj SEM endereço + completarEndereco → PUT preenche endereço 1ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer estendido (NF) — completa endereço de cadastro existente > SEM completarEndereco (boleto/Fase 1) → NÃO mexe no endereço (1 chamada só) 0ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer estendido (NF) — completa endereço de cadastro existente > achado com endereço E e-mail COMPLETOS + completarEndereco → nenhum PUT (nada faltando) 0ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer estendido (NF) — completa endereço de cadastro existente > achado por cpfCnpj SEM e-mail + completarEndereco → PUT completa o e-mail (a NF exige) 0ms
+ ✓ src/lib/asaas/asaas.test.ts > ensureCustomer estendido (NF) — completa endereço de cadastro existente > CEP inválido (≠ 8 dígitos) NÃO é enviado ao Asaas (fiel ao clean_cep do script) 0ms
+stdout | src/components/gestao-pessoas/inventario/derivar.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > transferencia → em_uso 1ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > retorno_manutencao → em_uso 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > reativacao → em_uso 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > devolucao_estoque → em_estoque 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > envio_manutencao → em_manutencao 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > emprestimo → emprestado 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > baixa → baixado 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > cadastro COM detentor → em uso 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > statusDaMovimentacao — status sai da última movimentação > cadastro SEM detentor → em estoque 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > ordenação e estado derivado > movimentação RETROATIVA entra no meio da cadeia e o estado atual NÃO muda 1ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > ordenação e estado derivado > mesma data desempata por criado_em, nunca por ordem de chegada 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > ordenação e estado derivado > devolução ao estoque deixa o ativo SEM detentor (travessão na lista, não erro) 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > ordenação e estado derivado > ativo sem movimentação é inalcançável, mas degrada sem quebrar 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > origem DERIVADA — nunca armazenada > a primeira movimentação não tem origem; as seguintes herdam o destino da anterior 1ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > origem DERIVADA — nunca armazenada > destino sem detentor que resulta em estoque diz "estoque" — "Tecnologia" sozinho esconderia 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > origem DERIVADA — nunca armazenada > baixa mostra o motivo, não um destino 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > baixa trava o ativo — reativação é o caminho de volta > baixado só aceita reativação 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > baixa trava o ativo — reativação é o caminho de volta > não-baixado aceita todos os outros, e NUNCA a reativação 1ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > baixa trava o ativo — reativação é o caminho de volta > reativação devolve o ativo ao uso 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > marcador de registro retroativo > data do fato anterior ao dia da gravação → retroativa 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > marcador de registro retroativo > registrada no mesmo dia → não é retroativa 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > marcador de registro retroativo > o dia é o de SÃO PAULO, não o UTC 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > mesmoNome — espelho de app.norm_nome > ignora caixa, espaço nas pontas e espaço repetido no meio 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > mesmoNome — espelho de app.norm_nome > não confunde pessoas diferentes 0ms
+ ✓ src/components/gestao-pessoas/inventario/derivar.test.ts > DESTINO_POR_TIPO cobre os 8 tipos e nenhum fica sem destino exigido > todo tipo declara ao menos um campo de destino obrigatório 1ms
+stdout | src/components/layout/nav-model.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/components/layout/nav-model.test.ts > inventário de rotas × sidebar > achou as rotas do App Router no disco (a varredura não pode rodar vazia) 4ms
+ ✓ src/components/layout/nav-model.test.ts > inventário de rotas × sidebar > toda rota protegida está na sidebar OU declarada fora dela com motivo 2ms
+ ✓ src/components/layout/nav-model.test.ts > inventário de rotas × sidebar > todo href da sidebar aponta para uma rota que existe 0ms
+ ✓ src/components/layout/nav-model.test.ts > inventário de rotas × sidebar > FORA_DA_SIDEBAR não guarda rota que deixou de existir 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'item "Executiva"' → '/executiva' 1ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'item "Solicitações"' → '/solicitacoes' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'item "Upload de Arquivos"' → '/admin/uploads' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'item "Usuários e Acessos"' → '/admin/acessos' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'item "Design System"' → '/admin/design-system' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Geral" de /performance' → '/performance' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Trips" de /performance' → '/performance/trips' 1ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Weddings" de /performance' → '/performance/weddings' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Corporativo" de /performance' → '/performance/corporativo' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Acervo de Documentos" de /fin…' → '/financeiro/acervo' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Demonstrativo de Resultado" d…' → '/financeiro/dre' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Fluxo de Caixa" de /financeiro' → '/financeiro/fluxo-caixa' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Gerencial" de /financeiro' → '/financeiro/fluxo-caixa/gerencial' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Calculadora de Rateio" de /fi…' → '/financeiro/calculadora-rateio' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Faturamento Corporativo" de /…' → '/financeiro/faturamento-corp' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Acompanhamento" de /metas' → '/metas' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Cadastro" de /metas' → '/metas/cadastro' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > 'subaba "Inventário de Ativos" de /ges…' → '/gestao-pessoas/inventario' 0ms
+ ✓ src/components/layout/nav-model.test.ts > quem VÊ o item ALCANÇA a rota (as pontas do RBAC) > toda área citada pela navegação existe no catálogo AREAS 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/executiva' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/solicitacoes' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/admin/uploads' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/admin/acessos' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/admin/design-system' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/performance' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/performance/trips' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/performance/weddings' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/performance/corporativo' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/financeiro/acervo' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/financeiro/dre' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/financeiro/fluxo-caixa' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/financeiro/fluxo-caixa/gerencial' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/financeiro/calculadora-rateio' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/financeiro/faturamento-corp' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/metas' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/metas/cadastro' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > '/gestao-pessoas/inventario' acende exatamente um item de 1º nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > item ativo — sem colisão de prefixo entre seções > dentro do grupo, a subaba ativa é a de prefixo MAIS ESPECÍFICO 0ms
+ ✓ src/components/layout/nav-model.test.ts > estrutura do modelo > todo grupo tem item-pai em NAV_ITEMS, sem área própria e com pelo menos uma subaba 1ms
+ ✓ src/components/layout/nav-model.test.ts > estrutura do modelo > hrefs únicos em cada nível 0ms
+ ✓ src/components/layout/nav-model.test.ts > estrutura do modelo > subaba de um grupo vive DENTRO do prefixo do pai 1ms
+ ✓ src/components/layout/nav-model.test.ts > filtro por permissão — a seção nova não vaza nem apaga o que já existia > com todas as permissões, a ordem da sidebar é a da v5.6.1 (Gestão de Pessoas abaixo de Financeiro) 0ms
+ ✓ src/components/layout/nav-model.test.ts > filtro por permissão — a seção nova não vaza nem apaga o que já existia > SEM a área nova, "Gestão de Pessoas" não aparece — e nada mais muda 0ms
+ ✓ src/components/layout/nav-model.test.ts > filtro por permissão — a seção nova não vaza nem apaga o que já existia > SÓ com a área nova, aparece SÓ a seção nova 0ms
+ ✓ src/components/layout/nav-model.test.ts > filtro por permissão — a seção nova não vaza nem apaga o que já existia > sem permissão nenhuma, a navegação fica vazia (deny-by-default) 0ms
+ ✓ src/components/layout/nav-model.test.ts > filtro por permissão — a seção nova não vaza nem apaga o que já existia > a seção nova NÃO é liberada por área vizinha de administração 1ms
+ ✓ src/components/layout/nav-model.test.ts > filtro por permissão — a seção nova não vaza nem apaga o que já existia > cada rota da sidebar é alcançável por quem tem a permissão dela, e só 2ms
+ ✓ src/components/layout/nav-model.test.ts > sonda: desktop e drawer mobile saem do MESMO molde > SidebarContent é montado nas duas variantes 0ms
+ ✓ src/components/layout/nav-model.test.ts > sonda: desktop e drawer mobile saem do MESMO molde > a variante mobile recebe o mesmo usuário e fecha o drawer ao navegar 0ms
+ ✓ src/components/layout/nav-model.test.ts > sonda: desktop e drawer mobile saem do MESMO molde > a lista de navegação NÃO é redeclarada dentro do componente 1ms
+ ✓ src/components/layout/nav-model.test.ts > molde de abas do Inventário (M2) > tablist com os três painéis rotulados 0ms
+ ✓ src/components/layout/nav-model.test.ts > molde de abas do Inventário (M2) > as três abas ficam montadas, alternando por `hidden` (nunca desmontadas) 0ms
+stdout | src/lib/email/fatura.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/lib/email/fatura.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > separa válidos e ignora vazios 3ms
+ ✓ src/lib/email/fatura.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > destinatário inválido no meio → vai para invalidos, envia aos válidos 1ms
+ ✓ src/lib/email/fatura.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > dedupe preservando ordem 0ms
+ ✓ src/lib/email/fatura.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > vazio/null → nada 0ms
+ ✓ src/lib/email/fatura.test.ts > emailAmbiente / getEmailTesteDestino — fail-safe > ausente → teste (fail-safe) 0ms
+ ✓ src/lib/email/fatura.test.ts > emailAmbiente / getEmailTesteDestino — fail-safe > 'real' → real; 'REAL' idem (case-insensitive) 0ms
+ ✓ src/lib/email/fatura.test.ts > emailAmbiente / getEmailTesteDestino — fail-safe > qualquer outro valor → teste (fail-safe) 0ms
+ ✓ src/lib/email/fatura.test.ts > emailAmbiente / getEmailTesteDestino — fail-safe > getEmailTesteDestino: ausente → null; presente → valor trimado 0ms
+ ✓ src/lib/email/fatura.test.ts > templateFaturaEmail — assunto, corpo condicional, prefixo de teste > assunto base: Fatura Welcome Trips – {cliente} – Nº {ref} 0ms
+ ✓ src/lib/email/fatura.test.ts > templateFaturaEmail — assunto, corpo condicional, prefixo de teste > teste → assunto com prefixo do destinatário real 0ms
+ ✓ src/lib/email/fatura.test.ts > templateFaturaEmail — assunto, corpo condicional, prefixo de teste > com nota → corpo menciona boleto e nota fiscal 0ms
+ ✓ src/lib/email/fatura.test.ts > templateFaturaEmail — assunto, corpo condicional, prefixo de teste > SEM nota → corpo menciona só o boleto, NÃO a nota fiscal (condicional) 0ms
+ ✓ src/lib/email/fatura.test.ts > templateFaturaEmail — assunto, corpo condicional, prefixo de teste > SEM botão/link do boleto (vai só como anexo); escapa o destinatário real na faixa de teste 0ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > teste: override — envia para EMAIL_TESTE_DESTINO, não para o real; com nota = 3 anexos 4ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > sem nota → 2 anexos (logo + boleto), 1 fetch, anexos.nota=false 1ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > anexos "Outros" (base64) entram como anexos extra; anexos.outros conta; filename sanitizado 1ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > anexo "Outros" vazio → envio FALHA (não manda incompleto) 1ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > FAIL-CLOSED: modo teste sem EMAIL_TESTE_DESTINO → recusa, NÃO envia nem baixa 1ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > SMTP não configurado → recusa (não envia) 0ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > PDF do boleto falha no download → envio FALHA (não manda incompleto) 0ms
+ ✓ src/lib/email/fatura.test.ts > enviarFaturaEmail — override, fail-closed, anexos, NUNCA lança > erro no SMTP → ok:false, NUNCA lança 1ms
+stdout | src/lib/metas/comparativo.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/metas/comparativo.test.ts > chaveMes / janelaDoMes > chaveMes é yyyy-MM zero-padded 2ms
+ ✓ src/lib/metas/comparativo.test.ts > chaveMes / janelaDoMes > janelaDoMes devolve primeiro/último dia ISO 4ms
+ ✓ src/lib/metas/comparativo.test.ts > mesSeguinte > mês comum 1ms
+ ✓ src/lib/metas/comparativo.test.ts > mesSeguinte > virada dez → jan do ano seguinte 1ms
+ ✓ src/lib/metas/comparativo.test.ts > rotuloMes > formato mmm/aa (mesma base do eixo mensal) 1ms
+ ✓ src/lib/metas/comparativo.test.ts > rotuloMes > sufixo " (parcial)" quando parcial=true 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > periodoDeMes degenera em período de 1 mês 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > normalizarPeriodo — a ordem dos cliques é indiferente 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > qtdMesesPeriodo conta inclusivo, inclusive na virada de ano 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > mesesDoPeriodo expande ASC atravessando a virada de ano 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > chavePeriodo: mês único degenera em chaveMes; range usa as duas pontas 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > janelaDoPeriodo cobre do 1º dia do mês inicial ao último do final 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > rotuloPeriodo: mês único, range no mesmo ano e range que cruza ano 1ms
+ ✓ src/lib/metas/comparativo.test.ts > período contíguo (v5.6.4) > tituloPeriodo: extenso no mês único (paridade v5.6.1), compacto no range 1ms
+ ✓ src/lib/metas/comparativo.test.ts > resolverPeriodos > 'este-mes' — período de 1 mês corrente + ANOS_YOY anos anteriores, ASC 1ms
+ ✓ src/lib/metas/comparativo.test.ts > resolverPeriodos > 'ultimo-mes' — mês ANTERIOR ao corrente + ANOS_YOY anos anteriores, ASC 1ms
+ ✓ src/lib/metas/comparativo.test.ts > resolverPeriodos > 'ultimo-mes' — virada jan→dez do ano anterior quando hoje é em janeiro 1ms
+ ✓ src/lib/metas/comparativo.test.ts > resolverPeriodos > 'personalizado' com range — o MESMO range nos anos anteriores (YoY automático) 3ms
+ ✓ src/lib/metas/comparativo.test.ts > resolverPeriodos > 'personalizado' com range de 1 mês ≡ comportamento da v5.6.1 (mês único) 0ms
+ ✓ src/lib/metas/comparativo.test.ts > resolverPeriodos > 'personalizado' — defensivo: pontas fora de ordem são normalizadas 0ms
+ ✓ src/lib/metas/comparativo.test.ts > resolverPeriodos > 'personalizado' sem range (null/ausente) cai no comportamento de 'este-mes' 1ms
+ ✓ src/lib/metas/comparativo.test.ts > montarComparativo > previsto/realizado por período; parcial=true no corrente, false em fechado 5ms
+ ✓ src/lib/metas/comparativo.test.ts > montarComparativo > range: previsto = SOMA das metas dos meses cobertos; realizado vem da janela composta 1ms
+ ✓ src/lib/metas/comparativo.test.ts > montarComparativo > range em curso (contém hoje) é parcial 0ms
+ ✓ src/lib/metas/comparativo.test.ts > montarComparativo > anel = null quando o período EM FOCO não tem NENHUMA meta cadastrada 1ms
+ ✓ src/lib/metas/comparativo.test.ts > montarComparativo > anel = meta do PRÓPRIO período em foco e COINCIDE com o previsto das colunas 1ms
+ ✓ src/lib/metas/comparativo.test.ts > montarComparativo > realizado null (falha/negação fail-safe) é preservado, não some com o ?? 0 20ms
+ ✓ src/lib/metas/comparativo.test.ts > montarComparativo > ordena defensivamente ASC mesmo se `periodos` chegar fora de ordem 1ms
+stdout | src/lib/metas/tooltip-clamp.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/metas/tooltip-clamp.test.ts > clampTooltip — nunca vaza do viewport, seta sempre no tick > tick no meio (folga dos dois lados) → balão centrado, seta no centro 2ms
+ ✓ src/lib/metas/tooltip-clamp.test.ts > clampTooltip — nunca vaza do viewport, seta sempre no tick > tick colado na borda DIREITA → balão trava antes da borda, seta desliza p/ direita 1ms
+ ✓ src/lib/metas/tooltip-clamp.test.ts > clampTooltip — nunca vaza do viewport, seta sempre no tick > tick colado na borda ESQUERDA → balão trava na margem, seta desliza p/ esquerda 1ms
+ ✓ src/lib/metas/tooltip-clamp.test.ts > clampTooltip — nunca vaza do viewport, seta sempre no tick > varredura: para qualquer tick, o balão fica dentro do viewport 35ms
+stdout | src/lib/gerencial/ordenacao.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/lib/gerencial/ordenacao.test.ts > ordenação da Base de Dados (Fluxo de Caixa Gerencial) > a direção padrão de Vencimento é asc (mais antigo primeiro) 1ms
+ ✓ src/lib/gerencial/ordenacao.test.ts > ordenação da Base de Dados (Fluxo de Caixa Gerencial) > valor continua desc por padrão 0ms
+ ✓ src/lib/gerencial/ordenacao.test.ts > ordenação da Base de Dados (Fluxo de Caixa Gerencial) > vencimento asc ordena do mais antigo para o mais novo 10ms
+ ✓ src/lib/gerencial/ordenacao.test.ts > ordenação da Base de Dados (Fluxo de Caixa Gerencial) > vencimento desc ordena do mais novo para o mais antigo 0ms
+ ✓ src/lib/gerencial/ordenacao.test.ts > ordenação da Base de Dados (Fluxo de Caixa Gerencial) > valor ordena numericamente (desc), não lexicograficamente 0ms
+stdout | src/lib/dre/folhas.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/lib/dre/folhas.test.ts > folhasPorGrupo — a árvore viva sai do próprio payload > agrupa as categorias pelo bloco pai (`g`) 4ms
+ ✓ src/lib/dre/folhas.test.ts > folhasPorGrupo — a árvore viva sai do próprio payload > IGNORA as linhas de bloco — somá-las contaria o mesmo dinheiro duas vezes 1ms
+ ✓ src/lib/dre/folhas.test.ts > folhasPorGrupo — a árvore viva sai do próprio payload > respeita a janela de meses 1ms
+ ✓ src/lib/dre/folhas.test.ts > folhasPorGrupo — a árvore viva sai do próprio payload > janela 0 zera tudo; janela acima de 12 é o ano inteiro 0ms
+ ✓ src/lib/dre/folhas.test.ts > folhasPorGrupo — a árvore viva sai do próprio payload > a BANDEJA fica de fora — ela não pertence a bloco nenhum 0ms
+ ✓ src/lib/dre/folhas.test.ts > folhasPorGrupo — a árvore viva sai do próprio payload > categoria sem bloco pai é ignorada em vez de derrubar a cascata 0ms
+ ✓ src/lib/dre/folhas.test.ts > centavos inteiros — a aritmética não pode acumular erro de float > soma exata onde o float erraria 0ms
+ ✓ src/lib/dre/folhas.test.ts > centavos inteiros — a aritmética não pode acumular erro de float > valores com meio centavo não escapam pelo Math.round(v*100) 0ms
+ ✓ src/lib/dre/folhas.test.ts > somarGrupos — chave ausente vale zero > permite nomear folha que o regime não tem, sem ramificar no chamador 0ms
+stdout | scripts/db-gate/classificar.test.mjs
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0149 → destrutiva 3ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0150 → aditiva 2ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0151 → aditiva 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0152 → aditiva 2ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0153 → aditiva 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0154 → warn 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0155 → aditiva 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0156 → aditiva 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0157 → aditiva 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — migrations reais 0149..0158 (não-regressão do verdadeiro positivo + fim dos falsos) > 0158 → aditiva 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DROP TABLE top-level + corpo $$ com UPDATE → destrutiva (o caso adversarial do briefing) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DROP TABLE top-level ANTES de um corpo $$ → destrutiva 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DML SÓ dentro do corpo $$ → aditiva (era o falso-positivo de 0150/0153) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DROP TABLE em comentário de linha → ignorado (aditiva) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DROP TABLE em comentário de bloco → ignorado (aditiva) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DROP em literal de string → ignorado (aditiva) 1ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > tag custom $body$: DROP TABLE no corpo → excisado (aditiva) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > tags diferentes aninhadas: scanner fecha na tag EXTERNA; DROP no meio fica no corpo → aditiva 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > corpo $$ NÃO fechado (ambíguo) → FALHA FECHADO (destrutiva) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > comentário de bloco NÃO fechado (ambíguo) → FALHA FECHADO (destrutiva) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > TRUNCATE top-level → destrutiva 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > ALTER TABLE ... DROP COLUMN → destrutiva 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > ALTER TABLE ... ADD COLUMN → aditiva 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DELETE FROM top-level → destrutiva 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > UPDATE top-level → destrutiva 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DROP FUNCTION top-level (troca de assinatura) → warn (nem aditiva cega, nem destrutiva) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > nome de função contendo "update" NÃO é UPDATE top-level (sem falso-positivo) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > CREATE TRIGGER com evento UPDATE/DELETE NÃO é mutação (aditiva — falso-positivo v5.2.1) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > classificarSql — adversarial: o tokenizer NÃO pode esconder um DROP top-level > DROP TRIGGER continua destrutivo (a isenção é SÓ do CREATE) 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > confirmaDestrutivaEOF — EOF/headless NUNCA confirma (inverte o default do CLI) > não-TTY (headless/EOF) → false, qualquer resposta 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > confirmaDestrutivaEOF — EOF/headless NUNCA confirma (inverte o default do CLI) > TTY + resposta afirmativa explícita → true 0ms
+ ✓ scripts/db-gate/classificar.test.mjs > confirmaDestrutivaEOF — EOF/headless NUNCA confirma (inverte o default do CLI) > TTY + resposta vazia/negativa/null (EOF no meio) → false 0ms
+stdout | src/lib/monde/reconciliacao.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ override existing { override: true }
+
+ ✓ src/lib/monde/reconciliacao.test.ts > mesesRecentes > devolve os 3 meses da janela, do MAIS RECENTE para o mais antigo 4ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesesRecentes > atravessa a virada de ano sem quebrar 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesesRecentes > cobre os 12 meses do tripwire 6ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesesRecentes > n <= 0 devolve pelo menos o mês corrente (nunca lista vazia) 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > rangeDoMes > fecha o mês de 31 dias 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > rangeDoMes > fecha o mês de 30 dias 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > rangeDoMes > acerta fevereiro de ano bissexto 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > rangeDoMes > acerta fevereiro de ano comum 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > proximoMesReconciliacao > sem cursor começa pelo mês MAIS RECENTE (onde a venda atrasada é mais provável) 4ms
+ ✓ src/lib/monde/reconciliacao.test.ts > proximoMesReconciliacao > avança no meio da janela 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > proximoMesReconciliacao > do ÚLTIMO da janela volta ao primeiro — é ciclo, não fila que termina 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > proximoMesReconciliacao > cursor que saiu da janela (virada de mês / pausa longa) retoma do mais recente 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > proximoMesReconciliacao > três invocações cobrem a janela inteira, sem repetir 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > proximoMesReconciliacao > janela vazia é erro de programação, não silêncio 2ms
+ ✓ src/lib/monde/reconciliacao.test.ts > avaliarMes > a conta fecha: lidas = espelháveis + excluídas + erros 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > avaliarMes > NÃO trata exclusão por regra como divergência — é o erro que o briefing tinha 2ms
+ ✓ src/lib/monde/reconciliacao.test.ts > avaliarMes > mede as vendas que sobraram no espelho (deixaram de ser espelháveis) 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > avaliarMes > conta as vendas que a API lista sem sale_id — a ingestão não as alcança 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > avaliarMes > erro de venda acende mesmo com todo o resto certo 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > avaliarMes > conta que não fecha acende (venda lida sumiu sem explicação) 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > avaliarMes > `removidas` viaja na apuração (v5.6.3) e NÃO é problema — é a cura registrada 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > podeCurar (v5.6.3) > rodada íntegra autoriza a cura (números reais de ago/26, dia da venda 73580) 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > podeCurar (v5.6.3) > rodada VAZIA bloqueia — API com 0 vendas não prova ausência de nada (CRÍTICO do revisor: num mês novo, curar contra o vazio apagaria o mês inteiro e a recontagem apagaria o alarme) 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > podeCurar (v5.6.3) > erro de detalhe/transform BLOQUEIA — a venda que falhou seria apagada como retida 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > podeCurar (v5.6.3) > venda sem sale_id na listagem BLOQUEIA — a ingestão não alcança o que não tem id 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > podeCurar (v5.6.3) > PARIDADE contagem×ids bloqueia — detalhe sem sale_id tira a venda do conjunto e a linha antiga dela viraria candidata (CRÍTICO do revisor) 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > podeCurar (v5.6.3) > conta que não fecha BLOQUEIA — venda lida sumiu sem explicação 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesclarTripwire > mês nunca reconciliado é NÃO VERIFICADO, nunca divergente 1ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesclarTripwire > acumula mês a mês: a 2ª invocação não apaga a apuração da 1ª 0ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesclarTripwire > acende com o motivo legível quando um mês verificado tem problema 1ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesclarTripwire > mês que saiu da janela de 12 é descartado (painel, não histórico) 5ms
+ ✓ src/lib/monde/reconciliacao.test.ts > mesclarTripwire > sem apuração nova só recarimba e reavalia o que já havia 0ms
+stdout | src/lib/gerencial/import-types.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — adicionar/manter/atualizar/remover básicos > fatia vazia: tudo adiciona 6ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — adicionar/manter/atualizar/remover básicos > linha idêntica (6 campos) → manter 4ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — adicionar/manter/atualizar/remover básicos > descrição muda (mesma chave lógica) → atualizar, preserva id 2ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — adicionar/manter/atualizar/remover básicos > conta muda → atualizar (conta_previsao) 2ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — adicionar/manter/atualizar/remover básicos > linha sumiu da planilha (própria fatia) → remover 0ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — adicionar/manter/atualizar/remover básicos > auto-correção de VALOR = remove a antiga + adiciona a nova (valor é identidade) 0ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — normalização (dedup não é teatro) > "BestBuy Hotel" e "BestBuy Hotel " (espaço/caixa) são idênticos → manter 1ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — normalização (dedup não é teatro) > tipo com caixa/espaço diferente é a MESMA linha lógica (não remove+adiciona) 1ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — normalização (dedup não é teatro) > valor monetário: 1234.5 e 1234.50 são o mesmo dinheiro → manter (chave de centavos consistente) 1ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — normalização (dedup não é teatro) > valor monetário: 100,00 ≠ 100,01 são linhas distintas → remove+adiciona 5ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — sincronização POR CONTAGEM (toggle ON = duplicatas reais) > 2 na planilha + 2 na fatia → mantém 2 1ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — sincronização POR CONTAGEM (toggle ON = duplicatas reais) > planilha caiu para 1 → remove 1 1ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — sincronização POR CONTAGEM (toggle ON = duplicatas reais) > planilha subiu para 3 → adiciona 1 1ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — toggle "manter duplicadas" (dentro da planilha) > desligado (padrão) colapsa idênticas da planilha em uma 0ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — toggle "manter duplicadas" (dentro da planilha) > ligado mantém as duas 0ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — toggle "manter duplicadas" (dentro da planilha) > reporta duplicatasPlanilha (independe do toggle) — alimenta o aviso da UI 0ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — toggle "manter duplicadas" (dentro da planilha) > duplicatasLinhas lista as ocorrências REPETIDAS (2ª+), com .length = duplicatasPlanilha (v4.23.3) 0ms
+ ✓ src/lib/gerencial/import-types.test.ts > computeDiffPorFatia — isolamento (escopo da fatia) > aRemover só contém ids vindos da fatia recebida (nunca inventa) 0ms
+stdout | src/lib/solicitacoes/ciclo-de-vida.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > paridade SQL ↔ TS do ciclo de vida > STATUS_SOLIC tem exatamente os valores que o CHECK do banco aceita 3ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > paridade SQL ↔ TS do ciclo de vida > STATUS_EM_ANDAMENTO espelha os estados que o CHECK dispensa de decisão terminal 1ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > paridade SQL ↔ TS do ciclo de vida > toda transição da 0261 aceita as MESMAS origens que STATUS_EM_ANDAMENTO 1ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > paridade SQL ↔ TS do ciclo de vida > solic_aprovar só transiciona a partir de aberta (não existe reaprovar nem desaprovar) 1ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > paridade SQL ↔ TS do ciclo de vida > a Aprovação no histórico deriva de aprovado_em, não do status 1ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > paridade SQL ↔ TS do ciclo de vida > solic_anexar aceita SOMENTE anexo livre — o campo do tipo é da abertura (0265) 1ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > paridade SQL ↔ TS do ciclo de vida > solic_anexar mantém as travas que NÃO mudaram 0ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > exclusão de anexo (v5.9.1, migration 0264) > só quem anexou exclui — e o predicado é NULL-safe 0ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > exclusão de anexo (v5.9.1, migration 0264) > não revela a existência de anexo que o caller não pode ver 0ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > exclusão de anexo (v5.9.1, migration 0264) > solicitação encerrada não aceita exclusão — imutabilidade vale nos dois sentidos 0ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > exclusão de anexo (v5.9.1, migration 0264) > anexo vindo da ABERTURA não se exclui (0265) 0ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > exclusão de anexo (v5.9.1, migration 0264) > o DELETE vem DEPOIS de todas as travas, e devolve o caminho do binário 0ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > exclusão de anexo (v5.9.1, migration 0264) > solic_json passou a emitir sou_autor SEM perder chave alguma 1ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > comportamento do estado Aprovada > toda origem em andamento tem rótulo, cor e é reconhecida como viva 1ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > comportamento do estado Aprovada > aprovada NÃO reusa a cor de concluída — autorizar não é encerrar 0ms
+ ✓ src/lib/solicitacoes/ciclo-de-vida.test.ts > comportamento do estado Aprovada > aprovada ainda vence: a data-limite corre até o desfecho, não até a autorização 0ms
+stdout | src/lib/dre/av.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > aceita base positiva 2ms
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > rejeita null 5ms
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > rejeita undefined 1ms
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > rejeita NaN 0ms
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > rejeita Infinity 0ms
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > rejeita -Infinity 0ms
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > rejeita zero e negativo — com base ≤ 0 a razão INVERTE de sinal e mente 1ms
+ ✓ src/lib/dre/av.test.ts > baseAv — a base só serve se for POSITIVA > rejeita resíduo de float abaixo de meio centavo (não é receita, é ruído) 1ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > metade da base dá 50% 1ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > a própria base dá exatamente 100 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > despesa negativa devolve AV negativa — o sinal NÃO é normalizado 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > medição datada: LOP/Receita Bruta de 2025 em 24/08/2026 ≈ 6,5% 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > zero devolve 0, não travessão — "não compõe" ≠ "não dá para calcular" 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > sem base válida, qualquer valor vira null (a coluna inteira do período) 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > valor null vira null 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > valor undefined vira null 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > valor NaN vira null 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > valor Infinity vira null 0ms
+ ✓ src/lib/dre/av.test.ts > avPercentual — percentual com sinal algébrico preservado > NUNCA devolve NaN nem Infinity — varredura de combinações de borda 1ms
+ ✓ src/lib/dre/av.test.ts > aditividade — exata ANTES do arredondamento > a AV do total é a soma das AVs dos componentes 1ms
+ ✓ src/lib/dre/av.test.ts > aditividade — exata ANTES do arredondamento > vale na cadeia inteira do demonstrativo, até o REX 0ms
+ ✓ src/lib/dre/av.test.ts > aditividade — exata ANTES do arredondamento > a EXIBIÇÃO com 1 casa pode divergir — inerente, e não se maquia 1ms
+ ✓ src/lib/dre/av.test.ts > linhaBaseAv / indiceBaseAv — a base é a Receita Bruta, casada por CHAVE > a chave da base é RB_H (mudou de ROL na v5.7.2) 0ms
+ ✓ src/lib/dre/av.test.ts > linhaBaseAv / indiceBaseAv — a base é a Receita Bruta, casada por CHAVE > acha a linha da Receita Bruta 0ms
+ ✓ src/lib/dre/av.test.ts > linhaBaseAv / indiceBaseAv — a base é a Receita Bruta, casada por CHAVE > acha mesmo com o rótulo mudado — o rótulo dela mudou na PRÓPRIA v5.7.1 0ms
+ ✓ src/lib/dre/av.test.ts > linhaBaseAv / indiceBaseAv — a base é a Receita Bruta, casada por CHAVE > devolve undefined quando a base não veio (payload degradado) 0ms
+ ✓ src/lib/dre/av.test.ts > linhaBaseAv / indiceBaseAv — a base é a Receita Bruta, casada por CHAVE > o ÍNDICE separa quem tem AV de quem não tem 0ms
+ ✓ src/lib/dre/av.test.ts > linhaBaseAv / indiceBaseAv — a base é a Receita Bruta, casada por CHAVE > sem a base no payload devolve -1 — e aí NINGUÉM tem AV (fail-safe) 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > 6.505 → 6,5% 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > 0 → 0,0% 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > 100 → 100,0% 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > -0.9902 → (1,0%) 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > -21 → (21,0%) 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > -0.04 → (0,0%) 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > 1234.56 → 1.234,6% 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > null → – 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > negativo NUNCA sai com sinal de menos — a convenção da tabela é parêntese 0ms
+ ✓ src/lib/dre/av.test.ts > fmtAv — percentual em gramática contábil > o pior caso cabe em 8 caracteres 1ms
+stdout | src/lib/weddings/janela-fluxo.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/weddings/janela-fluxo.test.ts > indiceHoje > acha o primeiro mês futuro (o mês corrente) 1ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > indiceHoje > devolve −1 quando a série não tem mês corrente/futuro 1ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > limitesJanela > reserva 1 mês de margem à esquerda 1ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > limitesJanela > não devolve limite negativo em série degenerada 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > limitesJanela > a janela larga produz EXATAMENTE o limite de 36 meses pedido pelo Yan 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > limitesJanela > o extremo do slider ainda tem mês anterior para rebasear 2ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — recorte > devolve exatamente atras + 1 + frente meses 1ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — recorte > a janela contém o mês corrente e o marca 1ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — recorte > clampa pedidos além dos limites em vez de estourar 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — recorte > clampa pedido negativo 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — o acumulado REINICIA na borda esquerda > o primeiro mês visível traz só o próprio valor, não a história anterior 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — o acumulado REINICIA na borda esquerda > o reinício vale para QUALQUER largura de janela (não só a default) 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — o acumulado REINICIA na borda esquerda > todos os elementos acumulados reiniciam JUNTOS — nenhum sobra acumulando 1ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — o acumulado REINICIA na borda esquerda > o acumulado rebaseado nunca começa negativo numa série monotônica 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — valor mensal derivado > deriva o valor do mês pela diferença dos acumulados 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — valor mensal derivado > a PRIMEIRA barra visível não absorve a história anterior (o defeito antigo) 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — valor mensal derivado > mês sem movimento dá zero, não buraco 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — valor mensal derivado > resultado mensal negativo é preservado (saída maior que entrada) 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — referência de saídas recalculada NA JANELA > é a soma das saídas da janela, não da série inteira 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — referência de saídas recalculada NA JANELA > acompanha a janela ao arrastar o slider 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — referência de saídas recalculada NA JANELA > coincide com o acumulado de saídas do último mês visível 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — degenerados nunca lançam > série vazia devolve janela vazia 1ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — degenerados nunca lançam > série de um mês só devolve janela vazia (sem mês de margem) 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — degenerados nunca lançam > série sem mês futuro devolve janela vazia 0ms
+ ✓ src/lib/weddings/janela-fluxo.test.ts > fatiarJanela — degenerados nunca lançam > NaN nos parâmetros do slider não vira janela quebrada 0ms
+stdout | src/lib/fluxo/janela-mensal.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/lib/fluxo/janela-mensal.test.ts > indiceMesHoje > acha o mês exato 2ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > indiceMesHoje > faltando o mês exato, cai no último mês ANTERIOR a ele 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > indiceMesHoje > série que começa depois do mês corrente devolve 0, não −1 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > indiceMesHoje > série vazia devolve −1 sem lançar 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > indiceMesHoje > a comparação lexicográfica de YYYY-MM respeita a virada de ano 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > limitesJanelaMensal > a janela larga da 0229 rende exatamente 36 para cada lado 1ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > limitesJanelaMensal > série curta limita pelo que existe, não pelo teto 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > limitesJanelaMensal > o teto de 36 vale mesmo se a série for maior 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > limitesJanelaMensal > série vazia não devolve limite negativo 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > devolve atras + 1 + frente meses e marca o hoje 1ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > o extremo 36+36 devolve a série inteira que a 0229 busca 0ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > janela mínima mostra só o mês corrente 1ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > NÃO altera nenhum valor — recortar é só recortar (nada rebaseia) 15ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > clampa pedido além dos limites em vez de estourar 1ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > clampa pedido negativo e NaN 2ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > série vazia devolve janela vazia sem lançar 1ms
+ ✓ src/lib/fluxo/janela-mensal.test.ts > fatiarJanelaMensal > mesHoje fica null quando o mês corrente sai da janela recortada 1ms
+stdout | src/lib/carga/coercao.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/carga/coercao.test.ts > toNum — robusto BR/US (substitui o ingênuo Number(replace(,,.))) > BR com milhar + decimal vírgula 2ms
+ ✓ src/lib/carga/coercao.test.ts > toNum — robusto BR/US (substitui o ingênuo Number(replace(,,.))) > ponto: milhar BR (3 dígitos) vs decimal US (≤2 dígitos) 1ms
+ ✓ src/lib/carga/coercao.test.ts > toNum — robusto BR/US (substitui o ingênuo Number(replace(,,.))) > números nativos e vazios 1ms
+ ✓ src/lib/carga/coercao.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > Date nativo usa ano/mês/dia locais (sem tz-shift) 1ms
+ ✓ src/lib/carga/coercao.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > DD/MM/YYYY não inverte (08/06 = 8 jun, NÃO 6 ago) 0ms
+ ✓ src/lib/carga/coercao.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > ISO passthrough; vazios → null 0ms
+ ✓ src/lib/carga/coercao.test.ts > toStr > apara e trata vazio 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum — negativo entre parênteses (convenção contábil, v4.27) > parênteses = negativo, preservando a desambiguação BR/US do conteúdo 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum — negativo entre parênteses (convenção contábil, v4.27) > aceita R$ dentro ou fora dos parênteses 1ms
+ ✓ src/lib/carga/coercao.test.ts > toNum — negativo entre parênteses (convenção contábil, v4.27) > parênteses vazios/lixo → null; positivo sem parênteses intacto 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > R$ 1.000,00 → mesmo valor nos dois caminhos 1ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > R$ 1.234,56 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 1.000,00 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 1.234,56 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > R$ 1,000.00 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 1,234.56 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 12.345,67 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 1.234.567,89 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 1,234,567.89 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 0,00 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > 0.00 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > -1.234,56 → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > (R$ 1.000,00) → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > (1.234,56) → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > (1,234.56) → mesmo valor nos dois caminhos 0ms
+ ✓ src/lib/carga/coercao.test.ts > toNum estendido CONCORDA com o parseValorMonetario legado (não-regressão Gerencial) > números nativos: idênticos nos dois 1ms
+ ✓ src/lib/carga/coercao.test.ts > toCentavos — dinheiro em centavos pela regra do Postgres > valor de 2 casas é exato 1ms
+ ✓ src/lib/carga/coercao.test.ts > toCentavos — dinheiro em centavos pela regra do Postgres > meio-centavo sobe a MAGNITUDE (meio-para-longe-de-zero), como o Postgres 1ms
+ ✓ src/lib/carga/coercao.test.ts > toCentavos — dinheiro em centavos pela regra do Postgres > DIVERGE de Math.round(v*100) — é justamente o motivo desta função existir 2ms
+ ✓ src/lib/carga/coercao.test.ts > toCentavos — dinheiro em centavos pela regra do Postgres > casas além da 3ª nunca mudam a decisão 0ms
+ ✓ src/lib/carga/coercao.test.ts > toCentavos — dinheiro em centavos pela regra do Postgres > herda a leitura BR/US do toNum e devolve null no que não é número 0ms
+stdout | src/lib/carga/vendas-parser.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/lib/carga/vendas-parser.test.ts > normalizeHeader — tolerante a acento, caixa e espaço > casa grafias diferentes do mesmo cabeçalho 1ms
+ ✓ src/lib/carga/vendas-parser.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > Date nativo da célula → ISO local (não desloca) 1ms
+ ✓ src/lib/carga/vendas-parser.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > string DD/MM/YYYY → YYYY-MM-DD (dia antes do mês) 1ms
+ ✓ src/lib/carga/vendas-parser.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > string já ISO passa direto; vazio/null → null 1ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > mapeia operacao_propria, passageiros e tipo_contrato (colunas da v4.9.x) 2ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > casa 'Operação Propria' SEM acento (grafia do ERP) no mesmo campo 1ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > aceita 'Data Início' e 'Data de Início' como o mesmo campo 0ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > avisa (console.warn) e ignora coluna não-mapeada — header novo não passa em silêncio 2ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > PARIDADE: a mesma linha produz saída idêntica independente da grafia do header 1ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > linha_origem reflete a linha real da planilha (cabeçalho = linha 1) 0ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > pula linhas inteiramente vazias 0ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — paridade de colunas dos dois caminhos de ingestão > arquivo sem dados (só cabeçalho) → nenhuma linha 0ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — valor_total/receitas pelo toNum canônico (M1, v4.27) > número nativo → string numérica (paridade do staging, inalterado) 0ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — valor_total/receitas pelo toNum canônico (M1, v4.27) > string BR com milhar → robusto (o toNumStr ingênuo dava 8.84 / NaN) 0ms
+ ✓ src/lib/carga/vendas-parser.test.ts > parseVendasRows — valor_total/receitas pelo toNum canônico (M1, v4.27) > vazio/nulo/inválido → null 0ms
+stdout | src/components/gestao-pessoas/inventario/paridade-sql.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > enums do banco × uniões do TS > tipo_movimentacao — mesmos 8 valores, na mesma ordem 2ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > enums do banco × uniões do TS > motivo_baixa — o TS não inventa nem esquece motivo 1ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > enums do banco × uniões do TS > estado_conservacao — idem 1ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > o CHECK tem um ramo para cada um dos 8 tipos — CASE sem ramo é FAIL-OPEN 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > cadastro exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > transferencia exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > devolucao_estoque exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > envio_manutencao exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > retorno_manutencao exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > emprestimo exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > baixa exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > reativacao exige do banco exatamente o que o TS mostra no modal 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > o predicado do ÚLTIMO ramo não engole o ELSE que vem depois dele 1ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > CHECK mov_destino_por_tipo × DESTINO_POR_TIPO > o CASE do CHECK fecha em ELSE false — tipo sem ramo REPROVA, não passa batido 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > status_derivado × STATUS_POR_TIPO > os 7 tipos que não ramificam produzem o mesmo status nas duas pontas 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > status_derivado × STATUS_POR_TIPO > só o cadastro ramifica: com detentor nasce em uso, sem detentor em estoque 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > status_derivado × STATUS_POR_TIPO > todo status que o SQL emite tem rótulo na UI 0ms
+ ✓ src/components/gestao-pessoas/inventario/paridade-sql.test.ts > status_derivado × STATUS_POR_TIPO > o coalesce de estado ausente cai em em_estoque (ativo sem razão é inalcançável) 0ms
+stdout | src/lib/monde/transform.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/monde/transform.test.ts > transformSale — exclusões > exclui setor Welcome (emissão interna) 3ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — exclusões > exclui venda sem custom_field Setor 0ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — exclusões > exclui micro desconhecido (fora do mapa) 0ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — exclusões > ESPELHA venda sem nenhum item ativo (não exclui mais) e ela soma ZERO 2ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > Corporativo: macro Corporativo, vendedor = travel_agent_name, contrato false, receitas somadas 1ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > receita = total_revenue da venda distribuído por valor entre os itens ativos (soma exata) 1ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > Lazer e Expedições → macro Lazer 0ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > Weddings: vendedor vem do custom_field "Vendedor(a) Responsável - Grupo" 0ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > Weddings sem o custom_field de vendedor → fallback travel_agent_name 0ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > taxa_servico = true quando algum item ativo tem agency_service_fee > 0 0ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > operacao_propria = false quando raw.intermediary está presente 0ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > grava o item cancelado junto do ativo, e o rateio de receita NÃO vaza para ele 1ms
+ ✓ src/lib/monde/transform.test.ts > transformSale — mapeamento e síntese > venda só com ativos: o rateio continua idêntico ao de antes (resto no último) 0ms
+stdout | src/lib/carga/parse-fluxo-caixa-onda1.test.ts
+◇ injected env (14) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > normalizeHeader — "Venda Nº" tolera caixa/acento/espaço (o `º` casa nos dois lados) > casa "Venda Nº" com "venda nº" (mesmo º, só caixa) 2ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > normalizeHeader — "Venda Nº" tolera caixa/acento/espaço (o `º` casa nos dois lados) > tolera espaço duplicado e maiúsculas 0ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > normalizeHeader — "Venda Nº" tolera caixa/acento/espaço (o `º` casa nos dois lados) > tolera acento (Descrição/Descricao, Liquidação/Liquidacao) 0ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > parseLancamentosMovimentacaoRows — o REALIZADO (13 colunas) > parseia data_movimentacao/valor/venda_no; sinal do valor preservado (negativo continua negativo) 4ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > parseLancamentosMovimentacaoRows — o REALIZADO (13 colunas) > valor positivo (entrada) permanece positivo 1ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > parseLancamentosMovimentacaoRows — o REALIZADO (13 colunas) > cabeçalho em grafia diferente ("venda nº" minúsculo) ainda casa a mesma coluna 1ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > parseLancamentosMovimentacaoRows — o REALIZADO (13 colunas) > falta a coluna obrigatória (Movimentação) → erro claro, não processa 1ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > parseLancamentosMovimentacaoRows — o REALIZADO (13 colunas) > falta a coluna obrigatória (Valor) → erro claro, não processa 0ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > parseTitulosEmAbertoRows — o PREVISTO (12 colunas, SEM data_movimentacao) > parseia normalmente sem a coluna Movimentação; eixo é vencimento; liquidacao vazia 1ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > parseTitulosEmAbertoRows — o PREVISTO (12 colunas, SEM data_movimentacao) > falta a coluna obrigatória (Vencimento) → erro claro, não processa 1ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > colunas obrigatórias exibidas na UI > LANCAMENTOS_MOVIMENTACAO_COLUNAS = Movimentação + Valor 2ms
+ ✓ src/lib/carga/parse-fluxo-caixa-onda1.test.ts > colunas obrigatórias exibidas na UI > TITULOS_EM_ABERTO_COLUNAS = Vencimento + Valor 0ms
+stdout | src/lib/dre/decomposicao-variacao.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > montarDecomposicao — aditividade ao centavo > REX anterior + Σ degraus ≡ REX atual 4ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > montarDecomposicao — aditividade ao centavo > folha que só existe num dos anos entra com o outro lado valendo zero 1ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > montarDecomposicao — ordenação e agrupamento > ordena por |Δ| decrescente: o que mais pesou vem primeiro 1ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > montarDecomposicao — ordenação e agrupamento > degraus sub-piso caem no residual sem perder valor 1ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > montarDecomposicao — ordenação e agrupamento > residual sempre por último 0ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > rótulos — vivos do payload, sem prefixo contábil > usa o rótulo do bloco e retira o `(-)` 1ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > rótulos — vivos do payload, sem prefixo contábil > sem linha de bloco, cai na chave em vez de ficar vazio 0ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > narrativaVariacao — a categoria que puxou > aponta a categoria de maior |Δ| do grupo, com sinal 0ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > narrativaVariacao — a categoria que puxou > positivo leva `+` 0ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > narrativaVariacao — a categoria que puxou > distribuição de lucros tem causa, não categoria 0ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > narrativaVariacao — a categoria que puxou > grupo sem movimento fica em silêncio em vez de apontar R$ 0,00 0ms
+ ✓ src/lib/dre/decomposicao-variacao.test.ts > narrativaVariacao — a categoria que puxou > casa a categoria entre os anos por IDENTIDADE, não por rótulo 0ms
+stdout | src/lib/auth/areas.test.ts
+◇ injected env (14) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+ ✓ src/lib/auth/areas.test.ts > areasDoSetor — espelho de app.areas_do_setor > mapeia os três setores do banco 7ms
+ ✓ src/lib/auth/areas.test.ts > areasDoSetor — espelho de app.areas_do_setor > 'todos', desconhecidos e vazio caem nos agregados (executiva|performance) 1ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > / → null 1ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /sem-acesso → null 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /executiva → ["executiva"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /metas → ["metas/acompanhamento","metas"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /metas/cadastro → ["metas"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /performance → ["performance"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /performance/trips → ["performance/trips"] 1ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /performance/weddings → ["performance/weddings"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /performance/corporativo → ["performance/corporativo"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /financeiro → ["financeiro/fluxo-caixa","financeiro/gerencial"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /financeiro/fluxo-caixa → ["financeiro/fluxo-caixa","financeiro/gerencial"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /financeiro/fluxo-caixa/gerencial → ["financeiro/gerencial"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /financeiro/acervo → ["financeiro/acervo","financeiro/acervo/gestao"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /financeiro/dre → ["financeiro/dre"] 1ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/uploads → ["admin/uploads"] 1ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/uploads/financeiro → ["admin/uploads"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/design-system → ["admin/design-system"] 1ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/acessos → ["admin/acessos"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/solicitacoes → ["solicitacoes"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/solicitacoes/movimentacoes → ["solicitacoes"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/api-externa → ["solicitacoes"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin/api-externa/documentacao → ["solicitacoes/documentacao","solicitacoes"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /admin → ["admin/acessos"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /solicitacoes → ["solicitacoes/basico","solicitacoes"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > /gestao-pessoas/inventario → ["gestao-pessoas/inventario"] 0ms
+ ✓ src/lib/auth/areas.test.ts > areasDaRota — toda rota de página tem dono > o mais específico vence o prefixo genérico 1ms
+ ✓ src/lib/auth/areas.test.ts > rotaInicial — primeira área permitida > prioriza executiva; sem nada → null 1ms
+ ✓ src/lib/auth/areas.test.ts > nextSeguro — anti open-redirect > só aceita caminho relativo interno 1ms
+ ✓ src/lib/auth/areas.test.ts > nextSeguro — anti open-redirect > rejeita externos, protocolo-relativo, /auth e vazios 1ms
+ ✓ src/lib/auth/areas.test.ts > nextSeguro — anti open-redirect > rejeita backslash, codificados e /auth case-insensitive (endurecido S11) 1ms
+ ✓ src/lib/auth/areas.test.ts > catálogo — consistência interna > AREA_INFO cobre exatamente AREAS 1ms
+ ✓ src/lib/auth/areas.test.ts > catálogo — consistência interna > ordens únicas 1ms
+stdout | src/lib/weddings/schemas-float.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/weddings/schemas-float.test.ts > schemas do float — degradação preservada (v5.9.4) > payload válido passa e preserva campos extras (passthrough) 7ms
+ ✓ src/lib/weddings/schemas-float.test.ts > schemas do float — degradação preservada (v5.9.4) > payload inválido → parseRpc devolve null (mesmo caminho de "sem dado"), sem lançar 7ms
+stdout | src/lib/decomposicao-variacao.test.ts
+◇ injected env (14) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+ ✓ src/lib/decomposicao-variacao.test.ts > gerarTextoDecomposicao > variação < 10k → estável 2ms
+ ✓ src/lib/decomposicao-variacao.test.ts > gerarTextoDecomposicao > um único setor relevante concentra a variação 5ms
+ ✓ src/lib/decomposicao-variacao.test.ts > gerarTextoDecomposicao > múltiplos setores na mesma direção 1ms
+ ✓ src/lib/decomposicao-variacao.test.ts > gerarTextoDecomposicao > setores em direções opostas → fala em saldo 1ms
+stdout | src/lib/email/template-acesso.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/email/template-acesso.test.ts > templateNotificacaoAcessoSolicitado (v5.0.1) > assunto interno Janus + campos do solicitante + botão com link 2ms
+ ✓ src/lib/email/template-acesso.test.ts > templateNotificacaoAcessoSolicitado (v5.0.1) > sem link → sem botão; sem nome/quando → sem essas linhas 1ms
+ ✓ src/lib/email/template-acesso.test.ts > templateNotificacaoAcessoSolicitado (v5.0.1) > escapa HTML no nome (anti-injeção) 1ms
+stdout | src/components/gestao-pessoas/inventario/exportar.test.ts
+◇ injected env (14) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
+
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > células — o dialeto do Excel pt-BR > número usa VÍRGULA decimal e 2 casas 2ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > células — o dialeto do Excel pt-BR > ativo SEM valor sai VAZIO — não 0 e não NaN 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > células — o dialeto do Excel pt-BR > data vira dd/mm/aaaa sem passar por fuso 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > células — o dialeto do Excel pt-BR > data e hora saem no fuso de São Paulo, não em UTC 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > células — o dialeto do Excel pt-BR > texto nulo ou em branco sai VAZIO, nunca a palavra "null" 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > células — o dialeto do Excel pt-BR > ponto e vírgula, aspas e quebra de linha são escapados 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > células — o dialeto do Excel pt-BR > célula que o Excel executaria como FÓRMULA é neutralizada 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > montagem do arquivo > começa com BOM UTF-8 — sem ele o acento quebra no Excel do Windows 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > montagem do arquivo > separa por ponto e vírgula e termina linha em CRLF 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de ativos > cabeçalho em português, com a unidade no valor 1ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de ativos > a linha traz o status por extenso e o acento intacto 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de ativos > descrição com ponto e vírgula não parte a linha em duas colunas 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de ativos > sem pessoa, a coluna "com quem / onde" cai no local em texto 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de ativos > ativo sem valor não escreve 0 na planilha 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de ativos > lista vazia gera só o cabeçalho (arquivo válido, não vazio) 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de movimentações > grava a ORIGEM derivada e o destino montado na leitura 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de movimentações > marca o registro retroativo — o CSV não perde o sinal que a timeline mostra 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de movimentações > registrado por e registrado em (data-hora SP) vão no arquivo 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de movimentações > baixa exporta o motivo por extenso, e o destino diz baixa 0ms
+ ✓ src/components/gestao-pessoas/inventario/exportar.test.ts > CSV de movimentações > as 11 colunas se mantêm mesmo com observação contendo ponto e vírgula 0ms
+stdout | src/lib/storage/nome-arquivo.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ override existing { override: true }
+
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > aceita o nome do bug real (ã em "Joao") 2ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > trata a forma NFD do macOS (a + combinante) igual à NFC 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > sanitiza "Orçamento.pdf" → "Orcamento.pdf" 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > sanitiza "Comissão Wedding.pdf" → "Comissao_Wedding.pdf" 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > sanitiza "NF #1234.pdf" → "NF__1234.pdf" 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > sanitiza "Recibo 100% pago.pdf" → "Recibo_100__pago.pdf" 1ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > sanitiza "Fatura – marco.pdf" → "Fatura___marco.pdf" 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > sanitiza "Contrato (assinado).pdf" → "Contrato__assinado_.pdf" 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > não mexe em nome que já é seguro 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > nome vazio cai no fallback (chave vazia é inválida no Storage) 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > nome sem nenhum caractere latino não vira string vazia 0ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > limita o comprimento a 100 1ms
+ ✓ src/lib/storage/nome-arquivo.test.ts > sanitizarNomeArquivo — a chave resultante é sempre válida no Storage > qualquer entrada produz chave aceita pelo Storage 0ms
+stdout | src/lib/metas/periodo-metas.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > mensal @ 2026-07-10 → 2026-07-01..2026-07-31 (Julho de 2026) 7ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > mensal @ 2026-02-05 → 2026-02-01..2026-02-28 (Fevereiro de 2026) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > mensal @ 2028-02-10 → 2028-02-01..2028-02-29 (Fevereiro de 2028) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > trimestral @ 2026-07-10 → 2026-07-01..2026-09-30 (3º trimestre de 2026) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > trimestral @ 2026-01-01 → 2026-01-01..2026-03-31 (1º trimestre de 2026) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > trimestral @ 2026-12-31 → 2026-10-01..2026-12-31 (4º trimestre de 2026) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > semestral @ 2026-07-10 → 2026-07-01..2026-12-31 (2º semestre de 2026) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > semestral @ 2026-06-30 → 2026-01-01..2026-06-30 (1º semestre de 2026) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > anual @ 2026-07-10 → 2026-01-01..2026-12-31 (2026) 0ms
+ ✓ src/lib/metas/periodo-metas.test.ts > resolverPeriodoMetas — cortes calendário > isPresetMetas valida a união (URL não confiável) 0ms
+stdout | src/lib/dre/rotulo-bloco.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > (+) ENTRADA DE CLIENTES → ENTRADA DE CLIENTES 2ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > (-) PAGAMENTO AO FORNECEDOR → PAGAMENTO AO FORNECEDOR 1ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > (=) SALDO REPASSE → SALDO REPASSE 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > (-) IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA → IMPOSTOS E DEDUÇÕES DA RECEITA BRUTA 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > = LUCRO BRUTO → LUCRO BRUTO 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > Receita de Vendas → Receita de Vendas 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > Despesas Operacionais RH → Despesas Operacionais RH 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > Despesas Operacionais RH Benefícios → Despesas Operacionais RH Benefícios 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > string vazia → string vazia 1ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > é idempotente — aplicar 2x é igual a aplicar 1x 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — remove só o prefixo contábil, preserva o resto > hífen NO MEIO do texto é preservado — não é prefixo (a âncora ^ protege) 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (+/-) Resultado Financeiro → Resultado Financeiro 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (+/-) INVESTIMENTOS, IMOBILIZADO E EMPRÉSTIMOS → INVESTIMENTOS, IMOBILIZADO E EMPRÉSTIMOS 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (+/-) OUTRAS RECEITAS E DESPESAS NÃO OPERACIONAIS → OUTRAS RECEITAS E DESPESAS NÃO OPERACIONAIS 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (+ / -) OUTRAS RECEITAS E DESPESAS NÃO OPERACIONAIS → OUTRAS RECEITAS E DESPESAS NÃO OPERACIONAIS 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (=) LUCRO BRUTO → LUCRO BRUTO 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (=) RESULTADO DO EXERCÍCIO → RESULTADO DO EXERCÍCIO 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (-) Custo dos Serviços Prestados → Custo dos Serviços Prestados 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (+) Receita de Vendas → Receita de Vendas 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > (-) Distribuição de Lucros → Distribuição de Lucros 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > continua idempotente com o prefixo duplo 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > barra NO MEIO do texto é preservada — a âncora ^ protege 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > rotuloBloco — prefixo duplo (+/-) e os rótulos padronizados da v5.7.0 > remove APENAS o prefixo, nunca uma ocorrência posterior 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > semCaixaAlta — caixa alta vira capitalização de leitura > converte o caso que motivou a função 1ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > semCaixaAlta — caixa alta vira capitalização de leitura > PRESERVA sigla — o risco real do title-case cego 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > semCaixaAlta — caixa alta vira capitalização de leitura > preposição no MEIO fica minúscula; na PRIMEIRA posição, não 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > semCaixaAlta — caixa alta vira capitalização de leitura > rótulo que JÁ tem minúscula passa intocado — a função não "corrige" o certo 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > semCaixaAlta — caixa alta vira capitalização de leitura > é idempotente 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > semCaixaAlta — caixa alta vira capitalização de leitura > não quebra em string vazia nem em texto sem letra 0ms
+ ✓ src/lib/dre/rotulo-bloco.test.ts > semCaixaAlta — caixa alta vira capitalização de leitura > acento é rebaixado corretamente em pt-BR 0ms
+stdout | src/lib/faturamento/classificar.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > casou + tem CPF/CNPJ + endereço/CEP → 'pronta' + prontaNf (emitir sugerido true) 2ms
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > SEM e-mail na base ainda é pronta-NF (permissivo: o Asaas valida o e-mail na emissão) 1ms
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > casou mas SEM CPF/CNPJ → 'sem_dados_fiscais' (emitir false; faltam lista CPF/CNPJ) 0ms
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > nome não está na base → 'nao_identificado' 0ms
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > TRIM nos dois lados: nome com espaço casa com cadastro trimado 0ms
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > pronta mas falta Endereço/CEP → faltam sinaliza (NF na fase 2), mas status pronta (boleto) 0ms
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > homônimo (>1 cadastro) → multiplos=true 0ms
+ ✓ src/lib/faturamento/classificar.test.ts > classificarFaturas — cruzamento da Fase 1a (v4.30.0) > resumo soma total e valorTotal 0ms
+stdout | src/lib/rateio/calcular.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/rateio/calcular.test.ts > calcularRateio — invariantes da Calculadora de Rateio > FECHAMENTO: soma dos 4 baldes == total (nenhum valor some) 1ms
+ ✓ src/lib/rateio/calcular.test.ts > calcularRateio — invariantes da Calculadora de Rateio > INVARIANTE 'Lazer': venda de lazer cai em 'Lazer', NUNCA em 'Não identificado' 0ms
+ ✓ src/lib/rateio/calcular.test.ts > calcularRateio — invariantes da Calculadora de Rateio > 'Não identificado' EXPLÍCITO: venda nula ou ausente do mapa soma no balde 0ms
+ ✓ src/lib/rateio/calcular.test.ts > calcularRateio — invariantes da Calculadora de Rateio > MULTI-LINHA da mesma venda: ambas no mesmo setor, somadas 0ms
+ ✓ src/lib/rateio/calcular.test.ts > calcularRateio — invariantes da Calculadora de Rateio > IGNORADAS: linha sem valor não entra no rateio (não afeta total) 1ms
+ ✓ src/lib/rateio/calcular.test.ts > calcularRateio — invariantes da Calculadora de Rateio > PCT: fração do total, com sinal negativo dá proporção positiva; total 0 → 0 (sem NaN) 0ms
+ ✓ src/lib/rateio/calcular.test.ts > calcularRateio — invariantes da Calculadora de Rateio > sempre devolve os 4 baldes na ordem fixa (Não identificado por último) 1ms
+stdout | src/lib/weddings/float-virtual.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ override existing { override: true }
+
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — as duas curvas nascem juntas na borda > gap começa em ZERO no primeiro mês visível 2ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — as duas curvas nascem juntas na borda > o fluxo do 1º mês NÃO rende no próprio mês 1ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — as duas curvas nascem juntas na borda > compõe (juro sobre juro), nunca soma linear 0ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — as duas curvas nascem juntas na borda > é SIMÉTRICO: saldo negativo gera custo teórico, sem ramo especial 1ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — o que o gap faz de verdade > com saldo POSITIVO e taxa positiva, o gap nunca encolhe 0ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — o que o gap faz de verdade > ⚠️ com saldo NEGATIVO o gap encolhe — e isso está certo 0ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — o que o gap faz de verdade > saldo que CRUZA o zero inverte a direção do gap 0ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — degradação honesta > sem NENHUMA taxa conhecida, não desenha nada 1ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — degradação honesta > janela vazia devolve vazio, sem lançar 0ms
+ ✓ src/lib/weddings/float-virtual.test.ts > curvasFloat — degradação honesta > mês sem taxa dentro de série conhecida rende zero naquele mês, e só nele 0ms
+ ✓ src/lib/weddings/float-virtual.test.ts > rendimentoDaJanela > é o gap do último mês visível 0ms
+ ✓ src/lib/weddings/float-virtual.test.ts > rendimentoDaJanela > janela MENOR mede rendimento MENOR — é o efeito esperado do slider 0ms
+stdout | src/lib/fluxo/cobertura.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/lib/fluxo/cobertura.test.ts > tCritico95 > valores canônicos da tabela t (bicaudal, 95%) 2ms
+ ✓ src/lib/fluxo/cobertura.test.ts > tCritico95 > df > 30 cai no z normal (1,96); df < 1 é NaN 1ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > caso da referência: 16,96 Mi ÷ 4,44 Mi/mês ≈ 3,8 meses 1ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > IC calculado à mão: R=12, saídas [3,4,5] → t(2)=4,303 0ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > com taxa de antecipação = 0,96 × cada ponta do IC (mesmo denominador) 0ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > variância zero → IC colapsa no ponto 1ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > denominador indistinguível de zero (m − t·SE ≤ 0) → teto ABERTO (null) 0ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > n = 1: sem variância amostral → IC degenera no ponto 1ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > saídas com sinal (negativas do fato) são normalizadas por módulo 0ms
+ ✓ src/lib/fluxo/cobertura.test.ts > calcularCobertura > sem base → null (recebíveis ≤ 0, sem meses, média 0) 0ms
+stdout | src/proxy.test.ts
+◇ injected env (14) from .env.local // tip: ◈ encrypted .env [www.dotenvx.com]
+
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > achou as fontes reais em public/fonts/avenir (senão o teste abaixo é vazio) 4ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /fonts/avenir/Avenir LT Std 35 Light.otf NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /fonts/avenir/Avenir LT Std 45 Book.otf NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /fonts/avenir/Avenir LT Std 55 Roman.otf NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /fonts/avenir/Avenir LT Std 65 Medium.otf NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /fonts/avenir/Avenir LT Std 85 Heavy.otf NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /logos/logo-janus.svg NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /logos/welcome-group-vert.svg NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /_next/static/chunks/main.js NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /favicon.ico NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /icon.svg NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /icon.png NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /icon0.png NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /icon1.png NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — assets estáticos isentos > /apple-icon.png NÃO passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > raiz: / passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > página protegida: /financeiro passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > página protegida aninhada: /financeiro/dre/estrutura passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > página que exige sessão: /trocar-senha passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > área admin: /admin/uploads passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > rota de API: /api/setores passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > rota de API aninhada: /api/dashboard/performance/cagr passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > página pública (o proxy decide, não o matcher): /login passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > página pública de pré-cadastro: /solicitar-acesso passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > API com bypass próprio no handler (isenção é no código, não no matcher): /api/monde/ingest passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > id dinâmico terminado em .png não escapa (lição S11): /api/uploads/abc.png passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > id dinâmico terminado em .otf não escapa: /api/uploads/abc.otf passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > "fonts" no meio do path não é isento: /api/algo/fonts/x.otf passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > "logos" no meio do path não é isento: /api/algo/logos/x.svg passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > prefixo sem a barra não é isento: /fonts passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > prefixo em caixa alta não é isento: /FONTS/avenir/x.otf passa pelo proxy 0ms
+ ✓ src/proxy.test.ts > matcher do proxy — superfícies reais SEMPRE passam (camada 1 intacta) > sufixo parecido não é isento: /meus-fonts/x.otf passa pelo proxy 0ms
+stdout | src/lib/dre/janela-competencia.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > cobertura no ano pedido devolve o mês da cobertura 2ms
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > cobertura em ano POSTERIOR fecha o ano pedido inteiro 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > cobertura em ano ANTERIOR não cobre mês nenhum do ano pedido 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > devolve null para null — o chamador decide o fallback 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > devolve null para undefined — o chamador decide o fallback 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > devolve null para vazio — o chamador decide o fallback 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > devolve null para sem forma de data — o chamador decide o fallback 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > mesFinalCoberto — comparação por ANO, não por distância de datas > mês fora da faixa é limitado, nunca propagado 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > janelaYtdCompetencia — cobertura primeiro, envelope como rede > usa a cobertura quando ela existe 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > janelaYtdCompetencia — cobertura primeiro, envelope como rede > a cobertura VENCE o mes_corrente — é justamente o ponto da decisão 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > janelaYtdCompetencia — cobertura primeiro, envelope como rede > sem cobertura, ano fechado cai no envelope 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > janelaYtdCompetencia — cobertura primeiro, envelope como rede > sem cobertura, ano futuro cai no envelope 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > janelaYtdCompetencia — cobertura primeiro, envelope como rede > sem cobertura, ano corrente usa mes_corrente 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > janelaYtdCompetencia — cobertura primeiro, envelope como rede > sem cobertura e sem mes_corrente num ano corrente devolve 0, não NaN 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > rotuloJanela — o subtítulo que explica a divergência com a tabela densa > 1 meses → "jan–jan" 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > rotuloJanela — o subtítulo que explica a divergência com a tabela densa > 8 meses → "jan–ago" 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > rotuloJanela — o subtítulo que explica a divergência com a tabela densa > 11 meses → "jan–nov" 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > rotuloJanela — o subtítulo que explica a divergência com a tabela densa > 12 meses → "ano inteiro" 0ms
+ ✓ src/lib/dre/janela-competencia.test.ts > rotuloJanela — o subtítulo que explica a divergência com a tabela densa > sem mês nenhum não há o que declarar 0ms
+stdout | src/lib/sonda-teste-escreve-banco.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/lib/sonda-teste-escreve-banco.test.ts > teste que abre pg — só escreve em transação revertida, com contrato (v5.9.6) > a sonda enxerga o arquivo de referência (reverter-diario) como alvo — senão não vale nada 2ms
+ ✓ src/lib/sonda-teste-escreve-banco.test.ts > teste que abre pg — só escreve em transação revertida, com contrato (v5.9.6) > quem se declara SOMENTE_LEITURA existe, não escreve e não abre transação 1ms
+ ✓ src/lib/sonda-teste-escreve-banco.test.ts > teste que abre pg — só escreve em transação revertida, com contrato (v5.9.6) > todo teste pg fora da allowlist tem BEGIN + ROLLBACK + lock_timeout + skipIf e nenhum COMMIT 1ms
+ ✓ src/lib/sonda-teste-escreve-banco.test.ts > teste que abre pg — só escreve em transação revertida, com contrato (v5.9.6) > cada exceção conhecida ainda existe E ainda viola (senão sai da lista) 0ms
+ ✓ src/lib/sonda-teste-escreve-banco.test.ts > teste que abre pg — só escreve em transação revertida, com contrato (v5.9.6) > a contagem do gatilho de reavaliação é a lista fechada — arquivo novo aqui atualiza a skill §6 1ms
+stdout | src/lib/ui/scrollbar-math.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/ui/scrollbar-math.test.ts > thumbGeom — geometria do thumb por eixo > conteúdo cabe (scroll ≤ client) → invisível 2ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > thumbGeom — geometria do thumb por eixo > proporcional ao conteúdo: 2× o viewport → thumb ~metade 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > thumbGeom — geometria do thumb por eixo > no fim do scroll → thumb encostado no fim do trilho 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > thumbGeom — geometria do thumb por eixo > no meio do scroll → thumb no meio do trilho livre 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > thumbGeom — geometria do thumb por eixo > conteúdo enorme → thumb nunca menor que THUMB_MIN 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max] > arrastar o thumb 1 px de trilho move o scroll pela razão max/livre 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max] > arrastar além do fim prende no máximo (max = scrollSize − client) 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max] > arrastar para trás abaixo de zero prende em 0 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max] > sem overflow (nada a rolar) → 0 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max] > ida e volta é consistente: arrastar todo o trilho e depois todo de volta zera 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > scrollAoArrastar — arraste do thumb → scrollTop, preso em [0, max] > folga (respiro nas pontas, v5.2.0): thumb começa em folga e termina em client − folga 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > folga assimétrica no fim do trilho (THUMB_CRUZ — barras que se cruzam) > folgaFim default = folga (comportamento anterior preservado) 1ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > folga assimétrica no fim do trilho (THUMB_CRUZ — barras que se cruzam) > folgaFim maior ENCURTA o trilho e o thumb nunca alcança o canto 0ms
+ ✓ src/lib/ui/scrollbar-math.test.ts > folga assimétrica no fim do trilho (THUMB_CRUZ — barras que se cruzam) > o arraste usa o MESMO trilho encurtado (proporção não descola) 0ms
+stdout | src/styles/tokens.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/styles/tokens.test.ts > tokens.css — fonte da verdade do Design System (ADR-0129) > define TODOS os tokens-âncora consumidos pelo app 4ms
+ ✓ src/styles/tokens.test.ts > tokens.css — fonte da verdade do Design System (ADR-0129) > os 4 temas por aba redefinem --brand (weddings/trips/corporativo/group) 1ms
+ ✓ src/styles/tokens.test.ts > tokens.css — fonte da verdade do Design System (ADR-0129) > expõe os tokens-chave como utilitárias no @theme (globals.css) 1ms
+ ✓ src/styles/tokens.test.ts > tokens.css — fonte da verdade do Design System (ADR-0129) > define os tokens de micro-texto (--text-2xs / --text-3xs) 0ms
+ ✓ src/styles/tokens.test.ts > tokens.css — fonte da verdade do Design System (ADR-0129) > --text-primary é #2D2A26 (não o #1A1814 dessincronizado pré-v4.26) 0ms
+ ✓ src/styles/tokens.test.ts > tokens.css — fonte da verdade do Design System (ADR-0129) > não reintroduz o --primary azul legado removido na v4.26 0ms
+stdout | src/lib/asaas/customers.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/asaas/customers.test.ts > escolherEmailFiscal — cadeia raw.pessoas → fallback do Cadastro > pessoas válido → usa o de pessoas (fallback ignorado) 2ms
+ ✓ src/lib/asaas/customers.test.ts > escolherEmailFiscal — cadeia raw.pessoas → fallback do Cadastro > pessoas ausente/vazio → cai para o fallback do cadastro 0ms
+ ✓ src/lib/asaas/customers.test.ts > escolherEmailFiscal — cadeia raw.pessoas → fallback do Cadastro > pessoas com ';' (multi-e-mail) é INVÁLIDO → cai para o fallback 0ms
+ ✓ src/lib/asaas/customers.test.ts > escolherEmailFiscal — cadeia raw.pessoas → fallback do Cadastro > nenhum válido → null (segue sem e-mail; o Asaas valida, como hoje) 0ms
+ ✓ src/lib/asaas/customers.test.ts > escolherEmailFiscal — cadeia raw.pessoas → fallback do Cadastro > trima o e-mail escolhido 0ms
+stdout | src/lib/dre/identidade.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/dre/identidade.test.ts > chaveDeLinha > bloco, sub e totalizador usam a chave da estrutura, com prefixo b: 2ms
+ ✓ src/lib/dre/identidade.test.ts > chaveDeLinha > folha do CAIXA usa categoria_id (a identidade é do banco) 0ms
+ ✓ src/lib/dre/identidade.test.ts > chaveDeLinha > folha da COMPETÊNCIA usa a chave de texto (não existe categoria de banco) 0ms
+ ✓ src/lib/dre/identidade.test.ts > chaveDeLinha > categoria_id tem precedência quando os dois vêm 0ms
+ ✓ src/lib/dre/identidade.test.ts > chaveDeLinha > folha sem identificador nenhum devolve null — a coluna cai em AUSÊNCIA 0ms
+ ✓ src/lib/dre/identidade.test.ts > chaveDeLinha > bloco sem chave devolve null 0ms
+ ✓ src/lib/dre/identidade.test.ts > chaveDeBandeja > usa categoria_id no caixa e a chave de texto na competência 0ms
+ ✓ src/lib/dre/identidade.test.ts > chaveDeBandeja > NUNCA devolve null: sem identificador, cai no rótulo 0ms
+ ✓ src/lib/dre/identidade.test.ts > os dois espaços de nome não colidem > uma folha nunca produz a mesma chave que um bloco de mesmo nome 1ms
+ ✓ src/lib/dre/identidade.test.ts > os dois espaços de nome não colidem > uma folha e uma órfã com a mesma identidade colidem DE PROPÓSITO 0ms
+stdout | src/lib/faturamento/status-nota.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/faturamento/status-nota.test.ts > classificarStatusNota — fail-safe INVERTIDO (desconhecido = falhou, nunca "processando") > AUTHORIZED → autorizada 1ms
+ ✓ src/lib/faturamento/status-nota.test.ts > classificarStatusNota — fail-safe INVERTIDO (desconhecido = falhou, nunca "processando") > estados de andamento CONHECIDOS → processando 0ms
+ ✓ src/lib/faturamento/status-nota.test.ts > classificarStatusNota — fail-safe INVERTIDO (desconhecido = falhou, nunca "processando") > vazio/null/undefined (sem info ainda, logo após emitir) → processando 0ms
+ ✓ src/lib/faturamento/status-nota.test.ts > classificarStatusNota — fail-safe INVERTIDO (desconhecido = falhou, nunca "processando") > cancelamentos → cancelada 0ms
+ ✓ src/lib/faturamento/status-nota.test.ts > classificarStatusNota — fail-safe INVERTIDO (desconhecido = falhou, nunca "processando") > ERROR e QUALQUER status desconhecido → falhou (o coração do fix: não mascara rejeição) 1ms
+ ✓ src/lib/faturamento/status-nota.test.ts > rótulos PT-BR > labelClasseNota mapeia cada classe 1ms
+ ✓ src/lib/faturamento/status-nota.test.ts > rótulos PT-BR > labelStatusNota nunca devolve status cru em inglês para desconhecido 0ms
+stdout | src/lib/solicitacoes/abas.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/solicitacoes/abas.test.ts > contarPorAba > conta cada status na aba certa numa lista mista 3ms
+ ✓ src/lib/solicitacoes/abas.test.ts > contarPorAba > lista vazia dá zero nas três abas 0ms
+ ✓ src/lib/solicitacoes/abas.test.ts > contarPorAba > encerradas é tudo que não está em andamento — inclusive cada status terminal isolado 0ms
+ ✓ src/lib/solicitacoes/abas.test.ts > contarPorAba > abertas e aprovadas são mutuamente exclusivas 0ms
+ ✓ src/lib/solicitacoes/abas.test.ts > ABAS — predicados > cada predicado casa só com o próprio status entre os cinco possíveis 0ms
+stdout | src/lib/weddings/ordenacao-operacoes.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/lib/weddings/ordenacao-operacoes.test.ts > contrato de ordenação da Lista de Operações — enum da rota × CASE do SQL > encontrou a whitelist vigente no SQL (senão o teste abaixo é vazio) 3ms
+ ✓ src/lib/weddings/ordenacao-operacoes.test.ts > contrato de ordenação da Lista de Operações — enum da rota × CASE do SQL > toda chave do SQL é aceita pela rota (senão: 400 e a Lista vira erro) 2ms
+ ✓ src/lib/weddings/ordenacao-operacoes.test.ts > contrato de ordenação da Lista de Operações — enum da rota × CASE do SQL > toda chave da rota existe no SQL (senão: ordena por data do evento em silêncio) 1ms
+ ✓ src/lib/weddings/ordenacao-operacoes.test.ts > contrato de ordenação da Lista de Operações — enum da rota × CASE do SQL > a coluna nova da v5.5.0 está nas duas pontas 2ms
+ ✓ src/lib/weddings/ordenacao-operacoes.test.ts > contrato de ordenação da Lista de Operações — enum da rota × CASE do SQL > o fallback do SQL é a chave padrão da rota 1ms
+stdout | src/lib/faturamento/juros-multa.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/lib/faturamento/juros-multa.test.ts > parsePctContrato — contrato estrito > aceita as 4 strings do contrato 2ms
+ ✓ src/lib/faturamento/juros-multa.test.ts > parsePctContrato — contrato estrito > rejeita qualquer outra coisa → null 1ms
+ ✓ src/lib/faturamento/juros-multa.test.ts > jurosMultaDoCadastro — MAPEAMENTO NÃO INVERTE (multa→fine, juros→interest) > multa 10% + juros 1% → fine=10, interest=1 (o teste crítico) 1ms
+ ✓ src/lib/faturamento/juros-multa.test.ts > jurosMultaDoCadastro — MAPEAMENTO NÃO INVERTE (multa→fine, juros→interest) > valores distintos não se confundem: multa 5% + juros 2% 0ms
+ ✓ src/lib/faturamento/juros-multa.test.ts > jurosMultaDoCadastro — MAPEAMENTO NÃO INVERTE (multa→fine, juros→interest) > default 2/2 quando vazio / inválido / fora do cadastro 0ms
+ ✓ src/lib/faturamento/juros-multa.test.ts > jurosMultaDoCadastro — MAPEAMENTO NÃO INVERTE (multa→fine, juros→interest) > mistura: multa do contrato (5%) + juros inválido → interest cai para 2 0ms
+stdout | src/lib/email/destinatarios.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+ ✓ src/lib/email/destinatarios.test.ts > emailValido — mesma regex de asaas/client > aceita e-mail simples 2ms
+ ✓ src/lib/email/destinatarios.test.ts > emailValido — mesma regex de asaas/client > rejeita vazio/null/sem-arroba/sem-domínio 1ms
+ ✓ src/lib/email/destinatarios.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > separa válidos e ignora vazios 1ms
+ ✓ src/lib/email/destinatarios.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > inválido no meio → invalidos, mantém os válidos 0ms
+ ✓ src/lib/email/destinatarios.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > dedupe preservando ordem 0ms
+ ✓ src/lib/email/destinatarios.test.ts > splitDestinatarios — split ; + trim + validação + dedupe > vazio/null → nada 0ms
+stdout | src/lib/gerencial/normalizar-conta.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ enable debugging { debug: true }
+
+ ✓ src/lib/gerencial/normalizar-conta.test.ts > normalizarChaveConta > minúsculo + sem acento + trim + espaços colapsados 8ms
+ ✓ src/lib/gerencial/normalizar-conta.test.ts > canonizarConta — mapeia conta_previsao cru → conta real ou "Outras" > alias "Banco Itau" (e variações de caixa/acento) → Itaú 0ms
+ ✓ src/lib/gerencial/normalizar-conta.test.ts > canonizarConta — mapeia conta_previsao cru → conta real ou "Outras" > normalização de caixa: ASAAS → Asaas 0ms
+ ✓ src/lib/gerencial/normalizar-conta.test.ts > canonizarConta — mapeia conta_previsao cru → conta real ou "Outras" > match direto (com acento): Itaú/itau e Blimboo 0ms
+ ✓ src/lib/gerencial/normalizar-conta.test.ts > canonizarConta — mapeia conta_previsao cru → conta real ou "Outras" > nulos/vazios/órfãos reais (2026-06-17) → "Outras" 0ms
+ ✓ src/lib/gerencial/normalizar-conta.test.ts > canonizarConta — mapeia conta_previsao cru → conta real ou "Outras" > devolve o nome EXATO da conta real (não o alias) 0ms
+stdout | src/lib/carga/colunas-obrigatorias.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+
+ ✓ src/lib/carga/colunas-obrigatorias.test.ts > validarColunasObrigatorias — aviso de colunas obrigatórias (v4.29.0) > todas presentes → [] 2ms
+ ✓ src/lib/carga/colunas-obrigatorias.test.ts > validarColunasObrigatorias — aviso de colunas obrigatórias (v4.29.0) > alias satisfaz o requisito (Valor_Final vale por Valor Final) 1ms
+ ✓ src/lib/carga/colunas-obrigatorias.test.ts > validarColunasObrigatorias — aviso de colunas obrigatórias (v4.29.0) > devolve os labels faltantes (não os aceitos) 0ms
+ ✓ src/lib/carga/colunas-obrigatorias.test.ts > validarColunasObrigatorias — aviso de colunas obrigatórias (v4.29.0) > trima os headers antes de comparar 0ms
+ ✓ src/lib/carga/colunas-obrigatorias.test.ts > validarColunasObrigatorias — aviso de colunas obrigatórias (v4.29.0) > comparação é EXATA por padrão (não casa acento/caixa) — não-regressão das bases existentes 0ms
+ ✓ src/lib/carga/colunas-obrigatorias.test.ts > validarColunasObrigatorias — aviso de colunas obrigatórias (v4.29.0) > o CALLER pode normalizar antes (padrão Pessoas, tolerante a acento) 1ms
+ ✓ src/lib/carga/colunas-obrigatorias.test.ts > validarColunasObrigatorias — aviso de colunas obrigatórias (v4.29.0) > mensagem amigável lista as faltantes 0ms
+stdout | src/lib/metas/sync-atraso.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ suppress logs { quiet: true }
+
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > LIMITE_ATRASO_MS = 45min (3 ticks de 15min) 2ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > null → não atrasada (rótulo nem aparece) 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > undefined → não atrasada 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > string vazia → não atrasada 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > data inválida → não atrasada 2ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > sincronizou agora → não atrasada 1ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > há 15min (1 tick) → não atrasada 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > há 44min → não atrasada 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > exatamente 45min (limite, usa >) → não atrasada 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > há 46min → ATRASADA 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > há 2h → ATRASADA 0ms
+ ✓ src/lib/metas/sync-atraso.test.ts > sincronizacaoAtrasada > timestamptz com offset é comparado como instante (fuso-agnóstico) 0ms
+stdout | src/lib/carga/parse-vendas-produto.test.ts
+◇ injected env (14) from .env.local // tip: ⌘ override existing { override: true }
+
+ ✓ src/lib/carga/parse-vendas-produto.test.ts > normalizeHeader — tolerante a acento, caixa e espaço > casa grafias diferentes do mesmo cabeçalho 2ms
+ ✓ src/lib/carga/parse-vendas-produto.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > Date nativo da célula → ISO local (não desloca) 1ms
+ ✓ src/lib/carga/parse-vendas-produto.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > string DD/MM/YYYY → YYYY-MM-DD (dia antes do mês) 0ms
+ ✓ src/lib/carga/parse-vendas-produto.test.ts > toIsoDate — Date nativo e DD/MM/YYYY, sem inverter dia/mês > string já ISO passa direto; vazio/null → null 0ms
+stdout | src/lib/monde/ingest.test.ts
+◇ injected env (14) from .env.local // tip: ⌁ auth for agents [www.vestauth.com]
+
+ ✓ src/lib/monde/ingest.test.ts > idsEspelhaveis (v5.6.3) > todas com sale_id ⇒ paridade perfeita com a contagem 2ms
+ ✓ src/lib/monde/ingest.test.ts > idsEspelhaveis (v5.6.3) > sale_id nulo SAI do conjunto — e a paridade quebra de propósito (gatilho do bloqueio) 1ms
+ ✓ src/lib/monde/ingest.test.ts > idsEspelhaveis (v5.6.3) > lista vazia ⇒ conjunto vazio (a RPC 0250 bloqueia conjunto vazio por cinto próprio) 0ms
+
+ Test Files  72 passed (72)
+      Tests  1207 passed (1207)
+   Start at  11:56:06
+   Duration  103.13s (transform 1.82s, setup 710ms, collect 13.72s, tests 66.20s, environment 18ms, prepare 6.66s)
+
+exit=0
