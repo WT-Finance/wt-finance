@@ -91,10 +91,5 @@ export const zSaleDetailResponse = z.object({
   data: zSaleDetail,
 }).passthrough()
 
-export type CustomField = z.infer<typeof zCustomField>
-export type Passenger = z.infer<typeof zPassenger>
 export type Product = z.infer<typeof zProduct>
-export type SaleListItem = z.infer<typeof zSaleListItem>
-export type SalesListResponse = z.infer<typeof zSalesListResponse>
 export type SaleDetail = z.infer<typeof zSaleDetail>
-export type SaleDetailResponse = z.infer<typeof zSaleDetailResponse>

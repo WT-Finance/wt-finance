@@ -56,8 +56,6 @@ export const horizonteSchema = z.object({
   anos:         z.array(horizonteAnoSchema),
 }).passthrough()
 
-export type HorizonteMes  = z.infer<typeof horizonteMesSchema>
-export type HorizonteAno  = z.infer<typeof horizonteAnoSchema>
 export type HorizonteData = z.infer<typeof horizonteSchema>
 
 // ── get_saldo_caixa() → SaldoCaixaConta[] (tabela própria financeiro.saldo_caixa) ──
@@ -94,7 +92,6 @@ export const runwaySemanalSchema = z.object({
   semanas:           z.array(runwaySemanaSchema),
 }).passthrough()
 
-export type RunwaySemana  = z.infer<typeof runwaySemanaSchema>
 export type RunwaySemanal = z.infer<typeof runwaySemanalSchema>
 
 // ── get_fluxo_ranking(p_limite) → RankingCaixa ───────────────────────────────
@@ -150,4 +147,3 @@ export type PrevistoDiario = z.infer<typeof previstoDiarioSchema>
 
 export const saldoRepasseSchema = z.object({ sal: z.number() }).passthrough()
 
-export type SaldoRepasse = z.infer<typeof saldoRepasseSchema>
