@@ -49,7 +49,24 @@ equivalência provada no corpo da função** —, **nunca** com cast. Registrado
 
 ## Decisão 2 — o relatório de auditoria APONTA; o commit PROVA
 
-*(a preencher ao final da Fase 2)*
+Um relatório de auditoria é uma **hipótese verificável**, não um inventário de verdades. A
+exclusão só se justifica pelo grep feito **no ato do commit**, transcrito na mensagem — e a
+varredura inclui `docs/runbooks/` e `docs/adr/` (ver skill `banco-e-rpc`, §5).
+
+**Evidência do próprio Bloco 1: em 4 itens o grep no ato salvou código vivo — e em 2 deles o
+relatório triado mandava apagar.**
+
+| item | o relatório dizia | o grep no ato provou |
+|---|---|---|
+| **D1-016** | apagar `listMonths` | é o **motor** do `fillMonths` (`fill-months.ts:56`) — só perdeu o `export` |
+| **D1-020** | apagar as 4 funções | só 2 eram mortas; `calcularPeriodoAnteriorInteligente` e `calcularYoYInteligente` são usadas por `resolverPeriodoCompleto` (linhas 235-236) |
+| **D1-015** | 6 exports supérfluos | 4 são importados por `scripts/db-gate/exportar.mjs:19` (o knip os deu como mortos porque marcou o próprio `exportar.mjs` como arquivo não usado — falso positivo **em cascata**); e `getPool` tem consumidor no **runbook de restore**, achado ALTO do `revisor` |
+| **D1-025** | consolidar export duplicado | achado **INVÁLIDO**: `LIMITE_MESES` e `JANELA_LARGA_FRENTE` são constantes semanticamente distintas com o mesmo valor (36), **ambas vivas** |
+
+Corolário para a próxima auditoria: um achado de ferramenta estática é **classe de suspeita**,
+não sentença. Três padrões de falso positivo já têm nome — chamada por processo
+(`execFileSync`), chamada por config (hooks no `settings.json`) e citação em Markdown
+executável (runbook/ADR) — e estão registrados em `knip.json` para não serem redescobertos.
 
 ## Decisão 3 — o que saiu, o que ficou de propósito
 

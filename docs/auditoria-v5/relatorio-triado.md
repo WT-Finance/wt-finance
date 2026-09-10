@@ -65,14 +65,14 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | D1-015 | **agir agora** | PARCIAL em f43d493, CORRIGIDO em 4f0d0a2 · só limparTopLevel ficou interno. CORRIGE O RELATÓRIO (2×): (a) SCHEMAS, qJson, colunasNaoGeradas e pgCopyOut são importados por scripts/db-gate/exportar.mjs:19 — o knip os deu como mortos porque marcou o próprio exportar.mjs como não usado (falso positivo em cascata); (b) getPool teve o export RESTAURADO — achado ALTO do revisor: docs/runbooks/db-backup-gate-runbook.md:65 o importa no procedimento de RESTORE. LIÇÃO DE MÉTODO: consumidor vivo dentro de code-fence de Markdown não é alcançado por knip nem por grep em código — a prova de orfandade tem de varrer docs/runbooks/ e ADRs |
 | D1-016 | **agir agora** | PARCIAL em f43d493 · ChartReferenceLineY apagada (0 uso; linha de doc do design-system removida junto). CORRIGE O RELATÓRIO: listMonths NÃO foi apagada — é o motor do fillMonths (fill-months.ts:56); só perdeu o export e saiu do barrel |
 | D1-017 | **agir agora** | feito em f43d493 · os 10 sub-schemas perderam o export (0 consumidor externo cada); comentário de design 30-44 intocado |
-| D1-018 | **agir agora** | PARCIAL em f43d493 · 6 schemas internos desexportados. rpcFluxo + HorizonteMes/HorizonteAno/RunwaySemana/SaldoRepasse: o lint provou MORTOS por inteiro (0 externo E 0 interno) — export restaurado, apagá-los é mais que "remover o export" → SUA DECISÃO |
-| D1-019 | **agir agora** | PARCIAL em f43d493 · 4 schemas internos desexportados. CustomField/Passenger/SaleListItem/SalesListResponse/SaleDetailResponse: mortos por inteiro, export restaurado → SUA DECISÃO |
+| D1-018 | **agir agora** | CONCLUÍDO em 1b88b99 · CORRIGE A NOTA ANTERIOR (que era minha e estava errada): rpcFluxo, HorizonteMes, HorizonteAno, RunwaySemana e SaldoRepasse NÃO eram "usados internamente" — o lint provou 0 uso externo E 0 interno, e o grep do item 3 confirmou 0 ocorrência em código, docs/runbooks, docs/adr, docs e harness. APAGADOS (decisão do Chat, item 3). Os 6 schemas internos seguem apenas desexportados. Ao apagar rpcFluxo saíram também os imports ServerClient e RpcLike (só ele os usava) e o comentário de cabeçalho, que afirmava que estas RPCs não estão no database.ts — falso desde a adoção do gerado (ADR-0173): as 8 estão lá |
+| D1-019 | **agir agora** | CONCLUÍDO em 1b88b99 · mesma correção do D1-018: CustomField, Passenger, SaleListItem, SalesListResponse e SaleDetailResponse eram mortos por inteiro, não "usados internamente". APAGADOS. Os 4 schemas (zCustomField, zPassenger, zProduct, zSaleListItem) FICAM, apenas desexportados — compõem zSalesListResponse/zSaleDetail internamente |
 | D1-020 | **agir agora** | PARCIAL em f43d493 · CORRIGE O RELATÓRIO: só 2 das 4 eram mortas (formatarPeriodo, resolverPeriodoFromParams — apagadas, com os imports getMonth/getDate que ficaram órfãos). calcularPeriodoAnteriorInteligente e calcularYoYInteligente são usadas por resolverPeriodoCompleto (linhas 235-236): só perderam o export |
 | D1-021 | **backlog v6** | ~29 interfaces de `types/api.ts`; junto de B-05 (tipagem) |
 | D1-022 | **backlog v6** | congelado; junto de B-05 |
 | D1-023 | **agir agora** | feito em f43d493 · 16 símbolos com uso interno comprovado perderam só o export. 3 ficam (só a definição, sem uso): atualizarObsMovimentacao (Server Action), SumarioExecutivoSkeleton, CLIENTES_COLUNAS → backlog |
 | D1-024 | descartar | falso positivo confirmado |
-| D1-025 | **agir agora** | NÃO FEITO — premissa falsa. LIMITE_MESES e JANELA_LARGA_FRENTE não são export duplicado: são duas constantes semanticamente distintas com o mesmo valor (36), AMBAS vivas (JANELA_LARGA_FRENTE em weddings-content.tsx:14,61,70; LIMITE_MESES em janela-fluxo.test.ts). Consolidar removeria um nome em uso → SUA DECISÃO |
+| D1-025 | **agir agora** | ACHADO INVÁLIDO (decisão do Chat, item 4) · não é export duplicado: LIMITE_MESES e JANELA_LARGA_FRENTE são constantes semanticamente distintas que hoje têm o mesmo valor (36), AMBAS vivas (JANELA_LARGA_FRENTE em weddings-content.tsx:14,61,70; LIMITE_MESES em janela-fluxo.test.ts). Consolidar removeria um nome em uso. NÃO consolidado, registrado como inválido no ADR-0173 (Decisão 2) |
 | D1-ferramenta | **agir agora** | feito em f43d493 · knip e depcheck como devDependencies + knip.json com as exceções (hooks, exportar.mjs, dre-oracle.mjs, gera-seed-dre-competencia.mjs, seed-fluxo-caixa.ts, Tailwind) |
 
 ## D2 — Banco: objetos
@@ -112,14 +112,14 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 
 | id | triagem | nota |
 |---|---|---|
-| D4-001 | **agir agora (só a medição)** | SPIKE feito (medição, arquivo restaurado idêntico ao HEAD): 4 erros, todos TS2322 da MESMA classe — nulidade mais estrita no tipo gerado. admin/acessos/actions.ts:108 e weddings/operacoes/route.ts:43,44,46. Não é zero → adoção fica para SUA DECISÃO (adotar com 4 ajustes, ou declarar "congelado + helper" no ADR) |
+| D4-001 | **agir agora (só a medição)** | CONCLUÍDO em 65f1326 + fb0fec8 (decisão do Chat, itens 1 e 2) · os 4 TS2322 foram corrigidos tratando o nulo NA FRONTEIRA, sem cast (omitir a chave nos 3 com DEFAULT NULL; sentinela "" no p_nome, com equivalência provada em nullif(trim(coalesce(p_nome,''))) no corpo da função). Depois o database.ts GERADO foi ADOTADO: tsc 0 erros, lint 0, 1217/1217. 645→1039 linhas, 255 entradas de função (o manuscrito cobria ~55). A convenção "congelado + helper" MORREU (ADR-0173, Decisão 1) e o ritual /fechamento-versao ganhou o passo de regenerar quando a versão criar/alterar RPC. ACHADO QUE INVERTE A PREMISSA: os 4 erros não eram código assumindo não-nulo — o gen types NÃO modela nulidade de PARÂMETRO, e nesses 4 pontos o arquivo manuscrito era MAIS preciso que o gerado |
 | D4-002 | descartar | registrar como não-exaustivo |
 | D4-003 | descartar | — |
 | D4-004 | descartar | tratado em D2 |
 | D4-005 | descartar | padrão são |
 | D4-006 | **agir agora** | feito em a3823fd · parseRpc(mixProdutoSchema) no molde de tendencia-margem/route.ts:29-31. Caso de contrato JÁ existia (rpc-contrato.test.ts:65 e :297) — não precisou de teste novo |
 | D4-007 | **backlog v6** | B-07 (8 schemas novos) |
-| D4-008 | **agir agora** | NÃO FEITO → SUA DECISÃO. Exige escrever árvore de schema NOVA (VisaoFinanceira com 14 campos + DecomposicaoSubsetorItem + AcumuladoMensalItem) e não há caso de contrato hoje (grep get_operacao_weddings em rpc-contrato.test.ts → vazio). Além disso a RPC devolve OU o drilldown OU {error} que a rota vira 404 (route.ts:57-60): parseRpc estrito antes dessa checagem transformaria 404 em 500 |
+| D4-008 | **agir agora** | BACKLOG V6, junto de B-07 (decisão do Chat, item 6) · exige VisaoFinanceira (14 campos) + DecomposicaoSubsetorItem + AcumuladoMensalItem + RendimentoFloatOperacao, e não há caso de contrato hoje. ⚠️ RETORNO EM UNIÃO: a RPC devolve o drilldown OU um objeto { error } que a rota converte em 404 (weddings/operacao/[id]/route.ts:57-60) — exige união DISCRIMINADA, e um parseRpc estrito antes dessa checagem transformaria o 404 em 500 |
 | D4-009 | **backlog v6** | B-06 |
 | D4-010 | **backlog v6** | junto de B-06 |
 | D4-011 | **agir agora** | feito em a3823fd · os 2 helpers Rpc locais passaram a data: unknown (o de monde também tinha error: any). Consequência: gerencial/import estreita explicitamente no único ponto que lê o resumo; os ?? de fallback não mudaram |
@@ -159,7 +159,7 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 
 | id | triagem | nota |
 |---|---|---|
-| D7-001 | **agir agora** | APLICADO, MEDIDO e REVERTIDO · antes 43,32s / depois 40,95s / depois (2ª) 57,70s. A variância entre rodadas idênticas (~17s) é muito maior que o ganho (2,4s): o tempo é latência de rede das 140 requisições contra produção. Sem ganho demonstrável e com carga concorrente em RPC de produção → revertido pela regra do bloco |
+| D7-001 | **agir agora** | MEDIDO E DESCARTADO (decisão do Chat, item 5) · B-15 fechado por medição no backlog. 43,32s (antes) · 40,95s (depois, 1ª) · 57,70s (depois, 2ª). A variância entre rodadas idênticas (~17s) é 7× o ganho aparente (2,4s): o tempo é latência das 140 requisições contra produção, não CPU local. Revertido. Só volta a fazer sentido junto de ambiente de teste próprio (gatilho da skill banco-e-rpc §6) |
 | D7-002 | descartar | contrato §6 cumprido |
 | D7-003 | descartar | sonda exata; gatilho em 3/4 |
 | D7-004 | **agir agora** | feito em 396f4c0 · = D5-004 |
@@ -211,7 +211,7 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | D9-004 | **backlog v6** | B-01: 3 tonalidades + verificação de contraste |
 | D9-005 | **backlog v6** | B-01: 8 tonalidades no `button` |
 | D9-006 | **backlog v6** | B-01 |
-| D9-007 | **agir agora** | NÃO FEITO → SUA DECISÃO. A triagem diz "1:1" mas o grep desmente: kpi-detail-drawer usa #f1f5f9 (grid) e #a1a1aa (tick), e os tokens valem #e4e4e7 e #52525b. Trocar escureceria visivelmente grade e rótulos (zinc-400→600), violando "zero mudança observável". Ou aceita a mudança visual, ou cria tokens com os valores atuais (molde do D9-002) |
+| D9-007 | **agir agora** | BACKLOG V6, junto de B-01 (decisão do Chat, item 7) · NÃO criar token com os valores atuais: dois tokens para "cor de grade" com valores diferentes institucionalizam a divergência. Os quatro valores para a decisão de paleta: --chart-grid #e4e4e7 × stroke #f1f5f9; --chart-axis-tick #52525b × fill #a1a1aa. Aquele gráfico está mais claro que todos os outros e alguém precisa decidir qual é o certo |
 | D9-008 a D9-010 | descartar | checks limpos / decisão vigente |
 | D9-011 | **agir agora** | feito em 6cb3586 · package.json name wt-finance-temp → janus; prova: grep -rn "wt-finance-temp" → só a própria linha 2 |
 | D9-012 | descartar | manter `config.toml` |
