@@ -1,6 +1,28 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-09 (pós-merge da v5.9.3) · produção na **v5.9.3** (#255 mergeado 09/09 às 15h33): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-09-09 (fechamento da v5.9.4, PR aberto — aguarda merge do Yan) · produção na **v5.9.3** (#255 mergeado 09/09 às 15h33); **migration `0267` (v5.9.4) já APLICADA** em 09/09 ~21h45 — próxima livre **0268**; próximo ADR livre **0173** (a v5.9.4 tomou o **0172**). v5.9.3: ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+
+🟡 **v5.9.4 FECHADA, PR ABERTO** (branch `fix/v5-9-4-varredura-divida`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v5-9-4_Varredura_Divida.md`) — varredura de dívida em três
+frentes. **Migration `0267` (aditiva) APLICADA** em 09/09 com gate verde: `monde_ingest_promover`
+preserva `sale_id` (COALESCE) e `get_executiva_kpis` aceita `metas/acompanhamento` **no `PERFORM`
+do wrapper** (o helper `app.areas_do_setor` tem 15 consumidoras — não foi tocado). **ADR-0172**
+(as-built da API externa; 0158–0161 supersedidos) + Emenda ao ADR-0099. **1193 testes** (de 1185).
+1. **Primitivo `GatilhoAjuda`** (`src/components/ui/gatilho-ajuda.tsx`) + **sonda**
+   `gatilho-ajuda.test.ts` que reprova `>?</span>` e `>?</button>` fora do primitivo — vista vermelha
+   com **7 spans + 6 buttons** (o briefing contava 7 + 2), verde após a varredura dos 13 call-sites.
+   `faturamento-corp` era o 8º defeito (span `aria-hidden` sem irmão focável). Skill
+   `ui-design-system` §2 reescrita para o primitivo.
+2. **RPCs do float com contrato** (`schemas-float.ts` + `parseRpc`, degradação preservada) e nota
+   teórica em constante única (`lib/weddings/textos.ts`).
+3. **Removidos** o parser órfão `parse-contas-pagar-receber.ts` e 6 assets de template em `public/`.
+Prova da 0267: transação REVERTIDA via `pg` (sale_id preservado; usuário só-Metas lê KPIs e segue
+negado em `get_mix_setor`); REST service_role 200 / anon 401. Revisores: sem CRÍTICO/ALTO/MÉDIO.
+Visual ao vivo (Claude in Chrome): 14 dos 17 gatilhos — balão abre pelo foco com o mouse longe.
+🔴 **Pendente (Yan):** merge do PR; Tab até o "?" no modal de nova solicitação, no Faturamento Corp e
+no inventário de Gestão de Pessoas (não exercitados ao vivo); `/metas` com usuário só-Metas; tripwire
+Monde verde na rodada seguinte; ler o ADR-0172 contra produção. Registrado fora do escopo: `RpcFrouxa`
+redeclarado 3×; `public/favicon.ico` órfão.
 
 ✅ **v5.9.3 EM PRODUÇÃO** (#255, 09/09 15h33) — cinco pedidos do Yan depois de ver a
 v5.9.2 no ar. **Migration `0266` (aditiva) APLICADA** em 09/09 com gate verde e verificada via REST
