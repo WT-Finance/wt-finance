@@ -34,6 +34,9 @@ async function emTransacaoRevertida<T>(f: (c: Cliente) => Promise<T>): Promise<T
     new pg.Client({ connectionString: DB_URL })
   await c.connect()
   await c.query('BEGIN')
+  // Dois `npm test` concorrentes (duas worktrees, mesmo banco) disputariam o lock das mesmas
+  // linhas; sem isto o teste TRAVARIA até o timeout do runner. Falhar rápido é o certo.
+  await c.query(`SET LOCAL lock_timeout = '5s'`)
   try { return await f(c) } finally {
     await c.query('ROLLBACK')
     await c.end()
