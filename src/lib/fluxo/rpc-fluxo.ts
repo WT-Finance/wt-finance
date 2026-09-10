@@ -1,19 +1,12 @@
 import { z } from 'zod'
-import type { ServerClient } from '@/lib/supabase/server'
-import type { RpcLike } from '@/lib/rpc'
 
-// RPCs do Fluxo de Caixa v5.2.0/Onda 1 (M4) — não estão em src/types/database.ts (mesma
-// convenção de acervo/faturamento/solicitações/metas: helper de tipagem frouxa em vez de
-// regenerar/editar o database.ts congelado). O SHAPE do retorno é validado por parseRpc
-// (@/lib/schemas-rpc) no call-site, com os schemas Zod abaixo.
-export function rpcFluxo(
-  db: ServerClient,
-  fn: string,
-  args: Record<string, unknown> = {},
-): Promise<RpcLike> {
-  const call = db.rpc as unknown as (f: string, a: Record<string, unknown>) => Promise<RpcLike>
-  return call.call(db, fn, args)
-}
+// Schemas Zod das RPCs do Fluxo de Caixa (v5.2.0/Onda 1, M4). O SHAPE do retorno é
+// validado por parseRpc (@/lib/schemas-rpc) no call-site.
+//
+// v5.10.0: o helper `rpcFluxo` que morava aqui foi APAGADO — não tinha nenhum
+// chamador (nem neste arquivo). O comentário que ele carregava dizia que estas RPCs
+// "não estão em src/types/database.ts": deixou de ser verdade quando o arquivo passou
+// a ser GERADO (ADR-0173) — as oito estão lá, tipadas.
 
 // ── get_repasse_mensal(p_ano) → RepasseMensalRow[] ───────────────────────────
 // sal = repasse BRUTO (Entrada Clientes − Pagto Fornecedor). pct/pct_ant podem ser
