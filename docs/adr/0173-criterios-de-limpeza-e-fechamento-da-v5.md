@@ -76,4 +76,34 @@ executável (runbook/ADR) — e estão registrados em `knip.json` para não sere
 
 ## Decisão 3 — o que saiu, o que ficou de propósito
 
-*(a preencher ao final da Fase 2, com as contagens de antes/depois)*
+*(contagens de antes/depois entram no fechamento; o que já está decidido:)*
+
+### Sobreposição deliberada de uma reserva de ADR
+
+O **ADR-0107** guardou a remoção de `get_my_profile()` para uma decisão futura do usuário:
+*"preservar em vez de remover, por política do projeto. Documentados como legado; remoção
+pode ser decidida pelo usuário em versão futura."* A migration destrutiva desta versão
+(0270) a remove. **Isso não é descuido: é o exercício da reserva.** O Yan listou
+`public.get_my_profile` nominalmente no escopo do Bloco 5, e a "versão futura" que o
+ADR-0107 previa é esta.
+
+O registro existe porque a primeira redação da migration quase o perdeu: ela tratou os
+ADRs só pela pergunta "isto é procedimento executável?" — a lição do `getPool`, do Bloco 1
+— e com isso passou por cima do **conteúdo** da decisão. O `revisor-db` levantou como
+achado ALTO, e com razão: a régua do core é "decisão de produto é do usuário; na dúvida,
+é produto", e um ADR que reserva algo *para o usuário* é produto por definição. A lição
+mais geral que o caso: **ao encontrar um ADR citando o objeto que se vai remover, a
+pergunta não é só se ele é executável — é se ele contém uma decisão sobre aquele objeto.**
+
+`app.usuarios` e `app.convites`, citadas no mesmo parágrafo do ADR-0107, **continuam
+intocadas**: nenhuma entrou no escopo da triagem.
+
+### O que ficou de propósito, e por quê
+
+| objeto | por que fica |
+|---|---|
+| `public.admin_set_enforcement` | kill switch de emergência, sem chamador **por desenho** (runbook v4-13). Ganhou `COMMENT` na 0269 justamente para a próxima varredura de código morto não propor o DROP |
+| `public.get_decomposicao_bloco` | tem consumidor vivo: 3 casos de contrato em `rpc-contrato.test.ts` e o `decomposicaoBlocoSchema`. Sai só depois do ciclo remover-código → deployar → dropar |
+| `public.get_sumario_subsetor` | viva na Performance de Weddings. Compartilha o núcleo com a `metas_sumario_subsetor` que saiu — nome parecido, função diferente |
+| as 12 funções com `postgres=X/postgres` | já tinham `PUBLIC` revogado pela 0122; conceder-lhes `service_role`, como a leitura literal do D2-010 pedia, teria **alargado** acesso |
+| ADRs supersedidos | regra 4 do briefing: ADR é histórico, não sai — ganha marcador |
