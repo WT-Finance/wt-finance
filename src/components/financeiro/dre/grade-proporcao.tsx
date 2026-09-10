@@ -1,7 +1,7 @@
 'use client'
 
 import { ResponsiveContainer, LineChart, Line, Tooltip } from 'recharts'
-import Tooltipzinho from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import {
   ChartGrid, ChartXAxisCategoria, ChartYAxisPct, CustomTooltip,
   chartMargins, strokeWidths,
@@ -210,17 +210,11 @@ export default function GradeProporcao({ series }: Props) {
           <h2 className="text-[15px] font-semibold text-text-primary">
             Proporção sobre a Receita Bruta
           </h2>
-          {/* `<button type="button">`, nunca `<span>`: o balão abre no FOCO e um `span`
-              fica fora do tab-order (skill ui-design-system §2). */}
-          <Tooltipzinho conteudo={AJUDA} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-            <button
-              type="button"
-              aria-label={`Proporção sobre a Receita Bruta: ${AJUDA}`}
-              className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
-            >
-              ?
-            </button>
-          </Tooltipzinho>
+          <GatilhoAjuda
+            rotulo="Proporção sobre a Receita Bruta"
+            texto={AJUDA}
+            classNameBalao="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug"
+          />
         </div>
         <p className="text-[11px] text-text-subtle">Por regime de competência</p>
       </div>

@@ -215,7 +215,7 @@ import { Fragment, useEffect, useRef, useState, useTransition, type CSSPropertie
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp, Maximize, Minimize } from 'lucide-react'
 import Button from '@/components/ui/button'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
@@ -2004,22 +2004,11 @@ function CabecalhoCard({
           decisão do Yan e o alinhamento voltou ao original. */}
       <div className="flex items-center gap-1.5">
         <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
-        {/* Mesmo idioma de ajuda do Resumo Executivo (e de posicao-projetado/repasse-mensal).
-            `!whitespace-normal` é obrigatório: o balão nasce `whitespace-nowrap` e, sem o `!`,
-            quem decide é a ORDEM DO CSS GERADO — não a ordem das classes. */}
-        {/* O gatilho é `<button type="button">`, NUNCA `<span>` (receita da skill
-            ui-design-system §2): `span` não entra no tab-order, e o `Tooltip` abre no hover
-            E NO FOCO — sem gatilho focável essa metade não serve para nada. Achado ALTO do
-            revisor na v5.4.2, reintroduzido aqui em código novo e pego de novo na v5.7.0. */}
-        <Tooltip conteudo={PREFIXO_AJUDA} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-          <button
-            type="button"
-            aria-label={`Prefixo das linhas: ${PREFIXO_AJUDA}`}
-            className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
-          >
-            ?
-          </button>
-        </Tooltip>
+        <GatilhoAjuda
+          rotulo="Prefixo das linhas"
+          texto={PREFIXO_AJUDA}
+          classNameBalao="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug"
+        />
       </div>
     </div>
   )

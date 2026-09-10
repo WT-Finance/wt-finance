@@ -9,7 +9,7 @@
 import { useRef, useState, useCallback, useMemo } from 'react'
 import { Upload, Loader2, AlertTriangle, ShieldAlert, FlaskConical, CheckCircle2, ExternalLink, FileText, RefreshCw, Barcode, Mail } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import ModalCentral from '@/components/shared/modal-central'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { ValorContabil } from '@/components/shared/valor-contabil'
@@ -738,17 +738,16 @@ function LinhaResultadoNota({ item, status }: { item: ItemNota; status?: NotaSta
 // A explicação que ficava na legenda ao pé da tabela vive AQUI (dica sob demanda). `abreEsquerda`
 // abre o balão para a esquerda (coluna colada à borda direita, não vaza do container rolável).
 function CabecalhoAjuda({ titulo, ajuda, abreEsquerda = false }: { titulo: string; ajuda: string; abreEsquerda?: boolean }) {
-  // !whitespace-normal (important): o primitivo Tooltip aplica `whitespace-nowrap` na base; sem o
-  // `!`, o texto longo da dica NÃO quebrava e virava uma linha gigante INVISÍVEL (visibility:hidden)
-  // que transbordava à direita → barra de rolagem horizontal com "espaço vazio". Forçar o wrap zera
-  // o overflow (medido: 313px → 0px). Ver DS §7. (v4.38.0/ajuste)
   return (
-    <Tooltip conteudo={ajuda} className={`z-30 w-60 !whitespace-normal font-normal leading-snug ${abreEsquerda ? '!left-auto right-0' : ''}`}>
-      <span className="inline-flex items-center gap-1">
-        {titulo}
-        <span aria-hidden className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
-      </span>
-    </Tooltip>
+    <span className="inline-flex items-center gap-1">
+      {titulo}
+      <GatilhoAjuda
+        rotulo={titulo}
+        texto={ajuda}
+        classNameBalao="z-30 w-60 !whitespace-normal font-normal leading-snug"
+        ancoraDireita={abreEsquerda}
+      />
+    </span>
   )
 }
 

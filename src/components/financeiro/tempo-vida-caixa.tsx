@@ -1,5 +1,5 @@
 import { fmtAxisMes } from '@/lib/fmt'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { calcularCobertura, type CoberturaEstimativa } from '@/lib/fluxo/cobertura'
 import type { CoberturaData } from '@/lib/fluxo/rpc-fluxo'
 
@@ -109,13 +109,11 @@ export default function TempoVidaCaixa({ data }: Props) {
       <div className="mb-2">
         <div className="flex items-center gap-1.5">
           <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Runway de Caixa</h3>
-          {/* Botão "?" de explicação — mesmo padrão do resto da plataforma (Tooltip + círculo). */}
-          <Tooltip
-            conteudo={`Recebíveis em aberto ÷ saída média mensal (${janela}, n=${calc.n}) · IC 95% via t de Student · "com antecipação" desconta a taxa média de 4% dos recebíveis · régua com o que está lançado hoje — não inclui saldo bancário nem vendas futuras.`}
-            className="z-30 w-72 !whitespace-normal font-normal leading-snug"
-          >
-            <span aria-label="Como o Runway de Caixa é calculado" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
-          </Tooltip>
+          <GatilhoAjuda
+            rotulo="Runway de Caixa"
+            texto={`Recebíveis em aberto ÷ saída média mensal (${janela}, n=${calc.n}) · IC 95% via t de Student · "com antecipação" desconta a taxa média de 4% dos recebíveis · régua com o que está lançado hoje — não inclui saldo bancário nem vendas futuras.`}
+            classNameBalao="z-30 w-72 !whitespace-normal font-normal leading-snug"
+          />
         </div>
         <div className="flex items-baseline gap-2 mt-1">
           <span className="text-3xl font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>

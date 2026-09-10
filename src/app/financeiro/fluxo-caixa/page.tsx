@@ -15,7 +15,7 @@ import RunwaySemanal from '@/components/financeiro/runway-semanal'
 import HorizontePrevisto from '@/components/financeiro/horizonte-previsto'
 import RepasseMensal from '@/components/financeiro/repasse-mensal'
 import PosicaoProjetado from '@/components/financeiro/posicao-projetado'
-import UiTooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import TempoVidaCaixa from '@/components/financeiro/tempo-vida-caixa'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, saldoCaixaSchema,
@@ -66,11 +66,7 @@ function KpiCelula({ label, value, tooltip, valueColor, primeiro = false }: {
     <div className={`flex-1 min-w-[150px] ${primeiro ? 'pr-7' : 'px-7 border-l border-zinc-100'}`}>
       <p className="text-2xs font-semibold uppercase tracking-wide inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
         {label}
-        {tooltip && (
-          <UiTooltip conteudo={tooltip} className="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-            <span aria-label={`Ajuda sobre ${label}`} className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
-          </UiTooltip>
-        )}
+        {tooltip && <GatilhoAjuda rotulo={label} texto={tooltip} />}
       </p>
       <p className="text-2xl font-bold tabular-nums mt-1" style={{ color: valueColor ?? 'var(--text-primary)' }}>{value}</p>
     </div>

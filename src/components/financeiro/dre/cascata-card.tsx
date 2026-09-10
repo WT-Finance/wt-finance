@@ -1,6 +1,6 @@
 'use client'
 
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { GraficoCascata, alturaCascata } from '@/components/charts'
 import type { Cascata } from '@/lib/dre/cascata'
 
@@ -33,17 +33,11 @@ export default function CascataCard({ titulo, subtitulo, ajuda, cascata }: Props
       <div className="mb-4">
         <div className="mb-1 flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
-          {/* `<button type="button">`, nunca `<span>`: o balão também abre no FOCO, e um
-              `span` fica fora do tab-order (receita da skill ui-design-system §2). */}
-          <Tooltip conteudo={ajuda} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-            <button
-              type="button"
-              aria-label={`${titulo}: ${ajuda}`}
-              className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
-            >
-              ?
-            </button>
-          </Tooltip>
+          <GatilhoAjuda
+            rotulo={titulo}
+            texto={ajuda}
+            classNameBalao="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug"
+          />
         </div>
         <p className="text-[11px] text-text-subtle">{subtitulo}</p>
       </div>

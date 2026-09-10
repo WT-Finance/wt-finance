@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import Badge from '@/components/ui/badge'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { fmtMi, fmtBRL2, fmtDate, hojeSP, diasDesde, rotuloStaleness } from '@/lib/fmt'
 import { InputMoeda } from '@/components/shared/input-moeda'
 import { atualizarSaldoCaixaAction } from '@/app/financeiro/fluxo-caixa/actions'
@@ -247,11 +247,7 @@ function KpiJanela({ label, valor, cor, tooltip, primeiro = false }: {
   const rotulo = (
     <p className="text-2xs font-semibold uppercase tracking-wide inline-flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
       {label}
-      {tooltip && (
-        <Tooltip conteudo={tooltip} className="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-          <span aria-label={`Ajuda sobre ${label}`} className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
-        </Tooltip>
-      )}
+      {tooltip && <GatilhoAjuda rotulo={label} texto={tooltip} />}
     </p>
   )
   return (

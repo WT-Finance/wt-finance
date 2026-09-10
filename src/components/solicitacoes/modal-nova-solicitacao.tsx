@@ -8,7 +8,7 @@ import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import CamposDinamicos, { type AnexoLocal } from './campos-dinamicos'
 import { Input, Select, Textarea } from '@/components/ui/field'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { criarSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import type { TipoAbertura, Destinatarios } from '@/lib/solicitacoes/schemas'
 
@@ -126,15 +126,15 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
           <div>
             <label htmlFor="ns-data" className="block text-xs font-medium text-zinc-600 mb-1">
               Data limite <span className="text-danger">*</span>
-              {/* "?" discreto → dica on-hover (mesmo padrão dos cabeçalhos do Faturamento, v4.38). */}
-              {/* Abre à ESQUERDA (!left-auto right-0): a coluna Data limite fica à direita do
+              {/* Abre à ESQUERDA (ancoraDireita): a coluna Data limite fica à direita do
                   modal e o balão vazava/era recortado pelo viewport rolável. (v5.1.1) */}
-              <Tooltip
-                conteudo="Data limite para resposta da solicitação. Prazo padrão de 3 dias."
-                className="z-30 w-56 !whitespace-normal font-normal leading-snug !left-auto right-0"
-              >
-                <span aria-label="Ajuda sobre a data limite" className="ml-1 inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
-              </Tooltip>
+              <GatilhoAjuda
+                rotulo="Data limite"
+                texto="Data limite para resposta da solicitação. Prazo padrão de 3 dias."
+                classNameBalao="z-30 w-56 !whitespace-normal font-normal leading-snug"
+                ancoraDireita
+                className="ml-1"
+              />
             </label>
             <Input id="ns-data" type="date" value={dataLimite} onChange={e => setDataLimite(e.target.value)} />
           </div>
