@@ -1,5 +1,5 @@
 /**
- * Barrel dos primitivos de gráfico — WT Finance Design System (v4.8 / M4).
+ * Barrel dos primitivos de gráfico — Janus Design System (v4.8 / M4).
  *
  * Ponto de importação único para gráficos e drawers (M5/M6):
  *   import {

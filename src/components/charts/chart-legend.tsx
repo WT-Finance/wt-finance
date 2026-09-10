@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Legenda padronizada de gráficos — WT Finance Design System (v4.8 / M4).
+ * Legenda padronizada de gráficos — Janus Design System (v4.8 / M4).
  *
  * Substitui as legendas HTML manuais (FluxoLegend / AcumuladoLegend / LegendItem)
  * espalhadas pelos gráficos. Renderize FORA do ResponsiveContainer, abaixo do

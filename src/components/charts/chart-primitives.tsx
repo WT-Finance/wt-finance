@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Primitivos de gráfico — WT Finance Design System (v4.8 / M4).
+ * Primitivos de gráfico — Janus Design System (v4.8 / M4).
  *
  * Encapsulam o "tom discreto" da plataforma (grade tracejada sutil, linha do
  * zero forte, eixos sem axisLine, ticks abreviados). Consumidos pelos gráficos

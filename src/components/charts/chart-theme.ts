@@ -1,5 +1,5 @@
 /**
- * Tema central de gráficos — WT Finance Design System (v4.8 / M4).
+ * Tema central de gráficos — Janus Design System (v4.8 / M4).
  *
  * Fonte única de verdade para cores, dimensões e padrões dos gráficos Recharts.
  * Todas as cores apontam para tokens CSS (`var(--*)` de `src/styles/tokens.css`).

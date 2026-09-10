@@ -85,6 +85,12 @@ const TOOLTIP_MARGEM_TEORICA =
  */
 const STALENESS_MESES = 2
 
+// Preferência de linhas por página (por navegador). A chave foi renomeada na
+// v5.10.0/D9-014 — `LS_PAGE_SIZE_LEGADO` é lida uma única vez para herdar o valor
+// de quem já tinha a preferência salva sob o nome antigo (pré-rebranding Janus).
+const LS_PAGE_SIZE        = 'janus-lista-operacoes-page-size'
+const LS_PAGE_SIZE_LEGADO = 'wt-finance-lista-operacoes-page-size'
+
 /** Aviso a acrescentar ao tooltip quando a ingestão do CDI está atrasada. */
 function avisoStaleness(taxaVigenteMes: string | null | undefined): string {
   if (!taxaVigenteMes) return ''
@@ -246,7 +252,20 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
 
   const [pageSize, setPageSize] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('wt-finance-lista-operacoes-page-size') ?? '10', 10)
+      // v5.10.0/D9-014: a chave passou de `wt-finance-*` (nome pré-rebranding) para
+      // `janus-*`. Migração one-shot: se a nova ainda não existe mas a antiga sim,
+      // herda o valor e apaga a antiga — sem isso o usuário perde a preferência
+      // salva, que seria mudança de comportamento observável.
+      const salvo = localStorage.getItem(LS_PAGE_SIZE)
+        ?? (() => {
+          const antigo = localStorage.getItem(LS_PAGE_SIZE_LEGADO)
+          if (antigo !== null) {
+            localStorage.setItem(LS_PAGE_SIZE, antigo)
+            localStorage.removeItem(LS_PAGE_SIZE_LEGADO)
+          }
+          return antigo
+        })()
+      return parseInt(salvo ?? '10', 10)
     }
     return 10
   })
@@ -367,7 +386,7 @@ export default function ListaOperacoesCard({ onSelectOperacao }: Props) {
   function handlePageSizeChange(value: string) {
     const size = parseInt(value, 10)
     setPageSize(size)
-    localStorage.setItem('wt-finance-lista-operacoes-page-size', value)
+    localStorage.setItem(LS_PAGE_SIZE, value)
     setPagina(1)
   }
 

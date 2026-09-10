@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 // ── <Tooltip> — dica on-hover de UI (v4.26 / Fase B) ──────────────────────────
-// Balão CSS-puro (sem dependência), tom escuro (zinc-800), igual ao do KpiCard.
+// Balão CSS-puro (sem dependência), tom escuro (`--tooltip-bg`), igual ao do KpiCard.
 // Aparece no hover/foco do gatilho (group/tip). NÃO confundir com o CustomTooltip
 // de Recharts (gráficos). Para dica de texto curta em rótulos/ícones de UI.
 //
@@ -29,7 +29,7 @@ export default function Tooltip({ children, conteudo, posicao = 'baixo', classNa
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute left-0 ${pos} z-20 invisible rounded bg-zinc-800 px-2 py-1 text-2xs text-white whitespace-nowrap shadow-lg group-hover/tip:visible group-focus-within/tip:visible ${className}`}
+        className={`pointer-events-none absolute left-0 ${pos} z-20 invisible rounded bg-[var(--tooltip-bg)] px-2 py-1 text-2xs text-white whitespace-nowrap shadow-lg group-hover/tip:visible group-focus-within/tip:visible ${className}`}
       >
         {conteudo}
       </span>

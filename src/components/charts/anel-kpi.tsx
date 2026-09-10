@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Anel de destaque — WT Finance Design System (v5.6.1).
+ * Anel de destaque — Janus Design System (v5.6.1).
  *
  * Primitivo GENÉRICO (sem semântica de metas): um círculo de contorno, sem
  * preenchimento/track de fundo (não é indicador de progresso — não recebe %),
