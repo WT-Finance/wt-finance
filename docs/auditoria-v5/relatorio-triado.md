@@ -52,28 +52,28 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | D1-002 | descartar | idem, `scripts/db-gate/exportar.mjs` (chamada por `execFileSync`) |
 | D1-003 | descartar | idem, `dre-oracle.mjs`; registrar como utilitário de verificação no `estado-do-projeto.md` |
 | D1-004 | descartar | **manter** o script: regenera artefato a partir da fonte (critério do Yan). Uma linha no `estado-do-projeto.md` |
-| D1-005 | **agir agora** | apagar: one-off já executado e defeito fechado pela `0220` |
-| D1-006 | **agir agora** | apagar `collapsible-section.tsx` |
-| D1-007 | **agir agora** | apagar componente + `decomposicaoBlocoSchema`; **e** avaliar `get_decomposicao_bloco` (0209) na destrutiva — o caminho de volta caducou com a acumulação da v5.9.2 |
-| D1-008 | **agir agora** | apagar `mockup-dados.ts` (condição de produto cumprida) |
-| D1-009 | **agir agora** | apagar componente **e** a linha do catálogo em `/admin/design-system` |
-| D1-010 | **agir agora** | apagar `layout/header.tsx` |
-| D1-011 | **agir agora** | apagar os dois juntos |
-| D1-012 | **agir agora** | apagar os 6 scripts; **recontar o mapa RPC→chamadores depois deste commit e antes da destrutiva** |
+| D1-005 | **agir agora** | feito em f43d493 · prova: grep -rn "limpeza-anexos" → só auto-referências no cabeçalho |
+| D1-006 | **agir agora** | feito em f43d493 · prova: grep -rn "collapsible-section|CollapsibleSection" src supabase scripts → vazio |
+| D1-007 | **agir agora** | PARCIAL em f43d493 · componente apagado (prova: único hit era o comentário em dre/page.tsx:44, reescrito). O decomposicaoBlocoSchema FICA: é usado por rpc-contrato.test.ts:1058,1075,1099 — sai junto com o DROP da RPC no Bloco 5 |
+| D1-008 | **agir agora** | feito em f43d493 · prova: grep -rn "mockup-dados|mockupDados" → só menção histórica em tabela-dre.tsx:7 |
+| D1-009 | **agir agora** | feito em f43d493 · prova: único hit era o catálogo em admin/design-system/page.tsx:496, removido junto |
+| D1-010 | **agir agora** | feito em f43d493 · prova: grep -rn "layout/header|from './header'" src → vazio |
+| D1-011 | **agir agora** | feito em f43d493 · prova: grep -rn "margem-drawer|MargemDrawer" src → só uso cruzado entre os dois |
+| D1-012 | **agir agora** | feito em f43d493 · prova: grep -rnE "seed/(check-andressa|diag|test-m4|test-operacoes|validate-0026|validate-m1)" em package.json src scripts supabase docs .claude CLAUDE.md → vazio. ⚠️ recontar o mapa RPC→chamadores antes do Bloco 5 |
 | D1-013 | descartar | **manter** `seed-fluxo-caixa.ts` (chama RPCs vivas; único caminho de popular local) |
-| D1-014 | **agir agora** | = D6-002, ação única |
-| D1-015 | **agir agora** | remover `export` supérfluo |
-| D1-016 | **agir agora** | remover as 2 funções e as linhas do barrel (sem call-site; API "para uso futuro" é código morto com esperança) |
-| D1-017 | **agir agora** | remover só o `export`; **não tocar** o comentário de design das linhas 30-44 |
-| D1-018 | **agir agora** | idem |
-| D1-019 | **agir agora** | idem |
-| D1-020 | **agir agora** | grep no ato; se morto, apagar as 4 funções |
+| D1-014 | **agir agora** | feito em a45fee4 (junto de D6-002) · declarado 8.59.1, a versão já resolvida |
+| D1-015 | **agir agora** | PARCIAL em f43d493 · só limparTopLevel e getPool. CORRIGE O RELATÓRIO: SCHEMAS, qJson, colunasNaoGeradas e pgCopyOut são importados por scripts/db-gate/exportar.mjs:19 — o knip os deu como mortos porque marcou o próprio exportar.mjs como não usado (falso positivo em cascata) |
+| D1-016 | **agir agora** | PARCIAL em f43d493 · ChartReferenceLineY apagada (0 uso; linha de doc do design-system removida junto). CORRIGE O RELATÓRIO: listMonths NÃO foi apagada — é o motor do fillMonths (fill-months.ts:56); só perdeu o export e saiu do barrel |
+| D1-017 | **agir agora** | feito em f43d493 · os 10 sub-schemas perderam o export (0 consumidor externo cada); comentário de design 30-44 intocado |
+| D1-018 | **agir agora** | PARCIAL em f43d493 · 6 schemas internos desexportados. rpcFluxo + HorizonteMes/HorizonteAno/RunwaySemana/SaldoRepasse: o lint provou MORTOS por inteiro (0 externo E 0 interno) — export restaurado, apagá-los é mais que "remover o export" → SUA DECISÃO |
+| D1-019 | **agir agora** | PARCIAL em f43d493 · 4 schemas internos desexportados. CustomField/Passenger/SaleListItem/SalesListResponse/SaleDetailResponse: mortos por inteiro, export restaurado → SUA DECISÃO |
+| D1-020 | **agir agora** | PARCIAL em f43d493 · CORRIGE O RELATÓRIO: só 2 das 4 eram mortas (formatarPeriodo, resolverPeriodoFromParams — apagadas, com os imports getMonth/getDate que ficaram órfãos). calcularPeriodoAnteriorInteligente e calcularYoYInteligente são usadas por resolverPeriodoCompleto (linhas 235-236): só perderam o export |
 | D1-021 | **backlog v6** | ~29 interfaces de `types/api.ts`; junto de B-05 (tipagem) |
 | D1-022 | **backlog v6** | congelado; junto de B-05 |
-| D1-023 | **agir agora** | uma missão, regra dura: **remove só o `export`**, nunca a função; símbolo ambíguo fica e vai para o backlog |
+| D1-023 | **agir agora** | feito em f43d493 · 16 símbolos com uso interno comprovado perderam só o export. 3 ficam (só a definição, sem uso): atualizarObsMovimentacao (Server Action), SumarioExecutivoSkeleton, CLIENTES_COLUNAS → backlog |
 | D1-024 | descartar | falso positivo confirmado |
-| D1-025 | **agir agora** | consolidar o export duplicado |
-| D1-ferramenta | **agir agora** | declarar `knip` e `depcheck` como devDependencies + `knip.json` com as 5 exceções de G6 — a auditoria será repetida no fechamento da v6 e re-derivar os falsos positivos custa uma sessão |
+| D1-025 | **agir agora** | NÃO FEITO — premissa falsa. LIMITE_MESES e JANELA_LARGA_FRENTE não são export duplicado: são duas constantes semanticamente distintas com o mesmo valor (36), AMBAS vivas (JANELA_LARGA_FRENTE em weddings-content.tsx:14,61,70; LIMITE_MESES em janela-fluxo.test.ts). Consolidar removeria um nome em uso → SUA DECISÃO |
+| D1-ferramenta | **agir agora** | feito em f43d493 · knip e depcheck como devDependencies + knip.json com as exceções (hooks, exportar.mjs, dre-oracle.mjs, gera-seed-dre-competencia.mjs, seed-fluxo-caixa.ts, Tailwind) |
 
 ## D2 — Banco: objetos
 
@@ -104,7 +104,7 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | D3-002 | **backlog v6** | B-11 |
 | D3-003 | **backlog v6** | B-11 |
 | D3-004 | **backlog v6** | B-10 |
-| D3-005 | **agir agora** | mover `buscarUltimaSincronizacaoMonde()` para dentro do `Promise.all` |
+| D3-005 | **agir agora** | feito em 6a4db84 · buscarUltimaSincronizacaoMonde() virou o 5º elemento do Promise.all; não recebe argumento nem lê resultado das outras chamadas, e já era fail-safe → null |
 | D3-006 | **backlog v6** | B-12 |
 | D3-007 | **backlog v6** | B-09 |
 
@@ -112,17 +112,17 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 
 | id | triagem | nota |
 |---|---|---|
-| D4-001 | **agir agora (só a medição)** | spike: substituir por `gen types`, rodar `tsc --noEmit`, **contar erros**. Zero erros ⇒ adota nesta versão. Erros ⇒ restaura, e a decisão "congelado + helper" vira convenção declarada no ADR de fechamento; aplicação vai para B-05 |
+| D4-001 | **agir agora (só a medição)** | SPIKE feito (medição, arquivo restaurado idêntico ao HEAD): 4 erros, todos TS2322 da MESMA classe — nulidade mais estrita no tipo gerado. admin/acessos/actions.ts:108 e weddings/operacoes/route.ts:43,44,46. Não é zero → adoção fica para SUA DECISÃO (adotar com 4 ajustes, ou declarar "congelado + helper" no ADR) |
 | D4-002 | descartar | registrar como não-exaustivo |
 | D4-003 | descartar | — |
 | D4-004 | descartar | tratado em D2 |
 | D4-005 | descartar | padrão são |
-| D4-006 | **agir agora** | `parseRpc(mixProdutoSchema, …)` + caso de contrato (schema já existe e já é usado pelo vizinho) |
+| D4-006 | **agir agora** | feito em a3823fd · parseRpc(mixProdutoSchema) no molde de tendencia-margem/route.ts:29-31. Caso de contrato JÁ existia (rpc-contrato.test.ts:65 e :297) — não precisou de teste novo |
 | D4-007 | **backlog v6** | B-07 (8 schemas novos) |
-| D4-008 | **agir agora** | `drilldownOperacaoSchema` + `parseRpc` + caso de contrato |
+| D4-008 | **agir agora** | NÃO FEITO → SUA DECISÃO. Exige escrever árvore de schema NOVA (VisaoFinanceira com 14 campos + DecomposicaoSubsetorItem + AcumuladoMensalItem) e não há caso de contrato hoje (grep get_operacao_weddings em rpc-contrato.test.ts → vazio). Além disso a RPC devolve OU o drilldown OU {error} que a rota vira 404 (route.ts:57-60): parseRpc estrito antes dessa checagem transformaria 404 em 500 |
 | D4-009 | **backlog v6** | B-06 |
 | D4-010 | **backlog v6** | junto de B-06 |
-| D4-011 | **agir agora** | `any` → `unknown` nos 2 helpers locais |
+| D4-011 | **agir agora** | feito em a3823fd · os 2 helpers Rpc locais passaram a data: unknown (o de monde também tinha error: any). Consequência: gerencial/import estreita explicitamente no único ponto que lê o resumo; os ?? de fallback não mudaram |
 | D4-012 | descartar | padrão sancionado |
 | D4-013 | descartar | narrowing comum |
 | D4-014 | descartar | = D1-017 |
@@ -133,9 +133,9 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | id | triagem | nota |
 |---|---|---|
 | D5-001 | **backlog v6** | B-08 (redesenho do carregamento da DRE) |
-| D5-002 | **agir agora** | **exceção deliberada à regra 1 do briefing**: corrigir **e escrever o teste**. É o único bug latente com efeito de negócio direto (solicitação fica pendente para sempre, ninguém é avisado) |
-| D5-003 | **agir agora** | mesmo bloco de D5-002 |
-| D5-004 | **agir agora** | = D7-004 = B-14. **Reincidente** (M10 em 13/06, idêntico) — a reincidência promove de "se triado" para agora |
+| D5-002 | **agir agora** | feito em 396f4c0 · { error } checado, avisoParcial no retorno. Teste src/app/admin/acessos/actions.test.ts com PROVA VERMELHA: revertendo a correção, 2 failed | 3 passed |
+| D5-003 | **agir agora** | feito em 396f4c0 · mesmo commit e mesmo teste de D5-002 |
+| D5-004 | **agir agora** | feito em 396f4c0 · sonda src/lib/sonda-skipif-silencioso.test.ts (inventário fechado dos 4 arquivos gated). PROVA VERMELHA: sem .env.local e com REQUIRE_CONTRACT=1, acusa SUPABASE_DB_URL, SUPABASE_SERVICE_ROLE_KEY e SUPABASE_URL. Cobre o furo do guard antigo, que só via rpc-contrato e 2 variáveis |
 | D5-005 | descartar | corrigir só a metodologia do inventário |
 | D5-006 | descartar | best-effort consistente |
 | D5-007 | descartar | degradação por construção |
@@ -145,12 +145,12 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | id | triagem | nota |
 |---|---|---|
 | D6-001 | descartar | falso positivo; anotar no `depcheck` |
-| D6-002 | **agir agora** | declarar `@typescript-eslint/parser` (= D1-014) |
+| D6-002 | **agir agora** | feito em a45fee4 · @typescript-eslint/parser declarado como devDependency exata 8.59.1 (era peer transitiva de eslint-config-next). Sonda que o usa: 14/14 verde |
 | D6-003 | **fora — patch 1** | ver "três patches de segurança" |
 | D6-004 | **fora — patch 3** | idem |
 | D6-005 | **fora — patch 2** | idem |
 | D6-006 | **fora — patch 1** | cascata do `next` + `audit fix` sem major |
-| D6-007 | **agir agora** | só o patch 0.10.3; 0.12 → B-04 |
+| D6-007 | **agir agora** | feito em a45fee4 · só o patch 0.10.2 → 0.10.3; 0.12 segue em B-04 |
 | D6-008 | **backlog v6** | B-04 |
 | D6-009 | descartar | registrar a **rotina periódica** no `estado-do-projeto.md` (ver E8) |
 | D6-010 a D6-014 | descartar | checks limpos |
@@ -159,14 +159,14 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 
 | id | triagem | nota |
 |---|---|---|
-| D7-001 | **agir agora** | `describe.concurrent` nos blocos independentes + **medir**; 54 s é metade da suíte, rodada várias vezes por dia. Reverter se o ganho for marginal |
+| D7-001 | **agir agora** | APLICADO, MEDIDO e REVERTIDO · antes 43,32s / depois 40,95s / depois (2ª) 57,70s. A variância entre rodadas idênticas (~17s) é muito maior que o ganho (2,4s): o tempo é latência de rede das 140 requisições contra produção. Sem ganho demonstrável e com carga concorrente em RPC de produção → revertido pela regra do bloco |
 | D7-002 | descartar | contrato §6 cumprido |
 | D7-003 | descartar | sonda exata; gatilho em 3/4 |
-| D7-004 | **agir agora** | = D5-004 |
+| D7-004 | **agir agora** | feito em 396f4c0 · = D5-004 |
 | D7-005 | descartar | sem duplicação real |
 | D7-006 | **backlog v6** | B-13 (corpus de fixtures reais) |
 | D7-007 a D7-009 | descartar | checks limpos |
-| D7-010 | **agir agora** | renomear `src/lib/decomposicao-variacao.ts` → `decomposicao-texto.ts` (+ teste), conferindo consumidores |
+| D7-010 | **agir agora** | feito em ec0916e · git mv para decomposicao-texto.ts (+ teste); os 2 consumidores atualizados (decomposicao-variacao-card.tsx:4 e o próprio teste). O irmão da DRE fica como está |
 
 ## D8 — Documentação
 
@@ -206,22 +206,22 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | id | triagem | nota |
 |---|---|---|
 | D9-001 | **backlog v6** | B-01 (1.675 ocorrências) |
-| D9-002 | **agir agora** | token `--tooltip-bg` reproduzindo `zinc-800` **exato** (1 ocorrência, 1 tonalidade, 1:1) |
+| D9-002 | **agir agora** | feito em 6cb3586 · token --tooltip-bg (#27272a) reproduzindo o zinc-800 EXATO; classe passou a bg-[var(--tooltip-bg)]. Zero pixel de diferença por construção |
 | D9-003 | **backlog v6** | B-01: a troca **não é 1:1** (zinc frio × border quente) — muda cor visível |
 | D9-004 | **backlog v6** | B-01: 3 tonalidades + verificação de contraste |
 | D9-005 | **backlog v6** | B-01: 8 tonalidades no `button` |
 | D9-006 | **backlog v6** | B-01 |
-| D9-007 | **agir agora** | `var(--chart-grid)`/`var(--chart-axis-tick)` (tokens existem, é 1:1) |
+| D9-007 | **agir agora** | NÃO FEITO → SUA DECISÃO. A triagem diz "1:1" mas o grep desmente: kpi-detail-drawer usa #f1f5f9 (grid) e #a1a1aa (tick), e os tokens valem #e4e4e7 e #52525b. Trocar escureceria visivelmente grade e rótulos (zinc-400→600), violando "zero mudança observável". Ou aceita a mudança visual, ou cria tokens com os valores atuais (molde do D9-002) |
 | D9-008 a D9-010 | descartar | checks limpos / decisão vigente |
-| D9-011 | **agir agora** | `package.json name` → `janus` (decisão do Yan); conferir no ato que nada consome o campo |
+| D9-011 | **agir agora** | feito em 6cb3586 · package.json name wt-finance-temp → janus; prova: grep -rn "wt-finance-temp" → só a própria linha 2 |
 | D9-012 | descartar | manter `config.toml` |
 | D9-013 | descartar | manter os paths de backup |
-| D9-014 | **agir agora** | renomear a chave **com migração one-shot** (lê a antiga, grava na nova) — sem isso viola "zero mudança observável" |
+| D9-014 | **agir agora** | feito em 6cb3586 · chave → janus-lista-operacoes-page-size COM migração one-shot (lê a antiga, grava na nova, remove a antiga); chaves viraram constantes de módulo |
 | D9-015 | **agir agora** | aditiva: `CREATE OR REPLACE` do **catálogo vivo**, trocando só o texto do `RAISE` |
-| D9-016 | **agir agora** | comentários de cabeçalho → "Janus" |
+| D9-016 | **agir agora** | feito em 6cb3586 · cabeçalhos → Janus em 5 arquivos de charts + tokens.css; prova: grep -rn "WT Finance" nesses caminhos → vazio |
 | D9-017 | descartar | histórico não se emenda |
 | D9-018 | descartar | mistura histórica sem custo; renomear RPC é destrutiva + todos os chamadores ("provavelmente nunca" — B-19 pode sair do backlog) |
-| D9-019 | **agir agora** | = D1-008 |
+| D9-019 | **agir agora** | feito em f43d493 · = D1-008 |
 | D9-020 | descartar | — |
 | D9-021 | descartar | kebab-case 100% |
 
@@ -231,10 +231,10 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 |---|---|---|
 | D10-001 | **agir agora (ato humano)** | **criar** o `deny` de `npx supabase db push` cru + os `allow` estreitos dos gates. O `db-gate` vive no wrapper `npm run db:migrate`; `db push` direto passa **por fora** de classificação, backup-gate e restore-test, e aplica todo o pending — inclusive destrutiva estacionada. Hoje a única proteção é disciplina. Diff pronto no PR; aplicação é do Yan |
 | D10-002 | **agir agora** | nota no `estado-do-projeto.md`: 14 pastas (9 domínio + 3 rituais + 2 externas) |
-| D10-003 | **agir agora** | 6 chaves no `.env.example` (só nome + comentário) |
+| D10-003 | **agir agora** | feito em 93bea0a · as 6 chaves com nome+comentário, nenhuma com valor. Duas eram segredo sem entrada de onboarding (MONDE_API_KEY, CRON_SECRET) |
 | D10-004 | descartar | `.env.local` do Yan, não versionado |
 | D10-005 | descartar | = D1-002 |
-| D10-006 | **agir agora** | `engines.node` + `.nvmrc`; `name` = D9-011 |
+| D10-006 | **agir agora** | feito em 93bea0a · engines.node ">=20.9.0" (PISO, não pin — não troca o runtime da Vercel) + .nvmrc 24. O name saiu em 6cb3586 (D9-011) |
 | D10-007 | descartar | coberto por D8-005 |
 
 ---
@@ -248,7 +248,7 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | E3 | As **8 decisões abertas do Scope B** (margem por produto ser alocação; `operation_id` curado com dono; Pessoas via pedido ao provedor; ordem das ondas; `get_prejuizos` sem paridade; cadência de Pessoas; vocabulário `receitas_alocadas`) | **backlog v6** | decisão do Yan em 10/09: registrar como bloco único, não triar agora |
 | E4 | `monde.venda.raw` **defasado em estrutura**: só 527/28.250 vendas têm o ramo `financial` — qualquer DRE viva pela API exige backfill/re-sync | **backlog v6** | nota no bloco Scope B; evita redescobrir |
 | E5 | Plugin **`superpowers` duplicado** (global v6.2.0 + projeto v5.1.0) faz sessões invocarem **todas as skills em bloco** — custo de contexto em toda sessão | **agir agora (ato humano)** | desativar a cópia do projeto e reavaliar; se o bloco persistir, é o mandato do plugin. Libera o descarte do `sonda-disparo.md` |
-| E6 | **Tokens CSS mortos** (`--surface-soft`, `--surface-strong`, `--primary-bg`) — dimensão que a D9 **não varreu** | **agir agora** | varrer `tokens.css` por token sem referência em `src/`; remover os mortos (com grep no ato) |
+| E6 | **Tokens CSS mortos** (`--surface-soft`, `--surface-strong`, `--primary-bg`) — dimensão que a D9 **não varreu** | **agir agora** | CHECK LIMPO em nenhuma mudança · varredura dos 61 tokens de tokens.css: ZERO mortos. Os 3 nomeados são usados como classe Tailwind (2 usos cada: --surface-soft, --surface-strong, --teorico-soft) e --primary-bg não existe no arquivo. Sem commit por não haver o que mudar |
 | E7 | Cinco `MÉDIA` de 13/06 de estado desconhecido: **M2** `getAdminClient` (service role) para leitura no Fluxo de Caixa · **M3** staging de Vendas sem lock (uploads concorrentes) · **M6** export da Lista trunca em 200 linhas · **M15** `admin.ts` sem `import 'server-only'` · **M17** anexos commitados sob prefixo `tmp/` | **agir agora (só verificar)** | uma missão curta de verificação; cada um vira `agir agora`, `backlog v6` ou `descartar` **com evidência**. Não presumir estado a partir de documento de junho |
 | E8 | **Segurança de dependência não tem dono**: `next` com advisories HIGH e fix em minor apareceu 3× (28/05, 13/06, 10/09); o `skipIf` silencioso 2× | **agir agora (documentar)** | rotina periódica declarada no `estado-do-projeto.md` (`npm audit` + `outdated` no fechamento de cada minor) e CI de PR no backlog (B-16) |
 
