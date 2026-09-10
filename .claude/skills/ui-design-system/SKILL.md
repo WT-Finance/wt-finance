@@ -84,38 +84,35 @@ Canônicos: `Button` (variantes sólido/contorno/ghost/ícone/ícone-borda/livre
 `Tooltip`, `Card`, `Checkbox`. Antes de montar um botão ou campo do zero, procure aqui —
 a divergência visual histórica nasceu de cada tela montar o próprio.
 
-**Afordância "?" de ajuda** (rótulo/cabeçalho que precisa explicar uma definição): bolinha
-`h-3 w-3` com borda `zinc-300` e o "?" em `text-[8px]`, envolvida no primitivo `Tooltip`.
-Receita completa, com os dois detalhes que já custaram caro:
+**Afordância "?" de ajuda** (rótulo/cabeçalho que precisa explicar uma definição): use o
+primitivo `GatilhoAjuda` (`@/components/ui/gatilho-ajuda`) — bolinha `h-3 w-3`, "?" em
+`text-[8px]`, envolvida no `Tooltip`. Nunca reimplemente a receita num call-site.
 
 ```tsx
-<Tooltip conteudo={texto} className="z-30 w-64 !whitespace-normal font-normal leading-snug">
-  <button type="button" aria-label={`${rotulo}: ${texto}`}
-          className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full
-                     border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</button>
-</Tooltip>
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
+
+<GatilhoAjuda rotulo="Margem (a.a.)" texto={TOOLTIP_MARGEM_AA} classNameBalao="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug" />
 ```
+
+O primitivo já resolve os quatro detalhes que custaram achado ALTO do revisor (v5.4.2) —
+os call-sites só acionam a prop certa:
 
 - **O gatilho é `<button type="button">`, NUNCA `<span>`.** `span` não entra no tab-order
   nem é nomeável por leitor de tela: a dica fica **invisível para quem navega por teclado**
   — e num cabeçalho de coluna ela costuma ser a única explicação de uma definição de
   métrica. O `Tooltip` abre no hover **e no foco** (`group-focus-within/tip:visible`) desde
-  a v5.4.2; sem um gatilho focável, essa metade não serve para nada. (Achado ALTO do
-  revisor na v5.4.2.)
-- **`!whitespace-normal` é obrigatório** (com o `!`): o `Tooltip` traz `whitespace-nowrap` na
-  base, e sem forçar o wrap um texto longo vira **uma linha invisível gigante** que
-  transborda e cria barra de rolagem horizontal (medido: 313px → 0px, v4.38.0).
-- **Perto da borda direita, ancore à direita** (`!left-auto right-0`): o balão é
+  a v5.4.2; sem um gatilho focável, essa metade não serve para nada.
+- **`!whitespace-normal` é obrigatório** (com o `!`, já no default de `classNameBalao`): o
+  `Tooltip` traz `whitespace-nowrap` na base, e sem forçar o wrap um texto longo vira
+  **uma linha invisível gigante** que transborda e cria barra de rolagem horizontal
+  (medido: 313px → 0px, v4.38.0).
+- **Perto da borda direita, prop `ancoraDireita`** (aplica `!left-auto right-0`): o balão é
   `absolute left-0` e abriria para fora da tela na última coluna de uma tabela (v5.4.2).
-- Dentro de `<th>` clicável (tabela ordenável), o "?" precisa de
-  `onClick={e => e.stopPropagation()}` — ler a dica não deve reordenar a tabela.
+- **Dentro de `<th>` clicável (tabela ordenável), prop `pararPropagacao`** — aplica
+  `onClick={e => e.stopPropagation()}`; ler a dica não deve reordenar a tabela.
 
-Call-sites vivos: `weddings/lista-operacoes` (`AjudaHeader`, já com `<button>`),
-`financeiro/faturamento-corp` (`CabecalhoAjuda`) e `financeiro/posicao-projetado`
-(`KpiJanela`) — **estes dois últimos ainda usam `<span>`** e portanto seguem inacessíveis
-por teclado (pendência registrada no out-briefing da v5.4.2; é uma linha em cada). São
-**três cópias da mesma receita** — candidata natural a primitivo compartilhado quando uma
-quarta aparecer.
+Todos os call-sites usam o primitivo; a sonda `src/components/ui/gatilho-ajuda.test.ts`
+reprova `>?</span>` e qualquer `>?</button>` fora dele.
 
 Pills de plataforma/filtro são consts de `@/components/shared/botoes`
 (`PILL*`/`PILL_FILTRO*`); badge de status de solicitação é `statusBadge` de

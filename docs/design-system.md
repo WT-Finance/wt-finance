@@ -2,7 +2,7 @@
 
 **Versão:** 4.26 · Jun 2026
 
-> **Referência VIVA:** a página `/admin/design-system` reflete o código real (tokens, gráficos e estilos de plataforma importados de verdade). Cor é **SEMPRE via token** — cor crua do Tailwind ou hex em classe **quebram o lint** (`wt/no-cor-hardcoded`, ADR-0129); `zinc` é permitido; `src/lib/email` é isento. Primitivos canônicos em `src/components/ui/` (`Button`, `Input`/`Select`/`Textarea`, `Badge`, `Tabs`, `Tooltip`, `Card`, `Checkbox`). Micro-texto: `text-2xs` (11px) / `text-3xs` (10px).
+> **Referência VIVA:** a página `/admin/design-system` reflete o código real (tokens, gráficos e estilos de plataforma importados de verdade). Cor é **SEMPRE via token** — cor crua do Tailwind ou hex em classe **quebram o lint** (`wt/no-cor-hardcoded`, ADR-0129); `zinc` é permitido; `src/lib/email` é isento. Primitivos canônicos em `src/components/ui/` (`Button`, `Input`/`Select`/`Textarea`, `Badge`, `Tabs`, `Tooltip`, `Card`, `Checkbox`). Gatilho de ajuda "?" = `GatilhoAjuda` (`<button>` acessível dentro de `Tooltip`; `aria-label` "rótulo: texto"; nunca `<span>`). Micro-texto: `text-2xs` (11px) / `text-3xs` (10px).
 
 ## Tokens CSS
 
