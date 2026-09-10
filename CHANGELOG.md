@@ -6,6 +6,27 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.7] — 2026-09-10
+
+PATCH (Rota C) · **Atualização de segurança: `next` 16.2.9 → 16.3.4** (2 CVEs *critical* de RCE) + resolução em cascata de vulnerabilidades transitivas sem major. Zero mudança em código de produção · **1207 testes** (mantidos).
+
+### Segurança
+
+- **`next` 16.2.9 → 16.3.4** e **`eslint-config-next` 16.2.9 → 16.3.4** (versões exatas, estilo do `package.json` preservado). Fecha 2 CVEs *critical* de RCE (execução remota em host Windows; Image Optimization com AVIF) e as high/moderate associadas na faixa `>=16.0.0 <16.3.3`. É atualização **minor**, não o major vedado pelo escopo de limpeza.
+- **Transitivas resolvidas em cascata** (`npm update` por nome, **sem `--force`**, sem tocar dependências diretas): `postcss` e `sharp` (vieram com o `next`), `brace-expansion`, `browserslist`, `js-yaml` (3 DoS *high*), `@babel/core` e `baseline-browser-mapping`. `esbuild` desceu para 0.28.2 via `tsx` (dev-only).
+- **`npm audit`** caiu de 13 (1 *critical*, 7 *high*) para **4 vulnerabilidades** — todas as 4 restantes exigem **major** e ficam FORA deste patch por decisão: `nodemailer` 9 → 10 (*high*) e `vitest`/`@vitest/mocker` 3 → 5 (*moderate*, path traversal só em dev). Ficam para patches próprios; a auditoria da v5.10.0 (PR #263) já as tinha mapeado (achados D6-004 e D6-005).
+
+### Prova
+
+- Gates: `tsc --noEmit`, `lint`, `build`, `npm test` **1207/1207** — todos verdes com o `next` novo.
+- **`proxy.ts` (camada 1 do enforcement)** verificado no `next dev` real, sem sessão via `curl` e com sessão via browser: página protegida sem sessão → 307 para `/login?next=…`; API protegida sem sessão → 401 `AUTH_NECESSARIA` (inclusive `/api/....png`, o furo S11); `/login`, `/solicitar-acesso`, `/auth/confirm` passam; rotas de cron (`/api/monde/ingest`, `/api/cdi/ingest`) e `/api/externo/*` autenticam no handler (bearer errado → 401 do handler, não do proxy); usuário logado em `/login` → 307 para `/`; página protegida com sessão renderiza. Nenhuma regressão de bypass.
+
+### Nota
+
+- `AGENTS.md` foi reescrito pelo `next dev` 16.3.4 (o próprio arquivo instrui a commitá-lo com o trabalho para manter a árvore limpa) — sem efeito em runtime.
+
+---
+
 ## [5.9.6] — 2026-09-10
 
 PATCH (Rota C) · **Convenção de teste que ESCREVE no banco: regra escrita + barreira mecânica**. Zero migration, zero mudança em código de produção · **1207 testes** (de 1202).
