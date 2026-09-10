@@ -1,5 +1,9 @@
 {
   "name": "janus",
+  "//engines": "v5.10.0/D10-006: piso declarado, não pin. Next 16 exige Node >= 20.9; a Vercel escolhe o LTS dela (24) e o .nvmrc alinha o local. Piso e não intervalo fechado, para não trocar o runtime de produção por efeito colateral desta limpeza.",
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "version": "5.9.7",
   "private": true,
   "scripts": {
