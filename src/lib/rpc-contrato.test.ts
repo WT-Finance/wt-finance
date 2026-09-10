@@ -67,7 +67,14 @@ describe.skipIf(!ON)('contrato RPC — shape + invariantes', () => {
       p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 10,
     }) as { produtos?: Array<{ produto_nome: string; faturamento: number; pct_faturamento: number }>; outros?: { pct_faturamento?: number } }
 
-    expect(Array.isArray(d.produtos)).toBe(true)
+    // `produtos` é array OU **null**: o `jsonb_agg` de conjunto vazio devolve NULL, então
+    // qualquer período/setor sem venda vem com `produtos: null`. A asserção anterior era
+    // `Array.isArray(...) === true`, o que contradizia a própria guarda logo abaixo
+    // (`if (d.produtos && ...)`) — ela previa o caso vazio, a asserção não. Passava só
+    // porque a base tinha dado; com a base de Vendas vazia, quebrou. O que o caso prova de
+    // verdade — tipos dos campos e soma dos % ≈ 100 — está preservado no ramo com dado.
+    // O tratamento do null no APP é do `mixProdutoSchema`, que normaliza para [].
+    expect(d.produtos === null || Array.isArray(d.produtos)).toBe(true)
     if (d.produtos && d.produtos.length) {
       const p = d.produtos[0]
       expect(typeof p.produto_nome).toBe('string')
