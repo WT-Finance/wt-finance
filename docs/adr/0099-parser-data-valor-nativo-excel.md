@@ -16,3 +16,31 @@ A importação (Gerencial e correlatas) deve ler o **valor `Date` NATIVO** da c�
 ## Justificativa
 
 Adivinhar o formato de uma string de data é frágil por construção: qualquer ambiguidade (dia ≤ 12) é um chute. Ler o tipo nativo que o Excel já guarda elimina a ambiguidade na origem em vez de tentar desfazê-la depois. **Convenção** para qualquer importação que leia datas de Excel neste projeto: prefira o `Date` nativo (`raw: true` + `cellDates: true`); trate string só como fallback explícito.
+
+## Emenda (09/09/2026, v5.9.4) — a metade que faltava: VALOR
+
+O título deste ADR sempre falou em "data/**valor** nativo", mas o corpo acima decidiu só sobre
+DATAS — o tratamento de VALOR ficou sem registro formal aqui, embora tenha sido corrigido depois,
+na v5.5.2, junto de um bug real em produção: a coerção lia `"-40.933"` (planilha BR, ponto como
+separador de milhar) como se fosse `-40933`×1000, corrompendo DRE e Fluxo de Caixa por um fator de
+1000. O registro dessa investigação vive em
+`docs/investigacoes/2026-08-10-coercao-milhar-dre-fluxo.md` e no `CHANGELOG.md` da v5.5.2 — este
+parágrafo só fecha a lacuna de nomenclatura do 0099, não repete aquela investigação.
+
+**O que ficou valendo para VALOR, consolidado na v5.5.2:** mesmo princípio de DATA (preferir o
+tipo nativo da célula à string formatada), com a mesma cautela de fallback:
+
+- **Leitura DUPLA nativo/string**, como já valia para data: `sheet_to_json` é chamado com `raw:
+  true` (número nativo da célula, sem a formatação de exibição) e, em paralelo/fallback, com
+  `raw: false` (string formatada) — o **número nativo tem prioridade**; a string só entra quando a
+  célula chega genuinamente como texto (mesma assimetria "nativo primeiro, string de socorro" da
+  Decisão original).
+- **`raw` é opção do `sheet_to_json`, não do `read`** — a distinção que o bug de milhar expôs: o
+  `XLSX.read()` inicial (que abre o workbook) não decide nativo-vs-string; quem decide é a
+  chamada de `XLSX.utils.sheet_to_json(sheet, { raw: … })` sobre a planilha já aberta. Ler `raw:
+  false` no `sheet_to_json` descarta o número nativo da célula e devolve a string já formatada
+  pelo Excel — foi essa string (com separador de milhar BR mal interpretado) que corrompeu os
+  valores.
+- **Canônico do projeto:** `src/lib/carga/coercao.ts` (`toNum`) é a função única para essa
+  conversão — qualquer parser de planilha que precise ler valor numérico usa `toNum`, não
+  reimplementa a heurística de separador decimal/milhar por conta própria.

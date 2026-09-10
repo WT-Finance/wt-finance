@@ -4,7 +4,7 @@
 > (v5.4.0 em paralelo às v5.2.0/v5.3.0) e foi renumerado pelo checklist de merge.
 
 - **Data:** 2026-07-21
-- **Status:** aceito
+- **Status:** Supersedido por ADR-0172 (as-built; este texto fica como histórico)
 - **Versão:** v5.4.0
 
 ## Contexto
