@@ -37,7 +37,14 @@ export const SCHEMAS = ['analytics', 'app', 'audit', 'dim', 'financeiro', 'raw']
 config({ path: join(REPO, '.env.local') })
 
 let _pool = null
-function getPool() {
+// Exportado de propósito, apesar de não ter chamador em `scripts/`/`src/`: o
+// procedimento de RESTORE do runbook `docs/runbooks/db-backup-gate-runbook.md:65`
+// o importa (`import { pgCopyIn, getPool, closePool } from './lib.mjs'`) para
+// resetar sequências depois de repopular uma tabela. Um `export` a menos aqui só
+// aparece quando alguém está recuperando o banco sob pressão — a v5.10.0/D1-015
+// removeu este export e o `revisor` pegou (achado ALTO): consumidor vivo dentro de
+// code-fence de Markdown não é alcançado por knip nem por grep em código.
+export function getPool() {
   if (_pool) return _pool
   const cs = process.env.SUPABASE_DB_URL
   if (!cs) {

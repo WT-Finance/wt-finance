@@ -26,5 +26,10 @@ Após a tabela, cada arquivo traz: **Síntese** (≤ 5 linhas), **Contagem por c
 ## Regras
 
 1. Órfão de relatório não é órfão de fato — a prova definitiva é o grep **no ato** do commit (Fase 2).
+   **A varredura tem de incluir `docs/runbooks/` e `docs/adr/`, não só código.** Custou um achado
+   ALTO no Bloco 1 da v5.10.0: o `export` de `getPool` foi removido como órfão, mas o
+   procedimento de restore em `docs/runbooks/db-backup-gate-runbook.md:65` o **importa** dentro
+   de um code-fence — consumidor vivo que nem o knip nem um grep em `src`/`scripts`/`supabase`
+   alcançam, e que só falharia com alguém recuperando o banco sob pressão.
 2. Achado `L` ou que exige redesenho vai também ao rascunho de `docs/backlog-v6.md`.
 3. Exploradores só leem; quem escreve estes arquivos é a sessão principal, a partir do retorno deles.
