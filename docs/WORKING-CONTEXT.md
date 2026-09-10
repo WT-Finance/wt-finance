@@ -1,6 +1,6 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-10 (fechamento da v5.9.5, PR aberto — aguarda merge do Yan) · produção na **v5.9.4** (#257 mergeado 10/09 às 09h01); **migration `0268` (v5.9.5) já APLICADA** em 10/09 ~10h34 — próxima livre **0269**; próximo ADR livre **0173** (a v5.9.5 não criou ADR; Emenda 1 ao 0168). v5.9.3:
+Última atualização: 2026-09-10 (fechamento da v5.9.5, PR aberto — aguarda merge do Yan) · produção na **v5.9.4** (#257 mergeado 10/09 às 09h01); **migration `0268` (v5.9.5) já APLICADA** em 10/09 ~10h34 — próxima livre **0269**; próximo ADR livre **0173** (a v5.9.5 não criou ADR; Emenda 1 ao 0168). Antes a v5.9.4 (#257, 10/09 09h01): varredura de dívida — gatilhos "?" acessíveis por teclado (primitivo `GatilhoAjuda` + sonda), migration **`0267` APLICADA** (sale_id preservado; só-Metas lê `get_executiva_kpis`), schemas do float, **ADR-0172**; **1193 testes**. Antes a v5.9.3 (#255, 09/09 15h33): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 🟡 **v5.9.5 FECHADA, PR ABERTO** (branch `fix/v5-9-5-reverter-diario-multiplos-toques`; out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v5-9-5_Reverter_Diario.md`) — desfazer em lote robusto a
@@ -22,13 +22,10 @@ aprovada sem CRÍTICO/ALTO (BAIXO `NOTIFY pgrst` atendido); `revisor` — ver ou
 🔴 **Pendente (Yan):** merge do PR; **checkpoint do briefing** — ler a Emenda 1 do ADR-0168 e o parecer do
 `revisor-db` sobre a comparação sem coluna volátil; confirmar a decisão de PORTAR o guard ao caixa (em vez de
 removê-lo da competência); aceitar o teste que escreve-e-reverte contra produção a cada `npm test`; depois do
-merge, um desfazer real pela UI de cada editor (lote de 2–3 linhas). ⚠️ O PR de docs do pós-merge da v5.9.4
-(`docs/pos-merge-v5-9-4`) também edita este arquivo — mergear um e reconciliar o outro. Fora do escopo,
+merge, um desfazer real pela UI de cada editor (lote de 2–3 linhas). Fora do escopo,
 registrado: `patrimonio.ativo`/`movimentacao` estão sob o diário sem wrapper de desfazer.
 
-v5.9.4 (contexto herdado): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
-
-🟡 **v5.9.4 FECHADA, PR ABERTO** (branch `fix/v5-9-4-varredura-divida`; out-briefing
+✅ **v5.9.4 EM PRODUÇÃO** (#257, 10/09 09h01; out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v5-9-4_Varredura_Divida.md`) — varredura de dívida em três
 frentes. **Migration `0267` (aditiva) APLICADA** em 09/09 com gate verde: `monde_ingest_promover`
 preserva `sale_id` (COALESCE) e `get_executiva_kpis` aceita `metas/acompanhamento` **no `PERFORM`
@@ -45,7 +42,7 @@ do wrapper** (o helper `app.areas_do_setor` tem 15 consumidoras — não foi toc
 Prova da 0267: transação REVERTIDA via `pg` (sale_id preservado; usuário só-Metas lê KPIs e segue
 negado em `get_mix_setor`); REST service_role 200 / anon 401. Revisores: sem CRÍTICO/ALTO/MÉDIO.
 Visual ao vivo (Claude in Chrome): 14 dos 17 gatilhos — balão abre pelo foco com o mouse longe.
-🔴 **Pendente (Yan):** merge do PR; Tab até o "?" no modal de nova solicitação, no Faturamento Corp e
+🔴 **Pendente (Yan), em produção:** Tab até o "?" no modal de nova solicitação, no Faturamento Corp e
 no inventário de Gestão de Pessoas (não exercitados ao vivo); `/metas` com usuário só-Metas; tripwire
 Monde verde na rodada seguinte; ler o ADR-0172 contra produção. Registrado fora do escopo: `RpcFrouxa`
 redeclarado 3×; `public/favicon.ico` órfão.
