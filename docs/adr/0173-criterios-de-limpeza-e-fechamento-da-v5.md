@@ -53,8 +53,11 @@ Um relatório de auditoria é uma **hipótese verificável**, não um inventári
 exclusão só se justifica pelo grep feito **no ato do commit**, transcrito na mensagem — e a
 varredura inclui `docs/runbooks/` e `docs/adr/` (ver skill `banco-e-rpc`, §5).
 
-**Evidência do próprio Bloco 1: em 4 itens o grep no ato salvou código vivo — e em 2 deles o
-relatório triado mandava apagar.**
+**Evidência: em 7 itens a verificação no ato salvou a versão de um erro — e em 2 deles o
+relatório triado mandava apagar código vivo.** Quatro vieram do Bloco 1 (grep) e três do
+Bloco 3 (catálogo vivo). O caso mais instrutivo é o último: um achado errado do relatório
+foi por mim copiado para dentro de um `COMMENT ON FUNCTION`, e só o `revisor-db` impediu
+que o engano virasse documentação permanente no catálogo do banco.
 
 | item | o relatório dizia | o grep no ato provou |
 |---|---|---|
@@ -62,6 +65,9 @@ relatório triado mandava apagar.**
 | **D1-020** | apagar as 4 funções | só 2 eram mortas; `calcularPeriodoAnteriorInteligente` e `calcularYoYInteligente` são usadas por `resolverPeriodoCompleto` (linhas 235-236) |
 | **D1-015** | 6 exports supérfluos | 4 são importados por `scripts/db-gate/exportar.mjs:19` (o knip os deu como mortos porque marcou o próprio `exportar.mjs` como arquivo não usado — falso positivo **em cascata**); e `getPool` tem consumidor no **runbook de restore**, achado ALTO do `revisor` |
 | **D1-025** | consolidar export duplicado | achado **INVÁLIDO**: `LIMITE_MESES` e `JANELA_LARGA_FRENTE` são constantes semanticamente distintas com o mesmo valor (36), **ambas vivas** |
+| **D2-010** (Bloco 3) | "21 funções sem grant" | são **8**: a consulta da Fase 1 não olhava o grant DEFAULT para PUBLIC, então reportava "sem grant" justamente onde o grant era o **pior** (PUBLIC inclui `anon`). Das 21, 12 já estavam corretas e dar-lhes o `GRANT` que o item pedia teria **alargado** acesso; e `app.norm_nome`, a mais chamada das 8 (13 funções), não estava na lista |
+| **D9-015** (Bloco 3) | "as duas funções" com o texto pré-rebranding | é **uma** (`app.exigir_acesso`). As migrations 0119 e 0133 contêm o texto, mas a 0133 é reaplicação — ler a migration em vez do catálogo conta duas vezes o mesmo objeto |
+| **D3-006 / B-12** (Bloco 3) | `v_estado_atual` "sem índice de suporte" | o índice **existe e é usado**: `mov_ativo_ordem_idx`, 102 scans. Pego pelo `revisor-db` num `COMMENT` que eu havia escrito **repetindo o achado** — o erro do relatório quase virou documentação permanente no catálogo do banco |
 
 Corolário para a próxima auditoria: um achado de ferramenta estática é **classe de suspeita**,
 não sentença. Três padrões de falso positivo já têm nome — chamada por processo

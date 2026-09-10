@@ -1924,3 +1924,124 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — hardenings da v5.9.4 (0267) no
     expect(r.rows[0].t).toEqual(['executiva', 'performance'])
   })
 })
+
+// ── v5.10.0 (0269) — grants explícitos, COMMENTs e o texto do RAISE, no CATÁLOGO VIVO ───
+// A 0269 é aditiva e o que ela muda não aparece em nenhum retorno de RPC: privilégio de
+// EXECUTE, comentário de catálogo e uma string de mensagem de erro. Nada disso o `tsc`, o
+// lint ou um caso de shape pegariam — e o modo de falha é o pior tipo, o silencioso: um
+// `CREATE OR REPLACE` futuro escrito a partir da migration de ORIGEM em vez do catálogo
+// vivo reverte tudo sem quebrar teste nenhum (é a regressão que a skill banco-e-rpc §5
+// descreve, e que já aconteceu no projeto). Estas sondas reprovam essa reversão.
+describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e rebranding do RAISE', () => {
+  async function comCliente<T>(f: (c: { query: (q: string, p?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }) => Promise<T>): Promise<T> {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    try { return await f(c) } finally { await c.end() }
+  }
+
+  // As 8 que a 0269 endureceu (D2-010). `proacl IS NULL` = ACL DEFAULT do Postgres =
+  // EXECUTE para PUBLIC — o estado que a migration removeu.
+  const ENDURECIDAS: ReadonlyArray<[string, string]> = [
+    ['analytics',  'extrair_nome_casal'],
+    ['analytics',  'fn_gerencial_lancamentos_atualizado'],
+    ['analytics',  'regenerar_dim_operacao_weddings'],
+    ['analytics',  'situacao_por_data_evento'],
+    ['app',        'norm_nome'],
+    ['financeiro', 'fn_broadcast_gerencial'],
+    ['financeiro', 'fn_diario_alteracoes'],
+    ['financeiro', 'fn_dre_touch_atualizado_em'],
+  ]
+
+  it('D2-010: nenhuma das 8 volta a depender do ACL DEFAULT (nem PUBLIC, nem anon, nem authenticated)', async () => {
+    const rows = await comCliente(async c => {
+      const r = await c.query(
+        `SELECT n.nspname AS schema, p.proname AS nome,
+                (p.proacl IS NULL) AS acl_default,
+                coalesce(array_to_string(p.proacl, ' '), '') AS acl
+           FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE (n.nspname, p.proname) IN (
+                  ('analytics','extrair_nome_casal'),('analytics','fn_gerencial_lancamentos_atualizado'),
+                  ('analytics','regenerar_dim_operacao_weddings'),('analytics','situacao_por_data_evento'),
+                  ('app','norm_nome'),('financeiro','fn_broadcast_gerencial'),
+                  ('financeiro','fn_diario_alteracoes'),('financeiro','fn_dre_touch_atualizado_em'))`,
+      )
+      return r.rows
+    })
+
+    expect(rows.length, 'as 8 funções endurecidas pela 0269 têm de existir').toBe(ENDURECIDAS.length)
+    for (const row of rows) {
+      const quem = `${row.schema}.${row.nome}`
+      // ACL default de volta = alguém recriou a função sem reaplicar o REVOKE.
+      expect(row.acl_default, `${quem}: voltou ao ACL DEFAULT (EXECUTE para PUBLIC) — a 0269 foi revertida?`).toBe(false)
+      const acl = String(row.acl)
+      // `=X/` sem role à esquerda é a forma do grant a PUBLIC no proacl.
+      expect(acl, `${quem}: proacl concede a PUBLIC`).not.toMatch(/(^|\s)=X\//)
+      expect(acl, `${quem}: proacl concede a anon`).not.toMatch(/\banon=/)
+      expect(acl, `${quem}: proacl concede a authenticated`).not.toMatch(/\bauthenticated=/)
+    }
+  })
+
+  it('D9-015: o guard do RBAC lança "Janus", não o nome pré-rebranding — e o CÓDIGO do erro não mudou', async () => {
+    const def = await comCliente(async c => {
+      const r = await c.query(
+        `SELECT pg_get_functiondef(p.oid) AS def
+           FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE n.nspname = 'app' AND p.proname = 'exigir_acesso'`,
+      )
+      expect(r.rows.length, 'app.exigir_acesso: esperada 1 definição').toBe(1)
+      return r.rows[0].def as string
+    })
+
+    expect(def).toContain('USUARIO_INATIVO: sem cadastro ativo no Janus')
+    expect(def, 'texto pré-rebranding voltou ao guard do RBAC').not.toMatch(/WT\s*Finance/i)
+
+    // O CÓDIGO do erro é o contrato (ERROS_BANCO em admin/acessos/actions.ts trata por
+    // prefixo); o texto livre é log. Trocar o texto não pode ter mexido no código.
+    expect(def).toMatch(/RAISE EXCEPTION 'USUARIO_INATIVO:[^']*'\s*\n?\s*USING ERRCODE = '42501'/)
+
+    // E os outros três ramos do guard seguem intactos — o CREATE OR REPLACE da 0269 só
+    // podia tocar uma linha (o diff foi conferido linha a linha antes de aplicar).
+    expect(def).toContain('AUTH_NECESSARIA: contexto sem identidade')
+    expect(def).toContain('AUTH_NECESSARIA: acesso anônimo desativado')
+    expect(def).toMatch(/PERMISSAO_NEGADA: requer uma de/)
+    expect(def).toMatch(/STABLE SECURITY DEFINER/)
+    expect(def).toMatch(/SET search_path TO ''/)
+    expect(def).toMatch(/p_areas text\[\] DEFAULT NULL::text\[\]/)
+  })
+
+  it('D2-006/D2-016: o kill switch e as RPCs centrais têm COMMENT no catálogo', async () => {
+    const rows = await comCliente(async c => {
+      const r = await c.query(
+        `SELECT n.nspname AS schema, p.proname AS nome,
+                coalesce(obj_description(p.oid, 'pg_proc'), '') AS comentario
+           FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE (n.nspname, p.proname) IN (
+                  ('public','admin_set_enforcement'),('app','exigir_acesso'),
+                  ('public','get_operacoes_weddings'),('public','promover_carga_vendas'),
+                  ('public','get_dre_mensal'),('public','get_dre_competencia_mensal'))`,
+      )
+      return r.rows
+    })
+    const por = new Map(rows.map(r => [`${r.schema}.${r.nome}`, String(r.comentario)]))
+
+    for (const [quem, c] of por) {
+      expect(c.length, `${quem}: sem COMMENT no catálogo (a 0269 foi revertida?)`).toBeGreaterThan(30)
+    }
+
+    // D2-006: o comentário existe para que a próxima varredura de código morto NÃO
+    // proponha o DROP do kill switch. Se o texto perder isso, perde a função dele.
+    const kill = por.get('public.admin_set_enforcement') ?? ''
+    expect(kill).toMatch(/DORMENTE/i)
+    expect(kill).toMatch(/NÃO REMOVER|NAO REMOVER/i)
+    expect(kill).toMatch(/runbook/i)
+
+    // D2-016: o fato mais útil de cada comentário é a ÁREA de RBAC exigida.
+    expect(por.get('public.get_operacoes_weddings') ?? '').toMatch(/performance\/weddings/)
+    expect(por.get('public.get_dre_mensal') ?? '').toMatch(/financeiro\/dre/)
+    expect(por.get('public.get_dre_competencia_mensal') ?? '').toMatch(/financeiro\/dre/)
+    // E a de carga declara por que NÃO tem exigir_acesso no corpo.
+    expect(por.get('public.promover_carga_vendas') ?? '').toMatch(/service_role/)
+  })
+})

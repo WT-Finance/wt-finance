@@ -50,8 +50,13 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
   },
   {
     arquivo: 'src/lib/rpc-contrato.test.ts',
-    envs: ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'],
-    porque: 'contrato REST das RPCs + RBAC (F7) — o maior bloco gated da suíte',
+    // SUPABASE_DB_URL entrou na declaração na v5.10.0: os blocos de introspecção do
+    // CATÁLOGO VIVO (hardenings da 0267 e grants/COMMENTs/RAISE da 0269) usam `pg`
+    // direto e ficam sob `skipIf(!ON || !DB_URL)`. O inventário estava incompleto —
+    // declarava só as duas de REST e, sem a terceira, ~6 casos podiam sumir calados
+    // exatamente no modo de falha que esta sonda existe para impedir.
+    envs: ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_DB_URL'],
+    porque: 'contrato REST das RPCs + RBAC (F7) e introspecção do catálogo vivo — o maior bloco gated da suíte',
   },
 ]
 

@@ -105,7 +105,7 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | D3-003 | **backlog v6** | B-11 |
 | D3-004 | **backlog v6** | B-10 |
 | D3-005 | **agir agora** | feito em 6a4db84 · buscarUltimaSincronizacaoMonde() virou o 5º elemento do Promise.all; não recebe argumento nem lê resultado das outras chamadas, e já era fail-safe → null |
-| D3-006 | **backlog v6** | B-12 |
+| D3-006 | **backlog v6** | **PREMISSA FALSA, corrigida no Bloco 3** (achado MÉDIO do `revisor-db` sobre o COMMENT que eu escrevi repetindo esta nota). O índice de suporte JÁ EXISTE: `mov_ativo_ordem_idx (ativo_id, data_movimentacao DESC, criado_em DESC)`, criado na 0247, cobre as três primeiras colunas do `ORDER BY` do `DISTINCT ON` e tem **102 scans** no catálogo (10/09/2026). O explorador leu a definição da view e concluiu "só a PK existe" sem consultar `_insumos/catalogo-indices.txt`, que estava na mesa. B-12 fechado por verificação; sobra só o gatilho de materializar SE o volume crescer (hoje 6 linhas). |
 | D3-007 | **backlog v6** | B-09 |
 
 ## D4 — Tipagem
