@@ -1,23 +1,20 @@
 # WORKING-CONTEXT — Janus
 
-> ## ⛔ v5.10.0 EM VOO — Fase 1 concluída, **GATE 1 (triagem) pendente** · 2026-09-10
+> ## ⛔ v5.10.0 EM VOO — Fase 1 concluída, **GATE 1 fechado → Fase 2** · 2026-09-10
 > Branch `chore/v5-10-0-limpeza-fechamento-v5` (worktree `.claude/worktrees/chore+v5-10-0-limpeza-fechamento-v5`),
-> base `main@885da65` (v5.9.6). Briefing `docs/briefings/briefing-v5-10-0-limpeza-fechamento-v5.md`.
-> **Entregue:** `docs/auditoria-v5/relatorio.md` (consolidado, **145 achados**: apagar 15 · corrigir 24 ·
-> simplificar 11 · documentar 55 · decidir 40) + `D1…D10-*.md` + `_insumos/` (knip, depcheck, audit, vitest,
-> catálogo do banco, mapa RPC→chamadores) + rascunho `docs/backlog-v6.md` (23 itens).
-> **Baseline preservável:** 1207 testes / 72 arquivos / 0 skip; `tsc` e `lint` limpos.
-> **Próximo passo:** Yan tria no Chat cada achado (`agir agora` · `backlog v6` · `descartar`) direto nas colunas
-> vazias dos `D<n>-*.md`; o relatório triado é commitado (`docs(auditoria): relatorio triado (spec da fase 2)`)
-> e só então a Fase 2 começa (ordem por risco: código → aditiva 0269 → deploy → destrutiva GATE 2 → docs).
-> **Para o Yan antes da Fase 2:** mergear o PR #262 (docs pós-merge v5.9.6; evita conflito aqui); decidir
-> PR #213 stand-by (`metas_subsetor_*`, D2-007); **D6-003 `next` 16.2.9 tem 2 CVEs critical, fix minor
-> 16.3.4**; **D10-001 as regras `allow`/`deny` do `CLAUDE.md` não existem em nenhum `settings.json`**.
-> Frente única: nenhuma outra branch de feature deve abrir enquanto esta corre.
+> base `main@885da65`, com `origin/main` (até a v5.9.7) já mergeado nela. Briefing
+> `docs/briefings/briefing-v5-10-0-limpeza-fechamento-v5.md`.
+> **Entregue (Fase 1):** `docs/auditoria-v5/relatorio.md` (consolidado, **145 achados**) + `D1…D10-*.md` +
+> `_insumos/` (knip, depcheck, audit, vitest, catálogo do banco, mapa RPC→chamadores) + rascunho
+> `docs/backlog-v6.md` (23 itens). **GATE 1 fechado 10/09:** triagem em `docs/auditoria-v5/relatorio-triado.md`
+> (a spec da Fase 2 — só `agir agora` é escopo; `backlog v6`/`descartar` não são tocados).
+> **Baseline preservável:** 1207 testes / 72 arquivos / 0 skip; `tsc`, `lint`, `build` limpos.
+> **Fase 2, ordem por risco:** código/arquivos → aditiva (0269) → deploy intermediário → destrutiva (0270, GATE 2, TTY) → docs.
+> **Já resolvido pelo main:** D6-003 (`next` 16.3.4, patch v5.9.7 #264). Frente única: nenhuma outra branch de feature enquanto esta corre.
 
-Última atualização: 2026-09-10 (fechamento da v5.9.6, PR aberto — aguarda merge do Yan) · produção na **v5.9.5** (#259 mergeado 10/09 às 11h03):
+Última atualização: 2026-09-10 (merge da v5.9.7 na branch da v5.10.0; GATE 1 fechado) · produção na **v5.9.7** (#264 mergeado 10/09, patch de segurança do `next` 16.3.4); antes a **v5.9.6** (#261, 10/09 11h45): convenção de teste que ESCREVE no banco (skill §6 + checklist `revisor-db` + sonda allowlist; exceção `contrato-api-externa` CONFIRMADA pelo Yan; reavaliação de ambiente de teste espera o 4º arquivo); **1207 testes**. Antes a v5.9.5 (#259, 10/09 11h03):
 
-🟡 **v5.9.6 FECHADA, PR ABERTO** (Rota C, branch `fix/v5-9-6-convencao-teste-escreve-banco`; out-briefing
+✅ **v5.9.6 EM PRODUÇÃO** (#261, 10/09 11h45; Rota C; out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v5-9-6_Convencao_Teste_Escreve_Banco.md`) — **convenção de teste que
 ESCREVE no banco**: decisão de método (10/09) de que provar RPC que escreve pode rodar contra produção em
 `BEGIN … ROLLBACK`, como padrão, com contrato obrigatório (uma transação POR CASO, `skipIf`, linhas dinâmicas,
@@ -31,8 +28,8 @@ que grava) → sonda virou **allowlist** (todo teste que abre `pg` é alvo salvo
 contagem do **gatilho de reavaliação** (3ª/4ª RPC → reabrir ambiente de teste próprio) ficou **mecânica**: lista
 fechada, hoje **TRÊS** arquivos (`reverter-diario`, `virada-paridade`, exceção `contrato-api-externa`). `virada-paridade`
 ganhou o `lock_timeout`. **1207 testes** (de 1202). Próxima migration livre segue **0269**; próximo ADR **0173**.
-🔴 **Pendente (Yan):** merge do PR; **decidir** se a exceção de `contrato-api-externa` fica como está (fixture
-commitada + limpeza) e se, com a contagem real em TRÊS, a reavaliação de ambiente de teste próprio já está madura.
+✅ **Decidido pelo Yan (10/09):** a exceção de `contrato-api-externa` fica como está (fixture commitada + limpeza);
+a reavaliação de ambiente de teste próprio espera o **4º arquivo** — a sonda avisa (lista fechada).
 
 v5.9.5: desfazer em lote robusto a múltiplos toques por linha — `reverter_diario` em DESC + comparação sem coluna volátil, guard de payload duplicado no caixa; **migration `0268` APLICADA** em 10/09 ~10h34; Emenda 1 ao ADR-0168; **1202 testes** — próxima livre **0269**; próximo ADR livre **0173** (a v5.9.5 não criou ADR; Emenda 1 ao 0168). Antes a v5.9.4 (#257, 10/09 09h01): varredura de dívida — gatilhos "?" acessíveis por teclado (primitivo `GatilhoAjuda` + sonda), migration **`0267` APLICADA** (sale_id preservado; só-Metas lê `get_executiva_kpis`), schemas do float, **ADR-0172**; **1193 testes**. Antes a v5.9.3 (#255, 09/09 15h33): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
