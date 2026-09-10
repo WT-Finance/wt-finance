@@ -53,10 +53,18 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════
 -- COMO APLICAR (Yan, em TTY — o agente não aplica destrutiva)
 -- ═══════════════════════════════════════════════════════════════════════════════════════
---   cd /home/yan-wt/projects/wt-finance
---   git checkout chore/v5-10-0-limpeza-fechamento-v5 && git pull --ff-only
+-- ⚠️ RODE **DE DENTRO DA WORKTREE**, não do checkout raiz. A 1ª versão deste roteiro
+-- mandava `cd /home/yan-wt/projects/wt-finance` + `git checkout chore/v5-10-0-...`, e
+-- estava errado por dois motivos: (1) o git RECUSA checkout de branch que já está em uso
+-- por uma worktree; (2) o checkout raiz está em `main@885da65`, DUAS fusões atrás — sem o
+-- arquivo da 0269 e sem esta pasta `patches/`. Rodar `migration list` de lá mostra
+-- `local: (vazio) | remote: 0269`, que é o sintoma dessa defasagem, não um problema no banco.
+--
+--   cd /home/yan-wt/projects/wt-finance/.claude/worktrees/chore+v5-10-0-limpeza-fechamento-v5
+--   git pull --ff-only
+--   npx supabase migration list          # ANTES: 0269 pareada, NENHUMA pendente
 --   mv supabase/patches/0270_v5_10_0_drop_objetos_orfaos.sql supabase/migrations/
---   npx supabase migration list          # conferir que 0270 é a ÚNICA pendente
+--   npx supabase migration list          # DEPOIS: 0270 é a ÚNICA com local sem remote
 --   npm run db:migrate -- --destrutiva   # backup-gate + restore-test + confirmação em TTY
 --
 -- Se a lista mostrar QUALQUER outra migration pendente além da 0270, PARE: `db push`
