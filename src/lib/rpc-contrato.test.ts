@@ -1862,3 +1862,59 @@ describe.skipIf(!ON)('contrato DRE — conciliação entre regimes (v5.8.1)', ()
     }
   })
 })
+
+// ── v5.9.4 (0267) — dois hardenings de RPC, provados pelo CATÁLOGO VIVO ─────────────────
+// (a) `monde_ingest_promover`: detalhe que chega sem `sale_id` num mês cujo `raw_hash`
+//     mudou não pode mais sobrescrever o `sale_id` real com NULL (COALESCE no ON CONFLICT).
+// (b) `get_executiva_kpis`: quem tem só `metas/acompanhamento` lê a RPC (o `PERFORM` do
+//     wrapper ganhou a área; o helper `app.areas_do_setor` — 15 consumidoras — NÃO mudou).
+// (c) anon segue negado — é o caso 'enforcement ATIVO: leitura anônima é negada' acima.
+// Lê `pg_get_functiondef` via `pg` (padrão de contrato-api-externa.test.ts): as duas
+// funções escrevem (promover) ou exigem sessão de usuário real (kpis só-Metas), então o
+// comportamento se prova no ato da aplicação, em transação revertida; aqui fica a sonda
+// que reprova a próxima `CREATE OR REPLACE` escrita a partir da migration de ORIGEM em
+// vez do catálogo (a regressão silenciosa da skill banco-e-rpc §5).
+const DB_URL = process.env.SUPABASE_DB_URL
+
+describe.skipIf(!ON || !DB_URL)('contrato RPC — hardenings da v5.9.4 (0267) no catálogo vivo', () => {
+  async function comCliente<T>(f: (c: { query: (q: string, p?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }) => Promise<T>): Promise<T> {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    try { return await f(c) } finally { await c.end() }
+  }
+
+  async function definicao(fn: string): Promise<string> {
+    return comCliente(async c => {
+      const r = await c.query(
+        `SELECT pg_get_functiondef(p.oid) AS def FROM pg_proc p
+           JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE n.nspname = 'public' AND p.proname = $1`,
+        [fn],
+      )
+      expect(r.rows.length, `${fn}: ${r.rows.length} definições (esperado 1)`).toBe(1)
+      return r.rows[0].def as string
+    })
+  }
+
+  it('monde_ingest_promover preserva sale_id existente quando o detalhe vem sem ele (COALESCE)', async () => {
+    const def = await definicao('monde_ingest_promover')
+    expect(def).toMatch(/sale_id\s*=\s*COALESCE\(\s*EXCLUDED\.sale_id\s*,\s*d\.sale_id\s*\)/i)
+    // e NENHUMA outra coluna do upsert mudou de regra (o COALESCE é só do sale_id)
+    expect(def).toMatch(/data_venda\s*=\s*EXCLUDED\.data_venda/)
+    expect(def).toMatch(/raw_hash\s*=\s*EXCLUDED\.raw_hash/)
+    expect(def).toMatch(/WHERE d\.raw_hash IS DISTINCT FROM EXCLUDED\.raw_hash/)
+  })
+
+  it('get_executiva_kpis aceita metas/acompanhamento no PERFORM — e o helper areas_do_setor não mudou', async () => {
+    const def = await definicao('get_executiva_kpis')
+    expect(def).toMatch(/exigir_acesso\(\s*app\.areas_do_setor\(p_setor\)\s*\|\|\s*ARRAY\['metas\/acompanhamento'\]\s*\)/)
+
+    // Sonda do ponto de mudança: o helper continua devolvendo só performance/<setor> e
+    // ['executiva','performance'] — ampliar ALI alargaria 14 RPCs que ninguém pediu.
+    const r = await comCliente(c => c.query(`SELECT app.areas_do_setor('Weddings') AS w, app.areas_do_setor('todos') AS t`))
+    expect(r.rows[0].w).toEqual(['performance/weddings'])
+    expect(r.rows[0].t).toEqual(['executiva', 'performance'])
+  })
+})
