@@ -552,6 +552,40 @@ erro só apareceu na tela do usuário. Fix na migration 0203. **Regra prática:*
 qualquer agregado dentro de uma RPC gated, execute-a via REST/`service_role`, não só via
 introspecção.
 
+### Provar comportamento de RPC que ESCREVE: transação revertida contra produção, com contrato
+
+O caso de contrato normal lê o **catálogo** (`pg_get_functiondef`) e afirma que o texto da
+função tem o que deve ter — ele **não vê comportamento**. Quando o defeito só se manifesta
+escrevendo (v5.9.5: a coluna volátil de `reverter_diario` era invisível no texto e só apareceu
+ao executar a cadeia), é **aceito escrever contra produção dentro de `BEGIN … ROLLBACK`**.
+É padrão, não exceção (decisão de método, 10/09/2026) — mas com **contrato obrigatório**:
+
+- **uma transação por caso** (`it`), nunca uma para o arquivo — fixture em `beforeAll` é
+  escrita fora de transação;
+- `describe.skipIf(!process.env.SUPABASE_DB_URL)` — offline, o gate pula em vez de quebrar;
+- **linhas escolhidas dinamicamente** (`SELECT … LIMIT n`), nunca id fixo;
+- **chave sintética identificável** no dado escrito — padrão `ZZ_TESTE_<migration>` —, para
+  que um resíduo, se um dia sobrar, seja reconhecível e apagável;
+- **`SET LOCAL lock_timeout`** na transação: sem isso, duas suítes concorrentes em worktrees
+  diferentes **travam** disputando lock de linha até o timeout do runner, em vez de falhar
+  rápido (achado MÉDIO do `revisor` na v5.9.5);
+- `SAVEPOINT` em volta da chamada que pode falhar, para o erro não derrubar a transação do
+  caso antes de você conferir o estado;
+- **nenhum `COMMIT`**.
+
+Referência viva: `src/lib/dre/reverter-diario.test.ts` (0268). **Enforcement:**
+`src/lib/sonda-teste-escreve-banco.test.ts` varre `src/**/*.test.ts` que abre `pg` e escreve
+(ou abre transação) e reprova sem `BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf` ou com `COMMIT`.
+
+**Exceção conhecida, listada na sonda:** `contrato-api-externa.test.ts` (v5.4.0) testa a API
+externa ponta a ponta por HTTP — a fixture precisa estar **commitada** para o PostgREST vê-la, e
+é apagada em `afterAll`. Não cabe em transação por desenho; fica visível, não escondida.
+
+**Gatilho de reavaliação:** à **terceira ou quarta RPC** testada assim, reabrir a decisão de
+**ambiente de teste próprio** (staging/branching — §1). Este caminho é para quando escrever é a
+**única** prova, não para conveniência. Contagem hoje: `reverter-diario` (transação revertida)
+e `contrato-api-externa` (fixture commitada) — dois arquivos.
+
 ---
 
 ## 7. RPC que "já existe e aceita o parâmetro certo" pode ter a SEMÂNTICA errada

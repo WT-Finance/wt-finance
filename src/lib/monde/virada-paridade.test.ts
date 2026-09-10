@@ -36,6 +36,7 @@ describe.skipIf(!DB)('v5.1.4 — paridade pós-virada (get_executiva_kpis lê o 
       const esperado = (s: string) => s === 'todos' ? grp : byMac[s]
 
       await c.query('BEGIN')
+      await c.query(`SET LOCAL lock_timeout = '5s'`) // contrato da skill banco-e-rpc §6 (v5.9.6): falhar rápido, não travar
       await c.query(up) // aplica o flip DENTRO da transação
       const got: Record<string, { fat: number; rec: number; v: number }> = {}
       for (const s of SETORES) {
