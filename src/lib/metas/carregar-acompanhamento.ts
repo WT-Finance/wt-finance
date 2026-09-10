@@ -31,7 +31,7 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
   // Anos que o período toca (1 ou 2) → uma metas_listar por ano.
   const anos = [...new Set([Number(from.slice(0, 4)), Number(to.slice(0, 4))])]
 
-  const [kpisResArr, metasResArr, ritmoResArr, sumRes] = await Promise.all([
+  const [kpisResArr, metasResArr, ritmoResArr, sumRes, ultimaAtualizacao] = await Promise.all([
     Promise.all(PAINEIS.map(p => db.rpc('get_executiva_kpis', {
       p_from: from, p_to: to, p_setor: p.key,
     }))),
@@ -41,6 +41,11 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
     // Performance de Weddings. Fail-safe: erro/negação (a RPC exige 'performance/weddings')
     // degrada p/ null. (No Modo TV o usuário não tem essa área → 'Contratos' nem aparece.)
     db.rpc('get_sumario_subsetor', { p_from: from, p_to: to }),
+    // "Última atualização" = frescor do espelho Monde = última SINCRONIZAÇÃO (não o último
+    // dado mudado). Helper compartilhado com /metas/comparacao (v5.1.9); fail-safe → null
+    // (o topo omite). Entrou no Promise.all na v5.10.0/D3-005: era o único `await`
+    // sequencial do carregamento e não depende de nenhuma das outras chamadas.
+    buscarUltimaSincronizacaoMonde(),
   ])
 
   // Sem venda ≠ sem dado (v5.6.2, pedido do Yan): quando a RPC RESPONDEU e o subsetor
@@ -50,10 +55,6 @@ export async function carregarAcompanhamento(preset: PresetMetas): Promise<Acomp
     ? null
     : (((sumRes.data as { subsetores?: SumarioSubsetorItem[] } | null)?.subsetores ?? [])
         .find(s => s.subsetor === 'COMERCIAL')?.n_contratos ?? 0)
-
-  // "Última atualização" = frescor do espelho Monde = última SINCRONIZAÇÃO (não o último dado
-  // mudado). Helper compartilhado com /metas/comparacao (v5.1.9); fail-safe → null (o topo omite).
-  const ultimaAtualizacao = await buscarUltimaSincronizacaoMonde()
 
   // Metas de todos os anos do período (fonte='real', filtrada pela RPC).
   const metaRows: MetaRow[] = metasResArr.flatMap((res, i) => {
