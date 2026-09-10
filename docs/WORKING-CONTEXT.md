@@ -1,5 +1,20 @@
 # WORKING-CONTEXT — Janus
 
+> ## ⛔ v5.10.0 EM VOO — Fase 1 concluída, **GATE 1 (triagem) pendente** · 2026-09-10
+> Branch `chore/v5-10-0-limpeza-fechamento-v5` (worktree `.claude/worktrees/chore+v5-10-0-limpeza-fechamento-v5`),
+> base `main@885da65` (v5.9.6). Briefing `docs/briefings/briefing-v5-10-0-limpeza-fechamento-v5.md`.
+> **Entregue:** `docs/auditoria-v5/relatorio.md` (consolidado, **145 achados**: apagar 15 · corrigir 24 ·
+> simplificar 11 · documentar 55 · decidir 40) + `D1…D10-*.md` + `_insumos/` (knip, depcheck, audit, vitest,
+> catálogo do banco, mapa RPC→chamadores) + rascunho `docs/backlog-v6.md` (23 itens).
+> **Baseline preservável:** 1207 testes / 72 arquivos / 0 skip; `tsc` e `lint` limpos.
+> **Próximo passo:** Yan tria no Chat cada achado (`agir agora` · `backlog v6` · `descartar`) direto nas colunas
+> vazias dos `D<n>-*.md`; o relatório triado é commitado (`docs(auditoria): relatorio triado (spec da fase 2)`)
+> e só então a Fase 2 começa (ordem por risco: código → aditiva 0269 → deploy → destrutiva GATE 2 → docs).
+> **Para o Yan antes da Fase 2:** mergear o PR #262 (docs pós-merge v5.9.6; evita conflito aqui); decidir
+> PR #213 stand-by (`metas_subsetor_*`, D2-007); **D6-003 `next` 16.2.9 tem 2 CVEs critical, fix minor
+> 16.3.4**; **D10-001 as regras `allow`/`deny` do `CLAUDE.md` não existem em nenhum `settings.json`**.
+> Frente única: nenhuma outra branch de feature deve abrir enquanto esta corre.
+
 Última atualização: 2026-09-10 (fechamento da v5.9.6, PR aberto — aguarda merge do Yan) · produção na **v5.9.5** (#259 mergeado 10/09 às 11h03):
 
 🟡 **v5.9.6 FECHADA, PR ABERTO** (Rota C, branch `fix/v5-9-6-convencao-teste-escreve-banco`; out-briefing

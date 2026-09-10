@@ -1,0 +1,31 @@
+# Backlog v6 — rascunho (Fase 1 da v5.10.0, antes da triagem)
+
+Tudo o que a auditoria classificou como "grande demais para limpeza" (esforço `L`, redesenho, major de
+dependência, decisão de arquitetura). **Rascunho**: a triagem do GATE 1 confirma, move ou descarta cada
+item; a versão final é entrega da Fase 2 (`Mfinal`). Referência = id em `docs/auditoria-v5/`.
+
+| # | item | origem | risco | esforço | por que é v6 e não limpeza |
+|---|---|---|---|---|---|
+| B-01 | Tokenizar o cinza neutro (`zinc-*`: 1.675 ocorrências / 137 arquivos; 4 primitivos de `ui/` como alavanca — `button` com 8 tonalidades) | D9-001/005/006 | médio | L | reestrutura paleta; muda cor visível; exige verificação de contraste |
+| B-02 | `nodemailer` 9 → 10 (4 CVEs moderate/high: bypass de allow-list de domínio, DoS) | D6-004 | médio | L | major com breaking; ação externa irreversível (skill `email`) |
+| B-03 | `vitest` 3 → 5 (CVE moderate em `@vitest/mocker`) | D6-005 | médio | L | major; config e reporters mudam |
+| B-04 | Majors pendentes: `typescript` 5.9 → 7, `eslint` 9 → 10, `@types/node` 20 → 22, `@supabase/ssr` 0.10 → 0.12 | D6-007/008 | alto | L | quebram regras/config; fora do escopo por briefing |
+| B-05 | Regenerar `src/types/database.ts` (manuscrito da M1, cobre ~25% das RPCs) e adaptar os 32 call-sites tipados — OU declarar oficialmente "congelado + helper" como convenção | D4-001, D1-022 | médio | L | decisão de arquitetura; toca dezenas de arquivos |
+| B-06 | `faturamento-corp/actions.ts`: 26 `(db.rpc as any)` → helper `BoundRpc` + schemas Zod + testes de contrato (maior área sem rede de contrato) | D4-009 | médio | L | 800+ linhas; validação nova pode rejeitar dado hoje aceito |
+| B-07 | 8 route handlers de `/api/dashboard/*` sem schema Zod (`cagr`, `prejuizos`, `mix-setor`, `pipeline`, `sumario-subsetor`, `proximos`, `kpi-historico`, `setores`) | D4-007 | médio | M | schema novo por RPC + teste de contrato cada |
+| B-08 | DRE: `Promise.allSettled` com índice posicional dinâmico → `Map` chave→resultado | D5-001 | médio | L | redesenho do carregamento da página (já mordeu 2×) |
+| B-09 | `/metas`: `get_executiva_kpis`/`metas_ritmo_diario` aceitarem `p_setor[]` (hoje ~11 RPCs por carregamento; Modo TV refaz a cada 60 s) | D3-007 | baixo | L | muda assinatura de RPC; contrato novo |
+| B-10 | Full scans repetidos em 10 tabelas grandes (`monde.venda`, `raw.vendas_excel`, `financeiro.fato_fluxo`…): `EXPLAIN` por chamador, filtro/índice | D3-004 | baixo | L | investigação; pode virar índice novo (aditiva) |
+| B-11 | Índices `idx_scan=0` em tabelas grandes (`fato_fluxo_venda_idx` 1,1 MB, `lanc_mov_liquidacao_idx` 0,8 MB, parcial redundante em `fato_lancamento_operacao`) — remedir e dropar | D3-001/002/003 | médio | S | estatística é indício; `DROP INDEX` é destrutiva |
+| B-12 | `patrimonio.v_estado_atual`: índice de suporte `(ativo_id, data_movimentacao DESC, criado_em DESC, id DESC)` ou materializar quando crescer | D3-006 | baixo | L | hoje 6 linhas; padrão não escala |
+| B-13 | Corpus de fixtures de arquivo REAL anonimizado para os parsers (hoje só matriz inline → bytes) | D7-006 | médio | L | trabalho de captura, não limpeza (lição v5.5.2) |
+| B-14 | Contador/sonda para `skipIf` — a suíte não pode parecer verde com ~180 casos pulados | D5-004, D7-004 | baixo | S | pode entrar na v5.10.0 se triado `agir agora` |
+| B-15 | `describe.concurrent` em `rpc-contrato.test.ts` (54 s → ?) | D7-001 | baixo | M | medir antes; pode entrar na v5.10.0 |
+| B-16 | CI de PR (`.github/workflows`: `tsc` + `lint` + `test`) — hoje os gates são 100% disciplina local | D10 (risco) | médio | M | infra nova; decisão do Yan (custo de minutos) |
+| B-17 | Lint `wt/*` para cor hardcoded em prop/`style` (Recharts `stroke=`/`fill=` com hex) | D9-007 | baixo | M | regra nova de lint; hoje 1 ocorrência |
+| B-18 | Hook PreToolUse para `git add -A`/`-a` (régua item 1; poda do `CLAUDE.md`) | D8-022 | baixo | S | ato humano (`.claude/hooks/` protegido) |
+| B-19 | Convenção única de prefixo de RPC (`get_*` 97 / `admin_*` 19 / `solic_*` 19 / verbo-substantivo ~60) | D9-018 | baixo | L | renomear RPC = destrutiva + todos os chamadores; provavelmente nunca |
+| B-20 | Renomear o repositório `WT-Finance/wt-finance` → Janus (quebra remotes/worktrees); `package.json name`; `localStorage` `wt-finance-*` com migração de chave | D9-011/014, D10-006 | médio | M | ato do Yan no GitHub; fora desta versão por invariante 5 |
+| B-21 | `docs/design-system.md` × página `/admin/design-system`: espelhar as 12 seções ou aposentar o `.md` | D8-014 | baixo | M | decisão de método; pode ser resolvida no ADR de fechamento |
+| B-22 | Baseline de schema + checagem de drift (decisão do Yan: virada v6) | briefing, invariante 6 | — | M | fora por decisão |
+| B-23 | `harness-base`: extrair hooks e aprendizados (pós-versão, outro repositório) | briefing | — | M | fora por decisão |
