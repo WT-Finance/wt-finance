@@ -6,6 +6,30 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.6] — 2026-09-10
+
+PATCH (Rota C) · **Convenção de teste que ESCREVE no banco: regra escrita + barreira mecânica**. Zero migration, zero mudança em código de produção · **1207 testes** (de 1202).
+
+### Adicionado
+
+- **Decisão de método (10/09/2026), registrada na skill `banco-e-rpc` §6** ("Provar comportamento de RPC que ESCREVE"): o caso de contrato normal lê o catálogo e não vê comportamento; quando o defeito só se manifesta escrevendo, é **aceito** escrever contra produção dentro de `BEGIN … ROLLBACK` — padrão, não exceção — com contrato obrigatório: uma transação **por caso** (nunca fixture em `beforeAll`), `describe.skipIf(!SUPABASE_DB_URL)`, linhas escolhidas dinamicamente, chave sintética `ZZ_TESTE_<migration>`, `SET LOCAL lock_timeout` (sem isso duas suítes concorrentes travam disputando lock até o timeout do runner), `SAVEPOINT` em volta da chamada que pode falhar, nenhum `COMMIT`. Referência: `reverter-diario.test.ts` (0268). **Gatilho de reavaliação:** à terceira ou quarta RPC testada assim, reabrir a decisão de ambiente de teste próprio — este caminho é para quando escrever é a única prova, não para conveniência.
+- **Sonda `src/lib/sonda-teste-escreve-banco.test.ts`** (régua de 5 destinos, destino 1), desenho **allowlist**: todo `src/**/*.test.ts` que obtém o driver `pg` é alvo e precisa de `BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf` sem `COMMIT`, a menos que se declare somente-leitura e prove (sem SQL de escrita em `query()`, sem `BEGIN`). Não é blacklist de INSERT/UPDATE porque o texto do teste não mostra o que uma função grava por dentro — `SELECT fn_que_grava()` sem transação passaria verde (achado CRÍTICO do `revisor`, corrigido antes de fechar). Cinco casos: a referência é reconhecida como alvo (autoconferência — pegou a própria sonda na 1ª rodada, quando `createRequire(...)('pg')` escapava da regex), a allowlist prova que só lê, nenhum alvo viola, cada exceção **ainda existe e ainda viola**, e a **contagem do gatilho é mecânica** (lista fechada de quem escreve-e-reverte; arquivo novo reprova até a skill ser atualizada). Comparações case-insensitive. Vista vermelha duas vezes antes de valer: arquivo que escrevia sem transação (4 faltas) e arquivo que chamava função gravadora via `SELECT` sem `BEGIN`.
+- **Checklist inline do `revisor-db`** ganha o item em par (D-12): forma (a sonda pega) e **escolha** (escrever é a única prova?), com a contagem para o gatilho de reavaliação.
+
+### Alterado
+
+- `virada-paridade.test.ts` (v5.1.4) ganha o `SET LOCAL lock_timeout` que faltava — único ajuste para cumprir a convenção; nenhuma expectativa muda.
+
+### Registrado
+
+- **Exceção conhecida, explícita na sonda:** `contrato-api-externa.test.ts` (v5.4.0) escreve fixture **commitada** (`beforeAll`/`afterAll`) e tem um `BEGIN … COMMIT` — testa a API externa ponta a ponta por HTTP, e o PostgREST só vê dado commitado; não cabe em transação por desenho. Corrige a afirmação da v5.9.5 de que `reverter-diario` era "o primeiro teste que escreve": é o **segundo** arquivo, e a contagem do gatilho de reavaliação começa em dois.
+
+### Prova
+
+- Gates: `tsc`, `lint`, `build`, `npm test` **1207/1207**. `revisor`: 1 CRÍTICO (blacklist de tokens não vê função que grava → allowlist), 1 ALTO (regex case-sensitive → `i`), 3 MÉDIOs (SQL de escrita em prosa contava → só dentro de `query()`; contagem manual omitia `virada-paridade` → mecânica; checklist não dizia o que a sonda NÃO vê → dito), 1 BAIXO (`query({ text })` → coberto) — todos corrigidos. `revisor-db` não se aplica (sem migration/RPC).
+
+---
+
 ## [5.9.5] — 2026-09-10
 
 PATCH · **Desfazer em lote robusto a múltiplos toques na mesma linha: `reverter_diario` processa em DESC e compara sem coluna volátil; guard de payload duplicado também no editor de estrutura do caixa**. Migration `0268` (aditiva, três `CREATE OR REPLACE` a partir do catálogo vivo) · sem ADR novo; **Emenda 1 ao ADR-0168** · **1202 testes** (de 1193).
