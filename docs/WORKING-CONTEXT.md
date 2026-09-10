@@ -1,6 +1,32 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-09 (fechamento da v5.9.4, PR aberto — aguarda merge do Yan) · produção na **v5.9.3** (#255 mergeado 09/09 às 15h33); **migration `0267` (v5.9.4) já APLICADA** em 09/09 ~21h45 — próxima livre **0268**; próximo ADR livre **0173** (a v5.9.4 tomou o **0172**). v5.9.3: ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-09-10 (fechamento da v5.9.5, PR aberto — aguarda merge do Yan) · produção na **v5.9.4** (#257 mergeado 10/09 às 09h01); **migration `0268` (v5.9.5) já APLICADA** em 10/09 ~10h34 — próxima livre **0269**; próximo ADR livre **0173** (a v5.9.5 não criou ADR; Emenda 1 ao 0168). v5.9.3:
+
+🟡 **v5.9.5 FECHADA, PR ABERTO** (branch `fix/v5-9-5-reverter-diario-multiplos-toques`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v5-9-5_Reverter_Diario.md`) — desfazer em lote robusto a
+múltiplos toques na mesma linha. **Migration `0268` (aditiva) APLICADA** em 10/09 com gate verde (58
+tabelas, restore-test 3/3): `financeiro.reverter_diario` percorre `ORDER BY id DESC` e compara o conflito
+**sem colunas voláteis** (`c_volateis = ['atualizado_em']`; DESC sozinho NÃO bastava — a reversão carimba
+`atualizado_em` e o segundo passo acusava conflito); `dre_estrutura_salvar` (caixa) ganhou o guard de
+payload duplicado da `0260`; `dre_comp_estrutura_salvar` só teve a justificativa do guard reescrita (a
+`0260` NÃO foi editada — registro imutável; o comentário vive no corpo, no catálogo). Sem ADR novo;
+**Emenda 1 ao ADR-0168** (a `0251` ficou revertível e NÃO deve ser revertida). **1202 testes** (de 1193).
+Medido: o lote `132178` (a `0251`, 43 toques/38 linhas) era o ÚNICO na base a violar a premissa — dívida
+preventiva. Chamadores vivos: **6** (o briefing listava 4 — faltavam `gerencial_desfazer_lote/_linha`);
+nenhum mudou. Prova: M1 viu as 3 cadeias abortarem no corpo antigo (transação revertida via `pg`); a
+0268 foi ensaiada DENTRO da transação revertida antes de aplicar e reprovada de novo depois. Teste
+permanente `src/lib/dre/reverter-diario.test.ts` — o PRIMEIRO da suíte que escreve-e-reverte contra
+produção a cada `npm test` (pulado sem `SUPABASE_DB_URL`). Skill `banco-e-rpc`: lição virou "coluna
+VOLÁTIL numa checagem de conflito"; checklist do `revisor-db` em par (D-12). Revisores: `revisor-db`
+aprovada sem CRÍTICO/ALTO (BAIXO `NOTIFY pgrst` atendido); `revisor` — ver out-briefing.
+🔴 **Pendente (Yan):** merge do PR; **checkpoint do briefing** — ler a Emenda 1 do ADR-0168 e o parecer do
+`revisor-db` sobre a comparação sem coluna volátil; confirmar a decisão de PORTAR o guard ao caixa (em vez de
+removê-lo da competência); aceitar o teste que escreve-e-reverte contra produção a cada `npm test`; depois do
+merge, um desfazer real pela UI de cada editor (lote de 2–3 linhas). ⚠️ O PR de docs do pós-merge da v5.9.4
+(`docs/pos-merge-v5-9-4`) também edita este arquivo — mergear um e reconciliar o outro. Fora do escopo,
+registrado: `patrimonio.ativo`/`movimentacao` estão sob o diário sem wrapper de desfazer.
+
+v5.9.4 (contexto herdado): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 🟡 **v5.9.4 FECHADA, PR ABERTO** (branch `fix/v5-9-4-varredura-divida`; out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v5-9-4_Varredura_Divida.md`) — varredura de dívida em três

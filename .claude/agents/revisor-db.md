@@ -94,9 +94,14 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
   dado VIVO** antes de entregar — quantas linhas casam, quais, e como ficam? E o inverso
   (nenhuma linha fora do alvo casa)? *(O briefing da v5.7.0 dizia 18 e eram 12.)*
 - A migration toca **a mesma linha mais de uma vez** (ex.: fórmula num passo, rótulo em
-  outro)? Se sim, o **undo em lote do diário está QUEBRADO** para ela — `reverter_diario`
-  pressupõe um toque por linha por lote e aborta sem reverter nada. Então o header **não pode
-  prometer "reversível pelo painel"**. (ALTO na v5.7.0.)
+  outro)? Desde a `0268` (v5.9.5) o undo em lote do diário **suporta** isso (DESC + comparação
+  sem coluna volátil); antes abortava sem reverter nada (ALTO na v5.7.0). O header ainda deve
+  dizer se a reversão pelo painel é **desejável** — revertível ≠ deve ser revertido (ADR-0168,
+  Emenda 1).
+- Guard de conflito otimista que compara a linha **inteira** contra snapshot: a própria
+  operação altera alguma coluna dessa linha (carimbo, token, contador)? Se sim, ela precisa
+  ficar **fora** da comparação — e SÓ ela (skill `banco-e-rpc`, "Coluna VOLÁTIL"). E o guard
+  foi **visto reprovando** com o corpo atual antes da correção, em transação revertida?
 - A reconciliação fail-closed confere **CONTEÚDO** (fórmulas, arrays, chaves), não só
   contagens? Contagem certa com conteúdo errado passa calada.
 

@@ -35,6 +35,28 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.9.5',
+    data: '2026-09-10T10:45', // horário REAL de autoria (fuso −03) — reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'O "desfazer em lote" do histórico dos editores da DRE e do Gerencial passa a funcionar ' +
+          'mesmo quando a mesma linha foi alterada mais de uma vez na mesma operação — antes, nesse ' +
+          'caso, o desfazer era recusado por inteiro. Nenhuma operação feita pela tela chegou a ' +
+          'esbarrar nisso; a correção é preventiva. Desfazer continua tudo-ou-nada e continua ' +
+          'recusando quando outra pessoa alterou a linha nesse meio-tempo.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Ao salvar a estrutura da DRE (regime de caixa), um envio que traga a mesma categoria duas ' +
+          'vezes é recusado com aviso claro, em vez de aceitar silenciosamente só a última — mesmo ' +
+          'comportamento que o editor por competência já tinha.',
+      },
+    ],
+  },
+  {
     versao: '5.9.4',
     data: '2026-09-09T21:58', // horário REAL de autoria (fuso −03) — reconciliar ao horário do merge no /pos-merge
     itens: [

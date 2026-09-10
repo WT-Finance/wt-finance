@@ -6,6 +6,30 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.5] — 2026-09-10
+
+PATCH · **Desfazer em lote robusto a múltiplos toques na mesma linha: `reverter_diario` processa em DESC e compara sem coluna volátil; guard de payload duplicado também no editor de estrutura do caixa**. Migration `0268` (aditiva, três `CREATE OR REPLACE` a partir do catálogo vivo) · sem ADR novo; **Emenda 1 ao ADR-0168** · **1202 testes** (de 1193).
+
+### Corrigido
+
+- **`financeiro.reverter_diario` aceita lotes que tocam a mesma linha mais de uma vez** (`0268`). Duas camadas: (a) o loop percorria `ORDER BY id` ASC, então a entrada mais antiga de uma cadeia guardava um estado intermediário e a checagem de conflito abortava a transação inteira sem reverter nada; agora percorre em **DESC** e cada entrada encontra a linha exatamente como a deixou. (b) DESC sozinho não bastava — a própria reversão avança `atualizado_em` (BEFORE trigger / `DEFAULT now()`), e comparar a linha inteira contra o `dados_depois` acusava conflito no segundo passo; a comparação passou a ignorar as **colunas voláteis**, nomeadas numa constante única (`c_volateis = ['atualizado_em']`). A guarda não afrouxou: conteúdo alterado por terceiro continua recusado, e um conflito real derruba tudo (atomicidade). Medido em produção: o único lote que violava a premissa era o `132178` (a `0251`, 43 toques para 38 linhas) — dívida preventiva, sem defeito ativo para usuários. Seis chamadores vivos, nenhum precisou mudar (DRE caixa/competência e Gerencial, `desfazer_lote`/`_linha`).
+- **`dre_estrutura_salvar` (caixa) recusa a mesma categoria duas vezes no mesmo lote** (`0268`) — guard que a competência (`0260`) tinha e o caixa não; no `ON CONFLICT DO UPDATE` o último toque vencia em silêncio. Roda antes do advisory lock e da trava otimista. Em `dre_comp_estrutura_salvar` só a **justificativa** mudou (comentário e mensagem): o guard não protege o desfazer (migration nem passa pela RPC) — rejeita payload ambíguo. A `0260` não foi editada (migration aplicada é registro imutável); o comentário vive no corpo da função, no catálogo.
+
+### Adicionado
+
+- **`src/lib/dre/reverter-diario.test.ts`**: prova comportamental permanente em **transação revertida** (`pg`, `BEGIN … ROLLBACK`, um `SAVEPOINT` por cenário) — cadeias U→U, I→U e U→D revertem ao original; conflito real recusado; lote com uma linha em conflito não reverte nenhuma; caminho normal (um toque por linha) sem regressão; sonda do catálogo vivo (DESC + constante) que reprova a próxima `CREATE OR REPLACE` escrita da `0206`; guard dos dois salvares via REST com token inválido de propósito (prova a posição: o erro tem de ser o do guard, não `DRE_CONFLITO`). Vista **vermelha em 6 de 9 casos** contra o corpo antigo antes de aplicar. Primeiro teste da suíte que escreve-e-reverte contra produção a cada `npm test`; pulado sem `SUPABASE_DB_URL`.
+- **Emenda 1 ao ADR-0168**: a `0251` deixa de ser irrevertível por limitação técnica e **não deve ser revertida** (estrutura viva e comunicada desde 19/08; reverter seria decisão de produto nova).
+
+### Alterado
+
+- Skill `banco-e-rpc`: a lição "`reverter_diario` pressupõe UM toque por linha" virou a classe **"coluna volátil numa checagem de conflito"** (compare sem o que a própria operação altera, e só isso; veja o guard reprovar antes de corrigir; trocar a ordem de um loop que compara contra snapshot é mudança de semântica). Checklist inline do `revisor-db` atualizado em par (D-12).
+
+### Prova
+
+- M1 (corpo antigo, transação revertida): as três cadeias abortam com as mensagens "foi alterada por outra pessoa depois desta edição" (U→U), "…depois desta criação" (I→U) e "não existe mais (foi excluída depois)" (U→D). M2 (0268 aplicada dentro da transação, depois em produção): as três revertem ao original; conflito real e atomicidade mantidos; caminho normal reverte 3/3. REST `service_role`: guard do caixa e da competência 400 com as mensagens novas; lote vazio segue até `DRE_CONFLITO`; `anon` 401; wrappers de desfazer (DRE e Gerencial) executam. Backup-gate VERDE (58 tabelas, restore-test 3/3). Gates: `tsc`, `lint`, `build`, `npm test` **1202/1202**. `revisor-db`: aprovada sem CRÍTICO/ALTO (BAIXO: `NOTIFY pgrst` — atendido).
+
+---
+
 ## [5.9.4] — 2026-09-09
 
 PATCH · **Varredura de dívida: gatilhos de ajuda "?" acessíveis por teclado em toda a plataforma (primitivo único + sonda), dois hardenings de RPC, contratos das RPCs do float, higiene e dois registros arquiteturais**. Migration `0267` (aditiva, dois `CREATE OR REPLACE`) · ADR-**0172** (as-built da API externa) + Emenda ao ADR-0099 · **1193 testes** (de 1185).
