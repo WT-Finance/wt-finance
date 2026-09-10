@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
-    "@supabase/ssr": "^0.10.2",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.1",
     "@vercel/speed-insights": "^2.0.0",
     "date-fns": "^4.1.0",
@@ -34,6 +34,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript-eslint/parser": "8.59.1",
     "depcheck": "^1.4.7",
     "dotenv": "^17.4.2",
     "eslint": "^9",
