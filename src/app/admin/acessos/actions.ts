@@ -107,8 +107,14 @@ export async function criarUsuario(input: {
 
     // 2) Vínculo RBAC (cliente de SESSÃO — banco valida o admin do chamador).
     const supabase = await getServerClient()
+    // v5.10.0 — `p_nome` passa a receber `''` em vez de `null` quando não há nome.
+    // Equivalência PROVADA no corpo da função (catálogo vivo):
+    //   INSERT … VALUES (…, nullif(trim(coalesce(p_nome, '')), ''), …)
+    // `NULL` e `''` atravessam o mesmo `coalesce`→`trim`→`nullif` e gravam NULL nos dois
+    // casos. A variável `nome` segue `string | null` para o resto da action (o e-mail de
+    // senha provisória distingue os dois) — a conversão é só nesta fronteira.
     const { error: erroRegistro } = await supabase.rpc('admin_registrar_usuario', {
-      p_user_id: userId, p_email: email, p_nome: nome, p_role_id: input.roleId,
+      p_user_id: userId, p_email: email, p_nome: nome ?? '', p_role_id: input.roleId,
     })
     if (erroRegistro) return { ok: false, erro: traduzirErro(erroRegistro.message) }
 
