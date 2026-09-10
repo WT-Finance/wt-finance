@@ -50,8 +50,9 @@ import {
 } from '@/lib/monde/reconciliacao'
 import { listarJanelaDaApi } from '@/lib/monde/auditoria'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: any }>
+// v5.10.0/D4-011: `unknown` em vez de `any` — o retorno já é estreitado por
+// cast/validação em cada call-site, e `any` desligava a checagem em toda a cadeia.
+type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
 /** Dias que o incremental cobre. Era 2 até a v5.4.4; o atraso MEDIANO de registro é 4. */
 const DIAS_INCREMENTAL = 7

@@ -12,8 +12,9 @@ import { parseGerencialExcel } from '@/lib/gerencial/parser'
 import { computeDiffPorFatia, type LancamentoPlanilha, type LinhaFatia, type ImportDiff } from '@/lib/gerencial/import-types'
 import { canonizarConta } from '@/lib/gerencial/normalizar-conta'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: any; error: { message: string } | null }>
+// v5.10.0/D4-011: `data: unknown` em vez de `any` — o retorno já é estreitado por
+// cast/validação em cada call-site, e `any` desligava a checagem em toda a cadeia.
+type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
 // v4.21.0 (M2): cliente de SESSÃO (não service role). batch_gerencial_import /
 // get_gerencial_lancamentos_planilha exigem app.exigir_acesso(['financeiro/gerencial']).
@@ -110,11 +111,16 @@ export async function POST(req: NextRequest) {
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+      // v5.10.0/D4-011: o `Rpc` local passou de `data: any` para `unknown`; o
+      // estreitamento vira explícito AQUI, no único ponto que lê o resumo, em vez
+      // de `any` desligar a checagem da cadeia inteira. Os `??` já cobrem ausência.
+      const resumo = data as { adicionados?: number; removidos?: number; atualizados?: number } | null
+
       return NextResponse.json({
         resumo: {
-          adicionados: data?.adicionados ?? diff.aAdicionar.length,
-          removidos:   data?.removidos   ?? removerIds.length,
-          atualizados: data?.atualizados ?? diff.aAtualizar.length,
+          adicionados: resumo?.adicionados ?? diff.aAdicionar.length,
+          removidos:   resumo?.removidos   ?? removerIds.length,
+          atualizados: resumo?.atualizados ?? diff.aAtualizar.length,
         },
       })
     }
