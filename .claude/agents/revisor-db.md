@@ -115,9 +115,12 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
   uma transação **por caso** (`BEGIN … ROLLBACK`, nunca fixture em `beforeAll`), `describe.skipIf`
   sem `SUPABASE_DB_URL`, linhas escolhidas dinamicamente (sem id fixo), chave sintética
   `ZZ_TESTE_<migration>` no dado escrito, `SET LOCAL lock_timeout`, nenhum `COMMIT`? A sonda
-  `sonda-teste-escreve-banco.test.ts` pega a forma; a ESCOLHA de escrever (em vez de ler o
-  catálogo) precisa de justificativa — escrever é a única prova? E conte: à 3ª/4ª RPC testada
-  assim, o parecer deve pedir a reavaliação de ambiente de teste próprio.
+  `sonda-teste-escreve-banco.test.ts` pega só a FORMA (`BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf`,
+  ausência de `COMMIT`) — ela **NÃO** verifica chave sintética, `SAVEPOINT`, nem se cada escrita
+  está DENTRO do `BEGIN` (fixture em `beforeAll` escapa): **confira manualmente**. A ESCOLHA de
+  escrever (em vez de ler o catálogo) precisa de justificativa — escrever é a única prova? E
+  conte: a sonda mantém a lista fechada de quem escreve-e-reverte; à 3ª/4ª RPC testada assim,
+  o parecer deve pedir a reavaliação de ambiente de teste próprio.
 
 ## Formato do parecer
 

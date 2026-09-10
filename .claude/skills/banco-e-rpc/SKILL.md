@@ -574,8 +574,13 @@ ao executar a cadeia), é **aceito escrever contra produção dentro de `BEGIN �
 - **nenhum `COMMIT`**.
 
 Referência viva: `src/lib/dre/reverter-diario.test.ts` (0268). **Enforcement:**
-`src/lib/sonda-teste-escreve-banco.test.ts` varre `src/**/*.test.ts` que abre `pg` e escreve
-(ou abre transação) e reprova sem `BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf` ou com `COMMIT`.
+`src/lib/sonda-teste-escreve-banco.test.ts` — **allowlist**: TODO `src/**/*.test.ts` que obtém o
+driver `pg` é alvo e precisa de `BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf` sem `COMMIT`, a menos
+que se declare **somente-leitura** (e prove: sem SQL de escrita, sem `BEGIN`). Não é blacklist de
+INSERT/UPDATE porque o texto do teste não mostra o que uma FUNÇÃO grava por dentro —
+`SELECT fn_que_grava()` sem transação passaria (achado CRÍTICO do `revisor` na v5.9.6). O que a
+sonda **não** vê e fica para o `revisor-db`: chave sintética, `SAVEPOINT`, e se cada escrita está
+DENTRO do `BEGIN` (ela prova presença do contrato, não fluxo).
 
 **Exceção conhecida, listada na sonda:** `contrato-api-externa.test.ts` (v5.4.0) testa a API
 externa ponta a ponta por HTTP — a fixture precisa estar **commitada** para o PostgREST vê-la, e
@@ -583,8 +588,11 @@ externa ponta a ponta por HTTP — a fixture precisa estar **commitada** para o 
 
 **Gatilho de reavaliação:** à **terceira ou quarta RPC** testada assim, reabrir a decisão de
 **ambiente de teste próprio** (staging/branching — §1). Este caminho é para quando escrever é a
-**única** prova, não para conveniência. Contagem hoje: `reverter-diario` (transação revertida)
-e `contrato-api-externa` (fixture commitada) — dois arquivos.
+**única** prova, não para conveniência. A contagem é **mecânica**: a sonda mantém a lista fechada
+`ESCREVEM_E_REVERTEM_HOJE` e reprova quando um arquivo novo entra — aí se atualiza esta seção e
+se avalia o gatilho. Hoje: `reverter-diario` (0268) e `virada-paridade` (0181, v5.1.4) em
+transação revertida, mais `contrato-api-externa` como exceção commitada — **três arquivos**; o
+próximo é o 4º.
 
 ---
 
