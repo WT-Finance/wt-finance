@@ -1,6 +1,25 @@
 # WORKING-CONTEXT — Janus
 
-Última atualização: 2026-09-10 (pós-merge da v5.9.5) · produção na **v5.9.5** (#259 mergeado 10/09 às 11h03): desfazer em lote robusto a múltiplos toques por linha — `reverter_diario` em DESC + comparação sem coluna volátil, guard de payload duplicado no caixa; **migration `0268` APLICADA** em 10/09 ~10h34; Emenda 1 ao ADR-0168; **1202 testes** — próxima livre **0269**; próximo ADR livre **0173** (a v5.9.5 não criou ADR; Emenda 1 ao 0168). Antes a v5.9.4 (#257, 10/09 09h01): varredura de dívida — gatilhos "?" acessíveis por teclado (primitivo `GatilhoAjuda` + sonda), migration **`0267` APLICADA** (sale_id preservado; só-Metas lê `get_executiva_kpis`), schemas do float, **ADR-0172**; **1193 testes**. Antes a v5.9.3 (#255, 09/09 15h33): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
+Última atualização: 2026-09-10 (fechamento da v5.9.6, PR aberto — aguarda merge do Yan) · produção na **v5.9.5** (#259 mergeado 10/09 às 11h03):
+
+🟡 **v5.9.6 FECHADA, PR ABERTO** (Rota C, branch `fix/v5-9-6-convencao-teste-escreve-banco`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v5-9-6_Convencao_Teste_Escreve_Banco.md`) — **convenção de teste que
+ESCREVE no banco**: decisão de método (10/09) de que provar RPC que escreve pode rodar contra produção em
+`BEGIN … ROLLBACK`, como padrão, com contrato obrigatório (uma transação POR CASO, `skipIf`, linhas dinâmicas,
+`ZZ_TESTE_<migration>`, `lock_timeout`, sem `COMMIT`) — escrita na skill `banco-e-rpc` §6, no checklist inline
+do `revisor-db` (D-12) e vigiada pela **sonda `src/lib/sonda-teste-escreve-banco.test.ts`** (vista vermelha
+antes; a autoconferência pegou a própria sonda deixando `createRequire(...)('pg')` escapar). **Zero migration,
+zero código de produção.** Achado: `contrato-api-externa.test.ts` (v5.4.0) JÁ escrevia fixture COMMITADA em
+produção — a v5.9.5 estava errada ao chamar `reverter-diario` de "primeiro"; entra como **exceção explícita** na
+sonda (HTTP ponta a ponta precisa de dado commitado). `revisor` pegou um CRÍTICO (blacklist de tokens não vê função
+que grava) → sonda virou **allowlist** (todo teste que abre `pg` é alvo salvo somente-leitura declarado) e a
+contagem do **gatilho de reavaliação** (3ª/4ª RPC → reabrir ambiente de teste próprio) ficou **mecânica**: lista
+fechada, hoje **TRÊS** arquivos (`reverter-diario`, `virada-paridade`, exceção `contrato-api-externa`). `virada-paridade`
+ganhou o `lock_timeout`. **1207 testes** (de 1202). Próxima migration livre segue **0269**; próximo ADR **0173**.
+🔴 **Pendente (Yan):** merge do PR; **decidir** se a exceção de `contrato-api-externa` fica como está (fixture
+commitada + limpeza) e se, com a contagem real em TRÊS, a reavaliação de ambiente de teste próprio já está madura.
+
+v5.9.5: desfazer em lote robusto a múltiplos toques por linha — `reverter_diario` em DESC + comparação sem coluna volátil, guard de payload duplicado no caixa; **migration `0268` APLICADA** em 10/09 ~10h34; Emenda 1 ao ADR-0168; **1202 testes** — próxima livre **0269**; próximo ADR livre **0173** (a v5.9.5 não criou ADR; Emenda 1 ao 0168). Antes a v5.9.4 (#257, 10/09 09h01): varredura de dívida — gatilhos "?" acessíveis por teclado (primitivo `GatilhoAjuda` + sonda), migration **`0267` APLICADA** (sale_id preservado; só-Metas lê `get_executiva_kpis`), schemas do float, **ADR-0172**; **1193 testes**. Antes a v5.9.3 (#255, 09/09 15h33): ajustes gerais — um token só para título/subtítulo em toda a plataforma (`--text-primary`/`--text-subtle`), "Resultado Financeiro" na grade de proporção da DRE (8 gráficos), badges de contagem em Abertas/Aprovadas, badge de pedidos de ACESSO pendentes (sidebar + pill; **migration `0266` APLICADA** em 09/09), Gerencial abrindo por Vencimento ASC; sem ADR novo; **1185 testes** (de 1171). Antes a v5.9.1 (#251, 02/09 17h13 — Solicitações: excluir anexo e o campo do TIPO como registro imutável da abertura; `0264`/`0265`, Emenda 2 do **ADR-0169**), a v5.9.0 (#245, 27/08 13h54 — status "Aprovada" e anexo ao longo da vida; `0261`–`0263`, **ADR-0169**), a v5.8.1 (#248, 26/08 16h43, **ADR-0171**) e a v5.8.0 (#246, 26/08 12h19, `0255`–`0257`/`0260`, **ADR-0170**). *Metas por subsetor de Weddings* segue em **STAND-BY** (liberou o número 5.4.4; migrations 0233–0235 aplicadas, código na branch, **não mergear**).
 
 ✅ **v5.9.5 EM PRODUÇÃO** (#259, 10/09 11h03; out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v5-9-5_Reverter_Diario.md`) — desfazer em lote robusto a
