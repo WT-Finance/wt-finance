@@ -17,7 +17,7 @@
 export const SERIE_SGS_CDI_MENSAL = 4391
 
 /** Início do backfill (decisão do briefing). */
-export const INICIO_SERIE = { dia: 1, mes: 8, ano: 2024 }
+const INICIO_SERIE = { dia: 1, mes: 8, ano: 2024 }
 
 /**
  * Teto de plausibilidade para uma taxa MENSAL: 5% a.m. (≈ 79% a.a.).
@@ -29,10 +29,10 @@ export const INICIO_SERIE = { dia: 1, mes: 8, ano: 2024 }
  * não este guard — ele é a segunda linha, não a primeira. O CHECK da tabela é mais
  * frouxo de propósito (±100%): é sanidade de coluna, não regra de negócio.
  */
-export const TETO_TAXA_MENSAL = 0.05
+const TETO_TAXA_MENSAL = 0.05
 
 /** O SGS aceita e devolve datas em dd/MM/yyyy. */
-export function paraDataBr(d: Date): string {
+function paraDataBr(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
 }
@@ -44,7 +44,7 @@ export function paraDataBr(d: Date): string {
  * pelo runtime (formato americano). As duas datas existem, então o erro não lança —
  * a taxa só aparece no mês errado, e a conta composta segue sem sintoma.
  */
-export function paraIsoPrimeiroDia(dataBr: string): string | null {
+function paraIsoPrimeiroDia(dataBr: string): string | null {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dataBr.trim())
   if (!m) return null
   const [, dia, mes, ano] = m

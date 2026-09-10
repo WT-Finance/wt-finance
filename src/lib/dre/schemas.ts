@@ -10,7 +10,7 @@ import { z } from 'zod'
 // nulo) quando o ano pedido é o corrente — a 2ª coluna do mês híbrido.
 
 /** Uma linha do demonstrativo (bloco, sub, totalizador ou categoria-folha). */
-export const dreLinhaSchema = z.object({
+const dreLinhaSchema = z.object({
   t:             z.enum(['blocoH', 'sub', 'tot', 'cat']),
   rotulo:        z.string(),
   estrela:       z.boolean(),
@@ -53,13 +53,13 @@ const bandejaComum = z.object({
 })
 
 /** Bandeja do regime de CAIXA — identidade é `categoria_id` (segue obrigatória). */
-export const dreBandejaSchema = bandejaComum.extend({
+const dreBandejaSchema = bandejaComum.extend({
   categoria_id: z.number(),
   chave:        z.string().optional(),
 }).passthrough()
 
 /** Bandeja do regime de COMPETÊNCIA — identidade é `chave` (`grupo · descrição`). */
-export const dreCompBandejaSchema = bandejaComum.extend({
+const dreCompBandejaSchema = bandejaComum.extend({
   chave:        z.string(),
   categoria_id: z.number().optional(),
 }).passthrough()
@@ -164,7 +164,7 @@ export interface ConsolidadoAno {
 // colunas da tabela e o que deixa o LADO (Entradas | Saídas) ser derivado do dado.
 // `bloco_chave: null` numa categoria = NÃO CLASSIFICADA (sem linha no de-para).
 
-export const decBlocoSchema = z.object({
+const decBlocoSchema = z.object({
   chave:  z.string(),
   rotulo: z.string(),
   ordem:  z.number(),
@@ -172,7 +172,7 @@ export const decBlocoSchema = z.object({
   n:      z.number(),
 }).passthrough()
 
-export const decCategoriaSchema = z.object({
+const decCategoriaSchema = z.object({
   categoria_id: z.number(),
   bloco_chave:  z.string().nullable(),
   rotulo:       z.string(),
@@ -193,7 +193,7 @@ export type DecomposicaoBloco = z.infer<typeof decomposicaoBlocoSchema>
 
 // ── Estrutura viva (editor) ───────────────────────────────────────────────────
 
-export const estruturaBlocoSchema = z.object({
+const estruturaBlocoSchema = z.object({
   chave:        z.string(),
   rotulo:       z.string(),
   tipo:         z.enum(['blocoH', 'sub', 'tot']),
@@ -202,7 +202,7 @@ export const estruturaBlocoSchema = z.object({
   nota_estrela: z.boolean(),
 }).passthrough()
 
-export const estruturaMapSchema = z.object({
+const estruturaMapSchema = z.object({
   categoria_id: z.number(),
   nome:         z.string(),
   rotulo:       z.string(),
@@ -212,7 +212,7 @@ export const estruturaMapSchema = z.object({
   excluida:     z.boolean(),
 }).passthrough()
 
-export const estruturaBandejaSchema = z.object({
+const estruturaBandejaSchema = z.object({
   categoria_id: z.number(),
   nome:         z.string(),
   grupo_monde:  z.string(),
@@ -261,7 +261,7 @@ export interface SalvarMapItem {
 
 // ── Histórico (mesmo shape do Gerencial — 0200/0206) ──────────────────────────
 
-export const historicoLoteSchema = z.object({
+const historicoLoteSchema = z.object({
   lote_id:      z.string(),
   criado_em:    z.string(),
   usuario_id:   z.string().nullable(),
@@ -273,7 +273,7 @@ export const historicoLoteSchema = z.object({
 
 export const historicoLotesSchema = z.array(historicoLoteSchema)
 
-export const historicoEntradaSchema = z.object({
+const historicoEntradaSchema = z.object({
   id:           z.number(),
   tabela_alvo:  z.string().optional(),   // presente nas RPCs da estrutura (duas tabelas)
   operacao:     z.string(),

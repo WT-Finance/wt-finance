@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "//": "v5.10.0/D1-ferramenta — exceções apuradas na auditoria da v5 (regra G6 do relatório triado). Sem elas, a próxima auditoria re-descobre os mesmos falsos positivos: knip só enxerga o grafo de import ESM, e estes arquivos são chamados por config, por processo ou à mão.",
+  "ignore": [
+    "//  hooks do harness: invocados pelo .claude/settings.json (PreToolUse/Stop/SessionStart), nunca importados — D1-001",
+    ".claude/hooks/**",
+    "//  chamado por gate.mjs via execFileSync (processo, não import) — D1-002 / D10-005",
+    "scripts/db-gate/exportar.mjs",
+    "//  utilitário de verificação manual da DRE, citado pelo ADR-0168 e pelo fechamento da v5.7.0 — D1-003",
+    "scripts/dre-oracle.mjs",
+    "//  regenera artefato a partir da fonte; mantido por critério do Yan na triagem — D1-004",
+    "scripts/gera-seed-dre-competencia.mjs",
+    "//  seeder manual do fluxo de caixa: chama RPCs vivas, é o único caminho de popular local — D1-013",
+    "supabase/seed/seed-fluxo-caixa.ts"
+  ],
+  "ignoreDependencies": [
+    "//  Tailwind 4 entra por postcss.config.mjs e por @import no globals.css — invisível ao grafo de import JS (D6-001)",
+    "tailwindcss",
+    "@tailwindcss/postcss"
+  ]
+}

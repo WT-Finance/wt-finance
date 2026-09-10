@@ -19,7 +19,7 @@ export function rpcFluxo(
 // sal = repasse BRUTO (Entrada Clientes − Pagto Fornecedor). pct/pct_ant podem ser
 // null (mês sem base comparável ou sem entrada no denominador).
 
-export const repasseMensalRowSchema = z.object({
+const repasseMensalRowSchema = z.object({
   mes:     z.number(),
   ent:     z.number(),
   sal:     z.number(),
@@ -37,7 +37,7 @@ export type RepasseMensalRow = z.infer<typeof repasseMensalRowSchema>
 // cheio do ano corrente. `anos` = consolidados SEM dupla contagem: ano+1 traz só os meses
 // não exibidos nas colunas (resto=true, m ≥ mês-corrente); ano+2 cheio.
 
-export const horizonteMesSchema = z.object({
+const horizonteMesSchema = z.object({
   mes:     z.number(),
   ano:     z.number(),
   parcial: z.boolean(),
@@ -47,7 +47,7 @@ export const horizonteMesSchema = z.object({
   n:       z.number(),
 }).passthrough()
 
-export const horizonteAnoSchema = z.object({
+const horizonteAnoSchema = z.object({
   ano:   z.number(),
   resto: z.boolean(),
   liq:   z.number(),
@@ -71,7 +71,7 @@ export type HorizonteData = z.infer<typeof horizonteSchema>
 // Desconectado de analytics.gerencial_saldos (ajuste do checkpoint): o saldo do Fluxo
 // Projetado é preenchível no modal do drill (atualizar_saldo_caixa). Reserva separada.
 
-export const saldoCaixaContaSchema = z.object({
+const saldoCaixaContaSchema = z.object({
   conta:         z.string(),
   saldo:         z.number(),
   ordem:         z.number(),
@@ -87,7 +87,7 @@ export type SaldoCaixaConta = z.infer<typeof saldoCaixaContaSchema>
 // ── get_fluxo_runway_semanal() → RunwaySemanal ───────────────────────────────
 // 13 semanas; acc = saldo projetado acumulado (saldo_operacional + Σ liq até a semana).
 
-export const runwaySemanaSchema = z.object({
+const runwaySemanaSchema = z.object({
   ini: z.string(),
   fim: z.string(),
   rec: z.number(),
@@ -108,7 +108,7 @@ export type RunwaySemanal = z.infer<typeof runwaySemanalSchema>
 // YTD × YTD ano anterior por categoria. pct null quando t25 (ano anterior) = 0
 // (sem base comparável).
 
-export const rankingItemSchema = z.object({
+const rankingItemSchema = z.object({
   c:   z.string(),
   t25: z.number(),
   t26: z.number(),

@@ -91,28 +91,6 @@ export function ChartZeroLineX(): ReactElement {
   )
 }
 
-/**
- * Linha de referência horizontal tracejada ('5 4') — ex.: meta de margem,
- * total previsto. SÓLIDO = real; TRACEJADO = referência (esta).
- */
-export function ChartReferenceLineY(
-  y: number,
-  opts?: { color?: string; label?: string },
-): ReactElement {
-  const color = opts?.color ?? chartColors.axisTick
-  return (
-    <ReferenceLine
-      y={y}
-      stroke={color}
-      strokeDasharray={dashArrays.reference}
-      strokeWidth={strokeWidths.lineDashed}
-      label={opts?.label
-        ? { value: opts.label, position: 'insideTopRight', fontSize: 10, fill: color }
-        : undefined}
-    />
-  )
-}
-
 // ── Eixos X ────────────────────────────────────────────────────────────────────
 
 /**

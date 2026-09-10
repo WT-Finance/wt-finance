@@ -83,7 +83,7 @@ export type DecisaoCura = { ok: true } | { ok: false; bloqueio: string }
 
 /** A conta da rodada fecha? (fórmula ÚNICA — `podeCurar` autoriza e `avaliarMes` reporta
  *  com o MESMO critério; duplicá-la quebraria a paridade em silêncio — MÉDIO do revisor.) */
-export function contaFecha(e: {
+function contaFecha(e: {
   lidas: number
   espelhaveis: number
   excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }

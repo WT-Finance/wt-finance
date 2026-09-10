@@ -37,7 +37,7 @@ export const SCHEMAS = ['analytics', 'app', 'audit', 'dim', 'financeiro', 'raw']
 config({ path: join(REPO, '.env.local') })
 
 let _pool = null
-export function getPool() {
+function getPool() {
   if (_pool) return _pool
   const cs = process.env.SUPABASE_DB_URL
   if (!cs) {

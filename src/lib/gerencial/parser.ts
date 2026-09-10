@@ -44,7 +44,7 @@ function montarISO(ano: number, mes: number, dia: number): string | null {
 //   - BR 'DD/MM/YYYY', 'DD-MM-YYYY', 'DD.MM.YYYY' (+ ano 2 dígitos)
 //   - US 'MM/DD/YYYY' (desambiguado quando 1º campo > 12)
 // Default BR (DD/MM) quando ambíguo — empresa brasileira.
-export function parseVencimento(raw: unknown): string | null {
+function parseVencimento(raw: unknown): string | null {
   if (raw == null) return null
 
   if (raw instanceof Date) {

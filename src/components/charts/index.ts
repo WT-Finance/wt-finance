@@ -16,7 +16,6 @@ export {
   ChartGrid,
   ChartZeroLine,
   ChartZeroLineX,
-  ChartReferenceLineY,
   ChartXAxisMes,
   ChartXAxisCategoria,
   ChartXAxisBRL,
@@ -38,7 +37,7 @@ export {
   FUTURE_OPACITY,
 } from './chart-theme'
 
-export { fillMonths, listMonths } from './fill-months'
+export { fillMonths } from './fill-months'
 
 // Anel de destaque (círculo de contorno + valor centrado) — sem série de dados.
 export { AnelKpi } from './anel-kpi'

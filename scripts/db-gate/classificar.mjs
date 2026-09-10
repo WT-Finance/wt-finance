@@ -25,7 +25,7 @@ export function confirmaDestrutivaEOF(isTTY, resposta) {
 // e corpo dollar-quoted). Tags custom/aninhadas: escaneia até a tag de FECHAMENTO EXATA
 // (dollar-quote do Postgres não interpreta nada no meio do corpo). Estado não fechado ao
 // fim → ambiguo=true (falha fechada). ──
-export function limparTopLevel(sql) {
+function limparTopLevel(sql) {
   const s = String(sql)
   const n = s.length
   let out = ''

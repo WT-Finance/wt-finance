@@ -11,7 +11,7 @@ export type SetorMacro = 'Lazer' | 'Weddings' | 'Corporativo'
 /** Nome do micro-setor "Welcome" — emissões internas, sempre excluídas da ingestão. */
 export const SETOR_WELCOME = 'Welcome'
 
-export const MICRO_MACRO: Record<string, SetorMacro> = {
+const MICRO_MACRO: Record<string, SetorMacro> = {
   Lazer: 'Lazer',
   'Expedições': 'Lazer',
   WedMe: 'Weddings',

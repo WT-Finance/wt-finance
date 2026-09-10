@@ -19,7 +19,7 @@ function baseUrl(): string {
 }
 
 /** Chave da API Monde. Ausência é erro de OPERAÇÃO (config faltando), não de dado — lança cedo. */
-export function mondeApiKey(): string {
+function mondeApiKey(): string {
   const key = process.env.MONDE_API_KEY?.trim()
   if (!key) throw new Error('MONDE_API_KEY ausente — configure o ambiente da integração Monde (.env / Vercel).')
   return key
