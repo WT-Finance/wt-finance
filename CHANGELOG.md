@@ -6,6 +6,41 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.9.4] — 2026-09-09
+
+PATCH · **Varredura de dívida: gatilhos de ajuda "?" acessíveis por teclado em toda a plataforma (primitivo único + sonda), dois hardenings de RPC, contratos das RPCs do float, higiene e dois registros arquiteturais**. Migration `0267` (aditiva, dois `CREATE OR REPLACE`) · ADR-**0172** (as-built da API externa) + Emenda ao ADR-0099 · **1193 testes** (de 1185).
+
+### Adicionado
+
+- **Primitivo `GatilhoAjuda`** (`src/components/ui/gatilho-ajuda.tsx`): a afordância "?" de ajuda como `<button type="button">` focável, `foco-neutro`, `aria-label` no formato `"rótulo: texto"`, dentro do `Tooltip` — que abre no hover **e no foco**. Props para o que os call-sites variavam (`classNameBalao`, `ancoraDireita` para a última coluna, `pararPropagacao` dentro de `<th>` ordenável). Tokens do DS (`border-wt-border-strong`, `text-text-subtle`) no lugar de `zinc-300`/`zinc-400`.
+- **Sonda `src/components/ui/gatilho-ajuda.test.ts`**: varre `src/app` e `src/components` e reprova qualquer `>?</span>` (inacessível por teclado) e qualquer `>?</button>` fora do primitivo (receita duplicada). Vista reprovando com **7 spans + 6 buttons** antes da varredura; verde depois. O mesmo defeito havia voltado duas vezes depois de escrito na skill — prosa não segura sozinha.
+- **Schemas Zod das RPCs do float** (`src/lib/weddings/schemas-float.ts`): `get_rendimento_float` (route da operação) e `get_taxas_cdi` (aba Weddings) passavam por cast; agora vão por `parseRpc`, com a degradação preservada — shape inesperado cai no mesmo caminho de "sem dado" de antes, agora com log de drift. Casos na tabela viva de contrato + teste offline de payload inválido → `null`.
+- **Casos de contrato da `0267`**: leem `pg_get_functiondef` do catálogo vivo e afirmam o `COALESCE` do `sale_id` e a área `metas/acompanhamento` no `PERFORM` — e que `app.areas_do_setor` **não** mudou.
+- **ADR-0172 — API externa de Solicitações, as-built**: consolida o modelo como construído (chave por hash, `solicitante_email` obrigatório e pessoa real como autor, destinatário sempre ROLE sem fallback, whitelist e outbox removidas — Janus não faz chamada de saída). Os ADRs 0158–0161 ganham `Status: Supersedido por ADR-0172` e ficam como histórico (convenção ADR-0055).
+- **Emenda ao ADR-0099**: o título falava em "data/valor" e o corpo decidia só sobre datas; a emenda registra o tratamento de VALOR consolidado na v5.5.2 (leitura dupla nativo/string; `raw` no `sheet_to_json`).
+
+### Corrigido
+
+- **Treze gatilhos "?" migrados para o primitivo** — sete eram `<span>` e ficavam **invisíveis para quem navega por teclado** (modal de nova solicitação, Maiores variações, Tendência da Margem de Repasse, Runway de Caixa, KPIs da posição projetada, KPIs do Fluxo de Caixa e os cabeçalhos Status/Boleto/Nota fiscal do Faturamento Corp — este último tinha `aria-hidden` e nenhum irmão focável: o oitavo defeito); seis já eram `<button>` mas copiavam a receita (DRE ×4, inventário de Gestão de Pessoas, Lista de Operações). Mesmo lugar, mesmo tamanho, mesmo texto.
+- **`monde_ingest_promover` preserva o `sale_id`** (`0267`, A1): detalhe da API Monde que chega sem `sale_id` num mês cujo `raw_hash` mudou sobrescrevia o `sale_id` real com NULL — corrupção silenciosa, e NULL nunca é candidata à cura do espelho (v5.6.3). Agora `sale_id = COALESCE(EXCLUDED.sale_id, d.sale_id)`; nada mais no upsert muda. Provado em transação revertida contra produção: venda 74260 manteve o `sale_id` com o `raw_hash` atualizado.
+- **Quem tem só `metas/acompanhamento` lê `get_executiva_kpis`** (`0267`, A2; decisão de produto do Yan): os MetaCards e o Comparativo mostravam "—" porque a RPC exigia `performance/<setor>` ou `executiva`. A área entrou no `PERFORM` do wrapper, **não** no helper `app.areas_do_setor` — ele tem 15 RPCs consumidoras e ampliá-lo alargaria o acesso de 14 que ninguém pediu. Provado em transação revertida: usuário só-Metas lê os KPIs e segue negado em `get_mix_setor`. `anon` segue 401.
+
+### Removido
+
+- `src/lib/carga/parse-contas-pagar-receber.ts` (zero importadores, sem teste/fixture) e seis sobras do `create-next-app` em `public/` (`file/globe/next/vercel/window.svg` e `apple-touch-icon.png` — o ícone vivo é `src/app/apple-icon.png`). Greps de referência no ato, não de memória.
+
+### Alterado
+
+- A nota "Rendimento teórico a 100% do CDI · não representa aplicação real" virou constante única (`src/lib/weddings/textos.ts`) consumida nos três pontos de UI.
+- Skill `ui-design-system` §2, `docs/design-system.md` e `/admin/design-system` prescrevem `GatilhoAjuda` (a skill dizia "três cópias… candidata a primitivo quando a quarta aparecer"; havia dez).
+
+### Prova
+
+- Gates: `tsc`, `lint`, `build` (55 páginas) e `npm test` **1193/1193**. `revisor-db` (0267) e `revisor` aprovaram sem CRÍTICO/ALTO/MÉDIO. Conferência visual ao vivo (Claude in Chrome, sessão do Yan): 14 dos 17 gatilhos — balão abre no foco com o mouse longe; âncora à direita na última coluna; ordenação não dispara ao clicar no "?".
+- **Fora do escopo, registrado:** `RpcFrouxa` redeclarado 3× (route do float, `cdi/ingest`, `weddings-content`); `public/favicon.ico` também sem referência (o vivo é `src/app/favicon.ico`); tokenização dos ~400 `zinc-*` e lint `zinc` (fronteira da v5.9.3).
+
+---
+
 ## [5.9.3] — 2026-09-09
 
 PATCH · **Ajustes gerais: um token só para títulos e subtítulos, Resultado Financeiro na grade da DRE, badges de contagem em Solicitações e em Acessos, Gerencial abrindo do vencimento mais antigo**. Migration `0266` (aditiva, RPC de contagem) · sem ADR novo.

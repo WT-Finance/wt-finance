@@ -35,6 +35,39 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.9.4',
+    data: '2026-09-09T21:58', // horário REAL de autoria (fuso −03) — reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os pequenos "?" de ajuda espalhados pela plataforma (ao lado de títulos de gráficos, ' +
+          'cabeçalhos de coluna e indicadores) passaram a ser alcançáveis pelo teclado: ao navegar ' +
+          'com Tab, a explicação abre sem precisar do mouse, e leitores de tela anunciam o que cada ' +
+          'um explica. Antes, em sete telas, a dica só aparecia para quem passava o mouse por cima.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'Quem tem acesso apenas à área de Metas passa a ver os números dos cards de ' +
+          'acompanhamento e do Comparativo — antes apareciam traços ("—") no lugar dos valores.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'A sincronização com o Monde ficou mais robusta: uma venda cujo detalhe chegasse ' +
+          'incompleto não perde mais a referência que a liga ao sistema de origem, o que evita ' +
+          'que ela saia da reconciliação diária.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Limpeza técnica e registro da documentação da integração externa de Solicitações ' +
+          'como ela funciona hoje. Sem mudança visível para o usuário.',
+      },
+    ],
+  },
+  {
     versao: '5.9.3',
     data: '2026-09-09T15:33', // horário REAL do merge (6c696d1, PR #255, 09/09 15h33 −03) — reconciliado no /pos-merge
     itens: [

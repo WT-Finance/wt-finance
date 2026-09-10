@@ -15,6 +15,7 @@ import { JANELA_LARGA_ATRAS, JANELA_LARGA_FRENTE } from '@/lib/weddings/janela-f
 import { getServerClient } from '@/lib/supabase/server'
 import { unwrapRpc } from '@/lib/rpc'
 import { parseRpc, carteiraWeddingsSchema } from '@/lib/schemas-rpc'
+import { taxasCdiSchema } from '@/lib/weddings/schemas-float'
 import { getBenchmarks } from '@/lib/config'
 import type {
   ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
@@ -82,10 +83,12 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   const prejuizos     = unwrapRpc<VendasReceitaNegativa>(prejRes, 'get_vendas_prejuizo_weddings')
   // DEGRADA em silêncio: se a ingestão do CDI nunca rodou, a RPC falha alto (é o
   // certo para ELA, invariante 9) — mas a aba inteira de Weddings não pode cair por
-  // causa disso. Sem taxas, o gráfico do float apenas não é desenhado.
-  const taxasCdi = (!taxasRes.error && taxasRes.data
-    ? (taxasRes.data as { meses?: { mes: string; taxa: number | null }[] }).meses
-    : undefined) ?? undefined
+  // causa disso. Sem taxas, o gráfico do float apenas não é desenhado. `parseRpc`
+  // soma um segundo motivo de degradação silenciosa: shape inesperado (contrato
+  // divergiu) também vira `null` — com log de drift — em vez de vazar um objeto
+  // malformado para o gráfico.
+  const taxasCdiParsed = parseRpc(taxasCdiSchema, taxasRes, 'get_taxas_cdi')
+  const taxasCdi = taxasCdiParsed?.meses ?? undefined
 
   // v4.19/M6: rótulo dos 2 gráficos — nome único quando 1 op, "N operações" quando >1,
   // undefined quando 0 (Todas → sem sufixo no título).

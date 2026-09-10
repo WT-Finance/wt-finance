@@ -7,7 +7,7 @@ import {
   ChartGrid, ChartXAxisCategoria, ChartYAxisPct, ChartZeroLine, ChartLegend,
   fluxoColors, dashArrays, strokeWidths,
 } from '@/components/charts'
-import UiTooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { fmtBRL, fmtAxisPct } from '@/lib/fmt'
 import type { RepasseMensalRow } from '@/lib/fluxo/rpc-fluxo'
 
@@ -123,12 +123,11 @@ export default function RepasseMensal({ rows }: Props) {
       {/* Sem subtítulo (checkpoint): a explicação vira o botão "?" ao lado do título. */}
       <div className="flex items-center gap-1.5 mb-3">
         <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Tendência da Margem de Repasse</h3>
-        <UiTooltip
-          conteudo={`Margem = saldo de repasse ÷ entradas de clientes, mês a mês. Linha sólida = ${anoCorrente}; tracejada = ${anoAnterior} (referência); ponto vermelho = mês negativo.`}
-          className="z-30 w-72 !whitespace-normal font-normal leading-snug"
-        >
-          <span aria-label="Como a margem de repasse é calculada" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
-        </UiTooltip>
+        <GatilhoAjuda
+          rotulo="Tendência da Margem de Repasse"
+          texto={`Margem = saldo de repasse ÷ entradas de clientes, mês a mês. Linha sólida = ${anoCorrente}; tracejada = ${anoAnterior} (referência); ponto vermelho = mês negativo.`}
+          classNameBalao="z-30 w-72 !whitespace-normal font-normal leading-snug"
+        />
       </div>
 
       {/* O indicador "Saldo de repasse (bruto)" MUDOU para o card principal do Realizado

@@ -1,6 +1,8 @@
 import { type NextRequest } from 'next/server'
 import { getServerClient } from '@/lib/supabase/server'
 import { requireAreaApi } from '@/lib/auth/sessao'
+import { parseRpc } from '@/lib/schemas-rpc'
+import { rendimentoFloatSchema } from '@/lib/weddings/schemas-float'
 import type { DrilldownOperacao, RendimentoFloatOperacao } from '@/types/api'
 
 /** Assinatura frouxa para RPC fora do `database.ts` congelado. */
@@ -61,14 +63,13 @@ export async function GET(
   // taxa fechada (invariante 9 do briefing) — é o comportamento certo PARA A RPC,
   // que assim fica diagnosticável. Mas o drawer inteiro não pode morrer porque a
   // ingestão do CDI está atrasada: sem float, o bloco simplesmente não aparece e
-  // todo o resto da operação continua legível.
+  // todo o resto da operação continua legível. `parseRpc` soma um segundo motivo
+  // de degradação: shape inesperado (contrato divergiu) também vira `null` — com
+  // log de drift — em vez de vazar um objeto malformado para a UI.
   let rendimento_float: RendimentoFloatOperacao | null = null
   let taxa_vigente_mes: string | null = null
-  if (!float.error && float.data) {
-    const payload = float.data as {
-      taxa_vigente_mes?: string | null
-      operacoes?: RendimentoFloatOperacao[]
-    }
+  const payload = parseRpc(rendimentoFloatSchema, float, 'get_rendimento_float')
+  if (payload) {
     rendimento_float = payload.operacoes?.[0] ?? null
     taxa_vigente_mes = payload.taxa_vigente_mes ?? null
   }

@@ -48,7 +48,7 @@
 
 import { useState } from 'react'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { ConteudoContabil, corPorSinal } from './celula-contabil'
 import { AnoPills } from './tabela-dre'
 import type { ConsolidadoAno } from '@/lib/dre/schemas'
@@ -252,18 +252,11 @@ export default function ResumoExecutivo({
       <div className="mb-4">
         <div className="mb-3 flex items-center gap-1.5">
           <h2 className="text-[15px] font-semibold text-text-primary">{titulo}</h2>
-          {/* `<button type="button">`, nunca `<span>` — receita da skill ui-design-system §2:
-              `span` fica fora do tab-order e o balão, que também abre no FOCO, se torna
-              inalcançável por teclado. (Achado ALTO do revisor na v5.4.2 e de novo na v5.7.0.) */}
-          <Tooltip conteudo={ajuda} className="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug">
-            <button
-              type="button"
-              aria-label={`${titulo}: ${ajuda}`}
-              className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
-            >
-              ?
-            </button>
-          </Tooltip>
+          <GatilhoAjuda
+            rotulo={titulo}
+            texto={ajuda}
+            classNameBalao="z-30 w-72 !whitespace-normal font-normal normal-case tracking-normal leading-snug"
+          />
         </div>
         {/* Pills ABAIXO do título e à esquerda (v5.7.0, conferência do Yan) — a MESMA
             anatomia do card da tabela: título, depois a faixa de controles. Encostadas à

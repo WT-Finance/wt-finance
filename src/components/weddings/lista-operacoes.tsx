@@ -12,7 +12,8 @@ import {
   margemAnualizada,
   fmtPct1,
 } from '@/lib/weddings/margem-anualizada'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
+import { FRASE_NAO_APLICACAO_REAL, NOTA_FLOAT_TEORICO } from '@/lib/weddings/textos'
 import EmptyState from '@/components/shared/empty-state'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 
@@ -55,7 +56,7 @@ const TOOLTIP_REND_FLOAT =
   'Quanto o caixa recebido antecipadamente desta operação renderia se aplicado a 100% ' +
   'do CDI, em regime composto, mês a mês, do primeiro ao último lançamento. Saldo ' +
   'negativo rende negativamente — é o custo teórico de precisar captar. ' +
-  'Rendimento teórico a 100% do CDI · não representa aplicação real.'
+  `${NOTA_FLOAT_TEORICO}.`
 
 /**
  * Tooltip da "Margem Poten. (a.a.)" (v5.5.1; renomeada de "Margem Teórica" na
@@ -71,7 +72,7 @@ const TOOLTIP_MARGEM_TEORICA =
   'Margem anualizada considerando o Resultado Previsto MAIS o rendimento potencial do ' +
   'caixa livre: (Resultado + Rend. Teórico) ÷ Faturamento, anualizado pela mesma régua ' +
   'LINEAR da "Margem (a.a.)". Embute um componente TEÓRICO — rendimento a 100% do CDI, ' +
-  'que não representa aplicação real —, então NÃO substitui a "Margem (a.a.)" ao lado: ' +
+  `que ${FRASE_NAO_APLICACAO_REAL} —, então NÃO substitui a "Margem (a.a.)" ao lado: ` +
   'a diferença entre as duas é exatamente o peso do float na operação. ' +
   'Travessão quando não há float conhecido.'
 
@@ -99,38 +100,26 @@ function avisoStaleness(taxaVigenteMes: string | null | undefined): string {
  * Afordância "?" de ajuda no cabeçalho — padrão da casa (mesmo desenho de
  * `CabecalhoAjuda` em faturamento-corp e do KPI do Fluxo de Caixa).
  *
- * Dois detalhes que já custaram caro e não são estéticos:
- *  • `!whitespace-normal` (important): o primitivo `Tooltip` traz
- *    `whitespace-nowrap` na base — sem o `!`, texto longo não quebra e vira uma
- *    linha gigante INVISÍVEL que transborda e cria barra de rolagem horizontal.
- *  • `!left-auto right-0`: âncora à DIREITA. São TRÊS call-sites — "Margem (a.a.)",
- *    "Rend. Teórico" e "Margem Teórica (a.a.)", esta última a ÚLTIMA coluna da
- *    tabela. A âncora à direita é obrigatória para a última (à esquerda o balão
- *    abriria para fora da borda) e inofensiva para as do meio, onde ele abre para
- *    dentro. Não "corrigir" pensando num call-site só — quebra os outros em silêncio.
+ * Wrapper fino sobre `GatilhoAjuda` fixando os três detalhes comuns às três colunas
+ * teóricas — "Margem (a.a.)", "Rend. Teórico" e "Margem Teórica (a.a.)" (esta
+ * última a ÚLTIMA coluna da tabela):
+ *  • `ancoraDireita`: obrigatório para a última coluna (à esquerda o balão abriria
+ *    para fora da borda) e inofensivo para as do meio, onde ele abre para dentro.
+ *    Não "corrigir" pensando num call-site só — quebra os outros em silêncio.
+ *  • `pararPropagacao`: o `<th>` inteiro ordena a tabela — ler a dica não deve
+ *    reordenar a lista.
+ *  • `text-left` no balão do primitivo, que não é o default.
  */
 function AjudaHeader({ texto, rotulo }: { texto: string; rotulo: string }) {
   return (
-    <Tooltip
-      conteudo={texto}
-      className="z-30 w-64 !whitespace-normal !left-auto right-0 font-normal normal-case tracking-normal leading-snug text-left"
-    >
-      {/* `<button>`, não `<span>` (achado ALTO do revisor, v5.4.2): span não entra no
-          tab-order nem é nomeável por leitor de tela, então a dica — a ÚNICA explicação
-          de por que esta coluna pode discordar da "Margem" ao lado — ficava invisível
-          para quem navega por teclado. Com o botão focável + o `focus-within` do
-          primitivo `Tooltip`, o balão abre no Tab.
-          stopPropagation: o `<th>` inteiro ordena a tabela — ler a dica não deve
-          reordenar a lista. */}
-      <button
-        type="button"
-        onClick={e => e.stopPropagation()}
-        aria-label={`${rotulo}: ${texto}`}
-        className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400 cursor-help"
-      >
-        ?
-      </button>
-    </Tooltip>
+    <GatilhoAjuda
+      rotulo={rotulo}
+      texto={texto}
+      classNameBalao="z-30 w-64 !whitespace-normal font-normal normal-case tracking-normal leading-snug text-left"
+      ancoraDireita
+      pararPropagacao
+      className="cursor-help"
+    />
   )
 }
 

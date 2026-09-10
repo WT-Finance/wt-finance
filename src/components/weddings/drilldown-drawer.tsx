@@ -17,6 +17,7 @@ import type {
   RendimentoFloatOperacao,
 } from '@/types/api'
 import { fmtBRL2, fmtDateLong, fmtAxisMes, fmtMeses, parseLocalDate } from '@/lib/fmt'
+import { NOTA_FLOAT_TEORICO } from '@/lib/weddings/textos'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ function BlocoFloat({ f, taxaVigenteMes }: {
 
       {/* Nota teórica — obrigatória nos TRÊS pontos de UI (invariante 2). */}
       <p className="mt-2 text-[10px] leading-snug text-zinc-400">
-        Rendimento teórico a 100% do CDI · não representa aplicação real{referencia}
+        {NOTA_FLOAT_TEORICO}{referencia}
       </p>
     </div>
   )

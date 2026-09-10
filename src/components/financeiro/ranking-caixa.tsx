@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
-import UiTooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import type { RankingCaixa as RankingCaixaData, RankingItem } from '@/lib/fluxo/rpc-fluxo'
 import { numBRL2, fmtAxisPct } from '@/lib/fmt'
 
@@ -49,14 +49,13 @@ export default function RankingCaixa({ data }: Props) {
     <div className="rounded-xl shadow-sm bg-white p-5">
       <div className="flex items-center gap-1.5 mb-4">
         <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Maiores variações</h3>
-        <UiTooltip
-          conteudo={temBase
+        <GatilhoAjuda
+          rotulo="Maiores variações"
+          texto={temBase
             ? `YTD = de janeiro até o mês corrente, a MESMA janela nos dois anos — é a coluna "YTD" do Demonstrativo acima, e os números batem. Var. = YTD ${anoAtual} − YTD ${anoAnterior}; nome verde = receita, vermelho = gasto; negativo entre parênteses. Clique em Var. (R$) ou Var. (%) para ordenar.`
             : `Acumulado de ${anoAtual} por categoria, de janeiro até o mês corrente. A comparação com ${anoAnterior} (e a ordenação por variação) aparece quando o histórico do ano anterior estiver carregado.`}
-          className="z-30 w-72 !whitespace-normal font-normal leading-snug"
-        >
-          <span aria-label="Como as maiores variações são calculadas" className="inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400">?</span>
-        </UiTooltip>
+          classNameBalao="z-30 w-72 !whitespace-normal font-normal leading-snug"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-zinc-100 gap-y-6 md:gap-y-0">

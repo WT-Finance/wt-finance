@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { History } from 'lucide-react'
-import Tooltip from '@/components/ui/tooltip'
+import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import EmptyState from '@/components/shared/empty-state'
 import { fmtBRL2, fmtDate } from '@/lib/fmt'
 import { TipoBadge } from './status-badge'
@@ -17,20 +17,6 @@ const AJUDA_CUSTO =
   'Soma do valor de aquisição dos ativos não baixados. Sem depreciação e sem relação com a ' +
   'contabilidade — nenhum número desta tela entra na DRE nem no Fluxo de Caixa.'
 
-function Ajuda({ rotulo, texto }: { rotulo: string; texto: string }) {
-  return (
-    <Tooltip conteudo={texto} className="z-30 w-64 !whitespace-normal font-normal leading-snug">
-      <button
-        type="button"
-        aria-label={`${rotulo}: ${texto}`}
-        className="foco-neutro inline-flex h-3 w-3 items-center justify-center rounded-full border border-zinc-300 text-[8px] font-semibold leading-none text-zinc-400"
-      >
-        ?
-      </button>
-    </Tooltip>
-  )
-}
-
 function Tile({ rotulo, valor, ajuda }: { rotulo: string; valor: string; ajuda?: string }) {
   return (
     <div className="rounded-xl bg-white shadow-sm px-5 py-4 h-full flex flex-col">
@@ -38,7 +24,13 @@ function Tile({ rotulo, valor, ajuda }: { rotulo: string; valor: string; ajuda?:
         <p className="text-2xs font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] leading-[1.3]">
           {rotulo}
         </p>
-        {ajuda && <Ajuda rotulo={rotulo} texto={ajuda} />}
+        {ajuda && (
+          <GatilhoAjuda
+            rotulo={rotulo}
+            texto={ajuda}
+            classNameBalao="z-30 w-64 !whitespace-normal font-normal leading-snug"
+          />
+        )}
       </div>
       <p className="mt-auto pt-1 font-extrabold tabular-nums leading-none text-zinc-800 whitespace-nowrap"
          style={{ fontSize: 'clamp(16px, 1.7vw, 26px)' }}>
@@ -136,7 +128,11 @@ export default function VisaoGeralTab({ resumo, ativos, movimentacoes, onAbrirFi
             <p className="text-2xs font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)]">
               Custo histórico de aquisição
             </p>
-            <Ajuda rotulo="Custo histórico de aquisição" texto={AJUDA_CUSTO} />
+            <GatilhoAjuda
+              rotulo="Custo histórico de aquisição"
+              texto={AJUDA_CUSTO}
+              classNameBalao="z-30 w-64 !whitespace-normal font-normal leading-snug"
+            />
           </div>
           <p className="mt-2 text-2xl font-extrabold tabular-nums leading-none text-zinc-800">
             {resumo ? fmtBRL2(resumo.custo_historico_aquisicao) : '—'}
