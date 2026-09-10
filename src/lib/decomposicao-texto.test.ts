@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gerarTextoDecomposicao } from './decomposicao-variacao'
+import { gerarTextoDecomposicao } from './decomposicao-texto'
 
 const NBSP = String.fromCharCode(160)
 const n = (s: string) => s.split(NBSP).join(' ')
