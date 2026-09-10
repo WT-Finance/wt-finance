@@ -29,6 +29,7 @@ import { montarProporcaoGrupos, GRUPOS_PROPORCAO } from './dre/proporcao-grupos'
 import { janelaYtdCompetencia } from './dre/janela-competencia'
 import { folhasPorGrupo, totalFolhas } from './dre/folhas'
 import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
+import { rendimentoFloatSchema, taxasCdiSchema } from './weddings/schemas-float'
 import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
 import { hojeSP } from './fmt'
 
@@ -318,6 +319,11 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // v5.6.2: contagem da "Meta de Assessorias" (0249) — o schema de 1 campo é validado
   // contra a RPC viva; as invariantes de negócio têm describe próprio mais abaixo.
   { fn: 'get_contratos_casamento_mes',   params: { p_from: '2025-07-01', p_to: '2025-07-31' },                         schema: contratosCasamentoMesSchema },
+  // v5.9.4 (B4): as duas RPCs do float passavam por CAST, sem contrato. Agora têm schema +
+  // parseRpc nos call-sites (route da operação e weddings-content); drift degrada para "sem
+  // dado" (o caminho que já existia), em vez de vazar objeto malformado para a UI.
+  { fn: 'get_taxas_cdi',                 params: { p_meses_passados: 37, p_meses_futuros: 36 },                        schema: taxasCdiSchema },
+  { fn: 'get_rendimento_float',          params: {},                                                                   schema: rendimentoFloatSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
