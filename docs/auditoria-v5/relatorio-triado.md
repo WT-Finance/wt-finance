@@ -172,13 +172,13 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 
 | id | triagem | nota |
 |---|---|---|
-| D8-001 | **agir agora** | apagar os 13 PDFs |
-| D8-002 | **agir agora** | apagar os 76 v4.x (a citação de `v4.17.1` é por número de versão) |
-| D8-003 | **agir agora** | apagar os 7 v3.x |
+| D8-001 | **agir agora** | apagar os 13 PDFs — **feito em db07024** (junto de D8-002/003: 92 arquivos pré-v5 num só `rm` versionado) · prova: grep dos 92 basenames em `CLAUDE.md README.md .claude docs src scripts supabase` (fora de `docs/briefings/` e `docs/auditoria-v5/`) = **0 citações**; restam 72 briefings, todos v5 |
+| D8-002 | **agir agora** | apagar os 76 v4.x (a citação de `v4.17.1` é por número de versão) — **feito em db07024**, ver D8-001 |
+| D8-003 | **agir agora** | apagar os 7 v3.x — **feito em db07024**, ver D8-001 |
 | D8-004 | descartar | manter os 71 da v5 |
 | D8-005 | **agir agora** | **resolvido**: critério **"medição fica, opinião sai"** — ver bloco abaixo |
 | D8-006 | ~~agir agora~~ **INVÁLIDO** | **achado falso — a pasta FICA.** O D8 afirmou "0 hits fora da pasta"; o grep no ato acha **5 citações vivas**: `docs/adr/0135-faturamento-fase1b-emissao-boletos.md:8` e `docs/adr/0136-faturamento-fase2-notas-fiscais.md:8` citam `asaas_from_simple_sheet.py` / `asaas_nfe_from_contas.py` como *"a especificação"* e *"evidência dos FATOS do Asaas"*; `docs/adr/0140:22` cita `envio_faturas.py`; `src/lib/asaas/client.ts:6`, `src/lib/asaas/notas.ts:4`, `src/lib/asaas/customers.ts:3` e `src/lib/email/template.ts:282` apontam para eles em comentário de origem. São o comportamento de referência da funcionalidade irreversível sobre dinheiro — mesma classe do `getPool` (citação em ADR/runbook não é orfandade). Nada apagado. |
-| D8-007 | **agir agora** | manter os 2 citados; **apagar** os 3 sem citação (pipeline mudou na v5.1.4 — runbook desatualizado é pior que nenhum), migrando antes para a skill correspondente qualquer procedimento ainda vivo |
+| D8-007 | **agir agora** (parcial — o achado errava o alvo) | **feito em 065c971: sai 1 dos 3.** `v4-24-email-runbook.md` **fica** — é citado (`docs/email-layout-guide.md:90`, `docs/adr/0127:66`); o explorador só varreu `CLAUDE.md` e `.claude/skills/**`. `v4-15-upload-vendas-runbook.md` **apagado**, mas não por estar desatualizado: a v5.1.4 repontou *Weddings* ao Monde, não o pipeline de carga — as 4 RPCs (`limpar_staging_vendas`, `inserir_lote_staging`, `validar_carga_staging`, `promover_carga_vendas`) seguem vivas em 4 arquivos de `src/` cada. Por isso o procedimento foi **migrado antes** para `.claude/skills/ingestao-planilhas/SKILL.md` §5 ("Operação da carga": reprovação na validação, falha na promoção, re-subida não duplica, lock `4017001`, staging `UNLOGGED`, aviso de `operacao_propria`). `v4-16-solicitacoes-runbook.md` **adiado**: sem citação mas vivo e correto (`solic_promover_anexos`, `solic_anexo_path`; promoção `tmp/`→`sol/<id>/` em `src/app/solicitacoes/actions.ts:118-127`) e sem skill correspondente — o conteúdo vai para `docs/estado-do-projeto.md` e a exclusão acontece junto. · prova: `grep -rn v4-15-upload-vendas` no repo = vazio |
 | D8-008 a D8-011 | **agir agora** | reescrita do `README.md` (entrega da Fase 2), lido inteiro contra o repo limpo |
 | D8-012 | **agir agora** | split: `estado-do-projeto.md` (novo) + `WORKING-CONTEXT.md` enxuto ao estado |
 | D8-013 | **agir agora** | resolvido por D8-014 (o arquivo sai) |
