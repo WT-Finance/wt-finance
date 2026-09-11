@@ -177,7 +177,7 @@ Recorrência registrada: `next` com advisories HIGH e fix em minor apareceu **tr
 | D8-003 | **agir agora** | apagar os 7 v3.x |
 | D8-004 | descartar | manter os 71 da v5 |
 | D8-005 | **agir agora** | **resolvido**: critério **"medição fica, opinião sai"** — ver bloco abaixo |
-| D8-006 | **agir agora** | apagar `faturamento-legado/` |
+| D8-006 | ~~agir agora~~ **INVÁLIDO** | **achado falso — a pasta FICA.** O D8 afirmou "0 hits fora da pasta"; o grep no ato acha **5 citações vivas**: `docs/adr/0135-faturamento-fase1b-emissao-boletos.md:8` e `docs/adr/0136-faturamento-fase2-notas-fiscais.md:8` citam `asaas_from_simple_sheet.py` / `asaas_nfe_from_contas.py` como *"a especificação"* e *"evidência dos FATOS do Asaas"*; `docs/adr/0140:22` cita `envio_faturas.py`; `src/lib/asaas/client.ts:6`, `src/lib/asaas/notas.ts:4`, `src/lib/asaas/customers.ts:3` e `src/lib/email/template.ts:282` apontam para eles em comentário de origem. São o comportamento de referência da funcionalidade irreversível sobre dinheiro — mesma classe do `getPool` (citação em ADR/runbook não é orfandade). Nada apagado. |
 | D8-007 | **agir agora** | manter os 2 citados; **apagar** os 3 sem citação (pipeline mudou na v5.1.4 — runbook desatualizado é pior que nenhum), migrando antes para a skill correspondente qualquer procedimento ainda vivo |
 | D8-008 a D8-011 | **agir agora** | reescrita do `README.md` (entrega da Fase 2), lido inteiro contra o repo limpo |
 | D8-012 | **agir agora** | split: `estado-do-projeto.md` (novo) + `WORKING-CONTEXT.md` enxuto ao estado |

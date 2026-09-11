@@ -241,6 +241,38 @@ de recuperação (`transform_raw_to_analytics` → `regenerar_dim_operacao_weddi
 `refresh_all_materialized_views`) segue intacta e serve para recompor as tabelas
 analíticas sem precisar re-subir o arquivo original.
 
+### Operação da carga — o que fazer quando ela reprova (migrado do runbook v4.15, v5.10.0)
+
+O pipeline é **fail-safe por construção**: a base de leitura só muda no `promover`, e ele é uma
+transação única. Toda mensagem de erro da tela de upload significa **base preservada**, não base
+corrompida — o reflexo certo é corrigir e re-subir, nunca "limpar na mão".
+
+- **Reprovou na validação** (ex.: *"N venda(s) com data fora do calendário … A base atual foi
+  preservada."*) — nada foi gravado. Causa comum é data fora do range de `analytics.dim_data`
+  (seção 6). Conferir `min/max(data_venda)` na `raw.vendas_excel_staging` contra `min/max(data)`
+  da `analytics.dim_data`: data legítima → estender a `dim_data` por migration; data digitada
+  errada → corrigir a planilha.
+- **Falhou DURANTE a promoção** — rollback automático; a contagem anterior continua de pé
+  (`get_upload_status() -> 'vendas' ->> 'total'`). Não há limpeza manual: o swap não chegou a
+  acontecer.
+- **Re-subir o mesmo arquivo não duplica.** `promover_carga_vendas` é substituição completa
+  (truncate + reload), não append — a verdade é sempre o último arquivo promovido.
+- **Uploads concorrentes serializam.** As três RPCs de escrita tomam o MESMO
+  `pg_advisory_xact_lock(4017001)` (v4.17.0/M3): o segundo upload espera o primeiro, e ninguém
+  trunca a staging enquanto outro promove. É transparente — não há ação manual.
+- **A staging é `UNLOGGED`** (decisão de performance): não sobrevive a crash/failover no meio de
+  uma carga multi-lote. O sintoma é *"Nenhuma linha válida na carga"* na validação; a base viva
+  fica intacta e a ação é refazer o upload do zero.
+- **Aviso de `operacao_propria` não bloqueia.** Se a carga vier com a coluna preenchida em menos
+  da metade do percentual da base atual, a validação anexa um AVISO à mensagem de sucesso — sinal
+  de que a origem (ERP) pode ter parado de exportar a coluna. Conferir a planilha, não o código.
+
+Inspeção não-destrutiva da staging (`select count(*)`, `min/max(data_venda)`,
+`select public.validar_carga_staging()`) é segura a qualquer momento. Recuperação a partir de
+backup lógico e a trinca `transform_raw_to_analytics` → `regenerar_dim_operacao_weddings` →
+`refresh_all_materialized_views`: runbook `docs/runbooks/db-backup-gate-runbook.md` e skill
+`banco-e-rpc`.
+
 ## 6. Sintoma cruzado: `dim_data` com range fixo
 
 Se uma carga de Vendas abortar com um erro de foreign key em `fato_venda_data_venda_fkey`,
