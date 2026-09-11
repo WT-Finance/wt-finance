@@ -1,8 +1,13 @@
-# Backlog v6 — rascunho (Fase 1 da v5.10.0, antes da triagem)
+# Backlog v6
 
-Tudo o que a auditoria classificou como "grande demais para limpeza" (esforço `L`, redesenho, major de
-dependência, decisão de arquitetura). **Rascunho**: a triagem do GATE 1 confirma, move ou descarta cada
-item; a versão final é entrega da Fase 2 (`Mfinal`). Referência = id em `docs/auditoria-v5/`.
+Fechado na **v5.10.0** (10/09/2026), ao fim da limpeza de encerramento da v5. Reúne o que a auditoria
+classificou como "grande demais para limpeza" — esforço `L`, redesenho, major de dependência, decisão de
+arquitetura ou de produto — mais os achados que nasceram durante a própria limpeza. Rastro completo por
+item: `docs/auditoria-v5/relatorio-triado.md` (a coluna `nota` diz o que foi provado no ato).
+
+**Como ler:** item riscado (~~B-nn~~) foi **fechado durante a v5.10.0**, por correção, por medição ou por
+se revelar premissa falsa — fica aqui como registro para ninguém reabrir. Item vivo tem risco e esforço.
+Nada neste arquivo está em andamento; é fila, não plano.
 
 | # | item | origem | risco | esforço | por que é v6 e não limpeza |
 |---|---|---|---|---|---|
@@ -30,3 +35,48 @@ item; a versão final é entrega da Fase 2 (`Mfinal`). Referência = id em `docs
 | B-22 | Baseline de schema + checagem de drift (decisão do Yan: virada v6) | briefing, invariante 6 | — | M | fora por decisão |
 | B-23 | `harness-base`: extrair hooks e aprendizados (pós-versão, outro repositório) | briefing | — | M | fora por decisão |
 | B-24 | **"A operação falhou pela metade e a tela não conta"** — uma superfície de aviso para falha parcial, cobrindo os dois casos abertos: (a) `lista-operacoes.tsx:440`, o `catch {}` do export engole tudo, inclusive o `throw new Error(HTTP …)` da linha 431, e o usuário baixa planilha PARCIAL (ou nenhuma) sem aviso — só o spinner some; (b) o `avisoParcial` de `ResultadoCriarUsuario` (v5.10.0/D5-002/003) existe no servidor e no tipo, mas `modal-convidar.tsx` e `aba-solicitacoes.tsx` não o leem no ramo `ok:true`. São o MESMO assunto e cabem num patch de UI único | E7-M6 (novo) + MÉDIO do revisor no Bloco 1 | médio | M | exige decidir a superfície (toast? banner? inline?) — decisão de produto, não limpeza |
+
+
+---
+
+## Retomada do Scope B (Monde item-level e Pessoas)
+
+Bloco único, por decisão do Yan em 10/09: o Scope B não se tria item a item agora — ou se retoma inteiro,
+com o provedor do Monde na conversa, ou não se toca. O que a Fase 1 apurou e que evita redescobrir:
+
+| # | item | origem | por que é um bloco, não itens soltos |
+|---|---|---|---|
+| B-25 | **`transformSale` erra 100% dos positivos em `contrato` e `taxa_servico`.** A regra correta já está identificada — derivar **pelo produto** — com acerto medido de **99,97%** e **99,99%** | E2 | corrigir isoladamente muda número de tela sem que ninguém tenha decidido a nova definição |
+| B-26 | **As 8 decisões abertas do Scope B**: margem por produto ser alocação (e não medição); `operation_id` curado precisa de dono; Pessoas depende de pedido ao provedor; ordem das ondas; `get_prejuizos` sem paridade; cadência de sincronização de Pessoas; vocabulário `receitas_alocadas` | E3 | são decisões de PRODUTO — o agente registra, não decide |
+| B-27 | **`monde.venda.raw` está defasado em ESTRUTURA**: só **527 de 28.250** vendas têm o ramo `financial`. Qualquer DRE viva pela API exige backfill ou re-sync antes | E4 | pré-requisito de infraestrutura de dados: bloqueia B-25/B-26, não é consequência deles |
+
+**Desbloqueio conhecido:** pedir **receita por produto** ao provedor do Monde (registrado desde a
+investigação do Scope B). Sem isso, a alocação continua sendo alocação.
+
+---
+
+## Achados da v5.10.0 que não couberam na limpeza
+
+| # | item | origem | risco | esforço | por que ficou |
+|---|---|---|---|---|---|
+| B-28 | **Três símbolos de orfandade AMBÍGUA** que o D1-023 não resolveu — têm definição e nenhum uso, mas apagar exige julgamento, não grep: `atualizarObsMovimentacao` (é **Server Action**; o `'use server'` torna o arquivo uma superfície de rede, então "sem chamador em `src/`" não prova morte), `SumarioExecutivoSkeleton` (skeleton de rota pesada — a convenção manda que exista mesmo sem uso corrente) e `CLIENTES_COLUNAS`. Decidir um a um, com o critério, em vez de varrer | D1-023 | baixo | S | 3 símbolos, 3 razões diferentes; varredura automática erraria nos três |
+| B-29 | **Verificar a skill `react-padroes` contra o repo**, como se fez com `ingestao-planilhas` na v5.10.0: cada afirmação conferida, lição falsa **apagada** (não emendada). É a metade que faltou do invariante 4 | D8-021 | baixo | S | timebox; a skill é grande e a verificação é leitura linha a linha |
+
+---
+
+## Registro dos achados E1–E8 (leitura dos 20 arquivos de `docs/audits`, `superpowers` e `harness`)
+
+Estes achados nasceram da leitura dos documentos que a v5.10.0 **apagou** no D8-005. Ficam registrados
+aqui para que a exclusão dos arquivos não leve junto o que eles renderam — é a condição que a própria
+triagem impôs ao grupo "SAEM".
+
+| id | achado | destino |
+|---|---|---|
+| E1 | Perda silenciosa por setor fora da dim (o "A1" da auditoria de 13/06) | **encerrado** — a migration `0132` já fechava; verificado no catálogo vivo em 10/09 |
+| E2 | `transformSale`: `contrato` e `taxa_servico` erram 100% dos positivos | → **B-25** |
+| E3 | As 8 decisões abertas do Scope B | → **B-26** |
+| E4 | `monde.venda.raw` defasado em estrutura (527/28.250 com ramo `financial`) | → **B-27** |
+| E5 | Plugin **`superpowers` duplicado** (global v6.2.0 + cópia do projeto v5.1.0): as sessões invocam todas as skills em bloco, com custo de contexto em **toda** sessão | **ato humano, em aberto** — desativar a cópia do projeto e reavaliar; se o bloco persistir, é mandato do plugin e não duplicação. Enquanto não resolvido, `docs/superpowers/sonda-disparo.md` **não é apagado** (é a medição do sintoma) |
+| E6 | Tokens CSS mortos — dimensão que a D9 não varreu | **fechado sem mudança**: varredura dos 61 tokens de `tokens.css` deu **zero mortos**; os 3 suspeitos são usados como classe Tailwind e `--primary-bg` sequer existe |
+| E7 | Cinco `MÉDIA` de 13/06 com estado desconhecido (M2, M3, M6, M15, M17) | **fechado no Bloco 2**: os cinco já estavam corrigidos — quatro na v4.17.0, um na v4.21.0. A auditoria de 13/06 era o **plano** dessas correções, não uma lista pendente. Rendeu 1 achado novo → **B-24** |
+| E8 | **Segurança de dependência não tem dono**: `next` com advisory HIGH e fix em minor apareceu **3×** (28/05, 13/06, 10/09); o `skipIf` silencioso, 2× | **parcialmente fechado**: a rotina periódica (`npm audit` + `npm outdated` no fechamento de cada minor) está declarada em `docs/estado-do-projeto.md` e no ritual `/fechamento-versao`. O automatismo — CI de PR — continua aberto em **B-16**, porque depende de decisão de custo do Yan |
