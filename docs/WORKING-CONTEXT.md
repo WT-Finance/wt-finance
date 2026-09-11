@@ -96,11 +96,25 @@ de todas elas estava no catálogo que eu mesmo havia exportado.
 - Metas por Vendedor — próxima capacidade planejada, escopo a confirmar.
 - **% Rec no Cadastro de Metas:** alvos nascem vazios e os cards mostram "—" até serem digitados.
 
-**Higiene de repositório** (levantada em 10/09, nada apagado ainda): 120 das 137 branches remotas
-já estão mergeadas no `main` e nunca foram apagadas; 9 das 16 não-mergeadas são de v3/v4 ou de bot;
-3 worktrees seguem em disco (`docs+pos-merge-v5-9-6` e `fix+v5-9-7-next-cve` já mergeadas,
-`feat+v5-4-4-metas-subsetor-weddings` é o PR #213 fechado). **O checkout raiz está em
-`main@885da65`, duas versões atrás — precisa de `git pull --ff-only`.**
+**Higiene de repositório — PODADA em 10/09** (autorizada pelo Yan): saíram **120 branches remotas**
+e **33 locais**, todas já mergeadas no `main`; remoto foi de 137 para 17 refs, local de 41 para 8.
+Removidas também as worktrees `docs+pos-merge-v5-9-6` e `fix+v5-9-7-next-cve` (zero commits fora do
+`main`). Nenhum commit se perdeu: tudo o que saiu já estava no `main`.
+
+O que **sobrou de propósito** e por quê:
+
+| ref | por que ficou |
+|---|---|
+| `docs/investigacao-dre-competencia-monde` | guarda o commit órfão `b869bb9` — **decisão sua**: PR próprio ou descarte |
+| `docs/pauta-provedor-monde` | pauta a levar ao provedor do Monde; desbloqueia o Scope B |
+| `feat/v5-4-4-metas-subsetor-weddings` | é o PR #213, fechado no Bloco 5. A **worktree local ficou**: tem 16 commits fora do `main`, e a regra da casa é não remover worktree com trabalho não-mergeado. As RPCs que ela chamava já não existem (0270), então a branch não aplica — mas a decisão de descartá-la é sua |
+| `fix/v5-4-4-agendamento-pos-merge`, `fix/upload-lancamentos-vercel-limit`, `fix/kpi-color-dropdown-label` | não-mergeadas; conferir se têm algo vivo antes de apagar |
+| `test/rebrand-janus-sidebar` | superada pela v4.40.0, mas não-mergeada — descarte é decisão sua |
+| `feat/v3-5-m1/m2/m3`, `feature/v3-4-6`, `feat/v4-2`, `revert/v4-auth-para-v3-3` | de maio, era v3/v4; candidatas óbvias a descarte |
+| `vercel/install-vercel-speed-insights-9x2sex`, `worktree-docs+investigacao-coercao-milhar` | resíduo de bot e de nomenclatura antiga |
+
+🔴 **O checkout raiz continua em `main@885da65`, duas versões atrás — precisa de `git pull
+--ff-only`** (não dá para fazer daqui: esta sessão é isolada na worktree).
 
 ---
 
