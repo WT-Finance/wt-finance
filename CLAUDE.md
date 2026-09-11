@@ -138,8 +138,12 @@ sequencia; arquivo-ímã (tokens/globals/config) tem dono único. A Carta comple
 hooks existe o classificador do modo auto do Claude Code, regido pelo `~/.claude/settings.json`
 do usuário. Regra de `allow` **explícita e estreita** dispensa o classificador; sem regra, um
 comando que escreve pode ser **negado seco** (sem prompt). A autonomia ADITIVA de banco depende
-das regras de `allow` aplicadas pelo usuário (handoff humano; o `deny` de `npx supabase db push`
-cru protege o backup-gate). Mudança nessas regras é sempre ato humano.
+das regras de `allow` aplicadas pelo usuário (handoff humano), e o `deny` de `npx supabase db push`
+cru é o que protegeria o backup-gate. Mudança nessas regras é sempre ato humano.
+⚠️ **Hoje NENHUMA dessas regras existe** (conferido em 10/09: o settings global tem só
+`defaultMode:auto`, e o do projeto, zero `allow` e zero `deny`). Ou seja: o `db push` cru **não
+está bloqueado por máquina**, e comando que escreve pode ser negado sem aviso. Diff pronto em
+`docs/auditoria-v5/atos-humanos/1-settings-projeto.json` — aplicação é ato humano.
 
 **Protocolo D5 — o harness barrou um passo que as regras do projeto autorizam:**
 1. **NÃO contornar** — o caminho alternativo geralmente fura uma rede (ex.: `db push` cru pula

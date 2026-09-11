@@ -195,6 +195,15 @@ mas Weddings, `get_mix_produto` e `get_cagr` ainda vêm do upload.
   Decomposição) — é de propósito. **A estrutura da DRE é DADO** (`dre_bloco`/`dre_categoria_map`;
   Receita Bruta é `RB_H`/`tipo:'blocoH'`, não `'tot'`), e o diário/undo é genérico (molde
   `dre_estrutura_*`, migration 0206).
-- **Terceira camada configurada:** o settings global tem `allow` estreito e `deny` do `db push`
-  cru. Bloqueio inesperado → **protocolo D5** (5 passos, no core). **Hooks ativos:**
-  `protecao-config` (6 alvos, incluindo o settings global), `gate-stop`, `contexto-sessao`.
+- 🔴 **A terceira camada NÃO está configurada — e o `CLAUDE.md` descreve como se estivesse.**
+  Conferido em 10/09: `~/.claude/settings.json` tem apenas `permissions: {"defaultMode":"auto"}`,
+  e `.claude/settings.json` do projeto tem **zero** regras de `allow` e **zero** de `deny`. Ou
+  seja: **não existe o `deny` de `npx supabase db push` cru**, e a única coisa que hoje impede
+  alguém de pular o backup-gate é disciplina. O diff está pronto em
+  `docs/auditoria-v5/atos-humanos/1-settings-projeto.json` (é o item 1 das Pendências do Yan, e
+  o agente não alcança o arquivo — o hook `protecao-config` o protege de propósito).
+  Consequência prática, medida nesta versão: **sem regra de `allow`, comando que escreve pode ser
+  negado seco pelo classificador** — aconteceu duas vezes em 10/09, na poda de branches.
+  Bloqueio inesperado → **protocolo D5** (5 passos, no core).
+- **Hooks ativos** (estes existem de fato): `protecao-config` (6 alvos, incluindo o settings
+  global), `gate-stop`, `contexto-sessao`.

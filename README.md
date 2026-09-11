@@ -17,12 +17,10 @@ são 100% marca **Welcome** (ADR-0145). O repositório ainda se chama `wt-financ
 
 ## Estado
 
-| | |
-|---|---|
-| Versão em produção | **v5.9.7** |
-| Última migration aplicada | **0270** (254 arquivos em `supabase/migrations/`) |
-| Último ADR | **0173** (153 ADRs em `docs/adr/`) |
-| Suíte | **1.220 testes** em 74 arquivos, todos verdes |
+Produção na **v5.9.7**. O quadro completo — migration e ADR correntes, tamanho da suíte, contagem
+de documentos — tem um dono só, e é
+[`docs/estado-do-projeto.md` §11](docs/estado-do-projeto.md#11-estado-atual); repetir os números
+aqui garantiria que um dos dois ficasse para trás.
 
 O que está em voo agora: [`docs/WORKING-CONTEXT.md`](docs/WORKING-CONTEXT.md).
 O que ficou para depois: [`docs/backlog-v6.md`](docs/backlog-v6.md).
