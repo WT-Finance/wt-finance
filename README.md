@@ -138,7 +138,7 @@ docs/
   adr/                       Architecture Decision Records (126)
   briefings/                 briefings e out-briefings por versão
   runbooks/                  runbooks operacionais (auth, e-mail, backup-gate…)
-  audits/ · email-layout-guide.md · changelog.md · bugs-resolvidos.md
+  email-layout-guide.md · changelog.md · bugs-resolvidos.md
 ```
 
 ## Convenções

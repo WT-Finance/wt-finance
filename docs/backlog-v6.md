@@ -64,7 +64,7 @@ investigação do Scope B). Sem isso, a alocação continua sendo alocação.
 
 ---
 
-## Registro dos achados E1–E8 (leitura dos 20 arquivos de `docs/audits`, `superpowers` e `harness`)
+## Registro dos achados E1–E8 (leitura dos 20 arquivos de `docs/audits/`, `docs/superpowers/` e `docs/harness/`, apagados no D8-005)
 
 Estes achados nasceram da leitura dos documentos que a v5.10.0 **apagou** no D8-005. Ficam registrados
 aqui para que a exclusão dos arquivos não leve junto o que eles renderam — é a condição que a própria
@@ -76,7 +76,7 @@ triagem impôs ao grupo "SAEM".
 | E2 | `transformSale`: `contrato` e `taxa_servico` erram 100% dos positivos | → **B-25** |
 | E3 | As 8 decisões abertas do Scope B | → **B-26** |
 | E4 | `monde.venda.raw` defasado em estrutura (527/28.250 com ramo `financial`) | → **B-27** |
-| E5 | Plugin **`superpowers` duplicado** (global v6.2.0 + cópia do projeto v5.1.0): as sessões invocam todas as skills em bloco, com custo de contexto em **toda** sessão | **ato humano, em aberto** — desativar a cópia do projeto e reavaliar; se o bloco persistir, é mandato do plugin e não duplicação. Enquanto não resolvido, `docs/superpowers/sonda-disparo.md` **não é apagado** (é a medição do sintoma) |
+| E5 | Plugin **`superpowers` duplicado** (global v6.2.0 + cópia do projeto v5.1.0): as sessões invocam todas as skills em bloco, com custo de contexto em **toda** sessão | **ato humano, em aberto** — desativar a cópia do projeto e reavaliar; se o bloco persistir, é mandato do plugin e não duplicação. Enquanto não resolvido, `docs/harness/sonda-disparo.md` **não é apagado** (é a medição do sintoma) |
 | E6 | Tokens CSS mortos — dimensão que a D9 não varreu | **fechado sem mudança**: varredura dos 61 tokens de `tokens.css` deu **zero mortos**; os 3 suspeitos são usados como classe Tailwind e `--primary-bg` sequer existe |
 | E7 | Cinco `MÉDIA` de 13/06 com estado desconhecido (M2, M3, M6, M15, M17) | **fechado no Bloco 2**: os cinco já estavam corrigidos — quatro na v4.17.0, um na v4.21.0. A auditoria de 13/06 era o **plano** dessas correções, não uma lista pendente. Rendeu 1 achado novo → **B-24** |
 | E8 | **Segurança de dependência não tem dono**: `next` com advisory HIGH e fix em minor apareceu **3×** (28/05, 13/06, 10/09); o `skipIf` silencioso, 2× | **parcialmente fechado**: a rotina periódica (`npm audit` + `npm outdated` no fechamento de cada minor) está declarada em `docs/estado-do-projeto.md` e no ritual `/fechamento-versao`. O automatismo — CI de PR — continua aberto em **B-16**, porque depende de decisão de custo do Yan |
