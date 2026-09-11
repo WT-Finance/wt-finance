@@ -309,7 +309,7 @@ estão no backlog v6, cada um com o motivo de não ter entrado.
 | Versão em produção | **v5.9.7** |
 | Última migration aplicada | **0270** (`v5_10_0_drop_objetos_orfaos`) — 254 arquivos em `supabase/migrations/` |
 | Último ADR | **0173** (critérios de limpeza e fechamento da v5) |
-| Suíte | ~1.220 testes, zero `skip` silencioso (há sonda que reprova se aparecer) |
+| Suíte | **1.220 testes** em 74 arquivos, zero `skip` silencioso (há sonda que reprova se aparecer) |
 | Documentos | 153 ADRs · 72 briefings (todos da v5; os anteriores saíram na v5.10.0) |
 | Banco | 8 schemas, ~75 tabelas e views; só `public` exposto ao PostgREST |
 

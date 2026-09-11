@@ -35,7 +35,7 @@ fechamento (bump, CHANGELOG, ADR-0173, PR 2).
 | Produção | **v5.9.7** (patch de segurança do `next` 16.3.4) |
 | Última migration aplicada | **0270** · próxima livre: **0271** |
 | Último ADR | **0173** (em rascunho nesta versão) · próximo livre: **0174** |
-| Suíte | ~1.220 testes, 73 arquivos, zero `skip` silencioso |
+| Suíte | **1.220 testes**, 74 arquivos, zero `skip` silencioso |
 
 Frente única: nenhuma outra branch de feature enquanto a v5.10.0 corre.
 

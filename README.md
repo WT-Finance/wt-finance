@@ -22,7 +22,7 @@ são 100% marca **Welcome** (ADR-0145). O repositório ainda se chama `wt-financ
 | Versão em produção | **v5.9.7** |
 | Última migration aplicada | **0270** (254 arquivos em `supabase/migrations/`) |
 | Último ADR | **0173** (153 ADRs em `docs/adr/`) |
-| Suíte | ~1.220 testes em 73 arquivos |
+| Suíte | **1.220 testes** em 74 arquivos, todos verdes |
 
 O que está em voo agora: [`docs/WORKING-CONTEXT.md`](docs/WORKING-CONTEXT.md).
 O que ficou para depois: [`docs/backlog-v6.md`](docs/backlog-v6.md).
