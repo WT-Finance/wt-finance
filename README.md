@@ -138,12 +138,12 @@ docs/
   adr/                       Architecture Decision Records (126)
   briefings/                 briefings e out-briefings por versão
   runbooks/                  runbooks operacionais (auth, e-mail, backup-gate…)
-  audits/ · design-system.md · email-layout-guide.md · changelog.md · bugs-resolvidos.md
+  audits/ · email-layout-guide.md · changelog.md · bugs-resolvidos.md
 ```
 
 ## Convenções
 
-- **Design System Welcome** (`docs/design-system.md`, `/admin/design-system`): cores via **tokens CSS**, nunca hex hardcoded — cor crua/hex em classe **quebra o lint** (`wt/no-cor-hardcoded`). Cor por aba resolvida via `[data-theme]` no `<html>`.
+- **Design System Welcome** (referência única: a página `/admin/design-system`; o *porquê* na skill `ui-design-system`): cores via **tokens CSS**, nunca hex hardcoded — cor crua/hex em classe **quebra o lint** (`wt/no-cor-hardcoded`). Cor por aba resolvida via `[data-theme]` no `<html>`.
 - **Primitivos únicos:** UI nova usa os componentes de `src/components/ui/` e os gráficos os primitivos de `@/components/charts` (sólido = realizado, tracejado = projeção/referência) — não reinventa botão/campo/eixo.
 - **Coerção de célula** (número/data/string) vem só de `@/lib/carga/coercao.ts` — reimplementar quebra o lint (`wt/no-coercao-reimpl`).
 - **Fuso e formatação:** `timestamptz` sempre exibido em São Paulo via `fmtDataSP`/`fmtDataHoraSP` (`Intl` + `timeZone`), nunca split de string. Casas decimais por contexto (`fmtBRL2` em operação individual, `fmtMi`/`fmtAxisBRL` em agregados).
@@ -259,7 +259,7 @@ Há uma suíte **Vitest** (~29 arquivos de teste em `src/`), rodada no gate de f
 - **`CLAUDE.md`** — como se trabalha no projeto (workflow, comandos, banco, convenções, salvaguardas). Documento vivo, fonte da verdade operacional.
 - **`docs/adr/`** — decisões arquiteturais (126 ADRs; a numeração real é a fonte da verdade).
 - **`docs/runbooks/`** — procedimentos operacionais (auth, e-mail/SMTP, upload de Vendas, backup-gate).
-- **`docs/design-system.md`** e **`docs/email-layout-guide.md`** — padrões visuais e de e-mail.
+- **`/admin/design-system`** (página viva, código real) + skill `ui-design-system` — padrões visuais. **`docs/email-layout-guide.md`** — padrões de e-mail.
 - **`CHANGELOG.md`** (técnico) e **`src/data/changelog-diretoria.ts`** (negócio, lido pelo modal de versão).
 
 ## Limitações conhecidas

@@ -76,6 +76,28 @@ Weddings/Trips/Corporativo usa `SETOR_COLORS` de `@/lib/config` (que resolve par
 
 ---
 
+### 1.3 — Token certo para FUNDO nem sempre é token certo para TINTA (contraste)
+
+A página `/admin/design-system` mostra os tokens; ela não mostra o **contraste**. Escolher a cor
+de um texto por "é a cor do estado" reprova AA sem que gate nenhum perceba — o lint
+`wt/no-cor-hardcoded` só checa se a cor veio de token, nunca se ela é legível.
+
+**`--warning` (#D9A23F) NÃO serve como tinta em corpo pequeno:** sobre branco dá **2,29:1**,
+reprova AA. Para texto âmbar use **`--warning-deep`** (#8A6413, classe `text-warning-deep`) —
+5,37:1 sobre branco, 4,70:1 sobre `--warning-bg`, 4,77:1 sobre `--surface-soft`. O `--warning`
+continua certo para **fundo, borda e ícone**, onde o critério de contraste é outro. A convenção
+`*-deep` existe para exatamente isso e já vale para `--positive-deep` / `--negative-deep`:
+**quando o estado vira texto, a variante `-deep` é a tinta.**
+
+**Não substitua por `--gestao-fg`.** O DS separa a família de gestão de propósito: gestão é "ação
+administrativa", não estado de alerta, e não acompanha mudanças do warning (ADR-0103 ext., v4.18.0).
+Dois âmbares parecidos com semânticas diferentes é como a divergência entra.
+
+(v5.3.0, nasceu nas colunas de PREVISTO da DRE; migrado de `docs/design-system.md` na v5.10.0,
+quando o `.md` foi aposentado em favor da página viva.)
+
+---
+
 ## 2. UI nova usa os PRIMITIVOS de `src/components/ui/` — não reinventa o seu
 
 Canônicos: `Button` (variantes sólido/contorno/ghost/ícone/ícone-borda/livre),
@@ -171,8 +193,19 @@ Se o gap lateral da plataforma inteira precisar afinar, o ajuste é **um lugar s
 **Cabeçalho de página (v5.9.3/M1):** título `text-xl font-semibold text-text-primary`,
 subtítulo (o `<p>` logo abaixo) `text-text-subtle` — sempre classe, nunca `style`, nunca
 `zinc`/`text-text-secondary`/`text-text-muted`. A sonda `src/styles/cabecalho-pagina.test.ts`
-varre `src/app`/`src/components` e reprova qualquer par h1+p fora do padrão; ver
-"Cabeçalho de página" em `docs/design-system.md` para o snippet canônico.
+varre `src/app`/`src/components` e reprova qualquer par h1+p fora do padrão (classe
+`zinc-*`, `text-text-secondary`/`text-text-muted` no subtítulo, ou cor via `style` — o lint
+`wt/no-cor-hardcoded` só enxerga classe). Snippet canônico:
+
+```tsx
+<div className="mb-6">
+  <h1 className="text-xl font-semibold text-text-primary">Título da Página</h1>
+  <p className="mt-0.5 text-sm text-text-subtle">Subtítulo — uma linha de contexto</p>
+</div>
+```
+
+Título de **seção** (`TopSection`) continua na cor de marca (`--brand-deep`, §6); título de
+**card** continua `--text-primary`. `--text-secondary` é texto de corpo/H3, nunca subtítulo.
 
 ---
 

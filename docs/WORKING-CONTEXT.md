@@ -82,8 +82,8 @@ v5.9.2 no ar. **Migration `0266` (aditiva) APLICADA** em 09/09 com gate verde e 
 1. **Título/subtítulo com um token só em toda a plataforma**: título `text-text-primary`, subtítulo de
    página E de seção `text-text-subtle` (decisão do Yan: cinza claro). Havia três dialetos (16 telas em
    `zinc` inline, a DRE em `text-text-secondary`, auth em `style`); a página `/admin/design-system`
-   prescrevia "cor terciária" sem nomear token — a brecha. Regra em `docs/design-system.md` (seção
-   "Cabeçalho de página"), na skill `ui-design-system` §3, e a sonda `src/styles/cabecalho-pagina.test.ts`
+   prescrevia "cor terciária" sem nomear token — a brecha. Regra na skill `ui-design-system` §3
+   (snippet canônico; era também `docs/design-system.md`, aposentado na v5.10.0), e a sonda `src/styles/cabecalho-pagina.test.ts`
    reprova regressão (o lint `wt/no-cor-hardcoded` NÃO vê `zinc` nem `style`; estender é decisão humana —
    config protegida — e o diff está no out-briefing).
 2. **"Resultado Financeiro" (`FIN`) na grade de proporção**, ao lado de CUSTO — 8 gráficos. A janela
