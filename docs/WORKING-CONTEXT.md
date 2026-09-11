@@ -76,13 +76,10 @@ de todas elas estava no catálogo que eu mesmo havia exportado.
    toda sessão invoca as skills em bloco, com custo de contexto. Enquanto não resolvido,
    `docs/harness/sonda-disparo.md` fica no repositório (é a medição do sintoma).
 
-**Conferências visuais em produção, represadas** — v5.9.0 e v5.9.1 (anexar em "Outros", aprovar uma
-solicitação), o Tab até o "?" nos gatilhos de ajuda (v5.9.4), os cabeçalhos das ~25 telas (v5.9.3),
-o desfazer real pela UI nos três editores (caixa, competência, Gerencial — v5.9.5).
-
-**Comunicações pendentes à liderança:**
-- **A DRE mudou de critério em 19/08** e a mudança nunca foi comunicada.
-- O **tripwire da v5.4.5 disparou para 2026-08**: 1 venda retida no espelho.
+> **Fechado em 10/09 pelo Yan:** as conferências visuais represadas da v5.3.x à v5.9.5 (anexar em
+> "Outros", aprovar solicitação, Tab nos gatilhos de ajuda, cabeçalhos das ~25 telas, desfazer real
+> nos três editores) e as comunicações à liderança — a mudança de critério da DRE de 19/08 e o
+> tripwire da v5.4.5 para 2026-08. Saíram da fila; não reabrir por leitura de out-briefing antigo.
 
 **Decisões abertas:**
 - Commit órfão `b869bb9` (relatório delta DRE×Monde + errata), só em
