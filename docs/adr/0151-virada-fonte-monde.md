@@ -1,6 +1,7 @@
 # ADR-0151 — A Virada: fonte de vendas passa a ser o Monde (repoint reversível)
 
 - **Status:** aceito (v5.1.4) — migration do flip **NÃO aplicada pelo Code** (gate do Yan)
+- **Emendado por:** ADR-0164 (reconciliação do espelho, depois que a virada o tornou fonte de produção)
 - **Data:** 2026-07-14
 - **Tipo:** PATCH · migration 0181 (repoint REVERSÍVEL) + 0182 (agendamento) · base main @ v5.1.2
 - **Nota de numeração:** ADR **0151** (não 0150 — a v5.1.3, harness, em paralelo, reservou 0150).

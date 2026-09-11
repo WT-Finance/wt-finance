@@ -1,6 +1,8 @@
 # ADR 0109 — Sessão SSR (@supabase/ssr) e guards de área no app
 
 **Status:** Aceito
+**Emendado por:** ADR-0153 (rotas de API com auth própria são isentas do portão de sessão do
+proxy — a camada 1 ganha uma exceção explícita, nomeada e auditável)
 **Data:** Junho/2026
 **Versão:** v4.13
 

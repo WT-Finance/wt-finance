@@ -1,6 +1,8 @@
 # ADR-0149 — Ingestão da API do Monde (espelho paralelo para alimentar as Metas)
 
 - **Status:** aceito (v5.1.2)
+- **Emendado por:** ADR-0164 (reconciliação do espelho: janela curta + varredura diária + tripwire)
+  e ADR-0165 (o filtro de negócio sai da escrita e vai para a leitura)
 - **Data:** 2026-07-14
 - **Tipo:** PATCH · migrations ADITIVAS 0178–0180 (schema espelho novo) · base main @ v5.1.1
 - **Fronteira:** esta versão NÃO vira a chave. Entrega ingestão paralela + tela de comparação.
