@@ -1,0 +1,45 @@
+{
+  "//": "ALTERNATIVA ao bloco `permissions` de 1-settings-projeto.json, caso você prefira as regras no ~/.claude/settings.json (global) em vez do settings do projeto. NÃO cole este arquivo inteiro por cima do global — ele tem outras chaves (model, enabledPlugins, extraKnownMarketplaces, theme…) que seriam perdidas. Use o comando de MERGE do README (seção 'Ato 1, variante global'), que preserva o resto.",
+  "//o-que-muda": "Os HOOKS continuam no settings do PROJETO de qualquer forma — os comandos usam caminho relativo e só resolvem com o projeto como cwd. Só as permissões mudam de lugar.",
+  "//tradeoff": "GLOBAL: vale em toda worktree e em qualquer clone desta máquina sem depender de arquivo versionado, mas o `deny` do db push também alcança OUTROS repositórios Supabase que você venha a ter, e a regra não viaja se você trocar de máquina nem é revisada em PR. PROJETO: versionada, revisada, viaja com o repo, vale em toda worktree — e é a recomendação, porque `db push` é uma regra DESTE projeto.",
+  "//defaultMode": "O global já tem `permissions: {\"defaultMode\": \"auto\"}`. O merge PRESERVA esse campo e apenas acrescenta `allow` e `deny` ao lado dele.",
+  "permissions": {
+    "defaultMode": "auto",
+    "deny": [
+      "Bash(npx supabase db push:*)",
+      "Bash(supabase db push:*)",
+      "Bash(npm run db:migrate -- --destrutiva:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push origin HEAD:main:*)"
+    ],
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:watch)",
+      "Bash(npx vitest run:*)",
+      "Bash(npx supabase migration list:*)",
+      "Bash(npx supabase gen types:*)",
+      "Bash(npm run db:migrate -- --aditiva)",
+      "Bash(npm run db:migrate -- --aditiva --fora-de-ordem)",
+      "Bash(npm run db:gate)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)"
+    ]
+  },
+  "//sintaxe-confirmada": "CONFIRMADO na documentacao (10/09): hook PreToolUse roda ANTES do fluxo de permissao, e `deny` vence `allow` sempre. Entao `Bash(git add:*)` no allow NAO da passe livre ao `git add -A`: o hook `protecao-git-add` dispara primeiro e bloqueia. E as regras exatas (sem `:*`) de db:migrate casam literalmente — os dois-pontos de `db:migrate` nao interferem no parsing. `Bash(cmd:*)` e `Bash(cmd *)` sao equivalentes; o `:*` e a forma preferida.",
+  "//deny-push": "O allow de `git push:*` sozinho liberaria `--force` e push para main, que as barreiras duras do CLAUDE.md proibem — prosa nao segura isso. Como `deny` vence `allow`, as 5 regras de deny sobre `push` devolvem a garantia por maquina. Nao cobrem TODA forma possivel (ex.: um refspec exotico escapa), mas cobrem as que a mao digita."
+}

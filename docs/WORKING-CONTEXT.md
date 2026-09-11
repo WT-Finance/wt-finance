@@ -72,9 +72,18 @@ de todas elas estava no catálogo que eu mesmo havia exportado.
    do backup-gate e aplica todo o pending, inclusive destrutiva estacionada) e os `allow` estreitos
    dos gates.
 2. Hook `PreToolUse` contra `git add -A` / `-a` (com 22 casos de teste escritos).
-3. Desativar o plugin **`superpowers` duplicado** (global v6.2.0 + cópia do projeto v5.1.0): hoje
-   toda sessão invoca as skills em bloco, com custo de contexto. Enquanto não resolvido,
-   `docs/harness/sonda-disparo.md` fica no repositório (é a medição do sintoma).
+3. ~~Desativar o plugin `superpowers` duplicado~~ — **o achado E5 estava ERRADO; medido em 10/09
+   e nada a fazer.** `claude plugin list` diz que `superpowers@superpowers-marketplace` 5.1.0
+   (escopo local deste projeto) está **`✘ disabled`**, e o `.in_use` dela é de **28/07**; a única
+   que carrega é a `@claude-plugins-official` **6.3.0** (não 6.2.0 — atualizou em 13/08). Não há
+   duplicação ativa há seis semanas. E `claude plugin details` mostra que o custo **always-on é de
+   ~688 tokens**, que é barato: o que dói é o disparo em bloco, ~**50 mil tokens** se as 14 skills
+   forem invocadas — e isso é **mandato do próprio plugin** (a skill `using-superpowers` manda
+   invocar havendo 1% de chance de aplicar), não consequência de duplicação. **O que resta é
+   decisão sua, de custo:** medir numa sessão nova se o bloco ainda dispara e, se disparar, optar
+   entre pagar ou `claude plugin disable superpowers@claude-plugins-official`. Roteiro em
+   `docs/auditoria-v5/atos-humanos/README.md` (Ato 3). Desinstalar a 5.1.0 é faxina opcional —
+   mas **não remova a marketplace**, que o `episodic-memory` vem dela e está habilitado.
 
 > **Fechado em 10/09 pelo Yan:** as conferências visuais represadas da v5.3.x à v5.9.5 (anexar em
 > "Outros", aprovar solicitação, Tab nos gatilhos de ajuda, cabeçalhos das ~25 telas, desfazer real

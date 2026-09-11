@@ -1,57 +1,88 @@
 {
-  "//": "ATO HUMANO 1 + 2 da v5.10.0 — conteúdo PROPOSTO para .claude/settings.json (versionado). NÃO está instalado: o arquivo é protegido pelo hook `protecao-config`, e o escape WT_PERMITIR_CONFIG=1 é variável de ambiente da sessão que o agente não alcança por desenho. Ver o README ao lado para o comando.",
-
-  "//permissions": "D10-001. Hoje NÃO existe nenhuma regra de allow/deny — nem aqui nem no ~/.claude/settings.json do usuário (que só tem defaultMode: auto). O CLAUDE.md descreve uma 'terceira camada' de permissões que na prática é prosa. O `deny` abaixo é o que importa: `npx supabase db push` cru passa POR FORA do wrapper npm run db:migrate e, com ele, por fora da classificação aditiva/destrutiva, do backup-gate e do restore-test — e empurra TODO o conjunto pendente, inclusive uma destrutiva estacionada. Hoje a única proteção contra isso é disciplina.",
-
+  "//": "ATO HUMANO 1+2 da v5.10.0 — conteúdo PROPOSTO para .claude/settings.json (do PROJETO, versionado). NÃO está instalado: o arquivo é protegido pelo hook `protecao-config`, e o escape WT_PERMITIR_CONFIG=1 é variável de ambiente da SESSÃO, que o agente não alcança por desenho. Comando de instalação no README ao lado.",
+  "//por-que-aqui-e-nao-no-global": "Os HOOKS têm de ficar aqui: os comandos usam caminho RELATIVO (`node .claude/hooks/...`), que só resolve com o projeto como cwd. As PERMISSÕES poderiam ir no ~/.claude/settings.json, mas ficam aqui de propósito — versionadas, revisadas no PR, e valendo automaticamente em TODA worktree nova (este projeto vive em worktrees; regra em settings global não é o problema, mas regra versionada é a que sobrevive a trocar de máquina). Se preferir no global, a alternativa está em 1b-settings-global-permissions.json.",
+  "//permissions": "D10-001. Antes deste ato NÃO existia nenhuma regra de allow/deny — conferido em 10/09: o ~/.claude/settings.json tinha só `permissions: {defaultMode: auto}` e este arquivo, zero de cada. O CLAUDE.md descrevia uma 'terceira camada' que era prosa.",
+  "//deny": "O `deny` é o que importa. `supabase db push` cru passa POR FORA do wrapper `npm run db:migrate` e, com ele, por fora da classificação aditiva/destrutiva, do backup-gate e do restore-test — e empurra TODO o conjunto pendente, inclusive uma destrutiva estacionada. As três primeiras cobrem `npx supabase`, `supabase` no PATH e qualquer invocação com prefixo (ex.: `cd x && npx supabase db push`).",
+  "//allow": "Estreito de propósito: só o que a sessão roda dezenas de vezes por versão e que NÃO escreve em produção. Regra de allow dispensa o classificador; o que não está aqui continua sujeito a ele — e sem regra, comando que escreve pode ser NEGADO SECO, sem prompt (aconteceu 2x em 10/09, na poda de branches). As duas invocações de db:migrate são EXATAS, sem `*` ao final: assim `--destrutiva` nunca é auto-aprovada por arrasto.",
   "permissions": {
     "deny": [
-      "Bash(npx supabase db push*)",
-      "Bash(supabase db push*)",
-      "Bash(*supabase* db push*)"
+      "Bash(npx supabase db push:*)",
+      "Bash(supabase db push:*)",
+      "Bash(npm run db:migrate -- --destrutiva:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push origin HEAD:main:*)"
     ],
     "allow": [
       "Bash(npx tsc --noEmit)",
-      "Bash(npm run lint*)",
+      "Bash(npm run lint:*)",
       "Bash(npm run build)",
-      "Bash(npm test*)",
-      "Bash(npx vitest run*)",
-      "Bash(npx supabase migration list*)",
-      "Bash(npx supabase db query*)",
-      "Bash(npx supabase gen types*)",
-      "Bash(npm run db:migrate -- --aditiva*)"
+      "Bash(npm test:*)",
+      "Bash(npm run test:watch)",
+      "Bash(npx vitest run:*)",
+      "Bash(npx supabase migration list:*)",
+      "Bash(npx supabase gen types:*)",
+      "Bash(npm run db:migrate -- --aditiva)",
+      "Bash(npm run db:migrate -- --aditiva --fora-de-ordem)",
+      "Bash(npm run db:gate)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)"
     ]
   },
-
-  "//hooks": "PreToolUse ganha o protecao-git-add (D8-022). O arquivo do hook está pronto em docs/auditoria-v5/atos-humanos/2-protecao-git-add.mjs e precisa ser copiado para .claude/hooks/ no mesmo ato.",
-
+  "//hooks": "PreToolUse ganha o `protecao-git-add` (D8-022) num matcher Bash NOVO — o matcher Edit|Write|MultiEdit do `protecao-config` fica intocado. O arquivo do hook está pronto em 2-protecao-git-add.mjs e precisa ser copiado para .claude/hooks/ NO MESMO ATO: registrar o hook sem o arquivo faz toda chamada Bash falhar.",
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/protecao-config.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/protecao-config.mjs"
+          }
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/protecao-git-add.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/protecao-git-add.mjs"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/gate-stop.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gate-stop.mjs"
+          }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/contexto-sessao.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/contexto-sessao.mjs"
+          }
         ]
       }
     ]
-  }
+  },
+  "//sintaxe-confirmada": "CONFIRMADO na documentacao (10/09): hook PreToolUse roda ANTES do fluxo de permissao, e `deny` vence `allow` sempre. Entao `Bash(git add:*)` no allow NAO da passe livre ao `git add -A`: o hook `protecao-git-add` dispara primeiro e bloqueia. E as regras exatas (sem `:*`) de db:migrate casam literalmente — os dois-pontos de `db:migrate` nao interferem no parsing. `Bash(cmd:*)` e `Bash(cmd *)` sao equivalentes; o `:*` e a forma preferida.",
+  "//deny-push": "O allow de `git push:*` sozinho liberaria `--force` e push para main, que as barreiras duras do CLAUDE.md proibem — prosa nao segura isso. Como `deny` vence `allow`, as 5 regras de deny sobre `push` devolvem a garantia por maquina. Nao cobrem TODA forma possivel (ex.: um refspec exotico escapa), mas cobrem as que a mao digita."
 }
