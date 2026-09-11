@@ -6,7 +6,7 @@ import { getAdminClient } from '@/lib/supabase/admin'
 // (último DADO mudado) se a coluna nova vier vazia. (v5.1.8 escolheu a sincronização, não o
 // último dado — este congelava em janelas quietas.) Leitura server-side (admin client,
 // service-role) de agregado NÃO-sensível; FAIL-SAFE: qualquer erro → null (o consumidor omite
-// a linha). `monde_ingest_status` não está no database.ts congelado → tipagem frouxa (padrão
+// a linha). `monde_ingest_status` nasceu fora do database.ts de então → tipagem frouxa (padrão
 // rpcMetas/acervo/faturamento). Compartilhado por /metas, /metas/tv e /metas/comparacao (v5.1.9).
 export async function buscarUltimaSincronizacaoMonde(): Promise<string | null> {
   try {

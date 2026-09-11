@@ -38,7 +38,7 @@ import {
   SERIE_SGS_CDI_MENSAL,
 } from '@/lib/cdi/serie-sgs'
 
-/** Assinatura frouxa de `rpc` para função fora do `database.ts` congelado. */
+/** Assinatura frouxa — helper LEGADO (o `database.ts` era tratado como congelado até a v5.10.0; hoje é GERADO — ADR-0173). */
 type RpcFrouxa = (
   fn: string,
   args?: Record<string, unknown>,
@@ -74,7 +74,7 @@ async function handle(req: NextRequest): Promise<Response> {
     }
 
     const admin = getAdminClient()
-    // `cdi_ingest_upsert` é RPC nova e o `database.ts` é congelado ⇒ tipagem frouxa,
+    // `cdi_ingest_upsert` nasceu quando o `database.ts` era congelado ⇒ tipagem frouxa,
     // no molde de `lib/api-externa/rpc.ts`. O `.bind(admin)` NÃO é decoração:
     // `SupabaseClient.rpc` é método de protótipo que faz `this.rest.rpc(...)`, então
     // destacá-lo numa variável perde o `this` e estoura em runtime — foi a causa-raiz

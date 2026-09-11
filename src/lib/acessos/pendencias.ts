@@ -5,7 +5,7 @@ import { getServerClient } from '@/lib/supabase/server'
 import { parseRpc } from '@/lib/schemas-rpc'
 
 // v5.9.3/M6 — contagem de solicitações de acesso PENDENTES (badge da sidebar em
-// 'admin/acessos' + pill da página). RPC nova (0266), fora do database.ts congelado —
+// 'admin/acessos' + pill da página). RPC 0266, nascida fora do database.ts de então —
 // mesmo padrão de helper de tipagem frouxa de src/lib/solicitacoes/rpc.ts (não
 // importado de lá: é privado àquele módulo e a duplicação de 6 linhas é mais barata
 // que expor um tipo interno de outro domínio). `cache()` deduplica no mesmo request
