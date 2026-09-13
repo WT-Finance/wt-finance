@@ -20,11 +20,14 @@
 `docs/briefings/briefing-v5-10-0-limpeza-fechamento-v5.md`. Spec da execução:
 `docs/auditoria-v5/relatorio-triado.md` — **só item marcado `agir agora` é escopo**.
 
-Blocos 1 a 5 entregues e **mergeados no PR 1**; a migration aditiva **0269** e a destrutiva
-**0270** estão aplicadas em produção. Em curso: o **Bloco 6 (documentação)** e, depois dele, o
-fechamento (bump, CHANGELOG, ADR-0173, PR 2).
+**Todos os 6 blocos entregues.** Blocos 1 a 5 mergeados no PR 1, com a aditiva **0269** e a
+destrutiva **0270** aplicadas em produção; Bloco 6 (documentação) e o fechamento estão no **PR 2**,
+aguardando merge. Bump **5.10.0**, CHANGELOG, changelog-diretoria, **ADR-0173** aceito, out-briefing
+em `docs/briefings/WT_Finance_Out_Briefing_v5-10-0_Limpeza_Fechamento_V5.md`.
 
-**Próximo passo:** concluir o Bloco 6, rodar os gates completos e abrir o PR 2.
+**Próximo passo — seu:** (1) **recopiar hook e settings** corrigidos no fechamento (o `revisor`
+achou 3 falsos negativos no hook instalado; comando único no Ato 2 de
+`docs/auditoria-v5/atos-humanos/README.md`); (2) revisar e mergear o PR 2; (3) `/pos-merge`.
 
 ---
 
@@ -32,10 +35,10 @@ fechamento (bump, CHANGELOG, ADR-0173, PR 2).
 
 | | |
 |---|---|
-| Produção | **v5.9.7** (patch de segurança do `next` 16.3.4) |
+| Produção | **v5.9.7** · **v5.10.0 no PR 2**, aguardando merge |
 | Última migration aplicada | **0270** · próxima livre: **0271** |
-| Último ADR | **0173** (em rascunho nesta versão) · próximo livre: **0174** |
-| Suíte | **1.220 testes**, 74 arquivos, zero `skip` silencioso |
+| Último ADR | **0173** (aceito) · próximo livre: **0174** |
+| Suíte | **1.220 testes**, 74 arquivos, 88,60 s, zero `skip` silencioso |
 
 Frente única: nenhuma outra branch de feature enquanto a v5.10.0 corre.
 
@@ -74,9 +77,9 @@ de todas elas estava no catálogo que eu mesmo havia exportado.
    `--force`/`-f`/`--force-with-lease` e para `main`. As 13 chaves do arquivo foram preservadas e
    o `defaultMode: auto` está intacto. **Verificado ao vivo:** `npx supabase db push --dry-run`
    volta negado — e pegou até numa sessão já aberta.
-2. ~~**Ato 1, `allow` + Ato 2, hook → `.claude/settings.json` do projeto**~~ — **feito.** 22 `allow`
+2. ~~**Ato 1, `allow` + Ato 2, hook → `.claude/settings.json` do projeto**~~ — **feito.** 23 `allow`
    dos gates e os matchers `Edit|Write|MultiEdit` + `Bash`; `protecao-git-add.mjs` instalado em
-   `.claude/hooks/`, byte a byte idêntico ao artefato. Bateria de 22 casos verde, e o hook
+   `.claude/hooks/`, byte a byte idêntico ao artefato. Bateria verde, e o hook
    **instalado** exercitado direto com o payload do harness: bloqueia `-A`, `--all`, `.` e
    encadeado após `&&`; passa caminho explícito, `-p`, `-u` e a regra citada dentro de aspas.
    Os dois arquivos são versionados e entram no PR 2 — a proteção passa a valer em toda worktree.
@@ -222,7 +225,7 @@ mas Weddings, `get_mix_produto` e `get_cagr` ainda vêm do upload.
   Receita Bruta é `RB_H`/`tipo:'blocoH'`, não `'tot'`), e o diário/undo é genérico (molde
   `dre_estrutura_*`, migration 0206).
 - ✅ **A terceira camada está ATIVA desde 13/09** (v5.10.0): 9 `deny` no `~/.claude/settings.json`
-  global (incluindo `supabase db push` cru, que fura o backup-gate) e 22 `allow` + os hooks no
+  global (incluindo `supabase db push` cru, que fura o backup-gate) e 23 `allow` + os hooks no
   `.claude/settings.json` do projeto, que é **versionado** — e por isso vale em toda worktree, ao
   contrário do `settings.local.json`, que é git-ignored e por diretório (foi essa diferença que
   negou dois comandos legítimos em 10/09). `deny` vence `allow` em qualquer nível, e hook

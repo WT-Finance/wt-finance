@@ -145,7 +145,7 @@ vence `allow` em qualquer nível, e hook `PreToolUse` roda **antes** do fluxo de
 - **`~/.claude/settings.json` (global): 9 `deny`** — `supabase db push` cru nas duas formas,
   `db:migrate -- --destrutiva`, `git push` com `--force`/`-f`/`--force-with-lease` e para `main`.
   O push cru é global porque fura o backup-gate em **qualquer** repositório Supabase da máquina.
-- **`.claude/settings.json` (projeto, VERSIONADO): 22 `allow`** dos gates + o registro dos hooks.
+- **`.claude/settings.json` (projeto, VERSIONADO): 23 `allow`** dos gates + o registro dos hooks.
   Versionado de propósito: `settings.local.json` é git-ignored e por diretório, então **worktree
   não o herda** — foi isso que negou dois comandos legítimos em 10/09.
 

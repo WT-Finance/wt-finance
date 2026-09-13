@@ -135,7 +135,7 @@ console.log('allow', j.permissions.allow.length, '| PreToolUse', j.hooks.PreTool
 node -e "require('fs').accessSync('.claude/hooks/protecao-git-add.mjs');console.log('hook no lugar')"
 
 # 3.4 — a bateria do hook, sem depender de instalação
-node docs/auditoria-v5/atos-humanos/2-protecao-git-add.teste.mjs   # 22 casos
+node docs/auditoria-v5/atos-humanos/2-protecao-git-add.teste.mjs   # 31 casos
 ```
 
 Você **não** precisa de `WT_PERMITIR_CONFIG=1`: o `protecao-config` intercepta as ferramentas de
@@ -149,6 +149,29 @@ a proteção passa a viajar com o repositório.
 ---
 
 ## Ato 2 — hook `PreToolUse` contra `git add -A` (D8-022)
+
+> 🔴 **O hook INSTALADO está desatualizado — recopie antes de confiar nele.** No fechamento da
+> v5.10.0 o `revisor` achou **três falsos negativos** na versão que você instalou em 13/09, os três
+> confirmados ao vivo: `bash -c 'git add -A'` (a remoção de todo texto entre aspas apagava o
+> próprio comando — vale para `sh -c`, `eval`, `ssh host '…'`), `git add -- .` (o `--` idiomático
+> escapava do padrão) e `git add -vA` (o cluster exigia `a` **minúsculo**). O artefato aqui já está
+> corrigido e a bateria subiu de 21 para **31 casos**, cobrindo os três. Um comando só:
+>
+> ```bash
+> cd ~/projects/wt-finance/.claude/worktrees/chore+v5-10-0-limpeza-fechamento-v5
+> cp docs/auditoria-v5/atos-humanos/2-protecao-git-add.mjs .claude/hooks/protecao-git-add.mjs
+> cp docs/auditoria-v5/atos-humanos/1-settings-projeto.json .claude/settings.json
+> HOOK=.claude/hooks/protecao-git-add.mjs node docs/auditoria-v5/atos-humanos/2-protecao-git-add.teste.mjs
+> node -e "const j=require('./.claude/settings.json');console.log('allow',j.permissions.allow.length)"  # 23
+> ```
+>
+> **O settings também mudou:** `Bash(git worktree:*)` era amplo e cobria `git worktree remove`, que o
+> `CLAUDE.md` proíbe com trabalho não-mergeado (MÉDIO do revisor). Virou `list` + `add`, e `remove`
+> volta a pedir confirmação. São **23 `allow`** agora. Reinicie a sessão depois de copiar.
+>
+> A lição ficou no cabeçalho da bateria: **caso de teste que nasce depois da regex só confirma a
+> regex.** Os casos que valem são os que um adversário tentaria.
+
 
 A regra "não usar `git add -A` cego" está no `CLAUDE.md` e é **só prosa**. Pela régua de 5
 destinos, o que dá para segurar por máquina não deveria ser — este é o destino 1.

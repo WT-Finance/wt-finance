@@ -38,22 +38,30 @@ try {
 const cmd = String(input.tool_input?.command ?? '');
 if (!cmd) process.exit(0);
 
-// TEXTO ENTRE ASPAS NÃO É COMANDO. Removido antes de casar qualquer padrão, senão
-// `git commit -m "não usar git add -A"` é bloqueado — e as mensagens de commit deste
-// projeto citam a regra literalmente, então o hook brigaria com o próprio CLAUDE.md.
-// (Os dois falsos positivos que a bateria de teste pegou eram exatamente isto.)
-// O que sobra depois da remoção é a estrutura do comando, que é o que interessa.
-const semAspas = cmd
-  .replace(/'[^']*'/g, "''")
-  .replace(/"(?:[^"\\]|\\.)*"/g, '""');
-
-// `add` tem de ser o SUBCOMANDO do git, não uma palavra qualquer depois dele.
+// NEUTRALIZAR A MENSAGEM DE COMMIT — e SÓ ela.
 //
-// A 1ª versão desta regex era `\bgit\b[^;&|]*?\badd\b[^;&|]*?(-A|--all)` e reprovou no
-// próprio teste: bloqueava `git commit -m "não usar git add -A"`, porque a palavra estava
-// no TEXTO da mensagem. Falso positivo que morderia todo dia — as mensagens de commit
-// deste projeto citam a regra literalmente. Daí a âncora: `git`, opcionalmente seguido das
-// opções GLOBAIS que podem preceder o subcomando, e então `add`.
+// A 1ª versão apagava TODO texto entre aspas, partindo de "texto entre aspas não é
+// comando". Isso é verdade para `git commit -m "…"` e FALSO para qualquer forma que passe
+// o comando real como string a um interpretador: `bash -c 'git add -A'`, `sh -c "…"`,
+// `eval "…"`, `ssh host '…'`. Nesses casos a remoção apagava justamente o `git add -A`, e
+// o hook liberava — pior que não existir, porque dava confiança injustificada. Achado
+// CRÍTICO do revisor no fechamento da v5.10.0, confirmado ao vivo.
+//
+// A correção é cirúrgica: neutraliza só o ARGUMENTO de `-m`/`--message`, que era o único
+// falso positivo real (as mensagens de commit deste projeto citam a regra literalmente).
+const semMensagem = cmd.replace(
+  /(^|\s)(-m|--message)(?:=|\s+)(?:'[^']*'|"(?:[^"\\]|\\.)*"|\S+)/g,
+  '$1$2 MSG',
+);
+
+// As ASPAS RESTANTES viram espaço — o CONTEÚDO fica visível ao scanner. É o que faz
+// `bash -c 'git add -A'` ser enxergado: some a aspa, sobra o comando.
+// Efeito colateral aceito: `echo "git add -A"` passa a ser bloqueado. Bloquear um `echo`
+// inofensivo custa uma reexecução; liberar um `bash -c` de stage cego custa o commit.
+const alvo = semMensagem.replace(/['"]/g, ' ');
+
+// `add` tem de ser o SUBCOMANDO do git, não uma palavra qualquer depois dele — daí a
+// âncora com as opções GLOBAIS que podem preceder o subcomando (`git -C /dir add …`).
 const GLOBAIS = String.raw`(?:-C\s+\S+|-c\s+\S+|--no-pager|--git-dir=\S+|--work-tree=\S+|--exec-path=\S+)`;
 const GIT_ADD = String.raw`\bgit\s+(?:${GLOBAIS}\s+)*add\b`;
 
@@ -61,12 +69,22 @@ const GIT_ADD = String.raw`\bgit\s+(?:${GLOBAIS}\s+)*add\b`;
 const ARGS = String.raw`[^;&|]*`;
 
 const PADROES = [
+  // `-A` / `--all` como token exato.
   new RegExp(GIT_ADD + ARGS + String.raw`(?:^|\s)(?:-A|--all)(?:\s|$)`),
-  new RegExp(GIT_ADD + ARGS + String.raw`(?:^|\s)-[A-Za-z]*a[A-Za-z]*(?:\s|$)`), // -a e combinações
-  new RegExp(GIT_ADD + String.raw`\s+(?:\.|:\/)(?:\s|$)`),
+
+  // Cluster de flags curtas contendo `a` OU `A` — pega `-a`, `-vA`, `-Av`, `-va`.
+  // A 1ª versão exigia `a` MINÚSCULO e sem flag `i`, então `-vA` passava: a documentação
+  // afirmava cobrir "combinações como -vA" e não cobria (2º CRÍTICO do revisor).
+  // O `[A-Za-z]*` fecha em `\s|$`, então um caminho como `-analise.csv` não casa — o `.`
+  // quebra o token antes do fim, que é a guarda natural contra esse falso positivo.
+  new RegExp(GIT_ADD + ARGS + String.raw`(?:^|\s)-[A-Za-z]*[aA][A-Za-z]*(?:\s|$)`),
+
+  // `.` ou `:/` como pathspec, com o `--` idiomático OPCIONAL no meio.
+  // `git add -- .` é equivalente a `git add .` e passava batido (3º CRÍTICO do revisor).
+  new RegExp(GIT_ADD + String.raw`\s+(?:--\s+)?(?:\.|:\/)(?:\s|$)`),
 ];
 
-if (PADROES.some((r) => r.test(semAspas))) {
+if (PADROES.some((r) => r.test(alvo))) {
   console.error(
     `[protecao-git-add] BLOQUEADO: stage cego em \`${cmd.slice(0, 120)}\`.\n` +
       `Regra (CLAUDE.md/Disciplina): "Não usar \`git add -A\` cego" — um stage cego arrasta ` +
