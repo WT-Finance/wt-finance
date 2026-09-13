@@ -67,28 +67,28 @@ de todas elas estava no catálogo que eu mesmo havia exportado.
 
 ## Pendências do Yan
 
-**Atos humanos com diff pronto** (`docs/auditoria-v5/atos-humanos/`, o agente não alcança):
-> 🔴 **ANTES DE TUDO: `~/projects/wt-finance/.claude/settings.json` está com JSON INVÁLIDO desde
-> 28/07** — vírgula sobrando antes do `}` que fecha `permissions`. Como é o arquivo que declara os
-> hooks, **provavelmente nenhum hook carrega no checkout raiz há seis semanas**: foi uma tentativa
-> de aplicar o Ato 1 à mão que falhou em silêncio. O arquivo é *tracked* e a edição **não está
-> commitada** (a versão em `main` não tem `permissions`), então o conserto é
-> `git checkout -- .claude/settings.json` na raiz. Nada de valor se perde — os `allow` realmente em
-> uso estão no `settings.local.json`, que não é tocado.
+**Atos humanos — ✅ APLICADOS em 13/09** (`docs/auditoria-v5/atos-humanos/`):
 
-1. **Ato 1, `deny` → `~/.claude/settings.json` (global).** `npx supabase db push` cru passa **por
-   fora** do backup-gate e aplica todo o pendente, inclusive destrutiva estacionada; é perigoso em
-   qualquer repositório Supabase desta máquina, por isso a regra é global. Conteúdo em
-   `atos-humanos/1b-deny-global.json` (9 regras) — **merge**, nunca cópia por cima, senão
-   `model`/`enabledPlugins`/tema se perdem.
-2. **Ato 1, `allow` + Ato 2, hooks → `.claude/settings.json` do projeto (versionado).** 22 `allow`
-   dos gates + o registro do hook `protecao-git-add` (22 casos de teste verdes). Conteúdo em
-   `atos-humanos/1-settings-projeto.json`; o hook em `2-protecao-git-add.mjs`. Como é versionado,
-   entra no PR 2 e passa a valer em **toda worktree nova** — hoje a worktree fica sem regra nenhuma
-   porque `.claude/settings.local.json` é git-ignored e por diretório, e não é herdado. Foi isso
-   que negou dois comandos meus em 10/09.
+1. ~~**Ato 1, `deny` → `~/.claude/settings.json`**~~ — **feito.** 9 regras: `supabase db push` cru
+   nas duas formas, `db:migrate -- --destrutiva` (com `:*` e exata), e `git push` com
+   `--force`/`-f`/`--force-with-lease` e para `main`. As 13 chaves do arquivo foram preservadas e
+   o `defaultMode: auto` está intacto. **Verificado ao vivo:** `npx supabase db push --dry-run`
+   volta negado — e pegou até numa sessão já aberta.
+2. ~~**Ato 1, `allow` + Ato 2, hook → `.claude/settings.json` do projeto**~~ — **feito.** 22 `allow`
+   dos gates e os matchers `Edit|Write|MultiEdit` + `Bash`; `protecao-git-add.mjs` instalado em
+   `.claude/hooks/`, byte a byte idêntico ao artefato. Bateria de 22 casos verde, e o hook
+   **instalado** exercitado direto com o payload do harness: bloqueia `-A`, `--all`, `.` e
+   encadeado após `&&`; passa caminho explícito, `-p`, `-u` e a regra citada dentro de aspas.
+   Os dois arquivos são versionados e entram no PR 2 — a proteção passa a valer em toda worktree.
+3. ~~**Consertar o `.claude/settings.json` da raiz**~~ — **feito.** Estava com JSON inválido desde
+   28/07 (vírgula antes do `}` de `permissions`), fruto de uma tentativa antiga de aplicar o Ato 1
+   à mão que falhou em silêncio; como é o arquivo que declara os hooks, provavelmente nenhum hook
+   carregava lá havia seis semanas. Revertido para a versão commitada, e válido de novo.
 
-   **Roteiro exato dos 5 passos, com as verificações:** `docs/auditoria-v5/atos-humanos/README.md`.
+**Lição, e ela é o motivo de o roteiro exigir validação:** config só vale depois de `JSON.parse` +
+exercício ao vivo. Uma edição de settings que não parseia não avisa — ela simplesmente não vale, e
+leva os hooks junto.
+
 3. ~~Desativar o plugin `superpowers` duplicado~~ — **o achado E5 estava ERRADO; medido em 10/09
    e nada a fazer.** `claude plugin list` diz que `superpowers@superpowers-marketplace` 5.1.0
    (escopo local deste projeto) está **`✘ disabled`**, e o `.in_use` dela é de **28/07**; a única
@@ -221,15 +221,11 @@ mas Weddings, `get_mix_produto` e `get_cagr` ainda vêm do upload.
   Decomposição) — é de propósito. **A estrutura da DRE é DADO** (`dre_bloco`/`dre_categoria_map`;
   Receita Bruta é `RB_H`/`tipo:'blocoH'`, não `'tot'`), e o diário/undo é genérico (molde
   `dre_estrutura_*`, migration 0206).
-- 🔴 **A terceira camada ainda NÃO está ativa** (conferido em 13/09), e é pior do que parecia:
-  `~/.claude/settings.json` tem só `permissions: {"defaultMode":"auto"}`; o `.claude/settings.json`
-  **commitado** tem zero `allow` e zero `deny`; e a cópia de trabalho da **raiz** tem uma tentativa
-  de aplicá-lo **com JSON inválido desde 28/07**, o que provavelmente derruba os hooks lá. Ou seja:
-  **não existe o `deny` de `npx supabase db push` cru** — só disciplina impede pular o backup-gate.
-  Quem carrega os `allow` em uso na raiz é `.claude/settings.local.json` (git-ignored, válido), que
-  a worktree **não herda**: por isso as sessões daqui ficam sem regra, e por isso o classificador
-  **negou seco** dois comandos em 10/09 na poda de branches. Diffs prontos e roteiro de 5 passos em
-  `docs/auditoria-v5/atos-humanos/README.md`; aplicação é ato humano (o `protecao-config` protege
-  esses caminhos de propósito). Bloqueio inesperado → **protocolo D5** (5 passos, no core).
-- **Hooks ativos** (estes existem de fato): `protecao-config` (6 alvos, incluindo o settings
-  global), `gate-stop`, `contexto-sessao`.
+- ✅ **A terceira camada está ATIVA desde 13/09** (v5.10.0): 9 `deny` no `~/.claude/settings.json`
+  global (incluindo `supabase db push` cru, que fura o backup-gate) e 22 `allow` + os hooks no
+  `.claude/settings.json` do projeto, que é **versionado** — e por isso vale em toda worktree, ao
+  contrário do `settings.local.json`, que é git-ignored e por diretório (foi essa diferença que
+  negou dois comandos legítimos em 10/09). `deny` vence `allow` em qualquer nível, e hook
+  `PreToolUse` roda **antes** do fluxo de permissão. Bloqueio inesperado → **protocolo D5**.
+- **Hooks ativos:** `protecao-config` (6 alvos, incluindo o settings global), **`protecao-git-add`**
+  (stage cego), `gate-stop`, `contexto-sessao`.

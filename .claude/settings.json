@@ -1,24 +1,74 @@
 {
+  "//": "ATO HUMANO 1 (parte `allow`) + ATO 2 (hooks) da v5.10.0 — conteudo PROPOSTO para .claude/settings.json do PROJETO, que e VERSIONADO. Instalar copiando por cima e, depois de validar, commitar: a protecao passa a viajar com o repositorio e vale em toda worktree nova. Roteiro completo no README ao lado.",
+  "//divisao": "DECISAO DO YAN (13/09): o `deny` NAO fica aqui — foi para o ~/.claude/settings.json global, em 1b-deny-global.json, porque `db push` cru e perigoso em qualquer repositorio desta maquina. Aqui ficam os `allow` dos gates (que sao deste projeto) e o registro dos hooks (que TEM de ficar aqui: os comandos usam caminho relativo `node .claude/hooks/...`, que so resolve com o projeto como cwd).",
+  "//por-que-versionado": "A worktree NAO herda o .claude/settings.local.json da raiz (e git-ignored, por diretorio). Foi por isso que as sessoes desta worktree ficaram sem regra nenhuma. Regra em arquivo VERSIONADO e a unica que alcanca toda worktree e sobrevive a trocar de maquina.",
+  "//allow": "Estreito de proposito: so o que a sessao roda dezenas de vezes por versao e que NAO escreve em producao. Sem regra de allow, comando que escreve pode ser NEGADO SECO, sem prompt — aconteceu 2x em 10/09 na poda de branches. As duas invocacoes de db:migrate sao EXATAS, sem `*` ao final: `--destrutiva` nunca e auto-aprovada por arrasto, e o deny global ainda a bloqueia por cima.",
+  "//sintaxe-confirmada": "CONFIRMADO na documentacao (10/09): hook PreToolUse roda ANTES do fluxo de permissao, e `deny` vence `allow` sempre. Entao `Bash(git add:*)` no allow NAO da passe livre ao `git add -A`: o hook `protecao-git-add` dispara primeiro e bloqueia. E as regras exatas (sem `:*`) de db:migrate casam literalmente — os dois-pontos de `db:migrate` nao interferem no parsing. `Bash(cmd:*)` e `Bash(cmd *)` sao equivalentes; o `:*` e a forma preferida.",
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:watch)",
+      "Bash(npx vitest run:*)",
+      "Bash(npx supabase migration list:*)",
+      "Bash(npx supabase gen types:*)",
+      "Bash(npm run db:migrate -- --aditiva)",
+      "Bash(npm run db:migrate -- --aditiva --fora-de-ordem)",
+      "Bash(npm run db:gate)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git worktree:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)"
+    ]
+  },
+  "//hooks": "PreToolUse ganha o `protecao-git-add` (D8-022) num matcher Bash NOVO — o matcher Edit|Write|MultiEdit do `protecao-config` fica intocado. O arquivo do hook está pronto em 2-protecao-git-add.mjs e precisa ser copiado para .claude/hooks/ NO MESMO ATO: registrar o hook sem o arquivo faz toda chamada Bash falhar.",
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/protecao-config.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/protecao-config.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/protecao-git-add.mjs"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/gate-stop.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/gate-stop.mjs"
+          }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/contexto-sessao.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/contexto-sessao.mjs"
+          }
         ]
       }
     ]
