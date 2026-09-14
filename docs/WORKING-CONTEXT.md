@@ -9,14 +9,18 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-10.
+Última atualização: 2026-09-13.
 
 ---
 
 ## Em voo
 
-**Nada.** A v5.10.0 foi mergeada (PR #265, 13/09 às 21:13) e está em produção. A frente está
-livre para a próxima versão — `/nova-versao <vX-Y>`.
+**v5.10.1 — patch de segurança do ambiente de testes (Rota C).** Branch `chore/v5-10-1-vitest-5`,
+PR **draft**, aguardando merge humano. `vitest` 3.2.6 → 5.0.0 (CVE *moderate* do `@vitest/mocker`).
+Dev-only: nenhuma dependência de produção muda, nenhum arquivo de `src/` alterado, sem migration e
+sem ADR. Gates verdes e **1.220 testes idênticos à baseline, zero `skip`**. Resolve B-03 do backlog v6.
+
+Fora isso a frente está livre — `/nova-versao <vX-Y>`.
 
 ---
 
@@ -27,7 +31,7 @@ livre para a próxima versão — `/nova-versao <vX-Y>`.
 | Produção | **v5.10.0** (PR #265, mergeado 13/09 às 21:13) |
 | Última migration aplicada | **0270** · próxima livre: **0271** |
 | Último ADR | **0173** (aceito) · próximo livre: **0174** |
-| Suíte | **1.220 testes**, 74 arquivos, 88,60 s, zero `skip` silencioso |
+| Suíte | **1.220 testes**, 74 arquivos, ~73 s no `vitest` 5 (era ~94 s no 3), zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 

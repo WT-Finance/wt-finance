@@ -6,6 +6,27 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.10.1] — 2026-09-13
+
+PATCH · **Atualização de segurança do ambiente de testes.** `vitest` 3.2.6 → 5.0.0, fechando a CVE *moderate* do `@vitest/mocker` (GHSA-82fw-gwwq-j7x9 — *path traversal* / leitura arbitrária de arquivo via *redirect mock*). **Dev-only: nenhuma dependência de produção muda, nenhum arquivo de `src/` alterado.** Migration: nenhuma · ADR: nenhum · **1.220 testes** (idênticos à baseline, zero `skip`).
+
+### Segurança
+
+- **`vitest` `^3.2.6` → `^5.0.0`** (dois majors). Resolve **B-03** do `docs/backlog-v6.md` (achado D6-005 da auditoria da v5.10.0).
+- **`npm audit` 4 → 1.** Saiu a *moderate* do `@vitest/mocker` (o alvo) e, no bojo, a do `esbuild` (GHSA-g7r4-m6w7-qqqr) — que vinha da árvore `vitest`←`vite` e cuja resolução a v5.9.7 já previa que sairia junto. **Nenhuma vulnerabilidade nova.** A *high* restante é o `nodemailer` (produção, B-02), fora do escopo deste patch por desenho.
+
+### Alterado
+
+- **`@types/node` `^20` → `^24`** — requisito duro da migração, não escolha de estilo: o `vitest@5` declara *peer* `@types/node@"^22.0.0 || >=24.0.0"` e o `npm` recusa a instalação com `ERESOLVE` sem isso. Dev-only (só tipos, zero runtime); alinha-se ao `.nvmrc` do repo (24). Resolve a fatia `@types/node` de **B-04**.
+- `vitest.config.ts` e `vitest.setup.ts` **intocados**: cruzados os guias oficiais 3→4 e 4→5 contra o uso real do repo, nenhum breaking change exigia ajuste (sem `poolOptions`/`workspace`/`deps.inline`/`maxThreads`, sem `.sequential`, sem `toThrow("")`, sem snapshot, sem reporter customizado, `alias`/`include`/`setupFiles`/`testTimeout` inalterados na semântica).
+
+### Notas
+
+- **As duas sondas foram vistas VERMELHAS, não só verdes.** `sonda-skipif-silencioso` e `sonda-teste-escreve-banco` fazem análise **estática do código-fonte** dos testes (`readFileSync` + regex), não leem saída nem *reporter* do runner — o formato da major não é insumo delas. Ainda assim, provadas por mutação sob o `vitest` 5: arquivo novo com `skipIf` não declarado **reprovou**; `REQUIRE_CONTRACT=1` sem credenciais **reprovou** nomeando as três variáveis ausentes; arquivo novo que abre `pg` sem `BEGIN`/`ROLLBACK` **reprovou** nos dois casos (contrato e lista fechada).
+- Suíte 22 s mais rápida (94,5 s → 72,6 s) com a mesma contagem.
+
+---
+
 ## [5.10.0] — 2026-09-13
 
 MINOR · **Limpeza de fechamento da v5.** Auditoria em 10 dimensões (145 achados), triagem humana e execução do que foi marcado `agir agora`. Zero mudança de comportamento observável na aplicação. **121 arquivos removidos**, 16 objetos de banco dropados, a terceira camada de proteção do harness deixa de ser prosa · **1.220 testes** (de 1.207) · migrations **0269** (aditiva) e **0270** (destrutiva) aplicadas · **ADR-0173**.
