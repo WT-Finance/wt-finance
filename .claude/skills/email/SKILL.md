@@ -82,6 +82,30 @@ suíte inteira passava com o defeito dentro.
 do dado não é a mesma das variantes antigas, resolva no **ato que gravou** (a RPC devolve o
 instante) em vez de esperar que o contexto genérico o tenha.
 
+### A suíte MOCKA o nodemailer — ela não prova a biblioteca
+
+`src/lib/email/email.test.ts` faz `vi.mock('nodemailer', ...)` (linha 8): substitui o
+**transporte inteiro** por um duplo. Isso é correto para o que ela testa (config, fallback,
+montagem do corpo, códigos de erro SMTP) e é o que a deixa rodar offline — mas tem uma
+consequência que não é óbvia quando a suíte fica verde: **nenhum dos casos executa uma linha de
+nodemailer**. Suíte verde depois de um bump da biblioteca prova que *o nosso código* não
+regrediu; não prova que a **biblioteca** funciona.
+
+**Custou atenção na v5.10.2** (nodemailer 9.0.1 → 10.0.9, 4 CVEs): a major mexe justamente na
+camada que o mock apaga — pipeline MIME, `attachments`, CID, negociação SMTP. Os 1.220 testes
+passariam idênticos se a major tivesse quebrado o `Content-ID` de toda imagem embutida.
+
+**Regra: bump de `nodemailer` (ou de qualquer lib do transporte) exige envio REAL pela camada de
+verdade** — `src/lib/email/`, não um script paralelo que remonta a mensagem —, em **MODO TESTE
+fail-closed** (§7: destinatário forçado ao interno), com **conferência no Outlook real** (§3 e §5:
+é onde CID e tabela quebram, e o cliente que a diretoria usa). O que prova o pipeline MIME/CID de
+ponta a ponta é comparar o anexo recebido **por BYTES** com o do bundle — igualdade de bytes é
+afirmação sobre o encode inteiro; "a imagem apareceu" é sobre o renderizador.
+
+E o contrário também vale, antes de chamar qualquer coisa de regressão: **ache o controle**. Na
+v5.10.2 um `<img cid:>` sumido no Outlook parecia culpa da major e era o Graph — o mesmo e-mail
+enviado pela versão anterior fazia igual.
+
 ## 2. Config e remetente 100% de `process.env`
 
 `getConfigSmtp()` (`config.ts`) é fail-safe: falta qualquer variável essencial (`SMTP_HOST`,
