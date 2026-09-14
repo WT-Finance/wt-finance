@@ -5,7 +5,7 @@
 **Código de produção:** intocado (nenhum arquivo de `src/` fora do changelog da diretoria) ·
 **Testes:** 1.220 (idênticos à baseline, zero `skip`).
 
-Fechamento em 13/09/2026. Merge humano pendente.
+Fechamento em 13/09/2026. **Mergeada — PR #267, 14/09/2026 às 08:38** (`3d582ff`).
 
 ## 1. O que foi feito
 
