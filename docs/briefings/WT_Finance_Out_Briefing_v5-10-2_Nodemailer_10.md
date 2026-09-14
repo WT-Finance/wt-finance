@@ -5,7 +5,8 @@
 **Arquivos de `src/` alterados:** **nenhum** (fora a entrada do changelog da diretoria) ·
 **Testes:** 1.220 (idênticos à baseline, zero `skip`).
 
-Fechamento em 14/09/2026. Conferência visual do Outlook ✅ confirmada pelo Yan. Merge humano pendente.
+Fechamento em 14/09/2026. Conferência visual do Outlook ✅ confirmada pelo Yan.
+**Mergeada — PR #269, 14/09/2026 às 09:51** (`e3d164a`).
 
 ## 1. O que foi feito
 
