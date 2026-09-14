@@ -21,6 +21,9 @@ o `npm audit` do repositório vai a **ZERO**. Nenhum arquivo de `src/` alterado;
 Gates verdes, **1.220 testes**, e prova de envio REAL dos 3 templates em modo teste fail-closed.
 Resolve B-02 do backlog v6.
 
+Inclui a higiene do `@types/nodemailer`, removido com autorização expressa do Yan (a major embarca
+os próprios tipos; o `tsc --traceResolution` prova que o `@types` era inerte).
+
 🔴 **Pendente do Yan:** confirmação VISUAL no Outlook real dos 3 e-mails de prova recebidos em 14/09
 por volta das 08:56 (logo via CID renderizando, tabelas íntegras). O conteúdo e os anexos já foram
 conferidos programaticamente contra um e-mail de produção do nodemailer 9; o que falta é o olho.

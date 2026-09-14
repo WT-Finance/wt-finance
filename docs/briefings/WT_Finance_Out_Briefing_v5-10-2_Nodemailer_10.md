@@ -149,13 +149,15 @@ Ou seja: `@types/nodemailer` `^8.0.1` **continua declarado mas não é mais cons
 nada (os tipos em uso são os corretos, do 10.0.9), mas é dívida: um `@types/*` descrevendo a API 8.x
 ao lado de um runtime 10.x.
 
-**Mantido nesta versão, deliberadamente.** Duas razões: (a) a regra permanente do Yan de não remover
-nada sem pedido expresso; (b) `8.0.1` é a **última versão publicada** e não está deprecada, então
-"instalar o `@types` compatível" já está satisfeito. O `revisor` chegou à mesma recomendação.
+**REMOVIDO — o Yan autorizou expressamente ("pode fazer a higiene do @types/nodemailer neste PR
+mesmo").** Foi a autorização que faltava: a regra permanente é não remover nada sem pedido expresso,
+e por isso o pacote tinha ficado de fora do primeiro corte, com o `revisor` recomendando o mesmo.
 
-🔴 **Decisão para o Yan:** autorizar `npm uninstall @types/nodemailer` numa próxima Rota C de higiene?
-É seguro (o compilador provou que o pacote não é consultado) e tira uma linha enganosa do
-`package.json` — mas é remoção, e remoção é sua.
+**A remoção se prova sozinha:** o `tsc --traceResolution` devolve **o mesmo resultado antes e depois**
+— `nodemailer/dist/esm/nodemailer.d.ts@10.0.9`. Se o `@types` estivesse sendo consultado, a resolução
+teria mudado ou o `tsc` teria quebrado. Não houve nenhum `import type` de `nodemailer` no repo (o
+único import é de valor, `index.ts:2`), e nada mais dependia do pacote. Gates completos rodados de
+novo depois da remoção: `tsc`, `lint`, `build` limpos, 1.220 testes, `npm audit` em zero.
 
 ## 8. Parecer da revisão
 
@@ -188,7 +190,7 @@ builds; escopo do diff estritamente `package.json`/`package-lock.json`.
 
 | arquivo | o quê |
 |---|---|
-| `package.json` | `nodemailer` ^9.0.1 → ^10.0.9; bump 5.10.1 → 5.10.2 |
+| `package.json` | `nodemailer` ^9.0.1 → ^10.0.9; **`@types/nodemailer` ^8.0.1 removido** (§7); bump 5.10.1 → 5.10.2 |
 | `package-lock.json` | resolução da árvore |
 | `CHANGELOG.md` | entrada `[5.10.2]` |
 | `src/data/changelog-diretoria.ts` | entrada 5.10.2 em linguagem de negócio (único arquivo de `src/`; não é código de aplicação) |

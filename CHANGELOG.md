@@ -22,7 +22,7 @@ PATCH · **Atualização de segurança do envio de e-mail.** `nodemailer` 9.0.1 
 
 ### Notas
 
-- **O nodemailer 10 passou a embarcar os próprios tipos** (76 `.d.ts`), e o `tsc --traceResolution` confirma que `'nodemailer'` resolve para `nodemailer/dist/esm/nodemailer.d.ts@10.0.9`. O `@types/nodemailer` `^8.0.1` **continua declarado mas ficou inerte** — mantido de propósito nesta versão (ver out-briefing §7).
+- **`@types/nodemailer` `^8.0.1` REMOVIDO** (com autorização expressa do Yan). A major passou a embarcar os próprios tipos (76 `.d.ts`) e o pacote `@types` deixou de ser consultado — o `tsc --traceResolution` devolve `nodemailer/dist/esm/nodemailer.d.ts@10.0.9` **antes e depois** da remoção, que é a prova de que ele era inerte. Tira do `package.json` uma linha que descrevia a API 8.x ao lado de um runtime 10.x. Resolve também a fatia `@types/nodemailer` de nada mais — não havia nenhum `import type` dele no repo.
 - **A suíte não prova esta major:** `email.test.ts:8` mocka o `nodemailer` inteiro. A prova é o envio REAL descrito no out-briefing §5 — três e-mails pela camada de verdade, em modo teste fail-closed, com os anexos inline conferidos **byte a byte** contra um e-mail de produção enviado no nodemailer 9.
 
 ---
