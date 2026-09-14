@@ -35,6 +35,19 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.10.2',
+    data: '2026-09-14T08:58', // horário real de AUTORIA — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'Atualização de segurança do envio de e-mail da plataforma. Os e-mails automáticos ' +
+          '(solicitações, acessos e faturas) continuam exatamente iguais — mesmo conteúdo, ' +
+          'mesmo layout, mesma identidade. É manutenção preventiva.',
+      },
+    ],
+  },
+  {
     versao: '5.10.1',
     data: '2026-09-14T08:38', // merge real do PR #267 (2026-09-14T11:38:27Z → -03)
     itens: [
