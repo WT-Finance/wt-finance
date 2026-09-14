@@ -6,7 +6,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [5.10.1] — 2026-09-13
+## [5.10.1] — 2026-09-14
 
 PATCH · **Atualização de segurança do ambiente de testes.** `vitest` 3.2.6 → 5.0.0, fechando a CVE *moderate* do `@vitest/mocker` (GHSA-82fw-gwwq-j7x9 — *path traversal* / leitura arbitrária de arquivo via *redirect mock*). **Dev-only: nenhuma dependência de produção muda, nenhum arquivo de `src/` alterado.** Migration: nenhuma · ADR: nenhum · **1.220 testes** (idênticos à baseline, zero `skip`).
 
