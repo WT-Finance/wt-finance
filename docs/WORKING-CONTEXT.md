@@ -15,19 +15,8 @@
 
 ## Em voo
 
-**v5.10.0 — Limpeza de fechamento da v5.** Branch `chore/v5-10-0-limpeza-fechamento-v5`, worktree
-`.claude/worktrees/chore+v5-10-0-limpeza-fechamento-v5`. Briefing:
-`docs/briefings/briefing-v5-10-0-limpeza-fechamento-v5.md`. Spec da execução:
-`docs/auditoria-v5/relatorio-triado.md` — **só item marcado `agir agora` é escopo**.
-
-**Todos os 6 blocos entregues.** Blocos 1 a 5 mergeados no PR 1, com a aditiva **0269** e a
-destrutiva **0270** aplicadas em produção; Bloco 6 (documentação) e o fechamento estão no **PR 2**,
-aguardando merge. Bump **5.10.0**, CHANGELOG, changelog-diretoria, **ADR-0173** aceito, out-briefing
-em `docs/briefings/WT_Finance_Out_Briefing_v5-10-0_Limpeza_Fechamento_V5.md`.
-
-**Próximo passo — seu:** (1) **recopiar hook e settings** corrigidos no fechamento (o `revisor`
-achou 3 falsos negativos no hook instalado; comando único no Ato 2 de
-`docs/auditoria-v5/atos-humanos/README.md`); (2) revisar e mergear o PR 2; (3) `/pos-merge`.
+**Nada.** A v5.10.0 foi mergeada (PR #265, 13/09 às 21:13) e está em produção. A frente está
+livre para a próxima versão — `/nova-versao <vX-Y>`.
 
 ---
 
@@ -35,12 +24,12 @@ achou 3 falsos negativos no hook instalado; comando único no Ato 2 de
 
 | | |
 |---|---|
-| Produção | **v5.9.7** · **v5.10.0 no PR 2**, aguardando merge |
+| Produção | **v5.10.0** (PR #265, mergeado 13/09 às 21:13) |
 | Última migration aplicada | **0270** · próxima livre: **0271** |
 | Último ADR | **0173** (aceito) · próximo livre: **0174** |
 | Suíte | **1.220 testes**, 74 arquivos, 88,60 s, zero `skip` silencioso |
 
-Frente única: nenhuma outra branch de feature enquanto a v5.10.0 corre.
+A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
 ---
 
@@ -70,45 +59,25 @@ de todas elas estava no catálogo que eu mesmo havia exportado.
 
 ## Pendências do Yan
 
-**Atos humanos — ✅ APLICADOS em 13/09** (`docs/auditoria-v5/atos-humanos/`):
+> **Fechado na v5.10.0, não reabrir** (detalhe no out-briefing
+> `docs/briefings/WT_Finance_Out_Briefing_v5-10-0_Limpeza_Fechamento_V5.md`): os **atos humanos 1 e
+> 2** — a terceira camada de permissões existe e está no repositório (9 `deny` no settings global,
+> 23 `allow` + o hook `protecao-git-add` no do projeto, bateria de 31 casos) · o
+> `.claude/settings.json` da raiz, que estava com **JSON inválido desde 28/07** · as **conferências
+> visuais** represadas da v5.3.x à v5.9.5 · as duas **comunicações à liderança** (critério da DRE de
+> 19/08 e o tripwire da v5.4.5).
+>
+> **Ato 3 (E5): nada a aplicar** — `superpowers@superpowers-marketplace` 5.1.0 já está `✘ disabled`
+> e não carrega desde 28/07. O custo always-on é de ~688 tokens; o que dói é o disparo em bloco
+> (~50 mil somando as 14 skills), e isso é **mandato do plugin**, não duplicação. Vira **decisão de
+> custo** sua: medir numa sessão nova e, se o bloco disparar, pagar ou
+> `claude plugin disable superpowers@claude-plugins-official`. **Não remova a marketplace** — o
+> `episodic-memory` vem dela e está habilitado. Enquanto a decisão não sai,
+> `docs/harness/sonda-disparo.md` fica.
 
-1. ~~**Ato 1, `deny` → `~/.claude/settings.json`**~~ — **feito.** 9 regras: `supabase db push` cru
-   nas duas formas, `db:migrate -- --destrutiva` (com `:*` e exata), e `git push` com
-   `--force`/`-f`/`--force-with-lease` e para `main`. As 13 chaves do arquivo foram preservadas e
-   o `defaultMode: auto` está intacto. **Verificado ao vivo:** `npx supabase db push --dry-run`
-   volta negado — e pegou até numa sessão já aberta.
-2. ~~**Ato 1, `allow` + Ato 2, hook → `.claude/settings.json` do projeto**~~ — **feito.** 23 `allow`
-   dos gates e os matchers `Edit|Write|MultiEdit` + `Bash`; `protecao-git-add.mjs` instalado em
-   `.claude/hooks/`, byte a byte idêntico ao artefato. Bateria verde, e o hook
-   **instalado** exercitado direto com o payload do harness: bloqueia `-A`, `--all`, `.` e
-   encadeado após `&&`; passa caminho explícito, `-p`, `-u` e a regra citada dentro de aspas.
-   Os dois arquivos são versionados e entram no PR 2 — a proteção passa a valer em toda worktree.
-3. ~~**Consertar o `.claude/settings.json` da raiz**~~ — **feito.** Estava com JSON inválido desde
-   28/07 (vírgula antes do `}` de `permissions`), fruto de uma tentativa antiga de aplicar o Ato 1
-   à mão que falhou em silêncio; como é o arquivo que declara os hooks, provavelmente nenhum hook
-   carregava lá havia seis semanas. Revertido para a versão commitada, e válido de novo.
-
-**Lição, e ela é o motivo de o roteiro exigir validação:** config só vale depois de `JSON.parse` +
-exercício ao vivo. Uma edição de settings que não parseia não avisa — ela simplesmente não vale, e
-leva os hooks junto.
-
-3. ~~Desativar o plugin `superpowers` duplicado~~ — **o achado E5 estava ERRADO; medido em 10/09
-   e nada a fazer.** `claude plugin list` diz que `superpowers@superpowers-marketplace` 5.1.0
-   (escopo local deste projeto) está **`✘ disabled`**, e o `.in_use` dela é de **28/07**; a única
-   que carrega é a `@claude-plugins-official` **6.3.0** (não 6.2.0 — atualizou em 13/08). Não há
-   duplicação ativa há seis semanas. E `claude plugin details` mostra que o custo **always-on é de
-   ~688 tokens**, que é barato: o que dói é o disparo em bloco, ~**50 mil tokens** se as 14 skills
-   forem invocadas — e isso é **mandato do próprio plugin** (a skill `using-superpowers` manda
-   invocar havendo 1% de chance de aplicar), não consequência de duplicação. **O que resta é
-   decisão sua, de custo:** medir numa sessão nova se o bloco ainda dispara e, se disparar, optar
-   entre pagar ou `claude plugin disable superpowers@claude-plugins-official`. Roteiro em
-   `docs/auditoria-v5/atos-humanos/README.md` (Ato 3). Desinstalar a 5.1.0 é faxina opcional —
-   mas **não remova a marketplace**, que o `episodic-memory` vem dela e está habilitado.
-
-> **Fechado em 10/09 pelo Yan:** as conferências visuais represadas da v5.3.x à v5.9.5 (anexar em
-> "Outros", aprovar solicitação, Tab nos gatilhos de ajuda, cabeçalhos das ~25 telas, desfazer real
-> nos três editores) e as comunicações à liderança — a mudança de critério da DRE de 19/08 e o
-> tripwire da v5.4.5 para 2026-08. Saíram da fila; não reabrir por leitura de out-briefing antigo.
+**Lição que vale guardar:** config só vale depois de `JSON.parse` **mais** exercício ao vivo. Um
+settings que não parseia não avisa — ele simplesmente não vale, e leva junto os hooks declarados
+nele. Foi o que aconteceu na raiz por seis semanas.
 
 **Decisões abertas:**
 - Commit órfão `b869bb9` (relatório delta DRE×Monde + errata), só em
