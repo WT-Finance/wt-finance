@@ -15,19 +15,12 @@
 
 ## Em voo
 
-**v5.10.2 — patch de segurança do envio de e-mail (Rota C).** Branch `chore/v5-10-2-nodemailer-10`,
-PR **draft**, aguardando merge humano. `nodemailer` 9.0.1 → 10.0.9, fechando as 4 advisories restantes —
-o `npm audit` do repositório vai a **ZERO**. Nenhum arquivo de `src/` alterado; sem migration e sem ADR.
-Gates verdes, **1.220 testes**, e prova de envio REAL dos 3 templates em modo teste fail-closed.
-Resolve B-02 do backlog v6.
+**Nada.** A v5.10.2 foi mergeada (PR #269, 14/09 às 09:51) e está em produção. A frente está
+livre para a próxima versão — `/nova-versao <vX-Y>`.
 
-Inclui a higiene do `@types/nodemailer`, removido com autorização expressa do Yan (a major embarca
-os próprios tipos; o `tsc --traceResolution` prova que o `@types` era inerte).
-
-✅ **Conferência visual no Outlook confirmada pelo Yan (14/09).** A versão está pronta: sem pendência
-de verificação, só aguardando o merge.
-
-Fora isso a frente está livre — `/nova-versao <vX-Y>`.
+**O `npm audit` do repositório está em ZERO vulnerabilidades** — as três últimas versões foram
+patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) e v5.10.2
+(`nodemailer`). Não há dívida de CVE aberta.
 
 ---
 
@@ -35,7 +28,7 @@ Fora isso a frente está livre — `/nova-versao <vX-Y>`.
 
 | | |
 |---|---|
-| Produção | **v5.10.1** (PR #267, mergeado 14/09 às 08:38) |
+| Produção | **v5.10.2** (PR #269, mergeado 14/09 às 09:51) |
 | Última migration aplicada | **0270** · próxima livre: **0271** |
 | Último ADR | **0173** (aceito) · próximo livre: **0174** |
 | Suíte | **1.220 testes**, 74 arquivos, ~73 s no `vitest` 5 (era ~94 s no 3), zero `skip` silencioso |
