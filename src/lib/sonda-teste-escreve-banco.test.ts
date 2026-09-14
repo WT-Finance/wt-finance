@@ -34,6 +34,15 @@ const RAIZ_REPO = fileURLToPath(new URL('../../', import.meta.url))
 // E este próprio arquivo, que cita os tokens como TEXTO (excluído por caminho, como a v5.9.4
 // aprendeu com o primitivo).
 //
+// SEGUNDA PARTE (v5.10.3) — INVENTÁRIO FECHADO dos consumidores de `SUPABASE_DB_URL`. A skill
+// `banco-e-rpc` §6 dizia "três arquivos" e a realidade eram CINCO: a contagem era prosa, e prosa
+// deriva. Agora é mecânica — todo arquivo de `src/`, `scripts/` e `supabase/` que lê
+// `process.env.SUPABASE_DB_URL` tem de estar classificado numa das quatro listas abaixo, e quem
+// não escreve-e-reverte precisa da TRAVA `SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY`.
+// A trava é o Postgres recusando a escrita na conexão — inclusive a que uma FUNÇÃO faria por
+// dentro, que é exatamente o que a análise do texto do teste não enxerga (o mesmo argumento que
+// fez a primeira parte ser allowlist). Precedente da trava: a medição do baseline da v5.4.5.
+//
 // EXCEÇÃO CONHECIDA (registrada, não escondida): `contrato-api-externa.test.ts` (v5.4.0) testa
 // a API externa PONTA A PONTA — as RPCs são chamadas por HTTP e leem numa conexão do PostgREST,
 // então a fixture (role/tipo/chave `ZZ_TESTE_API_V540`) precisa estar COMMITADA para ser vista;
@@ -64,6 +73,32 @@ const ESCREVEM_E_REVERTEM_HOJE = [
   'src/lib/monde/virada-paridade.test.ts', // v5.1.4 — aplica o UP da 0181 em tx e compara
 ]
 
+/**
+ * Consumidores de `SUPABASE_DB_URL` que NÃO são teste: infra que fala com produção por `pg`.
+ * Escrever é a função deles, então não cabe trava read-only — mas cabe estarem declarados, para
+ * que o inventário seja fechado e ninguém acrescente um sexto sem passar por aqui.
+ */
+const INFRA_DECLARADA: Record<string, string> = {
+  'scripts/db-gate/lib.mjs':
+    'o backup-gate (ADR-0119): COPY OUT do backup e COPY IN da recuperação — escrever é o que ele faz',
+}
+
+/** Raízes varridas em busca de quem lê `SUPABASE_DB_URL` (não só teste: infra também). */
+const RAIZES_DB_URL = ['src', 'scripts', 'supabase']
+const EXTENSOES_CODIGO = /\.(ts|tsx|mjs|cjs|js)$/
+
+function arquivosDeCodigo(dir: string): string[] {
+  const resultado: string[] = []
+  for (const entrada of readdirSync(dir, { withFileTypes: true })) {
+    const caminho = join(dir, entrada.name)
+    if (entrada.isDirectory()) {
+      if (entrada.name === 'node_modules' || entrada.name.startsWith('.')) continue
+      resultado.push(...arquivosDeCodigo(caminho))
+    } else if (entrada.isFile() && EXTENSOES_CODIGO.test(caminho)) resultado.push(caminho)
+  }
+  return resultado
+}
+
 function arquivosDeTeste(dir: string): string[] {
   const resultado: string[] = []
   for (const entrada of readdirSync(dir, { withFileTypes: true })) {
@@ -83,6 +118,12 @@ const ESCRITA_SQL = /query\(\s*(\{\s*text:\s*)?[`'"][^`'"]*\b(INSERT\s+INTO|UPDA
 // Só o COMANDO passado ao driver conta — `query('BEGIN')`, `query(\`ROLLBACK\`)`,
 // `query({ text: 'COMMIT' })`; menção em comentário ou prosa não é transação.
 const CMD = (palavra: string) => new RegExp(`query\\(\\s*(\\{\\s*text:\\s*)?[\`'"]\\s*${palavra}\\b`, 'i')
+// Lê a credencial de conexão DIRETA. `process.env.` literal de propósito: `sonda-skipif-silencioso`
+// cita 'SUPABASE_DB_URL' como STRING numa lista declarativa e não abre conexão nenhuma — citar não
+// é consumir.
+const LE_DB_URL = /process\.env\.SUPABASE_DB_URL/
+// A trava como COMANDO passado ao driver (mesmo critério do `CMD`: menção em prosa não trava nada).
+const TRAVA_RO = /query\(\s*(\{\s*text:\s*)?[`'"][^`'"]*SET\s+SESSION\s+CHARACTERISTICS\s+AS\s+TRANSACTION\s+READ\s+ONLY/i
 
 type Alvo = { arquivo: string; texto: string }
 
@@ -92,6 +133,28 @@ const ALVOS: Alvo[] = arquivosDeTeste(join(RAIZ_REPO, RAIZ_TESTES))
   .filter(a => ABRE_PG.test(a.texto))
 
 const QUE_ESCREVEM = ALVOS.filter(a => !(a.arquivo in SOMENTE_LEITURA))
+
+/** Todo arquivo de código (teste ou não) que lê `process.env.SUPABASE_DB_URL`. */
+const CONSUMIDORES_DB_URL: Alvo[] = RAIZES_DB_URL
+  .flatMap(raiz => arquivosDeCodigo(join(RAIZ_REPO, raiz)))
+  .map(abs => ({ arquivo: relative(RAIZ_REPO, abs).replace(/\\/g, '/'), texto: readFileSync(abs, 'utf8') }))
+  .filter(a => a.arquivo !== ESTE_ARQUIVO)
+  .filter(a => LE_DB_URL.test(a.texto))
+
+/** A classificação exigida: cada consumidor cai em exatamente uma destas quatro listas. */
+const DECLARADOS_DB_URL = [
+  ...ESCREVEM_E_REVERTEM_HOJE,
+  ...Object.keys(EXCECOES_CONHECIDAS),
+  ...Object.keys(INFRA_DECLARADA),
+  ...Object.keys(SOMENTE_LEITURA),
+]
+
+/** Quem precisa da trava: não escreve-e-reverte e não é infra que escreve por desenho. */
+const PRECISAM_DE_TRAVA = CONSUMIDORES_DB_URL.filter(
+  a => !ESCREVEM_E_REVERTEM_HOJE.includes(a.arquivo)
+    && !(a.arquivo in EXCECOES_CONHECIDAS)
+    && !(a.arquivo in INFRA_DECLARADA),
+)
 
 function faltas(a: Alvo): string[] {
   const f: string[] = []
@@ -137,5 +200,32 @@ describe('teste que abre pg — só escreve em transação revertida, com contra
     const hoje = QUE_ESCREVEM.map(a => a.arquivo).filter(a => !(a in EXCECOES_CONHECIDAS)).sort()
     expect(hoje, 'a lista de quem escreve-e-reverte mudou: atualizar ESCREVEM_E_REVERTEM_HOJE, a contagem na skill banco-e-rpc §6 e avaliar o gatilho (3ª/4ª RPC → ambiente de teste próprio)')
       .toEqual([...ESCREVEM_E_REVERTEM_HOJE].sort())
+  })
+
+  // ── v5.10.3 — o INVENTÁRIO de SUPABASE_DB_URL é fechado, e quem só lê tem de travar ────
+
+  it('a sonda enxerga os consumidores de SUPABASE_DB_URL fora de src/ (o gate) — senão não vale nada', () => {
+    expect(CONSUMIDORES_DB_URL.map(a => a.arquivo)).toContain('scripts/db-gate/lib.mjs')
+  })
+
+  it('o inventário de consumidores de SUPABASE_DB_URL é a lista fechada declarada', () => {
+    expect(
+      CONSUMIDORES_DB_URL.map(a => a.arquivo).sort(),
+      'entrou (ou saiu) um consumidor de SUPABASE_DB_URL: classificá-lo em ESCREVEM_E_REVERTEM_HOJE, EXCECOES_CONHECIDAS, INFRA_DECLARADA ou SOMENTE_LEITURA — e atualizar a contagem na skill banco-e-rpc §6, que já errou uma vez por ser prosa',
+    ).toEqual([...DECLARADOS_DB_URL].sort())
+  })
+
+  it('quem lê SUPABASE_DB_URL sem escrever-e-reverter abre com SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY', () => {
+    const violacoes = PRECISAM_DE_TRAVA
+      .filter(a => !TRAVA_RO.test(a.texto))
+      .map(a => `${a.arquivo} — abre pg por SUPABASE_DB_URL, não está declarado como escreve-e-reverte e não trava a sessão em READ ONLY`)
+    expect(violacoes, violacoes.join('\n')).toEqual([])
+  })
+
+  it('cada entrada de INFRA_DECLARADA ainda existe e ainda consome SUPABASE_DB_URL', () => {
+    for (const [arquivo, justificativa] of Object.entries(INFRA_DECLARADA)) {
+      const alvo = CONSUMIDORES_DB_URL.find(a => a.arquivo === arquivo)
+      expect(alvo, `${arquivo} não lê mais SUPABASE_DB_URL — remover de INFRA_DECLARADA (${justificativa})`).toBeDefined()
+    }
   })
 })

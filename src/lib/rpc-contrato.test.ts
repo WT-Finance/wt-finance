@@ -1895,6 +1895,15 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — hardenings da v5.9.4 (0267) no
     const pg = createRequire(process.cwd() + '/')('pg')
     const c = new pg.Client({ connectionString: DB_URL })
     await c.connect()
+    // Trava READ ONLY de SESSÃO (v5.10.3): este bloco só LÊ catálogo/agregados, e a
+    // declaração `SOMENTE_LEITURA` da sonda passa a ser cobrada mecanicamente aqui. Não é
+    // documentação — é o Postgres recusando qualquer escrita nesta conexão ("cannot execute
+    // ... in a read-only transaction"), inclusive a que uma FUNÇÃO faria por dentro, que é
+    // justamente o que o texto do teste não mostra. Precedente: a medição do baseline da
+    // v5.4.5. `CHARACTERISTICS` (e não `SET TRANSACTION`) porque vale para toda transação
+    // implícita da sessão, sem precisar de um BEGIN — e abrir BEGIN aqui reprovaria a
+    // própria declaração de só-leitura.
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
     try { return await f(c) } finally { await c.end() }
   }
 
@@ -1945,6 +1954,15 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
     const pg = createRequire(process.cwd() + '/')('pg')
     const c = new pg.Client({ connectionString: DB_URL })
     await c.connect()
+    // Trava READ ONLY de SESSÃO (v5.10.3): este bloco só LÊ catálogo/agregados, e a
+    // declaração `SOMENTE_LEITURA` da sonda passa a ser cobrada mecanicamente aqui. Não é
+    // documentação — é o Postgres recusando qualquer escrita nesta conexão ("cannot execute
+    // ... in a read-only transaction"), inclusive a que uma FUNÇÃO faria por dentro, que é
+    // justamente o que o texto do teste não mostra. Precedente: a medição do baseline da
+    // v5.4.5. `CHARACTERISTICS` (e não `SET TRANSACTION`) porque vale para toda transação
+    // implícita da sessão, sem precisar de um BEGIN — e abrir BEGIN aqui reprovaria a
+    // própria declaração de só-leitura.
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
     try { return await f(c) } finally { await c.end() }
   }
 
