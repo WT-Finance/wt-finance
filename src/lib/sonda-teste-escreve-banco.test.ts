@@ -124,6 +124,19 @@ const CMD = (palavra: string) => new RegExp(`query\\(\\s*(\\{\\s*text:\\s*)?[\`'
 const LE_DB_URL = /process\.env\.SUPABASE_DB_URL/
 // A trava como COMANDO passado ao driver (mesmo critério do `CMD`: menção em prosa não trava nada).
 const TRAVA_RO = /query\(\s*(\{\s*text:\s*)?[`'"][^`'"]*SET\s+SESSION\s+CHARACTERISTICS\s+AS\s+TRANSACTION\s+READ\s+ONLY/i
+// Abertura de conexão direta. A trava é de SESSÃO: vale para a conexão em que foi emitida, e só.
+const ABRE_CONEXAO = /new\s+pg\.(?:Client|Pool)\s*\(/
+
+/**
+ * Aberturas de conexão que NÃO travam (achado MÉDIO do `revisor` na v5.10.3). Conferir a trava
+ * contra o texto do arquivo INTEIRO é frouxo justamente onde o arquivo tem mais de uma conexão:
+ * `rpc-contrato.test.ts` já tem duas (o bloco da 0267 e o da 0269), e uma terceira acrescentada
+ * sem a trava passaria verde **de carona** na trava das outras. Fatiar o texto em cada abertura e
+ * exigir a trava DENTRO da fatia é o que torna a checagem por CONEXÃO, que é a unidade real.
+ */
+function aberturasSemTrava(texto: string): number {
+  return texto.split(ABRE_CONEXAO).slice(1).filter(fatia => !TRAVA_RO.test(fatia)).length
+}
 
 type Alvo = { arquivo: string; texto: string }
 
@@ -219,6 +232,14 @@ describe('teste que abre pg — só escreve em transação revertida, com contra
     const violacoes = PRECISAM_DE_TRAVA
       .filter(a => !TRAVA_RO.test(a.texto))
       .map(a => `${a.arquivo} — abre pg por SUPABASE_DB_URL, não está declarado como escreve-e-reverte e não trava a sessão em READ ONLY`)
+    expect(violacoes, violacoes.join('\n')).toEqual([])
+  })
+
+  it('a trava vale por CONEXÃO: toda abertura de pg.Client/pg.Pool nesses arquivos trava a própria sessão', () => {
+    const violacoes = PRECISAM_DE_TRAVA
+      .map(a => ({ arquivo: a.arquivo, n: aberturasSemTrava(a.texto) }))
+      .filter(x => x.n > 0)
+      .map(x => `${x.arquivo} — ${x.n} abertura(s) de conexão sem a trava READ ONLY na própria sessão; a trava de outro bloco do mesmo arquivo não alcança esta`)
     expect(violacoes, violacoes.join('\n')).toEqual([])
   })
 

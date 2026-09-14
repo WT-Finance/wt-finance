@@ -6,6 +6,29 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.10.3] — 2026-09-14
+
+PATCH · **Higiene de credencial e uma convenção que voltou a descrever a realidade.** Tira do repositório o script de varredura que carregava a chave de serviço — o molde do incidente de 10/09 —, trava em **somente-leitura** a conexão direta do único bloco de teste que só lê, e faz a sonda cobrar as duas coisas por máquina. **Nenhuma mudança de comportamento da aplicação; nenhum arquivo de `src/` fora de teste.** Migration: nenhuma · ADR: nenhum · **1.225 testes** (1.220 + 5 casos novos de sonda, zero `skip`).
+
+> A role `verificador` (v5.11.0), que fecharia a varredura com credencial mínima, foi **adiada para a v6** por bloqueio operacional; o risco de varrer com `service_role` fica **aceito por decisão do Yan**. Este patch fecha só o que não depende da role.
+
+### Segurança
+
+- **Removido `docs/auditoria-v5/_insumos/bloco5-verifica-pos-drop.mjs`.** Script de varredura pós-`0270`, já cumprido, que lia `SUPABASE_SERVICE_ROLE_KEY` do `.env.local` e chamava RPCs em série — exatamente a forma do incidente de 12–13/09, pronto para a próxima sessão copiar quando precisasse "conferir se algo quebrou". **O registro do que ele achou é o out-briefing, não o executável** (o resultado está no out-briefing da v5.10.0). Grep de prova transcrito no commit: a única citação viva era um comentário da migration `0270`, já aplicada.
+- **A varredura foi da CLASSE, não do arquivo:** `SUPABASE_SERVICE_ROLE_KEY` / `service_role` em `docs/**`, `scripts/**`, `supabase/**` e todo `.mjs`/`.ts` fora de `src/`. Os demais hits são `GRANT … TO service_role` em SQL (não portam credencial). Quem de fato lê a chave fora de `src/` ficou **declarado** em `docs/estado-do-projeto.md` §9, com uma linha de porquê cada: `scripts/dre-oracle.mjs` (uma RPC de leitura nomeada, já triado em D1-003 e citado por ADR-0168), `supabase/patches/RESTORE-incidente-varredura-rest.mjs` (incidente ainda aberto; nem usa a chave) e as declarações de onboarding (`.env.example`, `README.md`).
+
+### Corrigido
+
+- **A skill `banco-e-rpc` §6 dizia "três arquivos" e os consumidores de `SUPABASE_DB_URL` eram cinco.** A contagem era prosa, e prosa deriva: a frase era sobre os testes que escrevem e vinha sendo lida como o inventário da credencial de conexão **direta** (fora do PostgREST, fora de `exigir_acesso`). Os dois que faltavam não eram teste-que-escreve — `src/lib/rpc-contrato.test.ts` (só lê) e `scripts/db-gate/lib.mjs` (o backup-gate).
+- **O bloco somente-leitura do `rpc-contrato.test.ts` abria `pg` sem trava.** Os dois helpers `comCliente` passam a emitir `SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY` como primeiro comando depois do `connect()`. Não é documentação de intenção: é o Postgres recusando qualquer escrita naquela conexão, **inclusive a que uma função faria por dentro** — que é justamente o que a leitura do texto do teste não enxerga. `CHARACTERISTICS` e não `SET TRANSACTION` porque vale para toda transação implícita da sessão, sem exigir um `BEGIN` (e abrir `BEGIN` ali contradiria a própria declaração de só-leitura). Precedente: a medição do baseline da v5.4.5.
+
+### Adicionado
+
+- **Enforcement mecânico (régua de 5 destinos, destino 1)** em `src/lib/sonda-teste-escreve-banco.test.ts`, no molde da sonda existente (análise estática da fonte, listas inline): o inventário de `process.env.SUPABASE_DB_URL` vira **fechado** — varre `src/`, `scripts/` e `supabase/`, e cada consumidor tem de cair em `ESCREVEM_E_REVERTEM_HOJE`, `EXCECOES_CONHECIDAS`, `INFRA_DECLARADA` (nova) ou `SOMENTE_LEITURA`; quem não escreve-e-reverte e não é infra declarada precisa da trava. **5 → 10 casos.** Vista **vermelha por mutação** antes de valer, duas vezes: um arquivo abrindo `pg` sem trava e fora das listas fez os casos novos reprovarem nomeando-o; e, depois do achado MÉDIO do `revisor`, a trava passou a ser conferida **por conexão** e não por arquivo — um terceiro `pg.Client` acrescentado ao `rpc-contrato.test.ts`, que já trava nos outros dois, reprova agora e passava antes (era o ponto cego: a trava é de sessão, a de um bloco não alcança a conexão do outro). Mutantes removidos, árvore limpa.
+- **Skill `email` — a suíte MOCKA o transporte.** `email.test.ts:8` faz `vi.mock('nodemailer')`: substitui o transporte inteiro, então nenhum caso executa uma linha da biblioteca. Suíte verde após um bump prova que o nosso código não regrediu, **não** que a biblioteca funciona — e a major da v5.10.2 mexia justamente na camada que o mock apaga (MIME, anexos, CID, SMTP). Fica a regra: bump do transporte exige envio **real** pela camada de verdade, em MODO TESTE fail-closed, com conferência no Outlook e anexo comparado **por bytes**. E o contra-lado: antes de chamar de regressão, **ache o controle** (o `<img cid:>` sumido era o Graph, não a major). Era o achado durável da v5.10.2, à espera de um PR que tocasse skill.
+
+---
+
 ## [5.10.2] — 2026-09-14
 
 PATCH · **Atualização de segurança do envio de e-mail.** `nodemailer` 9.0.1 → 10.0.9, fechando as **4** advisories *moderate/high* que restavam no repositório. Com esta versão o `npm audit` fica em **zero vulnerabilidades**. **Nenhum arquivo de `src/` alterado** — a major não exigiu uma linha na camada de e-mail. Migration: nenhuma · ADR: nenhum · **1.220 testes** (idênticos à baseline, zero `skip`).

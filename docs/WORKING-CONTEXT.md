@@ -9,14 +9,31 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-14.
+Última atualização: 2026-09-14 (v5.10.3 em revisão do Yan).
 
 ---
 
 ## Em voo
 
-**Nada.** A v5.10.2 foi mergeada (PR #269, 14/09 às 09:51) e está em produção. A frente está
-livre para a próxima versão — `/nova-versao <vX-Y>`.
+**v5.10.3 — higiene de credencial e correção de convenção.** Patch de Rota C, **PR draft aberto,
+aguardando merge do Yan**. Sem migration, sem ADR, sem mudança de comportamento da aplicação. Três
+frentes: (A) removido o script de varredura que carregava `SUPABASE_SERVICE_ROLE_KEY`
+(`docs/auditoria-v5/_insumos/bloco5-verifica-pos-drop.mjs`) — o molde do incidente de 10/09; os
+demais usos da chave fora de `src/` ficaram **declarados** em `docs/estado-do-projeto.md` §9. (B) a
+skill `banco-e-rpc` §6 dizia 3 consumidores de `SUPABASE_DB_URL` e são **5**: o bloco somente-leitura
+do `rpc-contrato.test.ts` ganhou `SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY` e a sonda
+`sonda-teste-escreve-banco.test.ts` passou a cobrar inventário fechado + trava **por conexão**
+(5 → 10 casos). (C) a skill `email` registrou que a suíte **mocka** o nodemailer. Detalhes no
+out-briefing `WT_Finance_Out_Briefing_v5-10-3_Higiene_Credencial.md`.
+
+> **A role `verificador` (seria a v5.11.0) foi adiada para a v6** por bloqueio operacional. O risco
+> de varredura de produção com `service_role` fica **aceito por decisão do Yan** até lá — o item
+> segue em `docs/backlog-v6.md`.
+
+**Armadilha de worktree, nova:** se o `node_modules` da worktree for um **symlink** para o checkout
+raiz, o `npm run build` aborta com `TurbopackInternalError` (*"Symlink [project]/node_modules is
+invalid, it points out of the filesystem root"*). `tsc`, `lint` e `vitest` atravessam o symlink sem
+reclamar — **só o build não**. Correção: `npm ci` real dentro da worktree.
 
 **O `npm audit` do repositório está em ZERO vulnerabilidades** — as três últimas versões foram
 patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) e v5.10.2
@@ -31,7 +48,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | Produção | **v5.10.2** (PR #269, mergeado 14/09 às 09:51) |
 | Última migration aplicada | **0270** · próxima livre: **0271** |
 | Último ADR | **0173** (aceito) · próximo livre: **0174** |
-| Suíte | **1.220 testes**, 74 arquivos, ~73 s no `vitest` 5 (era ~94 s no 3), zero `skip` silencioso |
+| Suíte | **1.225 testes** (1.220 + 5 na v5.10.3), 74 arquivos, ~73 s no `vitest` 5 (era ~94 s no 3), zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 

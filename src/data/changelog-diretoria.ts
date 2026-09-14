@@ -35,6 +35,21 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.10.3',
+    data: '2026-09-14T17:18', // autoria; reconciliar ao merge real no /pos-merge
+    itens: [
+      {
+        tipo: 'melhoria',
+        texto:
+          'Manutenção interna de segurança e organização. Nada muda nas telas, nos ' +
+          'números ou nos relatórios — a plataforma se comporta exatamente como antes. ' +
+          'O trabalho foi reduzir o acesso que as ferramentas internas de conferência ' +
+          'têm ao banco de dados e deixar essa regra sendo verificada automaticamente a ' +
+          'cada alteração, em vez de depender de alguém lembrar dela.',
+      },
+    ],
+  },
+  {
     versao: '5.10.2',
     data: '2026-09-14T09:51', // merge real do PR #269 (2026-09-14T12:51:40Z → -03)
     itens: [
