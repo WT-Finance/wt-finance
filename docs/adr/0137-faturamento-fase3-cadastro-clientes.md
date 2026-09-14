@@ -1,6 +1,8 @@
 # ADR-0137 — Faturamento Corporativo Fase 3: cadastro de clientes (base central; reuso do Gerencial; import simples; Visão A)
 
 **Status:** Aceito · **Data:** 2026-07-01 · **Versão:** v4.33.0
+**Emendado por:** ADR-0142 (a Emissão passa a consumir o Cadastro — cai a Visão A, que dizia
+"a Emissão NÃO lê o cadastro")
 **Relaciona:** ADR-0136/0135/0134 (Faturamento Fases 1-2), ADR-0126 (Gerencial — importação por fatia, origem planilha/manual), ADR-0133 (raw.pessoas / buscar_pessoas — molde do parser + lookup). Estrutura de abas espelha o Fluxo de Caixa Gerencial.
 
 ## Contexto

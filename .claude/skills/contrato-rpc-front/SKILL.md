@@ -1,6 +1,6 @@
 ---
 name: contrato-rpc-front
-description: Contrato app↔dados do Janus — como o front chama RPC (helper de tipagem frouxa para RPC nova fora do database.ts congelado; o retorno é thenable, sem .catch), validação parseRpc/Zod (.optional() para campo que às vezes não vem; caso vivo em rpc-contrato.test.ts), campo novo que atravessa 5 camadas, e superfícies protegidas (requireArea/requireAreaApi/requireAreaAction, proxy.ts, senha provisória, magic link em 2 passos). Use quando ligar página/action/route a uma RPC, criar rota nova, adicionar campo que viaja form→RPC→UI, ou quando dois números vizinhos na mesma tela precisam concordar.
+description: Contrato app↔dados do Janus — como o front chama RPC (database.ts é GERADO: RPC nova pede regenerar, não helper frouxo; o retorno é thenable, sem .catch), validação parseRpc/Zod (.optional() para campo que às vezes não vem; caso vivo em rpc-contrato.test.ts), campo novo que atravessa 5 camadas, e superfícies protegidas (requireArea/requireAreaApi/requireAreaAction, proxy.ts, senha provisória, magic link em 2 passos). Use quando ligar página/action/route a uma RPC, criar rota nova, adicionar campo que viaja form→RPC→UI, ou quando dois números vizinhos na mesma tela precisam concordar.
 ---
 
 # Contrato RPC ↔ Front (Janus)
@@ -11,20 +11,31 @@ superfície (página/API/action) que consome o dado. O lado **banco** (RBAC inli
 `exigir_acesso`, RLS, verificação REST) vive na skill `banco-e-rpc` — leia as duas juntas
 quando a tarefa cruza as duas pontas (ex.: criar RPC nova + a tela que a chama).
 
-## 1. Chamando uma RPC nova — `database.ts` está CONGELADO
+## 1. Chamando uma RPC nova — `database.ts` é GERADO (v5.10.0)
 
-`src/types/database.ts` (tipos gerados do Supabase) não é regenerado a cada RPC nova —
-está congelado desde ~v4.29. Chamar `db.rpc('minha_rpc_nova')` direto **quebra o `tsc`**
-(o nome não está na união de funções conhecidas do tipo gerado).
+`src/types/database.ts` é a saída de `npx supabase gen types typescript --linked`. **Se a sua
+versão criou ou alterou uma RPC, regenere o arquivo e commite junto do bump** — é passo do ritual
+`/fechamento-versao`. Feito isso, `db.rpc('minha_rpc_nova')` tipa sozinho e não precisa de helper.
 
-**Não regenere nem edite `database.ts` por causa de uma RPC.** O padrão do projeto é um
-**helper de tipagem frouxa**: uma função pequena que casta o `db.rpc` para uma assinatura
-genérica e devolve `{ data: unknown, error }`, deixando a validação de shape para o
-`parseRpc`/schema Zod no call-site. Precedentes vivos: `rpcSessao` (acervo/solicitações),
-o helper de faturamento, e o compartilhado `@/lib/metas/rpc-metas.ts`:
+```bash
+npx supabase gen types typescript --linked > src/types/database.ts
+npx tsc --noEmit
+```
+
+**Isso mudou na v5.10.0 (ADR-0173, Decisão 1).** Até então o arquivo era tratado como "congelado
+desde ~v4.29", e cada RPC nova ganhava um *helper de tipagem frouxa*. A convenção morreu porque a
+premissa era falsa: o arquivo não era um `gen types` velho, era **manuscrito** — e cobria cerca de
+um quarto das RPCs. O espelho já mentia sobre o banco; mantê-lo congelado só aumentava a mentira.
+O spike que fechou a decisão adotou o gerado e achou **4 erros de tipo reais** — quatro lugares que
+assumiam não-nulo o que o banco permite nulo. Não era custo de adoção: era achado.
+
+**Os helpers frouxos que já existem continuam no código e continuam funcionando** — `rpcMetas`,
+`rpcDre`, `rpcSessao`, o de faturamento, o da API externa. Não saia trocando todos (é o B-06/B-07
+do backlog v6, com teste de contrato por RPC). Mas **não crie helper novo**: para RPC nova, o
+caminho é regenerar.
 
 ```ts
-// src/lib/metas/rpc-metas.ts
+// o molde dos helpers que ainda existem — leia-se como legado vivo, não como padrão a copiar
 export function rpcMetas(
   db: ServerClient,
   fn: string,
@@ -35,13 +46,21 @@ export function rpcMetas(
 }
 ```
 
-RPC **antiga**, já presente em `database.ts` (ex.: `get_executiva_kpis`), continua via
-`db.rpc` tipado normal — não precisa do helper. O helper é só para o que veio depois do
-congelamento.
+### Tipo gerado NÃO dispensa `parseRpc`
 
-(Custou caro: `db.rpc('metas_listar')` estourou o `tsc` na v5.0.0 — o M1 passou porque só
-o teste chamava a RPC via `fetch`; o erro só apareceu quando a página passou a chamá-la
-diretamente. Ao adicionar uma RPC nova, teste a CHAMADA real da UI, não só o schema.)
+O `gen types` descreve a **assinatura** da função no catálogo, não o **conteúdo** do que ela
+devolve. RPC que retorna `jsonb` — a maioria das nossas — tipa como `Json`, que é "qualquer coisa".
+O `tsc` fica satisfeito e a UI continua confiando em campo que pode não vir. A validação com
+`parseRpc`/schema Zod e o caso vivo em `rpc-contrato.test.ts` seguem **obrigatórios**, exatamente
+como antes.
+
+E um lembrete que a v5.10.0 pagou para aprender: **`jsonb_agg` de conjunto vazio devolve `NULL`, não
+`[]`.** Um schema que declara só `z.array(...)` reprova em todo filtro legítimo sem resultado, e a
+rota vira 500. Use `.nullable().transform(v => v ?? [])` quando "sem linha" for um estado normal.
+
+(Custou caro: `db.rpc('metas_listar')` estourou o `tsc` na v5.0.0 — o M1 passou porque só o teste
+chamava a RPC via `fetch`; o erro só apareceu quando a página passou a chamá-la diretamente. Ao
+adicionar uma RPC nova, teste a CHAMADA real da UI, não só o schema.)
 
 ### O `this` do cliente é OBRIGATÓRIO — `.call(db, …)` / `.bind(db)` não é enfeite
 

@@ -1,6 +1,7 @@
 # ADR-0164 — Reconciliação do espelho Monde: janela curta + varredura diária, e um tripwire que só fala do que mediu
 
 - **Status:** aceito
+- **Emendado por:** ADR-0165 (o espelho espelha: o filtro de negócio sai da escrita e vai para a leitura)
 - **Data:** 2026-08-04
 - **Versão:** v5.4.4 (Onda 0 — fechar o furo do espelho do Monde)
 - **Contexto:** ingestão do Monde (`/api/monde/ingest`, `monde.*`) — emenda ao **ADR-0149**

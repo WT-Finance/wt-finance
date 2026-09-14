@@ -1,12 +1,11 @@
 # ADR-0173 — Critérios de limpeza e fechamento da v5
 
-**Status:** RASCUNHO (fecha ao final da Fase 2 da v5.10.0) · **Data:** 2026-09-10 ·
+**Status:** aceito (v5.10.0) · **Data:** 2026-09-10 ·
 **Contexto:** versão v5.10.0, "Limpeza de fechamento da v5" · **Briefing:**
 `docs/briefings/briefing-v5-10-0-limpeza-fechamento-v5.md` · **Spec:**
 `docs/auditoria-v5/relatorio-triado.md`
 
-> ⚠️ Rascunho vivo. As seções ganham conteúdo à medida que os blocos da Fase 2 fecham; a
-> numeração já foi conferida contra `docs/adr/` (último real: 0172).
+> Numeração conferida contra `docs/adr/` no remoto (último real: 0172).
 
 ## Decisão 1 — `src/types/database.ts` é GERADO, não manuscrito
 
@@ -76,4 +75,119 @@ executável (runbook/ADR) — e estão registrados em `knip.json` para não sere
 
 ## Decisão 3 — o que saiu, o que ficou de propósito
 
-*(a preencher ao final da Fase 2, com as contagens de antes/depois)*
+**Contagens de antes/depois** (43 commits, `e6f3c9e..HEAD`; 121 arquivos removidos ao todo):
+
+| frente | antes | depois |
+|---|---|---|
+| `docs/briefings/` | 164 | **72** (só v5; os 92 pré-v5 saíram) |
+| `docs/audits/` | 9 | **0** (a pasta saiu inteira) |
+| `docs/superpowers/` | 3 | **0** |
+| `docs/runbooks/` | 5 | **3** (v4-15 e v4-16 migrados para skill e `estado-do-projeto`) |
+| `docs/design-system.md` | 496 linhas | **0** (a página viva é a referência única) |
+| `docs/WORKING-CONTEXT.md` | 1.252 linhas | **~190** (só estado; o histórico é git) |
+| componentes órfãos em `src/` | — | **7 apagados** |
+| scripts de seed de diagnóstico | — | **6 apagados** (+ `limpeza-anexos-solicitacoes.mjs`) |
+| funções no banco | — | **13 dropadas** + 2 tabelas + 1 constraint (0270) |
+| grants default-PUBLIC | 8 | **0** (REVOKE explícito na 0269) |
+| `COMMENT ON FUNCTION` | poucos | **+31** nas RPCs centrais (0269) |
+| branches remotas | 137 | **17** · locais: 41 → **8** |
+
+Saldo em código: `src/` **−567 linhas** líquidas (1.541 entradas, 2.108 saídas — as entradas são
+sobretudo teste novo e schemas Zod), `scripts/` −228, e `docs/` reorganizado.
+
+*O que já estava decidido antes do fechamento:*
+
+### Sobreposição deliberada de uma reserva de ADR
+
+O **ADR-0107** guardou a remoção de `get_my_profile()` para uma decisão futura do usuário:
+*"preservar em vez de remover, por política do projeto. Documentados como legado; remoção
+pode ser decidida pelo usuário em versão futura."* A migration destrutiva desta versão
+(0270) a remove. **Isso não é descuido: é o exercício da reserva.** O Yan listou
+`public.get_my_profile` nominalmente no escopo do Bloco 5, e a "versão futura" que o
+ADR-0107 previa é esta.
+
+O registro existe porque a primeira redação da migration quase o perdeu: ela tratou os
+ADRs só pela pergunta "isto é procedimento executável?" — a lição do `getPool`, do Bloco 1
+— e com isso passou por cima do **conteúdo** da decisão. O `revisor-db` levantou como
+achado ALTO, e com razão: a régua do core é "decisão de produto é do usuário; na dúvida,
+é produto", e um ADR que reserva algo *para o usuário* é produto por definição. A lição
+mais geral que o caso: **ao encontrar um ADR citando o objeto que se vai remover, a
+pergunta não é só se ele é executável — é se ele contém uma decisão sobre aquele objeto.**
+
+`app.usuarios` e `app.convites`, citadas no mesmo parágrafo do ADR-0107, **continuam
+intocadas**: nenhuma entrou no escopo da triagem.
+
+### O que ficou de propósito, e por quê
+
+| objeto | por que fica |
+|---|---|
+| `public.admin_set_enforcement` | kill switch de emergência, sem chamador **por desenho** (runbook v4-13). Ganhou `COMMENT` na 0269 justamente para a próxima varredura de código morto não propor o DROP |
+| `public.get_decomposicao_bloco` | tem consumidor vivo: 3 casos de contrato em `rpc-contrato.test.ts` e o `decomposicaoBlocoSchema`. Sai só depois do ciclo remover-código → deployar → dropar |
+| `public.get_sumario_subsetor` | viva na Performance de Weddings. Compartilha o núcleo com a `metas_sumario_subsetor` que saiu — nome parecido, função diferente |
+| as 12 funções com `postgres=X/postgres` | já tinham `PUBLIC` revogado pela 0122; conceder-lhes `service_role`, como a leitura literal do D2-010 pedia, teria **alargado** acesso |
+| ADRs supersedidos | regra 4 do briefing: ADR é histórico, não sai — ganha marcador |
+
+## Decisão 4 — critério de documentação: "medição fica, opinião sai"
+
+Vinte documentos de auditoria e planejamento estavam parados em `docs/audits/`,
+`docs/superpowers/` e `docs/harness/`. O critério que separou o que fica do que sai não foi idade
+nem tamanho:
+
+- **Fica** o documento que é a **única fonte de um número que ninguém vai refazer** — as cinco
+  medições de `docs/investigacoes/` (baseline de vendas retidas, de-para de produto do Monde,
+  paridade item-level do Scope B, delta DRE×competência, coerção de milhar).
+- **Sai** o documento cujo valor era a **lista de prioridades de um momento**, hoje vencida. Um
+  item dessa lista não pode ser confiado sem reverificação contra o código atual — e a prova disso
+  é o próprio E1: o achado "A1" da auditoria de 13/06 já estava fechado pela migration `0132` havia
+  meses, e só se descobriu isso relendo o catálogo vivo.
+
+**Pré-condição da exclusão:** os achados que a leitura daqueles 20 documentos rendeu (E1–E8)
+foram registrados em `docs/backlog-v6.md` **antes** de qualquer `rm`. Apagar a fonte sem preservar
+o que ela rendeu seria perder o trabalho, não limpá-lo.
+
+A mesma lógica vale para a nova divisão de documentos: **`estado-do-projeto.md`** responde "como o
+sistema funciona" (permanente), **`WORKING-CONTEXT.md`** responde "o que está acontecendo"
+(perecível, e item resolvido sai), **`README.md`** responde "o que é e como rodo", e o histórico
+mora no git e nos out-briefings. Um fato só pode ter um dono.
+
+## Decisão 5 — marcação de supersessão, e a exceção de nomenclatura do apêndice
+
+**Supersessão.** O **ADR-0055** instituiu que a marcação vai no cabeçalho do ADR **superado** —
+é ali que o leitor desavisado cai. A v5.10.0 varreu os 108 hits de `supersed|substitui|revoga|
+emenda` em `docs/adr/` (o achado D8-018 contava 42; eram 108, em 55 arquivos), separou as **10
+relações reais** dos **93 de prosa** e corrigiu **7 cabeçalhos**: 0109, 0137, 0142, 0148, 0149,
+0151 e 0164.
+
+O marcador usado nesses sete é **`Emendado por:`, não `Supersedido por:`** — eles continuam
+vigentes e tiveram só uma parte revista. Escrever "supersedido" mandaria o leitor descartar
+decisão viva, que é exatamente o defeito que a marcação existe para evitar. **A distinção passa a
+ser convenção:** *supersedido* = a decisão inteira foi substituída; *emendado* = uma parte foi
+revista e o resto vale.
+
+Observação registrada de propósito: o lado que **supersede** não se autodeclara (0051, 0042 e 0048
+não dizem "eu supersedo X"). Isso é o ADR-0055 funcionando como escrito, não uma falha — mas o
+ADR-0172 faz os **dois** lados, e é o formato mais útil. Recomendação para ADR novo: declarar nos
+dois.
+
+**Exceção de nomenclatura (D8-016).** `docs/adr/v3-6-apendice.md` é o único arquivo de
+`docs/adr/` sem prefixo numérico, e **fica assim**. Ele não é um ADR: é o apêndice de um conjunto
+de decisões da v3.6, e numerá-lo o faria aparecer na sequência como se fosse uma decisão própria —
+inventando um ADR que nunca existiu e deslocando a leitura de quem procura pela numeração. A
+regra geral ("todo arquivo de `docs/adr/` é `NNNN-slug.md`") vale; esta é a exceção, e está
+nomeada aqui para não ser "corrigida" por uma varredura futura.
+
+## Consequências
+
+- **Positivas.** O repositório passa a se explicar sozinho (`estado-do-projeto.md` + README
+  reescrito). O espelho de tipos deixa de envelhecer por desenho. Oito funções deixam de ser
+  executáveis por `PUBLIC`. Três classes de falso positivo de análise estática têm nome e estão em
+  `knip.json`, então não serão redescobertas. A próxima auditoria começa de um relatório triado com
+  a coluna `nota` preenchida — cada item diz o que foi provado, não só o que foi proposto.
+- **Negativas.** Perde-se precisão de nulidade em 4 parâmetros (tabela da Decisão 1). O histórico
+  de prioridades pré-v5 sai do repositório e passa a existir só no git. E o `database.ts` regenerado
+  cria uma obrigação nova no fechamento de toda versão que toca RPC — se for esquecida, o espelho
+  volta a mentir, agora sem a desculpa de estar declarado congelado.
+- **Risco residual conhecido.** A varredura que originou o incidente de 306.261 linhas apagadas em
+  produção mostrou que "ler o catálogo" e "chamar a função" são atos de natureza diferente num banco
+  onde a RPC é a superfície de escrita. A lição está na skill `banco-e-rpc`; o que **não** existe
+  ainda é enforcement mecânico para ela.

@@ -38,7 +38,15 @@ const mixProdutoItem = z.object({
 
 /** get_mix_produto → { produtos[], outros } */
 export const mixProdutoSchema = z.object({
-  produtos: z.array(mixProdutoItem),
+  // A RPC devolve `produtos: null` — não `[]` — quando a consulta não acha nenhuma linha
+  // (o `jsonb_agg` de conjunto vazio é NULL). O schema declarava só `z.array(...)`, então
+  // TODO período/setor sem venda reprovava no parseRpc. Ficou latente enquanto a base
+  // tinha dado; apareceu na v5.10.0, com a base de Vendas vazia, derrubando 2 casos de
+  // contrato. E era pior que um teste vermelho: desde o D4-006 a rota
+  // `/api/dashboard/performance/mix-produto` responde 500 quando o parse falha — ou seja,
+  // um filtro legítimo sem venda passou a devolver 500 em vez de gráfico vazio.
+  // Normaliza para `[]`: "sem produto" é conjunto vazio, não ausência de resposta.
+  produtos: z.array(mixProdutoItem).nullable().transform(v => v ?? []),
   outros:   mixProdutoItem.extend({ quantidade_produtos: z.number() }),
 }).passthrough() // M13 (v4.17.0): tolera campos extras do retorno real (era o único sem)
 

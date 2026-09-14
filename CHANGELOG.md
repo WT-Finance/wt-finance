@@ -6,6 +6,39 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.10.0] — 2026-09-13
+
+MINOR · **Limpeza de fechamento da v5.** Auditoria em 10 dimensões (145 achados), triagem humana e execução do que foi marcado `agir agora`. Zero mudança de comportamento observável na aplicação. **121 arquivos removidos**, 16 objetos de banco dropados, a terceira camada de proteção do harness deixa de ser prosa · **1.220 testes** (de 1.207) · migrations **0269** (aditiva) e **0270** (destrutiva) aplicadas · **ADR-0173**.
+
+### Removido
+
+- **Código morto provado por grep no ato:** 7 componentes órfãos, 6 scripts de diagnóstico em `supabase/seed/`, `scripts/limpeza-anexos-solicitacoes.mjs`, 10 símbolos que o compilador provou mortos e 16 `export` supérfluos (a função fica, só o `export` sai).
+- **Banco (migration `0270`, destrutiva, aplicada em TTY humano):** 13 funções, 2 tabelas (`app.meta_subsetor` e `app.meta_subsetor_historico`, provadas vazias no ato) e 1 `CHECK` redundante. Com bloco-guarda que **aborta a transação** se qualquer alvo sobreviver ao `DROP` — assinatura errada em `DROP … IF EXISTS` é *no-op silencioso*.
+- **Documentação pré-v5:** 92 briefings, `docs/audits/` e `docs/superpowers/` inteiras, 2 runbooks (com o procedimento vivo migrado antes) e `docs/design-system.md` (496 linhas — a página `/admin/design-system` passa a ser a referência única).
+- **Repositório:** 120 branches remotas e 33 locais já mergeadas; 2 worktrees.
+
+### Adicionado
+
+- **`docs/estado-do-projeto.md`** — arquitetura, módulos × fonte de verdade, os dois regimes contábeis, integrações, decisões vigentes, convenções e utilitários fora do grafo. O objetivo é um leitor novo se pôr em dia só pelo repositório.
+- **Terceira camada de proteção, agora real** (atos humanos 1 e 2): 9 regras de `deny` no settings global (inclui `supabase db push` cru, que fura o backup-gate) e 22 de `allow` no settings do projeto, mais o hook **`protecao-git-add`** contra stage cego. Antes disso o `CLAUDE.md` descrevia uma camada que **não existia**.
+- `knip` e `depcheck` como devDependencies, com `knip.json` nomeando as 3 classes de falso positivo de análise estática.
+- Casos de contrato e sonda de `skipIf` silencioso; `src/app/admin/acessos/actions.test.ts`.
+
+### Alterado
+
+- **`src/types/database.ts` passa a ser GERADO** (ADR-0173, Decisão 1). A convenção "arquivo congelado + helper de tipagem frouxa" morre: o arquivo era **manuscrito** e cobria ~55 de ~215 RPCs, o que empurrava todo código novo para fora do tipo. Regenerar passa a ser passo do `/fechamento-versao`.
+- **Migration `0269` (aditiva):** `REVOKE` nas 8 funções que dependiam de *default privileges* (ACL default = EXECUTE para `PUBLIC`, que inclui `anon`), 31 `COMMENT ON FUNCTION` nas RPCs centrais, e `app.exigir_acesso` reescrita a partir do catálogo vivo trocando só o texto do `RAISE` para "Janus".
+- **`README.md` reescrito** e **`WORKING-CONTEXT.md` de 1.252 para ~230 linhas** (o histórico é git e out-briefing).
+- 7 ADRs emendados ganham `Emendado por:` no cabeçalho — distinto de `Supersedido por:`, porque continuam vigentes.
+
+### Corrigido
+
+- 4 lugares que assumiam não-nulo o que o banco permite nulo (`admin/acessos/actions.ts`, `weddings/operacoes/route.ts`) — achado do spike de tipagem, não custo de adoção.
+- `get_mix_produto` devolve `produtos: null` quando não há linha (`jsonb_agg` de conjunto vazio é `NULL`, não `[]`): o schema passa a aceitar e normalizar. Sem isso, **qualquer filtro legítimo sem venda virava 500**.
+- Caminho de erro da RPC em `criarUsuario` com teste que exercita a falha.
+
+---
+
 ## [5.9.7] — 2026-09-10
 
 PATCH (Rota C) · **Atualização de segurança: `next` 16.2.9 → 16.3.4** (2 CVEs *critical* de RCE) + resolução em cascata de vulnerabilidades transitivas sem major. Zero mudança em código de produção · **1207 testes** (mantidos).

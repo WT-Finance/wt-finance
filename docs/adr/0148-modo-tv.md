@@ -1,6 +1,7 @@
 # ADR-0148 — Modo TV (pele de exibição do Acompanhamento de Metas)
 
 - **Status:** aceito (v5.1.0)
+- **Emendado por:** ADR-0152 (o auto-refresh volta a valer; a remoção da v5.1.4 partiu de premissa errada)
 - **Data:** 2026-07-13
 - **Tipo:** MINOR · SEM migration · base main @ v5.0.x
 

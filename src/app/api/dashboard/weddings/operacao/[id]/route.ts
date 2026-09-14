@@ -5,7 +5,7 @@ import { parseRpc } from '@/lib/schemas-rpc'
 import { rendimentoFloatSchema } from '@/lib/weddings/schemas-float'
 import type { DrilldownOperacao, RendimentoFloatOperacao } from '@/types/api'
 
-/** Assinatura frouxa para RPC fora do `database.ts` congelado. */
+/** Assinatura frouxa — helper LEGADO (o `database.ts` era tratado como congelado até a v5.10.0; hoje é GERADO — ADR-0173). */
 type RpcFrouxa = (
   fn: string,
   args?: Record<string, unknown>,

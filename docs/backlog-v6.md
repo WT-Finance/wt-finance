@@ -1,8 +1,13 @@
-# Backlog v6 — rascunho (Fase 1 da v5.10.0, antes da triagem)
+# Backlog v6
 
-Tudo o que a auditoria classificou como "grande demais para limpeza" (esforço `L`, redesenho, major de
-dependência, decisão de arquitetura). **Rascunho**: a triagem do GATE 1 confirma, move ou descarta cada
-item; a versão final é entrega da Fase 2 (`Mfinal`). Referência = id em `docs/auditoria-v5/`.
+Fechado na **v5.10.0** (10/09/2026), ao fim da limpeza de encerramento da v5. Reúne o que a auditoria
+classificou como "grande demais para limpeza" — esforço `L`, redesenho, major de dependência, decisão de
+arquitetura ou de produto — mais os achados que nasceram durante a própria limpeza. Rastro completo por
+item: `docs/auditoria-v5/relatorio-triado.md` (a coluna `nota` diz o que foi provado no ato).
+
+**Como ler:** item riscado (~~B-nn~~) foi **fechado durante a v5.10.0**, por correção, por medição ou por
+se revelar premissa falsa — fica aqui como registro para ninguém reabrir. Item vivo tem risco e esforço.
+Nada neste arquivo está em andamento; é fila, não plano.
 
 | # | item | origem | risco | esforço | por que é v6 e não limpeza |
 |---|---|---|---|---|---|
@@ -10,7 +15,7 @@ item; a versão final é entrega da Fase 2 (`Mfinal`). Referência = id em `docs
 | B-02 | `nodemailer` 9 → 10 (4 CVEs moderate/high: bypass de allow-list de domínio, DoS) | D6-004 | médio | L | major com breaking; ação externa irreversível (skill `email`) |
 | B-03 | `vitest` 3 → 5 (CVE moderate em `@vitest/mocker`) | D6-005 | médio | L | major; config e reporters mudam |
 | B-04 | Majors pendentes: `typescript` 5.9 → 7, `eslint` 9 → 10, `@types/node` 20 → 22, `@supabase/ssr` 0.10 → 0.12 | D6-007/008 | alto | L | quebram regras/config; fora do escopo por briefing |
-| B-05 | Regenerar `src/types/database.ts` (manuscrito da M1, cobre ~25% das RPCs) e adaptar os 32 call-sites tipados — OU declarar oficialmente "congelado + helper" como convenção | D4-001, D1-022 | médio | L | decisão de arquitetura; toca dezenas de arquivos |
+| ~~B-05~~ | ~~Regenerar `src/types/database.ts` ou declarar "congelado + helper" como convenção~~ — **RESOLVIDO na v5.10.0 (ADR-0173, Decisão 1).** Das duas saídas, venceu a primeira: o arquivo **é gerado** e se regenera junto do bump sempre que a versão cria ou altera RPC (passo do `/fechamento-versao`). A convenção "congelado + helper" **morreu** — os helpers existentes ficam como legado vivo, mas helper novo não se cria. Adoção com `tsc` limpo. **O que sobrou do item** está em B-06 e B-07: trocar os call-sites que ainda usam helper frouxo por tipo gerado, com teste de contrato por RPC | D4-001, D1-022 | — | — | fechado por execução, não por decisão adiada |
 | B-06 | `faturamento-corp/actions.ts`: 26 `(db.rpc as any)` → helper `BoundRpc` + schemas Zod + testes de contrato (maior área sem rede de contrato) | D4-009 | médio | L | 800+ linhas; validação nova pode rejeitar dado hoje aceito |
 | B-07 | 8 route handlers de `/api/dashboard/*` sem schema Zod (`cagr`, `prejuizos`, `mix-setor`, `pipeline`, `sumario-subsetor`, `proximos`, `kpi-historico`, `setores`). **Inclui D4-008** (`get_operacao_weddings`, o drilldown): exige `VisaoFinanceira` (14 campos) + `DecomposicaoSubsetorItem` + `AcumuladoMensalItem` + `RendimentoFloatOperacao`, e não há caso de contrato hoje. ⚠️ **Retorno em UNIÃO**: a RPC devolve o drilldown OU um objeto `{ error }` que a rota converte em **404** (`weddings/operacao/[id]/route.ts:57-60`) — exige união DISCRIMINADA; um `parseRpc` estrito aplicado ANTES dessa checagem transformaria o 404 em 500 | D4-007/008 | médio | M | schema novo por RPC + teste de contrato cada; o do drilldown é o mais caro |
 | B-08 | DRE: `Promise.allSettled` com índice posicional dinâmico → `Map` chave→resultado | D5-001 | médio | L | redesenho do carregamento da página (já mordeu 2×) |
@@ -26,7 +31,53 @@ item; a versão final é entrega da Fase 2 (`Mfinal`). Referência = id em `docs
 | B-18 | Hook PreToolUse para `git add -A`/`-a` (régua item 1; poda do `CLAUDE.md`) | D8-022 | baixo | S | ato humano (`.claude/hooks/` protegido) |
 | B-19 | Convenção única de prefixo de RPC (`get_*` 97 / `admin_*` 19 / `solic_*` 19 / verbo-substantivo ~60) | D9-018 | baixo | L | renomear RPC = destrutiva + todos os chamadores; provavelmente nunca |
 | B-20 | Renomear o repositório `WT-Finance/wt-finance` → Janus (quebra remotes/worktrees); `package.json name`; `localStorage` `wt-finance-*` com migração de chave | D9-011/014, D10-006 | médio | M | ato do Yan no GitHub; fora desta versão por invariante 5 |
-| B-21 | `docs/design-system.md` × página `/admin/design-system`: espelhar as 12 seções ou aposentar o `.md` | D8-014 | baixo | M | decisão de método; pode ser resolvida no ADR de fechamento |
+| ~~B-21~~ | ~~`docs/design-system.md` × página `/admin/design-system`~~ — **RESOLVIDO na v5.10.0**: o `.md` foi aposentado (a página é a referência única; o *porquê* que ela não carrega foi para a skill `ui-design-system` §1.3 e §3) | D8-014 | — | — | fechado, não vai para a v6 |
 | B-22 | Baseline de schema + checagem de drift (decisão do Yan: virada v6) | briefing, invariante 6 | — | M | fora por decisão |
 | B-23 | `harness-base`: extrair hooks e aprendizados (pós-versão, outro repositório) | briefing | — | M | fora por decisão |
 | B-24 | **"A operação falhou pela metade e a tela não conta"** — uma superfície de aviso para falha parcial, cobrindo os dois casos abertos: (a) `lista-operacoes.tsx:440`, o `catch {}` do export engole tudo, inclusive o `throw new Error(HTTP …)` da linha 431, e o usuário baixa planilha PARCIAL (ou nenhuma) sem aviso — só o spinner some; (b) o `avisoParcial` de `ResultadoCriarUsuario` (v5.10.0/D5-002/003) existe no servidor e no tipo, mas `modal-convidar.tsx` e `aba-solicitacoes.tsx` não o leem no ramo `ok:true`. São o MESMO assunto e cabem num patch de UI único | E7-M6 (novo) + MÉDIO do revisor no Bloco 1 | médio | M | exige decidir a superfície (toast? banner? inline?) — decisão de produto, não limpeza |
+
+
+---
+
+## Retomada do Scope B (Monde item-level e Pessoas)
+
+Bloco único, por decisão do Yan em 10/09: o Scope B não se tria item a item agora — ou se retoma inteiro,
+com o provedor do Monde na conversa, ou não se toca. O que a Fase 1 apurou e que evita redescobrir:
+
+| # | item | origem | por que é um bloco, não itens soltos |
+|---|---|---|---|
+| B-25 | **`transformSale` erra 100% dos positivos em `contrato` e `taxa_servico`.** A regra correta já está identificada — derivar **pelo produto** — com acerto medido de **99,97%** e **99,99%** | E2 | corrigir isoladamente muda número de tela sem que ninguém tenha decidido a nova definição |
+| B-26 | **As 8 decisões abertas do Scope B**: margem por produto ser alocação (e não medição); `operation_id` curado precisa de dono; Pessoas depende de pedido ao provedor; ordem das ondas; `get_prejuizos` sem paridade; cadência de sincronização de Pessoas; vocabulário `receitas_alocadas` | E3 | são decisões de PRODUTO — o agente registra, não decide |
+| B-27 | **`monde.venda.raw` está defasado em ESTRUTURA**: só **527 de 28.250** vendas têm o ramo `financial`. Qualquer DRE viva pela API exige backfill ou re-sync antes | E4 | pré-requisito de infraestrutura de dados: bloqueia B-25/B-26, não é consequência deles |
+
+**Desbloqueio conhecido:** pedir **receita por produto** ao provedor do Monde (registrado desde a
+investigação do Scope B). Sem isso, a alocação continua sendo alocação.
+
+---
+
+## Achados da v5.10.0 que não couberam na limpeza
+
+| # | item | origem | risco | esforço | por que ficou |
+|---|---|---|---|---|---|
+| B-28 | **Três símbolos de orfandade AMBÍGUA** que o D1-023 não resolveu — têm definição e nenhum uso, mas apagar exige julgamento, não grep: `atualizarObsMovimentacao` (é **Server Action**; o `'use server'` torna o arquivo uma superfície de rede, então "sem chamador em `src/`" não prova morte), `SumarioExecutivoSkeleton` (skeleton de rota pesada — a convenção manda que exista mesmo sem uso corrente) e `CLIENTES_COLUNAS`. Decidir um a um, com o critério, em vez de varrer | D1-023 | baixo | S | 3 símbolos, 3 razões diferentes; varredura automática erraria nos três |
+| B-29 | **Verificar a skill `react-padroes` contra o repo**, como se fez com `ingestao-planilhas` na v5.10.0: cada afirmação conferida, lição falsa **apagada** (não emendada). É a metade que faltou do invariante 4 | D8-021 | baixo | S | timebox; a skill é grande e a verificação é leitura linha a linha |
+| B-30 | **O `protecao-config` não intercepta escrita por Bash.** O hook casa só `Edit\|Write\|MultiEdit` e lê `tool_input.file_path`, então um `cp`, `sed` ou heredoc via Bash escreve em `.claude/hooks/` ou `.claude/settings.json` **sem ser visto**. A regra do projeto ("o agente não toca config") vale por disciplina, mas o enforcement mecânico — que é o **destino 1** da régua de 5 — cobre só metade da superfície. O encaixe é natural: o Ato 2 da v5.10.0 já instala um matcher `Bash`, e as duas checagens podem viver no mesmo hook, lendo `tool_input.command` | v5.10.0 (Ato 1/2) | baixo | S | exige o agente contornar deliberadamente; mas prosa que a máquina não segura foi o que custou caro nesta versão |
+
+---
+
+## Registro dos achados E1–E8 (leitura dos 20 arquivos de `docs/audits/`, `docs/superpowers/` e `docs/harness/`, apagados no D8-005)
+
+Estes achados nasceram da leitura dos documentos que a v5.10.0 **apagou** no D8-005. Ficam registrados
+aqui para que a exclusão dos arquivos não leve junto o que eles renderam — é a condição que a própria
+triagem impôs ao grupo "SAEM".
+
+| id | achado | destino |
+|---|---|---|
+| E1 | Perda silenciosa por setor fora da dim (o "A1" da auditoria de 13/06) | **encerrado** — a migration `0132` já fechava; verificado no catálogo vivo em 10/09 |
+| E2 | `transformSale`: `contrato` e `taxa_servico` erram 100% dos positivos | → **B-25** |
+| E3 | As 8 decisões abertas do Scope B | → **B-26** |
+| E4 | `monde.venda.raw` defasado em estrutura (527/28.250 com ramo `financial`) | → **B-27** |
+| E5 | Plugin **`superpowers` duplicado**: as sessões invocariam todas as skills em bloco | **premissa REFUTADA em 10/09.** A cópia local (`@superpowers-marketplace` 5.1.0) está **`✘ disabled`** e não é carregada desde 28/07; só a `@claude-plugins-official` **6.3.0** roda. Medido com `claude plugin details`: always-on de **~688 tok** (barato); o custo grande é o disparo em bloco, **~50k tok** somando as 14 skills — e esse é **mandato do plugin** (`using-superpowers` manda invocar com 1% de chance de aplicar), não duplicação. Vira **decisão de custo** do Yan: medir numa sessão nova e, se o bloco disparar, pagar ou desabilitar o plugin. Roteiro no Ato 3 de `docs/auditoria-v5/atos-humanos/README.md`. **`docs/harness/sonda-disparo.md` só sai quando essa decisão for tomada** |
+| E6 | Tokens CSS mortos — dimensão que a D9 não varreu | **fechado sem mudança**: varredura dos 61 tokens de `tokens.css` deu **zero mortos**; os 3 suspeitos são usados como classe Tailwind e `--primary-bg` sequer existe |
+| E7 | Cinco `MÉDIA` de 13/06 com estado desconhecido (M2, M3, M6, M15, M17) | **fechado no Bloco 2**: os cinco já estavam corrigidos — quatro na v4.17.0, um na v4.21.0. A auditoria de 13/06 era o **plano** dessas correções, não uma lista pendente. Rendeu 1 achado novo → **B-24** |
+| E8 | **Segurança de dependência não tem dono**: `next` com advisory HIGH e fix em minor apareceu **3×** (28/05, 13/06, 10/09); o `skipIf` silencioso, 2× | **parcialmente fechado**: a rotina periódica (`npm audit` + `npm outdated` no fechamento de cada minor) está declarada em `docs/estado-do-projeto.md` e no ritual `/fechamento-versao`. O automatismo — CI de PR — continua aberto em **B-16**, porque depende de decisão de custo do Yan |

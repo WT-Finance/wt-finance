@@ -26,7 +26,7 @@ interface Props {
   searchParams: { operacao?: string | string[] }
 }
 
-/** Assinatura frouxa para RPC fora do `database.ts` congelado. */
+/** Assinatura frouxa — helper LEGADO (o `database.ts` era tratado como congelado até a v5.10.0; hoje é GERADO — ADR-0173). */
 type RpcFrouxa = (
   fn: string,
   args?: Record<string, unknown>,
@@ -63,7 +63,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     }),
     // v5.5.0/M5: série do CDI na MESMA janela larga do acumulado, para as duas
     // curvas do float coincidirem mês a mês com os demais gráficos. Tipagem frouxa
-    // porque `get_taxas_cdi` é RPC nova, fora do `database.ts` congelado — e o
+    // porque `get_taxas_cdi` nasceu fora do `database.ts` de então (congelado) — e o
     // `.bind(db)` porque `rpc` é método de protótipo (v5.3.5).
     (db.rpc as unknown as RpcFrouxa).bind(db)('get_taxas_cdi', {
       p_meses_passados: JANELA_LARGA_ATRAS,

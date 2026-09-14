@@ -106,8 +106,12 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
   contagens? Contagem certa com conteúdo errado passa calada.
 
 ### Contrato com o app
-- RPC nova: o call-site usa helper de tipagem frouxa + `parseRpc` (não `db.rpc` tipado —
-  `database.ts` está congelado)?
+- RPC nova ou alterada: o `src/types/database.ts` foi **regenerado e commitado** junto
+  (`npx supabase gen types typescript --linked`)? É passo do `/fechamento-versao` desde a
+  v5.10.0 — o arquivo é GERADO, não mais congelado (ADR-0173). Os helpers de tipagem frouxa
+  que já existem são legado vivo; **helper novo não se cria**.
+- O call-site valida com `parseRpc`/Zod **mesmo com o tipo gerado**? RPC que devolve `jsonb`
+  tipa como `Json` — o `tsc` fica satisfeito e o conteúdo continua sem prova.
 - Campo que a RPC pode não emitir está `.optional()` no schema Zod?
 - Caso novo adicionado em `rpc-contrato.test.ts`?
 - O teste da versão **escreve no banco** (`pg` direto com INSERT/UPDATE/DELETE/DDL)? Então

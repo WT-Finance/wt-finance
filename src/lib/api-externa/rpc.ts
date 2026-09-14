@@ -6,8 +6,8 @@ import type { ChaveApi, LogChamada } from '@/components/admin/api-externa/tipos'
 // pelas server actions. Cliente de SESSÃO (authenticated) — o banco valida a
 // área 'solicitacoes' do chamador via exigir_acesso (0211).
 //
-// As RPCs api_chave_listar/api_log_listar são NOVAS: não estão em
-// src/types/database.ts (congelado desde ~v4.29) — helper de tipagem FROUXA
+// As RPCs api_chave_listar/api_log_listar nasceram fora do src/types/database.ts de
+// então (tratado como congelado; hoje é GERADO — ADR-0173) — helper de tipagem FROUXA
 // (cast + narrowing manual), mesmo padrão de src/app/admin/acessos/page.tsx,
 // em vez de regenerar o database.ts ou adicionar Zod (que exigiria um caso novo
 // em rpc-contrato.test.ts por RPC).

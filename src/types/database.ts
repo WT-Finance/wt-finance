@@ -421,8 +421,6 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: Json
       }
-      get_fluxo_caixa_kpis_diario: { Args: never; Returns: Json }
-      get_fluxo_caixa_kpis_diario__nucleo: { Args: never; Returns: Json }
       get_fluxo_caixa_mensal_v3: { Args: never; Returns: Json }
       get_fluxo_caixa_mensal_v3__nucleo: { Args: never; Returns: Json }
       get_fluxo_cobertura: { Args: never; Returns: Json }
@@ -431,22 +429,12 @@ export type Database = {
       get_fluxo_ranking: { Args: { p_limite?: number }; Returns: Json }
       get_fluxo_runway_semanal: { Args: never; Returns: Json }
       get_gerencial_lancamentos: { Args: { p_limit?: number }; Returns: Json }
-      get_gerencial_lancamentos__nucleo: {
-        Args: { p_limit?: number }
-        Returns: Json
-      }
       get_gerencial_lancamentos_planilha: { Args: never; Returns: Json }
-      get_gerencial_lancamentos_planilha__nucleo: { Args: never; Returns: Json }
       get_gerencial_projecao_diaria: {
         Args: { p_dias?: number }
         Returns: Json
       }
-      get_gerencial_projecao_diaria__nucleo: {
-        Args: { p_dias?: number }
-        Returns: Json
-      }
       get_gerencial_saldos: { Args: never; Returns: Json }
-      get_gerencial_saldos__nucleo: { Args: never; Returns: Json }
       get_historico_12m_setores: { Args: { p_setor?: string }; Returns: Json }
       get_historico_12m_setores__nucleo: {
         Args: { p_setor?: string }
@@ -488,18 +476,6 @@ export type Database = {
       get_mix_setor__nucleo: {
         Args: { p_from: string; p_setor?: string; p_to: string }
         Returns: Json
-      }
-      get_my_profile: {
-        Args: never
-        Returns: {
-          ativo: boolean
-          email: string
-          id: string
-          nome: string
-          role: string
-          setor_id: number
-          ultimo_acesso: string
-        }[]
       }
       get_operacao_weddings: { Args: { p_operacao: string }; Returns: Json }
       get_operacao_weddings__nucleo: {
@@ -698,12 +674,6 @@ export type Database = {
       metas_listar: { Args: { p_ano: number }; Returns: Json }
       metas_ritmo_diario: {
         Args: { p_from: string; p_setor?: string; p_to: string }
-        Returns: Json
-      }
-      metas_subsetor_listar: { Args: { p_ano: number }; Returns: Json }
-      metas_subsetor_upsert: { Args: { p_metas: Json }; Returns: Json }
-      metas_sumario_subsetor: {
-        Args: { p_from: string; p_to: string }
         Returns: Json
       }
       metas_upsert: { Args: { p_metas: Json }; Returns: Json }

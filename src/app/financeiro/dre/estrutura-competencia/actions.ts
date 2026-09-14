@@ -6,8 +6,9 @@
 //
 // Mesmo padrão da casa: `requireAreaAction` (guard de superfície; o banco também checa
 // `app.exigir_acesso` dentro de cada RPC) + `getServerClient` (SESSÃO, nunca service role —
-// o diário precisa saber QUEM alterou) + `rpcDre` (helper de tipagem frouxa; estas RPCs não
-// estão no `database.ts` congelado) + `parseRpc` (valida o shape antes de a UI confiar).
+// o diário precisa saber QUEM alterou) + `rpcDre` (helper de tipagem frouxa LEGADO — o
+// `database.ts` era tratado como congelado até a v5.10.0; hoje é GERADO, ADR-0173) +
+// `parseRpc` (valida o shape antes de a UI confiar — o tipo gerado não descreve jsonb).
 //
 // Os prefixos de erro da RPC são os MESMOS do caixa (DRE_CONFLITO, DRE_BLOCO_INVALIDO,
 // DRE_ESTADO_INVALIDO, DRE_CATEGORIA_INVALIDA, DRE_PAYLOAD_INVALIDO) — de propósito: o

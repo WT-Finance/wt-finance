@@ -1,6 +1,8 @@
 # ADR-0142 — A Emissão consome o Cadastro: Visão B parcial (juros/multa + fallback de e-mail fiscal)
 
 **Status:** Aceito · **Data:** 2026-07-06 · **Versão:** v4.37.0
+**Emendado por:** ADR-0143 (rehidratação — fecha o gap que este ADR deixou explícito: "sem UI dos
+valores aplicados nem registro em `fatura_emissao`")
 **Relaciona / emenda:** ADR-0137 (Fase 3 — Cadastro de Clientes, Visão A: "a Emissão NÃO lê o cadastro"). ADR-0134/0135/0136 (Faturamento Fases 1-2), ADR-0140/0141 (envio de e-mail). **Sem migration** (as RPCs `buscar_cliente_corporativo` da 0164 + `buscar_pessoas` da 0160 cobrem).
 
 ## Contexto
