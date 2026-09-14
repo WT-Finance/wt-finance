@@ -5,7 +5,7 @@
 **Arquivos de `src/` alterados:** **nenhum** (fora a entrada do changelog da diretoria) ·
 **Testes:** 1.220 (idênticos à baseline, zero `skip`).
 
-Fechamento em 14/09/2026. Merge humano pendente.
+Fechamento em 14/09/2026. Conferência visual do Outlook ✅ confirmada pelo Yan. Merge humano pendente.
 
 ## 1. O que foi feito
 
@@ -117,12 +117,15 @@ E a comparação byte a byte fecha: `welcome-group.png` **9.022 B** e `janus.png
 novo são **exatamente os mesmos tamanhos** do e-mail de produção do `nodemailer` 9, com a mesma
 estrutura de tabelas. O pipeline de MIME/CID saiu inalterado da major.
 
-### 5.3 O que ficou para o Yan
+### 5.3 Conferência visual — ✅ CONFIRMADA pelo Yan
 
-🔴 **A confirmação VISUAL no Outlook real é sua.** Eu verifiquei conteúdo, estrutura, marca e anexos
-programaticamente — mas *renderização* (o logo aparecendo de fato, as tabelas sem quebra no motor do
-Word) só o olho humano no cliente-alvo confirma, e é o modelo de conferência do projeto. Os 3 e-mails
-estão na sua caixa, recebidos em **14/09 por volta das 08:56**, com "PROVA v5.10.2" no corpo.
+A verificação programática cobriu conteúdo, estrutura, marca e anexos; **renderização** (o logo via
+CID aparecendo de fato, as tabelas sem quebra no motor do Word) só o olho humano no cliente-alvo
+confirma — é o modelo de conferência do projeto. Os 3 e-mails chegaram em **14/09 por volta das
+08:56** e o **Yan confirmou a conferência visual no Outlook real em 14/09** ("conferencia visual ok").
+
+Com isso a prova exigida pelo prompt está **completa**: envio real + conteúdo conferido + CID
+renderizando no cliente-alvo. Nenhuma pendência de verificação em aberto nesta versão.
 
 ## 6. Default import sob ESM/Turbopack
 
