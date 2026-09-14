@@ -6,6 +6,27 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.10.2] — 2026-09-14
+
+PATCH · **Atualização de segurança do envio de e-mail.** `nodemailer` 9.0.1 → 10.0.9, fechando as **4** advisories *moderate/high* que restavam no repositório. Com esta versão o `npm audit` fica em **zero vulnerabilidades**. **Nenhum arquivo de `src/` alterado** — a major não exigiu uma linha na camada de e-mail. Migration: nenhuma · ADR: nenhum · **1.220 testes** (idênticos à baseline, zero `skip`).
+
+### Segurança
+
+- **`nodemailer` `^9.0.1` → `^10.0.9`.** Fecha: `resolveContent()` furando `disableFileAccess`/`disableUrlAccess` na assinatura legada (GHSA-8m3c-c648-2xjj), bypass da allow-list de domínio por IDN/punycode (GHSA-wmmp-3585-3rmp), DoS por complexidade quadrática no `addressparser` (GHSA-2x7j-588g-ccc2) e bypass da validação de domínio por má leitura de comentário RFC 5322 (GHSA-cc9r-2j5m-2m83). Resolve **B-02** do `docs/backlog-v6.md`.
+- **`npm audit` 1 → 0.** `found 0 vulnerabilities` — primeira vez que o repositório fecha zerado desde que a auditoria da v5.10.0 levantou a lista. Nenhuma vulnerabilidade nova.
+- **Exposição real às CVEs era baixa, e isso foi verificado, não presumido:** o repo nunca usou `disableFileAccess`/`disableUrlAccess` nem allow-list de domínio, e **todo anexo usa `content: Buffer`** — nunca `path` nem `href`, que é o vetor do `resolveContent`. O patch fecha a porta mesmo assim.
+
+### Alterado
+
+- Nada em `src/`. Os breaking changes da major 10 são **Node ≥ 20** (o repo roda 24) e a migração para TypeScript com builds ESM+CJS duplos — nenhum toca `createTransport`, `sendMail`, anexos, CID ou headers, que é toda a superfície usada (`src/lib/email/index.ts:19,217` e `src/lib/email/fatura.ts:141`).
+
+### Notas
+
+- **O nodemailer 10 passou a embarcar os próprios tipos** (76 `.d.ts`), e o `tsc --traceResolution` confirma que `'nodemailer'` resolve para `nodemailer/dist/esm/nodemailer.d.ts@10.0.9`. O `@types/nodemailer` `^8.0.1` **continua declarado mas ficou inerte** — mantido de propósito nesta versão (ver out-briefing §7).
+- **A suíte não prova esta major:** `email.test.ts:8` mocka o `nodemailer` inteiro. A prova é o envio REAL descrito no out-briefing §5 — três e-mails pela camada de verdade, em modo teste fail-closed, com os anexos inline conferidos **byte a byte** contra um e-mail de produção enviado no nodemailer 9.
+
+---
+
 ## [5.10.1] — 2026-09-14
 
 PATCH · **Atualização de segurança do ambiente de testes.** `vitest` 3.2.6 → 5.0.0, fechando a CVE *moderate* do `@vitest/mocker` (GHSA-82fw-gwwq-j7x9 — *path traversal* / leitura arbitrária de arquivo via *redirect mock*). **Dev-only: nenhuma dependência de produção muda, nenhum arquivo de `src/` alterado.** Migration: nenhuma · ADR: nenhum · **1.220 testes** (idênticos à baseline, zero `skip`).

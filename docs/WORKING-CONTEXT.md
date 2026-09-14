@@ -15,8 +15,17 @@
 
 ## Em voo
 
-**Nada.** A v5.10.1 foi mergeada (PR #267, 14/09 às 08:38) e está em produção. A frente está
-livre para a próxima versão — `/nova-versao <vX-Y>`.
+**v5.10.2 — patch de segurança do envio de e-mail (Rota C).** Branch `chore/v5-10-2-nodemailer-10`,
+PR **draft**, aguardando merge humano. `nodemailer` 9.0.1 → 10.0.9, fechando as 4 advisories restantes —
+o `npm audit` do repositório vai a **ZERO**. Nenhum arquivo de `src/` alterado; sem migration e sem ADR.
+Gates verdes, **1.220 testes**, e prova de envio REAL dos 3 templates em modo teste fail-closed.
+Resolve B-02 do backlog v6.
+
+🔴 **Pendente do Yan:** confirmação VISUAL no Outlook real dos 3 e-mails de prova recebidos em 14/09
+por volta das 08:56 (logo via CID renderizando, tabelas íntegras). O conteúdo e os anexos já foram
+conferidos programaticamente contra um e-mail de produção do nodemailer 9; o que falta é o olho.
+
+Fora isso a frente está livre — `/nova-versao <vX-Y>`.
 
 ---
 
