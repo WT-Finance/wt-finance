@@ -9,6 +9,7 @@ import {
   metasListarSchema, metasRitmoDiarioSchema, contratosCasamentoMesSchema,
   patrimonioAtivosSchema, patrimonioCatalogosSchema, patrimonioMovimentacoesSchema,
   patrimonioResumoSchema,
+  estanteLivrosSchema, estanteMovimentacoesSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -583,6 +584,16 @@ describe.skipIf(!ON)('contrato RPC — Inventário de Ativos (leitura)', () => {
     const soUso = patrimonioAtivosSchema.parse(await rpc('patrimonio_listar_ativos', { p_status: 'em_uso' }))
     expect(soUso.every(l => l.status === 'em_uso')).toBe(true)
     expect(soUso.length).toBe(todos.filter(l => l.status === 'em_uso').length)
+  })
+})
+
+describe.skipIf(!ON)('contrato RPC — Estante Welcome (leitura)', () => {
+  it('estante_listar_livros e estante_listar_movimentacoes: shape valida pelo caminho REST', async () => {
+    // O teste comportamental de `estante-rpcs.test.ts` bate direto em `pg`, sem passar por
+    // PostgREST/GRANT a `authenticated`/serialização REST — é este caso que prova o caminho
+    // que a aplicação de fato usa (molde: patrimonio_listar_ativos acima).
+    estanteLivrosSchema.parse(await rpc('estante_listar_livros', {}))
+    estanteMovimentacoesSchema.parse(await rpc('estante_listar_movimentacoes', { p_limite: 50 }))
   })
 })
 

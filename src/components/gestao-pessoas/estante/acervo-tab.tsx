@@ -5,7 +5,7 @@ import { BookOpen, Search } from 'lucide-react'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import EmptyState from '@/components/shared/empty-state'
 import { Input } from '@/components/ui/field'
-import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
+import { PILL, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { fmtDate } from '@/lib/fmt'
 import { acaoDaLinha } from './acao-da-linha'
 import EstadoBadge from './estado-badge'
@@ -138,8 +138,9 @@ export default function AcervoTab({ livros, podeGerir, meuId, onAbrirFicha, onPe
                               e.stopPropagation()
                               if (acao === 'pegar') onPegar(l); else onDevolver(l)
                             }}
-                            className={[PILL_FILTRO_SM, 'whitespace-nowrap'].join(' ')}
-                            style={PILL_FILTRO_ATIVO_STYLE}
+                            className={`${PILL} ${PILL_PRIMARIA} whitespace-nowrap`}
+                            style={PILL_PRIMARIA_STYLE}
+                            aria-label={acao === 'pegar' ? `Pegar ${l.titulo}` : `Devolver ${l.titulo}`}
                           >
                             {acao === 'pegar' ? 'Pegar' : 'Devolver'}
                           </button>

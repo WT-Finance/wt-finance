@@ -57,7 +57,16 @@ export default function EstanteContent({ livros, movimentacoes, erroDeLeitura, p
 
   const [msg, setMsg] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null)
 
-  const livroAberto = livros.find(l => l.id === livroAbertoId) ?? null
+  // O drawer é montado por ID, não pela linha ENCONTRADA em `livros`: essa lista só traz
+  // livros não-arquivados (`p_incluir_arquivados` default false), mas o Histórico e a
+  // própria `carregarFicha` não filtram arquivado (invariante 6 — histórico legível após
+  // arquivar). Montar por objeto encontrado deixava a ficha de um livro arquivado num no-op
+  // silencioso: `carregarFicha` respondia com sucesso, o estado era gravado, e nada
+  // renderizava porque `livroAberto` nunca existia em `livros`. `ficha?.livro` já vem no
+  // MESMO formato de `LivroLista` (migration 0272 padronizou o `jsonb_build_object` para
+  // isso); o fallback em `livros.find` só cobre o instante entre o clique e a resposta da
+  // ficha, quando o título ainda precisa aparecer no cabeçalho do drawer.
+  const livroAberto = ficha?.livro ?? livros.find(l => l.id === livroAbertoId) ?? null
 
   // Último pedido de ficha VENCE: abrir A e, antes da resposta, abrir B faz duas leituras
   // correrem juntas — sem este desempate a resposta atrasada de A sobrescreveria a de B
@@ -161,7 +170,7 @@ export default function EstanteContent({ livros, movimentacoes, erroDeLeitura, p
         <HistoricoTab movimentacoes={movimentacoes} onAbrirFicha={abrirFicha} />
       </div>
 
-      {livroAberto && (
+      {livroAbertoId != null && (
         <FichaDrawer
           livro={livroAberto}
           ficha={ficha}
@@ -169,10 +178,10 @@ export default function EstanteContent({ livros, movimentacoes, erroDeLeitura, p
           podeGerir={podeGerir}
           meuId={meuId}
           onFechar={fecharFicha}
-          onEditar={() => setForm({ modo: 'editar', livro: livroAberto })}
-          onRemover={() => setLivroParaRemover(livroAberto)}
-          onPegar={() => abrirMovimentacao(livroAberto, 'emprestimo')}
-          onDevolver={() => abrirMovimentacao(livroAberto, 'devolucao')}
+          onEditar={() => { if (livroAberto) setForm({ modo: 'editar', livro: livroAberto }) }}
+          onRemover={() => { if (livroAberto) setLivroParaRemover(livroAberto) }}
+          onPegar={() => { if (livroAberto) abrirMovimentacao(livroAberto, 'emprestimo') }}
+          onDevolver={() => { if (livroAberto) abrirMovimentacao(livroAberto, 'devolucao') }}
         />
       )}
 

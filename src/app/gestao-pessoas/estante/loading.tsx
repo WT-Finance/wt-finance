@@ -1,12 +1,12 @@
-import { SkeletonPagina, SkeletonHeader, SkeletonFiltros, SkeletonKpis, SkeletonTabela } from '@/components/shared/skeletons'
+import { SkeletonPagina, SkeletonHeader, SkeletonFiltros, SkeletonTabela } from '@/components/shared/skeletons'
 
-// Gestão de Pessoas · Estante Welcome: header + 3 pills de aba + faixa de contagens + tabela.
+// Gestão de Pessoas · Estante Welcome: header + 2 abas (Acervo/Histórico) + tabela. Sem KPI —
+// a tela não tem faixa de contagens (não copiar do inventario/loading.tsx, que tem).
 export default function Loading() {
   return (
     <SkeletonPagina>
       <SkeletonHeader />
-      <SkeletonFiltros n={3} />
-      <SkeletonKpis n={4} />
+      <SkeletonFiltros n={2} />
       <SkeletonTabela linhas={8} />
     </SkeletonPagina>
   )

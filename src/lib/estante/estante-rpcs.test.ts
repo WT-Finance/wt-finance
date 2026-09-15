@@ -301,4 +301,55 @@ describe.skipIf(!DB_URL)('RPCs da Estante Welcome (0271/0272)', () => {
       if (!r.ok) expect(r.msg).toContain('TIPO_INVALIDO')
     })
   })
+
+  // ── Casos da leva de revisão final (task 11) ─────────────────────────────────
+
+  it('empréstimo em nome de outra pessoa: recusado SEM gestão, aceito COM gestão (EMPRESTIMO_PARA_OUTRO)', async () => {
+    await emTransacaoRevertida(async c => {
+      const [a, b] = await prepararGestor(c)
+      const id = await criarLivro(c, 'ZZ_TESTE_0271 Emprestimo Para Outro')
+
+      // A segue com identidade assumida, mas SEM a área de gestão: registrar o
+      // empréstimo em nome de B (não de si mesmo) é recusado.
+      await tirarAreas(c, a, [GESTAO])
+      const semGestao = await chamar(c, MOV, [id, 'emprestimo', b, null, null])
+      expect(semGestao.ok).toBe(false)
+      if (!semGestao.ok) expect(semGestao.msg).toContain('EMPRESTIMO_PARA_OUTRO')
+
+      // Com a área de gestão de volta: aceito, e o exemplar fica com B — quem
+      // registrou (A) não é quem ficou com o livro.
+      await darAreas(c, a, [GESTAO])
+      const comGestao = await chamar(c, MOV, [id, 'emprestimo', b, null, null])
+      expect(comGestao.ok).toBe(true)
+
+      const r = await c.query(
+        `SELECT usuario_id FROM estante.v_estado_atual WHERE livro_id = $1`, [id])
+      expect(String(r.rows[0].usuario_id)).toBe(b)
+    })
+  })
+
+  it('ciclo pegar/devolver 3× no mesmo livro: o estado derivado alterna a cada passo', async () => {
+    await emTransacaoRevertida(async c => {
+      const [a] = await prepararGestor(c)
+      const id = await criarLivro(c, 'ZZ_TESTE_0271 Ciclo Tripla')
+
+      async function emprestado(): Promise<boolean> {
+        const r = await c.query(`SELECT public.estante_listar_livros() AS v`)
+        const linha = (r.rows[0].v as Array<{ id: number; emprestado: boolean }>)
+          .find(l => Number(l.id) === id)
+        return Boolean(linha?.emprestado)
+      }
+
+      expect(await emprestado()).toBe(false)
+      for (let volta = 1; volta <= 3; volta++) {
+        const pegou = await chamar(c, MOV, [id, 'emprestimo', a, null, null])
+        expect(pegou.ok).toBe(true)
+        expect(await emprestado()).toBe(true)
+
+        const devolveu = await chamar(c, MOV, [id, 'devolucao', null, null, null])
+        expect(devolveu.ok).toBe(true)
+        expect(await emprestado()).toBe(false)
+      }
+    })
+  })
 })

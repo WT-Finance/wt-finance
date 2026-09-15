@@ -26,7 +26,12 @@ import type { LivroLista } from './tipos'
 const vazio = (v: string | null | undefined) => (v && v.trim() !== '' ? v : '—')
 
 interface Props {
-  livro: LivroLista
+  /**
+   * Nulo só no instante entre o clique num livro ARQUIVADO (só alcançável pelo Histórico —
+   * `estante_listar_livros` não traz arquivado) e a resposta de `carregarFicha`: a lista da
+   * página não tem a linha, e só a ficha (que não filtra arquivado) vai preencher o livro.
+   */
+  livro: LivroLista | null
   ficha: Ficha | null
   falhou: boolean
   podeGerir: boolean
@@ -41,20 +46,27 @@ interface Props {
 export default function FichaDrawer({
   livro, ficha, falhou, podeGerir, meuId, onFechar, onEditar, onRemover, onPegar, onDevolver,
 }: Props) {
-  const carregando = ficha === null && !falhou
+  // `atual` é o melhor livro que já temos: a ficha (fonte de verdade, invariante 10) ou,
+  // enquanto ela não chega, a linha da lista recebida via prop — que pode já ser `null`
+  // (livro ARQUIVADO não está em `livros`). A ficha traz livro + movimentações JUNTOS numa
+  // única resposta, mas `atual` pode resolver antes ou depois dela terminar de vez (o
+  // fallback da lista chega no primeiro render; a ficha, só depois do round-trip). Por
+  // isso os dois blocos abaixo — estado/grade (só precisam de `atual`) e razão (só precisa
+  // de `ficha`) — são guardados de forma INDEPENDENTE, cada um pelo dado que realmente usa,
+  // em vez de um único `if` em volta de tudo que travaria os dois ao mesmo instante.
   const atual = ficha?.livro ?? livro
 
-  const acao = acaoDaLinha(atual, meuId, podeGerir)
+  const acao = atual ? acaoDaLinha(atual, meuId, podeGerir) : null
 
   return (
-    <ListDrawer titulo={livro.titulo} subtitulo={livro.autor ?? undefined} onClose={onFechar}>
+    <ListDrawer titulo={atual?.titulo ?? 'Carregando…'} subtitulo={atual?.autor ?? undefined} onClose={onFechar}>
       <div className="flex flex-wrap gap-2 mb-5">
-        {acao && (
+        {atual && acao && (
           <button type="button" onClick={acao === 'pegar' ? onPegar : onDevolver} className={`${PILL} ${PILL_PRIMARIA}`} style={PILL_PRIMARIA_STYLE}>
             {acao === 'pegar' ? 'Pegar livro' : 'Devolver livro'}
           </button>
         )}
-        {podeGerir && (
+        {atual && podeGerir && (
           <>
             <button type="button" onClick={onEditar} className={`${PILL} ${PILL_NEUTRO}`}>
               Editar catálogo
@@ -66,8 +78,11 @@ export default function FichaDrawer({
         )}
       </div>
 
-      {carregando && (
-        <div className="space-y-3 animate-pulse" aria-hidden="true">
+      {/* Estado + grade de dados: dependem só de `atual`. Skeleton enquanto ele ainda não
+          existe (nem ficha nem fallback da lista); frase de erro se a busca falhou e
+          continua sem nada pra mostrar — nunca um esqueleto eterno. */}
+      {!atual && !falhou && (
+        <div className="space-y-3 animate-pulse mb-6" aria-hidden="true">
           <div className="h-16 rounded-lg bg-zinc-100" />
           <div className="h-4 w-2/3 rounded bg-zinc-100" />
           <div className="h-4 w-1/2 rounded bg-zinc-100" />
@@ -75,11 +90,11 @@ export default function FichaDrawer({
         </div>
       )}
 
-      {falhou && (
-        <p className="text-sm text-[var(--text-subtle)]">Não foi possível carregar a ficha.</p>
+      {!atual && falhou && (
+        <p className="mb-6 text-sm text-[var(--text-subtle)]">Não foi possível carregar a ficha.</p>
       )}
 
-      {ficha && (
+      {atual && (
         <>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 mb-5">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -113,35 +128,51 @@ export default function FichaDrawer({
               </div>
             )}
           </div>
-
-          <div className="flex items-center gap-2 mb-3 pt-4 border-t border-zinc-100">
-            <History size={14} className="text-[var(--text-subtle)]" />
-            <h3 className="text-2xs font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)]">
-              Razão deste exemplar
-            </h3>
-            <span className="text-2xs text-[var(--text-subtle)]">({ficha.movimentacoes.length})</span>
-          </div>
-
-          {ficha.movimentacoes.length === 0 ? (
-            <p className="text-sm text-[var(--text-subtle)]">Nenhuma movimentação registrada.</p>
-          ) : (
-            <ol className="relative ml-1.5 border-l border-zinc-200 pl-5 space-y-4">
-              {ficha.movimentacoes.map(mov => (
-                <li key={mov.id} className="relative">
-                  <span
-                    className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-zinc-300"
-                    style={{ boxShadow: '0 0 0 1px var(--border)' }}
-                  />
-                  <p className="text-sm text-zinc-700">
-                    <span className="font-medium">{mov.usuario_nome ?? 'Pessoa sem cadastro'}</span>{' '}
-                    {mov.tipo === 'emprestimo' ? 'pegou' : 'devolveu'} · {fmtDate(mov.data_movimentacao)}
-                  </p>
-                  {mov.obs && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{mov.obs}</p>}
-                </li>
-              ))}
-            </ol>
-          )}
         </>
+      )}
+
+      {/* Razão: depende só de `ficha` — as movimentações vêm juntas dela, não de `atual`.
+          Pode aparecer com o bloco acima ainda em skeleton, ou vice-versa. */}
+      <div className="flex items-center gap-2 mb-3 pt-4 border-t border-zinc-100">
+        <History size={14} className="text-[var(--text-subtle)]" />
+        <h3 className="text-2xs font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)]">
+          Razão deste exemplar
+        </h3>
+        {ficha && <span className="text-2xs text-[var(--text-subtle)]">({ficha.movimentacoes.length})</span>}
+      </div>
+
+      {ficha === null && !falhou && (
+        <div className="space-y-3 animate-pulse" aria-hidden="true">
+          <div className="h-4 w-2/3 rounded bg-zinc-100" />
+          <div className="h-4 w-1/2 rounded bg-zinc-100" />
+          <div className="h-4 w-3/4 rounded bg-zinc-100" />
+        </div>
+      )}
+
+      {ficha === null && falhou && (
+        <p className="text-sm text-[var(--text-subtle)]">Não foi possível carregar o histórico.</p>
+      )}
+
+      {ficha && (
+        ficha.movimentacoes.length === 0 ? (
+          <p className="text-sm text-[var(--text-subtle)]">Nenhuma movimentação registrada.</p>
+        ) : (
+          <ol className="relative ml-1.5 border-l border-zinc-200 pl-5 space-y-4">
+            {ficha.movimentacoes.map(mov => (
+              <li key={mov.id} className="relative">
+                <span
+                  className="absolute -left-[26px] top-1 h-2.5 w-2.5 rounded-full border-2 border-white bg-zinc-300"
+                  style={{ boxShadow: '0 0 0 1px var(--border)' }}
+                />
+                <p className="text-sm text-zinc-700">
+                  <span className="font-medium">{mov.usuario_nome ?? 'Pessoa sem cadastro'}</span>{' '}
+                  {mov.tipo === 'emprestimo' ? 'pegou' : 'devolveu'} · {fmtDate(mov.data_movimentacao)}
+                </p>
+                {mov.obs && <p className="mt-0.5 text-xs text-[var(--text-muted)]">{mov.obs}</p>}
+              </li>
+            ))}
+          </ol>
+        )
       )}
 
       <div className="mt-6 pt-4 border-t border-zinc-100">
