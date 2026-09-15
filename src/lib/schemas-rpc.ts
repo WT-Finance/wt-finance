@@ -456,3 +456,45 @@ export const patrimonioResumoSchema = z.object({
   por_categoria: z.array(z.object({ nome: z.string(), n: z.number() })),
   por_area:      z.array(z.object({ nome: z.string(), n: z.number() })),
 }).passthrough()
+
+/** Uma linha do acervo, com o estado DERIVADO da última movimentação. `estante_detalhe_livro`
+ *  devolve o livro NESTE mesmo formato (não `to_jsonb` cru) — uma forma só para os dois
+ *  caminhos, senão a ficha e a lista divergiriam de tipo. */
+export const estanteLivroSchema = z.object({
+  id:            z.number(),
+  titulo:        z.string(),
+  autor:         z.string().nullable(),
+  editora:       z.string().nullable(),
+  ano:           z.number().nullable(),
+  isbn:          z.string().nullable(),
+  obs:           z.string().nullable(),
+  arquivado:     z.boolean(),
+  emprestado:    z.boolean(),
+  portador_id:   z.string().nullable(),
+  portador_nome: z.string().nullable(),
+  desde:         z.string().nullable(),
+  tem_historico: z.boolean(),
+}).passthrough()
+
+/** estante_listar_livros → o acervo inteiro. */
+export const estanteLivrosSchema = z.array(estanteLivroSchema)
+
+/** estante_listar_movimentacoes / detalhe. `livro_titulo` só vem do razão global:
+ *  `.optional()`, não `.nullable()` — a chave AUSENTE reprovaria um schema só nullable. */
+export const estanteMovimentacoesSchema = z.array(z.object({
+  id:                z.number(),
+  livro_id:          z.number(),
+  livro_titulo:      z.string().optional(),
+  tipo:              z.enum(['emprestimo', 'devolucao']),
+  usuario_id:        z.string(),
+  usuario_nome:      z.string().nullable(),
+  data_movimentacao: z.string(),
+  obs:               z.string().nullable(),
+  criado_em:         z.string(),
+}).passthrough())
+
+/** estante_detalhe_livro → ficha + razão do exemplar, numa única leitura (invariante 10). */
+export const estanteFichaSchema = z.object({
+  livro:         estanteLivroSchema,
+  movimentacoes: estanteMovimentacoesSchema,
+})
