@@ -5,6 +5,7 @@ import ListDrawer from '@/components/shared/list-drawer'
 import Button from '@/components/ui/button'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDate } from '@/lib/fmt'
+import { acaoDaLinha } from './acao-da-linha'
 import EstadoBadge from './estado-badge'
 import type { Ficha } from '@/app/gestao-pessoas/estante/actions'
 import type { LivroLista } from './tipos'
@@ -43,14 +44,7 @@ export default function FichaDrawer({
   const carregando = ficha === null && !falhou
   const atual = ficha?.livro ?? livro
 
-  // Mesma regra de acaoDaLinha (inline até a Tarefa 9 centralizar em `acaoDaLinha`):
-  // disponível ⇒ pegar; emprestado a mim ou eu sou gestão ⇒ devolver; emprestado a
-  // outra pessoa e eu não sou gestão ⇒ nenhum botão.
-  const acao = !atual.emprestado
-    ? 'pegar'
-    : atual.portador_id === meuId || podeGerir
-      ? 'devolver'
-      : null
+  const acao = acaoDaLinha(atual, meuId, podeGerir)
 
   return (
     <ListDrawer titulo={livro.titulo} subtitulo={livro.autor ?? undefined} onClose={onFechar}>

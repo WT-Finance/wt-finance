@@ -7,6 +7,7 @@ import EmptyState from '@/components/shared/empty-state'
 import { Input } from '@/components/ui/field'
 import { PILL_FILTRO_SM, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { fmtDate } from '@/lib/fmt'
+import { acaoDaLinha } from './acao-da-linha'
 import EstadoBadge from './estado-badge'
 import type { LivroLista } from './tipos'
 
@@ -108,13 +109,9 @@ export default function AcervoTab({ livros, podeGerir, meuId, onAbrirFicha, onPe
                 {filtrados.map(l => {
                   // Livro disponível: qualquer um pega. Emprestado a MIM: eu devolvo.
                   // Emprestado a OUTRA pessoa: só a gestão devolve — para os demais, nenhum
-                  // botão (e não um botão que erra quando clicado). (Tarefa 9 centraliza
-                  // esta regra em `acaoDaLinha`; por ora, inline nos dois lugares que usam.)
-                  const acao = !l.emprestado
-                    ? 'pegar'
-                    : l.portador_id === meuId || podeGerir
-                      ? 'devolver'
-                      : null
+                  // botão (e não um botão que erra quando clicado). Regra centralizada em
+                  // `acaoDaLinha` (testável sem render — ver `acao-da-linha.test.ts`).
+                  const acao = acaoDaLinha(l, meuId, podeGerir)
 
                   return (
                     <tr

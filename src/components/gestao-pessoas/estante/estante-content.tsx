@@ -5,19 +5,18 @@ import { useRouter } from 'next/navigation'
 import { Plus } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
-import ModalCentral from '@/components/shared/modal-central'
-import Button from '@/components/ui/button'
-import { Textarea } from '@/components/ui/field'
-import { carregarFicha, registrarMovimentacao, type Ficha } from '@/app/gestao-pessoas/estante/actions'
+import { carregarFicha, type Ficha } from '@/app/gestao-pessoas/estante/actions'
 import AcervoTab from './acervo-tab'
 import FichaDrawer from './ficha-drawer'
+import HistoricoTab from './historico-tab'
 import LivroFormModal, { type EstadoForm } from './livro-form-modal'
+import MovimentacaoModal from './movimentacao-modal'
 import RemoverLivroModal from './remover-livro-modal'
 import type { LivroLista, MovimentacaoEstante, TipoMovimentacaoEstante } from './tipos'
 
-// Estante Welcome — casca da tela (v5.11.0/M3). As duas abas ficam SEMPRE montadas,
-// alternando por `hidden` (molde: inventario-content.tsx): busca/filtro do Acervo
-// sobrevivem à troca de aba. A aba Histórico é a Tarefa 9 — aqui é só o placeholder.
+// Estante Welcome — casca da tela (v5.11.0/M3-M4). As duas abas ficam SEMPRE montadas,
+// alternando por `hidden` (molde: inventario-content.tsx): busca/filtro do Acervo e do
+// Histórico sobrevivem à troca de aba.
 //
 // Dado vem PRONTO da page (RSC); cada escrita é server action + `router.refresh()` — o
 // padrão da casa. A ficha é a ÚNICA exceção: ela é buscada de novo ao abrir o drawer
@@ -55,9 +54,6 @@ export default function EstanteContent({ livros, movimentacoes, erroDeLeitura, p
   const [form, setForm] = useState<EstadoForm | null>(null)
   const [livroParaRemover, setLivroParaRemover] = useState<LivroLista | null>(null)
   const [movimentando, setMovimentando] = useState<Movimentando | null>(null)
-  const [obsMovimentacao, setObsMovimentacao] = useState('')
-  const [erroMovimentacao, setErroMovimentacao] = useState<string | null>(null)
-  const [salvandoMovimentacao, setSalvandoMovimentacao] = useState(false)
 
   const [msg, setMsg] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null)
 
@@ -94,29 +90,6 @@ export default function EstanteContent({ livros, movimentacoes, erroDeLeitura, p
 
   function abrirMovimentacao(livro: LivroLista, tipo: TipoMovimentacaoEstante) {
     setMovimentando({ livro, tipo })
-    setObsMovimentacao('')
-    setErroMovimentacao(null)
-  }
-
-  async function confirmarMovimentacao() {
-    if (!movimentando) return
-    setErroMovimentacao(null)
-    setSalvandoMovimentacao(true)
-    const res = await registrarMovimentacao({
-      livro_id: movimentando.livro.id,
-      tipo: movimentando.tipo,
-      data_movimentacao: null, // a RPC usa o hoje de São Paulo
-      obs: obsMovimentacao.trim() === '' ? null : obsMovimentacao.trim(),
-    })
-    setSalvandoMovimentacao(false)
-
-    if (!res.ok) { setErroMovimentacao(res.erro); return }
-
-    const texto = movimentando.tipo === 'emprestimo'
-      ? `"${movimentando.livro.titulo}" registrado como emprestado.`
-      : `"${movimentando.livro.titulo}" devolvido à estante.`
-    setMovimentando(null)
-    await recarregar(texto)
   }
 
   return (
@@ -185,11 +158,7 @@ export default function EstanteContent({ livros, movimentacoes, erroDeLeitura, p
         />
       </div>
       <div role="tabpanel" id="painel-historico" aria-labelledby="tab-historico" className={aba === 'historico' ? '' : 'hidden'}>
-        {/* Tarefa 9: razão completo da estante (tabela + filtros), consumindo `movimentacoes`.
-            Placeholder até lá — a contagem já dá uma ideia do tamanho do razão. */}
-        <p className="py-10 text-center text-sm text-[var(--text-subtle)]">
-          O histórico completo da estante ({movimentacoes.length} {movimentacoes.length === 1 ? 'movimentação' : 'movimentações'}) chega na próxima etapa.
-        </p>
+        <HistoricoTab movimentacoes={movimentacoes} onAbrirFicha={abrirFicha} />
       </div>
 
       {livroAberto && (
@@ -233,41 +202,16 @@ export default function EstanteContent({ livros, movimentacoes, erroDeLeitura, p
       )}
 
       {movimentando && (
-        <ModalCentral
-          titulo={movimentando.tipo === 'emprestimo' ? 'Confirmar empréstimo' : 'Confirmar devolução'}
-          subtitulo={movimentando.livro.titulo}
-          rodape={
-            <div>
-              {erroMovimentacao && (
-                <FaixaMensagem tipo="erro" texto={erroMovimentacao} onFechar={() => setErroMovimentacao(null)} />
-              )}
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="contorno" size="sm" onClick={() => setMovimentando(null)} disabled={salvandoMovimentacao}>
-                  Cancelar
-                </Button>
-                <Button variant="solido" size="sm" onClick={confirmarMovimentacao} disabled={salvandoMovimentacao}>
-                  {salvandoMovimentacao ? 'Registrando…' : movimentando.tipo === 'emprestimo' ? 'Registrar empréstimo' : 'Registrar devolução'}
-                </Button>
-              </div>
-            </div>
-          }
-          onClose={() => setMovimentando(null)}
-        >
-          <p className="text-sm text-zinc-700">
-            {movimentando.tipo === 'emprestimo'
-              ? <>Registrar que você está pegando <strong>{movimentando.livro.titulo}</strong>, com data de hoje.</>
-              : <>Registrar a devolução de <strong>{movimentando.livro.titulo}</strong>, com data de hoje.</>}
-          </p>
-          <label className="mt-3 flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-zinc-600">Observação (opcional)</span>
-            <Textarea
-              rows={2}
-              value={obsMovimentacao}
-              onChange={e => setObsMovimentacao(e.target.value)}
-              className="resize-none"
-            />
-          </label>
-        </ModalCentral>
+        <MovimentacaoModal
+          livro={movimentando.livro}
+          tipo={movimentando.tipo}
+          meuId={meuId}
+          onFechar={() => setMovimentando(null)}
+          onRegistrada={async texto => {
+            setMovimentando(null)
+            await recarregar(texto)
+          }}
+        />
       )}
     </div>
   )
