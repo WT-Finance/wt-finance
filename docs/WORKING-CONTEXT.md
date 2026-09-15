@@ -15,10 +15,27 @@
 
 ## Em voo
 
-**Nada.** A v5.10.3 foi mergeada (PR #271, 15/09 às 10:03) e está em produção. A frente está
+**Nada.** A v5.11.0 foi mergeada (PR #273, 15/09 às 12:55) e está em produção. A frente está
 livre para a próxima versão — `/nova-versao <vX-Y>`.
 
-> **A role `verificador` (seria a v5.11.0) foi adiada para a v6** por bloqueio operacional. O risco
+> 🔴 **Pendência do Yan, uma só, herdada da v5.11.0:** decidir se `PRIORIDADE_INICIAL`
+> (`src/lib/auth/areas.ts`) passa a incluir as áreas da Estante. Hoje um colaborador cujo **único**
+> acesso fosse `gestao-pessoas/estante` veria o item na sidebar mas cairia em `/sem-acesso` ao abrir
+> `/`. O buraco é **pré-existente** — Inventário, Acervo e `solicitacoes/basico` têm o mesmo —, mas a
+> Estante é o primeiro módulo com cara de "única área do colaborador comum". Mexer ali altera o
+> redirect inicial de TODA a plataforma, por isso ficou para decisão, não para autonomia.
+
+> 🔴 **Decisão aberta: ambiente de teste próprio.** O gatilho da skill `banco-e-rpc` §6 foi
+> **tocado** na v5.11.0 — são agora **quatro** arquivos de teste que escrevem em produção (três em
+> transação revertida + a exceção commitada da API externa). O caso novo reforça o argumento a
+> favor do ambiente próprio em vez de enfraquecê-lo: as travas de permissão da Estante só são
+> testáveis por conexão direta assumindo identidade JWT, porque o `service_role` faz bypass do
+> `exigir_acesso`. Um ambiente com usuários controlados resolveria sem tocar produção.
+
+> **A role `verificador` foi adiada para a v6** por bloqueio operacional. (Ela chegou a ser
+> planejada como v5.11.0 — há um `docs/briefings/briefing-v5-11-0-role-verificador.md` **untracked
+> na raiz** com esse nome; o número v5.11.0 foi para a Estante Welcome, então aquele briefing está
+> com nome defasado e precisa ser renumerado quando for retomado.) O risco
 > de varredura de produção com `service_role` fica **aceito por decisão do Yan** até lá — o item
 > segue em `docs/backlog-v6.md`. O que **não** dependia da role já foi feito na v5.10.3: o script de
 > varredura com a chave de serviço saiu do repositório, a conexão direta de leitura trava em
@@ -34,10 +51,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v5.10.3** (PR #271, mergeado 15/09 às 10:03) |
-| Última migration aplicada | **0270** · próxima livre: **0271** |
-| Último ADR | **0173** (aceito) · próximo livre: **0174** |
-| Suíte | **1.225 testes**, 74 arquivos, ~73 s no `vitest` 5 (era ~94 s no 3), zero `skip` silencioso |
+| Produção | **v5.11.0** (PR #273, mergeado 15/09 às 12:55) |
+| Última migration aplicada | **0272** · próxima livre: **0273** |
+| Último ADR | **0174** (aceito) · próximo livre: **0175** |
+| Suíte | **1.247 testes**, 76 arquivos, ~78 s no `vitest` 5, zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
