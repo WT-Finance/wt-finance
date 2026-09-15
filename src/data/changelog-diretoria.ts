@@ -36,7 +36,7 @@ export interface ChangelogEntrada {
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
     versao: '5.11.0',
-    data: '2026-09-15T12:00', // autoria; reconciliar ao merge real no /pos-merge
+    data: '2026-09-15T12:17', // autoria real (commit ddf3692); reconciliar ao merge no /pos-merge
     itens: [
       {
         tipo: 'novidade',
@@ -58,7 +58,7 @@ export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   },
   {
     versao: '5.10.3',
-    data: '2026-09-14T17:18', // autoria; reconciliar ao merge real no /pos-merge
+    data: '2026-09-15T10:03', // merge real do PR #271 (2026-09-15T13:03:34Z → -03)
     itens: [
       {
         tipo: 'melhoria',

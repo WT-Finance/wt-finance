@@ -10,7 +10,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 MINOR · **Gestão de Pessoas: Estante Welcome** — segundo módulo da seção, irmão deliberado do
 Inventário de Ativos. Cadastro dos livros da estante e um razão append-only de empréstimos e
-devoluções. Migrations `0271`/`0272` (aditivas, aplicadas) · **ADR-0174** · **1.243 testes**.
+devoluções. Migrations `0271`/`0272` (aditivas, aplicadas) · **ADR-0174** · **1.247 testes**.
 
 ### Adicionado — a estante
 
@@ -55,12 +55,12 @@ devoluções. Migrations `0271`/`0272` (aditivas, aplicadas) · **ADR-0174** · 
   e paridade de áreas banco↔app (`app.rbac_areas` × `AREAS`) conferida.
 - `nav-model.test.ts` estendido: `areasDaRota` de `/gestao-pessoas` desdobrada **por rota** — a
   Estante não regride a permissão do Inventário, e vice-versa.
-- **1.243 testes** · `tsc`, lint e build limpos · `revisor` e `revisor-db` (0271+0272 aprovadas,
+- **1.247 testes** · `tsc`, lint e build limpos · `revisor` e `revisor-db` (0271+0272 aprovadas,
   ressalvas baixas endereçadas ou registradas com ruling).
 
 ---
 
-## [5.10.3] — 2026-09-14
+## [5.10.3] — 2026-09-15
 
 PATCH · **Higiene de credencial e uma convenção que voltou a descrever a realidade.** Tira do repositório o script de varredura que carregava a chave de serviço — o molde do incidente de 10/09 —, trava em **somente-leitura** a conexão direta do único bloco de teste que só lê, e faz a sonda cobrar as duas coisas por máquina. **Nenhuma mudança de comportamento da aplicação; nenhum arquivo de `src/` fora de teste.** Migration: nenhuma · ADR: nenhum · **1.225 testes** (1.220 + 5 casos novos de sonda, zero `skip`).
 

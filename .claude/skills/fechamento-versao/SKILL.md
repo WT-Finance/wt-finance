@@ -34,6 +34,14 @@ rota** (ex.: a rota de preview de um gate): o `validator.ts` do build anterior s
 página deletada e o `tsc` quebra em arquivo gerado — `rm -rf .next/types` basta. (v5.4.2.) Ordem que evita o retrabalho:
 gates → revisores → visual (com dev) → `rm -rf .next` + gates de novo se algo mudou depois. (v5.3.3.)
 
+⚠️ **`node_modules` da worktree como SYMLINK quebra SÓ o build.** Se a worktree foi montada com
+`node_modules` apontando para o checkout raiz, o Turbopack recusa (*"Symlink [project]/node_modules
+is invalid, it points out of the filesystem root"*) e o `npm run build` aborta com
+`TurbopackInternalError`. O sinal que confunde é que **`tsc`, `lint` e `vitest` atravessam o symlink
+sem reclamar** — a versão parece verde até o gate de build, no fim. Correção: `npm ci` real dentro
+da worktree (`node_modules` é git-ignored; o checkout raiz não é tocado). Não é motivo para mexer em
+config. (v5.10.3.)
+
 ## 3. Conferência visual (se a versão tocou UI)
 
 O orquestrador sobe `npm run dev` (serializado — subagente NUNCA sobe servidor), despacha o
