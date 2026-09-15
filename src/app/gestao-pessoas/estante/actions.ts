@@ -109,14 +109,28 @@ export async function removerLivro(id: number): Promise<Resultado> {
   const { data, error } = await rpcEstante(db, 'estante_remover_livro', { p_id: id })
   if (error) return { ok: false, erro: traduzirErro(error.message) }
   const acao = (data as { acao?: unknown } | null)?.acao
-  revalidatePath(ROTA)
-  return {
-    ok: true,
-    id,
-    mensagem: acao === 'arquivado'
-      ? 'Livro arquivado: ele já teve empréstimo, e o histórico continua registrado.'
-      : 'Livro excluído.',
+  // Mapeamento EXPLÍCITO dos três valores possíveis, sem `else` genérico: foi um `else`
+  // fail-open desse tipo que o revisor-db reprovou no lado SQL (achado A2). Um `acao` que
+  // este código não reconhece cai no `default` e FALHA de forma visível em vez de arriscar
+  // uma frase errada (foi exatamente essa mentira — 'arquivado' para um no-op — que o B7
+  // pegou quando a RPC ainda não distinguia 'arquivado' de 'ja_arquivado').
+  let mensagem: string
+  switch (acao) {
+    case 'apagado':
+      mensagem = 'Livro excluído: nunca foi emprestado, então saiu de vez.'
+      break
+    case 'arquivado':
+      mensagem = 'Livro arquivado: ele já teve empréstimo, e o histórico continua registrado.'
+      break
+    case 'ja_arquivado':
+      mensagem = 'Este livro já estava arquivado — nada para fazer.'
+      break
+    default:
+      console.error('[estante] estante_remover_livro: acao desconhecida da RPC:', acao)
+      return { ok: false, erro: 'Não foi possível confirmar o resultado da exclusão. Recarregue a página.' }
   }
+  revalidatePath(ROTA)
+  return { ok: true, id, mensagem }
 }
 
 export interface Ficha {
