@@ -12,7 +12,15 @@
 --     sem consumidor.
 --   • ORÇAMENTO DE TEMPO: rodam como `authenticated` (teto de 8s, ADR-0122). O
 --     volume é uma estante de escritório (dezenas de linhas) — sem risco de N+1.
---   • Reversão (manual, destrutiva): DROP das 7 funções `public.estante_*`.
+--   • Reversão (manual, destrutiva) — assinaturas completas (sem elas o DROP não
+--     resolve função com DEFAULT); executar ANTES do DROP SCHEMA da 0271:
+--       DROP FUNCTION public.estante_listar_livros(text, text, boolean);
+--       DROP FUNCTION public.estante_detalhe_livro(bigint);
+--       DROP FUNCTION public.estante_listar_movimentacoes(integer);
+--       DROP FUNCTION public.estante_criar_livro(text, text, text, smallint, text, text);
+--       DROP FUNCTION public.estante_atualizar_livro(bigint, text, text, text, smallint, text, text);
+--       DROP FUNCTION public.estante_remover_livro(bigint);
+--       DROP FUNCTION public.estante_registrar_movimentacao(bigint, text, uuid, date, text);
 -- ---------------------------------------------------------------------------
 
 -- Áreas que abrem a LEITURA: gestão inclui o uso (invariante 8 do briefing).
@@ -32,9 +40,15 @@ SET search_path = ''
 AS $$
 DECLARE
   v   jsonb;
-  v_q text := app.norm_nome(coalesce(p_busca, ''));
+  -- `app.norm_nome` só faz lower/btrim/colapso de espaço — não escapa curinga de
+  -- LIKE. Escapamos aqui para uma busca com "%" ou "_" não virar padrão.
+  v_q text := replace(replace(app.norm_nome(coalesce(p_busca, '')), '%', '\%'), '_', '\_');
 BEGIN
   PERFORM app.exigir_acesso(ARRAY['gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']);
+
+  IF p_estado IS NOT NULL AND p_estado NOT IN ('emprestado', 'disponivel') THEN
+    RAISE EXCEPTION 'ESTADO_INVALIDO: "%" não é um estado reconhecido', p_estado USING ERRCODE = '22023';
+  END IF;
 
   SELECT coalesce(jsonb_agg(x ORDER BY x->>'titulo'), '[]'::jsonb) INTO v
   FROM (
@@ -67,10 +81,13 @@ BEGIN
            OR (p_estado = 'disponivel' AND NOT coalesce(e.emprestado, false)))
       AND (
         v_q = '' OR
-        app.norm_nome(l.titulo)                LIKE '%' || v_q || '%' OR
-        app.norm_nome(coalesce(l.autor, ''))   LIKE '%' || v_q || '%' OR
-        app.norm_nome(coalesce(l.editora, '')) LIKE '%' || v_q || '%' OR
-        app.norm_nome(coalesce(u.nome, e.usuario_nome, '')) LIKE '%' || v_q || '%'
+        app.norm_nome(l.titulo)                LIKE '%' || v_q || '%' ESCAPE '\' OR
+        app.norm_nome(coalesce(l.autor, ''))   LIKE '%' || v_q || '%' ESCAPE '\' OR
+        app.norm_nome(coalesce(l.editora, '')) LIKE '%' || v_q || '%' ESCAPE '\' OR
+        -- Só casa nome de portador se o livro ESTIVER emprestado — senão "Ana"
+        -- devolve livros disponíveis que ela já devolveu, com pill "Disponível".
+        (coalesce(e.emprestado, false) AND
+         app.norm_nome(coalesce(u.nome, e.usuario_nome, '')) LIKE '%' || v_q || '%' ESCAPE '\')
       )
   ) s;
   RETURN v;
@@ -282,7 +299,9 @@ LANGUAGE plpgsql
 VOLATILE SECURITY DEFINER
 SET search_path = ''
 AS $$
-DECLARE v_tem_historico boolean;
+DECLARE
+  v_tem_historico boolean;
+  v_ja_arquivado  boolean;
 BEGIN
   PERFORM app.exigir_acesso(ARRAY['gestao-pessoas/estante/gestao']);
 
@@ -290,10 +309,20 @@ BEGIN
     RAISE EXCEPTION 'LIVRO_NAO_ENCONTRADO: livro % não existe', p_id USING ERRCODE = '22023';
   END IF;
 
+  -- Trava a linha do livro: entre esta checagem e o DELETE abaixo, uma
+  -- movimentação inserida por outra sessão não pode aparecer (M3 do revisor-db).
+  PERFORM 1 FROM estante.livro WHERE id = p_id FOR UPDATE;
+
   SELECT EXISTS (SELECT 1 FROM estante.movimentacao m WHERE m.livro_id = p_id)
     INTO v_tem_historico;
 
   IF v_tem_historico THEN
+    SELECT (arquivado_em IS NOT NULL) INTO v_ja_arquivado FROM estante.livro WHERE id = p_id;
+    IF v_ja_arquivado THEN
+      -- Já estava arquivado: não é um no-op disfarçado de ação. A tela precisa
+      -- saber que nada mudou para não afirmar "arquivado" como se tivesse agido.
+      RETURN jsonb_build_object('id', p_id, 'acao', 'ja_arquivado');
+    END IF;
     UPDATE estante.livro SET arquivado_em = now(), atualizado_em = now()
      WHERE id = p_id AND arquivado_em IS NULL;
     RETURN jsonb_build_object('id', p_id, 'acao', 'arquivado');
@@ -307,8 +336,9 @@ REVOKE EXECUTE ON FUNCTION public.estante_remover_livro(bigint) FROM PUBLIC, ano
 GRANT  EXECUTE ON FUNCTION public.estante_remover_livro(bigint) TO authenticated, service_role;
 
 -- ── 7. Registrar movimentação ───────────────────────────────────────────────────
--- As cinco recusas desta função SÃO a regra de negócio da versão; nada disto se
--- duplica no TypeScript (invariante 7).
+-- As recusas desta função (JA_EMPRESTADO, NAO_EMPRESTADO, DEVOLUCAO_DE_OUTRO,
+-- EMPRESTIMO_PARA_OUTRO, LIVRO_ARQUIVADO, e as de validação de entrada) SÃO a
+-- regra de negócio da versão; nada disto se duplica no TypeScript (invariante 7).
 CREATE OR REPLACE FUNCTION public.estante_registrar_movimentacao(
   p_livro_id          bigint,
   p_tipo              text,
@@ -323,10 +353,16 @@ SET search_path = ''
 AS $$
 DECLARE
   v_tipo       estante.tipo_movimentacao;
-  v_uid        uuid    := app.uid_jwt();
-  v_alvo       uuid    := coalesce(p_usuario_id, app.uid_jwt());
-  v_gestao     boolean := estante.pode_gerir();
-  v_data       date    := coalesce(p_data_movimentacao, CURRENT_DATE);
+  v_uid        uuid   := app.uid_jwt();
+  v_alvo       uuid   := coalesce(p_usuario_id, app.uid_jwt());
+  -- Sem inicializador: atribuído no corpo, DEPOIS do PERFORM app.exigir_acesso
+  -- (achado M1 do revisor-db). Inicializadores de DECLARE rodam antes da primeira
+  -- instrução do BEGIN, então `:= estante.pode_gerir()` aqui rodaria ANTES do
+  -- guard — hoje inofensivo porque o valor só é usado depois e anon não tem
+  -- EXECUTE, mas a segurança da função não deve depender de "uso depois" em vez
+  -- de "chamada depois".
+  v_gestao     boolean;
+  v_data       date   := coalesce(p_data_movimentacao, CURRENT_DATE);
   v_emprestado boolean;
   v_portador   uuid;
   v_arquivado  boolean;
@@ -334,14 +370,25 @@ DECLARE
   v_id         bigint;
 BEGIN
   PERFORM app.exigir_acesso(ARRAY['gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']);
+  v_gestao := estante.pode_gerir();
 
   BEGIN
     v_tipo := p_tipo::estante.tipo_movimentacao;
   EXCEPTION WHEN others THEN
     RAISE EXCEPTION 'TIPO_INVALIDO: "%" não é um tipo de movimentação', p_tipo USING ERRCODE = '22023';
   END;
+  -- `NULL::estante.tipo_movimentacao` NÃO lança — o cast acima não dispara a
+  -- EXCEPTION para p_tipo NULL, e sem este guard o fluxo cairia silenciosamente
+  -- no ramo de devolução (achado A1 do revisor-db).
+  IF v_tipo IS NULL THEN
+    RAISE EXCEPTION 'TIPO_INVALIDO: informe "emprestimo" ou "devolucao"' USING ERRCODE = '22023';
+  END IF;
 
-  SELECT (l.arquivado_em IS NOT NULL) INTO v_arquivado FROM estante.livro l WHERE l.id = p_livro_id;
+  -- Trava a linha do livro: entre esta leitura e o INSERT no fim, duas sessões
+  -- concorrentes não podem ambas passar pelo JA_EMPRESTADO (achado M3 do
+  -- revisor-db).
+  SELECT (l.arquivado_em IS NOT NULL) INTO v_arquivado
+  FROM estante.livro l WHERE l.id = p_livro_id FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'LIVRO_NAO_ENCONTRADO: livro % não existe', p_livro_id USING ERRCODE = '22023';
   END IF;
@@ -349,18 +396,17 @@ BEGIN
     RAISE EXCEPTION 'LIVRO_ARQUIVADO: livro arquivado não aceita movimentação' USING ERRCODE = '22023';
   END IF;
 
-  -- Sem JWT (service_role/superusuário) o alvo tem de vir explícito: `usuario_id` é
-  -- NOT NULL e não há de quem derivá-lo.
-  IF v_alvo IS NULL THEN
-    RAISE EXCEPTION 'USUARIO_OBRIGATORIO: informe de quem é a movimentação' USING ERRCODE = '22023';
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM app.rbac_usuarios u WHERE u.user_id = v_alvo AND u.ativo) THEN
-    RAISE EXCEPTION 'USUARIO_DESCONHECIDO: pessoa sem cadastro ativo no Janus' USING ERRCODE = '42501';
-  END IF;
-
   IF v_data < DATE '2000-01-01' THEN
     RAISE EXCEPTION 'DATA_INVALIDA: % está fora do intervalo aceito — confira o ano', v_data
       USING ERRCODE = '22023';
+  END IF;
+  -- Teto: uma data futura (typo de ano) vira a última movimentação para sempre
+  -- pela ordenação (data DESC, criado_em DESC, id DESC), e a correção por
+  -- movimentação nova — a única saída do desenho append-only — deixa de
+  -- funcionar (achado M2 do revisor-db). O CHECK não serve: CURRENT_DATE não é
+  -- IMMUTABLE. Retroativa continua liberada.
+  IF v_data > CURRENT_DATE THEN
+    RAISE EXCEPTION 'DATA_FUTURA: a movimentação não pode ter data futura' USING ERRCODE = '22023';
   END IF;
 
   SELECT coalesce(e.emprestado, false), e.usuario_id INTO v_emprestado, v_portador
@@ -372,23 +418,42 @@ BEGIN
     IF v_emprestado THEN
       RAISE EXCEPTION 'JA_EMPRESTADO: este livro já está com outra pessoa' USING ERRCODE = '22023';
     END IF;
+    -- O alvo é dado de negócio SÓ neste ramo (achado M6 do revisor-db): sem JWT
+    -- (service_role/superusuário) tem de vir explícito, e precisa de cadastro
+    -- ATIVO — faz sentido exigir isso de quem está PEGANDO o livro agora.
+    IF v_alvo IS NULL THEN
+      RAISE EXCEPTION 'USUARIO_OBRIGATORIO: informe de quem é a movimentação' USING ERRCODE = '22023';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM app.rbac_usuarios u WHERE u.user_id = v_alvo AND u.ativo) THEN
+      RAISE EXCEPTION 'USUARIO_DESCONHECIDO: pessoa sem cadastro ativo no Janus' USING ERRCODE = '42501';
+    END IF;
     -- Registrar empréstimo em nome de terceiro é ato de gestão (alguém pegou o
     -- livro e não registrou). Para si mesmo, qualquer um da área de uso.
     IF v_alvo <> coalesce(v_uid, v_alvo) AND NOT v_gestao THEN
       RAISE EXCEPTION 'EMPRESTIMO_PARA_OUTRO: só a gestão registra empréstimo em nome de outra pessoa'
         USING ERRCODE = '42501';
     END IF;
-  ELSE
+  ELSIF v_tipo = 'devolucao' THEN
     IF NOT v_emprestado THEN
       RAISE EXCEPTION 'NAO_EMPRESTADO: este livro já está na estante' USING ERRCODE = '22023';
     END IF;
     -- A devolução é SEMPRE do portador atual — o razão não aceita devolução em nome
-    -- de quem não estava com o livro.
+    -- de quem não estava com o livro. Nenhuma exigência de cadastro ATIVO aqui
+    -- (achado M6 do revisor-db): devolver o livro de alguém que já saiu da
+    -- empresa é precisamente o caso de uso da regra "só a gestão devolve por
+    -- outro" logo abaixo.
     v_alvo := v_portador;
     IF v_portador <> coalesce(v_uid, v_portador) AND NOT v_gestao THEN
       RAISE EXCEPTION 'DEVOLUCAO_DE_OUTRO: este livro está com outra pessoa — só a gestão devolve por ela'
         USING ERRCODE = '42501';
     END IF;
+  ELSE
+    -- Trava explícita: sem este ELSE, um terceiro valor futuro do enum (ex.:
+    -- "reserva") cairia aqui por coincidência de tamanho do enum e seria tratado
+    -- como devolução — nada reprovaria, nem banco, nem tsc, nem a suíte (achado
+    -- A2 do revisor-db). `estante.tipo_movimentacao` tem hoje só dois valores; a
+    -- fronteira da versão prevê que ele cresça (reserva, baixa) depois.
+    RAISE EXCEPTION 'TIPO_NAO_SUPORTADO: "%" não é tratado por esta função', v_tipo USING ERRCODE = '22023';
   END IF;
 
   SELECT u.nome INTO v_nome FROM app.rbac_usuarios u WHERE u.user_id = v_alvo;

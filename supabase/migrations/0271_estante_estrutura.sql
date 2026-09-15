@@ -22,10 +22,17 @@
 --     INCLUI a de uso (a página faz OR das duas). Gate inicial APERTADO: só os
 --     roles que já têm 'admin/acessos' recebem as áreas novas; o admin libera os
 --     demais pelo editor de roles.
---   • Reversão (manual, destrutiva): DROP SCHEMA estante CASCADE (leva junto os 2
---     triggers do diário, que vivem nas tabelas deste schema), DELETE das linhas
---     de app.rbac_role_permissoes com area IN ('gestao-pessoas/estante',
---     'gestao-pessoas/estante/gestao') e DELETE das 2 linhas de app.rbac_areas.
+--   • Reversão (manual, destrutiva) — ORDEM OBRIGATÓRIA, porque as 7 funções
+--     `public.estante_*` da 0272 NÃO pertencem ao schema `estante` (nenhuma tem
+--     tipo de `estante` na assinatura) e sobreviveriam a um DROP SCHEMA CASCADE,
+--     apontando para objetos inexistentes:
+--       1. os 7 DROP FUNCTION da 0272 (ver header daquela migration para as
+--          assinaturas completas);
+--       2. DROP SCHEMA estante CASCADE (leva junto os 2 triggers do diário, que
+--          vivem nas tabelas deste schema);
+--       3. DELETE das linhas de app.rbac_role_permissoes com area IN
+--          ('gestao-pessoas/estante', 'gestao-pessoas/estante/gestao') e DELETE
+--          das 2 linhas de app.rbac_areas.
 --     As entradas já gravadas em financeiro.diario_alteracoes permanecem — o
 --     diário é append-only e imutável por construção.
 -- ---------------------------------------------------------------------------
@@ -33,8 +40,14 @@
 CREATE SCHEMA IF NOT EXISTS estante;
 
 -- Nenhum papel do PostgREST alcança o schema: todo acesso é por RPC SECURITY
--- DEFINER em `public` (dono postgres). Postura da 0120/0122/0247.
+-- DEFINER em `public` (dono postgres). Postura da 0120/0122/0247 — e, como o
+-- molde 0247, revogada tabela a tabela (não só o schema), incluindo os default
+-- privileges: sem isso, uma função futura criada em `estante` nasceria com
+-- EXECUTE para PUBLIC, porque os default privileges do projeto são por schema e
+-- não cobrem `estante` hoje.
 REVOKE ALL ON SCHEMA estante FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES IN SCHEMA estante
+  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
 
 COMMENT ON SCHEMA estante IS
   'Estante Welcome (v5.11.0). Razão append-only de empréstimos; disponibilidade e portador são DERIVADOS da última movimentação, nunca colunas em estante.livro.';
@@ -99,6 +112,11 @@ CREATE INDEX idx_estante_mov_livro_ordem
   ON estante.movimentacao(livro_id, data_movimentacao DESC, criado_em DESC, id DESC);
 CREATE INDEX idx_estante_mov_usuario ON estante.movimentacao(usuario_id);
 
+-- Tabela a tabela (molde 0247), além do REVOKE de schema acima — inclui as
+-- sequências dos bigserial, que ganham privilégio próprio por padrão.
+REVOKE ALL ON estante.livro, estante.movimentacao FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON estante.livro_id_seq, estante.movimentacao_id_seq FROM PUBLIC, anon, authenticated;
+
 -- ── 4. Estado derivado (invariante 1) ───────────────────────────────────────────
 -- Última movimentação por livro. Livro SEM movimentação não aparece aqui — e o LEFT
 -- JOIN das RPCs o lê como disponível, que é o estado correto (invariante 2).
@@ -116,12 +134,16 @@ CREATE VIEW estante.v_estado_atual AS
 REVOKE ALL ON estante.v_estado_atual FROM PUBLIC, anon, authenticated;
 
 -- ── 5. Helper de permissão de gestão ────────────────────────────────────────────
--- Chamado SEMPRE depois de `app.exigir_acesso`, que já barrou anônimo e usuário
--- inativo. Nesse ponto, `app.uid_jwt() IS NULL` só acontece para service_role ou
--- conexão de superusuário (migration, `db query`, teste) — os mesmos que o próprio
--- `exigir_acesso` libera por atalho. Tratá-los como gestão mantém as duas funções
--- coerentes; tratá-los como usuário comum tornaria as RPCs de catálogo
--- inalcançáveis à verificação via REST/service_role, que é o padrão do projeto.
+-- Esta função NÃO garante, por si, que rodou depois de `app.exigir_acesso` — ela só
+-- responde "este uid/contexto tem a área de gestão?". A garantia de que só é
+-- CHAMADA depois do guard é responsabilidade de cada RPC chamadora (nas 0272:
+-- `v_gestao` é atribuído no corpo, logo após o `PERFORM app.exigir_acesso(...)`,
+-- nunca no inicializador do DECLARE). Dito isso, `app.uid_jwt() IS NULL` só
+-- acontece para service_role ou conexão de superusuário (migration, `db query`,
+-- teste) — os mesmos que o próprio `exigir_acesso` libera por atalho. Tratá-los
+-- como gestão mantém as duas funções coerentes; tratá-los como usuário comum
+-- tornaria as RPCs de catálogo inalcançáveis à verificação via REST/service_role,
+-- que é o padrão do projeto.
 CREATE OR REPLACE FUNCTION estante.pode_gerir()
 RETURNS boolean
 LANGUAGE sql
