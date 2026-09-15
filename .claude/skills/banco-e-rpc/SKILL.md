@@ -615,9 +615,19 @@ externa ponta a ponta por HTTP — a fixture precisa estar **commitada** para o 
 **ambiente de teste próprio** (staging/branching — §1). Este caminho é para quando escrever é a
 **única** prova, não para conveniência. A contagem é **mecânica**: a sonda mantém a lista fechada
 `ESCREVEM_E_REVERTEM_HOJE` e reprova quando um arquivo novo entra — aí se atualiza esta seção e
-se avalia o gatilho. Hoje: `reverter-diario` (0268) e `virada-paridade` (0181, v5.1.4) em
-transação revertida, mais `contrato-api-externa` como exceção commitada — **três arquivos** de
-teste que escrevem; o próximo é o 4º.
+se avalia o gatilho.
+
+🔴 **O gatilho FOI TOCADO na v5.11.0 e a decisão está aberta.** Hoje são **quatro**:
+`reverter-diario` (0268), `virada-paridade` (0181, v5.1.4) e `estante-rpcs` (0271/0272, v5.11.0)
+em transação revertida, mais `contrato-api-externa` como exceção commitada.
+
+O 4º entrou com uma justificativa que **não** é conveniência, e é ela que precisa entrar na
+reavaliação: por REST com `service_role` as travas de permissão da Estante
+(`DEVOLUCAO_DE_OUTRO`, `PERMISSAO_NEGADA`) são **inalcançáveis** — o `service_role` faz bypass do
+`exigir_acesso` e `app.uid_jwt()` devolve NULL. A única forma de exercitar o ramo de recusa por
+permissão é conexão direta assumindo identidade via `SET LOCAL request.jwt.claims`. Ou seja: o
+argumento a favor do ambiente próprio ficou **mais** forte, não menos — um ambiente de teste com
+usuários controlados resolveria isso sem escrever em produção.
 
 ### Quem se conecta por `SUPABASE_DB_URL`: são CINCO, e quem só lê trava a sessão
 
