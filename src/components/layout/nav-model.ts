@@ -13,7 +13,7 @@
 import {
   LayoutDashboard, TrendingUp, Target, Upload, Building, Plane, Sparkles, Briefcase, Wallet,
   BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox,
-  LineChart, ClipboardList, FileSpreadsheet,
+  LineChart, ClipboardList, FileSpreadsheet, BookOpen,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
@@ -75,6 +75,9 @@ const METAS_SUBS: NavSubItem[] = [
 // O `emConstrucao` saiu na M3: a tela deixou o fixture e passou a ler as RPCs `patrimonio_*`.
 const GESTAO_PESSOAS_SUBS: NavSubItem[] = [
   { href: '/gestao-pessoas/inventario', label: 'Inventário de Ativos', icon: Boxes, area: 'gestao-pessoas/inventario' },
+  // v5.11.0 — 2º módulo da seção. `areasAny`: a área de gestão INCLUI a de uso, então
+  // qualquer uma das duas faz o item aparecer.
+  { href: '/gestao-pessoas/estante', label: 'Estante Welcome', icon: BookOpen, area: 'gestao-pessoas/estante', areasAny: ['gestao-pessoas/estante', 'gestao-pessoas/estante/gestao'] },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa

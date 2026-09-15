@@ -23,6 +23,8 @@ export const AREAS = [
   'solicitacoes',
   'solicitacoes/documentacao',
   'gestao-pessoas/inventario',
+  'gestao-pessoas/estante',
+  'gestao-pessoas/estante/gestao',
 ] as const
 
 export type Area = (typeof AREAS)[number]
@@ -76,6 +78,13 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // Acervo/Metas/Solicitações. Grupo próprio no editor de roles. Gate inicial APERTADO no
   // seed (só quem já tinha 'admin/acessos'); o admin libera os demais pelo editor.
   'gestao-pessoas/inventario': { rotulo: 'Inventário de Ativos', grupo: 'Gestão de Pessoas', ordem: 60 },
+  // Gestão de Pessoas · Estante Welcome (v5.11.0, migration 0271). DOIS níveis, molde de
+  // Acervo/Solicitações: 'gestao-pessoas/estante' = ver a estante e registrar que pegou ou
+  // devolveu; '/gestao' = o catálogo (incluir/editar/excluir livro) e devolver em nome de
+  // outra pessoa — e INCLUI a de uso, porque a página faz OR das duas. Gate inicial
+  // apertado no seed (só quem já tinha 'admin/acessos').
+  'gestao-pessoas/estante':        { rotulo: 'Estante Welcome',          grupo: 'Gestão de Pessoas', ordem: 61 },
+  'gestao-pessoas/estante/gestao': { rotulo: 'Estante Welcome (gestão)', grupo: 'Gestão de Pessoas', ordem: 62 },
 }
 
 /**
@@ -116,10 +125,14 @@ export function areasDaRota(pathname: string): Area[] | null {
   // o Acompanhamento (/metas e /metas/acompanhamento) libera com qualquer uma das duas.
   if (p.startsWith('/metas/cadastro'))          return ['metas']
   if (p.startsWith('/metas'))                   return ['metas/acompanhamento', 'metas']
-  // Gestão de Pessoas · Inventário de Ativos (v5.6.0). Área própria desde a migration 0247;
-  // na M0 esta rota ficou provisoriamente sob 'admin/design-system' porque declarar a área
-  // sem a migration quebraria o teste de paridade banco↔app.
-  if (p.startsWith('/gestao-pessoas'))          return ['gestao-pessoas/inventario']
+  // Gestão de Pessoas tem DOIS módulos desde a v5.11.0: a regra genérica que existia aqui
+  // mandava /gestao-pessoas inteiro para o Inventário, o que faria a Estante nascer gated
+  // pela área errada (usuário só de Estante cairia em /sem-acesso). Específicas primeiro.
+  if (p.startsWith('/gestao-pessoas/estante'))    return ['gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']
+  if (p.startsWith('/gestao-pessoas/inventario')) return ['gestao-pessoas/inventario']
+  // Raiz da seção (só o item-pai da sidebar; não há página em /gestao-pessoas): qualquer
+  // módulo da seção libera.
+  if (p.startsWith('/gestao-pessoas'))            return ['gestao-pessoas/inventario', 'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']

@@ -56,6 +56,12 @@ describe('areasDaRota — toda rota de página tem dono', () => {
   it.each(casos)('%s → %j', (rota, esperado) => {
     expect(areasDaRota(rota)).toEqual(esperado)
   })
+  it('Estante e Inventário não se confundem dentro de /gestao-pessoas', () => {
+    expect(areasDaRota('/gestao-pessoas/estante')).toEqual([
+      'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao',
+    ])
+    expect(areasDaRota('/gestao-pessoas/inventario')).toEqual(['gestao-pessoas/inventario'])
+  })
   it('o mais específico vence o prefixo genérico', () => {
     expect(areasDaRota('/performance/weddings/qualquer')).toEqual(['performance/weddings'])
     expect(areasDaRota('/financeiro/fluxo-caixa/gerencial/x')).toEqual(['financeiro/gerencial'])

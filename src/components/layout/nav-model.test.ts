@@ -193,9 +193,12 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
     ])
   })
 
-  it('SEM a área nova, "Gestão de Pessoas" não aparece — e nada mais muda', () => {
-    const semNova = TODAS.filter(a => a !== 'gestao-pessoas/inventario')
-    expect(rotulos(semNova)).toEqual(rotulos(TODAS).filter(l => l !== 'Gestão de Pessoas'))
+  it('SEM NENHUMA área da seção, "Gestão de Pessoas" não aparece — e nada mais muda', () => {
+    // v5.11.0: a seção passou a ter DOIS módulos (Inventário + Estante); tirar só a área do
+    // Inventário não basta mais para esconder a seção, porque as áreas da Estante também a
+    // fazem aparecer. Tira-se todo prefixo 'gestao-pessoas/*' para provar a mesma invariante.
+    const semNenhuma = TODAS.filter(a => !a.startsWith('gestao-pessoas/'))
+    expect(rotulos(semNenhuma)).toEqual(rotulos(TODAS).filter(l => l !== 'Gestão de Pessoas'))
   })
 
   it('SÓ com a área nova, aparece SÓ a seção nova', () => {

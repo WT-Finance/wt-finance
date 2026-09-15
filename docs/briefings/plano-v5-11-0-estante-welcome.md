@@ -1544,27 +1544,37 @@ git commit -m "feat(v5.11.0/M3): rota e server actions da Estante"
 - [ ] **Step 1: `estado-badge.tsx`**
 
 ```tsx
-import type { LivroLista } from './tipos'
+import Badge, { type BadgeVariant } from '@/components/ui/badge'
+import type { LivroLista, TipoMovimentacaoEstante } from './tipos'
 
-// Pill de estado do exemplar. Dois estados só (a versão não tem manutenção nem baixa).
-// Cores por TOKEN semântico — zero hex (lint wt/no-cor-hardcoded).
-export default function EstadoBadge({ livro }: { livro: LivroLista }) {
-  if (!livro.emprestado) {
-    return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-[var(--positive-soft)] text-[var(--positive)]">
-        Disponível
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-[var(--warning-soft)] text-[var(--warning)]">
-      Emprestado
-    </span>
-  )
+// Estado do exemplar e tipo da movimentação. Cor SEMPRE por variante semântica do primitivo
+// <Badge> — nunca hex, nunca classe de cor crua (lint wt/no-cor-hardcoded). Molde:
+// `inventario/status-badge.tsx`.
+//
+// `emprestado` herda a variante 'gestao' que o Inventário já usa para o status `emprestado`,
+// e o tipo `emprestimo` herda a cor do estado que ele PRODUZ — assim acervo e histórico
+// contam a mesma história.
+export function EstadoBadge({ livro }: { livro: LivroLista }) {
+  const variante: BadgeVariant = livro.emprestado ? 'gestao' : 'success'
+  return <Badge variant={variante}>{livro.emprestado ? 'Emprestado' : 'Disponível'}</Badge>
+}
+
+const VARIANTE_TIPO: Record<TipoMovimentacaoEstante, BadgeVariant> = {
+  emprestimo: 'gestao',
+  devolucao:  'success',
+}
+
+const ROTULO_TIPO: Record<TipoMovimentacaoEstante, string> = {
+  emprestimo: 'Pegou',
+  devolucao:  'Devolveu',
+}
+
+export function TipoBadge({ tipo }: { tipo: TipoMovimentacaoEstante }) {
+  return <Badge variant={VARIANTE_TIPO[tipo]}>{ROTULO_TIPO[tipo]}</Badge>
 }
 ```
 
-Confirme os nomes dos tokens em `src/app/globals.css` antes de commitar; se `--positive-soft`/`--warning-soft` não existirem, use os equivalentes que `status-badge.tsx` do Inventário já usa — **não** crie token novo.
+`EstadoBadge` e `TipoBadge` são exports NOMEADOS (não default) — é o que `status-badge.tsx` do Inventário faz, e o `historico-tab` da Tarefa 9 importa o `TipoBadge` daqui.
 
 - [ ] **Step 2: `estante-content.tsx`**
 
