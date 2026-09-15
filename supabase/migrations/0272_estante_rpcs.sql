@@ -41,8 +41,13 @@ AS $$
 DECLARE
   v   jsonb;
   -- `app.norm_nome` só faz lower/btrim/colapso de espaço — não escapa curinga de
-  -- LIKE. Escapamos aqui para uma busca com "%" ou "_" não virar padrão.
-  v_q text := replace(replace(app.norm_nome(coalesce(p_busca, '')), '%', '\%'), '_', '\_');
+  -- LIKE. Escapamos aqui para uma busca com "%" ou "_" não virar padrão. ORDEM
+  -- IMPORTA (achado R2 da re-revisão): a própria barra invertida tem de ser
+  -- escapada PRIMEIRO — senão "C:\temp" produz "\t" no padrão e o Postgres
+  -- recusa com "invalid escape sequence" (500 por um caractere legítimo).
+  v_q text := replace(replace(replace(
+                app.norm_nome(coalesce(p_busca, '')),
+                '\', '\\'), '%', '\%'), '_', '\_');
 BEGIN
   PERFORM app.exigir_acesso(ARRAY['gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']);
 
@@ -305,13 +310,14 @@ DECLARE
 BEGIN
   PERFORM app.exigir_acesso(ARRAY['gestao-pessoas/estante/gestao']);
 
-  IF NOT EXISTS (SELECT 1 FROM estante.livro l WHERE l.id = p_id) THEN
+  -- Trava a linha do livro E checa a existência no MESMO statement (achado R1 da
+  -- re-revisão): checar em dois passos deixava uma fresta entre o EXISTS sem
+  -- lock e o FOR UPDATE seguinte — outro gestor podia apagar o livro nessa
+  -- janela, e a função devolvia 'apagado' para algo que não tinha apagado.
+  PERFORM 1 FROM estante.livro WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN
     RAISE EXCEPTION 'LIVRO_NAO_ENCONTRADO: livro % não existe', p_id USING ERRCODE = '22023';
   END IF;
-
-  -- Trava a linha do livro: entre esta checagem e o DELETE abaixo, uma
-  -- movimentação inserida por outra sessão não pode aparecer (M3 do revisor-db).
-  PERFORM 1 FROM estante.livro WHERE id = p_id FOR UPDATE;
 
   SELECT EXISTS (SELECT 1 FROM estante.movimentacao m WHERE m.livro_id = p_id)
     INTO v_tem_historico;

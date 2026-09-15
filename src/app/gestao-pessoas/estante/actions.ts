@@ -63,6 +63,7 @@ function traduzirErro(msg: string): string {
   if (msg.includes('DATA_FUTURA'))           return 'A data não pode ser futura.'
   if (msg.includes('TIPO_INVALIDO'))         return 'Tipo de movimentação inválido.'
   if (msg.includes('TIPO_NAO_SUPORTADO'))    return 'Tipo de movimentação não suportado.'
+  if (msg.includes('ESTADO_INVALIDO'))       return 'Filtro de estado inválido.'
   if (msg.includes('USUARIO_INATIVO'))       return 'Seu acesso foi desativado. Recarregue a página.'
   if (msg.includes('PERMISSAO_NEGADA') || msg.includes('AUTH'))
     return 'Sem permissão para esta ação na Estante.'
