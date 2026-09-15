@@ -616,8 +616,46 @@ externa ponta a ponta por HTTP — a fixture precisa estar **commitada** para o 
 **única** prova, não para conveniência. A contagem é **mecânica**: a sonda mantém a lista fechada
 `ESCREVEM_E_REVERTEM_HOJE` e reprova quando um arquivo novo entra — aí se atualiza esta seção e
 se avalia o gatilho. Hoje: `reverter-diario` (0268) e `virada-paridade` (0181, v5.1.4) em
-transação revertida, mais `contrato-api-externa` como exceção commitada — **três arquivos**; o
-próximo é o 4º.
+transação revertida, mais `contrato-api-externa` como exceção commitada — **três arquivos** de
+teste que escrevem; o próximo é o 4º.
+
+### Quem se conecta por `SUPABASE_DB_URL`: são CINCO, e quem só lê trava a sessão
+
+`SUPABASE_DB_URL` é a conexão **direta** com produção (pooler em session mode, ADR-0119) — fora do
+PostgREST, fora de `exigir_acesso`, com o papel dono do banco. Até a v5.10.3 esta seção contava
+"três arquivos" (os testes que escrevem) e era lida como se fosse o inventário **da credencial**;
+os consumidores reais são **cinco**, e dois deles não eram teste nem escrita-e-reversão:
+
+| Consumidor | Classe |
+|---|---|
+| `src/lib/dre/reverter-diario.test.ts` | escreve-e-reverte (0268) |
+| `src/lib/monde/virada-paridade.test.ts` | escreve-e-reverte (0181) |
+| `src/lib/api-externa/contrato-api-externa.test.ts` | exceção: fixture **commitada**, limpa em `afterAll` |
+| `src/lib/rpc-contrato.test.ts` | **somente leitura** (catálogo + `app.areas_do_setor`) |
+| `scripts/db-gate/lib.mjs` | infra do backup-gate: `COPY OUT` do backup e `COPY IN` da recuperação |
+
+**Regra (v5.10.3): consumidor de somente leitura abre a conexão travada.** Primeiro comando depois
+do `connect()`:
+
+```ts
+await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+```
+
+Não é documentação de intenção — é o Postgres recusando qualquer escrita naquela conexão
+(`cannot execute ... in a read-only transaction`), **inclusive a que uma FUNÇÃO faria por dentro**,
+que é precisamente o que a leitura do texto do teste não enxerga (é o mesmo argumento que fez a
+sonda ser allowlist, e não blacklist de `INSERT`/`UPDATE`). `CHARACTERISTICS` e não
+`SET TRANSACTION`: vale para toda transação implícita da sessão, sem exigir um `BEGIN` — e abrir
+`BEGIN` num bloco de leitura contradiria a própria declaração. Precedente: a medição do baseline da
+v5.4.5. Infra que escreve por desenho (o backup-gate) não trava — **declara-se**.
+
+**Enforcement das duas coisas:** `src/lib/sonda-teste-escreve-banco.test.ts` também mantém o
+inventário de `process.env.SUPABASE_DB_URL` **fechado** — varre `src/`, `scripts/` e `supabase/`, e
+cada consumidor tem de estar em uma das quatro listas (`ESCREVEM_E_REVERTEM_HOJE`,
+`EXCECOES_CONHECIDAS`, `INFRA_DECLARADA`, `SOMENTE_LEITURA`); quem não escreve-e-reverte e não é
+infra declarada precisa da trava. Consumidor novo, ou trava removida, reprova a suíte nomeando o
+arquivo. A tabela acima só deriva outra vez se alguém mexer nas duas — que é o ponto: a contagem
+deixou de ser prosa.
 
 ---
 

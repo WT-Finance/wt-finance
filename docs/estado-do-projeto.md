@@ -272,6 +272,29 @@ estão declaradas em `knip.json`.
 | `supabase/seed/seed.ts` (+ `parse-excel.ts`, `load-metas.ts`) | `npm run seed`; usa o caminho **antigo** de carga (`truncate_dynamic_tables`, `inserir_lote_raw`), que por isso **não é órfão** |
 | `supabase/seed/seed-fluxo-caixa.ts` | seed do Fluxo de Caixa |
 
+### Credencial de serviço fora de `src/` — pontos declarados (v5.10.3)
+
+`SUPABASE_SERVICE_ROLE_KEY` é a credencial que **pula `app.exigir_acesso`** (ramo *trusted*): um
+script que a carrega chama qualquer RPC, inclusive as que truncam. Foi essa a forma do incidente de
+10/09/2026. A regra: **script de varredura pontual não fica no repositório depois de cumprido** — o
+registro do que ele achou é o out-briefing, não o executável, que só serve de molde para a próxima
+sessão copiar. Removido na v5.10.3: `docs/auditoria-v5/_insumos/bloco5-verifica-pos-drop.mjs`
+(verificação pós-`0270`, resultado transcrito no out-briefing da v5.10.0; a citação em
+`supabase/migrations/0270_*.sql:291` é de migration **já aplicada** e fica como está — migration
+aplicada não se reescreve).
+
+Os que ficam, e por quê:
+
+| Arquivo | Por que existe |
+|---|---|
+| `scripts/dre-oracle.mjs` | oráculo antes/depois da DRE — **uma** RPC de leitura nomeada, com argumentos; ferramenta de verificação recorrente, citada pelo ADR-0168 e pela skill `banco-e-rpc` §5 |
+| `supabase/patches/RESTORE-incidente-varredura-rest.mjs` | recuperação do incidente **ainda aberto** (306.261 linhas); não usa a chave de serviço — vai pelo `pg` do backup-gate — e é `--confirmar` humano por desenho |
+| `.env.example`, `README.md` | declaração de onboarding: nomeiam a chave, não a portam |
+
+Os dois `.mjs` que sobraram em `docs/auditoria-v5/_insumos/` (`contar-classes`,
+`mapa-rpc-chamadores`) **não tocam banco nem credencial** — leem arquivo e geram as tabelas do
+`relatorio.md`; apagá-los romperia a rastreabilidade dos achados que os citam como evidência.
+
 **Três classes de falso positivo de análise estática** já nomeadas nesta base, e é bom reconhecê-las
 antes de apagar algo: **chamada por processo** (`execFileSync`), **chamada por configuração** (hook
 declarado em `settings.json`) e **citação em Markdown executável** (procedimento de runbook ou ADR
