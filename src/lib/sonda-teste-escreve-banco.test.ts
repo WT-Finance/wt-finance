@@ -71,6 +71,7 @@ const EXCECOES_CONHECIDAS: Record<string, string> = {
 const ESCREVEM_E_REVERTEM_HOJE = [
   'src/lib/dre/reverter-diario.test.ts',   // v5.9.5 (0268) — a referência do contrato
   'src/lib/monde/virada-paridade.test.ts', // v5.1.4 — aplica o UP da 0181 em tx e compara
+  'src/lib/estante/estante-rpcs.test.ts',  // v5.11.0 (0271/0272) — recusas da Estante
 ]
 
 /**

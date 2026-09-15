@@ -44,6 +44,11 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
     porque: 'prova comportamental de RPC que escreve, em transação revertida (0268, v5.9.5)',
   },
   {
+    arquivo: 'src/lib/estante/estante-rpcs.test.ts',
+    envs: ['SUPABASE_DB_URL'],
+    porque: 'prova comportamental das RPCs da Estante Welcome, em transação revertida (0271/0272, v5.11.0)',
+  },
+  {
     arquivo: 'src/lib/monde/virada-paridade.test.ts',
     envs: ['SUPABASE_DB_URL'],
     porque: 'paridade pós-virada do espelho Monde (v5.1.4), em transação',

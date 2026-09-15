@@ -6,6 +6,60 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.11.0] — 2026-09-15
+
+MINOR · **Gestão de Pessoas: Estante Welcome** — segundo módulo da seção, irmão deliberado do
+Inventário de Ativos. Cadastro dos livros da estante e um razão append-only de empréstimos e
+devoluções. Migrations `0271`/`0272` (aditivas, aplicadas) · **ADR-0174** · **1.247 testes**.
+
+### Adicionado — a estante
+
+- **Sub-item "Estante Welcome" na sidebar**, dentro de "Gestão de Pessoas". Rota
+  `/gestao-pessoas/estante`, duas áreas de permissão: `gestao-pessoas/estante` (ver e movimentar) e
+  `gestao-pessoas/estante/gestao` (o catálogo, e a devolução do livro de outra pessoa).
+- **Aba Acervo**: tabela densa (título, autor, ano, pill de estado — "Disponível" ou "Com Fulano
+  desde 12/09"), busca por título/autor, filtro por estado. Drawer com a ficha do livro e o razão
+  daquele exemplar. Cadastro, edição e exclusão do catálogo, restritos a quem tem gestão.
+- **Ação rápida na linha** ("Peguei este livro" / "Devolvi"), com confirmação, `obs` opcional e
+  data padrão hoje — retroativa liberada, futura recusada.
+- **Aba Histórico**: o razão completo, filtro por tipo, busca, clique abre a ficha do livro.
+- **Excluir vira arquivar** a partir da primeira movimentação: livro nunca emprestado some de
+  verdade; livro com histórico é arquivado e some do catálogo ativo com o histórico intacto — a
+  tela conta qual dos dois aconteceu.
+
+### Decidido — o modelo (ADR-0174)
+
+- **Razão append-only com estado derivado, SEM movimentação de abertura.** Divergência deliberada
+  do Inventário (ADR-0167): um livro posto na prateleira não é um evento de empréstimo, e ausência
+  de razão já significa "disponível" sem ambiguidade — um tipo `cadastro` aqui seria cerimônia sem
+  informação.
+- **Um registro é um exemplar, sem coluna de quantidade.** Duas cópias do mesmo título são dois
+  registros; o caminho de volta, se a estante crescer, é puramente aditivo.
+- **Devolução do livro de outra pessoa é ato de gestão** (`DEVOLUCAO_DE_OUTRO` sem
+  `gestao-pessoas/estante/gestao`) — o caso real de alguém sair de férias, ou da empresa, com o
+  livro. A devolução **não** exige que o portador tenha cadastro ativo na plataforma.
+- **Data futura recusada, retroativa liberada:** sem o teto, uma data futura viraria para sempre a
+  última movimentação e congelaria o livro, sem saída pela regra normal de "conserta-se com
+  movimentação nova".
+- **Premissa registrada, não codificada:** `estante.movimentacao` herda o diário genérico da
+  `0199` e por isso é tecnicamente elegível a `financeiro.reverter_diario` — hoje inofensivo porque
+  as RPCs de undo filtram `tabela_alvo` por lista literal e nenhuma inclui `estante.*`, mas
+  qualquer undo genérico futuro precisa excluí-la explicitamente.
+
+### Verificado
+
+- Prova comportamental das 7 RPCs via `pg` com `SET LOCAL request.jwt.claims`, cobrindo os dois
+  níveis de permissão e os ramos de recusa (`JA_EMPRESTADO`, `NAO_EMPRESTADO`,
+  `DEVOLUCAO_DE_OUTRO`, `DATA_FUTURA`, exclusão que apaga × arquiva).
+- Caso de contrato REST/`service_role` novo em `rpc-contrato.test.ts` para `estante_listar_livros`,
+  e paridade de áreas banco↔app (`app.rbac_areas` × `AREAS`) conferida.
+- `nav-model.test.ts` estendido: `areasDaRota` de `/gestao-pessoas` desdobrada **por rota** — a
+  Estante não regride a permissão do Inventário, e vice-versa.
+- **1.247 testes** · `tsc`, lint e build limpos · `revisor` e `revisor-db` (0271+0272 aprovadas,
+  ressalvas baixas endereçadas ou registradas com ruling).
+
+---
+
 ## [5.10.3] — 2026-09-15
 
 PATCH · **Higiene de credencial e uma convenção que voltou a descrever a realidade.** Tira do repositório o script de varredura que carregava a chave de serviço — o molde do incidente de 10/09 —, trava em **somente-leitura** a conexão direta do único bloco de teste que só lê, e faz a sonda cobrar as duas coisas por máquina. **Nenhuma mudança de comportamento da aplicação; nenhum arquivo de `src/` fora de teste.** Migration: nenhuma · ADR: nenhum · **1.225 testes** (1.220 + 5 casos novos de sonda, zero `skip`).
