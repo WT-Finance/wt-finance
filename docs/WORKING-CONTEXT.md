@@ -9,31 +9,20 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-14 (v5.10.3 em revisão do Yan).
+Última atualização: 2026-09-15.
 
 ---
 
 ## Em voo
 
-**v5.10.3 — higiene de credencial e correção de convenção.** Patch de Rota C, **PR draft aberto,
-aguardando merge do Yan**. Sem migration, sem ADR, sem mudança de comportamento da aplicação. Três
-frentes: (A) removido o script de varredura que carregava `SUPABASE_SERVICE_ROLE_KEY`
-(`docs/auditoria-v5/_insumos/bloco5-verifica-pos-drop.mjs`) — o molde do incidente de 10/09; os
-demais usos da chave fora de `src/` ficaram **declarados** em `docs/estado-do-projeto.md` §9. (B) a
-skill `banco-e-rpc` §6 dizia 3 consumidores de `SUPABASE_DB_URL` e são **5**: o bloco somente-leitura
-do `rpc-contrato.test.ts` ganhou `SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY` e a sonda
-`sonda-teste-escreve-banco.test.ts` passou a cobrar inventário fechado + trava **por conexão**
-(5 → 10 casos). (C) a skill `email` registrou que a suíte **mocka** o nodemailer. Detalhes no
-out-briefing `WT_Finance_Out_Briefing_v5-10-3_Higiene_Credencial.md`.
+**Nada.** A v5.10.3 foi mergeada (PR #271, 15/09 às 10:03) e está em produção. A frente está
+livre para a próxima versão — `/nova-versao <vX-Y>`.
 
 > **A role `verificador` (seria a v5.11.0) foi adiada para a v6** por bloqueio operacional. O risco
 > de varredura de produção com `service_role` fica **aceito por decisão do Yan** até lá — o item
-> segue em `docs/backlog-v6.md`.
-
-**Armadilha de worktree, nova:** se o `node_modules` da worktree for um **symlink** para o checkout
-raiz, o `npm run build` aborta com `TurbopackInternalError` (*"Symlink [project]/node_modules is
-invalid, it points out of the filesystem root"*). `tsc`, `lint` e `vitest` atravessam o symlink sem
-reclamar — **só o build não**. Correção: `npm ci` real dentro da worktree.
+> segue em `docs/backlog-v6.md`. O que **não** dependia da role já foi feito na v5.10.3: o script de
+> varredura com a chave de serviço saiu do repositório, a conexão direta de leitura trava em
+> `READ ONLY` e a sonda mantém o inventário de `SUPABASE_DB_URL` fechado, por conexão.
 
 **O `npm audit` do repositório está em ZERO vulnerabilidades** — as três últimas versões foram
 patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) e v5.10.2
@@ -45,10 +34,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v5.10.2** (PR #269, mergeado 14/09 às 09:51) |
+| Produção | **v5.10.3** (PR #271, mergeado 15/09 às 10:03) |
 | Última migration aplicada | **0270** · próxima livre: **0271** |
 | Último ADR | **0173** (aceito) · próximo livre: **0174** |
-| Suíte | **1.225 testes** (1.220 + 5 na v5.10.3), 74 arquivos, ~73 s no `vitest` 5 (era ~94 s no 3), zero `skip` silencioso |
+| Suíte | **1.225 testes**, 74 arquivos, ~73 s no `vitest` 5 (era ~94 s no 3), zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
@@ -132,8 +121,23 @@ O que **sobrou de propósito** e por quê:
 | `feat/v3-5-m1/m2/m3`, `feature/v3-4-6`, `feat/v4-2`, `revert/v4-auth-para-v3-3` | de maio, era v3/v4; candidatas óbvias a descarte |
 | `vercel/install-vercel-speed-insights-9x2sex`, `worktree-docs+investigacao-coercao-milhar` | resíduo de bot e de nomenclatura antiga |
 
-🔴 **O checkout raiz continua em `main@885da65`, duas versões atrás — precisa de `git pull
---ff-only`** (não dá para fazer daqui: esta sessão é isolada na worktree).
+🔴 **O checkout raiz continua atrasado — precisa de `git pull --ff-only`, agora até a v5.10.3
+(`main@ec112be`).** Não dá para fazer daqui: a sessão é isolada na worktree e o harness recusa
+`git -C` apontando para o checkout compartilhado (protocolo D5 — não se contorna). Comandos prontos,
+para rodar **da raiz**:
+
+```bash
+cd /home/yan-wt/projects/wt-finance
+git pull --ff-only
+git worktree remove .claude/worktrees/feat-v5-10-3-role-verificador --force
+git worktree prune
+git branch -d feat/v5-10-3-role-verificador
+```
+
+⚠️ Se o `pull` abortar por colisão de untracked em `docs/briefings/briefing-v5-10-3-*.md`, é o
+modo de falha conhecido (o briefing untracked da raiz virou rastreado no merge): conferir que são
+idênticos com `git show origin/main:<caminho> | diff - <caminho>`, **mover** para fora do repo — e
+só então puxar. Nunca `reset`.
 
 ---
 
