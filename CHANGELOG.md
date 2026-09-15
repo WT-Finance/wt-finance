@@ -6,7 +6,7 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
-## [5.10.3] — 2026-09-14
+## [5.10.3] — 2026-09-15
 
 PATCH · **Higiene de credencial e uma convenção que voltou a descrever a realidade.** Tira do repositório o script de varredura que carregava a chave de serviço — o molde do incidente de 10/09 —, trava em **somente-leitura** a conexão direta do único bloco de teste que só lê, e faz a sonda cobrar as duas coisas por máquina. **Nenhuma mudança de comportamento da aplicação; nenhum arquivo de `src/` fora de teste.** Migration: nenhuma · ADR: nenhum · **1.225 testes** (1.220 + 5 casos novos de sonda, zero `skip`).
 
