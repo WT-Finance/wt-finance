@@ -35,6 +35,28 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.11.0',
+    data: '2026-09-15T12:00', // autoria; reconciliar ao merge real no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A empresa passou a ter registro de quem está com cada livro da estante. Entrou um ' +
+          'módulo novo, "Estante Welcome", dentro de Gestão de Pessoas: cada livro tem uma ' +
+          'ficha (título, autor, editora, ano) e um histórico completo de empréstimos e ' +
+          'devoluções — quem pegou, quando, e se já devolveu.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Cada colaborador registra ele mesmo que pegou ou que devolveu um livro. Devolver em ' +
+          'nome de outra pessoa (por exemplo, quando alguém sai de férias ou da empresa com o ' +
+          'livro) fica reservado a quem administra a estante. O histórico não se apaga: um ' +
+          'registro errado se corrige com um novo, nunca por cima do anterior.',
+      },
+    ],
+  },
+  {
     versao: '5.10.3',
     data: '2026-09-14T17:18', // autoria; reconciliar ao merge real no /pos-merge
     itens: [
