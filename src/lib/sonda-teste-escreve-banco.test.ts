@@ -56,6 +56,8 @@ const SOMENTE_LEITURA: Record<string, string> = {
   'src/lib/rpc-contrato.test.ts': 'lê pg_get_functiondef e app.areas_do_setor (v5.9.4); tudo o mais é REST',
   // v6.0.0/M1: deriva a allowlist de EXECUTE das credenciais de máquina lendo pg_proc — só catálogo.
   'scripts/credencial/derivar-allowlist.mjs': 'resolve nomes de RPC em assinaturas no catálogo vivo (pg_proc); nunca escreve',
+  // v6.0.0/M2: GATE 2 da credencial de ingestão — has_function_privilege no catálogo + REST; nunca escreve.
+  'src/lib/ingestao/credencial-ingestor.test.ts': 'lê has_function_privilege da role ingestor no catálogo; o resto é REST',
 }
 
 /** Escreve fora do contrato por DESENHO. Cada entrada precisa continuar existindo E violando. */

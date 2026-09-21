@@ -6,6 +6,13 @@
 // toda chave alcança todo tipo exposto (migration 0224). `ChaveApi` deixou de
 // carregar `whitelist_tipos`; não há mais nada por chave para "montar um
 // seletor" (o antigo `TipoWhitelist`/`TipoDisponivel`, órfãos, saíram junto).
+//
+// v6.0.0/M2 (migration 0274): a chave ganha um escopo de INGESTÃO por base —
+// `escopo_bases` — ortogonal à whitelist de tipos acima (que era de
+// Solicitações e já não existe): chave sem base nenhuma continua servindo só
+// à API externa de Solicitações, como todas as de hoje.
+
+import type { BaseIngestao } from '@/lib/ingestao/bases'
 
 export interface RoboChave {
   user_id: string
@@ -21,6 +28,7 @@ export interface ChaveApi {
   criado_em:         string   // timestamptz — exibir via fmtDataHoraSP
   revogado_em:       string | null
   ultima_chamada_em: string | null
+  escopo_bases:      BaseIngestao[]
 }
 
 export interface LogChamada {
@@ -37,5 +45,5 @@ export type ResultadoAcao =
 
 /** Criação de chave: devolve o segredo em claro para exibir UMA VEZ ao admin. */
 export type ResultadoCriarChave =
-  | { ok: true; segredo: string; plataforma: string }
+  | { ok: true; segredo: string; plataforma: string; escopoBases: BaseIngestao[] }
   | { ok: false; erro: string }

@@ -46,6 +46,11 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
     porque: 'prova comportamental de RPC que escreve, em transação revertida (0268, v5.9.5) + guards da estrutura da DRE',
   },
   {
+    arquivo: 'src/lib/ingestao/credencial-ingestor.test.ts',
+    envs: ['SUPABASE_URL', 'SUPABASE_INGESTOR_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_DB_URL'],
+    porque: 'GATE 2 parte 2 (v6.0.0/M2): a credencial de ingestão negada em leitura e truncar — REST + catálogo READ ONLY',
+  },
+  {
     arquivo: 'src/lib/estante/estante-rpcs.test.ts',
     envs: ['SUPABASE_DB_URL'],
     porque: 'prova comportamental das RPCs da Estante Welcome, em transação revertida (0271/0272, v5.11.0)',

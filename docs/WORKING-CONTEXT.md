@@ -9,14 +9,39 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-15.
+Última atualização: 2026-09-21.
 
 ---
 
-## Em voo
+## Em voo — v6.0.0 "Fundação da ingestão" (MAJOR, frente única)
 
-**Nada.** A v5.11.0 foi mergeada (PR #273, 15/09 às 12:55) e está em produção. A frente está
-livre para a próxima versão — `/nova-versao <vX-Y>`.
+Branch `feat/v6-0-0-fundacao-ingestao`, worktree `.claude/worktrees/feat-v6-0-0-fundacao-ingestao`.
+Briefing `docs/briefings/briefing-v6-0-0-fundacao-ingestao.md`; plano aprovado em 21/09 (validação
+briefing×repo com 11 divergências registradas — ver o plano da sessão e o out-briefing futuro).
+Contrato **congelado** (GATE 0): `docs/contratos/ingestao-v1.md` — com a decisão do Yan de
+entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Movimentação tem 6 MB).
+
+| Missão | Estado |
+|---|---|
+| M0 contrato + anexos | feito (`889db93`) — fixtures gitignoradas com sha256 em `scripts/ingestao/fixtures-manifest.json`; scripts R em `docs/legado/scripts-r/` |
+| M1 `verificador` | **aplicada** (0273, 21/09 19:13 UTC, gate verde) — 54 EXECUTE só leitura; usuário `verificador@janus.interno` criado (`sub 14b24718-85cf-4d68-b396-fd7c9f299caa`) |
+| M2 `ingestor` + escopo | 0274 escrita, revisada e aplicada (ver commit) — usuário `ingestor@janus.interno` |
+| M3 parsers/oráculos | próxima (Fase 2) |
+| M4–M11 | pendentes — roteiro no plano |
+
+> 🔴 **Pendência do Yan que bloqueia a suíte completa: gerar os DOIS JWTs.** O JWT secret do
+> projeto não está no `.env.local` (de propósito). Runbook `docs/runbooks/credenciais-maquina-runbook.md`:
+> `SUPABASE_JWT_SECRET='…' node scripts/credencial/gerar-jwt.mjs verificador <sub>` (idem `ingestor`),
+> colar em `SUPABASE_VERIFICADOR_KEY` / `SUPABASE_INGESTOR_KEY` no `.env.local`. Sem eles, os
+> casos de contrato **pulam** (146 skips medidos) e o GATE 2 não fica transcrito. Depois:
+> `npm test` deve dar ≥ 1.275, 0 skip.
+
+Decisões técnicas da v6.0.0 que divergem do briefing (registradas no ADR-0175 e no plano):
+allowlist do `ingestor` inclui `limpar_staging_*`/`inserir_lote_staging_*`/`validar_carga_*` (sem
+staging não há carga em lotes nem promoção atômica); a allowlist do `verificador` **não** tem
+RPC de escrita nenhuma (achado ALTO do `revisor-db` — os guards da DRE foram para transação
+revertida em `reverter-diario.test.ts`); `admin_listar_areas`/`admin_acesso_solicitacoes_pendentes`
+viraram prova negativa (GATE 2). Próximas: migration livre **0275**, ADR livre **0176**.
 
 > 🔴 **Pendência do Yan, uma só, herdada da v5.11.0:** decidir se `PRIORIDADE_INICIAL`
 > (`src/lib/auth/areas.ts`) passa a incluir as áreas da Estante. Hoje um colaborador cujo **único**
