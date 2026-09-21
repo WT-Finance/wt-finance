@@ -81,3 +81,7 @@ supabase/seed/data/*
 antes.json
 depois.json
 dre-oracle-*.json
+
+# Fixtures dos oráculos de ingestão (v6.0.0) — exports internos do Monde, nunca versionados
+tests/fixtures/ingestao/*
+!tests/fixtures/ingestao/README.md
