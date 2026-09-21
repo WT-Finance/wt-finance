@@ -47,7 +47,7 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
   },
   {
     arquivo: 'src/lib/ingestao/credencial-ingestor.test.ts',
-    envs: ['SUPABASE_URL', 'SUPABASE_INGESTOR_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_DB_URL'],
+    envs: ['SUPABASE_URL', 'SUPABASE_INGESTOR_SENHA', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_DB_URL'],
     porque: 'GATE 2 parte 2 (v6.0.0/M2): a credencial de ingestão negada em leitura e truncar — REST + catálogo READ ONLY',
   },
   {
@@ -67,9 +67,9 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
     // direto e ficam sob `skipIf(!ON || !DB_URL)`. O inventário estava incompleto —
     // declarava só as duas de REST e, sem a terceira, ~6 casos podiam sumir calados
     // exatamente no modo de falha que esta sonda existe para impedir.
-    // v6.0.0/M1: a service role saiu deste arquivo — a verificação usa `SUPABASE_VERIFICADOR_KEY`
-    // (role `verificador`, allowlist da 0273) com a anon key no `apikey`.
-    envs: ['SUPABASE_URL', 'SUPABASE_VERIFICADOR_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_DB_URL'],
+    // v6.0.0/M1: a service role saiu deste arquivo — a verificação faz LOGIN do usuário de máquina
+    // (`SUPABASE_VERIFICADOR_SENHA`, role `verificador` via hook 0275) com a anon key no `apikey`.
+    envs: ['SUPABASE_URL', 'SUPABASE_VERIFICADOR_SENHA', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_DB_URL'],
     porque: 'contrato REST das RPCs + RBAC (F7) e introspecção do catálogo vivo — o maior bloco gated da suíte',
   },
 ]

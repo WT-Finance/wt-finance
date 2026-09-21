@@ -33,6 +33,7 @@ import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
 import { rendimentoFloatSchema, taxasCdiSchema } from './weddings/schemas-float'
 import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
 import { hojeSP } from './fmt'
+import { tokenMaquina, credencialConfigurada } from './auth/credencial-maquina'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
 // credencial de VERIFICAÇÃO (`verificador`, v6.0.0 — antes era a service role) e valida SHAPE + INVARIANTES de
@@ -52,16 +53,18 @@ const HOST = RAW.replace(/\/+$/, '').replace(/\/rest\/v1$/, '')
 // mais aqui: a sonda `sonda-credencial.test.ts` reprova quem voltar a usá-la fora dos pontos
 // declarados. RPC nova nasce FORA da allowlist de propósito — o caso de contrato dela falha
 // com PERMISSAO_NEGADA (42501 → HTTP 403) até alguém conceder o EXECUTE deliberadamente.
-const KEY = process.env.SUPABASE_VERIFICADOR_KEY
+// A credencial é o LOGIN do usuário de máquina (`SUPABASE_VERIFICADOR_SENHA` + anon key +
+// SUPABASE_URL); o token ES256 de 1 h vem do Auth e o `custom_access_token_hook` (0275) põe
+// `role=verificador` nele. `tokenMaquina` cacheia no processo — um login por rodada.
 const APIKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const ON = Boolean(HOST && KEY && APIKEY)
+const ON = credencialConfigurada('verificador')
 
 async function rpc(fn: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
     method: 'POST',
     headers: {
       apikey: APIKEY as string,
-      Authorization: `Bearer ${KEY as string}`,
+      Authorization: `Bearer ${await tokenMaquina('verificador')}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -610,7 +613,7 @@ describe('gate de contrato — online obrigatório quando exigido (M10)', () => 
   it('REQUIRE_CONTRACT=1 exige credenciais (online não pode ser pulado)', () => {
     const exigido = process.env.REQUIRE_CONTRACT === '1'
     if (exigido) {
-      expect(ON, 'REQUIRE_CONTRACT=1 mas faltam SUPABASE_URL/SUPABASE_VERIFICADOR_KEY/NEXT_PUBLIC_SUPABASE_ANON_KEY → contrato/RBAC seriam pulados').toBe(true)
+      expect(ON, 'REQUIRE_CONTRACT=1 mas faltam SUPABASE_URL/SUPABASE_VERIFICADOR_SENHA/NEXT_PUBLIC_SUPABASE_ANON_KEY → contrato/RBAC seriam pulados').toBe(true)
     } else {
       expect(true).toBe(true) // offline: gate de unidade segue obrigatório; online é opcional
     }
@@ -681,7 +684,7 @@ async function rpcAnonStatus(fn: string, body: Record<string, unknown>): Promise
 async function statusVerificador(fn: string, body: Record<string, unknown>): Promise<{ status: number; texto: string }> {
   const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
     method: 'POST',
-    headers: { apikey: APIKEY as string, Authorization: `Bearer ${KEY as string}`, 'Content-Type': 'application/json' },
+    headers: { apikey: APIKEY as string, Authorization: `Bearer ${await tokenMaquina('verificador')}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   return { status: res.status, texto: await res.text() }

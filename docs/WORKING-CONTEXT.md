@@ -29,12 +29,14 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M3 parsers/oráculos | próxima (Fase 2) |
 | M4–M11 | pendentes — roteiro no plano |
 
-> 🔴 **Pendência do Yan que bloqueia a suíte completa: gerar os DOIS JWTs.** O JWT secret do
-> projeto não está no `.env.local` (de propósito). Runbook `docs/runbooks/credenciais-maquina-runbook.md`:
-> `SUPABASE_JWT_SECRET='…' node scripts/credencial/gerar-jwt.mjs verificador <sub>` (idem `ingestor`),
-> colar em `SUPABASE_VERIFICADOR_KEY` / `SUPABASE_INGESTOR_KEY` no `.env.local`. Sem eles, os
-> casos de contrato **pulam** (146 skips medidos) e o GATE 2 não fica transcrito. Depois:
-> `npm test` deve dar ≥ 1.275, 0 skip.
+> 🔴 **Pendência do Yan que bloqueia a suíte completa: registrar o Auth Hook (ato humano, uma
+> vez).** Dashboard → Authentication → Hooks → "Customize Access Token (JWT) Claims" → Postgres →
+> `public.custom_access_token_hook` (migration 0275) → Enable. O projeto está no regime novo de
+> chaves (ES256 gerido pelo Supabase), então a identidade de máquina é **login + hook**, não JWT
+> assinado localmente (tentado em 21/09 e recusado: `No suitable key`). As senhas dos dois usuários
+> de máquina já estão no `.env.local` (`SUPABASE_VERIFICADOR_SENHA`, `SUPABASE_INGESTOR_SENHA`).
+> Sem o hook, o login funciona mas o token sai `role=authenticated` e a allowlist responde 403.
+> Depois de registrar: `npm test` deve dar ≥ 1.275, 0 skip, e o GATE 2 fica transcrito.
 
 Decisões técnicas da v6.0.0 que divergem do briefing (registradas no ADR-0175 e no plano):
 allowlist do `ingestor` inclui `limpar_staging_*`/`inserir_lote_staging_*`/`validar_carga_*` (sem

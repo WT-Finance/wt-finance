@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { tokenMaquina, credencialConfigurada } from '@/lib/auth/credencial-maquina'
 
 // ── GATE 2 (parte 2, v6.0.0/M2): a credencial que INGERE não lê nem trunca ───────────────
 // A role `ingestor` (0274) só tem EXECUTE no pipeline staging → promoção (allowlist derivada
@@ -15,15 +16,16 @@ import { describe, it, expect } from 'vitest'
 
 const RAW = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const HOST = RAW.replace(/\/+$/, '').replace(/\/rest\/v1$/, '')
-const KEY = process.env.SUPABASE_INGESTOR_KEY
+// Credencial = login do usuário de máquina (`SUPABASE_INGESTOR_SENHA` + anon key + SUPABASE_URL);
+// o hook da 0275 põe `role=ingestor` no token.
 const APIKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const DB_URL = process.env.SUPABASE_DB_URL
-const ON = Boolean(HOST && KEY && APIKEY && DB_URL)
+const ON = credencialConfigurada('ingestor') && Boolean(DB_URL)
 
 async function statusIngestor(fn: string, body: Record<string, unknown>): Promise<{ status: number; texto: string }> {
   const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
     method: 'POST',
-    headers: { apikey: APIKEY as string, Authorization: `Bearer ${KEY as string}`, 'Content-Type': 'application/json' },
+    headers: { apikey: APIKEY as string, Authorization: `Bearer ${await tokenMaquina('ingestor')}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
   return { status: res.status, texto: await res.text() }

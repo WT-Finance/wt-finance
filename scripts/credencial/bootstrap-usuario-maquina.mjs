@@ -8,8 +8,9 @@
 // Por que um script e não a migration: `app.rbac_usuarios.user_id` tem FK para
 // `auth.users(id)`, e uma linha em `auth.users` só nasce pela Auth Admin API
 // (`auth.admin.createUser`) — o mesmo caminho do usuário-robô da API externa
-// (`src/app/admin/api-externa/actions.ts`). A senha é aleatória e descartada: a conta
-// NUNCA loga; ela existe para dar `sub` ao JWT e para `exigir_acesso` exigir `ativo`.
+// (`src/app/admin/api-externa/actions.ts`). A senha inicial é aleatória e descartada: a conta
+// só loga pela credencial de máquina (senha definida por `definir-senha-maquina.mjs`); é o
+// `sub` do token e o que `exigir_acesso` e o hook exigem `ativo`.
 //
 // Este é um dos PONTOS DECLARADOS de uso da `SUPABASE_SERVICE_ROLE_KEY` (sonda
 // `src/lib/sonda-credencial.test.ts`): bootstrap de credencial é ato administrativo,
@@ -48,7 +49,7 @@ if (existente.error) { console.error(`admin_usuario_maquina_por_email falhou: ${
 if (existente.data) {
   const u = existente.data
   console.log(`já existe: ${cred.email}  user_id=${u.user_id}  ativo=${u.ativo}  role=${u.role}`)
-  console.log(`\nsub para o JWT: ${u.user_id}`)
+  console.log(`\nuser_id: ${u.user_id}`)
   process.exit(0)
 }
 
@@ -75,5 +76,5 @@ if (reg.error) {
 }
 
 console.log(`criado: ${cred.email}  user_id=${userId}  role="${cred.roleNome}"`)
-console.log(`\nsub para o JWT: ${userId}`)
-console.log(`próximo passo (humano): SUPABASE_JWT_SECRET=... node scripts/credencial/gerar-jwt.mjs ${qual} ${userId}`)
+console.log(`\nuser_id: ${userId}`)
+console.log(`próximo passo: node scripts/credencial/definir-senha-maquina.mjs ${qual} --gravar`)

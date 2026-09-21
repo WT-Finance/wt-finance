@@ -25,8 +25,9 @@ const EXTENSOES_CODIGO = /\.(ts|tsx|mjs|cjs|js)$/
 
 /** A forma CONSUMIDORA. `process.env.` literal de propósito (menção em string/prosa não conta). */
 const LE_SERVICE_ROLE = /process\.env\.SUPABASE_SERVICE_ROLE_KEY/
-/** A credencial de verificação — o que a suíte e as medições passam a usar. */
-const LE_VERIFICADOR = /process\.env\.SUPABASE_VERIFICADOR_KEY/
+/** A credencial de verificação — o que a suíte e as medições passam a usar: login do usuário
+ *  de máquina (`tokenMaquina('verificador')` do helper, ou a senha lida direto num script .mjs). */
+const LE_VERIFICADOR = /tokenMaquina\(\s*'verificador'\s*\)|process\.env\.SUPABASE_VERIFICADOR_SENHA/
 
 /**
  * PONTOS DECLARADOS — lista FECHADA. Acrescentar aqui é decisão consciente e vai para o ADR:
@@ -41,6 +42,8 @@ const PONTOS_DECLARADOS: Record<string, string> = {
   'scripts/credencial/bootstrap-usuario-maquina.mjs':
     'bootstrap (uma vez) do usuário de máquina: `auth.admin.createUser` só existe com service_role — é ato administrativo, ' +
     'igual à tela de acessos',
+  'scripts/credencial/definir-senha-maquina.mjs':
+    'define/rotaciona a senha do usuário de máquina: `auth.admin.updateUserById` só existe com service_role — ato administrativo',
 }
 
 /** Quem tem de usar a credencial de VERIFICAÇÃO (exemplo positivo — se a regex parar de casar, a sonda vira decoração). */
@@ -92,7 +95,7 @@ describe('sonda C1 — SUPABASE_SERVICE_ROLE_KEY só nos pontos declarados (v6.0
   it('a suíte de contrato e as medições usam a credencial de VERIFICAÇÃO, não a de serviço', () => {
     for (const arquivo of USAM_VERIFICADOR) {
       const texto = readFileSync(join(RAIZ_REPO, arquivo), 'utf8')
-      expect(LE_VERIFICADOR.test(texto), `${arquivo}: não lê SUPABASE_VERIFICADOR_KEY`).toBe(true)
+      expect(LE_VERIFICADOR.test(texto), `${arquivo}: não usa a credencial de verificação (tokenMaquina('verificador') / SUPABASE_VERIFICADOR_SENHA)`).toBe(true)
       expect(LE_SERVICE_ROLE.test(texto), `${arquivo}: ainda lê SUPABASE_SERVICE_ROLE_KEY`).toBe(false)
     }
   })

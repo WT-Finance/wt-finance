@@ -4,7 +4,7 @@
 **Contexto:** versão v6.0.0, "Fundação da ingestão" — Frente A (A1 `verificador`, A2 `ingestor`) ·
 **Briefing:** `docs/briefings/briefing-v6-0-0-fundacao-ingestao.md` §5 A e o anexo
 `docs/briefings/anexo-v6-0-0-briefing-role-verificador.md` · **Migrations:** `0273` (verificador),
-`0274` (ingestor) · **Runbook:** `docs/runbooks/credenciais-maquina-runbook.md`
+`0274` (ingestor), `0275` (custom access token hook) · **Runbook:** `docs/runbooks/credenciais-maquina-runbook.md`
 
 > Numeração conferida contra `docs/adr/` e `supabase/migrations/` no remoto em 21/09/2026
 > (últimos reais: ADR 0174, migration 0272).
@@ -30,9 +30,9 @@ O mesmo desenho servia a suíte de contrato (`rpc-contrato.test.ts`), o oráculo
    DEFAULT PRIVILEGES` para função futura não nascer aberta) e recebe EXECUTE só numa
    **allowlist por assinatura**, **derivada** do código que a usa (`scripts/credencial/
    derivar-allowlist.mjs` lê a suíte e os scripts de medição, resolve no catálogo vivo e emite
-   o bloco `GRANT`). O JWT tem `role = verificador` e `sub` = um **usuário de máquina** ativo
-   (`verificador@janus.interno`, role RBAC "Máquina · verificação" com todas as áreas fora do
-   grupo Administração). `statement_timeout = 8s`, o mesmo da UI.
+   o bloco `GRANT`). A identidade é um **usuário de máquina** ativo (`verificador@janus.interno`,
+   role RBAC "Máquina · verificação" com todas as áreas fora do grupo Administração) que faz
+   **login** e recebe um token com `role = verificador`. `statement_timeout = 8s`, o mesmo da UI.
 2. **`ingestor`** (0274): a mesma anatomia para a **escrita** da ingestão — allowlist = só as
    RPCs de staging e promoção das cinco bases; usuário `ingestor@janus.interno` com a área
    `admin/uploads` apenas; `statement_timeout = 0` (carga pesada); a porta HTTP autentica por
@@ -46,7 +46,17 @@ O mesmo desenho servia a suíte de contrato (`rpc-contrato.test.ts`), o oráculo
    Storage, Auth Admin) — mas só pode ser **lida** nos pontos declarados na sonda
    `src/lib/sonda-credencial.test.ts` (o cliente admin da aplicação, a exceção da API externa
    com fixture commitada, e o bootstrap do usuário de máquina). Verificação, medição e
-   varredura usam `SUPABASE_VERIFICADOR_KEY` ou reprovam no gate, com o nome do arquivo.
+   varredura usam a credencial de verificação (`tokenMaquina('verificador')` /
+   `SUPABASE_VERIFICADOR_SENHA`) ou reprovam no gate, com o nome do arquivo.
+5. **Emissão do token = login + Custom Access Token Hook (0275).** O projeto está no regime novo
+   de chaves do Supabase (API keys `sb_publishable_`/`sb_secret_`, JWKS só com ES256 gerido pela
+   plataforma); um HS256 assinado localmente com o secret legado é recusado (`PGRST301: No
+   suitable key`). A decisão original do briefing ("JWT de validade longa fixo no `.env.local`")
+   ficou **inviável** e foi substituída, por decisão do Yan em 21/09: o usuário de máquina faz
+   login (senha em `SUPABASE_<PAPEL>_SENHA`), o Auth emite um token ES256 de 1 h, e o hook
+   `public.custom_access_token_hook` troca o claim `role` pelo papel do Postgres — só para
+   usuário **ativo** com role RBAC de máquina; qualquer outro usuário passa intocado. O hook é
+   registrado no Dashboard (ato humano, uma vez). Helper: `src/lib/auth/credencial-maquina.ts`.
 
 ## Por que allowlist derivada, e não volatilidade
 
@@ -82,17 +92,20 @@ mensagem do runbook para a próxima versão não achar que quebrou algo.
 
 - **Positivas.** A classe do incidente fecha no servidor. A suíte inteira roda com a credencial
   nova, contagem igual ou maior, 0 skip (invariante 7 do briefing). Duas alavancas de
-  revogação independentes (desativar o usuário ⇒ `USUARIO_INATIVO` na hora; trocar o JWT), e
+  revogação independentes (desativar o usuário ⇒ `USUARIO_INATIVO` na hora e o hook para de
+  conceder o papel; trocar a senha), e
   uma terceira para o `ingestor` (revogar a `x-api-key` ⇒ 401).
 - **Custos.** Dois usuários de máquina aparecem em `/admin/acessos` (deliberado: quem administra
   acessos vê que a máquina existe e o que ela alcança). Uma role RBAC a mais por credencial.
-  Um passo humano na criação: o JWT é assinado com o **JWT secret do projeto**, que não vive no
-  `.env.local` nem no repositório — `gerar-jwt.mjs` recebe-o só na linha de comando, no ato.
+  Um passo humano na criação: registrar o hook no Dashboard. Um login por processo (token
+  cacheado 1 h) — a suíte e a rota fazem isso sozinhas.
 - **O que muda para o desenvolvedor.** RPC nova + caso de contrato = rodar `derivar-allowlist.mjs`
   e colar o GRANT numa migration aditiva. `SUPABASE_SERVICE_ROLE_KEY` em teste ou script de
   medição = reprovado pela sonda C1.
-- **Limites.** A geração do JWT é manual e de validade longa (10 anos); rotação "de verdade"
-  é desativar o usuário e criar outro `sub`. Role `pg` read-only separada para `SUPABASE_DB_URL`
+- **Limites.** Tokens emitidos valem até o `exp` (1 h) mesmo após desativar o usuário — mas
+  `exigir_acesso` já os nega (exige `ativo`). A senha é segredo de longa duração; rotação é
+  `definir-senha-maquina.mjs`. Toda a autenticação de máquina depende do hook estar
+  registrado — se alguém o desregistrar, tudo cai para `PERMISSAO_NEGADA` (fail-closed). Role `pg` read-only separada para `SUPABASE_DB_URL`
   continua fora (a trava de sessão resolve por ora — v5.10.3). `STABLE` nos ~191 `VOLATILE`
   segue no backlog v6.
 
@@ -100,7 +113,9 @@ mensagem do runbook para a próxima versão não achar que quebrou algo.
 
 - **Filtrar EXECUTE por `provolatile`** — ver acima; quebraria a suíte e não mede segurança.
 - **Continuar com service_role + disciplina** — foi o que falhou em 10/09.
-- **JWT de curta validade gerado sob demanda** — exigiria o JWT secret no ambiente do agente,
-  que é justamente o que não se quer; fica para quando houver cofre de segredos.
+- **JWT HS256 assinado localmente com o secret legado (a decisão original do briefing)** —
+  tentado e recusado pelo gateway: o projeto já não verifica com a chave legada. Amarrar a
+  autenticação de máquina a uma chave que a plataforma pede para desligar seria frágil mesmo se
+  funcionasse.
 - **Usuário de máquina INATIVO (como o robô da API externa)** — não serve: `exigir_acesso` exige
   `ativo`; o robô da API externa nunca chama RPC gated, o verificador chama 58.
