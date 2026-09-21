@@ -25,7 +25,7 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 |---|---|
 | M0 contrato + anexos | feito (`889db93`) — fixtures gitignoradas com sha256 em `scripts/ingestao/fixtures-manifest.json`; scripts R em `docs/legado/scripts-r/` |
 | M1 `verificador` | **aplicada** (0273, 21/09 19:13 UTC, gate verde) — 54 EXECUTE só leitura; usuário `verificador@janus.interno` criado (`sub 14b24718-85cf-4d68-b396-fd7c9f299caa`) |
-| M2 `ingestor` + escopo | 0274 escrita, revisada e aplicada (ver commit) — usuário `ingestor@janus.interno` |
+| M2 `ingestor` + escopo | **aplicada** (0274, 21/09, gate verde; commit `c98ad14`) — 4 EXECUTE (pipeline de Vendas); usuário `ingestor@janus.interno` criado (`sub 952c5e70-555e-410b-a67f-26ce6e1833ae`); chave existente da API externa ficou com escopo vazio |
 | M3 parsers/oráculos | próxima (Fase 2) |
 | M4–M11 | pendentes — roteiro no plano |
 
