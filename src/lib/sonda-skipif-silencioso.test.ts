@@ -40,8 +40,10 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
   },
   {
     arquivo: 'src/lib/dre/reverter-diario.test.ts',
+    // v6.0.0/M1: o bloco REST (service role) saiu; os guards das RPCs de escrita da DRE rodam
+    // aqui em transação revertida com identidade simulada — só `pg`.
     envs: ['SUPABASE_DB_URL'],
-    porque: 'prova comportamental de RPC que escreve, em transação revertida (0268, v5.9.5)',
+    porque: 'prova comportamental de RPC que escreve, em transação revertida (0268, v5.9.5) + guards da estrutura da DRE',
   },
   {
     arquivo: 'src/lib/estante/estante-rpcs.test.ts',
@@ -60,7 +62,9 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
     // direto e ficam sob `skipIf(!ON || !DB_URL)`. O inventário estava incompleto —
     // declarava só as duas de REST e, sem a terceira, ~6 casos podiam sumir calados
     // exatamente no modo de falha que esta sonda existe para impedir.
-    envs: ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_DB_URL'],
+    // v6.0.0/M1: a service role saiu deste arquivo — a verificação usa `SUPABASE_VERIFICADOR_KEY`
+    // (role `verificador`, allowlist da 0273) com a anon key no `apikey`.
+    envs: ['SUPABASE_URL', 'SUPABASE_VERIFICADOR_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_DB_URL'],
     porque: 'contrato REST das RPCs + RBAC (F7) e introspecção do catálogo vivo — o maior bloco gated da suíte',
   },
 ]

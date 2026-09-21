@@ -22,10 +22,13 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 const RAW = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const HOST = RAW.replace(/\/+$/, '').replace(/\/rest\/v1$/, '')
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+// v6.0.0/M1: medição roda com a credencial de VERIFICAÇÃO (role `verificador`, EXECUTE só na
+// allowlist da 0273 — `get_dre_mensal` está nela porque ESTE script a chama). `apikey` = anon key.
+const KEY = process.env.SUPABASE_VERIFICADOR_KEY
+const APIKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!HOST || !KEY) {
-  console.error('Faltam SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente.')
+if (!HOST || !KEY || !APIKEY) {
+  console.error('Faltam SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL, SUPABASE_VERIFICADOR_KEY e NEXT_PUBLIC_SUPABASE_ANON_KEY no ambiente.')
   console.error('Rode com: set -a; . .env.local; set +a; node scripts/dre-oracle.mjs')
   process.exit(1)
 }
@@ -44,7 +47,7 @@ const brl = v =>
 async function totaisDoAno(ano) {
   const res = await fetch(`${HOST}/rest/v1/rpc/get_dre_mensal`, {
     method: 'POST',
-    headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+    headers: { apikey: APIKEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ p_ano: ano }),
   })
   if (!res.ok) throw new Error(`get_dre_mensal(${ano}) → HTTP ${res.status}: ${await res.text()}`)

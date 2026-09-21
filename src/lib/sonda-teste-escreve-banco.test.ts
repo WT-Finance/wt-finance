@@ -54,6 +54,8 @@ const ESTE_ARQUIVO = 'src/lib/sonda-teste-escreve-banco.test.ts'
 /** Abre `pg` mas só LÊ (catálogo, agregados). Precisa provar: sem SQL de escrita, sem BEGIN. */
 const SOMENTE_LEITURA: Record<string, string> = {
   'src/lib/rpc-contrato.test.ts': 'lê pg_get_functiondef e app.areas_do_setor (v5.9.4); tudo o mais é REST',
+  // v6.0.0/M1: deriva a allowlist de EXECUTE das credenciais de máquina lendo pg_proc — só catálogo.
+  'scripts/credencial/derivar-allowlist.mjs': 'resolve nomes de RPC em assinaturas no catálogo vivo (pg_proc); nunca escreve',
 }
 
 /** Escreve fora do contrato por DESENHO. Cada entrada precisa continuar existindo E violando. */
@@ -187,7 +189,10 @@ describe('teste que abre pg — só escreve em transação revertida, com contra
 
   it('quem se declara SOMENTE_LEITURA existe, não escreve e não abre transação', () => {
     for (const [arquivo, justificativa] of Object.entries(SOMENTE_LEITURA)) {
+      // Teste (ALVOS) ou script que lê SUPABASE_DB_URL (v6.0.0: `derivar-allowlist.mjs` é o
+      // primeiro consumidor de só-leitura fora de `src/`) — os dois têm de abrir `pg`.
       const alvo = ALVOS.find(a => a.arquivo === arquivo)
+        ?? CONSUMIDORES_DB_URL.find(a => a.arquivo === arquivo && ABRE_PG.test(a.texto))
       expect(alvo, `${arquivo} não abre pg mais — remover de SOMENTE_LEITURA (${justificativa})`).toBeDefined()
       const t = (alvo as Alvo).texto
       expect(ESCRITA_SQL.test(t), `${arquivo} declara só leitura mas tem SQL de escrita em query()`).toBe(false)
