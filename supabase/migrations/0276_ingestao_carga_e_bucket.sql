@@ -7,7 +7,9 @@
 --     o bucket privado NOVO `ingestao-cru` (Storage) onde o cru sobe por URL assinada
 --     (contrato §2.1/§2.2); e QUATRO RPCs `SECURITY DEFINER` service_role-only
 --     (`ingestao_carga_abrir`, `ingestao_carga_concluir`, `ingestao_carga_obter`,
---     `ingestao_carga_ultima`) que sustentam a idempotência do passo 1→3 do contrato
+--     `ingestao_carga_ultima`) que sustentam a idempotência do passo 1→3 do contrato,
+--     mais `ingestao_vencimentos_por_numero` (item 5), o cruzamento que resolve o
+--     `Vencimento` de Lançamentos por Operação nas bases vizinhas
 --     (anexo v6.0.0/M4 §3). A tabela nasce na M4 — não na M6 onde o briefing a listava —
 --     porque a rota não consegue honrar `x-ingestao-idempotencia` sem persistência
 --     sobrevivendo entre requisições/instâncias serverless (anexo §1.1a). Só a tabela e
@@ -52,6 +54,7 @@
 --     dois porque nenhuma fonte (contrato/anexo) especifica a regra, e é decisão de
 --     validação melhor deixada para a ROTA, que já sabe por qual porta a chamada veio.
 --   • Reversão (manual, destrutiva):
+--       DROP FUNCTION public.ingestao_vencimentos_por_numero(text[]);
 --       DROP FUNCTION public.ingestao_carga_ultima(text);
 --       DROP FUNCTION public.ingestao_carga_obter(uuid);
 --       DROP FUNCTION public.ingestao_carga_concluir(uuid, text, integer, jsonb, integer, integer, integer, integer, jsonb, jsonb, text, integer);
@@ -377,5 +380,56 @@ REVOKE EXECUTE ON FUNCTION public.ingestao_carga_ultima(text) FROM PUBLIC, anon,
 GRANT  EXECUTE ON FUNCTION public.ingestao_carga_ultima(text) TO service_role;
 COMMENT ON FUNCTION public.ingestao_carga_ultima(text) IS
   'v6.0.0/M4: última carga com status=aplicada de uma base — insumo do diff (contrato ingestao-v1 §2.3 passo 8) e, na M6, dos alarmes. NULL quando a base ainda não tem carga aplicada (estado inicial legítimo). SEM exigir_acesso no corpo POR DESENHO: sem sessão de usuário — quem autoriza é a rota /api/ingestao/{base} (x-api-key pelo escopo_bases, ou requireAreaApi(admin/uploads)); protegida só por GRANT, service_role-only.';
+
+-- ── 5. Índice de vencimentos das bases vizinhas (Lançamentos por Operação) ───────────────
+--
+-- O CSV cru da "Análise de Operações" NÃO traz `Vencimento` — quem o resolvia era o script R,
+-- cruzando por `Número` com as contas a pagar/receber. A decisão 10 do briefing aposenta aqueles
+-- 8 XLSX e manda o `Vencimento` vir da base **Aberto**, com **Movimentação** como fallback; o
+-- parser da M3 (`parsers/lancamentos-operacao.ts`) já recebe esse índice pronto como parâmetro,
+-- e é esta função que o serve.
+--
+-- Por que ela é indispensável na M4 e não pode esperar: sem índice, todo lançamento sem
+-- liquidação fica com `vencimento` nulo, logo `data_final = coalesce(liquidacao, vencimento)`
+-- também nulo — e `data_final` nulo apaga `mes_ano` e joga o `status` de "A Receber Futuro"/
+-- "A Pagar Futuro" de volta para o tipo. As RPCs de Carteira/Próximos de Weddings somam
+-- `SUM(CASE WHEN status = 'A Receber Futuro' …)`: as duas colunas de PREVISTO iriam a zero, em
+-- ~4.008 lançamentos. É o invariante 1 da versão ("zero mudança de número em qualquer tela").
+--
+-- Precedência IDÊNTICA à de `indiceDeVencimentos` no parser: **Aberto vence Movimentação**
+-- (a base Aberto é a mais atual para um título que ainda não liquidou). `numero` vazio NUNCA
+-- entra — no legado a junção era um `left_join` do dplyr, que casa `NA` com `NA` e fazia toda
+-- linha sem número herdar o mesmo vencimento.
+--
+-- Recebe os números de interesse (os sem liquidação, ~4 mil) em vez de devolver as duas bases
+-- inteiras (~130 mil linhas): o payload fica pequeno e o `max_rows` do PostgREST não se aplica
+-- porque o retorno é um único `jsonb`.
+CREATE OR REPLACE FUNCTION public.ingestao_vencimentos_por_numero(p_numeros text[])
+RETURNS jsonb
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT coalesce(jsonb_object_agg(numero, to_char(vencimento, 'YYYY-MM-DD')), '{}'::jsonb)
+  FROM (
+    SELECT DISTINCT ON (numero) numero, vencimento
+    FROM (
+      -- prioridade 1 = Aberto (vence); 2 = Movimentação (fallback)
+      SELECT btrim(numero) AS numero, vencimento, 1 AS prioridade
+        FROM raw.titulos_em_aberto
+       WHERE vencimento IS NOT NULL AND btrim(coalesce(numero, '')) <> ''
+      UNION ALL
+      SELECT btrim(numero), vencimento, 2
+        FROM raw.lancamentos_movimentacao
+       WHERE vencimento IS NOT NULL AND btrim(coalesce(numero, '')) <> ''
+    ) fontes
+    WHERE numero = ANY (coalesce(p_numeros, ARRAY[]::text[]))
+    ORDER BY numero, prioridade
+  ) resolvido;
+$$;
+REVOKE EXECUTE ON FUNCTION public.ingestao_vencimentos_por_numero(text[]) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.ingestao_vencimentos_por_numero(text[]) TO service_role;
+COMMENT ON FUNCTION public.ingestao_vencimentos_por_numero(text[]) IS
+  'v6.0.0/M4: vencimento por Número nas bases vizinhas (Aberto vence, Movimentação é fallback) — o cruzamento que resolve o Vencimento de Lançamentos por Operação, cujo CSV de scrape não o traz (briefing decisão 10; contrato ingestao-v1 §4). Sem ele, data_final fica nula nos lançamentos sem liquidação e as somas de A Receber/A Pagar Futuro da Carteira de Weddings vão a zero. SEM exigir_acesso no corpo POR DESENHO: sem sessão de usuário — quem autoriza é a rota /api/ingestao/{base}; protegida só por GRANT, service_role-only.';
 
 NOTIFY pgrst, 'reload schema';

@@ -1,20 +1,25 @@
 'use server'
 
-import { loadMetas } from '@/lib/carga/metas'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
-import {
-  parseRpc, cargaValidacaoSchema, cargaPromocaoSchema,
-  statusDemonstrativoCompetenciaSchema, provisionarDreCompParSchema,
-} from '@/lib/schemas-rpc'
-import type { LancamentoRaw, ResultadoCarga } from '@/lib/carga/lancamentos'
-import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
+import { parseRpc, statusDemonstrativoCompetenciaSchema } from '@/lib/schemas-rpc'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
-import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
-import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
-import type { DemonstrativoCompetenciaRaw } from '@/lib/carga/parse-demonstrativo-competencia'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+
+// ---------------------------------------------------------------------------
+// v6.0.0/M4 — as CINCO bases do contrato de ingestão (`docs/contratos/ingestao-v1.md`)
+// migraram para `POST /api/ingestao/{base}` (upload do arquivo CRU pelo card + parse no
+// SERVIDOR). As Server Actions de inserir/finalizar em lote que existiam aqui para Vendas,
+// Lançamentos por Operação, Lançamentos por Movimentação, Títulos em Aberto e Demonstrativo
+// de Competência SAÍRAM — o card não parseia mais essas cinco no navegador (anexo
+// `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` §5).
+//
+// FICAM neste arquivo: as ações de STATUS de todas as bases (o card continua mostrando
+// "última atualização · N registros" lendo direto do banco — nenhuma delas processa arquivo),
+// o fluxo completo de Pessoas (fora do contrato — decisão 11 do briefing da versão: "parada,
+// viva") e a leitura de sincronização do Monde (não é upload).
+// ---------------------------------------------------------------------------
 
 export async function getLancamentosStatusAction(): Promise<
   { total: number; ultima_atualizacao: string | null } | { error: string }
@@ -37,57 +42,6 @@ export async function getLancamentosStatusAction(): Promise<
   }
 }
 
-export async function inserirLoteLancamentosAction(
-  lote: LancamentoRaw[],
-  isFirst: boolean,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_lancamentos')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const { error } = await bound('inserir_lote_lancamentos', { p_linhas: lote })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarLancamentosAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<ResultadoCarga | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const { error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_dim_operacao_weddings')
-    if (error) return { error: `Erro ao regenerar operações: ${error.message}` }
-
-    return {
-      sucesso: true,
-      total_linhas: totalInseridas,
-      erros: [],
-      preview: {
-        antes:  { total_lancamentos: totalAntes },
-        depois: { total_lancamentos: totalInseridas },
-      },
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Vendas (M3.1) — padrão lotes, parse client-side
-// ---------------------------------------------------------------------------
-
 export async function getVendasStatusAction(): Promise<
   { total: number; ultima_atualizacao: string | null } | { error: string }
 > {
@@ -106,96 +60,11 @@ export async function getVendasStatusAction(): Promise<
   }
 }
 
-export async function inserirLoteVendasAction(
-  lote: VendaProdutoRaw[],
-  isFirst: boolean,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    // v4.15.0 (F2-real, ADR-0104): caminho real migrado ao pipeline ATÔMICO (0116/0118).
-    // NÃO trunca a base aqui (era `truncate_dynamic_tables` ANTES do transform → base
-    // ficava vazia se o transform falhasse). Em vez disso: limpa a STAGING (não-destrutivo)
-    // no 1º lote e carrega nela. O swap destrutivo só ocorre em finalizar → promover_carga_vendas,
-    // numa transação única. As metas saem daqui e vão para finalizar (após a validação passar).
-    if (isFirst) {
-      const { error: limpErr } = await bound('limpar_staging_vendas')
-      if (limpErr) return { error: `Erro ao preparar a carga: ${limpErr.message}` }
-    }
-
-    const { error } = await bound('inserir_lote_staging', { p_linhas: lote })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarVendasAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<{
-  sucesso: boolean
-  total_linhas: number
-  vendas_count: number
-  fato_item_count: number
-  erros: string[]
-  avisos: string[]
-  preview: { antes: { total_vendas: number }; depois: { total_vendas: number } }
-} | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    // v4.15.0 (F2-real, ADR-0104): validação NÃO-destrutiva → metas → swap ATÔMICO.
-    // 1. Pré-validação ANTES de qualquer destruição (range de datas vs dim_data, contagem).
-    //    Erro de RPC ou validação reprovada → mensagem explícita; a base atual fica intacta.
-    const valRes = await bound('validar_carga_staging')
-    if (valRes.error) return { error: `Erro na validação da carga: ${valRes.error.message}. A base atual foi preservada.` }
-    const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_staging')
-    if (!validacao) return { error: 'A validação retornou em formato inesperado. A base atual foi preservada.' }
-    if (!validacao.ok) {
-      const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
-      return { error: `${msgs.join(' ')} A base atual foi preservada.` }
-    }
-
-    // 2. Metas (upsert idempotente — fora da transação do swap; só após validar).
-    try { await loadMetas(false) } catch (e) {
-      return { error: `Erro ao carregar metas: ${e instanceof Error ? e.message : String(e)}` }
-    }
-
-    // 3. Swap ATÔMICO: truncate + copia staging→raw + transform + dims + refresh, tudo numa
-    //    transação. Falha aqui → ROLLBACK no banco → a base de leitura NUNCA fica vazia.
-    const promRes = await bound('promover_carga_vendas')
-    if (promRes.error) return { error: `Erro ao promover a carga (base preservada): ${promRes.error.message}` }
-    const promocao = parseRpc(cargaPromocaoSchema, promRes, 'promover_carga_vendas')
-    if (!promocao) return { error: 'A promoção retornou em formato inesperado.' }
-
-    return {
-      sucesso: true,
-      total_linhas: totalInseridas,
-      vendas_count: promocao.vendas_count,
-      fato_item_count: promocao.fato_venda_item_count,
-      erros: [],
-      avisos: validacao.avisos ?? [], // op_propria (v4.17.0): degradação não-bloqueante
-      preview: {
-        antes:  { total_vendas: totalAntes },
-        depois: { total_vendas: promocao.vendas_count },
-      },
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Pessoas (v4.29.0) — cadastro fiscal do Monde. Padrão ATÔMICO (= Vendas, 0116):
-// limpar_staging_pessoas → inserir_lote_staging_pessoas → validar → promover (swap
-// numa transação; o Faturamento depende, a base não pode ficar vazia no meio).
+// Pessoas (v4.29.0) — cadastro fiscal do Monde. FORA do contrato de ingestão v1 (decisão 11
+// do briefing: "parada, viva" — não é uma das cinco bases). Continua com o pipeline ATÔMICO
+// de sempre (0116): limpar_staging_pessoas → inserir_lote_staging_pessoas → validar →
+// promover (swap numa transação; o Faturamento depende, a base não pode ficar vazia no meio).
 // ---------------------------------------------------------------------------
 
 export async function getPessoasStatusAction(): Promise<
@@ -272,10 +141,9 @@ export async function finalizarPessoasAction(
 }
 
 // ---------------------------------------------------------------------------
-// Lançamentos por Movimentação (raw.lancamentos_movimentacao) — Fluxo de Caixa
-// Onda 1, v5.2.0. Full-swap (batch 500; arquivo_origem carregado por linha).
-// financeiro.fato_fluxo (regenerar_fluxo_caixa) lê esta base — realizado por
-// data_movimentacao + previsto por movimentação futura (M2).
+// Lançamentos por Movimentação / Títulos em Aberto — só STATUS (a carga migrou para
+// `POST /api/ingestao/{base}`, v6.0.0/M4; o aplicador do servidor chama
+// `regenerar_fluxo_caixa` no fim, lendo as duas bases, como a Server Action já fazia).
 // ---------------------------------------------------------------------------
 
 export async function getLancamentosMovimentacaoStatusAction(): Promise<
@@ -294,46 +162,6 @@ export async function getLancamentosMovimentacaoStatusAction(): Promise<
   }
 }
 
-export async function inserirLoteLancamentosMovimentacaoAction(
-  lote: LancamentoMovimentacaoRaw[],
-  isFirst: boolean,
-  arquivoOrigem: string,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_lancamentos_movimentacao')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_lancamentos_movimentacao', { p_linhas: rows })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarLancamentosMovimentacaoAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  // Regenera financeiro.fato_fluxo (realizado por movimentação + previsto), lendo AS DUAS bases novas.
-  return regenerarFluxoCaixa(totalInseridas)
-}
-
-// ---------------------------------------------------------------------------
-// Lançamentos por Vencimento em aberto (raw.titulos_em_aberto) — Fluxo de Caixa
-// Onda 1, v5.2.0. Mesmo padrão do Lançamentos por Movimentação. O previsto por
-// vencimento é lido por financeiro.fato_fluxo (regenerar_fluxo_caixa).
-// ---------------------------------------------------------------------------
-
 export async function getTitulosEmAbertoStatusAction(): Promise<
   { total: number; ultima_atualizacao: string | null } | { error: string }
 > {
@@ -350,75 +178,11 @@ export async function getTitulosEmAbertoStatusAction(): Promise<
   }
 }
 
-export async function inserirLoteTitulosEmAbertoAction(
-  lote: TituloEmAbertoRaw[],
-  isFirst: boolean,
-  arquivoOrigem: string,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_titulos_em_aberto')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_titulos_em_aberto', { p_linhas: rows })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function finalizarTitulosEmAbertoAction(
-  totalAntes: number,
-  totalInseridas: number,
-): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  // M2: regenera o fato_fluxo lendo AS DUAS bases novas (previsto por vencimento + realizado por movimentação).
-  return regenerarFluxoCaixa(totalInseridas)
-}
-
-// Regenera financeiro.fato_fluxo (M2, eixo movimentação). Chamado no finalizar dos DOIS
-// uploads (movimentação e em-aberto) — a RPC lê ambas as bases. Idempotente (TRUNCATE+rebuild).
-// Surfacea contas NOVAS não classificadas como aviso (nunca em silêncio — invariante 3).
-async function regenerarFluxoCaixa(
-  totalInseridas: number,
-): Promise<{ sucesso: boolean; total_linhas: number; erros: string[] } | { error: string }> {
-  try {
-    const supabase = getAdminClient()
-    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('regenerar_fluxo_caixa')
-    if (error) return { error: `Erro ao regenerar fluxo de caixa: ${error.message}` }
-    const meta = data as { contas_novas?: string[]; contas_novas_n?: number } | null
-    const erros: string[] = []
-    if (meta?.contas_novas_n && meta.contas_novas_n > 0) {
-      erros.push(
-        `Atenção: ${meta.contas_novas_n} conta(s) nova(s) não classificada(s) automaticamente: ` +
-          `${(meta.contas_novas ?? []).join(', ')}. Confira a classificação de cartão em dim_conta_bancaria.`,
-      )
-    }
-    return { sucesso: true, total_linhas: totalInseridas, erros }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
 // ---------------------------------------------------------------------------
-// Demonstrativo de Resultado por COMPETÊNCIA (raw.demonstrativo_competencia) —
-// v5.8.0, M1. Full-swap simples: nada a regenerar depois, porque a leitura é uma VIEW
-// (financeiro.vw_dre_competencia) sobre a base × de-para. Não existe fato a
-// materializar, então não existe deriva possível entre base e leitura.
-//
-// O `finalizar` aqui NÃO é formalidade: é o ALARME DE INGESTÃO que o briefing pede como
-// invariante — confronta contagem e soma do ARQUIVO (medidas pelo parser, no cliente)
-// com contagem e soma GRAVADAS (medidas pelo banco). Divergência devolve erro e o card
-// não declara sucesso. É a lição da v5.5.2 aplicada na fundação: lá um ×1000 silencioso
-// atravessou 753 testes e só apareceu meses depois, na DRE.
+// Demonstrativo de Resultado por COMPETÊNCIA (raw.demonstrativo_competencia) — só STATUS
+// (a carga migrou para `POST /api/ingestao/{base}`, v6.0.0/M4; o "alarme de ingestão" —
+// contagem e soma do arquivo × gravadas — passou a rodar dentro do aplicador do servidor,
+// `src/lib/ingestao/aplicar.ts`).
 // ---------------------------------------------------------------------------
 
 /**
@@ -476,95 +240,6 @@ export async function getDemonstrativoCompetenciaStatusAction(): Promise<
   await requireAreaAction('admin/uploads')
   try {
     return await lerStatusDemonstrativoCompetencia()
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-export async function inserirLoteDemonstrativoCompetenciaAction(
-  lote: DemonstrativoCompetenciaRaw[],
-  isFirst: boolean,
-  arquivoOrigem: string,
-): Promise<{ inseridas: number } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-
-    if (isFirst) {
-      const { error } = await bound('truncar_demonstrativo_competencia')
-      if (error) return { error: `Erro ao limpar tabela: ${error.message}` }
-    }
-
-    const rows = lote.map(r => ({ ...r, arquivo_origem: arquivoOrigem }))
-    const { error } = await bound('inserir_lote_demonstrativo_competencia', { p_linhas: rows })
-    if (error) return { error: `Erro ao inserir lote: ${error.message}` }
-
-    return { inseridas: lote.length }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
-
-/**
- * Alarme de ingestão: o que o arquivo tinha × o que a base gravou.
- *
- * `somaCentavosArquivo` vem de `somaCentavos()` (o parser), a mesma função que o teste
- * prova — não há segunda implementação da soma. A comparação é entre INTEIROS nas duas
- * pontas, então "bate" quer dizer bate ao centavo, não "bate aproximadamente".
- */
-export async function finalizarDemonstrativoCompetenciaAction(
-  totalEnviadas: number,
-  somaCentavosArquivo: number,
-): Promise<{ sucesso: true; status: StatusDemonstrativoCompetencia; avisos: string[] } | { error: string }> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const status = await lerStatusDemonstrativoCompetencia()
-    if ('error' in status) return { error: `Erro ao conferir a carga: ${status.error}` }
-
-    const problemas: string[] = []
-    if (status.total !== totalEnviadas) {
-      problemas.push(`o arquivo tinha ${totalEnviadas} linha(s) e a base gravou ${status.total}`)
-    }
-    if (status.soma_centavos !== somaCentavosArquivo) {
-      const fmt = (c: number) =>
-        (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      problemas.push(`a soma do arquivo é ${fmt(somaCentavosArquivo)} e a da base é ${fmt(status.soma_centavos)}`)
-    }
-    if (problemas.length > 0) {
-      return {
-        error:
-          `A carga NÃO fecha com o arquivo: ${problemas.join(' e ')}. ` +
-          `A base ficou com o conteúdo enviado, mas confira o arquivo e recarregue antes de usar os números.`,
-      }
-    }
-
-    // Provisiona no de-para editável (0260) uma linha para cada par NOVO do arquivo, com
-    // destino em branco — é isso que faz o par aparecer na BANDEJA do editor, e não só na
-    // bandeja da leitura. Roda DEPOIS do alarme: se a carga não fecha, não se mexe na
-    // curadoria. Falha aqui NÃO derruba o upload (a leitura já mostra o par não classificado
-    // pelo LEFT JOIN da view) — vira aviso, porque o dado carregado está correto.
-    const supabase = getAdminClient()
-    const bound = (supabase.rpc as unknown as BoundRpc).bind(supabase)
-    const prov = await bound('provisionar_dre_comp_par')
-    const avisos: string[] = []
-    if (prov.error) {
-      avisos.push(
-        'A base foi carregada e conferida, mas não foi possível atualizar o de-para editável ' +
-        `(${prov.error.message}). Pares novos aparecem como "Não classificadas" no ` +
-        'demonstrativo; abrir "Editar estrutura" provisiona de novo.',
-      )
-    } else {
-      const p = parseRpc(provisionarDreCompParSchema, prov, 'provisionar_dre_comp_par')
-      if (p && p.novos > 0) {
-        avisos.push(
-          `${p.novos} par(es) novo(s) do arquivo entraram como "Não classificadas" — ` +
-          'classifique-os em Editar estrutura para que entrem no demonstrativo.',
-        )
-      }
-    }
-
-    return { sucesso: true, status, avisos }
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) }
   }

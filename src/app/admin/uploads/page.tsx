@@ -4,50 +4,45 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Upload, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
 import {
   getLancamentosStatusAction,
-  inserirLoteLancamentosAction,
-  finalizarLancamentosAction,
   getVendasStatusAction,
-  inserirLoteVendasAction,
-  finalizarVendasAction,
   getLancamentosMovimentacaoStatusAction,
-  inserirLoteLancamentosMovimentacaoAction,
-  finalizarLancamentosMovimentacaoAction,
   getTitulosEmAbertoStatusAction,
-  inserirLoteTitulosEmAbertoAction,
-  finalizarTitulosEmAbertoAction,
   getPessoasStatusAction,
   inserirLotePessoasAction,
   finalizarPessoasAction,
   getDemonstrativoCompetenciaStatusAction,
-  inserirLoteDemonstrativoCompetenciaAction,
-  finalizarDemonstrativoCompetenciaAction,
   getMondeSincronizacaoStatusAction,
 } from './actions'
 import type { StatusSincronizacaoMonde } from './actions'
 import { fmtDataHoraSP, fmtBRL2 } from '@/lib/fmt'
-import { ModalConfirmacaoUpload } from '@/components/admin/modal-confirmacao-upload'
-import { parseLancamentosFile, LANCAMENTOS_COLUNAS } from '@/lib/carga/parse-lancamentos'
-import { parseVendasProdutoFile } from '@/lib/carga/parse-vendas-produto'
-import { parseLancamentosMovimentacaoFile, LANCAMENTOS_MOVIMENTACAO_COLUNAS } from '@/lib/carga/parse-lancamentos-movimentacao'
-import { parseTitulosEmAbertoFile, TITULOS_EM_ABERTO_COLUNAS } from '@/lib/carga/parse-titulos-em-aberto'
+import { ModalConfirmacaoUpload, type DetalhesConferencia } from '@/components/admin/modal-confirmacao-upload'
 import { parsePessoasFile, PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
-import {
-  parseDemonstrativoCompetenciaFile,
-  somaCentavos,
-  DEMONSTRATIVO_COMPETENCIA_COLUNAS,
-} from '@/lib/carga/parse-demonstrativo-competencia'
+import { LANCAMENTOS_COLUNAS } from '@/lib/carga/parse-lancamentos'
+import { LANCAMENTOS_MOVIMENTACAO_COLUNAS } from '@/lib/carga/parse-lancamentos-movimentacao'
+import { TITULOS_EM_ABERTO_COLUNAS } from '@/lib/carga/parse-titulos-em-aberto'
+import { DEMONSTRATIVO_COMPETENCIA_COLUNAS } from '@/lib/carga/parse-demonstrativo-competencia'
 import { parseArquivoEmWorker } from '@/lib/carga/parse-em-worker'
-import type { VendaProdutoRaw } from '@/lib/carga/parse-vendas-produto'
-import type { LancamentoRaw } from '@/lib/carga/lancamentos'
-import type { LancamentoMovimentacaoRaw } from '@/lib/carga/parse-lancamentos-movimentacao'
-import type { TituloEmAbertoRaw } from '@/lib/carga/parse-titulos-em-aberto'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
-import type { DemonstrativoCompetenciaRaw } from '@/lib/carga/parse-demonstrativo-competencia'
+import type { BaseIngestao } from '@/lib/ingestao/bases'
+import {
+  sha256DoArquivo, pedirUrlsAssinadas, enviarArquivoParaStorage, processarCarga,
+  type ArquivoDaCarga, type PacoteConferido, type RespostaCarga,
+} from './ingestao-cliente'
 
 type BaseKey =
   | 'vendas' | 'lancamentos' | 'lancamentos_movimentacao' | 'titulos_em_aberto' | 'pessoas'
   | 'demonstrativo_competencia'
-type EstadoCard = 'idle' | 'validando' | 'aguardando_confirmacao' | 'carregando' | 'sucesso' | 'erro'
+
+type EstadoCard =
+  | 'idle'
+  | 'validando'               // só Pessoas: parse no cliente
+  | 'enviando'                // fluxo novo: sha256 + PUT no Storage (barra por bytes)
+  | 'conferindo'              // fluxo novo: POST confirmar:false — parse/checksums/diff no servidor
+  | 'aguardando_confirmacao'
+  | 'aplicando'               // fluxo novo: POST confirmar:true
+  | 'carregando'              // só Pessoas: envio de lotes já parseados
+  | 'sucesso'
+  | 'erro'
 
 interface StatusCarga {
   total: number
@@ -63,85 +58,95 @@ interface StatusCarga {
 
 interface EstadoUpload {
   estado:      EstadoCard
-  arquivo:     File | null
+  arquivos:    File[]
   totalLinhas: number
   totalAntes:  number
   mensagem:    string
-  /** Progresso do envio em lotes (null = sem barra; feito===total = aguardando servidor). */
+  /** Progresso — bytes no fluxo novo (`enviando`), linhas já gravadas no fluxo antigo
+   *  (`carregando`, só Pessoas). `null` = sem barra (ainda calculando/aguardando servidor). */
   progresso:   { feito: number; total: number } | null
+  /** Fluxo novo: o que a CONFERÊNCIA do servidor devolveu — guardado para alimentar o modal
+   *  rico e, depois de confirmado, reenviado com `confirmar: true`. `null` no fluxo antigo. */
+  carga:       PacoteConferido | null
 }
 
 const ESTADO_INICIAL: EstadoUpload = {
-  estado: 'idle', arquivo: null, totalLinhas: 0, totalAntes: 0, mensagem: '', progresso: null,
+  estado: 'idle', arquivos: [], totalLinhas: 0, totalAntes: 0, mensagem: '', progresso: null, carga: null,
 }
 
 interface BaseConfig {
   key:      BaseKey
+  /** Presente ⇒ fluxo NOVO (rota de ingestão, v6.0.0/M4): upload do arquivo cru, sha256 no
+   *  navegador, conferência do servidor antes de aplicar (contrato
+   *  `docs/contratos/ingestao-v1.md`). Ausente ⇒ fluxo antigo — só Pessoas, fora do contrato
+   *  (decisão 11 do briefing: "parada, viva"). */
+  baseIngestao?: BaseIngestao
   label:    string
   descricao: string
-  /** Tamanho de lote validado para esta base — não unificar (cabe em <3s). */
-  batch:    number
   /** Sufixo do contador na linha de status (ex.: "vendas", "lançamentos", "registros"). */
   unidade:  string
   /** Colunas obrigatórias (rótulos) exibidas no card. DERIVADAS do parser (v4.29.0); o
    *  Vendas é tolerante (parser não exige nenhuma) → lista vazia, sem mudar o que aceita. */
   obrigatorias: string[]
-  /** Extensões aceitas no seletor. Omitido = `.xlsx,.csv` (o que todas as bases aceitavam
-   *  antes da v5.8.0 — o default preserva o comportamento existente). A base de
-   *  competência aceita só `.xlsx`: o export real é xlsx e o parser depende do valor
-   *  NATIVO da célula, que o CSV não tem. */
-  accept?:  string
+  /** Extensões aceitas no seletor. A extensão é POR BASE (contrato §2.1): `.xlsx` para as
+   *  quatro bases de planilha; `.csv` para Lançamentos por Operação (scrape). */
+  accept:  string
+  /** Só Vendas: a base aceita N arquivos, um por ano (contrato §2.1/§3). */
+  multiplos?: boolean
 }
-
-const ACCEPT_PADRAO = '.xlsx,.csv'
 
 // Texto explicativo uniforme: cada base SUBSTITUI TODA a base; importar sempre completo.
 const BASES: BaseConfig[] = [
   {
     key: 'vendas',
+    baseIngestao: 'vendas-produto',
     label: 'Vendas por Produto',
-    descricao: 'Substitui toda a base de Vendas por Produto. Importe sempre o arquivo completo.',
-    batch: 1000,
+    descricao: 'Substitui toda a base de Vendas por Produto. Um arquivo por ano — selecione todos de uma vez.',
     unidade: 'vendas',
     obrigatorias: [], // parser tolerante (mapeia o que estiver presente) — nenhuma exigida hoje
+    accept: '.xlsx',
+    multiplos: true,
   },
   {
     key: 'lancamentos',
+    baseIngestao: 'lancamentos-operacao',
     label: 'Lançamentos por Operação',
     descricao: 'Substitui toda a base de Lançamentos por Operação. Importe sempre o arquivo completo.',
-    batch: 1000,
     unidade: 'lançamentos',
     obrigatorias: LANCAMENTOS_COLUNAS,
+    accept: '.csv', // contrato §2.1: só esta base aceita csv (export "Análise de Operações", scrape)
   },
   {
     key: 'lancamentos_movimentacao',
+    baseIngestao: 'lancamentos-movimentacao',
     label: 'Lançamentos por Movimentação',
     descricao: 'Substitui toda a base de Lançamentos por Movimentação (realizado — data em que o dinheiro entrou/saiu da conta). Importe sempre o arquivo completo.',
-    batch: 500,
     unidade: 'registros',
     obrigatorias: LANCAMENTOS_MOVIMENTACAO_COLUNAS,
+    accept: '.xlsx',
   },
   {
     key: 'titulos_em_aberto',
+    baseIngestao: 'lancamentos-aberto',
     label: 'Lançamentos por Vencimento (em aberto)',
     descricao: 'Substitui toda a base de títulos em aberto (previsto — por data de vencimento). Importe sempre o arquivo completo.',
-    batch: 500,
     unidade: 'registros',
     obrigatorias: TITULOS_EM_ABERTO_COLUNAS,
+    accept: '.xlsx',
   },
   {
     key: 'pessoas',
     label: 'Pessoas',
     descricao: 'Substitui toda a base de Pessoas (cadastro do Monde). Importe sempre o arquivo completo.',
-    batch: 500,
     unidade: 'pessoas',
     obrigatorias: PESSOAS_COLUNAS,
+    accept: '.xlsx,.csv',
   },
   {
     key: 'demonstrativo_competencia',
+    baseIngestao: 'demonstrativo-competencia',
     label: 'Demonstrativo de Resultado (Competência)',
     descricao: 'Substitui toda a base do regime de COMPETÊNCIA (fato gerador: data de emissão) — o export "Demonstrativo de Resultado" do Monde já tratado. Importe sempre o arquivo completo.',
-    batch: 500,
     unidade: 'linhas',
     obrigatorias: DEMONSTRATIVO_COMPETENCIA_COLUNAS,
     accept: '.xlsx',
@@ -161,6 +166,13 @@ function formatarNum(n: number): string {
  *  (competência), e passar por `Date` traria deslocamento de fuso sem ganho nenhum. */
 function mesAno(iso: string): string {
   return `${iso.slice(5, 7)}/${iso.slice(0, 4)}`
+}
+
+/** Nome do(s) arquivo(s) selecionado(s), para o rótulo do card — Vendas pode trazer vários. */
+function descricaoArquivos(arquivos: File[]): string {
+  if (arquivos.length === 0) return ''
+  if (arquivos.length === 1) return arquivos[0].name
+  return `${arquivos.length} arquivos`
 }
 
 /**
@@ -266,16 +278,16 @@ function CardUpload({
   config,
   status,
   estado,
-  onArquivoSelecionado,
+  onArquivosSelecionados,
   onCancelar,
   onConfirmar,
 }: {
-  config:               BaseConfig
-  status:               StatusCarga | null
-  estado:               EstadoUpload
-  onArquivoSelecionado: (f: File) => void
-  onCancelar:           () => void
-  onConfirmar:          () => void
+  config:                 BaseConfig
+  status:                 StatusCarga | null
+  estado:                 EstadoUpload
+  onArquivosSelecionados: (files: File[]) => void
+  onCancelar:             () => void
+  onConfirmar:            () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -294,9 +306,10 @@ function CardUpload({
     e.preventDefault()
     setIsDragging(false)
     if (!ativo) return
-    const f = e.dataTransfer.files?.[0]
-    if (f) onArquivoSelecionado(f)
-  }, [ativo, onArquivoSelecionado])
+    const arquivos = Array.from(e.dataTransfer.files ?? [])
+    if (arquivos.length === 0) return
+    onArquivosSelecionados(config.multiplos ? arquivos : arquivos.slice(0, 1))
+  }, [ativo, config.multiplos, onArquivosSelecionados])
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
@@ -349,9 +362,14 @@ function CardUpload({
         <input
           ref={inputRef}
           type="file"
-          accept={config.accept ?? ACCEPT_PADRAO}
+          accept={config.accept}
+          multiple={config.multiplos === true}
           className="hidden"
-          onChange={e => { const f = e.target.files?.[0]; if (f) onArquivoSelecionado(f); e.target.value = '' }}
+          onChange={e => {
+            const arquivos = Array.from(e.target.files ?? [])
+            if (arquivos.length > 0) onArquivosSelecionados(arquivos)
+            e.target.value = ''
+          }}
         />
         {estado.estado === 'idle' && (
           <>
@@ -359,8 +377,8 @@ function CardUpload({
             {/* O texto segue o `accept` da base — prometer .csv onde o parser exige o valor
                 nativo da célula convidaria a um upload que falha (ou pior, que lê torto). */}
             <p className="text-xs text-zinc-500">
-              Arraste ou clique para selecionar um arquivo{' '}
-              {(config.accept ?? ACCEPT_PADRAO)
+              Arraste ou clique para selecionar {config.multiplos ? 'um ou mais arquivos' : 'um arquivo'}{' '}
+              {config.accept
                 .split(',')
                 .map(e => e.trim())
                 .map((e, i, arr) => (
@@ -374,13 +392,44 @@ function CardUpload({
         )}
         {estado.estado === 'validando' && (
           <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
-            <Loader2 size={14} className="animate-spin" /> Lendo planilha {estado.arquivo?.name}…
+            <Loader2 size={14} className="animate-spin" /> Lendo planilha {descricaoArquivos(estado.arquivos)}…
+          </div>
+        )}
+        {estado.estado === 'enviando' && (() => {
+          const p = estado.progresso
+          if (!p) {
+            return (
+              <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+                <Loader2 size={14} className="animate-spin" /> Preparando {descricaoArquivos(estado.arquivos)}…
+              </div>
+            )
+          }
+          const pct = p.total > 0 ? Math.min(100, Math.round((100 * p.feito) / p.total)) : 0
+          return (
+            <div className="text-xs text-text-secondary">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Loader2 size={14} className="animate-spin" /> Enviando {descricaoArquivos(estado.arquivos)}… {pct}%
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-action-soft">
+                <div className="h-full rounded-full bg-action-primary transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          )
+        })()}
+        {estado.estado === 'conferindo' && (
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+            <Loader2 size={14} className="animate-spin" /> Conferindo no servidor…
           </div>
         )}
         {estado.estado === 'aguardando_confirmacao' && (
           <p className="text-xs text-zinc-700">
-            <span className="font-medium">{estado.arquivo?.name}</span> — {formatarNum(estado.totalLinhas)} linhas válidas
+            <span className="font-medium">{descricaoArquivos(estado.arquivos)}</span> — {formatarNum(estado.totalLinhas)} linhas válidas
           </p>
+        )}
+        {estado.estado === 'aplicando' && (
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-500">
+            <Loader2 size={14} className="animate-spin" /> Aplicando…
+          </div>
         )}
         {estado.estado === 'carregando' && (() => {
           const p = estado.progresso
@@ -432,9 +481,47 @@ function CardUpload({
   )
 }
 
-// As linhas parseadas de cada base têm tipos diferentes; guardamos como unknown[]
-// por base e repassamos para a action correta no handleConfirmar.
-type LinhasRef = Record<BaseKey, unknown[]>
+/** Os avisos não-bloqueantes que o aplicador do servidor produziu (queda de `operacao_propria`,
+ *  par novo da competência, conta nova do fluxo de caixa) — todos pousam em `alarmes`
+ *  (`src/lib/ingestao/carga.ts#ResultadoCarga`). */
+function avisosDaResposta(resposta: RespostaCarga): string[] {
+  return [...resposta.alarmes]
+}
+
+/** Extrai do pacote conferido o que o modal RICO (cinco bases do contrato) mostra além do
+ *  antes/depois de sempre. `null` no fluxo antigo (Pessoas, sem `carga`). Sem detalhamento por
+ *  ano (`por_ano`/`anos_fechados_alterados`): exige `ingestao.baseline`, que é M6. */
+function detalhesDoModal(carga: PacoteConferido | null): DetalhesConferencia | null {
+  if (!carga) return null
+  const { resposta } = carga
+  return {
+    rejeitadasPorData:  resposta.parse.rejeitadas_por_data,
+    paresNovos:         resposta.parse.pares_novos,
+    checksumsConferidos: resposta.arquivos.reduce((s, a) => s + a.checksums_conferidos, 0),
+    checksumsFalhos:     resposta.arquivos.reduce((s, a) => s + a.checksums_falhos, 0),
+    somaDiff:            resposta.diff.soma,
+    avisos:              avisosDaResposta(resposta),
+  }
+}
+
+/** Mensagem final de sucesso do fluxo novo — o que a resposta da carga (contrato §2.3) traz,
+ *  no molde do que o card já mostrava por base antes desta missão: contagem, Σ quando existe,
+ *  "conferido com o arquivo" na competência, e os avisos não-bloqueantes (nunca descartados). */
+function mensagemDeSucesso(config: BaseConfig, resposta: RespostaCarga): string {
+  const extras: string[] = []
+  if (resposta.parse.rejeitadas_por_data > 0) {
+    extras.push(`${formatarNum(resposta.parse.rejeitadas_por_data)} data(s) fora da faixa`)
+  }
+  if (resposta.diff.soma !== null) extras.push(`Σ ${fmtBRL2(resposta.diff.soma)}`)
+  if (config.key === 'demonstrativo_competencia') {
+    const falhos = resposta.arquivos.reduce((s, a) => s + a.checksums_falhos, 0)
+    if (falhos === 0) extras.push('conferido com o arquivo')
+  }
+  const sufixo = extras.length > 0 ? ` (${extras.join(' · ')})` : ''
+  const avisos = avisosDaResposta(resposta)
+  const sufixoAvisos = avisos.length > 0 ? ` ⚠ ${avisos.join(' ')}` : ''
+  return `${formatarNum(resposta.parse.linhas)} ${config.unidade} importadas com sucesso${sufixo}${sufixoAvisos}`
+}
 
 export default function AdminUploadsPage() {
   const [status, setStatus] = useState<Record<BaseKey, StatusCarga | null>>({
@@ -451,10 +538,10 @@ export default function AdminUploadsPage() {
   // de carga). Fail-safe: erro vira `null` e o cartão diz "indisponível" — nunca derruba a tela.
   const [statusMonde, setStatusMonde] = useState<StatusSincronizacaoMonde | null>(null)
 
-  const linhasRef = useRef<LinhasRef>({
-    vendas: [], lancamentos: [], lancamentos_movimentacao: [], titulos_em_aberto: [], pessoas: [],
-    demonstrativo_competencia: [],
-  })
+  // Só Pessoas ainda parseia no cliente (fluxo antigo) — as linhas já parseadas ficam aqui
+  // entre a seleção do arquivo e a confirmação, exatamente como as cinco bases faziam antes
+  // desta missão.
+  const linhasPessoasRef = useRef<PessoaRaw[]>([])
 
   function setEstado(key: BaseKey, patch: Partial<EstadoUpload>) {
     setEstados(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
@@ -512,190 +599,166 @@ export default function AdminUploadsPage() {
   // reusado (mount e pós-upload), por isso permanece um useCallback à parte.
   useEffect(() => { void (async () => { await carregarStatus() })() }, [carregarStatus])
 
-  async function handleArquivoSelecionado(key: BaseKey, arquivo: File) {
-    setEstado(key, { estado: 'validando', arquivo, totalLinhas: 0, totalAntes: 0, mensagem: '', progresso: null })
+  /**
+   * Fluxo NOVO (v6.0.0/M4) — as cinco bases do contrato de ingestão. Passo a passo do anexo
+   * `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` §5:
+   *   1. sha256 no navegador (Web Crypto) → 2. `upload-url` → 3. `PUT` no Storage com
+   *   progresso real → 4. conferência do servidor (`confirmar: false`) → modal → 5. aplica
+   *   (`confirmar: true`, disparado por `handleConfirmar`).
+   */
+  async function handleArquivosSelecionadosNovo(key: BaseKey, base: BaseIngestao, files: File[]) {
+    setEstado(key, {
+      estado: 'enviando', arquivos: files, mensagem: '', carga: null,
+      totalLinhas: 0, totalAntes: 0, progresso: null,
+    })
 
     try {
-      if (key === 'vendas') {
-        const res = await parseArquivoEmWorker<VendaProdutoRaw>('vendas', arquivo, parseVendasProdutoFile)
-        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getVendasStatusAction()
-        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.vendas = res
-        // "Depois" para vendas = nº de vendas únicas (não de linhas/itens).
-        const uniqueVendas = new Set(res.map(r => r.venda_numero).filter(Boolean)).size
-        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: uniqueVendas, totalAntes: st.total })
-      } else if (key === 'lancamentos') {
-        const res = await parseArquivoEmWorker<LancamentoRaw>('lancamentos', arquivo, parseLancamentosFile)
-        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getLancamentosStatusAction()
-        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.lancamentos = res
-        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
-      } else if (key === 'lancamentos_movimentacao') {
-        const res = await parseArquivoEmWorker<LancamentoMovimentacaoRaw>('lancamentos_movimentacao', arquivo, parseLancamentosMovimentacaoFile)
-        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getLancamentosMovimentacaoStatusAction()
-        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.lancamentos_movimentacao = res
-        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
-      } else if (key === 'titulos_em_aberto') {
-        const res = await parseArquivoEmWorker<TituloEmAbertoRaw>('titulos_em_aberto', arquivo, parseTitulosEmAbertoFile)
-        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getTitulosEmAbertoStatusAction()
-        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.titulos_em_aberto = res
-        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
-      } else if (key === 'demonstrativo_competencia') {
-        const res = await parseArquivoEmWorker<DemonstrativoCompetenciaRaw>('demonstrativo_competencia', arquivo, parseDemonstrativoCompetenciaFile)
-        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getDemonstrativoCompetenciaStatusAction()
-        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.demonstrativo_competencia = res
-        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
-      } else {
-        const res = await parseArquivoEmWorker<PessoaRaw>('pessoas', arquivo, parsePessoasFile)
-        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-        const st = await getPessoasStatusAction()
-        if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
-        linhasRef.current.pessoas = res
-        setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
+      const [statusAtual, hashes] = await Promise.all([
+        statusAntesDoUpload(key),
+        Promise.all(files.map(f => sha256DoArquivo(f))),
+      ])
+      const infos = files.map((f, i) => ({ nome: f.name, bytes: f.size, sha256: hashes[i], file: f }))
+
+      const { carga_id: cargaId, arquivos: assinados } = await pedirUrlsAssinadas(
+        base, infos.map(({ nome, bytes, sha256 }) => ({ nome, bytes, sha256 })),
+      )
+
+      const totalBytes = infos.reduce((s, i) => s + i.bytes, 0)
+      const bytesPorArquivo = new Map<string, number>()
+      setEstado(key, { progresso: { feito: 0, total: totalBytes } })
+
+      for (const info of infos) {
+        const assinado = assinados.find(a => a.nome === info.nome)
+        if (!assinado) throw new Error(`O servidor não devolveu URL de envio para "${info.nome}".`)
+        await enviarArquivoParaStorage(assinado.signed_url, info.file, bytesEnviados => {
+          bytesPorArquivo.set(info.nome, bytesEnviados)
+          const feito = Array.from(bytesPorArquivo.values()).reduce((s, v) => s + v, 0)
+          setEstado(key, { progresso: { feito, total: totalBytes } })
+        })
       }
 
+      const arquivosDaCarga: ArquivoDaCarga[] = infos.map(i => {
+        const assinado = assinados.find(a => a.nome === i.nome)!
+        return { path: assinado.path, nome: i.nome, sha256: i.sha256 }
+      })
+      const extraidoEm = new Date().toISOString()
+
+      // Conferência — parse, checksums e diff no servidor, SEM aplicar (o gate humano
+      // continua sendo o modal, agora sobre o número que o servidor conferiu).
+      setEstado(key, { estado: 'conferindo', progresso: null })
+      const resposta = await processarCarga(base, { cargaId, arquivos: arquivosDaCarga, extraidoEm, confirmar: false })
+
+      setEstado(key, {
+        estado: 'aguardando_confirmacao',
+        totalAntes: statusAtual,
+        totalLinhas: resposta.parse.linhas,
+        carga: { cargaId, arquivos: arquivosDaCarga, extraidoEm, resposta },
+      })
+      setModal(key)
+    } catch (err) {
+      setEstado(key, { estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro ao enviar o arquivo' })
+    }
+  }
+
+  /** Fluxo ANTIGO — só Pessoas: parse no cliente (Web Worker), como sempre foi. */
+  async function handleArquivoSelecionadoAntigo(key: BaseKey, arquivo: File) {
+    setEstado(key, { estado: 'validando', arquivos: [arquivo], totalLinhas: 0, totalAntes: 0, mensagem: '', progresso: null, carga: null })
+    try {
+      const res = await parseArquivoEmWorker<PessoaRaw>('pessoas', arquivo, parsePessoasFile)
+      if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+      const st = await getPessoasStatusAction()
+      if ('error' in st) { setEstado(key, { estado: 'erro', mensagem: st.error }); return }
+      linhasPessoasRef.current = res
+      setEstado(key, { estado: 'aguardando_confirmacao', totalLinhas: res.length, totalAntes: st.total })
       setModal(key)
     } catch (err) {
       setEstado(key, { estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro de parse' })
     }
   }
 
-  async function handleConfirmar(key: BaseKey) {
-    setModal(null)
-    const est = estados[key]
-    if (!est.arquivo) return
-
+  async function handleArquivosSelecionados(key: BaseKey, files: File[]) {
+    if (files.length === 0) return
     const config = BASES.find(b => b.key === key)!
-    const BATCH = config.batch
-    const nome = est.arquivo.name
-    const totalAntes = est.totalAntes
-    setEstado(key, { estado: 'carregando' })
+    if (config.baseIngestao) {
+      await handleArquivosSelecionadosNovo(key, config.baseIngestao, config.multiplos ? files : files.slice(0, 1))
+    } else {
+      await handleArquivoSelecionadoAntigo(key, files[0])
+    }
+  }
 
+  async function handleConfirmarNovo(key: BaseKey, config: BaseConfig, carga: PacoteConferido) {
+    setEstado(key, { estado: 'aplicando' })
     try {
-      if (key === 'vendas') {
-        const rows = linhasRef.current.vendas as VendaProdutoRaw[]
-        let inseridas = 0
-        setEstado(key, { progresso: { feito: 0, total: rows.length } })
-        for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteVendasAction(rows.slice(i, i + BATCH), i === 0)
-          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-          inseridas += res.inseridas
-          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
-        }
-        const fin = await finalizarVendasAction(totalAntes, inseridas)
-        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.vendas = []
-        // op_propria (v4.17.0): aviso não-bloqueante (ex.: queda de operacao_propria) anexado ao sucesso.
-        const avisoVendas = fin.avisos.length ? ` ⚠ ${fin.avisos.join(' ')}` : ''
-        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.vendas_count)} vendas importadas com sucesso${avisoVendas}` })
+      const resposta = await processarCarga(config.baseIngestao!, {
+        cargaId: carga.cargaId, arquivos: carga.arquivos, extraidoEm: carga.extraidoEm, confirmar: true,
+      })
+      setEstado(key, {
+        estado: 'sucesso',
+        mensagem: mensagemDeSucesso(config, resposta),
+        arquivos: [], carga: null,
+      })
+      await carregarStatus()
+    } catch (err) {
+      setEstado(key, { estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro ao aplicar a carga' })
+    }
+  }
 
-      } else if (key === 'lancamentos') {
-        const rows = linhasRef.current.lancamentos as LancamentoRaw[]
-        let inseridas = 0
-        setEstado(key, { progresso: { feito: 0, total: rows.length } })
-        for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteLancamentosAction(rows.slice(i, i + BATCH), i === 0)
-          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-          inseridas += res.inseridas
-          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
-        }
-        const fin = await finalizarLancamentosAction(totalAntes, inseridas)
-        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.lancamentos = []
-        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.total_linhas)} lançamentos importados com sucesso` })
-
-      } else if (key === 'lancamentos_movimentacao') {
-        const rows = linhasRef.current.lancamentos_movimentacao as LancamentoMovimentacaoRaw[]
-        let inseridas = 0
-        setEstado(key, { progresso: { feito: 0, total: rows.length } })
-        for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteLancamentosMovimentacaoAction(rows.slice(i, i + BATCH), i === 0, nome)
-          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-          inseridas += res.inseridas
-          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
-        }
-        const fin = await finalizarLancamentosMovimentacaoAction(totalAntes, inseridas)
-        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.lancamentos_movimentacao = []
-        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
-
-      } else if (key === 'titulos_em_aberto') {
-        const rows = linhasRef.current.titulos_em_aberto as TituloEmAbertoRaw[]
-        let inseridas = 0
-        setEstado(key, { progresso: { feito: 0, total: rows.length } })
-        for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteTitulosEmAbertoAction(rows.slice(i, i + BATCH), i === 0, nome)
-          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-          inseridas += res.inseridas
-          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
-        }
-        const fin = await finalizarTitulosEmAbertoAction(totalAntes, inseridas)
-        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.titulos_em_aberto = []
-        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(inseridas)} registros importados com sucesso` })
-
-      } else if (key === 'demonstrativo_competencia') {
-        const rows = linhasRef.current.demonstrativo_competencia as DemonstrativoCompetenciaRaw[]
-        // A soma de conferência é medida ANTES de enviar, sobre as linhas que o parser
-        // produziu — e pela MESMA função que o teste prova (`somaCentavos`). Medi-la depois,
-        // ou reimplementá-la aqui, seria conferir a base contra ela mesma.
-        const somaArquivo = somaCentavos(rows)
-        let inseridas = 0
-        setEstado(key, { progresso: { feito: 0, total: rows.length } })
-        for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLoteDemonstrativoCompetenciaAction(rows.slice(i, i + BATCH), i === 0, nome)
-          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-          inseridas += res.inseridas
-          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
-        }
-        const fin = await finalizarDemonstrativoCompetenciaAction(inseridas, somaArquivo)
-        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.demonstrativo_competencia = []
-        // Aviso não-bloqueante (par novo entrou como "Não classificadas") anexado ao
-        // sucesso, no mesmo padrão do cartão de Vendas.
-        const avisoComp = fin.avisos.length ? ` ⚠ ${fin.avisos.join(' ')}` : ''
-        setEstado(key, {
-          estado: 'sucesso',
-          mensagem:
-            `${formatarNum(fin.status.total)} linhas · Σ ${fmtBRL2(fin.status.soma_centavos / 100)} ` +
-            `· ${formatarNum(fin.status.pares)} pares — conferido com o arquivo${avisoComp}`,
-        })
-
-      } else {
-        // Pessoas — pipeline ATÔMICO (= Vendas): lotes na staging + swap em finalizar.
-        const rows = linhasRef.current.pessoas as PessoaRaw[]
-        let inseridas = 0
-        setEstado(key, { progresso: { feito: 0, total: rows.length } })
-        for (let i = 0; i < rows.length; i += BATCH) {
-          const res = await inserirLotePessoasAction(rows.slice(i, i + BATCH), i === 0)
-          if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
-          inseridas += res.inseridas
-          setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
-        }
-        const fin = await finalizarPessoasAction(totalAntes, inseridas)
-        if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
-        linhasRef.current.pessoas = []
-        setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.pessoas_count)} pessoas importadas com sucesso` })
+  async function handleConfirmarAntigo(key: BaseKey) {
+    const est = estados[key]
+    const totalAntes = est.totalAntes
+    // Único consumidor hoje: Pessoas. Tamanho de lote validado (era o mesmo antes da migração).
+    const BATCH = 500
+    setEstado(key, { estado: 'carregando' })
+    try {
+      const rows = linhasPessoasRef.current
+      let inseridas = 0
+      setEstado(key, { progresso: { feito: 0, total: rows.length } })
+      for (let i = 0; i < rows.length; i += BATCH) {
+        const res = await inserirLotePessoasAction(rows.slice(i, i + BATCH), i === 0)
+        if ('error' in res) { setEstado(key, { estado: 'erro', mensagem: res.error }); return }
+        inseridas += res.inseridas
+        setEstado(key, { progresso: { feito: inseridas, total: rows.length } })
       }
-
+      const fin = await finalizarPessoasAction(totalAntes, inseridas)
+      if ('error' in fin) { setEstado(key, { estado: 'erro', mensagem: fin.error }); return }
+      linhasPessoasRef.current = []
+      setEstado(key, { estado: 'sucesso', mensagem: `${formatarNum(fin.pessoas_count)} pessoas importadas com sucesso` })
       await carregarStatus()
     } catch (err) {
       setEstado(key, { estado: 'erro', mensagem: err instanceof Error ? err.message : 'Erro na importação' })
     }
   }
 
+  async function handleConfirmar(key: BaseKey) {
+    setModal(null)
+    const config = BASES.find(b => b.key === key)!
+    const est = estados[key]
+    if (config.baseIngestao) {
+      if (!est.carga) return
+      await handleConfirmarNovo(key, config, est.carga)
+    } else {
+      if (est.arquivos.length === 0) return
+      await handleConfirmarAntigo(key)
+    }
+  }
+
   function handleCancelar(key: BaseKey) {
     setModal(null)
-    linhasRef.current[key] = []
+    if (key === 'pessoas') linhasPessoasRef.current = []
     setEstado(key, { ...ESTADO_INICIAL })
+  }
+
+  /** Fluxo novo: o "antes" mostrado no gate humano é o total ATUAL da base, lido fresco no
+   *  momento do envio — a mesma RPC de status que o card já usa para "última atualização". */
+  async function statusAntesDoUpload(key: BaseKey): Promise<number> {
+    switch (key) {
+      case 'vendas': { const r = await getVendasStatusAction(); return 'error' in r ? 0 : r.total }
+      case 'lancamentos': { const r = await getLancamentosStatusAction(); return 'error' in r ? 0 : r.total }
+      case 'lancamentos_movimentacao': { const r = await getLancamentosMovimentacaoStatusAction(); return 'error' in r ? 0 : r.total }
+      case 'titulos_em_aberto': { const r = await getTitulosEmAbertoStatusAction(); return 'error' in r ? 0 : r.total }
+      case 'demonstrativo_competencia': { const r = await getDemonstrativoCompetenciaStatusAction(); return 'error' in r ? 0 : r.total }
+      case 'pessoas': return 0 // fluxo antigo não passa por aqui
+    }
   }
 
   const modalConfig = modal ? BASES.find(b => b.key === modal)! : null
@@ -716,7 +779,7 @@ export default function AdminUploadsPage() {
             config={config}
             status={status[config.key]}
             estado={estados[config.key]}
-            onArquivoSelecionado={f => handleArquivoSelecionado(config.key, f)}
+            onArquivosSelecionados={files => { void handleArquivosSelecionados(config.key, files) }}
             onCancelar={() => handleCancelar(config.key)}
             onConfirmar={() => setModal(config.key)}
           />
@@ -730,7 +793,8 @@ export default function AdminUploadsPage() {
           baseLabel={modalConfig.label}
           totalAntes={estados[modal].totalAntes}
           totalDepois={estados[modal].totalLinhas}
-          onConfirmar={() => handleConfirmar(modal)}
+          detalhes={detalhesDoModal(estados[modal].carga)}
+          onConfirmar={() => { void handleConfirmar(modal) }}
           onCancelar={() => handleCancelar(modal)}
         />
       )}

@@ -2178,7 +2178,9 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
           WHERE (n.nspname, p.proname) IN (
                   ('public','admin_set_enforcement'),('app','exigir_acesso'),
                   ('public','get_operacoes_weddings'),('public','promover_carga_vendas'),
-                  ('public','get_dre_mensal'),('public','get_dre_competencia_mensal'))`,
+                  ('public','get_dre_mensal'),('public','get_dre_competencia_mensal'),
+                  ('public','ingestao_carga_abrir'),('public','ingestao_carga_concluir'),
+                  ('public','ingestao_carga_obter'),('public','ingestao_carga_ultima'))`,
       )
       return r.rows
     })
@@ -2201,5 +2203,16 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
     expect(por.get('public.get_dre_competencia_mensal') ?? '').toMatch(/financeiro\/dre/)
     // E a de carga declara por que NÃO tem exigir_acesso no corpo.
     expect(por.get('public.promover_carga_vendas') ?? '').toMatch(/service_role/)
+
+    // As 4 RPCs da ingestão (0276) são da MESMA classe que promover_carga_vendas: sem
+    // exigir_acesso no corpo porque a superfície não tem sessão de usuário — quem
+    // autoriza é a rota /api/ingestao/{base}. O comentário de cada uma tem de carregar
+    // essa explicação (service_role-only), não só existir.
+    for (const nome of [
+      'ingestao_carga_abrir', 'ingestao_carga_concluir', 'ingestao_carga_obter', 'ingestao_carga_ultima',
+    ]) {
+      const c = por.get(`public.${nome}`) ?? ''
+      expect(c, `public.${nome}: comentário sem menção a service_role (0276)`).toMatch(/service_role/)
+    }
   })
 })
