@@ -275,6 +275,34 @@ describe('sondas do parser de Lançamentos (mutante ⇒ reprova)', () => {
     expect(r.codigo).toBe('CHECKSUM_FALHOU')
   })
 
+  it('a coluna deslocada é resolvida no recuo MAIS PROFUNDO do vão, não no primeiro', () => {
+    // Se duas colunas do vão tiverem conteúdo nas linhas de dado, a certa é a da direita: num
+    // outline o recuo cresce para a direita e a linha de dado é o nível mais fundo. Pegar a
+    // primeira leria o marcador de nível intermediário no lugar do Número — e a base inteira
+    // sairia com a chave errada, sem que contagem ou soma acusassem nada.
+    const m = exportValido()
+    m[3][1] = '·'   // marcador de recuo intermediário aparece nas linhas de dado
+    m[4][1] = '·'
+    const r = parseLancamentosCategoriaRows(m as Matriz, { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect((r.diagnostico.colunas as Record<string, number>).numero).toBe(2)
+    expect(r.linhas[0].numero).toBe('100')
+  })
+
+  it('mutante: linha de dado que PERDE a categoria não é engolida como linha de total', () => {
+    // Sem esta guarda a linha cairia no ramo do rodapé, o total do arquivo seria sobrescrito por
+    // ela e o erro sairia como "checksum do total não fecha" — mandando o humano procurar no
+    // lugar errado. O defeito não some (o checksum pega), mas a mensagem mente.
+    const m = exportValido()
+    m[4][12] = null            // a segunda linha de lançamento perde a Categoria
+    m[4][13] = null            // ...e o Grupo
+    const r = parseLancamentosCategoriaRows(m as Matriz, { hoje: HOJE_SONDA })
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.codigo).toBe('ESTRUTURA_INESPERADA')
+    expect(r.mensagem).toContain('perdeu a categoria')
+  })
+
   it('mutante: coluna obrigatória ausente no cabeçalho ⇒ ESTRUTURA_INESPERADA (não some calada)', () => {
     const m = exportValido()
     m[0][11] = 'Vlr'          // "Valor" deixa de ser reconhecível

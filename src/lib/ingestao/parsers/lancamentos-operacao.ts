@@ -163,7 +163,7 @@ export function parseLancamentosOperacaoRows(
 
   for (let i = 1; i < rows.length; i++) {
     const linha = rows[i] ?? []
-    if (linha.every((c) => ehVazio(c))) continue
+    if (linha.every((c) => ehVazio(c))) { ignoradas++; continue }
 
     // Linha de operação SEM lançamento: o scrape preenche todas as colunas com o mesmo texto.
     const vazia = ehPlaceholderDoScrape(linha[indices.valor as number])
@@ -210,7 +210,6 @@ export function parseLancamentosOperacaoRows(
       tipo:              apararOuNulo(linha[indices.tipo as number]),
       data_final:        liquidacao ?? vencimento,
     })
-    if (linhas.length === 0) ignoradas++
   }
 
   if (linhas.length === 0) {

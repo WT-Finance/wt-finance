@@ -118,10 +118,16 @@ function resolverColunas(
   const resolvido: Partial<Record<Campo, number>> = { ...indices }
   for (const [campo, j] of Object.entries(indices) as [Campo, number][]) {
     if (temConteudo(j)) continue
+    // A busca só alcança colunas que NENHUM campo reclamou — o vão entre este cabeçalho e o
+    // próximo. Isso é o que impede a cura de roubar a coluna de um campo vizinho: dois campos
+    // com cabeçalhos adjacentes nunca disputam nada.
     const proxima = ocupadas.find((o) => o > j)
     const limite = Math.min(proxima ?? j + MAX_COLUNAS_DE_RECUO + 1, j + MAX_COLUNAS_DE_RECUO + 1)
-    for (let k = j + 1; k < limite; k++) {
-      if (ocupadas.includes(k)) break
+    // Entre as candidatas do vão, vale a ÚLTIMA com conteúdo, não a primeira: num outline o
+    // recuo cresce para a direita e a linha de dado é o nível mais profundo. Com mais de uma
+    // candidata preenchida, a primeira seria um nível intermediário.
+    for (let k = limite - 1; k > j; k--) {
+      if (ocupadas.includes(k)) continue
       if (temConteudo(k)) { resolvido[campo] = k; break }
     }
   }
@@ -264,6 +270,17 @@ export function parseLancamentosCategoriaRows(
         return erro('ESTRUTURA_INESPERADA',
           `Linha ${i + 1}: linha de total do arquivo com ${outrosNumeros.length} candidatas a ` +
           'contagem — esperava exatamente uma. O formato do rodapé do export mudou.',
+          { linha: i + 1 })
+      }
+      // Só existe UMA linha de total por arquivo. Uma segunda quase sempre significa outra coisa:
+      // uma linha de DADO que perdeu a Categoria ou o Grupo e caiu neste ramo. O checksum acabaria
+      // pegando (a contagem do grupo ficaria uma a menos), mas com a mensagem errada — e mensagem
+      // errada faz o humano procurar no lugar errado.
+      if (totalLinhasDeclarado !== null) {
+        return erro('ESTRUTURA_INESPERADA',
+          `Linha ${i + 1}: segunda linha sem Número/Categoria/Grupo com valor numérico. O arquivo ` +
+          'tem uma só linha de total — esta é provavelmente uma linha de lançamento que perdeu a ' +
+          'categoria ou o grupo na origem.',
           { linha: i + 1 })
       }
       totalLinhasDeclarado = outrosNumeros[0]
