@@ -100,6 +100,15 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_registrar_usuario_maquina: {
+        Args: {
+          p_email: string
+          p_nome: string
+          p_role_nome: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       admin_set_enforcement: { Args: { p_ativo: boolean }; Returns: Json }
       admin_solic_arquivar_tipo: {
         Args: { p_arquivar: boolean; p_id: number }
@@ -115,6 +124,10 @@ export type Database = {
         Args: { p_exposto: boolean; p_tipo_id: number }
         Returns: Json
       }
+      admin_usuario_maquina_por_email: {
+        Args: { p_email: string }
+        Returns: Json
+      }
       apagar_clientes_corp: { Args: { p_ids: number[] }; Returns: Json }
       api_chamada_registrar: {
         Args: {
@@ -126,14 +139,24 @@ export type Database = {
         Returns: Json
       }
       api_chave_listar: { Args: never; Returns: Json }
-      api_chave_registrar: {
-        Args: {
-          p_plataforma: string
-          p_robo_user_id: string
-          p_segredo_hash: string
-        }
-        Returns: Json
-      }
+      api_chave_registrar:
+        | {
+            Args: {
+              p_plataforma: string
+              p_robo_user_id: string
+              p_segredo_hash: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_escopo_bases: string[]
+              p_plataforma: string
+              p_robo_user_id: string
+              p_segredo_hash: string
+            }
+            Returns: Json
+          }
       api_chave_resolver: { Args: { p_segredo_hash: string }; Returns: Json }
       api_chave_revogar: { Args: { p_id: number }; Returns: Json }
       api_log_listar: {
@@ -239,6 +262,7 @@ export type Database = {
         Returns: Json
       }
       cruzar_vendas_setor: { Args: { p_vendas: string[] }; Returns: Json }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_gerencial_conta: { Args: { p_conta: string }; Returns: boolean }
       delete_gerencial_lancamento:
         | { Args: { p_id: number }; Returns: boolean }
@@ -289,6 +313,53 @@ export type Database = {
         Args: { p_modo: string; p_refs: string[] }
         Returns: Json
       }
+      estante_atualizar_livro: {
+        Args: {
+          p_ano?: number
+          p_autor?: string
+          p_editora?: string
+          p_id: number
+          p_isbn?: string
+          p_obs?: string
+          p_titulo: string
+        }
+        Returns: Json
+      }
+      estante_criar_livro: {
+        Args: {
+          p_ano?: number
+          p_autor?: string
+          p_editora?: string
+          p_isbn?: string
+          p_obs?: string
+          p_titulo: string
+        }
+        Returns: Json
+      }
+      estante_detalhe_livro: { Args: { p_id: number }; Returns: Json }
+      estante_listar_livros: {
+        Args: {
+          p_busca?: string
+          p_estado?: string
+          p_incluir_arquivados?: boolean
+        }
+        Returns: Json
+      }
+      estante_listar_movimentacoes: {
+        Args: { p_limite?: number }
+        Returns: Json
+      }
+      estante_registrar_movimentacao: {
+        Args: {
+          p_data_movimentacao?: string
+          p_livro_id: number
+          p_obs?: string
+          p_tipo: string
+          p_usuario_id?: string
+        }
+        Returns: Json
+      }
+      estante_remover_livro: { Args: { p_id: number }; Returns: Json }
       excluir_cliente_corp: { Args: { p_id: number }; Returns: Json }
       fatura_emissao_existentes: { Args: { p_refs: string[] }; Returns: Json }
       gerencial_desfazer_linha: { Args: { p_diario_id: number }; Returns: Json }
@@ -645,6 +716,43 @@ export type Database = {
         Returns: Json
       }
       importar_clientes_corp: { Args: { p_linhas: Json }; Returns: Json }
+      ingestao_carga_abrir: {
+        Args: {
+          p_arquivos: Json
+          p_base: string
+          p_carga_id: string
+          p_chave_id?: number
+          p_extraido_em?: string
+          p_idempotencia?: string
+          p_observacao?: string
+          p_origem: string
+          p_usuario_id?: string
+        }
+        Returns: Json
+      }
+      ingestao_carga_concluir: {
+        Args: {
+          p_carga_id: string
+          p_checksums_conferidos?: number
+          p_checksums_falhos?: number
+          p_diff?: Json
+          p_duracao_ms?: number
+          p_erro?: string
+          p_linhas?: number
+          p_pares_novos?: number
+          p_rejeitadas_por_data?: number
+          p_resposta?: Json
+          p_somas?: Json
+          p_status: string
+        }
+        Returns: Json
+      }
+      ingestao_carga_obter: { Args: { p_carga_id: string }; Returns: Json }
+      ingestao_carga_ultima: { Args: { p_base: string }; Returns: Json }
+      ingestao_vencimentos_por_numero: {
+        Args: { p_numeros: string[] }
+        Returns: Json
+      }
       inserir_cliente_corp: { Args: { p_dados: Json }; Returns: Json }
       inserir_lote_demonstrativo_competencia: {
         Args: { p_linhas: Json }
