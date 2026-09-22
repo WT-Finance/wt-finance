@@ -27,8 +27,37 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M1 `verificador` | **aplicada** (0273, 21/09 19:13 UTC, gate verde) — 54 EXECUTE só leitura; usuário `verificador@janus.interno` criado (`sub 14b24718-85cf-4d68-b396-fd7c9f299caa`) |
 | M2 `ingestor` + escopo | **aplicada** (0274, 21/09, gate verde; commit `c98ad14`) — 4 EXECUTE (pipeline de Vendas); usuário `ingestor@janus.interno` criado (`sub 952c5e70-555e-410b-a67f-26ce6e1833ae`); chave existente da API externa ficou com escopo vazio |
 | 0275 hook de credencial | **aplicada e registrada** (22/09) — identidade de máquina = login + hook (o JWT HS256 do briefing ficou inviável no regime novo de chaves; ADR-0175 §5) |
-| M3 parsers/oráculos | próxima (Fase 2) |
+| M3 parsers/oráculos | **feito** (`49c8c83` + `3cec38d`) — GATE 1 verde nas 5 bases |
 | M4–M11 | pendentes — roteiro no plano |
+
+**GATE 1 FECHADO (22/09) — as cinco bases têm parser de servidor e oráculo verde** contra os
+anexos reais de 21/09, e os scripts R podem ser aposentados (invariante 10). Parsers em
+`src/lib/ingestao/parsers/`, oráculos em `src/lib/ingestao/oraculo-*.test.ts`. Números medidos:
+
+| Base | Linhas | Células comparadas | Checksums | Divergências |
+|---|---|---|---|---|
+| Demonstrativo | 3.334 | 26.672 | 557 (556 subtotais + Total Geral) | **zero** |
+| Movimentação | 94.667 | 1.230.671 | 149 (15 grupos + 133 categorias + total) | 56 células de data (55 linhas, 30 no ano 1900) |
+| Aberto | 36.176 | — | 96 (15 + 80 + total) | 7 células de data |
+| Vendas | 48.862 (tratado cobre 48.652) | 1.021.692 | 5 por arquivo × 3 | `Intermediário` (por construção) + 10 de data |
+| Operação | 41.750 | — | cruzamento: 4.005 de 4.006 | 1 (lançamento 203048) |
+
+Quatro coisas que a realidade corrigiu e que valem para quem seguir:
+- **O subtotal declarado pelo export é o arredondamento da soma dos valores EXATOS.** O cru traz
+  mais de 2 casas (o total de Movimentação é 717.710,7392): somar linha a linha já arredondado
+  erra de 1 a 6 centavos por grupo e o checksum nunca fecha. `AcumuladorBruto` soma em inteiros e
+  arredonda uma vez; a linha gravada continua com 2 casas, que é o que `NUMERIC(18,2)` guarda.
+- **Guarda de faixa de data ancorada no DIA é intermitente.** Com `hoje+5 anos` ao dia, nove
+  vencimentos de 2031-09-22 eram recusados por um dia e aceitos no seguinte. Ancorada no fim do
+  ano, as contagens batem exatamente com o briefing (55 em Movimentação, 7 em Aberto).
+  ⚠️ **É desvio da letra do contrato §2.3 — confirmar com o Yan.**
+- **O cruzamento de Operação cobre melhor que o previsto:** falta 1 número, não os 3 do baseline.
+- **`semana` e `mes` de Vendas não têm consumidor** (enumerado: `setor_macro` é lida CRUA por
+  `vw_vendas_agregadas`, `setor_micro` é chave do JOIN do transform, `contrato` filtra ~15 RPCs,
+  `taxa_servico` é copiada para o fato). Seguem calculadas para o oráculo provar as 21 colunas; a
+  poda tem lugar na destrutiva do GATE 3.
+
+**Suíte: 1.339 testes, 83 arquivos, zero skip** (eram 1.275 na fronteira da Fase 1).
 
 **Credenciais de máquina PRONTAS (22/09):** hook `custom_access_token_hook` (0275) registrado no
 Dashboard pelo Yan; login de `verificador@janus.interno`/`ingestor@janus.interno` devolve token com
@@ -78,9 +107,9 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.11.0** (PR #273, mergeado 15/09 às 12:55) |
-| Última migration aplicada | **0272** · próxima livre: **0273** |
-| Último ADR | **0174** (aceito) · próximo livre: **0175** |
-| Suíte | **1.247 testes**, 76 arquivos, ~78 s no `vitest` 5, zero `skip` silencioso |
+| Última migration aplicada | **0275** (v6.0.0/M1–M2 + hook) · próxima livre: **0276** |
+| Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
+| Suíte | **1.339 testes**, 83 arquivos, zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
