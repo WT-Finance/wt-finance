@@ -251,7 +251,17 @@ causa de uma base fora do escopo. Fechar isso de verdade é decisão do Yan — 
 Pessoas (parada desde 30/06) ou portá-la numa versão seguinte. Registrado como divergência
 briefing×repo.
 
-Removidos nesta missão, com grep de chamador no ato: `src/lib/carga/lancamentos.ts` e
+**`src/lib/carga/lancamentos.ts` NÃO foi removido, contra o que o briefing e este anexo previam.**
+O grep de chamador — feito no ato, como manda a regra — achou o que a investigação prévia não
+tinha pego (ela varreu só `src/**/*.test.ts`): **`supabase/seed/seed.ts` chama
+`carregarLancamentos` de verdade** (passo 6 do seed, que popula `fato_lancamento_operacao`), e
+`src/lib/carga/parse-lancamentos.ts` importa o tipo `LancamentoRaw` de lá. Apagar o arquivo
+quebraria `npm run seed` **e** o build. É o precedente da v4.17.1 outra vez, e a mesma ressalva
+que a skill `ingestao-planilhas` §5 já registra para `truncate_dynamic_tables`/`inserir_lote_raw`:
+"órfão" pelo briefing, com uso vivo no seed. Fica **decisão do Yan** se o `seed.ts` migra para
+outro caminho antes de o arquivo poder sair (candidato à M10) ou se ele simplesmente fica.
+
+Removido nesta missão, com grep de chamador no ato e zero consumidor:
 `src/app/api/admin/upload-lancamentos/route.ts`. Os cinco parsers de cliente
 (`parse-vendas-produto`, `parse-lancamentos`, `parse-lancamentos-movimentacao`,
 `parse-titulos-em-aberto`, `parse-demonstrativo-competencia` e o núcleo `vendas-parser`) **ficam**

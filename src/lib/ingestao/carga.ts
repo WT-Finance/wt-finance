@@ -22,7 +22,7 @@ import { parseVendasProdutoRows, type ArquivoVendas, type VendaProdutoCru } from
 import { parseDemonstrativoCruRows, type DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import { parseLancamentosCategoriaRows } from './parsers/lancamentos-categoria'
 import { parseLancamentosOperacaoRows } from './parsers/lancamentos-operacao'
-import { aplicarCarga, CargaRejeitada, type ResultadoAplicacao } from './aplicar'
+import { aplicarCarga, CargaRejeitada, lancamentoOperacaoAplicavel, type ResultadoAplicacao } from './aplicar'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { autenticarChamada, type ChaveResolvida } from '@/lib/api-externa/http'
 import { requireAreaApi, type Sessao } from '@/lib/auth/sessao'
@@ -464,6 +464,22 @@ interface ParseNormalizado {
    * essa ordem só chega na M7; até lá, avisar é a única defesa.
    */
   readonly avisos?: readonly string[]
+  /**
+   * Quantas linhas a BASE vai ter depois desta carga — o "depois" do diff. Ausente = igual a
+   * `totalLinhas`.
+   *
+   * Existe porque "linhas parseadas" e "linhas na base" **não são a mesma grandeza em duas das
+   * cinco bases**, e comparar a errada faz o gate humano mentir (medido no smoke da M4):
+   *   • Vendas — o parse produz linhas de ITEM (48.862) e `get_upload_status().vendas.total`
+   *     conta `analytics.fato_venda`, que é VENDA distinta (29.458). O diff dizia +19.404 numa
+   *     carga que não muda quase nada. O card antigo já sabia disso e comparava
+   *     `new Set(venda_numero).size` — a conta certa se perdeu na troca de caminho.
+   *   • Operação — o aplicador descarta as linhas-placeholder do scrape
+   *     (`lancamentoOperacaoAplicavel`), então a base recebe menos do que o parse leu: o diff
+   *     acusava +5 numa carga idêntica à que já está lá (41.750 lidas − 5 placeholders = 41.745,
+   *     exatamente o total atual).
+   */
+  readonly linhasNaBase?: number
 }
 
 async function executarParse(base: BaseIngestao, arquivosLidos: readonly ArquivoLido[]): Promise<ParseNormalizado | ErroCarga> {
@@ -488,6 +504,11 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
       return {
         linhasParaAplicar: resultado.linhas,
         totalLinhas: resultado.linhas.length,
+        // O "depois" do diff é VENDA distinta, não linha de item — é o que
+        // `get_upload_status().vendas.total` (COUNT de `analytics.fato_venda`) mede do outro lado.
+        linhasNaBase: new Set(
+          resultado.linhas.map((l) => l.venda_numero).filter((n): n is string => n !== null && n !== ''),
+        ).size,
         checksums: resultado.checksums,
         datasRejeitadasN: resultado.datasRejeitadas.length,
         diagnostico: resultado.diagnostico,
@@ -586,6 +607,9 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
         avisos,
         linhasParaAplicar: resultado.linhas,
         totalLinhas: resultado.linhas.length,
+        // O "depois" do diff desconta as linhas-placeholder do scrape, que o aplicador não grava
+        // — sem isso o diff acusa diferença numa carga idêntica à que já está na base.
+        linhasNaBase: resultado.linhas.filter(lancamentoOperacaoAplicavel).length,
         checksums: resultado.checksums,
         datasRejeitadasN: resultado.datasRejeitadas.length,
         diagnostico: resultado.diagnostico,
@@ -789,7 +813,7 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     const somaCentavosNovo = base === 'demonstrativo-competencia'
       ? somaCentavos((parseado.linhasParaAplicar as readonly DemonstrativoCompetenciaCru[]).map((l) => l.valor))
       : null
-    const { diff, aviso: avisoDiff } = await calcularDiff(base, parseado.totalLinhas, somaCentavosNovo)
+    const { diff, aviso: avisoDiff } = await calcularDiff(base, parseado.linhasNaBase ?? parseado.totalLinhas, somaCentavosNovo)
     // Os avisos do PARSE (hoje: a cobertura do cruzamento de Vencimento) entram junto com o do
     // diff, e valem para a CONFERÊNCIA também — é antes de confirmar que o operador precisa
     // ler que nenhum vencimento foi resolvido.
