@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-22 (fronteira da M4).
+Última atualização: 2026-09-22 (fronteira da M5).
 
 ---
 
@@ -29,7 +29,75 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | 0275 hook de credencial | **aplicada e registrada** (22/09) — identidade de máquina = login + hook (o JWT HS256 do briefing ficou inviável no regime novo de chaves; ADR-0175 §5) |
 | M3 parsers/oráculos | **feito** (`49c8c83` + `3cec38d`) — GATE 1 verde nas 5 bases |
 | M4 Storage + rota | **feito** (`8d83fa7`→`8dc5285`) — 0276 aplicada 22/09; desenho em `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` |
-| M5–M11 | pendentes — roteiro no plano |
+| M5 atomicidade | **feito** (`7fb7097`) — 0277/0278 aplicadas 22/09; desenho em `docs/briefings/anexo-v6-0-0-m5-desenho-da-atomicidade.md` |
+| M6–M11 | pendentes — roteiro no plano |
+
+**M5 FECHADA (22/09).** As cinco bases têm carga atômica: `limpar_staging_{base}` →
+`inserir_lote_staging_{base}` → `validar_carga_{base}` → `promover_carga_{base}(checksums, carga_id)`,
+com TRUNCATE + INSERT + regeneração **dentro de uma transação**. A janela em que a base ficava vazia
+ou parcial deixou de existir. Migrations **0277/0278** aplicadas sob o backup-gate (verde).
+Suíte: **1.472 testes, 88 arquivos, zero falha**. Próxima migration livre: **0279**. ADR livre: **0176**.
+
+**O checksum do export agora é conferido DENTRO do banco**, contra o que ficou gravado — o que cobre
+o trecho entre o parse e a tabela (serialização, cast, arredondamento de `NUMERIC(18,2)`, lote
+perdido), que a conferência do servidor não alcança. O que cada base consegue reconferir foi medido,
+não presumido: Demonstrativo reagrupa os 557 por soma mas **nunca declara contagem** (é o formato do
+arquivo); Movimentação e Aberto conferem soma *e* contagem; Vendas confere 2 dos 4 campos somados
+(os outros dois não têm coluna de destino); Operação não tem checksum monetário. A resposta distingue
+"conferido" de "não conferível" — "conferi 0 de 557" não pode ter a mesma cara que "557 de 557".
+
+**Ensaio em transação revertida contra produção** (a prova que o briefing pede para a M5), executado
+em 22/09 no Demonstrativo: checksum errado (−3.234,00 no lugar de −3.234,56) levantou
+`CHECKSUM_FALHOU` nomeando o que não fechou e por quanto; checksum certo aplicou; **base intacta,
+3.334 linhas antes e depois**.
+
+> 🔴 **O ensaio existe como execução documentada, não como teste commitado — e isso é decisão sua.**
+> Torná-lo permanente significa acrescentar um arquivo a `ESCREVEM_E_REVERTEM_HOJE`
+> (`src/lib/sonda-teste-escreve-banco.test.ts`), que é **lista fechada de propósito**: o comentário
+> dela manda, a cada entrada nova, atualizar a contagem na skill `banco-e-rpc` §6 e **avaliar o
+> gatilho do ambiente de teste próprio** — gatilho que já está tocado e já é uma decisão sua em
+> aberto. Acrescentar um quinto caso por conta própria seria furar a disciplina que a própria sonda
+> existe para segurar. O ensaio está em condições de virar teste em minutos, assim que você decidir.
+
+**O filtro Welcome foi ANTECIPADO da M7 para cá, e o motivo é número em tela.** O filtro
+`Setor Macro != "Welcome"` nunca existiu em código: vivia no script R, e o card antigo subia o
+arquivo já tratado. Com o cru, aplicar Vendas somaria **141 vendas e R$ 470.320,84** ao `fato_venda`,
+sem erro nenhum. Agora vive numa view nomeada (`analytics.vendas_excel_para_fato`) que o
+`transform_raw_to_analytics` lê nas cinco leituras, com `IS DISTINCT FROM` — nunca `<>`, porque
+`setor_macro` é anulável e `<>` excluiria em silêncio toda linha sem setor macro.
+
+Medido contra a tabela viva imediatamente antes do push, e de novo depois: `raw.vendas_excel` com
+48.652 linhas, **zero** de Welcome, zero com `setor_macro` nulo, 29.458 vendas distintas = exatamente
+o `fato_venda`. A view é no-op sobre o dado de hoje.
+
+Três coisas que a M5 corrigiu antes de aplicar, e que valem para quem seguir:
+
+- **`p_checksums = []` promovia a base inteira devolvendo sucesso.** Um checksum AUSENTE não é
+  "falho", mas o efeito prático é idêntico: base substituída sem nenhuma verificação. O invariante 5
+  tinha uma porta dos fundos.
+- **`EXCEPTION WHEN OTHERS` é quase sempre amplo demais.** O que se queria tolerar era só o erro de
+  permissão; o amplo engoliria um bug real como se fosse aviso intermitente. Virou
+  `WHEN insufficient_privilege` — e o ensaio provou o catch funcionando, porque pela conexão direta
+  não há identidade JWT e `exigir_acesso` levanta justamente 42501.
+- **Staging nova pode exigir coluna que o caminho anterior não precisava.** O parse de Operação nunca
+  preenchia `arquivo_origem` (a base gravava direto no fato, que não tem essa coluna); com a staging,
+  que a exige `NOT NULL`, toda carga dessa base falharia.
+
+> 🔴 **A credencial `ingestor` ainda NÃO aplica — e a virada esbarra numa decisão sua.** A allowlist
+> dela é DERIVADA de `rpcs-ingestor.ts` por script, e o derivador resolve por NOME: rodá-lo concede
+> `EXECUTE` em `promover_carga_demonstrativo`, que chama `provisionar_dre_comp_par`, que exige a área
+> `financeiro/dre` — e a role "Máquina · ingestão" tem **exatamente uma área: `admin/uploads`**
+> (conferido no banco). As saídas são: (a) separar um núcleo service_role-only e manter a função
+> pública com o guard — é o padrão que o projeto já usa para este caso; (b) dar `financeiro/dre` à
+> role de máquina, alargando uma credencial deliberadamente estreita. **Recomendo (a).** Enquanto não
+> decide, tudo roda com `service_role`, como sempre rodou, atrás de uma costura de uma linha em
+> `aplicar.ts`.
+
+> ⚠️ **Risco registrado para a missão de corte / GATE 3:** o caminho LEGADO (`truncar_* +
+> regenerar_fluxo_caixa` direto) ainda está vivo e **não toma** a chave de advisory lock compartilhada
+> nova (`4017050`), que Movimentação e Aberto passam a tomar antes de reconstruir `fato_fluxo`.
+> Enquanto os dois caminhos coexistirem, a exclusão mútua que ela promete pode ser furada por um
+> chamador que não sabe dela.
 
 **M4 FECHADA (22/09).** As duas rotas do contrato existem (`/api/ingestao/{base}/upload-url` e
 `/api/ingestao/{base}`), o bucket privado `ingestao-cru` nasceu, o card de `/admin/uploads` sobe
@@ -215,9 +283,9 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.11.0** (PR #273, mergeado 15/09 às 12:55) |
-| Última migration aplicada | **0276** (v6.0.0/M4 — `ingestao.carga` + bucket) · próxima livre: **0277** |
+| Última migration aplicada | **0278** (v6.0.0/M5 — pipeline atômico) · próxima livre: **0279** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
-| Suíte | **1.455 testes**, 88 arquivos, zero `skip` silencioso |
+| Suíte | **1.472 testes**, 88 arquivos, zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
