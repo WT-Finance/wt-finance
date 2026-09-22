@@ -51,6 +51,19 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
     porque: 'GATE 2 parte 2 (v6.0.0/M2): a credencial de ingestão negada em leitura e truncar — REST + catálogo READ ONLY',
   },
   {
+    arquivo: 'src/lib/ingestao/oraculo-demonstrativo.test.ts',
+    envs: ['REQUIRE_FIXTURES'],
+    porque: 'GATE 1 (v6.0.0/M3): oráculo cru↔tratado do Demonstrativo. O gate aqui não é credencial ' +
+      'e sim a PRESENÇA das fixtures (gitignoradas, populadas por scripts/ingestao/fixtures.mjs); ' +
+      '`REQUIRE_FIXTURES=1` transforma a ausência em falha alta, como o REQUIRE_CONTRACT faz com a rede',
+  },
+  {
+    arquivo: 'src/lib/ingestao/oraculo-lancamentos.test.ts',
+    envs: ['REQUIRE_FIXTURES'],
+    porque: 'GATE 1 (v6.0.0/M3): oráculo cru↔tratado das duas bases de Lançamentos por Categoria — ' +
+      'mesmo gate de presença de fixture',
+  },
+  {
     arquivo: 'src/lib/estante/estante-rpcs.test.ts',
     envs: ['SUPABASE_DB_URL'],
     porque: 'prova comportamental das RPCs da Estante Welcome, em transação revertida (0271/0272, v5.11.0)',
