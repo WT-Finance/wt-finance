@@ -1,32 +1,39 @@
 import 'server-only'
 
-// Aplicação por base (v6.0.0, M4 — anexo `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md`
-// §1.1(b) e §2, entrada `aplicar.ts`).
+// Aplicação por base (v6.0.0, M5 — anexo `docs/briefings/anexo-v6-0-0-m5-desenho-da-atomicidade.md`).
 //
-// A M4 move o CAMINHO do parse (do navegador para o servidor) — não o pipeline. Este módulo
-// roda, a partir das linhas `*Cru` que os parsers da M3 (`./parsers/*`) produzem, EXATAMENTE a
-// mesma sequência de RPCs que `src/app/admin/uploads/actions.ts` já executava hoje: mesma
-// ordem, mesmo tamanho de lote, mesmos efeitos colaterais, mesmos avisos não-bloqueantes. Cada
-// aplicador traz o adaptador `*Cru` → payload da RPC (as RPCs de hoje esperam a forma antiga,
-// documentada nos tipos `*Raw` de `@/lib/carga/*`).
+// A M4 movia só o CAMINHO do parse (do navegador para o servidor), mantendo o pipeline antigo de
+// cada base — truncar_* + inserir_lote_* + regenerar_*, em passos HTTP separados — exceto Vendas,
+// que já era atômica desde a v4.15.0 (ADR-0111). A M5 troca ESSE pipeline pelo ATÔMICO que as
+// migrations 0277/0278 criaram para as quatro bases restantes, e estende Vendas com uma
+// sobrecarga nova. Toda base passa a seguir a MESMA forma:
 //
-// Tudo aqui roda com `service_role` (`getAdminClient`) — a MESMA credencial que as Server
-// Actions já usavam. A M5 troca este aplicador pelo pipeline ATÔMICO `promover_carga_{base}`
-// (quatro bases que ainda são truncar+inserir+regenerar em passos separados) — é lá que a
-// credencial `ingestor` do contrato (`docs/contratos/ingestao-v1.md` §1) passa a ser quem
-// aplica de fato. Hoje a allowlist da role `ingestor` NEGA `truncar_*` de propósito (migration
-// 0274, provado pelo GATE 2) — `service_role` continua sendo a única credencial capaz de rodar
-// o pipeline atual, e é por isso que este módulo ainda usa `getAdminClient`.
+//   `limpar_staging_{base}` (1x) → `inserir_lote_staging_{base}` (por lote) →
+//   `validar_carga_{base}` (1x) → `promover_carga_{base}(p_checksums, p_carga_id)` (1x)
+//
+// `promover_carga_{base}` faz o TRUNCATE + INSERT + regeneração da base VIVA dentro de UMA
+// transação, conferindo o checksum do parser CONTRA O QUE FICOU GRAVADO (contrato ingestao-v1
+// §4; anexo M5 §4) — qualquer divergência dá `RAISE` e a transação inteira volta. Consequência
+// direta: uma reprovação em QUALQUER etapa (staging ou promoção) agora SEMPRE deixa a base
+// anterior de pé — diferente do pipeline antigo, em que um `TRUNCATE` direto na base viva podia
+// deixá-la parcial se o lote seguinte falhasse (achado MÉDIO do `revisor` na M4, fechado aqui).
+//
+// Cada aplicador traz o adaptador `*Cru` → payload da RPC — as colunas agora são as da STAGING
+// (conferidas coluna a coluna contra o `INSERT` real de cada `inserir_lote_staging_{base}`,
+// migration 0278), não mais as da tabela viva ou (Operação) do fato.
+//
+// Tudo aqui roda com `service_role` (`getAdminClient`) — a credencial `ingestor` do contrato
+// (`docs/contratos/ingestao-v1.md` §1) ainda NÃO tem GRANT de EXECUTE nas RPCs novas desta missão
+// (a allowlist é DERIVADA de `rpcs-ingestor.ts` por script; a migration do GRANT é do
+// orquestrador, fora do escopo desta missão — ver o cabeçalho de `rpcs-ingestor.ts`). `rpcDe()`
+// abaixo é a COSTURA: trocar `getAdminClient()` por um cliente autenticado como `ingestor` (via
+// `tokenMaquina('ingestor')`, `src/lib/auth/credencial-maquina.ts`) é a única linha que muda
+// quando o GRANT existir — nenhuma outra parte deste módulo depende de qual credencial chama.
 
 import { getAdminClient } from '@/lib/supabase/admin'
 import { loadMetas } from '@/lib/carga/metas'
-import {
-  parseRpc, cargaValidacaoSchema, cargaPromocaoSchema,
-  statusDemonstrativoCompetenciaSchema, provisionarDreCompParSchema,
-} from '@/lib/schemas-rpc'
-import { hojeSP } from '@/lib/fmt'
-import { somaCentavos } from './parsers/comum'
-import { statusDoLancamento } from './parsers/lancamentos-operacao'
+import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
+import { normalizeHeader, type Checksum } from './parsers/comum'
 import type { BaseIngestao } from './bases'
 import type { VendaProdutoCru } from './parsers/vendas-produto'
 import type { DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
@@ -45,20 +52,31 @@ function rpcDe(): BoundRpc {
 export interface ResultadoAplicacao {
   readonly linhas: number
   readonly avisos: string[]
+  /**
+   * Quantos checksums a promoção RECONFERIU contra o que ficou gravado no banco (contrato
+   * ingestao-v1 §4, anexo M5 §4). Nem todo checksum é reconferível — dois dos quatro campos
+   * somados de Vendas não têm coluna própria em `raw.vendas_excel`, e Lançamentos por Operação
+   * não tem nenhum checksum monetário no arquivo. "Conferi 0 de N" e "conferi N de N" precisam
+   * ter aparência DIFERENTE na resposta da carga — foi exatamente essa distinção que sumiu
+   * (cobertura do cruzamento de Vencimento) na M4.
+   */
+  readonly checksumsConferidos: number
+  /** Quantos checksums do lote a RPC RECEBEU mas não tinha como reconferir (sem coluna própria
+   *  na base VIVA, ou base sem checksum monetário nenhum) — nunca contados como falha. */
+  readonly checksumsNaoConferiveis: number
 }
 
 export interface OpcoesAplicacao {
   /**
    * Nome do arquivo de origem — exigido pelas bases que anexam `arquivo_origem` por linha
-   * (Demonstrativo, Movimentação, Aberto; era o que a `action` já fazia). Vendas NÃO usa isto:
-   * `VendaProdutoCru.arquivo_origem` já vem por linha do parser da M3 (a base aceita N
-   * arquivos). Lançamentos por Operação também não usa: `analytics.fato_lancamento_operacao`
-   * não tem essa coluna.
+   * (Demonstrativo, Movimentação, Aberto). Vendas NÃO usa isto: `VendaProdutoCru.arquivo_origem`
+   * já vem por linha do parser da M3 (a base aceita N arquivos).
    *
-   * Divergência do desenho do anexo: o esboço de `aplicarCarga` ali é `(base, linhas)`, sem
-   * este campo — mas três dos cinco tipos `*Cru` não carregam `arquivo_origem` por linha, e as
-   * RPCs dessas três bases exigem a coluna (migrations 0185/0186/0255). Extensão mínima e
-   * documentada; ver o relato desta missão para o orquestrador.
+   * 🔁 M5: Lançamentos por Operação PASSA a exigir isto também —
+   * `raw.lancamentos_operacao_staging.arquivo_origem` é `NOT NULL` (migration 0277); na M4 a
+   * base gravava direto no FATO, que não tem essa coluna, e por isso não precisava dele.
+   * Divergência do desenho do anexo M4 (que não previa este campo para Operação), registrada no
+   * relato desta missão.
    */
   readonly arquivoOrigem?: string
   /**
@@ -67,6 +85,27 @@ export interface OpcoesAplicacao {
    * o retorno final.
    */
   readonly onProgresso?: (linhasAplicadas: number) => void
+  /**
+   * `carga_id` que torna a promoção idempotente (`ingestao.promocao`, migration 0277) — a partir
+   * da M5, TODA base chama `promover_carga_{base}(p_checksums, p_carga_id)`, e repetir a chamada
+   * com o MESMO `carga_id` devolve o resultado guardado sem repetir o efeito. Exigido em runtime
+   * por `exigirCargaId` (no molde de `exigirArquivoOrigem`).
+   */
+  readonly cargaId?: string
+  /**
+   * Checksums que o PARSE apurou desta carga — o que `serializarChecksums*` traduz para o jsonb
+   * que `promover_carga_{base}` confere contra o GRAVADO (contrato ingestao-v1 §4, cabeçalho da
+   * migration 0278). Ausente vira `[]`: Lançamentos por Operação nunca envia checksum monetário
+   * (a RPC dela nem lê este parâmetro — contrato §4).
+   */
+  readonly checksums?: readonly Checksum[]
+  /**
+   * Só a base "demonstrativo-competencia": os campos do pivot na ORDEM em que apareceram no
+   * arquivo (`ParseOk.diagnostico.campos`, `parsers/demonstrativo-competencia.ts`) — é o que
+   * permite a `serializarChecksumsDemonstrativo` remontar a `chave` POSICIONAL do parser em
+   * objeto por NOME de coluna, já que nesta base a ordem dos campos é descoberta, não fixa.
+   */
+  readonly camposPivotDemonstrativo?: readonly string[]
 }
 
 /**
@@ -94,9 +133,9 @@ const BATCH_DEMONSTRATIVO = 500
 // ── Adaptadores `*Cru` → payload da RPC ──────────────────────────────────────────────────────
 //
 // Cada função abaixo é PURA (sem I/O) e devolve exatamente as chaves que a RPC correspondente
-// lê do jsonb — conferidas coluna a coluna contra o `INSERT` real das migrations 0135 (Vendas),
-// 0255 (Demonstrativo), 0185/0186 (Movimentação/Aberto) e 0026/0027 (Lançamentos por
-// Operação), não contra suposição.
+// lê do jsonb — conferidas coluna a coluna contra o `INSERT` real de cada `inserir_lote_staging_
+// {base}` (migration 0278; Vendas em 0135/0118 + o `CREATE OR REPLACE` da 0278), não contra
+// suposição.
 
 /** `valor_total`/`receitas` de Vendas viajam como STRING — o staging faz `::numeric` na
  *  chegada (skill `ingestao-planilhas` §4; não "corrigir" para `number`). `toFixed(2)`
@@ -107,22 +146,25 @@ function dinheiroComoString(v: number | null): string | null {
 }
 
 /**
- * Vendas → `raw.vendas_excel_staging` via `inserir_lote_staging` (migration 0135/0118).
+ * Vendas → `raw.vendas_excel_staging` via `inserir_lote_staging` (migration 0135/0118, com o
+ * `CREATE OR REPLACE` da 0278 acrescentando `intermediario` ao INSERT).
  *
- * Três adaptações que MUDAM dado (anexo M4 §2):
+ * Adaptações que MUDAM dado (anexo M4 §2, mais a de M5 abaixo):
  *   - `data_inicio` (Cru) → `data_inicio_evento` (coluna);
  *   - `contrato`/`taxa_servico`: `0|1` (Cru) → `boolean` (a RPC casta `::boolean`, e o texto
  *     `'0'`/`'1'` também seria aceito pelo Postgres — mas o contrato explícito pede boolean);
- *   - `valor_total`/`receitas`: `number|null` (Cru) → string com 2 casas.
+ *   - `valor_total`/`receitas`: `number|null` (Cru) → string com 2 casas;
+ *   - `intermediario`: a partir da M5 a coluna EXISTE (`raw.vendas_excel.intermediario`,
+ *     migration 0277) e passa a ser GRAVADA — decisão 7 do briefing da versão ("Intermediário
+ *     volta a ser carregado"; o script R legado zerava a coluna — `mutate(Intermediário = NA)` —,
+ *     resíduo, não regra de negócio). Antes da M5 não havia coluna de destino e o campo era
+ *     descartado aqui de propósito; o parser da M3 já preservava o dado, só faltava para onde ir.
  *
- * `intermediario` do Cru **não tem coluna** em `raw.vendas_excel_staging` hoje — descartado de
- * propósito; a coluna nasce na M5 (decisão 7 do briefing da versão).
- *
- * 🔴 `situacao` do Cru é DELIBERADAMENTE descartada nesta missão, e isto precisa de decisão do
- * Yan antes de mudar. A coluna existe em `raw.vendas_excel` desde a 0038, mas o parser de
- * CLIENTE vivo (`vendas-parser.ts`) nunca a populou — a base recebe `situacao = NULL` em toda
- * carga feita pelo card. O parser da M3 lê a coluna do export e ela tem para onde ir, então
- * mapeá-la seria a coisa "óbvia" a fazer — e mudaria o que duas telas mostram:
+ * 🔴 `situacao` do Cru continua DELIBERADAMENTE descartada nesta missão — decisão pendente do
+ * Yan, sem relação com o escopo da M5. A coluna existe em `raw.vendas_excel` desde a 0038, mas o
+ * parser de CLIENTE vivo (`vendas-parser.ts`) nunca a populou — a base recebe `situacao = NULL`
+ * em toda carga feita pelo card. O parser da M3 lê a coluna do export e ela tem para onde ir,
+ * então mapeá-la seria a coisa "óbvia" a fazer — e mudaria o que duas telas mostram:
  * `analytics.vw_vendas_agregadas` (0040) e `get_vendas_em_aberto`/`get_vendas_em_aberto_weddings`
  * (0114/0121) filtram `situacao = 'Aberta'` ESTRITO. Com a coluna nula, esse filtro não casa
  * nada; preenchê-la faria "Vendas em Aberto" deixar de ser uma lista vazia.
@@ -163,15 +205,17 @@ export function adaptarVenda(cru: VendaProdutoCru): Record<string, unknown> {
     tipo_contrato:      cru.tipo_contrato,
     passageiros:        cru.passageiros,
     operacao_propria:   cru.operacao_propria,
+    intermediario:      cru.intermediario,
   }
 }
 
 /**
- * Demonstrativo de Competência → `raw.demonstrativo_competencia` via
- * `inserir_lote_demonstrativo_competencia` (migration 0255).
+ * Demonstrativo de Competência → `raw.demonstrativo_competencia_staging` via
+ * `inserir_lote_staging_demonstrativo` (migration 0278; mesmas colunas de
+ * `inserir_lote_demonstrativo_competencia`, 0255).
  *
  * Única adaptação: `arquivo_origem` anexado por linha — o Cru não o carrega (é base de 1
- * arquivo só), a action já anexava assim.
+ * arquivo só).
  */
 export function adaptarDemonstrativo(
   cru: DemonstrativoCompetenciaCru,
@@ -191,16 +235,15 @@ export function adaptarDemonstrativo(
 }
 
 /**
- * Lançamentos por Movimentação → `raw.lancamentos_movimentacao` via
- * `inserir_lote_lancamentos_movimentacao` (migration 0185).
+ * Lançamentos por Movimentação → `raw.lancamentos_movimentacao_staging` via
+ * `inserir_lote_staging_movimentacao` (migration 0278; mesmas colunas de
+ * `raw.lancamentos_movimentacao`, 0185 — a staging é `LIKE ... INCLUDING DEFAULTS`).
  *
  * ⚠️ Achado que o anexo NÃO lista explicitamente (só cita "arquivo_origem anexado" para esta
  * base): a RPC lê `x->>'venda_no'` e `x->>'data_movimentacao'`, mas o Cru (parser único de
  * `lancamentos-categoria.ts`, compartilhado com Aberto) chama os mesmos campos
  * `venda_numero`/`movimentacao`. É RENOMEAÇÃO, não só anexo de arquivo — confirmado contra o
- * `INSERT` real da migration, não contra a prosa do anexo. O `LancamentoMovimentacaoRaw`
- * antigo (`parse-lancamentos-movimentacao.ts`) já usava `venda_no`/`data_movimentacao`; este
- * adaptador só reproduz o mesmo nome de destino.
+ * `INSERT` real da migration, não contra a prosa do anexo.
  */
 export function adaptarLancamentoMovimentacao(
   cru: LancamentoCategoriaCru,
@@ -225,10 +268,11 @@ export function adaptarLancamentoMovimentacao(
 }
 
 /**
- * Títulos em Aberto → `raw.titulos_em_aberto` via `inserir_lote_titulos_em_aberto`
- * (migration 0186). Mesma renomeação `venda_numero` → `venda_no` da base irmã; SEM
- * `data_movimentacao` — a tabela não tem essa coluna (é o PREVISTO por vencimento; o campo
- * `movimentacao` do Cru já chega `null` nesta base, por construção do parser).
+ * Títulos em Aberto → `raw.titulos_em_aberto_staging` via `inserir_lote_staging_aberto`
+ * (migration 0278; mesmas colunas de `raw.titulos_em_aberto`, 0186). Mesma renomeação
+ * `venda_numero` → `venda_no` da base irmã; SEM `data_movimentacao` — a tabela não tem essa
+ * coluna (é o PREVISTO por vencimento; o campo `movimentacao` do Cru já chega `null` nesta
+ * base, por construção do parser).
  */
 export function adaptarTituloEmAberto(
   cru: LancamentoCategoriaCru,
@@ -252,55 +296,41 @@ export function adaptarTituloEmAberto(
 }
 
 /**
- * Lançamentos por Operação → direto em `analytics.fato_lancamento_operacao` via
- * `inserir_lote_lancamentos` (migrations 0026/0027) — "sem `raw` própria" (anexo M4 §2); a
- * `raw.lancamentos_operacao` é M5.
+ * Lançamentos por Operação → `raw.lancamentos_operacao_staging` via
+ * `inserir_lote_staging_operacao` (migration 0277/0278) — MUDANÇA DE FORMA da M5 (anexo §6): até
+ * a M4 este adaptador gravava DIRETO em `analytics.fato_lancamento_operacao`; a partir da M5 a
+ * cadeia passa a ser staging → raw → fato, e as colunas aqui são as da STAGING/RAW, não mais as
+ * do fato.
  *
- * ⚠️ `status` e `mes_ano` TÊM de continuar sendo gravados nesta missão — e a primeira versão
- * deste adaptador os deixava `null`, o que teria **zerado números em tela**. O Cru não os traz
- * (o CSV do scrape não tem essas colunas; quem as derivava era o script R
- * `docs/legado/scripts-r/analise_casamentos2.R`, e o parser de CLIENTE antigo as lia já
- * prontas do CSV tratado), mas do outro lado há leitor vivo:
- * `SUM(CASE WHEN status = 'Entrada' … 'A Receber Futuro' … 'Saída' … 'A Pagar Futuro')` nas
- * RPCs de Carteira/Próximos/Hotel de Weddings, e `'status', status` no drill-down da operação.
- * Coluna nula ali não dá erro: dá **zero**, em quatro somas que a diretoria lê.
+ * `status`/`mes_ano`/`data_final` NÃO são mais calculados neste adaptador — dependem de "hoje" e
+ * passam a ser DERIVADOS dentro de `promover_carga_operacao`, em SQL, com "hoje" de São Paulo
+ * lido no banco (anexo M5 §6; a regra do R — `TRUE ~ Tipo` — e o `hojeSP()` que este adaptador
+ * usava até a M4 migraram para lá). `linha_origem` agora TEM destino (a staging a guarda; o
+ * fato antigo não tinha essa coluna).
  *
- * O briefing manda calcular `Status` na LEITURA (§5-C) — e é para lá que ele vai, na **M7**,
- * junto com a mudança dos leitores. Enquanto os leitores lerem a coluna, a coluna é escrita:
- * a M4 move o caminho, não a semântica (invariante 1 da versão).
- *
- * As duas derivações são as do R, ao pé da letra:
- *   • `Mes_Ano = format(Data_Final, "%Y-%m")` — `NA` quando não há `Data_Final`.
- *   • `Status  = case_when(Tipo=='Entrada' & Data_Final > hoje ~ 'A Receber Futuro',
- *                          Tipo=='Saída'   & Data_Final > hoje ~ 'A Pagar Futuro',
- *                          TRUE ~ Tipo)`.
- * O `?? cru.tipo` abaixo **é** esse `TRUE ~ Tipo`, e não é detalhe: em R, `NA > data` avalia
- * para `NA`, então a linha sem `Data_Final` nunca casava os dois primeiros ramos e caía no
- * último, nascendo como "Entrada"/"Saída". `statusDoLancamento` (M3) devolve `null` nesse caso
- * de propósito — "a ausência tem nome próprio" —, e é a decisão certa para quando a leitura
- * mudar; aqui ela ainda precisa do fallback, senão os lançamentos sem data final (os 3
- * conhecidos, que não estão nem em Aberto nem em Movimentação) sumiriam das somas de
- * realizado. `hojeSP()` porque "hoje" nesta plataforma é sempre o de São Paulo.
- *
- * `linha_origem` do Cru não tem destino: a tabela não tem essa coluna.
+ * Nenhum FILTRO acontece aqui: TODAS as linhas do arquivo vão para a staging, inclusive as
+ * placeholder do scrape (valor nulo, tipo fora de Entrada/Saída, operação nula) que até a M4
+ * eram descartadas em silêncio por este adaptador (via `lancamentoOperacaoAplicavel`). Com
+ * `raw.lancamentos_operacao` própria elas passam a ser AUDITÁVEIS (decisão do anexo M5 §6) — é
+ * `promover_carga_operacao`, em SQL, quem aplica o mesmo critério de `lancamentoOperacaoAplicavel`
+ * ao derivar o fato.
  */
 export function adaptarLancamentoOperacao(
   cru: LancamentoOperacaoCru,
-  hojeIso: string = hojeSP(),
+  arquivoOrigem: string,
 ): Record<string, unknown> {
   return {
-    lancamento_n:  cru.lancamento_numero,
-    venda_n:       cru.venda_numero,
-    pessoa:        cru.pessoa,
-    descricao:     cru.descricao,
-    liquidacao_dt: cru.liquidacao,
-    vencimento_dt: cru.vencimento,
-    valor:         cru.valor,
-    tipo:          cru.tipo,
-    operacao:      cru.operacao,
-    status:        statusDoLancamento(cru.tipo, cru.data_final, hojeIso) ?? cru.tipo,
-    data_final:    cru.data_final,
-    mes_ano:       cru.data_final === null ? null : cru.data_final.slice(0, 7),
+    arquivo_origem:     arquivoOrigem,
+    linha_origem:       cru.linha_origem,
+    lancamento_numero:  cru.lancamento_numero,
+    venda_numero:       cru.venda_numero,
+    pessoa:             cru.pessoa,
+    descricao:          cru.descricao,
+    liquidacao:         cru.liquidacao,
+    vencimento:         cru.vencimento,
+    valor:              cru.valor,
+    operacao:           cru.operacao,
+    tipo:               cru.tipo,
   }
 }
 
@@ -308,29 +338,156 @@ export function adaptarLancamentoOperacao(
  * Só linhas com o mínimo que `analytics.fato_lancamento_operacao` exige: `valor`, `tipo`
  * (`CHECK IN ('Entrada','Saída')`) e `operacao` são `NOT NULL` (migration 0026). As linhas
  * placeholder do scrape (`"nada para mostrar"`, `"carregando..."` — ver
- * `parsers/lancamentos-operacao.ts`) têm `valor: null` por construção do parser e caem fora
- * aqui.
+ * `parsers/lancamentos-operacao.ts`) têm `valor: null` por construção do parser.
  *
- * Achado desta missão, não coberto explicitamente pelo anexo: o parser de CLIENTE antigo
- * (`parse-lancamentos.ts`) aplicava exatamente este filtro ANTES de montar `LancamentoRaw`
- * (pulava linha sem `Operacao`, sem `Valor` coercível, ou com `Tipo` fora de Entrada/Saída) —
- * então a RPC nunca via essas linhas. Hoje, sem `raw.lancamentos_operacao` própria (M5), não
- * há onde a linha rejeitada ficar visível — é aqui, no aplicador, que o filtro precisa
- * acontecer, ou o `INSERT` inteiro do lote falharia por violação de `NOT NULL`/`CHECK` assim
- * que tocasse a primeira linha-placeholder (e, medido no anexo de 21/09, TODO arquivo real
- * tem pelo menos uma).
+ * 🔁 M5: este critério NÃO filtra mais o que vai para a STAGING (ver `adaptarLancamentoOperacao`
+ * acima) — quem o aplica agora é `promover_carga_operacao`, em SQL, ao derivar o fato a partir de
+ * `raw.lancamentos_operacao`. A função continua exportada e em uso: `carga.ts` a usa para prever
+ * quantas linhas a base terá DEPOIS da carga (o "depois" do diff, §2.3 passo 8) — a mesma
+ * grandeza que a promoção vai gravar de fato.
  */
 export function lancamentoOperacaoAplicavel(cru: LancamentoOperacaoCru): boolean {
   return cru.valor !== null && cru.operacao !== null && (cru.tipo === 'Entrada' || cru.tipo === 'Saída')
+}
+
+// ── Checksums: parser → jsonb da RPC (contrato do checksum, cabeçalho da migration 0278) ──────
+//
+// `Checksum.chave` (parser) é POSICIONAL (`readonly string[]`); a RPC quer um OBJETO chaveado
+// pelo NOME REAL da coluna — nunca array por posição (o cabeçalho da 0278 explica o motivo: no
+// Demonstrativo a ordem dos campos do pivot é DESCOBERTA, e um array posicional exigiria o SQL
+// saber essa ordem, que ele não tem como saber).
+
+/**
+ * Garante `centavos` (SEMPRE `centavosArredondados`, NUNCA `centavosApurados` — é o único que
+ * corresponde ao que a coluna `NUMERIC(x,2)` guarda depois do INSERT, cabeçalho da migration
+ * 0278) e preserva `linhas` como `null` quando o arquivo não declarou contagem — "não declarou"
+ * não é "declarou zero". Falha ALTO e CEDO se o checksum não tiver `centavosArredondados`: um
+ * checksum assim chegando à RPC faria a conferência abortar por alguns centavos, em toda carga —
+ * melhor não deixar sair daqui.
+ */
+function checksumParaRpc(c: Checksum, chave: Record<string, unknown>): Record<string, unknown> {
+  if (c.centavosArredondados === undefined) {
+    throw new CargaRejeitada(
+      'serializar_checksum',
+      `Checksum sem "centavosArredondados" (escopo "${c.escopo}") — o parser precisa calculá-lo ` +
+      'para a promoção poder conferir contra o gravado (cabeçalho da migration 0278).',
+    )
+  }
+  return {
+    escopo: c.escopo,
+    chave,
+    campo: c.campo,
+    linhas: c.linhasDeclaradas,
+    centavos: c.centavosArredondados,
+  }
+}
+
+/** Vendas: `chave` do parser é `[arquivo_origem]` — mesmo nome de coluna da tabela, tradução
+ *  trivial (contrato do checksum, cabeçalho da migration 0278). */
+export function serializarChecksumsVendas(checksums: readonly Checksum[]): Record<string, unknown>[] {
+  return checksums.map((c) => checksumParaRpc(c, { arquivo_origem: c.chave[0] }))
+}
+
+/**
+ * Movimentação/Aberto: `chave` do parser já usa os MESMOS nomes de coluna
+ * (`grupo_categoria`/`categoria`) — sem remapeamento de posição (cabeçalho da migration 0278).
+ * Escopo desconhecido PARA em vez de assumir "sem filtro": um escopo que não seja nenhum dos três
+ * que `parsers/lancamentos-categoria.ts` produz faria a chave sair vazia em silêncio, e um
+ * checksum de grupo/categoria sem filtro soma a tabela inteira — a mesma classe de erro que
+ * "não declarou ≠ declarou zero".
+ */
+export function serializarChecksumsLancamentoCategoria(checksums: readonly Checksum[]): Record<string, unknown>[] {
+  return checksums.map((c) => {
+    let chave: Record<string, unknown>
+    if (c.escopo === 'grupo') {
+      chave = { grupo_categoria: c.chave[0] }
+    } else if (c.escopo === 'categoria') {
+      chave = { grupo_categoria: c.chave[0], categoria: c.chave[1] }
+    } else if (c.escopo === 'total-arquivo') {
+      chave = {} // soma a tabela inteira, sem filtro — é o que o total do arquivo precisa
+    } else {
+      throw new CargaRejeitada(
+        'serializar_checksum',
+        `Checksum de Lançamentos com escopo desconhecido: "${c.escopo}" — só "grupo", "categoria" ` +
+        'e "total-arquivo" são esperados nesta base (parsers/lancamentos-categoria.ts).',
+      )
+    }
+    return checksumParaRpc(c, chave)
+  })
+}
+
+/**
+ * Demonstrativo: a ÚNICA base em que a ORDEM dos campos do pivot é DESCOBERTA no arquivo, não
+ * fixa (`parsers/demonstrativo-competencia.ts`) — `Checksum.chave[k]` corresponde à POSIÇÃO `k`
+ * do pivot, e o campo que ocupa essa posição é `camposPivot[k]`, normalizado pelo MESMO
+ * `normalizeHeader` que o parser usa para casar contra `tipo|grupo|descricao|ano|mes` (cabeçalho
+ * da migration 0278, "CONTRATO DO CHECKSUM"). `camposPivot` PRECISA vir de
+ * `ParseOk.diagnostico.campos` — é o parser quem descobre a ordem; remontá-la por fora seria
+ * reinventar essa descoberta, e por isso ela é um parâmetro EXPLÍCITO, não um valor fixo aqui.
+ *
+ * Posição da chave sem campo correspondente em `camposPivot` PARA em vez de adivinhar — chave
+ * incompleta significa "não há como saber a que coluna esta posição corresponde", e prosseguir
+ * geraria um filtro que ignora essa coluna em silêncio (o checksum passaria a somar um conjunto
+ * mais amplo do que o arquivo declarou).
+ */
+export function serializarChecksumsDemonstrativo(
+  checksums: readonly Checksum[],
+  camposPivot: readonly string[],
+): Record<string, unknown>[] {
+  const camposNorm = camposPivot.map((c) => normalizeHeader(c))
+  return checksums.map((c) => {
+    const chave: Record<string, unknown> = {}
+    c.chave.forEach((valor, i) => {
+      const campo = camposNorm[i]
+      if (campo === undefined) {
+        throw new CargaRejeitada(
+          'serializar_checksum',
+          `Checksum do Demonstrativo (escopo "${c.escopo}") tem chave na posição ${i}, mas ` +
+          `"camposPivot" só declara ${camposPivot.length} campo(s) — não há como saber a que ` +
+          'coluna essa posição corresponde. A carga não pode ser promovida sem essa informação.',
+        )
+      }
+      chave[campo] = valor
+    })
+    return checksumParaRpc(c, chave)
+  })
+}
+
+// ── Leitura do retorno de `promover_carga_{base}` ────────────────────────────────────────────
+//
+// Superfície INTERNA (service_role-only, sem consumidor de UI — mesma classe de `ingestao.carga`
+// em `log.ts`, que usa o mesmo padrão de guard manual em vez de `parseRpc`/Zod). Fora do escopo
+// desta missão tocar `schemas-rpc.ts`/`rpc-contrato.test.ts` (skill `contrato-rpc-front` §3) —
+// registrado no relato desta missão para o orquestrador decidir se formaliza com Zod depois.
+// Degrada para 0/[] em vez de lançar: um shape que divergisse aqui não pode derrubar uma carga
+// que JÁ foi promovida (o dado já está no banco) — só a CONTAGEM exibida ficaria conservadora.
+
+function lerRetornoPromocao(data: unknown): {
+  readonly checksumsConferidos: number
+  readonly checksumsNaoConferiveis: number
+  readonly avisos: string[]
+} {
+  const o = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>
+  const avisosRaw = o.avisos
+  return {
+    checksumsConferidos: typeof o.checksums_conferidos === 'number' ? o.checksums_conferidos : 0,
+    checksumsNaoConferiveis: typeof o.checksums_nao_conferiveis === 'number' ? o.checksums_nao_conferiveis : 0,
+    avisos: Array.isArray(avisosRaw) ? avisosRaw.filter((a): a is string => typeof a === 'string') : [],
+  }
+}
+
+function lerNumeroOuNulo(data: unknown, campo: string): number | null {
+  const o = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>
+  return typeof o[campo] === 'number' ? (o[campo] as number) : null
 }
 
 // ── Infra de aplicação em lotes ──────────────────────────────────────────────────────────────
 
 interface ParamsAplicacaoEmLotes {
   readonly rpc: BoundRpc
-  /** RPC de truncar/limpar, chamada uma vez, ANTES do primeiro lote — mesma semântica do
-   *  `isFirst` das Server Actions (`inserirLoteXAction(lote, isFirst)`). Omitida quando a base
-   *  não faz truncate próprio nesta etapa. */
+  /** `limpar_staging_{base}`, chamada uma vez, ANTES do primeiro lote — mesma semântica do
+   *  `isFirst` das Server Actions antigas. A partir da M5 esta RPC só limpa a área de STAGING
+   *  (nunca a base viva) em TODAS as bases — Vendas já era assim desde a v4.15.0. */
   readonly truncar?: string
   readonly mensagemTruncar?: string
   readonly inserir: string
@@ -342,9 +499,9 @@ interface ParamsAplicacaoEmLotes {
 
 /**
  * Aplica `payload` em lotes de `tamanhoDoLote`, chamando `truncar` (se houver) antes do
- * PRIMEIRO lote — e só se houver ao menos uma linha, replicando o comportamento do card: como
- * o loop `for (i=0; i<rows.length; i+=BATCH)` nunca roda com `rows.length === 0`, o truncate
- * também nunca disparava para upload vazio.
+ * PRIMEIRO lote — e só se houver ao menos uma linha, replicando o comportamento do card antigo:
+ * como o loop nunca roda com `payload.length === 0`, o truncate também nunca disparava para
+ * upload vazio.
  */
 async function aplicarEmLotes(p: ParamsAplicacaoEmLotes): Promise<void> {
   let aplicadas = 0
@@ -352,24 +509,27 @@ async function aplicarEmLotes(p: ParamsAplicacaoEmLotes): Promise<void> {
     if (i === 0 && p.truncar) {
       const { error } = await p.rpc(p.truncar)
       if (error) {
-        throw new CargaRejeitada(p.truncar, `${p.mensagemTruncar ?? 'Erro ao limpar tabela'}: ${error.message}`)
+        throw new CargaRejeitada(
+          p.truncar,
+          `${p.mensagemTruncar ?? 'Erro ao preparar a carga'}: ${error.message}. A base atual ` +
+          '(viva) não foi tocada — esta etapa só limpa a área de STAGING.',
+        )
       }
     }
     const lote = p.payload.slice(i, i + p.tamanhoDoLote)
     const { error } = await p.rpc(p.inserir, { p_linhas: lote })
     if (error) {
-      // A frase sobre a base NÃO é enfeite, e ela muda conforme onde se falhou. O contrato §2.3
-      // promete "a base anterior fica intacta", e isso só vale nestas quatro bases enquanto a
-      // falha acontece ANTES do TRUNCATE. Depois dele, a base está parcial — e o operador que lê
-      // "Erro ao inserir lote" sem essa ressalva pode ir embora achando que não precisa fazer
-      // nada. Vendas já dizia "a base atual foi preservada" porque lá é verdade (staging +
-      // promoção atômica). Some quando a M5 trouxer `promover_carga_*` para as quatro.
-      // Achado MÉDIO do `revisor`.
-      const ressalva = p.truncar
-        ? ' ⚠️ A base já havia sido limpa quando a falha ocorreu, então está INCOMPLETA: ' +
-          'reimporte este arquivo antes de usar os números.'
-        : ' A base atual foi preservada.'
-      throw new CargaRejeitada(p.etapaInserir, `Erro ao inserir lote: ${error.message}.${ressalva}`)
+      // Com o pipeline ATÔMICO (M5) toda base tem staging própria: um erro aqui NUNCA toca a
+      // base VIVA (só a staging), e o swap real só acontece dentro de `promover_carga_*`, numa
+      // transação — reprovar ali sempre deixa a base anterior de pé. A ressalva antiga ("base
+      // incompleta, reimporte antes de usar os números") valia só enquanto quatro das cinco
+      // bases faziam TRUNCATE direto na tabela viva neste mesmo passo (achado MÉDIO do
+      // `revisor` na M4); com a M5 essa janela deixou de existir para todas as bases.
+      throw new CargaRejeitada(
+        p.etapaInserir,
+        `Erro ao inserir lote: ${error.message}. A base atual (viva) foi preservada — esta etapa ` +
+        'só grava na STAGING.',
+      )
     }
     aplicadas += lote.length
     p.onProgresso?.(aplicadas)
@@ -381,55 +541,51 @@ function exigirArquivoOrigem(opcoes: OpcoesAplicacao, base: BaseIngestao): strin
     throw new CargaRejeitada(
       'arquivo_origem',
       `A base "${base}" precisa do nome do arquivo de origem (opcoes.arquivoOrigem) — cada ` +
-      'linha grava o arquivo que a originou, como a Server Action já fazia.',
+      'linha grava o arquivo que a originou.',
     )
   }
   return opcoes.arquivoOrigem
 }
 
-/** `regenerar_fluxo_caixa` lê `raw.lancamentos_movimentacao` + `raw.titulos_em_aberto` juntas
- *  — chamada no fim dos finalizar das DUAS bases (era um helper compartilhado em
- *  `actions.ts`). Surfaceia conta nova não classificada como aviso não-bloqueante. */
-async function regenerarFluxoCaixa(rpc: BoundRpc): Promise<string[]> {
-  const { data, error } = await rpc('regenerar_fluxo_caixa')
-  if (error) {
-    throw new CargaRejeitada('regenerar_fluxo_caixa', `Erro ao regenerar fluxo de caixa: ${error.message}`)
-  }
-  const meta = data as { contas_novas?: string[]; contas_novas_n?: number } | null
-  const avisos: string[] = []
-  if (meta?.contas_novas_n && meta.contas_novas_n > 0) {
-    avisos.push(
-      `Atenção: ${meta.contas_novas_n} conta(s) nova(s) não classificada(s) automaticamente: ` +
-      `${(meta.contas_novas ?? []).join(', ')}. Confira a classificação de cartão em dim_conta_bancaria.`,
+/** `carga_id` é obrigatório a partir da M5: é o que torna `promover_carga_{base}` idempotente
+ *  (`ingestao.promocao`, migration 0277). Mesmo molde de `exigirArquivoOrigem`. */
+function exigirCargaId(opcoes: OpcoesAplicacao, base: BaseIngestao): string {
+  if (!opcoes.cargaId) {
+    throw new CargaRejeitada(
+      'carga_id',
+      `A base "${base}" precisa do carga_id (opcoes.cargaId) para promover a carga — é o que ` +
+      'torna a promoção idempotente (ingestao.promocao, migration 0277).',
     )
   }
-  return avisos
+  return opcoes.cargaId
 }
 
 // ── Aplicadores por base ─────────────────────────────────────────────────────────────────────
 
 /**
- * Vendas — pipeline ATÔMICO (ADR-0111/v4.15.0), sequência exata de
- * `inserirLoteVendasAction`/`finalizarVendasAction`:
+ * Vendas — pipeline ATÔMICO (ADR-0111/v4.15.0), estendido na M5 com checksum conferido no banco
+ * e idempotência por `carga_id`:
  *
  *   `limpar_staging_vendas` (1x) → `inserir_lote_staging` (por lote) → `validar_carga_staging`
- *   → `loadMetas(false)` → `promover_carga_vendas`
+ *   → `loadMetas(false)` → `promover_carga_vendas(p_checksums, p_carga_id)`
  *
  * `loadMetas` roda ENTRE a validação e a promoção — fora da transação do swap, só depois de a
  * carga ter passado na validação (é fácil de esquecer, e o anexo M4 §2 nomeia isto
- * explicitamente).
+ * explicitamente). A chamada de promoção passa a usar a sobrecarga NOVA `(jsonb, uuid)` da
+ * migration 0278 — a versão zero-arg (0116/0269) fica órfã de propósito (GATE 3, M10) e não é
+ * mais chamada por este módulo.
  */
 async function aplicarVendas(
   linhas: readonly VendaProdutoCru[],
   opcoes: OpcoesAplicacao,
 ): Promise<ResultadoAplicacao> {
   const rpc = rpcDe()
+  const cargaId = exigirCargaId(opcoes, 'vendas-produto')
   const payload = linhas.map(adaptarVenda)
 
   await aplicarEmLotes({
     rpc,
     truncar: 'limpar_staging_vendas',
-    mensagemTruncar: 'Erro ao preparar a carga',
     inserir: 'inserir_lote_staging',
     payload,
     tamanhoDoLote: BATCH_VENDAS,
@@ -441,19 +597,19 @@ async function aplicarVendas(
   if (valRes.error) {
     throw new CargaRejeitada(
       'validar_carga_staging',
-      `Erro na validação da carga: ${valRes.error.message}. A base atual foi preservada.`,
+      `Erro na validação da carga: ${valRes.error.message}. A base anterior foi preservada.`,
     )
   }
   const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_staging')
   if (!validacao) {
     throw new CargaRejeitada(
       'validar_carga_staging',
-      'A validação retornou em formato inesperado. A base atual foi preservada.',
+      'A validação retornou em formato inesperado. A base anterior foi preservada.',
     )
   }
   if (!validacao.ok) {
     const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
-    throw new CargaRejeitada('validar_carga_staging', `${msgs.join(' ')} A base atual foi preservada.`)
+    throw new CargaRejeitada('validar_carga_staging', `${msgs.join(' ')} A base anterior foi preservada.`)
   }
 
   try {
@@ -462,30 +618,40 @@ async function aplicarVendas(
     throw new CargaRejeitada('metas', `Erro ao carregar metas: ${e instanceof Error ? e.message : String(e)}`)
   }
 
-  const promRes = await rpc('promover_carga_vendas')
+  const checksumsRpc = serializarChecksumsVendas(opcoes.checksums ?? [])
+  const promRes = await rpc('promover_carga_vendas', { p_checksums: checksumsRpc, p_carga_id: cargaId })
   if (promRes.error) {
     throw new CargaRejeitada(
       'promover_carga_vendas',
-      `Erro ao promover a carga (base preservada): ${promRes.error.message}`,
+      `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+      `única): ${promRes.error.message}`,
     )
   }
   const promocao = parseRpc(cargaPromocaoSchema, promRes, 'promover_carga_vendas')
   if (!promocao) {
     throw new CargaRejeitada('promover_carga_vendas', 'A promoção retornou em formato inesperado.')
   }
+  const retorno = lerRetornoPromocao(promRes.data)
 
   // op_propria (v4.17.0): aviso não-bloqueante que `validar_carga_staging` já devolvia.
-  return { linhas: linhas.length, avisos: validacao.avisos ?? [] }
+  return {
+    linhas: linhas.length,
+    avisos: validacao.avisos ?? [],
+    checksumsConferidos: retorno.checksumsConferidos,
+    checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
+  }
 }
 
 /**
- * Demonstrativo de Competência — sequência exata de
- * `inserirLoteDemonstrativoCompetenciaAction`/`finalizarDemonstrativoCompetenciaAction`:
+ * Demonstrativo de Competência — pipeline ATÔMICO (M5):
  *
- *   `truncar_demonstrativo_competencia` (1x) → `inserir_lote_demonstrativo_competencia` (por
- *   lote) → `status_demonstrativo_competencia` (ALARME DE INGESTÃO: contagem e soma do
- *   arquivo × gravadas) → `provisionar_dre_comp_par` (depois da conferência — nunca antes: se
- *   a carga não fecha, não se mexe na curadoria).
+ *   `limpar_staging_demonstrativo` (1x) → `inserir_lote_staging_demonstrativo` (por lote) →
+ *   `validar_carga_demonstrativo` → `promover_carga_demonstrativo(p_checksums, p_carga_id)`.
+ *
+ * A conferência do checksum contra o gravado e a chamada a `provisionar_dre_comp_par` (depois da
+ * conferência — nunca antes: se a carga não fecha, não se mexe na curadoria) agora acontecem
+ * DENTRO da RPC, na mesma transação — o `status_demonstrativo_competencia` + a chamada solta a
+ * `provisionar_dre_comp_par` que este aplicador fazia até a M4 saem daqui.
  */
 async function aplicarDemonstrativo(
   linhas: readonly DemonstrativoCompetenciaCru[],
@@ -493,79 +659,75 @@ async function aplicarDemonstrativo(
 ): Promise<ResultadoAplicacao> {
   const rpc = rpcDe()
   const arquivoOrigem = exigirArquivoOrigem(opcoes, 'demonstrativo-competencia')
+  const cargaId = exigirCargaId(opcoes, 'demonstrativo-competencia')
   const payload = linhas.map((l) => adaptarDemonstrativo(l, arquivoOrigem))
 
   await aplicarEmLotes({
     rpc,
-    truncar: 'truncar_demonstrativo_competencia',
-    inserir: 'inserir_lote_demonstrativo_competencia',
+    truncar: 'limpar_staging_demonstrativo',
+    inserir: 'inserir_lote_staging_demonstrativo',
     payload,
     tamanhoDoLote: BATCH_DEMONSTRATIVO,
-    etapaInserir: 'inserir_lote_demonstrativo_competencia',
+    etapaInserir: 'inserir_lote_staging_demonstrativo',
     onProgresso: opcoes.onProgresso,
   })
 
-  // Alarme de ingestão (v5.8.0): a soma do ARQUIVO é medida pela MESMA função que o teste do
-  // parser prova (`somaCentavos`, de `./parsers/comum`) — nunca reimplementada aqui.
-  const somaArquivo = somaCentavos(linhas.map((l) => l.valor))
-  const statusRes = await rpc('status_demonstrativo_competencia')
-  if (statusRes.error) {
+  const valRes = await rpc('validar_carga_demonstrativo')
+  if (valRes.error) {
     throw new CargaRejeitada(
-      'status_demonstrativo_competencia',
-      `Erro ao conferir a carga: ${statusRes.error.message}`,
+      'validar_carga_demonstrativo',
+      `Erro na validação da carga: ${valRes.error.message}. A base anterior foi preservada.`,
     )
   }
-  const status = parseRpc(statusDemonstrativoCompetenciaSchema, statusRes, 'status_demonstrativo_competencia')
-  if (!status) {
+  const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_demonstrativo')
+  if (!validacao) {
     throw new CargaRejeitada(
-      'status_demonstrativo_competencia',
-      'não foi possível ler o status da base de competência (erro na RPC ou contrato divergente — ver log do servidor)',
+      'validar_carga_demonstrativo',
+      'A validação retornou em formato inesperado. A base anterior foi preservada.',
     )
+  }
+  if (!validacao.ok) {
+    const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
+    throw new CargaRejeitada('validar_carga_demonstrativo', `${msgs.join(' ')} A base anterior foi preservada.`)
   }
 
-  const problemas: string[] = []
-  if (status.total !== linhas.length) {
-    problemas.push(`o arquivo tinha ${linhas.length} linha(s) e a base gravou ${status.total}`)
-  }
-  if (status.soma_centavos !== somaArquivo) {
-    const fmt = (c: number) => (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    problemas.push(`a soma do arquivo é ${fmt(somaArquivo)} e a da base é ${fmt(status.soma_centavos)}`)
-  }
-  if (problemas.length > 0) {
+  const checksumsRpc = serializarChecksumsDemonstrativo(opcoes.checksums ?? [], opcoes.camposPivotDemonstrativo ?? [])
+  const promRes = await rpc('promover_carga_demonstrativo', { p_checksums: checksumsRpc, p_carga_id: cargaId })
+  if (promRes.error) {
     throw new CargaRejeitada(
-      'status_demonstrativo_competencia',
-      `A carga NÃO fecha com o arquivo: ${problemas.join(' e ')}. A base ficou com o conteúdo ` +
-      'enviado, mas confira o arquivo e recarregue antes de usar os números.',
+      'promover_carga_demonstrativo',
+      `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+      `única): ${promRes.error.message}`,
     )
   }
-
-  const avisos: string[] = []
-  const prov = await rpc('provisionar_dre_comp_par')
-  if (prov.error) {
+  const retorno = lerRetornoPromocao(promRes.data)
+  const paresNovos = lerNumeroOuNulo(promRes.data, 'pares_novos')
+  const avisos = [...retorno.avisos]
+  if (paresNovos !== null && paresNovos > 0) {
     avisos.push(
-      'A base foi carregada e conferida, mas não foi possível atualizar o de-para editável ' +
-      `(${prov.error.message}). Pares novos aparecem como "Não classificadas" no demonstrativo; ` +
-      'abrir "Editar estrutura" provisiona de novo.',
+      `${paresNovos} par(es) novo(s) do arquivo entraram como "Não classificadas" — classifique-os ` +
+      'em Editar estrutura para que entrem no demonstrativo.',
     )
-  } else {
-    const p = parseRpc(provisionarDreCompParSchema, prov, 'provisionar_dre_comp_par')
-    if (p && p.novos > 0) {
-      avisos.push(
-        `${p.novos} par(es) novo(s) do arquivo entraram como "Não classificadas" — classifique-os ` +
-        'em Editar estrutura para que entrem no demonstrativo.',
-      )
-    }
   }
 
-  return { linhas: linhas.length, avisos }
+  return {
+    linhas: linhas.length,
+    avisos,
+    checksumsConferidos: retorno.checksumsConferidos,
+    checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
+  }
 }
 
 /**
- * Lançamentos por Movimentação — sequência exata de
- * `inserirLoteLancamentosMovimentacaoAction`/`finalizarLancamentosMovimentacaoAction`:
+ * Lançamentos por Movimentação — pipeline ATÔMICO (M5):
  *
- *   `truncar_lancamentos_movimentacao` (1x) → `inserir_lote_lancamentos_movimentacao` (por
- *   lote) → `regenerar_fluxo_caixa` (lê esta base + Aberto).
+ *   `limpar_staging_movimentacao` (1x) → `inserir_lote_staging_movimentacao` (por lote) →
+ *   `validar_carga_movimentacao` → `promover_carga_movimentacao(p_checksums, p_carga_id)`.
+ *
+ * `regenerar_fluxo_caixa()` (lê esta base + Aberto) agora roda DENTRO da RPC, sob o lock
+ * compartilhado das duas bases — o aviso de conta nova não classificada chega em
+ * `retorno.avisos`, já formatado pelo SQL; a chamada solta a `regenerar_fluxo_caixa` que este
+ * aplicador fazia até a M4 sai daqui.
  */
 async function aplicarLancamentosMovimentacao(
   linhas: readonly LancamentoCategoriaCru[],
@@ -573,28 +735,61 @@ async function aplicarLancamentosMovimentacao(
 ): Promise<ResultadoAplicacao> {
   const rpc = rpcDe()
   const arquivoOrigem = exigirArquivoOrigem(opcoes, 'lancamentos-movimentacao')
+  const cargaId = exigirCargaId(opcoes, 'lancamentos-movimentacao')
   const payload = linhas.map((l) => adaptarLancamentoMovimentacao(l, arquivoOrigem))
 
   await aplicarEmLotes({
     rpc,
-    truncar: 'truncar_lancamentos_movimentacao',
-    inserir: 'inserir_lote_lancamentos_movimentacao',
+    truncar: 'limpar_staging_movimentacao',
+    inserir: 'inserir_lote_staging_movimentacao',
     payload,
     tamanhoDoLote: BATCH_LANCAMENTOS_MOVIMENTACAO,
-    etapaInserir: 'inserir_lote_lancamentos_movimentacao',
+    etapaInserir: 'inserir_lote_staging_movimentacao',
     onProgresso: opcoes.onProgresso,
   })
 
-  const avisos = await regenerarFluxoCaixa(rpc)
-  return { linhas: linhas.length, avisos }
+  const valRes = await rpc('validar_carga_movimentacao')
+  if (valRes.error) {
+    throw new CargaRejeitada(
+      'validar_carga_movimentacao',
+      `Erro na validação da carga: ${valRes.error.message}. A base anterior foi preservada.`,
+    )
+  }
+  const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_movimentacao')
+  if (!validacao) {
+    throw new CargaRejeitada(
+      'validar_carga_movimentacao',
+      'A validação retornou em formato inesperado. A base anterior foi preservada.',
+    )
+  }
+  if (!validacao.ok) {
+    const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
+    throw new CargaRejeitada('validar_carga_movimentacao', `${msgs.join(' ')} A base anterior foi preservada.`)
+  }
+
+  const checksumsRpc = serializarChecksumsLancamentoCategoria(opcoes.checksums ?? [])
+  const promRes = await rpc('promover_carga_movimentacao', { p_checksums: checksumsRpc, p_carga_id: cargaId })
+  if (promRes.error) {
+    throw new CargaRejeitada(
+      'promover_carga_movimentacao',
+      `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+      `única): ${promRes.error.message}`,
+    )
+  }
+  const retorno = lerRetornoPromocao(promRes.data)
+  return {
+    linhas: linhas.length,
+    avisos: retorno.avisos,
+    checksumsConferidos: retorno.checksumsConferidos,
+    checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
+  }
 }
 
 /**
- * Títulos em Aberto — sequência exata de
- * `inserirLoteTitulosEmAbertoAction`/`finalizarTitulosEmAbertoAction`:
+ * Títulos em Aberto — pipeline ATÔMICO (M5), simétrico à irmã Movimentação:
  *
- *   `truncar_titulos_em_aberto` (1x) → `inserir_lote_titulos_em_aberto` (por lote) →
- *   `regenerar_fluxo_caixa` (lê esta base + Movimentação).
+ *   `limpar_staging_aberto` (1x) → `inserir_lote_staging_aberto` (por lote) →
+ *   `validar_carga_aberto` → `promover_carga_aberto(p_checksums, p_carga_id)`.
  */
 async function aplicarTitulosEmAberto(
   linhas: readonly LancamentoCategoriaCru[],
@@ -602,68 +797,123 @@ async function aplicarTitulosEmAberto(
 ): Promise<ResultadoAplicacao> {
   const rpc = rpcDe()
   const arquivoOrigem = exigirArquivoOrigem(opcoes, 'lancamentos-aberto')
+  const cargaId = exigirCargaId(opcoes, 'lancamentos-aberto')
   const payload = linhas.map((l) => adaptarTituloEmAberto(l, arquivoOrigem))
 
   await aplicarEmLotes({
     rpc,
-    truncar: 'truncar_titulos_em_aberto',
-    inserir: 'inserir_lote_titulos_em_aberto',
+    truncar: 'limpar_staging_aberto',
+    inserir: 'inserir_lote_staging_aberto',
     payload,
     tamanhoDoLote: BATCH_LANCAMENTOS_ABERTO,
-    etapaInserir: 'inserir_lote_titulos_em_aberto',
+    etapaInserir: 'inserir_lote_staging_aberto',
     onProgresso: opcoes.onProgresso,
   })
 
-  const avisos = await regenerarFluxoCaixa(rpc)
-  return { linhas: linhas.length, avisos }
+  const valRes = await rpc('validar_carga_aberto')
+  if (valRes.error) {
+    throw new CargaRejeitada(
+      'validar_carga_aberto',
+      `Erro na validação da carga: ${valRes.error.message}. A base anterior foi preservada.`,
+    )
+  }
+  const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_aberto')
+  if (!validacao) {
+    throw new CargaRejeitada(
+      'validar_carga_aberto',
+      'A validação retornou em formato inesperado. A base anterior foi preservada.',
+    )
+  }
+  if (!validacao.ok) {
+    const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
+    throw new CargaRejeitada('validar_carga_aberto', `${msgs.join(' ')} A base anterior foi preservada.`)
+  }
+
+  const checksumsRpc = serializarChecksumsLancamentoCategoria(opcoes.checksums ?? [])
+  const promRes = await rpc('promover_carga_aberto', { p_checksums: checksumsRpc, p_carga_id: cargaId })
+  if (promRes.error) {
+    throw new CargaRejeitada(
+      'promover_carga_aberto',
+      `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+      `única): ${promRes.error.message}`,
+    )
+  }
+  const retorno = lerRetornoPromocao(promRes.data)
+  return {
+    linhas: linhas.length,
+    avisos: retorno.avisos,
+    checksumsConferidos: retorno.checksumsConferidos,
+    checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
+  }
 }
 
 /**
- * Lançamentos por Operação — sequência exata de
- * `inserirLoteLancamentosAction`/`finalizarLancamentosAction` (o card rotula "Lançamentos por
- * Operação"):
+ * Lançamentos por Operação — pipeline ATÔMICO (M5), mudança de FORMA (anexo §6):
  *
- *   `truncar_lancamentos` (1x) → `inserir_lote_lancamentos` (por lote, só linhas
- *   `lancamentoOperacaoAplicavel`) → `regenerar_dim_operacao_weddings`.
+ *   `limpar_staging_operacao` (1x) → `inserir_lote_staging_operacao` (por lote, TODAS as linhas)
+ *   → `validar_carga_operacao` → `promover_carga_operacao(p_checksums, p_carga_id)`.
+ *
+ * Esta base não tem checksum monetário no arquivo (contrato §4) — envia-se `p_checksums: []` de
+ * propósito; a RPC nem lê esse parâmetro (só valida que é um array). O cruzamento de Vencimento
+ * (ALARME, nunca bloqueio) é recalculado DENTRO da promoção e chega em `retorno.avisos`; a
+ * chamada solta a `regenerar_dim_operacao_weddings` que este aplicador fazia até a M4 sai daqui
+ * (a RPC já a chama internamente).
  */
 async function aplicarLancamentosOperacao(
   linhas: readonly LancamentoOperacaoCru[],
   opcoes: OpcoesAplicacao,
 ): Promise<ResultadoAplicacao> {
   const rpc = rpcDe()
-  const aplicaveis = linhas.filter(lancamentoOperacaoAplicavel)
-  // "Hoje" é medido UMA vez para a carga inteira, não por linha: `status` compara `data_final`
-  // com hoje, e uma carga que atravessasse a virada do dia classificaria as primeiras linhas
-  // por um dia e as últimas por outro. O `.map` também exige a lambda explícita — passar a
-  // função direto entregaria o ÍNDICE do array no lugar da data (o `tsc` pegou).
-  const hoje = hojeSP()
-  const payload = aplicaveis.map((cru) => adaptarLancamentoOperacao(cru, hoje))
+  const arquivoOrigem = exigirArquivoOrigem(opcoes, 'lancamentos-operacao')
+  const cargaId = exigirCargaId(opcoes, 'lancamentos-operacao')
+  const payload = linhas.map((cru) => adaptarLancamentoOperacao(cru, arquivoOrigem))
 
   await aplicarEmLotes({
     rpc,
-    truncar: 'truncar_lancamentos',
-    inserir: 'inserir_lote_lancamentos',
+    truncar: 'limpar_staging_operacao',
+    inserir: 'inserir_lote_staging_operacao',
     payload,
     tamanhoDoLote: BATCH_LANCAMENTOS_OPERACAO,
-    etapaInserir: 'inserir_lote_lancamentos',
+    etapaInserir: 'inserir_lote_staging_operacao',
     onProgresso: opcoes.onProgresso,
   })
 
-  const { error } = await rpc('regenerar_dim_operacao_weddings')
-  if (error) {
-    throw new CargaRejeitada('regenerar_dim_operacao_weddings', `Erro ao regenerar operações: ${error.message}`)
-  }
-
-  const avisos: string[] = []
-  const descartadas = linhas.length - aplicaveis.length
-  if (descartadas > 0) {
-    avisos.push(
-      `${descartadas} linha(s) do arquivo sem operação, valor ou tipo utilizável (placeholder do ` +
-      'scrape ou célula vazia) não foram gravadas — mesmo critério que o parser de cliente anterior aplicava.',
+  const valRes = await rpc('validar_carga_operacao')
+  if (valRes.error) {
+    throw new CargaRejeitada(
+      'validar_carga_operacao',
+      `Erro na validação da carga: ${valRes.error.message}. A base anterior foi preservada.`,
     )
   }
+  const validacao = parseRpc(cargaValidacaoSchema, valRes, 'validar_carga_operacao')
+  if (!validacao) {
+    throw new CargaRejeitada(
+      'validar_carga_operacao',
+      'A validação retornou em formato inesperado. A base anterior foi preservada.',
+    )
+  }
+  if (!validacao.ok) {
+    const msgs = validacao.erros.length ? validacao.erros : ['Validação da carga falhou.']
+    throw new CargaRejeitada('validar_carga_operacao', `${msgs.join(' ')} A base anterior foi preservada.`)
+  }
 
-  return { linhas: aplicaveis.length, avisos }
+  const promRes = await rpc('promover_carga_operacao', { p_checksums: [], p_carga_id: cargaId })
+  if (promRes.error) {
+    throw new CargaRejeitada(
+      'promover_carga_operacao',
+      `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+      `única): ${promRes.error.message}`,
+    )
+  }
+  const retorno = lerRetornoPromocao(promRes.data)
+  const gravadas = lerNumeroOuNulo(promRes.data, 'linhas') ?? linhas.filter(lancamentoOperacaoAplicavel).length
+
+  return {
+    linhas: gravadas,
+    avisos: retorno.avisos,
+    checksumsConferidos: retorno.checksumsConferidos,
+    checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
+  }
 }
 
 /**

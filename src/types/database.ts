@@ -765,6 +765,22 @@ export type Database = {
       }
       inserir_lote_raw: { Args: { p_linhas: Json }; Returns: undefined }
       inserir_lote_staging: { Args: { p_linhas: Json }; Returns: undefined }
+      inserir_lote_staging_aberto: {
+        Args: { p_linhas: Json }
+        Returns: undefined
+      }
+      inserir_lote_staging_demonstrativo: {
+        Args: { p_linhas: Json }
+        Returns: undefined
+      }
+      inserir_lote_staging_movimentacao: {
+        Args: { p_linhas: Json }
+        Returns: undefined
+      }
+      inserir_lote_staging_operacao: {
+        Args: { p_linhas: Json }
+        Returns: undefined
+      }
       inserir_lote_staging_pessoas: {
         Args: { p_linhas: Json }
         Returns: undefined
@@ -774,6 +790,10 @@ export type Database = {
         Returns: undefined
       }
       inserir_metas: { Args: { p_metas: Json }; Returns: undefined }
+      limpar_staging_aberto: { Args: never; Returns: undefined }
+      limpar_staging_demonstrativo: { Args: never; Returns: undefined }
+      limpar_staging_movimentacao: { Args: never; Returns: undefined }
+      limpar_staging_operacao: { Args: never; Returns: undefined }
       limpar_staging_pessoas: { Args: never; Returns: undefined }
       limpar_staging_vendas: { Args: never; Returns: undefined }
       listar_clientes_corp: { Args: never; Returns: Json }
@@ -890,8 +910,26 @@ export type Database = {
       }
       patrimonio_resumo: { Args: never; Returns: Json }
       patrimonio_upsert_detentor: { Args: { p_nome: string }; Returns: Json }
+      promover_carga_aberto: {
+        Args: { p_carga_id: string; p_checksums: Json }
+        Returns: Json
+      }
+      promover_carga_demonstrativo: {
+        Args: { p_carga_id: string; p_checksums: Json }
+        Returns: Json
+      }
+      promover_carga_movimentacao: {
+        Args: { p_carga_id: string; p_checksums: Json }
+        Returns: Json
+      }
+      promover_carga_operacao: {
+        Args: { p_carga_id: string; p_checksums: Json }
+        Returns: Json
+      }
       promover_carga_pessoas: { Args: never; Returns: Json }
-      promover_carga_vendas: { Args: never; Returns: Json }
+      promover_carga_vendas:
+        | { Args: never; Returns: Json }
+        | { Args: { p_carga_id: string; p_checksums: Json }; Returns: Json }
       provisionar_dre_comp_par: { Args: never; Returns: Json }
       rbac_verificar_guard: { Args: { p_area?: string }; Returns: string }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
@@ -978,6 +1016,10 @@ export type Database = {
             Args: { p_conta: string; p_data_saldo: string; p_saldo: number }
             Returns: boolean
           }
+      validar_carga_aberto: { Args: never; Returns: Json }
+      validar_carga_demonstrativo: { Args: never; Returns: Json }
+      validar_carga_movimentacao: { Args: never; Returns: Json }
+      validar_carga_operacao: { Args: never; Returns: Json }
       validar_carga_pessoas: { Args: never; Returns: Json }
       validar_carga_staging: { Args: never; Returns: Json }
     }

@@ -614,6 +614,10 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
         datasRejeitadasN: resultado.datasRejeitadas.length,
         diagnostico: resultado.diagnostico,
         porArquivo: [{ nome: unico.nome, linhas: resultado.linhas.length, checksumsConferidos: resultado.checksums.length }],
+        // M5: `raw.lancamentos_operacao_staging.arquivo_origem` é NOT NULL (migration 0277) — até
+        // a M4 esta base gravava direto no fato, que não tem essa coluna, e por isso o campo não
+        // era preenchido aqui (achado da M5, `aplicar.ts#OpcoesAplicacao.arquivoOrigem`).
+        arquivoOrigem: unico.nome,
       }
     }
 
@@ -681,6 +685,17 @@ export interface ResultadoCarga {
   }
   readonly diff: DiffCarga
   readonly alarmes: readonly string[]
+  /**
+   * Quantos checksums a promoção RECONFERIU contra o que ficou gravado no banco, e quantos não
+   * tinham como ser (contrato ingestao-v1 §4; anexo v6.0.0/M5 §4) — `null` na CONFERÊNCIA
+   * (`confirmar:false`), que nunca chega a promover nada. "Conferi 0 de N" e "conferi N de N"
+   * precisam ter aparência DIFERENTE na resposta — foi exatamente essa distinção (cobertura do
+   * cruzamento de Vencimento) que sumiu na M4.
+   */
+  readonly promocao: {
+    readonly checksums_conferidos: number
+    readonly checksums_nao_conferiveis: number
+  } | null
 }
 
 function montarArquivosResposta(
@@ -705,14 +720,27 @@ function montarArquivosResposta(
  * que a base espera") e preserva a mensagem ORIGINAL da RPC/validação (nunca reescrita — skill
  * `ingestao-planilhas` §5). Decisão registrada no relato desta missão como candidata a errata
  * futura do contrato, no molde da errata 1/2.
+ *
+ * M5: `cargaId` e `checksums` passam a ser OBRIGATÓRIOS para toda base — é o que
+ * `promover_carga_{base}(p_checksums, p_carga_id)` exige (`aplicar.ts#exigirCargaId`).
+ * `camposPivotDemonstrativo` só se aplica à base "demonstrativo-competencia" (ver
+ * `OpcoesAplicacao.camposPivotDemonstrativo`).
  */
 async function aplicarComTraducaoDeErro(
   base: BaseIngestao,
   linhas: readonly unknown[],
   arquivoOrigem: string | undefined,
+  cargaId: string,
+  checksums: readonly Checksum[],
+  camposPivotDemonstrativo: readonly string[] | undefined,
 ): Promise<ResultadoAplicacao> {
   try {
-    return await aplicarCarga(base, linhas, arquivoOrigem ? { arquivoOrigem } : {})
+    return await aplicarCarga(base, linhas, {
+      ...(arquivoOrigem ? { arquivoOrigem } : {}),
+      cargaId,
+      checksums,
+      ...(camposPivotDemonstrativo ? { camposPivotDemonstrativo } : {}),
+    })
   } catch (err) {
     if (err instanceof CargaRejeitada) {
       throw new ErroCarga('ESTRUTURA_INESPERADA', 422, err.message, { etapa: err.etapa })
@@ -847,27 +875,41 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
           linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
         },
         diff, alarmes: alarmesBase,
+        promocao: null, // conferência nunca promove — não há o que conferir contra o gravado
       }
     }
 
-    // Passo 9: aplica.
-    const aplicacao = await aplicarComTraducaoDeErro(base, parseado.linhasParaAplicar, parseado.arquivoOrigem)
+    // Passo 9: aplica. `camposPivotDemonstrativo` só a base de competência precisa (ver
+    // `OpcoesAplicacao.camposPivotDemonstrativo`) — vem do MESMO diagnóstico que o parser já
+    // produziu, nunca redescoberto aqui.
+    const camposPivotDemonstrativo = base === 'demonstrativo-competencia'
+      ? (Array.isArray(parseado.diagnostico.campos) ? (parseado.diagnostico.campos as string[]) : [])
+      : undefined
+    const aplicacao = await aplicarComTraducaoDeErro(
+      base, parseado.linhasParaAplicar, parseado.arquivoOrigem, cargaId, parseado.checksums, camposPivotDemonstrativo,
+    )
 
     const resultado: ResultadoCarga = {
       ok: true, carga_id: cargaId, base, status: 'aplicada', idempotente: false,
       arquivos: montarArquivosResposta(entrada, parseado.porArquivo),
       parse: {
         linhas: parseado.totalLinhas, rejeitadas_por_data: parseado.datasRejeitadasN,
-        // `pares_novos` (Demonstrativo): `aplicarCarga`/`ResultadoAplicacao` só devolve a
-        // contagem embutida em PROSA dentro de `avisos[]` (não como número) — extrair o valor
-        // exigiria alterar `aplicar.ts`, fora do escopo desta missão ("Não altere: ... aplicar.ts").
-        // Fica 0 aqui; o aviso em texto (quando houver par novo) já vai em `alarmes`.
+        // `pares_novos` (Demonstrativo): `promover_carga_demonstrativo` devolve a contagem em
+        // `pares_novos` (jsonb), mas `ResultadoAplicacao` só a expõe embutida em PROSA dentro de
+        // `avisos[]` (`aplicar.ts#aplicarDemonstrativo`) — manter só um formato evita dois
+        // números vizinhos (este campo numérico e o texto do aviso) discordarem se alguém alterar
+        // um sem o outro (skill `contrato-rpc-front` §5). Fica 0 aqui; o aviso em texto (quando
+        // houver par novo) já vai em `alarmes`.
         pares_novos: 0,
         soma: somaCentavosNovo === null ? null : somaCentavosNovo / 100,
         linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
       },
       diff,
       alarmes: [...alarmesBase, ...aplicacao.avisos],
+      promocao: {
+        checksums_conferidos: aplicacao.checksumsConferidos,
+        checksums_nao_conferiveis: aplicacao.checksumsNaoConferiveis,
+      },
     }
 
     const duracaoMs = Date.now() - inicio

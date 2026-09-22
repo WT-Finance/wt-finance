@@ -13,11 +13,15 @@ import {
   adaptarTituloEmAberto,
   adaptarLancamentoOperacao,
   lancamentoOperacaoAplicavel,
+  serializarChecksumsVendas,
+  serializarChecksumsLancamentoCategoria,
+  serializarChecksumsDemonstrativo,
 } from './aplicar'
 import type { VendaProdutoCru } from './parsers/vendas-produto'
 import type { DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import type { LancamentoCategoriaCru } from './parsers/lancamentos-categoria'
 import type { LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
+import type { Checksum } from './parsers/comum'
 
 // ── Provas dos ADAPTADORES `*Cru` → payload da RPC ───────────────────────────────────────────
 //
@@ -55,20 +59,31 @@ function vendaCru(overrides: Partial<VendaProdutoCru> = {}): VendaProdutoCru {
   }
 }
 
-// Colunas REAIS do `INSERT` de `inserir_lote_staging` (migration 0135/0118) — não a lista que
-// "parece certa". `intermediario` fica de fora de propósito (sem coluna hoje).
+// Colunas REAIS do `INSERT` de `inserir_lote_staging` (migration 0135/0118, com o `CREATE OR
+// REPLACE` da 0278 acrescentando `intermediario`) — não a lista que "parece certa".
 const COLUNAS_VENDAS_STAGING = [
   'arquivo_origem', 'linha_origem', 'venda_numero', 'data_venda', 'vendedor', 'pagante',
   'setor_macro', 'setor', 'setor_micro', 'produto', 'valor_total', 'receitas', 'contrato',
   'taxa_servico', 'semana', 'mes', 'data_inicio_evento', 'fornecedor', 'situacao',
-  'tipo_contrato', 'passageiros', 'operacao_propria',
+  'tipo_contrato', 'passageiros', 'operacao_propria', 'intermediario',
 ].sort()
 
 describe('adaptarVenda', () => {
-  it('produz exatamente as chaves que inserir_lote_staging lê (migration 0135) — sem intermediario', () => {
+  it('produz exatamente as chaves que inserir_lote_staging lê (migration 0135/0278)', () => {
     const payload = adaptarVenda(vendaCru())
     expect(Object.keys(payload).sort()).toEqual(COLUNAS_VENDAS_STAGING)
-    expect(payload).not.toHaveProperty('intermediario')
+  })
+
+  // M5 (decisão 7 do briefing): a coluna nasceu na 0277/0278 e o script R legado a zerava —
+  // resíduo, não regra de negócio. O parser da M3 já preservava o dado; só faltava para onde ir.
+  it('intermediario É GRAVADO — preserva o valor do Cru (deixou de ser descartado na M5)', () => {
+    const payload = adaptarVenda(vendaCru({ intermediario: 'Agência Parceira' }))
+    expect(payload.intermediario).toBe('Agência Parceira')
+  })
+
+  it('intermediario nulo continua nulo', () => {
+    const payload = adaptarVenda(vendaCru({ intermediario: null }))
+    expect(payload.intermediario).toBeNull()
   })
 
   it('a data de início do evento não se perde nem troca de VALOR ao trocar de nome (data_inicio → data_inicio_evento)', () => {
@@ -259,69 +274,64 @@ function lancamentoOperacaoCru(overrides: Partial<LancamentoOperacaoCru> = {}): 
   }
 }
 
-// Colunas REAIS de `inserir_lote_lancamentos` → `analytics.fato_lancamento_operacao`
-// (migrations 0026/0027).
-const COLUNAS_LANCAMENTO_OPERACAO = [
-  'lancamento_n', 'venda_n', 'pessoa', 'descricao', 'liquidacao_dt', 'vencimento_dt', 'valor',
-  'tipo', 'operacao', 'status', 'data_final', 'mes_ano',
+// Colunas REAIS de `inserir_lote_staging_operacao` → `raw.lancamentos_operacao_staging`
+// (migrations 0277/0278) — M5 muda o alvo de "direto no fato" (0026/0027) para "staging → raw →
+// fato": nenhuma renomeação aqui (a staging usa os MESMOS nomes do Cru), e status/mes_ano/
+// data_final NÃO são mais calculados neste adaptador (anexo M5 §6) — passam a ser derivados
+// dentro de `promover_carga_operacao`, em SQL, com "hoje" de São Paulo lido no banco.
+const COLUNAS_LANCAMENTO_OPERACAO_STAGING = [
+  'arquivo_origem', 'linha_origem', 'lancamento_numero', 'venda_numero', 'pessoa', 'descricao',
+  'liquidacao', 'vencimento', 'valor', 'operacao', 'tipo',
 ].sort()
 
 describe('adaptarLancamentoOperacao', () => {
-  it('produz exatamente as chaves de inserir_lote_lancamentos (migrations 0026/0027)', () => {
-    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru())
-    expect(Object.keys(payload).sort()).toEqual(COLUNAS_LANCAMENTO_OPERACAO)
+  it('produz exatamente as chaves de inserir_lote_staging_operacao (migration 0278)', () => {
+    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru(), 'operacoes-2026.csv')
+    expect(Object.keys(payload).sort()).toEqual(COLUNAS_LANCAMENTO_OPERACAO_STAGING)
   })
 
-  it('renomeia lancamento_numero/venda_numero/liquidacao/vencimento para os nomes da coluna', () => {
-    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru())
-    expect(payload.lancamento_n).toBe('30021')
-    expect(payload.venda_n).toBe('12345')
-    expect(payload.liquidacao_dt).toBe('2026-02-04')
-    expect(payload.vencimento_dt).toBe('2026-02-05')
-    expect(payload).not.toHaveProperty('lancamento_numero')
-    expect(payload).not.toHaveProperty('venda_numero')
+  it('NÃO renomeia mais lancamento_numero/venda_numero/liquidacao/vencimento — a staging usa os mesmos nomes do Cru', () => {
+    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru(), 'x.csv')
+    expect(payload.lancamento_numero).toBe('30021')
+    expect(payload.venda_numero).toBe('12345')
+    expect(payload.liquidacao).toBe('2026-02-04')
+    expect(payload.vencimento).toBe('2026-02-05')
+    expect(payload).not.toHaveProperty('lancamento_n')
+    expect(payload).not.toHaveProperty('venda_n')
+    expect(payload).not.toHaveProperty('liquidacao_dt')
+    expect(payload).not.toHaveProperty('vencimento_dt')
   })
 
-  // `status` e `mes_ano` não vêm no CSV do scrape: quem os derivava era o script R
-  // (`docs/legado/scripts-r/analise_casamentos2.R`), e o parser de cliente antigo os lia já
-  // prontos do CSV tratado. Continuam sendo GRAVADOS aqui porque há leitor vivo —
-  // `SUM(CASE WHEN status = 'Entrada' …)` nas RPCs de Carteira/Próximos/Hotel de Weddings.
-  // Coluna nula ali não dá erro: dá ZERO em quatro somas que a diretoria lê. O `Status`
-  // calculado na leitura é a M7, junto com a mudança dos leitores.
-  it('status: realizado quando a data final já passou (Tipo puro)', () => {
-    const p = adaptarLancamentoOperacao(lancamentoOperacaoCru({ tipo: 'Saída', data_final: '2026-02-04' }), '2026-09-22')
-    expect(p.status).toBe('Saída')
+  it('linha_origem chega ao payload — a staging tem essa coluna, o fato antigo não tinha', () => {
+    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru({ linha_origem: 42 }), 'x.csv')
+    expect(payload.linha_origem).toBe(42)
   })
 
-  it('status: futuro vira "A Receber Futuro"/"A Pagar Futuro" quando a data final é depois de hoje', () => {
-    const entrada = adaptarLancamentoOperacao(
-      lancamentoOperacaoCru({ tipo: 'Entrada', data_final: '2026-12-31' }), '2026-09-22')
-    const saida = adaptarLancamentoOperacao(
-      lancamentoOperacaoCru({ tipo: 'Saída', data_final: '2026-12-31' }), '2026-09-22')
-    expect(entrada.status).toBe('A Receber Futuro')
-    expect(saida.status).toBe('A Pagar Futuro')
+  it('o nome do arquivo de origem chega em todas as linhas — base PASSA a exigir isto na M5', () => {
+    const linhas = [lancamentoOperacaoCru({ lancamento_numero: '1' }), lancamentoOperacaoCru({ lancamento_numero: '2' })]
+    const payloads = linhas.map((l) => adaptarLancamentoOperacao(l, 'analise-operacoes.csv'))
+    expect(payloads.every((p) => p.arquivo_origem === 'analise-operacoes.csv')).toBe(true)
   })
 
-  // O ramo `TRUE ~ Tipo` do `case_when` do R: lá, `NA > data` avalia para NA, então a linha sem
-  // Data_Final nunca casava os dois primeiros ramos e caía no último. `statusDoLancamento` (M3)
-  // devolve `null` aqui de propósito — decisão certa para quando a LEITURA mudar —, e é por
-  // isso que o adaptador precisa do fallback: sem ele, os lançamentos sem data final (os 3
-  // conhecidos, fora de Aberto e de Movimentação) sumiriam das somas de realizado.
-  it('status: sem data final cai no Tipo — o ramo "TRUE ~ Tipo" do R, que o null da M3 não repõe', () => {
-    const p = adaptarLancamentoOperacao(lancamentoOperacaoCru({ tipo: 'Entrada', data_final: null }), '2026-09-22')
-    expect(p.status).toBe('Entrada')
-  })
-
-  it('mes_ano é AAAA-MM da data final, e null quando não há data final', () => {
-    expect(adaptarLancamentoOperacao(lancamentoOperacaoCru({ data_final: '2026-02-04' }), '2026-09-22').mes_ano)
-      .toBe('2026-02')
-    expect(adaptarLancamentoOperacao(lancamentoOperacaoCru({ data_final: null }), '2026-09-22').mes_ano)
-      .toBeNull()
+  // `status`/`mes_ano`/`data_final` deixaram de ser calculados AQUI na M5 (anexo §6) — quem os
+  // deriva agora é `promover_carga_operacao`, em SQL. O adaptador não lê mais `cru.data_final`
+  // nem `statusDoLancamento`/`hojeSP()`; a prova desse cálculo passa a ser da migration 0278
+  // (fora do escopo desta missão tocar migrations), não deste módulo.
+  it('não grava status/mes_ano/data_final — são derivados em SQL na promoção, não aqui', () => {
+    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru(), 'x.csv')
+    expect(payload).not.toHaveProperty('status')
+    expect(payload).not.toHaveProperty('mes_ano')
+    expect(payload).not.toHaveProperty('data_final')
   })
 
   it('valor negativo é preservado sem Math.abs', () => {
-    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru({ valor: -42.5 }))
+    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru({ valor: -42.5 }), 'x.csv')
     expect(payload.valor).toBe(-42.5)
+  })
+
+  it('campo nulo (pessoa) continua nulo', () => {
+    const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru({ pessoa: null }), 'x.csv')
+    expect(payload.pessoa).toBeNull()
   })
 })
 
@@ -341,5 +351,134 @@ describe('lancamentoOperacaoAplicavel', () => {
   it('rejeita tipo fora de Entrada/Saída (CHECK da migration 0026)', () => {
     expect(lancamentoOperacaoAplicavel(lancamentoOperacaoCru({ tipo: 'nada para mostrar' }))).toBe(false)
     expect(lancamentoOperacaoAplicavel(lancamentoOperacaoCru({ tipo: null }))).toBe(false)
+  })
+})
+
+// ── Serializador de checksum: parser → jsonb da RPC (contrato do checksum, cabeçalho da 0278) ─
+//
+// É o ponto de MAIOR RISCO da M5: mandar `centavosApurados` em vez de `centavosArredondados`, ou
+// remontar `chave` errado, faz o checksum não fechar por alguns centavos em TODA carga daquela
+// base — e o erro seria "CHECKSUM_FALHOU" na aplicação real, nunca um erro de tipo. Cada teste
+// abaixo confere o jsonb produzido contra as colunas que o CORPO de cada `promover_carga_{base}`
+// (migration 0278) realmente lê no `WHERE`, não contra suposição.
+
+function checksum(overrides: Partial<Checksum> = {}): Checksum {
+  return {
+    escopo: 'grupo',
+    chave: ['Custo dos Serviços Prestados'],
+    campo: 'valor',
+    linhasDeclaradas: 1738,
+    centavosDeclarados: -454603179,
+    linhasApuradas: 1738,
+    centavosApurados: -454603179,
+    centavosArredondados: -454603179,
+    ...overrides,
+  }
+}
+
+describe('serializarChecksumsVendas', () => {
+  it('escopo "arquivo": chave vira {arquivo_origem} — mesmo nome de coluna que a RPC lê (WHERE r.arquivo_origem = ...)', () => {
+    const c = checksum({
+      escopo: 'arquivo', chave: ['vendas-2026.xlsx'], campo: 'valor_total',
+      linhasDeclaradas: 48652, centavosArredondados: 123456,
+    })
+    expect(serializarChecksumsVendas([c])).toEqual([
+      { escopo: 'arquivo', chave: { arquivo_origem: 'vendas-2026.xlsx' }, campo: 'valor_total', linhas: 48652, centavos: 123456 },
+    ])
+  })
+
+  it('centavos sai de centavosArredondados, NUNCA de centavosApurados', () => {
+    const c = checksum({ campo: 'receitas', centavosApurados: 999999, centavosArredondados: 111111 })
+    expect(serializarChecksumsVendas([c])[0].centavos).toBe(111111)
+  })
+
+  it('linhas nulo (o arquivo não declara contagem para este campo) continua nulo, não vira 0', () => {
+    const c = checksum({ campo: 'total_produtos_moeda_origem', linhasDeclaradas: null })
+    expect(serializarChecksumsVendas([c])[0].linhas).toBeNull()
+  })
+
+  it('campo não-reconferível pela RPC (total_produtos_moeda_origem/reembolso_ao_cliente) ainda assim serializa — a RPC decide contá-lo como não-conferível', () => {
+    const c = checksum({ escopo: 'arquivo', chave: ['vendas-2026.xlsx'], campo: 'reembolso_ao_cliente', centavosArredondados: -50000 })
+    expect(serializarChecksumsVendas([c])[0]).toEqual({
+      escopo: 'arquivo', chave: { arquivo_origem: 'vendas-2026.xlsx' }, campo: 'reembolso_ao_cliente', linhas: 1738, centavos: -50000,
+    })
+  })
+
+  it('sem centavosArredondados: falha alto e explícito, nunca vira jsonb calado', () => {
+    const c = checksum({ centavosArredondados: undefined })
+    expect(() => serializarChecksumsVendas([c])).toThrow(/centavosArredondados/)
+  })
+})
+
+describe('serializarChecksumsLancamentoCategoria', () => {
+  it('escopo "grupo": chave vira {grupo_categoria} — mesmo nome de coluna que Movimentação e Aberto usam', () => {
+    const c = checksum({ escopo: 'grupo', chave: ['Custo dos Serviços Prestados'], linhasDeclaradas: 1738, centavosArredondados: -454603179 })
+    expect(serializarChecksumsLancamentoCategoria([c])).toEqual([
+      { escopo: 'grupo', chave: { grupo_categoria: 'Custo dos Serviços Prestados' }, campo: 'valor', linhas: 1738, centavos: -454603179 },
+    ])
+  })
+
+  it('escopo "categoria": chave vira {grupo_categoria, categoria}, na ordem [grupo, categoria] que o parser produz', () => {
+    const c = checksum({
+      escopo: 'categoria', chave: ['Custo dos Serviços Prestados', 'Assessoria Local'],
+      linhasDeclaradas: 99, centavosArredondados: -27173535,
+    })
+    expect(serializarChecksumsLancamentoCategoria([c])).toEqual([
+      {
+        escopo: 'categoria',
+        chave: { grupo_categoria: 'Custo dos Serviços Prestados', categoria: 'Assessoria Local' },
+        campo: 'valor', linhas: 99, centavos: -27173535,
+      },
+    ])
+  })
+
+  it('escopo "total-arquivo": chave VAZIA — soma a tabela inteira, sem filtro', () => {
+    const c = checksum({ escopo: 'total-arquivo', chave: [], linhasDeclaradas: 1837, centavosArredondados: -71771074 })
+    expect(serializarChecksumsLancamentoCategoria([c])[0]).toEqual({
+      escopo: 'total-arquivo', chave: {}, campo: 'valor', linhas: 1837, centavos: -71771074,
+    })
+  })
+
+  it('escopo desconhecido PARA em vez de assumir "sem filtro"', () => {
+    const c = checksum({ escopo: 'nivel-esquisito', chave: ['x'] })
+    expect(() => serializarChecksumsLancamentoCategoria([c])).toThrow(/escopo desconhecido/)
+  })
+})
+
+describe('serializarChecksumsDemonstrativo', () => {
+  const CAMPOS_ORDEM_PADRAO = ['Tipo', 'Grupo', 'Descrição', 'Ano', 'Mês']
+
+  it('ordem PADRÃO do pivot: chave posicional vira objeto por nome de coluna', () => {
+    const c = checksum({ escopo: 'grupo', chave: ['Despesas', 'Custo dos Serviços Prestados'], linhasDeclaradas: null, centavosArredondados: -454603179 })
+    expect(serializarChecksumsDemonstrativo([c], CAMPOS_ORDEM_PADRAO)).toEqual([
+      { escopo: 'grupo', chave: { tipo: 'Despesas', grupo: 'Custo dos Serviços Prestados' }, campo: 'valor', linhas: null, centavos: -454603179 },
+    ])
+  })
+
+  // O pivot é DESCOBERTO, não fixo (parsers/demonstrativo-competencia.ts) — reordenar os campos
+  // no export não pode quebrar a leitura, e o serializador precisa acompanhar essa liberdade.
+  it('ordem REORDENADA do pivot (Ano antes de Tipo): a chave usa a POSIÇÃO, não um mapa fixo', () => {
+    const camposReordenados = ['Ano', 'Tipo', 'Grupo', 'Descrição', 'Mês']
+    const c = checksum({ escopo: 'tipo', chave: ['2026', 'Despesas'], linhasDeclaradas: null, centavosArredondados: -100 })
+    expect(serializarChecksumsDemonstrativo([c], camposReordenados)).toEqual([
+      { escopo: 'tipo', chave: { ano: '2026', tipo: 'Despesas' }, campo: 'valor', linhas: null, centavos: -100 },
+    ])
+  })
+
+  it('escopo "total-geral": chave VAZIA', () => {
+    const c = checksum({ escopo: 'total-geral', chave: [], linhasDeclaradas: null, centavosArredondados: -100000 })
+    expect(serializarChecksumsDemonstrativo([c], CAMPOS_ORDEM_PADRAO)[0]).toEqual({
+      escopo: 'total-geral', chave: {}, campo: 'valor', linhas: null, centavos: -100000,
+    })
+  })
+
+  it('linhasDeclaradas sempre null nesta base (o pivot nunca declara contagem) — preservado como null, não 0', () => {
+    const c = checksum({ escopo: 'descricao', chave: ['Despesas', 'Custo dos Serviços Prestados', 'Assessoria Local'], linhasDeclaradas: null, centavosArredondados: -50 })
+    expect(serializarChecksumsDemonstrativo([c], CAMPOS_ORDEM_PADRAO)[0].linhas).toBeNull()
+  })
+
+  it('chave além do que camposPivot declara: PARA em vez de adivinhar a que coluna a posição corresponde', () => {
+    const c = checksum({ chave: ['Despesas'], centavosArredondados: -1 })
+    expect(() => serializarChecksumsDemonstrativo([c], [])).toThrow(/camposPivot/)
   })
 })

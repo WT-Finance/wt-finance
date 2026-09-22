@@ -14,6 +14,7 @@ import { BASES_INGESTAO } from './bases'
 const RAIZ = join(__dirname, '..', '..', '..')
 const SQL = readFileSync(join(RAIZ, 'supabase/migrations/0274_role_ingestor_e_escopo_api_chave.sql'), 'utf8')
 const SQL_0276 = readFileSync(join(RAIZ, 'supabase/migrations/0276_ingestao_carga_e_bucket.sql'), 'utf8')
+const SQL_0277 = readFileSync(join(RAIZ, 'supabase/migrations/0277_ingestao_estrutura_atomica.sql'), 'utf8')
 
 function basesDoCheck(sql: string): string[] {
   const m = sql.match(/CONSTRAINT api_chave_escopo_bases_validas CHECK \(\s*escopo_bases <@ ARRAY\[([\s\S]*?)\]::text\[\]/)
@@ -21,9 +22,12 @@ function basesDoCheck(sql: string): string[] {
   return [...m![1].matchAll(/'([a-z-]+)'/g)].map(x => x[1])
 }
 
-function basesDoCheckCarga(sql: string): string[] {
-  const m = sql.match(/CONSTRAINT ingestao_carga_base_valida CHECK \(\s*base IN \(([\s\S]*?)\)\s*\)/)
-  expect(m, 'CHECK ingestao_carga_base_valida não encontrado na 0276').not.toBeNull()
+/** As bases listadas num `CONSTRAINT <nome> CHECK (base IN (...))`. O nome do CHECK é parâmetro
+ *  porque a MESMA lista se repete em constraints diferentes, em migrations diferentes — e cada
+ *  repetição precisa do seu próprio fiscal. */
+function basesDoCheckCarga(sql: string, constraint = 'ingestao_carga_base_valida'): string[] {
+  const m = sql.match(new RegExp(`CONSTRAINT ${constraint} CHECK \\(\\s*base IN \\(([\\s\\S]*?)\\)\\s*\\)`))
+  expect(m, `CHECK ${constraint} não encontrado`).not.toBeNull()
   return [...m![1].matchAll(/'([a-z-]+)'/g)].map(x => x[1])
 }
 
@@ -66,5 +70,14 @@ describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.car
       const bloco = SQL_0276.slice(idx - 400, idx)
       for (const b of BASES_INGESTAO) expect(bloco, `${b} ausente de uma validação nomeada BASE_INVALIDA`).toContain(`'${b}'`)
     }
+  })
+})
+
+// A QUARTA repetição da mesma lista: `ingestao.promocao` (0277), a tabela que torna a promoção
+// idempotente por `carga_id`. Achado MÉDIO do `revisor-db` na M5 — sem este bloco, uma base nova
+// em `BASES_INGESTAO` sem a migration correspondente passaria batida justamente aqui.
+describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.promocao (CHECK da 0277)', () => {
+  it('o CHECK ingestao_promocao_base_valida lista exatamente as bases de BASES_INGESTAO (mesma ordem)', () => {
+    expect(basesDoCheckCarga(SQL_0277, 'ingestao_promocao_base_valida')).toEqual([...BASES_INGESTAO])
   })
 })
