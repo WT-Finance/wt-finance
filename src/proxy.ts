@@ -35,7 +35,16 @@ export const API_AUTH_PROPRIA = new Set(['/api/monde/ingest', '/api/cdi/ingest']
 // por PREFIXO (não path exato): a rota tem segmento dinâmico
 // (/api/externo/solicitacoes/[id]/cancelar), então um Set de paths exatos não cobriria
 // todas as rotas da família.
-const API_AUTH_PROPRIA_PREFIXOS = ['/api/externo/']
+// v6.0.0/M4 — rota de ingestão: `/api/ingestao/*` tem DUAS portas de entrada e por isso
+// precisa da mesma isenção. A RPA autentica por `x-api-key` (`escopo_bases` da chave) e nunca
+// tem sessão — sem a isenção o proxy devolveria o 401 genérico `AUTH_NECESSARIA` e o
+// integrador jamais veria `AUTH_AUSENTE`/`AUTH_INVALIDA`/`ESCOPO_INSUFICIENTE`, que é o
+// vocabulário do contrato (`docs/contratos/ingestao-v1.md` §2.4). O card de /admin/uploads
+// chama a MESMA rota com sessão, e aí quem autoriza é `requireAreaApi('admin/uploads')` no
+// handler. Isenção por PREFIXO porque a rota tem segmento dinâmico (`[base]`) e sub-rota
+// (`/upload-url`). Não abre buraco: a rota nega por conta própria quem não traz nenhuma
+// das duas credenciais.
+const API_AUTH_PROPRIA_PREFIXOS = ['/api/externo/', '/api/ingestao/']
 
 function temAuthPropria(pathname: string): boolean {
   if (API_AUTH_PROPRIA.has(pathname)) return true

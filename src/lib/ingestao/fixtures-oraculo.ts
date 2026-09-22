@@ -15,7 +15,7 @@
 
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import * as XLSX from '@e965/xlsx'
+import { lerMatriz } from './matriz'
 import type { Matriz } from './parsers/comum'
 
 /** Raiz do repo a partir DESTE arquivo (não do cwd do runner) — mesma cautela das sondas. */
@@ -48,26 +48,18 @@ export function motivoDoPulo(ausentes: readonly string[]): string {
 }
 
 /**
- * Lê uma planilha da pasta de fixtures como matriz de células.
- *
- * `cellDates: true` devolve `Date` nativo; `raw: true` preserva o valor NATIVO em vez de
- * reformatá-lo para a string de exibição. Pedir `raw: false` aqui reintroduziria a ambiguidade
- * que o Excel já resolveu — foi o bug ×1000 da v5.5.2 (`-40.933` lido como −40933).
+ * Lê uma planilha da pasta de fixtures como matriz de células — a leitura em si é
+ * `lerMatriz` (`./matriz.ts`), o único lugar do caminho de ingestão que chama `XLSX.read`/
+ * `sheet_to_json`. Este arquivo só soma o `readFileSync`: o oráculo prova exatamente a
+ * leitura que a rota (M4) executa, com bytes vindos do disco em vez do bucket.
  */
 export function lerMatrizXlsx(nome: string, aba?: string): Matriz {
-  const wb = XLSX.read(readFileSync(caminhoFixture(nome)), { cellDates: true })
-  const sheet = wb.Sheets[aba ?? wb.SheetNames[0]]
-  return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: null })
+  return lerMatriz(readFileSync(caminhoFixture(nome)), 'xlsx', aba)
 }
 
-/** Lê um CSV da pasta de fixtures como matriz. O ramo CSV também é `raw: true`: sem ele o
- *  SheetJS roda um heurístico AMERICANO sobre o texto e destrói todo valor BR com vírgula
- *  decimal (`"40,93"` → 4093). */
+/** Lê um CSV da pasta de fixtures como matriz — idem, via `lerMatriz`. */
 export function lerMatrizCsv(nome: string): Matriz {
-  const texto = readFileSync(caminhoFixture(nome), 'utf8').replace(/^﻿/, '')
-  const wb = XLSX.read(texto, { type: 'string', raw: true, cellDates: false })
-  const sheet = wb.Sheets[wb.SheetNames[0]]
-  return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: null })
+  return lerMatriz(readFileSync(caminhoFixture(nome)), 'csv')
 }
 
 /** Matriz → lista de objetos por cabeçalho da linha 0. Para ler o TRATADO (o oráculo). */
