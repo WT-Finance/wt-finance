@@ -82,12 +82,14 @@ export const ANOS_A_FRENTE = 5
  * Limite superior da faixa, em ISO, a partir de um "hoje" injetável (o oráculo fixa o dia para
  * não depender de quando a suíte roda).
  *
- * ⚠️ O limite é o FIM DO ANO de `hoje + 5 anos`, não o mesmo dia daqui a cinco anos — e a
- * diferença não é cosmética. Medido no anexo de vencimento em aberto de 21/09: com o limite ao
- * DIA, nove títulos com vencimento em **2031-09-22** eram recusados por um único dia de folga, e
- * passariam a ser aceitos no dia seguinte. Uma guarda cujo veredito depende de QUANDO a carga
- * rodou transforma parcela longa legítima em campo nulo de forma intermitente — o pior tipo de
- * defeito, porque some quando se vai investigar.
+ * O limite é o FIM DO ANO de `hoje + 5 anos`, não o mesmo dia daqui a cinco anos — é a **errata 1
+ * do contrato** (`docs/contratos/ingestao-v1.md`, decidida pelo Yan em 22/09), não uma liberdade
+ * do código. O texto original do §2.3 dizia `hoje + 5 anos` ao pé da letra, e a diferença não é
+ * cosmética: medido no anexo de vencimento em aberto de 21/09, com o limite ao DIA nove títulos
+ * com vencimento em **2031-09-22** eram recusados por um único dia de folga, e passariam a ser
+ * aceitos no dia seguinte. Uma guarda cujo veredito depende de QUANDO a carga rodou transforma
+ * parcela longa legítima em campo nulo de forma intermitente — o pior tipo de defeito, porque
+ * some quando se vai investigar.
  *
  * Com o limite no fim do ano, a faixa é estável dentro do ano e as anomalias reais continuam
  * caindo: no mesmo arquivo, 2049-12-31 (cinco células) e as emissões de 2002 e 2004 seguem

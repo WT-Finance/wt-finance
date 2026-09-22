@@ -7,6 +7,14 @@ pelo Yan na abertura da versão: o arquivo **não viaja no corpo da requisição
 body acima de 4,5 MB e o export de Movimentação já tem 6 MB); ele sobe direto para o Storage por
 **URL assinada** emitida pela rota, e a carga recebe só a referência.
 
+**Errata 1 (2026-09-22, decisão do Yan — GATE 1/M3):** o limite superior da faixa de data do §2.3
+passo 5 é o **fim do ano** de `hoje + 5 anos`, não o mesmo dia daqui a cinco anos. O texto original
+dizia `hoje + 5 anos` ao pé da letra, e medir isso ao dia recusava nove títulos com vencimento em
+2031-09-22 num export de 2026-09-21 — por um único dia de folga, e os aceitaria no dia seguinte.
+Guarda cujo veredito depende de QUANDO a carga rodou transforma parcela longa legítima em campo
+nulo de forma intermitente. Com o limite no fim do ano a faixa é estável dentro do ano e as
+anomalias reais continuam caindo (2049, e as emissões de 2002 e 2004).
+
 ## 0. Vocabulário
 
 | Termo | Significado |
@@ -98,8 +106,13 @@ Fluxo no servidor — **uma transação por carga, ou nada**:
 2. toma o **lock da base** (advisory lock); outra carga em curso ⇒ `409 CARGA_EM_ANDAMENTO`;
 3. confere o **grafo de dependência** (§5): pré-requisito do dia ausente ⇒ `409 DEPENDENCIA_AUSENTE`;
 4. lê cada objeto do bucket, recalcula o sha256 e compara com o declarado (≠ ⇒ `422 SHA256_DIVERGE`);
-5. **parse** com o núcleo `*Rows` da base (o mesmo do card); linhas com data fora de
-   `[2015-01-01, hoje + 5 anos]` são **rejeitadas e contadas**, nunca convertidas;
+5. **parse** com o núcleo `*Rows` da base (o mesmo do card); datas fora de
+   `[2015-01-01, 31/12 do ano de (hoje + 5 anos)]` são **rejeitadas e contadas**, nunca
+   convertidas (errata 1). **O que "rejeitada" significa na prática:** a LINHA permanece na carga
+   e só o CAMPO de data sai `null`, contado em `rejeitadas_por_data` — é o que o §7 quer dizer com
+   "a carga aplica e reporta", e é o único comportamento compatível com os checksums do §4, que
+   são calculados sobre o arquivo inteiro. Descartar a linha faria a contagem declarada pelo
+   próprio export deixar de fechar;
 6. extrai os **checksums do arquivo** (§4) e confere contra as linhas parseadas — no servidor **e**
    de novo dentro da RPC de promoção (`RAISE` se não fechar);
 7. reconcilia o conjunto (Σ arquivos = linhas parseadas; Vendas: nenhum `Venda Nº` repetido entre

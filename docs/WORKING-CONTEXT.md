@@ -56,16 +56,13 @@ Quatro coisas que a realidade corrigiu e que valem para quem seguir:
 
 **Suíte: 1.348 testes, 83 arquivos, zero skip** (eram 1.275 na fronteira da Fase 1).
 
-> 🔴 **DECISÃO DE PRODUTO ABERTA — faixa de data do contrato §2.3 (achado CRÍTICO do `revisor`).**
-> O contrato congelado diz `[2015-01-01, hoje + 5 anos]`. Implementei o limite superior como o
-> **fim do ano** de hoje+5 (`dataMaxima` em `src/lib/ingestao/parsers/comum.ts`), porque ao pé da
-> letra ele recusava **nove vencimentos legítimos de 2031-09-22** por um único dia — e os aceitaria
-> no dia seguinte, tornando o veredito dependente de QUANDO a carga rodou. Com o limite no fim do
-> ano as contagens batem exatamente com o que o briefing previa (55 linhas em Movimentação, 7 em
-> Aberto), o que sugere que era essa a intenção. **Mas é desvio da letra de um contrato congelado
-> no GATE 0, e mudança de contrato é decisão de produto.** Duas saídas, ambas de uma linha:
-> manter (e o contrato ganha uma errata) ou voltar ao literal (e nove vencimentos viram `null`).
-> Nada foi carregado ainda — a decisão cabe até o M5.
+**Faixa de data — DECIDIDA em 22/09 (fica ancorada no fim do ano).** Virou a **errata 1** do
+contrato (`docs/contratos/ingestao-v1.md`): o limite superior é 31/12 do ano de `hoje + 5 anos`,
+não o mesmo dia daqui a cinco anos. Ao pé da letra, o texto original recusava nove vencimentos
+legítimos de 2031-09-22 por um dia e os aceitaria no seguinte — guarda cujo veredito depende de
+quando a carga rodou. A mesma errata escreve o que "rejeitada" significa: a linha PERMANECE e só
+o campo de data sai `null`, contado em `rejeitadas_por_data`, que é o único comportamento
+compatível com os checksums do §4.
 
 **Credenciais de máquina PRONTAS (22/09):** hook `custom_access_token_hook` (0275) registrado no
 Dashboard pelo Yan; login de `verificador@janus.interno`/`ingestor@janus.interno` devolve token com
