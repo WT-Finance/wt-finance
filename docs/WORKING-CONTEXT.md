@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-21.
+Última atualização: 2026-09-22.
 
 ---
 
@@ -26,24 +26,23 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M0 contrato + anexos | feito (`889db93`) — fixtures gitignoradas com sha256 em `scripts/ingestao/fixtures-manifest.json`; scripts R em `docs/legado/scripts-r/` |
 | M1 `verificador` | **aplicada** (0273, 21/09 19:13 UTC, gate verde) — 54 EXECUTE só leitura; usuário `verificador@janus.interno` criado (`sub 14b24718-85cf-4d68-b396-fd7c9f299caa`) |
 | M2 `ingestor` + escopo | **aplicada** (0274, 21/09, gate verde; commit `c98ad14`) — 4 EXECUTE (pipeline de Vendas); usuário `ingestor@janus.interno` criado (`sub 952c5e70-555e-410b-a67f-26ce6e1833ae`); chave existente da API externa ficou com escopo vazio |
+| 0275 hook de credencial | **aplicada e registrada** (22/09) — identidade de máquina = login + hook (o JWT HS256 do briefing ficou inviável no regime novo de chaves; ADR-0175 §5) |
 | M3 parsers/oráculos | próxima (Fase 2) |
 | M4–M11 | pendentes — roteiro no plano |
 
-> 🔴 **Pendência do Yan que bloqueia a suíte completa: registrar o Auth Hook (ato humano, uma
-> vez).** Dashboard → Authentication → Hooks → "Customize Access Token (JWT) Claims" → Postgres →
-> `public.custom_access_token_hook` (migration 0275) → Enable. O projeto está no regime novo de
-> chaves (ES256 gerido pelo Supabase), então a identidade de máquina é **login + hook**, não JWT
-> assinado localmente (tentado em 21/09 e recusado: `No suitable key`). As senhas dos dois usuários
-> de máquina já estão no `.env.local` (`SUPABASE_VERIFICADOR_SENHA`, `SUPABASE_INGESTOR_SENHA`).
-> Sem o hook, o login funciona mas o token sai `role=authenticated` e a allowlist responde 403.
-> Depois de registrar: `npm test` deve dar ≥ 1.275, 0 skip, e o GATE 2 fica transcrito.
+**Credenciais de máquina PRONTAS (22/09):** hook `custom_access_token_hook` (0275) registrado no
+Dashboard pelo Yan; login de `verificador@janus.interno`/`ingestor@janus.interno` devolve token com
+`role=verificador`/`role=ingestor`; senhas em `SUPABASE_VERIFICADOR_SENHA`/`SUPABASE_INGESTOR_SENHA`
+no `.env.local`. **Suíte com as credenciais: 1.275 casos, 79 arquivos, 0 pulados** (≥ 1.247 da
+v5.11.0). GATE 2 transcrito em `docs/briefings/anexo-v6-0-0-gate2-transcricao.md`. O `ingestor`
+ainda precisa da senha no ambiente da Vercel (M4, quando a rota nascer).
 
 Decisões técnicas da v6.0.0 que divergem do briefing (registradas no ADR-0175 e no plano):
 allowlist do `ingestor` inclui `limpar_staging_*`/`inserir_lote_staging_*`/`validar_carga_*` (sem
 staging não há carga em lotes nem promoção atômica); a allowlist do `verificador` **não** tem
 RPC de escrita nenhuma (achado ALTO do `revisor-db` — os guards da DRE foram para transação
 revertida em `reverter-diario.test.ts`); `admin_listar_areas`/`admin_acesso_solicitacoes_pendentes`
-viraram prova negativa (GATE 2). Próximas: migration livre **0275**, ADR livre **0176**.
+viraram prova negativa (GATE 2). Próximas: migration livre **0276**, ADR livre **0176**.
 
 > 🔴 **Pendência do Yan, uma só, herdada da v5.11.0:** decidir se `PRIORIDADE_INICIAL`
 > (`src/lib/auth/areas.ts`) passa a incluir as áreas da Estante. Hoje um colaborador cujo **único**

@@ -738,10 +738,16 @@ describe.skipIf(!ON || !process.env.SUPABASE_DB_URL)('GATE 2 — a credencial de
   it.each([
     ['admin_listar_areas', {}],
     ['admin_acesso_solicitacoes_pendentes', {}],
-  ] as const)('%s: gated em admin/acessos → PERMISSAO_NEGADA para a credencial de verificação', async (fn, body) => {
+  ] as const)('%s: área administrativa → 42501 para a credencial de verificação (GRANT ou RBAC)', async (fn, body) => {
+    // Duas camadas podem negar, e a ORDEM é do servidor: sem EXECUTE (a allowlist não tem
+    // admin_*) o Postgres devolve "permission denied for function" ANTES de `exigir_acesso`
+    // rodar; se um dia o grant existir, é o RBAC que nega com PERMISSAO_NEGADA. Ambas são 42501
+    // → 403. O que se afirma é que a credencial NÃO alcança administração — por qualquer camada.
+    // Medido em 22/09/2026: a camada que dispara hoje é a de GRANT.
     const { status, texto } = await statusVerificador(fn, body as Record<string, unknown>)
     expect(status, `${fn}: esperado 403, veio ${status}: ${texto}`).toBe(403)
-    expect(texto).toMatch(/PERMISSAO_NEGADA/)
+    expect(texto).toMatch(/"42501"/)
+    expect(texto).toMatch(/PERMISSAO_NEGADA|permission denied for function/)
   })
 
   it('admin_acesso_solicitacoes_pendentes devolve integer (tipo lido do catálogo, já que o corpo é inalcançável)', async () => {
