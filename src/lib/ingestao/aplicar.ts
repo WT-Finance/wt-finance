@@ -358,7 +358,18 @@ async function aplicarEmLotes(p: ParamsAplicacaoEmLotes): Promise<void> {
     const lote = p.payload.slice(i, i + p.tamanhoDoLote)
     const { error } = await p.rpc(p.inserir, { p_linhas: lote })
     if (error) {
-      throw new CargaRejeitada(p.etapaInserir, `Erro ao inserir lote: ${error.message}`)
+      // A frase sobre a base NÃO é enfeite, e ela muda conforme onde se falhou. O contrato §2.3
+      // promete "a base anterior fica intacta", e isso só vale nestas quatro bases enquanto a
+      // falha acontece ANTES do TRUNCATE. Depois dele, a base está parcial — e o operador que lê
+      // "Erro ao inserir lote" sem essa ressalva pode ir embora achando que não precisa fazer
+      // nada. Vendas já dizia "a base atual foi preservada" porque lá é verdade (staging +
+      // promoção atômica). Some quando a M5 trouxer `promover_carga_*` para as quatro.
+      // Achado MÉDIO do `revisor`.
+      const ressalva = p.truncar
+        ? ' ⚠️ A base já havia sido limpa quando a falha ocorreu, então está INCOMPLETA: ' +
+          'reimporte este arquivo antes de usar os números.'
+        : ' A base atual foi preservada.'
+      throw new CargaRejeitada(p.etapaInserir, `Erro ao inserir lote: ${error.message}.${ressalva}`)
     }
     aplicadas += lote.length
     p.onProgresso?.(aplicadas)

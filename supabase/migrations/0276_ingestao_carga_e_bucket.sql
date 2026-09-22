@@ -126,6 +126,12 @@ CREATE UNIQUE INDEX idx_ingestao_carga_idempotencia
 CREATE INDEX idx_ingestao_carga_base_status_concluido
   ON ingestao.carga (base, status, concluido_em DESC);
 
+-- FK nova tem índice (item do checklist de banco). Sem consumidor HOJE — nenhuma das cinco RPCs
+-- filtra por quem chamou —, mas a tela `/admin/ingestao` da M6 vai perguntar exatamente isso
+-- ("as cargas desta chave", "as deste usuário"), e criar índice em tabela vazia é de graça.
+CREATE INDEX idx_ingestao_carga_chave   ON ingestao.carga (chave_id)   WHERE chave_id   IS NOT NULL;
+CREATE INDEX idx_ingestao_carga_usuario ON ingestao.carga (usuario_id) WHERE usuario_id IS NOT NULL;
+
 -- RLS deny-by-default (postura dos demais schemas). O app nunca toca ingestao.* direto;
 -- as RPCs SECURITY DEFINER (owner postgres) ignoram RLS. O ENABLE é cinto de segurança,
 -- não a porta — a porta é o REVOKE abaixo (nenhuma policy é criada).
@@ -208,16 +214,47 @@ BEGIN
     END IF;
   END IF;
 
+  -- ⚠️ Os dois SELECTs acima NÃO bastam sozinhos, e é por isso que o INSERT abaixo tem
+  -- tratamento de violação de unicidade. Eles são um `check-then-insert`: sob READ COMMITTED,
+  -- duas chamadas concorrentes não enxergam a linha não-commitada uma da outra, as duas chegam
+  -- a `v_existente = false` e as duas tentam inserir. A segunda bateria na PK (`carga_id`) ou
+  -- no índice único parcial da idempotência e sairia como erro cru 23505 — 500 para o chamador,
+  -- exatamente no caso que a idempotência existe para atender. E a concorrência aqui é real,
+  -- não hipotética: a trava de aplicação do lado do app é em MEMÓRIA, por processo (ver
+  -- `tentarTravarBase` em `src/lib/ingestao/carga.ts`), então duas instâncias serverless não se
+  -- veem — nesse cenário esta função é a única rede que sobra. Achado ALTO do `revisor-db`.
   IF NOT v_existente THEN
-    INSERT INTO ingestao.carga (
-      carga_id, base, origem, chave_id, usuario_id, idempotencia,
-      extraido_em, arquivos, status, observacao
-    ) VALUES (
-      p_carga_id, p_base, btrim(p_origem), p_chave_id, p_usuario_id, p_idempotencia,
-      p_extraido_em, coalesce(p_arquivos, '[]'::jsonb), 'aberta',
-      nullif(btrim(coalesce(p_observacao, '')), '')
-    )
-    RETURNING * INTO v_row;
+    BEGIN
+      INSERT INTO ingestao.carga (
+        carga_id, base, origem, chave_id, usuario_id, idempotencia,
+        extraido_em, arquivos, status, observacao
+      ) VALUES (
+        p_carga_id, p_base, btrim(p_origem), p_chave_id, p_usuario_id, p_idempotencia,
+        p_extraido_em, coalesce(p_arquivos, '[]'::jsonb), 'aberta',
+        nullif(btrim(coalesce(p_observacao, '')), '')
+      )
+      RETURNING * INTO v_row;
+    EXCEPTION WHEN unique_violation THEN
+      -- Perdemos a corrida: a linha que o outro chamador acabou de commitar é a verdadeira.
+      -- Relemos por carga_id e, se não for esse o conflito, por idempotência.
+      v_existente := true;
+      SELECT * INTO v_row FROM ingestao.carga WHERE carga_id = p_carga_id;
+      IF NOT FOUND AND p_idempotencia IS NOT NULL THEN
+        SELECT * INTO v_row FROM ingestao.carga WHERE idempotencia = p_idempotencia;
+      END IF;
+      -- Violação de unicidade que não é nem uma nem outra: não é nossa para engolir.
+      IF NOT FOUND THEN
+        RAISE;
+      END IF;
+    END;
+  END IF;
+
+  -- Reaproveitar `carga_id`/`x-ingestao-idempotencia` entre BASES diferentes é erro do
+  -- chamador, e devolver calado a carga da outra base seria uma resposta mentirosa sobre o
+  -- que foi aplicado. Achado MÉDIO do `revisor-db`.
+  IF v_existente AND v_row.base <> p_base THEN
+    RAISE EXCEPTION 'IDEMPOTENCIA_BASE_DIVERGENTE: a carga % já existe para a base %, não para %',
+      v_row.carga_id, v_row.base, p_base USING ERRCODE = '22023';
   END IF;
 
   RETURN jsonb_build_object(
@@ -262,8 +299,12 @@ AS $$
 DECLARE
   v_row ingestao.carga;
 BEGIN
-  IF p_status IS NULL OR NOT (p_status = ANY (ARRAY['aberta', 'aplicada', 'rejeitada', 'erro']::text[])) THEN
-    RAISE EXCEPTION 'STATUS_INVALIDO: % não é um status de carga válido', p_status USING ERRCODE = '22023';
+  -- Só status FINAIS: `aberta` é o estado inicial, e aceitá-lo aqui permitiria "concluir" uma
+  -- carga de volta para aberta carimbando `concluido_em` — incoerente com o nome da função e
+  -- com o que a M6 vai ler para alarmar carga que não terminou (achado MÉDIO do `revisor-db`).
+  IF p_status IS NULL OR NOT (p_status = ANY (ARRAY['aplicada', 'rejeitada', 'erro']::text[])) THEN
+    RAISE EXCEPTION 'STATUS_INVALIDO: % não é um status FINAL de carga (aplicada, rejeitada, erro)', p_status
+      USING ERRCODE = '22023';
   END IF;
 
   UPDATE ingestao.carga SET
@@ -415,16 +456,29 @@ AS $$
     SELECT DISTINCT ON (numero) numero, vencimento
     FROM (
       -- prioridade 1 = Aberto (vence); 2 = Movimentação (fallback)
-      SELECT btrim(numero) AS numero, vencimento, 1 AS prioridade
+      SELECT btrim(numero) AS numero, vencimento, 1 AS prioridade, id
         FROM raw.titulos_em_aberto
        WHERE vencimento IS NOT NULL AND btrim(coalesce(numero, '')) <> ''
       UNION ALL
-      SELECT btrim(numero), vencimento, 2
+      SELECT btrim(numero), vencimento, 2, id
         FROM raw.lancamentos_movimentacao
        WHERE vencimento IS NOT NULL AND btrim(coalesce(numero, '')) <> ''
     ) fontes
     WHERE numero = ANY (coalesce(p_numeros, ARRAY[]::text[]))
-    ORDER BY numero, prioridade
+    -- O `id DESC` NÃO é enfeite: sem ele, `DISTINCT ON` com empate em (numero, prioridade)
+    -- deixa a escolha da linha a critério do PLANO de execução — e um plano pode mudar com
+    -- VACUUM/ANALYZE, paralelismo ou um índice futuro. Duas cargas do MESMO arquivo poderiam
+    -- gravar `vencimento` diferente, sem erro e sem log, o que é o pior tipo de defeito num
+    -- número que a diretoria lê (achado ALTO do `revisor-db`).
+    --
+    -- `id DESC` reproduz a semântica do índice em TS (`indiceDeVencimentos`), que percorre as
+    -- linhas na ordem do arquivo com `Map.set` — ou seja, a ÚLTIMA ocorrência vence; como as
+    -- duas `raw.*` são recarregadas por inteiro a cada carga, o `id` cresce na ordem do arquivo.
+    --
+    -- Medido nos anexos de 21/09, pelo parser do projeto: ZERO `Número` com mais de um
+    -- `Vencimento` na mesma base (36.176 linhas em Aberto, 94.667 em Movimentação). O empate é
+    -- hoje teórico — o desempate está aqui porque nada no schema o impede amanhã.
+    ORDER BY numero, prioridade, id DESC
   ) resolvido;
 $$;
 REVOKE EXECUTE ON FUNCTION public.ingestao_vencimentos_por_numero(text[]) FROM PUBLIC, anon, authenticated;

@@ -201,13 +201,20 @@ export async function autenticarIngestao(req: Request, base: BaseIngestao): Prom
   const sessaoOuResp = await requireAreaApi('admin/uploads')
   if (sessaoOuResp instanceof Response) {
     const codigo: CodigoErroCarga = sessaoOuResp.status === 401 ? 'AUTH_AUSENTE' : 'ESCOPO_INSUFICIENTE'
+    // O 403 de `requireAreaApi` tem DOIS motivos, e dizer o motivo errado manda o operador
+    // procurar no lugar errado: quem precisa trocar a senha TEM sessão e TEM a área — falar em
+    // "credencial não informada" para ele é mentira. Achado MÉDIO do `revisor`.
+    let corpo: { error?: string } = {}
+    try { corpo = (await sessaoOuResp.clone().json()) as { error?: string } } catch { /* resposta sem JSON */ }
+    const mensagem =
+      corpo.error === 'TROCA_SENHA_OBRIGATORIA'
+        ? 'A sessão existe, mas a senha precisa ser trocada no primeiro acesso antes de usar esta rota.'
+        : sessaoOuResp.status === 401
+          ? 'Nem "x-api-key" nem uma sessão foram informados.'
+          : 'A sessão informada não tem a área "admin/uploads".'
     return {
       ok: false,
-      resposta: respostaErroCarga(
-        codigo,
-        'Nem "x-api-key" nem uma sessão com a área "admin/uploads" foram informados.',
-        sessaoOuResp.status,
-      ),
+      resposta: respostaErroCarga(codigo, mensagem, sessaoOuResp.status),
       viaChave: false,
       chaveId: null,
     }
@@ -244,13 +251,23 @@ export async function autenticarIngestao(req: Request, base: BaseIngestao): Prom
 const TTL_LOCK_MS = 10 * 60 * 1000
 const cargasEmAndamento = new Map<BaseIngestao, { cargaId: string; desde: number }>()
 
-/** `true` quando conseguiu (ou já era o dono) — `false` quando outra carga tem o lock. Exportada
- *  para o teste provar o comportamento sem depender de `processarCarga` inteiro. */
+/**
+ * `true` quando conseguiu o lock da base; `false` quando alguém já o tem.
+ *
+ * ⚠️ Bloqueia **qualquer** segunda chamada enquanto a base está marcada — inclusive uma com o
+ * MESMO `carga_id`. A primeira versão abria exceção para o próprio `carga_id` ("não bloquear o
+ * dono"), e isso deixava passar exatamente o caso que o lock existe para pegar: chamada
+ * duplicada é, por definição, o mesmo `carga_id` (retry de rede, duplo-clique, RPA reenviando o
+ * passo 3 depois de um timeout do lado dela). As duas entravam em `aplicarCarga` para a mesma
+ * base, e nas quatro bases não-Vendas não há lock nenhum no banco: dois `TRUNCATE`+`INSERT`
+ * intercalados deixam a base com a mistura de duas cargas. Achado ALTO do `revisor`.
+ *
+ * O caminho feliz não sofre: conferência e aplicação do mesmo clique são sequenciais, e o
+ * `finally` de `processarCarga` libera o lock antes de a próxima chamada começar.
+ */
 export function tentarTravarBase(base: BaseIngestao, cargaId: string): boolean {
   const atual = cargasEmAndamento.get(base)
-  if (atual && atual.cargaId !== cargaId && Date.now() - atual.desde < TTL_LOCK_MS) {
-    return false
-  }
+  if (atual && Date.now() - atual.desde < TTL_LOCK_MS) return false
   cargasEmAndamento.set(base, { cargaId, desde: Date.now() })
   return true
 }
@@ -436,6 +453,17 @@ interface ParseNormalizado {
   readonly porArquivo: readonly ResumoArquivo[]
   /** Só as bases single-file que `aplicarCarga` exige (`OpcoesAplicacao.arquivoOrigem`). */
   readonly arquivoOrigem?: string
+  /**
+   * Avisos nascidos no PARSE, que precisam chegar a `alarmes[]` da resposta e à linha de carga.
+   *
+   * Existe por um achado ALTO do `revisor`: a cobertura do cruzamento de Vencimento em
+   * Lançamentos por Operação era medida pelo parser e descartada aqui. O sintoma seria mudo —
+   * subir Operação com as bases vizinhas vazias resolve ZERO vencimentos, `data_final` sai nula
+   * e as colunas de previsto da Carteira vão a zero, enquanto a tela do operador mostra
+   * "1 checksum conferido" e nenhum aviso. O grafo de dependência (contrato §5) que impediria
+   * essa ordem só chega na M7; até lá, avisar é a única defesa.
+   */
+  readonly avisos?: readonly string[]
 }
 
 async function executarParse(base: BaseIngestao, arquivosLidos: readonly ArquivoLido[]): Promise<ParseNormalizado | ErroCarga> {
@@ -529,7 +557,33 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
 
       const resultado = parseLancamentosOperacaoRows(unico.matriz, vencimentos)
       if (!resultado.ok) return traduzirFalhaParse(resultado)
+
+      // A cobertura do cruzamento PRECISA chegar ao operador. O contrato §4 a trata como alarme,
+      // não bloqueio (a fonte é scrape, e a falta pode ser da raspagem) — mas alarme que ninguém
+      // vê não é alarme. Sem o grafo de dependência (M7), nada impede subir Operação com as
+      // vizinhas vazias, e é essa a única pista de que aconteceu.
+      const cruzamento = resultado.cruzamento
+      const avisos: string[] = []
+      if (cruzamento && cruzamento.semLiquidacao > 0) {
+        const faltando = cruzamento.semLiquidacao - cruzamento.encontrados
+        if (cruzamento.encontrados === 0) {
+          avisos.push(
+            `Nenhum dos ${cruzamento.semLiquidacao} lançamento(s) sem liquidação teve o Vencimento ` +
+            'resolvido nas bases vizinhas — eles ficam sem data final, e as colunas de previsto ' +
+            '(A Receber/A Pagar Futuro) da Carteira zeram. Carregue Lançamentos por Vencimento ' +
+            '(em aberto) e por Movimentação ANTES desta base e reimporte.',
+          )
+        } else if (faltando > 0) {
+          avisos.push(
+            `${faltando} de ${cruzamento.semLiquidacao} lançamento(s) sem liquidação ficaram sem ` +
+            `Vencimento nas bases vizinhas (baseline conhecido: 3)` +
+            (cruzamento.ausentes.length > 0 ? `. Exemplos: ${cruzamento.ausentes.slice(0, 5).join(', ')}` : '') + '.',
+          )
+        }
+      }
+
       return {
+        avisos,
         linhasParaAplicar: resultado.linhas,
         totalLinhas: resultado.linhas.length,
         checksums: resultado.checksums,
@@ -736,7 +790,10 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
       ? somaCentavos((parseado.linhasParaAplicar as readonly DemonstrativoCompetenciaCru[]).map((l) => l.valor))
       : null
     const { diff, aviso: avisoDiff } = await calcularDiff(base, parseado.totalLinhas, somaCentavosNovo)
-    const alarmesBase = avisoDiff ? [avisoDiff] : []
+    // Os avisos do PARSE (hoje: a cobertura do cruzamento de Vencimento) entram junto com o do
+    // diff, e valem para a CONFERÊNCIA também — é antes de confirmar que o operador precisa
+    // ler que nenhum vencimento foi resolvido.
+    const alarmesBase = [...(parseado.avisos ?? []), ...(avisoDiff ? [avisoDiff] : [])]
 
     if (!entrada.confirmar) {
       // CONFERÊNCIA (anexo §5): passos 4-8 só, sem aplicar (passo 9) nem concluir/logar (passo 10).

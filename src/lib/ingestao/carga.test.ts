@@ -219,9 +219,14 @@ describe('tentarTravarBase / destravarBase', () => {
     destravarBase('vendas-produto', 'carga-A') // limpeza — não afeta outros testes
   })
 
-  it('o MESMO carga_id pode "travar" de novo (não é bloqueado pelo próprio dono)', () => {
+  // Este caso já foi o OPOSTO: "o próprio dono pode travar de novo". Era o furo — chamada
+  // duplicada tem, por definição, o MESMO carga_id (retry de rede, duplo-clique, RPA reenviando
+  // o passo 3 após timeout), e abrir exceção para ele deixava as duas entrarem em `aplicarCarga`
+  // ao mesmo tempo. Nas quatro bases não-Vendas não há lock no banco: dois TRUNCATE+INSERT
+  // intercalados misturam duas cargas na mesma tabela. Achado ALTO do `revisor`.
+  it('o MESMO carga_id TAMBÉM é recusado enquanto a base está travada (é o caso do retry)', () => {
     expect(tentarTravarBase('vendas-produto', 'carga-C')).toBe(true)
-    expect(tentarTravarBase('vendas-produto', 'carga-C')).toBe(true)
+    expect(tentarTravarBase('vendas-produto', 'carga-C')).toBe(false)
     destravarBase('vendas-produto', 'carga-C')
   })
 

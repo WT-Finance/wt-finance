@@ -343,10 +343,20 @@ function CardUpload({
         ) : '—'}
       </p>
 
-      {/* Zona de drop / arquivo selecionado */}
+      {/* Zona de drop / arquivo selecionado.
+          Alcançável por TECLADO: é um `div` com handlers (o `<input type="file">` interno está
+          `hidden`, logo fora do tab-order), então sem `role`/`tabIndex`/`onKeyDown` não havia
+          NENHUMA forma de escolher arquivo sem mouse — e esta é a única porta de upload da
+          plataforma. O padrão vem do WAI-ARIA APG para botão: Enter e Espaço ativam, e o Espaço
+          tem `preventDefault` para não rolar a página. Achado do `revisor`; a estrutura era
+          pré-existente (idêntica antes da M4), o `aria-disabled` acompanha o estado real. */}
       <div
+        role="button"
+        tabIndex={ativo ? 0 : -1}
+        aria-disabled={!ativo}
+        aria-label={`Selecionar arquivo para ${config.label}`}
         className={[
-          'border-2 border-dashed rounded-lg p-4 text-center transition-colors mb-3',
+          'border-2 border-dashed rounded-lg p-4 text-center transition-colors mb-3 foco-neutro',
           ativo ? 'cursor-pointer' : 'cursor-default',
           ativo && isDragging
             ? 'border-action-soft-border bg-action-soft'
@@ -355,6 +365,13 @@ function CardUpload({
               : 'border-zinc-100 bg-zinc-50',
         ].join(' ')}
         onClick={() => ativo && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (!ativo) return
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            inputRef.current?.click()
+          }
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

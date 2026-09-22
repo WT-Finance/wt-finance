@@ -37,6 +37,10 @@ async function logar(auth: Awaited<ReturnType<typeof autenticarIngestao>>, rota:
 
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** `x-ingestao-origem` — o enum do contrato §1, literal. A M6 acrescenta `cron` quando os crons
+ *  existentes passarem a gravar em `ingestao.carga`. */
+const ORIGENS_VALIDAS: readonly string[] = ['rpa-pad', 'rpa-cloud', 'manual', 'reprocesso']
+
 const bodySchema = z.object({
   carga_id: z.string().regex(REGEX_UUID, 'carga_id precisa ser um UUID.'),
   arquivos: z.array(z.object({
@@ -65,10 +69,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ base: s
     return auth.resposta
   }
 
+  // Contrato §1: a origem é um ENUM, não texto livre. Aceitar qualquer string faria um typo
+  // (`rpa_pad`, `manuaI`) entrar calado em `ingestao.carga.origem` e degradar a trilha de
+  // auditoria do §6 — que é o único lugar onde se responde "quem mandou esta carga".
+  // Achado MÉDIO do `revisor`. A M6 acrescenta `cron` aqui, quando os crons passarem a logar.
   const origem = (req.headers.get('x-ingestao-origem') ?? '').trim()
-  if (origem === '') {
-    const resposta = respostaErroCarga('FORMATO_INVALIDO', 'Cabeçalho "x-ingestao-origem" é obrigatório.', 422)
-    await logar(auth, rota, 422, 'origem_ausente')
+  if (!ORIGENS_VALIDAS.includes(origem)) {
+    const resposta = respostaErroCarga(
+      'FORMATO_INVALIDO',
+      `Cabeçalho "x-ingestao-origem" é obrigatório e precisa ser um de: ${ORIGENS_VALIDAS.join(', ')}.`,
+      422,
+    )
+    await logar(auth, rota, 422, 'origem_invalida')
     return resposta
   }
 
