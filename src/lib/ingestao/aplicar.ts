@@ -22,15 +22,19 @@ import 'server-only'
 // (conferidas coluna a coluna contra o `INSERT` real de cada `inserir_lote_staging_{base}`,
 // migration 0278), não mais as da tabela viva ou (Operação) do fato.
 //
-// Tudo aqui roda com `service_role` (`getAdminClient`) — a credencial `ingestor` do contrato
-// (`docs/contratos/ingestao-v1.md` §1) ainda NÃO tem GRANT de EXECUTE nas RPCs novas desta missão
-// (a allowlist é DERIVADA de `rpcs-ingestor.ts` por script; a migration do GRANT é do
-// orquestrador, fora do escopo desta missão — ver o cabeçalho de `rpcs-ingestor.ts`). `rpcDe()`
-// abaixo é a COSTURA: trocar `getAdminClient()` por um cliente autenticado como `ingestor` (via
-// `tokenMaquina('ingestor')`, `src/lib/auth/credencial-maquina.ts`) é a única linha que muda
-// quando o GRANT existir — nenhuma outra parte deste módulo depende de qual credencial chama.
+// A credencial que aplica é o `ingestor` (contrato `docs/contratos/ingestao-v1.md` §1), não mais
+// a chave-mestra `service_role`. É o ponto inteiro da versão: numa plataforma em que a RPC é a
+// porta de escrita, quem ingere não pode alcançar o que não precisa — foi o `service_role` a
+// superfície do incidente de 10/09/2026. A role tem `EXECUTE` só no pipeline das cinco bases
+// (allowlist DERIVADA deste código por `scripts/credencial/derivar-allowlist.mjs`; GRANTs na
+// migration 0279) e **nenhum acesso ao schema `raw`**.
+//
+// Medido em 22/09 assumindo a identidade real (`SET LOCAL ROLE ingestor` + claims do JWT, em
+// transação revertida contra produção): a credencial limpa a staging, insere, RECUSA o checksum
+// errado por CHECKSUM (não por permissão) e APLICA com o certo — enquanto um `SELECT` direto em
+// `raw.*` na mesma sessão volta `permission denied for schema raw`.
 
-import { getAdminClient } from '@/lib/supabase/admin'
+import { getIngestorClient } from '@/lib/supabase/ingestor'
 import { loadMetas } from '@/lib/carga/metas'
 import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
 import { normalizeHeader, type Checksum } from './parsers/comum'
@@ -42,10 +46,20 @@ import type { LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
-/** Mesmo padrão de `actions.ts`: `.bind(supabase)` porque destacar o método (`const rpc =
- *  supabase.rpc`) perde o `this` e quebra em runtime (lição v5.3.5). */
-function rpcDe(): BoundRpc {
-  const supabase = getAdminClient()
+/**
+ * A credencial que APLICA. Desde a M5 é o `ingestor` (role com EXECUTE só no pipeline das cinco
+ * bases), não mais o `service_role` — que é chave-mestra e foi a superfície do incidente de
+ * 10/09/2026. Ver `src/lib/supabase/ingestor.ts` para o porquê e para o comportamento
+ * fail-closed quando a senha não está no ambiente.
+ *
+ * Assíncrona porque a credencial é um LOGIN (token de 1 h, cacheado no processo por
+ * `tokenMaquina`), não uma chave estática.
+ *
+ * `.bind(supabase)` porque destacar o método (`const rpc = supabase.rpc`) perde o `this` e
+ * quebra em runtime (lição v5.3.5).
+ */
+async function rpcDe(): Promise<BoundRpc> {
+  const supabase = await getIngestorClient()
   return (supabase.rpc as unknown as BoundRpc).bind(supabase)
 }
 
@@ -160,25 +174,24 @@ function dinheiroComoString(v: number | null): string | null {
  *     resíduo, não regra de negócio). Antes da M5 não havia coluna de destino e o campo era
  *     descartado aqui de propósito; o parser da M3 já preservava o dado, só faltava para onde ir.
  *
- * 🔴 `situacao` do Cru continua DELIBERADAMENTE descartada nesta missão — decisão pendente do
- * Yan, sem relação com o escopo da M5. A coluna existe em `raw.vendas_excel` desde a 0038, mas o
- * parser de CLIENTE vivo (`vendas-parser.ts`) nunca a populou — a base recebe `situacao = NULL`
- * em toda carga feita pelo card. O parser da M3 lê a coluna do export e ela tem para onde ir,
- * então mapeá-la seria a coisa "óbvia" a fazer — e mudaria o que duas telas mostram:
- * `analytics.vw_vendas_agregadas` (0040) e `get_vendas_em_aberto`/`get_vendas_em_aberto_weddings`
- * (0114/0121) filtram `situacao = 'Aberta'` ESTRITO. Com a coluna nula, esse filtro não casa
- * nada; preenchê-la faria "Vendas em Aberto" deixar de ser uma lista vazia.
+ * `situacao` PASSA A SER GRAVADA — decisão do Yan em 22/09, e é mudança VISÍVEL de propósito.
+ * A coluna existe em `raw.vendas_excel` desde a 0038, criada exatamente para a tela "Vendas em
+ * Aberto", mas o parser de CLIENTE que ficou vivo (`vendas-parser.ts`) nunca a populou — a base
+ * recebia `situacao = NULL` em toda carga feita pelo card. E `analytics.vw_vendas_agregadas`
+ * (0040) e `get_vendas_em_aberto`/`get_vendas_em_aberto_weddings` (0114/0121) filtram
+ * `situacao = 'Aberta'` ESTRITO: com a coluna nula, esse filtro não casa nada. A tela existia e
+ * não mostrava nada, e ninguém tinha como saber pela tela.
  *
  * Medido nos três anexos de 21/09 (48.865 linhas): `"Fechada"` 48.451, `"Aberta"` 411, e uma
- * célula vazia por arquivo (a linha de totais, que o parser já remove como checksum). Ou seja,
- * o `CHECK (situacao IS NULL OR situacao IN ('Aberta','Fechada'))` da 0038 não seria violado —
- * o risco aqui não é quebrar a carga, é MUDAR NÚMERO em tela.
+ * célula vazia por arquivo (a linha de totais, que o parser já remove como checksum). Os dois
+ * únicos valores cabem no `CHECK (situacao IS NULL OR situacao IN ('Aberta','Fechada'))` da
+ * 0038 — não há risco de a carga quebrar por conta disto.
  *
- * O invariante 1 da versão é "zero mudança de número em qualquer tela", e a lista de exceções
- * visíveis do briefing (sufixo "parcial", carimbo de data, `Intermediário` preenchido) não
- * inclui `situacao`. Pode muito bem ser defeito pré-existente — a coluna foi criada em 0038
- * exatamente para essa tela — mas "ligar uma tela que está apagada" é decisão de produto.
- * Virar isto é trocar `null` por `cru.situacao` nesta linha; o registro está no relato da M4.
+ * ⚠️ É EXCEÇÃO AO INVARIANTE 1 da versão ("zero mudança de número em qualquer tela"), e está
+ * registrada como tal: depois da primeira carga de Vendas, "Vendas em Aberto" deixa de ser uma
+ * lista vazia e passa a listar as vendas realmente abertas. Quem olhar a tela vai ver número
+ * onde não havia — o que é o conserto, não o defeito. Somar-se-á à lista de exceções visíveis
+ * (sufixo "parcial", carimbo de data, `Intermediário` preenchido) no out-briefing.
  */
 export function adaptarVenda(cru: VendaProdutoCru): Record<string, unknown> {
   return {
@@ -200,8 +213,7 @@ export function adaptarVenda(cru: VendaProdutoCru): Record<string, unknown> {
     mes:                cru.mes,
     data_inicio_evento: cru.data_inicio,
     fornecedor:         cru.fornecedor,
-    // 🔴 null de propósito, não esquecimento — ver a nota de `situacao` acima.
-    situacao:           null,
+    situacao:           cru.situacao,
     tipo_contrato:      cru.tipo_contrato,
     passageiros:        cru.passageiros,
     operacao_propria:   cru.operacao_propria,
@@ -579,7 +591,7 @@ async function aplicarVendas(
   linhas: readonly VendaProdutoCru[],
   opcoes: OpcoesAplicacao,
 ): Promise<ResultadoAplicacao> {
-  const rpc = rpcDe()
+  const rpc = await rpcDe()
   const cargaId = exigirCargaId(opcoes, 'vendas-produto')
   const payload = linhas.map(adaptarVenda)
 
@@ -657,7 +669,7 @@ async function aplicarDemonstrativo(
   linhas: readonly DemonstrativoCompetenciaCru[],
   opcoes: OpcoesAplicacao,
 ): Promise<ResultadoAplicacao> {
-  const rpc = rpcDe()
+  const rpc = await rpcDe()
   const arquivoOrigem = exigirArquivoOrigem(opcoes, 'demonstrativo-competencia')
   const cargaId = exigirCargaId(opcoes, 'demonstrativo-competencia')
   const payload = linhas.map((l) => adaptarDemonstrativo(l, arquivoOrigem))
@@ -733,7 +745,7 @@ async function aplicarLancamentosMovimentacao(
   linhas: readonly LancamentoCategoriaCru[],
   opcoes: OpcoesAplicacao,
 ): Promise<ResultadoAplicacao> {
-  const rpc = rpcDe()
+  const rpc = await rpcDe()
   const arquivoOrigem = exigirArquivoOrigem(opcoes, 'lancamentos-movimentacao')
   const cargaId = exigirCargaId(opcoes, 'lancamentos-movimentacao')
   const payload = linhas.map((l) => adaptarLancamentoMovimentacao(l, arquivoOrigem))
@@ -795,7 +807,7 @@ async function aplicarTitulosEmAberto(
   linhas: readonly LancamentoCategoriaCru[],
   opcoes: OpcoesAplicacao,
 ): Promise<ResultadoAplicacao> {
-  const rpc = rpcDe()
+  const rpc = await rpcDe()
   const arquivoOrigem = exigirArquivoOrigem(opcoes, 'lancamentos-aberto')
   const cargaId = exigirCargaId(opcoes, 'lancamentos-aberto')
   const payload = linhas.map((l) => adaptarTituloEmAberto(l, arquivoOrigem))
@@ -863,7 +875,7 @@ async function aplicarLancamentosOperacao(
   linhas: readonly LancamentoOperacaoCru[],
   opcoes: OpcoesAplicacao,
 ): Promise<ResultadoAplicacao> {
-  const rpc = rpcDe()
+  const rpc = await rpcDe()
   const arquivoOrigem = exigirArquivoOrigem(opcoes, 'lancamentos-operacao')
   const cargaId = exigirCargaId(opcoes, 'lancamentos-operacao')
   const payload = linhas.map((cru) => adaptarLancamentoOperacao(cru, arquivoOrigem))

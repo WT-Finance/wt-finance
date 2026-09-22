@@ -70,6 +70,15 @@ Medido contra a tabela viva imediatamente antes do push, e de novo depois: `raw.
 48.652 linhas, **zero** de Welcome, zero com `setor_macro` nulo, 29.458 vendas distintas = exatamente
 o `fato_venda`. A view é no-op sobre o dado de hoje.
 
+**`situacao` de Vendas passa a ser GRAVADA (decisão do Yan, 22/09) — e é exceção declarada ao
+invariante 1.** A coluna existe desde a 0038, criada exatamente para a tela "Vendas em Aberto", mas
+o parser de cliente que ficou vivo nunca a populou; e `vw_vendas_agregadas` (0040) /
+`get_vendas_em_aberto` (0114) filtram `situacao = 'Aberta'` ESTRITO. A tela existia e não mostrava
+nada, sem ninguém ter como saber pela tela. Medido nos anexos: 411 "Aberta" e 48.451 "Fechada" em
+48.865 linhas — os dois únicos valores, ambos dentro do CHECK da 0038. **Depois da primeira carga
+de Vendas, "Vendas em Aberto" deixa de ser lista vazia.** Some-se às exceções visíveis já
+declaradas (sufixo "parcial", carimbo de data, `Intermediário` preenchido).
+
 Três coisas que a M5 corrigiu antes de aplicar, e que valem para quem seguir:
 
 - **`p_checksums = []` promovia a base inteira devolvendo sucesso.** Um checksum AUSENTE não é
@@ -83,15 +92,27 @@ Três coisas que a M5 corrigiu antes de aplicar, e que valem para quem seguir:
   preenchia `arquivo_origem` (a base gravava direto no fato, que não tem essa coluna); com a staging,
   que a exige `NOT NULL`, toda carga dessa base falharia.
 
-> 🔴 **A credencial `ingestor` ainda NÃO aplica — e a virada esbarra numa decisão sua.** A allowlist
-> dela é DERIVADA de `rpcs-ingestor.ts` por script, e o derivador resolve por NOME: rodá-lo concede
-> `EXECUTE` em `promover_carga_demonstrativo`, que chama `provisionar_dre_comp_par`, que exige a área
-> `financeiro/dre` — e a role "Máquina · ingestão" tem **exatamente uma área: `admin/uploads`**
-> (conferido no banco). As saídas são: (a) separar um núcleo service_role-only e manter a função
-> pública com o guard — é o padrão que o projeto já usa para este caso; (b) dar `financeiro/dre` à
-> role de máquina, alargando uma credencial deliberadamente estreita. **Recomendo (a).** Enquanto não
-> decide, tudo roda com `service_role`, como sempre rodou, atrás de uma costura de uma linha em
-> `aplicar.ts`.
+✅ **A CREDENCIAL `ingestor` PASSOU A APLICAR (22/09) — a promessa central da versão, cumprida.**
+Decisão do Yan: separar o núcleo, mantendo a credencial estreita. A migration **0279** criou
+`provisionar_dre_comp_par__nucleo()` (service_role-only), transformou a função pública em wrapper
+que preserva o guard `financeiro/dre` para a tela, e concedeu as **21 assinaturas** que o derivador
+oficial produziu. `aplicar.ts` deixou de usar `getAdminClient()`.
+
+**Provado assumindo a identidade real**, em transação revertida contra produção (`SET LOCAL ROLE
+ingestor` + claims do JWT): a credencial limpa a staging, insere, **recusa o checksum errado por
+CHECKSUM — não por permissão** — e **aplica** com o certo (`{"avisos":[],"linhas":2,
+"pares_novos":2,"checksums_conferidos":1}`); base intacta, 3.334 antes e depois. Na mesma sessão,
+um `SELECT` direto em `raw.*` volta `permission denied for schema raw` — a credencial alcança as
+RPCs e **nada além delas**.
+
+O `avisos: []` com `pares_novos: 2` é a prova de que a separação funcionou: a função interna rodou
+de verdade, sem aviso de permissão. O `EXCEPTION` que existia para tolerar aquele erro foi
+**removido** — catch para um erro que não pode mais acontecer é ruído que engana quem lê depois, e
+falha real da função interna deve derrubar a promoção.
+
+**Fail-closed:** sem `SUPABASE_INGESTOR_SENHA` no ambiente, a carga LANÇA com mensagem operacional.
+Cair de volta no `service_role` desfaria a versão inteira em silêncio, no momento em que a proteção
+mais importa.
 
 > ⚠️ **Risco registrado para a missão de corte / GATE 3:** o caminho LEGADO (`truncar_* +
 > regenerar_fluxo_caixa` direto) ainda está vivo e **não toma** a chave de advisory lock compartilhada
@@ -139,19 +160,13 @@ Cinco coisas que a realidade corrigiu nesta missão, e que valem para quem segui
 - **`check-then-insert` não é idempotência.** Sob READ COMMITTED as duas chamadas concorrentes
   inserem, e a segunda vira 500 — exatamente no caso que a idempotência existe para atender.
 
-> 🔴 **Três decisões suas, abertas pela M4** (detalhe no out-briefing da versão):
-> 1. **Errata 2 do contrato** — o campo `confirmar` (default `true`) no passo 3, que só o card
->    usa. Ele repõe o gate humano do "antes → depois" que existia antes de o parse sair do
->    cliente; a RPA nunca o envia e continua vendo o contrato como congelado. Aceitar como errata
->    ou remover (e aí o gate humano some, o que precisa ser escolha dita).
-> 2. **A URL assinada não vale 15 minutos** (contrato §2.1). `createSignedUploadUrl` do supabase-js
->    **não aceita** validade — quem a define é o servidor do Storage, hoje 2 h. O código reporta o
->    `exp` real do token em vez de mentir. Errata ou outra forma de limitar.
-> 3. **`situacao` de Vendas continua nula de propósito.** O parser da M3 lê a coluna (medido:
->    411 "Aberta" em 48.865 linhas), mas `vw_vendas_agregadas` (0040) e `get_vendas_em_aberto`
->    (0114) filtram `situacao = 'Aberta'` ESTRITO — preencher agora acende uma tela que hoje está
->    apagada. Pode ser defeito pré-existente (a coluna nasceu em 0038 para essa tela), mas ligar
->    tela é decisão de produto. Virar é uma linha em `aplicar.ts`, com teste que segura a mudança.
+> ✅ **As decisões abertas pela M4 foram TODAS respondidas em 22/09** e já estão implementadas:
+> 1. **Errata 2 do contrato — ACEITA.** Registrada em `docs/contratos/ingestao-v1.md`, com o §2.1
+>    e o §2.3 alinhados para o documento não se contradizer. Cobre (a) o campo `confirmar`
+>    (default `true`), que repõe o gate humano do "antes → depois", e (b) a validade real da URL
+>    assinada — o SDK não aceita o parâmetro, e o que protege o caminho é o `carga_id` dentro do
+>    path mais o sha256 reconferido, não a janela curta.
+> 3. ~~`situacao` de Vendas~~ — **DECIDIDA em 22/09: passa a ser gravada.** Ver abaixo.
 
 **O card foi exercitado AO VIVO (22/09), com sessão real**, até o modal e sem aplicar:
 Demonstrativo (1 arquivo) e Vendas (3 arquivos). O fluxo inteiro funcionou — sha256 no navegador,
@@ -183,6 +198,15 @@ A tela pegou dois números mentirosos que nenhum gate acusaria, os dois já corr
 > ⚠️ **`SUPABASE_INGESTOR_SENHA` ainda não está no ambiente da Vercel.** Não bloqueia a M4 (a
 > aplicação roda com `service_role`, como as Server Actions já faziam), mas bloqueia a M5, que é
 > quando a credencial `ingestor` passa a ser quem aplica.
+
+> ⚠️ **Intermitência vista uma vez, não reproduzida — registrada de propósito.** Em 22/09, numa de
+> três execuções da suíte cheia, `src/lib/ingestao/oraculo-operacao.test.ts` reprovou em "a lista de
+> operações derivada de Vendas cobre a lista curada à mão"; as outras duas execuções e a execução
+> ISOLADA do arquivo passaram (16/16). Não diagnostiquei — o oráculo só lê fixture, então a hipótese
+> mais provável é contenção de recurso na suíte paralela, que ficou mais pesada com o teste novo que
+> abre conexão de banco. **Não tratar como ruído:** teste que falha uma vez em três é exatamente o
+> que esconde defeito real, e a versão inteira depende desses oráculos. Quem vir de novo, anote a
+> mensagem completa antes de re-rodar.
 
 **Divergências briefing×repo registradas na M4** (somam-se às 11 da abertura):
 - **`src/lib/carga/lancamentos.ts` NÃO saiu.** O briefing o dava como removível; `supabase/seed/seed.ts`
@@ -283,7 +307,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.11.0** (PR #273, mergeado 15/09 às 12:55) |
-| Última migration aplicada | **0278** (v6.0.0/M5 — pipeline atômico) · próxima livre: **0279** |
+| Última migration aplicada | **0279** (v6.0.0/M5 — credencial aplica) · próxima livre: **0280** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
 | Suíte | **1.472 testes**, 88 arquivos, zero `skip` silencioso |
 

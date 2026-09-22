@@ -96,6 +96,12 @@ const INVENTARIO: ReadonlyArray<{
     porque: 'prova comportamental das RPCs da Estante Welcome, em transação revertida (0271/0272, v5.11.0)',
   },
   {
+    arquivo: 'src/lib/ingestao/promover-carga-checksum.test.ts',
+    envs: ['SUPABASE_DB_URL'],
+    porque: 'prova da M5 (v6.0.0/0278): checksum falso ⇒ RAISE e base intacta, em transação revertida — ' +
+      'a conferência acontece DENTRO do banco, contra o que ficou gravado, então só se prova chamando',
+  },
+  {
     arquivo: 'src/lib/monde/virada-paridade.test.ts',
     envs: ['SUPABASE_DB_URL'],
     porque: 'paridade pós-virada do espelho Monde (v5.1.4), em transação',

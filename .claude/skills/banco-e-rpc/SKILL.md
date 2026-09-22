@@ -617,9 +617,10 @@ externa ponta a ponta por HTTP — a fixture precisa estar **commitada** para o 
 `ESCREVEM_E_REVERTEM_HOJE` e reprova quando um arquivo novo entra — aí se atualiza esta seção e
 se avalia o gatilho.
 
-🔴 **O gatilho FOI TOCADO na v5.11.0 e a decisão está aberta.** Hoje são **quatro**:
-`reverter-diario` (0268), `virada-paridade` (0181, v5.1.4) e `estante-rpcs` (0271/0272, v5.11.0)
-em transação revertida, mais `contrato-api-externa` como exceção commitada.
+🔴 **O gatilho FOI TOCADO na v5.11.0 e a decisão está aberta.** Hoje são **cinco**:
+`reverter-diario` (0268), `virada-paridade` (0181, v5.1.4), `estante-rpcs` (0271/0272, v5.11.0)
+e `promover-carga-checksum` (0278, v6.0.0/M5) em transação revertida, mais `contrato-api-externa`
+como exceção commitada.
 
 O 4º entrou com uma justificativa que **não** é conveniência, e é ela que precisa entrar na
 reavaliação: por REST com `service_role` as travas de permissão da Estante
@@ -629,19 +630,42 @@ permissão é conexão direta assumindo identidade via `SET LOCAL request.jwt.cl
 argumento a favor do ambiente próprio ficou **mais** forte, não menos — um ambiente de teste com
 usuários controlados resolveria isso sem escrever em produção.
 
-### Quem se conecta por `SUPABASE_DB_URL`: são CINCO, e quem só lê trava a sessão
+O 5º (`promover-carga-checksum`, v6.0.0/M5) é o ensaio de `CHECKSUM_FALHOU`/base-intacta que
+antes só rodava à mão contra produção — o mesmo caso, agora permanente. O dono do produto optou
+por **commitar esta prova** e manter a discussão do ambiente de teste próprio **em aberto**, não
+por encerrá-la: o gatilho segue **tocado**, a reavaliação continua pendente, e o argumento do
+parágrafo anterior (as travas mais interessantes de testar são as que o `service_role` não
+alcança) permanece de pé.
+
+### Quem se conecta por `SUPABASE_DB_URL`: hoje são NOVE, e quem só lê trava a sessão
 
 `SUPABASE_DB_URL` é a conexão **direta** com produção (pooler em session mode, ADR-0119) — fora do
 PostgREST, fora de `exigir_acesso`, com o papel dono do banco. Até a v5.10.3 esta seção contava
 "três arquivos" (os testes que escrevem) e era lida como se fosse o inventário **da credencial**;
-os consumidores reais são **cinco**, e dois deles não eram teste nem escrita-e-reversão:
+os consumidores reais eram **cinco**, e dois deles não eram teste nem escrita-e-reversão.
+
+⚠️ **Esta tabela já derivou uma vez, em silêncio** (achado da v6.0.0/M5): ficou em "cinco" enquanto
+`estante-rpcs.test.ts` entrou na v5.11.0 e `promover-carga-checksum.test.ts` na v6.0.0 — dois
+consumidores a mais sem ninguém notar, porque nenhuma sonda conta ESTA lista (a
+`sonda-teste-escreve-banco.test.ts` fiscaliza a lista de quem escreve, não este inventário). É a
+mesma classe de defeito que a v5.10.3 já registrou: **contagem em prosa deriva**. Quem acrescentar
+um consumidor atualiza aqui, e quem ler não deve confiar no número sem conferir.
+
+Como conferir em dez segundos, que é mais barato do que acreditar:
+`grep -rl SUPABASE_DB_URL src/ scripts/ supabase/` — descontando as duas sondas, que só VARREM a
+string e não abrem conexão. (Esta nota nasceu errando: a primeira correção desta tabela, feita na
+M5, escreveu "oito" de cabeça e o grep devolveu nove.)
 
 | Consumidor | Classe |
 |---|---|
 | `src/lib/dre/reverter-diario.test.ts` | escreve-e-reverte (0268) |
 | `src/lib/monde/virada-paridade.test.ts` | escreve-e-reverte (0181) |
+| `src/lib/estante/estante-rpcs.test.ts` | escreve-e-reverte (0271/0272, v5.11.0) |
+| `src/lib/ingestao/promover-carga-checksum.test.ts` | escreve-e-reverte (0278, v6.0.0/M5) — checksum contra o gravado |
 | `src/lib/api-externa/contrato-api-externa.test.ts` | exceção: fixture **commitada**, limpa em `afterAll` |
 | `src/lib/rpc-contrato.test.ts` | **somente leitura** (catálogo + `app.areas_do_setor`) |
+| `src/lib/ingestao/credencial-ingestor.test.ts` | **somente leitura** (`has_function_privilege` da role `ingestor`) |
+| `scripts/credencial/derivar-allowlist.mjs` | **somente leitura**: resolve nome de RPC em assinatura no catálogo (v6.0.0/M1) |
 | `scripts/db-gate/lib.mjs` | infra do backup-gate: `COPY OUT` do backup e `COPY IN` da recuperação |
 
 **Regra (v5.10.3): consumidor de somente leitura abre a conexão travada.** Primeiro comando depois

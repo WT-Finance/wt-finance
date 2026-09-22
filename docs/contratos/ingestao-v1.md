@@ -15,6 +15,27 @@ Guarda cujo veredito depende de QUANDO a carga rodou transforma parcela longa le
 nulo de forma intermitente. Com o limite no fim do ano a faixa é estável dentro do ano e as
 anomalias reais continuam caindo (2049, e as emissões de 2002 e 2004).
 
+**Errata 2 (2026-09-22, decisão do Yan — M4/M5):** duas correções que a construção impôs ao texto
+congelado. Nenhuma delas muda o que a RPA vê: a automação não envia o campo novo e continua lendo
+este contrato exatamente como está escrito.
+
+**(a) O passo 3 aceita `confirmar` (booleano, default `true`).** Com `false`, o servidor executa os
+passos 4 a 8 — sha256, parse, checksums, reconciliação e diff — e **para antes de aplicar**,
+devolvendo `200` com `status: "conferida"`; não grava linha em `ingestao.carga` nem consome a chave
+de idempotência, porque carga é o que aplica. **Por que existe:** antes desta versão o card de
+`/admin/uploads` parseava no navegador e mostrava "a base tem N, o arquivo traz M" **antes** de
+qualquer escrita. Esse número é o que pega o arquivo legítimo porém ERRADO — só 2024 em vez de
+todos os anos —, que passa por todos os checksums do §4 porque é internamente coerente. Mover o
+parse para o servidor sem repor essa etapa removeria uma proteção viva. A RPA nunca envia o campo;
+o default mantém o comportamento do §2.3 intacto.
+
+**(b) A URL assinada do §2.1 não vale 15 minutos, e não há como fazê-la valer.** O
+`createSignedUploadUrl` do SDK do Supabase **não aceita parâmetro de validade** — quem a define é o
+servidor do Storage, hoje em 2 horas. O campo `expira_em` da resposta passa a reportar o valor
+**real**, lido do claim `exp` do token emitido, em vez de repetir um número que o sistema não
+cumpre. O que protege o caminho não é a janela curta: é o `carga_id` (UUID de servidor) dentro do
+próprio caminho do objeto, conferido no passo 3, mais o sha256 declarado e reconferido.
+
 ## 0. Vocabulário
 
 | Termo | Significado |
@@ -78,8 +99,9 @@ Resposta `200`:
                   "signed_url": "https://…/storage/v1/object/upload/sign/ingestao-cru/…?token=…" } ] }
 ```
 
-O `carga_id` nasce aqui e identifica a carga até o fim. A URL vale **15 minutos** e serve para um
-único `PUT`. Path canônico: `{base}/{aaaa}/{mm}/{carga_id}-{n}-{nome-normalizado}`, onde `aaaa/mm`
+O `carga_id` nasce aqui e identifica a carga até o fim (ver **errata 2(b)**: a validade de
+**15 minutos** NÃO é implementável — o SDK não aceita esse parâmetro e o Storage define 2 h;
+`expira_em` reporta o valor real do token). A URL serve para um único `PUT`. Path canônico: `{base}/{aaaa}/{mm}/{carga_id}-{n}-{nome-normalizado}`, onde `aaaa/mm`
 é o momento da emissão (não o período do dado — o nome do arquivo não é fonte de cobertura).
 
 ### 2.2 `PUT <signed_url>`
@@ -96,8 +118,13 @@ Body (JSON):
 { "carga_id": "3f6c…",
   "arquivos": [ { "path": "vendas-produto/2026/09/3f6c…-1-25-26.xlsx", "nome": "25-26.xlsx", "sha256": "a06e…95dd" } ],
   "extraido_em": "2026-09-21T09:58:00-03:00",
-  "observacao": "texto livre opcional" }
+  "observacao": "texto livre opcional",
+  "confirmar": true }
 ```
+
+`confirmar` é opcional e vale `true` por default (**errata 2(a)**) — a RPA não o envia. Com `false`,
+o servidor roda os passos 4 a 8 e PARA antes de aplicar, devolvendo `status: "conferida"`.
+
 
 Fluxo no servidor — **uma transação por carga, ou nada**:
 

@@ -122,17 +122,19 @@ describe('adaptarVenda', () => {
     expect(payload.situacao).toBeNull()
   })
 
-  // 🔴 A prova é de PRESERVAÇÃO, não de capacidade: a coluna existe desde a 0038 e o Cru da M3
-  // traz o dado, mas mapeá-la mudaria tela. `vw_vendas_agregadas` (0040) e
-  // `get_vendas_em_aberto`/`get_vendas_em_aberto_weddings` (0114/0121) filtram
-  // `situacao = 'Aberta'` ESTRITO; com a coluna nula esse filtro não casa nada, e preenchê-la
-  // faria "Vendas em Aberto" deixar de ser uma lista vazia (medido nos anexos de 21/09: 411
-  // "Aberta" em 48.865 linhas). Invariante 1 da versão é "zero mudança de número em tela", e
-  // `situacao` não está na lista de exceções visíveis do briefing — é decisão do Yan. Este
-  // teste é o que impede a mudança de entrar sem querer, junto com a decisão.
-  it('situacao sai NULL mesmo quando o Cru traz o dado — preservar tela é decisão, não esquecimento', () => {
-    const payload = adaptarVenda(vendaCru({ situacao: 'Aberta' }))
-    expect(payload.situacao).toBeNull()
+  // Decisão do Yan em 22/09: a coluna PASSA a ser gravada. Ela existe desde a 0038 exatamente
+  // para a tela "Vendas em Aberto", que filtra `situacao = 'Aberta'` ESTRITO
+  // (`vw_vendas_agregadas`/0040, `get_vendas_em_aberto`/0114) — com a coluna nula, aquele filtro
+  // não casava nada e a tela ficava vazia sem ninguém ter como saber pela tela. Medido nos anexos
+  // de 21/09: 411 "Aberta" e 48.451 "Fechada" em 48.865 linhas, os dois únicos valores, ambos
+  // dentro do CHECK da 0038. É exceção declarada ao invariante 1 da versão.
+  it('situacao é GRAVADA — a tela "Vendas em Aberto" depende dela e ficava vazia sem ela', () => {
+    expect(adaptarVenda(vendaCru({ situacao: 'Aberta' })).situacao).toBe('Aberta')
+    expect(adaptarVenda(vendaCru({ situacao: 'Fechada' })).situacao).toBe('Fechada')
+  })
+
+  it('situacao ausente continua nula — "não veio" não é "Fechada"', () => {
+    expect(adaptarVenda(vendaCru({ situacao: null })).situacao).toBeNull()
   })
 })
 
