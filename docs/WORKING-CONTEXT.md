@@ -85,12 +85,32 @@ Cinco coisas que a realidade corrigiu nesta missão, e que valem para quem segui
 >    apagada. Pode ser defeito pré-existente (a coluna nasceu em 0038 para essa tela), mas ligar
 >    tela é decisão de produto. Virar é uma linha em `aplicar.ts`, com teste que segura a mudança.
 
-> ⚠️ **A metade da prova da M4 que depende do navegador NÃO foi exercitada por mim.** O briefing
-> pede "upload manual do cru pelo card funciona nas 5"; o Chrome desta máquina não tem sessão do
-> Janus e **o agente não faz login** (limite documentado). O que provei é o pipeline de servidor
-> inteiro, pela conferência. Para fechar a metade que falta: `npm run dev`, abrir
-> `localhost:3000/admin/uploads` logado, e subir os crus de `tests/fixtures/ingestao/`. A carga
-> real das cinco bases é a **M9**, com checkpoint seu.
+**O card foi exercitado AO VIVO (22/09), com sessão real**, até o modal e sem aplicar:
+Demonstrativo (1 arquivo) e Vendas (3 arquivos). O fluxo inteiro funcionou — sha256 no navegador,
+URL assinada, `PUT` no Storage, conferência no servidor, modal com os números dela. As outras três
+bases percorrem o MESMO caminho (o card é dirigido por configuração) e foram provadas no servidor.
+
+A tela pegou dois números mentirosos que nenhum gate acusaria, os dois já corrigidos (`8e25c26`):
+- **"Σ do arquivo: R$ 0,00"** — o modal exibia o `diff.soma` (a diferença) sob o rótulo "Σ do
+  arquivo"; recarregando o mesmo arquivo a diferença é zero, e a tela dizia que o arquivo estava
+  vazio — na base que se confere por SOMA. Agora lê "Σ do arquivo: R$ 508.964,10 · diferença
+  contra a base atual: R$ 0,00".
+- **"vai APAGAR os 29.458 e carregar 48.862 novos"** — o antes/depois do modal ainda comparava
+  venda distinta com linha de item (o `diff` já tinha sido corrigido; o modal não usava o `diff`).
+  Agora lê 29.458 → 29.599.
+
+> **Lição que vale além desta versão: a mesma confusão de grandeza reapareceu em TRÊS lugares**
+> (o diff, o título do modal e o rótulo da Σ), e cada um foi pego por um método diferente — o
+> smoke de servidor, a leitura do código e a tela ao vivo. Corrigir a primeira ocorrência não
+> encontra as outras: quando duas grandezas parecidas convivem, procure TODOS os pontos onde uma
+> é exibida no lugar da outra.
+
+> ⚠️ **A conferência cancelada deixa o cru no bucket sem linha de carga** (por desenho: o arquivo
+> fica para reprocesso, e a conferência não loga). São objetos órfãos. A retenção e a limpeza são
+> da **M6**, junto da tela `/admin/ingestao`. Os 8 objetos das provas de hoje foram removidos.
+
+> **A carga real das cinco bases continua sendo a M9**, com checkpoint seu — hoje nada foi
+> aplicado.
 
 > ⚠️ **`SUPABASE_INGESTOR_SENHA` ainda não está no ambiente da Vercel.** Não bloqueia a M4 (a
 > aplicação roda com `service_role`, como as Server Actions já faziam), mas bloqueia a M5, que é
