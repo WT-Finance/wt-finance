@@ -54,7 +54,7 @@ Quatro coisas que a realidade corrigiu e que valem para quem seguir:
   `taxa_servico` é copiada para o fato). Seguem calculadas para o oráculo provar as 21 colunas; a
   poda tem lugar na destrutiva do GATE 3.
 
-**Suíte: 1.347 testes, 83 arquivos, zero skip** (eram 1.275 na fronteira da Fase 1).
+**Suíte: 1.348 testes, 83 arquivos, zero skip** (eram 1.275 na fronteira da Fase 1).
 
 > 🔴 **DECISÃO DE PRODUTO ABERTA — faixa de data do contrato §2.3 (achado CRÍTICO do `revisor`).**
 > O contrato congelado diz `[2015-01-01, hoje + 5 anos]`. Implementei o limite superior como o

@@ -30,7 +30,7 @@ import { toNum, toCentavos } from '@/lib/carga/coercao'
 import {
   aparar, ehVazio, normalizeHeader, valorEmReais, somaCentavos,
   ultimaColunaComConteudo, acharLinhaDeCabecalho, colunasComConteudo, colunasNumericas,
-  AcumuladorBruto,
+  AcumuladorBruto, centavosDeBruto,
   checksumsFalhos, erro,
   type Matriz, type Checksum, type Parse,
 } from './comum'
@@ -155,7 +155,12 @@ export function parseDemonstrativoCruRows(
 
   // ── Varredura: forward-fill, folhas e subtotais ──────────────────────────────────────────
   const atual: (string | null)[] = new Array(nNiveis).fill(null)
-  const folhas: { chave: string[]; valor: number }[] = []
+  // `valor` é o que vai para a coluna NUMERIC(18,2); `bruto` é o que o arquivo trazia, e é ele
+  // que alimenta o checksum — o subtotal declarado pelo pivot é o arredondamento da soma dos
+  // valores EXATOS. Hoje o anexo do Demonstrativo não tem mais de 2 casas e os dois números
+  // coincidem, mas o contrato §4 já prevê tolerância nesta base ("o pivot arredonda na exibição"):
+  // somar o arredondado deixaria a divergência latente, esperando o primeiro título dividido.
+  const folhas: { chave: string[]; valor: number; bruto: number }[] = []
   const subtotais: { nivel: number; chave: string[]; centavos: number }[] = []
   let totalGeral: number | null = null
   let ignoradas = 0
@@ -167,8 +172,9 @@ export function parseDemonstrativoCruRows(
     let nivel = 0
     for (let k = 0; k < nNiveis; k++) if (!ehVazio(linha[colRotulos[k]])) nivel = k + 1
 
-    const bruto = linha[colValor]
-    const valor = ehVazio(bruto) ? null : valorEmReais(bruto)
+    const celula = linha[colValor]
+    const bruto = ehVazio(celula) ? null : toNum(celula)
+    const valor = bruto === null ? null : valorEmReais(bruto)
 
     if (nivel === 0) {
       if (valor !== null) ignoradas++
@@ -189,7 +195,7 @@ export function parseDemonstrativoCruRows(
           'significam que a estrutura mudou, e a segunda estaria apagando a primeira.',
           { linha: i + 1 })
       }
-      totalGeral = valor
+      totalGeral = bruto
       continue
     }
 
@@ -203,7 +209,7 @@ export function parseDemonstrativoCruRows(
           'Linha com conteúdo que não fecha um registro não é pulada em silêncio.',
           { linha: i + 1 })
       }
-      folhas.push({ chave: atual.map((x) => x ?? ''), valor })
+      folhas.push({ chave: atual.map((x) => x ?? ''), valor, bruto: bruto ?? valor })
     } else if (valor !== null) {
       // Nível intermediário SEM valor não vira checksum e não é erro — é o comportamento do
       // legado em R (`else if (!is.na(v))`), e é correto: o pivot pode trazer um nível de
@@ -213,7 +219,8 @@ export function parseDemonstrativoCruRows(
       subtotais.push({
         nivel,
         chave: atual.slice(0, nivel).map((x) => x ?? ''),
-        centavos: toCentavos(valor) ?? 0,
+        // O declarado sai da célula CRUA, não da arredondada: é o número que o arquivo afirma.
+        centavos: centavosDeBruto(bruto) ?? 0,
       })
     }
   }
@@ -233,7 +240,7 @@ export function parseDemonstrativoCruRows(
     for (const f of folhas) {
       let casa = true
       for (let k = 0; k < s.nivel; k++) if (f.chave[k] !== s.chave[k]) { casa = false; break }
-      if (casa) { acc.somar(f.valor); arredondados += toCentavos(f.valor) ?? 0; linhas++ }
+      if (casa) { acc.somar(f.bruto); arredondados += toCentavos(f.valor) ?? 0; linhas++ }
     }
     checksums.push({
       escopo: camposNorm[s.nivel - 1],
@@ -249,14 +256,14 @@ export function parseDemonstrativoCruRows(
 
   const centavosFolhas = somaCentavos(folhas.map((f) => f.valor))
   const totalBruto = new AcumuladorBruto()
-  for (const f of folhas) totalBruto.somar(f.valor)
+  for (const f of folhas) totalBruto.somar(f.bruto)
   if (totalGeral !== null) {
     checksums.push({
       escopo: 'total-geral',
       chave: [],
       campo: 'valor',
       linhasDeclaradas: null,
-      centavosDeclarados: toCentavos(totalGeral) ?? 0,
+      centavosDeclarados: centavosDeBruto(totalGeral) ?? 0,
       linhasApuradas: folhas.length,
       centavosApurados: totalBruto.centavos,
       centavosArredondados: centavosFolhas,

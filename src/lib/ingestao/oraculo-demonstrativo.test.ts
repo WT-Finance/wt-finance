@@ -196,6 +196,26 @@ describe('sondas do parser do Demonstrativo (mutante ⇒ reprova)', () => {
     expect(r.mensagem).toContain('coluna(s) de rótulo')
   })
 
+  it('o checksum soma o valor EXATO e arredonda uma vez — não a soma dos arredondados', () => {
+    // Duas folhas com três casas: 100,005 + 200,005 = 300,01 exatos, que é o que o pivot declara.
+    // Arredondando ANTES de somar dão 100,01 + 200,01 = 300,02 — um centavo a mais, e o checksum
+    // reprovaria um arquivo perfeitamente válido. Foi assim que a base de Movimentação errava de
+    // 1 a 6 centavos por grupo antes do `AcumuladorBruto`.
+    const m = pivotValido()
+    m[5][5] = 100.005
+    m[6][5] = 200.005
+    for (const i of [1, 2, 3, 4, 7]) m[i][5] = 300.01
+    const r = parseDemonstrativoCruRows(m as Matriz)
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+
+    const total = r.checksums.find((c) => c.escopo === 'total-geral')
+    expect(total?.centavosDeclarados).toBe(30_001)
+    expect(total?.centavosApurados).toBe(30_001)      // soma exata, arredondada uma vez
+    expect(total?.centavosArredondados).toBe(30_002)  // soma dos já arredondados: um centavo a mais
+    // E a linha gravada leva o valor com 2 casas, que é o que NUMERIC(18,2) guarda.
+    expect(r.linhas.map((l) => l.valor)).toEqual([100.01, 200.01])
+  })
+
   it('"Total Geral" casa por igualdade EXATA, não por prefixo', () => {
     // Um Tipo que começasse com "Total Geral…" seria descartado das folhas em silêncio e ainda
     // sobrescreveria o total do arquivo. Improvável num plano de contas, mas é a classe de perda
