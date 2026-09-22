@@ -47,17 +47,25 @@ Quatro coisas que a realidade corrigiu e que valem para quem seguir:
   mais de 2 casas (o total de Movimentação é 717.710,7392): somar linha a linha já arredondado
   erra de 1 a 6 centavos por grupo e o checksum nunca fecha. `AcumuladorBruto` soma em inteiros e
   arredonda uma vez; a linha gravada continua com 2 casas, que é o que `NUMERIC(18,2)` guarda.
-- **Guarda de faixa de data ancorada no DIA é intermitente.** Com `hoje+5 anos` ao dia, nove
-  vencimentos de 2031-09-22 eram recusados por um dia e aceitos no seguinte. Ancorada no fim do
-  ano, as contagens batem exatamente com o briefing (55 em Movimentação, 7 em Aberto).
-  ⚠️ **É desvio da letra do contrato §2.3 — confirmar com o Yan.**
+- **Guarda de faixa de data ancorada no DIA é intermitente.** Ver a decisão 🔴 aberta abaixo.
 - **O cruzamento de Operação cobre melhor que o previsto:** falta 1 número, não os 3 do baseline.
 - **`semana` e `mes` de Vendas não têm consumidor** (enumerado: `setor_macro` é lida CRUA por
   `vw_vendas_agregadas`, `setor_micro` é chave do JOIN do transform, `contrato` filtra ~15 RPCs,
   `taxa_servico` é copiada para o fato). Seguem calculadas para o oráculo provar as 21 colunas; a
   poda tem lugar na destrutiva do GATE 3.
 
-**Suíte: 1.339 testes, 83 arquivos, zero skip** (eram 1.275 na fronteira da Fase 1).
+**Suíte: 1.347 testes, 83 arquivos, zero skip** (eram 1.275 na fronteira da Fase 1).
+
+> 🔴 **DECISÃO DE PRODUTO ABERTA — faixa de data do contrato §2.3 (achado CRÍTICO do `revisor`).**
+> O contrato congelado diz `[2015-01-01, hoje + 5 anos]`. Implementei o limite superior como o
+> **fim do ano** de hoje+5 (`dataMaxima` em `src/lib/ingestao/parsers/comum.ts`), porque ao pé da
+> letra ele recusava **nove vencimentos legítimos de 2031-09-22** por um único dia — e os aceitaria
+> no dia seguinte, tornando o veredito dependente de QUANDO a carga rodou. Com o limite no fim do
+> ano as contagens batem exatamente com o que o briefing previa (55 linhas em Movimentação, 7 em
+> Aberto), o que sugere que era essa a intenção. **Mas é desvio da letra de um contrato congelado
+> no GATE 0, e mudança de contrato é decisão de produto.** Duas saídas, ambas de uma linha:
+> manter (e o contrato ganha uma errata) ou voltar ao literal (e nove vencimentos viram `null`).
+> Nada foi carregado ainda — a decisão cabe até o M5.
 
 **Credenciais de máquina PRONTAS (22/09):** hook `custom_access_token_hook` (0275) registrado no
 Dashboard pelo Yan; login de `verificador@janus.interno`/`ingestor@janus.interno` devolve token com

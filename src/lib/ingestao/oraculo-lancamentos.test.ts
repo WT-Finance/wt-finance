@@ -289,6 +289,19 @@ describe('sondas do parser de Lançamentos (mutante ⇒ reprova)', () => {
     expect(r.linhas[0].numero).toBe('100')
   })
 
+  it('uma célula ANÔMALA solta no vão não rouba o mapeamento do campo', () => {
+    // Piso mínimo: para ser adotada, a coluna do vão tem de estar preenchida na MAIORIA das linhas
+    // de dado. Aqui o vão tem três colunas; o Número mora na 2 e há UMA célula solta na 3 (mescla
+    // de Excel, resíduo de cópia). Sem o piso, a 3 venceria por ser a mais à direita com conteúdo,
+    // e a base inteira sairia com a chave errada.
+    const m = exportValido().map((linha) => [...linha.slice(0, 3), null, ...linha.slice(3)])
+    m[3][3] = 'x'   // a célula anômala, numa única linha de dado
+    const r = parseLancamentosCategoriaRows(m as Matriz, { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect((r.diagnostico.colunas as Record<string, number>).numero).toBe(2)
+    expect(r.linhas.map((l) => l.numero)).toEqual(['100', '101'])
+  })
+
   it('mutante: linha de dado que PERDE a categoria não é engolida como linha de total', () => {
     // Sem esta guarda a linha cairia no ramo do rodapé, o total do arquivo seria sobrescrito por
     // ela e o erro sairia como "checksum do total não fecha" — mandando o humano procurar no

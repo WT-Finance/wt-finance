@@ -213,6 +213,35 @@ describe('sondas do parser de Operação (mutante ⇒ reprova)', () => {
     expect(r.linhas[0].operacao).toBe('W - Camila e Bruno - 02SET23')
   })
 
+  it('linha "Nada para mostrar" (operação sem lançamento) sai com os campos tipados NULOS', () => {
+    // Lógica nova e central ao desenho desta base: são as 5 linhas que explicam a diferença entre
+    // as 41.750 do CSV e as 41.745 de `fato_lancamento_operacao`. Sem esta sonda a única prova
+    // ficaria no oráculo, que se auto-pula quando as fixtures não estão em disco.
+    const m = csvMinimo({})
+    for (let j = 0; j < 6; j++) m[1][j] = 'Nada para mostrar'
+    const r = parseLancamentosOperacaoRows(m as Matriz, new Map([['100', '2026-03-10']]), { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.linhas).toHaveLength(1)          // a linha PERMANECE: o raw espelha o CSV
+    expect(r.linhas[0].valor).toBeNull()
+    expect(r.linhas[0].liquidacao).toBeNull()
+    expect(r.linhas[0].vencimento).toBeNull() // não cruza, mesmo com o número no índice
+    expect(r.linhas[0].data_final).toBeNull()
+    expect(r.datasRejeitadas).toHaveLength(0) // não polui o contador de data com texto do scrape
+    expect(r.diagnostico.linhasSemLancamento).toBe(1)
+    expect(r.cruzamento?.semLiquidacao).toBe(0) // não entra na população do cruzamento
+  })
+
+  it('CONTROLE: qualquer OUTRO texto no lugar do valor derruba a carga', () => {
+    // A guarda do placeholder é por nome justamente para continuar afiada aqui: se ela virasse
+    // "texto no lugar de número vira null", um export corrompido passaria calado.
+    const m = csvMinimo({ valor: 'R$ dezoito' })
+    const r = parseLancamentosOperacaoRows(m as Matriz, new Map(), { hoje: HOJE_SONDA })
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.codigo).toBe('ESTRUTURA_INESPERADA')
+    expect(r.mensagem).toContain('valor ilegível')
+  })
+
   it('mutante: coluna obrigatória ausente ⇒ ESTRUTURA_INESPERADA', () => {
     const m = csvMinimo({})
     m[0][5] = 'Vlr'

@@ -248,6 +248,9 @@ export function parseVendasProdutoRows(
 
     const cDataVenda = indices.data_venda as number
     const cVendaNumero = indices.venda_numero as number
+    const arredondados: Record<CampoSomado, number> = {
+      valor_total: 0, receitas: 0, total_produtos_moeda_origem: 0, reembolso_ao_cliente: 0,
+    }
     const acumuladores: Record<CampoSomado, AcumuladorBruto> = {
       valor_total: new AcumuladorBruto(),
       receitas: new AcumuladorBruto(),
@@ -286,7 +289,11 @@ export function parseVendasProdutoRows(
       for (const [campo, j] of Object.entries(indices) as [Campo, number][]) valores[campo] = linha[j]
       brutas.push({ arquivo: nome, linha: i + 1, valores })
       linhasDoArquivo++
-      for (const campo of CAMPOS_SOMADOS) acumuladores[campo].somar(toNum(linha[indices[campo] as number]))
+      for (const campo of CAMPOS_SOMADOS) {
+        const bruto = toNum(linha[indices[campo] as number])
+        acumuladores[campo].somar(bruto)
+        arredondados[campo] += centavosDeBruto(valorEmReais(bruto)) ?? 0
+      }
     }
 
     if (totais === null) {
@@ -307,6 +314,11 @@ export function parseVendasProdutoRows(
         centavosDeclarados: centavosDeBruto(totais.somas[campo]),
         linhasApuradas: linhasDoArquivo,
         centavosApurados: acumuladores[campo].centavos,
+        // Soma dos valores JÁ ARREDONDADOS — é o que a RPC de promoção pode conferir contra a
+        // tabela depois do INSERT, já que lá só existe o valor com 2 casas. Nesta base os dois
+        // números coincidem nos anexos atuais, mas nada garante que continuem: três casas nascem
+        // de divisão de título (parcelamento, rateio, câmbio) e podem aparecer aqui também.
+        centavosArredondados: arredondados[campo],
       })
     }
     diagnosticoArquivos.push({
@@ -355,6 +367,13 @@ export function parseVendasProdutoRows(
       taxa_servico:     produto === 'Taxa de Serviço' ? 1 : 0,
     }
   })
+
+  if (linhas.length === 0) {
+    return erro('ESTRUTURA_INESPERADA',
+      'Nenhuma venda encontrada nos arquivos da carga — só cabeçalho e linha de totais. Carga ' +
+      'vazia é sinal de export errado, não de dia sem venda.',
+      { arquivos: diagnosticoArquivos })
+  }
 
   const falhos = checksumsFalhos(checksums, 0)
   if (falhos.length > 0) {

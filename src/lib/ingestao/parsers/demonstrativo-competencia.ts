@@ -26,10 +26,11 @@
 // de COLUNAS), a soma das folhas deixa de bater com os subtotais. O parser PARA. Nunca entrega
 // base silenciosamente errada — é o invariante 5 da versão ("checksum falho nunca aplica").
 
-import { toNum } from '@/lib/carga/coercao'
+import { toNum, toCentavos } from '@/lib/carga/coercao'
 import {
   aparar, ehVazio, normalizeHeader, valorEmReais, somaCentavos,
   ultimaColunaComConteudo, acharLinhaDeCabecalho, colunasComConteudo, colunasNumericas,
+  AcumuladorBruto,
   checksumsFalhos, erro,
   type Matriz, type Checksum, type Parse,
 } from './comum'
@@ -176,8 +177,18 @@ export function parseDemonstrativoCruRows(
 
     const rotulo = aparar(linha[colRotulos[nivel - 1]])
 
-    // Total Geral: rótulo no primeiro nível dizendo "total geral".
-    if (nivel === 1 && normalizeHeader(rotulo).startsWith('total geral')) {
+    // Total Geral: rótulo no primeiro nível dizendo exatamente "total geral".
+    // Igualdade EXATA, não prefixo: um Tipo que legitimamente começasse com "Total Geral…" seria
+    // descartado das folhas em silêncio — e sobrescreveria o total do arquivo por cima. Improvável
+    // num plano de contas, mas é justamente a classe de perda silenciosa que esta versão existe
+    // para impedir, e o custo de fechar é uma linha.
+    if (nivel === 1 && normalizeHeader(rotulo) === 'total geral') {
+      if (totalGeral !== null) {
+        return erro('ESTRUTURA_INESPERADA',
+          `Linha ${i + 1}: segunda linha "Total Geral" no arquivo. O export traz uma só — duas ` +
+          'significam que a estrutura mudou, e a segunda estaria apagando a primeira.',
+          { linha: i + 1 })
+      }
       totalGeral = valor
       continue
     }
@@ -194,10 +205,15 @@ export function parseDemonstrativoCruRows(
       }
       folhas.push({ chave: atual.map((x) => x ?? ''), valor })
     } else if (valor !== null) {
+      // Nível intermediário SEM valor não vira checksum e não é erro — é o comportamento do
+      // legado em R (`else if (!is.na(v))`), e é correto: o pivot pode trazer um nível de
+      // agrupamento puro, sem subtotal ligado. A assimetria com a folha (que sem valor DERRUBA o
+      // parse) é deliberada: folha sem valor é registro perdido; nível sem subtotal é só uma
+      // conferência a menos, e o Total Geral continua cobrindo o arquivo inteiro.
       subtotais.push({
         nivel,
         chave: atual.slice(0, nivel).map((x) => x ?? ''),
-        centavos: Math.round(valor * 100),
+        centavos: toCentavos(valor) ?? 0,
       })
     }
   }
@@ -211,12 +227,13 @@ export function parseDemonstrativoCruRows(
   // ── Checksums: todo subtotal fecha com a soma das folhas abaixo dele? ────────────────────
   const checksums: Checksum[] = []
   for (const s of subtotais) {
-    let centavos = 0
+    const acc = new AcumuladorBruto()
+    let arredondados = 0
     let linhas = 0
     for (const f of folhas) {
       let casa = true
       for (let k = 0; k < s.nivel; k++) if (f.chave[k] !== s.chave[k]) { casa = false; break }
-      if (casa) { centavos += Math.round(f.valor * 100); linhas++ }
+      if (casa) { acc.somar(f.valor); arredondados += toCentavos(f.valor) ?? 0; linhas++ }
     }
     checksums.push({
       escopo: camposNorm[s.nivel - 1],
@@ -225,20 +242,24 @@ export function parseDemonstrativoCruRows(
       linhasDeclaradas: null,   // o pivot declara a soma, não a contagem
       centavosDeclarados: s.centavos,
       linhasApuradas: linhas,
-      centavosApurados: centavos,
+      centavosApurados: acc.centavos,
+      centavosArredondados: arredondados,
     })
   }
 
   const centavosFolhas = somaCentavos(folhas.map((f) => f.valor))
+  const totalBruto = new AcumuladorBruto()
+  for (const f of folhas) totalBruto.somar(f.valor)
   if (totalGeral !== null) {
     checksums.push({
       escopo: 'total-geral',
       chave: [],
       campo: 'valor',
       linhasDeclaradas: null,
-      centavosDeclarados: Math.round(totalGeral * 100),
+      centavosDeclarados: toCentavos(totalGeral) ?? 0,
       linhasApuradas: folhas.length,
-      centavosApurados: centavosFolhas,
+      centavosApurados: totalBruto.centavos,
+      centavosArredondados: centavosFolhas,
     })
   }
 

@@ -32,7 +32,19 @@ const RAIZ_TESTES = 'src'
 /** Arquivos que PODEM usar `skipIf`, e de que variáveis de ambiente cada um depende.
  *  Manter em ordem alfabética. Acrescentar aqui é decisão consciente: o teste novo passa a
  *  ser exigido quando `REQUIRE_CONTRACT=1`. */
-const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porque: string }> = [
+/** Qual bandeira liga o modo "não pode pular" de cada arquivo.
+ *
+ *  Duas, não uma, porque são duas naturezas diferentes de pré-requisito: `REQUIRE_CONTRACT` é
+ *  CREDENCIAL (o banco está acessível?), `REQUIRE_FIXTURES` é ARQUIVO EM DISCO (os anexos do
+ *  GATE 1 foram populados por `scripts/ingestao/fixtures.mjs`?). Fundir as duas faria uma
+ *  máquina com credencial válida e sem os anexos reprovar a suíte inteira ao ligar
+ *  `REQUIRE_CONTRACT=1` — por um motivo que nada tem a ver com o contrato estar acessível.
+ *  Cada bandeira exige só o que é da sua natureza; ligar as duas exige tudo. */
+type Bandeira = 'REQUIRE_CONTRACT' | 'REQUIRE_FIXTURES'
+
+const INVENTARIO: ReadonlyArray<{
+  arquivo: string; envs: readonly string[]; porque: string; bandeira?: Bandeira
+}> = [
   {
     arquivo: 'src/lib/api-externa/contrato-api-externa.test.ts',
     envs: ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_DB_URL'],
@@ -52,6 +64,7 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
   },
   {
     arquivo: 'src/lib/ingestao/oraculo-demonstrativo.test.ts',
+    bandeira: 'REQUIRE_FIXTURES',
     envs: ['REQUIRE_FIXTURES'],
     porque: 'GATE 1 (v6.0.0/M3): oráculo cru↔tratado do Demonstrativo. O gate aqui não é credencial ' +
       'e sim a PRESENÇA das fixtures (gitignoradas, populadas por scripts/ingestao/fixtures.mjs); ' +
@@ -59,17 +72,20 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
   },
   {
     arquivo: 'src/lib/ingestao/oraculo-operacao.test.ts',
+    bandeira: 'REQUIRE_FIXTURES',
     envs: ['REQUIRE_FIXTURES'],
     porque: 'GATE 1 (v6.0.0/M3): oráculo de Lançamentos por Operação — acordo entre fontes para o ' +
       'vencimento (Aberto ∪ Movimentação × planilhas anuais do legado); mesmo gate de presença de fixture',
   },
   {
     arquivo: 'src/lib/ingestao/oraculo-vendas.test.ts',
+    bandeira: 'REQUIRE_FIXTURES',
     envs: ['REQUIRE_FIXTURES'],
     porque: 'GATE 1 (v6.0.0/M3): oráculo cru↔tratado de Vendas por Produto — mesmo gate de presença de fixture',
   },
   {
     arquivo: 'src/lib/ingestao/oraculo-lancamentos.test.ts',
+    bandeira: 'REQUIRE_FIXTURES',
     envs: ['REQUIRE_FIXTURES'],
     porque: 'GATE 1 (v6.0.0/M3): oráculo cru↔tratado das duas bases de Lançamentos por Categoria — ' +
       'mesmo gate de presença de fixture',
@@ -164,22 +180,25 @@ describe('sonda — nenhum skipIf some em silêncio (D5-004 / D7-004)', () => {
     ).toEqual([])
   })
 
-  it('REQUIRE_CONTRACT=1 exige TODAS as variáveis dos arquivos gated (online não pode pular)', () => {
-    // Este é o caso que transforma "verde por omissão" em falha alta. Sem
-    // REQUIRE_CONTRACT=1 (rodada local offline) ele apenas registra o que seria pulado.
-    const exigido = process.env.REQUIRE_CONTRACT === '1'
-    const necessarias = [...new Set(INVENTARIO.flatMap(e => e.envs))].sort()
-    const ausentes = necessarias.filter(env => !process.env[env])
+  it.each<Bandeira>(['REQUIRE_CONTRACT', 'REQUIRE_FIXTURES'])(
+    '%s=1 exige TODAS as variáveis dos arquivos sob essa bandeira (ligado não pode pular)',
+    (bandeira) => {
+      // Este é o caso que transforma "verde por omissão" em falha alta. Com a bandeira desligada
+      // (rodada local) ele apenas registra o que seria pulado.
+      const exigido = process.env[bandeira] === '1'
+      const daBandeira = INVENTARIO.filter(e => (e.bandeira ?? 'REQUIRE_CONTRACT') === bandeira)
+      const necessarias = [...new Set(daBandeira.flatMap(e => e.envs))].sort()
+      const ausentes = necessarias.filter(env => !process.env[env])
 
-    if (exigido) {
-      expect(
-        ausentes,
-        `REQUIRE_CONTRACT=1 mas faltam ${ausentes.join(', ')} → os blocos gated seriam PULADOS e a ` +
-        'suíte passaria verde anunciando menos casos. É exatamente o modo de falha da v5.4.3.',
-      ).toEqual([])
-    } else {
-      // Offline o gate segue verde por desenho — mas a sonda deixa o rastro no relatório.
-      expect(Array.isArray(ausentes)).toBe(true)
-    }
-  })
+      if (exigido) {
+        expect(
+          ausentes,
+          `${bandeira}=1 mas faltam ${ausentes.join(', ')} → os blocos sob essa bandeira seriam ` +
+          'PULADOS e a suíte passaria verde anunciando menos casos. É o modo de falha da v5.4.3.',
+        ).toEqual([])
+      } else {
+        // Desligada, o gate segue verde por desenho — mas a sonda deixa o rastro no relatório.
+        expect(Array.isArray(ausentes)).toBe(true)
+      }
+    })
 })

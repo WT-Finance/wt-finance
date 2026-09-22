@@ -196,6 +196,28 @@ describe('sondas do parser do Demonstrativo (mutante ⇒ reprova)', () => {
     expect(r.mensagem).toContain('coluna(s) de rótulo')
   })
 
+  it('"Total Geral" casa por igualdade EXATA, não por prefixo', () => {
+    // Um Tipo que começasse com "Total Geral…" seria descartado das folhas em silêncio e ainda
+    // sobrescreveria o total do arquivo. Improvável num plano de contas, mas é a classe de perda
+    // silenciosa que esta versão existe para fechar.
+    const m = pivotValido()
+    m[1][0] = 'Total Geral de Receitas'   // era "Receitas": continua sendo um subtotal comum
+    const r = parseDemonstrativoCruRows(m as Matriz)
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.linhas.map((l) => l.tipo)).toEqual(['Total Geral de Receitas', 'Total Geral de Receitas'])
+    expect(r.diagnostico.totalGeral).toBe(300)
+  })
+
+  it('mutante: duas linhas "Total Geral" ⇒ ESTRUTURA_INESPERADA (a segunda apagaria a primeira)', () => {
+    const m = pivotValido()
+    m.push(['Total Geral', null, null, null, null, 300])
+    const r = parseDemonstrativoCruRows(m as Matriz)
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.codigo).toBe('ESTRUTURA_INESPERADA')
+    expect(r.mensagem).toContain('Total Geral')
+  })
+
   it('mutante: folha sem valor NÃO é pulada em silêncio', () => {
     const m = pivotValido()
     m[5][5] = null           // a folha "janeiro" perde o valor

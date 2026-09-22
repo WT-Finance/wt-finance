@@ -107,12 +107,25 @@ function resolverColunas(
   // As linhas de OUTLINE ficam de fora da conta: elas trazem o marcador de recuo ("-") justamente
   // nas colunas A e B, e contá-las faria "Número" parecer preenchido na coluna A — que é
   // exatamente o engano que esta função existe para desfazer.
-  const temConteudo = (j: number): boolean => {
+  const contarConteudo = (j: number): { comConteudo: number; total: number } => {
+    let comConteudo = 0
+    let total = 0
     for (let i = primeiraLinhaDado; i < rows.length; i++) {
       if (ehOutline[i]) continue
-      if (!ehVazio(rows[i]?.[j])) return true
+      total++
+      if (!ehVazio(rows[i]?.[j])) comConteudo++
     }
-    return false
+    return { comConteudo, total }
+  }
+  const temConteudo = (j: number): boolean => contarConteudo(j).comConteudo > 0
+  /** Para ser adotada no lugar de um campo, a coluna do vão precisa estar preenchida na MAIORIA
+   *  das linhas de dado. Uma célula anômala solta (mescla de Excel, resíduo de cópia) no meio de
+   *  94 mil linhas não pode desviar o mapeamento de um campo obrigatório — é o mesmo cuidado do
+   *  piso de `colunasNumericas` no módulo comum, que exige 5 células antes de chamar uma coluna
+   *  de numérica. */
+  const ehCandidataDensa = (j: number): boolean => {
+    const { comConteudo, total } = contarConteudo(j)
+    return total > 0 && comConteudo * 2 > total
   }
 
   const resolvido: Partial<Record<Campo, number>> = { ...indices }
@@ -128,7 +141,7 @@ function resolverColunas(
     // candidata preenchida, a primeira seria um nível intermediário.
     for (let k = limite - 1; k > j; k--) {
       if (ocupadas.includes(k)) continue
-      if (temConteudo(k)) { resolvido[campo] = k; break }
+      if (ehCandidataDensa(k)) { resolvido[campo] = k; break }
     }
   }
   return resolvido
