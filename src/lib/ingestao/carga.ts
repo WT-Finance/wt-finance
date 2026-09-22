@@ -661,7 +661,24 @@ export interface ResultadoCarga {
   readonly status: 'aplicada' | 'conferida'
   readonly idempotente: boolean
   readonly arquivos: readonly ResultadoCargaArquivo[]
-  readonly parse: { readonly linhas: number; readonly rejeitadas_por_data: number; readonly pares_novos: number }
+  readonly parse: {
+    readonly linhas: number
+    readonly rejeitadas_por_data: number
+    readonly pares_novos: number
+    /** Σ do PRÓPRIO ARQUIVO, em reais — `null` nas bases que não são conferidas por soma.
+     *  Não confundir com `diff.soma`, que é a DIFERENÇA contra a base atual: o modal exibia o
+     *  diff sob o rótulo "Σ do arquivo" e, num recarregamento do mesmo arquivo, anunciava
+     *  "Σ do arquivo: R$ 0,00" — que se lê como "o arquivo está vazio". A base de competência é
+     *  justamente a que se confere por SOMA (lição da v5.5.2: contagem igual com soma diferente
+     *  passou batido), então este é o número que o gate humano precisa ver. */
+    readonly soma: number | null
+    /** Quantas linhas a BASE vai ter depois desta carga — a MESMA grandeza que o "antes" do
+     *  gate humano (que vem das RPCs de status). Difere de `linhas` em duas bases: Vendas
+     *  (o parse conta linha de ITEM, a base conta venda distinta) e Operação (o aplicador
+     *  descarta as linhas-placeholder do scrape). O modal precisa DESTE número, senão o
+     *  "vai apagar N e carregar M" compara grandezas diferentes e assusta à toa. */
+    readonly linhas_na_base: number
+  }
   readonly diff: DiffCarga
   readonly alarmes: readonly string[]
 }
@@ -824,7 +841,11 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
       return {
         ok: true, carga_id: cargaId, base, status: 'conferida', idempotente: false,
         arquivos: montarArquivosResposta(entrada, parseado.porArquivo),
-        parse: { linhas: parseado.totalLinhas, rejeitadas_por_data: parseado.datasRejeitadasN, pares_novos: 0 },
+        parse: {
+          linhas: parseado.totalLinhas, rejeitadas_por_data: parseado.datasRejeitadasN, pares_novos: 0,
+          soma: somaCentavosNovo === null ? null : somaCentavosNovo / 100,
+          linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
+        },
         diff, alarmes: alarmesBase,
       }
     }
@@ -842,6 +863,8 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
         // exigiria alterar `aplicar.ts`, fora do escopo desta missão ("Não altere: ... aplicar.ts").
         // Fica 0 aqui; o aviso em texto (quando houver par novo) já vai em `alarmes`.
         pares_novos: 0,
+        soma: somaCentavosNovo === null ? null : somaCentavosNovo / 100,
+        linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
       },
       diff,
       alarmes: [...alarmesBase, ...aplicacao.avisos],

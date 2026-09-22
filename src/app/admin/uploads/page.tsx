@@ -516,6 +516,7 @@ function detalhesDoModal(carga: PacoteConferido | null): DetalhesConferencia | n
     paresNovos:         resposta.parse.pares_novos,
     checksumsConferidos: resposta.arquivos.reduce((s, a) => s + a.checksums_conferidos, 0),
     checksumsFalhos:     resposta.arquivos.reduce((s, a) => s + a.checksums_falhos, 0),
+    somaArquivo:         resposta.parse.soma,
     somaDiff:            resposta.diff.soma,
     avisos:              avisosDaResposta(resposta),
   }
@@ -668,7 +669,11 @@ export default function AdminUploadsPage() {
       setEstado(key, {
         estado: 'aguardando_confirmacao',
         totalAntes: statusAtual,
-        totalLinhas: resposta.parse.linhas,
+        // O "depois" do gate humano é o que a BASE vai ter, não o que o parser leu — em Vendas e
+        // em Operação as duas grandezas divergem (venda distinta × linha de item; e o descarte
+        // de placeholder do scrape). O detalhe por arquivo continua mostrando as linhas lidas,
+        // que é outra informação e também interessa.
+        totalLinhas: resposta.parse.linhas_na_base,
         carga: { cargaId, arquivos: arquivosDaCarga, extraidoEm, resposta },
       })
       setModal(key)

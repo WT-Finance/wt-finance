@@ -21,6 +21,10 @@ export interface DetalhesConferencia {
   paresNovos: number
   checksumsConferidos: number
   checksumsFalhos: number
+  /** Σ do próprio arquivo (reais). */
+  somaArquivo: number | null
+  /** Diferença da soma contra a base atual (reais). NÃO é a Σ do arquivo — exibi-la com aquele
+   *  rótulo fazia um recarregamento do mesmo arquivo anunciar "Σ do arquivo: R$ 0,00". */
   somaDiff: number | null
   avisos: readonly string[]
 }
@@ -73,9 +77,12 @@ export function ModalConfirmacaoUpload({
                 <> {formatarNum(detalhes.paresNovos)} par(es) novo(s) entram como &quot;Não classificadas&quot;.</>
               )}
             </p>
-            {detalhes.somaDiff !== null && (
+            {detalhes.somaArquivo !== null && (
               <p className="text-xs text-zinc-600">
-                Σ do arquivo: <span className="font-medium">{fmtBRL2(detalhes.somaDiff)}</span>
+                Σ do arquivo: <span className="font-medium">{fmtBRL2(detalhes.somaArquivo)}</span>
+                {detalhes.somaDiff !== null && (
+                  <> · diferença contra a base atual: <span className="font-medium">{fmtBRL2(detalhes.somaDiff)}</span></>
+                )}
               </p>
             )}
             {detalhes.avisos.length > 0 && (

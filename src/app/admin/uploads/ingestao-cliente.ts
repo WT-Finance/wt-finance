@@ -68,6 +68,14 @@ export interface RespostaCarga {
     readonly linhas: number
     readonly rejeitadas_por_data: number
     readonly pares_novos: number
+    /** Σ do PRÓPRIO arquivo (reais) — `null` nas bases não conferidas por soma. Não é o
+     *  `diff.soma`, que é a diferença contra a base atual. */
+    readonly soma: number | null
+    /** O que a BASE vai ter — mesma grandeza do "antes" que as RPCs de status devolvem. É este
+     *  o número do "vai apagar N e carregar M", não `linhas`: em Vendas o parse conta linha de
+     *  ITEM e a base conta venda distinta; em Operação o aplicador descarta placeholder do
+     *  scrape. */
+    readonly linhas_na_base: number
   }
   /** `linhas`/`soma` só ficam `null` quando a LEITURA auxiliar do estado atual da base falhou
    *  (`calcularDiff` degrada em vez de abortar a carga) — nesse caso um aviso já vem em
