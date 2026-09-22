@@ -248,6 +248,15 @@ export class AcumuladorBruto {
   }
 }
 
+/** Centavos de um ÚNICO valor bruto, pela mesma regra do acumulador (meio-para-longe-de-zero
+ *  sobre a representação decimal). Para conferir um total declarado contra um apurado. */
+export function centavosDeBruto(v: number | null): number | null {
+  if (v === null) return null
+  const a = new AcumuladorBruto()
+  a.somar(v)
+  return a.centavos
+}
+
 /** Valor monetário já arredondado a 2 casas — o que se envia passa a ser exatamente o que a
  *  coluna `NUMERIC(x,2)` vai guardar, sem a fronteira arredondar de novo por conta própria. */
 export function valorEmReais(v: unknown): number | null {

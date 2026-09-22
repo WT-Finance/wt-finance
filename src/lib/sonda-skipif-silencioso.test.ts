@@ -58,6 +58,17 @@ const INVENTARIO: ReadonlyArray<{ arquivo: string; envs: readonly string[]; porq
       '`REQUIRE_FIXTURES=1` transforma a ausência em falha alta, como o REQUIRE_CONTRACT faz com a rede',
   },
   {
+    arquivo: 'src/lib/ingestao/oraculo-operacao.test.ts',
+    envs: ['REQUIRE_FIXTURES'],
+    porque: 'GATE 1 (v6.0.0/M3): oráculo de Lançamentos por Operação — acordo entre fontes para o ' +
+      'vencimento (Aberto ∪ Movimentação × planilhas anuais do legado); mesmo gate de presença de fixture',
+  },
+  {
+    arquivo: 'src/lib/ingestao/oraculo-vendas.test.ts',
+    envs: ['REQUIRE_FIXTURES'],
+    porque: 'GATE 1 (v6.0.0/M3): oráculo cru↔tratado de Vendas por Produto — mesmo gate de presença de fixture',
+  },
+  {
     arquivo: 'src/lib/ingestao/oraculo-lancamentos.test.ts',
     envs: ['REQUIRE_FIXTURES'],
     porque: 'GATE 1 (v6.0.0/M3): oráculo cru↔tratado das duas bases de Lançamentos por Categoria — ' +
