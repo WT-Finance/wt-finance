@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-22.
+Última atualização: 2026-09-22 (fronteira da M4).
 
 ---
 
@@ -28,7 +28,90 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M2 `ingestor` + escopo | **aplicada** (0274, 21/09, gate verde; commit `c98ad14`) — 4 EXECUTE (pipeline de Vendas); usuário `ingestor@janus.interno` criado (`sub 952c5e70-555e-410b-a67f-26ce6e1833ae`); chave existente da API externa ficou com escopo vazio |
 | 0275 hook de credencial | **aplicada e registrada** (22/09) — identidade de máquina = login + hook (o JWT HS256 do briefing ficou inviável no regime novo de chaves; ADR-0175 §5) |
 | M3 parsers/oráculos | **feito** (`49c8c83` + `3cec38d`) — GATE 1 verde nas 5 bases |
-| M4–M11 | pendentes — roteiro no plano |
+| M4 Storage + rota | **feito** (`8d83fa7`→`8dc5285`) — 0276 aplicada 22/09; desenho em `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` |
+| M5–M11 | pendentes — roteiro no plano |
+
+**M4 FECHADA (22/09).** As duas rotas do contrato existem (`/api/ingestao/{base}/upload-url` e
+`/api/ingestao/{base}`), o bucket privado `ingestao-cru` nasceu, o card de `/admin/uploads` sobe
+o **cru** das cinco bases e o cliente deixou de parsear. Migration **0276** aplicada sob o
+backup-gate (veredito verde, 56/56 tabelas). Suíte: **1.455 testes, 88 arquivos, zero falha**.
+Próxima migration livre: **0277**. ADR livre: **0176**.
+
+Pipeline exercitado contra a infraestrutura REAL pela **conferência** (`confirmar:false`, que faz
+os passos 4–8 do contrato sem aplicar nem gravar linha de carga) — URL assinada, `PUT` no bucket,
+parse, checksums e diff, com os anexos de 21/09:
+
+| Base | Linhas | Checksums | Diff | Datas rejeitadas |
+|---|---|---|---|---|
+| Demonstrativo | 3.334 | 557, zero falho | 0 | 0 |
+| Aberto | 36.176 | 96, zero falho | 0 | 7 |
+| Operação | 41.750 | cruzamento | 0 | **41** |
+| Vendas | 48.862 | 4 por arquivo, zero falho | 141 | 15 |
+
+O cruzamento de Vencimento **reproduziu o baseline da M3 sem ter sido ajustado para isso**:
+1 ausente em 4.006 sem liquidação (a M3 mediu 4.005 de 4.006). O ausente é o `Número` literal
+**"NA"** — resíduo do NA do R virando texto no CSV do scrape.
+
+Cinco coisas que a realidade corrigiu nesta missão, e que valem para quem seguir:
+
+- **Coluna que ninguém lê e coluna que alguém lê parecem iguais no código.**
+  `fato_lancamento_operacao.mes_ano` não tem leitor; `status`, ao lado, é somado em
+  `SUM(CASE WHEN status = 'Entrada' …)` por quatro RPCs de Weddings. Deixá-lo nulo não dá erro:
+  dá **zero** em quatro colunas que a diretoria lê. Antes de decidir que um campo "não precisa
+  ser gravado", grepe o nome dele nos corpos de função, não só na aplicação.
+- **`data_final` é uma dependência em cascata.** Ela vem de `coalesce(liquidacao, vencimento)`,
+  e o `vencimento` do scrape vem de um CRUZAMENTO com outras duas bases. Sem o cruzamento, a
+  cascata inteira (data final → `mes_ano` → `status` → somas de previsto) cai em silêncio.
+- **Diff só vale se comparar a MESMA grandeza dos dois lados.** `get_upload_status().vendas` conta
+  `fato_venda` (venda distinta) e o parser conta linha de item; Operação grava menos do que lê
+  (descarta placeholder do scrape). Os dois davam um "antes → depois" mentiroso no gate humano.
+- **Empate sem desempate em `DISTINCT ON` é não-determinismo silencioso** — a linha escolhida fica
+  a critério do plano, que muda com VACUUM/ANALYZE. Medido: zero ambiguidade nos anexos de hoje;
+  o desempate está lá porque nada no schema a impede amanhã.
+- **`check-then-insert` não é idempotência.** Sob READ COMMITTED as duas chamadas concorrentes
+  inserem, e a segunda vira 500 — exatamente no caso que a idempotência existe para atender.
+
+> 🔴 **Três decisões suas, abertas pela M4** (detalhe no out-briefing da versão):
+> 1. **Errata 2 do contrato** — o campo `confirmar` (default `true`) no passo 3, que só o card
+>    usa. Ele repõe o gate humano do "antes → depois" que existia antes de o parse sair do
+>    cliente; a RPA nunca o envia e continua vendo o contrato como congelado. Aceitar como errata
+>    ou remover (e aí o gate humano some, o que precisa ser escolha dita).
+> 2. **A URL assinada não vale 15 minutos** (contrato §2.1). `createSignedUploadUrl` do supabase-js
+>    **não aceita** validade — quem a define é o servidor do Storage, hoje 2 h. O código reporta o
+>    `exp` real do token em vez de mentir. Errata ou outra forma de limitar.
+> 3. **`situacao` de Vendas continua nula de propósito.** O parser da M3 lê a coluna (medido:
+>    411 "Aberta" em 48.865 linhas), mas `vw_vendas_agregadas` (0040) e `get_vendas_em_aberto`
+>    (0114) filtram `situacao = 'Aberta'` ESTRITO — preencher agora acende uma tela que hoje está
+>    apagada. Pode ser defeito pré-existente (a coluna nasceu em 0038 para essa tela), mas ligar
+>    tela é decisão de produto. Virar é uma linha em `aplicar.ts`, com teste que segura a mudança.
+
+> ⚠️ **A metade da prova da M4 que depende do navegador NÃO foi exercitada por mim.** O briefing
+> pede "upload manual do cru pelo card funciona nas 5"; o Chrome desta máquina não tem sessão do
+> Janus e **o agente não faz login** (limite documentado). O que provei é o pipeline de servidor
+> inteiro, pela conferência. Para fechar a metade que falta: `npm run dev`, abrir
+> `localhost:3000/admin/uploads` logado, e subir os crus de `tests/fixtures/ingestao/`. A carga
+> real das cinco bases é a **M9**, com checkpoint seu.
+
+> ⚠️ **`SUPABASE_INGESTOR_SENHA` ainda não está no ambiente da Vercel.** Não bloqueia a M4 (a
+> aplicação roda com `service_role`, como as Server Actions já faziam), mas bloqueia a M5, que é
+> quando a credencial `ingestor` passa a ser quem aplica.
+
+**Divergências briefing×repo registradas na M4** (somam-se às 11 da abertura):
+- **`src/lib/carga/lancamentos.ts` NÃO saiu.** O briefing o dava como removível; `supabase/seed/seed.ts`
+  chama `carregarLancamentos` de verdade e `parse-lancamentos.ts` importa um tipo de lá. É o
+  precedente da v4.17.1 outra vez. Saiu só a rota morta `api/admin/upload-lancamentos`.
+- **`parseArquivoEmWorker` não ficou com grep vazio.** Pessoas está fora do contrato (decisão 11)
+  e o card dela continua de pé; o worker caiu de cinco parsers para um. Fechar de verdade exige
+  aposentar o card de Pessoas ou portá-la — decisão sua.
+- **`ingestao.carga` nasceu na M4, não na M6**: sem persistência não há como honrar
+  `x-ingestao-idempotencia`. M6 fica com baseline, alarmes, crons e tela.
+- **A aplicação na M4 ainda é `truncar_* + inserir_lote_* + regenerar_*` com `service_role`** — a
+  M4 move o caminho, não o pipeline. **A janela de base vazia das quatro bases continua existindo
+  até a M5**, exatamente como hoje. A mensagem de erro passa a dizer quando a base ficou
+  incompleta, em vez de só "erro ao inserir lote".
+- **Acessibilidade**: a zona de drop virou alcançável por teclado (Enter/Espaço); o
+  `role="dialog"`/foco/Escape do **modal compartilhado** fica registrado e não foi mexido — é
+  pré-existente e o componente é usado por outros fluxos.
 
 **GATE 1 FECHADO (22/09) — as cinco bases têm parser de servidor e oráculo verde** contra os
 anexos reais de 21/09, e os scripts R podem ser aposentados (invariante 10). Parsers em
@@ -112,9 +195,9 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.11.0** (PR #273, mergeado 15/09 às 12:55) |
-| Última migration aplicada | **0275** (v6.0.0/M1–M2 + hook) · próxima livre: **0276** |
+| Última migration aplicada | **0276** (v6.0.0/M4 — `ingestao.carga` + bucket) · próxima livre: **0277** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
-| Suíte | **1.339 testes**, 83 arquivos, zero `skip` silencioso |
+| Suíte | **1.455 testes**, 88 arquivos, zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
