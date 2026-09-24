@@ -56,7 +56,7 @@ Sonnet** — onde a leitura literal de uma delegação vira defeito (v5.7.2) e o
 
 **Orquestrador: não consulta o advisor**, salvo pedido explícito do usuário. Três motivos:
 cada chamada relê a transcrição inteira **sem cache** na tarifa do advisor, e uma sessão de
-versão chega a centenas de milhares de tokens; em Fable, o advisor é o mesmo modelo; e a
+versão chega a centenas de milhares de tokens; em Fable, o advisor é da mesma família; e a
 segunda opinião independente já existe — o `revisor`, de contexto limpo. O advisor lê a
 mesma transcrição e **herda o mesmo enquadramento**: complementa, não substitui revisor nem
 auto-auditoria.
@@ -72,8 +72,10 @@ perde para elas e vira achado no retorno.
 
 **Medição.** Todo agente registra no retorno as consultas que fez (momento, pergunta, se mudou
 o rumo) — inclusive os que não deveriam consultar, porque é assim que se vê o custo real. O
-orquestrador consolida no out-briefing da versão: nº de consultas por agente, quantas mudaram
-o rumo, e o custo em `/usage`. Ao fim da primeira versão com o piloto, decidir com o Yan:
+orquestrador consolida no out-briefing da versão: nº de consultas por agente e quantas mudaram
+o rumo. **Custo é pendência do Yan**, não do orquestrador: o `/usage` é comando que só o humano
+digita e mostra o total da sessão, sem separar por agente — o out-briefing deixa o campo
+marcado para o Yan preencher no fechamento. Ao fim da primeira versão com o piloto, decidir com o Yan:
 manter, ajustar os momentos, restringir o alcance ao projeto ou desligar (`/advisor off`).
 
 ## Protocolo de delegação

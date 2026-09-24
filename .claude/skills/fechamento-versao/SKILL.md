@@ -84,7 +84,8 @@ servidor ao final. Parecer entra no out-briefing.
    implementadas, migrations, ADRs, pendências, arquivos modificados, seção **Parecer da
    revisão** (achados e como foram endereçados). Out-briefing é parte do DoD, não pós-entrega.
    Enquanto o piloto do advisor durar, inclua a seção **Advisor**: consultas por agente
-   (dos retornos), quantas mudaram o rumo e o custo em `/usage` — ver skill `orquestracao`.
+   (dos retornos) e quantas mudaram o rumo; o **custo** fica como pendência do Yan (o
+   `/usage` só o humano roda, e sem separar por agente) — ver skill `orquestracao`.
 7. **WORKING-CONTEXT.md** — versão, bloqueios, filas ativas, data. Item resolvido SAI.
 
 ## 6. Aprendizado permanente (régua de 5 destinos)
