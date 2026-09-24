@@ -76,6 +76,37 @@ export type TransformResult =
   | { venda: VendaEspelho }
   | { excluida: 'welcome' | 'sem_setor' | 'sem_item_ativo' }
 
+// ── v5.12.0: VERSÃO DA TRANSFORMAÇÃO NO `raw_hash` ─────────────────────────────────────────
+// O `monde_ingest_promover` (0267) só reescreve uma venda quando `raw_hash` MUDA. Isso é certo
+// para mudança na ORIGEM, mas cega para mudança AQUI: corrigir a transformação não corrige nada
+// do que já está espelhado, porque o `raw` do Monde é o mesmo e a venda é pulada. Foi o caso da
+// v5.12.0 — o `produto` de jun–set/2026 gravado como "Outros" só seria reescrito se o Monde
+// editasse cada venda.
+//
+// Por isso o hash gravado carrega a versão da transformação. Subir `VERSAO_TRANSFORM` faz TODA
+// venda que passar de novo pela ingestão (incremental: 7 dias; reconciliação: 3 meses em ciclo;
+// janela/backfill: sob demanda) divergir UMA vez e ser reescrita com a regra nova; dali em diante
+// a idempotência volta a valer. Nenhum leitor compara o hash com o da API — ele é só a chave do
+// "pula se igual". Suba a versão SEMPRE que a saída mudar para um mesmo `raw`.
+export const VERSAO_TRANSFORM = 2
+
+/** `raw_hash` do provedor + versão da transformação (ver o bloco acima). */
+export function hashComVersao(rawHash: string): string {
+  return `${rawHash}#t${VERSAO_TRANSFORM}`
+}
+
+/**
+ * Nome do produto (v5.12.0). O nome do catálogo (`product_name_resolvido`) vem primeiro: é o que
+ * `description` trazia até mai/2026 nos tipos others/operations ("Contrato de casamento", "Passes
+ * de Trem"…) e que o provedor trocou por rótulo genérico — o que zerou `get_contratos_casamento_mes`
+ * de jun a set. `description` fica como fallback para os tipos sem catálogo (hotel, aéreo, seguro)
+ * enquanto existir; ele SAI da API em 2026-10-01 e, daí em diante, esses tipos gravam `null`
+ * (nenhum leitor usa `produto` neles — o tipo está em `product_kind`).
+ */
+function nomeDoProduto(p: Product): string | null {
+  return p.product_name_resolvido ?? p.description ?? null
+}
+
 const CAMPO_SETOR = 'Setor'
 const CAMPO_VENDEDOR_WEDDINGS = 'Vendedor(a) Responsável - Grupo'
 
@@ -152,7 +183,7 @@ export function transformSale(sale: SaleDetail): TransformResult {
       }
     }
     return {
-      produto: p.description ?? null,
+      produto: nomeDoProduto(p),
       product_kind: p.product_kind ?? null,
       fornecedor: p.supplier_name ?? null,
       status: p.status,
@@ -181,7 +212,7 @@ export function transformSale(sale: SaleDetail): TransformResult {
     total_final_value: sale.total_final_value ?? null,
     total_revenue: sale.total_revenue ?? null,
     raw: sale.raw,
-    raw_hash: sale.raw_hash,
+    raw_hash: hashComVersao(sale.raw_hash),
     itens,
   }
 
