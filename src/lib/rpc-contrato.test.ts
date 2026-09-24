@@ -2103,6 +2103,10 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — ingestao_painel ↔ ingestaoPa
     // estado do vigia é boolean de verdade (o job existe desde a 0280).
     const p = r.data!
     expect(typeof p.vigia_cron_ativo).toBe('boolean')
+    // 0282: o job da limpeza existe desde a aplicação (inativo), então o estado dele é verificável
+    // hoje. `retencao_ultima` fica `null` até a primeira rodada REAL — o shape dela só é provado
+    // contra dado vivo depois da ativação (M9); até lá vale o teste unitário do schema.
+    expect(typeof p.retencao_cron_ativo).toBe('boolean')
     expect(p.expectativas.length, 'as 9 expectativas semeadas pela 0280').toBe(9)
     // 0281: toda carga feita pela rota tem autor (sessão OU chave) — `quem` nulo numa carga real
     // é o join quebrado, não "ninguém".
@@ -2219,7 +2223,8 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
                   ('public','ingestao_carga_obter'),('public','ingestao_carga_ultima'),
                   ('public','ingestao_vigia_definir'),('public','ingestao_expectativa_definir'),
                   ('public','ingestao_painel'),('public','ingestao_vigia_estado'),
-                  ('public','ingestao_alarme_abrir'))`,
+                  ('public','ingestao_alarme_abrir'),
+                  ('public','ingestao_retencao_inventario'),('public','ingestao_retencao_registrar'))`,
       )
       return r.rows
     })
@@ -2259,11 +2264,12 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
     for (const nome of ['ingestao_vigia_definir', 'ingestao_expectativa_definir', 'ingestao_painel']) {
       expect(por.get(`public.${nome}`) ?? '', `public.${nome}: comentário sem a área de RBAC (0280)`).toMatch(/admin\/uploads/)
     }
-    // As duas que só o servidor chama declaram por que não têm exigir_acesso.
-    for (const nome of ['ingestao_vigia_estado', 'ingestao_alarme_abrir']) {
+    // As que só o servidor chama (vigia, alarme, e as duas da limpeza do cru — 0282) declaram por
+    // que não têm exigir_acesso.
+    for (const nome of ['ingestao_vigia_estado', 'ingestao_alarme_abrir', 'ingestao_retencao_inventario', 'ingestao_retencao_registrar']) {
       expect(por.get(`public.${nome}`) ?? '', `public.${nome}: comentário sem menção a service_role (0280)`).toMatch(/service_role/)
     }
     // Sem a linha, o `for` acima não reprova uma função que sumiu do catálogo — só as que existem.
-    expect(por.size, 'uma das RPCs listadas não existe no catálogo').toBe(15)
+    expect(por.size, 'uma das RPCs listadas não existe no catálogo').toBe(17)
   })
 })

@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { obterPainelIngestaoAction } from '@/app/admin/ingestao/actions'
 import { AlarmesAbertosFaixa, AlarmesRecentesTabela } from './alarmes-secoes'
 import { VigiaPainel } from './vigia-painel'
+import { RetencaoLinha } from './retencao-linha'
 import { CargasTabela } from './cargas-tabela'
 import { ExecucoesTabela } from './execucoes-tabela'
 import { ModalReprocesso } from './modal-reprocesso'
@@ -59,6 +60,8 @@ export function IngestaoContent({ painelInicial }: { painelInicial: IngestaoPain
         onAtualizado={atualizar}
         onMensagem={mostrarMensagem}
       />
+
+      <RetencaoLinha ultima={painel.retencao_ultima} cronAtivo={painel.retencao_cron_ativo} />
 
       <CargasTabela cargas={painel.cargas} onReprocessar={setCargaParaReprocessar} />
       <ExecucoesTabela execucoes={painel.execucoes} />

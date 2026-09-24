@@ -6,7 +6,7 @@ import { getAdminClient } from '@/lib/supabase/admin'
 import { requireAreaAction } from '@/lib/auth/sessao'
 import { parseRpc, ingestaoPainelSchema, type IngestaoPainel, type IngestaoExpectativa } from '@/lib/schemas-rpc'
 import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
-import { baixarCru, caminhoCru, BUCKET_INGESTAO } from '@/lib/ingestao/storage'
+import { baixarCru, caminhoCru, BUCKET_INGESTAO, ErroIngestaoStorage } from '@/lib/ingestao/storage'
 import type { ArquivoDaCarga } from '@/app/admin/uploads/ingestao-cliente'
 
 // Server actions da tela /admin/ingestao (v6.0.0/M6, anexo §7). Guard de superfície
@@ -175,6 +175,15 @@ export async function prepararReprocessoAction(
       preparo: { base, cargaId: novoCargaId, arquivos: novosArquivos, extraidoEm: agora.toISOString() },
     }
   } catch (err) {
+    // M6b (errata 3(b)): o cru expira em 3 meses (7 dias se nunca virou carga) — objeto ausente
+    // numa carga antiga é o esperado, não defeito. Dizer o motivo e o que fazer.
+    if (err instanceof ErroIngestaoStorage && err.codigo === 'ARQUIVO_AUSENTE') {
+      return {
+        ok: false,
+        erro: 'O arquivo original desta carga não está mais no armazenamento — ele é guardado por 3 meses. ' +
+          'Para reprocessar, envie o export de novo pela tela de Upload de Arquivos.',
+      }
+    }
     return { ok: false, erro: err instanceof Error ? err.message : 'Erro ao preparar o reprocesso.' }
   }
 }

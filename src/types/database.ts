@@ -776,6 +776,18 @@ export type Database = {
         Returns: Json
       }
       ingestao_painel: { Args: never; Returns: Json }
+      ingestao_retencao_inventario: { Args: never; Returns: Json }
+      ingestao_retencao_registrar: {
+        Args: {
+          p_apagados?: Json
+          p_erro?: string
+          p_expirados: number
+          p_iniciado_em: string
+          p_orfaos: number
+          p_status: string
+        }
+        Returns: string
+      }
       ingestao_soma_por_ano: { Args: { p_base: string }; Returns: Json }
       ingestao_vencimentos_por_numero: {
         Args: { p_numeros: string[] }

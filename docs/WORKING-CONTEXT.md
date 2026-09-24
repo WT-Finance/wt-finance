@@ -31,6 +31,7 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M4 Storage + rota | **feito** (`8d83fa7`→`8dc5285`) — 0276 aplicada 22/09; desenho em `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` |
 | M5 atomicidade | **feito** (`7fb7097`) — 0277/0278 aplicadas 22/09; desenho em `docs/briefings/anexo-v6-0-0-m5-desenho-da-atomicidade.md` |
 | M6 log, alarmes, vigia, tela | **feito** — 0280/0281 aplicadas 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6-desenho-log-e-alarmes.md` |
+| M6b retenção do cru | **feito** — 0282 aplicada 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md` |
 | M7–M11 | pendentes — roteiro no plano |
 
 **Decisões do Yan em 24/09, depois da M6 — errata 3 do contrato (`docs/contratos/ingestao-v1.md`):**
@@ -41,12 +42,18 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
    5 bases tem ~20 MB → ~1 GB/ano no ritmo semanal de hoje, ~7 GB/ano com a RPA diária; o custo não
    pesou, e o Yan não vê motivo para guardar o arquivo por muito tempo. Vai para o ADR no fechamento.
 
-**Próximo passo: M6b "retenção do cru"** (antes da M7) — construir a limpeza que 2 e 3 pedem: rotina
-diária que apaga do bucket `ingestao-cru` os objetos sem linha em `ingestao.carga` com mais de 7 dias
-e todos os objetos com mais de 3 meses. Nasce desligada como o vigia (só roda em produção depois do
-deploy), apaga só dentro do bucket da ingestão, e registra em `ingestao.execucao` o que apagou.
-Pontos a desenhar: onde roda (rota própria no cron ou dentro do vigia, uma vez ao dia), e a tela de
-reprocesso passar a dizer "arquivo original expirado" em vez de erro genérico.
+**M6b FECHADA (24/09) — limpeza do cru** (desenho e o que foi provado:
+`docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md`). Migration **0282** aplicada (gate verde,
+`revisor-db` aprovou): log `ingestao.retencao`, inventário e registro service_role-only, cron
+`ingestao-retencao` diário 07:30 UTC **nascido INATIVO**. Regra pura em `src/lib/ingestao/retencao.ts`
+(3 meses de calendário para todo cru; 7 dias para o que nenhuma carga cita), rota
+`/api/ingestao/retencao` (**GET sempre simula; apagar exige POST** — achado ALTO do `revisor`),
+cartão "Limpeza do armazenamento" na tela, e o reprocesso de carga expirada explica o motivo.
+Travas: só o bucket da ingestão, só paths do inventário, teto de 500 por rodada, recusa com zero
+cargas, e o log registra só o que o Storage CONFIRMOU ter apagado. Suíte **1.595/94, zero falha**.
+**Ativação na M9**, como `postgres`: `SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE jobname
+= 'ingestao-retencao'), active := true);` — ANTES, `POST /api/ingestao/retencao?simular=1` e conferir
+a lista. A primeira exclusão real serão as 2 cópias órfãs de 24/09 (a partir de 01/10).
 
 **M6 FECHADA (24/09).** A ingestão passou a ter memória e alarme. Migrations **0280** (log de
 execução `ingestao.execucao`, incidentes `ingestao.alarme`, cadência `ingestao.expectativa`, cron
@@ -395,9 +402,9 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.12.0** (PR #275, mergeado 24/09 às 15:44 — sem migration; o `main` segue na 0272). Esta branch ainda não trouxe o `main`: no fechamento, conflito esperado em `WORKING-CONTEXT.md`, skill `banco-e-rpc`, `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` — nenhum em código da ingestão |
-| Última migration aplicada | **0281** (v6.0.0/M6 — painel com "quem") · próxima livre: **0282** |
+| Última migration aplicada | **0282** (v6.0.0/M6b — retenção do cru) · próxima livre: **0283** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
-| Suíte | **1.560 testes**, 93 arquivos, zero `skip` silencioso |
+| Suíte | **1.595 testes**, 94 arquivos, zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 

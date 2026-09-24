@@ -577,6 +577,16 @@ export const ingestaoPainelSchema = z.object({
   expectativas:             z.array(ingestaoExpectativaSchema).nullable().transform(v => v ?? []),
   vigia_ultima_verificacao: z.string().nullable(),
   vigia_cron_ativo:         z.boolean().nullable(),
+  // 0282 (M6b): a limpeza do cru. `.optional()` — o painel da 0281 não tem as chaves; `null` em
+  // `retencao_ultima` = nunca rodou.
+  retencao_ultima: z.object({
+    concluido_em: z.string(),
+    status:       z.enum(['ok', 'simulado', 'recusado', 'erro']),
+    expirados:    z.number(),
+    orfaos:       z.number(),
+    erro:         z.string().nullable(),
+  }).passthrough().nullable().optional(),
+  retencao_cron_ativo: z.boolean().nullable().optional(),
 }).passthrough()
 
 export type IngestaoPainel = z.infer<typeof ingestaoPainelSchema>
