@@ -35,6 +35,26 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '5.12.0',
+    data: '2026-09-24T15:35', // autoria; reconciliar ao horário real do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'A barra "Meta de Assessorias" do Comparativo de Metas voltou a contar os contratos de casamento. ' +
+          'Desde junho o sistema de vendas passou a identificar esses produtos de outra forma, e a plataforma ' +
+          'deixou de reconhecê-los: a barra mostrava zero de junho a setembro, quando houve 15 contratos (5, 4, 2 e 4). ' +
+          'Julho a setembro se corrigem sozinhos na primeira noite após a publicação; junho é reprocessado uma vez.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'A plataforma se antecipou a uma mudança anunciada pelo sistema de vendas para 1º de outubro, ' +
+          'que retiraria a informação usada para reconhecer os produtos. Nenhum número muda por isso.',
+      },
+    ],
+  },
+  {
     versao: '5.11.0',
     data: '2026-09-15T12:55', // merge real do PR #273 (2026-09-15T15:55:34Z → -03)
     itens: [
