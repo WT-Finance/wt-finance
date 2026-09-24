@@ -36,6 +36,28 @@ servidor do Storage, hoje em 2 horas. O campo `expira_em` da resposta passa a re
 cumpre. O que protege o caminho não é a janela curta: é o `carga_id` (UUID de servidor) dentro do
 próprio caminho do objeto, conferido no passo 3, mais o sha256 declarado e reconferido.
 
+**Errata 3 (2026-09-24, decisões do Yan — M6):** três correções; só a (a) muda o que a RPA faz.
+
+**(a) Reprocesso é uma carga NOVA com cópia dos arquivos, não "o passo 3 com os mesmos `path`s"**
+(§7). O texto original não funciona com a idempotência do §2.3: o `carga_id` viaja dentro do
+caminho do objeto e a carga é idempotente por `carga_id`, então repetir o passo 3 com os mesmos
+`path`s devolve a resposta GUARDADA da primeira vez, em vez de reprocessar. Reprocessar é:
+recopiar os mesmos bytes para caminhos novos sob um `carga_id` novo (passos 1 e 2 de novo, ou a
+cópia que a tela `/admin/ingestao` faz no servidor) e rodar o passo 3 com
+`x-ingestao-origem: reprocesso`. A proteção contra aplicar a mesma carga duas vezes fica intacta.
+
+**(b) O arquivo cru tem prazo (§7, "Dado pessoal").** O cru de uma carga fica no bucket por **3
+meses** e é apagado depois; o arquivo que subiu mas **nunca virou carga** (conferência cancelada,
+reprocesso não confirmado) é apagado em **7 dias**. O DADO carregado continua no banco sem prazo —
+só o arquivo como chegou expira. Consequência para quem reprocessa: depois de 3 meses não há mais
+arquivo original no Janus; a RPA reprocessa reenviando o export. Motivo: o cru de Vendas tem
+CPF/CNPJ/e-mail de clientes, e o arquivo só serve para reprocessar e investigar cargas recentes.
+
+**(c) Alarmes (§6), conforme as decisões de 24/09 que a M6 construiu:** "ano fechado alterado"
+dispara em **qualquer** mudança de contagem ou soma de um ano anterior ao corrente (não há limiar);
+**não há** alarme de "baseline desviou" nesta versão (dos três números de baseline do briefing, só
+um se reproduzia); "carga esperada não chegou" existe mas nasce **desligado** até a RPA existir.
+
 ## 0. Vocabulário
 
 | Termo | Significado |
@@ -224,15 +246,16 @@ origem, chave ou usuário, `extraido_em`, `recebido_em`, arquivos (jsonb com pat
 somas, checksums conferidos/falhos, rejeitadas por data, pares novos, diff, status, erro, duração.
 Alarmes (e-mail, destinatários em config): checksum falho · ano fechado alterado acima do limiar ·
 baseline desviou · par novo na bandeja · carga esperada não chegou até a hora configurada (cadência
-diária) · cron sem resultado.
+diária) · cron sem resultado. (**Errata 3(c)**: sem limiar, sem alarme de baseline, e "carga esperada"
+nasce desligado.)
 
 ## 7. O que a RPA precisa saber e o Janus não pergunta
 
 - **Cadência:** diária, horário configurado no Janus; a RPA só entrega.
 - **Mês corrente parcial** entra na base e é marcado na leitura; a RPA não filtra nada.
 - **Datas fora de faixa** são problema da origem: a carga aplica e reporta `rejeitadas_por_data`.
-- **Reprocesso**: repetir o passo 3 com `x-ingestao-origem: reprocesso` e os mesmos `path`s.
-- **Dado pessoal** (CPF/CNPJ/e-mail em Vendas) fica só no cru do bucket; nunca vai para tabela.
+- **Reprocesso**: carga NOVA com cópia dos mesmos arquivos e `x-ingestao-origem: reprocesso` (**errata 3(a)** — o texto original, "os mesmos `path`s", não funciona com a idempotência).
+- **Dado pessoal** (CPF/CNPJ/e-mail em Vendas) fica só no cru do bucket; nunca vai para tabela. O cru expira em 3 meses (7 dias se nunca virou carga) — **errata 3(b)**.
 
 ## 8. Fora da v1
 

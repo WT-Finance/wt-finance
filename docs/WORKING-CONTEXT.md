@@ -33,6 +33,21 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M6 log, alarmes, vigia, tela | **feito** — 0280/0281 aplicadas 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6-desenho-log-e-alarmes.md` |
 | M7–M11 | pendentes — roteiro no plano |
 
+**Decisões do Yan em 24/09, depois da M6 — errata 3 do contrato (`docs/contratos/ingestao-v1.md`):**
+1. **Reprocesso = carga NOVA com cópia dos arquivos** (errata 3(a)); o que a tela já faz. Afeta a RPA.
+2. **Arquivo que nunca virou carga é apagado em 7 dias** (conferência cancelada, reprocesso não
+   confirmado).
+3. **Retenção do cru: 3 meses** (o dado no banco não expira). Medido antes de decidir: um conjunto das
+   5 bases tem ~20 MB → ~1 GB/ano no ritmo semanal de hoje, ~7 GB/ano com a RPA diária; o custo não
+   pesou, e o Yan não vê motivo para guardar o arquivo por muito tempo. Vai para o ADR no fechamento.
+
+**Próximo passo: M6b "retenção do cru"** (antes da M7) — construir a limpeza que 2 e 3 pedem: rotina
+diária que apaga do bucket `ingestao-cru` os objetos sem linha em `ingestao.carga` com mais de 7 dias
+e todos os objetos com mais de 3 meses. Nasce desligada como o vigia (só roda em produção depois do
+deploy), apaga só dentro do bucket da ingestão, e registra em `ingestao.execucao` o que apagou.
+Pontos a desenhar: onde roda (rota própria no cron ou dentro do vigia, uma vez ao dia), e a tela de
+reprocesso passar a dizer "arquivo original expirado" em vez de erro genérico.
+
 **M6 FECHADA (24/09).** A ingestão passou a ter memória e alarme. Migrations **0280** (log de
 execução `ingestao.execucao`, incidentes `ingestao.alarme`, cadência `ingestao.expectativa`, cron
 `ingestao-vigia` nascido INATIVO, 10 RPCs) e **0281** (o painel diz QUEM fez cada carga) aplicadas
@@ -95,10 +110,8 @@ Registrado para o out-briefing (não bloqueia):
   "45 minutos" é recusado com erro. Mudar a tolerância de uma expectativa ATIVA exige desligar e
   religar. A tela não mostra quem alterou uma expectativa (o dado já vem do painel).
 - Chave do incidente de "ano fechado alterado": o anexo §4 diz `base + ano`; a 0280 usa
-  `base:ano:carga_id` — alarme de EVENTO, duas cargas mexendo no mesmo ano são dois fatos (header da
-  0280). Divergência deliberada, a confirmar.
-- Contrato §7 (reprocesso "com os mesmos paths") contradiz a idempotência por `carga_id`: a tela
-  reprocessa copiando para um `carga_id` novo. Candidata a **errata 3** — decisão sua, afeta a RPA.
+  `base:ano:carga_id`. **Não é decisão**: alarme de evento é resolvido logo após notificar, então as
+  duas chaves produzem exatamente os mesmos e-mails. Fica só como nota de divergência de texto.
 - Sem teste da leitura de `pares_novos` em `aplicarDemonstrativo` nem de orquestração ponta a ponta de
   `processarCarga` (os alarmes são provados nas funções puras e ao vivo).
 
@@ -264,7 +277,8 @@ A tela pegou dois números mentirosos que nenhum gate acusaria, os dois já corr
 > dizia que retenção e limpeza eram "da M6" — o briefing NÃO pede limpeza automática; pede
 > **retenção DECLARADA no ADR** (proposta: 24 meses, revisar), que é item do fechamento (M11). Limpeza
 > de órfãos fica como decisão sua no out-briefing. Os 8 objetos das provas da M4 foram removidos; os
-> 2 da prova da M6 (carga `c633873f-…` e a cópia do reprocesso) ficaram, como exemplo real.
+> da prova da M6 (cargas `c633873f-…` e `181c056a-…` e a cópia do reprocesso) ficaram, como exemplo
+> real — e a limpeza abaixo vai recolhê-los.
 
 > **A carga real das cinco bases continua sendo a M9**, com checkpoint seu — hoje nada foi
 > aplicado.
