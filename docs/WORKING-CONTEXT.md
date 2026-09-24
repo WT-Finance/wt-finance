@@ -21,11 +21,10 @@ arquivo, a skill `banco-e-rpc`, changelogs e `package.json`); a v6 não toca `sr
 
 **Produção na v5.12.0** (PR #275, mergeado 24/09 às 15:44; deploy Vercel no ar às 15:44).
 
-> 🔴 **Pós-merge da v5.12.0 — dois atos, os dois do Yan:**
-> 1. **Junho não se corrige sozinho.** A reconciliação noturna cobre os 3 últimos meses (jul–set);
->    junho precisa de UMA chamada, logado como admin (o deploy já está no ar):
->    `https://wt-janus.vercel.app/api/monde/ingest?mode=window&from=2026-06-01&to=2026-06-30`
-> 2. **Conferir em 25/09**, depois da reconciliação das 03h, o Comparativo de Metas (Weddings):
+> 🔴 **Pós-merge da v5.12.0 — falta um ato do Yan:**
+> 1. ✅ **Junho reprocessado em 24/09** (janela manual: 670 lidas · 652 atualizadas · 0 erros).
+>    Conferido no banco: **5 contratos**, 178/178 itens com hash `#t2`.
+> 2. **Conferir em 25/09**, depois da reconciliação das 03h (que cobre jul–set), o Comparativo de Metas (Weddings):
 >    "Meta de Assessorias" de jun · jul · ago · set deve mostrar **5 · 4 · 2 · 4**. Consulta de
 >    conferência no out-briefing da v5.12.0, §5.
 
