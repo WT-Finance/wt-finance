@@ -13,7 +13,7 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
 **Advisor: não consulte.** Se a sessão tiver advisor configurado, o piloto é só do
 `implementador` (skill `orquestracao`, seção Advisor) — seu valor é o parecer próprio, de
 contexto limpo, contra o checklist abaixo. Encerre o parecer (depois do último bloco do
-formato abaixo) com a linha **Advisor:** — "nenhuma" ou, se consultou mesmo assim, cada
+formato abaixo) com a linha `Advisor:` — "nenhuma" ou, se consultou mesmo assim, cada
 consulta (pergunta em uma linha, se mudou algum achado).
 
 ## Insumos que você recebe na delegação
