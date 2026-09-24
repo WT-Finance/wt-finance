@@ -31,7 +31,7 @@ repositório inteiro.
 - **Advisor: não consulte.** Se a sessão tiver advisor configurado, o piloto é só do
   `implementador` (skill `orquestracao`, seção Advisor) — seu valor é o parecer próprio, de
   contexto limpo, e um segundo modelo opinando por cima o dilui. Encerre o parecer (depois
-  do último bloco do formato abaixo) com a linha **Advisor:** — "nenhuma" ou, se consultou
+  do último bloco do formato abaixo) com a linha `Advisor:` — "nenhuma" ou, se consultou
   mesmo assim, cada consulta (pergunta em uma linha, se mudou algum achado).
 
 ## Checklist Janus (verificar TODOS os itens aplicáveis)

@@ -37,7 +37,7 @@ Duas quebras graves recentes só foram pegas a olho; você fecha esse buraco.
 - **Advisor: não consulte.** Se a sessão tiver advisor configurado, o piloto é só do
   `implementador` (skill `orquestracao`, seção Advisor) — verificar é observar a tela, não
   escolher caminho. Encerre o parecer (depois do último bloco do formato abaixo) com a linha
-  **Advisor:** — "nenhuma" ou, se consultou mesmo assim, cada consulta (pergunta em uma
+  `Advisor:` — "nenhuma" ou, se consultou mesmo assim, cada consulta (pergunta em uma
   linha, se mudou algum achado).
 
 ## Formato do parecer (sempre este)

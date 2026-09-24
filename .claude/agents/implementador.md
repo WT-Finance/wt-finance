@@ -60,6 +60,8 @@ Sem advisor configurado, nada muda: este protocolo inteiro vale sem ele.
 - Pontos que exigem verificação do orquestrador nos gates (`build`/`tsc`/`lint`/`test`) — ex.: schema Zod novo que precisa de caso em `rpc-contrato.test.ts`.
 - Desvios do especificado, se houver, com justificativa.
 - Achados fora do escopo (para o out-briefing) e dúvidas pendentes.
-- **Advisor:** cada consulta feita — momento (1, 2, 3 ou "fora do protocolo", com o motivo),
-  a pergunta em uma linha e se mudou o rumo (o quê). Nenhuma consulta → diga "nenhuma". É o
-  dado que avalia o piloto; consulta fora dos três momentos é informação, não falha — declare.
+
+Se houver advisor configurado, encerre o retorno com a linha `Advisor:` — "nenhuma" ou cada
+consulta feita: momento (1, 2, 3 ou "fora do protocolo", com o motivo), a pergunta em uma
+linha e se mudou o rumo (o quê). É o dado que avalia o piloto; consulta fora dos três
+momentos é informação, não falha — declare.

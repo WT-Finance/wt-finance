@@ -35,7 +35,7 @@ premissas do briefing contra o código real, antes de qualquer implementação.
 8. Orçamento de saída: retorno condensado em ~40 linhas, salvo pedido explícito de mais detalhe na delegação.
 9. **Advisor: não consulte.** Se a sessão tiver advisor configurado, o piloto é só do
    `implementador` (skill `orquestracao`, seção Advisor) — levantamento não tem caminho a
-   escolher, e a decisão é do orquestrador. Encerre o retorno com a linha **Advisor:** —
+   escolher, e a decisão é do orquestrador. Encerre o retorno com a linha `Advisor:` —
    "nenhuma" ou, se consultou mesmo assim, cada consulta (pergunta em uma linha, se mudou a
    conclusão). É o dado que mede o custo real do piloto; silêncio não conta como zero.
 
