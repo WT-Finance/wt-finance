@@ -1,6 +1,6 @@
 ---
 name: orquestracao
-description: Carta do Orquestrador do Janus — como a sessão principal dirige uma versão. Modelos por camada (orquestrador pensa/julga; subagentes Sonnet executam), delegação autocontida com "Skills a ler", paralelização por arquivos disjuntos (subagentes são editores puros; git/build/banco/servidor serializados no orquestrador), protocolo de revisão (revisor, revisor-db, verificador-visual) e gates escalonados. Use ao iniciar a sessão de uma versão (o /nova-versao a carrega), ao despachar subagentes, ao planejar paralelização de missões ou ao decidir quem roda um gate.
+description: Carta do Orquestrador do Janus — como a sessão principal dirige uma versão. Modelos por camada (orquestrador pensa/julga; subagentes Sonnet executam), delegação autocontida com "Skills a ler", paralelização por arquivos disjuntos (subagentes são editores puros; git/build/banco/servidor serializados no orquestrador), protocolo de revisão (revisor, revisor-db, verificador-visual), gates escalonados e o piloto do advisor (quem consulta, quando, e como medir). Use ao iniciar a sessão de uma versão (o /nova-versao a carrega), ao despachar subagentes, ao planejar paralelização de missões ou ao decidir quem roda um gate.
 ---
 
 # Carta do Orquestrador
@@ -47,7 +47,8 @@ Sonnet** — onde a leitura literal de uma delegação vira defeito (v5.7.2) e o
 - O advisor é **por sessão** (`advisorModel` no settings, `/advisor`, `--advisor`). Não existe
   campo no frontmatter dos agentes; **todo subagente herda** e passa pela checagem de
   pareamento contra o próprio modelo. Sonnet aceita Fable; **o orquestrador em Fable ou Opus
-  5.5 também aceita** (Fable com Fable é pareamento listado pela doc).
+  5.5 também aceita** (Fable com Fable é pareamento listado pela doc) — ou seja, ele TEM o
+  advisor à mão, e por isso precisa da regra de não consultar, logo abaixo.
 - Não há configuração que limite ou force chamadas. O "só implementador" vive nas instruções
   de cada arquivo em `.claude/agents/` — que competem com a orientação embutida da própria
   ferramenta ("consulte antes de trabalho substantivo e antes de declarar concluído").
