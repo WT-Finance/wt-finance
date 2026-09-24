@@ -36,7 +36,7 @@ export interface ChangelogEntrada {
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
     versao: '5.12.0',
-    data: '2026-09-24T15:35', // autoria; reconciliar ao horário real do merge no /pos-merge
+    data: '2026-09-24T15:44', // merge real do PR #275 (2026-09-24T18:44:17Z → -03)
     itens: [
       {
         tipo: 'correcao',

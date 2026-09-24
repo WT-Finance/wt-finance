@@ -15,20 +15,19 @@
 
 ## Em voo
 
-**v5.12.0 — nome do produto no espelho Monde** (branch `fix/v5-12-0-produto-monde`, PR aberto,
-aguardando merge). Deve entrar **antes** da v6.0.0, que está em voo na própria branch
-(`feat/v6-0-0-fundacao-ingestao`) e vai precisar mesclar a `main` — conflito só de texto (este
+**v6.0.0 — Fundação da ingestão**, na própria branch (`feat/v6-0-0-fundacao-ingestao`). A v5.12.0
+entrou antes dela, como pedido: a v6 precisa mesclar a `main` — conflito só de texto (este
 arquivo, a skill `banco-e-rpc`, changelogs e `package.json`); a v6 não toca `src/lib/monde/`.
+
+**Produção na v5.12.0** (PR #275, mergeado 24/09 às 15:44; deploy Vercel no ar às 15:44).
 
 > 🔴 **Pós-merge da v5.12.0 — dois atos, os dois do Yan:**
 > 1. **Junho não se corrige sozinho.** A reconciliação noturna cobre os 3 últimos meses (jul–set);
->    junho precisa de UMA chamada, logado como admin, **depois** do deploy:
+>    junho precisa de UMA chamada, logado como admin (o deploy já está no ar):
 >    `https://wt-janus.vercel.app/api/monde/ingest?mode=window&from=2026-06-01&to=2026-06-30`
-> 2. **Conferir no dia seguinte** o Comparativo de Metas (Weddings): "Meta de Assessorias" de
->    jun · jul · ago · set deve mostrar **5 · 4 · 2 · 4**. Consulta de conferência no out-briefing.
->
-> Chamar a janela ANTES do deploy não faz nada (com o código velho o hash é o mesmo e a venda é
-> pulada) — inofensivo, mas não corrige.
+> 2. **Conferir em 25/09**, depois da reconciliação das 03h, o Comparativo de Metas (Weddings):
+>    "Meta de Assessorias" de jun · jul · ago · set deve mostrar **5 · 4 · 2 · 4**. Consulta de
+>    conferência no out-briefing da v5.12.0, §5.
 
 > 🔴 **Pendência do Yan, uma só, herdada da v5.11.0:** decidir se `PRIORIDADE_INICIAL`
 > (`src/lib/auth/areas.ts`) passa a incluir as áreas da Estante. Hoje um colaborador cujo **único**
