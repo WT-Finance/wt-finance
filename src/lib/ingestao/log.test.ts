@@ -88,6 +88,13 @@ describe('concluirCarga', () => {
     const r = await concluirCarga({ cargaId: 'inexistente', status: 'erro', erro: 'ERRO_INTERNO: x' })
     expect(r).toEqual({ ok: false, erro: 'CARGA_NAO_ENCONTRADA: carga x não existe' })
   })
+
+  it('RPC que LANÇA (rede) devolve {ok:false} — nunca propaga depois de uma promoção já feita (M6)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    rpcMock.mockRejectedValueOnce(new Error('fetch failed'))
+    const r = await concluirCarga({ cargaId: 'c1', status: 'aplicada', linhas: 100 })
+    expect(r).toEqual({ ok: false, erro: 'fetch failed' })
+  })
 })
 
 describe('ultimaCargaAplicada', () => {

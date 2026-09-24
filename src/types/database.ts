@@ -716,6 +716,18 @@ export type Database = {
         Returns: Json
       }
       importar_clientes_corp: { Args: { p_linhas: Json }; Returns: Json }
+      ingestao_alarme_abrir: {
+        Args: { p_chave: string; p_detalhe?: Json; p_tipo: string }
+        Returns: Json
+      }
+      ingestao_alarme_marcar_notificado: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      ingestao_alarme_resolver: {
+        Args: { p_chave: string; p_tipo: string }
+        Returns: Json
+      }
       ingestao_carga_abrir: {
         Args: {
           p_arquivos: Json
@@ -749,10 +761,28 @@ export type Database = {
       }
       ingestao_carga_obter: { Args: { p_carga_id: string }; Returns: Json }
       ingestao_carga_ultima: { Args: { p_base: string }; Returns: Json }
+      ingestao_execucao_abrir: { Args: { p_processo: string }; Returns: string }
+      ingestao_execucao_concluir: {
+        Args: {
+          p_erro?: string
+          p_id: string
+          p_resultado?: Json
+          p_status: string
+        }
+        Returns: Json
+      }
+      ingestao_expectativa_definir: {
+        Args: { p_alvo: string; p_ativo: boolean; p_tolerancia?: string }
+        Returns: Json
+      }
+      ingestao_painel: { Args: never; Returns: Json }
+      ingestao_soma_por_ano: { Args: { p_base: string }; Returns: Json }
       ingestao_vencimentos_por_numero: {
         Args: { p_numeros: string[] }
         Returns: Json
       }
+      ingestao_vigia_definir: { Args: { p_ativo: boolean }; Returns: Json }
+      ingestao_vigia_estado: { Args: never; Returns: Json }
       inserir_cliente_corp: { Args: { p_dados: Json }; Returns: Json }
       inserir_lote_demonstrativo_competencia: {
         Args: { p_linhas: Json }
@@ -931,6 +961,7 @@ export type Database = {
         | { Args: never; Returns: Json }
         | { Args: { p_carga_id: string; p_checksums: Json }; Returns: Json }
       provisionar_dre_comp_par: { Args: never; Returns: Json }
+      provisionar_dre_comp_par__nucleo: { Args: never; Returns: Json }
       rbac_verificar_guard: { Args: { p_area?: string }; Returns: string }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
       regenerar_dim_operacao_weddings: { Args: never; Returns: number }

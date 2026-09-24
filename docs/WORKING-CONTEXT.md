@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-22 (fronteira da M5).
+Última atualização: 2026-09-24 (fronteira da M6).
 
 ---
 
@@ -30,13 +30,83 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M3 parsers/oráculos | **feito** (`49c8c83` + `3cec38d`) — GATE 1 verde nas 5 bases |
 | M4 Storage + rota | **feito** (`8d83fa7`→`8dc5285`) — 0276 aplicada 22/09; desenho em `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` |
 | M5 atomicidade | **feito** (`7fb7097`) — 0277/0278 aplicadas 22/09; desenho em `docs/briefings/anexo-v6-0-0-m5-desenho-da-atomicidade.md` |
-| M6–M11 | pendentes — roteiro no plano |
+| M6 log, alarmes, vigia, tela | **feito** — 0280/0281 aplicadas 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6-desenho-log-e-alarmes.md` |
+| M7–M11 | pendentes — roteiro no plano |
+
+**M6 FECHADA (24/09).** A ingestão passou a ter memória e alarme. Migrations **0280** (log de
+execução `ingestao.execucao`, incidentes `ingestao.alarme`, cadência `ingestao.expectativa`, cron
+`ingestao-vigia` nascido INATIVO, 10 RPCs) e **0281** (o painel diz QUEM fez cada carga) aplicadas
+sob o backup-gate (verde), as duas revisadas pelo `revisor-db` antes. Tela nova **`/admin/ingestao`**
+(área `admin/uploads`); rota nova **`/api/ingestao/vigia`**; as rotas do Monde (incremental e
+reconciliação) e do CDI gravam cada execução — sem mudar a resposta HTTP delas, e o log nunca lança.
+Suíte: **1.560 testes, 93 arquivos, zero falha**; `tsc`, `lint`, `build` verdes.
+
+**Tudo que depende do deploy nasceu DESLIGADO**: o cron do vigia (`active=false`) e as 9
+expectativas (`ativo=false`). A rota do vigia só existe em produção depois do merge; ligar antes
+faria o cron bater 404 a cada 15 min e aparecer VERDE em `cron.job_run_details` — a mesma armadilha
+que esta missão existe para detectar. Ativação é a M9, nesta ordem: `ingestao_vigia_definir(true)`;
+depois cada processo com `ingestao_expectativa_definir('<processo>', true)` só DEPOIS da 1ª execução
+registrada dele (sem isso ele alarma na hora — foi o que a prova 2 mostrou de propósito); as bases só
+quando a RPA existir (decisão 3, e a tolerância é obrigatória). Os alarmes de CARGA (rejeitada, ano
+fechado alterado, par novo na bandeja) já valem desde a aplicação.
+
+**Provado ao vivo em 24/09** (evidência — o `revisor-db` pediu que a prova do ALTO ficasse em disco):
+- **O vigia liga e desliga o `pg_cron` de verdade** (o ALTO da 0280, não verificável no papel):
+  `POST /rest/v1/rpc/ingestao_vigia_definir {"p_ativo": true}` com service_role → HTTP 200
+  `{"ativo": true}` e `cron.job.active = true` (job 10, dono `postgres` = dono da função); em seguida
+  `{"p_ativo": false}` → 200 e `active = false`. Estado final = inicial.
+- **Prova 1 — carga com CHECKSUM FALSO (a do anexo §8):** export mínimo de Lançamentos, estrutura
+  válida, TOTAL do arquivo adulterado (-301 no lugar de -300), em Lançamentos em Aberto pela rota real
+  com sessão. Conferência PRIMEIRO (422 `CHECKSUM_FALHOU`, "1 de 3 conferências não fecharam", nada
+  aplica) — só então `confirmar: true` → 422 `CHECKSUM_FALHOU`, linha `rejeitada` (carga
+  `181c056a-…`), ZERO linha em `ingestao.promocao`, alarme `checksum_falho` aberto → notificado →
+  resolvido. E-mail em MODO TESTE para `yan@welcometrips.com.br`, "checksum não fechou".
+  Uma segunda prova, com arquivo que NÃO é planilha (carga `c633873f-…`, "Quem: Yan"), exercitou o
+  outro ramo: 422 `FORMATO_INVALIDO`, mesmo alarme, e-mail SEM a palavra "checksum".
+  (Minha primeira versão desta prova usou só o arquivo mal formado — divergia do anexo, que pede
+  checksum falso; a auto-auditoria pegou.)
+- **Prova 2 — vigia:** `cdi-mensal` ligado sem execução nenhuma → rodada 1 abre UM incidente e
+  notifica; rodada 2 não manda outro; desligar → rodada 3 RESOLVE. Três execuções `ok` do próprio
+  vigia no log.
+- **Reprocesso pela tela:** copia o cru para um `carga_id` novo, roda só a conferência e mostra o erro
+  real no modal. A cópia fica no bucket como objeto sem linha de carga (esperado — ver abaixo).
+
+Defeitos que a revisão e as provas pegaram ANTES do commit (valem como lição):
+- A tela chaveava os rótulos de alarme por nomes com HÍFEN (`checksum-falho`), copiados de um
+  comentário errado da 0280; o código grava com SUBLINHADO. Nenhum alarme teria rótulo. Agora o mapa
+  é `Record<TipoAlarmeIngestao, …>` — o `tsc` reprova divergência.
+- Desligar uma expectativa em alarme deixava o incidente aberto PARA SEMPRE (o teste afirmava o
+  defeito). Agora resolve.
+- Toda rejeição 422 vira alarme `checksum_falho`, mas o e-mail dizia "o checksum não fechou" até para
+  arquivo mal formado. Agora o texto segue o `codigo` da rejeição.
+- O e-mail de processo que NUNCA rodou afirmava "sem resultado há 50.400 minutos" — o número é a
+  tolerância (piso), não fato. Agora diz "nunca registrou execução OK" e fala em dias.
+- `concluirCarga` (M4) podia lançar DEPOIS da promoção e regravar como `erro` uma carga aplicada.
+  Agora nunca lança. O `dispararAlarmeDeEvento` ganhou o mesmo `catch`.
+- A tela afirmava "(modo teste)" fixo no texto — mentiria no dia da virada para o e-mail real.
+
+Registrado para o out-briefing (não bloqueia):
+- O teste de contrato do painel roda pela conexão direta com claim `service_role`, NÃO pela
+  credencial `verificador`: dar `admin/uploads` a uma credencial de máquina só para o teste alargaria
+  a postura dela (o painel expõe nome/e-mail de quem carregou).
+- `admin/uploads` passa a ver o NOME (`plataforma`) das chaves de `app.api_chave` que fizeram carga —
+  a tabela é compartilhada com a API de Solicitações (BAIXO do `revisor-db`).
+- A tolerância digitada na tela é o texto de `interval` do Postgres, em inglês ("45 minutes");
+  "45 minutos" é recusado com erro. Mudar a tolerância de uma expectativa ATIVA exige desligar e
+  religar. A tela não mostra quem alterou uma expectativa (o dado já vem do painel).
+- Chave do incidente de "ano fechado alterado": o anexo §4 diz `base + ano`; a 0280 usa
+  `base:ano:carga_id` — alarme de EVENTO, duas cargas mexendo no mesmo ano são dois fatos (header da
+  0280). Divergência deliberada, a confirmar.
+- Contrato §7 (reprocesso "com os mesmos paths") contradiz a idempotência por `carga_id`: a tela
+  reprocessa copiando para um `carga_id` novo. Candidata a **errata 3** — decisão sua, afeta a RPA.
+- Sem teste da leitura de `pares_novos` em `aplicarDemonstrativo` nem de orquestração ponta a ponta de
+  `processarCarga` (os alarmes são provados nas funções puras e ao vivo).
 
 **M5 FECHADA (22/09).** As cinco bases têm carga atômica: `limpar_staging_{base}` →
 `inserir_lote_staging_{base}` → `validar_carga_{base}` → `promover_carga_{base}(checksums, carga_id)`,
 com TRUNCATE + INSERT + regeneração **dentro de uma transação**. A janela em que a base ficava vazia
 ou parcial deixou de existir. Migrations **0277/0278** aplicadas sob o backup-gate (verde).
-Suíte: **1.472 testes, 88 arquivos, zero falha**. Próxima migration livre: **0279**. ADR livre: **0176**.
+Suíte na fronteira da M5: **1.472 testes, 88 arquivos, zero falha** (numeração atual: ver "Verdade atual").
 
 **O checksum do export agora é conferido DENTRO do banco**, contra o que ficou gravado — o que cobre
 o trecho entre o parse e a tabela (serialização, cast, arredondamento de `NUMERIC(18,2)`, lote
@@ -189,8 +259,12 @@ A tela pegou dois números mentirosos que nenhum gate acusaria, os dois já corr
 > é exibida no lugar da outra.
 
 > ⚠️ **A conferência cancelada deixa o cru no bucket sem linha de carga** (por desenho: o arquivo
-> fica para reprocesso, e a conferência não loga). São objetos órfãos. A retenção e a limpeza são
-> da **M6**, junto da tela `/admin/ingestao`. Os 8 objetos das provas de hoje foram removidos.
+> fica para reprocesso, e a conferência não loga), e o reprocesso da M6 também (a cópia sob o
+> `carga_id` novo, se o operador não confirmar). São objetos órfãos. Correção do registro: esta nota
+> dizia que retenção e limpeza eram "da M6" — o briefing NÃO pede limpeza automática; pede
+> **retenção DECLARADA no ADR** (proposta: 24 meses, revisar), que é item do fechamento (M11). Limpeza
+> de órfãos fica como decisão sua no out-briefing. Os 8 objetos das provas da M4 foram removidos; os
+> 2 da prova da M6 (carga `c633873f-…` e a cópia do reprocesso) ficaram, como exemplo real.
 
 > **A carga real das cinco bases continua sendo a M9**, com checkpoint seu — hoje nada foi
 > aplicado.
@@ -306,10 +380,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v5.11.0** (PR #273, mergeado 15/09 às 12:55) |
-| Última migration aplicada | **0279** (v6.0.0/M5 — credencial aplica) · próxima livre: **0280** |
+| Produção | **v5.12.0** (PR #275, mergeado 24/09 às 15:44 — sem migration; o `main` segue na 0272). Esta branch ainda não trouxe o `main`: no fechamento, conflito esperado em `WORKING-CONTEXT.md`, skill `banco-e-rpc`, `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` — nenhum em código da ingestão |
+| Última migration aplicada | **0281** (v6.0.0/M6 — painel com "quem") · próxima livre: **0282** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
-| Suíte | **1.472 testes**, 88 arquivos, zero `skip` silencioso |
+| Suíte | **1.560 testes**, 93 arquivos, zero `skip` silencioso |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 

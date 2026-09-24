@@ -78,6 +78,15 @@ export interface ResultadoAplicacao {
   /** Quantos checksums do lote a RPC RECEBEU mas não tinha como reconferir (sem coluna própria
    *  na base VIVA, ou base sem checksum monetário nenhum) — nunca contados como falha. */
   readonly checksumsNaoConferiveis: number
+  /**
+   * v6.0.0/M6: quantos PARES NOVOS `promover_carga_demonstrativo` devolveu — só o Demonstrativo
+   * preenche isto (as demais bases não têm bandeja de pares); `undefined` nas outras quatro, e
+   * `carga.ts` trata `undefined` como 0. Existe porque até a M6 esse número só virava PROSA
+   * dentro de `avisos[]` (ver `aplicarDemonstrativo` abaixo) e `carga.ts` respondia sempre
+   * `pares_novos: 0` na resposta estruturada — o alarme "par novo na bandeja" (anexo
+   * v6.0.0/M6 §4) precisa do NÚMERO, não do texto, para decidir se dispara.
+   */
+  readonly paresNovos?: number
 }
 
 export interface OpcoesAplicacao {
@@ -725,6 +734,7 @@ async function aplicarDemonstrativo(
   return {
     linhas: linhas.length,
     avisos,
+    paresNovos: paresNovos ?? 0,
     checksumsConferidos: retorno.checksumsConferidos,
     checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
   }

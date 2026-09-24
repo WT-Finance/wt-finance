@@ -372,13 +372,16 @@ describe('calcularDiff', () => {
   it('bases sem soma na RPC de status devolvem soma:null, mesmo com soma nova conhecida', async () => {
     rpcMock.mockResolvedValueOnce({ data: { vendas: { total: 100 } }, error: null })
     const { diff } = await calcularDiff('vendas-produto', 110, null)
-    expect(diff).toEqual({ linhas: 10, soma: null })
+    // `por_ano`/`anos_fechados_alterados` (M6) nascem `null` aqui: esta função mede contra o
+    // TOTAL da base viva, não por ano — quem preenche os dois é `processarCarga`, via
+    // `ingestao_soma_por_ano` (ver `alarme.ts`).
+    expect(diff).toEqual({ linhas: 10, soma: null, por_ano: null, anos_fechados_alterados: null })
   })
 
   it('status indisponível degrada para {linhas:null, soma:null} com aviso — nunca aborta', async () => {
     rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'timeout' } })
     const { diff, aviso } = await calcularDiff('vendas-produto', 100, null)
-    expect(diff).toEqual({ linhas: null, soma: null })
+    expect(diff).toEqual({ linhas: null, soma: null, por_ano: null, anos_fechados_alterados: null })
     expect(aviso).toMatch(/não foi possível medir o diff/i)
   })
 })

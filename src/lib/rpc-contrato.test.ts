@@ -10,6 +10,7 @@ import {
   patrimonioAtivosSchema, patrimonioCatalogosSchema, patrimonioMovimentacoesSchema,
   patrimonioResumoSchema,
   estanteLivrosSchema, estanteMovimentacoesSchema,
+  ingestaoPainelSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -2074,6 +2075,41 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — hardenings da v5.9.4 (0267) no
   })
 })
 
+// ── v6.0.0/M6 (0280/0281) — `ingestao_painel()` ↔ `ingestaoPainelSchema` contra a RPC VIVA ───
+// Caso de contrato da skill `contrato-rpc-front` §3 (achado ALTO do revisor na M6). Não entra na
+// lista F7 acima de propósito: aquela roda pela credencial `verificador`, que passa pelo
+// `exigir_acesso` como usuário comum e NÃO tem área de administração — dar `admin/uploads` a uma
+// credencial de máquina só para este teste alargaria a postura dela (a RPC expõe nome/e-mail de
+// quem carregou). Aqui a conexão é a direta, em sessão READ ONLY (mesma trava dos blocos acima), e
+// a identidade é a claim `role=service_role` na sessão — o ramo TRUSTED de `app.exigir_acesso`,
+// o mesmo que o servidor usa. `ingestao_painel` é STABLE e só lê; nada persiste.
+describe.skipIf(!ON || !DB_URL)('contrato RPC — ingestao_painel ↔ ingestaoPainelSchema (0280/0281)', () => {
+  it('o retorno REAL passa no schema da tela — inclusive os ITENS de cada lista, quando houver', async () => {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    let painel: unknown
+    try {
+      await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+      await c.query(`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false)`)
+      painel = (await c.query('SELECT public.ingestao_painel() AS p')).rows[0].p
+    } finally {
+      await c.end()
+    }
+    const r = ingestaoPainelSchema.safeParse(painel)
+    expect(r.success, r.success ? '' : `ingestao_painel drift: ${JSON.stringify(r.error!.issues.slice(0, 6))}`).toBe(true)
+    // As cinco listas chegam como ARRAY (o `coalesce(..., '[]')` do SQL), nunca null — e o
+    // estado do vigia é boolean de verdade (o job existe desde a 0280).
+    const p = r.data!
+    expect(typeof p.vigia_cron_ativo).toBe('boolean')
+    expect(p.expectativas.length, 'as 9 expectativas semeadas pela 0280').toBe(9)
+    // 0281: toda carga feita pela rota tem autor (sessão OU chave) — `quem` nulo numa carga real
+    // é o join quebrado, não "ninguém".
+    for (const carga of p.cargas) expect(carga.quem, `carga ${carga.carga_id} sem quem`).toBeTruthy()
+  })
+})
+
 // ── v5.10.0 (0269) — grants explícitos, COMMENTs e o texto do RAISE, no CATÁLOGO VIVO ───
 // A 0269 é aditiva e o que ela muda não aparece em nenhum retorno de RPC: privilégio de
 // EXECUTE, comentário de catálogo e uma string de mensagem de erro. Nada disso o `tsc`, o
@@ -2180,7 +2216,10 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
                   ('public','get_operacoes_weddings'),('public','promover_carga_vendas'),
                   ('public','get_dre_mensal'),('public','get_dre_competencia_mensal'),
                   ('public','ingestao_carga_abrir'),('public','ingestao_carga_concluir'),
-                  ('public','ingestao_carga_obter'),('public','ingestao_carga_ultima'))`,
+                  ('public','ingestao_carga_obter'),('public','ingestao_carga_ultima'),
+                  ('public','ingestao_vigia_definir'),('public','ingestao_expectativa_definir'),
+                  ('public','ingestao_painel'),('public','ingestao_vigia_estado'),
+                  ('public','ingestao_alarme_abrir'))`,
       )
       return r.rows
     })
@@ -2214,5 +2253,17 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
       const c = por.get(`public.${nome}`) ?? ''
       expect(c, `public.${nome}: comentário sem menção a service_role (0276)`).toMatch(/service_role/)
     }
+
+    // 0280 (M6): as três que a TELA chama são as únicas desta família com exigir_acesso — e duas
+    // delas DESLIGAM o detector de falha (vigia, expectativa). O comentário tem de dizer a área.
+    for (const nome of ['ingestao_vigia_definir', 'ingestao_expectativa_definir', 'ingestao_painel']) {
+      expect(por.get(`public.${nome}`) ?? '', `public.${nome}: comentário sem a área de RBAC (0280)`).toMatch(/admin\/uploads/)
+    }
+    // As duas que só o servidor chama declaram por que não têm exigir_acesso.
+    for (const nome of ['ingestao_vigia_estado', 'ingestao_alarme_abrir']) {
+      expect(por.get(`public.${nome}`) ?? '', `public.${nome}: comentário sem menção a service_role (0280)`).toMatch(/service_role/)
+    }
+    // Sem a linha, o `for` acima não reprova uma função que sumiu do catálogo — só as que existem.
+    expect(por.size, 'uma das RPCs listadas não existe no catálogo').toBe(15)
   })
 })

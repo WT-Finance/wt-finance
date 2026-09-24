@@ -27,6 +27,11 @@ import { getAdminClient } from '@/lib/supabase/admin'
 import { autenticarChamada, type ChaveResolvida } from '@/lib/api-externa/http'
 import { requireAreaApi, type Sessao } from '@/lib/auth/sessao'
 import { abrirCarga, concluirCarga } from './log'
+import {
+  somaPorAno, calcularDiffPorAno, anoCorrenteSP, ehRejeicaoDeConteudo, precisaAlarmarParNovo,
+  dispararAlarmeDeEvento,
+} from './alarme'
+import type { AlarmeIngestao } from '@/lib/email/template'
 
 // ── Envelope de erro do contrato (§2.4) ──────────────────────────────────────────────────────
 
@@ -323,6 +328,18 @@ export function reconciliarVendas(
 export interface DiffCarga {
   readonly linhas: number | null
   readonly soma: number | null
+  /**
+   * v6.0.0/M6: delta de LINHAS por ano (contrato ingestao-v1 §2.3 — `{"2024": 0, "2026": 210}`).
+   * Medido comparando `ingestao_soma_por_ano(base)` ANTES e DEPOIS da promoção — só existe
+   * quando a carga foi de fato APLICADA (`confirmar:true`); a CONFERÊNCIA não promove nada,
+   * então não há "depois" para medir, e este campo sai `null` (mesmo tratamento que o contrato
+   * já dava a este campo até a M6 existir).
+   */
+  readonly por_ano: Record<string, number> | null
+  /** Anos ANTERIORES ao corrente (fuso São Paulo) cuja contagem OU soma mudou nesta carga — é
+   *  o que dispara o alarme "ano fechado alterado" (anexo v6.0.0/M6 §4). `null` nas mesmas
+   *  condições de `por_ano`. */
+  readonly anos_fechados_alterados: number[] | null
 }
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
@@ -419,14 +436,21 @@ export async function calcularDiff(
   const atual = await statusAtualDaBase(base)
   if (!atual) {
     return {
-      diff: { linhas: null, soma: null },
+      diff: { linhas: null, soma: null, por_ano: null, anos_fechados_alterados: null },
       aviso: 'Não foi possível medir o diff contra a base atual (falha ao ler o status) — confira os números manualmente.',
     }
   }
   const diffCentavos =
     somaCentavosNovo !== null && atual.somaCentavos !== null ? somaCentavosNovo - atual.somaCentavos : null
   return {
-    diff: { linhas: totalLinhasNovo - atual.linhas, soma: diffCentavos === null ? null : diffCentavos / 100 },
+    // `por_ano`/`anos_fechados_alterados` NÃO nascem aqui: esta função mede contra o TOTAL da
+    // base viva (as RPCs `status_*`/`get_upload_status`, que não quebram por ano). A medição
+    // por ano usa `ingestao_soma_por_ano` e só roda quando a carga é de fato APLICADA — quem
+    // preenche esses dois campos (ou os deixa `null`, na conferência) é `processarCarga`.
+    diff: {
+      linhas: totalLinhasNovo - atual.linhas, soma: diffCentavos === null ? null : diffCentavos / 100,
+      por_ano: null, anos_fechados_alterados: null,
+    },
     aviso: null,
   }
 }
@@ -885,26 +909,67 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     const camposPivotDemonstrativo = base === 'demonstrativo-competencia'
       ? (Array.isArray(parseado.diagnostico.campos) ? (parseado.diagnostico.campos as string[]) : [])
       : undefined
+
+    // M6 (anexo §4): "ano fechado alterado" compara a MESMA grandeza (linhas E soma) dos dois
+    // lados, com a MESMA RPC (`ingestao_soma_por_ano`) — nunca uma ponta do parser contra a
+    // base viva (a lição mais cara da M4, que apareceu em três lugares). Por isso o "antes" é
+    // medido AGORA, antes de aplicar — não a partir de `statusAtualDaBase`/`diff`, que é outra
+    // grandeza (total geral, sem quebra por ano).
+    const somaAnoAntes = await somaPorAno(base)
     const aplicacao = await aplicarComTraducaoDeErro(
       base, parseado.linhasParaAplicar, parseado.arquivoOrigem, cargaId, parseado.checksums, camposPivotDemonstrativo,
     )
+
+    // A promoção já aconteceu (senão `aplicarComTraducaoDeErro` teria lançado antes daqui) —
+    // mede o "depois" com a MESMA RPC, e a decisão do alarme é uma função PURA
+    // (`calcularDiffPorAno`, sem rede/banco). Falha em qualquer ponta da medição degrada em
+    // silêncio (loga e segue): o alarme de ano fechado é camada adicional, nunca pode reprovar
+    // uma carga que já foi aplicada com sucesso.
+    const somaAnoDepois = await somaPorAno(base)
+    const diffAno = somaAnoAntes && somaAnoDepois
+      ? calcularDiffPorAno(base, cargaId, somaAnoAntes, somaAnoDepois, anoCorrenteSP())
+      : null
+    if (!diffAno) {
+      console.error(
+        `[ingestao/carga] carga ${cargaId} (${base}): não foi possível medir a alteração por ano ` +
+        '(falha ao ler a soma por ano antes e/ou depois) — o alarme "ano fechado alterado" não foi avaliado desta vez.',
+      )
+    }
+    const diffComAno: DiffCarga = {
+      ...diff,
+      por_ano: diffAno?.porAno ?? null,
+      anos_fechados_alterados: diffAno ? [...diffAno.anosFechadosAlterados] : null,
+    }
+    // Um alarme por ano fechado alterado — a chave de EVENTO inclui `carga_id` (migration 0280,
+    // header "estado × evento"): duas cargas seguidas mexendo no mesmo ano são DOIS fatos, não
+    // um incidente que a segunda reabriria.
+    for (const alarmeAno of diffAno?.alarmes ?? []) {
+      await dispararAlarmeDeEvento(alarmeAno, `${base}:${alarmeAno.ano}:${cargaId}`)
+    }
+
+    // `pares_novos` (Demonstrativo): até a M6, `promover_carga_demonstrativo` devolvia a
+    // contagem em `pares_novos` (jsonb), mas `ResultadoAplicacao` só a expunha embutida em
+    // PROSA dentro de `avisos[]` (`aplicar.ts#aplicarDemonstrativo`) — a resposta estruturada
+    // sempre respondia `pares_novos: 0`. A M6 propaga o NÚMERO real (`aplicacao.paresNovos`,
+    // `undefined` nas quatro bases que não têm bandeja — tratado como 0) e usa-o para decidir
+    // o alarme "par novo na bandeja" (anexo §4), com a mesma chave de evento do checksum falho
+    // (só `carga_id`: a bandeja não tem "ano").
+    const paresNovos = aplicacao.paresNovos ?? 0
+    if (precisaAlarmarParNovo(base, paresNovos)) {
+      const alarmeParNovo: AlarmeIngestao = { tipo: 'par_novo_bandeja', cargaId, paresNovos }
+      await dispararAlarmeDeEvento(alarmeParNovo, cargaId)
+    }
 
     const resultado: ResultadoCarga = {
       ok: true, carga_id: cargaId, base, status: 'aplicada', idempotente: false,
       arquivos: montarArquivosResposta(entrada, parseado.porArquivo),
       parse: {
         linhas: parseado.totalLinhas, rejeitadas_por_data: parseado.datasRejeitadasN,
-        // `pares_novos` (Demonstrativo): `promover_carga_demonstrativo` devolve a contagem em
-        // `pares_novos` (jsonb), mas `ResultadoAplicacao` só a expõe embutida em PROSA dentro de
-        // `avisos[]` (`aplicar.ts#aplicarDemonstrativo`) — manter só um formato evita dois
-        // números vizinhos (este campo numérico e o texto do aviso) discordarem se alguém alterar
-        // um sem o outro (skill `contrato-rpc-front` §5). Fica 0 aqui; o aviso em texto (quando
-        // houver par novo) já vai em `alarmes`.
-        pares_novos: 0,
+        pares_novos: paresNovos,
         soma: somaCentavosNovo === null ? null : somaCentavosNovo / 100,
         linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
       },
-      diff,
+      diff: diffComAno,
       alarmes: [...alarmesBase, ...aplicacao.avisos],
       promocao: {
         checksums_conferidos: aplicacao.checksumsConferidos,
@@ -916,7 +981,7 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     const conclusao = await concluirCarga({
       cargaId, status: 'aplicada', linhas: parseado.totalLinhas,
       checksumsConferidos: parseado.checksums.length, checksumsFalhos: 0,
-      rejeitadasPorData: parseado.datasRejeitadasN, paresNovos: 0, diff, resposta: resultado, duracaoMs,
+      rejeitadasPorData: parseado.datasRejeitadasN, paresNovos, diff: diffComAno, resposta: resultado, duracaoMs,
     })
     if (!conclusao.ok) {
       // "Nunca em silêncio" (anexo §2) — mas a carga já foi aplicada: o dado está no banco,
@@ -938,6 +1003,17 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
       })
       if (!conclusao.ok) {
         console.error(`[ingestao/carga] carga ${cargaId} (${base}) rejeitada/erro, E o log também falhou:`, conclusao.erro)
+      }
+      // M6 (anexo §4): "checksum falho" cobre TODA rejeição de CONTEÚDO — checksum e as demais
+      // 422 (não auth: 401/403; não lock: 409 `CARGA_EM_ANDAMENTO`; não bug interno: 500
+      // `ERRO_INTERNO`, que não é "conteúdo", é defeito). Só dispara para carga CONFIRMADA
+      // (`entrada.confirmar`): a conferência nunca grava linha em `ingestao.carga` e não é,
+      // por definição do anexo §5 ("carga é o que aplica"), um evento de carga.
+      if (ehRejeicaoDeConteudo(cargaErro.http)) {
+        const alarme: AlarmeIngestao = {
+          tipo: 'checksum_falho', base, cargaId, motivo: cargaErro.message, codigo: cargaErro.codigo,
+        }
+        await dispararAlarmeDeEvento(alarme, cargaId)
       }
     }
     if (err instanceof ErroCarga) throw err

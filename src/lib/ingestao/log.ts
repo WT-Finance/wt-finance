@@ -142,6 +142,19 @@ export interface ConcluirCargaParams {
 
 /** Grava o resultado final de uma carga — contrato §2.3 passos 4-10. */
 export async function concluirCarga(p: ConcluirCargaParams): Promise<ResultadoLog> {
+  // NUNCA lança (v6.0.0/M6, achado do revisor): `processarCarga` chama isto DEPOIS de a promoção
+  // ter acontecido. Uma exceção aqui (rede, não `{error}` devolvido) subiria para o `catch` da
+  // carga, que chamaria `concluirCarga` DE NOVO com status `erro` — gravando como falha uma carga
+  // que já está aplicada no banco. `{ ok: false }` é o que o chamador já sabe tratar.
+  try {
+    return await concluirCargaSemProtecao(p)
+  } catch (err) {
+    console.error(`[ingestao/log] ingestao_carga_concluir(${p.cargaId}) lançou — a carga em si NÃO é desfeita por isto:`, err)
+    return { ok: false, erro: err instanceof Error ? err.message : 'ingestao_carga_concluir lançou.' }
+  }
+}
+
+async function concluirCargaSemProtecao(p: ConcluirCargaParams): Promise<ResultadoLog> {
   const { data, error } = await rpc()('ingestao_carga_concluir', {
     p_carga_id: p.cargaId,
     p_status: p.status,

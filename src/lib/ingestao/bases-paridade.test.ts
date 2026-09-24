@@ -81,3 +81,41 @@ describe('paridade — bases do contrato de ingestão: bases.ts ↔ ingestao.pro
     expect(basesDoCheckCarga(SQL_0277, 'ingestao_promocao_base_valida')).toEqual([...BASES_INGESTAO])
   })
 })
+
+// A QUINTA e a SEXTA repetições (0280, M6): o CHECK `ingestao_expectativa_alvo_valido` (as bases
+// que o vigia pode esperar) e a validação `BASE_INVALIDA` de `ingestao_soma_por_ano` (a medida do
+// alarme "ano fechado alterado"). Base nova sem estas duas nasceria sem cadência e sem o alarme.
+// O mesmo CHECK repete os PROCESSOS de `ingestao.execucao` — e uma divergência ali deixaria o
+// vigia esperando um processo que não consegue gravar execução (ou o contrário).
+describe('paridade — bases e processos da ingestão: 0280 (expectativa, soma por ano, execução)', () => {
+  const SQL_0280 = readFileSync(join(RAIZ, 'supabase/migrations/0280_ingestao_execucao_alarmes_vigia.sql'), 'utf8')
+
+  function listaDoRamo(ramo: 'processo' | 'base'): string[] {
+    const m = SQL_0280.match(
+      new RegExp(`CONSTRAINT ingestao_expectativa_alvo_valido CHECK \\([\\s\\S]*?WHEN '${ramo}' THEN alvo IN \\(([\\s\\S]*?)\\)`),
+    )
+    expect(m, `ramo '${ramo}' do CHECK ingestao_expectativa_alvo_valido não encontrado`).not.toBeNull()
+    return [...m![1].matchAll(/'([a-z-]+)'/g)].map(x => x[1])
+  }
+
+  it('o ramo base do CHECK da expectativa lista exatamente BASES_INGESTAO (mesma ordem)', () => {
+    expect(listaDoRamo('base')).toEqual([...BASES_INGESTAO])
+  })
+  it('o CHECK da expectativa fecha em ELSE false (CASE sem ELSE é fail-open sob CHECK)', () => {
+    const inicio = SQL_0280.indexOf('CONSTRAINT ingestao_expectativa_alvo_valido')
+    expect(SQL_0280.slice(inicio, SQL_0280.indexOf('END', inicio))).toMatch(/ELSE false\s*$/)
+  })
+  it('a validação nomeada BASE_INVALIDA de ingestao_soma_por_ano usa a mesma lista', () => {
+    const indices = todosIndices(SQL_0280, "RAISE EXCEPTION 'BASE_INVALIDA")
+    expect(indices.length, 'esperada exatamente 1 validação BASE_INVALIDA na 0280 (ingestao_soma_por_ano)').toBe(1)
+    const bloco = SQL_0280.slice(indices[0] - 400, indices[0])
+    for (const b of BASES_INGESTAO) expect(bloco, `${b} ausente da validação BASE_INVALIDA`).toContain(`'${b}'`)
+  })
+  it('os processos esperáveis são exatamente os processos que gravam execução (mesma ordem)', () => {
+    const m = SQL_0280.match(/CONSTRAINT ingestao_execucao_processo_valido CHECK \(\s*processo IN \(([\s\S]*?)\)\s*\)/)
+    expect(m, 'CHECK ingestao_execucao_processo_valido não encontrado').not.toBeNull()
+    const daExecucao = [...m![1].matchAll(/'([a-z-]+)'/g)].map(x => x[1])
+    expect(daExecucao).toHaveLength(4)
+    expect(listaDoRamo('processo')).toEqual(daExecucao)
+  })
+})

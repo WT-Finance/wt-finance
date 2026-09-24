@@ -1,4 +1,5 @@
 import 'server-only'
+import { emailValido } from './destinatarios'
 
 // v4.24.0 — Configuração SMTP lida 100% do ambiente (.env.local / Vercel).
 // ZERO HARDCODE: host/porta/usuário/senha/REMETENTE vêm só de process.env — nenhum
@@ -79,4 +80,20 @@ export function emailAmbiente(): EmailModo {
 /** Destino do override em MODO TESTE. Ausente → o envio é recusado (fail-closed), nunca vaza. */
 export function getEmailTesteDestino(): string | null {
   return process.env.EMAIL_TESTE_DESTINO?.trim() || null
+}
+
+// ── v6.0.0/M6 — destinatários REAIS do alarme de ingestão ─────────────────────────────────
+/**
+ * Destinatários reais do alarme de ingestão (usados só em MODO REAL), lista separada por
+ * VÍRGULA em `INGESTAO_ALARME_DESTINOS` — separador diferente de `splitDestinatarios`
+ * (';') de propósito: aquela é a regra do CAMPO de cadastro "ENVIAR PARA" de um cliente;
+ * esta é uma lista de OPERAÇÃO (equipe interna), configurada no ambiente. Deduplicado,
+ * e-mails inválidos descartados silenciosamente (mesma regra de validação de
+ * `destinatarios.ts`). Ausente/vazia → lista vazia — o chamador recusa fail-closed, nunca
+ * envia para "ninguém" silenciosamente.
+ */
+export function getIngestaoAlarmeDestinos(): string[] {
+  const partes = (process.env.INGESTAO_ALARME_DESTINOS ?? '')
+    .split(',').map(s => s.trim()).filter(Boolean)
+  return [...new Set(partes.filter(emailValido))]
 }
