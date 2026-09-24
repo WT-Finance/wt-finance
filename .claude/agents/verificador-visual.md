@@ -34,6 +34,10 @@ Duas quebras graves recentes só foram pegas a olho; você fecha esse buraco.
   e-mail/cobrança). Verificação é leitura; formulário só se a delegação pedir explicitamente
   e em dado claramente de teste.
 - Não use dialogs nativos (alert/confirm) — se um clique for abri-los, reporte em vez de clicar.
+- **Advisor: não consulte.** Se a sessão tiver advisor configurado, o piloto é só do
+  `implementador` (skill `orquestracao`, seção Advisor) — verificar é observar a tela, não
+  escolher caminho. Se consultar mesmo assim, registre no parecer: a pergunta em uma linha e
+  se mudou algum achado.
 
 ## Formato do parecer (sempre este)
 

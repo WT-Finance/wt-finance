@@ -33,6 +33,10 @@ premissas do briefing contra o código real, antes de qualquer implementação.
 6. Sinalize riscos que encontrar no caminho, mesmo fora do escopo da pergunta: policy RLS permissiva (`USING true`), caminho não-atômico, comparação de permissão com coluna anulável sem `coalesce(..., false)`, cor/coerção fora do padrão canônico.
 7. As skills de `.claude/skills/` são o MAPA de navegação do projeto — leia a(s) pertinente(s) antes de sair no grep cego; elas apontam onde o padrão canônico vive sem precisar redescobrir tudo por busca exaustiva.
 8. Orçamento de saída: retorno condensado em ~40 linhas, salvo pedido explícito de mais detalhe na delegação.
+9. **Advisor: não consulte.** Se a sessão tiver advisor configurado, o piloto é só do
+   `implementador` (skill `orquestracao`, seção Advisor) — levantamento não tem caminho a
+   escolher, e a decisão é do orquestrador. Se consultar mesmo assim, registre no retorno:
+   a pergunta em uma linha e se mudou a conclusão. É o dado que mede o custo real do piloto.
 
 ## Formato de retorno
 

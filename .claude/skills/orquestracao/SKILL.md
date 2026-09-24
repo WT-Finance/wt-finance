@@ -35,6 +35,47 @@ de subagente; o ruído (leituras, buscas, tentativas) morre no contexto de quem 
   de browser, APÓS gates e revisores, antes do checkpoint humano. **Não sobe servidor**: o
   orquestrador inicia/derruba o `npm run dev` (serializado) e passa a URL na delegação.
 
+## Advisor (piloto desde 24/09/2026 — só o `implementador` consulta)
+
+O advisor é um segundo modelo que o agente consulta por conta própria em pontos de decisão;
+ele recebe a transcrição **inteira** e devolve orientação. Doc oficial:
+`code.claude.com/docs/en/advisor`. Decisão do Yan: **Fable como advisor dos implementadores
+Sonnet** — onde a leitura literal de uma delegação vira defeito (v5.7.2) e onde a transcrição
+é curta, então cada consulta sai barata.
+
+**O que a máquina NÃO segura — a restrição é prosa, não enforcement:**
+- O advisor é **por sessão** (`advisorModel` no settings, `/advisor`, `--advisor`). Não existe
+  campo no frontmatter dos agentes; **todo subagente herda** e passa pela checagem de
+  pareamento contra o próprio modelo. Sonnet aceita Fable; **o orquestrador em Fable ou Opus
+  5.5 também aceita** (Fable com Fable é pareamento listado pela doc).
+- Não há configuração que limite ou force chamadas. O "só implementador" vive nas instruções
+  de cada arquivo em `.claude/agents/` — que competem com a orientação embutida da própria
+  ferramenta ("consulte antes de trabalho substantivo e antes de declarar concluído").
+- O `/advisor` grava no settings do **usuário** (`~/.claude/settings.json`): vale para toda
+  sessão e todo repositório da máquina, não só para o Janus.
+
+**Orquestrador: não consulta o advisor**, salvo pedido explícito do usuário. Três motivos:
+cada chamada relê a transcrição inteira **sem cache** na tarifa do advisor, e uma sessão de
+versão chega a centenas de milhares de tokens; em Fable, o advisor é o mesmo modelo; e a
+segunda opinião independente já existe — o `revisor`, de contexto limpo. O advisor lê a
+mesma transcrição e **herda o mesmo enquadramento**: complementa, não substitui revisor nem
+auto-auditoria.
+
+**`implementador`: três momentos** (detalhe no arquivo do agente) — antes de escolher caminho
+que a delegação não fixou; depois de a mesma abordagem falhar duas vezes; antes de retornar
+entrega que toca dinheiro, permissão, banco ou atomicidade. **Os outros quatro agentes não
+consultam.**
+
+**O advisor não autoriza nada.** Dúvida de produto ou de arquitetura continua voltando ao
+orquestrador (e, se produto, ao usuário). Conselho que contradiz a delegação ou uma skill
+perde para elas e vira achado no retorno.
+
+**Medição.** Todo agente registra no retorno as consultas que fez (momento, pergunta, se mudou
+o rumo) — inclusive os que não deveriam consultar, porque é assim que se vê o custo real. O
+orquestrador consolida no out-briefing da versão: nº de consultas por agente, quantas mudaram
+o rumo, e o custo em `/usage`. Ao fim da primeira versão com o piloto, decidir com o Yan:
+manter, ajustar os momentos, restringir o alcance ao projeto ou desligar (`/advisor off`).
+
 ## Protocolo de delegação
 
 Subagentes **não veem o histórico da sessão** — cada delegação é autocontida:

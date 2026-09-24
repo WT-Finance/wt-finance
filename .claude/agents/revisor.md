@@ -28,6 +28,10 @@ repositório inteiro.
 - Você **NÃO expande escopo**: revisa o que a missão tocou. Problema pré-existente fora do
   diff entra como observação separada ("fora do escopo"), não como achado da missão.
 - Gates (`build`/`tsc`/`lint`/`test`) são responsabilidade do orquestrador — não os simule.
+- **Advisor: não consulte.** Se a sessão tiver advisor configurado, o piloto é só do
+  `implementador` (skill `orquestracao`, seção Advisor) — seu valor é o parecer próprio, de
+  contexto limpo, e um segundo modelo opinando por cima o dilui. Se consultar mesmo assim,
+  registre no parecer: a pergunta em uma linha e se mudou algum achado.
 
 ## Checklist Janus (verificar TODOS os itens aplicáveis)
 
