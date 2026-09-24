@@ -9,14 +9,26 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-15.
+Última atualização: 2026-09-24.
 
 ---
 
 ## Em voo
 
-**Nada.** A v5.11.0 foi mergeada (PR #273, 15/09 às 12:55) e está em produção. A frente está
-livre para a próxima versão — `/nova-versao <vX-Y>`.
+**v5.12.0 — nome do produto no espelho Monde** (branch `fix/v5-12-0-produto-monde`, PR aberto,
+aguardando merge). Deve entrar **antes** da v6.0.0, que está em voo na própria branch
+(`feat/v6-0-0-fundacao-ingestao`) e vai precisar mesclar a `main` — conflito só de texto (este
+arquivo, a skill `banco-e-rpc`, changelogs e `package.json`); a v6 não toca `src/lib/monde/`.
+
+> 🔴 **Pós-merge da v5.12.0 — dois atos, os dois do Yan:**
+> 1. **Junho não se corrige sozinho.** A reconciliação noturna cobre os 3 últimos meses (jul–set);
+>    junho precisa de UMA chamada, logado como admin, **depois** do deploy:
+>    `https://wt-janus.vercel.app/api/monde/ingest?mode=window&from=2026-06-01&to=2026-06-30`
+> 2. **Conferir no dia seguinte** o Comparativo de Metas (Weddings): "Meta de Assessorias" de
+>    jun · jul · ago · set deve mostrar **5 · 4 · 2 · 4**. Consulta de conferência no out-briefing.
+>
+> Chamar a janela ANTES do deploy não faz nada (com o código velho o hash é o mesmo e a venda é
+> pulada) — inofensivo, mas não corrige.
 
 > 🔴 **Pendência do Yan, uma só, herdada da v5.11.0:** decidir se `PRIORIDADE_INICIAL`
 > (`src/lib/auth/areas.ts`) passa a incluir as áreas da Estante. Hoje um colaborador cujo **único**
