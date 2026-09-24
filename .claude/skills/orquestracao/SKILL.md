@@ -71,8 +71,10 @@ consultam.**
 orquestrador (e, se produto, ao usuário). Conselho que contradiz a delegação ou uma skill
 perde para elas e vira achado no retorno.
 
-**Medição.** Todo agente registra no retorno as consultas que fez (momento, pergunta, se mudou
-o rumo) — inclusive os que não deveriam consultar, porque é assim que se vê o custo real. O
+**Medição.** Todo agente encerra o retorno com a linha `Advisor:` — "nenhuma" ou as consultas
+(pergunta, se mudou o rumo) —, inclusive os que não deveriam consultar, porque é assim que se
+vê o custo real. Só o `implementador` acrescenta o **momento** (1, 2, 3 ou "fora do
+protocolo"); para os demais, qualquer consulta já é fora do protocolo. O
 orquestrador consolida no out-briefing da versão: nº de consultas por agente e quantas mudaram
 o rumo. **Custo é pendência do Yan**, não do orquestrador: o `/usage` é comando que só o humano
 digita e mostra o total da sessão, sem separar por agente — o out-briefing deixa o campo
