@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   parseVendasProdutoRows, classificarSetorMicro, classificarSetorMacro, semanaDoAno,
+  vendasDistintasQueEntramNoFato,
 } from './parsers/vendas-produto'
 import {
   lerMatrizXlsx, porCabecalho, fixturesAusentes, motivoDoPulo, EXIGIR_FIXTURES,
@@ -88,6 +89,18 @@ describe.skipIf(AUSENTES.length > 0)('oráculo — Vendas por Produto', () => {
     expect(resultado.linhas.length - semWelcome.length).toBe(LINHAS_CRU - LINHAS_TRATADO)
   })
 
+  it('o "depois" do diff de Vendas conta as vendas distintas do TRATADO — as que viram fato_venda', () => {
+    // Achado da 1ª carga real (M9): o modal dizia "29.458 → 29.599" porque contava também as 141
+    // vendas Welcome, que entram no cru e ficam fora de fato_venda. A grandeza certa é a do
+    // tratado (o que a produção tem desde 21/09), sem número mágico: derivada dele.
+    if (!resultado.ok) throw new Error(resultado.mensagem)
+    const vendasDoTratado = new Set(
+      tratado.map((l) => String(l['Venda Nº'] ?? '').trim()).filter((n) => n !== ''),
+    ).size
+    expect(vendasDistintasQueEntramNoFato(resultado.linhas)).toBe(vendasDoTratado)
+    expect(vendasDoTratado).toBe(29_458)
+  })
+
   it('célula a célula contra o tratado — só `Intermediário` diverge, e por construção', () => {
     if (!resultado.ok) throw new Error(resultado.mensagem)
     const meus = resultado.linhas.filter((l) => l.setor_macro !== 'Welcome')
@@ -167,6 +180,19 @@ describe.skipIf(AUSENTES.length > 0)('oráculo — Vendas por Produto', () => {
 })
 
 // ── Sondas: cada regra VISTA reprovando por mutante ──────────────────────────────────────────
+
+describe('vendasDistintasQueEntramNoFato — o predicado da view, em TS', () => {
+  it('Welcome sai; setor_macro nulo ENTRA (IS DISTINCT FROM); venda vazia sai; itens da mesma venda contam 1', () => {
+    expect(vendasDistintasQueEntramNoFato([
+      { venda_numero: '1', setor_macro: 'Trips' },
+      { venda_numero: '1', setor_macro: 'Trips' },
+      { venda_numero: '2', setor_macro: null },
+      { venda_numero: '3', setor_macro: 'Welcome' },
+      { venda_numero: '', setor_macro: 'Trips' },
+      { venda_numero: null, setor_macro: 'Trips' },
+    ])).toBe(2)
+  })
+})
 
 describe('sondas do parser de Vendas (mutante ⇒ reprova)', () => {
   it('`Setor Micro`: a classificação depende de a string estar APARADA', () => {

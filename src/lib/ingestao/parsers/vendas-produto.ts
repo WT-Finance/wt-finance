@@ -181,6 +181,24 @@ export interface ArquivoVendas {
  * semanas de 2024. Está portado fielmente porque a coluna já existe na base e mudar a regra
  * mudaria número em tela — mas fica registrado como fragilidade do desenho legado.
  */
+/**
+ * Vendas distintas que vão existir em `analytics.fato_venda` depois da carga: `Venda Nº` não
+ * vazio e Setor Macro diferente de Welcome — o predicado de `analytics.vendas_excel_para_fato`
+ * (0277), em que `null` passa (`IS DISTINCT FROM`). É a grandeza do "depois" do diff de Vendas:
+ * contar também as Welcome fazia o modal da 1ª carga real (M9) dizer "29.458 → 29.599" numa carga
+ * que deixa o `fato_venda` em 29.458.
+ */
+export function vendasDistintasQueEntramNoFato(
+  linhas: readonly Pick<VendaProdutoCru, 'venda_numero' | 'setor_macro'>[],
+): number {
+  return new Set(
+    linhas
+      .filter((l) => l.setor_macro !== 'Welcome')
+      .map((l) => l.venda_numero)
+      .filter((n): n is string => n !== null && n !== ''),
+  ).size
+}
+
 export function semanaDoAno(iso: string, menorDataIso: string): number | null {
   if (iso.length < 10) return null
   const ano = Number(iso.slice(0, 4))

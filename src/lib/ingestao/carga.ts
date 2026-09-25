@@ -21,7 +21,9 @@ import {
 import { formatoPeloNome, lerMatriz, type FormatoArquivo } from './matriz'
 import type { Matriz, Checksum, ParseErro } from './parsers/comum'
 import { somaCentavos } from './parsers/comum'
-import { parseVendasProdutoRows, type ArquivoVendas, type VendaProdutoCru } from './parsers/vendas-produto'
+import {
+  parseVendasProdutoRows, vendasDistintasQueEntramNoFato, type ArquivoVendas, type VendaProdutoCru,
+} from './parsers/vendas-produto'
 import { parseDemonstrativoCruRows, type DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import { parseLancamentosCategoriaRows } from './parsers/lancamentos-categoria'
 import { parseLancamentosOperacaoRows } from './parsers/lancamentos-operacao'
@@ -537,9 +539,12 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
         totalLinhas: resultado.linhas.length,
         // O "depois" do diff é VENDA distinta, não linha de item — é o que
         // `get_upload_status().vendas.total` (COUNT de `analytics.fato_venda`) mede do outro lado.
-        linhasNaBase: new Set(
-          resultado.linhas.map((l) => l.venda_numero).filter((n): n is string => n !== null && n !== ''),
-        ).size,
+        // E só as vendas que o transform LÊ: as de Setor Macro = Welcome entram no cru e ficam fora
+        // de `fato_venda` pela view `analytics.vendas_excel_para_fato` (decisão 8). Contá-las fazia o
+        // modal dizer "29.458 → 29.599" numa carga que deixa o `fato_venda` em 29.458 — a mesma
+        // confusão de grandeza que a M4 pegou três vezes, reaparecendo na 1ª carga real (M9).
+        // `!== 'Welcome'` com `null` passando é o `IS DISTINCT FROM` da view.
+        linhasNaBase: vendasDistintasQueEntramNoFato(resultado.linhas),
         checksums: resultado.checksums,
         datasRejeitadasN: resultado.datasRejeitadas.length,
         diagnostico: resultado.diagnostico,

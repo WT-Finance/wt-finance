@@ -44,6 +44,23 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
    5 bases tem ~20 MB → ~1 GB/ano no ritmo semanal de hoje, ~7 GB/ano com a RPA diária; o custo não
    pesou, e o Yan não vê motivo para guardar o arquivo por muito tempo. Vai para o ADR no fechamento.
 
+**M9 em curso (25/09) — cargas reais pela preview da branch, com os arquivos crus de 21/09** (a
+produção atual veio dos TRATADOS desses mesmos arquivos, carregados em 21/09 14:13–14:16 UTC — então
+o esperado é diferença ≈ 0). Fotos "antes" tiradas (`$CLAUDE_JOB_DIR/tmp/foto-m9-antes.json` e
+`dre-caixa-antes.json` — fora do repo; o resultado vai para o anexo da M9).
+- **1ª carga de Vendas RECUSADA, base intacta:** a guarda de setor de `validar_carga_staging` (0132)
+  cobrava as 210 linhas Welcome contra `dim_setor` — a M5/0283 levaram o filtro à leitura, esta guarda
+  lê a STAGING e ninguém a enumerou. **0284 aplicada** (gate verde 79/79, `revisor-db` aprovou): a
+  guarda olha só o que o transform lê. Provado sobre a staging real (48.862 linhas): antes
+  `setor_fora: 210` (todas Welcome), depois `ok: true, setor_fora: 0`. Baseline regenerado (diff =
+  hash da função + `ultima_migration`).
+- **Rótulo do modal corrigido:** o "depois" contava as vendas Welcome ("29.458 → 29.599"); agora
+  conta o que vira `fato_venda` — o oráculo prova 29.458 com os crus de 21/09.
+- Dívida registrada (MÉDIO do `revisor-db`): a guarda de DATA de `validar_carga_staging` e de
+  `promover_carga_vendas` ainda olha a staging inteira — uma linha Welcome datada fora de `dim_data`
+  reprovaria a carga toda. Não dispara hoje (`fora_do_range: 0`). Idem o denominador do aviso de
+  `operacao_propria`. Escopar ao predicado Welcome numa migration futura.
+
 **Pré-condições da M9 (deploy intermediário + 5 cargas reais) — quase todas atos do Yan:**
 1. `SUPABASE_INGESTOR_SENHA` no ambiente da Vercel — sem ela a carga LANÇA por desenho (fail-closed
    da M5); a M9 é a primeira vez que o caminho real roda em produção.
@@ -471,7 +488,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.12.0** (PR #275, mergeado 24/09 às 15:44 — sem migration; o `main` segue na 0272). Esta branch ainda não trouxe o `main`: no fechamento, conflito esperado em `WORKING-CONTEXT.md`, skill `banco-e-rpc`, `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` — nenhum em código da ingestão |
-| Última migration aplicada | **0283** (v6.0.0/M7a — Welcome em todos os leitores de Vendas) · próxima livre: **0284** |
+| Última migration aplicada | **0284** (v6.0.0/M9 — validação de Vendas ignora Welcome) · próxima livre: **0285** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
 | Suíte | **1.657 testes**, 99 arquivos, zero falha, zero `skip` (25/09, fim da M8) |
 
