@@ -87,6 +87,22 @@ function ehPlaceholderDoScrape(v: unknown): boolean {
 }
 
 /**
+ * Este CSV é SAÍDA DO R (`write.csv` da raspagem), não export do Monde: valor ausente chega como o
+ * texto `NA`. Medido no cru de 21/09: 5.185 em `Lançamento N°`, 124 em `Venda`, 41 em
+ * `Liquidação` — e nenhum em `Valor`. Guardado como texto, o `NA` de `Lançamento N°` quebrou a
+ * promoção (`invalid input syntax for type bigint: "NA"`, 1ª carga real da M9) e apareceu no
+ * aviso do cruzamento como se fosse um número de lançamento; o `NA` de `Liquidação` era contado
+ * como "data fora da faixa" quando significa NÃO LIQUIDADO. O caminho antigo (`toNum`/data
+ * coercion no cliente) já os gravava como vazio — é o que a produção tem.
+ *
+ * NÃO se aplica a `Valor`: ali um `NA` seria formato quebrado, e a guarda de valor ilegível
+ * continua derrubando a carga.
+ */
+function semNaDoR(v: unknown): unknown {
+  return aparar(v) === 'NA' ? '' : v
+}
+
+/**
  * Índice `Número → Vencimento` a partir das bases vizinhas já parseadas.
  *
  * Precedência: **Aberto ganha de Movimentação**. Aberto é a base dos títulos ainda não
@@ -169,9 +185,9 @@ export function parseLancamentosOperacaoRows(
     const vazia = ehPlaceholderDoScrape(linha[indices.valor as number])
     if (vazia) semLancamento++
 
-    const numero = apararOuNulo(linha[indices.lancamento_numero as number])
+    const numero = apararOuNulo(semNaDoR(linha[indices.lancamento_numero as number]))
     const liquidacao = vazia ? null : lerData(
-      linha[indices.liquidacao as number], 'liquidacao', i + 1, datasRejeitadas, opcoes.hoje)
+      semNaDoR(linha[indices.liquidacao as number]), 'liquidacao', i + 1, datasRejeitadas, opcoes.hoje)
 
     // O vencimento vem de fora do arquivo. Sem `Número` não há como cruzar — e herdar por
     // casamento de nulo é o defeito que `indiceDeVencimentos` existe para não repetir.
@@ -197,7 +213,7 @@ export function parseLancamentosOperacaoRows(
     linhas.push({
       linha_origem:      i + 1,
       lancamento_numero: numero,
-      venda_numero:      apararOuNulo(linha[indices.venda_numero as number]),
+      venda_numero:      apararOuNulo(semNaDoR(linha[indices.venda_numero as number])),
       pessoa:            apararOuNulo(linha[indices.pessoa as number]),
       descricao:         apararOuNulo(linha[indices.descricao as number]),
       liquidacao,

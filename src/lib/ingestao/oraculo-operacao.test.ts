@@ -49,6 +49,12 @@ function txt(v: unknown): string | null {
   const s = String(v).trim()
   return s === '' ? null : s
 }
+/** O tratado também é saída do R: `NA` é o ausente dele. O parser grava ausente (`semNaDoR`, 1ª carga
+ *  real da M9 — o texto "NA" quebrava o cast para bigint), então a comparação traduz o lado do R. */
+function txtR(v: unknown): string | null {
+  const s = txt(v)
+  return s === 'NA' ? null : s
+}
 
 it('as fixtures do oráculo estão presentes (ou o pulo está declarado)', () => {
   if (EXIGIR_FIXTURES) {
@@ -84,8 +90,8 @@ describe.skipIf(AUSENTES.length > 0)('oráculo — Lançamentos por Operação',
     resultado.linhas.forEach((meu, i) => {
       const dele = tratado[i]
       const pares: [string, unknown, unknown][] = [
-        ['Lançamento N°', meu.lancamento_numero, txt(dele['Lançamento.N.'])],
-        ['Venda',         meu.venda_numero,      txt(dele['Venda'])],
+        ['Lançamento N°', meu.lancamento_numero, txtR(dele['Lançamento.N.'])],
+        ['Venda',         meu.venda_numero,      txtR(dele['Venda'])],
         ['Pessoa',        meu.pessoa,            txt(dele['Pessoa'])],
         ['Descrição',     meu.descricao,         txt(dele['Descrição'])],
         ['Liquidação',    meu.liquidacao,        iso(dele['Liquidação'])],
@@ -126,16 +132,17 @@ describe.skipIf(AUSENTES.length > 0)('oráculo — Lançamentos por Operação',
   it('o cruzamento do contrato §4: todo Número sem liquidação existe nas bases vizinhas', () => {
     if (!resultado.ok || resultado.cruzamento === undefined) throw new Error('sem cruzamento')
     const { semLiquidacao, encontrados, ausentes, linhasSemLiquidacao } = resultado.cruzamento
-    // 4.006 NÚMEROS distintos em 5.019 linhas — o mesmo lançamento aparece em mais de uma
+    // 4.005 NÚMEROS distintos em 5.019 linhas — o mesmo lançamento aparece em mais de uma
     // operação (o briefing §2.2 registra 571 lançamentos em duas operações). O briefing falava
-    // em 4.008 números; a diferença de dois está em linhas sem `Número`, que não entram no
-    // cruzamento porque não há o que cruzar.
-    expect(semLiquidacao).toBe(4_006)
+    // em 4.008 números; a diferença está em linhas sem `Número`, que não entram no cruzamento
+    // porque não há o que cruzar. Até a M9 eram 4.006: o texto "NA" do R contava como um número
+    // (e era o único "ausente" do aviso) — é ausente, e sai (`semNaDoR`).
+    expect(semLiquidacao).toBe(4_005)
     expect(linhasSemLiquidacao).toBe(5_019)
 
     // A régua do contrato §4 é 4.005 encontrados com baseline de 3 ausentes. O cruzamento novo
-    // (Aberto ∪ Movimentação, que substitui as oito planilhas anuais) acerta os mesmos 4.005 e
-    // deixa UM de fora, não três — cobre melhor do que o desenho previa.
+    // (Aberto ∪ Movimentação, que substitui as oito planilhas anuais) acerta os 4.005 e não deixa
+    // NENHUM de fora — o único "ausente" que existia era o texto "NA" do R.
     expect(encontrados).toBe(4_005)
     expect(ausentes.length).toBe(semLiquidacao - encontrados)
     expect(ausentes.length).toBeLessThanOrEqual(3)
@@ -240,6 +247,29 @@ describe('sondas do parser de Operação (mutante ⇒ reprova)', () => {
     if (r.ok) return
     expect(r.codigo).toBe('ESTRUTURA_INESPERADA')
     expect(r.mensagem).toContain('valor ilegível')
+  })
+
+  it('"NA" do R em Lançamento N°, Venda e Liquidação é AUSENTE — não vira número, nem data rejeitada', () => {
+    // 1ª carga real (M9): o texto "NA" guardado em lancamento_numero quebrou a promoção no cast
+    // para bigint, e o "NA" de Liquidação era contado como data fora da faixa.
+    const m = csvMinimo({ numero: 'NA' })
+    m[1][1] = 'NA'   // Venda
+    m[1][4] = ' NA ' // Liquidação (com espaço: aparado antes de comparar)
+    const r = parseLancamentosOperacaoRows(m as Matriz, new Map([['NA', '2026-03-10']]), { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.linhas[0].lancamento_numero).toBeNull()
+    expect(r.linhas[0].venda_numero).toBeNull()
+    expect(r.linhas[0].liquidacao).toBeNull()
+    expect(r.linhas[0].vencimento).toBeNull() // "NA" no índice NÃO casa — sem número, sem cruzamento
+    expect(r.datasRejeitadas).toHaveLength(0)
+    expect(r.cruzamento?.semLiquidacao).toBe(0)
+  })
+
+  it('CONTROLE: "NA" no VALOR continua derrubando a carga', () => {
+    const r = parseLancamentosOperacaoRows(csvMinimo({ valor: 'NA' }) as Matriz, new Map(), { hoje: HOJE_SONDA })
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.codigo).toBe('ESTRUTURA_INESPERADA')
   })
 
   it('mutante: coluna obrigatória ausente ⇒ ESTRUTURA_INESPERADA', () => {

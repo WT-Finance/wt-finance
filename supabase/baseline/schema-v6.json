@@ -5879,7 +5879,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "ed05a6cb40080c7a119ad653a7b702c63c1bd2ffa9b6b2e96407ecd3d4d35d90",
+      "hash_corpo": "ad282e09f7f98050fd5e523ee6168162df119c865047497e3014a9c36aa791f8",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -15513,7 +15513,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0284",
+  "ultima_migration": "0285",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

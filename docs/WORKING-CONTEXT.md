@@ -56,6 +56,23 @@ o esperado é diferença ≈ 0). Fotos "antes" tiradas (`$CLAUDE_JOB_DIR/tmp/fot
   hash da função + `ultima_migration`).
 - **Rótulo do modal corrigido:** o "depois" contava as vendas Welcome ("29.458 → 29.599"); agora
   conta o que vira `fato_venda` — o oráculo prova 29.458 com os crus de 21/09.
+- **Vendas APLICADA (18:16 UTC)** e conferida: tudo o que as telas leem IGUAL linha a linha à
+  produção anterior; mudou só o previsto (210 Welcome no cru, `situação` 411/48.451, `Intermediário`,
+  10 datas de início de evento < 2015 vazias pela regra da faixa). **Movimentação APLICADA** (149/149,
+  56 datas da origem corrompidas vazias; DRE de caixa idêntica ao centavo). **Aberto APLICADO**
+  (96/96; 5 títulos com vencimento 2049 — cartas de crédito, possivelmente convenção de "sem prazo" —
+  ficaram sem vencimento e saíram do `fato_fluxo`, onde já eram pós-corte e nenhuma tela os mostrava;
+  **pergunta ao Yan/gerente**).
+- **1ª carga de Operação RECUSADA, base intacta:** `invalid input syntax for type bigint: "NA"`. O CSV
+  é saída do R: 5.185 "NA" em `Lançamento N°`, 124 em `Venda`, 41 em `Liquidação`; e 31 números de
+  PARCELA ("197848-2") quebrariam o mesmo cast em seguida. **0285 aplicada** (`revisor-db` aprovou):
+  o fato só converte inteiro puro, como o `toNum` do caminho antigo. Parser: `semNaDoR` nas 3 colunas.
+  **Ensaio da promoção inteira em transação revertida** sobre a staging real: roda sem erro; fato com
+  41.745 linhas, 5.371 `lancamento_n` nulos e a MESMA soma da produção. 79 lançamentos mudam de status
+  (futuro → realizado) em 41 operações de Weddings — **é o calendário**: com "hoje = 21/09" o fato novo
+  é idêntico ao da produção exceto 1 linha (o 203048, divergência conhecida). `venda_n` passa a ser
+  preenchido — o único leitor (`get_pipeline_weddings`) é rota órfã, sem tela; se reativada, mostraria
+  R$ 49,1 Mi contra R$ 48,4 Mi das outras telas.
 - Dívida registrada (MÉDIO do `revisor-db`): a guarda de DATA de `validar_carga_staging` e de
   `promover_carga_vendas` ainda olha a staging inteira — uma linha Welcome datada fora de `dim_data`
   reprovaria a carga toda. Não dispara hoje (`fora_do_range: 0`). Idem o denominador do aviso de
@@ -488,7 +505,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.12.0** (PR #275, mergeado 24/09 às 15:44 — sem migration; o `main` segue na 0272). Esta branch ainda não trouxe o `main`: no fechamento, conflito esperado em `WORKING-CONTEXT.md`, skill `banco-e-rpc`, `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` — nenhum em código da ingestão |
-| Última migration aplicada | **0284** (v6.0.0/M9 — validação de Vendas ignora Welcome) · próxima livre: **0285** |
+| Última migration aplicada | **0285** (v6.0.0/M9 — Operação só converte número inteiro) · próxima livre: **0286** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
 | Suíte | **1.657 testes**, 99 arquivos, zero falha, zero `skip` (25/09, fim da M8) |
 
