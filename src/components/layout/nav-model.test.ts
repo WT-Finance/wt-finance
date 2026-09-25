@@ -189,7 +189,7 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
   it('com todas as permissões, a ordem da sidebar é a da v5.6.1 (Gestão de Pessoas abaixo de Financeiro)', () => {
     expect(rotulos(TODAS)).toEqual([
       'Executiva', 'Performance', 'Metas', 'Financeiro', 'Gestão de Pessoas',
-      'Solicitações', 'Upload de Arquivos', 'Usuários e Acessos', 'Design System',
+      'Solicitações', 'Upload de Arquivos', 'Log de Ingestão', 'Usuários e Acessos', 'Design System',
     ])
   })
 

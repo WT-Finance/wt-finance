@@ -8,6 +8,7 @@ import { requireAreaAction } from '@/lib/auth/sessao'
 import { gerarSegredo, hashSegredo } from '@/lib/api-externa/segredo'
 import { listarLogApi } from '@/lib/api-externa/rpc'
 import type { ResultadoAcao, ResultadoCriarChave, LogChamada } from '@/components/admin/api-externa/tipos'
+import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // v5.4.0/M2 — server actions de Chaves de API. Guard de superfície
 // (requireAreaAction('solicitacoes')) + RPC com o cliente DE SESSÃO — o banco
@@ -71,10 +72,15 @@ function senhaRoboAleatoria(): string {
 
 export async function criarChaveApi(input: {
   plataforma: string
+  escopoBases?: BaseIngestao[]
 }): Promise<ResultadoCriarChave> {
   await requireAreaAction('solicitacoes')
   const plataforma = input.plataforma.trim()
   if (!plataforma) return { ok: false, erro: 'Informe a referência.' }
+  // Validação server-side (nunca confia no client): só bases reais de
+  // BASES_INGESTAO, deduplicadas — a RPC 0274 tem CHECK espelhado, mas
+  // recusar aqui evita a viagem ao banco por um valor forjado/duplicado.
+  const escopoBases = [...new Set((input.escopoBases ?? []).filter(ehBaseIngestao))]
 
   const admin = getAdminClient()
   const email = `integracao-${slugPlataforma(plataforma)}@janus.internal`
@@ -105,9 +111,10 @@ export async function criarChaveApi(input: {
   //    devolvido UMA VEZ para a UI mostrar (nunca mais recuperável depois disso).
   const segredo = gerarSegredo()
   const { error: erroChave } = await rpcSessao('api_chave_registrar', {
-    p_plataforma:   plataforma,
-    p_segredo_hash: hashSegredo(segredo),
-    p_robo_user_id: userId,
+    p_plataforma:    plataforma,
+    p_segredo_hash:  hashSegredo(segredo),
+    p_robo_user_id:  userId,
+    p_escopo_bases:  escopoBases,
   })
   if (erroChave) {
     // Best-effort: se a chave falhar DEPOIS do robô criado, remove o robô órfão
@@ -117,7 +124,7 @@ export async function criarChaveApi(input: {
   }
 
   revalidatePath('/admin/api-externa')
-  return { ok: true, segredo, plataforma }
+  return { ok: true, segredo, plataforma, escopoBases }
 }
 
 export async function revogarChaveApi(id: number): Promise<ResultadoAcao> {

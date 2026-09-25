@@ -1,6 +1,7 @@
 import 'server-only'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { hashSegredo } from './segredo'
+import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // v5.4.0/M3b — Camada HTTP da API externa de Solicitações: autenticação por chave
 // (header x-api-key), leitura de corpo com teto de tamanho, e tradução do erro de
@@ -22,6 +23,7 @@ export interface ChaveResolvida {
   id: number
   plataforma: string
   robo_user_id: string
+  escopo_bases: BaseIngestao[]
 }
 
 function comoChaveResolvida(x: unknown): ChaveResolvida | null {
@@ -32,6 +34,7 @@ function comoChaveResolvida(x: unknown): ChaveResolvida | null {
     id:               o.id,
     plataforma:       typeof o.plataforma === 'string' ? o.plataforma : '',
     robo_user_id:     typeof o.robo_user_id === 'string' ? o.robo_user_id : '',
+    escopo_bases:     Array.isArray(o.escopo_bases) ? o.escopo_bases.filter(ehBaseIngestao) : [],
   }
 }
 

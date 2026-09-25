@@ -22,10 +22,15 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 const RAW = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const HOST = RAW.replace(/\/+$/, '').replace(/\/rest\/v1$/, '')
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+// v6.0.0/M1: medição roda com a credencial de VERIFICAÇÃO (role `verificador`, EXECUTE só na
+// allowlist da 0273 — `get_dre_mensal` está nela porque ESTE script a chama). A credencial é o
+// LOGIN do usuário de máquina (`SUPABASE_VERIFICADOR_SENHA`); o hook da 0275 põe `role=verificador`
+// no token ES256 de 1 h. Espelho em .mjs do helper `src/lib/auth/credencial-maquina.ts`.
+const SENHA = process.env.SUPABASE_VERIFICADOR_SENHA
+const APIKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!HOST || !KEY) {
-  console.error('Faltam SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente.')
+if (!HOST || !SENHA || !APIKEY) {
+  console.error('Faltam SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL, SUPABASE_VERIFICADOR_SENHA e NEXT_PUBLIC_SUPABASE_ANON_KEY no ambiente.')
   console.error('Rode com: set -a; . .env.local; set +a; node scripts/dre-oracle.mjs')
   process.exit(1)
 }
@@ -41,10 +46,22 @@ const brl = v =>
     ? `(${Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
     : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+let _token = null
+async function tokenVerificador() {
+  if (_token) return _token
+  const r = await fetch(`${HOST}/auth/v1/token?grant_type=password`, {
+    method: 'POST', headers: { apikey: APIKEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'verificador@janus.interno', password: SENHA }),
+  })
+  if (!r.ok) throw new Error(`login do verificador recusado (HTTP ${r.status}): ${(await r.text()).slice(0, 200)}`)
+  _token = (await r.json()).access_token
+  return _token
+}
+
 async function totaisDoAno(ano) {
   const res = await fetch(`${HOST}/rest/v1/rpc/get_dre_mensal`, {
     method: 'POST',
-    headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+    headers: { apikey: APIKEY, Authorization: `Bearer ${await tokenVerificador()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ p_ano: ano }),
   })
   if (!res.ok) throw new Error(`get_dre_mensal(${ano}) → HTTP ${res.status}: ${await res.text()}`)

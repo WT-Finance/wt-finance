@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Ban, Plus, ScrollText } from 'lucide-react'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import type { ChaveApi } from './tipos'
+import { ROTULO_BASE } from '@/lib/ingestao/bases'
 import { TiposExpostos } from './tipos-expostos'
 import { ModalCriarChave } from './modal-criar-chave'
 import { ModalRevogarChave } from './modal-revogar-chave'
@@ -132,6 +133,11 @@ export function ChavesApiContent({
                     {chave.robo.nome ?? chave.robo.email}
                   </p>
                   <p className="text-3xs text-zinc-400 truncate">Criada em {fmtDataHoraSP(chave.criado_em)}</p>
+                  <p className="mt-0.5 text-3xs text-zinc-400 truncate">
+                    {chave.escopo_bases.length > 0
+                      ? `Ingestão: ${chave.escopo_bases.map(b => ROTULO_BASE[b]).join(', ')}`
+                      : 'Só Solicitações'}
+                  </p>
                 </td>
                 <td className="px-3 py-2.5">
                   <BadgeStatusChave chave={chave} />

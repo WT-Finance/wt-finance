@@ -37,6 +37,7 @@ import {
   urlSerieSgs,
   SERIE_SGS_CDI_MENSAL,
 } from '@/lib/cdi/serie-sgs'
+import { abrirExecucao, concluirExecucao } from '@/lib/ingestao/execucao'
 
 /** Assinatura frouxa — helper LEGADO (o `database.ts` era tratado como congelado até a v5.10.0; hoje é GERADO — ADR-0173). */
 type RpcFrouxa = (
@@ -54,6 +55,11 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   const url = urlSerieSgs(new Date())
+
+  // v6.0.0/M6: registra a PRÓPRIA execução em `ingestao.execucao` — camada ADICIONAL (skill
+  // `email` §1, mesmo espírito): nunca pode mudar a resposta desta rota nem derrubá-la.
+  // `abrirExecucao`/`concluirExecucao` já não lançam por construção.
+  const execId = await abrirExecucao('cdi-mensal')
 
   try {
     const resp = await fetch(url, {
@@ -85,10 +91,12 @@ async function handle(req: NextRequest): Promise<Response> {
       throw new Error(`RPC cdi_ingest_upsert falhou: ${JSON.stringify(error)}`)
     }
 
+    await concluirExecucao(execId, 'ok', { serie: SERIE_SGS_CDI_MENSAL, resumo: data })
     return NextResponse.json({ ok: true, serie: SERIE_SGS_CDI_MENSAL, resumo: data })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error(`[cdi-ingest] ERRO: ${msg}`)
+    await concluirExecucao(execId, 'erro', null, msg)
     // 502 e não 200: a falha precisa ser VISÍVEL para quem opera. O indicador
     // continua funcionando com as taxas já gravadas — degradação, não queda.
     return NextResponse.json({ ok: false, erro: msg }, { status: 502 })

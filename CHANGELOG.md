@@ -6,6 +6,121 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.0.0] — 2026-09-25
+
+MAJOR · **Fundação da ingestão: a plataforma passa a ler direto os relatórios cru do Monde, sem
+navegador e sem os scripts R intermediários.** Contrato de ingestão servidor-a-servidor congelado
+em `docs/contratos/ingestao-v1.md` (GATE 0), credenciais de máquina por papel com `EXECUTE`
+restrito a allowlist derivada mecanicamente, carga atômica das cinco bases com o checksum do
+próprio arquivo do Monde como condição de aplicação, log e alarme de toda execução, grafo de
+dependência entre bases, e baseline de schema versionado. Migrations `0273`–`0285` (todas
+aditivas; a destrutiva de aposentadoria do caminho antigo fica para a 6.0.1, GATE 3, TTY do Yan) ·
+**ADR-0175** (herdado da v5.11.0), **ADR-0176**, **ADR-0177**, **ADR-0178** · **1.665 testes**
+(99 arquivos, zero falha, no fechamento de 25/09).
+
+### Adicionado
+
+- **Rota de ingestão servidor-a-servidor** (`POST /api/ingestao/{base}/upload-url` +
+  `PUT <signed_url>` + `POST /api/ingestao/{base}`), autenticada por `x-api-key` com escopo por
+  base (RPA) ou sessão `admin/uploads` (card humano) — um único caminho para os dois chamadores.
+  Bucket privado `ingestao-cru`; o arquivo nunca viaja no corpo da requisição de carga (a Vercel
+  recusa corpo acima de 4,5 MB). Idempotência por `x-ingestao-idempotencia`; conferência
+  (`confirmar:false`) que confere, mostra o diff e não aplica nem grava carga.
+- **Credenciais de máquina por papel** (ADR-0175): `verificador` (leitura, allowlist de 54
+  assinaturas, sem nenhuma RPC de escrita) e `ingestor` (escrita, allowlist de 21 assinaturas — só
+  staging e promoção das cinco bases). Duas alavancas independentes de revogação por credencial
+  (revogar chave/senha ⇒ 401 ou negação imediata; desativar o usuário de máquina ⇒
+  `PERMISSAO_NEGADA` em toda RPC).
+- **Carga atômica com checksum como gate** (ADR-0177): `limpar_staging_*` →
+  `inserir_lote_staging_*` → `validar_carga_*` → `promover_carga_*` para as cinco bases, staging
+  `UNLOGGED`, `pg_advisory_xact_lock` por base, checksum conferido no servidor **e** de novo dentro
+  da RPC de promoção contra o que ficou gravado. Checksum falho nunca aplica — sem flag de bypass.
+- **Grafo de dependência entre bases** (`src/lib/ingestao/grafo.ts`): carga de Lançamentos por
+  Operação exige carga de Lançamentos por Vencimento em Aberto aplicada no dia; sem ela, `409
+  DEPENDENCIA_AUSENTE`.
+- **Log, alarmes e painel de administração**: `ingestao.carga` (uma linha por execução da rota),
+  `ingestao.execucao` (crons do Monde e do CDI passam a registrar resultado), `ingestao.alarme`
+  (incidente deduplicado — checksum falho, ano fechado alterado, par novo na bandeja, processo ou
+  carga sem resultado), tela nova `/admin/ingestao`. Alarmes em MODO TESTE (destino: conta do Yan);
+  a virada para destinatários reais é decisão dele. Cron `ingestao-vigia` (a cada 15 min) nasce
+  **inativo**, ativado só depois do deploy.
+- **Retenção do arquivo cru**: 3 meses para o cru de uma carga; 7 dias para o que subiu e nunca
+  virou carga. O dado carregado no banco não expira — só o arquivo original. Rota e cron próprios
+  (`ingestao-retencao`, diário, nascido inativo); `GET` sempre simula, só `POST` apaga.
+- **Selo "última atualização" em `/financeiro/fluxo-caixa`, `/performance*` e
+  `/performance/weddings`** — mostra a data da última carga aplicada de cada base que a tela lê.
+- **Mês corrente marcado como "· parcial"** na tabela densa e no YTD do Resumo da DRE de
+  competência, quando a última carga cobre o mês em curso. Nenhum valor nem corte de período muda.
+- **Baseline de schema versionado** (ADR-0178): `supabase/baseline/schema-v6.json`, gerado e
+  comparado por `scripts/schema-baseline/snapshot.mjs`, com teste de drift que nomeia qualquer
+  diferença. `npm run db:baseline` regenera; convenção nova: migration aplicada — ou cron
+  ligado/desligado — exige regenerar no mesmo commit (skill `banco-e-rpc`, `/fechamento-versao`,
+  checklist do `revisor-db`).
+- `raw.lancamentos_operacao` — a `raw` que faltava para Lançamentos por Operação (antes o CSV do
+  scrape ia direto para o fato, sem rastro auditável).
+
+### Alterado
+
+- **Filtro `Setor Macro = Welcome` sai do script R (que já não existia em código nenhum) e entra em
+  view nomeada** (`analytics.vendas_excel_para_fato`), lida pelo `transform_raw_to_analytics` (as
+  três dimensões, `fato_venda` e `fato_venda_item`) e por mais **seis** leitores diretos de
+  `raw.vendas_excel` enumerados no catálogo (`regenerar_dim_operacao_weddings`,
+  `contar_convidados_operacao`, três RPCs `get_*weddings__nucleo` e `vw_vendas_agregadas`, que
+  alimenta Vendas em Aberto). Nenhum número muda hoje — a tabela viva já não tem linha Welcome.
+- **`Intermediário` volta a ser carregado em Vendas** (o filtro anterior era resíduo do script R).
+- **`situacao` de Vendas passa a ser gravada** — a coluna existe desde a v4, mas nunca era
+  populada; "Vendas em Aberto" deixa de ser lista vazia. Exceção visível declarada ao invariante de
+  não mudar número (junto do sufixo "· parcial" e do carimbo de data).
+- **Os 8 XLSX de contas a pagar/receber se aposentam.** O `Vencimento` de Lançamentos por Operação
+  passa a vir de Lançamentos em Aberto (fallback: Movimentação).
+- **O card de `/admin/uploads` passa a subir o arquivo cru das cinco bases e chamar a mesma rota
+  da RPA** — o cliente deixa de parsear a planilha; o parser roda no servidor, um por base.
+- **Reprocesso de uma carga é uma execução nova com cópia dos arquivos**, não repetir a chamada
+  original (o `carga_id` viaja dentro do caminho do objeto e a carga é idempotente por ele).
+
+### Corrigido
+
+- **Vendas era recusada por uma guarda que ainda cobrava as vendas do setor Welcome** contra
+  `dim_setor`, embora o filtro já tivesse sido movido para o transform — a guarda lia a staging, não
+  o que de fato é promovido. Corrigida para olhar só o que o transform lê.
+- **O modal de Vendas contava as vendas Welcome no número "depois"**, mostrando um total que nunca
+  chegaria ao `fato_venda`.
+- **A promoção de Lançamentos por Operação rejeitava o literal `"NA"`** que o export do scrape
+  (saída do R) grava em `Lançamento N°`, `Venda` e `Liquidação` quando o dado é ausente — o parser
+  passa a limpar o literal antes do cast e o fato só converte o que é número inteiro puro, como o
+  caminho antigo já fazia.
+
+### Segurança
+
+- Nenhuma RPC de escrita entra na allowlist da credencial de leitura (`verificador`) — os guards
+  de escrita que a suíte antiga exercitava em modo no-op foram para transação revertida, fora do
+  caminho REST.
+- Rota de retenção do cru: `GET` nunca apaga (era alcançável por CSRF de navegação de topo e por
+  robôs de pré-visualização de link) — apagar exige `POST` explícito.
+
+### Adiado para 6.0.1
+
+- **GATE 3 — destrutiva**: `DROP` de `truncar_*`/`inserir_lote_*` migradas e da rota morta
+  `api/admin/upload-lancamentos`, em TTY do Yan, depois que o código que as referenciava saiu e foi
+  deployado.
+
+### Pós-merge (ato do Yan, não desta versão)
+
+- **Ativação em produção** do cron `ingestao-vigia`, do cron `ingestao-retencao` e das expectativas
+  de cadência dos processos — mecanismo pronto, nasceu desligado; liga-se por configuração/RPC
+  depois do deploy, sem código novo.
+
+### Fora desta versão (v6.1+)
+
+- **Extração automática (as RPAs)** — esta versão entrega só o contrato que elas vão honrar.
+- **Vendas via API do Monde** — aguarda resposta do fornecedor ao pedido de receita por produto.
+- **Caso residual de idempotência × grafo** (mesma chave de idempotência com `carga_id` novo, num
+  dia sem Lançamentos em Aberto, ainda leva `409` em vez de replay) — candidato a errata 4b do
+  contrato.
+- **RPC de leitura da lista de operações para a RPA** (contrato §5) — candidata a errata 4.
+
+---
+
 ## [5.12.0] — 2026-09-24
 
 MINOR · **Espelho Monde: nome do produto pelo catálogo + versão da transformação no `raw_hash`.**

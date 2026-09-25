@@ -1,6 +1,6 @@
 ---
 name: ingestao-planilhas
-description: Ingestão de planilhas/Excel no Janus — parse de ARQUIVO no servidor exige API Route (Server Action só quando apenas linhas já parseadas viajam, que é o caso das 5 bases vivas), parse pesado no cliente em Web Worker, leitura de datas e números pelo valor NATIVO da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate/toCentavos — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, coerção de número/data vindos de arquivo ou input do usuário, ou quando uma soma do cliente for comparada com uma soma do banco.
+description: Ingestão de planilhas/Excel no Janus — desde a v6.0.0 as 5 bases financeiras (Demonstrativo, Vendas, Movimentação, Aberto, Operação) parseiam no SERVIDOR via API Route (`/api/ingestao/{base}`, checksum do arquivo como gate); Pessoas é a única que ainda parseia no cliente + Web Worker + Server Action (Server Action só quando apenas linhas já parseadas viajam). Leitura de datas e números pelo valor NATIVO da célula (cellDates/raw: true), coerção canônica única em @/lib/carga/coercao.ts (toNum/toIsoDate/toCentavos — o lint wt/no-coercao-reimpl bloqueia reimplementação), parser único de Vendas e pipeline atômico de carga. Use ao mexer em upload, parser, importação, coerção de número/data vindos de arquivo ou input do usuário, ou quando uma soma do cliente for comparada com uma soma do banco.
 ---
 
 # Ingestão de planilhas (Janus)
@@ -24,17 +24,21 @@ v4.7 (PEND-001) quando uma Server Action de upload quebrava silenciosamente.
 
 ⚠️ **O gatilho da regra é o ARQUIVO chegar ao servidor — não a palavra "upload"** (precisão
 acrescentada na v5.8.0, onde a redação genérica anterior induziu o plano ao caminho errado).
-As **5 bases vivas de `/admin/uploads` usam Server Action**, e estão certas: o `File` nunca sai
-do navegador. O parse roda no cliente/Web Worker (§2) e só as **linhas já parseadas** viajam,
-em lotes, para uma Server Action que as repassa às RPCs. Sem `@e965/xlsx` no servidor, não há
-o problema que a regra existe para evitar.
+
+**Desde a v6.0.0, as 5 bases financeiras vivas (Demonstrativo, Vendas, Movimentação, Aberto,
+Operação) migraram para API Route** (`POST /api/ingestao/{base}`, §8 adiante): o navegador sobe o
+`File` cru por signed upload URL e quem parseia é o servidor, com `@e965/xlsx` em runtime Node
+puro — exatamente o caso que esta regra sempre existiu para prever. **Pessoas é a única que
+continua no caminho antigo** (decisão 11 do briefing v6.0.0: fica fora da fundação, parada mas
+viva): o `File` nunca sai do navegador, o parse roda no cliente/Web Worker (§2) e só as **linhas já
+parseadas** viajam, em lotes, para uma Server Action que as repassa às RPCs.
 
 Escolha assim:
 
 | O que atravessa a rede | Caminho | Precedente |
 |---|---|---|
-| o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/gerencial/import/route.ts` |
-| arrays já parseados no cliente | **Server Action** em lotes | `src/app/admin/uploads/actions.ts` (5 bases) |
+| o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/ingestao/{base}/route.ts` (5 bases, v6.0.0) · `src/app/api/gerencial/import/route.ts` |
+| arrays já parseados no cliente | **Server Action** em lotes | `src/app/admin/uploads/actions.ts` (só **Pessoas**) |
 
 ## 2. Parse pesado no cliente → Web Worker, nunca a main thread
 
@@ -59,6 +63,9 @@ Upload novo com volume relevante (milhares de linhas) nasce usando
 travada foi reportada por usuário real no upload de Vendas (v4.20.2) antes de virar
 regra — o parse funcionava perfeitamente em dev com arquivos pequenos e só quebrou com
 volume de produção.
+
+**Desde a v6.0.0, este caminho (parse no navegador + Web Worker) vale só para Pessoas.** As outras
+cinco bases parseiam no servidor (§8) — o navegador delas só calcula sha256 e sobe o arquivo cru.
 
 ## 3. Célula de planilha: ler o valor NATIVO — vale para data E para dinheiro
 
@@ -313,6 +320,57 @@ linha, não o texto.
 
 Manter o gerador **puro** (sem DOM) e isolar o download (`Blob` + `<a download>` + `revokeObjectURL`)
 numa função separada: é o que permite testar o arquivo caractere a caractere em ambiente `node`.
+
+## 8. Ingestão v6.0.0: parser único por base no SERVIDOR, checksum do arquivo como gate
+
+Desde a v6.0.0 as cinco bases vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação) entram
+por `POST /api/ingestao/{base}` (contrato: `docs/contratos/ingestao-v1.md`) — o navegador sobe o
+**cru** por signed upload URL, o servidor parseia (núcleo `*Rows` de `src/lib/ingestao/parsers/`,
+compartilhado com o card de `/admin/uploads`) e a carga inteira roda numa transação. Cada base tem
+oráculo `src/lib/ingestao/oraculo-*.test.ts` reproduzindo célula a célula o arquivo TRATADO do
+script R (fixtures dos anexos do briefing v6.0.0). **Pessoas continua no caminho antigo** (§1/§2
+acima, client-side + Server Action) — decisão 11 do briefing: fica fora da fundação, parada mas
+viva.
+
+Lições permanentes, detalhadas nos anexos `docs/briefings/anexo-v6-0-0-m{3,4,5,7,9}-*.md`:
+
+- **O arquivo já carrega a prova do checksum — ler totais/outline ANTES de descartar.** Linha de
+  TOTAL e de outline (`Grupo de Categoria: Nome (15, R$ x)`) que o script R sempre jogava fora é,
+  lida antes, o checksum de graça (557/149/95/5-por-arquivo). E **o subtotal do export é o
+  arredondamento da soma dos valores EXATOS, não da soma já arredondada a 2 casas** — o cru de
+  Movimentação tem células com mais de 2 casas (717.710,7392), e somar linha a linha já arredondada
+  erra de 1 a 6 centavos por grupo. Some em INTEIROS e arredonde uma vez só no fim
+  (`AcumuladorBruto`), nunca linha a linha já truncada.
+- **`trim` explícito cobre `\xa0` (NBSP) e tab, não só espaço comum** — 17% de `Produto` em Vendas
+  tem espaço nas pontas; `.trim()` puro não remove NBSP, e uma classificação por igualdade de
+  string (`Setor Micro`) falha em silêncio para a linha suja.
+- **Faixa de data ANCORADA NO FIM DO ANO** (`[2015-01-01, 31/12 do ano de hoje+5]`), não "hoje + 5
+  anos" ao pé da letra — ao pé da letra o veredito depende de QUANDO a carga rodou (errata 1 do
+  contrato). **"Rejeitada" não é "descartada": a linha PERMANECE, só o campo de data sai `null`**
+  (contado em `rejeitadas_por_data`) — é o único comportamento compatível com os checksums de
+  linha/soma (uma linha sumindo quebraria a contagem).
+- **Descoberta posicional de coluna por NOME normalizado** (`normalizeHeader`), nunca por vetor de
+  tipos fixo por posição — Movimentação/Aberto trocam entre 14 e 15 colunas conforme o export;
+  layout fora do esperado (coluna de rótulo virada campo, formato largo) **aborta** a carga (guarda
+  estrutural), em vez de gravar dado deslocado.
+- **"Diff só vale com a MESMA grandeza" — reapareceu 4 vezes só nesta versão.** Venda distinta ×
+  linha de item (`get_upload_status` × parser); `diff.soma` (a DIFERENÇA) rotulado como "Σ do
+  arquivo" no modal; título do modal comparando contagem do cru com contagem promovida enquanto o
+  filtro Welcome ainda não existia; e o aviso de Operação contando LINHAS de um lado e NÚMEROS
+  distintos do outro (ainda divergente, registrado no backlog). Cada ocorrência foi achada por um
+  método diferente (smoke de servidor, leitura de código, tela ao vivo); corrigir a primeira nunca
+  achou as outras. Ao ver dois números lado a lado ("antes/depois", "esperado/lido"), pergunte
+  primeiro **o que cada lado está contando**, não se a conta está certa.
+- **O CSV de Operação é SAÍDA DO R** — `NA` é ausente (não zero) em `Lançamento N°`/`Venda`/
+  `Liquidação`, e `Número da Parcela` tem valores como `"197848-2"`, que não é inteiro. Um cast
+  direto para `bigint` quebra nos dois. O fato só converte o que É inteiro puro (`semNaDoR` nas três
+  colunas) — o mesmo que o `toNum` do caminho antigo já fazia.
+- **Filtro de negócio numa VIEW só vale para quem lê a VIEW — inclusive guardas de VALIDAÇÃO.**
+  Mover `Setor Macro != Welcome` para uma view nomeada (`analytics.vendas_excel_para_fato`) não
+  alcançou os **seis** leitores de Weddings que liam `raw.vendas_excel` direto, nem a guarda de
+  `validar_carga_staging` (migration 0132, pré-existente) que também lia a STAGING direto (fix:
+  0284). Migrar um filtro de negócio para uma view exige grep de TODOS os leitores da tabela por
+  baixo — inclusive os que parecem só "checar", não "ler para exibir".
 
 ## Ver também
 

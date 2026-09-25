@@ -498,3 +498,99 @@ export const estanteFichaSchema = z.object({
   livro:         estanteLivroSchema,
   movimentacoes: estanteMovimentacoesSchema,
 })
+
+// ── ingestao_painel (v6.0.0/M6, migration 0280) → tudo que a tela /admin/ingestao lê ───────
+//
+// `jsonb_agg` de conjunto vazio devolve NULL, não `[]` (lição da v5.10.0) — as cinco listas
+// usam `.nullable().transform(v => v ?? [])`. Nenhum objeto de linha usa `.passthrough()` sem
+// necessidade real de tolerar campo extra — aqui cada um leva, porque o RPC evolui rápido
+// nesta frente (M9 ainda vai gravar execução real) e um campo novo não pode derrubar o parse
+// da tela inteira por um drift que não importa para ela.
+
+const ingestaoCargaSchema = z.object({
+  carga_id:             z.string(),
+  base:                 z.string(),
+  origem:               z.string(),
+  status:               z.enum(['aberta', 'aplicada', 'rejeitada', 'erro']),
+  linhas:               z.number().nullable(),
+  checksums_conferidos: z.number().nullable(),
+  checksums_falhos:     z.number().nullable(),
+  rejeitadas_por_data:  z.number().nullable(),
+  pares_novos:          z.number().nullable(),
+  // `diff` é o jsonb cru gravado por ingestao_carga_concluir — hoje `{linhas, soma}` (contrato
+  // ingestao-v1 §2.3), mas a tela só precisa exibir o que existir; passthrough tolera o formato
+  // evoluir sem quebrar o parse.
+  diff:                 z.object({
+    linhas: z.number().nullable().optional(),
+    soma:   z.number().nullable().optional(),
+  }).passthrough().nullable(),
+  recebido_em:          z.string(),
+  concluido_em:         z.string().nullable(),
+  erro:                 z.string().nullable(),
+  // 0281: nome/e-mail do usuário da sessão, ou "API · plataforma" da chave. `.optional()` porque
+  // o painel da 0280 (sem a chave) tem de continuar parseando; `null` = nenhum dos dois gravado.
+  quem:                 z.string().nullable().optional(),
+}).passthrough()
+
+const ingestaoExecucaoSchema = z.object({
+  id:           z.string(),
+  processo:     z.enum(['monde-incremental', 'monde-reconciliacao', 'cdi-mensal', 'ingestao-vigia']),
+  status:       z.enum(['em_curso', 'ok', 'pulado', 'erro']),
+  iniciado_em:  z.string(),
+  concluido_em: z.string().nullable(),
+  duracao_ms:   z.number().nullable(),
+  erro:         z.string().nullable(),
+}).passthrough()
+
+/** Um alarme (incidente) — `resolvido_em` ausente em `alarmes_abertos` (nunca tem chave),
+ *  presente (nullable) em `alarmes_recentes`; por isso `.optional()`, não só `.nullable()`. */
+const ingestaoAlarmeSchema = z.object({
+  id:            z.string(),
+  tipo:          z.string(),
+  chave:         z.string(),
+  aberto_em:     z.string(),
+  resolvido_em:  z.string().nullable().optional(),
+  notificado_em: z.string().nullable(),
+  detalhe:       z.record(z.string(), z.unknown()).nullable(),
+}).passthrough()
+
+const ingestaoExpectativaSchema = z.object({
+  tipo:         z.enum(['processo', 'base']),
+  alvo:         z.string(),
+  // `interval` do Postgres chega como texto (ex.: "00:45:00", "3 days") — nunca número.
+  tolerancia:   z.string().nullable(),
+  ativo:        z.boolean(),
+  descricao:    z.string().nullable(),
+  alterado_em:  z.string().nullable(),
+  alterado_por: z.string().nullable(),
+  alterado_por_nome: z.string().nullable().optional(), // 0281
+}).passthrough()
+
+/** ingestao_painel() → tudo que a tela `/admin/ingestao` (anexo v6.0.0/M6 §7) lê numa
+ *  chamada só: cargas/execuções recentes, alarmes (abertos + histórico), expectativas e o
+ *  estado do vigia. */
+export const ingestaoPainelSchema = z.object({
+  cargas:                   z.array(ingestaoCargaSchema).nullable().transform(v => v ?? []),
+  execucoes:                z.array(ingestaoExecucaoSchema).nullable().transform(v => v ?? []),
+  alarmes_abertos:          z.array(ingestaoAlarmeSchema).nullable().transform(v => v ?? []),
+  alarmes_recentes:         z.array(ingestaoAlarmeSchema).nullable().transform(v => v ?? []),
+  expectativas:             z.array(ingestaoExpectativaSchema).nullable().transform(v => v ?? []),
+  vigia_ultima_verificacao: z.string().nullable(),
+  vigia_cron_ativo:         z.boolean().nullable(),
+  // 0282 (M6b): a limpeza do cru. `.optional()` — o painel da 0281 não tem as chaves; `null` em
+  // `retencao_ultima` = nunca rodou.
+  retencao_ultima: z.object({
+    concluido_em: z.string(),
+    status:       z.enum(['ok', 'simulado', 'recusado', 'erro']),
+    expirados:    z.number(),
+    orfaos:       z.number(),
+    erro:         z.string().nullable(),
+  }).passthrough().nullable().optional(),
+  retencao_cron_ativo: z.boolean().nullable().optional(),
+}).passthrough()
+
+export type IngestaoPainel = z.infer<typeof ingestaoPainelSchema>
+export type IngestaoCarga = z.infer<typeof ingestaoCargaSchema>
+export type IngestaoExecucao = z.infer<typeof ingestaoExecucaoSchema>
+export type IngestaoAlarme = z.infer<typeof ingestaoAlarmeSchema>
+export type IngestaoExpectativa = z.infer<typeof ingestaoExpectativaSchema>

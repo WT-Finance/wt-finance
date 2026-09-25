@@ -9,17 +9,47 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-24.
+Última atualização: 2026-09-25 (fechamento da v6.0.0, PR aberto).
 
 ---
 
-## Em voo
+## Aguardando merge — v6.0.0 "Fundação da ingestão" (PR #279, aberto em 25/09)
 
-**v6.0.0 — Fundação da ingestão**, na própria branch (`feat/v6-0-0-fundacao-ingestao`). A v5.12.0
-entrou antes dela, como pedido: a v6 precisa mesclar a `main` — conflito só de texto (este
-arquivo, a skill `banco-e-rpc`, changelogs e `package.json`); a v6 não toca `src/lib/monde/`.
+Branch `feat/v6-0-0-fundacao-ingestao`, worktree `.claude/worktrees/feat-v6-0-0-fundacao-ingestao`.
+**Tudo o que a versão fez, provou e decidiu está no out-briefing**
+(`docs/briefings/WT_Finance_Out_Briefing_v6-0-0_Fundacao_Ingestao.md`) e nos anexos por missão
+(`docs/briefings/anexo-v6-0-0-*.md`). Contrato: `docs/contratos/ingestao-v1.md`. ADRs 0175–0178.
 
-**Produção na v5.12.0** (PR #275, mergeado 24/09 às 15:44; deploy Vercel no ar às 15:44).
+- **M0–M9 feitas**; migrations **0273–0285 aplicadas** sob o backup-gate; as **cinco cargas reais** rodaram
+  em 25/09 pela preview e foram conferidas contra produção (anexo M9). Produção JÁ tem os dados carregados
+  pelo caminho novo — o que falta é o CÓDIGO (rota, card, tela `/admin/ingestao`) chegar em produção.
+- **M10 (destrutiva / GATE 3) → v6.0.1**, decisão do Yan em 25/09: o GATE 3 exige que o código que usa
+  `truncar_*`/`inserir_lote_*` já tenha saído de produção. `truncate_dynamic_tables` fica FORA (o seed usa).
+- Gates do fechamento verdes (build, tsc, lint, **1.665 testes / 99 arquivos**); `revisor` e `revisor-db`
+  aprovaram com ressalvas (parecer no out-briefing §11).
+
+> 🔴 **Até o merge: NÃO usar o card de upload da produção (v5.12).** Ele usa o caminho antigo e
+> sobrescreveria as cargas de 25/09.
+
+> 🔴 **Pós-merge da v6.0.0 — em ordem, no `/pos-merge`:**
+> 1. `SUPABASE_INGESTOR_SENHA` confirmada no ambiente **Production** da Vercel (sem ela a carga lança).
+> 2. Recarregar **Lançamentos por Operação** pelo card de produção (o cru de 25/09 ficou com o texto "NA"
+>    — rodou antes do parser corrigido; o fato está certo). Aberto do mesmo dia antes, por causa do grafo.
+> 3. Ligar o vigia: `ingestao_vigia_definir(true)`; depois cada expectativa com
+>    `ingestao_expectativa_definir('<processo>', true)` SÓ depois da 1ª execução registrada dele
+>    (sem isso alarma na hora). As bases só quando a RPA existir.
+> 4. Limpeza do cru: `POST /api/ingestao/retencao?simular=1`, conferir a lista, e então, como `postgres`,
+>    `SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE jobname = 'ingestao-retencao'), active := true);`
+> 5. **`npm run db:baseline` e commitar** — ligar cron muda o `active` que o baseline guarda.
+> 6. Abrir a **v6.0.1** (destrutiva, TTY do Yan) — lista e provas exigidas no out-briefing §3.
+
+> 🔴 **Decisões e conversas do Yan que a v6.0.0 deixou** (detalhe no out-briefing §12; backlog B-31 a B-36):
+> cartas de crédito com vencimento 2049 (convenção de "sem prazo"? — com a gerente) · pipeline de
+> Weddings órfão (`venda_n` agora preenchido daria R$ 49,1 Mi) · os dois avisos do cruzamento de Operação
+> (1 × 86) · guarda de data de Vendas ainda cobra Welcome · idempotência por chave com `carga_id` novo ·
+> aposentar/portar Pessoas (fecha o invariante 3) · pedido 8.2 ao fornecedor do Monde · comunicar à
+> liderança a cadência diária e a reapresentação de histórico · o `<select id>` da página de operações ·
+> os 571 lançamentos em duas operações e os "Reembolsos" divergentes, com a gerente.
 
 > 🔴 **Pós-merge da v5.12.0 — falta um ato do Yan:**
 > 1. ✅ **Junho reprocessado em 24/09** (janela manual: 670 lidas · 652 atualizadas · 0 erros).
@@ -36,20 +66,11 @@ arquivo, a skill `banco-e-rpc`, changelogs e `package.json`); a v6 não toca `sr
 > redirect inicial de TODA a plataforma, por isso ficou para decisão, não para autonomia.
 
 > 🔴 **Decisão aberta: ambiente de teste próprio.** O gatilho da skill `banco-e-rpc` §6 foi
-> **tocado** na v5.11.0 — são agora **quatro** arquivos de teste que escrevem em produção (três em
-> transação revertida + a exceção commitada da API externa). O caso novo reforça o argumento a
+> **tocado** na v5.11.0 — são agora **cinco** arquivos de teste que escrevem em produção (quatro em
+> transação revertida — o último, `promover-carga-checksum.test.ts`, da v6.0.0/M5 — + a exceção commitada da API externa). O caso novo reforça o argumento a
 > favor do ambiente próprio em vez de enfraquecê-lo: as travas de permissão da Estante só são
 > testáveis por conexão direta assumindo identidade JWT, porque o `service_role` faz bypass do
 > `exigir_acesso`. Um ambiente com usuários controlados resolveria sem tocar produção.
-
-> **A role `verificador` foi adiada para a v6** por bloqueio operacional. (Ela chegou a ser
-> planejada como v5.11.0 — há um `docs/briefings/briefing-v5-11-0-role-verificador.md` **untracked
-> na raiz** com esse nome; o número v5.11.0 foi para a Estante Welcome, então aquele briefing está
-> com nome defasado e precisa ser renumerado quando for retomado.) O risco
-> de varredura de produção com `service_role` fica **aceito por decisão do Yan** até lá — o item
-> segue em `docs/backlog-v6.md`. O que **não** dependia da role já foi feito na v5.10.3: o script de
-> varredura com a chave de serviço saiu do repositório, a conexão direta de leitura trava em
-> `READ ONLY` e a sonda mantém o inventário de `SUPABASE_DB_URL` fechado, por conexão.
 
 **O `npm audit` do repositório está em ZERO vulnerabilidades** — as três últimas versões foram
 patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) e v5.10.2
@@ -61,36 +82,21 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v5.11.0** (PR #273, mergeado 15/09 às 12:55) |
-| Última migration aplicada | **0272** · próxima livre: **0273** |
-| Último ADR | **0174** (aceito) · próximo livre: **0175** |
-| Suíte | **1.247 testes**, 76 arquivos, ~78 s no `vitest` 5, zero `skip` silencioso |
+| Produção | **código v5.12.0** (PR #275, 24/09) · **banco já na 0285** (as migrations da v6.0.0 são aplicadas antes do merge, por desenho) · v6.0.0 em PR, com o `main` já mesclado (25/09) |
+| Última migration aplicada | **0285** (v6.0.0/M9 — Operação só converte número inteiro) · próxima livre: **0286** |
+| Último ADR | **0178** (v6.0.0 — baseline de schema versionado) · próximo livre: **0179** |
+| Suíte | **1.665 testes**, 99 arquivos, zero falha (fechamento da v6.0.0, 25/09) |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
 ---
 
-## ⚠️ Incidente aberto — 306.261 linhas a repovoar
+## ✅ Incidente de 10/09 (306.261 linhas zeradas) — encerrado
 
-Em 10/09/2026 uma varredura REST minha chamou todas as RPCs sem argumento obrigatório para
-conferir quais devolviam 500. Entre elas havia funções de **TRUNCATE**, e produção foi zerada em
-10 tabelas: `raw.lancamentos_movimentacao` (92.506), `analytics.fato_venda_item` (48.147),
-`raw.vendas_excel` (48.147), `analytics.fato_lancamento_operacao` (41.091),
-`raw.titulos_em_aberto` (36.756), `analytics.fato_venda` (29.106), `analytics.dim_pagante`
-(7.033), `raw.demonstrativo_competencia` (3.294), `analytics.dim_produto` (117),
-`analytics.dim_vendedor` (64).
-
-O backup está íntegro e o script de restore está pronto e **não executado**
-(`supabase/patches/RESTORE-incidente-varredura-rest.mjs`, backup `2026-09-10-pre-migration-221044`).
-Decisão do Yan: **repovoar pelo upload manual**, não pelo restore.
-
-> 🔴 **Ordem obrigatória do repovoamento: Lançamentos por Operação PRIMEIRO.** As 238 linhas
-> sobreviventes de `analytics.dim_operacao_weddings` são regeneradas a partir da tabela de fatos;
-> subir qualquer outra base antes faz a regeneração rodar contra fato vazio e apagá-las.
-
-**A lição, já promovida à skill `banco-e-rpc`:** num banco onde a RPC é a superfície de escrita,
-disparar uma função sem saber o que ela faz é executar comando arbitrário — não é leitura. O corpo
-de todas elas estava no catálogo que eu mesmo havia exportado.
+As dez tabelas foram repovoadas pelo upload manual em 21/09 (decisão do Yan: não pelo restore) e as
+cinco cargas da v6.0.0 em 25/09 confirmaram as contagens. A lição está na skill `banco-e-rpc`: num
+banco em que a RPC é a superfície de escrita, disparar uma função sem saber o que ela faz é executar
+comando arbitrário. O script de restore não executado segue em `supabase/patches/` como referência.
 
 ---
 

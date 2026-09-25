@@ -1,6 +1,6 @@
 ---
 name: banco-e-rpc
-description: Banco Supabase do Janus — migrations (aditiva × destrutiva, backup-gate, wrapper db:migrate), RPCs SECURITY DEFINER com app.exigir_acesso inline, RBAC/RLS, timeouts por role, fuso, schemas (analytics não exposto; espelho Monde × upload) e verificação REST pós-push. Use SEMPRE que for criar ou alterar migration/RPC, investigar erro de banco (timeout 57014, PGRST, permissão), decidir de qual fonte um dado vem, ou reusar uma RPC existente (MEÇA a semântica antes).
+description: Banco Supabase do Janus — migrations (aditiva × destrutiva, backup-gate, wrapper db:migrate), RPCs SECURITY DEFINER com app.exigir_acesso inline, RBAC/RLS, timeouts por role, fuso, schemas (analytics não exposto; espelho Monde × upload), as duas credenciais de MÁQUINA (`verificador`/`ingestor`, allowlist derivada do código, identidade por login + custom_access_token_hook) e verificação REST pós-push. Use SEMPRE que for criar ou alterar migration/RPC, investigar erro de banco (timeout 57014, PGRST, permissão), decidir de qual fonte um dado vem, criar/rotacionar credencial de máquina, ou reusar uma RPC existente (MEÇA a semântica antes).
 ---
 
 # Banco e RPC — Janus (Supabase/Postgres)
@@ -312,6 +312,66 @@ o furo (fail-open) antes do M1. Toda RPC consumida pela UI roda como `authentica
 grant novo nasce **sem** `anon` (é o efeito combinado da 0122 + essa limpeza). Não reabrir
 `anon` para nenhuma RPC nova.
 
+### Duas credenciais de MÁQUINA: `verificador` (só leitura) e `ingestor` (aplica) — allowlist DERIVADA, nunca por volatilidade (v6.0.0, ADR-0175)
+
+O incidente de 10/09/2026 (varredura de **verificação** com `SUPABASE_SERVICE_ROLE_KEY` chamou uma
+RPC de `TRUNCATE` e zerou 306.261 linhas) mostrou que uma credencial que só verifica e uma que aplica
+não podem ser a mesma chave — a barreira não pode ser "quem digita o comando sabe o que faz".
+
+- **`verificador`** (0273): role NOLOGIN concedida a `authenticator`, nasce **sem EXECUTE** em função
+  nenhuma (`REVOKE` explícito + `ALTER DEFAULT PRIVILEGES`) e recebe EXECUTE só na **allowlist
+  derivada do código que a usa** — `scripts/credencial/derivar-allowlist.mjs` lê `rpc-contrato.test.ts`
+  e os scripts de medição, resolve cada nome no catálogo vivo por assinatura e emite o `GRANT`.
+  **Nunca por volatilidade**: `public` tem ~191 funções `VOLATILE` (é o default de quem não declarou
+  nada) e há leitores puros entre elas — filtrar por `provolatile` quebraria a suíte sem medir
+  segurança nenhuma.
+- **`ingestor`** (0274): mesma anatomia para a escrita — allowlist = só `promover_carga_*` +
+  `limpar_staging_*`/`inserir_lote_staging_*`/`validar_carga_*` das bases migradas (nem leitura, nem
+  `truncar_*`).
+- **Identidade de máquina = LOGIN + Custom Access Token Hook (0275), não JWT assinado localmente.** O
+  projeto está no regime novo de chaves do Supabase (API keys `sb_publishable_`/`sb_secret_`, JWKS só
+  com ES256 gerido pela plataforma) — um HS256 com o secret legado é recusado (`PGRST301: No suitable
+  key`), o que invalidou a decisão original do briefing v6.0.0 (JWT de validade longa fixo). O caminho
+  que funciona: um usuário de máquina (`verificador@janus.interno`/`ingestor@janus.interno`, ativo,
+  com role RBAC própria) faz **login** com senha (`SUPABASE_VERIFICADOR_SENHA`/
+  `SUPABASE_INGESTOR_SENHA`), o Auth emite um token ES256 de validade curta, e
+  `public.custom_access_token_hook` troca o claim `role` pelo papel do Postgres — só para esse
+  usuário. Registrar o hook no Dashboard é ato humano, uma vez.
+- **`app.exigir_acesso` não muda.** O JWT de máquina passa pelo MESMO caminho de usuário (RBAC de
+  área + `ativo`) — são duas camadas independentes: ter o `GRANT` não basta sem a área; ter a área
+  não basta sem o `GRANT`.
+- **RPC nova entra num caso de contrato ⇒ rodar `derivar-allowlist.mjs` e colar o `GRANT` numa
+  migration aditiva.** Sem isso a função nasce fora da allowlist e o caso reprova com
+  `PERMISSAO_NEGADA` — é o fail-closed desejado, não um bug.
+- Detalhe completo, allowlist inicial e alternativas descartadas: ADR-0175 e
+  `docs/runbooks/credenciais-maquina-runbook.md`.
+
+### `EXCEPTION WHEN OTHERS` é quase sempre amplo demais
+
+Ao escrever uma promoção atômica que precisa tolerar um erro ESPERADO, a tentação é `EXCEPTION WHEN
+OTHERS` — e isso também engole um bug real como se fosse o aviso intermitente esperado. **Nomeie a
+exceção específica** (ex.: `WHEN insufficient_privilege`, código `42501`): só assim o catch fica
+estreito o bastante para servir de prova, e um ensaio em transação revertida sem identidade JWT (onde
+`exigir_acesso` sempre levanta `42501`) mostra o catch disparando pelo motivo CERTO, não por
+"qualquer coisa". Achado da v6.0.0/M5 (`promover_carga_vendas`): o catch amplo teria escondido para
+sempre um erro de verdade dentro da função, em vez de só o aviso de permissão que ele deveria tolerar.
+
+### `check-then-insert` não é idempotência, e empate sem desempate em `DISTINCT ON` não é seguro
+
+Uma RPC que "olha se já existe, e se não existir insere" (dedupe por `x-ingestao-idempotencia`,
+abertura de alarme) não é idempotente sob concorrência: em READ COMMITTED, duas chamadas quase
+simultâneas passam as duas pelo `check` antes de qualquer `INSERT`, e a segunda esbarra na
+constraint e vira 500 — exatamente no caso em que a idempotência existia para servir. A correção é
+`INSERT ... ON CONFLICT DO NOTHING/UPDATE` (ou tratar `unique_violation` no corpo), nunca um
+`SELECT` separado do `INSERT`. Achado da v6.0.0 (M4; corrigido de novo na 0280/M6 para
+`ingestao_alarme_abrir`).
+
+Do mesmo jeito, `DISTINCT ON (chave) ... ORDER BY a, b` que empata em `a` e `b` deixa a escolha da
+linha a critério do PLANO de execução — que pode mudar com um `VACUUM`/`ANALYZE`, sem nenhuma
+mudança de dado. A v6.0.0 mediu **zero** ambiguidade nos dados reais de Lançamentos por Operação,
+mas nada no schema impede que apareça amanhã: feche todo `DISTINCT ON`/`ORDER BY` com uma coluna que
+nunca empata (id, ou `criado_em` + id) — não confie em "não vi empate na amostra de hoje".
+
 ### Kill switch é emergência, não mais compatibilidade
 
 `app.config.auth_enforcement` + `admin_set_enforcement` permanecem como alavanca de
@@ -573,6 +633,31 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
   -H "Content-Type: application/json" -d '{...}'
 ```
 
+### Migration aplicada ⇒ regenerar o baseline de schema, no MESMO commit (v6.0.0/M8)
+
+`supabase/baseline/schema-v6.json` é o retrato versionado do catálogo de produção nas partes do
+projeto (tabelas/colunas/constraints/índices/policies/triggers, views, funções por assinatura com
+hash do corpo, as roles `verificador`/`ingestor` com a allowlist efetiva, `cron.job` com hash do
+comando, extensões). O teste `schema-baseline` compara o vivo com o arquivo e reprova qualquer
+diferença, nomeando-a. Depois de `npm run db:migrate`: `npm run db:baseline` e commitar o JSON
+junto da migration — mesma régua do `database.ts` (ADR-0173).
+
+**Não é só migration que muda o retrato.** Operação legítima que altera catálogo por RPC também
+exige regenerar na hora: ligar/desligar o vigia (`ingestao_vigia_definir`) ou qualquer cron
+(`cron.alter_job`) muda o `active` que o baseline guarda — a ativação da M9 inclusa. Mesma regra:
+fez, regenera e commita.
+
+Vermelho no teste tem duas causas, e elas se tratam diferente: (a) migration aplicada (ou cron
+ligado) sem regenerar — regenerar; (b) **mudança no banco fora de migration** (SQL editor do Dashboard, `db
+query`, função reescrita à mão) — é o drift que o teste existe para pegar; **ler a lista antes de
+regenerar**, porque regenerar às cegas aceita a mudança. Schema novo precisa ser declarado na
+lista do módulo (`scripts/schema-baseline/snapshot.mjs`), senão o teste reprova — foi uma lista
+fixa desatualizada que deixou quatro schemas fora do backup-gate (achado da M8).
+
+Por que JSON e não `supabase db dump --schema-only`: o dump roda num container Docker, e o
+arquivo SQL exigiria parsear texto para comparar. As queries de catálogo são as mesmas das
+sondas; o dump fica como companheiro legível opcional.
+
 ### REST com `service_role` EXECUTA o corpo da RPC — `db query` não substitui isso
 
 A verificação REST com `service_role` **executa de verdade o corpo** da função (o
@@ -609,6 +694,14 @@ ao executar a cadeia), é **aceito escrever contra produção dentro de `BEGIN �
   caso antes de você conferir o estado;
 - **nenhum `COMMIT`**.
 
+**Extensão do padrão: ensaiar a MIGRATION ainda não aplicada, não só a RPC já viva (v6.0.0/M9,
+0285).** Nada impede que a própria transação revertida contenha um `CREATE OR REPLACE FUNCTION` com
+o CORPO NOVO — o que a migration ainda não aplicada faria — antes de chamar a função: a chamada
+seguinte já exercita a versão corrigida contra o dado real de produção, e o `ROLLBACK` desfaz também
+esse `CREATE OR REPLACE`, sem deixar rastro no catálogo. É a forma de achar o PRÓXIMO erro antes do
+usuário, em vez de aplicar a correção e torcer. Foi assim que o parser de `NA`/número de parcela da
+base Operação (0285) foi validado antes de ir para produção.
+
 Referência viva: `src/lib/dre/reverter-diario.test.ts` (0268). **Enforcement:**
 `src/lib/sonda-teste-escreve-banco.test.ts` — **allowlist**: TODO `src/**/*.test.ts` que obtém o
 driver `pg` é alvo e precisa de `BEGIN`/`ROLLBACK`/`lock_timeout`/`skipIf` sem `COMMIT`, a menos
@@ -628,9 +721,10 @@ externa ponta a ponta por HTTP — a fixture precisa estar **commitada** para o 
 `ESCREVEM_E_REVERTEM_HOJE` e reprova quando um arquivo novo entra — aí se atualiza esta seção e
 se avalia o gatilho.
 
-🔴 **O gatilho FOI TOCADO na v5.11.0 e a decisão está aberta.** Hoje são **quatro**:
-`reverter-diario` (0268), `virada-paridade` (0181, v5.1.4) e `estante-rpcs` (0271/0272, v5.11.0)
-em transação revertida, mais `contrato-api-externa` como exceção commitada.
+🔴 **O gatilho FOI TOCADO na v5.11.0 e a decisão está aberta.** Hoje são **cinco**:
+`reverter-diario` (0268), `virada-paridade` (0181, v5.1.4), `estante-rpcs` (0271/0272, v5.11.0)
+e `promover-carga-checksum` (0278, v6.0.0/M5) em transação revertida, mais `contrato-api-externa`
+como exceção commitada.
 
 O 4º entrou com uma justificativa que **não** é conveniência, e é ela que precisa entrar na
 reavaliação: por REST com `service_role` as travas de permissão da Estante
@@ -640,19 +734,45 @@ permissão é conexão direta assumindo identidade via `SET LOCAL request.jwt.cl
 argumento a favor do ambiente próprio ficou **mais** forte, não menos — um ambiente de teste com
 usuários controlados resolveria isso sem escrever em produção.
 
-### Quem se conecta por `SUPABASE_DB_URL`: são CINCO, e quem só lê trava a sessão
+O 5º (`promover-carga-checksum`, v6.0.0/M5) é o ensaio de `CHECKSUM_FALHOU`/base-intacta que
+antes só rodava à mão contra produção — o mesmo caso, agora permanente. O dono do produto optou
+por **commitar esta prova** e manter a discussão do ambiente de teste próprio **em aberto**, não
+por encerrá-la: o gatilho segue **tocado**, a reavaliação continua pendente, e o argumento do
+parágrafo anterior (as travas mais interessantes de testar são as que o `service_role` não
+alcança) permanece de pé.
+
+### Quem se conecta por `SUPABASE_DB_URL`: hoje são DOZE, e quem só lê trava a sessão
 
 `SUPABASE_DB_URL` é a conexão **direta** com produção (pooler em session mode, ADR-0119) — fora do
 PostgREST, fora de `exigir_acesso`, com o papel dono do banco. Até a v5.10.3 esta seção contava
 "três arquivos" (os testes que escrevem) e era lida como se fosse o inventário **da credencial**;
-os consumidores reais são **cinco**, e dois deles não eram teste nem escrita-e-reversão:
+os consumidores reais eram **cinco**, e dois deles não eram teste nem escrita-e-reversão.
+
+⚠️ **Esta tabela já derivou uma vez, em silêncio** (achado da v6.0.0/M5): ficou em "cinco" enquanto
+`estante-rpcs.test.ts` entrou na v5.11.0 e `promover-carga-checksum.test.ts` na v6.0.0 — dois
+consumidores a mais sem ninguém notar, porque nenhuma sonda conta ESTA lista (a
+`sonda-teste-escreve-banco.test.ts` fiscaliza a lista de quem escreve, não este inventário). É a
+mesma classe de defeito que a v5.10.3 já registrou: **contagem em prosa deriva**. Quem acrescentar
+um consumidor atualiza aqui, e quem ler não deve confiar no número sem conferir.
+
+Como conferir em dez segundos, que é mais barato do que acreditar:
+`grep -rl SUPABASE_DB_URL src/ scripts/ supabase/` — descontando as duas sondas, que só VARREM a
+string e não abrem conexão. (Esta nota nasceu errando: a primeira correção desta tabela, feita na
+M5, escreveu "oito" de cabeça e o grep devolveu nove.)
 
 | Consumidor | Classe |
 |---|---|
 | `src/lib/dre/reverter-diario.test.ts` | escreve-e-reverte (0268) |
 | `src/lib/monde/virada-paridade.test.ts` | escreve-e-reverte (0181) |
+| `src/lib/estante/estante-rpcs.test.ts` | escreve-e-reverte (0271/0272, v5.11.0) |
+| `src/lib/ingestao/promover-carga-checksum.test.ts` | escreve-e-reverte (0278, v6.0.0/M5) — checksum contra o gravado |
 | `src/lib/api-externa/contrato-api-externa.test.ts` | exceção: fixture **commitada**, limpa em `afterAll` |
 | `src/lib/rpc-contrato.test.ts` | **somente leitura** (catálogo + `app.areas_do_setor`) |
+| `src/lib/ingestao/credencial-ingestor.test.ts` | **somente leitura** (`has_function_privilege` da role `ingestor`) |
+| `src/lib/ingestao/sonda-leitores-vendas-excel.test.ts` | **somente leitura**: todo leitor de `raw.vendas_excel` no catálogo está na lista fechada (v6.0.0/M7a, 0283) |
+| `src/lib/schema-baseline.test.ts` | **somente leitura**: catálogo vivo × `supabase/baseline/schema-v6.json` (v6.0.0/M8) |
+| `scripts/schema-baseline/gerar.mjs` | **somente leitura**: gera o baseline de schema (`npm run db:baseline`, v6.0.0/M8) |
+| `scripts/credencial/derivar-allowlist.mjs` | **somente leitura**: resolve nome de RPC em assinatura no catálogo (v6.0.0/M1) |
 | `scripts/db-gate/lib.mjs` | infra do backup-gate: `COPY OUT` do backup e `COPY IN` da recuperação |
 
 **Regra (v5.10.3): consumidor de somente leitura abre a conexão travada.** Primeiro comando depois

@@ -99,15 +99,22 @@ A pergunta que este quadro responde é: **"este número veio de onde?"**
 | **Solicitações** (`/solicitacoes`, `/admin/solicitacoes`) | `app.solicitacao` (+ `_tipo`, `_campo`, `_anexo`) | formulário interno **e** a API externa (ADR-0172) |
 | **Acessos** (`/admin/acessos`) | `app.rbac_usuarios`, `rbac_roles`, `rbac_role_permissoes`, `rbac_areas` | administração humana |
 | **Inventário de Ativos** (`/gestao-pessoas/inventario`) | `patrimonio.ativo`, `movimentacao`, `v_estado_atual` | cadastro humano |
-| **Uploads** (`/admin/uploads`) | — | é a **porta de entrada** dos quatro arquivos acima |
+| **Uploads / Ingestão** (`/admin/uploads`) | `ingestao.*` (log) | **porta de entrada das 5 bases financeiras** — Demonstrativo, Vendas, Movimentação, Aberto, Operação — via `POST /api/ingestao/{base}` (v6.0.0, ADR-0176); Pessoas continua no caminho antigo (client-side + Server Action, decisão 11 do briefing v6.0.0) |
+| **Painel de ingestão** (`/admin/ingestao`) | `ingestao.execucao`, `ingestao.alarme`, `ingestao.expectativa` | só leitura — últimas cargas, diff, alarmes, reprocesso do cru; não é fonte de dado de negócio |
 
-### O pipeline de upload de Vendas, em uma frase
+### O pipeline de carga, em uma frase (as 5 bases financeiras, v6.0.0)
 
-`limpar_staging_vendas` → `inserir_lote_staging` (por lote) → `validar_carga_staging`
-(pré-checagem **não-destrutiva**) → `promover_carga_vendas` (transação única: trunca, copia
-staging→raw, transforma, regenera dims, refresh das MVs). **Se qualquer etapa falha, a base de
-leitura continua a anterior** — antes disso (v4.15.0, ADR-0111) uma carga ruim podia deixar a
-tabela de vendas vazia em produção. Operação detalhada na skill `ingestao-planilhas` §5.
+`limpar_staging_{base}` → `inserir_lote_staging_{base}` (por lote) → `validar_carga_{base}`
+(pré-checagem **não-destrutiva**) → `promover_carga_{base}(checksums, carga_id)` (transação única:
+trunca, copia staging→raw, transforma, regenera dims/fatos, refresh das MVs — **e confere os
+checksums extraídos do arquivo contra o que ficou gravado**, rejeitando com `CHECKSUM_FALHOU` se não
+fechar; ADR-0177). **Se qualquer etapa falha, a base de leitura continua a anterior** — o desenho
+nasceu só para Vendas (v4.15.0, ADR-0111), quando uma carga ruim podia deixar a tabela vazia em
+produção; a v6.0.0 estendeu o mesmo molde às outras quatro bases e trocou quem aplica: a credencial
+de máquina `ingestor` (escopo só nessas RPCs), não mais `service_role`. A carga chega pela rota
+`POST /api/ingestao/{base}` (signed upload URL + parse no servidor), não mais pelo card
+client-side — ver o módulo Uploads/Ingestão acima. Operação detalhada na skill `ingestao-planilhas`
+§5/§8 e `banco-e-rpc` (credenciais de máquina).
 
 ### Solicitações — o que um operador precisa saber
 
@@ -172,6 +179,18 @@ o espelho guarda o que a origem diz, inclusive o que ela deixou de reconhecer, e
 conta é a consulta. A regra nasceu de um defeito real — o espelho retinha venda cancelada com os
 valores congelados de antes (24 vendas, R$ 896.718,90).
 
+### Crons internos de vigilância e retenção da ingestão (v6.0.0)
+
+Além dos crons de integração externa (Monde, CDI) acima, a v6.0.0 acrescentou dois crons que
+monitoram a própria ingestão, sem chamar nenhum terceiro: `ingestao-vigia` (confere se cada processo
+de carga/reconciliação registrou execução dentro da tolerância esperada; abre/resolve incidente em
+`ingestao.alarme`) e `ingestao-retencao` (apaga o cru do bucket `ingestao-cru` após a janela de
+retenção — 3 meses para todo cru, 7 dias para o que nenhuma carga cita). **Os dois nascem
+`active=false`**: a rota que cada um chama só existe depois do deploy, e ligar antes disso faria o
+cron bater 404 e aparecer VERDE em `cron.job_run_details` sem ter feito nada — a mesma armadilha que
+o `ingestao-vigia` existe para detectar nos outros processos. Ativar é ato humano, pós-merge, com o
+baseline de schema regenerado logo depois (`active` é campo do retrato — skill `banco-e-rpc` §6).
+
 ---
 
 ## 6. Decisões vigentes
@@ -200,6 +219,10 @@ As que mais moldam o dia a dia:
 | Rebranding Janus | **0145** |
 | Harness: core + skills + rituais | **0157** |
 | Critérios de limpeza e fechamento da v5 | **0173** |
+| Credenciais de máquina: `verificador` (só leitura) × `ingestor` (aplica) | **0175** |
+| Contrato de ingestão servidor-a-servidor (`/api/ingestao/{base}`) | **0176** |
+| Checksum do arquivo como gate de carga | **0177** |
+| Baseline de schema versionado (drift) | **0178** |
 
 ---
 
@@ -219,6 +242,13 @@ uma boa razão registrada.
 - **Migration destrutiva exige TTY humano**, e não se escreve na pasta `supabase/migrations/` antes
   da hora — `db push` empurra **todo** o conjunto pendente (custou bases dropadas por arrasto na
   v5.2.0). Destrutiva estacionada fica em `supabase/patches/`.
+- **Migration aplicada — ou cron ligado/desligado — exige regenerar o baseline de schema no mesmo
+  commit** (`npm run db:baseline`; teste de drift `schema-baseline` reprova qualquer diferença não
+  regenerada, v6.0.0/ADR-0178).
+- **Escrita de máquina passa por credencial de papel único, nunca por `service_role`.** `verificador`
+  só lê (allowlist derivada do código); `ingestor` só aplica as RPCs de staging/promoção da ingestão
+  (v6.0.0/ADR-0175). Script de medição/varredura usa a credencial de verificação, nunca a chave de
+  serviço.
 - **Merge humano é a única fronteira de entrada em produção.** O agente não mergeia e não deploya.
 - **Decisão de produto é do usuário.** Na dúvida entre técnico e produto, é produto.
 

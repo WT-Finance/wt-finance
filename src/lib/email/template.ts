@@ -6,6 +6,8 @@
 // pura — parametrizada por `tipo` e `linkAcesso`.
 
 import { LOGO_CID, LOGO_JANUS_CID } from './logo'
+import { ROTULO_BASE, type BaseIngestao } from '@/lib/ingestao/bases'
+import { fmtBRL2 } from '@/lib/fmt'
 
 export type TipoSenha = 'criacao' | 'reset'
 
@@ -450,6 +452,328 @@ export function templateNotificacaoAcessoSolicitado(input: {
       </td></tr>
       <tr><td class="em-pad" style="padding:12px 40px 38px;">
         <p style="margin:0;font-size:12px;line-height:1.6;color:${COR_TENUE};">Você recebe este aviso porque administra Usuários &amp; Acessos.</p>
+      </td></tr>
+    </table>
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
+      <tr><td align="center" style="padding:18px 0 0;font-size:11px;letter-spacing:1px;color:${COR_TENUE};">JANUS&nbsp;&nbsp;·&nbsp;&nbsp;WELCOME&nbsp;GROUP</td></tr>
+    </table>
+  </td></tr>
+</table>`
+
+  return { assunto, html, text }
+}
+
+// ── v6.0.0/M6 — Alarme de ingestão (interno, para quem administra a ingestão) ────────────
+// MESMO layout Outlook-safe (tabelas/inline/logo CID/lockup duplo/responsivo). A DECISÃO de
+// alarmar é de OUTRO módulo (ingestao.alarme + carga.ts/vigia) — este template só FORMATA o
+// que já foi decidido, com os números que o operador precisa para agir sem abrir a tela
+// (anexo v6.0.0/M6 §4/§5): o que aconteceu, em qual base/processo, quando, e a grandeza que
+// o explica. Em MODO TESTE, assunto e corpo dizem isso EXPLICITAMENTE — um alarme de teste
+// não pode ser confundido com um real (mesmo espírito do prefixo de `templateFaturaEmail`).
+
+const COR_ALARME = '#A35442'   // vermelho — mesma semântica de "rejeitada" em MOV_COR acima
+
+function numPt(n: number): string {
+  return n.toLocaleString('pt-BR')
+}
+/** Delta com sinal explícito ("+6" / "-3" / "0") — nunca ambíguo sobre a direção da mudança. */
+function comSinal(n: number): string {
+  return n > 0 ? `+${numPt(n)}` : numPt(n)
+}
+/** Delta monetário com sinal, a partir de CENTAVOS (a grandeza que o diff da M4 compara). */
+function deltaBRL(centavosAntes: number, centavosDepois: number): string {
+  const delta = centavosDepois - centavosAntes
+  const sinal = delta > 0 ? '+' : delta < 0 ? '-' : ''
+  return `${sinal}${fmtBRL2(Math.abs(delta) / 100)}`
+}
+
+export type TipoAlarmeIngestao =
+  | 'checksum_falho'
+  | 'ano_fechado_alterado'
+  | 'par_novo_bandeja'
+  | 'processo_sem_resultado'
+  | 'carga_esperada_nao_chegou'
+
+/** Carga rejeitada por checksum (ou outra rejeição de conteúdo) — chave do incidente = `cargaId`. */
+export interface AlarmeChecksumFalho {
+  tipo:    'checksum_falho'
+  base:    BaseIngestao
+  cargaId: string
+  /** Mensagem ORIGINAL da rejeição (ex.: `CargaRejeitada.message`) — nunca reescrita em prosa genérica. */
+  motivo:  string
+  /** Código da rejeição (`ErroCarga.codigo`: `CHECKSUM_FALHOU`, `FORMATO_INVALIDO`,
+   *  `ESTRUTURA_INESPERADA`, `ARQUIVO_AUSENTE`…). O tipo do alarme cobre TODA rejeição de
+   *  conteúdo, mas o texto só afirma "checksum" quando o código diz isso — o e-mail não pode
+   *  mandar o operador procurar a causa no lugar errado. Ausente = causa não informada. */
+  codigo?: string
+}
+
+/** A rejeição foi mesmo de checksum? — decide só a PROSA do alarme `checksum_falho`. */
+function rejeicaoPorChecksum(a: AlarmeChecksumFalho): boolean {
+  return a.codigo === 'CHECKSUM_FALHOU'
+}
+
+/** Carga aplicada mexeu num ano anterior ao corrente — QUALQUER valor dispara (decisão 1 do
+ *  anexo). Grandeza: contagem E soma (a mesma dos dois lados do diff — lição da M4). */
+export interface AlarmeAnoFechadoAlterado {
+  tipo:           'ano_fechado_alterado'
+  base:           BaseIngestao
+  ano:            number
+  linhasAntes:    number
+  linhasDepois:   number
+  /** Centavos (evita ponto-flutuante) — mesma unidade das colunas de valor no banco. */
+  centavosAntes:  number
+  centavosDepois: number
+  cargaId?:       string | null
+}
+
+/** Carga do Demonstrativo trouxe pares novos para a bandeja de revisão. */
+export interface AlarmeParNovoBandeja {
+  tipo:       'par_novo_bandeja'
+  cargaId:    string
+  paresNovos: number
+}
+
+/** Processo agendado (cron) sem execução `ok`/`pulado` dentro da tolerância — o vigia decide;
+ *  este template só formata. */
+export interface AlarmeProcessoSemResultado {
+  tipo:     'processo_sem_resultado'
+  processo: string
+  /** 'DD/MM/AAAA às HH:MM' (fuso SP), já formatado pelo chamador — `null` = nunca registrou execução OK. */
+  ultimaExecucaoOkEm?: string | null
+  minutosSemResultado: number
+}
+
+/** Base com expectativa ativa sem carga aplicada dentro da janela. */
+export interface AlarmeCargaEsperadaNaoChegou {
+  tipo: 'carga_esperada_nao_chegou'
+  base: BaseIngestao
+  /** 'DD/MM/AAAA às HH:MM' (fuso SP), já formatado pelo chamador — `null` = nunca houve carga aplicada. */
+  ultimaCargaEm?: string | null
+  horasSemCarga:  number
+}
+
+/** Um alarme de ingestão JÁ DECIDIDO — `enviarAlarmeIngestao`/este template não decidem se
+ *  há alarme, só formatam e enviam o que outro módulo decidiu (anexo v6.0.0/M6 §5). */
+export type AlarmeIngestao =
+  | AlarmeChecksumFalho
+  | AlarmeAnoFechadoAlterado
+  | AlarmeParNovoBandeja
+  | AlarmeProcessoSemResultado
+  | AlarmeCargaEsperadaNaoChegou
+
+/** Par rótulo/valor da caixa de detalhe — MÓDULO-level (não local a uma função) para ser
+ *  reusado pelo template de alarme sem duplicar o helper de `templateNotificacaoAcessoSolicitado`. */
+function linhaDetalheAlarme(rotulo: string, valor: string): string {
+  return `<tr>
+      <td style="padding:9px 0;font-size:13px;color:${COR_LABEL};white-space:nowrap;">${escaparHtml(rotulo)}</td>
+      <td align="right" style="padding:9px 0;font-size:14px;font-weight:bold;color:${COR_TITULO};">${escaparHtml(valor)}</td>
+    </tr>`
+}
+const DIVISORIA_DETALHE_ALARME = `<tr><td colspan="2" style="border-top:1px solid ${COR_BORDA};font-size:0;line-height:0;">&nbsp;</td></tr>`
+
+interface CorpoAlarme {
+  /** Headline da caixa colorida — o que aconteceu, em uma linha. */
+  titulo: string
+  /** Pares rótulo/valor da caixa de detalhe — a base/processo, o `carga_id`, os números. */
+  linhas: [string, string][]
+  /** Parágrafo livre opcional (o `motivo` do checksum) — escapado na montagem do html. */
+  extra?: string
+}
+
+/** Duração legível em pt-BR a partir de minutos — "50.400 minutos" não se lê numa caixa de
+ *  entrada. ≥ 2 dias → dias; ≥ 2 horas → horas; senão minutos. */
+function duracaoPt(minutos: number): string {
+  if (minutos >= 2 * 24 * 60) return `${numPt(Math.round(minutos / (24 * 60)))} dias`
+  if (minutos >= 120) return `${numPt(Math.round(minutos / 60))} horas`
+  return `${numPt(minutos)} minuto(s)`
+}
+
+function montarCorpoAlarme(a: AlarmeIngestao): CorpoAlarme {
+  switch (a.tipo) {
+    case 'checksum_falho':
+      return {
+        titulo: rejeicaoPorChecksum(a)
+          ? `Carga rejeitada — checksum não fechou (${ROTULO_BASE[a.base]})`
+          : `Carga rejeitada (${ROTULO_BASE[a.base]})`,
+        linhas: [
+          ['Base', ROTULO_BASE[a.base]], ['Carga', a.cargaId],
+          ...(a.codigo ? [['Código', a.codigo] as [string, string]] : []),
+        ],
+        extra:  a.motivo,
+      }
+    case 'ano_fechado_alterado':
+      return {
+        titulo: `Ano fechado alterado — ${ROTULO_BASE[a.base]}, ${a.ano}`,
+        linhas: [
+          ['Base', ROTULO_BASE[a.base]],
+          ['Ano', String(a.ano)],
+          ['Linhas', `${numPt(a.linhasAntes)} → ${numPt(a.linhasDepois)} (${comSinal(a.linhasDepois - a.linhasAntes)})`],
+          ['Valor', `${fmtBRL2(a.centavosAntes / 100)} → ${fmtBRL2(a.centavosDepois / 100)} (${deltaBRL(a.centavosAntes, a.centavosDepois)})`],
+          ...(a.cargaId ? [['Carga', a.cargaId] as [string, string]] : []),
+        ],
+      }
+    case 'par_novo_bandeja':
+      return {
+        titulo: `${numPt(a.paresNovos)} par(es) novo(s) na bandeja — ${ROTULO_BASE['demonstrativo-competencia']}`,
+        linhas: [['Pares novos', numPt(a.paresNovos)], ['Carga', a.cargaId]],
+      }
+    case 'processo_sem_resultado':
+      return {
+        titulo: `Processo sem resultado — ${a.processo}`,
+        linhas: [
+          ['Processo', a.processo],
+          // Sem nenhuma execução OK registrada, o número é só o PISO (a tolerância inteira) — não
+          // um fato medido; o rótulo diz isso em vez de afirmar uma duração exata.
+          a.ultimaExecucaoOkEm
+            ? ['Sem resultado há', duracaoPt(a.minutosSemResultado)]
+            : ['Sem resultado há pelo menos', duracaoPt(a.minutosSemResultado)],
+          ['Última execução OK', a.ultimaExecucaoOkEm ?? 'nunca registrada'],
+        ],
+      }
+    case 'carga_esperada_nao_chegou':
+      return {
+        titulo: `Carga esperada não chegou — ${ROTULO_BASE[a.base]}`,
+        linhas: [
+          ['Base', ROTULO_BASE[a.base]],
+          a.ultimaCargaEm
+            ? ['Sem carga há', duracaoPt(a.horasSemCarga * 60)]
+            : ['Sem carga há pelo menos', duracaoPt(a.horasSemCarga * 60)],
+          ['Última carga aplicada', a.ultimaCargaEm ?? 'nunca houve'],
+        ],
+      }
+  }
+}
+
+/** Primeira linha — o que aconteceu, em prosa direta (entra no topo do corpo): quem lê numa
+ *  caixa cheia decide se é urgente já nesta linha. */
+function primeiraLinhaAlarme(a: AlarmeIngestao): string {
+  switch (a.tipo) {
+    case 'checksum_falho':
+      return rejeicaoPorChecksum(a)
+        ? `Uma carga da base "${ROTULO_BASE[a.base]}" foi REJEITADA: o checksum não fechou.`
+        : `Uma carga da base "${ROTULO_BASE[a.base]}" foi REJEITADA — o motivo está abaixo.`
+    case 'ano_fechado_alterado':
+      return `Uma carga aplicada MUDOU o ano fechado ${a.ano} da base "${ROTULO_BASE[a.base]}".`
+    case 'par_novo_bandeja':
+      return `A carga do Demonstrativo trouxe ${numPt(a.paresNovos)} par(es) NOVO(S) para a bandeja de revisão.`
+    case 'processo_sem_resultado':
+      return a.ultimaExecucaoOkEm
+        ? `O processo "${a.processo}" está SEM RESULTADO há ${duracaoPt(a.minutosSemResultado)}.`
+        : `O processo "${a.processo}" NUNCA registrou execução OK, e já passou a tolerância de ${duracaoPt(a.minutosSemResultado)}.`
+    case 'carga_esperada_nao_chegou':
+      return a.ultimaCargaEm
+        ? `A base "${ROTULO_BASE[a.base]}" está SEM CARGA aplicada há ${duracaoPt(a.horasSemCarga * 60)}.`
+        : `A base "${ROTULO_BASE[a.base]}" NUNCA teve carga aplicada, e já passou a tolerância de ${duracaoPt(a.horasSemCarga * 60)}.`
+  }
+}
+
+function assuntoBaseAlarme(a: AlarmeIngestao): string {
+  switch (a.tipo) {
+    case 'checksum_falho':           return rejeicaoPorChecksum(a)
+      ? `Carga rejeitada (checksum) — ${ROTULO_BASE[a.base]}`
+      : `Carga rejeitada — ${ROTULO_BASE[a.base]}`
+    case 'ano_fechado_alterado':      return `Ano fechado alterado — ${ROTULO_BASE[a.base]} ${a.ano}`
+    case 'par_novo_bandeja':         return `${numPt(a.paresNovos)} par(es) novo(s) na bandeja — Demonstrativo`
+    case 'processo_sem_resultado':    return `Processo sem resultado — ${a.processo}`
+    case 'carga_esperada_nao_chegou': return `Carga esperada não chegou — ${ROTULO_BASE[a.base]}`
+  }
+}
+
+export function templateAlarmeIngestao(alarme: AlarmeIngestao, opts: {
+  /** true → MODO TESTE: assunto e corpo dizem isso explicitamente (não é um incidente real). */
+  teste: boolean
+  /** Link PRONTO para `/admin/ingestao` (já montado pelo chamador via `getAppBaseUrl()`) —
+   *  `null` → botão omitido, e-mail segue válido. Template não concatena rota (mesmo padrão
+   *  de `templateNotificacaoSolicitacao`/`link`). */
+  link: string | null
+}): TemplateSenha {
+  const corpo  = montarCorpoAlarme(alarme)
+  const linha1 = primeiraLinhaAlarme(alarme)
+  const link   = opts.link?.trim() || null
+
+  const assunto = `${opts.teste ? '[ALARME DE TESTE] ' : '[ALARME] '}${assuntoBaseAlarme(alarme)} | ${APP_NOME_INTERNO}`
+
+  const linhasHtml = corpo.linhas.map(([r, v]) => linhaDetalheAlarme(r, v))
+  const comDivisorias = linhasHtml.flatMap((l, i) => (i === 0 ? [l] : [DIVISORIA_DETALHE_ALARME, l]))
+
+  const extraParagrafo = corpo.extra
+    ? `<tr><td class="em-pad" style="padding:16px 40px 0;">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:${COR_TEXTO};"><strong>Motivo:</strong> ${escaparHtml(corpo.extra)}</p>
+      </td></tr>`
+    : ''
+
+  const faixaTeste = opts.teste
+    ? `<tr><td class="em-pad" style="padding:22px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_TESTE_BG};border:1px solid ${COR_TESTE_BORDA};border-radius:10px;">
+          <tr><td style="padding:12px 16px;">
+            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_TESTE_FG};font-weight:bold;margin-bottom:4px;">Alarme de teste</div>
+            <div style="font-size:13px;line-height:1.55;color:${COR_TESTE_FG};">Este alarme é de TESTE — não corresponde a um incidente real.</div>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : ''
+
+  const botaoLinha = link
+    ? `<tr><td class="em-pad" align="center" style="padding:26px 40px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+          <tr><td align="center" bgcolor="${COR_TITULO}" style="border-radius:12px;padding:14px 34px;">
+            <a href="${escaparHtml(link)}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;">Ver na plataforma</a>
+          </td></tr>
+        </table>
+      </td></tr>`
+    : ''
+
+  const text =
+    (opts.teste ? '[ALARME DE TESTE — não corresponde a um incidente real]\n\n' : '[ALARME]\n\n') +
+    `${linha1}\n\n` +
+    corpo.linhas.map(([r, v]) => `${r}: ${v}`).join('\n') + '\n\n' +
+    (corpo.extra ? `Motivo: ${corpo.extra}\n\n` : '') +
+    (link ? `Ver na plataforma: ${link}\n\n` : '') +
+    'Você recebe este aviso porque administra a ingestão de dados.\n\n' +
+    `— ${APP_NOME_INTERNO}`
+
+  const html =
+`<style>
+  @media only screen and (max-width:480px) {
+    .em-card { width:100% !important; }
+    .em-pad  { padding-left:24px !important; padding-right:24px !important; }
+  }
+</style>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;padding:0;background:${COR_FUNDO};font-family:Arial,Helvetica,sans-serif;">
+  <tr><td align="center" style="padding:40px 12px;">
+    <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border:1px solid ${COR_BORDA};border-radius:14px;">
+      <tr><td class="em-pad" align="center" style="padding:38px 40px 0;">
+        ${lockupDuploHtml()}
+      </td></tr>
+      <tr><td class="em-pad" style="padding:26px 40px 0;">
+        <div style="border-top:1px solid ${COR_LINHA};font-size:0;line-height:0;">&nbsp;</div>
+      </td></tr>
+      ${faixaTeste}
+      <tr><td class="em-pad" style="padding:24px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-left:3px solid ${COR_ALARME};border-radius:12px;">
+          <tr><td style="padding:16px 18px;">
+            <div style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:${COR_ALARME};font-weight:bold;margin-bottom:7px;">Alarme de ingestão</div>
+            <div style="font-size:16px;font-weight:bold;line-height:1.4;color:${COR_TITULO};">${escaparHtml(corpo.titulo)}</div>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:18px 40px 0;">
+        <p style="margin:0;font-size:14px;line-height:1.65;color:${COR_TEXTO};">${escaparHtml(linha1)}</p>
+      </td></tr>
+      <tr><td class="em-pad" style="padding:18px 40px 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR_SENHA_BG};border:1px solid ${COR_BORDA};border-radius:10px;">
+          <tr><td style="padding:6px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              ${comDivisorias.join('')}
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+      ${extraParagrafo}
+      ${botaoLinha}
+      <tr><td class="em-pad" style="padding:26px 40px 38px;">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:${COR_TENUE};">Você recebe este aviso porque administra a ingestão de dados.</p>
       </td></tr>
     </table>
     <table role="presentation" class="em-card" width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;">
