@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-24 (fronteira da M6).
+Última atualização: 2026-09-25 (fim da M7).
 
 ---
 
@@ -32,7 +32,8 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M5 atomicidade | **feito** (`7fb7097`) — 0277/0278 aplicadas 22/09; desenho em `docs/briefings/anexo-v6-0-0-m5-desenho-da-atomicidade.md` |
 | M6 log, alarmes, vigia, tela | **feito** — 0280/0281 aplicadas 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6-desenho-log-e-alarmes.md` |
 | M6b retenção do cru | **feito** — 0282 aplicada 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md` |
-| M7–M11 | pendentes — roteiro no plano |
+| M7 grafo + Welcome + leitura | **feito** — 0283 aplicada 25/09; desenho e provas em `docs/briefings/anexo-v6-0-0-m7-desenho-grafo-e-leitura.md` |
+| M8–M11 | pendentes — roteiro no plano |
 
 **Decisões do Yan em 24/09, depois da M6 — errata 3 do contrato (`docs/contratos/ingestao-v1.md`):**
 1. **Reprocesso = carga NOVA com cópia dos arquivos** (errata 3(a)); o que a tela já faz. Afeta a RPA.
@@ -41,6 +42,36 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 3. **Retenção do cru: 3 meses** (o dado no banco não expira). Medido antes de decidir: um conjunto das
    5 bases tem ~20 MB → ~1 GB/ano no ritmo semanal de hoje, ~7 GB/ano com a RPA diária; o custo não
    pesou, e o Yan não vê motivo para guardar o arquivo por muito tempo. Vai para o ADR no fechamento.
+
+**M7 FECHADA (25/09) — grafo de carga, Welcome em todos os leitores, leitura** (desenho e provas:
+`docs/briefings/anexo-v6-0-0-m7-desenho-grafo-e-leitura.md`).
+
+- **Grafo** (`src/lib/ingestao/grafo.ts`): Lançamentos por Operação exige carga de Aberto
+  **aplicada no dia** (data SP de `concluido_em` = `hojeSP()`), senão `409 DEPENDENCIA_AUSENTE`. O
+  check roda antes de `abrirCarga`: não grava linha, não consome idempotência, não alarma; vale na
+  conferência; leitura falhando ⇒ 500 (fail-closed). As outras arestas do §5 são ordem declarada.
+  **Consequência operacional para a M9: subir Aberto ANTES de Operação no mesmo dia.**
+- 🔴 **A M5 tinha deixado um buraco no invariante 1, fechado pela 0283 antes de ele custar número.**
+  O filtro Welcome vivia só no `transform`; **seis** leitores liam `raw.vendas_excel` direto (Weddings:
+  `regenerar_dim_operacao_weddings`, `contar_convidados_operacao`, os três `get_*weddings__nucleo`; e
+  `vw_vendas_agregadas`, que alimenta Vendas em Aberto/prejuízo/receita negativa). Medido no cru de
+  21/09: 5 linhas Welcome em 4 operações que existem fora de Welcome (2 casamentos) e 141 vendas — a
+  carga de Vendas da M9 teria mudado número em Weddings. **0283 aplicada** (gate verde; `revisor-db`
+  aprovou; 13 trocas conferidas contra o corpo vivo); ensaio em transação revertida: linha Welcome
+  sintética não mexe em nenhum dos seis, o controle Trips mexe em todos. Sonda de catálogo nova
+  (`sonda-leitores-vendas-excel.test.ts`) reprova qualquer leitor futuro fora da lista fechada.
+- **Leitura:** "· parcial" no mês que a última carga do Demonstrativo cobriu só em parte (regra pela
+  COBERTURA da base, não pelo calendário — export de 21/09 olhado em 01/10 continua com setembro
+  parcial), na tabela densa e no YTD do Resumo, **só na competência**; nenhum valor mudou. Selos de
+  carga novos em `/financeiro/fluxo-caixa` (Movimentação + Em aberto), `/performance*` (Vendas) e
+  `/performance/weddings` (Vendas + Operações), lidos de `ingestao_carga_ultima` — **vazios até a M9**.
+
+> 🔴 **Para o Yan decidir (defaults adotados, nada bloqueia):** (1) o caixa da DRE já marca o mês
+> corrente com `·REAL`/`·PREV` — basta, ou entra "· parcial" junto? (default: não mexer); (2) o
+> briefing pede o texto "base carregada em DD/MM/AAAA", a plataforma já usa "Última atualização em
+> DD/MM/AAAA HH:MM" (default: manter); (3) a "lista de operações exposta por RPC para a RPA"
+> (contrato §5) não existe e a RPA de Operação está fora da v6 (default: não construir — candidata a
+> errata 4 na v6.1).
 
 **M6b FECHADA (24/09) — limpeza do cru** (desenho e o que foi provado:
 `docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md`). Migration **0282** aplicada (gate verde,
@@ -402,9 +433,9 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v5.12.0** (PR #275, mergeado 24/09 às 15:44 — sem migration; o `main` segue na 0272). Esta branch ainda não trouxe o `main`: no fechamento, conflito esperado em `WORKING-CONTEXT.md`, skill `banco-e-rpc`, `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` — nenhum em código da ingestão |
-| Última migration aplicada | **0282** (v6.0.0/M6b — retenção do cru) · próxima livre: **0283** |
+| Última migration aplicada | **0283** (v6.0.0/M7a — Welcome em todos os leitores de Vendas) · próxima livre: **0284** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
-| Suíte | **1.595 testes**, 94 arquivos, zero `skip` silencioso |
+| Suíte | **1.639 testes**, 98 arquivos, zero falha, zero `skip` (25/09, com a 0283 aplicada) |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
