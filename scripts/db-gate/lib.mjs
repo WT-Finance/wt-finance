@@ -20,6 +20,7 @@ import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import pg from 'pg'
 import copyStreams from 'pg-copy-streams'
+import { SCHEMAS_PROJETO } from '../schema-baseline/snapshot.mjs'
 
 const { to: copyTo, from: copyFrom } = copyStreams
 
@@ -32,7 +33,14 @@ export const REPO = (() => {
   try { return execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() }
   catch { return process.cwd() }
 })()
-export const SCHEMAS = ['analytics', 'app', 'audit', 'dim', 'financeiro', 'raw']
+// Fonte ÚNICA com o baseline de schema (v6.0.0/M8, decisão do Yan em 25/09). A lista fixa daqui
+// era ['analytics','app','audit','dim','financeiro','raw'] desde 14/06 (ADR-0116) e deixou de fora,
+// em silêncio, os schemas que nasceram depois — estante, patrimonio, ingestao, monde: 18 de 79
+// tabelas sem backup. A checagem de completude (`tabelasVivas`) lê esta MESMA lista, então nunca
+// acusava: "61 vivas / 61 no manifest". Com a fonte única, schema novo se declara uma vez só em
+// `scripts/schema-baseline/snapshot.mjs`, e o teste de drift reprova schema não declarado.
+// (`public` entra na lista e não tem tabela — inofensivo.)
+export const SCHEMAS = SCHEMAS_PROJETO
 
 config({ path: join(REPO, '.env.local') })
 

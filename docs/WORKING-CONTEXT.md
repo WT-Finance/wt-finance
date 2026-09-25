@@ -51,7 +51,6 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
    de preview; decisão dele.
 3. Ordem no mesmo dia: Lançamentos por Vencimento (em aberto) ANTES de Lançamentos por Operação (409).
 4. Depois de ligar vigia/crons: `npm run db:baseline` e commitar (o `active` está no retrato).
-5. O diff do backup-gate (61 → 79 tabelas) decidido no máximo antes da M10.
 
 **M8 FECHADA (25/09) — baseline de schema e drift. Fronteira da Fase 4.**
 
@@ -73,21 +72,11 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
   sondas. Se quiser o `.sql` como companheiro legível: `sudo usermod -aG docker $USER` (relogin) e
   `npx supabase db dump --linked -f supabase/baseline/schema-v6.sql` (o dump já é só de schema por padrão — o `--schema-only` do briefing não existe nesta CLI).
 
-> 🔴 **CHECKPOINT DO YAN — o backup-gate não cobre 18 das 79 tabelas (achado da M8).**
-> `scripts/db-gate/lib.mjs:35` fixa `SCHEMAS = ['analytics','app','audit','dim','financeiro','raw']`
-> (14/06, ADR-0116), de antes de existirem `estante` (2 tabelas — Estante Welcome), `patrimonio` (5 —
-> Inventário), `ingestao` (6 — o log de cargas da v6) e `monde` (5 — o espelho). E a checagem de
-> completude (`tabelasVivas()`) lê a MESMA lista, então é circular: "61 vivas / 61 no manifest" nunca
-> fica vermelho por schema novo. Toda migration desde a v5.1.2 foi aplicada sem backup dessas tabelas.
-> **Diff proposto (não aplicado — mexer na rede de recuperação é decisão sua):**
-> ```js
-> // scripts/db-gate/lib.mjs
-> import { SCHEMAS_PROJETO } from '../schema-baseline/snapshot.mjs'
-> export const SCHEMAS = SCHEMAS_PROJETO   // fonte única com o baseline; public não tem tabela
-> ```
-> Efeito: export e completude passam a cobrir as 79; o backup ganha o espelho Monde (~80 mil linhas,
-> export um pouco mais lento). Com a fonte única, um schema novo precisa ser declarado uma vez só — e
-> o teste de drift já reprova schema não declarado.
+✅ **Backup-gate passou a cobrir as 79 tabelas (decisão do Yan, 25/09).** A lista fixa de
+`scripts/db-gate/lib.mjs` (61 tabelas; `estante`, `patrimonio`, `ingestao` e `monde` de fora desde
+que nasceram, com completude circular) virou `SCHEMAS = SCHEMAS_PROJETO`, fonte única com o baseline.
+Provado: `npm run db:gate` standalone ⇒ **79 tabelas exportadas, completude 79/79, VEREDITO VERDE**.
+O backup ficou maior (espelho Monde, ~80 mil linhas) e o export um pouco mais lento.
 
 **M7 FECHADA (25/09) — grafo de carga, Welcome em todos os leitores, leitura** (desenho e provas:
 `docs/briefings/anexo-v6-0-0-m7-desenho-grafo-e-leitura.md`).

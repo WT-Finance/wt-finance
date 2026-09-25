@@ -43,7 +43,9 @@ node scripts/db-gate/verificar.mjs <dir>      # re-verifica um backup (spot); --
 O gate imprime um relatório e grava `gate-report.json` no diretório do backup. Vermelho vem com
 o(s) **motivo(s)**:
 - `tabela(s) viva(s) ausente(s) do backup` → o exportador não cobriu uma tabela nova → backup
-  **incompleto**. Conferir os schemas em `scripts/db-gate/lib.mjs` (`SCHEMAS`).
+  **incompleto**. Conferir os schemas do projeto em `scripts/schema-baseline/snapshot.mjs`
+  (`SCHEMAS_PROJETO`) — desde a v6.0.0/M8 é a fonte única do gate e do baseline de schema; a lista
+  fixa antiga deixava 4 schemas (18 tabelas) fora do backup sem acusar.
 - `arquivo .copy ausente para: …` → o `.copy` de uma tabela do manifest sumiu do diretório.
 - `export incompleto (ok=false)` → o export parou no meio (linhas do `.copy` ≠ count da origem).
 - `<tabela>: prod(…) ≠ restaurado(…)` → o restaurado **não bate** com a produção viva (count ou
