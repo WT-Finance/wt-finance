@@ -472,6 +472,13 @@ RPC de escrita nenhuma (achado ALTO do `revisor-db` — os guards da DRE foram p
 revertida em `reverter-diario.test.ts`); `admin_listar_areas`/`admin_acesso_solicitacoes_pendentes`
 viraram prova negativa (GATE 2). Próximas: migration livre **0276**, ADR livre **0176**.
 
+> 🔴 **Pós-merge da v5.12.0 — falta um ato do Yan:**
+> 1. ✅ **Junho reprocessado em 24/09** (janela manual: 670 lidas · 652 atualizadas · 0 erros).
+>    Conferido no banco: **5 contratos**, 178/178 itens com hash `#t2`.
+> 2. **Conferir em 25/09**, depois da reconciliação das 03h (que cobre jul–set), o Comparativo de Metas (Weddings):
+>    "Meta de Assessorias" de jun · jul · ago · set deve mostrar **5 · 4 · 2 · 4**. Consulta de
+>    conferência no out-briefing da v5.12.0, §5.
+
 > 🔴 **Pendência do Yan, uma só, herdada da v5.11.0:** decidir se `PRIORIDADE_INICIAL`
 > (`src/lib/auth/areas.ts`) passa a incluir as áreas da Estante. Hoje um colaborador cujo **único**
 > acesso fosse `gestao-pessoas/estante` veria o item na sidebar mas cairia em `/sem-acesso` ao abrir

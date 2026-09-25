@@ -6,6 +6,35 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [5.12.0] — 2026-09-24
+
+MINOR · **Espelho Monde: nome do produto pelo catálogo + versão da transformação no `raw_hash`.**
+Sem migration · sem ADR novo (o mecanismo é o previsto no ADR-0149) · **1.251 testes**.
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v5-12-0_Produto_Monde.md`.
+
+### Corrigido
+
+- **Meta de Assessorias zerada desde junho/2026.** Desde jun/2026 a API do Monde manda rótulo
+  genérico em `products[].description` nos tipos `others`/`operations` ("Outros", "Operação
+  própria") e o nome do catálogo em `product_name_resolvido`. O espelho gravava `description` em
+  `monde.venda_item.produto`, e `get_contratos_casamento_mes` (que filtra `'contrato de casamento%'`)
+  contou **0** contratos de jun a set — a API tem **5 · 4 · 2 · 4**. Agora
+  `produto = product_name_resolvido ?? description ?? null` (`src/lib/monde/transform.ts`).
+- **Correção da transformação passa a alcançar o que já está espelhado.** O `monde_ingest_promover`
+  só reescreve venda cujo `raw_hash` muda; como o `raw` do Monde não mudou, a correção sozinha não
+  tocaria nenhuma das 939 linhas degradadas. O hash gravado passa a ser
+  `<hash do provedor>#t<VERSAO_TRANSFORM>` (`VERSAO_TRANSFORM = 2`): cada venda que passar de novo
+  pela ingestão diverge uma vez e é reescrita. Sem UPDATE em dado existente.
+
+### Antecipado
+
+- `description`, `data_inicio`, `data_fim` e `payments[].method` **saem da API em 2026-10-01**
+  (anunciado pela própria resposta, em `campos_que_saem`). `produto` já não depende de
+  `description` nos tipos que têm leitor; `data_inicio`/`data_fim` passam a gravar `null` depois
+  dessa data — **sem leitor hoje**, e reconstruíveis do `raw` guardado (registrado no out-briefing).
+
+---
+
 ## [5.11.0] — 2026-09-15
 
 MINOR · **Gestão de Pessoas: Estante Welcome** — segundo módulo da seção, irmão deliberado do

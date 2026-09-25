@@ -51,6 +51,10 @@ const zPassenger = z.object({
 
 const zProduct = z.object({
   product_kind: z.string().nullable().optional(),
+  // v5.12.0 — o provedor anunciou a SAÍDA de `description` em 2026-10-01 e, desde jun/2026, já o
+  // preenche com rótulo genérico ("Outros", "Operação própria") nos tipos others/operations. O nome
+  // do CATÁLOGO passou a vir em `product_name_resolvido` (null nos tipos sem catálogo: hotel, aéreo…).
+  product_name_resolvido: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   supplier_name: z.string().nullable().optional(),
   status: z.string().catch(''),

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { transformSale } from './transform'
+import { transformSale, VERSAO_TRANSFORM } from './transform'
 import type { SaleDetail } from './schemas'
 
 // Fixtures mínimas (só os campos que transformSale lê); cast via `unknown` porque a
@@ -162,5 +162,38 @@ describe('transformSale — mapeamento e síntese', () => {
     if (!('venda' in r)) throw new Error('esperava venda')
     expect(r.venda.itens.map(i => i.receitas)).toEqual([33.33, 33.33, 33.34]) // resto ao último
     expect(r.venda.itens.reduce((s, i) => s + i.receitas, 0)).toBe(100)
+  })
+})
+
+// v5.12.0 — desde jun/2026 o provedor manda rótulo genérico em `description` nos tipos
+// others/operations e o nome do catálogo em `product_name_resolvido`. Gravar `description`
+// zerou `get_contratos_casamento_mes` (que filtra `produto ILIKE 'contrato de casamento%'`)
+// de jun a set/2026, com 15 contratos na API.
+describe('transformSale — nome do produto e versão da transformação (v5.12.0)', () => {
+  it('produto = nome do catálogo quando description é o rótulo genérico "Outros"', () => {
+    const r = transformSale(sale({
+      custom_fields: [{ name: 'Setor', value: 'Weddings' }],
+      products: [product({ product_kind: 'others', description: 'Outros', product_name_resolvido: 'Contrato de casamento' })],
+    }))
+    if (!('venda' in r)) throw new Error('esperava venda')
+    expect(r.venda.itens[0].produto).toBe('Contrato de casamento')
+  })
+  it('produto cai para description quando o tipo não tem catálogo (hotel, aéreo, seguro)', () => {
+    const r = transformSale(sale({ products: [product({ description: 'Hotel Single', product_name_resolvido: null })] }))
+    if (!('venda' in r)) throw new Error('esperava venda')
+    expect(r.venda.itens[0].produto).toBe('Hotel Single')
+  })
+  it('produto = null quando a API não manda nenhum dos dois (description sai em 2026-10-01)', () => {
+    const r = transformSale(sale({ products: [product({ description: undefined, product_name_resolvido: undefined })] }))
+    if (!('venda' in r)) throw new Error('esperava venda')
+    expect(r.venda.itens[0].produto).toBeNull()
+  })
+  // O promover só reescreve venda cujo `raw_hash` mudou. Sem a versão no hash, corrigir a
+  // transformação não alcançaria nenhuma venda já espelhada (o `raw` do Monde é o mesmo).
+  it('raw_hash gravado = hash do provedor + versão da transformação', () => {
+    const r = transformSale(sale())
+    if (!('venda' in r)) throw new Error('esperava venda')
+    expect(r.venda.raw_hash).toBe(`h100#t${VERSAO_TRANSFORM}`)
+    expect(VERSAO_TRANSFORM).toBeGreaterThanOrEqual(2) // a v1 (hash cru) é o que está gravado até a v5.12.0
   })
 })

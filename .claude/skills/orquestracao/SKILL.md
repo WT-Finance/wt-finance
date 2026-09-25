@@ -1,6 +1,6 @@
 ---
 name: orquestracao
-description: Carta do Orquestrador do Janus — como a sessão principal dirige uma versão. Modelos por camada (orquestrador pensa/julga; subagentes Sonnet executam), delegação autocontida com "Skills a ler", paralelização por arquivos disjuntos (subagentes são editores puros; git/build/banco/servidor serializados no orquestrador), protocolo de revisão (revisor, revisor-db, verificador-visual) e gates escalonados. Use ao iniciar a sessão de uma versão (o /nova-versao a carrega), ao despachar subagentes, ao planejar paralelização de missões ou ao decidir quem roda um gate.
+description: Carta do Orquestrador do Janus — como a sessão principal dirige uma versão. Modelos por camada (orquestrador pensa/julga; subagentes Sonnet executam), delegação autocontida com "Skills a ler", paralelização por arquivos disjuntos (subagentes são editores puros; git/build/banco/servidor serializados no orquestrador), protocolo de revisão (revisor, revisor-db, verificador-visual), gates escalonados e o piloto do advisor (quem consulta, quando, e como medir). Use ao iniciar a sessão de uma versão (o /nova-versao a carrega), ao despachar subagentes, ao planejar paralelização de missões ou ao decidir quem roda um gate.
 ---
 
 # Carta do Orquestrador
@@ -34,6 +34,52 @@ de subagente; o ruído (leituras, buscas, tentativas) morre no contexto de quem 
 - **`verificador-visual`** (read-only + browser) — conferência visual de telas afetadas via MCP
   de browser, APÓS gates e revisores, antes do checkpoint humano. **Não sobe servidor**: o
   orquestrador inicia/derruba o `npm run dev` (serializado) e passa a URL na delegação.
+
+## Advisor (piloto desde 24/09/2026 — só o `implementador` consulta)
+
+O advisor é um segundo modelo que o agente consulta por conta própria em pontos de decisão;
+ele recebe a transcrição **inteira** e devolve orientação. Doc oficial:
+`code.claude.com/docs/en/advisor`. Decisão do Yan: **Fable como advisor dos implementadores
+Sonnet** — onde a leitura literal de uma delegação vira defeito (v5.7.2) e onde a transcrição
+é curta, então cada consulta sai barata.
+
+**O que a máquina NÃO segura — a restrição é prosa, não enforcement:**
+- O advisor é **por sessão** (`advisorModel` no settings, `/advisor`, `--advisor`). Não existe
+  campo no frontmatter dos agentes; **todo subagente herda** e passa pela checagem de
+  pareamento contra o próprio modelo. Sonnet aceita Fable; **o orquestrador em Fable ou Opus
+  5.5 também aceita** (Fable com Fable é pareamento listado pela doc) — ou seja, ele TEM o
+  advisor à mão, e por isso precisa da regra de não consultar, logo abaixo.
+- Não há configuração que limite ou force chamadas. O "só implementador" vive nas instruções
+  de cada arquivo em `.claude/agents/` — que competem com a orientação embutida da própria
+  ferramenta ("consulte antes de trabalho substantivo e antes de declarar concluído").
+- O `/advisor` grava no settings do **usuário** (`~/.claude/settings.json`): vale para toda
+  sessão e todo repositório da máquina, não só para o Janus.
+
+**Orquestrador: não consulta o advisor**, salvo pedido explícito do usuário. Três motivos:
+cada chamada relê a transcrição inteira **sem cache** na tarifa do advisor, e uma sessão de
+versão chega a centenas de milhares de tokens; em Fable, o advisor é da mesma família; e a
+segunda opinião independente já existe — o `revisor`, de contexto limpo. O advisor lê a
+mesma transcrição e **herda o mesmo enquadramento**: complementa, não substitui revisor nem
+auto-auditoria.
+
+**`implementador`: três momentos** (detalhe no arquivo do agente) — antes de escolher caminho
+que a delegação não fixou; depois de a mesma abordagem falhar duas vezes; antes de retornar
+entrega que toca dinheiro, permissão, banco ou atomicidade. **Os outros quatro agentes não
+consultam.**
+
+**O advisor não autoriza nada.** Dúvida de produto ou de arquitetura continua voltando ao
+orquestrador (e, se produto, ao usuário). Conselho que contradiz a delegação ou uma skill
+perde para elas e vira achado no retorno.
+
+**Medição.** Todo agente encerra o retorno com a linha `Advisor:` — "nenhuma" ou as consultas
+(pergunta, se mudou o rumo) —, inclusive os que não deveriam consultar, porque é assim que se
+vê o custo real. Só o `implementador` acrescenta o **momento** (1, 2, 3 ou "fora do
+protocolo"); para os demais, qualquer consulta já é fora do protocolo. O
+orquestrador consolida no out-briefing da versão: nº de consultas por agente e quantas mudaram
+o rumo. **Custo é pendência do Yan**, não do orquestrador: o `/usage` é comando que só o humano
+digita e mostra o total da sessão, sem separar por agente — o out-briefing deixa o campo
+marcado para o Yan preencher no fechamento. Ao fim da primeira versão com o piloto, decidir com o Yan:
+manter, ajustar os momentos, restringir o alcance ao projeto ou desligar (`/advisor off`).
 
 ## Protocolo de delegação
 

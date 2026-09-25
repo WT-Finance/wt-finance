@@ -153,6 +153,17 @@ de aplicar; a migration NÃO se auto-aplica). O espelho Monde foi ingerido na v5
 Ao decidir "de onde vem esse número", primeiro pergunte: é uma das 7 PURA-mv (veio do Monde,
 via view-compat) ou é `get_mix_produto`/`get_cagr`/algo de Weddings operacional (ainda upload)?
 
+**Mudou a transformação do espelho? Suba `VERSAO_TRANSFORM`** (`src/lib/monde/transform.ts`,
+v5.12.0). O `monde_ingest_promover` só reescreve venda cujo `raw_hash` muda — corrigir a
+transformação, sozinho, **não alcança nada já espelhado**, porque o `raw` do Monde é o mesmo. O
+hash gravado é `<hash do provedor>#t<versão>`: subir a versão faz cada venda que passar de novo
+pela ingestão divergir UMA vez (incremental = 7 dias; reconciliação noturna = 3 últimos meses;
+meses mais velhos, só por `?mode=window`). Antes de subir, meça o que a regra nova grava nos meses
+que vão ser reescritos contra o que já está lá — reescrever pode também **degradar** linha boa.
+E a API é de terceiro: ela muda campo **sem aviso** (em jun/2026 `description` virou "Outros" três
+meses antes da remoção anunciada), então o que a resposta traz em `campos_que_saem` é agenda, não
+garantia.
+
 ### `dim_data` tem range fixo — FK em `fato_venda`
 
 `analytics.fato_venda.data_venda` tem FK para `analytics.dim_data(data)`, semeada com range
