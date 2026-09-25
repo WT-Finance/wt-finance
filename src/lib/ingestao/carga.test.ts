@@ -36,12 +36,14 @@ vi.mock('@/lib/supabase/admin', () => ({ getAdminClient: () => new ClienteAdminF
 import {
   validarArquivosDeclarados, reconciliarVendas, traduzirFalhaParse, ErroCarga, respostaErroCarga,
   tentarTravarBase, destravarBase, autenticarIngestao, calcularDiff, statusAtualDaBase,
-  type ArquivoDeclarado,
+  processarCarga,
+  type ArquivoDeclarado, type EntradaCarga,
 } from './carga'
 import { LIMITE_BYTES_ARQUIVO, LIMITE_BYTES_CARGA } from './storage'
 import type { ParseErro } from './parsers/comum'
 import type { ChaveResolvida } from '@/lib/api-externa/http'
 import type { Sessao } from '@/lib/auth/sessao'
+import type { LinhaCarga } from './log'
 
 function reqComChave(chave: string | null): Request {
   return { headers: { get: (k: string) => (k.toLowerCase() === 'x-api-key' ? chave : null) } } as unknown as Request
@@ -383,5 +385,142 @@ describe('calcularDiff', () => {
     const { diff, aviso } = await calcularDiff('vendas-produto', 100, null)
     expect(diff).toEqual({ linhas: null, soma: null, por_ano: null, anos_fechados_alterados: null })
     expect(aviso).toMatch(/não foi possível medir o diff/i)
+  })
+})
+
+// ── processarCarga — grafo de dependência (§2.3 passo 3, §5; anexo v6.0.0/M7a) ──────────────
+//
+// Só o que dá para provar SEM mockar `storage.ts`/`aplicar.ts`/os parsers (fora do escopo desta
+// missão levantar esse andaime): o check roda ANTES de `abrirCarga` — então, para provar que
+// ele passou ("com Aberto do dia"), basta fazer `abrirCarga` falhar de propósito (mock de
+// `ingestao_carga_abrir` com erro) e confirmar que o código devolvido é `ERRO_INTERNO` (o
+// próximo passo do fluxo), não `DEPENDENCIA_AUSENTE`. Isso evita entrar em
+// `executarParse`/`aplicarCarga` — que exigiriam mockar `storage.ts` e os parsers, um andaime
+// bem maior do que o que esta missão pede.
+
+function linhaCargaAplicada(overrides: Partial<LinhaCarga> = {}): LinhaCarga {
+  return {
+    carga_id: 'c-aberto', base: 'lancamentos-aberto', origem: 'rpa-pad', chave_id: null, usuario_id: null,
+    idempotencia: null, extraido_em: null, recebido_em: '2026-09-25T14:00:00Z',
+    concluido_em: '2026-09-25T14:00:00Z', arquivos: [], linhas: 100, somas: null,
+    checksums_conferidos: 1, checksums_falhos: 0, rejeitadas_por_data: 0, pares_novos: null,
+    diff: null, status: 'aplicada', erro: null, duracao_ms: 100, resposta: null, observacao: null,
+    ...overrides,
+  }
+}
+
+function entradaOperacao(overrides: Partial<EntradaCarga> = {}): EntradaCarga {
+  return {
+    base: 'lancamentos-operacao', cargaId: 'carga-teste',
+    arquivos: [{ path: 'lancamentos-operacao/2026/09/carga-teste-1-a.csv', nome: 'a.csv', sha256: 'a'.repeat(64) }],
+    extraidoEm: null, observacao: null, origem: 'manual', idempotencia: null, confirmar: true,
+    chaveId: null, usuarioId: null,
+    ...overrides,
+  }
+}
+
+/** `processarCarga` sempre lança `ErroCarga` em rejeição — este helper captura e TIPA (em vez
+ *  de `.catch((e) => e)`, que deixaria `erro` como `unknown` e o `tsc` reprovaria o acesso a
+ *  `.codigo`/`.http`/`.detalhe` abaixo). Falha o teste se a promise resolver OU rejeitar com
+ *  algo que não seja `ErroCarga`. */
+async function capturarErroCarga(p: Promise<unknown>): Promise<ErroCarga> {
+  try {
+    await p
+  } catch (e) {
+    if (e instanceof ErroCarga) return e
+    throw e
+  }
+  throw new Error('esperava que processarCarga rejeitasse com ErroCarga')
+}
+
+describe('processarCarga — grafo de dependência', () => {
+  it('Operação SEM Aberto do dia (nunca aplicada) ⇒ 409 DEPENDENCIA_AUSENTE; abrirCarga NÃO é chamado; lock liberado', async () => {
+    // Só `Date` é fake — os testes daqui são `async`/`await` em cascata, e faking `setTimeout`
+    // junto arrisca prender uma microtask/timer interno do runtime de teste (vitest 5).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
+    rpcMock.mockResolvedValueOnce({ data: null, error: null }) // ingestao_carga_ultima: nunca aplicada
+
+    await expect(processarCarga(entradaOperacao({ cargaId: 'carga-409-a' })))
+      .rejects.toMatchObject({ codigo: 'DEPENDENCIA_AUSENTE', http: 409 })
+
+    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenCalledWith('ingestao_carga_ultima', { p_base: 'lancamentos-aberto' })
+    // Lock liberado pelo `finally` — outra carga da MESMA base consegue travar.
+    expect(tentarTravarBase('lancamentos-operacao', 'outra-carga')).toBe(true)
+    destravarBase('lancamentos-operacao', 'outra-carga')
+  })
+
+  it('Operação com Aberto aplicado ONTEM (não hoje) ⇒ também 409 DEPENDENCIA_AUSENTE', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
+    rpcMock.mockResolvedValueOnce({ data: linhaCargaAplicada({ concluido_em: '2026-09-24T14:00:00Z' }), error: null })
+
+    const erro = await capturarErroCarga(processarCarga(entradaOperacao({ cargaId: 'carga-409-b' })))
+    expect(erro.codigo).toBe('DEPENDENCIA_AUSENTE')
+    expect(erro.detalhe).toMatchObject({
+      faltando: [{ base: 'lancamentos-aberto', ultima_carga_aplicada_em: '2026-09-24T14:00:00Z' }],
+    })
+    expect(rpcMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('vale também na CONFERÊNCIA (confirmar:false) — o operador vê o 409 antes de aplicar', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
+    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+
+    await expect(processarCarga(entradaOperacao({ cargaId: 'carga-409-c', confirmar: false })))
+      .rejects.toMatchObject({ codigo: 'DEPENDENCIA_AUSENTE', http: 409 })
+    expect(rpcMock).toHaveBeenCalledTimes(1) // nenhuma tentativa de abrir carga na conferência
+  })
+
+  it('Operação COM Aberto aplicado HOJE ⇒ passa do grafo (chega a abrirCarga, não é DEPENDENCIA_AUSENTE)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
+    rpcMock.mockResolvedValueOnce({ data: linhaCargaAplicada({ concluido_em: '2026-09-25T10:00:00Z' }), error: null }) // ultima
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'boom' } }) // abrirCarga falha (não é o que testamos aqui)
+
+    const erro = await capturarErroCarga(processarCarga(entradaOperacao({ cargaId: 'carga-200-a' })))
+    expect(erro.codigo).not.toBe('DEPENDENCIA_AUSENTE')
+    expect(erro.codigo).toBe('ERRO_INTERNO') // o próximo passo do fluxo (abrirCarga) é quem falhou
+
+    expect(rpcMock).toHaveBeenCalledTimes(2)
+    expect(rpcMock).toHaveBeenNthCalledWith(1, 'ingestao_carga_ultima', { p_base: 'lancamentos-aberto' })
+    expect(rpcMock).toHaveBeenNthCalledWith(2, 'ingestao_carga_abrir', expect.anything())
+    // `abrirCarga` falhou ANTES de marcar `cargaAberta` — `concluirCarga` não é chamado para uma
+    // linha que nunca chegou a existir (só as 2 chamadas acima).
+    expect(tentarTravarBase('lancamentos-operacao', 'outra-carga-2')).toBe(true)
+    destravarBase('lancamentos-operacao', 'outra-carga-2')
+  })
+
+  it('leitura da última carga de Aberto FALHA (RPC com erro) ⇒ 500 ERRO_INTERNO, fail-closed; nada aplicado', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'timeout do banco' } })
+
+    const erro = await capturarErroCarga(processarCarga(entradaOperacao({ cargaId: 'carga-500-a' })))
+    expect(erro.codigo).toBe('ERRO_INTERNO')
+    expect(erro.http).toBe(500)
+    expect(erro.codigo).not.toBe('DEPENDENCIA_AUSENTE') // "não sei" nunca vira "está lá" nem "não está lá"
+
+    expect(rpcMock).toHaveBeenCalledTimes(1) // só a leitura que falhou — nada mais rodou
+    expect(tentarTravarBase('lancamentos-operacao', 'outra-carga-3')).toBe(true)
+    destravarBase('lancamentos-operacao', 'outra-carga-3')
+  })
+
+  it('bases SEM pré-requisito bloqueante não leem o grafo (0 chamadas antes de abrirCarga)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'boom' } }) // abrirCarga falha (não é o que testamos)
+
+    const erro = await capturarErroCarga(processarCarga(entradaOperacao({
+      base: 'demonstrativo-competencia', cargaId: 'carga-sem-grafo',
+      arquivos: [{ path: 'demonstrativo-competencia/2026/09/carga-sem-grafo-1-a.xlsx', nome: 'a.xlsx', sha256: 'b'.repeat(64) }],
+    })))
+    expect(erro.codigo).toBe('ERRO_INTERNO')
+    // Única chamada é `ingestao_carga_abrir` — nenhuma leitura de `ingestao_carga_ultima` para
+    // uma base sem pré-requisito bloqueante.
+    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(rpcMock).toHaveBeenCalledWith('ingestao_carga_abrir', expect.anything())
   })
 })

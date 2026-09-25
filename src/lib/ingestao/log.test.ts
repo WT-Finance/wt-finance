@@ -18,7 +18,7 @@ class ClienteAdminFake {
 }
 vi.mock('@/lib/supabase/admin', () => ({ getAdminClient: () => new ClienteAdminFake() }))
 
-import { abrirCarga, concluirCarga, ultimaCargaAplicada, obterCarga } from './log'
+import { abrirCarga, concluirCarga, ultimaCargaAplicada, lerUltimaCargaAplicada, obterCarga } from './log'
 
 const LINHA_ABERTA = {
   existente: false,
@@ -113,6 +113,41 @@ describe('ultimaCargaAplicada', () => {
   it('devolve null (nunca lança) quando a RPC falha', async () => {
     rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'timeout' } })
     expect(await ultimaCargaAplicada('vendas-produto')).toBeNull()
+  })
+
+  it('devolve null (nunca lança) quando a RPC devolve formato inesperado', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { algumaCoisa: 1 }, error: null })
+    expect(await ultimaCargaAplicada('vendas-produto')).toBeNull()
+  })
+})
+
+// ── lerUltimaCargaAplicada — v6.0.0/M7a: DISTINGUE "nunca houve" de "não consegui saber" ─────
+//
+// `ultimaCargaAplicada` (acima) delega a esta função e degrada os dois casos de falha para
+// `null` — os quatro testes acima provam que esse comportamento ficou INTACTO após o refactor.
+// Aqui prova-se a distinção em si, que o grafo de dependência (`carga.ts`) precisa.
+
+describe('lerUltimaCargaAplicada', () => {
+  it('RPC acha uma carga aplicada ⇒ {ok:true, linha}', async () => {
+    const linha = { ...LINHA_ABERTA, status: 'aplicada' }
+    rpcMock.mockResolvedValueOnce({ data: linha, error: null })
+    expect(await lerUltimaCargaAplicada('lancamentos-aberto')).toEqual({ ok: true, linha })
+  })
+
+  it('base nunca teve carga aplicada (RPC devolve null) ⇒ {ok:true, linha:null} — "nunca houve", NÃO "não consegui saber"', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+    expect(await lerUltimaCargaAplicada('lancamentos-aberto')).toEqual({ ok: true, linha: null })
+  })
+
+  it('RPC falha ⇒ {ok:false, erro} — "não consegui saber", NUNCA confundido com "nunca houve"', async () => {
+    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'timeout' } })
+    expect(await lerUltimaCargaAplicada('lancamentos-aberto')).toEqual({ ok: false, erro: 'timeout' })
+  })
+
+  it('formato inesperado (sem carga_id/status) ⇒ {ok:false} — mesma família de "não consegui saber"', async () => {
+    rpcMock.mockResolvedValueOnce({ data: { algumaCoisa: 1 }, error: null })
+    const r = await lerUltimaCargaAplicada('lancamentos-aberto')
+    expect(r.ok).toBe(false)
   })
 })
 

@@ -63,6 +63,11 @@ const INVENTARIO: ReadonlyArray<{
     porque: 'GATE 2 parte 2 (v6.0.0/M2): a credencial de ingestão negada em leitura e truncar — REST + catálogo READ ONLY',
   },
   {
+    arquivo: 'src/lib/ingestao/sonda-leitores-vendas-excel.test.ts',
+    envs: ['SUPABASE_DB_URL'],
+    porque: 'v6.0.0/M7a: catálogo vivo (pg_proc.prosrc/pg_get_viewdef) por leitores de raw.vendas_excel — só pg READ ONLY',
+  },
+  {
     arquivo: 'src/lib/ingestao/oraculo-demonstrativo.test.ts',
     bandeira: 'REQUIRE_FIXTURES',
     envs: ['REQUIRE_FIXTURES'],

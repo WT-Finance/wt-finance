@@ -5,12 +5,15 @@ import 'server-only'
 // de rejeição do contrato (§2.4) nascem: quem parseia/valida/reconciliou já fala a língua do
 // contrato quando devolve para a rota.
 //
-// Ordem do §2.3 preservada tal como escrita: autentica/idempotência (rota + `abrirCarga`) →
-// lock da base (§4 abaixo) → [grafo de dependência — FORA desta missão, ver nota] → baixa +
-// sha256 + parse + checksum (dentro do parser da M3) → reconciliação do conjunto → diff → aplica
-// (só se `confirmar`) → conclui/loga.
+// Ordem do §2.3 preservada tal como escrita: autentica (rota) → lock da base (§4 abaixo) →
+// grafo de dependência (`checarDependenciaDeCarga`, anexo v6.0.0/M7a §1 — ANTES da
+// idempotência/`abrirCarga` de propósito, ver a função) → baixa + sha256 + parse + checksum
+// (dentro do parser da M3) → reconciliação do conjunto → diff → aplica (só se `confirmar`) →
+// conclui/loga.
 
-import type { BaseIngestao } from './bases'
+import { ROTULO_BASE, type BaseIngestao } from './bases'
+import { preRequisitosBloqueantes, avaliarDependenciaDeCarga } from './grafo'
+import { hojeSP } from '@/lib/fmt'
 import {
   LIMITE_BYTES_ARQUIVO, LIMITE_BYTES_CARGA,
   ehCaminhoDaCarga, baixarCru, sha256Confere, ErroIngestaoStorage,
@@ -26,7 +29,7 @@ import { aplicarCarga, CargaRejeitada, lancamentoOperacaoAplicavel, type Resulta
 import { getAdminClient } from '@/lib/supabase/admin'
 import { autenticarChamada, type ChaveResolvida } from '@/lib/api-externa/http'
 import { requireAreaApi, type Sessao } from '@/lib/auth/sessao'
-import { abrirCarga, concluirCarga } from './log'
+import { abrirCarga, concluirCarga, lerUltimaCargaAplicada } from './log'
 import {
   somaPorAno, calcularDiffPorAno, anoCorrenteSP, ehRejeicaoDeConteudo, precisaAlarmarParNovo,
   dispararAlarmeDeEvento,
@@ -42,7 +45,7 @@ import type { AlarmeIngestao } from '@/lib/email/template'
  *  no relato desta missão — não há cobertura literal no contrato para este código específico. */
 export type CodigoErroCarga =
   | 'AUTH_AUSENTE' | 'AUTH_INVALIDA' | 'ESCOPO_INSUFICIENTE' | 'BASE_DESCONHECIDA'
-  | 'CARGA_EM_ANDAMENTO' | 'ACIMA_DO_LIMITE'
+  | 'CARGA_EM_ANDAMENTO' | 'DEPENDENCIA_AUSENTE' | 'ACIMA_DO_LIMITE'
   | 'SHA256_DIVERGE' | 'ARQUIVO_AUSENTE' | 'FORMATO_INVALIDO' | 'ESTRUTURA_INESPERADA'
   | 'CHECKSUM_FALHOU' | 'CONJUNTO_NAO_RECONCILIA' | 'VENDA_REPETIDA_ENTRE_ARQUIVOS'
   | 'ERRO_INTERNO'
@@ -232,7 +235,8 @@ export async function autenticarIngestao(req: Request, base: BaseIngestao): Prom
 // O contrato (§2.3 passo 2) pede um lock de BASE. O lock DE VERDADE (`pg_advisory_xact_lock`)
 // só nasce dentro de `promover_carga_*` na M5 (anexo M4 §4). Hoje a rota não tem de onde ler
 // "existe outra carga ABERTA desta base agora" pelo banco: das quatro RPCs da migration 0276,
-// `ingestao_carga_ultima` só enxerga `status='aplicada'` (é o insumo do DIFF, não um lock) e
+// `ingestao_carga_ultima` só enxerga `status='aplicada'` (é o insumo do DIFF e, desde a M7a, do
+// grafo de dependência — não um lock) e
 // `ingestao_carga_obter`/`ingestao_carga_abrir` só leem pelo `carga_id` que o PRÓPRIO chamador
 // já precisa conhecer — nenhuma lista "outras cargas abertas da base" sem um id em mãos. Pedir
 // essa leitura exigiria uma quinta RPC — fora do escopo desta missão (a 0276 já foi escrita por
@@ -484,8 +488,11 @@ interface ParseNormalizado {
    * Lançamentos por Operação era medida pelo parser e descartada aqui. O sintoma seria mudo —
    * subir Operação com as bases vizinhas vazias resolve ZERO vencimentos, `data_final` sai nula
    * e as colunas de previsto da Carteira vão a zero, enquanto a tela do operador mostra
-   * "1 checksum conferido" e nenhum aviso. O grafo de dependência (contrato §5) que impediria
-   * essa ordem só chega na M7; até lá, avisar é a única defesa.
+   * "1 checksum conferido" e nenhum aviso. O grafo de dependência (M7a, `checarDependenciaDeCarga`)
+   * bloqueia a ÚNICA aresta que o contrato marca como bloqueante (Aberto do dia ausente ⇒ 409
+   * `DEPENDENCIA_AUSENTE`) — mas Movimentação (o fallback de vencimento) NÃO é pré-requisito
+   * bloqueante, então subir Operação com Movimentação vazia continua possível e mudo sem este
+   * aviso: é ele, e só ele, quem cobre esse caso.
    */
   readonly avisos?: readonly string[]
   /**
@@ -605,8 +612,9 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
 
       // A cobertura do cruzamento PRECISA chegar ao operador. O contrato §4 a trata como alarme,
       // não bloqueio (a fonte é scrape, e a falta pode ser da raspagem) — mas alarme que ninguém
-      // vê não é alarme. Sem o grafo de dependência (M7), nada impede subir Operação com as
-      // vizinhas vazias, e é essa a única pista de que aconteceu.
+      // vê não é alarme. O grafo de dependência (M7a) bloqueia Aberto ausente HOJE, mas
+      // Movimentação (o fallback) não é pré-requisito bloqueante — nada impede subir Operação
+      // com Movimentação vazia, e este aviso é a única pista de que aconteceu.
       const cruzamento = resultado.cruzamento
       const avisos: string[] = []
       if (cruzamento && cruzamento.semLiquidacao > 0) {
@@ -773,10 +781,58 @@ async function aplicarComTraducaoDeErro(
   }
 }
 
+// ── Grafo de dependência (§2.3 passo 3, §5) — anexo v6.0.0/M7a ──────────────────────────────
+
 /**
- * Executa o §2.3 completo — passos 4 a 10 (autenticação/idempotência/lock já resolvidos por
- * quem chama: a rota, com `autenticarIngestao`/`tentarTravarBase`, e este módulo cuida do
- * `abrirCarga`). Lança `ErroCarga` em qualquer rejeição; a rota só precisa de um `try/catch`.
+ * Checa o grafo de dependência (contrato §5; anexo v6.0.0/M7a §1) — lê a última carga aplicada
+ * de cada pré-requisito BLOQUEANTE de `base` (hoje: só `lancamentos-operacao` tem um —
+ * `lancamentos-aberto`) e aplica a regra pura de `grafo.ts`. Não lança para bases sem
+ * pré-requisito bloqueante (não faz NENHUMA leitura nesse caso).
+ *
+ * Roda ANTES de `abrirCarga` — de propósito, tanto com `confirmar:true` quanto `false`: o
+ * contrato põe o passo 3 (grafo) antes do passo 1 (idempotência mora dentro de `abrirCarga`),
+ * então um retry com a MESMA chave de idempotência de uma Operação já aplicada, em outro dia
+ * sem Aberto do dia, cai em `DEPENDENCIA_AUSENTE` em vez do replay — é a aresta viva que o
+ * anexo registra, não um defeito.
+ *
+ * Fail-closed (anexo §1): falha ao LER a última carga de um pré-requisito ⇒ 500
+ * `ERRO_INTERNO` — "não consegui saber" não pode valer como "está lá".
+ */
+async function checarDependenciaDeCarga(base: BaseIngestao): Promise<void> {
+  const preRequisitos = preRequisitosBloqueantes(base)
+  if (preRequisitos.length === 0) return
+
+  const ultimaAplicadaPorPreRequisito = new Map<BaseIngestao, string | null>()
+  for (const pr of preRequisitos) {
+    const resultado = await lerUltimaCargaAplicada(pr)
+    if (!resultado.ok) {
+      throw new ErroCarga(
+        'ERRO_INTERNO', 500,
+        `Não foi possível confirmar se "${ROTULO_BASE[pr]}" foi carregada hoje: ${resultado.erro}.`,
+      )
+    }
+    ultimaAplicadaPorPreRequisito.set(pr, resultado.linha?.concluido_em ?? null)
+  }
+
+  const avaliacao = avaliarDependenciaDeCarga(base, ultimaAplicadaPorPreRequisito, hojeSP())
+  if (avaliacao.ok) return
+
+  const faltando = avaliacao.faltando.map((f) => ({
+    base: f.base, rotulo: ROTULO_BASE[f.base], ultima_carga_aplicada_em: f.ultimaAplicadaEm,
+  }))
+  const nomes = faltando.map((f) => f.rotulo).join(', ')
+  throw new ErroCarga(
+    'DEPENDENCIA_AUSENTE', 409,
+    `Carregue ${nomes} de hoje antes desta base.`,
+    { faltando },
+  )
+}
+
+/**
+ * Executa o §2.3 completo — passos 3 a 10 (autenticação/lock já resolvidos por quem chama: a
+ * rota, com `autenticarIngestao`/`tentarTravarBase`; este módulo cuida do grafo de dependência,
+ * da idempotência via `abrirCarga` e do resto). Lança `ErroCarga` em qualquer rejeição; a rota
+ * só precisa de um `try/catch`.
  */
 export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCarga> {
   const inicio = Date.now()
@@ -789,7 +845,18 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     )
   }
 
+  // `true` só depois que `abrirCarga` confirma que existe (ou passa a existir) uma linha em
+  // `ingestao.carga` para este `cargaId` — é o que o `catch` usa para decidir se há algo para
+  // `concluirCarga` atualizar. Sem isto, uma rejeição ANTES de `abrirCarga` (o grafo de
+  // dependência, M7a; ou, na CONFERÊNCIA, qualquer rejeição — `abrirCarga` nunca roda com
+  // `confirmar:false`) faria o `catch` tentar concluir uma linha que nunca foi aberta.
+  let cargaAberta = false
+
   try {
+    // Passo 3 do contrato — grafo de dependência (anexo v6.0.0/M7a §1). ANTES de tudo o mais,
+    // inclusive da idempotência (que só é consultada dentro de `abrirCarga`, logo abaixo).
+    await checarDependenciaDeCarga(base)
+
     // Idempotência (§1/§2.3 passo 1) — SÓ quando vai aplicar. A conferência (`confirmar:false`)
     // não abre linha nem consome idempotência (anexo §5: "carga é o que aplica").
     if (entrada.confirmar) {
@@ -801,6 +868,7 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
       if (!abertura.ok) {
         throw new ErroCarga('ERRO_INTERNO', 500, 'Falha ao registrar o início da carga.')
       }
+      cargaAberta = true
       if (abertura.linha.existente && abertura.linha.status === 'aplicada') {
         // Idempotência (contrato §1): "mesma chave ⇒ mesma resposta, sem recarregar" — só para
         // uma carga que JÁ APLICOU. `concluirCarga` só grava `resposta` no caminho de sucesso
@@ -991,7 +1059,14 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     }
     return resultado
   } catch (err) {
-    if (entrada.confirmar) {
+    if (entrada.confirmar && cargaAberta) {
+      // `cargaAberta` (não só `entrada.confirmar`): uma rejeição ANTES de `abrirCarga` — hoje só
+      // o grafo de dependência (M7a), 409 `DEPENDENCIA_AUSENTE` ou o 500 fail-closed da própria
+      // leitura do grafo — não tem linha em `ingestao.carga` para `concluirCarga` atualizar; o
+      // anexo M7a §1 é explícito: "um 409 de pré-condição não consome a chave de idempotência
+      // nem grava linha de carga (mesmo tratamento do 409 CARGA_EM_ANDAMENTO)". Sem este guard,
+      // `concluirCarga` receberia um `cargaId` que a RPC nunca viu (UPDATE que não acha linha, ou
+      // pior, dependendo da semântica da RPC).
       const cargaErro = err instanceof ErroCarga
         ? err
         : new ErroCarga('ERRO_INTERNO', 500, 'Falha inesperada ao processar a carga.')
@@ -1005,10 +1080,11 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
         console.error(`[ingestao/carga] carga ${cargaId} (${base}) rejeitada/erro, E o log também falhou:`, conclusao.erro)
       }
       // M6 (anexo §4): "checksum falho" cobre TODA rejeição de CONTEÚDO — checksum e as demais
-      // 422 (não auth: 401/403; não lock: 409 `CARGA_EM_ANDAMENTO`; não bug interno: 500
-      // `ERRO_INTERNO`, que não é "conteúdo", é defeito). Só dispara para carga CONFIRMADA
-      // (`entrada.confirmar`): a conferência nunca grava linha em `ingestao.carga` e não é,
-      // por definição do anexo §5 ("carga é o que aplica"), um evento de carga.
+      // 422 (não auth: 401/403; não lock: 409 `CARGA_EM_ANDAMENTO`; não dependência: 409
+      // `DEPENDENCIA_AUSENTE`; não bug interno: 500 `ERRO_INTERNO`, que não é "conteúdo", é
+      // defeito). Só dispara para carga CONFIRMADA E ABERTA — mesmo guard do `concluirCarga`
+      // acima, e por definição nunca dispararia para 409/500 mesmo sem o guard
+      // (`ehRejeicaoDeConteudo` só é `true` para HTTP 422).
       if (ehRejeicaoDeConteudo(cargaErro.http)) {
         const alarme: AlarmeIngestao = {
           tipo: 'checksum_falho', base, cargaId, motivo: cargaErro.message, codigo: cargaErro.codigo,

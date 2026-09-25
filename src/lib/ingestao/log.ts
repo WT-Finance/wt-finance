@@ -194,23 +194,47 @@ export async function obterCarga(cargaId: string): Promise<ResultadoLog> {
   return { ok: true, linha }
 }
 
+export type ResultadoUltimaCarga =
+  | { readonly ok: true; readonly linha: LinhaCarga | null }
+  | { readonly ok: false; readonly erro: string }
+
+/**
+ * Última carga `aplicada` de uma base, distinguindo "nunca houve carga aplicada"
+ * (`ok:true, linha:null` — estado inicial legítimo) de "não consegui saber"
+ * (`ok:false` — falha de RPC ou formato inesperado).
+ *
+ * Existe para o grafo de dependência (v6.0.0/M7a, `carga.ts`): ali os dois casos NÃO podem ser
+ * tratados igual — uma falha de leitura tem de abortar a carga (fail-closed, 500
+ * `ERRO_INTERNO`), nunca ser lida como "o pré-requisito não está lá" (409
+ * `DEPENDENCIA_AUSENTE`) nem, pior, como "está tudo bem". `ultimaCargaAplicada` (abaixo) segue
+ * degradando os dois casos para `null` — comportamento INTACTO para o diff e os alarmes, que
+ * não precisam da distinção.
+ */
+export async function lerUltimaCargaAplicada(base: BaseIngestao): Promise<ResultadoUltimaCarga> {
+  const { data, error } = await rpc()('ingestao_carga_ultima', { p_base: base })
+  if (error) {
+    console.error(`[ingestao/log] ingestao_carga_ultima(${base}) falhou:`, error.message)
+    return { ok: false, erro: error.message }
+  }
+  if (data === null) return { ok: true, linha: null }
+  const linha = comoLinhaCarga(data)
+  if (!linha) {
+    console.error(`[ingestao/log] ingestao_carga_ultima(${base}) devolveu formato inesperado.`, data)
+    return { ok: false, erro: 'ingestao_carga_ultima devolveu formato inesperado.' }
+  }
+  return { ok: true, linha }
+}
+
 /**
  * Última carga `aplicada` de uma base — insumo do diff (contrato §2.3 passo 8). `null` tanto
  * quando a base nunca teve carga aplicada (estado inicial legítimo) quanto quando a RPC falha
  * — os dois casos são "sem baseline para comparar", e quem chama decide como degradar
  * (`carga.ts`: o diff sai com `null` e um aviso, nunca abortando a carga por causa disto).
+ *
+ * Delega a `lerUltimaCargaAplicada`, que DISTINGUE os dois casos — usada aqui porque o diff/os
+ * alarmes não precisam da distinção (M7a: quem precisa é o grafo de dependência).
  */
 export async function ultimaCargaAplicada(base: BaseIngestao): Promise<LinhaCarga | null> {
-  const { data, error } = await rpc()('ingestao_carga_ultima', { p_base: base })
-  if (error) {
-    console.error(`[ingestao/log] ingestao_carga_ultima(${base}) falhou:`, error.message)
-    return null
-  }
-  if (data === null) return null
-  const linha = comoLinhaCarga(data)
-  if (!linha) {
-    console.error(`[ingestao/log] ingestao_carga_ultima(${base}) devolveu formato inesperado.`, data)
-    return null
-  }
-  return linha
+  const r = await lerUltimaCargaAplicada(base)
+  return r.ok ? r.linha : null
 }

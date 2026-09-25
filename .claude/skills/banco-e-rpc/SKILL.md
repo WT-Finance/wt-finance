@@ -637,7 +637,7 @@ por encerrá-la: o gatilho segue **tocado**, a reavaliação continua pendente, 
 parágrafo anterior (as travas mais interessantes de testar são as que o `service_role` não
 alcança) permanece de pé.
 
-### Quem se conecta por `SUPABASE_DB_URL`: hoje são NOVE, e quem só lê trava a sessão
+### Quem se conecta por `SUPABASE_DB_URL`: hoje são DEZ, e quem só lê trava a sessão
 
 `SUPABASE_DB_URL` é a conexão **direta** com produção (pooler em session mode, ADR-0119) — fora do
 PostgREST, fora de `exigir_acesso`, com o papel dono do banco. Até a v5.10.3 esta seção contava
@@ -665,6 +665,7 @@ M5, escreveu "oito" de cabeça e o grep devolveu nove.)
 | `src/lib/api-externa/contrato-api-externa.test.ts` | exceção: fixture **commitada**, limpa em `afterAll` |
 | `src/lib/rpc-contrato.test.ts` | **somente leitura** (catálogo + `app.areas_do_setor`) |
 | `src/lib/ingestao/credencial-ingestor.test.ts` | **somente leitura** (`has_function_privilege` da role `ingestor`) |
+| `src/lib/ingestao/sonda-leitores-vendas-excel.test.ts` | **somente leitura**: todo leitor de `raw.vendas_excel` no catálogo está na lista fechada (v6.0.0/M7a, 0283) |
 | `scripts/credencial/derivar-allowlist.mjs` | **somente leitura**: resolve nome de RPC em assinatura no catálogo (v6.0.0/M1) |
 | `scripts/db-gate/lib.mjs` | infra do backup-gate: `COPY OUT` do backup e `COPY IN` da recuperação |
 
