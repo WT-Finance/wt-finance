@@ -124,8 +124,9 @@ nomeando exatamente os 6 leitores; depois do push, 2/2 verdes. O padrão foi ala
 entre aspas e leitura não qualificada via `search_path` também reprovam. Continuou nomeando os
 mesmos 6, sem falso positivo.
 
-**Ensaio em transação revertida contra produção** (script fora do repositório, como o da M5 —
-tornar permanente é decisão do Yan, ver WORKING-CONTEXT, lista `ESCREVEM_E_REVERTEM_HOJE`). Na
+**Ensaio em transação revertida contra produção** (script fora do repositório; torná-lo permanente
+exigiria entrada nova na lista fechada `ESCREVEM_E_REVERTEM_HOJE`, com avaliação do gatilho do
+ambiente de teste próprio — o da M5 virou teste permanente em 22/09, `promover-carga-checksum.test.ts`). Na
 operação real `W - Jeanny e Leandro - 28NOV25` (uma das duas que o cru contamina):
 
 | leitor | antes | + 1 linha **Welcome** (R$ 1.000, Diárias, Aberta, 1 passageiro) | mesma linha como **Trips** (controle) |

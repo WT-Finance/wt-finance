@@ -24,12 +24,14 @@
 // que esta credencial alcançaria essa função, e o cabeçalho da 0278 já registra um risco de RBAC
 // para esse momento (a chamada interna a `provisionar_dre_comp_par`, que exige `financeiro/dre`
 // via `exigir_acesso`, hoje só passa porque `service_role` é o ramo TRUSTED — `ingestor` não tem
-// essa área). Decidir isso é do orquestrador/Yan quando a migration do GRANT for escrita; aqui
-// só se registra a allowlist-fonte.
+// essa área). Decidido pelo Yan em 22/09: a 0279 separou o núcleo
+// (`provisionar_dre_comp_par__nucleo`, service_role-only) e manteve a credencial estreita.
 //
-// A credencial `ingestor` AINDA NÃO tem GRANT nas 16 RPCs novas desta missão (M5): aplicar.ts
-// continua chamando com `service_role` (`getAdminClient`) até essa migration existir — ver o
-// comentário de topo de `aplicar.ts`.
+// Estado a partir da 0279 (22/09): a credencial `ingestor` TEM `EXECUTE` nas 21 assinaturas desta
+// allowlist (limpar/inserir/validar/promover das cinco bases), e `aplicar.ts` aplica
+// EXCLUSIVAMENTE por ela (`getIngestorClient`, fail-closed sem `SUPABASE_INGESTOR_SENHA`) — nunca
+// com `service_role`. O que ainda roda com `service_role` é metadado e infraestrutura (log da
+// carga, vencimentos por número, soma por ano, vigia, retenção), de propósito fora desta lista.
 
 /** Marca de leitura para o derivador: devolve o próprio nome (sem chamar nada). */
 const rpc = <T extends string>(nome: T): T => nome

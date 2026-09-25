@@ -100,7 +100,12 @@ O gate agora depende do pooler. Se abortar antes de exportar/verificar:
 
 ## Duração e escala (transporte COPY — ADR-0119)
 
-- Backup do dia (38 tabelas, COPY TO): **~40 s** (sequencial).
+- Backup do dia (38 tabelas, COPY TO): **~40 s** (sequencial). ⚠️ Medição antiga: desde a v6.0.0/M8
+  o gate cobre **79 tabelas** (fonte única `SCHEMAS_PROJETO`, inclui o espelho Monde, ~80 mil linhas) —
+  não remedido em separado; os gates de 25/09 (0284, 0285) rodaram inteiros em poucos minutos.
+  O restore-test SPOT continua no núcleo histórico (nenhuma tabela dos schemas `estante`,
+  `patrimonio`, `ingestao`, `monde` no `KEY_TABLES` de `verificar.mjs`) — a completude cobre as 79,
+  a fidelidade delas só o `--full`. Follow-up registrado no out-briefing da v6.0.0.
 - **Restore-test SPOT (subconjunto-chave): ~2,8 s** medido (vs ~228 s pela Management API antes — ~80×).
   **Gate completo (backup + spot): ~44 s.** **Falha rápido** em backup incompleto (sem restaurar).
 - **Sem dependência da Management API** no caminho do gate → não engasga mais quando ela degrada.

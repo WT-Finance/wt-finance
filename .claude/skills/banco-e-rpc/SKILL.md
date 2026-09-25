@@ -1,6 +1,6 @@
 ---
 name: banco-e-rpc
-description: Banco Supabase do Janus — migrations (aditiva × destrutiva, backup-gate, wrapper db:migrate), RPCs SECURITY DEFINER com app.exigir_acesso inline, RBAC/RLS, timeouts por role, fuso, schemas (analytics não exposto; espelho Monde × upload) e verificação REST pós-push. Use SEMPRE que for criar ou alterar migration/RPC, investigar erro de banco (timeout 57014, PGRST, permissão), decidir de qual fonte um dado vem, ou reusar uma RPC existente (MEÇA a semântica antes).
+description: Banco Supabase do Janus — migrations (aditiva × destrutiva, backup-gate, wrapper db:migrate), RPCs SECURITY DEFINER com app.exigir_acesso inline, RBAC/RLS, timeouts por role, fuso, schemas (analytics não exposto; espelho Monde × upload), as duas credenciais de MÁQUINA (`verificador`/`ingestor`, allowlist derivada do código, identidade por login + custom_access_token_hook) e verificação REST pós-push. Use SEMPRE que for criar ou alterar migration/RPC, investigar erro de banco (timeout 57014, PGRST, permissão), decidir de qual fonte um dado vem, criar/rotacionar credencial de máquina, ou reusar uma RPC existente (MEÇA a semântica antes).
 ---
 
 # Banco e RPC — Janus (Supabase/Postgres)
@@ -311,6 +311,66 @@ como `postgres`) — a requisição anônima do PostgREST chega sem claims, e er
 o furo (fail-open) antes do M1. Toda RPC consumida pela UI roda como `authenticated`. RPC ou
 grant novo nasce **sem** `anon` (é o efeito combinado da 0122 + essa limpeza). Não reabrir
 `anon` para nenhuma RPC nova.
+
+### Duas credenciais de MÁQUINA: `verificador` (só leitura) e `ingestor` (aplica) — allowlist DERIVADA, nunca por volatilidade (v6.0.0, ADR-0175)
+
+O incidente de 10/09/2026 (varredura de **verificação** com `SUPABASE_SERVICE_ROLE_KEY` chamou uma
+RPC de `TRUNCATE` e zerou 306.261 linhas) mostrou que uma credencial que só verifica e uma que aplica
+não podem ser a mesma chave — a barreira não pode ser "quem digita o comando sabe o que faz".
+
+- **`verificador`** (0273): role NOLOGIN concedida a `authenticator`, nasce **sem EXECUTE** em função
+  nenhuma (`REVOKE` explícito + `ALTER DEFAULT PRIVILEGES`) e recebe EXECUTE só na **allowlist
+  derivada do código que a usa** — `scripts/credencial/derivar-allowlist.mjs` lê `rpc-contrato.test.ts`
+  e os scripts de medição, resolve cada nome no catálogo vivo por assinatura e emite o `GRANT`.
+  **Nunca por volatilidade**: `public` tem ~191 funções `VOLATILE` (é o default de quem não declarou
+  nada) e há leitores puros entre elas — filtrar por `provolatile` quebraria a suíte sem medir
+  segurança nenhuma.
+- **`ingestor`** (0274): mesma anatomia para a escrita — allowlist = só `promover_carga_*` +
+  `limpar_staging_*`/`inserir_lote_staging_*`/`validar_carga_*` das bases migradas (nem leitura, nem
+  `truncar_*`).
+- **Identidade de máquina = LOGIN + Custom Access Token Hook (0275), não JWT assinado localmente.** O
+  projeto está no regime novo de chaves do Supabase (API keys `sb_publishable_`/`sb_secret_`, JWKS só
+  com ES256 gerido pela plataforma) — um HS256 com o secret legado é recusado (`PGRST301: No suitable
+  key`), o que invalidou a decisão original do briefing v6.0.0 (JWT de validade longa fixo). O caminho
+  que funciona: um usuário de máquina (`verificador@janus.interno`/`ingestor@janus.interno`, ativo,
+  com role RBAC própria) faz **login** com senha (`SUPABASE_VERIFICADOR_SENHA`/
+  `SUPABASE_INGESTOR_SENHA`), o Auth emite um token ES256 de validade curta, e
+  `public.custom_access_token_hook` troca o claim `role` pelo papel do Postgres — só para esse
+  usuário. Registrar o hook no Dashboard é ato humano, uma vez.
+- **`app.exigir_acesso` não muda.** O JWT de máquina passa pelo MESMO caminho de usuário (RBAC de
+  área + `ativo`) — são duas camadas independentes: ter o `GRANT` não basta sem a área; ter a área
+  não basta sem o `GRANT`.
+- **RPC nova entra num caso de contrato ⇒ rodar `derivar-allowlist.mjs` e colar o `GRANT` numa
+  migration aditiva.** Sem isso a função nasce fora da allowlist e o caso reprova com
+  `PERMISSAO_NEGADA` — é o fail-closed desejado, não um bug.
+- Detalhe completo, allowlist inicial e alternativas descartadas: ADR-0175 e
+  `docs/runbooks/credenciais-maquina-runbook.md`.
+
+### `EXCEPTION WHEN OTHERS` é quase sempre amplo demais
+
+Ao escrever uma promoção atômica que precisa tolerar um erro ESPERADO, a tentação é `EXCEPTION WHEN
+OTHERS` — e isso também engole um bug real como se fosse o aviso intermitente esperado. **Nomeie a
+exceção específica** (ex.: `WHEN insufficient_privilege`, código `42501`): só assim o catch fica
+estreito o bastante para servir de prova, e um ensaio em transação revertida sem identidade JWT (onde
+`exigir_acesso` sempre levanta `42501`) mostra o catch disparando pelo motivo CERTO, não por
+"qualquer coisa". Achado da v6.0.0/M5 (`promover_carga_vendas`): o catch amplo teria escondido para
+sempre um erro de verdade dentro da função, em vez de só o aviso de permissão que ele deveria tolerar.
+
+### `check-then-insert` não é idempotência, e empate sem desempate em `DISTINCT ON` não é seguro
+
+Uma RPC que "olha se já existe, e se não existir insere" (dedupe por `x-ingestao-idempotencia`,
+abertura de alarme) não é idempotente sob concorrência: em READ COMMITTED, duas chamadas quase
+simultâneas passam as duas pelo `check` antes de qualquer `INSERT`, e a segunda esbarra na
+constraint e vira 500 — exatamente no caso em que a idempotência existia para servir. A correção é
+`INSERT ... ON CONFLICT DO NOTHING/UPDATE` (ou tratar `unique_violation` no corpo), nunca um
+`SELECT` separado do `INSERT`. Achado da v6.0.0 (M4; corrigido de novo na 0280/M6 para
+`ingestao_alarme_abrir`).
+
+Do mesmo jeito, `DISTINCT ON (chave) ... ORDER BY a, b` que empata em `a` e `b` deixa a escolha da
+linha a critério do PLANO de execução — que pode mudar com um `VACUUM`/`ANALYZE`, sem nenhuma
+mudança de dado. A v6.0.0 mediu **zero** ambiguidade nos dados reais de Lançamentos por Operação,
+mas nada no schema impede que apareça amanhã: feche todo `DISTINCT ON`/`ORDER BY` com uma coluna que
+nunca empata (id, ou `criado_em` + id) — não confie em "não vi empate na amostra de hoje".
 
 ### Kill switch é emergência, não mais compatibilidade
 
@@ -633,6 +693,14 @@ ao executar a cadeia), é **aceito escrever contra produção dentro de `BEGIN �
 - `SAVEPOINT` em volta da chamada que pode falhar, para o erro não derrubar a transação do
   caso antes de você conferir o estado;
 - **nenhum `COMMIT`**.
+
+**Extensão do padrão: ensaiar a MIGRATION ainda não aplicada, não só a RPC já viva (v6.0.0/M9,
+0285).** Nada impede que a própria transação revertida contenha um `CREATE OR REPLACE FUNCTION` com
+o CORPO NOVO — o que a migration ainda não aplicada faria — antes de chamar a função: a chamada
+seguinte já exercita a versão corrigida contra o dado real de produção, e o `ROLLBACK` desfaz também
+esse `CREATE OR REPLACE`, sem deixar rastro no catálogo. É a forma de achar o PRÓXIMO erro antes do
+usuário, em vez de aplicar a correção e torcer. Foi assim que o parser de `NA`/número de parcela da
+base Operação (0285) foi validado antes de ir para produção.
 
 Referência viva: `src/lib/dre/reverter-diario.test.ts` (0268). **Enforcement:**
 `src/lib/sonda-teste-escreve-banco.test.ts` — **allowlist**: TODO `src/**/*.test.ts` que obtém o

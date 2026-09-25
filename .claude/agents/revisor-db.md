@@ -60,6 +60,20 @@ consulta (pergunta em uma linha, se mudou algum achado).
   primeira linha do corpo — NÃO o wrapper+`__nucleo` (legado de retrofit).
 - `SECURITY DEFINER` + `REVOKE EXECUTE ... FROM PUBLIC, anon` + `GRANT EXECUTE ... TO
   authenticated, service_role` **explícitos** — nunca confiar no default privilege.
+- **Credenciais de máquina (v6.0.0, ADR-0175):** `verificador` NÃO pode ganhar EXECUTE em RPC que
+  escreve (nem por GRANT, nem por `ALTER DEFAULT PRIVILEGES`); `ingestor` só nas RPCs do pipeline
+  de carga (`limpar_staging_*`/`inserir_lote_staging_*`/`validar_carga_*`/`promover_carga_*`). RPC
+  nova de carga ⇒ o GRANT ao `ingestor` sai do derivador (`scripts/credencial/derivar-allowlist.mjs`,
+  por ASSINATURA), nunca à mão; e a função não pode chamar, por dentro, algo que exija área que a
+  credencial não tem (o caso `provisionar_dre_comp_par`, resolvido na 0279 separando o núcleo).
+- **`EXCEPTION WHEN OTHERS`** para tolerar UM erro conhecido é quase sempre largo demais — engole bug
+  real como se fosse aviso. Exigir a condição específica (ex.: `WHEN insufficient_privilege`, 0278).
+- **Idempotência por `SELECT` e depois `INSERT`** não é idempotência sob READ COMMITTED (as duas
+  inserem, a segunda vira 500): exigir `ON CONFLICT`/índice único. **`DISTINCT ON` sem desempate
+  total no `ORDER BY`** escolhe a linha a critério do plano — exigir desempate determinístico.
+- **Filtro de negócio numa VIEW** (ex.: `analytics.vendas_excel_para_fato`): a migration enumerou
+  TODOS os leitores da tabela por baixo — inclusive guardas de VALIDAÇÃO que leem a staging (0284)?
+  A sonda `sonda-leitores-vendas-excel` só vê `raw.vendas_excel`.
 - `anon` não ganha EXECUTE em nada (exceção única e intocável: `solicitar_acesso`).
 - Predicado de permissão com coluna anulável em `coalesce(<cmp>, false)`; função de
   visibilidade retorna boolean estrito (NULL num IF NOT pula o RAISE — vazamento).
