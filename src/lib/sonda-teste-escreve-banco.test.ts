@@ -60,6 +60,10 @@ const SOMENTE_LEITURA: Record<string, string> = {
   'src/lib/ingestao/credencial-ingestor.test.ts': 'lê has_function_privilege da role ingestor no catálogo; o resto é REST',
   // v6.0.0/M7a: enumera pg_proc.prosrc/pg_get_viewdef por leitores de raw.vendas_excel; nunca escreve.
   'src/lib/ingestao/sonda-leitores-vendas-excel.test.ts': 'lê prosrc/pg_get_viewdef do catálogo (format_type, unnest de proargtypes); nunca escreve',
+  // v6.0.0/M8: baseline de schema — o GERADOR (não-teste) e o teste de drift só leem o catálogo
+  // (tabelas/views/funções/roles/cron) via snapshotCatalogo; nunca escrevem no banco.
+  'scripts/schema-baseline/gerar.mjs': 'chama snapshotCatalogo (só SELECT/introspecção) e grava o JSON localmente; nunca escreve no banco',
+  'src/lib/schema-baseline.test.ts': 'compara o catálogo vivo (snapshotCatalogo) contra supabase/baseline/schema-v6.json; nunca escreve',
 }
 
 /** Escreve fora do contrato por DESENHO. Cada entrada precisa continuar existindo E violando. */

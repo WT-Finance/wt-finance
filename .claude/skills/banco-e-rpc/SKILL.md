@@ -562,6 +562,31 @@ curl -s -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/<fn>" \
   -H "Content-Type: application/json" -d '{...}'
 ```
 
+### Migration aplicada ⇒ regenerar o baseline de schema, no MESMO commit (v6.0.0/M8)
+
+`supabase/baseline/schema-v6.json` é o retrato versionado do catálogo de produção nas partes do
+projeto (tabelas/colunas/constraints/índices/policies/triggers, views, funções por assinatura com
+hash do corpo, as roles `verificador`/`ingestor` com a allowlist efetiva, `cron.job` com hash do
+comando, extensões). O teste `schema-baseline` compara o vivo com o arquivo e reprova qualquer
+diferença, nomeando-a. Depois de `npm run db:migrate`: `npm run db:baseline` e commitar o JSON
+junto da migration — mesma régua do `database.ts` (ADR-0173).
+
+**Não é só migration que muda o retrato.** Operação legítima que altera catálogo por RPC também
+exige regenerar na hora: ligar/desligar o vigia (`ingestao_vigia_definir`) ou qualquer cron
+(`cron.alter_job`) muda o `active` que o baseline guarda — a ativação da M9 inclusa. Mesma regra:
+fez, regenera e commita.
+
+Vermelho no teste tem duas causas, e elas se tratam diferente: (a) migration aplicada (ou cron
+ligado) sem regenerar — regenerar; (b) **mudança no banco fora de migration** (SQL editor do Dashboard, `db
+query`, função reescrita à mão) — é o drift que o teste existe para pegar; **ler a lista antes de
+regenerar**, porque regenerar às cegas aceita a mudança. Schema novo precisa ser declarado na
+lista do módulo (`scripts/schema-baseline/snapshot.mjs`), senão o teste reprova — foi uma lista
+fixa desatualizada que deixou quatro schemas fora do backup-gate (achado da M8).
+
+Por que JSON e não `supabase db dump --schema-only`: o dump roda num container Docker, e o
+arquivo SQL exigiria parsear texto para comparar. As queries de catálogo são as mesmas das
+sondas; o dump fica como companheiro legível opcional.
+
 ### REST com `service_role` EXECUTA o corpo da RPC — `db query` não substitui isso
 
 A verificação REST com `service_role` **executa de verdade o corpo** da função (o
@@ -637,7 +662,7 @@ por encerrá-la: o gatilho segue **tocado**, a reavaliação continua pendente, 
 parágrafo anterior (as travas mais interessantes de testar são as que o `service_role` não
 alcança) permanece de pé.
 
-### Quem se conecta por `SUPABASE_DB_URL`: hoje são DEZ, e quem só lê trava a sessão
+### Quem se conecta por `SUPABASE_DB_URL`: hoje são DOZE, e quem só lê trava a sessão
 
 `SUPABASE_DB_URL` é a conexão **direta** com produção (pooler em session mode, ADR-0119) — fora do
 PostgREST, fora de `exigir_acesso`, com o papel dono do banco. Até a v5.10.3 esta seção contava
@@ -666,6 +691,8 @@ M5, escreveu "oito" de cabeça e o grep devolveu nove.)
 | `src/lib/rpc-contrato.test.ts` | **somente leitura** (catálogo + `app.areas_do_setor`) |
 | `src/lib/ingestao/credencial-ingestor.test.ts` | **somente leitura** (`has_function_privilege` da role `ingestor`) |
 | `src/lib/ingestao/sonda-leitores-vendas-excel.test.ts` | **somente leitura**: todo leitor de `raw.vendas_excel` no catálogo está na lista fechada (v6.0.0/M7a, 0283) |
+| `src/lib/schema-baseline.test.ts` | **somente leitura**: catálogo vivo × `supabase/baseline/schema-v6.json` (v6.0.0/M8) |
+| `scripts/schema-baseline/gerar.mjs` | **somente leitura**: gera o baseline de schema (`npm run db:baseline`, v6.0.0/M8) |
 | `scripts/credencial/derivar-allowlist.mjs` | **somente leitura**: resolve nome de RPC em assinatura no catálogo (v6.0.0/M1) |
 | `scripts/db-gate/lib.mjs` | infra do backup-gate: `COPY OUT` do backup e `COPY IN` da recuperação |
 

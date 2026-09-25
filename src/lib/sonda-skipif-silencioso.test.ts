@@ -68,6 +68,11 @@ const INVENTARIO: ReadonlyArray<{
     porque: 'v6.0.0/M7a: catálogo vivo (pg_proc.prosrc/pg_get_viewdef) por leitores de raw.vendas_excel — só pg READ ONLY',
   },
   {
+    arquivo: 'src/lib/schema-baseline.test.ts',
+    envs: ['SUPABASE_DB_URL'],
+    porque: 'v6.0.0/M8: catálogo vivo × supabase/baseline/schema-v6.json (drift) + drift sintético — só pg READ ONLY',
+  },
+  {
     arquivo: 'src/lib/ingestao/oraculo-demonstrativo.test.ts',
     bandeira: 'REQUIRE_FIXTURES',
     envs: ['REQUIRE_FIXTURES'],

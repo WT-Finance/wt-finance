@@ -110,6 +110,11 @@ consome; você **não aplica, não edita, não roda comando nenhum**.
   (`npx supabase gen types typescript --linked`)? É passo do `/fechamento-versao` desde a
   v5.10.0 — o arquivo é GERADO, não mais congelado (ADR-0173). Os helpers de tipagem frouxa
   que já existem são legado vivo; **helper novo não se cria**.
+- Migration aplicada (ou a aplicar): o `supabase/baseline/schema-v6.json` foi **regenerado**
+  (`npm run db:baseline`) e vai no MESMO commit da migration, com o metadado `ultima_migration` igual à
+  última aplicada (v6.0.0/M8)? Sem isso o teste de drift (`schema-baseline`) fica vermelho — e
+  regenerar para "passar" sem ler a lista de diferenças aceita às cegas uma mudança feita fora
+  de migration.
 - O call-site valida com `parseRpc`/Zod **mesmo com o tipo gerado**? RPC que devolve `jsonb`
   tipa como `Json` — o `tsc` fica satisfeito e o conteúdo continua sem prova.
 - Campo que a RPC pode não emitir está `.optional()` no schema Zod?

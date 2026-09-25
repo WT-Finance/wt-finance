@@ -9,7 +9,7 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-25 (fim da M7).
+Última atualização: 2026-09-25 (fim da M8 — fronteira da Fase 4).
 
 ---
 
@@ -33,7 +33,8 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M6 log, alarmes, vigia, tela | **feito** — 0280/0281 aplicadas 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6-desenho-log-e-alarmes.md` |
 | M6b retenção do cru | **feito** — 0282 aplicada 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md` |
 | M7 grafo + Welcome + leitura | **feito** — 0283 aplicada 25/09; desenho e provas em `docs/briefings/anexo-v6-0-0-m7-desenho-grafo-e-leitura.md` |
-| M8–M11 | pendentes — roteiro no plano |
+| M8 baseline de schema | **feito** — `supabase/baseline/schema-v6.json` + teste de drift (sem migration) |
+| M9–M11 | pendentes — roteiro no plano |
 
 **Decisões do Yan em 24/09, depois da M6 — errata 3 do contrato (`docs/contratos/ingestao-v1.md`):**
 1. **Reprocesso = carga NOVA com cópia dos arquivos** (errata 3(a)); o que a tela já faz. Afeta a RPA.
@@ -42,6 +43,42 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 3. **Retenção do cru: 3 meses** (o dado no banco não expira). Medido antes de decidir: um conjunto das
    5 bases tem ~20 MB → ~1 GB/ano no ritmo semanal de hoje, ~7 GB/ano com a RPA diária; o custo não
    pesou, e o Yan não vê motivo para guardar o arquivo por muito tempo. Vai para o ADR no fechamento.
+
+**M8 FECHADA (25/09) — baseline de schema e drift. Fronteira da Fase 4.**
+
+- `supabase/baseline/schema-v6.json`: retrato do catálogo de produção nas partes do projeto — 79
+  tabelas (colunas, constraints, índices, policies, triggers, ACL), 19 views, 330 funções por
+  assinatura (hash do corpo, SECURITY DEFINER, `proconfig`, ACL), as roles `verificador`/`ingestor`
+  (allowlist efetiva) e `anon`/`authenticated`/`service_role`/`authenticator` (configuração, onde
+  vivem `statement_timeout` e fuso), `pg_default_acl`, `cron.job` (hash do comando, nunca o texto) e
+  extensões. Metadado `ultima_migration` = 0283. Reprodutível (gerado duas vezes = byte-idêntico).
+- Módulo único `scripts/schema-baseline/snapshot.mjs` gera E compara; `npm run db:baseline` regenera;
+  `src/lib/schema-baseline.test.ts` reprova qualquer diferença nomeando-a. Provado ponta a ponta: com
+  o arquivo adulterado (coluna removida + cron invertido) o teste nomeou exatamente as duas.
+- **Convenção nova (skill `banco-e-rpc` §6, `/fechamento-versao` passo 5, checklist do `revisor-db`):
+  migration aplicada — ou cron ligado/desligado — ⇒ `npm run db:baseline` no mesmo commit.**
+  **Na M9: depois de ativar o vigia/crons, regenerar o baseline** (o `active` está no retrato).
+- **Divergência do briefing (D12):** o briefing pede `supabase db dump --schema-only` → `.sql`. Não
+  roda nesta máquina (o dump usa um container e o socket do Docker está negado; não há `pg_dump`
+  local), e comparar SQL exigiria parsear texto. O baseline é JSON das mesmas queries de catálogo das
+  sondas. Se quiser o `.sql` como companheiro legível: `sudo usermod -aG docker $USER` (relogin) e
+  `npx supabase db dump --linked --schema-only -f supabase/baseline/schema-v6.sql`.
+
+> 🔴 **CHECKPOINT DO YAN — o backup-gate não cobre 18 das 79 tabelas (achado da M8).**
+> `scripts/db-gate/lib.mjs:35` fixa `SCHEMAS = ['analytics','app','audit','dim','financeiro','raw']`
+> (14/06, ADR-0116), de antes de existirem `estante` (2 tabelas — Estante Welcome), `patrimonio` (5 —
+> Inventário), `ingestao` (6 — o log de cargas da v6) e `monde` (5 — o espelho). E a checagem de
+> completude (`tabelasVivas()`) lê a MESMA lista, então é circular: "61 vivas / 61 no manifest" nunca
+> fica vermelho por schema novo. Toda migration desde a v5.1.2 foi aplicada sem backup dessas tabelas.
+> **Diff proposto (não aplicado — mexer na rede de recuperação é decisão sua):**
+> ```js
+> // scripts/db-gate/lib.mjs
+> import { SCHEMAS_PROJETO } from '../schema-baseline/snapshot.mjs'
+> export const SCHEMAS = SCHEMAS_PROJETO   // fonte única com o baseline; public não tem tabela
+> ```
+> Efeito: export e completude passam a cobrir as 79; o backup ganha o espelho Monde (~80 mil linhas,
+> export um pouco mais lento). Com a fonte única, um schema novo precisa ser declarado uma vez só — e
+> o teste de drift já reprova schema não declarado.
 
 **M7 FECHADA (25/09) — grafo de carga, Welcome em todos os leitores, leitura** (desenho e provas:
 `docs/briefings/anexo-v6-0-0-m7-desenho-grafo-e-leitura.md`).
@@ -66,12 +103,12 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
   carga novos em `/financeiro/fluxo-caixa` (Movimentação + Em aberto), `/performance*` (Vendas) e
   `/performance/weddings` (Vendas + Operações), lidos de `ingestao_carga_ultima` — **vazios até a M9**.
 
-> 🔴 **Para o Yan decidir (defaults adotados, nada bloqueia):** (1) o caixa da DRE já marca o mês
-> corrente com `·REAL`/`·PREV` — basta, ou entra "· parcial" junto? (default: não mexer); (2) o
-> briefing pede o texto "base carregada em DD/MM/AAAA", a plataforma já usa "Última atualização em
-> DD/MM/AAAA HH:MM" (default: manter); (3) a "lista de operações exposta por RPC para a RPA"
-> (contrato §5) não existe e a RPA de Operação está fora da v6 (default: não construir — candidata a
-> errata 4 na v6.1); (4) **caso residual da idempotência × grafo:** o replay por `carga_id` já vem
+> ✅ **Decidido pelo Yan em 25/09:** (1) o caixa da DRE fica só com `·REAL`/`·PREV` — sem
+> "· parcial"; (2) o carimbo mantém "Última atualização em DD/MM/AAAA HH:MM" (não o texto do
+> briefing); (3) a "lista de operações exposta por RPC para a RPA" (contrato §5) NÃO se constrói na
+> v6 — vira errata 4 na v6.1, junto da RPA de Operação.
+>
+> 🔴 **Ainda aberto (default adotado, não bloqueia):** (4) **caso residual da idempotência × grafo:** o replay por `carga_id` já vem
 > antes do grafo (corrigido na auto-auditoria), mas a MESMA chave `x-ingestao-idempotencia` com
 > `carga_id` NOVO num dia sem Aberto ainda leva 409 — fechar pede uma RPC de leitura por chave
 > (aditiva, pequena; candidata a errata 4b). Default: registrar, não construir.
@@ -438,7 +475,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | Produção | **v5.12.0** (PR #275, mergeado 24/09 às 15:44 — sem migration; o `main` segue na 0272). Esta branch ainda não trouxe o `main`: no fechamento, conflito esperado em `WORKING-CONTEXT.md`, skill `banco-e-rpc`, `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` — nenhum em código da ingestão |
 | Última migration aplicada | **0283** (v6.0.0/M7a — Welcome em todos os leitores de Vendas) · próxima livre: **0284** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
-| Suíte | **1.641 testes**, 98 arquivos, zero falha, zero `skip` (25/09, com a 0283 aplicada) |
+| Suíte | **1.657 testes**, 99 arquivos, zero falha, zero `skip` (25/09, fim da M8) |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
