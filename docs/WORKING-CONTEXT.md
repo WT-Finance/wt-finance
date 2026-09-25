@@ -13,7 +13,7 @@
 
 ---
 
-## Aguardando merge — v6.0.0 "Fundação da ingestão" (PR aberto em 25/09)
+## Aguardando merge — v6.0.0 "Fundação da ingestão" (PR #279, aberto em 25/09)
 
 Branch `feat/v6-0-0-fundacao-ingestao`, worktree `.claude/worktrees/feat-v6-0-0-fundacao-ingestao`.
 **Tudo o que a versão fez, provou e decidiu está no out-briefing**
