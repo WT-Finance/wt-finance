@@ -34,7 +34,8 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M6b retenção do cru | **feito** — 0282 aplicada 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md` |
 | M7 grafo + Welcome + leitura | **feito** — 0283 aplicada 25/09; desenho e provas em `docs/briefings/anexo-v6-0-0-m7-desenho-grafo-e-leitura.md` |
 | M8 baseline de schema | **feito** (`438f7d2`) — `supabase/baseline/schema-v6.json` + teste de drift, sem migration; provas e parecer em `docs/briefings/anexo-v6-0-0-m8-baseline-de-schema.md` |
-| M9–M11 | pendentes — roteiro no plano |
+| M9 cargas reais | **5 cargas aplicadas e conferidas (25/09)** — 0284/0285 aplicadas; resultado em `docs/briefings/anexo-v6-0-0-m9-cargas-reais.md`; pendente: recarregar Operação na preview nova (cru com "NA") e ativar crons após o merge |
+| M10–M11 | pendentes — roteiro no plano |
 
 **Decisões do Yan em 24/09, depois da M6 — errata 3 do contrato (`docs/contratos/ingestao-v1.md`):**
 1. **Reprocesso = carga NOVA com cópia dos arquivos** (errata 3(a)); o que a tela já faz. Afeta a RPA.
