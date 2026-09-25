@@ -71,7 +71,10 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 > briefing pede o texto "base carregada em DD/MM/AAAA", a plataforma já usa "Última atualização em
 > DD/MM/AAAA HH:MM" (default: manter); (3) a "lista de operações exposta por RPC para a RPA"
 > (contrato §5) não existe e a RPA de Operação está fora da v6 (default: não construir — candidata a
-> errata 4 na v6.1).
+> errata 4 na v6.1); (4) **caso residual da idempotência × grafo:** o replay por `carga_id` já vem
+> antes do grafo (corrigido na auto-auditoria), mas a MESMA chave `x-ingestao-idempotencia` com
+> `carga_id` NOVO num dia sem Aberto ainda leva 409 — fechar pede uma RPC de leitura por chave
+> (aditiva, pequena; candidata a errata 4b). Default: registrar, não construir.
 
 **M6b FECHADA (24/09) — limpeza do cru** (desenho e o que foi provado:
 `docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md`). Migration **0282** aplicada (gate verde,
@@ -435,7 +438,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | Produção | **v5.12.0** (PR #275, mergeado 24/09 às 15:44 — sem migration; o `main` segue na 0272). Esta branch ainda não trouxe o `main`: no fechamento, conflito esperado em `WORKING-CONTEXT.md`, skill `banco-e-rpc`, `CHANGELOG.md`, `changelog-diretoria.ts` e `package.json` — nenhum em código da ingestão |
 | Última migration aplicada | **0283** (v6.0.0/M7a — Welcome em todos os leitores de Vendas) · próxima livre: **0284** |
 | Último ADR | **0175** (v6.0.0 — separação credencial de verificação × aplicação) · próximo livre: **0176** |
-| Suíte | **1.639 testes**, 98 arquivos, zero falha, zero `skip` (25/09, com a 0283 aplicada) |
+| Suíte | **1.641 testes**, 98 arquivos, zero falha, zero `skip` (25/09, com a 0283 aplicada) |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 

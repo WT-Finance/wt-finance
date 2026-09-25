@@ -32,8 +32,17 @@ Vale para a conferência (`confirmar:false`) também — o operador vê o 409 no
 
 Arestas vivas registradas (são o contrato, não defeito):
 - RPA de Aberto às 23:50 e de Operação às 00:10 ⇒ 409 (o dia virou).
-- Retry com a MESMA chave de idempotência de uma Operação já aplicada, em outro dia sem Aberto
-  do dia ⇒ 409 em vez do replay (o check vem antes da idempotência, que mora em `abrirCarga`).
+- **Idempotência antes do grafo** (contrato §2.3: idempotência é o passo 1, grafo o passo 3). A
+  primeira versão desta missão punha o grafo antes de TODA a idempotência, e este anexo chamava de
+  "contrato" o efeito — retry de uma Operação já aplicada, em outro dia sem Aberto, levando 409 em
+  vez do replay. Era desvio do contrato congelado, pego na auto-auditoria depois da revisão (o
+  `revisor` revisou contra este anexo, que estava errado). Corrigido: com `confirmar`, antes do
+  grafo, `obterCarga(carga_id)` — carga já `aplicada` com resposta guardada ⇒ replay 200
+  `idempotente: true`. É só LEITURA; a abertura (que escreve) segue depois do grafo, então o 409
+  continua sem linha e sem consumir a chave.
+  **Caso residual (decisão do Yan):** a MESMA chave `x-ingestao-idempotencia` com `carga_id` NOVO
+  (a RPA refez o passo 1) num dia sem Aberto ainda leva 409, porque não há leitura por chave antes
+  da abertura. Fechar exige uma RPC de leitura por chave (aditiva, pequena) — candidata a errata 4b.
 - O aviso de cruzamento de Vencimento (`carga.ts`) **continua**: o grafo cobre Aberto do dia;
   Movimentação vazia (o fallback do Vencimento) só é pega por ele.
 
@@ -136,9 +145,20 @@ re-rodado antes de dar a prova por fechada.)
 **Grafo:** 6 casos em `carga.test.ts` (sem Aberto ⇒ 409 e nenhuma linha aberta; Aberto de ontem ⇒
 409 com `detalhe.faltando`; vale na conferência; Aberto de hoje passa; leitura falhando ⇒ 500
 fail-closed; base sem pré-requisito não lê o grafo) + `grafo.test.ts` (arestas, sem ciclo, virada
-de dia no fuso nos dois sentidos). A prova AO VIVO do 409 fica para a M9: hoje nenhuma base tem
-carga `aplicada` em `ingestao.carga`, e subir Operação pela tela só para ver o 409 é possível a
-qualquer momento, sem risco (o 409 vem antes de qualquer escrita).
+de dia no fuso nos dois sentidos) + 2 depois da correção da ordem (replay de carga já aplicada sem
+Aberto do dia ⇒ 200 idempotente, não 409; carga prévia rejeitada não é repetida e cai no grafo).
+
+**409 visto AO VIVO contra produção** (critério de auto-auditoria da M7 no briefing §7): o
+`processarCarga` real, com o admin client real, em conferência (`confirmar:false`) de Operação.
+`lerUltimaCargaAplicada('lancamentos-aberto')` → `{"ok":true,"linha":null}` (nenhuma carga de
+Aberto pelo caminho novo); resposta **409 `DEPENDENCIA_AUSENTE`**, mensagem "Carregue Lançamentos
+por Vencimento (em aberto) de hoje antes desta base.", `detalhe.faltando =
+[{base:"lancamentos-aberto", rotulo:"Lançamentos por Vencimento (em aberto)",
+ultima_carga_aplicada_em:null}]`. O grafo roda antes de baixar qualquer objeto: nada lido do
+Storage, nada gravado. Rodado por um teste temporário (apagado, não commitado). **Não exercitado:**
+a exibição da mensagem no card de `/admin/uploads` — subir o CSV pelo formulário exige o OK do Yan
+no chat; o cliente repassa `erro.mensagem` sem mapear código (conferido na leitura do código), e a
+M9 vê isso de graça (Operação antes de Aberto no dia ⇒ 409 no card).
 
 **Revisões:** `revisor` APROVADO (zero CRÍTICO/ALTO/MÉDIO; 2 BAIXO de registro). `revisor-db`: a
 lacuna de GRANT que ele apontou para o `ingestor` em `promover_carga_vendas(jsonb, uuid)` **não

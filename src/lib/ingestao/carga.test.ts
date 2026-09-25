@@ -433,18 +433,40 @@ async function capturarErroCarga(p: Promise<unknown>): Promise<ErroCarga> {
   throw new Error('esperava que processarCarga rejeitasse com ErroCarga')
 }
 
+/**
+ * Programa o `rpcMock` POR NOME de RPC (fila de respostas por nome), em vez de pela ordem global
+ * das chamadas: `processarCarga` faz leituras diferentes conforme o caminho (replay prévio só com
+ * `confirmar`, grafo só para bases com pré-requisito), e amarrar os testes à posição de cada
+ * chamada quebrava todos a cada leitura nova. `ingestao_carga_obter` sem fila = carga inexistente
+ * (é o que o PostgREST devolve: `data: null`).
+ */
+function rpcPorNome(filas: Record<string, Array<{ data: unknown; error: { message: string } | null }>>) {
+  rpcMock.mockImplementation(async (nome: string) => {
+    const fila = filas[nome]
+    if (fila && fila.length > 0) return fila.shift()
+    if (nome === 'ingestao_carga_obter') return { data: null, error: null }
+    return { data: null, error: { message: `rpc ${nome} sem resposta programada no teste` } }
+  })
+}
+
+/** Nomes das RPCs chamadas, em ordem — o que os testes afirmam, sem depender de índice. */
+const chamadas = () => rpcMock.mock.calls.map((c) => c[0] as string)
+
 describe('processarCarga — grafo de dependência', () => {
-  it('Operação SEM Aberto do dia (nunca aplicada) ⇒ 409 DEPENDENCIA_AUSENTE; abrirCarga NÃO é chamado; lock liberado', async () => {
-    // Só `Date` é fake — os testes daqui são `async`/`await` em cascata, e faking `setTimeout`
-    // junto arrisca prender uma microtask/timer interno do runtime de teste (vitest 5).
+  // Só `Date` é fake — os testes daqui são `async`/`await` em cascata, e faking `setTimeout`
+  // junto arrisca prender uma microtask/timer interno do runtime de teste (vitest 5).
+  beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
-    rpcMock.mockResolvedValueOnce({ data: null, error: null }) // ingestao_carga_ultima: nunca aplicada
+  })
+
+  it('Operação SEM Aberto do dia (nunca aplicada) ⇒ 409 DEPENDENCIA_AUSENTE; abrirCarga NÃO é chamado; lock liberado', async () => {
+    rpcPorNome({ ingestao_carga_ultima: [{ data: null, error: null }] })
 
     await expect(processarCarga(entradaOperacao({ cargaId: 'carga-409-a' })))
       .rejects.toMatchObject({ codigo: 'DEPENDENCIA_AUSENTE', http: 409 })
 
-    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(chamadas()).toEqual(['ingestao_carga_obter', 'ingestao_carga_ultima'])
     expect(rpcMock).toHaveBeenCalledWith('ingestao_carga_ultima', { p_base: 'lancamentos-aberto' })
     // Lock liberado pelo `finally` — outra carga da MESMA base consegue travar.
     expect(tentarTravarBase('lancamentos-operacao', 'outra-carga')).toBe(true)
@@ -452,75 +474,94 @@ describe('processarCarga — grafo de dependência', () => {
   })
 
   it('Operação com Aberto aplicado ONTEM (não hoje) ⇒ também 409 DEPENDENCIA_AUSENTE', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
-    rpcMock.mockResolvedValueOnce({ data: linhaCargaAplicada({ concluido_em: '2026-09-24T14:00:00Z' }), error: null })
+    rpcPorNome({ ingestao_carga_ultima: [{ data: linhaCargaAplicada({ concluido_em: '2026-09-24T14:00:00Z' }), error: null }] })
 
     const erro = await capturarErroCarga(processarCarga(entradaOperacao({ cargaId: 'carga-409-b' })))
     expect(erro.codigo).toBe('DEPENDENCIA_AUSENTE')
     expect(erro.detalhe).toMatchObject({
       faltando: [{ base: 'lancamentos-aberto', ultima_carga_aplicada_em: '2026-09-24T14:00:00Z' }],
     })
-    expect(rpcMock).toHaveBeenCalledTimes(1)
+    expect(chamadas()).not.toContain('ingestao_carga_abrir')
   })
 
   it('vale também na CONFERÊNCIA (confirmar:false) — o operador vê o 409 antes de aplicar', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
-    rpcMock.mockResolvedValueOnce({ data: null, error: null })
+    rpcPorNome({ ingestao_carga_ultima: [{ data: null, error: null }] })
 
     await expect(processarCarga(entradaOperacao({ cargaId: 'carga-409-c', confirmar: false })))
       .rejects.toMatchObject({ codigo: 'DEPENDENCIA_AUSENTE', http: 409 })
-    expect(rpcMock).toHaveBeenCalledTimes(1) // nenhuma tentativa de abrir carga na conferência
+    // Conferência não faz replay (não há o que repetir) nem abre carga — só o grafo.
+    expect(chamadas()).toEqual(['ingestao_carga_ultima'])
   })
 
   it('Operação COM Aberto aplicado HOJE ⇒ passa do grafo (chega a abrirCarga, não é DEPENDENCIA_AUSENTE)', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
-    rpcMock.mockResolvedValueOnce({ data: linhaCargaAplicada({ concluido_em: '2026-09-25T10:00:00Z' }), error: null }) // ultima
-    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'boom' } }) // abrirCarga falha (não é o que testamos aqui)
+    rpcPorNome({
+      ingestao_carga_ultima: [{ data: linhaCargaAplicada({ concluido_em: '2026-09-25T10:00:00Z' }), error: null }],
+      ingestao_carga_abrir: [{ data: null, error: { message: 'boom' } }], // falha de propósito: não é o que testamos
+    })
 
     const erro = await capturarErroCarga(processarCarga(entradaOperacao({ cargaId: 'carga-200-a' })))
     expect(erro.codigo).not.toBe('DEPENDENCIA_AUSENTE')
     expect(erro.codigo).toBe('ERRO_INTERNO') // o próximo passo do fluxo (abrirCarga) é quem falhou
 
-    expect(rpcMock).toHaveBeenCalledTimes(2)
-    expect(rpcMock).toHaveBeenNthCalledWith(1, 'ingestao_carga_ultima', { p_base: 'lancamentos-aberto' })
-    expect(rpcMock).toHaveBeenNthCalledWith(2, 'ingestao_carga_abrir', expect.anything())
     // `abrirCarga` falhou ANTES de marcar `cargaAberta` — `concluirCarga` não é chamado para uma
-    // linha que nunca chegou a existir (só as 2 chamadas acima).
+    // linha que nunca chegou a existir.
+    expect(chamadas()).toEqual(['ingestao_carga_obter', 'ingestao_carga_ultima', 'ingestao_carga_abrir'])
     expect(tentarTravarBase('lancamentos-operacao', 'outra-carga-2')).toBe(true)
     destravarBase('lancamentos-operacao', 'outra-carga-2')
   })
 
   it('leitura da última carga de Aberto FALHA (RPC com erro) ⇒ 500 ERRO_INTERNO, fail-closed; nada aplicado', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
-    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'timeout do banco' } })
+    rpcPorNome({ ingestao_carga_ultima: [{ data: null, error: { message: 'timeout do banco' } }] })
 
     const erro = await capturarErroCarga(processarCarga(entradaOperacao({ cargaId: 'carga-500-a' })))
     expect(erro.codigo).toBe('ERRO_INTERNO')
     expect(erro.http).toBe(500)
     expect(erro.codigo).not.toBe('DEPENDENCIA_AUSENTE') // "não sei" nunca vira "está lá" nem "não está lá"
 
-    expect(rpcMock).toHaveBeenCalledTimes(1) // só a leitura que falhou — nada mais rodou
+    expect(chamadas()).not.toContain('ingestao_carga_abrir') // nada além das leituras rodou
     expect(tentarTravarBase('lancamentos-operacao', 'outra-carga-3')).toBe(true)
     destravarBase('lancamentos-operacao', 'outra-carga-3')
   })
 
-  it('bases SEM pré-requisito bloqueante não leem o grafo (0 chamadas antes de abrirCarga)', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-09-25T15:00:00Z'))
-    rpcMock.mockResolvedValueOnce({ data: null, error: { message: 'boom' } }) // abrirCarga falha (não é o que testamos)
+  it('bases SEM pré-requisito bloqueante não leem o grafo', async () => {
+    rpcPorNome({ ingestao_carga_abrir: [{ data: null, error: { message: 'boom' } }] }) // falha de propósito
 
     const erro = await capturarErroCarga(processarCarga(entradaOperacao({
       base: 'demonstrativo-competencia', cargaId: 'carga-sem-grafo',
       arquivos: [{ path: 'demonstrativo-competencia/2026/09/carga-sem-grafo-1-a.xlsx', nome: 'a.xlsx', sha256: 'b'.repeat(64) }],
     })))
     expect(erro.codigo).toBe('ERRO_INTERNO')
-    // Única chamada é `ingestao_carga_abrir` — nenhuma leitura de `ingestao_carga_ultima` para
-    // uma base sem pré-requisito bloqueante.
-    expect(rpcMock).toHaveBeenCalledTimes(1)
-    expect(rpcMock).toHaveBeenCalledWith('ingestao_carga_abrir', expect.anything())
+    expect(chamadas()).toEqual(['ingestao_carga_obter', 'ingestao_carga_abrir'])
+  })
+
+  // Contrato §2.3: idempotência é o passo 1, grafo é o passo 3 — o replay vem ANTES do grafo.
+  it('retry de uma Operação JÁ APLICADA, num dia SEM Aberto ⇒ replay 200 idempotente, NÃO 409', async () => {
+    const respostaOriginal = { carga_id: 'carga-ontem', base: 'lancamentos-operacao', status: 'aplicada', alarmes: [] }
+    rpcPorNome({
+      ingestao_carga_obter: [{
+        data: linhaCargaAplicada({ carga_id: 'carga-ontem', base: 'lancamentos-operacao', resposta: respostaOriginal }),
+        error: null,
+      }],
+      ingestao_carga_ultima: [{ data: null, error: null }], // Aberto nunca aplicado — o grafo reprovaria
+    })
+
+    const resultado = await processarCarga(entradaOperacao({ cargaId: 'carga-ontem' }))
+    expect(resultado).toMatchObject({ ...respostaOriginal, idempotente: true })
+    // Nem grafo, nem abertura: só a leitura do replay.
+    expect(chamadas()).toEqual(['ingestao_carga_obter'])
+  })
+
+  it('carga prévia REJEITADA não é repetida: segue para o grafo (e o grafo decide)', async () => {
+    rpcPorNome({
+      ingestao_carga_obter: [{
+        data: linhaCargaAplicada({ carga_id: 'carga-rej', base: 'lancamentos-operacao', status: 'rejeitada', resposta: null }),
+        error: null,
+      }],
+      ingestao_carga_ultima: [{ data: null, error: null }],
+    })
+
+    await expect(processarCarga(entradaOperacao({ cargaId: 'carga-rej' })))
+      .rejects.toMatchObject({ codigo: 'DEPENDENCIA_AUSENTE', http: 409 })
+    expect(chamadas()).toEqual(['ingestao_carga_obter', 'ingestao_carga_ultima'])
   })
 })

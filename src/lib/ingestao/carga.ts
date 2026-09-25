@@ -29,7 +29,7 @@ import { aplicarCarga, CargaRejeitada, lancamentoOperacaoAplicavel, type Resulta
 import { getAdminClient } from '@/lib/supabase/admin'
 import { autenticarChamada, type ChaveResolvida } from '@/lib/api-externa/http'
 import { requireAreaApi, type Sessao } from '@/lib/auth/sessao'
-import { abrirCarga, concluirCarga, lerUltimaCargaAplicada } from './log'
+import { abrirCarga, concluirCarga, lerUltimaCargaAplicada, obterCarga } from './log'
 import {
   somaPorAno, calcularDiffPorAno, anoCorrenteSP, ehRejeicaoDeConteudo, precisaAlarmarParNovo,
   dispararAlarmeDeEvento,
@@ -853,8 +853,23 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
   let cargaAberta = false
 
   try {
-    // Passo 3 do contrato — grafo de dependência (anexo v6.0.0/M7a §1). ANTES de tudo o mais,
-    // inclusive da idempotência (que só é consultada dentro de `abrirCarga`, logo abaixo).
+    // Contrato §2.3: a idempotência é o passo 1 e o grafo é o passo 3 — o REPLAY vem antes do
+    // grafo. Sem isto, a RPA que reenvia o passo 3 de uma Operação JÁ APLICADA (timeout do lado
+    // dela) num dia em que Aberto ainda não entrou levaria 409 em vez da resposta original
+    // (auto-auditoria da M7a, depois da revisão). O replay é só LEITURA (`obterCarga`); a
+    // ABERTURA da linha, que escreve, continua depois do grafo — é o que mantém o 409 sem linha
+    // e sem consumir a chave. Cobre o retry com o MESMO `carga_id`; o retry com a mesma chave de
+    // idempotência e `carga_id` NOVO só é resolvido dentro de `abrirCarga` (não há leitura por
+    // chave) — caso residual registrado no anexo M7 §1.
+    if (entrada.confirmar) {
+      const previa = await obterCarga(cargaId)
+      if (previa.ok && previa.linha.status === 'aplicada' && previa.linha.resposta && typeof previa.linha.resposta === 'object') {
+        return { ...(previa.linha.resposta as ResultadoCarga), idempotente: true }
+      }
+    }
+
+    // Passo 3 do contrato — grafo de dependência (anexo v6.0.0/M7a §1). Antes da ABERTURA da
+    // carga (que só acontece dentro de `abrirCarga`, logo abaixo).
     await checarDependenciaDeCarga(base)
 
     // Idempotência (§1/§2.3 passo 1) — SÓ quando vai aplicar. A conferência (`confirmar:false`)
