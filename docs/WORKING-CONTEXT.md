@@ -33,7 +33,7 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 | M6 log, alarmes, vigia, tela | **feito** — 0280/0281 aplicadas 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6-desenho-log-e-alarmes.md` |
 | M6b retenção do cru | **feito** — 0282 aplicada 24/09; desenho em `docs/briefings/anexo-v6-0-0-m6b-retencao-do-cru.md` |
 | M7 grafo + Welcome + leitura | **feito** — 0283 aplicada 25/09; desenho e provas em `docs/briefings/anexo-v6-0-0-m7-desenho-grafo-e-leitura.md` |
-| M8 baseline de schema | **feito** — `supabase/baseline/schema-v6.json` + teste de drift (sem migration) |
+| M8 baseline de schema | **feito** (`438f7d2`) — `supabase/baseline/schema-v6.json` + teste de drift, sem migration; provas e parecer em `docs/briefings/anexo-v6-0-0-m8-baseline-de-schema.md` |
 | M9–M11 | pendentes — roteiro no plano |
 
 **Decisões do Yan em 24/09, depois da M6 — errata 3 do contrato (`docs/contratos/ingestao-v1.md`):**
@@ -43,6 +43,15 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
 3. **Retenção do cru: 3 meses** (o dado no banco não expira). Medido antes de decidir: um conjunto das
    5 bases tem ~20 MB → ~1 GB/ano no ritmo semanal de hoje, ~7 GB/ano com a RPA diária; o custo não
    pesou, e o Yan não vê motivo para guardar o arquivo por muito tempo. Vai para o ADR no fechamento.
+
+**Pré-condições da M9 (deploy intermediário + 5 cargas reais) — quase todas atos do Yan:**
+1. `SUPABASE_INGESTOR_SENHA` no ambiente da Vercel — sem ela a carga LANÇA por desenho (fail-closed
+   da M5); a M9 é a primeira vez que o caminho real roda em produção.
+2. O "deploy intermediário" é merge do Yan (a sessão não deploya) — ou preview da branch com as envs
+   de preview; decisão dele.
+3. Ordem no mesmo dia: Lançamentos por Vencimento (em aberto) ANTES de Lançamentos por Operação (409).
+4. Depois de ligar vigia/crons: `npm run db:baseline` e commitar (o `active` está no retrato).
+5. O diff do backup-gate (61 → 79 tabelas) decidido no máximo antes da M10.
 
 **M8 FECHADA (25/09) — baseline de schema e drift. Fronteira da Fase 4.**
 
@@ -62,7 +71,7 @@ entregar o arquivo por **signed upload URL** (a Vercel recusa body > 4,5 MB; Mov
   roda nesta máquina (o dump usa um container e o socket do Docker está negado; não há `pg_dump`
   local), e comparar SQL exigiria parsear texto. O baseline é JSON das mesmas queries de catálogo das
   sondas. Se quiser o `.sql` como companheiro legível: `sudo usermod -aG docker $USER` (relogin) e
-  `npx supabase db dump --linked --schema-only -f supabase/baseline/schema-v6.sql`.
+  `npx supabase db dump --linked -f supabase/baseline/schema-v6.sql` (o dump já é só de schema por padrão — o `--schema-only` do briefing não existe nesta CLI).
 
 > 🔴 **CHECKPOINT DO YAN — o backup-gate não cobre 18 das 79 tabelas (achado da M8).**
 > `scripts/db-gate/lib.mjs:35` fixa `SCHEMAS = ['analytics','app','audit','dim','financeiro','raw']`
