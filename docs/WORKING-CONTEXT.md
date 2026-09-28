@@ -21,6 +21,8 @@ em produção; `seed-fluxo-caixa.ts`, `parse-excel.ts` e `carregarLancamentos` s
 exigiam o legado (b04baff) e a destrutiva **0286** (f011b78), **em `supabase/patches/`, fora de
 `migrations/`**. Conferência do seed contra produção em 28/09: 5 bases `conferida`, diff 0, foto do banco
 idêntica antes e depois. 0286 ensaiada em transação revertida; `revisor` e `revisor-db` sem CRÍTICO.
+**Não verificado:** o caminho `--aplicar` do seed nunca rodou ponta a ponta (só a conferência) — a 1ª
+execução real é do Yan, num dia em que substituir as bases seja a intenção; ela dispara os alarmes de carga.
 
 > 🔴 **Yan — aplicar a 0286 em TTY** (roteiro no header do arquivo: `migration list` → `mv` para
 > `supabase/migrations/` → `migration list` → `npm run db:migrate -- --destrutiva`). Depois, a sessão
@@ -29,14 +31,16 @@ idêntica antes e depois. 0286 ensaiada em transação revertida; `revisor` e `r
 > vermelho (o `main` ainda espera funções que saíram) e o `npm run seed` do `main` falha — não rodar
 > nenhum dos dois do `main` nesse intervalo.
 
-> 🔴 **Yan — as fixtures do oráculo sumiram.** `tests/fixtures/ingestao/` é gitignorado (Vendas cru tem
-> CPF/CNPJ) e só existia na worktree da v6.0.0, removida no pós-merge; nas pastas do Windows os exports
-> de 21/09 de Vendas (3 crus), Demonstrativo, Movimentação e Aberto foram sobrescritos, e a
-> `Lista de Operações.csv` não foi achada. Resultado: os 4 `oraculo-*.test.ts` falham com ENOENT antes de
-> rodar qualquer caso (o resto da suíte: 1.578 verdes). Se os anexos de 21/09 existirem em outro lugar
-> (e-mail, OneDrive, versão anterior), `JANUS_ANEXOS_DIRS=… node scripts/ingestao/fixtures.mjs` os
-> recupera e confere o sha256; senão, é decidir se o oráculo passa a usar os exports de 28/09 (novo
-> manifesto).
+> 🔴 **Yan — uma fixture do oráculo se perdeu: `demonstrativo-cru.xlsx` de 21/09.** `tests/fixtures/ingestao/`
+> é gitignorado (Vendas cru tem CPF/CNPJ) e só existia na worktree da v6.0.0, removida no pós-merge. Em
+> 28/09 a sessão recompôs 11 das 13 conferindo o sha256 do manifesto: os crus de Vendas, Movimentação,
+> Aberto e Operação vieram do bucket `ingestao-cru` (cargas da M9, 25/09) e os tratados, das pastas do
+> Windows. Faltam o **Demonstrativo cru** (o export de 21/09 foi sobrescrito e não foi carregado pelo
+> card) e a `Lista de Operações.csv` (auxiliar; sem ela 6 casos do oráculo de Operação ficam `skipped`).
+> Efeito: `oraculo-demonstrativo.test.ts` falha com ENOENT — o `describe.skipIf(AUSENTES…)` não protege,
+> porque o corpo do `describe` lê o arquivo na coleta. Saídas: achar o anexo de 21/09 (e-mail, OneDrive)
+> e rodar `JANUS_ANEXOS_DIRS=… node scripts/ingestao/fixtures.mjs`, ou decidir trocar o manifesto do
+> Demonstrativo para o export de 28/09 (o que está em produção hoje).
 
 ---
 
