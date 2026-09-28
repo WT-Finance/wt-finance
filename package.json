@@ -13,7 +13,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "tsx --tsconfig tsconfig.json supabase/seed/seed.ts",
+    "seed": "tsx --tsconfig tsconfig.json --require ./supabase/seed/sem-server-only.cjs supabase/seed/seed.ts",
     "db:migrate": "node scripts/db-gate/migrate.mjs",
     "db:gate": "node scripts/db-gate/gate.mjs",
     "db:baseline": "node scripts/schema-baseline/gerar.mjs"

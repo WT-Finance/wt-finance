@@ -1,6 +1,25 @@
-import type { LancamentoRaw } from './lancamentos'
 import { toNum, toIsoDate as toDate, toStr } from './coercao'
 import { validarColunasObrigatorias, mensagemColunasFaltando, type RequisitoColuna } from './colunas-obrigatorias'
+
+// `LancamentoRaw` morava em `./lancamentos.ts` (v6.0.1: o arquivo saiu inteiro — a função
+// `carregarLancamentos` que ele existia para servir só era usada pelo seed antigo, migrado para
+// o caminho único de ingestão v1; ver `docs/briefings/spec-v6-0-1-seeds-e-destrutiva.md` M1).
+// Este é o único outro consumidor do tipo, por isso ele migrou para cá em vez de para um arquivo
+// à parte.
+export interface LancamentoRaw {
+  lancamento_n:  number | null
+  venda_n:       number | null
+  pessoa:        string | null
+  descricao:     string | null
+  liquidacao_dt: string | null
+  vencimento_dt: string | null
+  valor:         number
+  tipo:          'Entrada' | 'Saída'
+  operacao:      string
+  status:        string | null
+  data_final:    string | null
+  mes_ano:       string | null
+}
 
 const COLUNAS_OBRIGATORIAS = ['Operacao', 'Valor', 'Tipo']
 // Requisitos p/ o helper compartilhado — checagem EXATA (= comportamento atual
