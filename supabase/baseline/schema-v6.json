@@ -15,7 +15,7 @@
       "username": "postgres"
     },
     "ingestao-vigia": {
-      "active": false,
+      "active": true,
       "database": "postgres",
       "hash_comando": "77df0113c939897f38fa4b369a9e20be17fe4ab4e356bac25e19224beba7bd75",
       "schedule": "*/15 * * * *",
