@@ -299,8 +299,8 @@ estão declaradas em `knip.json`.
 | `scripts/dre-oracle.mjs` | oráculo da DRE: recalcula fora do banco para conferir a tela |
 | `scripts/gera-seed-dre-competencia.mjs` | gera o seed da DRE por competência |
 | `scripts/db-gate/` | o backup-gate: `migrate.mjs`, `gate.mjs`, `classificar.mjs`, `lib.mjs`… — é o que `npm run db:migrate` executa |
-| `supabase/seed/seed.ts` (+ `parse-excel.ts`, `load-metas.ts`) | `npm run seed`; usa o caminho **antigo** de carga (`truncate_dynamic_tables`, `inserir_lote_raw`), que por isso **não é órfão** |
-| `supabase/seed/seed-fluxo-caixa.ts` | seed do Fluxo de Caixa |
+| `supabase/seed/seed.ts` (+ `sem-server-only.cjs`) | `npm run seed`; desde a v6.0.1 é **cliente do contrato de ingestão v1** (sobe o cru + `processarCarga`, mesmo caminho da rota `/api/ingestao/{base}` e do card de upload) — default confere sem aplicar, `--aplicar` substitui a base em produção. Deixou de ser o motivo para manter vivo o caminho destrutivo antigo (`truncate_dynamic_tables`/`inserir_lote_raw`), que a migration 0286 apaga |
+| `supabase/seed/load-metas.ts` | ⚠️ não é ferramenta de reprodução manual como as demais desta tabela — é um re-export de uma linha só (`export { loadMetas } from '@/lib/carga/metas'`). Desde a v6.0.1 `seed.ts` importa `loadMetas` direto de `src/lib/carga/metas.ts`, não deste arquivo: nenhum `import` alcança este re-export hoje. Fica por decisão da missão que o desconectou (não apagar sem pedido expresso), não porque sirva a algum propósito de análise |
 
 ### Credencial de serviço fora de `src/` — pontos declarados (v5.10.3)
 

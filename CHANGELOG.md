@@ -6,6 +6,44 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.0.1] — 2026-09-28
+
+PATCH · **Sai o caminho legado de carga (GATE 3 da v6.0.0).** O `npm run seed` passa a ser
+cliente do contrato de ingestão v1 — o último consumidor do legado — e a destrutiva `0286`
+(aplicada pelo Yan em TTY, 28/09) apaga as funções e a tabela que só ele usava. Spec:
+`docs/briefings/spec-v6-0-1-seeds-e-destrutiva.md`; out-briefing:
+`docs/briefings/WT_Finance_Out_Briefing_v6-0-1_Seeds_Destrutiva.md`. Migration `0286`
+(destrutiva) · sem ADR · **1.633 testes** verdes (6 skipped; 1 arquivo de oráculo sem fixture).
+
+### Alterado
+
+- **`npm run seed` pelo contrato de ingestão v1** (`supabase/seed/seed.ts`): sobe o CRU ao bucket
+  e chama `processarCarga`, na ordem do grafo, para cada base presente no diretório (`--dir`;
+  nomes canônicos do manifesto de fixtures). **Default = conferência** (nada aplicado, crus
+  removidos do bucket); `--aplicar` substitui a base de produção. Sem `--aplicar`, uma carga que
+  volte diferente de `conferida` é fatal. Preload `supabase/seed/sem-server-only.cjs` neutraliza só
+  o pacote `server-only` fora do Next.
+- Testes que exigiam o legado (`rpc-contrato`, `credencial-ingestor`, sonda de
+  `raw.vendas_excel`) passam a provar a mesma coisa contra funções que continuam no catálogo.
+- `src/types/database.ts` e `supabase/baseline/schema-v6.json` regenerados; a allowlist do
+  `ingestor` fica com 20 assinaturas (sai a `promover_carga_vendas()` zero-arg).
+
+### Removido
+
+- **Migration `0286`** (destrutiva): `truncar_demonstrativo_competencia()`, `truncar_lancamentos()`,
+  `truncar_lancamentos_movimentacao()`, `truncar_titulos_em_aberto()`,
+  `inserir_lote_demonstrativo_competencia(jsonb)`, `inserir_lote_lancamentos(jsonb)`,
+  `inserir_lote_lancamentos_movimentacao(jsonb)`, `inserir_lote_titulos_em_aberto(jsonb)`,
+  `inserir_lote_raw(jsonb)`, `promover_carga_vendas()` (só a zero-arg), `truncate_dynamic_tables()`,
+  `registrar_ingestao_log(text, text, integer, text)` e a tabela `audit.ingestao_log`. Guard de
+  efetividade por assinatura (12 têm de sumir, 26 do caminho vivo têm de ficar); rollback em
+  `supabase/patches/0286-rollback-corpos-vivos.sql`.
+- `supabase/seed/seed-fluxo-caixa.ts`, `supabase/seed/parse-excel.ts` e
+  `src/lib/carga/lancamentos.ts` (`carregarLancamentos`; o tipo `LancamentoRaw` foi para
+  `parse-lancamentos.ts`).
+
+---
+
 ## [6.0.0] — 2026-09-25
 
 MAJOR · **Fundação da ingestão: a plataforma passa a ler direto os relatórios cru do Monde, sem

@@ -9,7 +9,30 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-28 (pós-merge da v6.0.0).
+Última atualização: 2026-09-28 (v6.0.1 fechada — PR #281 aguardando merge; 0286 já aplicada).
+
+---
+
+## Aguardando merge — v6.0.1 "Seeds no caminho único + destrutiva do legado" (PR #281)
+
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-0-1_Seeds_Destrutiva.md`. O `npm run seed` virou
+cliente do contrato de ingestão v1 (default CONFERÊNCIA; `--aplicar` substitui a base em produção) e a
+destrutiva **0286 foi aplicada pelo Yan em TTY em 28/09** — 12 funções do caminho legado e
+`audit.ingestao_log` saíram do banco (REST 404 nos 12; caminho vivo 200). **O banco já está no estado do
+PR; o `main` ainda não:** até o merge, não rodar `npm test` com banco nem `npm run seed` a partir do `main`
+(ainda esperam funções que saíram). **Não verificado:** `npm run seed -- --aplicar` nunca rodou ponta a
+ponta — a 1ª execução real é do Yan e dispara os alarmes de carga.
+
+> 🔴 **Yan — uma fixture do oráculo se perdeu: `demonstrativo-cru.xlsx` de 21/09.** `tests/fixtures/ingestao/`
+> é gitignorado (Vendas cru tem CPF/CNPJ) e só existia na worktree da v6.0.0, removida no pós-merge. Em
+> 28/09 a sessão recompôs 11 das 13 conferindo o sha256 do manifesto: os crus de Vendas, Movimentação,
+> Aberto e Operação vieram do bucket `ingestao-cru` (cargas da M9, 25/09) e os tratados, das pastas do
+> Windows. Faltam o **Demonstrativo cru** (o export de 21/09 foi sobrescrito e não foi carregado pelo
+> card) e a `Lista de Operações.csv` (auxiliar; sem ela 6 casos do oráculo de Operação ficam `skipped`).
+> Efeito: `oraculo-demonstrativo.test.ts` falha com ENOENT — o `describe.skipIf(AUSENTES…)` não protege,
+> porque o corpo do `describe` lê o arquivo na coleta. Saídas: achar o anexo de 21/09 (e-mail, OneDrive)
+> e rodar `JANUS_ANEXOS_DIRS=… node scripts/ingestao/fixtures.mjs`, ou decidir trocar o manifesto do
+> Demonstrativo para o export de 28/09 (o que está em produção hoje).
 
 ---
 
@@ -33,33 +56,18 @@ grava em produção (1ª execução `ok` do `monde-incremental` às 12:45 UTC, d
 - ✅ Data do changelog da diretoria reconciliada ao merge real (28/09 09:43).
 
 > 🔴 **Pós-merge da v6.0.0 — o que falta, e de quem:**
-> 1. **Yan — sincronizar a raiz e remover a worktree da v6** (a sessão não alcança o checkout
->    compartilhado, protocolo D5). Comandos no fim desta seção.
+> 1. ✅ Worktree da v6.0.0 removida (conferido em 28/09).
 > 2. **Yan — confirmar `SUPABASE_INGESTOR_SENHA` no ambiente Production da Vercel.** Sem ela a carga
 >    LANÇA por desenho (fail-closed). A sessão não consegue ler as envs (403).
-> 3. **Yan — recarregar Lançamentos por Operação** pelo card de produção (o cru de 25/09 ficou com o
->    texto "NA"; o fato está certo). **Antes, no MESMO dia, recarregar Vencimento em aberto** — o grafo
->    exige Aberto aplicado no dia; a carga de 25/09 não vale mais.
+> 3. ✅ Aberto e Operação recarregados no mesmo dia pelo card (28/09 13:46 e 13:50 UTC), junto das outras três bases.
 > 4. **Sessão, depois da 1ª execução OK de cada um:** ligar as expectativas `monde-reconciliacao` (roda
 >    06:05 UTC — a partir de 29/09) e `cdi-mensal` (dia 3 — a partir de 03/10), com
 >    `ingestao_expectativa_definir('<processo>', true)`. As das bases, só quando a RPA existir.
 > 5. **Yan decide — ligar a limpeza do cru** (`SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE
 >    jobname = 'ingestao-retencao'), active := true);`, como `postgres`). A partir de 01/10 ela apaga as
 >    cópias órfãs e, a partir de 25/12, os crus de mais de 3 meses. Depois de ligar: `npm run db:baseline`.
-> 6. **Abrir a v6.0.1** — a destrutiva (GATE 3, TTY do Yan). Lista e provas exigidas no out-briefing §3;
->    `truncate_dynamic_tables` fica fora (o seed a usa).
->
-> Comandos do item 1, **da raiz** (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-0-0-fundacao-ingestao --force
-> git worktree prune
-> git branch -d feat/v6-0-0-fundacao-ingestao
-> ```
-> Se o `pull` abortar por colisão de untracked em `docs/briefings/briefing-v6-0-0-fundacao-ingestao.md`, é o
-> modo de falha conhecido do ritual: conferir que é idêntico ao do `origin/main` (`show` + `diff`),
-> mover para fora do repo e só então puxar. Nunca `reset`. A worktree só sai depois que o PR de docs do
-> pós-merge (esta branch, `docs/pos-merge-v6-0-0`) estiver mergeado.
+> 6. ✅ v6.0.1 aberta — ver "Em voo" acima. (O out-briefing da v6.0.0 dizia que `truncate_dynamic_tables`
+>    ficaria fora por causa do seed; o seed migrou na própria v6.0.1, e ela entra na 0286.)
 
 > 🔴 **Decisões e conversas do Yan que a v6.0.0 deixou** (detalhe no out-briefing §12; backlog B-31 a B-36):
 > cartas de crédito com vencimento 2049 (convenção de "sem prazo"? — com a gerente) · pipeline de
@@ -100,10 +108,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v6.0.0** (PR #279, mergeado 28/09 às 09:43) · banco na **0285** |
-| Última migration aplicada | **0285** (v6.0.0/M9 — Operação só converte número inteiro) · próxima livre: **0286** |
+| Produção | **v6.0.0** (PR #279, mergeado 28/09 às 09:43) · banco na **0286** (v6.0.1 aplicada antes do merge, PR #281) |
+| Última migration aplicada | **0286** (v6.0.1 — DESTRUTIVA, apaga o caminho legado de carga) · próxima livre: **0287** |
 | Último ADR | **0178** (v6.0.0 — baseline de schema versionado) · próximo livre: **0179** |
-| Suíte | **1.665 testes**, 99 arquivos, zero falha (fechamento da v6.0.0, 25/09) |
+| Suíte | **1.633 verdes + 6 skipped**, 99 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.0.1, 28/09 |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 

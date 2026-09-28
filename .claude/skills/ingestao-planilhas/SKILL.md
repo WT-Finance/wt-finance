@@ -240,13 +240,27 @@ a tabela de vendas vazia em produção; o pipeline atômico fechou esse buraco. 
 RPCs do pipeline (assinatura, orçamento de tempo, RBAC) é da skill `banco-e-rpc` — aqui
 importa saber que o caminho existe e que ele é o único vivo.
 
-RPCs do caminho destrutivo antigo (`truncate_dynamic_tables`, `inserir_lote_raw`)
-**permanecem no banco só porque `npm run seed` ainda as usa** — não são consumidor de
-nenhuma request viva da aplicação. Não as trate como órfãs/candidatas a `DROP` sem
-conferir o `seed` primeiro (precedente: a v4.17.1 quase as removeu por engano). A trinca
-de recuperação (`transform_raw_to_analytics` → `regenerar_dim_operacao_weddings` →
-`refresh_all_materialized_views`) segue intacta e serve para recompor as tabelas
-analíticas sem precisar re-subir o arquivo original.
+**Desde a v6.0.1, `npm run seed` (`supabase/seed/seed.ts`) deixou de ser o motivo para manter vivo
+o caminho destrutivo antigo.** O seed virou **cliente do contrato de ingestão v1** (§8 adiante):
+para cada base presente num diretório (default `supabase/seed/data/`, ou `--dir <pasta>`), ele
+sobe o CRU ao bucket e chama `processarCarga` — o MESMO caminho da rota `/api/ingestao/{base}` e
+do card de upload, sem conexão direta com o Postgres. Default é **conferência** (nada aplicado,
+crus removidos ao final); `--aplicar` aplica de verdade e **substitui a base inteira** em
+produção (não há staging). `supabase/seed/seed-fluxo-caixa.ts` e `supabase/seed/parse-excel.ts`
+foram apagados; a função `carregarLancamentos` (`src/lib/carga/lancamentos.ts`) também.
+
+Com isso, `truncate_dynamic_tables`/`inserir_lote_raw` (e o resto do caminho destrutivo:
+`truncar_demonstrativo_competencia`, `truncar_lancamentos`, `truncar_lancamentos_movimentacao`,
+`truncar_titulos_em_aberto`, os `inserir_lote_*` correspondentes, `registrar_ingestao_log` e
+`promover_carga_vendas()` sem argumento) **não têm mais nenhum consumidor vivo** — nem app, nem
+seed. A migration destrutiva **0286** (v6.0.1, aplicada pelo Yan em TTY em 28/09) apagou esse
+conjunto — as funções não existem mais no catálogo (REST devolve 404/PGRST202). O
+precedente da v4.17.1 (conferir o `seed` antes de qualquer `DROP` de RPC "órfã") continua valendo
+como método — foi exatamente essa checagem que confirmou, desta vez, que o `seed` migrou e a
+função deixou de ter dono. A trinca de recuperação (`transform_raw_to_analytics` →
+`regenerar_dim_operacao_weddings` → `refresh_all_materialized_views`) segue intacta e serve para
+recompor as tabelas analíticas sem precisar re-subir o arquivo original — nada nela é atingido
+pela 0286.
 
 ### Operação da carga — o que fazer quando ela reprova (migrado do runbook v4.15, v5.10.0)
 

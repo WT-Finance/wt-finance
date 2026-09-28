@@ -152,13 +152,15 @@ function demonstrativoCru(overrides: Partial<DemonstrativoCompetenciaCru> = {}):
   }
 }
 
-// Colunas REAIS de `inserir_lote_demonstrativo_competencia` (migration 0255).
+// Colunas REAIS de `inserir_lote_staging_demonstrativo` (migration 0278) — mesma forma da
+// legada `inserir_lote_demonstrativo_competencia` (0255), apagada pela migration destrutiva
+// 0286 (v6.0.1).
 const COLUNAS_DEMONSTRATIVO = [
   'arquivo_origem', 'tipo', 'grupo', 'descricao', 'ano', 'mes', 'mes_num', 'competencia', 'valor',
 ].sort()
 
 describe('adaptarDemonstrativo', () => {
-  it('produz exatamente as chaves de inserir_lote_demonstrativo_competencia (migration 0255)', () => {
+  it('produz exatamente as chaves de inserir_lote_staging_demonstrativo (migration 0278; mesma forma da legada 0255)', () => {
     const payload = adaptarDemonstrativo(demonstrativoCru(), 'demonstrativo-2026.xlsx')
     expect(Object.keys(payload).sort()).toEqual(COLUNAS_DEMONSTRATIVO)
   })
@@ -198,21 +200,25 @@ function lancamentoCategoriaCru(overrides: Partial<LancamentoCategoriaCru> = {})
   }
 }
 
-// Colunas REAIS de `inserir_lote_lancamentos_movimentacao` (migration 0185).
+// Colunas REAIS de `inserir_lote_staging_movimentacao` (migration 0278) — mesma forma da
+// legada `inserir_lote_lancamentos_movimentacao` (0185), apagada pela migration destrutiva
+// 0286 (v6.0.1).
 const COLUNAS_MOVIMENTACAO = [
   'arquivo_origem', 'numero', 'venda_no', 'emissao', 'vencimento', 'liquidacao',
   'data_movimentacao', 'pessoa', 'descricao', 'descricao_categoria', 'valor', 'categoria',
   'grupo_categoria', 'conta',
 ].sort()
 
-// Colunas REAIS de `inserir_lote_titulos_em_aberto` (migration 0186) — sem data_movimentacao.
+// Colunas REAIS de `inserir_lote_staging_aberto` (migration 0278) — mesma forma da legada
+// `inserir_lote_titulos_em_aberto` (0186), apagada pela migration destrutiva 0286 (v6.0.1) —
+// sem data_movimentacao.
 const COLUNAS_ABERTO = [
   'arquivo_origem', 'numero', 'venda_no', 'emissao', 'vencimento', 'liquidacao', 'pessoa',
   'descricao', 'descricao_categoria', 'valor', 'categoria', 'grupo_categoria', 'conta',
 ].sort()
 
 describe('adaptarLancamentoMovimentacao', () => {
-  it('produz exatamente as chaves de inserir_lote_lancamentos_movimentacao (migration 0185)', () => {
+  it('produz exatamente as chaves de inserir_lote_staging_movimentacao (migration 0278; mesma forma da legada 0185)', () => {
     const payload = adaptarLancamentoMovimentacao(lancamentoCategoriaCru(), 'movimentacao.xlsx')
     expect(Object.keys(payload).sort()).toEqual(COLUNAS_MOVIMENTACAO)
   })
@@ -241,7 +247,7 @@ describe('adaptarLancamentoMovimentacao', () => {
 })
 
 describe('adaptarTituloEmAberto', () => {
-  it('produz exatamente as chaves de inserir_lote_titulos_em_aberto (migration 0186) — sem data_movimentacao', () => {
+  it('produz exatamente as chaves de inserir_lote_staging_aberto (migration 0278; mesma forma da legada 0186) — sem data_movimentacao', () => {
     const payload = adaptarTituloEmAberto(lancamentoCategoriaCru({ movimentacao: null }), 'aberto.xlsx')
     expect(Object.keys(payload).sort()).toEqual(COLUNAS_ABERTO)
     expect(payload).not.toHaveProperty('data_movimentacao')
