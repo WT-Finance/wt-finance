@@ -40,6 +40,10 @@ consulta (pergunta em uma linha, se mudou algum achado).
 - DROP de qualquer objeto: os **consumidores reais** foram verificados? Grep no app **e**
   em `supabase/seed/` (precedente v4.17.1: RPCs "órfãs" pelo briefing eram usadas pelo
   seed). Corpo do objeto dropado preservado na migration para reversibilidade?
+- Destrutiva com `DROP ... IF EXISTS`: há guard de efetividade no fim? Ele compara por
+  **assinatura** (`to_regprocedure`) quando existe sobrecarga, e as assinaturas dele foram
+  **resolvidas no catálogo antes** (NULL = guard cego a erro de digitação)? O contrapeso cobre o
+  que a aplicação de fato chama? (skill `banco-e-rpc` §1, v6.0.1.)
 - **`CREATE OR REPLACE`: o corpo novo PERDE alguma chave/ramo que a versão VIVA emitia?**
   O `REPLACE` sobrescreve tudo e o que some não gera erro — nem de banco, nem de build.
   Comparar contra a **última** definição real (a de número mais alto:

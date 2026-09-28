@@ -53,6 +53,13 @@ Qualquer commit fora do main ou modificação não-commitada relevante → **PAR
 (barreira: nunca remover worktree com trabalho não-merjado). Cópias untracked 0950–0954 e
 symlinks de ambiente não contam como trabalho.
 
+⚠️ **Estado GITIGNORADO que não se recria sozinho vai embora com a worktree** — e o `status --short`
+não o mostra. Antes de remover, conferir `git -C <worktree> status --short --ignored` e salvar fora
+do repo o que não é derivável: em especial `tests/fixtures/ingestao/` (os crus do oráculo — Vendas
+tem CPF/CNPJ, por isso nunca entram no git). Na v6.0.1, a remoção da worktree da v6.0.0 levou o
+Demonstrativo cru de 21/09, cujo export no Windows já tinha sido sobrescrito, e o oráculo dele ficou
+sem fixture. `node_modules`, `.next` e `.env.local` são deriváveis ou recuperáveis e não contam.
+
 ## 3. Remover a worktree e podar
 
 Sempre a partir da raiz:

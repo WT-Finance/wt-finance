@@ -94,6 +94,18 @@ salvo na migration de origem).
 ingestão v1 — a migration destrutiva **0286** as apaga, junto do resto do caminho legado; skill
 `ingestao-planilhas` §5.)
 
+**Guard de efetividade de uma destrutiva — por ASSINATURA e com as assinaturas PROVADAS antes**
+(v6.0.1, 0286). `DROP FUNCTION IF EXISTS f(tipos_errados)` é no-op silencioso; o guard no fim da
+migration (padrão 0270) fecha isso — mas: (1) compare por `to_regprocedure('schema.f(tipos)')`, não
+por `proname`, quando há sobrecarga (a 0286 dropava `promover_carga_vendas()` e mantinha a
+`(jsonb, uuid)`; por nome o guard reprovaria a sobrevivente certa); (2) `to_regprocedure` devolve
+NULL tanto para "não existe" quanto para string que não casa com nada — um erro de digitação num alvo
+passa o guard ANTES e DEPOIS do DROP. **Antes de entregar a destrutiva, resolva TODAS as assinaturas
+do guard (alvos e contrapeso) no catálogo e exija zero NULL.** E ensaie o corpo inteiro em transação
+revertida (`BEGIN` → corpo → `ROLLBACK`, `lock_timeout` curto), conferindo depois do `ROLLBACK` que os
+alvos voltaram. **Sonda/allowlist que lista o objeto que sai:** a chave só sai DEPOIS do DROP — objeto
+vivo fora de uma lista fechada reprova, entrada sem objeto é inofensiva.
+
 ### A confirmação destrutiva vive no WRAPPER, e EOF ABORTA (ADR-0131)
 
 `migrate.mjs` pede a confirmação ele mesmo — não delega mais ao prompt nativo do `db push`

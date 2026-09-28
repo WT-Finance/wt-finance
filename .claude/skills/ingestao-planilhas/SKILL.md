@@ -253,8 +253,8 @@ Com isso, `truncate_dynamic_tables`/`inserir_lote_raw` (e o resto do caminho des
 `truncar_demonstrativo_competencia`, `truncar_lancamentos`, `truncar_lancamentos_movimentacao`,
 `truncar_titulos_em_aberto`, os `inserir_lote_*` correspondentes, `registrar_ingestao_log` e
 `promover_carga_vendas()` sem argumento) **não têm mais nenhum consumidor vivo** — nem app, nem
-seed. A migration destrutiva **0286** (v6.0.1) apaga esse conjunto; até o Yan aplicá-la em TTY
-(o gate destrutivo não se auto-aplica), as funções continuam no catálogo, só que órfãs. O
+seed. A migration destrutiva **0286** (v6.0.1, aplicada pelo Yan em TTY em 28/09) apagou esse
+conjunto — as funções não existem mais no catálogo (REST devolve 404/PGRST202). O
 precedente da v4.17.1 (conferir o `seed` antes de qualquer `DROP` de RPC "órfã") continua valendo
 como método — foi exatamente essa checagem que confirmou, desta vez, que o `seed` migrou e a
 função deixou de ter dono. A trinca de recuperação (`transform_raw_to_analytics` →
