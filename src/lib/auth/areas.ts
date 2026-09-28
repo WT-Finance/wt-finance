@@ -136,6 +136,10 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']
+  // Log de ingestão (v6.0.0/M6): mesma área de quem carrega planilha — anexo §7 ("as mesmas
+  // pessoas que carregam são as que precisam ver o log"). Casa ANTES do genérico '/admin'
+  // abaixo, senão cairia em 'admin/acessos'.
+  if (p.startsWith('/admin/ingestao'))          return ['admin/uploads']
   if (p.startsWith('/admin/solicitacoes'))      return ['solicitacoes']
   // Documentação da API externa (v5.4.0/Round4, pedido do Yan 30/07): área PRÓPRIA
   // 'solicitacoes/documentacao' OU a gestão 'solicitacoes' (quem administra

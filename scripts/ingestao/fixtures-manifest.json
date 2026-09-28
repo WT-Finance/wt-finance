@@ -1,0 +1,20 @@
+{
+  "_comentario": "Anexos §9 do briefing v6.0.0 — fixtures dos oráculos cru↔tratado. Os ARQUIVOS não entram no git (dado interno; Vendas cru traz CPF/CNPJ/e-mail). Só este manifest (nome canônico, sha256, tamanho, origem) é versionado. `node scripts/ingestao/fixtures.mjs` copia da(s) pasta(s) em JANUS_ANEXOS_DIRS e confere o hash.",
+  "destino": "tests/fixtures/ingestao",
+  "export_em": "2026-09-21",
+  "fixtures": [
+    { "nome": "vendas-cru-23.xlsx", "origem": "23.xlsx", "base": "vendas-produto", "papel": "cru", "sha256": "2a5817e75c56a2f5a92d9aae108271ea14caa84a78a67635b0bd2930a4a2cfe0", "bytes": 1594191 },
+    { "nome": "vendas-cru-24.xlsx", "origem": "24.xlsx", "base": "vendas-produto", "papel": "cru", "sha256": "e1b9a270830dc5a1ab8898f52418ff5c15a53a737ca037e9cd2a9aee90ca538b", "bytes": 1525125 },
+    { "nome": "vendas-cru-25-26.xlsx", "origem": "25-26.xlsx", "base": "vendas-produto", "papel": "cru", "sha256": "a06e177a43fed684eec990d5535b11261d5bbcc180be2f4534327c3aba0895dd", "bytes": 3118968 },
+    { "nome": "vendas-tratado.xlsx", "origem": "VendasPorProduto_tratada.xlsx", "base": "vendas-produto", "papel": "tratado", "sha256": "43ead4091c7028ab6d195421ba3e68a0cb3bfd9222012b1f12f97f3123513b94", "nota": "Welcome filtrado e Intermediário zerado pelo script R — o oráculo compara ANTES do filtro e COM Intermediário (briefing §9)" },
+    { "nome": "demonstrativo-cru.xlsx", "origem": "demostrativo_de_resultado.xlsx", "base": "demonstrativo-competencia", "papel": "cru", "sha256": "e740cc543b3a0e2575dea9b52b788b0012b6bf1e1928c75257a740e1d74b2f9a" },
+    { "nome": "demonstrativo-tratado.xlsx", "origem": "Demonstrativo_por_Competencia_tratado.xlsx", "base": "demonstrativo-competencia", "papel": "tratado", "sha256": "fbc264a78abf6817db1e8b7e841322121e6b505b3fce10792650a4e149fd7040" },
+    { "nome": "movimentacao-cru.xlsx", "origem": "Lancamentos_por_Categoria_2026_(movimentação).xlsx", "base": "lancamentos-movimentacao", "papel": "cru", "sha256": "c96059b56b56a28c2d9df8e708837df727e9cc4bb84995b533921c6a8bf032de", "bytes": 6055427 },
+    { "nome": "movimentacao-tratado.xlsx", "origem": "Lancamentos_por_Movimentacao_tratada.xlsx", "base": "lancamentos-movimentacao", "papel": "tratado", "sha256": "133a28427dce2cb370bd988ae24e06d62b83cfa02fb28887dcf50b3454c0f5cc" },
+    { "nome": "aberto-cru.xlsx", "origem": "Lancamentos_por_Categoria_2026_(venc_em_aberto).xlsx", "base": "lancamentos-aberto", "papel": "cru", "sha256": "ca171dfa6f60efd3c32c1584f0f74a2e8c81c951e20680d3262ae515e8a90475", "bytes": 1971740 },
+    { "nome": "aberto-tratado.xlsx", "origem": "Lancamentos_por_Vencimento_em_Aberto_tratada.xlsx", "base": "lancamentos-aberto", "papel": "tratado", "sha256": "15b5bb3c23c4b4ac6880c2a38f841593a62a0e7cb84164ea7212b6e9b3c5d1a2" },
+    { "nome": "operacao-cru.csv", "origem": "Análise de Operações 21-09.csv", "base": "lancamentos-operacao", "papel": "cru", "sha256": "33941a290e600105d77e992552fa918dcb6389668682b9374340e723672b66b0", "bytes": 5370374 },
+    { "nome": "operacao-lista.csv", "origem": "Lista de Operações.csv", "base": "lancamentos-operacao", "papel": "auxiliar", "sha256": "ba1966a6845db7fd0f9da8a823e4127b8d22bb4327e7006542c849cdd987f39b", "bytes": 7928 },
+    { "nome": "operacao-tratado.csv", "origem": "Lançamentos por Operação.csv", "base": "lancamentos-operacao", "papel": "tratado", "sha256": "437bc2d942c2cdf22884b3f7161fc782af91719df68b98e92db3a256dc5a8085", "bytes": 6782511 }
+  ]
+}

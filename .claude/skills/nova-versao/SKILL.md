@@ -54,7 +54,7 @@ branch do projeto é `feat/vX-Y`).
 
 ```bash
 RAIZ=<caminho da raiz do repo>; WT=<caminho da worktree>
-ln -s "$RAIZ/node_modules" "$WT/node_modules"
+cp -al "$RAIZ/node_modules" "$WT/node_modules"   # HARDLINKS, não symlink: o Turbopack recusa symlink para fora da raiz e o build falha (v5.10.3, v6.0.0)
 ln -s "$RAIZ/.env.local"   "$WT/.env.local"
 mkdir -p "$WT/supabase/.temp" && cp "$RAIZ"/supabase/.temp/* "$WT/supabase/.temp/"
 ```

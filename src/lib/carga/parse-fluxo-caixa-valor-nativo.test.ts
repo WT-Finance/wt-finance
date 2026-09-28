@@ -165,7 +165,12 @@ describe('CSV: texto puro segue a regra BR do toNum (v5.5.2)', () => {
 // `revisor`). Varre recursivamente todos os diretórios que fazem ingestão.
 // ─────────────────────────────────────────────────────────────────────────────
 function arquivosDeIngestao(): { caminho: string; nome: string }[] {
-  const raizes = ['src/lib/carga', 'src/lib/rateio', 'src/lib/faturamento', 'src/lib/gerencial']
+  // `src/lib/ingestao` entrou na v6.0.0/M3: é onde passam a viver os parsers de servidor das
+  // cinco bases. Sonda que não varre a pasta nova vira decoração no dia seguinte ao commit.
+  const raizes = [
+    'src/lib/carga', 'src/lib/rateio', 'src/lib/faturamento', 'src/lib/gerencial',
+    'src/lib/ingestao',
+  ]
   const achados: { caminho: string; nome: string }[] = []
   const desce = (dir: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {

@@ -10,6 +10,7 @@ import {
   patrimonioAtivosSchema, patrimonioCatalogosSchema, patrimonioMovimentacoesSchema,
   patrimonioResumoSchema,
   estanteLivrosSchema, estanteMovimentacoesSchema,
+  ingestaoPainelSchema,
 } from './schemas-rpc'
 import {
   tiposAberturaSchema, destinatariosSchema, tiposAdminSchema, solicitacoesListaSchema,
@@ -20,7 +21,7 @@ import {
   coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
 } from './fluxo/rpc-fluxo'
 import {
-  dreMensalSchema, dreCompMensalSchema, dreCompEstruturaSchema, dreEstruturaSchema, salvarEstruturaResultSchema,
+  dreMensalSchema, dreCompMensalSchema, dreCompEstruturaSchema, dreEstruturaSchema,
   historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
 import { montarPonte } from './dre/ponte-regimes'
@@ -33,9 +34,10 @@ import { duracaoDias, margemAnualizada } from './weddings/margem-anualizada'
 import { rendimentoFloatSchema, taxasCdiSchema } from './weddings/schemas-float'
 import { LIMITE_MESES_FLUXO } from './fluxo/janela-mensal'
 import { hojeSP } from './fmt'
+import { tokenMaquina, credencialConfigurada } from './auth/credencial-maquina'
 
 // CONTRATO das RPCs críticas (números que a diretoria vê). Bate via REST com a
-// service role (padrão de verificação do projeto) e valida SHAPE + INVARIANTES de
+// credencial de VERIFICAÇÃO (`verificador`, v6.0.0 — antes era a service role) e valida SHAPE + INVARIANTES de
 // negócio. skipIf sem credenciais → o gate `npm test` passa offline; com .env.local
 // carregado (vitest.setup.ts), roda de verdade. Só LEITURA — com UMA exceção
 // deliberada: o caso de dre_estrutura_salvar envia um lote VAZIO (no-op, gravadas=0)
@@ -45,15 +47,25 @@ import { hojeSP } from './fmt'
 // Normalizamos para o host e remontamos o endpoint REST — evita /rest/v1//rest/v1.
 const RAW = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
 const HOST = RAW.replace(/\/+$/, '').replace(/\/rest\/v1$/, '')
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const ON = Boolean(HOST && KEY)
+// v6.0.0/M1 — a credencial que VERIFICA não escreve: o JWT do papel `verificador` (role do
+// Postgres com EXECUTE só na allowlist derivada deste arquivo — `scripts/credencial/
+// derivar-allowlist.mjs`, migration 0273). `apikey` é a anon key (o gateway exige uma chave
+// do projeto no header); a identidade vem do Bearer. `SUPABASE_SERVICE_ROLE_KEY` não entra
+// mais aqui: a sonda `sonda-credencial.test.ts` reprova quem voltar a usá-la fora dos pontos
+// declarados. RPC nova nasce FORA da allowlist de propósito — o caso de contrato dela falha
+// com PERMISSAO_NEGADA (42501 → HTTP 403) até alguém conceder o EXECUTE deliberadamente.
+// A credencial é o LOGIN do usuário de máquina (`SUPABASE_VERIFICADOR_SENHA` + anon key +
+// SUPABASE_URL); o token ES256 de 1 h vem do Auth e o `custom_access_token_hook` (0275) põe
+// `role=verificador` nele. `tokenMaquina` cacheia no processo — um login por rodada.
+const APIKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const ON = credencialConfigurada('verificador')
 
 async function rpc(fn: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
     method: 'POST',
     headers: {
-      apikey: KEY as string,
-      Authorization: `Bearer ${KEY as string}`,
+      apikey: APIKEY as string,
+      Authorization: `Bearer ${await tokenMaquina('verificador')}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -305,9 +317,10 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   { fn: 'get_mix_produto',               params: { p_from: '2026-01-01', p_to: '2026-12-31', p_setor: 'Weddings', p_limite: 10 }, schema: mixProdutoSchema },
   { fn: 'get_minhas_permissoes',         params: {},                                                                     schema: minhasPermissoesSchema },
   { fn: 'solic_minhas_pendencias',       params: {},                                                                     schema: z.number() },
-  // v5.9.3 (0266): badge de solicitações de ACESSO pendentes (sidebar + pill). Service role
-  // passa o gate 'admin/acessos'; valida que a RPC viva devolve um inteiro.
-  { fn: 'admin_acesso_solicitacoes_pendentes', params: {},                                                               schema: z.number().int().nonnegative() },
+  // v5.9.3 (0266) → v6.0.0/M1: `admin_acesso_solicitacoes_pendentes` SAIU desta lista. É gated em
+  // 'admin/acessos', área que a credencial de verificação não tem por decisão; o caso dela virou
+  // prova NEGATIVA no bloco "GATE 2" abaixo (verificador ⇒ PERMISSAO_NEGADA) + tipo de retorno
+  // lido do catálogo. Validar o inteiro vivo exigiria a área administrativa na credencial.
   // v4.28.0: cruzamento da Calculadora de Rateio. 2 nº reais + 1 inexistente — o
   // SHAPE (array de {venda_no, setor_macro}) é validado contra a RPC viva; o nº fake
   // não volta (prova a diferença → 'Não identificado' é inferido no cliente).
@@ -601,7 +614,7 @@ describe('gate de contrato — online obrigatório quando exigido (M10)', () => 
   it('REQUIRE_CONTRACT=1 exige credenciais (online não pode ser pulado)', () => {
     const exigido = process.env.REQUIRE_CONTRACT === '1'
     if (exigido) {
-      expect(ON, 'REQUIRE_CONTRACT=1 mas faltam SUPABASE_URL/SERVICE_ROLE_KEY → contrato/RBAC seriam pulados').toBe(true)
+      expect(ON, 'REQUIRE_CONTRACT=1 mas faltam SUPABASE_URL/SUPABASE_VERIFICADOR_SENHA/NEXT_PUBLIC_SUPABASE_ANON_KEY → contrato/RBAC seriam pulados').toBe(true)
     } else {
       expect(true).toBe(true) // offline: gate de unidade segue obrigatório; online é opcional
     }
@@ -656,6 +669,103 @@ async function rpcAnonStatus(fn: string, body: Record<string, unknown>): Promise
   await res.text()
   return res.status
 }
+
+// ── v6.0.0/M1 — GATE 2 (parte 1): a credencial que VERIFICA não escreve ──────────────────
+// Reprodução controlada do incidente de 10/09/2026 (varredura com service_role chamou
+// funções de TRUNCATE e zerou 10 tabelas): a MESMA chamada, com o JWT do `verificador`, tem
+// de ser NEGADA pelo servidor — não pela disciplina. Duas camadas, nesta ordem:
+//   (1) o CATÁLOGO diz que a role não tem EXECUTE (`has_function_privilege`) — se disser que
+//       tem, o caso reprova ANTES de qualquer chamada de rede (uma chamada real a `truncar_*`
+//       com privilégio seria o próprio incidente de novo);
+//   (2) só então a chamada REST, que tem de voltar 4xx (42501 → 403; sem EXECUTE o PostgREST
+//       também pode responder 404) e, sobretudo, NÃO executar.
+// E o espelho para a área administrativa: `admin_*` é gated em 'admin/acessos', que a
+// credencial não tem por decisão — PERMISSAO_NEGADA aqui prova que a allowlist de EXECUTE e
+// o RBAC de área são camadas independentes (ter o grant não basta).
+async function statusVerificador(fn: string, body: Record<string, unknown>): Promise<{ status: number; texto: string }> {
+  const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { apikey: APIKEY as string, Authorization: `Bearer ${await tokenMaquina('verificador')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return { status: res.status, texto: await res.text() }
+}
+
+/** `has_function_privilege('verificador', '<assinatura>', 'EXECUTE')` lido do catálogo vivo, em
+ *  conexão READ ONLY. `null` = função inexistente (o caso não deve chamar nada). */
+async function verificadorTemExecute(assinatura: string): Promise<boolean | null> {
+  const { createRequire } = await import('node:module')
+  const pg = createRequire(process.cwd() + '/')('pg')
+  const c = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
+  await c.connect()
+  await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+  try {
+    const r = await c.query(
+      `SELECT CASE WHEN to_regprocedure($1) IS NULL THEN NULL
+                   ELSE has_function_privilege('verificador', $1, 'EXECUTE') END AS tem`,
+      [assinatura],
+    ) as { rows: Array<{ tem: boolean | null }> }
+    return r.rows[0]?.tem ?? null
+  } finally { await c.end() }
+}
+
+describe.skipIf(!ON || !process.env.SUPABASE_DB_URL)('GATE 2 — a credencial de verificação NÃO escreve nem administra (v6.0.0/M1)', () => {
+  // As funções do incidente (WORKING-CONTEXT: 10 tabelas zeradas). Assinaturas completas —
+  // grant e privilégio são por assinatura, não por nome.
+  const ESCRITA = [
+    'public.truncar_lancamentos()',
+    'public.truncar_lancamentos_movimentacao()',
+    'public.truncar_titulos_em_aberto()',
+    'public.truncar_demonstrativo_competencia()',
+    'public.truncate_dynamic_tables()',
+    'public.promover_carga_vendas()',
+    'public.promover_carga_pessoas()',
+    'public.limpar_staging_vendas()',
+    'public.limpar_staging_pessoas()',
+  ]
+
+  it.each(ESCRITA)('%s: sem EXECUTE no catálogo E negada via REST', async (assinatura) => {
+    const tem = await verificadorTemExecute(assinatura)
+    expect(tem, `${assinatura}: função inexistente no catálogo (assinatura mudou?)`).not.toBeNull()
+    // Camada 1 — se o catálogo diz que a role PODE executar, parar AQUI: chamar seria o incidente.
+    expect(tem, `${assinatura}: a role verificador TEM EXECUTE — allowlist vazou para uma função de escrita`).toBe(false)
+    // Camada 2 — a barreira vista negando (não basta o catálogo dizer).
+    const nome = assinatura.replace(/^public\./, '').replace(/\(.*$/, '')
+    const { status, texto } = await statusVerificador(nome, {})
+    expect(status, `${nome}: esperado 4xx, veio ${status}: ${texto}`).toBeGreaterThanOrEqual(400)
+    expect(status).toBeLessThan(500)
+  })
+
+  it.each([
+    ['admin_listar_areas', {}],
+    ['admin_acesso_solicitacoes_pendentes', {}],
+  ] as const)('%s: área administrativa → 42501 para a credencial de verificação (GRANT ou RBAC)', async (fn, body) => {
+    // Duas camadas podem negar, e a ORDEM é do servidor: sem EXECUTE (a allowlist não tem
+    // admin_*) o Postgres devolve "permission denied for function" ANTES de `exigir_acesso`
+    // rodar; se um dia o grant existir, é o RBAC que nega com PERMISSAO_NEGADA. Ambas são 42501
+    // → 403. O que se afirma é que a credencial NÃO alcança administração — por qualquer camada.
+    // Medido em 22/09/2026: a camada que dispara hoje é a de GRANT.
+    const { status, texto } = await statusVerificador(fn, body as Record<string, unknown>)
+    expect(status, `${fn}: esperado 403, veio ${status}: ${texto}`).toBe(403)
+    expect(texto).toMatch(/"42501"/)
+    expect(texto).toMatch(/PERMISSAO_NEGADA|permission denied for function/)
+  })
+
+  it('admin_acesso_solicitacoes_pendentes devolve integer (tipo lido do catálogo, já que o corpo é inalcançável)', async () => {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
+    await c.connect()
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try {
+      const r = await c.query(
+        `SELECT pg_get_function_result(p.oid) AS ret FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE n.nspname = 'public' AND p.proname = 'admin_acesso_solicitacoes_pendentes'`,
+      ) as { rows: Array<{ ret: string }> }
+      expect(r.rows.map(x => x.ret)).toEqual(['integer'])
+    } finally { await c.end() }
+  })
+})
 
 // v5.0.0 — FONTE ÚNICA DO REAL: a série de metas_ritmo_diario tem de somar EXATAMENTE
 // o faturamento de get_executiva_kpis no mesmo range/setor (mesma mv_vendas_diarias,
@@ -760,18 +870,38 @@ describe.skipIf(!ON)('contrato RPC — get_contratos_casamento_mes (v5.6.2)', ()
 })
 
 describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)', () => {
-  it('catálogo de áreas: banco (app.rbac_areas) ↔ app (AREAS) idênticos', async () => {
+  // v6.0.0/M1: lia `admin_listar_areas`, gated em 'admin/acessos' — área que a credencial de
+  // verificação NÃO tem (decisão: todas as áreas de leitura, nenhuma administrativa). A
+  // asserção é a mesma (catálogo do banco ≡ AREAS do app); a fonte passa a ser a tabela,
+  // lida pela conexão direta READ ONLY — o que se prova aqui é paridade de catálogo, não a
+  // RPC de administração.
+  it.skipIf(!process.env.SUPABASE_DB_URL)('catálogo de áreas: banco (app.rbac_areas) ↔ app (AREAS) idênticos', async () => {
     const { AREAS } = await import('./auth/areas')
-    const areas = await rpc('admin_listar_areas', {}) as unknown as Array<{ area: string }>
-    expect(Array.isArray(areas)).toBe(true)
-    expect(areas.map(a => a.area).sort()).toEqual([...AREAS].sort())
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: process.env.SUPABASE_DB_URL })
+    await c.connect()
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try {
+      const r = await c.query('SELECT area FROM app.rbac_areas') as { rows: Array<{ area: string }> }
+      expect(r.rows.map(a => a.area).sort()).toEqual([...AREAS].sort())
+    } finally { await c.end() }
   })
 
-  it('get_minhas_permissoes: shape estável mesmo sem usuário (service role)', async () => {
-    const d = await rpc('get_minhas_permissoes', {}) as { registrado?: boolean; ativo?: boolean; permissoes?: unknown[] }
-    expect(d.registrado).toBe(false)
-    expect(d.ativo).toBe(false)
+  // v6.0.0/M1: com o JWT do `verificador`, `auth.uid()` É um usuário real e ativo
+  // (`verificador@janus.interno`) — o caso deixa de provar "sem usuário" (comportamento do
+  // service_role, que não existe mais neste arquivo) e passa a provar a identidade da
+  // credencial: registrado, ativo, e com TODAS as áreas de leitura (as do catálogo menos o
+  // grupo Administração — a mesma regra da migration 0273).
+  it('get_minhas_permissoes: a credencial de verificação é um usuário ativo com todas as áreas de leitura', async () => {
+    const d = await rpc('get_minhas_permissoes', {}) as { registrado?: boolean; ativo?: boolean; email?: string; permissoes?: string[] }
+    expect(d.registrado).toBe(true)
+    expect(d.ativo).toBe(true)
+    expect(d.email).toBe('verificador@janus.interno')
     expect(Array.isArray(d.permissoes)).toBe(true)
+    const { AREAS, AREA_INFO } = await import('./auth/areas')
+    const leitura = AREAS.filter(a => AREA_INFO[a].grupo !== 'Administração')
+    expect([...(d.permissoes ?? [])].sort()).toEqual([...leitura].sort())
   })
 
   it('guard NEGA anon com enforcement simulado (rbac_verificar_guard → 403)', async () => {
@@ -1016,17 +1146,11 @@ describe.skipIf(!ON)('contrato RPC — DRE (v5.3.0)', () => {
     for (const b of p.data.bandeja) expect(mapeadas.has(b.categoria_id)).toBe(false)
   })
 
-  it('dre_estrutura_salvar: lote vazio é no-op; token errado → DRE_CONFLITO (nada muda)', async () => {
-    const est = dreEstruturaSchema.parse(await rpc('dre_estrutura', {}))
-    const ok = salvarEstruturaResultSchema.parse(
-      await rpc('dre_estrutura_salvar', { p_maps: [], p_token: est.token }),
-    )
-    expect(ok.ok).toBe(true)
-    expect(ok.gravadas).toBe(0)
-    await expect(
-      rpc('dre_estrutura_salvar', { p_maps: [], p_token: '1970-01-01T00:00:00Z' }),
-    ).rejects.toThrow(/DRE_CONFLITO/)
-  })
+  // v6.0.0/M1: o caso "dre_estrutura_salvar: lote vazio é no-op; token errado → DRE_CONFLITO"
+  // saiu daqui — conceder EXECUTE numa RPC de ESCRITA à credencial de verificação a tornaria
+  // capaz de escrever (achado ALTO do revisor-db). Vive em `src/lib/dre/reverter-diario.test.ts`,
+  // em transação revertida com identidade simulada. O shape do retorno é conferido lá contra o
+  // valor real, com o mesmo schema Zod do call-site.
 
   it('dre_estrutura_historico_lotes: shape (lista pode ser vazia)', async () => {
     const d = await rpc('dre_estrutura_historico_lotes', { p_limit: 5, p_offset: 0 })
@@ -1042,10 +1166,9 @@ describe.skipIf(!ON)('contrato RPC — DRE undo/detalhe (execução inofensiva)'
     expect(historicoEntradasSchema.safeParse(d).success).toBe(true)
     expect(Array.isArray(d) ? d.length : -1).toBe(0)
   })
-  it('dre_estrutura_desfazer_lote/linha: id inexistente → erro amigável, nada muda', async () => {
-    await expect(rpc('dre_estrutura_desfazer_lote', { p_lote: 1 })).rejects.toThrow(/inexistente/)
-    await expect(rpc('dre_estrutura_desfazer_linha', { p_diario_id: 1 })).rejects.toThrow(/inexistente/)
-  })
+  // v6.0.0/M1: "dre_estrutura_desfazer_lote/linha: id inexistente → erro amigável" saiu daqui
+  // pelo mesmo motivo do salvar (RPC de escrita fora da allowlist do verificador) — vive em
+  // `src/lib/dre/reverter-diario.test.ts`, em transação revertida.
 })
 
 // ── Decomposição por BLOCO (v5.3.1 · 0209) ────────────────────────────────────
@@ -1952,6 +2075,45 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — hardenings da v5.9.4 (0267) no
   })
 })
 
+// ── v6.0.0/M6 (0280/0281) — `ingestao_painel()` ↔ `ingestaoPainelSchema` contra a RPC VIVA ───
+// Caso de contrato da skill `contrato-rpc-front` §3 (achado ALTO do revisor na M6). Não entra na
+// lista F7 acima de propósito: aquela roda pela credencial `verificador`, que passa pelo
+// `exigir_acesso` como usuário comum e NÃO tem área de administração — dar `admin/uploads` a uma
+// credencial de máquina só para este teste alargaria a postura dela (a RPC expõe nome/e-mail de
+// quem carregou). Aqui a conexão é a direta, em sessão READ ONLY (mesma trava dos blocos acima), e
+// a identidade é a claim `role=service_role` na sessão — o ramo TRUSTED de `app.exigir_acesso`,
+// o mesmo que o servidor usa. `ingestao_painel` é STABLE e só lê; nada persiste.
+describe.skipIf(!ON || !DB_URL)('contrato RPC — ingestao_painel ↔ ingestaoPainelSchema (0280/0281)', () => {
+  it('o retorno REAL passa no schema da tela — inclusive os ITENS de cada lista, quando houver', async () => {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    let painel: unknown
+    try {
+      await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+      await c.query(`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false)`)
+      painel = (await c.query('SELECT public.ingestao_painel() AS p')).rows[0].p
+    } finally {
+      await c.end()
+    }
+    const r = ingestaoPainelSchema.safeParse(painel)
+    expect(r.success, r.success ? '' : `ingestao_painel drift: ${JSON.stringify(r.error!.issues.slice(0, 6))}`).toBe(true)
+    // As cinco listas chegam como ARRAY (o `coalesce(..., '[]')` do SQL), nunca null — e o
+    // estado do vigia é boolean de verdade (o job existe desde a 0280).
+    const p = r.data!
+    expect(typeof p.vigia_cron_ativo).toBe('boolean')
+    // 0282: o job da limpeza existe desde a aplicação (inativo), então o estado dele é verificável
+    // hoje. `retencao_ultima` fica `null` até a primeira rodada REAL — o shape dela só é provado
+    // contra dado vivo depois da ativação (M9); até lá vale o teste unitário do schema.
+    expect(typeof p.retencao_cron_ativo).toBe('boolean')
+    expect(p.expectativas.length, 'as 9 expectativas semeadas pela 0280').toBe(9)
+    // 0281: toda carga feita pela rota tem autor (sessão OU chave) — `quem` nulo numa carga real
+    // é o join quebrado, não "ninguém".
+    for (const carga of p.cargas) expect(carga.quem, `carga ${carga.carga_id} sem quem`).toBeTruthy()
+  })
+})
+
 // ── v5.10.0 (0269) — grants explícitos, COMMENTs e o texto do RAISE, no CATÁLOGO VIVO ───
 // A 0269 é aditiva e o que ela muda não aparece em nenhum retorno de RPC: privilégio de
 // EXECUTE, comentário de catálogo e uma string de mensagem de erro. Nada disso o `tsc`, o
@@ -2056,7 +2218,13 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
           WHERE (n.nspname, p.proname) IN (
                   ('public','admin_set_enforcement'),('app','exigir_acesso'),
                   ('public','get_operacoes_weddings'),('public','promover_carga_vendas'),
-                  ('public','get_dre_mensal'),('public','get_dre_competencia_mensal'))`,
+                  ('public','get_dre_mensal'),('public','get_dre_competencia_mensal'),
+                  ('public','ingestao_carga_abrir'),('public','ingestao_carga_concluir'),
+                  ('public','ingestao_carga_obter'),('public','ingestao_carga_ultima'),
+                  ('public','ingestao_vigia_definir'),('public','ingestao_expectativa_definir'),
+                  ('public','ingestao_painel'),('public','ingestao_vigia_estado'),
+                  ('public','ingestao_alarme_abrir'),
+                  ('public','ingestao_retencao_inventario'),('public','ingestao_retencao_registrar'))`,
       )
       return r.rows
     })
@@ -2079,5 +2247,29 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
     expect(por.get('public.get_dre_competencia_mensal') ?? '').toMatch(/financeiro\/dre/)
     // E a de carga declara por que NÃO tem exigir_acesso no corpo.
     expect(por.get('public.promover_carga_vendas') ?? '').toMatch(/service_role/)
+
+    // As 4 RPCs da ingestão (0276) são da MESMA classe que promover_carga_vendas: sem
+    // exigir_acesso no corpo porque a superfície não tem sessão de usuário — quem
+    // autoriza é a rota /api/ingestao/{base}. O comentário de cada uma tem de carregar
+    // essa explicação (service_role-only), não só existir.
+    for (const nome of [
+      'ingestao_carga_abrir', 'ingestao_carga_concluir', 'ingestao_carga_obter', 'ingestao_carga_ultima',
+    ]) {
+      const c = por.get(`public.${nome}`) ?? ''
+      expect(c, `public.${nome}: comentário sem menção a service_role (0276)`).toMatch(/service_role/)
+    }
+
+    // 0280 (M6): as três que a TELA chama são as únicas desta família com exigir_acesso — e duas
+    // delas DESLIGAM o detector de falha (vigia, expectativa). O comentário tem de dizer a área.
+    for (const nome of ['ingestao_vigia_definir', 'ingestao_expectativa_definir', 'ingestao_painel']) {
+      expect(por.get(`public.${nome}`) ?? '', `public.${nome}: comentário sem a área de RBAC (0280)`).toMatch(/admin\/uploads/)
+    }
+    // As que só o servidor chama (vigia, alarme, e as duas da limpeza do cru — 0282) declaram por
+    // que não têm exigir_acesso.
+    for (const nome of ['ingestao_vigia_estado', 'ingestao_alarme_abrir', 'ingestao_retencao_inventario', 'ingestao_retencao_registrar']) {
+      expect(por.get(`public.${nome}`) ?? '', `public.${nome}: comentário sem menção a service_role (0280)`).toMatch(/service_role/)
+    }
+    // Sem a linha, o `for` acima não reprova uma função que sumiu do catálogo — só as que existem.
+    expect(por.size, 'uma das RPCs listadas não existe no catálogo').toBe(17)
   })
 })

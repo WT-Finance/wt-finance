@@ -1,6 +1,7 @@
 import 'server-only'
 import { getServerClient } from '@/lib/supabase/server'
 import type { ChaveApi, LogChamada } from '@/components/admin/api-externa/tipos'
+import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // Leituras do módulo de Chaves de API (v5.4.0/M2), consumidas pela page RSC e
 // pelas server actions. Cliente de SESSÃO (authenticated) — o banco valida a
@@ -24,6 +25,13 @@ function comoObjArray(data: unknown): Record<string, unknown>[] {
   return data.filter((x): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x))
 }
 
+/** `escopo_bases` do jsonb → lista tipada, defensivo (mesmo molde do resto da função):
+ *  ausente/não-array/item inválido nunca lança — apenas some (`[]`). */
+function comoEscopoBases(x: unknown): BaseIngestao[] {
+  if (!Array.isArray(x)) return []
+  return x.filter(ehBaseIngestao)
+}
+
 function comoChave(x: Record<string, unknown>): ChaveApi | null {
   if (typeof x.id !== 'number') return null
   const robo = (typeof x.robo === 'object' && x.robo !== null && !Array.isArray(x.robo))
@@ -41,6 +49,7 @@ function comoChave(x: Record<string, unknown>): ChaveApi | null {
     criado_em:         typeof x.criado_em === 'string' ? x.criado_em : '',
     revogado_em:       typeof x.revogado_em === 'string' ? x.revogado_em : null,
     ultima_chamada_em: typeof x.ultima_chamada_em === 'string' ? x.ultima_chamada_em : null,
+    escopo_bases:      comoEscopoBases(x.escopo_bases),
   }
 }
 

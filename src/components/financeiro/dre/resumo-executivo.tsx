@@ -46,13 +46,14 @@
 //    exibidos são cópia de produto do Yan (os gravados no banco vêm em CAIXA ALTA e
 //    com prefixo contábil).
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { ConteudoContabil, corPorSinal } from './celula-contabil'
 import { AnoPills } from './tabela-dre'
 import type { ConsolidadoAno } from '@/lib/dre/schemas'
 import { LINHAS_CAIXA, type LinhaResumo } from '@/lib/dre/linhas-resumo'
+import { SUF_PARCIAL, type MesParcial } from '@/lib/dre/mes-parcial'
 
 interface Props {
   /** Janela navegável [corrente-2, corrente] — as pills que existem, mesmo as que a
@@ -71,6 +72,13 @@ interface Props {
   /** Sobrescreve o texto do "?". A competência precisa do seu porque a janela do YTD
    *  dela NÃO é a do calendário. */
   ajuda?: string
+  /** Mês PARCIAL da base de competência (decisão 14, v6.0.0/M7b) — só o call-site de
+   *  COMPETÊNCIA passa esta prop; o Resumo de CAIXA fica `undefined` e nenhuma coluna
+   *  marca nada. Quando o YTD de um ano marcado INCLUI o mês parcial (o `ano` da coluna
+   *  bate com o `ano` aqui), o rótulo ganha o sufixo " · parcial". SÓ RÓTULO: o `ytd`
+   *  em si já veio pronto da página, cortado pela MESMA cobertura que gerou este valor
+   *  — ver `@/lib/dre/mes-parcial`. */
+  mesParcial?: MesParcial | null
 }
 
 /** O aviso do "?" ao lado do título. Mudou na v5.7.0: antes explicava a ancoragem fixa
@@ -155,8 +163,10 @@ function montarColunas(sel: ConsolidadoAno[]): Coluna[] {
 }
 
 /** Cabeçalho na régua EXATA da tabela (`tabela-dre.tsx`, `ThConta` e as th de mês):
- *  10px, semibold, caixa alta, tracking 0.09em, `text-text-secondary`. */
-function ThResumo({ children, alinhamento, titulo }: { children: string; alinhamento: 'esquerda' | 'direita'; titulo?: string }) {
+ *  10px, semibold, caixa alta, tracking 0.09em, `text-text-secondary`. `children` é
+ *  `ReactNode` (não só `string`) desde o M7b — o sufixo "· parcial" precisa de um
+ *  `<span>` próprio (`normal-case`) para não herdar o `uppercase` do rótulo. */
+function ThResumo({ children, alinhamento, titulo }: { children: ReactNode; alinhamento: 'esquerda' | 'direita'; titulo?: string }) {
   return (
     <th
       title={titulo}
@@ -201,6 +211,7 @@ export default function ResumoExecutivo({
   linhas: linhasProp,
   titulo = 'Resumo Executivo',
   ajuda: ajudaProp,
+  mesParcial = null,
 }: Props) {
   const linhas = linhasProp ?? LINHAS
   const ajuda = ajudaProp ?? AJUDA
@@ -292,9 +303,23 @@ export default function ResumoExecutivo({
             <thead>
               <tr>
                 <ThResumo alinhamento="esquerda">Conta</ThResumo>
-                {colunas.map(c => (
-                  <ThResumo key={c.id} alinhamento="direita" titulo={c.titulo}>{c.rotulo}</ThResumo>
-                ))}
+                {colunas.map(c => {
+                  // Só a coluna de VALOR do YTD (nunca o Δ, nunca o ano cheio) marca o
+                  // sufixo — "o YTD deste ano inclui o mês parcial" é uma afirmação
+                  // sobre UM ano, e o `ano` só existe na variante 'valor' da `Coluna`.
+                  const parcial = c.k === 'valor' && c.campo === 'ytd'
+                    && mesParcial !== null && mesParcial.ano === c.ano
+                  return (
+                    <ThResumo key={c.id} alinhamento="direita" titulo={c.titulo}>
+                      {c.rotulo}
+                      {parcial && (
+                        <span className="normal-case font-normal tracking-normal text-text-subtle">
+                          {SUF_PARCIAL}
+                        </span>
+                      )}
+                    </ThResumo>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>

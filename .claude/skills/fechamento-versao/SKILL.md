@@ -80,6 +80,12 @@ servidor ao final. Parecer entra no out-briefing.
    `string | null` não atribuível a `string` num argumento de RPC, o defeito é do TIPO, não do
    código: trate o nulo na fronteira (omitir a chave quando o parâmetro tem `DEFAULT NULL`;
    sentinela só com equivalência provada no corpo da função) — **nunca com cast**.
+   **`supabase/baseline/schema-v6.json` — conferir que está no estado da última migration** (v6.0.0/M8).
+   A regra é regenerar a CADA migration aplicada (`npm run db:baseline`, commitado junto da
+   migration — skill `banco-e-rpc`); aqui só se confirma: o metadado `ultima_migration` do arquivo é a
+   última aplicada e o teste de drift (`schema-baseline`) está verde. Vermelho no fechamento =
+   alguém aplicou migration sem regenerar, ou houve mudança no banco FORA de migration — ler a
+   lista de diferenças antes de regenerar, porque regenerar às cegas "aceita" o drift.
 6. **Out-briefing** — `docs/briefings/WT_Finance_Out_Briefing_<versão>_<Nome>.md`: missões
    implementadas, migrations, ADRs, pendências, arquivos modificados, seção **Parecer da
    revisão** (achados e como foram endereçados). Out-briefing é parte do DoD, não pós-entrega.

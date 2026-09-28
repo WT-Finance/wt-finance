@@ -35,6 +35,50 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.0.0',
+    data: '2026-09-25T16:20', // horário de autoria; reconciliar ao merge real no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A plataforma passa a ler direto os relatórios do sistema de vendas (Monde), sem passar ' +
+          'mais por uma planilha intermediária tratada à parte antes de chegar aqui.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Antes de valer, cada carga de dados é conferida contra os próprios totais do relatório ' +
+          'que o sistema de vendas gerou. Se algum número não bater, nada muda na plataforma e a ' +
+          'carga fica registrada como recusada, para investigação.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'No Demonstrativo de Resultado por competência, o mês em curso aparece marcado como ' +
+          'parcial enquanto os dados dele ainda estão sendo formados, para não ser confundido ' +
+          'com um mês fechado.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'Uma tela nova, de administração, reúne o histórico de cada carga de dados — quem a fez, ' +
+          'quando, e os alertas que ela gerou.',
+      },
+      {
+        tipo: 'novidade',
+        texto:
+          'As telas de Fluxo de Caixa, Performance e Weddings passam a mostrar a data da última ' +
+          'atualização dos dados que exibem.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'A lista "Vendas em Aberto" passa a mostrar as vendas que de fato estão em aberto — antes ' +
+          'aparecia sempre vazia.',
+      },
+    ],
+  },
+  {
     versao: '5.12.0',
     data: '2026-09-24T15:44', // merge real do PR #275 (2026-09-24T18:44:17Z → -03)
     itens: [

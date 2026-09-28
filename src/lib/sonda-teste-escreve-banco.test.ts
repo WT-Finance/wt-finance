@@ -54,6 +54,16 @@ const ESTE_ARQUIVO = 'src/lib/sonda-teste-escreve-banco.test.ts'
 /** Abre `pg` mas só LÊ (catálogo, agregados). Precisa provar: sem SQL de escrita, sem BEGIN. */
 const SOMENTE_LEITURA: Record<string, string> = {
   'src/lib/rpc-contrato.test.ts': 'lê pg_get_functiondef e app.areas_do_setor (v5.9.4); tudo o mais é REST',
+  // v6.0.0/M1: deriva a allowlist de EXECUTE das credenciais de máquina lendo pg_proc — só catálogo.
+  'scripts/credencial/derivar-allowlist.mjs': 'resolve nomes de RPC em assinaturas no catálogo vivo (pg_proc); nunca escreve',
+  // v6.0.0/M2: GATE 2 da credencial de ingestão — has_function_privilege no catálogo + REST; nunca escreve.
+  'src/lib/ingestao/credencial-ingestor.test.ts': 'lê has_function_privilege da role ingestor no catálogo; o resto é REST',
+  // v6.0.0/M7a: enumera pg_proc.prosrc/pg_get_viewdef por leitores de raw.vendas_excel; nunca escreve.
+  'src/lib/ingestao/sonda-leitores-vendas-excel.test.ts': 'lê prosrc/pg_get_viewdef do catálogo (format_type, unnest de proargtypes); nunca escreve',
+  // v6.0.0/M8: baseline de schema — o GERADOR (não-teste) e o teste de drift só leem o catálogo
+  // (tabelas/views/funções/roles/cron) via snapshotCatalogo; nunca escrevem no banco.
+  'scripts/schema-baseline/gerar.mjs': 'chama snapshotCatalogo (só SELECT/introspecção) e grava o JSON localmente; nunca escreve no banco',
+  'src/lib/schema-baseline.test.ts': 'compara o catálogo vivo (snapshotCatalogo) contra supabase/baseline/schema-v6.json; nunca escreve',
 }
 
 /** Escreve fora do contrato por DESENHO. Cada entrada precisa continuar existindo E violando. */
@@ -72,6 +82,7 @@ const ESCREVEM_E_REVERTEM_HOJE = [
   'src/lib/dre/reverter-diario.test.ts',   // v5.9.5 (0268) — a referência do contrato
   'src/lib/monde/virada-paridade.test.ts', // v5.1.4 — aplica o UP da 0181 em tx e compara
   'src/lib/estante/estante-rpcs.test.ts',  // v5.11.0 (0271/0272) — recusas da Estante
+  'src/lib/ingestao/promover-carga-checksum.test.ts', // v6.0.0/M5 (0278) — checksum contra o gravado, Demonstrativo
 ]
 
 /**
@@ -187,7 +198,10 @@ describe('teste que abre pg — só escreve em transação revertida, com contra
 
   it('quem se declara SOMENTE_LEITURA existe, não escreve e não abre transação', () => {
     for (const [arquivo, justificativa] of Object.entries(SOMENTE_LEITURA)) {
+      // Teste (ALVOS) ou script que lê SUPABASE_DB_URL (v6.0.0: `derivar-allowlist.mjs` é o
+      // primeiro consumidor de só-leitura fora de `src/`) — os dois têm de abrir `pg`.
       const alvo = ALVOS.find(a => a.arquivo === arquivo)
+        ?? CONSUMIDORES_DB_URL.find(a => a.arquivo === arquivo && ABRE_PG.test(a.texto))
       expect(alvo, `${arquivo} não abre pg mais — remover de SOMENTE_LEITURA (${justificativa})`).toBeDefined()
       const t = (alvo as Alvo).texto
       expect(ESCRITA_SQL.test(t), `${arquivo} declara só leitura mas tem SQL de escrita em query()`).toBe(false)

@@ -13,7 +13,7 @@
 import {
   LayoutDashboard, TrendingUp, Target, Upload, Building, Plane, Sparkles, Briefcase, Wallet,
   BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox,
-  LineChart, ClipboardList, FileSpreadsheet, BookOpen,
+  LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
@@ -107,6 +107,9 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: IdCard,          area: null            },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
   { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
+  // v6.0.0/M6: log de cargas/execuções/alarmes — mesma área de quem já carrega planilha
+  // (anexo v6.0.0/M6 §7).
+  { href: '/admin/ingestao',       label: 'Log de Ingestão',    Icon: ScrollText, area: 'admin/uploads'     },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
   // "Gerenciar solicitações" dentro de Solicitações (só admin). Rota /admin/solicitacoes intacta.

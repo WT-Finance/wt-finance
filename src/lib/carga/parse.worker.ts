@@ -4,30 +4,20 @@
 //
 // Reaproveita os parsers isomórficos (sem DOM; `@e965/xlsx` via import dinâmico) — zero
 // duplicação de lógica. O `File` é clonável para o worker (structured clone).
+//
+// v6.0.0/M4: as CINCO bases do contrato de ingestão (`docs/contratos/ingestao-v1.md`) saíram
+// daqui — o arquivo cru sobe para o Storage e o SERVIDOR parseia (`src/lib/ingestao/`), não
+// mais o navegador. Só Pessoas fica (fora do contrato — decisão 11 do briefing da versão:
+// "parada, viva"). `parseArquivoEmWorker`/`parse-em-worker.ts` sobrevivem por causa dela
+// (anexo `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` §6).
 
-import { parseVendasProdutoFile } from './parse-vendas-produto'
-import { parseLancamentosFile } from './parse-lancamentos'
 import { parsePessoasFile } from './parse-pessoas'
-import { parseLancamentosMovimentacaoFile } from './parse-lancamentos-movimentacao'
-import { parseTitulosEmAbertoFile } from './parse-titulos-em-aberto'
-import { parseDemonstrativoCompetenciaFile } from './parse-demonstrativo-competencia'
 
-export type ParseKind =
-  | 'vendas'
-  | 'lancamentos'
-  | 'pessoas'
-  | 'lancamentos_movimentacao'
-  | 'titulos_em_aberto'
-  | 'demonstrativo_competencia'
+export type ParseKind = 'pessoas'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const PARSERS: Record<ParseKind, (f: File) => Promise<any>> = {
-  vendas: parseVendasProdutoFile,
-  lancamentos: parseLancamentosFile,
   pessoas: parsePessoasFile,
-  lancamentos_movimentacao: parseLancamentosMovimentacaoFile,
-  titulos_em_aberto: parseTitulosEmAbertoFile,
-  demonstrativo_competencia: parseDemonstrativoCompetenciaFile,
 }
 
 // `self` num worker é DedicatedWorkerGlobalScope; o tsconfig do projeto usa a lib DOM,

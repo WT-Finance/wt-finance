@@ -16,6 +16,7 @@ import {
 } from '@/lib/dre/schemas'
 import { chaveDeLinha, chaveDeBandeja } from '@/lib/dre/identidade'
 import { janelaYtdCompetencia, rotuloJanela } from '@/lib/dre/janela-competencia'
+import { mesParcialCompetencia, type MesParcial } from '@/lib/dre/mes-parcial'
 import { montarDecomposicao } from '@/lib/dre/decomposicao-variacao'
 import { montarPonte } from '@/lib/dre/ponte-regimes'
 import CascataCard from '@/components/financeiro/dre/cascata-card'
@@ -304,6 +305,17 @@ export default async function DrePage({
   const mCob = compCorrente ? janelaYtdCompetencia(compCorrente) : 0
   const janela = rotuloJanela(mCob)
 
+  // ── MÊS PARCIAL (decisão 14, v6.0.0/M7b) ─────────────────────────────────────
+  // Fonte: `compQualquer` — o MESMO payload que já alimenta o selo de frescor acima.
+  // `cobertura_ate`/`carregado_em` são GLOBAIS à base (não do ano navegado; ver
+  // migration 0257/0260), então qualquer ano carregado serve. `null` quando nenhum mês
+  // é parcial — a tabela e o Resumo Executivo simplesmente não marcam nada. SÓ RÓTULO:
+  // não corta janela nenhuma, não muda `mCob`/`mesJanela`/`total`/`ytd`.
+  const mesParcial: MesParcial | null = mesParcialCompetencia({
+    cobertura_ate: compQualquer?.cobertura_ate ?? null,
+    carregado_em:  compQualquer?.carregado_em ?? null,
+  })
+
   // O Resumo Executivo da competência lê o MESMO consolidado da tabela densa, só que
   // cortado pela cobertura. É o que garante que ele e o demonstrativo nunca discordem
   // por CAMINHO — se discordarem, é a janela, e o subtítulo diz qual é.
@@ -399,6 +411,7 @@ export default async function DrePage({
                 anosDisponiveis={anosDisponiveis}
                 consolidadoAnos={consolidadoResumoComp}
                 linhas={LINHAS_COMPETENCIA}
+                mesParcial={mesParcial}
                 /* A janela NÃO é declarada em subtítulo (decisão do Yan): o card fica com
                    a mesma anatomia do irmão de caixa logo abaixo. A explicação continua
                    no "?" — que é onde ela é procurada quando se procura. */
@@ -467,6 +480,7 @@ export default async function DrePage({
               titulo="Demonstrativo de Resultado por Competência"
               paramAno="anoComp"
               semPrevisto
+              mesParcial={mesParcial}
               slotAcoes={
                 <Link href="/financeiro/dre/estrutura-competencia" className={`${PILL} ${PILL_NEUTRO}`}>
                   <SquarePen size={13} />

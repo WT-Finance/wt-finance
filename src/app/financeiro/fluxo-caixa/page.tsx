@@ -17,6 +17,8 @@ import RepasseMensal from '@/components/financeiro/repasse-mensal'
 import PosicaoProjetado from '@/components/financeiro/posicao-projetado'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import TempoVidaCaixa from '@/components/financeiro/tempo-vida-caixa'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
+import { buscarUltimaCargaDaBase } from '@/lib/ingestao/ultima-carga-da-base'
 import {
   repasseMensalSchema, horizonteSchema, runwaySemanalSchema, saldoCaixaSchema,
   coberturaSchema, previstoDiarioSchema, saldoRepasseSchema,
@@ -118,31 +120,42 @@ export default async function FluxoCaixaPage({
   // (desconectada do Fluxo de Caixa Gerencial no ajuste do checkpoint), preenchível no modal
   // do drill. RPC falhou/sem acesso → KPI degrada para "—" sem quebrar a página. As 4 RPCs
   // novas (repasse mensal, horizonte, runway semanal, ranking de caixa) entram no mesmo estágio.
+  // v6.0.0/M7: carimbo de carga das duas bases que alimentam `financeiro.fato_fluxo`
+  // (Movimentação + Aberto) buscado em PARALELO com o estágio de RPCs de dado — sem serializar
+  // um round-trip novo à frente do resto (`Promise.all` por fora do `allSettled` existente).
   const [
-    fluxoMensalRes,
-    fluxoAcumuladoRes,
-    kpisRes,
-    previstoDiarioRes,
-    posicaoRes,
-    saldosRes,
-    repasseMensalRes,
-    horizonteRes,
-    runwaySemanalRes,
-    coberturaRes,
-    saldoRepasseRes,
-  ] = await Promise.allSettled([
-    rpc('get_fluxo_caixa_mensal_v3'),
-    rpc('get_fluxo_caixa_acumulado_v1'),
-    rpc('get_fluxo_caixa_kpis_b',        { p_from: from, p_to: to }),
-    rpc('get_fluxo_previsto_diario'),
-    rpc('get_posicao_por_conta'),
-    rpc('get_saldo_caixa'),
-    rpc('get_repasse_mensal',      { p_ano: anoAtual }),
-    rpc('get_fluxo_horizonte'),
-    rpc('get_fluxo_runway_semanal'),
-    rpc('get_fluxo_cobertura'),
-    rpc('get_saldo_repasse', { p_from: from, p_to: to }),
-  ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty))
+    [
+      fluxoMensalRes,
+      fluxoAcumuladoRes,
+      kpisRes,
+      previstoDiarioRes,
+      posicaoRes,
+      saldosRes,
+      repasseMensalRes,
+      horizonteRes,
+      runwaySemanalRes,
+      coberturaRes,
+      saldoRepasseRes,
+    ],
+    ultimaCargaMovimentacao,
+    ultimaCargaAberto,
+  ] = await Promise.all([
+    Promise.allSettled([
+      rpc('get_fluxo_caixa_mensal_v3'),
+      rpc('get_fluxo_caixa_acumulado_v1'),
+      rpc('get_fluxo_caixa_kpis_b',        { p_from: from, p_to: to }),
+      rpc('get_fluxo_previsto_diario'),
+      rpc('get_posicao_por_conta'),
+      rpc('get_saldo_caixa'),
+      rpc('get_repasse_mensal',      { p_ano: anoAtual }),
+      rpc('get_fluxo_horizonte'),
+      rpc('get_fluxo_runway_semanal'),
+      rpc('get_fluxo_cobertura'),
+      rpc('get_saldo_repasse', { p_from: from, p_to: to }),
+    ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : empty)),
+    buscarUltimaCargaDaBase('lancamentos-movimentacao'),
+    buscarUltimaCargaDaBase('lancamentos-aberto'),
+  ])
 
   const fluxoMensalRows    = unwrapRpc<FluxoMensalV3Row[]>(fluxoMensalRes, 'get_fluxo_caixa_mensal_v3') ?? []
   const fluxoAcumuladoRows = unwrapRpc<FluxoAcumuladoRow[]>(fluxoAcumuladoRes, 'get_fluxo_caixa_acumulado_v1') ?? []
@@ -192,6 +205,29 @@ export default async function FluxoCaixaPage({
 
   return (
     <div>
+
+      {/* ── CARIMBO DE CARGA (v6.0.0/M7) ────────────────────────────────────
+          `financeiro.fato_fluxo` é reconstruído de Movimentação E Aberto juntos — dois selos,
+          um por base, no MESMO componente/convenção da DRE (`vigiarAtraso={false}`: cadência
+          humana, não a régua do cron do Monde). Sem título de página nesta rota para alinhar o
+          selo a ele (o layout de `/financeiro` não tem h1 próprio); fica sozinho, alinhado à
+          direita, acima da 1ª seção. `UltimaAtualizacao` some sozinho quando `iso` é `null`. */}
+      <div className="flex justify-end mb-2">
+        <div className="flex flex-col items-end gap-y-0.5 text-2xs">
+          <UltimaAtualizacao
+            iso={ultimaCargaMovimentacao}
+            prefixo="Movimentação · Última atualização em"
+            iconSize={12}
+            vigiarAtraso={false}
+          />
+          <UltimaAtualizacao
+            iso={ultimaCargaAberto}
+            prefixo="Em aberto · Última atualização em"
+            iconSize={12}
+            vigiarAtraso={false}
+          />
+        </div>
+      </div>
 
       {/* ── FLUXO PROJETADO ──────────────────────────────────────────────── */}
       <TopSection titulo="Fluxo Projetado">

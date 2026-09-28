@@ -11,12 +11,14 @@ import FluxoCaixaCard from '@/components/weddings/fluxo-caixa-card'
 import FluxoCaixaTotaisCard from '@/components/weddings/fluxo-caixa-totais-card'
 import DropdownOperacao from '@/components/weddings/dropdown-operacao'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { JANELA_LARGA_ATRAS, JANELA_LARGA_FRENTE } from '@/lib/weddings/janela-fluxo'
 import { getServerClient } from '@/lib/supabase/server'
 import { unwrapRpc } from '@/lib/rpc'
 import { parseRpc, carteiraWeddingsSchema } from '@/lib/schemas-rpc'
 import { taxasCdiSchema } from '@/lib/weddings/schemas-float'
 import { getBenchmarks } from '@/lib/config'
+import { buscarUltimaCargaDaBase } from '@/lib/ingestao/ultima-carga-da-base'
 import type {
   ProximosCasamentos, AcumuladoWeddings, VendasEmAberto,
   OperacoesLista, VendasReceitaNegativa,
@@ -49,6 +51,7 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     cartCasRes,
     proximosRes, benchmarks, acumuladoRes, taxasRes,
     vendasAbertoRes, operacoesRes, prejRes,
+    ultimaCargaVendas, ultimaCargaOperacao,
   ] = await Promise.all([
     db.rpc('get_carteira_weddings', { p_metric: 'casamentos' }),
     db.rpc('get_proximos_casamentos', { p_horizonte_meses: 18 }),
@@ -73,6 +76,10 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
     db.rpc('get_operacoes_lista_weddings'),
     // Vendas com Receita Negativa: exibe histórico completo (ADR-0053)
     db.rpc('get_vendas_prejuizo_weddings', { p_from: '2020-01-01', p_to: '2099-12-31' }),
+    // v6.0.0/M7: carimbo de carga das duas bases (Vendas por Produto + Lançamentos por
+    // Operação) — mesmo estágio, sem serializar um round-trip novo à frente do resto.
+    buscarUltimaCargaDaBase('vendas-produto'),
+    buscarUltimaCargaDaBase('lancamentos-operacao'),
   ])
 
   const cartCas       = parseRpc(carteiraWeddingsSchema, cartCasRes, 'get_carteira_weddings') // F7
@@ -101,6 +108,29 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
 
   return (
     <div>
+
+      {/* ── CARIMBO DE CARGA (v6.0.0/M7) ────────────────────────────────────
+          Dois selos (Vendas por Produto + Lançamentos por Operação), MESMO componente/
+          convenção da DRE (`vigiarAtraso={false}`: cadência humana). O título "Performance dos
+          Setores" mora no layout compartilhado (`src/app/performance/layout.tsx`), fora desta
+          árvore — o selo não sobe pra lá (o layout não sabe que sub-rota está renderizando, e
+          Weddings é a única com 2 bases). Deviation reportada: não fica na MESMA linha do h1. */}
+      <div className="flex justify-end mb-2">
+        <div className="flex flex-col items-end gap-y-0.5 text-2xs">
+          <UltimaAtualizacao
+            iso={ultimaCargaVendas}
+            prefixo="Vendas · Última atualização em"
+            iconSize={12}
+            vigiarAtraso={false}
+          />
+          <UltimaAtualizacao
+            iso={ultimaCargaOperacao}
+            prefixo="Operações · Última atualização em"
+            iconSize={12}
+            vigiarAtraso={false}
+          />
+        </div>
+      </div>
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">

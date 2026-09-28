@@ -49,6 +49,7 @@ import {
   type Tripwire,
 } from '@/lib/monde/reconciliacao'
 import { listarJanelaDaApi } from '@/lib/monde/auditoria'
+import { abrirExecucao, concluirExecucao } from '@/lib/ingestao/execucao'
 
 // v5.10.0/D4-011: `unknown` em vez de `any` — o retorno já é estreitado por
 // cast/validação em cada call-site, e `any` desligava a checagem em toda a cadeia.
@@ -94,7 +95,7 @@ async function handle(req: NextRequest): Promise<Response> {
   const admin = getAdminClient()
   const db: MondeDb = { rpc: (fn, args) => (admin.rpc as unknown as Rpc)(fn, args) }
   const log: string[] = []
-  const onLog = (m: string) => { log.push(m); console.log(`[monde-ingest] ${m}`) }
+  const onLog = (m: string) => { log.push(m); console.info(`[monde-ingest] ${m}`) }
 
   async function rpc(fn: string, args?: Record<string, unknown>): Promise<unknown> {
     const { data, error } = await db.rpc(fn, args)
@@ -191,6 +192,13 @@ async function handle(req: NextRequest): Promise<Response> {
     // maxDuration=300 (jul/2026 tem ~775 vendas na API), e três disparos diários fecham a
     // janela. Resumível: se falhar, o cursor NÃO avança e a próxima invocação retoma o mesmo mês.
     if (mode === 'reconciliacao') {
+      // v6.0.0/M6: registra a PRÓPRIA execução em `ingestao.execucao` — camada ADICIONAL, nunca
+      // pode mudar o comportamento abaixo (contrato da delegação §1). `abrirExecucao`/
+      // `concluirExecucao` nunca lançam; o try/catch aqui é só para marcar 'erro' ANTES de
+      // relançar — o catch externo desta rota (linha ~316) continua respondendo exatamente
+      // como antes.
+      const execId = await abrirExecucao('monde-reconciliacao')
+      try {
       const hoje = hojeSP()
       const janela = mesesRecentes(hoje, MESES_RECONCILIACAO)
       const { data: cursorAtual } = await db.rpc('monde_ingest_control_get', { p_chave: 'reconciliacao_cursor' })
@@ -299,20 +307,42 @@ async function handle(req: NextRequest): Promise<Response> {
         return { resultado, tripwire }
       })
 
-      if (saida === null) return NextResponse.json({ mode, mes, pulado: 'lock', log })
+      if (saida === null) {
+        await concluirExecucao(execId, 'pulado', { mes, motivo: 'lock_ocupado' })
+        return NextResponse.json({ mode, mes, pulado: 'lock', log })
+      }
+      await concluirExecucao(execId, 'ok', { mes, ciclo_fechado: fechaCiclo })
       return NextResponse.json({ mode, mes, janela, ciclo_fechado: fechaCiclo, ...saida, log })
+      } catch (e) {
+        // Marca a execução como 'erro' ANTES de relançar — o catch EXTERNO desta rota (mais
+        // abaixo) é quem continua decidindo a resposta HTTP; este catch só acrescenta o
+        // registro e devolve o controle exatamente como se ele não existisse.
+        await concluirExecucao(execId, 'erro', null, e instanceof Error ? e.message : String(e))
+        throw e
+      }
     }
 
     // ── incremental (default) ──────────────────────────────────────────────────────────────
-    const to = hojeSP()
-    const from = addDiasISO(to, -DIAS_INCREMENTAL)
-    const resultado = await comLock('incremental', () => ingestWindow(db, { from, to, onLog }))
-    // Lock ocupado é NORMAL aqui (o tick de 15min caiu durante uma reconciliação, que cobre os
-    // mesmos dias). Responde 200 e NÃO grava o marcador: pular não é sincronizar, e o marcador é
-    // o que alimenta o alarme de atraso de /metas.
-    if (resultado === null) return NextResponse.json({ mode: 'incremental', pulado: 'lock', log })
-    await rpc('monde_ingest_control_set', { p_chave: 'ultimo_incremental', p_valor: `${from}..${to}` })
-    return NextResponse.json({ mode: 'incremental', janela: { from, to }, resultado, log })
+    // v6.0.0/M6: mesma camada adicional de log da reconciliação acima — nunca muda a resposta.
+    const execIdIncremental = await abrirExecucao('monde-incremental')
+    try {
+      const to = hojeSP()
+      const from = addDiasISO(to, -DIAS_INCREMENTAL)
+      const resultado = await comLock('incremental', () => ingestWindow(db, { from, to, onLog }))
+      // Lock ocupado é NORMAL aqui (o tick de 15min caiu durante uma reconciliação, que cobre os
+      // mesmos dias). Responde 200 e NÃO grava o marcador: pular não é sincronizar, e o marcador é
+      // o que alimenta o alarme de atraso de /metas.
+      if (resultado === null) {
+        await concluirExecucao(execIdIncremental, 'pulado', { from, to, motivo: 'lock_ocupado' })
+        return NextResponse.json({ mode: 'incremental', pulado: 'lock', log })
+      }
+      await rpc('monde_ingest_control_set', { p_chave: 'ultimo_incremental', p_valor: `${from}..${to}` })
+      await concluirExecucao(execIdIncremental, 'ok', { from, to })
+      return NextResponse.json({ mode: 'incremental', janela: { from, to }, resultado, log })
+    } catch (e) {
+      await concluirExecucao(execIdIncremental, 'erro', null, e instanceof Error ? e.message : String(e))
+      throw e
+    }
   } catch (e) {
     const msg = (e as Error).message
     console.error(`[monde-ingest] ERRO: ${msg}`)

@@ -7,6 +7,8 @@ import { criarChaveApi } from '@/app/admin/api-externa/actions'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import ModalCentral from '@/components/shared/modal-central'
 import { Input } from '@/components/ui/field'
+import Checkbox from '@/components/ui/checkbox'
+import { BASES_INGESTAO, ROTULO_BASE, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // v5.4.0/M2 (Round6, decisão do Yan 31/07: "retirar a whitelist de tipos da
 // chave de API, cada chave de API deve ter acesso a todos os tipos expostos,
@@ -18,8 +20,9 @@ import { Input } from '@/components/ui/field'
 // modal, o segredo não é recuperável (só revogar e criar outra chave).
 
 interface Sucesso {
-  plataforma: string
-  segredo:    string
+  plataforma:  string
+  segredo:     string
+  escopoBases: BaseIngestao[]
 }
 
 export function ModalCriarChave({
@@ -29,10 +32,15 @@ export function ModalCriarChave({
 }) {
   const router = useRouter()
   const [plataforma, setPlataforma] = useState('')
+  const [escopoBases, setEscopoBases] = useState<BaseIngestao[]>([])
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<Sucesso | null>(null)
   const [copiado, setCopiado] = useState(false)
+
+  function alternarBase(base: BaseIngestao, marcada: boolean) {
+    setEscopoBases(atual => marcada ? [...atual, base] : atual.filter(b => b !== base))
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -42,13 +50,13 @@ export function ModalCriarChave({
       return
     }
     setEnviando(true)
-    const res = await criarChaveApi({ plataforma })
+    const res = await criarChaveApi({ plataforma, escopoBases })
     setEnviando(false)
     if (!res.ok) {
       setErro(res.erro)
       return
     }
-    setSucesso({ plataforma: res.plataforma, segredo: res.segredo })
+    setSucesso({ plataforma: res.plataforma, segredo: res.segredo, escopoBases: res.escopoBases })
     router.refresh()
   }
 
@@ -84,6 +92,32 @@ export function ModalCriarChave({
             />
           </div>
 
+          <fieldset>
+            <legend className="block text-xs font-medium text-zinc-600 mb-1">
+              Bases de ingestão que esta chave pode carregar (opcional)
+            </legend>
+            <p className="mb-2 text-3xs text-zinc-400">
+              Sem nenhuma marcada, a chave serve só à API de Solicitações.
+            </p>
+            <div className="space-y-2">
+              {BASES_INGESTAO.map(base => {
+                const id = `chave-base-${base}`
+                return (
+                  <div key={base} className="flex items-center gap-2">
+                    <Checkbox
+                      id={id}
+                      checked={escopoBases.includes(base)}
+                      onChange={marcada => alternarBase(base, marcada)}
+                    />
+                    <label htmlFor={id} className="text-sm text-zinc-700 cursor-pointer">
+                      {ROTULO_BASE[base]}
+                    </label>
+                  </div>
+                )
+              })}
+            </div>
+          </fieldset>
+
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onFechar} className={`${PILL} ${PILL_NEUTRO}`}>
               Cancelar
@@ -102,6 +136,11 @@ export function ModalCriarChave({
         <div className="space-y-4">
           <div role="status" className="rounded-lg border border-success bg-success-bg px-3 py-2 text-sm text-success">
             Chave de <span className="font-medium">{sucesso.plataforma}</span> criada.
+            <span className="block text-xs">
+              {sucesso.escopoBases.length > 0
+                ? `Bases de ingestão: ${sucesso.escopoBases.map(b => ROTULO_BASE[b]).join(', ')}.`
+                : 'Nenhuma base de ingestão — serve só à API de Solicitações.'}
+            </span>
           </div>
 
           <div role="alert" className="flex items-start gap-2 rounded-lg border border-warning bg-warning-bg px-3 py-2 text-xs text-warning">

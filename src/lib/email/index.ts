@@ -39,11 +39,13 @@ export function anexoLogo() {
 
 /**
  * v4.40.0 (Rebranding Janus) — Logo Janus via CID, mesmo padrão do `anexoLogo()`. Usado SÓ
- * nos e-mails INTERNOS (senha provisória + notificação de solicitação), junto do `anexoLogo()`,
- * para o cabeçalho de lockup duplo [JANUS] | [WELCOME GROUP]. O e-mail de FATURA (cliente,
- * `fatura.ts`) continua anexando SÓ `anexoLogo()` — fronteira intocável.
+ * nos e-mails INTERNOS (senha provisória + notificação de solicitação + alarme de ingestão,
+ * v6.0.0/M6), junto do `anexoLogo()`, para o cabeçalho de lockup duplo [JANUS] | [WELCOME
+ * GROUP]. O e-mail de FATURA (cliente, `fatura.ts`) continua anexando SÓ `anexoLogo()` —
+ * fronteira intocável. Exportada (v6.0.0/M6) para reuso por `alarme-ingestao.ts`, que
+ * também é um e-mail interno — não duplicar o attachment.
  */
-function anexoLogoJanus() {
+export function anexoLogoJanus() {
   return {
     filename:    'janus.png',
     content:     Buffer.from(LOGO_JANUS_PNG_BASE64, 'base64'),
@@ -158,9 +160,12 @@ async function enviarUm(
 
 /**
  * Fan-out compartilhado pelas notificações: mesma mensagem para N destinatários, no máximo
- * MAX_CONEXOES_SMTP em voo, dentro do orçamento de tempo. Ordem de conclusão irrelevante. NUNCA lança.
+ * MAX_CONEXOES_SMTP em voo, dentro do orçamento de tempo. Ordem de conclusão irrelevante. NUNCA
+ * lança. Exportada (v6.0.0/M6) para reuso por `alarme-ingestao.ts` — o alarme também manda a
+ * MESMA mensagem para N destinatários (a lista de operação de `INGESTAO_ALARME_DESTINOS`),
+ * e reaproveitar aqui evita reimplementar o guard de conexões do Office 365 (v5.3.4).
  */
-async function enviarFanOut(input: {
+export async function enviarFanOut(input: {
   cfg:     ConfigSmtp
   paras:   string[]
   assunto: string

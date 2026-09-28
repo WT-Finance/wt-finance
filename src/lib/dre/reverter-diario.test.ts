@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { salvarEstruturaResultSchema } from './schemas'
 
 // ── v5.9.5 (0268) — desfazer em lote robusto a MÚLTIPLOS TOQUES por linha ─────────────
 // `financeiro.reverter_diario` percorria o lote em ASC e comparava a linha INTEIRA contra
@@ -12,14 +13,16 @@ import { describe, it, expect } from 'vitest'
 // suíte que escreve-e-reverte a cada `npm test` — deliberado e registrado no out-briefing
 // da v5.9.5. Sem `SUPABASE_DB_URL` (offline), é pulado; o gate segue verde.
 //
-// O guard de payload duplicado dos dois salvares se prova via REST (roda ANTES da trava
-// otimista, então um token inválido prova a POSIÇÃO: o erro tem de ser o do guard).
+// v6.0.0/M1 — os casos que EXERCITAM as RPCs de escrita da estrutura da DRE (guard de payload
+// duplicado, lote vazio, token inválido, id inexistente) rodavam via REST com a service role e
+// depois migrariam para a credencial `verificador`. Não migraram: conceder EXECUTE nessas RPCs à
+// credencial de verificação a tornaria capaz de escrever de verdade (achado ALTO do
+// `revisor-db` na 0273). Passaram para AQUI, em transação revertida com identidade JWT
+// simulada (`set_config('request.jwt.claims', …)`, o molde de `estante-rpcs.test.ts`): o corpo
+// roda até o guard, o erro tem de ser o do guard, e nada persiste. A allowlist do `verificador`
+// fica só com leitura.
 
 const DB_URL = process.env.SUPABASE_DB_URL
-const RAW = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-const HOST = RAW.replace(/\/+$/, '').replace(/\/rest\/v1$/, '')
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const REST_ON = Boolean(HOST && KEY)
 
 type Linha = Record<string, unknown>
 type Cliente = { query: (q: string, p?: unknown[]) => Promise<{ rows: Linha[] }> }
@@ -181,33 +184,89 @@ describe.skipIf(!DB_URL)('reverter_diario (0268) — cadeias de toques na MESMA 
   })
 })
 
-async function rpcErro(fn: string, body: Record<string, unknown>): Promise<string> {
-  const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
-    method: 'POST',
-    headers: { apikey: KEY as string, Authorization: `Bearer ${KEY as string}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  expect(res.ok, `${fn} deveria recusar`).toBe(false)
-  return res.text()
+/** Assume, dentro da transação, a identidade de um usuário REAL e ATIVO com a área
+ *  `financeiro/dre` (escolhido dinamicamente — nunca id fixo). `app.exigir_acesso` lê as
+ *  claims e percorre o caminho normal de usuário; a conexão é `postgres` (owner das tabelas). */
+async function comoUsuarioDaDre(c: Cliente): Promise<void> {
+  const r = await c.query(
+    `SELECT u.user_id FROM app.rbac_usuarios u
+       JOIN app.rbac_role_permissoes p ON p.role_id = u.role_id
+      WHERE u.ativo AND p.area = 'financeiro/dre' ORDER BY u.criado_em LIMIT 1`,
+  )
+  expect(r.rows.length, 'nenhum usuário ativo com financeiro/dre para simular').toBe(1)
+  await c.query(`SELECT set_config('request.jwt.claims', $1, true)`,
+    [JSON.stringify({ sub: r.rows[0].user_id, role: 'authenticated' })])
 }
 
-describe.skipIf(!REST_ON)('guard de payload duplicado — caixa (0268) e competência (0260), via REST', () => {
+/** Chama uma RPC sob SAVEPOINT e devolve o erro (ou o valor). Erro não derruba a transação. */
+async function chamar(c: Cliente, sql: string, p: unknown[]): Promise<{ ok: true; v: Linha } | { ok: false; msg: string }> {
+  await c.query('SAVEPOINT chamada')
+  try {
+    const r = await c.query(sql, p)
+    return { ok: true, v: r.rows[0] }
+  } catch (e) {
+    await c.query('ROLLBACK TO SAVEPOINT chamada')
+    return { ok: false, msg: (e as Error).message }
+  }
+}
+
+describe.skipIf(!DB_URL)('guards das RPCs de escrita da estrutura da DRE — em transação revertida, com identidade simulada (v6.0.0)', () => {
   // Token propositalmente inválido: se o guard rodasse DEPOIS da trava otimista, o erro
   // seria DRE_CONFLITO. Tem de ser o do guard — nada é lido nem escrito.
-  const dup = [
+  const dup = JSON.stringify([
     { categoria_id: 1, bloco_chave: 'ENT_H', ordem: 1, excluida: false },
     { categoria_id: 1, bloco_chave: 'PAG_H', ordem: 2, excluida: false },
-  ]
+  ])
   it('dre_estrutura_salvar recusa a mesma categoria duas vezes no lote, antes da trava', async () => {
-    const txt = await rpcErro('dre_estrutura_salvar', { p_maps: dup, p_token: '1970-01-01T00:00:00Z' })
-    expect(txt).toMatch(/DRE_PAYLOAD_INVALIDO/)
-    expect(txt).toMatch(/mais de uma vez/)
-    expect(txt).not.toMatch(/DRE_CONFLITO/)
+    await emTransacaoRevertida(async c => {
+      await comoUsuarioDaDre(c)
+      const r = await chamar(c, `SELECT public.dre_estrutura_salvar($1::jsonb, '1970-01-01T00:00:00Z'::timestamptz)`, [dup])
+      expect(r.ok).toBe(false)
+      const msg = (r as { msg: string }).msg
+      expect(msg).toMatch(/DRE_PAYLOAD_INVALIDO/)
+      expect(msg).toMatch(/mais de uma vez/)
+      expect(msg).not.toMatch(/DRE_CONFLITO/)
+    })
   })
   it('dre_comp_estrutura_salvar recusa a mesma linha duas vezes no lote, antes da trava', async () => {
-    const txt = await rpcErro('dre_comp_estrutura_salvar', { p_maps: dup, p_token: '1970-01-01T00:00:00Z' })
-    expect(txt).toMatch(/DRE_PAYLOAD_INVALIDO/)
-    expect(txt).toMatch(/mais de uma vez/)
-    expect(txt).not.toMatch(/DRE_CONFLITO/)
+    await emTransacaoRevertida(async c => {
+      await comoUsuarioDaDre(c)
+      const r = await chamar(c, `SELECT public.dre_comp_estrutura_salvar($1::jsonb, '1970-01-01T00:00:00Z'::timestamptz)`, [dup])
+      expect(r.ok).toBe(false)
+      const msg = (r as { msg: string }).msg
+      expect(msg).toMatch(/DRE_PAYLOAD_INVALIDO/)
+      expect(msg).toMatch(/mais de uma vez/)
+      expect(msg).not.toMatch(/DRE_CONFLITO/)
+    })
+  })
+
+  // Vieram de `rpc-contrato.test.ts` (v6.0.0/M1) — lá rodavam via REST com a service role.
+  it('dre_estrutura_salvar: lote vazio é no-op (gravadas=0); token errado → DRE_CONFLITO (nada muda)', async () => {
+    await emTransacaoRevertida(async c => {
+      await comoUsuarioDaDre(c)
+      const est = await c.query(`SELECT (public.dre_estrutura()->>'token') AS token`)
+      const token = est.rows[0].token as string
+      expect(token).toBeTruthy()
+      const ok = await chamar(c, `SELECT public.dre_estrutura_salvar('[]'::jsonb, $1::timestamptz) AS r`, [token])
+      expect(ok.ok, (ok as { msg?: string }).msg).toBe(true)
+      // O mesmo schema Zod do call-site (parseRpc) — shape do retorno REAL, não só o campo.
+      const r = salvarEstruturaResultSchema.parse((ok as { v: Linha }).v.r)
+      expect(r.ok).toBe(true)
+      expect(r.gravadas).toBe(0)
+      const conflito = await chamar(c, `SELECT public.dre_estrutura_salvar('[]'::jsonb, '1970-01-01T00:00:00Z'::timestamptz)`, [])
+      expect(conflito.ok).toBe(false)
+      expect((conflito as { msg: string }).msg).toMatch(/DRE_CONFLITO/)
+    })
+  })
+  it('dre_estrutura_desfazer_lote/linha: id inexistente → erro amigável, nada muda', async () => {
+    await emTransacaoRevertida(async c => {
+      await comoUsuarioDaDre(c)
+      const lote = await chamar(c, `SELECT public.dre_estrutura_desfazer_lote($1::bigint)`, [1])
+      expect(lote.ok).toBe(false)
+      expect((lote as { msg: string }).msg).toMatch(/inexistente/)
+      const linha = await chamar(c, `SELECT public.dre_estrutura_desfazer_linha($1::bigint)`, [1])
+      expect(linha.ok).toBe(false)
+      expect((linha as { msg: string }).msg).toMatch(/inexistente/)
+    })
   })
 })

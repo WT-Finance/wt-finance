@@ -12,9 +12,11 @@ import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-negativa-card'
 import TopSection from '@/components/shared/top-section'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
+import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { getServerClient, type ServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { unwrapRpc, unwrapRpcComErro } from '@/lib/rpc'
+import { buscarUltimaCargaDaBase } from '@/lib/ingestao/ultima-carga-da-base'
 import {
   parseRpc,
   mixProdutoSchema,
@@ -82,6 +84,7 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
     vendedores,
     vendasAbertoRes,
     receitaNegRes,
+    ultimaCargaVendas,
   ] = await Promise.all([
     Promise.all([
       db.rpc('get_executiva_kpis', {
@@ -108,6 +111,9 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
     (db.rpc as any)('get_vendas_em_aberto', { p_setor: setor, p_limite: 50, p_offset: 0 }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (db.rpc as any)('get_vendas_receita_negativa', { p_setor: setor, p_from: '2020-01-01', p_to: '2099-12-31' }),
+    // v6.0.0/M7: carimbo de carga de Vendas por Produto — mesmo estágio, sem serializar um
+    // round-trip novo à frente do resto.
+    buscarUltimaCargaDaBase('vendas-produto'),
   ])
 
   // F5 (v4.12): erro ≠ vazio. unwrapRpc loga a falha com contexto (sai do silêncio);
@@ -125,6 +131,22 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
 
   return (
     <div>
+
+      {/* ── CARIMBO DE CARGA (v6.0.0/M7) ────────────────────────────────────
+          Um selo (Vendas por Produto), MESMO componente/convenção da DRE
+          (`vigiarAtraso={false}`: cadência humana). O título "Performance dos Setores" mora no
+          layout (`src/app/performance/layout.tsx`, síncrono — persiste durante o loading.tsx),
+          não nesta árvore; o selo não pode subir para lá (não sabe qual conteúdo — Geral/Trips/
+          Corp usam 1 base, Weddings usa 2 — está renderizando). Fica sozinho, alinhado à
+          direita, acima da Visão Geral. Deviation reportada: não fica na MESMA linha do h1. */}
+      <div className="flex justify-end mb-2 text-2xs">
+        <UltimaAtualizacao
+          iso={ultimaCargaVendas}
+          prefixo="Vendas · Última atualização em"
+          iconSize={12}
+          vigiarAtraso={false}
+        />
+      </div>
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">

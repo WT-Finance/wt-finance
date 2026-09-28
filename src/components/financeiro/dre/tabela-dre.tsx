@@ -220,6 +220,7 @@ import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
 import { PILL_FILTRO, PILL_FILTRO_INATIVO, PILL_FILTRO_ATIVO_STYLE } from '@/components/shared/botoes'
 import { ConteudoContabil, corPorSinal, type TipoLinha } from './celula-contabil'
 import { avPercentual, baseAv, fmtAv, linhaBaseAv, indiceBaseAv, CHAVE_BASE_AV } from '@/lib/dre/av'
+import { ehMesParcial, SUF_PARCIAL, type MesParcial } from '@/lib/dre/mes-parcial'
 import {
   chaveDeLinha as chaveLinha,
   chaveDeBandeja as chaveBandeja,
@@ -2074,12 +2075,17 @@ interface TabelaDreProps {
    *  Consequência automática (nada mais a fazer): sem coluna ·PREV, sem VENCIDOS, sem
    *  anos seguintes, e num ano parcial a tabela mostra só os meses cobertos. */
   semPrevisto?: boolean
+  /** Mês PARCIAL da base de competência (decisão 14, v6.0.0/M7b) — a página só passa
+   *  esta prop no call-site de COMPETÊNCIA; no regime de caixa fica `undefined`, e
+   *  nenhum `<th>` de mês ganha o sufixo. `null` quando a base não tem mês parcial
+   *  algum. SÓ RÓTULO: não corta coluna, não muda valor — ver `@/lib/dre/mes-parcial`. */
+  mesParcial?: MesParcial | null
 }
 
 export default function TabelaDre({
   dados, ano, anosDisponiveis, anosSeguintes, consolidadoAnos, mesJanela,
   slotAcoes,
-  titulo, paramAno = 'ano', semPrevisto = false,
+  titulo, paramAno = 'ano', semPrevisto = false, mesParcial = null,
 }: TabelaDreProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -2662,19 +2668,34 @@ export default function TabelaDre({
                 )}
               </tr>
               <tr>
-                {mesesVisiveis.map((m, i) => (
-                  <th
-                    key={m}
-                    className={[
-                      'h-[25px] px-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em]',
-                      i >= idxPrevisto ? 'text-warning-deep' : 'text-text-secondary',
-                      corteIdx !== null && i === corteIdx ? 'border-l-2 border-l-wt-border-strong' : '',
-                      bordaBaseHeader,
-                    ].join(' ')}
-                  >
-                    {m}
-                  </th>
-                ))}
+                {mesesVisiveis.map((m, i) => {
+                  // ── Mês PARCIAL (decisão 14, v6.0.0/M7b) ─────────────────────────
+                  // Índice → mês REAL: só vale porque, no regime SEM previsto
+                  // (competência), `mesesVisiveis` nunca insere a coluna híbrida
+                  // ·REAL/·PREV (`incluirPrevCorrente` é sempre `false` ali) — o
+                  // índice `i` é o mês `i+1` em TODAS as três relações. Gate duplo
+                  // (`semPrevisto` E `mesParcial`) para o regime de CAIXA nunca marcar
+                  // nada, mesmo que a prop chegasse preenchida por engano.
+                  const parcial = semPrevisto && ehMesParcial(mesParcial, ano, i + 1)
+                  return (
+                    <th
+                      key={m}
+                      className={[
+                        'h-[25px] px-3.5 text-right text-[10px] font-semibold uppercase tracking-[0.09em]',
+                        i >= idxPrevisto ? 'text-warning-deep' : 'text-text-secondary',
+                        corteIdx !== null && i === corteIdx ? 'border-l-2 border-l-wt-border-strong' : '',
+                        bordaBaseHeader,
+                      ].join(' ')}
+                    >
+                      {m}
+                      {parcial && (
+                        <span className="normal-case font-normal tracking-normal text-text-subtle">
+                          {SUF_PARCIAL}
+                        </span>
+                      )}
+                    </th>
+                  )
+                })}
                 {anosSegVisiveisMensal.map((a, idx) => (
                   <Fragment key={`ano-th-${a.ano}`}>
                     <th
