@@ -24,6 +24,9 @@ grava em produção (1ª execução `ok` do `monde-incremental` às 12:45 UTC, d
 **Pós-merge feito em 28/09:**
 - ✅ Cron **`ingestao-vigia` LIGADO** (`ingestao_vigia_definir(true)` → HTTP 200; `cron.job.active = true`).
 - ✅ Expectativa **`monde-incremental` LIGADA** (tinha execução OK; tolerância 45 min).
+- ✅ **1ª rodada do vigia em produção: 28/09 13:00:03 UTC, `ok`**, 288 ms, 9 expectativas avaliadas, zero
+  alarme; `pg_cron` = `succeeded`. Prova ponta a ponta de que o cron chama a rota e grava resultado.
+- ✅ Expectativa **`ingestao-vigia` LIGADA** logo depois (quem vigia o vigia; tolerância 45 min).
 - ✅ Limpeza do cru **simulada em produção**: 0 expirados, 0 órfãos (as cópias órfãs de 24/09 só vencem os
   7 dias em 01/10). O cron `ingestao-retencao` **segue DESLIGADO** — ligar é decisão do Yan (apaga arquivo).
 - ✅ Baseline de schema regenerado (única diferença: `cron.ingestao-vigia.active false → true`).
@@ -37,8 +40,8 @@ grava em produção (1ª execução `ok` do `monde-incremental` às 12:45 UTC, d
 > 3. **Yan — recarregar Lançamentos por Operação** pelo card de produção (o cru de 25/09 ficou com o
 >    texto "NA"; o fato está certo). **Antes, no MESMO dia, recarregar Vencimento em aberto** — o grafo
 >    exige Aberto aplicado no dia; a carga de 25/09 não vale mais.
-> 4. **Sessão, depois da 1ª execução OK de cada um:** ligar as expectativas `ingestao-vigia` (após a
->    1ª rodada do vigia), `monde-reconciliacao` (roda 06:05 UTC) e `cdi-mensal` (dia 3), com
+> 4. **Sessão, depois da 1ª execução OK de cada um:** ligar as expectativas `monde-reconciliacao` (roda
+>    06:05 UTC — a partir de 29/09) e `cdi-mensal` (dia 3 — a partir de 03/10), com
 >    `ingestao_expectativa_definir('<processo>', true)`. As das bases, só quando a RPA existir.
 > 5. **Yan decide — ligar a limpeza do cru** (`SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE
 >    jobname = 'ingestao-retencao'), active := true);`, como `postgres`). A partir de 01/10 ela apaga as
