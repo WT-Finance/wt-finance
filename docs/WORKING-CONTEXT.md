@@ -9,19 +9,30 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-28 (v6.0.1 fechada — PR #281 aguardando merge; 0286 já aplicada).
+Última atualização: 2026-09-28 (pós-merge da v6.0.1).
 
 ---
 
-## Aguardando merge — v6.0.1 "Seeds no caminho único + destrutiva do legado" (PR #281)
+## Em produção — v6.0.1 "Seeds no caminho único + destrutiva do legado" (PR #281, mergeado 28/09 às 12:40)
 
-Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-0-1_Seeds_Destrutiva.md`. O `npm run seed` virou
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-0-1_Seeds_Destrutiva.md`. O `npm run seed` é
 cliente do contrato de ingestão v1 (default CONFERÊNCIA; `--aplicar` substitui a base em produção) e a
-destrutiva **0286 foi aplicada pelo Yan em TTY em 28/09** — 12 funções do caminho legado e
-`audit.ingestao_log` saíram do banco (REST 404 nos 12; caminho vivo 200). **O banco já está no estado do
-PR; o `main` ainda não:** até o merge, não rodar `npm test` com banco nem `npm run seed` a partir do `main`
-(ainda esperam funções que saíram). **Não verificado:** `npm run seed -- --aplicar` nunca rodou ponta a
-ponta — a 1ª execução real é do Yan e dispara os alarmes de carga.
+destrutiva **0286** (aplicada pelo Yan em TTY em 28/09, antes do merge) apagou as 12 funções do caminho
+legado e `audit.ingestao_log`. Banco e `main` voltaram a concordar. **Não verificado:** `npm run seed --
+--aplicar` nunca rodou ponta a ponta — a 1ª execução real é do Yan e dispara os alarmes de carga.
+
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.0.1** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-0-1`,
+> que mora na mesma worktree). As fixtures do oráculo já foram salvas fora do repo (abaixo). Da raiz
+> (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/fix-v6-0-1-destrutiva --force
+> git worktree prune
+> git branch -d fix/v6-0-1-destrutiva docs/pos-merge-v6-0-1
+> ```
+> Se o `pull` abortar por colisão de untracked, conferir contra o `origin/main` (`show` + `diff`) antes de
+> mover o arquivo; nunca `reset`.
 
 > 🔴 **Yan — uma fixture do oráculo se perdeu: `demonstrativo-cru.xlsx` de 21/09.** `tests/fixtures/ingestao/`
 > é gitignorado (Vendas cru tem CPF/CNPJ) e só existia na worktree da v6.0.0, removida no pós-merge. Em
@@ -33,10 +44,13 @@ ponta — a 1ª execução real é do Yan e dispara os alarmes de carga.
 > porque o corpo do `describe` lê o arquivo na coleta. Saídas: achar o anexo de 21/09 (e-mail, OneDrive)
 > e rodar `JANUS_ANEXOS_DIRS=… node scripts/ingestao/fixtures.mjs`, ou decidir trocar o manifesto do
 > Demonstrativo para o export de 28/09 (o que está em produção hoje).
+> **As 11 recompostas estão salvas FORA do repo** em `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`
+> (sha256 conferido contra o manifesto em 28/09). Numa worktree nova:
+> `JANUS_ANEXOS_DIRS=~/projects/arquivo-worktrees-janus/fixtures-ingestao node scripts/ingestao/fixtures.mjs`.
 
 ---
 
-## Em produção — v6.0.0 "Fundação da ingestão" (PR #279, mergeado 28/09 às 09:43)
+## v6.0.0 "Fundação da ingestão" (PR #279, mergeado 28/09 às 09:43) — o que ela deixou em aberto
 
 Tudo o que a versão fez, provou e decidiu: out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-0-0_Fundacao_Ingestao.md` e anexos `docs/briefings/anexo-v6-0-0-*.md`.
@@ -108,7 +122,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v6.0.0** (PR #279, mergeado 28/09 às 09:43) · banco na **0286** (v6.0.1 aplicada antes do merge, PR #281) |
+| Produção | **v6.0.1** (PR #281, mergeado 28/09 às 12:40) · banco na **0286** |
 | Última migration aplicada | **0286** (v6.0.1 — DESTRUTIVA, apaga o caminho legado de carga) · próxima livre: **0287** |
 | Último ADR | **0178** (v6.0.0 — baseline de schema versionado) · próximo livre: **0179** |
 | Suíte | **1.633 verdes + 6 skipped**, 99 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.0.1, 28/09 |
