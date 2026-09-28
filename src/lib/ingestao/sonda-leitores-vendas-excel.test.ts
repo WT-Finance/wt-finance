@@ -14,11 +14,13 @@ import { describe, it, expect } from 'vitest'
 // `raw.vendas_excel` diretamente e não estão na lista fechada — é o estado esperado ANTES da
 // migration ser empurrada, não um defeito desta sonda.
 //
-// `public.inserir_lote_raw(jsonb)`, `public.promover_carga_vendas()` (assinatura zero-arg),
-// `public.validar_carga_staging()` e `public.truncate_dynamic_tables()` são LEGADO previsto para
-// sair no GATE 3 (M10, skill ingestao-planilhas §5 — "RPCs do caminho destrutivo antigo... só
-// porque `npm run seed` ainda as usa"). Quando saírem, a lista fechada ABAIXO encolhe junto —
-// não é para "já tirar agora" nesta sonda, que só enumera o que está vivo hoje no catálogo.
+// `public.inserir_lote_raw(jsonb)`, a `public.promover_carga_vendas()` zero-arg e
+// `public.truncate_dynamic_tables()` são o LEGADO que a migration destrutiva 0286 (v6.0.1)
+// apaga. FICAM na lista fechada até a 0286 estar aplicada: antes do DROP elas existem e citam a
+// tabela, e tirá-las antes deixaria a sonda vermelha (entrada da lista que não existe no
+// catálogo é inofensiva; objeto que existe e não está na lista reprova). Saem da lista no commit
+// pós-aplicação, junto com o `database.ts` regenerado. `public.validar_carga_staging()` FICA de
+// vez — não é alvo da 0286 (compara a staging contra a base viva, e segue viva no pipeline).
 //
 // O PADRÃO de busca casa `raw\.vendas_excel` seguido de FIM-DE-PALAVRA (não `[a-z0-9_]`), não
 // substring solta — sem isso, `raw.vendas_excel_staging` (um nome DIFERENTE) casaria também, e
@@ -50,17 +52,17 @@ const ON = Boolean(DB_URL)
  */
 const OBJETOS_LEGITIMOS: Record<string, string> = {
   'public.inserir_lote_raw(jsonb)':
-    'INSERT INTO raw.vendas_excel — carregador do caminho LEGADO (0107); só `npm run seed` chama (skill ingestao-planilhas §5); candidato a sair no GATE 3 (M10)',
+    'INSERT INTO raw.vendas_excel — carregador do caminho LEGADO (0107); sai na 0286 (v6.0.1) — remover desta lista depois de aplicada',
+  'public.truncate_dynamic_tables()':
+    'TRUNCATE ... raw.vendas_excel — LEGADO (0035); sai na 0286 (v6.0.1) — remover desta lista depois de aplicada',
+  'public.promover_carga_vendas()':
+    'TRUNCATE + INSERT INTO raw.vendas_excel a partir da staging — assinatura ZERO-ARG LEGADA (0135); sai na 0286 (v6.0.1) — remover desta lista depois de aplicada',
   'public.inserir_lote_staging(jsonb)':
     'só toca raw.vendas_excel_staging (nunca a tabela crua) — declarado por ser o mesmo pipeline; não deve aparecer na enumeração hoje',
   'public.limpar_staging_vendas()':
     'só toca raw.vendas_excel_staging (nunca a tabela crua) — declarado por ser o mesmo pipeline; não deve aparecer na enumeração hoje',
   'public.validar_carga_staging()':
-    'compara o preenchimento de operacao_propria da staging contra a base viva (`FROM raw.vendas_excel`, 0135) — LEGADO previsto para sair no GATE 3 (M10)',
-  'public.truncate_dynamic_tables()':
-    'TRUNCATE ... raw.vendas_excel — só `npm run seed` chama (0035); LEGADO previsto para sair no GATE 3 (M10)',
-  'public.promover_carga_vendas()':
-    'TRUNCATE + INSERT INTO raw.vendas_excel a partir da staging — assinatura ZERO-ARG LEGADA (0135); só o seed chama; candidata a sair no GATE 3 (M10)',
+    'compara o preenchimento de operacao_propria da staging contra a base viva (`FROM raw.vendas_excel`, 0135) — segue viva no pipeline (não é apagada pela 0286)',
   'public.promover_carga_vendas(jsonb, uuid)':
     'TRUNCATE + INSERT INTO raw.vendas_excel, mais FROM raw.vendas_excel r (checksum pós-gravação) — assinatura NOVA do pipeline vivo (0278, v6.0.0/M5)',
   'analytics.vendas_excel_para_fato':

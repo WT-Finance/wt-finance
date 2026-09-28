@@ -710,15 +710,15 @@ async function verificadorTemExecute(assinatura: string): Promise<boolean | null
 }
 
 describe.skipIf(!ON || !process.env.SUPABASE_DB_URL)('GATE 2 — a credencial de verificação NÃO escreve nem administra (v6.0.0/M1)', () => {
-  // As funções do incidente (WORKING-CONTEXT: 10 tabelas zeradas). Assinaturas completas —
-  // grant e privilégio são por assinatura, não por nome.
+  // A lista nasceu com as funções do incidente (WORKING-CONTEXT: 10 tabelas zeradas) e outras
+  // escritas do legado: as `truncar_*`, `truncate_dynamic_tables` e a `promover_carga_vendas()`
+  // zero-arg — todas apagadas pela migration destrutiva 0286 (v6.0.1). Saíram desta lista
+  // (função inexistente não é caso de
+  // "sem EXECUTE", é caso de "não existe"; `it.each` reprovaria com `assinatura mudou?`).
+  // O que fica prova a mesma coisa (verificador não escreve) contra funções de escrita que
+  // CONTINUAM no catálogo. Assinaturas completas — grant e privilégio são por assinatura, não
+  // por nome.
   const ESCRITA = [
-    'public.truncar_lancamentos()',
-    'public.truncar_lancamentos_movimentacao()',
-    'public.truncar_titulos_em_aberto()',
-    'public.truncar_demonstrativo_competencia()',
-    'public.truncate_dynamic_tables()',
-    'public.promover_carga_vendas()',
     'public.promover_carga_pessoas()',
     'public.limpar_staging_vendas()',
     'public.limpar_staging_pessoas()',
@@ -920,12 +920,15 @@ describe.skipIf(!ON || !ANON)('contrato RBAC — guards e revogações (v4.13)',
   })
 
   it('mutações destrutivas INACESSÍVEIS a anon (revogação dura)', async () => {
-    // Caminho antigo (coexiste) + pipeline atômico (0116/0118, usado pelo caminho real
-    // da UI via service role): TODAS service_role-only → anon negado (v4.15.0/F2-real).
-    const comLinhas = new Set(['inserir_lote_raw', 'inserir_lote_staging'])
+    // Pipeline atômico (0116/0118, usado pelo caminho real da UI via service role): TODAS
+    // service_role-only → anon negado (v4.15.0/F2-real). `truncate_dynamic_tables`,
+    // `inserir_lote_raw` e a `promover_carga_vendas()` zero-arg saíram desta lista — apagadas
+    // pela migration destrutiva 0286 (v6.0.1); chamar um nome que não existe mais viraria 404
+    // (função ausente), não a negação de acesso que este caso prova. O que fica continua vivo
+    // no catálogo e continua sendo o caminho real do pipeline de Vendas.
+    const comLinhas = new Set(['inserir_lote_staging'])
     for (const fn of [
-      'truncate_dynamic_tables', 'inserir_lote_raw',
-      'limpar_staging_vendas', 'inserir_lote_staging', 'validar_carga_staging', 'promover_carga_vendas',
+      'limpar_staging_vendas', 'inserir_lote_staging', 'validar_carga_staging',
     ]) {
       const status = await rpcAnonStatus(fn, comLinhas.has(fn) ? { p_linhas: [] } : {})
       expect(status, `${fn} deveria estar revogada para anon`).toBeGreaterThanOrEqual(400)

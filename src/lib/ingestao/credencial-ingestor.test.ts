@@ -5,8 +5,9 @@ import { tokenMaquina, credencialConfigurada } from '@/lib/auth/credencial-maqui
 // A role `ingestor` (0274) só tem EXECUTE no pipeline staging → promoção (allowlist derivada
 // de `rpcs-ingestor.ts`). Aqui a barreira é VISTA negando — não basta o catálogo dizer:
 //   (1) leitura de negócio (`get_dre_mensal`) ⇒ 4xx;
-//   (2) `truncar_*` de base viva ⇒ sem privilégio no catálogo E 4xx via REST (pré-cheque no
-//       catálogo ANTES da chamada: se a role tivesse EXECUTE, chamar seria o incidente);
+//   (2) escrita de base que NÃO é do pipeline do ingestor (`promover_carga_pessoas`) ⇒ sem
+//       privilégio no catálogo E 4xx via REST (pré-cheque no catálogo ANTES da chamada: se a
+//       role tivesse EXECUTE, chamar seria o tipo de incidente que a allowlist estreita evita);
 //   (3) o que ela PODE: `validar_carga_staging` (só lê a staging) ⇒ 200.
 // A terceira alavanca (chave `x-api-key` revogada ⇒ 401) se prova na rota `/api/ingestao`
 // (M4), não aqui — esta credencial é o JWT, não a chave.
@@ -54,12 +55,12 @@ describe.skipIf(!ON)('GATE 2 — a credencial de ingestão NÃO lê nem trunca (
     expect(status).toBeLessThan(500)
   })
 
+  // As `truncar_*`/`truncate_dynamic_tables` saíram desta lista negativa — apagadas pela
+  // migration destrutiva 0286 (v6.0.1). `promover_carga_pessoas()` fica como o exemplo REAL
+  // que sustenta a prova: existe no catálogo, é service_role-only, e Pessoas não é uma das
+  // cinco bases migradas ao pipeline do `ingestor` (RPCS_INGESTOR em rpcs-ingestor.ts) — então
+  // a allowlist estreita segue provada contra uma função de escrita que continua viva.
   it.each([
-    'public.truncar_lancamentos()',
-    'public.truncar_lancamentos_movimentacao()',
-    'public.truncar_titulos_em_aberto()',
-    'public.truncar_demonstrativo_competencia()',
-    'public.truncate_dynamic_tables()',
     'public.promover_carga_pessoas()',
   ])('%s: sem EXECUTE no catálogo E negada via REST', async (assinatura) => {
     const tem = await temExecute(assinatura)
@@ -72,7 +73,11 @@ describe.skipIf(!ON)('GATE 2 — a credencial de ingestão NÃO lê nem trunca (
   })
 
   it('o que ela PODE: o pipeline de Vendas tem EXECUTE no catálogo', async () => {
-    for (const a of ['public.limpar_staging_vendas()', 'public.inserir_lote_staging(jsonb)', 'public.validar_carga_staging()', 'public.promover_carga_vendas()']) {
+    // `promover_carga_vendas(jsonb, uuid)` — a sobrecarga NOVA (0278), caminho real do
+    // pipeline atômico. A zero-arg (0116) saiu desta prova: é apagada pela migration
+    // destrutiva 0286 (v6.0.1), e a assinatura que o `ingestor` realmente usa (`aplicar.ts`
+    // chama com `{ p_checksums, p_carga_id }`) já é esta.
+    for (const a of ['public.limpar_staging_vendas()', 'public.inserir_lote_staging(jsonb)', 'public.validar_carga_staging()', 'public.promover_carga_vendas(jsonb, uuid)']) {
       expect(await temExecute(a), `${a} deveria estar na allowlist do ingestor`).toBe(true)
     }
   })
