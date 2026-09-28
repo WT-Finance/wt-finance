@@ -349,6 +349,9 @@ $function$
 REVOKE ALL ON FUNCTION public.promover_carga_vendas() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.promover_carga_vendas() TO ingestor;
 GRANT EXECUTE ON FUNCTION public.promover_carga_vendas() TO service_role;
+-- COMMENT vivo (obj_description) — a única das 12 funções que tinha comentário no catálogo; a
+-- tabela e as colunas de audit.ingestao_log não têm nenhum (conferido em 28/09).
+COMMENT ON FUNCTION public.promover_carga_vendas() IS 'Promove a staging de Vendas para as tabelas finais (jsonb com contagens). SEM exigir_acesso no corpo POR DESENHO: é RPC de carga, protegida por GRANT — só service_role executa. Abre com pg_advisory_xact_lock(4017001), que serializa limpar→inserir→promover e impede interleave de dois uploads concorrentes (0135). Promove TUDO o que está na staging: a staging é volume total, não incremental.';
 
 -- ═════ public.truncate_dynamic_tables()  dono=postgres  acl=postgres=X/postgres service_role=X/postgres
 CREATE OR REPLACE FUNCTION public.truncate_dynamic_tables()

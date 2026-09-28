@@ -9,7 +9,34 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-28 (pós-merge da v6.0.0).
+Última atualização: 2026-09-28 (v6.0.1 em voo — destrutiva 0286 aguardando o TTY do Yan).
+
+---
+
+## Em voo — v6.0.1 "Seeds no caminho único + destrutiva do legado" (branch `fix/v6-0-1-destrutiva`)
+
+Spec aprovada: `docs/briefings/spec-v6-0-1-seeds-e-destrutiva.md`. Feito e commitado: o `npm run seed`
+virou cliente do contrato de ingestão v1 (0811644 — default CONFERÊNCIA, `--aplicar` substitui a base
+em produção; `seed-fluxo-caixa.ts`, `parse-excel.ts` e `carregarLancamentos` saíram), os testes que
+exigiam o legado (b04baff) e a destrutiva **0286** (f011b78), **em `supabase/patches/`, fora de
+`migrations/`**. Conferência do seed contra produção em 28/09: 5 bases `conferida`, diff 0, foto do banco
+idêntica antes e depois. 0286 ensaiada em transação revertida; `revisor` e `revisor-db` sem CRÍTICO.
+
+> 🔴 **Yan — aplicar a 0286 em TTY** (roteiro no header do arquivo: `migration list` → `mv` para
+> `supabase/migrations/` → `migration list` → `npm run db:migrate -- --destrutiva`). Depois, a sessão
+> regenera `database.ts` + baseline, tira as 3 chaves do legado da sonda de `raw.vendas_excel`, roda a
+> suíte e fecha a versão. **Entre o DROP e o merge**, `npm test` com banco a partir do `main` fica
+> vermelho (o `main` ainda espera funções que saíram) e o `npm run seed` do `main` falha — não rodar
+> nenhum dos dois do `main` nesse intervalo.
+
+> 🔴 **Yan — as fixtures do oráculo sumiram.** `tests/fixtures/ingestao/` é gitignorado (Vendas cru tem
+> CPF/CNPJ) e só existia na worktree da v6.0.0, removida no pós-merge; nas pastas do Windows os exports
+> de 21/09 de Vendas (3 crus), Demonstrativo, Movimentação e Aberto foram sobrescritos, e a
+> `Lista de Operações.csv` não foi achada. Resultado: os 4 `oraculo-*.test.ts` falham com ENOENT antes de
+> rodar qualquer caso (o resto da suíte: 1.578 verdes). Se os anexos de 21/09 existirem em outro lugar
+> (e-mail, OneDrive, versão anterior), `JANUS_ANEXOS_DIRS=… node scripts/ingestao/fixtures.mjs` os
+> recupera e confere o sha256; senão, é decidir se o oráculo passa a usar os exports de 28/09 (novo
+> manifesto).
 
 ---
 
@@ -33,33 +60,18 @@ grava em produção (1ª execução `ok` do `monde-incremental` às 12:45 UTC, d
 - ✅ Data do changelog da diretoria reconciliada ao merge real (28/09 09:43).
 
 > 🔴 **Pós-merge da v6.0.0 — o que falta, e de quem:**
-> 1. **Yan — sincronizar a raiz e remover a worktree da v6** (a sessão não alcança o checkout
->    compartilhado, protocolo D5). Comandos no fim desta seção.
+> 1. ✅ Worktree da v6.0.0 removida (conferido em 28/09).
 > 2. **Yan — confirmar `SUPABASE_INGESTOR_SENHA` no ambiente Production da Vercel.** Sem ela a carga
 >    LANÇA por desenho (fail-closed). A sessão não consegue ler as envs (403).
-> 3. **Yan — recarregar Lançamentos por Operação** pelo card de produção (o cru de 25/09 ficou com o
->    texto "NA"; o fato está certo). **Antes, no MESMO dia, recarregar Vencimento em aberto** — o grafo
->    exige Aberto aplicado no dia; a carga de 25/09 não vale mais.
+> 3. ✅ Aberto e Operação recarregados no mesmo dia pelo card (28/09 13:46 e 13:50 UTC), junto das outras três bases.
 > 4. **Sessão, depois da 1ª execução OK de cada um:** ligar as expectativas `monde-reconciliacao` (roda
 >    06:05 UTC — a partir de 29/09) e `cdi-mensal` (dia 3 — a partir de 03/10), com
 >    `ingestao_expectativa_definir('<processo>', true)`. As das bases, só quando a RPA existir.
 > 5. **Yan decide — ligar a limpeza do cru** (`SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE
 >    jobname = 'ingestao-retencao'), active := true);`, como `postgres`). A partir de 01/10 ela apaga as
 >    cópias órfãs e, a partir de 25/12, os crus de mais de 3 meses. Depois de ligar: `npm run db:baseline`.
-> 6. **Abrir a v6.0.1** — a destrutiva (GATE 3, TTY do Yan). Lista e provas exigidas no out-briefing §3;
->    `truncate_dynamic_tables` fica fora (o seed a usa).
->
-> Comandos do item 1, **da raiz** (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-0-0-fundacao-ingestao --force
-> git worktree prune
-> git branch -d feat/v6-0-0-fundacao-ingestao
-> ```
-> Se o `pull` abortar por colisão de untracked em `docs/briefings/briefing-v6-0-0-fundacao-ingestao.md`, é o
-> modo de falha conhecido do ritual: conferir que é idêntico ao do `origin/main` (`show` + `diff`),
-> mover para fora do repo e só então puxar. Nunca `reset`. A worktree só sai depois que o PR de docs do
-> pós-merge (esta branch, `docs/pos-merge-v6-0-0`) estiver mergeado.
+> 6. ✅ v6.0.1 aberta — ver "Em voo" acima. (O out-briefing da v6.0.0 dizia que `truncate_dynamic_tables`
+>    ficaria fora por causa do seed; o seed migrou na própria v6.0.1, e ela entra na 0286.)
 
 > 🔴 **Decisões e conversas do Yan que a v6.0.0 deixou** (detalhe no out-briefing §12; backlog B-31 a B-36):
 > cartas de crédito com vencimento 2049 (convenção de "sem prazo"? — com a gerente) · pipeline de

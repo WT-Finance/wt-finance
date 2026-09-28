@@ -90,6 +90,10 @@ auto-auditoria descobriu que `npm run seed` ainda as consumia — só `admin_def
 era de fato órfã. `DROP` é destrutivo: exige confirmação + reversibilidade documentada (corpo
 salvo na migration de origem).
 
+(Atualização v6.0.1: essa dupla deixou de ter dono depois que o `seed` migrou para o contrato de
+ingestão v1 — a migration destrutiva **0286** as apaga, junto do resto do caminho legado; skill
+`ingestao-planilhas` §5.)
+
 ### A confirmação destrutiva vive no WRAPPER, e EOF ABORTA (ADR-0131)
 
 `migrate.mjs` pede a confirmação ele mesmo — não delega mais ao prompt nativo do `db push`
@@ -170,10 +174,13 @@ garantia.
 **fixo** (era 2024–2030; estendida para 2022–2030 na migration 0100). Subir Vendas com datas
 FORA do range faz `transform_raw_to_analytics` abortar em `fato_venda_data_venda_fkey`.
 
-**Pior:** o upload roda `truncate_dynamic_tables` (CASCADE) **ANTES** do transform — se o
-transform falha, `fato_venda` fica **VAZIA em produção** (os dados crus sobrevivem em
-`raw.vendas_excel`, então nada se perde de verdade, mas a base fica inconsistente até
-recuperar).
+**Pior (caminho legado, antes da v6.0.0):** o upload rodava `truncate_dynamic_tables` (CASCADE)
+**ANTES** do transform — se o transform falhasse, `fato_venda` ficava **VAZIA em produção** (os
+dados crus sobreviviam em `raw.vendas_excel`, então nada se perdia de verdade, mas a base ficava
+inconsistente até recuperar). **Desde a v6.0.0** a promoção de Vendas é `promover_carga_vendas`
+`(jsonb, uuid)` numa transação única (staging → validação → swap) — se a validação de data
+reprovar, nada é gravado e a base viva não é tocada; o sintoma abaixo (erro de FK ligado à
+`dim_data`) e a recuperação continuam valendo do mesmo jeito.
 
 **Regra de recuperação (sem re-upload):** estender `dim_data` com uma migration
 (`generate_series` + mesma derivação do seed `0002`, `ON CONFLICT (data) DO NOTHING`) e então
@@ -218,7 +225,7 @@ papel **não** define `statement_timeout`, cai no default do banco (**120s**).
 Esse orçamento de 8s também está no checklist do `revisor-db` (é um dos itens espelhados
 inline, ver nota D-12 no topo).
 
-### Fuso: app roles em `America/Sao_Paulo`; `postgres` (migrations/seed) em UTC
+### Fuso: app roles em `America/Sao_Paulo`; `postgres` (migrations) em UTC
 
 A sessão **padrão** do Postgres/Supabase é UTC, mas os papéis que o PostgREST usa por
 requisição — `anon`/`authenticated`/`service_role` — têm `timezone = 'America/Sao_Paulo'` no
@@ -231,10 +238,15 @@ Antes da 0152 era UTC, e o "hoje" adiantava um dia a partir de ~21h de SP (sinto
 projeção do Gerencial começava em "amanhã" — fix pontual na migration 0151, depois sistêmico
 na 0152).
 
-**Exceção que importa:** `postgres` **NÃO** foi alterado — **migrations e `npm run seed`
-rodam como `postgres`, em UTC**. Se uma migration/seed precisar do "hoje" de SP num
-`UPDATE`/backfill/`generate_series`, usar `(now() AT TIME ZONE 'America/Sao_Paulo')::date`
-explícito — `CURRENT_DATE` cru dentro de uma migration ainda é UTC.
+**Exceção que importa:** `postgres` **NÃO** foi alterado — **migrations rodam como `postgres`,
+em UTC**. Se uma migration precisar do "hoje" de SP num `UPDATE`/backfill/`generate_series`, usar
+`(now() AT TIME ZONE 'America/Sao_Paulo')::date` explícito — `CURRENT_DATE` cru dentro de uma
+migration ainda é UTC.
+
+**`npm run seed` deixou de estar nessa exceção desde a v6.0.1.** O seed não abre mais conexão
+direta com o Postgres (não usa `SUPABASE_DB_URL`); ele chama `processarCarga` pelo mesmo caminho
+de RPC que a rota `/api/ingestao/{base}` usa — como app role (`ingestor`), em fuso **SP**, igual a
+qualquer chamada do app. Só migration continua em UTC.
 
 Para **exibição** de `timestamptz` no app a regra de sempre continua valendo:
 `fmtDataSP`/`Intl` com `timeZone`, nunca split de string — o fuso do role muda só o **offset**
@@ -396,7 +408,9 @@ se auto-desativar nem para tirar o próprio acesso a `admin/acessos`.
 - **Antes de `DROP` de qualquer objeto, verificar consumidores reais** (grep no app **e** em
   `supabase/seed/`, mais uma auditoria cética). "Órfão" pelo briefing não é garantia — ver o
   precedente da v4.17.1 na seção 1. `DROP` é destrutivo: confirmação + reversibilidade
-  documentada (corpo salvo na migration de origem).
+  documentada (corpo salvo na migration de origem). (A dupla daquele precedente,
+  `truncate_dynamic_tables`/`inserir_lote_raw`, virou de fato órfã na v6.0.1 depois que o `seed`
+  migrou para o contrato de ingestão v1 — apagada pela 0286.)
 
 ### A varredura de orfandade inclui `docs/runbooks/` e `docs/adr/` (v5.10.0)
 
