@@ -4777,82 +4777,6 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
-    "public.inserir_lote_demonstrativo_competencia(jsonb)": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "1be210174d038adf0bb50a2bf80e7cde4f668df5d7dbf375049a09c1e0c59e01",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.inserir_lote_lancamentos(jsonb)": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "0d1aa2ce06da91f0c9bdebafb47850135e2d149d8324307c0048035ed50e5f91",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "integer",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.inserir_lote_lancamentos_movimentacao(jsonb)": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "5751842a14863fb324db0aecce41c4d6913c0002bf548d4f83f27c25a2d753bf",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.inserir_lote_raw(jsonb)": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "c17ff9cd9de230bd4507f1fbfce1394f33ad0b0b80e8f2abcd07d08f507f42bb",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
     "public.inserir_lote_staging(jsonb)": {
       "acl": {
         "ingestor": {
@@ -4974,25 +4898,6 @@
       },
       "dono": "postgres",
       "hash_corpo": "06f3c4b48dccc1ae2e96e79aa6e2db201394dd5329ab4b744ea66130a0e841b9",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.inserir_lote_titulos_em_aberto(jsonb)": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "82ca9d3ee236b48b7fbcb0373d4b4e603dd94a79ddd250dad0599f6c37ecd5fe",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -5907,28 +5812,6 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
-    "public.promover_carga_vendas()": {
-      "acl": {
-        "ingestor": {
-          "EXECUTE": false
-        },
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "91163f71449669ab5cc889cbc9abb45685ab846b5a54e58b805fc5d5bc9ce765",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "jsonb",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
     "public.promover_carga_vendas(jsonb, uuid)": {
       "acl": {
         "ingestor": {
@@ -6112,25 +5995,6 @@
         "search_path=\"\""
       ],
       "retorno": "jsonb",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.registrar_ingestao_log(text, text, integer, text)": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "77456bc8d9843ae4e879578b6dbd17a0a7c384129ef0aaf07d35c790af5ec0de",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
@@ -6794,101 +6658,6 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
-    "public.truncar_demonstrativo_competencia()": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "f35fb208e6c148169fba10be21b345424d726f86a612d6e896ee195581fc3e77",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.truncar_lancamentos()": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "e78e855b64b0a9610aaaf86bbff555bc34f36a6d740e2921ded10db82a0a5ead",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.truncar_lancamentos_movimentacao()": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "e065ae3eba0f23ff83eb3affd3f0ac8ca370bfea6863e01a478136adb90d6786",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.truncar_titulos_em_aberto()": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "a4ddb8219c836080c1c9dfe01af49a6666ed0e0299c6402d14e9dfcb1059259a",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
-    "public.truncate_dynamic_tables()": {
-      "acl": {
-        "postgres": {
-          "EXECUTE": false
-        },
-        "service_role": {
-          "EXECUTE": false
-        }
-      },
-      "dono": "postgres",
-      "hash_corpo": "874053b671b838dd5ec62d5984e3a7d63798e44a56c7f8cdfc813be043afdf34",
-      "linguagem": "plpgsql",
-      "proconfig": [
-        "search_path=\"\""
-      ],
-      "retorno": "void",
-      "security_definer": true,
-      "volatilidade": "VOLATILE"
-    },
     "public.update_gerencial_conta(text, jsonb)": {
       "acl": {
         "authenticated": {
@@ -7149,7 +6918,6 @@
         "public.promover_carga_demonstrativo(jsonb, uuid)",
         "public.promover_carga_movimentacao(jsonb, uuid)",
         "public.promover_carga_operacao(jsonb, uuid)",
-        "public.promover_carga_vendas()",
         "public.promover_carga_vendas(jsonb, uuid)",
         "public.validar_carga_aberto()",
         "public.validar_carga_demonstrativo()",
@@ -10911,94 +10679,6 @@
       "indices": {
         "usuarios_email_key": "CREATE UNIQUE INDEX usuarios_email_key ON app.usuarios USING btree (email)",
         "usuarios_pkey": "CREATE UNIQUE INDEX usuarios_pkey ON app.usuarios USING btree (id)"
-      },
-      "policies": {},
-      "rls_forcado": false,
-      "rls_habilitado": true,
-      "tipo": "tabela",
-      "triggers": {}
-    },
-    "audit.ingestao_log": {
-      "acl": {
-        "postgres": {
-          "DELETE": false,
-          "INSERT": false,
-          "MAINTAIN": false,
-          "REFERENCES": false,
-          "SELECT": false,
-          "TRIGGER": false,
-          "TRUNCATE": false,
-          "UPDATE": false
-        },
-        "service_role": {
-          "DELETE": false,
-          "INSERT": false,
-          "MAINTAIN": false,
-          "REFERENCES": false,
-          "SELECT": false,
-          "TRIGGER": false,
-          "TRUNCATE": false,
-          "UPDATE": false
-        }
-      },
-      "colunas": {
-        "erro_mensagem": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": false,
-          "tipo": "text"
-        },
-        "finalizado_em": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": false,
-          "tipo": "timestamp with time zone"
-        },
-        "fonte": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "text"
-        },
-        "id": {
-          "default": "nextval('audit.ingestao_log_id_seq'::regclass)",
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "bigint"
-        },
-        "iniciado_em": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "timestamp with time zone"
-        },
-        "registros_processados": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": false,
-          "tipo": "integer"
-        },
-        "status": {
-          "default": null,
-          "generated": null,
-          "identity": null,
-          "not_null": true,
-          "tipo": "text"
-        }
-      },
-      "constraints": {
-        "ingestao_log_pkey": "PRIMARY KEY (id)",
-        "ingestao_log_status_check": "CHECK (status = ANY (ARRAY['sucesso'::text, 'falha'::text, 'em_progresso'::text]))"
-      },
-      "dono": "postgres",
-      "indices": {
-        "ingestao_log_pkey": "CREATE UNIQUE INDEX ingestao_log_pkey ON audit.ingestao_log USING btree (id)"
       },
       "policies": {},
       "rls_forcado": false,
@@ -15513,7 +15193,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0285",
+  "ultima_migration": "0286",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

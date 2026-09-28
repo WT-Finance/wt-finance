@@ -15,12 +15,10 @@ import { describe, it, expect } from 'vitest'
 // migration ser empurrada, não um defeito desta sonda.
 //
 // `public.inserir_lote_raw(jsonb)`, a `public.promover_carga_vendas()` zero-arg e
-// `public.truncate_dynamic_tables()` são o LEGADO que a migration destrutiva 0286 (v6.0.1)
-// apaga. FICAM na lista fechada até a 0286 estar aplicada: antes do DROP elas existem e citam a
-// tabela, e tirá-las antes deixaria a sonda vermelha (entrada da lista que não existe no
-// catálogo é inofensiva; objeto que existe e não está na lista reprova). Saem da lista no commit
-// pós-aplicação, junto com o `database.ts` regenerado. `public.validar_carga_staging()` FICA de
-// vez — não é alvo da 0286 (compara a staging contra a base viva, e segue viva no pipeline).
+// `public.truncate_dynamic_tables()` eram o LEGADO que também citava a tabela; a migration
+// destrutiva 0286 (v6.0.1, aplicada em 28/09) os apagou e eles saíram da lista fechada.
+// `public.validar_carga_staging()` FICA — não era alvo da 0286 (compara a staging contra a base
+// viva, e segue viva no pipeline).
 //
 // O PADRÃO de busca casa `raw\.vendas_excel` seguido de FIM-DE-PALAVRA (não `[a-z0-9_]`), não
 // substring solta — sem isso, `raw.vendas_excel_staging` (um nome DIFERENTE) casaria também, e
@@ -51,12 +49,6 @@ const ON = Boolean(DB_URL)
  * chave nunca bater — ou `schema.nome` para view/matview.
  */
 const OBJETOS_LEGITIMOS: Record<string, string> = {
-  'public.inserir_lote_raw(jsonb)':
-    'INSERT INTO raw.vendas_excel — carregador do caminho LEGADO (0107); sai na 0286 (v6.0.1) — remover desta lista depois de aplicada',
-  'public.truncate_dynamic_tables()':
-    'TRUNCATE ... raw.vendas_excel — LEGADO (0035); sai na 0286 (v6.0.1) — remover desta lista depois de aplicada',
-  'public.promover_carga_vendas()':
-    'TRUNCATE + INSERT INTO raw.vendas_excel a partir da staging — assinatura ZERO-ARG LEGADA (0135); sai na 0286 (v6.0.1) — remover desta lista depois de aplicada',
   'public.inserir_lote_staging(jsonb)':
     'só toca raw.vendas_excel_staging (nunca a tabela crua) — declarado por ser o mesmo pipeline; não deve aparecer na enumeração hoje',
   'public.limpar_staging_vendas()':

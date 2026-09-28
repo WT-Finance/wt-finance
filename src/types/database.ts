@@ -796,16 +796,6 @@ export type Database = {
       ingestao_vigia_definir: { Args: { p_ativo: boolean }; Returns: Json }
       ingestao_vigia_estado: { Args: never; Returns: Json }
       inserir_cliente_corp: { Args: { p_dados: Json }; Returns: Json }
-      inserir_lote_demonstrativo_competencia: {
-        Args: { p_linhas: Json }
-        Returns: undefined
-      }
-      inserir_lote_lancamentos: { Args: { p_linhas: Json }; Returns: number }
-      inserir_lote_lancamentos_movimentacao: {
-        Args: { p_linhas: Json }
-        Returns: undefined
-      }
-      inserir_lote_raw: { Args: { p_linhas: Json }; Returns: undefined }
       inserir_lote_staging: { Args: { p_linhas: Json }; Returns: undefined }
       inserir_lote_staging_aberto: {
         Args: { p_linhas: Json }
@@ -824,10 +814,6 @@ export type Database = {
         Returns: undefined
       }
       inserir_lote_staging_pessoas: {
-        Args: { p_linhas: Json }
-        Returns: undefined
-      }
-      inserir_lote_titulos_em_aberto: {
         Args: { p_linhas: Json }
         Returns: undefined
       }
@@ -969,9 +955,10 @@ export type Database = {
         Returns: Json
       }
       promover_carga_pessoas: { Args: never; Returns: Json }
-      promover_carga_vendas:
-        | { Args: never; Returns: Json }
-        | { Args: { p_carga_id: string; p_checksums: Json }; Returns: Json }
+      promover_carga_vendas: {
+        Args: { p_carga_id: string; p_checksums: Json }
+        Returns: Json
+      }
       provisionar_dre_comp_par: { Args: never; Returns: Json }
       provisionar_dre_comp_par__nucleo: { Args: never; Returns: Json }
       rbac_verificar_guard: { Args: { p_area?: string }; Returns: string }
@@ -980,15 +967,6 @@ export type Database = {
       regenerar_fluxo_caixa: { Args: never; Returns: Json }
       registrar_email: { Args: { p_dados: Json }; Returns: Json }
       registrar_emissao: { Args: { p_dados: Json }; Returns: Json }
-      registrar_ingestao_log: {
-        Args: {
-          p_erro?: string
-          p_fonte: string
-          p_registros?: number
-          p_status: string
-        }
-        Returns: undefined
-      }
       registrar_nota: { Args: { p_dados: Json }; Returns: Json }
       reordenar_gerencial_contas: {
         Args: { p_contas: string[] }
@@ -1034,11 +1012,6 @@ export type Database = {
       status_pessoas: { Args: never; Returns: Json }
       status_titulos_em_aberto: { Args: never; Returns: Json }
       transform_raw_to_analytics: { Args: never; Returns: Json }
-      truncar_demonstrativo_competencia: { Args: never; Returns: undefined }
-      truncar_lancamentos: { Args: never; Returns: undefined }
-      truncar_lancamentos_movimentacao: { Args: never; Returns: undefined }
-      truncar_titulos_em_aberto: { Args: never; Returns: undefined }
-      truncate_dynamic_tables: { Args: never; Returns: undefined }
       update_gerencial_conta: {
         Args: { p_conta: string; p_updates: Json }
         Returns: boolean
