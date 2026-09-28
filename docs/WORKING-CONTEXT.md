@@ -9,27 +9,19 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-28 (v6.0.1 em voo — destrutiva 0286 aguardando o TTY do Yan).
+Última atualização: 2026-09-28 (v6.0.1 fechada — PR #281 aguardando merge; 0286 já aplicada).
 
 ---
 
-## Em voo — v6.0.1 "Seeds no caminho único + destrutiva do legado" (branch `fix/v6-0-1-destrutiva`)
+## Aguardando merge — v6.0.1 "Seeds no caminho único + destrutiva do legado" (PR #281)
 
-Spec aprovada: `docs/briefings/spec-v6-0-1-seeds-e-destrutiva.md`. Feito e commitado: o `npm run seed`
-virou cliente do contrato de ingestão v1 (0811644 — default CONFERÊNCIA, `--aplicar` substitui a base
-em produção; `seed-fluxo-caixa.ts`, `parse-excel.ts` e `carregarLancamentos` saíram), os testes que
-exigiam o legado (b04baff) e a destrutiva **0286** (f011b78), **em `supabase/patches/`, fora de
-`migrations/`**. Conferência do seed contra produção em 28/09: 5 bases `conferida`, diff 0, foto do banco
-idêntica antes e depois. 0286 ensaiada em transação revertida; `revisor` e `revisor-db` sem CRÍTICO.
-**Não verificado:** o caminho `--aplicar` do seed nunca rodou ponta a ponta (só a conferência) — a 1ª
-execução real é do Yan, num dia em que substituir as bases seja a intenção; ela dispara os alarmes de carga.
-
-> 🔴 **Yan — aplicar a 0286 em TTY** (roteiro no header do arquivo: `migration list` → `mv` para
-> `supabase/migrations/` → `migration list` → `npm run db:migrate -- --destrutiva`). Depois, a sessão
-> regenera `database.ts` + baseline, tira as 3 chaves do legado da sonda de `raw.vendas_excel`, roda a
-> suíte e fecha a versão. **Entre o DROP e o merge**, `npm test` com banco a partir do `main` fica
-> vermelho (o `main` ainda espera funções que saíram) e o `npm run seed` do `main` falha — não rodar
-> nenhum dos dois do `main` nesse intervalo.
+Out-briefing: `docs/briefings/WT_Finance_Out_Briefing_v6-0-1_Seeds_Destrutiva.md`. O `npm run seed` virou
+cliente do contrato de ingestão v1 (default CONFERÊNCIA; `--aplicar` substitui a base em produção) e a
+destrutiva **0286 foi aplicada pelo Yan em TTY em 28/09** — 12 funções do caminho legado e
+`audit.ingestao_log` saíram do banco (REST 404 nos 12; caminho vivo 200). **O banco já está no estado do
+PR; o `main` ainda não:** até o merge, não rodar `npm test` com banco nem `npm run seed` a partir do `main`
+(ainda esperam funções que saíram). **Não verificado:** `npm run seed -- --aplicar` nunca rodou ponta a
+ponta — a 1ª execução real é do Yan e dispara os alarmes de carga.
 
 > 🔴 **Yan — uma fixture do oráculo se perdeu: `demonstrativo-cru.xlsx` de 21/09.** `tests/fixtures/ingestao/`
 > é gitignorado (Vendas cru tem CPF/CNPJ) e só existia na worktree da v6.0.0, removida no pós-merge. Em
@@ -116,10 +108,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v6.0.0** (PR #279, mergeado 28/09 às 09:43) · banco na **0285** |
-| Última migration aplicada | **0285** (v6.0.0/M9 — Operação só converte número inteiro) · próxima livre: **0286** |
+| Produção | **v6.0.0** (PR #279, mergeado 28/09 às 09:43) · banco na **0286** (v6.0.1 aplicada antes do merge, PR #281) |
+| Última migration aplicada | **0286** (v6.0.1 — DESTRUTIVA, apaga o caminho legado de carga) · próxima livre: **0287** |
 | Último ADR | **0178** (v6.0.0 — baseline de schema versionado) · próximo livre: **0179** |
-| Suíte | **1.665 testes**, 99 arquivos, zero falha (fechamento da v6.0.0, 25/09) |
+| Suíte | **1.633 verdes + 6 skipped**, 99 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.0.1, 28/09 |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
