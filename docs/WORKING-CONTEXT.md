@@ -9,39 +9,54 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-25 (fechamento da v6.0.0, PR aberto).
+Última atualização: 2026-09-28 (pós-merge da v6.0.0).
 
 ---
 
-## Aguardando merge — v6.0.0 "Fundação da ingestão" (PR #279, aberto em 25/09)
+## Em produção — v6.0.0 "Fundação da ingestão" (PR #279, mergeado 28/09 às 09:43)
 
-Branch `feat/v6-0-0-fundacao-ingestao`, worktree `.claude/worktrees/feat-v6-0-0-fundacao-ingestao`.
-**Tudo o que a versão fez, provou e decidiu está no out-briefing**
-(`docs/briefings/WT_Finance_Out_Briefing_v6-0-0_Fundacao_Ingestao.md`) e nos anexos por missão
-(`docs/briefings/anexo-v6-0-0-*.md`). Contrato: `docs/contratos/ingestao-v1.md`. ADRs 0175–0178.
+Tudo o que a versão fez, provou e decidiu: out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-0-0_Fundacao_Ingestao.md` e anexos `docs/briefings/anexo-v6-0-0-*.md`.
+Deploy conferido em 28/09: `/api/ingestao/{vigia,retencao}` respondem 401 sem credencial,
+`/api/ingestao/{base}/upload-url` responde 405 a GET, `/admin/ingestao` pede login. O log de execução já
+grava em produção (1ª execução `ok` do `monde-incremental` às 12:45 UTC, dois minutos depois do merge).
 
-- **M0–M9 feitas**; migrations **0273–0285 aplicadas** sob o backup-gate; as **cinco cargas reais** rodaram
-  em 25/09 pela preview e foram conferidas contra produção (anexo M9). Produção JÁ tem os dados carregados
-  pelo caminho novo — o que falta é o CÓDIGO (rota, card, tela `/admin/ingestao`) chegar em produção.
-- **M10 (destrutiva / GATE 3) → v6.0.1**, decisão do Yan em 25/09: o GATE 3 exige que o código que usa
-  `truncar_*`/`inserir_lote_*` já tenha saído de produção. `truncate_dynamic_tables` fica FORA (o seed usa).
-- Gates do fechamento verdes (build, tsc, lint, **1.665 testes / 99 arquivos**); `revisor` e `revisor-db`
-  aprovaram com ressalvas (parecer no out-briefing §11).
+**Pós-merge feito em 28/09:**
+- ✅ Cron **`ingestao-vigia` LIGADO** (`ingestao_vigia_definir(true)` → HTTP 200; `cron.job.active = true`).
+- ✅ Expectativa **`monde-incremental` LIGADA** (tinha execução OK; tolerância 45 min).
+- ✅ Limpeza do cru **simulada em produção**: 0 expirados, 0 órfãos (as cópias órfãs de 24/09 só vencem os
+  7 dias em 01/10). O cron `ingestao-retencao` **segue DESLIGADO** — ligar é decisão do Yan (apaga arquivo).
+- ✅ Baseline de schema regenerado (única diferença: `cron.ingestao-vigia.active false → true`).
+- ✅ Data do changelog da diretoria reconciliada ao merge real (28/09 09:43).
 
-> 🔴 **Até o merge: NÃO usar o card de upload da produção (v5.12).** Ele usa o caminho antigo e
-> sobrescreveria as cargas de 25/09.
-
-> 🔴 **Pós-merge da v6.0.0 — em ordem, no `/pos-merge`:**
-> 1. `SUPABASE_INGESTOR_SENHA` confirmada no ambiente **Production** da Vercel (sem ela a carga lança).
-> 2. Recarregar **Lançamentos por Operação** pelo card de produção (o cru de 25/09 ficou com o texto "NA"
->    — rodou antes do parser corrigido; o fato está certo). Aberto do mesmo dia antes, por causa do grafo.
-> 3. Ligar o vigia: `ingestao_vigia_definir(true)`; depois cada expectativa com
->    `ingestao_expectativa_definir('<processo>', true)` SÓ depois da 1ª execução registrada dele
->    (sem isso alarma na hora). As bases só quando a RPA existir.
-> 4. Limpeza do cru: `POST /api/ingestao/retencao?simular=1`, conferir a lista, e então, como `postgres`,
->    `SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE jobname = 'ingestao-retencao'), active := true);`
-> 5. **`npm run db:baseline` e commitar** — ligar cron muda o `active` que o baseline guarda.
-> 6. Abrir a **v6.0.1** (destrutiva, TTY do Yan) — lista e provas exigidas no out-briefing §3.
+> 🔴 **Pós-merge da v6.0.0 — o que falta, e de quem:**
+> 1. **Yan — sincronizar a raiz e remover a worktree da v6** (a sessão não alcança o checkout
+>    compartilhado, protocolo D5). Comandos no fim desta seção.
+> 2. **Yan — confirmar `SUPABASE_INGESTOR_SENHA` no ambiente Production da Vercel.** Sem ela a carga
+>    LANÇA por desenho (fail-closed). A sessão não consegue ler as envs (403).
+> 3. **Yan — recarregar Lançamentos por Operação** pelo card de produção (o cru de 25/09 ficou com o
+>    texto "NA"; o fato está certo). **Antes, no MESMO dia, recarregar Vencimento em aberto** — o grafo
+>    exige Aberto aplicado no dia; a carga de 25/09 não vale mais.
+> 4. **Sessão, depois da 1ª execução OK de cada um:** ligar as expectativas `ingestao-vigia` (após a
+>    1ª rodada do vigia), `monde-reconciliacao` (roda 06:05 UTC) e `cdi-mensal` (dia 3), com
+>    `ingestao_expectativa_definir('<processo>', true)`. As das bases, só quando a RPA existir.
+> 5. **Yan decide — ligar a limpeza do cru** (`SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE
+>    jobname = 'ingestao-retencao'), active := true);`, como `postgres`). A partir de 01/10 ela apaga as
+>    cópias órfãs e, a partir de 25/12, os crus de mais de 3 meses. Depois de ligar: `npm run db:baseline`.
+> 6. **Abrir a v6.0.1** — a destrutiva (GATE 3, TTY do Yan). Lista e provas exigidas no out-briefing §3;
+>    `truncate_dynamic_tables` fica fora (o seed a usa).
+>
+> Comandos do item 1, **da raiz** (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-0-0-fundacao-ingestao --force
+> git worktree prune
+> git branch -d feat/v6-0-0-fundacao-ingestao
+> ```
+> Se o `pull` abortar por colisão de untracked em `docs/briefings/briefing-v6-0-0-fundacao-ingestao.md`, é o
+> modo de falha conhecido do ritual: conferir que é idêntico ao do `origin/main` (`show` + `diff`),
+> mover para fora do repo e só então puxar. Nunca `reset`. A worktree só sai depois que o PR de docs do
+> pós-merge (esta branch, `docs/pos-merge-v6-0-0`) estiver mergeado.
 
 > 🔴 **Decisões e conversas do Yan que a v6.0.0 deixou** (detalhe no out-briefing §12; backlog B-31 a B-36):
 > cartas de crédito com vencimento 2049 (convenção de "sem prazo"? — com a gerente) · pipeline de
@@ -82,7 +97,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **código v5.12.0** (PR #275, 24/09) · **banco já na 0285** (as migrations da v6.0.0 são aplicadas antes do merge, por desenho) · v6.0.0 em PR, com o `main` já mesclado (25/09) |
+| Produção | **v6.0.0** (PR #279, mergeado 28/09 às 09:43) · banco na **0285** |
 | Última migration aplicada | **0285** (v6.0.0/M9 — Operação só converte número inteiro) · próxima livre: **0286** |
 | Último ADR | **0178** (v6.0.0 — baseline de schema versionado) · próximo livre: **0179** |
 | Suíte | **1.665 testes**, 99 arquivos, zero falha (fechamento da v6.0.0, 25/09) |
