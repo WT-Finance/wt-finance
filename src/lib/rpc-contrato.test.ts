@@ -2220,6 +2220,51 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — ingestao_operacoes_vigentes (0
   })
 })
 
+// ── v6.1.0 (0288) — `promover_carga_operacao` devolve o conjunto "antes", no CATÁLOGO VIVO ────
+// O `operacoes_antes` do resultado é capturado DENTRO da transação, sob o lock, ANTES do TRUNCATE —
+// é o que faz o diff de operações sobreviver a uma retentativa depois de promoção commitada e a
+// duas cargas de Operação intercaladas (achado ALTO do `revisor`). Nada disso aparece em shape de
+// RPC que o `tsc` cheque, e o modo de falha é o silencioso: um `CREATE OR REPLACE` futuro escrito a
+// partir da migration 0287 (em vez do catálogo vivo — skill banco-e-rpc §5) apaga a chave sem
+// quebrar teste nenhum, e a remoção volta a poder passar calada. Leitura de `pg_get_functiondef`,
+// READ ONLY, sem executar a função. O nome vive na constante de assinatura — nunca como argumento
+// literal de `rpc(` nem valor de `fn:` (o `derivar-allowlist.mjs` extrai esses padrões do texto).
+describe.skipIf(!ON || !DB_URL)('contrato RPC — promover_carga_operacao (0288): operacoes_antes capturado antes do TRUNCATE', () => {
+  const ASSINATURA = 'public.promover_carga_operacao(jsonb, uuid)'
+
+  async function corpoVivo(): Promise<string> {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    // Trava READ ONLY de SESSÃO, por CONEXÃO (sonda-teste-escreve-banco).
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try {
+      const r = await c.query(
+        `SELECT pg_get_functiondef(to_regprocedure($1)) AS def, to_regprocedure($1) IS NOT NULL AS existe`,
+        [ASSINATURA],
+      )
+      expect(r.rows[0]?.existe, `${ASSINATURA} não existe no catálogo`).toBe(true)
+      return String(r.rows[0]?.def ?? '')
+    } finally { await c.end() }
+  }
+
+  it('o corpo vivo devolve `operacoes_antes`, lê o conjunto por ingestao_operacoes_vigentes() e o atribui a v_antes ANTES do 1º TRUNCATE', async () => {
+    const def = await corpoVivo()
+    // Sem comentários: uma menção a TRUNCATE/v_antes num `--` não pode enganar a ordem.
+    const corpo = def.replace(/--.*$/gm, '')
+
+    expect(corpo, 'o resultado perdeu a chave operacoes_antes (0288 revertida por um CREATE OR REPLACE?)').toContain('operacoes_antes')
+    expect(corpo, 'a captura não chama mais ingestao_operacoes_vigentes()').toContain('ingestao_operacoes_vigentes()')
+
+    const atribuicao = corpo.search(/\bv_antes\s*:=/i)
+    const primeiroTruncate = corpo.search(/\bTRUNCATE\b/i)
+    expect(atribuicao, 'não há atribuição a v_antes no corpo').toBeGreaterThanOrEqual(0)
+    expect(primeiroTruncate, 'o corpo não tem TRUNCATE (a promoção deixou de trocar a base?)').toBeGreaterThanOrEqual(0)
+    expect(atribuicao, 'v_antes é atribuído DEPOIS do primeiro TRUNCATE — o "antes" já seria a base nova').toBeLessThan(primeiroTruncate)
+  })
+})
+
 // ── v5.10.0 (0269) — grants explícitos, COMMENTs e o texto do RAISE, no CATÁLOGO VIVO ───
 // A 0269 é aditiva e o que ela muda não aparece em nenhum retorno de RPC: privilégio de
 // EXECUTE, comentário de catálogo e uma string de mensagem de erro. Nada disso o `tsc`, o

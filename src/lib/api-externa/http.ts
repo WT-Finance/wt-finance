@@ -60,6 +60,26 @@ export function respostaErro(codigo: string, mensagem: string, http: number): Re
  * comparados EM CÓDIGO (fora do WHERE do banco) — não é o caso deste caminho.
  */
 export async function autenticarChamada(req: Request): Promise<{ ok: true; chave: ChaveResolvida } | { ok: false; resposta: Response }> {
+  const r = await resolverChaveDaChamada(req)
+  return r.ok ? { ok: true, chave: r.chave } : r
+}
+
+/** O `escopo_bases` BRUTO, como o banco devolveu, é vazio? `comoChaveResolvida` filtra por
+ *  `ehBaseIngestao`, e uma base que existe só no CHECK do banco (ainda sem literal no TS) some
+ *  desse filtro — uma chave só com ela pareceria "sem escopo" e abriria a API de Solicitações.
+ *  Fail-closed: qualquer valor que não seja ausente/nulo/array vazio conta como NÃO vazio. */
+function escopoBrutoVazio(chaveBruta: unknown): boolean {
+  if (typeof chaveBruta !== 'object' || chaveBruta === null) return true
+  const escopo = (chaveBruta as Record<string, unknown>).escopo_bases
+  if (escopo === undefined || escopo === null) return true
+  return Array.isArray(escopo) && escopo.length === 0
+}
+
+/** Núcleo de `autenticarChamada`; devolve também o dado bruto da chave, para quem precisa olhar
+ *  o que o filtro de `comoChaveResolvida` descarta (`autenticarChamadaSolicitacoes`). */
+async function resolverChaveDaChamada(
+  req: Request,
+): Promise<{ ok: true; chave: ChaveResolvida; chaveBruta: unknown } | { ok: false; resposta: Response }> {
   const token = (req.headers.get('x-api-key') ?? '').trim()
   if (!token) {
     return { ok: false, resposta: respostaErro('AUTH_AUSENTE', 'Cabeçalho x-api-key ausente.', 401) }
@@ -71,13 +91,14 @@ export async function autenticarChamada(req: Request): Promise<{ ok: true; chave
   if (!chave) {
     return { ok: false, resposta: respostaErro('AUTH_INVALIDA', 'Chave de API inválida ou revogada.', 401) }
   }
-  return { ok: true, chave }
+  return { ok: true, chave, chaveBruta: data }
 }
 
 /**
  * Porta de autenticação da API externa de SOLICITAÇÕES (`/api/externo/*`) — v6.1.0, errata 4(g) do
  * contrato de ingestão v1. É a `autenticarChamada` acrescida de uma recusa: uma chave com
- * `escopo_bases` NÃO vazio é chave de INGESTÃO (RPA — 0274) e carrega relatório, nada mais; ela
+ * `escopo_bases` NÃO vazio (medido no array BRUTO do banco, não no filtrado por `ehBaseIngestao`)
+ * é chave de INGESTÃO (RPA — 0274) e carrega relatório, nada mais; ela
  * NÃO abre a API de Solicitações (`403 ESCOPO_INSUFICIENTE`). Chave com `escopo_bases` vazio (a
  * chave de integrador da v5.4.0) passa exatamente como antes.
  *
@@ -94,11 +115,12 @@ export async function autenticarChamada(req: Request): Promise<{ ok: true; chave
 export async function autenticarChamadaSolicitacoes(
   req: Request,
 ): Promise<{ ok: true; chave: ChaveResolvida } | { ok: false; resposta: Response; chaveId: number | null; detalhe: string }> {
-  const auth = await autenticarChamada(req)
+  const auth = await resolverChaveDaChamada(req)
   if (!auth.ok) {
     return { ok: false, resposta: auth.resposta, chaveId: null, detalhe: 'auth_negada' }
   }
-  if (auth.chave.escopo_bases.length > 0) {
+  // O array BRUTO, não o filtrado por `ehBaseIngestao` (ver `escopoBrutoVazio`).
+  if (!escopoBrutoVazio(auth.chaveBruta)) {
     return {
       ok: false,
       resposta: respostaErro(

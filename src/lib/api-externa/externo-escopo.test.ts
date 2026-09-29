@@ -81,6 +81,33 @@ describe('autenticarChamadaSolicitacoes — o ponto único da API de Solicitaç�
     expect(corpo.erro.mensagem).toBe('Chave de ingestão não tem acesso à API de Solicitações.')
   })
 
+  // Achado BAIXO do `revisor`: o filtro `ehBaseIngestao` de `comoChaveResolvida` descarta uma base
+  // que existe só no CHECK do banco — a chave só com ela ficaria com `escopo_bases: []` e abriria a
+  // porta. A recusa mede o array BRUTO.
+  it.each([
+    ['base que o TS ainda não conhece (só no CHECK do banco)', ['base-nova-so-no-check']],
+    ['mistura de base conhecida e desconhecida', ['lancamentos-operacao', 'base-nova-so-no-check']],
+    ['escopo malformado (string, não array)', 'lancamentos-operacao'],
+  ])('escopo bruto NÃO vazio — %s ⇒ 403 ESCOPO_INSUFICIENTE, com o id da chave', async (_nome, escopo) => {
+    simularRpcs({ id: 43, plataforma: 'rpa-futura', robo_user_id: 'user-x', escopo_bases: escopo })
+    const r = await autenticarChamadaSolicitacoes(req('segredo-x'))
+    expect(r.ok).toBe(false)
+    if (r.ok) throw new Error('unreachable')
+    expect(r.resposta.status).toBe(403)
+    expect(r.chaveId).toBe(43)
+    expect((await r.resposta.json()).erro.codigo).toBe('ESCOPO_INSUFICIENTE')
+  })
+
+  it('escopo_bases ausente ou null (chave de integrador) segue passando', async () => {
+    for (const chave of [
+      { id: 7, plataforma: 'integrador', robo_user_id: 'u' },
+      { id: 7, plataforma: 'integrador', robo_user_id: 'u', escopo_bases: null },
+    ]) {
+      simularRpcs(chave)
+      expect((await autenticarChamadaSolicitacoes(req('segredo-integrador'))).ok).toBe(true)
+    }
+  })
+
   it('chave de SOLICITAÇÕES (escopo vazio) ⇒ passa, com a mesma chave que autenticarChamada devolve', async () => {
     simularRpcs(CHAVE_SOLICITACOES)
     const r = await autenticarChamadaSolicitacoes(req('segredo-integrador'))

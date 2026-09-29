@@ -143,6 +143,26 @@ describe('POST /api/ingestao/{base} — `puladas` só em lancamentos-operacao (e
     expect(processarCargaMock.mock.calls[0][0]).not.toHaveProperty('puladas')
   })
 
+  it('tetos: >500 itens, operacao >300, >20 ids, id >100 ou motivo >500 ⇒ 422; no teto exato passa', async () => {
+    autenticarIngestaoMock.mockResolvedValue(AUTH_CHAVE)
+    const ok = { operacao: 'o'.repeat(300), ids: Array.from({ length: 20 }, () => 'i'.repeat(100)), motivo: 'm'.repeat(500) }
+    expect((await chamar('lancamentos-operacao', 'rpa-pad', corpo({ puladas: [ok] }))).resp.status).toBe(200)
+    expect((await chamar('lancamentos-operacao', 'rpa-pad', corpo({ puladas: Array.from({ length: 500 }, () => ok) }))).resp.status).toBe(200)
+
+    const estouros = [
+      Array.from({ length: 501 }, () => ok),
+      [{ ...ok, operacao: 'o'.repeat(301) }],
+      [{ ...ok, ids: Array.from({ length: 21 }, () => 'i') }],
+      [{ ...ok, ids: ['i'.repeat(101)] }],
+      [{ ...ok, motivo: 'm'.repeat(501) }],
+    ]
+    processarCargaMock.mockClear()
+    for (const puladas of estouros) {
+      expect((await chamar('lancamentos-operacao', 'rpa-pad', corpo({ puladas }))).resp.status).toBe(422)
+    }
+    expect(processarCargaMock).not.toHaveBeenCalled()
+  })
+
   it('operação de nome vazio, ids ausentes ou motivo ausente ⇒ 422 body_invalido', async () => {
     autenticarIngestaoMock.mockResolvedValue(AUTH_CHAVE)
     for (const puladas of [

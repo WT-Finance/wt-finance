@@ -57,11 +57,13 @@ const bodySchema = z.object({
   // Errata 4(b): as operações que a RPA NÃO extraiu (nome ambíguo/ausente no dropdown; `ids` pode
   // vir vazio). Só `lancamentos-operacao` — presente (mesmo `[]`) em outra base é 422, checado
   // abaixo por `validarPuladasNaBase`. Sem ele o Zod descartaria a chave em silêncio.
+  // Tetos: o alarme e o `diff` da linha de carga ecoam isto — sem teto, um cliente com defeito
+  // enche `ingestao.carga`/`ingestao.alarme` (jsonb). ~240 operações existem hoje; 500 é folga.
   puladas: z.array(z.object({
-    operacao: z.string().trim().min(1),
-    ids: z.array(z.string()),
-    motivo: z.string(),
-  })).optional(),
+    operacao: z.string().trim().min(1).max(300),
+    ids: z.array(z.string().max(100)).max(20),
+    motivo: z.string().max(500),
+  })).max(500).optional(),
 })
 
 export async function POST(req: Request, { params }: { params: Promise<{ base: string }> }): Promise<Response> {

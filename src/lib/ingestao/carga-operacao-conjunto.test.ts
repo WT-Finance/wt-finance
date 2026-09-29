@@ -82,10 +82,13 @@ function linhaCarga(overrides: Partial<LinhaCarga> = {}): LinhaCarga {
 }
 
 type Resp = { data: unknown; error: { message: string } | null }
+let antesDaPromocao: { operacao: string; operacao_id: string | null }[] | undefined
 
 /** Programa o `rpcMock` POR NOME (fila por nome). Padrões: replay sem carga prévia; grafo com Aberto
  *  aplicado hoje; abrir/concluir devolvem uma linha válida; o status da base tem 3 linhas. */
 function programarRpc(extra: Record<string, Resp[]> = {}) {
+  const previa = extra.ingestao_operacoes_vigentes?.[0]?.data
+  antesDaPromocao = Array.isArray(previa) ? (previa as { operacao: string; operacao_id: string | null }[]) : undefined
   const filas: Record<string, Resp[]> = {
     ingestao_carga_ultima: [{
       data: linhaCarga({ base: 'lancamentos-aberto', status: 'aplicada', concluido_em: '2026-09-25T10:00:00Z' }),
@@ -131,7 +134,12 @@ const GAMA = 'W - Gama'
 const antesPorNome = (...nomes: string[]): Resp => ({
   data: nomes.map((operacao) => ({ operacao, operacao_id: null })), error: null,
 })
-const aplicacaoOk = { linhas: 2, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1 }
+/** O que a promoção devolve por padrão: a MESMA base que a leitura prévia viu (`antesDaPromocao`,
+ *  gravado por `programarRpc`) — o caminho normal, sem retentativa nem carga intercalada. */
+const aplicacaoOk = () => ({
+  linhas: 2, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1,
+  operacoesAntes: antesDaPromocao,
+})
 
 /** O `p_diff` que `ingestao_carga_concluir` recebeu (a última chamada). */
 function diffGravado(): Record<string, unknown> | null {
@@ -148,7 +156,7 @@ describe('processarCarga (Operação) — conjunto de operações', () => {
   it('APLICAÇÃO com uma operação a menos ⇒ operacoes_removidas na resposta, no log e alarme operacoes_removidas', async () => {
     programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA, GAMA)] })
     lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
-    aplicarCargaMock.mockResolvedValue(aplicacaoOk)
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
 
     const r = await processarCarga(entrada())
 
@@ -190,7 +198,7 @@ describe('processarCarga (Operação) — conjunto de operações', () => {
   it('operação NOVA aparece em operacoes_novas e não alarma; espaço duplo no nome do "antes" não gera falsa remoção', async () => {
     programarRpc({ ingestao_operacoes_vigentes: [antesPorNome('W -  Alpha')] }) // legado com espaço duplo
     lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
-    aplicarCargaMock.mockResolvedValue(aplicacaoOk)
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
 
     const r = await processarCarga(entrada())
 
@@ -202,7 +210,7 @@ describe('processarCarga (Operação) — conjunto de operações', () => {
   it('puladas NÃO vazia ⇒ alarme operacoes_puladas (nomes e motivos) e puladas ecoadas em diff', async () => {
     programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)] })
     lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
-    aplicarCargaMock.mockResolvedValue(aplicacaoOk)
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
     const puladas = [{ operacao: 'W - Delta', ids: ['id-1', 'id-2'], motivo: 'nome ambíguo no dropdown' }]
 
     const r = await processarCarga(entrada({ puladas }))
@@ -220,7 +228,7 @@ describe('processarCarga (Operação) — conjunto de operações', () => {
   it('operação removida que CONSTA em puladas ⇒ os DOIS alarmes (a remoção não é engolida pela causa)', async () => {
     programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA, GAMA)] })
     lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
-    aplicarCargaMock.mockResolvedValue(aplicacaoOk)
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
 
     await processarCarga(entrada({ puladas: [{ operacao: GAMA, ids: [], motivo: 'ausente no dropdown' }] }))
 
@@ -257,7 +265,7 @@ describe('processarCarga (Operação) — critério por operacao_id × por nome'
     lerMatrizMock.mockReturnValue(matrizDoCsv([
       { nome: 'W - Alpha Renomeada', id: 'aaaa-1' }, { nome: BETA, id: 'bbbb-2' },
     ], true))
-    aplicarCargaMock.mockResolvedValue(aplicacaoOk)
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
 
     const r = await processarCarga(entrada())
 
@@ -271,7 +279,7 @@ describe('processarCarga (Operação) — critério por operacao_id × por nome'
     lerMatrizMock.mockReturnValue(matrizDoCsv([
       { nome: 'W - Alpha Renomeada', id: 'aaaa-1' }, { nome: BETA, id: 'bbbb-2' },
     ], true))
-    aplicarCargaMock.mockResolvedValue(aplicacaoOk)
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
 
     const r = await processarCarga(entrada())
 
@@ -290,7 +298,7 @@ describe('processarCarga (Operação) — critério por operacao_id × por nome'
       }],
     })
     lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA, id: 'id-a' }, { nome: BETA, id: 'id-b-novo' }], true))
-    aplicarCargaMock.mockResolvedValue(aplicacaoOk)
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
 
     const r = await processarCarga(entrada())
 
@@ -373,6 +381,213 @@ describe('processarCarga (Operação) — carga REJEITADA depois de calcular o d
     // Os alarmes de operação são da carga APLICADA; a rejeição alarma como `checksum_falho`.
     const tipos = dispararAlarmeMock.mock.calls.map((c) => (c[0] as { tipo: string }).tipo)
     expect(tipos).toEqual(['checksum_falho'])
+  })
+})
+
+// ── O "antes" que vale é o da PROMOÇÃO (0288) ────────────────────────────────────────────────
+
+describe('processarCarga (Operação) — o conjunto "antes" vem da promoção', () => {
+  it('RETENTATIVA depois de promoção JÁ commitada: o pré-lido já é a base nova, a promoção devolve o ORIGINAL ⇒ removida + alarme', async () => {
+    // A 1ª tentativa trocou o fato e o processo morreu antes de alarmar/concluir. Na repetição, a
+    // leitura prévia vê a base NOVA (igual ao arquivo ⇒ "nenhuma removida"); `promover_carga_operacao`
+    // devolve o `operacoes_antes` guardado em `ingestao.promocao` — com a operação que sumiu.
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+    aplicarCargaMock.mockResolvedValue({
+      linhas: 2, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1,
+      operacoesAntes: [
+        { operacao: ALPHA, operacao_id: null }, { operacao: BETA, operacao_id: null }, { operacao: GAMA, operacao_id: null },
+      ],
+    })
+
+    const r = await processarCarga(entrada())
+
+    expect(r.diff.operacoes_removidas).toEqual([{ operacao: GAMA, operacao_id: null }])
+    expect(dispararAlarmeMock).toHaveBeenCalledTimes(1)
+    expect(dispararAlarmeMock).toHaveBeenCalledWith(
+      { tipo: 'operacoes_removidas', cargaId: 'carga-op', operacoes: [GAMA] }, 'lancamentos-operacao:carga-op',
+    )
+    expect(diffGravado()).toMatchObject({ operacoes_removidas: [{ operacao: GAMA, operacao_id: null }] })
+    expect(r.alarmes.some((a) => a.includes(GAMA) && a.includes('NÃO estão no arquivo'))).toBe(true)
+    // Com `operacoes_antes` presente não há aviso de fallback.
+    expect(r.alarmes.some((a) => a.includes('operacoes_antes'))).toBe(false)
+  })
+
+  it('a promoção também manda no critério: operação NOVA no arquivo segundo o "antes" da promoção', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+    aplicarCargaMock.mockResolvedValue({
+      linhas: 2, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1,
+      operacoesAntes: [{ operacao: ALPHA, operacao_id: null }],
+    })
+
+    const r = await processarCarga(entrada())
+
+    expect(r.diff.operacoes_novas).toEqual([{ operacao: BETA, operacao_id: null }])
+    expect(r.diff.operacoes_removidas).toEqual([])
+    expect(dispararAlarmeMock).not.toHaveBeenCalled()
+  })
+
+  it.each([['undefined', undefined], ['null', null]])(
+    'promoção sem operacoes_antes (%s) ⇒ usa o pré-lido, alarma por ele e AVISA em alarmes[]', async (_n, antes) => {
+      programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA, GAMA)] })
+      lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+      aplicarCargaMock.mockResolvedValue({
+        linhas: 2, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1, operacoesAntes: antes,
+      })
+
+      const r = await processarCarga(entrada())
+
+      expect(r.diff.operacoes_removidas).toEqual([{ operacao: GAMA, operacao_id: null }])
+      expect(dispararAlarmeMock).toHaveBeenCalledWith(
+        { tipo: 'operacoes_removidas', cargaId: 'carga-op', operacoes: [GAMA] }, expect.any(String),
+      )
+      expect(r.alarmes.some((a) => a.includes('operacoes_antes'))).toBe(true)
+    },
+  )
+})
+
+describe('processarCarga (Operação) — RETENTATIVA sem operacoes_antes (o pré-lido pode já ser a base nova)', () => {
+  const abrirExistente = (status: string): Record<string, Resp[]> => ({
+    ingestao_carga_abrir: [{ data: { ...linhaCarga({ status: status as LinhaCarga['status'] }), existente: true }, error: null }],
+  })
+
+  it.each([['undefined', undefined], ['null', null]])(
+    'linha de carga JÁ existente + operacoes_antes %s ⇒ removidas/novas null ("não medido") na resposta e no log; NUNCA []; sem alarme de remoção', async (_n, antes) => {
+      // Pré-lido = arquivo (a 1ª tentativa já trocou a base): usá-lo daria [] — o silêncio proibido.
+      programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)], ...abrirExistente('aberta') })
+      lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+      aplicarCargaMock.mockResolvedValue({
+        linhas: 2, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1, operacoesAntes: antes,
+      })
+
+      const r = await processarCarga(entrada())
+
+      expect(r.status).toBe('aplicada')
+      expect(r.diff.operacoes_removidas).toBeNull()
+      expect(r.diff.operacoes_novas).toBeNull()
+      expect(diffGravado()).toMatchObject({ operacoes_removidas: null, operacoes_novas: null })
+      expect(r.alarmes.some((a) => a.includes('não medido') && a.includes('conferir manualmente as operações da base'))).toBe(true)
+      expect(dispararAlarmeMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('retentativa de carga `rejeitada`/`erro` anterior (existente, não aplicada) segue a mesma regra', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA)], ...abrirExistente('erro') })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+    aplicarCargaMock.mockResolvedValue({ linhas: 1, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1 })
+
+    const r = await processarCarga(entrada())
+
+    expect(r.diff.operacoes_removidas).toBeNull()
+    expect(r.diff.operacoes_novas).toBeNull()
+  })
+
+  it('carga NOVA (existente:false) + operacoes_antes ausente ⇒ usa o pré-lido + aviso (não vira null)', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, GAMA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+    aplicarCargaMock.mockResolvedValue({ linhas: 1, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1 })
+
+    const r = await processarCarga(entrada())
+
+    expect(r.diff.operacoes_removidas).toEqual([{ operacao: GAMA, operacao_id: null }])
+    expect(dispararAlarmeMock).toHaveBeenCalledTimes(1)
+    expect(r.alarmes.some((a) => a.includes('operacoes_antes'))).toBe(true)
+  })
+
+  it('retentativa COM operacoes_antes presente segue valendo o da promoção (não vira null)', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA)], ...abrirExistente('aberta') })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+    aplicarCargaMock.mockResolvedValue({
+      linhas: 1, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1,
+      operacoesAntes: [{ operacao: ALPHA, operacao_id: null }, { operacao: GAMA, operacao_id: null }],
+    })
+
+    const r = await processarCarga(entrada())
+
+    expect(r.diff.operacoes_removidas).toEqual([{ operacao: GAMA, operacao_id: null }])
+    expect(dispararAlarmeMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('processarCarga (Operação) — divergência entre o pré-lido e o "antes" da promoção', () => {
+  it('diverge ⇒ console.warn com as contagens; o resultado NÃO muda (vale a promoção)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+    aplicarCargaMock.mockResolvedValue({
+      linhas: 2, avisos: [], checksumsConferidos: 0, checksumsNaoConferiveis: 1,
+      operacoesAntes: [
+        { operacao: ALPHA, operacao_id: null }, { operacao: BETA, operacao_id: null }, { operacao: GAMA, operacao_id: null },
+      ],
+    })
+
+    const r = await processarCarga(entrada())
+
+    expect(r.diff.operacoes_removidas).toEqual([{ operacao: GAMA, operacao_id: null }])
+    const msg = warn.mock.calls.map((c) => String(c[0])).find((m) => m.includes('diverge')) ?? ''
+    expect(msg).toContain('(2)') // pré-lido
+    expect(msg).toContain('(3)') // promoção
+    expect(msg).toContain('1 só na promoção')
+  })
+
+  it('iguais ⇒ nenhum warn', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
+
+    await processarCarga(entrada())
+
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('diverge'))).toBe(false)
+  })
+})
+
+// ── O modal só renderiza alarmes[]: o que some/foi pulado tem de estar escrito ali ───────────
+
+describe('processarCarga (Operação) — linhas legíveis em alarmes[]', () => {
+  it('CONFERÊNCIA: removidas e puladas viram linhas escritas, com os nomes', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA, GAMA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+
+    const r = await processarCarga(entrada({
+      confirmar: false, puladas: [{ operacao: 'W - Delta', ids: [], motivo: 'x' }],
+    }))
+
+    expect(r.alarmes).toContain(`2 operação(ões) da base atual NÃO estão no arquivo: ${BETA}; ${GAMA}`)
+    expect(r.alarmes).toContain('1 operação(ões) não extraída(s) pela RPA: W - Delta')
+  })
+
+  it('APLICAÇÃO: as mesmas linhas aparecem na resposta', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, GAMA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+    aplicarCargaMock.mockImplementation(async () => aplicacaoOk())
+
+    const r = await processarCarga(entrada({ puladas: [{ operacao: GAMA, ids: [], motivo: 'x' }] }))
+
+    expect(r.alarmes).toContain(`1 operação(ões) da base atual NÃO estão no arquivo: ${GAMA}`)
+    expect(r.alarmes).toContain(`1 operação(ões) não extraída(s) pela RPA: ${GAMA}`)
+  })
+
+  it('nada removido nem pulado ⇒ nenhuma linha extra', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+    const r = await processarCarga(entrada({ confirmar: false }))
+    expect(r.alarmes).toEqual([])
+  })
+
+  it('mais de 20 nomes ⇒ 20 e "… e mais N"; a contagem é a real', async () => {
+    const muitos = Array.from({ length: 25 }, (_, i) => `W - Op ${String(i + 1).padStart(2, '0')}`)
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, ...muitos)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+
+    const r = await processarCarga(entrada({ confirmar: false }))
+
+    const linha = r.alarmes.find((a) => a.includes('NÃO estão no arquivo')) ?? ''
+    expect(linha.startsWith('25 operação(ões)')).toBe(true)
+    expect(linha).toContain('W - Op 20')
+    expect(linha).not.toContain('W - Op 21')
+    expect(linha).toContain('… e mais 5')
   })
 })
 

@@ -19,7 +19,6 @@ import {
   ehCaminhoDaCarga, baixarCru, sha256Confere, ErroIngestaoStorage,
 } from './storage'
 import { formatoPeloNome, lerMatriz, type FormatoArquivo } from './matriz'
-import { z } from 'zod'
 import type { Matriz, Checksum, ParseErro } from './parsers/comum'
 import { somaCentavos, apertar } from './parsers/comum'
 import {
@@ -28,7 +27,10 @@ import {
 import { parseDemonstrativoCruRows, type DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import { parseLancamentosCategoriaRows } from './parsers/lancamentos-categoria'
 import { parseLancamentosOperacaoRows, type LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
-import { aplicarCarga, CargaRejeitada, lancamentoOperacaoAplicavel, type ResultadoAplicacao } from './aplicar'
+import {
+  aplicarCarga, CargaRejeitada, lancamentoOperacaoAplicavel, operacoesDaBaseSchema,
+  type ResultadoAplicacao,
+} from './aplicar'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { autenticarChamada, type ChaveResolvida } from '@/lib/api-externa/http'
 import { requireAreaApi, type Sessao } from '@/lib/auth/sessao'
@@ -613,11 +615,10 @@ export function compararConjuntoDeOperacoes(
   }
 }
 
-/** `.nullable()` em `operacao_id`, não `.optional()`: a função emite `null` explícito (0287). */
-export const operacoesVigentesSchema = z.array(z.object({
-  operacao: z.string(),
-  operacao_id: z.string().nullable(),
-}))
+/** O MESMO formato que `promover_carga_operacao` devolve em `operacoes_antes` (0288) — definido em
+ *  `aplicar.ts` e reexportado aqui como o schema da RPC `ingestao_operacoes_vigentes` (0287), para
+ *  `rpc-contrato.test.ts` importar daqui. `.nullable()` em `operacao_id`, não `.optional()`. */
+export const operacoesVigentesSchema = operacoesDaBaseSchema
 
 /**
  * O "antes" do diff por conjunto — `ingestao_operacoes_vigentes()` (0287), lida ANTES da promoção
@@ -629,7 +630,9 @@ export const operacoesVigentesSchema = z.array(z.object({
  */
 export async function lerOperacoesVigentes(): Promise<readonly OperacaoRef[] | null> {
   try {
-    const res = await rpc()('ingestao_operacoes_vigentes')
+    // Chamada TIPADA direto no cliente (`database.ts` já tem a função), como `somaPorAno` em
+    // `alarme.ts` — sem destacar o método, então o `this` fica preservado.
+    const res = await getAdminClient().rpc('ingestao_operacoes_vigentes')
     const lista = parseRpc(operacoesVigentesSchema, res, 'ingestao_operacoes_vigentes')
     if (lista === null) return null
     return lista.map((o) => ({ operacao: o.operacao, operacao_id: o.operacao_id }))
@@ -637,6 +640,33 @@ export async function lerOperacoesVigentes(): Promise<readonly OperacaoRef[] | n
     console.error('[ingestao/carga] ingestao_operacoes_vigentes lançou:', err)
     return null
   }
+}
+
+/** Até 20 nomes, separados por "; " (os nomes têm " - " dentro), e "… e mais N" no resto. */
+const LIMITE_NOMES_EM_ALARMES = 20
+function nomesEmLinha(nomes: readonly string[]): string {
+  const visiveis = nomes.slice(0, LIMITE_NOMES_EM_ALARMES).join('; ')
+  const resto = nomes.length - LIMITE_NOMES_EM_ALARMES
+  return resto > 0 ? `${visiveis}; … e mais ${resto}` : visiveis
+}
+
+/**
+ * Linhas legíveis para `alarmes[]` da resposta — o modal do card só renderiza esse array, então o
+ * que vai sumir da base (conferência) ou sumiu (aplicação) e o que a RPA não extraiu precisam estar
+ * ESCRITOS ali, não só em `diff.operacoes_removidas`/`puladas`. Vazio fora de Operação (as chaves
+ * não existem) e quando não há nada a dizer.
+ */
+function linhasLegiveisDeOperacoes(diff: DiffCarga): string[] {
+  const linhas: string[] = []
+  const removidas = diff.operacoes_removidas ?? []
+  if (removidas.length > 0) {
+    linhas.push(`${removidas.length} operação(ões) da base atual NÃO estão no arquivo: ${nomesEmLinha(removidas.map((o) => o.operacao))}`)
+  }
+  const puladas = diff.puladas ?? []
+  if (puladas.length > 0) {
+    linhas.push(`${puladas.length} operação(ões) não extraída(s) pela RPA: ${nomesEmLinha(puladas.map((p) => p.operacao))}`)
+  }
+  return linhas
 }
 
 // ── Parse por base (§2.3 passos 4-7, dentro do que cada `parse*Rows` da M3 já faz) ──────────
@@ -1054,6 +1084,12 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
   // Só Operação: nas outras bases o `catch` grava como antes (sem diff).
   let diffParaLog: DiffCarga | undefined
 
+  // `true` quando a linha de `ingestao.carga` JÁ existia ao abrir (retentativa do mesmo `carga_id`
+  // ou da mesma chave de idempotência, e não `aplicada` com resposta — essa devolve o replay antes).
+  // Numa retentativa a promoção pode já ter commitado na tentativa anterior, e então a leitura
+  // PRÉVIA do conjunto de operações já é a base NOVA: só o `operacoes_antes` da promoção é confiável.
+  let ehRetentativa = false
+
   try {
     // Contrato §2.3: a idempotência é o passo 1 e o grafo é o passo 3 — o REPLAY vem antes do
     // grafo. Sem isto, a RPA que reenvia o passo 3 de uma Operação JÁ APLICADA (timeout do lado
@@ -1086,6 +1122,7 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
         throw new ErroCarga('ERRO_INTERNO', 500, 'Falha ao registrar o início da carga.')
       }
       cargaAberta = true
+      ehRetentativa = abertura.linha.existente === true
       if (abertura.linha.existente && abertura.linha.status === 'aplicada') {
         // Idempotência (contrato §1): "mesma chave ⇒ mesma resposta, sem recarregar" — só para
         // uma carga que JÁ APLICOU. `concluirCarga` só grava `resposta` no caminho de sucesso
@@ -1177,8 +1214,10 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     // e ecoa `puladas`. O "antes" é lido AGORA, antes da promoção que trunca raw e fato.
     const puladas: readonly PuladaRecebida[] = base === 'lancamentos-operacao' ? (entrada.puladas ?? []) : []
     let diff: DiffCarga = diffTotal
+    let antesPreLido: readonly OperacaoRef[] | null = null
     if (base === 'lancamentos-operacao') {
       const antes = await lerOperacoesVigentes()
+      antesPreLido = antes
       if (antes === null) {
         diff = { ...diffTotal, operacoes_removidas: null, operacoes_novas: null, puladas: [...puladas] }
         diffParaLog = diff
@@ -1217,7 +1256,9 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
           soma: somaCentavosNovo === null ? null : somaCentavosNovo / 100,
           linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
         },
-        diff, alarmes: alarmesBase,
+        // O modal do card só renderiza `alarmes[]` — o que vai SUMIR / o que a RPA não extraiu
+        // tem de estar escrito aqui, não só em `diff.operacoes_removidas`.
+        diff, alarmes: [...alarmesBase, ...linhasLegiveisDeOperacoes(diff)],
         promocao: null, // conferência nunca promove — não há o que conferir contra o gravado
       }
     }
@@ -1254,8 +1295,54 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
         '(falha ao ler a soma por ano antes e/ou depois) — o alarme "ano fechado alterado" não foi avaliado desta vez.',
       )
     }
+    // O "antes" do conjunto de operações que VALE é o que a PROMOÇÃO viu, dentro da transação e sob
+    // o lock, antes do TRUNCATE (0288) — o pré-lido acima só serve à conferência e como fail-closed
+    // antes de aplicar. Numa retentativa depois de uma promoção JÁ commitada (o processo morreu
+    // antes de alarmar/concluir), ou com duas cargas de Operação intercaladas, o pré-lido já é a
+    // base NOVA e daria "nenhuma removida"; o `operacoes_antes` da promoção (em replay, o ORIGINAL
+    // guardado em `ingestao.promocao`) não tem esse defeito.
+    let diffAplicado: DiffCarga = diff
+    const avisosDoConjunto: string[] = []
+    if (base === 'lancamentos-operacao') {
+      if (aplicacao.operacoesAntes) {
+        const cmp = compararConjuntoDeOperacoes(
+          aplicacao.operacoesAntes,
+          parseado.operacoesDoArquivo?.operacoes ?? [],
+          parseado.operacoesDoArquivo?.declarouId ?? false,
+        )
+        diffAplicado = { ...diff, operacoes_removidas: cmp.removidas, operacoes_novas: cmp.novas }
+        // Pré-lido e "antes" da promoção divergindo é o sinal de retentativa pós-commit ou de carga
+        // intercalada. Não muda o resultado (a promoção manda); só deixa rastro.
+        if (antesPreLido) {
+          const dif = compararConjuntoDeOperacoes(antesPreLido, aplicacao.operacoesAntes, false)
+          if (dif.removidas.length > 0 || dif.novas.length > 0) {
+            console.warn(
+              `[ingestao/carga] carga ${cargaId} (${base}): o conjunto de operações lido ANTES de aplicar ` +
+              `(${antesPreLido.length}) diverge do que a promoção viu (${aplicacao.operacoesAntes.length}): ` +
+              `${dif.removidas.length} só no pré-lido, ${dif.novas.length} só na promoção — retentativa ` +
+              'depois de promoção commitada ou carga de Operação intercalada. Vale o da promoção.',
+            )
+          }
+        }
+      } else if (ehRetentativa) {
+        // Retentativa: o pré-lido pode já ser a base NOVA, e usá-lo diria "nenhuma removida" quando a
+        // tentativa anterior removeu. Sem o `operacoes_antes` da promoção, NÃO SE SABE — grava-se
+        // "não medido" (`null`), nunca `[]`, e o alarme de e-mail não tem o que nomear.
+        diffAplicado = { ...diff, operacoes_removidas: null, operacoes_novas: null }
+        avisosDoConjunto.push(
+          'Conjunto de operações não medido — conferir manualmente as operações da base: esta carga é uma ' +
+          'retentativa e a promoção não devolveu o conjunto que a base tinha ("operacoes_antes"); a leitura ' +
+          'feita antes de aplicar pode já ser a base nova.',
+        )
+      } else {
+        avisosDoConjunto.push(
+          'A promoção não devolveu o conjunto de operações que a base tinha ("operacoes_antes"): o diff de ' +
+          'operações usa a leitura feita ANTES de aplicar, que pode não refletir a base no instante da troca.',
+        )
+      }
+    }
     const diffComAno: DiffCarga = {
-      ...diff,
+      ...diffAplicado,
       por_ano: diffAno?.porAno ?? null,
       anos_fechados_alterados: diffAno ? [...diffAno.anosFechadosAlterados] : null,
     }
@@ -1310,7 +1397,7 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
         linhas_na_base: parseado.linhasNaBase ?? parseado.totalLinhas,
       },
       diff: diffComAno,
-      alarmes: [...alarmesBase, ...aplicacao.avisos],
+      alarmes: [...alarmesBase, ...avisosDoConjunto, ...linhasLegiveisDeOperacoes(diffComAno), ...aplicacao.avisos],
       promocao: {
         checksums_conferidos: aplicacao.checksumsConferidos,
         checksums_nao_conferiveis: aplicacao.checksumsNaoConferiveis,
