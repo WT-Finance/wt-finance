@@ -9,22 +9,28 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-29 (v6.1.0 aberta — M0).
+Última atualização: 2026-09-29 (v6.1.0 fechada — PR aguardando merge; 0287/0288 já aplicadas).
 
 ---
 
-## Em voo — v6.1.0 "Entrega das RPAs" (branch `feat/v6-1-0-entrega-rpa`)
+## Aguardando merge — v6.1.0 "Entrega das RPAs" (branch `feat/v6-1-0-entrega-rpa`)
 
-Briefing `docs/briefings/briefing-v6-1-0-entrega-rpa.md`; plano validado contra o repo e aprovado em 29/09
-(anexo `docs/briefings/anexo-v6-1-0-m0-validacao.md`). Errata 4 do contrato escrita na M0 — **checkpoint
-do Yan: ler a errata antes da M1.** Decisões do Yan na validação: GATE em duas etapas (transporte contra
-produção antes do merge; Operação com `puladas` como smoke depois); fechar as duas brechas (chave de
-ingestão fora da API de Solicitações; origem da carga amarrada à credencial). Migration livre **0287**,
-ADR livre **0179**.
+Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-0_Entrega_RPA.md`; ADR-0179. Cliente de entrega
+`scripts/rpa/entregar-ingestao.ps1` (PAD chama com uma linha), quatro chaves por RPA (`rpa-vendas` 265,
+`rpa-lancamentos` 266, `rpa-operacao` 267, `rpa-demonstrativo` 268 — runbook `docs/runbooks/chaves-rpa-runbook.md`),
+errata 4 do contrato. **Migrations 0287 e 0288 JÁ APLICADAS** (aditivas, compatíveis com o código v6.0.1).
+**GATE etapa 1 feito em 29/09:** as cinco bases aplicadas pelo robô (`rpa-pad`, chave certa, checksums
+fechando) e a chave de Operação recusada em Vendas (403).
 
-> ℹ️ **As 201 linhas da Darlene e Adnan já saíram da produção** — a carga de Operação de 29/09 pelo card já
-> foi o CSV da RPA (`Operacao_Id`, 239 operações ↔ 239 ids). O fato só tem "W - Daniella e Augusto" (201
-> linhas, R$ 1.191.358,38). Avisar quem acompanha Weddings, se ainda não soube.
+> 🔴 **Yan — depois do merge: GATE etapa 2** — uma carga de Operação pela RPA com `-Log` (conferência e depois
+> `-Aplicar`), para ver `diff.puladas` e o conjunto de operações ao vivo; a sessão confere `ingestao.carga` e
+> vê negando em produção a origem amarrada e o 403 da API de Solicitações.
+
+> 🔴 **Yan — conferir com a gerente a mudança de 2025 no Demonstrativo** (alarme `ano_fechado_alterado` de
+> 29/09 17:28 UTC): mesmas 1.248 linhas, Σ de R$ 470.395,76 para R$ 469.600,56 (−R$ 795,20) — lançamento de
+> competência 2025 que mudou no Monde.
+
+> ℹ️ As 201 linhas da Darlene e Adnan já saíram da produção (carga de 29/09 pelo card já foi o CSV da RPA).
 
 ---
 
@@ -126,10 +132,10 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v6.0.1** (PR #281, mergeado 28/09 às 12:40) · banco na **0286** |
-| Última migration aplicada | **0286** (v6.0.1 — DESTRUTIVA, apaga o caminho legado de carga) · próxima livre: **0287** |
-| Último ADR | **0178** (v6.0.0 — baseline de schema versionado) · próximo livre: **0179** |
-| Suíte | **1.633 verdes + 6 skipped**, 99 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.0.1, 28/09 |
+| Produção | **v6.0.1** (PR #281, mergeado 28/09 às 12:40) · banco na **0288** (v6.1.0 aplicada antes do merge) |
+| Última migration aplicada | **0288** (v6.1.0 — o "antes" do diff de Operação dentro da promoção) · próxima livre: **0289** |
+| Último ADR | **0179** (v6.1.0 — cliente de entrega das RPAs e operações puladas) · próximo livre: **0180** |
+| Suíte | **1.804 verdes + 6 skipped**, 104 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.1.0, 29/09 |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
 
