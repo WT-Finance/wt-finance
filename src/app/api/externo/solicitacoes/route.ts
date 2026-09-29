@@ -12,7 +12,7 @@ export const maxDuration = 60
 
 import { z } from 'zod'
 import {
-  autenticarChamada, lerBodyLimitado, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
+  autenticarChamadaSolicitacoes, lerBodyLimitado, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
   getEmailsEnvolvidosSvc,
 } from '@/lib/api-externa/http'
 import { comoListaConsulta } from '@/lib/api-externa/consulta'
@@ -132,9 +132,9 @@ async function notificarCriacao(id: number): Promise<void> {
  * vazia: é uma busca sem retorno, não um recurso inexistente.
  */
 export async function GET(req: Request): Promise<Response> {
-  const auth = await autenticarChamada(req)
+  const auth = await autenticarChamadaSolicitacoes(req)
   if (!auth.ok) {
-    await registrarChamada(null, ROTA, auth.resposta.status, 'auth_negada')
+    await registrarChamada(auth.chaveId, ROTA, auth.resposta.status, auth.detalhe)
     return auth.resposta
   }
   const { chave } = auth
@@ -171,9 +171,9 @@ export async function GET(req: Request): Promise<Response> {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const auth = await autenticarChamada(req)
+  const auth = await autenticarChamadaSolicitacoes(req)
   if (!auth.ok) {
-    await registrarChamada(null, ROTA, auth.resposta.status, 'auth_negada')
+    await registrarChamada(auth.chaveId, ROTA, auth.resposta.status, auth.detalhe)
     return auth.resposta
   }
   const { chave } = auth

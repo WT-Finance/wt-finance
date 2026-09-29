@@ -143,6 +143,63 @@ describe('templateAlarmeIngestao — cada tipo EXIGE seus dados no corpo (não s
     expect(t.text).toContain('30 horas')
   })
 
+  // v6.1.0 (errata 4(b)/(c)) — variante NOVA num template parametrizado: o corpo EXIGE o dado
+  // (skill `email` §1). Campo ausente sairia como string vazia, sem erro e com o gate verde.
+  it('operacoes_puladas: NOME e MOTIVO de cada operação, contagem e carga_id aparecem em html e text', () => {
+    const puladas: AlarmeIngestao = {
+      tipo: 'operacoes_puladas', cargaId: 'c-pul-001',
+      puladas: [
+        { operacao: 'W - Delta', motivo: 'nome ambíguo no dropdown' },
+        { operacao: 'W - Épsilon', motivo: 'ausente no dropdown' },
+      ],
+    }
+    const t = templateAlarmeIngestao(puladas, { teste: false, link: null })
+    expect(t.assunto).toContain('2 operação(ões) pulada(s)')
+    expect(t.assunto).toContain('Lançamentos por Operação')
+    for (const s of [t.html, t.text]) {
+      expect(s).toContain('W - Delta')
+      expect(s).toContain('nome ambíguo no dropdown')
+      expect(s).toContain('W - Épsilon')
+      expect(s).toContain('ausente no dropdown')
+      expect(s).toContain('c-pul-001')
+    }
+  })
+
+  it('operacoes_removidas: o NOME de cada operação removida, contagem e carga_id aparecem em html e text', () => {
+    const removidas: AlarmeIngestao = {
+      tipo: 'operacoes_removidas', cargaId: 'c-rem-002', operacoes: ['W - Gama', 'W - Ômega'],
+    }
+    const t = templateAlarmeIngestao(removidas, { teste: false, link: null })
+    expect(t.assunto).toContain('2 operação(ões) removida(s)')
+    expect(t.assunto).toContain('Lançamentos por Operação')
+    for (const s of [t.html, t.text]) {
+      expect(s).toContain('W - Gama')
+      expect(s).toContain('W - Ômega')
+      expect(s).toContain('c-rem-002')
+    }
+    expect(t.text).toContain('REMOVEU 2 operação(ões)')
+  })
+
+  it('lista longa é TRUNCADA em 20 com "… e mais N" (o e-mail não vira a planilha)', () => {
+    const muitas: AlarmeIngestao = {
+      tipo: 'operacoes_removidas', cargaId: 'c-rem-003',
+      operacoes: Array.from({ length: 25 }, (_, i) => `W - Op ${String(i + 1).padStart(2, '0')}`),
+    }
+    const t = templateAlarmeIngestao(muitas, { teste: false, link: null })
+    expect(t.text).toContain('W - Op 20')
+    expect(t.text).not.toContain('W - Op 21')
+    expect(t.text).toContain('… e mais 5')
+    expect(t.assunto).toContain('25 operação(ões)') // a contagem é a real, não a da lista truncada
+  })
+
+  it('nome de operação com HTML é ESCAPADO no corpo html', () => {
+    const t = templateAlarmeIngestao(
+      { tipo: 'operacoes_removidas', cargaId: 'c', operacoes: ['W - <b>x</b> & y'] }, { teste: false, link: null },
+    )
+    expect(t.html).not.toContain('<b>x</b>')
+    expect(t.html).toContain('&lt;b&gt;x&lt;/b&gt;')
+  })
+
   it('sem carga/execução anterior → "nunca houve"/"nunca registrada" (não string vazia)', () => {
     const semCarga: AlarmeIngestao = { tipo: 'carga_esperada_nao_chegou', base: 'vendas-produto', horasSemCarga: 5 }
     const t = templateAlarmeIngestao(semCarga, { teste: false, link: null })

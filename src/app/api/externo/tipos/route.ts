@@ -7,14 +7,14 @@
 // contrato inteiro por esta rota antes de montar o POST de criação.
 export const runtime = 'nodejs'
 
-import { autenticarChamada, chamarRpcExterna, traduzirErroRpc, registrarChamada } from '@/lib/api-externa/http'
+import { autenticarChamadaSolicitacoes, chamarRpcExterna, traduzirErroRpc, registrarChamada } from '@/lib/api-externa/http'
 
 const ROTA = '/api/externo/tipos'
 
 export async function GET(req: Request): Promise<Response> {
-  const auth = await autenticarChamada(req)
+  const auth = await autenticarChamadaSolicitacoes(req)
   if (!auth.ok) {
-    await registrarChamada(null, ROTA, auth.resposta.status, 'auth_negada')
+    await registrarChamada(auth.chaveId, ROTA, auth.resposta.status, auth.detalhe)
     return auth.resposta
   }
   const { chave } = auth

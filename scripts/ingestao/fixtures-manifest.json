@@ -14,6 +14,7 @@
     { "nome": "aberto-cru.xlsx", "origem": "Lancamentos_por_Categoria_2026_(venc_em_aberto).xlsx", "base": "lancamentos-aberto", "papel": "cru", "sha256": "ca171dfa6f60efd3c32c1584f0f74a2e8c81c951e20680d3262ae515e8a90475", "bytes": 1971740 },
     { "nome": "aberto-tratado.xlsx", "origem": "Lancamentos_por_Vencimento_em_Aberto_tratada.xlsx", "base": "lancamentos-aberto", "papel": "tratado", "sha256": "15b5bb3c23c4b4ac6880c2a38f841593a62a0e7cb84164ea7212b6e9b3c5d1a2" },
     { "nome": "operacao-cru.csv", "origem": "Análise de Operações 21-09.csv", "base": "lancamentos-operacao", "papel": "cru", "sha256": "33941a290e600105d77e992552fa918dcb6389668682b9374340e723672b66b0", "bytes": 5370374 },
+    { "nome": "operacao-rpa-cru.csv", "origem": "lancamentos-operacao_2026-09-29.csv", "base": "lancamentos-operacao", "papel": "cru", "sha256": "6d6be549a806716d5fbae429ab019c9b1257f0f44a3c3577e1dc81c116c2a416", "bytes": 7031118, "nota": "CSV da RPA (v6.1.0, errata 4(a)): traz a coluna Operacao_Id; 41.959 linhas, 239 operações ↔ 239 ids. Sem tratado — o oráculo é o invariante 1:1 nome↔id." },
     { "nome": "operacao-lista.csv", "origem": "Lista de Operações.csv", "base": "lancamentos-operacao", "papel": "auxiliar", "sha256": "ba1966a6845db7fd0f9da8a823e4127b8d22bb4327e7006542c849cdd987f39b", "bytes": 7928 },
     { "nome": "operacao-tratado.csv", "origem": "Lançamentos por Operação.csv", "base": "lancamentos-operacao", "papel": "tratado", "sha256": "437bc2d942c2cdf22884b3f7161fc782af91719df68b98e92db3a256dc5a8085", "bytes": 6782511 }
   ]

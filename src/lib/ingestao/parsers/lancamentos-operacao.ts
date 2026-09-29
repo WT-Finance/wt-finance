@@ -46,10 +46,21 @@ export interface LancamentoOperacaoCru {
   readonly tipo: string | null
   /** `liquidacao` quando existe, senão `vencimento`. */
   readonly data_final: string | null
+  /**
+   * `Operacao_Id` do CSV da RPA (errata 4(a) do contrato): o UUID estável da operação no Monde,
+   * aparado; célula vazia ⇒ `null`. Coluna AUSENTE no cabeçalho (o CSV do R, caminho manual) ⇒
+   * `null` em todas as linhas — quem precisa distinguir "ausente" de "declarada" lê
+   * `operacaoIdDeclarado` do resultado do parse. Declarada e vazia numa linha de lançamento nunca
+   * chega aqui: o parse é recusado (`ESTRUTURA_INESPERADA`).
+   *
+   * camelCase de propósito (o consumidor de `carga.ts` lê exatamente este nome); o adaptador o
+   * grava na staging como `operacao_id`.
+   */
+  readonly operacaoId: string | null
 }
 
 type Campo = 'lancamento_numero' | 'venda_numero' | 'pessoa' | 'descricao' | 'liquidacao'
-  | 'valor' | 'operacao' | 'tipo'
+  | 'valor' | 'operacao' | 'tipo' | 'operacao_id'
 
 const COL_MAP: Record<string, Campo> = {
   'Lançamento N°':  'lancamento_numero',
@@ -64,6 +75,10 @@ const COL_MAP: Record<string, Campo> = {
   'Operacao':       'operacao',
   'Operação':       'operacao',
   'Tipo':           'tipo',
+  // OPCIONAL (errata 4(a)): só o CSV da RPA a traz. Fica fora de OBRIGATORIOS de propósito — o
+  // CSV do R, sem a coluna, continua aceito. Achada pelo nome NORMALIZADO (`normalizeHeader`
+  // mantém `_`, então `operacao_id` não colide com `operacao`).
+  'Operacao_Id':    'operacao_id',
 }
 
 const OBRIGATORIOS: Campo[] = [
@@ -156,7 +171,13 @@ export function parseLancamentosOperacaoRows(
   rows: Matriz,
   vencimentos: ReadonlyMap<string, string>,
   opcoes: { hoje?: Date } = {},
-): Parse<LancamentoOperacaoCru> & { cruzamento?: ResultadoCruzamento } {
+): Parse<LancamentoOperacaoCru> & {
+  cruzamento?: ResultadoCruzamento
+  /** O CABEÇALHO declarou a coluna `Operacao_Id`? (errata 4(a)). Sempre presente quando `ok`.
+   *  `false` ⇒ CSV do R: todas as linhas têm `operacaoId: null` e isso NÃO é defeito. Espelhado em
+   *  `diagnostico.operacaoIdDeclarado`. */
+  operacaoIdDeclarado?: boolean
+} {
   if (rows.length < 2) return erro('FORMATO_INVALIDO', 'CSV vazio ou sem linhas de dado.')
 
   const { indices, naoMapeados } = mapearColunas<Campo>(rows[0] ?? [], COL_MAP)
@@ -176,6 +197,9 @@ export function parseLancamentosOperacaoRows(
   let linhasSemLiquidacao = 0
   let ignoradas = 0
   let semLancamento = 0
+  const operacaoIdDeclarado = indices.operacao_id !== undefined
+  let semOperacaoId = 0
+  let primeiraSemOperacaoId: number | null = null
 
   for (let i = 1; i < rows.length; i++) {
     const linha = rows[i] ?? []
@@ -184,6 +208,19 @@ export function parseLancamentosOperacaoRows(
     // Linha de operação SEM lançamento: o scrape preenche todas as colunas com o mesmo texto.
     const vazia = ehPlaceholderDoScrape(linha[indices.valor as number])
     if (vazia) semLancamento++
+
+    // `Operacao_Id` (errata 4(a)): coluna ausente ⇒ null sem alarde. Declarada e vazia numa linha de
+    // LANÇAMENTO ⇒ defeito da extração (a linha-placeholder e a linha em branco, já descartada
+    // acima, não contam). Conta todas para a mensagem dizer quantas e citar a primeira.
+    // Na linha-placeholder o scrape repete o mesmo texto em todas as colunas — o id sairia como
+    // "Nada para mostrar". Placeholder não é operação: id `null`.
+    const operacaoId = operacaoIdDeclarado && !vazia
+      ? apararOuNulo(linha[indices.operacao_id as number])
+      : null
+    if (operacaoIdDeclarado && !vazia && operacaoId === null) {
+      semOperacaoId++
+      if (primeiraSemOperacaoId === null) primeiraSemOperacaoId = i + 1
+    }
 
     const numero = apararOuNulo(semNaDoR(linha[indices.lancamento_numero as number]))
     const liquidacao = vazia ? null : lerData(
@@ -225,11 +262,20 @@ export function parseLancamentosOperacaoRows(
       operacao:          apararOuNulo(apertar(linha[indices.operacao as number])),
       tipo:              apararOuNulo(linha[indices.tipo as number]),
       data_final:        liquidacao ?? vencimento,
+      operacaoId,
     })
   }
 
   if (linhas.length === 0) {
     return erro('ESTRUTURA_INESPERADA', 'Nenhuma linha de lançamento encontrada no CSV.')
+  }
+
+  if (semOperacaoId > 0) {
+    return erro('ESTRUTURA_INESPERADA',
+      `O cabeçalho declara a coluna Operacao_Id, mas ${semOperacaoId} linha(s) de lançamento vieram ` +
+      `sem ela (a primeira: linha ${primeiraSemOperacaoId} do arquivo). Um id que some numa linha é ` +
+      'defeito da extração, não dado — a carga foi recusada.',
+      { linhasSemOperacaoId: semOperacaoId, primeiraLinha: primeiraSemOperacaoId })
   }
 
   // Esta base não tem checksum próprio: o "checksum" é a cobertura do cruzamento. Ele vira
@@ -249,6 +295,7 @@ export function parseLancamentosOperacaoRows(
     linhas,
     checksums,
     datasRejeitadas,
+    operacaoIdDeclarado,
     cruzamento: {
       semLiquidacao: semLiquidacaoNumeros.size,
       encontrados: encontradosNumeros.size,
@@ -257,6 +304,7 @@ export function parseLancamentosOperacaoRows(
     },
     diagnostico: {
       linhas: linhas.length,
+      operacaoIdDeclarado,
       colunasNaoMapeadas: naoMapeados,
       semLiquidacao: semLiquidacaoNumeros.size,
       linhasSemLiquidacao,

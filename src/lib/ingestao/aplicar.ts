@@ -352,6 +352,9 @@ export function adaptarLancamentoOperacao(
     valor:              cru.valor,
     operacao:           cru.operacao,
     tipo:               cru.tipo,
+    // Errata 4(a): `Operacao_Id` da RPA (null no CSV do R). A `inserir_lote_staging_operacao` lê
+    // `x->>'operacao_id'` (migration 0287); vazio/ausente ⇒ NULL.
+    operacao_id:        cru.operacaoId,
   }
 }
 

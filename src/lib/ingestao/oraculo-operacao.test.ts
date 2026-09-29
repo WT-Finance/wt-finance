@@ -182,6 +182,70 @@ describe.skipIf(AUSENTES.length > 0)('oráculo — Lançamentos por Operação',
   })
 })
 
+// ── Oráculo do CSV da RPA (v6.1.0, errata 4(a)) ──────────────────────────────────────────────
+//
+// O CSV que a RPA (Power Automate Desktop) entrega é o mesmo scrape com UMA coluna a mais,
+// `Operacao_Id` (UUID da operação no Monde). Não há "tratado" para comparar: o oráculo é o
+// INVARIANTE da coluna — cada operação tem exatamente um id e cada id, exatamente uma operação — e
+// os números MEDIDOS no arquivo de 29/09 (sha256 no manifest). Fixture separada do oráculo acima
+// de propósito: ela não depende das bases vizinhas, e a ausência de uma não pode pular a outra.
+
+const CRU_RPA = 'operacao-rpa-cru.csv'
+const AUSENTES_RPA = fixturesAusentes([CRU_RPA])
+const LINHAS_RPA = 41_959
+const OPERACOES_RPA = 239
+
+it('a fixture do CSV da RPA está presente (ou o pulo está declarado)', () => {
+  if (EXIGIR_FIXTURES) {
+    expect(AUSENTES_RPA, `REQUIRE_FIXTURES=1 e ${motivoDoPulo(AUSENTES_RPA)}`).toEqual([])
+  } else if (AUSENTES_RPA.length > 0) {
+    expect(motivoDoPulo(AUSENTES_RPA)).toContain('fixture(s) ausente(s)')
+  } else {
+    expect(AUSENTES_RPA).toEqual([])
+  }
+})
+
+describe.skipIf(AUSENTES_RPA.length > 0)('oráculo — CSV da RPA com Operacao_Id', () => {
+  // Sem bases vizinhas: o vencimento não é objeto deste oráculo.
+  const resultado = parseLancamentosOperacaoRows(lerMatrizCsv(CRU_RPA), new Map(), { hoje: HOJE })
+
+  it('o parse fecha, declara a coluna e tem a contagem medida', () => {
+    if (!resultado.ok) throw new Error(`${resultado.codigo}: ${resultado.mensagem}`)
+    expect(resultado.operacaoIdDeclarado).toBe(true)
+    expect(resultado.diagnostico.operacaoIdDeclarado).toBe(true)
+    expect(resultado.diagnostico.colunasNaoMapeadas).toEqual([]) // Operacao_Id é lida, não ignorada
+    expect(resultado.linhas).toHaveLength(LINHAS_RPA)
+    expect(resultado.diagnostico.linhasSemLancamento).toBe(0)
+  })
+
+  it('239 operações distintas ↔ 239 ids distintos, relação 1:1, nenhum id vazio', () => {
+    if (!resultado.ok) throw new Error(resultado.mensagem)
+    const idsPorNome = new Map<string, Set<string>>()
+    const nomesPorId = new Map<string, Set<string>>()
+    let semId = 0
+    let semNome = 0
+    for (const l of resultado.linhas) {
+      if (l.operacaoId === null) { semId++; continue }
+      if (l.operacao === null) { semNome++; continue }
+      let ids = idsPorNome.get(l.operacao)
+      if (!ids) { ids = new Set(); idsPorNome.set(l.operacao, ids) }
+      ids.add(l.operacaoId)
+      let nomes = nomesPorId.get(l.operacaoId)
+      if (!nomes) { nomes = new Set(); nomesPorId.set(l.operacaoId, nomes) }
+      nomes.add(l.operacao)
+    }
+    expect(semId).toBe(0)
+    expect(semNome).toBe(0)
+    expect(idsPorNome.size).toBe(OPERACOES_RPA)
+    expect(nomesPorId.size).toBe(OPERACOES_RPA)
+    // 1:1 nas duas direções: nenhum nome com dois ids, nenhum id com dois nomes.
+    const nomeComVariosIds = [...idsPorNome].filter(([, ids]) => ids.size !== 1).map(([n]) => n)
+    const idComVariosNomes = [...nomesPorId].filter(([, nomes]) => nomes.size !== 1).map(([id]) => id)
+    expect(nomeComVariosIds).toEqual([])
+    expect(idComVariosNomes).toEqual([])
+  })
+})
+
 // ── Sondas ───────────────────────────────────────────────────────────────────────────────────
 
 describe('sondas do parser de Operação (mutante ⇒ reprova)', () => {
@@ -281,6 +345,57 @@ describe('sondas do parser de Operação (mutante ⇒ reprova)', () => {
     expect(r.codigo).toBe('ESTRUTURA_INESPERADA')
   })
 
+  // ── Operacao_Id (errata 4(a)) ──
+
+  it('Operacao_Id declarada: o id é lido (aparado) e o flag do resultado sobe', () => {
+    const r = parseLancamentosOperacaoRows(
+      csvComId(['  8f14e45f-ceea-467a-9575-000000000001  ', '8f14e45f-ceea-467a-9575-000000000002']) as Matriz,
+      new Map(), { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.operacaoIdDeclarado).toBe(true)
+    expect(r.diagnostico.operacaoIdDeclarado).toBe(true)
+    expect(r.linhas.map((l) => l.operacaoId)).toEqual([
+      '8f14e45f-ceea-467a-9575-000000000001',
+      '8f14e45f-ceea-467a-9575-000000000002',
+    ])
+    expect(r.diagnostico.colunasNaoMapeadas).toEqual([])
+  })
+
+  it('Operacao_Id ausente (CSV do R): todas as linhas com null, flag false, carga segue', () => {
+    const r = parseLancamentosOperacaoRows(csvMinimo({}) as Matriz, new Map(), { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.operacaoIdDeclarado).toBe(false)
+    expect(r.diagnostico.operacaoIdDeclarado).toBe(false)
+    expect(r.linhas).toHaveLength(1)
+    expect(r.linhas[0].operacaoId).toBeNull()
+  })
+
+  it('Operacao_Id declarada e VAZIA em linha de lançamento ⇒ ESTRUTURA_INESPERADA, com contagem e 1ª linha', () => {
+    // Linhas do arquivo: 1 = cabeçalho; a 2ª tem id; a 3ª e a 5ª não têm.
+    const r = parseLancamentosOperacaoRows(
+      csvComId(['id-1', '', 'id-3', '   ']) as Matriz, new Map(), { hoje: HOJE_SONDA })
+    expect(r.ok).toBe(false)
+    if (r.ok) return
+    expect(r.codigo).toBe('ESTRUTURA_INESPERADA')
+    expect(r.mensagem).toContain('Operacao_Id')
+    expect(r.mensagem).toContain('2 linha(s)')
+    expect(r.mensagem).toContain('linha 3 do arquivo')
+    expect(r.detalhe).toEqual({ linhasSemOperacaoId: 2, primeiraLinha: 3 })
+  })
+
+  it('placeholder "Nada para mostrar" e linha em branco SEM id não disparam o erro', () => {
+    const m = csvComId(['id-1', '', '', 'id-4'])
+    for (let j = 0; j < 6; j++) m[2][j] = 'Nada para mostrar'      // placeholder: id vazio, ok
+    m[2][8] = 'Nada para mostrar'                                    // scrape repete o texto no id: sai null
+    m[3] = m[3].map(() => '')                                        // linha em branco: descartada
+    const r = parseLancamentosOperacaoRows(m as Matriz, new Map(), { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.operacaoIdDeclarado).toBe(true)
+    expect(r.diagnostico.linhasSemLancamento).toBe(1)
+    expect(r.diagnostico.linhasIgnoradas).toBe(1)
+    expect(r.linhas.map((l) => l.operacaoId)).toEqual(['id-1', null, 'id-4'])
+  })
+
   it('`Status` é calculado na leitura, e ausência de Data_Final NÃO vira "realizado"', () => {
     expect(statusDoLancamento('Entrada', '2027-01-01', '2026-09-21')).toBe('A Receber Futuro')
     expect(statusDoLancamento('Saída', '2027-01-01', '2026-09-21')).toBe('A Pagar Futuro')
@@ -307,5 +422,19 @@ function csvMinimo(over: { numero?: string; valor?: string; operacao?: string })
     ['Lançamento N°', 'Venda', 'Pessoa', 'Descrição', 'Liquidação', 'Valor', 'Operacao', 'Tipo'],
     [over.numero ?? '100', '59180', 'Cliente', 'Pagamento venda', '', over.valor ?? 'R$ 389,16',
       over.operacao ?? 'W - Alguem - 18NOV25', 'Entrada'],
+  ]
+}
+
+/** Como `csvMinimo`, mas com a coluna `Operacao_Id` no fim do cabeçalho e uma linha de lançamento
+ *  por elemento de `ids` (cada uma com número distinto: 101, 102, …). Cabeçalho = linha 1 do
+ *  arquivo, então `ids[0]` está na linha 2. */
+function csvComId(ids: readonly string[]): unknown[][] {
+  const [cab] = csvMinimo({})
+  return [
+    [...cab, 'Operacao_Id'],
+    ...ids.map((id, k) => [
+      String(101 + k), '59180', 'Cliente', 'Pagamento venda', '', 'R$ 389,16',
+      'W - Alguem - 18NOV25', 'Entrada', id,
+    ]),
   ]
 }

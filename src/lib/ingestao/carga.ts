@@ -19,18 +19,20 @@ import {
   ehCaminhoDaCarga, baixarCru, sha256Confere, ErroIngestaoStorage,
 } from './storage'
 import { formatoPeloNome, lerMatriz, type FormatoArquivo } from './matriz'
+import { z } from 'zod'
 import type { Matriz, Checksum, ParseErro } from './parsers/comum'
-import { somaCentavos } from './parsers/comum'
+import { somaCentavos, apertar } from './parsers/comum'
 import {
   parseVendasProdutoRows, vendasDistintasQueEntramNoFato, type ArquivoVendas, type VendaProdutoCru,
 } from './parsers/vendas-produto'
 import { parseDemonstrativoCruRows, type DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import { parseLancamentosCategoriaRows } from './parsers/lancamentos-categoria'
-import { parseLancamentosOperacaoRows } from './parsers/lancamentos-operacao'
+import { parseLancamentosOperacaoRows, type LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
 import { aplicarCarga, CargaRejeitada, lancamentoOperacaoAplicavel, type ResultadoAplicacao } from './aplicar'
 import { getAdminClient } from '@/lib/supabase/admin'
 import { autenticarChamada, type ChaveResolvida } from '@/lib/api-externa/http'
 import { requireAreaApi, type Sessao } from '@/lib/auth/sessao'
+import { parseRpc } from '@/lib/schemas-rpc'
 import { abrirCarga, concluirCarga, lerUltimaCargaAplicada, obterCarga } from './log'
 import {
   somaPorAno, calcularDiffPorAno, anoCorrenteSP, ehRejeicaoDeConteudo, precisaAlarmarParNovo,
@@ -232,6 +234,40 @@ export async function autenticarIngestao(req: Request, base: BaseIngestao): Prom
   return { ok: true, via: 'sessao', sessao: sessaoOuResp }
 }
 
+// ── A origem é decidida pela CREDENCIAL, não pelo chamador (errata 4(g)) ─────────────────────
+//
+// `x-ingestao-origem` continua obrigatório e validado contra o enum (a rota); aqui se confere que
+// o valor não CONTRADIZ a porta de entrada. Sem isto, uma chave de RPA que declarasse `manual`
+// (ou o card, `rpa-pad`) sujaria a trilha de auditoria do §6 — o único lugar onde se responde
+// "quem mandou esta carga".
+const ORIGENS_POR_CREDENCIAL: Record<'chave' | 'sessao', readonly string[]> = {
+  chave: ['rpa-pad', 'rpa-cloud'],
+  sessao: ['manual', 'reprocesso'],
+}
+
+/** `null` quando `origem` é compatível com a credencial; senão o `ErroCarga` 422 pronto. */
+export function validarOrigemPelaCredencial(via: 'chave' | 'sessao', origem: string): ErroCarga | null {
+  const aceitas = ORIGENS_POR_CREDENCIAL[via]
+  if (aceitas.includes(origem)) return null
+  return new ErroCarga(
+    'FORMATO_INVALIDO', 422,
+    `A origem "${origem}" contradiz a credencial: uma chamada ${via === 'chave' ? 'com "x-api-key"' : 'com a sessão do card'} ` +
+    `só aceita ${aceitas.map((o) => `"${o}"`).join(' ou ')} em "x-ingestao-origem".`,
+    { origem, credencial: via, aceitas },
+  )
+}
+
+/** `puladas` (errata 4(b)) só existe em `lancamentos-operacao`. Presente — mesmo `[]` — em outra
+ *  base ⇒ 422: aceitar em silêncio esconderia um cliente que confundiu a base. */
+export function validarPuladasNaBase(base: BaseIngestao, puladas: readonly unknown[] | undefined): ErroCarga | null {
+  if (puladas === undefined || base === 'lancamentos-operacao') return null
+  return new ErroCarga(
+    'FORMATO_INVALIDO', 422,
+    `O campo "puladas" só é aceito na base "lancamentos-operacao"; a base "${base}" não o aceita.`,
+    { base },
+  )
+}
+
 // ── 409 CARGA_EM_ANDAMENTO — lock (ver limitação abaixo) ─────────────────────────────────────
 //
 // O contrato (§2.3 passo 2) pede um lock de BASE. O lock DE VERDADE (`pg_advisory_xact_lock`)
@@ -346,6 +382,31 @@ export interface DiffCarga {
    *  o que dispara o alarme "ano fechado alterado" (anexo v6.0.0/M6 §4). `null` nas mesmas
    *  condições de `por_ano`. */
   readonly anos_fechados_alterados: number[] | null
+  /**
+   * v6.1.0 (errata 4(c)) — SÓ em `lancamentos-operacao` (nas outras bases as três chaves NÃO
+   * existem). Operações que a base viva tinha e o arquivo NÃO traz; e as que o arquivo traz e a
+   * base não tinha. `null` = não foi possível medir (RPC do "antes" falhou). Na RESPOSTA isso só
+   * acontece na conferência (um aviso vai junto em `alarmes`), porque a aplicação aborta; na LINHA
+   * de carga aparece também com status `erro` (o diff calculado até ali é gravado).
+   */
+  readonly operacoes_removidas?: readonly OperacaoRef[] | null
+  readonly operacoes_novas?: readonly OperacaoRef[] | null
+  /** O que a RPA declarou não ter extraído (errata 4(b)), ecoado como veio; `[]` quando nada. */
+  readonly puladas?: readonly PuladaRecebida[]
+}
+
+/** Uma operação como o diff a reporta. `operacao` já com espaços apertados; `operacao_id` já com
+ *  trim/minúsculas (`null` quando a carga/base não tem a coluna). */
+export interface OperacaoRef {
+  readonly operacao: string
+  readonly operacao_id: string | null
+}
+
+/** Item de `puladas` do passo 3 (errata 4(b)): a operação que a RPA NÃO extraiu. */
+export interface PuladaRecebida {
+  readonly operacao: string
+  readonly ids: readonly string[]
+  readonly motivo: string
 }
 
 type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
@@ -461,6 +522,123 @@ export async function calcularDiff(
   }
 }
 
+// ── Conjunto de operações: base viva × arquivo (errata 4(c), v6.1.0) ─────────────────────────
+//
+// O diff de contagem não vê uma operação que SOME: 240 operações lidas contra 239 no arquivo
+// aparecem como "−N linhas", indistinguível de um mês a menos. O que a diretoria vê é a operação
+// de Weddings que desapareceu da carteira — daí a comparação por CONJUNTO.
+
+type OperacaoBruta = { readonly operacao: string | null; readonly operacao_id: string | null }
+
+function idNormalizado(v: string | null | undefined): string | null {
+  const s = (v ?? '').trim().toLowerCase()
+  return s === '' ? null : s
+}
+
+interface OperacaoNormalizada {
+  readonly nome: string
+  readonly id: string | null
+  readonly ref: OperacaoRef
+}
+
+/** `apertar` no nome (é o MESMO que o parser aplica, então o arquivo e a base — que guarda o nome
+ *  como o parser gravou, mas pode trazer legado com espaço duplo — se encontram), trim+minúsculas
+ *  no id. Nome vazio não é operação. */
+function normalizarOperacoes(itens: readonly OperacaoBruta[]): OperacaoNormalizada[] {
+  const out: OperacaoNormalizada[] = []
+  for (const i of itens) {
+    const nome = apertar(i.operacao)
+    if (nome === '') continue
+    const id = idNormalizado(i.operacao_id)
+    out.push({ nome, id, ref: { operacao: nome, operacao_id: id } })
+  }
+  return out
+}
+
+/** As operações que o ARQUIVO traz — só linhas de lançamento (`lancamentoOperacaoAplicavel`: valor,
+ *  operação e tipo válidos). As linhas-placeholder do scrape ("Nada para mostrar" e afins) têm
+ *  `operacaoId: null` E um `operacao` que parece nome; excluí-las pelo critério de linha aplicável,
+ *  nunca por `operacaoId === null`, é o que as impede de virar "operação nova". Distintas. */
+export function operacoesDoArquivo(linhas: readonly LancamentoOperacaoCru[]): OperacaoRef[] {
+  const brutas = linhas
+    .filter(lancamentoOperacaoAplicavel)
+    .map((l) => ({ operacao: l.operacao, operacao_id: l.operacaoId }))
+  const vistas = new Map<string, OperacaoRef>()
+  for (const n of normalizarOperacoes(brutas)) {
+    const k = `${n.nome}\u0000${n.id ?? ''}`
+    if (!vistas.has(k)) vistas.set(k, n.ref)
+  }
+  return [...vistas.values()]
+}
+
+export interface ComparacaoOperacoes {
+  readonly removidas: readonly OperacaoRef[]
+  readonly novas: readonly OperacaoRef[]
+  /** Qual chave decidiu — só para testes/diagnóstico; não vai ao contrato. */
+  readonly criterio: 'operacao_id' | 'nome'
+}
+
+/**
+ * Compara o conjunto ANTES (base viva) com o do ARQUIVO. Critério (errata 4(c)): por
+ * `operacao_id` quando o arquivo declarou a coluna E os dois lados o têm em TODO item; senão pelo
+ * nome normalizado. "Os dois lados" é por item, não "algum": um par sem id no "antes" (carga
+ * anterior sem a coluna) faria a comparação por id chamar toda operação de "nova" e "removida" ao
+ * mesmo tempo. Em ambos os critérios dedupa antes de comparar (homônimos com ids distintos
+ * colapsam por nome; o mesmo id com dois nomes colapsa por id). Pura.
+ */
+export function compararConjuntoDeOperacoes(
+  antes: readonly OperacaoBruta[],
+  arquivo: readonly OperacaoBruta[],
+  arquivoDeclarouId: boolean,
+): ComparacaoOperacoes {
+  const a = normalizarOperacoes(antes)
+  const b = normalizarOperacoes(arquivo)
+  const porId = arquivoDeclarouId && a.every((x) => x.id !== null) && b.every((x) => x.id !== null)
+
+  const unicos = (lista: readonly OperacaoNormalizada[]): Map<string, OperacaoRef> => {
+    const m = new Map<string, OperacaoRef>()
+    for (const x of lista) {
+      const k = porId ? (x.id as string) : x.nome
+      if (!m.has(k)) m.set(k, x.ref)
+    }
+    return m
+  }
+  const mA = unicos(a)
+  const mB = unicos(b)
+  const porNome = (x: OperacaoRef, y: OperacaoRef) => (x.operacao < y.operacao ? -1 : x.operacao > y.operacao ? 1 : 0)
+  return {
+    removidas: [...mA].filter(([k]) => !mB.has(k)).map(([, r]) => r).sort(porNome),
+    novas: [...mB].filter(([k]) => !mA.has(k)).map(([, r]) => r).sort(porNome),
+    criterio: porId ? 'operacao_id' : 'nome',
+  }
+}
+
+/** `.nullable()` em `operacao_id`, não `.optional()`: a função emite `null` explícito (0287). */
+export const operacoesVigentesSchema = z.array(z.object({
+  operacao: z.string(),
+  operacao_id: z.string().nullable(),
+}))
+
+/**
+ * O "antes" do diff por conjunto — `ingestao_operacoes_vigentes()` (0287), lida ANTES da promoção
+ * (que trunca raw e fato). `null` em qualquer falha: erro da RPC (inclusive função ausente do
+ * schema cache), exceção de rede, resposta fora do formato. **Nunca** vira `[]`: "não consegui
+ * ler" tratado como "a base estava vazia" diria "nenhuma operação removida" — exatamente o
+ * silêncio que o invariante 5 do briefing proíbe. A função devolve `[]` (não `null`) para fato
+ * vazio (`coalesce` na 0287), então `data: null` aqui é resposta malformada, e falha.
+ */
+export async function lerOperacoesVigentes(): Promise<readonly OperacaoRef[] | null> {
+  try {
+    const res = await rpc()('ingestao_operacoes_vigentes')
+    const lista = parseRpc(operacoesVigentesSchema, res, 'ingestao_operacoes_vigentes')
+    if (lista === null) return null
+    return lista.map((o) => ({ operacao: o.operacao, operacao_id: o.operacao_id }))
+  } catch (err) {
+    console.error('[ingestao/carga] ingestao_operacoes_vigentes lançou:', err)
+    return null
+  }
+}
+
 // ── Parse por base (§2.3 passos 4-7, dentro do que cada `parse*Rows` da M3 já faz) ──────────
 
 interface ArquivoLido {
@@ -513,6 +691,12 @@ interface ParseNormalizado {
    *     exatamente o total atual).
    */
   readonly linhasNaBase?: number
+  /** Só `lancamentos-operacao` (errata 4(c)): as operações do arquivo e se o cabeçalho declarou
+   *  `Operacao_Id` — os dois insumos de `compararConjuntoDeOperacoes`. */
+  readonly operacoesDoArquivo?: {
+    readonly operacoes: readonly OperacaoRef[]
+    readonly declarouId: boolean
+  }
 }
 
 async function executarParse(base: BaseIngestao, arquivosLidos: readonly ArquivoLido[]): Promise<ParseNormalizado | ErroCarga> {
@@ -647,6 +831,10 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
         // O "depois" do diff desconta as linhas-placeholder do scrape, que o aplicador não grava
         // — sem isso o diff acusa diferença numa carga idêntica à que já está na base.
         linhasNaBase: resultado.linhas.filter(lancamentoOperacaoAplicavel).length,
+        operacoesDoArquivo: {
+          operacoes: operacoesDoArquivo(resultado.linhas),
+          declarouId: resultado.operacaoIdDeclarado === true,
+        },
         checksums: resultado.checksums,
         datasRejeitadasN: resultado.datasRejeitadas.length,
         diagnostico: resultado.diagnostico,
@@ -685,6 +873,9 @@ export interface EntradaCarga {
   readonly confirmar: boolean
   readonly chaveId: number | null
   readonly usuarioId: string | null
+  /** Errata 4(b) — só `lancamentos-operacao`; a rota recusa (422) em outra base. Opcional de
+   *  propósito: `supabase/seed/seed.ts` monta `EntradaCarga` sem o campo. */
+  readonly puladas?: readonly PuladaRecebida[]
 }
 
 export interface ResultadoCargaArquivo {
@@ -857,6 +1048,12 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
   // `confirmar:false`) faria o `catch` tentar concluir uma linha que nunca foi aberta.
   let cargaAberta = false
 
+  // O diff de Operação (com o conjunto de operações e `puladas`) já calculado — o `catch` o
+  // grava em `ingestao.carga` também quando a carga é REJEITADA depois disso (errata 4(b)/(c):
+  // "o que a RPA não extraiu" e "o que ia sumir" são exatamente o que se quer ler numa rejeição).
+  // Só Operação: nas outras bases o `catch` grava como antes (sem diff).
+  let diffParaLog: DiffCarga | undefined
+
   try {
     // Contrato §2.3: a idempotência é o passo 1 e o grafo é o passo 3 — o REPLAY vem antes do
     // grafo. Sem isto, a RPA que reenvia o passo 3 de uma Operação JÁ APLICADA (timeout do lado
@@ -970,11 +1167,45 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     const somaCentavosNovo = base === 'demonstrativo-competencia'
       ? somaCentavos((parseado.linhasParaAplicar as readonly DemonstrativoCompetenciaCru[]).map((l) => l.valor))
       : null
-    const { diff, aviso: avisoDiff } = await calcularDiff(base, parseado.linhasNaBase ?? parseado.totalLinhas, somaCentavosNovo)
+    const { diff: diffTotal, aviso: avisoDiff } = await calcularDiff(base, parseado.linhasNaBase ?? parseado.totalLinhas, somaCentavosNovo)
     // Os avisos do PARSE (hoje: a cobertura do cruzamento de Vencimento) entram junto com o do
     // diff, e valem para a CONFERÊNCIA também — é antes de confirmar que o operador precisa
     // ler que nenhum vencimento foi resolvido.
     const alarmesBase = [...(parseado.avisos ?? []), ...(avisoDiff ? [avisoDiff] : [])]
+
+    // Errata 4(b)/(c) — só Operação: compara o CONJUNTO de operações da base viva com o do arquivo
+    // e ecoa `puladas`. O "antes" é lido AGORA, antes da promoção que trunca raw e fato.
+    const puladas: readonly PuladaRecebida[] = base === 'lancamentos-operacao' ? (entrada.puladas ?? []) : []
+    let diff: DiffCarga = diffTotal
+    if (base === 'lancamentos-operacao') {
+      const antes = await lerOperacoesVigentes()
+      if (antes === null) {
+        diff = { ...diffTotal, operacoes_removidas: null, operacoes_novas: null, puladas: [...puladas] }
+        diffParaLog = diff
+        if (entrada.confirmar) {
+          // NÃO aplica às cegas: sem o "antes", uma operação removida passaria em silêncio
+          // (invariante 5 do briefing). Mesmo caminho de `vencimentosPorNumero`: 500 `ERRO_INTERNO`
+          // ⇒ o `catch` grava a carga como `erro`; nenhum alarme (só rejeição 422 alarma hoje).
+          throw new ErroCarga(
+            'ERRO_INTERNO', 500,
+            'Não foi possível ler o conjunto de operações da base atual para compará-lo com o arquivo. ' +
+            'A base atual foi preservada.',
+          )
+        }
+        alarmesBase.push(
+          'Não foi possível medir o conjunto de operações (falha ao ler a base atual): "operacoes_removidas" ' +
+          'e "operacoes_novas" saem como não medidos — não os leia como "nenhuma". A aplicação recusaria esta carga.',
+        )
+      } else {
+        const cmp = compararConjuntoDeOperacoes(
+          antes,
+          parseado.operacoesDoArquivo?.operacoes ?? [],
+          parseado.operacoesDoArquivo?.declarouId ?? false,
+        )
+        diff = { ...diffTotal, operacoes_removidas: cmp.removidas, operacoes_novas: cmp.novas, puladas: [...puladas] }
+        diffParaLog = diff
+      }
+    }
 
     if (!entrada.confirmar) {
       // CONFERÊNCIA (anexo §5): passos 4-8 só, sem aplicar (passo 9) nem concluir/logar (passo 10).
@@ -1033,6 +1264,27 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
     // um incidente que a segunda reabriria.
     for (const alarmeAno of diffAno?.alarmes ?? []) {
       await dispararAlarmeDeEvento(alarmeAno, `${base}:${alarmeAno.ano}:${cargaId}`)
+    }
+
+    // Errata 4(b)/(c) — alarmes de Operação, só na APLICAÇÃO (a conferência devolveu antes daqui).
+    // Um incidente POR CARGA e por tipo (a chave de evento inclui `carga_id`, como acima).
+    // `operacoes_removidas` dispara MESMO que as operações constem em `puladas`: a pulada é a
+    // causa, a remoção é o efeito que a diretoria vê — os dois e-mails saem.
+    if (base === 'lancamentos-operacao') {
+      if (puladas.length > 0) {
+        const alarmePuladas: AlarmeIngestao = {
+          tipo: 'operacoes_puladas', cargaId,
+          puladas: puladas.map((p) => ({ operacao: p.operacao, motivo: p.motivo })),
+        }
+        await dispararAlarmeDeEvento(alarmePuladas, `${base}:${cargaId}`)
+      }
+      const removidas = diffComAno.operacoes_removidas ?? []
+      if (removidas.length > 0) {
+        const alarmeRemovidas: AlarmeIngestao = {
+          tipo: 'operacoes_removidas', cargaId, operacoes: removidas.map((o) => o.operacao),
+        }
+        await dispararAlarmeDeEvento(alarmeRemovidas, `${base}:${cargaId}`)
+      }
     }
 
     // `pares_novos` (Demonstrativo): até a M6, `promover_carga_demonstrativo` devolvia a
@@ -1095,6 +1347,7 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
         status: cargaErro.codigo === 'ERRO_INTERNO' ? 'erro' : 'rejeitada',
         erro: `${cargaErro.codigo}: ${cargaErro.message}`,
         duracaoMs: Date.now() - inicio,
+        ...(diffParaLog ? { diff: diffParaLog } : {}),
       })
       if (!conclusao.ok) {
         console.error(`[ingestao/carga] carga ${cargaId} (${base}) rejeitada/erro, E o log também falhou:`, conclusao.erro)

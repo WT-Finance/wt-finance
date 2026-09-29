@@ -75,6 +75,45 @@ export async function autenticarChamada(req: Request): Promise<{ ok: true; chave
 }
 
 /**
+ * Porta de autenticação da API externa de SOLICITAÇÕES (`/api/externo/*`) — v6.1.0, errata 4(g) do
+ * contrato de ingestão v1. É a `autenticarChamada` acrescida de uma recusa: uma chave com
+ * `escopo_bases` NÃO vazio é chave de INGESTÃO (RPA — 0274) e carrega relatório, nada mais; ela
+ * NÃO abre a API de Solicitações (`403 ESCOPO_INSUFICIENTE`). Chave com `escopo_bases` vazio (a
+ * chave de integrador da v5.4.0) passa exatamente como antes.
+ *
+ * Opt-in POR DESENHO: `autenticarChamada` continua sem olhar o escopo, porque `autenticarIngestao`
+ * (`src/lib/ingestao/carga.ts`) a usa e decide o escopo por BASE — mudar o helper compartilhado
+ * quebraria as rotas `/api/ingestao/*`. Toda rota sob `src/app/api/externo/` autentica AQUI, num
+ * ponto só; rota nova de `/api/externo/*` que chamar `autenticarChamada` direto reabre a brecha
+ * (o teste `externo-escopo.test.ts` varre o diretório e reprova).
+ *
+ * `chaveId` acompanha a recusa de ESCOPO (a chave foi resolvida — a auditoria deve vinculá-la à
+ * chamada negada, como `autenticarIngestao` faz) e é `null` nas recusas de autenticação (401), onde
+ * não há chave. A rota entrega esse valor a `registrarChamada`.
+ */
+export async function autenticarChamadaSolicitacoes(
+  req: Request,
+): Promise<{ ok: true; chave: ChaveResolvida } | { ok: false; resposta: Response; chaveId: number | null; detalhe: string }> {
+  const auth = await autenticarChamada(req)
+  if (!auth.ok) {
+    return { ok: false, resposta: auth.resposta, chaveId: null, detalhe: 'auth_negada' }
+  }
+  if (auth.chave.escopo_bases.length > 0) {
+    return {
+      ok: false,
+      resposta: respostaErro(
+        'ESCOPO_INSUFICIENTE',
+        'Chave de ingestão não tem acesso à API de Solicitações.',
+        403,
+      ),
+      chaveId: auth.chave.id,
+      detalhe: 'escopo_insuficiente: chave de ingestão na API de Solicitações',
+    }
+  }
+  return { ok: true, chave: auth.chave }
+}
+
+/**
  * Lê o corpo como JSON com teto de tamanho (default 64 KiB — payload de Solicitação
  * é pequeno; nada aqui envia anexo). `content-length` > limite OU texto lido > limite
  * → 413; corpo vazio ou JSON malformado → 400.
