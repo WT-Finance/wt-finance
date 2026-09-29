@@ -17,7 +17,8 @@ Parametros
   -Arquivos    1..N caminhos (so vendas-produto aceita mais de 1). Com powershell.exe -File a lista
                chega como UM texto: separe os caminhos por | (pipe) dentro de um unico par de aspas.
   -ChaveEnv    NOME da variavel de ambiente que guarda a chave (nunca a chave)
-  -Log         (so lancamentos-operacao) o .log da RPA; as linhas PULADA viram "puladas"
+  -Log         (so lancamentos-operacao, onde e OBRIGATORIO) o .log da RPA; as linhas PULADA viram
+               "puladas". Sem linha RESUMO o log e recusado (pode estar truncado).
   -ExtraidoEm  ISO-8601 com fuso (ex.: 2026-09-29T09:58:00-03:00); opcional
   -Aplicar     switch. SEM ele o script so CONFERE (confirmar=false) e nada e gravado.
 
@@ -50,7 +51,7 @@ $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 [Net.ServicePointManager]::Expect100Continue = $false
 
-$script:MaxTentativas = 3                 # por passo
+$script:MaxTentativas = 4                 # por passo (Vendas leva minutos: o lock devolve 409 enquanto processa)
 $script:Esperas = @(5, 15, 45)            # segundos entre tentativas (crescente)
 $script:TimeoutJsonSeg = 120              # passo 1
 $script:TimeoutPutSeg = 900               # passo 2 (ate 50 MB)
@@ -58,6 +59,7 @@ $script:TimeoutCargaSeg = 900             # passo 3 (Vendas processa por minutos
 $script:Origem = 'rpa-pad'                # a origem e amarrada a credencial (errata 4(g))
 $script:ChaveSecreta = ''
 $script:PrimeiroArquivo = $null
+$script:CargaId = $null                   # preenchido apos o passo 1; entra em toda mensagem de erro seguinte
 
 $BASES_VALIDAS = @('demonstrativo-competencia', 'vendas-produto', 'lancamentos-movimentacao', 'lancamentos-aberto', 'lancamentos-operacao')
 
@@ -146,39 +148,51 @@ function Ler-TextoDoLog {
 
 # Formato (uma linha por operacao): operacao;id;status;entradas;saidas;leituras
 # status = OK | PULADA - <motivo>. Ultima linha: RESUMO;;puladas=N;;;
-# Devolve @{ Puladas = object[] de @{Operacao;Ids;Motivo}; Resumo = N ou $null }.
+# NAO assume posicao: o campo de status e achado pelo CONTEUDO (^OK ou ^PULADA, a partir do 3o campo);
+# o que vem antes dele e id (o campo imediatamente anterior) e nome (o resto, reunido com ;), e os 3
+# ultimos campos sao entradas;saidas;leituras. Linha que nao se separa com seguranca vira ERRO (codigo 1).
+# Devolve @{ Puladas = object[] de @{Operacao;Ids;Motivo}; Resumo = N }.
 function Ler-LogPuladas {
     param([string]$Caminho)
     $texto = Ler-TextoDoLog $Caminho
     $puladas = New-Object System.Collections.Generic.List[object]
     $resumo = $null
+    $numLinha = 0
     foreach ($bruta in ($texto -split '\r?\n')) {
+        $numLinha++
         $linha = $bruta.Trim()
         if ($linha -eq '') { continue }
         $campos = $linha -split ';'
+        $n = $campos.Count
         if ($campos[0].Trim() -ceq 'RESUMO') {
             $textoResumo = ''
-            if ($campos.Count -ge 3) { $textoResumo = $campos[2].Trim() }
+            if ($n -ge 3) { $textoResumo = $campos[2].Trim() }
             if ($textoResumo -match '^puladas\s*=\s*(\d+)$') { $resumo = [int]$Matches[1] }
             else { Sair-Com 1 'ERRO: log inconsistente - a linha RESUMO nao traz puladas=N.' }
             continue
         }
-        $n = $campos.Count
-        if ($n -lt 3) { continue }
-        # o motivo pode conter ; - os 3 ultimos campos sao entradas;saidas;leituras
-        $fimStatus = $n - 1
-        if ($n -ge 6) { $fimStatus = $n - 4 }
-        $status = ($campos[2..$fimStatus] -join ';').Trim()
-        if ($status -notmatch '^PULADA\b') { continue }
-        $operacao = $campos[0].Trim()
-        if ($operacao -eq '') { Sair-Com 1 'ERRO: log inconsistente - linha PULADA sem nome de operacao.' }
+        if ($n -ge 3 -and $campos[0].Trim() -ieq 'operacao' -and $campos[2].Trim() -ieq 'status') { continue }   # cabecalho
+        $k = -1
+        for ($i = 2; $i -lt $n; $i++) {
+            if ($campos[$i].Trim() -match '^(OK|PULADA)\b') { $k = $i; break }
+        }
+        if ($k -lt 0) { Sair-Com 1 ('ERRO: log inconsistente - a linha ' + $numLinha + ' nao tem status OK nem PULADA reconhecivel.') }
+        if ($campos[$k].Trim() -match '^OK\b') { continue }
+        if ($n -lt ($k + 4)) {
+            Sair-Com 1 ('ERRO: log inconsistente - a linha ' + $numLinha + ' (PULADA) nao tem o formato operacao;id;status;entradas;saidas;leituras.')
+        }
+        $status = ($campos[$k..($n - 4)] -join ';').Trim()
+        $operacao = ($campos[0..($k - 2)] -join ';').Trim()
+        if ($operacao -eq '') { Sair-Com 1 ('ERRO: log inconsistente - a linha ' + $numLinha + ' (PULADA) esta sem nome de operacao.') }
         $motivo = ($status -replace '^PULADA\s*-?\s*', '').Trim()
-        $id = $campos[1].Trim()
+        $id = $campos[$k - 1].Trim()
         $ids = @()
         if ($id -ne '') { $ids = @($id) }
         [void]$puladas.Add(@{ Operacao = $operacao; Ids = [object[]]$ids; Motivo = $motivo })
     }
-    if ($null -ne $resumo -and $resumo -ne $puladas.Count) {
+    # Sem RESUMO o log pode estar truncado (a RPA morreu no meio): nao pode virar puladas = [].
+    if ($null -eq $resumo) { Sair-Com 1 'ERRO: log inconsistente - sem linha RESUMO (log truncado?).' }
+    if ($resumo -ne $puladas.Count) {
         Sair-Com 1 ('ERRO: log inconsistente - o RESUMO diz puladas=' + $resumo + ' mas ha ' + $puladas.Count + ' linhas PULADA.')
     }
     return @{ Puladas = [object[]]$puladas.ToArray(); Resumo = $resumo }
@@ -341,7 +355,7 @@ function Salvar-Resposta {
             $conteudo = $Res.Texto
         }
         else {
-            $conteudo = [ordered]@{ ok = $false; passo = $Passo; http_status = $Res.Status; erro_rede = $Res.ErroRede; corpo = $Res.Texto } | ConvertTo-Json -Depth 10
+            $conteudo = [ordered]@{ ok = $false; passo = $Passo; carga_id = $script:CargaId; http_status = $Res.Status; erro_rede = $Res.ErroRede; corpo = $Res.Texto } | ConvertTo-Json -Depth 10
         }
         [IO.File]::WriteAllText($destino, (Ocultar-Chave $conteudo), (New-Object System.Text.UTF8Encoding($false)))
     }
@@ -368,6 +382,11 @@ function Falhar-Http {
             $msg = 'ERRO: passo ' + $Passo + ' - HTTP ' + $Res.Status + ' ' + $trecho
         }
     }
+    if ($script:CargaId) { $msg = $msg + ' (carga_id ' + $script:CargaId + ')' }
+    # exit 1 no passo carga com -Aplicar: o servidor pode ter aplicado antes de a resposta se perder.
+    if ($Passo -eq 'carga' -and $Aplicar -and $codigo -eq 1) {
+        $msg = $msg + ' - RESULTADO INCERTO: confira ingestao.carga pelo carga_id (/admin/ingestao) antes de reenviar.'
+    }
     Sair-Com $codigo $msg
 }
 
@@ -392,6 +411,9 @@ function Invoke-Entrega {
         $completo = (Resolve-Path -LiteralPath $c).ProviderPath
         [void]$itens.Add(@{ Caminho = $completo; Nome = [IO.Path]::GetFileName($completo); Bytes = (Get-Item -LiteralPath $completo).Length; Sha256 = '' })
     }
+    # Resposta velha nao pode ser lida como se fosse desta execucao: apaga logo que o caminho e conhecido.
+    $script:PrimeiroArquivo = $itens[0].Caminho
+    try { Remove-Item -LiteralPath ($script:PrimeiroArquivo + '.resposta.json') -Force -ErrorAction SilentlyContinue } catch { }
     if ($itens.Count -gt 1 -and $Base -ne 'vendas-produto') {
         Sair-Com 1 ('ERRO: a base ' + $Base + ' aceita exatamente 1 arquivo (recebidos: ' + $itens.Count + ').')
     }
@@ -404,13 +426,14 @@ function Invoke-Entrega {
         if ($it.Bytes -le 0) { Sair-Com 1 ('ERRO: arquivo vazio: ' + $it.Nome) }
     }
     if ($Log -and $Base -ne 'lancamentos-operacao') { Sair-Com 1 'ERRO: -Log so vale para a base lancamentos-operacao.' }
+    # -Log e OBRIGATORIO em Operacao: a salvaguarda de "puladas" nao pode sumir por esquecimento.
+    if ($Base -eq 'lancamentos-operacao' -and -not $Log) { Sair-Com 1 'ERRO: a base lancamentos-operacao exige -Log (o .log da RPA).' }
     if ($Log -and -not (Test-Path -LiteralPath $Log -PathType Leaf)) { Sair-Com 1 ('ERRO: log nao encontrado: ' + $Log) }
     if ($ExtraidoEm -and $ExtraidoEm.Trim() -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$') {
         Sair-Com 1 'ERRO: -ExtraidoEm precisa ser ISO-8601 com fuso, ex.: 2026-09-29T09:58:00-03:00.'
     }
     $chave = Obter-Chave $ChaveEnv
     $script:ChaveSecreta = $chave
-    $script:PrimeiroArquivo = $itens[0].Caminho
 
     # puladas: lido e conferido ANTES de qualquer rede (log inconsistente => codigo 1)
     $puladas = $null
@@ -447,9 +470,10 @@ function Invoke-Entrega {
     if ([string]::IsNullOrWhiteSpace($cargaId) -or $assinados.Count -ne $itens.Count) {
         Sair-Com 1 'ERRO: passo upload-url - resposta fora do contrato (sem carga_id ou com numero de arquivos diferente).'
     }
+    $script:CargaId = $cargaId
     for ($i = 0; $i -lt $itens.Count; $i++) {
         if ([string]::IsNullOrWhiteSpace([string]$assinados[$i].path) -or [string]::IsNullOrWhiteSpace([string]$assinados[$i].signed_url) -or ([string]$assinados[$i].nome -cne $itens[$i].Nome)) {
-            Sair-Com 1 'ERRO: passo upload-url - resposta fora do contrato (arquivo sem path/signed_url ou fora de ordem).'
+            Sair-Com 1 ('ERRO: passo upload-url - resposta fora do contrato (arquivo sem path/signed_url ou fora de ordem) (carga_id ' + $cargaId + ').')
         }
     }
 
@@ -498,13 +522,15 @@ function Invoke-Entrega {
         Sair-Com 1 ('FATAL: modo APLICAR mas o servidor respondeu status conferida (carga_id ' + $cargaId + '); nada foi aplicado.')
     }
     if ($status -ne 'aplicada' -and $status -ne 'conferida') {
-        Sair-Com 1 'ERRO: passo carga - resposta 200 sem status aplicada/conferida.'
+        Sair-Com 1 ('ERRO: passo carga - resposta 200 sem status aplicada/conferida (carga_id ' + $cargaId + '); resultado INCERTO, confira ingestao.carga.')
     }
 
     $linhas = ''
     if ($null -ne $j3.parse -and $null -ne $j3.parse.linhas) { $linhas = [string]$j3.parse.linhas }
     $ok = 'OK: status=' + $status + ' carga_id=' + $cargaId + ' base=' + $Base + ' linhas=' + $linhas + ' idempotente=' + ([string]$j3.idempotente).ToLowerInvariant()
     if ($null -ne $puladas) { $ok = $ok + ' puladas=' + @($puladas).Count }
+    if ($null -ne $j3.alarmes) { $ok = $ok + ' alarmes=' + @($j3.alarmes).Count }
+    if ($null -ne $j3.diff -and $null -ne $j3.diff.operacoes_removidas) { $ok = $ok + ' operacoes_removidas=' + @($j3.diff.operacoes_removidas).Count }
     Sair-Com 0 $ok
 }
 
@@ -512,5 +538,7 @@ try {
     Invoke-Entrega
 }
 catch {
-    Sair-Com 1 ('ERRO: falha inesperada - ' + $_.Exception.Message)
+    $sufixoCarga = ''
+    if ($script:CargaId) { $sufixoCarga = ' (carga_id ' + $script:CargaId + ')' }
+    Sair-Com 1 ('ERRO: falha inesperada - ' + $_.Exception.Message + $sufixoCarga)
 }
