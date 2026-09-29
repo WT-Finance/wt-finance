@@ -13,7 +13,7 @@
 
 ---
 
-## Aguardando merge — v6.1.0 "Entrega das RPAs" (branch `feat/v6-1-0-entrega-rpa`)
+## Aguardando merge — v6.1.0 "Entrega das RPAs" (PR #283, branch `feat/v6-1-0-entrega-rpa`)
 
 Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-0_Entrega_RPA.md`; ADR-0179. Cliente de entrega
 `scripts/rpa/entregar-ingestao.ps1` (PAD chama com uma linha), quatro chaves por RPA (`rpa-vendas` 265,
