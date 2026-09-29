@@ -9,7 +9,22 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-28 (pós-merge da v6.0.1).
+Última atualização: 2026-09-29 (v6.1.0 aberta — M0).
+
+---
+
+## Em voo — v6.1.0 "Entrega das RPAs" (branch `feat/v6-1-0-entrega-rpa`)
+
+Briefing `docs/briefings/briefing-v6-1-0-entrega-rpa.md`; plano validado contra o repo e aprovado em 29/09
+(anexo `docs/briefings/anexo-v6-1-0-m0-validacao.md`). Errata 4 do contrato escrita na M0 — **checkpoint
+do Yan: ler a errata antes da M1.** Decisões do Yan na validação: GATE em duas etapas (transporte contra
+produção antes do merge; Operação com `puladas` como smoke depois); fechar as duas brechas (chave de
+ingestão fora da API de Solicitações; origem da carga amarrada à credencial). Migration livre **0287**,
+ADR livre **0179**.
+
+> ℹ️ **As 201 linhas da Darlene e Adnan já saíram da produção** — a carga de Operação de 29/09 pelo card já
+> foi o CSV da RPA (`Operacao_Id`, 239 operações ↔ 239 ids). O fato só tem "W - Daniella e Augusto" (201
+> linhas, R$ 1.191.358,38). Avisar quem acompanha Weddings, se ainda não soube.
 
 ---
 
@@ -20,19 +35,6 @@ cliente do contrato de ingestão v1 (default CONFERÊNCIA; `--aplicar` substitui
 destrutiva **0286** (aplicada pelo Yan em TTY em 28/09, antes do merge) apagou as 12 funções do caminho
 legado e `audit.ingestao_log`. Banco e `main` voltaram a concordar. **Não verificado:** `npm run seed --
 --aplicar` nunca rodou ponta a ponta — a 1ª execução real é do Yan e dispara os alarmes de carga.
-
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.0.1** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-0-1`,
-> que mora na mesma worktree). As fixtures do oráculo já foram salvas fora do repo (abaixo). Da raiz
-> (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/fix-v6-0-1-destrutiva --force
-> git worktree prune
-> git branch -d fix/v6-0-1-destrutiva docs/pos-merge-v6-0-1
-> ```
-> Se o `pull` abortar por colisão de untracked, conferir contra o `origin/main` (`show` + `diff`) antes de
-> mover o arquivo; nunca `reset`.
 
 > 🔴 **Yan — uma fixture do oráculo se perdeu: `demonstrativo-cru.xlsx` de 21/09.** `tests/fixtures/ingestao/`
 > é gitignorado (Vendas cru tem CPF/CNPJ) e só existia na worktree da v6.0.0, removida no pós-merge. Em
@@ -46,7 +48,9 @@ legado e `audit.ingestao_log`. Banco e `main` voltaram a concordar. **Não verif
 > Demonstrativo para o export de 28/09 (o que está em produção hoje).
 > **As 11 recompostas estão salvas FORA do repo** em `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`
 > (sha256 conferido contra o manifesto em 28/09). Numa worktree nova:
-> `JANUS_ANEXOS_DIRS=~/projects/arquivo-worktrees-janus/fixtures-ingestao node scripts/ingestao/fixtures.mjs`.
+> `JANUS_ANEXOS_DIRS=~/projects/arquivo-worktrees-janus/fixtures-ingestao node scripts/ingestao/fixtures.mjs`
+> — funciona a partir da v6.1.0, quando o script passou a achar também pelo nome canônico. Antes dela, a
+> instrução falhava ("13 faltando"): o script só procurava pelo nome de origem do export.
 
 ---
 
