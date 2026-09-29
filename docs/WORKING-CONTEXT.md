@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-29 (v6.1.0 fechada — PR aguardando merge; 0287/0288 já aplicadas).
+Última atualização: 2026-09-29 (pós-merge da v6.1.0).
 
 ---
 
-## Aguardando merge — v6.1.0 "Entrega das RPAs" (PR #283, branch `feat/v6-1-0-entrega-rpa`)
+## Em produção — v6.1.0 "Entrega das RPAs" (PR #283, mergeado 29/09 às 14:41)
 
 Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-0_Entrega_RPA.md`; ADR-0179. Cliente de entrega
 `scripts/rpa/entregar-ingestao.ps1` (PAD chama com uma linha), quatro chaves por RPA (`rpa-vendas` 265,
@@ -22,9 +22,23 @@ errata 4 do contrato. **Migrations 0287 e 0288 JÁ APLICADAS** (aditivas, compat
 **GATE etapa 1 feito em 29/09:** as cinco bases aplicadas pelo robô (`rpa-pad`, chave certa, checksums
 fechando) e a chave de Operação recusada em Vendas (403).
 
-> 🔴 **Yan — depois do merge: GATE etapa 2** — uma carga de Operação pela RPA com `-Log` (conferência e depois
-> `-Aplicar`), para ver `diff.puladas` e o conjunto de operações ao vivo; a sessão confere `ingestao.carga` e
-> vê negando em produção a origem amarrada e o 403 da API de Solicitações.
+> 🔴 **Yan — GATE etapa 2** (o código v6.1 está no ar desde o merge) — uma carga de Operação pela RPA com
+> `-Log` (conferência e depois `-Aplicar`), para ver `diff.puladas` e o conjunto de operações ao vivo; a sessão
+> confere `ingestao.carga` e vê negando em produção a origem amarrada e o 403 da API de Solicitações.
+
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.0** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-0`,
+> que mora na mesma worktree). As fixtures do oráculo (inclusive `operacao-rpa-cru.csv`) já estão salvas em
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-1-0-entrega-rpa --force
+> git worktree prune
+> git branch -D feat/v6-1-0-entrega-rpa docs/pos-merge-v6-1-0
+> ```
+> Se o `pull` abortar por colisão em `docs/briefings/briefing-v6-1-0-entrega-rpa.md` (untracked na raiz), é o
+> modo de falha conhecido: conferir que é idêntico ao do `origin/main` (`show` + `diff`), mover para fora do
+> repo e só então puxar. Nunca `reset`.
 
 > 🔴 **Yan — conferir com a gerente a mudança de 2025 no Demonstrativo** (alarme `ano_fechado_alterado` de
 > 29/09 17:28 UTC): mesmas 1.248 linhas, Σ de R$ 470.395,76 para R$ 469.600,56 (−R$ 795,20) — lançamento de
@@ -84,9 +98,10 @@ grava em produção (1ª execução `ok` do `monde-incremental` às 12:45 UTC, d
 > 2. **Yan — confirmar `SUPABASE_INGESTOR_SENHA` no ambiente Production da Vercel.** Sem ela a carga
 >    LANÇA por desenho (fail-closed). A sessão não consegue ler as envs (403).
 > 3. ✅ Aberto e Operação recarregados no mesmo dia pelo card (28/09 13:46 e 13:50 UTC), junto das outras três bases.
-> 4. **Sessão, depois da 1ª execução OK de cada um:** ligar as expectativas `monde-reconciliacao` (roda
->    06:05 UTC — a partir de 29/09) e `cdi-mensal` (dia 3 — a partir de 03/10), com
->    `ingestao_expectativa_definir('<processo>', true)`. As das bases, só quando a RPA existir.
+> 4. ✅ Expectativa `monde-reconciliacao` LIGADA em 29/09 (três execuções `ok` no dia; tolerância 30 h).
+>    **Sessão, a partir de 03/10:** ligar `cdi-mensal` depois da 1ª execução OK (`ingestao_expectativa_definir`
+>    com `p_alvo`, `p_ativo`, `p_tolerancia`). As das bases, depois da 1ª execução AUTOMÁTICA das RPAs
+>    (o agendamento ainda não existe — fora da v6.1.0).
 > 5. **Yan decide — ligar a limpeza do cru** (`SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE
 >    jobname = 'ingestao-retencao'), active := true);`, como `postgres`). A partir de 01/10 ela apaga as
 >    cópias órfãs e, a partir de 25/12, os crus de mais de 3 meses. Depois de ligar: `npm run db:baseline`.
@@ -132,7 +147,7 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 
 | | |
 |---|---|
-| Produção | **v6.0.1** (PR #281, mergeado 28/09 às 12:40) · banco na **0288** (v6.1.0 aplicada antes do merge) |
+| Produção | **v6.1.0** (PR #283, mergeado 29/09 às 14:41) · banco na **0288** |
 | Última migration aplicada | **0288** (v6.1.0 — o "antes" do diff de Operação dentro da promoção) · próxima livre: **0289** |
 | Último ADR | **0179** (v6.1.0 — cliente de entrega das RPAs e operações puladas) · próximo livre: **0180** |
 | Suíte | **1.804 verdes + 6 skipped**, 104 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.1.0, 29/09 |
