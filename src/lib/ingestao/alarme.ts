@@ -24,6 +24,7 @@ import type {
   AlarmeIngestao, TipoAlarmeIngestao,
   AlarmeChecksumFalho, AlarmeAnoFechadoAlterado, AlarmeParNovoBandeja,
   AlarmeProcessoSemResultado, AlarmeCargaEsperadaNaoChegou,
+  AlarmeOperacoesPuladas, AlarmeOperacoesRemovidas,
 } from '@/lib/email/template'
 import type { BaseIngestao } from './bases'
 import type { Json } from '@/types/database'
@@ -277,6 +278,18 @@ export function comoAlarmeIngestao(tipoEsperado: string, detalhe: unknown): Alar
     case 'carga_esperada_nao_chegou':
       return typeof o.base === 'string' && typeof o.horasSemCarga === 'number'
         ? (o as unknown as AlarmeCargaEsperadaNaoChegou) : null
+    // Os dois tipos da v6.1.0 TÊM de ter ramo: o `default: null` faria o vigia PULAR o reenvio
+    // de um e-mail que falhou ("detalhe não reconstituível") e o alarme se perderia em silêncio.
+    case 'operacoes_puladas':
+      return typeof o.cargaId === 'string' && Array.isArray(o.puladas)
+        && o.puladas.every((p) => typeof p === 'object' && p !== null
+          && typeof (p as Record<string, unknown>).operacao === 'string'
+          && typeof (p as Record<string, unknown>).motivo === 'string')
+        ? (o as unknown as AlarmeOperacoesPuladas) : null
+    case 'operacoes_removidas':
+      return typeof o.cargaId === 'string' && Array.isArray(o.operacoes)
+        && o.operacoes.every((n) => typeof n === 'string')
+        ? (o as unknown as AlarmeOperacoesRemovidas) : null
     default:
       return null
   }

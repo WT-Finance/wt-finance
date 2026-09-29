@@ -278,6 +278,7 @@ function lancamentoOperacaoCru(overrides: Partial<LancamentoOperacaoCru> = {}): 
     operacao:           'W - Camila e Bruno - 02SET23',
     tipo:               'Saída',
     data_final:         '2026-02-04',
+    operacaoId:         '0b8f6f0e-3c1d-4a52-9d1e-7a5d2c9b4e11',
     ...overrides,
   }
 }
@@ -290,12 +291,22 @@ function lancamentoOperacaoCru(overrides: Partial<LancamentoOperacaoCru> = {}): 
 const COLUNAS_LANCAMENTO_OPERACAO_STAGING = [
   'arquivo_origem', 'linha_origem', 'lancamento_numero', 'venda_numero', 'pessoa', 'descricao',
   'liquidacao', 'vencimento', 'valor', 'operacao', 'tipo',
+  // v6.1.0 (errata 4(a), migration 0287): `Operacao_Id` da RPA.
+  'operacao_id',
 ].sort()
 
 describe('adaptarLancamentoOperacao', () => {
-  it('produz exatamente as chaves de inserir_lote_staging_operacao (migration 0278)', () => {
+  it('produz exatamente as chaves de inserir_lote_staging_operacao (migrations 0278 + 0287)', () => {
     const payload = adaptarLancamentoOperacao(lancamentoOperacaoCru(), 'operacoes-2026.csv')
     expect(Object.keys(payload).sort()).toEqual(COLUNAS_LANCAMENTO_OPERACAO_STAGING)
+  })
+
+  it('operacao_id: o id chega ao payload; sem id (CSV do R) a chave existe e vale null', () => {
+    const comId = adaptarLancamentoOperacao(
+      lancamentoOperacaoCru({ operacaoId: 'abc-123' }), 'x.csv')
+    expect(comId.operacao_id).toBe('abc-123')
+    const semId = adaptarLancamentoOperacao(lancamentoOperacaoCru({ operacaoId: null }), 'x.csv')
+    expect(semId).toHaveProperty('operacao_id', null)
   })
 
   it('NÃO renomeia mais lancamento_numero/venda_numero/liquidacao/vencimento — a staging usa os mesmos nomes do Cru', () => {

@@ -396,6 +396,22 @@ mudança de dado. A v6.0.0 mediu **zero** ambiguidade nos dados reais de Lançam
 mas nada no schema impede que apareça amanhã: feche todo `DISTINCT ON`/`ORDER BY` com uma coluna que
 nunca empata (id, ou `criado_em` + id) — não confie em "não vi empate na amostra de hoje".
 
+### O "antes" que decide um alarme mora DENTRO da RPC que muda o dado — e volta no replay (v6.1.0, 0288)
+
+Um diff "antes × depois" que dispara alarme (operação removida, ano fechado alterado) **não pode ler o
+"antes" numa chamada separada, antes da RPC que troca o dado**. Com retentativa idempotente (mesmo
+`carga_id`), a sequência "promoção commita → processo morre antes de alarmar → cliente repete" faz a
+2ª tentativa ler o "antes" já como a base NOVA: o diff dá vazio e o alarme some — exatamente no caso em
+que ele existia. Duas cargas intercaladas (lock de carga por processo) abrem o mesmo buraco.
+
+**Regra:** capture o "antes" **dentro** da RPC que muda, depois do advisory lock e do replay por
+idempotência e antes do primeiro `TRUNCATE`/`UPDATE`, e devolva-o no resultado que já é guardado para
+o replay (`ingestao.promocao`) — a retentativa recebe o "antes" ORIGINAL. Para a conferência (que não
+muda nada), a leitura prévia vale; use a MESMA função nos dois caminhos, para não haver duas cópias do
+SQL divergindo. E "não consegui medir" é `null` com aviso, **nunca** lista vazia. Achado ALTO do
+`revisor` na v6.1.0 (`operacoes_antes` de `promover_carga_operacao`); o `somaPorAno` das cinco bases
+ainda lê fora — backlog.
+
 ### Kill switch é emergência, não mais compatibilidade
 
 `app.config.auth_enforcement` + `admin_set_enforcement` permanecem como alavanca de

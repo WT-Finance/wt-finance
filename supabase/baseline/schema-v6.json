@@ -4616,6 +4616,25 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.ingestao_operacoes_vigentes()": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "389a3fb220ab2c67425644f21585e6543d323496ed087ba2be244a9937dcbb5b",
+      "linguagem": "sql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
     "public.ingestao_painel()": {
       "acl": {
         "authenticated": {
@@ -4878,7 +4897,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "07e52785dd89f0c58e6cea1f52f2752404a2bb44048d6aefc2120a13d41ea5d0",
+      "hash_corpo": "e97c5a98c9649574fd26c31826706d73b522060e353f96e1c3e9b04b83903830",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -5784,7 +5803,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "ad282e09f7f98050fd5e523ee6168162df119c865047497e3014a9c36aa791f8",
+      "hash_corpo": "71d9f72ed567d3d35849f1944d8738d9fdb58e4e7d41580c57f09fd2d8e1afac",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -8078,6 +8097,13 @@
           "generated": null,
           "identity": null,
           "not_null": true,
+          "tipo": "text"
+        },
+        "operacao_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
           "tipo": "text"
         },
         "pessoa": {
@@ -14084,6 +14110,13 @@
           "not_null": false,
           "tipo": "text"
         },
+        "operacao_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
         "pessoa": {
           "default": null,
           "generated": null,
@@ -14186,6 +14219,13 @@
           "tipo": "date"
         },
         "operacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "operacao_id": {
           "default": null,
           "generated": null,
           "identity": null,
@@ -15193,7 +15233,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0286",
+  "ultima_migration": "0288",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

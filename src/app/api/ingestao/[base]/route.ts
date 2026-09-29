@@ -17,6 +17,7 @@ import { z } from 'zod'
 import { ehBaseIngestao, BASES_INGESTAO, type BaseIngestao } from '@/lib/ingestao/bases'
 import {
   autenticarIngestao, processarCarga, ErroCarga, respostaErroCarga,
+  validarOrigemPelaCredencial, validarPuladasNaBase,
   type EntradaCarga, type ArquivoRecebido,
 } from '@/lib/ingestao/carga'
 import { registrarChamada } from '@/lib/api-externa/http'
@@ -53,6 +54,16 @@ const bodySchema = z.object({
   // Default `true` — o card manda `false` primeiro (conferência), a RPA nunca envia o campo e
   // vê o contrato tal como congelado (anexo M4 §1.1c/§5).
   confirmar: z.boolean().optional(),
+  // Errata 4(b): as operações que a RPA NÃO extraiu (nome ambíguo/ausente no dropdown; `ids` pode
+  // vir vazio). Só `lancamentos-operacao` — presente (mesmo `[]`) em outra base é 422, checado
+  // abaixo por `validarPuladasNaBase`. Sem ele o Zod descartaria a chave em silêncio.
+  // Tetos: o alarme e o `diff` da linha de carga ecoam isto — sem teto, um cliente com defeito
+  // enche `ingestao.carga`/`ingestao.alarme` (jsonb). ~240 operações existem hoje; 500 é folga.
+  puladas: z.array(z.object({
+    operacao: z.string().trim().min(1).max(300),
+    ids: z.array(z.string().max(100)).max(20),
+    motivo: z.string().max(500),
+  })).max(500).optional(),
 })
 
 export async function POST(req: Request, { params }: { params: Promise<{ base: string }> }): Promise<Response> {
@@ -84,6 +95,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ base: s
     return resposta
   }
 
+  // Errata 4(g): a origem é decidida pela CREDENCIAL — chave ⇒ `rpa-*`, sessão ⇒ `manual`/
+  // `reprocesso`. O header segue obrigatório; o valor que contradiz a porta de entrada é 422.
+  const origemIncompativel = validarOrigemPelaCredencial(auth.via, origem)
+  if (origemIncompativel) {
+    await logar(auth, rota, 422, 'origem_incompativel')
+    return origemIncompativel.resposta()
+  }
+
   const idempotenciaHeader = (req.headers.get('x-ingestao-idempotencia') ?? '').trim()
   if (idempotenciaHeader !== '' && !REGEX_UUID.test(idempotenciaHeader)) {
     const resposta = respostaErroCarga('FORMATO_INVALIDO', 'Cabeçalho "x-ingestao-idempotencia" precisa ser um UUID (v4 recomendado).', 422)
@@ -112,6 +131,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ base: s
   }
   const p = parsedBody.data
 
+  const puladasForaDeOperacao = validarPuladasNaBase(base, p.puladas)
+  if (puladasForaDeOperacao) {
+    await logar(auth, rota, 422, 'puladas_fora_de_operacao')
+    return puladasForaDeOperacao.resposta()
+  }
+
   const arquivos: ArquivoRecebido[] = p.arquivos
   const entrada: EntradaCarga = {
     base,
@@ -124,6 +149,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ base: s
     confirmar: p.confirmar ?? true,
     chaveId: auth.via === 'chave' ? auth.chave.id : null,
     usuarioId: auth.via === 'sessao' ? auth.sessao.userId : null,
+    ...(p.puladas !== undefined ? { puladas: p.puladas } : {}),
   }
 
   try {

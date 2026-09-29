@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 import {
-  autenticarChamada, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
+  autenticarChamadaSolicitacoes, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
   getEmailsEnvolvidosSvc,
 } from '@/lib/api-externa/http'
 import { enviarNotificacaoSolicitacao } from '@/lib/email'
@@ -62,9 +62,9 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const auth = await autenticarChamada(req)
+  const auth = await autenticarChamadaSolicitacoes(req)
   if (!auth.ok) {
-    await registrarChamada(null, ROTA, auth.resposta.status, 'auth_negada')
+    await registrarChamada(auth.chaveId, ROTA, auth.resposta.status, auth.detalhe)
     return auth.resposta
   }
   const { chave } = auth

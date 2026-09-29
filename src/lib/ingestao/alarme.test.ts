@@ -277,6 +277,22 @@ describe('comoAlarmeIngestao', () => {
     expect(comoAlarmeIngestao('carga_esperada_nao_chegou', cargaNaoChegou)).toEqual(cargaNaoChegou)
   })
 
+  // Os dois tipos da v6.1.0 TÊM de ter ramo: sem ele o `default: null` faz o vigia pular o
+  // reenvio do e-mail que falhou ("detalhe não reconstituível") e o alarme se perde em silêncio.
+  it('reidrata operacoes_puladas e operacoes_removidas (e recusa detalhe incompleto)', () => {
+    const puladas: AlarmeIngestao = {
+      tipo: 'operacoes_puladas', cargaId: 'c1', puladas: [{ operacao: 'W - Delta', motivo: 'ausente' }],
+    }
+    expect(comoAlarmeIngestao('operacoes_puladas', puladas)).toEqual(puladas)
+    const removidas: AlarmeIngestao = { tipo: 'operacoes_removidas', cargaId: 'c1', operacoes: ['W - Gama'] }
+    expect(comoAlarmeIngestao('operacoes_removidas', removidas)).toEqual(removidas)
+
+    expect(comoAlarmeIngestao('operacoes_puladas', { tipo: 'operacoes_puladas', cargaId: 'c1' })).toBeNull()
+    expect(comoAlarmeIngestao('operacoes_puladas', { ...puladas, puladas: [{ operacao: 'x' }] })).toBeNull()
+    expect(comoAlarmeIngestao('operacoes_removidas', { tipo: 'operacoes_removidas', cargaId: 'c1', operacoes: [1] })).toBeNull()
+    expect(comoAlarmeIngestao('operacoes_removidas', { tipo: 'operacoes_removidas', operacoes: [] })).toBeNull()
+  })
+
   it('tipo divergente do esperado ⇒ null', () => {
     expect(comoAlarmeIngestao('par_novo_bandeja', CHECKSUM_FALHO)).toBeNull()
   })

@@ -7,7 +7,7 @@
 export const runtime = 'nodejs'
 
 import {
-  autenticarChamada, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
+  autenticarChamadaSolicitacoes, chamarRpcExterna, respostaErro, traduzirErroRpc, registrarChamada,
 } from '@/lib/api-externa/http'
 import { comoListaConsulta } from '@/lib/api-externa/consulta'
 
@@ -17,9 +17,9 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const auth = await autenticarChamada(req)
+  const auth = await autenticarChamadaSolicitacoes(req)
   if (!auth.ok) {
-    await registrarChamada(null, ROTA, auth.resposta.status, 'auth_negada')
+    await registrarChamada(auth.chaveId, ROTA, auth.resposta.status, auth.detalhe)
     return auth.resposta
   }
   const { chave } = auth

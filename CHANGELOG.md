@@ -6,6 +6,42 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.1.0] — 2026-09-29
+
+MINOR · **Entrega das RPAs: a carga dos relatórios do Monde passa a poder ser feita por robô, com a
+mesma conferência da carga manual.** Errata 4 do contrato de ingestão v1, uma chave de máquina por RPA
+com escopo mínimo e um cliente de entrega versionado em PowerShell que o Power Automate Desktop chama
+com uma linha. Briefing `docs/briefings/briefing-v6-1-0-entrega-rpa.md`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-1-0_Entrega_RPA.md`. Migrations `0287`, `0288` (aditivas) ·
+**ADR-0179** · **1.804 testes** verdes (6 skipped; 1 arquivo de oráculo sem fixture, B-38).
+
+### Adicionado
+
+- **Cliente de entrega** `scripts/rpa/entregar-ingestao.ps1` (Windows PowerShell 5.1): os três passos
+  do contrato, conferência por padrão (`-Aplicar` para gravar), um `carga_id` e uma idempotência por
+  execução, retentativa só do transitório, assert de modo, códigos de saída 0/2/3/4/5/1 para o PAD,
+  `puladas` a partir do `.log` da RPA de Operação. README com a linha exata de cada RPA.
+- **Quatro chaves de máquina** (`rpa-vendas`, `rpa-lancamentos`, `rpa-operacao`, `rpa-demonstrativo`)
+  com escopo por base; runbook `docs/runbooks/chaves-rpa-runbook.md`.
+- **`Operacao_Id`** (coluna opcional do CSV da RPA de Operação) lido pelo parser e gravado em
+  `raw.lancamentos_operacao`, na staging e no fato (`0287`); declarada e vazia numa linha ⇒ 422.
+- **`puladas`** no passo 3 (só Operação), gravado em `diff.puladas`, alarme `operacoes_puladas`.
+- **Diff por conjunto de operações** (`operacoes_removidas`/`operacoes_novas`) e alarme
+  `operacoes_removidas`, também quando a operação consta em `puladas`. O "antes" da aplicação é
+  capturado pela própria promoção, sob o lock (`0288`, `operacoes_antes`) — imune a retentativa e a
+  cargas intercaladas; `null` = não medido. Removidas e puladas também aparecem em `alarmes[]`.
+- `ingestao_operacoes_vigentes()` (service_role): o conjunto de operações da base, para a conferência.
+
+### Alterado
+
+- **Origem da carga amarrada à credencial**: chave ⇒ `rpa-pad`/`rpa-cloud`; sessão ⇒ `manual`/`reprocesso`.
+- **API de Solicitações recusa chave com escopo de ingestão** (403 `ESCOPO_INSUFICIENTE`).
+- Erro de transporte na promoção de Operação vira 500 "estado incerto" (antes: 422 "base preservada").
+- `scripts/ingestao/fixtures.mjs` acha fixtures também pelo nome canônico (restaurar do arquivo fora do repo).
+- Contrato: sai a "RPC de lista de operações para a RPA" (§5); a RPA envia `confirmar`.
+
+---
+
 ## [6.0.1] — 2026-09-28
 
 PATCH · **Sai o caminho legado de carga (GATE 3 da v6.0.0).** O `npm run seed` passa a ser

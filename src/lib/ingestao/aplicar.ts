@@ -34,6 +34,7 @@ import 'server-only'
 // errado por CHECKSUM (não por permissão) e APLICA com o certo — enquanto um `SELECT` direto em
 // `raw.*` na mesma sessão volta `permission denied for schema raw`.
 
+import { z } from 'zod'
 import { getIngestorClient } from '@/lib/supabase/ingestor'
 import { loadMetas } from '@/lib/carga/metas'
 import { parseRpc, cargaValidacaoSchema, cargaPromocaoSchema } from '@/lib/schemas-rpc'
@@ -44,7 +45,10 @@ import type { DemonstrativoCompetenciaCru } from './parsers/demonstrativo-compet
 import type { LancamentoCategoriaCru } from './parsers/lancamentos-categoria'
 import type { LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
 
-type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
+// `code` é opcional de propósito: um erro que veio do POSTGRES/PostgREST o traz (SQLSTATE ou
+// `PGRST…`); uma falha de transporte (fetch failed, timeout, DNS) o traz vazio — é o que
+// `aplicarLancamentosOperacao` usa para não afirmar "base preservada" sem saber.
+type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; code?: string | null } | null }>
 
 /**
  * A credencial que APLICA. Desde a M5 é o `ingestor` (role com EXECUTE só no pipeline das cinco
@@ -87,7 +91,25 @@ export interface ResultadoAplicacao {
    * v6.0.0/M6 §4) precisa do NÚMERO, não do texto, para decidir se dispara.
    */
   readonly paresNovos?: number
+  /**
+   * v6.1.0 (0288), só `lancamentos-operacao`: o conjunto distinto de operações que a base VIVA
+   * tinha DENTRO da transação da promoção, sob o lock, antes do TRUNCATE — a fonte de verdade do
+   * "antes" (o pré-lido por `lerOperacoesVigentes` pode já ser a base nova numa retentativa depois
+   * de uma promoção commitada, ou numa carga intercalada). Em replay vem o `operacoes_antes`
+   * ORIGINAL, guardado em `ingestao.promocao`. `null` = a promoção não devolveu (função anterior à
+   * 0288) ou devolveu fora do formato; `undefined` nas outras quatro bases.
+   */
+  readonly operacoesAntes?: readonly OperacaoDaBase[] | null
 }
+
+/** Uma operação como a RPC devolve — `operacao_id` nulo quando a carga anterior não tinha a coluna. */
+export const operacaoDaBaseSchema = z.object({
+  operacao: z.string(),
+  operacao_id: z.string().nullable(),
+})
+/** `.nullable()` em `operacao_id`, não `.optional()`: as duas RPCs (0287/0288) emitem `null` explícito. */
+export const operacoesDaBaseSchema = z.array(operacaoDaBaseSchema)
+export type OperacaoDaBase = z.infer<typeof operacaoDaBaseSchema>
 
 export interface OpcoesAplicacao {
   /**
@@ -141,6 +163,26 @@ export class CargaRejeitada extends Error {
     super(mensagem)
     this.name = 'CargaRejeitada'
   }
+}
+
+/**
+ * A promoção NÃO respondeu de um jeito que diga se aplicou (falha de transporte ao chamar
+ * `promover_carga_operacao`). Diferente de `CargaRejeitada` — que afirma "a base anterior foi
+ * preservada" e vira 422 —, isto é ESTADO INCERTO: `carga.ts` traduz para 500 `ERRO_INTERNO`.
+ */
+export class PromocaoIncerta extends Error {
+  constructor(readonly etapa: string, mensagem: string) {
+    super(mensagem)
+    this.name = 'PromocaoIncerta'
+  }
+}
+
+/** `code` de um erro que veio do servidor: SQLSTATE (5 caracteres `[0-9A-Z]`) ou PostgREST
+ *  (`PGRST` + 3 dígitos). Qualquer outra coisa — vazio, ausente, `ECONNRESET`, `ETIMEDOUT`, `UND_ERR…`
+ *  — é falha de transporte. O primeiro caractere do SQLSTATE nunca é `E` (nenhuma classe começa
+ *  por ele), e é o que separa `EPIPE` — código do Node com exatamente 5 letras — de um SQLSTATE. */
+export function codigoVeioDoPostgres(code: string | null | undefined): boolean {
+  return typeof code === 'string' && /^([0-9A-DF-Z][0-9A-Z]{4}|PGRST\d{3})$/.test(code)
 }
 
 // ── Tamanho de lote por base ─────────────────────────────────────────────────────────────────
@@ -352,6 +394,9 @@ export function adaptarLancamentoOperacao(
     valor:              cru.valor,
     operacao:           cru.operacao,
     tipo:               cru.tipo,
+    // Errata 4(a): `Operacao_Id` da RPA (null no CSV do R). A `inserir_lote_staging_operacao` lê
+    // `x->>'operacao_id'` (migration 0287); vazio/ausente ⇒ NULL.
+    operacao_id:        cru.operacaoId,
   }
 }
 
@@ -921,10 +966,25 @@ async function aplicarLancamentosOperacao(
 
   const promRes = await rpc('promover_carga_operacao', { p_checksums: [], p_carga_id: cargaId })
   if (promRes.error) {
-    throw new CargaRejeitada(
+    // Erro que VEIO DO POSTGRES (`code` = SQLSTATE ou `PGRST…`): a promoção é uma transação única e
+    // voltou — a base anterior está de pé, e dizer isso é verdade ⇒ `CargaRejeitada` (422).
+    // Falha de TRANSPORTE (fetch failed, timeout, corte de conexão — `code` vazio, ausente ou de
+    // rede como `ECONNRESET`): o servidor pode ter commitado e a resposta se perdido — NÃO se sabe.
+    // Isso não é rejeição de conteúdo: `PromocaoIncerta` vira 500 `ERRO_INTERNO` em `carga.ts`
+    // (linha `erro`, sem alarme `checksum_falho`), o cliente sai "RESULTADO INCERTO" e retenta com
+    // o mesmo `carga_id` — que o replay da 0288 cobre.
+    if (codigoVeioDoPostgres(promRes.error.code)) {
+      throw new CargaRejeitada(
+        'promover_carga_operacao',
+        `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+        `única): ${promRes.error.message}`,
+      )
+    }
+    throw new PromocaoIncerta(
       'promover_carga_operacao',
-      `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
-      `única): ${promRes.error.message}`,
+      `Erro ao chamar a promoção da carga — estado incerto: conferir ingestao.carga e ` +
+      `ingestao.promocao antes de reenviar (a promoção pode ter sido aplicada e a resposta se ` +
+      `perdido): ${promRes.error.message}`,
     )
   }
   const retorno = lerRetornoPromocao(promRes.data)
@@ -935,7 +995,18 @@ async function aplicarLancamentosOperacao(
     avisos: retorno.avisos,
     checksumsConferidos: retorno.checksumsConferidos,
     checksumsNaoConferiveis: retorno.checksumsNaoConferiveis,
+    operacoesAntes: lerOperacoesAntes(promRes.data),
   }
+}
+
+/** `operacoes_antes` do retorno de `promover_carga_operacao` (0288), validado. `null` quando a chave
+ *  falta (função anterior à 0288) ou o valor está fora do formato — nunca `[]` por engano: quem lê
+ *  (`carga.ts`) trata `null` como "não sei" e cai no "antes" pré-lido, com aviso. */
+function lerOperacoesAntes(data: unknown): readonly OperacaoDaBase[] | null {
+  if (typeof data !== 'object' || data === null) return null
+  const bruto = (data as Record<string, unknown>).operacoes_antes
+  if (bruto === undefined || bruto === null) return null
+  return parseRpc(operacoesDaBaseSchema, { data: bruto, error: null }, 'promover_carga_operacao.operacoes_antes')
 }
 
 /**

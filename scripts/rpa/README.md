@@ -1,0 +1,226 @@
+# Cliente de entrega das RPAs — `entregar-ingestao.ps1`
+
+O Power Automate Desktop (PAD) extrai os crus do Monde; este script **entrega** cada cru ao Janus. É a
+**única** implementação, fora do card de `/admin/uploads`, dos três passos do contrato
+(`docs/contratos/ingestao-v1.md`, §2 e **errata 4**): o PAD só chama o script e lê o **código de saída**.
+
+Os três passos, por execução:
+
+1. `POST /api/ingestao/{base}/upload-url` — pede uma URL assinada por arquivo (nasce o `carga_id`);
+2. `PUT <signed_url>` — sobe os bytes crus, sem a chave (a autorização é o token da própria URL);
+3. `POST /api/ingestao/{base}` — a carga: sha256, parse, checksums, diff e (só com `-Aplicar`) a promoção.
+
+Requisitos: **Windows PowerShell 5.1** (o que já vem no Windows — nada a instalar). Sem módulos, sem
+`curl`, sem PowerShell 7.
+
+## Conferência × aplicação
+
+**Sem `-Aplicar` o script só CONFERE.** Ele manda `"confirmar": false` explícito no passo 3 (o default do
+servidor é `true` — errata 4(f)); o servidor roda o parse, os checksums, a reconciliação e o diff e **para
+antes de aplicar**, devolvendo `status: "conferida"`. Conferência **não grava linha em `ingestao.carga`**,
+não consome a idempotência e não dispara alarme (errata 2(a)/4(f)): o que aconteceu aparece só na resposta
+(`<primeiro-arquivo>.resposta.json`) e em `app.api_chamada_log`. O grafo (§5) é conferido também na
+conferência.
+
+**Com `-Aplicar`** a carga substitui a base inteira em produção e vira linha em `ingestao.carga` com
+origem `rpa-pad` e a chave da RPA.
+
+O script confere o próprio resultado: sem `-Aplicar`, uma resposta `aplicada` é **FATAL** (código `1`,
+stderr começando com `FATAL:`); com `-Aplicar`, uma resposta `conferida` também.
+
+## Instalar na máquina da RPA
+
+1. Copie a pasta `scripts/rpa/` (o `.ps1` basta) para a máquina, por exemplo `C:\Janus\rpa\`.
+2. Libere a execução de scripts para o usuário que roda o PAD — **uma** das duas formas:
+   - uma vez: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (se o arquivo veio por download,
+     `Unblock-File C:\Janus\rpa\entregar-ingestao.ps1`); ou
+   - sem alterar a política: chamar sempre com `-ExecutionPolicy Bypass` (é o que as linhas abaixo fazem).
+3. Grave a chave na variável de ambiente do **usuário** (próxima seção).
+
+## A chave: variável de ambiente do usuário
+
+O script recebe em `-ChaveEnv` o **NOME** da variável, nunca a chave. Ele lê a variável do ambiente do
+**usuário** e, se não achar, do processo. A chave nunca é impressa nem gravada em disco.
+
+| RPA | Variável (`-ChaveEnv`) | Bases que a chave cobre |
+|---|---|---|
+| Vendas | `JANUS_CHAVE_RPA_VENDAS` | `vendas-produto` |
+| Lançamentos | `JANUS_CHAVE_RPA_LANCAMENTOS` | `lancamentos-movimentacao`, `lancamentos-aberto` |
+| Operação | `JANUS_CHAVE_RPA_OPERACAO` | `lancamentos-operacao` |
+| Demonstrativo | `JANUS_CHAVE_RPA_DEMONSTRATIVO` | `demonstrativo-competencia` |
+
+**A chave aparece uma vez só**, no modal de criação em `/admin/api-externa`; depois só existe o hash no
+banco. Criar, conferir, revogar e rotacionar chaves: **`docs/runbooks/chaves-rpa-runbook.md`** (não repetido
+aqui).
+
+Forma preferida de gravar — não deixa o segredo no histórico do console (PSReadLine). Troque o NOME pela
+linha da tabela:
+
+```powershell
+# cola o segredo no prompt (não aparece na tela nem no histórico) e grava — troque o NOME pela linha da tabela
+$p = Read-Host 'Cole a chave' -AsSecureString
+$b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($p)
+try { [Environment]::SetEnvironmentVariable('JANUS_CHAVE_RPA_VENDAS', [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b), 'User') }
+finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
+```
+
+A forma direta é equivalente, mas o segredo fica no histórico (apague a linha depois):
+`[Environment]::SetEnvironmentVariable('<NOME>', '<chave>', 'User')`.
+
+Variável de usuário só vale para processos **novos**, e só para o **mesmo usuário do Windows** que a gravou:
+feche e reabra o PAD antes de testar, e rode o PAD com esse mesmo usuário.
+
+## Parâmetros
+
+| Parâmetro | O que é |
+|---|---|
+| `-Url` | base da produção (`https://...`, com ou sem barra final). Só `https` (a chave viaja no cabeçalho); a única exceção é `http://localhost`, para teste local |
+| `-Base` | `demonstrativo-competencia` · `vendas-produto` · `lancamentos-movimentacao` · `lancamentos-aberto` · `lancamentos-operacao` |
+| `-Arquivos` | 1..N caminhos. **Só Vendas aceita mais de um** (um por ano). Extensão: `.xlsx` nas quatro bases de Excel; `.csv` em `lancamentos-operacao`. Vários caminhos: **separados por `\|` (pipe), dentro de um único par de aspas** — o `powershell.exe -File` entrega a lista como um texto só |
+| `-ChaveEnv` | **nome** da variável de ambiente com a chave |
+| `-Log` | só `lancamentos-operacao`, onde é **obrigatório** (sem ele, código `1`): o `.log` da RPA; as linhas `PULADA` viram `puladas` no passo 3 |
+| `-ExtraidoEm` | ISO-8601 **com fuso**, ex. `2026-09-29T09:58:00-03:00` (o momento da extração) |
+| `-Aplicar` | sem ele, conferência; com ele, aplica |
+
+Validação local antes de qualquer rede (falha ⇒ código `1`, uma linha no stderr): base conhecida, arquivos
+existem e não estão vazios, mais de um arquivo só em Vendas, extensão pela base, `-Log` obrigatório e só em
+Operação, variável de ambiente presente e não vazia. **Variável de ambiente ausente ou vazia é código `1`,
+não `3`**: o script recusa antes de tocar a rede (código `3` é o servidor recusando uma chave que chegou).
+
+## Códigos de saída (o que o PAD lê)
+
+| Código | Significado |
+|---|---|
+| `0` | aplicada ou conferida (bateu com o modo pedido) |
+| `1` | qualquer outra falha após as retentativas (validação local, rede, 5xx, 429, log inconsistente, assert de modo `FATAL:`) |
+| `2` | rejeitada pelo servidor (conteúdo) — **só HTTP 422**, base intacta; o motivo está em `erro.codigo`/`erro.mensagem`. Um 500 **não** é `2` (ver código `1`) |
+| `3` | chave inválida ou sem escopo (401/403) |
+| `4` | grafo (409 `DEPENDENCIA_AUSENTE`) — a base anterior do dia não foi carregada |
+| `5` | arquivo grande demais (413) — 50 MB por arquivo, 200 MB por carga |
+
+Em todo código diferente de `0` há **uma linha** no stderr (com `erro.codigo` e `erro.mensagem` do servidor
+quando houver; a partir do passo 1 ela traz também o `carga_id`). Em sucesso, uma linha no stdout:
+`OK: status=... carga_id=... base=... linhas=... idempotente=... alarmes=N` (mais `puladas=N` em Operação e
+`operacoes_removidas=N` quando o servidor devolve essa lista).
+A resposta inteira do último passo (sucesso ou erro) vai para `<primeiro-arquivo>.resposta.json` (UTF-8); o
+arquivo de uma execução anterior é apagado no início. Em erro de rede (sem resposta do servidor) o arquivo
+guarda `passo`, `carga_id` e o erro.
+
+**`operacoes_removidas=NAO_MEDIDO`** (só em Operação): a resposta trouxe `diff.operacoes_removidas` **presente
+e nulo** — o servidor **não mediu** o conjunto de operações (por exemplo, falhou a leitura do "antes"). Isso
+**não** significa "zero removidas": confira **manualmente** as operações (a lista da base viva contra a do
+arquivo) antes de dar a carga por boa. Campo **ausente** não imprime nada; lista vazia imprime `=0`.
+
+**Código `1` no passo `carga` com `-Aplicar` = resultado INCERTO.** A carga pode ter sido aplicada e a resposta
+ter se perdido (timeout, 5xx, `CARGA_EM_ANDAMENTO` esgotado). Erro de transporte do servidor na promoção chega
+como `500 ERRO_INTERNO` com "estado incerto": o cliente retenta como qualquer 5xx e, esgotadas as tentativas,
+sai `1` com este aviso. **Antes de reenviar**, confira em
+`/admin/ingestao` (`ingestao.carga`) a linha com o `carga_id` da mensagem. O `FATAL:` (assert de modo) traz
+o `carga_id` pelo mesmo motivo.
+
+**Retentativas.** Só o transitório: falha de rede/timeout, HTTP 5xx, 429 e 409 com
+`erro.codigo = CARGA_EM_ANDAMENTO` — até 4 tentativas por passo, com espera crescente (5 s, 15 s, 45 s). **Não**
+retenta 401/403/413/422 nem o 409 `DEPENDENCIA_AUSENTE` (os dois 409 se distinguem pelo `erro.codigo` do
+corpo, não pelo status). Toda retentativa reusa o **mesmo** `carga_id` e o **mesmo**
+`x-ingestao-idempotencia` (um UUID gerado por execução): se a carga já aplicou, o passo 3 repetido devolve a
+resposta guardada (`idempotente: true`). Um `PUT` que responde "já existe" conta como sucesso — o passo 3
+reconfere o sha256.
+
+## A ordem do dia
+
+```
+Vendas ──► Movimentação e Aberto ──► Operação          Demonstrativo (independente)
+```
+
+Ordem de entrega recomendada: Vendas, depois Movimentação e Aberto, depois Operação. A dependência que o
+servidor **faz cumprir** é uma só: **Operação exige Aberto aplicado no mesmo dia** — sem ele, código **`4`**
+(`409 DEPENDENCIA_AUSENTE`), **também na conferência**. O Demonstrativo não depende de nada.
+
+## A linha que o PAD executa
+
+Use a ação do PAD que executa um comando e devolve o **código de saída** (por exemplo, "Executar comando
+DOS"/"Run DOS command") e trate o código conforme a tabela. Trocar `C:\Janus\...` pelos caminhos reais.
+A URL de produção usada abaixo (`https://wt-janus.vercel.app`) é a do runbook de autenticação — confirme
+antes do 1º uso. **Cada linha desta seção é CONFERÊNCIA: nada é aplicado.** O comando que aplica de verdade
+está na seção seguinte, separada de propósito.
+
+`<AAAA-MM-DDTHH:MM:SS-03:00>` é um **marcador**: o PAD o substitui pelo momento da extração (ISO-8601 com
+fuso, ex. `2026-09-29T09:58:00-03:00`). Não cole o marcador com os `<` `>` — no `cmd` eles são redirecionamento.
+
+**Vendas** (um `.xlsx` por ano, separados por `|`):
+
+```
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\Janus\rpa\entregar-ingestao.ps1" -Url https://wt-janus.vercel.app -Base vendas-produto -Arquivos "C:\Janus\saida\vendas-2024.xlsx|C:\Janus\saida\vendas-2025.xlsx|C:\Janus\saida\vendas-2026.xlsx" -ChaveEnv JANUS_CHAVE_RPA_VENDAS -ExtraidoEm <AAAA-MM-DDTHH:MM:SS-03:00>
+```
+
+**Lançamentos — Movimentação** e **Lançamentos — Aberto** (mesma chave, duas chamadas):
+
+```
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\Janus\rpa\entregar-ingestao.ps1" -Url https://wt-janus.vercel.app -Base lancamentos-movimentacao -Arquivos "C:\Janus\saida\movimentacao.xlsx" -ChaveEnv JANUS_CHAVE_RPA_LANCAMENTOS -ExtraidoEm <AAAA-MM-DDTHH:MM:SS-03:00>
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\Janus\rpa\entregar-ingestao.ps1" -Url https://wt-janus.vercel.app -Base lancamentos-aberto -Arquivos "C:\Janus\saida\aberto.xlsx" -ChaveEnv JANUS_CHAVE_RPA_LANCAMENTOS -ExtraidoEm <AAAA-MM-DDTHH:MM:SS-03:00>
+```
+
+**Operação** (com o `.log` da RPA, que é obrigatório):
+
+```
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\Janus\rpa\entregar-ingestao.ps1" -Url https://wt-janus.vercel.app -Base lancamentos-operacao -Arquivos "C:\Janus\saida\operacao.csv" -Log "C:\Janus\saida\operacao.log" -ChaveEnv JANUS_CHAVE_RPA_OPERACAO -ExtraidoEm <AAAA-MM-DDTHH:MM:SS-03:00>
+```
+
+**Demonstrativo**:
+
+```
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\Janus\rpa\entregar-ingestao.ps1" -Url https://wt-janus.vercel.app -Base demonstrativo-competencia -Arquivos "C:\Janus\saida\demonstrativo.xlsx" -ChaveEnv JANUS_CHAVE_RPA_DEMONSTRATIVO -ExtraidoEm <AAAA-MM-DDTHH:MM:SS-03:00>
+```
+
+`-NonInteractive` evita que o PowerShell fique esperando um prompt caso falte um parâmetro (o script valida
+tudo sozinho e sai com código `1`).
+
+## Aplicar — só depois de conferir
+
+**Esta é a única forma de gravar na produção**: a mesma linha da conferência mais ` -Aplicar` no fim. Cada
+aplicação **substitui a base inteira** e vira linha em `ingestao.carga`. Rode primeiro a conferência da mesma
+base (código `0`, `status=conferida`, números conferidos); só então acrescente `-Aplicar`. Exemplo, Operação
+(aplica de verdade):
+
+```
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "C:\Janus\rpa\entregar-ingestao.ps1" -Url https://wt-janus.vercel.app -Base lancamentos-operacao -Arquivos "C:\Janus\saida\operacao.csv" -Log "C:\Janus\saida\operacao.log" -ChaveEnv JANUS_CHAVE_RPA_OPERACAO -ExtraidoEm <AAAA-MM-DDTHH:MM:SS-03:00> -Aplicar
+```
+
+## O `.log` da RPA de Operação (`-Log`)
+
+Uma linha por operação: `operacao;id;status;entradas;saidas;leituras`, com `status` = `OK` ou
+`PULADA - <motivo>`; última linha `RESUMO;;puladas=N;;;`. O script envia no passo 3 uma entrada em
+`puladas` para cada linha `PULADA` — `{ "operacao": <nome>, "ids": [<id>] (ou [] se o id vier vazio),
+"motivo": <texto depois de "PULADA - "> }`. Log com `RESUMO;;puladas=0;;;` e nenhuma pulada envia
+`puladas: []`.
+
+O script **não envia nada** e sai com código `1` (log inconsistente) quando:
+- **não há linha `RESUMO`** (o log pode estar truncado; não vira `puladas: []`);
+- o `RESUMO` diz `puladas=N` e o log tem outra quantidade de linhas `PULADA`;
+- uma linha não tem status `OK` nem `PULADA` reconhecível, ou uma linha `PULADA` não tem o formato completo
+  (`operacao;id;status;entradas;saidas;leituras`). O status é achado pelo **conteúdo** (não pela posição): nome de
+  operação com `;` ou motivo com `;` não fazem a linha sumir.
+
+O cabeçalho (linha cujo 3º campo é `status`, sem distinguir maiúsculas) é ignorado. O status é reconhecido
+**com maiúsculas** (`OK`, `PULADA`); `ok` minúsculo não vale. O caminho de `-Log` pode ser relativo.
+
+**Tetos do servidor** (acima deles o servidor recusaria o corpo inteiro e bloquearia a entrega): o script
+**corta** antes de enviar `motivo` em 500 caracteres, `operacao` em 300, cada id em 100 e no máximo 20 ids por
+entrada. Um corte fica só no envio; o `.log` original não é alterado.
+
+O log é lido como UTF-8 (com ou sem BOM); se os bytes não forem UTF-8 válido, como Windows-1252.
+
+Na **aplicação**, lista de puladas não vazia dispara o alarme `operacoes_puladas` e fica em `diff.puladas` da
+linha de `ingestao.carga`; na **conferência** as puladas aparecem só na resposta (errata 4(b)/(f)).
+
+## Diagnóstico rápido
+
+| Sintoma | Onde olhar |
+|---|---|
+| código `3` | o servidor recusou a chave que chegou: o nome em `-ChaveEnv` bate com a tabela e o segredo é o da RPA certa? a chave está revogada ou não cobre a base? — `docs/runbooks/chaves-rpa-runbook.md` §2 e §4 |
+| código `1`, "variável de ambiente ... ausente ou vazia" | recusa **local**, antes da rede (não é `3`): variável não gravada, nome errado ou PAD aberto antes de gravar — runbook §1 e §2 |
+| código `4` | a base anterior do dia foi **aplicada** hoje? (Operação exige Aberto) |
+| código `2` | `erro.codigo` na linha do stderr e em `<primeiro-arquivo>.resposta.json`; base intacta |
+| código `1` com `FATAL:` | o servidor fez o contrário do modo pedido — conferir `ingestao.carga` (pelo `carga_id` da mensagem) antes de rodar de novo |
+| código `1` no passo `carga` **com `-Aplicar`** | **resultado INCERTO**: conferir em `/admin/ingestao` (`ingestao.carga`, pelo `carga_id` da mensagem) se a carga foi aplicada **antes de reenviar** |
+| código `1` sem `FATAL:` (outros) | rede/servidor após 4 tentativas, ou validação local (inclui `-Log` ausente ou inconsistente) — a linha do stderr diz qual |

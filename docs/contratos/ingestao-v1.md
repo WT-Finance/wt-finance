@@ -58,6 +58,64 @@ dispara em **qualquer** mudança de contagem ou soma de um ano anterior ao corre
 **não há** alarme de "baseline desviou" nesta versão (dos três números de baseline do briefing, só
 um se reproduzia); "carga esperada não chegou" existe mas nasce **desligado** até a RPA existir.
 
+**Errata 4 (2026-09-29, decisões do Yan — v6.1.0/M0):** o que a entrega pelas RPAs (Power Automate
+Desktop) exige e o texto congelado não previa. As (a), (b), (c) e (f) mudam o que a RPA envia ou
+recebe. Nenhuma muda número de tela.
+
+**(a) `lancamentos-operacao` aceita a coluna opcional `Operacao_Id`** (texto — o UUID estável do
+`<select id="id">` de `agency_operations` no Monde, por onde a RPA navega). Achada pelo nome
+normalizado do cabeçalho, como as demais (§3). **Ausente** ⇒ o campo fica nulo e a carga segue
+(o CSV do R, sem a coluna, continua aceito — é o caminho manual). **Declarada no cabeçalho e vazia
+numa linha de lançamento** ⇒ `422 ESTRUTURA_INESPERADA`: um id que some numa linha é defeito da
+extração, não dado. O valor é **gravado** em `raw.lancamentos_operacao` e no fato; nenhum leitor o usa
+nesta versão.
+
+**(b) O passo 3 aceita, só em `lancamentos-operacao`, o campo opcional `puladas`**: lista de
+`{ "operacao": "<nome>", "ids": ["<uuid>", …], "motivo": "<texto>" }` — as operações que a RPA
+**não extraiu** (nome ambíguo ou ausente no dropdown; `ids` pode vir vazio). Em outra base o campo ⇒
+`422 FORMATO_INVALIDO`. Fica gravado no `diff` da linha de `ingestao.carga` (`diff.puladas`). Lista
+não vazia numa carga **aplicada** ⇒ alarme `operacoes_puladas` (um incidente por carga, com os nomes).
+
+**(c) O diff de Operação compara o conjunto de operações** da base viva com o do arquivo e devolve
+`diff.operacoes_removidas` e `diff.operacoes_novas` (listas de `{ operacao, operacao_id }`). O
+critério é **`Operacao_Id` quando os dois lados o têm**; senão, o **nome normalizado** (sem espaços
+nas pontas e com espaços internos colapsados; maiúsculas e acentos contam). Só entram linhas de
+lançamento (as linhas-placeholder do Monde, "Nada para mostrar" e afins, não são operação). O "antes"
+é a base viva no momento da carga, não "a carga anterior" do §2.3 passo 8 — é o que o diff sempre
+mediu. `operacoes_removidas` não vazia numa carga **aplicada** ⇒ alarme `operacoes_removidas`,
+**mesmo que** as operações constem em `puladas`: a pulada é a causa, a remoção é o efeito que a
+diretoria vê. Na **aplicação**, o "antes" é capturado pela própria promoção, sob o lock da base e na
+mesma transação que troca o fato (`operacoes_antes` no resultado da promoção, migration 0288) — é o
+que a retentativa com o mesmo `carga_id` recebe de volta, então uma remoção nunca some porque o
+retorno da primeira tentativa se perdeu. `operacoes_removidas`/`operacoes_novas` **`null`** significa
+**não medido** (o "antes" não pôde ser lido); nunca se lê `null` como "nenhuma" — a resposta traz um
+aviso em `alarmes` pedindo conferência manual.
+
+**(d) Sai do contrato a "RPC de leitura da lista de operações para a RPA" (§5).** A RPA deriva a
+lista dos próprios exports de Vendas (`Produto = "Contrato de casamento"`, `Operação Propria`,
+espaços colapsados); a RPC nunca foi construída e deixa de ser necessária.
+
+**(e) Idempotência na entrega pela RPA.** O cliente de entrega (`scripts/rpa/entregar-ingestao.ps1`)
+gera **um** `x-ingestao-idempotencia` e trabalha com **um** `carga_id` por execução. Retentativa
+repete o passo que falhou com os mesmos dois valores (o passo 3 repetido com o mesmo `carga_id`
+devolve a resposta guardada se a carga já aplicou). Um `PUT` que volta "já existe" conta como
+sucesso: o passo 3 reconfere o sha256. A consulta `GET /api/ingestao/cargas/{carga_id}` citada no §8
+**não existe** e o cliente não depende dela.
+
+**(f) A RPA envia `confirmar` — corrige a frase da errata 2(a).** O cliente nasce em conferência e só
+aplica com `-Aplicar` explícito (lição da v6.0.1: o default que aponta para produção tem de ser o
+inofensivo). Como o default do servidor continua `true`, o cliente manda `"confirmar": false`
+**sempre** que não for aplicar. Conferência não grava linha em `ingestao.carga` nem dispara alarme
+(errata 2(a)): `puladas` e `operacoes_removidas` aparecem só na resposta. O grafo (§5) é conferido
+também na conferência.
+
+**(g) A origem é decidida pela credencial, não pelo chamador.** Chamada com `x-api-key` ⇒ origem
+`rpa-pad` ou `rpa-cloud`; chamada com a sessão do card ⇒ `manual` ou `reprocesso`. O header
+`x-ingestao-origem` continua obrigatório (§1); valor que contradiz a credencial ⇒ `422
+FORMATO_INVALIDO`, como já é o valor fora do enum. E uma chave com `escopo_bases` não vazio — chave de ingestão — é
+**recusada** pela API externa de Solicitações (`/api/externo/*`) com `403 ESCOPO_INSUFICIENTE`: a
+chave de uma RPA carrega relatório e nada mais.
+
 ## 0. Vocabulário
 
 | Termo | Significado |
@@ -75,7 +133,9 @@ Toda chamada leva `x-api-key: <segredo>`. O servidor resolve por hash (sha256) e
 
 - chave ausente → `401 AUTH_AUSENTE`; inválida ou revogada → `401 AUTH_INVALIDA`;
 - chave sem a base pedida em `escopo_bases` → `403 ESCOPO_INSUFICIENTE`;
-- toda chamada (inclusive as negadas) é registrada em `app.api_chamada_log`.
+- toda chamada (inclusive as negadas) é registrada em `app.api_chamada_log`;
+- a origem da carga segue a credencial, e chave de ingestão não abre a API de Solicitações
+  (**errata 4(g)**).
 
 A promoção no banco roda com a credencial **`ingestor`** (role com `EXECUTE` só nas RPCs de
 staging e promoção das cinco bases). Duas alavancas independentes de emergência: **revogar a
@@ -144,8 +204,10 @@ Body (JSON):
   "confirmar": true }
 ```
 
-`confirmar` é opcional e vale `true` por default (**errata 2(a)**) — a RPA não o envia. Com `false`,
-o servidor roda os passos 4 a 8 e PARA antes de aplicar, devolvendo `status: "conferida"`.
+`confirmar` é opcional e vale `true` por default (**errata 2(a)**). Com `false`, o servidor roda os
+passos 4 a 8 e PARA antes de aplicar, devolvendo `status: "conferida"`. O cliente da RPA o envia
+`false` sempre que não for aplicar (**errata 4(f)**). Em `lancamentos-operacao`, o body aceita ainda
+`puladas` (**errata 4(b)**).
 
 
 Fluxo no servidor — **uma transação por carga, ou nada**:
@@ -166,7 +228,8 @@ Fluxo no servidor — **uma transação por carga, ou nada**:
    de novo dentro da RPC de promoção (`RAISE` se não fechar);
 7. reconcilia o conjunto (Σ arquivos = linhas parseadas; Vendas: nenhum `Venda Nº` repetido entre
    arquivos);
-8. **diff** contra a carga anterior (linhas, soma, por ano; pares novos na bandeja da competência);
+8. **diff** contra a carga anterior (linhas, soma, por ano; pares novos na bandeja da competência;
+   em Operação, o conjunto de operações — **errata 4(c)**);
 9. staging em lotes → `promover_carga_{base}` (atômica; `regenerar_*`/`provisionar_*` dentro);
 10. grava a linha em `ingestao.carga` e dispara os alarmes (§6).
 
@@ -209,7 +272,7 @@ Formato do erro: `{ "ok": false, "erro": { "codigo": "...", "mensagem": "...", "
 | `vendas-produto` | N xlsx, um por ano/período ("Vendas por produto") | `raw.vendas_excel` | item de venda |
 | `lancamentos-movimentacao` | 1 xlsx ("Lançamentos por categoria — movimentação") | `raw.lancamentos_movimentacao` | lançamento liquidado |
 | `lancamentos-aberto` | 1 xlsx ("Lançamentos por categoria — vencimento em aberto") | `raw.titulos_em_aberto` | título em aberto |
-| `lancamentos-operacao` | 1 csv ("Análise de Operações", scrape) | `raw.lancamentos_operacao` (nova) → `analytics.fato_lancamento_operacao` | lançamento por operação |
+| `lancamentos-operacao` | 1 csv ("Análise de Operações", scrape; coluna opcional `Operacao_Id` — **errata 4(a)**) | `raw.lancamentos_operacao` (nova) → `analytics.fato_lancamento_operacao` | lançamento por operação |
 
 Cada carga **substitui a base inteira** (não é append). Vendas: os N arquivos são unidos no
 servidor; a cobertura é derivada do dado (`min/max(data_venda)`), nunca do nome do arquivo.
@@ -236,8 +299,9 @@ demonstrativo-competencia  (independente)
 ```
 
 `lancamentos-operacao` exige carga **aplicada no dia** de `lancamentos-aberto` (é de onde vem o
-`Vencimento`); sem ela ⇒ `409 DEPENDENCIA_AUSENTE`. A lista de operações é **derivada** de
-`raw.vendas_excel` (`Produto = 'Contrato de casamento'`), exposta por RPC de leitura para a RPA.
+`Vencimento`); sem ela ⇒ `409 DEPENDENCIA_AUSENTE` — também na conferência (**errata 4(f)**). A
+lista de operações é **derivada** pela própria RPA dos exports de Vendas (`Produto = 'Contrato de
+casamento'`); a RPC de leitura que este parágrafo previa saiu do contrato (**errata 4(d)**).
 
 ## 6. Log e alarmes
 
@@ -247,7 +311,7 @@ somas, checksums conferidos/falhos, rejeitadas por data, pares novos, diff, stat
 Alarmes (e-mail, destinatários em config): checksum falho · ano fechado alterado acima do limiar ·
 baseline desviou · par novo na bandeja · carga esperada não chegou até a hora configurada (cadência
 diária) · cron sem resultado. (**Errata 3(c)**: sem limiar, sem alarme de baseline, e "carga esperada"
-nasce desligado.)
+nasce desligado.) (**Errata 4(b)(c)**: `operacoes_puladas` e `operacoes_removidas` em Operação.)
 
 ## 7. O que a RPA precisa saber e o Janus não pergunta
 
@@ -261,4 +325,4 @@ nasce desligado.)
 
 Extração automática (as RPAs em si), Pessoas, carga incremental por janela, Vendas via API do
 fornecedor, callbacks/webhooks de conclusão (a RPA consulta `GET /api/ingestao/cargas/{carga_id}`
-se precisar — leitura, mesma chave).
+se precisar — leitura, mesma chave; essa rota **não existe** — **errata 4(e)**).

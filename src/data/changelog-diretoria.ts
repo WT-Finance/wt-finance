@@ -35,6 +35,25 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.1.0',
+    data: '2026-09-29T14:32', // horário real de autoria; reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'A carga dos relatórios do sistema de vendas (Monde) passa a poder ser feita por robô, com a ' +
+          'mesma conferência da carga manual: se algum total não bater, nada muda na plataforma.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Quando uma operação de casamento deixa de aparecer numa nova carga — inclusive porque o robô não ' +
+          'conseguiu extraí-la —, a equipe recebe um aviso por e-mail com o nome da operação, em vez de ela ' +
+          'sumir da carteira sem explicação.',
+      },
+    ],
+  },
+  {
     versao: '6.0.1',
     data: '2026-09-28T12:40', // horário real do merge (PR #281), reconciliado no /pos-merge
     itens: [

@@ -36,7 +36,7 @@ vi.mock('@/lib/supabase/admin', () => ({ getAdminClient: () => new ClienteAdminF
 import {
   validarArquivosDeclarados, reconciliarVendas, traduzirFalhaParse, ErroCarga, respostaErroCarga,
   tentarTravarBase, destravarBase, autenticarIngestao, calcularDiff, statusAtualDaBase,
-  processarCarga,
+  processarCarga, validarOrigemPelaCredencial, validarPuladasNaBase,
   type ArquivoDeclarado, type EntradaCarga,
 } from './carga'
 import { LIMITE_BYTES_ARQUIVO, LIMITE_BYTES_CARGA } from './storage'
@@ -288,6 +288,25 @@ describe('autenticarIngestao', () => {
     expect((await r.resposta.json()).erro.codigo).toBe('ESCOPO_INSUFICIENTE')
   })
 
+  // Prova do GATE da v6.1.0 (M5, etapa 1): a chave da RPA de Operação carrega SÓ Operação — se ela
+  // entregar Vendas, a rota recusa e a tentativa fica em `api_chamada_log` (via `chaveId`).
+  it('chave com escopo SÓ em lancamentos-operacao entregando vendas-produto ⇒ 403 ESCOPO_INSUFICIENTE, com chaveId', async () => {
+    autenticarChamadaMock.mockResolvedValueOnce({ ok: true, chave: chaveResolvida({ id: 9, escopo_bases: ['lancamentos-operacao'] }) })
+    const r = await autenticarIngestao(reqComChave('segredo-da-rpa-operacao'), 'vendas-produto')
+    expect(r.ok).toBe(false)
+    if (r.ok) throw new Error('unreachable')
+    expect(r.resposta.status).toBe(403)
+    expect(r.viaChave).toBe(true)
+    expect(r.chaveId).toBe(9)
+    expect((await r.resposta.json()).erro.codigo).toBe('ESCOPO_INSUFICIENTE')
+  })
+
+  it('a MESMA chave só-Operação entregando lancamentos-operacao ⇒ ok via chave', async () => {
+    autenticarChamadaMock.mockResolvedValueOnce({ ok: true, chave: chaveResolvida({ id: 9, escopo_bases: ['lancamentos-operacao'] }) })
+    const r = await autenticarIngestao(reqComChave('segredo-da-rpa-operacao'), 'lancamentos-operacao')
+    expect(r.ok).toBe(true)
+  })
+
   it('x-api-key presente e INVÁLIDA ⇒ repassa a resposta de autenticarChamada (401 AUTH_INVALIDA)', async () => {
     const respostaOriginal = respostaErroCarga('AUTH_INVALIDA', 'chave inválida', 401)
     autenticarChamadaMock.mockResolvedValueOnce({ ok: false, resposta: respostaOriginal })
@@ -325,6 +344,45 @@ describe('autenticarIngestao', () => {
     expect(r.resposta.status).toBe(403)
     expect((await r.resposta.json()).erro.codigo).toBe('ESCOPO_INSUFICIENTE')
   })
+})
+
+// ── Origem amarrada à credencial e `puladas` (errata 4(g)/(b)) ───────────────────────────────
+
+describe('validarOrigemPelaCredencial', () => {
+  it.each([['chave', 'rpa-pad'], ['chave', 'rpa-cloud'], ['sessao', 'manual'], ['sessao', 'reprocesso']] as const)(
+    '%s + "%s" é compatível', (via, origem) => {
+      expect(validarOrigemPelaCredencial(via, origem)).toBeNull()
+    },
+  )
+
+  it.each([['chave', 'manual'], ['chave', 'reprocesso'], ['sessao', 'rpa-pad'], ['sessao', 'rpa-cloud']] as const)(
+    '%s + "%s" contradiz a credencial ⇒ 422 FORMATO_INVALIDO com a lista do que a credencial aceita', (via, origem) => {
+      const erro = validarOrigemPelaCredencial(via, origem)
+      expect(erro?.codigo).toBe('FORMATO_INVALIDO')
+      expect(erro?.http).toBe(422)
+      expect(erro?.message).toContain(`"${origem}"`)
+      expect(erro?.detalhe).toMatchObject({ origem, credencial: via })
+    },
+  )
+})
+
+describe('validarPuladasNaBase', () => {
+  it('lancamentos-operacao aceita, com ou sem puladas', () => {
+    expect(validarPuladasNaBase('lancamentos-operacao', undefined)).toBeNull()
+    expect(validarPuladasNaBase('lancamentos-operacao', [])).toBeNull()
+    expect(validarPuladasNaBase('lancamentos-operacao', [{ operacao: 'x' }])).toBeNull()
+  })
+
+  it.each(['vendas-produto', 'demonstrativo-competencia', 'lancamentos-movimentacao', 'lancamentos-aberto'] as const)(
+    '%s: ausente passa; presente — inclusive [] — ⇒ 422 FORMATO_INVALIDO', (base) => {
+      expect(validarPuladasNaBase(base, undefined)).toBeNull()
+      for (const puladas of [[], [{ operacao: 'x' }]]) {
+        const erro = validarPuladasNaBase(base, puladas)
+        expect(erro?.codigo).toBe('FORMATO_INVALIDO')
+        expect(erro?.http).toBe(422)
+      }
+    },
+  )
 })
 
 // ── Diff contra a base viva — §2.3 passo 8 ───────────────────────────────────────────────────

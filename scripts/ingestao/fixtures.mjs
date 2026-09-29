@@ -7,7 +7,10 @@
 //     node scripts/ingestao/fixtures.mjs            # copia + confere
 //   node scripts/ingestao/fixtures.mjs --verificar  # só confere o que já está no destino
 //
-// Procura cada `origem` (nome do arquivo como exportado) em TODAS as pastas de
+// Cópia de segurança (v6.0.1): `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`, já com os
+// nomes canônicos — `JANUS_ANEXOS_DIRS=~/projects/arquivo-worktrees-janus/fixtures-ingestao`.
+//
+// Procura cada `origem` (nome do arquivo como exportado) E cada `nome` canônico em TODAS as pastas de
 // JANUS_ANEXOS_DIRS (separador `:`), recursivamente até 3 níveis. Hash divergente ABORTA:
 // fixture com hash diferente do manifest não é a fixture — é outro export, e o oráculo
 // que roda em cima dela estaria medindo outra coisa.
@@ -51,8 +54,10 @@ let ok = 0, faltando = 0, divergentes = 0
 for (const f of manifest.fixtures) {
   const alvo = join(DESTINO, f.nome)
   if (!soVerificar && !existsSync(alvo)) {
-    const candidatos = procurar(f.origem, dirs)
-    if (candidatos.length === 0) { console.log(`FALTA   ${f.nome}  (origem "${f.origem}" não encontrada)`); faltando++; continue }
+    // Pelo nome de ORIGEM (o export como saiu do Monde) e pelo nome CANÔNICO (o que este script
+    // grava no destino — é como as cópias de segurança fora do repo ficam guardadas, v6.1.0).
+    const candidatos = [...new Set([...procurar(f.origem, dirs), ...procurar(f.nome, dirs)])]
+    if (candidatos.length === 0) { console.log(`FALTA   ${f.nome}  (nem "${f.origem}" nem "${f.nome}" encontrados)`); faltando++; continue }
     const certo = candidatos.find(c => sha256(c) === f.sha256)
     if (!certo) {
       console.log(`DIVERGE ${f.nome}  ${candidatos.length} candidato(s) com esse nome, nenhum com o sha256 do manifest:`)

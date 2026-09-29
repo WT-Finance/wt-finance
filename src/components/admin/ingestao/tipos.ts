@@ -18,6 +18,8 @@ export const ROTULO_ALARME: Record<TipoAlarmeIngestao, string> = {
   par_novo_bandeja:          'Par novo na bandeja',
   processo_sem_resultado:    'Processo sem resultado',
   carga_esperada_nao_chegou: 'Carga esperada não chegou',
+  operacoes_puladas:         'Operações puladas pela RPA',
+  operacoes_removidas:       'Operações removidas',
 }
 
 export function rotuloAlarme(tipo: string): string {

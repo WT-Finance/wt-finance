@@ -493,6 +493,8 @@ export type TipoAlarmeIngestao =
   | 'par_novo_bandeja'
   | 'processo_sem_resultado'
   | 'carga_esperada_nao_chegou'
+  | 'operacoes_puladas'
+  | 'operacoes_removidas'
 
 /** Carga rejeitada por checksum (ou outra rejeição de conteúdo) — chave do incidente = `cargaId`. */
 export interface AlarmeChecksumFalho {
@@ -553,6 +555,24 @@ export interface AlarmeCargaEsperadaNaoChegou {
   horasSemCarga:  number
 }
 
+/** Carga APLICADA de Lançamentos por Operação em que a RPA declarou (`puladas`, errata 4(b) do
+ *  contrato) operações que NÃO extraiu — nome ambíguo ou ausente no dropdown. Um incidente por
+ *  carga. Só nome e motivo viajam: os `ids` ficam no `diff.puladas` da linha de carga. */
+export interface AlarmeOperacoesPuladas {
+  tipo:    'operacoes_puladas'
+  cargaId: string
+  puladas: { operacao: string; motivo: string }[]
+}
+
+/** Carga APLICADA de Lançamentos por Operação cujo arquivo NÃO traz operações que a base viva tinha
+ *  (errata 4(c)) — dispara mesmo que as operações constem em `puladas`: a pulada é a causa, a
+ *  remoção é o efeito que a diretoria vê. Um incidente por carga. */
+export interface AlarmeOperacoesRemovidas {
+  tipo:      'operacoes_removidas'
+  cargaId:   string
+  operacoes: string[]
+}
+
 /** Um alarme de ingestão JÁ DECIDIDO — `enviarAlarmeIngestao`/este template não decidem se
  *  há alarme, só formatam e enviam o que outro módulo decidiu (anexo v6.0.0/M6 §5). */
 export type AlarmeIngestao =
@@ -561,6 +581,8 @@ export type AlarmeIngestao =
   | AlarmeParNovoBandeja
   | AlarmeProcessoSemResultado
   | AlarmeCargaEsperadaNaoChegou
+  | AlarmeOperacoesPuladas
+  | AlarmeOperacoesRemovidas
 
 /** Par rótulo/valor da caixa de detalhe — MÓDULO-level (não local a uma função) para ser
  *  reusado pelo template de alarme sem duplicar o helper de `templateNotificacaoAcessoSolicitado`. */
@@ -579,6 +601,18 @@ interface CorpoAlarme {
   linhas: [string, string][]
   /** Parágrafo livre opcional (o `motivo` do checksum) — escapado na montagem do html. */
   extra?: string
+  /** Lista opcional (um item por linha, já truncada por `listaTruncadaAlarme`) sob um rótulo —
+   *  usada pelos alarmes de operações, que nomeiam o que foi pulado/removido. Escapada na montagem. */
+  lista?: { rotulo: string; itens: string[] }
+}
+
+/** Teto de itens nomeados no e-mail — a lista completa fica no `diff` da linha de carga; o
+ *  e-mail só precisa dizer "quais" o bastante para o operador agir (mesma régua de `ausentes`/
+ *  `repetidas`, que também truncam em 20). */
+const LIMITE_LISTA_ALARME = 20
+function listaTruncadaAlarme(itens: readonly string[]): string[] {
+  if (itens.length <= LIMITE_LISTA_ALARME) return [...itens]
+  return [...itens.slice(0, LIMITE_LISTA_ALARME), `… e mais ${numPt(itens.length - LIMITE_LISTA_ALARME)}`]
 }
 
 /** Duração legível em pt-BR a partir de minutos — "50.400 minutos" não se lê numa caixa de
@@ -642,6 +676,29 @@ function montarCorpoAlarme(a: AlarmeIngestao): CorpoAlarme {
           ['Última carga aplicada', a.ultimaCargaEm ?? 'nunca houve'],
         ],
       }
+    case 'operacoes_puladas':
+      return {
+        titulo: `${numPt(a.puladas.length)} operação(ões) pulada(s) pela RPA — ${ROTULO_BASE['lancamentos-operacao']}`,
+        linhas: [
+          ['Base', ROTULO_BASE['lancamentos-operacao']],
+          ['Operações puladas', numPt(a.puladas.length)],
+          ['Carga', a.cargaId],
+        ],
+        lista: {
+          rotulo: 'Operações puladas (operação — motivo)',
+          itens: listaTruncadaAlarme(a.puladas.map((p) => `${p.operacao} — ${p.motivo}`)),
+        },
+      }
+    case 'operacoes_removidas':
+      return {
+        titulo: `${numPt(a.operacoes.length)} operação(ões) removida(s) da base — ${ROTULO_BASE['lancamentos-operacao']}`,
+        linhas: [
+          ['Base', ROTULO_BASE['lancamentos-operacao']],
+          ['Operações removidas', numPt(a.operacoes.length)],
+          ['Carga', a.cargaId],
+        ],
+        lista: { rotulo: 'Operações removidas', itens: listaTruncadaAlarme(a.operacoes) },
+      }
   }
 }
 
@@ -665,6 +722,10 @@ function primeiraLinhaAlarme(a: AlarmeIngestao): string {
       return a.ultimaCargaEm
         ? `A base "${ROTULO_BASE[a.base]}" está SEM CARGA aplicada há ${duracaoPt(a.horasSemCarga * 60)}.`
         : `A base "${ROTULO_BASE[a.base]}" NUNCA teve carga aplicada, e já passou a tolerância de ${duracaoPt(a.horasSemCarga * 60)}.`
+    case 'operacoes_puladas':
+      return `A RPA PULOU ${numPt(a.puladas.length)} operação(ões) ao extrair "${ROTULO_BASE['lancamentos-operacao']}" — elas não estão no arquivo da carga aplicada.`
+    case 'operacoes_removidas':
+      return `Uma carga aplicada REMOVEU ${numPt(a.operacoes.length)} operação(ões) que a base "${ROTULO_BASE['lancamentos-operacao']}" tinha.`
   }
 }
 
@@ -677,6 +738,8 @@ function assuntoBaseAlarme(a: AlarmeIngestao): string {
     case 'par_novo_bandeja':         return `${numPt(a.paresNovos)} par(es) novo(s) na bandeja — Demonstrativo`
     case 'processo_sem_resultado':    return `Processo sem resultado — ${a.processo}`
     case 'carga_esperada_nao_chegou': return `Carga esperada não chegou — ${ROTULO_BASE[a.base]}`
+    case 'operacoes_puladas':         return `${numPt(a.puladas.length)} operação(ões) pulada(s) pela RPA — ${ROTULO_BASE['lancamentos-operacao']}`
+    case 'operacoes_removidas':       return `${numPt(a.operacoes.length)} operação(ões) removida(s) — ${ROTULO_BASE['lancamentos-operacao']}`
   }
 }
 
@@ -700,6 +763,15 @@ export function templateAlarmeIngestao(alarme: AlarmeIngestao, opts: {
   const extraParagrafo = corpo.extra
     ? `<tr><td class="em-pad" style="padding:16px 40px 0;">
         <p style="margin:0;font-size:13px;line-height:1.6;color:${COR_TEXTO};"><strong>Motivo:</strong> ${escaparHtml(corpo.extra)}</p>
+      </td></tr>`
+    : ''
+
+  // Um <p> por item, com marcador textual — sem <ul>/<li>, que o Outlook/Word renderiza com
+  // recuo próprio; o restante do template já é só tabela + parágrafo inline.
+  const listaParagrafo = corpo.lista && corpo.lista.itens.length > 0
+    ? `<tr><td class="em-pad" style="padding:16px 40px 0;">
+        <p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:${COR_TEXTO};"><strong>${escaparHtml(corpo.lista.rotulo)}:</strong></p>
+        ${corpo.lista.itens.map((i) => `<p style="margin:0 0 4px;font-size:13px;line-height:1.55;color:${COR_TEXTO};">&bull;&nbsp;${escaparHtml(i)}</p>`).join('')}
       </td></tr>`
     : ''
 
@@ -729,6 +801,9 @@ export function templateAlarmeIngestao(alarme: AlarmeIngestao, opts: {
     `${linha1}\n\n` +
     corpo.linhas.map(([r, v]) => `${r}: ${v}`).join('\n') + '\n\n' +
     (corpo.extra ? `Motivo: ${corpo.extra}\n\n` : '') +
+    (corpo.lista && corpo.lista.itens.length > 0
+      ? `${corpo.lista.rotulo}:\n${corpo.lista.itens.map((i) => `- ${i}`).join('\n')}\n\n`
+      : '') +
     (link ? `Ver na plataforma: ${link}\n\n` : '') +
     'Você recebe este aviso porque administra a ingestão de dados.\n\n' +
     `— ${APP_NOME_INTERNO}`
@@ -771,6 +846,7 @@ export function templateAlarmeIngestao(alarme: AlarmeIngestao, opts: {
         </table>
       </td></tr>
       ${extraParagrafo}
+      ${listaParagrafo}
       ${botaoLinha}
       <tr><td class="em-pad" style="padding:26px 40px 38px;">
         <p style="margin:0;font-size:12px;line-height:1.6;color:${COR_TENUE};">Você recebe este aviso porque administra a ingestão de dados.</p>

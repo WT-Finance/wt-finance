@@ -2117,6 +2117,177 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — ingestao_painel ↔ ingestaoPa
   })
 })
 
+// ── v6.1.0 (0287) — `ingestao_operacoes_vigentes()`: o conjunto de operações da base VIVA ────
+// "Antes" do diff por conjunto de operações (errata 4(c) do contrato de ingestão v1), lido pelo
+// servidor ANTES da promoção — que trunca raw e fato. A função é service_role-ONLY por desenho
+// (mesma classe de `ingestao_soma_por_ano`; sem `exigir_acesso` no corpo, protegida só por GRANT).
+//
+// Por que NÃO entra na lista F7 nem em chamada REST pela credencial `verificador`: a allowlist do
+// `verificador` é DERIVADA deste arquivo por `scripts/credencial/derivar-allowlist.mjs`, que extrai
+// do TEXTO INTEIRO (comentários inclusos) o nome que aparece como argumento literal de `rpc(` ou
+// como valor da chave `fn:`. Escrever a função assim aqui emitiria GRANT ao `verificador` — o que a
+// 0287 não quer, e que este bloco reprova logo abaixo. Por isso a chamada é por `pg` direto, em
+// sessão READ ONLY, com a claim `role=service_role` (o ramo TRUSTED que o servidor usa — mesmo
+// molde do bloco de `ingestao_painel` acima) e o nome vive numa constante, nunca como literal
+// posicional. A função é STABLE e só lê; nada persiste.
+describe.skipIf(!ON || !DB_URL)('contrato RPC — ingestao_operacoes_vigentes (0287): shape + service_role-only', () => {
+  const NOME = 'ingestao_operacoes_vigentes'
+  const ASSINATURA = `public.${NOME}()`
+
+  async function comCliente<T>(f: (c: { query: (q: string, p?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }) => Promise<T>): Promise<T> {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    // Trava READ ONLY de SESSÃO, por CONEXÃO (sonda-teste-escreve-banco): o Postgres recusa qualquer
+    // escrita aqui — inclusive a que a função faria por dentro.
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try { return await f(c) } finally { await c.end() }
+  }
+
+  /** Falha ALTO se a função não existe: pular seria o `skipIf` silencioso que as sondas combatem. */
+  async function exigirFuncao(c: { query: (q: string, p?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }): Promise<void> {
+    const r = await c.query(`SELECT to_regprocedure($1) IS NOT NULL AS existe`, [ASSINATURA])
+    expect(r.rows[0]?.existe, `${ASSINATURA} não existe no catálogo — a migration 0287 foi aplicada?`).toBe(true)
+  }
+
+  it('devolve um array jsonb; cada item tem EXATAMENTE {operacao, operacao_id}; sem par duplicado', async () => {
+    const { itens, distintosNaTabela } = await comCliente(async c => {
+      await exigirFuncao(c)
+      await c.query(`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false)`)
+      const chamada = await c.query(`SELECT public.ingestao_operacoes_vigentes() AS v`)
+      // Contraprova pela tabela: o número de pares distintos que a função devolve é o do fato.
+      const tabela = await c.query(
+        `SELECT count(*)::int AS n FROM (SELECT DISTINCT operacao, operacao_id FROM analytics.fato_lancamento_operacao) s`,
+      )
+      return { itens: chamada.rows[0]?.v as unknown, distintosNaTabela: tabela.rows[0]?.n as number }
+    })
+
+    expect(Array.isArray(itens), `esperado array jsonb, veio ${typeof itens}`).toBe(true)
+    const lista = itens as Array<Record<string, unknown>>
+    // Caso positivo: a base viva tem operações (~240 em 29/09). Sem isto, as asserções por item
+    // passariam VAZIAS numa função que devolvesse `[]` por engano (join quebrado, filtro errado).
+    expect(lista.length, 'a base viva de Lançamentos por Operação não tem operação nenhuma?').toBeGreaterThan(0)
+
+    const vistos = new Set<string>()
+    for (const item of lista) {
+      expect(Object.keys(item).sort(), `chaves do item ${JSON.stringify(item)}`).toEqual(['operacao', 'operacao_id'])
+      // `operacao` é NOT NULL no fato (a promoção descarta placeholder); `operacao_id` é anulável —
+      // NULL até a primeira carga da RPA que traga a coluna (o CSV do R não a tem).
+      expect(typeof item.operacao, `operacao de ${JSON.stringify(item)}`).toBe('string')
+      expect((item.operacao as string).length, `operacao vazia em ${JSON.stringify(item)}`).toBeGreaterThan(0)
+      expect(item.operacao_id === null || typeof item.operacao_id === 'string', `operacao_id de ${JSON.stringify(item)}`).toBe(true)
+      const par = JSON.stringify([item.operacao, item.operacao_id])
+      expect(vistos.has(par), `par duplicado: ${par}`).toBe(false)
+      vistos.add(par)
+    }
+    expect(lista.length, 'a função e o DISTINCT direto da tabela discordam').toBe(distintosNaTabela)
+  })
+
+  it('service_role-ONLY no catálogo: nem PUBLIC, nem anon, nem authenticated, nem as credenciais de máquina', async () => {
+    const { existe, privilegios, acl, comentario } = await comCliente(async c => {
+      await exigirFuncao(c)
+      const r = await c.query(
+        `SELECT has_function_privilege('service_role',  $1, 'EXECUTE') AS service_role,
+                has_function_privilege('anon',          $1, 'EXECUTE') AS anon,
+                has_function_privilege('authenticated', $1, 'EXECUTE') AS authenticated,
+                has_function_privilege('verificador',   $1, 'EXECUTE') AS verificador,
+                has_function_privilege('ingestor',      $1, 'EXECUTE') AS ingestor`,
+        [ASSINATURA],
+      )
+      const p = await c.query(
+        `SELECT (p.proacl IS NULL) AS acl_default,
+                coalesce(array_to_string(p.proacl, ' '), '') AS acl,
+                coalesce(obj_description(p.oid, 'pg_proc'), '') AS comentario
+           FROM pg_proc p WHERE p.oid = to_regprocedure($1)`,
+        [ASSINATURA],
+      )
+      return { existe: p.rows[0], privilegios: r.rows[0], acl: String(p.rows[0]?.acl ?? ''), comentario: String(p.rows[0]?.comentario ?? '') }
+    })
+
+    // ACL default (proacl NULL) = EXECUTE para PUBLIC — o estado que o REVOKE explícito da 0287 remove.
+    expect(existe?.acl_default, `${ASSINATURA}: voltou ao ACL DEFAULT (EXECUTE para PUBLIC)`).toBe(false)
+    expect(acl, `${ASSINATURA}: proacl concede a PUBLIC`).not.toMatch(/(^|\s)=X\//)
+    expect(privilegios?.service_role, 'service_role é quem chama (carga.ts pelo cliente de servidor)').toBe(true)
+    expect(privilegios?.anon, 'anon executa a função').toBe(false)
+    expect(privilegios?.authenticated, 'authenticated executa a função').toBe(false)
+    // As duas credenciais de MÁQUINA (ADR-0175): a função NÃO entra em allowlist nenhuma. Se o
+    // `derivar-allowlist.mjs` a incluísse por engano, é aqui que reprova.
+    expect(privilegios?.verificador, 'verificador tem EXECUTE — a função vazou para a allowlist derivada').toBe(false)
+    expect(privilegios?.ingestor, 'ingestor tem EXECUTE — a função vazou para a allowlist da ingestão').toBe(false)
+    // Como as irmãs service_role-only (0276/0280): o comentário declara POR QUE não tem exigir_acesso.
+    expect(comentario, `${ASSINATURA}: comentário sem menção a service_role`).toMatch(/service_role/)
+  })
+})
+
+// ── v6.1.0 (0288) — `promover_carga_operacao` devolve o conjunto "antes", no CATÁLOGO VIVO ────
+// O `operacoes_antes` do resultado é capturado DENTRO da transação, sob o lock, ANTES do TRUNCATE —
+// é o que faz o diff de operações sobreviver a uma retentativa depois de promoção commitada e a
+// duas cargas de Operação intercaladas (achado ALTO do `revisor`). Nada disso aparece em shape de
+// RPC que o `tsc` cheque, e o modo de falha é o silencioso: um `CREATE OR REPLACE` futuro escrito a
+// partir da migration 0287 (em vez do catálogo vivo — skill banco-e-rpc §5) apaga a chave sem
+// quebrar teste nenhum, e a remoção volta a poder passar calada. Leitura de `pg_get_functiondef`,
+// READ ONLY, sem executar a função. O nome vive na constante de assinatura — nunca como argumento
+// literal de `rpc(` nem valor de `fn:` (o `derivar-allowlist.mjs` extrai esses padrões do texto).
+describe.skipIf(!ON || !DB_URL)('contrato RPC — promover_carga_operacao (0288): operacoes_antes capturado antes do TRUNCATE', () => {
+  const ASSINATURA = 'public.promover_carga_operacao(jsonb, uuid)'
+
+  async function corpoVivo(): Promise<string> {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    // Trava READ ONLY de SESSÃO, por CONEXÃO (sonda-teste-escreve-banco).
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try {
+      const r = await c.query(
+        `SELECT pg_get_functiondef(to_regprocedure($1)) AS def, to_regprocedure($1) IS NOT NULL AS existe`,
+        [ASSINATURA],
+      )
+      expect(r.rows[0]?.existe, `${ASSINATURA} não existe no catálogo`).toBe(true)
+      return String(r.rows[0]?.def ?? '')
+    } finally { await c.end() }
+  }
+
+  it('o corpo vivo: lock → v_antes := ingestao_operacoes_vigentes() → 1º TRUNCATE, e operacoes_antes dentro do jsonb_build_object de v_result', async () => {
+    const def = await corpoVivo()
+    // Sem comentários: uma menção a TRUNCATE/v_antes num `--` não pode enganar a ordem.
+    const corpo = def.replace(/--.*$/gm, '')
+
+    expect(corpo, 'o resultado perdeu a chave operacoes_antes (0288 revertida por um CREATE OR REPLACE?)').toContain('operacoes_antes')
+    expect(corpo, 'a captura não chama mais ingestao_operacoes_vigentes()').toContain('ingestao_operacoes_vigentes()')
+
+    // O lock serializa as promoções de Operação; o "antes" só é confiável se for lido DEPOIS dele
+    // (senão outra promoção troca a base entre a leitura e o TRUNCATE) e ANTES do primeiro TRUNCATE.
+    const lock = corpo.indexOf('pg_advisory_xact_lock(4017040)')
+    const atribuicao = corpo.search(/\bv_antes\s*:=/i)
+    const primeiroTruncate = corpo.search(/\bTRUNCATE\b/i)
+    expect(lock, 'o corpo não toma pg_advisory_xact_lock(4017040)').toBeGreaterThanOrEqual(0)
+    expect(atribuicao, 'não há atribuição a v_antes no corpo').toBeGreaterThanOrEqual(0)
+    expect(primeiroTruncate, 'o corpo não tem TRUNCATE (a promoção deixou de trocar a base?)').toBeGreaterThanOrEqual(0)
+    expect(lock, 'o lock vem DEPOIS de v_antes — o "antes" seria lido sem exclusão mútua').toBeLessThan(atribuicao)
+    expect(atribuicao, 'v_antes é atribuído DEPOIS do primeiro TRUNCATE — o "antes" já seria a base nova').toBeLessThan(primeiroTruncate)
+
+    // `operacoes_antes` tem de estar DENTRO do jsonb_build_object que monta `v_result` — não basta
+    // a palavra aparecer (num RAISE, num literal solto): é a chave do resultado guardado em
+    // `ingestao.promocao` e devolvido no replay.
+    const inicioResultado = corpo.search(/\bv_result\s*:=\s*jsonb_build_object\s*\(/i)
+    expect(inicioResultado, 'não há `v_result := jsonb_build_object(` no corpo').toBeGreaterThanOrEqual(0)
+    const aPartirDoResultado = corpo.slice(inicioResultado)
+    const abre = aPartirDoResultado.indexOf('(')
+    let profundidade = 0
+    let fecha = -1
+    for (let i = abre; i < aPartirDoResultado.length; i++) {
+      const ch = aPartirDoResultado[i]
+      if (ch === '(') profundidade++
+      else if (ch === ')') { profundidade--; if (profundidade === 0) { fecha = i; break } }
+    }
+    expect(fecha, 'parênteses do jsonb_build_object de v_result não fecham (corpo lido errado?)').toBeGreaterThan(abre)
+    const construtor = aPartirDoResultado.slice(abre, fecha + 1)
+    expect(construtor, "'operacoes_antes' não está dentro do jsonb_build_object de v_result").toMatch(/'operacoes_antes'\s*,\s*v_antes\b/)
+  })
+})
+
 // ── v5.10.0 (0269) — grants explícitos, COMMENTs e o texto do RAISE, no CATÁLOGO VIVO ───
 // A 0269 é aditiva e o que ela muda não aparece em nenhum retorno de RPC: privilégio de
 // EXECUTE, comentário de catálogo e uma string de mensagem de erro. Nada disso o `tsc`, o
@@ -2227,7 +2398,8 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
                   ('public','ingestao_vigia_definir'),('public','ingestao_expectativa_definir'),
                   ('public','ingestao_painel'),('public','ingestao_vigia_estado'),
                   ('public','ingestao_alarme_abrir'),
-                  ('public','ingestao_retencao_inventario'),('public','ingestao_retencao_registrar'))`,
+                  ('public','ingestao_retencao_inventario'),('public','ingestao_retencao_registrar'),
+                  ('public','ingestao_operacoes_vigentes'))`,
       )
       return r.rows
     })
@@ -2272,7 +2444,10 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
     for (const nome of ['ingestao_vigia_estado', 'ingestao_alarme_abrir', 'ingestao_retencao_inventario', 'ingestao_retencao_registrar']) {
       expect(por.get(`public.${nome}`) ?? '', `public.${nome}: comentário sem menção a service_role (0280)`).toMatch(/service_role/)
     }
+    // 0287 (v6.1.0): o conjunto de operações vigente, lido por carga.ts antes da promoção — mesma
+    // classe (só o servidor chama; sem exigir_acesso; protegida por GRANT).
+    expect(por.get('public.ingestao_operacoes_vigentes') ?? '', 'public.ingestao_operacoes_vigentes: comentário sem menção a service_role (0287)').toMatch(/service_role/)
     // Sem a linha, o `for` acima não reprova uma função que sumiu do catálogo — só as que existem.
-    expect(por.size, 'uma das RPCs listadas não existe no catálogo').toBe(17)
+    expect(por.size, 'uma das RPCs listadas não existe no catálogo').toBe(18)
   })
 })

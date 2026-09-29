@@ -386,6 +386,33 @@ Lições permanentes, detalhadas nos anexos `docs/briefings/anexo-v6-0-0-m{3,4,5
   0284). Migrar um filtro de negócio para uma view exige grep de TODOS os leitores da tabela por
   baixo — inclusive os que parecem só "checar", não "ler para exibir".
 
+## 9. Entrega pelas RPAs (v6.1.0, errata 4, ADR-0179)
+
+A RPA (Power Automate Desktop) só extrai; **quem entrega é `scripts/rpa/entregar-ingestao.ps1`** — a
+única implementação dos três passos do contrato fora do card (README em `scripts/rpa/`, chaves em
+`docs/runbooks/chaves-rpa-runbook.md`). Mudou algo nos passos, nos códigos de erro ou no body da rota?
+**O cliente PowerShell muda junto** (e a sonda estática `scripts/rpa/entregar-ingestao.test.mjs`) — a
+sessão não executa PowerShell, então a sonda e a 1ª execução do Yan são as únicas provas.
+
+- **Operação pulada não some em silêncio — duas redes.** A RPA declara `puladas` (só Operação,
+  `diff.puladas`, alarme `operacoes_puladas`); e o servidor, independentemente, compara o CONJUNTO de
+  operações da base com o do arquivo (`operacoes_removidas`/`novas`, alarme `operacoes_removidas`) —
+  por `Operacao_Id` quando os dois lados o têm, senão por nome `apertar`. Placeholder do scrape sai
+  pelo filtro de linha aplicável, **nunca** por `operacaoId === null`.
+- **O "antes" de um diff que alarma tem de ser capturado DENTRO da transação que troca o dado** — lido
+  por RPC separada antes de promover, ele vira a base NOVA na retentativa depois de um commit cujo
+  retorno se perdeu, e a remoção sai sem alarme (achado ALTO do `revisor`, fechado pela 0288:
+  `operacoes_antes` no resultado da promoção, guardado em `ingestao.promocao` e devolvido no replay). A
+  leitura prévia fica só para a CONFERÊNCIA, que não promove. `null` = **não medido**, nunca "nenhuma".
+  ⚠️ O mesmo buraco existe hoje no `somaPorAno` ("ano fechado alterado", as cinco bases) — backlog.
+- **Default que aponta para produção é o inofensivo** (repetida da v6.0.1): o cliente nasce em
+  conferência, manda `confirmar:false` EXPLÍCITO (o default do servidor é `true`) e falha fatal se a
+  resposta contradiz o modo pedido. Exemplo de comando em documentação também é "default": nenhuma
+  linha de exemplo de conferência carrega `-Aplicar` (achado ALTO do `revisor` na M4).
+- **Origem segue a credencial** (chave ⇒ `rpa-*`; sessão ⇒ `manual`/`reprocesso`) e chave com escopo de
+  ingestão não abre a API de Solicitações. Conferência não grava linha de carga: no GATE, a prova da
+  conferência é a resposta e o `app.api_chamada_log`.
+
 ## Ver também
 
 - **`banco-e-rpc`** — RPCs do pipeline de carga (assinatura, RBAC, orçamento de tempo),

@@ -40,6 +40,10 @@ consulta (pergunta em uma linha, se mudou algum achado).
 - DROP de qualquer objeto: os **consumidores reais** foram verificados? Grep no app **e**
   em `supabase/seed/` (precedente v4.17.1: RPCs "órfãs" pelo briefing eram usadas pelo
   seed). Corpo do objeto dropado preservado na migration para reversibilidade?
+- RPC que troca dado e cujo resultado alimenta um ALARME por diff (antes × depois): o "antes" é
+  capturado DENTRO dela (depois do lock e do replay, antes do primeiro TRUNCATE/UPDATE) e devolvido no
+  resultado guardado para o replay? Lido por chamada separada, a retentativa idempotente o vê já como a
+  base nova e o alarme some (skill `banco-e-rpc` §4, v6.1.0/0288).
 - Destrutiva com `DROP ... IF EXISTS`: há guard de efetividade no fim? Ele compara por
   **assinatura** (`to_regprocedure`) quando existe sobrecarga, e as assinaturas dele foram
   **resolvidas no catálogo antes** (NULL = guard cego a erro de digitação)? O contrapeso cobre o
