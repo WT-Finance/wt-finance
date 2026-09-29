@@ -224,7 +224,62 @@ describe('entregar-ingestao.ps1 — contrato', () => {
   })
 })
 
+describe('entregar-ingestao.ps1 — ordem de execucao, log e resposta (o que se prova sem PowerShell)', () => {
+  it('o .resposta.json antigo e apagado ANTES da primeira chamada de rede', () => {
+    const remover = posicao(ps1, "Remove-Item -LiteralPath ($script:PrimeiroArquivo + '.resposta.json')")
+    const primeiraChamada = ps1.search(/Invoke-ComRetentativa '/)
+    expect(primeiraChamada, 'nenhuma chamada Invoke-ComRetentativa com passo literal').toBeGreaterThan(-1)
+    expect(remover).toBeLessThan(primeiraChamada)
+  })
+
+  it('o log e lido e conferido ANTES da primeira chamada de rede (log inconsistente nunca chega ao servidor)', () => {
+    const lerLog = posicao(ps1, 'Ler-LogPuladas $caminhoLog')
+    expect(lerLog).toBeLessThan(ps1.search(/Invoke-ComRetentativa '/))
+  })
+
+  it('-Log passa por Resolve-Path como os arquivos', () => {
+    expect(ps1).toMatch(/\$caminhoLog = \(Resolve-Path -LiteralPath \$Log\)\.ProviderPath/)
+  })
+
+  it('o parse do log corta nos tetos do Zod do servidor: motivo 500, operacao 300, 20 ids, id 100', () => {
+    expect(ps1).toMatch(/\$script:LimiteMotivo = 500\b/)
+    expect(ps1).toMatch(/\$script:LimiteOperacao = 300\b/)
+    expect(ps1).toMatch(/\$script:LimiteIds = 20\b/)
+    expect(ps1).toMatch(/\$script:LimiteIdChars = 100\b/)
+    const parse = trecho(ps1, 'function Ler-LogPuladas', 'function Converter-Json')
+    expect(parse).toMatch(/Cortar-Texto \$operacao \$script:LimiteOperacao/)
+    expect(parse).toMatch(/Cortar-Texto \(\(\$status -replace [^\r\n]*\) \$script:LimiteMotivo/)
+    expect(parse).toMatch(/Cortar-Texto \(\$campos\[\$k - 1\]\.Trim\(\)\) \$script:LimiteIdChars/)
+    expect(parse).toMatch(/\$ids\.Count -gt \$script:LimiteIds/)
+  })
+
+  it('o parse reconhece status so com maiusculas (-cmatch) e ignora cabecalho pelo campo de status', () => {
+    const parse = trecho(ps1, 'function Ler-LogPuladas', 'function Converter-Json')
+    expect(parse).toMatch(/-cmatch '\^\(OK\|PULADA\)\\b'/)
+    expect(parse).toMatch(/\$campos\[2\]\.Trim\(\) -ieq 'status'\) \{ continue \}/)
+    expect(parse).not.toMatch(/-ieq 'operacao'/)
+  })
+
+  it('operacoes_removidas: ausente nao imprime, presente e null imprime NAO_MEDIDO (PSObject.Properties)', () => {
+    expect(ps1).toMatch(/\$j3\.diff\.PSObject\.Properties\['operacoes_removidas'\]/)
+    expect(ps1).toMatch(/\$null -eq \$propRemovidas\.Value\) \{ \$ok = \$ok \+ ' operacoes_removidas=NAO_MEDIDO' \}/)
+  })
+
+  it('500 da promocao (estado incerto) e 5xx: retenta e, esgotado, sai 1 (nunca 2)', () => {
+    const classif = trecho(ps1, 'function Classificar-Resposta', 'function Obter-CodigoSaida')
+    expect(classif).toMatch(/\$s -ge 500 -or \$s -eq 429\) \{ return 'transitorio' \}/)
+    const saida = trecho(ps1, 'function Obter-CodigoSaida', 'function Invoke-ComRetentativa')
+    expect(saida).not.toMatch(/-ge 500|-eq 500/) // 500 cai no "return 1" final, nao em 2
+  })
+})
+
 describe('README.md e runbook — mesma tabela de codigos, conferencia x aplicacao', () => {
+  it('README: NAO_MEDIDO pede conferencia manual e o codigo 2 e so 422', () => {
+    expect(readme).toMatch(/NAO_MEDIDO/)
+    expect(readme).toMatch(/manualmente/)
+    expect(readme).toMatch(/\| `2` \|[^\n]*s[óo] HTTP 422/)
+  })
+
   it('lista os 6 codigos de saida (tabela `| N |`)', () => {
     for (const n of CODIGOS) {
       expect(readme, `codigo ${n} fora da tabela do README`).toMatch(new RegExp(`\\|\\s*\`${n}\`\\s*\\|`))

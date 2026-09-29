@@ -84,7 +84,12 @@ lançamento (as linhas-placeholder do Monde, "Nada para mostrar" e afins, não s
 é a base viva no momento da carga, não "a carga anterior" do §2.3 passo 8 — é o que o diff sempre
 mediu. `operacoes_removidas` não vazia numa carga **aplicada** ⇒ alarme `operacoes_removidas`,
 **mesmo que** as operações constem em `puladas`: a pulada é a causa, a remoção é o efeito que a
-diretoria vê.
+diretoria vê. Na **aplicação**, o "antes" é capturado pela própria promoção, sob o lock da base e na
+mesma transação que troca o fato (`operacoes_antes` no resultado da promoção, migration 0288) — é o
+que a retentativa com o mesmo `carga_id` recebe de volta, então uma remoção nunca some porque o
+retorno da primeira tentativa se perdeu. `operacoes_removidas`/`operacoes_novas` **`null`** significa
+**não medido** (o "antes" não pôde ser lido); nunca se lê `null` como "nenhuma" — a resposta traz um
+aviso em `alarmes` pedindo conferência manual.
 
 **(d) Sai do contrato a "RPC de leitura da lista de operações para a RPA" (§5).** A RPA deriva a
 lista dos próprios exports de Vendas (`Produto = "Contrato de casamento"`, `Operação Propria`,

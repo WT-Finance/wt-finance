@@ -93,7 +93,7 @@ não `3`**: o script recusa antes de tocar a rede (código `3` é o servidor rec
 |---|---|
 | `0` | aplicada ou conferida (bateu com o modo pedido) |
 | `1` | qualquer outra falha após as retentativas (validação local, rede, 5xx, 429, log inconsistente, assert de modo `FATAL:`) |
-| `2` | rejeitada pelo servidor (422) — base intacta; o motivo está em `erro.codigo`/`erro.mensagem` |
+| `2` | rejeitada pelo servidor (conteúdo) — **só HTTP 422**, base intacta; o motivo está em `erro.codigo`/`erro.mensagem`. Um 500 **não** é `2` (ver código `1`) |
 | `3` | chave inválida ou sem escopo (401/403) |
 | `4` | grafo (409 `DEPENDENCIA_AUSENTE`) — a base anterior do dia não foi carregada |
 | `5` | arquivo grande demais (413) — 50 MB por arquivo, 200 MB por carga |
@@ -106,8 +106,15 @@ A resposta inteira do último passo (sucesso ou erro) vai para `<primeiro-arquiv
 arquivo de uma execução anterior é apagado no início. Em erro de rede (sem resposta do servidor) o arquivo
 guarda `passo`, `carga_id` e o erro.
 
+**`operacoes_removidas=NAO_MEDIDO`** (só em Operação): a resposta trouxe `diff.operacoes_removidas` **presente
+e nulo** — o servidor **não mediu** o conjunto de operações (por exemplo, falhou a leitura do "antes"). Isso
+**não** significa "zero removidas": confira **manualmente** as operações (a lista da base viva contra a do
+arquivo) antes de dar a carga por boa. Campo **ausente** não imprime nada; lista vazia imprime `=0`.
+
 **Código `1` no passo `carga` com `-Aplicar` = resultado INCERTO.** A carga pode ter sido aplicada e a resposta
-ter se perdido (timeout, 5xx, `CARGA_EM_ANDAMENTO` esgotado). **Antes de reenviar**, confira em
+ter se perdido (timeout, 5xx, `CARGA_EM_ANDAMENTO` esgotado). Erro de transporte do servidor na promoção chega
+como `500 ERRO_INTERNO` com "estado incerto": o cliente retenta como qualquer 5xx e, esgotadas as tentativas,
+sai `1` com este aviso. **Antes de reenviar**, confira em
 `/admin/ingestao` (`ingestao.carga`) a linha com o `carga_id` da mensagem. O `FATAL:` (assert de modo) traz
 o `carga_id` pelo mesmo motivo.
 
@@ -193,6 +200,13 @@ O script **não envia nada** e sai com código `1` (log inconsistente) quando:
 - uma linha não tem status `OK` nem `PULADA` reconhecível, ou uma linha `PULADA` não tem o formato completo
   (`operacao;id;status;entradas;saidas;leituras`). O status é achado pelo **conteúdo** (não pela posição): nome de
   operação com `;` ou motivo com `;` não fazem a linha sumir.
+
+O cabeçalho (linha cujo 3º campo é `status`, sem distinguir maiúsculas) é ignorado. O status é reconhecido
+**com maiúsculas** (`OK`, `PULADA`); `ok` minúsculo não vale. O caminho de `-Log` pode ser relativo.
+
+**Tetos do servidor** (acima deles o servidor recusaria o corpo inteiro e bloquearia a entrega): o script
+**corta** antes de enviar `motivo` em 500 caracteres, `operacao` em 300, cada id em 100 e no máximo 20 ids por
+entrada. Um corte fica só no envio; o `.log` original não é alterado.
 
 O log é lido como UTF-8 (com ou sem BOM); se os bytes não forem UTF-8 válido, como Windows-1252.
 

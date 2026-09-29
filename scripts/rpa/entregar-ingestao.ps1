@@ -60,6 +60,12 @@ $script:Origem = 'rpa-pad'                # a origem e amarrada a credencial (er
 $script:ChaveSecreta = ''
 $script:PrimeiroArquivo = $null
 $script:CargaId = $null                   # preenchido apos o passo 1; entra em toda mensagem de erro seguinte
+# Tetos do Zod de "puladas" no servidor: acima deles o servidor recusa o corpo INTEIRO (422) e a
+# entrega inteira ficaria bloqueada por causa de um texto longo. O cliente corta antes de enviar.
+$script:LimiteMotivo = 500
+$script:LimiteOperacao = 300
+$script:LimiteIds = 20
+$script:LimiteIdChars = 100
 
 $BASES_VALIDAS = @('demonstrativo-competencia', 'vendas-produto', 'lancamentos-movimentacao', 'lancamentos-aberto', 'lancamentos-operacao')
 
@@ -146,6 +152,12 @@ function Ler-TextoDoLog {
     }
 }
 
+function Cortar-Texto {
+    param([string]$Texto, [int]$Maximo)
+    if ($Texto.Length -gt $Maximo) { return $Texto.Substring(0, $Maximo) }
+    return $Texto
+}
+
 # Formato (uma linha por operacao): operacao;id;status;entradas;saidas;leituras
 # status = OK | PULADA - <motivo>. Ultima linha: RESUMO;;puladas=N;;;
 # NAO assume posicao: o campo de status e achado pelo CONTEUDO (^OK ou ^PULADA, a partir do 3o campo);
@@ -171,23 +183,25 @@ function Ler-LogPuladas {
             else { Sair-Com 1 'ERRO: log inconsistente - a linha RESUMO nao traz puladas=N.' }
             continue
         }
-        if ($n -ge 3 -and $campos[0].Trim() -ieq 'operacao' -and $campos[2].Trim() -ieq 'status') { continue }   # cabecalho
+        if ($n -ge 3 -and $campos[2].Trim() -ieq 'status') { continue }   # cabecalho (o campo de status diz "status")
         $k = -1
         for ($i = 2; $i -lt $n; $i++) {
-            if ($campos[$i].Trim() -match '^(OK|PULADA)\b') { $k = $i; break }
+            if ($campos[$i].Trim() -cmatch '^(OK|PULADA)\b') { $k = $i; break }   # case-sensitive: "ok" nao vale
         }
         if ($k -lt 0) { Sair-Com 1 ('ERRO: log inconsistente - a linha ' + $numLinha + ' nao tem status OK nem PULADA reconhecivel.') }
-        if ($campos[$k].Trim() -match '^OK\b') { continue }
+        if ($campos[$k].Trim() -cmatch '^OK\b') { continue }
         if ($n -lt ($k + 4)) {
             Sair-Com 1 ('ERRO: log inconsistente - a linha ' + $numLinha + ' (PULADA) nao tem o formato operacao;id;status;entradas;saidas;leituras.')
         }
         $status = ($campos[$k..($n - 4)] -join ';').Trim()
         $operacao = ($campos[0..($k - 2)] -join ';').Trim()
         if ($operacao -eq '') { Sair-Com 1 ('ERRO: log inconsistente - a linha ' + $numLinha + ' (PULADA) esta sem nome de operacao.') }
-        $motivo = ($status -replace '^PULADA\s*-?\s*', '').Trim()
-        $id = $campos[$k - 1].Trim()
+        $operacao = Cortar-Texto $operacao $script:LimiteOperacao
+        $motivo = Cortar-Texto (($status -replace '^PULADA\s*-?\s*', '').Trim()) $script:LimiteMotivo
+        $id = Cortar-Texto ($campos[$k - 1].Trim()) $script:LimiteIdChars
         $ids = @()
         if ($id -ne '') { $ids = @($id) }
+        if ($ids.Count -gt $script:LimiteIds) { $ids = $ids[0..($script:LimiteIds - 1)] }
         [void]$puladas.Add(@{ Operacao = $operacao; Ids = [object[]]$ids; Motivo = $motivo })
     }
     # Sem RESUMO o log pode estar truncado (a RPA morreu no meio): nao pode virar puladas = [].
@@ -428,7 +442,11 @@ function Invoke-Entrega {
     if ($Log -and $Base -ne 'lancamentos-operacao') { Sair-Com 1 'ERRO: -Log so vale para a base lancamentos-operacao.' }
     # -Log e OBRIGATORIO em Operacao: a salvaguarda de "puladas" nao pode sumir por esquecimento.
     if ($Base -eq 'lancamentos-operacao' -and -not $Log) { Sair-Com 1 'ERRO: a base lancamentos-operacao exige -Log (o .log da RPA).' }
-    if ($Log -and -not (Test-Path -LiteralPath $Log -PathType Leaf)) { Sair-Com 1 ('ERRO: log nao encontrado: ' + $Log) }
+    $caminhoLog = $null
+    if ($Log) {
+        if (-not (Test-Path -LiteralPath $Log -PathType Leaf)) { Sair-Com 1 ('ERRO: log nao encontrado: ' + $Log) }
+        $caminhoLog = (Resolve-Path -LiteralPath $Log).ProviderPath   # caminho relativo tambem vale (a API do .NET usa outro diretorio)
+    }
     if ($ExtraidoEm -and $ExtraidoEm.Trim() -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$') {
         Sair-Com 1 'ERRO: -ExtraidoEm precisa ser ISO-8601 com fuso, ex.: 2026-09-29T09:58:00-03:00.'
     }
@@ -437,7 +455,7 @@ function Invoke-Entrega {
 
     # puladas: lido e conferido ANTES de qualquer rede (log inconsistente => codigo 1)
     $puladas = $null
-    if ($Log) { $puladas = (Ler-LogPuladas $Log).Puladas }
+    if ($caminhoLog) { $puladas = (Ler-LogPuladas $caminhoLog).Puladas }
 
     # ---- 2. sha256 (minusculas)
     foreach ($it in $itens) {
@@ -530,7 +548,15 @@ function Invoke-Entrega {
     $ok = 'OK: status=' + $status + ' carga_id=' + $cargaId + ' base=' + $Base + ' linhas=' + $linhas + ' idempotente=' + ([string]$j3.idempotente).ToLowerInvariant()
     if ($null -ne $puladas) { $ok = $ok + ' puladas=' + @($puladas).Count }
     if ($null -ne $j3.alarmes) { $ok = $ok + ' alarmes=' + @($j3.alarmes).Count }
-    if ($null -ne $j3.diff -and $null -ne $j3.diff.operacoes_removidas) { $ok = $ok + ' operacoes_removidas=' + @($j3.diff.operacoes_removidas).Count }
+    # operacoes_removidas: AUSENTE (base que nao mede) nao imprime nada; PRESENTE e null = o servidor
+    # "nao mediu" (nao e "zero removidas"): imprime NAO_MEDIDO para o operador conferir a mao.
+    if ($null -ne $j3.diff) {
+        $propRemovidas = $j3.diff.PSObject.Properties['operacoes_removidas']
+        if ($null -ne $propRemovidas) {
+            if ($null -eq $propRemovidas.Value) { $ok = $ok + ' operacoes_removidas=NAO_MEDIDO' }
+            else { $ok = $ok + ' operacoes_removidas=' + @($propRemovidas.Value).Count }
+        }
+    }
     Sair-Com 0 $ok
 }
 

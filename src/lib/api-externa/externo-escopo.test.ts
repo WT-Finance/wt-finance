@@ -98,14 +98,18 @@ describe('autenticarChamadaSolicitacoes — o ponto único da API de Solicitaç�
     expect((await r.resposta.json()).erro.codigo).toBe('ESCOPO_INSUFICIENTE')
   })
 
-  it('escopo_bases ausente ou null (chave de integrador) segue passando', async () => {
-    for (const chave of [
-      { id: 7, plataforma: 'integrador', robo_user_id: 'u' },
-      { id: 7, plataforma: 'integrador', robo_user_id: 'u', escopo_bases: null },
-    ]) {
-      simularRpcs(chave)
-      expect((await autenticarChamadaSolicitacoes(req('segredo-integrador'))).ok).toBe(true)
-    }
+  // A coluna é `NOT NULL DEFAULT '{}'` e o resolver a emite sempre (0274): ausente/null seria
+  // REGRESSÃO do resolver — e nesse caso a porta fecha, não abre (só `[]` é chave de integrador).
+  it.each([
+    ['escopo_bases ausente', { id: 7, plataforma: 'integrador', robo_user_id: 'u' }],
+    ['escopo_bases null', { id: 7, plataforma: 'integrador', robo_user_id: 'u', escopo_bases: null }],
+  ])('%s ⇒ 403 (fail-closed: só o array vazio é chave de integrador)', async (_nome, chave) => {
+    simularRpcs(chave)
+    const r = await autenticarChamadaSolicitacoes(req('segredo-integrador'))
+    expect(r.ok).toBe(false)
+    if (r.ok) throw new Error('unreachable')
+    expect(r.resposta.status).toBe(403)
+    expect(r.chaveId).toBe(7)
   })
 
   it('chave de SOLICITAÇÕES (escopo vazio) ⇒ passa, com a mesma chave que autenticarChamada devolve', async () => {

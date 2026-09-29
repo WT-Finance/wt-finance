@@ -28,7 +28,7 @@ import { parseDemonstrativoCruRows, type DemonstrativoCompetenciaCru } from './p
 import { parseLancamentosCategoriaRows } from './parsers/lancamentos-categoria'
 import { parseLancamentosOperacaoRows, type LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
 import {
-  aplicarCarga, CargaRejeitada, lancamentoOperacaoAplicavel, operacoesDaBaseSchema,
+  aplicarCarga, CargaRejeitada, PromocaoIncerta, lancamentoOperacaoAplicavel, operacoesDaBaseSchema,
   type ResultadoAplicacao,
 } from './aplicar'
 import { getAdminClient } from '@/lib/supabase/admin'
@@ -387,9 +387,15 @@ export interface DiffCarga {
   /**
    * v6.1.0 (errata 4(c)) — SÓ em `lancamentos-operacao` (nas outras bases as três chaves NÃO
    * existem). Operações que a base viva tinha e o arquivo NÃO traz; e as que o arquivo traz e a
-   * base não tinha. `null` = não foi possível medir (RPC do "antes" falhou). Na RESPOSTA isso só
-   * acontece na conferência (um aviso vai junto em `alarmes`), porque a aplicação aborta; na LINHA
-   * de carga aparece também com status `erro` (o diff calculado até ali é gravado).
+   * base não tinha. `null` = "não medido" (nunca "nenhuma" — `[]` é medido e vazio). Aparece:
+   *  • na CONFERÊNCIA, quando a leitura do "antes" falhou (um aviso vai junto em `alarmes`);
+   *  • na APLICAÇÃO em RETENTATIVA (linha de carga já existente) cuja promoção não devolveu
+   *    `operacoes_antes`: o pré-lido pode já ser a base nova, então não se afirma nada (aviso em
+   *    `alarmes`);
+   *  • na LINHA de carga com status `erro`/`rejeitada` de uma retentativa, e de uma carga cuja leitura
+   *    do "antes" falhou — o diff calculado até ali é gravado, sem o `[]` do pré-lido numa retentativa.
+   * Na resposta de uma aplicação de carga NOVA nunca é `null`: a leitura do "antes" falha ⇒ a carga
+   * aborta (500) antes de aplicar.
    */
   readonly operacoes_removidas?: readonly OperacaoRef[] | null
   readonly operacoes_novas?: readonly OperacaoRef[] | null
@@ -1003,6 +1009,12 @@ async function aplicarComTraducaoDeErro(
     if (err instanceof CargaRejeitada) {
       throw new ErroCarga('ESTRUTURA_INESPERADA', 422, err.message, { etapa: err.etapa })
     }
+    if (err instanceof PromocaoIncerta) {
+      // Não é rejeição de conteúdo: a promoção pode ter commitado. 500 ⇒ linha `erro` (não
+      // `rejeitada`), sem alarme `checksum_falho` (só o 422 alarma), e o cliente retenta com o
+      // MESMO `carga_id` — o replay de `promover_carga_operacao` devolve o resultado guardado.
+      throw new ErroCarga('ERRO_INTERNO', 500, err.message, { etapa: err.etapa })
+    }
     throw err
   }
 }
@@ -1242,7 +1254,13 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
           parseado.operacoesDoArquivo?.declarouId ?? false,
         )
         diff = { ...diffTotal, operacoes_removidas: cmp.removidas, operacoes_novas: cmp.novas, puladas: [...puladas] }
-        diffParaLog = diff
+        // Numa RETENTATIVA o pré-lido pode já ser a base NOVA: o `[]` dele gravado numa linha
+        // `erro`/`rejeitada` diria "nenhuma removida" sobre o que não se mediu. O que vai ao log
+        // até a promoção responder é "não medido" (`null`); o `diff` da CONFERÊNCIA (que nunca é
+        // retentativa) e o da resposta seguem com o pré-lido.
+        diffParaLog = ehRetentativa
+          ? { ...diff, operacoes_removidas: null, operacoes_novas: null }
+          : diff
       }
     }
 

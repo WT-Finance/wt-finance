@@ -2249,7 +2249,7 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — promover_carga_operacao (0288)
     } finally { await c.end() }
   }
 
-  it('o corpo vivo devolve `operacoes_antes`, lê o conjunto por ingestao_operacoes_vigentes() e o atribui a v_antes ANTES do 1º TRUNCATE', async () => {
+  it('o corpo vivo: lock → v_antes := ingestao_operacoes_vigentes() → 1º TRUNCATE, e operacoes_antes dentro do jsonb_build_object de v_result', async () => {
     const def = await corpoVivo()
     // Sem comentários: uma menção a TRUNCATE/v_antes num `--` não pode enganar a ordem.
     const corpo = def.replace(/--.*$/gm, '')
@@ -2257,11 +2257,34 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — promover_carga_operacao (0288)
     expect(corpo, 'o resultado perdeu a chave operacoes_antes (0288 revertida por um CREATE OR REPLACE?)').toContain('operacoes_antes')
     expect(corpo, 'a captura não chama mais ingestao_operacoes_vigentes()').toContain('ingestao_operacoes_vigentes()')
 
+    // O lock serializa as promoções de Operação; o "antes" só é confiável se for lido DEPOIS dele
+    // (senão outra promoção troca a base entre a leitura e o TRUNCATE) e ANTES do primeiro TRUNCATE.
+    const lock = corpo.indexOf('pg_advisory_xact_lock(4017040)')
     const atribuicao = corpo.search(/\bv_antes\s*:=/i)
     const primeiroTruncate = corpo.search(/\bTRUNCATE\b/i)
+    expect(lock, 'o corpo não toma pg_advisory_xact_lock(4017040)').toBeGreaterThanOrEqual(0)
     expect(atribuicao, 'não há atribuição a v_antes no corpo').toBeGreaterThanOrEqual(0)
     expect(primeiroTruncate, 'o corpo não tem TRUNCATE (a promoção deixou de trocar a base?)').toBeGreaterThanOrEqual(0)
+    expect(lock, 'o lock vem DEPOIS de v_antes — o "antes" seria lido sem exclusão mútua').toBeLessThan(atribuicao)
     expect(atribuicao, 'v_antes é atribuído DEPOIS do primeiro TRUNCATE — o "antes" já seria a base nova').toBeLessThan(primeiroTruncate)
+
+    // `operacoes_antes` tem de estar DENTRO do jsonb_build_object que monta `v_result` — não basta
+    // a palavra aparecer (num RAISE, num literal solto): é a chave do resultado guardado em
+    // `ingestao.promocao` e devolvido no replay.
+    const inicioResultado = corpo.search(/\bv_result\s*:=\s*jsonb_build_object\s*\(/i)
+    expect(inicioResultado, 'não há `v_result := jsonb_build_object(` no corpo').toBeGreaterThanOrEqual(0)
+    const aPartirDoResultado = corpo.slice(inicioResultado)
+    const abre = aPartirDoResultado.indexOf('(')
+    let profundidade = 0
+    let fecha = -1
+    for (let i = abre; i < aPartirDoResultado.length; i++) {
+      const ch = aPartirDoResultado[i]
+      if (ch === '(') profundidade++
+      else if (ch === ')') { profundidade--; if (profundidade === 0) { fecha = i; break } }
+    }
+    expect(fecha, 'parênteses do jsonb_build_object de v_result não fecham (corpo lido errado?)').toBeGreaterThan(abre)
+    const construtor = aPartirDoResultado.slice(abre, fecha + 1)
+    expect(construtor, "'operacoes_antes' não está dentro do jsonb_build_object de v_result").toMatch(/'operacoes_antes'\s*,\s*v_antes\b/)
   })
 })
 

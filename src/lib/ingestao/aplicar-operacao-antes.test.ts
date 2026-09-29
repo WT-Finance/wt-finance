@@ -19,7 +19,7 @@ class ClienteIngestorFake {
 vi.mock('@/lib/supabase/ingestor', () => ({ getIngestorClient: async () => new ClienteIngestorFake() }))
 vi.mock('@/lib/carga/metas', () => ({ loadMetas: vi.fn() }))
 
-import { aplicarCarga, CargaRejeitada } from './aplicar'
+import { aplicarCarga, CargaRejeitada, PromocaoIncerta, codigoVeioDoPostgres } from './aplicar'
 import type { LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
 
 const LINHA: LancamentoOperacaoCru = {
@@ -88,16 +88,39 @@ describe('aplicarCarga(lancamentos-operacao) — erro ao promover', () => {
     expect((erro as CargaRejeitada).message).toContain('CHECKSUM_FALHOU')
   })
 
+  it.each(['P0001', '40001', '57014', '22P02', 'PGRST202', 'PGRST301'])(
+    'code %s (SQLSTATE/PostgREST) ⇒ veio do Postgres ⇒ CargaRejeitada "preservada"', async (code) => {
+      programar({ data: null, error: { message: 'x', code } })
+      const erro = await aplicarCarga('lancamentos-operacao', [LINHA], OPCOES).catch((e: unknown) => e)
+      expect(erro).toBeInstanceOf(CargaRejeitada)
+    },
+  )
+
   it.each([
     ['sem code', { message: 'TypeError: fetch failed' }],
     ['code vazio (falha de transporte do SDK)', { message: 'TypeError: fetch failed', code: '' }],
-  ])('falha de TRANSPORTE (%s) ⇒ "estado incerto", não afirma "preservada"', async (_nome, error) => {
+    ['code null', { message: 'x', code: null }],
+    ['ECONNRESET (código do Node, não do Postgres)', { message: 'read ECONNRESET', code: 'ECONNRESET' }],
+    ['ETIMEDOUT', { message: 'x', code: 'ETIMEDOUT' }],
+    ['EPIPE (5 letras — casa o tamanho de um SQLSTATE, mas não é um)', { message: 'write EPIPE', code: 'EPIPE' }],
+    ['código minúsculo/desconhecido', { message: 'x', code: 'unknown' }],
+  ])('falha de TRANSPORTE (%s) ⇒ PromocaoIncerta "estado incerto", NÃO CargaRejeitada', async (_nome, error) => {
     programar({ data: null, error })
     const erro = await aplicarCarga('lancamentos-operacao', [LINHA], OPCOES).catch((e: unknown) => e)
-    expect(erro).toBeInstanceOf(CargaRejeitada) // mesmo tipo de erro ⇒ mesmo HTTP
-    const msg = (erro as CargaRejeitada).message
+    expect(erro).toBeInstanceOf(PromocaoIncerta)
+    expect(erro).not.toBeInstanceOf(CargaRejeitada)
+    const msg = (erro as PromocaoIncerta).message
     expect(msg).toContain('estado incerto')
     expect(msg).toContain('ingestao.promocao')
     expect(msg).not.toContain('foi preservada')
+  })
+})
+
+describe('codigoVeioDoPostgres', () => {
+  it('SQLSTATE e PGRST passam; o resto (inclusive códigos do Node) não', () => {
+    for (const ok of ['P0001', '23505', '40P01', 'PGRST202']) expect(codigoVeioDoPostgres(ok)).toBe(true)
+    for (const nao of ['', null, undefined, 'ECONNRESET', 'EPIPE', 'ETIMEDOUT', 'pgrst202', 'PGRST20', 'P000']) {
+      expect(codigoVeioDoPostgres(nao as string | null | undefined)).toBe(false)
+    }
   })
 })

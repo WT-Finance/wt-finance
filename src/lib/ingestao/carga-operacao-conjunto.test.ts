@@ -53,7 +53,7 @@ import {
   processarCarga, ErroCarga, lerOperacoesVigentes, compararConjuntoDeOperacoes, operacoesDoArquivo,
   type EntradaCarga,
 } from './carga'
-import { CargaRejeitada } from './aplicar'
+import { CargaRejeitada, PromocaoIncerta } from './aplicar'
 import type { LinhaCarga } from './log'
 import type { LancamentoOperacaoCru } from './parsers/lancamentos-operacao'
 
@@ -507,6 +507,59 @@ describe('processarCarga (Operação) — RETENTATIVA sem operacoes_antes (o pr�
 
     expect(r.diff.operacoes_removidas).toEqual([{ operacao: GAMA, operacao_id: null }])
     expect(dispararAlarmeMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('processarCarga (Operação) — promoção de resultado INCERTO (falha de transporte)', () => {
+  it('PromocaoIncerta ⇒ 500 ERRO_INTERNO, linha `erro` (não `rejeitada`), SEM alarme checksum_falho', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+    aplicarCargaMock.mockRejectedValue(new PromocaoIncerta('promover_carga_operacao', 'estado incerto: conferir ingestao.promocao'))
+
+    const erro = await processarCarga(entrada()).catch((e: unknown) => e)
+
+    expect(erro).toBeInstanceOf(ErroCarga)
+    expect(erro).toMatchObject({ codigo: 'ERRO_INTERNO', http: 500 })
+    expect((erro as ErroCarga).message).toContain('estado incerto')
+    expect(statusGravado()).toBe('erro')
+    expect(dispararAlarmeMock).not.toHaveBeenCalled()
+  })
+
+  it('CargaRejeitada segue 422 ESTRUTURA_INESPERADA, linha `rejeitada` e alarme checksum_falho (Postgres respondeu)', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }], false))
+    aplicarCargaMock.mockRejectedValue(new CargaRejeitada('promover_carga_operacao', 'base preservada'))
+
+    const erro = await processarCarga(entrada()).catch((e: unknown) => e)
+
+    expect(erro).toMatchObject({ codigo: 'ESTRUTURA_INESPERADA', http: 422 })
+    expect(statusGravado()).toBe('rejeitada')
+    expect(dispararAlarmeMock.mock.calls.map((c) => (c[0] as { tipo: string }).tipo)).toEqual(['checksum_falho'])
+  })
+
+  it('RETENTATIVA que falha depois do diff: a linha de log leva operacoes_* = null, NUNCA o [] do pré-lido', async () => {
+    // Pré-lido = arquivo (a tentativa anterior já trocou a base) ⇒ o comparado seria [] / [].
+    programarRpc({
+      ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)],
+      ingestao_carga_abrir: [{ data: { ...linhaCarga({ status: 'erro' }), existente: true }, error: null }],
+    })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+    aplicarCargaMock.mockRejectedValue(new PromocaoIncerta('promover_carga_operacao', 'estado incerto'))
+    const puladas = [{ operacao: 'W - Delta', ids: [], motivo: 'x' }]
+
+    await processarCarga(entrada({ puladas })).catch(() => undefined)
+
+    expect(diffGravado()).toMatchObject({ operacoes_removidas: null, operacoes_novas: null, puladas })
+  })
+
+  it('carga NOVA que falha depois do diff: a linha de log segue com o comparado (o [] é medido)', async () => {
+    programarRpc({ ingestao_operacoes_vigentes: [antesPorNome(ALPHA, BETA)] })
+    lerMatrizMock.mockReturnValue(matrizDoCsv([{ nome: ALPHA }, { nome: BETA }], false))
+    aplicarCargaMock.mockRejectedValue(new PromocaoIncerta('promover_carga_operacao', 'estado incerto'))
+
+    await processarCarga(entrada()).catch(() => undefined)
+
+    expect(diffGravado()).toMatchObject({ operacoes_removidas: [], operacoes_novas: [] })
   })
 })
 

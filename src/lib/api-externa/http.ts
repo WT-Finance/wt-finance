@@ -67,11 +67,12 @@ export async function autenticarChamada(req: Request): Promise<{ ok: true; chave
 /** O `escopo_bases` BRUTO, como o banco devolveu, é vazio? `comoChaveResolvida` filtra por
  *  `ehBaseIngestao`, e uma base que existe só no CHECK do banco (ainda sem literal no TS) some
  *  desse filtro — uma chave só com ela pareceria "sem escopo" e abriria a API de Solicitações.
- *  Fail-closed: qualquer valor que não seja ausente/nulo/array vazio conta como NÃO vazio. */
+ *  Fail-closed: SÓ um array vazio conta como vazio. Ausente, `null` ou não-array ⇒ NÃO vazio (trata
+ *  como chave de ingestão ⇒ 403): a coluna é `NOT NULL DEFAULT '{}'` e o resolver a emite sempre
+ *  (0274), então "ausente" seria regressão do resolver, e abrir a porta nesse caso é o erro caro. */
 function escopoBrutoVazio(chaveBruta: unknown): boolean {
-  if (typeof chaveBruta !== 'object' || chaveBruta === null) return true
+  if (typeof chaveBruta !== 'object' || chaveBruta === null) return false
   const escopo = (chaveBruta as Record<string, unknown>).escopo_bases
-  if (escopo === undefined || escopo === null) return true
   return Array.isArray(escopo) && escopo.length === 0
 }
 

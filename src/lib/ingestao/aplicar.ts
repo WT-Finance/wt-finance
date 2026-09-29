@@ -165,6 +165,26 @@ export class CargaRejeitada extends Error {
   }
 }
 
+/**
+ * A promoção NÃO respondeu de um jeito que diga se aplicou (falha de transporte ao chamar
+ * `promover_carga_operacao`). Diferente de `CargaRejeitada` — que afirma "a base anterior foi
+ * preservada" e vira 422 —, isto é ESTADO INCERTO: `carga.ts` traduz para 500 `ERRO_INTERNO`.
+ */
+export class PromocaoIncerta extends Error {
+  constructor(readonly etapa: string, mensagem: string) {
+    super(mensagem)
+    this.name = 'PromocaoIncerta'
+  }
+}
+
+/** `code` de um erro que veio do servidor: SQLSTATE (5 caracteres `[0-9A-Z]`) ou PostgREST
+ *  (`PGRST` + 3 dígitos). Qualquer outra coisa — vazio, ausente, `ECONNRESET`, `ETIMEDOUT`, `UND_ERR…`
+ *  — é falha de transporte. O primeiro caractere do SQLSTATE nunca é `E` (nenhuma classe começa
+ *  por ele), e é o que separa `EPIPE` — código do Node com exatamente 5 letras — de um SQLSTATE. */
+export function codigoVeioDoPostgres(code: string | null | undefined): boolean {
+  return typeof code === 'string' && /^([0-9A-DF-Z][0-9A-Z]{4}|PGRST\d{3})$/.test(code)
+}
+
 // ── Tamanho de lote por base ─────────────────────────────────────────────────────────────────
 // Os mesmos valores que o card de `/admin/uploads` já usava — `BASES` em
 // `src/app/admin/uploads/page.tsx` (não em `actions.ts`: as Server Actions recebem o lote já
@@ -946,19 +966,25 @@ async function aplicarLancamentosOperacao(
 
   const promRes = await rpc('promover_carga_operacao', { p_checksums: [], p_carga_id: cargaId })
   if (promRes.error) {
-    // Erro que VEIO DO POSTGRES (traz `code`): a promoção é uma transação única e voltou — a base
-    // anterior está de pé, e dizer isso é verdade. Falha de TRANSPORTE (sem `code`: fetch failed,
-    // timeout, corte de conexão): o servidor pode ter commitado e a resposta se perdido — não se
-    // sabe, e a mensagem não afirma. O HTTP segue o mesmo (`CargaRejeitada` ⇒ 422).
-    const veioDoPostgres = typeof promRes.error.code === 'string' && promRes.error.code !== ''
-    throw new CargaRejeitada(
+    // Erro que VEIO DO POSTGRES (`code` = SQLSTATE ou `PGRST…`): a promoção é uma transação única e
+    // voltou — a base anterior está de pé, e dizer isso é verdade ⇒ `CargaRejeitada` (422).
+    // Falha de TRANSPORTE (fetch failed, timeout, corte de conexão — `code` vazio, ausente ou de
+    // rede como `ECONNRESET`): o servidor pode ter commitado e a resposta se perdido — NÃO se sabe.
+    // Isso não é rejeição de conteúdo: `PromocaoIncerta` vira 500 `ERRO_INTERNO` em `carga.ts`
+    // (linha `erro`, sem alarme `checksum_falho`), o cliente sai "RESULTADO INCERTO" e retenta com
+    // o mesmo `carga_id` — que o replay da 0288 cobre.
+    if (codigoVeioDoPostgres(promRes.error.code)) {
+      throw new CargaRejeitada(
+        'promover_carga_operacao',
+        `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
+        `única): ${promRes.error.message}`,
+      )
+    }
+    throw new PromocaoIncerta(
       'promover_carga_operacao',
-      veioDoPostgres
-        ? `Erro ao promover a carga (a base anterior foi preservada — o pipeline é uma transação ` +
-          `única): ${promRes.error.message}`
-        : `Erro ao chamar a promoção da carga — estado incerto: conferir ingestao.carga e ` +
-          `ingestao.promocao antes de reenviar (a promoção pode ter sido aplicada e a resposta se ` +
-          `perdido): ${promRes.error.message}`,
+      `Erro ao chamar a promoção da carga — estado incerto: conferir ingestao.carga e ` +
+      `ingestao.promocao antes de reenviar (a promoção pode ter sido aplicada e a resposta se ` +
+      `perdido): ${promRes.error.message}`,
     )
   }
   const retorno = lerRetornoPromocao(promRes.data)
