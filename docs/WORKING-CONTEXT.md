@@ -98,9 +98,10 @@ grava em produção (1ª execução `ok` do `monde-incremental` às 12:45 UTC, d
 > 2. **Yan — confirmar `SUPABASE_INGESTOR_SENHA` no ambiente Production da Vercel.** Sem ela a carga
 >    LANÇA por desenho (fail-closed). A sessão não consegue ler as envs (403).
 > 3. ✅ Aberto e Operação recarregados no mesmo dia pelo card (28/09 13:46 e 13:50 UTC), junto das outras três bases.
-> 4. **Sessão, depois da 1ª execução OK de cada um:** ligar as expectativas `monde-reconciliacao` (roda
->    06:05 UTC — a partir de 29/09) e `cdi-mensal` (dia 3 — a partir de 03/10), com
->    `ingestao_expectativa_definir('<processo>', true)`. As das bases, só quando a RPA existir.
+> 4. ✅ Expectativa `monde-reconciliacao` LIGADA em 29/09 (três execuções `ok` no dia; tolerância 30 h).
+>    **Sessão, a partir de 03/10:** ligar `cdi-mensal` depois da 1ª execução OK (`ingestao_expectativa_definir`
+>    com `p_alvo`, `p_ativo`, `p_tolerancia`). As das bases, depois da 1ª execução AUTOMÁTICA das RPAs
+>    (o agendamento ainda não existe — fora da v6.1.0).
 > 5. **Yan decide — ligar a limpeza do cru** (`SELECT cron.alter_job((SELECT jobid FROM cron.job WHERE
 >    jobname = 'ingestao-retencao'), active := true);`, como `postgres`). A partir de 01/10 ela apaga as
 >    cópias órfãs e, a partir de 25/12, os crus de mais de 3 meses. Depois de ligar: `npm run db:baseline`.
