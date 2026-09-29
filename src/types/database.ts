@@ -775,6 +775,7 @@ export type Database = {
         Args: { p_alvo: string; p_ativo: boolean; p_tolerancia?: string }
         Returns: Json
       }
+      ingestao_operacoes_vigentes: { Args: never; Returns: Json }
       ingestao_painel: { Args: never; Returns: Json }
       ingestao_retencao_inventario: { Args: never; Returns: Json }
       ingestao_retencao_registrar: {
