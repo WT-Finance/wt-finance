@@ -6,6 +6,22 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.1.2] — 2026-10-01
+
+PATCH · **Segurança: fecha os 4 alertas abertos do Dependabot.** Zero código de `src/` alterado. Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-1-2_Seguranca_Deps.md`. `npm audit` = 0.
+
+### Segurança
+
+- **`next` 16.3.4 → 16.3.8** (e `eslint-config-next` junto, pin exato) — alerta #54 **crítico**,
+  GHSA-vcvr-r3jv-pc5j (execução remota de código em `next/og` `ImageResponse`). O app não usa `next/og`;
+  16.3.6 é o primeiro corrigido, 16.3.8 o último patch da linha 16.3.
+- **`brace-expansion`** (dev, transitivo via `minimatch` de eslint, `@typescript-eslint` e depcheck)
+  1.1.18 → 1.1.21, 2.1.4 → 2.1.7, 5.0.9 → 5.0.12 — alertas #51/#52/#53, GHSA-q2hr-2g5m-vwhr (+
+  GHSA-qhr7-859c-m2p7 e GHSA-6j4f-fj2g-mc7p apontados pelo `npm audit`). Só lockfile.
+
+---
+
 ## [6.1.1] — 2026-10-01
 
 PATCH · **Ajustes de navegação, cabeçalho de Performance e Exportar do DRE.** Spec

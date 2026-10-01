@@ -9,7 +9,15 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-01 (fechamento da v6.1.1).
+Última atualização: 2026-10-01 (fechamento da v6.1.2).
+
+---
+
+## Em voo — v6.1.2 "Segurança: alertas do Dependabot" (PR aberto, aguardando merge)
+
+`next` 16.3.4 → 16.3.8 (alerta #54 crítico, RCE em `next/og`; o app não usa `next/og`) e `brace-expansion`
+corrigido nas 3 cópias transitivas (#51–#53). Só `package.json`/lockfile; `npm audit` = 0; suíte igual à da
+v6.1.1. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-2_Seguranca_Deps.md`. Sem migration.
 
 ---
 
