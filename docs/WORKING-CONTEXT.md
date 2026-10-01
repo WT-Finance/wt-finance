@@ -9,15 +9,27 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-01 (fechamento da v6.1.2).
+Última atualização: 2026-10-01 (pós-merge da v6.1.2).
 
 ---
 
-## Em voo — v6.1.2 "Segurança: alertas do Dependabot" (PR aberto, aguardando merge)
+## Em produção — v6.1.2 "Segurança: alertas do Dependabot" (PR #287, mergeado 01/10 às 14:50)
 
 `next` 16.3.4 → 16.3.8 (alerta #54 crítico, RCE em `next/og`; o app não usa `next/og`) e `brace-expansion`
 corrigido nas 3 cópias transitivas (#51–#53). Só `package.json`/lockfile; `npm audit` = 0; suíte igual à da
 v6.1.1. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-2_Seguranca_Deps.md`. Sem migration.
+
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.2** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-2`,
+> que mora na mesma worktree). Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-1-2-seguranca-deps --force
+> git worktree prune
+> git branch -D feat/v6-1-2-seguranca-deps docs/pos-merge-v6-1-2
+> ```
+> 🔴 **Yan — no ar:** um login real + uma tela com dados (ex.: DRE). O smoke de `next start` só provou o
+> ramo não autenticado do `proxy.ts`.
 
 ---
 
