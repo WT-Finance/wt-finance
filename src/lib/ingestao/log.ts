@@ -4,7 +4,7 @@ import 'server-only'
 // quatro RPCs `SECURITY DEFINER`/service_role-only da migration 0276
 // (`ingestao_carga_abrir`/`_concluir`/`_obter`/`_ultima`). Nenhuma lógica de negócio mora aqui:
 // é tradução de parâmetro → RPC e RPC → objeto tipado, no MESMO molde de
-// `src/lib/api-externa/http.ts` (`chamarRpcExterna`) e `src/app/admin/uploads/actions.ts`
+// `src/lib/api-externa/http.ts` (`chamarRpcExterna`) e `src/app/admin/ingestao/upload/actions.ts`
 // (`.bind(supabase)` — destacar o método perde o `this`, lição v5.3.5).
 //
 // "Nunca em silêncio, mas nunca derruba uma carga já aplicada" (anexo v6.0.0/M4 §2): toda

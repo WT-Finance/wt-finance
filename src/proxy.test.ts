@@ -54,6 +54,7 @@ describe('matcher do proxy — superfícies reais SEMPRE passam (camada 1 intact
     ['página protegida aninhada', '/financeiro/dre/estrutura'],
     ['página que exige sessão', '/trocar-senha'],
     ['área admin', '/admin/uploads'],
+    ['área admin (Upload, v6.1.1)', '/admin/ingestao/upload'],
     ['rota de API', '/api/setores'],
     ['rota de API aninhada', '/api/dashboard/performance/cagr'],
     ['página pública (o proxy decide, não o matcher)', '/login'],

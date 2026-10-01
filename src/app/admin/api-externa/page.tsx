@@ -4,7 +4,8 @@ import { getTiposAdmin } from '@/lib/solicitacoes/rpc'
 import { ChavesApiContent } from '@/components/admin/api-externa/chaves-api-content'
 
 // v5.4.0/M2 (+ Round2/Round3/Round6) — "API externa": duas seções reunidas
-// numa página só (área RBAC 'solicitacoes'), tema neutro Group. "Tipos
+// numa página só (área RBAC 'api-externa' desde a v6.1.1/M3, migration 0289; antes
+// 'solicitacoes'), tema neutro Group. "Tipos
 // expostos" (Round3: só o toggle exposto_via_api — a lista de equipes de
 // destino por tipo morreu, decisão do Yan; qualquer equipe cadastrada é
 // destino válido) + "Chaves de API" (uma chave por plataforma integradora —
@@ -15,14 +16,14 @@ import { ChavesApiContent } from '@/components/admin/api-externa/chaves-api-cont
 // só existia para a extinta seção de destinos por tipo; a página irmã
 // /admin/api-externa/documentacao é quem agora precisa dela (seção viva).
 //
-// NAVEGAÇÃO: esta rota não está na sidebar (mesmo padrão de /admin/solicitacoes,
-// que também só é alcançada por link a partir de /solicitacoes — v4.16.0). O
-// link de IDA (a partir de /admin/solicitacoes) fica em tipos-content.tsx.
+// NAVEGAÇÃO (v6.1.1/M3): grupo "API Externa" da sidebar (subaba "Chaves"; a irmã é
+// "Documentação"). Os atalhos que ficavam em Solicitações (tipos-content.tsx e a caixa
+// de entrada) saíram.
 
 export const dynamic = 'force-dynamic'
 
 export default async function ChavesApiPage() {
-  await requireArea('solicitacoes')
+  await requireArea('api-externa')
 
   const [chaves, tiposRes] = await Promise.all([
     listarChavesApi(),
@@ -40,7 +41,7 @@ export default async function ChavesApiPage() {
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-text-primary">API externa</h1>
         <p className="mt-0.5 text-sm text-text-subtle">
-          Tipos expostos e chaves de API para plataformas externas abrirem e consultarem solicitações
+          Configuração de chaves de API para ingestão de dados e solicitações
         </p>
       </div>
 

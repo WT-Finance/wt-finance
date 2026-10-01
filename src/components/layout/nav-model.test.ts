@@ -59,9 +59,8 @@ const PUBLICAS = new Set([
 const FORA_DA_SIDEBAR: Record<string, string> = {
   '/admin/solicitacoes':                'v4.18/M5: alcançada pelo botão "Gerenciar solicitações" dentro de Solicitações',
   '/admin/solicitacoes/movimentacoes':  'v4.18/M5: sub-rota de /admin/solicitacoes',
-  '/admin/api-externa':                 'v5.4.0/M2: chaves de integração, alcançada por link direto (só gestão)',
-  '/admin/api-externa/documentacao':    'v5.4.0/Round4: documentação para o integrador, por link',
-  '/admin/uploads/financeiro':          'sub-rota do Upload de Arquivos, alcançada de dentro da tela',
+  '/admin/uploads':                     'v6.1.1: rota LEGADA do Upload — page.tsx é só redirect para /admin/ingestao/upload (favoritos e links antigos)',
+  '/admin/uploads/financeiro':          'rota LEGADA (sub-rota do Upload, absorvida na v4.x) — redirect para /admin/ingestao/upload',
   '/financeiro':                        'página do grupo Financeiro; a sidebar leva direto às subabas',
   '/financeiro/dre/estrutura':          'v5.3.0: editor da estrutura, alcançado de dentro da DRE',
   '/financeiro/dre/estrutura-competencia': 'v5.8.0: editor da estrutura do regime de competência, alcançado de dentro da DRE (irmã da de cima)',
@@ -189,8 +188,63 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
   it('com todas as permissões, a ordem da sidebar é a da v5.6.1 (Gestão de Pessoas abaixo de Financeiro)', () => {
     expect(rotulos(TODAS)).toEqual([
       'Executiva', 'Performance', 'Metas', 'Financeiro', 'Gestão de Pessoas',
-      'Solicitações', 'Upload de Arquivos', 'Log de Ingestão', 'Usuários e Acessos', 'Design System',
+      'Solicitações', 'Ingestão de Dados', 'API Externa', 'Usuários e Acessos', 'Design System',
     ])
+  })
+
+  it('v6.1.1/M3: "API Externa" é um grupo com Configuração ANTES da Documentação, logo depois de Ingestão de Dados', () => {
+    const subs = NAV_GROUPS['/admin/api-externa']
+    expect(subs.map(s => [s.label, s.href, s.area])).toEqual([
+      ['Configuração', '/admin/api-externa',              'api-externa'],
+      ['Documentação', '/admin/api-externa/documentacao', 'solicitacoes/documentacao'],
+    ])
+    expect(subs[1].areasAny).toEqual(['api-externa', 'solicitacoes/documentacao'])
+    const ordem = NAV_ITEMS.map(i => i.label)
+    expect(ordem.indexOf('API Externa')).toBe(ordem.indexOf('Ingestão de Dados') + 1)
+  })
+
+  it('v6.1.1/M3: a área api-externa mostra o grupo com as DUAS subabas', () => {
+    expect(rotulos(['api-externa'])).toEqual(['API Externa'])
+    const subs = NAV_GROUPS['/admin/api-externa'].filter(s => subVisivel(s, ['api-externa']))
+    expect(subs.map(s => s.label)).toEqual(['Configuração', 'Documentação'])
+  })
+
+  it('v6.1.1/M3: quem só tem solicitacoes/documentacao vê o grupo, mas SÓ a Documentação', () => {
+    expect(rotulos(['solicitacoes/documentacao'])).toEqual(['API Externa'])
+    const subs = NAV_GROUPS['/admin/api-externa'].filter(s => subVisivel(s, ['solicitacoes/documentacao']))
+    expect(subs.map(s => s.label)).toEqual(['Documentação'])
+  })
+
+  it('v6.1.1/M3: a gestão de Solicitações SOZINHA não mostra mais a API Externa (a área é outra)', () => {
+    expect(rotulos(['solicitacoes'])).toEqual(['Solicitações'])
+    expect(rotulos(['solicitacoes/basico'])).toEqual(['Solicitações'])
+  })
+
+  it('v6.1.1/M3: em /documentacao acende só a Documentação; em /admin/api-externa, só Configuração', () => {
+    const subs = NAV_GROUPS['/admin/api-externa']
+    expect(hrefAtivoDoGrupo(subs, '/admin/api-externa/documentacao')).toBe('/admin/api-externa/documentacao')
+    expect(hrefAtivoDoGrupo(subs, '/admin/api-externa')).toBe('/admin/api-externa')
+  })
+
+  it('v6.1.1: "Ingestão de Dados" é um grupo com Upload ANTES do Log, ambos na área admin/uploads', () => {
+    const subs = NAV_GROUPS['/admin/ingestao']
+    expect(subs.map(s => [s.label, s.href, s.area])).toEqual([
+      ['Upload de Arquivos', '/admin/ingestao/upload', 'admin/uploads'],
+      ['Log de Ingestão',    '/admin/ingestao',        'admin/uploads'],
+    ])
+    expect(rotulos(['admin/uploads'])).toEqual(['Ingestão de Dados'])
+  })
+
+  it('v6.1.1: no Upload acende a subaba Upload (não o Log); no Log, só o Log', () => {
+    const subs = NAV_GROUPS['/admin/ingestao']
+    expect(hrefAtivoDoGrupo(subs, '/admin/ingestao/upload')).toBe('/admin/ingestao/upload')
+    expect(hrefAtivoDoGrupo(subs, '/admin/ingestao')).toBe('/admin/ingestao')
+  })
+
+  it('v6.1.1: as rotas legadas /admin/uploads* NÃO são itens da sidebar (só redirect)', () => {
+    const hrefs = HREFS_NAVEGAVEIS.map(h => h.href)
+    expect(hrefs).not.toContain('/admin/uploads')
+    expect(hrefs).not.toContain('/admin/uploads/financeiro')
   })
 
   it('SEM NENHUMA área da seção, "Gestão de Pessoas" não aparece — e nada mais muda', () => {

@@ -6,6 +6,39 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.1.1] — 2026-10-01
+
+PATCH · **Ajustes de navegação, cabeçalho de Performance e Exportar do DRE.** Spec
+`docs/briefings/spec-v6-1-1-ajustes-navegacao-dre.md`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-1-1_Ajustes_Navegacao_DRE.md`. Migration `0289` (aditiva,
+aplicada em 01/10) · **ADR-0180**.
+
+### Adicionado
+
+- **Botão "Exportar"** ao lado de "Ver em tela cheia" no Demonstrativo de Resultado (Competência e
+  Fluxo de Caixa): `.xlsx` gerado no navegador com duas abas — *Mensal* (ano em tela) e *Consolidado*
+  (anos marcados) —, sempre com todas as linhas expandidas e a bandeja "Não classificadas"; números
+  crus com formato contábil, AV/Δ% como percentual, ausência = célula vazia. Montagem pura em
+  `src/lib/dre/exportar.ts`; helpers de colunas/valores movidos sem mudança para
+  `src/lib/dre/colunas-tabela.ts` (tela e planilha leem a mesma fonte).
+- **Área RBAC `api-externa`** (grupo Administração, ordem 56; `0289`, ADR-0180): concedida a quem
+  tinha `solicitacoes` (fora roles de máquina); as RPCs exclusivas da API externa passam a exigi-la.
+
+### Alterado
+
+- **Sidebar — grupo "Ingestão de Dados"** com *Upload de Arquivos* (rota nova
+  `/admin/ingestao/upload`; `/admin/uploads` e `/admin/uploads/financeiro` redirecionam) e *Log de
+  Ingestão* (`/admin/ingestao`, inalterada).
+- **Sincronização Monde** saiu do fim do Upload de Arquivos e está no topo do Log de Ingestão,
+  relida junto com o painel.
+- **Sidebar — grupo "API Externa"** com *Configuração* e *Documentação*; saem os atalhos "API externa"
+  (Gerenciar solicitações) e "Documentação API" (Solicitações). A documentação abre com `api-externa`
+  ou `solicitacoes/documentacao`.
+- **Performance:** "Última atualização em…" na mesma linha do título (padrão do DRE); o título saiu
+  do layout do segmento para `CabecalhoPerformance` (conteúdo, loading e em construção).
+
+---
+
 ## [6.1.0] — 2026-09-29
 
 MINOR · **Entrega das RPAs: a carga dos relatórios do Monde passa a poder ser feita por robô, com a

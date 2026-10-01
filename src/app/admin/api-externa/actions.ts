@@ -11,7 +11,7 @@ import type { ResultadoAcao, ResultadoCriarChave, LogChamada } from '@/component
 import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // v5.4.0/M2 — server actions de Chaves de API. Guard de superfície
-// (requireAreaAction('solicitacoes')) + RPC com o cliente DE SESSÃO — o banco
+// (requireAreaAction('api-externa'), v6.1.1/M3 — antes 'solicitacoes') + RPC com o cliente DE SESSÃO — o banco
 // revalida a área do CHAMADOR (exigir_acesso, 0211); o guard da UI é
 // conveniência, o do banco é o backstop (mesmo padrão de admin/acessos).
 // O cliente ADMIN (service role) é usado só para o Auth (criar/remover o
@@ -74,7 +74,7 @@ export async function criarChaveApi(input: {
   plataforma: string
   escopoBases?: BaseIngestao[]
 }): Promise<ResultadoCriarChave> {
-  await requireAreaAction('solicitacoes')
+  await requireAreaAction('api-externa')
   const plataforma = input.plataforma.trim()
   if (!plataforma) return { ok: false, erro: 'Informe a referência.' }
   // Validação server-side (nunca confia no client): só bases reais de
@@ -128,7 +128,7 @@ export async function criarChaveApi(input: {
 }
 
 export async function revogarChaveApi(id: number): Promise<ResultadoAcao> {
-  await requireAreaAction('solicitacoes')
+  await requireAreaAction('api-externa')
   const { error } = await rpcSessao('api_chave_revogar', { p_id: id })
   if (error) return { ok: false, erro: traduzir(error.message) }
   revalidatePath('/admin/api-externa')
@@ -137,7 +137,7 @@ export async function revogarChaveApi(id: number): Promise<ResultadoAcao> {
 
 /** Últimas chamadas de uma chave (modal "Ver log"). null = falha ao carregar. */
 export async function listarLogChaveApi(chaveId: number): Promise<LogChamada[] | null> {
-  await requireAreaAction('solicitacoes')
+  await requireAreaAction('api-externa')
   return listarLogApi(chaveId)
 }
 
@@ -150,7 +150,7 @@ export async function listarLogChaveApi(chaveId: number): Promise<LogChamada[] |
  * volta à assinatura de 2 parâmetros (era 3, com p_roles, no Round2).
  */
 export async function salvarConfigApiTipo(tipoId: number, exposto: boolean): Promise<ResultadoAcao> {
-  await requireAreaAction('solicitacoes')
+  await requireAreaAction('api-externa')
   const { error } = await rpcSessao('admin_solic_tipo_api_config', {
     p_tipo_id: tipoId, p_exposto: exposto,
   })

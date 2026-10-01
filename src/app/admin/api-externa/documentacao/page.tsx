@@ -11,8 +11,8 @@ import { DocumentacaoContent } from '@/components/admin/api-externa/documentacao
 // e a lista de equipes válidas (solic_destinatarios).
 // v5.4.0/Round4 (2026-07-30, pedido do Yan): área PRÓPRIA
 // 'solicitacoes/documentacao' — quem só tem essa permissão entra sem ver a
-// gestão; quem tem a gestão 'solicitacoes' continua entrando (semântica OU).
-// O prefixo de rota (/admin/api-externa/documentacao) já casa ANTES do genérico
+// gestão. v6.1.1/M3: a gestão que também entra (semântica OU) passou a ser
+// 'api-externa' (antes 'solicitacoes'; migration 0289). O prefixo de rota (/admin/api-externa/documentacao) já casa ANTES do genérico
 // '/admin/api-externa' em areas.ts (areasDaRota) — aqui é só o guard local.
 //
 // A FONTE dos tipos mudou na migration 0219 (achado CRÍTICO da revisão do round
@@ -25,10 +25,10 @@ import { DocumentacaoContent } from '@/components/admin/api-externa/documentacao
 export const dynamic = 'force-dynamic'
 
 export default async function DocumentacaoApiPage() {
-  const sessao = await requireArea(['solicitacoes/documentacao', 'solicitacoes'])
-  // Distingue quem entrou pela gestão de quem entrou pela permissão nova: os links
+  const sessao = await requireArea(['api-externa', 'solicitacoes/documentacao'])
+  // Distingue quem entrou pela gestão de quem entrou pela permissão de leitura: os links
   // internos para /admin/api-externa só valem para o primeiro (ver DocumentacaoContent).
-  const podeGestao = sessao.permissoes.includes('solicitacoes')
+  const podeGestao = sessao.permissoes.includes('api-externa')
 
   const [tiposRes, destinatarios] = await Promise.all([
     getTiposDocumentacao(),

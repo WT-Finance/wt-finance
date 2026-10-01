@@ -7,7 +7,9 @@ import { requireAreaAction } from '@/lib/auth/sessao'
 import { parseRpc, ingestaoPainelSchema, type IngestaoPainel, type IngestaoExpectativa } from '@/lib/schemas-rpc'
 import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
 import { baixarCru, caminhoCru, BUCKET_INGESTAO, ErroIngestaoStorage } from '@/lib/ingestao/storage'
-import type { ArquivoDaCarga } from '@/app/admin/uploads/ingestao-cliente'
+import type { ArquivoDaCarga } from '@/app/admin/ingestao/upload/ingestao-cliente'
+
+type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
 // Server actions da tela /admin/ingestao (v6.0.0/M6, anexo §7). Guard de superfície
 // (requireAreaAction('admin/uploads')) em TODA action — o banco revalida a mesma área via
@@ -53,6 +55,81 @@ export async function obterPainelIngestaoAction(): Promise<IngestaoPainel | null
   const sb = await getServerClient()
   const res = await sb.rpc('ingestao_painel')
   return parseRpc(ingestaoPainelSchema, res, 'ingestao_painel')
+}
+
+// ---------------------------------------------------------------------------
+// Sincronização Monde (v5.4.4; movida do Upload para o Log de Ingestão na v6.1.1) — LEITURA.
+// Não é uma base de upload: o espelho vem da API, e o cartão existe para o tripwire ter onde
+// ACENDER. Divergência tem de ser alerta visível, não linha de log perdida no console da Vercel.
+// ---------------------------------------------------------------------------
+
+/** Um mês apurado pela reconciliação (ou `nao_verificado` se ela ainda não passou por ele). */
+export type TripwireMes =
+  | { nao_verificado: true }
+  | {
+      mes: string
+      api: number
+      lidas: number
+      sem_sale_id: number
+      espelhaveis: number
+      excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
+      erros: number
+      espelho: number
+      sobrando: number
+      conta_fecha: boolean
+      verificado_em: string
+    }
+
+export interface StatusSincronizacaoMonde {
+  /** Tudo o que está espelhado, inclusive venda cujos produtos a origem cancelou. */
+  vendas: number
+  /**
+   * v5.4.5 — o universo que a mv soma (venda com ao menos um item ativo). Diverge de `vendas`
+   * quando a origem cancela todos os produtos: a venda continua espelhada, para auditoria, e
+   * deixa de contar. Antes desta versão ela era descartada na escrita e a linha velha ficava
+   * congelada — era o defeito (+25% na receita de jul/2026).
+   */
+  vendas_que_contam: number
+  /** v5.4.5 — passa a ser > 0; era 0 fixo porque o cancelado nunca era gravado. */
+  itens_cancelados: number
+  ultima_sincronizacao: string | null
+  ultima_reconciliacao: string | null
+  reconciliacao_cursor: string | null
+  tripwire: {
+    atualizado_em: string
+    acendeu: boolean
+    motivos: string[]
+    meses: Record<string, TripwireMes>
+  } | null
+}
+
+export async function getMondeSincronizacaoStatusAction(): Promise<
+  StatusSincronizacaoMonde | { error: string }
+> {
+  await requireAreaAction('admin/uploads')
+  try {
+    const supabase = getAdminClient()
+    // `.bind(supabase)`: destacar o método perde o `this` e quebra em runtime (lição v5.3.5).
+    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('monde_ingest_status')
+    if (error) return { error: error.message }
+    const s = (data ?? {}) as Partial<StatusSincronizacaoMonde>
+    // Só o que o cartão renderiza — dado buscado e não mostrado é smell (achado BAIXO do
+    // revisor). A RPC devolve mais (`itens`, `itens_ativos`, `min_data`, `max_data`,
+    // `ultima_sync`, `ingest_em_curso`); se o cartão passar a mostrar, é aqui que entram.
+    // `vendas_que_contam` cai para `vendas` se a 0237 ainda não estiver aplicada — assim o
+    // cartão não mostra zero durante a janela entre o deploy e a migration.
+    return {
+      vendas:               s.vendas ?? 0,
+      vendas_que_contam:    s.vendas_que_contam ?? s.vendas ?? 0,
+      itens_cancelados:     s.itens_cancelados ?? 0,
+      ultima_sincronizacao: s.ultima_sincronizacao ?? null,
+      ultima_reconciliacao: s.ultima_reconciliacao ?? null,
+      reconciliacao_cursor: s.reconciliacao_cursor ?? null,
+      tripwire:             s.tripwire ?? null,
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) }
+  }
 }
 
 export async function definirVigiaAction(

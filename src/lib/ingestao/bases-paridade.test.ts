@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { BASES_INGESTAO } from './bases'
 
@@ -10,11 +10,31 @@ import { BASES_INGESTAO } from './bases'
 // pontas mudam juntas" em comentário não reprova nada (lição da v5.6.0 → `paridade-sql.test.ts`);
 // este teste lê o SQL aplicado e compara. ⚠️ Lê cada migration por NOME DE ARQUIVO: uma alteração
 // futura de qualquer um desses CHECKs/validações vem numa migration NOVA — apontar o bloco
-// correspondente deste teste para ela faz parte da mudança.
+// correspondente deste teste para ela faz parte da mudança. EXCEÇÃO (v6.1.1/M3): a validação
+// nomeada `ESCOPO_INVALIDO` de `api_chave_registrar` se LOCALIZA sozinha — a 0289 redefiniu a
+// função inteira, então o bloco segue a migration vigente (a última que a recria) em vez de um
+// nome fixo; os blocos de CHECK abaixo continuam presos ao arquivo.
 const RAIZ = join(__dirname, '..', '..', '..')
 const SQL = readFileSync(join(RAIZ, 'supabase/migrations/0274_role_ingestor_e_escopo_api_chave.sql'), 'utf8')
 const SQL_0276 = readFileSync(join(RAIZ, 'supabase/migrations/0276_ingestao_carga_e_bucket.sql'), 'utf8')
 const SQL_0277 = readFileSync(join(RAIZ, 'supabase/migrations/0277_ingestao_estrutura_atomica.sql'), 'utf8')
+
+/** A definição VIGENTE de `api_chave_registrar(text, text, uuid, text[])` — a validação nomeada
+ *  `ESCOPO_INVALIDO` mora no CORPO da função, e a 0289 (v6.1.1/M3, troca de `solicitacoes` por
+ *  `api-externa` no `exigir_acesso`) a redefiniu por inteiro (`CREATE OR REPLACE`). Ler a 0274 por
+ *  nome fiscalizaria uma definição morta; aqui pega-se a ÚLTIMA migration (ordem do nome) que
+ *  recria a função COM a validação — se uma futura a redefinir de novo, o teste a segue sozinho. */
+function migrationVigenteDeApiChaveRegistrar(): { arquivo: string; sql: string } {
+  const pasta = join(RAIZ, 'supabase/migrations')
+  const candidatas = readdirSync(pasta)
+    .filter(f => /^\d{4}_.*\.sql$/.test(f))
+    .sort()
+    .map(f => ({ arquivo: f, sql: readFileSync(join(pasta, f), 'utf8') }))
+    .filter(m => /CREATE\s+(OR\s+REPLACE\s+)?FUNCTION\s+public\.api_chave_registrar\s*\(\s*p_plataforma\s+text\s*,\s*p_segredo_hash\s+text\s*,\s*p_robo_user_id\s+uuid\s*,\s*p_escopo_bases\s+text\[\]/i.test(m.sql)
+      && m.sql.includes("RAISE EXCEPTION 'ESCOPO_INVALIDO"))
+  expect(candidatas.length, 'nenhuma migration recria api_chave_registrar com ESCOPO_INVALIDO').toBeGreaterThan(0)
+  return candidatas[candidatas.length - 1]
+}
 
 function basesDoCheck(sql: string): string[] {
   const m = sql.match(/CONSTRAINT api_chave_escopo_bases_validas CHECK \(\s*escopo_bases <@ ARRAY\[([\s\S]*?)\]::text\[\]/)
@@ -46,9 +66,19 @@ describe('paridade — bases do contrato de ingestão: bases.ts ↔ CHECK da 027
   it('o CHECK lista exatamente as bases de BASES_INGESTAO (mesma ordem)', () => {
     expect(basesDoCheck(SQL)).toEqual([...BASES_INGESTAO])
   })
-  it('a validação com nome de erro em api_chave_registrar usa a mesma lista', () => {
-    const bloco = SQL.slice(SQL.indexOf('ESCOPO_INVALIDO') - 400, SQL.indexOf('ESCOPO_INVALIDO'))
-    for (const b of BASES_INGESTAO) expect(bloco, `${b} ausente da validação nomeada`).toContain(`'${b}'`)
+  it('a validação com nome de erro em api_chave_registrar (definição VIGENTE) usa a mesma lista', () => {
+    const { arquivo, sql } = migrationVigenteDeApiChaveRegistrar()
+    const alvo = sql.indexOf("RAISE EXCEPTION 'ESCOPO_INVALIDO")
+    const bloco = sql.slice(alvo - 400, alvo)
+    for (const b of BASES_INGESTAO) expect(bloco, `${b} ausente da validação nomeada (${arquivo})`).toContain(`'${b}'`)
+  })
+  it('a definição vigente é a 0289 ou posterior (a 0274 foi superada), e a lista é exatamente as cinco bases', () => {
+    const { arquivo, sql } = migrationVigenteDeApiChaveRegistrar()
+    expect(arquivo >= '0289', `vigente: ${arquivo}`).toBe(true)
+    const alvo = sql.indexOf("RAISE EXCEPTION 'ESCOPO_INVALIDO")
+    const m = sql.slice(0, alvo).match(/ARRAY\[([^\]]*)\]::text\[\]\)\s*THEN\s*$/)
+    expect(m, 'lista da validação nomeada não encontrada').not.toBeNull()
+    expect([...m![1].matchAll(/'([a-z-]+)'/g)].map(x => x[1])).toEqual([...BASES_INGESTAO])
   })
   it('são cinco bases, todas em kebab-case', () => {
     expect(BASES_INGESTAO).toHaveLength(5)

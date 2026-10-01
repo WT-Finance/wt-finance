@@ -16,9 +16,10 @@ type BoundRpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: 
 // `docs/briefings/anexo-v6-0-0-m4-desenho-da-rota.md` §5).
 //
 // FICAM neste arquivo: as ações de STATUS de todas as bases (o card continua mostrando
-// "última atualização · N registros" lendo direto do banco — nenhuma delas processa arquivo),
-// o fluxo completo de Pessoas (fora do contrato — decisão 11 do briefing da versão: "parada,
-// viva") e a leitura de sincronização do Monde (não é upload).
+// "última atualização · N registros" lendo direto do banco — nenhuma delas processa arquivo)
+// e o fluxo completo de Pessoas (fora do contrato — decisão 11 do briefing da versão: "parada,
+// viva"). A leitura de sincronização do Monde (não é upload) foi para o Log de Ingestão na
+// v6.1.1 — ver `src/app/admin/ingestao/actions.ts`.
 // ---------------------------------------------------------------------------
 
 export async function getLancamentosStatusAction(): Promise<
@@ -245,77 +246,5 @@ export async function getDemonstrativoCompetenciaStatusAction(): Promise<
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sincronização Monde (v5.4.4) — LEITURA. Não é uma base de upload: o espelho vem da API,
-// e este bloco existe para o tripwire ter onde ACENDER. Divergência tem de ser alerta
-// visível, não linha de log perdida no console da Vercel.
-// ---------------------------------------------------------------------------
-
-/** Um mês apurado pela reconciliação (ou `nao_verificado` se ela ainda não passou por ele). */
-export type TripwireMes =
-  | { nao_verificado: true }
-  | {
-      mes: string
-      api: number
-      lidas: number
-      sem_sale_id: number
-      espelhaveis: number
-      excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
-      erros: number
-      espelho: number
-      sobrando: number
-      conta_fecha: boolean
-      verificado_em: string
-    }
-
-export interface StatusSincronizacaoMonde {
-  /** Tudo o que está espelhado, inclusive venda cujos produtos a origem cancelou. */
-  vendas: number
-  /**
-   * v5.4.5 — o universo que a mv soma (venda com ao menos um item ativo). Diverge de `vendas`
-   * quando a origem cancela todos os produtos: a venda continua espelhada, para auditoria, e
-   * deixa de contar. Antes desta versão ela era descartada na escrita e a linha velha ficava
-   * congelada — era o defeito (+25% na receita de jul/2026).
-   */
-  vendas_que_contam: number
-  /** v5.4.5 — passa a ser > 0; era 0 fixo porque o cancelado nunca era gravado. */
-  itens_cancelados: number
-  ultima_sincronizacao: string | null
-  ultima_reconciliacao: string | null
-  reconciliacao_cursor: string | null
-  tripwire: {
-    atualizado_em: string
-    acendeu: boolean
-    motivos: string[]
-    meses: Record<string, TripwireMes>
-  } | null
-}
-
-export async function getMondeSincronizacaoStatusAction(): Promise<
-  StatusSincronizacaoMonde | { error: string }
-> {
-  await requireAreaAction('admin/uploads')
-  try {
-    const supabase = getAdminClient()
-    // `.bind(supabase)`: destacar o método perde o `this` e quebra em runtime (lição v5.3.5).
-    const { data, error } = await (supabase.rpc as unknown as BoundRpc).bind(supabase)('monde_ingest_status')
-    if (error) return { error: error.message }
-    const s = (data ?? {}) as Partial<StatusSincronizacaoMonde>
-    // Só o que o cartão renderiza — dado buscado e não mostrado é smell (achado BAIXO do
-    // revisor). A RPC devolve mais (`itens`, `itens_ativos`, `min_data`, `max_data`,
-    // `ultima_sync`, `ingest_em_curso`); se o cartão passar a mostrar, é aqui que entram.
-    // `vendas_que_contam` cai para `vendas` se a 0237 ainda não estiver aplicada — assim o
-    // cartão não mostra zero durante a janela entre o deploy e a migration.
-    return {
-      vendas:               s.vendas ?? 0,
-      vendas_que_contam:    s.vendas_que_contam ?? s.vendas ?? 0,
-      itens_cancelados:     s.itens_cancelados ?? 0,
-      ultima_sincronizacao: s.ultima_sincronizacao ?? null,
-      ultima_reconciliacao: s.ultima_reconciliacao ?? null,
-      reconciliacao_cursor: s.reconciliacao_cursor ?? null,
-      tripwire:             s.tripwire ?? null,
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) }
-  }
-}
+// (A leitura "Sincronização Monde" — `getMondeSincronizacaoStatusAction` — mudou na v6.1.1 para
+// `src/app/admin/ingestao/actions.ts`: o cartão passou do Upload para o Log de Ingestão.)

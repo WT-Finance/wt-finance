@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2, KeyRound } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import { arquivarTipo, excluirTipo } from '@/app/admin/solicitacoes/actions'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
@@ -78,14 +78,11 @@ export function TiposContent({ tipos }: { tipos: TipoAdmin[] }) {
     <>
       {/* Ações da página (v4.18): "Ver solicitações" (âmbar --gestao, volta à página
           Solicitações) à esquerda; "Novo tipo" FORA do box, à direita (padrão das demais páginas).
-          v5.4.0/Round2: "API externa" leva à página de exposição/equipes + chaves. */}
+          v6.1.1/M3: o atalho "API externa" (v5.4.0/Round2) saiu — a API tem seção própria na sidebar. */}
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <Link href="/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
             <ArrowLeft size={13} /> Ver solicitações
-          </Link>
-          <Link href="/admin/api-externa" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-            <KeyRound size={13} /> API externa
           </Link>
         </div>
         <button

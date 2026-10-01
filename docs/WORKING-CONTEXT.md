@@ -9,7 +9,22 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-09-29 (pós-merge da v6.1.0).
+Última atualização: 2026-10-01 (fechamento da v6.1.1).
+
+---
+
+## Em voo — v6.1.1 "Ajustes de navegação, cabeçalho de Performance e Exportar do DRE" (PR aberto, aguardando merge)
+
+Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-1_Ajustes_Navegacao_DRE.md`; ADR-0180. Grupos
+"Ingestão de Dados" e "API Externa" na sidebar (Upload agora em `/admin/ingestao/upload`; `/admin/uploads`
+redireciona), Sincronização Monde no Log, cabeçalho de Performance alinhado, botão Exportar (xlsx) no DRE.
+**Migration 0289 JÁ APLICADA** (aditiva, 01/10): área RBAC `api-externa`, concedida a Administrador e
+Financeiro; compatível com o código v6.1.0 em produção. Banco na 0289, livre 0290; ADR livre 0181.
+
+> 🔴 **Yan — conferir visualmente no preview** (a sessão não conseguiu abrir browser: Playwright fora,
+> Edge não alcança o WSL) e decidir a guarda anti-fórmula do Exportar (apóstrofo visível).
+> 🔴 **No merge** — rodar a query de §8 do out-briefing (role com `solicitacoes` sem `api-externa`).
+> 🔴 **Yan — EBITDA** no DRE por Competência adiado (sem conta de D&A no plano; proposta `LOP − FIN`).
 
 ---
 

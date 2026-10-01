@@ -69,8 +69,8 @@ UPDATE app.rbac_usuarios SET ativo = false WHERE email = 'verificador@janus.inte
 redefine a senha na hora (a antiga deixa de logar). Tokens já emitidos valem até o `exp`
 (1 h) — por isso a alavanca 1 é a de emergência.
 
-**Para o `ingestor` há uma terceira**: revogar a chave `x-api-key` em `/admin/api-externa`
-(⇒ 401 imediato na rota). Ela corta a porta HTTP; as duas acima cortam o banco.
+**Para o `ingestor` há uma terceira**: revogar a chave `x-api-key` na sidebar › API Externa › Configuração
+(`/admin/api-externa`; exige a área `api-externa`) (⇒ 401 imediato na rota). Ela corta a porta HTTP; as duas acima cortam o banco.
 
 ## 3. Sintomas e diagnóstico
 

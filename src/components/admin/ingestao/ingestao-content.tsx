@@ -1,7 +1,10 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { obterPainelIngestaoAction } from '@/app/admin/ingestao/actions'
+import {
+  obterPainelIngestaoAction, getMondeSincronizacaoStatusAction, type StatusSincronizacaoMonde,
+} from '@/app/admin/ingestao/actions'
+import { CardSincronizacaoMonde } from './card-sincronizacao-monde'
 import { AlarmesAbertosFaixa, AlarmesRecentesTabela } from './alarmes-secoes'
 import { VigiaPainel } from './vigia-painel'
 import { RetencaoLinha } from './retencao-linha'
@@ -14,16 +17,35 @@ import type { IngestaoCarga, IngestaoPainel } from './tipos'
 // responde: (1) há algo errado agora? → AlarmesAbertosFaixa, no topo; (2) o vigia está de pé?
 // → VigiaPainel (com liga/desliga de vigia e expectativas); (3) o que aconteceu? → cargas e
 // execuções; (4) histórico de alarmes.
+//
+// v6.1.1: o cartão "Sincronização Monde" (espelho da API, antes no Upload) abre a tela, antes das
+// tabelas. Ele se atualiza junto do painel (mesmo `atualizar`); se a releitura dele falhar,
+// vira "Status indisponível" — nunca exibe o último valor bom como se fosse atual.
 
-export function IngestaoContent({ painelInicial }: { painelInicial: IngestaoPainel | null }) {
+export function IngestaoContent({
+  painelInicial,
+  statusMondeInicial,
+}: {
+  painelInicial: IngestaoPainel | null
+  statusMondeInicial: StatusSincronizacaoMonde | null
+}) {
   const [painel, setPainel] = useState(painelInicial)
+  const [statusMonde, setStatusMonde] = useState(statusMondeInicial)
   const [falhaCarga, setFalhaCarga] = useState(painelInicial === null)
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [cargaParaReprocessar, setCargaParaReprocessar] = useState<IngestaoCarga | null>(null)
 
   const atualizar = useCallback(async () => {
-    const novo = await obterPainelIngestaoAction()
+    // allSettled: o Monde nunca pode impedir a releitura do painel (nem o contrário).
+    const [painelRes, mondeRes] = await Promise.allSettled([
+      obterPainelIngestaoAction(),
+      getMondeSincronizacaoStatusAction(),
+    ])
+    const novo = painelRes.status === 'fulfilled' ? painelRes.value : null
     if (novo) { setPainel(novo); setFalhaCarga(false) } else { setFalhaCarga(true) }
+    // Falha na releitura ⇒ "Status indisponível" (null), nunca o último valor bom: o cartão é
+    // alarme, e um "Conferido" velho na tela esconderia uma divergência nova (revisor, v6.1.1).
+    setStatusMonde(mondeRes.status === 'fulfilled' && !('error' in mondeRes.value) ? mondeRes.value : null)
   }, [])
 
   function mostrarMensagem(texto: string) {
@@ -50,6 +72,8 @@ export function IngestaoContent({ painelInicial }: { painelInicial: IngestaoPain
           A última atualização do painel falhou — os dados abaixo podem estar desatualizados.
         </div>
       )}
+
+      <CardSincronizacaoMonde status={statusMonde} />
 
       <AlarmesAbertosFaixa alarmes={painel.alarmes_abertos} />
 

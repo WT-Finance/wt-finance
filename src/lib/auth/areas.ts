@@ -22,6 +22,7 @@ export const AREAS = [
   'solicitacoes/basico',
   'solicitacoes',
   'solicitacoes/documentacao',
+  'api-externa',
   'gestao-pessoas/inventario',
   'gestao-pessoas/estante',
   'gestao-pessoas/estante/gestao',
@@ -73,6 +74,13 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // (antes a página vivia gated pela gestão 'solicitacoes'). Rótulo/grupo/ordem aqui
   // são FALLBACK — a migration paralela insere a mesma linha em app.rbac_areas.
   'solicitacoes/documentacao': { rotulo: 'Solicitações (documentação)', grupo: 'Solicitações', ordem: 55 },
+  // API Externa (v6.1.1/M3, migration 0289): área PRÓPRIA da gestão da API — chaves (inclusive as
+  // das RPAs de ingestão), log de chamadas e tipos expostos. Antes vivia sob a gestão
+  // 'solicitacoes'; desde a v6.1.0 a API também emite as chaves das RPAs, então deixou de ser
+  // "coisa de Solicitações". Grupo 'Administração' (não 'Solicitações'): rpc-contrato.test.ts
+  // exige que a role de máquina tenha exatamente as áreas FORA desse grupo, e a máquina não
+  // administra chaves. A migration concedeu a área a toda role que tinha 'solicitacoes'.
+  'api-externa':             { rotulo: 'API Externa',               grupo: 'Administração', ordem: 56 },
   // Gestão de Pessoas · Inventário de Ativos (v5.6.0/M1, migration 0247). Permissão ÚNICA
   // de página: quem edita a página cadastra e movimenta — sem dois níveis, ao contrário de
   // Acervo/Metas/Solicitações. Grupo próprio no editor de roles. Gate inicial APERTADO no
@@ -135,23 +143,25 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/gestao-pessoas'))            return ['gestao-pessoas/inventario', 'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
+  // /admin/uploads* é rota LEGADA desde a v6.1.1 (só redirect para /admin/ingestao/upload);
+  // segue mapeada porque o guard do layout e o proxy ainda a atravessam antes do redirect.
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']
-  // Log de ingestão (v6.0.0/M6): mesma área de quem carrega planilha — anexo §7 ("as mesmas
-  // pessoas que carregam são as que precisam ver o log"). Casa ANTES do genérico '/admin'
-  // abaixo, senão cairia em 'admin/acessos'.
+  // Ingestão de Dados (v6.0.0/M6 → v6.1.1): Log de Ingestão (/admin/ingestao) e Upload de
+  // Arquivos (/admin/ingestao/upload) — mesma área de quem carrega planilha, anexo §7 ("as mesmas
+  // pessoas que carregam são as que precisam ver o log"). O prefixo cobre as duas. Casa ANTES
+  // do genérico '/admin' abaixo, senão cairia em 'admin/acessos'.
   if (p.startsWith('/admin/ingestao'))          return ['admin/uploads']
   if (p.startsWith('/admin/solicitacoes'))      return ['solicitacoes']
   // Documentação da API externa (v5.4.0/Round4, pedido do Yan 30/07): área PRÓPRIA
-  // 'solicitacoes/documentacao' OU a gestão 'solicitacoes' (quem administra
-  // continua entrando, sem precisar da área nova). Esta regra casa ANTES da
-  // genérica '/admin/api-externa' logo abaixo — senão a genérica (mais curta)
-  // casaria primeiro e a página nunca veria a área específica.
-  if (p.startsWith('/admin/api-externa/documentacao')) return ['solicitacoes/documentacao', 'solicitacoes']
-  // Chaves de API para a API externa de Solicitações (v5.4.0/M2): mesma área de
-  // GESTÃO 'solicitacoes' — quem administra tipos/movimentações também administra
-  // as credenciais de integração. Rota fora da sidebar (só por link, como
-  // /admin/solicitacoes); casa ANTES do genérico '/admin' abaixo.
-  if (p.startsWith('/admin/api-externa'))        return ['solicitacoes']
+  // 'solicitacoes/documentacao' (leitor/integrador) OU, desde a v6.1.1, a gestão 'api-externa'
+  // (antes era a gestão 'solicitacoes'). Esta regra casa ANTES da genérica
+  // '/admin/api-externa' logo abaixo — senão a genérica (mais curta) casaria primeiro e a
+  // página nunca veria a área específica. Ordem ['api-externa', 'solicitacoes/documentacao']
+  // espelha o gate do banco (solic_tipos_documentacao, 0289).
+  if (p.startsWith('/admin/api-externa/documentacao')) return ['api-externa', 'solicitacoes/documentacao']
+  // Chaves de API (v5.4.0/M2 → v6.1.1/M3): área PRÓPRIA 'api-externa' (migration 0289). Grupo
+  // "API Externa" da sidebar (Configuração + Documentação); casa ANTES do genérico '/admin' abaixo.
+  if (p.startsWith('/admin/api-externa'))        return ['api-externa']
   if (p.startsWith('/admin'))                   return ['admin/acessos']
   // /solicitacoes (abertura/minhas/caixa): acesso BÁSICO ou GESTÃO (v4.20.0). A gestão
   // inclui o básico, então qualquer das duas libera a página; os botões/rotas de gestão
@@ -170,7 +180,10 @@ const PRIORIDADE_INICIAL: { area: Area; href: string }[] = [
   { area: 'financeiro/fluxo-caixa',  href: '/financeiro/fluxo-caixa' },
   { area: 'financeiro/gerencial',    href: '/financeiro/fluxo-caixa/gerencial' },
   { area: 'metas',                   href: '/metas' },
-  { area: 'admin/uploads',           href: '/admin/uploads' },
+  { area: 'admin/uploads',           href: '/admin/ingestao/upload' },
+  // v6.1.1/M3: área de Administração com entrada própria na sidebar, como as vizinhas — sem
+  // isto, quem tem SÓ 'api-externa' cairia em /sem-acesso ao entrar pela raiz.
+  { area: 'api-externa',             href: '/admin/api-externa' },
   { area: 'admin/acessos',           href: '/admin/acessos' },
   { area: 'admin/design-system',     href: '/admin/design-system' },
 ]

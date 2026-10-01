@@ -1094,7 +1094,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "ce48b4b6cf4a6119dc98ffa43dee613f9629b0404e192314ed37f8eba9f72e7a",
+      "hash_corpo": "a3e7c6e6b525039efd8552ded992aa54e34f3f260074b7f4e204686ebe9ecbf4",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1138,7 +1138,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "a4d4b216ae4f26280f14f1cb01bc02cb648404b37f90f04a39d0c47b65575266",
+      "hash_corpo": "54e356029aaae14ce92c385fc3a1c864cbde34e569c8d2127e82f79d57f274b5",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1223,7 +1223,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "de03c7a438b1dae4ae2ff428a7a324669eb581bc3bd5e185f9791dd6d223b93a",
+      "hash_corpo": "2193da70d1ae09d140d112392828ef4068fc5fdb63f8a86ec1bf911a7ca472e5",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1245,7 +1245,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "43fd5d30ba523032800f42f40a16e6a6e7531df2b35c17d6edaab24bed704df0",
+      "hash_corpo": "7164e1186bd8e1c6a77b1a4073051d78a081fbecbd274ba5af215548ecfe5846",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1267,7 +1267,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "7c4756ab655c0adea210b0894d1d2835a55a1ef5ac642db2bba3605fc79c5fcb",
+      "hash_corpo": "01988451ec77673acd5b70f1458748449c7ee3e7249bd7d7bdb07f620a17cc4f",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1308,7 +1308,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "80047039c8e0148e73c1f3fe84f098440bb7b59139cd21d5d274f0323c3e805d",
+      "hash_corpo": "520d803ec3081fd5f1ca9e1137a4420fcd52762fdd459253bdcdb9156df4e13d",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1330,7 +1330,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "4a852e4d05adc21c2d118c555fffa475c354b86b513065eaed32dee94d3dab10",
+      "hash_corpo": "41d94fd541cab2f18a79c7ddff3b0175a03b83dca71b820806622a6c30116cb3",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -1371,7 +1371,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "75b02f1385eae7000d0bcbd87f66d0bfb486612001723034d6f1ea3b6fd16344",
+      "hash_corpo": "bb089fdb83136ee4c612fdedea0345639da5d369dfbbf347725fa3f6ebd5651c",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -6529,7 +6529,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "e13a6b81927962ea050dfeeaed12fef19ea11ae6376597fa1786b353bad9015b",
+      "hash_corpo": "0780d7d8b8dfc084f3b2c2a8e800ed9b84d7844a80a2ba021f2cd3e82d72c0fd",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -15233,7 +15233,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0288",
+  "ultima_migration": "0289",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {
