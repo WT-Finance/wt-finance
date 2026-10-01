@@ -12,6 +12,7 @@ import FluxoCaixaTotaisCard from '@/components/weddings/fluxo-caixa-totais-card'
 import DropdownOperacao from '@/components/weddings/dropdown-operacao'
 import VendasEmAbertoCard from '@/components/weddings/vendas-em-aberto-card'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
+import CabecalhoPerformance from '@/components/performance/cabecalho-performance'
 import { JANELA_LARGA_ATRAS, JANELA_LARGA_FRENTE } from '@/lib/weddings/janela-fluxo'
 import { getServerClient } from '@/lib/supabase/server'
 import { unwrapRpc } from '@/lib/rpc'
@@ -109,28 +110,27 @@ export default async function WeddingsContent({ searchParams: sp }: Props) {
   return (
     <div>
 
-      {/* ── CARIMBO DE CARGA (v6.0.0/M7) ────────────────────────────────────
-          Dois selos (Vendas por Produto + Lançamentos por Operação), MESMO componente/
-          convenção da DRE (`vigiarAtraso={false}`: cadência humana). O título "Performance dos
-          Setores" mora no layout compartilhado (`src/app/performance/layout.tsx`), fora desta
-          árvore — o selo não sobe pra lá (o layout não sabe que sub-rota está renderizando, e
-          Weddings é a única com 2 bases). Deviation reportada: não fica na MESMA linha do h1. */}
-      <div className="flex justify-end mb-2">
-        <div className="flex flex-col items-end gap-y-0.5 text-2xs">
-          <UltimaAtualizacao
-            iso={ultimaCargaVendas}
-            prefixo="Vendas · Última atualização em"
-            iconSize={12}
-            vigiarAtraso={false}
-          />
-          <UltimaAtualizacao
-            iso={ultimaCargaOperacao}
-            prefixo="Operações · Última atualização em"
-            iconSize={12}
-            vigiarAtraso={false}
-          />
-        </div>
-      </div>
+      {/* ── CABEÇALHO + CARIMBO DE CARGA (v6.0.0/M7; alinhado ao título na v6.1.1/M2) ──
+          Título à esquerda e dois selos (Vendas por Produto + Lançamentos por Operação) à
+          direita, NA MESMA LINHA — o arranjo da DRE; os selos empilham no bloco da direita
+          (`CabecalhoPerformance` já traz o `flex-col items-end text-2xs`). MESMO componente/
+          convenção da DRE (`vigiarAtraso={false}`: cadência humana). O título deixou o layout
+          para dividir a linha com o selo; `CabecalhoPerformance` também é renderizado no
+          `loading.tsx` e na tela "em construção" (sem selos), com a mesma marcação. */}
+      <CabecalhoPerformance>
+        <UltimaAtualizacao
+          iso={ultimaCargaVendas}
+          prefixo="Vendas · Última atualização em"
+          iconSize={12}
+          vigiarAtraso={false}
+        />
+        <UltimaAtualizacao
+          iso={ultimaCargaOperacao}
+          prefixo="Operações · Última atualização em"
+          iconSize={12}
+          vigiarAtraso={false}
+        />
+      </CabecalhoPerformance>
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">

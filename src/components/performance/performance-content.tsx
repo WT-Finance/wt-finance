@@ -13,6 +13,7 @@ import VendasReceitaNegativaCard from '@/components/weddings/vendas-receita-nega
 import TopSection from '@/components/shared/top-section'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
+import CabecalhoPerformance from '@/components/performance/cabecalho-performance'
 import { getServerClient, type ServerClient } from '@/lib/supabase/server'
 import { resolverPeriodoCompleto } from '@/lib/periodo'
 import { unwrapRpc, unwrapRpcComErro } from '@/lib/rpc'
@@ -132,21 +133,20 @@ export default async function PerformanceContent({ setor, searchParams: sp }: Pr
   return (
     <div>
 
-      {/* ── CARIMBO DE CARGA (v6.0.0/M7) ────────────────────────────────────
-          Um selo (Vendas por Produto), MESMO componente/convenção da DRE
-          (`vigiarAtraso={false}`: cadência humana). O título "Performance dos Setores" mora no
-          layout (`src/app/performance/layout.tsx`, síncrono — persiste durante o loading.tsx),
-          não nesta árvore; o selo não pode subir para lá (não sabe qual conteúdo — Geral/Trips/
-          Corp usam 1 base, Weddings usa 2 — está renderizando). Fica sozinho, alinhado à
-          direita, acima da Visão Geral. Deviation reportada: não fica na MESMA linha do h1. */}
-      <div className="flex justify-end mb-2 text-2xs">
+      {/* ── CABEÇALHO + CARIMBO DE CARGA (v6.0.0/M7; alinhado ao título na v6.1.1/M2) ──
+          Título à esquerda e um selo (Vendas por Produto) à direita, NA MESMA LINHA — o
+          arranjo da DRE. O selo é o MESMO componente/convenção da DRE (`vigiarAtraso={false}`:
+          cadência humana). O título deixou o layout justamente para poder dividir a linha com
+          o selo: `CabecalhoPerformance` é renderizado aqui (com selo), no `loading.tsx` e na
+          tela "em construção" (sem selo), com a mesma marcação — sem salto na troca. */}
+      <CabecalhoPerformance>
         <UltimaAtualizacao
           iso={ultimaCargaVendas}
           prefixo="Vendas · Última atualização em"
           iconSize={12}
           vigiarAtraso={false}
         />
-      </div>
+      </CabecalhoPerformance>
 
       {/* ── VISÃO GERAL ──────────────────────────────────────────── */}
       <TopSection titulo="Visão Geral">
