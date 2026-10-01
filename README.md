@@ -27,7 +27,7 @@ O que ficou para depois: [`docs/backlog-v6.md`](docs/backlog-v6.md).
 
 ## Stack
 
-**Next.js 16.3.4** (App Router) · **React 19.2.4** · **TypeScript** estrito ·
+**Next.js 16.3.8** (App Router) · **React 19.2.4** · **TypeScript** estrito ·
 **Tailwind CSS 4** · **Recharts 3** · `lucide-react` · padrão visual shadcn/ui ·
 **Supabase / Postgres** via PostgREST (`@supabase/ssr` + `@supabase/supabase-js`) ·
 **Zod 4** (contrato de RPC) · `@e965/xlsx` (planilhas) · `nodemailer` (e-mail) ·
