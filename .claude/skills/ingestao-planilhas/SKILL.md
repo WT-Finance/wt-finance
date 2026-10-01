@@ -38,11 +38,11 @@ Escolha assim:
 | O que atravessa a rede | Caminho | Precedente |
 |---|---|---|
 | o `File`/buffer | **API Route** `runtime = 'nodejs'` | `src/app/api/ingestao/{base}/route.ts` (5 bases, v6.0.0) · `src/app/api/gerencial/import/route.ts` |
-| arrays já parseados no cliente | **Server Action** em lotes | `src/app/admin/uploads/actions.ts` (só **Pessoas**) |
+| arrays já parseados no cliente | **Server Action** em lotes | `src/app/admin/ingestao/upload/actions.ts` (só **Pessoas**) |
 
 ## 2. Parse pesado no cliente → Web Worker, nunca a main thread
 
-Quando o parse acontece no navegador (ex.: `/admin/uploads`, que parseia client-side antes
+Quando o parse acontece no navegador (ex.: `/admin/ingestao/upload`, que parseia client-side antes
 de enviar ao servidor), `XLSX.read` + `sheet_to_json` + o parser da base (~45 mil linhas)
 são síncronos e pesados. Rodar isso na main thread **trava a aba inteira** — a página
 "não responde" e até o spinner de carregamento congela, porque o spinner também é DOM/JS
@@ -340,7 +340,7 @@ numa função separada: é o que permite testar o arquivo caractere a caractere 
 Desde a v6.0.0 as cinco bases vivas (Demonstrativo, Vendas, Movimentação, Aberto, Operação) entram
 por `POST /api/ingestao/{base}` (contrato: `docs/contratos/ingestao-v1.md`) — o navegador sobe o
 **cru** por signed upload URL, o servidor parseia (núcleo `*Rows` de `src/lib/ingestao/parsers/`,
-compartilhado com o card de `/admin/uploads`) e a carga inteira roda numa transação. Cada base tem
+compartilhado com o card de `/admin/ingestao/upload`) e a carga inteira roda numa transação. Cada base tem
 oráculo `src/lib/ingestao/oraculo-*.test.ts` reproduzindo célula a célula o arquivo TRATADO do
 script R (fixtures dos anexos do briefing v6.0.0). **Pessoas continua no caminho antigo** (§1/§2
 acima, client-side + Server Action) — decisão 11 do briefing: fica fora da fundação, parada mas

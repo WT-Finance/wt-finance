@@ -20,7 +20,7 @@ import type { IngestaoCarga, IngestaoPainel } from './tipos'
 //
 // v6.1.1: o cartão "Sincronização Monde" (espelho da API, antes no Upload) abre a tela, antes das
 // tabelas. Ele se atualiza junto do painel (mesmo `atualizar`); se a releitura dele falhar,
-// mantém o último valor bom (mesma política do painel) em vez de apagar o cartão.
+// vira "Status indisponível" — nunca exibe o último valor bom como se fosse atual.
 
 export function IngestaoContent({
   painelInicial,
@@ -43,7 +43,9 @@ export function IngestaoContent({
     ])
     const novo = painelRes.status === 'fulfilled' ? painelRes.value : null
     if (novo) { setPainel(novo); setFalhaCarga(false) } else { setFalhaCarga(true) }
-    if (mondeRes.status === 'fulfilled' && !('error' in mondeRes.value)) setStatusMonde(mondeRes.value)
+    // Falha na releitura ⇒ "Status indisponível" (null), nunca o último valor bom: o cartão é
+    // alarme, e um "Conferido" velho na tela esconderia uma divergência nova (revisor, v6.1.1).
+    setStatusMonde(mondeRes.status === 'fulfilled' && !('error' in mondeRes.value) ? mondeRes.value : null)
   }, [])
 
   function mostrarMensagem(texto: string) {

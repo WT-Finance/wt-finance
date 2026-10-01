@@ -79,9 +79,9 @@ export function SkeletonPagina({ container = '', children }: { container?: strin
 // ── Templates de página ───────────────────────────────────────────────────────
 
 /** Dashboard: header + filtros + KPIs + 2 gráficos (Performance/Fluxo de Caixa/Weddings).
- *  `header={false}` quando o header REAL vive no layout persistente do segmento (ex.:
- *  /performance, v5.1.9) — senão o skeleton desenharia um título-fantasma DUPLICADO
- *  abaixo do título real a cada navegação. */
+ *  `header={false}` quando o header REAL é desenhado fora do skeleton (ex.: /performance —
+ *  v5.1.9 no layout do segmento; desde a v6.1.1 o `CabecalhoPerformance` no próprio
+ *  loading.tsx) — senão o skeleton desenharia um título-fantasma DUPLICADO. */
 export function SkeletonDashboard({ kpis = 4, header = true }: { kpis?: number; header?: boolean }) {
   return (
     <>

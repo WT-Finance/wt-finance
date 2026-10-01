@@ -23,7 +23,10 @@ import { ChavesApiContent } from '@/components/admin/api-externa/chaves-api-cont
 export const dynamic = 'force-dynamic'
 
 export default async function ChavesApiPage() {
-  await requireArea('api-externa')
+  const sessao = await requireArea('api-externa')
+  // O atalho "Ver solicitações" (gestão de tipos) só aparece para quem também gere
+  // Solicitações — com só `api-externa`, /admin/solicitacoes daria /sem-acesso.
+  const podeVerSolicitacoes = sessao.permissoes.includes('solicitacoes')
 
   const [chaves, tiposRes] = await Promise.all([
     listarChavesApi(),
@@ -49,6 +52,7 @@ export default async function ChavesApiPage() {
         chaves={chaves ?? []}
         tiposAdmin={tiposRes ?? []}
         erroCarga={erroCarga}
+        podeVerSolicitacoes={podeVerSolicitacoes}
       />
     </div>
   )

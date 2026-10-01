@@ -1,6 +1,6 @@
 /**
  * seed.ts — v6.0.1: o seed é um CLIENTE do contrato de ingestão v1 (`docs/contratos/ingestao-v1.md`),
- * pelo MESMO caminho do card de upload (`src/app/admin/uploads/ingestao-cliente.ts`) e da futura
+ * pelo MESMO caminho do card de upload (`src/app/admin/ingestao/upload/ingestao-cliente.ts`) e da futura
  * RPA. A diferença é só de TRANSPORTE: o card roda no navegador e bate em `/api/ingestao/{base}`
  * por HTTP; este script roda fora do Next (via `tsx`) e chama as MESMAS funções de servidor
  * diretamente — `caminhoCru`/`urlAssinadaDeUpload`/`sha256Hex`/`removerCru`

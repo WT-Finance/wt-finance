@@ -213,7 +213,7 @@
 
 import { Fragment, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp, FileSpreadsheet, Maximize, Minimize } from 'lucide-react'
+import { ChevronRight, ChevronsLeft, ChevronsRight, ChevronsUpDown, ChevronsDownUp, FileSpreadsheet, Loader2, Maximize, Minimize } from 'lucide-react'
 import Button from '@/components/ui/button'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import ScrollAutoHide from '@/components/shared/scroll-auto-hide'
@@ -1643,8 +1643,8 @@ function AcoesHierarquia({
       {/* Exportar (v6.1.1/M4) — mesmo estilo dos vizinhos. A planilha leva SEMPRE todas as
           linhas (blocos, categorias e a bandeja) e as duas abas (Mensal e Consolidado),
           independente do que está recolhido ou da visão ativa; `disabled` enquanto gera
-          impede o duplo clique. O erro é um aviso discreto ao lado — nada de quebrar a
-          tela nem de console. */}
+          impede o duplo clique e o ícone vira spinner (rótulo mantido). O erro é um aviso
+          discreto ao lado, sem quebrar a tela; a causa vai para o console.error. */}
       <Button
         variant="ghost"
         size="sm"
@@ -1653,8 +1653,8 @@ function AcoesHierarquia({
         className={GHOST_ICONE}
         title="Baixar o demonstrativo em Excel — todas as linhas expandidas, nas abas Mensal e Consolidado"
       >
-        <FileSpreadsheet size={13} />
-        {exportando ? 'Gerando…' : 'Exportar'}
+        {exportando ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <FileSpreadsheet size={13} />}
+        Exportar
       </Button>
       {erroExportar && (
         <span role="alert" className="text-2xs text-danger">
@@ -2104,7 +2104,8 @@ export default function TabelaDre({
         XLSX.utils.book_append_sheet(wb, ws, aba.nome)
       }
       XLSX.writeFile(wb, nomeArquivoExportacao(exportacao.regime, ano, geradoEm))
-    } catch {
+    } catch (err) {
+      console.error('[DRE exportar]', err)
       setErroExportar(true)
     } finally {
       setExportando(false)

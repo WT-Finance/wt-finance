@@ -83,7 +83,7 @@ npm run db:gate                        # só o backup-gate
 npm run seed     # seed local; lê supabase/seed/data/ (pasta git-ignored)
 ```
 
-Na aplicação, a carga é por **`/admin/uploads`** (Vendas, Lançamentos por Operação, Contas,
+Na aplicação, a carga é por **`/admin/ingestao/upload`** (sidebar › Ingestão de Dados › Upload de Arquivos) (Vendas, Lançamentos por Operação, Contas,
 Títulos, Pessoas, Demonstrativo de Competência). Cada importação **substitui a base inteira**
 correspondente. Vendas tem pipeline atômico — staging → validação → promoção em transação —, então
 uma carga com erro faz ROLLBACK e **não esvazia** a base viva.
@@ -106,7 +106,7 @@ uma carga com erro faz ROLLBACK e **não esvazia** a base viva.
 | Metas | `/metas`, `/cadastro`, `/comparacao`, `/tv` | Realizado × meta por setor, cadastro em grade anual, comparação e Modo TV |
 | Inventário de Ativos | `/gestao-pessoas/inventario` | Ativos, detentores e movimentações |
 | Solicitações | `/solicitacoes` | Abrir / minhas / caixa (dois níveis de acesso) |
-| Admin | `/admin/uploads`, `/acessos`, `/solicitacoes`, `/api-externa`, `/design-system` | Carga, usuários e roles, tipos de solicitação, chaves da API externa, catálogo do DS |
+| Admin | `/admin/ingestao` (upload + log), `/acessos`, `/solicitacoes`, `/api-externa`, `/design-system` | Carga, usuários e roles, tipos de solicitação, chaves da API externa, catálogo do DS |
 
 Fora do AppShell: `/login`, `/trocar-senha`, `/solicitar-acesso`, `/auth/confirm` e `/sem-acesso`.
 

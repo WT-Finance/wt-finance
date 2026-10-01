@@ -46,7 +46,7 @@ export function CargasTabela({
       {cargas.length === 0 ? (
         <p className="py-6 text-center text-xs text-zinc-400">
           Nenhuma carga registrada ainda — assim que alguém enviar um arquivo pela tela de{' '}
-          <Link href="/admin/ingestao/upload"className="underline hover:text-zinc-600">Upload de Arquivos</Link>, ela aparece aqui.
+          <Link href="/admin/ingestao/upload" className="underline hover:text-zinc-600">Upload de Arquivos</Link>, ela aparece aqui.
         </p>
       ) : (
         <ScrollAutoHide className="max-h-[420px] pr-3.5" eixo="y">

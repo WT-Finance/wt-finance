@@ -131,7 +131,7 @@ Escopo errado (marcou base a mais ou a menos) não tem edição: é o mesmo proc
 escopo certo, troca a variável, revoga a errada.
 
 **Alavanca 2 — desativar o usuário `ingestor@janus.interno` (emergência geral; NÃO é por RPA).** Vale
-para **todas as quatro RPAs e para o card `/admin/uploads`**, porque toda promoção usa essa credencial
+para **todas as quatro RPAs e para o card `/admin/ingestao/upload`**, porque toda promoção usa essa credencial
 (`src/lib/supabase/ingestor.ts`). Pela tela `/admin/acessos` ou pelo SQL do runbook de credenciais de
 máquina (`docs/runbooks/credenciais-maquina-runbook.md` §2). A chave continua "válida" e as chamadas
 passam da porta HTTP; a promoção é que é negada no banco (`USUARIO_INATIVO` enquanto o token de máquina
