@@ -135,10 +135,13 @@ export function areasDaRota(pathname: string): Area[] | null {
   if (p.startsWith('/gestao-pessoas'))            return ['gestao-pessoas/inventario', 'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
+  // /admin/uploads* é rota LEGADA desde a v6.1.1 (só redirect para /admin/ingestao/upload);
+  // segue mapeada porque o guard do layout e o proxy ainda a atravessam antes do redirect.
   if (p.startsWith('/admin/uploads'))           return ['admin/uploads']
-  // Log de ingestão (v6.0.0/M6): mesma área de quem carrega planilha — anexo §7 ("as mesmas
-  // pessoas que carregam são as que precisam ver o log"). Casa ANTES do genérico '/admin'
-  // abaixo, senão cairia em 'admin/acessos'.
+  // Ingestão de Dados (v6.0.0/M6 → v6.1.1): Log de Ingestão (/admin/ingestao) e Upload de
+  // Arquivos (/admin/ingestao/upload) — mesma área de quem carrega planilha, anexo §7 ("as mesmas
+  // pessoas que carregam são as que precisam ver o log"). O prefixo cobre as duas. Casa ANTES
+  // do genérico '/admin' abaixo, senão cairia em 'admin/acessos'.
   if (p.startsWith('/admin/ingestao'))          return ['admin/uploads']
   if (p.startsWith('/admin/solicitacoes'))      return ['solicitacoes']
   // Documentação da API externa (v5.4.0/Round4, pedido do Yan 30/07): área PRÓPRIA
@@ -170,7 +173,7 @@ const PRIORIDADE_INICIAL: { area: Area; href: string }[] = [
   { area: 'financeiro/fluxo-caixa',  href: '/financeiro/fluxo-caixa' },
   { area: 'financeiro/gerencial',    href: '/financeiro/fluxo-caixa/gerencial' },
   { area: 'metas',                   href: '/metas' },
-  { area: 'admin/uploads',           href: '/admin/uploads' },
+  { area: 'admin/uploads',           href: '/admin/ingestao/upload' },
   { area: 'admin/acessos',           href: '/admin/acessos' },
   { area: 'admin/design-system',     href: '/admin/design-system' },
 ]

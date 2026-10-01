@@ -38,6 +38,9 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     ['/financeiro/dre',                     ['financeiro/dre']],
     ['/admin/uploads',                      ['admin/uploads']],
     ['/admin/uploads/financeiro',           ['admin/uploads']],
+    // v6.1.1 — Upload de Arquivos mora em /admin/ingestao/upload (a rota antiga é só redirect).
+    ['/admin/ingestao',                     ['admin/uploads']],
+    ['/admin/ingestao/upload',              ['admin/uploads']],
     ['/admin/design-system',                ['admin/design-system']],
     ['/admin/acessos',                      ['admin/acessos']],
     ['/admin/solicitacoes',                 ['solicitacoes']],
@@ -76,6 +79,8 @@ describe('rotaInicial — primeira área permitida', () => {
     expect(rotaInicial(['metas', 'executiva'])).toBe('/executiva')
     expect(rotaInicial(['performance/trips'])).toBe('/performance/trips')
     expect(rotaInicial(['financeiro/gerencial'])).toBe('/financeiro/fluxo-caixa/gerencial')
+    // v6.1.1: quem só tem a área de upload cai direto no Upload novo (sem passar pelo redirect).
+    expect(rotaInicial(['admin/uploads'])).toBe('/admin/ingestao/upload')
     expect(rotaInicial([])).toBeNull()
     expect(rotaInicial(['inexistente'])).toBeNull()
   })

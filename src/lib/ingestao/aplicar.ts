@@ -187,7 +187,7 @@ export function codigoVeioDoPostgres(code: string | null | undefined): boolean {
 
 // ── Tamanho de lote por base ─────────────────────────────────────────────────────────────────
 // Os mesmos valores que o card de `/admin/uploads` já usava — `BASES` em
-// `src/app/admin/uploads/page.tsx` (não em `actions.ts`: as Server Actions recebem o lote já
+// `src/app/admin/ingestao/upload/page.tsx` (não em `actions.ts`: as Server Actions recebem o lote já
 // fatiado pelo cliente e não têm opinião sobre o tamanho; quem decide é o loop do card).
 const BATCH_VENDAS = 1000
 const BATCH_LANCAMENTOS_OPERACAO = 1000

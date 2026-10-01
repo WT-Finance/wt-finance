@@ -1,5 +1,5 @@
 // Cliente HTTP do REPROCESSO (v6.0.0/M6, anexo §7) — roda no NAVEGADOR, mesmo padrão do passo 3
-// de `admin/uploads/ingestao-cliente.ts#processarCarga` (não editado por esta missão: outra
+// de `admin/ingestao/upload/ingestao-cliente.ts#processarCarga` (não editado por esta missão: outra
 // missão pode estar com esse arquivo em mãos). A ÚNICA diferença do upload manual é o cabeçalho
 // `x-ingestao-origem: reprocesso` — os tipos de erro/resposta são os MESMOS (reexportados do
 // módulo irmão), então o card e o modal de confirmação (`ModalConfirmacaoUpload`) funcionam sem
@@ -11,8 +11,8 @@
 // service_role-only); esta função só chama o passo 3 (`confirmar:false` depois `confirmar:true`)
 // com a SESSÃO do usuário, exatamente como o card de upload já faz.
 
-import type { ArquivoDaCarga, RespostaCarga } from '@/app/admin/uploads/ingestao-cliente'
-import { ErroRotaIngestao } from '@/app/admin/uploads/ingestao-cliente'
+import type { ArquivoDaCarga, RespostaCarga } from '@/app/admin/ingestao/upload/ingestao-cliente'
+import { ErroRotaIngestao } from '@/app/admin/ingestao/upload/ingestao-cliente'
 import type { BaseIngestao } from '@/lib/ingestao/bases'
 
 async function lerRespostaJson(res: Response): Promise<unknown> {

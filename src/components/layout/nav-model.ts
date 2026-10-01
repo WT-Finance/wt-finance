@@ -13,7 +13,7 @@
 import {
   LayoutDashboard, TrendingUp, Target, Upload, Building, Plane, Sparkles, Briefcase, Wallet,
   BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox,
-  LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText,
+  LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText, DatabaseZap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
@@ -80,6 +80,17 @@ const GESTAO_PESSOAS_SUBS: NavSubItem[] = [
   { href: '/gestao-pessoas/estante', label: 'Estante Welcome', icon: BookOpen, area: 'gestao-pessoas/estante', areasAny: ['gestao-pessoas/estante', 'gestao-pessoas/estante/gestao'] },
 ]
 
+// Ingestão de Dados (v6.1.1) — Upload de Arquivos e Log de Ingestão viraram subabas de um
+// grupo só (antes eram dois itens soltos). A subaba "Log de Ingestão" tem o MESMO href do
+// pai (`/admin/ingestao`), como "Geral" em PERFORMANCE_SUBS; o Upload mora em
+// `/admin/ingestao/upload`. Quando o pathname é o do Upload, os dois hrefs casam por prefixo
+// e `hrefAtivoDoGrupo` escolhe o mais longo (o Upload) — o Log só acende em `/admin/ingestao`.
+// Mesma área nas duas ('admin/uploads'): as pessoas que carregam planilha são as que veem o log.
+const INGESTAO_SUBS: NavSubItem[] = [
+  { href: '/admin/ingestao/upload', label: 'Upload de Arquivos', icon: Upload,     area: 'admin/uploads' },
+  { href: '/admin/ingestao',        label: 'Log de Ingestão',    icon: ScrollText, area: 'admin/uploads' },
+]
+
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
  *  saber "isto é um grupo" (o resto do render/filtro é genérico via NavGroup). */
 export const NAV_GROUPS: Record<string, NavSubItem[]> = {
@@ -87,13 +98,16 @@ export const NAV_GROUPS: Record<string, NavSubItem[]> = {
   '/financeiro':     FINANCEIRO_SUBS,
   '/metas':          METAS_SUBS,
   '/gestao-pessoas': GESTAO_PESSOAS_SUBS,
+  '/admin/ingestao': INGESTAO_SUBS,
 }
 
-// Ordem da sidebar (v5.6.1): Executiva › Performance › Metas › Financeiro › Gestão de
-// Pessoas › Solicitações › Upload de Arquivos › Usuários e Acessos › Design System.
+// Ordem da sidebar (v6.1.1): Executiva › Performance › Metas › Financeiro › Gestão de
+// Pessoas › Solicitações › Ingestão de Dados (Upload de Arquivos, Log de Ingestão) ›
+// Usuários e Acessos › Design System.
 // (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
 // Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo;
-// v5.6.1: subiu para logo abaixo de Financeiro, pedido do Yan.)
+// v5.6.1: subiu para logo abaixo de Financeiro, pedido do Yan. v6.1.1: Upload e Log de
+// Ingestão viraram o grupo "Ingestão de Dados".)
 export const NAV_ITEMS: NavItem[] = [
   { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva', emConstrucao: true },
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
@@ -106,10 +120,9 @@ export const NAV_ITEMS: NavItem[] = [
   // conta da plataforma lá.
   { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: IdCard,          area: null            },
   { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
-  { href: '/admin/uploads',        label: 'Upload de Arquivos', Icon: Upload,  area: 'admin/uploads'        },
-  // v6.0.0/M6: log de cargas/execuções/alarmes — mesma área de quem já carrega planilha
-  // (anexo v6.0.0/M6 §7).
-  { href: '/admin/ingestao',       label: 'Log de Ingestão',    Icon: ScrollText, area: 'admin/uploads'     },
+  // v6.1.1: grupo "Ingestão de Dados" — Upload de Arquivos + Log de Ingestão (v6.0.0/M6, mesma
+  // área de quem já carrega planilha — anexo v6.0.0/M6 §7). Permissão vem das subabas.
+  { href: '/admin/ingestao',       label: 'Ingestão de Dados',  Icon: DatabaseZap, area: null              },
   { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
   // "Gerenciar solicitações" dentro de Solicitações (só admin). Rota /admin/solicitacoes intacta.

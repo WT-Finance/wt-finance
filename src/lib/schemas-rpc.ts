@@ -301,7 +301,7 @@ export const statusDemonstrativoCompetenciaSchema = z.object({
   ultima_atualizacao: z.string().nullable(),
 }).passthrough()
 // Sem `export type` do z.infer aqui de propósito: o tipo que os consumidores usam é a
-// interface EXPLÍCITA de `src/app/admin/uploads/actions.ts`, sem o índice `unknown` que
+// interface EXPLÍCITA de `src/app/admin/ingestao/upload/actions.ts`, sem o índice `unknown` que
 // o `.passthrough()` arrasta. Dois tipos com o mesmo nome só confundiriam.
 
 /** provisionar_dre_comp_par (v5.8.0, migration 0260) → quantos pares NOVOS do arquivo

@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import ModalCentral from '@/components/shared/modal-central'
 import { ModalConfirmacaoUpload, type DetalhesConferencia } from '@/components/admin/modal-confirmacao-upload'
-import type { RespostaCarga } from '@/app/admin/uploads/ingestao-cliente'
+import type { RespostaCarga } from '@/app/admin/ingestao/upload/ingestao-cliente'
 import {
   getVendasStatusAction, getLancamentosStatusAction, getLancamentosMovimentacaoStatusAction,
   getTitulosEmAbertoStatusAction, getDemonstrativoCompetenciaStatusAction,
-} from '@/app/admin/uploads/actions'
+} from '@/app/admin/ingestao/upload/actions'
 import { prepararReprocessoAction, type PreparoReprocesso } from '@/app/admin/ingestao/actions'
 import { processarCargaReprocesso } from '@/app/admin/ingestao/reprocesso-cliente'
 import { ROTULO_BASE, ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
