@@ -35,6 +35,32 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.1.1',
+    data: '2026-10-01T13:47', // horário real de autoria — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'O Demonstrativo de Resultado (por Competência e por Fluxo de Caixa) ganhou o botão "Exportar": ' +
+          'gera uma planilha Excel com a visão mensal e a comparativa entre anos, sempre com todas as ' +
+          'linhas abertas.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Menu lateral reorganizado: "Upload de Arquivos" e "Log de Ingestão" agora ficam juntos em ' +
+          '"Ingestão de Dados" (o acompanhamento da sincronização com o Monde passou para o Log), e a ' +
+          '"API Externa" ganhou seção própria, com permissão de acesso separada da de Solicitações.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Nas páginas de Performance, a data da última atualização aparece na mesma linha do título, ' +
+          'como no Demonstrativo de Resultado.',
+      },
+    ],
+  },
+  {
     versao: '6.1.0',
     data: '2026-09-29T14:41', // horário real do merge (PR #283), reconciliado no /pos-merge
     itens: [
