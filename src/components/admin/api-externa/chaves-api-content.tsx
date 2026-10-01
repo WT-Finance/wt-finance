@@ -80,11 +80,11 @@ export function ChavesApiContent({
 
   return (
     <>
-      {/* Ação da página: "Nova chave" à direita (mesmo padrão de tipos-content.tsx).
+      {/* Ação da página: "Nova chave" à ESQUERDA (ajuste do Yan, v6.1.1 — sem o "Ver solicitações" ao lado).
           v6.1.1/M3: o link "Ver solicitações" SAIU (pedido do Yan) — esta página deixou de ser
           filha de Solicitações; a navegação é pela sidebar (API Externa › Configuração |
           Documentação). */}
-      <div className="mb-5 flex flex-wrap items-center justify-end gap-3">
+      <div className="mb-5 flex flex-wrap items-center justify-start gap-3">
         <button
           type="button"
           onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}
