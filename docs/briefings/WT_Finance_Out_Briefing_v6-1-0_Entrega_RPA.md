@@ -74,7 +74,33 @@ fechando.
   R$ 470.395,76 para R$ 469.600,56 (**−R$ 795,20**). E-mail `ano_fechado_alterado` enviado às 17:28 UTC.
   Não é defeito da entrega — é um lançamento de competência 2025 que mudou no Monde. **Conferir com a gerente.**
 - **Etapa 2 (depois do merge):** uma carga de Operação pela RPA com `-Log` ⇒ `diff.puladas` e o conjunto de
-  operações gravados; origem amarrada e o 403 da API de Solicitações vistos negando em produção.
+  operações gravados; origem amarrada e o 403 da API de Solicitações vistos negando em produção. Ver §5b.
+
+## 5b. GATE — etapa 2 (30/09, contra produção já no servidor v6.1.0) — PROVADA
+
+Registrado no pós-merge da v6.1.1 (01/10), conferido de novo no banco (`ingestao.carga`,
+`ingestao.promocao`, `ingestao.alarme`) antes de escrever.
+
+| Campo | Valor |
+|---|---|
+| Carga | `32cc194b-fc38-4ec0-98ce-3c3edf24a60c` · base `lancamentos-operacao` · recebida 30/09 14:55 UTC |
+| Chave / origem | `rpa-operacao` (267) · `rpa-pad` (origem amarrada à credencial) |
+| Status | **aplicada** · 41.973 linhas |
+| Operações antes (medido na promoção, `operacoes_antes`) | 239 |
+| `operacoes_removidas` | `[]` — **medido**, não "não medido" |
+| `operacoes_novas` | 0 |
+| `diff.puladas` | 3, todas por "nome ambíguo": `W - Darlene e Adnan - DDMMAA`, `W - Giovana e Victor - 05SEP27`, `W - Paula e Fernando - 11MAY27` |
+| Alarme | `operacoes_puladas` aberto 14:55:49 e **notificado por e-mail 14:55:51 UTC** |
+
+- Na mesma sessão de 30/09 o fato ficou com 41.973 de 41.973 linhas com `operacao_id` preenchido.
+- **As 3 puladas não são defeito da entrega:** existiam no CSV do R de 28/09 como cópia exata de outra
+  operação e saíram da carteira em 29/09 pelo card (sem alarme, antes da v6.1). Os casamentos reais de
+  Giovana e Victor e de Paula e Fernando (e o de Darlene e Adnan) dependem de corrigir o cadastro
+  duplicado no Monde — ato do Yan.
+- **Não rodadas ao vivo** (cobertas só por teste automatizado): o 403 da API de Solicitações para a chave
+  de ingestão e o 422 de origem declarada incompatível com a credencial.
+- **Achado miúdo do cliente:** `puladas[].ids` chega como UMA string `"uuidA|uuidB"` (o `.log` da RPA junta
+  ids ambíguos com `|`); o cliente deveria separar — próximo patch.
 
 ## 6. Parecer da revisão
 
@@ -119,7 +145,8 @@ real da RPA (41.959 linhas, 239 operações ↔ 239 ids) roda. Sem UI ⇒ sem co
 ## 8. Pendências
 
 **Do Yan:**
-- **Mergear o PR**, depois rodar a **etapa 2 do GATE** (Operação pela RPA com `-Log`) e me passar o resultado.
+- ~~**Mergear o PR**, depois rodar a **etapa 2 do GATE**~~ — feito: mergeado 29/09, etapa 2 provada em 30/09 (§5b).
+- **Corrigir no Monde os cadastros duplicados** das 3 operações puladas (§5b).
 - **Conferir a mudança de −R$ 795,20 em 2025 no Demonstrativo** (§5), com a gerente.
 - Nas próximas execuções, **conferir antes de aplicar** também em Operação e Demonstrativo.
 - Decisões de backlog: B-45 (rename), B-47 (nome de chave para sempre), B-48 (nomes de noivos em alarme).
@@ -130,6 +157,8 @@ real da RPA (41.959 linhas, 239 operações ↔ 239 ids) roda. Sem UI ⇒ sem co
 **Não verificado:** as construções mais frágeis do PowerShell 5.1 que o GATE não exercitou — a leitura do
 corpo de erro HTTP (nenhuma execução deu 4xx além do 403 do passo 1), Vendas com um único arquivo, e o
 parse do `.log` com linhas `PULADA` reais (o GATE rodou contra o servidor v6.0.1 e a RPA não pulou nada).
+— *Atualização 01/10:* o parse de `PULADA` reais foi exercitado na etapa 2 (§5b, 3 puladas lidas), com o
+defeito dos ids unidos por `|`.
 
 ## 9. Aprendizados (régua de 5 destinos)
 

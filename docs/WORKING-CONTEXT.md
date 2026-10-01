@@ -36,7 +36,7 @@ conferida no merge: nenhuma role com `solicitacoes` ficou sem `api-externa`.
 > cabeçalho de Performance, Exportar + planilha) e **decidir a guarda anti-fórmula** do Exportar
 > (apóstrofo visível em rótulo que começa com `= + - @`).
 > 🔴 **Yan — EBITDA** no DRE por Competência adiado (sem conta de D&A no plano; proposta `LOP − FIN`).
-> ℹ️ Próximo patch: split de `puladas[].ids` ("a|b") no cliente da RPA + registrar o GATE etapa 2 da v6.1.0.
+> ℹ️ Próximo patch: split de `puladas[].ids` ("a|b") no cliente da RPA.
 
 ---
 
@@ -49,9 +49,11 @@ errata 4 do contrato. **Migrations 0287 e 0288 JÁ APLICADAS** (aditivas, compat
 **GATE etapa 1 feito em 29/09:** as cinco bases aplicadas pelo robô (`rpa-pad`, chave certa, checksums
 fechando) e a chave de Operação recusada em Vendas (403).
 
-> 🔴 **Yan — GATE etapa 2** (o código v6.1 está no ar desde o merge) — uma carga de Operação pela RPA com
-> `-Log` (conferência e depois `-Aplicar`), para ver `diff.puladas` e o conjunto de operações ao vivo; a sessão
-> confere `ingestao.carga` e vê negando em produção a origem amarrada e o 403 da API de Solicitações.
+> ✅ **GATE etapa 2 provado em 30/09** (carga `32cc194b`, `rpa-operacao`): `operacoes_removidas = []` medido,
+> 3 puladas por "nome ambíguo" com alarme enviado, 239 operações antes — registro completo no §5b do
+> out-briefing da v6.1.0. O 403 da API de Solicitações e o 422 de origem não rodaram ao vivo (só teste).
+> 🔴 **Yan — corrigir no Monde os cadastros duplicados** das 3 puladas (Darlene e Adnan, Giovana e Victor,
+> Paula e Fernando) para que os casamentos reais voltem à carteira.
 
 > 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.0** (a sessão não alcança o checkout
 > compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-0`,
