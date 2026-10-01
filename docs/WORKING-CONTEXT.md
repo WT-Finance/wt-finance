@@ -13,18 +13,30 @@
 
 ---
 
-## Em voo — v6.1.1 "Ajustes de navegação, cabeçalho de Performance e Exportar do DRE" (PR aberto, aguardando merge)
+## Em produção — v6.1.1 "Ajustes de navegação, cabeçalho de Performance e Exportar do DRE" (PR #285, mergeado 01/10 às 14:27)
 
 Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-1_Ajustes_Navegacao_DRE.md`; ADR-0180. Grupos
-"Ingestão de Dados" e "API Externa" na sidebar (Upload agora em `/admin/ingestao/upload`; `/admin/uploads`
-redireciona), Sincronização Monde no Log, cabeçalho de Performance alinhado, botão Exportar (xlsx) no DRE.
-**Migration 0289 JÁ APLICADA** (aditiva, 01/10): área RBAC `api-externa`, concedida a Administrador e
-Financeiro; compatível com o código v6.1.0 em produção. Banco na 0289, livre 0290; ADR livre 0181.
+"Ingestão de Dados" e "API Externa" (Configuração + Documentação) na sidebar (Upload agora em
+`/admin/ingestao/upload`; `/admin/uploads` redireciona), Sincronização Monde no Log, cabeçalho de
+Performance alinhado, botão Exportar (xlsx) no DRE. **Migration 0289 aplicada** (01/10): área RBAC
+`api-externa` (Administrador e Financeiro). Banco na 0289, livre 0290; ADR livre 0181. Janela da 0289
+conferida no merge: nenhuma role com `solicitacoes` ficou sem `api-externa`.
 
-> 🔴 **Yan — conferir visualmente no preview** (a sessão não conseguiu abrir browser: Playwright fora,
-> Edge não alcança o WSL) e decidir a guarda anti-fórmula do Exportar (apóstrofo visível).
-> 🔴 **No merge** — rodar a query de §8 do out-briefing (role com `solicitacoes` sem `api-externa`).
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.1** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-1`,
+> que mora na mesma worktree). As fixtures do oráculo já estão salvas em
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-1-1-ajustes-navegacao-dre --force
+> git worktree prune
+> git branch -D feat/v6-1-1-ajustes-navegacao-dre docs/pos-merge-v6-1-1
+> ```
+> 🔴 **Yan — conferência visual** das telas que não vieram por print (sidebar Ingestão, card Monde no Log,
+> cabeçalho de Performance, Exportar + planilha) e **decidir a guarda anti-fórmula** do Exportar
+> (apóstrofo visível em rótulo que começa com `= + - @`).
 > 🔴 **Yan — EBITDA** no DRE por Competência adiado (sem conta de D&A no plano; proposta `LOP − FIN`).
+> ℹ️ Próximo patch: split de `puladas[].ids` ("a|b") no cliente da RPA.
 
 ---
 
@@ -37,9 +49,11 @@ errata 4 do contrato. **Migrations 0287 e 0288 JÁ APLICADAS** (aditivas, compat
 **GATE etapa 1 feito em 29/09:** as cinco bases aplicadas pelo robô (`rpa-pad`, chave certa, checksums
 fechando) e a chave de Operação recusada em Vendas (403).
 
-> 🔴 **Yan — GATE etapa 2** (o código v6.1 está no ar desde o merge) — uma carga de Operação pela RPA com
-> `-Log` (conferência e depois `-Aplicar`), para ver `diff.puladas` e o conjunto de operações ao vivo; a sessão
-> confere `ingestao.carga` e vê negando em produção a origem amarrada e o 403 da API de Solicitações.
+> ✅ **GATE etapa 2 provado em 30/09** (carga `32cc194b`, `rpa-operacao`): `operacoes_removidas = []` medido,
+> 3 puladas por "nome ambíguo" com alarme enviado, 239 operações antes — registro completo no §5b do
+> out-briefing da v6.1.0. O 403 da API de Solicitações e o 422 de origem não rodaram ao vivo (só teste).
+> 🔴 **Yan — corrigir no Monde os cadastros duplicados** das 3 puladas (Darlene e Adnan, Giovana e Victor,
+> Paula e Fernando) para que os casamentos reais voltem à carteira.
 
 > 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.0** (a sessão não alcança o checkout
 > compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-0`,
