@@ -278,7 +278,7 @@ export function DocumentacaoContent({
               ) : (
                 // Sem gestão, mandar a pessoa para uma tela que ela não abre é pior que
                 // não mandar: a instrução vira o que ela pede a quem administra.
-                <>Nenhum tipo exposto ainda — peça a quem administra as Solicitações para ligar a exposição do tipo que você vai integrar.</>
+                <>Nenhum tipo exposto ainda — peça a quem administra a API Externa para ligar a exposição do tipo que você vai integrar.</>
               )}
             </div>
           ) : (

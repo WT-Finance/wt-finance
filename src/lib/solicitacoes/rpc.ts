@@ -26,8 +26,9 @@ export const getTiposAdmin     = () => call('admin_solic_listar_tipos', {}, S.ti
 // v5.4.0/Round4 (migration 0219) — irmã ENXUTA de admin_solic_listar_tipos para a
 // página de Documentação da API: mesma forma (reaproveita tiposAdminSchema), mas só
 // tipos EXPOSTOS e não arquivados, e o gate aceita 'solicitacoes/documentacao' além
-// da gestão. A de admin segue gated só na gestão — quem documenta não precisa ver o
-// cadastro inteiro.
+// da gestão da API ('api-externa' desde a v6.1.1/0289; antes 'solicitacoes'). A de admin
+// segue gated na gestão (aceita 'solicitacoes' e 'api-externa' desde a 0289, porque
+// também alimenta a tela de Chaves) — quem documenta não precisa ver o cadastro inteiro.
 export const getTiposDocumentacao = () => call('solic_tipos_documentacao', {}, S.tiposAdminSchema)
 // cache() deduplica chamadas no mesmo request (layout + page chamam em paralelo)
 export const getPendencias     = cache(() => call('solic_minhas_pendencias', {}, z.number()))

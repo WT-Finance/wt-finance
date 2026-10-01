@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Plus, Eye, ClipboardList, History, BookOpen } from 'lucide-react'
+import { Plus, Eye, ClipboardList, History } from 'lucide-react'
 import { PILL, PILL_NEUTRO, PILL_PRIMARIA, PILL_PRIMARIA_STYLE, PILL_GESTAO, PILL_GESTAO_STYLE } from '@/components/shared/botoes'
 import Badge from '@/components/ui/badge'
 import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
@@ -15,12 +15,10 @@ import type { Solicitacao, TipoAbertura, Destinatarios } from '@/lib/solicitacoe
 
 type Escopo = 'mim_e_role' | 'so_mim' | 'todas'
 
-export default function SolicitacoesContent({ view, escopo, lista, pendentes, podeGestao, podeVerDocApi, tipos, destinatarios, erroCarga }: {
+export default function SolicitacoesContent({ view, escopo, lista, pendentes, podeGestao, tipos, destinatarios, erroCarga }: {
   view: 'minhas' | 'caixa'; escopo: Escopo
   /** Lista da view ATUAL (a page busca só uma das duas). */
   lista: Solicitacao[]; pendentes: number; podeGestao: boolean
-  /** Documentação da API (v5.4.0/Round4): área própria 'solicitacoes/documentacao' OU a gestão. */
-  podeVerDocApi: boolean
   tipos: TipoAbertura[]; destinatarios: Destinatarios
   erroCarga: string | null
 }) {
@@ -118,14 +116,8 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
               </Link>
             </>
           )}
-          {/* Documentação da API (v5.4.0/Round4, pedido do Yan): área PRÓPRIA
-              'solicitacoes/documentacao' OU a gestão — por isso é um `if` separado
-              do bloco `podeGestao` acima (quem só tem a documentação também vê). */}
-          {podeVerDocApi && (
-            <Link href="/admin/api-externa/documentacao" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-              <BookOpen size={13} /> Documentação API
-            </Link>
-          )}
+          {/* v6.1.1/M3: o atalho "Documentação API" (v5.4.0/Round4) saiu — a documentação
+              mora na sidebar, em API Externa › Documentação. */}
         </div>
         <button type="button" onClick={() => setNovaAberta(true)} className={`${PILL} ${PILL_PRIMARIA} whitespace-nowrap`} style={PILL_PRIMARIA_STYLE}>
           <Plus size={14} /> Nova solicitação

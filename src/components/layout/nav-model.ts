@@ -13,7 +13,7 @@
 import {
   LayoutDashboard, TrendingUp, Target, Upload, Building, Plane, Sparkles, Briefcase, Wallet,
   BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox,
-  LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText, DatabaseZap,
+  LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText, DatabaseZap, KeyRound, Plug,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
@@ -91,6 +91,18 @@ const INGESTAO_SUBS: NavSubItem[] = [
   { href: '/admin/ingestao',        label: 'Log de Ingestão',    icon: ScrollText, area: 'admin/uploads' },
 ]
 
+// API Externa (v6.1.1/M3) — antes duas rotas soltas, alcançadas por atalhos dentro de Solicitações
+// ("API externa" em Gerenciar solicitações; "Documentação API" na caixa de entrada). Desde a
+// v6.1.0 a API também emite as chaves das RPAs de ingestão, então ganhou seção e área própria
+// ('api-externa', migration 0289). A subaba "Chaves" tem o MESMO href do pai (`/admin/api-externa`),
+// como o Log em INGESTAO_SUBS: em `/admin/api-externa/documentacao` os dois hrefs casam por prefixo
+// e `hrefAtivoDoGrupo` escolhe o mais longo — a Documentação acende sozinha. A Documentação também
+// libera para a área de leitura 'solicitacoes/documentacao' (integrador que só lê o contrato).
+const API_EXTERNA_SUBS: NavSubItem[] = [
+  { href: '/admin/api-externa',              label: 'Chaves',       icon: KeyRound, area: 'api-externa' },
+  { href: '/admin/api-externa/documentacao', label: 'Documentação', icon: BookOpen, area: 'solicitacoes/documentacao', areasAny: ['api-externa', 'solicitacoes/documentacao'] },
+]
+
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
  *  saber "isto é um grupo" (o resto do render/filtro é genérico via NavGroup). */
 export const NAV_GROUPS: Record<string, NavSubItem[]> = {
@@ -99,15 +111,17 @@ export const NAV_GROUPS: Record<string, NavSubItem[]> = {
   '/metas':          METAS_SUBS,
   '/gestao-pessoas': GESTAO_PESSOAS_SUBS,
   '/admin/ingestao': INGESTAO_SUBS,
+  '/admin/api-externa': API_EXTERNA_SUBS,
 }
 
 // Ordem da sidebar (v6.1.1): Executiva › Performance › Metas › Financeiro › Gestão de
 // Pessoas › Solicitações › Ingestão de Dados (Upload de Arquivos, Log de Ingestão) ›
-// Usuários e Acessos › Design System.
+// API Externa (Chaves, Documentação) › Usuários e Acessos › Design System.
 // (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
 // Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo;
 // v5.6.1: subiu para logo abaixo de Financeiro, pedido do Yan. v6.1.1: Upload e Log de
-// Ingestão viraram o grupo "Ingestão de Dados".)
+// Ingestão viraram o grupo "Ingestão de Dados"; "API Externa" ganhou seção própria logo
+// depois dele.)
 export const NAV_ITEMS: NavItem[] = [
   { href: '/executiva',      label: 'Executiva',          Icon: LayoutDashboard, area: 'executiva', emConstrucao: true },
   { href: '/performance',    label: 'Performance',        Icon: TrendingUp,      area: null            },
@@ -123,7 +137,10 @@ export const NAV_ITEMS: NavItem[] = [
   // v6.1.1: grupo "Ingestão de Dados" — Upload de Arquivos + Log de Ingestão (v6.0.0/M6, mesma
   // área de quem já carrega planilha — anexo v6.0.0/M6 §7). Permissão vem das subabas.
   { href: '/admin/ingestao',       label: 'Ingestão de Dados',  Icon: DatabaseZap, area: null              },
-  { href: '/admin/acessos',        label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
+  // v6.1.1/M3: grupo "API Externa" — Chaves + Documentação. Permissão vem das subabas
+  // (área própria 'api-externa'; a Documentação também abre para 'solicitacoes/documentacao').
+  { href: '/admin/api-externa',    label: 'API Externa',        Icon: Plug,        area: null              },
+  { href: '/admin/acessos',       label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },
   // 'Tipos de solicitação' saiu da sidebar (v4.18/M5): acessível pelo botão âmbar
   // "Gerenciar solicitações" dentro de Solicitações (só admin). Rota /admin/solicitacoes intacta.
   { href: '/admin/design-system',  label: 'Design System',      Icon: Palette,       area: 'admin/design-system'  },

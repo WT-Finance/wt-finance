@@ -37,17 +37,18 @@ criação e da coluna "Ingestão:" da listagem.
   Não é alavanca de nada: ativar/desativar/apagar esse usuário não muda o que a chave pode. **Não
   confundir** com `ingestor@janus.interno` (ativo, com role de máquina) — domínios `.internal` × `.interno`.
 - **Trilha:** toda chamada com chave, inclusive a negada, vai para `app.api_chamada_log`
-  (tela `/admin/api-externa` → "Ver log", últimas 50 por chave); a carga **aplicada** vira linha em
+  (sidebar › API Externa › Chaves, `/admin/api-externa` → "Ver log", últimas 50 por chave); a carga **aplicada** vira linha em
   `ingestao.carga` com `chave_id`, e `/admin/ingestao` mostra a coluna "quem" como
   **`API · <referência>`** (migration 0281). Conferência (`confirmar: false`) não grava linha de
   carga — só aparece no log de chamadas e na resposta.
 
 ## 1. Criar (uma vez por RPA — quem cria é o Yan; a sessão nunca vê o segredo)
 
-Quem cria precisa da área **`solicitacoes`** (é a área da tela `/admin/api-externa` e das RPCs
-`api_chave_*`). Ver a carga depois em `/admin/ingestao` exige **`admin/uploads`**.
+Quem cria precisa da área **`api-externa`** ("API Externa", grupo Administração — é a área da tela
+`/admin/api-externa` e das RPCs `api_chave_*`; desde a v6.1.1, antes era `solicitacoes`). Ver a carga
+depois em `/admin/ingestao` exige **`admin/uploads`**.
 
-1. Abrir `/admin/api-externa` → seção "Chaves de API" → **Nova chave de API**.
+1. Na sidebar: **API Externa › Chaves** (`/admin/api-externa`) → seção "Chaves de API" → **Nova chave de API**.
 2. **Referência:** exatamente o nome da tabela acima, em minúsculas com hífen (`rpa-vendas`…). É
    único no banco **inclusive entre chaves já revogadas** e vira o e-mail do robô e o "quem" das cargas.
 3. **Bases de ingestão:** marcar **só** as bases da tabela (`rpa-lancamentos` = **duas**; as demais, uma).
@@ -90,7 +91,7 @@ processos **novos**: feche e reabra o PAD/console antes de testar.
 Saída vazia — ou erro "cannot call a method on a null-valued expression" na segunda linha — =
 variável inexistente. Outro tamanho = segredo truncado ou com espaço/quebra de linha.
 
-**Que as quatro chaves existem com os escopos certos:** a listagem de `/admin/api-externa` mostra, por
+**Que as quatro chaves existem com os escopos certos:** a listagem em sidebar › API Externa › Chaves (`/admin/api-externa`) mostra, por
 chave, "Ingestão: <rótulos>", status (ativa/revogada) e "última chamada". Compare com a tabela do topo.
 A sessão confere o mesmo pela RPC `api_chave_listar` (não devolve segredo nem hash) — ela emite
 `escopo_bases` por chave.
@@ -105,8 +106,8 @@ A sessão confere o mesmo pela RPC `api_chave_listar` (não devolve segredo nem 
 
 ## 3. Revogar / rotacionar — duas alavancas, alcances diferentes
 
-**Alavanca 1 — revogar UMA chave (derruba só aquela RPA, sem tocar nas outras).** `/admin/api-externa`
-→ ícone de revogar na linha da chave → digitar a referência para confirmar (`api_chave_revogar(id)`,
+**Alavanca 1 — revogar UMA chave (derruba só aquela RPA, sem tocar nas outras).** Sidebar › API Externa
+› Chaves (`/admin/api-externa`) → ícone de revogar na linha da chave → digitar a referência para confirmar (`api_chave_revogar(id)`,
 `revogarChaveApi`). Efeito: a partir da próxima chamada `api_chave_resolver` não acha mais a chave ⇒
 `401 AUTH_INVALIDA` (exit `3`). Propriedades:
 - **Irreversível:** nenhuma RPC reativa. Voltar = criar uma chave **nova**.
@@ -160,7 +161,7 @@ ficam em `<primeiro-arquivo>.resposta.json`.
 | exit `2` com `FORMATO_INVALIDO` citando **"origem contradiz a credencial"** | o cabeçalho `x-ingestao-origem` não é `rpa-pad`/`rpa-cloud` numa chamada com chave — o cliente versionado não faz isso; indica script alterado ou chamada manual | usar o cliente do repositório; a origem é decidida pela credencial (errata 4(g)) |
 | exit `1` logo após desativar `ingestor@janus.interno` | alavanca 2 acionada (a chave está boa) | `SELECT email, ativo FROM app.rbac_usuarios WHERE email = 'ingestor@janus.interno'` |
 | criar chave falha com "Não foi possível criar o usuário-robô: … already been registered" / `PLATAFORMA_EM_USO` | referência já usada — **inclui as revogadas** | escolher outra referência (§3, `-2`) |
-| criar chave falha com `PERMISSAO_NEGADA` | quem criou não tem a área `solicitacoes` | `/admin/acessos` |
+| criar chave falha com `PERMISSAO_NEGADA` | quem criou não tem a área `api-externa` (antes da v6.1.1 era `solicitacoes`) | `/admin/acessos` |
 | "Ver log" mostra 200 mas nenhuma linha em `/admin/ingestao` | era **conferência** (não grava carga) ou a tela exige `admin/uploads` | rodar com `-Aplicar` para a base; conferir a área |
 
 ## 5. O que NÃO fazer

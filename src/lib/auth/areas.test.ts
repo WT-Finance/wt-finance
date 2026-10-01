@@ -45,8 +45,9 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     ['/admin/acessos',                      ['admin/acessos']],
     ['/admin/solicitacoes',                 ['solicitacoes']],
     ['/admin/solicitacoes/movimentacoes',   ['solicitacoes']],
-    ['/admin/api-externa',                   ['solicitacoes']],
-    ['/admin/api-externa/documentacao',      ['solicitacoes/documentacao', 'solicitacoes']],
+    // v6.1.1/M3 — área PRÓPRIA 'api-externa' (0289): a gestão de Solicitações não decide mais aqui.
+    ['/admin/api-externa',                   ['api-externa']],
+    ['/admin/api-externa/documentacao',      ['api-externa', 'solicitacoes/documentacao']],
     ['/admin',                              ['admin/acessos']],
     ['/solicitacoes',                       ['solicitacoes/basico', 'solicitacoes']],
     // v5.6.0/M1 — área própria, no ar desde a migration 0247. Este caso existiu antes
@@ -70,7 +71,14 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     expect(areasDaRota('/financeiro/fluxo-caixa/gerencial/x')).toEqual(['financeiro/gerencial'])
     // v5.4.0/Round4: /admin/api-externa/documentacao (mais específico) não pode ser
     // engolido pelo genérico /admin/api-externa.
-    expect(areasDaRota('/admin/api-externa/documentacao')).toEqual(['solicitacoes/documentacao', 'solicitacoes'])
+    expect(areasDaRota('/admin/api-externa/documentacao')).toEqual(['api-externa', 'solicitacoes/documentacao'])
+    expect(areasDaRota('/admin/api-externa')).toEqual(['api-externa'])
+  })
+  it("v6.1.1/M3: 'api-externa' é da Administração e não conta com 'solicitacoes' em nenhuma das duas rotas", () => {
+    expect(AREA_INFO['api-externa']).toEqual({ rotulo: 'API Externa', grupo: 'Administração', ordem: 56 })
+    for (const rota of ['/admin/api-externa', '/admin/api-externa/documentacao']) {
+      expect(areasDaRota(rota)).not.toContain('solicitacoes')
+    }
   })
 })
 
@@ -81,6 +89,8 @@ describe('rotaInicial — primeira área permitida', () => {
     expect(rotaInicial(['financeiro/gerencial'])).toBe('/financeiro/fluxo-caixa/gerencial')
     // v6.1.1: quem só tem a área de upload cai direto no Upload novo (sem passar pelo redirect).
     expect(rotaInicial(['admin/uploads'])).toBe('/admin/ingestao/upload')
+    // v6.1.1/M3: quem só tem a área da API Externa não cai em /sem-acesso.
+    expect(rotaInicial(['api-externa'])).toBe('/admin/api-externa')
     expect(rotaInicial([])).toBeNull()
     expect(rotaInicial(['inexistente'])).toBeNull()
   })

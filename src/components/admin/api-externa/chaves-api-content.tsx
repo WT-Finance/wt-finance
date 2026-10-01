@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Ban, Plus, ScrollText } from 'lucide-react'
+import { Ban, Plus, ScrollText } from 'lucide-react'
 import type { TipoAdmin } from '@/lib/solicitacoes/schemas'
 import type { ChaveApi } from './tipos'
 import { ROTULO_BASE } from '@/lib/ingestao/bases'
@@ -15,14 +14,12 @@ import { FaixaMensagem } from '@/components/shared/faixa-mensagem'
 import CardTabela, { CARD_TABELA_TH } from '@/components/shared/card-tabela'
 import Badge from '@/components/ui/badge'
 import Button from '@/components/ui/button'
-import { PILL, PILL_GESTAO, PILL_GESTAO_STYLE, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
+import { PILL, PILL_PRIMARIA, PILL_PRIMARIA_STYLE } from '@/components/shared/botoes'
 import { fmtDataHoraSP } from '@/lib/fmt'
 
 // v5.4.0/M2 (+ Round2/Round3/Round4/Round6) — conteúdo client de
-// /admin/api-externa ("API externa"): header de navegação (volta a
-// /admin/solicitacoes — esta rota não está na sidebar, mesmo padrão de
-// /admin/solicitacoes; Round3 acrescenta a pill "Documentação", que leva à
-// página irmã /admin/api-externa/documentacao), a tabela "Chaves de API", a
+// /admin/api-externa ("API Externa › Chaves"; v6.1.1/M3: a rota ganhou grupo próprio na
+// sidebar e o link de volta a /admin/solicitacoes saiu), a tabela "Chaves de API", a
 // seção "Tipos Expostos" (TiposExpostos — Round3: virou só um toggle de
 // exposição por linha, a lista de equipes de destino por tipo morreu) e a
 // orquestração dos 3 modais (criar / revogar / log). Round4 (pedido do Yan
@@ -83,18 +80,11 @@ export function ChavesApiContent({
 
   return (
     <>
-      {/* Ações da página: "Ver solicitações" (âmbar --gestao, volta ao módulo) à
-          esquerda; "Nova chave" à direita — mesmo padrão de tipos-content.tsx.
-          v5.4.0/Round4 (pedido do Yan, 31/07): a pill "Documentação" SAIU daqui —
-          o acesso à documentação é pela tela inicial do módulo de Solicitações, que
-          é onde ela tem permissão própria. Ter os dois caminhos deixava a permissão
-          nova parecendo acessório de uma tela de gestão. */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/admin/solicitacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
-            <ArrowLeft size={13} /> Ver solicitações
-          </Link>
-        </div>
+      {/* Ação da página: "Nova chave" à direita (mesmo padrão de tipos-content.tsx).
+          v6.1.1/M3: o link "Ver solicitações" (volta ao módulo de Solicitações) SAIU — esta
+          página deixou de ser filha de Solicitações; a navegação é pela sidebar
+          (API Externa › Chaves | Documentação). */}
+      <div className="mb-5 flex flex-wrap items-center justify-end gap-3">
         <button
           type="button"
           onClick={() => { setMsg(null); setModal({ modo: 'criar' }) }}

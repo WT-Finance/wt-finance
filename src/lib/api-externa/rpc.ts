@@ -5,7 +5,7 @@ import { ehBaseIngestao, type BaseIngestao } from '@/lib/ingestao/bases'
 
 // Leituras do módulo de Chaves de API (v5.4.0/M2), consumidas pela page RSC e
 // pelas server actions. Cliente de SESSÃO (authenticated) — o banco valida a
-// área 'solicitacoes' do chamador via exigir_acesso (0211).
+// área 'api-externa' do chamador via exigir_acesso (0211 → 0289; antes da v6.1.1 era 'solicitacoes').
 //
 // As RPCs api_chave_listar/api_log_listar nasceram fora do src/types/database.ts de
 // então (tratado como congelado; hoje é GERADO — ADR-0173) — helper de tipagem FROUXA
