@@ -13,18 +13,30 @@
 
 ---
 
-## Em voo — v6.1.1 "Ajustes de navegação, cabeçalho de Performance e Exportar do DRE" (PR aberto, aguardando merge)
+## Em produção — v6.1.1 "Ajustes de navegação, cabeçalho de Performance e Exportar do DRE" (PR #285, mergeado 01/10 às 14:27)
 
 Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-1_Ajustes_Navegacao_DRE.md`; ADR-0180. Grupos
-"Ingestão de Dados" e "API Externa" na sidebar (Upload agora em `/admin/ingestao/upload`; `/admin/uploads`
-redireciona), Sincronização Monde no Log, cabeçalho de Performance alinhado, botão Exportar (xlsx) no DRE.
-**Migration 0289 JÁ APLICADA** (aditiva, 01/10): área RBAC `api-externa`, concedida a Administrador e
-Financeiro; compatível com o código v6.1.0 em produção. Banco na 0289, livre 0290; ADR livre 0181.
+"Ingestão de Dados" e "API Externa" (Configuração + Documentação) na sidebar (Upload agora em
+`/admin/ingestao/upload`; `/admin/uploads` redireciona), Sincronização Monde no Log, cabeçalho de
+Performance alinhado, botão Exportar (xlsx) no DRE. **Migration 0289 aplicada** (01/10): área RBAC
+`api-externa` (Administrador e Financeiro). Banco na 0289, livre 0290; ADR livre 0181. Janela da 0289
+conferida no merge: nenhuma role com `solicitacoes` ficou sem `api-externa`.
 
-> 🔴 **Yan — conferir visualmente no preview** (a sessão não conseguiu abrir browser: Playwright fora,
-> Edge não alcança o WSL) e decidir a guarda anti-fórmula do Exportar (apóstrofo visível).
-> 🔴 **No merge** — rodar a query de §8 do out-briefing (role com `solicitacoes` sem `api-externa`).
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.1** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-1`,
+> que mora na mesma worktree). As fixtures do oráculo já estão salvas em
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-1-1-ajustes-navegacao-dre --force
+> git worktree prune
+> git branch -D feat/v6-1-1-ajustes-navegacao-dre docs/pos-merge-v6-1-1
+> ```
+> 🔴 **Yan — conferência visual** das telas que não vieram por print (sidebar Ingestão, card Monde no Log,
+> cabeçalho de Performance, Exportar + planilha) e **decidir a guarda anti-fórmula** do Exportar
+> (apóstrofo visível em rótulo que começa com `= + - @`).
 > 🔴 **Yan — EBITDA** no DRE por Competência adiado (sem conta de D&A no plano; proposta `LOP − FIN`).
+> ℹ️ Próximo patch: split de `puladas[].ids` ("a|b") no cliente da RPA + registrar o GATE etapa 2 da v6.1.0.
 
 ---
 
