@@ -10,8 +10,10 @@ Patch pedido pelo Yan em 01/10 com cinco itens; quatro entregues, o EBITDA adiad
 1. **Ingestão de Dados** — "Upload de Arquivos" e "Log de Ingestão" viraram subabas de um grupo
    novo na sidebar. O card "Sincronização Monde" saiu do Upload e abre o Log.
 2. **Performance** — "Última atualização em…" na mesma linha do título, como no Demonstrativo.
-3. **API Externa** — seção própria na sidebar (Chaves + Documentação), com **área de permissão
+3. **API Externa** — seção própria na sidebar (Configuração + Documentação), com **área de permissão
    própria** (`api-externa`), separada de Solicitações. Os atalhos dentro de Solicitações saíram.
+   Ajuste do Yan após o fechamento: subaba "Chaves" → "Configuração" (ícone `Settings`), subtítulo
+   "Configuração de chaves de API para ingestão de dados e solicitações", sem o botão "Ver solicitações".
 4. **Exportar** — botão ao lado de "Ver em tela cheia" no DRE por Competência e por Fluxo de Caixa:
    planilha Excel com duas abas (Mensal e Consolidado), sempre com todas as linhas abertas.
 5. **EBITDA** — **fora** (o Yan está discutindo internamente). Ver §8.
@@ -80,8 +82,8 @@ também) e a planilha gerada. 🔴 Yan: conferir no preview da Vercel e mandar p
 **revisor (versão inteira): CORREÇÕES NECESSÁRIAS → corrigidas.** (a) `allSettled` índice a índice,
 (b) fidelidade do Exportar à tela e movimentação dos helpers, (c) permissões — limpos.
 - **ALTO** botão Exportar sem spinner (trocava o rótulo) → `Loader2` girando, rótulo mantido.
-- MÉDIO link "Ver solicitações" removido além do pedido → **restaurado**, só para quem tem
-  `solicitacoes` (sem ela o destino daria /sem-acesso).
+- MÉDIO link "Ver solicitações" removido além do pedido → restaurado (só para quem tem
+  `solicitacoes`) e, no ajuste pós-fechamento, **retirado por pedido expresso do Yan**.
 - MÉDIO card Monde mantinha valor velho se a releitura falhasse → vira "Status indisponível".
 - MÉDIO o Monde passou a bloquear o 1º render do Log (antes era carregado no cliente do Upload) →
   **registrado, não alterado**: `monde_ingest_status` é leitura pequena, o `loading.tsx` cobre a

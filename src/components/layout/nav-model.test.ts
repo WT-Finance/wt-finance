@@ -192,10 +192,10 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
     ])
   })
 
-  it('v6.1.1/M3: "API Externa" é um grupo com Chaves ANTES da Documentação, logo depois de Ingestão de Dados', () => {
+  it('v6.1.1/M3: "API Externa" é um grupo com Configuração ANTES da Documentação, logo depois de Ingestão de Dados', () => {
     const subs = NAV_GROUPS['/admin/api-externa']
     expect(subs.map(s => [s.label, s.href, s.area])).toEqual([
-      ['Chaves',       '/admin/api-externa',              'api-externa'],
+      ['Configuração', '/admin/api-externa',              'api-externa'],
       ['Documentação', '/admin/api-externa/documentacao', 'solicitacoes/documentacao'],
     ])
     expect(subs[1].areasAny).toEqual(['api-externa', 'solicitacoes/documentacao'])
@@ -206,7 +206,7 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
   it('v6.1.1/M3: a área api-externa mostra o grupo com as DUAS subabas', () => {
     expect(rotulos(['api-externa'])).toEqual(['API Externa'])
     const subs = NAV_GROUPS['/admin/api-externa'].filter(s => subVisivel(s, ['api-externa']))
-    expect(subs.map(s => s.label)).toEqual(['Chaves', 'Documentação'])
+    expect(subs.map(s => s.label)).toEqual(['Configuração', 'Documentação'])
   })
 
   it('v6.1.1/M3: quem só tem solicitacoes/documentacao vê o grupo, mas SÓ a Documentação', () => {
@@ -220,7 +220,7 @@ describe('filtro por permissão — a seção nova não vaza nem apaga o que já
     expect(rotulos(['solicitacoes/basico'])).toEqual(['Solicitações'])
   })
 
-  it('v6.1.1/M3: em /documentacao acende só a Documentação; em /admin/api-externa, só Chaves', () => {
+  it('v6.1.1/M3: em /documentacao acende só a Documentação; em /admin/api-externa, só Configuração', () => {
     const subs = NAV_GROUPS['/admin/api-externa']
     expect(hrefAtivoDoGrupo(subs, '/admin/api-externa/documentacao')).toBe('/admin/api-externa/documentacao')
     expect(hrefAtivoDoGrupo(subs, '/admin/api-externa')).toBe('/admin/api-externa')

@@ -31,7 +31,7 @@ aplicada em 01/10) · **ADR-0180**.
   Ingestão* (`/admin/ingestao`, inalterada).
 - **Sincronização Monde** saiu do fim do Upload de Arquivos e está no topo do Log de Ingestão,
   relida junto com o painel.
-- **Sidebar — grupo "API Externa"** com *Chaves* e *Documentação*; saem os atalhos "API externa"
+- **Sidebar — grupo "API Externa"** com *Configuração* e *Documentação*; saem os atalhos "API externa"
   (Gerenciar solicitações) e "Documentação API" (Solicitações). A documentação abre com `api-externa`
   ou `solicitacoes/documentacao`.
 - **Performance:** "Última atualização em…" na mesma linha do título (padrão do DRE); o título saiu

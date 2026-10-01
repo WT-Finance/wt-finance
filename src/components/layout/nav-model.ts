@@ -13,7 +13,7 @@
 import {
   LayoutDashboard, TrendingUp, Target, Upload, Building, Plane, Sparkles, Briefcase, Wallet,
   BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox,
-  LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText, DatabaseZap, KeyRound, Plug,
+  LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText, DatabaseZap, Settings, Plug,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
@@ -94,12 +94,12 @@ const INGESTAO_SUBS: NavSubItem[] = [
 // API Externa (v6.1.1/M3) — antes duas rotas soltas, alcançadas por atalhos dentro de Solicitações
 // ("API externa" em Gerenciar solicitações; "Documentação API" na caixa de entrada). Desde a
 // v6.1.0 a API também emite as chaves das RPAs de ingestão, então ganhou seção e área própria
-// ('api-externa', migration 0289). A subaba "Chaves" tem o MESMO href do pai (`/admin/api-externa`),
+// ('api-externa', migration 0289). A subaba "Configuração" (ex-"Chaves", renomeada no ajuste do Yan) tem o MESMO href do pai (`/admin/api-externa`),
 // como o Log em INGESTAO_SUBS: em `/admin/api-externa/documentacao` os dois hrefs casam por prefixo
 // e `hrefAtivoDoGrupo` escolhe o mais longo — a Documentação acende sozinha. A Documentação também
 // libera para a área de leitura 'solicitacoes/documentacao' (integrador que só lê o contrato).
 const API_EXTERNA_SUBS: NavSubItem[] = [
-  { href: '/admin/api-externa',              label: 'Chaves',       icon: KeyRound, area: 'api-externa' },
+  { href: '/admin/api-externa',              label: 'Configuração', icon: Settings, area: 'api-externa' },
   { href: '/admin/api-externa/documentacao', label: 'Documentação', icon: BookOpen, area: 'solicitacoes/documentacao', areasAny: ['api-externa', 'solicitacoes/documentacao'] },
 ]
 
@@ -116,7 +116,7 @@ export const NAV_GROUPS: Record<string, NavSubItem[]> = {
 
 // Ordem da sidebar (v6.1.1): Executiva › Performance › Metas › Financeiro › Gestão de
 // Pessoas › Solicitações › Ingestão de Dados (Upload de Arquivos, Log de Ingestão) ›
-// API Externa (Chaves, Documentação) › Usuários e Acessos › Design System.
+// API Externa (Configuração, Documentação) › Usuários e Acessos › Design System.
 // (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
 // Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo;
 // v5.6.1: subiu para logo abaixo de Financeiro, pedido do Yan. v6.1.1: Upload e Log de
@@ -137,7 +137,7 @@ export const NAV_ITEMS: NavItem[] = [
   // v6.1.1: grupo "Ingestão de Dados" — Upload de Arquivos + Log de Ingestão (v6.0.0/M6, mesma
   // área de quem já carrega planilha — anexo v6.0.0/M6 §7). Permissão vem das subabas.
   { href: '/admin/ingestao',       label: 'Ingestão de Dados',  Icon: DatabaseZap, area: null              },
-  // v6.1.1/M3: grupo "API Externa" — Chaves + Documentação. Permissão vem das subabas
+  // v6.1.1/M3: grupo "API Externa" — Configuração + Documentação. Permissão vem das subabas
   // (área própria 'api-externa'; a Documentação também abre para 'solicitacoes/documentacao').
   { href: '/admin/api-externa',    label: 'API Externa',        Icon: Plug,        area: null              },
   { href: '/admin/acessos',       label: 'Usuários e Acessos', Icon: Users,         area: 'admin/acessos'        },

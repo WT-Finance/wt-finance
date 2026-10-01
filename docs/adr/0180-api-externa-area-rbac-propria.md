@@ -21,7 +21,7 @@ chave de carga de dados.
 
 ## Decisão (do Yan, 01/10/2026)
 
-1. **Seção própria na sidebar** — grupo "API Externa" com as subabas *Chaves* e *Documentação*. Os
+1. **Seção própria na sidebar** — grupo "API Externa" com as subabas *Configuração* (chaves e tipos expostos) e *Documentação*. Os
    atalhos que ficavam dentro de Solicitações saem.
 2. **Área RBAC própria `api-externa`** (grupo *Administração*, ordem 56):
    - libera a tela de chaves, as actions e as 7 RPCs exclusivas da API externa

@@ -37,7 +37,7 @@ criação e da coluna "Ingestão:" da listagem.
   Não é alavanca de nada: ativar/desativar/apagar esse usuário não muda o que a chave pode. **Não
   confundir** com `ingestor@janus.interno` (ativo, com role de máquina) — domínios `.internal` × `.interno`.
 - **Trilha:** toda chamada com chave, inclusive a negada, vai para `app.api_chamada_log`
-  (sidebar › API Externa › Chaves, `/admin/api-externa` → "Ver log", últimas 50 por chave); a carga **aplicada** vira linha em
+  (sidebar › API Externa › Configuração, `/admin/api-externa` → "Ver log", últimas 50 por chave); a carga **aplicada** vira linha em
   `ingestao.carga` com `chave_id`, e `/admin/ingestao` mostra a coluna "quem" como
   **`API · <referência>`** (migration 0281). Conferência (`confirmar: false`) não grava linha de
   carga — só aparece no log de chamadas e na resposta.
@@ -48,7 +48,7 @@ Quem cria precisa da área **`api-externa`** ("API Externa", grupo Administraç�
 `/admin/api-externa` e das RPCs `api_chave_*`; desde a v6.1.1, antes era `solicitacoes`). Ver a carga
 depois em `/admin/ingestao` exige **`admin/uploads`**.
 
-1. Na sidebar: **API Externa › Chaves** (`/admin/api-externa`) → seção "Chaves de API" → **Nova chave de API**.
+1. Na sidebar: **API Externa › Configuração** (`/admin/api-externa`) → seção "Chaves de API" → **Nova chave de API**.
 2. **Referência:** exatamente o nome da tabela acima, em minúsculas com hífen (`rpa-vendas`…). É
    único no banco **inclusive entre chaves já revogadas** e vira o e-mail do robô e o "quem" das cargas.
 3. **Bases de ingestão:** marcar **só** as bases da tabela (`rpa-lancamentos` = **duas**; as demais, uma).
@@ -91,7 +91,7 @@ processos **novos**: feche e reabra o PAD/console antes de testar.
 Saída vazia — ou erro "cannot call a method on a null-valued expression" na segunda linha — =
 variável inexistente. Outro tamanho = segredo truncado ou com espaço/quebra de linha.
 
-**Que as quatro chaves existem com os escopos certos:** a listagem em sidebar › API Externa › Chaves (`/admin/api-externa`) mostra, por
+**Que as quatro chaves existem com os escopos certos:** a listagem em sidebar › API Externa › Configuração (`/admin/api-externa`) mostra, por
 chave, "Ingestão: <rótulos>", status (ativa/revogada) e "última chamada". Compare com a tabela do topo.
 A sessão confere o mesmo pela RPC `api_chave_listar` (não devolve segredo nem hash) — ela emite
 `escopo_bases` por chave.
@@ -107,7 +107,7 @@ A sessão confere o mesmo pela RPC `api_chave_listar` (não devolve segredo nem 
 ## 3. Revogar / rotacionar — duas alavancas, alcances diferentes
 
 **Alavanca 1 — revogar UMA chave (derruba só aquela RPA, sem tocar nas outras).** Sidebar › API Externa
-› Chaves (`/admin/api-externa`) → ícone de revogar na linha da chave → digitar a referência para confirmar (`api_chave_revogar(id)`,
+› Configuração (`/admin/api-externa`) → ícone de revogar na linha da chave → digitar a referência para confirmar (`api_chave_revogar(id)`,
 `revogarChaveApi`). Efeito: a partir da próxima chamada `api_chave_resolver` não acha mais a chave ⇒
 `401 AUTH_INVALIDA` (exit `3`). Propriedades:
 - **Irreversível:** nenhuma RPC reativa. Voltar = criar uma chave **nova**.

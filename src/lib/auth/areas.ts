@@ -160,7 +160,7 @@ export function areasDaRota(pathname: string): Area[] | null {
   // espelha o gate do banco (solic_tipos_documentacao, 0289).
   if (p.startsWith('/admin/api-externa/documentacao')) return ['api-externa', 'solicitacoes/documentacao']
   // Chaves de API (v5.4.0/M2 → v6.1.1/M3): área PRÓPRIA 'api-externa' (migration 0289). Grupo
-  // "API Externa" da sidebar (Chaves + Documentação); casa ANTES do genérico '/admin' abaixo.
+  // "API Externa" da sidebar (Configuração + Documentação); casa ANTES do genérico '/admin' abaixo.
   if (p.startsWith('/admin/api-externa'))        return ['api-externa']
   if (p.startsWith('/admin'))                   return ['admin/acessos']
   // /solicitacoes (abertura/minhas/caixa): acesso BÁSICO ou GESTÃO (v4.20.0). A gestão
