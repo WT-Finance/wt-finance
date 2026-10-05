@@ -1,99 +1,144 @@
 import { z } from 'zod'
 
-// Schemas Zod da API Monde (v5.1.2 — Ingestão Monde). TOLERANTES por invariante: a
-// API é de terceiro e pode mudar de formato sem aviso — isso NUNCA pode quebrar a
-// ingestão/o painel. Por isso:
-//   - todo objeto usa `.passthrough()` (campos extras do lado de lá não derrubam o parse);
-//   - campo não-essencial é `.optional()`/`.nullable()`, e campo que alimenta cálculo tem
-//     `.catch(<default>)` (nunca lança por tipo inesperado/ausência);
-//   - número que pode chegar como string OU number usa `z.coerce.number()` (aceita ambos;
-//     string não-numérica vira NaN → parsedType 'nan' → falha → `.catch(0)` resolve).
+// Schemas Zod da API OFICIAL do Monde, versão 3 (v6.2.0 — a `monde-data` do TTARS, que a v5.1.2
+// consumia, foi desligada em 02/10/2026). Formatos medidos ao vivo em 05/10/2026 e conferidos contra
+// o `raw` já guardado no espelho, que É o payload de `GET /sales/{id}` (o TTARS só acrescentava os
+// nomes resolvidos por fora).
 //
-// Falha de parse em `fetchSalesPage`/`fetchSaleDetail` (client.ts) ainda é reportada com
-// contexto — a tolerância aqui é por CAMPO, não pelo formato geral da resposta.
+// Tolerância por CAMPO, como antes: todo objeto é `.passthrough()`, campo não essencial é
+// `.optional()`/`.nullable()`, número que alimenta cálculo usa `z.coerce.number()` com `.catch(0)`.
+//
+// ⚠️ Mas a ESTRUTURA que decide "quantas vendas existem" é ESTRITA. Na v5.x o `data` da lista tinha
+// `.catch([])`, e a paginação se guiava pelo `total` da API. A v3 não tem `total`: a varredura para
+// quando `has_next_page` é false. Se uma resposta malformada virasse "página vazia, sem próxima", a
+// varredura terminaria cedo, a apuração do mês contaria menos vendas e a CURA removeria do espelho
+// as que não foram listadas. Por isso `data` e `pagination.has_next_page` falham o parse — e o erro
+// sobe — em vez de cair num default.
 
-/** Custom field genérico `{ name, value }` — usado na listagem e no detalhe. */
-const zCustomField = z.object({
-  name: z.string(),
-  value: z.string().nullable().optional(),
-}).passthrough()
+/** Texto a partir de string OU número (a v3 manda `sale_number` como número; o espelho guarda texto). */
+const zTexto = z.preprocess((v) => (v === null || v === undefined ? '' : String(v)), z.string())
 
-const zSaleListItem = z.object({
-  sale_number: z.string().catch(''),
-  sale_id: z.string().nullable().optional(),
+/** `{ id }` de pessoa/produto/fornecedor. A v3 nunca manda o nome junto. */
+const zRef = z.object({ id: z.string().nullable().optional() }).passthrough().nullable().optional()
+
+const zNum = z.coerce.number().catch(0)
+const zTextoOpc = z.string().nullable().optional()
+
+// ── Lista: GET /sales ─────────────────────────────────────────────────────────────────────
+const zCabecalho = z.object({
+  id: z.string().nullable().optional(),
+  sale_number: zTexto.catch(''),
   sale_date: z.string().catch(''),
+  /** Sem fuso, no horário de Brasília. É por ELE que a lista vem ordenada (desc). */
+  created_at: z.string().catch(''),
   status: z.string().catch(''),
-  period_start: z.string().nullable().optional(),
-  period_end: z.string().nullable().optional(),
-  travel_agent_name: z.string().nullable().optional(),
-  payer_name: z.string().nullable().optional(),
-  payer_cpf_cnpj: z.string().nullable().optional(),
-  total_final_value: z.coerce.number().catch(0),
-  total_revenue: z.coerce.number().catch(0),
-  product_count: z.coerce.number().catch(0),
-  custom_fields: z.array(zCustomField).catch([]),
+  totals: z.record(z.string(), z.unknown()).catch({}),
 }).passthrough()
 
-export const zSalesListResponse = z.object({
-  resource: z.string().optional(),
-  total: z.coerce.number().catch(0),
-  page: z.coerce.number().catch(1),
-  page_size: z.coerce.number().catch(0),
-  data: z.array(zSaleListItem).catch([]),
+export const zPaginaVendas = z.object({
+  data: z.array(zCabecalho),
+  pagination: z.object({
+    has_next_page: z.boolean(),
+    next_cursor: z.string().nullable().optional(),
+  }).passthrough(),
 }).passthrough()
 
-const zPassenger = z.object({
-  person_name: z.string().nullable().optional(),
-  amount: z.coerce.number().catch(0),
-  agency_fee: z.coerce.number().catch(0),
-  fees: z.coerce.number().catch(0),
+// ── Detalhe: GET /sales/{id} ──────────────────────────────────────────────────────────────
+const zTrecho = z.object({
+  departure_date: zTextoOpc,
+  arrival_date: zTextoOpc,
 }).passthrough()
 
-const zProduct = z.object({
-  product_kind: z.string().nullable().optional(),
-  // v5.12.0 — o provedor anunciou a SAÍDA de `description` em 2026-10-01 e, desde jun/2026, já o
-  // preenche com rótulo genérico ("Outros", "Operação própria") nos tipos others/operations. O nome
-  // do CATÁLOGO passou a vir em `product_name_resolvido` (null nos tipos sem catálogo: hotel, aéreo…).
-  product_name_resolvido: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
-  supplier_name: z.string().nullable().optional(),
+const zProduto = z.object({
+  id: z.string().nullable().optional(),
   status: z.string().catch(''),
-  canceled_at: z.string().nullable().optional(),
-  total_amount: z.coerce.number().catch(0),
-  agency_service_fee: z.coerce.number().catch(0),
-  over_amount: z.coerce.number().catch(0),
-  intermediary_commission_amount: z.coerce.number().catch(0),
-  data_inicio: z.string().nullable().optional(),
-  data_fim: z.string().nullable().optional(),
-  passengers: z.array(zPassenger).catch([]),
+  canceled_at: zTextoOpc,
+  supplier: zRef,
+  /** Só em `others`/`operations`: o produto do catálogo (nome em /products/{id}). */
+  product: zRef,
+  totals: z.object({ amount: zNum }).passthrough().catch({ amount: 0 }),
+  agency_service_fee: zNum,
+  passengers: z.array(z.unknown()).catch([]),
+  // Campos de nome e de data — cada tipo usa os seus (ver transform.ts).
+  accommodation_kind: zTextoOpc,
+  package_name: zTextoOpc,
+  ship_name: zTextoOpc,
+  check_in: zTextoOpc,
+  check_out: zTextoOpc,
+  begin_date: zTextoOpc,
+  end_date: zTextoOpc,
+  pickup_date: zTextoOpc,
+  dropoff_date: zTextoOpc,
+  departure_date: zTextoOpc,
+  arrival_date: zTextoOpc,
+  segments: z.array(zTrecho).catch([]),
 }).passthrough()
 
-export const zSaleDetail = z.object({
-  sale_id: z.string().nullable().optional(),
-  sale_number: z.string().catch(''),
-  sale_date: z.string().catch(''),
+const zCampoPersonalizado = z.object({
+  id: z.coerce.number().catch(-1),
+  value: z.unknown().optional(),
+}).passthrough()
+
+const zListaProdutos = z.array(zProduto).catch([])
+
+export const zVendaDetalhe = z.object({
+  id: z.string(),
+  sale_number: zTexto,
+  sale_date: z.string(),
   status: z.string().catch(''),
-  payer_name: z.string().nullable().optional(),
-  payer_cpf_cnpj: z.string().nullable().optional(),
-  // Não listado nos "campos que importam" do detalhe, mas a API o repete (mesmo nome da
-  // listagem) — usado no fallback de vendedor em transform.ts (regra 3). `.passthrough()`
-  // já toleraria a chave sem tipagem; declarar explicitamente dá tipo limpo ao call-site.
-  travel_agent_name: z.string().nullable().optional(),
-  custom_fields: z.array(zCustomField).catch([]),
-  total_final_value: z.coerce.number().catch(0),
-  total_revenue: z.coerce.number().catch(0),
-  // `raw` guarda o payload INTEIRO da venda (inclui `intermediary`, usado na síntese de
-  // `operacao_propria` em transform.ts) — tolerante: qualquer objeto vira record; o que
-  // não for objeto vira `{}` (nunca derruba o parse do resto da venda).
-  raw: z.record(z.string(), z.unknown()).catch({}),
-  raw_hash: z.string().catch(''),
-  products: z.array(zProduct).catch([]),
+  payer: zRef,
+  seller: zRef,
+  intermediary: z.unknown().optional(),
+  custom_fields: z.array(zCampoPersonalizado).catch([]),
+  // Estrito: `final_amount`/`revenue` viram `total_final_value`/`total_revenue` e o rateio de receita
+  // inteiro. Zero silencioso aqui seria receita sumindo do espelho sem erro nenhum.
+  totals: z.object({
+    final_amount: z.coerce.number(),
+    revenue: z.coerce.number(),
+  }).passthrough(),
+  hotels: zListaProdutos,
+  airline_tickets: zListaProdutos,
+  insurances: zListaProdutos,
+  cruises: zListaProdutos,
+  car_rentals: zListaProdutos,
+  ground_transportations: zListaProdutos,
+  train_tickets: zListaProdutos,
+  travel_packages: zListaProdutos,
+  others: zListaProdutos,
+  operations: zListaProdutos,
+  cvc_packages: zListaProdutos,
+  excursions: zListaProdutos,
 }).passthrough()
 
-export const zSaleDetailResponse = z.object({
-  resource: z.string().optional(),
-  data: zSaleDetail,
+// ── Cadastros ─────────────────────────────────────────────────────────────────────────────
+export const zPessoa = z.object({
+  id: z.string(),
+  name: zTextoOpc,
+  cpf_cnpj: zTextoOpc,
 }).passthrough()
 
-export type Product = z.infer<typeof zProduct>
-export type SaleDetail = z.infer<typeof zSaleDetail>
+const zProdutoCatalogo = z.object({
+  id: z.string(),
+  name: zTextoOpc,
+  kind: zTextoOpc,
+}).passthrough()
+
+export const zProdutoCatalogoDetalhe = zProdutoCatalogo
+
+export const zPaginaCatalogo = z.object({
+  data: z.array(zProdutoCatalogo),
+  pagination: z.object({
+    has_next_page: z.boolean(),
+    next_cursor: z.string().nullable().optional(),
+  }).passthrough(),
+}).passthrough()
+
+export const zCamposPersonalizados = z.object({
+  data: z.array(z.object({ id: z.coerce.number(), name: z.string() }).passthrough()),
+}).passthrough()
+
+export type Cabecalho = z.infer<typeof zCabecalho>
+export type PaginaVendas = z.infer<typeof zPaginaVendas>
+export type VendaDetalhe = z.infer<typeof zVendaDetalhe>
+export type Produto = z.infer<typeof zProduto>
+export type Pessoa = z.infer<typeof zPessoa>
