@@ -1,39 +1,31 @@
+import { createHash } from 'node:crypto'
 import { setorMacro, SETOR_WELCOME, type SetorMacro } from './sectors'
-import type { SaleDetail, Product } from './schemas'
+import type { VendaDetalhe, Produto } from './schemas'
 
-// Transformação PURA (sem I/O — testável isoladamente) de um SaleDetail da API Monde
-// numa linha de venda-espelho, pronta para a RPC `monde_ingest_lote` (v5.1.2 — Ingestão
-// Monde). Aplica as exclusões de ESCOPO (setor Welcome = emissão interna; setor fora do
-// mapa) e a SÍNTESE de 3 campos sem sinal direto na API — ver ADR-0149: a decisão foi
-// consumir o `raw` cru (guardado por inteiro em cada venda) e reconstruir esses sinais
-// por heurística, documentada aqui, em vez de esperar a API expor os campos. Nenhuma
-// dessas heurísticas afeta a agregação da materialized view — são de completude/auditoria;
-// reprocessáveis a partir do `raw` se a heurística mudar.
+// Transformação PURA (sem I/O — testável isoladamente) de uma venda da API OFICIAL do Monde (v3) numa
+// linha de venda-espelho, pronta para a RPC `monde_ingest_lote`. Aplica as exclusões de ESCOPO (setor
+// Welcome = emissão interna; setor fora do mapa) e a síntese de 3 campos sem sinal direto na API
+// (ADR-0149).
 //
-// ── v5.4.5: O ESPELHO ESPELHA; A REGRA DE NEGÓCIO MORA NA LEITURA (ADR-0165) ───────────
-// Até a v5.4.4 esta função filtrava `status === 'active'` ANTES de gravar e descartava a
-// venda inteira quando não sobrava item ativo. Isso criava uma falha estrutural: o UPSERT
-// só escreve sobre o universo que pediu, então venda que **saía** desse universo (todos os
-// produtos cancelados na origem) ficava invisível para a escrita — não podia ser atualizada
-// nem removida, e a linha velha sobrevivia CONGELADA com os valores de antes.
+// ── v6.2.0: A FONTE MUDOU, A SAÍDA NÃO ─────────────────────────────────────────────────────
+// Até a v6.1.x a venda chegava pela `monde-data` do TTARS, que embrulhava este mesmo payload e
+// acrescentava nomes resolvidos (`payer_name`, `travel_agent_name`, `supplier_name`,
+// `product_name_resolvido`, `custom_fields[].name`, `data_inicio`/`data_fim`, `total_amount`). A v3
+// manda só ids. Cada regra abaixo reconstrói o que o TTARS entregava e foi PROVADA contra as colunas
+// já gravadas no espelho (jul–set/2026: 2.140 vendas, 4.604 itens — o `raw` guardado é o payload v3):
+//   • valor do item = `totals.amount` (4604/4604);
+//   • datas por tipo (100% em todos os tipos presentes; no aéreo, 1ª..última PARTIDA dos trechos);
+//   • nome do produto por tipo (hotel `accommodation_kind`, pacote `package_name`, others/operations o
+//     nome do catálogo SEM o espaço final, demais um rótulo fixo);
+//   • setor = campo personalizado "Setor" (2140/2140); vendedor de Weddings = campo "Vendedor(a)
+//     Responsável - Grupo" ou, sem ele, o nome do seller; nomes de pessoa = `/people/{id}.name`.
+// Os ids dos campos personalizados NÃO são fixados aqui: o resolvedor os acha pelo NOME em
+// `/custom_fields` — a mesma chave que a v5.x usava.
 //
-// Medido em 05/08/2026 contra a API, venda a venda, nos 12 meses — **24 vendas nessa condição,
-// R$ 896.718,90 de faturamento e R$ 282.422,05 de receita** (baseline completo em
-// `docs/investigacoes/2026-08-05-v5-4-5-baseline-vendas-retidas.md`). jul/2026 é o pior:
-// **25,19% da receita do mês**, quase toda numa venda só (a 73083 valia R$ 293.721,82 no
-// espelho e −R$ 687,96 na API). E crescia: julho foi de 5 para 6 em 24h.
-//
-// Agora gravamos TODOS os produtos, com o `status` real. Quem decide o que soma é a
-// `monde.mv_vendas_diarias`, que **já filtra** `WHERE i.status = 'active'` desde a 0179 — um
-// filtro que era código morto (a tabela tinha 47.182 itens, todos ativos) e passa a ser o
-// mecanismo vivo. Venda 100% cancelada entra no espelho e não produz linha nenhuma na mv:
-// contribui zero **sozinha**, sem ninguém marcar nada. Auto-corretiva.
-//
-// O que continua sendo excluído é só o que é exclusão de ESCOPO — `welcome` e `sem_setor` —,
-// que é estável: uma venda não deixa de ser Welcome. (Resíduo conhecido e aceito: venda que
-// MUDE para Welcome depois de espelhada ainda sobraria; zero casos medidos, e o tripwire a
-// acusaria. Tratá-la exigiria filtrar venda na mv, o que só é possível com DROP+CREATE —
-// destrutivo, e derrubaria a view-compat de que Metas e Performance dependem.)
+// ── v5.4.5: O ESPELHO ESPELHA; A REGRA DE NEGÓCIO MORA NA LEITURA (ADR-0165) ───────────────
+// Gravamos TODOS os produtos, com o `status` real; quem decide o que soma é a
+// `monde.mv_vendas_diarias` (`WHERE i.status = 'active'`). Venda 100% cancelada entra no espelho e
+// soma zero sozinha. Só `welcome` e `sem_setor` continuam sendo exclusão (de ESCOPO, estável).
 
 export interface ItemEspelho {
   produto: string | null
@@ -68,153 +60,215 @@ export interface VendaEspelho {
   itens: ItemEspelho[]
 }
 
-// `sem_item_ativo` continua no tipo, mas NUNCA é mais retornado (v5.4.5): venda sem item ativo
-// passou a ser espelhada, com os itens cancelados. O membro fica porque `IngestResult.excluidas`
-// e o tripwire têm a chave no shape e em dado já gravado — removê-la quebraria o histórico do
-// painel sem ganho. Vira zero permanente, e isso é observável de propósito.
+// `sem_item_ativo` continua no tipo, mas NUNCA é retornado (v5.4.5) — a chave segue no shape do
+// tripwire e em dado já gravado.
 export type TransformResult =
   | { venda: VendaEspelho }
   | { excluida: 'welcome' | 'sem_setor' | 'sem_item_ativo' }
 
-// ── v5.12.0: VERSÃO DA TRANSFORMAÇÃO NO `raw_hash` ─────────────────────────────────────────
-// O `monde_ingest_promover` (0267) só reescreve uma venda quando `raw_hash` MUDA. Isso é certo
-// para mudança na ORIGEM, mas cega para mudança AQUI: corrigir a transformação não corrige nada
-// do que já está espelhado, porque o `raw` do Monde é o mesmo e a venda é pulada. Foi o caso da
-// v5.12.0 — o `produto` de jun–set/2026 gravado como "Outros" só seria reescrito se o Monde
-// editasse cada venda.
-//
-// Por isso o hash gravado carrega a versão da transformação. Subir `VERSAO_TRANSFORM` faz TODA
-// venda que passar de novo pela ingestão (incremental: 7 dias; reconciliação: 3 meses em ciclo;
-// janela/backfill: sob demanda) divergir UMA vez e ser reescrita com a regra nova; dali em diante
-// a idempotência volta a valer. Nenhum leitor compara o hash com o da API — ele é só a chave do
-// "pula se igual". Suba a versão SEMPRE que a saída mudar para um mesmo `raw`.
-export const VERSAO_TRANSFORM = 2
+/** O que o transform precisa saber que a venda não traz (nomes) — ver `nomes.ts`. */
+export interface Resolvedor {
+  /** Nome e documento de uma pessoa do Monde; `null` se desconhecida. */
+  pessoa(id: string | null | undefined): { nome: string | null; cpf_cnpj: string | null } | null
+  /** Nome do produto do catálogo; `null` se desconhecido. */
+  produtoCatalogo(id: string | null | undefined): string | null
+  /** Id do campo personalizado "Setor". */
+  readonly campoSetor: number
+  /** Id do campo "Vendedor(a) Responsável - Grupo" (`null` se o Monde não tiver mais o campo). */
+  readonly campoVendedorWeddings: number | null
+}
 
-/** `raw_hash` do provedor + versão da transformação (ver o bloco acima). */
-export function hashComVersao(rawHash: string): string {
-  return `${rawHash}#t${VERSAO_TRANSFORM}`
+// ── VERSÃO DA TRANSFORMAÇÃO NO `raw_hash` (v5.12.0) ───────────────────────────────────────────
+// O `monde_ingest_promover` só reescreve uma venda quando `raw_hash` MUDA. O hash carrega a versão da
+// transformação para que mudar a REGRA (sem o Monde mudar a venda) reescreva cada venda uma vez.
+// v6.2.0: 3 — e o hash da origem passou a ser NOSSO (o TTARS mandava pronto): sha256 do JSON
+// canônico do payload (chaves ordenadas), estável para o mesmo conteúdo.
+export const VERSAO_TRANSFORM = 3
+
+/** JSON com as chaves de todo objeto em ordem — a mesma venda dá sempre o mesmo texto. */
+export function jsonCanonico(v: unknown): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v) ?? 'null'
+  if (Array.isArray(v)) return `[${v.map(jsonCanonico).join(',')}]`
+  const o = v as Record<string, unknown>
+  return `{${Object.keys(o).sort().filter((k) => o[k] !== undefined)
+    .map((k) => `${JSON.stringify(k)}:${jsonCanonico(o[k])}`).join(',')}}`
+}
+
+/** `raw_hash` gravado: sha256 do payload canônico + versão da transformação. */
+export function hashDoRaw(raw: unknown): string {
+  return `${createHash('sha256').update(jsonCanonico(raw)).digest('hex')}#t${VERSAO_TRANSFORM}`
 }
 
 /**
- * Nome do produto (v5.12.0). O nome do catálogo (`product_name_resolvido`) vem primeiro: é o que
- * `description` trazia até mai/2026 nos tipos others/operations ("Contrato de casamento", "Passes
- * de Trem"…) e que o provedor trocou por rótulo genérico — o que zerou `get_contratos_casamento_mes`
- * de jun a set. `description` fica como fallback para os tipos sem catálogo (hotel, aéreo, seguro)
- * enquanto existir; ele SAI da API em 2026-10-01 e, daí em diante, esses tipos gravam `null`
- * (nenhum leitor usa `produto` neles — o tipo está em `product_kind`).
+ * Tipos de produto, NA ORDEM em que os itens são gravados. É a ordem dos arrays no manual da v3 e a
+ * ordem que o espelho já tem (medido em 05/10: as sequências multi-tipo gravadas seguem esta lista).
+ * O valor gravado em `product_kind` é o nome do array — o mesmo que a v5.x gravava.
  */
-function nomeDoProduto(p: Product): string | null {
-  return p.product_name_resolvido ?? p.description ?? null
+export const TIPOS_PRODUTO = [
+  'hotels', 'airline_tickets', 'insurances', 'cruises', 'car_rentals', 'ground_transportations',
+  'train_tickets', 'travel_packages', 'others', 'operations', 'cvc_packages', 'excursions',
+] as const
+export type TipoProduto = (typeof TIPOS_PRODUTO)[number]
+
+/** Rótulo do produto nos tipos sem nome próprio — o que o TTARS gravava (medido nos tipos presentes). */
+const ROTULO_FIXO: Partial<Record<TipoProduto, string>> = {
+  airline_tickets: 'Passagem aérea',
+  insurances: 'Seguro viagem',
+  car_rentals: 'Locação de veículo',
+  // Tipos AUSENTES do espelho até 05/10 (nenhum item gravado): rótulo genérico, sem leitor hoje.
+  cruises: 'Cruzeiro',
+  ground_transportations: 'Transporte terrestre',
+  train_tickets: 'Passagem de trem',
+  cvc_packages: 'Pacote CVC',
+  excursions: 'Excursão',
 }
 
-const CAMPO_SETOR = 'Setor'
-const CAMPO_VENDEDOR_WEDDINGS = 'Vendedor(a) Responsável - Grupo'
+function texto(v: unknown): string | null {
+  if (v === null || v === undefined) return null
+  const s = String(v).trim()
+  return s ? s : null
+}
 
-/** Valor (trim, `null` se ausente/vazio) do custom_field cujo `name` bate exatamente. */
-function customFieldValor(sale: SaleDetail, nome: string): string | null {
-  const cf = sale.custom_fields.find((f) => f.name === nome)
-  const v = cf?.value?.trim()
-  return v ? v : null
+/** Parte de data (`AAAA-MM-DD`) de um campo de data ou data-hora sem fuso. */
+function dia(v: string | null | undefined): string | null {
+  const s = v?.trim()
+  return s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null
+}
+
+function nomeDoProduto(tipo: TipoProduto, p: Produto, r: Resolvedor): string | null {
+  switch (tipo) {
+    case 'hotels': return texto(p.accommodation_kind) ?? 'Hospedagem'
+    case 'travel_packages': return texto(p.package_name)
+    case 'others':
+    case 'operations': return texto(r.produtoCatalogo(p.product?.id)) // o catálogo tem espaço final
+    case 'cruises': return texto(p.ship_name) ?? ROTULO_FIXO.cruises ?? null
+    case 'cvc_packages': return texto(p.package_name) ?? ROTULO_FIXO.cvc_packages ?? null
+    default: return ROTULO_FIXO[tipo] ?? null
+  }
+}
+
+function datasDoProduto(tipo: TipoProduto, p: Produto): { inicio: string | null; fim: string | null } {
+  switch (tipo) {
+    case 'hotels': return { inicio: dia(p.check_in), fim: dia(p.check_out) }
+    case 'airline_tickets': {
+      // A data do aéreo só existe nos trechos. O TTARS gravava a 1ª e a ÚLTIMA PARTIDA (1031/1031);
+      // "última chegada" errava 83 itens.
+      const partidas = p.segments.map((s) => dia(s.departure_date)).filter((d): d is string => d !== null).sort()
+      return { inicio: partidas[0] ?? null, fim: partidas[partidas.length - 1] ?? null }
+    }
+    case 'insurances':
+    case 'travel_packages': return { inicio: dia(p.begin_date), fim: dia(p.end_date) }
+    case 'car_rentals': return { inicio: dia(p.pickup_date), fim: dia(p.dropoff_date) }
+    case 'others':
+    case 'operations':
+    case 'cruises': return { inicio: dia(p.departure_date), fim: dia(p.arrival_date) }
+    default:
+      // Tipos ausentes do espelho: o primeiro par de datas que existir.
+      return {
+        inicio: dia(p.begin_date) ?? dia(p.departure_date) ?? dia(p.check_in) ?? dia(p.pickup_date),
+        fim: dia(p.end_date) ?? dia(p.arrival_date) ?? dia(p.check_out) ?? dia(p.dropoff_date),
+      }
+  }
 }
 
 /**
- * Converte um SaleDetail em uma venda-espelho, ou sinaliza exclusão. Regras 1-6 do
- * briefing v5.1.2 (ver módulo). Nunca lança — Zod (schemas.ts) já tolerou o formato;
- * aqui só há decisão de escopo/síntese sobre dado já validado.
+ * `canceled_at` da v3 vem como DATA (`2026-08-20`) ou data-hora SEM fuso, sempre no horário de
+ * Brasília. A coluna é `timestamptz` e o espelho já guarda a meia-noite de Brasília
+ * (`2026-08-20T03:00:00Z`) — então o offset vai explícito; sem ele o Postgres leria em UTC e erraria 3 h.
  */
-export function transformSale(sale: SaleDetail): TransformResult {
-  // 1. Setor: custom_field "Setor" → micro → macro. Sem setor, Welcome e desconhecido excluem.
-  const micro = customFieldValor(sale, CAMPO_SETOR)
-  if (micro === null) return { excluida: 'sem_setor' }        // sem custom_field Setor
-  if (micro === SETOR_WELCOME) return { excluida: 'welcome' } // emissão interna
+export function canceladoEm(v: string | null | undefined): string | null {
+  const s = v?.trim()
+  if (!s) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00-03:00`
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) return `${s}-03:00`
+  return s // já tem fuso
+}
 
+function valorCampo(venda: VendaDetalhe, id: number | null): string | null {
+  if (id === null) return null
+  return texto(venda.custom_fields.find((c) => c.id === id)?.value)
+}
+
+/**
+ * Converte uma venda da v3 em uma venda-espelho, ou sinaliza exclusão. Nunca lança — o Zod
+ * (schemas.ts) já validou o formato; aqui só há decisão de escopo e síntese.
+ */
+export function transformSale(venda: VendaDetalhe, raw: unknown, r: Resolvedor): TransformResult {
+  // 1. Setor: campo "Setor" → micro → macro. Sem setor, Welcome e desconhecido excluem.
+  const micro = valorCampo(venda, r.campoSetor)
+  if (micro === null) return { excluida: 'sem_setor' }
+  if (micro === SETOR_WELCOME) return { excluida: 'welcome' }
   const macro = setorMacro(micro)
-  if (macro === null) return { excluida: 'sem_setor' }        // micro fora do mapa
+  if (macro === null) return { excluida: 'sem_setor' }
 
-  // 2. Itens = TODOS os produtos (v5.4.5). O cancelado é gravado com o `status` real e a mv o
-  //    ignora — ver o bloco no topo. `itensAtivos` segue existindo porque é a base do RATEIO
-  //    de receita (§5) e do `taxa_servico` (§4): esses continuam olhando só o que está vivo.
-  //    Venda sem NENHUM item ativo não é mais excluída: ela é espelhada e soma zero.
-  const itensAtivos: Product[] = sale.products.filter((p) => p.status === 'active')
+  // 2. Itens = TODOS os produtos, na ordem dos tipos (v5.4.5: o cancelado é gravado com o status real).
+  const produtos: { tipo: TipoProduto; p: Produto }[] = TIPOS_PRODUTO.flatMap((tipo) =>
+    (venda[tipo] ?? []).map((p) => ({ tipo, p })))
+  const ehAtivo = (p: Produto) => p.status === 'active'
+  const ativos = produtos.filter(({ p }) => ehAtivo(p))
 
-  // 3. Vendedor: em Weddings, custom_field dedicado tem prioridade, com fallback ao
-  // travel_agent_name se ausente/vazio; nos demais setores, sempre travel_agent_name.
-  const vendedorWeddings = macro === 'Weddings' ? customFieldValor(sale, CAMPO_VENDEDOR_WEDDINGS) : null
-  const travelAgent = sale.travel_agent_name?.trim() || null
-  const vendedor = vendedorWeddings ?? travelAgent
+  // 3. Vendedor: em Weddings o campo dedicado tem prioridade; senão, o seller da venda.
+  const nomeSeller = texto(r.pessoa(venda.seller?.id)?.nome)
+  const vendedor = (macro === 'Weddings' ? valorCampo(venda, r.campoVendedorWeddings) : null) ?? nomeSeller
 
-  // 4. Síntese (ADR-0149) — não afeta a agregação da mv; é completude/auditoria.
-  //    - taxa_servico: algum item ATIVO cobrou taxa de agência (> 0).
-  //    - operacao_propria: heurística PROVISÓRIA a partir de `raw.intermediary`
-  //      (ausente/null = operação própria); `raw` fica guardado por inteiro para
-  //      reprocessar se a heurística precisar mudar.
-  //    - contrato: sem sinal confiável na API hoje — default explícito `false`
-  //      (não é "falso valor"; é "não sabemos", registrado como tal); `raw` guardado.
-  const taxaServico = itensAtivos.some((p) => (p.agency_service_fee ?? 0) > 0)
-  const intermediary = sale.raw.intermediary
-  const operacaoPropria = intermediary === undefined || intermediary === null
+  // 4. Síntese (ADR-0149) — não afeta a agregação da mv.
+  const taxaServico = ativos.some(({ p }) => (p.agency_service_fee ?? 0) > 0)
+  const operacaoPropria = venda.intermediary === undefined || venda.intermediary === null
   const contrato = false
 
-  // 5. RECEITA por item: o `total_revenue` da VENDA é o número autoritativo do Monde (agrega
-  // ~ao que o upload traz); a soma dos componentes por produto (comissão/over/taxa/RAV/pax_fee)
-  // NÃO o reconstrói de forma confiável (verificado ao vivo: nenhuma combinação bate por venda).
-  // Então distribuímos o `total_revenue` entre os itens ATIVOS proporcional ao valor, com o resto
-  // de arredondamento no ÚLTIMO ATIVO → a soma por venda bate com total_revenue AO CENTAVO. É uma
-  // ALOCAÇÃO (não receita nativa por item); só o agregado (o que a comparação mostra) importa. (ADR-0149.)
-  //
-  // ⚠️ v5.4.5 — o rateio continua caindo SÓ nos ativos; **cancelado recebe receitas = 0**. Se ele
-  // participasse, receita vazaria para linha que a mv não soma e o total por venda deixaria de
-  // fechar com `total_revenue`. Por isso o denominador é a soma dos ATIVOS e o resto vai ao último
-  // ATIVO — daí `idxUltimoAtivo` em vez do último índice do array. Venda 100% cancelada não aloca
-  // nada a ninguém (`idxUltimoAtivo === -1`) e soma zero, que é o comportamento pretendido.
-  const totalRevenue = sale.total_revenue ?? 0
-  const somaValorAtivos = itensAtivos.reduce((s, p) => s + (p.total_amount ?? 0), 0)
-  const idxUltimoAtivo = sale.products.reduce((ult, p, i) => (p.status === 'active' ? i : ult), -1)
+  // 5. RECEITA por item: o `totals.revenue` da VENDA distribuído entre os itens ATIVOS proporcional ao
+  // valor, com o resto de arredondamento no ÚLTIMO ativo → a soma por venda bate ao centavo. Cancelado
+  // recebe 0 (se participasse, receita vazaria para linha que a mv não soma). (ADR-0149, v5.4.5.)
+  const totalRevenue = venda.totals.revenue
+  const somaAtivos = ativos.reduce((s, { p }) => s + p.totals.amount, 0)
+  const idxUltimoAtivo = produtos.reduce((ult, { p }, i) => (ehAtivo(p) ? i : ult), -1)
   let acumulado = 0
-  const itens: ItemEspelho[] = sale.products.map((p, idx) => {
-    let receita = 0 // cancelado fica em zero e não entra no rateio
-    if (p.status === 'active') {
+  const itens: ItemEspelho[] = produtos.map(({ tipo, p }, idx) => {
+    let receita = 0
+    if (ehAtivo(p)) {
       if (idx === idxUltimoAtivo) {
-        receita = Math.round((totalRevenue - acumulado) * 100) / 100 // resto ao último → soma exata
+        receita = Math.round((totalRevenue - acumulado) * 100) / 100
       } else {
-        const frac = somaValorAtivos > 0 ? (p.total_amount ?? 0) / somaValorAtivos : 1 / itensAtivos.length
+        const frac = somaAtivos > 0 ? p.totals.amount / somaAtivos : 1 / ativos.length
         receita = Math.round(totalRevenue * frac * 100) / 100
         acumulado += receita
       }
     }
+    const { inicio, fim } = datasDoProduto(tipo, p)
     return {
-      produto: nomeDoProduto(p),
-      product_kind: p.product_kind ?? null,
-      fornecedor: p.supplier_name ?? null,
+      produto: nomeDoProduto(tipo, p, r),
+      product_kind: tipo,
+      fornecedor: texto(r.pessoa(p.supplier?.id)?.nome),
       status: p.status,
-      canceled_at: p.canceled_at ?? null,
-      valor_total: p.total_amount ?? 0,
+      canceled_at: canceladoEm(p.canceled_at),
+      valor_total: p.totals.amount,
       receitas: receita,
-      data_inicio: p.data_inicio ?? null,
-      data_fim: p.data_fim ?? null,
-      passageiros: p.passengers?.length ?? null,
+      data_inicio: inicio,
+      data_fim: fim,
+      passageiros: p.passengers.length,
     }
   })
 
-  const venda: VendaEspelho = {
-    venda_numero: sale.sale_number,
-    sale_id: sale.sale_id ?? null,
-    data_venda: sale.sale_date,
-    status: sale.status,
-    setor_micro: micro,
-    setor_macro: macro,
-    vendedor,
-    pagante: sale.payer_name ?? null,
-    pagante_doc: sale.payer_cpf_cnpj ?? null,
-    contrato,
-    taxa_servico: taxaServico,
-    operacao_propria: operacaoPropria,
-    total_final_value: sale.total_final_value ?? null,
-    total_revenue: sale.total_revenue ?? null,
-    raw: sale.raw,
-    raw_hash: hashComVersao(sale.raw_hash),
-    itens,
+  const pagante = r.pessoa(venda.payer?.id)
+  return {
+    venda: {
+      venda_numero: venda.sale_number,
+      sale_id: venda.id,
+      data_venda: venda.sale_date,
+      status: venda.status,
+      setor_micro: micro,
+      setor_macro: macro,
+      vendedor,
+      pagante: texto(pagante?.nome),
+      pagante_doc: texto(pagante?.cpf_cnpj),
+      contrato,
+      taxa_servico: taxaServico,
+      operacao_propria: operacaoPropria,
+      total_final_value: venda.totals.final_amount,
+      total_revenue: venda.totals.revenue,
+      raw,
+      raw_hash: hashDoRaw(raw),
+      itens,
+    },
   }
-
-  return { venda }
 }

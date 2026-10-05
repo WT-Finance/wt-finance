@@ -1,199 +1,234 @@
 import { describe, it, expect } from 'vitest'
-import { transformSale, VERSAO_TRANSFORM } from './transform'
-import type { SaleDetail } from './schemas'
+import { transformSale, VERSAO_TRANSFORM, hashDoRaw, jsonCanonico, canceladoEm, type Resolvedor } from './transform'
+import { zVendaDetalhe } from './schemas'
 
-// Fixtures mínimas (só os campos que transformSale lê); cast via `unknown` porque a
-// tolerância do Zod deixa muitos campos opcionais e o teste exercita a LÓGICA, não o parse.
-function product(over: Record<string, unknown> = {}) {
+// Fixtures SINTÉTICAS no formato da API Monde v3 (v6.2.0) — ids e nomes inventados, nunca dado real.
+// Passam pelo Zod de verdade (`zVendaDetalhe.parse`), então o teste também cobre o schema.
+const SETOR = 7
+const VENDEDOR_WED = 11
+
+const PESSOAS: Record<string, { nome: string | null; cpf_cnpj: string | null }> = {
+  'p-pagante': { nome: 'Cliente Y', cpf_cnpj: '00000000191' },
+  'p-seller': { nome: 'Agente Emissor', cpf_cnpj: null },
+  'p-forn': { nome: 'Fornecedor Hotel', cpf_cnpj: null },
+}
+const CATALOGO: Record<string, string> = { 'prd-contrato': 'Contrato de casamento ', 'prd-ferry': 'Ferry' }
+
+const R: Resolvedor = {
+  campoSetor: SETOR,
+  campoVendedorWeddings: VENDEDOR_WED,
+  pessoa: (id) => (id ? PESSOAS[id] ?? null : null),
+  produtoCatalogo: (id) => (id ? CATALOGO[id] ?? null : null),
+}
+
+function produto(over: Record<string, unknown> = {}) {
   return {
-    product_kind: 'hotels', description: 'Hotel Single', supplier_name: 'Fornecedor',
-    status: 'active', canceled_at: null, total_amount: 500, agency_service_fee: 0,
-    over_amount: 0, intermediary_commission_amount: 0, data_inicio: '2026-06-11',
-    data_fim: '2026-06-12', passengers: [{ person_name: 'P', amount: 480, agency_fee: 20, fees: 0 }],
+    id: 'prod-1', status: 'active', canceled_at: null, supplier: { id: 'p-forn' },
+    totals: { amount: 500 }, agency_service_fee: 0, passengers: [{ person: { id: 'pax' } }],
+    accommodation_kind: 'Single', check_in: '2026-06-11', check_out: '2026-06-12',
     ...over,
   }
 }
-function sale(over: Record<string, unknown> = {}): SaleDetail {
-  return {
-    sale_number: '100', sale_id: 'uuid-100', sale_date: '2026-06-10', status: 'closed',
-    travel_agent_name: 'Agente Emissor', payer_name: 'Cliente Y', payer_cpf_cnpj: '123',
-    total_final_value: 1000, total_revenue: 100, raw: {}, raw_hash: 'h100',
-    custom_fields: [{ name: 'Setor', value: 'Corporativo' }],
-    products: [product()],
+function venda(over: Record<string, unknown> = {}) {
+  const raw = {
+    id: 'sale-100', sale_number: 100, sale_date: '2026-06-10', status: 'closed',
+    payer: { id: 'p-pagante' }, seller: { id: 'p-seller' }, intermediary: null,
+    custom_fields: [{ id: SETOR, value: 'Corporativo' }],
+    totals: { final_amount: 1000, revenue: 100, balance: 0 },
+    hotels: [produto()],
     ...over,
-  } as unknown as SaleDetail
+  }
+  return { detalhe: zVendaDetalhe.parse(raw), raw }
+}
+function transformar(over: Record<string, unknown> = {}) {
+  const { detalhe, raw } = venda(over)
+  const r = transformSale(detalhe, raw, R)
+  if (!('venda' in r)) throw new Error(`esperava venda, veio ${JSON.stringify(r)}`)
+  return r.venda
 }
 
-describe('transformSale — exclusões', () => {
+describe('transformSale v3 — exclusões', () => {
   it('exclui setor Welcome (emissão interna)', () => {
-    const r = transformSale(sale({ custom_fields: [{ name: 'Setor', value: 'Welcome' }] }))
-    expect(r).toEqual({ excluida: 'welcome' })
+    const { detalhe, raw } = venda({ custom_fields: [{ id: SETOR, value: 'Welcome' }] })
+    expect(transformSale(detalhe, raw, R)).toEqual({ excluida: 'welcome' })
   })
-  it('exclui venda sem custom_field Setor', () => {
-    const r = transformSale(sale({ custom_fields: [] }))
-    expect(r).toEqual({ excluida: 'sem_setor' })
+  it('exclui venda sem o campo Setor', () => {
+    const { detalhe, raw } = venda({ custom_fields: [] })
+    expect(transformSale(detalhe, raw, R)).toEqual({ excluida: 'sem_setor' })
   })
   it('exclui micro desconhecido (fora do mapa)', () => {
-    const r = transformSale(sale({ custom_fields: [{ name: 'Setor', value: 'Foo' }] }))
-    expect(r).toEqual({ excluida: 'sem_setor' })
+    const { detalhe, raw } = venda({ custom_fields: [{ id: SETOR, value: 'Foo' }] })
+    expect(transformSale(detalhe, raw, R)).toEqual({ excluida: 'sem_setor' })
   })
-  // v5.4.5 — INVERSÃO DELIBERADA. Até a v5.4.4 este caso devolvia `{excluida:'sem_item_ativo'}`,
-  // e era isso que criava o furo: a venda saía do universo de escrita e a linha antiga ficava
-  // CONGELADA no espelho (medido: 10 vendas, +25% na receita de jul/2026). Agora ela é espelhada
-  // com os itens cancelados e a mv — que já filtra `status='active'` — a ignora sozinha.
-  it('ESPELHA venda sem nenhum item ativo (não exclui mais) e ela soma ZERO', () => {
-    const r = transformSale(sale({
-      total_revenue: 5000, // a API pode reportar receita mesmo com tudo cancelado (venda 73083)
-      products: [product({ status: 'canceled', canceled_at: '2026-06-09T00:00:00Z', total_amount: 900 })],
-    }))
-    if (!('venda' in r)) throw new Error('não deve mais excluir por sem_item_ativo')
-    expect(r.venda.itens).toHaveLength(1)
-    expect(r.venda.itens[0].status).toBe('canceled')
-    expect(r.venda.itens[0].canceled_at).toBe('2026-06-09T00:00:00Z')
-    // O que faz a venda sumir dos totais: o item existe, mas nada é alocado nele.
-    expect(r.venda.itens[0].receitas).toBe(0)
-    // O `total_revenue` da venda NÃO é distribuído quando não há ativo — não vaza para o cancelado.
-    expect(r.venda.itens.reduce((s, i) => s + i.receitas, 0)).toBe(0)
+  it('lê o setor pelo ID do campo, não pela posição (outro campo com valor de setor não conta)', () => {
+    const { detalhe, raw } = venda({ custom_fields: [{ id: 99, value: 'Lazer' }] })
+    expect(transformSale(detalhe, raw, R)).toEqual({ excluida: 'sem_setor' })
+  })
+  // v5.4.5 — venda sem item ativo é ESPELHADA e soma zero (a mv filtra `status='active'`).
+  it('ESPELHA venda sem nenhum item ativo e ela soma ZERO', () => {
+    const v = transformar({ totals: { final_amount: 900, revenue: 5000 }, hotels: [produto({ status: 'canceled', canceled_at: '2026-06-09' })] })
+    expect(v.itens).toHaveLength(1)
+    expect(v.itens[0].status).toBe('canceled')
+    expect(v.itens[0].receitas).toBe(0)
   })
 })
 
-describe('transformSale — mapeamento e síntese', () => {
-  it('Corporativo: macro Corporativo, vendedor = travel_agent_name, contrato false, receitas somadas', () => {
-    const r = transformSale(sale())
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.setor_macro).toBe('Corporativo')
-    expect(r.venda.setor_micro).toBe('Corporativo')
-    expect(r.venda.vendedor).toBe('Agente Emissor')
-    expect(r.venda.contrato).toBe(false)
-    expect(r.venda.taxa_servico).toBe(false)          // agency_service_fee 0
-    expect(r.venda.operacao_propria).toBe(true)       // raw.intermediary ausente
-    expect(r.venda.itens).toHaveLength(1)
-    expect(r.venda.itens[0].receitas).toBe(100)       // total_revenue da venda (1 item → tudo)
-    expect(r.venda.itens[0].valor_total).toBe(500)
+describe('transformSale v3 — mapeamento (regras provadas contra o espelho em 05/10)', () => {
+  it('cabeçalho: número vira texto, totais da venda, nomes pelo resolvedor, síntese', () => {
+    const v = transformar()
+    expect(v.venda_numero).toBe('100')            // sale_number é NÚMERO na v3; o espelho guarda texto
+    expect(v.sale_id).toBe('sale-100')
+    expect(v.data_venda).toBe('2026-06-10')
+    expect(v.total_final_value).toBe(1000)        // totals.final_amount
+    expect(v.total_revenue).toBe(100)             // totals.revenue
+    expect(v.setor_macro).toBe('Corporativo')
+    expect(v.vendedor).toBe('Agente Emissor')     // /people/{seller.id}.name
+    expect(v.pagante).toBe('Cliente Y')
+    expect(v.pagante_doc).toBe('00000000191')
+    expect(v.contrato).toBe(false)
+    expect(v.taxa_servico).toBe(false)
+    expect(v.operacao_propria).toBe(true)         // intermediary null
   })
 
-  it('receita = total_revenue da venda distribuído por valor entre os itens ativos (soma exata)', () => {
-    const r = transformSale(sale({
-      total_revenue: 100,
-      products: [
-        product({ description: 'A', total_amount: 750, passengers: [] }),
-        product({ description: 'B', total_amount: 250, passengers: [] }),
-      ],
-    }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    const recs = r.venda.itens.map(i => i.receitas)
-    expect(recs[0]).toBe(75)                                  // 750/1000 × 100
-    expect(recs[1]).toBe(25)                                  // resto → 100 − 75
-    expect(recs[0] + recs[1]).toBe(100)                        // soma = total_revenue ao centavo
+  it('item: valor = totals.amount, tipo = nome do array, fornecedor pelo resolvedor, passageiros', () => {
+    const it0 = transformar().itens[0]
+    expect(it0.valor_total).toBe(500)
+    expect(it0.product_kind).toBe('hotels')
+    expect(it0.fornecedor).toBe('Fornecedor Hotel')
+    expect(it0.passageiros).toBe(1)
+    expect(it0.receitas).toBe(100)
+  })
+
+  it('pessoa desconhecida vira null (nunca o id no lugar do nome)', () => {
+    const v = transformar({ payer: { id: 'p-inexistente' }, seller: null })
+    expect(v.pagante).toBeNull()
+    expect(v.pagante_doc).toBeNull()
+    expect(v.vendedor).toBeNull()
   })
 
   it('Lazer e Expedições → macro Lazer', () => {
     for (const micro of ['Lazer', 'Expedições']) {
-      const r = transformSale(sale({ custom_fields: [{ name: 'Setor', value: micro }] }))
-      if (!('venda' in r)) throw new Error('esperava venda')
-      expect(r.venda.setor_macro).toBe('Lazer')
+      expect(transformar({ custom_fields: [{ id: SETOR, value: micro }] }).setor_macro).toBe('Lazer')
     }
   })
 
-  it('Weddings: vendedor vem do custom_field "Vendedor(a) Responsável - Grupo"', () => {
-    const r = transformSale(sale({
-      custom_fields: [
-        { name: 'Setor', value: 'WedMe' },
-        { name: 'Vendedor(a) Responsável - Grupo', value: 'Consultora Wed' },
-      ],
-    }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.setor_macro).toBe('Weddings')
-    expect(r.venda.vendedor).toBe('Consultora Wed')
+  it('Weddings: vendedor vem do campo "Vendedor(a) Responsável - Grupo"', () => {
+    const v = transformar({ custom_fields: [{ id: SETOR, value: 'WedMe' }, { id: VENDEDOR_WED, value: 'Consultora Wed' }] })
+    expect(v.setor_macro).toBe('Weddings')
+    expect(v.vendedor).toBe('Consultora Wed')
+  })
+  it('Weddings sem o campo de vendedor → nome do seller', () => {
+    expect(transformar({ custom_fields: [{ id: SETOR, value: 'Weddings' }] }).vendedor).toBe('Agente Emissor')
+  })
+  it('fora de Weddings o campo de vendedor é ignorado', () => {
+    expect(transformar({ custom_fields: [{ id: SETOR, value: 'Lazer' }, { id: VENDEDOR_WED, value: 'X' }] }).vendedor).toBe('Agente Emissor')
   })
 
-  it('Weddings sem o custom_field de vendedor → fallback travel_agent_name', () => {
-    const r = transformSale(sale({ custom_fields: [{ name: 'Setor', value: 'Weddings' }] }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.vendedor).toBe('Agente Emissor')
+  it('taxa_servico = true quando algum item ATIVO tem agency_service_fee > 0', () => {
+    expect(transformar({ hotels: [produto({ agency_service_fee: 15 })] }).taxa_servico).toBe(true)
+    expect(transformar({ hotels: [produto({ agency_service_fee: 15, status: 'canceled' })] }).taxa_servico).toBe(false)
   })
-
-  it('taxa_servico = true quando algum item ativo tem agency_service_fee > 0', () => {
-    const r = transformSale(sale({ products: [product({ agency_service_fee: 15 })] }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.taxa_servico).toBe(true)
-  })
-
-  it('operacao_propria = false quando raw.intermediary está presente', () => {
-    const r = transformSale(sale({ raw: { intermediary: { name: 'Agência X' } } }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.operacao_propria).toBe(false)
-  })
-
-  // v5.4.5 — o cancelado passa a ser GRAVADO (antes era descartado aqui). Quem filtra é a mv.
-  it('grava o item cancelado junto do ativo, e o rateio de receita NÃO vaza para ele', () => {
-    const r = transformSale(sale({
-      total_revenue: 300,
-      products: [
-        product({ description: 'Ativo', status: 'active', total_amount: 1000 }),
-        product({ description: 'Cancelado', status: 'canceled', canceled_at: '2026-06-09T00:00:00Z', total_amount: 4000 }),
-      ],
-    }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.itens).toHaveLength(2)
-
-    const ativo = r.venda.itens.find(i => i.produto === 'Ativo')!
-    const cancelado = r.venda.itens.find(i => i.produto === 'Cancelado')!
-    expect(cancelado.status).toBe('canceled')
-    expect(cancelado.receitas).toBe(0)
-    // O denominador do rateio é a soma dos ATIVOS: o ativo leva os 300 inteiros, apesar de o
-    // cancelado ter 4× o valor dele. Se o cancelado entrasse na conta, o ativo levaria 60.
-    expect(ativo.receitas).toBe(300)
-    // Invariante que não pode quebrar: soma dos ATIVOS = total_revenue, ao centavo.
-    const somaAtivos = r.venda.itens.filter(i => i.status === 'active').reduce((s, i) => s + i.receitas, 0)
-    expect(somaAtivos).toBe(300)
-  })
-
-  // Guarda de não-regressão: para venda SEM cancelado, nada pode ter mudado na v5.4.5.
-  it('venda só com ativos: o rateio continua idêntico ao de antes (resto no último)', () => {
-    const r = transformSale(sale({
-      total_revenue: 100,
-      products: [
-        product({ description: 'A', status: 'active', total_amount: 1 }),
-        product({ description: 'B', status: 'active', total_amount: 1 }),
-        product({ description: 'C', status: 'active', total_amount: 1 }),
-      ],
-    }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.itens.map(i => i.receitas)).toEqual([33.33, 33.33, 33.34]) // resto ao último
-    expect(r.venda.itens.reduce((s, i) => s + i.receitas, 0)).toBe(100)
+  it('operacao_propria = false quando há intermediary', () => {
+    expect(transformar({ intermediary: { id: 'p-inter' } }).operacao_propria).toBe(false)
   })
 })
 
-// v5.12.0 — desde jun/2026 o provedor manda rótulo genérico em `description` nos tipos
-// others/operations e o nome do catálogo em `product_name_resolvido`. Gravar `description`
-// zerou `get_contratos_casamento_mes` (que filtra `produto ILIKE 'contrato de casamento%'`)
-// de jun a set/2026, com 15 contratos na API.
-describe('transformSale — nome do produto e versão da transformação (v5.12.0)', () => {
-  it('produto = nome do catálogo quando description é o rótulo genérico "Outros"', () => {
-    const r = transformSale(sale({
-      custom_fields: [{ name: 'Setor', value: 'Weddings' }],
-      products: [product({ product_kind: 'others', description: 'Outros', product_name_resolvido: 'Contrato de casamento' })],
-    }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.itens[0].produto).toBe('Contrato de casamento')
+describe('transformSale v3 — rateio de receita (ADR-0149, v5.4.5)', () => {
+  it('total_revenue distribuído por valor entre os ativos, resto no último (soma exata)', () => {
+    const v = transformar({ hotels: [produto({ totals: { amount: 750 } }), produto({ totals: { amount: 250 } })] })
+    expect(v.itens.map((i) => i.receitas)).toEqual([75, 25])
   })
-  it('produto cai para description quando o tipo não tem catálogo (hotel, aéreo, seguro)', () => {
-    const r = transformSale(sale({ products: [product({ description: 'Hotel Single', product_name_resolvido: null })] }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.itens[0].produto).toBe('Hotel Single')
+  it('cancelado recebe 0 e NÃO entra no denominador', () => {
+    const v = transformar({
+      totals: { final_amount: 5000, revenue: 300 },
+      hotels: [produto({ totals: { amount: 1000 } }), produto({ status: 'canceled', canceled_at: '2026-06-09', totals: { amount: 4000 } })],
+    })
+    expect(v.itens.map((i) => i.receitas)).toEqual([300, 0])
   })
-  it('produto = null quando a API não manda nenhum dos dois (description sai em 2026-10-01)', () => {
-    const r = transformSale(sale({ products: [product({ description: undefined, product_name_resolvido: undefined })] }))
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.itens[0].produto).toBeNull()
+  it('três iguais: 33,33 / 33,33 / 33,34', () => {
+    const v = transformar({ hotels: [1, 2, 3].map(() => produto({ totals: { amount: 1 } })) })
+    expect(v.itens.map((i) => i.receitas)).toEqual([33.33, 33.33, 33.34])
   })
-  // O promover só reescreve venda cujo `raw_hash` mudou. Sem a versão no hash, corrigir a
-  // transformação não alcançaria nenhuma venda já espelhada (o `raw` do Monde é o mesmo).
-  it('raw_hash gravado = hash do provedor + versão da transformação', () => {
-    const r = transformSale(sale())
-    if (!('venda' in r)) throw new Error('esperava venda')
-    expect(r.venda.raw_hash).toBe(`h100#t${VERSAO_TRANSFORM}`)
-    expect(VERSAO_TRANSFORM).toBeGreaterThanOrEqual(2) // a v1 (hash cru) é o que está gravado até a v5.12.0
+  it('itens na ORDEM dos tipos do manual (hotel antes de aéreo antes de seguro antes de others)', () => {
+    const v = transformar({
+      others: [produto({ product: { id: 'prd-ferry' } })],
+      insurances: [produto({ begin_date: '2026-06-01', end_date: '2026-06-09' })],
+      airline_tickets: [produto({ segments: [] })],
+      hotels: [produto()],
+    })
+    expect(v.itens.map((i) => i.product_kind)).toEqual(['hotels', 'airline_tickets', 'insurances', 'others'])
+  })
+})
+
+describe('transformSale v3 — nome e datas por tipo', () => {
+  it('hotel: accommodation_kind; sem ele, "Hospedagem"; datas check_in/check_out', () => {
+    const a = transformar().itens[0]
+    expect([a.produto, a.data_inicio, a.data_fim]).toEqual(['Single', '2026-06-11', '2026-06-12'])
+    expect(transformar({ hotels: [produto({ accommodation_kind: null })] }).itens[0].produto).toBe('Hospedagem')
+  })
+  it('aéreo: rótulo fixo e datas = 1ª e ÚLTIMA PARTIDA dos trechos (não a última chegada)', () => {
+    const a = transformar({ hotels: [], airline_tickets: [produto({ segments: [
+      { departure_date: '2026-12-25T08:00:00', arrival_date: '2026-12-26T01:00:00' },
+      { departure_date: '2026-12-12T22:00:00', arrival_date: '2026-12-13T09:00:00' },
+    ] })] }).itens[0]
+    expect([a.produto, a.data_inicio, a.data_fim]).toEqual(['Passagem aérea', '2026-12-12', '2026-12-25'])
+  })
+  it('seguro, locação e pacote', () => {
+    const v = transformar({ hotels: [],
+      insurances: [produto({ begin_date: '2026-07-01', end_date: '2026-07-20' })],
+      car_rentals: [produto({ pickup_date: '2026-10-03T14:00:00', dropoff_date: '2026-10-07T10:00:00' })],
+      travel_packages: [produto({ package_name: 'Tropical Snack', begin_date: '2026-08-01', end_date: '2026-08-05' })],
+    })
+    expect(v.itens.map((i) => [i.produto, i.data_inicio, i.data_fim])).toEqual([
+      ['Seguro viagem', '2026-07-01', '2026-07-20'],
+      ['Locação de veículo', '2026-10-03', '2026-10-07'],
+      ['Tropical Snack', '2026-08-01', '2026-08-05'],
+    ])
+  })
+  // v5.12.0 — o nome do CATÁLOGO é o que `get_contratos_casamento_mes` filtra. O catálogo da v3 traz
+  // espaço no fim do nome ("Transporte Rodoviario "); o espelho guarda sem.
+  it('others/operations: nome do catálogo SEM espaço final; datas departure/arrival', () => {
+    const v = transformar({ custom_fields: [{ id: SETOR, value: 'Weddings' }], hotels: [],
+      others: [produto({ product: { id: 'prd-contrato' }, departure_date: '2027-05-01', arrival_date: null })],
+      operations: [produto({ product: { id: 'prd-desconhecido' } })],
+    })
+    expect(v.itens[0].produto).toBe('Contrato de casamento')
+    expect([v.itens[0].data_inicio, v.itens[0].data_fim]).toEqual(['2027-05-01', null])
+    expect(v.itens[1].produto).toBeNull()
+  })
+})
+
+describe('canceladoEm — fuso explícito de Brasília', () => {
+  it('data pura vira meia-noite de Brasília (o que o espelho já guarda: 03:00Z)', () => {
+    expect(canceladoEm('2026-08-20')).toBe('2026-08-20T00:00:00-03:00')
+    expect(new Date(canceladoEm('2026-08-20')!).toISOString()).toBe('2026-08-20T03:00:00.000Z')
+  })
+  it('data-hora sem fuso ganha -03:00; com fuso fica como veio; vazio é null', () => {
+    expect(canceladoEm('2026-08-20T10:30:00')).toBe('2026-08-20T10:30:00-03:00')
+    expect(canceladoEm('2026-08-20T10:30:00Z')).toBe('2026-08-20T10:30:00Z')
+    expect(canceladoEm(null)).toBeNull()
+    expect(canceladoEm('  ')).toBeNull()
+  })
+})
+
+describe('raw_hash (v6.2.0: o hash da origem passou a ser nosso)', () => {
+  it('mesmo conteúdo com chaves em outra ordem dá o MESMO hash', () => {
+    expect(hashDoRaw({ a: 1, b: { c: [1, { d: 2, e: 3 }] } })).toBe(hashDoRaw({ b: { c: [1, { e: 3, d: 2 }] }, a: 1 }))
+    expect(jsonCanonico({ b: 1, a: undefined, c: null })).toBe('{"b":1,"c":null}')
+  })
+  it('conteúdo diferente dá hash diferente; o hash carrega a versão da transformação', () => {
+    expect(hashDoRaw({ a: 1 })).not.toBe(hashDoRaw({ a: 2 }))
+    expect(transformar().raw_hash).toMatch(new RegExp(`^[0-9a-f]{64}#t${VERSAO_TRANSFORM}$`))
+    expect(VERSAO_TRANSFORM).toBe(3) // 2 = era TTARS; subir de novo quando a saída mudar para o mesmo raw
+  })
+  it('o raw gravado é o payload como veio, com o número da venda ainda numérico', () => {
+    const v = transformar()
+    expect((v.raw as { sale_number: unknown }).sale_number).toBe(100)
+  })
+})
+
+describe('zVendaDetalhe — estrito no que decide receita', () => {
+  it('totals sem revenue falha o parse (nunca zero silencioso)', () => {
+    expect(zVendaDetalhe.safeParse({ id: 'x', sale_number: 1, sale_date: '2026-01-01', totals: { final_amount: 1 } }).success).toBe(false)
   })
 })

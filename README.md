@@ -48,7 +48,7 @@ Chaves obrigatórias: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`. As de SMTP, Asaas, Monde e cron são opcionais no desenvolvimento e
 estão documentadas em `.env.example`.
 
-> `SUPABASE_SERVICE_ROLE_KEY`, `SMTP_PASS`, `ASAAS_API_KEY`, `MONDE_API_KEY` e `CRON_SECRET` são
+> `SUPABASE_SERVICE_ROLE_KEY`, `SMTP_PASS`, `ASAAS_API_KEY`, `MONDE_V3_API_KEY` e `CRON_SECRET` são
 > **sensíveis**: só server-side, nunca no cliente, nunca com valor real no repositório. As de
 > e-mail, Asaas e Monde precisam existir **também** no ambiente da Vercel.
 

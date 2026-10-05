@@ -1,74 +1,70 @@
-import { fetchSalesPage } from './client'
+import { OrcamentoEsgotado, type ClienteMonde } from './client'
+import { corteDoDia } from './ingest'
 
-// Auditoria do espelho Monde (v5.4.4) — a camada de I/O do detector e do tripwire.
+// Auditoria do espelho Monde (v5.4.4; refeita na v6.2.0 para a API oficial v3) — o detector "quais
+// números a API tem que o espelho não tem". SÓ LEITURA: lê a lista e não grava nada (nem o índice de
+// cabeçalhos), então pode rodar fora do lock de ingestão.
 //
-// Fica separada de `ingest.ts` DE PROPÓSITO: auditar e ingerir têm necessidades diferentes
-// (a auditoria quer TODOS os `sale_number` da API, inclusive os que a ingestão nem consegue
-// buscar; a ingestão quer os que têm `sale_id`) e esta versão é um hotfix — o caminho de
-// ingestão vivo não é refatorado por conveniência.
+// A v3 não filtra a lista por data e a ordena por CRIAÇÃO. Para cobrir as vendas com `sale_date` em
+// [from, to] é preciso descer até a criação anterior a `from − MARGEM_CRIACAO_DIAS`: medido em 05/10/2026
+// (12 meses do espelho), venda criada até 16 dias ANTES da própria data. Janela antiga custa muitas
+// páginas; sem orçamento, a resposta sai com `parcial: true` em vez de fingir completude.
 //
-// Nada aqui compara contra o UPLOAD. A referência é sempre a API: o upload vai ficar dormente
-// e esfriar, e um monitor ancorado nele morre junto (decisão do Yan no briefing).
+// Nada aqui compara contra o UPLOAD. A referência é sempre a API (decisão do Yan na v5.4.4).
 
-/** Todos os `sale_number` que a API lista para uma janela, + os que não têm `sale_id`. */
+/** Folga de criação ANTES da data da venda (máximo medido: 16 dias). */
+export const MARGEM_CRIACAO_DIAS = 20
+
 export interface JanelaDaApi {
   numeros: string[]
-  /**
-   * Vendas listadas pela API SEM `sale_id`. A ingestão as pula (`ingest.ts` precisa do id para
-   * buscar o detalhe), então elas nunca chegam ao espelho — é um segundo furo, de natureza
-   * diferente do que esta versão conserta, e a auditoria o reporta em vez de escondê-lo dentro
-   * da contagem de ausentes.
-   */
+  /** Vendas da janela listadas SEM id — a ingestão não consegue abri-las. */
   sem_sale_id: string[]
-  /** `total` que a própria API declara para a janela (guia da paginação). */
+  /** A v3 não declara total: é a contagem do que foi listado. */
   total: number
   paginas: number
+  /** `true` se o orçamento acabou antes do corte — a lista está incompleta. */
+  parcial: boolean
 }
 
-/**
- * Lista a janela inteira na API, coletando só o que a auditoria precisa. Mesma paginação guiada
- * por `total` de `ingestWindow`, e o mesmo teto de `page_size` (200, o máximo da API).
- */
-export async function listarJanelaDaApi(opts: {
-  from: string
-  to: string
-  pageSize?: number
-  onLog?: (msg: string) => void
-}): Promise<JanelaDaApi> {
-  const { from, to, pageSize = 200, onLog } = opts
+export function menosDias(diaISO: string, n: number): string {
+  const d = new Date(`${diaISO}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - n)
+  return d.toISOString().slice(0, 10)
+}
+
+export async function listarJanelaDaApi(
+  cliente: ClienteMonde,
+  opts: { from: string; to: string; onLog?: (msg: string) => void },
+): Promise<JanelaDaApi> {
+  const { from, to, onLog } = opts
+  const corte = corteDoDia(menosDias(from, MARGEM_CRIACAO_DIAS))
   const numeros: string[] = []
   const semSaleId: string[] = []
-  let page = 1
-  let total = Number.POSITIVE_INFINITY
   let paginas = 0
-
-  while (numeros.length < total) {
-    const resp = await fetchSalesPage({ from, to, page, pageSize })
-    total = resp.total ?? numeros.length
-    paginas++
-    const data = resp.data ?? []
-    if (data.length === 0) break
-    for (const s of data) {
-      const numero = s.sale_number ?? ''
-      if (!numero) continue // sem número não há como comparar com o espelho
-      numeros.push(numero)
-      if (!s.sale_id) semSaleId.push(numero)
+  let parcial = false
+  let cursor: string | null = null
+  try {
+    for (;;) {
+      const pagina = await cliente.listarVendas(cursor)
+      paginas++
+      for (const s of pagina.data) {
+        if (!s.sale_number || s.sale_date < from || s.sale_date > to) continue
+        numeros.push(s.sale_number)
+        if (!s.id) semSaleId.push(s.sale_number)
+      }
+      const ultima = pagina.data[pagina.data.length - 1]
+      if (ultima?.created_at && ultima.created_at < corte) break
+      if (!pagina.pagination.has_next_page || !pagina.pagination.next_cursor) break
+      cursor = pagina.pagination.next_cursor
     }
-    if (data.length < pageSize) break
-    page++
+  } catch (e) {
+    if (!(e instanceof OrcamentoEsgotado)) throw e
+    parcial = true
   }
-
+  const unicos = [...new Set(numeros)]
   onLog?.(
-    `auditoria ${from}..${to}: ${numeros.length} venda(s) na API em ${paginas} página(s)` +
-      (semSaleId.length ? ` · ${semSaleId.length} SEM sale_id (a ingestão não as alcança)` : ''),
+    `auditoria ${from}..${to}: ${unicos.length} venda(s) na API em ${paginas} página(s)` +
+      (semSaleId.length ? ` · ${semSaleId.length} SEM id` : '') + (parcial ? ' · PARCIAL (orçamento)' : ''),
   )
-  return { numeros, sem_sale_id: semSaleId, total: Number.isFinite(total) ? total : numeros.length, paginas }
+  return { numeros: unicos, sem_sale_id: semSaleId, total: unicos.length, paginas, parcial }
 }
-
-// NOTA (v5.4.4): houve aqui um `contarVendasPorMesNaApi` que fazia 12 chamadas `page_size=1`
-// lendo só o `total`, para o tripwire da M4. Foi REMOVIDO: medido em 04/08/2026, comparar o
-// `total` da API contra a contagem do espelho acende todo mês para sempre, porque a API conta
-// vendas que a transformação exclui por regra (jul/2026: 8 Welcome + 12 sem setor + 9 sem item
-// ativo, de 775). O tripwire passou a ser subproduto da reconciliação, que já tem o detalhe de
-// cada venda e portanto a contagem EXATA de espelháveis — zero chamada extra. Ver
-// `reconciliacao.ts` (§TRIPWIRE) e o ADR-0164.

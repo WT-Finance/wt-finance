@@ -1,41 +1,38 @@
-// API Route de ingestão do Monde (v5.1.2/M5; alcance corrigido na v5.4.4). runtime nodejs,
-// server-only. Aciona `ingestWindow` (lista→detalhe→transform→staging→promover→refresh) com um
-// client SERVICE-ROLE (as RPCs monde_ingest_* são service_role-only). Idempotente por raw_hash.
+// API Route de ingestão do Monde (v5.1.2/M5; alcance corrigido na v5.4.4; API oficial v3 na v6.2.0).
+// runtime nodejs, server-only. Aciona `sincronizar` (varredura de cabeçalhos → fila de detalhe →
+// transform → staging → promover → marcar → refresh) com um client SERVICE-ROLE (as RPCs monde_* são
+// service_role-only).
 //
 // Auth (duas portas):
-//   • Vercel Cron / pg_cron → header `Authorization: Bearer $CRON_SECRET` (Vercel injeta quando
-//     CRON_SECRET está no ambiente). Sem sessão/cookies.
+//   • Vercel Cron / pg_cron → header `Authorization: Bearer $CRON_SECRET`. Sem sessão/cookies.
 //   • Disparo manual (backfill/window/auditoria) → sessão com área `admin/uploads`.
 //
 // Modos (?mode=):
-//   • incremental (default) — janela = hoje−7d..hoje. É o que o cron de 15min chama.
-//   • reconciliacao (v5.4.4) — UM mês por invocação, ciclando os 3 últimos meses por cursor.
-//     A rede AUTO-CURATIVA desta versão. Fecha o ciclo populando o tripwire.
-//   • auditoria&from&to (v5.4.4) — SÓ LEITURA: lista a API e pergunta ao banco quais vendas
-//     faltam. É o detector do furo e o teste de aceitação da versão.
-//   • window&from=YYYY-MM-DD&to=YYYY-MM-DD[&max=N] — janela explícita (demonstração/checkpoint).
-//   • backfill[&from=YYYY-MM-DD] — resumível por cursor de MÊS: processa o próximo mês após o
-//     cursor e avança; re-invocar até `done:true`. UPSERT torna o reprocesso seguro.
+//   • incremental (default, cron de 15 min) — varre a lista até as vendas CRIADAS há 7 dias e drena a
+//     fila sob orçamento; o que não couber fica para o próximo tick.
+//   • reconciliacao (3×/dia, um mês por invocação em ciclo) — varre fundo (janela de 3 meses + margem
+//     de criação), drena, e APURA o mês pela tabela de cabeçalhos para a CURA e o TRIPWIRE.
+//   • auditoria&from&to — SÓ LEITURA: lista a API e pergunta ao banco quais vendas faltam.
+//   • window&from&to[&max=N] — força a releitura de um intervalo de data de venda; resumível (re-invocar
+//     até `done:true`).
+//   • backfill[&from=YYYY-MM-DD] — `window` mês a mês por cursor, resumível.
 //
-// ── POR QUE A v5.4.4 EXISTE ────────────────────────────────────────────────────────────────
-// A API do Monde filtra a listagem por DATA DA VENDA. A janela antiga do incremental era
-// `hoje−2d..hoje`, então venda REGISTRADA COM ATRASO e data retroativa nunca caía nela — e o
-// incremental nunca voltava àquele dia. Medido em 04/08/2026 contra a API, venda a venda: 42
-// vendas fora do espelho (R$ 392.070,01 de faturamento), 37 de 38 registradas mais de 2 dias
-// depois da data da venda, atraso mediano 4 dias e MÁXIMO 32. O espelho é a fonte de produção
-// de Metas e Performance desde a v5.1.4 ⇒ era subestimação de faturamento em produção.
-//
-// A correção NÃO é alargar a janela até caber o pior caso (32 dias observado não é teto
-// garantido, e puxar 35 dias 96×/dia é caro). É janela curta e barata para o caso comum +
-// reconciliação larga diária, que é AUTO-CURATIVA: não depende de acertar o tamanho de nenhuma
-// janela. Ver ADR-0164 e a migration 0232.
+// ── v6.2.0: POR QUE A FORMA MUDOU ──────────────────────────────────────────────────────────
+// A `monde-data` (TTARS) foi desligada em 02/10/2026. A v3 não filtra por data, ordena por CRIAÇÃO, não
+// tem "alterado desde" nem `total`, e aceita 1 chamada a cada 1,3 s. Ver o topo de `ingest.ts`. A rede
+// AUTO-CURATIVA da v5.4.4 continua: a reconciliação é a varredura FUNDA + a cura; a venda lançada com
+// atraso entra pelo incremental, porque aparece no topo da lista (é recém-criada).
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAreaApi } from '@/lib/auth/sessao'
 import { getAdminClient } from '@/lib/supabase/admin'
-import { ingestWindow, type MondeDb } from '@/lib/monde/ingest'
+import { criarClienteMonde } from '@/lib/monde/client'
+import {
+  sincronizar, apurarMes, bloqueioDaApuracao, corteDoDia,
+  type MondeDb, type ResultadoSincronizacao,
+} from '@/lib/monde/ingest'
 import {
   MESES_RECONCILIACAO,
   MESES_TRIPWIRE,
@@ -48,40 +45,54 @@ import {
   mesclarTripwire,
   type Tripwire,
 } from '@/lib/monde/reconciliacao'
-import { listarJanelaDaApi } from '@/lib/monde/auditoria'
+import { listarJanelaDaApi, menosDias, MARGEM_CRIACAO_DIAS } from '@/lib/monde/auditoria'
 import { abrirExecucao, concluirExecucao } from '@/lib/ingestao/execucao'
 
-// v5.10.0/D4-011: `unknown` em vez de `any` — o retorno já é estreitado por
-// cast/validação em cada call-site, e `any` desligava a checagem em toda a cadeia.
+// v5.10.0/D4-011: `unknown` em vez de `any` — o retorno já é estreitado por cast/validação.
 type Rpc = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
-/** Dias que o incremental cobre. Era 2 até a v5.4.4; o atraso MEDIANO de registro é 4. */
+/** Dias de CRIAÇÃO que o incremental varre (o atraso mediano de registro é 0–4 dias; p99 11). */
 const DIAS_INCREMENTAL = 7
 
 /**
- * TTL do lock de ingestão. ⚠️ Tem de ficar > 2× `maxDuration` (ver o corpo de
- * `monde_ingest_claim`, migration 0232): não há heartbeat nem fencing token, então é essa
- * margem que impede o lock de um processo VIVO de ser expirado debaixo dele. Mexeu no
- * `maxDuration`? Mexa aqui.
+ * Orçamento de chamadas à API por invocação. A 1 chamada / 1,3 s cabem ~175 chamadas; o resto do
+ * `maxDuration` (70 s) fica para staging/promover/marcar/refresh e para a cura.
+ */
+const PRAZO_API_MS = 230_000
+
+/** Uma venda já lida só é RE-lida (revisita) depois deste intervalo. */
+const REVISITA_HORAS = 12
+
+/** Valor de `window_cursor:<intervalo>` quando a varredura do intervalo já chegou ao corte. */
+const VARREDURA_CONCLUIDA = 'concluida'
+
+const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
+/** `from`/`to` válidos (AAAA-MM-DD, from ≤ to) ou a mensagem de erro para o 400. */
+function intervaloInvalido(from: string | null, to: string | null): string | null {
+  if (!from || !to) return 'faltam from/to (YYYY-MM-DD)'
+  if (!RE_DIA.test(from) || !RE_DIA.test(to) || Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) return 'from/to fora do formato YYYY-MM-DD'
+  if (from > to) return 'from depois de to'
+  return null
+}
+
+/**
+ * TTL do lock de ingestão. ⚠️ Tem de ficar > 2× `maxDuration` (ver o corpo de `monde_ingest_claim`,
+ * migration 0232): não há heartbeat nem fencing token.
  */
 const LOCK_TTL_SEGUNDOS = 900
 
 function hojeSP(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
 }
-function addDiasISO(iso: string, n: number): string {
-  const d = new Date(iso + 'T12:00:00Z')
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-/** Mês seguinte a um `YYYY-MM` — cursor do backfill, que avança para frente sem ciclar. */
+/** Mês seguinte a um `YYYY-MM` — cursor do backfill. */
 function proxMes(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
-  const d = new Date(Date.UTC(y, m, 1)) // m (1-based) → mês seguinte (0-based)
+  const d = new Date(Date.UTC(y, m, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
 async function handle(req: NextRequest): Promise<Response> {
+  const inicio = Date.now()
   // ── auth: cron secret OU sessão admin ──
   const secret = process.env.CRON_SECRET
   const cronOk = !!secret && req.headers.get('authorization') === `Bearer ${secret}`
@@ -102,20 +113,15 @@ async function handle(req: NextRequest): Promise<Response> {
     if (error) throw new Error(`RPC ${fn} falhou: ${JSON.stringify(error)}`)
     return data
   }
+  async function controle(chave: string): Promise<string | null> {
+    const v = await rpc('monde_ingest_control_get', { p_chave: chave })
+    return v === null || v === undefined || v === '' ? null : String(v)
+  }
 
   /**
-   * Roda `corpo` com o lock de ingestão tomado, ou devolve `null` se outra ingestão já está em
-   * curso. Obrigatório em TODO modo que chame `ingestWindow`.
-   *
-   * O recurso protegido é a STAGING COMPARTILHADA: `monde_ingest_limpar_staging` dá TRUNCATE em
-   * `monde.venda_staging`/`venda_item_staging` no início de toda janela, então duas ingestões
-   * sobrepostas fazem uma apagar as linhas da outra em pleno vôo e as vendas lidas da API nunca
-   * são promovidas — PERDA SILENCIOSA. A race é pré-existente (um ciclo que passe de 15 min já
-   * se sobrepõe ao tick seguinte); a reconciliação diária a tornaria rotina.
-   *
-   * `p_dono` é token por EXECUÇÃO e `monde_ingest_release` compara antes de deletar, então um
-   * ciclo não solta o lock de outro (achado ALTO do revisor-db). O release só é alcançado com o
-   * claim ganho — o caminho do "pulado" retorna antes do `try`.
+   * Roda `corpo` com o lock de ingestão tomado, ou devolve `null` se outra ingestão já está em curso.
+   * O recurso protegido é a STAGING COMPARTILHADA (TRUNCATE a cada lote) e, desde a v6.2.0, também o
+   * RITMO da API: duas ingestões simultâneas dobrariam a taxa e levariam 429.
    */
   async function comLock<T>(rotulo: string, corpo: () => Promise<T>): Promise<T | null> {
     const dono = `${rotulo}:${crypto.randomUUID()}`
@@ -127,7 +133,6 @@ async function handle(req: NextRequest): Promise<Response> {
     try {
       return await corpo()
     } finally {
-      // Falha no release não pode mascarar o erro do corpo: engolimos e logamos.
       try {
         const soltou = await rpc('monde_ingest_release', { p_dono: dono })
         if (soltou !== true) onLog(`aviso: release devolveu ${JSON.stringify(soltou)} — TTL expirou antes do fim?`)
@@ -137,28 +142,68 @@ async function handle(req: NextRequest): Promise<Response> {
     }
   }
 
+  const hoje = hojeSP()
+  const janela = mesesRecentes(hoje, MESES_RECONCILIACAO)
+  /** Início do mês mais antigo da janela de reconciliação — piso da revisita. */
+  const inicioJanela = rangeDoMes(janela[janela.length - 1]).from
+  const revisitaAntes = new Date(Date.now() - REVISITA_HORAS * 3_600_000).toISOString()
+  const novoCliente = () => criarClienteMonde({ prazo: inicio + PRAZO_API_MS })
+
+  /**
+   * Força a releitura de [from, to] e drena — o corpo de `window` e `backfill`. Resumível: o cursor da
+   * varredura e o "já forçado" moram em `monde.ingest_control`, por intervalo.
+   */
+  async function releitura(from: string, to: string, maxFila: number | undefined) {
+    const chave = `${from}..${to}`
+    const cursorSalvo = await controle(`window_cursor:${chave}`)
+    // `VARREDURA_CONCLUIDA` = a varredura deste intervalo já chegou ao corte: as próximas invocações só
+    // drenam a fila, em vez de re-varrer do topo (MÉDIO do revisor).
+    const varrer = cursorSalvo !== VARREDURA_CONCLUIDA
+    const cliente = novoCliente()
+    const r = await sincronizar(db, cliente, {
+      corte: corteDoDia(menosDias(from, MARGEM_CRIACAO_DIAS)),
+      cursorInicial: varrer ? cursorSalvo : null,
+      varrer,
+      revisitaDesde: inicioJanela,
+      revisitaAntes,
+      limiteFila: maxFila,
+      onLog,
+      antesDaFila: async () => {
+        if ((await controle(`window_forcado:${chave}`)) === null) {
+          const n = await rpc('monde_cabecalho_forcar', { p_from: from, p_to: to })
+          await rpc('monde_ingest_control_set', { p_chave: `window_forcado:${chave}`, p_valor: new Date().toISOString() })
+          onLog(`releitura forçada de ${n} venda(s) já lidas em ${chave}`)
+        }
+      },
+    })
+    await rpc('monde_ingest_control_set', {
+      p_chave: `window_cursor:${chave}`,
+      p_valor: r.varredura.chegou_no_corte ? VARREDURA_CONCLUIDA : (r.varredura.cursor_final ?? ''),
+    })
+    const situacao = await apurarMes(db, from, to, '-infinity')
+    const done = r.varredura.chegou_no_corte && situacao.pendentes === 0 && situacao.erros === 0
+    if (done) {
+      // Intervalo concluído: limpa as marcas, para uma releitura futura do mesmo intervalo varrer e forçar de novo.
+      await rpc('monde_ingest_control_set', { p_chave: `window_forcado:${chave}`, p_valor: '' })
+      await rpc('monde_ingest_control_set', { p_chave: `window_cursor:${chave}`, p_valor: '' })
+    }
+    return { resultado: r, pendentes: situacao.pendentes, erros: situacao.erros, done }
+  }
+
   try {
-    // ── auditoria (SÓ LEITURA — sem lock, não toca staging) ────────────────────────────────
-    // O detector: compara a API contra o espelho e diz exatamente quais vendas faltam. Teste de
-    // aceitação da v5.4.4 e invariante permanente (zero ausentes no range coberto). A referência
-    // é a API, NUNCA o upload — que vai ficar dormente e esfriar (decisão do Yan no briefing).
+    // ── auditoria (SÓ LEITURA — sem lock, não toca staging nem o índice de cabeçalhos) ─────
     if (mode === 'auditoria') {
       const from = sp.get('from'); const to = sp.get('to')
-      if (!from || !to) return NextResponse.json({ error: 'faltam from/to (YYYY-MM-DD)' }, { status: 400 })
-      const janela = await listarJanelaDaApi({ from, to, onLog })
-      const diff = await rpc('monde_vendas_ausentes', {
-        p_numeros: janela.numeros, p_from: from, p_to: to,
-      })
+      const invalido = intervaloInvalido(from, to)
+      if (invalido || !from || !to) return NextResponse.json({ error: invalido }, { status: 400 })
+      const janelaApi = await listarJanelaDaApi(novoCliente(), { from, to, onLog })
+      const diff = await rpc('monde_vendas_ausentes', { p_numeros: janelaApi.numeros, p_from: from, p_to: to })
       return NextResponse.json({
         mode,
-        api: { total: janela.total, paginas: janela.paginas, sem_sale_id: janela.sem_sale_id },
+        api: { total: janelaApi.total, paginas: janelaApi.paginas, sem_sale_id: janelaApi.sem_sale_id, parcial: janelaApi.parcial },
         diff,
-        // ⚠️ `diff.ausentes` NÃO é a contagem do defeito: a listagem não diz quais vendas a
-        // transformação excluiria por regra (Welcome / sem setor / sem item ativo — 29 das 775
-        // de jul/2026), e essas aparecem aqui como "ausentes" sendo ausência CORRETA. Saber
-        // isso exige o detalhe de cada venda, que só a reconciliação baixa — é ela que produz a
-        // contagem exata, no `tripwire` de `monde_ingest_status`. Este modo responde "QUAIS
-        // números faltam", para investigar; o tripwire responde "quantas faltam de verdade".
+        // ⚠️ `diff.ausentes` inclui vendas que a transformação exclui por regra (Welcome/sem setor) —
+        // ausência CORRETA. A contagem exata do defeito está no `tripwire` de `monde_ingest_status`.
         nota: 'ausentes inclui vendas que a transformação excluiria por regra; a contagem exata do defeito está no tripwire (monde_ingest_status)',
         log,
       })
@@ -166,179 +211,176 @@ async function handle(req: NextRequest): Promise<Response> {
 
     if (mode === 'window') {
       const from = sp.get('from'); const to = sp.get('to')
-      if (!from || !to) return NextResponse.json({ error: 'faltam from/to (YYYY-MM-DD)' }, { status: 400 })
-      const max = sp.get('max')
-      const resultado = await comLock('window', () =>
-        ingestWindow(db, { from, to, maxSales: max ? Number(max) : undefined, onLog }))
-      if (resultado === null) return NextResponse.json({ mode, pulado: 'lock', log })
-      return NextResponse.json({ mode, resultado, log })
+      const invalido = intervaloInvalido(from, to)
+      if (invalido || !from || !to) return NextResponse.json({ error: invalido }, { status: 400 })
+      const maxTexto = sp.get('max')
+      const max = maxTexto === null ? undefined : Number(maxTexto)
+      if (max !== undefined && (!Number.isInteger(max) || max <= 0)) {
+        return NextResponse.json({ error: 'max deve ser inteiro positivo' }, { status: 400 })
+      }
+      const saida = await comLock('window', () => releitura(from, to, max))
+      if (saida === null) return NextResponse.json({ mode, pulado: 'lock', log })
+      return NextResponse.json({ mode, ...saida, log })
     }
 
     if (mode === 'backfill') {
       const inicioYm = (sp.get('from') ?? '2023-01-01').slice(0, 7)
-      const fimYm = hojeSP().slice(0, 7)
-      const { data: cursor } = await db.rpc('monde_ingest_control_get', { p_chave: 'backfill_cursor' })
-      const alvoYm = cursor ? proxMes(String(cursor)) : inicioYm
+      const fimYm = hoje.slice(0, 7)
+      const cursor = await controle('backfill_cursor')
+      const alvoYm = cursor ? proxMes(cursor) : inicioYm
       if (alvoYm > fimYm) return NextResponse.json({ mode, done: true, cursor })
       const { from, to } = rangeDoMes(alvoYm)
-      const resultado = await comLock('backfill', () => ingestWindow(db, { from, to, onLog }))
-      if (resultado === null) return NextResponse.json({ mode, pulado: 'lock', log })
-      await rpc('monde_ingest_control_set', { p_chave: 'backfill_cursor', p_valor: alvoYm })
-      return NextResponse.json({ mode, mes: alvoYm, done: proxMes(alvoYm) > fimYm, resultado, log })
+      const saida = await comLock('backfill', () => releitura(from, to, undefined))
+      if (saida === null) return NextResponse.json({ mode, pulado: 'lock', log })
+      // O cursor só avança com o mês CONCLUÍDO (varredura no corte e fila do mês vazia).
+      if (saida.done) await rpc('monde_ingest_control_set', { p_chave: 'backfill_cursor', p_valor: alvoYm })
+      return NextResponse.json({ mode, mes: alvoYm, ...saida, mes_concluido: saida.done, done: saida.done && proxMes(alvoYm) > fimYm, log })
     }
 
-    // ── reconciliacao (v5.4.4) ─────────────────────────────────────────────────────────────
-    // UM mês por invocação, ciclando os 3 últimos meses pelo cursor. Um mês cabe folgado no
-    // maxDuration=300 (jul/2026 tem ~775 vendas na API), e três disparos diários fecham a
-    // janela. Resumível: se falhar, o cursor NÃO avança e a próxima invocação retoma o mesmo mês.
+    // ── reconciliacao ─────────────────────────────────────────────────────────────────────
+    // UM mês por invocação (cursor em ciclo sobre a janela de 3). A varredura é FUNDA (até a criação
+    // anterior ao início da janela − margem); a apuração e a cura são do mês do cursor.
     if (mode === 'reconciliacao') {
-      // v6.0.0/M6: registra a PRÓPRIA execução em `ingestao.execucao` — camada ADICIONAL, nunca
-      // pode mudar o comportamento abaixo (contrato da delegação §1). `abrirExecucao`/
-      // `concluirExecucao` nunca lançam; o try/catch aqui é só para marcar 'erro' ANTES de
-      // relançar — o catch externo desta rota (linha ~316) continua respondendo exatamente
-      // como antes.
+      // v6.0.0/M6: registra a PRÓPRIA execução em `ingestao.execucao` — camada adicional.
       const execId = await abrirExecucao('monde-reconciliacao')
       try {
-      const hoje = hojeSP()
-      const janela = mesesRecentes(hoje, MESES_RECONCILIACAO)
-      const { data: cursorAtual } = await db.rpc('monde_ingest_control_get', { p_chave: 'reconciliacao_cursor' })
-      const mes = proximoMesReconciliacao(cursorAtual ? String(cursorAtual) : null, janela)
+      const cursorAtual = await controle('reconciliacao_cursor')
+      const mes = proximoMesReconciliacao(cursorAtual, janela)
       const { from, to } = rangeDoMes(mes)
       const fechaCiclo = mes === janela[janela.length - 1]
       onLog(`reconciliação: mês ${mes} (${from}..${to}); janela=${janela.join(',')}`)
 
       const saida = await comLock('reconciliacao', async () => {
-        const resultado = await ingestWindow(db, { from, to, onLog })
-        // Cursor avança só em caso de sucesso — falha retoma o MESMO mês.
-        await rpc('monde_ingest_control_set', { p_chave: 'reconciliacao_cursor', p_valor: mes })
-        await rpc('monde_ingest_control_set', {
-          p_chave: 'ultima_reconciliacao', p_valor: new Date().toISOString(),
+        const resultado: ResultadoSincronizacao = await sincronizar(db, novoCliente(), {
+          corte: corteDoDia(menosDias(inicioJanela, MARGEM_CRIACAO_DIAS)),
+          revisitaDesde: inicioJanela,
+          revisitaAntes,
+          onLog,
         })
+        // Cursor avança só com a rodada concluída sem exceção — falha retoma o MESMO mês.
+        await rpc('monde_ingest_control_set', { p_chave: 'reconciliacao_cursor', p_valor: mes })
+        await rpc('monde_ingest_control_set', { p_chave: 'ultima_reconciliacao', p_valor: new Date().toISOString() })
+
+        const apuracao = await apurarMes(db, from, to, resultado.varredura.inicio_banco ?? 'infinity')
+        const bloqueio = bloqueioDaApuracao(resultado.varredura, apuracao)
+        if (bloqueio) {
+          // Sem apuração íntegra NÃO há cura nem tripwire do mês: pendente não é "sem sale_id" e não
+          // pode acender alarme. O mês volta ao ciclo na próxima volta do cursor.
+          onLog(`apuração de ${mes} adiada — ${bloqueio}`)
+          return { resultado, apuracao: { ...apuracao, espelhaveis_ids: apuracao.espelhaveis_ids.length }, tripwire: null, adiada: bloqueio }
+        }
+        // Mapeamento para as funções puras da v5.x: `lidas` = tudo que tem veredito (inclui erro), de modo
+        // que `api − lidas` = pendentes = 0 aqui e a conta fecha por construção.
+        const excluidas = { welcome: apuracao.welcome, sem_setor: apuracao.sem_setor, sem_item_ativo: 0 }
+        const lidas = apuracao.espelhaveis + apuracao.welcome + apuracao.sem_setor + apuracao.erros
 
         // ── CURA (v5.6.3): remove do espelho o que deixou de ser espelhável ────────────────
-        // Venda reclassificada p/ Welcome/sem-setor (ou sumida da listagem) fica congelada
-        // somando — a exclusão de escopo é aplicada na escrita e o upsert nunca mais a toca.
-        // Guardas fail-closed em `podeCurar` (apuração íntegra) + TETO dentro da própria RPC
-        // (0250). Não é caminho crítico: falha aqui não invalida a reconciliação — o tripwire
-        // logo abaixo segue acusando o `sobrando` e a próxima rodada tenta de novo.
         let removidas = 0
         try {
           const cura = podeCurar({
-            apiTotal: resultado.total_janela,
-            lidas: resultado.lidas,
-            espelhaveis: resultado.espelhaveis,
-            espelhaveisIds: resultado.espelhaveis_ids.length,
-            excluidas: resultado.excluidas,
-            erros: resultado.erros,
+            apiTotal: apuracao.api, lidas, espelhaveis: apuracao.espelhaveis,
+            espelhaveisIds: apuracao.espelhaveis_ids.length, excluidas, erros: apuracao.erros,
           })
           if (!cura.ok) {
             onLog(`cura pulada (apuração não íntegra): ${cura.bloqueio}`)
           } else {
             const r = (await rpc('monde_ingest_remover_vendas', {
-              p_espelhaveis_ids: resultado.espelhaveis_ids,
-              p_from: from,
-              p_to: to,
-              p_teto: TETO_REMOCOES_RECONCILIACAO,
-            })) as { removidas: number; bloqueado: boolean; candidatas: number; vendas: unknown }
+              p_espelhaveis_ids: apuracao.espelhaveis_ids, p_from: from, p_to: to, p_teto: TETO_REMOCOES_RECONCILIACAO,
+            })) as { removidas: number; bloqueado: boolean; candidatas: number; vendas: { venda_numero: string }[] }
             if (r.bloqueado) {
-              onLog(`cura BLOQUEADA pelo teto: ${r.candidatas} candidatas > ${TETO_REMOCOES_RECONCILIACAO} — nada removido (listagem truncada?)`)
+              onLog(`cura BLOQUEADA pelo teto: ${r.candidatas} candidatas > ${TETO_REMOCOES_RECONCILIACAO} — nada removido`)
             } else if (r.removidas > 0) {
               removidas = r.removidas
               onLog(`cura: ${r.removidas} venda(s) retida(s) removida(s) do espelho — ${JSON.stringify(r.vendas)}`)
+              // Rastro e mv PRIMEIRO, logo depois do DELETE: se o passo seguinte falhar, a remoção já está
+              // auditada e a mv já não soma a venda apagada (MÉDIO do revisor).
               await rpc('monde_ingest_control_set', {
                 p_chave: 'ultima_remocao',
                 p_valor: JSON.stringify({ em: new Date().toISOString(), mes, removidas: r.removidas, vendas: r.vendas }),
               })
               await rpc('monde_refresh_mv')
+              // Venda removida volta a ser "não lida": se reaparecer na lista com o mesmo cabeçalho, é relida.
+              try {
+                await rpc('monde_cabecalho_invalidar', { p_numeros: r.vendas.map((v) => v.venda_numero) })
+              } catch (e) {
+                onLog(`ERRO: cura removeu ${r.removidas} venda(s) mas não invalidou o cabeçalho delas — se voltarem à ` +
+                  `lista sem mudar, não serão relidas até a revisita: ${(e as Error).message}`)
+              }
             }
           }
         } catch (e) {
           onLog(`aviso: cura falhou (a reconciliação segue válida) — ${(e as Error).message}`)
         }
 
-        // ── TRIPWIRE: subproduto exato desta reconciliação, sem chamada extra à API ────────
-        // A reconciliação já baixou o detalhe de cada venda do mês, então ela sabe quantas eram
-        // espelháveis e quantas excluiu, por motivo. É isso que torna a comparação exata —
-        // contagem crua contra o `total` da API acenderia todo mês (a API conta o que a
-        // transformação exclui por regra). Atualiza SÓ o mês reconciliado agora; os demais
-        // ficam como estavam, e os nunca reconciliados como `nao_verificado`.
-        // Não é caminho crítico: falha aqui não invalida a reconciliação.
+        // ── TRIPWIRE: subproduto da apuração, sem chamada extra à API ──────────────────────
         let tripwire: unknown = null
         try {
-          const contagem = (await rpc('monde_vendas_ausentes', {
-            p_numeros: [], p_from: from, p_to: to,
-          })) as { espelho?: number } | null
-
+          const contagem = (await rpc('monde_vendas_ausentes', { p_numeros: [], p_from: from, p_to: to })) as { espelho?: number } | null
           const apurado = avaliarMes({
-            mes,
-            apiTotal: resultado.total_janela,
-            lidas: resultado.lidas,
-            espelhaveis: resultado.espelhaveis,
-            excluidas: resultado.excluidas,
-            erros: resultado.erros,
-            espelho: contagem?.espelho ?? 0, // contado APÓS a cura — sobrando reflete o estado curado
-            removidas,
-            verificadoEmISO: new Date().toISOString(),
+            mes, apiTotal: apuracao.api, lidas, espelhaveis: apuracao.espelhaveis, excluidas, erros: apuracao.erros,
+            espelho: contagem?.espelho ?? 0, removidas, verificadoEmISO: new Date().toISOString(),
           })
-
-          const { data: anteriorRaw } = await db.rpc('monde_ingest_control_get', { p_chave: 'tripwire' })
+          const anteriorRaw = await controle('tripwire')
           let anterior: Tripwire | null = null
           try {
-            anterior = anteriorRaw ? (JSON.parse(String(anteriorRaw)) as Tripwire) : null
+            anterior = anteriorRaw ? (JSON.parse(anteriorRaw) as Tripwire) : null
           } catch (e) {
-            // NUNCA silencioso: cair aqui joga fora a apuração acumulada dos outros 11 meses do
-            // painel (todos voltam a `nao_verificado`), e sem log ninguém saberia por quê. Um
-            // silêncio dentro do mecanismo feito para acabar com silêncios seria a pior espécie.
             anterior = null
             onLog(`aviso: tripwire anterior corrompido — histórico do painel reiniciado — ${(e as Error).message}`)
           }
-
           const t = mesclarTripwire(anterior, apurado, mesesRecentes(hoje, MESES_TRIPWIRE), new Date().toISOString())
           await rpc('monde_ingest_control_set', { p_chave: 'tripwire', p_valor: JSON.stringify(t) })
           onLog(
-            `tripwire ${mes}: api=${apurado.api} lidas=${apurado.lidas} espelhaveis=${apurado.espelhaveis} ` +
-            `espelho=${apurado.espelho} sobrando=${apurado.sobrando} removidas=${apurado.removidas ?? 0} ` +
-            `erros=${apurado.erros} conta_fecha=${apurado.conta_fecha} · geral ${t.acendeu ? `ACESO (${t.motivos.join('; ')})` : 'apagado'}`,
+            `tripwire ${mes}: api=${apurado.api} espelhaveis=${apurado.espelhaveis} espelho=${apurado.espelho} ` +
+            `sobrando=${apurado.sobrando} removidas=${apurado.removidas ?? 0} erros=${apurado.erros} ` +
+            `conta_fecha=${apurado.conta_fecha} · geral ${t.acendeu ? `ACESO (${t.motivos.join('; ')})` : 'apagado'}`,
           )
           tripwire = t
         } catch (e) {
           onLog(`aviso: tripwire falhou (a reconciliação segue válida) — ${(e as Error).message}`)
         }
-        return { resultado, tripwire }
+        return { resultado, apuracao: { ...apuracao, espelhaveis_ids: apuracao.espelhaveis_ids.length }, tripwire, adiada: null }
       })
 
       if (saida === null) {
         await concluirExecucao(execId, 'pulado', { mes, motivo: 'lock_ocupado' })
         return NextResponse.json({ mode, mes, pulado: 'lock', log })
       }
-      await concluirExecucao(execId, 'ok', { mes, ciclo_fechado: fechaCiclo })
+      // Apuração ADIADA conclui como `erro` (com o motivo), não `ok` (MÉDIO do revisor): o vigia mede o
+      // último `ok`, então cura e tripwire desligados por mais de 30 h acendem "processo sem resultado"
+      // em vez de passar calados. Uma adiada isolada (ex.: fila ainda drenando) não alarma — a tolerância
+      // de 30 h cobre várias voltas do ciclo.
+      if (saida.adiada) {
+        await concluirExecucao(execId, 'erro', { mes, ciclo_fechado: fechaCiclo }, `apuração de ${mes} adiada — ${saida.adiada}`)
+      } else {
+        await concluirExecucao(execId, 'ok', { mes, ciclo_fechado: fechaCiclo })
+      }
       return NextResponse.json({ mode, mes, janela, ciclo_fechado: fechaCiclo, ...saida, log })
       } catch (e) {
-        // Marca a execução como 'erro' ANTES de relançar — o catch EXTERNO desta rota (mais
-        // abaixo) é quem continua decidindo a resposta HTTP; este catch só acrescenta o
-        // registro e devolve o controle exatamente como se ele não existisse.
         await concluirExecucao(execId, 'erro', null, e instanceof Error ? e.message : String(e))
         throw e
       }
     }
 
     // ── incremental (default) ──────────────────────────────────────────────────────────────
-    // v6.0.0/M6: mesma camada adicional de log da reconciliação acima — nunca muda a resposta.
     const execIdIncremental = await abrirExecucao('monde-incremental')
     try {
-      const to = hojeSP()
-      const from = addDiasISO(to, -DIAS_INCREMENTAL)
-      const resultado = await comLock('incremental', () => ingestWindow(db, { from, to, onLog }))
-      // Lock ocupado é NORMAL aqui (o tick de 15min caiu durante uma reconciliação, que cobre os
-      // mesmos dias). Responde 200 e NÃO grava o marcador: pular não é sincronizar, e o marcador é
-      // o que alimenta o alarme de atraso de /metas.
+      const corte = corteDoDia(menosDias(hoje, DIAS_INCREMENTAL))
+      const resultado = await comLock('incremental', () =>
+        sincronizar(db, novoCliente(), { corte, revisitaDesde: inicioJanela, revisitaAntes, onLog }))
+      // Lock ocupado é NORMAL (o tick caiu durante uma reconciliação, que cobre os mesmos dias).
+      // Responde 200 e NÃO grava o marcador: pular não é sincronizar.
       if (resultado === null) {
-        await concluirExecucao(execIdIncremental, 'pulado', { from, to, motivo: 'lock_ocupado' })
+        await concluirExecucao(execIdIncremental, 'pulado', { corte, motivo: 'lock_ocupado' })
         return NextResponse.json({ mode: 'incremental', pulado: 'lock', log })
       }
-      await rpc('monde_ingest_control_set', { p_chave: 'ultimo_incremental', p_valor: `${from}..${to}` })
-      await concluirExecucao(execIdIncremental, 'ok', { from, to })
-      return NextResponse.json({ mode: 'incremental', janela: { from, to }, resultado, log })
+      // Marcador do alarme de atraso de /metas: só quando a varredura alcançou o corte — aí o índice
+      // está em dia com a lista; a fila que sobrar é drenada nos próximos ticks.
+      if (resultado.varredura.chegou_no_corte) {
+        await rpc('monde_ingest_control_set', { p_chave: 'ultimo_incremental', p_valor: `criadas desde ${corte}` })
+      }
+      await concluirExecucao(execIdIncremental, 'ok', { corte, varredura: resultado.varredura, fila: resultado.fila, api: resultado.api })
+      return NextResponse.json({ mode: 'incremental', corte, resultado, log })
     } catch (e) {
       await concluirExecucao(execIdIncremental, 'erro', null, e instanceof Error ? e.message : String(e))
       throw e

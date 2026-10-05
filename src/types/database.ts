@@ -834,6 +834,30 @@ export type Database = {
         Returns: Json
       }
       metas_upsert: { Args: { p_metas: Json }; Returns: Json }
+      monde_cabecalho_apurar: {
+        Args: { p_from: string; p_to: string; p_visto_desde: string }
+        Returns: Json
+      }
+      monde_cabecalho_fila: {
+        Args: {
+          p_limite: number
+          p_revisita_antes: string
+          p_revisita_desde: string
+        }
+        Returns: Json
+      }
+      monde_cabecalho_forcar: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
+      monde_cabecalho_invalidar: {
+        Args: { p_numeros: string[] }
+        Returns: number
+      }
+      monde_cabecalho_marcar: { Args: { p_resultados: Json }; Returns: number }
+      monde_cabecalho_registrar: { Args: { p_cabecalhos: Json }; Returns: Json }
+      monde_catalogo_obter: { Args: never; Returns: Json }
+      monde_catalogo_registrar: { Args: { p_produtos: Json }; Returns: number }
       monde_comparacao_mensal: {
         Args: { p_from: string; p_to: string }
         Returns: Json
@@ -861,6 +885,8 @@ export type Database = {
         Returns: Json
       }
       monde_ingest_status: { Args: never; Returns: Json }
+      monde_pessoa_obter: { Args: { p_ids: string[] }; Returns: Json }
+      monde_pessoa_registrar: { Args: { p_pessoas: Json }; Returns: number }
       monde_refresh_mv: { Args: never; Returns: undefined }
       monde_vendas_ausentes: {
         Args: { p_from: string; p_numeros: string[]; p_to: string }

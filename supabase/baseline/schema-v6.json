@@ -549,6 +549,25 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "monde.cabecalho_hash(text, jsonb)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "c89a86262033beb2442d8533f0dbfd03015c3eb33dcab702bf97e8dc8053e0bf",
+      "linguagem": "sql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "text",
+      "security_definer": false,
+      "volatilidade": "IMMUTABLE"
+    },
     "patrimonio.como_estado_conservacao(text)": {
       "acl": {
         "postgres": {
@@ -5211,6 +5230,158 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.monde_cabecalho_apurar(date, date, timestamp with time zone)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "bae2bf3c53d35b1cde37cf425aa3d590f8c829b8ba6b5acfdab4413c3a198f3b",
+      "linguagem": "sql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_cabecalho_fila(integer, date, timestamp with time zone)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "c111513200ace168fb1da0af24d683c3ea2a87b4187d47155b5e3806b5e7d70c",
+      "linguagem": "sql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_cabecalho_forcar(date, date)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "6ed77b3f108fe7e5ea0e31cdcdff5b070f69adaca6291470c946fd5a94d07e28",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "integer",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_cabecalho_invalidar(text[])": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "92df05a1f3b653b339b34b813e853001f38a2670f5b8f73b4c9a749ad3d59f4c",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "integer",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_cabecalho_marcar(jsonb)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "0502b2ab651cc022e11c31af485a6c79cfd281d3e844762d29581ae964cfdd1a",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "integer",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_cabecalho_registrar(jsonb)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "a595ed9a1e8cbe57c7f26f1b189db562bbfb2b497d656f0a1bb30c0aeb6cfa7a",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_catalogo_obter()": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "093f408d4ec2269311aa223b67f9fbfb74bf6f13fc88cc5ff8128c159f1a918e",
+      "linguagem": "sql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_catalogo_registrar(jsonb)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "b7320ac3bc32d8eaca3fdb3651a55ba94050bacdb9d518c38f0c26a5f0d4796a",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "integer",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
     "public.monde_comparacao_mensal(date, date)": {
       "acl": {
         "authenticated": {
@@ -5406,6 +5577,44 @@
       "retorno": "jsonb",
       "security_definer": true,
       "volatilidade": "STABLE"
+    },
+    "public.monde_pessoa_obter(uuid[])": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "b4ee058613ded71b225fd3f85d964e750d4ede7abcb7d3ba68241dba40a5c48e",
+      "linguagem": "sql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "jsonb",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
+    },
+    "public.monde_pessoa_registrar(jsonb)": {
+      "acl": {
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "e5c18b5d203c8ca00999ba78f39723581f61fed59bfed649ab4c2fc4f1954e2c",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "integer",
+      "security_definer": true,
+      "volatilidade": "VOLATILE"
     },
     "public.monde_refresh_mv()": {
       "acl": {
@@ -12623,6 +12832,104 @@
       "tipo": "tabela",
       "triggers": {}
     },
+    "monde.pessoa": {
+      "acl": {},
+      "colunas": {
+        "atualizado_em": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "cpf_cnpj": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "uuid"
+        },
+        "nome": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "origem": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        }
+      },
+      "constraints": {
+        "pessoa_origem_check": "CHECK (origem = ANY (ARRAY['semente'::text, 'api'::text]))",
+        "pessoa_pkey": "PRIMARY KEY (id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "pessoa_pkey": "CREATE UNIQUE INDEX pessoa_pkey ON monde.pessoa USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "monde.produto_catalogo": {
+      "acl": {},
+      "colunas": {
+        "atualizado_em": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        },
+        "id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "uuid"
+        },
+        "kind": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "nome": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        }
+      },
+      "constraints": {
+        "produto_catalogo_pkey": "PRIMARY KEY (id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "produto_catalogo_pkey": "CREATE UNIQUE INDEX produto_catalogo_pkey ON monde.produto_catalogo USING btree (id)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
     "monde.venda": {
       "acl": {},
       "colunas": {
@@ -12770,6 +13077,110 @@
         "idx_monde_venda_macro": "CREATE INDEX idx_monde_venda_macro ON monde.venda USING btree (setor_macro)",
         "venda_pkey": "CREATE UNIQUE INDEX venda_pkey ON monde.venda USING btree (id)",
         "venda_venda_numero_key": "CREATE UNIQUE INDEX venda_venda_numero_key ON monde.venda USING btree (venda_numero)"
+      },
+      "policies": {},
+      "rls_forcado": false,
+      "rls_habilitado": true,
+      "tipo": "tabela",
+      "triggers": {}
+    },
+    "monde.venda_cabecalho": {
+      "acl": {},
+      "colunas": {
+        "cabecalho_hash": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "classificacao": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "criado_monde": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp without time zone"
+        },
+        "data_venda": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "date"
+        },
+        "erro": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "lido_em": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "timestamp with time zone"
+        },
+        "lido_hash": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": false,
+          "tipo": "text"
+        },
+        "sale_id": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "uuid"
+        },
+        "status": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "totais": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "jsonb"
+        },
+        "venda_numero": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "text"
+        },
+        "visto_em": {
+          "default": null,
+          "generated": null,
+          "identity": null,
+          "not_null": true,
+          "tipo": "timestamp with time zone"
+        }
+      },
+      "constraints": {
+        "venda_cabecalho_classificacao_check": "CHECK (classificacao = ANY (ARRAY['espelhada'::text, 'welcome'::text, 'sem_setor'::text, 'erro'::text]))",
+        "venda_cabecalho_pkey": "PRIMARY KEY (sale_id)"
+      },
+      "dono": "postgres",
+      "indices": {
+        "venda_cabecalho_criado_idx": "CREATE INDEX venda_cabecalho_criado_idx ON monde.venda_cabecalho USING btree (criado_monde DESC)",
+        "venda_cabecalho_data_venda_idx": "CREATE INDEX venda_cabecalho_data_venda_idx ON monde.venda_cabecalho USING btree (data_venda)",
+        "venda_cabecalho_pkey": "CREATE UNIQUE INDEX venda_cabecalho_pkey ON monde.venda_cabecalho USING btree (sale_id)"
       },
       "policies": {},
       "rls_forcado": false,
@@ -15233,7 +15644,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0289",
+  "ultima_migration": "0290",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {

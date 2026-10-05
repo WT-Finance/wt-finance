@@ -6,6 +6,47 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.2.0] — 2026-10-05
+
+MINOR · **Espelho Monde lido da API oficial v3.** A `monde-data` (intermediária do TTARS) foi desligada em
+02/10/2026 e respondia 410; o espelho estava parado desde 01/10 23:45. Spec
+`docs/briefings/spec-v6-2-0-monde-api-v3.md`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-0_Monde_API_v3.md`. Migration `0290` (aditiva, aplicada em
+05/10) · **ADR-0181**.
+
+### Alterado
+
+- **Fonte do espelho**: `web.monde.com.br/api/v3` com `MONDE_V3_API_KEY` (Basic, já em base64), no lugar
+  de `MONDE_API_URL`/`MONDE_API_KEY`. Saída do espelho, `mv_vendas_diarias` e RPCs de leitura **sem
+  mudança** — paridade offline sobre jul–set/2026 (2.140 vendas, 3.474 itens) com zero diferença em
+  valores, receitas, datas, status e vendedor.
+- **Ingestão por índice de cabeçalhos** (`src/lib/monde/ingest.ts`): varredura da lista por cursor até o
+  corte de **criação** (a v3 lista por `created_at` desc e não filtra por data) → fila de detalhe só com
+  venda nova ou com status/totais/data diferentes → staging → promover → marcar. Ritmo de 1 chamada /
+  1,3 s e orçamento de 230 s por invocação; o que não cabe fica para o próximo tick.
+- **Reconciliação**: varredura funda (janela de 3 meses − 20 d de margem de criação); cura e tripwire
+  apurados pela tabela de cabeçalhos e só com apuração íntegra — mês com venda na fila é adiado e a
+  execução conclui como `erro` (o vigia acende se passar de 30 h). A cura invalida o cabeçalho do que remove.
+- **Modos manuais** `window`/`backfill` resumíveis (cursor de varredura + releitura forçada uma vez por
+  intervalo); `auditoria` segue só leitura; `from`/`to`/`max` validados.
+- `VERSAO_TRANSFORM` 2 → 3 e `raw_hash` = sha256 do JSON canônico (antes vinha pronto do TTARS).
+
+### Adicionado
+
+- Migration **0290**: `monde.venda_cabecalho`, `monde.pessoa`, `monde.produto_catalogo`,
+  `monde.cabecalho_hash` e 10 RPCs service_role-only (`monde_cabecalho_registrar/fila/marcar/forcar/
+  invalidar/apurar`, `monde_pessoa_obter/registrar`, `monde_catalogo_obter/registrar`), com semente a
+  partir do próprio espelho (2.802 cabeçalhos, 1.616 pessoas).
+- `src/lib/monde/nomes.ts` — cache de nomes (pessoa/catálogo) e campos personalizados por nome.
+
+### Corrigido
+
+- O resíduo de jun–set/2026 com `produto = "Outros"` é reescrito com o nome do catálogo quando a venda
+  passa de novo pela ingestão (era o que zerava `get_contratos_casamento_mes`).
+- Venda lançada com atraso entra pelo incremental (aparece no topo da lista como recém-criada).
+
+---
+
 ## [6.1.3] — 2026-10-05
 
 PATCH · **Instruções de upload em cada card do Upload de Arquivos.** Pedido do Yan (Rota C, o prompt é o
