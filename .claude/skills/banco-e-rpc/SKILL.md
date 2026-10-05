@@ -169,12 +169,21 @@ de aplicar; a migration NÃO se auto-aplica). O espelho Monde foi ingerido na v5
 Ao decidir "de onde vem esse número", primeiro pergunte: é uma das 7 PURA-mv (veio do Monde,
 via view-compat) ou é `get_mix_produto`/`get_cagr`/algo de Weddings operacional (ainda upload)?
 
+**De onde o espelho lê (v6.2.0, ADR-0181): API OFICIAL do Monde v3** (`web.monde.com.br/api/v3`,
+`MONDE_V3_API_KEY`). A `monde-data` do TTARS, que a v5.x consumia, foi desligada em 02/10/2026 (410).
+Três fatos da v3 que custaram uma investigação e mandam no desenho: (1) a lista **não filtra por data**
+e vem ordenada por **criação** — corte de varredura é por `created_at`, nunca por `sale_date`; (2) não
+há "alterado desde" — quem decide o que reler é o índice `monde.venda_cabecalho` (0290); (3) **1
+chamada a cada 1,3 s** — toda rota trabalha sob orçamento e deixa o resto na fila. Venda cancelada só
+vem com `status=opened,closed,canceled` — sem isso a cura apaga canceladas.
+
 **Mudou a transformação do espelho? Suba `VERSAO_TRANSFORM`** (`src/lib/monde/transform.ts`,
 v5.12.0). O `monde_ingest_promover` só reescreve venda cujo `raw_hash` muda — corrigir a
 transformação, sozinho, **não alcança nada já espelhado**, porque o `raw` do Monde é o mesmo. O
-hash gravado é `<hash do provedor>#t<versão>`: subir a versão faz cada venda que passar de novo
-pela ingestão divergir UMA vez (incremental = 7 dias; reconciliação noturna = 3 últimos meses;
-meses mais velhos, só por `?mode=window`). Antes de subir, meça o que a regra nova grava nos meses
+hash gravado é `<sha256 do JSON canônico do payload>#t<versão>` (até a v6.1.x o hash da origem vinha
+pronto do TTARS): subir a versão faz cada venda que passar de novo pela ingestão divergir UMA vez
+(incremental = criadas há 7 dias + revisita da janela; reconciliação = 3 últimos meses; meses mais
+velhos, só por `?mode=window`, que força a releitura e é resumível). Antes de subir, meça o que a regra nova grava nos meses
 que vão ser reescritos contra o que já está lá — reescrever pode também **degradar** linha boa.
 E a API é de terceiro: ela muda campo **sem aviso** (em jun/2026 `description` virou "Outros" três
 meses antes da remoção anunciada), então o que a resposta traz em `campos_que_saem` é agenda, não

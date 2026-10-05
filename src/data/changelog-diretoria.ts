@@ -35,6 +35,25 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.2.0',
+    data: '2026-10-05T12:51', // horário real de autoria; reconciliar ao horário do merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'As vendas do Monde voltaram a atualizar sozinhas em Metas, Comparação e Performance. Elas tinham ' +
+          'parado em 01/10, quando o serviço intermediário que entregava esses dados foi desligado; agora o ' +
+          'Janus busca direto no Monde. Os números das vendas já registradas continuam os mesmos.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Venda registrada no Monde com data retroativa passa a aparecer já na atualização seguinte, sem ' +
+          'esperar a conferência noturna, e produtos que apareciam como "Outros" voltam a mostrar o nome real.',
+      },
+    ],
+  },
+  {
     versao: '6.1.2',
     data: '2026-10-01T14:50', // horário real do merge (PR #287), reconciliado no /pos-merge
     itens: [

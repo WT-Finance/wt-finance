@@ -9,7 +9,22 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-01 (pós-merge da v6.1.2).
+Última atualização: 2026-10-05 (fechamento da v6.2.0).
+
+---
+
+## Em voo — v6.2.0 "Espelho Monde na API oficial v3" (PR aberto, aguardando merge)
+
+A `monde-data` (intermediária do TTARS) foi **desligada em 02/10** (HTTP 410) e o espelho Monde — fonte de
+Metas/Comparação/Performance — **está parado desde 01/10 23:45 em produção até este merge**. A v6.2.0 lê
+direto de `web.monde.com.br/api/v3` (`MONDE_V3_API_KEY`, já em `.env.local` e em Production). Migration
+**0290 já aplicada** (aditiva; inofensiva para a `main` viva). ADR-0181; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-0_Monde_API_v3.md`. Paridade offline exata sobre 2.140 vendas.
+
+> 🔴 **Yan — mergear o PR da v6.2.0** e, depois, o checklist de produção do out-briefing §8 (cron sem
+> 410/429, `max_data` andando, alarmes do vigia resolvendo, `EMAIL_MODO=real` intencional?).
+> **Toda sessão nova:** a lista da v3 vem por **criação** (`created_at` desc) e não filtra por data — nunca
+> cortar varredura por `sale_date` (ADR-0181, skill `banco-e-rpc` §2).
 
 ---
 
