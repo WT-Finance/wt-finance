@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { INSTRUCOES_UPLOAD, type BaseUpload } from './instrucoes-upload'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { INSTRUCOES_UPLOAD, LIMITE_MB_ARQUIVO, type BaseUpload } from './instrucoes-upload'
 import { mapearColunas, camposFaltando } from './parsers/comum'
 import * as vendas from './parsers/vendas-produto'
 import * as operacao from './parsers/lancamentos-operacao'
@@ -47,8 +49,22 @@ describe('instruções de upload × parser do servidor', () => {
     expect([...rotulos].sort()).toEqual([...CAMPOS_CANONICOS].sort())
   })
 
+  // Certo POR CONSTRUÇÃO (`itens` é a própria `PESSOAS_COLUNAS`, de onde o parser deriva os
+  // requisitos) — o teste só trava que ninguém troque a referência por uma cópia manual.
   it('Pessoas usa a lista do próprio parser', () => {
     expect(INSTRUCOES_UPLOAD.pessoas.colunas.itens).toEqual(PESSOAS_COLUNAS)
+  })
+
+  it('o limite de MB exibido é o do Storage, e só nas cinco bases que sobem por ele', () => {
+    // `storage.ts` é `server-only` — lido como TEXTO, no molde de `bases-paridade.test.ts`.
+    const fonte = readFileSync(join(__dirname, 'storage.ts'), 'utf8')
+    const m = fonte.match(/LIMITE_BYTES_ARQUIVO\s*=\s*([\d_]+)/)
+    expect(m, 'LIMITE_BYTES_ARQUIVO não encontrado em storage.ts').not.toBeNull()
+    expect(Number(m![1].replaceAll('_', ''))).toBe(LIMITE_MB_ARQUIVO * 1024 * 1024)
+    for (const [base, inst] of Object.entries(INSTRUCOES_UPLOAD)) {
+      // Pessoas parseia no navegador (fluxo antigo): não passa pelo Storage.
+      expect(inst.limiteMB, base).toBe(base === 'pessoas' ? undefined : LIMITE_MB_ARQUIVO)
+    }
   })
 
   it('o painel "Ver instruções" nunca nasce vazio', () => {

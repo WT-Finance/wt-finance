@@ -1,7 +1,8 @@
 // Instruções de upload por base — o texto do painel "Ver instruções" de cada card de
 // `/admin/ingestao/upload` (v6.1.3).
 //
-// Módulo de DADOS puro (sem React, sem import de parser): a página é client component e não deve
+// Módulo de DADOS puro (sem React, sem import dos parsers do SERVIDOR — o único import é a lista
+// de Pessoas, cujo módulo a página já carrega): a página é client component e não deve
 // carregar os parsers do servidor no bundle só para exibir rótulos. A fonte da verdade das
 // colunas continua sendo o parser do SERVIDOR (`src/lib/ingestao/parsers/*`) — a sonda
 // `instrucoes-upload.test.ts` passa estas listas pelo mesmo `mapearColunas`/`camposFaltando` que
@@ -36,13 +37,20 @@ export interface InstrucoesUpload {
     itens: readonly string[]
     nota?: string
   }
+  /** Limite por arquivo, em MB — só nas bases que sobem pelo Storage (as cinco do contrato).
+   *  Pessoas parseia no navegador e não tem esse limite. */
+  limiteMB?: number
 }
+
+/** `LIMITE_BYTES_ARQUIVO` de `storage.ts` (contrato §2.1) em MB. Não importado de lá porque
+ *  `storage.ts` é `server-only`; a sonda confere os dois. */
+export const LIMITE_MB_ARQUIVO = 50
 
 /** Vale para todas as bases — exibido ao fim de todo painel. */
 export const INSTRUCOES_GERAIS: readonly string[] = [
   'Cada envio SUBSTITUI a base inteira (não acrescenta). Se algo der errado, a base anterior continua intacta.',
-  'Antes de aplicar, a plataforma confere o arquivo e mostra quantos registros existem hoje e quantos vão ficar. Confira esse número: um arquivo incompleto (por exemplo, só um ano) passa em todas as conferências e só esse número o denuncia.',
-  'Só a primeira aba da planilha é lida. Limite de 50 MB por arquivo.',
+  'Antes de aplicar, a plataforma confere o arquivo e mostra quantos registros existem hoje e quantos vão ficar. Confira esse número: um arquivo incompleto (por exemplo, só um ano) passa em todas as conferências, e o principal sinal é essa diferença.',
+  'Só a primeira aba da planilha é lida.',
   'Os nomes das colunas não diferenciam maiúsculas, acentos nem espaços extras.',
 ]
 
@@ -51,6 +59,7 @@ const AVISO_NAO_TRATAR =
 
 export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
   vendas: {
+    limiteMB: LIMITE_MB_ARQUIVO,
     origem: 'Relatório "Vendas por produto" do Monde, em Excel (.xlsx).',
     atencao: [
       AVISO_NAO_TRATAR,
@@ -78,6 +87,7 @@ export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
   },
 
   lancamentos: {
+    limiteMB: LIMITE_MB_ARQUIVO,
     origem:
       'CSV gerado pelo robô (RPA) a partir da tela "Análise de Operações" do Monde, operação por operação. Não é um relatório que se exporta do Monde.',
     atencao: [
@@ -94,15 +104,16 @@ export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
     colunas: {
       rotulo: 'Colunas obrigatórias',
       itens: ['Lançamento N°', 'Venda', 'Pessoa', 'Descrição', 'Liquidação', 'Valor', 'Operacao', 'Tipo'],
-      nota: 'A coluna Operacao_Id (que o robô acrescenta) é opcional; se existir, não pode vir vazia.',
+      nota: 'A coluna Operacao_Id (que o robô acrescenta) é opcional; se existir, precisa vir preenchida em todas as linhas de lançamento.',
     },
   },
 
   lancamentos_movimentacao: {
+    limiteMB: LIMITE_MB_ARQUIVO,
     origem: 'Relatório "Lançamentos por Categoria" do Monde, na versão por movimentação, em Excel (.xlsx).',
     atencao: [
       AVISO_NAO_TRATAR,
-      'Mantenha as linhas de agrupamento ("Grupo de Categoria : …" e "Categoria : …") e a linha de total do fim. São elas que conferem o arquivo: sem elas a conferência até passa, mas o envio é recusado na hora de aplicar.',
+      'Mantenha as linhas de agrupamento ("Grupo de Categoria : …" e "Categoria : …") e a linha de total do fim. São elas que conferem o arquivo: sem NENHUMA delas o envio é recusado na hora de aplicar; sem parte delas ele passa com menos conferências — por isso não apague nenhuma.',
       'Use a versão POR MOVIMENTAÇÃO (com a coluna "Movimentação"). A plataforma não impede trocar pelo arquivo de vencimento em aberto — confira antes de enviar.',
       'Não exclua as movimentações futuras: a plataforma separa sozinha o realizado do previsto.',
     ],
@@ -117,15 +128,16 @@ export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
         'Número', 'Venda Nº', 'Emissão', 'Vencimento', 'Liquidação', 'Pessoa', 'Descrição',
         'Descrição Categoria', 'Valor', 'Categoria', 'Grupo de Categoria', 'Conta',
       ],
-      nota: 'Mais a coluna "Movimentação", que é o que distingue este arquivo do de vencimento em aberto.',
+      nota: 'O arquivo certo traz também a coluna "Movimentação" — é ela que distingue este arquivo do de vencimento em aberto, mas a plataforma não a exige.',
     },
   },
 
   titulos_em_aberto: {
+    limiteMB: LIMITE_MB_ARQUIVO,
     origem: 'Relatório "Lançamentos por Categoria" do Monde, na versão por vencimento em aberto, em Excel (.xlsx).',
     atencao: [
       AVISO_NAO_TRATAR,
-      'Mantenha as linhas de agrupamento ("Grupo de Categoria : …" e "Categoria : …") e a linha de total do fim. São elas que conferem o arquivo: sem elas a conferência até passa, mas o envio é recusado na hora de aplicar.',
+      'Mantenha as linhas de agrupamento ("Grupo de Categoria : …" e "Categoria : …") e a linha de total do fim. São elas que conferem o arquivo: sem NENHUMA delas o envio é recusado na hora de aplicar; sem parte delas ele passa com menos conferências — por isso não apague nenhuma.',
       'Use a versão POR VENCIMENTO EM ABERTO (sem a coluna "Movimentação"). A plataforma não impede trocar pelo arquivo de movimentação — confira antes de enviar.',
       'Os Lançamentos por Operação só são aceitos se esta base tiver sido carregada no mesmo dia — carregue-a antes.',
     ],
@@ -146,7 +158,7 @@ export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
   pessoas: {
     origem: 'Cadastro de pessoas do Monde, em Excel (.xlsx) ou CSV.',
     atencao: [
-      'O arquivo precisa trazer as 17 colunas abaixo, mesmo que algumas venham vazias.',
+      `O arquivo precisa trazer as ${PESSOAS_COLUNAS.length} colunas abaixo, mesmo que algumas venham vazias.`,
     ],
     passos: [
       'Exporte o cadastro completo de pessoas.',
@@ -156,11 +168,12 @@ export const INSTRUCOES_UPLOAD: Record<BaseUpload, InstrucoesUpload> = {
     colunas: {
       rotulo: 'Colunas obrigatórias',
       itens: PESSOAS_COLUNAS,
-      nota: 'Células vazias são normais. Os valores são lidos como texto (zeros à esquerda de CEP e documentos se mantêm).',
+      nota: 'Células vazias são normais. Os valores são lidos como texto: zeros à esquerda de CEP e documentos se mantêm, desde que a coluna esteja como texto no arquivo.',
     },
   },
 
   demonstrativo_competencia: {
+    limiteMB: LIMITE_MB_ARQUIVO,
     origem:
       'Relatório "Demonstrativo de Resultado" do Monde (tabela dinâmica), em Excel (.xlsx), exatamente como sai do sistema — sem tratamento.',
     atencao: [

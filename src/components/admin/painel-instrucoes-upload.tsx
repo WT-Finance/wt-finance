@@ -68,12 +68,14 @@ export default function PainelInstrucoesUpload({
                 </li>
               ))}
             </ul>
-            {instrucoes.colunas.nota && <p className="mt-1.5 text-zinc-500">{instrucoes.colunas.nota}</p>}
+            {/* zinc-600, não 500: sobre `surface-soft` o 500 fica abaixo de AA (~4,3:1) em 12px. */}
+            {instrucoes.colunas.nota && <p className="mt-1.5 text-zinc-600">{instrucoes.colunas.nota}</p>}
           </Secao>
 
           <Secao titulo="Bom saber">
             <ul className="list-disc space-y-1 pl-4">
               {INSTRUCOES_GERAIS.map(t => <li key={t}>{t}</li>)}
+              {instrucoes.limiteMB !== undefined && <li>Limite de {instrucoes.limiteMB} MB por arquivo.</li>}
             </ul>
           </Secao>
         </div>

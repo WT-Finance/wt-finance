@@ -62,7 +62,7 @@ export interface LancamentoOperacaoCru {
 type Campo = 'lancamento_numero' | 'venda_numero' | 'pessoa' | 'descricao' | 'liquidacao'
   | 'valor' | 'operacao' | 'tipo' | 'operacao_id'
 
-export const COL_MAP: Record<string, Campo> = {
+export const COL_MAP: Readonly<Record<string, Campo>> = {
   'Lançamento N°':  'lancamento_numero',
   'Lançamento Nº':  'lancamento_numero',
   'Lançamento N.':  'lancamento_numero',
@@ -81,7 +81,7 @@ export const COL_MAP: Record<string, Campo> = {
   'Operacao_Id':    'operacao_id',
 }
 
-export const OBRIGATORIOS: Campo[] = [
+export const OBRIGATORIOS: readonly Campo[] = [
   'lancamento_numero', 'venda_numero', 'pessoa', 'descricao', 'liquidacao', 'valor', 'operacao', 'tipo',
 ]
 
