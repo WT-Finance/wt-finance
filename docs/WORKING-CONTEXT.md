@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-05 (fechamento da v6.1.3).
+Última atualização: 2026-10-05 (pós-merge da v6.1.3).
 
 ---
 
-## Em voo — v6.1.3 "Instruções de upload em cada card" (PR draft, branch `feat/v6-1-3-instrucoes-upload`)
+## Em produção — v6.1.3 "Instruções de upload em cada card" (PR #289, mergeado 05/10 às 12:07)
 
 Botão "Ver instruções" nos seis cards de `/admin/ingestao/upload` (texto em
 `src/lib/ingestao/instrucoes-upload.ts`, colunas pinadas no parser do servidor por sonda) e correção da
@@ -24,7 +24,18 @@ linha "Colunas obrigatórias" do card, errada em 5 de 6 bases desde a v6.0.0. Ou
 > Categoria (movimentação e venc. em aberto), Demonstrativo de Resultado e Pessoas — o repo não documenta;
 > o campo `ondeNoMonde` ficou vazio de propósito (lista no §6 do out-briefing). Operação não tem caminho
 > manual (é o CSV do robô) — decidir se o card deve dizer mais.
-> 🔴 **Yan — conferência visual no preview** (§5 do out-briefing; a sessão não tem login) e merge.
+> 🔴 **Yan — conferência visual no ar** (§5 do out-briefing; a sessão não tem login), se ainda não feita:
+> abrir/fechar o painel de 2–3 cards em `/admin/ingestao/upload`.
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.3** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-3`,
+> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures da worktree são cópias de
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-1-3-instrucoes-upload --force
+> git worktree prune
+> git branch -D feat/v6-1-3-instrucoes-upload docs/pos-merge-v6-1-3
+> ```
 
 ---
 
@@ -34,15 +45,6 @@ linha "Colunas obrigatórias" do card, errada em 5 de 6 bases desde a v6.0.0. Ou
 corrigido nas 3 cópias transitivas (#51–#53). Só `package.json`/lockfile; `npm audit` = 0; suíte igual à da
 v6.1.1. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-2_Seguranca_Deps.md`. Sem migration.
 
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.2** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-2`,
-> que mora na mesma worktree). Da raiz (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-1-2-seguranca-deps --force
-> git worktree prune
-> git branch -D feat/v6-1-2-seguranca-deps docs/pos-merge-v6-1-2
-> ```
 > 🔴 **Yan — no ar:** um login real + uma tela com dados (ex.: DRE). O smoke de `next start` só provou o
 > ramo não autenticado do `proxy.ts`.
 
@@ -57,16 +59,6 @@ Performance alinhado, botão Exportar (xlsx) no DRE. **Migration 0289 aplicada**
 `api-externa` (Administrador e Financeiro). Banco na 0289, livre 0290; ADR livre 0181. Janela da 0289
 conferida no merge: nenhuma role com `solicitacoes` ficou sem `api-externa`.
 
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.1** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-1`,
-> que mora na mesma worktree). As fixtures do oráculo já estão salvas em
-> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-1-1-ajustes-navegacao-dre --force
-> git worktree prune
-> git branch -D feat/v6-1-1-ajustes-navegacao-dre docs/pos-merge-v6-1-1
-> ```
 > 🔴 **Yan — conferência visual** das telas que não vieram por print (sidebar Ingestão, card Monde no Log,
 > cabeçalho de Performance, Exportar + planilha) e **decidir a guarda anti-fórmula** do Exportar
 > (apóstrofo visível em rótulo que começa com `= + - @`).
@@ -89,20 +81,6 @@ fechando) e a chave de Operação recusada em Vendas (403).
 > out-briefing da v6.1.0. O 403 da API de Solicitações e o 422 de origem não rodaram ao vivo (só teste).
 > 🔴 **Yan — corrigir no Monde os cadastros duplicados** das 3 puladas (Darlene e Adnan, Giovana e Victor,
 > Paula e Fernando) para que os casamentos reais voltem à carteira.
-
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.1.0** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-1-0`,
-> que mora na mesma worktree). As fixtures do oráculo (inclusive `operacao-rpa-cru.csv`) já estão salvas em
-> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-1-0-entrega-rpa --force
-> git worktree prune
-> git branch -D feat/v6-1-0-entrega-rpa docs/pos-merge-v6-1-0
-> ```
-> Se o `pull` abortar por colisão em `docs/briefings/briefing-v6-1-0-entrega-rpa.md` (untracked na raiz), é o
-> modo de falha conhecido: conferir que é idêntico ao do `origin/main` (`show` + `diff`), mover para fora do
-> repo e só então puxar. Nunca `reset`.
 
 > 🔴 **Yan — conferir com a gerente a mudança de 2025 no Demonstrativo** (alarme `ano_fechado_alterado` de
 > 29/09 17:28 UTC): mesmas 1.248 linhas, Σ de R$ 470.395,76 para R$ 469.600,56 (−R$ 795,20) — lançamento de
