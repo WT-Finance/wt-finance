@@ -51,7 +51,7 @@ export interface DemonstrativoCompetenciaCru {
 
 /** Os cinco campos do pivot, por nome NORMALIZADO. A ordem em que aparecem no arquivo é
  *  descoberta, não presumida — reordenar os campos no Monde não quebra a leitura. */
-const CAMPOS_CANONICOS = ['tipo', 'grupo', 'descricao', 'ano', 'mes'] as const
+export const CAMPOS_CANONICOS = ['tipo', 'grupo', 'descricao', 'ano', 'mes'] as const
 type CampoCanonico = (typeof CAMPOS_CANONICOS)[number]
 
 /** Nome de mês pt-BR → número. Tabela FIXA: o `format(data, "%b")` do R dependia do `LC_TIME` da

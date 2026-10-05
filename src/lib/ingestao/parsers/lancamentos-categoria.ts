@@ -53,7 +53,7 @@ type Campo =
   | 'pessoa' | 'descricao' | 'descricao_categoria' | 'valor' | 'categoria' | 'grupo_categoria'
   | 'conta'
 
-const COL_MAP: Record<string, Campo> = {
+export const COL_MAP: Readonly<Record<string, Campo>> = {
   'Número':              'numero',
   'Numero':              'numero',
   'Venda Nº':            'venda_numero',
@@ -73,7 +73,7 @@ const COL_MAP: Record<string, Campo> = {
 
 /** Sem qualquer um destes a base não tem significado. "Movimentação" fica de fora de propósito:
  *  é o que separa as duas irmãs. */
-const OBRIGATORIOS: Campo[] = [
+export const OBRIGATORIOS: readonly Campo[] = [
   'numero', 'venda_numero', 'emissao', 'vencimento', 'liquidacao', 'pessoa', 'descricao',
   'descricao_categoria', 'valor', 'categoria', 'grupo_categoria', 'conta',
 ]

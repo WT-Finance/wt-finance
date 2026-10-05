@@ -90,7 +90,7 @@ type Campo =
 /** Só as colunas que a plataforma usa. `E-mail`/`CPF`/`CNPJ`/`Tipo Pessoa` ficam de fora de
  *  propósito (decisão 3); `Data Fim`, `Vendedor(a) Responsável - Grupo`, `Representante`,
  *  `Câmbio Operadora` e `Comissão (%)` o legado já descartava. */
-const COL_MAP: Record<string, Campo> = {
+export const COL_MAP: Readonly<Record<string, Campo>> = {
   'Venda Nº':                   'venda_numero',
   'Data Venda':                 'data_venda',
   'Data Início':                'data_inicio',
@@ -112,7 +112,7 @@ const COL_MAP: Record<string, Campo> = {
   'Operação Própria':           'operacao_propria',
 }
 
-const OBRIGATORIOS: Campo[] = [
+export const OBRIGATORIOS: readonly Campo[] = [
   'venda_numero', 'data_venda', 'data_inicio', 'pagante', 'vendedor', 'intermediario', 'setor',
   'passageiros', 'produto', 'valor_total', 'receitas', 'total_produtos_moeda_origem',
   'fornecedor', 'tipo_contrato', 'situacao', 'reembolso_ao_cliente', 'operacao_propria',
