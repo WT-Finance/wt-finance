@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { Upload, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback, useId } from 'react'
+import { Upload, CheckCircle, AlertTriangle, Loader2, ChevronDown } from 'lucide-react'
 import {
   getLancamentosStatusAction,
   getVendasStatusAction,
@@ -14,11 +14,10 @@ import {
 } from './actions'
 import { fmtBRL2 } from '@/lib/fmt'
 import { ModalConfirmacaoUpload, type DetalhesConferencia } from '@/components/admin/modal-confirmacao-upload'
-import { parsePessoasFile, PESSOAS_COLUNAS } from '@/lib/carga/parse-pessoas'
-import { LANCAMENTOS_COLUNAS } from '@/lib/carga/parse-lancamentos'
-import { LANCAMENTOS_MOVIMENTACAO_COLUNAS } from '@/lib/carga/parse-lancamentos-movimentacao'
-import { TITULOS_EM_ABERTO_COLUNAS } from '@/lib/carga/parse-titulos-em-aberto'
-import { DEMONSTRATIVO_COMPETENCIA_COLUNAS } from '@/lib/carga/parse-demonstrativo-competencia'
+import PainelInstrucoesUpload from '@/components/admin/painel-instrucoes-upload'
+import Button from '@/components/ui/button'
+import { INSTRUCOES_UPLOAD, type BaseUpload } from '@/lib/ingestao/instrucoes-upload'
+import { parsePessoasFile } from '@/lib/carga/parse-pessoas'
 import { parseArquivoEmWorker } from '@/lib/carga/parse-em-worker'
 import type { PessoaRaw } from '@/lib/carga/parse-pessoas'
 import type { BaseIngestao } from '@/lib/ingestao/bases'
@@ -27,9 +26,8 @@ import {
   type ArquivoDaCarga, type PacoteConferido, type RespostaCarga,
 } from './ingestao-cliente'
 
-type BaseKey =
-  | 'vendas' | 'lancamentos' | 'lancamentos_movimentacao' | 'titulos_em_aberto' | 'pessoas'
-  | 'demonstrativo_competencia'
+// Mesma união do módulo de instruções: base nova sem instruções não compila.
+type BaseKey = BaseUpload
 
 type EstadoCard =
   | 'idle'
@@ -81,11 +79,11 @@ interface BaseConfig {
   baseIngestao?: BaseIngestao
   label:    string
   descricao: string
+  // As colunas obrigatórias e o painel "Ver instruções" vêm de `INSTRUCOES_UPLOAD[key]`
+  // (v6.1.3) — pinados no parser do SERVIDOR por sonda. Até a v6.1.2 o card lia aqui as listas
+  // dos parsers antigos do navegador, que o fluxo novo (v6.0.0) já não usa, e elas derivaram.
   /** Sufixo do contador na linha de status (ex.: "vendas", "lançamentos", "registros"). */
   unidade:  string
-  /** Colunas obrigatórias (rótulos) exibidas no card. DERIVADAS do parser (v4.29.0); o
-   *  Vendas é tolerante (parser não exige nenhuma) → lista vazia, sem mudar o que aceita. */
-  obrigatorias: string[]
   /** Extensões aceitas no seletor. A extensão é POR BASE (contrato §2.1): `.xlsx` para as
    *  quatro bases de planilha; `.csv` para Lançamentos por Operação (scrape). */
   accept:  string
@@ -101,7 +99,6 @@ const BASES: BaseConfig[] = [
     label: 'Vendas por Produto',
     descricao: 'Substitui toda a base de Vendas por Produto. Um arquivo por ano — selecione todos de uma vez.',
     unidade: 'vendas',
-    obrigatorias: [], // parser tolerante (mapeia o que estiver presente) — nenhuma exigida hoje
     accept: '.xlsx',
     multiplos: true,
   },
@@ -111,7 +108,6 @@ const BASES: BaseConfig[] = [
     label: 'Lançamentos por Operação',
     descricao: 'Substitui toda a base de Lançamentos por Operação. Importe sempre o arquivo completo.',
     unidade: 'lançamentos',
-    obrigatorias: LANCAMENTOS_COLUNAS,
     accept: '.csv', // contrato §2.1: só esta base aceita csv (export "Análise de Operações", scrape)
   },
   {
@@ -120,7 +116,6 @@ const BASES: BaseConfig[] = [
     label: 'Lançamentos por Movimentação',
     descricao: 'Substitui toda a base de Lançamentos por Movimentação (realizado — data em que o dinheiro entrou/saiu da conta). Importe sempre o arquivo completo.',
     unidade: 'registros',
-    obrigatorias: LANCAMENTOS_MOVIMENTACAO_COLUNAS,
     accept: '.xlsx',
   },
   {
@@ -129,7 +124,6 @@ const BASES: BaseConfig[] = [
     label: 'Lançamentos por Vencimento (em aberto)',
     descricao: 'Substitui toda a base de títulos em aberto (previsto — por data de vencimento). Importe sempre o arquivo completo.',
     unidade: 'registros',
-    obrigatorias: TITULOS_EM_ABERTO_COLUNAS,
     accept: '.xlsx',
   },
   {
@@ -137,16 +131,14 @@ const BASES: BaseConfig[] = [
     label: 'Pessoas',
     descricao: 'Substitui toda a base de Pessoas (cadastro do Monde). Importe sempre o arquivo completo.',
     unidade: 'pessoas',
-    obrigatorias: PESSOAS_COLUNAS,
     accept: '.xlsx,.csv',
   },
   {
     key: 'demonstrativo_competencia',
     baseIngestao: 'demonstrativo-competencia',
     label: 'Demonstrativo de Resultado (Competência)',
-    descricao: 'Substitui toda a base do regime de COMPETÊNCIA (fato gerador: data de emissão) — o export "Demonstrativo de Resultado" do Monde já tratado. Importe sempre o arquivo completo.',
+    descricao: 'Substitui toda a base do regime de COMPETÊNCIA (fato gerador: data de emissão) — o export "Demonstrativo de Resultado" do Monde como sai do sistema (tabela dinâmica, sem tratamento). Importe sempre o arquivo completo.',
     unidade: 'linhas',
-    obrigatorias: DEMONSTRATIVO_COMPETENCIA_COLUNAS,
     accept: '.xlsx',
   },
 ]
@@ -190,6 +182,9 @@ function CardUpload({
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [instrucoesAbertas, setInstrucoesAbertas] = useState(false)
+  const idInstrucoes = useId()
+  const instrucoes = INSTRUCOES_UPLOAD[config.key]
   const ativo = estado.estado === 'idle' || estado.estado === 'erro'
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -216,17 +211,31 @@ function CardUpload({
         <div>
           <h2 className="text-sm font-semibold text-zinc-900">{config.label}</h2>
           <p className="text-xs text-zinc-500 mt-0.5">{config.descricao}</p>
-          {config.obrigatorias.length > 0 ? (
-            <p className="text-2xs text-zinc-400 mt-1">
-              <span className="font-medium text-zinc-500">Colunas obrigatórias:</span> {config.obrigatorias.join(', ')}
-            </p>
-          ) : (
-            <p className="text-2xs text-zinc-400 mt-1">As colunas são reconhecidas automaticamente.</p>
-          )}
+          <p className="text-2xs text-zinc-400 mt-1">
+            <span className="font-medium text-zinc-500">{instrucoes.colunas.rotulo}:</span> {instrucoes.colunas.itens.join(', ')}
+          </p>
         </div>
-        {estado.estado === 'sucesso' && <CheckCircle size={18} className="text-success shrink-0" />}
-        {estado.estado === 'erro'    && <AlertTriangle size={18} className="text-danger shrink-0" />}
+        <div className="flex shrink-0 items-center gap-2 pl-3">
+          <Button
+            variant="livre"
+            onClick={() => setInstrucoesAbertas(a => !a)}
+            aria-expanded={instrucoesAbertas}
+            aria-controls={idInstrucoes}
+            className="foco-neutro inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-zinc-200 px-2 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-800"
+          >
+            {instrucoesAbertas ? 'Ocultar instruções' : 'Ver instruções'}
+            <ChevronDown
+              size={13}
+              aria-hidden
+              className={`transition-transform duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${instrucoesAbertas ? 'rotate-180' : ''}`}
+            />
+          </Button>
+          {estado.estado === 'sucesso' && <CheckCircle size={18} className="text-success shrink-0" />}
+          {estado.estado === 'erro'    && <AlertTriangle size={18} className="text-danger shrink-0" />}
+        </div>
       </div>
+
+      <PainelInstrucoesUpload id={idInstrucoes} aberto={instrucoesAbertas} instrucoes={instrucoes} />
 
       <p className="text-xs text-zinc-400 mb-3">
         {status ? (
