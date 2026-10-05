@@ -63,6 +63,18 @@ const PRAZO_API_MS = 230_000
 /** Uma venda já lida só é RE-lida (revisita) depois deste intervalo. */
 const REVISITA_HORAS = 12
 
+/** Valor de `window_cursor:<intervalo>` quando a varredura do intervalo já chegou ao corte. */
+const VARREDURA_CONCLUIDA = 'concluida'
+
+const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
+/** `from`/`to` válidos (AAAA-MM-DD, from ≤ to) ou a mensagem de erro para o 400. */
+function intervaloInvalido(from: string | null, to: string | null): string | null {
+  if (!from || !to) return 'faltam from/to (YYYY-MM-DD)'
+  if (!RE_DIA.test(from) || !RE_DIA.test(to) || Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) return 'from/to fora do formato YYYY-MM-DD'
+  if (from > to) return 'from depois de to'
+  return null
+}
+
 /**
  * TTL do lock de ingestão. ⚠️ Tem de ficar > 2× `maxDuration` (ver o corpo de `monde_ingest_claim`,
  * migration 0232): não há heartbeat nem fencing token.
@@ -143,11 +155,15 @@ async function handle(req: NextRequest): Promise<Response> {
    */
   async function releitura(from: string, to: string, maxFila: number | undefined) {
     const chave = `${from}..${to}`
-    const cursorInicial = await controle(`window_cursor:${chave}`)
+    const cursorSalvo = await controle(`window_cursor:${chave}`)
+    // `VARREDURA_CONCLUIDA` = a varredura deste intervalo já chegou ao corte: as próximas invocações só
+    // drenam a fila, em vez de re-varrer do topo (MÉDIO do revisor).
+    const varrer = cursorSalvo !== VARREDURA_CONCLUIDA
     const cliente = novoCliente()
     const r = await sincronizar(db, cliente, {
       corte: corteDoDia(menosDias(from, MARGEM_CRIACAO_DIAS)),
-      cursorInicial,
+      cursorInicial: varrer ? cursorSalvo : null,
+      varrer,
       revisitaDesde: inicioJanela,
       revisitaAntes,
       limiteFila: maxFila,
@@ -161,13 +177,15 @@ async function handle(req: NextRequest): Promise<Response> {
       },
     })
     await rpc('monde_ingest_control_set', {
-      p_chave: `window_cursor:${chave}`, p_valor: r.varredura.chegou_no_corte ? '' : (r.varredura.cursor_final ?? ''),
+      p_chave: `window_cursor:${chave}`,
+      p_valor: r.varredura.chegou_no_corte ? VARREDURA_CONCLUIDA : (r.varredura.cursor_final ?? ''),
     })
     const situacao = await apurarMes(db, from, to, '-infinity')
     const done = r.varredura.chegou_no_corte && situacao.pendentes === 0 && situacao.erros === 0
     if (done) {
-      // Intervalo concluído: limpa as marcas, para uma releitura futura do mesmo intervalo forçar de novo.
+      // Intervalo concluído: limpa as marcas, para uma releitura futura do mesmo intervalo varrer e forçar de novo.
       await rpc('monde_ingest_control_set', { p_chave: `window_forcado:${chave}`, p_valor: '' })
+      await rpc('monde_ingest_control_set', { p_chave: `window_cursor:${chave}`, p_valor: '' })
     }
     return { resultado: r, pendentes: situacao.pendentes, erros: situacao.erros, done }
   }
@@ -176,7 +194,8 @@ async function handle(req: NextRequest): Promise<Response> {
     // ── auditoria (SÓ LEITURA — sem lock, não toca staging nem o índice de cabeçalhos) ─────
     if (mode === 'auditoria') {
       const from = sp.get('from'); const to = sp.get('to')
-      if (!from || !to) return NextResponse.json({ error: 'faltam from/to (YYYY-MM-DD)' }, { status: 400 })
+      const invalido = intervaloInvalido(from, to)
+      if (invalido || !from || !to) return NextResponse.json({ error: invalido }, { status: 400 })
       const janelaApi = await listarJanelaDaApi(novoCliente(), { from, to, onLog })
       const diff = await rpc('monde_vendas_ausentes', { p_numeros: janelaApi.numeros, p_from: from, p_to: to })
       return NextResponse.json({
@@ -192,9 +211,14 @@ async function handle(req: NextRequest): Promise<Response> {
 
     if (mode === 'window') {
       const from = sp.get('from'); const to = sp.get('to')
-      if (!from || !to) return NextResponse.json({ error: 'faltam from/to (YYYY-MM-DD)' }, { status: 400 })
-      const max = sp.get('max')
-      const saida = await comLock('window', () => releitura(from, to, max ? Number(max) : undefined))
+      const invalido = intervaloInvalido(from, to)
+      if (invalido || !from || !to) return NextResponse.json({ error: invalido }, { status: 400 })
+      const maxTexto = sp.get('max')
+      const max = maxTexto === null ? undefined : Number(maxTexto)
+      if (max !== undefined && (!Number.isInteger(max) || max <= 0)) {
+        return NextResponse.json({ error: 'max deve ser inteiro positivo' }, { status: 400 })
+      }
+      const saida = await comLock('window', () => releitura(from, to, max))
       if (saida === null) return NextResponse.json({ mode, pulado: 'lock', log })
       return NextResponse.json({ mode, ...saida, log })
     }
@@ -268,13 +292,20 @@ async function handle(req: NextRequest): Promise<Response> {
             } else if (r.removidas > 0) {
               removidas = r.removidas
               onLog(`cura: ${r.removidas} venda(s) retida(s) removida(s) do espelho — ${JSON.stringify(r.vendas)}`)
-              // Venda removida volta a ser "não lida": se reaparecer na lista com o mesmo cabeçalho, é relida.
-              await rpc('monde_cabecalho_invalidar', { p_numeros: r.vendas.map((v) => v.venda_numero) })
+              // Rastro e mv PRIMEIRO, logo depois do DELETE: se o passo seguinte falhar, a remoção já está
+              // auditada e a mv já não soma a venda apagada (MÉDIO do revisor).
               await rpc('monde_ingest_control_set', {
                 p_chave: 'ultima_remocao',
                 p_valor: JSON.stringify({ em: new Date().toISOString(), mes, removidas: r.removidas, vendas: r.vendas }),
               })
               await rpc('monde_refresh_mv')
+              // Venda removida volta a ser "não lida": se reaparecer na lista com o mesmo cabeçalho, é relida.
+              try {
+                await rpc('monde_cabecalho_invalidar', { p_numeros: r.vendas.map((v) => v.venda_numero) })
+              } catch (e) {
+                onLog(`ERRO: cura removeu ${r.removidas} venda(s) mas não invalidou o cabeçalho delas — se voltarem à ` +
+                  `lista sem mudar, não serão relidas até a revisita: ${(e as Error).message}`)
+              }
             }
           }
         } catch (e) {
@@ -315,7 +346,15 @@ async function handle(req: NextRequest): Promise<Response> {
         await concluirExecucao(execId, 'pulado', { mes, motivo: 'lock_ocupado' })
         return NextResponse.json({ mode, mes, pulado: 'lock', log })
       }
-      await concluirExecucao(execId, 'ok', { mes, ciclo_fechado: fechaCiclo, adiada: saida.adiada })
+      // Apuração ADIADA conclui como `erro` (com o motivo), não `ok` (MÉDIO do revisor): o vigia mede o
+      // último `ok`, então cura e tripwire desligados por mais de 30 h acendem "processo sem resultado"
+      // em vez de passar calados. Uma adiada isolada (ex.: fila ainda drenando) não alarma — a tolerância
+      // de 30 h cobre várias voltas do ciclo.
+      if (saida.adiada) {
+        await concluirExecucao(execId, 'erro', { mes, ciclo_fechado: fechaCiclo }, `apuração de ${mes} adiada — ${saida.adiada}`)
+      } else {
+        await concluirExecucao(execId, 'ok', { mes, ciclo_fechado: fechaCiclo })
+      }
       return NextResponse.json({ mode, mes, janela, ciclo_fechado: fechaCiclo, ...saida, log })
       } catch (e) {
         await concluirExecucao(execId, 'erro', null, e instanceof Error ? e.message : String(e))

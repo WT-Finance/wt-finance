@@ -18,7 +18,10 @@
 // Fluxo: varrer cabeçalhos (cursor) até o corte → fila (pendentes, depois revisita) → por lote:
 // detalhe → nomes → transform → staging → `monde_ingest_promover` → SÓ ENTÃO `monde_cabecalho_marcar`
 // (marcar antes e falhar no promover deixaria a venda "lida" sem estar no espelho) → refresh da mv.
-import { OrcamentoEsgotado, ErroMonde, type ClienteMonde } from './client'
+//
+// Importa valores de `./client` (que é `server-only`): este módulo só roda no servidor; os testes
+// mockam `server-only`, como os demais do projeto.
+import { OrcamentoEsgotado, ErroMonde, ErroTransitorio, type ClienteMonde } from './client'
 import { transformSale, type VendaEspelho } from './transform'
 import { CacheNomes, carregarCampos } from './nomes'
 import type { Cabecalho, VendaDetalhe } from './schemas'
@@ -130,7 +133,12 @@ export interface ResultadoFila {
   excluidas: { welcome: number; sem_setor: number; sem_item_ativo: number }
   erros: number
   promover: PromoverResult
-  parou_por_orcamento: boolean
+  /**
+   * Por que a drenagem parou antes do fim da fila: `orcamento` (tempo da invocação) ou `instabilidade`
+   * (429/5xx/rede persistentes — a API, não a venda). Nos dois casos o que não foi gravado fica na fila,
+   * SEM ser marcado como erro.
+   */
+  parada: 'orcamento' | 'instabilidade' | null
 }
 
 function somarPromover(a: PromoverResult, b: PromoverResult | null): PromoverResult {
@@ -152,39 +160,49 @@ export async function drenarFila(
   const log = (m: string) => opts.onLog?.(m)
   const out: ResultadoFila = {
     lidas: 0, espelhadas: 0, excluidas: { welcome: 0, sem_setor: 0, sem_item_ativo: 0 }, erros: 0,
-    promover: { ok: true, inseridas: 0, atualizadas: 0, ignoradas: 0, itens: 0 }, parou_por_orcamento: false,
+    promover: { ok: true, inseridas: 0, atualizadas: 0, ignoradas: 0, itens: 0 }, parada: null,
   }
+  /** Orçamento e instabilidade da API PARAM o tick (nada é marcado); qualquer outra coisa sobe. */
+  const motivoDeParada = (e: unknown): ResultadoFila['parada'] =>
+    e instanceof OrcamentoEsgotado ? 'orcamento' : e instanceof ErroTransitorio ? 'instabilidade' : null
+
   const fila = ((await rpc(db, 'monde_cabecalho_fila', {
     p_limite: opts.limite, p_revisita_desde: opts.revisitaDesde, p_revisita_antes: opts.revisitaAntes,
   })) ?? []) as ItemFila[]
   if (!fila.length) { log('fila vazia'); return out }
 
   const resolvedor = nomes.resolvedor(campos)
-  for (let i = 0; i < fila.length && !out.parou_por_orcamento; i += lote) {
+  for (let i = 0; i < fila.length && out.parada === null; i += lote) {
     const bloco = fila.slice(i, i + lote)
     const lidos: { item: ItemFila; detalhe: VendaDetalhe; raw: unknown }[] = []
-    const resultados: { sale_id: string; lido_hash: string; classificacao: Classificacao; erro?: string }[] = []
+    const resultados: { sale_id: string; venda_numero: string; lido_hash: string; classificacao: Classificacao; erro?: string }[] = []
+    const marcarErro = (item: ItemFila, erro: string) => {
+      out.erros++
+      resultados.push({ sale_id: item.sale_id, venda_numero: item.venda_numero, lido_hash: item.cabecalho_hash, classificacao: 'erro', erro })
+    }
 
-    // 2a. Detalhes. Orçamento acabou no meio ⇒ o que já foi lido NESTE bloco ainda é processado.
+    // 2a. Detalhes. Parada no meio ⇒ o que já foi lido NESTE bloco ainda é processado. Só erro que é
+    // da VENDA (404, formato) vira `erro`; 429/5xx/rede persistentes são da API e param o tick.
     for (const item of bloco) {
       try {
         lidos.push({ item, ...(await cliente.detalheVenda(item.sale_id)) })
       } catch (e) {
-        if (e instanceof OrcamentoEsgotado) { out.parou_por_orcamento = true; break }
-        out.erros++
+        const parada = motivoDeParada(e)
+        if (parada) { out.parada = parada; log(`detalhe interrompido (${parada}): ${(e as Error).message}`); break }
         const msg = e instanceof ErroMonde ? e.message : (e as Error).message
-        resultados.push({ sale_id: item.sale_id, lido_hash: item.cabecalho_hash, classificacao: 'erro', erro: msg })
+        marcarErro(item, msg)
         log(`venda ${item.venda_numero}: erro no detalhe — ${msg}`)
       }
     }
 
-    // 2b. Nomes. Orçamento acabou aqui ⇒ o bloco inteiro volta para a fila (sem nome não se grava).
+    // 2b. Nomes. Parada aqui ⇒ o bloco lido volta inteiro para a fila (sem nome não se grava).
     try {
       await nomes.preparar(lidos.map((l) => l.detalhe))
     } catch (e) {
-      if (!(e instanceof OrcamentoEsgotado)) throw e
-      out.parou_por_orcamento = true
-      log(`orçamento acabou resolvendo nomes — ${lidos.length} venda(s) voltam para a fila`)
+      const parada = motivoDeParada(e)
+      if (!parada) throw e
+      out.parada = parada
+      log(`resolução de nomes interrompida (${parada}) — ${lidos.length} venda(s) voltam para a fila`)
       lidos.length = 0
     }
 
@@ -195,37 +213,61 @@ export async function drenarFila(
         const t = transformSale(detalhe, raw, resolvedor)
         if ('venda' in t) {
           vendas.push(t.venda)
-          resultados.push({ sale_id: item.sale_id, lido_hash: item.cabecalho_hash, classificacao: 'espelhada' })
+          resultados.push({ sale_id: item.sale_id, venda_numero: item.venda_numero, lido_hash: item.cabecalho_hash, classificacao: 'espelhada' })
         } else {
           // `sem_item_ativo` nunca é devolvido desde a v5.4.5 (ver transform.ts); se voltar, é erro.
           if (t.excluida === 'sem_item_ativo') throw new Error('transform devolveu sem_item_ativo (removido na v5.4.5)')
           out.excluidas[t.excluida]++
-          resultados.push({ sale_id: item.sale_id, lido_hash: item.cabecalho_hash, classificacao: t.excluida })
+          resultados.push({ sale_id: item.sale_id, venda_numero: item.venda_numero, lido_hash: item.cabecalho_hash, classificacao: t.excluida })
         }
       } catch (e) {
-        out.erros++
-        resultados.push({ sale_id: item.sale_id, lido_hash: item.cabecalho_hash, classificacao: 'erro', erro: (e as Error).message })
+        marcarErro(item, (e as Error).message)
       }
     }
 
-    // 2d. Staging → promover → marcar (nesta ordem).
-    if (vendas.length) {
-      await rpc(db, 'monde_ingest_limpar_staging')
-      await rpc(db, 'monde_ingest_lote', { p_vendas: vendas })
-      out.promover = somarPromover(out.promover, (await rpc(db, 'monde_ingest_promover')) as PromoverResult)
+    // 2d. Staging → promover → marcar (nesta ordem). A venda que o BANCO recusa é isolada e marcada
+    // `erro` — sem isso ela voltaria na frente da fila a cada tick e travaria a ingestão inteira.
+    const gravacao = await gravar(db, vendas)
+    out.promover = somarPromover(out.promover, gravacao.promover)
+    for (const f of gravacao.falhas) {
+      const r = resultados.find((x) => x.venda_numero === f.venda_numero && x.classificacao === 'espelhada')
+      if (r) { r.classificacao = 'erro'; r.erro = f.erro; out.erros++ }
+      log(`venda ${f.venda_numero}: recusada pelo banco — ${f.erro}`)
     }
     if (resultados.length) {
-      const marcadas = (await rpc(db, 'monde_cabecalho_marcar', { p_resultados: resultados })) as number
+      const marcadas = (await rpc(db, 'monde_cabecalho_marcar', {
+        p_resultados: resultados.map((r) => ({ sale_id: r.sale_id, lido_hash: r.lido_hash, classificacao: r.classificacao, erro: r.erro })),
+      })) as number
       if (marcadas !== resultados.length) {
         throw new Error(`monde_cabecalho_marcar gravou ${marcadas} de ${resultados.length} — cabeçalho ausente?`)
       }
     }
     out.lidas += lidos.length
-    out.espelhadas += vendas.length
+    out.espelhadas += vendas.length - gravacao.falhas.length
   }
   log(`fila: ${out.lidas} lida(s) · ${out.espelhadas} espelhada(s) · excluídas ${JSON.stringify(out.excluidas)} · erros ${out.erros}` +
-    ` · promover ${JSON.stringify(out.promover)}${out.parou_por_orcamento ? ' · PAROU POR ORÇAMENTO' : ''}`)
+    ` · promover ${JSON.stringify(out.promover)}${out.parada ? ` · PAROU (${out.parada})` : ''}`)
   return out
+}
+
+/**
+ * staging → promover de um conjunto de vendas. Se o banco recusar o conjunto, BISSECCIONA até isolar
+ * a(s) venda(s) que ele recusa sozinha(s) — essas voltam como `falhas`; as demais são gravadas.
+ */
+async function gravar(db: MondeDb, vendas: VendaEspelho[]): Promise<{ promover: PromoverResult | null; falhas: { venda_numero: string; erro: string }[] }> {
+  if (!vendas.length) return { promover: null, falhas: [] }
+  try {
+    await rpc(db, 'monde_ingest_limpar_staging')
+    await rpc(db, 'monde_ingest_lote', { p_vendas: vendas })
+    return { promover: (await rpc(db, 'monde_ingest_promover')) as PromoverResult, falhas: [] }
+  } catch (e) {
+    if (vendas.length === 1) return { promover: null, falhas: [{ venda_numero: vendas[0].venda_numero, erro: (e as Error).message }] }
+    const meio = Math.floor(vendas.length / 2)
+    const a = await gravar(db, vendas.slice(0, meio))
+    const b = await gravar(db, vendas.slice(meio))
+    const vazio: PromoverResult = { ok: true, inseridas: 0, atualizadas: 0, ignoradas: 0, itens: 0 }
+    return { promover: somarPromover(somarPromover(vazio, a.promover), b.promover), falhas: [...a.falhas, ...b.falhas] }
+  }
 }
 
 // ── 3. Rodada completa ────────────────────────────────────────────────────────────────────
@@ -246,6 +288,12 @@ export async function sincronizar(
     revisitaAntes: string
     limiteFila?: number
     cursorInicial?: string | null
+    /**
+     * `false` = a varredura deste intervalo JÁ chegou ao corte numa invocação anterior (modos
+     * `window`/`backfill`): só drena a fila. Sem isso, cada invocação de um mês antigo re-varreria
+     * centenas de páginas e sobraria quase nada para a fila (MÉDIO do revisor).
+     */
+    varrer?: boolean
     antesDaFila?: () => Promise<void>
     onLog?: (m: string) => void
   },
@@ -253,7 +301,9 @@ export async function sincronizar(
   const campos = await carregarCampos(cliente)
   const nomes = new CacheNomes(db, cliente)
   await nomes.iniciar()
-  const varredura = await varrerCabecalhos(db, cliente, { corte: opts.corte, cursorInicial: opts.cursorInicial, onLog: opts.onLog })
+  const varredura: ResultadoVarredura = opts.varrer === false
+    ? { paginas: 0, registrados: 0, novos: 0, pendentes: 0, invalidos: 0, chegou_no_corte: true, cursor_final: null, inicio_banco: null }
+    : await varrerCabecalhos(db, cliente, { corte: opts.corte, cursorInicial: opts.cursorInicial, onLog: opts.onLog })
   await opts.antesDaFila?.()
   const fila = await drenarFila(db, cliente, nomes, campos, {
     limite: opts.limiteFila ?? 400, revisitaDesde: opts.revisitaDesde, revisitaAntes: opts.revisitaAntes, onLog: opts.onLog,

@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import { varrerCabecalhos, drenarFila, bloqueioDaApuracao, linhaDeCabecalho, corteDoDia, type MondeDb, type ResultadoVarredura } from './ingest'
-import { OrcamentoEsgotado, ErroMonde, type ClienteMonde } from './client'
+import { OrcamentoEsgotado, ErroMonde, ErroTransitorio, type ClienteMonde } from './client'
 import { CacheNomes } from './nomes'
 
 // Tudo SINTÉTICO (ids e nomes inventados).
@@ -17,7 +17,11 @@ function bancoFalso(respostas: Record<string, (args: Record<string, unknown> | u
     rpc: async (fn, args) => {
       chamadas.push({ fn, args })
       const r = respostas[fn]
-      return { data: r ? r(args) : null, error: null }
+      try {
+        return { data: r ? r(args) : null, error: null }
+      } catch (e) {
+        return { data: null, error: { message: (e as Error).message } } // resposta que lança = erro do banco
+      }
     },
   }
   return { db, chamadas, ordem: () => chamadas.map((c) => c.fn) }
@@ -97,11 +101,16 @@ describe('drenarFila', () => {
   const CAMPOS = { campoSetor: 7, campoVendedorWeddings: 11 }
   const fila = [1, 2, 3].map((n) => ({ sale_id: `sale-${n}`, venda_numero: String(n), cabecalho_hash: `h${n}`, motivo: 'pendente' }))
 
-  function montar(detalheVenda: (id: string) => Promise<unknown>, pessoa: () => Promise<unknown> = async () => ({ id: 'p1', name: 'Fulano' })) {
+  function montar(
+    detalheVenda: (id: string) => Promise<unknown>,
+    pessoa: () => Promise<unknown> = async () => ({ id: 'p1', name: 'Fulano' }),
+    lote: (a: Record<string, unknown> | undefined) => unknown = () => null,
+  ) {
     const banco = bancoFalso({
       monde_cabecalho_fila: () => fila,
       monde_pessoa_obter: () => ({}),
-      monde_ingest_promover: () => ({ ok: true, inseridas: 2, atualizadas: 0, ignoradas: 0, itens: 2 }),
+      monde_ingest_lote: lote,
+      monde_ingest_promover: () => ({ ok: true, inseridas: 1, atualizadas: 0, ignoradas: 0, itens: 1 }),
       monde_cabecalho_marcar: (a) => (a?.p_resultados as unknown[]).length,
     })
     const cliente = {
@@ -119,7 +128,7 @@ describe('drenarFila', () => {
   it('promove ANTES de marcar; erro de detalhe vira classificação "erro" com o hash da fila', async () => {
     const m = montar(async (id) => { if (id === 'sale-2') throw new ErroMonde(404, 'sale'); return detalhe(Number(id.split('-')[1])) })
     const r = await drenarFila(m.db, m.cliente, m.nomes, CAMPOS, { limite: 10, revisitaDesde: '2026-08-01', revisitaAntes: '2026-10-05T00:00:00Z' })
-    expect(r).toMatchObject({ lidas: 2, espelhadas: 2, erros: 1, parou_por_orcamento: false })
+    expect(r).toMatchObject({ lidas: 2, espelhadas: 2, erros: 1, parada: null })
     const ordem = m.ordem()
     expect(ordem.indexOf('monde_ingest_promover')).toBeLessThan(ordem.indexOf('monde_cabecalho_marcar'))
     const marcados = m.chamadas.find((c) => c.fn === 'monde_cabecalho_marcar')!.args!.p_resultados as { sale_id: string; classificacao: string; lido_hash: string }[]
@@ -130,9 +139,33 @@ describe('drenarFila', () => {
   it('orçamento acaba resolvendo um nome NOVO: o bloco inteiro volta para a fila (nada promovido nem marcado)', async () => {
     const m = montar(async (id) => detalhe(Number(id.split('-')[1])), async () => { throw new OrcamentoEsgotado() })
     const r = await drenarFila(m.db, m.cliente, m.nomes, CAMPOS, { limite: 10, revisitaDesde: '2026-08-01', revisitaAntes: '2026-10-05T00:00:00Z' })
-    expect(r.parou_por_orcamento).toBe(true)
+    expect(r.parada).toBe('orcamento')
     expect(m.ordem()).not.toContain('monde_ingest_promover')
     expect(m.ordem()).not.toContain('monde_cabecalho_marcar')
+  })
+
+  // 429/5xx/rede persistentes são da API: param o tick sem marcar nada como erro (marcar zeraria o
+  // lido_hash de vendas corretas e bloquearia a cura por um soluço da API).
+  it('instabilidade da API no detalhe PARA o tick: só o que já foi lido é gravado; nada vira "erro"', async () => {
+    const m = montar(async (id) => { if (id === 'sale-2') throw new ErroTransitorio(503, 'sale'); return detalhe(Number(id.split('-')[1])) })
+    const r = await drenarFila(m.db, m.cliente, m.nomes, CAMPOS, { limite: 10, revisitaDesde: '2026-08-01', revisitaAntes: '2026-10-05T00:00:00Z' })
+    expect(r).toMatchObject({ parada: 'instabilidade', erros: 0, lidas: 1 })
+    const marcados = m.chamadas.find((c) => c.fn === 'monde_cabecalho_marcar')!.args!.p_resultados as { sale_id: string; classificacao: string }[]
+    expect(marcados).toEqual([expect.objectContaining({ sale_id: 'sale-1', classificacao: 'espelhada' })])
+  })
+
+  // Venda que o banco recusa voltaria na frente da fila a cada tick e travaria a ingestão inteira.
+  it('lote recusado pelo banco é BISSECCIONADO: só a venda ofensora vira "erro", as outras são gravadas', async () => {
+    const m = montar(
+      async (id) => detalhe(Number(id.split('-')[1])),
+      undefined,
+      (a) => { if ((a?.p_vendas as { venda_numero: string }[]).some((v) => v.venda_numero === '2')) throw new Error('cast falhou'); return null },
+    )
+    const r = await drenarFila(m.db, m.cliente, m.nomes, CAMPOS, { limite: 10, revisitaDesde: '2026-08-01', revisitaAntes: '2026-10-05T00:00:00Z' })
+    expect(r).toMatchObject({ erros: 1, espelhadas: 2, parada: null })
+    const marcados = m.chamadas.find((c) => c.fn === 'monde_cabecalho_marcar')!.args!.p_resultados as { sale_id: string; classificacao: string }[]
+    expect(Object.fromEntries(marcados.map((x) => [x.sale_id, x.classificacao]))).toEqual({ 'sale-1': 'espelhada', 'sale-2': 'erro', 'sale-3': 'espelhada' })
+    expect(marcados.every((x) => !('venda_numero' in x))).toBe(true) // o campo auxiliar não vai para a RPC
   })
 
   it('marcar que grava menos do que o enviado LANÇA (cabeçalho sumiu)', async () => {

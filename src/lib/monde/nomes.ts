@@ -8,11 +8,13 @@
 // Política do cache de PESSOA:
 //   • nome ausente do cache ⇒ busca na API. Se o orçamento acabar aqui, `OrcamentoEsgotado` SOBE: a
 //     venda não pode ser gravada sem o nome (seria regressão de dado no espelho) — fica na fila;
-//   • nome com mais de `TTL_PESSOA_DIAS` ⇒ re-busca SÓ se sobrar orçamento; sem orçamento usa o velho
-//     (resíduo aceito: o TTARS resolvia ao vivo; nome de cadastro muda raramente);
-//   • 404 ⇒ grava nome nulo, para não perguntar de novo a cada tick.
-// Não importa 'server-only' de propósito (mesma postura de `ingest.ts`): recebe o cliente pronto.
-import { OrcamentoEsgotado, type ClienteMonde } from './client'
+//   • nome com mais de `TTL_PESSOA_DIAS` ⇒ re-busca SÓ se sobrar orçamento (`RESERVA_REBUSCA_MS`); sem
+//     orçamento usa o velho (resíduo aceito: o TTARS resolvia ao vivo; nome de cadastro muda raramente).
+//     Re-busca que volta VAZIA (404, nome em branco — cadastro mesclado no Monde) MANTÉM o nome velho:
+//     nome desatualizado é resíduo aceito, nome apagado seria regressão de dado (MÉDIO do revisor);
+//   • pessoa nunca vista com 404 ⇒ grava nome nulo, para não perguntar de novo a cada tick.
+// Importa valores de `./client` (que é `server-only`): só roda no servidor; os testes mockam `server-only`.
+import { OrcamentoEsgotado, ErroTransitorio, type ClienteMonde } from './client'
 import type { Resolvedor } from './transform'
 import type { VendaDetalhe } from './schemas'
 import { TIPOS_PRODUTO } from './transform'
@@ -22,6 +24,8 @@ export interface NomesDb {
 }
 
 export const TTL_PESSOA_DIAS = 30
+/** Re-buscar nome VELHO só se ainda sobrar este tanto de orçamento — a fila de leitura vem antes. */
+export const RESERVA_REBUSCA_MS = 90_000
 /** Nomes dos campos personalizados — a MESMA chave que a v5.x usava (o TTARS mandava o nome). */
 export const CAMPO_SETOR = 'Setor'
 export const CAMPO_VENDEDOR_WEDDINGS = 'Vendedor(a) Responsável - Grupo'
@@ -103,15 +107,20 @@ export class CacheNomes {
         const atual = this.pessoas.get(id)
         const velha = atual !== undefined && Date.parse(atual.atualizado_em) < limite
         if (atual !== undefined && !velha) continue
+        if (velha && this.cliente.restaMs() < RESERVA_REBUSCA_MS) continue // sem sobra: fica o velho
         try {
           const p = await this.cliente.pessoa(id)
           this.metricas.pessoas_api++
-          const linha = { id, nome: p?.name?.trim() || null, cpf_cnpj: p?.cpf_cnpj?.trim() || null }
+          let linha = { id, nome: p?.name?.trim() || null, cpf_cnpj: p?.cpf_cnpj?.trim() || null }
+          if (velha && atual && linha.nome === null) {
+            // Re-busca vazia: mantém nome e documento antigos, só renova a data (não pergunta de novo amanhã).
+            linha = { id, nome: atual.nome, cpf_cnpj: linha.cpf_cnpj ?? atual.cpf_cnpj }
+          }
           novas.push(linha)
           this.pessoas.set(id, { nome: linha.nome, cpf_cnpj: linha.cpf_cnpj, atualizado_em: new Date(this.agora()).toISOString() })
         } catch (e) {
-          // Só a RE-busca de nome velho tolera o orçamento acabar; nome ausente faz a venda esperar.
-          if (e instanceof OrcamentoEsgotado && velha) continue
+          // Só a RE-busca de nome velho tolera orçamento/instabilidade; nome ausente faz a venda esperar.
+          if (velha && (e instanceof OrcamentoEsgotado || e instanceof ErroTransitorio)) continue
           throw e
         }
       }

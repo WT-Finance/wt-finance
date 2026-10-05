@@ -84,7 +84,9 @@ const zListaProdutos = z.array(zProduto).catch([])
 export const zVendaDetalhe = z.object({
   id: z.string(),
   sale_number: zTexto,
-  sale_date: z.string(),
+  // Formato validado AQUI: data fora do formato falharia o cast no `monde_ingest_lote` e envenenaria o
+  // lote inteiro a cada tick (MÉDIO do revisor). No parse, vira `erro` só desta venda.
+  sale_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   status: z.string().catch(''),
   payer: zRef,
   seller: zRef,

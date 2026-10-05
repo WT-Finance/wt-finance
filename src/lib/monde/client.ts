@@ -48,9 +48,22 @@ export class OrcamentoEsgotado extends Error {
 
 /** Erro HTTP da API, com o status para o chamador decidir (404 de pessoa vira "sem nome"). */
 export class ErroMonde extends Error {
-  constructor(readonly status: number, contexto: string) {
-    super(`[monde:${contexto}] HTTP ${status} ao chamar a API Monde v3.`)
+  constructor(readonly status: number, contexto: string, mensagem?: string) {
+    super(mensagem ?? `[monde:${contexto}] HTTP ${status} ao chamar a API Monde v3.`)
     this.name = 'ErroMonde'
+  }
+}
+
+/**
+ * Falha de INFRAESTRUTURA depois das repetições (429 persistente, 5xx, rede/timeout; `status` 0 = rede).
+ * Não diz nada sobre a venda: o chamador para o tick em vez de marcar a venda como `erro` — marcar
+ * zeraria o `lido_hash` de vendas corretas e bloquearia a cura por causa de um soluço da API
+ * (MÉDIO do revisor, v6.2.0).
+ */
+export class ErroTransitorio extends ErroMonde {
+  constructor(status: number, contexto: string, mensagem?: string) {
+    super(status, contexto, mensagem)
+    this.name = 'ErroTransitorio'
   }
 }
 
@@ -110,6 +123,16 @@ export function criarClienteMonde(opcoes: OpcoesCliente = {}): ClienteMonde {
     ultima = agora()
   }
 
+  /**
+   * Espera de repetição (429/5xx/rede) que NUNCA passa do prazo: um `Retry-After` longo, somado às
+   * repetições, mataria a função no `maxDuration` sem rodar o `finally` — lock preso por 900 s e
+   * execução eternamente "running" (MÉDIO do revisor). Não cabe ⇒ `OrcamentoEsgotado`.
+   */
+  async function esperarRepeticao(ms: number): Promise<void> {
+    if (agora() + ms >= prazo) throw new OrcamentoEsgotado()
+    await dormir(ms)
+  }
+
   /** GET com ritmo, 429 com espera e retry de rede/5xx. Devolve o JSON ou `null` em 404. */
   async function get(caminho: string, contexto: string): Promise<unknown | null> {
     let tentativas429 = 0
@@ -132,9 +155,10 @@ export function criarClienteMonde(opcoes: OpcoesCliente = {}): ClienteMonde {
         tentativasRede++
         if (tentativasRede >= MAX_TENTATIVAS_REDE) {
           const abortado = e instanceof Error && e.name === 'AbortError'
-          throw new Error(`[monde:${contexto}] ${abortado ? `tempo de resposta excedido (${TIMEOUT_MS}ms)` : 'falha de rede'} ao chamar a API Monde v3.`)
+          throw new ErroTransitorio(0, contexto,
+            `[monde:${contexto}] ${abortado ? `tempo de resposta excedido (${TIMEOUT_MS}ms)` : 'falha de rede'} ao chamar a API Monde v3.`)
         }
-        await dormir(500 * tentativasRede)
+        await esperarRepeticao(500 * tentativasRede)
         continue
       }
       clearTimeout(timer)
@@ -142,15 +166,15 @@ export function criarClienteMonde(opcoes: OpcoesCliente = {}): ClienteMonde {
       if (resp.status === 429) {
         metricas.c429++
         tentativas429++
-        if (tentativas429 > MAX_TENTATIVAS_429) throw new ErroMonde(429, contexto)
+        if (tentativas429 > MAX_TENTATIVAS_429) throw new ErroTransitorio(429, contexto)
         const retryAfter = Number(resp.headers.get('retry-after'))
-        await dormir(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : ESPERA_429_MS)
+        await esperarRepeticao(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : ESPERA_429_MS)
         continue
       }
       if (resp.status >= 500) {
         tentativasRede++
-        if (tentativasRede >= MAX_TENTATIVAS_REDE) throw new ErroMonde(resp.status, contexto)
-        await dormir(500 * tentativasRede)
+        if (tentativasRede >= MAX_TENTATIVAS_REDE) throw new ErroTransitorio(resp.status, contexto)
+        await esperarRepeticao(500 * tentativasRede)
         continue
       }
       if (resp.status === 404) return null

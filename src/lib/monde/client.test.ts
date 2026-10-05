@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('server-only', () => ({}))
 
 import {
-  criarClienteMonde, queryListaVendas, OrcamentoEsgotado, ErroMonde, STATUS_LISTA, INTERVALO_MS, BASE_URL_V3,
+  criarClienteMonde, queryListaVendas, OrcamentoEsgotado, ErroMonde, ErroTransitorio, STATUS_LISTA, INTERVALO_MS, BASE_URL_V3,
 } from './client'
 
 /** Relógio e `fetch` falsos: `dormir` avança o relógio, então o teste mede o RITMO sem esperar. */
@@ -77,6 +77,23 @@ describe('criarClienteMonde', () => {
     const amb = ambiente(Array.from({ length: 10 }, () => ({ status: 429 })))
     const c = criarClienteMonde({ fetchImpl: amb.fetchImpl, agora: amb.agora, dormir: amb.dormir })
     await expect(c.listarVendas(null)).rejects.toBeInstanceOf(ErroMonde)
+  })
+
+  // Um Retry-After longo, somado às repetições, mataria a função no maxDuration sem rodar o `finally`
+  // (lock preso, execução "running"). A espera nunca passa do prazo.
+  it('429 com Retry-After maior que o orçamento restante ⇒ OrcamentoEsgotado, sem dormir além do prazo', async () => {
+    const amb = ambiente([{ status: 429, headers: { 'retry-after': '120' } }, { status: 200, body: PAGINA }])
+    const prazo = amb.agora() + 60_000
+    const c = criarClienteMonde({ fetchImpl: amb.fetchImpl, agora: amb.agora, dormir: amb.dormir, prazo })
+    await expect(c.listarVendas(null)).rejects.toBeInstanceOf(OrcamentoEsgotado)
+    expect(amb.agora()).toBeLessThan(prazo)
+    expect(amb.chamadas).toHaveLength(1)
+  })
+
+  it('5xx persistente vira ErroTransitorio (é da API, não da venda)', async () => {
+    const amb = ambiente([{ status: 502 }, { status: 503 }, { status: 500 }])
+    const c = criarClienteMonde({ fetchImpl: amb.fetchImpl, agora: amb.agora, dormir: amb.dormir })
+    await expect(c.detalheVenda('x')).rejects.toBeInstanceOf(ErroTransitorio)
   })
 
   it('orçamento esgotado: lança OrcamentoEsgotado SEM chamar a API', async () => {
