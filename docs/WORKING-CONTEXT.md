@@ -13,7 +13,7 @@
 
 ---
 
-## Em voo — v6.2.0 "Espelho Monde na API oficial v3" (PR aberto, aguardando merge)
+## Em voo — v6.2.0 "Espelho Monde na API oficial v3" (PR #291 draft, aguardando merge)
 
 A `monde-data` (intermediária do TTARS) foi **desligada em 02/10** (HTTP 410) e o espelho Monde — fonte de
 Metas/Comparação/Performance — **está parado desde 01/10 23:45 em produção até este merge**. A v6.2.0 lê
