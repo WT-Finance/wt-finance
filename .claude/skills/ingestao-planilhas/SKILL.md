@@ -385,6 +385,12 @@ Lições permanentes, detalhadas nos anexos `docs/briefings/anexo-v6-0-0-m{3,4,5
   `validar_carga_staging` (migration 0132, pré-existente) que também lia a STAGING direto (fix:
   0284). Migrar um filtro de negócio para uma view exige grep de TODOS os leitores da tabela por
   baixo — inclusive os que parecem só "checar", não "ler para exibir".
+- **O que o card de upload EXIBE sobre o arquivo vem de `INSTRUCOES_UPLOAD`**
+  (`src/lib/ingestao/instrucoes-upload.ts`, v6.1.3) — colunas obrigatórias, painel "Ver
+  instruções", limite de MB. A sonda `instrucoes-upload.test.ts` passa as colunas pelo mesmo
+  `mapearColunas`/`camposFaltando` do parser do servidor. Mudou `COL_MAP`/`OBRIGATORIOS` de um
+  parser? A sonda reprova até o texto acompanhar. (Até a v6.1.2 o card lia as listas dos parsers
+  ANTIGOS do navegador e ficou errado em 5 de 6 bases por três versões sem gate nenhum perceber.)
 
 ## 9. Entrega pelas RPAs (v6.1.0, errata 4, ADR-0179)
 

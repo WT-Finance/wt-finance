@@ -6,6 +6,35 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.1.3] — 2026-10-05
+
+PATCH · **Instruções de upload em cada card do Upload de Arquivos.** Pedido do Yan (Rota C, o prompt é o
+escopo). Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-1-3_Instrucoes_Upload.md`. Sem migration,
+sem ADR.
+
+### Adicionado
+
+- **Botão "Ver instruções"** no cabeçalho de cada um dos seis cards de `/admin/ingestao/upload`, que abre
+  (cortina do DS, `inert` quando fechada) um painel com: de onde vem o arquivo, **Atenção** (as armadilhas:
+  manter linhas de total/subtotal, todos os anos juntos em Vendas, ordem do dia antes de Operação, arquivo
+  cru do Demonstrativo), passo a passo, colunas obrigatórias e regras gerais da carga.
+- Texto em `src/lib/ingestao/instrucoes-upload.ts` (dados puros). O caminho de menu no Monde
+  (`ondeNoMonde`) fica **ausente** — o repositório não o documenta.
+- Sonda `instrucoes-upload.test.ts`: as colunas exibidas passam pelo mesmo `mapearColunas`/
+  `camposFaltando` do parser do servidor (`COL_MAP`/`OBRIGATORIOS`/`CAMPOS_CANONICOS` passam a ser
+  exportados, `readonly`); o limite de MB é pinado em `LIMITE_BYTES_ARQUIVO`. Render do painel nas seis
+  bases em `painel-instrucoes-upload.test.ts`.
+
+### Corrigido
+
+- **Linha "Colunas obrigatórias" do card errada em 5 de 6 bases desde a v6.0.0** — exibia as listas dos
+  parsers antigos do navegador, que o fluxo do servidor não usa (Movimentação mostrava 2 colunas, o servidor
+  exige 12; Vendas dizia "reconhecidas automaticamente", o servidor exige 17). Agora sai da mesma fonte do
+  painel.
+- Descrição do card do Demonstrativo: o servidor lê o export **cru** (tabela dinâmica), não o "já tratado".
+
+---
+
 ## [6.1.2] — 2026-10-01
 
 PATCH · **Segurança: fecha os 4 alertas abertos do Dependabot.** Zero código de `src/` alterado. Out-briefing
