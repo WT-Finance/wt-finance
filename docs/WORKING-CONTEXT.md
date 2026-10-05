@@ -9,7 +9,22 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-01 (pós-merge da v6.1.2).
+Última atualização: 2026-10-05 (fechamento da v6.1.3).
+
+---
+
+## Em voo — v6.1.3 "Instruções de upload em cada card" (PR draft, branch `feat/v6-1-3-instrucoes-upload`)
+
+Botão "Ver instruções" nos seis cards de `/admin/ingestao/upload` (texto em
+`src/lib/ingestao/instrucoes-upload.ts`, colunas pinadas no parser do servidor por sonda) e correção da
+linha "Colunas obrigatórias" do card, errada em 5 de 6 bases desde a v6.0.0. Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-1-3_Instrucoes_Upload.md`. Sem migration, sem ADR.
+
+> 🔴 **Yan — ditar o "onde no Monde"** (menu/filtros/período) de Vendas por produto, Lançamentos por
+> Categoria (movimentação e venc. em aberto), Demonstrativo de Resultado e Pessoas — o repo não documenta;
+> o campo `ondeNoMonde` ficou vazio de propósito (lista no §6 do out-briefing). Operação não tem caminho
+> manual (é o CSV do robô) — decidir se o card deve dizer mais.
+> 🔴 **Yan — conferência visual no preview** (§5 do out-briefing; a sessão não tem login) e merge.
 
 ---
 

@@ -35,6 +35,22 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.1.3',
+    data: '2026-10-05T11:54', // horário real de autoria — reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Atualização de Dados: cada base ganhou o botão "Ver instruções", com o passo a passo para gerar e enviar o arquivo, as colunas obrigatórias e os cuidados que evitam uma carga recusada ou incompleta.',
+      },
+      {
+        tipo: 'correcao',
+        texto:
+          'A lista de colunas obrigatórias exibida em cada base estava desatualizada em cinco das seis bases e foi corrigida; a descrição do Demonstrativo de Resultado agora diz que o arquivo vai como sai do Monde, sem tratamento.',
+      },
+    ],
+  },
+  {
     versao: '6.1.2',
     data: '2026-10-01T14:50', // horário real do merge (PR #287), reconciliado no /pos-merge
     itens: [
