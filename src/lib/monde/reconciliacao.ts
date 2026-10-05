@@ -12,6 +12,11 @@
 // O cursor mora em `monde.ingest_control` (chave `reconciliacao_cursor`) e cada invocação
 // processa UM mês — três disparos diários fecham a janela de 3 meses e cabem folgado no
 // `maxDuration` da rota.
+//
+// ⚠️ v6.2.0 (ADR-0181): o parágrafo acima descreve a `monde-data` do TTARS, desligada em 02/10/2026. A API
+// oficial v3 NÃO filtra por data (lista por CRIAÇÃO) e não tem `total`; quem alimenta estas funções puras
+// agora é a apuração pela tabela `monde.venda_cabecalho` (`apurarMes` em `ingest.ts`). As funções em si
+// não mudaram — `apiTotal` é a contagem de cabeçalhos do mês vistos na varredura.
 
 /** Quantos meses a reconciliação cobre (cauda observada: 32 dias de atraso de registro). */
 export const MESES_RECONCILIACAO = 3

@@ -117,6 +117,12 @@ Sem UI tocada → sem `verificador-visual`.
 > 3. Opcional: `?mode=window&from=2026-10-01&to=2026-10-05` com sessão admin para forçar a releitura da
 >    lacuna, e a reconciliação de setembro com tripwire `conta_fecha=true`, `sobrando=0`.
 > 4. Confirmar que `EMAIL_MODO=real` em produção foi intencional — ele vale também para faturas.
+>
+> ⚠️ **As primeiras ~24 h parecem uma tempestade, e é esperado:** a revisita relê as ~2.600 vendas da janela
+> e cada uma ganha `raw_hash` novo (sha256 próprio no lugar do hash do TTARS) — `promover` reporta milhares
+> de `atualizadas`, `ultima_sync` salta, a mv é atualizada a cada tick e `ultima_remocao` pode registrar
+> vendas apagadas no Monde desde 01/10. A 1ª reconciliação também pode concluir como `erro` ("apuração
+> adiada — venda na fila") enquanto a fila drena. Tudo se acalma sozinho quando cada venda tiver `#t3`.
 
 - Alarme `cdi-mensal` aberto desde 01/10: o processo nunca registrou execução OK (fora do escopo).
 - `oraculo-demonstrativo` segue vermelho até a fixture de 21/09 ser recomposta (B-38).
@@ -136,7 +142,10 @@ Sem UI tocada → sem `verificador-visual`.
 
 ## Advisor
 
-Consultas da sessão principal: 4 (antes do diagnóstico final; antes de desenhar; antes do plano;
-reconciliação após a sonda). Mudaram o rumo: 3 — exigir prova em produção do 410 antes de concluir; sondar
-antes de planejar (revelou a ordem por criação e o `raw` como oráculo); fechar `canceled_at`/PJ/cursor.
-Custo: pendência do Yan (`/usage`).
+Consultas da sessão principal: 4 — (1) antes do relatório do diagnóstico; (2) antes de desenhar, ao pedir
+a chave; (3) depois da sonda, antes do plano; (4) antes do PR. Mudaram o rumo: 3 — (1) exigir a prova em
+produção do 410 antes de concluir; (2) sondar antes de planejar (revelou a ordem por criação e o `raw`
+como oráculo); (3) fechar `canceled_at`/pagante PJ/cursor e as restrições do desenho. A (4) foi de
+confirmação, e acrescentou o ensaio de `monde_catalogo_registrar`/`monde_pessoa_registrar` com payload
+real (813 produtos, 391 pessoas, em transação revertida: OK) e o aviso das primeiras 24 h. Custo:
+pendência do Yan (`/usage`).
