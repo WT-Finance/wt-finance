@@ -9,20 +9,39 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-05 (fechamento da v6.2.0; v6.1.3 em produção desde 12:07).
+Última atualização: 2026-10-05 (pós-merge da v6.2.0).
 
 ---
 
-## Em voo — v6.2.0 "Espelho Monde na API oficial v3" (PR #291 draft, aguardando merge)
+## Em produção — v6.2.0 "Espelho Monde na API oficial v3" (PR #291, mergeado 05/10 às 13:55)
 
-A `monde-data` (intermediária do TTARS) foi **desligada em 02/10** (HTTP 410) e o espelho Monde — fonte de
-Metas/Comparação/Performance — **está parado desde 01/10 23:45 em produção até este merge**. A v6.2.0 lê
-direto de `web.monde.com.br/api/v3` (`MONDE_V3_API_KEY`, já em `.env.local` e em Production). Migration
-**0290 já aplicada** (aditiva; inofensiva para a `main` viva). ADR-0181; out-briefing
-`docs/briefings/WT_Finance_Out_Briefing_v6-2-0_Monde_API_v3.md`. Paridade offline exata sobre 2.140 vendas.
+O espelho Monde lê direto de `web.monde.com.br/api/v3` (`MONDE_V3_API_KEY`) desde o deploy de 08bff57 — a
+`monde-data` do TTARS foi desligada em 02/10. Migration 0290, ADR-0181, out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-0_Monde_API_v3.md`.
 
-> 🔴 **Yan — mergear o PR da v6.2.0** e, depois, o checklist de produção do out-briefing §8 (cron sem
-> 410/429, `max_data` andando, alarmes do vigia resolvendo, `EMAIL_MODO=real` intencional?).
+**Conferido no ar (05/10, 1º tick às 14:00, pela sessão):** HTTP 200, sem 410/429; varredura de 4 páginas até o
+corte; 106 vendas lidas → 105 espelhadas, 1 Welcome, **0 erro**; 53 inseridas + 52 atualizadas; parou por
+orçamento (esperado — o resto drena nos ticks seguintes). `monde_ingest_status`: `max_data` = 2026-10-05,
+30.073 vendas (eram 30.020 em 01/10), `ultima_sincronizacao` 14:03.
+
+> **Esperado nas primeiras ~24 h:** a revisita relê as ~2.600 vendas da janela de 3 meses e cada uma ganha
+> `raw_hash` novo — milhares de `atualizadas`, mv atualizada a cada tick; a 1ª reconciliação pode concluir como
+> `erro` ("apuração adiada — venda na fila") enquanto a fila drena. Não é incidente.
+> 🔴 **Yan — amanhã (06/10) depois das 06:35:** conferir que o alarme `monde-reconciliacao` do vigia fechou e
+> que o tripwire de `monde_ingest_status` tem o mês reconciliado com `conta_fecha=true` e `sobrando=0`.
+> (`monde-incremental` fecha sozinho no vigia das 14:15 de 05/10.)
+> 🔴 **Yan — confirmar que `EMAIL_MODO=real` em produção foi intencional** (vale também para faturas) e, se
+> quiser, remover `MONDE_API_URL`/`MONDE_API_KEY` da Vercel (nada mais as lê).
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.2.0** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-2-0`,
+> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures são cópias de
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree remove .claude/worktrees/feat-v6-2-0-monde-api-v3 --force
+> git worktree prune
+> git branch -D feat/v6-2-0-monde-api-v3 docs/pos-merge-v6-2-0
+> ```
 > **Toda sessão nova:** a lista da v3 vem por **criação** (`created_at` desc) e não filtra por data — nunca
 > cortar varredura por `sale_date` (ADR-0181, skill `banco-e-rpc` §2).
 
