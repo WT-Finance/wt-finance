@@ -105,6 +105,12 @@ erro · `npm run lint` 0 erro / 0 warning · `npm test` **1.911 passaram + 6 ski
 `src/lib/monde` 94/94) — 1 arquivo vermelho **pré-existente**: `oraculo-demonstrativo.test.ts` (fixture
 `demonstrativo-cru.xlsx` perdida, B-38; idêntico à v6.1.1/v6.1.2). Fixtures do oráculo copiadas de
 `~/projects/arquivo-worktrees-janus/fixtures-ingestao/` (sem elas, mais 3 arquivos ficam vermelhos por ENOENT).
+
+**Depois do merge de `main` (v6.1.3, mergeada em paralelo às 12:07):** conflitos só de documentação/versão
+(CHANGELOG, CHANGELOG_DIRETORIA, WORKING-CONTEXT, `package.json`) — resolvidos mantendo as duas entradas,
+v6.2.0 acima. Gates de novo: `tsc` 0 · `lint` 0/0 · `build` verde · `npm test` 1.923 + 6 skipped; além
+do B-38, 2 casos de `rpc-contrato` (`get_operacoes_weddings`) deram **timeout 57014** sob a carga da suíte
+inteira contra produção — rodado sozinho, `rpc-contrato.test.ts` passou **151/151** (a RPC não lê o espelho).
 Sem UI tocada → sem `verificador-visual`.
 
 ## 8. Pendências
