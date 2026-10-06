@@ -2,7 +2,7 @@ import { emAndamento } from './schemas'
 import type { StatusSolic, Solicitacao } from './schemas'
 import type { z } from 'zod'
 import type { respostaSchema } from './schemas'
-import { toNum } from '@/lib/carga/coercao'
+import { toNum, toCentavos } from '@/lib/carga/coercao'
 
 // Helpers de apresentação do módulo (client-safe). Cores semânticas neutras de
 // plataforma (sem var(--brand)); feedback semântico via tokens --success/--danger.
@@ -78,6 +78,47 @@ export function fmtValor(r: Resposta): string {
   }
   if (r.tipo_campo === 'data') return fmtDataBR(r.valor)
   return r.valor
+}
+
+/**
+ * v6.2.1 — valor DIGITADO num campo `numero`/`moeda` → a forma canônica que
+ * `criar_solicitacao` grava. Devolve null quando não dá para ler um número.
+ *
+ * Por que existe: o banco valida esses campos com `^-?[0-9]+([.,][0-9]+)?$` — UM separador
+ * só. O jeito mais natural de digitar dinheiro em pt-BR, `1.234,56`, tem dois, e era recusado
+ * com "Há um valor inválido em um dos campos" (nenhum dos 126 valores gravados até 06/10
+ * tinha milhar + decimal: quem passava tinha redigitado). Pior, a recusa apagava os anexos
+ * já enviados (ver `criarSolicitacao`). A leitura é a do `toNum` canônico — `R$`, espaço,
+ * milhar BR/US, parênteses —, então a tela aceita o que a plataforma inteira aceita, e o
+ * banco continua recebendo um formato que ele já conhece (e que a API externa também usa).
+ *
+ * Forma emitida: vírgula decimal, sem milhar — a mesma de 76 dos 126 valores já gravados.
+ * `moeda` sai sempre com 2 casas, arredondada pela regra do `toCentavos`; `numero` sai com
+ * as casas que tiver (3 → "3", não "3,00").
+ */
+export function valorNumericoCanonico(tipo: 'numero' | 'moeda', digitado: string): string | null {
+  const n = toNum(digitado)
+  if (n === null || !Number.isFinite(n)) return null
+  if (tipo === 'moeda') {
+    const centavos = toCentavos(n)
+    if (centavos === null) return null
+    const abs = Math.abs(centavos)
+    return `${centavos < 0 ? '-' : ''}${Math.trunc(abs / 100)},${String(abs % 100).padStart(2, '0')}`
+  }
+  const s = String(n)
+  // Notação exponencial ("1e+21") não passa no regex do banco — melhor recusar aqui, com
+  // mensagem, do que deixar o banco recusar com a genérica.
+  if (/e/i.test(s)) return null
+  return s.replace('.', ',')
+}
+
+/** v6.2.1 — prévia de como o valor digitado vai ser GRAVADO e exibido ("R$ 1.318,00"), ou
+ *  null se não der para ler. Sai do mesmo `fmtValor` que o drawer usa depois — a prévia não
+ *  pode prometer uma leitura diferente da que a solicitação vai mostrar. */
+export function previaValorNumerico(tipo: 'numero' | 'moeda', digitado: string): string | null {
+  const canonico = valorNumericoCanonico(tipo, digitado)
+  if (canonico === null) return null
+  return fmtValor({ campo_id: 0, rotulo: '', tipo_campo: tipo, valor: canonico })
 }
 
 /** Resumo (2-3 primeiros campos preenchidos) para cards/linhas. */

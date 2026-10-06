@@ -107,10 +107,14 @@ export async function criarSolicitacao(input: {
     p_anexos: input.anexos,
   })
   if (error) {
-    // Limpa anexos órfãos (já subiram ao storage antes da RPC falhar).
-    if (input.anexos.length) {
-      try { await getAdminClient().storage.from(BUCKET).remove(input.anexos.map(a => a.storage_path)) } catch { /* best-effort */ }
-    }
+    // v6.2.1 — os anexos FICAM no Storage quando a criação falha. Até aqui eles eram apagados
+    // como "órfãos", mas o modal continua com os metadados na mão e a recusa típica é
+    // corrigível (valor num formato que o banco não aceita, campo obrigatório vazio): o
+    // usuário corrige, reenvia, e a solicitação nascia apontando para arquivos que esta linha
+    // tinha acabado de apagar — o move abaixo falhava em silêncio e o download dava "Não foi
+    // possível gerar o link". Foram 25 anexos perdidos assim entre 12/08 e 05/10/2026.
+    // Se o usuário desistir, sobra um órfão em tmp/ — o mesmo que já sobra quando ele fecha
+    // o modal sem enviar. Lixo inofensivo (não é listado nem baixável) contra dado perdido.
     return { ok: false, erro: traduzir(error.message) }
   }
   const id = (data as { id: number }).id
@@ -123,15 +127,28 @@ export async function criarSolicitacao(input: {
   if (tmpAnexos.length) {
     const storage = getAdminClient().storage.from(BUCKET)
     const movidos: { de: string; para: string }[] = []
+    // v6.2.1 — as falhas daqui passam a ser LOGADAS. O SDK do Storage e o `rpc` não lançam
+    // (resolvem com `{ error }`), então os `catch` mudos de antes não viam nada: foi um move
+    // falhando em silêncio que escondeu por dois meses os anexos perdidos (ver acima).
     for (const a of tmpAnexos) {
       const para = `sol/${id}/${a.storage_path.slice('tmp/'.length)}`
       try {
         const { error: mvErr } = await storage.move(a.storage_path, para)
-        if (!mvErr) movidos.push({ de: a.storage_path, para })
-      } catch { /* mantém em tmp/ */ }
+        if (mvErr) console.error(`[solicitacoes] #${id}: anexo não promovido de tmp/ (segue em ${a.storage_path}):`, mvErr)
+        else movidos.push({ de: a.storage_path, para })
+      } catch (err) {
+        console.error(`[solicitacoes] #${id}: falha de rede ao promover anexo (segue em ${a.storage_path}):`, err)
+      }
     }
     if (movidos.length) {
-      try { await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: movidos }) } catch { /* best-effort */ }
+      // Se isto falhar, o banco segue apontando para tmp/ e o objeto já está em sol/ — o
+      // anexo fica indisponível. Raro (mesma sessão que acabou de criar), mas não mudo.
+      try {
+        const { error: prErr } = await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: movidos })
+        if (prErr) console.error(`[solicitacoes] #${id}: objetos movidos para sol/, mas o banco não foi atualizado:`, prErr.message, movidos)
+      } catch (err) {
+        console.error(`[solicitacoes] #${id}: falha de rede ao registrar a promoção dos anexos:`, err, movidos)
+      }
     }
   }
 
@@ -187,14 +204,28 @@ export async function uploadAnexo(formData: FormData): Promise<{ ok: true; anexo
 }
 
 // Signed URL de download (checa visibilidade na RPC; gera URL com service role).
-export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string } | { ok: false; erro: string }> {
+// v6.2.1 — `indisponivel` separa "o arquivo não existe mais no Storage" (o anexo está listado,
+// mas o binário se perdeu — ver `criarSolicitacao`) de uma falha qualquer de gerar o link: no
+// primeiro caso tentar de novo não adianta, e a tela diz o que fazer em vez do erro genérico.
+export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string } | { ok: false; erro: string; indisponivel?: true }> {
   await requireAreaAction(null)
   const { data, error } = await rpcSessao('solic_anexo_path', { p_anexo_id: anexoId })
   if (error) return { ok: false, erro: traduzir(error.message) }
   const path = (data as { storage_path: string }).storage_path
   const { data: signed, error: sErr } = await getAdminClient().storage.from(BUCKET).createSignedUrl(path, 60)
+  if (sErr && objetoAusente(sErr)) {
+    console.error(`[solicitacoes] anexo ${anexoId}: binário ausente no Storage (${path}).`)
+    return { ok: false, erro: 'Arquivo indisponível: ele não foi encontrado no armazenamento.', indisponivel: true }
+  }
   if (sErr || !signed) return { ok: false, erro: 'Não foi possível gerar o link do anexo.' }
   return { ok: true, url: signed.signedUrl }
+}
+
+/** O Storage responde objeto inexistente com `message: 'Object not found'` e
+ *  `statusCode: '404'` (o `status` HTTP vem 400) — medido contra produção em 06/10/2026. */
+function objetoAusente(err: { message?: string }): boolean {
+  const statusCode = (err as { statusCode?: unknown }).statusCode
+  return String(statusCode) === '404' || /object not found/i.test(err.message ?? '')
 }
 
 /**
@@ -354,6 +385,13 @@ function traduzir(msg: string): string {
     ANEXO_DA_ABERTURA: 'Anexos enviados na abertura da solicitação não podem ser excluídos.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
+  // v6.2.1 — nos erros de CAMPO o detalhe diz QUAL campo, e é o que o usuário precisa para
+  // corrigir. A RPC emite 'CAMPO_OBRIGATORIO: <rótulo>' e 'VALOR_INVALIDO: <rótulo> deve ser
+  // numérico' (ou '... não admite data no passado', 'opção inexistente em <rótulo>'); o
+  // dicionário acima segue valendo quando o detalhe não vem.
+  const detalhe = msg.includes(':') ? msg.slice(msg.indexOf(':') + 1).trim() : ''
+  if (prefixo === 'CAMPO_OBRIGATORIO' && detalhe) return `Preencha o campo obrigatório "${detalhe}".`
+  if (prefixo === 'VALOR_INVALIDO' && detalhe) return `${detalhe.charAt(0).toUpperCase()}${detalhe.slice(1)}.`
   if (m[prefixo]) return m[prefixo]
 
   // Rede de segurança da v5.9.0: a etapa "Aprovada" depende de uma migration DESTRUTIVA
