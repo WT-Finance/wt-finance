@@ -113,6 +113,35 @@ describe('criarSolicitacao — anexos sobrevivem à recusa (v6.2.1)', () => {
     expect(consoleError.mock.calls.some((c: unknown[]) => String(c[0]).startsWith('[solicitacoes] #2401:'))).toBe(false)
   })
 
+  it('RPC sem erro mas sem efeito (0 linhas) NÃO apaga o original — mantém as duas cópias', async () => {
+    sessao
+      .responder('criar_solicitacao', { data: { id: 9 }, error: null })
+      .responder('solic_promover_anexos', { data: 0, error: null })
+    expect((await criarSolicitacao(INPUT)).ok).toBe(true)
+    expect(bucket.removidos).toEqual([])
+    expect(bucket.objetos.has(TMP)).toBe(true)
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('promoção parcial (0 de 1)'))
+  })
+
+  it('remoção do original que falha depois de promovido é LOGADA', async () => {
+    sessao
+      .responder('criar_solicitacao', { data: { id: 10 }, error: null })
+      .responder('solic_promover_anexos', { data: 1, error: null })
+    bucket.remove = async () => ({ data: null, error: { message: 'boom' } } as never)
+    expect((await criarSolicitacao(INPUT)).ok).toBe(true)
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('originais ficaram em tmp/'), expect.anything())
+  })
+
+  it('caminho fora do padrão tmp/<uuid>/<nome> não é copiado nem removido', async () => {
+    sessao.responder('criar_solicitacao', { data: { id: 11 }, error: null })
+    const torto = 'tmp/../sol/999/alheio.pdf'
+    bucket.objetos.add(torto)
+    expect((await criarSolicitacao({ ...INPUT, anexos: [{ ...META, storage_path: torto }] })).ok).toBe(true)
+    expect(bucket.objetos.has(torto)).toBe(true)
+    expect(bucket.removidos).toEqual([])
+    expect(sessao.chamadas.some(c => c.fn === 'solic_promover_anexos')).toBe(false)
+  })
+
   it('cópia que falha é LOGADA (antes era engolida) e não é registrada como promovida', async () => {
     sessao.responder('criar_solicitacao', { data: { id: 7 }, error: null })
     bucket.falharCopia = true

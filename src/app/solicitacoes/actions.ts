@@ -23,6 +23,8 @@ const MIME_OK = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv',
 ])
 const MAX_BYTES = 10 * 1024 * 1024
+/** Caminho de anexo da abertura como `uploadAnexo` o gera: `tmp/<uuid>/<nome sanitizado>`. */
+const CAMINHO_TMP = /^tmp\/[0-9a-f-]{36}\/[A-Za-z0-9._-]+$/
 
 async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> {
   const sb = await getServerClient()
@@ -111,7 +113,7 @@ export async function criarSolicitacao(input: {
     // como "órfãos", mas o modal continua com os metadados na mão e a recusa típica é
     // corrigível (valor num formato que o banco não aceita, campo obrigatório vazio): o
     // usuário corrige, reenvia, e a solicitação nascia apontando para arquivos que esta linha
-    // tinha acabado de apagar — o move abaixo falhava em silêncio e o download dava "Não foi
+    // tinha acabado de apagar — a promoção abaixo falhava em silêncio e o download dava "Não foi
     // possível gerar o link". Foram 25 anexos perdidos assim entre 12/08 e 05/10/2026.
     // Se o usuário desistir, sobra um órfão em tmp/ — o mesmo que já sobra quando ele fecha
     // o modal sem enviar. Lixo inofensivo (não é listado nem baixável) contra dado perdido.
@@ -133,11 +135,18 @@ export async function criarSolicitacao(input: {
   // As falhas passam a ser LOGADAS: o SDK do Storage e o `rpc` não lançam, então os `catch`
   // mudos de antes não viam nada — foi um move falhando em silêncio que escondeu por dois meses
   // os anexos perdidos (ver acima).
+  // Só o formato que `uploadAnexo` produz (`tmp/<uuid>/<nome sanitizado>`): a cópia e a remoção
+  // usam service_role sobre caminhos vindos do cliente, e um caminho fora do padrão não é
+  // tocado — fica onde está, como estava. (Achado BAIXO do revisor, 2ª passada.)
   const tmpAnexos = input.anexos.filter(a => a.storage_path.startsWith('tmp/'))
-  if (tmpAnexos.length) {
+  for (const a of tmpAnexos) {
+    if (!CAMINHO_TMP.test(a.storage_path)) console.error(`[solicitacoes] #${id}: caminho de anexo fora do padrão, não promovido: ${a.storage_path}`)
+  }
+  const promoviveis = tmpAnexos.filter(a => CAMINHO_TMP.test(a.storage_path))
+  if (promoviveis.length) {
     const storage = getAdminClient().storage.from(BUCKET)
     const copiados: { de: string; para: string }[] = []
-    for (const a of tmpAnexos) {
+    for (const a of promoviveis) {
       const para = `sol/${id}/${a.storage_path.slice('tmp/'.length)}`
       try {
         const { error: cpErr } = await storage.copy(a.storage_path, para)
@@ -150,9 +159,16 @@ export async function criarSolicitacao(input: {
     if (copiados.length) {
       let promovido = false
       try {
-        const { error: prErr } = await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: copiados })
+        const { data: nAtualizados, error: prErr } = await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: copiados })
+        // Ausência de erro NÃO basta para apagar o original: a RPC devolve quantas linhas
+        // atualizou, e só com todas confirmadas o banco deixou de apontar para tmp/. Sucesso
+        // presumido pela falta de erro é exatamente a classe do bug que este patch fecha.
+        // `>=` porque o mesmo caminho repetido no input faz o UPDATE contar mais linhas.
+        // (Achado MÉDIO do revisor, 2ª passada.)
         if (prErr) console.error(`[solicitacoes] #${id}: promoção dos anexos não confirmada pelo banco; mantidas as duas cópias:`, prErr.message)
-        else promovido = true
+        else if (typeof nAtualizados !== 'number' || nAtualizados < copiados.length) {
+          console.error(`[solicitacoes] #${id}: promoção parcial (${String(nAtualizados)} de ${copiados.length}); mantidas as duas cópias.`)
+        } else promovido = true
       } catch (err) {
         console.error(`[solicitacoes] #${id}: falha de rede ao registrar a promoção; mantidas as duas cópias:`, err)
       }
@@ -267,7 +283,7 @@ export async function aprovarSolicitacao(id: number): Promise<{ ok: boolean; err
  *
  * Diferente da criação, aqui o id da solicitação JÁ é conhecido no momento do upload —
  * então o objeto vai direto para `sol/<id>/<uuid>/<arq>` e não existe a dança
- * tmp/ → move → `solic_promover_anexos` (que, além do mais, é solicitante-only e não
+ * tmp/ → cópia → `solic_promover_anexos` (que, além do mais, é solicitante-only e não
  * serviria ao atendente).
  */
 /**

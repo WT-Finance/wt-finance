@@ -93,11 +93,17 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                         aria-invalid={v.trim() && !previa ? true : undefined}
                         className={campo.tipo_campo === 'moeda' ? 'pl-9' : ''} placeholder={campo.tipo_campo === 'moeda' ? '0,00' : '0'} />
                     </div>
-                    {/* Só o ERRO é região viva: anunciar a prévia a cada tecla seria ruído; ela
-                        fica ligada ao campo pelo aria-describedby. (Achado MÉDIO do revisor.) */}
-                    {v.trim() && (previa
-                      ? <p id={`previa-${id}`} className="mt-1 text-xs text-zinc-500">Será registrado como {previa}</p>
-                      : <p id={`previa-${id}`} role="status" aria-live="polite" className="mt-1 text-xs text-danger">Valor não reconhecido. Use, por exemplo, 1.234,56.</p>)}
+                    {v.trim() && previa && (
+                      <p id={`previa-${id}`} className="mt-1 text-xs text-zinc-500">Será registrado como {previa}</p>
+                    )}
+                    {/* Só o ERRO é anunciado (a prévia a cada tecla seria ruído; ela fica ligada ao
+                        campo pelo aria-describedby). A região viva fica SEMPRE montada: leitor de
+                        tela costuma não anunciar uma que já nasce com conteúdo. (Revisor, 2 passadas.) */}
+                    <div role="status" aria-live="polite">
+                      {v.trim() && !previa && (
+                        <p id={`previa-${id}`} className="mt-1 text-xs text-danger">Valor não reconhecido. Use, por exemplo, 1.234,56.</p>
+                      )}
+                    </div>
                   </>
                 )
               })()

@@ -36,8 +36,12 @@ Evidência:
 - `criarSolicitacao` **não apaga mais** os anexos quando a RPC recusa. O reenvio usa os mesmos
   binários. Custo aceito: se o usuário desistir, sobra um órfão em `tmp/` — o mesmo que já sobra quando
   ele fecha o modal sem enviar (20 hoje).
-- Falha do `move` e falha (`{ error }`) de `solic_promover_anexos` passam a ser **logadas** — os
-  `catch` mudos não viam nada porque o SDK não lança.
+- A promoção `tmp/ → sol/<id>/` passa de `move` para **cópia → `solic_promover_anexos` → remoção do
+  original só com todas as linhas confirmadas** (o retorno da RPC é a contagem). Em qualquer falha —
+  inclusive a de rede, em que não se sabe se o banco gravou — os dois caminhos existem e o anexo baixa
+  pelo que o banco tiver. Só caminhos no formato `tmp/<uuid>/<nome>` são tocados. Toda falha é
+  **logada** — os `catch` mudos não viam nada porque o SDK não lança. (Desenho fechado na revisão: a
+  primeira proposta, desfazer o move, reabria o buraco no caso incerto.)
 - `anexarEmSolicitacao` **não muda**: o drawer recria os metadados a cada tentativa, então apagar no
   erro ali é correto.
 
