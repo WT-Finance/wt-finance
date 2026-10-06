@@ -6,6 +6,31 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.2.2] — 2026-10-06
+
+PATCH · **Segurança: alertas do Dependabot.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-2_Seguranca_Deps.md`. Sem migration; nenhum código de `src/` alterado.
+
+### Segurança
+
+- **`sharp`** 0.35.4 → **0.35.5** (runtime, transitivo via `next`; `@img/sharp-libvips-*` 1.3.3 → 1.3.4) —
+  GHSA-wq5f-xc86-pv6w, librsvg (Dependabot #59, high).
+- **`source-map-js`** 1.2.1 → **1.2.2** (transitivo via `postcss` do `next`, Tailwind e Vite) —
+  GHSA-68fv-2mgg-jv7q, DoS (Dependabot #56, high).
+- **`smol-toml`** 1.8.0 → **1.9.0** (dev, via `knip`) — GHSA-r4xh-jqrq-34v2, DoS (Dependabot #57, moderate).
+- As três versões cabem nas faixas já declaradas: só o lockfile muda para elas.
+- **`depcheck` removido** das devDependencies (decisão do Yan): `sprintf-js` (Dependabot #58, moderate) não
+  tem versão corrigida e só chegava por ele. Nada o chamava; o `knip` cobre o mesmo papel (prova de
+  paridade no out-briefing). Saem 63 pacotes do lockfile, nenhum entra.
+- **Risco aceito:** `braces` ≤ 3.0.3 (GHSA-vfj7-8cjw-p6xm, high no `npm audit`) sem versão corrigida, via
+  `eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` 3.3.1 → `micromatch`. Só lint local, globs
+  do próprio repo; a "correção" do `--force` rebaixaria o `eslint-config-next` para a 14.
+
+### Corrigido
+
+- **`npx knip` voltou a rodar** (B-40): `knip.json` → **`knip.jsonc`**. O knip@6 recusava a configuração
+  inteira por causa das chaves `"//"` usadas como comentário; os comentários agora são comentários.
+
 ## [6.2.1] — 2026-10-06
 
 PATCH · **Solicitações: anexo que não baixava e "valor inválido" na abertura.** Os dois sintomas eram uma
