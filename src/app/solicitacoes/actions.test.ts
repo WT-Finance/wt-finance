@@ -39,17 +39,17 @@ class ClienteSessaoFake {
 class BucketFake {
   readonly objetos = new Set<string>()
   readonly removidos: string[] = []
-  falharMove = false
+  falharCopia = false
 
   async upload(path: string) { this.objetos.add(path); return { data: { path }, error: null } }
   async remove(paths: string[]) {
     for (const p of paths) { this.objetos.delete(p); this.removidos.push(p) }
     return { data: [], error: null }
   }
-  async move(de: string, para: string) {
-    if (this.falharMove || !this.objetos.has(de)) return { data: null, error: { message: 'Object not found', statusCode: '404' } }
-    this.objetos.delete(de); this.objetos.add(para)
-    return { data: { message: 'ok' }, error: null }
+  async copy(de: string, para: string) {
+    if (this.falharCopia || !this.objetos.has(de)) return { data: null, error: { message: 'Object not found', statusCode: '404' } }
+    this.objetos.add(para)
+    return { data: { path: para }, error: null }
   }
   async createSignedUrl(path: string) {
     if (!this.objetos.has(path)) return { data: null, error: { message: 'Object not found', statusCode: '404' } }
@@ -105,6 +105,7 @@ describe('criarSolicitacao — anexos sobrevivem à recusa (v6.2.1)', () => {
 
     const destino = `sol/2401/${TMP.slice('tmp/'.length)}`
     expect(bucket.objetos.has(destino)).toBe(true)
+    expect(bucket.objetos.has(TMP)).toBe(false)                              // original sai só depois de promovido
     const promover = sessao.chamadas.find(c => c.fn === 'solic_promover_anexos')
     expect(promover?.args).toEqual({ p_solicitacao_id: 2401, p_de_para: [{ de: TMP, para: destino }] })
     // Nenhum log do bloco de anexos — todos começam com este prefixo (o dublê de e-mail sem
@@ -112,26 +113,28 @@ describe('criarSolicitacao — anexos sobrevivem à recusa (v6.2.1)', () => {
     expect(consoleError.mock.calls.some((c: unknown[]) => String(c[0]).startsWith('[solicitacoes] #2401:'))).toBe(false)
   })
 
-  it('move que falha é LOGADO (antes era engolido) e não é registrado como promovido', async () => {
+  it('cópia que falha é LOGADA (antes era engolida) e não é registrada como promovida', async () => {
     sessao.responder('criar_solicitacao', { data: { id: 7 }, error: null })
-    bucket.falharMove = true
+    bucket.falharCopia = true
     expect((await criarSolicitacao(INPUT)).ok).toBe(true)
     expect(sessao.chamadas.some(c => c.fn === 'solic_promover_anexos')).toBe(false)
     expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('anexo não promovido'), expect.anything())
   })
 
-  it('promoção recusada pelo banco é LOGADA e os moves são DESFEITOS (banco e Storage concordam em tmp/)', async () => {
+  it('promoção não confirmada pelo banco é LOGADA e mantém as DUAS cópias — baixa por qualquer caminho', async () => {
     sessao
       .responder('criar_solicitacao', { data: { id: 8 }, error: null })
-      .responder('solic_promover_anexos', ERRO('PERMISSAO_NEGADA: somente o solicitante'))
+      .responder('solic_promover_anexos', ERRO('TypeError: fetch failed'))      // rede: gravou ou não? não se sabe
     expect((await criarSolicitacao(INPUT)).ok).toBe(true)
     expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining('desfazendo os moves'), expect.stringContaining('PERMISSAO_NEGADA'))
-    expect(bucket.objetos.has(TMP)).toBe(true)                               // o banco aponta para cá
-    expect(bucket.objetos.has(`sol/8/${TMP.slice('tmp/'.length)}`)).toBe(false)
-    // e o anexo continua baixável pelo caminho que o banco tem
-    sessao.responder('solic_anexo_path', { data: { storage_path: TMP }, error: null })
-    expect((await anexoUrl(1)).ok).toBe(true)
+      expect.stringContaining('mantidas as duas cópias'), expect.stringContaining('fetch failed'))
+    const destino = `sol/8/${TMP.slice('tmp/'.length)}`
+    expect(bucket.removidos).toEqual([])
+    // O banco pode estar em qualquer um dos dois caminhos — os dois baixam.
+    for (const caminho of [TMP, destino]) {
+      sessao.responder('solic_anexo_path', { data: { storage_path: caminho }, error: null })
+      expect((await anexoUrl(1)).ok).toBe(true)
+    }
   })
 })
 

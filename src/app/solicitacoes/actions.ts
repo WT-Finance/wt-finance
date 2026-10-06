@@ -120,47 +120,48 @@ export async function criarSolicitacao(input: {
   const id = (data as { id: number }).id
 
   // M17 (v4.17.0): promove os anexos de tmp/<uuid>/<arq> → sol/<id>/<uuid>/<arq>.
-  // Move o objeto (service role) e atualiza o storage_path no banco para os movidos com
-  // sucesso. Best-effort: anexo que falhar o move permanece em tmp/ (ainda funcional);
-  // tmp/ passa a conter só órfãos. Não bloqueia o sucesso da criação.
+  // Best-effort: não bloqueia o sucesso da criação.
+  //
+  // v6.2.1 — COPIA, registra no banco e SÓ ENTÃO apaga o original (antes era `move`). O motivo é
+  // a janela entre o Storage e o banco: se `solic_promover_anexos` falhar, o banco segue em tmp/;
+  // e numa falha de REDE nem dá para saber se ele gravou (o `rpc` resolve com `{ error }` também
+  // nesse caso). Com `move`, qualquer um desses deixava o banco apontando para onde o objeto não
+  // está — o anexo indisponível que este patch fecha. Com cópia, em toda falha os DOIS caminhos
+  // existem e o anexo baixa por qualquer um que o banco tenha; o custo é um órfão. (Achado MÉDIO
+  // do revisor; a primeira correção dele — desfazer o move — reabria o buraco no caso incerto.)
+  //
+  // As falhas passam a ser LOGADAS: o SDK do Storage e o `rpc` não lançam, então os `catch`
+  // mudos de antes não viam nada — foi um move falhando em silêncio que escondeu por dois meses
+  // os anexos perdidos (ver acima).
   const tmpAnexos = input.anexos.filter(a => a.storage_path.startsWith('tmp/'))
   if (tmpAnexos.length) {
     const storage = getAdminClient().storage.from(BUCKET)
-    const movidos: { de: string; para: string }[] = []
-    // v6.2.1 — as falhas daqui passam a ser LOGADAS. O SDK do Storage e o `rpc` não lançam
-    // (resolvem com `{ error }`), então os `catch` mudos de antes não viam nada: foi um move
-    // falhando em silêncio que escondeu por dois meses os anexos perdidos (ver acima).
+    const copiados: { de: string; para: string }[] = []
     for (const a of tmpAnexos) {
       const para = `sol/${id}/${a.storage_path.slice('tmp/'.length)}`
       try {
-        const { error: mvErr } = await storage.move(a.storage_path, para)
-        if (mvErr) console.error(`[solicitacoes] #${id}: anexo não promovido de tmp/ (segue em ${a.storage_path}):`, mvErr)
-        else movidos.push({ de: a.storage_path, para })
+        const { error: cpErr } = await storage.copy(a.storage_path, para)
+        if (cpErr) console.error(`[solicitacoes] #${id}: anexo não promovido (segue em ${a.storage_path}):`, cpErr)
+        else copiados.push({ de: a.storage_path, para })
       } catch (err) {
         console.error(`[solicitacoes] #${id}: falha de rede ao promover anexo (segue em ${a.storage_path}):`, err)
       }
     }
-    if (movidos.length) {
-      // Se o banco não registrar a promoção, ele segue apontando para tmp/ enquanto o objeto já
-      // está em sol/ — o anexo ficaria indisponível, que é justamente o sintoma deste patch.
-      // Então os moves são DESFEITOS (best-effort): banco e Storage voltam a concordar em tmp/,
-      // e o anexo segue baixável de lá. (Achado MÉDIO do revisor.)
+    if (copiados.length) {
       let promovido = false
       try {
-        const { error: prErr } = await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: movidos })
-        if (prErr) console.error(`[solicitacoes] #${id}: promoção dos anexos recusada pelo banco; desfazendo os moves:`, prErr.message)
+        const { error: prErr } = await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: copiados })
+        if (prErr) console.error(`[solicitacoes] #${id}: promoção dos anexos não confirmada pelo banco; mantidas as duas cópias:`, prErr.message)
         else promovido = true
       } catch (err) {
-        console.error(`[solicitacoes] #${id}: falha de rede ao registrar a promoção dos anexos; desfazendo os moves:`, err)
+        console.error(`[solicitacoes] #${id}: falha de rede ao registrar a promoção; mantidas as duas cópias:`, err)
       }
-      if (!promovido) {
-        for (const m of movidos) {
-          try {
-            const { error: dvErr } = await storage.move(m.para, m.de)
-            if (dvErr) console.error(`[solicitacoes] #${id}: anexo ficou em ${m.para}, mas o banco aponta ${m.de}:`, dvErr)
-          } catch (err) {
-            console.error(`[solicitacoes] #${id}: anexo ficou em ${m.para}, mas o banco aponta ${m.de} (rede):`, err)
-          }
+      if (promovido) {
+        try {
+          const { error: rmErr } = await storage.remove(copiados.map(c => c.de))
+          if (rmErr) console.error(`[solicitacoes] #${id}: anexos promovidos, mas os originais ficaram em tmp/:`, rmErr)
+        } catch (err) {
+          console.error(`[solicitacoes] #${id}: anexos promovidos; falha de rede ao apagar os originais em tmp/:`, err)
         }
       }
     }
