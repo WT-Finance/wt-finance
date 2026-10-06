@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-06 (fechamento da v6.2.1; v6.2.0 em produção desde 05/10 13:55).
+Última atualização: 2026-10-06 (pós-merge da v6.2.1, em produção desde 12:23).
 
 ---
 
-## Em voo — v6.2.1 "Solicitações: anexo e valor" (PR #293 draft, aguardando merge)
+## Em produção — v6.2.1 "Solicitações: anexo e valor" (PR #293, mergeado 06/10 às 12:23)
 
 Patch sem migration. Valor `1.234,56` (ou campo obrigatório vazio) era recusado na abertura, a recusa
 **apagava os anexos já enviados** e o reenvio criava a solicitação apontando para binários inexistentes —
@@ -30,6 +30,18 @@ valor pt-BR normalizado no envio + prévia no campo, erro diz o campo, anexo per
 > 🔴 **Yan — após o deploy, na 1ª abertura real com anexo:** procurar `[solicitacoes] #` nos logs da Vercel.
 > Nenhuma linha = caminho feliz ok; `não promovido` = o `storage.copy` precisa de olhar (o anexo baixa de
 > `tmp/`, mas acumularia lá sem ninguém ver — o padrão que este patch fecha).
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.2.1** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-2-1`,
+> que mora na mesma worktree). A raiz ainda está em `08bff57` (o pull da v6.2.0 não foi feito; a worktree e os
+> branches dela já saíram) — este pull cobre os dois. Nada gitignorado a salvar: as fixtures são cópias de
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree unlock .claude/worktrees/fix-v6-2-1-solicitacoes-anexo-valor 2>/dev/null
+> git worktree remove .claude/worktrees/fix-v6-2-1-solicitacoes-anexo-valor --force
+> git worktree prune
+> git branch -D fix/v6-2-1-solicitacoes-anexo-valor docs/pos-merge-v6-2-1
+> ```
 > **Toda sessão nova:** anexo da abertura nasce em `tmp/` e é promovido por **cópia** (não `move`); órfãos em
 > `tmp/` são esperados e não têm coleta (backlog).
 
@@ -52,16 +64,6 @@ orçamento (esperado — o resto drena nos ticks seguintes). `monde_ingest_statu
 > (`monde-incremental` fecha sozinho no vigia das 14:15 de 05/10.)
 > 🔴 **Yan — confirmar que `EMAIL_MODO=real` em produção foi intencional** (vale também para faturas) e, se
 > quiser, remover `MONDE_API_URL`/`MONDE_API_KEY` da Vercel (nada mais as lê).
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.2.0** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-2-0`,
-> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures são cópias de
-> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree remove .claude/worktrees/feat-v6-2-0-monde-api-v3 --force
-> git worktree prune
-> git branch -D feat/v6-2-0-monde-api-v3 docs/pos-merge-v6-2-0
-> ```
 > **Toda sessão nova:** a lista da v3 vem por **criação** (`created_at` desc) e não filtra por data — nunca
 > cortar varredura por `sale_date` (ADR-0181, skill `banco-e-rpc` §2).
 
