@@ -13,7 +13,7 @@
 
 ---
 
-## Em voo — v6.2.1 "Solicitações: anexo e valor" (PR draft, aguardando merge)
+## Em voo — v6.2.1 "Solicitações: anexo e valor" (PR #293 draft, aguardando merge)
 
 Patch sem migration. Valor `1.234,56` (ou campo obrigatório vazio) era recusado na abertura, a recusa
 **apagava os anexos já enviados** e o reenvio criava a solicitação apontando para binários inexistentes —
@@ -27,6 +27,9 @@ valor pt-BR normalizado no envio + prévia no campo, erro diz o campo, anexo per
 > reenviar e baixar o anexo; abrir #2400 ou #2401 e clicar no anexo perdido.
 > 🔴 **Yan — avisar os solicitantes das 5 em andamento** com anexo perdido (#920, #2307, #2400 abertas;
 > #2192, #2401 aprovadas) — a lista completa dos 25 está no out-briefing §6.
+> 🔴 **Yan — após o deploy, na 1ª abertura real com anexo:** procurar `[solicitacoes] #` nos logs da Vercel.
+> Nenhuma linha = caminho feliz ok; `não promovido` = o `storage.copy` precisa de olhar (o anexo baixa de
+> `tmp/`, mas acumularia lá sem ninguém ver — o padrão que este patch fecha).
 > **Toda sessão nova:** anexo da abertura nasce em `tmp/` e é promovido por **cópia** (não `move`); órfãos em
 > `tmp/` são esperados e não têm coleta (backlog).
 

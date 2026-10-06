@@ -79,6 +79,10 @@ O MCP Playwright não sobe em sessão de background (v5.3.3) e a tela exige logi
 ## 6. Pendências — o que só o Yan tem
 
 - 🔴 Conferência visual (§5).
+- 🔴 **Logs após o deploy.** O `storage.copy` não foi exercitado contra o Storage real, mas falha de
+  forma segura: se ele falhar, o banco segue em `tmp/`, o objeto também, e o anexo baixa. O risco é
+  silencioso: todo anexo novo acumularia em `tmp/` sem ninguém ver. Na 1ª abertura real com anexo, procurar
+  `[solicitacoes] #` nos logs da Vercel: nenhuma linha = ok; `não promovido` = olhar o `copy`.
 - 🔴 **Os 25 anexos perdidos não têm recuperação** (o binário foi apagado; só o solicitante tem a cópia).
   Solicitações afetadas (anexos): #920 (2), #940, #992, #1003, #1066, #1067, #1227, #1312, #1377, #1379,
   #1385, #1394, #1505, #1547, #1548, #1554, #1573 (2), #2192, #2212, #2307, #2399, #2400, #2401.
@@ -127,7 +131,8 @@ tenha, o objeto existe' vale em todo passo"). 0 CRÍTICO, 0 ALTO, 1 MÉDIO novo,
 
 ## Advisor
 
-Sessão principal: 1 consulta antes de abordar (confirmou a cadeia, sugeriu os dois descartes — data da
+Sessão principal: **2 consultas**. A 1ª, antes de abordar (confirmou a cadeia, sugeriu os dois descartes — data da
 0220 e resposta do Storage para objeto ausente — e o desenho de normalização no envio; mudou o rumo ao
-apontar que o gatilho incluía `CAMPO_OBRIGATORIO` e que `anexarEmSolicitacao` não devia mudar).
+apontar que o gatilho incluía `CAMPO_OBRIGATORIO` e que `anexarEmSolicitacao` não devia mudar). A 2ª, antes do PR: não mudou o rumo; pediu o registro do
+`copy` como fail-safe com o sinal de log a conferir, esta contagem e o número do PR no WORKING-CONTEXT.
 Revisor: nenhuma. Custo: pendência do Yan (`/usage`).
