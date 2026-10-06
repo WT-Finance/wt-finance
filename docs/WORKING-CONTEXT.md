@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-06 (fechamento da v6.2.2; v6.2.1 em produção desde 12:23).
+Última atualização: 2026-10-06 (pós-merge da v6.2.2, em produção desde 13:30).
 
 ---
 
-## Em voo — v6.2.2 "Segurança: alertas do Dependabot" (PR #295 draft, aguardando merge)
+## Em produção — v6.2.2 "Segurança: alertas do Dependabot" (PR #295, mergeado 06/10 às 13:30)
 
 Só dependências: `sharp` 0.35.5 (#59), `source-map-js` 1.2.2 (#56), `smol-toml` 1.9.0 (#57); **`depcheck`
 removido** (decisão do Yan — `sprintf-js` #58 não tem correção e só vinha por ele) e `knip.json` →
@@ -21,8 +21,21 @@ removido** (decisão do Yan — `sprintf-js` #58 não tem correção e só vinha
 `braces` via `eslint-config-next`, sem correção publicada, lint local: **risco aceito pelo Yan**. Out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-2-2_Seguranca_Deps.md`.
 
-> Os alertas #56–#59 fecham sozinhos depois do merge. **Toda sessão nova:** a ferramenta de dependência
-> não usada é o `knip` (`npx knip`); o `depcheck` não existe mais.
+> Alertas #56–#59 **fechados** pelo GitHub às 13:31 (conferido no pós-merge).
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.2.2** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-2-2`,
+> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures são cópias de
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> npm ci          # o lockfile mudou (−63 pacotes); node_modules da raiz ainda tem o depcheck
+> git worktree unlock .claude/worktrees/fix-v6-2-2-seguranca-deps 2>/dev/null
+> git worktree remove .claude/worktrees/fix-v6-2-2-seguranca-deps --force
+> git worktree prune
+> git branch -D fix/v6-2-2-seguranca-deps docs/pos-merge-v6-2-2
+> ```
+> **Toda sessão nova:** a ferramenta de dependência não usada é o `knip` (`npx knip`); o `depcheck` não
+> existe mais.
 
 ## Em produção — v6.2.1 "Solicitações: anexo e valor" (PR #293, mergeado 06/10 às 12:23)
 
