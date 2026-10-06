@@ -2,7 +2,7 @@ import { emAndamento } from './schemas'
 import type { StatusSolic, Solicitacao } from './schemas'
 import type { z } from 'zod'
 import type { respostaSchema } from './schemas'
-import { toNum } from '@/lib/carga/coercao'
+import { toNum, toCentavos } from '@/lib/carga/coercao'
 
 // Helpers de apresentação do módulo (client-safe). Cores semânticas neutras de
 // plataforma (sem var(--brand)); feedback semântico via tokens --success/--danger.
@@ -78,6 +78,78 @@ export function fmtValor(r: Resposta): string {
   }
   if (r.tipo_campo === 'data') return fmtDataBR(r.valor)
   return r.valor
+}
+
+/** Regra do banco para `numero`/`moeda` — espelho de `app.solic_validar_e_snapshotar` (0212).
+ *  UM separador só. `format.test.ts` reprova se o SQL e este espelho divergirem. */
+export const REGEX_NUMERICO_BANCO = /^-?[0-9]+([.,][0-9]+)?$/
+
+/** Teto de magnitude: acima disto `String(n)` perde dígitos ou vira notação exponencial
+ *  ("1e+23,00"), que o banco recusa com a mensagem genérica. Em centavos, para `moeda`. */
+const MAX_SEGURO = Number.MAX_SAFE_INTEGER
+
+/**
+ * v6.2.1 — valor DIGITADO num campo `numero`/`moeda` → o texto que `criar_solicitacao` grava.
+ * Devolve null quando não dá para ler um número.
+ *
+ * Por que existe: o banco valida esses campos com `REGEX_NUMERICO_BANCO` — UM separador só. O
+ * jeito mais natural de digitar dinheiro em pt-BR, `1.234,56`, tem dois, e era recusado com "Há
+ * um valor inválido em um dos campos" (nenhum dos 126 valores gravados até 06/10 tinha milhar +
+ * decimal: quem passava tinha redigitado). Pior, a recusa apagava os anexos já enviados (ver
+ * `criarSolicitacao`).
+ *
+ * - `moeda`: SEMPRE pela leitura do `toNum` canônico (R$, espaço, milhar BR/US) e emitida com
+ *   vírgula decimal, sem milhar e 2 casas (`toCentavos`) — a forma de 76 dos 126 valores já
+ *   gravados. Não muda o significado de nada que já passava: o drawer exibe moeda pelo mesmo
+ *   `toNum` (`fmtValor`), então "1.318" já era mostrado como R$ 1.318,00.
+ * - `numero`: o que o banco JÁ aceita vai **como digitado**. `numero` é exibido cru, e pode ser
+ *   identificador ("000123") ou medida ("2.500"); reinterpretar pelo milhar BR mudaria o que o
+ *   usuário escreveu. Só o que o banco recusaria (milhar + decimal, "1.234,5") passa pelo `toNum`.
+ */
+export function valorNumericoCanonico(tipo: 'numero' | 'moeda', digitado: string): string | null {
+  const bruto = digitado.trim()
+  if (tipo === 'numero' && REGEX_NUMERICO_BANCO.test(bruto)) return bruto
+  const n = toNum(bruto)
+  if (n === null || !Number.isFinite(n)) return null
+  if (tipo === 'moeda') {
+    const centavos = toCentavos(n)
+    if (centavos === null || Math.abs(centavos) > MAX_SEGURO) return null
+    const abs = Math.abs(centavos)
+    return `${centavos < 0 ? '-' : ''}${Math.trunc(abs / 100)},${String(abs % 100).padStart(2, '0')}`
+  }
+  if (Math.abs(n) > MAX_SEGURO) return null
+  const s = String(n).replace('.', ',')
+  return REGEX_NUMERICO_BANCO.test(s) ? s : null
+}
+
+/** v6.2.1 — prévia de como o valor digitado vai ser GRAVADO e exibido ("R$ 1.318,00"), ou
+ *  null se não der para ler. Sai do mesmo `fmtValor` que o drawer usa depois — a prévia não
+ *  pode prometer uma leitura diferente da que a solicitação vai mostrar. */
+export function previaValorNumerico(tipo: 'numero' | 'moeda', digitado: string): string | null {
+  const canonico = valorNumericoCanonico(tipo, digitado)
+  if (canonico === null) return null
+  return fmtValor({ campo_id: 0, rotulo: '', tipo_campo: tipo, valor: canonico })
+}
+
+/** v6.2.1 — aplica `valorNumericoCanonico` às respostas de um tipo, no ENVIO do modal (nunca no
+ *  `onChange`: normalizar enquanto se digita impediria escrever "1.234,56"). Campo vazio fica
+ *  como está (o obrigatório é do servidor). O primeiro campo ilegível devolve o RÓTULO dele,
+ *  para a tela dizer qual — sem ir ao banco e voltar com a mensagem genérica. */
+export function normalizarRespostasNumericas(
+  campos: readonly { id?: number; rotulo: string; tipo_campo: string }[],
+  valores: Record<string, string>,
+): { ok: true; respostas: Record<string, string> } | { ok: false; rotulo: string } {
+  const respostas = { ...valores }
+  for (const campo of campos) {
+    if ((campo.tipo_campo !== 'numero' && campo.tipo_campo !== 'moeda') || campo.id == null) continue
+    const chave = String(campo.id)
+    const digitado = (valores[chave] ?? '').trim()
+    if (!digitado) continue
+    const canonico = valorNumericoCanonico(campo.tipo_campo, digitado)
+    if (canonico === null) return { ok: false, rotulo: campo.rotulo }
+    respostas[chave] = canonico
+  }
+  return { ok: true, respostas }
 }
 
 /** Resumo (2-3 primeiros campos preenchidos) para cards/linhas. */

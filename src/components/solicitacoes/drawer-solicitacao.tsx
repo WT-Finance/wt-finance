@@ -83,11 +83,13 @@ function ControleAnexar({ solId, subindo, onSelecionar }: {
  *  botão some mesmo, e isso é diferente de esconder um controle disponível: não há ação
  *  possível a explicar. Quando ele aparece e está apenas OCUPADO (download/exclusão em
  *  curso), usa `aria-disabled` em vez do `disabled` nativo, que removeria do tab-order. */
-function BotaoAnexo({ a, baixando, excluindo, podeExcluir, onBaixar, onPedirExclusao }: {
+function BotaoAnexo({ a, baixando, excluindo, podeExcluir, indisponivel = false, onBaixar, onPedirExclusao }: {
   a: Solicitacao['anexos'][number]
   baixando: number | null
   excluindo: number | null
   podeExcluir: boolean
+  /** v6.2.1 — o download já respondeu que o binário não existe mais no Storage. */
+  indisponivel?: boolean
   onBaixar: (id: number) => void
   onPedirExclusao: (a: Solicitacao['anexos'][number]) => void
 }) {
@@ -102,7 +104,9 @@ function BotaoAnexo({ a, baixando, excluindo, podeExcluir, onBaixar, onPedirExcl
           ? <Loader2 size={15} className="shrink-0 animate-spin text-zinc-400" />
           : iconeArquivo(a.mime, a.nome, 'shrink-0 text-zinc-400')}
         <span className="min-w-0 flex-1 truncate">{a.nome}</span>
-        {baixando !== a.id && <Download size={13} className="shrink-0 text-zinc-400" />}
+        {indisponivel
+          ? <span className="shrink-0 text-danger">Arquivo indisponível</span>
+          : baixando !== a.id && <Download size={13} className="shrink-0 text-zinc-400" />}
       </button>
       {podeExcluir && (
         <button
@@ -156,6 +160,10 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
   const [justificativa, setJustificativa] = useState('')
   // id do anexo sendo baixado no momento (impede duplo-clique e exibe spinner)
   const [baixando, setBaixando] = useState<number | null>(null)
+  // v6.2.1 — anexos cujo download respondeu "binário ausente" (perdidos até a v6.2.0 por uma
+  // recusa na abertura; ver `criarSolicitacao`). Só se descobre no clique — saber antes
+  // custaria uma consulta ao Storage por anexo a cada drawer aberto.
+  const [indisponiveis, setIndisponiveis] = useState<ReadonlySet<number>>(() => new Set())
   // Upload de anexo livre em curso (v5.9.0; simplificado na v5.9.1, quando o campo do tipo
   // deixou de aceitar arquivo novo e sobrou um único alvo possível).
   const [anexando, setAnexando] = useState(false)
@@ -183,9 +191,21 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
     if (!r.ok) { setErro(r.erro ?? 'Falha na ação.'); return }
     router.refresh(); onClose()
   }
+  // Só o SOLICITANTE tem a cópia de um anexo da abertura; o atendente que dá com um perdido
+  // não tem o que reenviar — a instrução para ele é pedir. (Achado MÉDIO do revisor.)
+  const msgIndisponivel = !emAnd
+    ? 'Arquivo indisponível: ele não foi encontrado no armazenamento.'
+    : sol.sou_solicitante
+      ? 'Arquivo indisponível: ele não foi encontrado no armazenamento. Envie-o de novo em "Outros anexos".'
+      : sol.sou_atendente
+        ? 'Arquivo indisponível: ele não foi encontrado no armazenamento. Peça ao solicitante para reenviá-lo em "Outros anexos".'
+        : 'Arquivo indisponível: ele não foi encontrado no armazenamento.'
+
   async function baixarAnexo(id: number) {
     // Evita duplo-clique enquanto já há um download em progresso
     if (baixando !== null) return
+    // Já se sabe que o binário não existe: reexibe o aviso sem abrir (e fechar) uma aba à toa.
+    if (indisponiveis.has(id)) { setErro(msgIndisponivel); return }
     setErro(null)
     setBaixando(id)
     // Abre a janela de forma SÍNCRONA (antes do await) para não ser bloqueada pelo
@@ -205,7 +225,12 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
         }
       } else {
         w?.close()
-        setErro(r.erro)
+        if (r.indisponivel) {
+          setIndisponiveis(prev => new Set(prev).add(id))
+          setErro(msgIndisponivel)
+        } else {
+          setErro(r.erro)
+        }
       }
     } finally {
       setBaixando(null)
@@ -331,7 +356,7 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
                 {arquivos.length > 0
                   ? <div className="space-y-1.5">{arquivos.map(a => (
                       <BotaoAnexo key={a.id} a={a} baixando={baixando} excluindo={excluindo}
-                        podeExcluir={false}
+                        podeExcluir={false} indisponivel={indisponiveis.has(a.id)}
                         onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao} />
                     ))}</div>
                   : <span className="text-xs text-zinc-400">—</span>}
@@ -351,7 +376,7 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
         <div className="mb-5">
           <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-zinc-400">Outros anexos</p>
           {anexosGerais.length > 0
-            ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} baixando={baixando} excluindo={excluindo} podeExcluir={!!a.sou_autor && emAnd} onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao} />)}</div>
+            ? <div className="space-y-1.5">{anexosGerais.map(a => <BotaoAnexo key={a.id} a={a} baixando={baixando} excluindo={excluindo} podeExcluir={!!a.sou_autor && emAnd} indisponivel={indisponiveis.has(a.id)} onBaixar={baixarAnexo} onPedirExclusao={setConfirmandoExclusao} />)}</div>
             : <p className="text-xs text-zinc-400">Nenhum anexo além dos campos acima.</p>}
           {podeAnexar && <ControleAnexar solId={sol.id} subindo={anexando} onSelecionar={anexarLivre} />}
         </div>

@@ -23,6 +23,8 @@ const MIME_OK = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv',
 ])
 const MAX_BYTES = 10 * 1024 * 1024
+/** Caminho de anexo da abertura como `uploadAnexo` o gera: `tmp/<uuid>/<nome sanitizado>`. */
+const CAMINHO_TMP = /^tmp\/[0-9a-f-]{36}\/[A-Za-z0-9._-]+$/
 
 async function rpcSessao(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: { message: string } | null }> {
   const sb = await getServerClient()
@@ -107,31 +109,77 @@ export async function criarSolicitacao(input: {
     p_anexos: input.anexos,
   })
   if (error) {
-    // Limpa anexos órfãos (já subiram ao storage antes da RPC falhar).
-    if (input.anexos.length) {
-      try { await getAdminClient().storage.from(BUCKET).remove(input.anexos.map(a => a.storage_path)) } catch { /* best-effort */ }
-    }
+    // v6.2.1 — os anexos FICAM no Storage quando a criação falha. Até aqui eles eram apagados
+    // como "órfãos", mas o modal continua com os metadados na mão e a recusa típica é
+    // corrigível (valor num formato que o banco não aceita, campo obrigatório vazio): o
+    // usuário corrige, reenvia, e a solicitação nascia apontando para arquivos que esta linha
+    // tinha acabado de apagar — a promoção abaixo falhava em silêncio e o download dava "Não foi
+    // possível gerar o link". Foram 25 anexos perdidos assim entre 12/08 e 05/10/2026.
+    // Se o usuário desistir, sobra um órfão em tmp/ — o mesmo que já sobra quando ele fecha
+    // o modal sem enviar. Lixo inofensivo (não é listado nem baixável) contra dado perdido.
     return { ok: false, erro: traduzir(error.message) }
   }
   const id = (data as { id: number }).id
 
   // M17 (v4.17.0): promove os anexos de tmp/<uuid>/<arq> → sol/<id>/<uuid>/<arq>.
-  // Move o objeto (service role) e atualiza o storage_path no banco para os movidos com
-  // sucesso. Best-effort: anexo que falhar o move permanece em tmp/ (ainda funcional);
-  // tmp/ passa a conter só órfãos. Não bloqueia o sucesso da criação.
+  // Best-effort: não bloqueia o sucesso da criação.
+  //
+  // v6.2.1 — COPIA, registra no banco e SÓ ENTÃO apaga o original (antes era `move`). O motivo é
+  // a janela entre o Storage e o banco: se `solic_promover_anexos` falhar, o banco segue em tmp/;
+  // e numa falha de REDE nem dá para saber se ele gravou (o `rpc` resolve com `{ error }` também
+  // nesse caso). Com `move`, qualquer um desses deixava o banco apontando para onde o objeto não
+  // está — o anexo indisponível que este patch fecha. Com cópia, em toda falha os DOIS caminhos
+  // existem e o anexo baixa por qualquer um que o banco tenha; o custo é um órfão. (Achado MÉDIO
+  // do revisor; a primeira correção dele — desfazer o move — reabria o buraco no caso incerto.)
+  //
+  // As falhas passam a ser LOGADAS: o SDK do Storage e o `rpc` não lançam, então os `catch`
+  // mudos de antes não viam nada — foi um move falhando em silêncio que escondeu por dois meses
+  // os anexos perdidos (ver acima).
+  // Só o formato que `uploadAnexo` produz (`tmp/<uuid>/<nome sanitizado>`): a cópia e a remoção
+  // usam service_role sobre caminhos vindos do cliente, e um caminho fora do padrão não é
+  // tocado — fica onde está, como estava. (Achado BAIXO do revisor, 2ª passada.)
   const tmpAnexos = input.anexos.filter(a => a.storage_path.startsWith('tmp/'))
-  if (tmpAnexos.length) {
+  for (const a of tmpAnexos) {
+    if (!CAMINHO_TMP.test(a.storage_path)) console.error(`[solicitacoes] #${id}: caminho de anexo fora do padrão, não promovido: ${a.storage_path}`)
+  }
+  const promoviveis = tmpAnexos.filter(a => CAMINHO_TMP.test(a.storage_path))
+  if (promoviveis.length) {
     const storage = getAdminClient().storage.from(BUCKET)
-    const movidos: { de: string; para: string }[] = []
-    for (const a of tmpAnexos) {
+    const copiados: { de: string; para: string }[] = []
+    for (const a of promoviveis) {
       const para = `sol/${id}/${a.storage_path.slice('tmp/'.length)}`
       try {
-        const { error: mvErr } = await storage.move(a.storage_path, para)
-        if (!mvErr) movidos.push({ de: a.storage_path, para })
-      } catch { /* mantém em tmp/ */ }
+        const { error: cpErr } = await storage.copy(a.storage_path, para)
+        if (cpErr) console.error(`[solicitacoes] #${id}: anexo não promovido (segue em ${a.storage_path}):`, cpErr)
+        else copiados.push({ de: a.storage_path, para })
+      } catch (err) {
+        console.error(`[solicitacoes] #${id}: falha de rede ao promover anexo (segue em ${a.storage_path}):`, err)
+      }
     }
-    if (movidos.length) {
-      try { await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: movidos }) } catch { /* best-effort */ }
+    if (copiados.length) {
+      let promovido = false
+      try {
+        const { data: nAtualizados, error: prErr } = await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: copiados })
+        // Ausência de erro NÃO basta para apagar o original: a RPC devolve quantas linhas
+        // atualizou, e só com todas confirmadas o banco deixou de apontar para tmp/. Sucesso
+        // presumido pela falta de erro é exatamente a classe do bug que este patch fecha.
+        // `>=` porque o mesmo caminho repetido no input faz o UPDATE contar mais linhas.
+        // (Achado MÉDIO do revisor, 2ª passada.)
+        if (prErr) console.error(`[solicitacoes] #${id}: promoção dos anexos não confirmada pelo banco; mantidas as duas cópias:`, prErr.message)
+        else if (typeof nAtualizados !== 'number' || nAtualizados < copiados.length) {
+          console.error(`[solicitacoes] #${id}: promoção parcial (${String(nAtualizados)} de ${copiados.length}); mantidas as duas cópias.`)
+        } else promovido = true
+      } catch (err) {
+        console.error(`[solicitacoes] #${id}: falha de rede ao registrar a promoção; mantidas as duas cópias:`, err)
+      }
+      if (promovido) {
+        try {
+          const { error: rmErr } = await storage.remove(copiados.map(c => c.de))
+          if (rmErr) console.error(`[solicitacoes] #${id}: anexos promovidos, mas os originais ficaram em tmp/:`, rmErr)
+        } catch (err) {
+          console.error(`[solicitacoes] #${id}: anexos promovidos; falha de rede ao apagar os originais em tmp/:`, err)
+        }
+      }
     }
   }
 
@@ -187,14 +235,30 @@ export async function uploadAnexo(formData: FormData): Promise<{ ok: true; anexo
 }
 
 // Signed URL de download (checa visibilidade na RPC; gera URL com service role).
-export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string } | { ok: false; erro: string }> {
+// v6.2.1 — `indisponivel` separa "o arquivo não existe mais no Storage" (o anexo está listado,
+// mas o binário se perdeu — ver `criarSolicitacao`) de uma falha qualquer de gerar o link: no
+// primeiro caso tentar de novo não adianta, e a tela diz o que fazer em vez do erro genérico.
+export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string } | { ok: false; erro: string; indisponivel?: true }> {
   await requireAreaAction(null)
   const { data, error } = await rpcSessao('solic_anexo_path', { p_anexo_id: anexoId })
   if (error) return { ok: false, erro: traduzir(error.message) }
   const path = (data as { storage_path: string }).storage_path
   const { data: signed, error: sErr } = await getAdminClient().storage.from(BUCKET).createSignedUrl(path, 60)
+  if (sErr && objetoAusente(sErr)) {
+    console.error(`[solicitacoes] anexo ${anexoId}: binário ausente no Storage (${path}).`)
+    return { ok: false, erro: 'Arquivo indisponível: ele não foi encontrado no armazenamento.', indisponivel: true }
+  }
   if (sErr || !signed) return { ok: false, erro: 'Não foi possível gerar o link do anexo.' }
   return { ok: true, url: signed.signedUrl }
+}
+
+/** O Storage responde objeto inexistente com `message: 'Object not found'` e
+ *  `statusCode: '404'` (o `status` HTTP vem 400) — medido contra produção em 06/10/2026.
+ *  Decide pela MENSAGEM: o `statusCode` '404' sozinho também vale para "Bucket not found", e
+ *  um bucket ausente/mal configurado pintaria TODO anexo de indisponível, com instrução de
+ *  reenviar, mascarando falha de infraestrutura. (Achado MÉDIO do revisor.) */
+function objetoAusente(err: { message?: string }): boolean {
+  return /object not found/i.test(err.message ?? '')
 }
 
 /**
@@ -219,7 +283,7 @@ export async function aprovarSolicitacao(id: number): Promise<{ ok: boolean; err
  *
  * Diferente da criação, aqui o id da solicitação JÁ é conhecido no momento do upload —
  * então o objeto vai direto para `sol/<id>/<uuid>/<arq>` e não existe a dança
- * tmp/ → move → `solic_promover_anexos` (que, além do mais, é solicitante-only e não
+ * tmp/ → cópia → `solic_promover_anexos` (que, além do mais, é solicitante-only e não
  * serviria ao atendente).
  */
 /**
@@ -354,6 +418,13 @@ function traduzir(msg: string): string {
     ANEXO_DA_ABERTURA: 'Anexos enviados na abertura da solicitação não podem ser excluídos.',
   }
   const prefixo = (msg.split(':')[0] ?? '').trim()
+  // v6.2.1 — nos erros de CAMPO o detalhe diz QUAL campo, e é o que o usuário precisa para
+  // corrigir. A RPC emite 'CAMPO_OBRIGATORIO: <rótulo>' e 'VALOR_INVALIDO: <rótulo> deve ser
+  // numérico' (ou '... não admite data no passado', 'opção inexistente em <rótulo>'); o
+  // dicionário acima segue valendo quando o detalhe não vem.
+  const detalhe = msg.includes(':') ? msg.slice(msg.indexOf(':') + 1).trim() : ''
+  if (prefixo === 'CAMPO_OBRIGATORIO' && detalhe) return `Preencha o campo obrigatório "${detalhe}".`
+  if (prefixo === 'VALOR_INVALIDO' && detalhe) return `${detalhe.charAt(0).toUpperCase()}${detalhe.slice(1)}.`
   if (m[prefixo]) return m[prefixo]
 
   // Rede de segurança da v5.9.0: a etapa "Aprovada" depende de uma migration DESTRUTIVA

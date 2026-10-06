@@ -2,7 +2,7 @@
 
 import { Paperclip, X } from 'lucide-react'
 import { Input, Select, Textarea } from '@/components/ui/field'
-import { hojeSP } from '@/lib/solicitacoes/format'
+import { hojeSP, previaValorNumerico } from '@/lib/solicitacoes/format'
 import type { CampoDef } from '@/lib/solicitacoes/schemas'
 
 // Motor de render dinâmico dos campos de um tipo (v4.16.0). Presentational: recebe a
@@ -78,12 +78,35 @@ export default function CamposDinamicos({ campos, valores, onValor, anexos, onAn
                 )
               })()
             ) : campo.tipo_campo === 'numero' || campo.tipo_campo === 'moeda' ? (
-              <div className="relative">
-                {campo.tipo_campo === 'moeda' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">R$</span>}
-                <Input id={`campo-${id}`} inputMode="decimal" value={v}
-                  onChange={e => onValor(id, e.target.value.replace(/[^\d.,-]/g, ''))}
-                  className={campo.tipo_campo === 'moeda' ? 'pl-9' : ''} placeholder="0" />
-              </div>
+              (() => {
+                // v6.2.1 — prévia de como o valor vai ser GRAVADO. Desambigua o que só o olho
+                // não resolve ("1.318" é mil trezentos e dezoito, não um vírgula três) e avisa
+                // na hora o que não dá para ler, em vez de só no envio.
+                const previa = v.trim() ? previaValorNumerico(campo.tipo_campo, v) : null
+                return (
+                  <>
+                    <div className="relative">
+                      {campo.tipo_campo === 'moeda' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">R$</span>}
+                      <Input id={`campo-${id}`} inputMode="decimal" value={v}
+                        onChange={e => onValor(id, e.target.value.replace(/[^\d.,-]/g, ''))}
+                        aria-describedby={v.trim() ? `previa-${id}` : undefined}
+                        aria-invalid={v.trim() && !previa ? true : undefined}
+                        className={campo.tipo_campo === 'moeda' ? 'pl-9' : ''} placeholder={campo.tipo_campo === 'moeda' ? '0,00' : '0'} />
+                    </div>
+                    {v.trim() && previa && (
+                      <p id={`previa-${id}`} className="mt-1 text-xs text-zinc-500">Será registrado como {previa}</p>
+                    )}
+                    {/* Só o ERRO é anunciado (a prévia a cada tecla seria ruído; ela fica ligada ao
+                        campo pelo aria-describedby). A região viva fica SEMPRE montada: leitor de
+                        tela costuma não anunciar uma que já nasce com conteúdo. (Revisor, 2 passadas.) */}
+                    <div role="status" aria-live="polite">
+                      {v.trim() && !previa && (
+                        <p id={`previa-${id}`} className="mt-1 text-xs text-danger">Valor não reconhecido. Use, por exemplo, 1.234,56.</p>
+                      )}
+                    </div>
+                  </>
+                )
+              })()
             ) : campo.tipo_campo === 'anexo' ? (
               <div>
                 <label className="foco-neutro flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-500 hover:bg-zinc-50">

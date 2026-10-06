@@ -9,9 +9,29 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-05 (pós-merge da v6.2.0).
+Última atualização: 2026-10-06 (fechamento da v6.2.1; v6.2.0 em produção desde 05/10 13:55).
 
 ---
+
+## Em voo — v6.2.1 "Solicitações: anexo e valor" (PR #293 draft, aguardando merge)
+
+Patch sem migration. Valor `1.234,56` (ou campo obrigatório vazio) era recusado na abertura, a recusa
+**apagava os anexos já enviados** e o reenvio criava a solicitação apontando para binários inexistentes —
+**25 de 141 anexos** perdidos (12/08–05/10). Agora: anexos sobrevivem à recusa, promoção por cópia,
+valor pt-BR normalizado no envio + prévia no campo, erro diz o campo, anexo perdido aparece como
+"Arquivo indisponível". Spec `docs/briefings/spec-v6-2-1-solicitacoes-anexo-e-valor.md`; out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-1_Solicitacoes_Anexo_Valor.md`.
+
+> 🔴 **Yan — conferência visual** (a sessão não faz: login real + Playwright em background): abrir uma
+> solicitação com moeda `1.234,56` e um anexo; forçar uma recusa (campo obrigatório vazio), corrigir,
+> reenviar e baixar o anexo; abrir #2400 ou #2401 e clicar no anexo perdido.
+> 🔴 **Yan — avisar os solicitantes das 5 em andamento** com anexo perdido (#920, #2307, #2400 abertas;
+> #2192, #2401 aprovadas) — a lista completa dos 25 está no out-briefing §6.
+> 🔴 **Yan — após o deploy, na 1ª abertura real com anexo:** procurar `[solicitacoes] #` nos logs da Vercel.
+> Nenhuma linha = caminho feliz ok; `não promovido` = o `storage.copy` precisa de olhar (o anexo baixa de
+> `tmp/`, mas acumularia lá sem ninguém ver — o padrão que este patch fecha).
+> **Toda sessão nova:** anexo da abertura nasce em `tmp/` e é promovido por **cópia** (não `move`); órfãos em
+> `tmp/` são esperados e não têm coleta (backlog).
 
 ## Em produção — v6.2.0 "Espelho Monde na API oficial v3" (PR #291, mergeado 05/10 às 13:55)
 

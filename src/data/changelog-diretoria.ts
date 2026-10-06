@@ -35,6 +35,26 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.2.1',
+    data: '2026-10-06T12:10', // horário real de autoria; reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'Os arquivos anexados ao abrir uma solicitação não se perdem mais. Quando a abertura era recusada ' +
+          'por algum campo (por exemplo, um valor digitado como 1.234,56) e a pessoa corrigia e reenviava, ' +
+          'o anexo aparecia na solicitação mas não abria. Os arquivos que se perderam assim até hoje aparecem ' +
+          'como "Arquivo indisponível", com a orientação de reenviá-los.',
+      },
+      {
+        tipo: 'melhoria',
+        texto:
+          'Os campos de valor em Solicitações aceitam o formato usual, como 1.234,56 ou R$ 1.234,56, e mostram ' +
+          'logo abaixo como o valor será registrado. Quando algo impede a abertura, a mensagem agora diz qual campo corrigir.',
+      },
+    ],
+  },
+  {
     versao: '6.2.0',
     data: '2026-10-05T13:55', // horário real do merge (PR #291), reconciliado no /pos-merge
     itens: [

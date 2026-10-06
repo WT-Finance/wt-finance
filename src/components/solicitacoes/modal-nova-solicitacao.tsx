@@ -11,6 +11,7 @@ import { Input, Select, Textarea } from '@/components/ui/field'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { criarSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import type { TipoAbertura, Destinatarios } from '@/lib/solicitacoes/schemas'
+import { normalizarRespostasNumericas } from '@/lib/solicitacoes/format'
 
 type AnexoItem = AnexoLocal & { meta?: AnexoMeta }
 
@@ -72,11 +73,17 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
     if (subindo) { setErro('Aguarde o envio dos anexos terminar.'); return }
     // avisa o usuário sobre anexo com falha (em vez de silenciar o erro)
     if (comAnexoErro) { setErro('Há anexo com falha de envio — remova-o ou tente novamente.'); return }
+    // v6.2.1 — número/moeda vão ao banco na forma que ele aceita (o regex de lá só aceita UM
+    // separador, e "1.234,56" é o jeito natural de digitar). O que não dá para ler para aqui,
+    // com o nome do campo, em vez de virar o "valor inválido em um dos campos" do servidor.
+    const norm = normalizarRespostasNumericas(tipo.campos, valores)
+    if (!norm.ok) { setErro(`${norm.rotulo}: valor não reconhecido. Use, por exemplo, 1.234,56.`); return }
+    const { respostas } = norm
     const anexosMeta = Object.values(anexos).flat().map(a => a.meta).filter((m): m is AnexoMeta => !!m)
     setEnviando(true)
     const res = await criarSolicitacao({
       tipo_id: tipo.id, destinatario_user_id, destinatario_role_id,
-      data_limite: dataLimite, descricao, respostas: valores, anexos: anexosMeta,
+      data_limite: dataLimite, descricao, respostas, anexos: anexosMeta,
     })
     setEnviando(false)
     if (!res.ok) { setErro(res.erro); return }
