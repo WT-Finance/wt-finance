@@ -6,6 +6,26 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.2.1] — 2026-10-06
+
+PATCH · **Solicitações: anexo que não baixava e "valor inválido" na abertura.** Os dois sintomas eram uma
+cadeia: valor como `1.234,56` (ou campo obrigatório vazio) era recusado pelo banco, a recusa apagava os
+anexos já enviados e o reenvio criava a solicitação apontando para binários inexistentes — **25 de 141
+anexos** perdidos entre 12/08 e 05/10/2026. Spec `docs/briefings/spec-v6-2-1-solicitacoes-anexo-e-valor.md`;
+out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-2-1_Solicitacoes_Anexo_Valor.md`. Sem migration.
+
+### Corrigido
+
+- **Anexos da abertura sobrevivem à recusa**: `criarSolicitacao` não apaga mais os binários quando a RPC
+  recusa; a promoção `tmp/ → sol/<id>/` passa a ser **cópia → registro → remoção do original**, e em
+  qualquer falha os dois caminhos ficam baixáveis. Falhas do Storage e de `solic_promover_anexos` são logadas.
+- **Valor em pt-BR**: campos `moeda` aceitam `1.234,56`, `R$ 1.234,56`, `1234.56`; normalizados no envio
+  pelo `toNum` canônico para `1234,56`. `numero` que o banco já aceita vai como digitado. Prévia abaixo do
+  campo ("Será registrado como R$ 1.318,00"); valor ilegível é apontado na tela, com o nome do campo.
+- **Mensagem de erro diz qual campo** (`CAMPO_OBRIGATORIO`, `VALOR_INVALIDO`).
+- **Anexo perdido** aparece como "Arquivo indisponível" no drawer, com instrução por papel (solicitante
+  reenvia em "Outros anexos"; atendente pede ao solicitante), em vez de "Não foi possível gerar o link".
+
 ## [6.2.0] — 2026-10-05
 
 MINOR · **Espelho Monde lido da API oficial v3.** A `monde-data` (intermediária do TTARS) foi desligada em
