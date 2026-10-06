@@ -13,7 +13,7 @@
 
 ---
 
-## Em voo — v6.2.2 "Segurança: alertas do Dependabot" (PR draft, aguardando merge)
+## Em voo — v6.2.2 "Segurança: alertas do Dependabot" (PR #295 draft, aguardando merge)
 
 Só dependências: `sharp` 0.35.5 (#59), `source-map-js` 1.2.2 (#56), `smol-toml` 1.9.0 (#57); **`depcheck`
 removido** (decisão do Yan — `sprintf-js` #58 não tem correção e só vinha por ele) e `knip.json` →
