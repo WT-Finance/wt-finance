@@ -107,8 +107,9 @@ describe('criarSolicitacao — anexos sobrevivem à recusa (v6.2.1)', () => {
     expect(bucket.objetos.has(destino)).toBe(true)
     const promover = sessao.chamadas.find(c => c.fn === 'solic_promover_anexos')
     expect(promover?.args).toEqual({ p_solicitacao_id: 2401, p_de_para: [{ de: TMP, para: destino }] })
-    // Nenhum log de anexo (o dublê de e-mail sem envolvidos loga por conta própria — irrelevante aqui).
-    expect(consoleError.mock.calls.some((c: unknown[]) => /anexo|promo/i.test(String(c[0])))).toBe(false)
+    // Nenhum log do bloco de anexos — todos começam com este prefixo (o dublê de e-mail sem
+    // envolvidos loga "notificação #2401", que é outro caminho e irrelevante aqui).
+    expect(consoleError.mock.calls.some((c: unknown[]) => String(c[0]).startsWith('[solicitacoes] #2401:'))).toBe(false)
   })
 
   it('move que falha é LOGADO (antes era engolido) e não é registrado como promovido', async () => {
@@ -119,13 +120,18 @@ describe('criarSolicitacao — anexos sobrevivem à recusa (v6.2.1)', () => {
     expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('anexo não promovido'), expect.anything())
   })
 
-  it('promoção recusada pelo banco é LOGADA (o SDK resolve com { error }, não lança)', async () => {
+  it('promoção recusada pelo banco é LOGADA e os moves são DESFEITOS (banco e Storage concordam em tmp/)', async () => {
     sessao
       .responder('criar_solicitacao', { data: { id: 8 }, error: null })
       .responder('solic_promover_anexos', ERRO('PERMISSAO_NEGADA: somente o solicitante'))
     expect((await criarSolicitacao(INPUT)).ok).toBe(true)
     expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining('banco não foi atualizado'), expect.stringContaining('PERMISSAO_NEGADA'), expect.anything())
+      expect.stringContaining('desfazendo os moves'), expect.stringContaining('PERMISSAO_NEGADA'))
+    expect(bucket.objetos.has(TMP)).toBe(true)                               // o banco aponta para cá
+    expect(bucket.objetos.has(`sol/8/${TMP.slice('tmp/'.length)}`)).toBe(false)
+    // e o anexo continua baixável pelo caminho que o banco tem
+    sessao.responder('solic_anexo_path', { data: { storage_path: TMP }, error: null })
+    expect((await anexoUrl(1)).ok).toBe(true)
   })
 })
 
@@ -153,6 +159,12 @@ describe('anexoUrl — binário ausente é "indisponível", não erro genérico 
   it('objeto presente → URL assinada', async () => {
     sessao.responder('solic_anexo_path', { data: { storage_path: TMP }, error: null })
     expect(await anexoUrl(1)).toEqual({ ok: true, url: `https://assinado/${TMP}` })
+  })
+
+  it('"Bucket not found" (também statusCode 404) NÃO é anexo indisponível — é falha de infraestrutura', async () => {
+    sessao.responder('solic_anexo_path', { data: { storage_path: TMP }, error: null })
+    bucket.createSignedUrl = async () => ({ data: null, error: { message: 'Bucket not found', statusCode: '404' } })
+    expect(await anexoUrl(1)).toEqual({ ok: false, erro: 'Não foi possível gerar o link do anexo.' })
   })
 
   it('outra falha do Storage segue como erro genérico, sem marcar indisponível', async () => {

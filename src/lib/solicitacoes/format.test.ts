@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { toNum } from '@/lib/carga/coercao'
-import { fmtValor, vencida, fmtDataBR, hojeSP, casaBuscaSolicitacao, maisRecentePrimeiro, valorNumericoCanonico, previaValorNumerico } from './format'
+import { fmtValor, vencida, fmtDataBR, hojeSP, casaBuscaSolicitacao, maisRecentePrimeiro, valorNumericoCanonico, previaValorNumerico, normalizarRespostasNumericas, REGEX_NUMERICO_BANCO } from './format'
 import type { Solicitacao } from './schemas'
 
 // Cobre a coerção/limite de Solicitações (v4.17.0 / Balde 2). fmtValor agora usa o
@@ -159,6 +159,10 @@ describe('valorNumericoCanonico — o que a tela manda o banco aceita', () => {
     expect('1234,56').toMatch(regexBanco)
   })
 
+  it('o espelho TS do regex (REGEX_NUMERICO_BANCO) é idêntico ao do SQL', () => {
+    expect(REGEX_NUMERICO_BANCO.source).toBe(regexBanco.source)
+  })
+
   it.each(casos)('moeda %s → %s', (digitado, esperado) => {
     const c = valorNumericoCanonico('moeda', digitado)
     expect(c).toBe(esperado)
@@ -171,12 +175,26 @@ describe('valorNumericoCanonico — o que a tela manda o banco aceita', () => {
     expect(valorNumericoCanonico('moeda', '1.0055')).toBe('1,01')
   })
 
-  it('numero mantém as casas que tem (3 não vira 3,00)', () => {
-    expect(valorNumericoCanonico('numero', '3')).toBe('3')
+  it('numero que o banco JÁ aceita vai como digitado (identificador e medida não são reinterpretados)', () => {
+    expect(valorNumericoCanonico('numero', '3')).toBe('3')                 // não vira 3,00
     expect(valorNumericoCanonico('numero', '1,5')).toBe('1,5')
-    expect(valorNumericoCanonico('numero', '1.234')).toBe('1234')
+    expect(valorNumericoCanonico('numero', '000123')).toBe('000123')       // zero à esquerda fica
+    expect(valorNumericoCanonico('numero', '2.500')).toBe('2.500')         // não vira 2500
+    expect(valorNumericoCanonico('numero', ' 42 ')).toBe('42')
+  })
+
+  it('numero que o banco recusaria passa pelo toNum', () => {
     expect(valorNumericoCanonico('numero', '1.234,5')).toBe('1234,5')
-    for (const d of ['3', '1,5', '1.234', '1.234,5', '-2']) expect(valorNumericoCanonico('numero', d)).toMatch(regexBanco)
+    expect(valorNumericoCanonico('numero', '1.234.567')).toBe('1234567')
+    for (const d of ['1.234,5', '1.234.567', '-2']) expect(valorNumericoCanonico('numero', d)).toMatch(regexBanco)
+  })
+
+  it('magnitude além do inteiro seguro é recusada (sem "1e+23,00" nem dígito perdido)', () => {
+    expect(valorNumericoCanonico('moeda', '9'.repeat(22))).toBeNull()
+    expect(valorNumericoCanonico('moeda', '9'.repeat(17))).toBeNull()
+    expect(valorNumericoCanonico('numero', '9'.repeat(17) + ',5')).toBe('9'.repeat(17) + ',5')   // já aceito: texto, sem perda
+    expect(valorNumericoCanonico('numero', '9.999.999.999.999.999.999,5')).toBeNull()             // precisaria do toNum: recusa
+    expect(valorNumericoCanonico('moeda', '1.000.000.000,00')).toBe('1000000000,00')
   })
 
   it('o que não dá para ler devolve null (a tela avisa, sem ir ao banco)', () => {
@@ -201,5 +219,23 @@ describe('previaValorNumerico — o que a tela mostra abaixo do campo', () => {
     expect(previaValorNumerico('moeda', '1.234,56')).toBe(fmtValor(r('moeda', '1234,56')))
     expect(previaValorNumerico('numero', '1,5')).toBe('1,5')
     expect(previaValorNumerico('moeda', 'abc')).toBeNull()
+  })
+})
+
+describe('normalizarRespostasNumericas — o envio do modal', () => {
+  const campos = [
+    { id: 10, rotulo: 'Valor', tipo_campo: 'moeda' },
+    { id: 11, rotulo: 'Parcelas', tipo_campo: 'numero' },
+    { id: 12, rotulo: 'Fornecedor', tipo_campo: 'texto_curto' },
+  ]
+  it('normaliza moeda/numero e deixa o resto intacto', () => {
+    const r = normalizarRespostasNumericas(campos, { '10': '1.234,56', '11': '3', '12': '1.234,56' })
+    expect(r).toEqual({ ok: true, respostas: { '10': '1234,56', '11': '3', '12': '1.234,56' } })
+  })
+  it('campo vazio fica como está (obrigatório é do servidor)', () => {
+    expect(normalizarRespostasNumericas(campos, { '10': '' })).toEqual({ ok: true, respostas: { '10': '' } })
+  })
+  it('valor ilegível devolve o RÓTULO do campo', () => {
+    expect(normalizarRespostasNumericas(campos, { '10': '-', '11': '2' })).toEqual({ ok: false, rotulo: 'Valor' })
   })
 })

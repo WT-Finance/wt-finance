@@ -191,9 +191,21 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
     if (!r.ok) { setErro(r.erro ?? 'Falha na ação.'); return }
     router.refresh(); onClose()
   }
+  // Só o SOLICITANTE tem a cópia de um anexo da abertura; o atendente que dá com um perdido
+  // não tem o que reenviar — a instrução para ele é pedir. (Achado MÉDIO do revisor.)
+  const msgIndisponivel = !emAnd
+    ? 'Arquivo indisponível: ele não foi encontrado no armazenamento.'
+    : sol.sou_solicitante
+      ? 'Arquivo indisponível: ele não foi encontrado no armazenamento. Envie-o de novo em "Outros anexos".'
+      : sol.sou_atendente
+        ? 'Arquivo indisponível: ele não foi encontrado no armazenamento. Peça ao solicitante para reenviá-lo em "Outros anexos".'
+        : 'Arquivo indisponível: ele não foi encontrado no armazenamento.'
+
   async function baixarAnexo(id: number) {
     // Evita duplo-clique enquanto já há um download em progresso
     if (baixando !== null) return
+    // Já se sabe que o binário não existe: reexibe o aviso sem abrir (e fechar) uma aba à toa.
+    if (indisponiveis.has(id)) { setErro(msgIndisponivel); return }
     setErro(null)
     setBaixando(id)
     // Abre a janela de forma SÍNCRONA (antes do await) para não ser bloqueada pelo
@@ -215,9 +227,7 @@ export default function DrawerSolicitacao({ sol, onClose, onAtualizar }: {
         w?.close()
         if (r.indisponivel) {
           setIndisponiveis(prev => new Set(prev).add(id))
-          setErro(podeAnexar
-            ? 'Arquivo indisponível: ele não foi encontrado no armazenamento. Envie-o de novo em "Outros anexos".'
-            : 'Arquivo indisponível: ele não foi encontrado no armazenamento.')
+          setErro(msgIndisponivel)
         } else {
           setErro(r.erro)
         }

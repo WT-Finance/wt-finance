@@ -11,7 +11,7 @@ import { Input, Select, Textarea } from '@/components/ui/field'
 import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { criarSolicitacao, uploadAnexo, type AnexoMeta } from '@/app/solicitacoes/actions'
 import type { TipoAbertura, Destinatarios } from '@/lib/solicitacoes/schemas'
-import { valorNumericoCanonico } from '@/lib/solicitacoes/format'
+import { normalizarRespostasNumericas } from '@/lib/solicitacoes/format'
 
 type AnexoItem = AnexoLocal & { meta?: AnexoMeta }
 
@@ -73,19 +73,12 @@ export default function ModalNovaSolicitacao({ tipos, destinatarios, onFechar }:
     if (subindo) { setErro('Aguarde o envio dos anexos terminar.'); return }
     // avisa o usuário sobre anexo com falha (em vez de silenciar o erro)
     if (comAnexoErro) { setErro('Há anexo com falha de envio — remova-o ou tente novamente.'); return }
-    // v6.2.1 — número/moeda vão ao banco na forma canônica (o regex de lá só aceita UM
+    // v6.2.1 — número/moeda vão ao banco na forma que ele aceita (o regex de lá só aceita UM
     // separador, e "1.234,56" é o jeito natural de digitar). O que não dá para ler para aqui,
     // com o nome do campo, em vez de virar o "valor inválido em um dos campos" do servidor.
-    const respostas = { ...valores }
-    for (const campo of tipo.campos) {
-      if (campo.tipo_campo !== 'numero' && campo.tipo_campo !== 'moeda') continue
-      const chave = String(campo.id)
-      const digitado = (valores[chave] ?? '').trim()
-      if (!digitado) continue
-      const canonico = valorNumericoCanonico(campo.tipo_campo, digitado)
-      if (canonico === null) { setErro(`${campo.rotulo}: valor não reconhecido. Use, por exemplo, 1.234,56.`); return }
-      respostas[chave] = canonico
-    }
+    const norm = normalizarRespostasNumericas(tipo.campos, valores)
+    if (!norm.ok) { setErro(`${norm.rotulo}: valor não reconhecido. Use, por exemplo, 1.234,56.`); return }
+    const { respostas } = norm
     const anexosMeta = Object.values(anexos).flat().map(a => a.meta).filter((m): m is AnexoMeta => !!m)
     setEnviando(true)
     const res = await criarSolicitacao({

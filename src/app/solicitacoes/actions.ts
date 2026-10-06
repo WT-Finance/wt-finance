@@ -141,13 +141,27 @@ export async function criarSolicitacao(input: {
       }
     }
     if (movidos.length) {
-      // Se isto falhar, o banco segue apontando para tmp/ e o objeto já está em sol/ — o
-      // anexo fica indisponível. Raro (mesma sessão que acabou de criar), mas não mudo.
+      // Se o banco não registrar a promoção, ele segue apontando para tmp/ enquanto o objeto já
+      // está em sol/ — o anexo ficaria indisponível, que é justamente o sintoma deste patch.
+      // Então os moves são DESFEITOS (best-effort): banco e Storage voltam a concordar em tmp/,
+      // e o anexo segue baixável de lá. (Achado MÉDIO do revisor.)
+      let promovido = false
       try {
         const { error: prErr } = await rpcSessao('solic_promover_anexos', { p_solicitacao_id: id, p_de_para: movidos })
-        if (prErr) console.error(`[solicitacoes] #${id}: objetos movidos para sol/, mas o banco não foi atualizado:`, prErr.message, movidos)
+        if (prErr) console.error(`[solicitacoes] #${id}: promoção dos anexos recusada pelo banco; desfazendo os moves:`, prErr.message)
+        else promovido = true
       } catch (err) {
-        console.error(`[solicitacoes] #${id}: falha de rede ao registrar a promoção dos anexos:`, err, movidos)
+        console.error(`[solicitacoes] #${id}: falha de rede ao registrar a promoção dos anexos; desfazendo os moves:`, err)
+      }
+      if (!promovido) {
+        for (const m of movidos) {
+          try {
+            const { error: dvErr } = await storage.move(m.para, m.de)
+            if (dvErr) console.error(`[solicitacoes] #${id}: anexo ficou em ${m.para}, mas o banco aponta ${m.de}:`, dvErr)
+          } catch (err) {
+            console.error(`[solicitacoes] #${id}: anexo ficou em ${m.para}, mas o banco aponta ${m.de} (rede):`, err)
+          }
+        }
       }
     }
   }
@@ -222,10 +236,12 @@ export async function anexoUrl(anexoId: number): Promise<{ ok: true; url: string
 }
 
 /** O Storage responde objeto inexistente com `message: 'Object not found'` e
- *  `statusCode: '404'` (o `status` HTTP vem 400) — medido contra produção em 06/10/2026. */
+ *  `statusCode: '404'` (o `status` HTTP vem 400) — medido contra produção em 06/10/2026.
+ *  Decide pela MENSAGEM: o `statusCode` '404' sozinho também vale para "Bucket not found", e
+ *  um bucket ausente/mal configurado pintaria TODO anexo de indisponível, com instrução de
+ *  reenviar, mascarando falha de infraestrutura. (Achado MÉDIO do revisor.) */
 function objetoAusente(err: { message?: string }): boolean {
-  const statusCode = (err as { statusCode?: unknown }).statusCode
-  return String(statusCode) === '404' || /object not found/i.test(err.message ?? '')
+  return /object not found/i.test(err.message ?? '')
 }
 
 /**
