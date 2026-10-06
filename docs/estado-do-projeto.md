@@ -291,8 +291,8 @@ puros**: não rodam git, banco, build nem servidor.
 ## 9. Utilitários fora do grafo de build
 
 Scripts que **nenhum `import` alcança** — ferramenta de análise ou reprodução manual, e não código
-da aplicação. Análise estática (`knip`, `depcheck`) os aponta como mortos; não são. As exceções
-estão declaradas em `knip.json`.
+da aplicação. Análise estática (`knip`) os aponta como mortos; não são. As exceções
+estão declaradas em `knip.jsonc` (desde a v6.2.2; o `depcheck` saiu na mesma versão).
 
 | Arquivo | O que é |
 |---|---|
