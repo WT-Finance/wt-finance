@@ -9,9 +9,20 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-06 (pós-merge da v6.2.1, em produção desde 12:23).
+Última atualização: 2026-10-06 (fechamento da v6.2.2; v6.2.1 em produção desde 12:23).
 
 ---
+
+## Em voo — v6.2.2 "Segurança: alertas do Dependabot" (PR #295 draft, aguardando merge)
+
+Só dependências: `sharp` 0.35.5 (#59), `source-map-js` 1.2.2 (#56), `smol-toml` 1.9.0 (#57); **`depcheck`
+removido** (decisão do Yan — `sprintf-js` #58 não tem correção e só vinha por ele) e `knip.json` →
+`knip.jsonc` (o knip@6 recusava a config; B-40 fechado). `npm audit` fica com 5 high de uma cadeia só —
+`braces` via `eslint-config-next`, sem correção publicada, lint local: **risco aceito pelo Yan**. Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-2_Seguranca_Deps.md`.
+
+> Os alertas #56–#59 fecham sozinhos depois do merge. **Toda sessão nova:** a ferramenta de dependência
+> não usada é o `knip` (`npx knip`); o `depcheck` não existe mais.
 
 ## Em produção — v6.2.1 "Solicitações: anexo e valor" (PR #293, mergeado 06/10 às 12:23)
 
@@ -30,18 +41,6 @@ valor pt-BR normalizado no envio + prévia no campo, erro diz o campo, anexo per
 > 🔴 **Yan — após o deploy, na 1ª abertura real com anexo:** procurar `[solicitacoes] #` nos logs da Vercel.
 > Nenhuma linha = caminho feliz ok; `não promovido` = o `storage.copy` precisa de olhar (o anexo baixa de
 > `tmp/`, mas acumularia lá sem ninguém ver — o padrão que este patch fecha).
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.2.1** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-2-1`,
-> que mora na mesma worktree). A raiz ainda está em `08bff57` (o pull da v6.2.0 não foi feito; a worktree e os
-> branches dela já saíram) — este pull cobre os dois. Nada gitignorado a salvar: as fixtures são cópias de
-> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> git worktree unlock .claude/worktrees/fix-v6-2-1-solicitacoes-anexo-valor 2>/dev/null
-> git worktree remove .claude/worktrees/fix-v6-2-1-solicitacoes-anexo-valor --force
-> git worktree prune
-> git branch -D fix/v6-2-1-solicitacoes-anexo-valor docs/pos-merge-v6-2-1
-> ```
 > **Toda sessão nova:** anexo da abertura nasce em `tmp/` e é promovido por **cópia** (não `move`); órfãos em
 > `tmp/` são esperados e não têm coleta (backlog).
 
