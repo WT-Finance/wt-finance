@@ -4,7 +4,7 @@ Patch pedido pelo Yan em 08/10/2026 (rota C com gates; sem briefing — o pedido
 produto: **"pode exportar quem tem acesso a solicitações (gestão); exporta tudo; não entra movimentações"**,
 e o número: v6.3.1, porque a v6.3.0 está em implementação). Formato escolhido antes, na mesma conversa, sobre
 uma extração pontual: **Excel multi-aba** (aba geral + uma por tipo + anexos). Branch
-`feat/v6-3-1-exportar-solicitacoes`. **Sem migration, sem RPC nova, sem ADR** (`database.ts` não muda).
+`feat/v6-3-1-exportar-solicitacoes`, **PR #300**. **Sem migration, sem RPC nova, sem ADR** (`database.ts` não muda).
 
 ## 1. Resumo
 

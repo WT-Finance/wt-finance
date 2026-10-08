@@ -13,7 +13,7 @@
 
 ---
 
-## Em voo — v6.3.1 "Solicitações: exportar todas para Excel" (branch `feat/v6-3-1-exportar-solicitacoes`)
+## Em voo — v6.3.1 "Solicitações: exportar todas para Excel" (PR #300, branch `feat/v6-3-1-exportar-solicitacoes`)
 
 Botão "Exportar" na página de Solicitações (gestão, área `solicitacoes`) → `GET /api/solicitacoes/exportar`
 devolve `.xlsx` com TODAS as solicitações (abas Todas / uma por tipo / Anexos / Sobre). Sem migration, sem RPC
