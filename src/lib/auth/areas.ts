@@ -26,6 +26,7 @@ export const AREAS = [
   'gestao-pessoas/inventario',
   'gestao-pessoas/estante',
   'gestao-pessoas/estante/gestao',
+  'marketing/gastos',
 ] as const
 
 export type Area = (typeof AREAS)[number]
@@ -93,6 +94,12 @@ export const AREA_INFO: Record<Area, { rotulo: string; grupo: string; ordem: num
   // apertado no seed (só quem já tinha 'admin/acessos').
   'gestao-pessoas/estante':        { rotulo: 'Estante Welcome',          grupo: 'Gestão de Pessoas', ordem: 61 },
   'gestao-pessoas/estante/gestao': { rotulo: 'Estante Welcome (gestão)', grupo: 'Gestão de Pessoas', ordem: 62 },
+  // Marketing · Gastos (v6.3.0/M3, migration 0292). Permissão ÚNICA de página (só leitura dos
+  // lançamentos pagos do bloco MKT da DRE de caixa). Grupo NOVO 'Marketing' — fora de
+  // 'Administração', então a role de máquina de verificação a recebe (rpc-contrato.test.ts exige
+  // TODA área fora desse grupo). A migration concede, por nome, a Administrador, Financeiro e
+  // 'Máquina · verificação'; qualquer outra role recebe pelo editor de roles.
+  'marketing/gastos':              { rotulo: 'Gastos',                   grupo: 'Marketing',         ordem: 70 },
 }
 
 /**

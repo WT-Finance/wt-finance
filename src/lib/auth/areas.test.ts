@@ -67,8 +67,9 @@ describe('areasDaRota — toda rota de página tem dono', () => {
   it.each(casos)('%s → %j', (rota, esperado) => {
     expect(areasDaRota(rota)).toEqual(esperado)
   })
-  it('v6.3.0 (provisório): a área própria de Marketing AINDA NÃO existe no catálogo (nasce na M3, com a migration)', () => {
-    expect((AREAS as readonly string[]).includes('marketing/gastos')).toBe(false)
+  it("v6.3.0/M3: 'marketing/gastos' existe no catálogo (migration 0292), no grupo próprio 'Marketing' e fora da Administração", () => {
+    expect((AREAS as readonly string[]).includes('marketing/gastos')).toBe(true)
+    expect(AREA_INFO['marketing/gastos']).toEqual({ rotulo: 'Gastos', grupo: 'Marketing', ordem: 70 })
   })
   it('Estante e Inventário não se confundem dentro de /gestao-pessoas', () => {
     expect(areasDaRota('/gestao-pessoas/estante')).toEqual([
