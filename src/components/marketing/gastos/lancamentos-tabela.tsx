@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronsUpDown, Download, Receipt, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronsUpDown, Download, Loader2, Receipt, Search } from 'lucide-react'
 import EmptyState from '@/components/shared/empty-state'
 import ErroCarregamento from '@/components/shared/erro-carregamento'
 import { CARD_TABELA_TH } from '@/components/shared/card-tabela'
@@ -10,8 +10,9 @@ import { ValorContabil } from '@/components/shared/valor-contabil'
 import Button from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input, Select } from '@/components/ui/field'
-import { fmtBRL2, fmtDate } from '@/lib/fmt'
+import { fmtBRL2, fmtDate, hojeSP } from '@/lib/fmt'
 import { lancamentosDoRecorte, rotuloFornecedor, chaveFornecedor, somar } from '@/lib/marketing/agregacao'
+import { montarExportacaoMarketing, nomeArquivoExportacaoMarketing } from '@/lib/marketing/exportar'
 import {
   ORDENACAO_PADRAO, alternarOrdenacao, categoriasDe, filtrarLancamentos,
   fornecedoresDe, haFiltro, ordenarLancamentos, type ColunaLancamento, type Ordenacao,
@@ -95,6 +96,8 @@ export default function LancamentosTabela({ ano, recorte, lancamentos, fornecedo
   const [busca, setBusca] = useState('')
   const [ordem, setOrdem] = useState<Ordenacao>(ORDENACAO_PADRAO)
   const [rolado, setRolado] = useState(false)
+  const [exportando, setExportando] = useState(false)
+  const [erroExportar, setErroExportar] = useState(false)
 
   const doRecorte = useMemo(
     () => (lancamentos ? lancamentosDoRecorte(lancamentos, recorte) : []),
@@ -139,24 +142,58 @@ export default function LancamentosTabela({ ano, recorte, lancamentos, fornecedo
   const comFiltro = haFiltro(filtro)
   const limparFiltros = () => { setCategoria(null); setBusca(''); onFornecedor(null) }
 
+  // Exportar para Excel (v6.3.0): a planilha leva EXATAMENTE `linhas` — a lista que o render
+  // acima mapeia (recorte + filtros + ordenação vigentes no clique) —, nunca uma refiltragem.
+  // A lib de planilha entra por import dinâmico no clique, fora do bundle inicial (molde do DRE).
+  async function exportarExcel() {
+    if (exportando) return
+    setExportando(true)
+    setErroExportar(false)
+    try {
+      const XLSX = await import('@e965/xlsx')
+      const geradoEm = hojeSP()
+      const exportacao = montarExportacaoMarketing({ ano, recorte, linhas, filtrado: comFiltro, geradoEm })
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.aoa_to_sheet(exportacao.linhas)
+      ws['!cols'] = exportacao.larguras.map(wch => ({ wch }))
+      XLSX.utils.book_append_sheet(wb, ws, exportacao.nome)
+      XLSX.writeFile(wb, nomeArquivoExportacaoMarketing(ano, recorte))
+    } catch (err) {
+      console.error('[Marketing exportar]', err)
+      setErroExportar(true)
+    } finally {
+      setExportando(false)
+    }
+  }
+
   return (
     <Card>
       <CabecalhoCard
         titulo="Lançamentos"
         subtitulo={`${periodo} · pago · data de movimentação`}
-        // Inerte, NÃO `disabled`: o botão desabilitado sai do tab-order e `title` não aparece em
-        // todo navegador. `aria-disabled` + onClick vazio mantém o foco e a dica. O export real é a M4.
+        // `disabled` só enquanto gera (impede o duplo clique; o spinner mantém o rótulo). O erro é
+        // um aviso discreto ao lado, sem quebrar a tela; a causa vai para o console.error.
         acao={(
-          <Button
-            variant="contorno"
-            size="sm"
-            aria-disabled="true"
-            onClick={() => {}}
-            title="Disponível na versão final"
-            className="inline-flex cursor-not-allowed items-center gap-1.5 opacity-50"
-          >
-            <Download size={14} aria-hidden /> Exportar
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {erroExportar && (
+              <span role="alert" className="text-2xs text-danger">
+                Não foi possível gerar a planilha — tente de novo.
+              </span>
+            )}
+            <Button
+              variant="contorno"
+              size="sm"
+              onClick={exportarExcel}
+              disabled={exportando}
+              title={comFiltro
+                ? 'Baixar em Excel os lançamentos filtrados, na ordem da tabela'
+                : 'Baixar em Excel os lançamentos do recorte, na ordem da tabela'}
+              className="inline-flex items-center gap-1.5"
+            >
+              {exportando ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Download size={14} aria-hidden />}
+              Exportar
+            </Button>
+          </div>
         )}
       />
 

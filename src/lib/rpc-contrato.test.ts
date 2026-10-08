@@ -24,6 +24,9 @@ import {
   dreMensalSchema, dreCompMensalSchema, dreCompEstruturaSchema, dreEstruturaSchema,
   historicoLotesSchema, historicoEntradasSchema, decomposicaoBlocoSchema,
 } from './dre/schemas'
+import {
+  resumoMarketingSchema, fornecedoresMarketingSchema, lancamentosMarketingSchema,
+} from './marketing/schemas'
 import { montarPonte } from './dre/ponte-regimes'
 import { montarDecomposicao } from './dre/decomposicao-variacao'
 import { LINHAS_CAIXA, LINHAS_COMPETENCIA } from './dre/linhas-resumo'
@@ -279,6 +282,11 @@ describe.skipIf(!ON)('contrato RPC — janela do Fluxo de Caixa Mensal (Financei
 // Foi exatamente o que escapou na Lista de Operações (get_operacoes_weddings): o
 // schema exigia passageiros_raw, que a RPC não emite. Este bloco roda o schema real
 // contra a RPC real e guarda contra essa classe de regressão em TODAS as 7 RPCs do M2.
+// Ano corrente em SÃO PAULO (o fuso das RPCs de app — migration 0152) e o último ano FECHADO.
+// Usados pela lista F7 logo abaixo e pelo bloco de Gastos de Marketing (v6.3.0) no fim do arquivo.
+const ANO_SP_MKT = Number(hojeSP().slice(0, 4))
+const ANO_FECHADO_MKT = ANO_SP_MKT - 1
+
 const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; schema: ZodType }> = [
   { fn: 'get_operacoes_weddings',        params: { p_status: 'todos', p_subsetor: 'todos', p_ordenar_por: 'data_evento', p_direcao: 'desc', p_pagina: 1, p_por_pagina: 200 }, schema: operacoesWeddingsSchema },
   // v5.4.2: MESMA RPC com a chave de ordenação NOVA. Existe porque a whitelist do
@@ -345,6 +353,12 @@ const CONTRATOS_PARSE_RPC: Array<{ fn: string; params: Record<string, unknown>; 
   // dado" (o caminho que já existia), em vez de vazar objeto malformado para a UI.
   { fn: 'get_taxas_cdi',                 params: { p_meses_passados: 37, p_meses_futuros: 36 },                        schema: taxasCdiSchema },
   { fn: 'get_rendimento_float',          params: {},                                                                   schema: rendimentoFloatSchema },
+  // v6.3.0 (0292): as 3 RPCs de "Gastos de Marketing". O ano é o último FECHADO (calculado, não
+  // fixo): estável durante o ano corrente. As invariantes (paridade com a DRE, completude, lista
+  // fechada, ano vazio/inválido, negações) têm bloco próprio no fim do arquivo.
+  { fn: 'get_marketing_gastos_resumo',       params: { p_ano: ANO_FECHADO_MKT },                                       schema: resumoMarketingSchema },
+  { fn: 'get_marketing_gastos_fornecedores', params: { p_ano: ANO_FECHADO_MKT },                                       schema: fornecedoresMarketingSchema },
+  { fn: 'get_marketing_gastos_lancamentos',  params: { p_ano: ANO_FECHADO_MKT },                                       schema: lancamentosMarketingSchema },
 ]
 
 describe.skipIf(!ON)('contrato RPC — schema parseRpc (F7) aceita o retorno REAL', () => {
@@ -2461,4 +2475,332 @@ describe.skipIf(!ON || !DB_URL)('contrato RPC — 0269: grants, comentários e r
     // Sem a linha, o `for` acima não reprova uma função que sumiu do catálogo — só as que existem.
     expect(por.size, 'uma das RPCs listadas não existe no catálogo').toBe(18)
   })
+})
+
+// ── v6.3.0 (0292) — Gastos de Marketing: as 3 RPCs de leitura da página /marketing/gastos ─────
+// SÓ LEITURA (nenhuma escrita; o bloco de `pg` abaixo trava a sessão em READ ONLY).
+//
+// O que este bloco prova, e por que cada coisa é caso de contrato (skill contrato-rpc-front §5):
+//   1. PARIDADE COM A DRE — o total do mês da página (Σ `porMesCategoria[mês].valor`) é a célula
+//      MKT de `get_dre_mensal(ano)`, AO CENTAVO. Os dois números aparecem em telas vizinhas e a
+//      0292 os mantém iguais por COPIAR o predicado da DRE (tipo=realizado, de-para vivo, bloco
+//      MKT); se alguém "otimizar" uma das duas RPCs e a igualdade cair, é aqui que estoura. A DRE
+//      troca realizado por PREVISTO nos meses futuros do ano corrente — esses não se comparam: o
+//      teto de meses vem da PRÓPRIA resposta da DRE (`relacao`/`mes_corrente`), a definição que a
+//      RPC usa para decidir o que é realizado. Comparação em CENTAVOS INTEIROS, célula a célula.
+//   2. COMPLETUDE — por ano e mês, Σ lançamentos ≡ Σ fornecedores ≡ Σ resumo (valor e qtd), e a
+//      mesma coisa na granularidade fina (mês×fornecedor, mês×categoria).
+//   3. LISTA FECHADA de colunas do lançamento (decisão do Yan: nada de conta bancária/cartão),
+//      conferida no JSON CRU — o schema Zod descarta chave extra em silêncio e aprovaria o vazamento.
+//   4. Ano sem dado → arrays vazios e `cobertura: null`; ano inválido → 'Ano inválido.'.
+//   5. NEGAÇÕES: `anon` (sem JWT) e usuário ATIVO sem a área `marketing/gastos`.
+//
+// RESSALVA (revisor-db): as 3 chamadas de um ano são SNAPSHOTS separados (3 requisições REST). Uma
+// carga que entre entre elas poderia, em milissegundos, fazer a completude divergir sem bug algum. O
+// arquivo não tem padrão de retentativa e este bloco NÃO inventa um: a divergência, se aparecer,
+// reprova alto e deve ser re-rodada à mão.
+//
+// Os nomes das RPCs aparecem como argumento literal da helper `rpc(` e como valor de `fn:` — é o
+// que `scripts/credencial/derivar-allowlist.mjs` extrai para derivar o GRANT do `verificador`.
+
+const RPCS_MKT = [
+  { fn: 'get_marketing_gastos_resumo' },
+  { fn: 'get_marketing_gastos_fornecedores' },
+  { fn: 'get_marketing_gastos_lancamentos' },
+] as const
+
+const ANO_INICIAL_MKT = 2024
+/** Todos os anos com possibilidade de dado: do primeiro ano do fluxo realizado ao corrente (SP). */
+const ANOS_MKT = Array.from({ length: ANO_SP_MKT - ANO_INICIAL_MKT + 1 }, (_, i) => ANO_INICIAL_MKT + i)
+/** Lista FECHADA de colunas do lançamento (migration 0292). Ordem alfabética, como `Object.keys().sort()`. */
+const CHAVES_LANCAMENTO_MKT = ['categoria', 'data', 'descricao', 'documento', 'fornecedor', 'id', 'valor']
+
+/** Centavos inteiros: o `numeric` do banco serializa como número JSON, e a igualdade é ao centavo. */
+const centavos = (v: number): number => Math.round(v * 100)
+const somaCentavos = (valores: number[]): number => valores.reduce((s, v) => s + centavos(v), 0)
+
+/** Agrupa por chave e devolve linhas ordenadas "chave → centavos / qtd" — comparáveis por `toEqual`
+ *  com mensagem de diferença legível. */
+function agruparMkt<T>(itens: T[], chave: (x: T) => string, valor: (x: T) => number, qtd: (x: T) => number): string[] {
+  const m = new Map<string, { c: number; q: number }>()
+  for (const x of itens) {
+    const k = chave(x)
+    const a = m.get(k) ?? { c: 0, q: 0 }
+    a.c += centavos(valor(x))
+    a.q += qtd(x)
+    m.set(k, a)
+  }
+  return [...m.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => `${k} → ${v.c} centavos / ${v.q} lançamentos`)
+}
+
+function exigirParseMkt<T>(schema: ZodType<T>, cru: unknown, nome: string): T {
+  const r = schema.safeParse(cru)
+  if (!r.success) throw new Error(`${nome} drift: ${JSON.stringify(r.error.issues.slice(0, 6))}`)
+  return r.data
+}
+
+// Um ano é carregado UMA vez e reaproveitado pelos casos (cada ano = 3 requisições em paralelo).
+const cacheMkt = new Map<number, ReturnType<typeof carregarMkt>>()
+async function carregarMkt(ano: number) {
+  const [resumoCru, fornecedoresCru, lancamentosCru] = await Promise.all([
+    rpc('get_marketing_gastos_resumo', { p_ano: ano }),
+    rpc('get_marketing_gastos_fornecedores', { p_ano: ano }),
+    rpc('get_marketing_gastos_lancamentos', { p_ano: ano }) as unknown as Promise<Array<Record<string, unknown>>>,
+  ])
+  return {
+    resumo: exigirParseMkt(resumoMarketingSchema, resumoCru, `resumo ${ano}`),
+    fornecedores: exigirParseMkt(fornecedoresMarketingSchema, fornecedoresCru, `fornecedores ${ano}`),
+    lancamentos: exigirParseMkt(lancamentosMarketingSchema, lancamentosCru, `lancamentos ${ano}`),
+    lancamentosCru,
+  }
+}
+function dadosMkt(ano: number) {
+  let p = cacheMkt.get(ano)
+  if (!p) { p = carregarMkt(ano); cacheMkt.set(ano, p) }
+  return p
+}
+
+describe.skipIf(!ON)('contrato RPC — Gastos de Marketing (v6.3.0, 0292)', () => {
+  it('a base viva TEM gasto de marketing realizado (sem isto, paridade e completude passariam 0=0)', async () => {
+    const todos = await Promise.all(ANOS_MKT.map(dadosMkt))
+    const total = todos.reduce((s, d) => s + d.lancamentos.length, 0)
+    expect(total, 'nenhum lançamento MKT realizado em nenhum ano — filtro quebrado ou de-para sem o bloco MKT?').toBeGreaterThan(0)
+  }, 30_000)
+
+  it.each(ANOS_MKT)('%i: as 3 RPCs passam nos schemas Zod e devolvem o ano pedido; cobertura ↔ dado coerentes', async (ano) => {
+    const { resumo, fornecedores, lancamentos } = await dadosMkt(ano)
+    expect(resumo.ano).toBe(ano)
+    expect(fornecedores.ano).toBe(ano)
+    expect([...resumo.anosDisponiveis].sort((a, b) => a - b), 'anosDisponiveis fora de ordem crescente').toEqual(resumo.anosDisponiveis)
+    const temDado = lancamentos.length > 0
+    expect(resumo.porMesCategoria.length > 0, 'resumo × lançamentos discordam sobre o ano ter dado').toBe(temDado)
+    expect(fornecedores.porMesFornecedor.length > 0, 'fornecedores × lançamentos discordam sobre o ano ter dado').toBe(temDado)
+    if (temDado) {
+      expect(resumo.anosDisponiveis).toContain(ano)
+      expect(resumo.cobertura, 'ano com dado precisa de cobertura').not.toBeNull()
+      expect(resumo.cobertura!.min <= resumo.cobertura!.max).toBe(true)
+      expect(resumo.cobertura!.min.startsWith(`${ano}-`)).toBe(true)
+      expect(resumo.cobertura!.max.startsWith(`${ano}-`)).toBe(true)
+    } else {
+      expect(resumo.cobertura).toBeNull()
+    }
+  })
+
+  // INVARIANTE 1 — o oráculo de paridade com a DRE.
+  it.each(ANOS_MKT)('%i: Σ porMesCategoria[mês] ≡ célula MKT de get_dre_mensal, ao centavo, em cada mês realizado', async (ano) => {
+    const { resumo } = await dadosMkt(ano)
+    const dre = exigirParseMkt(dreMensalSchema, await rpc('get_dre_mensal', { p_ano: ano }), `get_dre_mensal ${ano}`)
+
+    // Sanidade do próprio teto: ano passado = fechado (12 meses); o corrente = corrente (até o mês
+    // de hoje em SP). 'futuro' nunca ocorre na faixa 2024..ano corrente.
+    expect(dre.relacao, `get_dre_mensal(${ano}).relacao`).toBe(ano < ANO_SP_MKT ? 'fechado' : 'corrente')
+    const ultimoMes = dre.relacao === 'fechado' ? 12 : (dre.mes_corrente ?? 0)
+    expect(ultimoMes, 'sem mês realizado para comparar').toBeGreaterThanOrEqual(1)
+
+    const mkt = dre.linhas.filter(l => l.t !== 'cat' && l.chave === 'MKT')
+    expect(mkt.length, 'a DRE precisa ter EXATAMENTE uma linha de bloco com chave MKT').toBe(1)
+
+    const divergencias: string[] = []
+    for (let mes = 1; mes <= ultimoMes; mes++) {
+      const pagina = somaCentavos(resumo.porMesCategoria.filter(x => x.mes === mes).map(x => x.valor))
+      const celulaDre = centavos(mkt[0].meses[mes - 1])
+      if (pagina !== celulaDre) divergencias.push(`${ano}-${String(mes).padStart(2, '0')}: página ${pagina} ≠ DRE ${celulaDre} (centavos)`)
+    }
+    expect(divergencias, `a página discorda da DRE:\n${divergencias.join('\n')}`).toEqual([])
+
+    // A página é só REALIZADO: mês depois do último realizado = zero linhas (a DRE ali é previsto).
+    const futuros = resumo.porMesCategoria.filter(x => x.mes > ultimoMes)
+    expect(futuros, `linhas de realizado em mês futuro de ${ano}`).toEqual([])
+  }, 30_000)
+
+  // INVARIANTE 4 — completude: as 3 visões do mesmo conjunto fecham entre si.
+  it.each(ANOS_MKT)('%i: completude — Σ lançamentos ≡ Σ fornecedores ≡ Σ resumo (valor e qtd), por mês, mês×fornecedor e mês×categoria', async (ano) => {
+    const { resumo, fornecedores, lancamentos } = await dadosMkt(ano)
+    const mesDe = (data: string): number => Number(data.slice(5, 7))
+    const meses = Array.from({ length: 12 }, (_, i) => i + 1)
+
+    const porMes = {
+      lancamentos: meses.map(m => {
+        const doMes = lancamentos.filter(l => mesDe(l.data) === m)
+        return { mes: m, centavos: somaCentavos(doMes.map(l => l.valor)), qtd: doMes.length }
+      }),
+      fornecedores: meses.map(m => {
+        const doMes = fornecedores.porMesFornecedor.filter(x => x.mes === m)
+        return { mes: m, centavos: somaCentavos(doMes.map(x => x.valor)), qtd: doMes.reduce((s, x) => s + x.qtd, 0) }
+      }),
+      resumo: meses.map(m => {
+        const doMes = resumo.porMesCategoria.filter(x => x.mes === m)
+        return { mes: m, centavos: somaCentavos(doMes.map(x => x.valor)), qtd: doMes.reduce((s, x) => s + x.qtd, 0) }
+      }),
+    }
+    expect(porMes.fornecedores, 'Σ fornecedores ≠ Σ lançamentos (por mês)').toEqual(porMes.lancamentos)
+    expect(porMes.resumo, 'Σ resumo ≠ Σ lançamentos (por mês)').toEqual(porMes.lancamentos)
+
+    // Granularidade fina. Fornecedor NULL (vazio/só-espaço) é um balde próprio dos dois lados.
+    const chaveForn = (mes: number, f: string | null) => JSON.stringify([mes, f])
+    expect(
+      agruparMkt(fornecedores.porMesFornecedor, x => chaveForn(x.mes, x.fornecedor), x => x.valor, x => x.qtd),
+      'mês×fornecedor: fornecedores ≠ lançamentos',
+    ).toEqual(agruparMkt(lancamentos, l => chaveForn(mesDe(l.data), l.fornecedor), l => l.valor, () => 1))
+
+    const chaveCat = (mes: number, c: string) => JSON.stringify([mes, c])
+    expect(
+      agruparMkt(resumo.porMesCategoria, x => chaveCat(x.mes, x.categoria), x => x.valor, x => x.qtd),
+      'mês×categoria: resumo ≠ lançamentos',
+    ).toEqual(agruparMkt(lancamentos, l => chaveCat(mesDe(l.data), l.categoria), l => l.valor, () => 1))
+  })
+
+  it('lista FECHADA: cada lançamento tem exatamente id, data, categoria, fornecedor, descricao, documento, valor (JSON cru)', async () => {
+    let vistos = 0
+    for (const ano of ANOS_MKT) {
+      const { lancamentosCru } = await dadosMkt(ano)
+      const ids = new Set<unknown>()
+      for (const item of lancamentosCru) {
+        // No JSON CRU, antes de qualquer safeParse: o `z.object` descarta chave extra em silêncio.
+        expect(Object.keys(item).sort(), `chaves do lançamento ${JSON.stringify(item)}`).toEqual(CHAVES_LANCAMENTO_MKT)
+        expect(String(item.data).startsWith(`${ano}-`), `lançamento fora do ano ${ano}: ${JSON.stringify(item)}`).toBe(true)
+        expect(ids.has(item.id), `id repetido ${String(item.id)} em ${ano}`).toBe(false)
+        ids.add(item.id)
+        vistos++
+      }
+    }
+    // Caso positivo: sem isto o laço acima passaria vazio numa RPC que devolvesse `[]` por engano.
+    expect(vistos, 'nenhum lançamento examinado').toBeGreaterThan(0)
+  })
+
+  it('ano sem dado (o anterior ao primeiro de anosDisponiveis): arrays vazios e cobertura null nas 3', async () => {
+    const { resumo: base } = await dadosMkt(ANO_FECHADO_MKT)
+    expect(base.anosDisponiveis.length, 'a base viva não tem ano algum com gasto MKT').toBeGreaterThan(0)
+    const anoVazio = Math.min(...base.anosDisponiveis) - 1
+    expect(anoVazio, 'ano vazio fora da faixa aceita pela RPC').toBeGreaterThanOrEqual(2000)
+
+    const { resumo, fornecedores, lancamentos } = await dadosMkt(anoVazio)
+    expect(resumo.ano).toBe(anoVazio)
+    expect(resumo.porMesCategoria).toEqual([])
+    expect(resumo.cobertura).toBeNull()
+    expect(fornecedores.ano).toBe(anoVazio)
+    expect(fornecedores.porMesFornecedor).toEqual([])
+    expect(lancamentos).toEqual([])
+    // Os metadados não dependem do ano pedido: a lista de anos com dado é a mesma.
+    expect(resumo.anosDisponiveis).toEqual(base.anosDisponiveis)
+  })
+
+  it.each(RPCS_MKT)('$fn: ano inválido (1999) → erro "Ano inválido." (400), não lista vazia', async ({ fn }) => {
+    const { status, texto } = await statusVerificador(fn, { p_ano: 1999 })
+    expect(status, `${fn}: esperado 4xx, veio ${status}: ${texto}`).toBeGreaterThanOrEqual(400)
+    expect(status).toBeLessThan(500)
+    let mensagem = ''
+    try { mensagem = String((JSON.parse(texto) as { message?: unknown }).message) } catch { /* corpo não-JSON: cai no expect abaixo */ }
+    expect(mensagem, `${fn}: corpo do erro = ${texto}`).toBe('Ano inválido.')
+  })
+})
+
+// ── NEGAÇÃO 1: anon (sem JWT) ────────────────────────────────────────────────────────────────
+// REVOKE EXECUTE de PUBLIC/anon nas 3 (0292) → o PostgREST responde com o erro de permissão
+// (42501), que para o papel `anon` vira HTTP 401 (403 para `authenticated`). Aceita-se as duas
+// faixas, e o que se EXIGE é o código do Postgres no corpo — não uma resposta 200 vazia.
+describe.skipIf(!ON || !ANON)('contrato RBAC — Gastos de Marketing: anon negado (v6.3.0)', () => {
+  it.each(RPCS_MKT)('$fn: anon → erro de permissão 42501 (HTTP 401/403)', async ({ fn }) => {
+    const res = await fetch(`${HOST}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: ANON as string, Authorization: `Bearer ${ANON as string}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_ano: ANO_FECHADO_MKT }),
+    })
+    const texto = await res.text()
+    expect([401, 403], `${fn}: anon recebeu HTTP ${res.status}: ${texto}`).toContain(res.status)
+    let codigo = ''
+    try { codigo = String((JSON.parse(texto) as { code?: unknown }).code) } catch { /* corpo não-JSON: cai no expect abaixo */ }
+    expect(codigo, `${fn}: corpo do erro = ${texto}`).toBe('42501')
+  })
+})
+
+// ── NEGAÇÃO 2: usuário ATIVO sem a área `marketing/gastos` ───────────────────────────────────
+// Caminho que o repo já usa (estante-rpcs, contrato-api-externa, ingestao_painel): conexão direta
+// `pg` assumindo identidade por `request.jwt.claims`, porque o REST do `verificador` (que TEM a
+// área) e a service_role (que faz bypass do guard) não alcançam este ramo. Aqui é SOMENTE LEITURA:
+// sessão travada em READ ONLY, sem `BEGIN`, claims no escopo de SESSÃO (`false`) — nada persiste.
+// O usuário é escolhido DINAMICAMENTE (um ativo por role que NÃO tem a área; nunca id fixo): o
+// `exigir_acesso` para antes do corpo, com PERMISSAO_NEGADA (42501). E, de contraprova, um usuário
+// que TEM a área passa — sem ela, um erro qualquer (função quebrada) passaria por "negação".
+describe.skipIf(!ON || !DB_URL)('contrato RBAC — Gastos de Marketing: usuário sem a área (v6.3.0)', () => {
+  const AREA_MKT = 'marketing/gastos'
+  type ClienteMkt = { query: (q: string, p?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }> }
+
+  async function comClienteMkt<T>(f: (c: ClienteMkt) => Promise<T>): Promise<T> {
+    const { createRequire } = await import('node:module')
+    const pg = createRequire(process.cwd() + '/')('pg')
+    const c = new pg.Client({ connectionString: DB_URL })
+    await c.connect()
+    // Trava READ ONLY de SESSÃO, por CONEXÃO (sonda-teste-escreve-banco): qualquer escrita aqui,
+    // inclusive a que uma função fizesse por dentro, é recusada pelo Postgres.
+    await c.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY')
+    try { return await f(c) } finally { await c.end() }
+  }
+
+  type Resultado = { ok: true; valor: unknown } | { ok: false; code?: string; msg: string }
+  /** Assume a identidade do usuário na SESSÃO e chama a RPC. Sem transação: erro só falha o statement. */
+  async function chamarComo(c: ClienteMkt, uid: string, fn: string, ano: number): Promise<Resultado> {
+    await c.query(`SELECT set_config('request.jwt.claims', $1, false)`, [JSON.stringify({ sub: uid, role: 'authenticated' })])
+    try {
+      const r = await c.query(`SELECT public.${fn}($1::int) AS r`, [ano])
+      return { ok: true, valor: r.rows[0]?.r }
+    } catch (e) {
+      const err = e as { code?: string; message?: string }
+      return { ok: false, code: err.code, msg: String(err.message) }
+    }
+  }
+
+  it('um usuário ATIVO de cada role SEM a área recebe PERMISSAO_NEGADA (42501) nas 3 RPCs', async () => {
+    await comClienteMkt(async c => {
+      const r = await c.query(
+        `SELECT DISTINCT ON (u.role_id) u.user_id::text AS uid, ro.nome AS role
+           FROM app.rbac_usuarios u
+           JOIN app.rbac_roles ro ON ro.id = u.role_id
+          WHERE u.ativo
+            AND NOT EXISTS (SELECT 1 FROM app.rbac_role_permissoes rp WHERE rp.role_id = u.role_id AND rp.area = $1)
+          ORDER BY u.role_id, u.user_id`,
+        [AREA_MKT],
+      )
+      expect(r.rows.length, `não há usuário ativo fora de ${AREA_MKT} — a negação ficaria sem prova (o caso REPROVA, não pula)`).toBeGreaterThan(0)
+
+      for (const u of r.rows) {
+        for (const { fn } of RPCS_MKT) {
+          const quem = `${fn} como «${String(u.role)}»`
+          const res = await chamarComo(c, String(u.uid), fn, ANO_FECHADO_MKT)
+          expect(res.ok, `${quem}: a RPC DEVOLVEU dado a quem não tem a área`).toBe(false)
+          if (res.ok) continue
+          expect(res.code, `${quem}: ${res.msg}`).toBe('42501')
+          expect(res.msg, quem).toMatch(/PERMISSAO_NEGADA.*marketing\/gastos/)
+        }
+      }
+    })
+  }, 30_000)
+
+  it('contraprova: um usuário ATIVO COM a área é atendido pelas 3 RPCs (a negação acima é pela área, não por função quebrada)', async () => {
+    await comClienteMkt(async c => {
+      const r = await c.query(
+        `SELECT u.user_id::text AS uid
+           FROM app.rbac_usuarios u
+           JOIN app.rbac_role_permissoes rp ON rp.role_id = u.role_id AND rp.area = $1
+          WHERE u.ativo
+          ORDER BY u.user_id
+          LIMIT 1`,
+        [AREA_MKT],
+      )
+      expect(r.rows.length, `não há usuário ativo com ${AREA_MKT}`).toBeGreaterThan(0)
+      const uid = String(r.rows[0].uid)
+
+      const resumo = await chamarComo(c, uid, 'get_marketing_gastos_resumo', ANO_FECHADO_MKT)
+      const fornecedores = await chamarComo(c, uid, 'get_marketing_gastos_fornecedores', ANO_FECHADO_MKT)
+      const lancamentos = await chamarComo(c, uid, 'get_marketing_gastos_lancamentos', ANO_FECHADO_MKT)
+      for (const [nome, res] of [['resumo', resumo], ['fornecedores', fornecedores], ['lancamentos', lancamentos]] as const) {
+        expect(res.ok, `${nome}: ${res.ok ? '' : res.msg}`).toBe(true)
+      }
+      if (resumo.ok) exigirParseMkt(resumoMarketingSchema, resumo.valor, 'resumo (como usuário com a área)')
+      if (fornecedores.ok) exigirParseMkt(fornecedoresMarketingSchema, fornecedores.valor, 'fornecedores (como usuário com a área)')
+      if (lancamentos.ok) exigirParseMkt(lancamentosMarketingSchema, lancamentos.valor, 'lancamentos (como usuário com a área)')
+    })
+  }, 30_000)
 })
