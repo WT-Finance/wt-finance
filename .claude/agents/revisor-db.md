@@ -81,7 +81,11 @@ consulta (pergunta em uma linha, se mudou algum achado).
   total no `ORDER BY`** escolhe a linha a critério do plano — exigir desempate determinístico.
 - **Filtro de negócio numa VIEW** (ex.: `analytics.vendas_excel_para_fato`): a migration enumerou
   TODOS os leitores da tabela por baixo — inclusive guardas de VALIDAÇÃO que leem a staging (0284)?
-  A sonda `sonda-leitores-vendas-excel` só vê `raw.vendas_excel`.
+  A sonda `sonda-leitores-vendas-excel` só vê `raw.vendas_excel`. O predicado da guarda é o da view,
+  LITERAL, e o espelho TS (`vendasDistintasQueEntramNoFato`) acompanha (0291 tem teste de paridade).
+- **Guarda que passa a IGNORAR linha em vez de reprovar** (ex.: 0291, venda sem setor): o caso-limite
+  "TODAS as linhas ignoradas" vira fail-open — a promoção substitui a base e o leitor fica vazio. Exigir
+  guarda "nenhuma linha sobrou ⇒ reprova" junto (achado ALTO na v6.2.3).
 - `anon` não ganha EXECUTE em nada (exceção única e intocável: `solicitar_acesso`).
 - Predicado de permissão com coluna anulável em `coalesce(<cmp>, false)`; função de
   visibilidade retorna boolean estrito (NULL num IF NOT pula o RAISE — vazamento).
