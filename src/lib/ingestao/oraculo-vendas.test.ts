@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   parseVendasProdutoRows, classificarSetorMicro, classificarSetorMacro, semanaDoAno,
-  vendasDistintasQueEntramNoFato,
+  vendasDistintasQueEntramNoFato, avisoLinhasSemSetor,
 } from './parsers/vendas-produto'
 import {
   lerMatrizXlsx, porCabecalho, fixturesAusentes, motivoDoPulo, EXIGIR_FIXTURES,
@@ -182,15 +184,69 @@ describe.skipIf(AUSENTES.length > 0)('oráculo — Vendas por Produto', () => {
 // ── Sondas: cada regra VISTA reprovando por mutante ──────────────────────────────────────────
 
 describe('vendasDistintasQueEntramNoFato — o predicado da view, em TS', () => {
-  it('Welcome sai; setor_macro nulo ENTRA (IS DISTINCT FROM); venda vazia sai; itens da mesma venda contam 1', () => {
+  it('Welcome sai; setor_macro nulo SAI (0291); venda vazia sai; itens da mesma venda contam 1', () => {
     expect(vendasDistintasQueEntramNoFato([
       { venda_numero: '1', setor_macro: 'Trips' },
       { venda_numero: '1', setor_macro: 'Trips' },
       { venda_numero: '2', setor_macro: null },
       { venda_numero: '3', setor_macro: 'Welcome' },
+      { venda_numero: '4', setor_macro: 'Lazer' },
       { venda_numero: '', setor_macro: 'Trips' },
       { venda_numero: null, setor_macro: 'Trips' },
     ])).toBe(2)
+  })
+})
+
+describe('venda SEM SETOR (v6.2.3/0291) — o parser não recusa; a leitura a ignora', () => {
+  it('Setor vazio no cru: o parse passa, setor/setor_macro/setor_micro saem null e a venda não conta no "depois"', () => {
+    const r = parseVendasProdutoRows([{ nome: 'x.xlsx', rows: matrizMinima({ setor: '' }) }], { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.linhas).toHaveLength(1)
+    expect(r.linhas[0].setor).toBeNull()
+    expect(r.linhas[0].setor_macro).toBeNull()
+    expect(r.linhas[0].setor_micro).toBeNull()
+    expect(vendasDistintasQueEntramNoFato(r.linhas)).toBe(0)
+  })
+
+  it('CONTROLE: a mesma matriz COM setor conta 1, e não há aviso', () => {
+    const r = parseVendasProdutoRows([{ nome: 'x.xlsx', rows: matrizMinima({}) }], { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(vendasDistintasQueEntramNoFato(r.linhas)).toBe(1)
+    expect(avisoLinhasSemSetor(r.linhas)).toBeNull()
+  })
+
+  it.each([
+    ['célula nula', null],
+    ['NBSP e tab', ' \t '],
+  ])('Setor em branco (%s) também vira setor_macro null — a premissa "nulo ⇔ em branco" da view', (_, setor) => {
+    const m = matrizMinima({})
+    m[1][7] = setor // coluna 'Setor'
+    const r = parseVendasProdutoRows([{ nome: 'x.xlsx', rows: m }], { hoje: HOJE_SONDA })
+    if (!r.ok) throw new Error(`${r.codigo}: ${r.mensagem}`)
+    expect(r.linhas[0].setor_macro).toBeNull()
+    expect(vendasDistintasQueEntramNoFato(r.linhas)).toBe(0)
+  })
+
+  it('aviso da conferência: conta linhas e vendas como o SQL (venda sem número é «∅»)', () => {
+    expect(avisoLinhasSemSetor([
+      { venda_numero: '7', setor_macro: null },
+      { venda_numero: '7', setor_macro: null },
+      { venda_numero: null, setor_macro: null },
+      { venda_numero: '8', setor_macro: 'Lazer' },
+    ])).toBe(
+      '3 linha(s) sem Setor no Monde, de 2 venda(s), ficarão de fora das telas nesta carga — vendas: ' +
+      '7, ∅. Elas voltam sozinhas na próxima carga em que o Setor estiver preenchido.',
+    )
+  })
+
+  it('paridade SQL×TS: a 0291 usa o predicado da view, literal, nas 4 ocorrências', () => {
+    const sql = readFileSync(
+      join(process.cwd(), 'supabase/migrations/0291_ingestao_vendas_ignora_sem_setor.sql'), 'utf8')
+    const view = sql.match(/CREATE OR REPLACE VIEW analytics\.vendas_excel_para_fato AS[\s\S]*?;/)?.[0] ?? ''
+    expect(view.replace(/\s+/g, ' ')).toContain(
+      "WHERE setor_macro IS NOT NULL AND setor_macro IS DISTINCT FROM 'Welcome';")
+    // 3 na guarda de dimensões + 1 na guarda de "nenhuma linha passa"
+    expect(sql.match(/s\.setor_macro IS NOT NULL AND s\.setor_macro IS DISTINCT FROM 'Welcome'/g)).toHaveLength(4)
   })
 })
 

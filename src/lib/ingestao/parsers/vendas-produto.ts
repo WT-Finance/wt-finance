@@ -183,20 +183,41 @@ export interface ArquivoVendas {
  */
 /**
  * Vendas distintas que vão existir em `analytics.fato_venda` depois da carga: `Venda Nº` não
- * vazio e Setor Macro diferente de Welcome — o predicado de `analytics.vendas_excel_para_fato`
- * (0277), em que `null` passa (`IS DISTINCT FROM`). É a grandeza do "depois" do diff de Vendas:
+ * vazio, Setor Macro preenchido e diferente de Welcome — o predicado de
+ * `analytics.vendas_excel_para_fato` (0277, 0291). É a grandeza do "depois" do diff de Vendas:
  * contar também as Welcome fazia o modal da 1ª carga real (M9) dizer "29.458 → 29.599" numa carga
  * que deixa o `fato_venda` em 29.458.
+ *
+ * Setor nulo NÃO entra desde a v6.2.3 (0291): o Monde deixa a venda sem setor até a forma de
+ * pagamento ser informada, e ela fica fora da view até uma carga em que o setor venha — avisada
+ * por `validar_carga_staging`, não em silêncio. Até a 0291 o `null` passava (`IS DISTINCT FROM`).
  */
 export function vendasDistintasQueEntramNoFato(
   linhas: readonly Pick<VendaProdutoCru, 'venda_numero' | 'setor_macro'>[],
 ): number {
   return new Set(
     linhas
-      .filter((l) => l.setor_macro !== 'Welcome')
+      .filter((l) => l.setor_macro !== null && l.setor_macro !== 'Welcome')
       .map((l) => l.venda_numero)
       .filter((n): n is string => n !== null && n !== ''),
   ).size
+}
+
+/**
+ * Aviso de linha SEM SETOR para a CONFERÊNCIA (v6.2.3). Na aplicação quem avisa é
+ * `validar_carga_staging` (0291), que só roda com a staging carregada — sem este, o operador veria
+ * no modal o "depois" menor que o esperado e só leria o porquê depois de confirmar. Mesma contagem e
+ * mesmas vendas do SQL (venda sem número conta como «∅»); só o tempo verbal muda ("ficarão").
+ */
+export function avisoLinhasSemSetor(
+  linhas: readonly Pick<VendaProdutoCru, 'venda_numero' | 'setor_macro'>[],
+): string | null {
+  const semSetor = linhas.filter((l) => l.setor_macro === null)
+  if (semSetor.length === 0) return null
+  const vendas = [...new Set(semSetor.map((l) => l.venda_numero?.trim() || '∅'))].sort()
+  return `${semSetor.length} linha(s) sem Setor no Monde, de ${vendas.length} venda(s), ficarão de ` +
+    `fora das telas nesta carga — vendas: ${vendas.join(', ').slice(0, 300)}. Elas voltam sozinhas na ` +
+    'próxima carga em que o Setor estiver preenchido.'
 }
 
 export function semanaDoAno(iso: string, menorDataIso: string): number | null {

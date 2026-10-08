@@ -385,6 +385,15 @@ Lições permanentes, detalhadas nos anexos `docs/briefings/anexo-v6-0-0-m{3,4,5
   `validar_carga_staging` (migration 0132, pré-existente) que também lia a STAGING direto (fix:
   0284). Migrar um filtro de negócio para uma view exige grep de TODOS os leitores da tabela por
   baixo — inclusive os que parecem só "checar", não "ler para exibir".
+- **Venda SEM SETOR é ignorada, não recusada (v6.2.3, 0291).** O Monde deixa a venda sem setor até a
+  forma de pagamento ser informada (transitório). A view `analytics.vendas_excel_para_fato` filtra
+  `setor_macro IS NOT NULL AND setor_macro IS DISTINCT FROM 'Welcome'`; a linha fica no cru (checksum) e
+  volta sozinha na carga em que o setor vier. Não é silencioso: aviso na conferência (parse,
+  `avisoLinhasSemSetor`) e na aplicação (`validar_carga_staging`, chave `sem_setor`). **Tirar da VIEW,
+  não só afrouxar a guarda**: afrouxar só a guarda deixaria a venda em `fato_venda` como cabeçalho sem
+  itens (contaria como venda/contrato sem valor). E **ignorar linha exige a guarda do caso-limite**: se
+  NENHUMA linha passa no predicado (coluna Setor vazia no export inteiro), a carga REPROVA — senão a
+  promoção esvaziaria a base (achado ALTO do `revisor-db`).
 - **O que o card de upload EXIBE sobre o arquivo vem de `INSTRUCOES_UPLOAD`**
   (`src/lib/ingestao/instrucoes-upload.ts`, v6.1.3) — colunas obrigatórias, painel "Ver
   instruções", limite de MB. A sonda `instrucoes-upload.test.ts` passa as colunas pelo mesmo

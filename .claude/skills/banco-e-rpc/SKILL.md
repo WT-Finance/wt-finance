@@ -665,6 +665,10 @@ Regras que ficam:
 - **Veja o guard reprovar antes de corrigi-lo**, com o corpo atual, em transação revertida
   (`pg`, `BEGIN … ROLLBACK`, um `SAVEPOINT` por cenário): guard que não foi visto vermelho não
   vale; e foi essa prova que revelou a camada (b), invisível no raciocínio sobre a ordem.
+- **Guarda que deixa de REPROVAR uma linha para IGNORÁ-LA abre o caso-limite "todas ignoradas"**
+  (v6.2.3, 0291 — venda sem setor). Com pipeline de substituição completa, carga em que nada sobra
+  passa na validação e a promoção esvazia o fato. Junto do afrouxamento vai a guarda "nenhuma linha
+  passa no predicado ⇒ reprova" — e o ensaio revertido inclui esse cenário (achado ALTO do `revisor-db`).
 - Trocar a ordem de um loop que compara contra snapshot é mudança de **semântica**, não de
   performance: enumere os chamadores que passam array (aqui 6 — DRE caixa/competência e
   Gerencial, `desfazer_lote`/`_linha`) e prove que quem passa um id só é indiferente.

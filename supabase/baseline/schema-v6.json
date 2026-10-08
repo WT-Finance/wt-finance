@@ -7119,7 +7119,7 @@
         }
       },
       "dono": "postgres",
-      "hash_corpo": "f0182677eab1d3cbd44dbca0968603fd9a19d4237fac723b13d5d345d7467bc7",
+      "hash_corpo": "402ca4159baf37ed2d51123f9323f7f63a0ab61b7d1ce212c37f1e518be43e2c",
       "linguagem": "plpgsql",
       "proconfig": [
         "search_path=\"\""
@@ -15644,7 +15644,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0290",
+  "ultima_migration": "0291",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {
@@ -15761,7 +15761,7 @@
     "analytics.vendas_excel_para_fato": {
       "acl": {},
       "dono": "postgres",
-      "hash_definicao": "74125b9014c52c8efcdf5605c9a27e22595a8febde75ee45ad57d089ff9fbc88",
+      "hash_definicao": "0d81893a92ccd94d73a74b24d611f4915df66291903e44174eb1a66f2120be1d",
       "reloptions": null,
       "tipo": "view"
     },

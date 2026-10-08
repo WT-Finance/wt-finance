@@ -9,7 +9,24 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-06 (pós-merge da v6.2.2, em produção desde 13:30).
+Última atualização: 2026-10-08 (fechamento da v6.2.3, PR aberto — aguardando merge).
+
+---
+
+## Em PR — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, branch `fix/v6-2-3-vendas-sem-setor`)
+
+O Monde deixa a venda sem Setor até a forma de pagamento ser informada; a guarda de `validar_carga_staging`
+recusava a carga INTEIRA ("setor=«∅»"). **Migration 0291 APLICADA em 08/10** (aditiva, backup-gate verde):
+a linha sem setor fica no cru e sai de `analytics.vendas_excel_para_fato` (some de fato/Weddings/Vendas em
+Aberto até vir com setor), com AVISO na conferência e na aplicação; carga em que NENHUMA linha passa
+reprova (achado ALTO do `revisor-db`). Banco na **0291**, livre **0292**; baseline regenerado. Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-3_Vendas_Sem_Setor.md`.
+
+> ⚠️ **A 0291 já vale em produção antes do merge** (o banco não espera o PR): a próxima carga de Vendas já
+> passa com aviso. O código do PR só acrescenta o aviso na conferência e o "depois" do diff coerente.
+> 🔴 **Yan:** mergear o PR #297; re-subir o export que quebrou (ou esperar a RPA) e ver o aviso nomeando a
+> venda; depois, `/pos-merge`. Decidido em 08/10: "ignorar" confirmado, **sem** limiar percentual, **sem**
+> alarme de venda presa sem setor (out-briefing §6).
 
 ---
 

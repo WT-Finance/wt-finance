@@ -6,6 +6,33 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.2.3] — 2026-10-08
+
+PATCH · **Ingestão de Vendas por Produto: venda sem Setor deixa de derrubar a carga.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-2-3_Vendas_Sem_Setor.md`. Migration **0291** (aditiva, aplicada).
+
+### Corrigido
+
+- **Carga de Vendas recusada inteira por uma venda sem Setor.** O Monde deixa, em casos raros, a venda sem
+  setor até a forma de pagamento ser informada. A guarda de dimensões de `validar_carga_staging` (0132/0284)
+  recusava a carga toda ("setor=«∅»"). Agora a linha sem setor fica em `raw.vendas_excel` (o checksum do
+  arquivo continua fechando) e sai de `analytics.vendas_excel_para_fato` — predicado
+  `setor_macro IS NOT NULL AND setor_macro IS DISTINCT FROM 'Welcome'` — e, com ela, do transform e dos seis
+  leitores de Weddings/Vendas em Aberto, até a carga em que o setor vier.
+
+### Adicionado
+
+- **Aviso não-bloqueante** listando as linhas/vendas sem setor: na aplicação, por `validar_carga_staging`
+  (chave nova `sem_setor` no retorno); na conferência, pelo parse (`avisoLinhasSemSetor`), antes de o humano
+  confirmar.
+- **Guarda nova que reprova** a carga em que nenhuma linha passa no predicado da view (arquivo inteiro sem
+  setor, ou só Welcome) — sem ela, a promoção esvaziaria `fato_venda` (achado ALTO do `revisor-db`).
+
+### Alterado
+
+- `vendasDistintasQueEntramNoFato` (o "depois" do diff) espelha o predicado novo; a regra "setor nulo
+  passa" da 0277/0283 está invertida de propósito.
+
 ## [6.2.2] — 2026-10-06
 
 PATCH · **Segurança: alertas do Dependabot.** Out-briefing

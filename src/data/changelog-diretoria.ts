@@ -35,6 +35,21 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.2.3',
+    data: '2026-10-08T11:22', // horário de autoria; reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'correcao',
+        texto:
+          'A atualização diária das vendas não trava mais quando o sistema de vendas tem uma venda ainda sem ' +
+          'setor (o que acontece por pouco tempo, até a forma de pagamento ser informada). Antes, uma única ' +
+          'venda nessa situação impedia a atualização de todas as outras. Agora ela fica de fora das telas só ' +
+          'enquanto estiver sem setor, a atualização avisa quais vendas ficaram de fora, e elas voltam sozinhas ' +
+          'na atualização seguinte em que o setor estiver preenchido.',
+      },
+    ],
+  },
+  {
     versao: '6.2.2',
     data: '2026-10-06T13:30', // horário real do merge (PR #295), reconciliado no /pos-merge
     itens: [
