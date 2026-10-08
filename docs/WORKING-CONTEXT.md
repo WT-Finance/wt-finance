@@ -9,7 +9,21 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-08 (pós-merge da v6.2.3, em produção desde 11:34).
+Última atualização: 2026-10-08 (fechamento da v6.3.1; v6.2.3 em produção desde 11:34).
+
+---
+
+## Em voo — v6.3.1 "Solicitações: exportar todas para Excel" (branch `feat/v6-3-1-exportar-solicitacoes`)
+
+Botão "Exportar" na página de Solicitações (gestão, área `solicitacoes`) → `GET /api/solicitacoes/exportar`
+devolve `.xlsx` com TODAS as solicitações (abas Todas / uma por tipo / Anexos / Sobre). Sem migration, sem RPC
+nova. Out-briefing `docs/briefings/WT_Finance_Out_Briefing_v6-3-1_Exportar_Solicitacoes.md`.
+
+> 🔴 **Yan:** mergear o PR; conferência visual + download autenticado (roteiro no out-briefing §5).
+> ⚠️ **Paralela à v6.3.0 (PR #299)**: as duas partiram do mesmo `main` → conflito esperado SÓ em versão
+> (`package*.json`), CHANGELOGs e neste arquivo. Versão final 6.3.1; as duas entradas nos CHANGELOGs.
+> ⚠️ Até o #299 entrar, `npm test` no `main` acusa 3 falhas de drift (`rpc-contrato` áreas/verificador e
+> `schema-baseline`): a 0292 da v6.3.0 já está aplicada em produção. Não é regressão.
 
 ---
 

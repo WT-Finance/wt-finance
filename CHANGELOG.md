@@ -6,6 +6,26 @@ A partir de v4.4.0 este projeto adota [Versionamento Semântico](https://semver.
 
 ---
 
+## [6.3.1] — 2026-10-08
+
+PATCH · **Solicitações: exportar todas para Excel.** Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-3-1_Exportar_Solicitacoes.md`. Sem migration; sem RPC nova.
+
+### Adicionado
+
+- **Botão "Exportar"** na página de Solicitações, entre os botões de gestão (área `solicitacoes`). Baixa
+  `solicitacoes-AAAA-MM-DD.xlsx` com TODAS as solicitações do sistema, qualquer que seja a visão, o escopo ou a
+  busca da tela; Movimentações não entram (decisão do Yan, 08/10).
+- **Abas:** "Todas" (uma linha por solicitação: tipo, status, origem, solicitante, destinatário, abertura,
+  prazo, aprovação, decisão, descrição, justificativa, nº de anexos), **uma por tipo** (os campos do formulário
+  viram colunas — moeda como número, data como data, horário em São Paulo), "Anexos" e "Sobre".
+- `src/lib/solicitacoes/exportar.ts` — montagem PURA das abas (molde do export da DRE, v6.1.1), testada no
+  vitest. A coluna de campo é **rótulo + tipo do campo**, não `campo_id`: o editor recria os campos com id novo a
+  cada save, e agrupar por id abria uma coluna por edição (19 colunas para os 10 campos de "Pagamentos fora do
+  prazo"). Moeda lida pelo mesmo `toNum` da tela.
+- `GET /api/solicitacoes/exportar` — `requireAreaApi('solicitacoes')` + `solic_caixa('todas')` (mesma RPC e
+  `parseRpc` da visão "Ver todas"); devolve o `.xlsx` com `Cache-Control: no-store`.
+
 ## [6.2.3] — 2026-10-08
 
 PATCH · **Ingestão de Vendas por Produto: venda sem Setor deixa de derrubar a carga.** Out-briefing
