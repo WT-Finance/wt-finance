@@ -1,7 +1,7 @@
 # Out-briefing — v6.3.0 · Gastos de Marketing
 
 Rota A com briefing (`docs/briefings/briefing-v6-3-0-gastos-marketing.md`), aberta e fechada em 08/10/2026.
-Branch `feat/v6-3-0-gastos-marketing`. **Migration 0292 (aditiva, APLICADA 08/10).** **ADR-0182.**
+Branch `feat/v6-3-0-gastos-marketing`, **PR #299**. **Migration 0292 (aditiva, APLICADA 08/10).** **ADR-0182.**
 Medição da M0: `docs/auditoria/v6-3-0-m0-marketing.md`.
 
 ## 1. Resumo

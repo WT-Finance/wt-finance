@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-08 (fechamento da v6.3.0 — PR aberto, aguardando merge).
+Última atualização: 2026-10-08 (fechamento da v6.3.0 — PR #299, aguardando merge).
 
 ---
 
-## Em voo — v6.3.0 "Gastos de Marketing" (branch `feat/v6-3-0-gastos-marketing`, PR aberto)
+## Em voo — v6.3.0 "Gastos de Marketing" (branch `feat/v6-3-0-gastos-marketing`, **PR #299**)
 
 Seção nova **Marketing** na sidebar → `/marketing/gastos`, área própria `marketing/gastos` (Administrador,
 Financeiro, Máquina · verificação). Gastos **pagos** do bloco MKT da DRE de caixa, lido do mapa vivo — o
