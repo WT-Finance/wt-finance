@@ -206,8 +206,8 @@ export function vendasDistintasQueEntramNoFato(
 /**
  * Aviso de linha SEM SETOR para a CONFERÊNCIA (v6.2.3). Na aplicação quem avisa é
  * `validar_carga_staging` (0291), que só roda com a staging carregada — sem este, o operador veria
- * no modal o "depois" menor que o esperado e só leria o porquê depois de confirmar. Mesmo texto e
- * mesma contagem do SQL (venda sem número conta como «∅»), para as duas mensagens dizerem o mesmo.
+ * no modal o "depois" menor que o esperado e só leria o porquê depois de confirmar. Mesma contagem e
+ * mesmas vendas do SQL (venda sem número conta como «∅»); só o tempo verbal muda ("ficarão").
  */
 export function avisoLinhasSemSetor(
   linhas: readonly Pick<VendaProdutoCru, 'venda_numero' | 'setor_macro'>[],

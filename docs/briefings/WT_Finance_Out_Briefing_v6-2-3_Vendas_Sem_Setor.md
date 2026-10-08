@@ -2,7 +2,7 @@
 
 Patch pedido pelo Yan em 08/10/2026 (rota C com gates; sem briefing — o pedido foi explícito: "permitir
 que ignore vendas sem setor, pois ela permanecerá assim apenas por um tempo curto e se resolverá
-posteriormente"). Branch `fix/v6-2-3-vendas-sem-setor`. **Migration 0291 (aditiva, APLICADA 08/10).**
+posteriormente"). Branch `fix/v6-2-3-vendas-sem-setor`, **PR #297**. **Migration 0291 (aditiva, APLICADA 08/10).**
 Sem ADR, sem RPC nova (assinatura de `validar_carga_staging` inalterada → `database.ts` não muda).
 
 ## 1. Resumo
@@ -42,8 +42,8 @@ Na base viva de 08/10 há **zero** linhas com setor nulo (49.521): nenhum númer
   a view tinha as 25 colunas de `raw.vendas_excel`, dono `postgres`, ACL vazia — o `OR REPLACE` da view
   preserva tudo isso e os dependentes (`vw_vendas_agregadas`).
 - **Aviso sem duplicar.** Na aplicação quem avisa é o SQL; na conferência (sem staging) é o parse — o
-  ramo de conferência de `carga.ts` acrescenta o aviso só ali. Mesmo texto e mesma contagem nos dois
-  (venda sem número conta como «∅»).
+  ramo de conferência de `carga.ts` acrescenta o aviso só ali. Mesma contagem e mesmas vendas nos dois
+  (venda sem número conta como «∅»); o texto muda só no tempo verbal ("ficarão" × "ficaram").
 - **Venda mista** (itens com e sem setor na mesma venda): não observada, não medida. Só os itens sem
   setor saem; a venda entra com os demais (valor subestimado enquanto durar). O aviso fala em LINHAS por isso.
 
@@ -132,12 +132,18 @@ Na base viva de 08/10 há **zero** linhas com setor nulo (49.521): nenhum númer
 - BAIXO · COMMENT da view com justificativa enganosa do `IS DISTINCT FROM` → **corrigido**.
 - BAIXO · limiar percentual → **registrado** (§6, produto).
 
+**Desvio de ordem, registrado:** a regra é `revisor-db` ANTES de aplicar. A 1ª revisão foi antes; a
+correção do ALTO foi provada no ensaio revertido (todos os cenários, inclusive o do ALTO) e a 0291 foi
+aplicada; a **re-revisão da correção veio depois da aplicação**. Ela não achou nada — se tivesse achado, o
+caminho seria uma 0292 aditiva.
+
 Classificação ADITIVA confirmada; OR REPLACE preserva dono/ACL/dependentes; predicado idêntico nas 4
 ocorrências; checksum de `promover_carga_vendas` e `ingestao_soma_por_ano` sem efeito colateral.
 
 ## Advisor
 
-Orquestrador: 1 consulta antes de escrever — endossou o desenho (view + guarda + aviso + contador) e
-acrescentou COMMENTs, lista de vendas no aviso, ambiente da worktree (`.env.local`/fixtures) e o registro
-da consequência de produto; mudou o rumo em escopo (não em direção). Subagentes: 0. Custo: pendência do
-Yan (`/usage`).
+Orquestrador: 2 consultas. (1) Antes de escrever — endossou o desenho (view + guarda + aviso + contador)
+e acrescentou COMMENTs, lista de vendas no aviso, ambiente da worktree (`.env.local`/fixtures) e o registro
+da consequência de produto; mudou o rumo em escopo, não em direção. (2) Antes de declarar concluído —
+pediu o nº do PR nos docs, o registro do desvio de ordem da re-revisão e a re-execução dos testes após o
+bump; não mudou o rumo. Subagentes (`revisor`, `revisor-db`): 0. Custo: pendência do Yan (`/usage`).

@@ -13,7 +13,7 @@
 
 ---
 
-## Em PR — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (branch `fix/v6-2-3-vendas-sem-setor`)
+## Em PR — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, branch `fix/v6-2-3-vendas-sem-setor`)
 
 O Monde deixa a venda sem Setor até a forma de pagamento ser informada; a guarda de `validar_carga_staging`
 recusava a carga INTEIRA ("setor=«∅»"). **Migration 0291 APLICADA em 08/10** (aditiva, backup-gate verde):
@@ -24,7 +24,7 @@ reprova (achado ALTO do `revisor-db`). Banco na **0291**, livre **0292**; baseli
 
 > ⚠️ **A 0291 já vale em produção antes do merge** (o banco não espera o PR): a próxima carga de Vendas já
 > passa com aviso. O código do PR só acrescenta o aviso na conferência e o "depois" do diff coerente.
-> 🔴 **Yan:** mergear o PR; re-subir o export que quebrou (ou esperar a RPA) e ver o aviso nomeando a
+> 🔴 **Yan:** mergear o PR #297; re-subir o export que quebrou (ou esperar a RPA) e ver o aviso nomeando a
 > venda; decidir **limiar** (hoje só "todas sem setor" reprova) e **alarme de venda presa sem setor**
 > (out-briefing §6). Depois, `/pos-merge`.
 
