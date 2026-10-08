@@ -56,9 +56,19 @@ describe('areasDaRota — toda rota de página tem dono', () => {
     // requireArea da page e o gate do item de sidebar — têm de virar juntas. Reprovou, e
     // as quatro viraram no mesmo commit.
     ['/gestao-pessoas/inventario',          ['gestao-pessoas/inventario']],
+    // v6.3.0 (GATE 1, mockup) — Marketing PROVISORIAMENTE sob 'admin/design-system'. Estes dois
+    // casos existem para REPROVAR no flip da M3 (quando 'marketing/gastos' entra em AREAS junto
+    // com a migration) e lembrar que as quatro pontas — AREAS/AREA_INFO, areasDaRota, requireArea
+    // da page e a `area` da subaba na sidebar — têm de virar juntas. Mesma disciplina do
+    // Inventário (v5.6.0), acima.
+    ['/marketing',                          ['admin/design-system']],
+    ['/marketing/gastos',                   ['admin/design-system']],
   ]
   it.each(casos)('%s → %j', (rota, esperado) => {
     expect(areasDaRota(rota)).toEqual(esperado)
+  })
+  it('v6.3.0 (provisório): a área própria de Marketing AINDA NÃO existe no catálogo (nasce na M3, com a migration)', () => {
+    expect((AREAS as readonly string[]).includes('marketing/gastos')).toBe(false)
   })
   it('Estante e Inventário não se confundem dentro de /gestao-pessoas', () => {
     expect(areasDaRota('/gestao-pessoas/estante')).toEqual([

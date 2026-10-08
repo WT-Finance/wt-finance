@@ -14,6 +14,7 @@ import {
   LayoutDashboard, TrendingUp, Target, Upload, Building, Plane, Sparkles, Briefcase, Wallet,
   BarChart3, Table2, Calculator, Receipt, Library, Users, IdCard, Boxes, Palette, Inbox,
   LineChart, ClipboardList, FileSpreadsheet, BookOpen, ScrollText, DatabaseZap, Settings, Plug,
+  Megaphone, HandCoins,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Area } from '@/lib/auth/areas'
@@ -103,6 +104,15 @@ const API_EXTERNA_SUBS: NavSubItem[] = [
   { href: '/admin/api-externa/documentacao', label: 'Documentação', icon: BookOpen, area: 'solicitacoes/documentacao', areasAny: ['api-externa', 'solicitacoes/documentacao'] },
 ]
 
+// Marketing (v6.3.0) — seção NOVA da sidebar; "Gastos" é o 1º módulo. Na M0/M1 (mockup, GATE 1)
+// a subaba fica PROVISORIAMENTE sob 'admin/design-system', como o Inventário ficou na v5.6.0:
+// declarar a área nova só no código, sem a migration que a insere em `app.rbac_areas`, quebraria
+// o teste de paridade banco↔app. Na M3 viram juntas — `AREAS`/`AREA_INFO`, `areasDaRota`,
+// `requireArea` da page e a `area` desta subaba (→ 'marketing/gastos').
+const MARKETING_SUBS: NavSubItem[] = [
+  { href: '/marketing/gastos', label: 'Gastos', icon: HandCoins, area: 'admin/design-system' },
+]
+
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa
  *  saber "isto é um grupo" (o resto do render/filtro é genérico via NavGroup). */
 export const NAV_GROUPS: Record<string, NavSubItem[]> = {
@@ -110,13 +120,14 @@ export const NAV_GROUPS: Record<string, NavSubItem[]> = {
   '/financeiro':     FINANCEIRO_SUBS,
   '/metas':          METAS_SUBS,
   '/gestao-pessoas': GESTAO_PESSOAS_SUBS,
+  '/marketing':      MARKETING_SUBS,
   '/admin/ingestao': INGESTAO_SUBS,
   '/admin/api-externa': API_EXTERNA_SUBS,
 }
 
-// Ordem da sidebar (v6.1.1): Executiva › Performance › Metas › Financeiro › Gestão de
-// Pessoas › Solicitações › Ingestão de Dados (Upload de Arquivos, Log de Ingestão) ›
-// API Externa (Configuração, Documentação) › Usuários e Acessos › Design System.
+// Ordem da sidebar (v6.3.0): Executiva › Performance › Metas › Financeiro › Gestão de
+// Pessoas › Marketing (Gastos) › Solicitações › Ingestão de Dados (Upload de Arquivos, Log de
+// Ingestão) › API Externa (Configuração, Documentação) › Usuários e Acessos › Design System.
 // (v5.1.9: Metas subiu p/ cima de Financeiro; Solicitações subiu p/ cima de Upload de
 // Arquivos. v5.6.0: Gestão de Pessoas entrou entre Solicitações e o bloco administrativo;
 // v5.6.1: subiu para logo abaixo de Financeiro, pedido do Yan. v6.1.1: Upload e Log de
@@ -133,7 +144,11 @@ export const NAV_ITEMS: NavItem[] = [
   // pelo Yan na aprovação da M0). O crachá também separa os conceitos: pessoa da empresa aqui,
   // conta da plataforma lá.
   { href: '/gestao-pessoas', label: 'Gestão de Pessoas',  Icon: IdCard,          area: null            },
-  { href: '/solicitacoes',   label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
+  // v6.3.0: seção "Marketing" logo abaixo de Gestão de Pessoas (módulos de negócio antes do
+  // bloco administrativo). Grupo: a permissão vem das subabas. Não há página em `/marketing`
+  // (o item-pai só agrupa), como em `/gestao-pessoas`.
+  { href: '/marketing',      label: 'Marketing',          Icon: Megaphone,       area: null            },
+  { href: '/solicitacoes',  label: 'Solicitações',       Icon: Inbox,           area: null, areasAny: ['solicitacoes/basico', 'solicitacoes'] },
   // v6.1.1: grupo "Ingestão de Dados" — Upload de Arquivos + Log de Ingestão (v6.0.0/M6, mesma
   // área de quem já carrega planilha — anexo v6.0.0/M6 §7). Permissão vem das subabas.
   { href: '/admin/ingestao',       label: 'Ingestão de Dados',  Icon: DatabaseZap, area: null              },
