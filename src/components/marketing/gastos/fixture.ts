@@ -7,10 +7,10 @@
 // DETERMINÍSTICA: um PRNG com semente = o ano. A mesma chamada devolve sempre os mesmos
 // lançamentos — o mockup não "pisca" entre renders e os testes podem confiar nele.
 //
-// Na M3 este arquivo MORRE: `page.tsx` passa a montar `DadosGastosMarketing` a partir das RPCs
-// (contrato em `tipos.ts`) e os componentes ficam como estão.
-//
-// Estados forçáveis pelo `?estado=` da rota:
+// DESDE A M3 a página NÃO importa mais este arquivo: `page.tsx` monta `DadosGastosMarketing` a
+// partir das RPCs (contrato em `tipos.ts`; schemas em `src/lib/marketing/schemas.ts`). A fixture
+// sobrevive só como massa de teste (`completude.test.ts`, `schemas.test.ts`) — o `?estado=` da
+// rota, que forçava os estados abaixo, saiu junto com o mockup:
 //   vazio → o ano selecionado não tem lançamento (cada card mostra o próprio estado vazio);
 //   erro  → o ranking por fornecedor falha; os outros cards seguem de pé.
 
@@ -152,8 +152,10 @@ export function gerarLancamentos(ano: number, hoje: string): LancamentoMkt[] {
 
 function resumoDe(ano: number, lancamentos: LancamentoMkt[], hoje: string): ResumoMarketing {
   const datas = lancamentos.map(l => l.data).sort()
+  const anoHoje = anoDaData(hoje)
   return {
     ano,
+    anosDisponiveis: Array.from({ length: anoHoje - ANO_MINIMO_FIXTURE + 1 }, (_, i) => ANO_MINIMO_FIXTURE + i),
     porMesCategoria: cuboCategorias(ano, lancamentos),
     cobertura: datas.length ? { min: datas[0], max: datas[datas.length - 1] } : null,
     // 11:42 em São Paulo (UTC−3).

@@ -18,10 +18,13 @@ const AJUDA_CARTAO =
   'corrente fica subcontado até a fatura ser lançada.'
 
 export default function CabecalhoGastos({
-  resumo, prototipo,
+  resumo, prototipo, ultimaDataCartao,
 }: {
   /** `null` = o resumo não carregou; o título fica, os selos somem. */
   resumo: ResumoMarketing | null
+  /** Data do aviso "Cartão lançado até". O CHAMADOR decide quando mostrar: a data é global (não
+   *  é do ano exibido), então só vale no ano corrente — em ano fechado vem `null`. */
+  ultimaDataCartao: string | null
   /** Selo "dados fictícios" do mockup (some quando a fonte passa a ser a RPC). */
   prototipo: boolean
 }) {
@@ -47,10 +50,10 @@ export default function CabecalhoGastos({
               ? `Dados de ${fmtDate(resumo.cobertura.min)} a ${fmtDate(resumo.cobertura.max)}`
               : 'Sem lançamentos no ano'}
           </span>
-          {resumo.ultimaDataCartao && (
+          {ultimaDataCartao && (
             <span className="inline-flex items-center gap-1.5 text-warning-deep" title={AJUDA_CARTAO}>
               <CreditCard size={12} aria-hidden />
-              Cartão lançado até {fmtDiaMes(resumo.ultimaDataCartao)}
+              Cartão lançado até {fmtDiaMes(ultimaDataCartao)}
             </span>
           )}
         </div>

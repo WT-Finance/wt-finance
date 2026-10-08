@@ -148,11 +148,9 @@ export function areasDaRota(pathname: string): Area[] | null {
   // Raiz da seção (só o item-pai da sidebar; não há página em /gestao-pessoas): qualquer
   // módulo da seção libera.
   if (p.startsWith('/gestao-pessoas'))            return ['gestao-pessoas/inventario', 'gestao-pessoas/estante', 'gestao-pessoas/estante/gestao']
-  // Marketing (v6.3.0, GATE 1 — mockup): PROVISORIAMENTE sob 'admin/design-system'. A área
-  // própria 'marketing/gastos' nasce na M3 com a migration que a insere em `app.rbac_areas`;
-  // declará-la antes, só no código, quebraria a paridade banco↔app (precedente: Inventário,
-  // v5.6.0). Cobre /marketing (item-pai da sidebar, sem página) e /marketing/gastos.
-  if (p.startsWith('/marketing'))                 return ['admin/design-system']
+  // Marketing (v6.3.0): área própria 'marketing/gastos' (migration 0292). Cobre /marketing
+  // (item-pai da sidebar, sem página) e /marketing/gastos.
+  if (p.startsWith('/marketing'))                 return ['marketing/gastos']
   if (p.startsWith('/admin/design-system'))     return ['admin/design-system']
   if (p.startsWith('/admin/acessos'))           return ['admin/acessos']
   // /admin/uploads* é rota LEGADA desde a v6.1.1 (só redirect para /admin/ingestao/upload);
@@ -196,7 +194,9 @@ const PRIORIDADE_INICIAL: { area: Area; href: string }[] = [
   // v6.1.1/M3: área de Administração com entrada própria na sidebar, como as vizinhas — sem
   // isto, quem tem SÓ 'api-externa' cairia em /sem-acesso ao entrar pela raiz.
   { area: 'api-externa',             href: '/admin/api-externa' },
-  { area: 'admin/acessos',           href: '/admin/acessos' },
+  // v6.3.0: quem tem SÓ 'marketing/gastos' entra direto na página, não em /sem-acesso.
+  { area: 'marketing/gastos',        href: '/marketing/gastos' },
+  { area: 'admin/acessos',          href: '/admin/acessos' },
   { area: 'admin/design-system',     href: '/admin/design-system' },
 ]
 

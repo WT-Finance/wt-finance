@@ -104,13 +104,10 @@ const API_EXTERNA_SUBS: NavSubItem[] = [
   { href: '/admin/api-externa/documentacao', label: 'Documentação', icon: BookOpen, area: 'solicitacoes/documentacao', areasAny: ['api-externa', 'solicitacoes/documentacao'] },
 ]
 
-// Marketing (v6.3.0) — seção NOVA da sidebar; "Gastos" é o 1º módulo. Na M0/M1 (mockup, GATE 1)
-// a subaba fica PROVISORIAMENTE sob 'admin/design-system', como o Inventário ficou na v5.6.0:
-// declarar a área nova só no código, sem a migration que a insere em `app.rbac_areas`, quebraria
-// o teste de paridade banco↔app. Na M3 viram juntas — `AREAS`/`AREA_INFO`, `areasDaRota`,
-// `requireArea` da page e a `area` desta subaba (→ 'marketing/gastos').
+// Marketing (v6.3.0) — seção NOVA da sidebar; "Gastos" é o 1º módulo. Área própria
+// 'marketing/gastos' (migration 0292) — a mesma de `areasDaRota` e do `requireArea` da página.
 const MARKETING_SUBS: NavSubItem[] = [
-  { href: '/marketing/gastos', label: 'Gastos', icon: HandCoins, area: 'admin/design-system' },
+  { href: '/marketing/gastos', label: 'Gastos', icon: HandCoins, area: 'marketing/gastos' },
 ]
 
 /** Grupos com subabas — chave = href do item-pai em NAV_ITEMS. Único ponto que precisa

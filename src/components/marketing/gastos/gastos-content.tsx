@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { calcularIndicadores } from '@/lib/marketing/indicadores'
-import { mesLimite, recortePadrao, type Recorte } from '@/lib/marketing/periodo'
+import { anoDaData, mesLimite, recortePadrao, type Recorte } from '@/lib/marketing/periodo'
 import CabecalhoGastos from './cabecalho-gastos'
 import FiltroGlobal from './filtro-global'
 import IndicadoresGastos from './indicadores-gastos'
@@ -40,6 +40,10 @@ export default function GastosContent({ dados }: { dados: DadosGastosMarketing }
   const ancoraLancamentos = useRef<HTMLDivElement>(null)
 
   const resumo = dados.resumo.ok ? dados.resumo.dados : null
+  // "Cartão lançado até DD/MM" só no ano CORRENTE: `ultimaDataCartao` é global (a RPC não filtra
+  // por ano), e em 2024/2025 o aviso de "mês subcontado" seria enganoso. O ano corrente vem do
+  // `hoje` do servidor (fuso de SP), nunca do relógio do cliente.
+  const cartaoAte = ano === anoDaData(hoje) ? (resumo?.ultimaDataCartao ?? null) : null
   const anterior = dados.resumoAnterior.ok ? dados.resumoAnterior.dados : null
   const fornecedores = dados.fornecedores.ok ? dados.fornecedores.dados : null
   const lancamentos = dados.lancamentos.ok ? dados.lancamentos.dados : null
@@ -56,7 +60,7 @@ export default function GastosContent({ dados }: { dados: DadosGastosMarketing }
   )
 
   function irParaAno(novo: number) {
-    // Preserva o resto da query (`?estado=` do mockup) e troca só o ano.
+    // Preserva o resto da query e troca só o ano.
     const params = new URLSearchParams(searchParams.toString())
     params.set('ano', String(novo))
     startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }))
@@ -70,7 +74,7 @@ export default function GastosContent({ dados }: { dados: DadosGastosMarketing }
 
   return (
     <div className="space-y-6" aria-busy={isPending}>
-      <CabecalhoGastos resumo={resumo} prototipo={dados.fonte === 'fixture'} />
+      <CabecalhoGastos resumo={resumo} prototipo={dados.fonte === 'fixture'} ultimaDataCartao={cartaoAte} />
 
       <div className={`space-y-6 transition-opacity ${isPending ? 'pointer-events-none opacity-60' : ''}`}>
         <FiltroGlobal
@@ -87,7 +91,7 @@ export default function GastosContent({ dados }: { dados: DadosGastosMarketing }
           recorte={recorte}
           ind={indicadores}
           anteriorFalhou={!dados.resumoAnterior.ok}
-          ultimaDataCartao={resumo?.ultimaDataCartao ?? null}
+          ultimaDataCartao={cartaoAte}
         />
 
         <SerieMensal ano={ano} recorte={recorte} limiteMes={limiteMes} resumo={resumo} anterior={anterior} />
