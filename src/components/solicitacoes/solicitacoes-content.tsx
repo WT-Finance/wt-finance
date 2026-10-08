@@ -11,6 +11,7 @@ import MinhasSolicitacoes from './minhas-solicitacoes'
 import BoardSolicitacoes from './board-solicitacoes'
 import DrawerSolicitacao from './drawer-solicitacao'
 import ModalNovaSolicitacao from './modal-nova-solicitacao'
+import BotaoExportarSolicitacoes from './botao-exportar'
 import type { Solicitacao, TipoAbertura, Destinatarios } from '@/lib/solicitacoes/schemas'
 
 type Escopo = 'mim_e_role' | 'so_mim' | 'todas'
@@ -114,6 +115,8 @@ export default function SolicitacoesContent({ view, escopo, lista, pendentes, po
               <Link href="/admin/solicitacoes/movimentacoes" className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`} style={PILL_GESTAO_STYLE}>
                 <History size={13} /> Movimentações
               </Link>
+              {/* v6.3.1: exporta TODAS as solicitações, qualquer que seja a visão/escopo em tela. */}
+              <BotaoExportarSolicitacoes />
             </>
           )}
           {/* v6.1.1/M3: o atalho "Documentação API" (v5.4.0/Round4) saiu — a documentação

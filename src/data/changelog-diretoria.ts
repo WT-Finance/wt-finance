@@ -35,6 +35,20 @@ export interface ChangelogEntrada {
 
 export const CHANGELOG_DIRETORIA: ChangelogEntrada[] = [
   {
+    versao: '6.3.1',
+    data: '2026-10-08T14:38', // horário real de autoria; reconciliar ao merge no /pos-merge
+    itens: [
+      {
+        tipo: 'novidade',
+        texto:
+          'Quem faz a gestão das solicitações agora pode baixar todas elas numa planilha de Excel, com um ' +
+          'clique no botão "Exportar" da página de Solicitações. A planilha traz uma aba com a lista geral, ' +
+          'uma aba para cada tipo de solicitação com as respostas do formulário em colunas (valores e datas ' +
+          'prontos para somar e filtrar) e a lista de arquivos anexados.',
+      },
+    ],
+  },
+  {
     versao: '6.2.3',
     data: '2026-10-08T11:34', // horário real do merge (PR #297), reconciliado no /pos-merge
     itens: [
