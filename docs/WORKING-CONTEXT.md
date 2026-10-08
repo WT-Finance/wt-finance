@@ -9,9 +9,25 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-08 (pós-merge da v6.2.3, em produção desde 11:34).
+Última atualização: 2026-10-08 (fechamento da v6.3.0 — PR aberto, aguardando merge).
 
 ---
+
+## Em voo — v6.3.0 "Gastos de Marketing" (branch `feat/v6-3-0-gastos-marketing`, PR aberto)
+
+Seção nova **Marketing** na sidebar → `/marketing/gastos`, área própria `marketing/gastos` (Administrador,
+Financeiro, Máquina · verificação). Gastos **pagos** do bloco MKT da DRE de caixa, lido do mapa vivo — o
+total da página **é** a linha "(-) Despesas Marketing" (ADR-0182; paridade 34/34 células provada e coberta
+em `rpc-contrato.test.ts`). **Migration 0292 APLICADA em 08/10** (aditiva, backup-gate verde) — banco na
+**0292**, livre **0293**; ADR livre **0183**. Out-briefing
+`docs/briefings/WT_Finance_Out_Briefing_v6-3-0_Gastos_Marketing.md`; medição `docs/auditoria/v6-3-0-m0-marketing.md`.
+
+> Decidido pelo Yan em 08/10 (GATE 0/1): gasto **negativo** como na DRE; sem filtro de setor; sem conta
+> bancária na tela; carimbo vigente sem "· parcial" + aviso "Cartão lançado até"; mapa vivo sem exceção
+> (Endomarketing/Feiras ficam fora) — não re-propor.
+> 🔴 **Yan:** mergear o PR; criar a role/usuário da gestora (só `marketing/gastos`) pelo editor; conferir no
+> ar (só-Marketing entra direto, um mês × DRE, 2024 sem "zero" no ano anterior, Exportar, celular); mostrar
+> à gestora e anotar o que ela pedir.
 
 ## Em produção — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, mergeado 08/10 às 11:34)
 
@@ -273,8 +289,8 @@ patches de segurança encadeados: v5.9.7 (`next`), v5.10.1 (`vitest`/`esbuild`) 
 | | |
 |---|---|
 | Produção | **v6.1.0** (PR #283, mergeado 29/09 às 14:41) · banco na **0288** |
-| Última migration aplicada | **0288** (v6.1.0 — o "antes" do diff de Operação dentro da promoção) · próxima livre: **0289** |
-| Último ADR | **0179** (v6.1.0 — cliente de entrega das RPAs e operações puladas) · próximo livre: **0180** |
+| Última migration aplicada | **0292** (v6.3.0 — área `marketing/gastos` + RPCs de Gastos de Marketing) · próxima livre: **0293** |
+| Último ADR | **0182** (v6.3.0 — recorte de marketing derivado da DRE de caixa) · próximo livre: **0183** |
 | Suíte | **1.804 verdes + 6 skipped**, 104 arquivos; 1 falha por fixture ausente (`oraculo-demonstrativo`, B-38) — fechamento da v6.1.0, 29/09 |
 
 A v5 está encerrada: auditada, triada e limpa. O que ficou para a v6 está em `docs/backlog-v6.md` (30 itens); como o sistema funciona, em `docs/estado-do-projeto.md`.
