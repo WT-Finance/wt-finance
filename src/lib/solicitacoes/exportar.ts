@@ -76,8 +76,13 @@ function serial(ano: number, mes: number, dia: number, hora = 0, min = 0): numbe
   return Date.UTC(ano, mes - 1, dia, hora, min) / 86_400_000 + EPOCA_EXCEL
 }
 
+/** Teto de caracteres de uma célula do Excel; acima disso o arquivo abre como corrompido. */
+export const MAX_CELULA = 32_767
+const MARCA_CORTE = ' […]'
+
 function texto(v: string | null | undefined): Celula {
-  return v == null || v === '' ? null : v
+  if (v == null || v === '') return null
+  return v.length > MAX_CELULA ? v.slice(0, MAX_CELULA - MARCA_CORTE.length) + MARCA_CORTE : v
 }
 
 /** date puro 'AAAA-MM-DD' → data do Excel. Fora do formato → o texto cru. */
@@ -135,14 +140,18 @@ function aba(nome: string, linhas: Celula[][], filtro = true): AbaExportacao {
   return { nome, linhas, larguras: larguras(linhas), filtro }
 }
 
-/** Nome de aba válido no Excel: sem `[]:*?/\`, até 31 caracteres, único (sem diferenciar
- *  maiúsculas) dentro da pasta. */
+/** Nome de aba válido no Excel: sem `[]:*?/\`, sem apóstrofo nas pontas, até 31
+ *  caracteres, único (sem diferenciar maiúsculas) dentro da pasta, e nunca "History"
+ *  (reservado pelo Excel). */
 export function nomeDeAba(base: string, usados: Set<string>): string {
-  const limpo = base.replace(/[[\]:*?/\\]/g, ' ').replace(/\s+/g, ' ').trim() || 'Tipo'
-  let nome = limpo.slice(0, 31).trim()
+  usados.add('history')
+  // pontas limpas DEPOIS de cada corte: o corte em 31 pode expor um apóstrofo do meio
+  const pontas = (s: string) => s.replace(/\s+/g, ' ').trim().replace(/^'+|'+$/g, '').trim()
+  const limpo = pontas(base.replace(/[[\]:*?/\\]/g, ' ')) || 'Tipo'
+  let nome = pontas(limpo.slice(0, 31)) || 'Tipo'
   for (let i = 2; usados.has(nome.toLowerCase()); i++) {
     const suf = ` (${i})`
-    nome = limpo.slice(0, 31 - suf.length).trim() + suf
+    nome = pontas(limpo.slice(0, 31 - suf.length)) + suf
   }
   usados.add(nome.toLowerCase())
   return nome
@@ -191,7 +200,10 @@ interface ColunaCampo {
  *  mapa `campo_id → índice da coluna`. `lista` em ordem do mais recente ao mais antigo. */
 export function colunasDoTipo(maisRecentesPrimeiro: Solicitacao[]): { colunas: ColunaCampo[]; colunaDoCampo: Map<number, number> } {
   const colunas: ColunaCampo[] = []
-  const porChave = new Map<string, number>()
+  // chave → colunas dessa chave, em ordem. A n-ésima ocorrência da chave numa solicitação vai
+  // para a n-ésima coluna da lista (criada só se faltar) — assim dois campos de mesmo rótulo
+  // e tipo dão DUAS colunas, e não uma coluna nova a cada versão do tipo (achado do revisor).
+  const porChave = new Map<string, number[]>()
   const colunaDoCampo = new Map<number, number>()
   for (const s of maisRecentesPrimeiro) {
     const usadasNesta = new Set<number>()
@@ -199,12 +211,11 @@ export function colunasDoTipo(maisRecentesPrimeiro: Solicitacao[]): { colunas: C
       let idx = colunaDoCampo.get(r.campo_id)
       if (idx === undefined) {
         const chave = `${r.rotulo.trim().toLowerCase()}|${r.tipo_campo}`
-        const existente = porChave.get(chave)
-        if (existente !== undefined && !usadasNesta.has(existente)) {
-          idx = existente
-        } else {
+        const daChave = porChave.get(chave) ?? []
+        idx = daChave.find(i => !usadasNesta.has(i))
+        if (idx === undefined) {
           idx = colunas.push({ rotulo: r.rotulo.trim(), tipo: r.tipo_campo, ids: new Set() }) - 1
-          if (existente === undefined) porChave.set(chave, idx)
+          porChave.set(chave, [...daChave, idx])
         }
         colunaDoCampo.set(r.campo_id, idx)
       }
@@ -215,8 +226,10 @@ export function colunasDoTipo(maisRecentesPrimeiro: Solicitacao[]): { colunas: C
   return { colunas, colunaDoCampo }
 }
 
-function cabecalhosDeCampo(colunas: ColunaCampo[]): string[] {
-  const vistos = new Map<string, number>()
+/** Cabeçalho de cada coluna de campo. Desduplica entre os campos E contra as colunas fixas
+ *  da aba (um campo chamado "Status" não pode gerar dois "Status" no filtro). */
+function cabecalhosDeCampo(colunas: ColunaCampo[], fixas: readonly string[]): string[] {
+  const vistos = new Map<string, number>(fixas.map(f => [f, 1]))
   return colunas.map(c => {
     const base = c.tipo === 'moeda' && !c.rotulo.includes('R$') ? `${c.rotulo} (R$)` : c.rotulo
     const n = (vistos.get(base) ?? 0) + 1
@@ -228,7 +241,7 @@ function cabecalhosDeCampo(colunas: ColunaCampo[]): string[] {
 const COLUNAS_FIXAS_TIPO = ['Nº', 'Status', 'Solicitante', 'Aberta em', 'Prazo', 'Decisão em', 'Descrição']
 
 function abaDoTipo(nome: string, doTipo: Solicitacao[]): AbaExportacao {
-  const recentesPrimeiro = [...doTipo].sort((a, b) => b.criado_em.localeCompare(a.criado_em) || b.id - a.id)
+  const recentesPrimeiro = [...doTipo].sort((a, b) => Date.parse(b.criado_em) - Date.parse(a.criado_em) || b.id - a.id)
   const { colunas, colunaDoCampo } = colunasDoTipo(recentesPrimeiro)
   const linhas: Celula[][] = doTipo.map(s => {
     const campos: Celula[] = colunas.map(() => null)
@@ -252,7 +265,7 @@ function abaDoTipo(nome: string, doTipo: Solicitacao[]): AbaExportacao {
       texto(s.descricao), ...campos,
     ]
   })
-  return aba(nome, [[...COLUNAS_FIXAS_TIPO, ...cabecalhosDeCampo(colunas)], ...linhas])
+  return aba(nome, [[...COLUNAS_FIXAS_TIPO, ...cabecalhosDeCampo(colunas, COLUNAS_FIXAS_TIPO)], ...linhas])
 }
 
 function abaAnexos(lista: Solicitacao[]): AbaExportacao {
@@ -264,7 +277,8 @@ function abaAnexos(lista: Solicitacao[]): AbaExportacao {
         inteiro(s.id), nomeTipo(s),
         a.campo_id == null ? 'Anexo posterior' : texto(rotuloDoCampo.get(a.campo_id)),
         a.nome, texto(a.mime),
-        { t: 'n', v: Math.round(a.tamanho / 1024), z: '#,##0' },
+        // para cima, como o explorador de arquivos: arquivo de 300 bytes é "1 KB", não "0 KB"
+        { t: 'n', v: Math.ceil(a.tamanho / 1024), z: '#,##0' },
       ])
     }
   }

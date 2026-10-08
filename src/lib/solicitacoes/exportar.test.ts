@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   montarExportacaoSolicitacoes, colunasDoTipo, nomeDeAba, nomeArquivoExportacao,
-  celulaData, celulaDataHora, celulaMoeda,
+  celulaData, celulaDataHora, celulaMoeda, MAX_CELULA,
   FMT_MOEDA, FMT_DATA, FMT_DATA_HORA, NOME_ABA_TODAS, NOME_ABA_ANEXOS, NOME_ABA_SOBRE,
   type AbaExportacao, type Celula,
 } from './exportar'
@@ -72,6 +72,13 @@ describe('nomeDeAba', () => {
     expect(b.endsWith(' (2)')).toBe(true)
     expect(a).not.toBe(b)
   })
+
+  it('sem apóstrofo nas pontas (nem depois do corte) e nunca "History"', () => {
+    const usados = new Set<string>()
+    expect(nomeDeAba("'Pagamentos'", usados)).toBe('Pagamentos')
+    expect(nomeDeAba(`${'x'.repeat(30)}'y`, usados)).toBe('x'.repeat(30))
+    expect(nomeDeAba('History', usados)).toBe('History (2)')
+  })
 })
 
 describe('colunasDoTipo — coluna é rótulo+tipo, não campo_id', () => {
@@ -98,6 +105,15 @@ describe('colunasDoTipo — coluna é rótulo+tipo, não campo_id', () => {
     ])
     expect(colunas).toHaveLength(2)
     expect(colunaDoCampo.get(1)).not.toBe(colunaDoCampo.get(2))
+  })
+
+  it('dois campos iguais atravessando VÁRIAS versões do tipo continuam sendo 2 colunas (achado do revisor)', () => {
+    const versao = (id: number, a: number, b: number) =>
+      sol({ id, respostas: [resp(a, 'Obs', 'texto_curto', `${id}a`), resp(b, 'Obs', 'texto_curto', `${id}b`)] })
+    const { colunas, colunaDoCampo } = colunasDoTipo([versao(3, 5, 6), versao(2, 3, 4), versao(1, 1, 2)])
+    expect(colunas).toHaveLength(2)
+    expect([colunaDoCampo.get(1), colunaDoCampo.get(3), colunaDoCampo.get(5)]).toEqual([0, 0, 0])
+    expect([colunaDoCampo.get(2), colunaDoCampo.get(4), colunaDoCampo.get(6)]).toEqual([1, 1, 1])
   })
 
   it('campo que só existe em snapshot antigo vai para o fim', () => {
@@ -169,6 +185,19 @@ describe('montarExportacaoSolicitacoes', () => {
       expect(a.larguras).toHaveLength(Math.max(...a.linhas.map(l => l.length)))
       expect(Math.max(...a.larguras)).toBeLessThanOrEqual(60)
     }
+  })
+
+  it('campo com o nome de uma coluna fixa não duplica o cabeçalho', () => {
+    const [, tipo] = montarExportacaoSolicitacoes([sol({ id: 1, respostas: [resp(1, 'Status', 'texto_curto', 'ok')] })], new Date())
+    expect(tipo.linhas[0].filter(h => h === 'Status')).toHaveLength(1)
+    expect(tipo.linhas[0]).toContain('Status [2]')
+  })
+
+  it('texto acima do teto de célula do Excel é cortado com marca, nunca some', () => {
+    const [todas] = montarExportacaoSolicitacoes([sol({ id: 1, descricao: 'a'.repeat(MAX_CELULA + 10) })], new Date())
+    const d = coluna(todas, 'Descrição')[0] as string
+    expect(d).toHaveLength(MAX_CELULA)
+    expect(d.endsWith('[…]')).toBe(true)
   })
 
   it('lista vazia ainda gera Todas/Anexos/Sobre só com cabeçalho', () => {

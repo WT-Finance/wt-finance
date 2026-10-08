@@ -25,9 +25,12 @@ export default function BotaoExportarSolicitacoes() {
       const a = document.createElement('a')
       a.href = url
       a.download = nomeArquivoExportacao(hojeSP())
+      document.body.appendChild(a)
       a.click()
-      // Sem o revoke o blob fica retido na aba até o reload (mesma nota do `baixarCsv`).
-      URL.revokeObjectURL(url)
+      a.remove()
+      // Sem o revoke o blob fica retido na aba até o reload (mesma nota do `baixarCsv`). Adiado
+      // um tique: revogar no mesmo tique do clique pode abortar o download em alguns navegadores.
+      setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch (err) {
       console.error('[Solicitações exportar]', err)
       setErro(true)
@@ -43,7 +46,7 @@ export default function BotaoExportarSolicitacoes() {
         onClick={exportar}
         disabled={exportando}
         aria-busy={exportando}
-        className={`${PILL} ${PILL_GESTAO} whitespace-nowrap disabled:opacity-60`}
+        className={`${PILL} ${PILL_GESTAO} whitespace-nowrap`}
         style={PILL_GESTAO_STYLE}
         title="Baixar todas as solicitações em Excel — uma aba geral, uma por tipo e a lista de anexos"
       >
