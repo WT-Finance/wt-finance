@@ -521,6 +521,15 @@ export type Database = {
         Args: { p_data: string }
         Returns: Json
       }
+      get_marketing_gastos_fornecedores: {
+        Args: { p_ano: number }
+        Returns: Json
+      }
+      get_marketing_gastos_lancamentos: {
+        Args: { p_ano: number }
+        Returns: Json
+      }
+      get_marketing_gastos_resumo: { Args: { p_ano: number }; Returns: Json }
       get_minhas_permissoes: { Args: never; Returns: Json }
       get_mix_produto: {
         Args: {

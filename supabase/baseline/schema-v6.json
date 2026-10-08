@@ -3454,6 +3454,81 @@
       "security_definer": true,
       "volatilidade": "VOLATILE"
     },
+    "public.get_marketing_gastos_fornecedores(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "c64b5dd58ebdba683e7b8765f32049a157aab3b153a5e3c13282c1a8f911d807",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.get_marketing_gastos_lancamentos(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "4e4c0b26c77740f0de5a0f52348f18f136cf860716044e46a09e50128c190ff2",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
+    "public.get_marketing_gastos_resumo(integer)": {
+      "acl": {
+        "authenticated": {
+          "EXECUTE": false
+        },
+        "postgres": {
+          "EXECUTE": false
+        },
+        "service_role": {
+          "EXECUTE": false
+        },
+        "verificador": {
+          "EXECUTE": false
+        }
+      },
+      "dono": "postgres",
+      "hash_corpo": "df9ca9963c4a6b523123ec8e5ee4f0cfb9c457d5b8d3fc754ac9ce3c6afc04ab",
+      "linguagem": "plpgsql",
+      "proconfig": [
+        "search_path=\"\""
+      ],
+      "retorno": "json",
+      "security_definer": true,
+      "volatilidade": "STABLE"
+    },
     "public.get_minhas_permissoes()": {
       "acl": {
         "authenticated": {
@@ -7201,6 +7276,9 @@
         "public.get_fluxo_previsto_diario()",
         "public.get_fluxo_ranking(integer)",
         "public.get_fluxo_runway_semanal()",
+        "public.get_marketing_gastos_fornecedores(integer)",
+        "public.get_marketing_gastos_lancamentos(integer)",
+        "public.get_marketing_gastos_resumo(integer)",
         "public.get_minhas_permissoes()",
         "public.get_mix_produto(date, date, text, integer)",
         "public.get_operacoes_weddings(text, date, date, text, text, text, text, integer, integer)",
@@ -15644,7 +15722,7 @@
       "triggers": {}
     }
   },
-  "ultima_migration": "0291",
+  "ultima_migration": "0292",
   "views": {
     "analytics.mv_ranking_produtos_mensal": {
       "acl": {
