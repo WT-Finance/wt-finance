@@ -54,11 +54,11 @@ const OBJETOS_LEGITIMOS: Record<string, string> = {
   'public.limpar_staging_vendas()':
     'só toca raw.vendas_excel_staging (nunca a tabela crua) — declarado por ser o mesmo pipeline; não deve aparecer na enumeração hoje',
   'public.validar_carga_staging()':
-    'compara o preenchimento de operacao_propria da staging contra a base viva (`FROM raw.vendas_excel`, 0135) — segue viva no pipeline (não é apagada pela 0286)',
+    'compara o preenchimento de operacao_propria da staging contra a base viva (`FROM raw.vendas_excel`, 0135) — segue viva no pipeline (não é apagada pela 0286); as guardas de setor (0284/0291) leem só a STAGING',
   'public.promover_carga_vendas(jsonb, uuid)':
     'TRUNCATE + INSERT INTO raw.vendas_excel, mais FROM raw.vendas_excel r (checksum pós-gravação) — assinatura NOVA do pipeline vivo (0278, v6.0.0/M5)',
   'analytics.vendas_excel_para_fato':
-    'a PRÓPRIA view do filtro Welcome (0277) — sua definição É `SELECT * FROM raw.vendas_excel WHERE setor_macro IS DISTINCT FROM \'Welcome\'`; citar a tabela é o motivo dela existir',
+    'a PRÓPRIA view do filtro Welcome (0277) e de venda sem setor (0291) — sua definição É `SELECT * FROM raw.vendas_excel WHERE setor_macro IS NOT NULL AND setor_macro IS DISTINCT FROM \'Welcome\'`; citar a tabela é o motivo dela existir',
 }
 
 async function abrirConexaoReadOnly() {

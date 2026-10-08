@@ -699,7 +699,8 @@ async function aplicarVendas(
   }
   const retorno = lerRetornoPromocao(promRes.data)
 
-  // op_propria (v4.17.0): aviso não-bloqueante que `validar_carga_staging` já devolvia.
+  // Avisos não-bloqueantes de `validar_carga_staging`: queda de op_propria (v4.17.0) e linha sem
+  // setor (v6.2.3/0291).
   return {
     linhas: linhas.length,
     avisos: validacao.avisos ?? [],

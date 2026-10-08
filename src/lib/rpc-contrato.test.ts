@@ -644,6 +644,17 @@ describe('contrato RPC — schema de promover_carga_vendas (estrutural, RPC dest
     expect(r.success).toBe(true)
     expect(r.success && r.data.setor_fora).toBe(12)
   })
+  // v6.2.3: linha sem setor (migration 0291) — passa com AVISO e a chave sem_setor
+  it('cargaValidacaoSchema aceita o retorno com linhas sem setor (sem_setor + aviso)', () => {
+    const r = cargaValidacaoSchema.safeParse({
+      ok: true, total: 100, data_min: '2026-01-01', data_max: '2026-03-01',
+      dim_min: '2022-01-01', dim_max: '2030-12-31', fora_do_range: 0, setor_fora: 0, sem_setor: 2,
+      erros: [],
+      avisos: ['2 linha(s) sem Setor no Monde, de 1 venda(s), ficaram de fora das telas nesta carga — vendas: 123. Elas voltam sozinhas na próxima carga em que o Setor estiver preenchido. A carga prossegue.'],
+    })
+    expect(r.success).toBe(true)
+    expect(r.success && r.data.sem_setor).toBe(2)
+  })
 })
 
 // ── v4.13: contrato do RBAC (ADRs 0106-0108) ─────────────────────────────────

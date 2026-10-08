@@ -22,7 +22,8 @@ import { formatoPeloNome, lerMatriz, type FormatoArquivo } from './matriz'
 import type { Matriz, Checksum, ParseErro } from './parsers/comum'
 import { somaCentavos, apertar } from './parsers/comum'
 import {
-  parseVendasProdutoRows, vendasDistintasQueEntramNoFato, type ArquivoVendas, type VendaProdutoCru,
+  parseVendasProdutoRows, vendasDistintasQueEntramNoFato, avisoLinhasSemSetor,
+  type ArquivoVendas, type VendaProdutoCru,
 } from './parsers/vendas-produto'
 import { parseDemonstrativoCruRows, type DemonstrativoCompetenciaCru } from './parsers/demonstrativo-competencia'
 import { parseLancamentosCategoriaRows } from './parsers/lancamentos-categoria'
@@ -763,7 +764,7 @@ async function executarParse(base: BaseIngestao, arquivosLidos: readonly Arquivo
         // de `fato_venda` pela view `analytics.vendas_excel_para_fato` (decisão 8). Contá-las fazia o
         // modal dizer "29.458 → 29.599" numa carga que deixa o `fato_venda` em 29.458 — a mesma
         // confusão de grandeza que a M4 pegou três vezes, reaparecendo na 1ª carga real (M9).
-        // `!== 'Welcome'` com `null` passando é o `IS DISTINCT FROM` da view.
+        // Venda SEM setor também fica fora (v6.2.3/0291) — o mesmo predicado da view.
         linhasNaBase: vendasDistintasQueEntramNoFato(resultado.linhas),
         checksums: resultado.checksums,
         datasRejeitadasN: resultado.datasRejeitadas.length,
@@ -1266,6 +1267,12 @@ export async function processarCarga(entrada: EntradaCarga): Promise<ResultadoCa
 
     if (!entrada.confirmar) {
       // CONFERÊNCIA (anexo §5): passos 4-8 só, sem aplicar (passo 9) nem concluir/logar (passo 10).
+      // Linha sem setor (v6.2.3): na aplicação o aviso vem de `validar_carga_staging` (0291); aqui,
+      // sem staging, ele sai do parse — só na conferência, para não repetir na aplicação.
+      const avisoSemSetor = base === 'vendas-produto'
+        ? avisoLinhasSemSetor(parseado.linhasParaAplicar as readonly VendaProdutoCru[])
+        : null
+      if (avisoSemSetor) alarmesBase.push(avisoSemSetor)
       return {
         ok: true, carga_id: cargaId, base, status: 'conferida', idempotente: false,
         arquivos: montarArquivosResposta(entrada, parseado.porArquivo),
