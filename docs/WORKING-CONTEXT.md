@@ -9,11 +9,11 @@
 > skill, pela régua de 5 destinos. Como o sistema funciona é `docs/estado-do-projeto.md`; o que
 > ficou para a v6 é `docs/backlog-v6.md`.
 
-Última atualização: 2026-10-08 (fechamento da v6.2.3, PR aberto — aguardando merge).
+Última atualização: 2026-10-08 (pós-merge da v6.2.3, em produção desde 11:34).
 
 ---
 
-## Em PR — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, branch `fix/v6-2-3-vendas-sem-setor`)
+## Em produção — v6.2.3 "Vendas por Produto: venda sem Setor deixa de derrubar a carga" (PR #297, mergeado 08/10 às 11:34)
 
 O Monde deixa a venda sem Setor até a forma de pagamento ser informada; a guarda de `validar_carga_staging`
 recusava a carga INTEIRA ("setor=«∅»"). **Migration 0291 APLICADA em 08/10** (aditiva, backup-gate verde):
@@ -22,11 +22,21 @@ Aberto até vir com setor), com AVISO na conferência e na aplicação; carga em
 reprova (achado ALTO do `revisor-db`). Banco na **0291**, livre **0292**; baseline regenerado. Out-briefing
 `docs/briefings/WT_Finance_Out_Briefing_v6-2-3_Vendas_Sem_Setor.md`.
 
-> ⚠️ **A 0291 já vale em produção antes do merge** (o banco não espera o PR): a próxima carga de Vendas já
-> passa com aviso. O código do PR só acrescenta o aviso na conferência e o "depois" do diff coerente.
-> 🔴 **Yan:** mergear o PR #297; re-subir o export que quebrou (ou esperar a RPA) e ver o aviso nomeando a
-> venda; depois, `/pos-merge`. Decidido em 08/10: "ignorar" confirmado, **sem** limiar percentual, **sem**
-> alarme de venda presa sem setor (out-briefing §6).
+> Decidido pelo Yan em 08/10: "ignorar" confirmado, **sem** limiar percentual, **sem** alarme de venda
+> presa sem setor (out-briefing §6) — não re-propor.
+> 🔴 **Yan — prova real pendente:** re-subir o export de Vendas que quebrou (ou esperar a próxima RPA) e
+> ver a carga passar com o aviso nomeando a venda sem setor.
+> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.2.3** (a sessão não alcança o checkout
+> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-2-3`,
+> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures são cópias de
+> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
+> ```bash
+> git pull --ff-only
+> git worktree unlock .claude/worktrees/fix-v6-2-3-vendas-sem-setor 2>/dev/null
+> git worktree remove .claude/worktrees/fix-v6-2-3-vendas-sem-setor --force
+> git worktree prune
+> git branch -D fix/v6-2-3-vendas-sem-setor docs/pos-merge-v6-2-3
+> ```
 
 ---
 
@@ -39,18 +49,6 @@ removido** (decisão do Yan — `sprintf-js` #58 não tem correção e só vinha
 `docs/briefings/WT_Finance_Out_Briefing_v6-2-2_Seguranca_Deps.md`.
 
 > Alertas #56–#59 **fechados** pelo GitHub às 13:31 (conferido no pós-merge).
-> 🔴 **Yan — sincronizar a raiz e remover a worktree da v6.2.2** (a sessão não alcança o checkout
-> compartilhado, protocolo D5), **depois de mergear o PR de docs deste pós-merge** (`docs/pos-merge-v6-2-2`,
-> que mora na mesma worktree). Nada gitignorado a salvar: as fixtures são cópias de
-> `~/projects/arquivo-worktrees-janus/fixtures-ingestao/`. Da raiz (`/home/yan-wt/projects/wt-finance`):
-> ```bash
-> git pull --ff-only
-> npm ci          # o lockfile mudou (−63 pacotes); node_modules da raiz ainda tem o depcheck
-> git worktree unlock .claude/worktrees/fix-v6-2-2-seguranca-deps 2>/dev/null
-> git worktree remove .claude/worktrees/fix-v6-2-2-seguranca-deps --force
-> git worktree prune
-> git branch -D fix/v6-2-2-seguranca-deps docs/pos-merge-v6-2-2
-> ```
 > **Toda sessão nova:** a ferramenta de dependência não usada é o `knip` (`npx knip`); o `depcheck` não
 > existe mais.
 
