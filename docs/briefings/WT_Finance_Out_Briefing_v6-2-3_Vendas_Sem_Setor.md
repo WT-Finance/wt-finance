@@ -95,22 +95,24 @@ Na base viva de 08/10 há **zero** linhas com setor nulo (49.521): nenhum númer
 
 ## 6. Pendências — o que só o Yan tem
 
-- 🔴 **Mergear o PR** e confirmar a leitura de produto abaixo.
-- **Confirmar a leitura de produto do "ignorar":** enquanto a venda estiver sem setor ela **some** de
-  `fato_venda`, de Weddings (operações, carteira, convidados), de Vendas em Aberto/Rateio e do "depois"
-  do diff — o vendedor não é creditado por ela até a carga em que o setor vier. Foi o pedido ao pé da letra.
-- **Decisão de produto em aberto — limiar.** Hoje só "TODAS as linhas sem setor" reprova; um export com,
-  digamos, 80% sem setor passa só com aviso. Quer um limiar percentual que reprove?
-- **Decisão de produto em aberto — alarme de venda presa.** O único rastro durável do aviso é o
-  `alarmes[]` do log da carga; a RPA diária imprime só `alarmes=N`. Uma venda parada sem setor por
-  semanas não gera e-mail. Quer alarme (ex.: venda sem setor há mais de N cargas)?
+- 🔴 **Mergear o PR #297**; depois re-subir o export que quebrou (ou esperar a RPA), conferir o aviso
+  nomeando a venda, e `/pos-merge`.
+
+**Decisões de produto tomadas pelo Yan em 08/10** (respondidas no fechamento):
+- **"Ignorar" confirmado:** enquanto a venda estiver sem setor ela some de `fato_venda`, de Weddings
+  (operações, carteira, convidados), de Vendas em Aberto/Rateio e do "depois" do diff — o vendedor não é
+  creditado por ela até a carga em que o setor vier.
+- **Sem limiar percentual:** só a carga com TODAS as linhas sem setor (ou só Welcome) reprova; qualquer
+  proporção menor passa com aviso.
+- **Sem alarme de venda presa sem setor:** o rastro é o aviso da carga (modal do card e `alarmes[]` do
+  log); nenhum e-mail.
 
 ## 7. Parecer da revisão
 
 **`revisor`** — APROVADO COM RESSALVAS, sem CRÍTICO/ALTO.
 - MÉDIO · aviso só existia na APLICAÇÃO, não na conferência → **corrigido** (`avisoLinhasSemSetor` no
   ramo de conferência).
-- MÉDIO · venda sem setor some sem alarme durável → **registrado** (§6, decisão de produto).
+- MÉDIO · venda sem setor some sem alarme durável → **decidido pelo Yan: sem alarme** (§6).
 - MÉDIO · `sem_setor` sem caso em `rpc-contrato.test.ts` → **corrigido**.
 - MÉDIO · baseline vai divergir → **feito** após a aplicação (3 diferenças, lidas antes de aceitar).
 - BAIXO · sem teste de paridade SQL×TS → **corrigido** (teste estático lendo a 0291: predicado da view +
@@ -130,7 +132,7 @@ Na base viva de 08/10 há **zero** linhas com setor nulo (49.521): nenhum númer
   sem carga em andamento (staging vazia).
 - BAIXO · contagem do aviso ≠ lista com `venda_numero` nulo → **corrigido** (mesmo `coalesce`).
 - BAIXO · COMMENT da view com justificativa enganosa do `IS DISTINCT FROM` → **corrigido**.
-- BAIXO · limiar percentual → **registrado** (§6, produto).
+- BAIXO · limiar percentual → **decidido pelo Yan: sem limiar** (§6).
 
 **Desvio de ordem, registrado:** a regra é `revisor-db` ANTES de aplicar. A 1ª revisão foi antes; a
 correção do ALTO foi provada no ensaio revertido (todos os cenários, inclusive o do ALTO) e a 0291 foi

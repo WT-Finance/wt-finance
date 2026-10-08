@@ -25,8 +25,8 @@ reprova (achado ALTO do `revisor-db`). Banco na **0291**, livre **0292**; baseli
 > ⚠️ **A 0291 já vale em produção antes do merge** (o banco não espera o PR): a próxima carga de Vendas já
 > passa com aviso. O código do PR só acrescenta o aviso na conferência e o "depois" do diff coerente.
 > 🔴 **Yan:** mergear o PR #297; re-subir o export que quebrou (ou esperar a RPA) e ver o aviso nomeando a
-> venda; decidir **limiar** (hoje só "todas sem setor" reprova) e **alarme de venda presa sem setor**
-> (out-briefing §6). Depois, `/pos-merge`.
+> venda; depois, `/pos-merge`. Decidido em 08/10: "ignorar" confirmado, **sem** limiar percentual, **sem**
+> alarme de venda presa sem setor (out-briefing §6).
 
 ---
 
