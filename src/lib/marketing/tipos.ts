@@ -1,32 +1,30 @@
 // Tipos da página "Gastos de Marketing" (v6.3.0).
 //
-// Estes tipos são o CONTRATO que as RPCs (migration 0292) devolvem — a página foi construída em
-// cima deles com uma fixture (GATE 1, mockup) e, na M3, só a FONTE do dado trocou (agora as
-// RPCs, validadas por `src/lib/marketing/schemas.ts`); componentes, módulos de
-// `src/lib/marketing/` e testes ficaram. Por isso o formato aqui já é o de uma RPC: dado cru,
-// nada derivado no servidor que o cliente não saiba refazer.
+// Estes tipos são o CONTRATO que as RPCs (migration 0292) devolvem; os schemas Zod que o validam
+// em runtime estão em `src/lib/marketing/schemas.ts`. O formato é o de uma RPC: dado cru, nada
+// derivado no servidor que o cliente não saiba refazer.
 //
-// ── Origem do dado (já medido na M0) ────────────────────────────────────────────────────
+// ── Origem do dado ──────────────────────────────────────────────────────────────────────
 // `financeiro.fato_fluxo`, só lançamentos PAGOS (realizados), filtrados pelo bloco MKT da DRE de
-// caixa. Por construção o total da página É a linha "(-) Despesas Marketing" da DRE de caixa.
+// caixa. Por construção o total da página É a linha de Marketing da DRE de caixa.
 //
 // ── SINAL (decisão firme do Yan) ────────────────────────────────────────────────────────
 // O gasto é NEGATIVO, exatamente como na DRE — o `valor` vem da base SEM inversão. Um estorno
 // (raro) é POSITIVO e reduz o gasto. Vale em toda a página: KPIs, tabelas, ranking, lançamentos
 // e tooltip. Nenhum componente aplica `Math.abs` para exibir valor monetário.
 //
-// ── RPCs (migration 0292; schemas Zod em `src/lib/marketing/schemas.ts`) ────────────────
+// ── RPCs (migration 0292) ───────────────────────────────────────────────────────────────
 //   get_marketing_gastos_resumo(p_ano)       → ResumoMarketing    (por mês × categoria + metadados)
 //   get_marketing_gastos_fornecedores(p_ano) → FornecedoresMarketing (por mês × fornecedor)
 //   get_marketing_gastos_lancamentos(p_ano)  → LancamentoMkt[]    (o ano inteiro; sem paginação)
 // O resumo é chamado duas vezes (ano selecionado e anterior). Filtro, ordenação e busca da
 // tabela de lançamentos rodam no CLIENTE: ~230 linhas/ano não justificam paginar no servidor.
-// O contrato de completude (Σ lançamentos ≡ Σ resumo ≡ Σ fornecedores ≡ linha da DRE) vira caso
-// de `rpc-contrato.test.ts` na M3; `src/lib/marketing/completude.test.ts` prova a mesma
-// identidade sobre a fixture.
+// O contrato de completude (Σ lançamentos ≡ Σ resumo ≡ Σ fornecedores ≡ linha da DRE) é provado
+// contra a base viva em `src/lib/rpc-contrato.test.ts`; `src/lib/marketing/completude.test.ts`
+// prova a mesma identidade sobre a fixture (`src/lib/marketing/fixture.ts`).
 
 /** Resultado de uma leitura que pode falhar sem derrubar a página (invariante 14: a seção
- *  degrada, a página fica de pé). Espelha o `allSettled` por item que a M3 vai fazer. */
+ *  degrada, a página fica de pé). Espelha o `allSettled` por item feito em `page.tsx`. */
 export type Carregado<T> = { ok: true; dados: T } | { ok: false }
 
 /** Um lançamento pago. `valor` com o sinal da DRE (gasto < 0, estorno > 0). */
@@ -65,7 +63,8 @@ export interface LinhaMesFornecedor {
 export interface ResumoMarketing {
   ano: number
   /** Anos com algum lançamento MKT realizado na base (SEM filtro de ano), crescente. É a fonte
-   *  das pills de ano da página. */
+   *  das pills de ano da página — e diz se o ano anterior TEM histórico: ano fora desta lista é
+   *  ausência de dado (a UI mostra "—"), não zero. */
   anosDisponiveis: number[]
   porMesCategoria: LinhaMesCategoria[]
   /** Primeira e última data de movimentação do dado do ano; `null` = ano sem lançamento. */
@@ -92,13 +91,8 @@ export interface DadosGastosMarketing {
   /** Hoje em São Paulo ('YYYY-MM-DD'), calculado NO SERVIDOR — o cliente não usa relógio
    *  próprio (mismatch de hidratação e fuso). Define o mês corrente. */
   hoje: string
-  /** 'fixture' = mockup (aparece o selo "dados fictícios"); a página de produção passa 'rpc'. */
-  fonte: 'fixture' | 'rpc'
   resumo: Carregado<ResumoMarketing>
   resumoAnterior: Carregado<ResumoMarketing>
   fornecedores: Carregado<FornecedoresMarketing>
   lancamentos: Carregado<LancamentoMkt[]>
 }
-
-/** Estados que a fixture sabe forjar (massa de teste; a página de produção não usa mais). */
-export type EstadoMockup = 'vazio' | 'erro'

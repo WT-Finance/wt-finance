@@ -12,8 +12,8 @@ import GatilhoAjuda from '@/components/ui/gatilho-ajuda'
 import { pctDoTotal, tabelaPorCategoria } from '@/lib/marketing/agregacao'
 import { fmtPct } from '@/lib/marketing/formatar'
 import { MESES_ABREV, rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
+import type { ResumoMarketing } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
-import type { ResumoMarketing } from './tipos'
 
 // Componente D — categoria × mês, com total e "% do total de marketing".
 //

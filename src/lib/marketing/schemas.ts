@@ -1,15 +1,12 @@
 import { z } from 'zod'
-import type {
-  FornecedoresMarketing,
-  LancamentoMkt,
-  ResumoMarketing,
-} from '@/components/marketing/gastos/tipos'
+import type { FornecedoresMarketing, LancamentoMkt, ResumoMarketing } from './tipos'
 
 // ── Schemas Zod das 3 RPCs de "Gastos de Marketing" (v6.3.0 · migration 0292) ────────────
 // Regra do projeto: o schema reflete o retorno REAL da RPC, não o tipo TS. Os três retornos são
 // `json` (database.ts tipa como `Json`), então o `tsc` não protege nada aqui — é este schema, via
-// `parseRpc`, que impede um campo ausente de chegar à UI. Casos vivos em `rpc-contrato.test.ts`
-// (a M4 acrescenta; este arquivo não os cria).
+// `parseRpc`, que impede um campo ausente de chegar à UI. Os casos contra a RPC viva estão em
+// `src/lib/rpc-contrato.test.ts` (bloco "Gastos de Marketing"); `schemas.test.ts` cobre o que dá
+// para provar sem banco.
 //
 // Números: `numeric` do Postgres serializa como número JSON (`z.number()`, sem coerção — o mesmo
 // tratamento dos schemas da DRE). `valor` vem com o sinal da DRE (gasto < 0, estorno > 0).

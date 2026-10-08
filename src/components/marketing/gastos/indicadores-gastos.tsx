@@ -49,10 +49,20 @@ function Tile({ rotulo, valor, children }: {
   )
 }
 
-function LinhaDelta({ ind, ano }: { ind: Indicadores; ano: number }) {
+function LinhaDelta({ ind, ano, ultimaDataCartao }: {
+  ind: Indicadores
+  ano: number
+  /** Só quando o recorte termina no mês corrente do ano corrente (o chamador decide, como no
+   *  tile do mês): o mês corrente subcontado pode fazer o Δ parecer mais favorável do que é, e a
+   *  dica avisa. */
+  ultimaDataCartao: string | null
+}) {
   if (ind.deltaPct === null || ind.sentido === null) {
     return <p>Sem base de comparação em {ano - 1}.</p>
   }
+  const dicaCartao = ultimaDataCartao
+    ? `Cartão lançado até ${fmtDiaMes(ultimaDataCartao)}: o mês corrente pode estar subcontado e a variação parecer mais favorável do que é.`
+    : undefined
   const cor =
     ind.sentido === 'favoravel' ? 'text-success'
     : ind.sentido === 'desfavoravel' ? 'text-danger'
@@ -63,9 +73,12 @@ function LinhaDelta({ ind, ano }: { ind: Indicadores; ano: number }) {
     : 'estável'
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 text-xs">
-      <span className={`font-semibold tabular-nums ${cor}`}>{fmtDeltaPct(ind.deltaPct)}</span>
-      <span className={cor}>{palavra}</span>
-      <span className="text-[var(--text-subtle)]">vs {ano - 1}</span>
+      {/* A dica nativa fica só no trio número + palavra + "vs": o "?" tem o Tooltip do DS. */}
+      <span className="inline-flex items-center gap-x-1.5" title={dicaCartao}>
+        <span className={`font-semibold tabular-nums ${cor}`}>{fmtDeltaPct(ind.deltaPct)}</span>
+        <span className={cor}>{palavra}</span>
+        <span className="text-[var(--text-subtle)]">vs {ano - 1}</span>
+      </span>
       <GatilhoAjuda rotulo="Variação" texto={AJUDA_DELTA} />
     </p>
   )
@@ -99,17 +112,22 @@ export default function IndicadoresGastos({ ano, recorte, ind, anteriorFalhou, u
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <Tile rotulo={`Gasto no período · ${rotuloRecorteAno(recorte, ano)}`} valor={fmtBRL2(ind.periodo.valor)}>
-        {anteriorFalhou ? <p>Variação indisponível.</p> : <LinhaDelta ind={ind} ano={ano} />}
+        {anteriorFalhou && !ind.anteriorSemHistorico
+          ? <p>Variação indisponível.</p>
+          : <LinhaDelta ind={ind} ano={ano} ultimaDataCartao={ind.mesRef.corrente ? ultimaDataCartao : null} />}
         <p>{plural(ind.periodo.qtd)}</p>
       </Tile>
 
+      {/* Ano anterior sem histórico na base: "—" (ausência de dado), nunca "R$ 0,00 · 0 lançamentos". */}
       <Tile
         rotulo={`Mesmo período de ${ano - 1} · ${rotuloRecorteAno(recorte, ano - 1)}`}
         valor={ind.anoAnterior ? fmtBRL2(ind.anoAnterior.valor) : '—'}
       >
         {ind.anoAnterior
           ? <p>{plural(ind.anoAnterior.qtd)}</p>
-          : <ErroCarregamento mensagem={`Não foi possível carregar ${ano - 1}.`} className="text-2xs" />}
+          : ind.anteriorSemHistorico
+            ? <p>Sem dados em {ano - 1}</p>
+            : <ErroCarregamento mensagem={`Não foi possível carregar ${ano - 1}.`} />}
       </Tile>
 
       <Tile

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { LancamentoMkt } from '@/components/marketing/gastos/tipos'
+import type { LancamentoMkt } from './tipos'
 import { FMT_MOEDA, type Celula } from '@/lib/dre/exportar'
 import { lancamentosDoRecorte, somar } from './agregacao'
 import {

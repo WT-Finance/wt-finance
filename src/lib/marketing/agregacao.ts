@@ -1,8 +1,9 @@
 // Agregações da página "Gastos de Marketing" (v6.3.0) — módulo PURO.
 //
 // Duas famílias:
-//  • CUBOS a partir de lançamentos (`cuboCategorias`, `cuboFornecedores`): o que a RPC de resumo
-//    faz em SQL. Aqui servem à fixture do mockup e à prova de completude; na M3 a fonte vira a RPC.
+//  • CUBOS a partir de lançamentos (`cuboCategorias`, `cuboFornecedores`): o que as RPCs de resumo
+//    e de fornecedores fazem em SQL. A página lê os cubos prontos da RPC; aqui eles servem à
+//    fixture (`fixture.ts`) e à prova de completude (`completude.test.ts`).
 //  • LEITURAS do recorte sobre os cubos (`totalNoRecorte`, `serieMensal`, `tabelaPorCategoria`,
 //    `rankingFornecedores`): o que os cards mostram. Valem igual para o cubo da fixture e da RPC.
 //
@@ -14,9 +15,7 @@
 // A única razão aqui (% do total) divide dois valores do MESMO sinal, então é positiva por
 // construção — e a conta não depende de inverter nada.
 
-import type {
-  LancamentoMkt, LinhaMesCategoria, LinhaMesFornecedor,
-} from '@/components/marketing/gastos/tipos'
+import type { LancamentoMkt, LinhaMesCategoria, LinhaMesFornecedor } from './tipos'
 import { anoDaData, mesDaData, mesNoRecorte, mesesDoRecorte, type Recorte } from './periodo'
 
 // ── Dinheiro ────────────────────────────────────────────────────────────────────────────
@@ -29,7 +28,7 @@ export function somar(valores: readonly number[]): number {
 }
 
 /** Epsilon do zero contábil — o mesmo de `deltaYtd`/`fmtContabil` (0,005). */
-export const EPS_ZERO = 0.005
+const EPS_ZERO = 0.005
 
 /** % que `parte` representa de `total`. `null` (travessão) quando o total é zero contábil:
  *  razão sobre zero é indefinida, nunca Infinity/NaN na tela. */
@@ -52,7 +51,7 @@ export function rotuloFornecedor(chave: string): string {
   return chave === '' ? ROTULO_SEM_FORNECEDOR : chave
 }
 
-// ── Cubos a partir de lançamentos (o que o SQL faz na M3) ───────────────────────────────
+// ── Cubos a partir de lançamentos (o que o SQL das RPCs faz) ────────────────────────────
 
 /** Lançamentos de um ano → total por mês × categoria. Ordenado por mês, depois categoria. */
 export function cuboCategorias(ano: number, lancamentos: readonly LancamentoMkt[]): LinhaMesCategoria[] {
@@ -113,14 +112,16 @@ export interface PontoMensal {
   mes: number
   /** `null` = mês ainda não alcançado no ano selecionado (ausência ≠ zero). */
   atual: number | null
-  /** `null` = ano anterior indisponível (a leitura falhou). */
+  /** `null` = ano anterior indisponível (a leitura falhou, ou o ano não tem histórico na base).
+   *  Com o ano disponível, mês sem gasto é zero REAL. */
   anterior: number | null
 }
 
 /**
  * Série do gráfico: um ponto por mês do recorte, ano selecionado × mesmo mês do ano anterior.
  * `limiteAtual` é o último mês alcançado do ano selecionado (`mesLimite`); depois dele o valor
- * é `null`, não zero. `anterior === null` quando o resumo do ano anterior falhou.
+ * é `null`, não zero. `anterior === null` quando o ano anterior está indisponível (a leitura
+ * falhou ou o ano não consta em `anosDisponiveis`): a referência é omitida, nunca zerada.
  */
 export function serieMensal(
   atual: readonly ComMes[],
@@ -135,7 +136,7 @@ export function serieMensal(
   }))
 }
 
-export interface LinhaCategoria {
+interface LinhaCategoria {
   categoria: string
   /** Alinhado a `meses`; `null` = a categoria não teve lançamento naquele mês (célula "—"). */
   porMes: (number | null)[]
@@ -198,7 +199,7 @@ export function tabelaPorCategoria(linhas: readonly LinhaMesCategoria[], r: Reco
   }
 }
 
-export interface LinhaFornecedor {
+interface LinhaFornecedor {
   /** Chave de agrupamento ('' = sem fornecedor). */
   chave: string
   rotulo: string

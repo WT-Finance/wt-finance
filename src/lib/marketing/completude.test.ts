@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { gerarLancamentos, montarDadosFixture } from '@/components/marketing/gastos/fixture'
-import type { LancamentoMkt, ResumoMarketing } from '@/components/marketing/gastos/tipos'
 import {
   cuboCategorias, cuboFornecedores, lancamentosDoRecorte, rankingFornecedores, somar,
   tabelaPorCategoria, totalNoRecorte,
 } from './agregacao'
+import { gerarLancamentos, montarDadosFixture } from './fixture'
 import type { Recorte } from './periodo'
+import type { LancamentoMkt, ResumoMarketing } from './tipos'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────
 // COMPLETUDE (v6.3.0) — a identidade que dá sentido à página inteira:
@@ -120,8 +120,8 @@ describe('completude — caso nominal (estorno + sem fornecedor)', () => {
   })
 })
 
-// ── A fixture do mockup respeita a mesma identidade ────────────────────────────────────────
-describe('completude — fixture do mockup', () => {
+// ── A fixture respeita a mesma identidade ──────────────────────────────────────────────────
+describe('completude — fixture', () => {
   const anoCorrente = gerarLancamentos(2026, HOJE)
   const anoCheio = gerarLancamentos(2025, HOJE)
 
@@ -176,12 +176,11 @@ describe('completude — fixture do mockup', () => {
   })
 })
 
-describe('fixture — estados do mockup', () => {
+describe('fixture — estados degradados', () => {
   const base = { ano: 2026, hoje: HOJE }
 
-  it('padrão: tudo carregado, fonte fixture, pills de 2024 ao ano corrente, aviso do cartão com atraso', () => {
+  it('padrão: tudo carregado, pills de 2024 ao ano corrente, aviso do cartão com atraso', () => {
     const d = montarDadosFixture({ ...base, estado: null })
-    expect(d.fonte).toBe('fixture')
     expect(d.anosDisponiveis).toEqual([2024, 2025, 2026])
     expect([d.resumo.ok, d.resumoAnterior.ok, d.fornecedores.ok, d.lancamentos.ok]).toEqual([true, true, true, true])
     const resumo = d.resumo.ok ? d.resumo.dados : null
@@ -191,7 +190,16 @@ describe('fixture — estados do mockup', () => {
     expect((resumo?.ultimaDataCartao ?? '') < (resumo?.cobertura?.max ?? '')).toBe(true)
   })
 
-  it('?estado=vazio: o ano selecionado não tem lançamento; o anterior segue com dado', () => {
+  it('ano antes do 1º da base (2024 → 2023): o resumo anterior vem vazio e 2023 fora de anosDisponiveis', () => {
+    const d = montarDadosFixture({ ano: 2024, hoje: HOJE, estado: null })
+    expect(d.anosDisponiveis).not.toContain(2023)
+    expect(d.resumoAnterior.ok && d.resumoAnterior.dados.porMesCategoria).toEqual([])
+    expect(d.resumoAnterior.ok && d.resumoAnterior.dados.cobertura).toBeNull()
+    // …e o ano selecionado segue com dado.
+    expect(d.resumo.ok && d.resumo.dados.porMesCategoria.length).toBeGreaterThan(0)
+  })
+
+  it('estado "vazio": o ano selecionado não tem lançamento; o anterior segue com dado', () => {
     const d = montarDadosFixture({ ...base, estado: 'vazio' })
     const resumo = d.resumo.ok ? d.resumo.dados : null
     const anterior = d.resumoAnterior.ok ? d.resumoAnterior.dados : null
@@ -201,7 +209,7 @@ describe('fixture — estados do mockup', () => {
     expect((anterior as ResumoMarketing).porMesCategoria.length).toBeGreaterThan(0)
   })
 
-  it('?estado=erro: só o ranking por fornecedor falha; o resto carrega', () => {
+  it('estado "erro": só o ranking por fornecedor falha; o resto carrega', () => {
     const d = montarDadosFixture({ ...base, estado: 'erro' })
     expect(d.fornecedores).toEqual({ ok: false })
     expect([d.resumo.ok, d.resumoAnterior.ok, d.lancamentos.ok]).toEqual([true, true, true])

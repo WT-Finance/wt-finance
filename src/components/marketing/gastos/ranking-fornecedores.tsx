@@ -11,8 +11,8 @@ import { Card } from '@/components/ui/card'
 import { rankingFornecedores } from '@/lib/marketing/agregacao'
 import { fmtPct } from '@/lib/marketing/formatar'
 import { rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
+import type { FornecedoresMarketing } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
-import type { FornecedoresMarketing } from './tipos'
 
 // Componente E — ranking por fornecedor do recorte: valor, % do total e nº de lançamentos.
 // Clicar num fornecedor FILTRA a tabela de lançamentos (F); clicar de novo (ou "Limpar filtro")
@@ -69,7 +69,7 @@ export default function RankingFornecedores({ ano, recorte, fornecedores, seleci
     <Card>
       <CabecalhoCard
         titulo="Por fornecedor"
-        subtitulo={`${periodo} · ${ranking.linhas.length} fornecedores · clique para filtrar os lançamentos`}
+        subtitulo={`${periodo} · ${ranking.linhas.length} ${ranking.linhas.length === 1 ? 'fornecedor' : 'fornecedores'} · clique para filtrar os lançamentos`}
         acao={selecionado !== null && (
           <Button variant="ghost" onClick={() => onSelecionar(null)}>
             Limpar filtro{filtrado ? ` · ${filtrado.rotulo}` : ''}

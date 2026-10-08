@@ -31,13 +31,13 @@
 //     inteiros, `somar`) das linhas EXPORTADAS — com filtro vira "Total filtrado", como o
 //     rodapé da tela. Sem linhas, a folha sai só com o cabeçalho (sem linha de total).
 
-import type { LancamentoMkt } from '@/components/marketing/gastos/tipos'
 import { FMT_MOEDA, rotuloSeguro, type Celula } from '@/lib/dre/exportar'
 import { chaveFornecedor, rotuloFornecedor, somar } from './agregacao'
 import { MESES_ABREV, rotuloRecorteAno, type Recorte } from './periodo'
+import type { LancamentoMkt } from './tipos'
 
 export const NOME_ABA_LANCAMENTOS = 'Lançamentos'
-export const TITULO_EXPORTACAO = 'Gastos de Marketing — Lançamentos'
+const TITULO_EXPORTACAO = 'Gastos de Marketing — Lançamentos'
 /** Formato de data do Excel; o Excel pt-BR o exibe como dd/mm/aaaa. */
 export const FMT_DATA = 'dd/mm/yyyy'
 
@@ -104,7 +104,7 @@ function dataBR(iso: string): string {
 // ── API ──────────────────────────────────────────────────────────────────────────
 
 /** Uma linha da planilha — os mesmos seis campos e a mesma ordem da tabela. */
-export function linhaDeLancamento(l: LancamentoMkt): Celula[] {
+function linhaDeLancamento(l: LancamentoMkt): Celula[] {
   return [
     celulaData(l.data),
     celulaTexto(l.categoria),

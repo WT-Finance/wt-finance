@@ -4,8 +4,8 @@
 // não há o problema "ordena só a página visível". O recorte de meses é aplicado ANTES, por
 // `lancamentosDoRecorte` (agregacao.ts).
 
-import type { LancamentoMkt } from '@/components/marketing/gastos/tipos'
 import { chaveFornecedor, rotuloFornecedor } from './agregacao'
+import type { LancamentoMkt } from './tipos'
 
 // ── Busca ───────────────────────────────────────────────────────────────────────────────
 

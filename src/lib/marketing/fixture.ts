@@ -1,27 +1,27 @@
-// FIXTURE FICTÍCIA da página "Gastos de Marketing" (v6.3.0, GATE 1 — mockup navegável).
+// FIXTURE FICTÍCIA da página "Gastos de Marketing" (v6.3.0) — massa de TESTE.
 //
 // Tudo aqui é inventado: fornecedores, descrições, documentos e valores. Nada veio de produção
 // (nem de longe) — as marcas genéricas (Google, Meta, Adobe…) são só rótulos plausíveis. Os
 // NOMES das 6 categorias são os reais (já medidos na M0), porque são o vocabulário da DRE.
 //
 // DETERMINÍSTICA: um PRNG com semente = o ano. A mesma chamada devolve sempre os mesmos
-// lançamentos — o mockup não "pisca" entre renders e os testes podem confiar nele.
+// lançamentos, então os testes podem confiar nela.
 //
-// DESDE A M3 a página NÃO importa mais este arquivo: `page.tsx` monta `DadosGastosMarketing` a
-// partir das RPCs (contrato em `tipos.ts`; schemas em `src/lib/marketing/schemas.ts`). A fixture
-// sobrevive só como massa de teste (`completude.test.ts`, `schemas.test.ts`) — o `?estado=` da
-// rota, que forçava os estados abaixo, saiu junto com o mockup:
+// Só os testes importam este arquivo (`completude.test.ts`, `schemas.test.ts`): a página monta
+// `DadosGastosMarketing` a partir das RPCs (`page.tsx`; contrato em `tipos.ts`, schemas em
+// `schemas.ts`). As variantes do `montarDadosFixture` forjam dois estados degradados:
 //   vazio → o ano selecionado não tem lançamento (cada card mostra o próprio estado vazio);
 //   erro  → o ranking por fornecedor falha; os outros cards seguem de pé.
+//
+// Como a base real, a fixture NÃO tem lançamento antes de `ANO_MINIMO_FIXTURE`: o resumo de um
+// ano anterior a ele vem vazio e fora de `anosDisponiveis` (ausência de dado, não zero).
 
-import { cuboCategorias, cuboFornecedores } from '@/lib/marketing/agregacao'
-import { anoDaData, mesLimite, somarDias } from '@/lib/marketing/periodo'
-import type {
-  DadosGastosMarketing, EstadoMockup, LancamentoMkt, ResumoMarketing,
-} from './tipos'
+import { cuboCategorias, cuboFornecedores } from './agregacao'
+import { anoDaData, mesLimite, somarDias } from './periodo'
+import type { DadosGastosMarketing, LancamentoMkt, ResumoMarketing } from './tipos'
 
-/** Primeiro ano com pill no mockup (o dado real começa em 2024). */
-export const ANO_MINIMO_FIXTURE = 2024
+/** Primeiro ano com dado na fixture (o dado real também começa em 2024). */
+const ANO_MINIMO_FIXTURE = 2024
 
 // ── PRNG (mulberry32) ───────────────────────────────────────────────────────────────────
 function criarPrng(semente: number): () => number {
@@ -150,12 +150,15 @@ export function gerarLancamentos(ano: number, hoje: string): LancamentoMkt[] {
     .map((l, i) => ({ ...l, id: (ano - 2000) * 10000 + i + 1 }))
 }
 
+function anosDaFixture(hoje: string): number[] {
+  return Array.from({ length: anoDaData(hoje) - ANO_MINIMO_FIXTURE + 1 }, (_, i) => ANO_MINIMO_FIXTURE + i)
+}
+
 function resumoDe(ano: number, lancamentos: LancamentoMkt[], hoje: string): ResumoMarketing {
   const datas = lancamentos.map(l => l.data).sort()
-  const anoHoje = anoDaData(hoje)
   return {
     ano,
-    anosDisponiveis: Array.from({ length: anoHoje - ANO_MINIMO_FIXTURE + 1 }, (_, i) => ANO_MINIMO_FIXTURE + i),
+    anosDisponiveis: anosDaFixture(hoje),
     porMesCategoria: cuboCategorias(ano, lancamentos),
     cobertura: datas.length ? { min: datas[0], max: datas[datas.length - 1] } : null,
     // 11:42 em São Paulo (UTC−3).
@@ -169,20 +172,18 @@ function resumoDe(ano: number, lancamentos: LancamentoMkt[], hoje: string): Resu
 export function montarDadosFixture(args: {
   ano: number
   hoje: string
-  estado: EstadoMockup | null
+  estado: 'vazio' | 'erro' | null
 }): DadosGastosMarketing {
   const { ano, hoje, estado } = args
-  const anoHoje = anoDaData(hoje)
-  const anosDisponiveis = Array.from({ length: anoHoje - ANO_MINIMO_FIXTURE + 1 }, (_, i) => ANO_MINIMO_FIXTURE + i)
 
   const lancAtual = estado === 'vazio' ? [] : gerarLancamentos(ano, hoje)
-  const lancAnterior = gerarLancamentos(ano - 1, hoje)
+  // Antes do 1º ano da base não há lançamento — como na RPC, o resumo vem vazio.
+  const lancAnterior = ano - 1 < ANO_MINIMO_FIXTURE ? [] : gerarLancamentos(ano - 1, hoje)
 
   return {
     ano,
-    anosDisponiveis,
+    anosDisponiveis: anosDaFixture(hoje),
     hoje,
-    fonte: 'fixture',
     resumo: { ok: true, dados: resumoDe(ano, lancAtual, hoje) },
     resumoAnterior: { ok: true, dados: resumoDe(ano - 1, lancAnterior, hoje) },
     fornecedores: estado === 'erro'

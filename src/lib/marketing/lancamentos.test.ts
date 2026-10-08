@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { LancamentoMkt } from '@/components/marketing/gastos/tipos'
+import type { LancamentoMkt } from './tipos'
 import {
   FILTRO_VAZIO, ORDENACAO_PADRAO, alternarOrdenacao, casaBusca, categoriasDe, direcaoInicial,
   filtrarLancamentos, fornecedoresDe, haFiltro, normalizarTexto, ordenarLancamentos,

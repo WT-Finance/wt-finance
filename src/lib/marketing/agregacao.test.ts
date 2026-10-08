@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { LancamentoMkt } from '@/components/marketing/gastos/tipos'
+import type { LancamentoMkt } from './tipos'
 import {
   ROTULO_SEM_FORNECEDOR, chaveFornecedor, cuboCategorias, cuboFornecedores, lancamentosDoRecorte,
   pctDoTotal, rankingFornecedores, rotuloFornecedor, serieMensal, somar, tabelaPorCategoria,

@@ -18,8 +18,8 @@ import {
   fornecedoresDe, haFiltro, ordenarLancamentos, type ColunaLancamento, type Ordenacao,
 } from '@/lib/marketing/lancamentos'
 import { rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
+import type { LancamentoMkt } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
-import type { LancamentoMkt } from './tipos'
 
 // Componente F — lançamentos do recorte. Colunas (lista FECHADA): data de movimentação,
 // categoria, fornecedor, descrição, nº do documento e valor. Nada de conta bancária/cartão.
@@ -38,10 +38,10 @@ const COLUNAS: { id: ColunaLancamento; rotulo: string; direita?: boolean; largur
   { id: 'categoria',  rotulo: 'Categoria', largura: 208 },
   { id: 'fornecedor', rotulo: 'Fornecedor', largura: 200 },
   { id: 'descricao',  rotulo: 'Descrição' },
-  { id: 'documento',  rotulo: 'Documento', largura: 128 },
+  { id: 'documento',  rotulo: 'Nº do documento', largura: 152 },
   { id: 'valor',      rotulo: 'Valor', direita: true, largura: 156 },
 ]
-const LARGURA_MIN = 1040
+const LARGURA_MIN = 1064
 
 const TD = 'border-b border-zinc-50 px-3 py-2 text-xs text-zinc-700'
 
@@ -203,9 +203,11 @@ export default function LancamentosTabela({ ano, recorte, lancamentos, fornecedo
           <Input
             variant="compacto"
             type="search"
+            name="busca-descricao"
+            autoComplete="off"
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar na descrição"
+            placeholder="Buscar na descrição…"
             aria-label="Buscar na descrição"
             className="w-56 max-w-full pl-8"
           />

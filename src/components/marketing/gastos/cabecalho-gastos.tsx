@@ -1,9 +1,8 @@
 import { CalendarRange, CreditCard } from 'lucide-react'
-import Badge from '@/components/ui/badge'
 import UltimaAtualizacao from '@/components/metas/ultima-atualizacao'
 import { fmtDate } from '@/lib/fmt'
 import { fmtDiaMes } from '@/lib/marketing/periodo'
-import type { ResumoMarketing } from './tipos'
+import type { ResumoMarketing } from '@/lib/marketing/tipos'
 
 // Componente A — cabeçalho: título, regra de leitura, carimbo, cobertura e o aviso de
 // defasagem do cartão.
@@ -18,26 +17,21 @@ const AJUDA_CARTAO =
   'corrente fica subcontado até a fatura ser lançada.'
 
 export default function CabecalhoGastos({
-  resumo, prototipo, ultimaDataCartao,
+  resumo, ultimaDataCartao,
 }: {
   /** `null` = o resumo não carregou; o título fica, os selos somem. */
   resumo: ResumoMarketing | null
   /** Data do aviso "Cartão lançado até". O CHAMADOR decide quando mostrar: a data é global (não
    *  é do ano exibido), então só vale no ano corrente — em ano fechado vem `null`. */
   ultimaDataCartao: string | null
-  /** Selo "dados fictícios" do mockup (some quando a fonte passa a ser a RPC). */
-  prototipo: boolean
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="text-xl font-semibold text-text-primary">Gastos de Marketing</h1>
-          {prototipo && <Badge variant="warning">Protótipo · dados fictícios</Badge>}
-        </div>
+        <h1 className="text-xl font-semibold text-text-primary">Gastos de Marketing</h1>
         <p className="mt-0.5 text-sm text-text-subtle">Lançamentos pagos · data de movimentação</p>
         <p className="mt-1 text-2xs text-[var(--text-muted)]">
-          Mesmo número da linha “(-) Despesas Marketing” da DRE de caixa. Gasto em negativo, como na DRE.
+          Mesmo número da linha de Marketing da DRE de caixa. Gasto em negativo, como na DRE.
         </p>
       </div>
 

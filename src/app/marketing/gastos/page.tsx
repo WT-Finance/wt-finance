@@ -9,7 +9,7 @@ import {
   resumoMarketingSchema,
 } from '@/lib/marketing/schemas'
 import GastosContent from '@/components/marketing/gastos/gastos-content'
-import type { Carregado, DadosGastosMarketing } from '@/components/marketing/gastos/tipos'
+import type { Carregado, DadosGastosMarketing } from '@/lib/marketing/tipos'
 
 // Marketing · Gastos de Marketing (v6.3.0). Área própria 'marketing/gastos' (migration 0292).
 //
@@ -104,7 +104,6 @@ export default async function GastosMarketingPage({
     ano,
     anosDisponiveis,
     hoje,
-    fonte: 'rpc',
     resumo: carregado(resumo),
     resumoAnterior: carregado(resumoAnterior),
     fornecedores: carregado(fornecedores),

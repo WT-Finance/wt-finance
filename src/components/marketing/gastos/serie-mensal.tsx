@@ -15,7 +15,7 @@ import { serieMensal, totalNoRecorte } from '@/lib/marketing/agregacao'
 import { escalaSerie } from '@/lib/marketing/escala'
 import { MESES_ABREV, rotuloRecorteAno, type Recorte } from '@/lib/marketing/periodo'
 import CabecalhoCard from './cabecalho-card'
-import type { ResumoMarketing } from './tipos'
+import type { ResumoMarketing } from '@/lib/marketing/tipos'
 
 // Componente C — série mensal: barras do ano selecionado × linha TRACEJADA do ano anterior.
 //
@@ -42,21 +42,28 @@ interface Props {
   resumo: ResumoMarketing | null
   /** `null` = o resumo do ano anterior não carregou (a linha some, as barras ficam). */
   anterior: ResumoMarketing | null
+  /** O ano anterior não consta em `anosDisponiveis` (a base começa em 2024): não há o que
+   *  comparar. A linha de referência e a legenda somem em silêncio — sem zero inventado e sem o
+   *  aviso de erro, porque não houve falha. */
+  anteriorSemHistorico: boolean
 }
 
-export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior }: Props) {
+export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior, anteriorSemHistorico }: Props) {
+  // Cubo da referência; `null` = sem linha (leitura falhou OU ano sem histórico).
+  const referencia = anterior && !anteriorSemHistorico ? anterior.porMesCategoria : null
+
   const pontos = useMemo(() => {
     if (!resumo) return []
-    return serieMensal(resumo.porMesCategoria, anterior ? anterior.porMesCategoria : null, recorte, limiteMes)
+    return serieMensal(resumo.porMesCategoria, referencia, recorte, limiteMes)
       .map(p => ({ label: MESES_ABREV[p.mes - 1], atual: p.atual, anterior: p.anterior }))
-  }, [resumo, anterior, recorte, limiteMes])
+  }, [resumo, referencia, recorte, limiteMes])
 
   const escala = useMemo(
     () => escalaSerie(pontos.flatMap(p => [p.atual, p.anterior])),
     [pontos],
   )
 
-  const subtitulo = `${rotuloRecorteAno(recorte, ano)} · barras: ${ano}${anterior ? ` · linha tracejada: ${ano - 1}` : ''}`
+  const subtitulo = `${rotuloRecorteAno(recorte, ano)} · barras: ${ano}${referencia ? ` · linha tracejada: ${ano - 1}` : ''}`
 
   if (!resumo) {
     return (
@@ -82,7 +89,7 @@ export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior 
       <CabecalhoCard titulo="Gasto mensal" subtitulo={subtitulo} />
 
       {/* `height` fixo no pai — `min-height` faz o ResponsiveContainer medir 0 e o gráfico some. */}
-      <div role="img" aria-label={`Gasto mensal de marketing em ${rotuloRecorteAno(recorte, ano)}, comparado a ${ano - 1}`}>
+      <div role="img" aria-label={`Gasto mensal de marketing em ${rotuloRecorteAno(recorte, ano)}${referencia ? `, comparado a ${ano - 1}` : ''}`}>
         <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={pontos} margin={chartMargins.default} barCategoryGap="22%">
             {ChartGrid()}
@@ -103,18 +110,20 @@ export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior 
               maxBarSize={34}
               isAnimationActive={false}
             />
-            <Line
-              dataKey="anterior"
-              name={String(ano - 1)}
-              type="monotone"
-              stroke={COR_REFERENCIA}
-              strokeWidth={strokeWidths.lineDashed}
-              strokeDasharray={dashArrays.reference}
-              dot={{ r: 2.5, fill: COR_REFERENCIA, strokeWidth: 0 }}
-              activeDot={{ r: 4 }}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
+            {referencia && (
+              <Line
+                dataKey="anterior"
+                name={String(ano - 1)}
+                type="monotone"
+                stroke={COR_REFERENCIA}
+                strokeWidth={strokeWidths.lineDashed}
+                strokeDasharray={dashArrays.reference}
+                dot={{ r: 2.5, fill: COR_REFERENCIA, strokeWidth: 0 }}
+                activeDot={{ r: 4 }}
+                connectNulls={false}
+                isAnimationActive={false}
+              />
+            )}
             {/* Legenda nativa escondida — a `ChartLegend` fica fora do container, abaixo. */}
             <Legend content={() => null} />
           </ComposedChart>
@@ -124,10 +133,10 @@ export default function SerieMensal({ ano, recorte, limiteMes, resumo, anterior 
       <ChartLegend
         items={[
           { label: String(ano), color: COR_ANO, type: 'rect' },
-          ...(anterior ? [{ label: String(ano - 1), color: COR_REFERENCIA, type: 'line' as const, dashed: true }] : []),
+          ...(referencia ? [{ label: String(ano - 1), color: COR_REFERENCIA, type: 'line' as const, dashed: true }] : []),
         ]}
       />
-      {!anterior && (
+      {!anterior && !anteriorSemHistorico && (
         <ErroCarregamento mensagem={`Não foi possível carregar ${ano - 1}; sem a linha de referência.`} className="mt-2 justify-center" />
       )}
     </Card>

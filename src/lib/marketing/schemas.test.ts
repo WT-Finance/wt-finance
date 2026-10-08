@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { montarDadosFixture } from '@/components/marketing/gastos/fixture'
+import { montarDadosFixture } from './fixture'
 import {
   fornecedoresMarketingSchema,
   lancamentosMarketingSchema,
@@ -7,7 +7,7 @@ import {
 } from './schemas'
 
 // Os schemas validam o retorno REAL das 3 RPCs (0292). A prova contra a RPC viva é do
-// `rpc-contrato.test.ts` (M4); aqui, o que dá para provar sem banco: o formato que a fixture
+// `src/lib/rpc-contrato.test.ts`; aqui, o que dá para provar sem banco: o formato que a fixture
 // (que espelha o contrato de `tipos.ts`) produz passa, e o formato que o Postgres de fato
 // serializa — timestamptz com offset, chaves com `null`, arrays vazios — também.
 
