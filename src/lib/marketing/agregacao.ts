@@ -133,7 +133,7 @@ const porAnoCrescente = <L>(fatias: readonly FatiaAno<L>[]): FatiaAno<L>[] =>
   [...fatias].sort((a, b) => a.ano - b.ano)
 
 /** As linhas de todos os anos que caem no recorte do SEU ano (a ordem dos anos não importa). */
-export function linhasDoPeriodo<L extends ComMes>(fatias: readonly FatiaAno<L>[]): L[] {
+function linhasDoPeriodo<L extends ComMes>(fatias: readonly FatiaAno<L>[]): L[] {
   return fatias.flatMap(f => f.linhas.filter(l => mesNoRecorte(l.mes, f.recorte)))
 }
 
@@ -153,7 +153,7 @@ export function totaisPorAno(fatias: readonly FatiaAno<ComMes>[]): TotalDoAno[] 
   return porAnoCrescente(fatias).map(f => ({ ano: f.ano, ...totalNoRecorte(f.linhas, f.recorte) }))
 }
 
-export interface PontoMensal {
+interface PontoMensal {
   mes: number
   /** Um valor por ano, na ordem de `SerieMensal.anos`. `null` = mês ainda não alcançado naquele
    *  ano (sem barra — ausência ≠ zero); mês alcançado e sem gasto é zero REAL. */

@@ -14,9 +14,11 @@ import { fmtBRL2 } from '@/lib/fmt'
 import {
   serieMensalMultiAno, totaisPorAno, totalDoPeriodo, type FatiaAno,
 } from '@/lib/marketing/agregacao'
-import { coresDosAnos } from '@/lib/marketing/cores'
+import { TONS_DO_ANO, coresPorAno } from '@/lib/marketing/cores'
 import { escalaSerie } from '@/lib/marketing/escala'
-import { MESES_ABREV, rotuloAnos } from '@/lib/marketing/periodo'
+import {
+  MESES_ABREV, notaRecortesParciais, recorteParcial, rotuloAnoNoTotal, rotuloAnos, rotuloRecorte,
+} from '@/lib/marketing/periodo'
 import type { LinhaMesCategoria } from '@/lib/marketing/tipos'
 import CabecalhoCard from './cabecalho-card'
 
@@ -28,9 +30,15 @@ import CabecalhoCard from './cabecalho-card'
 // Eixo X SEMPRE jan–dez, mesmo no ano corrente: o mês que ainda não chegou é `null` (sem barra —
 // ausência ≠ zero), nunca zero.
 //
-// Cores por token e por POSIÇÃO entre os selecionados (`coresDosAnos`): o ano mais recente na cor
-// principal (`--action-soft-border`), os anteriores em cinzas progressivamente mais claros. O painel
-// Total usa as mesmas cores por ano. Esta é uma tela de plataforma — sem `--brand`.
+// Cores por token e por POSIÇÃO entre os SELECIONADOS (`coresPorAno`, sobre `anos` — não só os que
+// carregaram, como o card de proporção): o ano mais recente na cor principal (`--action-primary`),
+// os anteriores em cinzas progressivamente mais claros. Assim a cor de um ano não muda se o resumo
+// de outro falhou, e é a mesma nos dois gráficos. A legenda, o tooltip e o painel Total usam as
+// mesmas cores por ano. Esta é uma tela de plataforma — sem `--brand`.
+//
+// Ano PARCIAL no painel Total: "2026*" e a nota "* jan–out", derivados do recorte de cada ano
+// (`@/lib/marketing/periodo`) — a mesma convenção do card de proporção. Sem isso a barra do ano
+// corrente (10 meses) pareceria comparável às dos anos inteiros.
 //
 // VALORES NEGATIVOS — a armadilha que não dá erro: o domínio default do Recharts ancora em zero e
 // CORTA os negativos. O domínio e os ticks de CADA gráfico saem de `escalaSerie` (passo redondo), o
@@ -38,23 +46,32 @@ import CabecalhoCard from './cabecalho-card'
 // não pode aparecer com dois sinais em telas vizinhas.
 //
 // Falha parcial: o gráfico desenha os anos que carregaram e AVISA dos ausentes (ele não soma anos
-// — cada barra é de um ano só; quem soma, os cards, mostra o erro no lugar do número).
+// — cada barra é de um ano só; quem soma, os cards, mostra o erro no lugar do número). O aviso
+// nomeia os anos ausentes em TODOS os ramos (com dado, sem lançamento nos carregados, falha total).
 
 const ALTURA = 260
 
 interface Props {
   /** Rótulo do período ("2025 + 2026 (até out)"). */
   periodo: string
+  /** Todos os anos SELECIONADOS (carregados ou não): a cor de cada ano sai da posição aqui. */
+  anos: readonly number[]
   /** Os anos selecionados que carregaram, cada um no seu recorte. */
   fatias: readonly FatiaAno<LinhaMesCategoria>[]
   /** Anos selecionados cujo resumo falhou. */
   anosFalha: readonly number[]
 }
 
-export default function SerieMensal({ periodo, fatias, anosFalha }: Props) {
+export default function SerieMensal({ periodo, anos, fatias, anosFalha }: Props) {
   const serie = useMemo(() => serieMensalMultiAno(fatias), [fatias])
   const totais = useMemo(() => totaisPorAno(fatias), [fatias])
-  const cores = useMemo(() => coresDosAnos(serie.anos), [serie.anos])
+  const recortePorAno = useMemo(() => new Map(fatias.map(f => [f.ano, f.recorte])), [fatias])
+  // Cor por ano pela posição entre os SELECIONADOS; `serie.anos` são só os que carregaram.
+  const corPorAno = useMemo(() => coresPorAno(anos), [anos])
+  const cores = useMemo(
+    () => serie.anos.map(a => corPorAno.get(a) ?? TONS_DO_ANO[TONS_DO_ANO.length - 1]),
+    [serie.anos, corPorAno],
+  )
 
   // Um ponto por mês; uma chave por ano (`dataKey` = o ano). `null` = sem barra.
   const dadosMensais = useMemo(
@@ -64,10 +81,24 @@ export default function SerieMensal({ periodo, fatias, anosFalha }: Props) {
     })),
     [serie],
   )
+  // Painel Total: o rótulo do ano parcial leva `*`; o tooltip diz o recorte ("2026 · jan–out").
   const dadosTotal = useMemo(
-    () => totais.map((t, i) => ({ label: String(t.ano), valor: t.valor, cor: cores[i] })),
-    [totais, cores],
+    () => totais.map(t => {
+      const recorte = recortePorAno.get(t.ano)
+      return {
+        label: recorte ? rotuloAnoNoTotal(t.ano, recorte) : String(t.ano),
+        rotuloTooltip: recorte && recorteParcial(recorte) ? `${t.ano} · ${rotuloRecorte(recorte)}` : String(t.ano),
+        valor: t.valor,
+        cor: corPorAno.get(t.ano) ?? TONS_DO_ANO[TONS_DO_ANO.length - 1],
+      }
+    }),
+    [totais, recortePorAno, corPorAno],
   )
+  const tooltipTotalPorRotulo = useMemo(
+    () => new Map(dadosTotal.map(d => [d.label, d.rotuloTooltip])),
+    [dadosTotal],
+  )
+  const notaParcial = useMemo(() => notaRecortesParciais(fatias), [fatias])
 
   const escalaMeses = useMemo(() => escalaSerie(serie.pontos.flatMap(p => p.valores)), [serie])
   const escalaTotal = useMemo(() => escalaSerie(totais.map(t => t.valor)), [totais])
@@ -75,20 +106,38 @@ export default function SerieMensal({ periodo, fatias, anosFalha }: Props) {
   const titulo = 'Despesas mensais'
   const subtitulo = `${periodo} · uma barra por ano, lado a lado`
 
+  // O aviso dos anos ausentes — o MESMO em todos os ramos que tenham ao menos um ano carregado.
+  const avisoFalha = anosFalha.length > 0 ? (
+    <ErroCarregamento
+      mensagem={`Não foi possível carregar ${rotuloAnos(anosFalha)}; fora do gráfico.`}
+      className="mt-2 justify-center"
+    />
+  ) : null
+
+  // Falha total (nenhum ano carregou): UM aviso só, nomeando os anos.
   if (fatias.length === 0) {
     return (
       <Card>
         <CabecalhoCard titulo={titulo} />
-        <ErroCarregamento mensagem="Não foi possível carregar as despesas mensais." />
+        <ErroCarregamento
+          mensagem={anosFalha.length > 0
+            ? `Não foi possível carregar as despesas mensais de ${rotuloAnos(anosFalha)}.`
+            : 'Não foi possível carregar as despesas mensais.'}
+        />
       </Card>
     )
   }
 
   if (totalDoPeriodo(fatias).qtd === 0) {
+    // Com ano que falhou, "sem lançamentos em <todos os anos>" seria falso: só vale para os carregados.
+    const mensagemVazio = anosFalha.length > 0
+      ? `Sem lançamentos pagos nos anos carregados (${rotuloAnos(serie.anos)}).`
+      : `Sem lançamentos pagos em ${periodo}.`
     return (
       <Card>
         <CabecalhoCard titulo={titulo} subtitulo={subtitulo} />
-        <EmptyState icon={ChartColumn} message={`Sem lançamentos pagos em ${periodo}.`} />
+        <EmptyState icon={ChartColumn} message={mensagemVazio} />
+        {avisoFalha}
       </Card>
     )
   }
@@ -152,7 +201,11 @@ export default function SerieMensal({ periodo, fatias, anosFalha }: Props) {
                 {ChartZeroLine()}
                 <Tooltip
                   content={p => (
-                    <CustomTooltip {...p} formatter={(v) => [fmtBRL2(v), 'Total']} />
+                    <CustomTooltip
+                      {...p}
+                      labelFormatter={l => tooltipTotalPorRotulo.get(String(l)) ?? String(l)}
+                      formatter={(v) => [fmtBRL2(v), 'Total']}
+                    />
                   )}
                   cursor={{ fill: 'var(--surface-soft)' }}
                 />
@@ -168,16 +221,13 @@ export default function SerieMensal({ periodo, fatias, anosFalha }: Props) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="mt-2 text-center text-xs text-[var(--text-muted)]">Total por ano</p>
+          <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
+            Total por ano{notaParcial ? ` · ${notaParcial}` : ''}
+          </p>
         </div>
       </div>
 
-      {anosFalha.length > 0 && (
-        <ErroCarregamento
-          mensagem={`Não foi possível carregar ${rotuloAnos(anosFalha)}; fora do gráfico.`}
-          className="mt-2 justify-center"
-        />
-      )}
+      {avisoFalha}
     </Card>
   )
 }

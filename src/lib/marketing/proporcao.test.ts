@@ -36,7 +36,7 @@ describe('barrasProporcao — ordem, cor e rótulo', () => {
   it('as cores são as do gráfico "Despesas mensais" (coresDosAnos): o ano mais recente na principal', () => {
     const { barras } = barrasProporcao([2024, 2025, 2026], REAIS)
     expect(barras.map(b => b.cor)).toEqual(coresDosAnos([2024, 2025, 2026]))
-    expect(barras[2].cor).toBe('var(--action-soft-border)')
+    expect(barras[2].cor).toBe('var(--action-primary)')
   })
 
   it('o valor é o da RPC, sem refazer a conta: o sinal da DRE (negativo) atravessa intacto', () => {

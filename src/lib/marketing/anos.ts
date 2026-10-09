@@ -61,6 +61,28 @@ export function anosDaUrl(params: ParamsAnos, anoCorrente: number): number[] {
 }
 
 /**
+ * A lista de pills de ano. Fonte normal: `anosDaBase` (anos com lançamento, GLOBAL — qualquer
+ * resumo carregado traz a mesma lista). Sem ela (`null` = nenhum resumo carregou), cai na janela
+ * dos últimos `janela` anos até o corrente E inclui os anos PEDIDOS: nesse caso `resolverAnos`
+ * devolve o pedido tal como veio, e uma seleção sem pill não poderia ser desmarcada pelo usuário.
+ * Sempre inclui o ano corrente (em janeiro ele pode ainda não ter lançamento e a pill não pode
+ * sumir). Com a base lida, um `?anos=` fora dela NÃO ganha pill (é descartado por `resolverAnos`).
+ */
+export function anosDasPills(
+  anosDaBase: readonly number[] | null,
+  pedidos: readonly number[],
+  anoCorrente: number,
+  janela: number,
+): number[] {
+  const base = anosDaBase
+    ?? [
+      ...Array.from({ length: janela }, (_, i) => anoCorrente - (janela - 1) + i),
+      ...pedidos,
+    ]
+  return unicosCrescentes([...base, anoCorrente])
+}
+
+/**
  * Filtra o pedido pelos anos que têm pill. `anosDisponiveis === null` = a lista não pôde ser lida
  * (todas as leituras falharam): não há com o que filtrar, vale o pedido. Se nada sobrar, o default
  * (ano corrente), que sempre tem pill.

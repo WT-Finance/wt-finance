@@ -76,6 +76,7 @@ export default function GastosContent({ dados, proporcao }: Props) {
 
         <SerieMensal
           periodo={periodo}
+          anos={anos}
           fatias={resumo.fatias}
           anosFalha={resumo.anosFalha}
         />

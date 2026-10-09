@@ -3,7 +3,7 @@ import { requireArea } from '@/lib/auth/sessao'
 import { hojeSP } from '@/lib/fmt'
 import { type RpcLike } from '@/lib/rpc'
 import { parseRpc } from '@/lib/schemas-rpc'
-import { anosDaUrl, resolverAnos, type ParamsAnos } from '@/lib/marketing/anos'
+import { anosDaUrl, anosDasPills, resolverAnos, type ParamsAnos } from '@/lib/marketing/anos'
 import type { LeituraProporcao } from '@/lib/marketing/proporcao'
 import { fornecedoresMarketingSchema, resumoMarketingSchema } from '@/lib/marketing/schemas'
 import { proporcaoReceitaMarketingSchema } from '@/lib/marketing/schemas-proporcao'
@@ -31,7 +31,7 @@ import type { Carregado, DadosGastosMarketing, LeituraAno } from '@/lib/marketin
 // o pedido pelo default (ano corrente) que ainda não foi lido, uma segunda leitura o busca.
 export const dynamic = 'force-dynamic'
 
-/** Quantos anos a pill oferece quando nenhum resumo carregou e `anosDisponiveis` não veio. */
+/** Quantos anos a pill oferece (além dos pedidos) quando nenhum resumo carregou e `anosDisponiveis` não veio. */
 const JANELA_FALLBACK = 3
 
 type Db = Awaited<ReturnType<typeof getServerClient>>
@@ -109,14 +109,14 @@ export default async function GastosMarketingPage({
   }
   for (const l of await Promise.all(pedidos.map(a => lerAnoCompleto(db, a)))) guardar(l)
 
-  // Pills de ano. Fonte: `anosDisponiveis` (anos com lançamento na base), que é GLOBAL — qualquer
-  // resumo carregado traz a mesma lista. Só se NENHUM carregou cai para os `JANELA_FALLBACK` anos
-  // até o corrente (mesmo critério da DRE). Sempre inclui o ano corrente (em janeiro ele ainda pode
-  // não ter lançamento e a pill não pode sumir); um `?anos=` digitado fora da base NÃO ganha pill.
+  // Pills de ano (`anosDasPills`). Fonte: `anosDisponiveis` (anos com lançamento na base), que é
+  // GLOBAL — qualquer resumo carregado traz a mesma lista. Só se NENHUM carregou cai para os
+  // `JANELA_FALLBACK` anos até o corrente (mesmo critério da DRE) MAIS os anos pedidos: sem a base,
+  // a seleção é o pedido tal como veio, e ela precisa ter pill para o usuário poder desmarcá-la.
+  // Sempre inclui o ano corrente (em janeiro ele ainda pode não ter lançamento e a pill não pode
+  // sumir). Com a base lida, um `?anos=` digitado fora dela NÃO ganha pill.
   const daBase = [...lidos.values()].flatMap(l => (l.resumo.ok ? [l.resumo.dados.anosDisponiveis] : []))[0] ?? null
-  const base = daBase
-    ?? Array.from({ length: JANELA_FALLBACK }, (_, i) => anoCorrente - (JANELA_FALLBACK - 1) + i)
-  const anosDisponiveis = [...new Set([...base, anoCorrente])].sort((a, b) => a - b)
+  const anosDisponiveis = anosDasPills(daBase, pedidos, anoCorrente, JANELA_FALLBACK)
 
   // A seleção final só tem anos com pill. Sem a lista da base (todos falharam), vale o pedido.
   const anos = resolverAnos(pedidos, daBase === null ? null : anosDisponiveis, anoCorrente)
